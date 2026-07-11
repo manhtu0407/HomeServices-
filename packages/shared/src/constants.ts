@@ -1,4 +1,11 @@
-export const SERVICE_TYPES = Object.freeze(['electrical', 'plumbing', 'cleaning'] as const)
+export const SERVICE_TYPES = Object.freeze([
+  'electrical',
+  'plumbing',
+  'cleaning',
+  'hvac',
+  'upholstery',
+  'handyman',
+] as const)
 export type ServiceType = (typeof SERVICE_TYPES)[number]
 
 export const JOB_STATUSES = Object.freeze([
@@ -7,6 +14,7 @@ export const JOB_STATUSES = Object.freeze([
   'estimate_ready',
   'awaiting_customer_confirm',
   'broadcasting',
+  'worker_candidate_pending',
   'worker_matched',
   'worker_on_way',
   'arrived',
@@ -124,6 +132,33 @@ export const PROBLEM_CHIPS = Object.freeze({
     'Dọn sau sửa chữa',
     'Vệ sinh cửa kính',
     'Vấn đề khác',
+  ] as const),
+  hvac: Object.freeze([
+    'Vệ sinh điều hòa',
+    'Máy lạnh yếu',
+    'Máy không mát',
+    'Chảy nước',
+    'Kêu bất thường',
+    'Có mã lỗi',
+    'Vấn đề khác',
+  ] as const),
+  upholstery: Object.freeze([
+    'Vệ sinh sofa',
+    'Vệ sinh nệm',
+    'Vệ sinh rèm',
+    'Vệ sinh thảm',
+    'Vết bẩn',
+    'Mùi hôi/ẩm mốc',
+    'Vấn đề khác',
+  ] as const),
+  handyman: Object.freeze([
+    'Khoan/lắp kệ',
+    'Lắp thanh rèm',
+    'Lắp đèn/thiết bị nhỏ',
+    'Sửa bản lề/tay nắm',
+    'Lắp thiết bị phòng tắm',
+    'Lắp TV/nội thất',
+    'Việc nhỏ khác',
   ] as const),
 } as const)
 

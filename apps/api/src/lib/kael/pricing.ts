@@ -40,6 +40,15 @@ export async function searchMarketPrice(
     return { success: false, failureReason: 'JSON parse failed on AI response' }
   }
 
+  if (
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    'error' in parsed &&
+    parsed.error === 'insufficient_trusted_data'
+  ) {
+    return { success: false, failureReason: 'insufficient_trusted_data' }
+  }
+
   const validated = marketPriceResultSchema.safeParse(parsed)
   if (!validated.success) {
     return {

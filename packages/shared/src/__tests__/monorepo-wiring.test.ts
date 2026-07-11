@@ -103,9 +103,9 @@ describe('root product contract alignment', () => {
     expect(supabaseConfig).not.toContain('auth flow is phone OTP')
   })
 
-  it('keeps worker verification scoped to electrical, plumbing, and cleaning services', () => {
-    expect(structures).toContain('service skills: electrical / plumbing / cleaning')
-    expect(structures).toContain('including multi-service combinations')
+  it('keeps worker verification scoped to the six approved services', () => {
+    expect(structures).toContain('service skills: electrical / plumbing / cleaning / HVAC / upholstery / handyman')
+    expect(structures).toContain('including verified multi-service combinations')
     expect(structures).not.toContain('service skills: electrical / plumbing / both')
   })
 

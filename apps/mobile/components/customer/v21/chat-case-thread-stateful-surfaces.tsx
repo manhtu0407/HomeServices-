@@ -14,11 +14,10 @@ import {
   AgenticCaseOptionsCardPanel,
 } from './agentic-case-surfaces'
 import { AgenticCaseQuoteDecisionCardPanel } from './agentic-decision-surfaces'
-import { AgenticCasePaymentCardPanel } from './agentic-surfaces'
+import { AgenticCasePaymentCardPanel, AgenticChatFact } from './agentic-surfaces'
 import { CaseWideMintAura, CaseWorkActionButtonAura, CaseWorkCardAura, SourceCardSkin } from './aura-surfaces'
 import { customerV21Assets } from './assets'
 import { customerV21AgenticStyles as agenticStyles } from './agentic-styles'
-import { AgenticChatFact } from './agentic-surfaces'
 import { buildAgenticCaseThreadStageCardModels, type AgenticCaseThreadStageCardModels } from './case-thread-display-model'
 import type {
   AgenticCaseSignal as AgenticCaseThreadLiveSignalModel,
@@ -38,13 +37,13 @@ export function AgenticCaseThreadPanel({
   activityLabel,
   caseEvidenceGateActive,
   caseEvidenceGateNode,
+  completionReviewNode,
   caseOptionsAcknowledged,
   caseQuoteRejectOpen,
   caseQuoteRejectReason,
   confirmingCaseQuote,
   deal,
   editing,
-  focus,
   language,
   onAcknowledgeOptions,
   onApproveScopeChange,
@@ -65,13 +64,13 @@ export function AgenticCaseThreadPanel({
   activityLabel: string
   caseEvidenceGateActive: boolean
   caseEvidenceGateNode: ReactNode
+  completionReviewNode: ReactNode
   caseOptionsAcknowledged: boolean
   caseQuoteRejectOpen: boolean
   caseQuoteRejectReason: string
   confirmingCaseQuote: boolean
   deal: LocalDeal
   editing: boolean
-  focus?: 'approval' | 'payment' | null
   language: AppLanguage
   onAcknowledgeOptions: () => void
   onApproveScopeChange: (id: string) => void
@@ -94,7 +93,6 @@ export function AgenticCaseThreadPanel({
     caseOptionsAcknowledged,
     deal,
     editing,
-    focus,
     language,
     sourceFooterLabel,
     submittingCaseEvidence,
@@ -108,6 +106,7 @@ export function AgenticCaseThreadPanel({
       activityLabel={activityLabel}
       approval={threadModel.approval}
       caseEvidenceGateNode={caseEvidenceGateActive ? caseEvidenceGateNode : null}
+      completionReviewNode={completionReviewNode}
       caseStageNodes={(
         <AgenticCaseThreadStageNodes
           cards={stageCards}
@@ -143,6 +142,7 @@ export function AgenticCaseThreadView({
   activityLabel,
   approval,
   caseEvidenceGateNode,
+  completionReviewNode,
   caseStageNodes,
   language,
   liveSignal,
@@ -157,6 +157,7 @@ export function AgenticCaseThreadView({
   activityLabel: string
   approval: AgenticCaseThreadApprovalModel | null
   caseEvidenceGateNode: ReactNode
+  completionReviewNode: ReactNode
   caseStageNodes: ReactNode
   language: AppLanguage
   liveSignal: AgenticCaseThreadLiveSignalModel | null
@@ -203,6 +204,7 @@ export function AgenticCaseThreadView({
 
       {caseEvidenceGateNode}
       {caseStageNodes}
+      {completionReviewNode}
 
       {liveSignal ? (
         <V21Card

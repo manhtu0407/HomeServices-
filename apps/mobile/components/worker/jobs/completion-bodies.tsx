@@ -219,7 +219,7 @@ export function WorkerV5CompletionSubmittedBody({
 }) {
   const deal = runtime.state.deal
   const sourceCount = (deal?.completionPhotoUrls?.length ?? 0) + (deal?.completionNotes?.trim() ? 1 : 0)
-  const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'reviewed'
+  const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
 
   return (
     <View style={styles.sectionStack}>

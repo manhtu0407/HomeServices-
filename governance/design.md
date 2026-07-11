@@ -113,7 +113,7 @@ Customer design emphasis:
 - booking confidence,
 - apartment address context,
 - friendly guidance,
-- visible Kael decision audit, override, and appeal for money-impacting decisions.
+- visible validated proposal/decision audit, customer authority, override, and appeal for money-impacting steps.
 
 Worker design emphasis:
 
@@ -234,7 +234,7 @@ An option fails the quality audit if:
 - customer screens feel like a marketing landing page,
 - the design cannot be built cleanly in React Native,
 - loading, empty, error, success, retry, and confirmation states are missing,
-- money-impacting screens do not make the Kael decision, audit trail, override, and appeal path obvious.
+- money-impacting screens do not make the validated proposal/decision, required customer authority, audit trail, override, and appeal path obvious.
 
 When a failure mode is found, revise the option before production implementation.
 
@@ -287,7 +287,7 @@ Preferred production renderers:
 When asking an agent to generate a Lottie animation, ground the prompt in concrete NestScout assets instead of generic text:
 
 - approved Kael mascot assets or poses,
-- actual service scope: electrical repair, plumbing repair, home cleaning,
+- actual six-service scope: electrical repair, plumbing repair, home cleaning, HVAC/indoor air, upholstery care, and minor repair/installation,
 - real UI screenshots or frame sketches from the target onboarding screen,
 - current glass-liquid palette tokens and one mint accent,
 - exact composition size, duration, FPS, background treatment, and start/mid/end states.
@@ -300,7 +300,7 @@ Each onboarding panel gets one clear motion idea. The animation should explain a
 
 - Kael listens -> evidence enters -> structured estimate appears,
 - apartment context anchors the request -> only coarse trust-safe context is shown,
-- worker matching starts after Kael decision -> no fake worker or fake queue,
+- worker matching starts after the customer confirms the validated Kael offer -> no fake worker or fake queue,
 - evidence trail protects scope, completion, and support.
 
 Recommended defaults:
@@ -455,7 +455,7 @@ Did color, typography, layout, decoration, and motion work together?
 Was a design lab created for major screens?
 Were skill adaptations stated before build?
 Were all required states covered?
-Were money-impacting Kael decisions visible, audited, and appealable/overridable where policy allows?
+Were money-impacting proposals/decisions and the required customer authority visible, audited, and appealable/overridable where policy allows?
 Does it work as React Native mobile UI?
 Is Kael used consistently and not excessively?
 Were prototype/lab artifacts kept out of production?

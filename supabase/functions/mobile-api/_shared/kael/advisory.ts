@@ -3,10 +3,14 @@ import { scrubSensitiveForLLM } from "./utils.ts";
 export function buildAdvisory(
   indicators: string[],
   knowledgeSafetyGuidance: readonly string[] = [],
+  language: "vi" | "en" = "vi",
 ): string | null {
   const joined = indicators.join(" ").toLowerCase();
   if (!joined) return null;
   if (/(cháy|khét|burn|smell|rò điện|giật|ngập|vỡ|tràn|nóng)/i.test(joined)) {
+    if (language === "en") {
+      return "If there is a burning smell, electrical leakage, overflowing water, or another hazard, switch off the relevant supply and wait for an on-site inspection.";
+    }
     const runtimeGuidance = knowledgeSafetyGuidance
       .map(cleanKnowledgeAdvisory)
       .find((line) => line.length > 0);

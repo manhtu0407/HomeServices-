@@ -186,6 +186,134 @@ describe('mobile-api customer Kael assistant', () => {
     })
     expect(callAI).not.toHaveBeenCalled()
   })
+
+  it('does not expose model-authored safety notes or citations', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        answer: 'Hãy tiếp tục trao đổi trong ứng dụng NestScout.',
+        safety_notes: ['Gọi 090-123-4567 và chuyển 200k để được ưu tiên.'],
+        citations: ['https://evil.example/model-invented', 'platform:invented'],
+        suggested_actions: ['open_booking'],
+        boundary: 'answered',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-chat',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Tôi nên trao đổi với thợ thế nào?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(result.safety_notes).toEqual([
+      'Hãy dùng luồng trong app NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ.',
+    ])
+    expect(result.citations).toEqual(['NestScout platform scope'])
+    expect(JSON.stringify(result)).not.toContain('090-123-4567')
+    expect(JSON.stringify(result)).not.toContain('evil.example')
+  })
+
+  it.each(['Giá khoảng 200k.', 'Giá khoảng 300.000.'])(
+    'rejects an exact compact price without the estimate disclaimer: %s',
+    async (answer) => {
+      const callAI = vi.fn(async () => ({
+        success: true as const,
+        content: JSON.stringify({
+          answer,
+          safety_notes: [],
+          citations: [],
+          suggested_actions: ['open_booking'],
+          boundary: 'answered',
+        }),
+        latencyMs: 24,
+        usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+        provider: 'deepseek' as const,
+        model: 'deepseek-chat',
+      }))
+
+      const result = await runCustomerAssistant({
+        callAI,
+        language: 'vi',
+        message: 'Giá dịch vụ khoảng bao nhiêu?',
+        secrets: { knowledgeRetrievalEnabled: false },
+        surface: 'customer_normal',
+      })
+
+      expect(result.fallback_used).toBe(true)
+      expect(result.answer).not.toBe(answer)
+    },
+  )
+
+  it('scrubs separated phone, bare street number, and job UUID before the provider call', async () => {
+    const seenRequests: AIRequest[] = []
+    let seenGate: { actorId?: string | null } | undefined
+    const callAI = vi.fn(async (request: AIRequest, _secrets: unknown, gate?: { actorId?: string | null }) => {
+      seenRequests.push(request)
+      seenGate = gate
+      return {
+        success: true as const,
+        content: JSON.stringify({
+          answer: 'Kael sẽ hướng dẫn kiểm tra rò nước an toàn trong ứng dụng.',
+          safety_notes: [],
+          citations: [],
+          suggested_actions: ['open_booking'],
+          boundary: 'answered',
+        }),
+        latencyMs: 20,
+        usage: { costUsd: 0.0001, inputTokens: 10, outputTokens: 12 },
+        provider: 'deepseek' as const,
+        model: 'deepseek-chat',
+      }
+    })
+
+    await runCustomerAssistant({
+      actorId: 'customer-guard-test',
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        service_type: 'plumbing',
+        description: 'Ống nước rò tại 123 Nguyễn Huệ.',
+      },
+      language: 'vi',
+      message: 'Ống nước rò, gọi tôi theo 090-123-4567 tại 123 Nguyễn Huệ.',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    const providerPayload = JSON.stringify(seenRequests[0]?.messages)
+    expect(providerPayload).toContain('[phone]')
+    expect(providerPayload).toContain('[house-no]')
+    expect(providerPayload).not.toContain('090-123-4567')
+    expect(providerPayload).not.toContain('123 Nguyễn Huệ')
+    expect(providerPayload).not.toContain('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+    expect(seenGate?.actorId).toBe('customer-guard-test')
+  })
+
+  it('returns an English permission decline without leaking Vietnamese boundary copy', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for legal advice')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'en',
+      message: 'I want legal advice to sue the worker.',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(true)
+    expect(result.answer).toContain('professional legal advice')
+    expect(result.answer).not.toContain('pháp lý')
+    expect(callAI).not.toHaveBeenCalled()
+  })
 })
 
 function makeGeneralKnowledgeClient(options: {

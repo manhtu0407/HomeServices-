@@ -231,13 +231,14 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(mockWorkflowValue.actions.createRemoteJobFromDraft).toBeUndefined()
   })
 
-  it('opens expansion scope preview without creating a production workflow draft', () => {
+  it('opens an expansion service in the same production Basic Intake path', () => {
     render(<CustomerHomeSurface />)
 
     fireEvent.press(screen.getByTestId('customer-v21-service-hvac_basic_maintenance'))
 
-    expect(mockDispatch).not.toHaveBeenCalled()
+    expect(mockDispatch).toHaveBeenCalledWith({ type: 'start_home_service', serviceType: 'hvac' })
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking?service=hvac_basic_maintenance')
+    expect(mockWorkflowValue.actions.createRemoteJobFromDraft).toBeUndefined()
   })
 
   it('renders active case fields only from real workflow state', () => {

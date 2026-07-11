@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SERVICE_TYPES } from "../../../_shared/domain.ts";
 import type { AIProvider, EdgeAiSecrets } from "./types.ts";
 import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "./types.ts";
 import { callStructuredAI } from "./structured-call.ts";
@@ -6,7 +7,7 @@ import { KAEL_ROUTING_CONFIG, maxTokensForPurpose } from "./routing.config.ts";
 
 export const priceSynthesisAbCaseSchema = z.object({
   case_key: z.string().min(4).max(160),
-  service_type: z.enum(["electrical", "plumbing", "cleaning"]),
+  service_type: z.enum(SERVICE_TYPES),
   problem_slug: z.string().min(1).max(100),
   district_code: z.string().min(1).max(80),
   complexity: z.enum(["small", "medium", "large"]),

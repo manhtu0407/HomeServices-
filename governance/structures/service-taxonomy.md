@@ -4,7 +4,22 @@
 
 ## 5. Service Taxonomy
 
-Only electrical, plumbing, and home cleaning are active. Future-service cards or "coming soon" service entries must not appear in current product UI unless Tu explicitly approves that specific state.
+Exactly six services are active: electrical, plumbing, home cleaning, HVAC/indoor air, upholstery care, and minor repair/installation. A service route collects Basic Intake only; taxonomy chips are optional hints, not a required static questionnaire. Kael owns the deeper one-question-at-a-time Case Work after handoff.
+
+### Case Work Performance Profiles
+
+```text
+Service -> profile
+-
+|- electrical -> electric_diagnose
+|- plumbing -> water_diagnose
+|- cleaning -> clean_scope
+|- hvac -> air_scope
+|- upholstery -> fabric_scope
+|- handyman -> task_scope
+```
+
+All profiles use the same phase-gated server workflow. A profile supplies service-specific quote drivers, evidence guidance, safety/capability checks, completion checks, and scope-change triggers. Those details must not be expanded into a long client-side form.
 
 ### Electrical Taxonomy
 
@@ -126,15 +141,106 @@ Home cleaning / housekeeping
 |  |- complexity: unknown
 ```
 
+### HVAC And Indoor Air Taxonomy
+
+`hvac` is a broad service, not a cleaning-only maintenance category. Kael may scope cleaning, diagnosis, or repair from evidence. Dispatch still requires a worker whose verified capabilities cover the diagnosed work, and universal safety gates may pause or reroute hazardous cases.
+
+```text
+Air conditioning and indoor air service
+-
+|- cleaning_or_maintenance
+|  |- hints: routine unit cleaning, filter or airflow maintenance
+|  |- quote drivers: unit count/type, access, last service, observed condition
+|
+|- weak_or_no_cooling
+|  |- hints: runs but cools poorly or not at all
+|  |- quote drivers: unit type, symptoms, duration, error indicators
+|
+|- water_or_condensate_issue
+|  |- hints: dripping, leaking, blocked drainage, indoor moisture
+|  |- quote drivers: leak location, active damage, unit/access type
+|
+|- noise_or_vibration
+|  |- hints: unusual sound, vibration, intermittent operation
+|  |- quote drivers: sound pattern, operating state, unit/access type
+|
+|- power_or_start_issue
+|  |- hints: does not start, trips power, shuts down unexpectedly
+|  |- quote drivers: power symptoms, error indicators, unit type
+|
+|- odor_or_air_quality
+|  |- hints: persistent odor, dusty airflow, indoor air concern
+|  |- quote drivers: odor timing, affected units/rooms, visible condition
+|
+|- other_hvac
+|  |- hints: must be clarified by Kael without silently limiting the case to cleaning
+|  |- complexity: unknown
+```
+
+### Upholstery Care Taxonomy
+
+```text
+Sofa, mattress, curtain, and carpet care
+-
+|- sofa_or_chair_care
+|  |- quote drivers: item count/size, material, stain/odor condition, access
+|
+|- mattress_care
+|  |- quote drivers: size/count, material, stain/odor condition, drying constraints
+|
+|- curtain_care
+|  |- quote drivers: panel count/size, material, removal/access, drying constraints
+|
+|- carpet_or_rug_care
+|  |- quote drivers: dimensions/count, material, stain/odor condition, on-site access
+|
+|- mixed_fabric_care
+|  |- quote drivers: item inventory, material mix, condition, priority, drying constraints
+|
+|- other_upholstery
+|  |- hints: must be clarified by Kael
+|  |- complexity: unknown
+```
+
+### Minor Repair And Installation Taxonomy
+
+```text
+Minor repair and installation
+-
+|- drill_or_mount_small_item
+|  |- quote drivers: item/count, wall or mounting surface, fixings, access
+|
+|- install_shelf_or_curtain_rod
+|  |- quote drivers: item/count, dimensions, surface, supplied materials
+|
+|- adjust_hinge_handle_or_hardware
+|  |- quote drivers: item/count, current damage, replacement parts
+|
+|- assemble_or_install_small_furnishing
+|  |- quote drivers: item/count, assembly state, instructions/parts, access
+|
+|- mixed_minor_tasks
+|  |- quote drivers: task list, count, surfaces, tools/materials, access
+|
+|- other_handyman
+|  |- hints: must be clarified by Kael
+|  |- complexity: unknown
+```
+
+If a handyman request crosses into electrical, plumbing, HVAC, structural, gas, fire-safety, or other capability-controlled work, Kael must reroute or stop it through the applicable service/safety gate. It must not disguise specialist work as a minor task.
+
 Taxonomy rules:
 
 ```text
 Rules
 -
-|- taxonomy drives UI chips
-|- taxonomy drives Kael prompt context
-|- taxonomy drives price baseline lookup
-|- taxonomy drives worker skill matching
-|- taxonomy must not include unsupported services
+|- route UI collects only service, location, desired time, short description, and optional chips/media
+|- chips help Basic Intake but are never a complete or mandatory diagnosis form
+|- taxonomy selects the server-side Case Work performance profile
+|- profile context drives Kael's one focused question per turn
+|- taxonomy and structured scope drive price baseline lookup only when real baseline data exists
+|- taxonomy plus verified capabilities drive worker matching
+|- missing baseline, worker, ETA, or payment data produces an honest not-ready/empty state; it is never invented
+|- only the six supported services may be activated
 |- taxonomy changes require tests and admin visibility
 ```

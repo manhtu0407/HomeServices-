@@ -3,17 +3,15 @@ import type { JobStatus } from '../constants'
 export const LOCAL_WORKFLOW_PRICE_DISCLAIMER =
   'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
 
-// Local workflow keeps only statuses that create visible customer/worker UI
-// states. Backend-only settlement markers are folded by toLocalDealStatus():
-// estimate_ready folds into the legacy awaiting_customer_confirm status for
-// old rows, but UI copy treats that state as Kael orchestration rather than a
-// customer gate. payment_pending/paid -> confirmed_by_customer keeps mobile
-// honest while payment rails remain outside the visible mobile workflow.
+// Keep server-owned phases intact. UI gates must never infer a customer action
+// phase by folding an earlier backend status into a later local status.
 export const LOCAL_DEAL_STATUSES = Object.freeze([
   'draft',
   'analyzing',
+  'estimate_ready',
   'awaiting_customer_confirm',
   'broadcasting',
+  'worker_candidate_pending',
   'worker_matched',
   'worker_on_way',
   'arrived',
@@ -22,6 +20,8 @@ export const LOCAL_DEAL_STATUSES = Object.freeze([
   'scope_change_pending',
   'completed_by_worker',
   'confirmed_by_customer',
+  'payment_pending',
+  'paid',
   'reviewed',
   'cancelled',
 ] as const)
@@ -34,15 +34,12 @@ const LOCAL_DEAL_STATUS_SET = new Set<string>(LOCAL_DEAL_STATUSES)
 
 export function toLocalDealStatus(status: JobStatus): LocalDealStatus {
   switch (status) {
-    case 'estimate_ready':
-      return 'awaiting_customer_confirm'
-    case 'payment_pending':
-    case 'paid':
-      return 'confirmed_by_customer'
     case 'draft':
     case 'analyzing':
+    case 'estimate_ready':
     case 'awaiting_customer_confirm':
     case 'broadcasting':
+    case 'worker_candidate_pending':
     case 'worker_matched':
     case 'worker_on_way':
     case 'arrived':
@@ -51,6 +48,8 @@ export function toLocalDealStatus(status: JobStatus): LocalDealStatus {
     case 'scope_change_pending':
     case 'completed_by_worker':
     case 'confirmed_by_customer':
+    case 'payment_pending':
+    case 'paid':
     case 'reviewed':
     case 'cancelled':
       return status

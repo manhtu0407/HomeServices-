@@ -123,34 +123,51 @@ The app must not mix visible Vietnamese and English in one selected language mod
 
 ## Rule #6: Kael Only Supports The Active NestScout Scope
 
-Active service scope:
-- electrical repair,
-- plumbing repair,
-- home cleaning / housekeeping.
+Active service scope is exactly six services:
+- electrical repair (`electrical`),
+- plumbing repair (`plumbing`),
+- home cleaning / housekeeping (`cleaning`),
+- air conditioning and indoor air service (`hvac`),
+- sofa, mattress, curtain, and carpet care (`upholstery`),
+- minor repair and installation (`handyman`).
 
 ```typescript
 if (
   service_category !== 'electrical' &&
   service_category !== 'plumbing' &&
-  service_category !== 'cleaning'
+  service_category !== 'cleaning' &&
+  service_category !== 'hvac' &&
+  service_category !== 'upholstery' &&
+  service_category !== 'handyman'
 ) {
   return POLITE_DECLINE_MESSAGE
 }
 ```
 
-Hard rule: Kael answers NestScout questions for electrical repair, plumbing repair, and home cleaning/housekeeping, including directly tied educational responses, safety advisories, and legal-awareness warnings for those three categories. For unsupported services, dangerous content, adult content, PII exposure, or unrelated requests, Kael must politely decline instead of analyzing.
+Hard rule: Kael answers NestScout questions for these six services, including directly tied educational responses, safety advisories, and legal-awareness warnings. HVAC is broad enough to cover cleaning, diagnosis, and repair when evidence and verified worker capabilities support the work; safety or capability gates may stop or reroute the case, but must not silently narrow HVAC to cleaning-only maintenance. For unsupported services, dangerous content, adult content, PII exposure, or unrelated requests, Kael must politely decline instead of analyzing.
 
 ---
 
 ## Rule #7: Kael Autonomy V2 Requires Validated Server Decisions
 
-Kael is the default workflow actor for orchestration when backend policy has enough data. Kael may create/update tickets, lock estimates, start matching, re-match, process cancellation, decide scope changes, confirm completion, and issue payment/refund/dispute decisions.
+Kael is the default workflow actor between explicit phase gates when backend policy has enough data. Kael may create/update tickets, analyze evidence, prepare estimates, search for eligible workers, re-match, and prepare scope/completion/payment proposals, but it must stop for the required confirmation before crossing a confirmation gate.
 
-Autonomy is only valid through a server-side `KaelAutonomyDecision`:
+Required confirmation gates:
+- the customer confirms the offer before matching starts,
+- a worker acceptance creates a candidate; the customer confirms that candidate before final assignment, exact-address release, or on-the-way state,
+- the customer confirms every money- or work-impacting scope change before changed work continues,
+- the customer confirms completion before payment begins,
+- payment requires an explicit customer action or a verified callback from an implemented payment rail.
+
+Analysis, clarification, evidence processing, eligibility checks, and other non-confirmation work may continue within their current phase. A later phase must never be entered early or run continuously across one of the gates above.
+
+When Kael performs an autonomous non-confirmation transition, autonomy is only valid through a server-side `KaelAutonomyDecision`:
 - `actor = kael_system`,
 - action and resulting event are schema-validated,
 - `policy_id`, evidence, confidence, reversible/appealable flags, and audit metadata are recorded,
 - raw LLM output, mobile UI, and client-side code cannot directly set workflow status or money-impacting state.
+
+An authenticated customer action at a required gate is not a Kael autonomy decision. The server must validate ownership, the current phase, the pending proposal, and the atomic transition before applying that customer decision.
 
 Client, worker, and admin actions are inputs, override/appeal paths, and audit controls unless a specific contract marks the action as a physical-world requirement.
 
@@ -251,6 +268,14 @@ No unbounded network call is allowed.
 - Customer and worker chat is relayed through Kael; do not expose direct contact details unless the product contract explicitly requires it.
 - Scrub sensitive information before sending anything to LLMs.
 - Share only the minimum job context required for customer/worker workflow.
+
+### Multimodal Evidence Privacy
+
+- Customer photos are private evidence; only the minimum required image content may reach vision analysis through short-lived server-side access after validation and PII scrubbing.
+- Voice is transcribed on-device into editable text. Raw audio must not leave the device and must be discarded after transcript confirmation; it is never uploaded or used as model input.
+- Video analysis uses 1-3 frames extracted locally. Only those validated frames may reach vision analysis; raw video must never be sent to an AI provider.
+- An original video may be kept in private storage only as human-review evidence with explicit product disclosure, least-privilege access, retention controls, and deletion support.
+- If local transcription or frame extraction is unavailable, the product must offer honest text/photo fallback instead of silently uploading raw media.
 
 ### Input Validation
 

@@ -265,7 +265,7 @@ describe('Kael P5 permission scope and response policy', () => {
     })
   })
 
-  it('declines unsupported AC service requests with a Vietnamese template', () => {
+  it('declines unsupported appliance service requests with a Vietnamese template', () => {
     const decision = evaluateKaelPermissionGate({
       purpose: 'clarification',
       actor: 'customer',
@@ -282,9 +282,33 @@ describe('Kael P5 permission scope and response policy', () => {
       reasonCode: 'DENY_OUT_OF_SCOPE_SERVICE',
       declineTemplateKey: 'out_of_scope_service',
     })
-    expect(decision.responseText).toContain('sửa điện')
-    expect(decision.responseText).toContain('sửa nước')
-    expect(decision.responseText).toContain('dọn dẹp')
+    expect(decision.responseText).toContain('ngoài')
+    expect(decision.responseText).toContain('sáu nhóm dịch vụ')
+  })
+
+  it('uses an English-safe decline even when stored boundary guidance is Vietnamese', async () => {
+    const client = makeSequenceClient([{ data: [{
+      pattern_key: 'professional_legal_advice_redirect',
+      topic: 'legal_advice',
+      boundary_type: 'redirect_required',
+      response_guidance: 'Bạn cần tham vấn luật sư.',
+      is_enabled: true,
+    }], error: null }])
+
+    const decision = await evaluateKaelPermissionGateWithBoundaries({
+      purpose: 'educational_response',
+      actor: 'customer',
+      jobRelation: 'none',
+      topic: 'legal_advice',
+      action: 'generate_advisory',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: true,
+      language: 'en',
+    }, client)
+
+    expect(decision.responseText).toContain('professional legal advice')
+    expect(decision.responseText).not.toContain('Bạn')
   })
 
   it('blocks worker pre-accept PII and inserts an append-only permission audit row', async () => {

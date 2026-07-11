@@ -26,6 +26,9 @@ export type KaelTopic =
   | "electrical_repair"
   | "plumbing_repair"
   | "home_cleaning"
+  | "hvac_service"
+  | "upholstery_care"
+  | "handyman_service"
   | "electrical_safety_education"
   | "plumbing_self_diagnosis"
   | "cleaning_best_practices"
@@ -74,6 +77,7 @@ export type KaelPermissionGateRequest = {
   boundarySignal: boolean;
   actorId?: string | null;
   jobId?: string | null;
+  language?: "vi" | "en";
 };
 
 export type KaelPermissionGateOptions = {
@@ -98,31 +102,38 @@ type AuditClient = {
 
 type BoundaryClient = Parameters<typeof retrieveLegalBoundaryPattern>[0];
 
-const DECLINE_TEMPLATES: Record<DeclineTemplateKey, string> = {
-  out_of_scope_service:
-    "Hiện Kael chỉ hỗ trợ sửa điện, sửa nước và dọn dẹp tại các căn hộ HCMC. Bạn vui lòng quay lại khi Kael mở thêm dịch vụ.",
-  out_of_domain_question:
-    "Câu hỏi này nằm ngoài phạm vi của Kael. Bạn vui lòng liên hệ hỗ trợ tại tab hồ sơ để được giúp.",
-  cannot_do_action:
-    "Kael không có thẩm quyền thực hiện điều này. {alternative}",
-  unsafe_or_sensitive:
-    "Kael không thể trả lời câu hỏi này. Nếu bạn cần hỗ trợ khẩn cấp, vui lòng gọi số 113.",
-  rate_limit_hit:
-    "Bạn đã hỏi Kael quá nhiều lần trong thời gian ngắn. Vui lòng đợi {seconds} giây.",
-  cost_cap_hit:
-    "Bạn đã đạt giới hạn yêu cầu Kael cho tháng này. Vui lòng liên hệ hỗ trợ.",
-  legal_advice_redirect:
-    "Câu hỏi này cần tư vấn pháp lý chuyên môn. Kael có thể cảnh báo về an toàn nhưng không tư vấn pháp lý. Vui lòng tham vấn luật sư.",
-  emergency_redirect:
-    "Kael nhận thấy tình huống này có vẻ khẩn cấp. Vui lòng gọi 113 hoặc 115 ngay lập tức.",
-  clarification_required:
-    "\u0110\u1ec3 Kael h\u1ed7 tr\u1ee3 \u0111\u00fang v\u00e0 an to\u00e0n, b\u1ea1n vui l\u00f2ng n\u00eau r\u00f5 nhu c\u1ea7u, b\u1ed1i c\u1ea3nh v\u00e0 k\u1ebft qu\u1ea3 b\u1ea1n mu\u1ed1n h\u1ecfi.",
+const DECLINE_TEMPLATES: Record<"vi" | "en", Record<DeclineTemplateKey, string>> = {
+  vi: {
+    out_of_scope_service: "Vấn đề này nằm ngoài sáu nhóm dịch vụ nhà ở Kael đang hỗ trợ tại TP.HCM.",
+    out_of_domain_question: "Câu hỏi này nằm ngoài phạm vi của Kael. Bạn vui lòng liên hệ hỗ trợ tại tab hồ sơ để được giúp.",
+    cannot_do_action: "Kael không có thẩm quyền thực hiện điều này. {alternative}",
+    unsafe_or_sensitive: "Kael không thể trả lời câu hỏi này. Nếu bạn cần hỗ trợ khẩn cấp, vui lòng gọi số 113.",
+    rate_limit_hit: "Bạn đã hỏi Kael quá nhiều lần trong thời gian ngắn. Vui lòng đợi {seconds} giây.",
+    cost_cap_hit: "Bạn đã đạt giới hạn yêu cầu Kael cho tháng này. Vui lòng liên hệ hỗ trợ.",
+    legal_advice_redirect: "Câu hỏi này cần tư vấn pháp lý chuyên môn. Kael có thể cảnh báo về an toàn nhưng không tư vấn pháp lý. Vui lòng tham vấn luật sư.",
+    emergency_redirect: "Kael nhận thấy tình huống này có vẻ khẩn cấp. Vui lòng gọi 113 hoặc 115 ngay lập tức.",
+    clarification_required: "Để Kael hỗ trợ đúng và an toàn, bạn vui lòng nêu rõ nhu cầu, bối cảnh và kết quả bạn muốn hỏi.",
+  },
+  en: {
+    out_of_scope_service: "This is outside the six HCMC home-service categories Kael currently supports.",
+    out_of_domain_question: "This question is outside Kael's scope. Please contact support from your profile tab.",
+    cannot_do_action: "Kael is not authorized to perform that action. {alternative}",
+    unsafe_or_sensitive: "Kael cannot answer that safely. If this is an emergency, call 113 or 115 now.",
+    rate_limit_hit: "You have sent too many Kael requests in a short time. Please wait {seconds} seconds.",
+    cost_cap_hit: "You have reached the current Kael request limit. Please contact support.",
+    legal_advice_redirect: "This requires professional legal advice. Kael can provide general safety awareness, but not legal advice. Please consult a lawyer.",
+    emergency_redirect: "This may be an emergency. Please call 113 or 115 now.",
+    clarification_required: "To help safely, Kael needs a clearer request, context, and desired outcome.",
+  },
 };
 
 const SERVICE_TOPICS: readonly KaelTopic[] = [
   "electrical_repair",
   "plumbing_repair",
   "home_cleaning",
+  "hvac_service",
+  "upholstery_care",
+  "handyman_service",
 ];
 const EDUCATIONAL_TOPICS: readonly KaelTopic[] = [
   ...SERVICE_TOPICS,
@@ -298,7 +309,7 @@ export function hasKaelForbiddenTopicBoundarySignal(
 ): boolean {
   const canonicalText = canonicalizeVN(text);
   const patterns = topic === "legal_advice"
-    ? ["khoi kien", "luat su", "toa an", "don kien", "hop dong phap ly"]
+    ? ["khoi kien", "luat su", "toa an", "don kien", "hop dong phap ly", "legal advice", "lawyer", "attorney", "lawsuit", "sue the"]
     : topic === "medical_advice"
     ? ["y te", "tai nan", "benh", "medical", "hospital"]
     : topic === "financial_advice"
@@ -314,11 +325,14 @@ export function hasKaelForbiddenTopicBoundarySignal(
 export function renderDeclineTemplate(
   key: DeclineTemplateKey,
   values: { alternative?: string; seconds?: number } = {},
+  language: "vi" | "en" = "vi",
 ) {
-  return DECLINE_TEMPLATES[key]
+  return DECLINE_TEMPLATES[language][key]
     .replace(
       "{alternative}",
-      values.alternative ?? "Bạn có thể tiếp tục trong luồng hỗ trợ phù hợp.",
+      values.alternative ?? (language === "vi"
+        ? "Bạn có thể tiếp tục trong luồng hỗ trợ phù hợp."
+        : "You can continue through the appropriate support flow."),
     )
     .replace("{seconds}", String(values.seconds ?? 60));
 }
@@ -395,7 +409,9 @@ function deny(
     decision: "deny",
     reasonCode,
     declineTemplateKey,
-    responseText: options.responseText ?? renderDeclineTemplate(declineTemplateKey),
+    responseText: request.language === "en"
+      ? renderDeclineTemplate(declineTemplateKey, {}, "en")
+      : options.responseText ?? renderDeclineTemplate(declineTemplateKey),
     safeMetadata: options.safeMetadata,
   };
 }

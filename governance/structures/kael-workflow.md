@@ -13,10 +13,12 @@ Canonical artifacts
 -
 |- service_request
 |- process_ticket
+|- diagnosis_scope
 |- ai_diagnosis
 |- ai_notes
 |- estimate
 |- worker_brief
+|- worker_candidate
 |- provider_match
 |- booking
 |- scope_change
@@ -28,22 +30,29 @@ Canonical artifacts
 |- review
 ```
 
-These artifacts are created or updated by Kael, workers, clients, or admin according to the workflow phase. They are audit records and phase-gated UI inputs, not direct status writers. Any artifact that implies money, booking, cancellation, scope, completion, dispute, or payment movement still requires a server-validated `KaelAutonomyDecision` or explicit admin override.
+These artifacts are created or updated by Kael, workers, clients, or admin according to the workflow phase. They are audit records and phase-gated UI inputs, not direct status writers. Any artifact that implies money, booking, cancellation, scope, completion, dispute, or payment movement still requires the actor-specific validated server transition: a `KaelAutonomyDecision` only for eligible non-confirmation automation, an explicit authenticated customer action at a required gate, or an explicit admin override.
 
-### Kael Price Check Flow
+### Kael Case Work Analysis And Offer Flow
 
 ```text
-Kael Price Check flow
+Kael Case Work flow
 -
 |- classify intent
 |- reject out-of-scope service
-|- understand problem from text/photos
-|- ask clarification if needed
-|- run price search
+|- select exactly one of the six service performance profiles
+|- understand the case from text, private photos, editable on-device voice transcript, and 1-3 locally extracted video frames
+|- never send raw audio or raw video to an AI provider
+|- build/update the structured diagnosis/scope artifact
+|- ask exactly one focused question per turn until quote-ready; no fixed question cap
+|- run price search only when the case is quote-ready and a validated source path exists
 |- compare search result with baseline
-|- synthesize structured price estimate
+|- synthesize a structured price estimate or an honest not-ready state
 |- generate at most one advisory
-|- create worker pre-brief after validated Kael matching decision
+|- stop for explicit customer offer confirmation
+|- create worker pre-brief after the validated matching decision
+|- search eligible workers; treat worker acceptance as a candidate proposal
+|- stop for explicit customer candidate confirmation before final assignment
+|- stop again at scope-change, completion, and payment confirmation phases
 ```
 
 ### AI Provider Roles
@@ -74,12 +83,23 @@ Provider role mapping is sourced from `ai_provider_routing` (DB) plus `routing.c
 Kael output shape
 -
 |- service_type
+|- performance_profile
 |- problem_category
 |- problem_summary
+|- facts
+|- missing_facts
+|- evidence_summary
+|- included_scope
+|- excluded_scope
+|- safety_flags
+|- required_worker_capabilities
+|- quote_ready
 |- complexity
-|- price_min
-|- price_max
+|- price_min_optional
+|- price_max_optional
 |- confidence
+|- next_focused_question_optional
+|- next_action
 |- advisory_optional
 |- disclaimer
 |- worker_prebrief
@@ -96,6 +116,9 @@ Kael output rules
 |- no raw AI output to user
 |- no exact price guarantee
 |- no unsupported service advice
+|- no invented baseline, worker, ETA, or payment state
+|- HVAC may cover cleaning, diagnosis, or repair when evidence and worker capabilities support it
+|- service-specific behavior comes from the selected server profile, not a long client-side questionnaire
 |- one advisory max
 |- no fear-based upsell language
 ```

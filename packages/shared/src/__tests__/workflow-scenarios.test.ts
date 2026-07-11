@@ -17,8 +17,8 @@ describe('progressive service workflow scenarios', () => {
     expect(intake.artifacts.process_ticket.mode).toBe('partial')
     expect(estimating.artifacts.process_ticket.mode).toBe('loading')
     expect(explaining.artifacts.ai_notes.mode).toBe('annotated')
-    expect(kaelOrchestrating.phase).toBe('matching')
-    expect(kaelOrchestrating.allowedActions.confirmTicketAndEstimate).toBe(false)
+    expect(kaelOrchestrating.phase).toBe('ticket_review')
+    expect(kaelOrchestrating.allowedActions.confirmTicketAndEstimate).toBe(true)
     expect(matching.artifacts.provider_match.mode).toBe('loading')
     expect(workerDone.artifacts.completion_evidence.mode).toBe('review')
     expect(customerConfirmed.artifacts.review.mode).toBe('review')
@@ -29,16 +29,16 @@ describe('progressive service workflow scenarios', () => {
     expect(reviewed.isDone).toBe(true)
   })
 
-  it('shows provider matching once Kael has enough data to orchestrate', () => {
+  it('shows provider matching only after the customer confirms the reviewed ticket', () => {
     const collecting = buildWorkflowViewModel({ status: null, hasCustomerInput: true })
     const kaelOrchestrating = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasEstimate: true })
 
     expect(collecting.artifacts.provider_match.visible).toBe(false)
-    expect(kaelOrchestrating.artifacts.provider_match.mode).toBe('loading')
-    expect(kaelOrchestrating.allowedActions.confirmTicketAndEstimate).toBe(false)
+    expect(kaelOrchestrating.artifacts.provider_match.mode).toBe('hidden')
+    expect(kaelOrchestrating.allowedActions.confirmTicketAndEstimate).toBe(true)
   })
 
-  it('does not restore the old ticket confirmation gate during optimistic matching state', () => {
+  it('does not reveal matching before the server phase changes, even during an optimistic request', () => {
     const startingMatching = buildWorkflowViewModel({
       status: 'awaiting_customer_confirm',
       hasCustomerInput: true,
@@ -46,9 +46,9 @@ describe('progressive service workflow scenarios', () => {
       optimistic: 'starting_matching',
     })
 
-    expect(startingMatching.phase).toBe('matching')
+    expect(startingMatching.phase).toBe('ticket_review')
     expect(startingMatching.optimistic).toBe('starting_matching')
-    expect(startingMatching.artifacts.provider_match.mode).toBe('loading')
+    expect(startingMatching.artifacts.provider_match.mode).toBe('hidden')
   })
 
   it('does not show late workflow artifacts early just because stale data exists', () => {

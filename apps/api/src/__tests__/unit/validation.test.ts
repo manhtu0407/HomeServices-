@@ -9,20 +9,15 @@ import {
   scrubSensitiveForLLM,
 } from '@nestscout/shared'
 
-describe('serviceTypeSchema (Rule #6: electrical + plumbing + cleaning)', () => {
-  it('accepts "electrical"', () => {
-    expect(serviceTypeSchema.parse('electrical')).toBe('electrical')
-  })
+describe('serviceTypeSchema (Rule #6: six launched services)', () => {
+  it.each(['electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman'])(
+    'accepts "%s"',
+    (value) => {
+      expect(serviceTypeSchema.parse(value)).toBe(value)
+    },
+  )
 
-  it('accepts "plumbing"', () => {
-    expect(serviceTypeSchema.parse('plumbing')).toBe('plumbing')
-  })
-
-  it('accepts "cleaning"', () => {
-    expect(serviceTypeSchema.parse('cleaning')).toBe('cleaning')
-  })
-
-  it.each(['hvac', '', 'ELECTRICAL', 'Plumbing', 'gas', 'painting'])(
+  it.each(['', 'ELECTRICAL', 'Plumbing', 'gas', 'painting', 'appliance_repair'])(
     'rejects "%s"',
     (value) => {
       expect(() => serviceTypeSchema.parse(value)).toThrow()
@@ -120,7 +115,7 @@ describe('jobCreateSchema', () => {
 
   it('rejects invalid service_type', () => {
     expect(() =>
-      jobCreateSchema.parse({ ...validJob, service_type: 'hvac' })
+      jobCreateSchema.parse({ ...validJob, service_type: 'appliance_repair' })
     ).toThrow()
   })
 
@@ -166,19 +161,33 @@ describe('workerScopeChangeSchema (Phase 2.0 2026-05-23: Kael owns final price)'
   })
 
   it('accepts up to 5 photo urls', () => {
+    const jobId = '11111111-1111-4111-8111-111111111111'
     expect(() =>
       workerScopeChangeSchema.parse({
         ...validScope,
-        photo_urls: Array.from({ length: 5 }, (_, index) => `https://example.com/${index}.jpg`),
+        photo_urls: Array.from(
+          { length: 5 },
+          (_, index) => `supabase://job-media/${jobId}/scope_change_evidence/${index}.jpg`,
+        ),
       })
     ).not.toThrow()
+  })
+
+  it('rejects arbitrary remote scope evidence URLs', () => {
+    expect(() => workerScopeChangeSchema.parse({
+      ...validScope,
+      photo_urls: ['https://attacker.example/pixel.jpg'],
+    })).toThrow()
   })
 
   it('rejects more than 5 photo urls', () => {
     expect(() =>
       workerScopeChangeSchema.parse({
         ...validScope,
-        photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
+        photo_urls: Array.from(
+          { length: 6 },
+          (_, index) => `supabase://job-media/11111111-1111-4111-8111-111111111111/scope_change_evidence/${index}.jpg`,
+        ),
       })
     ).toThrow()
   })
@@ -354,6 +363,15 @@ describe('scrubSensitiveForLLM', () => {
     expect(scrubSensitiveForLLM(input)).toBe('SĐT [phone], email [email], CCCD [id-number]')
   })
 
+  it('scrubs separator-formatted Vietnamese phone numbers', () => {
+    expect(scrubSensitiveForLLM('Gọi tôi theo số 090-123-4567')).toBe(
+      'Gọi tôi theo số [phone]',
+    )
+    expect(scrubSensitiveForLLM('Liên hệ +84 90 123 4567')).toBe(
+      'Liên hệ [phone]',
+    )
+  })
+
   it('strips HCMC apartment complex names', () => {
     expect(scrubSensitiveForLLM('Tôi ở Vinhomes Central Park')).toContain('[building]')
     expect(scrubSensitiveForLLM('Toi o Masteri An Phu')).toContain('[building]')
@@ -376,6 +394,15 @@ describe('scrubSensitiveForLLM', () => {
   it('strips house number after "số"', () => {
     expect(scrubSensitiveForLLM('số 123 Nguyễn Văn Linh')).toBe('[house-no] Nguyễn Văn Linh')
     expect(scrubSensitiveForLLM('so 45A Le Loi')).toBe('[house-no] Le Loi')
+  })
+
+  it('strips a bare house number before a capitalized street name', () => {
+    expect(scrubSensitiveForLLM('Tôi ở 123 Nguyễn Huệ')).toBe(
+      'Tôi ở [house-no] Nguyễn Huệ',
+    )
+    expect(scrubSensitiveForLLM('Hẹn tại 45A Lê Lợi')).toBe(
+      'Hẹn tại [house-no] Lê Lợi',
+    )
   })
 
   it('combines patterns in a realistic customer message', () => {

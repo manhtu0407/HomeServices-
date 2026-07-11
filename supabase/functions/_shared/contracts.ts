@@ -41,6 +41,21 @@ export type KaelChatStatus =
   | "abandoned"
   | "unsupported";
 
+export type EdgeKaelCaseWorkPhase =
+  | "analysis"
+  | "offer_review"
+  | "matching"
+  | "worker_candidate_review"
+  | "worker_en_route"
+  | "service_execution"
+  | "scope_change_review"
+  | "completion_review"
+  | "payment"
+  | "review"
+  | "closed";
+
+type KaelCaseWorkPhase = EdgeKaelCaseWorkPhase;
+
 export type KaelChatNextAction =
   | "await_input"
   | "collect_evidence"
@@ -49,7 +64,9 @@ export type KaelChatNextAction =
   | "estimate_ready"
   | "unsupported"
   | "budget_exceeded"
-  | "confirmed";
+  | "confirmed"
+  | "ask_question"
+  | "request_evidence";
 
 export type KaelChatTurn = {
   id: string;
@@ -79,6 +96,9 @@ export type KaelChatSession = {
   customer_id: string;
   service_type: ServiceType;
   status: KaelChatStatus;
+  case_phase: KaelCaseWorkPhase;
+  diagnosis_scope: Record<string, unknown> | null;
+  scheduled_at: string | null;
   estimate: KaelEstimate | null;
   started_at: string;
   estimate_ready_at: string | null;

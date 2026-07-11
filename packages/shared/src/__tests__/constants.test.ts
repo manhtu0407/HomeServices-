@@ -79,14 +79,22 @@ describe('database enum constants', () => {
     expect([...values]).toEqual(sqlValues)
   })
 
-  it('keeps services hard-scoped to electrical, plumbing, and cleaning', () => {
-    expect(SERVICE_TYPES).toEqual(['electrical', 'plumbing', 'cleaning'])
+  it('keeps services hard-scoped to the six approved launch services', () => {
+    expect(SERVICE_TYPES).toEqual([
+      'electrical',
+      'plumbing',
+      'cleaning',
+      'hvac',
+      'upholstery',
+      'handyman',
+    ])
   })
 
   it('keeps the full STRUCTURES.md job workflow states', () => {
-    expect(JOB_STATUSES).toHaveLength(17)
+    expect(JOB_STATUSES).toHaveLength(18)
     expect(JOB_STATUSES[0]).toBe('draft')
     expect(JOB_STATUSES).toContain('awaiting_customer_confirm')
+    expect(JOB_STATUSES).toContain('worker_candidate_pending')
     expect(JOB_STATUSES).toContain('scope_change_pending')
     expect(JOB_STATUSES).toContain('confirmed_by_customer')
     expect(JOB_STATUSES[JOB_STATUSES.length - 1]).toBe('cancelled')
@@ -113,6 +121,9 @@ describe('business constants', () => {
     expect(PROBLEM_CHIPS.electrical).toHaveLength(7)
     expect(PROBLEM_CHIPS.plumbing).toHaveLength(7)
     expect(PROBLEM_CHIPS.cleaning).toHaveLength(7)
+    expect(PROBLEM_CHIPS.hvac.length).toBeGreaterThan(0)
+    expect(PROBLEM_CHIPS.upholstery.length).toBeGreaterThan(0)
+    expect(PROBLEM_CHIPS.handyman.length).toBeGreaterThan(0)
   })
 
   it('does not allow duplicate problem chips within a service', () => {

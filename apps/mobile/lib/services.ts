@@ -27,6 +27,7 @@ import type {
   CustomerPaymentMethodResponse,
   CustomerPaymentMethodSaveInput,
   CustomerProfileInsightsResponse,
+  CustomerFavoriteWorkerResponse,
   DisputeAdminDecisionResponse,
   DisputeCounterStatementResponse,
   DisputeOpenResponse,
@@ -65,6 +66,8 @@ import type {
   WorkerKaelTrainingConsentResponse,
   WorkerKaelClarifyResponse,
   WorkerScopeChangeResponse,
+  WorkerCandidateDecisionResponse,
+  WorkerCandidateResponse,
 } from './api-types'
 import type {
   AvailabilityToggleInput,
@@ -82,6 +85,7 @@ import type {
   KaelChatCreateInput,
   KaelChatEvidenceInput,
   KaelChatTurnInput,
+  KaelPerformanceMode,
   PlacesAutocompleteInput,
   ReviewInput,
   WorkerApplicationSubmitInput,
@@ -94,6 +98,19 @@ import type {
   WorkerKaelMemoryPreferenceUpdateInput,
   WorkerScopeChangeInput,
 } from '@nestscout/shared'
+
+type MobileKaelScheduleWindowInput = {
+  date: string
+  start: string
+  end: string
+  timeZone: 'Asia/Ho_Chi_Minh'
+}
+
+type MobileKaelChatCreateInput = KaelChatCreateInput & {
+  profileId?: KaelPerformanceMode
+  scheduledAt?: string
+  scheduleWindow?: MobileKaelScheduleWindowInput
+}
 
 type WorkerStatusUpdate = Extract<JobStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'>
 type WorkerAccessCheckInInput = {
@@ -129,7 +146,7 @@ export const jobService = {
     return api.get<CustomerActiveJobResponse>('/me/jobs/active')
   },
 
-  // the customer's pending Kael decisions (scope-changes awaiting them).
+  // the customer's pending decisions (validated scope proposals awaiting them).
   listPendingDecisions() {
     return api.get<PendingDecisionsResponse>('/me/pending-decisions')
   },
@@ -163,6 +180,29 @@ export const jobService = {
 
   cancelJob(jobId: string) {
     return api.post<{ job_id: string; status: JobStatus }>(`/jobs/${jobId}/cancel`)
+  },
+
+  getWorkerCandidate(jobId: string) {
+    return api.get<WorkerCandidateResponse>(`/jobs/${encodeURIComponent(jobId)}/candidate`)
+  },
+
+  confirmWorkerCandidate(jobId: string, candidateId: string) {
+    return api.post<WorkerCandidateDecisionResponse>(
+      `/jobs/${encodeURIComponent(jobId)}/candidates/${encodeURIComponent(candidateId)}/confirm`,
+    )
+  },
+
+  rejectWorkerCandidate(jobId: string, candidateId: string) {
+    return api.post<WorkerCandidateDecisionResponse>(
+      `/jobs/${encodeURIComponent(jobId)}/candidates/${encodeURIComponent(candidateId)}/reject`,
+    )
+  },
+
+  setFavoriteWorker(workerId: string, isFavorite: boolean) {
+    const path = `/me/favorite-workers/${encodeURIComponent(workerId)}`
+    return isFavorite
+      ? api.post<CustomerFavoriteWorkerResponse>(path)
+      : api.delete<CustomerFavoriteWorkerResponse>(path)
   },
 
   updateStatus(jobId: string, status: WorkerStatusUpdate, extras?: {
@@ -238,8 +278,18 @@ export const jobService = {
 }
 
 export const kaelChatService = {
-  create(input: KaelChatCreateInput) {
-    return api.post<KaelChatResponse>('/kael/chat', input)
+  create({ profileId, scheduledAt, scheduleWindow, profile_id, scheduled_at, ...input }: MobileKaelChatCreateInput) {
+    return api.post<KaelChatResponse>('/kael/chat', {
+      ...input,
+      profile_id: profileId ?? profile_id,
+      scheduled_at: scheduledAt ?? scheduled_at,
+      schedule_window: scheduleWindow ? {
+        date: scheduleWindow.date,
+        start: scheduleWindow.start,
+        end: scheduleWindow.end,
+        time_zone: scheduleWindow.timeZone,
+      } : undefined,
+    })
   },
 
   get(sessionId: string) {
@@ -250,8 +300,20 @@ export const kaelChatService = {
     return api.post<KaelChatResponse>(`/kael/chat/${sessionId}`, input)
   },
 
-  createMediaUpload(input: { file_name?: string; mime_type: string; file_size_bytes?: number }) {
+  createMediaUpload(input: {
+    file_name?: string
+    mime_type: string
+    purpose: 'model_vision' | 'private_video_original'
+    file_size_bytes: number
+  }) {
     return api.post<KaelChatMediaUploadResponse>('/kael/chat/media-upload', input)
+  },
+
+  revokeMedia(input: { media_refs: string[] }) {
+    return api.post<{ revoked_count: number; deletion_pending: boolean }>(
+      '/kael/chat/media-revoke',
+      input,
+    )
   },
 
   submitEvidence(sessionId: string, input: KaelChatEvidenceInput) {
@@ -265,8 +327,7 @@ export const kaelChatService = {
 
 export const kaelAssistantService = {
   ask(input: KaelAssistantInput) {
-    void input
-    return parkedMobileApiResult<KaelAssistantResponse>('KAEL_ASSISTANT_PARKED', 'Kael assistant dùng luồng chat chính')
+    return api.post<KaelAssistantResponse>('/kael/assistant', input)
   },
 }
 

@@ -1,14 +1,19 @@
 // Edge service matching/broadcast domain (C4 6a, services/* split): the broadcast lifecycle —
-// customer confirm-search -> createBroadcasts (with retry-lease + rollback), worker accept (brief
-// guidance persist + address building-release), and worker decline. Imported by services.ts.
+// customer confirm-search -> createBroadcasts (with retry-lease + rollback), worker proposal,
+// customer candidate decision, and worker decline. Address release starts only after confirmation.
 
 import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { mapAcceptError, relatedJob } from "./_shared.ts";
 import { logJobEvent, queueKaelLearningEvent } from "./audit.ts";
-import { acquireBroadcastRetryLease, createBroadcasts, expireStaleBroadcasts, hasActiveBroadcast } from "./broadcasts.service.ts";
-import { insertUserNotification, notifyCustomerWorkerMatched } from "./notifications.service.ts";
-import { projectAddressAccess } from "./apartment-access.service.ts";
+import {
+  acquireBroadcastRetryLease,
+  createBroadcasts,
+  expireStaleBroadcasts,
+  hasActiveBroadcast,
+} from "./broadcasts.service.ts";
+import { insertUserNotification } from "./notifications.service.ts";
+import { notifyCustomerCandidateReady } from "./worker-candidate.service.ts";
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { validateKaelAutonomyTransition, validateWorkflowTransition } from "../workflow-orchestrator.ts";
@@ -18,6 +23,7 @@ import type { JobStatus, ServiceType } from "../../../_shared/domain.ts";
 
 type ConfirmSearchOptions = {
   autonomyDecision?: KaelAutonomyDecision;
+  kaelSessionId?: string;
 };
 
 export async function confirmSearch(
@@ -169,6 +175,21 @@ export async function confirmSearch(
             500,
           );
         }
+        if (
+          options.kaelSessionId &&
+          !(await restoreKaelOfferAfterBroadcastFailure(
+            client,
+            options.kaelSessionId,
+            jobId,
+            ctx.user.id,
+          ))
+        ) {
+          apiFailure(
+            "DB_ERROR",
+            "Kh\u00f4ng th\u1ec3 kh\u00f4i ph\u1ee5c phi\u00ean Kael sau l\u1ed7i g\u1eedi th\u1ee3",
+            500,
+          );
+        }
         await logJobEvent(
           client,
           jobId,
@@ -266,24 +287,27 @@ export async function acceptBroadcast(ctx: MobileApiContext, jobId: string) {
   });
   if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
 
-  await logJobEvent(
-    client,
-    jobId,
-    "worker_accepted",
-    ctx,
-    "broadcasting",
-    "worker_matched",
-  );
-  await notifyCustomerWorkerMatched(client, jobId, ctx.user.id);
-  await persistWorkerBriefGuidanceAfterAccept(client, jobId, row);
-  const addressProjection = projectAddressAccess(row, ctx.role, {
-    forcedStage: "building_released",
-  });
+  const candidateId = nullableString(row.candidate_id);
+  if (!candidateId) apiFailure("DB_ERROR", "Lỗi khi ghi nhận thợ đề xuất", 500);
+  const alreadyApplied = row.already_applied === true;
+  if (!alreadyApplied) {
+    await logJobEvent(
+      client,
+      jobId,
+      "worker_accepted",
+      ctx,
+      "broadcasting",
+      "worker_candidate_pending",
+      { candidate_id: candidateId },
+    );
+    await notifyCustomerCandidateReady(client, jobId, candidateId);
+  }
   return {
     job_id: jobId,
     status: row.job_status as JobStatus,
-    full_address: addressProjection.fullAddress,
-    address_access: addressProjection.addressAccess,
+    candidate_id: candidateId,
+    awaiting_customer_confirmation: true as const,
+    already_applied: alreadyApplied,
   };
 }
 
@@ -381,63 +405,22 @@ export async function rollbackFailedBroadcastStart(
   return !result.error && Boolean(result.data);
 }
 
-async function persistWorkerBriefGuidanceAfterAccept(
+async function restoreKaelOfferAfterBroadcastFailure(
   client: DbClient,
+  sessionId: string,
   jobId: string,
-  acceptedRow: Record<string, unknown>,
+  customerId: string,
 ) {
-  const result = await dbQuery<Record<string, unknown>>(
+  const result = await dbQuery<{ id: string }>(
     client
-      .from("jobs")
-      .select(
-        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, final_price",
-      )
-      .eq("id", jobId)
+      .from("kael_chat_sessions")
+      .update({ status: "estimate_ready", case_phase: "offer_review" })
+      .eq("id", sessionId)
+      .eq("job_id", jobId)
+      .eq("customer_id", customerId)
+      .eq("case_phase", "matching")
+      .select("id")
       .maybeSingle(),
   );
-  if (result.error || !result.data) return;
-
-  const job = result.data;
-  const finalPrice = nullableNumber(job.final_price) ??
-    nullableNumber(job.kael_price_max);
-  const priceMin = nullableNumber(job.kael_price_min);
-  const addressProjection = projectAddressAccess(
-    {
-      ...job,
-      address_building: nullableString(acceptedRow.address_building) ??
-        nullableString(job.address_building),
-      address_floor: nullableString(acceptedRow.address_floor) ??
-        nullableString(job.address_floor),
-      address_unit: nullableString(acceptedRow.address_unit) ??
-        nullableString(job.address_unit),
-      address_district: nullableString(acceptedRow.address_district) ??
-        nullableString(job.address_district),
-    },
-    "worker",
-    { forcedStage: "building_released" },
-  );
-  const guidance = buildWorkerBriefOutput({
-    stage: "guidance",
-    serviceType: asServiceType(job.service_type),
-    problemSummary:
-      nullableString(job.kael_problem_identified) ??
-        "\u0059\u00eau c\u1ea7u c\u1ea7n th\u1ee3 ki\u1ec3m tra",
-    district: nullableString(job.address_district),
-    fullAddress: addressProjection.fullAddress,
-    estimatedEarningMin: priceMin === null
-      ? null
-      : Math.round(priceMin * (1 - PLATFORM_FEE_WORKER)),
-    estimatedEarningMax: finalPrice === null
-      ? null
-      : Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER)),
-  });
-
-  await dbQuery(
-    client
-      .from("jobs")
-      .update({ kael_worker_brief_guidance: guidance })
-      .eq("id", jobId),
-  ).catch(() => {
-    console.warn("mobile-api worker brief guidance persist failed", { jobId });
-  });
+  return !result.error && Boolean(result.data);
 }

@@ -32,11 +32,21 @@ describe('job media previews', () => {
     })
 
     await expect(resolveJobMediaPreviewUrl(storageRef)).resolves.toBe('https://storage.example.test/signed/on-site-photo.jpg')
-    expect(mockCreateSignedUrl).toHaveBeenCalledWith(objectPath, 15 * 60)
+    expect(mockCreateSignedUrl).toHaveBeenCalledWith(
+      objectPath,
+      15 * 60,
+      expect.objectContaining({ transform: expect.objectContaining({ resize: 'contain' }) }),
+    )
   })
 
   it('does not convert unrelated Supabase references into previews', async () => {
     await expect(resolveJobMediaPreviewUrl('supabase://worker-verification/user/selfie.jpg')).resolves.toBeNull()
+    expect(mockCreateSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it('rejects arbitrary remote URLs while preserving local draft previews', async () => {
+    await expect(resolveJobMediaPreviewUrl('https://attacker.example/pixel.jpg')).resolves.toBeNull()
+    await expect(resolveJobMediaPreviewUrl('file:///private/local-draft.jpg')).resolves.toBe('file:///private/local-draft.jpg')
     expect(mockCreateSignedUrl).not.toHaveBeenCalled()
   })
 })

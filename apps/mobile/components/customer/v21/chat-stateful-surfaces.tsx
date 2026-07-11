@@ -129,7 +129,8 @@ export function AgenticChatEstimateCard({
   const serviceLabel = customerV21ServiceCopy[language][estimate.service_type].label
   const problem = problemLabelForEstimate(estimate, language)
   const confidencePercent = Math.round(estimate.confidence * 100)
-  const needsMoreInfo = estimate.confidence < 0.7
+  const needsInspection = estimate.needs_inspection === true
+  const needsMoreInfo = needsInspection || estimate.confidence < 0.7
   const confirmLabel = confirmed
     ? (language === 'vi' ? 'Đã xác nhận' : 'Confirmed')
     : confirming
@@ -140,18 +141,34 @@ export function AgenticChatEstimateCard({
     : (language === 'vi' ? 'Từ chối' : 'Decline')
   const canSubmitRejectReason = rejectReason.trim().length > 0 && !submittingRejectReason && !confirming
   const statusLabel = confirmed
-    ? (language === 'vi' ? 'Backend đã mở công việc' : 'Backend opened work')
+      ? (language === 'vi' ? 'Công việc đã được mở' : 'Work request opened')
+    : needsInspection
+      ? (language === 'vi' ? 'Cần khảo sát hiện trường' : 'Inspection required')
     : needsMoreInfo
       ? (language === 'vi' ? 'Cần thêm dữ liệu' : 'Needs more context')
       : canConfirm
       ? (language === 'vi' ? 'Cần bạn chốt' : 'Needs your decision')
       : (language === 'vi' ? 'Đang chờ' : 'Waiting')
   const priceExplanation = priceExplanationForEstimate(estimate, language)
-  const sourceExplanation = sourceExplanationForLanguage(language)
+  const priceSource = estimate.price_source
+  const priceSourceLabel = priceSource === 'perplexity_validated'
+    ? (language === 'vi' ? 'Nguồn giá: thị trường đã kiểm chứng.' : 'Price source: validated market evidence.')
+    : priceSource === 'baseline_with_market'
+      ? (language === 'vi' ? 'Nguồn giá: mức giá cơ sở và tín hiệu thị trường.' : 'Price source: baseline and market signals.')
+      : priceSource === 'baseline_only'
+        ? (language === 'vi' ? 'Nguồn giá: mức giá cơ sở đã kiểm chứng.' : 'Price source: governed baseline.')
+        : priceSource === 'inspection_required'
+          ? (language === 'vi' ? 'Nguồn giá chưa đủ chắc chắn; cần khảo sát.' : 'Price evidence is not yet sufficient; inspection is required.')
+          : null
+  const sourceExplanation = [sourceExplanationForLanguage(language), priceSourceLabel]
+    .filter(Boolean)
+    .join(' ')
   const price = formatPriceRange(estimate.price_min, estimate.price_max, language)
-  const moreInfoText = language === 'vi'
-    ? 'Độ tin cậy dưới 70%. Bạn gửi thêm ảnh/video hoặc mô tả rõ vị trí, mức độ rò rỉ và thời điểm xảy ra, rồi Kael sẽ tính lại.'
-    : 'Confidence is below 70%. Add media or describe the location, severity, and timing so Kael can re-check.'
+  const moreInfoText = needsInspection && estimate.needs_inspection_reason
+    ? estimate.needs_inspection_reason
+    : language === 'vi'
+      ? 'Dữ liệu hiện tại chưa đủ chắc chắn. Bạn gửi thêm ảnh/video hoặc mô tả rõ phạm vi, mức độ và thời điểm xảy ra để Kael kiểm tra lại.'
+      : 'Current evidence is not yet sufficient. Add media or clarify the scope, severity, and timing so Kael can re-check.'
 
   return (
     <AgenticChatEstimateCardPanel
@@ -186,7 +203,7 @@ export function AgenticChatEstimateCard({
 
 export function KaelChatSurfaceView({
   agenticEstimateNode,
-  agenticEvidenceGateNode,
+  analysisEvidenceNode,
   agenticVisibleTurns,
   animatedModeMenuSheenStyle,
   animatedModeMenuStyle,
@@ -195,7 +212,9 @@ export function KaelChatSurfaceView({
   caseWorkLabel,
   composerBusy,
   composerMediaDraftCount,
+  composerMediaNode,
   composerPlaceholder,
+  composerVoiceNode,
   draft,
   error,
   hiddenScrollbarStyle,
@@ -222,12 +241,13 @@ export function KaelChatSurfaceView({
   textInputNoOutlineStyle,
   timelineHeadline,
   tokens,
+  workerCandidateNode,
   caseAssistantTurns,
   missingCaseWorkDeal,
   pendingDraftMessage,
 }: {
   agenticEstimateNode: ReactNode
-  agenticEvidenceGateNode: ReactNode
+  analysisEvidenceNode: ReactNode
   agenticVisibleTurns: AgenticTurnView[]
   animatedModeMenuSheenStyle: AnimatedViewStyle
   animatedModeMenuStyle: AnimatedViewStyle
@@ -237,7 +257,9 @@ export function KaelChatSurfaceView({
   caseWorkLabel: string
   composerBusy: boolean
   composerMediaDraftCount: number
+  composerMediaNode: ReactNode
   composerPlaceholder: string
+  composerVoiceNode: ReactNode
   draft: string
   error: string | null
   hiddenScrollbarStyle: StyleProp<ViewStyle>
@@ -266,6 +288,7 @@ export function KaelChatSurfaceView({
   textInputNoOutlineStyle: StyleProp<TextStyle>
   timelineHeadline: string
   tokens: CustomerThemeTokens
+  workerCandidateNode: ReactNode
 }) {
   return (
     <SafeAreaView style={[sharedStyles.safeArea, { backgroundColor: tokens.canvas }]} testID="customer-v21-kael-chat">
@@ -356,10 +379,11 @@ export function KaelChatSurfaceView({
               </V21Card>
             ) : null}
             {caseThreadNode}
+            {workerCandidateNode}
             {agenticVisibleTurns.length > 0 ? agenticVisibleTurns.map((turn) => (
               <ChatBubble key={turn.id} role={turn.role === 'customer' ? 'customer' : 'kael'} text={turn.text_content ?? ''} tokens={tokens} />
             )) : null}
-            {agenticEvidenceGateNode}
+            {analysisEvidenceNode}
             {agenticEstimateNode}
             {mode === 'normal' ? normalAssistantTurns.map((turn) => (
               <ChatBubble key={turn.id} role={turn.role} text={turn.text_content} tokens={tokens} />
@@ -372,6 +396,8 @@ export function KaelChatSurfaceView({
           </ScrollView>
 
           {normalEvidenceNode}
+          {composerVoiceNode}
+          {composerMediaNode}
           {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-kael-error">{error}</Text> : null}
           {showComposer ? <View style={[rootStyles.composer, chatStyles.chatComposer, { backgroundColor: tokens.raised, borderColor: 'rgba(255,255,255,0.92)' }]}>
             <SourceCardSkin />

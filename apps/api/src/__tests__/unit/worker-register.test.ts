@@ -51,10 +51,10 @@ describe('workerRegisterSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('accepts electrical, plumbing, and cleaning service types', () => {
+  it('accepts all six launched service types', () => {
     const result = workerRegisterSchema.safeParse({
       ...VALID_INPUT,
-      service_types: ['electrical', 'plumbing', 'cleaning'],
+      service_types: ['electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman'],
     })
     expect(result.success).toBe(true)
   })
@@ -73,7 +73,7 @@ describe('workerRegisterSchema', () => {
   it('rejects unsupported service (RULES.md #6)', () => {
     const result = workerRegisterSchema.safeParse({
       ...VALID_INPUT,
-      service_types: ['hvac'],
+      service_types: ['appliance_repair'],
     })
     expect(result.success).toBe(false)
   })

@@ -155,6 +155,7 @@ describe('runKaelPipeline with DI providers', () => {
       INPUT.description,
       'electrical: breaker_trip',
       photoUrls,
+      'vi',
     )
   })
 
@@ -193,7 +194,7 @@ describe('runKaelPipeline with DI providers', () => {
     expect(intentLog?.fallbackUsed).toBe(true)
   })
 
-  it('returns UNSUPPORTED for services outside electrical/plumbing/cleaning', async () => {
+  it('returns UNSUPPORTED when the classifier marks a request out of product scope', async () => {
     const supabase = makeMockSupabase(null)
 
     const result = await runKaelPipeline(

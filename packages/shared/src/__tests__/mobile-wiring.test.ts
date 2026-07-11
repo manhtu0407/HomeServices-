@@ -1784,10 +1784,18 @@ describe('app.json configuration', () => {
     expect(expo.android?.package).toBeDefined()
   })
 
-  it('has Android store build metadata and blocks microphone permission', () => {
+  it('enables microphone only through the on-device speech recognition plugin', () => {
     expect(expo.android?.versionCode).toBeGreaterThanOrEqual(1)
     expect(expo.android?.permissions).toEqual([])
-    expect(expo.android?.blockedPermissions).toContain('android.permission.RECORD_AUDIO')
+    expect(expo.android?.blockedPermissions ?? []).not.toContain('android.permission.RECORD_AUDIO')
+    const plugins = expo.plugins ?? []
+    const speechPlugin = plugins.find((plugin: string | string[]) =>
+      Array.isArray(plugin) && plugin[0] === 'expo-speech-recognition'
+    ) as string[] | undefined
+    expect(speechPlugin?.[1]).toMatchObject({
+      microphonePermission: expect.stringContaining('trên thiết bị'),
+      speechRecognitionPermission: expect.stringContaining('trên thiết bị'),
+    })
   })
 
   it('has expo-router plugin', () => {

@@ -11,7 +11,7 @@ import { confirmSearch } from "./matching.service.ts";
 import { hasActiveBroadcast } from "./broadcasts.service.ts";
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildKaelAutonomyDecision, type EdgeAiSecrets, type KaelAutonomyDecision } from "../kael/index.ts";
+import { buildKaelAutonomyDecision, kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets, type KaelAutonomyDecision } from "../kael/index.ts";
 import type { JobStatus } from "../../../_shared/domain.ts";
 
 export async function confirmKaelChat(
@@ -20,6 +20,35 @@ export async function confirmKaelChat(
   secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
+  const sessionResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_chat_sessions")
+      .select("id, customer_id, case_phase, diagnosis_scope")
+      .eq("id", sessionId)
+      .eq("customer_id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (sessionResult.error || !sessionResult.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
+  }
+  const diagnosisScopeResult = kaelDiagnosisScopeArtifactSchema.safeParse(
+    sessionResult.data.diagnosis_scope,
+  );
+  if (!diagnosisScopeResult.success) {
+    apiFailure("INVALID_STATUS", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
+  }
+  const diagnosisScope = diagnosisScopeResult.data;
+  const casePhase = sessionResult.data.case_phase;
+  if (
+    (casePhase !== "offer_review" && casePhase !== "matching") ||
+    !diagnosisScope.quote_ready ||
+    diagnosisScope.quote_blockers.length > 0 ||
+    diagnosisScope.confidence < 0.7 ||
+    diagnosisScope.facts.needs_inspection === true ||
+    diagnosisScope.next_action.kind !== "prepare_offer"
+  ) {
+    apiFailure("INVALID_STATUS", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
+  }
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("confirm_kael_chat_atomic", {
       p_session_id: sessionId,
@@ -56,7 +85,13 @@ export async function confirmKaelChat(
         return {
           session_id: sessionId,
           ...(await confirmSearch(ctx, existingJobId, {
-            autonomyDecision: buildKaelChatMatchingDecision(sessionId, existingJobId),
+            kaelSessionId: sessionId,
+            autonomyDecision: buildKaelChatMatchingDecision(
+              sessionId,
+              existingJobId,
+              diagnosisScope.confidence,
+              diagnosisScope.scope_summary,
+            ),
           })),
         };
       }
@@ -79,7 +114,13 @@ export async function confirmKaelChat(
     secrets,
   );
   const confirmed = await confirmSearch(ctx, jobId, {
-    autonomyDecision: buildKaelChatMatchingDecision(sessionId, jobId),
+    kaelSessionId: sessionId,
+    autonomyDecision: buildKaelChatMatchingDecision(
+      sessionId,
+      jobId,
+      diagnosisScope.confidence,
+      diagnosisScope.scope_summary,
+    ),
   });
   return {
     session_id: sessionId,
@@ -90,6 +131,8 @@ export async function confirmKaelChat(
 function buildKaelChatMatchingDecision(
   sessionId: string,
   jobId: string,
+  confidence: number,
+  scopeSummary: string | null,
 ): KaelAutonomyDecision {
   return buildKaelAutonomyDecision({
     action: "start_matching",
@@ -98,7 +141,7 @@ function buildKaelChatMatchingDecision(
       {
         kind: "artifact",
         reference_id: sessionId,
-        summary: "Validated Kael chat estimate and customer intake.",
+        summary: scopeSummary ?? "Validated Kael DiagnosisScopeArtifact and customer-confirmed offer.",
       },
       {
         kind: "artifact",
@@ -111,7 +154,7 @@ function buildKaelChatMatchingDecision(
         summary: "Kael Autonomy v2 allows server-validated matching after estimate.",
       },
     ],
-    confidence: 0.86,
+    confidence,
     reversible: true,
     appealable: true,
     resultingEvent: "kael_started_matching",

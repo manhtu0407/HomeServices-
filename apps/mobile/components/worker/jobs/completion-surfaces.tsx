@@ -139,7 +139,7 @@ export function WorkerV5SubmissionTimeline({
   statusTimeline: WorkerV5StatusTimelineComponent
 }) {
   const hasEvidence = Boolean(deal?.completionNotes?.trim() || deal?.completionPhotoUrls?.length)
-  const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'reviewed'
+  const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
   const paymentRecorded = Boolean(deal?.payment?.workerNet && deal.payment.workerNet > 0)
   const rows: WorkerV5TimelineRow[] = [
     {

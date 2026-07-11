@@ -1,7 +1,24 @@
 import { z } from 'zod'
-import { HCMC_DISTRICTS, normalizeDistrict } from './constants'
+import { HCMC_DISTRICTS, normalizeDistrict, SERVICE_TYPES } from './constants'
+import { KAEL_PERFORMANCE_PROFILE_IDS } from './service-intake/types'
+import { caseWorkEvidenceSchema } from './kael-case-work'
 
-export const serviceTypeSchema = z.enum(['electrical', 'plumbing', 'cleaning'])
+export const serviceTypeSchema = z.enum(SERVICE_TYPES)
+const kaelChatEvidenceItemsSchema = z.array(caseWorkEvidenceSchema).max(20).optional()
+const kaelChatScheduleWindowSchema = z.object({
+  date: z.string().refine(isRealCalendarDate, 'date must be YYYY-MM-DD'),
+  start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'start must be HH:mm'),
+  end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'end must be HH:mm'),
+  time_zone: z.literal('Asia/Ho_Chi_Minh'),
+}).strict().superRefine((value, ctx) => {
+  if (value.end <= value.start) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'schedule window end must be after start',
+      path: ['end'],
+    })
+  }
+})
 
 export const apartmentAccessProfileSchema = z.object({
   entry_method: z.string().max(300).optional(),
@@ -27,29 +44,94 @@ export const jobCreateSchema = z.object({
   client_request_id: z.string().uuid().optional(),
 })
 
+const kaelProfileByService = {
+  electrical: 'electric_diagnose',
+  plumbing: 'water_diagnose',
+  cleaning: 'clean_scope',
+  hvac: 'air_scope',
+  upholstery: 'fabric_scope',
+  handyman: 'task_scope',
+} as const
+
 export const kaelChatCreateSchema = z.object({
   service_type: serviceTypeSchema,
+  profile_id: z.enum(KAEL_PERFORMANCE_PROFILE_IDS).optional(),
   session_id: z.string().uuid().optional(),
   message: z.string().min(1).max(5000).optional(),
   problem_chips: z.array(z.string().max(100)).max(10).default([]),
   photo_urls: z.array(z.string().url()).max(5).default([]),
+  evidence_items: kaelChatEvidenceItemsSchema,
   defer_analysis: z.boolean().optional(),
+  language: z.enum(['vi', 'en']).optional(),
   address_label: z.string().max(200).optional(),
   address_district: z.string().max(100).optional(),
+  scheduled_at: z.string().datetime().optional(),
+  schedule_window: kaelChatScheduleWindowSchema.optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
   // Mobile-generated UUID v4 per submit.
   client_request_id: z.string().uuid().optional(),
+}).superRefine((value, ctx) => {
+  if (value.profile_id && kaelProfileByService[value.service_type] !== value.profile_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'profile_id must match service_type',
+      path: ['profile_id'],
+    })
+  }
 })
 
 const kaelChatMediaRefSchema = z.string().regex(
-  /^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,
+  /^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/(?:model_vision|private_video_original)\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,
   'Kael chat media_refs must be Supabase kael-chat-media storage refs',
+).refine(
+  (value) => !/\.(?:aac|flac|m4a|mp3|oga|opus|wav)$/i.test(value),
+  'Raw audio must stay on device; submit an editable voice transcript instead',
 )
 
 export const kaelChatMediaUploadSchema = z.object({
   file_name: z.string().trim().min(1).max(180).optional(),
   mime_type: z.string().trim().min(3).max(120),
-  file_size_bytes: z.number().int().positive().max(50 * 1024 * 1024).optional(),
+  purpose: z.enum(['model_vision', 'private_video_original']),
+  file_size_bytes: z.number().int().positive().max(50 * 1024 * 1024),
+}).strict().superRefine((value, ctx) => {
+  const mimeType = value.mime_type.toLowerCase()
+  const rawAudio = mimeType.startsWith('audio/') ||
+    /\.(?:aac|flac|m4a|mp3|oga|opus|wav)$/i.test(value.file_name ?? '')
+  if (rawAudio) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Raw voice audio must remain on device; submit a reviewed transcript',
+      path: ['mime_type'],
+    })
+  }
+  if (
+    value.purpose === 'model_vision' &&
+    !['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Model vision uploads must be compatible JPEG, PNG, or WebP images',
+      path: ['purpose'],
+    })
+  }
+  if (value.purpose === 'model_vision' && value.file_size_bytes > 10 * 1024 * 1024) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Model vision images must not exceed 10 MB',
+      path: ['file_size_bytes'],
+    })
+  }
+  if (value.purpose === 'private_video_original' && !mimeType.startsWith('video/')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Private original evidence must be a video',
+      path: ['purpose'],
+    })
+  }
+})
+
+export const kaelChatMediaRevokeSchema = z.object({
+  media_refs: z.array(kaelChatMediaRefSchema).min(1).max(20),
 }).strict()
 
 export const kaelChatEvidenceSchema = z.object({
@@ -58,9 +140,15 @@ export const kaelChatEvidenceSchema = z.object({
   problem_chips: z.array(z.string().max(100)).max(10).optional(),
   photo_urls: z.array(z.string().url()).max(5).default([]),
   media_refs: z.array(kaelChatMediaRefSchema).max(5).default([]),
+  evidence_items: kaelChatEvidenceItemsSchema,
+  language: z.enum(['vi', 'en']).optional(),
   skip_reason: z.string().trim().max(500).optional(),
 }).superRefine((value, ctx) => {
-  if (value.decision === 'confirmed' && value.media_refs.length === 0) {
+  if (
+    value.decision === 'confirmed' &&
+    value.media_refs.length === 0 &&
+    (value.evidence_items?.length ?? 0) === 0
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Evidence confirmation requires at least one durable media ref.',
@@ -73,8 +161,12 @@ export const kaelChatTurnSchema = z.object({
   message: z.string().min(1).max(5000),
   problem_chips: z.array(z.string().max(100)).max(10).optional(),
   photo_urls: z.array(z.string().url()).max(5).default([]),
+  evidence_items: kaelChatEvidenceItemsSchema,
+  language: z.enum(['vi', 'en']).optional(),
   address_label: z.string().max(200).optional(),
   address_district: z.string().max(100).optional(),
+  scheduled_at: z.string().datetime().optional(),
+  schedule_window: kaelChatScheduleWindowSchema.optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
 })
 
@@ -83,7 +175,15 @@ export const kaelAssistantSchema = z.object({
   language: z.enum(['vi', 'en']).default('vi'),
   job_id: z.string().uuid().optional(),
   surface: z.enum(['customer_normal', 'customer_case']).default('customer_normal'),
-}).strict()
+}).strict().superRefine((input, ctx) => {
+  if (input.surface === 'customer_case' && !input.job_id) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'job_id is required for customer_case',
+      path: ['job_id'],
+    })
+  }
+})
 
 export const kaelChatProgressSchema = z.object({
   current_stage: z.enum([
@@ -236,7 +336,7 @@ export const workerRegisterSchema = z.object({
     .string()
     .refine(isRealCalendarDate, 'date_of_birth must be a real calendar date in YYYY-MM-DD'),
   gender: z.enum(['male', 'female', 'other']).optional(),
-  service_types: z.array(serviceTypeSchema).min(1).max(3),
+  service_types: z.array(serviceTypeSchema).min(1).max(SERVICE_TYPES.length),
   years_experience: z.number().int().min(0).max(60),
   // Reject inputs that don't normalize to
   // a known HCMC district slug. Explicit hcmc_all remains valid because broad
@@ -270,7 +370,10 @@ export const availabilityToggleSchema = z.object({
 export const workerScopeChangeSchema = z.object({
   new_description: z.string().min(10).max(2000),
   reason: z.string().min(10).max(1000),
-  photo_urls: z.array(z.string().url()).max(5).default([]),
+  photo_urls: z.array(z.string().regex(
+    /^supabase:\/\/job-media\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/(?:before|kael_reference|scope_change_evidence)\/[A-Za-z0-9._-]+$/i,
+    'Scope evidence must be an attached private job-media ref',
+  )).max(5).default([]),
 })
 
 export const kaelWorkerClarifySchema = z.object({
@@ -391,22 +494,24 @@ export function sanitizeForLLM(input: string): string {
 
 export function scrubSensitiveForLLM(input: string): string {
   return sanitizeForLLM(input)
-    .replace(/\b0\d{8,10}\b/g, '[phone]')
-    .replace(/\b\+?84\d{8,10}\b/g, '[phone]')
+    .replace(/(?<!\d)(?:\+?84|0)[\s().-]*(?:\d[\s().-]*){8,10}(?!\d)/g, '[phone]')
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
     .replace(/\b\d{9,12}\b/g, '[id-number]')
     .replace(/\b\d{8}\b/g, '[bank-account]')
     .replace(/\b\d{13,15}\b/g, '[bank-account]')
     .replace(/\b(?:Vinhomes|Vincom|Masteri|Saigon Pearl|Saigon Royal|Saigon South|Sun Avenue|Sun Village|Sunwah|Estella|Lexington|Diamond Island|Empire City|Eco Green|Phu My Hung|Phú Mỹ Hưng|Hoang Anh Gia Lai|Hoàng Anh Gia Lai|Riviera Point|Vista Verde|Era Town|The Manor|Lancaster|City Garden|Lavila|Centana|Topaz|Jamila|Akari|Sunrise City|Botanica|Pearl Plaza|Landmark|The Sun|Citadines|Lumière|Lumiere)(?:\s+(?!tầng|tang|lầu|lau|căn|can|phòng|phong|block|toà|tòa|toa|số|so|STK|TK)[A-Za-zÀ-ỹ][\wÀ-ỹ.]*){0,2}/gi, '[building]')
+    .replace(/\b(?:số|so)\s+\d+[A-Za-z]?\b/gi, '[house-no]')
+    .replace(/(?<![\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=\s+(?:(?:đường|duong|phố|pho|hẻm|hem)\s+)?\p{Lu}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*){0,3}\b)/gu, '[house-no]')
+    .replace(/(?<![\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=\s+(?:đường|duong|phố|pho|hẻm|hem)\s+\p{L})/giu, '[house-no]')
     .replace(/\b(?:tầng|tang|lầu|lau)\s*\d{1,3}\b/gi, '[floor]')
     .replace(/\b(?:căn(?:\s+hộ)?|can(?:\s+ho)?|phòng|phong|block|toà|tòa|toa)\s+[A-Za-z0-9.\-_/]+/gi, '[unit]')
-    .replace(/\b(?:số|so)\s+\d+[A-Za-z]?\b/gi, '[house-no]')
 }
 
 export type JobCreateInput = z.infer<typeof jobCreateSchema>
 export type ApartmentAccessProfileInput = z.infer<typeof apartmentAccessProfileSchema>
 export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>
 export type KaelChatMediaUploadInput = z.infer<typeof kaelChatMediaUploadSchema>
+export type KaelChatMediaRevokeInput = z.infer<typeof kaelChatMediaRevokeSchema>
 export type KaelChatEvidenceInput = z.infer<typeof kaelChatEvidenceSchema>
 export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>
 export type KaelAssistantInput = z.infer<typeof kaelAssistantSchema>

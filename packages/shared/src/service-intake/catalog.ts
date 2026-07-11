@@ -108,7 +108,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
   },
 
   hvac_basic_maintenance: {
-    serviceLineId: 'hvac_basic_maintenance', productionServiceType: null,
+    serviceLineId: 'hvac_basic_maintenance', productionServiceType: 'hvac',
     labelVi: 'Điều hòa & Không khí', labelEn: 'Air conditioning & air care',
     professionalName: 'HVAC Cleaning & Basic Maintenance Scope Planning', kaelScopeName: 'Kael AirScope', mode: 'air_scope',
     performanceGoalVi: 'Làm rõ số lượng máy, mục tiêu, khả năng tiếp cận và dấu hiệu cần kiểm tra chuyên môn.',
@@ -183,7 +183,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
   },
 
   upholstery_care: {
-    serviceLineId: 'upholstery_care', productionServiceType: null,
+    serviceLineId: 'upholstery_care', productionServiceType: 'upholstery',
     labelVi: 'Sofa, nệm, rèm, thảm', labelEn: 'Sofa, mattress, curtain & carpet care',
     professionalName: 'Soft Furnishing & Upholstery Care Scope Planning', kaelScopeName: 'Kael FabricScope', mode: 'fabric_scope',
     performanceGoalVi: 'Làm rõ loại món, kích thước, chất liệu, vết bẩn, mùi và kỳ vọng xử lý.',
@@ -241,7 +241,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
   },
 
   handyman_minor_installation: {
-    serviceLineId: 'handyman_minor_installation', productionServiceType: null,
+    serviceLineId: 'handyman_minor_installation', productionServiceType: 'handyman',
     labelVi: 'Sửa vặt & Lắp đặt nhỏ', labelEn: 'Minor repairs & installation',
     professionalName: 'Multi-Skill Handyman & Minor Installation Scope Planning', kaelScopeName: 'Kael TaskScope', mode: 'task_scope',
     performanceGoalVi: 'Gom các việc nhỏ thành task bundle có vật tư, dụng cụ và ranh giới rõ ràng.',

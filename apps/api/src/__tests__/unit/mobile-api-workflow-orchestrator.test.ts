@@ -11,14 +11,17 @@ describe('mobile-api workflow orchestrator wrapper', () => {
   it('validates the main Kael-led service workflow sequence through review', () => {
     const sequence = [
       ['kael_started_matching', 'analyzing', 'broadcasting'],
-      ['worker_accepted', 'broadcasting', 'worker_matched'],
+      ['worker_accepted', 'broadcasting', 'worker_candidate_pending'],
+      ['customer_confirmed_worker', 'worker_candidate_pending', 'worker_matched'],
       ['worker_status_advanced', 'worker_matched', 'worker_on_way'],
       ['worker_status_advanced', 'worker_on_way', 'arrived'],
       ['worker_status_advanced', 'arrived', 'inspecting'],
       ['worker_status_advanced', 'inspecting', 'repairing'],
       ['worker_completed', 'repairing', 'completed_by_worker'],
       ['kael_confirmed_completion', 'completed_by_worker', 'confirmed_by_customer'],
-      ['review_submitted', 'confirmed_by_customer', 'reviewed'],
+      ['kael_decided_payment', 'confirmed_by_customer', 'payment_pending'],
+      ['payment_confirmed', 'payment_pending', 'paid'],
+      ['review_submitted', 'paid', 'reviewed'],
     ] as const
 
     for (const [event, from, to] of sequence) {
@@ -207,6 +210,11 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const workerAccepted = validateWorkflowTransition({
       event: 'worker_accepted',
       from: 'broadcasting',
+      to: 'worker_candidate_pending',
+    })
+    const customerConfirmedWorker = validateWorkflowTransition({
+      event: 'customer_confirmed_worker',
+      from: 'worker_candidate_pending',
       to: 'worker_matched',
     })
     const scopeRequested = validateWorkflowTransition({
@@ -222,10 +230,11 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const scopeRejected = validateWorkflowTransition({
       event: 'kael_decided_scope_change',
       from: 'scope_change_pending',
-      to: 'cancelled',
+      to: 'worker_on_way',
     })
 
     expect(workerAccepted.valid).toBe(true)
+    expect(customerConfirmedWorker.valid).toBe(true)
     expect(scopeRequested.valid).toBe(true)
     expect(scopeApproved.valid).toBe(true)
     expect(scopeRejected.valid).toBe(true)
@@ -236,24 +245,26 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8')
     expect(servicesSource).toContain('event: "worker_accepted"')
     expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('event: "scope_change_requested"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('resultingEvent: "kael_decided_scope_change"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('function tryAutoApproveScopeChange')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('customer_confirmed_scope_change')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('customer_rejected_scope_change')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('runPolicyAutonomyGate')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('tryAutoApproveScopeChange')
     // K-1 (Notes.md, Tu chốt 2026-06-13): scope-change auto-approve is disabled —
     // a scope-change changes the deal price, so it is ALWAYS confirmed by the
-    // customer (even low-risk). tryAutoApproveScopeChange is now a no-op, the
-    // auto-approve autonomy policy id is removed, and the worker request always
+    // customer (even low-risk). The auto-approve branch and autonomy policy id
+    // are removed, and the worker request always
     // routes to the customer-decide path. This assertion guards against the
     // auto-approve wiring being silently re-introduced.
     expect(servicesSource).not.toContain('policyId: "kael.autonomy.v2.scope_change_auto_approve"')
     expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('notifyCustomerScopeChangeRequested')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('notifyCustomerScopeChangeDecided')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('notifyCustomerScopeChangeDecided')
     expect(
       servicesSource +
         readFileSync(
           join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/notifications.service.ts'),
           'utf8',
         ),
-    ).toContain('scope_change_auto_approved')
+    ).not.toContain('scope_change_auto_approved')
   })
 
   it('rejects out-of-order completion transitions', () => {
@@ -306,7 +317,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     expect(servicesSource).toContain('autonomyDecision ? "kael_started_matching" : "customer_confirmed_search"')
   })
 
-  it('wraps legacy completion recovery in a Kael autonomy decision', () => {
+  it('keeps customer completion as an explicit server-validated gate', () => {
     const transition = validateWorkflowTransition({
       event: 'kael_confirmed_completion',
       from: 'completed_by_worker',
@@ -318,10 +329,10 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     )
 
     expect(transition.valid).toBe(true)
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')).toContain('function buildKaelCustomerAcceptedCompletionDecision')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')).toContain('policyId: "kael.autonomy.v2.customer_completion_acceptance"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')).toContain('"kael_confirmed_completion"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')).toContain('customer_input: "accepted_completion"')
+    const completionSource = servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')
+    expect(completionSource).toContain('event: "customer_confirmed_completion"')
+    expect(completionSource).toContain('customer_input: "accepted_completion"')
+    expect(completionSource).not.toContain('runPolicyAutonomyGate')
   })
 
   it('wraps Kael failure cleanup before cancelling an analyzing job', () => {
@@ -339,7 +350,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     expect(servicesSource).toContain('event: "kael_failed"')
   })
 
-  it('allows Phase 0 direct review while still blocking payment_pending', () => {
+  it('requires paid server truth before review submission', () => {
     const paymentConfirmed = validateWorkflowTransition({
       event: 'payment_confirmed',
       from: 'payment_pending',
@@ -361,7 +372,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       to: 'reviewed',
     })
     expect(paymentConfirmed.valid).toBe(true)
-    expect(phaseZeroConfirmed.valid).toBe(true)
+    expect(phaseZeroConfirmed.valid).toBe(false)
     expect(paid.valid).toBe(true)
     expect(paymentPending.valid).toBe(false)
   })

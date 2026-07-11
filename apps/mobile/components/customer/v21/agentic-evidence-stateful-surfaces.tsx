@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
@@ -8,24 +9,23 @@ import { AgenticChatFact } from './agentic-surfaces'
 import { customerV21AgenticStyles as agenticStyles } from './agentic-styles'
 import { CaseWideMintAura, CaseWorkActionButtonAura, SourceCardSkin } from './aura-surfaces'
 import { customerV21Assets } from './assets'
-import { MediaVoiceNote } from './booking-surfaces'
 import { customerV21BookingStyles as bookingStyles } from './booking-styles'
 import { ChatMediaCameraIcon } from './chat-surfaces'
 import { AssetTile, V21Card } from './shared-surfaces'
 
 export function AgenticEvidenceGateView({
+  allowSkip,
   busy,
   canConfirm,
   fileValue,
-  isRecordingVoice,
   language,
+  mediaPreviewNode,
   onAddMedia,
   onConfirm,
   onReasonChange,
   onReject,
   onSkip,
-  onVoicePress,
-  recordingSeconds,
+  prompt,
   rejectOpen,
   rejectReason,
   textInputNoOutlineStyle,
@@ -33,20 +33,21 @@ export function AgenticEvidenceGateView({
   totalFileCount,
   visualMediaValue,
   voiceError,
+  voiceTranscriptNode,
   voiceValue,
 }: {
+  allowSkip: boolean
   busy: boolean
   canConfirm: boolean
   fileValue: string
-  isRecordingVoice: boolean
   language: AppLanguage
+  mediaPreviewNode: ReactNode
   onAddMedia: () => void
   onConfirm: () => void
   onReasonChange: (value: string) => void
   onReject: () => void
   onSkip: () => void
-  onVoicePress: () => void
-  recordingSeconds: number
+  prompt?: string
   rejectOpen: boolean
   rejectReason: string
   textInputNoOutlineStyle: StyleProp<TextStyle>
@@ -54,6 +55,7 @@ export function AgenticEvidenceGateView({
   totalFileCount: number
   visualMediaValue: string
   voiceError: string | null
+  voiceTranscriptNode: ReactNode
   voiceValue: string
 }) {
   return (
@@ -70,7 +72,7 @@ export function AgenticEvidenceGateView({
             {language === 'vi' ? 'Kael cần hiện trạng trước' : 'Kael needs current evidence first'}
           </Text>
           <Text numberOfLines={2} style={[agenticStyles.agenticChatBody, { color: tokens.muted }]}>
-            {language === 'vi' ? 'Thêm ảnh, video hoặc ghi âm. Kael chỉ phân tích sau khi bạn chốt bước này.' : 'Add photos, video, or voice. Kael analyzes only after you confirm this step.'}
+            {prompt ?? (language === 'vi' ? 'Thêm ảnh, video hoặc bản chép lời. Kael chỉ phân tích sau khi bạn chốt bước này.' : 'Add photos, video, or an editable transcript. Kael analyzes only after you confirm this step.')}
           </Text>
         </View>
       </View>
@@ -100,18 +102,18 @@ export function AgenticEvidenceGateView({
         </View>
       </View>
 
-      <MediaVoiceNote
-        isRecording={isRecordingVoice}
-        language={language}
-        onPress={onVoicePress}
-        recordingSeconds={recordingSeconds}
-        testID="customer-v21-agentic-evidence-voice-note"
-        tokens={tokens}
-        value={isRecordingVoice ? `${recordingSeconds}s` : voiceValue}
-      />
+      {mediaPreviewNode}
+      <Text style={[viewStyles.mediaDisclosure, { color: tokens.muted }]} testID="customer-v21-agentic-evidence-privacy-disclosure">
+        {language === 'vi'
+          ? 'Video gốc được lưu riêng tư cùng hồ sơ để người có quyền xem lại; Kael chỉ phân tích 1–3 khung hình được tách trên thiết bị. Bạn có thể bỏ tệp trước khi xác nhận.'
+          : 'The original video is stored privately with the case for authorized review; Kael analyzes only 1–3 frames extracted on your device. You can remove a file before confirming.'}
+      </Text>
+
+      {voiceTranscriptNode}
       {voiceError ? <Text style={[bookingStyles.mediaVoiceError, { color: tokens.primary }]}>{voiceError}</Text> : null}
 
-      {rejectOpen ? (
+      {allowSkip ? (
+        rejectOpen ? (
         <View style={agenticStyles.agenticEvidenceReasonBox}>
           <KaelTextField
             inputShellStyle={agenticStyles.agenticEvidenceReasonInputShell}
@@ -133,19 +135,22 @@ export function AgenticEvidenceGateView({
             testID="customer-v21-agentic-evidence-skip"
           />
         </View>
+        ) : null
       ) : null}
 
       <View style={agenticStyles.agenticChatActions}>
-        <KaelButton
-          backgroundLayer={<CaseWorkActionButtonAura scope="EvidenceReject" />}
-          disabled={busy}
-          label={language === 'vi' ? 'Từ chối' : 'Decline'}
-          onPress={onReject}
-          size="small"
-          style={agenticStyles.agenticChatActionButton}
-          testID="customer-v21-agentic-evidence-reject"
-          variant="secondary"
-        />
+        {allowSkip ? (
+          <KaelButton
+            backgroundLayer={<CaseWorkActionButtonAura scope="EvidenceReject" />}
+            disabled={busy}
+            label={language === 'vi' ? 'Từ chối' : 'Decline'}
+            onPress={onReject}
+            size="small"
+            style={agenticStyles.agenticChatActionButton}
+            testID="customer-v21-agentic-evidence-reject"
+            variant="secondary"
+          />
+        ) : null}
         <KaelButton
           accessibilityState={{ busy, disabled: !canConfirm }}
           disabled={!canConfirm}
@@ -171,5 +176,9 @@ const viewStyles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  mediaDisclosure: {
+    fontSize: 12,
+    lineHeight: 18,
   },
 })

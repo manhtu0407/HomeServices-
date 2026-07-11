@@ -119,7 +119,7 @@ function buildDeal(status: LocalDealStatus, backendStatus: LocalDeal['backendSta
 function customerSearchStateForStatus(status: LocalDealStatus): LocalCustomerSearchState {
   if (status === 'broadcasting') return 'searching'
   if (status === 'worker_matched') return 'matched'
-  if (status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'reviewed') return 'completed'
+  if (status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'payment_pending' || status === 'paid' || status === 'reviewed') return 'completed'
   if (['worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(status)) return 'active'
   return 'idle'
 }
@@ -183,7 +183,7 @@ describe('CustomerHistorySurface V21 routing', () => {
 
   it('redirects real payment activity through V21 case-work instead of the deleted history surface', () => {
     mockRouteParams = { screen: '3.3-payment-protected' }
-    buildWorkflow(buildDeal('confirmed_by_customer', 'payment_pending'))
+    buildWorkflow(buildDeal('payment_pending', 'payment_pending'))
 
     render(<CustomerHistorySurface />)
 

@@ -236,7 +236,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     // Inline customer scope-change decide buttons stay removed; the hard-stop modal
     // owns the decision callsite.
     expect(customer).not.toContain('customer-scope-change-decision')
-    expect(customer).not.toContain('actions.customerConfirmCompletion')
+    expect(customer).toContain('actions.customerConfirmCompletion')
+    expect(customer).toContain('CompletionReviewCard')
     expect(customer).toContain('actions.decideScopeChange')
     expect(worker).toContain('actions.workerAcceptBroadcast')
     expect(worker).toContain('actions.workerDeclineBroadcast')
@@ -246,7 +247,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(worker).toContain('worker-v5-verification-hero')
     expect(worker).toContain('worker-v5-verification-checklist')
     expect(worker).toContain('actions.requestScopeChange')
-    expect(worker).toContain('worker-v5-scope-change-hero')
+    expect(worker).toContain('worker-scope-change-evidence-form')
     expect(worker).toContain('worker-v5-scope-change-send-action')
   })
 
@@ -308,6 +309,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps customer active hydration alive through completion and payment gates without treating paid jobs as active', () => {
     const services = readEdgeServiceLayer()
     const customerActiveStatusSet = services.match(/CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus\[] = \[([\s\S]*?)\]/)?.[1] ?? ''
+    expect(customerActiveStatusSet).toContain('worker_candidate_pending')
 
     expect(customerActiveStatusSet).toContain('"completed_by_worker"')
     expect(customerActiveStatusSet).toContain('"confirmed_by_customer"')

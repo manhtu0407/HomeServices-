@@ -9,13 +9,14 @@ const VALID_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
   analyzing: ['estimate_ready', 'awaiting_customer_confirm', 'draft', 'cancelled'],
   estimate_ready: ['awaiting_customer_confirm'],
   awaiting_customer_confirm: ['broadcasting', 'cancelled'],
-  broadcasting: ['worker_matched', 'cancelled'],
-  worker_matched: ['worker_on_way', 'cancelled'],
-  worker_on_way: ['arrived', 'cancelled'],
-  arrived: ['inspecting', 'cancelled'],
+  broadcasting: ['worker_candidate_pending', 'cancelled'],
+  worker_candidate_pending: ['worker_matched', 'broadcasting', 'cancelled'],
+  worker_matched: ['worker_on_way', 'scope_change_pending', 'cancelled'],
+  worker_on_way: ['arrived', 'scope_change_pending', 'cancelled'],
+  arrived: ['inspecting', 'scope_change_pending', 'cancelled'],
   inspecting: ['repairing', 'scope_change_pending', 'cancelled'],
   repairing: ['completed_by_worker', 'scope_change_pending', 'cancelled'],
-  scope_change_pending: ['repairing', 'cancelled'],
+  scope_change_pending: ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'cancelled'],
   completed_by_worker: ['confirmed_by_customer'],
   confirmed_by_customer: ['payment_pending', 'reviewed'],
   payment_pending: ['paid'],
@@ -92,5 +93,6 @@ export const WORKER_UPDATABLE_STATUSES: readonly JobStatus[] = [
 
 export const CUSTOMER_GATE_STATUSES: readonly JobStatus[] = [
   'broadcasting',
+  'worker_candidate_pending',
   'confirmed_by_customer',
 ]

@@ -7,12 +7,36 @@ import {
   type LocalDealEstimate,
   type LocalDealStatus,
   type LocalPaymentStatus,
-  type LocalScopeChange,
   type ServiceType,
 } from '@nestscout/shared'
 
 import { customerV21Assets, customerV21ServiceAssets } from './assets'
 import { customerV21CommonCopy, customerV21ServiceCopy, customerV21StatusCopy } from './copy'
+import {
+  approvalConfidenceLabel,
+  canCustomerDecideScopeChange,
+  formatNumber,
+  formatShortClockTime,
+  formatVnd,
+  isDealPaymentProtected,
+  isPendingCustomerScopeChange,
+  scopeChangeAmountLabel,
+  scopeChangeApproveLabel,
+} from './case-work-money-display-model'
+
+export {
+  approvalConfidenceLabel,
+  canCustomerDecideScopeChange,
+  formatNumber,
+  formatShortClockTime,
+  formatVnd,
+  isDealPaymentProtected,
+  isPaymentProtectedStatus,
+  isPendingCustomerScopeChange,
+  paymentLedgerConfirmationStep,
+  scopeChangeAmountLabel,
+  scopeChangeApproveLabel,
+} from './case-work-money-display-model'
 
 export type AgenticCaseSignal = {
   body: string
@@ -153,7 +177,6 @@ export type BuildAgenticCaseThreadModelInput = {
   caseOptionsAcknowledged: boolean
   deal: LocalDeal
   editing: boolean
-  focus?: 'approval' | 'payment' | null
   language: AppLanguage
   sourceFooterLabel: string
   submittingCaseEvidence: boolean
@@ -214,14 +237,6 @@ export function paymentAmountLabel(payment: LocalDeal['payment'] | null, languag
   const amount = payment?.grossAmount ?? payment?.amountReceived
   if (typeof amount === 'number') return formatVnd(amount, language)
   return fallback
-}
-
-export function formatNumber(value: number, language: AppLanguage) {
-  return new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US').format(value)
-}
-
-export function formatVnd(value: number, language: AppLanguage) {
-  return `${formatNumber(value, language)}đ`
 }
 
 export function formatDurationShort(seconds: number, language: AppLanguage) {
@@ -309,7 +324,7 @@ export function caseThreadLiveSignal(deal: LocalDeal, language: AppLanguage): Ag
   const copy = customerV21CommonCopy[language]
   const status = customerV21StatusCopy[language][deal.status]
   if (deal.payment) {
-    const amount = paymentAmountLabel(deal.payment, language, '0')
+    const amount = paymentAmountLabel(deal.payment, language, copy.dataPending)
     const method = deal.payment.provider ? paymentProviderLabel(deal.payment.provider, language) : copy.dataPending
     const paymentStatus = paymentStatusLabel(deal.payment.status, language)
     return {
@@ -361,7 +376,6 @@ export function buildAgenticCaseThreadModel({
   caseOptionsAcknowledged,
   deal,
   editing,
-  focus,
   language,
   sourceFooterLabel,
   submittingCaseEvidence,
@@ -379,6 +393,9 @@ export function buildAgenticCaseThreadModel({
   const pendingText = language === 'vi' ? 'Chờ' : 'Pending'
   const recommendationText = estimate?.advisory || deal.draft.description || copy.dataPending
   const pendingScopeChange = deal.scopeChange && isPendingCustomerScopeChange(deal.scopeChange) ? deal.scopeChange : null
+  const customerDecidableScopeChange = pendingScopeChange && canCustomerDecideScopeChange(pendingScopeChange)
+    ? pendingScopeChange
+    : null
   const caseFlowBlockedByEvidence = caseEvidenceGateActive || submittingCaseEvidence
   const matchingGateActive = !caseFlowBlockedByEvidence && deal.status === 'broadcasting'
   const optionsGateActive = !caseFlowBlockedByEvidence && deal.status === 'awaiting_customer_confirm' && Boolean(estimate) && !caseOptionsAcknowledged
@@ -387,33 +404,37 @@ export function buildAgenticCaseThreadModel({
   const liveNoticeGateActive = !caseFlowBlockedByEvidence && Boolean(deal.broadcast) && deal.status === 'worker_on_way'
   const acceptedWorkerGateActive = !caseFlowBlockedByEvidence && (deal.status === 'arrived' || deal.status === 'inspecting')
   const jobProgressGateActive = !caseFlowBlockedByEvidence && ['repairing', 'completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(deal.status)
-  const paymentGateActive = !caseFlowBlockedByEvidence && Boolean(deal.payment) && (focus === 'payment' || ['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(deal.status))
+  const paymentGateActive = !caseFlowBlockedByEvidence && Boolean(deal.payment) &&
+    deal.status !== 'completed_by_worker' &&
+    ['payment_pending', 'paid', 'reviewed'].includes(deal.status)
   const casePayment = deal.payment
   const casePaymentPanel = casePayment ? {
-    amount: paymentAmountLabel(casePayment, language, '0'),
+    amount: paymentAmountLabel(casePayment, language, copy.dataPending),
     caseCode: caseDisplayCode(deal, language),
     ledgerMethod: [casePayment.paymentCode, formatShortClockTime(casePayment.receivedAt, language), casePayment.provider ? paymentProviderLabel(casePayment.provider, language) : copy.dataPending].filter(Boolean).join(' · ') || (casePayment.provider ? paymentProviderLabel(casePayment.provider, language) : copy.dataPending),
     method: casePayment.provider ? paymentProviderLabel(casePayment.provider, language) : copy.dataPending,
     platformFee: casePayment.platformFee === 0 || casePayment.platformFee ? formatVnd(casePayment.platformFee, language) : copy.dataPending,
-    protectedPayment: isPaymentProtectedStatus(casePayment.status),
+    protectedPayment: isDealPaymentProtected(deal),
     service: deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending,
-    status: paymentStatusLabel(casePayment.status, language),
+    status: deal.status === 'payment_pending'
+      ? customerV21StatusCopy[language].payment_pending
+      : paymentStatusLabel(casePayment.status, language),
     workerNet: casePayment.workerNet === 0 || casePayment.workerNet ? formatVnd(casePayment.workerNet, language) : copy.dataPending,
   } : null
   const liveSignal = caseThreadLiveSignal(deal, language)
   const actionStatus = editing
     ? (language === 'vi' ? 'Đang trao đổi' : 'Discussing')
-    : hasEstimate
+    : deal.status === 'awaiting_customer_confirm' && hasEstimate
       ? (language === 'vi' ? 'Cần bạn chốt' : 'Needs decision')
       : pendingText
   const liveSignalModel = liveSignal && !pendingScopeChange && !quoteDecision && !matchingGateActive && !optionsGateActive && !paymentGateActive && !etaGateActive && !liveNoticeGateActive && !acceptedWorkerGateActive && !jobProgressGateActive ? liveSignal : null
-  const approvalModel = pendingScopeChange && !editing && !quoteDecision && !matchingGateActive && !optionsGateActive && !paymentGateActive && !etaGateActive && !liveNoticeGateActive && !acceptedWorkerGateActive && !jobProgressGateActive ? {
-    amountLabel: scopeChangeAmountLabel(pendingScopeChange, language),
-    approveLabel: scopeChangeApproveLabel(pendingScopeChange, language),
-    confidenceLabel: approvalConfidenceLabel(pendingScopeChange, deal, language),
-    id: pendingScopeChange.id,
-    reason: pendingScopeChange.reason ?? copy.dataPending,
-    requestedDescription: pendingScopeChange.requestedDescription ?? pendingScopeChange.reason ?? copy.dataPending,
+  const approvalModel = customerDecidableScopeChange && !editing && !quoteDecision && !matchingGateActive && !optionsGateActive && !paymentGateActive && !etaGateActive && !liveNoticeGateActive && !acceptedWorkerGateActive && !jobProgressGateActive ? {
+    amountLabel: scopeChangeAmountLabel(customerDecidableScopeChange, language),
+    approveLabel: scopeChangeApproveLabel(customerDecidableScopeChange, language),
+    confidenceLabel: approvalConfidenceLabel(customerDecidableScopeChange, deal, language),
+    id: customerDecidableScopeChange.id,
+    reason: customerDecidableScopeChange.reason ?? copy.dataPending,
+    requestedDescription: customerDecidableScopeChange.requestedDescription ?? customerDecidableScopeChange.reason ?? copy.dataPending,
   } : null
   const recommendationModel = !pendingScopeChange && !liveSignal && !quoteDecision && !matchingGateActive && !optionsGateActive && !paymentGateActive && !etaGateActive && !liveNoticeGateActive && !acceptedWorkerGateActive && !jobProgressGateActive ? {
     actionStatus,
@@ -568,61 +589,6 @@ export function buildAgenticCaseThreadQuoteDecisionModel(
   }
 }
 
-export function isPaymentProtectedStatus(status: LocalPaymentStatus) {
-  return status === 'received' || status === 'reconciled'
-}
-
-export function formatShortClockTime(value: string | null | undefined, language: AppLanguage) {
-  if (!value) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
-    hour: '2-digit',
-    hour12: false,
-    minute: '2-digit',
-  }).format(date)
-}
-
-export function scopeChangeAmountLabel(scopeChange: NonNullable<LocalDeal['scopeChange']>, language: AppLanguage) {
-  const min = typeof scopeChange.priceMin === 'number' ? scopeChange.priceMin : null
-  const max = typeof scopeChange.priceMax === 'number' ? scopeChange.priceMax : null
-  if (min !== null && max !== null && min !== max) return `${formatVnd(min, language)} - ${formatVnd(max, language)}`
-  const amount = max ?? min
-  if (amount === null) return '0'
-  return `+${formatVnd(amount, language)}`
-}
-
-export function scopeChangeApproveLabel(scopeChange: NonNullable<LocalDeal['scopeChange']>, language: AppLanguage) {
-  const amount = typeof scopeChange.priceMax === 'number'
-    ? scopeChange.priceMax
-    : typeof scopeChange.priceMin === 'number'
-      ? scopeChange.priceMin
-      : null
-  if (amount === null) return language === 'vi' ? 'Duyệt' : 'Approve'
-  return language === 'vi' ? `Duyệt +${formatVnd(amount, language)}` : `Approve +${formatVnd(amount, language)}`
-}
-
-export function approvalConfidenceLabel(scopeChange: NonNullable<LocalDeal['scopeChange']>, deal: LocalDeal | null, language: AppLanguage) {
-  const kaelReview = scopeChange.kaelReview && typeof scopeChange.kaelReview === 'object'
-    ? scopeChange.kaelReview as Record<string, unknown>
-    : null
-  const verdict = stringFromCaseWorkUnknown(kaelReview?.verdict) ?? stringFromCaseWorkUnknown(kaelReview?.label)
-  const confidence = stringFromCaseWorkUnknown(kaelReview?.confidence_label)
-    ?? (typeof kaelReview?.confidence === 'number' ? `${Math.round(kaelReview.confidence * 100)}%` : null)
-    ?? deal?.estimate?.confidenceLabel
-  if (verdict && confidence) return `${verdict} · ${confidence}`
-  if (confidence) return language === 'vi' ? `Hợp lý · ${confidence}` : `Reasonable · ${confidence}`
-  return language === 'vi' ? 'Chưa có' : 'Pending'
-}
-
-export function isPendingCustomerScopeChange(scopeChange: LocalScopeChange) {
-  return ['requested_by_worker', 'reviewing_by_kael', 'waiting_customer_decision'].includes(scopeChange.status)
-}
-
-function stringFromCaseWorkUnknown(value: unknown) {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
-}
-
 export function caseScopeRowsForDeal(deal: LocalDeal, language: AppLanguage) {
   const copy = customerV21CommonCopy[language]
   const includedLabel = deal.estimate ? (language === 'vi' ? 'Đã gồm' : 'Included') : copy.dataPending
@@ -638,6 +604,15 @@ export function caseScopeRowsForDeal(deal: LocalDeal, language: AppLanguage) {
     plumbing: language === 'vi'
       ? ['Xác định rò rỉ/tắc', 'Kiểm tra áp lực nước', 'Xử lý đường ống nhẹ', 'Siết/đổi ron cơ bản', 'Test sau xử lý', 'Vật tư phát sinh']
       : ['Locate leak/blockage', 'Water pressure check', 'Light pipe handling', 'Basic seal replacement', 'Post-fix test', 'Extra materials'],
+    hvac: language === 'vi'
+      ? ['Xác nhận hiện trạng máy', 'Kiểm tra an toàn', 'Chốt phạm vi vệ sinh/sửa chữa', 'Thử vận hành', 'Ghi nhận kết quả', 'Vật tư phát sinh']
+      : ['Confirm unit condition', 'Safety check', 'Lock cleaning/repair scope', 'Operation test', 'Record result', 'Extra materials'],
+    upholstery: language === 'vi'
+      ? ['Xác nhận chất liệu', 'Kiểm tra vết bẩn/mùi', 'Chốt phương pháp làm sạch', 'Xử lý theo phạm vi', 'Kiểm tra sau làm sạch', 'Vật tư phát sinh']
+      : ['Confirm material', 'Check stain/odor', 'Lock cleaning method', 'Clean agreed scope', 'Post-clean check', 'Extra materials'],
+    handyman: language === 'vi'
+      ? ['Xác nhận từng việc nhỏ', 'Kiểm tra bề mặt/an toàn', 'Chốt vật tư và dụng cụ', 'Thực hiện theo phạm vi', 'Kiểm tra hoàn tất', 'Vật tư phát sinh']
+      : ['Confirm each small task', 'Check surface/safety', 'Lock materials and tools', 'Complete agreed scope', 'Completion check', 'Extra materials'],
   }
   const labels = serviceType
     ? rowsByService[serviceType]
@@ -692,9 +667,9 @@ export function caseEtaTimelineRows(deal: LocalDeal, language: AppLanguage) {
   const eta = typeof deal.broadcast?.secondsRemaining === 'number'
     ? formatDurationShort(deal.broadcast.secondsRemaining, language)
     : copy.dataPending
-  const accepted = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(deal.status)
-  const onWay = ['worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(deal.status)
-  const arrived = ['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(deal.status)
+  const accepted = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status)
+  const onWay = ['worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status)
+  const arrived = ['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status)
 
   return [
     {
@@ -721,15 +696,15 @@ export function caseEtaTimelineRows(deal: LocalDeal, language: AppLanguage) {
 }
 
 export function isArrivalConfirmedStatus(status: LocalDealStatus) {
-  return ['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(status)
+  return ['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(status)
 }
 
 export function isWorkStartedStatus(status: LocalDealStatus) {
-  return ['inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(status)
+  return ['inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(status)
 }
 
 export function isWorkCompletedStatus(status: LocalDealStatus) {
-  return ['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(status)
+  return ['completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(status)
 }
 
 export function workProgressPercent(status: LocalDealStatus | undefined) {

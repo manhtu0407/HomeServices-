@@ -14,6 +14,8 @@ export type WorkflowTransitionEvent =
   | "customer_confirmed_ticket"
   | "matching_started"
   | "worker_accepted"
+  | "customer_confirmed_worker"
+  | "customer_rejected_worker"
   | "worker_status_advanced"
   | "scope_change_requested"
   | "kael_decided_scope_change"
@@ -108,7 +110,9 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
   ],
   customer_confirmed_ticket: [["awaiting_customer_confirm", "broadcasting"]],
   matching_started: [["awaiting_customer_confirm", "broadcasting"]],
-  worker_accepted: [["broadcasting", "worker_matched"]],
+  worker_accepted: [["broadcasting", "worker_candidate_pending"]],
+  customer_confirmed_worker: [["worker_candidate_pending", "worker_matched"]],
+  customer_rejected_worker: [["worker_candidate_pending", "broadcasting"]],
   worker_status_advanced: [
     ["worker_matched", "worker_on_way"],
     ["worker_on_way", "arrived"],
@@ -116,14 +120,25 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
     ["inspecting", "repairing"],
   ],
   scope_change_requested: [
+    ["worker_matched", "scope_change_pending"],
+    ["worker_on_way", "scope_change_pending"],
+    ["arrived", "scope_change_pending"],
     ["inspecting", "scope_change_pending"],
     ["repairing", "scope_change_pending"],
   ],
   kael_decided_scope_change: [
+    ["scope_change_pending", "worker_matched"],
+    ["scope_change_pending", "worker_on_way"],
+    ["scope_change_pending", "arrived"],
+    ["scope_change_pending", "inspecting"],
     ["scope_change_pending", "repairing"],
     ["scope_change_pending", "cancelled"],
   ],
   scope_change_decided: [
+    ["scope_change_pending", "worker_matched"],
+    ["scope_change_pending", "worker_on_way"],
+    ["scope_change_pending", "arrived"],
+    ["scope_change_pending", "inspecting"],
     ["scope_change_pending", "repairing"],
     ["scope_change_pending", "cancelled"],
   ],
@@ -136,10 +151,7 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
     ["completed_by_worker", "confirmed_by_customer"],
     ["confirmed_by_customer", "reviewed"],
   ],
-  review_submitted: [
-    ["confirmed_by_customer", "reviewed"],
-    ["paid", "reviewed"],
-  ],
+  review_submitted: [["paid", "reviewed"]],
   kael_processed_cancellation: [
     ["draft", "cancelled"],
     ["analyzing", "cancelled"],
@@ -163,6 +175,7 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
     ["analyzing", "cancelled"],
     ["awaiting_customer_confirm", "cancelled"],
     ["broadcasting", "cancelled"],
+    ["worker_candidate_pending", "cancelled"],
   ],
 };
 
@@ -179,6 +192,7 @@ const KAEL_AUTONOMY_ACTION_EVENTS: Record<KaelAutonomyDecision["action"], readon
 const CUSTOMER_CANCELLATION_REQUEST_STATUSES: readonly JobStatus[] = [
   "awaiting_customer_confirm",
   "broadcasting",
+  "worker_candidate_pending",
   "worker_matched",
   "worker_on_way",
   "arrived",
@@ -198,13 +212,14 @@ const WORKER_CANCELLATION_REQUEST_STATUSES: readonly JobStatus[] = [
 ];
 
 const MEDIA_STAGE_STATUSES: Record<WorkflowMediaStage, readonly JobStatus[]> = {
-  before: ["draft", "analyzing", "estimate_ready", "awaiting_customer_confirm", "broadcasting"],
+  before: ["draft", "analyzing", "estimate_ready", "awaiting_customer_confirm", "broadcasting", "worker_candidate_pending"],
   kael_reference: [
     "draft",
     "analyzing",
     "estimate_ready",
     "awaiting_customer_confirm",
     "broadcasting",
+    "worker_candidate_pending",
     "worker_matched",
     "worker_on_way",
     "arrived",
@@ -222,7 +237,14 @@ const MEDIA_STAGE_STATUSES: Record<WorkflowMediaStage, readonly JobStatus[]> = {
     "repairing",
     "scope_change_pending",
   ],
-  scope_change_evidence: ["inspecting", "repairing", "scope_change_pending"],
+  scope_change_evidence: [
+    "worker_matched",
+    "worker_on_way",
+    "arrived",
+    "inspecting",
+    "repairing",
+    "scope_change_pending",
+  ],
   // §32.7: lobby check-in photo is taken while the worker is still `worker_on_way`
   // (the status flips to `arrived` only after the check-in upload succeeds);
   // `arrived` stays allowed for a retry after a partial failure.

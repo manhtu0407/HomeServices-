@@ -183,8 +183,15 @@ describe('Database.public.Enums completeness', () => {
 })
 
 describe('Core enum values', () => {
-  it('service_type remains scoped to electrical, plumbing, and cleaning', () => {
-    expect(Constants.public.Enums.service_type).toEqual(['electrical', 'plumbing', 'cleaning'])
+  it('service_type remains scoped to the six launched services', () => {
+    expect(Constants.public.Enums.service_type).toEqual([
+      'electrical',
+      'plumbing',
+      'cleaning',
+      'hvac',
+      'upholstery',
+      'handyman',
+    ])
   })
 
   it('job_status matches STRUCTURES.md workflow', () => {
@@ -194,6 +201,7 @@ describe('Core enum values', () => {
       'estimate_ready',
       'awaiting_customer_confirm',
       'broadcasting',
+      'worker_candidate_pending',
       'worker_matched',
       'worker_on_way',
       'arrived',

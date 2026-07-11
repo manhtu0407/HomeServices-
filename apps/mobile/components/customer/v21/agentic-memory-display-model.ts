@@ -31,7 +31,7 @@ export function totalDealEvidenceCount(deal: LocalDeal | null) {
 }
 
 export function agenticCommandStep(status: LocalDealStatus) {
-  if (status === 'draft' || status === 'analyzing') return 1
+  if (status === 'draft' || status === 'analyzing' || status === 'estimate_ready') return 1
   if (status === 'awaiting_customer_confirm' || status === 'scope_change_pending') return 2
   if (status === 'confirmed_by_customer') return 3
   if (status === 'broadcasting' || status === 'worker_matched' || status === 'worker_on_way') return 4
@@ -44,7 +44,7 @@ export function agenticProcessedApprovalRows(deal: LocalDeal | null, language: A
   const quoteReady = Boolean(deal?.estimate || deal?.payment || step >= 3)
   const scheduleReady = Boolean(deal && step >= 3)
   const quoteValue = deal?.payment
-    ? paymentAmountLabel(deal.payment, language, '0')
+    ? paymentAmountLabel(deal.payment, language, copy.dataPending)
     : deal?.estimate?.priceRangeLabel ?? copy.dataPending
   const scheduleValue = scheduleReady
     ? (language === 'vi' ? 'Theo yêu cầu hiện tại' : 'Current request')

@@ -3,6 +3,8 @@ import {
   serviceTypeSchema,
   jobCreateSchema,
   kaelChatCreateSchema,
+  kaelChatEvidenceSchema,
+  kaelChatMediaUploadSchema,
   kaelChatProgressSchema,
   kaelChatTurnSchema,
   placesAutocompleteSchema,
@@ -26,7 +28,7 @@ const UUID = '550e8400-e29b-41d4-a716-446655440000'
 // Rule #6: Kael chỉ trả lời về điện, nước, và vệ sinh — hard enforcement
 // ===================================================================
 
-describe('serviceTypeSchema (Rule #6: electrical + plumbing + cleaning)', () => {
+describe('serviceTypeSchema (Rule #6: six approved home services)', () => {
   it('accepts electrical', () => {
     expect(serviceTypeSchema.parse('electrical')).toBe('electrical')
   })
@@ -35,12 +37,16 @@ describe('serviceTypeSchema (Rule #6: electrical + plumbing + cleaning)', () => 
     expect(serviceTypeSchema.parse('plumbing')).toBe('plumbing')
   })
 
-  it('rejects hvac', () => {
-    expect(() => serviceTypeSchema.parse('hvac')).toThrow()
-  })
-
   it('accepts cleaning', () => {
     expect(serviceTypeSchema.parse('cleaning')).toBe('cleaning')
+  })
+
+  it.each(['hvac', 'upholstery', 'handyman'] as const)('accepts %s', (serviceType) => {
+    expect(serviceTypeSchema.parse(serviceType)).toBe(serviceType)
+  })
+
+  it('still rejects an unsupported service', () => {
+    expect(() => serviceTypeSchema.parse('painting')).toThrow()
   })
 
   it('rejects empty string', () => {
@@ -104,6 +110,15 @@ describe('workerRegisterSchema districts', () => {
         districts: ['ha_noi'],
       }),
     ).toThrow()
+  })
+
+  it('accepts all six approved capabilities without widening beyond the launch set', () => {
+    const parsed = workerRegisterSchema.parse({
+      ...validWorker,
+      service_types: [...SERVICE_TYPES],
+    })
+
+    expect(parsed.service_types).toEqual([...SERVICE_TYPES])
   })
 })
 
@@ -224,6 +239,44 @@ describe('kaelChat schemas', () => {
     expect(result.address_label).toContain('Landmark')
   })
 
+  it('accepts a matching six-service profile and structured time window', () => {
+    const result = kaelChatCreateSchema.parse({
+      service_type: 'hvac',
+      profile_id: 'air_scope',
+      message: 'Máy lạnh yếu và chảy nước.',
+      scheduled_at: '2026-07-12T01:00:00.000Z',
+      schedule_window: {
+        date: '2026-07-12',
+        start: '08:00',
+        end: '10:00',
+        time_zone: 'Asia/Ho_Chi_Minh',
+      },
+    })
+
+    expect(result.profile_id).toBe('air_scope')
+    expect(() => kaelChatCreateSchema.parse({
+      ...result,
+      profile_id: 'task_scope',
+    })).toThrow()
+  })
+
+  it('keeps voice on device and accepts only a reviewed transcript', () => {
+    expect(() => kaelChatMediaUploadSchema.parse({
+      file_name: 'voice.m4a',
+      mime_type: 'audio/mp4',
+    })).toThrow()
+
+    const evidence = kaelChatEvidenceSchema.parse({
+      decision: 'confirmed',
+      evidence_items: [{
+        kind: 'voice_transcript',
+        transcript: 'Máy kêu to hơn bình thường.',
+        model_eligible: true,
+      }],
+    })
+    expect(evidence.evidence_items?.[0].kind).toBe('voice_transcript')
+  })
+
   it('validates Places autocomplete input for the Edge proxy', () => {
     expect(placesAutocompleteSchema.parse({ input: 'Bình Thạnh' }).input).toBe('Bình Thạnh')
     expect(() => placesAutocompleteSchema.parse({ input: 'x' })).toThrow()
@@ -326,25 +379,36 @@ describe('workerScopeChangeSchema (Phase 2.0 2026-05-23: no price fields)', () =
   })
 
   it('accepts up to 5 photo urls', () => {
+    const jobId = '11111111-1111-4111-8111-111111111111'
     expect(() =>
       workerScopeChangeSchema.parse({
         ...validScope,
         photo_urls: [
-          'https://example.com/1.jpg',
-          'https://example.com/2.jpg',
-          'https://example.com/3.jpg',
-          'https://example.com/4.jpg',
-          'https://example.com/5.jpg',
+          `supabase://job-media/${jobId}/scope_change_evidence/1.jpg`,
+          `supabase://job-media/${jobId}/scope_change_evidence/2.jpg`,
+          `supabase://job-media/${jobId}/scope_change_evidence/3.jpg`,
+          `supabase://job-media/${jobId}/scope_change_evidence/4.jpg`,
+          `supabase://job-media/${jobId}/scope_change_evidence/5.jpg`,
         ],
       })
     ).not.toThrow()
+  })
+
+  it('rejects arbitrary remote URLs as scope evidence', () => {
+    expect(() => workerScopeChangeSchema.parse({
+      ...validScope,
+      photo_urls: ['https://attacker.example/pixel.jpg'],
+    })).toThrow()
   })
 
   it('rejects more than 5 photo urls', () => {
     expect(() =>
       workerScopeChangeSchema.parse({
         ...validScope,
-        photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
+        photo_urls: Array.from(
+          { length: 6 },
+          (_, index) => `supabase://job-media/11111111-1111-4111-8111-111111111111/scope_change_evidence/${index}.jpg`,
+        ),
       })
     ).toThrow()
   })

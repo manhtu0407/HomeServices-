@@ -228,39 +228,56 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.queryByText(/rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
   })
 
-  it('uses AirScope guided intake and keeps beta booking blocked', () => {
-    render(<CustomerBookingEntrySurface />)
-
-    fireEvent.press(screen.getByTestId('customer-v21-service-hvac_basic_maintenance'))
-
-    expect(screen.getByTestId('customer-v21-performance-intake')).toBeOnTheScreen()
-    expect(screen.getByText('Kael AirScope')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-performance-question-hvac_goal')).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-hvac_goal-routine_cleaning'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-number-unit_count-increment'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-access_level-easy'))
-
-    expect(screen.getByTestId('customer-v21-performance-scope-card')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-submit').props.accessibilityState).toEqual(
-      expect.objectContaining({ disabled: true }),
-    )
-    expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
-  })
-
   it.each([
-    ['upholstery_care', 'Kael FabricScope', 'fabric_items'],
-    ['handyman_minor_installation', 'Kael TaskScope', 'task_bundle_type'],
-  ] as const)('renders the %s guided core', (serviceId, scopeName, firstQuestionId) => {
-    mockRouteParams = { service: serviceId }
-    render(<CustomerBookingEntrySurface />)
+    ['electrical', 'electrical', 'electric_diagnose', PROBLEM_CHIPS.electrical[0]],
+    ['plumbing', 'plumbing', 'water_diagnose', PROBLEM_CHIPS.plumbing[0]],
+    ['home_cleaning', 'cleaning', 'clean_scope', PROBLEM_CHIPS.cleaning[0]],
+    ['hvac_basic_maintenance', 'hvac', 'air_scope', PROBLEM_CHIPS.hvac[0]],
+    ['upholstery_care', 'upholstery', 'fabric_scope', PROBLEM_CHIPS.upholstery[0]],
+    ['handyman_minor_installation', 'handyman', 'task_scope', PROBLEM_CHIPS.handyman[0]],
+  ] as const)(
+    'uses the same Basic Intake for %s and preserves its canonical Kael profile',
+    async (serviceId, serviceType, profileId, firstProblemChip) => {
+      mockRouteParams = { service: serviceId }
+      render(<CustomerBookingEntrySurface />)
 
-    expect(screen.getByText(scopeName)).toBeOnTheScreen()
-    expect(screen.getByTestId(`customer-v21-performance-question-${firstQuestionId}`)).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-booking-description')).toBeNull()
-  })
+      expect(screen.getByTestId('customer-v21-selected-service')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-booking-description')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-booking-schedule-panel')).toBeOnTheScreen()
+      expect(screen.getByTestId(`customer-v21-problem-${firstProblemChip}`)).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-booking-add-media')).toBeOnTheScreen()
+      expect(screen.queryByTestId('customer-v21-performance-intake')).toBeNull()
+      expect(screen.queryByTestId('customer-v21-performance-scope-card')).toBeNull()
+      expect(screen.queryByTestId('customer-v21-performance-question-hvac_goal')).toBeNull()
 
-  it('adds real photo evidence to TaskScope confidence without creating a job', async () => {
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can Kael tim hieu them truoc khi bao gia')
+      fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+      fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
+      fireEvent.press(screen.getByTestId(`customer-v21-problem-${firstProblemChip}`))
+      fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+      await waitFor(() => {
+        expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+          description: 'Can Kael tim hieu them truoc khi bao gia',
+          problemChips: [firstProblemChip],
+          profileId,
+          scheduleMode: 'scheduled',
+          scheduleWindow: expect.objectContaining({
+            date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+            end: '10:00',
+            start: '08:00',
+            timeZone: 'Asia/Ho_Chi_Minh',
+          }),
+          scheduledAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+          serviceType,
+        }))
+      })
+      expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps optional photo evidence with the Basic Intake without building a local scope card', async () => {
     mockRouteParams = { service: 'handyman_minor_installation' }
     mockLaunchImageLibraryAsync.mockResolvedValueOnce({
       canceled: false,
@@ -268,20 +285,50 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     })
     render(<CustomerBookingEntrySurface />)
 
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-task_bundle_type-single'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-task_types-drill_shelf'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-number-task_count-increment'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-materials_ready-yes'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-requires_drilling-no'))
-
-    expect(screen.getByTestId('customer-v21-performance-status')).toHaveTextContent(/Cần ảnh/)
-    fireEvent.press(screen.getByTestId('customer-v21-performance-add-photos'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-add-media'))
 
     await waitFor(() => {
-      expect(screen.getByText('1/5')).toBeOnTheScreen()
-      expect(screen.getByTestId('customer-v21-performance-status')).toHaveTextContent(/Sẵn sàng/)
+      expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({
+        allowsMultipleSelection: true,
+        mediaTypes: ['images'],
+        selectionLimit: 5,
+      }))
+      expect(screen.getByTestId('customer-v21-booking-media-count')).toHaveTextContent('1/5')
     })
+    expect(screen.queryByTestId('customer-v21-performance-scope-card')).toBeNull()
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can lap ke nho trong phong khach')
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    await waitFor(() => {
+      expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+        mediaCount: 1,
+        photoDrafts: [expect.objectContaining({ fileName: 'wall.jpg', type: 'image', uri: 'file://wall.jpg' })],
+        profileId: 'task_scope',
+        serviceType: 'handyman',
+      }))
+    })
+  })
+
+  it('requires a complete desired time before handing Basic Intake to Kael Case Work', async () => {
+    mockRouteParams = { service: 'handyman_minor_installation' }
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can lap ke nho trong phong khach')
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    expect(screen.getByTestId('customer-v21-booking-error')).toHaveTextContent(/thời gian mong muốn/i)
     expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    await waitFor(() => expect(mockSetPendingKaelChatDraft).toHaveBeenCalledTimes(1))
   })
 
   it('finds expansion services through the existing booking search', () => {
@@ -290,27 +337,6 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-search-input'), 'điều hòa')
 
     expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toHaveTextContent('Điều hòa & Không khí')
-  })
-
-  it('converts a locked CleanScope into the existing cleaning Kael draft', async () => {
-    mockRouteParams = { service: 'home_cleaning' }
-    render(<CustomerBookingEntrySurface />)
-
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-cleaning_type-standard'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-property_layout-studio'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-number-bathroom_count-increment'))
-    fireEvent.press(screen.getByTestId('customer-v21-performance-option-condition_level-level_2'))
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Tòa A, Quận 7')
-
-    expect(screen.getByTestId('customer-v21-performance-scope-card')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
-
-    await waitFor(() => {
-      expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
-        description: expect.stringContaining('Kael CleanScope'),
-        serviceType: 'cleaning',
-      }))
-    })
   })
 
   it('uses mint text for booking guidance instead of red error copy', () => {
@@ -338,6 +364,8 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-selected-service')).toHaveTextContent(/Sửa nước/)
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Voi nuoc trong bep bi ro va can tho kiem tra')
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
     expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -443,6 +471,8 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     fireEvent.press(screen.getByTestId('customer-v21-booking-search-suggestion-0'))
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Ong nuoc duoi lavabo bi ro ri rat nhieu')
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
     expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({

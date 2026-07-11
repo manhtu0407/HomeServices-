@@ -33,6 +33,7 @@ import { setAppLanguage, type AppLanguage, localizedServiceLabel, localizedStatu
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { jobMediaObjectPathFromRef } from '@/lib/job-media-preview'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { kaelMemoryService, workerKaelChatService, workerRouteService } from '@/lib/services'
 import type {
@@ -257,7 +258,10 @@ const workerV5CaseTrailIcons = {
 const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
   cleaning: require('@/assets/worker-image-icons/service-cleaning.png') as ImageSourcePropType,
   electrical: require('@/assets/worker-image-icons/service-electrical.png') as ImageSourcePropType,
+  handyman: require('../customer/v21/assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,
+  hvac: require('../customer/v21/assets/service-icons/client-service-hvac.png') as ImageSourcePropType,
   plumbing: require('@/assets/worker-image-icons/service-plumbing.png') as ImageSourcePropType,
+  upholstery: require('../customer/v21/assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
 }
 
 const workerV5AvatarIcon = require('@/assets/worker-image-icons/profile-avatar-core.png') as ImageSourcePropType
@@ -1657,7 +1661,7 @@ function WorkerV5InProgressBody({
         mimeType: asset.mimeType ?? undefined,
         type: 'image',
         uri: asset.uri,
-      }], 'before')
+      }], 'kael_reference')
       if (!uploaded.success) {
         if (activeFieldEvidenceJobIdRef.current === currentJobId) {
           setFieldEvidenceKaelConfirmation(textByLanguage(
@@ -1755,6 +1759,7 @@ function WorkerV5InProgressBody({
         navigateJobChat={navigateJobChat}
         onArrivalAcknowledged={() => router.replace('/(worker)/jobs?ns_worker_screen=2.7-in-progress' as never)}
         onTravelAction={onTravelAction}
+        onAdjustScope={() => router.replace('/(worker)/jobs?ns_worker_screen=2.8-scope-change&ns_scope_mode=edit' as never)}
         reduceTransparency={reduceTransparency}
       />
     )
@@ -1819,6 +1824,7 @@ const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate(
   navigateJobChat,
   onArrivalAcknowledged,
   onTravelAction,
+  onAdjustScope,
   reduceTransparency,
 }: {
   actionBusy: boolean
@@ -1827,6 +1833,7 @@ const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate(
   navigateJobChat: () => void
   onArrivalAcknowledged: () => void
   onTravelAction: () => void
+  onAdjustScope: () => void
   reduceTransparency: boolean
 }) {
   const routePreview = useWorkerV5RoutePreview(deal, true)
@@ -1845,6 +1852,7 @@ const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate(
       etaSummaryComponent={WorkerV5EtaSummaryCard}
       language={language}
       navigateJobChat={navigateJobChat}
+      onAdjustScope={onAdjustScope}
       onPrimary={confirmArrivalGate}
       primaryLabel={deal?.status === 'worker_matched'
         ? textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
@@ -1897,7 +1905,7 @@ function WorkerV5ScopeChangeBody({
     ...scopeUploadedEvidenceRefs,
   ].filter((uri): uri is string => Boolean(uri))))
   const evidenceCount = scopeEvidenceUrls.length
-  const canDraftScopeEvidence = Boolean(deal && ['arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(deal.status))
+  const canDraftScopeEvidence = Boolean(deal && ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(deal.status))
   const hasScopeSubmission = Boolean(scope || scopeEvidenceSent)
   const scopeDescriptionReady = scopeDescription.trim().length >= 10
   const scopeReasonReady = scopeReason.trim().length >= 10
@@ -1931,7 +1939,7 @@ function WorkerV5ScopeChangeBody({
       ...(scope?.evidencePhotoUrls ?? []),
       ...scopeUploadedEvidenceRefs,
       ...uploadedRefs,
-    ])).slice(0, 5)
+    ])).filter((ref) => Boolean(jobMediaObjectPathFromRef(ref))).slice(0, 5)
     setScopeUploadedEvidenceRefs((current) => Array.from(new Set([...current, ...uploadedRefs])))
     const ok = await runtime.actions.requestScopeChange({
       new_description: scopeDescription.trim(),
@@ -6277,7 +6285,7 @@ const styles = StyleSheet.create({
   kaelIntakeReadinessTitle: {
     color: color.text.strong,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 20,
   },
   kaelIntakeReadinessBody: {

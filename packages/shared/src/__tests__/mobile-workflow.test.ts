@@ -35,8 +35,10 @@ describe('mobile local workflow state machine', () => {
     expect([...LOCAL_DEAL_STATUSES]).toEqual([
       'draft',
       'analyzing',
+      'estimate_ready',
       'awaiting_customer_confirm',
       'broadcasting',
+      'worker_candidate_pending',
       'worker_matched',
       'worker_on_way',
       'arrived',
@@ -45,10 +47,11 @@ describe('mobile local workflow state machine', () => {
       'scope_change_pending',
       'completed_by_worker',
       'confirmed_by_customer',
+      'payment_pending',
+      'paid',
       'reviewed',
       'cancelled',
     ])
-    expect([...LOCAL_DEAL_STATUSES]).not.toContain('payment_pending')
   })
 
   it('keeps local statuses as a documented subset of backend job statuses', () => {
@@ -63,9 +66,9 @@ describe('mobile local workflow state machine', () => {
       expect(LOCAL_DEAL_STATUSES).toContain(toLocalDealStatus(status))
     }
 
-    expect(toLocalDealStatus('estimate_ready')).toBe('awaiting_customer_confirm')
-    expect(toLocalDealStatus('payment_pending')).toBe('confirmed_by_customer')
-    expect(toLocalDealStatus('paid')).toBe('confirmed_by_customer')
+    expect(toLocalDealStatus('estimate_ready')).toBe('estimate_ready')
+    expect(toLocalDealStatus('payment_pending')).toBe('payment_pending')
+    expect(toLocalDealStatus('paid')).toBe('paid')
   })
 
   it('starts empty and does not fabricate a booking, worker, price, payment, or review', () => {

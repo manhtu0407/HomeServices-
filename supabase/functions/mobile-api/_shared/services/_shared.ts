@@ -1,7 +1,8 @@
 import type { ComplexityLevel, JobMediaAttachInput, JobStatus, ServiceType } from "../../../_shared/domain.ts";
 import { HCMC_DISTRICTS, kaelChatProgressSchema, normalizeDistrict } from "../../../_shared/domain.ts";
 import type { EstimatePriceSource, PipelineStageLog } from "../kael/index.ts";
-import type { KaelChatNextAction, KaelChatStatus } from "../../../_shared/contracts.ts";
+import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../_shared/contracts.ts";
+import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../kael/artifact-contract.ts";
 import { PRICE_DISCLAIMER } from "../kael/index.ts";
 import { apiFailure } from "../router.ts";
 import type { MobileApiContext } from "../router.ts";
@@ -59,6 +60,9 @@ export function mapConfirmKaelChatError(errorCode: string | null): never {
   }
   if (errorCode === "MISSING_ESTIMATE") {
     apiFailure("INVALID_STATUS", "Kael chưa có ước tính để đặt thợ", 409);
+  }
+  if (errorCode === "MISSING_SCOPE") {
+    apiFailure("INVALID_STATUS", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
   }
   if (errorCode === "NO_DISTRICT") {
     apiFailure("VALIDATION", "Địa chỉ cần có quận TP.HCM rõ ràng", 400);
@@ -376,18 +380,27 @@ export function serializeKaelSession(
   const status = asKaelChatStatus(row.status);
   const lastTurn = turns[turns.length - 1];
   const totalCostUsd = asNumber(row.total_cost_usd);
+  const diagnosisScopeResult = kaelDiagnosisScopeArtifactSchema.safeParse(row.diagnosis_scope);
+  const diagnosisScope = diagnosisScopeResult.success ? diagnosisScopeResult.data : null;
+  const rowCasePhase = typeof row.case_phase === "string" &&
+      (KAEL_CASE_WORK_PHASES as readonly string[]).includes(row.case_phase)
+    ? row.case_phase as EdgeKaelCaseWorkPhase
+    : "analysis";
   return {
     id: asString(row.id),
     job_id: nullableString(row.job_id),
     customer_id: asString(row.customer_id),
     service_type: asServiceType(row.service_type),
     status,
+    case_phase: rowCasePhase,
+    diagnosis_scope: diagnosisScope,
+    scheduled_at: nullableString(row.scheduled_at),
     estimate,
     started_at: asString(row.started_at),
     estimate_ready_at: nullableString(row.estimate_ready_at),
     total_turns: asNumber(row.total_turns),
     total_cost_usd: totalCostUsd,
-    next_action: kaelNextAction(status, lastTurn?.content_type, totalCostUsd),
+    next_action: kaelNextAction(status, lastTurn?.content_type, totalCostUsd, diagnosisScope),
   };
 }
 
@@ -399,7 +412,9 @@ export function serializeKaelEstimate(value: unknown, cardV3?: unknown) {
   // confidence is low) so the customer estimate card can show "cần kiểm tra
   // hiện trường" instead of an over-confident price. When no card is present
   // (older turns / non-estimate), needs_inspection is honestly false.
-  const card = asRecord(cardV3);
+  const cardEnvelope = asRecord(cardV3);
+  const nestedCard = asRecord(cardEnvelope.card);
+  const card = Object.keys(nestedCard).length > 0 ? nestedCard : cardEnvelope;
   const reasoning = asRecord(card.kael_reasoning);
   return {
     service_type: asServiceType(estimate.service_type),
@@ -433,12 +448,16 @@ export function kaelNextAction(
   status: KaelChatStatus,
   lastContentType: string | undefined,
   totalCostUsd: number,
+  diagnosisScope?: unknown,
 ): KaelChatNextAction {
   if (status === "confirmed") return "confirmed";
   if (status === "unsupported") return "unsupported";
   if (totalCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) return "budget_exceeded";
   if (status === "collecting_evidence") return "collect_evidence";
   if (status === "estimate_ready") return "estimate_ready";
+  const artifact = kaelDiagnosisScopeArtifactSchema.safeParse(diagnosisScope);
+  if (artifact.success && artifact.data.next_action.kind === "ask_question") return "ask_question";
+  if (artifact.success && artifact.data.next_action.kind === "request_evidence") return "request_evidence";
   if (lastContentType === "photo_request") return "ask_photo";
   if (lastContentType === "video_request") return "ask_video";
   if (lastContentType === "error") return "unsupported";
@@ -465,7 +484,11 @@ export function formatKaelEstimateText(estimate: {
   price_max: number;
   advisory: string | null;
   disclaimer: string;
-}) {
+}, language: "vi" | "en" = "vi") {
+  if (language === "en") {
+    const advisory = estimate.advisory ? ` Note: ${estimate.advisory}` : "";
+    return `Kael has prepared an estimate: ${estimate.problem_summary}. Complexity: ${estimate.complexity}; range: ${estimate.price_min.toLocaleString("en-US")}-${estimate.price_max.toLocaleString("en-US")} VND. ${estimate.disclaimer}${advisory}`;
+  }
   const advisory = estimate.advisory ? ` Lưu ý: ${estimate.advisory}` : "";
   return `Kael đã có ước tính: ${estimate.problem_summary}. Mức độ ${estimate.complexity}, khoảng ${estimate.price_min.toLocaleString("vi-VN")}-${estimate.price_max.toLocaleString("vi-VN")} đ. ${estimate.disclaimer}${advisory}`;
 }
@@ -515,18 +538,24 @@ export function clampServiceRadius(value: unknown): number {
 }
 
 export function kaelServiceLabelVi(service: string): string {
-  return service === "electrical"
-    ? "sửa điện"
-    : service === "plumbing"
-    ? "sửa nước"
-    : "vệ sinh nhà";
+  if (service === "electrical") return "sửa điện";
+  if (service === "plumbing") return "sửa nước";
+  if (service === "cleaning") return "vệ sinh nhà";
+  if (service === "hvac") return "điều hòa và không khí";
+  if (service === "upholstery") return "vệ sinh sofa, nệm, rèm hoặc thảm";
+  if (service === "handyman") return "sửa vặt và lắp đặt nhỏ";
+  return "dịch vụ nhà ở";
 }
 
 
 export function serviceLabel(serviceType: ServiceType): string {
   if (serviceType === "electrical") return "Sửa điện";
   if (serviceType === "plumbing") return "Sửa nước";
-  return "Vệ sinh";
+  if (serviceType === "cleaning") return "Vệ sinh nhà";
+  if (serviceType === "hvac") return "Điều hòa & Không khí";
+  if (serviceType === "upholstery") return "Sofa, nệm, rèm, thảm";
+  if (serviceType === "handyman") return "Sửa vặt & Lắp đặt nhỏ";
+  return "Dịch vụ nhà ở";
 }
 
 export function districtLabel(district: string): string {

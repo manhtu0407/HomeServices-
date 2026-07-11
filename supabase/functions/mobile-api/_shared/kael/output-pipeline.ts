@@ -1,5 +1,5 @@
 import type { ComplexityLevel, KaelEstimate, ServiceType } from "./types.ts";
-import { PRICE_DISCLAIMER } from "./types.ts";
+import { PRICE_DISCLAIMER, priceDisclaimer } from "./types.ts";
 import {
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
@@ -79,12 +79,14 @@ export function runKaelOutputPipeline<TInput, TSanitized, TOutput>(input: {
 
 export function buildEstimateCardOutput(input: {
   estimate: KaelEstimate;
+  language?: "vi" | "en";
   priceSource?: EstimatePriceSource;
   baselineUsed: string | null;
   visionFindings?: string | null;
   marketSignals?: string | null;
   needsInspectionReason?: string | null;
 }) {
+  const language = input.language ?? "vi";
   const confidence = numericConfidenceToLabel(input.estimate.confidence);
   const needsInspection = input.priceSource === "inspection_required" ||
     confidence === "low";
@@ -107,21 +109,29 @@ export function buildEstimateCardOutput(input: {
       market_signals: optionalText(input.marketSignals, 300),
       baseline_used: optionalText(input.baselineUsed, 100) ?? "inspection_required",
       complexity_reasoning: needsInspection
-        ? "Thông tin hiện tại chưa đủ chắc chắn nên cần thợ kiểm tra trực tiếp."
+        ? language === "en"
+          ? "The current evidence is not yet strong enough, so a worker must inspect it on site."
+          : "Thông tin hiện tại chưa đủ chắc chắn nên cần thợ kiểm tra trực tiếp."
+        : language === "en"
+        ? "Kael checks the description, severity, and governed baseline before presenting a price range."
         : "Kael đối chiếu mô tả, mức độ và baseline phù hợp trước khi đưa khoảng giá.",
       needs_inspection_reason: needsInspection
         ? optionalText(input.needsInspectionReason, 200) ??
-          "Cần xác nhận hiện trường trước khi chốt phạm vi."
+          (language === "en"
+            ? "The scope must be verified on site before it is finalized."
+            : "Cần xác nhận hiện trường trước khi chốt phạm vi.")
         : undefined,
     },
     advisory: needsInspection
       ? sanitizeKaelText(
         input.estimate.advisory ??
-          "Cần thợ kiểm tra trực tiếp trước khi chốt phạm vi.",
+          (language === "en"
+            ? "A worker must inspect the issue on site before the scope is finalized."
+            : "Cần thợ kiểm tra trực tiếp trước khi chốt phạm vi."),
         150,
       )
       : optionalText(input.estimate.advisory, 150),
-    disclaimer: PRICE_DISCLAIMER,
+    disclaimer: priceDisclaimer(language),
   };
   const artifactProposal = kaelArtifactProposalSchema.parse({
     artifact_type: "estimate",

@@ -409,6 +409,39 @@ export type Database = {
           },
         ]
       }
+      customer_favorite_workers: {
+        Row: {
+          created_at: string
+          customer_id: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_favorite_workers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_favorite_workers_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_profiles: {
         Row: {
           building_name: string | null
@@ -864,6 +897,67 @@ export type Database = {
           },
         ]
       }
+      job_worker_candidates: {
+        Row: {
+          broadcast_id: string | null
+          created_at: string
+          customer_decided_at: string | null
+          expires_at: string | null
+          id: string
+          job_id: string
+          proposed_at: string
+          status: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          broadcast_id?: string | null
+          created_at?: string
+          customer_decided_at?: string | null
+          expires_at?: string | null
+          id?: string
+          job_id: string
+          proposed_at?: string
+          status?: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          broadcast_id?: string | null
+          created_at?: string
+          customer_decided_at?: string | null
+          expires_at?: string | null
+          id?: string
+          job_id?: string
+          proposed_at?: string
+          status?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_worker_candidates_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "job_broadcasts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_worker_candidates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_worker_candidates_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_media_assets: {
         Row: {
           bucket_id: string
@@ -942,6 +1036,7 @@ export type Database = {
           created_at: string
           customer_id: string
           description: string
+          diagnosis_scope: Json | null
           display_code: string
           estimate_ready_at: string | null
           final_price: number | null
@@ -997,6 +1092,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           description: string
+          diagnosis_scope?: Json | null
           display_code?: string
           estimate_ready_at?: string | null
           final_price?: number | null
@@ -1052,6 +1148,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           description?: string
+          diagnosis_scope?: Json | null
           display_code?: string
           estimate_ready_at?: string | null
           final_price?: number | null
@@ -1785,16 +1882,80 @@ export type Database = {
           },
         ]
       }
+      kael_chat_media_upload_intents: {
+        Row: {
+          bucket_id: string
+          cleaned_at: string | null
+          cleanup_attempts: number
+          cleanup_claim_token: string | null
+          cleanup_claimed_at: string | null
+          consumed_at: string | null
+          created_at: string
+          customer_id: string
+          delete_after: string
+          expires_at: string
+          file_size_bytes: number
+          id: string
+          mime_type: string
+          object_path: string
+          purpose: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_id?: string
+          cleaned_at?: string | null
+          cleanup_attempts?: number
+          cleanup_claim_token?: string | null
+          cleanup_claimed_at?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          customer_id: string
+          delete_after: string
+          expires_at: string
+          file_size_bytes: number
+          id?: string
+          mime_type: string
+          object_path: string
+          purpose: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_id?: string
+          cleaned_at?: string | null
+          cleanup_attempts?: number
+          cleanup_claim_token?: string | null
+          cleanup_claimed_at?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          delete_after?: string
+          expires_at?: string
+          file_size_bytes?: number
+          id?: string
+          mime_type?: string
+          object_path?: string
+          purpose?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kael_chat_sessions: {
         Row: {
           abandoned_at: string | null
+          case_phase: string
+          client_request_id: string | null
           created_at: string
           customer_id: string
+          diagnosis_scope: Json | null
           estimate_ready_at: string | null
           id: string
           job_id: string | null
           kael_progress: Json | null
           safe_metadata: Json
+          scheduled_at: string | null
           service_type: Database["public"]["Enums"]["service_type"]
           started_at: string
           status: string
@@ -1804,13 +1965,17 @@ export type Database = {
         }
         Insert: {
           abandoned_at?: string | null
+          case_phase?: string
+          client_request_id?: string | null
           created_at?: string
           customer_id: string
+          diagnosis_scope?: Json | null
           estimate_ready_at?: string | null
           id?: string
           job_id?: string | null
           kael_progress?: Json | null
           safe_metadata?: Json
+          scheduled_at?: string | null
           service_type: Database["public"]["Enums"]["service_type"]
           started_at?: string
           status?: string
@@ -1820,13 +1985,17 @@ export type Database = {
         }
         Update: {
           abandoned_at?: string | null
+          case_phase?: string
+          client_request_id?: string | null
           created_at?: string
           customer_id?: string
+          diagnosis_scope?: Json | null
           estimate_ready_at?: string | null
           id?: string
           job_id?: string | null
           kael_progress?: Json | null
           safe_metadata?: Json
+          scheduled_at?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
           started_at?: string
           status?: string
@@ -3329,7 +3498,9 @@ export type Database = {
           price_max: number | null
           price_min: number | null
           reason: string
+          request_timing: string
           requested_description: string
+          resume_job_status: Database["public"]["Enums"]["job_status"]
           status: Database["public"]["Enums"]["scope_change_status"]
           updated_at: string
           worker_id: string
@@ -3348,7 +3519,9 @@ export type Database = {
           price_max?: number | null
           price_min?: number | null
           reason: string
+          request_timing?: string
           requested_description: string
+          resume_job_status?: Database["public"]["Enums"]["job_status"]
           status?: Database["public"]["Enums"]["scope_change_status"]
           updated_at?: string
           worker_id: string
@@ -3367,7 +3540,9 @@ export type Database = {
           price_max?: number | null
           price_min?: number | null
           reason?: string
+          request_timing?: string
           requested_description?: string
+          resume_job_status?: Database["public"]["Enums"]["job_status"]
           status?: Database["public"]["Enums"]["scope_change_status"]
           updated_at?: string
           worker_id?: string
@@ -4277,6 +4452,37 @@ export type Database = {
       }
     }
     Functions: {
+      claim_kael_chat_media_cleanup_batch: {
+        Args: {
+          p_claim_token: string
+          p_limit?: number
+          p_now?: string
+        }
+        Returns: {
+          intent_id: string
+          object_path: string
+        }[]
+      }
+      complete_kael_chat_media_cleanup: {
+        Args: {
+          p_claim_token: string
+          p_intent_ids: string[]
+          p_now?: string
+        }
+        Returns: number
+      }
+      consume_kael_chat_media_uploads: {
+        Args: {
+          p_customer_id: string
+          p_now?: string
+          p_object_paths: string[]
+        }
+        Returns: {
+          consumed_count: number
+          ok: boolean
+          reason: string | null
+        }[]
+      }
       apply_approved_learning_candidate_to_knowledge: {
         Args: { p_admin_id: string; p_candidate_id: string }
         Returns: {
@@ -4327,6 +4533,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      reserve_kael_chat_media_upload: {
+        Args: {
+          p_customer_id: string
+          p_file_size_bytes: number
+          p_mime_type: string
+          p_now?: string
+          p_object_path: string
+          p_purpose: string
+        }
+        Returns: {
+          allowed: boolean
+          expires_at: string | null
+          intent_id: string | null
+          reason: string | null
+        }[]
+      }
       reserve_kael_ai_spend: {
         Args: {
           p_actor_id: string
@@ -4349,6 +4571,18 @@ export type Database = {
           p_purpose: string
         }
         Returns: undefined
+      }
+      revoke_kael_chat_media_uploads: {
+        Args: {
+          p_customer_id: string
+          p_now?: string
+          p_object_paths: string[]
+        }
+        Returns: {
+          ok: boolean
+          reason: string | null
+          revoked_paths: string[]
+        }[]
       }
       check_kael_chat_rate: {
         Args: {
@@ -4405,13 +4639,53 @@ export type Database = {
       accept_broadcast_atomic: {
         Args: { p_job_id: string; p_worker_id: string }
         Returns: {
-          address_building: string
-          address_district: string
-          address_floor: string
-          address_unit: string
+          already_applied: boolean
+          candidate_id: string
           error_code: string
           job_status: Database["public"]["Enums"]["job_status"]
           ok: boolean
+        }[]
+      }
+      validate_scope_change_evidence_refs: {
+        Args: {
+          p_job_id: string
+          p_media_refs: string[]
+          p_worker_id: string
+        }
+        Returns: {
+          ok: boolean
+          reason: string | null
+          validated_refs: string[]
+        }[]
+      }
+      confirm_worker_candidate_atomic: {
+        Args: {
+          p_candidate_id: string
+          p_customer_id: string
+          p_job_id: string
+        }
+        Returns: {
+          already_applied: boolean
+          candidate_id: string
+          error_code: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          worker_id: string
+        }[]
+      }
+      reject_worker_candidate_atomic: {
+        Args: {
+          p_candidate_id: string
+          p_customer_id: string
+          p_job_id: string
+        }
+        Returns: {
+          already_applied: boolean
+          candidate_id: string
+          error_code: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          worker_id: string
         }[]
       }
       archive_stale_kael_memory: {
@@ -4833,6 +5107,7 @@ export type Database = {
         | "estimate_ready"
         | "awaiting_customer_confirm"
         | "broadcasting"
+        | "worker_candidate_pending"
         | "worker_matched"
         | "worker_on_way"
         | "arrived"
@@ -4876,7 +5151,13 @@ export type Database = {
         | "approved_by_customer"
         | "rejected_by_customer"
         | "cancelled"
-      service_type: "electrical" | "plumbing" | "cleaning"
+      service_type:
+        | "electrical"
+        | "plumbing"
+        | "cleaning"
+        | "hvac"
+        | "upholstery"
+        | "handyman"
       user_role: "customer" | "worker" | "admin"
       worker_verification_status:
         | "draft"
@@ -5029,6 +5310,7 @@ export const Constants = {
         "estimate_ready",
         "awaiting_customer_confirm",
         "broadcasting",
+        "worker_candidate_pending",
         "worker_matched",
         "worker_on_way",
         "arrived",
@@ -5077,7 +5359,14 @@ export const Constants = {
         "rejected_by_customer",
         "cancelled",
       ],
-      service_type: ["electrical", "plumbing", "cleaning"],
+      service_type: [
+        "electrical",
+        "plumbing",
+        "cleaning",
+        "hvac",
+        "upholstery",
+        "handyman",
+      ],
       user_role: ["customer", "worker", "admin"],
       worker_verification_status: [
         "draft",

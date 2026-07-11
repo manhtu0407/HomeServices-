@@ -14,6 +14,7 @@ import type { JobStatus, ScopeChangeStatus } from "../../../_shared/domain.ts";
 const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
   "broadcasting",
+  "worker_candidate_pending",
   "worker_matched",
   "worker_on_way",
   "arrived",
@@ -152,10 +153,10 @@ async function getCurrentScopeChange(client: DbClient, jobId: string) {
     client
       .from("scope_change_requests")
       .select(
-        "id, status, requested_description, reason, price_min, price_max, kael_computed_min, kael_computed_max, kael_review, kael_progress, evidence_photo_urls, created_at",
+        "id, status, requested_description, reason, price_min, price_max, kael_computed_min, kael_computed_max, kael_review, kael_progress, evidence_photo_urls, request_timing, resume_job_status, created_at",
       )
       .eq("job_id", jobId)
-      .in("status", ["waiting_customer_decision", "reviewing_by_kael"])
+      .eq("status", "waiting_customer_decision")
       .order("created_at", { ascending: false })
       .limit(1),
   );
@@ -180,6 +181,8 @@ async function getCurrentScopeChange(client: DbClient, jobId: string) {
     kael_review: nullableRecord(row.kael_review),
     kael_progress: parseKaelProgressSnapshot(row.kael_progress, asString(row.id)),
     evidence_photo_urls: asStringArray(row.evidence_photo_urls),
+    request_timing: nullableString(row.request_timing) === "pre_arrival" ? "pre_arrival" : "on_site",
+    resume_job_status: nullableString(row.resume_job_status),
     created_at: nullableString(row.created_at),
   };
 }

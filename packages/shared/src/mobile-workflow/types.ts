@@ -5,7 +5,7 @@ export type LocalDealSource = 'home' | 'kael' | 'booking'
 export type LocalWorkerBroadcastStatus = 'pending' | 'sent' | 'accepted' | 'declined' | 'expired' | 'reassigned' | 'cancelled'
 export type LocalWorkerGate = 'backend_pending' | 'local_deal_audit' | 'remote_backend'
 export type LocalScheduleMode = 'now_only'
-export type LocalCustomerSearchState = 'idle' | 'searching' | 'no_worker' | 'matched' | 'active' | 'completed'
+export type LocalCustomerSearchState = 'idle' | 'searching' | 'no_worker' | 'candidate' | 'matched' | 'active' | 'completed'
 
 export type LocalAddressAccess = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
@@ -88,7 +88,7 @@ export type LocalPaymentStatus =
   | 'reconciled'
 
 export type LocalDealPayment = {
-  provider: 'sepay_vietqr' | 'cash' | 'bank_transfer' | string
+  provider: 'sepay_vietqr' | 'cash' | 'bank_transfer' | string | null
   status: LocalPaymentStatus
   grossAmount: number | null
   platformFee: number | null
@@ -135,6 +135,8 @@ export type LocalScopeChange = {
   kaelReview: Record<string, unknown> | null
   kaelProgress: LocalKaelProgress | null
   evidencePhotoUrls: string[]
+  requestTiming?: 'pre_arrival' | 'on_site'
+  resumeJobStatus?: JobStatus | null
   createdAt: string | null
 }
 

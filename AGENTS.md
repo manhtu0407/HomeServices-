@@ -97,6 +97,9 @@ Supported services are only:
 - electrical repair
 - plumbing repair
 - home cleaning / housekeeping
+- air conditioning / indoor air service
+- sofa, mattress, curtain, and carpet care
+- minor repair and installation / handyman
 
 Do not add unsupported service categories, future-service cards, fake provider data, fake prices, fake workers, fake earnings, fake ratings, or fake queue counts.
 

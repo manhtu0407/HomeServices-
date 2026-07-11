@@ -75,7 +75,7 @@ Project-specific filters:
 - Prefer existing Supabase, Expo, Next.js, and Turbo patterns.
 - Prefer explicit data flow over magic.
 - Prefer small functions over framework-like internal APIs.
-- Keep Kael scoped to Home Services: electrical repair, plumbing repair, and home cleaning/housekeeping only.
+- Keep Kael scoped to the six approved Home Services: electrical, plumbing, cleaning/housekeeping, HVAC/indoor air, upholstery care, and handyman/minor installation only.
 
 ## Core Skill 3: Surgical Changes
 

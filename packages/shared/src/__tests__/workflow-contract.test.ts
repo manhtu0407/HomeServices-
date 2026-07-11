@@ -72,6 +72,7 @@ describe('workflow phase contract', () => {
       'kael_explaining',
       'ticket_review',
       'matching',
+      'worker_candidate_review',
       'worker_matched',
       'worker_on_way',
       'arrived',
@@ -95,8 +96,9 @@ describe('workflow phase contract', () => {
     expect(toWorkflowPhase('draft')).toBe('intake_started')
     expect(toWorkflowPhase('analyzing')).toBe('kael_estimating')
     expect(toWorkflowPhase('estimate_ready')).toBe('kael_explaining')
-    expect(toWorkflowPhase('awaiting_customer_confirm')).toBe('matching')
+    expect(toWorkflowPhase('awaiting_customer_confirm')).toBe('ticket_review')
     expect(toWorkflowPhase('broadcasting')).toBe('matching')
+    expect(toWorkflowPhase('worker_candidate_pending')).toBe('worker_candidate_review')
     expect(toWorkflowPhase('confirmed_by_customer')).toBe('customer_confirmed_completion')
     expect(toWorkflowPhase('payment_pending')).toBe('payment_pending')
     expect(toWorkflowPhase('paid')).toBe('paid')
@@ -129,6 +131,7 @@ describe('workflow event contract', () => {
       'customer_confirmed_ticket',
       'matching_started',
       'worker_accepted',
+      'customer_confirmed_worker',
       'worker_status_advanced',
       'scope_change_requested',
       'kael_decided_scope_change',
@@ -278,7 +281,7 @@ describe('workflow view model contract', () => {
     expect(workflow.allowedActions.confirmTicketAndEstimate).toBe(false)
   })
 
-  it('keeps ticket artifacts visible while Kael orchestration replaces the customer confirmation gate', () => {
+  it('keeps ticket artifacts visible until the customer confirms the server estimate', () => {
     const explaining = buildWorkflowViewModel({ status: 'estimate_ready', hasCustomerInput: true, hasEstimate: true })
     const orchestrating = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasEstimate: true })
 
@@ -286,9 +289,9 @@ describe('workflow view model contract', () => {
     expect(explaining.artifacts.estimate.mode).toBe('review')
     expect(explaining.artifacts.ai_notes.mode).toBe('loading')
     expect(explaining.allowedActions.confirmTicketAndEstimate).toBe(false)
-    expect(orchestrating.phase).toBe('matching')
-    expect(orchestrating.artifacts.provider_match.mode).toBe('loading')
-    expect(orchestrating.allowedActions.confirmTicketAndEstimate).toBe(false)
+    expect(orchestrating.phase).toBe('ticket_review')
+    expect(orchestrating.artifacts.provider_match.mode).toBe('hidden')
+    expect(orchestrating.allowedActions.confirmTicketAndEstimate).toBe(true)
   })
 
   it('keeps AI notes hidden during orchestration unless Kael produced notes', () => {
@@ -297,16 +300,16 @@ describe('workflow view model contract', () => {
 
     expect(withoutNotes.artifacts.ai_notes.visible).toBe(false)
     expect(withoutNotes.artifacts.ai_diagnosis.visible).toBe(false)
-    expect(withNotes.artifacts.ai_notes.mode).toBe('final')
-    expect(withNotes.artifacts.ai_diagnosis.mode).toBe('final')
+    expect(withNotes.artifacts.ai_notes.mode).toBe('review')
+    expect(withNotes.artifacts.ai_diagnosis.mode).toBe('review')
   })
 
   it('does not restore customer confirmation when an orchestration estimate is missing', () => {
     const workflow = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true })
 
-    expect(workflow.phase).toBe('matching')
-    expect(workflow.artifacts.estimate.mode).toBe('hidden')
-    expect(workflow.artifacts.provider_match.mode).toBe('loading')
+    expect(workflow.phase).toBe('ticket_review')
+    expect(workflow.artifacts.estimate.mode).toBe('loading')
+    expect(workflow.artifacts.provider_match.mode).toBe('hidden')
     expect(workflow.allowedActions.confirmTicketAndEstimate).toBe(false)
   })
 
@@ -332,7 +335,7 @@ describe('workflow view model contract', () => {
     expect(customerConfirmed.isDone).toBe(false)
     expect(customerConfirmed.artifacts.payment_decision.mode).toBe('review')
     expect(customerConfirmed.artifacts.review.mode).toBe('review')
-    expect(customerConfirmed.allowedActions.submitReview).toBe(true)
+    expect(customerConfirmed.allowedActions.submitReview).toBe(false)
     expect(paymentPending.artifacts.review.mode).toBe('blocked')
     expect(paymentPending.allowedActions.submitReview).toBe(false)
     expect(paid.artifacts.review.mode).toBe('review')
@@ -384,16 +387,17 @@ describe('workflow phase context contract', () => {
       draft: ['intake_started', 'pending_intake', 'service_request', 'customer_input_updated'],
       analyzing: ['kael_estimating', 'kael_chat_session', 'estimate', 'ai_estimate_ready'],
       estimate_ready: ['kael_explaining', 'kael_chat_session', 'estimate', 'kael_started_matching'],
-      awaiting_customer_confirm: ['matching', 'broadcast', 'provider_match', 'worker_accepted'],
+      awaiting_customer_confirm: ['ticket_review', 'kael_chat_session', 'process_ticket', 'kael_started_matching'],
       broadcasting: ['matching', 'broadcast', 'provider_match', 'worker_accepted'],
+      worker_candidate_pending: ['worker_candidate_review', 'broadcast', 'provider_match', 'customer_confirmed_worker'],
       worker_matched: ['worker_matched', 'hydrated_job', 'booking', 'worker_status_advanced'],
       worker_on_way: ['worker_on_way', 'hydrated_job', 'booking', 'worker_status_advanced'],
       arrived: ['arrived', 'hydrated_job', 'booking', 'worker_status_advanced'],
       inspecting: ['inspecting', 'hydrated_job', 'booking', 'worker_status_advanced'],
       repairing: ['repairing', 'hydrated_job', 'booking', 'worker_completed'],
       scope_change_pending: ['scope_change_pending', 'scope_change', 'scope_change', 'kael_decided_scope_change'],
-      completed_by_worker: ['completed_by_worker', 'completion_evidence', 'completion_evidence', 'kael_confirmed_completion'],
-      confirmed_by_customer: ['customer_confirmed_completion', 'completion_evidence', 'payment_decision', 'review_submitted'],
+      completed_by_worker: ['completed_by_worker', 'completion_evidence', 'completion_evidence', 'customer_confirmed_completion'],
+      confirmed_by_customer: ['customer_confirmed_completion', 'completion_evidence', 'payment_decision', 'kael_decided_payment'],
       payment_pending: ['payment_pending', 'hydrated_job', 'payment_decision', 'payment_confirmed'],
       paid: ['paid', 'hydrated_job', 'review', 'review_submitted'],
       reviewed: ['done', 'review', 'review', null],
@@ -544,16 +548,18 @@ describe('workflow phase context contract', () => {
     expect(repairing.phaseContext.sections.find((section) => section.id === 'completion_evidence')?.visible).toBe(true)
     expect(scope.phaseContext.blockedReason).toBe('kael_scope_decision_required')
     expect(scope.phaseContext.primaryArtifact?.artifact).toBe('scope_change')
-    expect(completion.phaseContext.blockedReason).toBe('kael_completion_review_required')
+    expect(completion.phaseContext.blockedReason).toBe('customer_completion_confirmation_required')
     expect(completion.phaseContext.primaryArtifact?.artifact).toBe('completion_evidence')
     expect(completion.phaseContext.sections.find((section) => section.id === 'completion_evidence')?.role).toBe('shared')
     expect(completionMissingEvidence.phaseContext.blockedReason).toBe('completion_evidence_required')
     expect(completionMissingEvidence.artifacts.completion_evidence.mode).toBe('blocked')
     expect(completionMissingEvidence.artifacts.dispute_decision.mode).toBe('hidden')
     expect(completionMissingEvidence.phaseContext.sections.find((section) => section.id === 'dispute_decision')?.visible).toBe(false)
-    expect(customerConfirmedMissingEvidence.allowedActions.submitReview).toBe(true)
+    expect(customerConfirmedMissingEvidence.allowedActions.submitReview).toBe(false)
     expect(customerConfirmedMissingEvidence.artifacts.completion_evidence.mode).toBe('blocked')
-    expect(customerConfirmedMissingEvidence.phaseContext.sections.find((section) => section.id === 'review')?.lockedReason).toBeNull()
+    expect(customerConfirmedMissingEvidence.phaseContext.blockedReason).toBe('payment_required')
+    expect(customerConfirmedMissingEvidence.phaseContext.nextExpectedEvent).toBe('kael_decided_payment')
+    expect(customerConfirmedMissingEvidence.phaseContext.sections.find((section) => section.id === 'review')?.lockedReason).toBe('payment_required')
     expect(payment.phaseContext.sections.find((section) => section.id === 'job_chat')?.visible).toBe(true)
     expect(payment.phaseContext.sections.find((section) => section.id === 'job_chat')?.lockedReason).toBe('chat_send_closed')
     expect(payment.allowedActions.jobChatRead).toBe(true)

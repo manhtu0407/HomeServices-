@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,7 +14,6 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
-import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from './customer-audio'
 import * as ImagePicker from 'expo-image-picker'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated'
@@ -24,12 +22,12 @@ import {
   inferLocalDealDraftFromKael,
   CUSTOMER_SERVICE_IDS,
   LOCAL_DEAL_ID,
-  PROBLEM_CHIPS,
   extractKnownDistrictLabel,
   type CustomerServiceId,
   type LocalDeal,
   type LocalDealStatus,
   type CustomerKaelMemoryPreferenceKey,
+  type CaseWorkEvidence,
   type ServiceType,
 } from '@nestscout/shared'
 import { KaelButton, KaelChip, KaelTextInput } from '@/components/ui/kael-primitives'
@@ -38,12 +36,12 @@ import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { generateClientRequestId } from '@/lib/client-request-id'
-import { setAppLanguage, useAppLanguage, type AppLanguage } from '@/lib/app-language'
+import { localizedProblemOptions, setAppLanguage, useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { customerProfileService, jobService, kaelAssistantService, kaelChatService, placesService } from '@/lib/services'
-import { bookingServiceIdFromRoute, productionServiceForBooking } from '@/lib/kael-performance-intake'
-import { uploadJobMediaDrafts, uploadKaelChatMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
+import { cleanupKaelChatMediaRefs, localizeMediaUploadFailure, uploadJobMediaDrafts, uploadKaelChatMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { CustomerProfileInsightsResponse, KaelAssistantResponse, KaelChatResponse, KaelChatTurn, PlacesAutocompleteResponse } from '@/lib/api-types'
 import {
   getCustomerThemeTokens,
@@ -52,6 +50,13 @@ import {
   type CustomerThemeTokens,
 } from '../customer-theme'
 import { clearPendingKaelChatDraft, peekPendingKaelChatDraft, readPendingKaelChatDraft, setPendingKaelChatDraft } from '../kael-chat/pending-intake'
+import { AgenticEvidenceGateCard } from '../kael-chat/agentic-evidence-gate-card'
+import { CompletionReviewCard } from '../kael-chat/completion-review-card'
+import { localizedCaseWorkEvidencePrompt, localizedCaseWorkSafetyMessage } from '../kael-chat/case-work-localization'
+import { MediaDraftPreviewTray } from '../kael-chat/media-draft-preview-tray'
+import { OnDeviceVoiceTranscript } from '../kael-chat/on-device-voice-transcript'
+import { WorkerCandidateReviewCard } from '../kael-chat/worker-candidate-review-card'
+import { QuoteReadinessReviewCard } from '../kael-chat/quote-readiness-review-card'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
 import { AgenticCasePriorityCardPanel } from './agentic-case-surfaces'
 import {
@@ -61,17 +66,16 @@ import {
   SourceCardSkin,
   ZipMintAura,
 } from './aura-surfaces'
-import { AgenticEvidenceGateView } from './agentic-evidence-stateful-surfaces'
 import { AgenticMemoryStageView } from './agentic-memory-stateful-surfaces'
 import { CustomerAgenticCenterSurfaceView } from './agentic-center-stateful-surfaces'
 import { AgenticApprovalQueuePanel, AgenticArtifactTile, AgenticChatFact, AgenticCommandCaseCardPanel, AgenticCommandTimelinePanel, AgenticHomeBackdropAura, AgenticMetricTile, AgenticProcessedApprovalRow, AgenticStageBackdropAura, AgenticStageHero, AgenticUtilityStackPanel, AgenticWorkLogCardPanel } from './agentic-surfaces'
 import { customerV21Assets, customerV21BankAssets, customerV21ServiceAssets, type CustomerV21BankKey } from './assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from './booking-entry-stateful-surfaces'
-import { usePerformanceBookingIntake } from './use-performance-booking-intake'
 import { PrepRow } from './booking-surfaces'
 import { buildBookingSearchSuggestions, normalizeBookingSearchText, type BookingSearchSuggestion } from './booking-search-display-model'
 import {
   bookingScheduleDateParam,
+  bookingScheduleDraft,
   bookingScheduleLabel,
   bookingScheduleTimeParam,
   bookingTimeSlots,
@@ -89,6 +93,7 @@ import {
   caseScopeRowsForDeal,
   caseSecondaryOptionsForDeal,
   caseThreadLiveSignal,
+  canCustomerDecideScopeChange,
   currentScopeLabel,
   formatDurationShort,
   formatEvidenceFileCount,
@@ -96,7 +101,7 @@ import {
   formatShortClockTime,
   formatVnd,
   isArrivalConfirmedStatus,
-  isPaymentProtectedStatus,
+  isDealPaymentProtected,
   isPendingCustomerScopeChange,
   isWorkStartedStatus,
   normalizeKaelRoutingText,
@@ -139,7 +144,6 @@ import {
   type AgenticProcessedApprovalRowModel,
   type MemoryPreferenceActionResult,
 } from './agentic-memory-display-model'
-import { MediaIntakeView } from './booking-media-surfaces'
 import { ChatBubble } from './chat-surfaces'
 import { AgenticCaseThreadPanel } from './chat-case-thread-stateful-surfaces'
 import { AgenticChatEstimateCard, ChatEvidenceStrip, KaelChatSurfaceView } from './chat-stateful-surfaces'
@@ -235,6 +239,36 @@ function cleanRouteJobId(jobId: string | null | undefined) {
   return jobId && jobId !== LOCAL_DEAL_ID ? jobId : null
 }
 
+function localizeKaelRequestFailure(
+  failure: { code?: string; error: string },
+  language: AppLanguage,
+) {
+  if (language === 'vi') return failure.error
+  switch (failure.code) {
+    case 'RATE_LIMITED':
+    case 'PENDING_MEDIA_QUOTA':
+    case 'DAILY_MEDIA_QUOTA':
+      return 'Kael has reached a temporary request limit. Please try again later.'
+    case 'VALIDATION':
+    case 'INVALID_MEDIA_CONTENT':
+    case 'INVALID_MEDIA_REF':
+      return 'Some request information is invalid. Please review it and try again.'
+    case 'INVALID_STATUS':
+    case 'ALREADY_DECIDED':
+      return 'This step is no longer available because the case has moved forward.'
+    case 'SESSION_PENDING':
+      return 'Kael is still preparing this case. Please try again shortly.'
+    case 'AI_DISABLED':
+    case 'NO_PROVIDER_AVAILABLE':
+    case 'MEDIA_VALIDATION_UNAVAILABLE':
+      return 'Kael is temporarily unavailable. Please try again shortly.'
+    case 'NOT_FOUND':
+      return 'This case could not be found or is no longer available.'
+    default:
+      return 'Kael could not complete that step. Please try again.'
+  }
+}
+
 function shouldUseLegacyKaelEvidenceFallback(
   result: { code?: string; status?: number },
   photoUrls: string[],
@@ -266,23 +300,6 @@ const caseWorkScreenIds: CustomerV21ScreenId[] = ['2.5-chat-case', '2.6-case-ove
 const paymentScreenIds: CustomerV21ScreenId[] = ['3.1-payment-review', '3.2-payment-method', '3.3-payment-protected']
 const chatCompressedActivityScreenIds = new Set<CustomerV21ScreenId>(['2.6-case-overview', '2.7-matching', '2.8-options', '2.9-quotes', '2.10-location-eta', '2.11-live-alert', '2.12-job-accepted', '2.13-job-progress'])
 const completionScreenIds: CustomerV21ScreenId[] = ['2.13-job-progress']
-function openMicrophoneSettingsPrompt(language: AppLanguage, title: string) {
-  Alert.alert(
-    title,
-    language === 'vi'
-      ? 'Mở Cài đặt để cho phép NestScout dùng mic.'
-      : 'Open Settings to allow NestScout to use the microphone.',
-    [
-      { text: language === 'vi' ? 'Để sau' : 'Later', style: 'cancel' },
-      {
-        text: language === 'vi' ? 'Mở cài đặt' : 'Open settings',
-        onPress: () => {
-          void Linking.openSettings().catch(() => undefined)
-        },
-      },
-    ],
-  )
-}
 const bookingScheduleRuntimeRefreshMs = 30_000
 const bookingAddressLookupDelayMs = 260
 const bookingSearchInputTextColor = '#071A24'
@@ -710,10 +727,9 @@ export function CustomerBookingEntrySurface() {
   const [description, setDescription] = useState('')
   const [selectedScheduleDate, setSelectedScheduleDate] = useState<string | null>(directScheduleDate)
   const [selectedScheduleTime, setSelectedScheduleTime] = useState<string | null>(directScheduleTime)
-  const mediaCount = 0
-  const [voiceDrafts, setVoiceDrafts] = useState<LocalMediaUploadDraft[]>([])
+  const [photoDrafts, setPhotoDrafts] = useState<LocalMediaUploadDraft[]>([])
+  const mediaCount = photoDrafts.length
   const [error, setError] = useState<string | null>(null)
-  const performanceIntake = usePerformanceBookingIntake({ existingMediaCount: mediaCount, language, selectedService, setError, tokens })
   const [scheduleRuntimeNow, setScheduleRuntimeNow] = useState(() => Date.now())
   useEffect(() => {
     const intervalId = setInterval(() => setScheduleRuntimeNow(Date.now()), bookingScheduleRuntimeRefreshMs)
@@ -776,19 +792,21 @@ export function CustomerBookingEntrySurface() {
     )
   }
 
-  const problemOptions = performanceIntake.productionServiceType && !performanceIntake.serviceLineId ? [...PROBLEM_CHIPS[performanceIntake.productionServiceType]] : []
+  const productionServiceType = productionServiceForBooking(selectedService)
+  const problemOptions = productionServiceType ? localizedProblemOptions(productionServiceType, language) : []
+  const problemValues = problemOptions.map((option) => option.value)
   const normalizedServiceSearchQuery = normalizeBookingSearchText(serviceSearchQuery)
   const toggleProblem = (label: string) => {
     setSelectedProblems((current) =>
       current.includes(label) ? current.filter((item) => item !== label) : [...current, label],
     )
   }
-  const searchSuggestions = buildBookingSearchSuggestions({ language, problemOptions, query: normalizedServiceSearchQuery, selectedProblems, selectedService })
+  const searchSuggestions = buildBookingSearchSuggestions({ language, problemOptions: problemValues, query: normalizedServiceSearchQuery, selectedProblems, selectedService })
   const selectSearchSuggestion = (suggestion: BookingSearchSuggestion) => {
     if (!suggestion.problem) {
       setSelectedService(suggestion.serviceType)
       setSelectedProblems([])
-      performanceIntake.reset()
+      setPhotoDrafts([])
       return
     }
     setSelectedService(suggestion.serviceType)
@@ -832,8 +850,32 @@ export function CustomerBookingEntrySurface() {
     setDescription('')
     setSelectedScheduleDate(null)
     setSelectedScheduleTime(null)
-    setVoiceDrafts([])
-    performanceIntake.reset()
+    setPhotoDrafts([])
+    setError(null)
+  }
+
+  const pickBasicIntakePhotos = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      setError(language === 'vi' ? 'Cho phép truy cập thư viện để thêm ảnh hiện trạng.' : 'Allow photo-library access to add current-condition photos.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true,
+      mediaTypes: ['images'],
+      preferredAssetRepresentationMode: 'compatible' as ImagePicker.UIImagePickerPreferredAssetRepresentationMode,
+      quality: 0.82,
+      selectionLimit: Math.max(1, 5 - photoDrafts.length),
+    })
+    if (result.canceled) return
+    const drafts: LocalMediaUploadDraft[] = result.assets.map((asset) => ({
+      fileName: asset.fileName ?? undefined,
+      fileSizeBytes: asset.fileSize,
+      mimeType: asset.mimeType ?? undefined,
+      type: 'image',
+      uri: asset.uri,
+    }))
+    setPhotoDrafts((current) => mergeMediaDrafts(current, drafts, 5))
     setError(null)
   }
 
@@ -842,11 +884,26 @@ export function CustomerBookingEntrySurface() {
       setError(language === 'vi' ? 'Chọn dịch vụ trước khi gửi Kael.' : 'Choose a service before sending to Kael.')
       return
     }
-    const resolvedDraft = performanceIntake.resolveDraft({ fallbackDescription: description, fallbackProblemChips: selectedProblems })
-    if (!resolvedDraft.ok) return setError(resolvedDraft.error)
-    const { description: draftDescription, problemChips: draftProblemChips, serviceType: draftServiceType } = resolvedDraft
+    const draftServiceType = productionServiceForBooking(selectedService)
+    const profileId = performanceProfileForBooking(selectedService)
+    if (!draftServiceType || !profileId) {
+      setError(language === 'vi' ? 'Dịch vụ này chưa có cấu hình Kael phù hợp.' : 'This service does not have a Kael profile yet.')
+      return
+    }
+    const draftDescription = description.trim()
+    if (draftDescription.length < 10) {
+      setError(language === 'vi' ? 'Mô tả cần rõ hơn trước khi gửi Kael.' : 'Add a clearer description before sending to Kael.')
+      return
+    }
+    const draftProblemChips = selectedProblems
     if (address.trim().length < 4) {
       setError(language === 'vi' ? 'Nhập khu vực hoặc căn hộ.' : 'Enter an apartment or area.')
+      return
+    }
+    if (!selectedScheduleDate || !selectedScheduleTime) {
+      setError(language === 'vi'
+        ? 'Chọn ngày và khung thời gian mong muốn trước khi gửi Kael.'
+        : 'Choose your desired date and time window before sending to Kael.')
       return
     }
     const message = buildBookingDraftMessage({
@@ -857,8 +914,13 @@ export function CustomerBookingEntrySurface() {
       scheduleLabel,
       serviceType: draftServiceType,
     })
-    const pendingMediaDrafts = mergeMediaDrafts(performanceIntake.photoDrafts, voiceDrafts, Math.max(0, 5 - mediaCount))
-    const totalMediaCount = mediaCount + pendingMediaDrafts.length
+    const scheduleDraft = bookingScheduleDraft(selectedScheduleDate, selectedScheduleTime)
+    if (!scheduleDraft.scheduledAt || !scheduleDraft.scheduleWindow) {
+      setError(language === 'vi'
+        ? 'Khung thời gian chưa hợp lệ. Chọn lại ngày và giờ mong muốn.'
+        : 'The time window is invalid. Choose your desired date and time again.')
+      return
+    }
     const normalizedAddress = address.trim()
     const normalizedDistrict = addressDistrictLabel.current ?? extractKnownDistrictLabel(normalizedAddress) ?? normalizedAddress
     await setPendingKaelChatDraft({
@@ -868,10 +930,14 @@ export function CustomerBookingEntrySurface() {
       description: draftDescription,
       districtLabel: normalizedDistrict,
       locale: language,
-      mediaCount: totalMediaCount,
+      mediaCount,
       message,
-      photoDrafts: pendingMediaDrafts.length > 0 ? pendingMediaDrafts : undefined,
+      photoDrafts: photoDrafts.length > 0 ? photoDrafts : undefined,
       problemChips: draftProblemChips,
+      profileId,
+      scheduleMode: 'scheduled',
+      scheduledAt: scheduleDraft.scheduledAt,
+      scheduleWindow: scheduleDraft.scheduleWindow,
       serviceType: draftServiceType,
       source: 'booking',
     })
@@ -879,7 +945,7 @@ export function CustomerBookingEntrySurface() {
     router.replace(customerKaelWorkRoute as never)
   }
   const selectedServiceCopy = selectedService ? customerV21BookingServiceCopy[language][selectedService] : null
-  const createDraftLabel = performanceIntake.submitLabel ?? copy.createDraft
+  const createDraftLabel = copy.createDraft
 
   return (
     <V21Screen screenId={servicesScreenId} testID="customer-v21-services">
@@ -901,27 +967,28 @@ export function CustomerBookingEntrySurface() {
         invisibleTextInputScrollbarStyle={customerV21InvisibleTextInputScrollbar}
         isMediaScreen={isMediaScreen}
         language={language}
-        mediaPanelNode={(
-          <MediaIntakePanel
-            caseLabel={language === 'vi' ? 'Nháp' : 'Draft'}
-            description={description}
-            mediaCount={mediaCount}
-            onVoiceSaved={(draft) => setVoiceDrafts((current) => mergeMediaDrafts(current, [draft], Math.max(1, 5 - mediaCount)))}
-            onSubmit={submitDraft}
-            problemChips={selectedProblems}
-            voiceDrafts={voiceDrafts}
+        mediaCount={mediaCount}
+        mediaDraftPreviewNode={(
+          <MediaDraftPreviewTray
+            busy={false}
+            drafts={photoDrafts}
+            language={language}
+            onRemove={(index) => setPhotoDrafts((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+            tokens={tokens}
           />
         )}
+        mediaPanelNode={null}
         onAddressChange={updateAddress}
         onAddressFocus={() => setAddressLookupOpen(true)}
         onAddressSuggestionPress={selectAddressSuggestion}
         onBack={() => router.replace('/(customer)/home' as never)}
         onDescriptionChange={setDescription}
+        onMediaAdd={() => void pickBasicIntakePhotos()}
         onProblemToggle={toggleProblem}
         onResetSelectedService={() => {
           setSelectedService(null)
           setSelectedProblems([])
-          performanceIntake.reset()
+          setPhotoDrafts([])
           router.replace('/(customer)/booking' as never)
         }}
         onScheduleDateSelect={setSelectedScheduleDate}
@@ -931,11 +998,10 @@ export function CustomerBookingEntrySurface() {
         onServiceSelect={(service) => {
           setSelectedService(service)
           setSelectedProblems([])
-          performanceIntake.reset()
+          setPhotoDrafts([])
         }}
         onSubmit={submitDraft}
         problemOptions={problemOptions}
-        performanceIntakeNode={performanceIntake.panel}
         reduceTransparency={reduceTransparency}
         rootStyles={styles}
         scheduleDateOptions={scheduleDateOptions}
@@ -947,147 +1013,11 @@ export function CustomerBookingEntrySurface() {
         selectedService={selectedService}
         selectedServiceCopy={selectedServiceCopy}
         serviceSearchQuery={serviceSearchQuery}
-        submitDisabled={performanceIntake.submitBlocked}
         textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
         timeSlots={bookingTimeSlots}
         tokens={tokens}
-        usesPerformanceIntake={Boolean(performanceIntake.state)}
       />
     </V21Screen>
-  )
-}
-
-function MediaIntakePanel({
-  caseLabel,
-  description,
-  mediaCount,
-  onSubmit,
-  onVoiceSaved,
-  problemChips,
-  voiceDrafts,
-}: {
-  caseLabel: string
-  description: string
-  mediaCount: number
-  onSubmit: () => void
-  onVoiceSaved: (draft: LocalMediaUploadDraft) => void
-  problemChips: string[]
-  voiceDrafts: LocalMediaUploadDraft[]
-}) {
-  const language = useAppLanguage()
-  const { reduceTransparency, tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
-  const recorderState = useAudioRecorderState(audioRecorder, 250)
-  const recordingRef = useRef(false)
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false)
-  const [voiceError, setVoiceError] = useState<string | null>(null)
-  const hasDescription = description.trim().length > 0
-  const hasProblems = problemChips.length > 0
-  const draftLabel = language === 'vi' ? 'Nháp' : 'Draft'
-  const cleanCaseLabel = caseLabel.trim().length > 0 ? caseLabel.trim() : draftLabel
-  const emptyText = language === 'vi' ? 'Trống' : 'Empty'
-  const waitingText = language === 'vi' ? 'Chờ' : 'Waiting'
-  const doneText = language === 'vi' ? 'Hoàn tất' : 'Done'
-  const runningText = language === 'vi' ? 'Đang chờ' : 'Waiting'
-  const voiceCount = voiceDrafts.length
-  const totalFileCount = mediaCount + voiceCount
-  const mediaValue = formatKnownCount(mediaCount, language)
-  const voiceValue = formatKnownCount(voiceCount, language)
-  const totalFileValue = formatKnownCount(totalFileCount, language)
-  const recordingSeconds = Math.max(0, Math.round((recorderState.durationMillis ?? 0) / 1000))
-  const hasAnyInput = hasDescription || hasProblems || totalFileCount > 0
-  const microNote = cleanCaseLabel === draftLabel
-    ? (language === 'vi' ? 'Dữ liệu nháp tách khỏi trò chuyện thường.' : 'Draft data stays separate from normal chat.')
-    : (language === 'vi' ? `Dữ liệu ${cleanCaseLabel} tách khỏi trò chuyện thường.` : `${cleanCaseLabel} data stays separate from normal chat.`)
-  const handleVoicePress = async () => {
-    try {
-      if (isRecordingVoice) {
-        await audioRecorder.stop()
-        recordingRef.current = false
-        setIsRecordingVoice(false)
-        const uri = audioRecorder.uri
-        if (!uri) {
-          setVoiceError(language === 'vi' ? 'Chưa lưu' : 'Not saved')
-          return
-        }
-        const extension = Platform.OS === 'web' ? '.webm' : '.m4a'
-        onVoiceSaved({
-          fileName: `kael-voice-${Date.now()}${extension}`,
-          mimeType: Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a',
-          type: 'audio',
-          uri,
-        })
-        setVoiceError(null)
-        return
-      }
-
-      if (totalFileCount >= 5) {
-        setVoiceError(language === 'vi' ? 'Đủ tệp' : 'Full')
-        return
-      }
-
-      const permission = await AudioModule.requestRecordingPermissionsAsync()
-      if (!permission.granted) {
-        const message = language === 'vi' ? 'Chưa bật mic' : 'Mic off'
-        setVoiceError(message)
-        openMicrophoneSettingsPrompt(language, message)
-        return
-      }
-
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      })
-      await audioRecorder.prepareToRecordAsync()
-      audioRecorder.record()
-      recordingRef.current = true
-      setIsRecordingVoice(true)
-      setVoiceError(null)
-    } catch {
-      recordingRef.current = false
-      setIsRecordingVoice(false)
-      setVoiceError(language === 'vi' ? 'Lỗi mic' : 'Mic error')
-    }
-  }
-
-  useEffect(() => {
-    return () => {
-      if (!recordingRef.current) return
-      void audioRecorder.stop().catch(() => undefined)
-      recordingRef.current = false
-    }
-  }, [audioRecorder])
-
-  return (
-    <MediaIntakeView
-      caseLabel={cleanCaseLabel}
-      description={description}
-      doneText={doneText}
-      emptyText={emptyText}
-      hasAnyInput={hasAnyInput}
-      hasDescription={hasDescription}
-      hasProblems={hasProblems}
-      isRecordingVoice={isRecordingVoice}
-      language={language}
-      mediaCount={mediaCount}
-      mediaTitle={copy.mediaTitle}
-      mediaValue={mediaValue}
-      microNote={microNote}
-      onSubmit={onSubmit}
-      onVoicePress={() => void handleVoicePress()}
-      problemChips={problemChips}
-      recordingSeconds={recordingSeconds}
-      reduceTransparency={reduceTransparency}
-      runningText={runningText}
-      tokens={tokens}
-      totalFileCount={totalFileCount}
-      totalFileValue={totalFileValue}
-      voiceCount={voiceCount}
-      voiceError={voiceError}
-      voiceValue={voiceValue}
-      waitingText={waitingText}
-    />
   )
 }
 
@@ -1154,8 +1084,9 @@ export function CustomerHistorySurface() {
     isPendingCustomerScopeChange(scopeChange) &&
     (deal?.status === 'scope_change_pending' || routeScopeChangeParam),
   )
+  const scopeDecisionBusy = Boolean(scopeChange?.id && workflow.customerScopeDecisionBusyId === scopeChange.id)
   const decideScopeChange = (decision: 'approve' | 'reject') => {
-    if (!scopeChange) return
+    if (!scopeChange || scopeDecisionBusy || !canCustomerDecideScopeChange(scopeChange)) return
     void workflow.actions.decideScopeChange(scopeChange.id, { decision })
   }
 
@@ -1198,6 +1129,7 @@ export function CustomerHistorySurface() {
       bodyNode={bodyNode}
       modalNode={(
         <ScopeChangeHardStopModal
+          busy={scopeDecisionBusy}
           language={language}
           newScopeLabel={scopeChange?.requestedDescription ?? copy.dataPending}
           onApprove={() => decideScopeChange('approve')}
@@ -1374,14 +1306,16 @@ export function CustomerAgenticCenterSurface({ screenId = '5.1-agentic-home' }: 
   const copy = customerV21CommonCopy[language]
   const memoryRows = agenticMemoryRowsFromUnknown(workflow.customerKaelMemory, language)
   const memoryCount = agenticMemoryItemCount(memoryRows)
-  const approvalCount = deal?.scopeChange ? 1 : 0
-  const pendingApproval = deal?.scopeChange && isPendingCustomerScopeChange(deal.scopeChange) ? deal.scopeChange : null
+  const pendingApproval = deal?.scopeChange && canCustomerDecideScopeChange(deal.scopeChange) ? deal.scopeChange : null
+  const approvalCount = pendingApproval ? 1 : 0
   const processedApprovalRows = agenticProcessedApprovalRows(deal, language)
   const redirectApprovalToCaseWork = screenId === '5.3-approval-queue' && Boolean(deal?.id && pendingApproval)
   const approveScopeChange = (id: string) => {
+    if (!pendingApproval || pendingApproval.id !== id) return
     void workflow.actions?.decideScopeChange?.(id, { decision: 'approve' })
   }
   const rejectScopeChange = (id: string) => {
+    if (!pendingApproval || pendingApproval.id !== id) return
     void workflow.actions?.decideScopeChange?.(id, { decision: 'reject' })
   }
   const openAgenticHome = () => router.replace('/(customer)/profile?utility=agentic' as never)
@@ -1681,7 +1615,7 @@ function AgenticCommandCaseCard({ deal }: { deal: LocalDeal | null }) {
   const detailLine = hasDeal
     ? ([workerName, address].filter((item): item is string => Boolean(item)).join(' · ') || copy.dataPending)
     : (language === 'vi' ? 'Dữ liệu sẽ vào từ Kael Chat' : 'Data will arrive from Kael Chat')
-  const amount = deal?.payment ? paymentAmountLabel(deal.payment, language, '0') : copy.dataPending
+  const amount = deal?.payment ? paymentAmountLabel(deal.payment, language, copy.dataPending) : copy.dataPending
   const activeStep = deal ? agenticCommandStep(deal.status) : 0
 
   return (
@@ -1736,7 +1670,7 @@ function AgenticArtifactGrid({ deal }: { deal: LocalDeal | null }) {
   const language = useAppLanguage()
   const { tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
-  const quote = deal ? (deal.estimate?.priceRangeLabel || (deal.payment ? paymentAmountLabel(deal.payment, language, '0') : copy.dataPending)) : copy.dataPending
+  const quote = deal ? (deal.estimate?.priceRangeLabel || (deal.payment ? paymentAmountLabel(deal.payment, language, copy.dataPending) : copy.dataPending)) : copy.dataPending
   const worker = deal?.workerProfile ? (language === 'vi' ? 'Thợ thật' : 'Real worker') : copy.dataPending
   const evidence = deal ? formatEvidenceFileCount(totalDealEvidenceCount(deal), language) : copy.dataPending
 
@@ -1856,6 +1790,22 @@ export function KaelChatSurface() {
   const copy = customerV21CommonCopy[language]
   const timelineHeadline = useKaelTimelineHeadline(language)
   const [pendingDraft, setPendingDraftState] = useState(() => peekPendingKaelChatDraft())
+  const pendingDraftLocalizedMessage = pendingDraft
+    ? pendingDraft.description?.trim() || (
+        pendingDraft.locale === language || !pendingDraft.serviceType
+          ? pendingDraft.message
+          : buildBookingDraftMessage({
+              address: pendingDraft.addressLabel ?? pendingDraft.districtLabel ?? '',
+              description: '',
+              language,
+              problems: pendingDraft.problemChips ?? [],
+              scheduleLabel: pendingDraft.scheduleWindow
+                ? `${pendingDraft.scheduleWindow.date} · ${pendingDraft.scheduleWindow.start}-${pendingDraft.scheduleWindow.end}`
+                : null,
+              serviceType: pendingDraft.serviceType,
+            })
+      )
+    : null
   const [routeDraftEvidencePending, setRouteDraftEvidencePending] = useState(() => Boolean(peekPendingKaelChatDraft()))
   const routeModeParam = firstParam(params.mode)
   const explicitRouteMode: CustomerKaelMode | null = routeModeParam === 'case'
@@ -1865,10 +1815,9 @@ export function KaelChatSurface() {
       : null
   const routeMode = explicitRouteMode ?? chatScreenModeParam(firstParam(params.screen)) ?? 'normal'
   const routeJobId = cleanRouteJobId(firstParam(params.jobId))
-  const routeFocus = firstParam(params.focus)
-  const caseFocus = routeFocus === 'payment' || routeFocus === 'approval' ? routeFocus : null
   const workflowDeal = workflow.state.deal
   const deal = isRealCaseDeal(workflowDeal) ? workflowDeal : null
+  const candidateJobId = deal?.status === 'worker_candidate_pending' ? deal.id : null
   const caseServiceLabel = deal?.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : null
   const routeDerivedMode: CustomerKaelMode = routeMode === 'case' || routeJobId || pendingDraft ? 'case' : 'normal'
   const [localMode, setLocalMode] = useState<CustomerKaelMode>(routeDerivedMode)
@@ -1883,14 +1832,15 @@ export function KaelChatSurface() {
   const [hydratingCase, setHydratingCase] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [composerMediaDrafts, setComposerMediaDrafts] = useState<LocalMediaUploadDraft[]>(() => pendingDraft?.photoDrafts ? [...pendingDraft.photoDrafts] : [])
+  const [voiceTranscript, setVoiceTranscript] = useState('')
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const [caseEditOpen, setCaseEditOpen] = useState(false)
   const [confirmingAgenticEstimate, setConfirmingAgenticEstimate] = useState(false)
   const [confirmingCaseQuote, setConfirmingCaseQuote] = useState(false)
+  const [confirmingCompletion, setConfirmingCompletion] = useState(false)
   const [caseQuoteRejectOpen, setCaseQuoteRejectOpen] = useState(false)
   const [caseQuoteRejectReason, setCaseQuoteRejectReason] = useState('')
   const [caseOptionsAcknowledged, setCaseOptionsAcknowledged] = useState(false)
-  const [caseEvidenceAcknowledged, setCaseEvidenceAcknowledged] = useState(false)
   const [caseEvidenceRejectOpen, setCaseEvidenceRejectOpen] = useState(false)
   const [caseEvidenceReason, setCaseEvidenceReason] = useState('')
   const [submittingCaseEvidence, setSubmittingCaseEvidence] = useState(false)
@@ -2050,7 +2000,6 @@ export function KaelChatSurface() {
     setCaseEvidenceReason('')
     setSubmittingCaseEvidence(false)
     if (!deal || (deal.draft.mediaCount ?? 0) > 0) {
-      setCaseEvidenceAcknowledged(false)
     }
   }, [deal?.id, deal?.draft.mediaCount])
 
@@ -2086,7 +2035,7 @@ export function KaelChatSurface() {
             setTurns(result.data.turns)
             setSelectedService(result.data.session.service_type)
           } else {
-            setError(result.error)
+            setError(localizeKaelRequestFailure(result, language))
           }
         })
         .finally(() => {
@@ -2097,42 +2046,43 @@ export function KaelChatSurface() {
       }
     }
 
-    if (pendingDraft?.serviceType && sessionAccessToken) {
-      const pendingDraftDescription = pendingDraft.description?.trim() || pendingDraft.message
+    const pendingServiceType = pendingDraft?.serviceType
+    if (pendingServiceType && sessionAccessToken) {
+      const pendingDraftDescription = pendingDraftLocalizedMessage ?? pendingDraft.message
       setLoading(true)
-      kaelChatService.create({
-        address_district: pendingDraft.districtLabel ?? undefined,
-        address_label: pendingDraft.addressLabel,
-        client_request_id: pendingDraft.clientRequestId ?? generateClientRequestId(),
-        defer_analysis: true,
-        message: pendingDraftDescription,
-        problem_chips: pendingDraft.problemChips ?? [],
-        photo_urls: [],
-        service_type: pendingDraft.serviceType,
-      })
+      const createFromBasicIntake = async () => {
+        const uploaded = await uploadKaelChatMediaDrafts(pendingDraft.photoDrafts ?? [])
+        if (!uploaded.success) return uploaded
+        const created = await kaelChatService.create({
+          address_district: pendingDraft.districtLabel ?? undefined,
+          address_label: pendingDraft.addressLabel,
+          client_request_id: pendingDraft.clientRequestId ?? generateClientRequestId(),
+          evidence_items: uploaded.evidenceItems,
+          language,
+          message: pendingDraftDescription,
+          problem_chips: pendingDraft.problemChips ?? [],
+          photo_urls: uploaded.urls,
+          profileId: pendingDraft.profileId,
+          scheduledAt: pendingDraft.scheduledAt,
+          scheduleWindow: pendingDraft.scheduleWindow,
+          service_type: pendingServiceType,
+        })
+        if (!created.success) await cleanupKaelChatMediaRefs(uploaded.mediaRefs)
+        return created
+      }
+      createFromBasicIntake()
         .then((result) => {
           if (cancelled) return
           if (result.success) {
-            const createdSession = result.data.session
-            const createdHasStructuredOutcome = Boolean(
-              createdSession.estimate ||
-              createdSession.job_id ||
-              createdSession.status === 'estimate_ready' ||
-              createdSession.status === 'confirmed' ||
-              createdSession.next_action === 'estimate_ready' ||
-              createdSession.next_action === 'confirmed',
-            )
-            if (createdHasStructuredOutcome) {
-              clearPendingKaelChatDraft()
-              setRouteDraftEvidencePending(false)
-            } else {
-              setRouteDraftEvidencePending(true)
-            }
+            clearPendingKaelChatDraft()
+            setPendingDraftState(null)
+            setRouteDraftEvidencePending(false)
+            setComposerMediaDrafts([])
             setChat(result.data)
             setTurns(result.data.turns)
             setSelectedService(result.data.session.service_type)
           } else {
-            setError(result.error)
+            setError(localizeKaelRequestFailure(result, language))
           }
         })
         .finally(() => {
@@ -2142,7 +2092,7 @@ export function KaelChatSurface() {
     return () => {
       cancelled = true
     }
-  }, [params.sessionId, pendingDraft, sessionAccessToken])
+  }, [language, params.sessionId, pendingDraft, pendingDraftLocalizedMessage, sessionAccessToken])
 
   const pickComposerMedia = async () => {
     if (mode === 'case' && !caseEvidenceGateActive && !agenticEvidenceGateActive) return
@@ -2158,6 +2108,7 @@ export function KaelChatSurface() {
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: true,
       mediaTypes: chatComposerMediaTypes,
+      preferredAssetRepresentationMode: 'compatible' as ImagePicker.UIImagePickerPreferredAssetRepresentationMode,
       quality: 0.86,
       selectionLimit: Math.max(1, 5 - composerMediaDrafts.length),
     })
@@ -2168,6 +2119,7 @@ export function KaelChatSurface() {
       fileName: asset.fileName ?? asset.uri.split('/').pop(),
       mimeType: asset.mimeType ?? undefined,
       fileSizeBytes: asset.fileSize ?? undefined,
+      durationMillis: asset.duration ?? undefined,
     }))
     setComposerMediaDrafts((current) => mergeMediaDrafts(current, drafts, 5))
     setError(null)
@@ -2175,47 +2127,56 @@ export function KaelChatSurface() {
 
   const submitAgenticEvidence = async (decision: 'confirmed' | 'skipped') => {
     if (!chat?.session.id || submittingAgenticEvidence) return
-    if (decision === 'confirmed' && composerMediaDrafts.length === 0) {
-      setError(language === 'vi' ? 'Thêm ảnh, video hoặc ghi âm trước khi xác nhận.' : 'Add media before confirming.')
+    const reviewedVoiceTranscript = voiceTranscript.trim()
+    if (decision === 'confirmed' && composerMediaDrafts.length === 0 && !reviewedVoiceTranscript) {
+      setError(language === 'vi' ? 'Thêm ảnh, video hoặc bản chép lời trước khi xác nhận.' : 'Add media or an editable transcript before confirming.')
       return
     }
     setSubmittingAgenticEvidence(true)
     setLoading(true)
     setError(null)
     let photoUrls: string[] = []
-    let mediaRefs: string[] = []
+    let uploadedMediaRefs: string[] = []
+    let mediaAccepted = false
+    let evidenceItems: CaseWorkEvidence[] = reviewedVoiceTranscript
+      ? [{ kind: 'voice_transcript', transcript: reviewedVoiceTranscript, model_eligible: true }]
+      : []
     try {
       if (decision === 'confirmed') {
         setUploadingMedia(true)
         const uploaded = await uploadKaelChatMediaDrafts(composerMediaDrafts)
         setUploadingMedia(false)
         if (!uploaded.success) {
-          setError(uploaded.error)
+          setError(localizeMediaUploadFailure(uploaded, language))
           return
         }
         photoUrls = uploaded.urls
-        mediaRefs = uploaded.mediaRefs ?? []
+        uploadedMediaRefs = uploaded.mediaRefs
+        evidenceItems = [...evidenceItems, ...uploaded.evidenceItems]
       }
       const firstCustomerMessage = turns.find((turn) => turn.role === 'customer' && turn.text_content)?.text_content ?? null
-      const sourceMessage = pendingDraft?.description?.trim() || pendingDraft?.message || firstCustomerMessage || (language === 'vi' ? 'Khách đã gửi ngữ cảnh dịch vụ.' : 'Customer sent service context.')
+      const sourceMessage = pendingDraftLocalizedMessage || firstCustomerMessage || (language === 'vi' ? 'Khách đã gửi ngữ cảnh dịch vụ.' : 'Customer sent service context.')
       const processPrompt = decision === 'confirmed'
         ? (language === 'vi' ? 'Đã gửi bằng chứng hiện trạng.' : 'Sent current evidence.')
         : (language === 'vi' ? 'Tiếp tục không có bằng chứng.' : 'Continue without evidence.')
       const processDone = startProcessLines(processPrompt, {
         complexity: null,
-        mediaCount: photoUrls.length + mediaRefs.length,
+        mediaCount: composerMediaDrafts.length + (reviewedVoiceTranscript ? 1 : 0),
         mode: mode === 'case' ? 'case' : 'normal',
         serviceType: selectedService ?? chat.session.service_type,
       })
       const result = await kaelChatService.submitEvidence(chat.session.id, {
         decision,
-        message: sourceMessage,
+        evidence_items: evidenceItems,
+        language,
+        message: reviewedVoiceTranscript || sourceMessage,
         photo_urls: photoUrls,
-        media_refs: mediaRefs,
+        media_refs: [],
         problem_chips: pendingDraft?.problemChips ?? [],
         skip_reason: decision === 'skipped' ? agenticEvidenceReason.trim() || undefined : undefined,
       })
       if (result.success) {
+        mediaAccepted = true
         await processDone
         stopProcessLines()
         clearPendingKaelChatDraft()
@@ -2223,17 +2184,21 @@ export function KaelChatSurface() {
         setChat(result.data)
         setTurns(result.data.turns)
         setComposerMediaDrafts([])
+        setVoiceTranscript('')
         setAgenticEvidenceRejectOpen(false)
         setAgenticEvidenceReason('')
       } else if (shouldUseLegacyKaelEvidenceFallback(result, photoUrls)) {
         const legacy = await kaelChatService.sendTurn(chat.session.id, {
           address_district: pendingDraft?.districtLabel ?? undefined,
           address_label: pendingDraft?.addressLabel,
+          evidence_items: evidenceItems,
+          language,
           message: processPrompt,
           photo_urls: photoUrls,
           problem_chips: pendingDraft?.problemChips ?? [],
         })
         if (legacy.success) {
+          mediaAccepted = true
           await processDone
           stopProcessLines()
           clearPendingKaelChatDraft()
@@ -2241,17 +2206,21 @@ export function KaelChatSurface() {
           setChat(legacy.data)
           setTurns(legacy.data.turns)
           setComposerMediaDrafts([])
+          setVoiceTranscript('')
           setAgenticEvidenceRejectOpen(false)
           setAgenticEvidenceReason('')
         } else {
           stopProcessLines()
-          setError(legacy.error)
+          setError(localizeKaelRequestFailure(legacy, language))
         }
       } else {
         stopProcessLines()
-        setError(result.error)
+        setError(localizeKaelRequestFailure(result, language))
       }
     } finally {
+      if (!mediaAccepted && uploadedMediaRefs.length > 0) {
+        await cleanupKaelChatMediaRefs(uploadedMediaRefs)
+      }
       setUploadingMedia(false)
       setSubmittingAgenticEvidence(false)
       setLoading(false)
@@ -2260,8 +2229,9 @@ export function KaelChatSurface() {
 
   const submitCaseEvidence = async (decision: 'confirmed' | 'skipped') => {
     if (!deal?.id || submittingCaseEvidence) return
-    if (decision === 'confirmed' && composerMediaDrafts.length === 0) {
-      setError(language === 'vi' ? 'Thêm ảnh, video hoặc ghi âm trước khi xác nhận.' : 'Add media before confirming.')
+    const reviewedVoiceTranscript = voiceTranscript.trim()
+    if (decision === 'confirmed' && composerMediaDrafts.length === 0 && !reviewedVoiceTranscript) {
+      setError(language === 'vi' ? 'Thêm ảnh, video hoặc bản chép lời trước khi xác nhận.' : 'Add media or an editable transcript before confirming.')
       return
     }
     setSubmittingCaseEvidence(true)
@@ -2277,13 +2247,21 @@ export function KaelChatSurface() {
       serviceType: deal.draft.serviceType,
     })
     try {
-      if (decision === 'confirmed') {
+      if (decision === 'confirmed' && composerMediaDrafts.length > 0) {
         setUploadingMedia(true)
         const uploaded = await uploadJobMediaDrafts(deal.id, composerMediaDrafts, 'before')
         setUploadingMedia(false)
         if (!uploaded.success) {
           stopProcessLines()
-          setError(uploaded.error)
+          setError(localizeMediaUploadFailure(uploaded, language))
+          return
+        }
+      }
+      if (decision === 'confirmed' && reviewedVoiceTranscript) {
+        const storedTranscript = await jobService.sendMessage(deal.id, { content: reviewedVoiceTranscript })
+        if (!storedTranscript.success) {
+          stopProcessLines()
+          setError(localizeKaelRequestFailure(storedTranscript, language))
           return
         }
       }
@@ -2291,10 +2269,10 @@ export function KaelChatSurface() {
         await workflow.actions.hydrateRemoteJobById(deal.id)
       }
       await processDone
-      setCaseEvidenceAcknowledged(true)
       setCaseEvidenceRejectOpen(false)
       setCaseEvidenceReason('')
       setComposerMediaDrafts([])
+      setVoiceTranscript('')
     } finally {
       setUploadingMedia(false)
       setSubmittingCaseEvidence(false)
@@ -2304,10 +2282,11 @@ export function KaelChatSurface() {
   }
 
   const sendMessage = async () => {
-    const message = draft.trim()
+    const reviewedVoiceTranscript = voiceTranscript.trim()
+    const message = draft.trim() || reviewedVoiceTranscript
     const hasComposerMedia = composerMediaDrafts.length > 0
-    if (!message && !hasComposerMedia) return
-    if (mode === 'case') {
+    if (!message && !hasComposerMedia && !reviewedVoiceTranscript) return
+    if (mode === 'case' && deal) {
       if (hasComposerMedia) {
         setError(language === 'vi' ? 'Ảnh/video cần gửi qua công việc thật.' : 'Media requires a real job.')
         return
@@ -2364,10 +2343,10 @@ export function KaelChatSurface() {
             ])
             setDraft('')
           } else {
-            setError(stored.error)
+            setError(localizeKaelRequestFailure(stored, language))
           }
         } else {
-          setError(result.error)
+          setError(localizeKaelRequestFailure(result, language))
         }
       } finally {
         setLoading(false)
@@ -2378,7 +2357,7 @@ export function KaelChatSurface() {
     const intakeIntent = isLikelyKaelIntakeRequest(message)
     const inferredDraft = selectedService ? null : inferLocalDealDraftFromKael(message)
     const shouldUseIntake = Boolean(
-      hasComposerMedia || pendingDraft || chat || intakeIntent,
+      hasComposerMedia || reviewedVoiceTranscript || pendingDraft || chat || intakeIntent,
     )
     if (!shouldUseIntake) {
       setLoading(true)
@@ -2414,7 +2393,7 @@ export function KaelChatSurface() {
           ])
           setDraft('')
         } else {
-          setError(result.error)
+          setError(localizeKaelRequestFailure(result, language))
         }
       } finally {
         setLoading(false)
@@ -2432,29 +2411,11 @@ export function KaelChatSurface() {
     }
     setLoading(true)
     setError(null)
-    if (!chat) {
-      const result = await kaelChatService.create({
-        client_request_id: generateClientRequestId(),
-        defer_analysis: true,
-        message: message || (language === 'vi' ? 'Đã thêm bằng chứng hiện trạng.' : 'Added current evidence.'),
-        photo_urls: [],
-        problem_chips: inferredDraft?.problemChips ?? [],
-        service_type: inferredService,
-      })
-      setLoading(false)
-      if (result.success) {
-        setChat(result.data)
-        setTurns(result.data.turns)
-        setDraft('')
-        setAgenticRejectOpen(false)
-        setAgenticEvidenceRejectOpen(false)
-        setAgenticEvidenceReason('')
-      } else {
-        setError(result.error)
-      }
-      return
-    }
     let photoUrls: string[] = []
+    let uploadedMediaRefs: string[] = []
+    let evidenceItems: CaseWorkEvidence[] = reviewedVoiceTranscript
+      ? [{ kind: 'voice_transcript', transcript: reviewedVoiceTranscript, model_eligible: true }]
+      : []
     if (hasComposerMedia) {
       setUploadingMedia(true)
       const uploaded = await uploadKaelChatMediaDrafts(composerMediaDrafts)
@@ -2462,22 +2423,31 @@ export function KaelChatSurface() {
       if (!uploaded.success) {
         setLoading(false)
         stopProcessLines()
-        setError(uploaded.error)
+        setError(localizeMediaUploadFailure(uploaded, language))
         return
       }
       photoUrls = uploaded.urls
+      uploadedMediaRefs = uploaded.mediaRefs
+      evidenceItems = [...evidenceItems, ...uploaded.evidenceItems]
     }
     const outgoingMessage = message || (language === 'vi' ? 'Đã gửi ảnh/video.' : 'Sent media.')
     const processDone = startProcessLines(outgoingMessage, {
       complexity: null,
-      mediaCount: photoUrls.length,
+      mediaCount: composerMediaDrafts.length + (reviewedVoiceTranscript ? 1 : 0),
       mode: 'normal',
       serviceType: inferredService,
     })
     const result = chat
-      ? await kaelChatService.sendTurn(chat.session.id, { message: outgoingMessage, photo_urls: photoUrls })
+      ? await kaelChatService.sendTurn(chat.session.id, {
+          evidence_items: evidenceItems,
+          language,
+          message: outgoingMessage,
+          photo_urls: photoUrls,
+        })
       : await kaelChatService.create({
           client_request_id: generateClientRequestId(),
+          evidence_items: evidenceItems,
+          language,
           message: outgoingMessage,
           photo_urls: photoUrls,
           problem_chips: inferredDraft?.problemChips ?? [],
@@ -2490,13 +2460,15 @@ export function KaelChatSurface() {
       setChat(result.data)
       setTurns(result.data.turns)
       setDraft('')
+      setVoiceTranscript('')
       setComposerMediaDrafts([])
       setAgenticRejectOpen(false)
       setAgenticRejectReason('')
     } else {
+      await cleanupKaelChatMediaRefs(uploadedMediaRefs)
       setLoading(false)
       stopProcessLines()
-      setError(result.error)
+      setError(localizeKaelRequestFailure(result, language))
     }
   }
 
@@ -2509,7 +2481,7 @@ export function KaelChatSurface() {
   const backendDraftCustomerTurn = routeDraftEvidencePending
     ? normalVisibleTurns.find((turn) => turn.role === 'customer' && turn.text_content?.trim())
     : null
-  const pendingDraftMessage = pendingDraft?.message.trim() ?? backendDraftCustomerTurn?.text_content?.trim() ?? ''
+  const pendingDraftMessage = pendingDraftLocalizedMessage?.trim() ?? backendDraftCustomerTurn?.text_content?.trim() ?? ''
   const routeDraftOwnsIntake = Boolean(pendingDraft || routeDraftEvidencePending)
   const hasPendingDraftTurn = pendingDraftMessage.length > 0 &&
     normalVisibleTurns.some((turn) => turn.role === 'customer' && turn.text_content?.trim() === pendingDraftMessage)
@@ -2524,9 +2496,41 @@ export function KaelChatSurface() {
   const workIntakeActive = mode === 'case' && !deal && routeIntakeHasWorkState
   const normalIntakeActive = mode === 'normal' && !routeDraftOwnsIntake && routeIntakeHasWorkState
   const agenticIntakeModeActive = normalIntakeActive || workIntakeActive
+  const diagnosisScope = chat?.session.diagnosis_scope
+  const artifactNextAction = diagnosisScope && typeof diagnosisScope.next_action === 'object' && diagnosisScope.next_action
+    ? diagnosisScope.next_action as Record<string, unknown>
+    : null
+  const serverRequestsEvidence = artifactNextAction?.kind === 'request_evidence'
+  const serverEvidenceKind = artifactNextAction?.evidence_kind === 'photo' ||
+      artifactNextAction?.evidence_kind === 'video_frame' ||
+      artifactNextAction?.evidence_kind === 'voice_transcript'
+    ? artifactNextAction.evidence_kind
+    : undefined
+  const serverEvidencePrompt = serverRequestsEvidence
+    ? localizedCaseWorkEvidencePrompt({
+        blockers: Array.isArray(diagnosisScope?.quote_blockers)
+          ? diagnosisScope.quote_blockers.filter((value: unknown): value is string => typeof value === 'string')
+          : [],
+        evidenceKind: serverEvidenceKind,
+        language,
+      })
+    : undefined
+  const serverPriceReviewBlocked = artifactNextAction?.kind === 'escalate'
+  const serverSafetyMessages = Array.isArray(diagnosisScope?.safety_flags)
+    ? diagnosisScope.safety_flags.flatMap((flag: unknown) => {
+        if (!flag || typeof flag !== 'object') return []
+        const code = (flag as { code?: unknown }).code
+        return typeof code === 'string' && code.trim() ? [localizedCaseWorkSafetyMessage(code, language)] : []
+      })
+    : []
+  const agenticAnalysisActive = agenticIntakeModeActive && chat?.session.case_phase === 'analysis'
+  const offerReviewActive = agenticIntakeModeActive &&
+    chat?.session.case_phase === 'offer_review' &&
+    chat.session.status === 'estimate_ready' &&
+    chat.session.next_action === 'estimate_ready'
   const missingCaseWorkDeal = mode === 'case' && !deal && !workIntakeActive
   const routeDraftHasStructuredOutcome = Boolean(
-    chatEstimate ||
+    offerReviewActive ||
     chat?.session.job_id ||
     chat?.session.status === 'estimate_ready' ||
     chat?.session.status === 'confirmed' ||
@@ -2552,19 +2556,13 @@ export function KaelChatSurface() {
     !processLines &&
     normalAssistantTurns.length === 0 &&
     (routeDraftOwnsIntake || (!chat && turns.length === 0))
-  const caseEvidenceGateActive = mode === 'case' &&
-    Boolean(deal) &&
-    !processLines &&
-    !caseEditOpen &&
-    !caseEvidenceAcknowledged &&
-    (deal?.draft.mediaCount ?? 0) <= 0 &&
-    (deal?.status === 'broadcasting' || deal?.status === 'awaiting_customer_confirm')
+  const caseEvidenceGateActive = false
   const agenticEvidenceGateActive = agenticIntakeModeActive &&
     !submittingAgenticEvidence &&
     !processLines &&
-    (routeDraftAwaitingAgenticStep || chat?.session.status === 'collecting_evidence' || Boolean(routeDraftEvidencePending && !chat && loading))
-  const canConfirmAgenticEstimate = agenticIntakeModeActive &&
-    Boolean(chat?.session.id && chatEstimate && chatEstimate.confidence >= 0.7 && chat?.session.status === 'estimate_ready' && chat?.session.next_action === 'estimate_ready')
+    serverRequestsEvidence
+  const canConfirmAgenticEstimate = offerReviewActive &&
+    Boolean(chat?.session.id && chatEstimate && chatEstimate.confidence >= 0.7 && chatEstimate.needs_inspection !== true && chat?.session.status === 'estimate_ready' && chat?.session.next_action === 'estimate_ready')
   const agenticEstimateConfirmed = chat?.session.status === 'confirmed' || chat?.session.next_action === 'confirmed' || Boolean(chat?.session.job_id)
   const confirmAgenticEstimate = async () => {
     if (!chat?.session.id || !chatEstimate || confirmingAgenticEstimate) return
@@ -2585,7 +2583,7 @@ export function KaelChatSurface() {
       const confirmed = await kaelChatService.confirm(chat.session.id)
       if (!confirmed.success) {
         stopProcessLines()
-        setError(confirmed.error)
+        setError(localizeKaelRequestFailure(confirmed, language))
         return
       }
       await processDone
@@ -2626,6 +2624,7 @@ export function KaelChatSurface() {
     })
     try {
       const result = await kaelChatService.sendTurn(chat.session.id, {
+        language,
         message: reason,
         photo_urls: [],
       })
@@ -2637,7 +2636,7 @@ export function KaelChatSurface() {
         setAgenticRejectReason('')
       } else {
         stopProcessLines()
-        setError(result.error)
+        setError(localizeKaelRequestFailure(result, language))
       }
     } finally {
       setSubmittingAgenticRejectReason(false)
@@ -2713,12 +2712,26 @@ export function KaelChatSurface() {
         setCaseEditOpen(true)
       } else {
         stopProcessLines()
-        setError(result.error)
+        setError(localizeKaelRequestFailure(result, language))
       }
     } finally {
       setSubmittingCaseQuoteRejectReason(false)
       setLoading(false)
       stopProcessLines()
+    }
+  }
+
+  const confirmCaseCompletion = async () => {
+    if (deal?.status !== 'completed_by_worker' || confirmingCompletion) return
+    setConfirmingCompletion(true)
+    setError(null)
+    try {
+      const confirmed = await workflow.actions.customerConfirmCompletion()
+      if (!confirmed) {
+        setError(language === 'vi' ? 'Chưa thể xác nhận hoàn tất' : 'Completion could not be confirmed')
+      }
+    } finally {
+      setConfirmingCompletion(false)
     }
   }
 
@@ -2795,10 +2808,35 @@ export function KaelChatSurface() {
   const canUseComposerMedia = mode === 'normal' || caseEvidenceGateActive || workIntakeActive
   const composerPlaceholder = mode === 'normal' || !deal ? copy.chatPlaceholder : ''
   const composerBusy = loading || uploadingMedia
+  const workerCandidateNode = useMemo(() => {
+    if (mode !== 'case' || !candidateJobId) return null
+    return (
+      <WorkerCandidateReviewCard
+        busy={workflow.customerWorkerCandidateBusy}
+        candidate={workflow.customerWorkerCandidate}
+        error={workflow.customerWorkerCandidateError}
+        language={language}
+        onConfirm={() => void workflow.actions.decideWorkerCandidate('confirm')}
+        onReject={() => void workflow.actions.decideWorkerCandidate('reject')}
+        onRetry={() => void workflow.actions.refreshWorkerCandidate(candidateJobId)}
+        onToggleFavorite={(isFavorite) => void workflow.actions.setWorkerCandidateFavorite(isFavorite)}
+        tokens={tokens}
+      />
+    )
+  }, [
+    candidateJobId,
+    language,
+    mode,
+    tokens,
+    workflow.actions,
+    workflow.customerWorkerCandidate,
+    workflow.customerWorkerCandidateBusy,
+    workflow.customerWorkerCandidateError,
+  ])
 
   return (
     <KaelChatSurfaceView
-      agenticEstimateNode={agenticIntakeModeActive && chatEstimate && !processLines && !submittingAgenticRejectReason && !confirmingAgenticEstimate ? (
+      agenticEstimateNode={offerReviewActive && chatEstimate && !processLines && !submittingAgenticRejectReason && !confirmingAgenticEstimate ? (
         <AgenticChatEstimateCard
           canConfirm={canConfirmAgenticEstimate}
           confirming={confirmingAgenticEstimate}
@@ -2822,21 +2860,36 @@ export function KaelChatSurface() {
           textInputStyle={[styles.composerInput, customerV21WebTextInputNoOutline]}
         />
       ) : null}
-      agenticEvidenceGateNode={agenticEvidenceGateActive ? (
+      analysisEvidenceNode={agenticEvidenceGateActive ? (
         <AgenticEvidenceGateCard
+          allowSkip={false}
           busy={loading || uploadingMedia || submittingAgenticEvidence || !chat?.session.id}
+          language={language}
           mediaDrafts={composerMediaDrafts}
           onAddMedia={pickComposerMedia}
           onConfirm={() => void submitAgenticEvidence('confirmed')}
           onReasonChange={setAgenticEvidenceReason}
+          onRemoveMedia={(index) => setComposerMediaDrafts((current) => current.filter((_, currentIndex) => currentIndex !== index))}
           onReject={() => {
             setAgenticEvidenceRejectOpen(true)
             setError(null)
           }}
           onSkip={() => void submitAgenticEvidence('skipped')}
-          onVoiceSaved={(draft) => setComposerMediaDrafts((current) => mergeMediaDrafts(current, [draft], 5))}
+          onVoiceTranscriptChange={setVoiceTranscript}
+          prompt={serverEvidencePrompt}
           rejectOpen={agenticEvidenceRejectOpen}
           rejectReason={agenticEvidenceReason}
+          requiredEvidenceKind={serverEvidenceKind}
+          textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
+          tokens={tokens}
+          voiceTranscript={voiceTranscript}
+        />
+      ) : serverPriceReviewBlocked ? (
+        <QuoteReadinessReviewCard
+          language={language}
+          reason={typeof artifactNextAction?.reason === 'string' ? artifactNextAction.reason : undefined}
+          safetyMessages={serverSafetyMessages}
+          tokens={tokens}
         />
       ) : null}
       agenticVisibleTurns={agenticIntakeModeActive ? agenticVisibleTurns : []}
@@ -2845,9 +2898,11 @@ export function KaelChatSurface() {
       canUseComposerMedia={canUseComposerMedia}
       caseAssistantTurns={showCaseConversation ? caseAssistantTurns : []}
       caseThreadNode={mode === 'case' && deal ? (
-        <AgenticCaseThreadPanel activityLabel={customerV21TabCopy[language].activity} deal={deal} editing={caseEditOpen} focus={caseFocus} language={language} onApproveScopeChange={(scopeChangeId) => {
+        <AgenticCaseThreadPanel activityLabel={customerV21TabCopy[language].activity} deal={deal} editing={caseEditOpen} language={language} onApproveScopeChange={(scopeChangeId) => {
+          if (!deal.scopeChange || deal.scopeChange.id !== scopeChangeId || !canCustomerDecideScopeChange(deal.scopeChange)) return
           void workflow.actions.decideScopeChange?.(scopeChangeId, { decision: 'approve' })
-        }} onOpenActivity={openActivity} onRejectScopeChange={() => {
+        }} onOpenActivity={openActivity} onRejectScopeChange={(scopeChangeId) => {
+          if (!deal.scopeChange || deal.scopeChange.id !== scopeChangeId || !canCustomerDecideScopeChange(deal.scopeChange)) return
           setCaseEditOpen(true)
           setError(null)
           setAssistantTurns((current) => [
@@ -2869,24 +2924,42 @@ export function KaelChatSurface() {
           caseEvidenceGateNode={(
             <AgenticEvidenceGateCard
               busy={submittingCaseEvidence || uploadingMedia}
+              language={language}
               mediaDrafts={composerMediaDrafts}
               onAddMedia={pickComposerMedia}
               onConfirm={() => void submitCaseEvidence('confirmed')}
               onReasonChange={setCaseEvidenceReason}
+              onRemoveMedia={(index) => setComposerMediaDrafts((current) => current.filter((_, currentIndex) => currentIndex !== index))}
               onReject={() => {
                 setCaseEvidenceRejectOpen(true)
                 setError(null)
               }}
               onSkip={() => void submitCaseEvidence('skipped')}
-              onVoiceSaved={(mediaDraft) => setComposerMediaDrafts((current) => mergeMediaDrafts(current, [mediaDraft], 5))}
+              onVoiceTranscriptChange={setVoiceTranscript}
               rejectOpen={caseEvidenceRejectOpen}
               rejectReason={caseEvidenceReason}
+              textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
+              tokens={tokens}
+              voiceTranscript={voiceTranscript}
             />
           )}
           caseQuoteRejectOpen={caseQuoteRejectOpen}
           caseQuoteRejectReason={caseQuoteRejectReason}
           caseOptionsAcknowledged={caseOptionsAcknowledged}
           confirmingCaseQuote={confirmingCaseQuote}
+          completionReviewNode={deal.status === 'completed_by_worker' ? (
+            <CompletionReviewCard
+              busy={confirmingCompletion}
+              deal={deal}
+              language={language}
+              onConfirm={() => void confirmCaseCompletion()}
+              onReportIssue={() => {
+                setCaseEditOpen(true)
+                setError(null)
+              }}
+              tokens={tokens}
+            />
+          ) : null}
           onAcknowledgeOptions={() => setCaseOptionsAcknowledged(true)}
           onApproveQuote={() => void confirmCaseQuote()}
           onQuoteRejectReasonChange={setCaseQuoteRejectReason}
@@ -2906,7 +2979,25 @@ export function KaelChatSurface() {
       caseWorkLabel={copy.caseWork}
       composerBusy={composerBusy}
       composerMediaDraftCount={composerMediaDrafts.length}
+      composerMediaNode={(
+        <MediaDraftPreviewTray
+          busy={composerBusy}
+          drafts={composerMediaDrafts}
+          language={language}
+          onRemove={(index) => setComposerMediaDrafts((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+          tokens={tokens}
+        />
+      )}
       composerPlaceholder={composerPlaceholder}
+      composerVoiceNode={agenticAnalysisActive && !agenticEvidenceGateActive ? (
+        <OnDeviceVoiceTranscript
+          disabled={composerBusy}
+          language={language}
+          onChangeText={setVoiceTranscript}
+          tokens={tokens}
+          transcript={voiceTranscript}
+        />
+      ) : null}
       draft={draft}
       error={error}
       hiddenScrollbarStyle={customerV21HiddenScrollbar}
@@ -2947,6 +3038,7 @@ export function KaelChatSurface() {
       textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
       timelineHeadline={timelineHeadline}
       tokens={tokens}
+      workerCandidateNode={workerCandidateNode}
       missingCaseWorkDeal={missingCaseWorkDeal}
     />
   )
@@ -4081,13 +4173,17 @@ function CasePaymentStageScreen({
   const { tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
   const payment = deal.payment ?? null
-  const amount = paymentAmountLabel(payment, language, '0')
+  const amount = paymentAmountLabel(payment, language, copy.dataPending)
   const platformFee = payment?.platformFee === 0 || payment?.platformFee ? formatVnd(payment.platformFee, language) : copy.dataPending
   const workerNet = payment?.workerNet === 0 || payment?.workerNet ? formatVnd(payment.workerNet, language) : copy.dataPending
   const method = payment?.provider ? paymentProviderLabel(payment.provider, language) : copy.dataPending
-  const status = payment?.status ? paymentStatusLabel(payment.status, language) : copy.dataPending
+  const status = deal.status === 'payment_pending'
+    ? customerV21StatusCopy[language].payment_pending
+    : payment?.status
+      ? paymentStatusLabel(payment.status, language)
+      : copy.dataPending
   const paymentReady = Boolean(payment)
-  const protectedPayment = Boolean(payment && isPaymentProtectedStatus(payment.status))
+  const protectedPayment = isDealPaymentProtected(deal)
   const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
   const serviceAsset = deal.draft.serviceType ? customerV21ServiceAssets[deal.draft.serviceType] : customerV21Assets.payment
   const caseCode = caseDisplayCode(deal, language)
@@ -4105,7 +4201,9 @@ function CasePaymentStageScreen({
     ? [
       paymentReceivedTime,
       method,
-      language === 'vi' ? 'Nhà cung cấp xác nhận' : 'Provider confirmed',
+      protectedPayment
+        ? (language === 'vi' ? 'Nhà cung cấp xác nhận' : 'Provider confirmed')
+        : status,
     ].filter(Boolean).join(' · ')
     : copy.dataPending
   const protectedBody = protectedPayment
@@ -4877,124 +4975,6 @@ function ProfileMemory() {
       memoryRecordPresent={Boolean(memoryRecord)}
       preference={preference}
       servicePreference={servicePreference}
-    />
-  )
-}
-
-function AgenticEvidenceGateCard({
-  busy,
-  mediaDrafts,
-  onAddMedia,
-  onConfirm,
-  onReasonChange,
-  onReject,
-  onSkip,
-  onVoiceSaved,
-  rejectOpen,
-  rejectReason,
-}: {
-  busy: boolean
-  mediaDrafts: LocalMediaUploadDraft[]
-  onAddMedia: () => void
-  onConfirm: () => void
-  onReasonChange: (value: string) => void
-  onReject: () => void
-  onSkip: () => void
-  onVoiceSaved: (draft: LocalMediaUploadDraft) => void
-  rejectOpen: boolean
-  rejectReason: string
-}) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
-  const recorderState = useAudioRecorderState(audioRecorder, 250)
-  const recordingRef = useRef(false)
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false)
-  const [voiceError, setVoiceError] = useState<string | null>(null)
-  const visualMediaCount = mediaDrafts.filter((item) => item.type === 'image' || item.type === 'video').length
-  const voiceCount = mediaDrafts.filter((item) => item.type === 'audio').length
-  const totalFileCount = mediaDrafts.length
-  const recordingSeconds = Math.max(0, Math.round((recorderState.durationMillis ?? 0) / 1000))
-  const canConfirm = totalFileCount > 0 && !busy
-
-  const handleVoicePress = async () => {
-    try {
-      if (isRecordingVoice) {
-        await audioRecorder.stop()
-        recordingRef.current = false
-        setIsRecordingVoice(false)
-        const uri = audioRecorder.uri
-        if (!uri) {
-          setVoiceError(language === 'vi' ? 'Chưa lưu' : 'Not saved')
-          return
-        }
-        const extension = Platform.OS === 'web' ? '.webm' : '.m4a'
-        onVoiceSaved({
-          fileName: `kael-evidence-voice-${Date.now()}${extension}`,
-          mimeType: Platform.OS === 'web' ? 'audio/webm' : 'audio/m4a',
-          type: 'audio',
-          uri,
-        })
-        setVoiceError(null)
-        return
-      }
-      if (totalFileCount >= 5) {
-        setVoiceError(language === 'vi' ? 'Đủ tệp' : 'Full')
-        return
-      }
-      const permission = await AudioModule.requestRecordingPermissionsAsync()
-      if (!permission.granted) {
-        const message = language === 'vi' ? 'Chưa bật mic' : 'Mic off'
-        setVoiceError(message)
-        openMicrophoneSettingsPrompt(language, message)
-        return
-      }
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      })
-      await audioRecorder.prepareToRecordAsync()
-      audioRecorder.record()
-      recordingRef.current = true
-      setIsRecordingVoice(true)
-      setVoiceError(null)
-    } catch {
-      recordingRef.current = false
-      setIsRecordingVoice(false)
-      setVoiceError(language === 'vi' ? 'Lỗi mic' : 'Mic error')
-    }
-  }
-
-  useEffect(() => {
-    return () => {
-      if (!recordingRef.current) return
-      void audioRecorder.stop().catch(() => undefined)
-      recordingRef.current = false
-    }
-  }, [audioRecorder])
-
-  return (
-    <AgenticEvidenceGateView
-      busy={busy}
-      canConfirm={canConfirm}
-      fileValue={formatKnownCount(totalFileCount, language)}
-      isRecordingVoice={isRecordingVoice}
-      language={language}
-      onAddMedia={onAddMedia}
-      onConfirm={onConfirm}
-      onReasonChange={onReasonChange}
-      onReject={onReject}
-      onSkip={onSkip}
-      onVoicePress={() => void handleVoicePress()}
-      recordingSeconds={recordingSeconds}
-      rejectOpen={rejectOpen}
-      rejectReason={rejectReason}
-      textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
-      tokens={tokens}
-      totalFileCount={totalFileCount}
-      visualMediaValue={formatKnownCount(visualMediaCount, language)}
-      voiceError={voiceError}
-      voiceValue={formatKnownCount(voiceCount, language)}
     />
   )
 }
