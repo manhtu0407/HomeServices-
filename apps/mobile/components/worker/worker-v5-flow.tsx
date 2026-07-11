@@ -33,6 +33,7 @@ import { setAppLanguage, type AppLanguage, localizedServiceLabel, localizedStatu
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { kaelMemoryService, workerKaelChatService, workerRouteService } from '@/lib/services'
 import type {
@@ -928,6 +929,9 @@ function WorkerV5HomeScreenSurface({
         </View>
 
         <WorkerV5AvailabilityCard
+          availabilityGuardReady={runtime.workerJobsHydrated}
+          hasActiveJob={runtime.workerJobs.some((job) => isWorkerOperationalJobStatus(job.status))}
+          key={profile?.id ?? 'worker-profile-loading'}
           language={language}
           onToggleAvailability={runtime.actions.workerUpdateAvailability}
           profile={profile}
@@ -1309,6 +1313,9 @@ function WorkerV5HomeBody({
   return (
     <View style={styles.sectionStack}>
       <WorkerV5AvailabilityCard
+        availabilityGuardReady={runtime.workerJobsHydrated}
+        hasActiveJob={runtime.workerJobs.some((job) => isWorkerOperationalJobStatus(job.status))}
+        key={profile?.id ?? 'worker-profile-loading'}
         language={language}
         onToggleAvailability={runtime.actions.workerUpdateAvailability}
         profile={profile}
@@ -3078,12 +3085,16 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
 }
 
 function WorkerV5AvailabilityCard({
+  availabilityGuardReady,
+  hasActiveJob,
   language,
   onToggleAvailability,
   profile,
   reduceMotion = false,
   reduceTransparency,
 }: {
+  availabilityGuardReady: boolean
+  hasActiveJob: boolean
   language: AppLanguage
   onToggleAvailability?: (isAvailable: boolean) => Promise<boolean>
   profile: WorkerV5Runtime['workerProfile']
@@ -3092,25 +3103,30 @@ function WorkerV5AvailabilityCard({
 }) {
   const [pending, setPending] = useState(false)
   const [optimisticAvailable, setOptimisticAvailable] = useState<boolean | null>(null)
+  const [inlineFailure, setInlineFailure] = useState<string | null>(null)
   const availabilityRequestIdRef = useRef(0)
   const availabilityTitleDidMountRef = useRef(false)
   const availabilityTitleProgress = useSharedValue(1)
+  const availabilitySwitchProgress = useSharedValue(profile?.is_available ? 1 : 0)
   const rawAvailable = optimisticAvailable ?? Boolean(profile?.is_available)
   const effectiveProfile = profile ? { ...profile, is_available: rawAvailable } : profile
-  const availabilityTitle = workerAvailabilityLabel(effectiveProfile, language)
+  const blockedByGuardLoading = Boolean(profile && !availabilityGuardReady && !rawAvailable)
+  const blockedByActiveJob = Boolean(hasActiveJob && !rawAvailable)
+  const availabilityTitle = inlineFailure
+    ?? (blockedByGuardLoading
+      ? textByLanguage(language, 'Đang đồng bộ công việc', 'Syncing current work')
+      : blockedByActiveJob
+        ? textByLanguage(language, 'Hoàn tất việc hiện tại để bật nhận việc', 'Finish the current job to go online')
+        : workerAvailabilityLabel(effectiveProfile, language))
   const checked = Boolean(rawAvailable && profile?.is_approved && !profile?.is_suspended)
   const canToggle = Boolean(
     onToggleAvailability
       && profile
+      && !blockedByGuardLoading
+      && !blockedByActiveJob
       && ((profile.is_approved && !profile.is_suspended) || rawAvailable),
   )
-  const disabled = !canToggle
-
-  useEffect(() => {
-    availabilityRequestIdRef.current += 1
-    setOptimisticAvailable(null)
-    setPending(false)
-  }, [profile?.id])
+  const disabled = !canToggle || pending
 
   useEffect(() => {
     if (pending || optimisticAvailable === null || profile?.is_available !== optimisticAvailable) return
@@ -3135,9 +3151,22 @@ function WorkerV5AvailabilityCard({
     })
   }, [availabilityTitle, availabilityTitleProgress, reduceMotion])
 
+  useEffect(() => {
+    const target = checked ? 1 : 0
+    availabilitySwitchProgress.value = reduceMotion
+      ? target
+      : withSpring(target, motionTokens.liquid.pill)
+  }, [availabilitySwitchProgress, checked, reduceMotion])
+
   const availabilityTitleMotionStyle = useAnimatedStyle(() => ({
     opacity: availabilityTitleProgress.value,
     transform: [{ translateY: (1 - availabilityTitleProgress.value) * 8 }],
+  }))
+  const availabilitySwitchOnMotionStyle = useAnimatedStyle(() => ({
+    opacity: availabilitySwitchProgress.value,
+  }))
+  const availabilityKnobMotionStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: availabilitySwitchProgress.value * 18 }],
   }))
 
   const handleToggle = async () => {
@@ -3145,6 +3174,7 @@ function WorkerV5AvailabilityCard({
     const nextAvailability = rawAvailable ? false : true
     const requestId = availabilityRequestIdRef.current + 1
     availabilityRequestIdRef.current = requestId
+    setInlineFailure(null)
     setOptimisticAvailable(nextAvailability)
     setPending(true)
     try {
@@ -3152,6 +3182,7 @@ function WorkerV5AvailabilityCard({
       if (availabilityRequestIdRef.current !== requestId) return
       if (!saved) {
         setOptimisticAvailable(null)
+        setInlineFailure(textByLanguage(language, 'Chưa cập nhật được — kiểm tra việc đang chạy', 'Could not update — check active work'))
         Alert.alert(
           textByLanguage(language, 'Chưa cập nhật được trạng thái', 'Could not update status'),
           textByLanguage(language, 'Vui lòng thử lại sau khi kết nối ổn định.', 'Please try again once the connection is stable.'),
@@ -3160,6 +3191,7 @@ function WorkerV5AvailabilityCard({
     } catch {
       if (availabilityRequestIdRef.current !== requestId) return
       setOptimisticAvailable(null)
+      setInlineFailure(textByLanguage(language, 'Chưa cập nhật được — kiểm tra kết nối', 'Could not update — check your connection'))
       Alert.alert(
         textByLanguage(language, 'Chưa cập nhật được trạng thái', 'Could not update status'),
         textByLanguage(language, 'Vui lòng thử lại sau khi kết nối ổn định.', 'Please try again once the connection is stable.'),
@@ -3188,13 +3220,19 @@ function WorkerV5AvailabilityCard({
         onPress={handleToggle}
         style={({ pressed }) => [
           styles.availabilitySwitch,
-          checked ? styles.availabilitySwitchOn : null,
           disabled ? styles.availabilitySwitchDisabled : null,
           pressed && !reduceMotion ? styles.pressed : null,
         ]}
         testID="worker-v5-availability-switch"
       >
-        <View style={[styles.availabilityKnob, checked ? styles.availabilityKnobOn : null]} />
+        <Animated.View
+          style={[styles.availabilitySwitchOn, availabilitySwitchOnMotionStyle]}
+          testID="worker-v5-availability-switch-fill"
+        />
+        <Animated.View
+          style={[styles.availabilityKnob, availabilityKnobMotionStyle]}
+          testID="worker-v5-availability-switch-knob"
+        />
       </Pressable>
     </View>
   )
@@ -4668,14 +4706,13 @@ const styles = StyleSheet.create({
     backgroundColor: color.mint.white,
     borderRadius: 10,
     height: 20,
+    position: 'relative',
     shadowColor: color.text.primary,
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.16,
     shadowRadius: 8,
     width: 20,
-  },
-  availabilityKnobOn: {
-    marginLeft: 18,
+    zIndex: 1,
   },
   availabilitySwitch: {
     backgroundColor: '#DFE9E7',
@@ -4684,6 +4721,7 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     height: 26,
     justifyContent: 'center',
+    overflow: 'hidden',
     paddingHorizontal: 3,
     width: 44,
   },
@@ -4693,6 +4731,11 @@ const styles = StyleSheet.create({
   availabilitySwitchOn: {
     backgroundColor: '#16C7B4',
     boxShadow: '0 8px 16px rgba(8,175,156,0.22)',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   availabilityTitle: {
     color: color.text.strong,

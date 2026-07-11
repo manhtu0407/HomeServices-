@@ -147,6 +147,7 @@ type FrontendWorkflowContextValue = {
   customerProfileInsights: CustomerProfileInsightsResponse | null
   workerEarnings: EarningsResponse | null
   workerJobs: WorkerJobListResponse['jobs']
+  workerJobsHydrated: boolean
   workerPerformanceInsights: WorkerPerformanceInsightsResponse | null
   workerProfile: WorkerProfileResponse | null
   notifications: NotificationListResponse['notifications']
@@ -158,6 +159,7 @@ type FrontendWorkflowContextValue = {
 type WorkerRemoteState = {
   earnings: EarningsResponse | null
   jobs: WorkerJobListResponse['jobs']
+  jobsHydrated: boolean
   performanceInsights: WorkerPerformanceInsightsResponse | null
   profile: WorkerProfileResponse | null
   sessionUserId: string | null
@@ -177,6 +179,7 @@ type CustomerProfileInsightsState = {
 const initialWorkerRemoteState: WorkerRemoteState = {
   earnings: null,
   jobs: [],
+  jobsHydrated: false,
   performanceInsights: null,
   profile: null,
   sessionUserId: null,
@@ -207,6 +210,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
   const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
   const workerJobs = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.jobs : []
+  const workerJobsHydrated = workerRemoteState.sessionUserId === sessionUserId && workerRemoteState.jobsHydrated
   const workerPerformanceInsights = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.performanceInsights : null
   const [customerKaelMemoryState, setCustomerKaelMemoryState] = useState<CustomerKaelMemoryState>(initialCustomerKaelMemoryState)
   const customerKaelMemory = customerKaelMemoryState.sessionUserId === sessionUserId ? customerKaelMemoryState.memory : null
@@ -415,7 +419,14 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
         : currentPerformanceInsights === null
       return current.sessionUserId === sessionUserId && sameProfile && sameEarnings && samePerformanceInsights
         ? current
-        : { earnings: nextEarnings, jobs: currentJobs, performanceInsights: nextPerformanceInsights, profile: profile.data, sessionUserId }
+        : {
+            earnings: nextEarnings,
+            jobs: currentJobs,
+            jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
+            performanceInsights: nextPerformanceInsights,
+            profile: profile.data,
+            sessionUserId,
+          }
     })
 
     const broadcasts = await workerService.getBroadcasts()
@@ -432,10 +443,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
     setWorkerRemoteState((current) => {
       const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
-      if (current.sessionUserId === sessionUserId && sameWorkerJobs(currentJobs, jobs.data.jobs)) return current
+      if (current.sessionUserId === sessionUserId && current.jobsHydrated && sameWorkerJobs(currentJobs, jobs.data.jobs)) return current
       return {
         earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
         jobs: jobs.data.jobs,
+        jobsHydrated: true,
         performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
         profile: current.sessionUserId === sessionUserId ? current.profile : null,
         sessionUserId,
@@ -479,6 +491,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     setWorkerRemoteState((current) => ({
       earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
       jobs: current.sessionUserId === sessionUserId ? current.jobs : [],
+      jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
       performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
       profile: updated.data,
       sessionUserId,
@@ -969,6 +982,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerProfileInsights,
     workerEarnings,
     workerJobs,
+    workerJobsHydrated,
     workerPerformanceInsights,
     workerProfile,
     notifications,

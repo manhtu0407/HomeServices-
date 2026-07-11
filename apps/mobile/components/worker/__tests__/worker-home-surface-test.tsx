@@ -309,11 +309,15 @@ function buildWorkflow({
   canWorkerAdvance = false,
   deal = null,
   workerEarnings = buildNoEarnings(),
+  workerJobs = [],
+  workerJobsHydrated = true,
   workerProfile = buildWorkerProfile(),
 }: {
   canWorkerAdvance?: boolean
   deal?: LocalDeal | null
   workerEarnings?: EarningsResponse | null
+  workerJobs?: Array<{ status: string }>
+  workerJobsHydrated?: boolean
   workerProfile?: WorkerProfileResponse | null
 } = {}) {
   mockWorkerUpdateAvailability = jest.fn(async () => true)
@@ -340,6 +344,8 @@ function buildWorkflow({
       workerGate: 'remote_backend',
     },
     workerEarnings,
+    workerJobs,
+    workerJobsHydrated,
     workerProfile,
   }
 }
@@ -486,6 +492,66 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.queryByText('Kael đã chuẩn bị việc phù hợp')).toBeNull()
     expect(screen.getByTestId('worker-v5-home-command-center')).toBeOnTheScreen()
+  })
+
+  it('updates the availability control optimistically while the backend write is pending', async () => {
+    buildWorkflow()
+
+    render(<WorkerHomeSurface />)
+
+    expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Đang tắt nhận việc')
+    fireEvent.press(screen.getByTestId('worker-v5-availability-switch'))
+
+    expect(mockWorkerUpdateAvailability).toHaveBeenCalledWith(true)
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Sẵn sàng nhận việc')
+    })
+  })
+
+  it('rolls back visibly when the availability write is rejected', async () => {
+    buildWorkflow()
+    mockWorkerUpdateAvailability.mockResolvedValueOnce(false)
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+
+    render(<WorkerHomeSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-availability-switch'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Chưa cập nhật được — kiểm tra việc đang chạy')
+    })
+    expect(screen.getByTestId('worker-v5-availability-switch').props.accessibilityState).toMatchObject({
+      checked: false,
+    })
+    expect(alertSpy).toHaveBeenCalled()
+    alertSpy.mockRestore()
+  })
+
+  it('explains and blocks going online while an operational job is still active', () => {
+    buildWorkflow({ workerJobs: [{ status: 'arrived' }] })
+
+    render(<WorkerHomeSurface />)
+
+    const availabilitySwitch = screen.getByTestId('worker-v5-availability-switch')
+    expect(availabilitySwitch.props.accessibilityState).toMatchObject({
+      checked: false,
+      disabled: true,
+    })
+    expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Hoàn tất việc hiện tại để bật nhận việc')
+
+    fireEvent.press(availabilitySwitch)
+    expect(mockWorkerUpdateAvailability).not.toHaveBeenCalled()
+  })
+
+  it('keeps availability guarded until the real worker job list has hydrated', () => {
+    buildWorkflow({ workerJobsHydrated: false })
+
+    render(<WorkerHomeSurface />)
+
+    const availabilitySwitch = screen.getByTestId('worker-v5-availability-switch')
+    expect(availabilitySwitch.props.accessibilityState).toMatchObject({ disabled: true })
+    expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Đang đồng bộ công việc')
+    fireEvent.press(availabilitySwitch)
+    expect(mockWorkerUpdateAvailability).not.toHaveBeenCalled()
   })
 
   it('retires the old accept-review deep link back to the work board', () => {
