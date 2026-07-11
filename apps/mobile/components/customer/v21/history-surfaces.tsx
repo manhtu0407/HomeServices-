@@ -1,9 +1,11 @@
 import type { ComponentType, ReactNode } from 'react'
-import { Image, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
+import { Image, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
 
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
+import { isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import {
   customerV21CaseScopeStateDotSurface,
   customerV21CaseScopeStepRowSurface,
@@ -16,7 +18,7 @@ type FulfillmentStepState = 'active' | 'done' | 'pending'
 type CustomerV21SourceSkin = ComponentType<{ testID?: string }>
 type CustomerV21ZipAura = ComponentType<{ scope: string; testID?: string }>
 type CustomerV21AssetTile = ComponentType<{
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   size?: number
   sourceAura?: boolean
@@ -212,7 +214,7 @@ export function MatchingKaelStatusIcon({
   image,
   testID,
 }: {
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   testID?: string
 }) {
   return (
@@ -229,7 +231,7 @@ export function MatchingKaelStatusIcon({
           <Rect fill="url(#matchingKaelStatusAura)" height="86" width="86" />
         </Svg>
       </View>
-      <Image resizeMode="contain" source={image} style={styles.matchingKaelStatusImage} />
+      {isKaelCoreV9Visual(image) ? <KaelCoreV9 size={54} /> : <Image resizeMode="contain" source={image} style={styles.matchingKaelStatusImage} />}
     </View>
   )
 }
@@ -332,7 +334,7 @@ export function FulfillmentInfoRow({
 }: {
   assetTile: CustomerV21AssetTile
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   renderRightLabel?: (label: string) => ReactNode
   rightLabel?: string
   title: string
@@ -437,7 +439,7 @@ export function MediaRow({
   value,
 }: {
   assetTile: CustomerV21AssetTile
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   tokens: CustomerThemeTokens
   value: string
@@ -469,7 +471,7 @@ export function CaseOptionChoiceCard({
   assetTile: CustomerV21AssetTile
   body: string
   card: CustomerV21Card
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   renderRightLabel: (label: string) => ReactNode
   rightLabel: string
   sourceCardSkin: CustomerV21SourceSkin

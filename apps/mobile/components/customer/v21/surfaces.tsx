@@ -33,6 +33,7 @@ import {
   type ServiceType,
 } from '@nestscout/shared'
 import { KaelButton, KaelChip, KaelTextInput } from '@/components/ui/kael-primitives'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
@@ -65,7 +66,7 @@ import { AgenticEvidenceGateView } from './agentic-evidence-stateful-surfaces'
 import { AgenticMemoryStageView } from './agentic-memory-stateful-surfaces'
 import { CustomerAgenticCenterSurfaceView } from './agentic-center-stateful-surfaces'
 import { AgenticApprovalQueuePanel, AgenticArtifactTile, AgenticChatFact, AgenticCommandCaseCardPanel, AgenticCommandTimelinePanel, AgenticHomeBackdropAura, AgenticMetricTile, AgenticProcessedApprovalRow, AgenticStageBackdropAura, AgenticStageHero, AgenticUtilityStackPanel, AgenticWorkLogCardPanel } from './agentic-surfaces'
-import { customerV21Assets, customerV21BankAssets, customerV21ServiceAssets, type CustomerV21BankKey } from './assets'
+import { customerV21Assets, customerV21BankAssets, customerV21ServiceAssets, type CustomerV21BankKey, type CustomerV21Visual } from './assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from './booking-entry-stateful-surfaces'
 import { usePerformanceBookingIntake } from './use-performance-booking-intake'
 import { PrepRow } from './booking-surfaces'
@@ -646,7 +647,7 @@ export function CustomerHomeSurface() {
             {language === 'vi' ? 'Kael sẵn sàng hỗ trợ, công việc vẫn do bạn kiểm soát.' : 'Kael is ready to help while you keep work control.'}
           </Text>
         </View>
-        <Image resizeMode="contain" source={customerV21Assets.kaelFull} style={sharedStyles.heroKael} />
+        <KaelCoreV9 motionClip="autoplay-once" size={164} />
       </V21Card>
       </View>
 
@@ -1501,7 +1502,7 @@ function AgenticHomeStage({
         body={hasDeal
           ? (language === 'vi' ? 'Một luồng dữ liệu, một vết duyệt, một trạng thái tiền.' : 'One data flow, one approval trail, one money state.')
           : (language === 'vi' ? 'Trung tâm sẽ nhận dữ liệu từ Kael Chat và quy trình Agentic.' : 'The center will receive data from Kael Chat and the Agentic workflow.')}
-        image={customerV21Assets.kaelFull}
+        image={customerV21Assets.kael}
         imageKind="mascot"
         narrow
         scope="AgenticHomeHero"
@@ -3199,7 +3200,7 @@ function CaseOverviewNextStep({ onNext }: { onNext: () => void }) {
         <SourceCardSkin />
         <CaseWorkCardAura scope="OverviewNext" testID="customer-v21-case-overview-next-mint-aura" />
         <View style={historyActiveStyles.caseOverviewNextContent}>
-          <AssetTile image={customerV21Assets.kaelHead} label="Kael" size={38} sourceAura style={historyActiveStyles.caseOverviewNextIcon} />
+          <AssetTile image={customerV21Assets.kael} label="Kael" size={38} sourceAura style={historyActiveStyles.caseOverviewNextIcon} />
           <View style={styles.flex}>
             <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{language === 'vi' ? 'Bước tiếp theo' : 'Next step'}</Text>
             <Text numberOfLines={2} style={[historyActiveStyles.caseOverviewNextCopy, { color: tokens.muted }]}>
@@ -3247,7 +3248,7 @@ function CaseWorkPanel({
       hasDescription={hasDescription}
       hasMedia={deal.draft.mediaCount > 0}
       kaelIconStyle={styles.infoNoticeIcon}
-      kaelImage={customerV21Assets.kaelHead}
+      kaelImage={customerV21Assets.kael}
       onOpenActivity={onOpenActivity}
       onRequestEdit={onRequestEdit}
       recommendation={recommendation}
@@ -3671,7 +3672,7 @@ function CaseOptionsScreen({ deal }: { deal: LocalDeal }) {
           body={language === 'vi'
             ? 'Mọi thay đổi phạm vi hoặc giá đều cần duyệt trong quy trình.'
             : 'Scope or price changes must stay in the approval workflow.'}
-          image={customerV21Assets.kaelHead}
+          image={customerV21Assets.kael}
           testID="customer-v21-options-kael-card"
           title={language === 'vi' ? 'Không tự ý phát sinh' : 'No silent changes'}
         />
@@ -3698,7 +3699,7 @@ function CaseKaelSourceCard({
   title,
 }: {
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   testID: string
   title: string
 }) {
@@ -3826,7 +3827,7 @@ function CaseLocationEtaScreen({ deal }: { deal: LocalDeal }) {
           body={hasEta
             ? (language === 'vi' ? 'Kael sẽ nhắc khi thời gian đến thay đổi.' : 'Kael will alert when ETA changes.')
             : (language === 'vi' ? 'Chờ thời gian đến thật từ hệ thống.' : 'Waiting for real system ETA.')}
-          image={customerV21Assets.kaelHead}
+          image={customerV21Assets.kael}
           testID="customer-v21-location-kael-card"
           title={language === 'vi' ? 'Kael đang theo dõi thời gian đến' : 'Kael tracks ETA'}
         />
@@ -3883,7 +3884,7 @@ function CaseLiveAlertScreen({ deal }: { deal: LocalDeal }) {
       kaelSourceNode={(
         <CaseKaelSourceCard
           body={language === 'vi' ? 'Mã này chỉ mở khi hệ thống có xác minh đến nơi thật.' : 'This code opens only after a real arrival signal.'}
-          image={customerV21Assets.kaelHead}
+          image={customerV21Assets.kael}
           testID="customer-v21-live-alert-kael-card"
           title={language === 'vi' ? 'Không chia sẻ mã quá sớm' : 'Do not share the code early'}
         />
@@ -3925,7 +3926,7 @@ function CaseJobAcceptedScreen({ deal }: { deal: LocalDeal }) {
       kaelSourceNode={(
         <CaseKaelSourceCard
           body={language === 'vi' ? 'Bằng chứng, checklist và thay đổi phạm vi tiếp tục nằm trong cùng công việc thật.' : 'Evidence, checklist, and scope changes stay inside the same real job.'}
-          image={customerV21Assets.kaelHead}
+          image={customerV21Assets.kael}
           testID="customer-v21-job-accepted-kael-card"
           title={language === 'vi' ? 'Kael đã mở bảng công việc' : 'Kael opened the job cockpit'}
         />

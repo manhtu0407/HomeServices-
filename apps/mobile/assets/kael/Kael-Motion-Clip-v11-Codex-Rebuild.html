@@ -1,0 +1,1139 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<title>Kael Motion Clip v11 — Living Concierge</title>
+<!--
+KAEL MOTION CLIP v11 — LIVING CONCIERGE
+===============================================================================
+Single-file source of truth for Codex / Claude Code rebuild.
+No Image Gen. No PNG/JPEG/WebP. No CDN. No framework. No external font.
+The companion PNG report is deterministically composed from this same inline SVG geometry and static pose contract.
+
+WHY v11 EXISTS
+--------------
+v10 used a low-amplitude float plus isolated micro-gestures. That felt like
+"movement" rather than a complete animation. v11 removes that scheduler and
+replaces it with short motion clips that have a beginning, middle and ending.
+
+MOTION VOCABULARY
+-----------------
+1. AUTOPLAY CLIP — "Observe → Invite → Nod" (3.8 s, seamless loop)
+   - Kael glides toward the supporting copy and visibly reads it.
+   - Eyes return first, then the shell turns toward the user.
+   - Monocle catches light as Kael invites interaction.
+   - A compact concierge nod closes the clip before the next iteration.
+   - This clip starts immediately and repeats continuously while visible.
+
+2. PROXIMITY EVENT CLIP — "I noticed you" (3.3 s)
+   - Triggered once when a pointer enters the configured proximity radius.
+   - Eyes lock first; shell follows on a curved approach; a two-beat nod closes.
+   - The fixed autoplay clip pauses underneath and resumes afterward.
+
+3. DIRECT EVENT CLIP — "Formal bow" (3.7 s)
+   - Triggered by pointer press, touch, keyboard Enter/Space, or API.
+   - Notice → centre → prepare → bow → hold → recover → reconnect.
+
+PERFORMANCE / ACCESSIBILITY
+---------------------------
+- Autoplay is a single synchronized Web Animations API clip, not a random timer.
+- The loop begins as soon as the component connects. It pauses only when the
+  document is hidden, Reduced Motion is active, or `paused` is present.
+- Event clips temporarily pause the loop and animate from the computed current
+  pose, preventing a snap when an event interrupts the autoplay scene.
+- prefers-reduced-motion disables autonomous looping and uses a short direct
+  acknowledgement for explicit interaction.
+
+MINIMAL INTEGRATION
+-------------------
+<kael-motion-v11
+  size="58"
+  proximity="150"
+  copy-direction="left"
+  label="Tương tác với Kael"
+></kael-motion-v11>
+
+const kael = document.querySelector('kael-motion-v11')
+kael.notice({ source: 'api', direction: -1 })
+kael.bow({ source: 'api' })
+kael.pause()
+kael.resume()
+kael.restart()
+
+EVENTS
+------
+- kael-clip-start detail { clip, source }
+- kael-clip-end   detail { clip, source }
+- kael-proximity  detail { distance, direction }
+
+GLOBALS
+-------
+- window.KAEL_MOTION_V11_CONTRACT
+- window.verifyKaelMotionV11()
+===============================================================================
+-->
+<style>
+:root {
+  --ink: #10262d;
+  --ink-soft: #60777e;
+  --mint-wash: #ecfffb;
+  --mint-line: rgba(112, 225, 207, .34);
+  --page: #e9fbf7;
+  --panel: rgba(255,255,255,.78);
+  --panel-line: rgba(255,255,255,.96);
+  --dark: #080a0b;
+  --dark-panel: #111417;
+  --dark-line: rgba(255,255,255,.10);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(760px 400px at 90% 0%, rgba(94,226,203,.26), transparent 70%),
+    radial-gradient(680px 420px at 5% 100%, rgba(184,243,233,.38), transparent 72%),
+    linear-gradient(145deg, #f9fffd, #eaf9f6 58%, #e4f7f2);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font: inherit; }
+kael-motion-v11 { vertical-align: middle; }
+[hidden] { display: none !important; }
+
+/* ========================================================================== 
+   PROTOTYPE PAGE
+   ========================================================================== */
+.prototype {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 34px 0 72px;
+}
+.proto-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+.proto-kicker { margin: 0 0 9px; color: #157f71; font-size: 11px; font-weight: 850; letter-spacing: .16em; text-transform: uppercase; }
+.proto-header h1 { max-width: 820px; margin: 0; color: #0b3334; font-size: clamp(34px, 5.2vw, 62px); line-height: .98; letter-spacing: -.052em; }
+.proto-lead { max-width: 850px; margin: 17px 0 0; color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
+.proto-badge { flex: 0 0 auto; padding: 10px 14px; border: 1px solid rgba(15,113,99,.18); border-radius: 999px; background: rgba(255,255,255,.58); color: #0d6e62; font-size: 11px; font-weight: 850; letter-spacing: .06em; }
+.section-preview { margin-top: 28px; padding: 26px; border: 1px solid rgba(255,255,255,.95); border-radius: 34px; background: rgba(255,255,255,.64); box-shadow: 0 28px 80px rgba(22,112,99,.11); }
+.section-caption { display: flex; justify-content: space-between; gap: 20px; margin: 0 0 16px; color: #6b8581; font-size: 12px; }
+.kael-support-card {
+  width: min(660px, 100%);
+  min-height: 222px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 98px;
+  align-items: center;
+  gap: 14px;
+  padding: 28px 27px 28px 42px;
+  border: 1px solid rgba(255,255,255,.98);
+  border-radius: 38px;
+  overflow: visible;
+  background:
+    radial-gradient(220px 150px at 95% 8%, rgba(104,232,208,.17), transparent 70%),
+    radial-gradient(250px 160px at 4% 100%, rgba(232,255,250,.74), transparent 75%),
+    linear-gradient(145deg, rgba(255,255,255,.94), rgba(251,255,254,.82));
+  box-shadow: 0 18px 50px rgba(23,109,96,.08), 0 1px 0 #fff inset;
+}
+.support-copy { display: grid; place-items: center; text-align: center; }
+.support-copy p { max-width: 470px; margin: 0; color: #102631; font-size: clamp(23px, 3.2vw, 31px); font-weight: 720; line-height: 1.18; letter-spacing: -.028em; }
+.support-copy strong { font-weight: 850; }
+.kael-slot { display: grid; place-items: center; min-width: 92px; min-height: 116px; position: relative; }
+.kael-slot::after {
+  content: "";
+  position: absolute;
+  left: 50%; bottom: 19px;
+  width: 58px; height: 8px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgba(8,27,30,.18), transparent 72%);
+  filter: blur(2px);
+  pointer-events: none;
+}
+.demo-grid { display: grid; grid-template-columns: 1.08fr .92fr; gap: 18px; margin-top: 18px; }
+.demo-card { border: 1px solid rgba(255,255,255,.94); border-radius: 27px; background: rgba(255,255,255,.66); box-shadow: 0 20px 55px rgba(22,112,99,.08); }
+.stage-card { min-height: 460px; display: grid; place-items: center; align-content: center; gap: 18px; padding: 28px; }
+.live-state { min-width: 260px; padding: 9px 13px; border: 1px solid rgba(12,112,97,.12); border-radius: 999px; color: #55746f; background: rgba(255,255,255,.68); text-align: center; font-size: 11px; font-weight: 760; letter-spacing: .035em; }
+.info-card { padding: 26px; }
+.info-card h2 { margin: 0; color: #0c3635; font-size: 23px; letter-spacing: -.03em; }
+.info-card p { margin: 10px 0 0; color: #637d79; font-size: 13px; line-height: 1.62; }
+.contract-list { display: grid; gap: 9px; margin-top: 18px; }
+.contract-row { display: grid; grid-template-columns: 142px 1fr; gap: 14px; padding: 12px 13px; border: 1px solid rgba(14,112,98,.10); border-radius: 14px; background: rgba(255,255,255,.56); }
+.contract-row b { color: #0b7468; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
+.contract-row span { color: #526b68; font-size: 12px; line-height: 1.45; }
+.demo-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+.demo-actions button { border: 1px solid rgba(11,112,97,.18); border-radius: 12px; padding: 9px 12px; background: rgba(255,255,255,.76); color: #0f6e63; font-weight: 750; cursor: pointer; }
+.demo-actions button:hover { background: #fff; border-color: rgba(11,112,97,.36); }
+.demo-actions button:active { transform: scale(.98); }
+.motion-strip { margin-top: 18px; padding: 24px; border: 1px solid rgba(255,255,255,.94); border-radius: 27px; background: rgba(255,255,255,.66); box-shadow: 0 20px 55px rgba(22,112,99,.08); }
+.motion-strip h2 { margin: 0; color: #0c3635; font-size: 22px; letter-spacing: -.03em; }
+.motion-strip > p { margin: 9px 0 0; color: #647c79; font-size: 13px; line-height: 1.55; }
+.pose-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 17px; }
+.pose-card { min-height: 178px; display: grid; place-items: center; align-content: center; gap: 10px; padding: 14px 8px; border: 1px solid rgba(15,113,99,.10); border-radius: 17px; background: rgba(255,255,255,.58); }
+.pose-card b { color: #173c3c; font-size: 11px; }
+.pose-card span { color: #728a86; font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+@media (max-width: 860px) {
+  .demo-grid { grid-template-columns: 1fr; }
+  .pose-grid { grid-template-columns: repeat(3, 1fr); }
+  .proto-header { display: block; }
+  .proto-badge { display: inline-block; margin-top: 14px; }
+}
+@media (max-width: 600px) {
+  .prototype { width: min(100% - 20px, 1180px); padding-top: 22px; }
+  .section-preview { padding: 12px; border-radius: 24px; }
+  .kael-support-card { min-height: 205px; grid-template-columns: 1fr 72px; gap: 5px; padding: 24px 14px 24px 25px; border-radius: 30px; }
+  .support-copy p { font-size: 21px; }
+  .pose-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ========================================================================== 
+   REPORT PAGE — SCREENSHOT SOURCE
+   ========================================================================== */
+.report {
+  width: 2400px;
+  min-height: 0;
+  padding: 92px;
+  color: #f3f5f6;
+  background:
+    radial-gradient(1000px 760px at 12% 0%, rgba(132,255,232,.075), transparent 72%),
+    radial-gradient(900px 650px at 100% 15%, rgba(255,255,255,.045), transparent 70%),
+    #080a0b;
+}
+.report-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 70px; }
+.report-kicker { margin: 0 0 15px; color: #a7f1e4; font-size: 18px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; }
+.report h1 { max-width: 1580px; margin: 0; font-size: 82px; line-height: .98; letter-spacing: -.055em; }
+.report-sub { max-width: 1540px; margin: 25px 0 0; color: #aab2b8; font-size: 25px; line-height: 1.56; }
+.report-chip { flex: 0 0 auto; padding: 17px 23px; border: 1px solid rgba(255,255,255,.17); border-radius: 999px; color: #dfe4e7; font-size: 17px; font-weight: 850; letter-spacing: .08em; }
+.report-rule { height: 1px; margin: 52px 0; background: linear-gradient(90deg, rgba(255,255,255,.52), transparent 82%); }
+.report-section { margin-top: 54px; }
+.report-section-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 25px; }
+.report-section-title h2 { margin: 0; font-size: 35px; letter-spacing: -.035em; }
+.report-section-title span { color: #869198; font-size: 17px; }
+.report-panel { border: 1px solid rgba(255,255,255,.10); border-radius: 34px; background: linear-gradient(145deg, rgba(24,28,31,.96), rgba(13,15,17,.98)); box-shadow: 0 35px 100px rgba(0,0,0,.26); }
+.report-context { min-height: 520px; display: grid; place-items: center; padding: 55px; }
+.report-context .kael-support-card { width: 1320px; min-height: 444px; grid-template-columns: minmax(0,1fr) 210px; gap: 30px; padding: 56px 52px 56px 84px; border-radius: 76px; }
+.report-context .support-copy p { max-width: 940px; font-size: 61px; }
+.report-context .kael-slot { min-width: 190px; min-height: 230px; }
+.report-context .kael-slot::after { bottom: 38px; width: 118px; height: 17px; filter: blur(4px); }
+.report-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.compare-card { min-height: 350px; padding: 42px; }
+.compare-card .tag { color: #a7f1e4; font-size: 14px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.compare-card h3 { margin: 14px 0 0; font-size: 33px; letter-spacing: -.035em; }
+.compare-card p { margin: 18px 0 0; color: #aab2b8; font-size: 20px; line-height: 1.6; }
+.compare-card ul { margin: 24px 0 0; padding-left: 23px; color: #c4c9cc; font-size: 18px; line-height: 1.72; }
+.report-pose-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; }
+.report-pose { min-height: 360px; display: grid; place-items: center; align-content: center; gap: 18px; padding: 30px 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 25px; background: rgba(255,255,255,.026); }
+.report-pose b { font-size: 18px; }
+.report-pose span { color: #8f999f; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.timeline-bar { display: grid; grid-template-columns: repeat(6,1fr); gap: 2px; margin: 18px 2px 0; }
+.timeline-bar span { height: 6px; border-radius: 99px; background: linear-gradient(90deg,#a7f1e4,#59636a); opacity: .75; }
+.report-event-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.event-card { padding: 34px; }
+.event-card h3 { margin: 0; font-size: 31px; letter-spacing: -.03em; }
+.event-card > p { margin: 12px 0 0; color: #9ba5ab; font-size: 18px; line-height: 1.55; }
+.event-frame-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 23px; }
+.event-frame { min-height: 280px; display: grid; place-items: center; align-content: center; gap: 14px; border: 1px solid rgba(255,255,255,.07); border-radius: 22px; background: rgba(255,255,255,.022); }
+.event-frame b { font-size: 15px; }
+.event-frame span { color: #7f8a90; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; }
+.arch-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.arch-card { min-height: 245px; padding: 28px; }
+.arch-card .num { color: #a7f1e4; font-size: 14px; font-weight: 900; letter-spacing: .12em; }
+.arch-card h3 { margin: 15px 0 0; font-size: 25px; }
+.arch-card p { margin: 13px 0 0; color: #9ca6ac; font-size: 17px; line-height: 1.55; }
+.verify-panel { padding: 36px 42px; }
+.verify-panel pre { margin: 0; color: #c5ced2; font: 16px/1.62 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
+.report-footer { display: flex; justify-content: space-between; gap: 30px; margin-top: 54px; padding-top: 28px; border-top: 1px solid rgba(255,255,255,.10); color: #69757c; font-size: 15px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-force-motion]) * { scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<main class="prototype" id="prototypePage">
+  <header class="proto-header">
+    <div>
+      <p class="proto-kicker">Kael Motion Clip v11 · Living Concierge</p>
+      <h1>Không còn “động nhẹ” — Kael tự chạy một đoạn animation hoàn chỉnh 3.8 giây.</h1>
+      <p class="proto-lead">Clip mặc định tự bắt đầu ngay khi Kael xuất hiện: quan sát phần copy, quay lại mời user, cúi đầu ngắn rồi trở về điểm đầu. Khi người dùng tiến gần hoặc chạm vào, clip sự kiện 3–4 giây sẽ tạm thay thế clip mặc định.</p>
+    </div>
+    <div class="proto-badge">AUTOPLAY · EVENT CLIPS · ZERO SCHEDULER</div>
+  </header>
+
+  <section class="section-preview">
+    <div class="section-caption"><span>Section target · exact right-side slot</span><span>Autoplay starts immediately</span></div>
+    <article class="kael-support-card">
+      <div class="support-copy"><p><strong>Kael sẵn sàng hỗ trợ,</strong> công việc vẫn do bạn kiểm soát.</p></div>
+      <div class="kael-slot"><kael-motion-v11 id="cardKael" size="62" proximity="150" copy-direction="left" label="Tương tác với Kael"></kael-motion-v11></div>
+    </article>
+  </section>
+
+  <section class="demo-grid">
+    <article class="demo-card stage-card">
+      <kael-motion-v11 id="heroKael" size="265" proximity="220" copy-direction="left" label="Tương tác với Kael"></kael-motion-v11>
+      <div class="live-state" id="liveState">AUTOPLAY · Observe → Invite → Nod</div>
+    </article>
+    <article class="demo-card info-card">
+      <h2>Motion clip contract</h2>
+      <p>Thay vì chọn ngẫu nhiên blink hoặc glance, Kael giờ diễn một “micro-scene” có narrative rõ. Tất cả body, mắt, monocle, chain và shadow dùng chung timeline.</p>
+      <div class="contract-list">
+        <div class="contract-row"><b>Autoplay clip</b><span>3.8 s · Scan copy → eye contact → invite → concierge nod → settle.</span></div>
+        <div class="contract-row"><b>Near-user clip</b><span>3.3 s · Eye lock → curved approach → acknowledgement → return.</span></div>
+        <div class="contract-row"><b>Direct clip</b><span>3.7 s · Notice → centre → formal bow → reconnect.</span></div>
+        <div class="contract-row"><b>Continuity</b><span>Event clip bắt đầu từ computed pose hiện tại, không giật về idle.</span></div>
+        <div class="contract-row"><b>Lifecycle</b><span>Chỉ pause khi tab hidden / explicit pause / Reduced Motion; không có random delay.</span></div>
+      </div>
+      <div class="demo-actions">
+        <button type="button" data-action="restart">Restart autoplay</button>
+        <button type="button" data-action="notice-left">Notice from left</button>
+        <button type="button" data-action="notice-right">Notice from right</button>
+        <button type="button" data-action="bow">Formal bow</button>
+        <button type="button" data-action="toggle">Pause loop</button>
+      </div>
+    </article>
+  </section>
+
+  <section class="motion-strip">
+    <h2>Autoplay clip — 3.8 seconds / one complete scene</h2>
+    <p>Mỗi frame dưới đây là một điểm thật trong cùng timeline, không phải sáu motion rời.</p>
+    <div class="pose-grid">
+      <div class="pose-card"><kael-motion-v11 size="90" pose="loop-rest"></kael-motion-v11><b>0.0 s · Rest</b><span>Scene opens</span></div>
+      <div class="pose-card"><kael-motion-v11 size="90" pose="loop-scan"></kael-motion-v11><b>0.8 s · Read</b><span>Glide to copy</span></div>
+      <div class="pose-card"><kael-motion-v11 size="90" pose="loop-hold"></kael-motion-v11><b>1.4 s · Inspect</b><span>Monocle catches light</span></div>
+      <div class="pose-card"><kael-motion-v11 size="90" pose="loop-invite"></kael-motion-v11><b>2.4 s · Invite</b><span>Reconnect to user</span></div>
+      <div class="pose-card"><kael-motion-v11 size="90" pose="loop-nod"></kael-motion-v11><b>3.1 s · Nod</b><span>Polite closure</span></div>
+      <div class="pose-card"><kael-motion-v11 size="90" pose="loop-settle"></kael-motion-v11><b>3.8 s · Settle</b><span>Seamless restart</span></div>
+    </div>
+  </section>
+</main>
+
+<main class="report" id="reportPage" hidden>
+  <header class="report-header">
+    <div>
+      <p class="report-kicker">Kael Motion Clip v11 · Code-rendered report</p>
+      <h1>Living Concierge — chuyển từ chuyển động rời sang animation clip 3–4 giây.</h1>
+      <p class="report-sub">Model được giữ nguyên. Toàn bộ scheduler và micro-gesture cũ được thay bằng một autoplay scene liền mạch, cộng hai event scene có cấu trúc rõ. PNG này được dựng từ cùng inline SVG geometry và static pose contract của file HTML bàn giao.</p>
+    </div>
+    <div class="report-chip">3 CLIPS · 1 MODEL · 0 RASTER</div>
+  </header>
+  <div class="report-rule"></div>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>01 · In-context result</h2><span>Kael occupies the original small slot</span></div>
+    <div class="report-panel report-context">
+      <article class="kael-support-card">
+        <div class="support-copy"><p><strong>Kael sẵn sàng hỗ trợ,</strong> công việc vẫn do bạn kiểm soát.</p></div>
+        <div class="kael-slot"><kael-motion-v11 size="138" pose="loop-invite"></kael-motion-v11></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>02 · What changed</h2><span>v10 movement → v11 motion clip</span></div>
+    <div class="report-compare">
+      <article class="report-panel compare-card">
+        <div class="tag">Before · v10</div><h3>Isolated micro-movements</h3>
+        <p>Buoyancy luôn chạy, còn blink, glance và invite được scheduler gọi riêng. Dù có chuyển động, người xem không cảm nhận được một đoạn animation hoàn chỉnh.</p>
+        <ul><li>Random 2.8–5.2 s delay</li><li>Each gesture was a separate action</li><li>Very low body travel</li><li>No narrative arc</li></ul>
+      </article>
+      <article class="report-panel compare-card">
+        <div class="tag">Now · v11</div><h3>One coherent 3.8 s scene</h3>
+        <p>Kael đọc context, quay lại giao tiếp, mời tương tác và kết thúc bằng một concierge nod. Start và end trùng pose nên clip loop liên tục mà không snap.</p>
+        <ul><li>Immediate autoplay</li><li>Body + eyes + monocle + shadow share one timeline</li><li>Visible curved travel inside the slot</li><li>Event clips temporarily take over</li></ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>03 · Autoplay scene storyboard</h2><span>Observe → Invite → Nod · 3800 ms</span></div>
+    <div class="report-pose-grid">
+      <div class="report-pose"><kael-motion-v11 size="194" pose="loop-rest"></kael-motion-v11><b>0.0 s · Establish</b><span>Neutral eye contact</span></div>
+      <div class="report-pose"><kael-motion-v11 size="194" pose="loop-scan"></kael-motion-v11><b>0.8 s · Observe</b><span>Move toward copy</span></div>
+      <div class="report-pose"><kael-motion-v11 size="194" pose="loop-hold"></kael-motion-v11><b>1.4 s · Inspect</b><span>Hold + lens glint</span></div>
+      <div class="report-pose"><kael-motion-v11 size="194" pose="loop-invite"></kael-motion-v11><b>2.4 s · Invite</b><span>Return eye contact</span></div>
+      <div class="report-pose"><kael-motion-v11 size="194" pose="loop-nod"></kael-motion-v11><b>3.1 s · Nod</b><span>Concierge gesture</span></div>
+      <div class="report-pose"><kael-motion-v11 size="194" pose="loop-settle"></kael-motion-v11><b>3.8 s · Reset</b><span>Seamless next loop</span></div>
+    </div>
+    <div class="timeline-bar"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>04 · Event-driven scenes</h2><span>Autoplay pauses underneath and resumes afterward</span></div>
+    <div class="report-event-grid">
+      <article class="report-panel event-card">
+        <h3>Proximity · “I noticed you”</h3><p>Triggered once on radius entry. Eyes acquire first, shell travels on a wider arc, then a two-beat acknowledgement closes the 3.3 s clip.</p>
+        <div class="event-frame-grid">
+          <div class="event-frame"><kael-motion-v11 size="174" pose="notice-lock"></kael-motion-v11><b>Eye lock</b><span>0.4 s</span></div>
+          <div class="event-frame"><kael-motion-v11 size="174" pose="notice-approach"></kael-motion-v11><b>Approach</b><span>1.3 s</span></div>
+          <div class="event-frame"><kael-motion-v11 size="174" pose="notice-nod"></kael-motion-v11><b>Acknowledge</b><span>2.4 s</span></div>
+        </div>
+      </article>
+      <article class="report-panel event-card">
+        <h3>Direct · Formal bow</h3><p>Touch, click or keyboard creates a complete social response rather than a scale tap. Eyes centre before the 16° bow and reconnect before recovery ends.</p>
+        <div class="event-frame-grid">
+          <div class="event-frame"><kael-motion-v11 size="174" pose="bow-notice"></kael-motion-v11><b>Notice</b><span>0.5 s</span></div>
+          <div class="event-frame"><kael-motion-v11 size="174" pose="bow-hold"></kael-motion-v11><b>Bow + hold</b><span>2.1 s</span></div>
+          <div class="event-frame"><kael-motion-v11 size="174" pose="bow-return"></kael-motion-v11><b>Reconnect</b><span>3.3 s</span></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>05 · Runtime architecture</h2><span>Simple enough for Codex to rebuild</span></div>
+    <div class="arch-grid">
+      <article class="report-panel arch-card"><div class="num">01 · LOOP</div><h3>Infinite fixed clip</h3><p>Seven synchronized WAAPI animations run on one 3800 ms timeline with identical start and end poses.</p></article>
+      <article class="report-panel arch-card"><div class="num">02 · EVENTS</div><h3>Computed-pose handoff</h3><p>Event animations begin and end at current computed transforms, avoiding snaps when they interrupt the loop.</p></article>
+      <article class="report-panel arch-card"><div class="num">03 · PRIORITY</div><h3>Direct beats proximity</h3><p>If a bow is requested during notice, notice accelerates and bow runs next. The model never stacks two conflicting scenes.</p></article>
+      <article class="report-panel arch-card"><div class="num">04 · LIFECYCLE</div><h3>Connected means alive</h3><p>Autoplay starts immediately when mounted. Only a hidden tab, explicit pause, or Reduced Motion can stop the timeline.</p></article>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>06 · Runtime verification</h2><span>Executed from the same HTML</span></div>
+    <div class="report-panel verify-panel"><pre id="reportVerification">Running…</pre></div>
+  </section>
+
+  <footer class="report-footer"><span>Kael Motion Clip v11 · inline SVG · Web Animations API</span><span>PNG compiled from the same SVG + pose contract · no Image Gen</span></footer>
+</main>
+
+<script>
+(() => {
+'use strict'
+
+const CONTRACT = Object.freeze({
+  version: '11.0.0',
+  renderer: 'inline-svg',
+  legacyStatusCount: 0,
+  legacyMotionCount: 0,
+  handCount: 0,
+  accessoryCount: 0,
+  motionVocabulary: Object.freeze(['autoplay-clip', 'notice-clip', 'formal-bow']),
+  defaultSize: 58,
+  defaultProximity: 150,
+  autoplayClipDurationMs: 3800,
+  noticeClipDurationMs: 3300,
+  bowClipDurationMs: 3700,
+  reducedDurationMs: 360,
+  proximityCooldownMs: 5200,
+  maxLoopTravelPx: 6.4,
+  maxLoopTiltDeg: 3.4,
+  maxEventTravelPx: 7.2,
+  maxEventTiltDeg: 4.2,
+  maxEyeTravelPx: 1.55,
+  maxBowPitchDeg: 16,
+  maxBowDropPx: 5.8
+})
+window.KAEL_MOTION_V11_CONTRACT = CONTRACT
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+class KaelMotionV11 extends HTMLElement {
+  static get observedAttributes() { return ['size', 'proximity', 'label', 'pose', 'copy-direction', 'paused', 'reduced-motion'] }
+
+  constructor() {
+    super()
+    this.attachShadow({ mode: 'open' })
+    this.shadowRoot.innerHTML = this._template()
+    this._media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    this._tabVisible = !document.hidden
+    this._destroyed = false
+    this._loopAnimations = []
+    this._eventAnimations = []
+    this._eventBusy = false
+    this._currentPriority = 0
+    this._queuedEvent = null
+    this._near = false
+    this._proximityCooldownUntil = 0
+    this._onPointerMove = this._onPointerMove.bind(this)
+    this._onPointerDown = this._onPointerDown.bind(this)
+    this._onKeyDown = this._onKeyDown.bind(this)
+    this._onFocus = this._onFocus.bind(this)
+    this._onVisibility = this._onVisibility.bind(this)
+  }
+
+  connectedCallback() {
+    if (!this.hasAttribute('tabindex') && !this.hasAttribute('pose')) this.tabIndex = 0
+    if (!this.hasAttribute('role') && !this.hasAttribute('pose')) this.setAttribute('role', 'button')
+    this._sync()
+    window.addEventListener('pointermove', this._onPointerMove, { passive: true })
+    this.addEventListener('pointerdown', this._onPointerDown, { passive: true })
+    this.addEventListener('keydown', this._onKeyDown)
+    this.addEventListener('focus', this._onFocus)
+    document.addEventListener('visibilitychange', this._onVisibility)
+    this._ensureLoop()
+    this._syncRunningState()
+  }
+
+  disconnectedCallback() {
+    this._destroyed = true
+    window.removeEventListener('pointermove', this._onPointerMove)
+    this.removeEventListener('pointerdown', this._onPointerDown)
+    this.removeEventListener('keydown', this._onKeyDown)
+    this.removeEventListener('focus', this._onFocus)
+    document.removeEventListener('visibilitychange', this._onVisibility)
+    this._cancelAll()
+  }
+
+  attributeChangedCallback() { this._sync() }
+
+  get size() { return Number(this.getAttribute('size')) || CONTRACT.defaultSize }
+  set size(value) { this.setAttribute('size', String(value)) }
+  get proximity() { return Number(this.getAttribute('proximity')) || Math.max(CONTRACT.defaultProximity, this.size * 1.8) }
+  set proximity(value) { this.setAttribute('proximity', String(value)) }
+  get reducedMotion() { return this.hasAttribute('reduced-motion') || this._media.matches }
+  set reducedMotion(value) { value ? this.setAttribute('reduced-motion', '') : this.removeAttribute('reduced-motion') }
+  get motionScale() { return clamp(this.size / CONTRACT.defaultSize, .72, 2.5) }
+
+  _sync() {
+    if (!this.shadowRoot) return
+    const size = clamp(this.size, 18, 720)
+    this.style.setProperty('--kael-size', `${size}px`)
+    this.setAttribute('aria-label', this.getAttribute('label') || 'Tương tác với Kael')
+    this.dataset.lod = size < 42 ? 'micro' : size < 78 ? 'compact' : 'full'
+    if (this.hasAttribute('pose')) this._applyStaticPose(this.getAttribute('pose'))
+    this._syncRunningState()
+  }
+
+  _onVisibility() {
+    this._tabVisible = !document.hidden
+    this._syncRunningState()
+  }
+
+  _canAutoplay() {
+    return !this.hasAttribute('pose') && !this.reducedMotion && !this.hasAttribute('paused') && this._tabVisible && !this._destroyed
+  }
+
+  _syncRunningState() {
+    if (!this.isConnected || this.hasAttribute('pose')) return
+    this._ensureLoop()
+    const shouldPlay = this._canAutoplay() && !this._eventBusy
+    for (const animation of this._loopAnimations) {
+      if (shouldPlay) animation.play()
+      else animation.pause()
+    }
+    this.toggleAttribute('data-paused', !shouldPlay)
+  }
+
+  _ensureLoop() {
+    if (this._loopAnimations.length || this.hasAttribute('pose') || this.reducedMotion) return
+    const s = this.motionScale
+    const duration = CONTRACT.autoplayClipDurationMs
+    const body = [
+      { offset: 0, transform: 'perspective(600px) translate3d(0,0,0) rotateZ(0deg) rotateX(0deg) scale(1)' },
+      { offset: .08, transform: 'perspective(600px) translate3d(0,0,0) rotateZ(0deg) rotateX(0deg) scale(1)' },
+      { offset: .22, transform: `perspective(600px) translate3d(${-5.70*s}px,${-2.0*s}px,0) rotateZ(-3.4deg) rotateX(-1deg) scale(1.035)`, easing: 'cubic-bezier(.16,.82,.22,1)' },
+      { offset: .36, transform: `perspective(600px) translate3d(${-6.40*s}px,${-1.7*s}px,0) rotateZ(-2.7deg) rotateX(-.4deg) scale(1.03)` },
+      { offset: .50, transform: `perspective(600px) translate3d(${-1.45*s}px,${-.6*s}px,0) rotateZ(-.4deg) rotateX(0deg) scale(1.012)`, easing: 'cubic-bezier(.28,.04,.22,1)' },
+      { offset: .63, transform: `perspective(600px) translate3d(${4.60*s}px,${-2.35*s}px,0) rotateZ(2.8deg) rotateX(-1deg) scale(1.045)`, easing: 'cubic-bezier(.16,.82,.22,1)' },
+      { offset: .72, transform: `perspective(600px) translate3d(${3.80*s}px,${-1.75*s}px,0) rotateZ(1.9deg) rotateX(-.4deg) scale(1.034)` },
+      { offset: .82, transform: `perspective(600px) translate3d(${.2*s}px,${2.3*s}px,0) rotateZ(0deg) rotateX(7deg) scale(.994,.955)`, easing: 'cubic-bezier(.24,.04,.28,1)' },
+      { offset: .91, transform: `perspective(600px) translate3d(0,${-.78*s}px,0) rotateZ(-.6deg) rotateX(-.6deg) scale(1.012)`, easing: 'cubic-bezier(.18,.78,.2,1)' },
+      { offset: 1, transform: 'perspective(600px) translate3d(0,0,0) rotateZ(0deg) rotateX(0deg) scale(1)' }
+    ]
+    const eyeLeft = [
+      { offset: 0, transform: 'translate(0,0) scale(1)' },
+      { offset: .09, transform: 'translate(0,.18px) scale(1,.22)' },
+      { offset: .14, transform: 'translate(0,0) scale(1)' },
+      { offset: .21, transform: `translate(${-1.55*s}px,${-.20*s}px) scale(1.03,1.04)`, easing: 'cubic-bezier(.16,.82,.22,1)' },
+      { offset: .41, transform: `translate(${-1.55*s}px,${-.20*s}px) scale(1.03,1.04)` },
+      { offset: .54, transform: 'translate(-.18px,-.08px) scale(1.01,1.02)' },
+      { offset: .63, transform: `translate(${.28*s}px,${-.38*s}px) scale(1.08,1.13)`, easing: 'cubic-bezier(.16,.82,.22,1)' },
+      { offset: .72, transform: 'translate(.10px,-.20px) scale(1.05,1.08)' },
+      { offset: .82, transform: `translate(0,${1.32*s}px) scale(1,.58)` },
+      { offset: .91, transform: 'translate(0,-.16px) scale(1.04,1.08)' },
+      { offset: 1, transform: 'translate(0,0) scale(1)' }
+    ]
+    const eyeRight = [
+      { offset: 0, transform: 'translate(0,0) scale(1)' },
+      { offset: .10, transform: 'translate(0,.18px) scale(1,.22)' },
+      { offset: .15, transform: 'translate(0,0) scale(1)' },
+      { offset: .23, transform: `translate(${-1.32*s}px,${-.18*s}px) scale(1.03,1.04)`, easing: 'cubic-bezier(.16,.82,.22,1)' },
+      { offset: .42, transform: `translate(${-1.32*s}px,${-.18*s}px) scale(1.03,1.04)` },
+      { offset: .56, transform: 'translate(.14px,-.08px) scale(1.01,1.02)' },
+      { offset: .65, transform: `translate(${- .22*s}px,${-.38*s}px) scale(1.08,1.13)`, easing: 'cubic-bezier(.16,.82,.22,1)' },
+      { offset: .73, transform: 'translate(-.08px,-.20px) scale(1.05,1.08)' },
+      { offset: .83, transform: `translate(0,${1.32*s}px) scale(1,.58)` },
+      { offset: .92, transform: 'translate(0,-.16px) scale(1.04,1.08)' },
+      { offset: 1, transform: 'translate(0,0) scale(1)' }
+    ]
+    const chain = [
+      { offset: 0, transform: 'rotate(0deg)' },
+      { offset: .23, transform: 'rotate(-3.4deg)' },
+      { offset: .39, transform: 'rotate(1.2deg)' },
+      { offset: .64, transform: 'rotate(4deg)' },
+      { offset: .74, transform: 'rotate(-1.8deg)' },
+      { offset: .82, transform: 'rotate(5.8deg)' },
+      { offset: .92, transform: 'rotate(-.8deg)' },
+      { offset: 1, transform: 'rotate(0deg)' }
+    ]
+    const glint = [
+      { offset: 0, opacity: .08, transform: 'translate(-1.8px,1.3px)' },
+      { offset: .27, opacity: .08, transform: 'translate(-1.8px,1.3px)' },
+      { offset: .33, opacity: .88, transform: 'translate(1.5px,-1.2px)' },
+      { offset: .40, opacity: .10, transform: 'translate(2.2px,-1.7px)' },
+      { offset: .61, opacity: .10, transform: 'translate(-1.6px,1.2px)' },
+      { offset: .67, opacity: .98, transform: 'translate(1.8px,-1.35px)' },
+      { offset: .75, opacity: .08, transform: 'translate(2.3px,-1.8px)' },
+      { offset: 1, opacity: .08, transform: 'translate(-1.8px,1.3px)' }
+    ]
+    const rim = [
+      { offset: 0, opacity: .50 }, { offset: .26, opacity: .50 }, { offset: .34, opacity: .88 },
+      { offset: .44, opacity: .46 }, { offset: .64, opacity: .46 }, { offset: .70, opacity: .76 }, { offset: 1, opacity: .50 }
+    ]
+    const shadow = [
+      { offset: 0, transform: 'translateX(-50%) scale(1)', opacity: .23 },
+      { offset: .22, transform: `translateX(calc(-50% - ${1.1*s}px)) scale(.88,.84)`, opacity: .17 },
+      { offset: .36, transform: `translateX(calc(-50% - ${1.35*s}px)) scale(.86,.82)`, opacity: .16 },
+      { offset: .63, transform: `translateX(calc(-50% + ${1.15*s}px)) scale(.82,.76)`, opacity: .15 },
+      { offset: .82, transform: 'translateX(-50%) scale(1.14,.78)', opacity: .31 },
+      { offset: 1, transform: 'translateX(-50%) scale(1)', opacity: .23 }
+    ]
+    const options = { duration, iterations: Infinity, easing: 'linear' }
+    this._loopAnimations = [
+      this._animateLoop('.clip-plane', body, options),
+      this._animateLoop('.eye-left', eyeLeft, options),
+      this._animateLoop('.eye-right', eyeRight, options),
+      this._animateLoop('.monocle-chain', chain, options),
+      this._animateLoop('.lens-edge-glint', glint, options),
+      this._animateLoop('.rim-glint-primary', rim, options),
+      this._animateLoop('.ground-shadow', shadow, options)
+    ].filter(Boolean)
+    this.dispatchEvent(new CustomEvent('kael-clip-start', { bubbles: true, composed: true, detail: { clip: 'autoplay', source: 'connected' } }))
+  }
+
+  _animateLoop(selector, frames, options) {
+    const node = this.shadowRoot.querySelector(selector)
+    if (!node) return null
+    return node.animate(frames, options)
+  }
+
+  _pauseLoop() { for (const animation of this._loopAnimations) animation.pause() }
+  _resumeLoop() {
+    if (!this._canAutoplay() || this._eventBusy) return
+    for (const animation of this._loopAnimations) animation.play()
+    this.removeAttribute('data-paused')
+  }
+
+  _onPointerMove(event) {
+    if (this.hasAttribute('pose') || event.pointerType === 'touch') return
+    const rect = this.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    const dx = event.clientX - cx
+    const dy = event.clientY - cy
+    const distance = Math.hypot(dx, dy)
+    const enter = distance <= this.proximity
+    const leave = distance > this.proximity * 1.18
+    if (enter && !this._near) {
+      this._near = true
+      const direction = clamp(dx / Math.max(rect.width * 1.2, 1), -1, 1)
+      this.dispatchEvent(new CustomEvent('kael-proximity', { bubbles: true, composed: true, detail: { distance, direction } }))
+      if (performance.now() >= this._proximityCooldownUntil) {
+        this._proximityCooldownUntil = performance.now() + CONTRACT.proximityCooldownMs
+        this.notice({ source: 'proximity', direction })
+      }
+    } else if (leave) {
+      this._near = false
+    }
+  }
+
+  _onPointerDown(event) {
+    if (this.hasAttribute('pose')) return
+    const rect = this.getBoundingClientRect()
+    const direction = clamp((event.clientX - (rect.left + rect.width / 2)) / Math.max(rect.width, 1), -1, 1)
+    this.bow({ source: event.pointerType === 'touch' ? 'touch' : 'pointer-press', direction })
+  }
+
+  _onKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      this.bow({ source: 'keyboard', direction: 0 })
+    }
+  }
+
+  _onFocus() {
+    if (!this.hasAttribute('pose')) this.notice({ source: 'focus', direction: 0 })
+  }
+
+  _computedBase(node) {
+    const style = getComputedStyle(node)
+    return {
+      transform: style.transform === 'none' ? 'none' : style.transform,
+      opacity: Number(style.opacity || 1)
+    }
+  }
+
+  _animateEvent(selector, peaks, options) {
+    const node = this.shadowRoot.querySelector(selector)
+    if (!node) return null
+    const base = this._computedBase(node)
+    const frames = [{ offset: 0, transform: base.transform, opacity: base.opacity }, ...peaks, { offset: 1, transform: base.transform, opacity: base.opacity }]
+    const animation = node.animate(frames, { ...options, fill: 'none' })
+    this._eventAnimations.push(animation)
+    return animation
+  }
+
+  async _runEventClip(clip, { source = 'api', direction = 0, priority = 1 } = {}) {
+    if (this.hasAttribute('pose')) return false
+    if (this.reducedMotion) return this._reducedAcknowledge(clip, source)
+    if (this._eventBusy) {
+      if (priority > this._currentPriority) {
+        this._queuedEvent = { clip, source, direction, priority }
+        for (const animation of this._eventAnimations) animation.playbackRate = Math.max(animation.playbackRate || 1, 3.2)
+      }
+      return false
+    }
+
+    this._eventBusy = true
+    this._currentPriority = priority
+    this._pauseLoop()
+    this.setAttribute('data-event', clip)
+    this.dispatchEvent(new CustomEvent('kael-clip-start', { bubbles: true, composed: true, detail: { clip, source } }))
+    this._eventAnimations = this._buildEventAnimations(clip, clamp(direction, -1, 1)).filter(Boolean)
+    await Promise.allSettled(this._eventAnimations.map(animation => animation.finished))
+    for (const animation of this._eventAnimations) animation.cancel()
+    this._eventAnimations.length = 0
+    this.removeAttribute('data-event')
+    this._eventBusy = false
+    this._currentPriority = 0
+    this.dispatchEvent(new CustomEvent('kael-clip-end', { bubbles: true, composed: true, detail: { clip, source } }))
+    this._resumeLoop()
+
+    const queued = this._queuedEvent
+    this._queuedEvent = null
+    if (queued) {
+      await wait(70)
+      return this._runEventClip(queued.clip, queued)
+    }
+    return true
+  }
+
+  _buildEventAnimations(clip, direction) {
+    const s = this.motionScale
+    if (clip === 'notice') {
+      const d = direction || (this.getAttribute('copy-direction') === 'right' ? 1 : -1)
+      const duration = CONTRACT.noticeClipDurationMs
+      const common = { duration, easing: 'linear' }
+      return [
+        this._animateEvent('.clip-plane', [
+          { offset: .12, transform: `perspective(600px) translate3d(${1.0*d*s}px,${-.7*s}px,0) rotateZ(${1.4*d}deg) scale(1.012)`, easing: 'cubic-bezier(.16,.82,.22,1)' },
+          { offset: .30, transform: `perspective(600px) translate3d(${6.80*d*s}px,${-3.0*s}px,0) rotateZ(${4.2*d}deg) rotateX(-1deg) scale(1.065)` },
+          { offset: .45, transform: `perspective(600px) translate3d(${6.20*d*s}px,${-2.5*s}px,0) rotateZ(${3.3*d}deg) scale(1.052)` },
+          { offset: .61, transform: `perspective(600px) translate3d(${3.10*d*s}px,${-1.45*s}px,0) rotateZ(${1.8*d}deg) scale(1.027)`, easing: 'cubic-bezier(.28,.04,.22,1)' },
+          { offset: .73, transform: `perspective(600px) translate3d(${.65*d*s}px,${1.85*s}px,0) rotateZ(${.35*d}deg) rotateX(5.2deg) scale(.993,.958)` },
+          { offset: .84, transform: `perspective(600px) translate3d(${.2*d*s}px,${-.65*s}px,0) rotateZ(${- .45*d}deg) scale(1.015)` }
+        ], common),
+        this._animateEvent('.eye-left', [
+          { offset: .10, transform: `translate(${1.15*d*s}px,${-.18*s}px) scale(1.05,1.09)` },
+          { offset: .31, transform: `translate(${1.55*d*s}px,${-.30*s}px) scale(1.10,1.15)` },
+          { offset: .49, transform: `translate(${1.45*d*s}px,${-.26*s}px) scale(1.08,1.12)` },
+          { offset: .72, transform: `translate(${.28*d*s}px,${1.05*s}px) scale(1,.66)` },
+          { offset: .84, transform: 'translate(0,-.12px) scale(1.04,1.08)' }
+        ], common),
+        this._animateEvent('.eye-right', [
+          { offset: .12, transform: `translate(${1.02*d*s}px,${-.18*s}px) scale(1.05,1.09)` },
+          { offset: .33, transform: `translate(${1.42*d*s}px,${-.30*s}px) scale(1.10,1.15)` },
+          { offset: .51, transform: `translate(${1.35*d*s}px,${-.26*s}px) scale(1.08,1.12)` },
+          { offset: .73, transform: `translate(${.25*d*s}px,${1.05*s}px) scale(1,.66)` },
+          { offset: .85, transform: 'translate(0,-.12px) scale(1.04,1.08)' }
+        ], common),
+        this._animateEvent('.monocle-chain', [
+          { offset: .28, transform: `rotate(${5.0*d}deg)` }, { offset: .48, transform: `rotate(${-2.2*d}deg)` },
+          { offset: .73, transform: 'rotate(5.4deg)' }, { offset: .86, transform: 'rotate(-1deg)' }
+        ], common),
+        this._animateEvent('.lens-edge-glint', [
+          { offset: .25, opacity: .10, transform: 'translate(-1.8px,1.3px)' },
+          { offset: .34, opacity: .96, transform: 'translate(1.7px,-1.3px)' },
+          { offset: .44, opacity: .08, transform: 'translate(2.3px,-1.8px)' }
+        ], common),
+        this._animateEvent('.ground-shadow', [
+          { offset: .30, transform: `translateX(calc(-50% + ${3.10*d*s}px)) scale(.78,.72)`, opacity: .13 },
+          { offset: .73, transform: `translateX(calc(-50% + ${.4*d*s}px)) scale(1.12,.78)`, opacity: .30 },
+          { offset: .86, transform: 'translateX(-50%) scale(.94,.92)', opacity: .20 }
+        ], common)
+      ]
+    }
+
+    const d = direction
+    const duration = CONTRACT.bowClipDurationMs
+    const common = { duration, easing: 'linear' }
+    return [
+      this._animateEvent('.clip-plane', [
+        { offset: .10, transform: `perspective(620px) translate3d(${1.2*d*s}px,${-.8*s}px,0) rotateZ(${1.6*d}deg) scale(1.018)`, easing: 'cubic-bezier(.16,.82,.22,1)' },
+        { offset: .21, transform: 'perspective(620px) translate3d(0,0,0) rotateZ(0deg) rotateX(0deg) scale(1)' },
+        { offset: .34, transform: `perspective(620px) translate3d(0,${-1.45*s}px,0) rotateX(-2deg) scale(1.012,.997)` },
+        { offset: .52, transform: `perspective(620px) translate3d(0,${CONTRACT.maxBowDropPx*s}px,0) rotateX(${CONTRACT.maxBowPitchDeg}deg) scale(.985,.938)`, easing: 'cubic-bezier(.24,.03,.28,1)' },
+        { offset: .69, transform: `perspective(620px) translate3d(0,${CONTRACT.maxBowDropPx*s}px,0) rotateX(${CONTRACT.maxBowPitchDeg}deg) scale(.985,.938)` },
+        { offset: .83, transform: `perspective(620px) translate3d(0,${-1.1*s}px,0) rotateX(-1.6deg) scale(1.014)` },
+        { offset: .93, transform: 'perspective(620px) translate3d(0,-.25px,0) rotateX(-.3deg) scale(1.004)' }
+      ], common),
+      this._animateEvent('.eye-left', [
+        { offset: .09, transform: `translate(${.78*d*s}px,${-.28*s}px) scale(1.05,1.09)` },
+        { offset: .22, transform: 'translate(0,0) scale(1,.92)' },
+        { offset: .52, transform: `translate(0,${1.85*s}px) scale(1,.58)` },
+        { offset: .69, transform: `translate(0,${1.85*s}px) scale(1,.58)` },
+        { offset: .82, transform: 'translate(0,-.18px) scale(1.06,1.12)' },
+        { offset: .93, transform: 'translate(0,0) scale(1)' }
+      ], common),
+      this._animateEvent('.eye-right', [
+        { offset: .10, transform: `translate(${.68*d*s}px,${-.28*s}px) scale(1.05,1.09)` },
+        { offset: .23, transform: 'translate(0,0) scale(1,.92)' },
+        { offset: .53, transform: `translate(0,${1.85*s}px) scale(1,.58)` },
+        { offset: .69, transform: `translate(0,${1.85*s}px) scale(1,.58)` },
+        { offset: .81, transform: 'translate(0,-.18px) scale(1.06,1.12)' },
+        { offset: .94, transform: 'translate(0,0) scale(1)' }
+      ], common),
+      this._animateEvent('.monocle-chain', [
+        { offset: .20, transform: `rotate(${1.8*d}deg)` }, { offset: .52, transform: 'rotate(7deg)' },
+        { offset: .69, transform: 'rotate(-2.6deg)' }, { offset: .84, transform: 'rotate(1.1deg)' }, { offset: .94, transform: 'rotate(0deg)' }
+      ], common),
+      this._animateEvent('.lens-edge-glint', [
+        { offset: .10, opacity: .58, transform: 'translate(.8px,-.5px)' },
+        { offset: .48, opacity: .04, transform: 'translate(2px,-1.6px)' },
+        { offset: .84, opacity: .92, transform: 'translate(1.7px,-1.3px)' },
+        { offset: .92, opacity: .08, transform: 'translate(2.3px,-1.8px)' }
+      ], common),
+      this._animateEvent('.ground-shadow', [
+        { offset: .34, transform: 'translateX(-50%) scale(.88,.86)', opacity: .18 },
+        { offset: .52, transform: 'translateX(-50%) scale(1.18,.74)', opacity: .34 },
+        { offset: .69, transform: 'translateX(-50%) scale(1.18,.74)', opacity: .34 },
+        { offset: .84, transform: 'translateX(-50%) scale(.92,.90)', opacity: .20 }
+      ], common)
+    ]
+  }
+
+  notice({ source = 'api', direction = 0 } = {}) { return this._runEventClip('notice', { source, direction, priority: 1 }) }
+  bow({ source = 'api', direction = 0 } = {}) { return this._runEventClip('bow', { source, direction, priority: 2 }) }
+  playClip(name, options = {}) { return name === 'bow' ? this.bow(options) : this.notice(options) }
+  pause() { this.setAttribute('paused', '') }
+  resume() { this.removeAttribute('paused') }
+  restart() {
+    this._ensureLoop()
+    for (const animation of this._loopAnimations) animation.currentTime = 0
+    this._syncRunningState()
+    return true
+  }
+
+  _reducedAnimation() {
+    return this.shadowRoot.querySelector('.clip-plane').animate([
+      { transform: 'scale(1)', opacity: 1 },
+      { offset: .48, transform: 'scale(.965)', opacity: .78 },
+      { transform: 'scale(1)', opacity: 1 }
+    ], { duration: CONTRACT.reducedDurationMs, easing: 'cubic-bezier(.2,.8,.2,1)' })
+  }
+
+  async _reducedAcknowledge(clip, source) {
+    if (this._eventBusy || this.hasAttribute('pose')) return false
+    this._eventBusy = true
+    this.dispatchEvent(new CustomEvent('kael-clip-start', { bubbles: true, composed: true, detail: { clip, source } }))
+    const animation = this._reducedAnimation()
+    await animation.finished.catch(() => {})
+    this._eventBusy = false
+    this.dispatchEvent(new CustomEvent('kael-clip-end', { bubbles: true, composed: true, detail: { clip, source } }))
+    return true
+  }
+
+  _cancelAll() {
+    for (const animation of [...this._loopAnimations, ...this._eventAnimations]) animation.cancel()
+    this._loopAnimations.length = 0
+    this._eventAnimations.length = 0
+  }
+
+  _applyStaticPose(pose) {
+    this.setAttribute('data-paused', '')
+    this.dataset.pose = pose || 'loop-rest'
+  }
+
+  _template() {
+    return `
+<style>
+:host {
+  --kael-size: 58px;
+  display: inline-grid;
+  place-items: center;
+  width: var(--kael-size);
+  height: calc(var(--kael-size) * 1.16);
+  position: relative;
+  border-radius: 50%;
+  outline: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  contain: layout paint style;
+}
+:host(:focus-visible)::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--kael-size) * -.08) calc(var(--kael-size) * -.08) calc(var(--kael-size) * .04);
+  border: max(1px, calc(var(--kael-size) * .018)) solid rgba(16,125,111,.54);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.root { width: 100%; height: 100%; position: relative; display: grid; place-items: start center; }
+.clip-plane { width: 100%; height: calc(var(--kael-size) * 1.04); position: relative; transform-origin: 50% 69%; will-change: transform; }
+.svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.eye { transform-box: fill-box; transform-origin: center; will-change: transform; }
+.monocle-chain { transform-box: fill-box; transform-origin: 0% 0%; will-change: transform; }
+.lens-edge-glint { transform-box: fill-box; transform-origin: center; opacity: .08; will-change: transform,opacity; }
+.rim-glint-primary { will-change: opacity; }
+.ground-shadow {
+  position: absolute;
+  z-index: -1;
+  left: 50%; bottom: calc(var(--kael-size) * .018);
+  width: calc(var(--kael-size) * .66); height: calc(var(--kael-size) * .115);
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0,0,0,.35), transparent 72%);
+  filter: blur(calc(var(--kael-size) * .035));
+  opacity: .23;
+  pointer-events: none;
+  will-change: transform,opacity;
+}
+:host([data-lod="micro"]) .chain-link-minor,
+:host([data-lod="micro"]) .rim-anchor-detail,
+:host([data-lod="micro"]) .monocle-ring-detail { display: none; }
+:host([data-lod="micro"]) .monocle-chain { opacity: .76; }
+:host([data-lod="compact"]) .chain-link-minor:nth-of-type(n+6) { display: none; }
+
+/* Static storyboard poses rendered by the report. */
+:host([data-pose="loop-scan"]) .clip-plane { transform: perspective(600px) translate3d(-7px,-3.2px,0) rotateZ(-3.4deg) scale(1.035); }
+:host([data-pose="loop-scan"]) .eye-left { transform: translate(-2.5px,-.3px) scale(1.03,1.04); }
+:host([data-pose="loop-scan"]) .eye-right { transform: translate(-2.15px,-.3px) scale(1.03,1.04); }
+:host([data-pose="loop-scan"]) .monocle-chain { transform: rotate(-3.4deg); }
+:host([data-pose="loop-hold"]) .clip-plane { transform: perspective(600px) translate3d(-7.6px,-2.7px,0) rotateZ(-2.7deg) scale(1.03); }
+:host([data-pose="loop-hold"]) .eye { transform: translate(-2.3px,-.3px) scale(1.03,1.04); }
+:host([data-pose="loop-hold"]) .lens-edge-glint { opacity: .9; transform: translate(1.5px,-1.2px); }
+:host([data-pose="loop-invite"]) .clip-plane { transform: perspective(600px) translate3d(5px,-3.8px,0) rotateZ(2.8deg) scale(1.045); }
+:host([data-pose="loop-invite"]) .eye-left { transform: translate(.45px,-.62px) scale(1.08,1.13); }
+:host([data-pose="loop-invite"]) .eye-right { transform: translate(-.35px,-.62px) scale(1.08,1.13); }
+:host([data-pose="loop-invite"]) .monocle-chain { transform: rotate(4deg); }
+:host([data-pose="loop-invite"]) .lens-edge-glint { opacity: .98; transform: translate(1.8px,-1.35px); }
+:host([data-pose="loop-nod"]) .clip-plane { transform: perspective(600px) translate3d(0,4px,0) rotateX(7deg) scale(.994,.955); }
+:host([data-pose="loop-nod"]) .eye { transform: translate(0,2.2px) scale(1,.58); }
+:host([data-pose="loop-nod"]) .monocle-chain { transform: rotate(5.8deg); }
+:host([data-pose="loop-nod"]) .ground-shadow { transform: translateX(-50%) scale(1.14,.78); opacity: .31; }
+:host([data-pose="loop-settle"]) .clip-plane { transform: perspective(600px) translate3d(0,-1.2px,0) rotateZ(-.6deg) scale(1.012); }
+:host([data-pose="loop-settle"]) .eye { transform: translate(0,-.3px) scale(1.04,1.08); }
+:host([data-pose="notice-lock"]) .clip-plane { transform: perspective(600px) translate3d(-2px,-1.4px,0) rotateZ(-1.4deg) scale(1.02); }
+:host([data-pose="notice-lock"]) .eye { transform: translate(-2px,-.4px) scale(1.08,1.12); }
+:host([data-pose="notice-approach"]) .clip-plane { transform: perspective(600px) translate3d(-8px,-5px,0) rotateZ(-4.2deg) scale(1.065); }
+:host([data-pose="notice-approach"]) .eye { transform: translate(-2.5px,-.5px) scale(1.1,1.15); }
+:host([data-pose="notice-approach"]) .monocle-chain { transform: rotate(-5deg); }
+:host([data-pose="notice-approach"]) .lens-edge-glint { opacity: .96; transform: translate(1.7px,-1.3px); }
+:host([data-pose="notice-nod"]) .clip-plane { transform: perspective(600px) translate3d(-1px,3.4px,0) rotateZ(-.4deg) rotateX(5.2deg) scale(.993,.958); }
+:host([data-pose="notice-nod"]) .eye { transform: translate(-.45px,1.8px) scale(1,.66); }
+:host([data-pose="notice-nod"]) .monocle-chain { transform: rotate(5.4deg); }
+:host([data-pose="bow-notice"]) .clip-plane { transform: perspective(620px) translate3d(-2px,-1.3px,0) rotateZ(-1.6deg) scale(1.018); }
+:host([data-pose="bow-notice"]) .eye { transform: translate(-1.2px,-.45px) scale(1.05,1.09); }
+:host([data-pose="bow-hold"]) .clip-plane { transform: perspective(620px) translate3d(0,9.2px,0) rotateX(16deg) scale(.985,.938); }
+:host([data-pose="bow-hold"]) .eye { transform: translate(0,3px) scale(1,.58); }
+:host([data-pose="bow-hold"]) .monocle-chain { transform: rotate(7deg); }
+:host([data-pose="bow-hold"]) .ground-shadow { transform: translateX(-50%) scale(1.18,.74); opacity: .34; }
+:host([data-pose="bow-return"]) .clip-plane { transform: perspective(620px) translate3d(0,-1.8px,0) rotateX(-1.6deg) scale(1.014); }
+:host([data-pose="bow-return"]) .eye { transform: translate(0,-.3px) scale(1.06,1.12); }
+:host([data-pose="bow-return"]) .lens-edge-glint { opacity: .92; transform: translate(1.7px,-1.3px); }
+</style>
+<div class="root">
+  <div class="clip-plane">
+    <svg class="svg" viewBox="0 0 120 126" aria-hidden="true" focusable="false">
+        <defs>
+          <radialGradient id="body" cx="32%" cy="20%" r="84%">
+            <stop offset="0" stop-color="#697177"/>
+            <stop offset=".20" stop-color="#30353a"/>
+            <stop offset=".52" stop-color="#111416"/>
+            <stop offset=".80" stop-color="#050607"/>
+            <stop offset="1" stop-color="#010203"/>
+          </radialGradient>
+          <radialGradient id="bodyDepth" cx="72%" cy="82%" r="68%">
+            <stop offset="0" stop-color="#000" stop-opacity=".72"/>
+            <stop offset=".52" stop-color="#050607" stop-opacity=".25"/>
+            <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="topBloom" cx="22%" cy="4%" r="74%">
+            <stop offset="0" stop-color="#fff" stop-opacity=".31"/>
+            <stop offset=".28" stop-color="#f3f5f6" stop-opacity=".12"/>
+            <stop offset=".66" stop-color="#c9cdd1" stop-opacity=".025"/>
+            <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="rim" x1="21" y1="17" x2="101" y2="104" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#f7f8f9"/><stop offset=".14" stop-color="#b8bec3"/><stop offset=".39" stop-color="#40454a"/><stop offset=".69" stop-color="#111315"/><stop offset=".84" stop-color="#71777c"/><stop offset="1" stop-color="#dfe2e4"/>
+          </linearGradient>
+          <linearGradient id="rimInner" x1="25" y1="20" x2="96" y2="101" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#fff" stop-opacity=".72"/><stop offset=".28" stop-color="#d5d9dc" stop-opacity=".12"/><stop offset=".70" stop-color="#020304" stop-opacity=".72"/><stop offset="1" stop-color="#c7ccd0" stop-opacity=".42"/>
+          </linearGradient>
+          <linearGradient id="monocleMetal" x1="64" y1="40" x2="87" y2="67" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#fff"/><stop offset=".16" stop-color="#cfd3d6"/><stop offset=".38" stop-color="#5b6166"/><stop offset=".62" stop-color="#171a1d"/><stop offset=".82" stop-color="#8e9499"/><stop offset="1" stop-color="#eceeef"/>
+          </linearGradient>
+          <radialGradient id="lensGlass" cx="34%" cy="22%" r="84%"><stop stop-color="#fff" stop-opacity=".05"/><stop offset=".42" stop-color="#cdd2d6" stop-opacity=".01"/><stop offset="1" stop-color="#090b0d" stop-opacity=".035"/></radialGradient>
+          <filter id="shellShadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="4" stdDeviation="4.6" flood-color="#000" flood-opacity=".62"/></filter>
+          <filter id="eyeSoft" x="-80%" y="-50%" width="260%" height="200%"><feDropShadow dx="0" dy=".6" stdDeviation=".65" flood-color="#fff" flood-opacity=".20"/><feDropShadow dx="0" dy="1.2" stdDeviation="1.3" flood-color="#000" flood-opacity=".42"/></filter>
+        </defs>
+        <g filter="url(#shellShadow)">
+          <circle cx="60" cy="58" r="47.1" fill="#050607" opacity=".98"/>
+          <circle cx="60" cy="58" r="45.7" fill="url(#rim)"/>
+          <circle cx="60" cy="58" r="43.8" fill="#08090a"/>
+          <circle cx="60" cy="58" r="42.6" fill="url(#body)"/>
+          <circle cx="60" cy="58" r="42.6" fill="url(#bodyDepth)"/>
+          <circle cx="60" cy="58" r="42.6" fill="url(#topBloom)"/>
+          <circle cx="60" cy="58" r="43.35" fill="none" stroke="url(#rimInner)" stroke-width="1.25"/>
+          <!-- Perimeter-only reflections. -->
+          <path class="rim-glint-primary" d="M25.8 36.5 A42.7 42.7 0 0 1 55.6 15.7" fill="none" stroke="#fff" stroke-opacity=".52" stroke-width="1.35" stroke-linecap="round"/>
+          <path class="rim-glint-secondary" d="M91.2 31.1 A42.7 42.7 0 0 1 102.2 56.1" fill="none" stroke="#e9ecee" stroke-opacity=".28" stroke-width="1.05" stroke-linecap="round"/>
+          <path d="M76.8 97.1 A42.7 42.7 0 0 1 45.3 99.0" fill="none" stroke="#c9ced2" stroke-opacity=".18" stroke-width=".8" stroke-linecap="round"/>
+          <g class="eyes" filter="url(#eyeSoft)">
+            <g class="eye eye-left"><rect x="46.2" y="43.3" width="5.8" height="16.6" rx="2.9" fill="#fff" transform="rotate(-4 49.1 51.6)"/></g>
+            <g class="eye eye-right"><rect x="68.0" y="43.3" width="5.8" height="16.6" rx="2.9" fill="#fff" transform="rotate(3 70.9 51.6)"/></g>
+          </g>
+          <g class="monocle">
+            <circle cx="71.2" cy="51.9" r="12.25" fill="none" stroke="#030405" stroke-width="1.35" opacity=".42"/>
+            <circle cx="71.2" cy="51.9" r="11.55" fill="url(#lensGlass)"/>
+            <circle cx="71.2" cy="51.9" r="12.35" fill="none" stroke="#0a0b0d" stroke-width="2.7" opacity=".86"/>
+            <circle cx="71.2" cy="51.9" r="12.05" fill="none" stroke="url(#monocleMetal)" stroke-width="1.72"/>
+            <circle class="monocle-ring-detail" cx="71.2" cy="51.9" r="10.87" fill="none" stroke="#edf0f2" stroke-opacity=".25" stroke-width=".56"/>
+            <path class="lens-edge-glint" d="M64.1 43.4 A11.1 11.1 0 0 1 70.1 40.9" fill="none" stroke="#fff" stroke-width=".88" stroke-linecap="round"/>
+            <g>
+              <path d="M80.65 44.55 l2.35 -1.55 1.35 1.75 -2.15 1.75 z" fill="url(#monocleMetal)" stroke="#111417" stroke-width=".42"/>
+              <circle cx="82.62" cy="44.55" r=".68" fill="#dfe3e6"/>
+              <path d="M79.7 60.7 l2.62 1.05 -.62 2.08 -2.78 -1.1 z" fill="url(#monocleMetal)" stroke="#111417" stroke-width=".42"/>
+              <circle cx="81.25" cy="62.38" r=".62" fill="#dfe3e6"/>
+            </g>
+            <g class="monocle-chain">
+              <path d="M81.2 62.35 C84.9 67.8 87.1 73.2 89.2 79.9 C90.0 82.5 90.1 84.4 90.1 86.1" fill="none" stroke="#c9cdd0" stroke-opacity=".68" stroke-width=".72" stroke-linecap="round" stroke-dasharray=".95 1.42"/>
+              <ellipse cx="82.55" cy="64.8" rx="1.05" ry=".62" fill="none" stroke="#e6e8ea" stroke-width=".47" transform="rotate(53 82.55 64.8)"/>
+              <ellipse cx="84.1" cy="67.35" rx="1.05" ry=".62" fill="none" stroke="#bfc4c8" stroke-width=".47" transform="rotate(58 84.1 67.35)"/>
+              <ellipse cx="85.45" cy="70.2" rx="1.05" ry=".62" fill="none" stroke="#e0e3e5" stroke-width=".47" transform="rotate(63 85.45 70.2)"/>
+              <ellipse class="chain-link-minor" cx="86.65" cy="73.25" rx="1.03" ry=".6" fill="none" stroke="#b7bcc0" stroke-width=".45" transform="rotate(67 86.65 73.25)"/>
+              <ellipse class="chain-link-minor" cx="87.75" cy="76.4" rx="1" ry=".58" fill="none" stroke="#d9dde0" stroke-width=".44" transform="rotate(71 87.75 76.4)"/>
+              <ellipse class="chain-link-minor" cx="88.7" cy="79.58" rx=".98" ry=".56" fill="none" stroke="#b5babf" stroke-width=".43" transform="rotate(75 88.7 79.58)"/>
+              <g class="rim-anchor-detail"><circle cx="90.05" cy="86.15" r="2.25" fill="#0a0c0e" stroke="url(#monocleMetal)" stroke-width=".85"/><circle cx="90.05" cy="86.15" r=".76" fill="#dfe3e6"/></g>
+            </g>
+          </g>
+        </g>
+      </svg>
+  </div>
+  <span class="ground-shadow"></span>
+</div>`
+  }
+}
+
+if (!customElements.get('kael-motion-v11')) customElements.define('kael-motion-v11', KaelMotionV11)
+
+async function verifyKaelMotionV11() {
+  const live = document.createElement('kael-motion-v11')
+  live.setAttribute('size', '120')
+  live.style.position = 'fixed'
+  live.style.left = '-2000px'
+  live.style.top = '0'
+  document.body.appendChild(live)
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  const root = live.shadowRoot
+  const before = live._loopAnimations[0]?.currentTime || 0
+  await wait(520)
+  const after = live._loopAnimations[0]?.currentTime || 0
+  const checks = [
+    ['custom element registered', Boolean(customElements.get('kael-motion-v11'))],
+    ['legacy status count is zero', CONTRACT.legacyStatusCount === 0],
+    ['legacy motion count is zero', CONTRACT.legacyMotionCount === 0],
+    ['hands remain removed', CONTRACT.handCount === 0 && root.querySelectorAll('[class*="hand"]').length === 0],
+    ['accessory-status system remains removed', CONTRACT.accessoryCount === 0],
+    ['three-clip vocabulary', CONTRACT.motionVocabulary.join(',') === 'autoplay-clip,notice-clip,formal-bow'],
+    ['autoplay clip is 3.8 seconds', CONTRACT.autoplayClipDurationMs === 3800],
+    ['proximity clip is 3.3 seconds', CONTRACT.noticeClipDurationMs === 3300],
+    ['formal bow clip is 3.7 seconds', CONTRACT.bowClipDurationMs === 3700],
+    ['old random scheduler removed', typeof live._scheduleNext === 'undefined'],
+    ['old isolated micro APIs removed', ['softBlink','glanceToCopy','reconnect','invite','acknowledge'].every(name => typeof live[name] === 'undefined')],
+    ['autoplay loop created', live._loopAnimations.length >= 7],
+    ['autoplay time advances automatically', Math.abs(after - before) > 20],
+    ['loop uses infinite iterations', live._loopAnimations.every(a => a.effect?.getTiming().iterations === Infinity)],
+    ['two white pill eyes', root.querySelectorAll('.eye rect').length === 2],
+    ['one European monocle', root.querySelectorAll('.monocle').length === 1],
+    ['six visible chain links', root.querySelectorAll('.monocle-chain ellipse').length === 6],
+    ['proximity API exists', typeof live.notice === 'function' && typeof live._onPointerMove === 'function'],
+    ['formal bow API exists', typeof live.bow === 'function'],
+    ['pause/resume/restart APIs exist', ['pause','resume','restart'].every(name => typeof live[name] === 'function')],
+    ['computed-pose event handoff exists', typeof live._computedBase === 'function' && typeof live._animateEvent === 'function'],
+    ['event priority queue exists', '_queuedEvent' in live && '_currentPriority' in live],
+    ['autoplay is independent of viewport observers', typeof live._observer === 'undefined'],
+    ['tab visibility pause exists', typeof live._onVisibility === 'function'],
+    ['reduced motion path exists', typeof live._reducedAcknowledge === 'function'],
+    ['no raster in model', root.querySelectorAll('img,image,video,canvas').length === 0],
+    ['no external scripts', document.querySelectorAll('script[src]').length === 0],
+    ['no external stylesheets', document.querySelectorAll('link[rel="stylesheet"]').length === 0]
+  ]
+
+  const noticePromise = live.notice({ source: 'verify', direction: -1 })
+  await wait(32)
+  for (const animation of live._eventAnimations) animation.playbackRate = 24
+  const noticeResult = await noticePromise
+  checks.push(['notice event clip executes', noticeResult === true])
+  checks.push(['autoplay resumes after notice', live._loopAnimations.every(a => a.playState === 'running')])
+
+  const bowPromise = live.bow({ source: 'verify', direction: 1 })
+  await wait(32)
+  for (const animation of live._eventAnimations) animation.playbackRate = 24
+  const bowResult = await bowPromise
+  checks.push(['formal bow clip executes', bowResult === true])
+  checks.push(['event animations clean up', live._eventAnimations.length === 0])
+
+  const failed = checks.filter(([, pass]) => !pass)
+  const report = [
+    `RESULT: ${failed.length ? 'FAIL' : 'PASS'}`,
+    `Checks: ${checks.length - failed.length} / ${checks.length}`,
+    '',
+    `Autoplay clip:            ${CONTRACT.autoplayClipDurationMs} ms`,
+    `Proximity event clip:     ${CONTRACT.noticeClipDurationMs} ms`,
+    `Formal bow clip:          ${CONTRACT.bowClipDurationMs} ms`,
+    `Loop animation layers:    ${live._loopAnimations.length}`,
+    `Autoplay phase delta:     ${Math.round(Math.abs(after - before))} ms in sample`,
+    `Random scheduler:         removed`,
+    `Legacy Status:            ${CONTRACT.legacyStatusCount}`,
+    `Hands:                    ${CONTRACT.handCount}`,
+    `Raster elements:          ${root.querySelectorAll('img,image,video,canvas').length}`,
+    `External dependencies:    0`,
+    '',
+    ...checks.map(([name, pass]) => `${pass ? 'PASS' : 'FAIL'}  ${name}`)
+  ].join('\n')
+  live.remove()
+  return { ok: failed.length === 0, checks, report }
+}
+window.verifyKaelMotionV11 = verifyKaelMotionV11
+
+const reportMode = location.hash === '#report' || new URLSearchParams(location.search).has('report')
+document.getElementById('prototypePage').hidden = reportMode
+document.getElementById('reportPage').hidden = !reportMode
+
+const hero = document.getElementById('heroKael')
+const state = document.getElementById('liveState')
+const setState = text => { if (state) state.textContent = text }
+for (const node of [hero, document.getElementById('cardKael')].filter(Boolean)) {
+  node.addEventListener('kael-clip-start', event => setState(`${event.detail.clip.toUpperCase()} · ${event.detail.source}`))
+  node.addEventListener('kael-clip-end', () => setState('AUTOPLAY · Observe → Invite → Nod'))
+}
+
+document.querySelectorAll('[data-action]').forEach(button => {
+  button.addEventListener('click', () => {
+    const action = button.dataset.action
+    if (action === 'restart') hero?.restart()
+    if (action === 'notice-left') hero?.notice({ source: 'control', direction: -1 })
+    if (action === 'notice-right') hero?.notice({ source: 'control', direction: 1 })
+    if (action === 'bow') hero?.bow({ source: 'control', direction: 0 })
+    if (action === 'toggle' && hero) {
+      if (hero.hasAttribute('paused')) { hero.resume(); button.textContent = 'Pause loop' }
+      else { hero.pause(); button.textContent = 'Resume loop' }
+    }
+  })
+})
+
+verifyKaelMotionV11().then(result => {
+  const target = document.getElementById('reportVerification')
+  if (target) target.textContent = result.report
+  console.info(result.report)
+  window.__KAEL_REPORT_READY__ = true
+})
+})()
+</script>
+</body>
+</html>

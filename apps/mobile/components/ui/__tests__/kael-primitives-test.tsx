@@ -10,10 +10,9 @@ jest.mock('expo-image', () => {
   }
 })
 
-import { KAEL_CONTEXTUAL_STATES, KAEL_CORE_STATES, KAEL_EMOTIONS, getKaelMascotAssetStatus } from '@/components/kael/kael-mascot-assets'
-import { KaelMascot } from '@/components/kael/kael-mascot'
 import { component, shadow, typography } from '@/design/theme'
 import { FormulaMintCanvasAura } from '../formula-mint-canvas'
+import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
 import { AlphaStop } from '../svg-alpha-stop'
 import {
   KaelAlertBadge,
@@ -106,32 +105,13 @@ describe('Kael UI primitives', () => {
     expect(UNSAFE_getAllByType(Rect)[0].props.rx).toBeUndefined()
   })
 
-  it('keeps the full official mascot state and emotion taxonomy addressable', () => {
-    expect(KAEL_CORE_STATES).toHaveLength(10)
-    expect(KAEL_CONTEXTUAL_STATES).toHaveLength(10)
-    expect(KAEL_EMOTIONS).toHaveLength(10)
-    expect([...KAEL_CORE_STATES, ...KAEL_CONTEXTUAL_STATES]).toEqual([
-      'welcome',
-      'listening',
-      'thinking',
-      'analyzing',
-      'processing',
-      'understood',
-      'proposing',
-      'success',
-      'warning',
-      'error',
-      'typing',
-      'recording',
-      'fileReview',
-      'locationMap',
-      'findingWorker',
-      'priceCheck',
-      'compareOptions',
-      'report',
-      'reminder',
-      'miniCelebration',
-    ])
+  it('keeps Kael visual identity to one vector core, one Home clip, and one bow interaction', () => {
+    expect(KAEL_CORE_V9_CONTRACT).toMatchObject({
+      legacyMotionCount: 0,
+      legacyStatusCount: 0,
+      motionVocabulary: ['autoplay-clip', 'formal-bow'],
+      renderer: 'inline-svg',
+    })
   })
 
   it('prevents disabled primary actions from firing', () => {
@@ -292,14 +272,4 @@ describe('Kael UI primitives', () => {
     expect(screen.queryByTestId('kael-hidden-alert-badge')).toBeNull()
   })
 
-  it('uses official mascot board assets for states and emotions', () => {
-    expect(getKaelMascotAssetStatus('findingWorker')).toBe('state')
-    expect(getKaelMascotAssetStatus('welcome', 'happy')).toBe('emotion')
-
-    render(<KaelMascot state="findingWorker" />)
-    expect(screen.getByTestId('kael-mascot-findingWorker').props.accessibilityRole).toBe('image')
-    expect(screen.getByTestId('kael-mascot-findingWorker').props.accessibilityLabel).toBe('Kael findingWorker')
-
-    expect(screen.queryByText(/Asset/)).toBeNull()
-  })
 })

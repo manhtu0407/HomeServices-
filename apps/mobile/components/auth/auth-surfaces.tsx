@@ -14,7 +14,6 @@ const AUTH_ENTRY_SOURCE_OF_TRUTH_MARKERS = [
   'nestscout-aurora-nest-north-star-awakening.json',
   'auth-entry-six-step-native-lottie',
   'auth-entry-1-1-splash-brand',
-  'auth-entry-1-2-welcome-kael',
   'auth-entry-1-3-login-gate',
   'auth-entry-1-4-login-email',
   'auth-entry-1-5-register-email',
@@ -40,7 +39,7 @@ function firstParam(value: EntryParam) {
 function resolveEntryStep(value: EntryParam): EntryAccessStep | null {
   const stage = firstParam(value)
   if (stage === '1.1' || stage === 'splash') return 'splash'
-  if (stage === '1.2' || stage === 'welcome') return 'welcome'
+  if (stage === '1.2' || stage === 'welcome') return 'role-gate'
   if (stage === '1.3' || stage === 'role' || stage === 'role-gate') return 'role-gate'
   if (stage === '1.4' || stage === 'login') return 'login'
   if (stage === '1.5' || stage === 'register') return 'register'

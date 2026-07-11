@@ -29,7 +29,6 @@ jest.mock('react-native-safe-area-context', () => {
     useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
   }
 })
-
 jest.mock('@/lib/auth-provider', () => ({
   useAuth: () => ({
     authError: null,
@@ -181,9 +180,8 @@ describe('LoginRoleSurface', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('supports direct review links for all six entry sections', () => {
+  it('supports direct review links without restoring the removed welcome section', () => {
     const stages = [
-      ['1.2', 'auth-welcome-screen'],
       ['1.3', 'auth-role-gate-screen'],
       ['1.4', 'auth-login-screen'],
       ['1.5', 'auth-register-screen'],
@@ -199,7 +197,7 @@ describe('LoginRoleSurface', () => {
     }
   })
 
-  it('auto-advances from splash to welcome using the source flow timing', () => {
+  it('auto-advances from splash directly to the role gate after the welcome section is removed', () => {
     render(<LoginRoleSurface />)
 
     expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
@@ -214,15 +212,12 @@ describe('LoginRoleSurface', () => {
       jest.advanceTimersByTime(2650)
     })
 
-    expect(screen.getByTestId('auth-welcome-screen')).toBeOnTheScreen()
-    expect(screen.getByText('Xin chào!\nMình là Kael.')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
   })
 
-  it('continues from welcome into the role-first login gate without guest entry', () => {
+  it('maps the former welcome review link into the role-first login gate without guest entry', () => {
     mockRouteParams = { stage: '1.2' }
     render(<LoginRoleSurface />)
-
-    fireEvent.press(screen.getByTestId('auth-welcome-continue'))
 
     expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-role-gate-content')).toBeOnTheScreen()

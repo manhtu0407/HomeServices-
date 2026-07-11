@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
-import { AssetTile, GlassPanel, IconButton, KaelMascot, KaelStatus, NativeSafeGlassPanel, PageAura, PrimaryButton, TextAction, useEntryAccessibility } from './components/materials'
+import { AssetTile, GlassPanel, IconButton, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { EntryIcon, ProviderBrandIcon, type ProviderBrand } from './components/icons'
 import { LottieLogoMark } from './lottie-logo-mark'
@@ -31,7 +31,6 @@ const assets = {
   activity: require('./assets/activity.png') as ImageSourcePropType,
   customerHome: require('./assets/customer-home.png') as ImageSourcePropType,
   identity: require('./assets/identity.png') as ImageSourcePropType,
-  kael: require('./assets/kael.png') as ImageSourcePropType,
   shield: require('./assets/shield.png') as ImageSourcePropType,
   workerTools: require('./assets/worker-tools.png') as ImageSourcePropType,
 }
@@ -82,7 +81,7 @@ export function EntryBrandAccessFlow({
 
   useEffect(() => {
     if (step !== 'splash' || splashDurationMs <= 0) return
-    const timeout = setTimeout(() => go('welcome'), splashDurationMs)
+    const timeout = setTimeout(() => go('role-gate'), splashDurationMs)
     return () => clearTimeout(timeout)
   }, [go, splashDurationMs, step])
 
@@ -185,8 +184,6 @@ export function EntryBrandAccessFlow({
     switch (step) {
       case 'splash':
         return <SplashScreen durationMs={splashDurationMs} />
-      case 'welcome':
-        return <WelcomeScreen onContinue={() => go('role-gate')} onExistingAccount={() => go('role-gate')} />
       case 'role-gate':
         return <RoleGateScreen onContinue={() => go('login')} onRoleChange={chooseRole} role={role} />
       case 'login':
@@ -404,24 +401,6 @@ function SplashFormulaAura() {
   )
 }
 
-function WelcomeScreen({ onContinue, onExistingAccount }: { onContinue: () => void; onExistingAccount: () => void }) {
-  return (
-    <Screen>
-      <View style={styles.screen} testID="auth-welcome-1-2">
-        <View style={styles.welcomeHead}>
-          <Text style={[styles.h1, styles.centerText, styles.welcomeTitle]}>Xin chào!{`\n`}Mình là Kael.</Text>
-          <Text style={[styles.lead, styles.centerText, styles.welcomeLead]}>Tìm đúng người, hiểu đúng việc và theo sát từng bước cùng bạn.</Text>
-        </View>
-        <View style={styles.flexCenter}><KaelMascot source={assets.kael} /></View>
-        <View style={styles.actionStack}>
-          <PrimaryButton label="Tiếp tục" onPress={onContinue} testID="auth-welcome-continue" />
-          <TextAction label="Tôi đã có tài khoản" onPress={onExistingAccount} testID="auth-welcome-existing-account" />
-        </View>
-      </View>
-    </Screen>
-  )
-}
-
 function RoleGateScreen({ onContinue, onRoleChange, role }: { onContinue: () => void; onRoleChange: (role: EntryRole) => void; role: EntryRole }) {
   return (
     <Screen>
@@ -512,7 +491,6 @@ function FormHeader({ lead, title }: { lead: string; title: string }) {
           <Text style={styles.formTitle}>{normalizeTitleBreaks(title)}</Text>
           <Text style={[styles.lead, { marginTop: 6 }]}>{lead}</Text>
         </View>
-        <KaelStatus source={assets.kael} />
       </View>
     </View>
   )
@@ -644,7 +622,7 @@ function OnboardingScreen({ busy, error, onComplete, role }: { busy: boolean; er
           <Text style={[styles.h1, styles.onboardingTitle]}>Chào mừng{`\n`}về nhà.</Text>
           <Text style={[styles.lead, styles.onboardingLead]}>{role === 'customer' ? 'Kael sẽ đồng hành từ yêu cầu đầu tiên đến khi công việc hoàn tất.' : 'Kael sẽ hướng dẫn bạn hoàn thiện hồ sơ và bắt đầu nhận việc minh bạch.'}</Text>
         </View>
-        <KaelMascot compact source={assets.kael} />
+        <KaelCoreHero compact />
         <View style={styles.benefitRow}>
           <BenefitCard label="Hiểu đúng yêu cầu" meta="Gợi ý rõ ràng" source={assets.identity} />
           <BenefitCard label="Theo dõi minh bạch" meta="Mọi bước đều rõ" source={assets.activity} />
@@ -671,7 +649,6 @@ function BenefitCard({ label, meta, source }: { label: string; meta: string; sou
 }
 
 const styles = StyleSheet.create({
-  actionStack: { gap: 7, paddingBottom: 4 },
   benefitCard: { alignItems: 'center', borderRadius: 23, flex: 1, minHeight: 101, paddingHorizontal: 7, paddingVertical: 10 },
   benefitIcon: { height: 47, marginBottom: 4, width: 47 },
   benefitLabel: { color: entryTheme.color.text.strong, fontSize: 10.5, fontWeight: '700', lineHeight: 14, textAlign: 'center' },
@@ -683,8 +660,6 @@ const styles = StyleSheet.create({
   dividerLine: { backgroundColor: entryTheme.color.surface.stroke, flex: 1, height: 1 },
   dividerText: { color: entryTheme.color.text.muted, fontSize: 10 },
   error: { color: entryTheme.color.accent.destructive, fontSize: 11, lineHeight: 16, marginBottom: 10, marginTop: -2 },
-  flexCenter: { alignItems: 'center', flex: 1, justifyContent: 'center', marginHorizontal: -10 },
-  centerText: { textAlign: 'center' },
   formHead: { paddingBottom: 12, paddingHorizontal: 3, paddingTop: 6 },
   formHeadRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   formPanel: { borderRadius: entryTheme.radius.sheet, paddingBottom: 15, paddingHorizontal: 15, paddingTop: 17 },
@@ -769,7 +744,4 @@ const styles = StyleSheet.create({
   topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 48 },
   topbarSpacer: { width: 42 },
   topbarTitle: { color: entryTheme.color.text.primary, fontSize: 15, fontWeight: '700', letterSpacing: 0 },
-  welcomeHead: { alignItems: 'center', paddingHorizontal: 4, paddingTop: 12 },
-  welcomeLead: { marginTop: 8, maxWidth: 340 },
-  welcomeTitle: { marginTop: 0, maxWidth: 340 },
 })

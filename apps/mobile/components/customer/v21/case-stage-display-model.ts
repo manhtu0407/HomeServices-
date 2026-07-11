@@ -1,9 +1,7 @@
-import type { ImageSourcePropType } from 'react-native'
-
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalDeal, LocalDealEstimate, LocalDealStatus } from '@nestscout/shared'
 
-import { customerV21Assets, customerV21ServiceAssets } from './assets'
+import { customerV21Assets, customerV21ServiceAssets, type CustomerV21Visual } from './assets'
 import { customerV21CommonCopy, customerV21ServiceCopy, customerV21StatusCopy } from './copy'
 import {
   agenticDealProblemLabel,
@@ -89,7 +87,7 @@ export function activityStatusRows(
     workerName: string
   },
 ) {
-  const row = (image: ImageSourcePropType, label: string, value: string) => ({ image, label, value })
+  const row = (image: CustomerV21Visual, label: string, value: string) => ({ image, label, value })
   if (screenId === '2.10-location-eta') {
     return [
       row(customerV21Assets.map, values.language === 'vi' ? 'Địa điểm' : 'Location', values.address),
@@ -129,7 +127,7 @@ export function screenIdsForStatus(status: LocalDealStatus): CustomerV21ScreenId
   return ['2.6-case-overview']
 }
 
-export function caseScreenAsset(screenId: CustomerV21ScreenId): ImageSourcePropType {
+export function caseScreenAsset(screenId: CustomerV21ScreenId): CustomerV21Visual {
   if (screenId.startsWith('3.')) return customerV21Assets.payment
   if (screenId === '2.10-location-eta' || screenId === '2.11-live-alert') return customerV21Assets.map
   if (screenId === '2.5-chat-case') return customerV21Assets.kael
@@ -202,7 +200,7 @@ export function caseReferenceRows(screenId: CustomerV21ScreenId, deal: LocalDeal
   const completionEvidence = formatEvidenceFileCount(deal.completionPhotoUrls?.length, language)
   const completionNote = deal.completionNotes?.trim() || copy.dataPending
 
-  const row = (image: ImageSourcePropType, label: string, value: string) => ({ image, label, value })
+  const row = (image: CustomerV21Visual, label: string, value: string) => ({ image, label, value })
   const serviceAsset = deal.draft.serviceType ? customerV21ServiceAssets[deal.draft.serviceType] : customerV21Assets.request
   const common = [
     row(serviceAsset, language === 'vi' ? 'Dịch vụ' : 'Service', service),

@@ -1,5 +1,5 @@
 import { Fragment, type ComponentType, type ReactNode } from 'react'
-import { Pressable, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
@@ -12,7 +12,7 @@ import {
   type CustomerThemeTokens,
 } from '../customer-theme'
 import { CaseWideMintAura, SourceCardSkin, ZipMintAura } from './aura-surfaces'
-import { customerV21Assets, customerV21ServiceAssets } from './assets'
+import { customerV21Assets, customerV21ServiceAssets, type CustomerV21Visual } from './assets'
 import { customerV21CommonCopy, customerV21ScreenTitles } from './copy'
 import { MemoryDivider, MemoryPermissionRow } from './agentic-surfaces'
 import { customerV21AgenticStyles as agenticStyles } from './agentic-styles'
@@ -30,7 +30,7 @@ function useCustomerV21ProfileTheme() {
 }
 
 type CustomerV21UtilityAssetTile = ComponentType<{
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   size?: number
   sourceAura?: boolean
@@ -55,7 +55,7 @@ type ProfileRankingNode = {
 }
 
 type ProfileInsightModel = {
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   status: string
   testID?: string
@@ -112,7 +112,7 @@ export function ProfileRankingEvaluation({
 }: {
   assetTile: CustomerV21UtilityAssetTile
   completed: string
-  kaelHeadImage: ImageSourcePropType
+  kaelHeadImage: CustomerV21Visual
   protectedTransactions: string
   reviewRate: string
 }) {
@@ -165,7 +165,7 @@ export function ProfileInsightRow({
 }: {
   assetTile: CustomerV21UtilityAssetTile
   iconStyle?: StyleProp<ViewStyle>
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   status: string
   testID?: string
@@ -312,7 +312,7 @@ export function ProfileRankingPanel({
       <ProfileRankingEvaluation
         assetTile={AssetTile}
         completed={completed}
-        kaelHeadImage={customerV21Assets.kaelHead}
+        kaelHeadImage={customerV21Assets.kael}
         protectedTransactions={protectedTransactions}
         reviewRate={reviewRate}
       />
@@ -430,7 +430,7 @@ export function ProfileMoneyPanel({
       </ProfileAuraCard>
 
       <ProfileAuraCard contentStyle={styles.profileKaelNote} scope="MoneyKael" testID="customer-v21-profile-money-kael">
-        <AssetTile image={customerV21Assets.kaelHead} label="Kael" size={42} sourceAura style={styles.infoNoticeIcon} />
+        <AssetTile image={customerV21Assets.kael} label="Kael" size={42} sourceAura style={styles.infoNoticeIcon} />
         <View style={styles.flex}>
           <Text style={[styles.cardTitle, { color: tokens.text }]}>{language === 'vi' ? 'Kael nhắc bạn' : 'Kael reminder'}</Text>
           <Text style={[styles.bodyText, { color: tokens.muted }]}>
@@ -539,7 +539,7 @@ export function SettingsActionRow({
 }: {
   assetTile: CustomerV21UtilityAssetTile
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   onPress: () => void
   status: string
   testID: string

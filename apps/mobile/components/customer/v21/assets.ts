@@ -1,6 +1,15 @@
 import { type ImageSourcePropType } from 'react-native'
 import { type CustomerServiceId, type ServiceType } from '@nestscout/shared'
 
+export type KaelCoreV9Visual = Readonly<{ kind: 'kael-core-v9' }>
+export type CustomerV21Visual = ImageSourcePropType | KaelCoreV9Visual
+
+export const KAEL_CORE_V9_VISUAL: KaelCoreV9Visual = Object.freeze({ kind: 'kael-core-v9' })
+
+export function isKaelCoreV9Visual(value: CustomerV21Visual): value is KaelCoreV9Visual {
+  return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'kael-core-v9'
+}
+
 export const customerV21Assets = {
   activity: require('@/assets/client-image-icons/client-activity.png') as ImageSourcePropType,
   address: require('@/assets/client-image-icons/client-address.png') as ImageSourcePropType,
@@ -10,9 +19,7 @@ export const customerV21Assets = {
   feedback: require('@/assets/client-image-icons/client-feedback.png') as ImageSourcePropType,
   home: require('@/assets/client-image-icons/client-home.png') as ImageSourcePropType,
   identity: require('@/assets/client-image-icons/client-identity.png') as ImageSourcePropType,
-  kael: require('@/assets/kael-orb-icon.png') as ImageSourcePropType,
-  kaelHead: require('@/assets/kael-emotions/kael-emotion-focused.png') as ImageSourcePropType,
-  kaelFull: require('@/assets/kael-states/kael-state-welcome.png') as ImageSourcePropType,
+  kael: KAEL_CORE_V9_VISUAL,
   language: require('@/assets/client-image-icons/client-language.png') as ImageSourcePropType,
   logout: require('@/assets/client-image-icons/client-logout-v2.png') as ImageSourcePropType,
   auroraNestLogo: require('@/assets/nestscout-aurora-nest-appstore-1024.png') as ImageSourcePropType,

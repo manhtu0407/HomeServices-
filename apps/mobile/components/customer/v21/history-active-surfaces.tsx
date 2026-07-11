@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 
 import { KaelButton, KaelChip } from '@/components/ui/kael-primitives'
 import { useAppLanguage } from '@/lib/app-language'
@@ -7,6 +7,7 @@ import { useAppLanguage } from '@/lib/app-language'
 import { CaseOverviewHeroAura, CaseWideMintAura, CaseWorkActionButtonAura, CaseWorkCardAura, CaseWorkSourceChipAura, SourceCardSkin } from './aura-surfaces'
 import { PrepRow } from './booking-surfaces'
 import { customerV21HistoryActiveStyles as styles } from './history-active-styles'
+import type { CustomerV21Visual } from './assets'
 import { CaseArtifact, CustomerStatusPill, MediaRow } from './history-surfaces'
 import { CaseProgressLabels } from './history-case-surfaces'
 import { AssetTile, InfoNotice, ProgressRail, SectionHeader, useCustomerV21SurfaceTheme, V21Card } from './shared-surfaces'
@@ -19,7 +20,7 @@ type ActivityStatusPrimaryModel = {
 }
 
 type ActivityStatusRowModel = {
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   value: string
 }
@@ -59,7 +60,7 @@ export function ActiveCaseCardPanel({
 }: {
   activeCaseLabel: string
   activeStep: number
-  activityImage: ImageSourcePropType
+  activityImage: CustomerV21Visual
   bodyTextStyle?: StyleProp<TextStyle>
   cardStyle?: StyleProp<ViewStyle>
   caseCode: string
@@ -157,7 +158,7 @@ export function CaseWorkPanelView({
   evidenceLabel: string
   hasDescription: boolean
   hasMedia: boolean
-  kaelImage: ImageSourcePropType
+  kaelImage: CustomerV21Visual
   kaelIconStyle?: StyleProp<ViewStyle>
   onOpenActivity: () => void
   onRequestEdit: () => void
@@ -233,9 +234,9 @@ export function ActivityStatusPanelView({
 }: {
   activeStep: number
   eyebrow: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   infoBody: string
-  infoImage: ImageSourcePropType
+  infoImage: CustomerV21Visual
   infoTitle: string
   labelTextStyle?: StyleProp<TextStyle>
   primary: ActivityStatusPrimaryModel
