@@ -7,6 +7,7 @@ import type { CustomerServiceId } from '@nestscout/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 import { KaelChip } from '@/components/ui/kael-primitives'
 import { useAppLanguage } from '@/lib/app-language'
@@ -18,7 +19,7 @@ import {
   type CustomerThemeTokens,
 } from '../customer-theme'
 import { CustomerScreenCanvasAura, HomeEmptySourceAura, SourceCardSkin, SourceIconAura, SourceIconTileSkin, ZipMintAura } from './aura-surfaces'
-import { customerV21BookingServiceAssets } from './assets'
+import { customerV21BookingServiceAssets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
 import { customerV21BookingServiceCopy } from './copy'
 import { customerV21SharedStyles as styles } from './shared-styles'
 import { type CustomerV21ScreenId } from './types'
@@ -32,7 +33,7 @@ export function useCustomerV21SurfaceTheme() {
 }
 
 type CustomerV21AssetTile = ComponentType<{
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   size?: number
   sourceAura?: boolean
@@ -48,21 +49,21 @@ export function AssetTile({
   style,
   testID,
 }: {
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   size?: number
   sourceAura?: boolean
   style?: StyleProp<ViewStyle>
   testID?: string
 }) {
-  const { tokens } = useCustomerV21SurfaceTheme()
+  const { reduceMotion, tokens } = useCustomerV21SurfaceTheme()
   if (sourceAura) {
     return (
       <View accessibilityLabel={label} style={[styles.sourceIconAuraFrame, style]} testID={testID}>
         <SourceIconAura />
         <View style={[styles.assetTile, styles.sourceIconTile, { backgroundColor: tokens.mode === 'dark' ? tokens.glassStrong : 'transparent', borderColor: 'rgba(255,255,255,0.95)' }]}>
           <SourceIconTileSkin />
-          <Image resizeMode="contain" source={image} style={{ height: size, width: size }} />
+          <CustomerV21AssetVisual image={image} reduceMotion={reduceMotion} size={size} />
         </View>
       </View>
     )
@@ -70,9 +71,22 @@ export function AssetTile({
 
   return (
     <View accessibilityLabel={label} style={[styles.assetTile, { backgroundColor: tokens.ghost, borderColor: tokens.border }, style]} testID={testID}>
-      <Image resizeMode="contain" source={image} style={{ height: size, width: size }} />
+      <CustomerV21AssetVisual image={image} reduceMotion={reduceMotion} size={size} />
     </View>
   )
+}
+
+function CustomerV21AssetVisual({
+  image,
+  reduceMotion,
+  size,
+}: {
+  image: CustomerV21Visual
+  reduceMotion: boolean
+  size: number
+}) {
+  if (isKaelCoreV9Visual(image)) return <KaelCoreV9 reduceMotion={reduceMotion} size={size} />
+  return <Image resizeMode="contain" source={image} style={{ height: size, width: size }} />
 }
 
 export function SectionHeader({ eyebrow, title }: { eyebrow?: string; title: string }) {
@@ -319,7 +333,7 @@ export function EmptyState({
   action?: ReactNode
   assetTile: CustomerV21AssetTile
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   mintAura?: boolean
   testID?: string
   title: string
@@ -449,7 +463,7 @@ export function InfoNotice({
 }: {
   assetTile: CustomerV21AssetTile
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   title: string
   tokens: CustomerThemeTokens
 }) {

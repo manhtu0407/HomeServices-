@@ -1,12 +1,13 @@
-import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-native'
+import { Image, Pressable, Text, View } from 'react-native'
 import Svg, { Defs, RadialGradient, Rect } from 'react-native-svg'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { customerV21Assets } from './assets'
+import { customerV21Assets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
 import { customerV21BookingStyles as styles } from './booking-styles'
 
 type CustomerV21BookingTokens = CustomerThemeTokens
@@ -155,7 +156,7 @@ export function MediaEvidenceSlot({
   value,
 }: {
   active?: boolean
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   testID: string
   tokens: CustomerV21BookingTokens
@@ -173,7 +174,7 @@ export function MediaEvidenceSlot({
       ]}
       testID={testID}
     >
-      <Image resizeMode="contain" source={image} style={styles.mediaSlotIcon} />
+      <MediaEvidenceVisual image={image} />
       <Text numberOfLines={1} style={[styles.mediaSlotLabel, { color: tokens.muted }]}>{label}</Text>
       <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={[styles.mediaSlotValue, { color: active ? tokens.primary : tokens.text }]}>{value}</Text>
     </View>
@@ -218,7 +219,7 @@ export function MediaVoiceNote({
       ]}
       testID={testID}
     >
-      <Image resizeMode="contain" source={customerV21Assets.kael} style={styles.mediaVoiceIcon} />
+      <KaelCoreV9 size={30} />
       <View style={styles.mediaVoiceBody}>
         <Text numberOfLines={1} style={[styles.mediaVoiceTitle, { color: tokens.text }]}>{title}</Text>
         <View style={styles.mediaWave} testID="customer-v21-media-wave">
@@ -233,6 +234,11 @@ export function MediaVoiceNote({
       <Text accessibilityLabel={isRecording ? `${recordingSeconds} seconds` : value} style={[styles.mediaVoiceValue, { color: isRecording ? tokens.primary : tokens.muted }]}>{value}</Text>
     </Pressable>
   )
+}
+
+function MediaEvidenceVisual({ image }: { image: CustomerV21Visual }) {
+  if (isKaelCoreV9Visual(image)) return <KaelCoreV9 size={30} />
+  return <Image resizeMode="contain" source={image} style={styles.mediaSlotIcon} />
 }
 
 export function MediaPrepRow({

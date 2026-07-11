@@ -4,7 +4,7 @@ import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWideMintAura, CaseWorkCardAura, SourceCardSkin, ZipMintAura } from './aura-surfaces'
-import { customerV21Assets } from './assets'
+import { customerV21Assets, type CustomerV21Visual } from './assets'
 import { customerV21HistoryActiveStyles as historyActiveStyles } from './history-active-styles'
 import { CaseWorkerAvatar } from './history-surfaces'
 import { customerV21PaymentStyles as paymentStyles } from './payment-styles'
@@ -19,7 +19,7 @@ function PaymentKaelSourceCard({
   tokens,
 }: {
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   testID: string
   title: string
   tokens: CustomerThemeTokens
@@ -92,7 +92,7 @@ export function PaymentReviewStageView({
       kaelSourceCard={(
         <PaymentKaelSourceCard
           body={language === 'vi' ? 'Tiền chỉ đi qua payment order thật và sổ cái nội bộ.' : 'Money only moves through a real payment order and ledger.'}
-          image={customerV21Assets.kaelHead}
+          image={customerV21Assets.kael}
           testID="customer-v21-payment-review-kael-card"
           title={language === 'vi' ? 'Bảo vệ thanh toán cùng Kael' : 'Payment protection with Kael'}
           tokens={tokens}
@@ -156,7 +156,7 @@ export function PaymentProtectedStageView({
       kaelSourceCard={(
         <PaymentKaelSourceCard
           body={language === 'vi' ? 'Không thanh toán ngoài nền tảng. Tôi sẽ theo dõi trạng thái tiền cùng công việc.' : 'Do not pay off-platform. I will follow money state with the job.'}
-          image={customerV21Assets.kaelHead}
+          image={customerV21Assets.kael}
           testID="customer-v21-payment-protected-kael-card"
           title={language === 'vi' ? 'Kael nhắc bạn' : 'Kael reminder'}
           tokens={tokens}

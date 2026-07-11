@@ -183,7 +183,6 @@ export function CustomerProfileOverviewView({
         testID="customer-v21-profile-agentic-entry"
       >
         <ProfileAuraCard cardStyle={profileUtilityStyles.profileOverviewAgenticCard} contentStyle={profileUtilityStyles.profileAgenticCard} scope="OverviewAgentic" testID="customer-v21-profile-agentic-card">
-          <AssetTile image={customerV21Assets.kaelHead} label={agenticCenterLabel} size={48} sourceAura style={profileUtilityStyles.profileAgenticIcon} />
           <View style={rootStyles.flex}>
             <View style={profileUtilityStyles.profileNameRow}>
               <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{agenticCenterLabel}</Text>

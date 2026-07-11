@@ -14,6 +14,7 @@ import {
   type ViewStyle,
 } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { entryTheme } from '../theme'
 import { EntryIcon, type EntryIconName } from './icons'
 
@@ -190,14 +191,6 @@ export function PrimaryButton({
   )
 }
 
-export function TextAction({ label, onPress, testID }: { label: string; onPress: () => void; testID?: string }) {
-  return (
-    <Pressable accessibilityRole="button" hitSlop={8} onPress={onPress} style={({ pressed }: { pressed: boolean }) => [styles.textAction, pressed && { opacity: 0.62 }]} testID={testID}>
-      <Text style={styles.textActionLabel}>{label}</Text>
-    </Pressable>
-  )
-}
-
 export function IconButton({ icon = 'back', label, onPress }: { icon?: EntryIconName; label: string; onPress: () => void }) {
   return (
     <Pressable accessibilityLabel={label} accessibilityRole="button" onPress={onPress} style={({ pressed }: { pressed: boolean }) => [styles.iconButton, pressed && styles.pressed]}>
@@ -219,66 +212,12 @@ export function NestScoutBrandMark({ size = 102, source }: { size?: number; sour
   )
 }
 
-export function KaelStatus({ source }: { source: ImageSourcePropType }) {
-  const { reduceTransparency } = useEntryAccessibility()
-
+export function KaelCoreHero({ compact = false }: { compact?: boolean }) {
+  const { reduceMotion } = useEntryAccessibility()
   return (
-    <View accessibilityLabel="Kael đang sẵn sàng" accessible style={styles.kaelStatus}>
-      {reduceTransparency ? <View pointerEvents="none" style={styles.kaelStatusAuraFallback} /> : <KaelStatusAura />}
-      <Image resizeMode="contain" source={source} style={styles.kaelStatusImage} />
-      <View pointerEvents="none" style={styles.kaelStatusDot} />
+    <View accessibilityLabel="Kael, trợ lý gia đình" accessible style={[styles.kaelCoreHero, compact && styles.kaelCoreHeroCompact]}>
+      <KaelCoreV9 reduceMotion={reduceMotion} size={compact ? 136 : 188} />
     </View>
-  )
-}
-
-function KaelStatusAura() {
-  return (
-    <Svg pointerEvents="none" viewBox="0 0 90 90" style={styles.kaelStatusAura}>
-      <Defs>
-        <LinearGradient id="kaelStatusMintBase" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0" stopColor="#F0FCFB" stopOpacity="0.98" />
-          <Stop offset="0.56" stopColor="#E4FAF8" stopOpacity="0.96" />
-          <Stop offset="1" stopColor="#D8F5F3" stopOpacity="0.94" />
-        </LinearGradient>
-        <RadialGradient id="kaelStatusMintAura" cx="52%" cy="44%" r="68%">
-          <Stop offset="0" stopColor="#8FE9E3" stopOpacity="0.22" />
-          <Stop offset="0.58" stopColor="#5FDCD6" stopOpacity="0.12" />
-          <Stop offset="1" stopColor="#2CBAB4" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      <Rect x="0" y="0" width="90" height="90" rx="30" fill="url(#kaelStatusMintBase)" />
-      <Circle cx="50" cy="39" r="54" fill="url(#kaelStatusMintAura)" />
-      <Circle cx="24" cy="24" r="20" fill="#FFFFFF" opacity="0.18" />
-      <Circle cx="68" cy="64" r="23" fill="#8FE9E3" opacity="0.10" />
-    </Svg>
-  )
-}
-
-export function KaelMascot({ compact = false, source }: { compact?: boolean; source: ImageSourcePropType }) {
-  const { reduceMotion, reduceTransparency } = useEntryAccessibility()
-  return (
-    <View accessible accessibilityLabel="Kael, trợ lý gia đình" style={[styles.mascotShell, compact && styles.mascotShellCompact]}>
-      <View style={[styles.mascotAura, compact && styles.mascotAuraCompact]} />
-      {!reduceTransparency ? <MascotPrimaryAura compact={compact} /> : null}
-      <View style={[styles.mascotRing, compact && styles.mascotRingCompact]} />
-      <Image source={source} resizeMode="contain" style={[styles.mascotImage, compact && styles.mascotImageCompact, reduceMotion && { transform: [{ translateY: 0 }] }]} />
-      {!compact ? <View style={styles.mascotPedestal} /> : null}
-    </View>
-  )
-}
-
-function MascotPrimaryAura({ compact }: { compact: boolean }) {
-  return (
-    <Svg pointerEvents="none" viewBox="0 0 290 290" style={[styles.mascotPrimaryAura, compact && styles.mascotPrimaryAuraCompact]}>
-      <Defs>
-        <RadialGradient id="mascotPrimaryAuraGradient" cx="50%" cy="48%" r="56%">
-          <Stop offset="0" stopColor="#49CFC0" stopOpacity="0.18" />
-          <Stop offset="0.54" stopColor="#24B3A1" stopOpacity="0.10" />
-          <Stop offset="1" stopColor="#088779" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      <Circle cx="145" cy="145" r="132" fill="url(#mascotPrimaryAuraGradient)" />
-    </Svg>
   )
 }
 
@@ -378,82 +317,8 @@ const styles = StyleSheet.create({
     width: 42,
     ...entryTheme.shadow.soft,
   },
-  kaelStatus: {
-    backgroundColor: 'rgba(240,252,251,0.96)',
-    borderColor: 'rgba(255,255,255,0.76)',
-    borderRadius: 30,
-    borderWidth: 1,
-    height: 90,
-    marginTop: -9,
-    overflow: 'hidden',
-    position: 'relative',
-    width: 90,
-    ...entryTheme.shadow.soft,
-  },
-  kaelStatusAura: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
-  kaelStatusAuraFallback: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#E8FAF8',
-    zIndex: 0,
-  },
-  kaelStatusDot: {
-    backgroundColor: entryTheme.color.accent.success,
-    borderColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 3,
-    bottom: 9,
-    height: 16,
-    position: 'absolute',
-    right: 9,
-    width: 16,
-    zIndex: 3,
-  },
-  kaelStatusImage: {
-    bottom: -17,
-    height: 110,
-    left: -10,
-    position: 'absolute',
-    width: 110,
-    zIndex: 2,
-  },
-  mascotAura: {
-    backgroundColor: 'rgba(200,244,234,0.28)',
-    borderRadius: 145,
-    height: 290,
-    position: 'absolute',
-    width: 290,
-  },
-  mascotAuraCompact: { borderRadius: 130, height: 260, top: 28, width: 260 },
-  mascotImage: { height: 285, width: 285, zIndex: 2 },
-  mascotImageCompact: { height: 245, top: 28, width: 245 },
-  mascotPedestal: {
-    backgroundColor: 'rgba(13,174,154,0.13)',
-    borderRadius: 95,
-    bottom: 42,
-    height: 23,
-    position: 'absolute',
-    width: 190,
-  },
-  mascotPrimaryAura: {
-    height: 290,
-    position: 'absolute',
-    width: 290,
-  },
-  mascotPrimaryAuraCompact: { height: 260, top: 28, width: 260 },
-  mascotRing: {
-    borderColor: 'rgba(143,226,212,0.40)',
-    borderRadius: 109,
-    borderWidth: 1,
-    height: 218,
-    position: 'absolute',
-    width: 218,
-  },
-  mascotRingCompact: { borderRadius: 95, height: 190, top: 28, width: 190 },
-  mascotShell: { alignItems: 'center', height: 310, justifyContent: 'center', width: '100%' },
-  mascotShellCompact: { height: 278 },
+  kaelCoreHero: { alignItems: 'center', height: 310, justifyContent: 'center', width: '100%' },
+  kaelCoreHeroCompact: { height: 278 },
   pressed: { opacity: 0.78 },
   primaryButton: {
     alignItems: 'center',
@@ -470,6 +335,4 @@ const styles = StyleSheet.create({
   },
   primaryLabel: { color: entryTheme.color.text.inverse, fontSize: 15, fontWeight: '700', letterSpacing: 0 },
   ribbon: { bottom: -120, left: -124, position: 'absolute', transform: [{ rotate: '-7deg' }] },
-  textAction: { alignItems: 'center', justifyContent: 'center', minHeight: 42, paddingHorizontal: 8 },
-  textActionLabel: { color: entryTheme.color.mint.mint700, fontSize: 13, fontWeight: '700' },
 })

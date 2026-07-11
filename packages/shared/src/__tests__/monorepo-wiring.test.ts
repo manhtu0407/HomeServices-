@@ -40,7 +40,7 @@ function listSourceFiles(rel: string): string[] {
 }
 
 // ===================================================================
-// Workspace structure — Turborepo + pnpm
+// Workspace structure â€” Turborepo + pnpm
 // ===================================================================
 
 describe('monorepo directory structure', () => {
@@ -65,7 +65,7 @@ describe('monorepo directory structure', () => {
     // If src/ exists at root, the move was incomplete
     const rootSrc = resolve(REPO_ROOT, 'src')
     if (existsSync(rootSrc)) {
-      // It could exist as an empty dir or leftover — check for actual code
+      // It could exist as an empty dir or leftover â€” check for actual code
       expect(exists('src/lib')).toBe(false)
       expect(exists('src/app')).toBe(false)
     }
@@ -114,7 +114,7 @@ describe('root product contract alignment', () => {
     const claude = readText('CLAUDE.md')
     expect(claude).toMatch(/Production fix and foundation hardening/i)
     expect(claude).toMatch(/Mobile and Supabase Edge workflow slices exist/i)
-    expect(claude).not.toContain('Chưa có feature code')
+    expect(claude).not.toContain('ChÆ°a cÃ³ feature code')
   })
   it('keeps production source files free from mojibake Vietnamese strings', () => {
     const productionFiles = [
@@ -149,6 +149,27 @@ describe('root product contract alignment', () => {
 
     expect(rawTextInputOffenders).toEqual([])
     expect(legacyAssetOffenders).toEqual([])
+  })
+
+  it('keeps Kael Core v9 as the only Kael visual source and removes legacy status assets', () => {
+    expect(exists('apps/mobile/assets/kael/Kael-Core-v9-Codex-Rebuild.html')).toBe(true)
+    expect(exists('apps/mobile/assets/kael/Kael-Motion-Clip-v11-Codex-Rebuild.html')).toBe(true)
+    expect(exists('apps/mobile/assets/kael-emotions')).toBe(false)
+    expect(exists('apps/mobile/assets/kael-states')).toBe(false)
+    expect(exists('apps/mobile/assets/status')).toBe(false)
+    expect(exists('apps/mobile/assets/lottie/kael-bow-welcome.json')).toBe(false)
+    expect(exists('apps/mobile/assets/kael-model-8a.png')).toBe(false)
+    expect(exists('apps/mobile/assets/kael-model-8a-head.png')).toBe(false)
+    expect(exists('apps/mobile/assets/kael-orb-icon.png')).toBe(false)
+    expect(exists('apps/mobile/assets/kael-orb-glyph.png')).toBe(false)
+    expect(exists('apps/mobile/assets/client-image-icons/client-kael.png')).toBe(false)
+    expect(exists('apps/mobile/assets/navigation/customer/kael.png')).toBe(false)
+    expect(exists('apps/mobile/assets/navigation/worker/kael.png')).toBe(false)
+    expect(exists('apps/mobile/components/auth/entry-access/assets/kael.png')).toBe(false)
+    expect(exists('apps/mobile/components/kael/kael-mascot-assets.ts')).toBe(false)
+    expect(exists('apps/mobile/components/kael/kael-mascot.tsx')).toBe(false)
+    expect(exists('apps/mobile/components/kael/kael-motion-renderer.tsx')).toBe(false)
+    expect(readText('apps/mobile/components/ui/kael-core-v9-contract.ts')).toContain("motionVocabulary: ['autoplay-clip', 'formal-bow']")
   })
 })
 
@@ -198,7 +219,7 @@ describe('config/turbo/turbo.json', () => {
 })
 
 // ===================================================================
-// Root package.json — workspace root
+// Root package.json â€” workspace root
 // ===================================================================
 
 describe('root package.json', () => {
@@ -223,7 +244,7 @@ describe('root package.json', () => {
   })
 
   it('does NOT have app-specific deps at root', () => {
-    // Root should only have turbo — app deps live in apps/
+    // Root should only have turbo â€” app deps live in apps/
     expect(pkg.dependencies).toBeUndefined()
     expect(pkg.devDependencies.next).toBeUndefined()
     expect(pkg.devDependencies.react).toBeUndefined()
@@ -323,7 +344,7 @@ describe('apps/mobile/package.json', () => {
   })
 
   it('does NOT have vitest (no tests in mobile yet)', () => {
-    // Mobile doesn't run vitest — it uses Expo testing tools
+    // Mobile doesn't run vitest â€” it uses Expo testing tools
     expect(pkg.devDependencies?.vitest).toBeUndefined()
   })
 
@@ -429,7 +450,7 @@ describe('apps/api source structure after move', () => {
     expect(exists('apps/api/vitest.config.mts')).toBe(true)
   })
 
-  it('has proxy.ts (Next.js 16 — not middleware.ts at root)', () => {
+  it('has proxy.ts (Next.js 16 â€” not middleware.ts at root)', () => {
     expect(exists('apps/api/src/proxy.ts')).toBe(true)
   })
 

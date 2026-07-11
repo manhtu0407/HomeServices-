@@ -3,7 +3,8 @@ import { Pressable, View, type ImageSourcePropType, type ViewStyle } from 'react
 import Animated from 'react-native-reanimated'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
-import { KaelCoreV9, type KaelCoreV9Handle } from '@/components/ui/kael-core-v9'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
+import type { KaelCoreV9Handle } from '@/components/ui/kael-core-v9-contract'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'

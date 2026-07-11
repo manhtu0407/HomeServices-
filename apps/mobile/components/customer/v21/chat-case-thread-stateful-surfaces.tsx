@@ -268,7 +268,7 @@ export function AgenticCaseThreadView({
           <SourceCardSkin />
           <CaseWorkCardAura scope="Recommendation" testID="customer-v21-case-work-recommendation-mint-aura" />
           <View style={sharedStyles.cardHeaderRow}>
-            <AssetTile image={customerV21Assets.kaelHead} label="Kael" size={42} style={sharedStyles.infoNoticeIcon} />
+            <AssetTile image={customerV21Assets.kael} label="Kael" size={42} style={sharedStyles.infoNoticeIcon} />
             <View style={sharedStyles.flex}>
               <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>
                 {language === 'vi' ? 'Đề xuất tiếp theo' : 'Next recommendation'}

@@ -17,7 +17,8 @@ import {
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { DockScrollStateProvider, useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { GlassSurface } from '@/components/ui/glass-surface'
-import { KaelCoreV9, type KaelCoreV9Handle } from '@/components/ui/kael-core-v9'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
+import type { KaelCoreV9Handle } from '@/components/ui/kael-core-v9-contract'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { customerTheme } from '@/design/theme'
 

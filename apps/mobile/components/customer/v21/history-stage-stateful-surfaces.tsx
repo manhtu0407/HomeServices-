@@ -171,7 +171,7 @@ export function CaseMatchingStageView({
       >
         <SourceCardSkin />
         <CaseWorkCardAura scope="MatchingKael" testID="customer-v21-matching-kael-mint-aura" />
-        <MatchingKaelStatusIcon image={customerV21Assets.kaelHead} testID="customer-v21-matching-kael-status-icon" />
+        <MatchingKaelStatusIcon image={customerV21Assets.kael} testID="customer-v21-matching-kael-status-icon" />
         <View style={rootStyles.flex}>
           <Text numberOfLines={1} style={[rootStyles.matchingKaelTitle, { color: tokens.text }]}>{kaelTitle}</Text>
           <Text numberOfLines={2} style={[rootStyles.matchingKaelBody, { color: tokens.muted }]}>{kaelBody}</Text>

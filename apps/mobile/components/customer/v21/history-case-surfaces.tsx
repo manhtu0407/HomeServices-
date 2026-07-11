@@ -1,11 +1,11 @@
 import { Fragment, type ComponentType } from 'react'
-import { Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWorkCardAura, SourceCardSkin } from './aura-surfaces'
-import { customerV21Assets } from './assets'
+import { customerV21Assets, type CustomerV21Visual } from './assets'
 import { customerV21HistoryActiveStyles as historyActiveStyles } from './history-active-styles'
 import { customerV21HistoryStyles as styles } from './history-styles'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
@@ -14,7 +14,7 @@ import { AssetTile, InfoNotice, SectionActionHeader, SectionHeader, useCustomerV
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
 
 type CustomerV21AssetTile = ComponentType<{
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   size?: number
   sourceAura?: boolean
@@ -23,7 +23,7 @@ type CustomerV21AssetTile = ComponentType<{
 }>
 
 type CaseDecisionRowModel = {
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   value: string
 }
@@ -93,7 +93,7 @@ export function CaseOverviewInfoRow({
 }: {
   assetTile: CustomerV21AssetTile
   chipLabel?: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   showChevron?: boolean
   tokens: CustomerThemeTokens
@@ -206,9 +206,9 @@ export function CaseDecisionPanelView({
   actionLabel: string
   body: string
   eyebrow: string
-  heroImage: ImageSourcePropType
+  heroImage: CustomerV21Visual
   infoBody: string
-  infoImage: ImageSourcePropType
+  infoImage: CustomerV21Visual
   infoTitle: string
   rows: CaseDecisionRowModel[]
   testID: string

@@ -1,6 +1,5 @@
 export type EntryAccessStep =
   | 'splash'
-  | 'welcome'
   | 'role-gate'
   | 'login'
   | 'register'

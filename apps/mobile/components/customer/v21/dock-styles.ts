@@ -3,7 +3,7 @@ import { Platform, StyleSheet } from 'react-native'
 export const CUSTOMER_LIQUID_NAV_MAX_WIDTH = 390
 export const CUSTOMER_LIQUID_NAV_SIDE_INSET = 12
 export const CUSTOMER_LIQUID_NAV_DOCK_HEIGHT = 56
-export const CUSTOMER_LIQUID_NAV_ORB_SIZE = 68
+export const CUSTOMER_LIQUID_NAV_ORB_SIZE = 72
 export const CUSTOMER_LIQUID_NAV_GAP = 8
 export const CUSTOMER_LIQUID_NAV_RAIL_PADDING = 4
 

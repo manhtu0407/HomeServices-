@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Kael Core v9 — Monocle Bow Identity</title>
+<!--
+KAEL CORE v9.0 — MONOCLE BOW IDENTITY
+===============================================================================
+Single-file source of truth for Codex / Claude Code rebuild.
+No raster assets. No CDN. No framework. No external font. No runtime dependency.
+The companion PNG report is rendered by Chromium from this exact HTML.
+Image generation is not used.
+
+PRODUCT RESET
+-------------
+- Legacy Status system: removed.
+- Legacy Action / Eye / Hand / Accessory motions: removed.
+- Hands: removed.
+- Accessories: removed.
+- Current motion vocabulary: exactly one interaction — a respectful bow.
+
+VISUAL CONTRACT
+---------------
+- Minimal spherical assistant identity based on the supplied Kimi 2.6 reference.
+- Kael differentiation is intentionally narrow: monochrome Obsidian Pearl material
+  and one detailed European-style monocle.
+- Two pure white vertical pill eyes; no iris, glitter, face, mouth, or inner streaks.
+- Bright reflections are constrained to the perimeter of the orb.
+- Monocle: double-bevel silver ring, transparent lens, two-point clasp, fine chain,
+  and a rim anchor. Minor details are removed automatically at micro sizes.
+
+INTERACTION CONTRACT
+--------------------
+The only motion is bow(). It may be triggered by:
+1. Pointer entering the proximity radius.
+2. Touch / pointer press on Kael.
+3. Keyboard focus, Enter, or Space.
+4. Direct API call: element.bow().
+
+Bow choreography:
+notice -> prepare -> descent -> hold -> recovery -> settle
+The shell, both eyes, lens glint, monocle chain, and ground shadow share one timeline.
+There is no idle animation.
+
+PUBLIC API
+----------
+<kael-core-v9 size="72" proximity="112" label="Kael"></kael-core-v9>
+
+const kael = document.querySelector('kael-core-v9')
+await kael.bow({ source: 'api' })
+
+Events:
+- kael-bow-start
+- kael-bow-end
+
+Globals:
+- window.KAEL_CORE_V9_CONTRACT
+- window.KAEL_CORE_V9_BOW_TIMELINE
+- window.verifyKaelCoreV9()
+-->
+<style>
+:root {
+  color-scheme: dark;
+  --page: #070809;
+  --panel: #101214;
+  --panel-2: #15181b;
+  --line: rgba(255,255,255,.10);
+  --line-strong: rgba(255,255,255,.18);
+  --text: #f4f5f6;
+  --muted: #9ca2a8;
+  --soft: #c7cbd0;
+  --shadow: 0 28px 90px rgba(0,0,0,.42);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--page); color: var(--text); }
+body { overflow-x: hidden; }
+button { font: inherit; }
+
+/* --------------------------------------------------------------------------
+   KAEL WEB COMPONENT HOST STYLES
+   -------------------------------------------------------------------------- */
+kael-core-v9 { vertical-align: middle; }
+
+/* --------------------------------------------------------------------------
+   PROTOTYPE PAGE
+   -------------------------------------------------------------------------- */
+.prototype {
+  width: min(1220px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 34px 0 74px;
+}
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.eyebrow {
+  margin: 0 0 9px;
+  color: #d8dadd;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+}
+h1 { margin: 0; font-size: clamp(32px, 5vw, 58px); line-height: .98; letter-spacing: -.05em; }
+.lead { max-width: 720px; margin: 15px 0 0; color: var(--muted); font-size: 15px; line-height: 1.7; }
+.reset-chip {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: #e6e8ea;
+  background: rgba(255,255,255,.035);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.inline-demo {
+  min-height: 178px;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 30px 38px;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 18% 4%, rgba(255,255,255,.06), transparent 32%),
+    linear-gradient(145deg, #151719, #0b0c0e 72%);
+  box-shadow: var(--shadow);
+  overflow: visible;
+}
+.inline-copy strong { display: block; font-size: clamp(24px, 4vw, 42px); font-weight: 500; letter-spacing: -.035em; }
+.inline-copy span { display: block; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.demo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: rgba(255,255,255,.025);
+}
+.demo-controls button {
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 9px 12px;
+  color: var(--text);
+  background: rgba(255,255,255,.04);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 120ms ease;
+}
+.demo-controls button:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.3); }
+.demo-controls button:active { transform: scale(.98); }
+.demo-controls small { color: var(--muted); margin-left: auto; }
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.15fr) minmax(320px, .85fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+.card {
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: linear-gradient(150deg, rgba(27,30,33,.93), rgba(14,16,18,.96));
+  box-shadow: 0 22px 68px rgba(0,0,0,.26);
+}
+.hero-card { min-height: 560px; display: grid; place-items: center; padding: 28px; }
+.spec-card { padding: 24px; }
+.spec-card h2 { margin: 0; font-size: 22px; letter-spacing: -.03em; }
+.spec-card > p { margin: 10px 0 0; color: var(--muted); line-height: 1.62; }
+.spec-list { display: grid; gap: 10px; margin-top: 20px; }
+.spec-row {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 15px;
+  background: rgba(255,255,255,.022);
+}
+.spec-row b { color: #dfe2e5; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.spec-row span { color: #aeb4ba; font-size: 13px; line-height: 1.45; }
+.timeline {
+  margin-top: 18px;
+  padding: 23px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: #101214;
+}
+.timeline h2 { margin: 0; font-size: 21px; letter-spacing: -.03em; }
+.timeline-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 18px; }
+.pose-card {
+  min-height: 190px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 16px 8px 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 19px;
+  background: rgba(255,255,255,.022);
+}
+.pose-card b { font-size: 11px; }
+.pose-card span { color: var(--muted); font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
+@media (max-width: 900px) {
+  .workspace { grid-template-columns: 1fr; }
+  .timeline-grid { grid-template-columns: repeat(3, 1fr); }
+  .topbar { display: block; }
+  .reset-chip { display: inline-block; margin-top: 16px; }
+}
+@media (max-width: 560px) {
+  .prototype { width: min(100% - 24px, 1220px); padding-top: 22px; }
+  .inline-demo { padding: 24px 20px; gap: 16px; border-radius: 23px; }
+  .timeline-grid { grid-template-columns: repeat(2, 1fr); }
+  .demo-controls small { width: 100%; margin-left: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   REPORT PAGE — SCREENSHOT SOURCE
+   -------------------------------------------------------------------------- */
+.report {
+  width: 2400px;
+  min-height: 2000px;
+  padding: 92px;
+  background:
+    radial-gradient(circle at 17% 0%, rgba(255,255,255,.06), transparent 20%),
+    #090a0b;
+}
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 60px;
+}
+.report-kicker { margin: 0 0 14px; color: #d5d8db; font-size: 18px; font-weight: 850; letter-spacing: .18em; text-transform: uppercase; }
+.report h1 { font-size: 80px; max-width: 1400px; }
+.report-sub { max-width: 1240px; margin: 24px 0 0; color: #a6acb2; font-size: 26px; line-height: 1.55; }
+.report-badge {
+  padding: 18px 24px;
+  border: 1px solid rgba(255,255,255,.17);
+  border-radius: 999px;
+  color: #e5e7e9;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.report-rule { height: 1px; margin: 54px 0; background: linear-gradient(90deg, rgba(255,255,255,.55), transparent); }
+.report-inline {
+  min-height: 330px;
+  display: flex;
+  align-items: center;
+  gap: 52px;
+  padding: 46px 62px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 42px;
+  background: linear-gradient(145deg, #16181a, #0e0f11);
+  box-shadow: 0 38px 110px rgba(0,0,0,.36);
+}
+.report-inline strong { display: block; font-size: 64px; font-weight: 490; letter-spacing: -.035em; }
+.report-inline span { display: block; margin-top: 14px; color: #9fa5ab; font-size: 22px; }
+.report-section { margin-top: 36px; }
+.report-section-title { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; margin-bottom: 20px; }
+.report-section-title h2 { margin: 0; font-size: 38px; letter-spacing: -.035em; }
+.report-section-title span { color: #949aa0; font-size: 18px; }
+.identity-grid { display: grid; grid-template-columns: 1.08fr .92fr; gap: 22px; }
+.report-panel {
+  border: 1px solid rgba(255,255,255,.105);
+  border-radius: 34px;
+  background: linear-gradient(150deg, rgba(28,31,34,.96), rgba(14,16,18,.98));
+}
+.report-hero { min-height: 870px; display: grid; place-items: center; }
+.monocle-panel { min-height: 870px; padding: 34px; }
+.monocle-panel h3 { margin: 0; font-size: 31px; letter-spacing: -.03em; }
+.monocle-panel > p { margin: 12px 0 0; color: #a0a6ac; font-size: 19px; line-height: 1.55; }
+.mono-preview { min-height: 460px; display: grid; place-items: center; }
+.detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.detail-item { min-height: 126px; padding: 19px; border: 1px solid rgba(255,255,255,.08); border-radius: 18px; background: rgba(255,255,255,.022); }
+.detail-item b { display: block; font-size: 16px; color: #e2e4e6; }
+.detail-item span { display: block; margin-top: 8px; color: #969ca2; font-size: 14px; line-height: 1.45; }
+.report-story { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.report-pose {
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 15px;
+  padding: 24px 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 26px;
+  background: rgba(23,25,27,.94);
+}
+.report-pose b { font-size: 18px; }
+.report-pose span { color: #8f959b; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+.sync-table { width: 100%; border-collapse: collapse; border: 1px solid rgba(255,255,255,.09); overflow: hidden; border-radius: 28px; background: #111315; }
+.sync-table th, .sync-table td { padding: 22px 20px; border-bottom: 1px solid rgba(255,255,255,.075); text-align: left; vertical-align: top; }
+.sync-table th { color: #93999f; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; }
+.sync-table td { color: #c6cacf; font-size: 17px; line-height: 1.45; }
+.sync-table td:first-child { color: #f0f1f2; font-weight: 750; }
+.fact-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; }
+.fact { min-height: 150px; padding: 22px; border: 1px solid rgba(255,255,255,.09); border-radius: 22px; background: #121416; }
+.fact b { display: block; font-size: 40px; letter-spacing: -.04em; }
+.fact span { display: block; margin-top: 9px; color: #979da3; font-size: 14px; line-height: 1.4; }
+.verify-panel { padding: 30px 34px; border: 1px solid rgba(255,255,255,.11); border-radius: 30px; background: #101214; }
+.verify-panel pre { margin: 0; white-space: pre-wrap; color: #d4d7da; font: 17px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.report-footer { display: flex; justify-content: space-between; gap: 30px; margin-top: 52px; padding-top: 28px; border-top: 1px solid rgba(255,255,255,.09); color: #858b91; font-size: 15px; }
+
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main id="prototype" class="prototype">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Kael Core v9 · Product Reset</p>
+      <h1>Một model. Một cử chỉ.</h1>
+      <p class="lead">Toàn bộ Status, tay, phụ kiện và motion cũ đã được loại bỏ. Kael giờ là một orb tối giản với monocle Châu Âu cổ điển và chỉ một hành vi: tự cúi đầu chào khi người dùng đến gần hoặc chạm vào.</p>
+    </div>
+    <span class="reset-chip">0 STATUS · 0 HAND · 1 MOTION</span>
+  </header>
+
+  <section class="inline-demo" id="interactionZone">
+    <kael-core-v9 id="inlineKael" size="88" proximity="138" label="Kael đang sẵn sàng cúi chào"></kael-core-v9>
+    <div class="inline-copy">
+      <strong>Hey, let's build something.</strong>
+      <span>Đưa con trỏ tới gần Kael, chạm vào, hoặc focus bằng bàn phím.</span>
+    </div>
+  </section>
+
+  <div class="demo-controls">
+    <button id="bowButton" type="button">Cúi chào</button>
+    <button id="motionButton" type="button" data-on="false">Reduced Motion: Off</button>
+    <small id="eventReadout">Idle · proximity radius 138 px</small>
+  </div>
+
+  <section class="workspace">
+    <article class="card hero-card">
+      <kael-core-v9 id="heroKael" size="390" proximity="240" label="Kael Monocle"></kael-core-v9>
+    </article>
+    <article class="card spec-card">
+      <p class="eyebrow">Identity contract</p>
+      <h2>Gần Kimi về form, khác ở vật liệu và monocle.</h2>
+      <p>Giữ đúng mức tối giản: orb, hai mắt pill và một chi tiết thương hiệu duy nhất. Không thêm miệng, tay, icon, status ring hay idle loop.</p>
+      <div class="spec-list">
+        <div class="spec-row"><b>Body</b><span>Obsidian Pearl: graphite sâu, ánh limestone khuếch tán, highlight chỉ nằm trên perimeter.</span></div>
+        <div class="spec-row"><b>Eyes</b><span>Hai pill trắng dọc, không iris. Eye motion chỉ tồn tại bên trong bow choreography.</span></div>
+        <div class="spec-row"><b>Monocle</b><span>Double-bevel silver ring, clear lens, two-point clasp, fine chain và rim anchor.</span></div>
+        <div class="spec-row"><b>Motion</b><span>Notice → Prepare → Descent → Hold → Recovery → Settle. Không có motion thứ hai.</span></div>
+        <div class="spec-row"><b>Trigger</b><span>Pointer proximity, touch/press, keyboard focus, Enter/Space hoặc API <code>bow()</code>.</span></div>
+      </div>
+    </article>
+  </section>
+
+  <section class="timeline">
+    <h2>Bow choreography — shell và ánh mắt dùng chung một nhịp</h2>
+    <div class="timeline-grid">
+      <div class="pose-card"><kael-core-v9 size="118" pose="idle"></kael-core-v9><b>Idle</b><span>0 ms</span></div>
+      <div class="pose-card"><kael-core-v9 size="118" pose="notice"></kael-core-v9><b>Notice</b><span>0–150 ms</span></div>
+      <div class="pose-card"><kael-core-v9 size="118" pose="prepare"></kael-core-v9><b>Prepare</b><span>150–280 ms</span></div>
+      <div class="pose-card"><kael-core-v9 size="118" pose="bow"></kael-core-v9><b>Descent</b><span>280–640 ms</span></div>
+      <div class="pose-card"><kael-core-v9 size="118" pose="hold"></kael-core-v9><b>Hold</b><span>640–800 ms</span></div>
+      <div class="pose-card"><kael-core-v9 size="118" pose="recover"></kael-core-v9><b>Recovery</b><span>800–1220 ms</span></div>
+    </div>
+  </section>
+</main>
+
+<main id="report" class="report" hidden>
+  <header class="report-header">
+    <div>
+      <p class="report-kicker">Kael Core v9 · Code-rendered visual report</p>
+      <h1>Monocle Bow Identity</h1>
+      <p class="report-sub">Một product reset hoàn toàn: bỏ Status, bỏ tay, bỏ phụ kiện, bỏ mọi motion cũ. Kael giữ form orb tối giản, chuyển sang Obsidian Pearl và nhận diện bằng một monocle Châu Âu cổ điển. Chỉ còn một hành vi được build thật kỹ: cúi đầu chào.</p>
+    </div>
+    <span class="report-badge">SOURCE OF TRUTH · HTML / SVG / JS</span>
+  </header>
+
+  <div class="report-rule"></div>
+
+  <section class="report-inline">
+    <kael-core-v9 size="180" pose="idle"></kael-core-v9>
+    <div>
+      <strong>Hey, let's build something.</strong>
+      <span>Minimal assistant presence · monochrome body · European monocle</span>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>01 · Final identity</h2><span>Kimi-like simplicity, Kael-specific monocle</span></div>
+    <div class="identity-grid">
+      <article class="report-panel report-hero"><kael-core-v9 size="720" pose="idle"></kael-core-v9></article>
+      <article class="report-panel monocle-panel">
+        <h3>European monocle system</h3>
+        <p>Một chi tiết duy nhất nhưng đủ giàu craftsmanship để tạo dấu ấn. Toàn bộ được dựng bằng SVG geometry và tự giảm chi tiết khi scale nhỏ.</p>
+        <div class="mono-preview"><kael-core-v9 size="420" pose="notice"></kael-core-v9></div>
+        <div class="detail-grid">
+          <div class="detail-item"><b>Double-bevel ring</b><span>Hai lớp silver rim tạo cạnh mượt, rõ ở 48–240 px nhưng không nặng.</span></div>
+          <div class="detail-item"><b>Clear lens</b><span>Lens trung tính, chỉ có một edge glint nhẹ; mắt pill vẫn là chủ thể.</span></div>
+          <div class="detail-item"><b>Two-point clasp</b><span>Hai micro-clamp giữ lens có logic vật lý, không biến thành phụ kiện fantasy.</span></div>
+          <div class="detail-item"><b>Fine chain + anchor</b><span>Chuỗi link nhỏ nối xuống outer rim; chain swing là secondary motion duy nhất.</span></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>02 · Bow storyboard</h2><span>One motion · six synchronized phases</span></div>
+    <div class="report-story">
+      <div class="report-pose"><kael-core-v9 size="245" pose="idle"></kael-core-v9><b>Idle</b><span>0 ms</span></div>
+      <div class="report-pose"><kael-core-v9 size="245" pose="notice"></kael-core-v9><b>Notice</b><span>0–150 ms</span></div>
+      <div class="report-pose"><kael-core-v9 size="245" pose="prepare"></kael-core-v9><b>Prepare</b><span>150–280 ms</span></div>
+      <div class="report-pose"><kael-core-v9 size="245" pose="bow"></kael-core-v9><b>Descent</b><span>280–640 ms</span></div>
+      <div class="report-pose"><kael-core-v9 size="245" pose="hold"></kael-core-v9><b>Hold</b><span>640–800 ms</span></div>
+      <div class="report-pose"><kael-core-v9 size="245" pose="recover"></kael-core-v9><b>Recovery</b><span>800–1220 ms</span></div>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>03 · Synchronization contract</h2><span>Eyes, shell, monocle and shadow never act independently</span></div>
+    <table class="sync-table">
+      <thead><tr><th>Phase</th><th>Shell</th><th>Eyes</th><th>Monocle / Chain</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Notice</td><td>Lift 1.2 px, reverse pitch −1.2°.</td><td>Shift toward pointer up to 0.6 px.</td><td>Lens edge glint rises.</td><td>Acknowledge the user before moving.</td></tr>
+        <tr><td>Prepare</td><td>Returns to neutral pivot.</td><td>Recenter and narrow 8%.</td><td>Chain remains still.</td><td>A short courteous intake, not a bounce.</td></tr>
+        <tr><td>Descent</td><td>RotateX 16°, drop 6.4 px, compress to 94% height.</td><td>Lower 2.3 px and narrow to 66%.</td><td>Chain swings +6° with inertia.</td><td>Clear front-facing bow without adding a body.</td></tr>
+        <tr><td>Hold</td><td>160 ms stillness.</td><td>Hold gaze downward.</td><td>One damped counter-swing.</td><td>Respectful pause makes the gesture readable.</td></tr>
+        <tr><td>Recovery</td><td>Small −1° overshoot, then settle.</td><td>Reopen 20 ms before shell settles.</td><td>Chain returns through −1.5°.</td><td>Eyes re-establish contact before completion.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>04 · Product reset facts</h2><span>Everything not required has been removed</span></div>
+    <div class="fact-grid">
+      <div class="fact"><b>0</b><span>Legacy Status definitions</span></div>
+      <div class="fact"><b>0</b><span>Hands or hand gestures</span></div>
+      <div class="fact"><b>0</b><span>Accessory instruments</span></div>
+      <div class="fact"><b>1</b><span>Interaction motion: bow</span></div>
+      <div class="fact"><b>0</b><span>Raster and external dependencies</span></div>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="report-section-title"><h2>05 · Runtime verification</h2><span>Generated by the same HTML source</span></div>
+    <div class="verify-panel"><pre id="reportVerification">Running…</pre></div>
+  </section>
+
+  <footer class="report-footer">
+    <span>Kael Core v9 · standalone HTML / inline SVG / Web Animations API</span>
+    <span>Companion PNG rendered by Chromium · no Image Gen</span>
+  </footer>
+</main>
+
+<script>
+(() => {
+'use strict'
+
+const CONTRACT = Object.freeze({
+  version: '9.0.0',
+  renderer: 'inline-svg',
+  legacyStatusCount: 0,
+  legacyMotionCount: 0,
+  handCount: 0,
+  accessoryCount: 0,
+  motionVocabulary: Object.freeze(['bow']),
+  triggers: Object.freeze(['proximity', 'pointer-press', 'keyboard-focus', 'enter-space', 'api']),
+  defaultSize: 72,
+  defaultProximity: 112,
+  bowDuration: 1220,
+  maxEyeTravelPx: 0.60,
+  maxPitchDeg: 16,
+  maxDropPx: 6.4,
+  reducedMotionDuration: 480
+})
+
+const BOW_TIMELINE = Object.freeze({
+  phases: Object.freeze([
+    Object.freeze({ id: 'idle',     start: 0.00, end: 0.00 }),
+    Object.freeze({ id: 'notice',   start: 0.00, end: 0.15 }),
+    Object.freeze({ id: 'prepare',  start: 0.15, end: 0.28 }),
+    Object.freeze({ id: 'descent',  start: 0.28, end: 0.64 }),
+    Object.freeze({ id: 'hold',     start: 0.64, end: 0.80 }),
+    Object.freeze({ id: 'recovery', start: 0.80, end: 1.00 })
+  ]),
+  shell: Object.freeze({ liftPx: -1.2, pitchDeg: 16, dropPx: 6.4, compressionY: .94, recoveryOvershootDeg: -1 }),
+  eyes: Object.freeze({ noticeTravelPx: .60, bowDropPx: 2.3, bowOpen: .66, prepareOpen: .92, recoveryOpen: 1.06 }),
+  monocle: Object.freeze({ chainPeakDeg: 6, counterSwingDeg: -2.2, settleDeg: -1.1 }),
+  holdMs: 160
+})
+
+window.KAEL_CORE_V9_CONTRACT = CONTRACT
+window.KAEL_CORE_V9_BOW_TIMELINE = BOW_TIMELINE
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+
+class KaelCoreV9 extends HTMLElement {
+  static get observedAttributes() { return ['size', 'proximity', 'label', 'pose', 'reduced-motion'] }
+
+  constructor() {
+    super()
+    this.attachShadow({ mode: 'open' })
+    this._bowing = false
+    this._inside = false
+    this._lastBow = Number.NEGATIVE_INFINITY
+    this._animations = []
+    this._media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    this._onWindowPointerMove = this._onWindowPointerMove.bind(this)
+    this._onPointerDown = this._onPointerDown.bind(this)
+    this._onKeyDown = this._onKeyDown.bind(this)
+    this._onFocus = this._onFocus.bind(this)
+    this.shadowRoot.innerHTML = this._template()
+  }
+
+  connectedCallback() {
+    if (!this.hasAttribute('tabindex')) this.tabIndex = 0
+    if (!this.hasAttribute('role')) this.setAttribute('role', 'img')
+    this._syncAttributes()
+    window.addEventListener('pointermove', this._onWindowPointerMove, { passive: true })
+    this.addEventListener('pointerdown', this._onPointerDown, { passive: true })
+    this.addEventListener('keydown', this._onKeyDown)
+    this.addEventListener('focus', this._onFocus)
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener('pointermove', this._onWindowPointerMove)
+    this.removeEventListener('pointerdown', this._onPointerDown)
+    this.removeEventListener('keydown', this._onKeyDown)
+    this.removeEventListener('focus', this._onFocus)
+    this._cancelAnimations()
+  }
+
+  attributeChangedCallback() { this._syncAttributes() }
+
+  get size() { return Number(this.getAttribute('size')) || CONTRACT.defaultSize }
+  set size(value) { this.setAttribute('size', String(value)) }
+
+  get proximity() { return Number(this.getAttribute('proximity')) || Math.max(CONTRACT.defaultProximity, this.size * 1.45) }
+  set proximity(value) { this.setAttribute('proximity', String(value)) }
+
+  get reducedMotion() { return this.hasAttribute('reduced-motion') || this._media.matches }
+  set reducedMotion(value) { value ? this.setAttribute('reduced-motion', '') : this.removeAttribute('reduced-motion') }
+
+  _syncAttributes() {
+    if (!this.shadowRoot) return
+    const size = clamp(this.size, 18, 720)
+    this.style.setProperty('--kael-size', `${size}px`)
+    this.setAttribute('aria-label', this.getAttribute('label') || 'Kael')
+    this.dataset.lod = size < 42 ? 'micro' : size < 78 ? 'compact' : 'full'
+  }
+
+  _onWindowPointerMove(event) {
+    if (this.hasAttribute('pose') || event.pointerType === 'touch') return
+    const rect = this.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    const distance = Math.hypot(event.clientX - cx, event.clientY - cy)
+    const radius = this.proximity
+    if (distance <= radius && !this._inside) {
+      this._inside = true
+      this.bow({ source: 'proximity', pointerX: event.clientX })
+    } else if (distance > radius * 1.22) {
+      this._inside = false
+    }
+  }
+
+  _onPointerDown(event) {
+    if (this.hasAttribute('pose')) return
+    this.bow({ source: event.pointerType === 'touch' ? 'touch' : 'pointer-press', pointerX: event.clientX })
+  }
+
+  _onKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      this.bow({ source: 'keyboard' })
+    }
+  }
+
+  _onFocus() {
+    if (!this.hasAttribute('pose')) this.bow({ source: 'focus' })
+  }
+
+  _cancelAnimations() {
+    for (const animation of this._animations) animation.cancel()
+    this._animations.length = 0
+  }
+
+  async bow({ source = 'api', pointerX } = {}) {
+    if (this.hasAttribute('pose')) return false
+    const now = performance.now()
+    if (this._bowing || now - this._lastBow < 720) return false
+
+    this._bowing = true
+    this._lastBow = now
+    this.setAttribute('data-bowing', '')
+    this.dispatchEvent(new CustomEvent('kael-bow-start', { bubbles: true, composed: true, detail: { source } }))
+
+    const rect = this.getBoundingClientRect()
+    const direction = Number.isFinite(pointerX)
+      ? clamp((pointerX - (rect.left + rect.width / 2)) / Math.max(rect.width, 1), -1, 1)
+      : 0
+
+    this._cancelAnimations()
+    const reduced = this.reducedMotion
+    const animations = reduced ? this._runReducedBow(direction) : this._runFullBow(direction)
+    this._animations.push(...animations)
+
+    await Promise.allSettled(animations.map(animation => animation.finished))
+    this._animations.length = 0
+    this.removeAttribute('data-bowing')
+    this._bowing = false
+    this.dispatchEvent(new CustomEvent('kael-bow-end', { bubbles: true, composed: true, detail: { source } }))
+    return true
+  }
+
+  _runFullBow(direction) {
+    const q = selector => this.shadowRoot.querySelector(selector)
+    const duration = CONTRACT.bowDuration
+    const common = { duration, fill: 'none', easing: 'linear' }
+
+    const shell = q('.bow-plane').animate([
+      { offset: 0.00, transform: 'perspective(620px) translate3d(0,0,0) rotateX(0deg) scale(1,1)', easing: 'cubic-bezier(.20,.72,.25,1)' },
+      { offset: 0.12, transform: 'perspective(620px) translate3d(0,-1.2px,0) rotateX(-1.2deg) scale(1.005,.998)', easing: 'cubic-bezier(.25,.9,.25,1)' },
+      { offset: 0.22, transform: 'perspective(620px) translate3d(0,0,0) rotateX(0deg) scale(1,1)', easing: 'cubic-bezier(.18,.74,.22,1)' },
+      { offset: 0.54, transform: 'perspective(620px) translate3d(0,6.4px,0) rotateX(16deg) scale(.985,.94)', easing: 'cubic-bezier(.24,.02,.28,1)' },
+      { offset: 0.68, transform: 'perspective(620px) translate3d(0,6.4px,0) rotateX(16deg) scale(.985,.94)', easing: 'cubic-bezier(.15,.7,.2,1)' },
+      { offset: 0.86, transform: 'perspective(620px) translate3d(0,-.7px,0) rotateX(-1deg) scale(1.004,1.002)', easing: 'cubic-bezier(.18,.82,.22,1)' },
+      { offset: 1.00, transform: 'perspective(620px) translate3d(0,0,0) rotateX(0deg) scale(1,1)' }
+    ], common)
+
+    const eyeFrames = side => {
+      const sideBias = side === 'left' ? -.05 : .05
+      const noticeX = (direction * .60) + sideBias
+      return [
+        { offset: 0.00, transform: 'translate(0px,0px) scale(1,1)' },
+        { offset: 0.12, transform: `translate(${noticeX.toFixed(3)}px,-.34px) scale(1.01,1.02)`, easing: 'cubic-bezier(.2,.8,.2,1)' },
+        { offset: 0.22, transform: 'translate(0px,.15px) scale(1,.92)', easing: 'cubic-bezier(.3,.1,.3,1)' },
+        { offset: 0.54, transform: `translate(${(direction * .08).toFixed(3)}px,2.3px) scale(1,.66)`, easing: 'cubic-bezier(.24,.05,.28,1)' },
+        { offset: 0.68, transform: `translate(${(direction * .05).toFixed(3)}px,2.3px) scale(1,.66)` },
+        { offset: 0.84, transform: 'translate(0px,-.12px) scale(1,1.06)', easing: 'cubic-bezier(.17,.82,.2,1)' },
+        { offset: 1.00, transform: 'translate(0px,0px) scale(1,1)' }
+      ]
+    }
+
+    const eyeLeft = q('.eye-left').animate(eyeFrames('left'), { ...common, duration: duration - 4 })
+    const eyeRight = q('.eye-right').animate(eyeFrames('right'), { ...common, duration: duration, delay: 10 })
+
+    const chain = q('.monocle-chain').animate([
+      { offset: 0.00, transform: 'rotate(0deg)' },
+      { offset: 0.22, transform: 'rotate(0deg)' },
+      { offset: 0.50, transform: 'rotate(6deg)', easing: 'cubic-bezier(.2,.1,.3,1)' },
+      { offset: 0.68, transform: 'rotate(-2.2deg)', easing: 'cubic-bezier(.2,.8,.25,1)' },
+      { offset: 0.86, transform: 'rotate(-1.1deg)', easing: 'cubic-bezier(.2,.7,.25,1)' },
+      { offset: 1.00, transform: 'rotate(0deg)' }
+    ], common)
+
+    const lens = q('.lens-edge-glint').animate([
+      { offset: 0.00, opacity: .16 },
+      { offset: 0.12, opacity: .52 },
+      { offset: 0.28, opacity: .20 },
+      { offset: 0.66, opacity: .10 },
+      { offset: 0.88, opacity: .26 },
+      { offset: 1.00, opacity: .16 }
+    ], common)
+
+    const shade = q('.bow-shade').animate([
+      { offset: 0.00, opacity: 0 },
+      { offset: 0.25, opacity: .03 },
+      { offset: 0.54, opacity: .26 },
+      { offset: 0.68, opacity: .26 },
+      { offset: 0.90, opacity: .04 },
+      { offset: 1.00, opacity: 0 }
+    ], common)
+
+    const shadow = q('.ground-shadow').animate([
+      { offset: 0.00, transform: 'translateX(-50%) scaleX(1)', opacity: .38 },
+      { offset: 0.12, transform: 'translateX(-50%) scaleX(.94)', opacity: .31 },
+      { offset: 0.54, transform: 'translateX(-50%) scaleX(1.13)', opacity: .52 },
+      { offset: 0.68, transform: 'translateX(-50%) scaleX(1.13)', opacity: .52 },
+      { offset: 0.86, transform: 'translateX(-50%) scaleX(.98)', opacity: .35 },
+      { offset: 1.00, transform: 'translateX(-50%) scaleX(1)', opacity: .38 }
+    ], common)
+
+    return [shell, eyeLeft, eyeRight, chain, lens, shade, shadow]
+  }
+
+  _runReducedBow(direction) {
+    const q = selector => this.shadowRoot.querySelector(selector)
+    const duration = CONTRACT.reducedMotionDuration
+    const common = { duration, fill: 'none', easing: 'cubic-bezier(.22,.72,.22,1)' }
+    const shell = q('.bow-plane').animate([
+      { transform: 'translateY(0) scaleY(1)' },
+      { offset: .45, transform: 'translateY(2.2px) scaleY(.965)' },
+      { transform: 'translateY(0) scaleY(1)' }
+    ], common)
+    const eyeTransform = `translate(${(direction * .25).toFixed(3)}px,1px) scale(1,.84)`
+    const left = q('.eye-left').animate([{ transform:'translate(0,0) scale(1,1)' }, { offset:.45, transform:eyeTransform }, { transform:'translate(0,0) scale(1,1)' }], common)
+    const right = q('.eye-right').animate([{ transform:'translate(0,0) scale(1,1)' }, { offset:.45, transform:eyeTransform }, { transform:'translate(0,0) scale(1,1)' }], { ...common, delay: 6 })
+    const chain = q('.monocle-chain').animate([{ transform:'rotate(0deg)' }, { offset:.45, transform:'rotate(2deg)' }, { transform:'rotate(0deg)' }], common)
+    return [shell, left, right, chain]
+  }
+
+  _template() {
+    return `
+<style>
+:host {
+  --kael-size: 72px;
+  display: inline-grid;
+  place-items: center;
+  width: var(--kael-size);
+  height: var(--kael-size);
+  position: relative;
+  overflow: visible;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  cursor: default;
+  contain: layout style;
+}
+:host(:focus-visible)::after {
+  content: '';
+  position: absolute;
+  inset: -9%;
+  border: 1px solid rgba(255,255,255,.48);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(255,255,255,.08);
+}
+.stage {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  position: relative;
+  perspective: 620px;
+  overflow: visible;
+}
+.bow-plane {
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 86%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.eye {
+  transform-box: view-box;
+  transform-origin: center;
+  will-change: transform;
+}
+.monocle-chain {
+  transform-box: view-box;
+  transform-origin: 79px 61px;
+  will-change: transform;
+}
+.ground-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  width: 54%;
+  height: 7%;
+  border-radius: 50%;
+  background: rgba(0,0,0,.72);
+  filter: blur(calc(var(--kael-size) * .035));
+  transform: translateX(-50%);
+  opacity: .38;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+:host([data-lod="compact"]) .chain-link-minor,
+:host([data-lod="micro"]) .monocle-chain,
+:host([data-lod="micro"]) .clasp-detail,
+:host([data-lod="micro"]) .lens-edge-glint,
+:host([data-lod="micro"]) .rim-anchor-detail { display: none; }
+:host([data-lod="micro"]) .monocle-ring-detail { opacity: .55; }
+
+/* Static report poses. No animation is attached to these states. */
+:host([pose="notice"]) .bow-plane { transform: perspective(620px) translateY(-1.2px) rotateX(-1.2deg) scale(1.005,.998); }
+:host([pose="notice"]) .eye-left  { transform: translate(.45px,-.34px) scale(1.01,1.02); }
+:host([pose="notice"]) .eye-right { transform: translate(.56px,-.34px) scale(1.01,1.02); }
+:host([pose="notice"]) .lens-edge-glint { opacity: .52; }
+:host([pose="prepare"]) .eye-left,
+:host([pose="prepare"]) .eye-right { transform: translate(0,.15px) scale(1,.92); }
+:host([pose="bow"]) .bow-plane,
+:host([pose="hold"]) .bow-plane { transform: perspective(620px) translateY(6.4px) rotateX(16deg) scale(.985,.94); }
+:host([pose="bow"]) .eye-left,
+:host([pose="bow"]) .eye-right,
+:host([pose="hold"]) .eye-left,
+:host([pose="hold"]) .eye-right { transform: translate(0,2.3px) scale(1,.66); }
+:host([pose="bow"]) .monocle-chain { transform: rotate(6deg); }
+:host([pose="hold"]) .monocle-chain { transform: rotate(-2.2deg); }
+:host([pose="bow"]) .bow-shade,
+:host([pose="hold"]) .bow-shade { opacity: .26; }
+:host([pose="bow"]) .ground-shadow,
+:host([pose="hold"]) .ground-shadow { transform: translateX(-50%) scaleX(1.13); opacity: .52; }
+:host([pose="recover"]) .bow-plane { transform: perspective(620px) translateY(-.7px) rotateX(-1deg) scale(1.004,1.002); }
+:host([pose="recover"]) .eye-left,
+:host([pose="recover"]) .eye-right { transform: translate(0,-.12px) scale(1,1.06); }
+:host([pose="recover"]) .monocle-chain { transform: rotate(-1.1deg); }
+</style>
+<div class="stage" part="stage">
+  <div class="ground-shadow"></div>
+  <div class="bow-plane" part="model">
+    <svg viewBox="0 0 120 120" role="presentation" aria-hidden="true">
+      <defs>
+        <radialGradient id="body" cx="36%" cy="22%" r="83%">
+          <stop offset="0" stop-color="#d9dde0"/>
+          <stop offset=".13" stop-color="#aeb4b9"/>
+          <stop offset=".34" stop-color="#62686e"/>
+          <stop offset=".63" stop-color="#2a2e32"/>
+          <stop offset=".86" stop-color="#151719"/>
+          <stop offset="1" stop-color="#090a0b"/>
+        </radialGradient>
+        <radialGradient id="bodyDepth" cx="73%" cy="82%" r="68%">
+          <stop offset="0" stop-color="#030405" stop-opacity=".94"/>
+          <stop offset=".62" stop-color="#0d0f11" stop-opacity=".42"/>
+          <stop offset="1" stop-color="#5d6368" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="topBloom" cx="42%" cy="3%" r="72%">
+          <stop offset="0" stop-color="#ffffff" stop-opacity=".34"/>
+          <stop offset=".28" stop-color="#f3f5f6" stop-opacity=".14"/>
+          <stop offset=".64" stop-color="#c9cdd1" stop-opacity=".035"/>
+          <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="rim" x1="21" y1="17" x2="101" y2="104" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#f7f8f9"/>
+          <stop offset=".14" stop-color="#b8bec3"/>
+          <stop offset=".39" stop-color="#40454a"/>
+          <stop offset=".69" stop-color="#111315"/>
+          <stop offset=".84" stop-color="#71777c"/>
+          <stop offset="1" stop-color="#dfe2e4"/>
+        </linearGradient>
+        <linearGradient id="rimInner" x1="25" y1="20" x2="96" y2="101" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ffffff" stop-opacity=".72"/>
+          <stop offset=".28" stop-color="#d5d9dc" stop-opacity=".12"/>
+          <stop offset=".70" stop-color="#020304" stop-opacity=".72"/>
+          <stop offset="1" stop-color="#c7ccd0" stop-opacity=".42"/>
+        </linearGradient>
+        <linearGradient id="monocleMetal" x1="64" y1="40" x2="87" y2="67" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ffffff"/>
+          <stop offset=".16" stop-color="#cfd3d6"/>
+          <stop offset=".38" stop-color="#5b6166"/>
+          <stop offset=".62" stop-color="#171a1d"/>
+          <stop offset=".82" stop-color="#8e9499"/>
+          <stop offset="1" stop-color="#eceeef"/>
+        </linearGradient>
+        <radialGradient id="lensGlass" cx="34%" cy="22%" r="84%">
+          <stop stop-color="#ffffff" stop-opacity=".055"/>
+          <stop offset=".42" stop-color="#cdd2d6" stop-opacity=".012"/>
+          <stop offset="1" stop-color="#090b0d" stop-opacity=".035"/>
+        </radialGradient>
+        <linearGradient id="bowShade" x1="60" y1="22" x2="60" y2="102" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#030405" stop-opacity=".62"/>
+          <stop offset=".48" stop-color="#0b0d0f" stop-opacity=".18"/>
+          <stop offset="1" stop-color="#ffffff" stop-opacity=".16"/>
+        </linearGradient>
+        <filter id="shellShadow" x="-30%" y="-30%" width="160%" height="170%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4.6" flood-color="#000000" flood-opacity=".66"/>
+        </filter>
+        <filter id="eyeSoft" x="-80%" y="-50%" width="260%" height="200%">
+          <feDropShadow dx="0" dy=".6" stdDeviation=".65" flood-color="#ffffff" flood-opacity=".20"/>
+          <feDropShadow dx="0" dy="1.2" stdDeviation="1.3" flood-color="#000000" flood-opacity=".42"/>
+        </filter>
+        <clipPath id="bodyClip"><circle cx="60" cy="58" r="42.6"/></clipPath>
+      </defs>
+
+      <g filter="url(#shellShadow)">
+        <circle cx="60" cy="58" r="47.1" fill="#050607" opacity=".98"/>
+        <circle cx="60" cy="58" r="45.7" fill="url(#rim)"/>
+        <circle cx="60" cy="58" r="43.8" fill="#08090a"/>
+        <circle cx="60" cy="58" r="42.6" fill="url(#body)"/>
+        <circle cx="60" cy="58" r="42.6" fill="url(#bodyDepth)"/>
+        <circle cx="60" cy="58" r="42.6" fill="url(#topBloom)"/>
+        <circle cx="60" cy="58" r="43.35" fill="none" stroke="url(#rimInner)" stroke-width="1.25"/>
+
+        <!-- Perimeter-only reflections: no white streaks cross the body interior. -->
+        <path d="M25.8 36.5 A42.7 42.7 0 0 1 55.6 15.7" fill="none" stroke="#ffffff" stroke-opacity=".56" stroke-width="1.35" stroke-linecap="round"/>
+        <path d="M91.2 31.1 A42.7 42.7 0 0 1 102.2 56.1" fill="none" stroke="#e9ecee" stroke-opacity=".31" stroke-width="1.05" stroke-linecap="round"/>
+        <path d="M76.8 97.1 A42.7 42.7 0 0 1 45.3 99.0" fill="none" stroke="#c9ced2" stroke-opacity=".20" stroke-width=".8" stroke-linecap="round"/>
+
+        <g class="eyes" filter="url(#eyeSoft)">
+          <g class="eye eye-left"><rect x="46.2" y="43.3" width="5.8" height="16.6" rx="2.9" fill="#ffffff" transform="rotate(-4 49.1 51.6)"/></g>
+          <g class="eye eye-right"><rect x="68.0" y="43.3" width="5.8" height="16.6" rx="2.9" fill="#ffffff" transform="rotate(3 70.9 51.6)"/></g>
+        </g>
+
+        <g class="monocle" aria-hidden="true">
+          <circle cx="71.2" cy="51.9" r="12.25" fill="none" stroke="#030405" stroke-width="1.35" opacity=".42"/>
+          <circle cx="71.2" cy="51.9" r="11.55" fill="url(#lensGlass)"/>
+          <circle cx="71.2" cy="51.9" r="12.35" fill="none" stroke="#0a0b0d" stroke-width="2.7" opacity=".86"/>
+          <circle cx="71.2" cy="51.9" r="12.05" fill="none" stroke="url(#monocleMetal)" stroke-width="1.72"/>
+          <circle class="monocle-ring-detail" cx="71.2" cy="51.9" r="10.87" fill="none" stroke="#edf0f2" stroke-opacity=".25" stroke-width=".56"/>
+          <path class="lens-edge-glint" d="M64.1 43.4 A11.1 11.1 0 0 1 70.1 40.9" fill="none" stroke="#ffffff" stroke-width=".88" stroke-linecap="round" opacity=".16"/>
+
+          <g class="clasp-detail">
+            <path d="M80.65 44.55 l2.35 -1.55 1.35 1.75 -2.15 1.75 z" fill="url(#monocleMetal)" stroke="#111417" stroke-width=".42"/>
+            <circle cx="82.62" cy="44.55" r=".68" fill="#dfe3e6"/>
+            <path d="M79.7 60.7 l2.62 1.05 -.62 2.08 -2.78 -1.1 z" fill="url(#monocleMetal)" stroke="#111417" stroke-width=".42"/>
+            <circle cx="81.25" cy="62.38" r=".62" fill="#dfe3e6"/>
+          </g>
+
+          <g class="monocle-chain">
+            <path d="M81.2 62.35 C84.9 67.8 87.1 73.2 89.2 79.9 C90.0 82.5 90.1 84.4 90.1 86.1" fill="none" stroke="#c9cdd0" stroke-opacity=".68" stroke-width=".72" stroke-linecap="round" stroke-dasharray=".95 1.42"/>
+            <ellipse cx="82.55" cy="64.8" rx="1.05" ry=".62" fill="none" stroke="#e6e8ea" stroke-width=".47" transform="rotate(53 82.55 64.8)"/>
+            <ellipse cx="84.1" cy="67.35" rx="1.05" ry=".62" fill="none" stroke="#bfc4c8" stroke-width=".47" transform="rotate(58 84.1 67.35)"/>
+            <ellipse cx="85.45" cy="70.2" rx="1.05" ry=".62" fill="none" stroke="#e0e3e5" stroke-width=".47" transform="rotate(63 85.45 70.2)"/>
+            <ellipse class="chain-link-minor" cx="86.65" cy="73.25" rx="1.03" ry=".6" fill="none" stroke="#b7bcc0" stroke-width=".45" transform="rotate(67 86.65 73.25)"/>
+            <ellipse class="chain-link-minor" cx="87.75" cy="76.4" rx="1.0" ry=".58" fill="none" stroke="#d9dde0" stroke-width=".44" transform="rotate(71 87.75 76.4)"/>
+            <ellipse class="chain-link-minor" cx="88.7" cy="79.58" rx=".98" ry=".56" fill="none" stroke="#b5babf" stroke-width=".43" transform="rotate(75 88.7 79.58)"/>
+            <g class="rim-anchor-detail">
+              <circle cx="90.05" cy="86.15" r="2.25" fill="#0a0c0e" stroke="url(#monocleMetal)" stroke-width=".85"/>
+              <circle cx="90.05" cy="86.15" r=".76" fill="#dfe3e6"/>
+              <path d="M88.7 87.65 l-1.4 1.65" stroke="#848a8f" stroke-width=".55" stroke-linecap="round"/>
+            </g>
+          </g>
+        </g>
+
+        <circle class="bow-shade" cx="60" cy="58" r="42.6" fill="url(#bowShade)" clip-path="url(#bodyClip)" opacity="0" pointer-events="none"/>
+      </g>
+    </svg>
+  </div>
+</div>`
+  }
+}
+
+if (!customElements.get('kael-core-v9')) customElements.define('kael-core-v9', KaelCoreV9)
+
+function verifyKaelCoreV9() {
+  const probe = document.createElement('kael-core-v9')
+  probe.setAttribute('size', '120')
+  probe.setAttribute('pose', 'idle')
+  probe.style.position = 'fixed'
+  probe.style.left = '-1000px'
+  document.body.appendChild(probe)
+
+  const root = probe.shadowRoot
+  const checks = [
+    ['custom element registered', Boolean(customElements.get('kael-core-v9'))],
+    ['legacy status count is zero', CONTRACT.legacyStatusCount === 0],
+    ['legacy motion count is zero', CONTRACT.legacyMotionCount === 0],
+    ['hand count is zero', CONTRACT.handCount === 0 && root.querySelectorAll('[class*="hand"]').length === 0],
+    ['accessory count is zero', CONTRACT.accessoryCount === 0],
+    ['motion vocabulary contains only bow', CONTRACT.motionVocabulary.length === 1 && CONTRACT.motionVocabulary[0] === 'bow'],
+    ['two white pill eyes', root.querySelectorAll('.eye rect').length === 2],
+    ['one monocle system', root.querySelectorAll('.monocle').length === 1],
+    ['monocle chain has six visible link ellipses', root.querySelectorAll('.monocle-chain ellipse').length >= 6],
+    ['perimeter reflections only', root.querySelectorAll('path').length >= 8 && root.querySelectorAll('.bow-shade').length === 1],
+    ['bow API exists', typeof probe.bow === 'function'],
+    ['proximity trigger exists', typeof probe._onWindowPointerMove === 'function'],
+    ['keyboard trigger exists', typeof probe._onKeyDown === 'function'],
+    ['reduced motion path exists', typeof probe._runReducedBow === 'function'],
+    ['six bow phases', BOW_TIMELINE.phases.length === 6],
+    ['eye and shell share one duration', CONTRACT.bowDuration === 1220],
+    ['no raster elements in model', root.querySelectorAll('img,image,video,canvas').length === 0],
+    ['no external scripts', document.querySelectorAll('script[src]').length === 0],
+    ['no external stylesheets', document.querySelectorAll('link[rel="stylesheet"]').length === 0],
+    ['no CSS idle animation on component', [...root.styleSheets].every(sheet => [...sheet.cssRules].every(rule => !String(rule.cssText).includes('animation:')))]
+  ]
+
+  probe.remove()
+  return {
+    pass: checks.every(([, ok]) => ok),
+    passed: checks.filter(([, ok]) => ok).length,
+    total: checks.length,
+    checks: checks.map(([name, ok]) => ({ name, ok })),
+    contract: CONTRACT
+  }
+}
+window.verifyKaelCoreV9 = verifyKaelCoreV9
+
+function verificationText(result) {
+  return [
+    `RESULT: ${result.pass ? 'PASS' : 'FAIL'}`,
+    `Checks: ${result.passed} / ${result.total}`,
+    '',
+    `Legacy Status definitions: ${CONTRACT.legacyStatusCount}`,
+    `Legacy motions:            ${CONTRACT.legacyMotionCount}`,
+    `Hands:                     ${CONTRACT.handCount}`,
+    `Accessory instruments:     ${CONTRACT.accessoryCount}`,
+    `Motion vocabulary:         ${CONTRACT.motionVocabulary.join(', ')}`,
+    `Bow phases:                ${BOW_TIMELINE.phases.length}`,
+    `Bow duration:              ${CONTRACT.bowDuration} ms`,
+    `Maximum eye travel:        ${CONTRACT.maxEyeTravelPx.toFixed(2)} px`,
+    `Maximum pitch:             ${CONTRACT.maxPitchDeg}°`,
+    `Maximum drop:              ${CONTRACT.maxDropPx.toFixed(1)} px`,
+    `Raster elements:           0`,
+    `External runtime deps:     0`,
+    '',
+    ...result.checks.map(check => `${check.ok ? 'PASS' : 'FAIL'}  ${check.name}`)
+  ].join('\n')
+}
+
+function initPrototype() {
+  const inline = document.getElementById('inlineKael')
+  const hero = document.getElementById('heroKael')
+  const button = document.getElementById('bowButton')
+  const motionButton = document.getElementById('motionButton')
+  const readout = document.getElementById('eventReadout')
+
+  button.addEventListener('click', () => Promise.all([inline.bow({source:'button'}), hero.bow({source:'button'})]))
+  motionButton.addEventListener('click', () => {
+    const on = motionButton.dataset.on !== 'true'
+    motionButton.dataset.on = String(on)
+    motionButton.textContent = `Reduced Motion: ${on ? 'On' : 'Off'}`
+    for (const kael of document.querySelectorAll('kael-core-v9')) kael.reducedMotion = on
+  })
+  document.addEventListener('kael-bow-start', event => { readout.textContent = `Bow started · ${event.detail.source}` })
+  document.addEventListener('kael-bow-end', event => { readout.textContent = `Bow complete · ${event.detail.source}` })
+}
+
+const params = new URLSearchParams(location.search)
+const mode = params.get('mode') || 'prototype'
+const prototype = document.getElementById('prototype')
+const report = document.getElementById('report')
+
+if (mode === 'report') {
+  prototype.hidden = true
+  report.hidden = false
+  const result = verifyKaelCoreV9()
+  document.getElementById('reportVerification').textContent = verificationText(result)
+} else if (mode === 'verify') {
+  prototype.hidden = true
+  report.hidden = true
+} else {
+  initPrototype()
+}
+
+const verification = verifyKaelCoreV9()
+window.__KAEL_CORE_V9_VERIFICATION__ = verification
+window.__KAEL_CORE_V9_READY__ = true
+})()
+</script>
+</body>
+</html>

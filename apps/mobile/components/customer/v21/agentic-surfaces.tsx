@@ -5,18 +5,18 @@ import {
   Pressable,
   Text,
   View,
-  type ImageSourcePropType,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
 import Svg, { Defs, RadialGradient, Rect } from 'react-native-svg'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
+import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { useAppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWideMintAura, CaseWorkCardAura, SourceCardSkin, ZipMintAura } from './aura-surfaces'
-import { customerV21Assets } from './assets'
+import { customerV21Assets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
 import { customerV21AgenticStyles as styles } from './agentic-styles'
 import { customerV21CommonCopy } from './copy'
 import { CaseWorkSourceChip } from './history-active-surfaces'
@@ -28,7 +28,7 @@ type CustomerV21SourceSkin = ComponentType<{ testID?: string }>
 type CustomerV21WideAura = ComponentType<{ intensity?: 'default' | 'strong'; scope: string; testID?: string }>
 type CustomerV21ZipAura = ComponentType<{ scope: string; testID?: string }>
 type CustomerV21AssetTile = ComponentType<{
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   size?: number
   sourceAura?: boolean
@@ -48,14 +48,14 @@ type AgenticApprovalModel = {
 type AgenticProcessedApprovalModel = {
   available: boolean
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   status: string
   title: string
 }
 
 type AgenticWorkLogRowModel = {
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   status: string
   title: string
   tone: 'selected' | 'success' | 'unselected'
@@ -68,7 +68,7 @@ type AgenticCommandTimelineRowModel = {
 }
 
 type AgenticUtilityCardModel = {
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   onPress?: () => void
   testID: string
@@ -162,7 +162,7 @@ export function AgenticStageHero({
   assetTile: CustomerV21AssetTile
   body: string
   compact?: boolean
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   imageKind?: 'mascot' | 'tile'
   narrow?: boolean
   pill?: string
@@ -178,7 +178,7 @@ export function AgenticStageHero({
       <ZipMintAura scope={scope} testID={`${testID}-mint-aura`} />
       {imageKind === 'mascot' ? (
         <View style={[styles.agenticHeroMascotWrap, compact ? styles.agenticHeroMascotWrapCompact : null]}>
-          <Image resizeMode="contain" source={image} style={[styles.agenticHeroMascot, compact ? styles.agenticHeroMascotCompact : null]} />
+          {isKaelCoreV9Visual(image) ? <KaelCoreV9 size={compact ? 96 : 132} /> : <Image resizeMode="contain" source={image} style={[styles.agenticHeroMascot, compact ? styles.agenticHeroMascotCompact : null]} />}
         </View>
       ) : (
         <AssetTile image={image} label={title} size={compact ? 50 : 58} sourceAura style={[styles.agenticHeroIcon, compact ? styles.agenticHeroIconCompact : null]} />
@@ -260,7 +260,7 @@ export function AgenticUtilityCard({
   value,
 }: {
   assetTile: CustomerV21AssetTile
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   onPress?: () => void
   testID?: string
@@ -330,7 +330,7 @@ export function AgenticWorkLogRow({
 }: {
   assetTile: CustomerV21AssetTile
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   status: string
   title: string
   tokens: CustomerThemeTokens
@@ -447,7 +447,7 @@ export function AgenticProcessedApprovalRow({
   assetTile: CustomerV21AssetTile
   available: boolean
   body: string
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   status: string
   title: string
   tokens: CustomerThemeTokens
@@ -682,7 +682,7 @@ export function MemoryPermissionRow({
 }: {
   control?: 'toggle' | 'chip'
   enabled: boolean
-  image: ImageSourcePropType
+  image: CustomerV21Visual
   label: string
   onToggle?: () => void
   pending?: boolean
