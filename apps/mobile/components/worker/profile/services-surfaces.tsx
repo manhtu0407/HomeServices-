@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -8,12 +7,13 @@ import {
 } from 'react-native'
 import type { ServiceType } from '@nestscout/shared'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import type { WorkerProfileResponse } from '@/lib/api-types'
 
 import { textByLanguage } from '../ui/format'
+import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { workerVerificationLabel } from '../ui/labels'
+import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './services-styles'
 
 type WorkerV5ServicesProfile = WorkerProfileResponse | null | undefined
@@ -24,8 +24,14 @@ function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
+function workerV5ServiceDetailLabel(service: ServiceType, language: AppLanguage) {
+  if (service === 'plumbing') return textByLanguage(language, 'Đường nước', 'Water systems')
+  if (service === 'electrical') return textByLanguage(language, 'Thiết bị điện', 'Electrical systems')
+  return textByLanguage(language, 'Không gian sống', 'Living spaces')
+}
+
 export function WorkerV5SkillsServiceHero({
-  heroAura: HeroAura,
+  heroAura: _heroAura,
   language,
   profile,
   reduceTransparency,
@@ -40,24 +46,37 @@ export function WorkerV5SkillsServiceHero({
   const serviceCount = profile?.service_types?.length ?? 0
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-skills-service-hero">
-      {!reduceTransparency ? <HeroAura testID="worker-v5-skills-service-mint-aura" /> : null}
-      <View style={styles.earningsHeroCopy}>
+      <View style={[styles.earningsHeroCopy, styles.skillsServiceHeroCopy]} testID="worker-v5-skills-hero-copy">
         <Text style={[styles.earningsHeroAmount, styles.skillsServiceHeroAmount]} numberOfLines={2} testID="worker-v5-skills-service-count">
           {textByLanguage(language, `${serviceCount} kỹ năng đang hoạt động`, `${serviceCount} active skills`)}
         </Text>
-        <Text style={styles.earningsHeroMeta} numberOfLines={2}>{textByLanguage(language, 'Chỉ hiển thị dữ liệu sử dụng trực tiếp trong workflow.', 'Only data used directly by the workflow is shown.')}</Text>
+        <WorkerV5DetailRail
+          items={[
+            {
+              glyph: 'service',
+              label: serviceCount
+                ? textByLanguage(language, `${serviceCount} dịch vụ`, `${serviceCount} services`)
+                : textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile'),
+            },
+            {
+              glyph: 'location',
+              label: profile?.districts?.length
+                ? textByLanguage(language, `${profile.districts.length} khu vực`, `${profile.districts.length} areas`)
+                : textByLanguage(language, 'Chưa có khu vực', 'No area yet'),
+            },
+          ]}
+          prominent
+          testID="worker-v5-skills-hero-detail"
+        />
       </View>
-      <View style={styles.earningsHeroIconShell}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image resizeMode="contain" source={toolsIcon} style={styles.earningsHeroIcon} />
-      </View>
+      <WorkerV5IntegratedIcon bleed={16} edge="left" image={toolsIcon} reduceTransparency={reduceTransparency} tone="service" variant="heroPanel" />
     </View>
   )
 }
 
 export function WorkerV5ServiceCardGrid({
   language,
-  listAura: ListAura,
+  listAura: _listAura,
   profile,
   reduceTransparency,
   serviceIcons,
@@ -75,11 +94,7 @@ export function WorkerV5ServiceCardGrid({
     return (
       <View style={styles.serviceCardGrid} testID="worker-v5-quick-action-grid">
         <View style={[styles.serviceSourceCard, styles.serviceSourceCardFull, reduceTransparency && styles.opaqueCard]} testID="worker-v5-quick-action-empty">
-          {!reduceTransparency ? <ListAura testID="worker-v5-service-card-mint-aura-empty" /> : null}
-          <View style={styles.serviceSourceIconTile}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image resizeMode="contain" source={toolsIcon} style={styles.serviceSourceIcon} />
-          </View>
+          <WorkerV5IntegratedIcon bleed={11} edge="none" image={toolsIcon} reduceTransparency={reduceTransparency} style={styles.serviceSourceIntegratedIcon} tone="service" variant="stagePanel" />
           <View style={styles.serviceSourceCopy}>
             <Text style={styles.serviceSourceTitle} numberOfLines={2} testID="worker-v5-quick-action-empty-title">
               {textByLanguage(language, 'Chưa có kỹ năng đã ghi', 'No saved skills')}
@@ -87,6 +102,14 @@ export function WorkerV5ServiceCardGrid({
             <Text style={styles.serviceSourceMeta} numberOfLines={2} testID="worker-v5-quick-action-empty-meta">
               {textByLanguage(language, 'Kỹ năng sẽ hiện khi hồ sơ thợ đồng bộ', 'Skills appear when the worker profile syncs')}
             </Text>
+            <WorkerV5DetailRail
+              items={[
+                { glyph: 'sync', label: textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile') },
+                { glyph: 'service', label: textByLanguage(language, 'Chưa dùng để lọc', 'Not filtering yet') },
+              ]}
+              layout="stacked"
+              testID="worker-v5-service-card-empty-detail"
+            />
           </View>
         </View>
       </View>
@@ -107,11 +130,7 @@ export function WorkerV5ServiceCardGrid({
             ]}
             testID={`worker-v5-quick-action-${index}`}
           >
-            {!reduceTransparency ? <ListAura testID={`worker-v5-service-card-mint-aura-${index}`} /> : null}
-            <View style={styles.serviceSourceIconTile}>
-              {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-              <Image resizeMode="contain" source={serviceIcons[service]} style={styles.serviceSourceIcon} />
-            </View>
+            <WorkerV5IntegratedIcon bleed={11} edge="none" image={serviceIcons[service]} reduceTransparency={reduceTransparency} style={styles.serviceSourceIntegratedIcon} tone="service" variant="stagePanel" />
             <View style={styles.serviceSourceCopy}>
               <Text style={styles.serviceSourceTitle} numberOfLines={2} testID={`worker-v5-quick-action-title-${index}`}>
                 {localizedServiceLabel(service, language)}
@@ -119,6 +138,14 @@ export function WorkerV5ServiceCardGrid({
               <Text style={styles.serviceSourceMeta} numberOfLines={2} testID={`worker-v5-quick-action-meta-${index}`}>
                 {workerVerificationLabel(profile?.verification_status, language)}
               </Text>
+              <WorkerV5DetailRail
+                items={[
+                  { glyph: 'service', label: workerV5ServiceDetailLabel(service, language) },
+                  { glyph: 'check', label: textByLanguage(language, 'Dùng để lọc việc', 'Used for matching') },
+                ]}
+                layout="stacked"
+                testID={`worker-v5-service-card-detail-${index}`}
+              />
             </View>
           </View>
         )

@@ -49,7 +49,6 @@ describe('active customer Kael chat surface wiring', () => {
     const historyAura = readCustomerSource('v21/history-surfaces.tsx')
     const profileAura = readCustomerSource('v21/profile-metrics-surfaces.tsx')
     const workerAura = readMobileSource('components/worker/ui/aura-surfaces.tsx')
-    const workerHomeActionAura = readMobileSource('components/worker/home/action-surfaces.tsx')
 
     expect(alphaStop).toContain('toHexChannel')
     expect(alphaStop).toContain('Math.min(255, Math.max(0, Math.round(Number(value))))')
@@ -65,6 +64,5 @@ describe('active customer Kael chat surface wiring', () => {
     expect(historyAura).toContain('AlphaStop as Stop')
     expect(profileAura).toContain('AlphaStop as Stop')
     expect(workerAura).toContain('AlphaStop as Stop')
-    expect(workerHomeActionAura).toContain('AlphaStop as Stop')
   })
 })

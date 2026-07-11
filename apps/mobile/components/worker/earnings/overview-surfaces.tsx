@@ -1,16 +1,16 @@
 import type { ComponentType } from 'react'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
   type TextProps,
 } from 'react-native'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
 import { formatCompactVnd, formatVndDong, textByLanguage } from '../ui/format'
+import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
+import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './overview-styles'
 
 type WorkerV5EarningsDailyRow = {
@@ -36,7 +36,7 @@ function Text({ style, ...props }: TextProps) {
 
 export function WorkerV5EarningsHero({
   earnings,
-  heroAura: HeroAura,
+  heroAura: _heroAura,
   language,
   reduceTransparency,
   walletIcon,
@@ -67,18 +67,23 @@ export function WorkerV5EarningsHero({
   ]
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-earnings-hero">
-      {!reduceTransparency ? (
-        <HeroAura testID="worker-v5-earnings-mint-aura" />
-      ) : null}
       <View style={styles.earningsHeroContent}>
         <View style={styles.earningsHeroMainRow}>
           <View style={styles.earningsHeroCopy}>
             <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-earnings-amount">{amount}</Text>
             <Text style={styles.earningsHeroMeta} numberOfLines={2}>{hasGross ? textByLanguage(language, 'Đã ghi sổ thu nhập', 'Income ledger recorded') : textByLanguage(language, 'Chờ hệ thống ghi sổ thu nhập', 'Waiting for system income ledger')}</Text>
-          </View>
-          <View style={styles.earningsHeroIconShell}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image resizeMode="contain" source={walletIcon} style={styles.earningsHeroIcon} />
+            <WorkerV5DetailRail
+              items={hasGross
+                ? [
+                  { glyph: 'document', label: textByLanguage(language, 'Đã ghi sổ', 'Recorded') },
+                  { glyph: 'money', label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
+                ]
+                : [
+                  { glyph: 'sync', label: textByLanguage(language, 'Chờ đối soát', 'Waiting settlement') },
+                  { glyph: 'shield', label: textByLanguage(language, 'Số liệu thật', 'Real figures only') },
+                ]}
+              testID="worker-v5-earnings-hero-detail"
+            />
           </View>
         </View>
         <View style={styles.earningsStatGrid} testID="worker-v5-earnings-stat-grid">
@@ -90,51 +95,70 @@ export function WorkerV5EarningsHero({
           ))}
         </View>
       </View>
+      <WorkerV5IntegratedIcon
+        bleed={18}
+        edge="left"
+        image={walletIcon}
+        reduceTransparency={reduceTransparency}
+        testID="worker-v5-earnings-hero-icon"
+        tone="money"
+        variant="heroPanel"
+      />
     </View>
   )
 }
 
 export function WorkerV5EarningsTransactionList({
   documentIcon,
+  emptyStateIcon,
   language,
-  listAura: ListAura,
+  listAura: _listAura,
   recent,
   reduceTransparency,
-  walletIcon,
 }: {
   documentIcon: ImageSourcePropType
+  emptyStateIcon: ImageSourcePropType
   language: AppLanguage
   listAura: WorkerV5EarningsAuraComponent
   recent: readonly WorkerV5EarningsDailyRow[]
   reduceTransparency: boolean
-  walletIcon: ImageSourcePropType
 }) {
   return (
     <View style={[styles.earningsTransactionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-earnings-transactions">
-      {!reduceTransparency ? (
-        <ListAura testID="worker-v5-earnings-transactions-mint-aura" />
-      ) : null}
       {recent.length ? recent.map((row, index) => (
         <View key={row.date} style={styles.earningsTransactionRow} testID={`worker-v5-earnings-transaction-${index}`}>
-          <View style={styles.earningsTransactionIconShell}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image source={documentIcon} style={styles.earningsTransactionIcon} />
-          </View>
+          <WorkerV5IntegratedIcon bleed={13} image={documentIcon} reduceTransparency={reduceTransparency} tone="document" variant="panel" />
           <View style={styles.earningsTransactionCopy}>
             <Text style={styles.earningsTransactionTitle} numberOfLines={1}>{row.date}</Text>
-            <Text style={styles.earningsTransactionMeta} numberOfLines={2}>{textByLanguage(language, `${row.paid_job_count} việc đã trả`, `${row.paid_job_count} paid jobs`)}</Text>
+            <WorkerV5DetailRail
+              items={[
+                { glyph: 'document', label: textByLanguage(language, `${row.paid_job_count} việc`, `${row.paid_job_count} jobs`) },
+                { glyph: 'check', label: textByLanguage(language, 'Đã thanh toán', 'Settled') },
+              ]}
+              testID={`worker-v5-earnings-transaction-detail-${index}`}
+            />
           </View>
           <Text style={styles.earningsTransactionAmount} numberOfLines={2} testID={`worker-v5-earnings-transaction-amount-${index}`}>+{formatVndDong(row.net_earnings, language)}</Text>
         </View>
       )) : (
         <View style={styles.earningsTransactionRow}>
-          <View style={styles.earningsTransactionIconShell}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image source={walletIcon} style={styles.earningsTransactionIcon} />
-          </View>
+          <WorkerV5IntegratedIcon
+            bleed={13}
+            image={emptyStateIcon}
+            reduceTransparency={reduceTransparency}
+            testID="worker-v5-earnings-empty-transaction-icon"
+            tone="document"
+            variant="panel"
+          />
           <View style={styles.earningsTransactionCopy}>
             <Text style={styles.earningsTransactionTitle} numberOfLines={2}>{textByLanguage(language, 'Chưa có giao dịch gần đây', 'No recent transactions')}</Text>
-            <Text style={styles.earningsTransactionMeta} numberOfLines={2}>{textByLanguage(language, 'Giao dịch chỉ hiện khi số đối soát thật đồng bộ.', 'Transactions appear only when the real ledger syncs.')}</Text>
+            <WorkerV5DetailRail
+              items={[
+                { glyph: 'sync', label: textByLanguage(language, 'Chờ đồng bộ', 'Waiting to sync') },
+                { glyph: 'document', label: textByLanguage(language, 'Sổ đối soát thật', 'Real ledger only') },
+              ]}
+              testID="worker-v5-earnings-empty-transaction-detail"
+            />
           </View>
         </View>
       )}

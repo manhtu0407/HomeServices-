@@ -12,7 +12,8 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
 import { formatVndDong, textByLanguage } from '../ui/format'
-import { resolveWorkerV5BankLogo } from './banks'
+import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
+import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './payout-request-styles'
 
 type WorkerV5PayoutRequestEarnings = EarningsResponse | null | undefined
@@ -57,31 +58,45 @@ export function WorkerV5PayoutRequestHero({
 }
 
 export function WorkerV5PayoutAccountCard({
+  accountIcon,
   language,
-  listAura: ListAura,
+  listAura: _listAura,
   profile,
   reduceTransparency,
-  shieldIcon,
 }: {
+  accountIcon: ImageSourcePropType
   language: AppLanguage
   listAura: WorkerV5PayoutRequestAura
   profile: WorkerV5PayoutRequestProfile
   reduceTransparency: boolean
-  shieldIcon: ImageSourcePropType
 }) {
   const hasBank = Boolean(profile?.bank_account_masked)
-  const bankLogo = resolveWorkerV5BankLogo(profile?.bank_name)
   const bankName = profile?.bank_name || textByLanguage(language, 'Ngân hàng đã ghi', 'Recorded bank')
   return (
     <View style={[styles.bankCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-account-card">
-      {!reduceTransparency ? <ListAura testID="worker-v5-payout-account-mint-aura" /> : null}
-      <View style={styles.bankIconTile}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image source={bankLogo ?? shieldIcon} style={bankLogo ? styles.bankCardLogoImage : styles.utilityIcon} />
-      </View>
-      <View style={styles.opportunityTextColumn}>
+      <WorkerV5IntegratedIcon
+        bleed={12}
+        image={accountIcon}
+        reduceTransparency={reduceTransparency}
+        testID="worker-v5-payout-account-icon"
+        tone="identity"
+        variant="panel"
+      />
+      <View style={styles.opportunityTextColumn} testID="worker-v5-payout-account-copy">
         <Text style={styles.opportunityTitle} numberOfLines={2} testID="worker-v5-payout-account-title">{hasBank ? bankName : textByLanguage(language, 'Chưa có tài khoản xác minh', 'No verified account')}</Text>
         <Text style={styles.opportunityMeta} numberOfLines={2} testID="worker-v5-payout-account-meta">{hasBank ? profile?.bank_account_masked : textByLanguage(language, 'Dùng luồng xác minh hiện hữu trước khi rút tiền.', 'Use the existing verification flow before payout.')}</Text>
+        <WorkerV5DetailRail
+          items={hasBank
+            ? [
+              { glyph: 'identity', label: textByLanguage(language, 'Danh tính khớp', 'Identity matched') },
+              { glyph: 'check', label: textByLanguage(language, 'Đã xác minh', 'Verified') },
+            ]
+            : [
+              { glyph: 'shield', label: textByLanguage(language, 'Cần xác minh', 'Verification required') },
+              { glyph: 'money', label: textByLanguage(language, 'Trước khi rút tiền', 'Before payout') },
+            ]}
+          testID="worker-v5-payout-account-detail"
+        />
       </View>
       <Text style={styles.chevronText}>›</Text>
     </View>

@@ -1,5 +1,4 @@
 import {
-  Image,
   Pressable,
   Text as RNText,
   View,
@@ -8,11 +7,12 @@ import {
 } from 'react-native'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 
 import { workerV5TimeChoiceLabel } from '../ui/labels'
 import { textByLanguage } from '../ui/format'
+import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
+import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import {
   WorkerV5SourceProgressBar,
   type WorkerV5InboxTabId,
@@ -46,21 +46,23 @@ export function WorkerV5OpportunityCard({
 }) {
   const earning = deal.broadcast?.estimatedEarningLabel ?? textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning')
   const area = deal.broadcast?.generalArea || deal.draft.districtLabel || textByLanguage(language, 'Khu vực đang ẩn', 'Area hidden')
-  const meta = `${workerV5TimeChoiceLabel(deal.draft.timeChoice, language)} · ${area}`
   const serviceLabel = localizedServiceLabel(deal.draft.serviceType, language)
-  const serviceIcon = deal.draft.serviceType ? serviceIcons[deal.draft.serviceType] : fallbackJobIcon
+  const serviceIcon = deal.draft.serviceType ? serviceIcons[deal.draft.serviceType] ?? fallbackJobIcon : fallbackJobIcon
   const distanceLabel = deal.broadcast
     ? textByLanguage(language, 'Đã gửi tới bạn', 'Sent to you')
     : textByLanguage(language, 'Chưa có broadcast', 'No broadcast yet')
   const content = (
     <>
-      <View style={styles.opportunityIconTile}>
-        <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-        <Image source={serviceIcon} style={styles.opportunityIcon} />
-      </View>
-      <View style={styles.opportunityTextColumn}>
+      <WorkerV5IntegratedIcon bleed={11} image={serviceIcon} reduceTransparency={reduceTransparency} tone="service" variant="compactPanel" />
+      <View style={styles.opportunityTextColumn} testID="worker-v5-opportunity-copy">
         <Text style={styles.opportunityTitle} numberOfLines={1}>{serviceLabel}</Text>
-        <Text style={styles.opportunityMeta} numberOfLines={1}>{meta}</Text>
+        <WorkerV5DetailRail
+          items={[
+            { glyph: 'arrival', label: workerV5TimeChoiceLabel(deal.draft.timeChoice, language) },
+            { glyph: 'location', label: area },
+          ]}
+          testID="worker-v5-opportunity-detail"
+        />
       </View>
       <View style={styles.opportunityPayoutColumn}>
         <Text style={styles.opportunityPayout} numberOfLines={1}>{earning}</Text>
@@ -131,10 +133,7 @@ export function WorkerV5OpportunityEmptyCard({
       : textByLanguage(language, 'Danh sách chỉ hiện cơ hội thật NestScout đã gửi tới thợ.', 'The list only shows real NestScout opportunities sent to the worker.')
   return (
     <View style={[styles.opportunityCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-opportunity-empty-card">
-      <View style={styles.opportunityIconTile}>
-        <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-        <Image source={jobIcon} style={styles.opportunityIcon} />
-      </View>
+      <WorkerV5IntegratedIcon bleed={11} image={jobIcon} reduceTransparency={reduceTransparency} tone="service" variant="compactPanel" />
       <View style={styles.opportunityTextColumn}>
         <Text style={styles.opportunityTitle} numberOfLines={1}>
           {title}
@@ -142,6 +141,13 @@ export function WorkerV5OpportunityEmptyCard({
         <Text style={styles.opportunityMeta} numberOfLines={2}>
           {body}
         </Text>
+        <WorkerV5DetailRail
+          items={[
+            { glyph: 'sync', label: textByLanguage(language, 'Chờ broadcast thật', 'Waiting for real broadcast') },
+            { glyph: 'shield', label: textByLanguage(language, 'Chỉ dữ liệu thật', 'Real data only') },
+          ]}
+          testID="worker-v5-opportunity-empty-detail"
+        />
         <WorkerV5SourceProgressBar active={false} label={textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')} />
       </View>
     </View>

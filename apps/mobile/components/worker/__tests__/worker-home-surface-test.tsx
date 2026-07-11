@@ -115,6 +115,7 @@ import {
 import { resolveWorkerV5DockActive } from '../dock/routing'
 import { WorkerRebuildDockOverlay } from '../dock/worker-v5-dock-overlay'
 import { WorkerV5ScheduleList } from '../jobs/surfaces'
+import { workerV5CapturedIconAssets } from '../ui/worker-v5-icon-assets'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
   return {
@@ -572,6 +573,7 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.queryByText('Một luồng công việc')).toBeNull()
     expect(screen.getByTestId('worker-v5-opportunity-card')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-opportunity-copy').props.style)).toMatchObject({ justifyContent: 'center' })
   })
 
   it('requires a selected mission before enabling the continuation CTA and source formula', () => {
@@ -824,6 +826,17 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-dock-jobs').props.accessibilityState).toMatchObject({ selected: false })
   })
 
+  it('uses the dedicated recent-transaction icon instead of the reused wallet in the earnings empty state', () => {
+    buildWorkflow({ workerEarnings: buildNoEarnings() })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    render(<WorkerEarningsSurface />)
+
+    const emptyTransactionIcon = screen.getByTestId('worker-v5-earnings-empty-transaction-icon-image')
+    expect(emptyTransactionIcon.props.source).toBe(require('@/assets/worker-image-icons/utility-recent-transactions-sync-core.png'))
+    expect(emptyTransactionIcon.props.source).not.toBe(require('@/assets/worker-image-icons/utility-wallet.png'))
+  })
+
   it('uses net earnings copy and one full-width payout action in ledger detail', () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.2-ledger-detail' }
@@ -833,5 +846,152 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getAllByText('Thu nhập ròng')).toHaveLength(3)
     expect(screen.getByTestId('worker-v5-ledger-payout-action')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-ledger-back-earnings-action')).toBeNull()
+  })
+
+  it('keeps every captured Worker card icon distinct from the other captured card contexts', () => {
+    const sources = Object.values(workerV5CapturedIconAssets)
+
+    expect(sources).toHaveLength(34)
+    expect(new Set(sources).size).toBe(sources.length)
+  })
+
+  it('wires contextual icon assets into the profile dossier and earnings empty state', () => {
+    buildWorkflow({ workerEarnings: buildNoEarnings() })
+    mockRouteParams = {}
+
+    const profile = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-profile-dossier-icon-0-image').props.source).toBe(workerV5CapturedIconAssets.profileDossierServices)
+    expect(screen.getByTestId('worker-v5-profile-dossier-icon-1-image').props.source).toBe(workerV5CapturedIconAssets.profileDossierReliability)
+    expect(screen.getByTestId('worker-v5-profile-dossier-icon-2-image').props.source).toBe(workerV5CapturedIconAssets.profileDossierSettings)
+    profile.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+    render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-earnings-hero-icon-image').props.source).toBe(workerV5CapturedIconAssets.earningsHero)
+    expect(screen.getByTestId('worker-v5-earnings-empty-transaction-icon-image').props.source).toBe(workerV5CapturedIconAssets.earningsRecentTransactions)
+  })
+
+  it('keeps dossier visual panels aligned while giving every dossier card a contextual detail rail', () => {
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({
+        service_types: ['plumbing', 'electrical', 'cleaning'],
+      }),
+    })
+    mockRouteParams = {}
+
+    render(<WorkerProfileSurface />)
+
+    const dossierIcons = [0, 1, 2].map((index) => screen.getByTestId(`worker-v5-profile-dossier-icon-${index}`))
+    dossierIcons.forEach((icon) => {
+      expect(icon.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ width: 94 })]))
+    })
+    ;[1, 2].forEach((index) => {
+      expect(StyleSheet.flatten(screen.getByTestId(`worker-v5-profile-dossier-copy-${index}`).props.style)).toMatchObject({
+        justifyContent: 'center',
+      })
+    })
+    expect(screen.getByTestId('worker-v5-profile-dossier-meta-0')).toBeOnTheScreen()
+    expect(screen.getByText('Sửa nước')).toBeOnTheScreen()
+    expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
+    expect(screen.getByText('Vệ sinh')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-dossier-detail-1')).toHaveTextContent(/Chờ dữ liệu thật/)
+    expect(screen.getByTestId('worker-v5-profile-dossier-detail-1')).toHaveTextContent(/Sau công việc/)
+    expect(screen.getByTestId('worker-v5-profile-dossier-detail-2')).toHaveTextContent(/Tài khoản/)
+    expect(screen.getByTestId('worker-v5-profile-dossier-detail-2')).toHaveTextContent(/Bảo mật/)
+    expect(screen.getByTestId('worker-v5-profile-dossier-detail-2')).toHaveTextContent(/Bộ nhớ Kael/)
+  })
+
+  it('renders contextual detail rails across all 17 captured Worker card clusters', () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = {}
+
+    const home = render(<WorkerHomeSurface />)
+    expect(screen.getByTestId('worker-v5-home-quick-action-detail-0')).toHaveTextContent(/Cơ hội thật/)
+    home.unmount()
+
+    const jobs = render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-opportunity-detail')).toHaveTextContent(/Ngay/)
+    jobs.unmount()
+
+    buildWorkflow({ workerEarnings: buildNoEarnings() })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+    const earnings = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-earnings-hero-detail')).toHaveTextContent(/Chờ đối soát/)
+    expect(screen.getByTestId('worker-v5-earnings-empty-transaction-detail')).toHaveTextContent(/Sổ đối soát thật/)
+    earnings.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
+    const payout = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-payout-account-icon-image').props.source).toBe(require('@/assets/worker-image-icons/utility-identity.png'))
+    expect(screen.getByTestId('worker-v5-payout-account-detail')).toHaveTextContent(/Cần xác minh/)
+    expect(screen.queryByTestId('worker-v5-payout-account-mint-aura')).toBeNull()
+    payout.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
+    const payoutMethod = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-payout-method-hero-icon-image').props.source).toBe(require('@/assets/worker-image-icons/payout-receiving-account-core.png'))
+    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Chủ tài khoản/)
+    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Cần xác minh/)
+    expect(screen.queryByTestId('worker-v5-payout-method-mint-aura')).toBeNull()
+    expect(screen.getByTestId('worker-v5-account-management-icon-0-image').props.source).toBe(require('@/assets/worker-image-icons/payout-add-bank-account-core.png'))
+    expect(screen.getByTestId('worker-v5-account-management-icon-1-image').props.source).toBe(require('@/assets/worker-image-icons/payout-limit-policy-core.png'))
+    expect(screen.getByTestId('worker-v5-account-management-detail-0')).toHaveTextContent(/Chủ tài khoản/)
+    expect(screen.getByTestId('worker-v5-account-management-detail-0')).toHaveTextContent(/Cần xác minh/)
+    expect(screen.getByTestId('worker-v5-account-management-detail-1')).toHaveTextContent(/Theo hệ thống/)
+    expect(screen.getByTestId('worker-v5-account-management-detail-1')).toHaveTextContent(/Không mức cố định/)
+    expect(screen.queryByTestId('worker-v5-account-management-mint-aura')).toBeNull()
+    fireEvent.press(screen.getByTestId('worker-v5-account-management-row-0'))
+    expect(screen.getByTestId('worker-v5-bank-account-form')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-account-management-row-1'))
+    expect(screen.getByTestId('worker-v5-payout-limit-policy')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-bank-account-form')).toBeNull()
+    payoutMethod.unmount()
+
+    buildWorkflow({ deal: buildConfirmedCompletionDeal() })
+    mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
+    const closedCase = render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-case-trail-detail-0')).toHaveTextContent(/Bằng chứng thật/)
+    closedCase.unmount()
+
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({
+        districts: ['quan_1', 'quan_binh_thanh'],
+        service_types: ['plumbing', 'electrical', 'cleaning'],
+      }),
+    })
+    mockRouteParams = {}
+    const profile = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-profile-dossier-detail-1')).toBeOnTheScreen()
+    profile.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
+    const skills = render(<WorkerProfileSurface />)
+    expect(screen.queryByText('Chỉ hiển thị dữ liệu sử dụng trực tiếp trong workflow.')).toBeNull()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-hero-copy').props.style)).toMatchObject({ justifyContent: 'center' })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-service-count').props.style)).toMatchObject({ fontSize: 26 })
+    expect(StyleSheet.flatten(screen.getByText('3 dịch vụ').props.style)).toMatchObject({ fontSize: 11 })
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-service-card-detail-0').props.style)).toMatchObject({
+      alignItems: 'flex-start',
+      flexDirection: 'column',
+    })
+    expect(screen.getByTestId('worker-v5-service-area-detail')).toBeOnTheScreen()
+    skills.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.4-reliability-insights' }
+    const reliability = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-reliability-axis-detail-0')).toBeOnTheScreen()
+    reliability.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.5-account-utilities' }
+    const settings = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-settings-hero-detail')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-settings-account-detail')).toBeOnTheScreen()
+    settings.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.2-worker-ranking' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-ranking-leaderboard-detail')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-ranking-improvement-detail-0')).toBeOnTheScreen()
   })
 })

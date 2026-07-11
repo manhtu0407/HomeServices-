@@ -240,6 +240,8 @@ describe('mobile-api Edge runtime helpers', () => {
       'getWorkerKaelTrainingConsent',
       'getWorkerPerformanceInsights',
       'getWorkerProfile',
+      'getWorkerRouteMap',
+      'getWorkerRoutePreview',
       'invalidateMarketCache',
       'listCustomerActiveJobs',
       'listJobMessages',

@@ -58,6 +58,9 @@ const GUARDED: Record<string, string> = {
   'jobs.kaelClarify': 'service participant check',
   'jobs.confirmCompletion': 'RPC customer-owner',
   'jobs.review': 'service customer-owner',
+  // worker route reads — workerRouteDestination scopes the job query to ctx.user.id
+  'workers.routePreview': 'worker route service owner check',
+  'workers.routeMap': 'worker route service owner check',
   // scope/cancellation/dispute by id — atomic RPC owner/admin SQL check
   'scope.decide': 'decide_scope_change_atomic p_customer_id',
   'workerCancellation.decide': 'decide_worker_cancellation_atomic admin',

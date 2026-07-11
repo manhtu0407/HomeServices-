@@ -115,8 +115,8 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
   caseTrailCard: {
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
     borderRadius: 25,
     borderWidth: 1,
     overflow: 'hidden',
@@ -125,6 +125,7 @@ export const styles = StyleSheet.create({
   caseTrailCopy: {
     flex: 1,
     gap: 3,
+    marginLeft: 46,
     minWidth: 0,
     position: 'relative',
     zIndex: 1,
@@ -159,11 +160,11 @@ export const styles = StyleSheet.create({
     lineHeight: 15,
   },
   caseTrailRow: {
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderBottomColor: 'rgba(176,222,214,0.38)',
     borderBottomWidth: 1,
     flexDirection: 'row',
-    gap: 12,
+    gap: 0,
     minHeight: 96,
     overflow: 'hidden',
     padding: 13,
@@ -185,6 +186,7 @@ export const styles = StyleSheet.create({
     width: 300,
   },
   caseTrailStatus: {
+    alignSelf: 'center',
     backgroundColor: 'rgba(230,251,243,0.88)',
     borderColor: 'rgba(127,226,215,0.76)',
     borderRadius: radius.pill,
@@ -195,6 +197,7 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 14,
     maxWidth: 86,
+    marginLeft: 10,
     minWidth: 64,
     overflow: 'hidden',
     paddingHorizontal: 8,

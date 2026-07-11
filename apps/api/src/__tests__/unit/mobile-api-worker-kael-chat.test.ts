@@ -503,7 +503,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(rateLimitBlock).toContain('takeDurableKaelChatRateLimit')
     expect(rateLimitBlock).toContain('"RATE_LIMIT_UNAVAILABLE"')
     expect(rateLimitBlock).toContain('429')
-    expect(rateLimitBlock).toContain('return;\n  }')
+    expect(rateLimitBlock).toMatch(/return;\r?\n  \}/)
     expect(migration).toContain('pg_advisory_xact_lock')
   })
 
