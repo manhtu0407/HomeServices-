@@ -80,6 +80,8 @@ export function canShowWorkerAddress(deal: LocalDeal) {
     'scope_change_pending',
     'completed_by_worker',
     'confirmed_by_customer',
+    'payment_pending',
+    'paid',
     'reviewed',
   ].includes(deal.status)
 }
@@ -99,12 +101,12 @@ export function buildKnownCaseEvents(deal: LocalDeal | null, language: AppLangua
     textByLanguage(language, 'Việc được tạo trong NestScout', 'Work created in NestScout'),
   ]
   if (canShowWorkerAddress(deal)) events.push(textByLanguage(language, 'Thợ đã nhận việc', 'Worker accepted the work'))
-  if (['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(deal.status)) {
+  if (['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status)) {
     events.push(textByLanguage(language, 'Thợ đã đến nơi hoặc bắt đầu kiểm tra', 'Worker checked in or started inspection'))
   }
   if (deal.scopeChange) events.push(textByLanguage(language, 'Có yêu cầu đổi phạm vi', 'Scope-change request exists'))
   if (deal.completionNotes || deal.completionPhotoUrls?.length) events.push(textByLanguage(language, 'Có bằng chứng hoàn tất', 'Completion evidence exists'))
-  if (['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(deal.status)) events.push(textByLanguage(language, 'Hồ sơ hoàn tất đã gửi', 'Completion artifact submitted'))
+  if (['completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status)) events.push(textByLanguage(language, 'Hồ sơ hoàn tất đã gửi', 'Completion artifact submitted'))
   return events
 }
 
@@ -130,6 +132,8 @@ export function workerStatusStage(status: LocalDeal['status'] | null | undefined
       break
     case 'completed_by_worker':
     case 'confirmed_by_customer':
+    case 'payment_pending':
+    case 'paid':
     case 'reviewed':
       current = 5
       break

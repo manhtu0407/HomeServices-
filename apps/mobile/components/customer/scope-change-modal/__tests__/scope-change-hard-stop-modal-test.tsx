@@ -41,16 +41,19 @@ function makeScopeChange(overrides: Partial<LocalScopeChange> = {}): LocalScopeC
       fallback_used: false,
     },
     evidencePhotoUrls: [],
+    requestTiming: 'pre_arrival',
+    resumeJobStatus: 'worker_on_way',
     createdAt: '2026-05-29T10:00:00Z',
     ...overrides,
   }
 }
 
-function setup(overrides: { scopeChange?: LocalScopeChange | null; visible?: boolean } = {}) {
+function setup(overrides: { busy?: boolean; scopeChange?: LocalScopeChange | null; visible?: boolean } = {}) {
   const onApprove = jest.fn()
   const onReject = jest.fn()
   render(
     <ScopeChangeHardStopModal
+      busy={overrides.busy}
       language="vi"
       newScopeLabel="Đi lại dây âm tường"
       originalEstimateLabel="150.000đ - 250.000đ"
@@ -68,7 +71,8 @@ function setup(overrides: { scopeChange?: LocalScopeChange | null; visible?: boo
 describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
   it('tells the customer the worker is paused awaiting Kael decision', () => {
     setup()
-    expect(screen.getByText(/Thợ đang chờ quyết định của Kael/)).toBeOnTheScreen()
+    expect(screen.getByText(/chỉ bạn mới có thể xác nhận thay đổi/)).toBeOnTheScreen()
+    expect(screen.getByText('Trước khi thợ đến')).toBeOnTheScreen()
   })
 
   it('shows the old vs new scope and old vs new Kael estimate', () => {
@@ -105,11 +109,41 @@ describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
     expect(onApprove).not.toHaveBeenCalled()
   })
 
+  it('disables both decisions while the server is handling the first press', () => {
+    const { onApprove, onReject } = setup({ busy: true })
+    fireEvent.press(screen.getByTestId('customer-scope-change-modal-approve'))
+    fireEvent.press(screen.getByTestId('customer-scope-change-modal-reject'))
+    expect(onApprove).not.toHaveBeenCalled()
+    expect(onReject).not.toHaveBeenCalled()
+  })
+
   it('does not invent a price when Kael has no estimate yet (price honesty)', () => {
-    setup({ scopeChange: makeScopeChange({ priceMin: null, priceMax: null }) })
+    const { onApprove, onReject } = setup({ scopeChange: makeScopeChange({ priceMin: null, priceMax: null }) })
     // the specific computed range must be absent…
     expect(screen.queryByText('450.000đ - 650.000đ')).toBeNull()
     // …and the new-estimate slot falls back to a pending label instead of a fake number
     expect(screen.getAllByText('Kael đang xét').length).toBeGreaterThan(0)
+    fireEvent.press(screen.getByTestId('customer-scope-change-modal-approve'))
+    fireEvent.press(screen.getByTestId('customer-scope-change-modal-reject'))
+    expect(onApprove).not.toHaveBeenCalled()
+    expect(onReject).not.toHaveBeenCalled()
+  })
+
+  it.each(['requested_by_worker', 'reviewing_by_kael'] as const)(
+    'keeps both decisions disabled while the server scope state is %s',
+    (status) => {
+      const { onApprove, onReject } = setup({ scopeChange: makeScopeChange({ status }) })
+      fireEvent.press(screen.getByTestId('customer-scope-change-modal-approve'))
+      fireEvent.press(screen.getByTestId('customer-scope-change-modal-reject'))
+      expect(onApprove).not.toHaveBeenCalled()
+      expect(onReject).not.toHaveBeenCalled()
+      expect(screen.queryByText('450.000đ - 650.000đ')).toBeNull()
+    },
+  )
+
+  it('enables decisions only for a reviewed price in waiting_customer_decision', () => {
+    const { onApprove } = setup()
+    fireEvent.press(screen.getByTestId('customer-scope-change-modal-approve'))
+    expect(onApprove).toHaveBeenCalledTimes(1)
   })
 })

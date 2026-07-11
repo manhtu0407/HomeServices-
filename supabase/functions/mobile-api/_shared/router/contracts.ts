@@ -11,9 +11,11 @@ import type {
   JobMediaAttachInput,
   JobMessageSendInput,
   JobStatus,
+  KaelAssistantInput,
   KaelChatCreateInput,
   KaelChatEvidenceInput,
-  KaelChatMediaUploadInput,
+  EdgeKaelChatMediaRevokeInput,
+  EdgeKaelChatMediaUploadInput,
   KaelChatTurnInput,
   KaelWorkerClarifyInput,
   PlacesAutocompleteInput,
@@ -39,6 +41,7 @@ import type {
 } from "../kael/price-synthesis-ab.ts";
 import type {
   EdgeAcceptBroadcastResponse,
+  EdgeConfirmWorkerCandidateResponse,
   EdgeAvailabilityToggleResponse,
   EdgeBroadcastListResponse,
   EdgeConfirmCompletionResponse,
@@ -48,6 +51,7 @@ import type {
   EdgeCustomerCancellationResponse,
   EdgeCustomerKaelFeedbackResponse,
   EdgeCustomerProfileInsightsResponse,
+  EdgeCustomerFavoriteWorkerResponse,
   EdgeCustomerScopeDecisionResponse,
   EdgeDeclineBroadcastResponse,
   EdgeDevicePushTokenResponse,
@@ -59,6 +63,7 @@ import type {
   EdgeJobMediaAttachResponse,
   EdgeJobMessageListResponse,
   EdgeJobMessageSendResponse,
+  EdgeKaelAssistantResponse,
   EdgeKaelChatMediaUploadResponse,
   KaelBatchResultsProcessInput,
   KaelBatchResultsProcessResponse,
@@ -84,6 +89,7 @@ import type {
   EdgeWorkerCancellationDecisionResponse,
   EdgeWorkerCancellationResponse,
   EdgeWorkerApplicationResponse,
+  EdgeWorkerCandidateResponse,
   EdgeWorkerJobListResponse,
   EdgeWorkerKaelClarifyResponse,
   EdgeWorkerKaelChatListResponse,
@@ -95,6 +101,7 @@ import type {
   EdgeWorkerRegisterResponse,
   EdgeWorkerRoutePreviewResponse,
   EdgeWorkerScopeChangeResponse,
+  EdgeRejectWorkerCandidateResponse,
 } from "./dtos.ts";
 export type {
   KaelBatchResultsProcessInput,
@@ -234,10 +241,18 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: KaelChatCreateInput,
   ): Promise<EdgeKaelChatResponse>;
+  answerKaelAssistant(
+    ctx: MobileApiContext,
+    input: KaelAssistantInput,
+  ): Promise<EdgeKaelAssistantResponse>;
   createKaelChatMediaUpload(
     ctx: MobileApiContext,
-    input: KaelChatMediaUploadInput,
+    input: EdgeKaelChatMediaUploadInput,
   ): Promise<EdgeKaelChatMediaUploadResponse>;
+  revokeKaelChatMedia(
+    ctx: MobileApiContext,
+    input: EdgeKaelChatMediaRevokeInput,
+  ): Promise<{ revoked_count: number; deletion_pending: boolean }>;
   getKaelChat(
     ctx: MobileApiContext,
     sessionId: string,
@@ -281,6 +296,28 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     jobId: string,
   ): Promise<EdgeDeclineBroadcastResponse>;
+  getWorkerCandidate(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeWorkerCandidateResponse>;
+  confirmWorkerCandidate(
+    ctx: MobileApiContext,
+    jobId: string,
+    candidateId: string,
+  ): Promise<EdgeConfirmWorkerCandidateResponse>;
+  rejectWorkerCandidate(
+    ctx: MobileApiContext,
+    jobId: string,
+    candidateId: string,
+  ): Promise<EdgeRejectWorkerCandidateResponse>;
+  saveCustomerFavoriteWorker?(
+    ctx: MobileApiContext,
+    workerId: string,
+  ): Promise<EdgeCustomerFavoriteWorkerResponse>;
+  removeCustomerFavoriteWorker?(
+    ctx: MobileApiContext,
+    workerId: string,
+  ): Promise<EdgeCustomerFavoriteWorkerResponse>;
   updateJobStatus(
     ctx: MobileApiContext,
     jobId: string,

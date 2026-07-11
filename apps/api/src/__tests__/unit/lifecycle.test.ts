@@ -49,8 +49,10 @@ describe('lifecycle — canTransition', () => {
     expect(canTransition('awaiting_customer_confirm', 'cancelled')).toBe(true)
   })
 
-  it('allows broadcasting → worker_matched', () => {
-    expect(canTransition('broadcasting', 'worker_matched')).toBe(true)
+  it('requires candidate review between broadcasting and worker_matched', () => {
+    expect(canTransition('broadcasting', 'worker_candidate_pending')).toBe(true)
+    expect(canTransition('broadcasting', 'worker_matched')).toBe(false)
+    expect(canTransition('worker_candidate_pending', 'worker_matched')).toBe(true)
   })
 
   it('allows worker_matched → worker_on_way', () => {
@@ -234,7 +236,7 @@ describe('lifecycle — validateTransition', () => {
   })
 
   it('includes timestamp column for valid transition', () => {
-    const result = validateTransition('broadcasting', 'worker_matched')
+    const result = validateTransition('worker_candidate_pending', 'worker_matched')
     expect(result.valid).toBe(true)
     if (result.valid) {
       expect(result.timestampColumn).toBe('matched_at')

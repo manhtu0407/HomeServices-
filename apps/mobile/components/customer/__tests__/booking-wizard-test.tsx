@@ -128,6 +128,8 @@ describe('BookingWizard Kael autonomy', () => {
       mediaCount: 0,
       message: 'Đèn phòng khách bị chập, có mùi khét nhẹ',
       problemChips: [],
+      scheduleMode: 'now',
+      scheduledAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
       serviceType: 'electrical',
       source: 'booking',
     }))

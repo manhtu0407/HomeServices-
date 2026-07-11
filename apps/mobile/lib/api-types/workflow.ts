@@ -77,6 +77,8 @@ export type JobDetailResponse = {
     kael_review: Record<string, unknown> | null
     kael_progress: KaelChatProgress | null
     evidence_photo_urls: string[]
+    request_timing: 'pre_arrival' | 'on_site'
+    resume_job_status: JobStatus | null
     created_at: string | null
   } | null
 }

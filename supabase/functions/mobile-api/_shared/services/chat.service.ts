@@ -15,6 +15,8 @@ import type { JobMessageSendInput, JobStatus } from "../../../_shared/domain.ts"
 
 const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK =
   "Kael đã ghi nhận và lưu lại đầy đủ trao đổi của bạn. Nếu cần, bạn có thể yêu cầu admin can thiệp.";
+const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK_EN =
+  "Kael has recorded the conversation. You can request human support if another review is needed.";
 
 export async function listJobMessages(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
@@ -242,17 +244,25 @@ async function recordWorkerDisintermediationRisk(
   );
 }
 
-export function selfCheckDemandingResponseText(responseText: string): string {
-  return guardDemandingResponseText(responseText).text;
+export function selfCheckDemandingResponseText(
+  responseText: string,
+  language: "vi" | "en" = "vi",
+): string {
+  return guardDemandingResponseText(responseText, language).text;
 }
 
-export function guardDemandingResponseText(responseText: string) {
+export function guardDemandingResponseText(
+  responseText: string,
+  language: "vi" | "en" = "vi",
+) {
   return guardOutput({
     text: responseText,
     actor: "customer",
-    language: "vi",
+    language,
     surface: "job_chat_demanding_response",
-    fallbackText: DEMANDING_RESPONSE_SELF_CHECK_FALLBACK,
+    fallbackText: language === "en"
+      ? DEMANDING_RESPONSE_SELF_CHECK_FALLBACK_EN
+      : DEMANDING_RESPONSE_SELF_CHECK_FALLBACK,
   });
 }
 

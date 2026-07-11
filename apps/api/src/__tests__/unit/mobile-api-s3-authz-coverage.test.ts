@@ -31,6 +31,10 @@ const routeLayerPath = resolve(
   here,
   '../../../../../supabase/functions/mobile-api/_shared/router/routes.ts',
 )
+const caseWorkRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/router/case-work-resource-routes.ts',
+)
 
 /**
  * Every resource-scoped route -> the ownership mechanism that fails closed for it.
@@ -53,14 +57,14 @@ const GUARDED: Record<string, string> = {
   'jobs.openDispute': 'open_dispute_atomic participant',
   'jobs.accept': 'accept_broadcast worker-eligibility',
   'jobs.decline': 'broadcast worker-eligibility',
+  'jobs.workerCandidate': 'requireJobAccess customer-owner (404)',
+  'jobs.workerCandidateConfirm': 'RPC customer-owner + exact candidate id',
+  'jobs.workerCandidateReject': 'RPC customer-owner + exact candidate id',
   'jobs.accessAuthorize': 'service customer-owner check',
   'jobs.scopeChange': 'service worker-owner (Edge)',
   'jobs.kaelClarify': 'service participant check',
   'jobs.confirmCompletion': 'RPC customer-owner',
   'jobs.review': 'service customer-owner',
-  // worker route reads — workerRouteDestination scopes the job query to ctx.user.id
-  'workers.routePreview': 'worker route service owner check',
-  'workers.routeMap': 'worker route service owner check',
   // scope/cancellation/dispute by id — atomic RPC owner/admin SQL check
   'scope.decide': 'decide_scope_change_atomic p_customer_id',
   'workerCancellation.decide': 'decide_worker_cancellation_atomic admin',
@@ -77,6 +81,9 @@ const GUARDED: Record<string, string> = {
   'workers.kaelChat.get': 'readWorkerKaelSession ownership',
   'workers.kaelChat.stream': 'readWorkerKaelSession ownership',
   'workers.kaelChat.turn': 'readWorkerKaelSession ownership',
+  // worker route reads — job query is constrained to the authenticated worker id
+  'workers.routeMap': 'jobs.worker_id equality + 404',
+  'workers.routePreview': 'jobs.worker_id equality + 404',
   // learning candidate by id — admin-only at router (S2/F2) + service ctx.role guard
   'admin.kaelLearning.candidates.approve': 'admin-only (S2/F2) + service guard',
   'admin.kaelLearning.candidates.reject': 'admin-only (S2/F2) + service guard',
@@ -93,7 +100,7 @@ function deriveResourceScopedRoutes(): Set<string> {
   const unionEnd = src.indexOf('function matchRoute(')
   expect(unionStart, 'Route union must exist in router routes layer').toBeGreaterThanOrEqual(0)
   expect(unionEnd, 'matchRoute must follow the Route union').toBeGreaterThan(unionStart)
-  const union = src.slice(unionStart, unionEnd)
+  const union = `${src.slice(unionStart, unionEnd)}\n${readFileSync(caseWorkRouteLayerPath, 'utf8')}`
 
   const kindRe = /kind:\s*"([^"]+)"/g
   const matches = [...union.matchAll(kindRe)]

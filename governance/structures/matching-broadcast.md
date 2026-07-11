@@ -4,7 +4,7 @@
 
 ## 13. Matching And Broadcast Rules
 
-Matching starts when Kael emits a validated `kael_started_matching` decision at A7. Customer input can improve or challenge the decision, but it is not the mandatory gate.
+Matching starts only after the customer explicitly confirms the current offer and Kael emits a validated `kael_started_matching` decision at A7. Offer confirmation is a mandatory, audited gate.
 
 Worker eligibility:
 
@@ -15,6 +15,7 @@ Eligible worker
 |- not suspended
 |- online
 |- supports requested service type
+|- has every verified capability required by the diagnosis/scope artifact
 |- works in customer district
 |- not already busy
 |- not blocked by prior job conflict
@@ -28,7 +29,10 @@ Broadcast flow
 |- create broadcast batch
 |- send to eligible workers
 |- each worker gets limited time window
-|- worker accepts or declines
+|- worker accepts as a candidate or declines
+|- accepted candidate is held while the customer sees real trust signals and confirms/declines
+|- customer confirms -> finalize match, release only necessary exact address, allow on-the-way state
+|- customer declines -> release candidate and continue matching according to policy
 |- expired request moves to next eligible worker/batch
 |- no worker found triggers customer fallback
 ```
@@ -53,6 +57,8 @@ Hidden before accept
 |- exact customer identity details
 ```
 
+Worker acceptance does not authorize release of the exact address. Those fields remain hidden until customer candidate confirmation finalizes the match.
+
 Failure rules:
 
 ```text
@@ -60,6 +66,8 @@ Failure rules
 -
 |- worker decline -> try next worker
 |- countdown expires -> auto-expire request
+|- customer declines candidate -> release candidate and try next eligible worker according to policy
 |- worker accepts then cancels -> rebroadcast
 |- no worker available -> notify customer and log
+|- never fabricate a candidate, rating, capability, availability, or ETA
 ```

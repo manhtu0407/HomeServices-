@@ -2,7 +2,7 @@ import { callAI } from '@/lib/ai/client'
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from './prompts'
 import { intentResultSchema, type IntentResult } from './schemas'
 import { safeParseJSON } from './parsing'
-import { sanitizeForLLM, scrubSensitiveForLLM } from '@nestscout/shared'
+import { SERVICE_TYPES, sanitizeForLLM, scrubSensitiveForLLM, type ServiceType } from '@nestscout/shared'
 
 export type IntentClassifyResult =
   | { success: true; intent: IntentResult; failureReason?: undefined }
@@ -68,6 +68,7 @@ export async function diagnoseIntake(
   problemChips: string[],
   description: string,
   conversationContext?: string,
+  language: 'vi' | 'en' = 'vi',
 ): Promise<IntentClassifyResult> {
   const sanitized = scrubSensitiveForLLM(description)
   const sanitizedChips = problemChips.map(scrubSensitiveForLLM)
@@ -79,6 +80,7 @@ export async function diagnoseIntake(
     sanitizedChips,
     sanitized,
     sanitizedContext,
+    language,
   )
 
   const failures: string[] = []
@@ -127,10 +129,9 @@ function buildFallbackIntent(
   serviceType: string,
   problemChips: string[],
 ): IntentResult {
-  const validServiceType =
-    serviceType === 'electrical' || serviceType === 'plumbing' || serviceType === 'cleaning'
-      ? serviceType
-      : ('unsupported' as const)
+  const validServiceType = SERVICE_TYPES.includes(serviceType as ServiceType)
+    ? serviceType as ServiceType
+    : ('unsupported' as const)
 
   const slugMap: Record<string, string> = {
     'Mất điện một phòng': 'power_outage_one_room',
@@ -151,6 +152,25 @@ function buildFallbackIntent(
     'Tổng vệ sinh': 'deep_cleaning',
     'Dọn sau sửa chữa': 'post_repair_cleaning',
     'Vệ sinh cửa kính': 'window_cleaning',
+    'Vệ sinh điều hòa': 'routine_hvac_cleaning',
+    'Máy lạnh yếu': 'weak_cooling',
+    'Máy không mát': 'no_cooling',
+    'Chảy nước': 'water_leak',
+    'Kêu bất thường': 'unusual_noise',
+    'Có mã lỗi': 'error_code',
+    'Vệ sinh sofa': 'sofa_cleaning',
+    'Vệ sinh nệm': 'mattress_cleaning',
+    'Vệ sinh rèm': 'curtain_cleaning',
+    'Vệ sinh thảm': 'carpet_cleaning',
+    'Vết bẩn': 'stain_treatment',
+    'Mùi hôi/ẩm mốc': 'odor_or_mold',
+    'Khoan/lắp kệ': 'drill_or_mount_shelf',
+    'Lắp thanh rèm': 'install_curtain_rod',
+    'Lắp đèn/thiết bị nhỏ': 'install_small_fixture',
+    'Sửa bản lề/tay nắm': 'repair_hinge_or_handle',
+    'Lắp thiết bị phòng tắm': 'install_bathroom_fixture',
+    'Lắp TV/nội thất': 'mount_tv_or_furniture',
+    'Việc nhỏ khác': 'other_handyman',
   }
 
   const firstChip = problemChips[0] ?? ''
@@ -162,6 +182,12 @@ function buildFallbackIntent(
         ? 'other_plumbing'
         : validServiceType === 'cleaning'
           ? 'other_cleaning'
+          : validServiceType === 'hvac'
+            ? 'other_hvac'
+            : validServiceType === 'upholstery'
+              ? 'other_upholstery'
+              : validServiceType === 'handyman'
+                ? 'other_handyman'
           : 'unsupported')
 
   return {

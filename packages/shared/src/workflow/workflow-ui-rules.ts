@@ -38,11 +38,12 @@ export function buildWorkflowViewModel(input: WorkflowViewModelInput): WorkflowV
   const artifacts = buildArtifactViews(phase, input)
   const optimistic = input.optimistic ?? null
   const allowedActions = {
-    confirmTicketAndEstimate: false,
-    confirmCompletion: false,
+    confirmTicketAndEstimate: phase === 'ticket_review' && Boolean(input.hasEstimate),
+    confirmWorker: phase === 'worker_candidate_review',
+    confirmCompletion: phase === 'completed_by_worker' && Boolean(input.hasCompletionEvidence),
     jobChatRead: isWorkflowJobChatReadable(phase),
     jobChatSend: isWorkflowJobChatSendable(phase),
-    submitReview: phase === 'customer_confirmed_completion' || phase === 'paid',
+    submitReview: phase === 'paid',
   }
 
   return {
@@ -133,6 +134,7 @@ function estimateMode(phase: WorkflowPhase, input: WorkflowViewModelInput): Work
 
 function providerMatchMode(phase: WorkflowPhase): WorkflowArtifactMode {
   if (phase === 'matching') return 'loading'
+  if (phase === 'worker_candidate_review') return 'review'
   if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
   if (phase === 'done') return 'done'
   return 'hidden'
@@ -140,6 +142,7 @@ function providerMatchMode(phase: WorkflowPhase): WorkflowArtifactMode {
 
 function workerBriefMode(phase: WorkflowPhase): WorkflowArtifactMode {
   if (phase === 'matching') return 'loading'
+  if (phase === 'worker_candidate_review') return 'review'
   if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
   if (phase === 'done') return 'done'
   if (phase === 'cancelled') return 'blocked'

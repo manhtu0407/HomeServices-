@@ -11,6 +11,10 @@ import {
 import { parseBatchLearningCandidate } from "./batch-learning-candidate.ts";
 import type { EdgeAiSecrets } from "../types.ts";
 import {
+  KAEL_CASE_WORK_SERVICE_TYPES,
+  type KaelCaseWorkServiceType,
+} from "../performance-profiles.ts";
+import {
   type LearningQueueDbClient,
   type QueuedLearningRow,
 } from "./process-learning-queue.ts";
@@ -55,7 +59,7 @@ type LearningCandidateStatus =
   | "rejected";
 
 type LearningRuleScope = {
-  affected_service: "electrical" | "plumbing" | "cleaning";
+  affected_service: KaelCaseWorkServiceType;
   affected_problem: string;
   affected_district: string;
 };
@@ -933,12 +937,13 @@ function stringFrom(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function serviceFrom(value: unknown): "electrical" | "plumbing" | "cleaning" | null {
+function serviceFrom(value: unknown): KaelCaseWorkServiceType | null {
   return isSupportedService(value) ? value : null;
 }
 
-function isSupportedService(value: unknown): value is "electrical" | "plumbing" | "cleaning" {
-  return value === "electrical" || value === "plumbing" || value === "cleaning";
+function isSupportedService(value: unknown): value is KaelCaseWorkServiceType {
+  return typeof value === "string" &&
+    (KAEL_CASE_WORK_SERVICE_TYPES as readonly string[]).includes(value);
 }
 
 function numberFrom(value: unknown): number | null {

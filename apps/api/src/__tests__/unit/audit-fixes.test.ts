@@ -418,10 +418,13 @@ describe('kael prompts — versioning', () => {
   })
 
   it('Kael prompt contract keeps the business scope and tone explicit', () => {
-    expect(PROMPT_VERSIONS.intent).toBe('2026-05-19.v2')
+    expect(PROMPT_VERSIONS.intent).toBe('2026-07-11.v3')
     expect(PROMPT_VERSIONS.vision).toBe('2026-05-19.v2')
-    expect(PROMPT_VERSIONS.pricing).toBe('2026-05-19.v2')
-    expect(KAEL_BUSINESS_GUARDRAILS).toContain('exactly three service boxes')
+    expect(PROMPT_VERSIONS.pricing).toBe('2026-07-11.v3')
+    expect(KAEL_BUSINESS_GUARDRAILS).toContain('strictly six HCMC apartment services')
+    expect(KAEL_BUSINESS_GUARDRAILS).toContain('HVAC')
+    expect(KAEL_BUSINESS_GUARDRAILS).toContain('upholstery care')
+    expect(KAEL_BUSINESS_GUARDRAILS).toContain('minor handyman work')
     expect(KAEL_BUSINESS_GUARDRAILS).toContain('adult or explicit sexual content')
     expect(KAEL_BUSINESS_GUARDRAILS).toContain('legality questions')
     expect(KAEL_RESPONSE_STYLE).toContain('concise')
@@ -437,7 +440,7 @@ describe('kael prompts — versioning', () => {
 
     for (const prompt of prompts) {
       expect(prompt).toContain('Kael is the main AI assistant')
-      expect(prompt).toContain('electrical repair, plumbing repair, and home cleaning')
+      expect(prompt).toContain('six HCMC apartment services')
       expect(prompt).toContain('unsupported')
       expect(prompt).toContain('Return the required JSON only')
     }

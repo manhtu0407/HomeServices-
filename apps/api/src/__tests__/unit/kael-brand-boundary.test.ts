@@ -10,6 +10,7 @@ import {
   buildIntentMessages as buildEdgeIntentMessages,
   buildIntakeDiagnosisMessages as buildEdgeIntakeDiagnosisMessages,
   buildPricingMessages as buildEdgePricingMessages,
+  buildVisionMessages as buildEdgeVisionMessages,
   buildScopeChangeEstimateMessages,
   buildScopeChangeReviewMessages,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
@@ -29,6 +30,22 @@ describe('Kael brand boundary', () => {
       expect(guardrail).toContain('NestScout')
       expect(guardrail).not.toMatch(/Home Services/i)
       expect(guardrail).not.toMatch(/home-services product/i)
+    }
+  })
+
+  it('uses the selected language in intake and vision prompts without contradictory Vietnamese instructions', () => {
+    const prompts = [
+      buildApiIntakeDiagnosisMessages('electrical', [], 'breaker trips', undefined, 'en'),
+      buildApiVisionMessages('breaker trips', 'electrical: breaker_trip', [], 'en'),
+      buildEdgeIntakeDiagnosisMessages('electrical', [], 'breaker trips', undefined, 'en'),
+      buildEdgeVisionMessages('breaker trips', 'electrical: breaker_trip', [], 'en'),
+    ].map((messages) => String(messages[0]?.content ?? ''))
+
+    for (const prompt of prompts) {
+      expect(prompt).toContain('short English')
+      expect(prompt).toContain('Do not mix languages')
+      expect(prompt).not.toContain('Any free-text field should be short Vietnamese')
+      expect(prompt).not.toContain('problem_identified must be natural Vietnamese')
     }
   })
 

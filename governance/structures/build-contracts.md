@@ -14,7 +14,7 @@ Frontend contract
 |- user-facing text is Vietnamese
 |- future services are hidden unless Tu explicitly approves a specific non-functional state
 |- price UI always shows estimate disclaimer
-|- audit/override/appeal UI required for money-impacting Kael decisions
+|- audit/override/appeal UI required for money-impacting proposals and decisions; required customer gates must expose the customer's authority explicitly
 |- Kael messages visually differ from human chat
 |- Next.js is not consumer web product
 |- React Native is the primary app surface
@@ -158,7 +158,7 @@ Server responsibilities
 |- accept/decline worker request
 |- update job status
 |- create scope change request
-|- record customer/worker scope evidence and Kael scope decision
+|- record customer/worker scope evidence, the validated Kael-computed proposal, and the explicit customer decision
 |- record completion
 |- record review
 |- create learning candidates
@@ -228,7 +228,7 @@ Testing blueprint
 |- AI fallback tests
 |- Job lifecycle state tests
 |- Broadcast expiry tests
-|- Scope change Kael decision, accept, and appeal tests
+|- Scope change proposal, customer confirm/keep-old-scope, and appeal tests
 |- RLS customer/worker/admin tests
 |- Chat/evidence permission tests
 |- Learning candidate creation tests

@@ -131,7 +131,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSCameraUsageDescription:
         'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.',
       NSMicrophoneUsageDescription:
-        'NestScout cần quyền micro nếu bạn muốn ghi chú giọng nói cho Kael phân tích ca dịch vụ.',
+        'NestScout cần quyền micro để chuyển giọng nói thành bản chép lời có thể chỉnh sửa ngay trên thiết bị.',
       NSPhotoLibraryUsageDescription:
         'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
       NSLocationWhenInUseUsageDescription:
@@ -145,7 +145,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     versionCode: 1,
     permissions: [],
-    blockedPermissions: ['android.permission.RECORD_AUDIO'],
     edgeToEdgeEnabled: true,
     package: 'com.phanmanhtu.nestscout',
   },
@@ -155,8 +154,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-audio',
       {
         microphonePermission:
-          'NestScout cần quyền micro nếu bạn muốn ghi chú giọng nói cho Kael phân tích ca dịch vụ.',
+          'NestScout cần quyền micro để chuyển giọng nói thành bản chép lời có thể chỉnh sửa ngay trên thiết bị.',
         recordAudioAndroid: false,
+      },
+    ],
+    [
+      'expo-speech-recognition',
+      {
+        microphonePermission:
+          'NestScout cần quyền micro để chuyển giọng nói thành bản chép lời ngay trên thiết bị.',
+        speechRecognitionPermission:
+          'NestScout dùng nhận dạng giọng nói trên thiết bị để tạo bản chép lời có thể chỉnh sửa.',
       },
     ],
     'expo-secure-store',

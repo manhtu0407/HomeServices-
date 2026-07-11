@@ -9,16 +9,17 @@ This section prevents attractive but dangerous over-engineering.
 ```text
 Do not build now
 -
-|- multi-agent orchestration
+|- uncontrolled multi-agent orchestration outside the validated six-profile Case Work spine
 |- raw-AI/client-side autonomous booking
 |- raw-AI/client-side autonomous payment
 |- raw-AI/client-side autonomous cancellation
 |- autonomous worker punishment
-|- service expansion beyond electrical/plumbing/cleaning
+|- service expansion beyond the six approved services: electrical/plumbing/cleaning/HVAC/upholstery/handyman
 |- multi-city support
 |- consumer web app
 |- complex custom memory system outside controlled learning tables
 |- strategic L3/L4 autonomy
+|- fake or unimplemented price baselines, workers, ETAs, or payment rails
 ```
 
 Allowed to design, not necessarily implement:
@@ -29,7 +30,7 @@ Allowed in docs
 |- future-ready workflows
 |- state machine placeholders
 |- learning-system skeleton
-|- payment placeholders
+|- payment state and implemented-rail contracts; no fake payment execution
 |- support/admin placeholders
 ```
 
@@ -44,7 +45,7 @@ Kael learning exception:
 
 ```text
 Evidence-gated self-learning is allowed for analysis behavior, price suggestions, and policy evidence thresholds.
-It must not bypass `KaelAutonomyDecision`, punish workers automatically, or expand service scope.
+It must not bypass `KaelAutonomyDecision` or an explicit phase confirmation, punish workers automatically, or expand beyond the approved six-service scope.
 ```
 
 Current priority:

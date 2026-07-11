@@ -417,7 +417,7 @@ describe('Worker V5 arrival check-in', () => {
       canceled: false,
     })
     mediaUpload.uploadJobMediaDrafts.mockResolvedValue({
-      mediaRefs: ['supabase://job-media/job_test_1/before/onsite.jpg'],
+      mediaRefs: ['supabase://job-media/job_test_1/kael_reference/onsite.jpg'],
       success: true,
     })
     mockWorkerKaelChatService.create.mockResolvedValue({
@@ -446,12 +446,12 @@ describe('Worker V5 arrival check-in', () => {
       expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledWith(
         'job_test_1',
         [expect.objectContaining({ type: 'image', uri: 'file://onsite.jpg' })],
-        'before',
+        'kael_reference',
       )
       expect(mockWorkerKaelChatService.create).toHaveBeenCalledWith(expect.objectContaining({ job_id: 'job_test_1', language: 'vi' }))
       expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledWith(
         'worker-kael-session-1',
-        expect.objectContaining({ media_refs: ['supabase://job-media/job_test_1/before/onsite.jpg'] }),
+        expect.objectContaining({ media_refs: ['supabase://job-media/job_test_1/kael_reference/onsite.jpg'] }),
         expect.any(Object),
       )
     })
@@ -503,30 +503,38 @@ describe('Worker V5 arrival check-in', () => {
 
   it('reuses stored field evidence for scope review and before-and-after completion evidence', async () => {
     const deal = buildInProgressDeal() as LocalDeal & { fieldEvidencePhotoUrls?: string[] }
-    deal.fieldEvidencePhotoUrls = ['https://storage.example.test/job_test_1/before/onsite.jpg']
+    const jobId = '11111111-1111-4111-8111-111111111111'
+    const privateEvidenceRef = `supabase://job-media/${jobId}/kael_reference/onsite.jpg`
+    deal.id = jobId
+    if (deal.broadcast) deal.broadcast.jobId = jobId
+    deal.fieldEvidencePhotoUrls = [privateEvidenceRef]
     buildWorkflow(deal)
     mockRouteParams = { ns_scope_mode: 'edit', ns_worker_screen: '2.8-scope-change' }
 
     const { rerender } = render(<WorkerJobsSurface />)
 
     expect(screen.queryByTestId('worker-v5-scope-change-hero')).toBeNull()
-    expect(screen.getByText('Đã có')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-evidence-tray-image-0')).toBeOnTheScreen()
+    await waitFor(() => {
+      expect(screen.getByText('Đã có')).toBeOnTheScreen()
+      expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
+    })
     fireEvent.changeText(screen.getByTestId('worker-scope-change-new-description-input'), 'Cần thay dây cháy tại ổ cắm.')
     fireEvent.changeText(screen.getByTestId('worker-scope-change-reason-input'), 'Dây bên trong đã cháy do quá nhiệt.')
     fireEvent.press(screen.getByTestId('worker-scope-change-confirm-submit'))
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.requestScopeChange).toHaveBeenCalledWith(expect.objectContaining({
-        photo_urls: ['https://storage.example.test/job_test_1/before/onsite.jpg'],
+        photo_urls: [privateEvidenceRef],
       }))
     })
 
     mockRouteParams = { ns_worker_screen: '2.10-completion-evidence' }
     rerender(<WorkerJobsSurface />)
 
-    expect(screen.getByText('Đã có')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-evidence-tray-image-0')).toBeOnTheScreen()
+    await waitFor(() => {
+      expect(screen.getByText('Đã có')).toBeOnTheScreen()
+      expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
+    })
     expect(screen.queryByText('Hồ sơ hoàn tất')).toBeNull()
   })
 

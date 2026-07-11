@@ -39,12 +39,22 @@ describe('kael-schemas — intentResultSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects invalid service type', () => {
-    const result = intentResultSchema.safeParse({
+  it.each(['cleaning', 'hvac', 'upholstery', 'handyman'])(
+    'parses launched %s intent',
+    (service_type) => {
+      const result = intentResultSchema.safeParse({
+        ...validIntent,
+        service_type,
+      })
+      expect(result.success).toBe(true)
+    },
+  )
+
+  it('rejects an unknown service type', () => {
+    expect(intentResultSchema.safeParse({
       ...validIntent,
-      service_type: 'hvac',
-    })
-    expect(result.success).toBe(false)
+      service_type: 'painting',
+    }).success).toBe(false)
   })
 
   it('rejects confidence > 1', () => {

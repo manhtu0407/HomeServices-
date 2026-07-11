@@ -12,8 +12,10 @@ import {
   jobMessageSendSchema,
   jobCreateSchema,
   kaelWorkerClarifySchema,
+  kaelAssistantSchema,
   kaelChatCreateSchema,
   kaelChatEvidenceSchema,
+  kaelChatMediaRevokeSchema,
   kaelChatMediaUploadSchema,
   kaelChatTurnSchema,
   workerKaelChatCreateSchema,
@@ -91,7 +93,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 const MAX_JSON_BODY_BYTES = 64 * 1024;
 
@@ -270,17 +272,32 @@ async function dispatchRoute(
     case "jobs.create": {
       const input = jobCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.createJob(ctx, input.data);
+      apiFailure(
+        "KAEL_CASE_WORK_REQUIRED",
+        "Hãy bắt đầu qua Kael Case Work và xác nhận báo giá trước khi tạo yêu cầu.",
+        409,
+        { next_route: "/kael/chat" },
+      );
     }
     case "kael.chat.create": {
       const input = kaelChatCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.createKaelChat(ctx, input.data);
     }
+    case "kael.assistant": {
+      const input = kaelAssistantSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.answerKaelAssistant(ctx, input.data);
+    }
     case "kael.chat.mediaUpload": {
       const input = kaelChatMediaUploadSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.createKaelChatMediaUpload(ctx, input.data);
+    }
+    case "kael.chat.mediaRevoke": {
+      const input = kaelChatMediaRevokeSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.revokeKaelChatMedia(ctx, input.data);
     }
     case "kael.chat.get":
       return services.getKaelChat(ctx, route.sessionId);
@@ -325,6 +342,22 @@ async function dispatchRoute(
       return services.acceptBroadcast(ctx, route.jobId);
     case "jobs.decline":
       return services.declineBroadcast(ctx, route.jobId);
+    case "jobs.workerCandidate":
+      return services.getWorkerCandidate(ctx, route.jobId);
+    case "jobs.workerCandidateConfirm":
+      return services.confirmWorkerCandidate(ctx, route.jobId, route.candidateId);
+    case "jobs.workerCandidateReject":
+      return services.rejectWorkerCandidate(ctx, route.jobId, route.candidateId);
+    case "me.favoriteWorkerSave":
+      if (!services.saveCustomerFavoriteWorker) {
+        apiFailure("NOT_IMPLEMENTED", "Chức năng lưu thợ chưa sẵn sàng", 501);
+      }
+      return services.saveCustomerFavoriteWorker(ctx, route.workerId);
+    case "me.favoriteWorkerRemove":
+      if (!services.removeCustomerFavoriteWorker) {
+        apiFailure("NOT_IMPLEMENTED", "Chức năng bỏ lưu thợ chưa sẵn sàng", 501);
+      }
+      return services.removeCustomerFavoriteWorker(ctx, route.workerId);
     case "jobs.status": {
       const input = workerStatusUpdateSchema(await readJson(request));
       return services.updateJobStatus(ctx, route.jobId, input);

@@ -38,7 +38,7 @@ Current phase note:
 ```text
 The file may describe full app operation.
 Implementation must still be phase-controlled.
-Do not build future autonomy, service expansion, or multi-city workflows without Tu's explicit approval.
+The approved service scope is the six-service catalog in §1; do not expand beyond it or add multi-city workflows without Tu's explicit approval.
 ```
 
 ---
@@ -55,23 +55,38 @@ Supported now
 |- Electrical repair
 |- Plumbing repair
 |- Home cleaning / housekeeping
+|- Air conditioning and indoor air service
+|- Sofa, mattress, curtain, and carpet care
+|- Minor repair and installation
 |- HCMC apartments
 |- Customer-to-worker matching
-|- Kael-first AI intake, diagnosis, price check, worker brief, and support
+|- Basic Intake at the service route, then Kael Case Work for diagnosis/scope, price check, worker brief, matching, and support
 ```
+
+Canonical service identifiers and Kael performance profiles:
+
+```text
+electrical -> electric_diagnose
+plumbing -> water_diagnose
+cleaning -> clean_scope
+hvac -> air_scope
+upholstery -> fabric_scope
+handyman -> task_scope
+```
+
+The six profiles share one server-side Case Work spine and one phase contract. Each profile owns service-specific quote drivers, safety/capability checks, evidence guidance, completion checks, and scope-change triggers; it is not a separate client-side questionnaire or an uncontrolled collection of autonomous agents.
 
 Out of scope now:
 
 ```text
 Not supported now
 -
-|- AC repair
 |- Appliance repair
-|- General handyman marketplace
+|- Services outside the six approved categories
 |- Multi-city expansion
 |- Autonomous actions from raw AI output or client-side UI
 |- Payment provider execution beyond implemented rails
-|- Multi-agent orchestration
+|- Uncontrolled multi-agent orchestration outside the validated Case Work spine
 |- Consumer web app
 ```
 
@@ -79,21 +94,24 @@ If a user asks for an unsupported service, Kael must politely decline:
 
 ```text
 Current meaning:
-"We currently only support electrical repair, plumbing repair, and home cleaning. Please come back when we open more services."
+"Yêu cầu này hiện chưa thuộc phạm vi NestScout. NestScout đang hỗ trợ sửa điện, sửa nước, vệ sinh nhà cửa, điều hòa và không khí, sofa/nệm/rèm/thảm, cùng sửa vặt và lắp đặt nhỏ."
 ```
 
 Kael today:
 
 ```text
-Kael = AI Price Check + camera-based problem understanding
+Kael = phase-gated Agentic Case Work
 -
-|- receives customer text/photos/videos
-|- identifies likely electrical/plumbing/cleaning problem
-|- asks clarification when needed
-|- estimates market price range
+|- receives Basic Intake: service, location, desired time, short description, and optional privacy-safe evidence
+|- identifies the applicable service profile and builds a structured diagnosis/scope artifact
+|- asks exactly one focused question per turn until the case is quote-ready
+|- analyzes photos, editable on-device voice transcripts, and 1-3 locally extracted video frames
+|- estimates a market price range only when validated baseline/market evidence exists
 |- explains uncertainty
-|- prepares worker pre-brief and starts matching when policy has enough evidence
-|- mediates scope-change explanation
+|- pauses for customer offer confirmation before starting matching
+|- prepares worker pre-brief and searches verified, service-capable workers
+|- pauses for customer confirmation of a proposed worker before final assignment
+|- mediates explicit scope-change, completion, and payment confirmation gates
 ```
 
 Kael is not:
@@ -103,9 +121,8 @@ Kael is not
 -
 |- a raw-LLM status writer
 |- a client-side money/payment actor
-|- a payment agent
+|- an unverified payment executor
 |- a worker punishment system
-|- a multi-specialist orchestrator
 |- a generic repair chatbot
 |- a service expansion engine
 ```
@@ -155,7 +172,7 @@ Product principle:
 ```text
 Copy the validated shape.
 Remove what is heavy or unclear.
-Adapt it to electrical/plumbing/cleaning Price Check.
+Adapt it to the six approved services and the same phase-gated Case Work contract.
 Keep the path to the first real transaction short.
 ```
 
@@ -165,21 +182,23 @@ Keep the path to the first real transaction short.
 
 ### Customer
 
-The customer is an HCMC apartment resident who needs electrical, plumbing, or home cleaning help, wants a fair price estimate, and wants a trustworthy worker.
+The customer is an HCMC apartment resident who needs one of the six supported services, wants a fair evidence-backed estimate, and wants a trustworthy worker.
 
 Customer app responsibilities:
 
 ```text
 Customer app
 -
-|- collect problem description and media
-|- show Kael estimate
+|- collect Basic Intake only: service, location, desired time, short description, and optional media
+|- hand the case to Kael for one-question-at-a-time analysis
+|- show the structured Kael diagnosis/scope and estimate
+|- collect explicit offer and proposed-worker confirmation
 |- show Kael orchestration and audit trail
 |- show worker match
 |- support in-app chat
-|- provide scope-change evidence/override/appeal
-|- provide completion evidence/appeal
-|- support payment placeholder
+|- provide scope-change evidence and explicit confirmation/appeal
+|- provide completion evidence and explicit confirmation/appeal
+|- show payment only when an implemented rail and real payment state exist
 |- collect review
 ```
 
@@ -235,9 +254,12 @@ Kael
 -
 |- classify intent
 |- enforce service scope
-|- analyze text/media
-|- search market price
-|- synthesize structured estimate
+|- select the service performance profile
+|- analyze privacy-safe text/media and build the diagnosis/scope artifact
+|- ask one focused question per turn until quote-ready
+|- search market price only when a source-backed lookup is available
+|- synthesize a structured estimate or an honest not-ready state
+|- stop at offer, proposed-worker, scope-change, completion, and payment gates
 |- create advisory only when justified
 |- generate worker pre-brief
 |- explain scope change
@@ -295,14 +317,16 @@ Frontend build order
 -
 |- Customer auth/profile
 |- Customer home
-|- Service/problem selection
-|- Problem description/media
-|- Kael estimate
-|- Kael orchestration decision
+|- Six-service Basic Intake
+|- Kael one-question-at-a-time analysis + diagnosis/scope artifact
+|- Kael estimate + customer offer confirmation
 |- Searching/matching status
+|- Proposed-worker confirmation
 |- Active job
-|- Scope change
-|- Completion/review
+|- Scope-change confirmation
+|- Completion confirmation
+|- Implemented payment rail
+|- Review
 |- Worker app surfaces
 |- Admin panel surfaces
 ```
@@ -322,7 +346,7 @@ define the backend contract before building final UI.
 
 | § | Domain | Spoke |
 |---|---|---|
-| 5 | Service taxonomy (electrical / plumbing / cleaning) | [`structures/service-taxonomy.md`](structures/service-taxonomy.md) |
+| 5 | Six-service taxonomy and performance-profile mapping | [`structures/service-taxonomy.md`](structures/service-taxonomy.md) |
 | 6 | Customer workflow (A0–A14) | [`structures/customer-workflow.md`](structures/customer-workflow.md) |
 | 7 | Worker workflow (B0–B8) | [`structures/worker-workflow.md`](structures/worker-workflow.md) |
 | 8 | Admin workflow | [`structures/admin-workflow.md`](structures/admin-workflow.md) |
@@ -343,7 +367,7 @@ define the backend contract before building final UI.
 
 ## 5. Service Taxonomy
 
-> Moved to [`structures/service-taxonomy.md`](structures/service-taxonomy.md). Electrical / plumbing / cleaning taxonomy + taxonomy rules.
+> Moved to [`structures/service-taxonomy.md`](structures/service-taxonomy.md). Six-service taxonomy, Case Work profile mapping, and taxonomy rules.
 
 ## 6. Customer Workflow
 

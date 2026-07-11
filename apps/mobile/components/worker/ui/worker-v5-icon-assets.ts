@@ -47,7 +47,10 @@ export const workerV5ProfileDossierIconAssets = {
 export const workerV5ProfileServiceIconAssets: Record<ServiceType, ImageSourcePropType> = {
   cleaning: workerV5CapturedIconAssets.serviceGridCleaning,
   electrical: workerV5CapturedIconAssets.serviceGridElectrical,
+  handyman: require('../../customer/v21/assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,
+  hvac: require('../../customer/v21/assets/service-icons/client-service-hvac.png') as ImageSourcePropType,
   plumbing: workerV5CapturedIconAssets.serviceGridPlumbing,
+  upholstery: require('../../customer/v21/assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
 }
 
 export const workerV5HomeQuickIconAssets = {

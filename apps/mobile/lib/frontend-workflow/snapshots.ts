@@ -216,14 +216,19 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
 
 function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['jobs'][number]): LocalDealPayment | null {
   const paymentStatus = job.payment_status ?? paymentStatusFromJobStatus(job.status)
-  const grossAmount = numericOrNull(job.gross_amount) ?? numericOrNull(job.final_price)
+  const grossAmount = numericOrNull(job.gross_amount)
   const platformFee = numericOrNull(job.platform_fee)
-  const workerNet = numericOrNull(job.worker_net) ?? numericOrNull('estimated_earning' in job ? job.estimated_earning : null)
+  const workerNet = numericOrNull(job.worker_net)
+  const amountReceived = numericOrNull(job.payment_amount_received)
+  const provider = job.payment_provider ?? null
+  const hasActivePaymentStatus = paymentStatus !== null && paymentStatus !== 'not_started'
   const hasPaymentData = Boolean(
-    paymentStatus
+    hasActivePaymentStatus
+    || provider
     || grossAmount
     || platformFee
     || workerNet
+    || amountReceived
     || job.payment_code
     || job.payment_transfer_content
     || job.payment_qr_image_url
@@ -232,12 +237,12 @@ function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['j
   )
   if (!hasPaymentData) return null
   return {
-    amountReceived: numericOrNull(job.payment_amount_received),
+    amountReceived,
     expiresAt: job.payment_expires_at ?? null,
     grossAmount,
     paymentCode: job.payment_code ?? null,
     platformFee,
-    provider: job.payment_provider ?? 'sepay_vietqr',
+    provider,
     qrImageUrl: job.payment_qr_image_url ?? null,
     receivedAt: job.payment_received_at ?? null,
     status: paymentStatus ?? 'not_started',
@@ -314,6 +319,8 @@ function scopeChangeFromJobDetail(data: JobDetailResponse): LocalScopeChange | n
     kaelReview: scope.kael_review,
     kaelProgress: scope.kael_progress ?? data.job.kael_progress ?? null,
     evidencePhotoUrls: scope.evidence_photo_urls,
+    requestTiming: scope.request_timing,
+    resumeJobStatus: scope.resume_job_status,
     createdAt: scope.created_at,
   }
 }

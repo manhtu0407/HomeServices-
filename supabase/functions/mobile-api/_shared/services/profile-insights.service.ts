@@ -1,4 +1,5 @@
 import { apiFailure, type MobileApiContext } from "../router.ts";
+import { SERVICE_TYPES } from "../../../_shared/domain.ts";
 import { asNumber, asString, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
 
@@ -331,6 +332,7 @@ const CUSTOMER_PROFILE_TRANSACTION_STATUSES = new Set([
 ]);
 const CUSTOMER_PROFILE_USAGE_RANK_STEP = 200;
 const CUSTOMER_PROFILE_USAGE_RANK_MAX = 5;
+const CUSTOMER_PROFILE_SUPPORTED_SERVICES = new Set<string>(SERVICE_TYPES);
 const WORKER_PERFORMANCE_TOTAL_BROADCAST_STATUSES = new Set([
   "sent",
   "accepted",
@@ -395,7 +397,7 @@ export function buildCustomerProfileInsights(
     preferred_service_count: new Set(
       completedJobs
         .map((job) => job.service_type)
-        .filter((serviceType) => serviceType === "electrical" || serviceType === "plumbing" || serviceType === "cleaning"),
+        .filter((serviceType) => CUSTOMER_PROFILE_SUPPORTED_SERVICES.has(serviceType)),
     ).size,
     active_streak_days: customerProfileActiveStreakDays(completedJobs),
     positive_review_rate_percent: customerProfilePositiveReviewRatePercent(input.reviews),

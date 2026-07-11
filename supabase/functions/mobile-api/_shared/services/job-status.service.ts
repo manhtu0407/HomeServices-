@@ -1,20 +1,17 @@
 // Edge service job-status domain (C4 6a, services/* split): the worker-driven status machine —
 // updateJobStatus (transition validate, geofenced check-in -> access state, completion evidence ->
-// Kael completion autonomy gate + customer notify + check-in nudge). buildKaelCompletionDecision is the
-// internal autonomy-decision builder. Imported by services.ts for wiring.
+// customer confirmation gate + check-in nudge). Imported by services.ts for wiring.
 
 import { asStringArray, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
 import { mergeLimitedRefs } from "./_shared.ts";
 import { logJobEvent, queueKaelLearningEvent } from "./audit.ts";
-import { runPolicyAutonomyGate } from "./autonomy-gate.ts";
-import { notifyCustomerJobStatus, notifyCustomerWorkerCheckedIn, notifyKaelConfirmedCompletion } from "./notifications.service.ts";
+import { notifyCustomerJobStatus, notifyCustomerWorkerCheckedIn } from "./notifications.service.ts";
 import { distanceKmBetween } from "./broadcasts.service.ts";
 import { ACCESS_GEOFENCE_RADIUS_KM, buildCheckInAccessState } from "./apartment-access.service.ts";
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext, type WorkerStatusUpdateInput } from "../router.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
-import { buildKaelAutonomyDecision, type KaelAutonomyDecision } from "../kael/index.ts";
 import type { JobStatus } from "../../../_shared/domain.ts";
 
 export async function updateJobStatus(
@@ -167,94 +164,13 @@ export async function updateJobStatus(
     input.status,
     accessReleaseMetadata ?? {},
   );
-  let finalStatus: JobStatus = input.status;
-  if (input.status === "completed_by_worker") {
-    const completionDecision = buildKaelCompletionDecision(
-      jobId,
-      completionEvidenceForDecision ?? input,
-      nullableNumber(job.final_price),
-    );
-    if (completionDecision) {
-      const completionRun = await runPolicyAutonomyGate({
-        label: "worker_evidence_confirm_completion",
-        client,
-        ctx,
-        jobId,
-        decision: completionDecision,
-        from: "completed_by_worker",
-        to: "confirmed_by_customer",
-        amountVnd: nullableNumber(job.final_price),
-        authority: {
-          purpose: "scope_change",
-          actor: ctx.role,
-          jobRelation: "own_worker_job",
-          action: "review_scope_change",
-          topic: "job_status",
-          intentConfidence: 1,
-          topicSource: "deterministic_rule",
-          boundarySignal: false,
-          actorId: ctx.user.id,
-          jobId,
-        },
-        knownEvidenceReferences: [jobId, "STRUCTURES.md#completion"],
-      });
-      if (completionRun.gate.result === "allow") {
-        const confirmedAt = new Date().toISOString();
-        const confirmed = await dbQuery<{ id: string }>(
-          client
-            .from("jobs")
-            .update({ status: "confirmed_by_customer", confirmed_at: confirmedAt })
-            .eq("id", jobId)
-            .eq("worker_id", ctx.user.id)
-            .eq("status", "completed_by_worker")
-            .select("id")
-            .maybeSingle(),
-        );
-        if (!confirmed.error && confirmed.data) {
-          finalStatus = "confirmed_by_customer";
-          await logJobEvent(
-            client,
-            jobId,
-            "kael_confirmed_completion",
-            ctx,
-            "completed_by_worker",
-            "confirmed_by_customer",
-            { autonomy_decision: completionDecision },
-          );
-          await notifyKaelConfirmedCompletion(
-            client,
-            jobId,
-            nullableString(job.customer_id),
-            ctx.user.id,
-            nullableNumber(job.final_price),
-            completionDecision,
-          );
-        }
-      } else {
-        await logJobEvent(
-          client,
-          jobId,
-          "kael_completion_decision_rejected",
-          ctx,
-          "completed_by_worker",
-          "completed_by_worker",
-          {
-            autonomy_decision: completionDecision,
-            autonomy_gate_result: completionRun.gate.result,
-            autonomy_transition_error: completionRun.gate.audit.reason_code,
-          },
-        );
-      }
-    }
-  }
-  if (input.status !== "completed_by_worker" || finalStatus === "completed_by_worker") {
-    await notifyCustomerJobStatus(
-      client,
-      jobId,
-      nullableString(job.customer_id),
-      input.status,
-    );
-  }
+  const finalStatus: JobStatus = input.status;
+  await notifyCustomerJobStatus(
+    client,
+    jobId,
+    nullableString(job.customer_id),
+    input.status,
+  );
   // Worker just checked in at the lobby → prompt the customer to
   // authorize exact-unit access ("Cho thợ lên"). Distinct from the generic arrived
   // push; this one tells the customer an ACTION is needed.
@@ -287,43 +203,4 @@ export async function updateJobStatus(
     to_status: finalStatus,
     updated_at: now,
   };
-}
-
-function buildKaelCompletionDecision(
-  jobId: string,
-  input: {
-    completion_notes?: string;
-    completion_photo_urls?: string[];
-  },
-  finalPrice: number | null,
-): KaelAutonomyDecision | null {
-  const photoCount = input.completion_photo_urls?.length ?? 0;
-  const noteLength = input.completion_notes?.trim().length ?? 0;
-  if (finalPrice === null || finalPrice <= 0) return null;
-  if (photoCount === 0 && noteLength < 12) return null;
-  return buildKaelAutonomyDecision({
-    action: "confirm_completion",
-    policyId: "kael.autonomy.v2.worker_evidence_completion",
-    evidence: [
-      {
-        kind: "worker_evidence",
-        reference_id: jobId,
-        summary: `Worker submitted completion evidence: ${photoCount} photo(s), note length ${noteLength}.`,
-      },
-      {
-        kind: "system_check",
-        reference_id: jobId,
-        summary: "Final price is already Kael-locked before completion confirmation.",
-      },
-      {
-        kind: "policy",
-        reference_id: "STRUCTURES.md#completion",
-        summary: "Kael may confirm completion from validated worker evidence.",
-      },
-    ],
-    confidence: photoCount > 0 ? 0.86 : 0.74,
-    reversible: true,
-    appealable: true,
-    resultingEvent: "kael_confirmed_completion",
-  });
 }

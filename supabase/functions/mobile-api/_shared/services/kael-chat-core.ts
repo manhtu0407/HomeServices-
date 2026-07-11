@@ -2,27 +2,34 @@
 // primitives behind the kael-chat API (kael-chat.service.ts). Split from the API layer to stay under
 // the structure cap. Imported one-way by kael-chat.service.ts (no back-import).
 
-import { asKaelTurnRole, asNumber, asRecord, asString, nullableNumber, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { KAEL_CHAT_HARD_COST_CAP_USD, asKaelStoredSentiment, compactMetadata, estimatePriceSourceFromStageLogs, formatKaelEstimateText, kaelServiceLabelVi, sourceTrustSecretsForRequest } from "./_shared.ts";
-import type { KaelChatTurnRole } from "./_shared.ts";
+import { asNumber } from "./coercions.ts";
+import { db, type DbClient } from "./db.ts";
+import { KAEL_CHAT_HARD_COST_CAP_USD, asKaelStoredSentiment, estimatePriceSourceFromStageLogs, formatKaelEstimateText, kaelServiceLabelVi, sourceTrustSecretsForRequest } from "./_shared.ts";
+import { buildKaelConversationContext, demandingCustomerSessionMetadata, demandingCustomerTurnMetadata, diagnosisScopeWithEvidenceRequest, diagnosisScopeWithQuestion, getKaelChatTurnCount, loadDiagnosisScopeArtifact, persistDiagnosisScopeArtifact } from "./kael-chat-case-work.ts";
+import { appendKaelSystemTurn, getKaelChatCostUsd, updateKaelSession } from "./kael-chat-session-store.ts";
 import type { KaelChatStatus } from "../../../_shared/contracts.ts";
 import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "./audit.ts";
 import { guardDemandingResponseText } from "./chat.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildKaelMissingInfoArtifactProposal, detectDemandingCustomerPatterns, recordDemandingCustomerInteraction, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
+import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, detectDemandingCustomerPatterns, getKaelPerformanceProfile, kaelDiagnosisScopeArtifactSchema, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, runKaelPipeline, scrubSensitiveForLLM, updateKaelProgress, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
 import { evaluateMessageBoundary } from "../kael/boundary-guard.ts";
 import { guardOutput } from "../kael/output-gateway.ts";
-import { readKaelOptimizationFlags } from "../kael/cost-tracking.ts";
 import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { KaelChatCreateInput, ServiceType } from "../../../_shared/domain.ts";
 
-type ExistingKaelSessionByClientRequest =
-  | { kind: "ready"; sessionId: string }
-  | { kind: "pending" }
-  | null;
-
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
+
+function kaelServiceLabelEn(serviceType: string) {
+  const labels: Record<string, string> = {
+    electrical: "electrical repair",
+    plumbing: "plumbing repair",
+    cleaning: "home cleaning",
+    hvac: "air conditioning and air care",
+    upholstery: "upholstery care",
+    handyman: "minor repairs and installation",
+  };
+  return labels[serviceType] ?? "another supported service";
+}
 
 export async function advanceKaelChatEstimate(
   ctx: MobileApiContext,
@@ -32,24 +39,63 @@ export async function advanceKaelChatEstimate(
     problem_chips?: string[];
     photo_urls?: string[];
     address_district?: string;
+    language?: "vi" | "en";
   },
   secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
   const progressTarget = { table: "kael_chat_sessions" as const, id: sessionId };
-  const llmClarificationEnabled =
-    readKaelOptimizationFlags().KAEL_OPT_LLM_CLARIFICATION_ENABLED;
+  const llmClarificationEnabled = true;
+  const language = input.language ?? "vi";
+  const message = sanitizeForLLM(input.message ?? "");
+  const durableCustomerDetail = scrubSensitiveForLLM(message);
+  let artifact = await loadDiagnosisScopeArtifact(
+    client,
+    sessionId,
+    input.service_type,
+    durableCustomerDetail || input.problem_chips?.join(" ") || input.service_type,
+  );
+  if (artifact.next_action.kind === "escalate") {
+    const escalationArtifact = kaelDiagnosisScopeArtifactSchema.parse({
+      ...artifact,
+      quote_ready: false,
+      next_action: artifact.next_action,
+      updated_at: new Date().toISOString(),
+    });
+    await persistDiagnosisScopeArtifact(client, sessionId, escalationArtifact);
+    await appendKaelSystemTurn(client, sessionId, {
+      contentType: "clarification",
+      text: language === "en"
+        ? "Kael is not yet confident enough to provide a safe offer. A support specialist needs to review the collected information."
+        : "Kael chưa đủ chắc chắn để báo giá an toàn. Yêu cầu này cần người hỗ trợ xem lại thông tin đã thu thập.",
+      nextStatus: "active",
+      metadata: {
+        diagnosis_scope: escalationArtifact,
+        escalation_reason: artifact.next_action.reason,
+      },
+    });
+    await updateKaelProgress(client, progressTarget, {
+      stage: "clarification",
+      status: "failed",
+      progress: 1,
+      failureReason: artifact.next_action.reason,
+    });
+    return;
+  }
+  const persistedTurnCount = await getKaelChatTurnCount(client, sessionId);
   const currentCostUsd = await getKaelChatCostUsd(client, sessionId);
   if (currentCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) {
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "error",
-      text:
-        "Kael tạm dừng phân tích thêm cho phiên này để giữ ngân sách AI an toàn. Bạn có thể đặt thợ từ ước tính đã có hoặc tạo phiên mới nếu cần.",
+      text: language === "en"
+        ? "Kael has paused further analysis in this session to keep AI usage safe. You can use an existing validated offer or start a new session if needed."
+        : "Kael tạm dừng phân tích thêm cho phiên này để giữ ngân sách AI an toàn. Bạn có thể đặt thợ từ ước tính đã có hoặc tạo phiên mới nếu cần.",
       nextStatus: "active",
       metadata: {
         budget_exceeded: true,
         hard_cap_usd: KAEL_CHAT_HARD_COST_CAP_USD,
         total_cost_usd: currentCostUsd,
+        persisted_turn_count: persistedTurnCount,
       },
     });
     await updateKaelProgress(client, progressTarget, {
@@ -63,8 +109,11 @@ export async function advanceKaelChatEstimate(
 
   const district = normalizeServiceAreaDistrict(input.address_district);
   if (!district) {
-    const question =
-      "\u0042\u1ea1n cho Kael bi\u1ebft qu\u1eadn \u1edf TP.HCM \u0111\u1ec3 \u01b0\u1edbc t\u00ednh \u0111\u00fang khu v\u1ef1c v\u00e0 t\u00ecm th\u1ee3 ph\u00f9 h\u1ee3p.";
+    const question = language === "en"
+      ? "Which Ho Chi Minh City district is the apartment in? Kael uses it to validate the area and eligible workers."
+      : "Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.";
+    artifact = diagnosisScopeWithQuestion(artifact, ["address_district"], question, 0.25);
+    await persistDiagnosisScopeArtifact(client, sessionId, artifact);
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "clarification",
       text: question,
@@ -74,6 +123,7 @@ export async function advanceKaelChatEstimate(
           missingFields: ["address_district"],
           question,
         }),
+        diagnosis_scope: artifact,
       },
     });
     await updateKaelProgress(client, progressTarget, {
@@ -84,13 +134,13 @@ export async function advanceKaelChatEstimate(
     return;
   }
 
-  const message = sanitizeForLLM(input.message ?? "");
   const problemChips = input.problem_chips?.filter(Boolean) ?? [];
   // When smart clarification is on, let intake-diagnosis ask a CONTEXTUAL question
   // instead of this generic length-heuristic prompt (STRUCTURES.md A4).
   if (!llmClarificationEnabled && message.length < 10 && problemChips.length === 0) {
-    const question =
-      "\u0042\u1ea1n m\u00f4 t\u1ea3 r\u00f5 h\u01a1n v\u1ea5n \u0111\u1ec1 \u0111ang g\u1eb7p: v\u1ecb tr\u00ed, d\u1ea5u hi\u1ec7u v\u00e0 m\u1ee9c \u0111\u1ed9 \u1ea3nh h\u01b0\u1edfng trong c\u0103n h\u1ed9.";
+    const question = buildFocusedClarificationQuestion("symptom", language);
+    artifact = diagnosisScopeWithQuestion(artifact, ["description"], question, 0.3);
+    await persistDiagnosisScopeArtifact(client, sessionId, artifact);
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "clarification",
       text: question,
@@ -100,6 +150,7 @@ export async function advanceKaelChatEstimate(
           missingFields: ["description"],
           question,
         }),
+        diagnosis_scope: artifact,
       },
     });
     await updateKaelProgress(client, progressTarget, {
@@ -186,6 +237,7 @@ export async function advanceKaelChatEstimate(
         intakeDiagnosisEnabled: llmClarificationEnabled,
         conversationContext,
         clarificationCount: priorClarificationCount,
+        language,
         progressTarget,
         actorId: ctx.user.id, // S4/F1 (§38): per-user AI-spend attribution
       },
@@ -201,7 +253,9 @@ export async function advanceKaelChatEstimate(
     });
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "error",
-      text: "Kael chưa thể phân tích lúc này. Bạn thử gửi lại sau ít phút.",
+      text: language === "en"
+        ? "Kael cannot analyze this right now. Please try again in a few minutes."
+        : "Kael chưa thể phân tích lúc này. Bạn thử gửi lại sau ít phút.",
       nextStatus: "active",
     });
     return;
@@ -237,13 +291,17 @@ export async function advanceKaelChatEstimate(
     // missing detail. Self-check the AI question before showing it (RULES.md #3);
     // fall back to a safe template if it fails screening — never raw AI text.
     if (pipeline.code === "NEEDS_CLARIFICATION") {
+      const missingSlots = pipeline.clarification?.missingSlots ?? [];
+      const focusedFallback = buildFocusedClarificationQuestion(
+        missingSlots[0] ?? "service_scope",
+        language,
+      );
       const checked = guardOutput({
         text: pipeline.clarification?.question ?? "",
         actor: "customer",
-        language: "vi",
+        language,
         surface: "kael_chat_clarification",
-        fallbackText:
-          "Bạn mô tả rõ hơn vấn đề đang gặp: vị trí, dấu hiệu và mức độ ảnh hưởng trong căn hộ.",
+        fallbackText: focusedFallback,
       });
       if (checked.used_fallback || !checked.allowed) {
         await auditGuardrailTripBestEffort(client, {
@@ -262,8 +320,15 @@ export async function advanceKaelChatEstimate(
           },
         });
       }
-      const missingSlots = pipeline.clarification?.missingSlots ?? [];
       const sentiment = pipeline.clarification?.customerSentiment;
+      artifact = diagnosisScopeWithQuestion(
+        artifact,
+        missingSlots.length > 0 ? missingSlots : ["description"],
+        checked.text,
+        0.4,
+        durableCustomerDetail,
+      );
+      await persistDiagnosisScopeArtifact(client, sessionId, artifact);
       await appendKaelSystemTurn(client, sessionId, {
         contentType: "clarification",
         text: checked.text,
@@ -276,6 +341,7 @@ export async function advanceKaelChatEstimate(
             artifactType: "ai_notes",
           }),
           clarification_source: checked.used_fallback ? "fallback" : "ai",
+          diagnosis_scope: artifact,
           ...(sentiment ? { customer_sentiment: sentiment } : {}),
         },
         ...(sentiment
@@ -291,9 +357,13 @@ export async function advanceKaelChatEstimate(
     }
     if (pipeline.code === "SERVICE_MISMATCH") {
       const suggested = pipeline.suggestedService;
-      const mismatchText = suggested
-        ? `Mô tả của bạn nghiêng về dịch vụ ${kaelServiceLabelVi(suggested)}. Bạn quay lại chọn đúng dịch vụ để Kael ước tính chính xác.`
-        : "Mô tả của bạn không khớp với dịch vụ đang chọn. Bạn quay lại chọn đúng dịch vụ phù hợp để Kael ước tính.";
+      const mismatchText = language === "en"
+        ? (suggested
+          ? `Your description appears to match ${kaelServiceLabelEn(suggested)}. Go back and select that service so Kael can analyze it accurately.`
+          : "Your description does not match the selected service. Go back and select the appropriate service for an accurate analysis.")
+        : (suggested
+          ? `Mô tả của bạn nghiêng về dịch vụ ${kaelServiceLabelVi(suggested)}. Bạn quay lại chọn đúng dịch vụ để Kael ước tính chính xác.`
+          : "Mô tả của bạn không khớp với dịch vụ đang chọn. Bạn quay lại chọn đúng dịch vụ phù hợp để Kael ước tính.");
       await appendKaelSystemTurn(client, sessionId, {
         contentType: "error",
         text: mismatchText,
@@ -311,9 +381,46 @@ export async function advanceKaelChatEstimate(
       });
       return;
     }
+    if (pipeline.code === "NO_BASELINE") {
+      artifact = buildPriceEvidenceUnavailableArtifact(artifact, {
+        customerDetail: durableCustomerDetail,
+        scopeSummary: durableCustomerDetail,
+      });
+      await persistDiagnosisScopeArtifact(client, sessionId, artifact);
+      await appendKaelSystemTurn(client, sessionId, {
+        contentType: "error",
+        text: language === "en"
+          ? "Kael has identified the scope but does not have validated price evidence for this case. It needs review before any offer is shown."
+          : "Kael đã xác định phạm vi nhưng chưa có dữ liệu giá đã kiểm chứng cho trường hợp này. Yêu cầu cần được rà soát trước khi hiển thị báo giá.",
+        nextStatus: "active",
+        metadata: {
+          diagnosis_scope: artifact,
+          quote_readiness: "validated_price_evidence_unavailable",
+        },
+      });
+      await updateKaelProgress(client, progressTarget, {
+        stage: "price_synthesis",
+        status: "failed",
+        progress: 1,
+        failureReason: "validated_price_evidence_unavailable",
+      });
+      return;
+    }
     const clarificationText = pipeline.code === "UNSUPPORTED"
       ? pipeline.error
-      : "Kael chưa đủ dữ liệu an toàn để ước tính. Bạn mô tả thêm hoặc gửi ảnh rõ hơn.";
+      : (language === "en"
+        ? "Kael does not yet have enough safe evidence to estimate. Add more detail or send a clearer photo."
+        : "Kael chưa đủ dữ liệu an toàn để ước tính. Bạn mô tả thêm hoặc gửi ảnh rõ hơn.");
+    if (pipeline.code !== "UNSUPPORTED") {
+      artifact = diagnosisScopeWithQuestion(
+        artifact,
+        ["description_or_photo"],
+        clarificationText,
+        0.35,
+        durableCustomerDetail,
+      );
+      await persistDiagnosisScopeArtifact(client, sessionId, artifact);
+    }
     await appendKaelSystemTurn(client, sessionId, {
       contentType: pipeline.code === "UNSUPPORTED" ? "error" : "clarification",
       text: clarificationText,
@@ -327,6 +434,7 @@ export async function advanceKaelChatEstimate(
             confidence: 0.35,
             artifactType: "ai_notes",
           }),
+          diagnosis_scope: artifact,
         },
     });
     await updateKaelProgress(client, progressTarget, {
@@ -343,8 +451,101 @@ export async function advanceKaelChatEstimate(
     0,
   );
   const estimate = pipeline.estimate;
+  const profile = getKaelPerformanceProfile(input.service_type);
+  if (!profile) {
+    apiFailure("UNSUPPORTED_SERVICE", language === "en" ? "This service does not have a valid Case Work profile" : "Dịch vụ chưa có hồ sơ Case Work hợp lệ", 400);
+  }
+  const evidenceRequest = requiredCaseWorkEvidenceRequest({
+    serviceType: input.service_type,
+    problemCategory: estimate.problem_category,
+    customerMessage: message,
+    evidence: artifact.evidence,
+    language,
+  });
+  if (evidenceRequest) {
+    artifact = diagnosisScopeWithEvidenceRequest(
+      artifact,
+      evidenceRequest,
+      {
+        customerDetail: durableCustomerDetail,
+        problemSummary: estimate.problem_summary,
+        complexity: estimate.complexity,
+        problemChips,
+        workerRequirements: profile.worker_capabilities,
+        confidence: estimate.confidence,
+      },
+    );
+    await persistDiagnosisScopeArtifact(client, sessionId, artifact);
+    await appendKaelSystemTurn(client, sessionId, {
+      contentType: "clarification",
+      text: evidenceRequest.prompt,
+      nextStatus: "active",
+      metadata: {
+        artifact_proposal: buildKaelMissingInfoArtifactProposal({
+          missingFields: [evidenceRequest.blocker],
+          question: evidenceRequest.prompt,
+          confidence: Math.min(estimate.confidence, 0.65),
+          artifactType: "ai_notes",
+        }),
+        diagnosis_scope: artifact,
+      },
+    });
+    await updateKaelProgress(client, progressTarget, {
+      stage: "clarification",
+      status: "completed",
+      progress: 1,
+    });
+    return;
+  }
+  const profileFactCoverage = resolveProfileFactCoverage(profile, pipeline.profileFacts ?? {});
+  const safetyFlags = buildProfileSafetyFlags(profile, pipeline.safetySignals ?? [], language);
+  const quoteBlockers = [
+    ...profileFactCoverage.missing.map((driver) => `missing_profile_fact:${driver}`),
+    ...safetyFlags.map((flag) => `safety_gate:${flag.code}`),
+    ...(estimate.needs_inspection ? ["onsite_inspection_required"] : []),
+    ...(estimate.confidence < 0.7 ? ["confidence_below_offer_threshold"] : []),
+  ];
+  const quoteReady = quoteBlockers.length === 0;
+  const quoteReadyArtifact = kaelDiagnosisScopeArtifactSchema.parse({
+    ...artifact,
+    case_phase: quoteReady ? "offer_review" : "analysis",
+    facts: {
+      ...artifact.facts,
+      ...profileFactCoverage.facts,
+      latest_customer_detail: durableCustomerDetail,
+      address_district: district,
+      problem_summary: estimate.problem_summary,
+      complexity: estimate.complexity,
+      problem_chips: problemChips,
+      needs_inspection: estimate.needs_inspection === true,
+      safety_signals: pipeline.safetySignals ?? [],
+    },
+    missing_facts: [...profileFactCoverage.missing],
+    evidence: artifact.evidence,
+    safety_flags: safetyFlags,
+    scope_summary: estimate.problem_summary,
+    quote_ready: quoteReady,
+    quote_blockers: quoteBlockers,
+    worker_requirements: profile.worker_capabilities,
+    confidence: estimate.confidence,
+    next_action: quoteReady
+      ? { kind: "prepare_offer" }
+      : {
+        kind: "escalate",
+        reason: safetyFlags[0]?.customer_message ??
+          estimate.needs_inspection_reason ??
+          quoteBlockers[0] ??
+          "manual_review_required",
+      },
+    updated_at: new Date().toISOString(),
+  });
+  await updateKaelSession(client, sessionId, {
+    case_phase: quoteReady ? "offer_review" : "analysis",
+    diagnosis_scope: quoteReadyArtifact,
+  });
   const estimateCardV3 = buildEstimateCardOutput({
     estimate,
+    language,
     priceSource: estimate.needs_inspection
       ? "inspection_required"
       : estimatePriceSourceFromStageLogs(pipeline.stageLogs),
@@ -355,14 +556,15 @@ export async function advanceKaelChatEstimate(
   });
   await appendKaelSystemTurn(client, sessionId, {
     contentType: "estimate",
-    text: formatKaelEstimateText(estimate),
-    nextStatus: "estimate_ready",
+    text: formatKaelEstimateText(estimate, language),
+    nextStatus: quoteReady ? "estimate_ready" : "active",
     estimate,
     costUsd,
     metadata: {
       estimate,
       estimate_card_v3: estimateCardV3,
       artifact_proposal: estimateCardV3.artifact_proposal,
+      diagnosis_scope: quoteReadyArtifact,
       fallback_used: pipeline.fallbackUsed,
       service_problem_id: pipeline.serviceProblemId,
       photo_count: input.photo_urls?.length ?? 0,
@@ -383,12 +585,14 @@ export async function maybeApplyKaelBoundaryGuard(
   auditContext: {
     readonly actorId: string | null;
     readonly jobId: string | null;
+    readonly language?: "vi" | "en";
   } = { actorId: null, jobId: null },
 ): Promise<boolean> {
   // S2/F6 (§38): semantic injection classifier is intentionally always-on here
   // (do not gate off) — defense-in-depth on the customer Kael chat path.
   const boundary = evaluateMessageBoundary(message, serviceType, {
     semanticInjectionClassifierEnabled: true,
+    language: auditContext.language,
   });
   if (boundary.ok) return false;
   console.warn("kael_chat boundary decline", {
@@ -434,6 +638,7 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
     metadata: Record<string, unknown>;
     message: string;
     qaCount: number;
+    language?: "vi" | "en";
   },
 ) {
   const alreadyHardStopped = input.metadata.demanding_customer_hard_escalation === true;
@@ -456,8 +661,9 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
       escalationLevel: "hard" as const,
     }
     : detection;
-  const response = buildDemandingCustomerResponse(effectiveDetection);
-  const guarded = guardDemandingResponseText(response.responseText);
+  const language = input.language ?? (input.metadata.language === "en" ? "en" : "vi");
+  const response = buildDemandingCustomerResponse(effectiveDetection, {}, language);
+  const guarded = guardDemandingResponseText(response.responseText, language);
   if (guarded.trip) {
     await auditGuardrailTripBestEffort(client, {
       jobId: input.jobId,
@@ -499,206 +705,9 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
   return true;
 }
 
-export async function insertKaelTurn(
-  client: DbClient,
-  value: Record<string, unknown>,
-) {
-  const result = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_chat_turns")
-      .insert(value)
-      .select("id")
-      .single(),
-  );
-  if (result.error || !result.data) {
-    apiFailure("DB_ERROR", "Không thể lưu lượt chat Kael", 500);
-  }
-  return result.data;
-}
-
-export async function updateKaelSession(
-  client: DbClient,
-  sessionId: string,
-  value: Record<string, unknown>,
-) {
-  const result = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_chat_sessions")
-      .update(value)
-      .eq("id", sessionId)
-      .select("id")
-      .maybeSingle(),
-  );
-  if (result.error || !result.data) {
-    apiFailure("DB_ERROR", "Không thể cập nhật phiên Kael", 500);
-  }
-}
-
-export function assertKaelSessionOwnership(
-  session: Record<string, unknown>,
-  ctx: MobileApiContext,
-) {
-  if (ctx.role === "admin") return;
-  if (session.customer_id === ctx.user.id) return;
-  apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
-}
-
-export async function findExistingKaelSessionByClientRequest(
-  client: DbClient,
-  customerId: string,
-  clientRequestId: string,
-): Promise<ExistingKaelSessionByClientRequest> {
-  const result = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_chat_sessions")
-      .select("id, job_id, status, estimate_ready_at, total_turns")
-      .eq("customer_id", customerId)
-      .eq("client_request_id", clientRequestId)
-      .maybeSingle(),
-  );
-  if (result.error || !result.data) return null;
-  const sessionId = asString(result.data.id);
-  if (!sessionId) return null;
-  const hasMaterializedTurn = (nullableNumber(result.data.total_turns) ?? 0) > 0;
-  const hasJob = nullableString(result.data.job_id) !== null;
-  const hasEstimate = nullableString(result.data.estimate_ready_at) !== null;
-  if (!hasMaterializedTurn && !hasJob && !hasEstimate) {
-    return { kind: "pending" };
-  }
-  return { kind: "ready", sessionId };
-}
-
-async function appendKaelSystemTurn(
-  client: DbClient,
-  sessionId: string,
-  input: {
-    contentType: "clarification" | "estimate" | "error";
-    text: string;
-    nextStatus: "active" | "estimate_ready" | "unsupported";
-    estimate?: unknown;
-    costUsd?: number;
-    metadata?: Record<string, unknown>;
-    sessionMetadata?: Record<string, unknown>;
-  },
-) {
-  const sessionResult = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_chat_sessions")
-      .select("id, total_turns, total_cost_usd, safe_metadata")
-      .eq("id", sessionId)
-      .single(),
-  );
-  if (sessionResult.error || !sessionResult.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
-  }
-  const nextIndex = asNumber(sessionResult.data.total_turns) + 1;
-  await insertKaelTurn(client, {
-    session_id: sessionId,
-    turn_index: nextIndex,
-    role: "kael",
-    content_type: input.contentType,
-    text_content: input.text,
-    media_refs: [],
-    safe_metadata: input.metadata ?? {},
-    cost_usd: input.costUsd ?? null,
-  });
-  const sessionUpdate: Record<string, unknown> = {
-    total_turns: nextIndex,
-    total_cost_usd: asNumber(sessionResult.data.total_cost_usd) +
-      (input.costUsd ?? 0),
-    status: input.nextStatus,
-  };
-  if (input.nextStatus === "estimate_ready") {
-    sessionUpdate.estimate_ready_at = new Date().toISOString();
-  }
-  if (input.sessionMetadata) {
-    sessionUpdate.safe_metadata = compactMetadata({
-      ...asRecord(sessionResult.data.safe_metadata),
-      ...input.sessionMetadata,
-    });
-  }
-  await updateKaelSession(client, sessionId, sessionUpdate);
-}
-
-async function getKaelChatCostUsd(
-  client: DbClient,
-  sessionId: string,
-): Promise<number> {
-  const sessionResult = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_chat_sessions")
-      .select("id, total_cost_usd")
-      .eq("id", sessionId)
-      .single(),
-  );
-  if (sessionResult.error || !sessionResult.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
-  }
-  return asNumber(sessionResult.data.total_cost_usd);
-}
-
-async function buildKaelConversationContext(
-  client: DbClient,
-  sessionId: string,
-): Promise<{ context: string | undefined; clarificationCount: number }> {
-  const turnsResult = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("kael_chat_turns")
-      .select("turn_index, role, content_type, text_content")
-      .eq("session_id", sessionId)
-      .order("turn_index", { ascending: true }),
-  );
-  const rows = turnsResult.data ?? [];
-  const clarificationCount = rows.filter((row) =>
-    asString(row.content_type) === "clarification" &&
-    asKaelTurnRole(row.role) !== "customer"
-  ).length;
-  const recent = rows
-    .map((row) => ({
-      role: asKaelTurnRole(row.role),
-      text: nullableString(row.text_content),
-    }))
-    .filter((turn): turn is { role: KaelChatTurnRole; text: string } =>
-      Boolean(turn.text)
-    )
-    .slice(-8)
-    .map((turn) => `${turn.role === "customer" ? "khách" : "kael"}: ${turn.text}`);
-  return {
-    context: recent.length > 0 ? recent.join("\n") : undefined,
-    clarificationCount,
-  };
-}
-
-function demandingCustomerTurnMetadata(
-  detection: ReturnType<typeof detectDemandingCustomerPatterns>,
-  response: ReturnType<typeof buildDemandingCustomerResponse>,
-) {
-  return {
-    nuance: detection.nuance,
-    expected_nuance: detection.expectedNuance,
-    escalation_level: detection.escalationLevel,
-    pressure_score: detection.pressureScore,
-    legitimate_concern_signals: detection.legitimateConcernSignals,
-    pressure_signals: detection.pressureSignals,
-    strategy_ids: response.strategyIds,
-    admin_queue_priority: response.adminQueuePriority,
-    stop_ai_loop: response.stopAiLoop,
-  };
-}
-
-function demandingCustomerSessionMetadata(
-  previousMetadata: Record<string, unknown>,
-  detection: ReturnType<typeof detectDemandingCustomerPatterns>,
-  response: ReturnType<typeof buildDemandingCustomerResponse>,
-) {
-  return compactMetadata({
-    ...previousMetadata,
-    demanding_customer_last_nuance: detection.nuance,
-    demanding_customer_escalation_level: detection.escalationLevel,
-    demanding_customer_admin_queue_priority: response.adminQueuePriority,
-    demanding_customer_stop_ai_loop: response.stopAiLoop,
-    demanding_customer_hard_escalation:
-      response.stopAiLoop || previousMetadata.demanding_customer_hard_escalation === true,
-    demanding_customer_last_at: new Date().toISOString(),
-  });
-}
+export {
+  assertKaelSessionOwnership,
+  findExistingKaelSessionByClientRequest,
+  insertKaelTurn,
+  updateKaelSession,
+} from "./kael-chat-session-store.ts";

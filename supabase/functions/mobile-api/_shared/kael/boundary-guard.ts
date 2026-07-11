@@ -10,6 +10,7 @@
 // alone covers F-18..F-21 from the 2026-05-28 production audit.
 
 import type { ServiceType } from "../../../_shared/domain.ts";
+import { KAEL_CASE_WORK_SERVICE_TYPES } from "./performance-profiles.ts";
 
 export type BoundaryReason =
   | "prompt_injection"
@@ -35,13 +36,10 @@ export type BoundaryInjectionClassifier = (input: {
 export type BoundaryGuardOptions = {
   readonly semanticInjectionClassifierEnabled?: boolean;
   readonly injectionClassifier?: BoundaryInjectionClassifier;
+  readonly language?: "vi" | "en";
 };
 
-const SUPPORTED_SERVICES: readonly ServiceType[] = [
-  "electrical",
-  "plumbing",
-  "cleaning",
-] as const;
+const SUPPORTED_SERVICES: readonly ServiceType[] = KAEL_CASE_WORK_SERVICE_TYPES;
 
 // Prompt-injection sentinels. Matched against the raw message (case-insensitive)
 // and against the NFD-normalized form to catch unaccented Vietnamese variants.
@@ -87,8 +85,6 @@ const INJECTION_PATTERNS: { id: string; pattern: RegExp }[] = [
 // Normalized (NFD, lower-case) before comparison.
 const OUT_OF_SCOPE_KEYWORDS: readonly string[] = [
   // Unsupported repair services
-  "dieu hoa",
-  "may lanh",
   "tu lanh",
   "may giat",
   "may say",
@@ -98,10 +94,12 @@ const OUT_OF_SCOPE_KEYWORDS: readonly string[] = [
   "bep ga",
   "bep tu",
   "binh nong lanh",
-  "tivi",
-  "ti vi",
-  "ti-vi",
   "tv hong",
+  "tivi hong",
+  "ti vi hong",
+  "tv khong len",
+  "tivi khong len",
+  "tv khong chay",
   "internet",
   "wifi",
   "sua khoa",
@@ -180,21 +178,82 @@ const SERVICE_KEYWORDS: Record<ServiceType, readonly string[]> = {
     "lau kinh",
     "vat tu don dep",
   ],
+  hvac: [
+    "dieu hoa",
+    "may lanh",
+    "khong mat",
+    "lam lanh yeu",
+    "chay nuoc",
+    "keu bat thuong",
+    "ma loi",
+    "dan lanh",
+    "dan nong",
+    "ve sinh may lanh",
+  ],
+  upholstery: [
+    "sofa",
+    "nem",
+    "rem",
+    "tham",
+    "vai boc",
+    "vet ban",
+    "mui hoi",
+    "am moc",
+    "giat sofa",
+    "giat nem",
+  ],
+  handyman: [
+    "khoan tuong",
+    "lap ke",
+    "lap thanh rem",
+    "lap den",
+    "thiet bi nho",
+    "ban le",
+    "tay nam",
+    "lap thiet bi phong tam",
+    "treo tv",
+    "lap tv",
+    "lap noi that",
+    "sua vat",
+  ],
 };
 
-const DECLINE_COPY: Record<BoundaryReason, string> = {
-  prompt_injection:
-    "Kael chỉ hỗ trợ sửa điện, sửa nước và vệ sinh nhà. Bạn vui lòng mô tả vấn đề thực tế trong căn hộ để Kael giúp ước tính.",
-  out_of_scope:
-    "Hiện Kael chỉ hỗ trợ sửa điện, sửa nước và vệ sinh nhà trong khu vực TP.HCM. Vấn đề bạn nêu nằm ngoài phạm vi hiện tại. Khi Kael mở rộng dịch vụ sẽ thông báo bạn sau.",
-  service_mismatch:
-    "Mô tả của bạn không khớp với dịch vụ đang chọn. Bạn quay lại chọn đúng dịch vụ (sửa điện, sửa nước hoặc vệ sinh) phù hợp với vấn đề để Kael ước tính chính xác.",
+const DECLINE_COPY: Record<"vi" | "en", Record<BoundaryReason, string>> = {
+  vi: {
+    prompt_injection:
+      "Kael chỉ hỗ trợ sáu nhóm dịch vụ nhà ở đang mở trên NestScout. Bạn vui lòng mô tả công việc thực tế trong căn hộ để Kael tiếp tục xử lý.",
+    out_of_scope:
+      "Vấn đề bạn nêu nằm ngoài phạm vi sáu nhóm dịch vụ nhà ở Kael đang hỗ trợ tại TP.HCM.",
+    service_mismatch:
+      "Mô tả của bạn không khớp với dịch vụ đang chọn. Bạn quay lại chọn đúng một trong sáu dịch vụ phù hợp để Kael xử lý chính xác.",
+  },
+  en: {
+    prompt_injection:
+      "Kael only supports the six home-service categories currently available on NestScout. Describe the actual work needed in the apartment so Kael can continue.",
+    out_of_scope:
+      "This request is outside the six home-service categories Kael currently supports in Ho Chi Minh City.",
+    service_mismatch:
+      "Your description does not match the selected service. Go back and choose the matching service so Kael can handle it accurately.",
+  },
 };
 
-const SERVICE_LABEL_VI: Record<ServiceType, string> = {
-  electrical: "sửa điện",
-  plumbing: "sửa nước",
-  cleaning: "vệ sinh nhà",
+const SERVICE_LABEL: Record<"vi" | "en", Record<ServiceType, string>> = {
+  vi: {
+    electrical: "sửa điện",
+    plumbing: "sửa nước",
+    cleaning: "vệ sinh nhà",
+    hvac: "điều hòa và không khí",
+    upholstery: "vệ sinh sofa, nệm, rèm hoặc thảm",
+    handyman: "sửa vặt và lắp đặt nhỏ",
+  },
+  en: {
+    electrical: "electrical repair",
+    plumbing: "plumbing repair",
+    cleaning: "home cleaning",
+    hvac: "air conditioning",
+    upholstery: "upholstery care",
+    handyman: "minor handyman work",
+  },
 };
 
 function normalize(text: string): string {
@@ -265,6 +324,9 @@ export function detectServiceMismatch(
     electrical: 0,
     plumbing: 0,
     cleaning: 0,
+    hvac: 0,
+    upholstery: 0,
+    handyman: 0,
   };
   const signals: string[] = [];
   for (const service of SUPPORTED_SERVICES) {
@@ -302,6 +364,8 @@ export function evaluateMessageBoundary(
   options: BoundaryGuardOptions = {},
 ): BoundaryDecision {
   const trimmed = text.trim();
+  const language = options.language ?? "vi";
+  const declineCopy = DECLINE_COPY[language];
   if (trimmed.length === 0) return { ok: true };
 
   const injection = detectPromptInjection(trimmed);
@@ -309,7 +373,7 @@ export function evaluateMessageBoundary(
     return {
       ok: false,
       reason: "prompt_injection",
-      declineText: DECLINE_COPY.prompt_injection,
+      declineText: declineCopy.prompt_injection,
       detectedSignals: injection.signals,
     };
   }
@@ -323,7 +387,7 @@ export function evaluateMessageBoundary(
       return {
         ok: false,
         reason: "prompt_injection",
-        declineText: DECLINE_COPY.prompt_injection,
+        declineText: declineCopy.prompt_injection,
         detectedSignals: [
           "semantic_injection_classifier",
           ...semanticInjection.signals,
@@ -337,7 +401,7 @@ export function evaluateMessageBoundary(
     return {
       ok: false,
       reason: "out_of_scope",
-      declineText: DECLINE_COPY.out_of_scope,
+      declineText: declineCopy.out_of_scope,
       detectedSignals: outOfScope.signals,
     };
   }
@@ -346,10 +410,10 @@ export function evaluateMessageBoundary(
   if (mismatch.detected) {
     const suggestion = mismatch.suggestedService;
     const declineText = suggestion
-      ? `${DECLINE_COPY.service_mismatch} Kael nghĩ vấn đề thuộc dịch vụ ${
-        SERVICE_LABEL_VI[suggestion]
-      }.`
-      : DECLINE_COPY.service_mismatch;
+      ? language === "en"
+        ? `${declineCopy.service_mismatch} Kael identified ${SERVICE_LABEL.en[suggestion]} as the closer match.`
+        : `${declineCopy.service_mismatch} Kael nghĩ vấn đề thuộc dịch vụ ${SERVICE_LABEL.vi[suggestion]}.`
+      : declineCopy.service_mismatch;
     return {
       ok: false,
       reason: "service_mismatch",

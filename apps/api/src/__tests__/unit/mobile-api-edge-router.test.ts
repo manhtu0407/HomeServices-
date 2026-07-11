@@ -66,6 +66,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getJob: vi.fn(),
     listCustomerActiveJobs: vi.fn(),
     createKaelChat: vi.fn(),
+    answerKaelAssistant: vi.fn(),
     createKaelChatMediaUpload: vi.fn(async () => ({
       bucket_id: 'kael-chat-media' as const,
       object_path: 'customer/session/photo.jpg',
@@ -73,6 +74,10 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       token: 'signed-token',
       signed_upload_url: 'https://storage.example.test/upload',
       expires_in_seconds: 900,
+    })),
+    revokeKaelChatMedia: vi.fn(async () => ({
+      revoked_count: 1,
+      deletion_pending: false,
     })),
     getKaelChat: vi.fn(),
     getKaelChatProgress: vi.fn(async () => ({
@@ -95,6 +100,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     cancelJob: vi.fn(),
     acceptBroadcast: vi.fn(),
     declineBroadcast: vi.fn(),
+    getWorkerCandidate: vi.fn(),
+    confirmWorkerCandidate: vi.fn(),
+    rejectWorkerCandidate: vi.fn(),
     updateJobStatus: vi.fn(),
     authorizeApartmentAccess: vi.fn(),
     requestScopeChange: vi.fn(),
@@ -955,25 +963,15 @@ describe('mobile-api Edge router contract', () => {
     expect(createJob).not.toHaveBeenCalled()
   })
 
-  it('passes validated POST /jobs payload to the backend service', async () => {
-    const createJob = vi.fn(async () => ({
-      job_id: '22222222-2222-4222-8222-222222222222',
-      status: 'broadcasting' as const,
-      estimate: {
-        service_type: 'plumbing' as const,
-        problem_category: 'pipe_leak',
-        problem_summary: 'Ống rò rỉ cần kiểm tra',
-        complexity: 'medium' as const,
-        price_min: 150000,
-        price_max: 350000,
-        confidence: 0.5,
-        advisory: null,
-        disclaimer:
-          'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
-      },
-      final_price: 350000,
-      fallback_used: true,
-    }))
+  it.each([
+    'electrical',
+    'plumbing',
+    'cleaning',
+    'hvac',
+    'upholstery',
+    'handyman',
+  ])('fails closed when legacy POST /jobs tries to bypass Case Work for %s', async (serviceType) => {
+    const createJob = vi.fn()
     const handler = createMobileApiHandler({
       authenticate: vi.fn(async () => customerAuth),
       services: makeServices({ createJob }),
@@ -983,7 +981,7 @@ describe('mobile-api Edge router contract', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        service_type: 'plumbing',
+        service_type: serviceType,
         problem_chips: ['Ống rò rỉ'],
         description: 'Ống nước dưới lavabo bị rò và nhỏ nước liên tục',
         photo_urls: [],
@@ -991,17 +989,12 @@ describe('mobile-api Edge router contract', () => {
       }),
     }))
 
-    expect(response.status).toBe(201)
-    expect(createJob).toHaveBeenCalledWith(
-      expect.objectContaining({
-        role: 'customer',
-        user: customerAuth.user,
-      }),
-      expect.objectContaining({
-        service_type: 'plumbing',
-        address_district: 'q7',
-      }),
-    )
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      code: 'KAEL_CASE_WORK_REQUIRED',
+      next_route: '/kael/chat',
+    })
+    expect(createJob).not.toHaveBeenCalled()
   })
 
   it('routes Kael chat session creation through customer/admin auth', async () => {
@@ -1009,6 +1002,9 @@ describe('mobile-api Edge router contract', () => {
       session: {
         id: 'kael-session-1',
         status: 'estimate_ready' as const,
+        case_phase: 'offer_review' as const,
+        diagnosis_scope: null,
+        scheduled_at: null,
         service_type: 'plumbing' as const,
         job_id: null,
         customer_id: customerAuth.user.id,
@@ -1086,11 +1082,38 @@ describe('mobile-api Edge router contract', () => {
     expect(createKaelChat).not.toHaveBeenCalled()
   })
 
+  it('routes owner-scoped Kael media revocation through the Edge service', async () => {
+    const revokeKaelChatMedia = vi.fn(async () => ({
+      revoked_count: 1,
+      deletion_pending: false,
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ revokeKaelChatMedia }),
+    })
+    const mediaRef = `supabase://kael-chat-media/${customerAuth.user.id}/kael-chat/model_vision/frame.jpg`
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/media-revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ media_refs: [mediaRef] }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(revokeKaelChatMedia).toHaveBeenCalledWith(
+      expect.objectContaining({ user: expect.objectContaining({ id: customerAuth.user.id }) }),
+      { media_refs: [mediaRef] },
+    )
+  })
+
   it('routes Kael chat history reads through customer auth', async () => {
     const getKaelChat = vi.fn(async () => ({
       session: {
         id: 'kael-session-1',
         status: 'active' as const,
+        case_phase: 'analysis' as const,
+        diagnosis_scope: null,
+        scheduled_at: null,
         service_type: 'plumbing' as const,
         job_id: null,
         customer_id: customerAuth.user.id,
@@ -1244,6 +1267,9 @@ describe('mobile-api Edge router contract', () => {
       session: {
         id: 'kael-session-1',
         status: 'active' as const,
+        case_phase: 'analysis' as const,
+        diagnosis_scope: null,
+        scheduled_at: null,
         service_type: 'plumbing' as const,
         job_id: null,
         customer_id: customerAuth.user.id,
@@ -1306,24 +1332,8 @@ describe('mobile-api Edge router contract', () => {
     )
   })
 
-  it('lets admin QA exercise the customer job creation route explicitly', async () => {
-    const createJob = vi.fn(async () => ({
-      job_id: '22222222-2222-4222-8222-222222222222',
-      status: 'broadcasting' as const,
-      estimate: {
-        service_type: 'cleaning' as const,
-        problem_category: 'home_cleaning',
-        problem_summary: 'Can don dep can ho',
-        complexity: 'medium' as const,
-        price_min: 200000,
-        price_max: 450000,
-        confidence: 0.6,
-        advisory: null,
-        disclaimer: 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
-      },
-      final_price: 450000,
-      fallback_used: false,
-    }))
+  it('does not let admin QA bypass the Case Work offer gate through legacy POST /jobs', async () => {
+    const createJob = vi.fn()
     const handler = createMobileApiHandler({
       authenticate: vi.fn(async () => adminAuth),
       services: makeServices({ createJob }),
@@ -1341,11 +1351,12 @@ describe('mobile-api Edge router contract', () => {
       }),
     }))
 
-    expect(response.status).toBe(201)
-    expect(createJob).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'admin', user: adminAuth.user }),
-      expect.objectContaining({ service_type: 'cleaning' }),
-    )
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      code: 'KAEL_CASE_WORK_REQUIRED',
+      next_route: '/kael/chat',
+    })
+    expect(createJob).not.toHaveBeenCalled()
   })
 
   it('passes validated POST /jobs/:id/media payload to the backend service', async () => {

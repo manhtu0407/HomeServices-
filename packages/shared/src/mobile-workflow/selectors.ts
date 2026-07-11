@@ -21,9 +21,11 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
         ? 'no_worker'
         : status === 'broadcasting'
           ? 'searching'
+          : status === 'worker_candidate_pending'
+            ? 'candidate'
           : status === 'worker_matched'
             ? 'matched'
-            : status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'reviewed'
+            : status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'payment_pending' || status === 'paid' || status === 'reviewed'
               ? 'completed'
               : status && ['worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(status)
                 ? 'active'

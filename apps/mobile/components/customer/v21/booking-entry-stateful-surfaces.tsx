@@ -14,9 +14,8 @@ import type { AppLanguage } from '@/lib/app-language'
 import { CUSTOMER_SERVICE_IDS, type CustomerServiceId } from '@nestscout/shared'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { SourceCardSkin } from './aura-surfaces'
+import { BookingDraftButtonAura, BookingProblemChipAura, BookingSearchMintBorder, BookingSuggestedChipAura, SourceCardSkin } from './aura-surfaces'
 import { customerV21Assets, customerV21BookingServiceAssets } from './assets'
-import { BookingDraftButtonAura, BookingProblemChipAura, BookingSearchMintBorder, BookingSuggestedChipAura } from './aura-surfaces'
 import { customerV21BookingStyles as bookingStyles } from './booking-styles'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
 import { AssetTile, EmptyState, ProgressRail, SectionActionHeader, ServiceTile, V21Card, V21TopBar } from './shared-surfaces'
@@ -27,6 +26,11 @@ type BookingSearchSuggestionView = {
   problem?: string
   selected: boolean
   serviceType: CustomerServiceId
+}
+
+type BookingProblemOptionView = {
+  label: string
+  value: string
 }
 
 type BookingAddressSuggestionView = {
@@ -98,12 +102,15 @@ export function CustomerBookingEntryView({
   invisibleTextInputScrollbarStyle,
   isMediaScreen,
   language,
+  mediaCount,
+  mediaDraftPreviewNode,
   mediaPanelNode,
   onAddressChange,
   onAddressFocus,
   onAddressSuggestionPress,
   onBack,
   onDescriptionChange,
+  onMediaAdd,
   onProblemToggle,
   onResetSelectedService,
   onScheduleDateSelect,
@@ -112,7 +119,6 @@ export function CustomerBookingEntryView({
   onSearchSuggestionPress,
   onServiceSelect,
   onSubmit,
-  performanceIntakeNode,
   problemOptions,
   reduceTransparency,
   rootStyles,
@@ -128,7 +134,6 @@ export function CustomerBookingEntryView({
   textInputNoOutlineStyle,
   timeSlots,
   tokens,
-  usesPerformanceIntake,
   submitDisabled = false,
 }: {
   address: string
@@ -148,12 +153,15 @@ export function CustomerBookingEntryView({
   invisibleTextInputScrollbarStyle: StyleProp<TextStyle>
   isMediaScreen: boolean
   language: AppLanguage
+  mediaCount: number
+  mediaDraftPreviewNode: ReactNode
   mediaPanelNode: ReactNode
   onAddressChange: (value: string) => void
   onAddressFocus: () => void
   onAddressSuggestionPress: (suggestion: BookingAddressSuggestionView) => void
   onBack: () => void
   onDescriptionChange: (value: string) => void
+  onMediaAdd: () => void
   onProblemToggle: (problem: string) => void
   onResetSelectedService: () => void
   onScheduleDateSelect: (value: string) => void
@@ -162,8 +170,7 @@ export function CustomerBookingEntryView({
   onSearchSuggestionPress: (suggestion: BookingSearchSuggestionView) => void
   onServiceSelect: (service: CustomerServiceId) => void
   onSubmit: () => void
-  performanceIntakeNode?: ReactNode
-  problemOptions: string[]
+  problemOptions: BookingProblemOptionView[]
   reduceTransparency: boolean
   rootStyles: RootBookingStyles
   scheduleDateOptions: BookingScheduleDateOptionView[]
@@ -178,7 +185,6 @@ export function CustomerBookingEntryView({
   textInputNoOutlineStyle: StyleProp<TextStyle>
   timeSlots: readonly string[]
   tokens: CustomerThemeTokens
-  usesPerformanceIntake: boolean
   submitDisabled?: boolean
 }) {
   return (
@@ -265,7 +271,7 @@ export function CustomerBookingEntryView({
                 <View style={sharedStyles.heroChipRow}>
                   <View style={bookingStyles.bookingSuggestedChipFrame}>
                     <BookingSuggestedChipAura reduceTransparency={reduceTransparency} />
-                    <KaelChip label={language === 'vi' ? 'Đề xuất bởi Kael' : 'Suggested by Kael'} style={bookingStyles.bookingSuggestedChip} variant="selected" />
+                    <KaelChip label={language === 'vi' ? 'Bạn đã chọn' : 'You selected'} style={bookingStyles.bookingSuggestedChip} variant="selected" />
                   </View>
                   <KaelChip label={dataPendingLabel} variant="unselected" />
                 </View>
@@ -400,6 +406,7 @@ export function CustomerBookingEntryView({
                     const selected = selectedScheduleTime === slot
                     return (
                       <KaelChip
+                        accessibilityState={{ selected }}
                         key={slot}
                         label={slot}
                         onPress={() => onScheduleTimeSelect(slot)}
@@ -411,8 +418,7 @@ export function CustomerBookingEntryView({
                 </View>
               </View>
             </View>
-            {usesPerformanceIntake ? performanceIntakeNode : (
-              <View style={bookingStyles.bookingField}>
+            <View style={bookingStyles.bookingField}>
                 <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Mô tả sự cố' : 'Issue description'}</Text>
                 <KaelTextField
                   inputShellStyle={[bookingStyles.bookingDescriptionInputShell, { backgroundColor: tokens.mode === 'dark' ? tokens.base : '#FFFFFF', borderColor: tokens.border }]}
@@ -426,23 +432,42 @@ export function CustomerBookingEntryView({
                   textAlignVertical="top"
                   value={description}
                 />
-              </View>
-            )}
-            {selectedService && !usesPerformanceIntake ? (
+            </View>
+            {selectedService ? (
               <View style={[bookingStyles.bookingField, bookingStyles.bookingProblemField]}>
                 <BookingProblemChipAura reduceTransparency={reduceTransparency} />
                 <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Chi tiết' : 'Details'}</Text>
                 <View style={rootStyles.chipWrap}>
                   {problemOptions.map((problem) => (
                     <KaelChip
-                      key={problem}
-                      label={problem}
-                      onPress={() => onProblemToggle(problem)}
-                      testID={`customer-v21-problem-${problem}`}
-                      variant={selectedProblems.includes(problem) ? 'selected' : 'unselected'}
+                      accessibilityState={{ selected: selectedProblems.includes(problem.value) }}
+                      key={problem.value}
+                      label={problem.label}
+                      onPress={() => onProblemToggle(problem.value)}
+                      testID={`customer-v21-problem-${problem.value}`}
+                      variant={selectedProblems.includes(problem.value) ? 'selected' : 'unselected'}
                     />
                   ))}
                 </View>
+              </View>
+            ) : null}
+            {selectedService ? (
+              <View style={bookingStyles.bookingField}>
+                <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>
+                  {language === 'vi' ? 'Ảnh hiện trạng (không bắt buộc)' : 'Current photos (optional)'}
+                </Text>
+                <View style={rootStyles.chipWrap}>
+                  <KaelChip
+                    label={language === 'vi' ? 'Thêm ảnh' : 'Add photos'}
+                    onPress={onMediaAdd}
+                    testID="customer-v21-booking-add-media"
+                    variant="unselected"
+                  />
+                  <Text style={[rootStyles.bodyText, { color: tokens.muted }]} testID="customer-v21-booking-media-count">
+                    {mediaCount}/5
+                  </Text>
+                </View>
+                {mediaDraftPreviewNode}
               </View>
             ) : null}
           </V21Card>

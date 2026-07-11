@@ -301,10 +301,12 @@ type AcceptRpcRow = {
   ok: boolean
   error_code: string | null
   job_status: string | null
-  address_building: string | null
-  address_unit: string | null
-  address_floor: string | null
-  address_district: string | null
+  candidate_id?: string | null
+  already_applied?: boolean
+  address_building?: string | null
+  address_unit?: string | null
+  address_floor?: string | null
+  address_district?: string | null
 }
 
 /**
@@ -338,25 +340,24 @@ function makeAcceptRpcSupabase(opts: {
 }
 
 describe('acceptBroadcast (RPC-based)', () => {
-  it('succeeds when RPC returns ok=true with full address', async () => {
+  it('creates a private worker candidate without returning the customer address', async () => {
     const { supabase } = makeAcceptRpcSupabase({
       rpcResult: {
         ok: true,
         error_code: null,
-        job_status: 'worker_matched',
-        address_building: 'Vinhomes',
-        address_unit: 'A101',
-        address_floor: '5',
-        address_district: 'q1',
+        job_status: 'worker_candidate_pending',
+        candidate_id: 'candidate-1',
+        already_applied: false,
       },
     })
 
     const result = await acceptBroadcast(supabase, 'job-1', 'worker-1')
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.status).toBe('worker_matched')
-      expect(result.fullAddress.building).toBe('Vinhomes')
-      expect(result.fullAddress.unit).toBe('A101')
+      expect(result.status).toBe('worker_candidate_pending')
+      expect(result.candidateId).toBe('candidate-1')
+      expect(result.awaitingCustomerConfirmation).toBe(true)
+      expect(result).not.toHaveProperty('fullAddress')
     }
   })
 
@@ -365,11 +366,9 @@ describe('acceptBroadcast (RPC-based)', () => {
       rpcResult: {
         ok: true,
         error_code: null,
-        job_status: 'worker_matched',
-        address_building: null,
-        address_unit: null,
-        address_floor: null,
-        address_district: null,
+        job_status: 'worker_candidate_pending',
+        candidate_id: 'candidate-1',
+        already_applied: false,
       },
     })
     await acceptBroadcast(supabase, 'job-42', 'worker-99')

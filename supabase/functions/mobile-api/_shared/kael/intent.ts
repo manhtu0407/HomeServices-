@@ -1,6 +1,7 @@
 import { sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { AIMessage, AIProvider, EdgeAiSecrets, IntentAttemptLog, IntentResult } from "./types.ts";
-import { intentResultSchema } from "./types.ts";
+import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, intentResultSchema } from "./types.ts";
+import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from "./prompts.ts";
 import { callStructuredAI } from "./structured-call.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
@@ -122,6 +123,7 @@ export async function diagnoseIntake(
   description: string,
   secrets: EdgeAiSecrets,
   conversationContext?: string,
+  language: "vi" | "en" = "vi",
 ): Promise<
   | { success: true; intent: IntentResult; attempts: IntentAttemptLog[] }
   | {
@@ -136,6 +138,7 @@ export async function diagnoseIntake(
     problemChips.map(sanitizeForLLM),
     description,
     conversationContext ? scrubSensitiveForLLM(conversationContext) : undefined,
+    language,
   );
   const attempts: IntentAttemptLog[] = [];
 
@@ -235,11 +238,8 @@ export function buildFallbackIntent(
     };
   }
 
-  const validServiceType =
-    serviceType === "electrical" || serviceType === "plumbing" ||
-      serviceType === "cleaning"
-      ? serviceType
-      : "unsupported";
+  const profile = getKaelPerformanceProfile(serviceType);
+  const validServiceType = profile?.service_type ?? "unsupported";
   const slugMap: Record<string, string> = {
     "Mất điện một phòng": "power_outage_one_room",
     "Mất điện toàn căn": "power_outage_whole_unit",
@@ -259,16 +259,29 @@ export function buildFallbackIntent(
     "Tổng vệ sinh": "deep_cleaning",
     "Dọn sau sửa chữa": "post_repair_cleaning",
     "Vệ sinh cửa kính": "window_cleaning",
+    "Vệ sinh điều hòa": "routine_hvac_cleaning",
+    "Máy lạnh yếu": "weak_cooling",
+    "Máy không mát": "no_cooling",
+    "Chảy nước": "water_leak",
+    "Kêu bất thường": "unusual_noise",
+    "Có mã lỗi": "error_code",
+    "Vệ sinh sofa": "sofa_cleaning",
+    "Vệ sinh nệm": "mattress_cleaning",
+    "Vệ sinh rèm": "curtain_cleaning",
+    "Vệ sinh thảm": "carpet_cleaning",
+    "Vết bẩn": "stain_treatment",
+    "Mùi hôi/ẩm mốc": "odor_or_mold",
+    "Khoan/lắp kệ": "drill_or_mount_shelf",
+    "Lắp thanh rèm": "install_curtain_rod",
+    "Lắp đèn/thiết bị nhỏ": "install_small_fixture",
+    "Sửa bản lề/tay nắm": "repair_hinge_or_handle",
+    "Lắp thiết bị phòng tắm": "install_bathroom_fixture",
+    "Lắp TV/nội thất": "mount_tv_or_furniture",
   };
   const firstChip = problemChips[0] ?? "";
-  const slug = slugMap[firstChip] ??
-    (validServiceType === "electrical"
-      ? "other_electrical"
-      : validServiceType === "plumbing"
-      ? "other_plumbing"
-      : validServiceType === "cleaning"
-      ? "other_cleaning"
-      : "unsupported");
+  const slug = slugMap[firstChip] ?? (validServiceType === "unsupported"
+    ? "unsupported"
+    : FALLBACK_PROBLEM_SLUG_BY_SERVICE[validServiceType]);
   return {
     service_type: validServiceType,
     problem_slug: slug,

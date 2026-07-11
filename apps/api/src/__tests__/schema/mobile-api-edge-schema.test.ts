@@ -216,7 +216,9 @@ describe('mobile-api Edge schema compatibility', () => {
 
     expect(edgeKael).toContain('const problemChips = input.problemChips.map(scrubSensitiveForLLM)')
     expect(edgeKael).toContain('const description = scrubSensitiveForLLM(input.description)')
-    expect(edgeKael).toContain('.replace(/\\b0\\d{8,10}\\b/g, "[phone]")')
+    expect(edgeKael).toContain('(?:\\+?84|0)')
+    expect(edgeKael).toContain('[\\s().-]*')
+    expect(edgeKael).toContain('{8,10}(?!\\d)')
     expect(edgeKael).toContain('.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[email]")')
     expect(edgeKael).toContain('.replace(/\\b\\d{9,12}\\b/g, "[id-number]")')
     expect(edgeKael).toContain('"[bank-account]"')
@@ -233,7 +235,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
     expect(edgeKael).toContain('KAEL_BUSINESS_GUARDRAILS')
     expect(edgeKael).toContain('Kael is the main AI assistant')
-    expect(edgeKael).toContain('exactly three service boxes')
+    expect(edgeKael).toContain('six service boxes')
     expect(edgeKael).toContain('adult or explicit sexual content')
     expect(edgeKael).toContain('legality questions')
     expect(edgeKael).toContain('Return the required JSON only')
@@ -1233,19 +1235,16 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(scopeUpdateIndex).toBeGreaterThan(jobUpdateIndex)
   })
 
-  it('stops changed work when a customer rejects a scope-change request', () => {
-    const migration = read('supabase/migrations/20260518181500_scope_change_reject_cancels_job.sql')
+  it('resumes the agreed work when a customer rejects a scope-change request', () => {
+    const migration = read('supabase/migrations/20260711062000_unified_scope_change_timing.sql')
     const edgeServices = readEdgeServiceLayer()
-    const nextRoute = read('apps/api/src/app/api/scope-changes/[id]/decide/route.ts')
-    const nextScopeChange = read('apps/api/src/lib/jobs/scope-change.ts')
 
-    expect(migration).toContain("v_job_status := 'cancelled'::public.job_status")
-    expect(migration).toContain('cancelled_at = case')
+    expect(migration).toContain('v_job_status := v_sc.resume_job_status')
+    expect(migration).toContain('scope change resume status invariant violated')
+    expect(migration).not.toContain("v_job_status := 'cancelled'::public.job_status")
     expect(migration).toContain("v_decision_text := 'rejected'")
     expect(migration).toContain('scope_change_customer_decision = v_decision_text')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/scope-change.service.ts')).toContain('scopeDecisionToJobStatus(input.decision)')
-    expect(nextRoute).toContain("parsed.data.decision === 'approve' ? 'repairing' : 'cancelled'")
-    expect(nextScopeChange).toContain("Reject transitions the job to 'cancelled'")
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/scope-change.service.ts')).toContain('scopeDecisionToJobStatus(')
   })
 
   it('keeps real Supabase integration suites blocked from production project ref', () => {

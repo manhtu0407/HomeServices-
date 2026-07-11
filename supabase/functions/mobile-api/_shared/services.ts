@@ -31,7 +31,8 @@ import {
 import { decideScopeChange, requestScopeChange } from "./services/scope-change.service.ts";
 import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/chat.service.ts";
-import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat.service.ts";
+import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat.service.ts";
+import { answerKaelAssistant } from "./services/customer-assistant.service.ts";
 import { askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, sendWorkerKaelChatTurn } from "./services/worker-kael-chat.service.ts";
 import { streamKaelChatTurn, streamWorkerKaelChatTurn } from "./services/kael-chat-stream.ts";
 import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin-learning.service.ts";
@@ -40,7 +41,13 @@ import { attachJobMedia } from "./services/job-media.service.ts";
 import { getJob, listCustomerActiveJobs, listMyPendingDecisions } from "./services/job-read.service.ts";
 import { cancelJob, requestCustomerCancellation } from "./services/customer-cancellation.service.ts";
 import { decideWorkerCancellation, requestWorkerCancellation } from "./services/worker-cancellation.service.ts";
-import { acceptBroadcast, confirmSearch, declineBroadcast } from "./services/matching.service.ts";
+import {
+  acceptBroadcast,
+  confirmSearch,
+  declineBroadcast,
+} from "./services/matching.service.ts";
+import { confirmWorkerCandidate, getWorkerCandidate, rejectWorkerCandidate } from "./services/worker-candidate.service.ts";
+import { removeCustomerFavoriteWorker, saveCustomerFavoriteWorker } from "./services/customer-favorite-worker.service.ts";
 import { createJob } from "./services/job-create.service.ts";
 import { updateJobStatus } from "./services/job-status.service.ts";
 import { confirmKaelChat } from "./services/kael-chat-confirm.service.ts";
@@ -63,7 +70,10 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listCustomerActiveJobs,
     createKaelChat: (ctx, input) =>
       createKaelChat(ctx, input, aiRuntime(ctx, secrets)),
+    answerKaelAssistant: (ctx, input) =>
+      answerKaelAssistant(ctx, input, aiRuntime(ctx, secrets)),
     createKaelChatMediaUpload,
+    revokeKaelChatMedia,
     getKaelChat,
     getKaelChatProgress,
     streamKaelChatTurn: (ctx, sessionId, input) =>
@@ -72,11 +82,17 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
       sendKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     confirmKaelChat: (ctx, sessionId) =>
       confirmKaelChat(ctx, sessionId, aiRuntime(ctx, secrets)),
-    submitKaelChatEvidence,
+    submitKaelChatEvidence: (ctx, sessionId, input) =>
+      submitKaelChatEvidence(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     confirmSearch,
     cancelJob,
     acceptBroadcast,
     declineBroadcast,
+    getWorkerCandidate,
+    confirmWorkerCandidate,
+    rejectWorkerCandidate,
+    saveCustomerFavoriteWorker,
+    removeCustomerFavoriteWorker,
     updateJobStatus,
     authorizeApartmentAccess,
     requestScopeChange: (ctx, jobId, input) =>

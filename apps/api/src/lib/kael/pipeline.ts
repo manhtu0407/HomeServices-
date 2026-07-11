@@ -4,8 +4,8 @@ import { classifyIntent as defaultClassifyIntent, diagnoseIntake as defaultDiagn
 import { analyzeDescription as defaultAnalyzeDescription } from './vision'
 import { searchMarketPrice as defaultSearchMarketPrice, synthesizePrice } from './pricing'
 import { fetchBaseline } from './baseline'
-import { PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from './schemas'
-import { hasHighSeverity, SEVERITY_ADVISORY } from './defaults'
+import { priceDisclaimer, unsupportedServiceMessage } from './schemas'
+import { hasHighSeverity, severityAdvisory } from './defaults'
 import { applyLearnedComplexityRule } from '@/lib/learning/apply-complexity-rule'
 import type { KaelEstimate } from './schemas'
 
@@ -15,6 +15,7 @@ export type PipelineInput = {
   description: string
   district: string
   photoUrls?: string[]
+  language?: 'vi' | 'en'
   // Smart-clarification intake-diagnosis (2026-06-04). When enabled, the intent
   // stage uses diagnoseIntake (conversation-aware) and the pipeline may short-circuit
   // to ask ONE clarification question or flag a scope mismatch before vision/market.
@@ -62,10 +63,6 @@ export type PipelineResult =
       suggestedService?: ServiceType
     }
 
-// Max clarification questions per session (STRUCTURES.md A4 "ask 0-2 questions").
-// Past the cap, Kael proceeds to a best-effort estimate instead of looping.
-export const CLARIFICATION_CAP = 2
-
 function timed<T>(fn: () => Promise<T>): Promise<{ result: T; ms: number }> {
   const start = Date.now()
   return fn().then((result) => ({ result, ms: Date.now() - start }))
@@ -77,6 +74,7 @@ export async function runKaelPipeline(
   providers?: PipelineProviders,
 ): Promise<PipelineResult> {
   const { serviceType, problemChips, description, district } = input
+  const language = input.language ?? 'vi'
   const photoUrls = input.photoUrls ?? []
   const classifyIntent = providers?.classifyIntent ?? defaultClassifyIntent
   const diagnoseIntake = providers?.diagnoseIntake ?? defaultDiagnoseIntake
@@ -89,7 +87,7 @@ export async function runKaelPipeline(
   // Stage 1: Intent classification (or conversation-aware intake-diagnosis).
   const { result: intentResult, ms: intentMs } = await timed(() =>
     input.intakeDiagnosisEnabled
-      ? diagnoseIntake(serviceType, problemChips, description, input.conversationContext)
+      ? diagnoseIntake(serviceType, problemChips, description, input.conversationContext, language)
       : classifyIntent(serviceType, problemChips, description),
   )
   const intent = intentResult.success ? intentResult.intent : intentResult.fallback
@@ -106,7 +104,7 @@ export async function runKaelPipeline(
   if (intent.service_type === 'unsupported' || intent.scope_signal === 'out_of_scope') {
     return {
       success: false,
-      error: UNSUPPORTED_SERVICE_MESSAGE,
+      error: unsupportedServiceMessage(language),
       code: 'UNSUPPORTED',
       stageLogs,
     }
@@ -118,20 +116,27 @@ export async function runKaelPipeline(
     if (intent.scope_signal === 'service_mismatch') {
       return {
         success: false,
-        error: 'Mô tả của bạn không khớp với dịch vụ đang chọn.',
+        error: language === 'en'
+          ? 'Your description does not match the selected service.'
+          : 'Mô tả của bạn không khớp với dịch vụ đang chọn.',
         code: 'SERVICE_MISMATCH',
         stageLogs,
         suggestedService: intent.suggested_service ?? undefined,
       }
     }
-    if (intent.needs_clarification && (input.clarificationCount ?? 0) < CLARIFICATION_CAP) {
+    if (intent.needs_clarification) {
+      const clarificationQuestion = intent.clarification_question ??
+        (language === 'vi' ? intent.clarification_question_vi : null) ??
+        (language === 'en'
+          ? 'Please describe the issue in a little more detail for Kael.'
+          : 'Bạn mô tả rõ hơn vấn đề đang gặp giúp Kael nhé.')
       return {
         success: false,
-        error: intent.clarification_question_vi ?? 'Bạn mô tả rõ hơn vấn đề đang gặp giúp Kael nhé.',
+        error: clarificationQuestion,
         code: 'NEEDS_CLARIFICATION',
         stageLogs,
         clarification: {
-          question: intent.clarification_question_vi ?? null,
+          question: clarificationQuestion,
           missingSlots: intent.missing_slots ?? [],
           customerSentiment: intent.customer_sentiment,
         },
@@ -143,7 +148,7 @@ export async function runKaelPipeline(
 
   // Stage 2: Problem analysis
   const { result: visionResult, ms: visionMs } = await timed(() =>
-    analyzeDescription(description, `${validServiceType}: ${intent.problem_slug}`, photoUrls),
+    analyzeDescription(description, `${validServiceType}: ${intent.problem_slug}`, photoUrls, language),
   )
   const analysis = visionResult.success ? visionResult.analysis : visionResult.fallback
   if (!visionResult.success) fallbackUsed = true
@@ -183,7 +188,9 @@ export async function runKaelPipeline(
   if (!baselineResult.success) {
     return {
       success: false,
-      error: 'Không có dữ liệu giá tham khảo cho dịch vụ này. Vui lòng thử lại sau.',
+      error: language === 'en'
+        ? 'No governed price evidence is available for this service. Please try again later.'
+        : 'Không có dữ liệu giá tham khảo cho dịch vụ này. Vui lòng thử lại sau.',
       code: 'NO_BASELINE',
       stageLogs,
     }
@@ -230,8 +237,8 @@ export async function runKaelPipeline(
     price_min: synthesized.price_min,
     price_max: synthesized.price_max,
     confidence: synthesized.confidence,
-    advisory: buildAdvisory(analysis.severity_indicators),
-    disclaimer: PRICE_DISCLAIMER,
+    advisory: buildAdvisory(analysis.severity_indicators, language),
+    disclaimer: priceDisclaimer(language),
   }
 
   return {
@@ -244,7 +251,10 @@ export async function runKaelPipeline(
   }
 }
 
-function buildAdvisory(severityIndicators: string[]): string | null {
+function buildAdvisory(
+  severityIndicators: string[],
+  language: 'vi' | 'en' = 'vi',
+): string | null {
   if (severityIndicators.length === 0) return null
-  return hasHighSeverity(severityIndicators) ? SEVERITY_ADVISORY : null
+  return hasHighSeverity(severityIndicators) ? severityAdvisory(language) : null
 }

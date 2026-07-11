@@ -14,6 +14,7 @@ import type { AppLanguage } from '../app-language'
 // reduced-interval poll fallback.
 export const ACTIVE_TIMELINE_STATUSES = [
   'broadcasting',
+  'worker_candidate_pending',
   'worker_matched',
   'worker_on_way',
   'arrived',
@@ -72,7 +73,8 @@ export function usesBeforeAcceptCancelEndpoint(status: JobStatus) {
     status === 'analyzing' ||
     status === 'estimate_ready' ||
     status === 'awaiting_customer_confirm' ||
-    status === 'broadcasting'
+    status === 'broadcasting' ||
+    status === 'worker_candidate_pending'
 }
 
 export function defaultCustomerCancellationInput(language: AppLanguage): CustomerCancellationRequestInput {

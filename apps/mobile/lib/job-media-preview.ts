@@ -20,20 +20,37 @@ export function jobMediaObjectPathFromRef(ref: string): string | null {
   if (!ref.startsWith(JOB_MEDIA_REF_PREFIX)) return null
 
   const path = ref.slice(JOB_MEDIA_REF_PREFIX.length)
-  const segments = path.split('/')
-  if (segments.length < 3 || segments.some((segment) => !segment || segment === '.' || segment === '..')) return null
-  if (!JOB_MEDIA_STAGES.has(segments[1])) return null
+  const match = path.match(
+    /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([A-Za-z_]+)\/([A-Za-z0-9._-]+)$/i,
+  )
+  if (!match || !JOB_MEDIA_STAGES.has(match[2])) return null
 
   return path
 }
 
+function isLocalMediaPreviewUri(ref: string) {
+  return /^(?:file|content|ph|assets-library):/i.test(ref)
+}
+
 export async function resolveJobMediaPreviewUrl(ref: string): Promise<string | null> {
-  if (!ref.startsWith('supabase://')) return ref
+  if (isLocalMediaPreviewUri(ref)) return ref
+  if (!ref.startsWith('supabase://')) return null
 
   const objectPath = jobMediaObjectPathFromRef(ref)
   if (!objectPath || !supabase) return null
 
-  const { data, error } = await supabase.storage.from('job-media').createSignedUrl(objectPath, 15 * 60)
+  const { data, error } = await supabase.storage.from('job-media').createSignedUrl(
+    objectPath,
+    15 * 60,
+    {
+      transform: {
+        height: 1200,
+        quality: 82,
+        resize: 'contain',
+        width: 1200,
+      },
+    },
+  )
   return error || !data?.signedUrl ? null : data.signedUrl
 }
 
@@ -42,10 +59,13 @@ export async function resolveJobMediaPreviewUrl(ref: string): Promise<string | n
  * renderable in the native image surface for the current participant.
  */
 export function useJobMediaPreviewUrls(urls: readonly (string | null | undefined)[]) {
-  const key = urls.map((url) => url ?? '').join('\u0000')
-  const refs = useMemo(() => urls.map((url) => url?.trim() || null), [key])
+  const key = JSON.stringify(urls.map((url) => url?.trim() || null))
+  const refs = useMemo(
+    () => JSON.parse(key) as (string | null)[],
+    [key],
+  )
   const directUrls = useMemo(
-    () => refs.map((ref) => ref && !ref.startsWith('supabase://') ? ref : null),
+    () => refs.map((ref) => ref && isLocalMediaPreviewUri(ref) ? ref : null),
     [refs],
   )
   const [signedPreview, setSignedPreview] = useState(() => ({

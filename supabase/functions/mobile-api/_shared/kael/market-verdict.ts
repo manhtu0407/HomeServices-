@@ -70,8 +70,17 @@ export function evaluateMarketVerdict(input: {
 }
 
 export function marketVerdictReasonVi(verdict: MarketVerdict): string | null {
+  return marketVerdictReason(verdict, "vi");
+}
+
+export function marketVerdictReason(
+  verdict: MarketVerdict,
+  language: "vi" | "en" = "vi",
+): string | null {
   if (verdict.reasons.length === 0) return null;
-  return "Dữ liệu giá cần được thợ kiểm tra trực tiếp trước khi chốt phạm vi.";
+  return language === "en"
+    ? "A worker must verify the pricing evidence on site before the scope is finalized."
+    : "Dữ liệu giá cần được thợ kiểm tra trực tiếp trước khi chốt phạm vi.";
 }
 
 export function marketVerdictSafeMetadata(verdict: MarketVerdict): Record<string, unknown> {

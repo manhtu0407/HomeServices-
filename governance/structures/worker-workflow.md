@@ -17,14 +17,15 @@ Worker opens app
 |- turns online
 |- receives matching job
 |- sees general area + Kael pre-brief
-|- accepts within 60s
-|- full address revealed
+|- accepts within 60s as a candidate
+|- waits for customer confirmation of the proposed match
+|- full address revealed only after customer confirmation
 |- updates job status
 |- chats with customer
 |- requests scope change if issue differs
-|- waits for Kael scope decision or override
+|- waits for the validated Kael scope proposal and explicit customer decision
 |- completes job with notes/photos
-|- earnings updated after Kael completion/payment decision
+|- earnings updated only after customer completion confirmation and verified payment state
 ```
 
 ### B0. Worker Registration
@@ -41,7 +42,7 @@ Input
 |- legal name
 |- date of birth
 |- gender optional
-|- service skills: electrical / plumbing / cleaning, including multi-service combinations
+|- service skills: electrical / plumbing / cleaning / HVAC / upholstery / handyman, including verified multi-service combinations
 |- years of experience
 |- working districts
 |- CCCD front/back
@@ -101,7 +102,7 @@ UI
 ```text
 Purpose
 -
-|- allow worker to accept or skip quickly
+|- allow worker to accept or skip quickly; acceptance proposes a candidate and does not finalize assignment
 
 Content before accept
 -
@@ -122,16 +123,17 @@ Events
 -
 |- job_request_sent
 |- worker_accepted
+|- worker_candidate_proposed
 |- worker_declined
 |- request_expired
 ```
 
-### B4. Job Detail After Accept
+### B4. Job Detail After Customer Confirms Candidate
 
 ```text
 Purpose
 -
-|- give worker full context after commitment
+|- give worker full context only after both worker acceptance and customer confirmation
 
 Content
 -
@@ -146,7 +148,8 @@ Content
 Rules
 -
 |- reveal only necessary PII
-|- full details only after accept
+|- full details only after customer confirms the accepted candidate
+|- if the customer declines, return the job to matching without revealing exact address or customer PII
 ```
 
 ### B5. On-Site Status Updates
@@ -187,8 +190,8 @@ Worker input
 Rules
 -
 |- worker does NOT propose price; Kael computes new estimate from worker reported scope (Phase 2.0 2026-05-23)
-|- worker cannot continue changed work until Kael emits a validated scope decision or admin override
-|- Kael computes + explains change to customer, with accept/appeal path
+|- worker cannot continue changed work until Kael emits a validated scope proposal and the customer explicitly confirms it, or an admin override resolves a dispute
+|- Kael computes + explains the change to the customer, with confirm/reject/appeal paths
 |- all scope change data is logged
 ```
 
@@ -207,12 +210,14 @@ Input
 State
 -
 |- completed_by_worker
-|- kael_completion_review
+|- awaiting_customer_completion_confirm
+|- confirmed_by_customer or disputed
 
 Rules
 -
 |- worker does NOT enter final price; Kael-locked value is authoritative (Phase 2.0 2026-05-23)
-|- final price source: jobs.final_price (set at A7 Kael decision baseline or latest A11 Kael-computed scope decision)
+|- final price source: jobs.final_price (set at the confirmed A7 offer baseline or latest customer-confirmed A11 Kael-computed scope proposal)
+|- payment cannot start until the customer explicitly confirms completion and the server validates the completion decision
 ```
 
 ### B8. Earnings
@@ -228,7 +233,7 @@ Content
 |- platform fee
 |- worker net earning
 |- job history
-|- withdrawal placeholder
+|- withdrawal controls only when a real rail is implemented; otherwise an honest unavailable state
 
 Rule
 -

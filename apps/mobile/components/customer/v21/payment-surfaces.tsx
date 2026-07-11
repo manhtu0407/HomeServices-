@@ -9,6 +9,7 @@ import { CaseWideMintAura, CaseWorkActionButtonAura, SourceCardSkin, ZipMintAura
 import { customerV21Assets, customerV21BankAssets, type CustomerV21BankKey } from './assets'
 import { customerV21BookingStyles as bookingStyles } from './booking-styles'
 import { customerV21CommonCopy } from './copy'
+import { paymentLedgerConfirmationStep } from './case-work-money-display-model'
 import { customerV21HistoryActiveStyles as historyActiveStyles } from './history-active-styles'
 import { CaseSuccessEmblem } from './history-surfaces'
 import { customerV21PaymentStyles as styles } from './payment-styles'
@@ -491,6 +492,7 @@ export function PaymentProtectedStagePanel({
   const language = useAppLanguage()
   const { reduceTransparency, tokens } = useCustomerV21SurfaceTheme()
   const copy = customerV21CommonCopy[language]
+  const paymentConfirmation = paymentLedgerConfirmationStep(protectedPayment, language)
   return (
     <>
       <V21Card glass style={styles.paymentProtectedHeroCard} testID="customer-v21-payment-protected-hero">
@@ -530,8 +532,8 @@ export function PaymentProtectedStagePanel({
         <SourceCardSkin />
         <CaseWideMintAura scope="PaymentProtectedLedger" testID="customer-v21-payment-protected-ledger-mint-aura" />
         <ZipMintAura scope="PaymentProtectedLedgerFine" testID="customer-v21-payment-protected-ledger-zip-mint-aura" />
-        <PaymentLedgerStep body={paymentConfirmedBody} state={hasPayment ? 'done' : 'pending'} tokens={tokens} title={hasPayment ? (language === 'vi' ? 'Đã thanh toán' : 'Paid') : (language === 'vi' ? 'Lệnh thanh toán' : 'Payment order')} />
-        <PaymentLedgerStep body={protectedBody} state={hasPayment ? 'active' : 'pending'} tokens={tokens} title={protectedPayment ? (language === 'vi' ? 'Đang giữ an toàn' : 'Held safely') : (language === 'vi' ? 'Đối soát' : 'Reconciliation')} />
+        <PaymentLedgerStep body={paymentConfirmedBody} state={paymentConfirmation.state} tokens={tokens} title={paymentConfirmation.title} />
+        <PaymentLedgerStep body={protectedBody} state={protectedPayment ? 'active' : 'pending'} tokens={tokens} title={protectedPayment ? (language === 'vi' ? 'Đang giữ an toàn' : 'Held safely') : (language === 'vi' ? 'Đối soát' : 'Reconciliation')} />
         <PaymentLedgerStep body={completionBody} state="pending" tokens={tokens} title={language === 'vi' ? 'Chờ hoàn tất công việc' : 'Waiting for completion'} />
         <PaymentLedgerStep body={payoutBody} state="pending" tokens={tokens} title={language === 'vi' ? 'Giải ngân vào ví thợ' : 'Worker payout'} />
       </V21Card>

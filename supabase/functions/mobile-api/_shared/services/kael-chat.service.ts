@@ -4,64 +4,28 @@
 
 import { asBoolean, asNumber, asRecord, asString, asStringArray, asKaelChatStatus, asServiceType, nullableString } from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
-import { compactMetadata, mergeLimitedRefs, parseKaelProgressSnapshot, serializeKaelSession, serializeKaelTurn } from "./_shared.ts";
+import { compactMetadata, mergeLimitedRefs } from "./_shared.ts";
 import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { checkKaelChatRateLimit } from "../rate-limit.ts";
 import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
-import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../kael/index.ts";
+import { buildInitialDiagnosisScopeArtifact, kaelDiagnosisScopeArtifactSchema, scrubSensitiveForLLM, type EdgeAiSecrets, type KaelDiagnosisScopeArtifact } from "../kael/index.ts";
 import {
   sanitizeForLLM,
   type KaelChatCreateInput,
   type KaelChatEvidenceInput,
-  type KaelChatMediaUploadInput,
   type KaelChatTurnInput,
 } from "../../../_shared/domain.ts";
 import { advanceKaelChatEstimate, assertKaelSessionOwnership, findExistingKaelSessionByClientRequest, insertKaelTurn, maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn, updateKaelSession } from "./kael-chat-core.ts";
-
-type SignedUploadStorage = {
-  storage?: {
-    from(bucket: string): {
-      createSignedUploadUrl(
-        path: string,
-      ): Promise<{
-        data: { signedUrl?: string; signed_url?: string; token?: string } | null;
-        error: unknown;
-      }>;
-    };
-  };
-};
-
-const KAEL_CHAT_MEDIA_BUCKET = "kael-chat-media" as const;
-const KAEL_CHAT_MEDIA_UPLOAD_EXPIRES_IN_SECONDS = 60 * 60;
-const KAEL_CHAT_ALLOWED_MIME_TYPES = new Set([
-  "audio/aac",
-  "audio/mp4",
-  "audio/mpeg",
-  "audio/wav",
-  "audio/webm",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-]);
-
-function rejectKaelChatRateLimit(reason: string | null): never {
-  apiFailure(
-    "RATE_LIMITED",
-    reason === "hour"
-      ? "Bạn đã đạt giới hạn 20 phiên Kael trong 1 giờ. Vui lòng thử lại sau."
-      : "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.",
-    429,
-  );
-}
-
-
+import { getKaelChat } from "./kael-chat-read.service.ts";
+import { rejectKaelChatRateLimit } from "./kael-chat-rate-limit.ts";
+import {
+  buildKaelVisionValidationEvidence,
+  createKaelChatMediaUpload,
+  createSignedVisionUrls,
+  revokeKaelChatMedia,
+  validateAndConsumeKaelChatEvidenceMediaRefs,
+} from "./kael-chat-media.service.ts";
 
 export async function createKaelChat(
   ctx: MobileApiContext,
@@ -73,7 +37,9 @@ export async function createKaelChat(
     return sendKaelChatTurn(ctx, input.session_id, {
       message: input.message,
       problem_chips: input.problem_chips,
-      photo_urls: input.photo_urls,
+      photo_urls: [],
+      evidence_items: input.evidence_items,
+      language: input.language,
       address_label: input.address_label,
       address_district: input.address_district,
       apartment_access_profile: input.apartment_access_profile,
@@ -81,6 +47,7 @@ export async function createKaelChat(
   }
 
   const client = db(ctx);
+  const language = input.language ?? "vi";
 
   // Idempotent re-POST runs BEFORE the
   // rate limiter so harmless retries with the same client_request_id do not
@@ -134,15 +101,53 @@ export async function createKaelChat(
     }
   }
 
+  const initialEvidenceItems = sanitizeCaseWorkEvidenceItems(input.evidence_items ?? []);
+  const initialEvidenceRefs = await validateAndConsumeKaelChatEvidenceMediaRefs(
+    ctx,
+    initialEvidenceItems.flatMap((evidence) => evidence.ref ? [evidence.ref] : []),
+    ctx.user.id,
+  );
+  // Decode/transform every model-visible image before creating any durable
+  // session or artifact. Consumed intents are retry-safe, so a transient
+  // transform failure cannot leave a poisoned case-work record behind.
+  const initialSignedVisionUrls = await createSignedVisionUrls(
+    ctx,
+    initialEvidenceItems,
+    ctx.user.id,
+  );
+  const initialVoiceTranscript = caseWorkVoiceTranscript(initialEvidenceItems);
   const metadata = compactMetadata({
     problem_chips: input.problem_chips,
+    language,
+    profile_id: input.profile_id ?? null,
     address_label: input.address_label ?? null,
     address_district: input.address_district ?? null,
     apartment_access_profile: sanitizeApartmentAccessProfile(
       input.apartment_access_profile,
     ),
-    photo_urls: input.photo_urls,
+    evidence_media_refs: initialEvidenceRefs,
+    evidence_kinds: initialEvidenceItems.map((evidence) => evidence.kind),
+    private_video_evidence_count: initialEvidenceItems.filter((evidence) =>
+      evidence.kind === "video_original_private"
+    ).length,
+    schedule_window: input.schedule_window ?? null,
     demanding_customer_qa_count: input.message ? 1 : undefined,
+  });
+  const initialArtifact = buildInitialDiagnosisScopeArtifact({
+    serviceType: input.service_type,
+    customerGoal: scrubSensitiveForLLM(input.message?.trim() ?? "") ||
+      input.problem_chips.join(" ") || input.service_type,
+  });
+  const initialDiagnosisScope = kaelDiagnosisScopeArtifactSchema.parse({
+    ...initialArtifact,
+    evidence: mergeCaseWorkEvidence(initialArtifact.evidence, initialEvidenceItems),
+    facts: {
+      ...initialArtifact.facts,
+      ...(initialVoiceTranscript
+        ? { latest_voice_transcript: scrubSensitiveForLLM(initialVoiceTranscript) }
+        : {}),
+    },
+    updated_at: new Date().toISOString(),
   });
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
@@ -151,11 +156,14 @@ export async function createKaelChat(
         customer_id: ctx.user.id,
         service_type: input.service_type,
         status: "active",
+        case_phase: "analysis",
+        diagnosis_scope: initialDiagnosisScope,
+        scheduled_at: input.scheduled_at ?? null,
         safe_metadata: metadata,
         client_request_id: input.client_request_id ?? null,
       })
       .select(
-        "id, job_id, customer_id, service_type, status, started_at, estimate_ready_at, total_turns, total_cost_usd, safe_metadata, created_at",
+        "id, job_id, customer_id, service_type, status, case_phase, diagnosis_scope, scheduled_at, started_at, estimate_ready_at, total_turns, total_cost_usd, safe_metadata, created_at",
       )
       .single(),
   );
@@ -196,13 +204,16 @@ export async function createKaelChat(
       role: "customer",
       content_type: "text",
       text_content: scrubSensitiveForLLM(message),
-      media_refs: input.photo_urls,
-      safe_metadata: {},
+      media_refs: initialEvidenceRefs,
+      safe_metadata: compactMetadata({
+        evidence_kinds: initialEvidenceItems.map((evidence) => evidence.kind),
+      }),
     });
     await updateKaelSession(client, sessionId, {
       total_turns: 1,
       safe_metadata: metadata,
     });
+    if (!input.defer_analysis) {
     // Apply boundary guard FIRST so
     // out-of-scope / injection / mismatch messages are declined before the
     // demanding-customer empathy path can intercept and produce a
@@ -212,7 +223,7 @@ export async function createKaelChat(
       sessionId,
       message,
       input.service_type,
-      { actorId: ctx.user.id, jobId: null },
+      { actorId: ctx.user.id, jobId: null, language },
     );
     if (!boundaryHandled) {
       const handledDemandingCustomer =
@@ -226,6 +237,7 @@ export async function createKaelChat(
             metadata,
             message,
             qaCount: 1,
+            language,
           },
         );
       if (!handledDemandingCustomer) {
@@ -235,95 +247,16 @@ export async function createKaelChat(
           {
             ...input,
             message,
+            photo_urls: initialSignedVisionUrls,
           },
           secrets,
         );
       }
     }
+    }
   }
 
   return getKaelChat(ctx, asString(sessionResult.data.id));
-}
-
-export async function createKaelChatMediaUpload(
-  ctx: MobileApiContext,
-  input: KaelChatMediaUploadInput,
-) {
-  const mimeType = input.mime_type.trim().toLowerCase();
-  if (!KAEL_CHAT_ALLOWED_MIME_TYPES.has(mimeType)) {
-    apiFailure("UNSUPPORTED_MEDIA", "Định dạng media chưa được hỗ trợ", 400);
-  }
-  const storage = (ctx.supabase as SignedUploadStorage).storage;
-  if (!storage) {
-    apiFailure("STORAGE_NOT_CONFIGURED", "Kho media chưa được cấu hình", 500);
-  }
-
-  const objectName = safeKaelChatObjectName(input.file_name, mimeType);
-  const objectPath = `${ctx.user.id}/kael-chat/${crypto.randomUUID()}-${objectName}`;
-  const signed = await storage
-    .from(KAEL_CHAT_MEDIA_BUCKET)
-    .createSignedUploadUrl(objectPath);
-  const signedUrl = signed.data?.signedUrl ?? signed.data?.signed_url;
-  const token = signed.data?.token;
-  if (signed.error || !signedUrl || !token) {
-    apiFailure("STORAGE_ERROR", "Không thể chuẩn bị media cho Kael", 500);
-  }
-
-  return {
-    bucket_id: KAEL_CHAT_MEDIA_BUCKET,
-    object_path: objectPath,
-    media_ref: `supabase://${KAEL_CHAT_MEDIA_BUCKET}/${objectPath}`,
-    token,
-    signed_upload_url: signedUrl,
-    expires_in_seconds: KAEL_CHAT_MEDIA_UPLOAD_EXPIRES_IN_SECONDS,
-  };
-}
-
-export async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
-  const client = db(ctx);
-  const sessionResult = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_chat_sessions")
-      .select(
-        "id, job_id, customer_id, service_type, status, started_at, estimate_ready_at, total_turns, total_cost_usd, safe_metadata, created_at",
-      )
-      .eq("id", sessionId)
-      .single(),
-  );
-  if (sessionResult.error || !sessionResult.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
-  }
-  assertKaelSessionOwnership(sessionResult.data, ctx);
-
-  const turnsResult = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("kael_chat_turns")
-      .select(
-        "id, session_id, turn_index, role, content_type, text_content, media_refs, safe_metadata, created_at",
-      )
-      .eq("session_id", sessionId)
-      .order("turn_index", { ascending: true }),
-  );
-  if (turnsResult.error) {
-    apiFailure("DB_ERROR", "Không thể tải lịch sử Kael", 500);
-  }
-
-  const turns = (turnsResult.data ?? []).map(serializeKaelTurn);
-  const latestEstimate = [...turns]
-    .reverse()
-    .find((turn) => turn.content_type === "estimate")?.estimate ?? null;
-
-  return {
-    session: serializeKaelSession(sessionResult.data, latestEstimate, turns),
-    turns,
-  };
-}
-
-export async function getKaelChatProgress(
-  ctx: MobileApiContext,
-  sessionId: string,
-) {
-  return readKaelChatProgressSnapshot(ctx, sessionId);
 }
 
 export async function sendKaelChatTurn(
@@ -337,7 +270,7 @@ export async function sendKaelChatTurn(
     client
       .from("kael_chat_sessions")
       .select(
-        "id, job_id, customer_id, service_type, status, total_turns, safe_metadata",
+        "id, job_id, customer_id, service_type, status, total_turns, safe_metadata, diagnosis_scope",
       )
       .eq("id", sessionId)
       .single(),
@@ -357,9 +290,28 @@ export async function sendKaelChatTurn(
 
   const previousTurns = asNumber(session.total_turns);
   const previousMetadata = asRecord(session.safe_metadata);
+  const language = input.language ?? (previousMetadata.language === "en" ? "en" : "vi");
+  const durablePreviousMetadata = withoutEphemeralKaelMediaUrls(previousMetadata);
   const qaCount = asNumber(previousMetadata.demanding_customer_qa_count) + 1;
+  const sanitizedEvidenceItems = sanitizeCaseWorkEvidenceItems(input.evidence_items ?? []);
+  const evidenceRefs = await validateAndConsumeKaelChatEvidenceMediaRefs(
+    ctx,
+    sanitizedEvidenceItems.flatMap((evidence) => evidence.ref ? [evidence.ref] : []),
+    asString(session.customer_id),
+  );
+  // Validate only the media submitted in this turn. Older evidence is already
+  // represented in the artifact and must not make a sixth later upload fail
+  // forever. This runs before inserts/updates so invalid bytes cannot poison
+  // durable case state.
+  const signedVisionUrls = await createSignedVisionUrls(
+    ctx,
+    sanitizedEvidenceItems,
+    asString(session.customer_id),
+  );
+  const voiceTranscript = caseWorkVoiceTranscript(sanitizedEvidenceItems);
   const metadata = compactMetadata({
-    ...previousMetadata,
+    ...durablePreviousMetadata,
+    language,
     problem_chips: input.problem_chips ??
       asStringArray(previousMetadata.problem_chips),
     address_label: input.address_label ??
@@ -370,27 +322,55 @@ export async function sendKaelChatTurn(
       previousMetadata.apartment_access_profile,
       input.apartment_access_profile,
     ),
-    photo_urls: mergeLimitedRefs(
-      asStringArray(previousMetadata.photo_urls),
-      input.photo_urls,
-      5,
+    evidence_media_refs: mergeLimitedRefs(
+      asStringArray(previousMetadata.evidence_media_refs),
+      evidenceRefs,
+      20,
     ),
+    evidence_kinds: sanitizedEvidenceItems.map((evidence) => evidence.kind),
+    schedule_window: input.schedule_window ?? previousMetadata.schedule_window,
     demanding_customer_qa_count: qaCount,
   });
-  const message = sanitizeForLLM(input.message);
+  const message = sanitizeForLLM(input.message || voiceTranscript);
   // Scrub PII before persisting.
   await insertKaelTurn(client, {
     session_id: sessionId,
     turn_index: previousTurns + 1,
     role: "customer",
-    content_type: input.photo_urls.length > 0 ? "photo_attached" : "text",
+    content_type: evidenceRefs.length > 0 ? "photo_attached" : "text",
     text_content: scrubSensitiveForLLM(message),
-    media_refs: input.photo_urls,
-    safe_metadata: {},
+    media_refs: evidenceRefs,
+    safe_metadata: compactMetadata({
+      evidence_kinds: sanitizedEvidenceItems.map((evidence) => evidence.kind),
+      private_video_evidence_count: sanitizedEvidenceItems.filter((evidence) =>
+        evidence.kind === "video_original_private"
+      ).length,
+    }),
   });
+  const currentArtifact = kaelDiagnosisScopeArtifactSchema.safeParse(session.diagnosis_scope);
+  const diagnosisScope = currentArtifact.success
+    ? kaelDiagnosisScopeArtifactSchema.parse({
+      ...currentArtifact.data,
+      case_phase: "analysis",
+      evidence: mergeCaseWorkEvidence(currentArtifact.data.evidence, sanitizedEvidenceItems),
+      facts: {
+        ...currentArtifact.data.facts,
+        ...(voiceTranscript
+          ? { latest_voice_transcript: scrubSensitiveForLLM(voiceTranscript) }
+          : {}),
+      },
+      quote_ready: false,
+      quote_blockers: [],
+      next_action: { kind: "wait" },
+      updated_at: new Date().toISOString(),
+    })
+    : null;
   await updateKaelSession(client, sessionId, {
     total_turns: previousTurns + 1,
     status: "active",
+    case_phase: "analysis",
+    ...(diagnosisScope ? { diagnosis_scope: diagnosisScope } : {}),
+    ...(input.scheduled_at ? { scheduled_at: input.scheduled_at } : {}),
     safe_metadata: metadata,
   });
 
@@ -402,7 +382,7 @@ export async function sendKaelChatTurn(
     sessionId,
     message,
     asServiceType(session.service_type),
-    { actorId: ctx.user.id, jobId: nullableString(session.job_id) },
+    { actorId: ctx.user.id, jobId: nullableString(session.job_id), language },
   );
   if (boundaryHandled) return getKaelChat(ctx, sessionId);
 
@@ -416,6 +396,7 @@ export async function sendKaelChatTurn(
       metadata,
       message,
       qaCount,
+      language,
     },
   );
   if (handledDemandingCustomer) return getKaelChat(ctx, sessionId);
@@ -424,8 +405,9 @@ export async function sendKaelChatTurn(
     service_type: asServiceType(session.service_type),
     message,
     problem_chips: asStringArray(metadata.problem_chips),
-    photo_urls: asStringArray(metadata.photo_urls),
+    photo_urls: signedVisionUrls,
     address_district: nullableString(metadata.address_district) ?? undefined,
+    language,
   }, secrets);
 
   return getKaelChat(ctx, sessionId);
@@ -435,13 +417,14 @@ export async function submitKaelChatEvidence(
   ctx: MobileApiContext,
   sessionId: string,
   input: KaelChatEvidenceInput,
+  secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_chat_sessions")
       .select(
-        "id, job_id, customer_id, service_type, status, total_turns, safe_metadata",
+        "id, job_id, customer_id, service_type, status, total_turns, safe_metadata, diagnosis_scope",
       )
       .eq("id", sessionId)
       .single(),
@@ -461,20 +444,49 @@ export async function submitKaelChatEvidence(
     apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận bằng chứng", 409);
   }
 
-  const evidenceRefs = validateKaelChatEvidenceMediaRefs(
+  const sanitizedEvidenceItems = sanitizeCaseWorkEvidenceItems(input.evidence_items ?? []);
+  const visionValidationEvidence = buildKaelVisionValidationEvidence(
+    sanitizedEvidenceItems,
     input.media_refs,
+  );
+  const evidenceRefs = await validateAndConsumeKaelChatEvidenceMediaRefs(
+    ctx,
+    [
+      ...input.media_refs,
+      ...sanitizedEvidenceItems.flatMap((evidence) => evidence.ref ? [evidence.ref] : []),
+    ],
     asString(session.customer_id),
   );
-  if (input.decision === "confirmed" && evidenceRefs.length === 0) {
+  const signedVisionUrls = await createSignedVisionUrls(
+    ctx,
+    visionValidationEvidence,
+    asString(session.customer_id),
+  );
+  if (
+    input.decision === "confirmed" &&
+    evidenceRefs.length === 0 &&
+    sanitizedEvidenceItems.length === 0
+  ) {
     apiFailure("VALIDATION", "Cần ít nhất một media bằng chứng", 400);
   }
 
   const previousMetadata = asRecord(session.safe_metadata);
+  const language = input.language ?? (previousMetadata.language === "en" ? "en" : "vi");
+  const durablePreviousMetadata = withoutEphemeralKaelMediaUrls(previousMetadata);
   const previousTurns = asNumber(session.total_turns);
+  const transcriptText = sanitizedEvidenceItems
+    .filter((evidence) => evidence.kind === "voice_transcript")
+    .map((evidence) => evidence.transcript)
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
   const message = sanitizeForLLM(
-    input.message ??
-      input.skip_reason ??
-      (input.decision === "confirmed" ? "Đã gửi bằng chứng." : "Bỏ qua bằng chứng."),
+    input.message ?? (
+      transcriptText ||
+      input.skip_reason ||
+      (input.decision === "confirmed"
+        ? (language === "en" ? "Evidence submitted." : "Đã gửi bằng chứng.")
+        : (language === "en" ? "Evidence skipped." : "Bỏ qua bằng chứng."))
+    ),
   );
   await insertKaelTurn(client, {
     session_id: sessionId,
@@ -485,16 +497,41 @@ export async function submitKaelChatEvidence(
     media_refs: evidenceRefs,
     safe_metadata: compactMetadata({
       evidence_decision: input.decision,
+      evidence_kinds: sanitizedEvidenceItems.map((evidence) => evidence.kind),
+      private_video_evidence_count: sanitizedEvidenceItems.filter((evidence) =>
+        evidence.kind === "video_original_private"
+      ).length,
       skip_reason: input.skip_reason ?? null,
     }),
   });
 
   const now = new Date().toISOString();
+  const currentArtifact = kaelDiagnosisScopeArtifactSchema.safeParse(session.diagnosis_scope);
+  const diagnosisScope = currentArtifact.success
+    ? kaelDiagnosisScopeArtifactSchema.parse({
+      ...currentArtifact.data,
+      case_phase: "analysis",
+      evidence: mergeCaseWorkEvidence(currentArtifact.data.evidence, sanitizedEvidenceItems),
+      facts: {
+        ...currentArtifact.data.facts,
+        ...(transcriptText
+          ? { latest_voice_transcript: scrubSensitiveForLLM(transcriptText) }
+          : {}),
+      },
+      quote_ready: false,
+      quote_blockers: [],
+      next_action: { kind: "wait" },
+      updated_at: now,
+    })
+    : null;
   await updateKaelSession(client, sessionId, {
     total_turns: previousTurns + 1,
-    status: input.decision === "confirmed" ? "collecting_evidence" : "active",
+    status: "active",
+    case_phase: "analysis",
+    ...(diagnosisScope ? { diagnosis_scope: diagnosisScope } : {}),
     safe_metadata: compactMetadata({
-      ...previousMetadata,
+      ...durablePreviousMetadata,
+      language,
       evidence_decision: input.decision,
       evidence_media_refs: mergeLimitedRefs(
         asStringArray(previousMetadata.evidence_media_refs),
@@ -508,84 +545,81 @@ export async function submitKaelChatEvidence(
     }),
   });
 
+  await advanceKaelChatEstimate(ctx, sessionId, {
+    service_type: asServiceType(session.service_type),
+    message,
+    problem_chips: input.problem_chips ?? asStringArray(previousMetadata.problem_chips),
+    photo_urls: signedVisionUrls,
+    address_district: nullableString(previousMetadata.address_district) ?? undefined,
+    language,
+  }, secrets);
+
   return getKaelChat(ctx, sessionId);
 }
 
-export async function readKaelChatProgressSnapshot(
-  ctx: MobileApiContext,
-  sessionId: string,
-) {
-  const client = db(ctx);
-  const sessionResult = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_chat_sessions")
-      .select("id, customer_id, kael_progress")
-      .eq("id", sessionId)
-      .single(),
-  );
-  if (sessionResult.error || !sessionResult.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
-  }
-  assertKaelSessionOwnership(sessionResult.data, ctx);
-
-  return {
-    session_id: sessionId,
-    progress: parseKaelProgressSnapshot(sessionResult.data.kael_progress, sessionId),
-  };
-}
-
-function safeKaelChatObjectName(fileName: string | undefined, mimeType: string) {
-  const extension = extensionForKaelChatMime(mimeType);
-  const rawName = (fileName?.trim() || `evidence.${extension}`)
-    .split(/[\\/]/)
-    .pop() ?? `evidence.${extension}`;
-  const withoutQuery = rawName.split(/[?#]/)[0] ?? `evidence.${extension}`;
-  const safeName = withoutQuery
-    .replace(/[^A-Za-z0-9._-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^\.+/, "")
-    .slice(0, 140);
-  const fallback = `evidence.${extension}`;
-  const normalized = safeName || fallback;
-  return /\.[A-Za-z0-9]{2,5}$/.test(normalized)
-    ? normalized
-    : `${normalized}.${extension}`;
-}
-
-function extensionForKaelChatMime(mimeType: string) {
-  if (mimeType === "image/png") return "png";
-  if (mimeType === "image/webp") return "webp";
-  if (mimeType === "image/gif") return "gif";
-  if (mimeType === "image/heic") return "heic";
-  if (mimeType === "image/heif") return "heif";
-  if (mimeType === "video/mp4") return "mp4";
-  if (mimeType === "video/quicktime") return "mov";
-  if (mimeType === "video/webm") return "webm";
-  if (mimeType === "audio/mp4") return "m4a";
-  if (mimeType === "audio/mpeg") return "mp3";
-  if (mimeType === "audio/wav") return "wav";
-  if (mimeType === "audio/aac") return "aac";
-  if (mimeType === "audio/webm") return "webm";
-  return "jpg";
-}
-
-const KAEL_CHAT_MEDIA_REF_PATTERN =
-  /^supabase:\/\/kael-chat-media\/([^/\s?#]+)\/kael-chat\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i;
-
-function validateKaelChatEvidenceMediaRefs(
-  mediaRefs: string[],
-  sessionOwnerId: string,
-) {
-  const normalizedRefs = mergeLimitedRefs(
-    [],
-    mediaRefs.map((ref) => ref.trim()).filter(Boolean),
-    5,
-  );
-  for (const mediaRef of normalizedRefs) {
-    const match = mediaRef.match(KAEL_CHAT_MEDIA_REF_PATTERN);
-    if (!match || match[1] !== sessionOwnerId) {
-      apiFailure("VALIDATION", "Media bằng chứng không hợp lệ", 400);
+function sanitizeCaseWorkEvidenceItems(
+  evidenceItems: NonNullable<KaelChatEvidenceInput["evidence_items"]>,
+): KaelDiagnosisScopeArtifact["evidence"] {
+  return evidenceItems.map((evidence) => {
+    const ref = evidence.ref ?? "";
+    const expectedPurpose = evidence.kind === "video_original_private"
+      ? "/private_video_original/"
+      : evidence.kind === "photo" || evidence.kind === "video_frame"
+      ? "/model_vision/"
+      : null;
+    if (expectedPurpose && !ref.includes(expectedPurpose)) {
+      apiFailure("VALIDATION", "Loại media bằng chứng không khớp mục đích upload", 400);
     }
-  }
-  return normalizedRefs;
+    return {
+      ...evidence,
+      ...(evidence.transcript
+        ? { transcript: scrubSensitiveForLLM(sanitizeForLLM(evidence.transcript)) }
+        : {}),
+      ...(evidence.summary
+        ? { summary: scrubSensitiveForLLM(sanitizeForLLM(evidence.summary)) }
+        : {}),
+    };
+  });
 }
+
+function caseWorkVoiceTranscript(
+  evidenceItems: KaelDiagnosisScopeArtifact["evidence"],
+) {
+  return evidenceItems
+    .filter((evidence) => evidence.kind === "voice_transcript")
+    .map((evidence) => evidence.transcript)
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+}
+
+function mergeCaseWorkEvidence(
+  current: KaelDiagnosisScopeArtifact["evidence"],
+  incoming: KaelDiagnosisScopeArtifact["evidence"],
+): KaelDiagnosisScopeArtifact["evidence"] {
+  const result = [...current];
+  const keys = new Set(current.map((evidence) =>
+    `${evidence.kind}:${evidence.ref ?? evidence.transcript ?? evidence.summary ?? ""}`
+  ));
+  for (const evidence of incoming) {
+    const key = `${evidence.kind}:${evidence.ref ?? evidence.transcript ?? evidence.summary ?? ""}`;
+    if (keys.has(key)) continue;
+    keys.add(key);
+    result.push(evidence);
+    if (result.length >= 20) break;
+  }
+  return result;
+}
+
+function withoutEphemeralKaelMediaUrls(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> {
+  const { photo_urls: _ephemeralSignedUrls, ...durableMetadata } = metadata;
+  return durableMetadata;
+}
+
+export { createKaelChatMediaUpload, revokeKaelChatMedia };
+export {
+  getKaelChat,
+  getKaelChatProgress,
+  readKaelChatProgressSnapshot,
+} from "./kael-chat-read.service.ts";

@@ -45,6 +45,20 @@ jest.mock('expo-audio', () => ({
   }),
 }))
 
+jest.mock('expo-speech-recognition', () => ({
+  ExpoSpeechRecognitionModule: {
+    abort: jest.fn(),
+    androidTriggerOfflineModelDownload: jest.fn(async () => ({ status: 'download_success' })),
+    getSupportedLocales: jest.fn(async () => ({ installedLocales: ['vi-VN', 'en-US'], locales: ['vi-VN', 'en-US'] })),
+    isRecognitionAvailable: jest.fn(() => true),
+    requestMicrophonePermissionsAsync: jest.fn(async () => ({ granted: true })),
+    start: jest.fn(),
+    stop: jest.fn(),
+    supportsOnDeviceRecognition: jest.fn(() => true),
+  },
+  useSpeechRecognitionEvent: jest.fn(),
+}))
+
 jest.mock('lottie-react-native', () => {
   const React = require('react')
   const { View } = require('react-native')

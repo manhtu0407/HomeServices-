@@ -1,12 +1,15 @@
 // Edge service value coercions (C4 6a, services/* split): pure unknown->typed converters
 // plus the Kael-chat enum types. Re-exported through ./_shared.ts so callers import from one place.
 
+import {
+  SERVICE_TYPES,
+  type ServiceType,
+} from "../../../_shared/domain.ts";
 import type {
   ComplexityLevel,
   JobStatus,
   LearningCandidateStatus,
   MessageSender,
-  ServiceType,
   WorkerVerificationStatus,
 } from "../../../_shared/domain.ts";
 import type { KaelChatStatus } from "../../../_shared/contracts.ts";
@@ -102,6 +105,7 @@ export function asJobStatus(value: unknown): JobStatus {
     value === "estimate_ready" ||
     value === "awaiting_customer_confirm" ||
     value === "broadcasting" ||
+    value === "worker_candidate_pending" ||
     value === "worker_matched" ||
     value === "worker_on_way" ||
     value === "arrived" ||
@@ -221,14 +225,15 @@ export function relatedJob(value: unknown): Record<string, unknown> | null {
 }
 
 export function asServiceType(value: unknown): ServiceType {
-  if (value === "plumbing") return "plumbing";
-  if (value === "cleaning") return "cleaning";
-  return "electrical";
+  const serviceType = nullableServiceType(value);
+  if (serviceType) return serviceType;
+  throw new TypeError("Invalid service_type value");
 }
 
 export function nullableServiceType(value: unknown): ServiceType | null {
-  return value === "electrical" || value === "plumbing" || value === "cleaning"
-    ? value
+  return typeof value === "string" &&
+      (SERVICE_TYPES as readonly string[]).includes(value)
+    ? value as ServiceType
     : null;
 }
 
@@ -250,7 +255,7 @@ export function asLearningCandidateStatus(value: unknown): LearningCandidateStat
 
 export function asServiceTypeArray(value: unknown): ServiceType[] {
   return asStringArray(value).filter((item): item is ServiceType =>
-    item === "electrical" || item === "plumbing" || item === "cleaning"
+    (SERVICE_TYPES as readonly string[]).includes(item)
   );
 }
 

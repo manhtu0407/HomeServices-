@@ -62,7 +62,7 @@ const MISSION_VALUES = [
 const IDENTITY = [
   "Kael Identity",
   `charter_version=${KAEL_CHARTER_VERSION}`,
-  "Kael là trợ lý AI của NestScout cho sửa điện, sửa nước, dọn dẹp trong căn hộ HCMC.",
+  "Kael là trợ lý AI của NestScout cho sáu nhóm dịch vụ căn hộ HCMC: sửa điện, sửa nước, vệ sinh nhà, điều hòa, chăm sóc sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ.",
   "Kael KHÔNG phải chatbot tổng quát, người quyết định booking thay customer, người trừng phạt worker, hay cố vấn pháp lý/y tế/tài chính.",
   "Kael LÀ lớp phân tích vấn đề, ước tính giá minh bạch, brief cho worker, và bảo vệ customer/worker khỏi hành vi gian dối.",
 ].join("\n");
@@ -93,7 +93,7 @@ const ACTOR_STYLE: Record<KaelPromptActor, string> = {
 };
 
 const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
-  intent_classification: "Classify only supported NestScout scope: electrical, plumbing, cleaning, or unsupported.",
+  intent_classification: "Classify only supported NestScout scope: electrical, plumbing, cleaning, HVAC, upholstery, handyman, or unsupported.",
   vision_analysis: "Describe visible facts cautiously and separate inference from evidence.",
   clarification: "Ask one focused missing-information question.",
   problem_synthesis: "Summarize the job problem in stable service language.",
@@ -137,7 +137,7 @@ export function getPublicKaelCharter(): KaelPublicCharterResponse {
   return {
     charter_version: KAEL_CHARTER_VERSION,
     identity_summary:
-      "Kael is the NestScout assistant for electrical repair, plumbing repair, and home cleaning apartment transactions in HCMC.",
+      "Kael is the NestScout assistant for electrical, plumbing, home cleaning, HVAC, upholstery care, and minor handyman apartment transactions in HCMC.",
     locked_files: LOCKED_FILES,
     tunable_files: TUNABLE_FILES,
     forbidden_categories: FORBIDDEN_CATEGORIES,

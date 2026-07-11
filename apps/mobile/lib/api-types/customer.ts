@@ -40,3 +40,37 @@ export type CustomerPaymentMethodResponse = {
     updated_at: string
   } | null
 }
+
+export type WorkerCandidateView = {
+  candidate_id: string
+  worker_id: string
+  status: 'proposed' | 'customer_confirmed' | 'customer_declined' | 'expired' | 'withdrawn'
+  display_name: string | null
+  avatar_url: string | null
+  rating: number | null
+  total_jobs: number
+  years_experience: number
+  verification_status: string
+  is_favorite: boolean
+  proposed_at: string
+  expires_at: string | null
+  customer_decided_at: string | null
+}
+
+export type WorkerCandidateResponse = {
+  job_id: string
+  status: import('@nestscout/shared').JobStatus
+  candidate: WorkerCandidateView | null
+}
+
+export type WorkerCandidateDecisionResponse = WorkerCandidateResponse & {
+  candidate: WorkerCandidateView
+  already_applied: boolean
+  broadcast_sent?: boolean
+  message?: string
+}
+
+export type CustomerFavoriteWorkerResponse = {
+  worker_id: string
+  is_favorite: boolean
+}

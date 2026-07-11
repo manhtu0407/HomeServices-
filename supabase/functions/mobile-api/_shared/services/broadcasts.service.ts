@@ -11,6 +11,7 @@ import { normalizeDistrict, type ServiceType } from "../../../_shared/domain.ts"
 
 const DISINTERMEDIATION_RISK_PENALTY_THRESHOLD = 2;
 const DISINTERMEDIATION_RISK_SCORE_PENALTY = 15;
+const FAVORITE_WORKER_SCORE_BONUS = 25;
 
 export async function createBroadcasts(
   client: DbClient,
@@ -221,10 +222,16 @@ async function queryEligibleWorkers(
   const jobGeo = options.jobId
     ? await loadJobGeoForMatching(client, options.jobId)
     : null;
+  const favoriteWorkerIds = await loadAllFavoriteWorkerIds(
+    client,
+    jobGeo?.customerId ?? null,
+  );
+  const workerProjection =
+    "id, rating, total_jobs, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations";
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client
       .from("worker_profiles")
-      .select("id, rating, total_jobs, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations")
+      .select(workerProjection)
       .eq("is_approved", true)
       .eq("is_available", true)
       .eq("is_suspended", false)
@@ -244,8 +251,39 @@ async function queryEligibleWorkers(
       reason: "Lỗi khi tìm thợ phù hợp",
     };
   }
-  const candidates = (result.data ?? []).filter((worker) =>
-    !excludedWorkerIds.has(asString(worker.id))
+  let favoriteCandidates: Array<Record<string, unknown>> = [];
+  if (favoriteWorkerIds.size > 0) {
+    const favoriteResult = await dbQuery<Array<Record<string, unknown>>>(
+      client
+        .from("worker_profiles")
+        .select(workerProjection)
+        .in("id", Array.from(favoriteWorkerIds))
+        .eq("is_approved", true)
+        .eq("is_available", true)
+        .eq("is_suspended", false)
+        .contains("service_types", [serviceType])
+        .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`),
+    );
+    if (favoriteResult.error) {
+      console.warn("mobile-api favorite-worker eligibility load failed", {
+        customerId: jobGeo?.customerId ?? null,
+        errorCode: favoriteResult.error.code,
+      });
+    } else {
+      favoriteCandidates = favoriteResult.data ?? [];
+    }
+  }
+  const combinedCandidates = new Map<string, Record<string, unknown>>();
+  for (const worker of [...(result.data ?? []), ...favoriteCandidates]) {
+    const workerId = asString(worker.id);
+    if (workerId) combinedCandidates.set(workerId, worker);
+  }
+  const candidates = Array.from(combinedCandidates.values()).filter((worker) =>
+    !excludedWorkerIds.has(asString(worker.id)) &&
+    hasEveryRequiredCapability(
+      asStringArray(worker.problem_specializations),
+      jobGeo?.workerRequirements ?? [],
+    )
   );
   const candidateIds = candidates
     .map((worker) => asString(worker.id))
@@ -277,6 +315,21 @@ async function queryEligibleWorkers(
       .map((job) => asString(job.worker_id))
       .filter(Boolean),
   );
+  const activeReservations = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("job_worker_candidates")
+      .select("worker_id")
+      .in("worker_id", candidateIds)
+      .eq("status", "proposed")
+      .gt("expires_at", new Date().toISOString())
+      .limit(candidateIds.length),
+  );
+  if (activeReservations.error) {
+    return { success: false as const, reason: "Lỗi khi kiểm tra thợ đang chờ xác nhận" };
+  }
+  const reservedWorkerIds = new Set(
+    (activeReservations.data ?? []).map((row) => asString(row.worker_id)).filter(Boolean),
+  );
   const riskCounts = await loadDisintermediationRiskCounts(client, candidateIds);
   const deprioritizedIds = candidateIds.filter((id) =>
     (riskCounts.get(id) ?? 0) >= DISINTERMEDIATION_RISK_PENALTY_THRESHOLD
@@ -291,9 +344,13 @@ async function queryEligibleWorkers(
   return {
     success: true as const,
     workers: rankEligibleWorkers(
-      candidates.filter((worker) => !busyWorkerIds.has(asString(worker.id))),
+      candidates.filter((worker) =>
+        !busyWorkerIds.has(asString(worker.id)) &&
+        !reservedWorkerIds.has(asString(worker.id))
+      ),
       jobGeo,
       riskCounts,
+      favoriteWorkerIds,
     )
       .slice(0, limit)
       .map((worker) => ({
@@ -335,7 +392,7 @@ async function loadJobGeoForMatching(client: DbClient, jobId: string) {
   const result = await dbQuery<Record<string, unknown>>(
     client
       .from("jobs")
-      .select("address_lat, address_lng, problem_chips, service_problem_id, kael_problem_identified")
+      .select("customer_id, address_lat, address_lng, problem_chips, service_problem_id, kael_problem_identified, diagnosis_scope")
       .eq("id", jobId)
       .maybeSingle(),
   );
@@ -347,21 +404,40 @@ async function loadJobGeoForMatching(client: DbClient, jobId: string) {
     return null;
   }
   if (!result.data) return null;
+  const diagnosisScope = nullableRecord(result.data.diagnosis_scope) ?? {};
   return {
+    customerId: nullableString(result.data.customer_id),
     lat: nullableNumber(result.data.address_lat),
     lng: nullableNumber(result.data.address_lng),
     problemKeys: specializationKeys([
       ...asStringArray(result.data.problem_chips),
+      ...asStringArray(diagnosisScope.worker_requirements),
       nullableString(result.data.service_problem_id),
       nullableString(result.data.kael_problem_identified),
     ]),
+    workerRequirements: asStringArray(diagnosisScope.worker_requirements),
   };
+}
+
+function hasEveryRequiredCapability(
+  workerCapabilities: string[],
+  requiredCapabilities: string[],
+) {
+  if (requiredCapabilities.length === 0) return true;
+  // Legacy approved profiles predate granular capability capture; their
+  // canonical service_types + district eligibility remains the qualification.
+  if (workerCapabilities.length === 0) return true;
+  const available = specializationKeys(workerCapabilities);
+  return requiredCapabilities.every((requirement) =>
+    available.has(normalizeSpecializationKey(requirement))
+  );
 }
 
 function rankEligibleWorkers(
   workers: Array<Record<string, unknown>>,
   jobGeo: Awaited<ReturnType<typeof loadJobGeoForMatching>>,
   riskCounts: Map<string, number> = new Map(),
+  favoriteWorkerIds: Set<string> = new Set(),
 ) {
   return workers
     .map((worker) => {
@@ -385,11 +461,14 @@ function rankEligibleWorkers(
       const riskPenalty = riskCount >= DISINTERMEDIATION_RISK_PENALTY_THRESHOLD
         ? DISINTERMEDIATION_RISK_SCORE_PENALTY
         : 0;
+      const favoriteBonus = favoriteWorkerIds.has(asString(worker.id))
+        ? FAVORITE_WORKER_SCORE_BONUS
+        : 0;
       return {
         worker,
         rating,
         totalJobs,
-        score: rating * 10 + (specializationMatch ? 20 : 0) + distanceScore -
+        score: rating * 10 + (specializationMatch ? 20 : 0) + favoriteBonus + distanceScore -
           riskPenalty,
       };
     })
@@ -399,6 +478,29 @@ function rankEligibleWorkers(
       right.totalJobs - left.totalJobs
     )
     .map((entry) => entry.worker);
+}
+
+async function loadAllFavoriteWorkerIds(
+  client: DbClient,
+  customerId: string | null,
+) {
+  if (!customerId) return new Set<string>();
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("customer_favorite_workers")
+      .select("worker_id")
+      .eq("customer_id", customerId),
+  );
+  if (result.error) {
+    console.warn("mobile-api favorite-worker ranking load failed", {
+      customerId,
+      errorCode: result.error.code,
+    });
+    return new Set<string>();
+  }
+  return new Set(
+    (result.data ?? []).map((row) => asString(row.worker_id)).filter(Boolean),
+  );
 }
 
 export function distanceKmBetween(

@@ -66,13 +66,13 @@ Critical decision surfaces:
 
 - A7 Kael matching decision.
 - B2 worker accept.
-- A11 Kael scope change decision plus customer/worker appeal.
+- A11 Kael-computed scope proposal plus explicit customer decision and customer/worker appeal.
 - B5 worker completion signal.
 - A12 Kael completion/payment decision plus customer/worker appeal.
 
 ### Money-Impacting UI Rule
 
-Any booking, payment, cancellation, or scope change UI MUST show the Kael decision state, audit/appeal/override affordances, and honest capability limits. The UI MUST NOT directly mutate money-impacting state from raw AI output or client-side-only actions.
+Any booking, payment, cancellation, or scope change UI MUST show the validated proposal/decision state, the required human authority, audit/appeal/override affordances, and honest capability limits. The UI MUST NOT mutate money-impacting state from raw AI output or an unvalidated client-side-only action.
 
 Scope change A11 is a critical decision protocol:
 
@@ -80,9 +80,9 @@ Scope change A11 is a critical decision protocol:
 - old scope vs new scope,
 - old price reference vs new price reference,
 - clear reason,
-- Kael decision and evidence,
-- continue/cancel/appeal where policy allows,
-- worker blocked until Kael decision or override.
+- Kael-computed proposal and evidence,
+- confirm-change/keep-old-scope/appeal where policy allows,
+- changed work blocked until the explicit customer decision or admin override.
 
 B2 worker accept countdown MUST later be tested for expiry and auto-decline behavior when implemented.
 
@@ -130,7 +130,7 @@ Related UI risk:
 - English user-facing copy.
 - Generic SaaS/Bento/web design default instead of `design.md`.
 - Next.js becomes consumer web product.
-- Client-side auto-confirming money-impacting actions without validated Kael decision.
+- Client-side auto-confirming money-impacting actions without the required actor-specific server validation.
 - UI change verified only in one narrow state.
 
 ### Anti-Patterns

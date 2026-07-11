@@ -125,7 +125,7 @@ const FORBIDDEN_PHRASES: Record<Exclude<KaelSelfCheckReason, "empty" | "exact_vn
 
 export const KAEL_SELF_CHECK_FORBIDDEN_PHRASES = FORBIDDEN_PHRASES;
 
-const EXACT_VND_PATTERN = /\b\d+(?:[.,]\d+)*\s*(?:vnd|dong)\b/i;
+const EXACT_VND_PATTERN = /\b\d+(?:[.,]\d+)*\s*(?:vnd|dong)\b|\b\d{1,3}(?:[.,]\d{3})+\b|\b\d+(?:[.,]\d+)?\s*k\b/i;
 const DIACRITIC_SENSITIVE_PHRASES: Readonly<Record<string, RegExp>> = {
   vai: /(?:^|[^\p{L}\p{N}_])(?:vai|vãi)(?=$|[^\p{L}\p{N}_])/iu,
   om: /(?:^|[^\p{L}\p{N}_])(?:om|ờm)(?=$|[^\p{L}\p{N}_])/iu,
@@ -142,6 +142,26 @@ const ENGLISH_SIGNAL_WORDS = [
   "provide",
   "customer",
   "worker",
+];
+const VIETNAMESE_SIGNAL_WORDS = [
+  "ban",
+  "vui",
+  "long",
+  "mo",
+  "ta",
+  "van",
+  "de",
+  "can",
+  "gui",
+  "thong",
+  "tin",
+  "dich",
+  "vu",
+  "sua",
+  "tho",
+  "khach",
+  "kiem",
+  "tra",
 ];
 
 export function checkKaelResponse(input: KaelSelfCheckInput): KaelSelfCheckResult {
@@ -164,7 +184,11 @@ export function checkKaelResponse(input: KaelSelfCheckInput): KaelSelfCheckResul
     return { allowed: false, text, reason: "exact_vnd" };
   }
 
-  if ((input.language ?? "vi") === "vi" && looksEnglishOnly(canonical)) {
+  const language = input.language ?? "vi";
+  if (
+    (language === "vi" && looksEnglishOnly(canonical)) ||
+    (language === "en" && looksVietnameseOnly(text, canonical))
+  ) {
     return { allowed: false, text, reason: "language_mismatch" };
   }
 
@@ -289,6 +313,21 @@ function looksEnglishOnly(lower: string): boolean {
   );
   const vietnameseServiceSignal = /\b(kael|ghi|nhan|thong|tin|huong|dan|buoc|tiep|theo|sua|dien|nuoc|don|dep|tho|khach)\b/i.test(lower);
   return signalCount >= 3 && !vietnameseServiceSignal;
+}
+
+function looksVietnameseOnly(text: string, canonical: string): boolean {
+  const englishSignalCount = ENGLISH_SIGNAL_WORDS.reduce(
+    (count, word) => count + (new RegExp(`\\b${word}\\b`, "i").test(canonical) ? 1 : 0),
+    0,
+  );
+  const vietnameseSignalCount = VIETNAMESE_SIGNAL_WORDS.reduce(
+    (count, word) => count + (new RegExp(`\\b${word}\\b`, "i").test(canonical) ? 1 : 0),
+    0,
+  );
+  const hasVietnameseSpecificLetter = /[ăâđêôơưàáạảãằắặẳẵầấậẩẫèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/iu
+    .test(text);
+  return (hasVietnameseSpecificLetter && englishSignalCount < 3) ||
+    (vietnameseSignalCount >= 4 && englishSignalCount < 2);
 }
 
 function hasSentenceOverWordCap(text: string, cap: number): boolean {

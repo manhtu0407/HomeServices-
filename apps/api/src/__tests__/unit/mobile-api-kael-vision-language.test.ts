@@ -87,4 +87,40 @@ describe('mobile-api Kael vision language boundary', () => {
     expect(models).toEqual(['claude-sonnet-5', 'claude-opus-4-8'])
     expect(result).toMatchObject({ success: true, model: 'claude-opus-4-8' })
   })
+
+  it('rejects Vietnamese vision output when the selected language is English', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string | URL) => {
+      const target = String(url)
+      if (target.includes('storage.example.com')) {
+        return new Response(new Uint8Array([255, 216, 255, 217]), {
+          headers: { 'content-type': 'image/jpeg' },
+        })
+      }
+      return new Response(JSON.stringify({
+        content: [{
+          text: JSON.stringify({
+            problem_identified: 'Cầu dao tự nhảy sau khi bật lại.',
+            severity_indicators: [],
+            complexity_hint: 'small',
+          }),
+        }],
+        usage: { input_tokens: 80, output_tokens: 20 },
+      }))
+    }))
+
+    const result = await analyzeDescription(
+      'The breaker trips again after reset.',
+      'electrical: breaker_trip',
+      ['https://storage.example.com/job-media/breaker.jpg'],
+      { anthropicApiKey: 'anthropic-test' },
+      undefined,
+      'en',
+    )
+
+    expect(result).toMatchObject({
+      success: false,
+      failureReason: 'AI vision English validation failed',
+      fallback: { problem_identified: 'electrical: breaker_trip' },
+    })
+  })
 })

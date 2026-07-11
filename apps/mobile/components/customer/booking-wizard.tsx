@@ -18,17 +18,19 @@ import { color, typography } from '@/design/theme'
 import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { performanceProfileForServiceType } from '@/lib/kael-performance-intake'
 import { AddressAutocomplete } from './address-autocomplete'
+import {
+  bookingEvidenceMediaTypes,
+  bookingServiceImageIcons,
+  bookingServiceOrder,
+  bookingServiceSegmentWidthPercent,
+  mediaDraftTypeFromAsset,
+  mergeBookingPhotoDrafts,
+  parseRouteServiceType,
+} from './booking-wizard-support'
 import { setPendingKaelChatDraft } from './kael-chat/pending-intake'
 
-const bookingServiceImageIcons: Record<ServiceType, number> = {
-  cleaning: require('../../assets/client-image-icons/client-service-cleaning.png'),
-  electrical: require('../../assets/client-image-icons/client-service-electrical.png'),
-  plumbing: require('../../assets/client-image-icons/client-service-plumbing.png'),
-}
-const bookingEvidenceMediaTypes: ImagePicker.MediaType[] = ['images', 'videos']
-const bookingServiceOrder: readonly ServiceType[] = ['electrical', 'plumbing', 'cleaning']
-const bookingServiceSegmentWidthPercent = 100 / bookingServiceOrder.length
 const BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL = 'BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL: standard content material, segmented selected service, Liquid Glass reserved for primary controls'
 const BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM = 'BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM: description field, photo picker, address control, progress, and action buttons use one Apple-style component material system'
 void BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL
@@ -83,23 +85,6 @@ function createInitialWizardState(routeServiceType: ServiceType | null): WizardS
     : { ...INITIAL, photoDrafts: [] }
 }
 
-function mergePhotoDrafts(current: LocalMediaUploadDraft[], drafts: LocalMediaUploadDraft[]) {
-  const seenUris = new Set(current.map((photo) => photo.uri))
-  const merged = [...current]
-  for (const draft of drafts) {
-    if (seenUris.has(draft.uri)) continue
-    seenUris.add(draft.uri)
-    merged.push(draft)
-    if (merged.length >= 5) break
-  }
-  return merged
-}
-
-function mediaDraftTypeFromAsset(asset: ImagePicker.ImagePickerAsset): LocalMediaUploadDraft['type'] {
-  if (asset.type === 'video' || asset.mimeType?.startsWith('video/')) return 'video'
-  return 'image'
-}
-
 function formatBookingMessageForKael(copy: WizardCopy, state: WizardState) {
   const description = state.description.trim()
   if (state.priority === 'normal') return description
@@ -122,7 +107,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
           : [...state.problemChips, action.chip],
       }
     case 'add_photos':
-      return { ...state, photoDrafts: mergePhotoDrafts(state.photoDrafts, action.drafts) }
+      return { ...state, photoDrafts: mergeBookingPhotoDrafts(state.photoDrafts, action.drafts) }
     case 'remove_photo':
       return { ...state, photoDrafts: state.photoDrafts.filter((_, index) => index !== action.index) }
     case 'update_address':
@@ -142,16 +127,22 @@ const copyMap = {
   vi: {
     serviceStep: 'Chọn dịch vụ',
     serviceTitle: 'Bạn cần dịch vụ nào?',
-    serviceBody: 'Hiện hỗ trợ sửa điện, sửa nước và vệ sinh tại căn hộ TP.HCM.',
+    serviceBody: 'Sáu nhóm dịch vụ gia đình được chuyển vào Kael để phân tích theo từng trường hợp.',
     services: {
       electrical: 'Sửa điện',
       plumbing: 'Sửa nước',
       cleaning: 'Vệ sinh',
+      hvac: 'Điều hòa',
+      upholstery: 'Sofa & nệm',
+      handyman: 'Sửa vặt',
     },
     serviceMeta: {
       electrical: 'Ổ cắm, CB, đèn',
       plumbing: 'Rò rỉ, nghẹt',
       cleaning: 'Dọn căn hộ',
+      hvac: 'Vệ sinh, chẩn đoán',
+      upholstery: 'Vết bẩn, mùi',
+      handyman: 'Lắp đặt nhỏ',
     },
     servicePreviewTitle: 'Phiếu gửi Kael',
     servicePreviewMeta: 'Thông tin đầu vào',
@@ -182,9 +173,12 @@ const copyMap = {
       electrical: ['Mất điện', 'Chập ổ cắm', 'Đèn hỏng'],
       plumbing: ['Rò rỉ', 'Nghẹt thoát nước', 'Yếu nước'],
       cleaning: ['Dọn nhanh', 'Tổng vệ sinh', 'Sau sửa chữa'],
+      hvac: ['Vệ sinh điều hòa', 'Máy không mát', 'Chảy nước'],
+      upholstery: ['Vệ sinh sofa', 'Vệ sinh nệm', 'Mùi/ẩm mốc'],
+      handyman: ['Khoan/lắp kệ', 'Lắp thanh rèm', 'Sửa bản lề'],
     },
     flowSteps: [
-      ['Chọn dịch vụ', 'Điện · Nước · Vệ sinh'],
+      ['Chọn dịch vụ', '6 nhóm dịch vụ gia đình'],
       ['Mô tả', 'Vấn đề · Ảnh · Khu vực'],
       ['Gửi Kael', 'Tạo phiếu đầu vào'],
       ['Kael xử lý', 'Phân tích · Hỏi thêm'],
@@ -218,16 +212,22 @@ const copyMap = {
   en: {
     serviceStep: 'Choose a service',
     serviceTitle: 'Which service do you need?',
-    serviceBody: 'We currently support electrical, plumbing, and cleaning for HCMC apartments.',
+    serviceBody: 'Six home-service paths hand off to Kael for case-specific analysis.',
     services: {
       electrical: 'Electrical',
       plumbing: 'Plumbing',
       cleaning: 'Cleaning',
+      hvac: 'Air conditioning',
+      upholstery: 'Upholstery care',
+      handyman: 'Minor handyman',
     },
     serviceMeta: {
       electrical: 'Outlet, breaker, light',
       plumbing: 'Leak, clog',
       cleaning: 'Apartment cleaning',
+      hvac: 'Cleaning, diagnosis',
+      upholstery: 'Stain, odor, material',
+      handyman: 'Small installation',
     },
     servicePreviewTitle: 'Kael intake ticket',
     servicePreviewMeta: 'Input',
@@ -258,9 +258,12 @@ const copyMap = {
       electrical: ['Power outage', 'Burned outlet', 'Broken light'],
       plumbing: ['Leak', 'Clogged drain', 'Low water'],
       cleaning: ['Quick clean', 'Deep clean', 'After repair'],
+      hvac: ['Air-con cleaning', 'Not cooling', 'Water leak'],
+      upholstery: ['Sofa cleaning', 'Mattress cleaning', 'Odor or mold'],
+      handyman: ['Mount shelf', 'Install curtain rod', 'Fix hinge'],
     },
     flowSteps: [
-      ['Choose service', 'Electrical · Plumbing · Cleaning'],
+      ['Choose service', '6 home-service paths'],
       ['Describe', 'Issue · Photos · Area'],
       ['Send to Kael', 'Create intake ticket'],
       ['Kael works', 'Analyze · Ask more'],
@@ -349,16 +352,20 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
     dispatch({ type: 'goto', step: 'analyzing' })
     try {
       const message = formatBookingMessageForKael(copy, state)
+      const scheduledAt = new Date().toISOString()
       await setPendingKaelChatDraft({
         addressLabel: state.addressLabel.trim(),
         clientRequestId: generateClientRequestId(),
-        createdAt: new Date().toISOString(),
+        createdAt: scheduledAt,
         districtLabel: state.districtLabel,
         locale: language,
         mediaCount: state.photoDrafts.length,
         message,
         photoDrafts: state.photoDrafts,
         problemChips: state.problemChips,
+        profileId: performanceProfileForServiceType(state.serviceType),
+        scheduleMode: 'now',
+        scheduledAt,
         serviceType: state.serviceType,
         source: 'booking',
       })
@@ -504,11 +511,6 @@ function getBookingWizardVisual(mode: GlassMode, reduceTransparency: boolean): B
         text: '#12231F',
         warm: 'rgba(187,116,61,0.045)',
       }
-}
-
-function parseRouteServiceType(value: string | string[] | undefined): ServiceType | null {
-  const raw = Array.isArray(value) ? value[0] : value
-  return raw === 'electrical' || raw === 'plumbing' || raw === 'cleaning' ? raw : null
 }
 
 function WizardCard({ children, testID }: { children: ReactNode; testID: string }) {
@@ -959,25 +961,6 @@ function ServiceStep({
       />
     </WizardCard>
   )
-}
-
-function bookingServiceTone(service: ServiceType) {
-  if (service === 'plumbing') return 'water'
-  if (service === 'cleaning') return 'warm'
-  return 'service'
-}
-
-function bookingServiceCardSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean, service: ServiceType, selected: boolean) {
-  void service
-  const base = bookingMintOperationalTileSurface(visual, mode, reduceTransparency)
-
-  return {
-    ...base,
-    borderColor: selected ? visual.borderStrong : base.borderColor,
-    boxShadow: selected && !reduceTransparency
-      ? mode === 'dark' ? '0 12px 24px rgba(0,0,0,0.20), inset 0 1px 0 rgba(190,210,205,0.08)' : '0 12px 24px rgba(9,121,106,0.12), inset 0 1px 0 rgba(255,255,255,0.78)'
-      : base.boxShadow,
-  } as any
 }
 
 function bookingServiceRailSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {

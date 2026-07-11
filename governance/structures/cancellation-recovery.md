@@ -16,7 +16,7 @@ Failure recovery
 |- worker no response -> expire and try next worker
 |- customer cancels before accept -> stop broadcast
 |- customer cancels after accept -> cancellation policy placeholder
-|- scope change rejected -> stop changed work, decide cancel/original scope
+|- scope change rejected -> stop changed work and resume the captured status under the original agreed scope
 |- payment fails -> keep job unpaid, notify support
 |- learning rule degrades accuracy -> rollback rule
 |- dispute opened -> lock evidence, admin review
@@ -30,7 +30,7 @@ Cancellation moments
 |- before worker accept: simple cancellation
 |- after worker accept: policy required later
 |- after worker arrival: support/admin review may be needed
-|- after scope change reject: cancel or continue original scope only if safe
+|- after scope change reject: continue the original scope from the captured status; cancellation remains a separate explicit action if continuing is unsafe
 ```
 
 Reschedule:

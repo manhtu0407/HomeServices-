@@ -43,3 +43,5 @@ export * from "./agentic/case-2-demanding.ts";
 export * from "./agentic/case-3-worker-cancel.ts";
 export * from "./agentic/case-4-customer-cancel.ts";
 export * from "./agentic/case-5-dispute.ts";
+export * from "./performance-profiles.ts";
+export * from "./case-work-controls.ts";

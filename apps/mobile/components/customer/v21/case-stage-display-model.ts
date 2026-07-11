@@ -21,7 +21,7 @@ export function formatKnownCount(value: number | null | undefined, language: App
   return '0'
 }
 export function stepForStatus(status: LocalDealStatus) {
-  if (status === 'draft' || status === 'analyzing' || status === 'awaiting_customer_confirm') return 1
+  if (status === 'draft' || status === 'analyzing' || status === 'estimate_ready' || status === 'awaiting_customer_confirm') return 1
   if (status === 'broadcasting' || status === 'worker_matched' || status === 'worker_on_way') return 2
   if (status === 'arrived' || status === 'inspecting' || status === 'repairing' || status === 'scope_change_pending') return 3
   return 4
@@ -122,7 +122,9 @@ export function screenIdsForStatus(status: LocalDealStatus): CustomerV21ScreenId
   if (status === 'worker_on_way') return ['2.10-location-eta', '2.11-live-alert']
   if (status === 'arrived' || status === 'inspecting') return ['2.12-job-accepted']
   if (status === 'repairing' || status === 'scope_change_pending') return ['2.13-job-progress']
-  if (status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'reviewed') return ['2.13-job-progress', '3.3-payment-protected']
+  if (status === 'completed_by_worker') return ['2.13-job-progress']
+  if (status === 'payment_pending' || status === 'paid') return ['2.13-job-progress', '3.3-payment-protected']
+  if (status === 'confirmed_by_customer' || status === 'reviewed') return ['2.13-job-progress']
   if (status === 'awaiting_customer_confirm') return ['2.8-options', '2.9-quotes']
   return ['2.6-case-overview']
 }
@@ -174,7 +176,7 @@ export function caseScreenSummary(screenId: CustomerV21ScreenId, deal: LocalDeal
   }
   if (screenId === '2.13-job-progress') {
     if (deal.status === 'repairing' || deal.status === 'scope_change_pending') return customerV21StatusCopy[language][deal.status]
-    if (deal.status === 'completed_by_worker' || deal.status === 'confirmed_by_customer' || deal.status === 'reviewed') return customerV21StatusCopy[language][deal.status]
+    if (deal.status === 'completed_by_worker' || deal.status === 'confirmed_by_customer' || deal.status === 'payment_pending' || deal.status === 'paid' || deal.status === 'reviewed') return customerV21StatusCopy[language][deal.status]
     return language === 'vi' ? 'Chưa bắt đầu công việc' : 'Work has not started'
   }
   return copy.dataPending
