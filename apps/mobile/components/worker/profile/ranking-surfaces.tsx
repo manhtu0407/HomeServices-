@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -8,14 +7,14 @@ import {
   type ViewStyle,
 } from 'react-native'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
-import type { WorkerV5IconName } from '../dock/types'
 import { textByLanguage } from '../ui/format'
+import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { workerPerformanceAxisLabel } from '../ui/labels'
-import { workerV5HasNumber, workerV5NumericInsight, workerV5RankingAxisIcon } from '../ui/performance'
+import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
+import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './ranking-styles'
 
 type WorkerV5RankingProfile = WorkerProfileResponse | null | undefined
@@ -29,7 +28,7 @@ function Text({ style, ...props }: TextProps) {
 export function WorkerV5RankingStatsStrip({
   insights,
   language,
-  listAura: ListAura,
+  listAura: _listAura,
   profile,
   reduceTransparency,
 }: {
@@ -57,7 +56,6 @@ export function WorkerV5RankingStatsStrip({
     <View style={styles.settlementStrip} testID="worker-v5-ranking-stat-strip">
       {stats.map((item, index) => (
         <View key={item.label} style={[styles.settlementCell, reduceTransparency && styles.opaqueCard]} testID={`worker-v5-ranking-stat-${index}`}>
-          {!reduceTransparency ? <ListAura testID={`worker-v5-ranking-stat-aura-${index}`} /> : null}
           <Text style={styles.settlementValue} numberOfLines={1} testID={`worker-v5-ranking-stat-value-${index}`}>{item.value}</Text>
           <Text style={styles.settlementLabel} numberOfLines={2} testID={`worker-v5-ranking-stat-label-${index}`}>{item.label}</Text>
         </View>
@@ -69,7 +67,7 @@ export function WorkerV5RankingStatsStrip({
 export function WorkerV5RankingLeaderboard({
   insights,
   language,
-  listAura: ListAura,
+  listAura: _listAura,
   profile,
   profileIcon,
   reduceTransparency,
@@ -86,17 +84,28 @@ export function WorkerV5RankingLeaderboard({
   const name = profile?.legal_name?.trim() || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')
   return (
     <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-ranking-leaderboard">
-      {!reduceTransparency ? <ListAura testID="worker-v5-ranking-leaderboard-mint-aura" /> : null}
       <View style={styles.approvalDecisionRow}>
-        <View style={styles.approvalDecisionIconShell}>
-          {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-          <Image resizeMode="contain" source={profileIcon} style={styles.approvalDecisionIcon} />
-        </View>
+        <WorkerV5IntegratedIcon
+          bleed={12}
+          image={profileIcon}
+          reduceTransparency={reduceTransparency}
+          testID="worker-v5-ranking-leaderboard-icon"
+          tone="identity"
+          variant="panel"
+        />
         <View style={styles.approvalDecisionCopy}>
           <Text style={styles.approvalDecisionTitle} numberOfLines={2} testID="worker-v5-ranking-leaderboard-title">{name}</Text>
           <Text style={styles.approvalDecisionMeta} numberOfLines={2} testID="worker-v5-ranking-leaderboard-meta">
             {textByLanguage(language, `Hồ sơ hiện tại · ${completed} việc hoàn tất · nguồn Supabase`, `Current profile · ${completed} completed jobs · Supabase source`)}
           </Text>
+          <WorkerV5DetailRail
+            items={[
+              { glyph: 'document', label: textByLanguage(language, `${completed} việc`, `${completed} jobs`) },
+              { glyph: 'signal', label: `${score}/100` },
+              { glyph: 'sync', label: textByLanguage(language, 'Nguồn thật', 'Real source') },
+            ]}
+            testID="worker-v5-ranking-leaderboard-detail"
+          />
         </View>
         <Text style={styles.approvalDecisionStatus} numberOfLines={2} testID="worker-v5-ranking-leaderboard-status">{score}</Text>
       </View>
@@ -105,13 +114,13 @@ export function WorkerV5RankingLeaderboard({
 }
 
 export function WorkerV5RankingImprovementList({
-  icons,
+  axisIcons,
   insights,
   language,
-  listAura: ListAura,
+  listAura: _listAura,
   reduceTransparency,
 }: {
-  icons: Record<WorkerV5IconName, ImageSourcePropType>
+  axisIcons: Record<string, ImageSourcePropType>
   insights: WorkerV5RankingInsights
   language: AppLanguage
   listAura: WorkerV5RankingAura
@@ -126,16 +135,19 @@ export function WorkerV5RankingImprovementList({
   const rows = (axes.length ? axes : fallbackAxes.map((id) => ({ id, score: 0 }))).slice(0, 3)
   return (
     <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-ranking-improvement-list">
-      {!reduceTransparency ? <ListAura testID="worker-v5-ranking-improvement-mint-aura" /> : null}
       {rows.map((axis, index) => {
         const score = workerV5NumericInsight(axis.score)
         const gain = Math.max(0, 100 - score)
         return (
           <View key={axis.id} style={[styles.approvalDecisionRow, index > 0 && styles.offerDetailListDivider]}>
-            <View style={styles.approvalDecisionIconShell}>
-              {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-              <Image resizeMode="contain" source={icons[workerV5RankingAxisIcon(axis.id)]} style={styles.approvalDecisionIcon} />
-            </View>
+            <WorkerV5IntegratedIcon
+              bleed={12}
+              image={axisIcons[axis.id] ?? axisIcons.fallback}
+              reduceTransparency={reduceTransparency}
+              testID={`worker-v5-ranking-improvement-icon-${index}`}
+              tone={axis.id === 'arrival' ? 'signal' : axis.id === 'completion' ? 'document' : 'identity'}
+              variant="panel"
+            />
             <View style={styles.approvalDecisionCopy}>
               <Text style={styles.approvalDecisionTitle} numberOfLines={2} testID={`worker-v5-ranking-improvement-title-${index}`}>
                 {workerPerformanceAxisLabel(axis.id, language)}
@@ -145,6 +157,18 @@ export function WorkerV5RankingImprovementList({
                   ? textByLanguage(language, `${score}/100 từ dữ liệu hiệu suất thật`, `${score}/100 from real performance data`)
                   : textByLanguage(language, '0/100 khi chưa có dữ liệu thật', '0/100 until real data syncs')}
               </Text>
+              <WorkerV5DetailRail
+                items={score > 0
+                  ? [
+                    { glyph: 'signal', label: `${score}/100` },
+                    { glyph: 'check', label: textByLanguage(language, 'Đã ghi nhận', 'Recorded') },
+                  ]
+                  : [
+                    { glyph: 'sync', label: textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data') },
+                    { glyph: 'spark', label: textByLanguage(language, `Có thể tăng +${gain}`, `Up to +${gain}`) },
+                  ]}
+                testID={`worker-v5-ranking-improvement-detail-${index}`}
+              />
               <View style={styles.rankingProgressTrack}>
                 <View style={[styles.rankingProgressFill, { width: `${Math.max(0, Math.min(100, score))}%` as ViewStyle['width'] }]} />
               </View>

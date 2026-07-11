@@ -538,7 +538,7 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.queryByText('Hồ sơ hoàn tất')).toBeNull()
   })
 
-  it('keeps the case-trail heading removed while showing the two dedicated case icons', () => {
+  it('keeps the case-trail heading removed while showing the two dedicated case icons without redundant row aura', () => {
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
     buildWorkflow(buildInProgressDeal())
 
@@ -547,8 +547,8 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.queryByText('Dấu vết Case')).toBeNull()
     expect(screen.getByTestId('worker-v5-case-trail-icon-0')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-case-trail-icon-1')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-case-trail-icon-aura-0')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-case-trail-icon-aura-1')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-case-trail-icon-aura-0')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-case-trail-icon-aura-1')).toBeNull()
   })
 
   it('opens earnings from a closed case on the earnings route', () => {

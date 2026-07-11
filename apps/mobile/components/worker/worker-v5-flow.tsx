@@ -33,6 +33,7 @@ import { setAppLanguage, type AppLanguage, localizedServiceLabel, localizedStatu
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
 import { jobMediaObjectPathFromRef } from '@/lib/job-media-preview'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { kaelMemoryService, workerKaelChatService, workerRouteService } from '@/lib/services'
@@ -190,6 +191,17 @@ import {
   workerV5StringFromUnknown,
   type WorkerV5MapLocation,
 } from './ui/route'
+import { WorkerV5IntegratedIcon } from './ui/integrated-icon-surfaces'
+import { WorkerV5DetailRail } from './ui/worker-v5-detail-rail'
+import {
+  workerV5CapturedIconAssets,
+  workerV5HomeQuickIconAssets,
+  workerV5ProfileDossierIconAssets,
+  workerV5ProfileServiceIconAssets,
+  workerV5RankingIconAssets,
+  workerV5ReliabilityIconAssets,
+  workerV5SettingsIconAssets,
+} from './ui/worker-v5-icon-assets'
 import {
   WorkerV5CustomerCaseWideMintAura,
   WorkerV5CustomerCaseWorkCardAura,
@@ -250,11 +262,6 @@ const workerV5Icons: Record<WorkerV5IconName, ImageSourcePropType> = {
   wallet: require('@/assets/worker-image-icons/utility-wallet.png') as ImageSourcePropType,
 }
 
-const workerV5CaseTrailIcons = {
-  completionRecord: require('@/assets/worker-image-icons/utility-completion-record-core.png') as ImageSourcePropType,
-  incomeLedger: require('@/assets/worker-image-icons/utility-income-ledger-core.png') as ImageSourcePropType,
-}
-
 const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
   cleaning: require('@/assets/worker-image-icons/service-cleaning.png') as ImageSourcePropType,
   electrical: require('@/assets/worker-image-icons/service-electrical.png') as ImageSourcePropType,
@@ -262,6 +269,10 @@ const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
   hvac: require('../customer/v21/assets/service-icons/client-service-hvac.png') as ImageSourcePropType,
   plumbing: require('@/assets/worker-image-icons/service-plumbing.png') as ImageSourcePropType,
   upholstery: require('../customer/v21/assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
+}
+const workerV5OpportunityServiceIcons: Record<ServiceType, ImageSourcePropType> = {
+  ...workerV5ServiceIcons,
+  plumbing: workerV5CapturedIconAssets.opportunityPlumbing,
 }
 
 const workerV5AvatarIcon = require('@/assets/worker-image-icons/profile-avatar-core.png') as ImageSourcePropType
@@ -865,33 +876,53 @@ function WorkerV5HomeScreenSurface({
   ]
   const quickActions = [
     {
-      icon: 'jobs' as const,
+      details: [
+        { glyph: 'document' as const, label: textByLanguage(language, 'Cơ hội thật', 'Real opportunities') },
+        { glyph: 'check' as const, label: textByLanguage(language, 'Bạn quyết định', 'You decide') },
+      ],
+      icon: workerV5HomeQuickIconAssets.incoming,
       meta: deal?.broadcast ? textByLanguage(language, '1 cơ hội đã lọc', '1 filtered opportunity') : textByLanguage(language, 'Chưa có cơ hội thật', 'No real opportunity'),
       targetId: '2.1-opportunity-inbox' as const,
+      tone: 'document' as const,
       title: textByLanguage(language, 'Nhận việc ngay', 'Open work'),
     },
     {
-      icon: 'chat' as const,
+      details: [
+        { glyph: 'spark' as const, label: textByLanguage(language, 'Kael lọc', 'Kael filters') },
+        { glyph: 'shield' as const, label: textByLanguage(language, 'Không tự nhận', 'No auto-accept') },
+      ],
+      icon: workerV5HomeQuickIconAssets.kael,
       meta: deal?.broadcast
         ? textByLanguage(language, 'Giải thích cơ hội hiện tại', 'Explain the current opportunity')
         : textByLanguage(language, 'Lọc theo kỹ năng & khu vực', 'Filter by skills and area'),
       targetId: '3.2-kael-job-intake' as const,
+      tone: 'signal' as const,
       title: textByLanguage(language, 'Kael nhận việc', 'Kael job intake'),
     },
     {
-      icon: 'tools' as const,
+      details: [
+        { glyph: 'service' as const, label: textByLanguage(language, 'Kỹ năng', 'Skills') },
+        { glyph: 'location' as const, label: textByLanguage(language, 'Khu vực', 'Area') },
+      ],
+      icon: workerV5HomeQuickIconAssets.skillsArea,
       meta: profile?.districts?.length
         ? textByLanguage(language, `${profile.districts.length} khu vực phục vụ`, `${profile.districts.length} service areas`)
         : textByLanguage(language, 'Bổ sung để tăng cơ hội phù hợp', 'Complete this for better matches'),
       targetId: '5.3-skills-service-area' as const,
+      tone: 'location' as const,
       title: textByLanguage(language, 'Kỹ năng & khu vực', 'Skills and area'),
     },
     {
-      icon: 'earnings' as const,
+      details: [
+        { glyph: 'document' as const, label: textByLanguage(language, 'Đối soát', 'Settlement') },
+        { glyph: 'money' as const, label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
+      ],
+      icon: workerV5HomeQuickIconAssets.earnings,
       meta: earnings?.net_earnings
         ? formatVnd(earnings.net_earnings, language)
         : textByLanguage(language, 'Chưa có đối soát', 'No settlement yet'),
       targetId: '4.1-earnings-overview' as const,
+      tone: 'money' as const,
       title: textByLanguage(language, 'Thu nhập', 'Earnings'),
     },
   ]
@@ -932,6 +963,9 @@ function WorkerV5HomeScreenSurface({
         </View>
 
         <WorkerV5AvailabilityCard
+          availabilityGuardReady={runtime.workerJobsHydrated}
+          hasActiveJob={runtime.workerJobs.some((job) => isWorkerOperationalJobStatus(job.status))}
+          key={profile?.id ?? 'worker-profile-loading'}
           language={language}
           onToggleAvailability={runtime.actions.workerUpdateAvailability}
           profile={profile}
@@ -993,7 +1027,6 @@ function WorkerV5HomeScreenSurface({
         <View style={styles.homeQuickAuraFrame}>
           {!glass.reduceTransparency ? <WorkerV5HomeQuickActionsAura /> : null}
           <WorkerV5HomeQuickActionGrid
-            icons={workerV5Icons}
             items={quickActions}
             onOpen={(id) => openScreen(getWorkerV5Screen(id))}
             reduceMotion={glass.reduceMotion}
@@ -1097,8 +1130,8 @@ function renderWorkerV5Body(
     case '2.12-case-closed':
       return (
         <WorkerV5CaseClosedBody
-          completionRecordIcon={workerV5CaseTrailIcons.completionRecord}
-          incomeLedgerIcon={workerV5CaseTrailIcons.incomeLedger}
+          completionRecordIcon={workerV5CapturedIconAssets.caseCompletionRecord}
+          incomeLedgerIcon={workerV5CapturedIconAssets.caseIncomeLedger}
           language={language}
           navigateToEarnings={() => navigateToScreen('4.1-earnings-overview')}
           navigateToRanking={() => navigateToScreen('5.2-worker-ranking')}
@@ -1115,12 +1148,14 @@ function renderWorkerV5Body(
       return (
         <WorkerV5EarningsOverviewBody
           caseWideAura={WorkerV5CustomerCaseWideMintAura}
+          earningsHeroIcon={workerV5CapturedIconAssets.earningsHero}
           heroAura={WorkerV5EarningsHomeHeroAura}
           icons={workerV5Icons}
           language={language}
           listAura={WorkerV5EarningsHomeListAura}
           navigateToScreen={navigateToScreen}
           primaryFill={WorkerV5PrimaryButtonFill}
+          recentTransactionIcon={workerV5CapturedIconAssets.earningsRecentTransactions}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
           zipAura={WorkerV5CustomerZipMintAura}
@@ -1163,8 +1198,8 @@ function renderWorkerV5Body(
         <WorkerV5ProfileOverviewBody
           avatarIcon={workerV5AvatarIcon}
           caseWideAura={WorkerV5CustomerCaseWideMintAura}
+          dossierIcons={workerV5ProfileDossierIconAssets}
           heroAura={WorkerV5EarningsHomeHeroAura}
-          icons={workerV5Icons}
           language={language}
           listAura={WorkerV5EarningsHomeListAura}
           navigateToScreen={navigateToScreen}
@@ -1177,9 +1212,9 @@ function renderWorkerV5Body(
       return (
         <WorkerV5WorkerRankingBody
           heroAura={WorkerV5EarningsHomeHeroAura}
-          icons={workerV5Icons}
           language={language}
           listAura={WorkerV5EarningsHomeListAura}
+          rankingIcons={workerV5RankingIconAssets}
           rankingHero={WorkerV5RankingHero}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
@@ -1189,13 +1224,13 @@ function renderWorkerV5Body(
       return (
         <WorkerV5SkillsServiceAreaBody
           heroAura={WorkerV5EarningsHomeHeroAura}
-          icons={workerV5Icons}
           language={language}
           listAura={WorkerV5EarningsHomeListAura}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
           serviceAreaMapCard={WorkerV5ServiceAreaMapCard}
-          serviceIcons={workerV5ServiceIcons}
+          serviceIcons={workerV5ProfileServiceIconAssets}
+          skillsHeroIcon={workerV5CapturedIconAssets.skillsHero}
         />
       )
     case '5.4-reliability-insights':
@@ -1207,6 +1242,7 @@ function renderWorkerV5Body(
           listAura={WorkerV5EarningsHomeListAura}
           reduceMotion={reduceMotion}
           reduceTransparency={reduceTransparency}
+          reliabilityIcons={workerV5ReliabilityIconAssets}
           reliabilityAxisFill={WorkerV5ReliabilityAxisFill}
           reliabilityHero={WorkerV5ReliabilityHero}
           runtime={runtime}
@@ -1313,6 +1349,9 @@ function WorkerV5HomeBody({
   return (
     <View style={styles.sectionStack}>
       <WorkerV5AvailabilityCard
+        availabilityGuardReady={runtime.workerJobsHydrated}
+        hasActiveJob={runtime.workerJobs.some((job) => isWorkerOperationalJobStatus(job.status))}
+        key={profile?.id ?? 'worker-profile-loading'}
         language={language}
         onToggleAvailability={runtime.actions.workerUpdateAvailability}
         profile={profile}
@@ -1394,7 +1433,7 @@ function WorkerV5OpportunityInboxBody({
             onSelect={() => setSelectedMissionId(currentDeal.id)}
             reduceTransparency={reduceTransparency}
             selected={isCurrentMissionSelected}
-            serviceIcons={workerV5ServiceIcons}
+            serviceIcons={workerV5OpportunityServiceIcons}
           />
         ) : (
           <WorkerV5OpportunityEmptyCard jobIcon={workerV5Icons.jobs} language={language} reduceTransparency={reduceTransparency} tab="matches" />
@@ -1475,7 +1514,7 @@ function WorkerV5OfferDetailBody({
           jobIcon={workerV5Icons.jobs}
           language={language}
           reduceTransparency={reduceTransparency}
-          serviceIcons={workerV5ServiceIcons}
+          serviceIcons={workerV5OpportunityServiceIcons}
           zipAura={WorkerV5CustomerZipMintAura}
         />
       ) : (
@@ -2241,7 +2280,7 @@ function WorkerV5KaelOrbScreenSurface({
             modeMenuOpen={modeMenuOpen}
             onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
             reduceTransparency={reduceTransparency}
-            serviceIcons={workerV5ServiceIcons}
+            serviceIcons={workerV5OpportunityServiceIcons}
           />
         </View>
       </KeyboardAvoidingView>
@@ -2412,7 +2451,7 @@ function WorkerV5KaelChatBody({
       mode="normal"
       onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(runtime.state.deal))}
       reduceTransparency={reduceTransparency}
-      serviceIcons={workerV5ServiceIcons}
+      serviceIcons={workerV5OpportunityServiceIcons}
     />
   )
 }
@@ -2443,7 +2482,7 @@ function WorkerV5KaelJobIntakeBody({
       mode="intake"
       onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(runtime.state.deal))}
       reduceTransparency={reduceTransparency}
-      serviceIcons={workerV5ServiceIcons}
+      serviceIcons={workerV5OpportunityServiceIcons}
     />
   )
 }
@@ -2509,9 +2548,9 @@ function WorkerV5PayoutMethodBody({
         language={language}
         listAura={WorkerV5EarningsHomeListAura}
         profile={profile}
+        receivingAccountIcon={workerV5CapturedIconAssets.payoutReceivingAccount}
         reduceTransparency={reduceTransparency}
         selectedBank={selectedBank}
-        walletIcon={workerV5Icons.wallet}
       />
       <WorkerV5SectionHeader
         action={textByLanguage(language, '6 ngân hàng', '6 banks')}
@@ -2533,9 +2572,10 @@ function WorkerV5PayoutMethodBody({
         title={textByLanguage(language, 'Quản lý tài khoản', 'Account management')}
       />
       <WorkerV5PayoutAccountManagementRows
+        accountIcon={workerV5CapturedIconAssets.payoutBankAccount}
         accountFormOpen={accountFormOpen}
-        icons={workerV5Icons}
         language={language}
+        limitIcon={workerV5CapturedIconAssets.payoutLimitPolicy}
         limitPolicyOpen={limitPolicyOpen}
         listAura={WorkerV5EarningsHomeListAura}
         onOpenAccountForm={() => {
@@ -2884,18 +2924,20 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
         language={language}
         listAura={WorkerV5EarningsHomeListAura}
         reduceTransparency={reduceTransparency}
-        shieldIcon={workerV5Icons.shield}
+        settingsIcon={workerV5SettingsIconAssets.hero}
       />
       <WorkerV5SectionHeader
         action={textByLanguage(language, 'Cơ bản', 'Basics')}
         title={textByLanguage(language, 'Cài đặt chung', 'General settings')}
       />
       <View style={[styles.workerSettingsListCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-settings-list">
-        {!reduceTransparency ? <WorkerV5EarningsHomeListAura testID="worker-v5-settings-list-mint-aura" /> : null}
         <WorkerV5SettingsActionRow
           body={textByLanguage(language, 'Cập nhật tên, số điện thoại và email liên hệ.', 'Update name, phone, and contact email.')}
-          icon="profile"
-          icons={workerV5Icons}
+          details={[
+            { glyph: 'identity', label: textByLanguage(language, 'Tên & liên hệ', 'Name and contact') },
+            { glyph: 'shield', label: textByLanguage(language, 'Thông tin riêng', 'Private details') },
+          ]}
+          icon={workerV5SettingsIconAssets.personal}
           listAura={WorkerV5EarningsHomeListAura}
           onPress={() => {
             setAccountPanelOpen((current) => !current)
@@ -2904,6 +2946,7 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
           reduceTransparency={reduceTransparency}
           status={accountPanelOpen ? textByLanguage(language, 'Ẩn', 'Hide') : textByLanguage(language, 'Sửa', 'Edit')}
           testID="worker-v5-settings-account"
+          tone="identity"
           title={textByLanguage(language, 'Thông tin cá nhân', 'Personal details')}
         />
         {accountPanelOpen ? (
@@ -2968,20 +3011,27 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
         <View style={styles.workerSettingsDivider} />
         <WorkerV5SettingsActionRow
           body={textByLanguage(language, 'Chuyển ngôn ngữ giao diện.', 'Switch app language.')}
-          icon="chat"
-          icons={workerV5Icons}
+          details={[
+            { glyph: 'language', label: textByLanguage(language, 'Ngôn ngữ', 'Language') },
+            { glyph: 'settings', label: textByLanguage(language, 'Giao diện', 'Interface') },
+          ]}
+          icon={workerV5SettingsIconAssets.language}
           listAura={WorkerV5EarningsHomeListAura}
           onPress={switchSettingsLanguage}
           reduceTransparency={reduceTransparency}
           status={currentLanguage}
           testID="worker-v5-settings-language"
+          tone="signal"
           title={textByLanguage(language, 'Ngôn ngữ', 'Language')}
         />
         <View style={styles.workerSettingsDivider} />
         <WorkerV5SettingsActionRow
           body={textByLanguage(language, 'Xác nhận mật khẩu hiện tại trước khi đổi.', 'Confirm the current password first.')}
-          icon="shield"
-          icons={workerV5Icons}
+          details={[
+            { glyph: 'shield', label: textByLanguage(language, 'Mật khẩu', 'Password') },
+            { glyph: 'check', label: textByLanguage(language, 'Xác nhận hiện tại', 'Verify current') },
+          ]}
+          icon={workerV5SettingsIconAssets.security}
           listAura={WorkerV5EarningsHomeListAura}
           onPress={() => {
             setPasswordPanelOpen((current) => !current)
@@ -2990,6 +3040,7 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
           reduceTransparency={reduceTransparency}
           status={passwordPanelOpen ? textByLanguage(language, 'Ẩn', 'Hide') : textByLanguage(language, 'Đổi', 'Change')}
           testID="worker-v5-settings-password"
+          tone="identity"
           title={textByLanguage(language, 'Bảo mật đăng nhập', 'Login security')}
         />
         {passwordPanelOpen ? (
@@ -3059,25 +3110,43 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
         <View style={styles.workerSettingsDivider} />
         <WorkerV5SettingsActionRow
           body={hasServiceArea ? textByLanguage(language, 'Khu vực phục vụ lấy từ hồ sơ thợ.', 'Service areas come from the worker profile.') : textByLanguage(language, 'Thiết lập khu vực phục vụ ưu tiên.', 'Set preferred service areas.')}
-          icon="map"
-          icons={workerV5Icons}
+          details={[
+            {
+              glyph: 'location',
+              label: runtime.workerProfile?.districts?.length
+                ? textByLanguage(language, `${runtime.workerProfile.districts.length} khu vực`, `${runtime.workerProfile.districts.length} areas`)
+                : textByLanguage(language, 'Chưa có khu vực', 'No area yet'),
+            },
+            {
+              glyph: 'signal',
+              label: typeof runtime.workerProfile?.service_radius_km === 'number'
+                ? textByLanguage(language, `${runtime.workerProfile.service_radius_km} km`, `${runtime.workerProfile.service_radius_km} km`)
+                : textByLanguage(language, 'Chưa có bán kính', 'No radius yet'),
+            },
+          ]}
+          icon={workerV5SettingsIconAssets.serviceArea}
           listAura={WorkerV5EarningsHomeListAura}
           onPress={() => router.replace('/(worker)/profile?ns_worker_screen=5.3-skills-service-area' as never)}
           reduceTransparency={reduceTransparency}
           status={hasServiceArea ? textByLanguage(language, 'Mở', 'Open') : textByLanguage(language, 'Thiết lập', 'Set up')}
           testID="worker-v5-settings-service-area"
+          tone="location"
           title={textByLanguage(language, 'Khu vực phục vụ', 'Service areas')}
         />
         <View style={styles.workerSettingsDivider} />
         <WorkerV5SettingsActionRow
           body={textByLanguage(language, 'Ghi nhớ tương tác được phép; thợ có thể bật hoặc tắt.', 'Remember allowed interactions; the worker can turn it on or off.')}
-          icon="shield"
-          icons={workerV5Icons}
+          details={[
+            { glyph: 'memory', label: textByLanguage(language, 'Quyền ghi nhớ', 'Memory permission') },
+            { glyph: 'shield', label: textByLanguage(language, 'Bạn kiểm soát', 'You control it') },
+          ]}
+          icon={workerV5SettingsIconAssets.kaelMemory}
           listAura={WorkerV5EarningsHomeListAura}
           onPress={() => router.replace('/(worker)/profile?ns_worker_screen=5.6-agent-memory-preferences' as never)}
           reduceTransparency={reduceTransparency}
           status={textByLanguage(language, 'Mở', 'Open')}
           testID="worker-v5-settings-memory"
+          tone="signal"
           title={textByLanguage(language, 'Bộ nhớ Kael', 'Kael memory')}
         />
       </View>
@@ -3086,12 +3155,16 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
 }
 
 function WorkerV5AvailabilityCard({
+  availabilityGuardReady,
+  hasActiveJob,
   language,
   onToggleAvailability,
   profile,
   reduceMotion = false,
   reduceTransparency,
 }: {
+  availabilityGuardReady: boolean
+  hasActiveJob: boolean
   language: AppLanguage
   onToggleAvailability?: (isAvailable: boolean) => Promise<boolean>
   profile: WorkerV5Runtime['workerProfile']
@@ -3100,25 +3173,30 @@ function WorkerV5AvailabilityCard({
 }) {
   const [pending, setPending] = useState(false)
   const [optimisticAvailable, setOptimisticAvailable] = useState<boolean | null>(null)
+  const [inlineFailure, setInlineFailure] = useState<string | null>(null)
   const availabilityRequestIdRef = useRef(0)
   const availabilityTitleDidMountRef = useRef(false)
   const availabilityTitleProgress = useSharedValue(1)
+  const availabilitySwitchProgress = useSharedValue(profile?.is_available ? 1 : 0)
   const rawAvailable = optimisticAvailable ?? Boolean(profile?.is_available)
   const effectiveProfile = profile ? { ...profile, is_available: rawAvailable } : profile
-  const availabilityTitle = workerAvailabilityLabel(effectiveProfile, language)
+  const blockedByGuardLoading = Boolean(profile && !availabilityGuardReady && !rawAvailable)
+  const blockedByActiveJob = Boolean(hasActiveJob && !rawAvailable)
+  const availabilityTitle = inlineFailure
+    ?? (blockedByGuardLoading
+      ? textByLanguage(language, 'Đang đồng bộ công việc', 'Syncing current work')
+      : blockedByActiveJob
+        ? textByLanguage(language, 'Hoàn tất việc hiện tại để bật nhận việc', 'Finish the current job to go online')
+        : workerAvailabilityLabel(effectiveProfile, language))
   const checked = Boolean(rawAvailable && profile?.is_approved && !profile?.is_suspended)
   const canToggle = Boolean(
     onToggleAvailability
       && profile
+      && !blockedByGuardLoading
+      && !blockedByActiveJob
       && ((profile.is_approved && !profile.is_suspended) || rawAvailable),
   )
-  const disabled = !canToggle
-
-  useEffect(() => {
-    availabilityRequestIdRef.current += 1
-    setOptimisticAvailable(null)
-    setPending(false)
-  }, [profile?.id])
+  const disabled = !canToggle || pending
 
   useEffect(() => {
     if (pending || optimisticAvailable === null || profile?.is_available !== optimisticAvailable) return
@@ -3143,9 +3221,22 @@ function WorkerV5AvailabilityCard({
     })
   }, [availabilityTitle, availabilityTitleProgress, reduceMotion])
 
+  useEffect(() => {
+    const target = checked ? 1 : 0
+    availabilitySwitchProgress.value = reduceMotion
+      ? target
+      : withSpring(target, motionTokens.liquid.pill)
+  }, [availabilitySwitchProgress, checked, reduceMotion])
+
   const availabilityTitleMotionStyle = useAnimatedStyle(() => ({
     opacity: availabilityTitleProgress.value,
     transform: [{ translateY: (1 - availabilityTitleProgress.value) * 8 }],
+  }))
+  const availabilitySwitchOnMotionStyle = useAnimatedStyle(() => ({
+    opacity: availabilitySwitchProgress.value,
+  }))
+  const availabilityKnobMotionStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: availabilitySwitchProgress.value * 18 }],
   }))
 
   const handleToggle = async () => {
@@ -3153,6 +3244,7 @@ function WorkerV5AvailabilityCard({
     const nextAvailability = rawAvailable ? false : true
     const requestId = availabilityRequestIdRef.current + 1
     availabilityRequestIdRef.current = requestId
+    setInlineFailure(null)
     setOptimisticAvailable(nextAvailability)
     setPending(true)
     try {
@@ -3160,6 +3252,7 @@ function WorkerV5AvailabilityCard({
       if (availabilityRequestIdRef.current !== requestId) return
       if (!saved) {
         setOptimisticAvailable(null)
+        setInlineFailure(textByLanguage(language, 'Chưa cập nhật được — kiểm tra việc đang chạy', 'Could not update — check active work'))
         Alert.alert(
           textByLanguage(language, 'Chưa cập nhật được trạng thái', 'Could not update status'),
           textByLanguage(language, 'Vui lòng thử lại sau khi kết nối ổn định.', 'Please try again once the connection is stable.'),
@@ -3168,6 +3261,7 @@ function WorkerV5AvailabilityCard({
     } catch {
       if (availabilityRequestIdRef.current !== requestId) return
       setOptimisticAvailable(null)
+      setInlineFailure(textByLanguage(language, 'Chưa cập nhật được — kiểm tra kết nối', 'Could not update — check your connection'))
       Alert.alert(
         textByLanguage(language, 'Chưa cập nhật được trạng thái', 'Could not update status'),
         textByLanguage(language, 'Vui lòng thử lại sau khi kết nối ổn định.', 'Please try again once the connection is stable.'),
@@ -3196,13 +3290,19 @@ function WorkerV5AvailabilityCard({
         onPress={handleToggle}
         style={({ pressed }) => [
           styles.availabilitySwitch,
-          checked ? styles.availabilitySwitchOn : null,
           disabled ? styles.availabilitySwitchDisabled : null,
           pressed && !reduceMotion ? styles.pressed : null,
         ]}
         testID="worker-v5-availability-switch"
       >
-        <View style={[styles.availabilityKnob, checked ? styles.availabilityKnobOn : null]} />
+        <Animated.View
+          style={[styles.availabilitySwitchOn, availabilitySwitchOnMotionStyle]}
+          testID="worker-v5-availability-switch-fill"
+        />
+        <Animated.View
+          style={[styles.availabilityKnob, availabilityKnobMotionStyle]}
+          testID="worker-v5-availability-switch-knob"
+        />
       </Pressable>
     </View>
   )
@@ -3488,7 +3588,7 @@ function WorkerV5IntakeOpportunityStack({
           language={language}
           onOpenOpportunity={onOpenOpportunity}
           reduceTransparency={reduceTransparency}
-          serviceIcons={workerV5ServiceIcons}
+          serviceIcons={workerV5OpportunityServiceIcons}
         />
       ) : (
         <View style={[styles.intakeEmptyRow, reduceTransparency && styles.opaqueCard]} testID="worker-v5-intake-empty-state">
@@ -3955,19 +4055,31 @@ function WorkerV5ServiceAreaMapCard({
         ]}
         testID="worker-v5-service-area-open-card"
       >
-        {!reduceTransparency ? (
-          <>
-            <WorkerV5CustomerCaseWideMintAura scope="ServiceAreaOpenWide" style={styles.kaelBriefAura} />
-            <WorkerV5CustomerZipMintAura scope="ServiceAreaOpenFine" style={styles.kaelBriefZipAura} />
-          </>
-        ) : null}
-        <View style={styles.kaelBriefIconTile}>
-          {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-          <Image source={workerV5Icons.map} style={styles.kaelBriefIcon} />
-        </View>
+        <WorkerV5IntegratedIcon
+          bleed={11}
+          image={workerV5CapturedIconAssets.profileServiceArea}
+          reduceTransparency={reduceTransparency}
+          tone="location"
+          variant="compactPanel"
+        />
         <View style={styles.kaelBriefText}>
           <Text style={styles.kaelBriefTitle} numberOfLines={2}>{textByLanguage(language, 'Khu vực phục vụ', 'Service area')}</Text>
           <Text style={styles.kaelBriefBody} numberOfLines={2} testID="worker-v5-service-area-open-summary">{collapsedSummary}</Text>
+          <WorkerV5DetailRail
+            items={[
+              {
+                glyph: 'location',
+                label: visibleAreaLabels.length
+                  ? textByLanguage(language, `${visibleAreaLabels.length} khu vực`, `${visibleAreaLabels.length} areas`)
+                  : textByLanguage(language, 'Chưa chọn khu vực', 'No area selected'),
+              },
+              {
+                glyph: 'signal',
+                label: radius ?? textByLanguage(language, 'Chưa có bán kính', 'No radius yet'),
+              },
+            ]}
+            testID="worker-v5-service-area-detail"
+          />
         </View>
         <Text style={[styles.kaelBriefChevron, expanded && styles.serviceAreaChevronOpen]}>›</Text>
       </Pressable>
@@ -4676,14 +4788,13 @@ const styles = StyleSheet.create({
     backgroundColor: color.mint.white,
     borderRadius: 10,
     height: 20,
+    position: 'relative',
     shadowColor: color.text.primary,
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.16,
     shadowRadius: 8,
     width: 20,
-  },
-  availabilityKnobOn: {
-    marginLeft: 18,
+    zIndex: 1,
   },
   availabilitySwitch: {
     backgroundColor: '#DFE9E7',
@@ -4692,6 +4803,7 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     height: 26,
     justifyContent: 'center',
+    overflow: 'hidden',
     paddingHorizontal: 3,
     width: 44,
   },
@@ -4701,6 +4813,11 @@ const styles = StyleSheet.create({
   availabilitySwitchOn: {
     backgroundColor: '#16C7B4',
     boxShadow: '0 8px 16px rgba(8,175,156,0.22)',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   availabilityTitle: {
     color: color.text.strong,
@@ -5250,13 +5367,13 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   kaelBriefCard: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
     borderRadius: 22,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 10,
+    gap: 0,
     minHeight: 76,
     overflow: 'hidden',
     padding: 11,
@@ -5276,6 +5393,8 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     lineHeight: 24,
+    alignSelf: 'center',
+    marginLeft: 10,
     position: 'relative',
     zIndex: 1,
   },
@@ -5306,6 +5425,7 @@ const styles = StyleSheet.create({
   kaelBriefText: {
     flex: 1,
     gap: 3,
+    marginLeft: 38,
     minWidth: 0,
     position: 'relative',
     zIndex: 1,

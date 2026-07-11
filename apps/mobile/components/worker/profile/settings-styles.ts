@@ -26,9 +26,9 @@ export const styles = StyleSheet.create({
     marginTop: 8,
   },
   earningsHeroCard: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.79)',
-    borderColor: 'rgba(255,255,255,0.94)',
+    alignItems: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
     borderRadius: 30,
     borderWidth: 1,
     flexDirection: 'row',
@@ -42,6 +42,9 @@ export const styles = StyleSheet.create({
   earningsHeroCopy: {
     flex: 1,
     minWidth: 0,
+  },
+  settingsHeroCopy: {
+    marginLeft: 10,
   },
   earningsHeroIcon: {
     height: 42,
@@ -137,6 +140,7 @@ export const styles = StyleSheet.create({
   },
   workerSettingsActionCopy: {
     flex: 1,
+    marginLeft: 46,
     minWidth: 0,
     zIndex: 1,
   },
@@ -157,13 +161,13 @@ export const styles = StyleSheet.create({
     width: 58,
   },
   workerSettingsActionRow: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderColor: 'rgba(176,222,214,0.48)',
+    alignItems: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.98)',
+    borderColor: 'rgba(217,232,229,0.92)',
     borderRadius: 22,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
+    gap: 0,
     minHeight: 82,
     overflow: 'hidden',
     paddingHorizontal: 12,
@@ -185,6 +189,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 32,
     minWidth: 58,
+    alignSelf: 'center',
+    marginLeft: 10,
     overflow: 'hidden',
     paddingHorizontal: 12,
     position: 'relative',

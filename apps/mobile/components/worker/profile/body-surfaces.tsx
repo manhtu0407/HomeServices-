@@ -69,6 +69,7 @@ import {
 import { styles } from './body-styles'
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type WorkerV5IconMap = Record<WorkerV5IconName, ImageSourcePropType>
+type WorkerV5DossierIconMap = Record<'reliability' | 'services' | 'settings', ImageSourcePropType>
 type WorkerV5ServiceIconMap = Record<ServiceType, ImageSourcePropType>
 type WorkerV5AuraComponent = ComponentType<{ testID: string }>
 type WorkerV5ScopedAuraComponent = ComponentType<{
@@ -119,8 +120,8 @@ type WorkerV5ReadOnlyToggleListComponent = ComponentType<{
 export function WorkerV5ProfileOverviewBody({
   avatarIcon,
   caseWideAura,
+  dossierIcons,
   heroAura,
-  icons,
   language,
   listAura,
   navigateToScreen,
@@ -130,8 +131,8 @@ export function WorkerV5ProfileOverviewBody({
 }: {
   avatarIcon: ImageSourcePropType
   caseWideAura: WorkerV5ScopedAuraComponent
+  dossierIcons: WorkerV5DossierIconMap
   heroAura: WorkerV5AuraComponent
-  icons: WorkerV5IconMap
   language: AppLanguage
   listAura: WorkerV5AuraComponent
   navigateToScreen: (id: WorkerV5ScreenId) => void
@@ -164,7 +165,7 @@ export function WorkerV5ProfileOverviewBody({
       />
       <WorkerV5ProfileDossierCard
         caseWideAura={caseWideAura}
-        icons={icons}
+        icons={dossierIcons}
         insights={insights}
         language={language}
         onOpenReliability={() => navigateToScreen('5.4-reliability-insights')}
@@ -180,17 +181,17 @@ export function WorkerV5ProfileOverviewBody({
 
 export function WorkerV5WorkerRankingBody({
   heroAura,
-  icons,
   language,
   listAura,
+  rankingIcons,
   rankingHero: RankingHero,
   reduceTransparency,
   runtime,
 }: {
   heroAura: WorkerV5AuraComponent
-  icons: WorkerV5IconMap
   language: AppLanguage
   listAura: WorkerV5AuraComponent
+  rankingIcons: Record<string, ImageSourcePropType>
   rankingHero: WorkerV5RankingHeroComponent
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
@@ -222,7 +223,7 @@ export function WorkerV5WorkerRankingBody({
         language={language}
         listAura={listAura}
         profile={profile}
-        profileIcon={icons.profile}
+        profileIcon={rankingIcons.worker}
         reduceTransparency={reduceTransparency}
       />
       <WorkerV5SectionHeader
@@ -230,7 +231,7 @@ export function WorkerV5WorkerRankingBody({
         title={textByLanguage(language, 'Điều giúp bạn thăng hạng', 'Ranking improvements')}
       />
       <WorkerV5RankingImprovementList
-        icons={icons}
+        axisIcons={rankingIcons}
         insights={insights}
         language={language}
         listAura={listAura}
@@ -242,22 +243,22 @@ export function WorkerV5WorkerRankingBody({
 
 export function WorkerV5SkillsServiceAreaBody({
   heroAura,
-  icons,
   language,
   listAura,
   reduceTransparency,
   runtime,
   serviceAreaMapCard: ServiceAreaMapCard,
   serviceIcons,
+  skillsHeroIcon,
 }: {
   heroAura: WorkerV5AuraComponent
-  icons: WorkerV5IconMap
   language: AppLanguage
   listAura: WorkerV5AuraComponent
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
   serviceAreaMapCard: WorkerV5ServiceAreaMapCardComponent
   serviceIcons: WorkerV5ServiceIconMap
+  skillsHeroIcon: ImageSourcePropType
 }) {
   const profile = runtime.workerProfile
 
@@ -268,7 +269,7 @@ export function WorkerV5SkillsServiceAreaBody({
         language={language}
         profile={profile}
         reduceTransparency={reduceTransparency}
-        toolsIcon={icons.tools}
+        toolsIcon={skillsHeroIcon}
       />
       <WorkerV5ServiceCardGrid
         language={language}
@@ -276,7 +277,7 @@ export function WorkerV5SkillsServiceAreaBody({
         profile={profile}
         reduceTransparency={reduceTransparency}
         serviceIcons={serviceIcons}
-        toolsIcon={icons.tools}
+        toolsIcon={skillsHeroIcon}
       />
       <ServiceAreaMapCard language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     </View>
@@ -290,6 +291,7 @@ export function WorkerV5ReliabilityInsightsBody({
   listAura,
   reduceMotion,
   reduceTransparency,
+  reliabilityIcons,
   reliabilityAxisFill: ReliabilityAxisFill,
   reliabilityHero: ReliabilityHero,
   runtime,
@@ -301,6 +303,7 @@ export function WorkerV5ReliabilityInsightsBody({
   listAura: WorkerV5AuraComponent
   reduceMotion: boolean
   reduceTransparency: boolean
+  reliabilityIcons: Record<string, ImageSourcePropType>
   reliabilityAxisFill: WorkerV5ReliabilityAxisFillComponent
   reliabilityHero: WorkerV5ReliabilityHeroComponent
   runtime: WorkerV5Runtime
@@ -339,7 +342,7 @@ export function WorkerV5ReliabilityInsightsBody({
       />
       <WorkerV5ReliabilityComponentList
         axes={axes}
-        icons={icons}
+        axisIcons={reliabilityIcons}
         language={language}
         listAura={listAura}
         reduceTransparency={reduceTransparency}

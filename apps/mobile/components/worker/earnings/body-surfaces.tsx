@@ -6,6 +6,7 @@ import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 import type { WorkerV5IconName, WorkerV5ScreenId } from '../dock/types'
 import { textByLanguage, formatVndDong } from '../ui/format'
+import { workerV5CapturedIconAssets } from '../ui/worker-v5-icon-assets'
 import {
   WorkerV5LedgerBreakdownCard,
   WorkerV5LedgerTraceTimeline,
@@ -46,23 +47,27 @@ type WorkerV5LedgerHeroComponent = ComponentType<{
 }>
 export function WorkerV5EarningsOverviewBody({
   caseWideAura,
+  earningsHeroIcon,
   heroAura,
   icons,
   language,
   listAura,
   navigateToScreen,
   primaryFill,
+  recentTransactionIcon,
   reduceTransparency,
   runtime,
   zipAura,
 }: {
   caseWideAura: WorkerV5ScopedAuraComponent
+  earningsHeroIcon: ImageSourcePropType
   heroAura: WorkerV5AuraComponent
   icons: WorkerV5IconMap
   language: AppLanguage
   listAura: WorkerV5AuraComponent
   navigateToScreen: (id: WorkerV5ScreenId) => void
   primaryFill: WorkerV5PrimaryFillComponent
+  recentTransactionIcon: ImageSourcePropType
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
   zipAura: WorkerV5ScopedAuraComponent
@@ -77,7 +82,7 @@ export function WorkerV5EarningsOverviewBody({
         heroAura={heroAura}
         language={language}
         reduceTransparency={reduceTransparency}
-        walletIcon={icons.wallet}
+        walletIcon={earningsHeroIcon}
       />
       <WorkerV5SectionHeader
         action={textByLanguage(language, 'Xem tất cả ›', 'View all ›')}
@@ -85,11 +90,11 @@ export function WorkerV5EarningsOverviewBody({
       />
       <WorkerV5EarningsTransactionList
         documentIcon={icons.document}
+        emptyStateIcon={recentTransactionIcon}
         language={language}
         listAura={listAura}
         recent={recent}
         reduceTransparency={reduceTransparency}
-        walletIcon={icons.wallet}
       />
       <WorkerV5ActionRail
         caseWideAura={caseWideAura}
@@ -221,11 +226,11 @@ export function WorkerV5PayoutRequestBody({
         title={textByLanguage(language, 'Tài khoản nhận', 'Receiving account')}
       />
       <WorkerV5PayoutAccountCard
+        accountIcon={workerV5CapturedIconAssets.payoutVerifiedAccount}
         language={language}
         listAura={listAura}
         profile={profile}
         reduceTransparency={reduceTransparency}
-        shieldIcon={icons.shield}
       />
       <WorkerV5SingleSourceActionButton
         primaryButtonFill={primaryFill}

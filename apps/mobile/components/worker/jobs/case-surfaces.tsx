@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -14,6 +13,8 @@ import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
 import { formatVnd, textByLanguage } from '../ui/format'
+import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
+import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './case-styles'
 
 type WorkerV5CaseAuraComponent = ComponentType<{
@@ -81,13 +82,13 @@ export function WorkerV5CaseClosedHero({
 }
 
 export function WorkerV5CaseTrailCard({
-  caseWideAura: CaseWideAura,
+  caseWideAura: _caseWideAura,
   completionRecordIcon,
   deal,
   incomeLedgerIcon,
   language,
   reduceTransparency,
-  zipAura: ZipAura,
+  zipAura: _zipAura,
 }: {
   caseWideAura: WorkerV5CaseAuraComponent
   completionRecordIcon: ImageSourcePropType
@@ -101,6 +102,15 @@ export function WorkerV5CaseTrailCard({
   const ledgerReady = Boolean(deal?.payment?.workerNet && deal.payment.workerNet > 0)
   const rows = [
     {
+      details: artifactReady
+        ? [
+          { glyph: 'document' as const, label: textByLanguage(language, 'Hồ sơ đã khóa', 'Artifact locked') },
+          { glyph: 'check' as const, label: textByLanguage(language, 'Bằng chứng thật', 'Real evidence') },
+        ]
+        : [
+          { glyph: 'sync' as const, label: textByLanguage(language, 'Chờ bằng chứng', 'Waiting for evidence') },
+          { glyph: 'document' as const, label: textByLanguage(language, 'Ảnh & ghi chú', 'Photos and notes') },
+        ],
       icon: completionRecordIcon,
       meta: artifactReady
         ? textByLanguage(language, `${deal?.completionPhotoUrls?.length ?? 0} ảnh · có ghi chú`, `${deal?.completionPhotoUrls?.length ?? 0} photos · note exists`)
@@ -109,6 +119,15 @@ export function WorkerV5CaseTrailCard({
       title: textByLanguage(language, 'Hồ sơ hoàn tất', 'Completion artifact'),
     },
     {
+      details: ledgerReady
+        ? [
+          { glyph: 'money' as const, label: textByLanguage(language, 'Đã ghi sổ', 'Recorded') },
+          { glyph: 'check' as const, label: textByLanguage(language, 'Có thể xem', 'Available') },
+        ]
+        : [
+          { glyph: 'sync' as const, label: textByLanguage(language, 'Chờ đối soát', 'Waiting settlement') },
+          { glyph: 'money' as const, label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
+        ],
       icon: incomeLedgerIcon,
       meta: ledgerReady ? formatVnd(deal?.payment?.workerNet ?? 0, language) : textByLanguage(language, 'Chờ hệ thống đối soát', 'Waiting for system settlement'),
       status: ledgerReady ? textByLanguage(language, 'Đã ghi', 'Recorded') : textByLanguage(language, 'Chờ', 'Waiting'),
@@ -119,27 +138,18 @@ export function WorkerV5CaseTrailCard({
     <View style={[styles.caseTrailCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-case-trail-card">
       {rows.map((row, index) => (
         <View key={row.title} style={styles.caseTrailRow}>
-          {!reduceTransparency ? (
-            <>
-              <CaseWideAura
-                scope={`CaseTrailRow${index}`}
-                style={styles.caseTrailRowAura}
-                testID={`worker-v5-case-trail-row-mint-aura-${index}`}
-              />
-              <ZipAura
-                scope={`CaseTrailRow${index}`}
-                style={styles.caseTrailRowZipAura}
-                testID={`worker-v5-case-trail-row-zip-mint-aura-${index}`}
-              />
-            </>
-          ) : null}
-          <View style={styles.caseTrailIconShell}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.caseTrailIconMintAura} testID={`worker-v5-case-trail-icon-aura-${index}`} /> : null}
-            <Image resizeMode="contain" source={row.icon} style={styles.caseTrailIcon} testID={`worker-v5-case-trail-icon-${index}`} />
-          </View>
+          <WorkerV5IntegratedIcon
+            bleed={13}
+            image={row.icon}
+            reduceTransparency={reduceTransparency}
+            testID={`worker-v5-case-trail-icon-${index}`}
+            tone={index === 0 ? 'document' : 'money'}
+            variant="panel"
+          />
           <View style={styles.caseTrailCopy}>
             <Text style={styles.caseTrailTitle} numberOfLines={2} testID={`worker-v5-case-trail-title-${index}`}>{row.title}</Text>
             <Text style={styles.caseTrailMeta} numberOfLines={2} testID={`worker-v5-case-trail-meta-${index}`}>{row.meta}</Text>
+            <WorkerV5DetailRail items={row.details} testID={`worker-v5-case-trail-detail-${index}`} />
           </View>
           <Text style={styles.caseTrailStatus} numberOfLines={2} testID={`worker-v5-case-trail-status-${index}`}>{row.status}</Text>
         </View>

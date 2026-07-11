@@ -8,12 +8,19 @@ import {
   type TextProps,
 } from 'react-native'
 
-import { KaelTextField, MintAura } from '@/components/ui/kael-primitives'
+import { KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerProfileResponse } from '@/lib/api-types'
 
-import type { WorkerV5IconName } from '../dock/types'
 import { textByLanguage } from '../ui/format'
+import {
+  WorkerV5IntegratedIcon,
+  type WorkerV5IntegratedIconTone,
+} from '../ui/integrated-icon-surfaces'
+import {
+  WorkerV5DetailRail,
+  type WorkerV5DetailRailItem,
+} from '../ui/worker-v5-detail-rail'
 import {
   WORKER_V5_BANK_OPTIONS,
   resolveWorkerV5BankLogoName,
@@ -25,7 +32,6 @@ import { styles } from './payout-method-styles'
 
 type WorkerV5PayoutMethodProfile = WorkerProfileResponse | null | undefined
 type WorkerV5PayoutMethodAura = ComponentType<{ testID: string }>
-type WorkerV5PayoutMethodIcons = Record<WorkerV5IconName, ImageSourcePropType>
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -33,37 +39,34 @@ function Text({ style, ...props }: TextProps) {
 
 export function WorkerV5PayoutMethodHero({
   language,
-  listAura: ListAura,
+  listAura: _listAura,
   profile,
+  receivingAccountIcon,
   reduceTransparency,
   selectedBank,
-  walletIcon,
 }: {
   language: AppLanguage
   listAura: WorkerV5PayoutMethodAura
   profile: WorkerV5PayoutMethodProfile
+  receivingAccountIcon: ImageSourcePropType
   reduceTransparency: boolean
   selectedBank: WorkerV5BankLogoName | null
-  walletIcon: ImageSourcePropType
 }) {
   const profileBank = resolveWorkerV5BankLogoName(profile?.bank_name)
   const effectiveBank = selectedBank ?? profileBank
   const hasBank = Boolean(profile?.bank_account_masked && (!selectedBank || selectedBank === profileBank))
-  const bankLogo = effectiveBank ? workerV5BankLogos[effectiveBank] : null
   const bankName = effectiveBank ? workerV5BankLabel(effectiveBank) : textByLanguage(language, 'Tài khoản nhận tiền', 'Payout account')
   const identity = profile?.legal_name?.trim() || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')
   return (
     <View style={[styles.payoutMethodHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-method-hero">
-      {!reduceTransparency ? <ListAura testID="worker-v5-payout-method-mint-aura" /> : null}
-      <View style={styles.payoutMethodLogoFrame}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image
-          resizeMode="contain"
-          source={bankLogo ?? walletIcon}
-          style={bankLogo ? styles.payoutMethodLogoImage : styles.earningsHeroIcon}
-          testID="worker-v5-payout-method-hero-logo"
-        />
-      </View>
+      <WorkerV5IntegratedIcon
+        bleed={12}
+        image={receivingAccountIcon}
+        reduceTransparency={reduceTransparency}
+        testID="worker-v5-payout-method-hero-icon"
+        tone="money"
+        variant="panel"
+      />
       <View style={styles.payoutMethodHeroCopy}>
         <Text style={styles.opportunityTitle} numberOfLines={2} testID="worker-v5-payout-method-name">
           {hasBank ? `${bankName} · ${profile?.bank_account_masked}` : bankName}
@@ -71,6 +74,18 @@ export function WorkerV5PayoutMethodHero({
         <Text style={styles.opportunityMeta} numberOfLines={2} testID="worker-v5-payout-method-account">
           {hasBank ? `${identity} · ${textByLanguage(language, 'mặc định', 'default')}` : textByLanguage(language, 'Nhập thông tin chủ tài khoản rồi kiểm tra trước xác thực.', 'Enter account owner details, then run pre-verification checks.')}
         </Text>
+        <WorkerV5DetailRail
+          items={hasBank
+            ? [
+              { glyph: 'identity', label: textByLanguage(language, 'Chủ tài khoản', 'Account owner') },
+              { glyph: 'check', label: textByLanguage(language, 'Đã xác minh', 'Verified') },
+            ]
+            : [
+              { glyph: 'identity', label: textByLanguage(language, 'Chủ tài khoản', 'Account owner') },
+              { glyph: 'shield', label: textByLanguage(language, 'Cần xác minh', 'Verification required') },
+            ]}
+          testID="worker-v5-payout-method-hero-detail"
+        />
       </View>
       <Text style={styles.approvalDecisionStatus} numberOfLines={2} testID="worker-v5-payout-method-status">
         {hasBank ? textByLanguage(language, 'Đã chọn', 'Selected') : textByLanguage(language, 'Chưa có', 'None')}
@@ -128,19 +143,21 @@ export function WorkerV5PayoutMethodBankGrid({
 }
 
 export function WorkerV5PayoutAccountManagementRows({
+  accountIcon,
   accountFormOpen,
-  icons,
   language,
+  limitIcon,
   limitPolicyOpen,
-  listAura: ListAura,
+  listAura: _listAura,
   onOpenAccountForm,
   onOpenLimitPolicy,
   profile,
   reduceTransparency,
 }: {
+  accountIcon: ImageSourcePropType
   accountFormOpen: boolean
-  icons: WorkerV5PayoutMethodIcons
   language: AppLanguage
+  limitIcon: ImageSourcePropType
   limitPolicyOpen: boolean
   listAura: WorkerV5PayoutMethodAura
   onOpenAccountForm: () => void
@@ -148,27 +165,35 @@ export function WorkerV5PayoutAccountManagementRows({
   profile: WorkerV5PayoutMethodProfile
   reduceTransparency: boolean
 }) {
+  const hasBank = Boolean(profile?.bank_account_masked)
   const rows = [
     {
-      icon: 'wallet' as const,
+      detailItems: [
+        { glyph: 'identity', label: textByLanguage(language, 'Chủ tài khoản', 'Account owner') },
+        { glyph: hasBank ? 'check' : 'shield', label: hasBank ? textByLanguage(language, 'Đã ghi nhận', 'Recorded') : textByLanguage(language, 'Cần xác minh', 'Verification required') },
+      ] satisfies readonly WorkerV5DetailRailItem[],
+      icon: accountIcon,
       meta: textByLanguage(language, 'Xác minh chủ tài khoản trước khi dùng', 'Verify account ownership before use'),
       onPress: onOpenAccountForm,
-      status: Boolean(profile?.bank_account_masked) ? textByLanguage(language, 'Đã ghi', 'Recorded') : textByLanguage(language, 'Chờ', 'Waiting'),
       title: textByLanguage(language, 'Thêm tài khoản ngân hàng', 'Add bank account'),
+      tone: 'money' as WorkerV5IntegratedIconTone,
       active: accountFormOpen,
     },
     {
-      icon: 'shield' as const,
+      detailItems: [
+        { glyph: 'shield', label: textByLanguage(language, 'Theo hệ thống', 'System policy') },
+        { glyph: 'money', label: textByLanguage(language, 'Không mức cố định', 'No fixed cap') },
+      ] satisfies readonly WorkerV5DetailRailItem[],
+      icon: limitIcon,
       meta: textByLanguage(language, 'Không đặt hạn mức cố định', 'No fixed withdrawal cap'),
       onPress: onOpenLimitPolicy,
-      status: textByLanguage(language, 'Hệ thống', 'System'),
       title: textByLanguage(language, 'Giới hạn rút tiền', 'Payout limit'),
+      tone: 'signal' as WorkerV5IntegratedIconTone,
       active: limitPolicyOpen,
     },
   ]
   return (
     <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-account-management-list">
-      {!reduceTransparency ? <ListAura testID="worker-v5-account-management-mint-aura" /> : null}
       {rows.map((row, index) => (
         <Pressable
           accessibilityLabel={row.title}
@@ -179,13 +204,21 @@ export function WorkerV5PayoutAccountManagementRows({
           style={[styles.approvalDecisionRow, row.active ? styles.payoutAccountManagementRowActive : null]}
           testID={`worker-v5-account-management-row-${index}`}
         >
-          <View style={styles.approvalDecisionIconShell}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image resizeMode="contain" source={icons[row.icon]} style={styles.approvalDecisionIcon} />
-          </View>
+          <WorkerV5IntegratedIcon
+            bleed={12}
+            image={row.icon}
+            reduceTransparency={reduceTransparency}
+            testID={`worker-v5-account-management-icon-${index}`}
+            tone={row.tone}
+            variant="panel"
+          />
           <View style={styles.approvalDecisionCopy}>
             <Text style={styles.approvalDecisionTitle} numberOfLines={2} testID={`worker-v5-account-management-title-${index}`}>{row.title}</Text>
             <Text style={styles.approvalDecisionMeta} numberOfLines={2} testID={`worker-v5-account-management-meta-${index}`}>{row.meta}</Text>
+            <WorkerV5DetailRail
+              items={row.detailItems}
+              testID={`worker-v5-account-management-detail-${index}`}
+            />
           </View>
           <Text style={styles.chevronText}>›</Text>
         </Pressable>

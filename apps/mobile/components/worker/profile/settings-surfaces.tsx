@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react'
 import {
-  Image,
   Pressable,
   Text as RNText,
   View,
@@ -8,15 +7,14 @@ import {
   type TextProps,
 } from 'react-native'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
-import type { WorkerV5IconName } from '../dock/types'
 import { textByLanguage } from '../ui/format'
+import { WorkerV5IntegratedIcon, type WorkerV5IntegratedIconTone } from '../ui/integrated-icon-surfaces'
+import { WorkerV5DetailRail, type WorkerV5DetailRailItem } from '../ui/worker-v5-detail-rail'
 import { styles } from './settings-styles'
 
 type WorkerV5SettingsAura = ComponentType<{ testID: string }>
-type WorkerV5SettingsIcons = Record<WorkerV5IconName, ImageSourcePropType>
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -24,27 +22,31 @@ function Text({ style, ...props }: TextProps) {
 
 export function WorkerV5SettingsHero({
   language,
-  listAura: ListAura,
+  listAura: _listAura,
   reduceTransparency,
-  shieldIcon,
+  settingsIcon,
 }: {
   language: AppLanguage
   listAura: WorkerV5SettingsAura
   reduceTransparency: boolean
-  shieldIcon: ImageSourcePropType
+  settingsIcon: ImageSourcePropType
 }) {
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-settings-hero">
-      {!reduceTransparency ? <ListAura testID="worker-v5-settings-mint-aura" /> : null}
-      <View style={styles.earningsHeroIconShell}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image resizeMode="contain" source={shieldIcon} style={styles.earningsHeroIcon} />
-      </View>
-      <View style={styles.earningsHeroCopy}>
+      <WorkerV5IntegratedIcon bleed={18} image={settingsIcon} reduceTransparency={reduceTransparency} tone="identity" variant="heroPanel" />
+      <View style={[styles.earningsHeroCopy, styles.settingsHeroCopy]}>
         <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-settings-title">{textByLanguage(language, 'Cài đặt tài khoản', 'Account settings')}</Text>
         <Text style={styles.earningsHeroMeta} numberOfLines={2}>
           {textByLanguage(language, 'Bảo mật, ngôn ngữ và dữ liệu Kael.', 'Security, language, and Kael data.')}
         </Text>
+        <WorkerV5DetailRail
+          items={[
+            { glyph: 'identity', label: textByLanguage(language, 'Tài khoản', 'Account') },
+            { glyph: 'shield', label: textByLanguage(language, 'Bảo mật', 'Security') },
+            { glyph: 'memory', label: textByLanguage(language, 'Bộ nhớ Kael', 'Kael memory') },
+          ]}
+          testID="worker-v5-settings-hero-detail"
+        />
       </View>
     </View>
   )
@@ -52,23 +54,25 @@ export function WorkerV5SettingsHero({
 
 export function WorkerV5SettingsActionRow({
   body,
+  details,
   icon,
-  icons,
-  listAura: ListAura,
+  listAura: _listAura,
   onPress,
   reduceTransparency,
   status,
   testID,
+  tone,
   title,
 }: {
   body: string
-  icon: WorkerV5IconName
-  icons: WorkerV5SettingsIcons
+  details: readonly WorkerV5DetailRailItem[]
+  icon: ImageSourcePropType
   listAura: WorkerV5SettingsAura
   onPress: () => void
   reduceTransparency: boolean
   status: string
   testID: string
+  tone: WorkerV5IntegratedIconTone
   title: string
 }) {
   return (
@@ -79,17 +83,13 @@ export function WorkerV5SettingsActionRow({
       style={({ pressed }) => [styles.workerSettingsActionRow, pressed ? styles.pressed : null]}
       testID={testID}
     >
-      {!reduceTransparency ? <ListAura testID={`${testID}-mint-aura`} /> : null}
-      <View style={styles.workerSettingsActionIconShell}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image resizeMode="contain" source={icons[icon]} style={styles.workerSettingsActionIcon} />
-      </View>
+      <WorkerV5IntegratedIcon bleed={12} image={icon} reduceTransparency={reduceTransparency} tone={tone} variant="panel" />
       <View style={styles.workerSettingsActionCopy}>
         <Text style={styles.workerSettingsActionTitle} numberOfLines={2}>{title}</Text>
         <Text style={styles.workerSettingsActionBody} numberOfLines={2}>{body}</Text>
+        <WorkerV5DetailRail items={details} testID={`${testID}-detail`} />
       </View>
       <View style={[styles.workerSettingsStatusPill, reduceTransparency && styles.opaqueCard]}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
         <Text style={styles.workerSettingsStatusText} numberOfLines={1}>{status}</Text>
       </View>
     </Pressable>

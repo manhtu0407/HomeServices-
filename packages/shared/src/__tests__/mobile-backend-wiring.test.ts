@@ -110,6 +110,18 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(services).toContain('export const workerService')
   })
 
+  it('connects worker availability from the mobile action through the atomic RPC into mission eligibility', () => {
+    const provider = readFrontendWorkflowLayer()
+    const workerService = readEdgeShared('services/workers.service.ts')
+    const broadcastService = readEdgeShared('services/broadcasts.service.ts')
+    const migration = readRoot('supabase/migrations/20260518010500_availability_offline_expires_sent_broadcasts.sql')
+
+    expect(provider).toContain("workerService.updateAvailability({ is_available: isAvailable })")
+    expect(workerService).toContain('db(ctx).rpc("set_worker_availability_atomic"')
+    expect(migration).toContain('set is_available = p_is_available')
+    expect(broadcastService).toContain('.eq("is_available", true)')
+  })
+
   it('preserves HTTP error status when Edge responses are not JSON', () => {
     const api = read('lib/api.ts')
 

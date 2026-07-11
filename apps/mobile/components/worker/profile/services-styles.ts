@@ -22,9 +22,9 @@ export const styles = StyleSheet.create({
     marginTop: 7,
   },
   earningsHeroCard: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.79)',
-    borderColor: 'rgba(255,255,255,0.94)',
+    alignItems: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
     borderRadius: 30,
     borderWidth: 1,
     flexDirection: 'row',
@@ -74,8 +74,8 @@ export const styles = StyleSheet.create({
     zIndex: 1,
   },
   serviceSourceCard: {
-    backgroundColor: 'rgba(255,255,255,0.80)',
-    borderColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
     borderRadius: 23,
     borderWidth: 1,
     minHeight: 128,
@@ -87,12 +87,12 @@ export const styles = StyleSheet.create({
     ...shadow.soft,
   },
   serviceSourceCardSelected: {
-    backgroundColor: 'rgba(232,255,249,0.88)',
-    borderColor: 'rgba(13,179,159,0.48)',
-    shadowColor: '#079B8A',
-    shadowOffset: { height: 13, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(70,194,174,0.58)',
+    shadowColor: '#79D8C8',
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
   },
   serviceSourceCardFull: {
     width: '100%',
@@ -125,6 +125,9 @@ export const styles = StyleSheet.create({
     width: 64,
     zIndex: 1,
   },
+  serviceSourceIntegratedIcon: {
+    marginBottom: 10,
+  },
   serviceSourceMeta: {
     color: color.text.muted,
     fontSize: 9,
@@ -140,8 +143,12 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
   skillsServiceHeroAmount: {
-    fontSize: 24,
-    lineHeight: 29,
+    fontSize: 26,
+    lineHeight: 31,
     marginTop: 0,
+  },
+  skillsServiceHeroCopy: {
+    gap: 6,
+    justifyContent: 'center',
   },
 })

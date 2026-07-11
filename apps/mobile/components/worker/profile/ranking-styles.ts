@@ -15,6 +15,7 @@ export const styles = StyleSheet.create({
   approvalDecisionCopy: {
     flex: 1,
     gap: 2,
+    marginLeft: 46,
     minWidth: 0,
   },
   approvalDecisionIcon: {
@@ -35,8 +36,8 @@ export const styles = StyleSheet.create({
     width: 64,
   },
   approvalDecisionList: {
-    backgroundColor: 'rgba(255,255,255,0.77)',
-    borderColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderColor: 'rgba(204,223,219,0.94)',
     borderRadius: 24,
     borderWidth: 1,
     overflow: 'hidden',
@@ -49,16 +50,17 @@ export const styles = StyleSheet.create({
     lineHeight: 14,
   },
   approvalDecisionRow: {
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderBottomColor: 'rgba(176,222,214,0.38)',
     borderBottomWidth: 1,
     flexDirection: 'row',
-    gap: 11,
+    gap: 0,
     minHeight: 72,
     padding: 12,
     position: 'relative',
   },
   approvalDecisionStatus: {
+    alignSelf: 'center',
     backgroundColor: color.mint.mint50,
     borderColor: color.surface.strokeStrong,
     borderRadius: radius.pill,
@@ -69,6 +71,7 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 12,
     maxWidth: 92,
+    marginLeft: 10,
     minWidth: 54,
     overflow: 'hidden',
     paddingHorizontal: 8,
