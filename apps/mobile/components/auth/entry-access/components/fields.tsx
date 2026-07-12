@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   Platform,
   Pressable,
@@ -7,7 +7,6 @@ import {
   View,
   type KeyboardTypeOptions,
   type TextStyle,
-  type TextInput as RNTextInput,
   type TextInputProps,
 } from 'react-native'
 import { KaelTextInput } from '@/components/ui/kael-primitives'
@@ -37,24 +36,19 @@ export function EntryTextField({
   textContentType?: TextInputProps['textContentType']
   value: string
 }) {
-  const inputRef = useRef<RNTextInput>(null)
   const [focused, setFocused] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const isSecure = Boolean(secureTextEntry) && !revealed
   const shellTestID = testID ? `${testID}-shell` : undefined
-  const focusInput = () => inputRef.current?.focus()
+  const iconRailTestID = testID ? `${testID}-icon-rail` : undefined
 
   return (
     <View style={styles.group}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable
-        accessible={false}
-        onPress={focusInput}
-        onPressIn={focusInput}
-        style={({ pressed }: { pressed: boolean }) => [styles.field, focused && styles.fieldFocused, pressed && !focused && styles.fieldPressed]}
-        testID={shellTestID}
-      >
-        <EntryIcon color={entryTheme.color.mint.mint700} name={icon} size={17} />
+      <View style={[styles.field, focused && styles.fieldFocused]} testID={shellTestID}>
+        <View style={styles.iconRail} testID={iconRailTestID}>
+          <EntryIcon color={entryTheme.color.mint.mint700} name={icon} size={16} />
+        </View>
         <KaelTextInput
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
@@ -64,7 +58,6 @@ export function EntryTextField({
           onFocus={() => setFocused(true)}
           placeholder={placeholder}
           placeholderTextColor="#87999E"
-          ref={inputRef}
           secureTextEntry={isSecure}
           style={[styles.input, webInputFocusReset]}
           testID={testID}
@@ -76,7 +69,7 @@ export function EntryTextField({
             <EntryIcon color={entryTheme.color.text.muted} name="eye" size={18} />
           </Pressable>
         ) : null}
-      </Pressable>
+      </View>
     </View>
   )
 }
@@ -124,8 +117,17 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 0 },
   },
-  fieldPressed: { borderColor: 'rgba(36,179,161,0.42)' },
   group: { gap: 7, marginBottom: 12 },
+  iconRail: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(230,249,245,0.9)',
+    borderColor: 'rgba(36,179,161,0.14)',
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 30,
+    justifyContent: 'center',
+    width: 30,
+  },
   input: { color: entryTheme.color.text.primary, flex: 1, fontSize: 13, height: '100%', paddingVertical: 0 },
   label: { color: entryTheme.color.text.strong, fontSize: 12, fontWeight: '600', paddingLeft: 2 },
 })

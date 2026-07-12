@@ -1437,9 +1437,11 @@ describe('auth production login surface', () => {
     expect(surface).toContain('signatureRail')
     expect(surface).toContain('ProviderButton')
     expect(surface).toContain('auth-client-google-primary')
-    expect(surface).toContain('auth-client-gmail-secondary')
-    expect(surface).toContain('auth-client-facebook-secondary')
-    expect(surface).toContain('showProviders = props.role === \'customer\'')
+    expect(surface).not.toContain('auth-client-gmail-secondary')
+    expect(surface).not.toContain('auth-client-facebook-secondary')
+    expect(surface).toContain("showProviders = props.role === 'customer' && props.features.customerGoogle")
+    expect(surface).toContain('Email/SDT')
+    expect(surface).toContain('auth-recovery-submit')
     expect(surface).toContain('workerRegistration')
     expect(surface).toContain('submitWorkerApplication')
     expect(surface).not.toContain('auth-worker-google')
@@ -1686,10 +1688,10 @@ describe('auth-provider.tsx', () => {
     expect(src).toContain('Vai trò tài khoản không hợp lệ')
   })
 
-  it('validates malformed email locally before Supabase password sign-in', () => {
-    expect(src).toContain('isValidEmail')
-    expect(src).toContain('Email không hợp lệ')
-    expect(src.indexOf('isValidEmail(normalizedEmail)')).toBeLessThan(src.indexOf('supabase.auth.signInWithPassword'))
+  it('validates malformed Email/SDT locally before Supabase password sign-in', () => {
+    expect(src).toContain('parseAuthIdentifier')
+    expect(src).toContain('validateAuthIdentifier')
+    expect(src.indexOf('const identifier = parseAuthIdentifier(identifierInput)')).toBeLessThan(src.indexOf('supabase.auth.signInWithPassword(credentials)'))
   })
 
   it('resets role to null on sign out', () => {

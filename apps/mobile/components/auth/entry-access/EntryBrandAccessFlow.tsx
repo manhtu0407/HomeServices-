@@ -14,11 +14,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
+import { parseAuthIdentifier, validateAuthIdentifier } from '@/lib/auth-identifier'
+import { clearRememberedAuthIdentifier, getRememberedAuthIdentifier, rememberAuthIdentifier } from '@/lib/remembered-auth-identifier'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
 import { AssetTile, GlassPanel, IconButton, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
-import { EntryIcon, ProviderBrandIcon, type ProviderBrand } from './components/icons'
+import { ProviderButton } from './components/provider-button'
+import { EntryIcon } from './components/icons'
+import { identifierFieldProps, validateIdentifierForRole } from './entry-identifier-fields'
 import { LottieLogoMark } from './lottie-logo-mark'
+import { PasswordRecoveryScreen } from './password-recovery-screen'
+import { selectRoleGateGreeting, type RoleGateGreeting } from './role-gate-greeting'
 import { entryTheme } from './theme'
 import type {
   EntryAccessFeatureFlags,
@@ -26,7 +32,6 @@ import type {
   EntryBrandAccessFlowProps,
   EntryRole,
 } from './types'
-
 const assets = {
   activity: require('./assets/activity.png') as ImageSourcePropType,
   customerHome: require('./assets/customer-home.png') as ImageSourcePropType,
@@ -36,8 +41,6 @@ const assets = {
 }
 
 const defaultFeatures: EntryAccessFeatureFlags = {
-  customerFacebook: true,
-  customerGmail: true,
   customerGoogle: true,
   customerRegistration: true,
   workerRegistration: true,
@@ -59,13 +62,15 @@ export function EntryBrandAccessFlow({
   const features = useMemo(() => ({ ...defaultFeatures, ...featureFlags }), [featureFlags])
   const [step, setStep] = useState<EntryAccessStep>(initialStep)
   const [role, setRole] = useState<EntryRole>(initialRole)
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [recoveryIdentifier, setRecoveryIdentifier] = useState('')
   const [fullName, setFullName] = useState('')
   const [remember, setRemember] = useState(true)
   const [acceptedTerms, setAcceptedTerms] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [roleGateGreeting] = useState(() => selectRoleGateGreeting(new Date()))
 
   const go = useCallback((next: EntryAccessStep) => {
     setError(null)
@@ -85,18 +90,39 @@ export function EntryBrandAccessFlow({
     return () => clearTimeout(timeout)
   }, [go, splashDurationMs, step])
 
+  useEffect(() => {
+    let active = true
+    if (step !== 'login' || identifier) return () => {
+      active = false
+    }
+
+    void getRememberedAuthIdentifier().then((remembered) => {
+      if (active && remembered) setIdentifier(remembered)
+    })
+    return () => {
+      active = false
+    }
+  }, [identifier, step])
+
   const submitLogin = async () => {
     setError(null)
-    if (!email.trim() || !password) {
-      setError('Vui lòng nhập email và mật khẩu.')
+    const identifierError = validateIdentifierForRole(identifier, role)
+    const parsedIdentifier = parseAuthIdentifier(identifier)
+    if (identifierError || !parsedIdentifier || !password) {
+      setError(identifierError ?? 'Vui lòng nhập Email/SDT và mật khẩu.')
       return
     }
     setBusy(true)
     try {
-      const result = await actions.onEmailLogin({ email: email.trim(), password, role })
+      const result = await actions.onPasswordLogin({ identifier: parsedIdentifier.value, password, role })
       if (!result.success) {
         setError(result.error ?? 'Chưa thể đăng nhập. Vui lòng thử lại.')
         return
+      }
+      if (remember) {
+        await rememberAuthIdentifier(identifier)
+      } else {
+        await clearRememberedAuthIdentifier()
       }
       go('onboarding')
     } catch {
@@ -108,8 +134,9 @@ export function EntryBrandAccessFlow({
 
   const submitRegister = async () => {
     setError(null)
-    if (!fullName.trim() || !email.trim() || password.length < 8) {
-      setError('Kiểm tra họ tên, email và mật khẩu tối thiểu 8 ký tự.')
+    const identifierError = validateIdentifierForRole(identifier, role)
+    if (!fullName.trim() || identifierError || password.length < 8) {
+      setError(identifierError ?? 'Kiểm tra họ tên, Email/SDT và mật khẩu tối thiểu 8 ký tự.')
       return
     }
     if (!acceptedTerms) {
@@ -118,7 +145,7 @@ export function EntryBrandAccessFlow({
     }
     setBusy(true)
     try {
-      const result = await actions.onRegister({ email: email.trim(), fullName: fullName.trim(), password, role })
+      const result = await actions.onRegister({ identifier: identifier.trim(), fullName: fullName.trim(), password, role })
       if (!result.success) {
         setError(result.error ?? 'Chưa thể tạo tài khoản. Vui lòng thử lại.')
         return
@@ -131,12 +158,8 @@ export function EntryBrandAccessFlow({
     }
   }
 
-  const providerLogin = async (provider: ProviderBrand) => {
-    const action = provider === 'google'
-      ? actions.onGoogleLogin
-      : provider === 'gmail'
-        ? actions.onGmailLogin
-        : actions.onFacebookLogin
+  const providerLogin = async () => {
+    const action = actions.onGoogleLogin
     if (!action) {
       setError('Phương thức này chưa được cấu hình.')
       return
@@ -157,11 +180,35 @@ export function EntryBrandAccessFlow({
     }
   }
 
-  const forgotPassword = async () => {
+  const submitPasswordRecovery = async () => {
     setError(null)
-    const result = await actions.onForgotPassword?.(email)
-    if (result && !result.success) {
-      setError(result.error ?? 'Đặt lại mật khẩu chưa sẵn sàng.')
+    const primary = parseAuthIdentifier(identifier)
+    const primaryError = validateAuthIdentifier(identifier)
+    if (!primary || primaryError) {
+      setError(primaryError ?? 'Nhập Email/SDT đã đăng ký để tiếp tục.')
+      return
+    }
+
+    const recovery = parseAuthIdentifier(recoveryIdentifier)
+    const expectedRecoveryKind = primary.kind === 'email' ? 'phone' : 'email'
+    if (!recovery || recovery.kind !== expectedRecoveryKind) {
+      setError(expectedRecoveryKind === 'phone' ? 'Nhập SDT khôi phục đúng định dạng.' : 'Nhập email khôi phục đúng định dạng.')
+      return
+    }
+
+    setBusy(true)
+    try {
+      const result = await actions.onForgotPassword?.({
+        identifier: primary.value,
+        recoveryIdentifier: recovery.value,
+      })
+      if (result && !result.success) {
+        setError(result.error ?? 'Khôi phục mật khẩu chưa sẵn sàng.')
+      }
+    } catch {
+      setError('Không thể kết nối. Vui lòng thử lại.')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -185,21 +232,19 @@ export function EntryBrandAccessFlow({
       case 'splash':
         return <SplashScreen durationMs={splashDurationMs} />
       case 'role-gate':
-        return <RoleGateScreen onContinue={() => go('login')} onRoleChange={chooseRole} role={role} />
+        return <RoleGateScreen greeting={roleGateGreeting} onContinue={() => go('login')} onRoleChange={chooseRole} role={role} />
       case 'login':
         return (
           <LoginScreen
             busy={busy}
             canRegister={role === 'customer' ? features.customerRegistration : features.workerRegistration}
-            email={email}
+            identifier={identifier}
             error={error}
             features={features}
-            onFacebook={() => providerLogin('facebook')}
             onBack={() => go('role-gate')}
-            onEmailChange={setEmail}
-            onForgotPassword={forgotPassword}
-            onGmail={() => providerLogin('gmail')}
-            onGoogle={() => providerLogin('google')}
+            onIdentifierChange={setIdentifier}
+            onForgotPassword={() => go('password-recovery')}
+            onGoogle={providerLogin}
             onPasswordChange={setPassword}
             onRegister={() => go('register')}
             onRemember={() => setRemember((current) => !current)}
@@ -214,11 +259,11 @@ export function EntryBrandAccessFlow({
           <RegisterScreen
             acceptedTerms={acceptedTerms}
             busy={busy}
-            email={email}
+            identifier={identifier}
             error={error}
             fullName={fullName}
             onBack={() => go('login')}
-            onEmailChange={setEmail}
+            onIdentifierChange={setIdentifier}
             onFullNameChange={setFullName}
             onLogin={() => go('login')}
             onPasswordChange={setPassword}
@@ -226,6 +271,19 @@ export function EntryBrandAccessFlow({
             onToggleTerms={() => setAcceptedTerms((current) => !current)}
             password={password}
             role={role}
+          />
+        )
+      case 'password-recovery':
+        return (
+          <PasswordRecoveryScreen
+            busy={busy}
+            error={error}
+            identifier={identifier}
+            onBack={() => go('login')}
+            onIdentifierChange={setIdentifier}
+            onRecoveryIdentifierChange={setRecoveryIdentifier}
+            onSubmit={submitPasswordRecovery}
+            recoveryIdentifier={recoveryIdentifier}
           />
         )
       case 'onboarding':
@@ -401,23 +459,20 @@ function SplashFormulaAura() {
   )
 }
 
-function RoleGateScreen({ onContinue, onRoleChange, role }: { onContinue: () => void; onRoleChange: (role: EntryRole) => void; role: EntryRole }) {
+function RoleGateScreen({ greeting, onContinue, onRoleChange, role }: { greeting: RoleGateGreeting; onContinue: () => void; onRoleChange: (role: EntryRole) => void; role: EntryRole }) {
   return (
     <Screen>
       <View style={styles.screen} testID="auth-role-gate-content">
         <View style={styles.gateHead}>
-          <Text style={[styles.h1, { marginTop: 0 }]}>Bạn đang cần điều gì hôm nay?</Text>
-          <Text style={[styles.lead, { marginTop: 7 }]}>Chọn vai trò để Kael mở đúng trải nghiệm cho bạn.</Text>
+          <Text style={[styles.h1, styles.gateGreetingTitle, { marginTop: 0 }]} testID="auth-role-gate-greeting">{greeting.headline}</Text>
+          <Text style={[styles.lead, { marginTop: 7 }]} testID="auth-role-gate-greeting-lead">{greeting.lead}</Text>
         </View>
-        <GlassPanel style={styles.signatureRail}>
-          <View style={styles.sparkTile}><EntryIcon color={entryTheme.color.mint.mint700} name="spark" size={16} /></View>
-          <Text style={styles.signatureText}>Đúng người, đúng việc, đúng lúc nhà cần.</Text>
-        </GlassPanel>
+        <RoleGateGreetingRail signature={greeting.signature} />
         <View style={styles.roleList}>
           <RoleCard
             badge="Phổ biến"
             description="Đặt dịch vụ, chat cùng Kael và theo dõi tiến độ."
-            meta="Google · Gmail · Facebook"
+            meta="Google · Email/SDT"
             onPress={() => onRoleChange('customer')}
             selected={role === 'customer'}
             source={assets.customerHome}
@@ -440,6 +495,20 @@ function RoleGateScreen({ onContinue, onRoleChange, role }: { onContinue: () => 
         </View>
       </View>
     </Screen>
+  )
+}
+
+function RoleGateGreetingRail({ signature }: { signature: string }) {
+  const { reduceTransparency } = useEntryAccessibility()
+
+  return (
+    <View style={styles.signatureRailShell} testID="auth-role-gate-signature-shell">
+      {!reduceTransparency ? <View pointerEvents="none" style={styles.signatureRailAura} testID="auth-role-gate-signature-aura" /> : null}
+      <GlassPanel style={styles.signatureRail} testID="auth-role-gate-signature-rail">
+        <View style={styles.sparkTile}><EntryIcon color={entryTheme.color.mint.mint700} name="spark" size={16} /></View>
+        <Text style={styles.signatureText} testID="auth-role-gate-greeting-signature">{signature}</Text>
+      </GlassPanel>
+    </View>
   )
 }
 
@@ -499,14 +568,12 @@ function FormHeader({ lead, title }: { lead: string; title: string }) {
 function LoginScreen(props: {
   busy: boolean
   canRegister: boolean
-  email: string
+  identifier: string
   error: string | null
   features: EntryAccessFeatureFlags
-  onFacebook: () => void
   onBack: () => void
-  onEmailChange: (value: string) => void
+  onIdentifierChange: (value: string) => void
   onForgotPassword: () => void
-  onGmail: () => void
   onGoogle: () => void
   onPasswordChange: (value: string) => void
   onRegister: () => void
@@ -516,7 +583,8 @@ function LoginScreen(props: {
   remember: boolean
   role: EntryRole
 }) {
-  const showProviders = props.role === 'customer' && (props.features.customerGoogle || props.features.customerGmail || props.features.customerFacebook)
+  const identifierProps = identifierFieldProps(props.identifier, props.role)
+  const showProviders = props.role === 'customer' && props.features.customerGoogle
   return (
     <Screen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
@@ -524,11 +592,11 @@ function LoginScreen(props: {
           <AuthTopBar onBack={props.onBack} title="Đăng nhập" />
           <FormHeader lead="Tiếp tục nơi bạn đã dừng cùng Kael." title="Chào mừng\ntrở lại." />
           <NativeSafeGlassPanel style={styles.formPanel} testID="auth-login-1-4">
-            <EntryTextField icon="mail" keyboardType="email-address" label="Email" onChangeText={props.onEmailChange} placeholder="email@example.com" testID="auth-login-email-input" textContentType="emailAddress" value={props.email} />
+            <EntryTextField {...identifierProps} onChangeText={props.onIdentifierChange} testID="auth-login-email-input" value={props.identifier} />
             <EntryTextField icon="lock" label="Mật khẩu" onChangeText={props.onPasswordChange} placeholder="Nhập mật khẩu" secureTextEntry testID="auth-login-password-input" textContentType="password" value={props.password} />
             <View style={styles.formUtils}>
               <CheckRow checked={props.remember} label="Ghi nhớ tôi" onPress={props.onRemember} testID="auth-login-remember" />
-              <Pressable hitSlop={8} onPress={props.onForgotPassword} testID="auth-customer-forgot-password"><Text style={styles.link}>Quên mật khẩu?</Text></Pressable>
+              {props.role === 'customer' ? <Pressable hitSlop={8} onPress={props.onForgotPassword} testID="auth-customer-forgot-password"><Text style={styles.link}>Quên mật khẩu?</Text></Pressable> : <View />}
             </View>
             {props.error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{props.error}</Text> : null}
             <PrimaryButton disabled={props.busy} label={props.busy ? 'Đang xử lý…' : 'Đăng nhập'} onPress={props.onSubmit} testID="auth-login-submit" />
@@ -536,9 +604,7 @@ function LoginScreen(props: {
               <>
                 <Divider label="hoặc tiếp tục với" />
                 <View style={styles.providerRow}>
-                  {props.features.customerGoogle ? <ProviderButton label="Google" onPress={props.onGoogle} provider="google" testID="auth-client-google-primary" /> : null}
-                  {props.features.customerGmail ? <ProviderButton label="Gmail" onPress={props.onGmail} provider="gmail" testID="auth-client-gmail-secondary" /> : null}
-                  {props.features.customerFacebook ? <ProviderButton label="Facebook" onPress={props.onFacebook} provider="facebook" testID="auth-client-facebook-secondary" /> : null}
+                  {props.features.customerGoogle ? <ProviderButton label="Google" onPress={props.onGoogle} testID="auth-client-google-primary" /> : null}
                 </View>
               </>
             ) : null}
@@ -553,11 +619,11 @@ function LoginScreen(props: {
 function RegisterScreen(props: {
   acceptedTerms: boolean
   busy: boolean
-  email: string
+  identifier: string
   error: string | null
   fullName: string
   onBack: () => void
-  onEmailChange: (value: string) => void
+  onIdentifierChange: (value: string) => void
   onFullNameChange: (value: string) => void
   onLogin: () => void
   onPasswordChange: (value: string) => void
@@ -566,6 +632,7 @@ function RegisterScreen(props: {
   password: string
   role: EntryRole
 }) {
+  const identifierProps = identifierFieldProps(props.identifier, props.role)
   return (
     <Screen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
@@ -574,7 +641,7 @@ function RegisterScreen(props: {
           <FormHeader lead={props.role === 'customer' ? 'Chỉ mất chưa đến một phút.' : 'Tạo tài khoản trước khi gửi hồ sơ xác thực.'} title={props.role === 'customer' ? 'Tạo tài khoản\ncủa bạn.' : 'Tạo hồ sơ\nđối tác.'} />
           <NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">
             <EntryTextField autoCapitalize="words" icon="user" label="Họ và tên" onChangeText={props.onFullNameChange} placeholder="Nguyễn Hoàng Minh" testID="auth-register-name-input" textContentType="name" value={props.fullName} />
-            <EntryTextField icon="mail" keyboardType="email-address" label="Email" onChangeText={props.onEmailChange} placeholder="email@example.com" testID="auth-register-email-input" textContentType="emailAddress" value={props.email} />
+            <EntryTextField {...identifierProps} onChangeText={props.onIdentifierChange} testID="auth-register-email-input" value={props.identifier} />
             <EntryTextField icon="lock" label="Mật khẩu" onChangeText={props.onPasswordChange} placeholder="Tối thiểu 8 ký tự" secureTextEntry testID="auth-register-password-input" textContentType="newPassword" value={props.password} />
             <View style={styles.termsRow}>
               <CheckRow checked={props.acceptedTerms} label="Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của NestScout." onPress={props.onToggleTerms} testID="auth-register-terms" />
@@ -596,21 +663,6 @@ function Divider({ label }: { label: string }) {
       <Text style={styles.dividerText}>{label}</Text>
       <View style={styles.dividerLine} />
     </View>
-  )
-}
-
-function ProviderButton({ label, onPress, provider, testID }: { label: string; onPress: () => void; provider: ProviderBrand; testID: string }) {
-  return (
-    <Pressable
-      accessibilityLabel={`Tiếp tục với ${label}`}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }: { pressed: boolean }) => [styles.providerButton, pressed && styles.pressed]}
-      testID={testID}
-    >
-      <View style={styles.providerMark}><ProviderBrandIcon provider={provider} size={18} /></View>
-      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={styles.providerLabel}>{label}</Text>
-    </Pressable>
   )
 }
 
@@ -670,6 +722,7 @@ const styles = StyleSheet.create({
   formUtils: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9, marginHorizontal: 2, marginTop: -2, minHeight: 28 },
   gateBottom: { marginTop: 'auto', paddingTop: 12 },
   gateFoot: { marginTop: 10, textAlign: 'center' },
+  gateGreetingTitle: { fontSize: 29, lineHeight: 35 },
   gateHead: { paddingHorizontal: 4, paddingTop: 8 },
   h1: { ...entryTheme.typography.h1, color: entryTheme.color.text.strong },
   h3: { ...entryTheme.typography.h3, color: entryTheme.color.text.strong },
@@ -687,9 +740,6 @@ const styles = StyleSheet.create({
   pagerActive: { backgroundColor: entryTheme.color.mint.mint600, borderRadius: 999, height: 5, width: 18 },
   pagerDot: { backgroundColor: '#BDD8D3', borderRadius: 999, height: 5, width: 5 },
   pressed: { opacity: 0.78 },
-  providerButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.90)', borderColor: entryTheme.color.surface.stroke, borderRadius: 18, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 6, height: 46, justifyContent: 'center', minWidth: 0, paddingHorizontal: 6 },
-  providerLabel: { color: entryTheme.color.text.strong, flexShrink: 1, fontSize: 11, fontWeight: '700', letterSpacing: 0 },
-  providerMark: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 8, height: 22, justifyContent: 'center', width: 22, ...entryTheme.shadow.soft },
   providerRow: { flexDirection: 'row', gap: 8 },
   roleArrow: { alignItems: 'center', backgroundColor: 'rgba(230,251,243,0.76)', borderRadius: 12, height: 24, justifyContent: 'center', width: 24 },
   roleBadge: { backgroundColor: entryTheme.color.mint.mint50, borderColor: entryTheme.color.surface.strokeStrong, borderRadius: 999, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
@@ -727,7 +777,9 @@ const styles = StyleSheet.create({
   runtimeMarkerText: { color: '#F7FFFB', fontSize: 10, lineHeight: 14, textAlign: 'center' },
   safe: { flex: 1 },
   screen: { flex: 1, paddingBottom: 18, paddingHorizontal: entryTheme.spacing.screenX, paddingTop: 8 },
-  signatureRail: { alignItems: 'center', borderRadius: 19, flexDirection: 'row', gap: 9, marginBottom: 14, marginTop: 7, minHeight: 42, paddingHorizontal: 13, paddingVertical: 10 },
+  signatureRail: { alignItems: 'center', borderRadius: 19, flexDirection: 'row', gap: 9, minHeight: 42, paddingHorizontal: 13, paddingVertical: 10 },
+  signatureRailAura: { backgroundColor: 'transparent', borderColor: 'rgba(64,205,190,0.36)', borderRadius: 21, borderWidth: 1, bottom: -2, boxShadow: '0px 0px 8px rgba(64,205,190,0.12)', left: -2, position: 'absolute', right: -2, top: -2 },
+  signatureRailShell: { marginBottom: 14, marginTop: 18, position: 'relative' },
   signatureText: { color: entryTheme.color.mint.mint800, flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   sparkTile: { alignItems: 'center', backgroundColor: entryTheme.color.mint.mint50, borderRadius: 10, height: 23, justifyContent: 'center', width: 23 },
   splashBrandLockup: { alignItems: 'center', alignSelf: 'stretch', marginTop: 28 },

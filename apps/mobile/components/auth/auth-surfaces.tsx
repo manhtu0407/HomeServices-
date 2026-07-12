@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { EntryBrandAccessFlow } from './entry-access/EntryBrandAccessFlow'
-import type { EmailLoginInput, EntryAccessStep, EntryRole, RegistrationInput } from './entry-access/types'
+import type { EntryAccessStep, EntryRole, PasswordLoginInput, RegistrationInput } from './entry-access/types'
 import { useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 
@@ -25,8 +25,6 @@ const AUTH_ENTRY_SOURCE_OF_TRUTH_MARKERS = [
   'auth-login-role-worker',
   'auth-role-gate-content',
   'auth-client-google-primary',
-  'auth-client-gmail-secondary',
-  'auth-client-facebook-secondary',
   'auth-worker-no-provider-login',
   'submitWorkerApplication',
 ].join('|')
@@ -52,6 +50,7 @@ function resolveEntryRole(value: EntryParam): EntryRole {
 }
 
 const ENTRY_AUTH_COPY = {
+  recoveryVerificationPending: 'Khôi phục mật khẩu sẽ hoàn tất sau khi kênh liên hệ đối diện được xác minh.',
   accountNotReady: 'T\u00e0i kho\u1ea3n ch\u01b0a s\u1eb5n s\u00e0ng \u0111\u1ec3 v\u00e0o \u1ee9ng d\u1ee5ng. Vui l\u00f2ng ho\u00e0n t\u1ea5t \u0111\u0103ng nh\u1eadp tr\u01b0\u1edbc.',
   emailConfirmation: 'Ki\u1ec3m tra email \u0111\u1ec3 x\u00e1c nh\u1eadn t\u00e0i kho\u1ea3n tr\u01b0\u1edbc khi ti\u1ebfp t\u1ee5c.',
   facebookPending: 'Facebook ch\u01b0a s\u1eb5n s\u00e0ng tr\u00ean b\u1ea3n d\u1ef1ng n\u00e0y.',
@@ -102,37 +101,29 @@ export function LoginRoleSurface() {
         error: ENTRY_AUTH_COPY.accountNotReady,
       }
     },
-    onEmailLogin: async ({ email, password }: EmailLoginInput) => auth.signInWithPassword(email, password),
-    onFacebookLogin: async () => ({
-      success: false,
-      error: ENTRY_AUTH_COPY.facebookPending,
-    }),
+    onPasswordLogin: async ({ identifier, password }: PasswordLoginInput) => auth.signInWithPassword(identifier, password),
     onForgotPassword: async () => ({
       success: false,
-      error: ENTRY_AUTH_COPY.forgotPasswordPending,
-    }),
-    onGmailLogin: async () => ({
-      success: false,
-      error: ENTRY_AUTH_COPY.gmailPending,
+      error: ENTRY_AUTH_COPY.recoveryVerificationPending,
     }),
     onGoogleLogin: auth.signInWithGoogle,
-    onRegister: async ({ email, fullName, password, role }: RegistrationInput) => {
+    onRegister: async ({ identifier, fullName, password, role }: RegistrationInput) => {
       if (role === 'worker') {
-        const result = await auth.submitWorkerApplication({ contact: email, language })
+        const result = await auth.submitWorkerApplication({ contact: identifier, language })
         return result.success
           ? { success: true }
           : { success: false, error: result.error }
       }
 
-      const result = await auth.signUpWithEmail({
+      const result = await auth.signUpWithIdentifier({
         displayName: fullName,
-        email,
+        identifier,
         password,
       })
       if (result.success && result.needsConfirmation) {
         return {
           success: false,
-          error: ENTRY_AUTH_COPY.emailConfirmation,
+          error: 'Kiểm tra kênh liên hệ để xác nhận tài khoản trước khi tiếp tục.',
         }
       }
       return result.success
@@ -145,8 +136,6 @@ export function LoginRoleSurface() {
     <EntryBrandAccessFlow
       actions={actions}
       featureFlags={{
-        customerFacebook: true,
-        customerGmail: true,
         customerGoogle: true,
         customerRegistration: true,
         workerRegistration: true,

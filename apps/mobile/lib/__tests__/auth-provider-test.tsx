@@ -73,16 +73,16 @@ function PasswordHarness() {
 }
 
 function SignupHarness() {
-  const { signUpWithEmail } = useAuth()
+  const { signUpWithIdentifier } = useAuth()
   const [result, setResult] = useState('idle')
 
   return (
     <>
       <Pressable
         onPress={() => {
-          void signUpWithEmail({
+          void signUpWithIdentifier({
             displayName: 'Tu Phan',
-            email: 'TU@example.com',
+            identifier: 'TU@example.com',
             password: 'secret123',
           }).then((nextResult) => setResult(nextResult.success ? 'success' : nextResult.error ?? 'error'))
         }}
@@ -91,6 +91,45 @@ function SignupHarness() {
         <Text>signup</Text>
       </Pressable>
       <Text testID="signup-result">{result}</Text>
+    </>
+  )
+}
+
+function IdentifierAuthHarness() {
+  const { signInWithPassword, signUpWithIdentifier } = useAuth()
+  const [result, setResult] = useState('idle')
+
+  return (
+    <>
+      <Pressable
+        onPress={() => {
+          void signInWithPassword('090 123 4567', 'secret123').then((nextResult) => setResult(nextResult.success ? 'login-success' : nextResult.error ?? 'error'))
+        }}
+        testID="signin-phone"
+      >
+        <Text>sign in phone</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          void signUpWithIdentifier({
+            displayName: 'Tu Phan',
+            identifier: '0912345678',
+            password: 'secret123',
+          }).then((nextResult) => setResult(nextResult.success ? 'signup-success' : nextResult.error ?? 'error'))
+        }}
+        testID="signup-phone"
+      >
+        <Text>sign up phone</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          void signInWithPassword('0112345678', 'secret123').then((nextResult) => setResult(nextResult.success ? 'invalid-success' : nextResult.error ?? 'error'))
+        }}
+        testID="signin-invalid-phone"
+      >
+        <Text>invalid phone</Text>
+      </Pressable>
+      <Text testID="identifier-auth-result">{result}</Text>
     </>
   )
 }
@@ -163,7 +202,7 @@ describe('AuthProvider password update', () => {
   })
 })
 
-describe('AuthProvider email signup', () => {
+describe('AuthProvider Email/SDT signup', () => {
   it('creates a customer-safe email signup without client-controlled role metadata', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: null } })
 
@@ -190,5 +229,60 @@ describe('AuthProvider email signup', () => {
     })
     expect(JSON.stringify(mockSignUp.mock.calls[0][0])).not.toContain('role')
     expect(mockMaybeSingle).toHaveBeenCalled()
+  })
+})
+
+describe('AuthProvider Email/SDT credentials', () => {
+  it('normalizes Vietnamese phone credentials for Supabase sign-in and sign-up', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+
+    render(
+      <AuthProvider>
+        <IdentifierAuthHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signin-phone'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('login-success')
+    })
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({
+      phone: '+84901234567',
+      password: 'secret123',
+    })
+
+    fireEvent.press(screen.getByTestId('signup-phone'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('signup-success')
+    })
+    expect(mockSignUp).toHaveBeenCalledWith({
+      phone: '+84912345678',
+      password: 'secret123',
+      options: {
+        data: {
+          full_name: 'Tu Phan',
+          name: 'Tu Phan',
+        },
+      },
+    })
+  })
+
+  it('rejects a malformed Vietnamese phone number before Supabase is called', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+
+    render(
+      <AuthProvider>
+        <IdentifierAuthHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signin-invalid-phone'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('SDT Việt Nam chưa đúng định dạng.')
+    })
+    expect(mockSignInWithPassword).not.toHaveBeenCalled()
   })
 })

@@ -6,8 +6,8 @@ const mockReplace = jest.fn()
 const mockRefreshProfile = jest.fn(async () => null)
 const mockEnterGuestMode = jest.fn()
 const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
-const mockSignInWithPassword = jest.fn(async () => ({ success: false, error: 'Không thể đăng nhập' }))
-const mockSignUpWithEmail = jest.fn(async () => ({ success: true, needsConfirmation: true }))
+const mockSignInWithPassword = jest.fn(async (): Promise<{ success: boolean; error?: string }> => ({ success: false, error: 'Không thể đăng nhập' }))
+const mockSignUpWithIdentifier = jest.fn(async () => ({ success: true, needsConfirmation: true }))
 const mockSignOut = jest.fn(async () => undefined)
 const mockSubmitWorkerApplication = jest.fn(async () => ({ success: true }))
 const mockUpdateCustomerProfile = jest.fn(async () => ({ success: true }))
@@ -41,13 +41,28 @@ jest.mock('@/lib/auth-provider', () => ({
     session: null,
     signInWithGoogle: mockSignInWithGoogle,
     signInWithPassword: mockSignInWithPassword,
-    signUpWithEmail: mockSignUpWithEmail,
+    signUpWithIdentifier: mockSignUpWithIdentifier,
     signOut: mockSignOut,
     submitWorkerApplication: mockSubmitWorkerApplication,
     updateCustomerProfile: mockUpdateCustomerProfile,
     ...mockAuthOverride,
   }),
 }))
+
+jest.mock('@/lib/remembered-auth-identifier', () => ({
+  clearRememberedAuthIdentifier: jest.fn(async () => undefined),
+  getRememberedAuthIdentifier: jest.fn(async () => null),
+  rememberAuthIdentifier: jest.fn(async () => undefined),
+}))
+
+const mockedRememberedIdentifier = jest.requireMock('@/lib/remembered-auth-identifier') as {
+  clearRememberedAuthIdentifier: jest.Mock
+  getRememberedAuthIdentifier: jest.Mock
+  rememberAuthIdentifier: jest.Mock
+}
+const mockClearRememberedAuthIdentifier = mockedRememberedIdentifier.clearRememberedAuthIdentifier
+const mockGetRememberedAuthIdentifier = mockedRememberedIdentifier.getRememberedAuthIdentifier
+const mockRememberAuthIdentifier = mockedRememberedIdentifier.rememberAuthIdentifier
 
 jest.mock('@/lib/app-language', () => {
   const actual = jest.requireActual('@/lib/app-language')
@@ -79,6 +94,7 @@ beforeEach(() => {
   mockAuthOverride = {}
   mockRouteParams = {}
   jest.clearAllMocks()
+  mockGetRememberedAuthIdentifier.mockResolvedValue(null)
 })
 
 afterEach(() => {
@@ -106,22 +122,38 @@ describe('LoginRoleSurface', () => {
     expect(existsSync(nativeAdapterPath)).toBe(false)
   })
 
-  it('keeps login input shells wired to focus the native TextInput on iOS taps', () => {
+  it('leaves login TextInputs as the native touch responder instead of wrapping them in a press handler', () => {
     const fieldSource = readFileSync(resolve(__dirname, '../entry-access/components/fields.tsx'), 'utf-8')
-    const primitiveSource = readFileSync(resolve(__dirname, '../../ui/kael-primitives.tsx'), 'utf-8')
     mockRouteParams = { stage: '1.4' }
 
     render(<LoginRoleSurface />)
 
     expect(screen.getByTestId('auth-login-email-input-shell')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-login-password-input-shell')).toBeOnTheScreen()
-    expect(fieldSource).toContain('inputRef.current?.focus()')
-    expect(fieldSource).toContain('ref={inputRef}')
-    expect(fieldSource).toContain('onPressIn={focusInput}')
+    expect(fieldSource).toContain('<View style={[styles.field, focused && styles.fieldFocused]} testID={shellTestID}>')
+    expect(fieldSource).not.toContain('inputRef.current?.focus()')
+    expect(fieldSource).not.toContain('onPressIn={focusInput}')
     expect(fieldSource).toContain('`${testID}-shell`')
-    expect(primitiveSource).toContain('ref?: Ref<TextInput>')
-    expect(primitiveSource).toContain('export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps)')
-    expect(primitiveSource).not.toContain('forwardRef')
+  })
+
+  it('keeps the Email/SDT input stable while a customer starts entering a Vietnamese phone number', () => {
+    mockRouteParams = { stage: '1.4' }
+    render(<LoginRoleSurface />)
+
+    const identifierInput = screen.getByTestId('auth-login-email-input')
+    expect(identifierInput).toHaveProp('keyboardType', 'default')
+    expect(identifierInput).toHaveProp('textContentType', 'username')
+
+    fireEvent.changeText(identifierInput, '090')
+
+    expect(screen.getByTestId('auth-login-email-input')).toHaveProp('keyboardType', 'default')
+    expect(screen.getByTestId('auth-login-email-input')).toHaveProp('textContentType', 'username')
+    expect(screen.getByTestId('auth-login-email-input-icon-rail')).toHaveStyle({
+      alignItems: 'center',
+      height: 30,
+      justifyContent: 'center',
+      width: 30,
+    })
   })
 
   it('keeps auth form inputs outside native glass containers on iOS', () => {
@@ -227,26 +259,33 @@ describe('LoginRoleSurface', () => {
     expect(mockEnterGuestMode).not.toHaveBeenCalled()
   })
 
-  it('keeps customer providers honest: Google calls real auth, Gmail and Facebook stay pending', async () => {
+  it('keeps the time-aware role greeting stable while a role is selected', () => {
+    mockRouteParams = { stage: '1.3' }
+    render(<LoginRoleSurface />)
+
+    const headline = screen.getByTestId('auth-role-gate-greeting').props.children as string
+    const lead = screen.getByTestId('auth-role-gate-greeting-lead').props.children as string
+    const signature = screen.getByTestId('auth-role-gate-greeting-signature').props.children as string
+
+    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveStyle({ fontSize: 29, lineHeight: 35 })
+    expect(screen.getByTestId('auth-role-gate-signature-shell')).toHaveStyle({ marginTop: 18 })
+    expect(screen.getByTestId('auth-role-gate-signature-aura')).toHaveStyle({ borderWidth: 1, bottom: -2, left: -2, right: -2, top: -2 })
+
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
+
+    expect(screen.getByTestId('auth-role-gate-greeting')).toHaveTextContent(headline)
+    expect(screen.getByTestId('auth-role-gate-greeting-lead')).toHaveTextContent(lead)
+    expect(screen.getByTestId('auth-role-gate-greeting-signature')).toHaveTextContent(signature)
+  })
+
+  it('keeps Google as the only customer provider', async () => {
     mockRouteParams = { stage: '1.4' }
     render(<LoginRoleSurface />)
 
     expect(screen.getByTestId('auth-client-google-primary')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-client-gmail-secondary')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-client-facebook-secondary')).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('auth-client-gmail-secondary'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Gmail chưa sẵn sàng trên bản dựng này.')).toBeOnTheScreen()
-    })
-    expect(mockSignInWithGoogle).not.toHaveBeenCalled()
-
-    fireEvent.press(screen.getByTestId('auth-client-facebook-secondary'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Facebook chưa sẵn sàng trên bản dựng này.')).toBeOnTheScreen()
-    })
+    expect(screen.queryByTestId('auth-client-gmail-secondary')).toBeNull()
+    expect(screen.queryByTestId('auth-client-facebook-secondary')).toBeNull()
 
     fireEvent.press(screen.getByTestId('auth-client-google-primary'))
 
@@ -256,43 +295,79 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
   })
 
-  it('submits customer email login through the existing auth provider boundary', async () => {
+  it('accepts a Vietnamese mobile number for customer login, remembers the latest identifier, and sends it as E.164', async () => {
     mockRouteParams = { stage: '1.4' }
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true })
     render(<LoginRoleSurface />)
 
-    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'tu@example.com')
+    expect(screen.getByText('Email/SDT')).toBeOnTheScreen()
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), '090 123 4567')
     fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-login-submit'))
 
     await waitFor(() => {
-      expect(mockSignInWithPassword).toHaveBeenCalledWith('tu@example.com', 'secret123')
+      expect(mockSignInWithPassword).toHaveBeenCalledWith('+84901234567', 'secret123')
     })
-    expect(screen.getByText('Không thể đăng nhập')).toBeOnTheScreen()
+    expect(mockRememberAuthIdentifier).toHaveBeenCalledWith('090 123 4567')
+    expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
+  })
 
-    fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
+  it('prefills the latest remembered identifier when the login screen reopens', async () => {
+    mockRouteParams = { stage: '1.4' }
+    mockGetRememberedAuthIdentifier.mockResolvedValueOnce('tu@example.com')
+    render(<LoginRoleSurface />)
 
     await waitFor(() => {
-      expect(screen.getByText('Đặt lại mật khẩu chưa sẵn sàng.')).toBeOnTheScreen()
+      expect(screen.getByTestId('auth-login-email-input')).toHaveProp('value', 'tu@example.com')
     })
   })
 
-  it('holds customer email registration at confirmation instead of faking an authenticated session', async () => {
+  it('blocks malformed customer identifiers before the provider is called', () => {
+    mockRouteParams = { stage: '1.4' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), '0112345678')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    expect(screen.getByText('SDT Việt Nam chưa đúng định dạng.')).toBeOnTheScreen()
+    expect(mockSignInWithPassword).not.toHaveBeenCalled()
+  })
+
+  it('asks for the opposite recovery channel without pretending a reset was sent', async () => {
+    mockRouteParams = { stage: '1.4' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
+
+    expect(screen.getByTestId('auth-password-recovery-panel')).toBeOnTheScreen()
+    fireEvent.changeText(screen.getByTestId('auth-recovery-identifier-input'), 'tu@example.com')
+    expect(screen.getByText('SDT khôi phục')).toBeOnTheScreen()
+    fireEvent.changeText(screen.getByTestId('auth-recovery-secondary-input'), '090 123 4567')
+    fireEvent.press(screen.getByTestId('auth-recovery-submit'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Khôi phục mật khẩu sẽ hoàn tất sau khi kênh liên hệ đối diện được xác minh.')).toBeOnTheScreen()
+    })
+  })
+
+  it('accepts a customer email or Vietnamese mobile number during registration', async () => {
     mockRouteParams = { stage: '1.5' }
     render(<LoginRoleSurface />)
 
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
-    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), '0912345678')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
     await waitFor(() => {
-      expect(mockSignUpWithEmail).toHaveBeenCalledWith({
+      expect(mockSignUpWithIdentifier).toHaveBeenCalledWith({
         displayName: 'Tu Phan',
-        email: 'tu@example.com',
+        identifier: '0912345678',
         password: 'secret123',
       })
     })
-    expect(screen.getByText('Kiểm tra email để xác nhận tài khoản trước khi tiếp tục.')).toBeOnTheScreen()
+    expect(screen.getByText('Kiểm tra kênh liên hệ để xác nhận tài khoản trước khi tiếp tục.')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
   })
 
@@ -319,7 +394,7 @@ describe('LoginRoleSurface', () => {
         language: 'vi',
       })
     })
-    expect(mockSignUpWithEmail).not.toHaveBeenCalled()
+    expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
     expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
 
     fireEvent.press(screen.getByTestId('auth-onboarding-start'))
