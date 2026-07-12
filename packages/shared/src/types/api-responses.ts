@@ -428,16 +428,9 @@ export type BroadcastListResponse = {
 export type AcceptBroadcastResponse = {
   job_id: string
   status: JobStatus
-  full_address: {
-    building: string | null
-    unit: string | null
-    floor: string | null
-    district: string | null
-  }
-  address_access: AddressAccessView
-  anti_fraud?: Record<string, unknown>
-  worker_challenge?: Record<string, unknown>
-  customer_card?: Record<string, unknown>
+  candidate_id: string
+  awaiting_customer_confirmation: true
+  already_applied: boolean
 }
 
 export type WorkerKaelClarifyResponse = {

@@ -73,8 +73,6 @@ import {
   confirmSearchToSnapshot,
   createJobResponseToSnapshot,
   dealToSnapshot,
-  formatReleasedFullAddress,
-  formatStoredJobAddress,
   jobDetailToSnapshot,
   workerBroadcastToSnapshot,
   workerJobToSnapshot,
@@ -626,22 +624,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       if (isStaleBroadcastError(accepted.code)) dispatch({ type: 'mark_remote_broadcast_expired' })
       return setRemoteError(accepted.error)
     }
-    setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
-      ? { ...current, profile: { ...current.profile, is_available: false } }
-      : current)
 
     const existing = stateRef.current.deal
     if (existing?.broadcast) {
-      const addressAccess = accepted.data.address_access
-      const fullAddressLabel = addressAccess.exact_unit_released
-        ? formatReleasedFullAddress(accepted.data.full_address)
-        : ''
-      const stagedAddressLabel = formatStoredJobAddress({
-        building: accepted.data.full_address.building,
-        floor: null,
-        unit: null,
-        district: accepted.data.full_address.district,
-      })
       dispatch({
         type: 'hydrate_remote_job',
         workerGate: 'remote_backend',
@@ -649,14 +634,19 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
           ...dealToSnapshot(existing),
           backendStatus: accepted.data.status,
           status: toLocalDealStatus(accepted.data.status),
-          addressLabel: fullAddressLabel || stagedAddressLabel || existing.draft.addressLabel,
+          addressLabel: existing.broadcast.generalArea || existing.draft.districtLabel || existing.draft.addressLabel,
           broadcast: {
             ...existing.broadcast,
             status: 'accepted',
-            generalArea: stagedAddressLabel || existing.broadcast.generalArea,
-            fullAddressVisible: Boolean(fullAddressLabel),
-            fullAddressLabel: fullAddressLabel || null,
-            addressAccess,
+            fullAddressVisible: false,
+            fullAddressLabel: null,
+            addressAccess: null,
+            safe_metadata: {
+              ...existing.broadcast.safe_metadata,
+              candidate_id: accepted.data.candidate_id,
+              awaiting_customer_confirmation: accepted.data.awaiting_customer_confirmation,
+              already_applied: accepted.data.already_applied,
+            },
           },
         },
       })
@@ -664,7 +654,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       await refreshCurrentJob()
     }
     return true
-  }, [refreshCurrentJob, sessionUserId, setRemoteError])
+  }, [refreshCurrentJob, setRemoteError])
 
   const workerDeclineBroadcast = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
