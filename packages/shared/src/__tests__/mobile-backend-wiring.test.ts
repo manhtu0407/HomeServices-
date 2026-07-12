@@ -122,6 +122,42 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(broadcastService).toContain('.eq("is_available", true)')
   })
 
+  it('keeps worker broadcast acceptance aligned with the candidate-pending Edge contract and address privacy', () => {
+    const provider = readFrontendWorkflowLayer()
+    const edgeMatching = readEdgeShared('services/matching.service.ts')
+    const sharedResponses = readRoot('packages/shared/src/types/api-responses.ts')
+    const mobileWorkerTypes = read('lib/api-types/worker.ts')
+    const readAcceptContract = (source: string) => {
+      const start = source.indexOf('export type AcceptBroadcastResponse = {')
+      const end = source.indexOf('\n}', start)
+      return source.slice(start, end + 2)
+    }
+    const workerAcceptStart = provider.indexOf('const workerAcceptBroadcast = useCallback')
+    const workerAcceptEnd = provider.indexOf('const workerDeclineBroadcast = useCallback', workerAcceptStart)
+    const workerAccept = provider.slice(workerAcceptStart, workerAcceptEnd)
+
+    expect(workerAcceptStart).toBeGreaterThanOrEqual(0)
+    expect(workerAcceptEnd).toBeGreaterThan(workerAcceptStart)
+    expect(edgeMatching).toContain('awaiting_customer_confirmation: true as const')
+
+    for (const contract of [readAcceptContract(sharedResponses), readAcceptContract(mobileWorkerTypes)]) {
+      expect(contract).toContain('candidate_id: string')
+      expect(contract).toContain('awaiting_customer_confirmation: true')
+      expect(contract).toContain('already_applied: boolean')
+      expect(contract).not.toContain('full_address')
+      expect(contract).not.toContain('address_access')
+    }
+
+    expect(workerAccept).toContain('accepted.data.candidate_id')
+    expect(workerAccept).toContain('accepted.data.awaiting_customer_confirmation')
+    expect(workerAccept).toContain('accepted.data.already_applied')
+    expect(workerAccept).toContain('fullAddressVisible: false')
+    expect(workerAccept).toContain('fullAddressLabel: null')
+    expect(workerAccept).not.toContain('accepted.data.full_address')
+    expect(workerAccept).not.toContain('accepted.data.address_access')
+    expect(workerAccept).not.toContain('is_available: false')
+  })
+
   it('preserves HTTP error status when Edge responses are not JSON', () => {
     const api = read('lib/api.ts')
 

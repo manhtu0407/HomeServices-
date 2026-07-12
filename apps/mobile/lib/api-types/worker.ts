@@ -125,13 +125,9 @@ export type AvailabilityToggleResponse = WorkerAvailabilityResponse
 export type AcceptBroadcastResponse = {
   job_id: string
   status: JobStatus
-  full_address: {
-    building: string | null
-    unit: string | null
-    floor: string | null
-    district: string | null
-  }
-  address_access: AddressAccessView
+  candidate_id: string
+  awaiting_customer_confirmation: true
+  already_applied: boolean
 }
 
 export type DeclineBroadcastResponse = {
