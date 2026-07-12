@@ -4,6 +4,22 @@ import { isAbsolute, resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
 import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins'
 
+type ReleaseAuthConfigModule = {
+  assertReleaseAuthConfig: (input: {
+    isEasBuild: boolean
+    supabasePublishableKey: string
+    supabaseUrl: string
+  }) => void
+  resolveMobileEnvFiles: (input: {
+    configDir: string
+    explicitEnvFiles: string[]
+    isEasBuild: boolean
+    repoRoot: string
+  }) => string[]
+}
+
+const { assertReleaseAuthConfig, resolveMobileEnvFiles }: ReleaseAuthConfigModule = require('./config/release-auth-config.cjs')
+
 const configDir = __dirname
 const repoRoot = resolve(configDir, '../..')
 
@@ -13,13 +29,14 @@ const explicitEnvFiles = (process.env.NESTSCOUT_MOBILE_ENV_FILE ?? '')
   .filter(Boolean)
   .map((filePath: string) => (isAbsolute(filePath) ? filePath : resolve(repoRoot, filePath)))
 
-const localEnv = [
-  resolve(repoRoot, '.env'),
-  resolve(repoRoot, '.env.local'),
-  resolve(configDir, '.env'),
-  resolve(configDir, '.env.local'),
-  ...explicitEnvFiles,
-].reduce<Record<string, string>>((env, filePath) => {
+const isEasBuild = Boolean(process.env.EAS_BUILD_ID || process.env.EAS_BUILD_PLATFORM || process.env.EAS_BUILD_PROFILE)
+
+const localEnv = resolveMobileEnvFiles({
+  configDir,
+  explicitEnvFiles,
+  isEasBuild,
+  repoRoot,
+}).reduce<Record<string, string>>((env, filePath) => {
   if (!existsSync(filePath)) {
     return env
   }
@@ -68,6 +85,11 @@ const fromGit = (...args: string[]) => {
 const supabaseUrl = fromEnv('EXPO_PUBLIC_SUPABASE_URL')
 const supabasePublishableKey = fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
 const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
+assertReleaseAuthConfig({
+  isEasBuild,
+  supabasePublishableKey,
+  supabaseUrl,
+})
 const apiBaseUrl =
   configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
 const buildGitSha = fromEnv('NESTSCOUT_BUILD_GIT_SHA', 'EAS_BUILD_GIT_COMMIT_HASH', 'GITHUB_SHA') || fromGit('rev-parse', 'HEAD')

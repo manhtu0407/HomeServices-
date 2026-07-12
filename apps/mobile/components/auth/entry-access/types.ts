@@ -3,21 +3,27 @@ export type EntryAccessStep =
   | 'role-gate'
   | 'login'
   | 'register'
+  | 'password-recovery'
   | 'onboarding'
 
 export type EntryRole = 'customer' | 'worker'
 
-export type EmailLoginInput = {
+export type PasswordLoginInput = {
   role: EntryRole
-  email: string
+  identifier: string
   password: string
 }
 
 export type RegistrationInput = {
   role: EntryRole
   fullName: string
-  email: string
+  identifier: string
   password: string
+}
+
+export type PasswordRecoveryInput = {
+  identifier: string
+  recoveryIdentifier: string
 }
 
 export type EntryActionResult = {
@@ -27,19 +33,15 @@ export type EntryActionResult = {
 
 export type EntryAccessFeatureFlags = {
   customerGoogle: boolean
-  customerGmail: boolean
-  customerFacebook: boolean
   customerRegistration: boolean
   workerRegistration: boolean
 }
 
 export type EntryAccessActions = {
-  onEmailLogin: (input: EmailLoginInput) => Promise<EntryActionResult>
+  onPasswordLogin: (input: PasswordLoginInput) => Promise<EntryActionResult>
   onRegister: (input: RegistrationInput) => Promise<EntryActionResult>
   onGoogleLogin?: () => Promise<EntryActionResult>
-  onGmailLogin?: () => Promise<EntryActionResult>
-  onFacebookLogin?: () => Promise<EntryActionResult>
-  onForgotPassword?: (email: string) => Promise<EntryActionResult>
+  onForgotPassword?: (input: PasswordRecoveryInput) => Promise<EntryActionResult>
   onCompleteOnboarding: (role: EntryRole) => Promise<EntryActionResult> | EntryActionResult
 }
 

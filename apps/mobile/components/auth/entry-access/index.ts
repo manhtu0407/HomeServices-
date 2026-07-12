@@ -1,7 +1,8 @@
 export { EntryBrandAccessFlow } from './EntryBrandAccessFlow'
 export { entryTheme, targetCanvas } from './theme'
 export type {
-  EmailLoginInput,
+  PasswordLoginInput,
+  PasswordRecoveryInput,
   EntryAccessActions,
   EntryAccessFeatureFlags,
   EntryAccessStep,

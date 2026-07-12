@@ -8,10 +8,11 @@ export type EntryIconName =
   | 'eye'
   | 'lock'
   | 'mail'
+  | 'phone'
   | 'spark'
   | 'user'
 
-export type ProviderBrand = 'facebook' | 'gmail' | 'google'
+export type ProviderBrand = 'google'
 
 export function EntryIcon({ color = '#088779', name, size = 18 }: { color?: string; name: EntryIconName; size?: number }) {
   const common = { fill: 'none', stroke: color, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 1.9 }
@@ -51,6 +52,9 @@ export function EntryIcon({ color = '#088779', name, size = 18 }: { color?: stri
         </>
       )
       break
+    case 'phone':
+      content = <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.34 1.78.66 2.63a2 2 0 0 1-.45 2.11L8.05 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.32 1.73.54 2.63.66A2 2 0 0 1 22 16.92Z" {...common} strokeWidth={1.75} />
+      break
     case 'spark':
       content = <Path d="M12 3c.7 4.7 3.3 7.3 8 8-4.7.7-7.3 3.3-8 8-.7-4.7-3.3-7.3-8-8 4.7-.7 7.3-3.3 8-8Z" fill={color} />
       break
@@ -81,22 +85,4 @@ export function ProviderBrandIcon({ provider, size = 18 }: { provider: ProviderB
     )
   }
 
-  if (provider === 'gmail') {
-    return (
-      <Svg width={size * 1.24} height={size * 0.93} viewBox="0 0 24 18" accessibilityLabel="Gmail">
-        <Path d="M3 18h4V8.5L1 4v12c0 1.1.9 2 2 2Z" fill="#4285F4" />
-        <Path d="M17 18h4c1.1 0 2-.9 2-2V4l-6 4.5V18Z" fill="#34A853" />
-        <Path d="M17 4.5v4L23 4V3c0-2.5-2.9-3.9-4.8-2.4L17 1.5v3Z" fill="#FBBC04" />
-        <Path d="M7 8.5v-4L12 8.25l5-3.75v4L12 12.25 7 8.5Z" fill="#EA4335" />
-        <Path d="M1 3v1l6 4.5v-4L5.8.6C3.9-.8 1 .5 1 3Z" fill="#C5221F" />
-      </Svg>
-    )
-  }
-
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityLabel="Facebook">
-      <Circle cx="12" cy="12" r="11" fill="#1877F2" />
-      <Path d="M13.5 20v-7h2.4l.36-2.75H13.5V8.5c0-.8.22-1.34 1.38-1.34h1.48V4.7c-.26-.04-1.14-.11-2.17-.11-2.15 0-3.62 1.31-3.62 3.72v1.94H8.14V13h2.43v7h2.93Z" fill="#FFFFFF" />
-    </Svg>
-  )
 }

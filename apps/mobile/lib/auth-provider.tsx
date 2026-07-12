@@ -7,6 +7,7 @@ import { supabase } from './supabase'
 import { USER_ROLES, type UserRole } from '@nestscout/shared'
 import { addPushNotificationResponseListener, setupPushNotifications } from './push-notifications'
 import { generateClientRequestId } from './client-request-id'
+import { parseAuthIdentifier, validateAuthIdentifier } from './auth-identifier'
 import { workerService } from './services'
 
 type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'config_missing'
@@ -21,7 +22,7 @@ type AuthState = {
   enterGuestMode: () => void
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  signUpWithEmail: (profile: CustomerEmailSignupDraft) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>
+  signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>
   submitWorkerApplication: (draft: WorkerApplicationDraft) => Promise<{ success: boolean; error?: string; applicationId?: string }>
   updateCustomerProfile: (profile: CustomerProfileDraft) => Promise<{ success: boolean; error?: string }>
   updatePassword: (passwords: CustomerPasswordUpdateDraft) => Promise<{ success: boolean; error?: string }>
@@ -44,9 +45,9 @@ type CustomerProfileDraft = {
   savedAddresses?: string[]
 }
 
-type CustomerEmailSignupDraft = {
+type CustomerIdentifierSignupDraft = {
   displayName: string
-  email: string
+  identifier: string
   password: string
 }
 
@@ -78,7 +79,7 @@ const AuthContext = createContext<AuthState>({
   enterGuestMode: () => undefined,
   signInWithGoogle: async () => ({ success: false, error: 'Đăng nhập Google chưa sẵn sàng' }),
   signInWithPassword: async () => ({ success: false, error: 'Đăng nhập chưa sẵn sàng' }),
-  signUpWithEmail: async () => ({ success: false, error: 'Đăng ký email chưa sẵn sàng' }),
+  signUpWithIdentifier: async () => ({ success: false, error: 'Đăng ký chưa sẵn sàng' }),
   submitWorkerApplication: async () => ({ success: false, error: 'Gửi xét duyệt thợ chưa sẵn sàng' }),
   updateCustomerProfile: async () => ({ success: false, error: 'Lưu hồ sơ khách chưa sẵn sàng' }),
   updatePassword: async () => ({ success: false, error: 'Đổi mật khẩu chưa sẵn sàng' }),
@@ -316,34 +317,30 @@ function useAuthController(): AuthState {
     })
   }, [])
 
-  const signInWithPassword = useCallback(async (email: string, password: string) => {
+  const signInWithPassword = useCallback(async (identifierInput: string, password: string) => {
     if (!supabase) {
       const error = 'Dịch vụ đăng nhập chưa sẵn sàng. Vui lòng thử lại sau.'
       patchAuth({ authError: error, profileStatus: 'config_missing', loading: false })
       return { success: false, error }
     }
 
-    const normalizedEmail = email.trim().toLowerCase()
-    if (!normalizedEmail || !password) {
-      const error = 'Nhập email và mật khẩu để tiếp tục'
-      patchAuth({ authError: error })
-      return { success: false, error }
-    }
-    if (!isValidEmail(normalizedEmail)) {
-      const error = 'Email không hợp lệ'
+    const identifier = parseAuthIdentifier(identifierInput)
+    const identifierError = validateAuthIdentifier(identifierInput)
+    if (!identifier || !password) {
+      const error = identifierError ?? 'Nhập Email hoặc SDT và mật khẩu để tiếp tục'
       patchAuth({ authError: error })
       return { success: false, error }
     }
 
     patchAuth({ loading: true, authError: null })
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password,
-      })
+      const credentials = identifier.kind === 'email'
+        ? { email: identifier.value, password }
+        : { phone: identifier.value, password }
+      const { data, error } = await supabase.auth.signInWithPassword(credentials)
 
       if (error || !data.session?.user) {
-        const message = 'Email hoặc mật khẩu không đúng'
+        const message = 'Email/SDT hoặc mật khẩu không đúng'
         patchAuth({
           session: null,
           role: null,
@@ -392,7 +389,7 @@ function useAuthController(): AuthState {
     return { success: true }
   }, [profileStatus])
 
-  const signUpWithEmail = useCallback(async ({ displayName, email, password }: CustomerEmailSignupDraft) => {
+  const signUpWithIdentifier = useCallback(async ({ displayName, identifier: identifierInput, password }: CustomerIdentifierSignupDraft) => {
     setGuestMode(false)
     if (!supabase) {
       const error = 'Dịch vụ đăng ký chưa sẵn sàng. Vui lòng thử lại sau.'
@@ -400,20 +397,16 @@ function useAuthController(): AuthState {
       return { success: false, error }
     }
 
-    const normalizedEmail = email.trim().toLowerCase()
+    const identifier = parseAuthIdentifier(identifierInput)
+    const identifierError = validateAuthIdentifier(identifierInput)
     const normalizedName = displayName.trim().replace(/\s+/g, ' ')
     if (normalizedName.length < 2) {
       const error = 'Nhập họ tên để tạo tài khoản'
       patchAuth({ authError: error })
       return { success: false, error }
     }
-    if (!normalizedEmail || !password) {
-      const error = 'Nhập email và mật khẩu để đăng ký'
-      patchAuth({ authError: error })
-      return { success: false, error }
-    }
-    if (!isValidEmail(normalizedEmail)) {
-      const error = 'Email không hợp lệ'
+    if (!identifier || !password) {
+      const error = identifierError ?? 'Nhập Email hoặc SDT và mật khẩu để đăng ký'
       patchAuth({ authError: error })
       return { success: false, error }
     }
@@ -425,8 +418,11 @@ function useAuthController(): AuthState {
 
     patchAuth({ loading: true, authError: null })
     try {
+      const credentials = identifier.kind === 'email'
+        ? { email: identifier.value }
+        : { phone: identifier.value }
       const { data, error } = await supabase.auth.signUp({
-        email: normalizedEmail,
+        ...credentials,
         password,
         options: {
           data: {
@@ -629,8 +625,8 @@ function useAuthController(): AuthState {
   }, [fetchRole, localVisualAuditRole, session?.user])
 
   const authValue = useMemo(
-    () => ({ session, role, guestMode, loading, profileStatus, authError, enterGuestMode, signInWithGoogle, signInWithPassword, signUpWithEmail, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
-    [authError, enterGuestMode, guestMode, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, signUpWithEmail, submitWorkerApplication, updateCustomerProfile, updatePassword],
+    () => ({ session, role, guestMode, loading, profileStatus, authError, enterGuestMode, signInWithGoogle, signInWithPassword, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
+    [authError, enterGuestMode, guestMode, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword],
   )
 
   return authValue
