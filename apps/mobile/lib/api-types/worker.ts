@@ -60,6 +60,8 @@ export type WorkerPerformanceAxisId =
   | 'arrival'
   | 'completion'
   | 'earnings'
+  | 'work_response'
+  | 'incident_handling'
 
 export type WorkerPerformanceInsightsResponse = {
   worker_id: string
@@ -76,6 +78,9 @@ export type WorkerPerformanceInsightsResponse = {
   on_time_job_count: number
   paid_job_count: number
   reconciled_earnings_vnd: number | null
+  work_response_review_count: number
+  resolved_incident_case_count: number
+  incident_rank_bonus: number
   performance_score: number | null
   badges: {
     id: WorkerPerformanceBadgeId
@@ -153,6 +158,27 @@ export type WorkerScopeChangeResponse = {
   anti_fraud?: Record<string, unknown>
   worker_challenge?: Record<string, unknown>
   customer_card?: Record<string, unknown>
+}
+
+export type JobIncidentStatus = 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal' | 'scope_proposed' | 'resolved' | 'cancelled'
+
+export type JobIncidentResponse = {
+  incident: {
+    id: string
+    job_id: string
+    status: JobIncidentStatus
+    evidence_status: 'needs_more' | 'ready'
+    last_summary: string | null
+    last_question: string | null
+    last_next_actor: 'customer' | 'worker' | null
+    created_at: string
+    updated_at: string
+  } | null
+}
+
+export type JobIncidentScopeProposalResponse = {
+  incident: NonNullable<JobIncidentResponse['incident']>
+  scope_change: WorkerScopeChangeResponse
 }
 
 export type WorkerKaelClarifyResponse = {

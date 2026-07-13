@@ -27,13 +27,14 @@ import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { KaelButton, KaelTextField, MintAura } from '@/components/ui/kael-primitives'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color, glass, radius, shadow, signature, typography } from '@/design/theme'
-import type { KaelChatProgress, WorkerKaelChatTurn } from '@/lib/api-types'
+import type { JobIncidentResponse, KaelChatProgress, WorkerKaelChatTurn } from '@/lib/api-types'
 import { getMobileApiAuthHeaders, mobileApiUrl } from '@/lib/api'
 import { setAppLanguage, type AppLanguage, localizedServiceLabel, localizedStatusLabel } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
+import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { jobMediaObjectPathFromRef } from '@/lib/job-media-preview'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { kaelMemoryService, workerKaelChatService, workerRouteService } from '@/lib/services'
@@ -400,7 +401,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesPayoutRequestHandoff = screen.id === '4.3-payout-request'
   const usesPayoutMethodHandoff = screen.id === '4.4-payout-method'
   const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.8-bank-tax-center' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings'
-  const usesProfileInfoHeaderIcon = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights'
+  const hidesHeaderUtility = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.10-support-settings'
   const usesCaseExecutionHandoff = usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
   const usesHandoffStage = usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
   const handoffHeaderSubtitle = usesOpportunityInboxHandoff
@@ -625,12 +626,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
         testID="worker-v5-scroll"
       >
         <View style={[styles.headerRow, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderRow : null]}>
-          {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff ? (
-            <View style={styles.iconBadge} testID="worker-v5-opportunity-header-icon">
-              <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-              <Image source={workerV5Icons[usesEarningsOverviewHandoff ? 'profile' : 'jobs']} style={styles.iconImage} />
-            </View>
-          ) : (
+          {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff ? null : (
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Quay lại worker hiện tại' : 'Back to current worker surface'}
               accessibilityRole="button"
@@ -644,7 +640,16 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           <View style={styles.headerTextColumn}>
             {usesCaseClosedHandoff ? null : usesKaelOrbHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff || usesProfileHandoff ? (
               <>
-                <Text style={[styles.titleText, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderTitle : null]}>{displayTitle}</Text>
+                <Text
+                  style={[
+                    styles.titleText,
+                    usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderTitle : null,
+                    usesEarningsOverviewHandoff ? styles.earningsOverviewTitle : null,
+                  ]}
+                  testID={usesEarningsOverviewHandoff ? 'worker-v5-earnings-overview-title' : undefined}
+                >
+                  {displayTitle}
+                </Text>
                 {handoffHeaderSubtitle ? <Text style={styles.headerSubtitleText} numberOfLines={2}>{handoffHeaderSubtitle}</Text> : null}
               </>
             ) : (
@@ -652,27 +657,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             )}
             {!usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff && !usesProfileHandoff ? <Text style={styles.titleText}>{title}</Text> : null}
           </View>
-          {usesOpportunityInboxHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Lọc cơ hội' : 'Filter opportunities'}
-              accessibilityRole="button"
-              onPress={() => openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === '3.2-kael-job-intake') ?? nextScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-opportunity-filter"
-            >
-              <Text style={styles.headerMenuText}>⌁</Text>
-            </Pressable>
-          ) : usesEarningsOverviewHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Lọc thu nhập' : 'Filter earnings'}
-              accessibilityRole="button"
-              onPress={() => openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === '4.2-ledger-detail') ?? nextScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-earnings-filter"
-            >
-              <Text style={styles.headerMenuText}>⌁</Text>
-            </Pressable>
-          ) : usesOfferDetailHandoff ? (
+          {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff ? null : usesOfferDetailHandoff ? (
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Tùy chọn đề nghị' : 'Offer options'}
               accessibilityRole="button"
@@ -702,17 +687,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             >
               <Text style={styles.headerMenuText}>?</Text>
             </Pressable>
-          ) : usesCaseExecutionHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Thông tin công việc' : 'Work information'}
-              accessibilityRole="button"
-              onPress={usesInProgressHandoff || usesScopeChangeHandoff ? openJobChat : () => openScreen(previousScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-case-flow-info"
-            >
-              <Text style={styles.headerMenuText}>i</Text>
-            </Pressable>
-          ) : screen.id === '4.2-ledger-detail' ? (
+          ) : usesCaseExecutionHandoff ? null : screen.id === '4.2-ledger-detail' ? (
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Mở yêu cầu rút tiền' : 'Open payout request'}
               accessibilityRole="button"
@@ -742,13 +717,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             >
               <Text style={styles.headerMenuText}>•••</Text>
             </Pressable>
-          ) : usesProfileInfoHeaderIcon ? (
-            <View style={styles.iconBadge} testID={`worker-v5-profile-info-header-icon-${screen.id}`}>
-              {!glass.reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-              <Text style={[styles.headerMenuText, styles.profileInfoHeaderGlyph]}>i</Text>
-            </View>
-          ) : (
-            <View style={styles.iconBadge}>
+          ) : hidesHeaderUtility ? null : (
+            <View style={styles.iconBadge} testID={`worker-v5-header-icon-${screen.id}`}>
               <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
               <Image source={workerV5Icons[screen.icon]} style={styles.iconImage} />
             </View>
@@ -938,11 +908,7 @@ function WorkerV5HomeScreenSurface({
         style={styles.homeSourceScroll}
         testID="worker-v5-scroll"
       >
-        <View style={styles.homeSourceHeader}>
-          <View style={styles.homeSourceAvatarTile}>
-            {!glass.reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image source={workerV5AvatarIcon} style={styles.homeSourceAvatarImage} />
-          </View>
+        <View style={styles.homeSourceHeader} testID="worker-v5-home-header">
           <View style={styles.homeSourceHeaderCopy}>
             <Text style={styles.homeSourceTitle} numberOfLines={2}>
               {textByLanguage(language, `Chào buổi sáng, ${displayName}!`, `Good morning, ${displayName}!`)}
@@ -953,13 +919,6 @@ function WorkerV5HomeScreenSurface({
                 : textByLanguage(language, 'Kael đã đồng bộ hồ sơ và khu vực nhận việc', 'Kael synced profile and service area')}
             </Text>
           </View>
-          <Pressable
-            accessibilityLabel={textByLanguage(language, 'Thông báo worker', 'Worker notifications')}
-            style={({ pressed }) => [styles.homeSourceHeaderAction, pressed && !glass.reduceMotion ? styles.pressed : null]}
-            testID="worker-v5-home-notifications"
-          >
-            <Text style={styles.homeSourceHeaderActionText}>•</Text>
-          </Pressable>
         </View>
 
         <WorkerV5AvailabilityCard
@@ -1122,6 +1081,7 @@ function renderWorkerV5Body(
           navigateNext={navigateNext}
           navigateToEvidence={() => navigateToScreen('2.10-completion-evidence')}
           primaryFill={WorkerV5PrimaryButtonFill}
+          reduceMotion={reduceMotion}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
           statusTimeline={WorkerV5StatusTimeline}
@@ -1230,6 +1190,7 @@ function renderWorkerV5Body(
           runtime={runtime}
           serviceAreaMapCard={WorkerV5ServiceAreaMapCard}
           serviceIcons={workerV5ProfileServiceIconAssets}
+          skillsGridEmptyIcon={workerV5Icons.tools}
           skillsHeroIcon={workerV5CapturedIconAssets.skillsHero}
         />
       )
@@ -1798,7 +1759,6 @@ function WorkerV5InProgressBody({
         navigateJobChat={navigateJobChat}
         onArrivalAcknowledged={() => router.replace('/(worker)/jobs?ns_worker_screen=2.7-in-progress' as never)}
         onTravelAction={onTravelAction}
-        onAdjustScope={() => router.replace('/(worker)/jobs?ns_worker_screen=2.8-scope-change&ns_scope_mode=edit' as never)}
         reduceTransparency={reduceTransparency}
       />
     )
@@ -1863,7 +1823,6 @@ const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate(
   navigateJobChat,
   onArrivalAcknowledged,
   onTravelAction,
-  onAdjustScope,
   reduceTransparency,
 }: {
   actionBusy: boolean
@@ -1872,7 +1831,6 @@ const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate(
   navigateJobChat: () => void
   onArrivalAcknowledged: () => void
   onTravelAction: () => void
-  onAdjustScope: () => void
   reduceTransparency: boolean
 }) {
   const routePreview = useWorkerV5RoutePreview(deal, true)
@@ -1891,7 +1849,6 @@ const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate(
       etaSummaryComponent={WorkerV5EtaSummaryCard}
       language={language}
       navigateJobChat={navigateJobChat}
-      onAdjustScope={onAdjustScope}
       onPrimary={confirmArrivalGate}
       primaryLabel={deal?.status === 'worker_matched'
         ? textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
@@ -1929,7 +1886,9 @@ function WorkerV5ScopeChangeBody({
   const [scopePhotos, setScopePhotos] = useState<WorkerV5PrivateKaelMediaPreview[]>([])
   const [scopeUploadedEvidenceRefs, setScopeUploadedEvidenceRefs] = useState<string[]>([])
   const [scopeSubmitting, setScopeSubmitting] = useState(false)
+  const [scopeProposing, setScopeProposing] = useState(false)
   const [scopeEvidenceSent, setScopeEvidenceSent] = useState(false)
+  const [jobIncident, setJobIncident] = useState<JobIncidentResponse['incident']>(null)
   const [scopeMediaNotice, setScopeMediaNotice] = useState<string | null>(null)
   useEffect(() => {
     if (!scope) return
@@ -1945,10 +1904,10 @@ function WorkerV5ScopeChangeBody({
   ].filter((uri): uri is string => Boolean(uri))))
   const evidenceCount = scopeEvidenceUrls.length
   const canDraftScopeEvidence = Boolean(deal && ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(deal.status))
-  const hasScopeSubmission = Boolean(scope || scopeEvidenceSent)
+  const hasScopeSubmission = Boolean(scope || scopeEvidenceSent || jobIncident)
   const scopeDescriptionReady = scopeDescription.trim().length >= 10
   const scopeReasonReady = scopeReason.trim().length >= 10
-  const scopeSubmitDisabled = !canDraftScopeEvidence || !scopeDescriptionReady || !scopeReasonReady || scopeSubmitting || scopeEvidenceSent
+  const scopeSubmitDisabled = !canDraftScopeEvidence || !scopeDescriptionReady || !scopeReasonReady || scopeSubmitting || Boolean(scope && !jobIncident)
   const openScopeEditPath = () => {
     setScopeEvidenceOpenLocal(true)
     router.replace('/(worker)/jobs?ns_worker_screen=2.8-scope-change&ns_scope_mode=edit' as never)
@@ -1980,14 +1939,24 @@ function WorkerV5ScopeChangeBody({
       ...uploadedRefs,
     ])).filter((ref) => Boolean(jobMediaObjectPathFromRef(ref))).slice(0, 5)
     setScopeUploadedEvidenceRefs((current) => Array.from(new Set([...current, ...uploadedRefs])))
-    const ok = await runtime.actions.requestScopeChange({
+    const opened = await runtime.actions.openKaelJobIncident({
       new_description: scopeDescription.trim(),
       photo_urls: nextEvidenceRefs,
       reason: scopeReason.trim(),
     })
     setScopeSubmitting(false)
-    if (!ok) return
+    if (!opened) return
+    setJobIncident(opened.incident)
+    setScopePhotos([])
     setScopeEvidenceSent(true)
+    router.replace('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal' as never)
+  }
+  const submitScopeProposal = async () => {
+    if (scopeProposing || jobIncident?.status !== 'ready_for_scope_proposal') return
+    setScopeProposing(true)
+    const submitted = await runtime.actions.proposeScopeChangeFromKaelIncident()
+    setScopeProposing(false)
+    if (submitted) setJobIncident((current) => current ? { ...current, status: 'scope_proposed' } : current)
   }
   const attachScopePhotos = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -2055,7 +2024,7 @@ function WorkerV5ScopeChangeBody({
         scope={scope}
         scopeDescription={scopeDescription}
         scopeEvidenceOpen={scopeEvidenceOpen}
-        scopeEvidenceSent={scopeEvidenceSent}
+        scopeEvidenceSent={scopeEvidenceSent && !jobIncident}
         scopeMediaNotice={scopeMediaNotice}
         scopePhotos={scopePhotos}
         scopeReason={scopeReason}
@@ -2066,9 +2035,13 @@ function WorkerV5ScopeChangeBody({
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
         primaryButtonFill={WorkerV5PrimaryButtonFill}
         zipAura={WorkerV5CustomerZipMintAura}
-        onPrimary={navigateNext}
+        onPrimary={jobIncident?.status === 'ready_for_scope_proposal' ? submitScopeProposal : hasScopeSubmission ? viewScopeDetails : navigateNext}
         onSecondary={canDraftScopeEvidence ? openScopeEditPath : undefined}
-        primary={hasScopeSubmission ? textByLanguage(language, 'Gửi khách phê duyệt', 'Send for customer review') : textByLanguage(language, 'Không có vấn đề phát sinh', 'No scope issue')}
+        primary={jobIncident?.status === 'ready_for_scope_proposal'
+          ? textByLanguage(language, 'Tạo đề xuất gửi khách', 'Create proposal for customer')
+          : hasScopeSubmission
+          ? textByLanguage(language, 'Mở Kael Công việc', 'Open Kael Work')
+          : textByLanguage(language, 'Không có vấn đề phát sinh', 'No scope issue')}
         primaryTestID="worker-v5-scope-change-send-action"
         primaryVariant="source"
         reduceTransparency={reduceTransparency}
@@ -2138,24 +2111,26 @@ function WorkerV5KaelOrbScreenSurface({
       { rotate: '-10deg' },
     ],
   }))
-  const composer = useMemo(
-    () => mode === 'intake' && !canUseWorkerV5PrivateKaelChat(deal)
-      ? (
-          <WorkerV5KaelIntakeReadinessActions
-            language={language}
-            navigateToScreen={navigateToScreen}
-            reduceTransparency={reduceTransparency}
-          />
-        )
-      : (
-        <WorkerV5KaelOrbComposer
+  const orbChat = useWorkerV5KaelOrbChat(deal, language)
+  const composer = mode === 'intake' && !canUseWorkerV5PrivateKaelChat(deal)
+    ? (
+        <WorkerV5KaelIntakeReadinessActions
           language={language}
-          mode={mode}
+          navigateToScreen={navigateToScreen}
           reduceTransparency={reduceTransparency}
         />
-      ),
-    [deal, language, mode, navigateToScreen, reduceTransparency],
-  )
+      )
+    : (
+      <WorkerV5KaelOrbComposer
+        busy={orbChat.busy}
+        language={language}
+        mediaCount={orbChat.mediaCount}
+        mode={mode}
+        onPickMedia={() => void orbChat.pickMedia()}
+        onSend={(message) => void orbChat.send(message)}
+        reduceTransparency={reduceTransparency}
+      />
+    )
 
   useEffect(() => {
     if (!modeMenuOpen) return
@@ -2276,6 +2251,9 @@ function WorkerV5KaelOrbScreenSurface({
             deal={deal}
             fallbackJobIcon={workerV5Icons.jobs}
             language={language}
+            liveError={orbChat.error}
+            liveStatus={orbChat.busyLabel}
+            liveTurns={orbChat.liveTurns}
             mode={mode}
             modeMenuOpen={modeMenuOpen}
             onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
@@ -2324,25 +2302,47 @@ function WorkerV5KaelIntakeReadinessActions({
   )
 }
 
-function WorkerV5KaelOrbComposer({
-  language,
-  mode,
-  reduceTransparency,
-}: {
-  language: AppLanguage
-  mode: WorkerV5KaelOrbMode
-  reduceTransparency: boolean
-}) {
-  const [draft, setDraft] = useState('')
-  const [selectedMediaCount, setSelectedMediaCount] = useState(0)
-  const trimmedDraft = draft.trim()
-  const placeholder = textByLanguage(language, 'Nhập tin nhắn cho Kael...', 'Message Kael...')
-  const disclaimer = textByLanguage(language, 'Kael có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng.', 'Kael can make mistakes. Check important information.')
-  const mediaLabel = mode === 'normal'
-    ? textByLanguage(language, 'Thêm ảnh cho Kael', 'Add photo for Kael')
-    : textByLanguage(language, 'Thêm ảnh công việc cho Kael', 'Add work photo for Kael')
+function useWorkerV5KaelOrbChat(deal: LocalDeal | null, language: AppLanguage) {
+  const [turns, setTurns] = useState<WorkerV5PrivateKaelLocalTurn[]>([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<KaelChatProgress | null>(null)
+  const [mediaItems, setMediaItems] = useState<WorkerV5PrivateKaelMediaPreview[]>([])
+  const jobId = getWorkerV5ChatJobId(deal)
+  const readOnly = isWorkerV5PrivateKaelReadOnly(deal)
+  const hasPrivateKaelSessionAccess = Boolean(jobId) && canUseWorkerV5PrivateKaelChat(deal) && !readOnly
+  const activeJobIdRef = useRef<string | null>(jobId)
+  const sessionRef = useRef<WorkerV5PrivateKaelSession | null>(null)
+  activeJobIdRef.current = jobId
 
-  const pickComposerMedia = async () => {
+  useEffect(() => {
+    setTurns([])
+    setError(null)
+    setProgress(null)
+    setMediaItems([])
+    sessionRef.current = null
+  }, [jobId])
+
+  const advisoryUnavailableReply = readOnly
+    ? textByLanguage(language, 'Chat chỉ còn đọc lại sau cổng thanh toán.', 'Chat is read-only after the payment gate.')
+    : textByLanguage(
+        language,
+        'Mình chưa có phiên Kael theo công việc để gửi câu hỏi này. Khi bạn có việc đang thực hiện, tin nhắn sẽ được gửi qua kênh tư vấn riêng.',
+        'There is no job-scoped Kael session for this question yet. Once you have active work, messages go through the private advisory channel.',
+      )
+  const progressPercent = progress ? Math.max(0, Math.min(100, Math.round(progress.progress * 100))) : null
+  const busyLabel = busy
+    ? progressPercent != null
+      ? textByLanguage(language, `Kael đang xử lý... ${progressPercent}%`, `Kael is working... ${progressPercent}%`)
+      : textByLanguage(language, 'Kael đang xử lý...', 'Kael is working...')
+    : null
+
+  const pickMedia = async () => {
+    if (busy) return
+    if (!hasPrivateKaelSessionAccess) {
+      Alert.alert('Kael', textByLanguage(language, 'Cần việc đang thực hiện để gửi ảnh cho Kael.', 'Active work is needed to send a photo to Kael.'))
+      return
+    }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
       Alert.alert('Kael', textByLanguage(language, 'Cần quyền thư viện ảnh để thêm ảnh cho Kael.', 'Photo library permission is needed to add a photo for Kael.'))
@@ -2354,7 +2354,127 @@ function WorkerV5KaelOrbComposer({
       quality: 0.84,
     })
     if (result.canceled || result.assets.length === 0) return
-    setSelectedMediaCount(1)
+    const asset = result.assets[0]
+    setMediaItems([{ fileName: workerV5PrivateKaelMediaName(asset, 0, language), uri: asset.uri }])
+  }
+
+  const send = async (message: string) => {
+    const content = message.trim()
+    if (!content || busy) return
+    setError(null)
+    setTurns((current) => [...current, { id: `worker-orb-${Date.now()}`, role: 'worker', text: content }])
+
+    if (!hasPrivateKaelSessionAccess || !jobId) {
+      setTurns((current) => [...current, { id: `kael-orb-${Date.now()}`, role: 'kael', text: advisoryUnavailableReply }])
+      setMediaItems([])
+      return
+    }
+
+    setBusy(true)
+    const currentJobId = jobId
+    try {
+      let mediaRefs: string[] = []
+      if (mediaItems.length > 0) {
+        const uploadDrafts: LocalMediaUploadDraft[] = mediaItems.map((item) => ({
+          fileName: item.fileName,
+          type: 'image',
+          uri: item.uri,
+        }))
+        const uploaded = await uploadJobMediaDrafts(currentJobId, uploadDrafts, 'kael_reference')
+        if (!uploaded.success) {
+          setError(uploaded.error)
+          return
+        }
+        mediaRefs = uploaded.mediaRefs
+      }
+
+      let sessionId = sessionRef.current?.jobId === currentJobId ? sessionRef.current.sessionId : null
+      if (!sessionId) {
+        const created = await workerKaelChatService.create({
+          client_request_id: generateClientRequestId(),
+          job_id: currentJobId,
+          language,
+        })
+        if (!created.success || created.data.session.job_id !== currentJobId) {
+          setProgress(null)
+          setError(textByLanguage(language, 'Kael chưa mở được phiên riêng cho việc này.', 'Kael could not open the private work session yet.'))
+          return
+        }
+        sessionId = created.data.session.id
+        sessionRef.current = { jobId: currentJobId, sessionId }
+        if (created.data.session.progress && activeJobIdRef.current === currentJobId) {
+          setProgress(created.data.session.progress)
+        }
+      }
+
+      const streamed = await workerKaelChatService.streamTurn(sessionId, {
+        client_request_id: generateClientRequestId(),
+        language,
+        media_refs: mediaRefs,
+        message: content,
+      }, {
+        onStage: (event) => {
+          if (activeJobIdRef.current !== currentJobId) return
+          setProgress(event.progress)
+        },
+        onToken: () => undefined,
+      })
+
+      let finalResponse = streamed.success ? streamed : null
+      if (!finalResponse) {
+        const recovered = await workerKaelChatService.get(sessionId)
+        if (recovered.success) finalResponse = recovered
+      }
+
+      if (!finalResponse || finalResponse.data.session.job_id !== currentJobId) {
+        if (activeJobIdRef.current === currentJobId) setProgress(null)
+        setError(textByLanguage(language, 'Kael bỏ qua phản hồi không khớp việc hiện tại.', 'Kael ignored a response that did not match the current work.'))
+        return
+      }
+
+      if (activeJobIdRef.current === currentJobId) {
+        sessionRef.current = { jobId: currentJobId, sessionId: finalResponse.data.session.id }
+        setProgress(finalResponse.data.session.progress)
+        setTurns(workerV5PrivateKaelTurnsFromResponse(finalResponse.data.turns))
+        setMediaItems([])
+      }
+    } catch {
+      setError(textByLanguage(language, 'Kael đang không kết nối được. Không có hành động nào được ghi vào việc.', 'Kael is unavailable. No work action was written.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return { busy, busyLabel, error, liveTurns: turns, mediaCount: mediaItems.length, pickMedia, send }
+}
+
+function WorkerV5KaelOrbComposer({
+  busy,
+  language,
+  mediaCount,
+  mode,
+  onPickMedia,
+  onSend,
+  reduceTransparency,
+}: {
+  busy: boolean
+  language: AppLanguage
+  mediaCount: number
+  mode: WorkerV5KaelOrbMode
+  onPickMedia: () => void
+  onSend: (message: string) => void
+  reduceTransparency: boolean
+}) {
+  const [draft, setDraft] = useState('')
+  const trimmedDraft = draft.trim()
+  const mediaLabel = mode === 'normal'
+    ? textByLanguage(language, 'Thêm ảnh cho Kael', 'Add photo for Kael')
+    : textByLanguage(language, 'Thêm ảnh công việc cho Kael', 'Add work photo for Kael')
+
+  const submitDraft = () => {
+    if (!trimmedDraft || busy) return
+    setDraft('')
+    onSend(trimmedDraft)
   }
 
   return (
@@ -2369,7 +2489,8 @@ function WorkerV5KaelOrbComposer({
         <Pressable
           accessibilityLabel={mediaLabel}
           accessibilityRole="button"
-          onPress={pickComposerMedia}
+          disabled={busy}
+          onPress={onPickMedia}
           style={({ pressed }) => [
             styles.kaelOrbComposerCameraButton,
             pressed ? styles.pressed : null,
@@ -2377,9 +2498,9 @@ function WorkerV5KaelOrbComposer({
           testID="worker-v5-kael-orb-camera"
         >
           <WorkerV5KaelOrbCameraIcon color={color.brand.primaryDark} />
-          {selectedMediaCount > 0 ? (
+          {mediaCount > 0 ? (
             <View style={styles.kaelOrbComposerCameraBadge} testID="worker-v5-kael-orb-camera-count">
-              <Text style={styles.kaelOrbComposerCameraBadgeText}>{selectedMediaCount}</Text>
+              <Text style={styles.kaelOrbComposerCameraBadgeText}>{mediaCount}</Text>
             </View>
           ) : null}
         </Pressable>
@@ -2388,12 +2509,7 @@ function WorkerV5KaelOrbComposer({
           inputShellStyle={styles.kaelOrbComposerInputShell}
           inputShellTestID="worker-v5-kael-orb-input-shell"
           onChangeText={setDraft}
-          onSubmitEditing={() => {
-            if (trimmedDraft || selectedMediaCount > 0) {
-              setDraft('')
-              setSelectedMediaCount(0)
-            }
-          }}
+          onSubmitEditing={submitDraft}
           placeholder={textByLanguage(language, 'Nhập tin nhắn cho Kael...', 'Message Kael...')}
           placeholderTextColor={color.text.muted}
           returnKeyType="send"
@@ -2405,12 +2521,12 @@ function WorkerV5KaelOrbComposer({
         <Pressable
           accessibilityLabel={textByLanguage(language, 'Gửi tin nhắn cho Kael', 'Send message to Kael')}
           accessibilityRole="button"
-          onPress={() => {
-            setDraft('')
-            setSelectedMediaCount(0)
-          }}
+          accessibilityState={{ busy, disabled: busy || !trimmedDraft }}
+          disabled={busy || !trimmedDraft}
+          onPress={submitDraft}
           style={({ pressed }) => [
             styles.kaelOrbSendButton,
+            busy || !trimmedDraft ? styles.jobRoomSendDisabled : null,
             pressed && trimmedDraft ? styles.pressed : null,
           ]}
           testID="worker-v5-kael-orb-send"
@@ -2436,23 +2552,100 @@ function WorkerV5KaelChatBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language)
+  if (getWorkerV5ChatJobId(runtime.state.deal)) {
+    return <WorkerV5SharedJobIncidentChat deal={runtime.state.deal} language={language} reduceTransparency={reduceTransparency} />
+  }
   return (
     <WorkerV5KaelOrbBody
       composer={(
         <WorkerV5KaelOrbComposer
+          busy={orbChat.busy}
           language={language}
+          mediaCount={orbChat.mediaCount}
           mode="normal"
+          onPickMedia={() => void orbChat.pickMedia()}
+          onSend={(message) => void orbChat.send(message)}
           reduceTransparency={reduceTransparency}
         />
       )}
       deal={runtime.state.deal}
       fallbackJobIcon={workerV5Icons.jobs}
       language={language}
+      liveError={orbChat.error}
+      liveStatus={orbChat.busyLabel}
+      liveTurns={orbChat.liveTurns}
       mode="normal"
       onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(runtime.state.deal))}
       reduceTransparency={reduceTransparency}
       serviceIcons={workerV5OpportunityServiceIcons}
     />
+  )
+}
+
+function WorkerV5SharedJobIncidentChat({
+  deal,
+  language,
+  reduceTransparency,
+}: {
+  deal: LocalDeal | null
+  language: AppLanguage
+  reduceTransparency: boolean
+}) {
+  const jobId = getWorkerV5ChatJobId(deal)
+  const { error, loading, messages, send, sending } = useJobChatThread(jobId, Boolean(jobId))
+  const [draft, setDraft] = useState('')
+  const submit = async () => {
+    const content = draft.trim()
+    if (!content || sending) return
+    const sent = await send(content)
+    if (sent) setDraft('')
+  }
+  return (
+    <View style={[styles.jobRoomThreadCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-shared-job-incident-chat">
+      {!reduceTransparency ? <MintAura intensity="component" style={styles.jobRoomThreadAura} /> : null}
+      <View style={styles.jobRoomBubbleStack}>
+        {loading ? <Text style={styles.boundaryBody}>{textByLanguage(language, 'Đang tải Kael Công việc...', 'Loading Kael Work...')}</Text> : null}
+        {messages.slice(-24).map((message) => (
+          <WorkerV5ChatBubble
+            align={message.sender_role === 'worker' ? 'right' : undefined}
+            body={message.content}
+            key={message.id}
+            label={message.sender_role === 'worker'
+              ? textByLanguage(language, 'Thợ', 'Worker')
+              : message.sender_role === 'customer'
+              ? textByLanguage(language, 'Khách', 'Customer')
+              : textByLanguage(language, 'Kael Công việc', 'Kael Work')}
+          />
+        ))}
+        {error ? <WorkerV5ChatBubble body={error} label={textByLanguage(language, 'Kael · trạng thái', 'Kael · status')} /> : null}
+      </View>
+      <View style={styles.kaelOrbComposerCard}>
+        <KaelTextField
+          accessibilityLabel={textByLanguage(language, 'Nhắn trong Kael Công việc', 'Message in Kael Work')}
+          inputShellStyle={styles.kaelOrbComposerInputShell}
+          onChangeText={setDraft}
+          onSubmitEditing={() => void submit()}
+          placeholder={textByLanguage(language, 'Nhắn cho khách hoặc trả lời Kael...', 'Message the customer or reply to Kael...')}
+          placeholderTextColor={color.text.muted}
+          returnKeyType="send"
+          shellStyle={styles.kaelOrbComposerField}
+          style={styles.kaelOrbComposerInput}
+          testID="worker-v5-shared-job-incident-input"
+          value={draft}
+        />
+        <Pressable
+          accessibilityLabel={textByLanguage(language, 'Gửi tin nhắn Kael Công việc', 'Send Kael Work message')}
+          accessibilityRole="button"
+          disabled={sending || !draft.trim()}
+          onPress={() => void submit()}
+          style={({ pressed }) => [styles.kaelOrbSendButton, pressed && draft.trim() ? styles.pressed : null]}
+          testID="worker-v5-shared-job-incident-send"
+        >
+          <Text style={styles.kaelOrbSendText}>↑</Text>
+        </Pressable>
+      </View>
+    </View>
   )
 }
 
@@ -2467,18 +2660,26 @@ function WorkerV5KaelJobIntakeBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language)
   return (
     <WorkerV5KaelOrbBody
       composer={(
         <WorkerV5KaelOrbComposer
+          busy={orbChat.busy}
           language={language}
+          mediaCount={orbChat.mediaCount}
           mode="intake"
+          onPickMedia={() => void orbChat.pickMedia()}
+          onSend={(message) => void orbChat.send(message)}
           reduceTransparency={reduceTransparency}
         />
       )}
       deal={runtime.state.deal}
       fallbackJobIcon={workerV5Icons.jobs}
       language={language}
+      liveError={orbChat.error}
+      liveStatus={orbChat.busyLabel}
+      liveTurns={orbChat.liveTurns}
       mode="intake"
       onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(runtime.state.deal))}
       reduceTransparency={reduceTransparency}
@@ -3154,6 +3355,12 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
   )
 }
 
+const availabilitySwitchSpring = {
+  damping: 24,
+  mass: 0.55,
+  stiffness: 420,
+}
+
 function WorkerV5AvailabilityCard({
   availabilityGuardReady,
   hasActiveJob,
@@ -3174,34 +3381,32 @@ function WorkerV5AvailabilityCard({
   const [pending, setPending] = useState(false)
   const [optimisticAvailable, setOptimisticAvailable] = useState<boolean | null>(null)
   const [inlineFailure, setInlineFailure] = useState<string | null>(null)
+  const availabilityInteractionRef = useRef(false)
   const availabilityRequestIdRef = useRef(0)
   const availabilityTitleDidMountRef = useRef(false)
   const availabilityTitleProgress = useSharedValue(1)
   const availabilitySwitchProgress = useSharedValue(profile?.is_available ? 1 : 0)
-  const rawAvailable = optimisticAvailable ?? Boolean(profile?.is_available)
+  const profileAvailable = Boolean(profile?.is_available)
+  if (!pending && optimisticAvailable !== null && profileAvailable === optimisticAvailable) {
+    setOptimisticAvailable(null)
+  }
+  const rawAvailable = optimisticAvailable ?? profileAvailable
   const effectiveProfile = profile ? { ...profile, is_available: rawAvailable } : profile
   const blockedByGuardLoading = Boolean(profile && !availabilityGuardReady && !rawAvailable)
-  const blockedByActiveJob = Boolean(hasActiveJob && !rawAvailable)
   const availabilityTitle = inlineFailure
     ?? (blockedByGuardLoading
       ? textByLanguage(language, 'Đang đồng bộ công việc', 'Syncing current work')
-      : blockedByActiveJob
-        ? textByLanguage(language, 'Hoàn tất việc hiện tại để bật nhận việc', 'Finish the current job to go online')
-        : workerAvailabilityLabel(effectiveProfile, language))
+      : hasActiveJob && rawAvailable
+        ? textByLanguage(language, 'Đã bật cho công việc tiếp theo', 'Enabled for the next job')
+      : workerAvailabilityLabel(effectiveProfile, language))
   const checked = Boolean(rawAvailable && profile?.is_approved && !profile?.is_suspended)
   const canToggle = Boolean(
     onToggleAvailability
       && profile
       && !blockedByGuardLoading
-      && !blockedByActiveJob
       && ((profile.is_approved && !profile.is_suspended) || rawAvailable),
   )
   const disabled = !canToggle || pending
-
-  useEffect(() => {
-    if (pending || optimisticAvailable === null || profile?.is_available !== optimisticAvailable) return
-    setOptimisticAvailable(null)
-  }, [optimisticAvailable, pending, profile?.is_available])
 
   useEffect(() => {
     if (reduceMotion) {
@@ -3225,7 +3430,7 @@ function WorkerV5AvailabilityCard({
     const target = checked ? 1 : 0
     availabilitySwitchProgress.value = reduceMotion
       ? target
-      : withSpring(target, motionTokens.liquid.pill)
+      : withSpring(target, availabilitySwitchSpring)
   }, [availabilitySwitchProgress, checked, reduceMotion])
 
   const availabilityTitleMotionStyle = useAnimatedStyle(() => ({
@@ -3240,7 +3445,8 @@ function WorkerV5AvailabilityCard({
   }))
 
   const handleToggle = async () => {
-    if (!onToggleAvailability || !canToggle) return
+    if (!onToggleAvailability || !canToggle || availabilityInteractionRef.current) return
+    availabilityInteractionRef.current = true
     const nextAvailability = rawAvailable ? false : true
     const requestId = availabilityRequestIdRef.current + 1
     availabilityRequestIdRef.current = requestId
@@ -3268,6 +3474,7 @@ function WorkerV5AvailabilityCard({
       )
     } finally {
       if (availabilityRequestIdRef.current === requestId) setPending(false)
+      availabilityInteractionRef.current = false
     }
   }
 
@@ -4898,45 +5105,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     lineHeight: 25,
   },
-  homeSourceAvatarImage: {
-    height: 34,
-    width: 34,
-  },
-  homeSourceAvatarTile: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderColor: 'rgba(255,255,255,0.96)',
-    borderRadius: 17,
-    borderWidth: 1,
-    height: 42,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-    width: 42,
-    ...shadow.soft,
-  },
   homeSourceHeader: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
     minHeight: 58,
-  },
-  homeSourceHeaderAction: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.84)',
-    borderColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 38,
-    justifyContent: 'center',
-    width: 38,
-    ...shadow.soft,
-  },
-  homeSourceHeaderActionText: {
-    color: color.brand.primaryDark,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 18,
   },
   homeSourceHeaderCopy: {
     flex: 1,
@@ -4963,7 +5136,7 @@ const styles = StyleSheet.create({
   homeSourceTitle: {
     color: color.text.strong,
     fontSize: 21,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: 0,
     lineHeight: 25,
   },
@@ -6172,15 +6345,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     lineHeight: 29,
   },
+  earningsOverviewTitle: {
+    marginLeft: 8,
+  },
   profileRouteIconVisualBoost: {
     height: 52,
-    width: 52,
-  },
-  profileInfoHeaderGlyph: {
-    color: color.brand.primaryDark,
-    fontSize: 17,
-    height: 52,
-    lineHeight: 52,
     width: 52,
   },
   scheduleSupportAura: {

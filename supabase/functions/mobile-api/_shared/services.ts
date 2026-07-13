@@ -29,6 +29,7 @@ import {
 } from "./services/dispute.service.ts";
 
 import { decideScopeChange, requestScopeChange } from "./services/scope-change.service.ts";
+import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./services/job-incident.service.ts";
 import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/chat.service.ts";
 import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat.service.ts";
@@ -97,6 +98,11 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     authorizeApartmentAccess,
     requestScopeChange: (ctx, jobId, input) =>
       requestScopeChange(ctx, jobId, input, aiRuntime(ctx, secrets)),
+    getJobIncident,
+    openJobIncident: (ctx, jobId, input) =>
+      openJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
+    proposeScopeChangeFromJobIncident: (ctx, jobId) =>
+      proposeScopeChangeFromJobIncident(ctx, jobId, aiRuntime(ctx, secrets)),
     askKaelForWorker,
     createWorkerKaelChat: (ctx, input) =>
       createWorkerKaelChat(ctx, input, aiRuntime(ctx, secrets)),
@@ -116,7 +122,8 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     decideDispute,
     attachJobMedia,
     listJobMessages,
-    sendJobMessage,
+    sendJobMessage: (ctx, jobId, input) =>
+      sendJobMessage(ctx, jobId, input, aiRuntime(ctx, secrets)),
     decideWorkerCancellation,
     decideScopeChange,
     confirmCompletion,

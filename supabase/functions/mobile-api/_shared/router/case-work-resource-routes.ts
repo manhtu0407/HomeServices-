@@ -6,6 +6,9 @@ export type CaseWorkResourceRoute =
   | { kind: "jobs.workerCandidate"; method: "GET"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.workerCandidateConfirm"; method: "POST"; jobId: string; candidateId: string; roles: UserRole[] }
   | { kind: "jobs.workerCandidateReject"; method: "POST"; jobId: string; candidateId: string; roles: UserRole[] }
+  | { kind: "jobs.kaelIncidentGet"; method: "GET"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.kaelIncidentOpen"; method: "POST"; jobId: string; roles: UserRole[]; successStatus: 201 }
+  | { kind: "jobs.kaelIncidentProposeScope"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "me.favoriteWorkerSave"; method: "POST"; workerId: string; roles: UserRole[] }
   | { kind: "me.favoriteWorkerRemove"; method: "DELETE"; workerId: string; roles: UserRole[] }
   | { kind: "workers.routePreview"; method: "GET"; jobId: string; roles: UserRole[] }
@@ -21,6 +24,22 @@ export function matchCaseWorkResourceRoute(
   }
   if (method === "POST" && path === "/kael/chat/media-revoke") {
     return { kind: "kael.chat.mediaRevoke", method: "POST", roles: ["customer", "admin"] };
+  }
+
+  const incident = path.match(/^\/jobs\/([^/]+)\/kael-incident(?:\/(propose-scope))?$/);
+  if (incident) {
+    const jobId = decodePathSegment(incident[1] ?? "");
+    if (!jobId) return null;
+    if (!incident[2] && method === "GET") {
+      return { kind: "jobs.kaelIncidentGet", method: "GET", jobId, roles: ["customer", "worker", "admin"] };
+    }
+    if (!incident[2] && method === "POST") {
+      return { kind: "jobs.kaelIncidentOpen", method: "POST", jobId, roles: ["worker"], successStatus: 201 };
+    }
+    if (incident[2] === "propose-scope" && method === "POST") {
+      return { kind: "jobs.kaelIncidentProposeScope", method: "POST", jobId, roles: ["worker"] };
+    }
+    return null;
   }
 
   const workerRoute = path.match(/^\/workers\/me\/jobs\/([^/]+)\/(route-preview|route-map)$/);

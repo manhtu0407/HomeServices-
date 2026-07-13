@@ -35,7 +35,7 @@ type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
 
 type ChatTurnView = {
   id: string
-  role: 'customer' | 'kael'
+  role: 'customer' | 'worker' | 'kael'
   text_content: string
 }
 

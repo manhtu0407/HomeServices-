@@ -212,6 +212,20 @@ function buildInProgressDeal(): LocalDeal {
 function buildWorkflow(deal: LocalDeal) {
   mockWorkflowValue = {
     actions: {
+      openKaelJobIncident: jest.fn(async () => ({
+        incident: {
+          id: 'incident-1',
+          job_id: deal.id,
+          status: 'awaiting_customer',
+          evidence_status: 'needs_more',
+          last_summary: null,
+          last_question: null,
+          last_next_actor: 'customer',
+          created_at: '2026-07-12T00:00:00.000Z',
+          updated_at: '2026-07-12T00:00:00.000Z',
+        },
+      })),
+      proposeScopeChangeFromKaelIncident: jest.fn(async () => true),
       requestScopeChange: jest.fn(async () => true),
       requestWorkerCancellation: jest.fn(async () => true),
       workerAcceptBroadcast: jest.fn(async () => true),
@@ -281,6 +295,8 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.getByTestId('worker-v5-eta-summary-card')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-route-arrival-action')).toBeOnTheScreen()
     expect(screen.getByText('Xác nhận đã tới')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-route-pre-arrival-scope-action')).toBeNull()
+    expect(screen.queryByText('Điều chỉnh trước khi đến')).toBeNull()
     expect(screen.queryByTestId('worker-v5-work-progress-board')).toBeNull()
     expect(screen.queryByTestId('worker-v5-evidence-tray')).toBeNull()
     expect(screen.queryByTestId('worker-jobs-surface')).toBeNull()
@@ -523,10 +539,11 @@ describe('Worker V5 arrival check-in', () => {
     fireEvent.press(screen.getByTestId('worker-scope-change-confirm-submit'))
 
     await waitFor(() => {
-      expect(mockWorkflowValue.actions.requestScopeChange).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockWorkflowValue.actions.openKaelJobIncident).toHaveBeenCalledWith(expect.objectContaining({
         photo_urls: [privateEvidenceRef],
       }))
     })
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
 
     mockRouteParams = { ns_worker_screen: '2.10-completion-evidence' }
     rerender(<WorkerJobsSurface />)
@@ -577,5 +594,15 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.getByTestId('worker-v5-completion-submit-action')).toBeOnTheScreen()
     expect(screen.queryByText('Kael đã đối chiếu phạm vi')).toBeNull()
     expect(screen.queryByText('Kael chỉ đối chiếu phạm vi và nguồn bằng chứng; quyền gửi vẫn là hành động rõ ràng của thợ.')).toBeNull()
+  })
+
+  it('opens the shared Kael Work thread when messaging the customer during approval wait', () => {
+    buildWorkflow(buildInProgressDeal())
+    mockRouteParams = { ns_worker_screen: '2.9-approval-wait' }
+
+    render(<WorkerJobsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-approval-message-action'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
   })
 })

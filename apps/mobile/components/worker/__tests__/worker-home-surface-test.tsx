@@ -116,6 +116,7 @@ import { resolveWorkerV5DockActive } from '../dock/routing'
 import { WorkerRebuildDockOverlay } from '../dock/worker-v5-dock-overlay'
 import { WorkerV5ScheduleList } from '../jobs/surfaces'
 import { workerV5CapturedIconAssets } from '../ui/worker-v5-icon-assets'
+import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
   return {
@@ -324,6 +325,8 @@ function buildWorkflow({
   mockWorkerUpdateAvailability = jest.fn(async () => true)
   mockWorkflowValue = {
     actions: {
+      openKaelJobIncident: jest.fn(async () => ({ incident: null })),
+      proposeScopeChangeFromKaelIncident: jest.fn(async () => true),
       requestScopeChange: jest.fn(async () => true),
       requestWorkerCancellation: jest.fn(async () => true),
       workerAcceptBroadcast: jest.fn(async () => true),
@@ -495,8 +498,31 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-home-command-center')).toBeOnTheScreen()
   })
 
-  it('updates the availability control optimistically while the backend write is pending', async () => {
+  it('removes dividers only from the four Home quick-action detail rails', () => {
+    const standaloneRail = render(
+      <WorkerV5DetailRail
+        items={[{ glyph: 'document', label: 'Một' }, { glyph: 'shield', label: 'Hai' }]}
+        testID="worker-v5-detail-rail-default"
+      />,
+    )
+    expect(screen.getByTestId('worker-v5-detail-rail-default-divider-0')).toBeOnTheScreen()
+    standaloneRail.unmount()
+
     buildWorkflow()
+    render(<WorkerHomeSurface />)
+
+    for (const index of [0, 1, 2, 3]) {
+      expect(screen.queryByTestId(`worker-v5-home-quick-action-detail-${index}-divider-0`)).toBeNull()
+      expect(screen.getByTestId(`worker-v5-home-quick-action-detail-${index}`)).toHaveStyle({ flexDirection: 'column' })
+    }
+  })
+
+  it('updates the availability control immediately while the backend write is pending', async () => {
+    buildWorkflow()
+    let resolveAvailabilityWrite: (saved: boolean) => void = () => undefined
+    mockWorkerUpdateAvailability.mockImplementationOnce(() => new Promise<boolean>((resolve) => {
+      resolveAvailabilityWrite = resolve
+    }))
 
     render(<WorkerHomeSurface />)
 
@@ -504,9 +530,31 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-availability-switch'))
 
     expect(mockWorkerUpdateAvailability).toHaveBeenCalledWith(true)
-    await waitFor(() => {
-      expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Sẵn sàng nhận việc')
+    expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Sẵn sàng nhận việc')
+    expect(screen.getByTestId('worker-v5-availability-switch').props.accessibilityState).toMatchObject({
+      busy: true,
+      checked: true,
     })
+
+    resolveAvailabilityWrite(true)
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-availability-switch').props.accessibilityState).toMatchObject({ busy: false })
+    })
+  })
+
+  it('commits only the first availability intent while its write is pending', () => {
+    buildWorkflow()
+    mockWorkerUpdateAvailability.mockImplementationOnce(() => new Promise<boolean>(() => undefined))
+
+    render(<WorkerHomeSurface />)
+
+    const availabilitySwitch = screen.getByTestId('worker-v5-availability-switch')
+    fireEvent.press(availabilitySwitch)
+    fireEvent.press(availabilitySwitch)
+
+    expect(mockWorkerUpdateAvailability).toHaveBeenCalledTimes(1)
+    expect(mockWorkerUpdateAvailability).toHaveBeenLastCalledWith(true)
+    expect(availabilitySwitch.props.accessibilityState).toMatchObject({ busy: true, checked: true })
   })
 
   it('rolls back visibly when the availability write is rejected', async () => {
@@ -527,7 +575,7 @@ describe('Worker runtime surface wiring', () => {
     alertSpy.mockRestore()
   })
 
-  it('explains and blocks going online while an operational job is still active', () => {
+  it('keeps availability as the worker preference while an operational job is still active', async () => {
     buildWorkflow({ workerJobs: [{ status: 'arrived' }] })
 
     render(<WorkerHomeSurface />)
@@ -535,12 +583,15 @@ describe('Worker runtime surface wiring', () => {
     const availabilitySwitch = screen.getByTestId('worker-v5-availability-switch')
     expect(availabilitySwitch.props.accessibilityState).toMatchObject({
       checked: false,
-      disabled: true,
+      disabled: false,
     })
-    expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Hoàn tất việc hiện tại để bật nhận việc')
+    expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Đang tắt nhận việc')
 
     fireEvent.press(availabilitySwitch)
-    expect(mockWorkerUpdateAvailability).not.toHaveBeenCalled()
+    expect(mockWorkerUpdateAvailability).toHaveBeenCalledWith(true)
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Đã bật cho công việc tiếp theo')
+    })
   })
 
   it('keeps availability guarded until the real worker job list has hydrated', () => {
@@ -683,7 +734,7 @@ describe('Worker runtime surface wiring', () => {
     })
   })
 
-  it('keeps the standard Kael composer on job intake after a worker is matched', async () => {
+  it('sends the matched-job intake message through the private worker Kael session', async () => {
     buildWorkflow({ deal: buildAcceptedDeal() })
     mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
 
@@ -692,7 +743,63 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
 
     expect(screen.getByTestId('worker-v5-kael-orb-input').props.value).toBe('')
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.create).toHaveBeenCalledWith(expect.objectContaining({
+        job_id: 'job_test_1',
+        language: 'vi',
+      }))
+    })
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledWith(
+        'worker-kael-session-1',
+        expect.objectContaining({ language: 'vi', media_refs: [], message: 'Tôi nên chuẩn bị dụng cụ gì?' }),
+        expect.any(Object),
+      )
+    })
+    expect(await screen.findByText('Kael saved this advisory. Keep the next step inside the app.')).toBeOnTheScreen()
+    expect(screen.getByText('Tôi nên chuẩn bị dụng cụ gì?')).toBeOnTheScreen()
+  })
+
+  it('ignores an empty Kael orb send without opening a session', () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+
     expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
+    expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
+  })
+
+  it('answers the normal Kael chat honestly when no active work session exists', async () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Kael giúp tôi chuẩn bị gì?')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+
+    expect(await screen.findByText('Kael giúp tôi chuẩn bị gì?')).toBeOnTheScreen()
+    expect(await screen.findByText(/chưa có phiên Kael theo công việc/)).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
+    expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
+  })
+
+  it('refuses a Kael orb photo attach without an active work session', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-camera'))
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Kael', 'Cần việc đang thực hiện để gửi ảnh cho Kael.')
+    })
+    const imagePicker = jest.requireMock('expo-image-picker')
+    expect(imagePicker.launchImageLibraryAsync).not.toHaveBeenCalled()
+    alertSpy.mockRestore()
   })
 
   it('opens the unified decision screen from Kael for an incoming opportunity', async () => {
@@ -742,6 +849,104 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-screen-2.1-opportunity-inbox')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-schedule-support-aura-group')).toBeNull()
+  })
+
+  it('uses the approved circular seal for a completion submission awaiting customer confirmation', () => {
+    buildWorkflow({ deal: buildCompletedByWorkerDeal() })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-completion-submitted-seal')).toHaveStyle({ borderRadius: 46, height: 92, width: 92 })
+    expect(screen.getByTestId('worker-v5-completion-submitted-title')).toHaveTextContent('Đã gửi hồ sơ')
+    expect(screen.getByTestId('worker-v5-completion-submitted-status')).toHaveTextContent('Đang chờ khách xác nhận')
+    expect(screen.getByTestId('worker-v5-completion-submitted-status-waiting-dots').children).toHaveLength(3)
+  })
+
+  it('runs the pending confirmation dots only until the customer confirms, then uses the rebuilt settlement seal', () => {
+    buildWorkflow({ deal: buildCompletedByWorkerDeal() })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+
+    const submitted = render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-completion-submitted-status-waiting-dots')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-completion-submitted-status-static-dots')).toBeNull()
+    submitted.unmount()
+
+    buildWorkflow({ deal: buildConfirmedCompletionDeal() })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+    const confirmed = render(<WorkerJobsSurface />)
+    expect(screen.queryByTestId('worker-v5-completion-submitted-status-waiting-dots')).toBeNull()
+    expect(screen.getByTestId('worker-v5-completion-submitted-status-static-dots')).toBeOnTheScreen()
+    confirmed.unmount()
+
+    mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
+    render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-case-closed-settlement-seal')).toHaveStyle({ borderRadius: 46, height: 92, width: 92 })
+    expect(screen.getByTestId('worker-v5-case-closed-settlement-status')).toHaveTextContent('Chờ đối soát')
+  })
+
+  it('removes the requested home, jobs, earnings, and settings header utilities', () => {
+    buildWorkflow()
+
+    const home = render(<WorkerHomeSurface />)
+    expect(screen.getByTestId('worker-v5-home-header').children).toHaveLength(1)
+    expect(screen.getByText('Chào buổi sáng, Worker Test!')).toHaveStyle({ fontWeight: '700' })
+    expect(screen.queryByTestId('worker-v5-home-notifications')).toBeNull()
+    home.unmount()
+
+    mockRouteParams = {}
+    const jobs = render(<WorkerJobsSurface />)
+    expect(screen.queryByTestId('worker-v5-opportunity-header-icon')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-opportunity-filter')).toBeNull()
+    jobs.unmount()
+
+    const earnings = render(<WorkerEarningsSurface />)
+    expect(screen.queryByTestId('worker-v5-opportunity-header-icon')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-earnings-filter')).toBeNull()
+    earnings.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.10-support-settings' }
+    const settings = render(<WorkerProfileSurface />)
+    expect(screen.queryByTestId('worker-v5-header-icon-5.10-support-settings')).toBeNull()
+    expect(screen.getByTestId('worker-v5-settings-screen')).toBeOnTheScreen()
+    settings.unmount()
+  })
+
+  it('gives the earnings overview title a small left inset', () => {
+    buildWorkflow()
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-v5-earnings-overview-title')).toHaveStyle({ marginLeft: 8 })
+  })
+
+  it('removes every Worker header info icon without removing the primary navigation', () => {
+    buildWorkflow()
+
+    const profileOverview = render(<WorkerProfileSurface />)
+    expect(screen.queryByTestId('worker-v5-profile-info-header-icon-5.1-profile-overview')).toBeNull()
+    profileOverview.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.2-worker-ranking' }
+    const ranking = render(<WorkerProfileSurface />)
+    expect(screen.queryByTestId('worker-v5-profile-info-header-icon-5.2-worker-ranking')).toBeNull()
+    ranking.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
+    const skills = render(<WorkerProfileSurface />)
+    expect(screen.queryByTestId('worker-v5-profile-info-header-icon-5.3-skills-service-area')).toBeNull()
+    skills.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.4-reliability-insights' }
+    const reliability = render(<WorkerProfileSurface />)
+    expect(screen.queryByTestId('worker-v5-profile-info-header-icon-5.4-reliability-insights')).toBeNull()
+    reliability.unmount()
+
+    buildWorkflow({ canWorkerAdvance: true, deal: buildRepairingDeal() })
+    mockRouteParams = { tab: 'active' }
+    render(<WorkerJobsSurface />)
+    expect(screen.queryByTestId('worker-v5-case-flow-info')).toBeNull()
+    expect(screen.getByTestId('worker-v5-in-progress-scope-action')).toBeOnTheScreen()
   })
 
   it('routes the public worker wrapper to the restored Worker V5 sections', () => {
@@ -851,7 +1056,7 @@ describe('Worker runtime surface wiring', () => {
   it('keeps every captured Worker card icon distinct from the other captured card contexts', () => {
     const sources = Object.values(workerV5CapturedIconAssets)
 
-    expect(sources).toHaveLength(34)
+    expect(sources).toHaveLength(36)
     expect(new Set(sources).size).toBe(sources.length)
   })
 
@@ -932,6 +1137,11 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-payout-method-hero-icon-image').props.source).toBe(require('@/assets/worker-image-icons/payout-receiving-account-core.png'))
     expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Chủ tài khoản/)
     expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Cần xác minh/)
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-payout-method-status').props.style)).toMatchObject({
+      alignSelf: 'center',
+      minWidth: 64,
+      paddingVertical: 7,
+    })
     expect(screen.queryByTestId('worker-v5-payout-method-mint-aura')).toBeNull()
     expect(screen.getByTestId('worker-v5-account-management-icon-0-image').props.source).toBe(require('@/assets/worker-image-icons/payout-add-bank-account-core.png'))
     expect(screen.getByTestId('worker-v5-account-management-icon-1-image').props.source).toBe(require('@/assets/worker-image-icons/payout-limit-policy-core.png'))
@@ -993,5 +1203,9 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-ranking-leaderboard-detail')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-ranking-improvement-detail-0')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-ranking-improvement-title-3')).toHaveTextContent('Phản hồi trong công việc')
+    expect(screen.getByTestId('worker-v5-ranking-improvement-title-4')).toHaveTextContent('Xử lý phát sinh minh bạch')
+    expect(screen.getByTestId('worker-v5-ranking-improvement-meta-3')).toHaveTextContent('Chờ khách đánh giá sau khi công việc hoàn tất')
+    expect(screen.getByTestId('worker-v5-ranking-improvement-meta-4')).toHaveTextContent('Mỗi phát sinh chỉ tính khi Kael và khách đã chốt')
   })
 })

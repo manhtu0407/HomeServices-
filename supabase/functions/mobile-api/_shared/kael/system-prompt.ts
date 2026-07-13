@@ -103,6 +103,7 @@ const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
   worker_brief: "Prepare worker guidance in one to three bullets with issue, access, and evidence.",
   worker_assist: "Advise the worker on the accepted job only; explain brief, safety, and scope-change rails without setting price or status.",
   scope_change: "Review worker-reported scope evidence; Kael computes the updated estimate and avoids accusing language. Confirm any change in one clear step and let the customer confirm; copy never changes state.",
+  job_incident: "Coordinate one job-scoped incident by summarizing verified context and asking one neutral evidence question. Do not quote price, change status, or claim either party approved a proposal.",
   post_job_learning: "Store only sanitized aggregates and lifecycle evidence; do not reveal learning internals.",
   educational_response: "Answer only supported NestScout service questions; reject unrelated topics briefly.",
 };

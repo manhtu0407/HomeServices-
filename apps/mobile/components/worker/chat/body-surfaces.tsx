@@ -14,11 +14,20 @@ import { styles } from './body-styles'
 
 type WorkerV5ServiceIconMap = Partial<Record<ServiceType, ImageSourcePropType>>
 
+export type WorkerV5KaelOrbLiveTurn = {
+  id: string
+  role: 'kael' | 'worker'
+  text: string
+}
+
 export function WorkerV5KaelOrbBody({
   composer,
   deal,
   fallbackJobIcon,
   language,
+  liveError = null,
+  liveStatus = null,
+  liveTurns = [],
   mode,
   modeMenuOpen = false,
   onOpenOpportunity,
@@ -29,12 +38,16 @@ export function WorkerV5KaelOrbBody({
   deal: LocalDeal | null
   fallbackJobIcon: ImageSourcePropType
   language: AppLanguage
+  liveError?: string | null
+  liveStatus?: string | null
+  liveTurns?: WorkerV5KaelOrbLiveTurn[]
   mode: 'intake' | 'normal'
   modeMenuOpen?: boolean
   onOpenOpportunity: () => void
   reduceTransparency: boolean
   serviceIcons: WorkerV5ServiceIconMap
 }) {
+  const hasLiveThread = liveTurns.length > 0 || Boolean(liveStatus) || Boolean(liveError)
   return (
     <View style={styles.kaelOrbCustomerShell} testID={`worker-v5-kael-orb-${mode}`}>
       <ScrollView
@@ -61,6 +74,20 @@ export function WorkerV5KaelOrbBody({
             serviceIcons={serviceIcons}
           />
         )}
+        {hasLiveThread ? (
+          <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-orb-live-thread">
+            {liveTurns.slice(-8).map((turn) => (
+              <WorkerV5KaelOrbBubble
+                align={turn.role === 'worker' ? 'right' : undefined}
+                body={turn.text}
+                key={turn.id}
+                role={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
+              />
+            ))}
+            {liveStatus ? <WorkerV5KaelOrbBubble body={liveStatus} role="Kael" /> : null}
+            {liveError ? <WorkerV5KaelOrbBubble body={liveError} role="Kael" /> : null}
+          </View>
+        ) : null}
       </ScrollView>
       {composer}
     </View>

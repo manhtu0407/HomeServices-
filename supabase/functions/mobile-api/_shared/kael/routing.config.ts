@@ -64,6 +64,7 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
     route: anthropic("claude-opus-4-8"),
     trigger: HIGH_STAKES_ESCALATION,
   }),
+  job_incident: config("job_incident", deepseek(), anthropic(), 0.004, 5_000, true, 250),
   post_job_learning: config("post_job_learning", deepseek("deepseek-v4-pro"), anthropic(), 0.012, 15_000, false, 800),
   educational_response: config("educational_response", deepseek(), anthropic("claude-haiku-4-5-20251001"), 0.003, 2_000, true, 500),
   worker_assist: config("worker_assist", deepseek(), anthropic(), 0.004, 5_000, true, 180),

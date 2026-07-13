@@ -41,6 +41,7 @@ import type {
   WorkerPerformanceInsightsResponse,
   WorkerProfileResponse,
   WorkerCandidateView,
+  JobIncidentResponse,
 } from './api-types'
 import { useAppLanguage } from './app-language'
 import {
@@ -120,6 +121,9 @@ type FrontendWorkflowActions = {
     extras?: { completion_notes?: string; completion_photo_urls?: string[]; access_check_in?: WorkerAccessCheckInInput },
   ) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeInput) => Promise<boolean>
+  getKaelJobIncident: () => Promise<JobIncidentResponse | false>
+  openKaelJobIncident: (input: WorkerScopeChangeInput) => Promise<JobIncidentResponse | false>
+  proposeScopeChangeFromKaelIncident: () => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
   workerSubmitRegistration: (input: WorkerRegisterInput) => Promise<boolean>
   decideScopeChange: (scopeChangeId: string, input: CustomerScopeDecisionInput) => Promise<boolean>
@@ -224,6 +228,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const selectors = useMemo(() => selectLocalWorkflow(state), [state])
   const sessionUserId = session?.user.id ?? null
   const stateRef = useRef(state)
+  const workerAvailabilityPreferenceRef = useRef<{ sessionUserId: string | null; value: boolean } | null>(null)
+  const workerRefreshRequestIdRef = useRef(0)
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
   const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
@@ -500,20 +506,35 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   const workerRefresh = useCallback(async () => {
     if (role !== 'worker' && role !== 'admin') return true
+    const workerRefreshRequestId = workerRefreshRequestIdRef.current + 1
+    workerRefreshRequestIdRef.current = workerRefreshRequestId
+    const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
     const profile = await workerService.getProfile()
+    if (!isCurrentWorkerRefresh()) return true
     if (!profile.success) return setRemoteError(profile.error)
 
     const earnings = await workerService.getEarnings(currentWorkerMonthRange())
+    if (!isCurrentWorkerRefresh()) return true
     const nextEarnings = earnings.success ? earnings.data : null
     const performanceInsights = await workerService.getPerformanceInsights()
+    if (!isCurrentWorkerRefresh()) return true
     const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
+    const pendingAvailabilityPreference = workerAvailabilityPreferenceRef.current?.sessionUserId === sessionUserId
+      ? workerAvailabilityPreferenceRef.current.value
+      : null
+    const refreshedProfile = pendingAvailabilityPreference === null || profile.data.is_available === pendingAvailabilityPreference
+      ? profile.data
+      : { ...profile.data, is_available: pendingAvailabilityPreference }
+    if (pendingAvailabilityPreference !== null && profile.data.is_available === pendingAvailabilityPreference) {
+      workerAvailabilityPreferenceRef.current = null
+    }
     setWorkerRemoteState((current) => {
       const currentProfile = current.sessionUserId === sessionUserId ? current.profile : null
       const currentEarnings = current.sessionUserId === sessionUserId ? current.earnings : null
       const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
       const currentPerformanceInsights = current.sessionUserId === sessionUserId ? current.performanceInsights : null
-      const sameProfile = sameWorkerProfile(currentProfile, profile.data)
+      const sameProfile = sameWorkerProfile(currentProfile, refreshedProfile)
       const sameEarnings = nextEarnings ? sameWorkerEarnings(currentEarnings, nextEarnings) : currentEarnings === null
       const samePerformanceInsights = nextPerformanceInsights
         ? sameWorkerPerformanceInsights(currentPerformanceInsights, nextPerformanceInsights)
@@ -525,16 +546,18 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
             jobs: currentJobs,
             jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
             performanceInsights: nextPerformanceInsights,
-            profile: profile.data,
+            profile: refreshedProfile,
             sessionUserId,
           }
     })
 
     const broadcasts = await workerService.getBroadcasts()
+    if (!isCurrentWorkerRefresh()) return true
     if (!broadcasts.success) return setRemoteError(broadcasts.error)
     const nextBroadcast = broadcasts.data.broadcasts[0]
 
     const jobs = await workerService.getJobs()
+    if (!isCurrentWorkerRefresh()) return true
     if (!jobs.success) {
       if (nextBroadcast) {
         dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
@@ -554,16 +577,16 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
         sessionUserId,
       }
     })
-    if (nextBroadcast) {
-      dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
-      return true
-    }
-    const currentJobId = getRemoteJobId(stateRef.current)
     const activeJob = jobs.data.jobs.find((job) => isWorkerOperationalJobStatus(job.status))
     if (activeJob) {
       dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(activeJob), workerGate: 'remote_backend' })
       return true
     }
+    if (nextBroadcast) {
+      dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
+      return true
+    }
+    const currentJobId = getRemoteJobId(stateRef.current)
     const currentJob = currentJobId ? jobs.data.jobs.find((job) => job.id === currentJobId) : undefined
     if (currentJob) {
       dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(currentJob), workerGate: 'remote_backend' })
@@ -579,10 +602,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const workerUpdateAvailability = useCallback(async (isAvailable: boolean) => {
     const updated = await workerService.updateAvailability({ is_available: isAvailable })
     if (!updated.success) return setRemoteError(updated.error)
+    workerAvailabilityPreferenceRef.current = { sessionUserId, value: updated.data.is_available }
     setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
       ? { ...current, profile: { ...current.profile, is_available: updated.data.is_available } }
       : current)
-    await workerRefresh()
+    void workerRefresh().catch(() => undefined)
     return true
   }, [sessionUserId, setRemoteError, workerRefresh])
 
@@ -682,6 +706,40 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để đổi phạm vi')
     const result = await workerService.requestScopeChange(jobId, input)
+    if (!result.success) return setRemoteError(result.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError])
+
+  const getKaelJobIncident = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return false
+    const result = await workerService.getKaelJobIncident(jobId)
+    if (!result.success) {
+      setRemoteError(result.error)
+      return false
+    }
+    return result.data
+  }, [setRemoteError])
+
+  const openKaelJobIncident = useCallback(async (input: WorkerScopeChangeInput) => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) {
+      setRemoteError('Không có yêu cầu để mở Kael Công việc')
+      return false
+    }
+    const result = await workerService.openKaelJobIncident(jobId, input)
+    if (!result.success) {
+      setRemoteError(result.error)
+      return false
+    }
+    return result.data
+  }, [setRemoteError])
+
+  const proposeScopeChangeFromKaelIncident = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để tạo đề xuất')
+    const result = await workerService.proposeScopeChangeFromKaelIncident(jobId)
     if (!result.success) return setRemoteError(result.error)
     await refreshCurrentJob()
     return true
@@ -895,6 +953,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerDeclineBroadcast,
     workerUpdateStatus,
     requestScopeChange,
+    getKaelJobIncident,
+    openKaelJobIncident,
+    proposeScopeChangeFromKaelIncident,
     requestWorkerCancellation,
     workerSubmitRegistration,
     decideScopeChange,
@@ -930,6 +991,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     updateCustomerKaelMemoryPreference,
     markNotificationRead,
     requestScopeChange,
+    getKaelJobIncident,
+    openKaelJobIncident,
+    proposeScopeChangeFromKaelIncident,
     requestWorkerCancellation,
     submitReview,
     workerAcceptBroadcast,
@@ -999,9 +1063,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   }, [refreshNotifications, role, sessionUserId])
 
   useEffect(() => {
-    if (!sessionUserId || (role !== 'worker' && role !== 'admin')) return
+    if (!sessionUserId || role !== 'worker') return
     const initialRefresh = setTimeout(() => {
-      if (isAppForeground()) void workerRefresh()
+      if (isAppForeground()) void workerUpdateAvailability(false)
     }, 0)
     const interval = setInterval(() => {
       if (isAppForeground()) void workerRefresh()
@@ -1010,7 +1074,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       clearTimeout(initialRefresh)
       clearInterval(interval)
     }
-  }, [role, sessionUserId, workerRefresh])
+  }, [role, sessionUserId, workerRefresh, workerUpdateAvailability])
 
   // Realtime surfaces incoming broadcasts quickly; polling remains the fallback
   // and RLS scopes the channel to this worker's own rows.

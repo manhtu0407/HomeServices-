@@ -2,33 +2,21 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "Mobile (Expo Web)",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@home-services/mobile", "web"],
+      "name": "mobile-web",
+      "runtimeExecutable": "C:\\tmp\\hs-toolchain\\node-v20.18.0-win-x64\\pnpm.CMD",
+      "runtimeArgs": ["--filter", "@nestscout/mobile", "web"],
       "port": 8081
     },
     {
-      "name": "API (Next.js)",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@home-services/api", "dev"],
-      "port": 3000
+      "name": "mobile-web-staging",
+      "runtimeExecutable": "C:\\tmp\\hs-toolchain\\node-v20.18.0-win-x64\\pnpm.CMD",
+      "runtimeArgs": ["run", "preview:mobile:web:staging"],
+      "port": 8082
     },
     {
-      "name": "Supabase Local Stack",
-      "runtimeExecutable": "supabase",
-      "runtimeArgs": ["start"],
-      "port": 54321
-    },
-    {
-      "name": "Supabase Edge Functions (mobile-api)",
-      "runtimeExecutable": "supabase",
-      "runtimeArgs": ["functions", "serve", "mobile-api", "--no-verify-jwt"],
-      "port": 54321
-    },
-    {
-      "name": "Turbo dev (all workspaces)",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
+      "name": "api-nextjs",
+      "runtimeExecutable": "C:\\tmp\\hs-toolchain\\node-v20.18.0-win-x64\\pnpm.CMD",
+      "runtimeArgs": ["--filter", "@nestscout/api", "dev"],
       "port": 3000
     }
   ]

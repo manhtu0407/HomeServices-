@@ -65,6 +65,8 @@ import type {
   WorkerKaelFeedbackResponse,
   WorkerKaelTrainingConsentResponse,
   WorkerKaelClarifyResponse,
+  JobIncidentResponse,
+  JobIncidentScopeProposalResponse,
   WorkerScopeChangeResponse,
   WorkerCandidateDecisionResponse,
   WorkerCandidateResponse,
@@ -225,6 +227,18 @@ export const jobService = {
 
   requestScopeChange(jobId: string, input: WorkerScopeChangeInput) {
     return api.post<WorkerScopeChangeResponse>(`/jobs/${jobId}/scope-change`, input)
+  },
+
+  getKaelJobIncident(jobId: string) {
+    return api.get<JobIncidentResponse>(`/jobs/${jobId}/kael-incident`)
+  },
+
+  openKaelJobIncident(jobId: string, input: WorkerScopeChangeInput) {
+    return api.post<JobIncidentResponse>(`/jobs/${jobId}/kael-incident`, input)
+  },
+
+  proposeScopeChangeFromKaelIncident(jobId: string) {
+    return api.post<JobIncidentScopeProposalResponse>(`/jobs/${jobId}/kael-incident/propose-scope`)
   },
 
   askKaelForWorker(jobId: string, input: KaelWorkerClarifyInput) {
@@ -491,6 +505,18 @@ export const workerService = {
 
   requestScopeChange(jobId: string, input: WorkerScopeChangeInput) {
     return jobService.requestScopeChange(jobId, input)
+  },
+
+  getKaelJobIncident(jobId: string) {
+    return jobService.getKaelJobIncident(jobId)
+  },
+
+  openKaelJobIncident(jobId: string, input: WorkerScopeChangeInput) {
+    return jobService.openKaelJobIncident(jobId, input)
+  },
+
+  proposeScopeChangeFromKaelIncident(jobId: string) {
+    return jobService.proposeScopeChangeFromKaelIncident(jobId)
   },
 
   askKael(jobId: string, input: KaelWorkerClarifyInput) {

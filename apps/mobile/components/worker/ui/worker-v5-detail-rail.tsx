@@ -152,11 +152,13 @@ export function WorkerV5DetailRail({
   items,
   layout = 'inline',
   prominent = false,
+  showDividers = true,
   testID,
 }: {
   items: readonly WorkerV5DetailRailItem[]
   layout?: WorkerV5DetailRailLayout
   prominent?: boolean
+  showDividers?: boolean
   testID?: string
 }) {
   if (!items.length) return null
@@ -167,7 +169,7 @@ export function WorkerV5DetailRail({
         <View key={`${item.glyph}-${item.label}`} style={[styles.item, stacked && styles.itemStacked]}>
           <WorkerV5DetailGlyphMark glyph={item.glyph} />
           <Text numberOfLines={1} style={[styles.label, prominent && styles.labelProminent]}>{item.label}</Text>
-          {!stacked && index < items.length - 1 ? <View style={styles.divider} /> : null}
+          {!stacked && showDividers && index < items.length - 1 ? <View style={styles.divider} testID={testID ? `${testID}-divider-${index}` : undefined} /> : null}
         </View>
       ))}
     </View>

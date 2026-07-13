@@ -2,6 +2,12 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import { SERVICE_TYPES } from "../../../_shared/domain.ts";
 import { asNumber, asString, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
+import {
+  calculateKaelWorkResponseScore,
+  isWorkerPerformanceResolvedIncidentCase,
+  type WorkerPerformanceInsightIncidentCaseRow,
+  type WorkerPerformanceInsightReviewRow,
+} from "./worker-performance-policy.ts";
 
 type CustomerProfileInsightJobRow = {
   id: string;
@@ -83,12 +89,9 @@ type WorkerPerformanceInsightJobRow = {
   status: string;
 };
 
-type WorkerPerformanceInsightReviewRow = {
-  rating: number | null;
-};
-
 type WorkerPerformanceInsightInput = {
   broadcasts: WorkerPerformanceInsightBroadcastRow[];
+  incidentCases: WorkerPerformanceInsightIncidentCaseRow[];
   jobs: WorkerPerformanceInsightJobRow[];
   reviews: WorkerPerformanceInsightReviewRow[];
   workerId: string;
@@ -117,13 +120,16 @@ type WorkerPerformanceInsightsResponse = {
   on_time_job_count: number;
   paid_job_count: number;
   reconciled_earnings_vnd: number | null;
+  work_response_review_count: number;
+  resolved_incident_case_count: number;
+  incident_rank_bonus: number;
   performance_score: number | null;
   badges: Array<{
     id: "verified_profile" | "fast_responder" | "reliable_arrival" | "trusted_by_customers" | "steady_earner";
     status: "earned" | "locked";
   }>;
   performance_axes: Array<{
-    id: "rating" | "response" | "arrival" | "completion" | "earnings";
+    id: "rating" | "response" | "arrival" | "completion" | "earnings" | "work_response" | "incident_handling";
     score: number | null;
   }>;
 };
@@ -236,7 +242,7 @@ export async function getCustomerProfileInsights(ctx: MobileApiContext) {
 
 export async function getWorkerPerformanceInsights(ctx: MobileApiContext) {
   const client = db(ctx);
-  const [workerProfile, broadcasts, jobs, reviews] = await Promise.all([
+  const [workerProfile, broadcasts, jobs, reviews, incidentCases] = await Promise.all([
     dbQuery<Record<string, unknown>>(
       client
         .from("worker_profiles")
@@ -267,9 +273,17 @@ export async function getWorkerPerformanceInsights(ctx: MobileApiContext) {
     dbQuery<Array<Record<string, unknown>>>(
       client
         .from("reviews")
-        .select("rating")
+        .select("rating, tags")
         .eq("worker_id", ctx.user.id)
         .limit(500),
+    ),
+    dbQuery<Array<Record<string, unknown>>>(
+      client
+        .from("scope_change_requests")
+        .select("status, kael_review")
+        .eq("worker_id", ctx.user.id)
+        .in("status", ["approved_by_customer", "rejected_by_customer"])
+        .limit(100),
     ),
   ]);
   if (workerProfile.error) {
@@ -283,6 +297,8 @@ export async function getWorkerPerformanceInsights(ctx: MobileApiContext) {
   if (jobs.error) apiFailure("DB_ERROR", "Không thể tải công việc của thợ", 500);
 
   if (reviews.error) apiFailure("DB_ERROR", "Không thể tải đánh giá thợ", 500);
+
+  if (incidentCases.error) apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i d\u1eef li\u1ec7u ph\u00e1t sinh", 500);
 
   return buildWorkerPerformanceInsights({
     broadcasts: (broadcasts.data ?? []).map((row) => ({
@@ -302,6 +318,11 @@ export async function getWorkerPerformanceInsights(ctx: MobileApiContext) {
     })),
     reviews: (reviews.data ?? []).map((review) => ({
       rating: nullableNumber(review.rating),
+      tags: stringArray(review.tags),
+    })),
+    incidentCases: (incidentCases.data ?? []).map((incident) => ({
+      kael_review: objectRecordOrNull(incident.kael_review),
+      status: asString(incident.status),
     })),
     workerId: ctx.user.id,
     workerProfile: workerProfile.data
@@ -456,6 +477,12 @@ export function buildWorkerPerformanceInsights(
     ? roundToOneDecimal(Math.min(5, Math.max(1, input.workerProfile.rating)))
     : null;
   const ratingScore = averageRating === null ? null : Math.round((averageRating / 5) * 100);
+  const workResponse = calculateKaelWorkResponseScore(input.reviews);
+  const resolvedIncidentCaseCount = input.incidentCases.filter(isWorkerPerformanceResolvedIncidentCase).length;
+  const incidentHandlingScore = resolvedIncidentCaseCount > 0
+    ? Math.min(100, resolvedIncidentCaseCount * 25)
+    : null;
+  const incidentRankBonus = Math.min(20, resolvedIncidentCaseCount * 5);
   const completionScore = respondedBroadcasts.length > 0
     ? Math.min(100, Math.round((completedJobs.length / respondedBroadcasts.length) * 100))
     : completedJobs.length > 0
@@ -468,12 +495,15 @@ export function buildWorkerPerformanceInsights(
     { id: "arrival", score: onTimeRatePercent },
     { id: "completion", score: completionScore },
     { id: "earnings", score: earningsScore },
+    { id: "work_response", score: workResponse.score },
+    { id: "incident_handling", score: incidentHandlingScore },
   ];
-  const axisScores = performance_axes
+  const routineAxisScores = performance_axes
+    .filter((axis) => axis.id !== "incident_handling")
     .map((axis) => axis.score)
     .filter((score): score is number => score !== null);
-  const performanceScore = axisScores.length > 0
-    ? Math.round(axisScores.reduce((total, score) => total + score, 0) / axisScores.length)
+  const performanceScore = routineAxisScores.length > 0
+    ? Math.min(100, Math.round(routineAxisScores.reduce((total, score) => total + score, 0) / routineAxisScores.length) + incidentRankBonus)
     : null;
 
   return {
@@ -491,6 +521,9 @@ export function buildWorkerPerformanceInsights(
     on_time_job_count: onTimeJobs.length,
     paid_job_count: paidJobs.length,
     reconciled_earnings_vnd: reconciledEarningsVnd > 0 ? reconciledEarningsVnd : null,
+    work_response_review_count: workResponse.reviewCount,
+    resolved_incident_case_count: resolvedIncidentCaseCount,
+    incident_rank_bonus: incidentRankBonus,
     performance_score: performanceScore,
     badges: workerPerformanceBadges({
       averageRating,
@@ -681,6 +714,16 @@ function isWorkerPerformanceOnTimeJob(row: WorkerPerformanceInsightJobRow) {
   const arrived = timestampMs(row.arrived_at);
   if (scheduled === null || arrived === null) return false;
   return arrived <= scheduled + WORKER_PERFORMANCE_ON_TIME_GRACE_MS;
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function objectRecordOrNull(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
 
 function workerPerformanceBadges(input: {

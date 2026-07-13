@@ -40,6 +40,7 @@ import { generateClientRequestId } from '@/lib/client-request-id'
 import { localizedProblemOptions, setAppLanguage, useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { customerProfileService, jobService, kaelAssistantService, kaelChatService, placesService } from '@/lib/services'
 import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
 import { cleanupKaelChatMediaRefs, localizeMediaUploadFailure, uploadJobMediaDrafts, uploadKaelChatMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -311,7 +312,7 @@ const vietnamTimelineTimeZone = 'Asia/Ho_Chi_Minh'
 const kaelTimelineRefreshMs = 60_000
 type CustomerAssistantLocalTurn = {
   id: string
-  role: 'customer' | 'kael'
+  role: 'customer' | 'worker' | 'kael'
   surface: 'customer_normal' | 'customer_case'
   text_content: string
 }
@@ -1824,6 +1825,7 @@ export function KaelChatSurface() {
   const [localMode, setLocalMode] = useState<CustomerKaelMode>(routeDerivedMode)
   const [modeMenuOpen, setModeMenuOpen] = useState(false)
   const mode: CustomerKaelMode = localMode
+  const jobIncidentThread = useJobChatThread(deal?.id ?? null, Boolean(deal && mode === 'case'))
   const [selectedService, setSelectedService] = useState<ServiceType | null>(pendingDraft?.serviceType ?? deal?.draft.serviceType ?? serviceParam(firstParam(params.service)))
   const [draft, setDraft] = useState('')
   const [chat, setChat] = useState<KaelChatResponse | null>(null)
@@ -2296,6 +2298,19 @@ export function KaelChatSurface() {
         setError(language === 'vi' ? 'Chưa có' : 'Empty')
         return
       }
+      if (hasSharedJobIncident) {
+        setLoading(true)
+        setError(null)
+        const sent = await jobIncidentThread.send(message)
+        setLoading(false)
+        if (sent) {
+          setDraft('')
+          setVoiceTranscript('')
+        } else {
+          setError(jobIncidentThread.error ?? (language === 'vi' ? 'Chưa thể gửi vào Kael Công việc.' : 'Kael Work could not send this message.'))
+        }
+        return
+      }
       const processDone = startProcessLines(message, {
         complexity: deal.estimate?.complexity ?? null,
         mediaCount: deal.draft.mediaCount ?? 0,
@@ -2478,7 +2493,23 @@ export function KaelChatSurface() {
     turn.content_type !== 'estimate' &&
     !isScriptedKaelAcknowledgementTurn(turn))
   const normalAssistantTurns = assistantTurns.filter((turn) => turn.surface === 'customer_normal')
-  const caseAssistantTurns = assistantTurns.filter((turn) => turn.surface === 'customer_case')
+  const hasSharedJobIncident = jobIncidentThread.messages.some((message) =>
+    message.sender_role === 'kael' && message.content.startsWith('Kael Công việc:'),
+  )
+  const sharedJobIncidentTurns = hasSharedJobIncident
+    ? jobIncidentThread.messages.map((message) => ({
+      id: `job-incident-${message.id}`,
+      role: message.sender_role,
+      surface: 'customer_case' as const,
+      text_content: message.sender_role === 'worker'
+        ? `${language === 'vi' ? 'Thợ: ' : 'Worker: '}${message.content}`
+        : message.content,
+    }))
+    : []
+  const caseAssistantTurns = [
+    ...assistantTurns.filter((turn) => turn.surface === 'customer_case'),
+    ...sharedJobIncidentTurns,
+  ]
   const backendDraftCustomerTurn = routeDraftEvidencePending
     ? normalVisibleTurns.find((turn) => turn.role === 'customer' && turn.text_content?.trim())
     : null

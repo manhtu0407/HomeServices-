@@ -173,7 +173,7 @@ export function WorkerV5SuccessEmblemAura({ scope, testID }: { scope: string; te
   const edgeId = `workerV5SuccessEmblemAuraEdge${scope}`
   return (
     <View pointerEvents="none" style={styles.successEmblemAura} testID={testID}>
-      <Svg height="104" preserveAspectRatio="none" viewBox="0 0 104 104" width="104">
+      <Svg height="92" preserveAspectRatio="none" viewBox="0 0 92 92" width="92">
         <Defs>
           <RadialGradient id={coreId} cx="45%" cy="35%" r="70%">
             <Stop offset="0" stopColor="#F4FFFC" />
@@ -186,8 +186,8 @@ export function WorkerV5SuccessEmblemAura({ scope, testID }: { scope: string; te
             <Stop offset="1" stopColor="rgba(63,223,202,0)" />
           </RadialGradient>
         </Defs>
-        <Rect fill={`url(#${coreId})`} height="104" rx="34" width="104" />
-        <Rect fill={`url(#${edgeId})`} height="104" rx="34" width="104" />
+        <Circle cx="46" cy="46" fill={`url(#${coreId})`} r="46" />
+        <Circle cx="46" cy="46" fill={`url(#${edgeId})`} r="46" />
       </Svg>
     </View>
   )
@@ -197,14 +197,14 @@ export function WorkerV5SuccessCheckFill({ scope, testID }: { scope: string; tes
   const fillId = `workerV5SuccessCheckFill${scope}`
   return (
     <View pointerEvents="none" style={styles.successCheckFill} testID={testID}>
-      <Svg height="63" preserveAspectRatio="none" viewBox="0 0 63 63" width="63">
+      <Svg height="58" preserveAspectRatio="none" viewBox="0 0 58 58" width="58">
         <Defs>
           <LinearGradient id={fillId} x1="0" x2="1" y1="0" y2="1">
             <Stop offset="0" stopColor="#33D4BD" />
             <Stop offset="1" stopColor="#087D72" />
           </LinearGradient>
         </Defs>
-        <Rect fill={`url(#${fillId})`} height="63" rx="23" width="63" />
+        <Circle cx="29" cy="29" fill={`url(#${fillId})`} r="29" />
       </Svg>
     </View>
   )

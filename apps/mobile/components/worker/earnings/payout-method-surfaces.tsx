@@ -87,7 +87,7 @@ export function WorkerV5PayoutMethodHero({
           testID="worker-v5-payout-method-hero-detail"
         />
       </View>
-      <Text style={styles.approvalDecisionStatus} numberOfLines={2} testID="worker-v5-payout-method-status">
+      <Text style={styles.payoutMethodStatus} numberOfLines={1} testID="worker-v5-payout-method-status">
         {hasBank ? textByLanguage(language, 'Đã chọn', 'Selected') : textByLanguage(language, 'Chưa có', 'None')}
       </Text>
     </View>

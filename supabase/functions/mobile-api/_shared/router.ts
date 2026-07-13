@@ -369,6 +369,15 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.requestScopeChange(ctx, route.jobId, input.data);
     }
+    case "jobs.kaelIncidentGet":
+      return services.getJobIncident(ctx, route.jobId);
+    case "jobs.kaelIncidentOpen": {
+      const input = workerScopeChangeSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+      return services.openJobIncident(ctx, route.jobId, input.data);
+    }
+    case "jobs.kaelIncidentProposeScope":
+      return services.proposeScopeChangeFromJobIncident(ctx, route.jobId);
     case "jobs.kaelClarify": {
       const input = kaelWorkerClarifySchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

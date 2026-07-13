@@ -106,6 +106,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     updateJobStatus: vi.fn(),
     authorizeApartmentAccess: vi.fn(),
     requestScopeChange: vi.fn(),
+    getJobIncident: vi.fn(async () => ({ incident: null })),
+    openJobIncident: vi.fn(async () => ({ incident: null })),
+    proposeScopeChangeFromJobIncident: vi.fn(),
     askKaelForWorker: vi.fn(),
     createWorkerKaelChat: vi.fn(),
     listWorkerKaelChats: vi.fn(),
@@ -176,6 +179,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       on_time_job_count: 0,
       paid_job_count: 0,
       reconciled_earnings_vnd: null,
+      work_response_review_count: 0,
+      resolved_incident_case_count: 0,
+      incident_rank_bonus: 0,
       performance_score: null,
       badges: [],
       performance_axes: [],
@@ -1446,6 +1452,54 @@ describe('mobile-api Edge router contract', () => {
       '22222222-2222-4222-8222-222222222222',
       { content: 'Tôi đang lên thang máy.' },
     )
+  })
+
+  it('keeps Kael job incident opening, readback, and proposal behind their dedicated Edge routes', async () => {
+    const openJobIncident = vi.fn(async () => ({ incident: null }))
+    const getJobIncident = vi.fn(async () => ({ incident: null }))
+    const proposeScopeChangeFromJobIncident = vi.fn(async () => ({
+      incident: {
+        id: 'incident-1',
+        job_id: '22222222-2222-4222-8222-222222222222',
+        status: 'scope_proposed' as const,
+        evidence_status: 'ready' as const,
+        last_summary: null,
+        last_question: null,
+        last_next_actor: null,
+        created_at: '2026-07-12T00:00:00.000Z',
+        updated_at: '2026-07-12T00:00:00.000Z',
+      },
+      scope_change: {
+        scope_change_id: 'scope-1',
+        job_id: '22222222-2222-4222-8222-222222222222',
+        status: 'waiting_customer_decision' as const,
+        created_at: '2026-07-12T00:00:00.000Z',
+      },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ openJobIncident, getJobIncident, proposeScopeChangeFromJobIncident }),
+    })
+    const jobId = '22222222-2222-4222-8222-222222222222'
+
+    const opened = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        new_description: 'Có thêm đoạn ống bị nứt sau lavabo.',
+        reason: 'Phần nứt này chưa thuộc phạm vi đã chốt.',
+        photo_urls: [],
+      }),
+    }))
+    const read = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident`))
+    const proposed = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident/propose-scope`, { method: 'POST' }))
+
+    expect(opened.status).toBe(201)
+    expect(read.status).toBe(200)
+    expect(proposed.status).toBe(200)
+    expect(openJobIncident).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }), jobId, expect.objectContaining({ photo_urls: [] }))
+    expect(getJobIncident).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }), jobId)
+    expect(proposeScopeChangeFromJobIncident).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }), jobId)
   })
 
   it('rejects invalid worker completion price before service mutation', async () => {

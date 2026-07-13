@@ -320,6 +320,30 @@ export type EdgeWorkerScopeChangeResponse = {
   worker_challenge?: Record<string, unknown>;
   customer_card?: Record<string, unknown>;
 };
+export type EdgeJobIncidentStatus =
+  | "open"
+  | "awaiting_worker"
+  | "awaiting_customer"
+  | "ready_for_scope_proposal"
+  | "scope_proposed"
+  | "resolved"
+  | "cancelled";
+export type EdgeJobIncident = {
+  id: string;
+  job_id: string;
+  status: EdgeJobIncidentStatus;
+  evidence_status: "needs_more" | "ready";
+  last_summary: string | null;
+  last_question: string | null;
+  last_next_actor: "customer" | "worker" | null;
+  created_at: string;
+  updated_at: string;
+};
+export type EdgeJobIncidentResponse = { incident: EdgeJobIncident | null };
+export type EdgeJobIncidentScopeProposalResponse = {
+  incident: EdgeJobIncident;
+  scope_change: EdgeWorkerScopeChangeResponse;
+};
 export type EdgeWorkerKaelClarifyResponse = {
   qa_id: string;
   job_id: string;
@@ -676,13 +700,16 @@ export type EdgeWorkerPerformanceInsightsResponse = {
   on_time_job_count: number;
   paid_job_count: number;
   reconciled_earnings_vnd: number | null;
+  work_response_review_count: number;
+  resolved_incident_case_count: number;
+  incident_rank_bonus: number;
   performance_score: number | null;
   badges: {
     id: "verified_profile" | "fast_responder" | "reliable_arrival" | "trusted_by_customers" | "steady_earner";
     status: "earned" | "locked";
   }[];
   performance_axes: {
-    id: "rating" | "response" | "arrival" | "completion" | "earnings";
+    id: "rating" | "response" | "arrival" | "completion" | "earnings" | "work_response" | "incident_handling";
     score: number | null;
   }[];
 };

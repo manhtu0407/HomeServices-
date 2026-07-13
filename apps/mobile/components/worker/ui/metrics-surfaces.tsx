@@ -1,9 +1,11 @@
+import { useEffect } from 'react'
 import {
   Text as RNText,
   View,
   type TextProps,
 } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient } from 'react-native-svg'
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated'
 import type { LocalDeal } from '@nestscout/shared'
 
 import { MintAura } from '@/components/ui/kael-primitives'
@@ -27,35 +29,87 @@ function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
+function WorkerV5CompletionStatusDots({
+  reduceMotion,
+  waitingForCustomer,
+}: {
+  reduceMotion: boolean
+  waitingForCustomer: boolean
+}) {
+  const firstDotProgress = useSharedValue(1)
+  const secondDotProgress = useSharedValue(1)
+  const thirdDotProgress = useSharedValue(1)
+  const firstDotStyle = useAnimatedStyle(() => ({ opacity: firstDotProgress.value }))
+  const secondDotStyle = useAnimatedStyle(() => ({ opacity: secondDotProgress.value }))
+  const thirdDotStyle = useAnimatedStyle(() => ({ opacity: thirdDotProgress.value }))
+  const shouldAnimate = waitingForCustomer && !reduceMotion
+
+  useEffect(() => {
+    const dots = [firstDotProgress, secondDotProgress, thirdDotProgress]
+    dots.forEach((dot) => cancelAnimation(dot))
+
+    if (!shouldAnimate) {
+      dots.forEach((dot) => {
+        dot.value = 1
+      })
+      return
+    }
+
+    firstDotProgress.value = withRepeat(withSequence(withTiming(0.34, { duration: 360 }), withTiming(1, { duration: 360 })), -1, false)
+    secondDotProgress.value = withDelay(140, withRepeat(withSequence(withTiming(0.34, { duration: 360 }), withTiming(1, { duration: 360 })), -1, false))
+    thirdDotProgress.value = withDelay(280, withRepeat(withSequence(withTiming(0.34, { duration: 360 }), withTiming(1, { duration: 360 })), -1, false))
+
+    return () => {
+      dots.forEach((dot) => cancelAnimation(dot))
+    }
+  }, [firstDotProgress, secondDotProgress, shouldAnimate, thirdDotProgress])
+
+  return (
+    <View
+      style={styles.successStatusDots}
+      testID={shouldAnimate ? 'worker-v5-completion-submitted-status-waiting-dots' : 'worker-v5-completion-submitted-status-static-dots'}
+    >
+      <Animated.View style={[styles.statusDotSmall, styles.statusDotSoft, firstDotStyle]} />
+      <Animated.View style={[styles.statusDotSmall, styles.statusDotMid, secondDotStyle]} />
+      <Animated.View style={[styles.statusDotSmall, thirdDotStyle]} />
+    </View>
+  )
+}
+
 export function WorkerV5SuccessEmblem({
   body,
+  reduceMotion = false,
   reduceTransparency,
   status,
+  waitingForCustomer = false,
   title,
 }: {
   body: string
+  reduceMotion?: boolean
   reduceTransparency?: boolean
   status?: string
+  waitingForCustomer?: boolean
   title: string
 }) {
   return (
     <View style={[styles.successCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-success-emblem">
       {!reduceTransparency ? <MintAura intensity="component" style={styles.successAura} testID="worker-v5-completion-submitted-mint-aura" /> : null}
-      <View style={styles.successEmblem}>
+      <View style={styles.successEmblem} testID="worker-v5-completion-submitted-seal">
         {!reduceTransparency ? <WorkerV5SuccessEmblemAura scope="CompletionSubmitted" testID="worker-v5-success-emblem-aura" /> : null}
         <View style={styles.successCheck}>
           {!reduceTransparency ? <WorkerV5SuccessCheckFill scope="CompletionSubmitted" testID="worker-v5-success-check-fill" /> : null}
           <Text style={styles.successCheckText}>✓</Text>
         </View>
       </View>
+      <Text style={styles.successTitle} numberOfLines={2} testID="worker-v5-completion-submitted-title">{title}</Text>
+      <Text style={styles.successBody} numberOfLines={3}>{body}</Text>
       {status ? (
-        <View style={styles.successStatusPill}>
-          <View style={styles.statusDotSmall} />
+        <View style={styles.successStatusPill} testID="worker-v5-completion-submitted-status">
+          <WorkerV5CompletionStatusDots reduceMotion={reduceMotion} waitingForCustomer={waitingForCustomer} />
+          <View style={styles.successStatusDivider} />
           <Text style={styles.successStatusText} numberOfLines={2}>{status}</Text>
         </View>
       ) : null}
-      <Text style={styles.successTitle} numberOfLines={2}>{title}</Text>
-      <Text style={styles.successBody} numberOfLines={3}>{body}</Text>
     </View>
   )
 }

@@ -12,14 +12,15 @@ export function ChatBubble({
   text,
   tokens,
 }: {
-  role: 'customer' | 'kael'
+  role: 'customer' | 'worker' | 'kael'
   testID?: string
   text: string
   tokens: CustomerThemeTokens
 }) {
   const isCustomer = role === 'customer'
+  const isWorker = role === 'worker'
   return (
-    <View style={[styles.chatBubble, isCustomer ? styles.chatBubbleCustomer : styles.chatBubbleKael, { backgroundColor: isCustomer ? tokens.primary : tokens.raised, borderColor: tokens.border }]} testID={testID}>
+    <View style={[styles.chatBubble, isCustomer ? styles.chatBubbleCustomer : styles.chatBubbleKael, { backgroundColor: isCustomer ? tokens.primary : isWorker ? tokens.ghost : tokens.raised, borderColor: tokens.border }]} testID={testID}>
       <Text style={[styles.chatBubbleText, { color: isCustomer ? tokens.primaryText : tokens.text }]}>{text}</Text>
     </View>
   )
