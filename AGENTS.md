@@ -16,6 +16,7 @@ The docs are a supporting stack in authority order. Read only what the task need
 | Per-task execution protocol (diagnose, tdd, architecture, ai-boundary, supabase, security, ui, docs) | `governance/critical.md` §1 index -> `governance/protocols/*` (load only the selected protocol) |
 | UI, motion, glass, mascot, design tokens, screen recipes | `governance/design.md` (-> `governance/design/*`) |
 | Coding behavior (assumptions, simplicity, surgical diffs) | `governance/skills.md` or the `karpathy-guidelines` skill |
+| Writing code — comments, headers, notes (always on) | `governance/protocols/code-hygiene.md` (skill: `kael-core-hygiene`) |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`) |
 | Continuing or deferred plan work | `governance/Plan.md` (referenced section only) |
@@ -36,7 +37,7 @@ Before editing code:
 
 - Run `kael-preflight` and state the pre-edit status (`governance/critical.md` §5).
 - Classify the task (`governance/critical.md` §2), then load only the matching protocol file from `governance/protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `governance/critical.md`.
-- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, plus `karpathy-guidelines`.
+- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, plus `karpathy-guidelines`. `kael-core-hygiene` is always on for any code change (comments/headers/notes) and is enforced by `pnpm lint:comments`, the comment-hygiene Stop hook, and CI.
 
 Core quality gates (`governance/critical.md` §3) — do not bypass:
 
