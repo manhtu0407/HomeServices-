@@ -9,9 +9,10 @@
 // Modes:
 //   node scripts/check-comment-discipline.mjs            full scan of code dirs
 //   node scripts/check-comment-discipline.mjs --diff REF only added lines vs REF
+//   node scripts/check-comment-discipline.mjs --working  only the uncommitted change (Stop hook)
 //   node scripts/check-comment-discipline.mjs --warn     report but exit 0
 //
-// Exit code 1 when violations are found (unless --warn). Zero runtime deps.
+// Exit: 0 clean, 1 violations found (unless --warn), 2 git/infra failure. Zero runtime deps.
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, sep } from 'node:path'
@@ -31,13 +32,22 @@ const SKIP_DIRS = new Set([
 //   governance/STRUCTURES.md §X, governance/RULES.md #X, governance/design.md, governance/critical.md, bare "Phase 1" scope.
 // Banned is the dated/status/plan-tag narrative, not authority citations.
 const RULES = [
-  { re: /\b20\d\d-\d\d-\d\d\b/, why: 'date in comment' },
+  { re: /\b20\d\d-\d\d-\d\d\b/, why: 'date in comment' }, // ISO 2026-07-13
+  { re: /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/, why: 'date in comment' }, // 13/07/2026, 07-13-26
+  { re: /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+20\d\d\b/i, why: 'date in comment' }, // Jul 2026
   { re: /\bphase\s+\d+\.\d+/i, why: 'phase tag' }, // "5.11" (a plan tag), not "Phase 1" scope
   { re: /\bstatus:\s*(wired|done|deferred|pending|blocked|todo)\b/i, why: 'status banner' },
   { re: /\bplan\s*§/i, why: 'plan reference' },
   { re: /\b(map plan|notes\.md|plan\.md)\b/i, why: 'ephemeral-doc reference' },
   { re: /\baudit\s*§/i, why: 'audit reference' },
   { re: /\([A-Z]\d{0,2}-\d+\)/, why: 'ticket/audit code' },
+  // AI residue — the source is not the agent's worklog.
+  { re: /\b(added|generated|written|created|refactored|updated|fixed|wired|authored)\s+by\s+(claude|codex|chatgpt|gpt|ai|cursor|copilot|the assistant|an? ai)\b/i, why: 'AI self-attribution' },
+  { re: /\bas an? ai\b/i, why: 'AI self-attribution' },
+  { re: /\b(claude|codex|copilot|cursor)\s+(generated|wrote|added|created|refactored)\b/i, why: 'AI self-attribution' },
+  { re: /\b(as requested|per your request|as you asked|you asked me to|per request)\b/i, why: 'request narration' },
+  { re: /\b(i|we)['’]?(ve|ll|m)?\s+(added|created|implemented|refactored|removed|changed|fixed|updated|wrote|renamed|moved|introduced)\b/i, why: 'first-person change narration' },
+  { re: /\b(todo|fixme|xxx|hack)\b\s*[:\-—]?\s*$/i, why: 'bare backlog marker' },
 ]
 
 // Pull comment text out of one source line, carrying block-comment state.
@@ -124,16 +134,9 @@ function fullScan() {
   return violations
 }
 
-// Ratchet mode: only added lines (`+`) in `git diff --unified=0 REF...HEAD`.
-// Lets legacy files stay until touched while blocking any NEW banner comment.
-function diffScan(ref) {
-  let raw
-  try {
-    raw = execSync(`git diff --unified=0 ${ref}...HEAD`, { encoding: 'utf8', maxBuffer: 1 << 28 })
-  } catch (e) {
-    console.error(`comment-discipline: git diff against "${ref}" failed: ${e.message}`)
-    process.exit(2)
-  }
+// Ratchet: judge only added lines (`+`) from a git diff, so legacy files stay
+// until touched while any NEW banner comment is blocked.
+function parseAddedViolations(raw) {
   const violations = []
   let file = null
   let ok = false
@@ -167,11 +170,56 @@ function diffScan(ref) {
   return violations
 }
 
+function runGitDiff(cmd) {
+  try {
+    return execSync(cmd, { encoding: 'utf8', maxBuffer: 1 << 28 })
+  } catch (e) {
+    console.error(`comment-discipline: "${cmd}" failed: ${e.message}`)
+    process.exit(2)
+  }
+}
+
+// CI ratchet: added lines between a base ref and HEAD.
+function diffScan(ref) {
+  return parseAddedViolations(runGitDiff(`git diff --unified=0 ${ref}...HEAD`))
+}
+
+// Stop-hook ratchet: the current uncommitted change only. Tracked edits come
+// from `git diff HEAD`; brand-new untracked code files are scanned whole, since
+// every one of their comment lines is effectively an added line.
+function workingScan() {
+  const violations = parseAddedViolations(runGitDiff('git diff --unified=0 HEAD'))
+  let untracked = ''
+  try {
+    untracked = execSync(`git ls-files --others --exclude-standard -- ${ROOTS.join(' ')}`, {
+      encoding: 'utf8',
+      maxBuffer: 1 << 28,
+    })
+  } catch {
+    return violations
+  }
+  for (const rel of untracked.split('\n').map((s) => s.trim()).filter(Boolean)) {
+    if (!eligible(rel)) continue
+    let content
+    try {
+      content = readFileSync(rel, 'utf8')
+    } catch {
+      continue
+    }
+    for (const v of scanContent(content)) violations.push({ file: rel.split(sep).join('/'), ...v })
+  }
+  return violations
+}
+
 function main() {
   const args = process.argv.slice(2)
   const warn = args.includes('--warn')
   const diffIdx = args.indexOf('--diff')
-  const violations = diffIdx !== -1 ? diffScan(args[diffIdx + 1]) : fullScan()
+  const violations = args.includes('--working')
+    ? workingScan()
+    : diffIdx !== -1
+      ? diffScan(args[diffIdx + 1])
+      : fullScan()
 
   if (!violations.length) {
     console.log('comment-discipline: clean — no note-banner comments found.')
@@ -189,8 +237,8 @@ function main() {
     for (const v of vs) console.error(`  ${v.line}: [${v.hits.join(', ')}] ${v.snippet}`)
     console.error('')
   }
-  console.error('Move phase/plan/date/status/audit notes to the git commit message or docs/.')
-  console.error('See governance/skills.md "Core Skill 5: Comment Discipline".')
+  console.error('Move dates, phase/status/plan/audit banners, AI attribution, and first-person narration to the git commit message or docs/.')
+  console.error('See the kael-core-hygiene skill / governance/protocols/code-hygiene.md.')
   if (!warn) process.exit(1)
 }
 

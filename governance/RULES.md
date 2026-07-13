@@ -12,6 +12,7 @@ The repository includes AI coding agent skills in `skills.md` and `.agents/skill
 
 - `skills.md` summarizes the repo's Karpathy-inspired workflow: think before coding, simplicity first, surgical changes, and goal-driven execution.
 - `.agents/skills/karpathy-guidelines/SKILL.md` is the project-local Codex/agent skill for NestScout.
+- `kael-core-hygiene` (canonical `governance/protocols/code-hygiene.md`, mirrored in `.claude/skills/` and `.agents/skills/`) is the always-on output-hygiene skill: it forbids AI self-attribution and dated/phase/status/plan/audit note-banners in source, and is enforced by `pnpm lint:comments`, the comment-hygiene Stop hook, and the `comment-discipline` CI job.
 - Skills guide how agents work. They do not replace the non-negotiable rules in this file.
 - If a skill conflicts with `RULES.md`, `RULES.md` wins.
 

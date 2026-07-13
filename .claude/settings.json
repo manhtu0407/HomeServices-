@@ -33,6 +33,11 @@
             "type": "command",
             "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-node.cmd\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-frontend-gates.mjs\"",
             "timeout": 180
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-node.cmd\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-comment-hygiene.mjs\"",
+            "timeout": 60
           }
         ]
       }

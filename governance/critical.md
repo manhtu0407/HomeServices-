@@ -22,7 +22,7 @@ Before editing files, the agent MUST:
 4. Read `design.md` when the task touches UI, frontend, prototype, visual design, motion, mascot, layout, design tokens, or component styling.
 5. Read `AGENTS.md` for the local Codex/Claude Code workspace loop.
 6. Read `CLAUDE.md` when the task is ambiguous, strategic, cross-cutting, or may conflict with project identity.
-7. Read `skills.md`, or invoke the project-local `karpathy-guidelines` skill from `.agents/skills/karpathy-guidelines/SKILL.md`, before writing, reviewing, refactoring, debugging, or planning code.
+7. Read `skills.md`, or invoke the project-local `karpathy-guidelines` skill from `.agents/skills/karpathy-guidelines/SKILL.md`, before writing, reviewing, refactoring, debugging, or planning code. Whenever you write or edit code, the always-on `kael-core-hygiene` skill (canonical `protocols/code-hygiene.md`) is mandatory before adding any comment, header, or note; it is enforced by `pnpm lint:comments`, the comment-hygiene Stop hook, and the `comment-discipline` CI job.
 8. Read relevant `docs/**/*.md`, `README.md`, and `Plan.md` sections only when they materially affect the task or contain current/deferred work.
 9. Read the relevant code and tests before proposing or making changes.
 10. Read `.claude/MEMORY.md` last for current session facts, dirty-worktree context, latest caveats, and handoff notes.

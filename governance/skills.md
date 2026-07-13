@@ -134,62 +134,13 @@ Examples of stronger task framing:
 
 ## Core Skill 5: Comment Discipline
 
-Comments explain non-obvious WHY or warn about a trap — short, at the point they apply. Source code is not a changelog. Keep adjacent code clean and upgradeable over time.
+Comments explain non-obvious WHY or warn about a trap — short, at the point they apply. Source code is not a changelog, a worklog, or a transcript of the session that produced it. Authorship lives in `git blame`; history in the commit message and `docs/`; the task in the PR.
 
-Never bake into code (these belong in the git commit message, `docs/`, `Notes.md`, or the plan):
+Never bake into code: dates, phase/plan tags, status banners, audit/ticket codes, internal-doc references, AI self-attribution ("added by Claude/Codex"), request narration ("as requested"), first-person change narration, dead commented-out code, or changelog/narrative headers. Keep: architectural WHY, invariants/gotchas, JSDoc on public APIs, and authority citations (`// RULES.md #8`). The ban targets dated/status/plan-tag narrative and AI residue, not authority citations.
 
-- Phase/plan numbers: `Phase 5.11`, `plan §22.10.L`.
-- Dates: `2026-05-23`.
-- Status banners: `Status: WIRED / DONE / DEFERRED`.
-- Audit/ticket codes: `kael-...-audit §9`, `(B-1)`, `(H9-1)`.
-- Internal-doc references: `Notes.md MAP PLAN`, `Plan.md §…`.
-- Multi-line changelog/narrative headers describing how the file evolved.
+This skill is promoted to the always-on `kael-core-hygiene` skill (`.claude/skills/kael-core-hygiene`, `.agents/skills/kael-core-hygiene`). The full ban list (machine-enforced + judgment), before/after examples, and self-check are **canonical in `protocols/code-hygiene.md`** — do not duplicate them here.
 
-Keep (compressed):
-
-- Architectural WHY a reader cannot infer: "RLS-scoped to the participant", "polling is the fallback when the socket drops".
-- Invariants and gotchas that are easy to miss.
-- JSDoc/TSDoc on public APIs — that is documentation, not narrative.
-
-Allowed (these are WHY, not changelog — keep them):
-
-- Citing a durable contract for a rule: `// Per STRUCTURES.md §10C`, `// RULES.md #8`.
-- Bare scope language: "only honored in Phase 1", "Phase 1 fire-and-forget".
-
-The ban targets the dated / status / plan-tag *narrative*, not authority citations.
-
-Before (banned — a changelog in the file header):
-
-```ts
-// Phase 5.11 (plan §22.10.L, 2026-05-23): realtime subscription helper.
-// Status: WIRED (Notes.md MAP PLAN Phase 2, 2026-06-13). Perceived-perf audit
-// (kael-perf-agentic-hardening-audit §9) confirmed the polling story is
-// insufficient on the active-job phase ... (B-1)(B-2)(H9-1).
-```
-
-After (WHY only — the rest goes to the commit message + Notes):
-
-```ts
-// Realtime subscription helper for jobs, chat, and broadcasts.
-// Target tables are RLS-scoped to the participant, so realtime honors the same
-// access boundary as the REST reads. Returns null when Supabase is unconfigured;
-// callers treat null as "stay on poll" (polling remains the fallback path).
-```
-
-Red flags — STOP and trim:
-
-- A date, a decimal phase tag (`5.11`), or a `plan §` / `audit §` reference in a comment.
-- A `Status:` / `WIRED` / `DONE` banner.
-- A comment that points at a plan/Notes/audit document.
-- A header comment longer than ~3 lines that is not JSDoc/license.
-
-| Rationalization | Reality |
-|---|---|
-| "Future me needs this history" | History lives in git + Notes/docs, not the source header. |
-| "It documents the decision" | The decision goes in the commit message and docs; the comment states the one-line WHY. |
-| "It's traceability to the plan" | Trace via the commit/PR, not phase tags compiled into the code. |
-
-Enforcement: `pnpm lint:comments` for a full report; the `comment-discipline` CI job blocks NEW banner comments on changed lines. It is a going-forward ratchet — legacy files are cleaned when next touched, not in one mass rewrite.
+Enforcement: `pnpm lint:comments` (`--diff`/`--working` ratchet), the `comment-hygiene` Stop hook (`.claude/hooks/verify-comment-hygiene.mjs`), and the `comment-discipline` CI job. Going-forward ratchet — legacy files are cleaned when next touched, not in one mass rewrite.
 
 ## Core Skill 6: Code Organization
 
