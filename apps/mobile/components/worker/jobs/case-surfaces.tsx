@@ -61,14 +61,14 @@ export function WorkerV5CaseClosedHero({
   return (
     <View style={[styles.caseClosedHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-case-closed-hero">
       {!reduceTransparency ? <MintAura intensity="component" style={styles.caseClosedHeroAura} testID="worker-v5-case-closed-mint-aura" /> : null}
-      <View style={styles.caseClosedCheckShell}>
+      <View style={styles.caseClosedCheckShell} testID="worker-v5-case-closed-settlement-seal">
         {!reduceTransparency ? <SuccessEmblemAura scope="CaseClosed" testID="worker-v5-case-closed-check-aura" /> : null}
         <View style={styles.caseClosedCheck}>
           {!reduceTransparency ? <SuccessCheckFill scope="CaseClosed" testID="worker-v5-case-closed-check-fill" /> : null}
           <Text style={styles.caseClosedCheckText}>✓</Text>
         </View>
       </View>
-      <View style={styles.caseClosedStatusPill}>
+      <View style={styles.caseClosedStatusPill} testID="worker-v5-case-closed-settlement-status">
         <View style={styles.statusDotSmall} />
         <Text style={styles.caseClosedStatusText} numberOfLines={2} testID="worker-v5-case-closed-status">{status}</Text>
       </View>

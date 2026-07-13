@@ -427,7 +427,7 @@ function scopeDecisionToJobStatus(
     : safeResume;
 }
 
-async function validateScopeChangeEvidenceRefs(
+export async function validateScopeChangeEvidenceRefs(
   client: DbClient,
   jobId: string,
   workerId: string,

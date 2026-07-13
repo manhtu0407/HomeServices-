@@ -215,6 +215,7 @@ export const KAEL_PURPOSES = [
   "advisory_generation",
   "worker_brief",
   "scope_change",
+  "job_incident",
   "post_job_learning",
   "educational_response",
   "worker_assist",

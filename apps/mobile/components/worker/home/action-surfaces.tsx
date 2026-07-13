@@ -57,7 +57,7 @@ export function WorkerV5HomeQuickActionGrid({
           <View style={styles.quickActionText}>
             <Text style={styles.quickActionTitle} numberOfLines={2} testID={`worker-v5-quick-action-title-${index}`}>{item.title}</Text>
             <Text style={styles.quickActionMeta} numberOfLines={2} testID={`worker-v5-quick-action-meta-${index}`}>{item.meta}</Text>
-            <WorkerV5DetailRail items={item.details} testID={`worker-v5-home-quick-action-detail-${index}`} />
+            <WorkerV5DetailRail items={item.details} layout="stacked" showDividers={false} testID={`worker-v5-home-quick-action-detail-${index}`} />
           </View>
         </Pressable>
       ))}

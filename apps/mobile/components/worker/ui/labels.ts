@@ -357,6 +357,8 @@ export function workerPerformanceAxisLabel(id: string, language: AppLanguage) {
       earnings: 'Settled earnings',
       rating: 'Customer feedback',
       response: 'Response discipline',
+      work_response: 'In-work communication',
+      incident_handling: 'Transparent incident handling',
     },
     vi: {
       arrival: 'Đúng hẹn',
@@ -364,6 +366,8 @@ export function workerPerformanceAxisLabel(id: string, language: AppLanguage) {
       earnings: 'Thu nhập đã đối soát',
       rating: 'Phản hồi khách',
       response: 'Kỷ luật phản hồi',
+      work_response: 'Phản hồi trong công việc',
+      incident_handling: 'Xử lý phát sinh minh bạch',
     },
   }
   return labels[language][id] ?? formatLooseLabel(id)
@@ -377,6 +381,8 @@ export function workerPerformanceAxisShortLabel(id: string, language: AppLanguag
       earnings: 'Earnings',
       rating: 'Rating',
       response: 'Response',
+      work_response: 'Communication',
+      incident_handling: 'Incidents',
     },
     vi: {
       arrival: 'Đúng hẹn',
@@ -384,6 +390,8 @@ export function workerPerformanceAxisShortLabel(id: string, language: AppLanguag
       earnings: 'Thu nhập',
       rating: 'Đánh giá',
       response: 'Phản hồi',
+      work_response: 'Trao đổi',
+      incident_handling: 'Phát sinh',
     },
   }
   return labels[language][id] ?? formatLooseLabel(id)

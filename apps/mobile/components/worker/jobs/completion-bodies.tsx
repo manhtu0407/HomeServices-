@@ -205,6 +205,7 @@ export function WorkerV5CompletionSubmittedBody({
   navigateNext,
   navigateToEvidence,
   primaryFill,
+  reduceMotion,
   reduceTransparency,
   runtime,
   statusTimeline,
@@ -213,6 +214,7 @@ export function WorkerV5CompletionSubmittedBody({
   navigateNext: () => void
   navigateToEvidence: () => void
   primaryFill: WorkerV5PrimaryFillComponent
+  reduceMotion: boolean
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
   statusTimeline: WorkerV5StatusTimelineComponent
@@ -229,9 +231,11 @@ export function WorkerV5CompletionSubmittedBody({
             ? textByLanguage(language, `Khách đang xem ${sourceCount} nguồn bằng chứng và tổng thanh toán.`, `The customer is reviewing ${sourceCount} evidence sources and the payment total.`)
             : textByLanguage(language, 'Hệ thống chưa có nguồn bằng chứng hoàn tất để gửi.', 'The system has no completion evidence sources to submit yet.')
           : textByLanguage(language, 'Chỉ hiển thị khi NestScout ghi nhận hồ sơ hoàn tất thật.', 'Shown only when NestScout records a real completion artifact.')}
+        reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
-        status={customerConfirmed ? textByLanguage(language, 'Đã xác nhận', 'Confirmed') : textByLanguage(language, 'Đang chờ xác nhận', 'Waiting confirmation')}
-        title={deal ? textByLanguage(language, 'Hồ sơ đã được gửi', 'Completion artifact submitted') : textByLanguage(language, 'Chưa có hồ sơ đã gửi', 'No submitted artifact')}
+        status={customerConfirmed ? textByLanguage(language, 'Đã xác nhận', 'Confirmed') : textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for customer confirmation')}
+        title={deal ? textByLanguage(language, 'Đã gửi hồ sơ', 'Completion artifact submitted') : textByLanguage(language, 'Chưa có hồ sơ đã gửi', 'No submitted artifact')}
+        waitingForCustomer={!customerConfirmed}
       />
       <WorkerV5SectionHeader
         action={textByLanguage(language, 'Tự động cập nhật', 'Auto update')}

@@ -54,9 +54,10 @@ describe('worker performance insights aggregation', () => {
         },
       ],
       reviews: [
-        { rating: 5 },
-        { rating: 4 },
+        { rating: 5, tags: ['Chuyên nghiệp', 'Giải thích rõ ràng'] },
+        { rating: 4, tags: [] },
       ],
+      incidentCases: [],
       workerId: '33333333-3333-4333-8333-333333333333',
       workerProfile: {
         is_approved: true,
@@ -87,11 +88,15 @@ describe('worker performance insights aggregation', () => {
     expect(insights.performance_score).toBeGreaterThan(0)
     expect(insights.badges.map((badge) => badge.id)).toContain('verified_profile')
     expect(insights.performance_axes.find((axis) => axis.id === 'response')?.score).toBe(67)
+    expect(insights.work_response_review_count).toBe(2)
+    expect(insights.performance_axes.find((axis) => axis.id === 'work_response')?.score).toBe(82)
+    expect(insights.performance_axes.find((axis) => axis.id === 'incident_handling')?.score).toBeNull()
   })
 
   it('keeps empty workers pending instead of fabricating performance signals', () => {
     const insights = buildWorkerPerformanceInsights({
       broadcasts: [],
+      incidentCases: [],
       jobs: [],
       reviews: [],
       workerId: '33333333-3333-4333-8333-333333333333',
@@ -111,5 +116,27 @@ describe('worker performance insights aggregation', () => {
     })
     expect(insights.badges.every((badge) => badge.status === 'locked')).toBe(true)
     expect(insights.performance_axes.every((axis) => axis.score === null)).toBe(true)
+  })
+
+  it('scores scarce incidents by closed Kael-reviewed cases instead of averaging them into routine performance', () => {
+    const insights = buildWorkerPerformanceInsights({
+      broadcasts: [],
+      incidentCases: [
+        { kael_review: { verdict: 'documented' }, status: 'approved_by_customer' },
+        { kael_review: { verdict: 'documented' }, status: 'rejected_by_customer' },
+        { kael_review: null, status: 'approved_by_customer' },
+        { kael_review: { verdict: 'pending' }, status: 'waiting_customer_decision' },
+      ],
+      jobs: [],
+      reviews: [],
+      workerId: '33333333-3333-4333-8333-333333333333',
+      workerProfile: null,
+    })
+
+    expect(insights.resolved_incident_case_count).toBe(2)
+    expect(insights.incident_rank_bonus).toBe(10)
+    expect(insights.performance_score).toBeNull()
+    expect(insights.performance_axes.find((axis) => axis.id === 'incident_handling')?.score).toBe(50)
+    expect(insights.performance_axes.find((axis) => axis.id === 'work_response')?.score).toBeNull()
   })
 })

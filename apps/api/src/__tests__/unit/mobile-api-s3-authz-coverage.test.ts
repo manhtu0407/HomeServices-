@@ -63,6 +63,9 @@ const GUARDED: Record<string, string> = {
   'jobs.accessAuthorize': 'service customer-owner check',
   'jobs.scopeChange': 'service worker-owner (Edge)',
   'jobs.kaelClarify': 'service participant check',
+  'jobs.kaelIncidentGet': 'requireJobAccess (404)',
+  'jobs.kaelIncidentOpen': 'service worker-owner (Edge)',
+  'jobs.kaelIncidentProposeScope': 'service worker-owner + ready-case guard',
   'jobs.confirmCompletion': 'RPC customer-owner',
   'jobs.review': 'service customer-owner',
   // scope/cancellation/dispute by id — atomic RPC owner/admin SQL check

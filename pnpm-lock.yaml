@@ -219,6 +219,8 @@ importers:
         specifier: ^4.1.5
         version: 4.1.6(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(jsdom@20.0.3)(vite@8.0.12(@types/node@20.19.41)(jiti@2.7.0)(terser@5.47.1)(yaml@2.9.0))
 
+  sandbox/agent: {}
+
 packages:
 
   '@0no-co/graphql.web@1.2.0':

@@ -157,6 +157,7 @@ const ACTIONS_BY_PURPOSE: Record<KaelPurpose, readonly KaelAction[]> = {
   worker_brief: ["generate_worker_brief"],
   worker_assist: ["read_context", "generate_advisory", "ask_clarification"],
   scope_change: ["review_scope_change"],
+  job_incident: ["read_context", "ask_clarification", "generate_advisory"],
   post_job_learning: ["write_memory", "create_learning_candidate"],
   educational_response: ["generate_advisory", "read_context"],
 };
@@ -229,6 +230,11 @@ function evaluateAllowedTopic(
     }
     if (request.purpose === "scope_change" && request.jobRelation === "own_worker_job") {
       return allow(request, "ALLOW_WORKER_SCOPE_CHANGE");
+    }
+    if (request.purpose === "job_incident" && request.jobRelation === "own_worker_job") {
+      return ACTIONS_BY_PURPOSE.job_incident.includes(request.action)
+        ? allow(request, "ALLOW_WORKER_JOB_INCIDENT")
+        : deny(request, "DENY_WORKER_JOB_INCIDENT_ACTION", "cannot_do_action");
     }
     return deny(request, "DENY_WORKER_JOB_REQUIRED", "cannot_do_action");
   }

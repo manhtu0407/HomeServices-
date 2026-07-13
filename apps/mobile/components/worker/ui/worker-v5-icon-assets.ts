@@ -4,12 +4,12 @@ import type { ServiceType } from '@nestscout/shared'
 export const workerV5CapturedIconAssets = {
   caseCompletionRecord: require('@/assets/worker-image-icons/utility-completion-record-core.png') as ImageSourcePropType,
   caseIncomeLedger: require('@/assets/worker-image-icons/utility-income-ledger-core.png') as ImageSourcePropType,
-  earningsHero: require('@/assets/worker-image-icons/utility-earnings-wallet-core.png') as ImageSourcePropType,
+  earningsHero: require('@/assets/worker-image-icons/earnings-reconciliation-folio.png') as ImageSourcePropType,
   earningsRecentTransactions: require('@/assets/worker-image-icons/utility-recent-transactions-sync-core.png') as ImageSourcePropType,
   homeQuickEarnings: require('@/assets/worker-image-icons/nav-earnings.png') as ImageSourcePropType,
   homeQuickIncoming: require('@/assets/worker-image-icons/nav-jobs.png') as ImageSourcePropType,
   homeQuickKael: require('@/assets/worker-image-icons/utility-chat.png') as ImageSourcePropType,
-  homeQuickSkillsArea: require('@/assets/worker-image-icons/utility-scope-core.png') as ImageSourcePropType,
+  homeQuickSkillsArea: require('@/assets/worker-image-icons/home-quick-skills-area-map-kit.png') as ImageSourcePropType,
   opportunityPlumbing: require('@/assets/worker-image-icons/service-plumbing.png') as ImageSourcePropType,
   payoutBankAccount: require('@/assets/worker-image-icons/payout-add-bank-account-core.png') as ImageSourcePropType,
   payoutLimitPolicy: require('@/assets/worker-image-icons/payout-limit-policy-core.png') as ImageSourcePropType,
@@ -22,6 +22,8 @@ export const workerV5CapturedIconAssets = {
   rankingArrival: require('@/assets/worker-image-icons/utility-calendar.png') as ImageSourcePropType,
   rankingCompletion: require('@/assets/worker-image-icons/utility-document.png') as ImageSourcePropType,
   rankingFeedback: require('@/assets/worker-image-icons/ranking-feedback-core.png') as ImageSourcePropType,
+  rankingIncidentHandling: require('@/assets/worker-image-icons/ranking-incident-resolution-core.png') as ImageSourcePropType,
+  rankingWorkResponse: require('@/assets/worker-image-icons/ranking-work-response-core.png') as ImageSourcePropType,
   rankingWorker: require('@/assets/worker-image-icons/profile-avatar-core.png') as ImageSourcePropType,
   reliabilityCommunication: require('@/assets/worker-image-icons/utility-bell.png') as ImageSourcePropType,
   reliabilityEvidence: require('@/assets/worker-image-icons/utility-evidence-core.png') as ImageSourcePropType,
@@ -35,7 +37,7 @@ export const workerV5CapturedIconAssets = {
   settingsPersonal: require('@/assets/worker-image-icons/profile-identity.png') as ImageSourcePropType,
   settingsSecurity: require('@/assets/worker-image-icons/profile-verified.png') as ImageSourcePropType,
   settingsServiceArea: require('@/assets/worker-image-icons/utility-map.png') as ImageSourcePropType,
-  skillsHero: require('@/assets/worker-image-icons/utility-tools.png') as ImageSourcePropType,
+  skillsHero: require('@/assets/worker-image-icons/skills-service-kit.png') as ImageSourcePropType,
 } as const
 
 export const workerV5ProfileDossierIconAssets = {
@@ -80,6 +82,8 @@ export const workerV5RankingIconAssets = {
   arrival: workerV5CapturedIconAssets.rankingArrival,
   completion: workerV5CapturedIconAssets.rankingCompletion,
   fallback: workerV5CapturedIconAssets.rankingFeedback,
+  incident_handling: workerV5CapturedIconAssets.rankingIncidentHandling,
   rating: workerV5CapturedIconAssets.rankingFeedback,
+  work_response: workerV5CapturedIconAssets.rankingWorkResponse,
   worker: workerV5CapturedIconAssets.rankingWorker,
 } as const

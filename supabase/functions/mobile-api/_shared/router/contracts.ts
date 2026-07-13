@@ -60,6 +60,8 @@ import type {
   EdgeDisputeOpenResponse,
   EdgeEarningsResponse,
   EdgeJobDetailResponse,
+  EdgeJobIncidentResponse,
+  EdgeJobIncidentScopeProposalResponse,
   EdgeJobMediaAttachResponse,
   EdgeJobMessageListResponse,
   EdgeJobMessageSendResponse,
@@ -336,6 +338,19 @@ export type MobileApiServices = {
     jobId: string,
     input: WorkerScopeChangeInput,
   ): Promise<EdgeWorkerScopeChangeResponse>;
+  getJobIncident(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeJobIncidentResponse>;
+  openJobIncident(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: WorkerScopeChangeInput,
+  ): Promise<EdgeJobIncidentResponse>;
+  proposeScopeChangeFromJobIncident(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeJobIncidentScopeProposalResponse>;
   askKaelForWorker(
     ctx: MobileApiContext,
     jobId: string,

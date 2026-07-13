@@ -3,8 +3,6 @@ import { View, type StyleProp, type ViewStyle } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
 import type { AppLanguage } from '@/lib/app-language'
-import { KaelButton } from '@/components/ui/kael-primitives'
-
 import { textByLanguage } from '../ui/format'
 import {
   buildWorkerV5AcceptEtaSignal,
@@ -49,7 +47,6 @@ export function WorkerV5RouteEtaBody({
   etaSummaryComponent: EtaSummaryCard,
   language,
   navigateJobChat,
-  onAdjustScope,
   onPrimary,
   primaryLabel,
   primaryFill,
@@ -64,7 +61,6 @@ export function WorkerV5RouteEtaBody({
   etaSummaryComponent: WorkerV5EtaSummaryComponent
   language: AppLanguage
   navigateJobChat: () => void
-  onAdjustScope?: () => void
   onPrimary: () => void
   primaryLabel: string
   primaryFill: WorkerV5PrimaryFillComponent
@@ -103,16 +99,6 @@ export function WorkerV5RouteEtaBody({
         onPrimary={canAdvanceRoute ? onPrimary : undefined}
         onSecondary={navigateJobChat}
       />
-      {onAdjustScope ? (
-        <KaelButton
-          disabled={actionBusy || !deal}
-          label={textByLanguage(language, 'Điều chỉnh trước khi đến', 'Adjust before arrival')}
-          onPress={onAdjustScope}
-          size="small"
-          testID="worker-v5-route-pre-arrival-scope-action"
-          variant="secondary"
-        />
-      ) : null}
     </View>
   )
 }

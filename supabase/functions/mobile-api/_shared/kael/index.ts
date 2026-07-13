@@ -35,6 +35,7 @@ export * from "./system-prompt.ts";
 export * from "./self-check.ts";
 export * from "./ai-boundary-contract.ts";
 export * from "./worker-assist.ts";
+export * from "./job-incident.ts";
 export * from "./customer-assistant.ts";
 export * from "./price-synthesis-ab.ts";
 export * from "./agentic/case-1-normal.ts";

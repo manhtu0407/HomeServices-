@@ -249,6 +249,7 @@ export function WorkerV5SkillsServiceAreaBody({
   runtime,
   serviceAreaMapCard: ServiceAreaMapCard,
   serviceIcons,
+  skillsGridEmptyIcon,
   skillsHeroIcon,
 }: {
   heroAura: WorkerV5AuraComponent
@@ -258,6 +259,7 @@ export function WorkerV5SkillsServiceAreaBody({
   runtime: WorkerV5Runtime
   serviceAreaMapCard: WorkerV5ServiceAreaMapCardComponent
   serviceIcons: WorkerV5ServiceIconMap
+  skillsGridEmptyIcon: ImageSourcePropType
   skillsHeroIcon: ImageSourcePropType
 }) {
   const profile = runtime.workerProfile
@@ -277,7 +279,7 @@ export function WorkerV5SkillsServiceAreaBody({
         profile={profile}
         reduceTransparency={reduceTransparency}
         serviceIcons={serviceIcons}
-        toolsIcon={skillsHeroIcon}
+        toolsIcon={skillsGridEmptyIcon}
       />
       <ServiceAreaMapCard language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     </View>

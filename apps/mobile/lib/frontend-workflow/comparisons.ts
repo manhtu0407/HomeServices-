@@ -84,6 +84,9 @@ export function sameWorkerPerformanceInsights(left: WorkerPerformanceInsightsRes
     && left.on_time_job_count === right.on_time_job_count
     && left.paid_job_count === right.paid_job_count
     && left.reconciled_earnings_vnd === right.reconciled_earnings_vnd
+    && left.work_response_review_count === right.work_response_review_count
+    && left.resolved_incident_case_count === right.resolved_incident_case_count
+    && left.incident_rank_bonus === right.incident_rank_bonus
     && left.performance_score === right.performance_score
     && sameWorkerPerformanceBadges(left.badges, right.badges)
     && sameWorkerPerformanceAxes(left.performance_axes, right.performance_axes)

@@ -11,6 +11,8 @@ import { requireJobAccess } from "../access.ts";
 import { buildDemandingCustomerResponse, detectDemandingCustomerPatterns, recordDemandingCustomerInteraction } from "../kael/index.ts";
 import { guardOutput } from "../kael/output-gateway.ts";
 import { auditGuardrailTripBestEffort } from "./audit.ts";
+import { recordJobIncidentChatMessage } from "./job-incident.service.ts";
+import type { EdgeAiSecrets } from "../kael/index.ts";
 import type { JobMessageSendInput, JobStatus } from "../../../_shared/domain.ts";
 
 const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK =
@@ -45,6 +47,7 @@ export async function sendJobMessage(
   ctx: MobileApiContext,
   jobId: string,
   input: JobMessageSendInput,
+  secrets: EdgeAiSecrets,
 ) {
   if (ctx.role !== "customer" && ctx.role !== "worker") {
     apiFailure("AUTH_FORBIDDEN", "Bạn không có quyền gửi tin nhắn", 403);
@@ -93,6 +96,16 @@ export async function sendJobMessage(
     await maybeHandleDemandingCustomerJobChat(client, job, ctx, content);
   }
   await notifyJobMessageRecipient(client, job, ctx, message.id);
+  if (!contactGuard.flagged) {
+    try {
+      await recordJobIncidentChatMessage(client, job, message, ctx, secrets);
+    } catch (error) {
+      console.warn("mobile-api job incident advance failed", {
+        jobId,
+        errorName: error instanceof Error ? error.name : typeof error,
+      });
+    }
+  }
   return { message };
 }
 
@@ -308,7 +321,7 @@ async function maybeHandleDemandingCustomerJobChat(
   );
 }
 
-async function insertKaelJobMessage(
+export async function insertKaelJobMessage(
   client: DbClient,
   jobId: string,
   content: string,
