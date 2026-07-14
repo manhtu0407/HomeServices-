@@ -2,10 +2,12 @@ export const KAEL_CORE_V9_SIZE = 72
 export const KAEL_CORE_V9_DEFAULT_PROXIMITY = 112
 export const KAEL_CORE_V9_BOW_DURATION_MS = 1220
 export const KAEL_CORE_V9_AUTOPLAY_CLIP_DURATION_MS = 3800
+export const KAEL_CORE_V9_AUTOPLAY_REPEAT_COUNT = -1
 
 export const KAEL_CORE_V9_CONTRACT = Object.freeze({
   accessoryCount: 0,
   autoplayClipDurationMs: KAEL_CORE_V9_AUTOPLAY_CLIP_DURATION_MS,
+  autoplayRepeatCount: KAEL_CORE_V9_AUTOPLAY_REPEAT_COUNT,
   bowDurationMs: KAEL_CORE_V9_BOW_DURATION_MS,
   defaultProximity: KAEL_CORE_V9_DEFAULT_PROXIMITY,
   defaultSize: KAEL_CORE_V9_SIZE,

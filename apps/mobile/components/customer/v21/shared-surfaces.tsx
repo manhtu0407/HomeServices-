@@ -1,5 +1,5 @@
 import { Fragment, type ComponentType, type ReactNode } from 'react'
-import { Image, Pressable, ScrollView, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { Image, Pressable, ScrollView, Text, useWindowDimensions, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
@@ -18,7 +18,7 @@ import {
   useCustomerThemeMode,
   type CustomerThemeTokens,
 } from '../customer-theme'
-import { CustomerScreenCanvasAura, HomeEmptySourceAura, SourceCardSkin, SourceIconAura, SourceIconTileSkin, ZipMintAura } from './aura-surfaces'
+import { CaseWideMintAura, CustomerScreenCanvasAura, HomeEmptySourceAura, SourceCardSkin, SourceIconAura, SourceIconTileSkin, ZipMintAura } from './aura-surfaces'
 import { customerV21BookingServiceAssets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
 import { customerV21BookingServiceCopy } from './copy'
 import { customerV21SharedStyles as styles } from './shared-styles'
@@ -128,41 +128,141 @@ export function SectionActionHeader({
 }
 
 export function ServiceTile({
+  fullWidth = false,
   homeAura = false,
   onPress,
   selected,
   service,
+  testID,
 }: {
+  fullWidth?: boolean
   homeAura?: boolean
-  onPress: () => void
+  onPress?: () => void
   selected?: boolean
   service: CustomerServiceId
+  testID?: string
 }) {
   const language = useAppLanguage()
-  const { reduceMotion, tokens } = useCustomerV21SurfaceTheme()
+  const { reduceMotion, reduceTransparency, tokens } = useCustomerV21SurfaceTheme()
+  const { width: viewportWidth } = useWindowDimensions()
   const copy = customerV21BookingServiceCopy[language][service]
+  const serviceTestID = testID ?? `customer-v21-service-${service}`
 
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityLabel={`${copy.label}. ${copy.note}`}
+      accessibilityRole={onPress ? 'button' : undefined}
       accessibilityState={{ selected: Boolean(selected) }}
+      disabled={!onPress}
       onPress={onPress}
       style={({ pressed }) => [
         styles.serviceTile,
         homeAura ? styles.homeAuraServiceTile : null,
+        homeAura ? (fullWidth || viewportWidth < 680 ? styles.homeAuraServiceTileNarrow : styles.homeAuraServiceTileWide) : null,
         homeAura ? (tokens.mode === 'dark' ? styles.homeAuraServiceTileShadowDark : styles.homeAuraServiceTileShadowLight) : null,
         {
-          backgroundColor: homeAura ? 'transparent' : selected ? tokens.service : tokens.raised,
-          borderColor: selected ? (homeAura ? 'rgba(64,215,193,0.46)' : tokens.primary) : homeAura ? 'rgba(255,255,255,0.91)' : tokens.border,
-          transform: [{ scale: pressed && !reduceMotion ? 0.985 : 1 }],
+          backgroundColor: homeAura
+            ? reduceTransparency || tokens.mode === 'dark' ? tokens.raised : 'transparent'
+            : selected ? tokens.service : tokens.raised,
+          borderColor: selected
+            ? (homeAura ? 'rgba(64,215,193,0.62)' : tokens.primary)
+            : homeAura ? (tokens.mode === 'dark' ? tokens.border : 'rgba(204,223,219,0.94)') : tokens.border,
+          opacity: pressed && !reduceMotion ? 0.84 : 1,
+          transform: [{ scale: pressed && !reduceMotion ? 0.98 : 1 }],
         },
       ]}
-      testID={`customer-v21-service-${service}`}
+      testID={serviceTestID}
     >
-      {homeAura ? <SourceCardSkin /> : null}
-      <AssetTile image={customerV21BookingServiceAssets[service]} label={copy.label} size={homeAura ? 46 : 58} sourceAura={homeAura} style={styles.serviceIcon} />
-      <Text numberOfLines={2} style={[styles.serviceTitle, homeAura ? styles.homeServiceTitle : null, { color: tokens.text }]}>{copy.label}</Text>
-      <Text numberOfLines={2} style={[styles.serviceNote, homeAura ? styles.homeServiceNote : null, { color: tokens.muted }]}>{copy.note}</Text>
+      {homeAura ? (
+        <>
+          {tokens.mode === 'dark' ? null : <SourceCardSkin testID={`${serviceTestID}-skin`} />}
+          {selected ? (
+            <View pointerEvents="none" style={styles.homeServiceFormulaMintAura} testID={`${serviceTestID}-formula-mint-aura`}>
+              <CaseWideMintAura
+                intensity="strong"
+                scope={`ServiceTile${service}Wide`}
+                testID={`${serviceTestID}-wide-mint-aura`}
+              />
+              <ZipMintAura scope={`ServiceTile${service}Fine`} testID={`${serviceTestID}-mint-aura`} />
+            </View>
+          ) : null}
+          <View
+            style={[
+              styles.homeServiceVisualPanel,
+              {
+                backgroundColor: selected
+                  ? tokens.service
+                  : tokens.mode === 'dark' ? tokens.ghost : 'rgba(232,250,247,0.90)',
+                borderRightColor: tokens.mode === 'dark' ? tokens.border : 'rgba(198,222,218,0.92)',
+              },
+            ]}
+            testID={`${serviceTestID}-visual-panel`}
+          >
+            <View accessibilityLabel={copy.label} style={styles.homeServiceIcon} testID={`${serviceTestID}-icon`}>
+              <SourceIconAura />
+              <CustomerV21AssetVisual
+                image={customerV21BookingServiceAssets[service]}
+                reduceMotion={reduceMotion}
+                size={50}
+              />
+            </View>
+            <View
+              pointerEvents="none"
+              style={[
+                styles.homeServiceConnector,
+                { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' },
+              ]}
+              testID={`${serviceTestID}-connector`}
+            />
+            <View
+              pointerEvents="none"
+              style={[
+                styles.homeServiceConnectorDot,
+                { backgroundColor: tokens.primary, borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)' },
+              ]}
+              testID={`${serviceTestID}-connector-dot`}
+            />
+          </View>
+          <View style={styles.homeServiceCopy} testID={`${serviceTestID}-copy`}>
+            <View style={styles.homeServiceHeading} testID={`${serviceTestID}-heading`}>
+              <Text
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
+                numberOfLines={2}
+                style={[styles.serviceTitle, styles.homeServiceTitle, { color: tokens.text }]}
+                testID={`${serviceTestID}-title`}
+              >
+                {copy.label}
+              </Text>
+            </View>
+            <View style={styles.homeServiceDetailRail} testID={`${serviceTestID}-detail-rail`}>
+              {copy.details.map((detail, index) => (
+                <View key={detail} style={styles.homeServiceDetailRow} testID={`${serviceTestID}-detail-${index}`}>
+                  <Svg accessibilityElementsHidden height={14} viewBox="0 0 14 14" width={14}>
+                    <Path
+                      d={index === 0
+                        ? 'M3.2 1.8h4.6l3 3v7.4H3.2V1.8Zm4.6 0v3h3M5 7h4M5 9.3h3.2'
+                        : 'm3.1 7.1 2.4 2.4 5.2-5.1'}
+                      fill="none"
+                      stroke={tokens.primary}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={index === 0 ? 1.2 : 1.7}
+                    />
+                  </Svg>
+                  <Text numberOfLines={1} style={[styles.homeServiceDetailLabel, { color: tokens.muted }]}>{detail}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </>
+      ) : (
+        <>
+          <AssetTile image={customerV21BookingServiceAssets[service]} label={copy.label} size={58} style={styles.serviceIcon} />
+          <Text numberOfLines={2} style={[styles.serviceTitle, { color: tokens.text }]}>{copy.label}</Text>
+          <Text numberOfLines={2} style={[styles.serviceNote, { color: tokens.muted }]}>{copy.note}</Text>
+        </>
+      )}
     </Pressable>
   )
 }

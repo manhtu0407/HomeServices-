@@ -1,21 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
-  Image,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
   type ImageSourcePropType,
-  type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, Rect } from 'react-native-svg'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
@@ -25,13 +21,10 @@ import {
   extractKnownDistrictLabel,
   type CustomerServiceId,
   type LocalDeal,
-  type LocalDealStatus,
-  type CustomerKaelMemoryPreferenceKey,
   type CaseWorkEvidence,
   type ServiceType,
 } from '@nestscout/shared'
-import { KaelButton, KaelChip, KaelTextInput } from '@/components/ui/kael-primitives'
-import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
+import { KaelButton } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
@@ -41,15 +34,14 @@ import { localizedProblemOptions, setAppLanguage, useAppLanguage, type AppLangua
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
-import { customerProfileService, jobService, kaelAssistantService, kaelChatService, placesService } from '@/lib/services'
+import { customerProfileService, jobService, kaelChatService, placesService } from '@/lib/services'
 import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
 import { cleanupKaelChatMediaRefs, localizeMediaUploadFailure, uploadJobMediaDrafts, uploadKaelChatMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
-import type { CustomerProfileInsightsResponse, KaelAssistantResponse, KaelChatResponse, KaelChatTurn, PlacesAutocompleteResponse } from '@/lib/api-types'
+import type { CustomerProfileInsightsResponse, CustomerServiceHistoryItem, KaelChatResponse, KaelChatTurn, PlacesAutocompleteResponse } from '@/lib/api-types'
 import {
   getCustomerThemeTokens,
   getReducedTransparencyCustomerTokens,
   useCustomerThemeMode,
-  type CustomerThemeTokens,
 } from '../customer-theme'
 import { clearPendingKaelChatDraft, peekPendingKaelChatDraft, readPendingKaelChatDraft, setPendingKaelChatDraft } from '../kael-chat/pending-intake'
 import { AgenticEvidenceGateCard } from '../kael-chat/agentic-evidence-gate-card'
@@ -59,71 +51,38 @@ import { MediaDraftPreviewTray } from '../kael-chat/media-draft-preview-tray'
 import { OnDeviceVoiceTranscript } from '../kael-chat/on-device-voice-transcript'
 import { WorkerCandidateReviewCard } from '../kael-chat/worker-candidate-review-card'
 import { QuoteReadinessReviewCard } from '../kael-chat/quote-readiness-review-card'
-import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
-import { AgenticCasePriorityCardPanel } from './agentic-case-surfaces'
 import {
   CaseWideMintAura,
-  CaseWorkCardAura,
   HomeHeroSourceAura,
   SourceCardSkin,
   ZipMintAura,
 } from './aura-surfaces'
-import { AgenticMemoryStageView } from './agentic-memory-stateful-surfaces'
-import { CustomerAgenticCenterSurfaceView } from './agentic-center-stateful-surfaces'
-import { AgenticApprovalQueuePanel, AgenticArtifactTile, AgenticChatFact, AgenticCommandCaseCardPanel, AgenticCommandTimelinePanel, AgenticHomeBackdropAura, AgenticMetricTile, AgenticProcessedApprovalRow, AgenticStageBackdropAura, AgenticStageHero, AgenticUtilityStackPanel, AgenticWorkLogCardPanel } from './agentic-surfaces'
-import { customerV21Assets, customerV21BankAssets, customerV21ServiceAssets, type CustomerV21BankKey, type CustomerV21Visual } from './assets'
+import { customerV21Assets, customerV21BankAssets, type CustomerV21BankKey } from './assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from './booking-entry-stateful-surfaces'
-import { PrepRow } from './booking-surfaces'
-import { buildBookingSearchSuggestions, normalizeBookingSearchText, type BookingSearchSuggestion } from './booking-search-display-model'
 import {
+  bookingCustomDateValue,
+  bookingCustomTimeValue,
   bookingScheduleDateParam,
+  bookingScheduleDateIsBookable,
   bookingScheduleDraft,
   bookingScheduleLabel,
   bookingScheduleTimeParam,
   bookingTimeSlots,
   buildBookingDraftMessage,
   buildBookingScheduleDateOptions,
+  normalizeBookingCustomDateInput,
+  normalizeBookingCustomTimeInput,
 } from './booking-intake-display-model'
 import {
   agenticDealProblemLabel,
-  approvalConfidenceLabel,
-  buildAgenticCaseThreadModel,
-  caseAddressLabel,
   caseDisplayCode,
-  caseEtaTimelineRows,
-  caseJobProgressSteps,
-  caseScopeRowsForDeal,
-  caseSecondaryOptionsForDeal,
-  caseThreadLiveSignal,
   canCustomerDecideScopeChange,
-  currentScopeLabel,
-  formatDurationShort,
-  formatEvidenceFileCount,
   formatNumber,
-  formatShortClockTime,
   formatVnd,
-  isArrivalConfirmedStatus,
-  isDealPaymentProtected,
-  isPendingCustomerScopeChange,
-  isWorkStartedStatus,
   normalizeKaelRoutingText,
-  paymentAmountLabel,
-  paymentProviderLabel,
-  paymentStatusLabel,
-  scopeChangeAmountLabel,
-  scopeChangeApproveLabel,
-  timeChoiceLabel,
-  workProgressPercent,
 } from './case-work-display-model'
 import {
-  activityStatusPrimary,
-  activityStatusRows,
-  caseReferenceRows,
-  caseScreenAsset,
-  caseScreenSummary,
-  complexitySafetyLabel,
   formatKnownCount,
-  screenIdsForStatus,
   stepForStatus,
 } from './case-stage-display-model'
 import { caseWorkDataSourceFooterLabel } from './case-source-display-model'
@@ -135,15 +94,9 @@ import {
 } from './agentic-estimate-display-model'
 import {
   agenticBooleanFromMemory,
-  agenticCommandStep,
-  agenticMemoryItemCount,
   agenticMemoryRowsFromUnknown,
-  agenticProcessedApprovalRows,
   memoryPreferenceActionSucceeded,
   memoryPreferenceSyncFailureLabel,
-  totalDealEvidenceCount,
-  type AgenticMemoryRowModel,
-  type AgenticProcessedApprovalRowModel,
   type MemoryPreferenceActionResult,
 } from './agentic-memory-display-model'
 import { ChatBubble } from './chat-surfaces'
@@ -151,35 +104,28 @@ import { AgenticCaseThreadPanel } from './chat-case-thread-stateful-surfaces'
 import { AgenticChatEstimateCard, ChatEvidenceStrip, KaelChatSurfaceView } from './chat-stateful-surfaces'
 import { CustomerV21DockOverlayView } from './dock-stateful-surfaces'
 import { buildKaelProcessSequence, type KaelProcessLine, type KaelProcessScenarioId } from './kael-process-lines'
+import { CustomerKaelSessionMenu } from './kael-session-menu'
+import { useCustomerKaelConversations } from './use-customer-kael-conversations'
 import {
   customerV21CommonCopy,
-  customerV21BookingServiceCopy,
   customerV21ScreenTitles,
   customerV21ServiceCopy,
   customerV21StatusCopy,
   customerV21TabCopy,
 } from './copy'
-import { CaseDecisionPanelView, CasePrimaryInfoPanel, CaseProgressLabels, CaseUnderstandingPanel } from './history-case-surfaces'
-import { CaseMatchingStageView, CaseOptionsStageView, CaseQuotesStageView } from './history-stage-stateful-surfaces'
-import { ActiveCaseCardPanel, ActivityStatusPanelView, CaseOverviewPanel, CaseWorkDataSourceFooter, CaseWorkPanelView, CaseWorkSourceChip } from './history-active-surfaces'
-import { CaseJobAcceptedStageView, CaseJobProgressStageView, CaseLiveAlertStageView, CaseLocationEtaStageView } from './history-fulfillment-stateful-surfaces'
-import { CustomerHistorySurfaceView } from './history-surface-stateful-surfaces'
-import { ArrivalCodeBox, CaseArtifact, CaseFactGrid, CaseFulfillmentStep, CaseMapCanvas, CaseMapPin, CaseMapPreview, CaseMetric, CaseMiniStat, CaseOptionChoiceCard, CaseOverviewLiquidScore, CaseScopeStepRow, CaseStageMediaStrip, CaseSuccessEmblem, CaseTimelineItem, CaseWorkerAvatar, CustomerStatusPill, FulfillmentInfoRow, MatchingKaelStatusIcon, MediaRow, QuotePriceLine } from './history-surfaces'
-import { PaymentMethodStagePanel } from './payment-surfaces'
-import { PaymentProtectedStageView, PaymentReviewStageView } from './payment-stage-stateful-surfaces'
+import { ActiveCaseCardPanel } from './history-active-surfaces'
+import { CustomerServiceHistorySurface } from './service-history-surface'
+import { CaseFactGrid } from './history-surfaces'
 import { CustomerProfileOverviewView, CustomerProfileSubscreenView } from './profile-stateful-surfaces'
 import { ProfileCompactMintAura } from './profile-metrics-surfaces'
-import { ProfileAuraCard, ProfileInsightRow, ProfileMemoryPanel, ProfileMoneyPanel, ProfileRankingPanel, SettingsActionRow } from './profile-utility-surfaces'
+import { ProfileMoneyPanel, ProfileRankingPanel } from './profile-utility-surfaces'
 import { ProfileUtilityAddressView, ProfileUtilityPaymentView, ProfileUtilitySettingsView } from './profile-utility-stateful-surfaces'
 import {
-  agenticScreenParam,
+  customerAccountJourneyDisplay,
   fairPriceStatusLabel,
-  formatWorkerJobs,
   homeGreeting,
   initialsForName,
   insightNumber,
-  memberSinceLabel,
-  percentFromConfidenceLabel,
   profileName,
   profilePanelForScreen,
   profilePanelParam,
@@ -191,14 +137,10 @@ import {
   profileUtilityTitle,
   protectedTransactionLabel,
   rankLabel,
-  servicePreferenceLabel,
   type CustomerProfilePanel,
   type CustomerProfileUtility,
 } from './profile-display-model'
-import { AssetTile, EmptyState, EyebrowPill, InactiveAgenticGate, InfoNotice, MatchingHandoffChip, SectionActionHeader, SectionHeader, ServiceTile, V21Card, V21Screen, V21TopBar } from './shared-surfaces'
-import { customerV21AgenticStyles as agenticStyles } from './agentic-styles'
-import { customerV21BookingStyles as bookingStyles } from './booking-styles'
-import { customerV21ChatStyles as chatStyles } from './chat-styles'
+import { AssetTile, EmptyState, SectionActionHeader, ServiceTile, V21Card, V21Screen, V21TopBar } from './shared-surfaces'
 import {
   CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
   CUSTOMER_LIQUID_NAV_GAP,
@@ -206,10 +148,7 @@ import {
   CUSTOMER_LIQUID_NAV_ORB_SIZE,
   CUSTOMER_LIQUID_NAV_RAIL_PADDING,
   CUSTOMER_LIQUID_NAV_SIDE_INSET,
-  customerV21DockStyles as dockStyles,
 } from './dock-styles'
-import { customerV21HistoryActiveStyles as historyActiveStyles } from './history-active-styles'
-import { customerV21PaymentStyles as paymentStyles } from './payment-styles'
 import {
   maskBankAccountNumber,
   normalizeBankAccountNumber,
@@ -220,8 +159,6 @@ import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profi
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
 import { type CustomerDockActive, type CustomerKaelMode, type CustomerPrimaryTab, type CustomerV21ScreenId } from './types'
 import {
-  activityScreenParam,
-  caseScreenIds,
   chatScreenModeParam,
   firstParam,
   serviceParam,
@@ -232,6 +169,15 @@ import { stringArrayFromUnknown, stringFromUnknown } from './value-display-model
 
 const customerKaelChatRoute = '/(customer)/kael-chat?mode=normal'
 const customerKaelWorkRoute = '/(customer)/kael-chat?mode=case'
+
+const customerBookingServiceIdForHistory: Record<ServiceType, CustomerServiceId> = {
+  cleaning: 'home_cleaning',
+  electrical: 'electrical',
+  handyman: 'handyman_minor_installation',
+  hvac: 'hvac_basic_maintenance',
+  plumbing: 'plumbing',
+  upholstery: 'upholstery_care',
+}
 
 function isRealCaseDeal(deal: LocalDeal | null | undefined): deal is LocalDeal {
   return Boolean(deal?.id && deal.id !== LOCAL_DEAL_ID)
@@ -281,47 +227,23 @@ function shouldUseLegacyKaelEvidenceFallback(
     (result.status === 400 && result.code === 'VALIDATION')
 }
 
-function shouldFallbackCaseAssistantToJobChat(result: { code?: string; error?: string; status?: number }) {
-  const normalizedError = (result.error ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-  return result.status === 404 && (
-    normalizedError.includes('endpoint') ||
-    (result.code === 'NOT_FOUND' && normalizedError.includes('khong tim thay endpoint'))
-  )
-}
-
 function customerCaseWorkRouteForDeal(deal: LocalDeal | null | undefined, suffix = '') {
   return isRealCaseDeal(deal)
     ? `/(customer)/kael-chat?mode=case&jobId=${encodeURIComponent(deal.id)}${suffix}`
     : customerKaelWorkRoute
 }
 
-const caseWorkScreenIds: CustomerV21ScreenId[] = ['2.5-chat-case', '2.6-case-overview', '2.7-matching', '2.8-options', '2.9-quotes']
-const paymentScreenIds: CustomerV21ScreenId[] = ['3.1-payment-review', '3.2-payment-method', '3.3-payment-protected']
-const chatCompressedActivityScreenIds = new Set<CustomerV21ScreenId>(['2.6-case-overview', '2.7-matching', '2.8-options', '2.9-quotes', '2.10-location-eta', '2.11-live-alert', '2.12-job-accepted', '2.13-job-progress'])
-const completionScreenIds: CustomerV21ScreenId[] = ['2.13-job-progress']
 const bookingScheduleRuntimeRefreshMs = 30_000
 const bookingAddressLookupDelayMs = 260
-const bookingSearchInputTextColor = '#071A24'
 type BookingAddressSuggestion = PlacesAutocompleteResponse['suggestions'][number]
 const chatComposerMediaTypes: ImagePicker.MediaType[] = ['images', 'videos']
 const kaelProcessAnswerSettleMs = 1100
-const vietnamTimelineTimeZone = 'Asia/Ho_Chi_Minh'
-const kaelTimelineRefreshMs = 60_000
 type CustomerAssistantLocalTurn = {
   id: string
   role: 'customer' | 'worker' | 'kael'
   surface: 'customer_normal' | 'customer_case'
   text_content: string
 }
-const bookingSourceSearchWebShadow = Platform.select({
-  web: {
-    boxShadow: '0 0 0 3px rgba(13,174,154,0.08), 0 10px 24px rgba(5,89,81,0.08), inset 0 1px 0 rgba(255,255,255,0.95)',
-  } as unknown as ViewStyle,
-  default: null,
-})
 const customerV21WebTextInputNoOutline = Platform.select({
   web: {
     boxShadow: 'none',
@@ -356,126 +278,6 @@ const customerV21InvisibleTextInputScrollbar = Platform.select({
   } as unknown as TextStyle,
   default: null,
 })
-type KaelTimelineWindow = 'afternoon' | 'evening' | 'late' | 'midday' | 'morning'
-
-const kaelTimelineHeadlines: Record<AppLanguage, Record<KaelTimelineWindow, string[]>> = {
-  en: {
-    afternoon: [
-      'Afternoon check-in, I am here.',
-      'Need anything this afternoon?',
-      'I will stay with you.',
-      'Let me listen first.',
-    ],
-    evening: [
-      'Evening now, I am here.',
-      'Tell me what you need tonight.',
-      'I am listening, gently.',
-      'We can take it slowly.',
-    ],
-    late: [
-      'Late now, I am still here.',
-      'Urgent? Tell me briefly.',
-      'I am here tonight.',
-      'Say only what you need.',
-    ],
-    midday: [
-      'Midday now, I am here.',
-      'Take a pause, I can help.',
-      'Tell me what you need.',
-      'I am listening closely.',
-    ],
-    morning: [
-      'Good morning, I am here.',
-      'Need anything this morning?',
-      'I am listening.',
-      'Easy start, I am here.',
-    ],
-  },
-  vi: {
-    afternoon: [
-      'Buổi chiều, mình ở đây.',
-      'Chiều nay cần gì, cứ nói.',
-      'Mình theo cùng bạn nhé.',
-      'Cứ để mình nghe trước.',
-    ],
-    evening: [
-      'Buổi tối rồi, mình ở đây.',
-      'Tối nay cần gì, cứ nói nhé.',
-      'Mình nghe bạn, chậm rãi thôi.',
-      'Bạn cứ nói, mình hỗ trợ.',
-    ],
-    late: [
-      'Muộn rồi, mình vẫn nghe.',
-      'Cần gấp thì cứ nói nhé.',
-      'Đêm muộn rồi, mình ở đây.',
-      'Bạn cứ nói ngắn thôi.',
-    ],
-    midday: [
-      'Giữa ngày rồi, mình ở đây.',
-      'Trưa rồi, cứ nói với mình.',
-      'Cần gì, mình nghe nhé.',
-      'Bạn nghỉ chút, mình hỗ trợ.',
-    ],
-    morning: [
-      'Chào buổi sáng, mình ở đây.',
-      'Sáng nay cần gì, cứ nói nhé.',
-      'Mình nghe bạn đây.',
-      'Ngày mới nhẹ nhàng nhé.',
-    ],
-  },
-}
-
-function getVietnamTimelineParts(now = new Date()) {
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      day: '2-digit',
-      hour: '2-digit',
-      hourCycle: 'h23',
-      minute: '2-digit',
-      timeZone: vietnamTimelineTimeZone,
-    }).formatToParts(now)
-    const day = Number(parts.find((part) => part.type === 'day')?.value)
-    const hour = Number(parts.find((part) => part.type === 'hour')?.value)
-    const minute = Number(parts.find((part) => part.type === 'minute')?.value)
-    if (Number.isFinite(day) && Number.isFinite(hour) && Number.isFinite(minute)) {
-      return { day, hour, minute }
-    }
-  } catch {
-    // Fallback keeps the headline on Vietnam time when a runtime lacks full Intl time-zone data.
-  }
-  return { day: now.getUTCDate(), hour: (now.getUTCHours() + 7) % 24, minute: now.getUTCMinutes() }
-}
-
-function kaelTimelineWindow(hour: number): KaelTimelineWindow {
-  if (hour >= 5 && hour < 11) return 'morning'
-  if (hour >= 11 && hour < 14) return 'midday'
-  if (hour >= 14 && hour < 18) return 'afternoon'
-  if (hour >= 18 && hour < 22) return 'evening'
-  return 'late'
-}
-
-function kaelTimelineHeadline(language: AppLanguage, now = new Date()) {
-  const { day, hour, minute } = getVietnamTimelineParts(now)
-  const lines = kaelTimelineHeadlines[language][kaelTimelineWindow(hour)]
-  const slot = Math.floor(minute / 10)
-  return lines[(day + slot) % lines.length]
-}
-
-function useKaelTimelineHeadline(language: AppLanguage) {
-  const [headline, setHeadline] = useState(() => kaelTimelineHeadline(language))
-
-  useEffect(() => {
-    const updateHeadline = () => setHeadline(kaelTimelineHeadline(language))
-    updateHeadline()
-    const interval = setInterval(updateHeadline, kaelTimelineRefreshMs)
-    return () => clearInterval(interval)
-  }, [language])
-
-  return headline
-}
-
-type V21Theme = CustomerThemeTokens
-
 type KaelProcessLineRuntime = {
   activeIndex: number | null
   collapse: string | null
@@ -491,33 +293,6 @@ function useV21Theme() {
   const baseTokens = getCustomerThemeTokens(mode)
   const tokens = glass.reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   return { ...glass, mode, tokens }
-}
-
-function CaseChatSummary({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const problem = agenticDealProblemLabel(deal, language)
-  const address = deal.draft.addressLabel || deal.draft.districtLabel || copy.dataPending
-  return (
-    <V21Card style={historyActiveStyles.caseChatSummaryCard} testID="customer-v21-case-overview">
-      <SourceCardSkin />
-      <CaseWorkCardAura scope="Summary" />
-      <View style={historyActiveStyles.caseChatSummaryHeader}>
-        <KaelChip label={caseDisplayCode(deal, language)} variant="selected" />
-        <CustomerStatusPill label={customerV21StatusCopy[language][deal.status]} tokens={tokens} />
-      </View>
-      <View style={historyActiveStyles.caseChatSummaryBody}>
-        <AssetTile image={customerV21Assets.request} label={service} size={48} style={historyActiveStyles.caseChatSummaryIcon} />
-        <View style={styles.flex}>
-          <Text numberOfLines={1} style={[historyActiveStyles.caseChatSummaryTitle, { color: tokens.text }]}>{service}</Text>
-          <Text numberOfLines={1} style={[historyActiveStyles.caseChatSummaryText, { color: tokens.muted }]}>{problem}</Text>
-          <Text numberOfLines={1} style={[historyActiveStyles.caseChatSummaryText, { color: tokens.muted }]}>{address}</Text>
-        </View>
-      </View>
-    </V21Card>
-  )
 }
 
 function ProfileProgressBar({ percent, testID }: { percent: number; testID?: string }) {
@@ -637,7 +412,6 @@ export function CustomerHomeSurface() {
   return (
     <V21Screen screenId="2.1-home" testID="customer-v21-home">
       <V21TopBar
-        actionLabel="◌"
         avatarText={initialsForName(displayName)}
         showAvatar={false}
         subtitle=""
@@ -665,7 +439,6 @@ export function CustomerHomeSurface() {
             {language === 'vi' ? 'Kael sẵn sàng hỗ trợ, công việc vẫn do bạn kiểm soát.' : 'Kael is ready to help while you keep work control.'}
           </Text>
         </View>
-        <KaelCoreV9 motionClip="autoplay-once" size={164} />
       </V21Card>
       </View>
 
@@ -718,7 +491,6 @@ export function CustomerBookingEntrySurface() {
   const servicesScreenId = legacyMediaScreenRequested ? '2.2-search' : directServicesScreen ?? '2.2-search'
   const isMediaScreen = false
   const [selectedService, setSelectedService] = useState<CustomerServiceId | null>(directService)
-  const [serviceSearchQuery, setServiceSearchQuery] = useState('')
   const [selectedProblems, setSelectedProblems] = useState<string[]>([])
   const [address, setAddress] = useState('')
   const addressDistrictLabel = useRef<string | null>(null)
@@ -728,7 +500,9 @@ export function CustomerBookingEntrySurface() {
   const [addressSuggestions, setAddressSuggestions] = useState<BookingAddressSuggestion[]>([])
   const [description, setDescription] = useState('')
   const [selectedScheduleDate, setSelectedScheduleDate] = useState<string | null>(directScheduleDate)
+  const [customScheduleDateInput, setCustomScheduleDateInput] = useState('')
   const [selectedScheduleTime, setSelectedScheduleTime] = useState<string | null>(directScheduleTime)
+  const [customScheduleTimeInput, setCustomScheduleTimeInput] = useState('')
   const [photoDrafts, setPhotoDrafts] = useState<LocalMediaUploadDraft[]>([])
   const mediaCount = photoDrafts.length
   const [error, setError] = useState<string | null>(null)
@@ -773,13 +547,19 @@ export function CustomerBookingEntrySurface() {
   }, [address, addressLookupOpen])
   const scheduleDateOptions = useMemo(() => buildBookingScheduleDateOptions(language, new Date(scheduleRuntimeNow)), [language, scheduleRuntimeNow])
   const scheduleLabel = bookingScheduleLabel(scheduleDateOptions, selectedScheduleDate, selectedScheduleTime, language)
+  const customScheduleDateError = customScheduleDateInput.length === 10 && !selectedScheduleDate
+    ? (language === 'vi' ? 'Nhập ngày hợp lệ từ hôm nay trở đi.' : 'Enter a valid date from today onward.')
+    : null
+  const customScheduleTimeError = customScheduleTimeInput.length === 5 && !selectedScheduleTime
+    ? (language === 'vi' ? 'Nhập giờ hợp lệ theo HH:mm, trước 23:59.' : 'Enter a valid HH:mm time before 23:59.')
+    : null
   const addressUsesMultiline = address.trim().length > 34
 
   useEffect(() => {
     if (!selectedScheduleDate) return
-    if (scheduleDateOptions.some((option) => option.value === selectedScheduleDate)) return
+    if (bookingScheduleDateIsBookable(selectedScheduleDate, new Date(scheduleRuntimeNow))) return
     setSelectedScheduleDate(null)
-  }, [scheduleDateOptions, selectedScheduleDate])
+  }, [scheduleRuntimeNow, selectedScheduleDate])
 
   if (guestMode || !session) {
     return (
@@ -796,28 +576,10 @@ export function CustomerBookingEntrySurface() {
 
   const productionServiceType = productionServiceForBooking(selectedService)
   const problemOptions = productionServiceType ? localizedProblemOptions(productionServiceType, language) : []
-  const problemValues = problemOptions.map((option) => option.value)
-  const normalizedServiceSearchQuery = normalizeBookingSearchText(serviceSearchQuery)
   const toggleProblem = (label: string) => {
     setSelectedProblems((current) =>
       current.includes(label) ? current.filter((item) => item !== label) : [...current, label],
     )
-  }
-  const searchSuggestions = buildBookingSearchSuggestions({ language, problemOptions: problemValues, query: normalizedServiceSearchQuery, selectedProblems, selectedService })
-  const selectSearchSuggestion = (suggestion: BookingSearchSuggestion) => {
-    if (!suggestion.problem) {
-      setSelectedService(suggestion.serviceType)
-      setSelectedProblems([])
-      setPhotoDrafts([])
-      return
-    }
-    setSelectedService(suggestion.serviceType)
-    setSelectedProblems((current) => {
-      if (selectedService !== suggestion.serviceType) return [suggestion.problem as string]
-      return current.includes(suggestion.problem as string)
-        ? current.filter((item) => item !== suggestion.problem)
-        : [...current, suggestion.problem as string]
-    })
   }
   const updateAddress = (nextAddress: string) => {
     setAddress(nextAddress)
@@ -841,7 +603,6 @@ export function CustomerBookingEntrySurface() {
   }
   const resetBookingBoard = () => {
     setSelectedService(null)
-    setServiceSearchQuery('')
     setSelectedProblems([])
     setAddress('')
     addressDistrictLabel.current = null
@@ -851,7 +612,9 @@ export function CustomerBookingEntrySurface() {
     setAddressSuggestions([])
     setDescription('')
     setSelectedScheduleDate(null)
+    setCustomScheduleDateInput('')
     setSelectedScheduleTime(null)
+    setCustomScheduleTimeInput('')
     setPhotoDrafts([])
     setError(null)
   }
@@ -881,6 +644,20 @@ export function CustomerBookingEntrySurface() {
     setError(null)
   }
 
+  const updateCustomScheduleDate = (value: string) => {
+    const normalizedInput = normalizeBookingCustomDateInput(value)
+    setCustomScheduleDateInput(normalizedInput)
+    setSelectedScheduleDate(bookingCustomDateValue(normalizedInput, new Date(scheduleRuntimeNow)))
+    setError(null)
+  }
+
+  const updateCustomScheduleTime = (value: string) => {
+    const normalizedInput = normalizeBookingCustomTimeInput(value)
+    setCustomScheduleTimeInput(normalizedInput)
+    setSelectedScheduleTime(bookingCustomTimeValue(normalizedInput))
+    setError(null)
+  }
+
   const submitDraft = async () => {
     if (!selectedService) {
       setError(language === 'vi' ? 'Chọn dịch vụ trước khi gửi Kael.' : 'Choose a service before sending to Kael.')
@@ -904,8 +681,8 @@ export function CustomerBookingEntrySurface() {
     }
     if (!selectedScheduleDate || !selectedScheduleTime) {
       setError(language === 'vi'
-        ? 'Chọn ngày và khung thời gian mong muốn trước khi gửi Kael.'
-        : 'Choose your desired date and time window before sending to Kael.')
+        ? 'Chọn ngày và giờ bắt đầu mong muốn trước khi gửi Kael.'
+        : 'Choose your desired date and start time before sending to Kael.')
       return
     }
     const message = buildBookingDraftMessage({
@@ -919,8 +696,8 @@ export function CustomerBookingEntrySurface() {
     const scheduleDraft = bookingScheduleDraft(selectedScheduleDate, selectedScheduleTime)
     if (!scheduleDraft.scheduledAt || !scheduleDraft.scheduleWindow) {
       setError(language === 'vi'
-        ? 'Khung thời gian chưa hợp lệ. Chọn lại ngày và giờ mong muốn.'
-        : 'The time window is invalid. Choose your desired date and time again.')
+        ? 'Ngày hoặc giờ bắt đầu chưa hợp lệ. Chọn lại trước khi gửi Kael.'
+        : 'The desired date or start time is invalid. Choose it again before sending to Kael.')
       return
     }
     const normalizedAddress = address.trim()
@@ -946,7 +723,6 @@ export function CustomerBookingEntrySurface() {
     resetBookingBoard()
     router.replace(customerKaelWorkRoute as never)
   }
-  const selectedServiceCopy = selectedService ? customerV21BookingServiceCopy[language][selectedService] : null
   const createDraftLabel = copy.createDraft
 
   return (
@@ -958,11 +734,12 @@ export function CustomerBookingEntrySurface() {
         addressLookupPending={addressLookupPending}
         addressSuggestions={addressSuggestions}
         addressUsesMultiline={addressUsesMultiline}
-        bookingSearchInputColor={bookingSearchInputTextColor}
-        bookingSourceSearchShadowStyle={bookingSourceSearchWebShadow}
         chatPlaceholder={copy.chatPlaceholder}
         createDraftLabel={createDraftLabel}
-        dataPendingLabel={copy.dataPending}
+        customScheduleDateError={customScheduleDateError}
+        customScheduleDateInput={customScheduleDateInput}
+        customScheduleTimeError={customScheduleTimeError}
+        customScheduleTimeInput={customScheduleTimeInput}
         description={description}
         error={error}
         hiddenTextInputScrollbarStyle={customerV21HiddenTextInputScrollbar}
@@ -984,6 +761,8 @@ export function CustomerBookingEntrySurface() {
         onAddressFocus={() => setAddressLookupOpen(true)}
         onAddressSuggestionPress={selectAddressSuggestion}
         onBack={() => router.replace('/(customer)/home' as never)}
+        onCustomScheduleDateChange={updateCustomScheduleDate}
+        onCustomScheduleTimeChange={updateCustomScheduleTime}
         onDescriptionChange={setDescription}
         onMediaAdd={() => void pickBasicIntakePhotos()}
         onProblemToggle={toggleProblem}
@@ -993,10 +772,16 @@ export function CustomerBookingEntrySurface() {
           setPhotoDrafts([])
           router.replace('/(customer)/booking' as never)
         }}
-        onScheduleDateSelect={setSelectedScheduleDate}
-        onScheduleTimeSelect={setSelectedScheduleTime}
-        onSearchQueryChange={setServiceSearchQuery}
-        onSearchSuggestionPress={selectSearchSuggestion}
+        onScheduleDateSelect={(value) => {
+          setCustomScheduleDateInput('')
+          setSelectedScheduleDate(value)
+          setError(null)
+        }}
+        onScheduleTimeSelect={(value) => {
+          setCustomScheduleTimeInput('')
+          setSelectedScheduleTime(value)
+          setError(null)
+        }}
         onServiceSelect={(service) => {
           setSelectedService(service)
           setSelectedProblems([])
@@ -1008,13 +793,10 @@ export function CustomerBookingEntrySurface() {
         rootStyles={styles}
         scheduleDateOptions={scheduleDateOptions}
         scheduleLabel={scheduleLabel}
-        searchSuggestions={searchSuggestions}
         selectedProblems={selectedProblems}
         selectedScheduleDate={selectedScheduleDate}
         selectedScheduleTime={selectedScheduleTime}
         selectedService={selectedService}
-        selectedServiceCopy={selectedServiceCopy}
-        serviceSearchQuery={serviceSearchQuery}
         textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
         timeSlots={bookingTimeSlots}
         tokens={tokens}
@@ -1024,128 +806,50 @@ export function CustomerBookingEntrySurface() {
 }
 
 export function CustomerHistorySurface() {
-  const language = useAppLanguage()
   const router = useRouter()
   const params = useLocalSearchParams<{ job_id?: string | string[]; scope_change?: string | string[]; screen?: string | string[]; tab?: string | string[] }>()
   const workflow = useFrontendWorkflow()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
   const workflowDeal = workflow.state.deal
   const deal = isRealCaseDeal(workflowDeal) ? workflowDeal : null
   const routeJobId = cleanRouteJobId(firstParam(params.job_id))
-  const rawActivityScreen = firstParam(params.screen)
-  const legacyCaseChatHistoryRequested = rawActivityScreen === '2.5-chat-case'
-  const legacyCaseOverviewHistoryRequested = rawActivityScreen === '2.6-case-overview'
-  const legacyMatchingHistoryRequested = rawActivityScreen === '2.7-matching'
-  const legacyOptionsHistoryRequested = rawActivityScreen === '2.8-options'
-  const legacyQuoteHistoryRequested = rawActivityScreen === '2.9-quotes'
-  const legacyLocationHistoryRequested = rawActivityScreen === '2.10-location-eta'
-  const legacyLiveAlertHistoryRequested = rawActivityScreen === '2.11-live-alert'
-  const legacyJobAcceptedHistoryRequested = rawActivityScreen === '2.12-job-accepted'
-  const legacyJobProgressHistoryRequested = rawActivityScreen === '2.13-job-progress'
-  const legacyPaymentReviewHistoryRequested = rawActivityScreen === '3.1-payment-review'
-  const legacyPaymentMethodHistoryRequested = rawActivityScreen === '3.2-payment-method'
-  const legacyPaymentProtectedHistoryRequested = rawActivityScreen === '3.3-payment-protected'
-  const legacyPaymentRouteRequested = legacyPaymentReviewHistoryRequested || legacyPaymentMethodHistoryRequested || legacyPaymentProtectedHistoryRequested
-  const defaultActivityScreen = deal
-    ? screenIdsForStatus(deal.status).find((screen) => !chatCompressedActivityScreenIds.has(screen)) ?? null
-    : null
-  const defaultCompressedActivityRequested = !rawActivityScreen && Boolean(deal) && !defaultActivityScreen
-  const legacyCaseRouteRequested = legacyCaseChatHistoryRequested || legacyCaseOverviewHistoryRequested || legacyMatchingHistoryRequested || legacyOptionsHistoryRequested || legacyQuoteHistoryRequested || legacyLocationHistoryRequested || legacyLiveAlertHistoryRequested || legacyJobAcceptedHistoryRequested || legacyJobProgressHistoryRequested || defaultCompressedActivityRequested
-  const activeScreen = legacyCaseChatHistoryRequested || legacyCaseOverviewHistoryRequested
-    ? '2.6-case-overview'
-    : legacyMatchingHistoryRequested
-      ? '2.7-matching'
-      : legacyOptionsHistoryRequested
-        ? '2.8-options'
-        : legacyQuoteHistoryRequested
-          ? '2.9-quotes'
-          : legacyLocationHistoryRequested
-            ? '2.10-location-eta'
-            : legacyLiveAlertHistoryRequested
-              ? '2.11-live-alert'
-              : legacyJobAcceptedHistoryRequested
-                ? '2.12-job-accepted'
-                : legacyJobProgressHistoryRequested
-                  ? '2.13-job-progress'
-                  : legacyPaymentReviewHistoryRequested
-                    ? '3.1-payment-review'
-                    : legacyPaymentMethodHistoryRequested
-                      ? '3.2-payment-method'
-                      : legacyPaymentProtectedHistoryRequested
-                        ? '3.3-payment-protected'
-                        : activityScreenParam(rawActivityScreen) ?? defaultActivityScreen ?? '2.6-case-overview'
-  const compressedActivityActive = chatCompressedActivityScreenIds.has(activeScreen)
-  const paymentRouteRedirectRequested = legacyPaymentRouteRequested && Boolean(deal?.payment)
-  const caseRouteRedirectRequested = legacyCaseRouteRequested || paymentRouteRedirectRequested || (compressedActivityActive && Boolean(deal))
-  const caseOverviewActive = activeScreen === '2.6-case-overview'
-  const scopeChange = deal?.scopeChange ?? null
   const routeScopeChangeParam = firstParam(params.scope_change)
-  const forceScopeChangeModal = Boolean(
-    scopeChange &&
-    isPendingCustomerScopeChange(scopeChange) &&
-    (deal?.status === 'scope_change_pending' || routeScopeChangeParam),
-  )
-  const scopeDecisionBusy = Boolean(scopeChange?.id && workflow.customerScopeDecisionBusyId === scopeChange.id)
-  const decideScopeChange = (decision: 'approve' | 'reject') => {
-    if (!scopeChange || scopeDecisionBusy || !canCustomerDecideScopeChange(scopeChange)) return
-    void workflow.actions.decideScopeChange(scopeChange.id, { decision })
-  }
+  const legacyActivityScreen = firstParam(params.screen)
+  const shouldOpenCaseWork = Boolean(routeJobId || routeScopeChangeParam || legacyActivityScreen)
 
   useEffect(() => {
     if (!routeJobId || deal?.id === routeJobId) return
     void workflow.actions.hydrateRemoteJobById(routeJobId)
   }, [deal?.id, routeJobId, workflow.actions])
-  useEffect(() => {
-    if (!caseRouteRedirectRequested) return
-    const caseChatPath = customerCaseWorkRouteForDeal(deal, paymentRouteRedirectRequested ? '&focus=payment' : '')
-    router.replace(caseChatPath as never)
-  }, [caseRouteRedirectRequested, deal?.id, paymentRouteRedirectRequested, router])
-  const title = caseOverviewActive
-    ? (language === 'vi' ? 'Tổng Quan' : 'Overview')
-    : customerV21ScreenTitles[language][activeScreen]
-  const subtitle = caseOverviewActive
-    ? ''
-    : activeScreen === '2.7-matching'
-      ? (language === 'vi' ? 'Kael so sánh kỹ năng, lịch và khu vực' : 'Kael compares skill, schedule, and area')
-    : deal
-      ? caseDisplayCode(deal, language)
-      : copy.dataPending
 
-  const bodyNode = deal ? (
-    caseRouteRedirectRequested ? (
-      <InactiveAgenticGate testID={`customer-v21-direct-empty-${activeScreen}`} />
-    ) : caseOverviewActive ? (
-      <CaseOverviewDirectScreen deal={deal} />
-    ) : (
-      <ActivityDirectScreen deal={deal} screenId={activeScreen} />
-    )
-  ) : (
-    <InactiveAgenticGate testID={`customer-v21-direct-empty-${activeScreen}`} />
-  )
+  useEffect(() => {
+    if (!shouldOpenCaseWork) return
+    if (routeJobId && deal?.id !== routeJobId) return
+    if (!deal) {
+      if (legacyActivityScreen && !routeJobId) router.replace(customerKaelWorkRoute as never)
+      return
+    }
+    const focus = routeScopeChangeParam
+      ? '&focus=approval'
+      : legacyActivityScreen?.startsWith('3.')
+        ? '&focus=payment'
+        : ''
+    router.replace(customerCaseWorkRouteForDeal(deal, focus) as never)
+  }, [deal, legacyActivityScreen, routeJobId, routeScopeChangeParam, router, shouldOpenCaseWork])
+
+  const rebookService = (item: CustomerServiceHistoryItem) => {
+    const serviceId = customerBookingServiceIdForHistory[item.service_type]
+    router.replace(`/(customer)/booking?service=${encodeURIComponent(serviceId)}` as never)
+  }
+
+  const openHistoryDetail = (item: CustomerServiceHistoryItem) => {
+    router.replace(`/(customer)/kael-chat?mode=case&jobId=${encodeURIComponent(item.id)}` as never)
+  }
 
   return (
-    <CustomerHistorySurfaceView
-      actionLabel="↗"
-      activeScreen={activeScreen}
-      bodyNode={bodyNode}
-      modalNode={(
-        <ScopeChangeHardStopModal
-          busy={scopeDecisionBusy}
-          language={language}
-          newScopeLabel={scopeChange?.requestedDescription ?? copy.dataPending}
-          onApprove={() => decideScopeChange('approve')}
-          onReject={() => decideScopeChange('reject')}
-          originalEstimateLabel={deal?.estimate?.priceRangeLabel ?? copy.dataPending}
-          originalScopeLabel={deal?.estimate?.problemLabel ?? deal?.draft.description ?? copy.dataPending}
-          scopeChange={scopeChange}
-          tokens={tokens}
-          visible={forceScopeChangeModal}
-        />
-      )}
+    <CustomerServiceHistorySurface
       onBack={() => router.replace('/(customer)/home' as never)}
-      subtitle={subtitle}
-      title={title}
+      onOpenDetail={openHistoryDetail}
+      onRebook={rebookService}
     />
   )
 }
@@ -1160,14 +864,16 @@ export function CustomerProfileSurface() {
   const copy = customerV21CommonCopy[language]
   const insights = workflow.customerProfileInsights ?? null
   const directProfileScreen = profileScreenParam(firstParam(params.screen))
-  const directAgenticScreen = agenticScreenParam(directProfileScreen, firstParam(params.utility))
   const directProfileUtility = profileUtilityParam(firstParam(params.utility))
   const requestedPanel = profilePanelForScreen(directProfileScreen) ?? profilePanelParam(firstParam(params.panel))
   const [panel, setPanel] = useState<CustomerProfilePanel>(() => requestedPanel ?? 'overview')
   const name = profileName(session?.user.user_metadata, language)
-  const memberSince = memberSinceLabel(insights?.member_since ?? session?.user.created_at, language, copy.dataPending)
-  const activeLabel = session ? (language === 'vi' ? 'Tích cực' : 'Active') : copy.dataPending
-  const verifiedProfileLabel = session ? (language === 'vi' ? 'Khách hàng đã xác minh' : 'Verified customer') : copy.dataPending
+  const accountJourney = customerAccountJourneyDisplay({
+    activeServiceDays: insights?.active_service_days,
+    createdAt: insights?.member_since ?? session?.user.created_at,
+    fallback: copy.dataPending,
+    language,
+  })
   const bankOptionCount = Object.keys(customerV21BankAssets).length
   const bankOptionLabel = language === 'vi'
     ? `${formatNumber(bankOptionCount, language)} ngân hàng`
@@ -1190,15 +896,10 @@ export function CustomerProfileSurface() {
     router.replace(`/(customer)/profile?screen=${screenId}` as never)
   }
 
-  if (directAgenticScreen) {
-    return <CustomerAgenticCenterSurface screenId={directAgenticScreen} />
-  }
-
   if (directProfileUtility) {
     return (
       <V21Screen key={`profile-utility-${directProfileUtility}`} screenId="6.1-profile-overview" testID="customer-v21-profile">
         <CustomerProfileSubscreenView
-          actionLabel="i"
           body={<ProfileUtilitySection insights={insights} kind={directProfileUtility} />}
           onBack={() => router.replace('/(customer)/profile' as never)}
           subtitle={directProfileUtility === 'address' ? '' : profileUtilitySubtitle(directProfileUtility, language)}
@@ -1210,17 +911,15 @@ export function CustomerProfileSurface() {
   }
 
   const profileScreenId: CustomerV21ScreenId =
-    panel === 'ranking' ? '6.2-usage-ranking' : panel === 'money' ? '6.3-protect-money' : panel === 'memory' ? '5.4-memory' : '6.1-profile-overview'
+    panel === 'ranking' ? '6.2-usage-ranking' : panel === 'money' ? '6.3-protect-money' : '6.1-profile-overview'
   if (panel !== 'overview') {
     return (
       <V21Screen key={profileScreenId} screenId={profileScreenId} testID="customer-v21-profile">
         <CustomerProfileSubscreenView
-          actionLabel="i"
           body={(
             <>
               {panel === 'ranking' ? <ProfileRanking insights={insights} /> : null}
               {panel === 'money' ? <ProfileMoney insights={insights} /> : null}
-              {panel === 'memory' ? <ProfileMemory /> : null}
             </>
           )}
           onBack={() => {
@@ -1237,16 +936,9 @@ export function CustomerProfileSurface() {
   return (
     <V21Screen key={profileScreenId} screenId={profileScreenId} testID="customer-v21-profile">
       <CustomerProfileOverviewView
-        activeLabel={activeLabel}
-        agenticBody={language === 'vi'
-          ? 'Trung tâm điều phối, hàng chờ duyệt và ghi nhớ theo dữ liệu thật.'
-          : 'Command center, approval queue, and memory from real data.'}
-        agenticCenterLabel={copy.agenticCenter}
-        agenticChipLabel={language === 'vi' ? 'Tiện ích phụ' : 'Utility'}
+        accountJourney={accountJourney}
         initials={initialsForName(name)}
-        memberSince={memberSince}
         name={name}
-        onOpenAgenticCenter={() => router.replace('/(customer)/profile?utility=agentic' as never)}
         onOpenRanking={() => openProfilePanel('ranking', '6.2-usage-ranking')}
         onSignOut={() => void signOut()}
         rankingAccessibilityLabel={language === 'vi' ? 'Xem xếp hạng sử dụng' : 'View usage ranking'}
@@ -1254,13 +946,12 @@ export function CustomerProfileSurface() {
         rankingLabel={language === 'vi' ? 'Xếp hạng sử dụng' : 'Usage ranking'}
         rankingMetaLabel={usageRankPointsLabel}
         rankingProgressNode={<ProfileProgressBar percent={usageRankProgress} testID="customer-v21-profile-ranking-entry-progress" />}
+        rankingProgressSourceLabel={language === 'vi' ? 'Tăng theo hoạt động thật' : 'Grows with real activity'}
         rankingStatus={usageRankStatus}
         rankingStatusActive={usageRank > 0}
         rankingStatusTextStyle={usageRank > 0 ? styles.profileMintChipText : profileUtilityStyles.profileRankingEmptyChipText}
         rootStyles={styles}
         signOutLabel={language === 'vi' ? 'Đăng xuất' : 'Sign out'}
-        smartUtilitiesAction={language === 'vi' ? 'Mặc định có sẵn' : 'Available'}
-        smartUtilitiesTitle={language === 'vi' ? 'Tiện ích thông minh' : 'Smart utilities'}
         tokens={tokens}
         topBarSubtitle={language === 'vi' ? 'Tài khoản, bảo vệ và các tiện ích phụ' : 'Account, protection, and utilities'}
         topBarTitle={language === 'vi' ? 'Hồ sơ khách hàng' : 'Customer profile'}
@@ -1292,505 +983,23 @@ export function CustomerProfileSurface() {
             value: language === 'vi' ? 'Tài khoản' : 'Account',
           },
         ]}
-        verified={Boolean(session)}
-        verifiedProfileLabel={verifiedProfileLabel}
       />
     </V21Screen>
   )
-}
-
-export function CustomerAgenticCenterSurface({ screenId = '5.1-agentic-home' }: { screenId?: CustomerV21ScreenId } = {}) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const workflow = useFrontendWorkflow()
-  const workflowDeal = workflow.state.deal
-  const deal = isRealCaseDeal(workflowDeal) ? workflowDeal : null
-  const copy = customerV21CommonCopy[language]
-  const memoryRows = agenticMemoryRowsFromUnknown(workflow.customerKaelMemory, language)
-  const memoryCount = agenticMemoryItemCount(memoryRows)
-  const pendingApproval = deal?.scopeChange && canCustomerDecideScopeChange(deal.scopeChange) ? deal.scopeChange : null
-  const approvalCount = pendingApproval ? 1 : 0
-  const processedApprovalRows = agenticProcessedApprovalRows(deal, language)
-  const redirectApprovalToCaseWork = screenId === '5.3-approval-queue' && Boolean(deal?.id && pendingApproval)
-  const approveScopeChange = (id: string) => {
-    if (!pendingApproval || pendingApproval.id !== id) return
-    void workflow.actions?.decideScopeChange?.(id, { decision: 'approve' })
-  }
-  const rejectScopeChange = (id: string) => {
-    if (!pendingApproval || pendingApproval.id !== id) return
-    void workflow.actions?.decideScopeChange?.(id, { decision: 'reject' })
-  }
-  const openAgenticHome = () => router.replace('/(customer)/profile?utility=agentic' as never)
-  const openProfile = () => router.replace('/(customer)/profile' as never)
-  const openActivity = () => router.replace('/(customer)/profile?screen=5.2-command-center' as never)
-  const openCaseChat = () => {
-    router.replace(customerCaseWorkRouteForDeal(deal) as never)
-  }
-
-  useEffect(() => {
-    if (!redirectApprovalToCaseWork) return
-    router.replace(customerCaseWorkRouteForDeal(deal, '&focus=approval') as never)
-  }, [deal?.id, redirectApprovalToCaseWork, router])
-
-  const agenticScreenView = screenId === '5.2-command-center'
-    ? {
-      actionLabel: '✦',
-      bodyNode: <AgenticCommandCenter deal={deal} onOpenCaseChat={openCaseChat} />,
-      onBack: openAgenticHome,
-      screenId: '5.2-command-center' as const,
-      subtitle: deal ? caseDisplayCode(deal, language) : copy.dataPending,
-      testID: 'customer-v21-agentic-command-center',
-      title: customerV21ScreenTitles[language]['5.2-command-center'],
-    }
-    : screenId === '5.3-approval-queue'
-      ? {
-        actionLabel: 'i',
-        bodyNode: redirectApprovalToCaseWork ? (
-          <InactiveAgenticGate testID="customer-v21-agentic-approval-redirect" />
-        ) : (
-          <AgenticApprovalQueuePanel
-            approvalSectionAction={deal ? caseDisplayCode(deal, language) : copy.dataPending}
-            approvalSectionTitle={language === 'vi' ? 'Cần duyệt ngay' : 'Needs approval now'}
-            heroBody={approvalCount > 0
-              ? (language === 'vi' ? 'Có quyết định cần bạn duyệt trước khi Kael tiếp tục.' : 'A decision needs your approval before Kael continues.')
-              : (language === 'vi' ? 'Không có quyết định chờ duyệt.' : 'No decision is waiting.')}
-            heroTitle={language === 'vi' ? 'Duyệt đúng lúc, không bỏ lỡ công việc.' : 'Approve at the right time without missing the job.'}
-            onApprove={approveScopeChange}
-            onReject={rejectScopeChange}
-            pendingApproval={pendingApproval ? {
-              approveLabel: scopeChangeApproveLabel(pendingApproval, language),
-              confidence: approvalConfidenceLabel(pendingApproval, deal, language),
-              costChange: scopeChangeAmountLabel(pendingApproval, language),
-              id: pendingApproval.id,
-              reason: pendingApproval.reason ?? copy.dataPending,
-              requestedDescription: pendingApproval.requestedDescription ?? copy.dataPending,
-            } : null}
-            processedRows={processedApprovalRows}
-            processedSectionAction={language === 'vi' ? `${formatNumber(processedApprovalRows.filter((row) => row.available).length, language)} quyết định` : `${formatNumber(processedApprovalRows.filter((row) => row.available).length, language)} decisions`}
-            processedSectionTitle={language === 'vi' ? 'Đã xử lý' : 'Processed'}
-            screenTitle={customerV21ScreenTitles[language]['5.3-approval-queue']}
-          />
-        ),
-        onBack: openAgenticHome,
-        screenId: '5.3-approval-queue' as const,
-        subtitle: language === 'vi' ? 'Quyết định ảnh hưởng giá, phạm vi hoặc hoàn tất' : 'Price, scope, or completion decisions',
-        testID: 'customer-v21-agentic-approval-screen',
-        title: customerV21ScreenTitles[language]['5.3-approval-queue'],
-      }
-      : screenId === '5.4-memory'
-        ? {
-          actionLabel: '⌁',
-          bodyNode: <AgenticMemoryStage memory={workflow.customerKaelMemory} memoryRows={memoryRows} />,
-          onBack: openAgenticHome,
-          screenId: '5.4-memory' as const,
-          subtitle: language === 'vi' ? 'Kiểm soát điều Kael nhớ và cách dùng trong công việc' : 'Control what Kael remembers and how it is used',
-          testID: 'customer-v21-agentic-memory-screen',
-          title: customerV21ScreenTitles[language]['5.4-memory'],
-        }
-        : {
-          actionLabel: '⚙',
-          bodyNode: (
-            <AgenticHomeStage
-              approvalCount={approvalCount}
-              deal={deal}
-              memoryCount={memoryCount}
-              onOpenActivity={openActivity}
-              onOpenCaseChat={openCaseChat}
-            />
-          ),
-          onBack: openProfile,
-          screenId: '5.1-agentic-home' as const,
-          subtitle: language === 'vi' ? 'Tiện ích trong Hồ sơ · điều phối, không thay quyền quyết định' : 'Profile utility · coordination without replacing your authority',
-          testID: 'customer-v21-agentic-center',
-          title: copy.agenticCenter,
-        }
-
-  return <CustomerAgenticCenterSurfaceView {...agenticScreenView} />
 }
 
 export function CustomerKaelSurface() {
   return <KaelChatSurface />
 }
 
-function AgenticHomeStage({
-  approvalCount,
-  deal,
-  memoryCount,
-  onOpenActivity,
-  onOpenCaseChat,
-}: {
-  approvalCount: number
-  deal: LocalDeal | null
-  memoryCount: number
-  onOpenActivity: () => void
-  onOpenCaseChat: () => void
-}) {
-  const language = useAppLanguage()
-  const { reduceTransparency, tokens } = useV21Theme()
-  const hasDeal = Boolean(deal)
-
-  return (
-    <View style={agenticStyles.agenticHomeStack}>
-      <AgenticHomeBackdropAura reduceTransparency={reduceTransparency} />
-      <AgenticStageHero
-        assetTile={AssetTile}
-        body={hasDeal
-          ? (language === 'vi' ? 'Một luồng dữ liệu, một vết duyệt, một trạng thái tiền.' : 'One data flow, one approval trail, one money state.')
-          : (language === 'vi' ? 'Trung tâm sẽ nhận dữ liệu từ Kael Chat và quy trình Agentic.' : 'The center will receive data from Kael Chat and the Agentic workflow.')}
-        image={customerV21Assets.kael}
-        imageKind="mascot"
-        narrow
-        scope="AgenticHomeHero"
-        testID="customer-v21-agentic-home-hero"
-        tokens={tokens}
-        title={hasDeal
-          ? (language === 'vi' ? 'Tôi đang làm việc trên công việc của bạn.' : 'I am working on your job.')
-          : (language === 'vi' ? 'Kael sẵn sàng điều phối công việc.' : 'Kael is ready to coordinate work.')}
-      />
-
-      <View style={agenticStyles.agenticMetricRow}>
-        <AgenticMetricTile caseWideMintAura={CaseWideMintAura} label={language === 'vi' ? 'Công việc đang chạy' : 'Active jobs'} sourceCardSkin={SourceCardSkin} testID="customer-v21-agentic-active" tokens={tokens} value={formatNumber(hasDeal ? 1 : 0, language)} zipMintAura={ZipMintAura} />
-        <AgenticMetricTile caseWideMintAura={CaseWideMintAura} label={language === 'vi' ? 'Cần duyệt' : 'Needs approval'} sourceCardSkin={SourceCardSkin} testID="customer-v21-agentic-approvals" tokens={tokens} value={formatNumber(approvalCount, language)} zipMintAura={ZipMintAura} />
-        <AgenticMetricTile caseWideMintAura={CaseWideMintAura} label={language === 'vi' ? 'Mục ghi nhớ' : 'Memory items'} sourceCardSkin={SourceCardSkin} testID="customer-v21-agentic-alerts" tokens={tokens} value={formatNumber(memoryCount, language)} zipMintAura={ZipMintAura} />
-      </View>
-
-      {deal ? (
-        <>
-          <SectionActionHeader
-            action={language === 'vi' ? 'Mở ›' : 'Open ›'}
-            onAction={onOpenActivity}
-            title={language === 'vi' ? 'Công việc ưu tiên' : 'Priority job'}
-          />
-          <AgenticCasePriorityCard deal={deal} onOpenActivity={onOpenActivity} onOpenCaseChat={onOpenCaseChat} />
-
-          <SectionActionHeader
-            action={language === 'vi' ? 'Nhật ký ›' : 'Work log ›'}
-            title={language === 'vi' ? 'Kael đang làm' : 'Kael is working on'}
-          />
-          <AgenticWorkLogCard deal={deal} />
-        </>
-      ) : null}
-
-      <AgenticUtilityStack deal={deal} memoryCount={memoryCount} />
-    </View>
-  )
-}
-
-function AgenticCasePriorityCard({
-  deal,
-  onOpenActivity,
-  onOpenCaseChat,
-}: {
-  deal: LocalDeal
-  onOpenActivity: () => void
-  onOpenCaseChat: () => void
-}) {
-  const language = useAppLanguage()
-  const copy = customerV21CommonCopy[language]
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const problem = agenticDealProblemLabel(deal, language)
-  const subtitle = [caseDisplayCode(deal, language), problem].filter(Boolean).join(' · ')
-  const latestApproval = deal.scopeChange?.requestedDescription ?? deal.scopeChange?.reason
-  const statusLabel = customerV21StatusCopy[language][deal.status]
-  const footerLabel = latestApproval
-    ? (language === 'vi' ? `Duyệt gần nhất: ${latestApproval}` : `Latest approval: ${latestApproval}`)
-    : statusLabel
-
-  return (
-    <AgenticCasePriorityCardPanel
-      activeStep={stepForStatus(deal.status)}
-      caseWorkLabel={copy.caseWork}
-      footerLabel={footerLabel}
-      onOpenActivity={onOpenActivity}
-      onOpenCaseChat={onOpenCaseChat}
-      service={service}
-      serviceAsset={deal.draft.serviceType ? customerV21ServiceAssets[deal.draft.serviceType] : customerV21Assets.request}
-      statusLabel={statusLabel}
-      subtitle={subtitle}
-    />
-  )
-}
-
-function AgenticWorkLogCard({ deal }: { deal: LocalDeal | null }) {
-  const language = useAppLanguage()
-  const copy = customerV21CommonCopy[language]
-  const evidenceCount = totalDealEvidenceCount(deal)
-  const riskDone = Boolean(deal?.estimate)
-  const scopeActive = Boolean(deal)
-  const completionCount = (deal?.completionPhotoUrls?.length ?? 0) + (deal?.completionNotes ? 1 : 0)
-  const rows = [
-    {
-      body: evidenceCount > 0 ? formatEvidenceFileCount(evidenceCount, language) : copy.dataPending,
-      image: customerV21Assets.evidence,
-      status: evidenceCount > 0 ? (language === 'vi' ? 'Xong' : 'Done') : (language === 'vi' ? 'Chờ' : 'Pending'),
-      tone: evidenceCount > 0 ? 'success' as const : 'unselected' as const,
-      title: language === 'vi' ? 'Đọc bằng chứng mới' : 'Read new evidence',
-    },
-    {
-      body: riskDone ? (deal?.estimate?.confidenceLabel ?? copy.dataPending) : copy.dataPending,
-      image: customerV21Assets.shield,
-      status: riskDone ? (language === 'vi' ? 'Đang chạy' : 'Live') : (language === 'vi' ? 'Chờ' : 'Pending'),
-      tone: riskDone ? 'selected' as const : 'unselected' as const,
-      title: language === 'vi' ? 'Kiểm tra rủi ro' : 'Risk check',
-    },
-    {
-      body: scopeActive && deal ? customerV21StatusCopy[language][deal.status] : copy.dataPending,
-      image: customerV21Assets.activity,
-      status: scopeActive ? (language === 'vi' ? 'Đang chạy' : 'Running') : (language === 'vi' ? 'Chờ' : 'Pending'),
-      tone: scopeActive ? 'selected' as const : 'unselected' as const,
-      title: language === 'vi' ? 'Đối chiếu phạm vi' : 'Scope check',
-    },
-    {
-      body: completionCount > 0 ? formatEvidenceFileCount(completionCount, language) : copy.dataPending,
-      image: customerV21Assets.request,
-      status: completionCount > 0 ? (language === 'vi' ? 'Xong' : 'Done') : (language === 'vi' ? 'Chờ' : 'Pending'),
-      tone: completionCount > 0 ? 'success' as const : 'unselected' as const,
-      title: language === 'vi' ? 'Bằng chứng hoàn tất' : 'Completion artifact',
-    },
-  ]
-
-  return <AgenticWorkLogCardPanel rows={rows} />
-}
-
-function AgenticCommandCenter({
-  deal,
-  onOpenCaseChat,
-}: {
-  deal: LocalDeal | null
-  onOpenCaseChat: () => void
-}) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { reduceTransparency, tokens } = useV21Theme()
-  const pendingApproval = deal?.scopeChange && isPendingCustomerScopeChange(deal.scopeChange) ? deal.scopeChange : null
-  const openApproval = () => {
-    if (pendingApproval) {
-      router.replace(customerCaseWorkRouteForDeal(deal, '&focus=approval') as never)
-      return
-    }
-    router.replace('/(customer)/profile?screen=5.3-approval-queue' as never)
-  }
-
-  return (
-    <View style={agenticStyles.agenticStageStack}>
-      <AgenticStageBackdropAura reduceTransparency={reduceTransparency} scope="Command" />
-      <AgenticCommandCaseCard deal={deal} />
-      <SectionActionHeader action={language === 'vi' ? 'Nhật ký' : 'Live log'} title={language === 'vi' ? 'Điều Kael đang điều phối' : 'What Kael is coordinating'} />
-      <AgenticCommandTimeline deal={deal} />
-      <SectionActionHeader action={language === 'vi' ? 'Tất cả ›' : 'All ›'} title={language === 'vi' ? 'Tài liệu của công việc' : 'Work artifacts'} />
-      <AgenticArtifactGrid deal={deal} />
-      <View style={agenticStyles.agenticCommandActionRow}>
-        <KaelButton
-          disabled={!deal}
-          label={language === 'vi' ? 'Trò chuyện xử lý công việc' : 'Work handling chat'}
-          onPress={deal ? onOpenCaseChat : () => undefined}
-          style={agenticStyles.agenticCommandButton}
-          testID="customer-v21-agentic-open-case-chat"
-          variant="secondary"
-        />
-        <KaelButton
-          disabled={!pendingApproval}
-          label={`${customerV21ScreenTitles[language]['5.3-approval-queue']} · ${deal?.scopeChange ? '1' : '0'}`}
-          onPress={openApproval}
-          style={agenticStyles.agenticCommandButton}
-          testID="customer-v21-agentic-command-approval"
-        />
-      </View>
-      <Text style={[agenticStyles.agenticAuthorityNote, { color: tokens.muted }]}>
-        {language === 'vi'
-          ? 'Kael điều phối và đề xuất; mọi hành động có thẩm quyền vẫn cần bạn hoặc quy trình thật.'
-          : 'Kael coordinates and suggests; authority still requires you or the real workflow.'}
-      </Text>
-    </View>
-  )
-}
-
-function AgenticCommandCaseCard({ deal }: { deal: LocalDeal | null }) {
-  const language = useAppLanguage()
-  const copy = customerV21CommonCopy[language]
-  const hasDeal = Boolean(deal)
-  const service = deal?.draft.serviceType
-    ? customerV21ServiceCopy[language][deal.draft.serviceType].label
-    : (language === 'vi' ? 'Chưa có công việc' : 'No active work')
-  const address = deal?.draft.addressLabel || deal?.draft.districtLabel || copy.dataPending
-  const workerName = deal?.workerProfile?.fullName?.trim() || null
-  const detailLine = hasDeal
-    ? ([workerName, address].filter((item): item is string => Boolean(item)).join(' · ') || copy.dataPending)
-    : (language === 'vi' ? 'Dữ liệu sẽ vào từ Kael Chat' : 'Data will arrive from Kael Chat')
-  const amount = deal?.payment ? paymentAmountLabel(deal.payment, language, copy.dataPending) : copy.dataPending
-  const activeStep = deal ? agenticCommandStep(deal.status) : 0
-
-  return (
-    <AgenticCommandCaseCardPanel
-      activeStep={activeStep}
-      amount={amount}
-      detailLine={detailLine}
-      hasDeal={hasDeal}
-      service={service}
-      statusLabel={deal ? customerV21StatusCopy[language][deal.status] : copy.dataPending}
-      stepLabels={language === 'vi'
-        ? ['Thu thập', 'Báo giá', 'Trả tiền', 'Ghép thợ', 'Làm việc']
-        : ['Intake', 'Quote', 'Pay', 'Match', 'Work']}
-    />
-  )
-}
-
-function AgenticCommandTimeline({ deal }: { deal: LocalDeal | null }) {
-  const language = useAppLanguage()
-  const copy = customerV21CommonCopy[language]
-  const evidenceCount = totalDealEvidenceCount(deal)
-  const activeStep = deal ? agenticCommandStep(deal.status) : 0
-  const rows = [
-    {
-      active: evidenceCount > 0,
-      body: evidenceCount > 0 ? `${formatEvidenceFileCount(evidenceCount, language)} · ${language === 'vi' ? 'dữ liệu thật' : 'real data'}` : copy.dataPending,
-      title: language === 'vi' ? 'Bằng chứng đã nhập' : 'Evidence received',
-    },
-    {
-      active: Boolean(deal?.estimate),
-      body: deal?.estimate?.confidenceLabel
-        ? (language === 'vi' ? `Tin cậy ${deal.estimate.confidenceLabel}` : `Confidence ${deal.estimate.confidenceLabel}`)
-        : copy.dataPending,
-      title: language === 'vi' ? 'Kiểm tra rủi ro hoàn tất' : 'Risk check complete',
-    },
-    {
-      active: Boolean(deal),
-      body: deal ? (language === 'vi' ? 'Kael đang so với dữ liệu đã có' : 'Kael is comparing against current data') : copy.dataPending,
-      title: language === 'vi' ? 'Đối chiếu phạm vi & tiến độ' : 'Scope and progress check',
-    },
-    {
-      active: Boolean((deal?.completionPhotoUrls?.length ?? 0) > 0 || deal?.completionNotes),
-      body: deal?.completionNotes ?? (activeStep >= 5 ? (language === 'vi' ? 'Chờ bước kiểm tra vận hành' : 'Waiting for operation check') : copy.dataPending),
-      title: language === 'vi' ? 'Chuẩn bị bằng chứng hoàn tất' : 'Prepare completion artifact',
-    },
-  ]
-
-  return <AgenticCommandTimelinePanel rows={rows} />
-}
-
-function AgenticArtifactGrid({ deal }: { deal: LocalDeal | null }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const quote = deal ? (deal.estimate?.priceRangeLabel || (deal.payment ? paymentAmountLabel(deal.payment, language, copy.dataPending) : copy.dataPending)) : copy.dataPending
-  const worker = deal?.workerProfile ? (language === 'vi' ? 'Thợ thật' : 'Real worker') : copy.dataPending
-  const evidence = deal ? formatEvidenceFileCount(totalDealEvidenceCount(deal), language) : copy.dataPending
-
-  return (
-    <View style={agenticStyles.agenticArtifactGrid} testID="customer-v21-agentic-artifacts">
-      <AgenticArtifactTile caseWideMintAura={CaseWideMintAura} label={language === 'vi' ? 'Báo giá' : 'Quote'} sourceCardSkin={SourceCardSkin} tokens={tokens} value={quote} zipMintAura={ZipMintAura} />
-      <AgenticArtifactTile caseWideMintAura={CaseWideMintAura} label={language === 'vi' ? 'Thợ' : 'Worker'} sourceCardSkin={SourceCardSkin} tokens={tokens} value={worker} zipMintAura={ZipMintAura} />
-      <AgenticArtifactTile caseWideMintAura={CaseWideMintAura} label={language === 'vi' ? 'Bằng chứng' : 'Evidence'} sourceCardSkin={SourceCardSkin} tokens={tokens} value={evidence} zipMintAura={ZipMintAura} />
-    </View>
-  )
-}
-
-function AgenticMemoryStage({
-  memory,
-  memoryRows,
-}: {
-  memory: unknown
-  memoryRows: AgenticMemoryRowModel[]
-}) {
-  const language = useAppLanguage()
-  const { reduceTransparency, tokens } = useV21Theme()
-  const { actions } = useFrontendWorkflow()
-  const copy = customerV21CommonCopy[language]
-  const [pendingPreferenceKey, setPendingPreferenceKey] = useState<CustomerKaelMemoryPreferenceKey | null>(null)
-  const [optimisticMemoryPreferences, setOptimisticMemoryPreferences] = useState<Partial<Record<CustomerKaelMemoryPreferenceKey, boolean>>>({})
-  useEffect(() => {
-    setOptimisticMemoryPreferences({})
-  }, [memory])
-  const visibleMemoryRows = useMemo(() => memoryRows.map((row) => ({
-    ...row,
-    enabled: optimisticMemoryPreferences[row.preferenceKey] ?? row.enabled,
-  })), [memoryRows, optimisticMemoryPreferences])
-  const sharePreferencesEnabled = optimisticMemoryPreferences.share_preferences_with_worker
-    ?? agenticBooleanFromMemory(memory, 'share_preferences_with_worker')
-  const visibleMemoryCount = visibleMemoryRows.filter((row) => row.enabled).length
-  const handleSaveMemory = () => {
-    void actions.refreshCustomerKaelMemory()
-  }
-  const handleToggleMemoryPreference = async (key: CustomerKaelMemoryPreferenceKey, currentEnabled: boolean) => {
-    const nextEnabled = !currentEnabled
-    setOptimisticMemoryPreferences((current) => ({ ...current, [key]: nextEnabled }))
-    setPendingPreferenceKey(key)
-    let result: MemoryPreferenceActionResult = false
-    try {
-      result = await actions.updateCustomerKaelMemoryPreference({ key, enabled: nextEnabled })
-    } catch {
-      result = false
-    }
-    setPendingPreferenceKey(null)
-    if (!memoryPreferenceActionSucceeded(result)) {
-      setOptimisticMemoryPreferences((current) => ({ ...current, [key]: currentEnabled }))
-      Alert.alert(
-        language === 'vi' ? 'Chưa lưu được' : 'Not saved',
-        language === 'vi' ? 'Vui lòng thử lại sau.' : 'Please try again later.',
-      )
-    }
-  }
-  return (
-    <AgenticMemoryStageView
-      language={language}
-      memoryCountLabel={formatNumber(visibleMemoryCount, language)}
-      onSaveMemory={handleSaveMemory}
-      onToggleMemoryPreference={(key, currentEnabled) => void handleToggleMemoryPreference(key, currentEnabled)}
-      pendingPreferenceKey={pendingPreferenceKey}
-      reduceTransparency={reduceTransparency}
-      sharePreferencesEnabled={sharePreferencesEnabled}
-      tokens={tokens}
-      visibleMemoryRows={visibleMemoryRows}
-    />
-  )
-}
-
-function AgenticUtilityStack({ deal, memoryCount }: { deal: LocalDeal | null; memoryCount: number }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const copy = customerV21CommonCopy[language]
-  const commandCenterLabel = language === 'vi' ? 'Trung tâm điều phối' : customerV21ScreenTitles[language]['5.2-command-center']
-  return (
-    <AgenticUtilityStackPanel
-      cards={[
-        {
-          image: customerV21Assets.activity,
-          label: commandCenterLabel,
-          onPress: () => router.replace('/(customer)/profile?screen=5.2-command-center' as never),
-          testID: 'customer-v21-agentic-card-5.2-command-center',
-          value: deal ? `${caseDisplayCode(deal, language)} · ${customerV21StatusCopy[language][deal.status]}` : copy.dataPending,
-        },
-        {
-          image: customerV21Assets.shield,
-          label: customerV21ScreenTitles[language]['5.3-approval-queue'],
-          onPress: () => router.replace('/(customer)/profile?screen=5.3-approval-queue' as never),
-          testID: 'customer-v21-agentic-card-5.3-approval-queue',
-          value: deal?.scopeChange ? (language === 'vi' ? '1 việc cần duyệt' : '1 approval') : '0',
-        },
-        {
-          image: customerV21Assets.memory,
-          label: customerV21ScreenTitles[language]['5.4-memory'],
-          onPress: () => router.replace('/(customer)/profile?screen=5.4-memory' as never),
-          testID: 'customer-v21-agentic-card-5.4-memory',
-          value: formatNumber(memoryCount, language),
-        },
-      ]}
-      sectionAction={language === 'vi' ? 'Tiện ích' : 'Utilities'}
-      sectionTitle={language === 'vi' ? 'Màn hình điều phối' : 'Coordination screens'}
-    />
-  )
-}
-
 export function KaelChatSurface() {
   const language = useAppLanguage()
-  const params = useLocalSearchParams<{ focus?: string | string[]; jobId?: string | string[]; mode?: string | string[]; screen?: string | string[]; sessionId?: string | string[]; service?: string | string[] }>()
+  const params = useLocalSearchParams<{ focus?: string | string[]; jobId?: string | string[]; mode?: string | string[]; ns_audit_role?: string | string[]; screen?: string | string[]; sessionId?: string | string[]; service?: string | string[] }>()
   const router = useRouter()
   const workflow = useFrontendWorkflow()
   const { session } = useAuth()
   const sessionAccessToken = session?.access_token
   const { reduceMotion, reduceTransparency, tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const timelineHeadline = useKaelTimelineHeadline(language)
   const [pendingDraft, setPendingDraftState] = useState(() => peekPendingKaelChatDraft())
   const pendingDraftLocalizedMessage = pendingDraft
     ? pendingDraft.description?.trim() || (
@@ -1818,19 +1027,47 @@ export function KaelChatSurface() {
   const routeMode = explicitRouteMode ?? chatScreenModeParam(firstParam(params.screen)) ?? 'normal'
   const routeJobId = cleanRouteJobId(firstParam(params.jobId))
   const workflowDeal = workflow.state.deal
-  const deal = isRealCaseDeal(workflowDeal) ? workflowDeal : null
-  const candidateJobId = deal?.status === 'worker_candidate_pending' ? deal.id : null
-  const caseServiceLabel = deal?.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : null
+  const workflowCaseDeal = isRealCaseDeal(workflowDeal) ? workflowDeal : null
   const routeDerivedMode: CustomerKaelMode = routeMode === 'case' || routeJobId || pendingDraft ? 'case' : 'normal'
   const [localMode, setLocalMode] = useState<CustomerKaelMode>(routeDerivedMode)
   const [modeMenuOpen, setModeMenuOpen] = useState(false)
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false)
+  const [blankCaseTransition, setBlankCaseTransition] = useState(false)
   const mode: CustomerKaelMode = localMode
-  const jobIncidentThread = useJobChatThread(deal?.id ?? null, Boolean(deal && mode === 'case'))
-  const [selectedService, setSelectedService] = useState<ServiceType | null>(pendingDraft?.serviceType ?? deal?.draft.serviceType ?? serviceParam(firstParam(params.service)))
+  const conversations = useCustomerKaelConversations(mode, language)
+  const {
+    busy: conversationBusy,
+    openSession: openCatalogConversation,
+    resetToBlank: resetCatalogConversation,
+    startNewSession: startCatalogConversation,
+    syncLinkedCaseSession,
+    syncLinkedJobSession,
+  } = conversations
+  const [selectedService, setSelectedService] = useState<ServiceType | null>(pendingDraft?.serviceType ?? workflowCaseDeal?.draft.serviceType ?? serviceParam(firstParam(params.service)))
   const [draft, setDraft] = useState('')
   const [chat, setChat] = useState<KaelChatResponse | null>(null)
+  const [chatModeOwner, setChatModeOwner] = useState<CustomerKaelMode | null>(null)
   const [turns, setTurns] = useState<KaelChatTurn[]>([])
   const [assistantTurns, setAssistantTurns] = useState<CustomerAssistantLocalTurn[]>([])
+  const activeChat = chatModeOwner === mode ? chat : null
+  const activeTurns = chatModeOwner === mode ? turns : []
+  const activeCatalogCaseJobId = conversations.activeResponse?.session.case_job_id ?? null
+  const activeCatalogCaseSessionId = conversations.activeResponse?.session.case_session_id ?? null
+  const catalogCaseOwnsSurface = mode === 'case' && (
+    blankCaseTransition || Boolean(conversations.activeSessionId)
+  )
+  const activeCatalogCaseMatchesWorkflowDeal = Boolean(
+    activeCatalogCaseSessionId
+    && activeChat?.session.id === activeCatalogCaseSessionId
+    && activeChat.session.job_id
+    && activeChat.session.job_id === workflowCaseDeal?.id,
+  )
+  const deal = catalogCaseOwnsSurface
+    ? activeCatalogCaseMatchesWorkflowDeal ? workflowCaseDeal : null
+    : workflowCaseDeal
+  const candidateJobId = deal?.status === 'worker_candidate_pending' ? deal.id : null
+  const caseServiceLabel = deal?.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : null
+  const jobIncidentThread = useJobChatThread(deal?.id ?? null, Boolean(deal && mode === 'case'))
   const [loading, setLoading] = useState(false)
   const [hydratingCase, setHydratingCase] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1855,32 +1092,60 @@ export function KaelChatSurface() {
   const [agenticEvidenceReason, setAgenticEvidenceReason] = useState('')
   const [submittingAgenticEvidence, setSubmittingAgenticEvidence] = useState(false)
   const [processLines, setProcessLines] = useState<KaelProcessLineRuntime | null>(null)
-  const modeMenuOpacity = useSharedValue(0)
-  const modeMenuScale = useSharedValue(0.96)
+  const modeMenuOpacity = useSharedValue(reduceMotion ? 1 : 0)
+  const modeMenuScale = useSharedValue(reduceMotion ? 1 : 0.96)
   const modeMenuSheenOpacity = useSharedValue(0)
   const modeMenuSheenX = useSharedValue(-92)
-  const modeMenuTranslateY = useSharedValue(-6)
+  const modeMenuTranslateY = useSharedValue(reduceMotion ? 0 : -6)
   const processLineTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const processLineRunRef = useRef(0)
-  const processLineWaitersRef = useRef<Array<() => void>>([])
+  const processLineWaitersRef = useRef<(() => void)[]>([])
+  const [caseSessionLoads] = useState(() => new Map<string, Promise<boolean>>())
 
-  const clearProcessLineTimers = () => {
+  const clearProcessLineTimers = useCallback(() => {
     processLineTimersRef.current.forEach((timer) => clearTimeout(timer))
     processLineTimersRef.current = []
-  }
+  }, [])
 
-  const resolveProcessLineWaiters = () => {
+  const resolveProcessLineWaiters = useCallback(() => {
     const waiters = processLineWaitersRef.current
     processLineWaitersRef.current = []
     waiters.forEach((resolve) => resolve())
-  }
+  }, [])
 
-  const stopProcessLines = () => {
+  const stopProcessLines = useCallback(() => {
     processLineRunRef.current += 1
     clearProcessLineTimers()
     resolveProcessLineWaiters()
     setProcessLines(null)
-  }
+  }, [clearProcessLineTimers, resolveProcessLineWaiters])
+
+  const loadCatalogCaseSession = useCallback((caseSessionId: string) => {
+    const inFlight = caseSessionLoads.get(caseSessionId)
+    if (inFlight) return inFlight
+    const request = kaelChatService.get(caseSessionId)
+      .then((loaded) => {
+        if (!loaded.success) {
+          setError(localizeKaelRequestFailure(loaded, language))
+          return false
+        }
+        setChat(loaded.data)
+        setChatModeOwner('case')
+        setTurns(loaded.data.turns)
+        setSelectedService(loaded.data.session.service_type)
+        if (loaded.data.session.job_id && typeof workflow.actions.hydrateRemoteJobById === 'function') {
+          void workflow.actions.hydrateRemoteJobById(loaded.data.session.job_id)
+        }
+        return true
+      })
+      .finally(() => {
+        if (caseSessionLoads.get(caseSessionId) === request) {
+          caseSessionLoads.delete(caseSessionId)
+        }
+      })
+    caseSessionLoads.set(caseSessionId, request)
+    return request
+  }, [caseSessionLoads, language, workflow.actions])
 
   const startProcessLines = (prompt: string, options: {
     complexity?: string | null
@@ -1958,7 +1223,7 @@ export function KaelChatSurface() {
       clearProcessLineTimers()
       resolveProcessLineWaiters()
     }
-  }, [])
+  }, [clearProcessLineTimers, resolveProcessLineWaiters])
 
   useEffect(() => {
     if (routeDerivedMode === 'case') {
@@ -1993,18 +1258,19 @@ export function KaelChatSurface() {
     setError((current) => (current === 'Chọn dịch vụ.' || current === 'Choose a service.' ? null : current))
   }, [mode])
 
+  const caseOptionsDealId = deal?.id
+  const caseOptionsDealStatus = deal?.status
+  const caseEvidenceMediaCount = deal?.draft.mediaCount
   useEffect(() => {
-    if (deal?.status === 'awaiting_customer_confirm') return
+    if (caseOptionsDealStatus === 'awaiting_customer_confirm') return
     setCaseOptionsAcknowledged(false)
-  }, [deal?.id, deal?.status])
+  }, [caseOptionsDealId, caseOptionsDealStatus])
 
   useEffect(() => {
     setCaseEvidenceRejectOpen(false)
     setCaseEvidenceReason('')
     setSubmittingCaseEvidence(false)
-    if (!deal || (deal.draft.mediaCount ?? 0) > 0) {
-    }
-  }, [deal?.id, deal?.draft.mediaCount])
+  }, [caseEvidenceMediaCount, caseOptionsDealId])
 
   useEffect(() => {
     if (mode !== 'case' || !routeJobId || deal?.id === routeJobId) return
@@ -2025,6 +1291,32 @@ export function KaelChatSurface() {
     }
   }, [deal?.id, language, mode, routeJobId, workflow.actions])
 
+  const automaticCaseJobId = mode === 'case' && !blankCaseTransition
+    ? routeJobId ?? (!conversations.activeSessionId ? workflowCaseDeal?.id ?? null : null)
+    : null
+
+  useEffect(() => {
+    if (!automaticCaseJobId || activeCatalogCaseJobId === automaticCaseJobId) return
+    void syncLinkedJobSession(automaticCaseJobId)
+  }, [activeCatalogCaseJobId, automaticCaseJobId, syncLinkedJobSession])
+
+  useEffect(() => {
+    if (
+      mode !== 'case'
+      || !activeCatalogCaseSessionId
+      || activeChat?.session.id === activeCatalogCaseSessionId
+      || (routeJobId && activeCatalogCaseJobId !== routeJobId)
+    ) return
+    void loadCatalogCaseSession(activeCatalogCaseSessionId)
+  }, [
+    activeCatalogCaseJobId,
+    activeCatalogCaseSessionId,
+    activeChat?.session.id,
+    loadCatalogCaseSession,
+    mode,
+    routeJobId,
+  ])
+
   useEffect(() => {
     let cancelled = false
     const sessionId = firstParam(params.sessionId)
@@ -2035,6 +1327,7 @@ export function KaelChatSurface() {
           if (cancelled) return
           if (result.success) {
             setChat(result.data)
+            setChatModeOwner(routeMode)
             setTurns(result.data.turns)
             setSelectedService(result.data.session.service_type)
           } else {
@@ -2082,8 +1375,10 @@ export function KaelChatSurface() {
             setRouteDraftEvidencePending(false)
             setComposerMediaDrafts([])
             setChat(result.data)
+            setChatModeOwner('case')
             setTurns(result.data.turns)
             setSelectedService(result.data.session.service_type)
+            void syncLinkedCaseSession(result.data.session.id)
           } else {
             setError(localizeKaelRequestFailure(result, language))
           }
@@ -2095,10 +1390,10 @@ export function KaelChatSurface() {
     return () => {
       cancelled = true
     }
-  }, [language, params.sessionId, pendingDraft, pendingDraftLocalizedMessage, sessionAccessToken])
+  }, [language, params.sessionId, pendingDraft, pendingDraftLocalizedMessage, routeMode, sessionAccessToken, syncLinkedCaseSession])
 
   const pickComposerMedia = async () => {
-    if (mode === 'case' && !caseEvidenceGateActive && !agenticEvidenceGateActive) return
+    if (mode === 'case' && deal && !caseEvidenceGateActive && !agenticEvidenceGateActive) return
     if (mode !== 'normal' && mode !== 'case') return
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
@@ -2129,7 +1424,7 @@ export function KaelChatSurface() {
   }
 
   const submitAgenticEvidence = async (decision: 'confirmed' | 'skipped') => {
-    if (!chat?.session.id || submittingAgenticEvidence) return
+    if (!activeChat?.session.id || submittingAgenticEvidence) return
     const reviewedVoiceTranscript = voiceTranscript.trim()
     if (decision === 'confirmed' && composerMediaDrafts.length === 0 && !reviewedVoiceTranscript) {
       setError(language === 'vi' ? 'Thêm ảnh, video hoặc bản chép lời trước khi xác nhận.' : 'Add media or an editable transcript before confirming.')
@@ -2157,7 +1452,7 @@ export function KaelChatSurface() {
         uploadedMediaRefs = uploaded.mediaRefs
         evidenceItems = [...evidenceItems, ...uploaded.evidenceItems]
       }
-      const firstCustomerMessage = turns.find((turn) => turn.role === 'customer' && turn.text_content)?.text_content ?? null
+      const firstCustomerMessage = activeTurns.find((turn) => turn.role === 'customer' && turn.text_content)?.text_content ?? null
       const sourceMessage = pendingDraftLocalizedMessage || firstCustomerMessage || (language === 'vi' ? 'Khách đã gửi ngữ cảnh dịch vụ.' : 'Customer sent service context.')
       const processPrompt = decision === 'confirmed'
         ? (language === 'vi' ? 'Đã gửi bằng chứng hiện trạng.' : 'Sent current evidence.')
@@ -2166,9 +1461,9 @@ export function KaelChatSurface() {
         complexity: null,
         mediaCount: composerMediaDrafts.length + (reviewedVoiceTranscript ? 1 : 0),
         mode: mode === 'case' ? 'case' : 'normal',
-        serviceType: selectedService ?? chat.session.service_type,
+        serviceType: selectedService ?? activeChat.session.service_type,
       })
-      const result = await kaelChatService.submitEvidence(chat.session.id, {
+      const result = await kaelChatService.submitEvidence(activeChat.session.id, {
         decision,
         evidence_items: evidenceItems,
         language,
@@ -2185,13 +1480,14 @@ export function KaelChatSurface() {
         clearPendingKaelChatDraft()
         setRouteDraftEvidencePending(false)
         setChat(result.data)
+        setChatModeOwner(mode)
         setTurns(result.data.turns)
         setComposerMediaDrafts([])
         setVoiceTranscript('')
         setAgenticEvidenceRejectOpen(false)
         setAgenticEvidenceReason('')
       } else if (shouldUseLegacyKaelEvidenceFallback(result, photoUrls)) {
-        const legacy = await kaelChatService.sendTurn(chat.session.id, {
+        const legacy = await kaelChatService.sendTurn(activeChat.session.id, {
           address_district: pendingDraft?.districtLabel ?? undefined,
           address_label: pendingDraft?.addressLabel,
           evidence_items: evidenceItems,
@@ -2207,6 +1503,7 @@ export function KaelChatSurface() {
           clearPendingKaelChatDraft()
           setRouteDraftEvidencePending(false)
           setChat(legacy.data)
+          setChatModeOwner(mode)
           setTurns(legacy.data.turns)
           setComposerMediaDrafts([])
           setVoiceTranscript('')
@@ -2289,6 +1586,36 @@ export function KaelChatSurface() {
     const message = draft.trim() || reviewedVoiceTranscript
     const hasComposerMedia = composerMediaDrafts.length > 0
     if (!message && !hasComposerMedia && !reviewedVoiceTranscript) return
+    if (mode === 'normal') {
+      if (hasComposerMedia) {
+        setError(language === 'vi'
+          ? 'Ảnh và video được xử lý trong mục Xử lý công việc.'
+          : 'Photos and videos are handled in Work handling.')
+        return
+      }
+      const processDone = startProcessLines(message, {
+        complexity: null,
+        mediaCount: 0,
+        mode: 'normal',
+        serviceType: null,
+      })
+      setLoading(true)
+      setError(null)
+      try {
+        const result = await conversations.sendConversationTurn(message)
+        if (result) {
+          await processDone
+          setDraft('')
+          setVoiceTranscript('')
+        } else {
+          setError(conversations.sessionsError ?? (language === 'vi' ? 'Kael chưa thể trả lời lúc này.' : 'Kael could not reply right now.'))
+        }
+      } finally {
+        setLoading(false)
+        stopProcessLines()
+      }
+      return
+    }
     if (mode === 'case' && deal) {
       if (hasComposerMedia) {
         setError(language === 'vi' ? 'Ảnh/video cần gửi qua công việc thật.' : 'Media requires a real job.')
@@ -2320,49 +1647,12 @@ export function KaelChatSurface() {
       setLoading(true)
       setError(null)
       try {
-        const result = await kaelAssistantService.ask({
-          job_id: deal.id,
-          language,
-          message,
-          surface: 'customer_case',
-        })
-        if (result.success) {
+        const result = await conversations.sendConversationTurn(message)
+        if (result) {
           await processDone
-          setAssistantTurns((current) => [
-            ...current,
-            {
-              id: makeAssistantTurnId('customer_case', 'customer'),
-              role: 'customer',
-              surface: 'customer_case',
-              text_content: message,
-            },
-            {
-              id: makeAssistantTurnId('customer_case', 'kael'),
-              role: 'kael',
-              surface: 'customer_case',
-              text_content: formatAssistantAnswer(result.data, language),
-            },
-          ])
           setDraft('')
-        } else if (shouldFallbackCaseAssistantToJobChat(result)) {
-          const stored = await jobService.sendMessage(deal.id, { content: message })
-          if (stored.success) {
-            await processDone
-            setAssistantTurns((current) => [
-              ...current,
-              {
-                id: makeAssistantTurnId('customer_case', 'customer'),
-                role: 'customer',
-                surface: 'customer_case',
-                text_content: message,
-              },
-            ])
-            setDraft('')
-          } else {
-            setError(localizeKaelRequestFailure(stored, language))
-          }
         } else {
-          setError(localizeKaelRequestFailure(result, language))
+          setError(conversations.sessionsError ?? (language === 'vi' ? 'Kael chưa thể trả lời lúc này.' : 'Kael could not reply right now.'))
         }
       } finally {
         setLoading(false)
@@ -2373,7 +1663,7 @@ export function KaelChatSurface() {
     const intakeIntent = isLikelyKaelIntakeRequest(message)
     const inferredDraft = selectedService ? null : inferLocalDealDraftFromKael(message)
     const shouldUseIntake = Boolean(
-      hasComposerMedia || reviewedVoiceTranscript || pendingDraft || chat || intakeIntent,
+      hasComposerMedia || reviewedVoiceTranscript || pendingDraft || activeChat || intakeIntent,
     )
     if (!shouldUseIntake) {
       setLoading(true)
@@ -2381,35 +1671,16 @@ export function KaelChatSurface() {
       const processDone = startProcessLines(message, {
         complexity: null,
         mediaCount: 0,
-        mode: 'normal',
+        mode: 'case',
         serviceType: null,
       })
       try {
-        const result = await kaelAssistantService.ask({
-          language,
-          message,
-          surface: 'customer_normal',
-        })
-        if (result.success) {
+        const result = await conversations.sendConversationTurn(message)
+        if (result) {
           await processDone
-          setAssistantTurns((current) => [
-            ...current,
-            {
-              id: makeAssistantTurnId('customer_normal', 'customer'),
-              role: 'customer',
-              surface: 'customer_normal',
-              text_content: message,
-            },
-            {
-              id: makeAssistantTurnId('customer_normal', 'kael'),
-              role: 'kael',
-              surface: 'customer_normal',
-              text_content: formatAssistantAnswer(result.data, language),
-            },
-          ])
           setDraft('')
         } else {
-          setError(localizeKaelRequestFailure(result, language))
+          setError(conversations.sessionsError ?? (language === 'vi' ? 'Kael chưa thể tiếp nhận nội dung này.' : 'Kael could not receive this message.'))
         }
       } finally {
         setLoading(false)
@@ -2424,6 +1695,13 @@ export function KaelChatSurface() {
     }
     if (!selectedService && inferredDraft?.serviceType) {
       setSelectedService(inferredDraft.serviceType)
+    }
+    const catalogConversation = activeChat
+      ? await conversations.syncLinkedCaseSession(activeChat.session.id) ?? await conversations.ensureActiveSession()
+      : await conversations.ensureActiveSession()
+    if (!catalogConversation) {
+      setError(language === 'vi' ? 'Chưa thể mở phiên Xử lý công việc.' : 'A Work handling session could not be opened.')
+      return
     }
     setLoading(true)
     setError(null)
@@ -2450,18 +1728,18 @@ export function KaelChatSurface() {
     const processDone = startProcessLines(outgoingMessage, {
       complexity: null,
       mediaCount: composerMediaDrafts.length + (reviewedVoiceTranscript ? 1 : 0),
-      mode: 'normal',
+      mode: mode === 'case' ? 'case' : 'normal',
       serviceType: inferredService,
     })
-    const result = chat
-      ? await kaelChatService.sendTurn(chat.session.id, {
+    const result = activeChat
+      ? await kaelChatService.sendTurn(activeChat.session.id, {
           evidence_items: evidenceItems,
           language,
           message: outgoingMessage,
           photo_urls: photoUrls,
         })
       : await kaelChatService.create({
-          client_request_id: generateClientRequestId(),
+          client_request_id: catalogConversation.session.client_request_id,
           evidence_items: evidenceItems,
           language,
           message: outgoingMessage,
@@ -2474,12 +1752,14 @@ export function KaelChatSurface() {
       setLoading(false)
       stopProcessLines()
       setChat(result.data)
+      setChatModeOwner(mode)
       setTurns(result.data.turns)
       setDraft('')
       setVoiceTranscript('')
       setComposerMediaDrafts([])
       setAgenticRejectOpen(false)
       setAgenticRejectReason('')
+      await conversations.syncLinkedCaseSession(result.data.session.id)
     } else {
       await cleanupKaelChatMediaRefs(uploadedMediaRefs)
       setLoading(false)
@@ -2488,11 +1768,16 @@ export function KaelChatSurface() {
     }
   }
 
-  const chatEstimate = chat?.session.estimate ?? turns.find((turn) => turn.estimate)?.estimate ?? null
-  const normalVisibleTurns = turns.filter((turn) =>
+  const chatEstimate = activeChat?.session.estimate ?? activeTurns.find((turn) => turn.estimate)?.estimate ?? null
+  const normalVisibleTurns = activeTurns.filter((turn) =>
     turn.content_type !== 'estimate' &&
     !isScriptedKaelAcknowledgementTurn(turn))
-  const normalAssistantTurns = assistantTurns.filter((turn) => turn.surface === 'customer_normal')
+  const catalogConversationTurns = conversations.turns.map((turn) => ({
+    id: turn.id,
+    role: turn.role === 'customer' ? 'customer' as const : 'kael' as const,
+    text_content: turn.text_content,
+  }))
+  const normalAssistantTurns = mode === 'normal' ? catalogConversationTurns : []
   const hasSharedJobIncident = jobIncidentThread.messages.some((message) =>
     message.sender_role === 'kael' && message.content.startsWith('Kael Công việc:'),
   )
@@ -2507,6 +1792,7 @@ export function KaelChatSurface() {
     }))
     : []
   const caseAssistantTurns = [
+    ...(mode === 'case' ? catalogConversationTurns : []),
     ...assistantTurns.filter((turn) => turn.surface === 'customer_case'),
     ...sharedJobIncidentTurns,
   ]
@@ -2524,11 +1810,11 @@ export function KaelChatSurface() {
       turn.content_type === 'error' ||
       turn.content_type === 'photo_request' ||
       turn.content_type === 'video_request'))
-  const routeIntakeHasWorkState = Boolean(pendingDraft || chat || loading || normalVisibleTurns.length > 0)
+  const routeIntakeHasWorkState = Boolean(pendingDraft || activeChat || loading || normalVisibleTurns.length > 0)
   const workIntakeActive = mode === 'case' && !deal && routeIntakeHasWorkState
   const normalIntakeActive = mode === 'normal' && !routeDraftOwnsIntake && routeIntakeHasWorkState
   const agenticIntakeModeActive = normalIntakeActive || workIntakeActive
-  const diagnosisScope = chat?.session.diagnosis_scope
+  const diagnosisScope = activeChat?.session.diagnosis_scope
   const artifactNextAction = diagnosisScope && typeof diagnosisScope.next_action === 'object' && diagnosisScope.next_action
     ? diagnosisScope.next_action as Record<string, unknown>
     : null
@@ -2555,25 +1841,25 @@ export function KaelChatSurface() {
         return typeof code === 'string' && code.trim() ? [localizedCaseWorkSafetyMessage(code, language)] : []
       })
     : []
-  const agenticAnalysisActive = agenticIntakeModeActive && chat?.session.case_phase === 'analysis'
+  const agenticAnalysisActive = agenticIntakeModeActive && activeChat?.session.case_phase === 'analysis'
   const offerReviewActive = agenticIntakeModeActive &&
-    chat?.session.case_phase === 'offer_review' &&
-    chat.session.status === 'estimate_ready' &&
-    chat.session.next_action === 'estimate_ready'
+    activeChat?.session.case_phase === 'offer_review' &&
+    activeChat.session.status === 'estimate_ready' &&
+    activeChat.session.next_action === 'estimate_ready'
   const missingCaseWorkDeal = mode === 'case' && !deal && !workIntakeActive
   const routeDraftHasStructuredOutcome = Boolean(
     offerReviewActive ||
-    chat?.session.job_id ||
-    chat?.session.status === 'estimate_ready' ||
-    chat?.session.status === 'confirmed' ||
-    chat?.session.next_action === 'estimate_ready' ||
-    chat?.session.next_action === 'confirmed',
+    activeChat?.session.job_id ||
+    activeChat?.session.status === 'estimate_ready' ||
+    activeChat?.session.status === 'confirmed' ||
+    activeChat?.session.next_action === 'estimate_ready' ||
+    activeChat?.session.next_action === 'confirmed',
   )
   const routeDraftAwaitingAgenticStep = workIntakeActive &&
     routeDraftOwnsIntake &&
     !processLines &&
     !routeDraftHasStructuredOutcome &&
-    (routeDraftEvidencePending || !chat || chat.session.status === 'collecting_evidence' || !hasActionableAgenticTurn)
+    (routeDraftEvidencePending || !activeChat || activeChat.session.status === 'collecting_evidence' || !hasActionableAgenticTurn)
   const showPendingDraftBubble = workIntakeActive &&
     pendingDraftMessage.length > 0 &&
     !processLines &&
@@ -2584,20 +1870,16 @@ export function KaelChatSurface() {
   const agenticVisibleTurns = routeDraftAwaitingAgenticStep
     ? []
     : normalVisibleTurns.filter((turn) => turn.id !== routeDraftBackendCustomerTurnId)
-  const showNormalGreeting = mode === 'normal' &&
-    !processLines &&
-    normalAssistantTurns.length === 0 &&
-    (routeDraftOwnsIntake || (!chat && turns.length === 0))
   const caseEvidenceGateActive = false
   const agenticEvidenceGateActive = agenticIntakeModeActive &&
     !submittingAgenticEvidence &&
     !processLines &&
     serverRequestsEvidence
   const canConfirmAgenticEstimate = offerReviewActive &&
-    Boolean(chat?.session.id && chatEstimate && chatEstimate.confidence >= 0.7 && chatEstimate.needs_inspection !== true && chat?.session.status === 'estimate_ready' && chat?.session.next_action === 'estimate_ready')
-  const agenticEstimateConfirmed = chat?.session.status === 'confirmed' || chat?.session.next_action === 'confirmed' || Boolean(chat?.session.job_id)
+    Boolean(activeChat?.session.id && chatEstimate && chatEstimate.confidence >= 0.7 && chatEstimate.needs_inspection !== true && activeChat?.session.status === 'estimate_ready' && activeChat?.session.next_action === 'estimate_ready')
+  const agenticEstimateConfirmed = activeChat?.session.status === 'confirmed' || activeChat?.session.next_action === 'confirmed' || Boolean(activeChat?.session.job_id)
   const confirmAgenticEstimate = async () => {
-    if (!chat?.session.id || !chatEstimate || confirmingAgenticEstimate) return
+    if (!activeChat?.session.id || !chatEstimate || confirmingAgenticEstimate) return
     setConfirmingAgenticEstimate(true)
     setAgenticRejectOpen(false)
     setAgenticRejectReason('')
@@ -2607,12 +1889,12 @@ export function KaelChatSurface() {
       : 'Estimate confirmed. Kael is opening the real job.'
     const processDone = startProcessLines(processPrompt, {
       complexity: chatEstimate.complexity ?? null,
-      mediaCount: totalMediaRefs(turns),
+      mediaCount: totalMediaRefs(activeTurns),
       mode: mode === 'case' ? 'case' : 'normal',
-      serviceType: chat.session.service_type,
+      serviceType: activeChat.session.service_type,
     })
     try {
-      const confirmed = await kaelChatService.confirm(chat.session.id)
+      const confirmed = await kaelChatService.confirm(activeChat.session.id)
       if (!confirmed.success) {
         stopProcessLines()
         setError(localizeKaelRequestFailure(confirmed, language))
@@ -2633,6 +1915,7 @@ export function KaelChatSurface() {
         await workflow.actions.hydrateRemoteJobById(jobId)
       }
       if (jobId) {
+        setChatModeOwner('case')
         setLocalMode('case')
         router.replace(`/(customer)/kael-chat?mode=case&jobId=${encodeURIComponent(jobId)}` as never)
       }
@@ -2644,18 +1927,18 @@ export function KaelChatSurface() {
 
   const submitAgenticRejectReason = async () => {
     const reason = agenticRejectReason.trim()
-    if (!chat?.session.id || submittingAgenticRejectReason || !reason) return
+    if (!activeChat?.session.id || submittingAgenticRejectReason || !reason) return
     setSubmittingAgenticRejectReason(true)
     setLoading(true)
     setError(null)
     const processDone = startProcessLines(reason, {
       complexity: chatEstimate?.complexity ?? null,
       mediaCount: 0,
-      mode: 'normal',
-      serviceType: chat.session.service_type,
+      mode: mode === 'case' ? 'case' : 'normal',
+      serviceType: activeChat.session.service_type,
     })
     try {
-      const result = await kaelChatService.sendTurn(chat.session.id, {
+      const result = await kaelChatService.sendTurn(activeChat.session.id, {
         language,
         message: reason,
         photo_urls: [],
@@ -2663,6 +1946,7 @@ export function KaelChatSurface() {
       if (result.success) {
         await processDone
         setChat(result.data)
+        setChatModeOwner(mode)
         setTurns(result.data.turns)
         setAgenticRejectOpen(false)
         setAgenticRejectReason('')
@@ -2716,35 +2000,15 @@ export function KaelChatSurface() {
       serviceType: deal.draft.serviceType,
     })
     try {
-      const result = await kaelAssistantService.ask({
-        job_id: deal.id,
-        language,
-        message: reason,
-        surface: 'customer_case',
-      })
-      if (result.success) {
+      const result = await conversations.sendConversationTurn(reason)
+      if (result) {
         await processDone
-        setAssistantTurns((current) => [
-          ...current,
-          {
-            id: makeAssistantTurnId('customer_case', 'customer'),
-            role: 'customer',
-            surface: 'customer_case',
-            text_content: reason,
-          },
-          {
-            id: makeAssistantTurnId('customer_case', 'kael'),
-            role: 'kael',
-            surface: 'customer_case',
-            text_content: formatAssistantAnswer(result.data, language),
-          },
-        ])
         setCaseQuoteRejectOpen(false)
         setCaseQuoteRejectReason('')
         setCaseEditOpen(true)
       } else {
         stopProcessLines()
-        setError(localizeKaelRequestFailure(result, language))
+        setError(conversations.sessionsError ?? (language === 'vi' ? 'Kael chưa thể trả lời lúc này.' : 'Kael could not reply right now.'))
       }
     } finally {
       setSubmittingCaseQuoteRejectReason(false)
@@ -2768,15 +2032,22 @@ export function KaelChatSurface() {
   }
 
   const openActivity = () => {
-    router.replace('/(customer)/profile?screen=5.2-command-center' as never)
+    router.replace('/(customer)/history' as never)
   }
 
-  const normalEvidenceCount = Math.max(pendingDraft?.mediaCount ?? 0, totalMediaRefs(turns))
+  const normalEvidenceCount = Math.max(pendingDraft?.mediaCount ?? 0, totalMediaRefs(activeTurns))
   const showNormalEvidence = agenticIntakeModeActive && !agenticEvidenceGateActive && !processLines && normalEvidenceCount > 0
-  const caseWorkRoute = customerCaseWorkRouteForDeal(deal)
+  const visualAuditCustomerSuffix = firstParam(params.ns_audit_role) === 'customer'
+    ? '&ns_audit_role=customer'
+    : ''
+  const normalChatRoute = `${customerKaelChatRoute}${visualAuditCustomerSuffix}`
+  const blankCaseWorkRoute = `${customerKaelWorkRoute}${visualAuditCustomerSuffix}`
+  const caseWorkRoute = `${customerCaseWorkRouteForDeal(deal)}${visualAuditCustomerSuffix}`
   const switchChatMode = (nextMode: CustomerKaelMode) => {
     setLocalMode(nextMode)
+    setBlankCaseTransition(false)
     setModeMenuOpen(false)
+    setSessionMenuOpen(false)
     setCaseEditOpen(false)
     setComposerMediaDrafts([])
     setDraft('')
@@ -2786,7 +2057,132 @@ export function KaelChatSurface() {
     setAgenticEvidenceRejectOpen(false)
     setAgenticEvidenceReason('')
     stopProcessLines()
-    router.replace(nextMode === 'case' ? caseWorkRoute as never : customerKaelChatRoute as never)
+    router.replace(nextMode === 'case' ? caseWorkRoute as never : normalChatRoute as never)
+  }
+  const resetConversationVisualState = useCallback(() => {
+    const currentSurface = mode === 'normal' ? 'customer_normal' : 'customer_case'
+    setModeMenuOpen(false)
+    setSessionMenuOpen(false)
+    setCaseEditOpen(false)
+    setComposerMediaDrafts([])
+    setDraft('')
+    setVoiceTranscript('')
+    setError(null)
+    setAgenticRejectOpen(false)
+    setAgenticRejectReason('')
+    setAgenticEvidenceRejectOpen(false)
+    setAgenticEvidenceReason('')
+    setCaseQuoteRejectOpen(false)
+    setCaseQuoteRejectReason('')
+    setCaseEvidenceRejectOpen(false)
+    setCaseEvidenceReason('')
+    setAssistantTurns((current) => current.filter((turn) => turn.surface !== currentSurface))
+    stopProcessLines()
+
+    if (chatModeOwner === mode) {
+      setChat(null)
+      setChatModeOwner(null)
+      setTurns([])
+    }
+
+    if (mode === 'case') {
+      clearPendingKaelChatDraft()
+      setPendingDraftState(null)
+      setRouteDraftEvidencePending(false)
+      setSelectedService(null)
+    } else if (mode === 'normal') {
+      setSelectedService(null)
+    }
+
+  }, [chatModeOwner, mode, stopProcessLines])
+  const startNewConversation = useCallback(async () => {
+    if (loading || uploadingMedia || conversationBusy) return
+    setBlankCaseTransition(mode === 'case')
+    resetConversationVisualState()
+    resetCatalogConversation()
+    const created = await startCatalogConversation()
+    if (!created) {
+      setBlankCaseTransition(false)
+      setError(language === 'vi' ? 'Chưa thể tạo cuộc trò chuyện mới.' : 'A new conversation could not be created.')
+      return
+    }
+    setBlankCaseTransition(false)
+    router.replace(mode === 'case' ? blankCaseWorkRoute as never : normalChatRoute as never)
+  }, [
+    blankCaseWorkRoute,
+    conversationBusy,
+    language,
+    loading,
+    mode,
+    normalChatRoute,
+    resetConversationVisualState,
+    resetCatalogConversation,
+    router,
+    startCatalogConversation,
+    uploadingMedia,
+  ])
+  const openConversation = useCallback(async (conversationId: string) => {
+    if (loading || uploadingMedia || conversationBusy) return
+    setBlankCaseTransition(false)
+    setSessionMenuOpen(false)
+    const opened = await openCatalogConversation(conversationId)
+    if (!opened) return
+    resetConversationVisualState()
+    if (opened.session.mode === 'normal' || !opened.session.case_session_id) {
+      router.replace(opened.session.mode === 'case' ? blankCaseWorkRoute as never : normalChatRoute as never)
+      return
+    }
+
+    setLoading(true)
+    const loaded = await loadCatalogCaseSession(opened.session.case_session_id)
+    setLoading(false)
+    if (!loaded) return
+    router.replace(blankCaseWorkRoute as never)
+  }, [
+    blankCaseWorkRoute,
+    conversationBusy,
+    loadCatalogCaseSession,
+    loading,
+    normalChatRoute,
+    openCatalogConversation,
+    resetConversationVisualState,
+    router,
+    uploadingMedia,
+  ])
+  const archiveConversation = useCallback(async (conversationId: string) => {
+    const target = conversations.sessions.find((session) => session.id === conversationId)
+    const wasActive = conversations.activeSessionId === conversationId
+    const archived = await conversations.archiveSession(conversationId)
+    if (!archived) return false
+
+    const closesVisibleCase = Boolean(
+      target?.case_session_id
+      && (wasActive || target.case_job_id === workflowCaseDeal?.id),
+    )
+    if (closesVisibleCase) {
+      setSessionMenuOpen(false)
+      setBlankCaseTransition(true)
+      resetConversationVisualState()
+      router.replace(blankCaseWorkRoute as never)
+      if (target?.case_job_id && typeof workflow.actions.hydrateRemoteJobById === 'function') {
+        void workflow.actions.hydrateRemoteJobById(target.case_job_id)
+      }
+    }
+    return true
+  }, [
+    blankCaseWorkRoute,
+    conversations,
+    resetConversationVisualState,
+    router,
+    workflow.actions,
+    workflowCaseDeal?.id,
+  ])
+  const toggleSessionMenu = () => {
+    setModeMenuOpen(false)
+    setSessionMenuOpen((current) => {
+      if (!current) void conversations.refreshSessions(true)
+      return !current
+    })
   }
   const toggleModeMenu = () => {
     if (!modeMenuOpen) {
@@ -2796,6 +2192,7 @@ export function KaelChatSurface() {
       modeMenuSheenX.value = -92
       modeMenuTranslateY.value = reduceMotion ? 0 : -6
     }
+    setSessionMenuOpen(false)
     setModeMenuOpen((current) => !current)
   }
   const animatedModeMenuStyle = useAnimatedStyle(() => ({
@@ -2837,9 +2234,17 @@ export function KaelChatSurface() {
 
   const showCaseConversation = mode === 'case' && Boolean(deal) && (caseEditOpen || caseAssistantTurns.length > 0)
   const showComposer = (mode === 'normal' || mode === 'case') && !agenticEvidenceGateActive
-  const canUseComposerMedia = mode === 'normal' || caseEvidenceGateActive || workIntakeActive
-  const composerPlaceholder = mode === 'normal' || !deal ? copy.chatPlaceholder : ''
-  const composerBusy = loading || uploadingMedia
+  const canUseComposerMedia = mode === 'normal' || (mode === 'case' && !deal) || caseEvidenceGateActive || workIntakeActive
+  const composerPlaceholder = mode === 'normal'
+    ? (language === 'vi' ? 'Nhập tin nhắn cho Kael...' : 'Message Kael...')
+    : deal
+      ? (language === 'vi' ? 'Trao đổi với Kael về công việc này...' : 'Ask Kael about this service...')
+      : (language === 'vi' ? 'Mô tả nhu cầu dịch vụ cho Kael...' : 'Describe the service you need...')
+  const composerBusy = loading || uploadingMedia || conversations.busy
+  const hasCurrentConversation = mode === 'normal'
+    ? Boolean(processLines || activeChat || activeTurns.length > 0 || normalAssistantTurns.length > 0 || composerMediaDrafts.length > 0 || voiceTranscript.trim())
+    : Boolean(processLines || activeChat || activeTurns.length > 0 || deal || hydratingCase || showPendingDraftBubble || caseAssistantTurns.length > 0 || composerMediaDrafts.length > 0 || voiceTranscript.trim())
+  const showEmptyHero = !hasCurrentConversation && !loading
   const workerCandidateNode = useMemo(() => {
     if (mode !== 'case' || !candidateJobId) return null
     return (
@@ -2864,6 +2269,43 @@ export function KaelChatSurface() {
     workflow.customerWorkerCandidate,
     workflow.customerWorkerCandidateBusy,
     workflow.customerWorkerCandidateError,
+  ])
+  const sessionMenuNode = useMemo(() => (
+    <CustomerKaelSessionMenu
+      activeSessionId={conversations.activeSessionId}
+      canCreate={conversations.canCreateSession}
+      error={conversations.sessionsError}
+      language={language}
+      loading={conversations.sessionsLoading}
+      mode={mode}
+      onArchive={archiveConversation}
+      onCreate={() => void startNewConversation()}
+      onPin={conversations.setSessionPinned}
+      onRename={conversations.renameSession}
+      onSelect={(conversationId) => void openConversation(conversationId)}
+      pendingSessionIds={conversations.pendingSessionIds}
+      reduceMotion={reduceMotion}
+      reduceTransparency={reduceTransparency}
+      sessions={conversations.sessions}
+      tokens={tokens}
+    />
+  ), [
+    conversations.activeSessionId,
+    conversations.canCreateSession,
+    conversations.pendingSessionIds,
+    conversations.renameSession,
+    conversations.sessions,
+    conversations.sessionsError,
+    conversations.sessionsLoading,
+    conversations.setSessionPinned,
+    archiveConversation,
+    language,
+    mode,
+    openConversation,
+    reduceMotion,
+    reduceTransparency,
+    startNewConversation,
+    tokens,
   ])
 
   return (
@@ -2895,7 +2337,7 @@ export function KaelChatSurface() {
       analysisEvidenceNode={agenticEvidenceGateActive ? (
         <AgenticEvidenceGateCard
           allowSkip={false}
-          busy={loading || uploadingMedia || submittingAgenticEvidence || !chat?.session.id}
+          busy={loading || uploadingMedia || submittingAgenticEvidence || !activeChat?.session.id}
           language={language}
           mediaDrafts={composerMediaDrafts}
           onAddMedia={pickComposerMedia}
@@ -2927,6 +2369,7 @@ export function KaelChatSurface() {
       agenticVisibleTurns={agenticIntakeModeActive ? agenticVisibleTurns : []}
       animatedModeMenuSheenStyle={animatedModeMenuSheenStyle}
       animatedModeMenuStyle={animatedModeMenuStyle}
+      canStartNewConversation={!composerBusy}
       canUseComposerMedia={canUseComposerMedia}
       caseAssistantTurns={showCaseConversation ? caseAssistantTurns : []}
       caseThreadNode={mode === 'case' && deal ? (
@@ -3008,7 +2451,7 @@ export function KaelChatSurface() {
           tokens={tokens}
         />
       ) : null}
-      caseWorkLabel={copy.caseWork}
+      caseWorkLabel={language === 'vi' ? 'Xử lý công việc' : 'Work handling'}
       composerBusy={composerBusy}
       composerMediaDraftCount={composerMediaDrafts.length}
       composerMediaNode={(
@@ -3038,7 +2481,7 @@ export function KaelChatSurface() {
       mode={mode}
       modeMenuOpen={modeMenuOpen}
       normalAssistantTurns={normalAssistantTurns}
-      normalChatLabel={copy.normalChat}
+      normalChatLabel={language === 'vi' ? 'Chat thường' : 'Normal chat'}
       normalEvidenceNode={showNormalEvidence ? (
         <ChatEvidenceStrip
           formatCount={formatKnownCount}
@@ -3054,6 +2497,7 @@ export function KaelChatSurface() {
       onSendMessage={sendMessage}
       onSwitchMode={switchChatMode}
       onToggleModeMenu={toggleModeMenu}
+      onToggleSessionMenu={toggleSessionMenu}
       pendingDraftMessage={pendingDraftMessage}
       processLinesNode={processLines ? (
         <>
@@ -3064,11 +2508,12 @@ export function KaelChatSurface() {
       reduceMotion={reduceMotion}
       reduceTransparency={reduceTransparency}
       rootStyles={styles}
+      sessionMenuNode={sessionMenuNode}
+      sessionMenuOpen={sessionMenuOpen}
       showComposer={showComposer}
-      showNormalGreeting={showNormalGreeting}
+      showEmptyHero={showEmptyHero}
       showPendingDraftBubble={showPendingDraftBubble}
       textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
-      timelineHeadline={timelineHeadline}
       tokens={tokens}
       workerCandidateNode={workerCandidateNode}
       missingCaseWorkDeal={missingCaseWorkDeal}
@@ -3085,7 +2530,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   const activeTab = active === 'chat' ? null : active
 
-  const navItems: Array<{ image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }> = [
+  const navItems: { image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }[] = [
     { image: customerV21Assets.home, key: 'home', route: '/(customer)/home' },
     { image: customerV21Assets.booking, key: 'services', route: '/(customer)/booking' },
     { image: customerV21Assets.activity, key: 'activity', route: '/(customer)/history' },
@@ -3253,876 +2698,6 @@ function ActiveCaseCard({ deal, onOpen }: { deal: LocalDeal; onOpen: () => void 
   )
 }
 
-function CaseOverview({
-  deal,
-  showWorkflowRail = true,
-}: {
-  deal: LocalDeal
-  showWorkflowRail?: boolean
-}) {
-  const language = useAppLanguage()
-  const { reduceTransparency, tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const problem = agenticDealProblemLabel(deal, language)
-  const address = deal.draft.addressLabel || deal.draft.districtLabel || copy.dataPending
-  const confidence = deal.estimate?.confidenceLabel ?? null
-  const detailLine = [problem, address].filter((item) => item && item !== copy.dataPending).join(' · ') || copy.dataPending
-  return (
-    <CaseOverviewPanel
-      analyzedLabel={deal.estimate ? (language === 'vi' ? 'Kael đã phân tích' : 'Kael analyzed') : copy.dataPending}
-      code={caseDisplayCode(deal, language)}
-      detailLine={detailLine}
-      reduceTransparency={reduceTransparency}
-      scoreNode={confidence ? (
-        <CaseOverviewLiquidScore
-          aura={false}
-          label={language === 'vi' ? 'đủ dữ liệu' : 'data ready'}
-          percent={percentFromConfidenceLabel(confidence)}
-          reduceTransparency={reduceTransparency}
-          scope="Ready"
-          tokens={tokens}
-          value={confidence}
-        />
-      ) : null}
-      service={service}
-      statusLabel={customerV21StatusCopy[language][deal.status]}
-      workflowRail={showWorkflowRail ? <ScreenAdaptationRail activeStatus={deal.status} /> : null}
-    />
-  )
-}
-
-function CaseOverviewDirectScreen({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  return (
-    <View testID="customer-v21-direct-screen-2.6-case-overview">
-      <CaseOverview deal={deal} showWorkflowRail={false} />
-      <CasePrimaryInfo deal={deal} />
-      <CaseUnderstandingCard deal={deal} />
-      <CaseOverviewNextStep onNext={() => router.replace('/(customer)/history?screen=2.7-matching' as never)} />
-    </View>
-  )
-}
-
-function CaseOverviewNextStep({ onNext }: { onNext: () => void }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  return (
-    <View style={historyActiveStyles.caseOverviewNextStack} testID="customer-v21-case-overview-next-step">
-      <V21Card
-        style={[
-          historyActiveStyles.caseOverviewNextCard,
-          {
-            backgroundColor: tokens.mode === 'dark' ? tokens.glassStrong : 'rgba(246,255,252,0.92)',
-            borderColor: tokens.mode === 'dark' ? 'rgba(117,236,220,0.22)' : 'rgba(184,231,223,0.85)',
-          },
-        ]}
-        testID="customer-v21-case-overview-next-card"
-      >
-        <SourceCardSkin />
-        <CaseWorkCardAura scope="OverviewNext" testID="customer-v21-case-overview-next-mint-aura" />
-        <View style={historyActiveStyles.caseOverviewNextContent}>
-          <AssetTile image={customerV21Assets.kael} label="Kael" size={38} sourceAura style={historyActiveStyles.caseOverviewNextIcon} />
-          <View style={styles.flex}>
-            <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{language === 'vi' ? 'Bước tiếp theo' : 'Next step'}</Text>
-            <Text numberOfLines={2} style={[historyActiveStyles.caseOverviewNextCopy, { color: tokens.muted }]}>
-              {language === 'vi'
-                ? 'Tôi sẽ chấm điểm thợ theo kỹ năng, khoảng cách, lịch và uy tín.'
-                : 'Kael scores workers by skill, distance, schedule, and trust.'}
-            </Text>
-          </View>
-          <Text style={[styles.chevronText, { color: tokens.primary }]}>›</Text>
-        </View>
-      </V21Card>
-      <KaelButton label={language === 'vi' ? 'Tìm thợ phù hợp' : 'Find a worker'} onPress={onNext} style={historyActiveStyles.caseOverviewNextButton} testID="customer-v21-case-overview-next" />
-    </View>
-  )
-}
-
-function CaseWorkPanel({
-  deal,
-  editing,
-  onOpenActivity,
-  onRequestEdit,
-}: {
-  deal: LocalDeal
-  editing: boolean
-  onOpenActivity: () => void
-  onRequestEdit: () => void
-}) {
-  const language = useAppLanguage()
-  const copy = customerV21CommonCopy[language]
-  const estimate = deal.estimate
-  const evidenceLabel = formatEvidenceFileCount(deal.draft.mediaCount, language)
-  const hasDescription = deal.draft.description.trim().length > 0
-  const hasEstimate = Boolean(estimate?.priceRangeLabel)
-  const recommendation = estimate?.advisory || deal.draft.description || copy.dataPending
-
-  return (
-    <CaseWorkPanelView
-      activeStep={stepForStatus(deal.status)}
-      activityLabel={customerV21TabCopy[language].activity}
-      editing={editing}
-      editLabel={editing ? (language === 'vi' ? 'Đang chỉnh sửa' : 'Editing') : (language === 'vi' ? 'Yêu cầu chỉnh sửa' : 'Request edits')}
-      estimateReady={hasEstimate}
-      estimateValue={estimate?.priceRangeLabel || copy.dataPending}
-      evidenceLabel={evidenceLabel}
-      hasDescription={hasDescription}
-      hasMedia={deal.draft.mediaCount > 0}
-      kaelIconStyle={styles.infoNoticeIcon}
-      kaelImage={customerV21Assets.kael}
-      onOpenActivity={onOpenActivity}
-      onRequestEdit={onRequestEdit}
-      recommendation={recommendation}
-      riskLabel={estimate ? complexitySafetyLabel(estimate.complexity, language) : copy.dataPending}
-      sourceFooterLabel={caseWorkDataSourceFooterLabel(caseDisplayCode(deal, language), language)}
-    />
-  )
-}
-
-function CasePrimaryInfo({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const address = deal.draft.addressLabel || deal.draft.districtLabel || copy.dataPending
-  const evidenceLabel = formatEvidenceFileCount(deal.draft.mediaCount, language)
-  return (
-    <CasePrimaryInfoPanel
-      actionLabel={language === 'vi' ? 'Chỉnh sửa' : 'Edit'}
-      addressLabel={language === 'vi' ? 'Địa điểm' : 'Location'}
-      addressValue={address}
-      evidenceChipLabel={deal.draft.mediaCount > 0 ? (language === 'vi' ? 'Đủ' : 'Ready') : evidenceLabel}
-      evidenceLabel={language === 'vi' ? 'Bằng chứng' : 'Evidence'}
-      evidenceValue={evidenceLabel}
-      timeLabel={language === 'vi' ? 'Khung giờ' : 'Time window'}
-      timeValue={timeChoiceLabel(deal.draft.timeChoice, language)}
-      title={language === 'vi' ? 'Thông tin chính' : 'Primary details'}
-      tokens={tokens}
-    />
-  )
-}
-
-function CaseUnderstandingCard({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const estimate = deal.estimate
-  const headline = agenticDealProblemLabel(deal, language)
-  const body = estimate?.advisory || deal.draft.description || copy.dataPending
-  return (
-    <CaseUnderstandingPanel
-      actionLabel={language === 'vi' ? 'Bằng chứng ›' : 'Evidence ›'}
-      body={body}
-      bodyTextStyle={styles.bodyText}
-      confidenceChipLabel={estimate?.confidenceLabel ? (language === 'vi' ? `Độ tin cậy ${estimate.confidenceLabel}` : `Confidence ${estimate.confidenceLabel}`) : null}
-      headline={headline}
-      likelyPrefix={language === 'vi' ? 'Khả năng cao: ' : 'Likely: '}
-      riskChipLabel={estimate?.complexity ? complexitySafetyLabel(estimate.complexity, language) : null}
-      title={language === 'vi' ? 'Kael đã hiểu vấn đề' : 'Kael understanding'}
-      tokens={tokens}
-    />
-  )
-}
-
-function ActivityScreenCard({
-  active,
-  deal,
-  screenId,
-}: {
-  active: boolean
-  deal: LocalDeal
-  screenId: CustomerV21ScreenId
-}) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { tokens } = useV21Theme()
-  const summary = caseScreenSummary(screenId, deal, language)
-  const paymentRelated = paymentScreenIds.includes(screenId)
-  return (
-    <Pressable
-      accessibilityLabel={customerV21ScreenTitles[language][screenId]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={() => router.replace(`/(customer)/history?screen=${screenId}` as never)}
-      style={[
-        historyActiveStyles.activityScreenCard,
-        paymentRelated ? historyActiveStyles.activityScreenPaymentAuraCard : null,
-        {
-          backgroundColor: active ? tokens.service : tokens.raised,
-          borderColor: paymentRelated ? 'rgba(154,232,219,0.54)' : active ? tokens.primary : tokens.border,
-        },
-      ]}
-      testID={`customer-v21-case-screen-${screenId}`}
-    >
-      {paymentRelated ? <SourceCardSkin /> : null}
-      {paymentRelated ? <CaseWorkCardAura scope={`PaymentRelatedCard${screenId}`} testID={`customer-v21-case-screen-${screenId}-card-mint-aura`} /> : null}
-      {paymentRelated ? <CaseWideMintAura scope={`PaymentRelated${screenId}`} testID={`customer-v21-case-screen-${screenId}-wide-mint-aura`} /> : null}
-      {paymentRelated ? <ZipMintAura scope={`PaymentRelatedZip${screenId}`} testID={`customer-v21-case-screen-${screenId}-mint-aura`} /> : null}
-      <AssetTile image={caseScreenAsset(screenId)} label={customerV21ScreenTitles[language][screenId]} size={36} style={historyActiveStyles.activityScreenIcon} />
-      <View style={styles.flex}>
-        <Text numberOfLines={1} style={[sharedStyles.screenRailTitle, { color: active ? tokens.primary : tokens.text }]}>{customerV21ScreenTitles[language][screenId]}</Text>
-        <Text numberOfLines={2} style={[historyActiveStyles.activityScreenBody, { color: tokens.muted }]}>{summary}</Text>
-      </View>
-      {active ? <View style={[historyActiveStyles.activityActiveDot, { backgroundColor: tokens.primary }]} /> : null}
-    </Pressable>
-  )
-}
-
-function ActivityDirectScreen({ deal, screenId }: { deal: LocalDeal; screenId: CustomerV21ScreenId }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  const title = customerV21ScreenTitles[language][screenId]
-  const rows = caseReferenceRows(screenId, deal, language)
-  const activeScreens = screenIdsForStatus(deal.status)
-  const active = activeScreens.includes(screenId)
-
-  if (screenId === '2.7-matching') {
-    return <CaseMatchingScreen deal={deal} />
-  }
-
-  if (screenId === '2.8-options') {
-    return <CaseOptionsScreen deal={deal} />
-  }
-
-  if (screenId === '2.9-quotes') {
-    return <CaseQuotesScreen deal={deal} />
-  }
-
-  if (screenId === '2.10-location-eta') {
-    return <CaseLocationEtaScreen deal={deal} />
-  }
-
-  if (screenId === '2.11-live-alert') {
-    return <CaseLiveAlertScreen deal={deal} />
-  }
-
-  if (screenId === '2.12-job-accepted') {
-    return <CaseJobAcceptedScreen deal={deal} />
-  }
-
-  if (screenId === '2.13-job-progress') {
-    return <CaseJobProgressScreen deal={deal} />
-  }
-
-  if (paymentScreenIds.includes(screenId)) {
-    return <CasePaymentStageScreen deal={deal} screenId={screenId} />
-  }
-
-  return (
-    <View testID={`customer-v21-direct-screen-${screenId}`}>
-      <V21Card glass style={historyActiveStyles.caseReferenceHero}>
-        <AssetTile image={caseScreenAsset(screenId)} label={title} size={62} />
-        <View style={styles.flex}>
-          <EyebrowPill label={active ? (language === 'vi' ? 'ĐANG MỞ THEO CÔNG VIỆC' : 'ACTIVE IN JOB') : customerV21CommonCopy[language].dataPending} tokens={tokens} />
-          <Text style={[historyActiveStyles.caseOverviewTitle, { color: tokens.text }]}>{title}</Text>
-          <Text style={[styles.bodyText, { color: tokens.muted }]}>{caseScreenSummary(screenId, deal, language)}</Text>
-        </View>
-      </V21Card>
-
-      <V21Card testID={`customer-v21-direct-facts-${screenId}`}>
-        <SectionHeader
-          eyebrow={caseDisplayCode(deal, language)}
-          title={language === 'vi' ? 'Dữ liệu của màn hình này' : 'Screen data'}
-        />
-        {rows.map((row) => (
-          <MediaRow assetTile={AssetTile} tokens={tokens} image={row.image} key={row.label} label={row.label} value={row.value} />
-        ))}
-      </V21Card>
-
-      {screenId === '2.5-chat-case' ? <CaseWorkSummary deal={deal} /> : null}
-      {screenId === '2.6-case-overview' ? (
-        <>
-          <CasePrimaryInfo deal={deal} />
-          <CaseUnderstandingCard deal={deal} />
-        </>
-      ) : null}
-      <ActivityScreenCard active={active} deal={deal} screenId={screenId} />
-    </View>
-  )
-}
-
-function CaseMatchingScreen({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { reduceTransparency, tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const estimate = deal.estimate
-  const worker = deal.workerProfile ?? null
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const problem = agenticDealProblemLabel(deal, language)
-  const area = deal.broadcast?.generalArea || deal.draft.districtLabel || deal.draft.addressLabel || copy.dataPending
-  const time = timeChoiceLabel(deal.draft.timeChoice, language)
-  const confidencePercent = estimate ? percentFromConfidenceLabel(estimate.confidenceLabel) : 0
-  const confidenceLabel = estimate?.confidenceLabel || '0'
-  const workerName = worker?.fullName?.trim() || (deal.status === 'broadcasting'
-    ? (language === 'vi' ? 'Đang tìm thợ' : 'Finding worker')
-    : copy.dataPending)
-  const workerJobs = worker ? formatWorkerJobs(worker.totalJobs, language) : formatWorkerJobs(0, language)
-  const workerRating = worker ? `★ ${worker.rating.toFixed(1)}` : '0'
-  const statusLabel = customerV21StatusCopy[language][deal.status]
-  const matchLabel = worker
-    ? (language === 'vi' ? 'Thợ thật' : 'Real worker')
-    : deal.status === 'broadcasting'
-      ? (language === 'vi' ? 'Đang ghép' : 'Matching')
-      : copy.dataPending
-  const profileAction = worker ? (language === 'vi' ? 'Xem hồ sơ ›' : 'View profile ›') : copy.dataPending
-  const priceScore = estimate?.hasVndPrice ? confidencePercent : 0
-  const trustScore = worker ? Math.round(Math.max(0, Math.min(5, worker.rating)) * 20) : 0
-  const openOptions = () => router.replace('/(customer)/history?screen=2.8-options' as never)
-
-  const reasons = [
-    {
-      body: problem,
-      image: customerV21Assets.tools,
-      score: confidencePercent ? formatNumber(Math.round(confidencePercent), language) : '0',
-      title: language === 'vi' ? 'Kỹ năng dịch vụ' : 'Service skill',
-    },
-    {
-      body: language === 'vi' ? `${time} · ${area}` : `${time} · ${area}`,
-      image: customerV21Assets.booking,
-      score: '0',
-      title: language === 'vi' ? 'Lịch & khu vực' : 'Schedule and area',
-    },
-    {
-      body: worker ? workerJobs : copy.dataPending,
-      image: customerV21Assets.shield,
-      score: worker ? formatNumber(trustScore, language) : '0',
-      title: language === 'vi' ? 'Uy tín & hiệu suất' : 'Trust and performance',
-    },
-  ]
-
-  return (
-    <CaseMatchingStageView
-      barsNode={(
-        <>
-          <SectionActionHeader action={language === 'vi' ? 'Chi tiết' : 'Details'} title={language === 'vi' ? 'Điểm matching' : 'Matching score'} />
-          <V21Card style={styles.matchingBarsCard} testID="customer-v21-matching-bars">
-            <SourceCardSkin />
-            <CaseWorkCardAura scope="MatchingBars" testID="customer-v21-matching-bars-mint-aura" />
-            <MatchingBar delayMs={0} label={language === 'vi' ? 'Kỹ năng' : 'Skill'} percent={confidencePercent} testID="customer-v21-matching-bar-skill" value={confidencePercent ? formatNumber(Math.round(confidencePercent), language) : '0'} />
-            <MatchingBar delayMs={45} label={language === 'vi' ? 'Khoảng cách' : 'Distance'} percent={0} testID="customer-v21-matching-bar-distance" value="0" />
-            <MatchingBar delayMs={90} label={language === 'vi' ? 'Đúng giá' : 'Price fit'} percent={priceScore} testID="customer-v21-matching-bar-price" value={priceScore ? formatNumber(Math.round(priceScore), language) : '0'} />
-          </V21Card>
-        </>
-      )}
-      confidenceLabel={confidenceLabel}
-      confidencePercent={confidencePercent}
-      confidenceTitle={estimate ? (language === 'vi' ? 'độ tin cậy' : 'confidence') : copy.dataPending}
-      dataPendingLabel={copy.dataPending}
-      kaelBody={worker
-        ? (language === 'vi' ? 'Dựa trên dữ liệu thợ thật và công việc hiện tại.' : 'Based on real worker and job data.')
-        : (language === 'vi' ? 'Chờ dữ liệu thợ thật từ hệ thống.' : 'Waiting for real worker data from the system.')}
-      kaelTitle={worker ? (language === 'vi' ? `Kael đề xuất ${worker.fullName}` : `Kael recommends ${worker.fullName}`) : (language === 'vi' ? 'Kael đang ghép thợ' : 'Kael is matching')}
-      matchLabel={matchLabel}
-      matchTone={worker || deal.status === 'broadcasting' ? 'success' : 'unselected'}
-      onOpenOptions={openOptions}
-      optionsButtonLabel={language === 'vi' ? 'Xem phương án dịch vụ' : 'View service options'}
-      profileAction={profileAction}
-      reasonSectionTitle={language === 'vi' ? 'Vì sao phù hợp?' : 'Why this match?'}
-      reasons={reasons}
-      reduceTransparency={reduceTransparency}
-      rootStyles={styles}
-      serviceMeta={worker ? `${service} · ${workerJobs}` : `${service} · ${area}`}
-      statusLabel={statusLabel}
-      statusTone={deal.status === 'broadcasting' || worker ? 'success' : 'unselected'}
-      tokens={tokens}
-      workerName={workerName}
-      workerRating={workerRating}
-    />
-  )
-}
-
-function MatchingBar({
-  delayMs = 0,
-  label,
-  percent,
-  testID,
-  value,
-}: {
-  delayMs?: number
-  label: string
-  percent: number
-  testID?: string
-  value: string
-}) {
-  const { tokens } = useV21Theme()
-  const { reduceMotion } = useGlassAccessibility()
-  const rowOpacity = useSharedValue(1)
-  const rowTranslateY = useSharedValue(0)
-  const fillOpacity = useSharedValue(1)
-  const valueScale = useSharedValue(1)
-  const clamped = Math.max(0, Math.min(100, percent))
-
-  useEffect(() => {
-    rowOpacity.value = reduceMotion ? 1 : 0
-    rowTranslateY.value = reduceMotion ? 0 : 4
-    fillOpacity.value = reduceMotion ? 1 : 0.48
-    valueScale.value = reduceMotion ? 1 : 0.96
-
-    const duration = motionDuration(190, reduceMotion)
-    rowOpacity.value = withDelay(reduceMotion ? 0 : delayMs, withTiming(1, { duration }))
-    rowTranslateY.value = reduceMotion
-      ? withTiming(0, { duration })
-      : withDelay(delayMs, withSpring(0, motionTokens.liquid.entrance))
-    fillOpacity.value = withDelay(reduceMotion ? 0 : delayMs + 35, withTiming(1, { duration }))
-    valueScale.value = reduceMotion
-      ? withTiming(1, { duration })
-      : withDelay(delayMs + 35, withSpring(1, motionTokens.liquid.press))
-
-    return () => {
-      cancelAnimation(rowOpacity)
-      cancelAnimation(rowTranslateY)
-      cancelAnimation(fillOpacity)
-      cancelAnimation(valueScale)
-    }
-  }, [delayMs, fillOpacity, reduceMotion, rowOpacity, rowTranslateY, value, valueScale])
-
-  const rowMotionStyle = useAnimatedStyle(() => (
-    reduceMotion
-      ? { opacity: rowOpacity.value }
-      : { opacity: rowOpacity.value, transform: [{ translateY: rowTranslateY.value }] }
-  ), [reduceMotion])
-
-  const fillMotionStyle = useAnimatedStyle(() => ({
-    opacity: fillOpacity.value,
-  }))
-
-  const valueMotionStyle = useAnimatedStyle(() => (
-    reduceMotion
-      ? { opacity: rowOpacity.value }
-      : { opacity: rowOpacity.value, transform: [{ scale: valueScale.value }] }
-  ), [reduceMotion])
-
-  return (
-    <Animated.View style={[styles.matchingBarRow, rowMotionStyle]} testID={testID ? `${testID}-motion` : undefined}>
-      <Text numberOfLines={1} style={[styles.matchingBarLabel, { color: tokens.muted }]}>{label}</Text>
-      <View style={[styles.matchingBarTrack, { backgroundColor: tokens.border }]}>
-        <Animated.View style={[styles.matchingBarFill, { width: `${clamped}%` }, fillMotionStyle]} />
-      </View>
-      <Animated.View style={[styles.matchingBarValueMotion, valueMotionStyle]} testID={testID ? `${testID}-value-motion` : undefined}>
-        <Text numberOfLines={1} style={[styles.matchingBarValue, { color: tokens.text }]}>{value}</Text>
-      </Animated.View>
-    </Animated.View>
-  )
-}
-
-function CaseDecisionPanel({ deal, screenId }: { deal: LocalDeal; screenId: CustomerV21ScreenId }) {
-  const language = useAppLanguage()
-  const copy = customerV21CommonCopy[language]
-  const estimate = deal.estimate
-  const workerName = deal.workerProfile?.fullName?.trim() || copy.dataPending
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const problem = agenticDealProblemLabel(deal, language)
-  const address = deal.broadcast?.generalArea || deal.draft.districtLabel || deal.draft.addressLabel || copy.dataPending
-  const price = estimate?.priceRangeLabel || copy.dataPending
-  const title = customerV21ScreenTitles[language][screenId]
-  const actionLabel = screenId === '2.7-matching'
-    ? (language === 'vi' ? 'Ghép theo công việc thật' : 'Real-job matching')
-    : screenId === '2.8-options'
-      ? (language === 'vi' ? 'Phương án có kiểm soát' : 'Controlled options')
-      : (language === 'vi' ? 'Báo giá cần duyệt' : 'Approval-bound quote')
-  const body = screenId === '2.7-matching'
-    ? (language === 'vi' ? 'NestScout chỉ mở thợ và điểm phù hợp khi hệ thống trả dữ liệu thật.' : 'NestScout opens worker and fit-score details only from real system data.')
-    : screenId === '2.8-options'
-      ? (language === 'vi' ? 'Phạm vi đề xuất bám theo estimate thật và luôn giữ quyền duyệt cho khách.' : 'Options follow the real estimate and keep customer approval authority.')
-      : (language === 'vi' ? 'Giá hiển thị theo estimate/payment thật, không tự dựng paid state.' : 'Price uses real estimate/payment state; no paid state is invented.')
-  const rows = screenId === '2.7-matching'
-    ? [
-      { image: customerV21Assets.identity, label: language === 'vi' ? 'Thợ thật' : 'Real worker', value: workerName },
-      { image: customerV21Assets.request, label: language === 'vi' ? 'Dịch vụ cần ghép' : 'Service to match', value: service },
-      { image: customerV21Assets.map, label: language === 'vi' ? 'Khu vực' : 'Area', value: address },
-    ]
-    : screenId === '2.8-options'
-      ? [
-        { image: customerV21Assets.request, label: language === 'vi' ? 'Phạm vi' : 'Scope', value: estimate?.advisory || problem },
-        { image: customerV21Assets.shield, label: language === 'vi' ? 'Mức rủi ro' : 'Risk level', value: estimate ? complexitySafetyLabel(estimate.complexity, language) : copy.dataPending },
-        { image: customerV21Assets.payment, label: language === 'vi' ? 'Ước tính' : 'Estimate', value: price },
-      ]
-      : [
-        { image: customerV21Assets.payment, label: language === 'vi' ? 'Khoảng giá' : 'Price range', value: price },
-        { image: customerV21Assets.shield, label: language === 'vi' ? 'Ghi chú giá' : 'Price note', value: estimate?.disclaimer || copy.dataPending },
-        { image: customerV21Assets.identity, label: language === 'vi' ? 'Thợ' : 'Worker', value: workerName },
-      ]
-
-  return (
-    <CaseDecisionPanelView
-      actionLabel={actionLabel}
-      body={body}
-      eyebrow={caseDisplayCode(deal, language)}
-      heroImage={caseScreenAsset(screenId)}
-      infoBody={language === 'vi'
-        ? 'Mọi thợ, điểm, giá và quyết định đều phải đến từ quy trình thật.'
-        : 'Worker, score, price, and decision data must come from the real workflow.'}
-      infoImage={customerV21Assets.shield}
-      infoTitle={language === 'vi' ? 'Dữ liệu thật' : 'Real data'}
-      rows={rows}
-      testID={`customer-v21-decision-panel-${screenId}`}
-      title={title}
-    />
-  )
-}
-
-type CaseScopeRowTone = 'done' | 'active' | 'pending'
-
-function CaseOptionsScreen({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const estimate = deal.estimate
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType] : null
-  const serviceLabel = service?.label ?? copy.dataPending
-  const problem = agenticDealProblemLabel(deal, language)
-  const advisory = estimate?.advisory || problem
-  const price = estimate?.priceRangeLabel || copy.dataPending
-  const time = timeChoiceLabel(deal.draft.timeChoice, language)
-  const scopeRows = caseScopeRowsForDeal(deal, language)
-  const serviceAsset = deal.draft.serviceType ? customerV21ServiceAssets[deal.draft.serviceType] : customerV21Assets.request
-  const secondaryOptions = caseSecondaryOptionsForDeal(deal, language)
-
-  return (
-    <CaseOptionsStageView
-      activityNode={<ActivityScreenCard active deal={deal} screenId="2.8-options" />}
-      advisory={advisory}
-      chooseOptionLabel={language === 'vi' ? 'Chọn phương án Kael đề xuất' : 'Choose Kael option'}
-      dataBasedLabel={estimate ? (language === 'vi' ? 'Theo dữ liệu' : 'Data based') : copy.dataPending}
-      dataBasedTone={estimate ? 'success' : 'unselected'}
-      estimateLabel={language === 'vi' ? 'Dự kiến' : 'Estimate'}
-      heroBadgeLabel={language === 'vi' ? 'Kael khuyên dùng' : 'Kael recommends'}
-      kaelSourceNode={(
-        <CaseKaelSourceCard
-          body={language === 'vi'
-            ? 'Mọi thay đổi phạm vi hoặc giá đều cần duyệt trong quy trình.'
-            : 'Scope or price changes must stay in the approval workflow.'}
-          image={customerV21Assets.kael}
-          testID="customer-v21-options-kael-card"
-          title={language === 'vi' ? 'Không tự ý phát sinh' : 'No silent changes'}
-        />
-      )}
-      onChooseOption={() => router.replace('/(customer)/history?screen=2.9-quotes' as never)}
-      optionAssetLabel={language === 'vi' ? 'Phương án' : 'Option'}
-      price={price}
-      problem={problem}
-      scopeRows={scopeRows}
-      scopeSectionAction={language === 'vi' ? `${formatNumber(scopeRows.length, language)} hạng mục` : `${formatNumber(scopeRows.length, language)} items`}
-      scopeSectionTitle={language === 'vi' ? 'Phạm vi phương án đề xuất' : 'Recommended scope'}
-      secondaryOptions={secondaryOptions}
-      time={time}
-      timeLabel={language === 'vi' ? 'Thời gian' : 'Time'}
-      tokens={tokens}
-    />
-  )
-}
-
-function CaseKaelSourceCard({
-  body,
-  image,
-  testID,
-  title,
-}: {
-  body: string
-  image: CustomerV21Visual
-  testID: string
-  title: string
-}) {
-  const { tokens } = useV21Theme()
-  const auraScope = testID.replace(/[^a-zA-Z0-9]/g, '')
-  const usesWideAura =
-    testID === 'customer-v21-location-kael-card' ||
-    testID === 'customer-v21-live-alert-kael-card' ||
-    testID === 'customer-v21-job-accepted-kael-card' ||
-    testID === 'customer-v21-payment-review-kael-card' ||
-    testID === 'customer-v21-payment-protected-kael-card'
-  const usesPaymentProtectedAura = testID === 'customer-v21-payment-protected-kael-card'
-  return (
-    <V21Card style={[historyActiveStyles.caseKaelSourceCard, usesPaymentProtectedAura ? historyActiveStyles.caseKaelPaymentAuraCard : null]} testID={testID}>
-      <SourceCardSkin />
-      {usesPaymentProtectedAura ? <CaseWorkCardAura scope={`${auraScope}PaymentProtected`} testID={`${testID}-card-mint-aura`} /> : null}
-      {usesWideAura ? <CaseWideMintAura scope={auraScope} testID={`${testID}-wide-mint-aura`} /> : null}
-      <ZipMintAura scope={auraScope} testID={`${testID}-mint-aura`} />
-      <View style={historyActiveStyles.caseKaelSourceContent}>
-        <AssetTile image={image} label="Kael" size={38} sourceAura style={historyActiveStyles.caseKaelSourceIcon} />
-        <View style={styles.flex}>
-          <Text numberOfLines={1} style={[historyActiveStyles.caseKaelSourceTitle, { color: tokens.text }]}>{title}</Text>
-          <Text numberOfLines={2} style={[historyActiveStyles.caseKaelSourceBody, { color: tokens.muted }]}>{body}</Text>
-        </View>
-        <Text style={[styles.chevronText, { color: tokens.primary }]}>›</Text>
-      </View>
-    </V21Card>
-  )
-}
-
-function CaseQuotesScreen({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const estimate = deal.estimate
-  const payment = deal.payment
-  const worker = deal.workerProfile
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const workerName = worker?.fullName?.trim() || copy.dataPending
-  const workerMeta = worker
-    ? `${service} · ${formatWorkerJobs(worker.totalJobs, language)}`
-    : `${service} · ${copy.dataPending}`
-  const price = estimate?.priceRangeLabel || copy.dataPending
-  const grossAmount = payment?.grossAmount === 0 || payment?.grossAmount ? formatVnd(payment.grossAmount, language) : null
-  const platformFee = payment?.platformFee === 0 || payment?.platformFee ? formatVnd(payment.platformFee, language) : copy.dataPending
-  const workerNet = payment?.workerNet === 0 || payment?.workerNet ? formatVnd(payment.workerNet, language) : copy.dataPending
-  const total = grossAmount ?? price
-  const canOpenPayment = Boolean(payment?.grossAmount === 0 || payment?.grossAmount)
-  const scopeRows = caseScopeRowsForDeal(deal, language).slice(0, 4)
-
-  return (
-    <CaseQuotesStageView
-      activityNode={<ActivityScreenCard active deal={deal} screenId="2.9-quotes" />}
-      approveQuoteLabel={language === 'vi' ? 'Duyệt báo giá' : 'Approve quote'}
-      canOpenPayment={canOpenPayment}
-      committedScopeAction={language === 'vi' ? `${formatNumber(scopeRows.length, language)} mục` : `${formatNumber(scopeRows.length, language)} items`}
-      committedScopeTitle={language === 'vi' ? 'Phạm vi cam kết' : 'Committed scope'}
-      dataSourceNode={<CaseWorkDataSourceFooter label={caseWorkDataSourceFooterLabel(caseDisplayCode(deal, language), language)} testID="customer-v21-quote-data-source" />}
-      editQuoteLabel={language === 'vi' ? 'Yêu cầu chỉnh sửa' : 'Request edit'}
-      kaelSourceNode={(
-        <CaseKaelSourceCard
-          body={language === 'vi'
-            ? 'Báo giá chỉ mở theo estimate hoặc payment thật từ hệ thống.'
-            : 'Quote data opens only from real estimate or payment state.'}
-          image={customerV21Assets.shield}
-          testID="customer-v21-quote-kael-card"
-          title={language === 'vi' ? 'Báo giá theo quy trình' : 'Workflow quote'}
-        />
-      )}
-      onApproveQuote={() => router.replace('/(customer)/history?screen=3.1-payment-review' as never)}
-      onRequestEdit={() => router.replace(customerCaseWorkRouteForDeal(deal) as never)}
-      platformFee={platformFee}
-      platformFeeLabel={language === 'vi' ? 'Phí bảo vệ' : 'Protection fee'}
-      price={price}
-      priceLabel={language === 'vi' ? 'Ước tính Kael' : 'Kael estimate'}
-      problem={agenticDealProblemLabel(deal, language)}
-      problemLabel={language === 'vi' ? 'Phạm vi' : 'Scope'}
-      scopeRows={scopeRows}
-      serviceWorkerMeta={workerMeta}
-      tokens={tokens}
-      total={total}
-      totalLabel={language === 'vi' ? 'Tổng thanh toán' : 'Total'}
-      warrantyLabel={language === 'vi' ? 'Bảo hành' : 'Warranty'}
-      warrantyValue={copy.dataPending}
-      workerAvatarInitials={initialsForName(workerName)}
-      workerAvatarUri={worker?.avatarUrl ?? null}
-      workerName={workerName}
-      workerNetLabel={language === 'vi' ? 'Thợ nhận' : 'Worker net'}
-      workerNetValue={workerNet}
-      workerVerifiedLabel={worker ? (language === 'vi' ? 'Đã xác minh' : 'Verified') : copy.dataPending}
-      workerVerifiedTone={worker ? 'success' : 'unselected'}
-    />
-  )
-}
-
-function CaseLocationEtaScreen({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { reduceTransparency, tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const worker = deal.workerProfile
-  const workerName = worker?.fullName?.trim() || copy.dataPending
-  const address = caseAddressLabel(deal, language)
-  const eta = typeof deal.broadcast?.secondsRemaining === 'number'
-    ? formatDurationShort(deal.broadcast.secondsRemaining, language)
-    : copy.dataPending
-  const etaLabel = language === 'vi' ? 'Thời gian đến' : 'ETA'
-  const hasEta = typeof deal.broadcast?.secondsRemaining === 'number'
-  const timelineRows = caseEtaTimelineRows(deal, language)
-
-  return (
-    <CaseLocationEtaStageView
-      activeNode={<ActivityScreenCard active deal={deal} screenId="2.10-location-eta" />}
-      address={address}
-      alertNextDisabled={!hasEta}
-      alertNextLabel={language === 'vi' ? 'Xem cảnh báo sắp đến' : 'View arrival alert'}
-      callWorkerLabel={language === 'vi' ? 'Gọi thợ' : 'Call worker'}
-      dataPendingLabel={copy.dataPending}
-      eta={eta}
-      etaLabel={etaLabel}
-      hasEta={hasEta}
-      kaelSourceNode={(
-        <CaseKaelSourceCard
-          body={hasEta
-            ? (language === 'vi' ? 'Kael sẽ nhắc khi thời gian đến thay đổi.' : 'Kael will alert when ETA changes.')
-            : (language === 'vi' ? 'Chờ thời gian đến thật từ hệ thống.' : 'Waiting for real system ETA.')}
-          image={customerV21Assets.kael}
-          testID="customer-v21-location-kael-card"
-          title={language === 'vi' ? 'Kael đang theo dõi thời gian đến' : 'Kael tracks ETA'}
-        />
-      )}
-      liveActionLabel={language === 'vi' ? 'Trực tiếp' : 'Live'}
-      liveRouteTitle={language === 'vi' ? 'Hành trình trực tiếp' : 'Live route'}
-      mapStatus={customerV21StatusCopy[language][deal.status]}
-      messageWorkerDisabled={!worker}
-      messageWorkerLabel={language === 'vi' ? 'Nhắn thợ' : 'Message worker'}
-      onCallWorker={() => undefined}
-      onMessageWorker={() => router.replace(customerCaseWorkRouteForDeal(deal) as never)}
-      onOpenLiveAlert={() => router.replace('/(customer)/history?screen=2.11-live-alert' as never)}
-      reduceTransparency={reduceTransparency}
-      timelineRows={timelineRows}
-      tokens={tokens}
-      workerAvatarInitials={initialsForName(workerName)}
-      workerAvatarUri={worker?.avatarUrl ?? null}
-      workerName={workerName}
-    />
-  )
-}
-
-function CaseLiveAlertScreen({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const screenId = '2.11-live-alert' as const
-  const eta = typeof deal.broadcast?.secondsRemaining === 'number'
-    ? formatDurationShort(deal.broadcast.secondsRemaining, language)
-    : copy.dataPending
-  const hasEta = typeof deal.broadcast?.secondsRemaining === 'number'
-  const workerName = deal.workerProfile?.fullName?.trim() || copy.dataPending
-  const address = caseAddressLabel(deal, language)
-  const status = customerV21StatusCopy[language][deal.status]
-  const active = screenIdsForStatus(deal.status).includes(screenId)
-  const canMessageWorker = Boolean(deal.workerProfile && deal.id)
-
-  return (
-    <CaseLiveAlertStageView
-      accessActionLabel={language === 'vi' ? 'Gửi cho thợ' : 'Send to worker'}
-      addressBody={deal.broadcast?.fullAddressVisible ? address : copy.dataPending}
-      addressSharedLabel={deal.broadcast?.fullAddressVisible ? (language === 'vi' ? 'Đã chia sẻ' : 'Shared') : undefined}
-      accessTitle={language === 'vi' ? 'Hướng dẫn tiếp cận' : 'Access guide'}
-      activeNode={<ActivityScreenCard active={active} deal={deal} screenId={screenId} />}
-      arrivalCodeLabel={copy.dataPending}
-      canMessageWorker={canMessageWorker}
-      dataPendingLabel={copy.dataPending}
-      entryPointLabel={language === 'vi' ? 'Địa điểm vào nhà' : 'Entry point'}
-      eta={eta}
-      hasEta={hasEta}
-      heroBody={language === 'vi' ? 'Chuẩn bị lối vào và khu vực thao tác.' : 'Prepare the entrance and work area.'}
-      heroPillLabel={language === 'vi' ? 'Thời gian sắp đến' : 'Upcoming time'}
-      kaelSourceNode={(
-        <CaseKaelSourceCard
-          body={language === 'vi' ? 'Mã này chỉ mở khi hệ thống có xác minh đến nơi thật.' : 'This code opens only after a real arrival signal.'}
-          image={customerV21Assets.kael}
-          testID="customer-v21-live-alert-kael-card"
-          title={language === 'vi' ? 'Không chia sẻ mã quá sớm' : 'Do not share the code early'}
-        />
-      )}
-      onMessageWorker={() => router.replace(customerCaseWorkRouteForDeal(deal) as never)}
-      onReady={() => router.replace('/(customer)/history?screen=2.12-job-accepted' as never)}
-      readyLabel={language === 'vi' ? 'Tôi đã sẵn sàng' : 'I am ready'}
-      rootStyles={styles}
-      shieldBody={language === 'vi' ? 'Chỉ đọc mã khi đúng thợ đến nơi.' : 'Read only after the right worker arrives.'}
-      shieldTitle={language === 'vi' ? 'Mã xác minh đến nơi' : 'Arrival code'}
-      status={status}
-      tokens={tokens}
-      workerMessageLabel={language === 'vi' ? 'Nhắn cho thợ' : 'Message worker'}
-      workerName={workerName}
-    />
-  )
-}
-
-function CaseJobAcceptedScreen({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { reduceTransparency, tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const screenId = '2.12-job-accepted' as const
-  const workerName = deal.workerProfile?.fullName?.trim() || copy.dataPending
-  const address = caseAddressLabel(deal, language)
-  const status = customerV21StatusCopy[language][deal.status]
-  const arrived = isArrivalConfirmedStatus(deal.status)
-  const paymentReady = Boolean(deal.payment)
-  const scopeLabel = currentScopeLabel(deal, language)
-  const active = screenIdsForStatus(deal.status).includes(screenId)
-
-  return (
-    <CaseJobAcceptedStageView
-      activeNode={<ActivityScreenCard active={active} deal={deal} screenId={screenId} />}
-      address={address}
-      arrived={arrived}
-      dataPendingLabel={copy.dataPending}
-      kaelSourceNode={(
-        <CaseKaelSourceCard
-          body={language === 'vi' ? 'Bằng chứng, checklist và thay đổi phạm vi tiếp tục nằm trong cùng công việc thật.' : 'Evidence, checklist, and scope changes stay inside the same real job.'}
-          image={customerV21Assets.kael}
-          testID="customer-v21-job-accepted-kael-card"
-          title={language === 'vi' ? 'Kael đã mở bảng công việc' : 'Kael opened the job cockpit'}
-        />
-      )}
-      language={language}
-      onOpenProgress={() => router.replace('/(customer)/history?screen=2.13-job-progress' as never)}
-      paymentReady={paymentReady}
-      progressDisabled={!isWorkStartedStatus(deal.status)}
-      progressLabel={language === 'vi' ? 'Xem công việc đang diễn ra' : 'View work progress'}
-      reduceTransparency={reduceTransparency}
-      scopeLabel={scopeLabel}
-      successDone={arrived || Boolean(deal)}
-      status={status}
-      tokens={tokens}
-      workerAvatarInitials={initialsForName(workerName)}
-      workerAvatarUri={deal.workerProfile?.avatarUrl ?? null}
-      workerIdentityDone={Boolean(deal.workerProfile)}
-      workerName={workerName}
-    />
-  )
-}
-
-function CaseJobProgressScreen({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const screenId = '2.13-job-progress' as const
-  const status = customerV21StatusCopy[language][deal.status]
-  const progress = workProgressPercent(deal.status)
-  const started = isWorkStartedStatus(deal.status)
-  const evidenceCount = (deal.draft.mediaCount ?? 0) + (deal.completionPhotoUrls?.length ?? 0)
-  const active = screenIdsForStatus(deal.status).includes(screenId)
-  const riskTone = deal.scopeChange || started ? 'success' : 'unselected'
-  const riskLabel = deal.scopeChange
-    ? (language === 'vi' ? 'Cần duyệt' : 'Needs approval')
-    : started
-      ? (language === 'vi' ? 'An toàn' : 'Safe')
-      : copy.dataPending
-  const openCaseWork = () => router.replace(customerCaseWorkRouteForDeal(deal) as never)
-
-  return (
-    <CaseJobProgressStageView
-      activeNode={<ActivityScreenCard active={active} deal={deal} screenId={screenId} />}
-      completionNode={<CompletionStateSummary deal={deal} />}
-      dataPendingLabel={copy.dataPending}
-      evidenceCount={evidenceCount}
-      evidenceLabel={formatEvidenceFileCount(evidenceCount, language)}
-      language={language}
-      onOpenKael={openCaseWork}
-      onOpenWork={openCaseWork}
-      openKaelLabel={language === 'vi' ? 'Nhắn Kael' : 'Message Kael'}
-      openWorkLabel={language === 'vi' ? 'Mở xử lý công việc' : 'Open work handling'}
-      progressBarNode={<AnimatedStageProgressBar active={started} progress={progress} />}
-      progressValue={`${progress}%`}
-      riskBody={deal.scopeChange?.reason
-        || (started
-          ? (language === 'vi' ? 'Kael theo dõi phát sinh theo dữ liệu thật.' : 'Kael monitors real scope changes.')
-          : copy.dataPending)}
-      riskLabel={riskLabel}
-      riskTone={riskTone}
-      rootStyles={styles}
-      started={started}
-      status={status}
-      stepNodes={caseJobProgressSteps(deal.status, language).map((step) => (
-        <CaseFulfillmentStep body={step.body} key={step.title} state={step.state} tokens={tokens} title={step.title} />
-      ))}
-      tokens={tokens}
-      workProgressTitle={customerV21ScreenTitles[language][screenId]}
-    />
-  )
-}
-
 function AnimatedStageProgressBar({ active, progress }: { active: boolean; progress: number }) {
   const { reduceMotion } = useV21Theme()
   const clamped = Math.max(0, Math.min(100, progress))
@@ -4172,269 +2747,6 @@ function AnimatedStageProgressBar({ active, progress }: { active: boolean; progr
       <Animated.View style={[styles.stageProgressFill, fillStyle]} testID="customer-v21-job-progress-bar-fill">
         <View pointerEvents="none" style={styles.stageProgressFillHighlight} />
       </Animated.View>
-    </View>
-  )
-}
-
-function CaseWorkSummary({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  return (
-    <V21Card testID="customer-v21-case-work">
-      <SectionHeader title={customerV21ScreenTitles[language]['2.5-chat-case']} />
-      <MediaRow assetTile={AssetTile} tokens={tokens} image={customerV21Assets.evidence} label={language === 'vi' ? 'Bằng chứng' : 'Evidence'} value={formatKnownCount(deal.draft.mediaCount, language)} />
-      <MediaRow assetTile={AssetTile} tokens={tokens} image={customerV21Assets.request} label={language === 'vi' ? 'Phạm vi' : 'Scope'} value={agenticDealProblemLabel(deal, language)} />
-      <Text style={[styles.bodyText, { color: tokens.muted }]}>
-        {language === 'vi'
-          ? 'Xử lý công việc chỉ dùng dữ liệu của công việc thật. Trò chuyện thường không tự nhập bằng chứng vào đây.'
-          : 'Work handling only uses real job data. Normal Chat does not silently enter evidence here.'}
-      </Text>
-    </V21Card>
-  )
-}
-
-function CasePaymentStageScreen({
-  deal,
-  screenId,
-}: {
-  deal: LocalDeal
-  screenId: CustomerV21ScreenId
-}) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { tokens } = useV21Theme()
-  const copy = customerV21CommonCopy[language]
-  const payment = deal.payment ?? null
-  const amount = paymentAmountLabel(payment, language, copy.dataPending)
-  const platformFee = payment?.platformFee === 0 || payment?.platformFee ? formatVnd(payment.platformFee, language) : copy.dataPending
-  const workerNet = payment?.workerNet === 0 || payment?.workerNet ? formatVnd(payment.workerNet, language) : copy.dataPending
-  const method = payment?.provider ? paymentProviderLabel(payment.provider, language) : copy.dataPending
-  const status = deal.status === 'payment_pending'
-    ? customerV21StatusCopy[language].payment_pending
-    : payment?.status
-      ? paymentStatusLabel(payment.status, language)
-      : copy.dataPending
-  const paymentReady = Boolean(payment)
-  const protectedPayment = isDealPaymentProtected(deal)
-  const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const serviceAsset = deal.draft.serviceType ? customerV21ServiceAssets[deal.draft.serviceType] : customerV21Assets.payment
-  const caseCode = caseDisplayCode(deal, language)
-  const serviceDetail = agenticDealProblemLabel(deal, language)
-  const workerName = deal.workerProfile?.fullName?.trim() || copy.dataPending
-  const workerMeta = deal.workerProfile
-    ? (language === 'vi' ? 'Thợ đã xác minh' : 'Verified worker')
-    : copy.dataPending
-  const time = timeChoiceLabel(deal.draft.timeChoice, language)
-  const address = deal.draft.addressLabel || deal.draft.districtLabel || copy.dataPending
-  const active = screenIdsForStatus(deal.status).includes(screenId)
-  const stageTestId = `customer-v21-direct-screen-${screenId}`
-  const paymentReceivedTime = formatShortClockTime(payment?.receivedAt, language)
-  const paymentConfirmedBody = payment
-    ? [
-      paymentReceivedTime,
-      method,
-      protectedPayment
-        ? (language === 'vi' ? 'Nhà cung cấp xác nhận' : 'Provider confirmed')
-        : status,
-    ].filter(Boolean).join(' · ')
-    : copy.dataPending
-  const protectedBody = protectedPayment
-    ? (language === 'vi' ? 'NestScout ghi nhận vào sổ cái bất biến' : 'NestScout recorded it in the immutable ledger')
-    : status
-  const completionBody = payment
-    ? (language === 'vi' ? 'Khách hàng xác nhận hoặc xử lý theo quy trình' : 'Customer confirms or process handles it')
-    : copy.dataPending
-  const payoutBody = payment
-    ? (language === 'vi' ? 'Chỉ sau khi được phép giải ngân' : 'Only after authorized release')
-    : copy.dataPending
-
-  const goMethod = () => router.replace('/(customer)/history?screen=3.2-payment-method' as never)
-  const goProtected = () => router.replace('/(customer)/history?screen=3.3-payment-protected' as never)
-  const goTracking = () => router.replace('/(customer)/history?screen=2.10-location-eta' as never)
-
-  return (
-    <View testID={stageTestId}>
-      {screenId === '3.1-payment-review' ? (
-        <PaymentReviewStageView
-          address={address}
-          amount={amount}
-          caseCode={caseCode}
-          disabled={!paymentReady}
-          language={language}
-          method={method}
-          onNext={goMethod}
-          platformFee={platformFee}
-          service={service}
-          serviceAsset={serviceAsset}
-          serviceDetail={serviceDetail}
-          status={status}
-          time={time}
-          tokens={tokens}
-          workerInitials={initialsForName(workerName)}
-          workerMeta={workerMeta}
-          workerName={workerName}
-          workerNet={workerNet}
-        />
-      ) : screenId === '3.2-payment-method' ? (
-        <PaymentMethodStage
-          amount={amount}
-          caseCode={caseCode}
-          disabled={!paymentReady}
-          method={method}
-          onNext={goProtected}
-          paymentReady={paymentReady}
-          status={status}
-        />
-      ) : (
-        <PaymentProtectedStageView
-          amount={amount}
-          caseCode={caseCode}
-          completionBody={completionBody}
-          hasPayment={Boolean(payment)}
-          language={language}
-          onNext={goTracking}
-          paymentConfirmedBody={paymentConfirmedBody}
-          payoutBody={payoutBody}
-          protectedBody={protectedBody}
-          protectedPayment={protectedPayment}
-          service={service}
-          serviceAsset={serviceAsset}
-          time={time}
-          tokens={tokens}
-          workerName={workerName}
-        />
-      )}
-      <ActivityScreenCard active={active} deal={deal} screenId={screenId} />
-    </View>
-  )
-}
-
-function PaymentMethodStage({
-  amount,
-  caseCode,
-  disabled,
-  method,
-  onNext,
-  paymentReady,
-  status,
-}: {
-  amount: string
-  caseCode: string
-  disabled: boolean
-  method: string
-  onNext: () => void
-  paymentReady: boolean
-  status: string
-}) {
-  const language = useAppLanguage()
-  const copy = customerV21CommonCopy[language]
-  const [selectedBankKey, setSelectedBankKey] = useState<CustomerV21BankKey | null>(null)
-  const visibleSelectedBankKey = selectedBankKey
-  const selectedBank = paymentBankOptions.find((bank) => bank.key === visibleSelectedBankKey) ?? null
-  const recommendedTitle = selectedBank
-    ? `${selectedBank.name} qua VietQR`
-    : language === 'vi'
-      ? 'Chọn ngân hàng qua VietQR'
-      : 'Choose a VietQR bank'
-  const recommendedBody = paymentReady
-    ? (language === 'vi' ? 'Mở app ngân hàng, quét QR và xác nhận lệnh thanh toán.' : 'Open your bank app, scan the QR, and confirm the payment order.')
-    : copy.paymentLocked
-  return (
-    <PaymentMethodStagePanel
-      amount={amount}
-      disabled={disabled}
-      method={method}
-      onNext={onNext}
-      onSelectBank={setSelectedBankKey}
-      paymentReady={paymentReady}
-      recommendedBody={recommendedBody}
-      recommendedTitle={recommendedTitle}
-      selectedBank={selectedBank}
-      selectedBankKey={visibleSelectedBankKey}
-      status={status}
-      visibleBanks={paymentBankOptions}
-    />
-  )
-}
-
-function CompletionStateSummary({ deal }: { deal: LocalDeal }) {
-  const language = useAppLanguage()
-  const { tokens } = useV21Theme()
-  return (
-    <V21Card testID="customer-v21-completion-state">
-      <SectionHeader title={customerV21ScreenTitles[language]['2.13-job-progress']} />
-      <MediaRow assetTile={AssetTile} tokens={tokens} image={customerV21Assets.evidence} label={language === 'vi' ? 'Ảnh hoàn tất' : 'Completion photos'} value={formatKnownCount(deal.completionPhotoUrls?.length, language)} />
-      <MediaRow assetTile={AssetTile} tokens={tokens} image={customerV21Assets.feedback} label={language === 'vi' ? 'Ghi chú hoàn tất' : 'Completion note'} value={deal.completionNotes?.trim() || customerV21CommonCopy[language].dataPending} />
-    </V21Card>
-  )
-}
-
-function ActivityStatusPanel({ deal, screenId }: { deal: LocalDeal; screenId: CustomerV21ScreenId }) {
-  const language = useAppLanguage()
-  const copy = customerV21CommonCopy[language]
-  const broadcast = deal.broadcast
-  const address = broadcast?.fullAddressVisible
-    ? broadcast.fullAddressLabel || deal.draft.addressLabel || broadcast.generalArea || copy.dataPending
-    : broadcast?.generalArea || deal.draft.districtLabel || deal.draft.addressLabel || copy.dataPending
-  const eta = typeof broadcast?.secondsRemaining === 'number' ? formatDurationShort(broadcast.secondsRemaining, language) : copy.dataPending
-  const workerName = deal.workerProfile?.fullName || copy.dataPending
-  const prebrief = broadcast?.prebrief?.[0] || copy.dataPending
-  const completionEvidence = formatEvidenceFileCount(deal.completionPhotoUrls?.length, language)
-  const title = customerV21ScreenTitles[language][screenId]
-  const status = customerV21StatusCopy[language][deal.status]
-  const primary = activityStatusPrimary(screenId, { address, eta, language, status })
-  const rows = activityStatusRows(screenId, {
-    address,
-    completionEvidence,
-    eta,
-    language,
-    prebrief,
-    status,
-    workerName,
-  })
-
-  return (
-    <ActivityStatusPanelView
-      activeStep={stepForStatus(deal.status)}
-      eyebrow={caseDisplayCode(deal, language)}
-      image={caseScreenAsset(screenId)}
-      infoBody={language === 'vi'
-        ? 'Màn này chỉ mở dữ liệu đã có trong công việc thật. Thiếu dữ liệu thì giữ trạng thái chờ, không tự dựng thợ, thời gian đến, giá hoặc thanh toán.'
-        : 'This screen only opens data already present on the real job. Missing values stay pending; no worker, ETA, price, or payment is invented.'}
-      infoImage={customerV21Assets.shield}
-      infoTitle={language === 'vi' ? 'Dữ liệu trung thực' : 'Honest data'}
-      labelTextStyle={styles.labelText}
-      primary={primary}
-      rows={rows}
-      testID={`customer-v21-status-panel-${screenId}`}
-      title={title}
-    />
-  )
-}
-
-function ScreenAdaptationRail({ activeStatus }: { activeStatus: LocalDealStatus }) {
-  const language = useAppLanguage()
-  const router = useRouter()
-  const { tokens } = useV21Theme()
-  const activeScreens = screenIdsForStatus(activeStatus)
-  return (
-    <View style={sharedStyles.screenRail} testID="customer-v21-screen-rail">
-      {caseScreenIds.map((id) => {
-        const active = activeScreens.includes(id)
-        return (
-          <Pressable
-            accessibilityLabel={customerV21ScreenTitles[language][id]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            key={id}
-            onPress={() => router.replace(`/(customer)/history?screen=${id}` as never)}
-            style={[sharedStyles.screenRailItem, { backgroundColor: active ? tokens.service : tokens.ghost, borderColor: tokens.border }]}
-            testID={`customer-v21-screen-rail-${id}`}
-          >
-            <Text numberOfLines={1} style={[sharedStyles.screenRailTitle, { color: active ? tokens.primary : tokens.muted }]}>{customerV21ScreenTitles[language][id]}</Text>
-          </Pressable>
-        )
-      })}
     </View>
   )
 }
@@ -4684,6 +2996,7 @@ function ProfileUtilitySection({
         accountNumberDraft={paymentAccountNumberDraft}
         bankCountLabel={language === 'vi' ? `${formatNumber(paymentBankOptions.length, language)} ngân hàng` : `${formatNumber(paymentBankOptions.length, language)} banks`}
         confirmedPaymentAccountMasked={confirmedPaymentAccountMasked}
+        confirmedPaymentBankKey={confirmedPaymentBankKey}
         confirmedPaymentBankName={confirmedPaymentBankName}
         confirmedPaymentReady={confirmedPaymentReady}
         confirmedPaymentStatus={confirmedPaymentStatus}
@@ -4884,7 +3197,6 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
   const protectedTransactions = protectedTransactionLabel(insights, language, copy.emptyProfileMetric)
   return (
     <ProfileRankingPanel
-      completed={completedCount}
       metrics={[
         { label: language === 'vi' ? 'Dịch vụ đã dùng' : 'Used services', value: completedCount },
         { label: language === 'vi' ? 'Chuỗi hoạt động' : 'Active streak', value: streakLabel },
@@ -4893,7 +3205,6 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
       pointsText={pointsText}
       progress={progress}
       progressBar={<ProfileProgressBar percent={rank > 0 ? progress : 0} testID="customer-v21-profile-ranking-progress" />}
-      protectedTransactions={protectedTransactions}
       rank={rank}
       rankNodes={[1, 2, 3, 4, 5].map((node) => ({ active: rank === node, label: rankLabel(node, language), value: node }))}
       rankProcess={(
@@ -4905,24 +3216,35 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
       )}
       rankStatusLabel={profileRankStatus(rank, language, copy.dataPending)}
       rankTitle={rankTitle}
-      reviewRate={reviewRate}
       rules={[
         {
-          image: customerV21Assets.request,
+          details: [
+            { glyph: 'document', label: language === 'vi' ? 'Theo trạng thái' : 'Status tracked' },
+            { glyph: 'check', label: language === 'vi' ? 'Không bỏ đơn' : 'No job drop' },
+          ],
+          image: customerV21Assets.rankingCompletion,
           label: language === 'vi' ? 'Hoàn tất đúng quy trình' : 'Finish through workflow',
           status: completedCount,
           testID: 'customer-v21-profile-ranking-rule-completed',
           value: language === 'vi' ? 'Không bỏ đơn sau khi thợ đã di chuyển' : 'No cancellation after worker travel starts',
         },
         {
-          image: customerV21Assets.feedback,
+          details: [
+            { glyph: 'identity', label: language === 'vi' ? 'Sau công việc' : 'After service' },
+            { glyph: 'check', label: language === 'vi' ? 'Phản hồi công bằng' : 'Fair feedback' },
+          ],
+          image: customerV21Assets.rankingReview,
           label: language === 'vi' ? 'Đánh giá chất lượng' : 'Quality review',
           status: reviewRate,
           testID: 'customer-v21-profile-ranking-rule-review',
           value: language === 'vi' ? 'Phản hồi công bằng sau mỗi công việc' : 'Fair feedback after each job',
         },
         {
-          image: customerV21Assets.shield,
+          details: [
+            { glyph: 'shield', label: language === 'vi' ? 'Trong hệ thống' : 'In platform' },
+            { glyph: 'document', label: language === 'vi' ? 'Có đối soát' : 'Reconciled' },
+          ],
+          image: customerV21Assets.rankingProtection,
           label: language === 'vi' ? 'Dùng thanh toán được bảo vệ' : 'Use protected payment',
           status: protectedTransactions,
           testID: 'customer-v21-profile-ranking-rule-protected',
@@ -4985,28 +3307,6 @@ function ProfileMoney({ insights }: { insights: CustomerProfileInsightsResponse 
       ]}
       score={score}
       scoreState={scoreState}
-    />
-  )
-}
-
-function ProfileMemory() {
-  const language = useAppLanguage()
-  const workflow = useFrontendWorkflow()
-  const memory = workflow.customerKaelMemory
-  const copy = customerV21CommonCopy[language]
-  const memoryRecord = memory && typeof memory === 'object' ? memory as Record<string, unknown> : null
-  const preference = stringFromUnknown(memoryRecord?.preference_summary) ?? copy.dataPending
-  const servicePrefs = memoryRecord?.service_preferences && typeof memoryRecord.service_preferences === 'object'
-    ? memoryRecord.service_preferences as Record<string, unknown>
-    : {}
-  const languageValue = stringFromUnknown(memoryRecord?.language)?.toUpperCase() ?? copy.dataPending
-  const servicePreference = servicePreferenceLabel(servicePrefs.preferred_service, language) ?? copy.dataPending
-  return (
-    <ProfileMemoryPanel
-      languageValue={languageValue}
-      memoryRecordPresent={Boolean(memoryRecord)}
-      preference={preference}
-      servicePreference={servicePreference}
     />
   )
 }
@@ -5151,13 +3451,6 @@ function isLikelyKaelIntakeRequest(message: string) {
   const qnaSignal = /\b(gia|bao nhieu|luat|phap ly|quy dinh|quy trinh|dich vu|tho|bao hanh|huy|thanh toan|co duoc|la gi|huong dan|nen|khac gi|yeu cau gi|tu van)\b/.test(normalized)
   if (qnaSignal) return false
   return /\b(dat lich|goi tho|can sua|can don|kiem tra giup|bi hong|hong|ro|ri|tac|mat dien|chap|hien trang|anh\/video|anh|video|duong ong|ve sinh|don dep|thay|lap|sua giup|o cam|cong tac|voi nuoc|ong nuoc|lavabo|toilet)\b/.test(normalized)
-}
-
-function formatAssistantAnswer(result: KaelAssistantResponse, language: AppLanguage) {
-  const notes = result.safety_notes.filter((note) => note.trim().length > 0)
-  if (notes.length === 0) return result.answer
-  const noteLabel = language === 'vi' ? 'Lưu ý' : 'Note'
-  return `${result.answer}\n\n${noteLabel}: ${notes.join(' ')}`
 }
 
 const styles = StyleSheet.create({
@@ -5589,27 +3882,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     lineHeight: 21,
-  },
-  searchShell: {
-    alignItems: 'center',
-    borderRadius: 23,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    minHeight: 54,
-    paddingHorizontal: 14,
-  },
-  searchText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    minHeight: 34,
-    paddingVertical: 0,
-  },
-  selectedServiceCard: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
   },
   stepBadge: {
     fontSize: 10.5,

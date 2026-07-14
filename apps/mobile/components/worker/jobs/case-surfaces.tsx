@@ -9,9 +9,9 @@ import {
 } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { formatVnd, textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
@@ -60,7 +60,11 @@ export function WorkerV5CaseClosedHero({
   const closed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
   return (
     <View style={[styles.caseClosedHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-case-closed-hero">
-      {!reduceTransparency ? <MintAura intensity="component" style={styles.caseClosedHeroAura} testID="worker-v5-case-closed-mint-aura" /> : null}
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="CaseClosedHero"
+        testID="worker-v5-case-closed-mint-aura"
+      />
       <View style={styles.caseClosedCheckShell} testID="worker-v5-case-closed-settlement-seal">
         {!reduceTransparency ? <SuccessEmblemAura scope="CaseClosed" testID="worker-v5-case-closed-check-aura" /> : null}
         <View style={styles.caseClosedCheck}>
@@ -136,6 +140,11 @@ export function WorkerV5CaseTrailCard({
   ]
   return (
     <View style={[styles.caseTrailCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-case-trail-card">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="CaseTrail"
+        testID="worker-v5-case-trail-formula-mint-aura"
+      />
       {rows.map((row, index) => (
         <View key={row.title} style={styles.caseTrailRow}>
           <WorkerV5IntegratedIcon

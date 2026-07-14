@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import {
   Image,
   Pressable,
@@ -9,24 +9,22 @@ import {
   type ViewStyle,
 } from 'react-native'
 
-import { KaelButton, KaelChip, KaelTextField, KaelTextInput } from '@/components/ui/kael-primitives'
+import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import { CUSTOMER_SERVICE_IDS, type CustomerServiceId } from '@nestscout/shared'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { BookingDraftButtonAura, BookingProblemChipAura, BookingSearchMintBorder, BookingSuggestedChipAura, SourceCardSkin } from './aura-surfaces'
-import { customerV21Assets, customerV21BookingServiceAssets } from './assets'
+import {
+  BookingDraftButtonAura,
+  BookingProblemChipAura,
+  CaseWideMintAura,
+  SourceCardSkin,
+  ZipMintAura,
+} from './aura-surfaces'
+import { customerV21Assets } from './assets'
 import { customerV21BookingStyles as bookingStyles } from './booking-styles'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
 import { AssetTile, EmptyState, ProgressRail, SectionActionHeader, ServiceTile, V21Card, V21TopBar } from './shared-surfaces'
-
-type BookingSearchSuggestionView = {
-  key: string
-  label: string
-  problem?: string
-  selected: boolean
-  serviceType: CustomerServiceId
-}
 
 type BookingProblemOptionView = {
   label: string
@@ -53,12 +51,31 @@ type RootBookingStyles = {
   flex: StyleProp<ViewStyle>
   formCard: StyleProp<ViewStyle>
   pressed: StyleProp<ViewStyle>
-  searchShell: StyleProp<ViewStyle>
-  searchText: StyleProp<TextStyle>
-  selectedServiceCard: StyleProp<ViewStyle>
   stepBadge: StyleProp<TextStyle>
   stepCard: StyleProp<ViewStyle>
   stepLabel: StyleProp<TextStyle>
+}
+
+function BookingFormulaMintAura({
+  includeSkin = false,
+  scope,
+  testIDPrefix,
+}: {
+  includeSkin?: boolean
+  scope: string
+  testIDPrefix: string
+}) {
+  return (
+    <View pointerEvents="none" style={bookingStyles.bookingFormulaMintAura}>
+      {includeSkin ? <SourceCardSkin testID={`${testIDPrefix}-card-skin`} /> : null}
+      <CaseWideMintAura
+        intensity="strong"
+        scope={`${scope}Wide`}
+        testID={`${testIDPrefix}-wide-mint-aura`}
+      />
+      <ZipMintAura scope={`${scope}Fine`} testID={`${testIDPrefix}-mint-aura`} />
+    </View>
+  )
 }
 
 export function CustomerBookingGuestGateView({
@@ -91,11 +108,12 @@ export function CustomerBookingEntryView({
   addressFallbackUsed,
   addressSuggestions,
   addressUsesMultiline,
-  bookingSourceSearchShadowStyle,
-  bookingSearchInputColor,
   chatPlaceholder,
   createDraftLabel,
-  dataPendingLabel,
+  customScheduleDateError,
+  customScheduleDateInput,
+  customScheduleTimeError,
+  customScheduleTimeInput,
   description,
   error,
   hiddenTextInputScrollbarStyle,
@@ -109,14 +127,14 @@ export function CustomerBookingEntryView({
   onAddressFocus,
   onAddressSuggestionPress,
   onBack,
+  onCustomScheduleDateChange,
+  onCustomScheduleTimeChange,
   onDescriptionChange,
   onMediaAdd,
   onProblemToggle,
   onResetSelectedService,
   onScheduleDateSelect,
   onScheduleTimeSelect,
-  onSearchQueryChange,
-  onSearchSuggestionPress,
   onServiceSelect,
   onSubmit,
   problemOptions,
@@ -124,13 +142,10 @@ export function CustomerBookingEntryView({
   rootStyles,
   scheduleDateOptions,
   scheduleLabel,
-  searchSuggestions,
   selectedProblems,
   selectedScheduleDate,
   selectedScheduleTime,
   selectedService,
-  selectedServiceCopy,
-  serviceSearchQuery,
   textInputNoOutlineStyle,
   timeSlots,
   tokens,
@@ -142,11 +157,12 @@ export function CustomerBookingEntryView({
   addressLookupPending: boolean
   addressSuggestions: BookingAddressSuggestionView[]
   addressUsesMultiline: boolean
-  bookingSearchInputColor: string
-  bookingSourceSearchShadowStyle: StyleProp<ViewStyle>
   chatPlaceholder: string
   createDraftLabel: string
-  dataPendingLabel: string
+  customScheduleDateError: string | null
+  customScheduleDateInput: string
+  customScheduleTimeError: string | null
+  customScheduleTimeInput: string
   description: string
   error: string | null
   hiddenTextInputScrollbarStyle: StyleProp<TextStyle>
@@ -160,14 +176,14 @@ export function CustomerBookingEntryView({
   onAddressFocus: () => void
   onAddressSuggestionPress: (suggestion: BookingAddressSuggestionView) => void
   onBack: () => void
+  onCustomScheduleDateChange: (value: string) => void
+  onCustomScheduleTimeChange: (value: string) => void
   onDescriptionChange: (value: string) => void
   onMediaAdd: () => void
   onProblemToggle: (problem: string) => void
   onResetSelectedService: () => void
   onScheduleDateSelect: (value: string) => void
   onScheduleTimeSelect: (value: string) => void
-  onSearchQueryChange: (value: string) => void
-  onSearchSuggestionPress: (suggestion: BookingSearchSuggestionView) => void
   onServiceSelect: (service: CustomerServiceId) => void
   onSubmit: () => void
   problemOptions: BookingProblemOptionView[]
@@ -175,22 +191,30 @@ export function CustomerBookingEntryView({
   rootStyles: RootBookingStyles
   scheduleDateOptions: BookingScheduleDateOptionView[]
   scheduleLabel: string | null
-  searchSuggestions: BookingSearchSuggestionView[]
   selectedProblems: string[]
   selectedScheduleDate: string | null
   selectedScheduleTime: string | null
   selectedService: CustomerServiceId | null
-  selectedServiceCopy: { label: string; note: string } | null
-  serviceSearchQuery: string
   textInputNoOutlineStyle: StyleProp<TextStyle>
   timeSlots: readonly string[]
   tokens: CustomerThemeTokens
   submitDisabled?: boolean
 }) {
+  const timeSlotAuraLayers = useMemo(
+    () => timeSlots.map((slot, index) => (
+      <CaseWideMintAura
+        intensity="strong"
+        key={`booking-start-time-aura-${slot}`}
+        scope={`BookingStartTime${slot.replace(':', '')}`}
+        testID={`customer-v21-booking-time-${index}-mint-aura`}
+      />
+    )),
+    [timeSlots],
+  )
+
   return (
     <>
       <V21TopBar
-        actionLabel="≡"
         onBack={onBack}
         subtitle={isMediaScreen ? (language === 'vi' ? 'Bước 2/4 · dữ liệu chờ công việc thật' : 'Step 2/4 · data waits for a real job') : (language === 'vi' ? 'Kael sẽ dẫn bạn theo từng bước' : 'Kael guides each step')}
         title={isMediaScreen ? (language === 'vi' ? 'Kael thu thập hiện trạng' : 'Kael collects current state') : (language === 'vi' ? 'Tạo yêu cầu dịch vụ' : 'Create service request')}
@@ -199,60 +223,22 @@ export function CustomerBookingEntryView({
       {!isMediaScreen ? (
         <V21Card glass style={[rootStyles.stepCard, bookingStyles.bookingSourceStepCard]} testID="customer-v21-services-hero">
           <SourceCardSkin testID="customer-v21-booking-step-card-skin" />
-          <View style={sharedStyles.rowBetween}>
-            <Text style={[rootStyles.stepLabel, { color: tokens.text }]}>{language === 'vi' ? 'Bước 1/4 · Chọn dịch vụ' : 'Step 1/4 · Choose service'}</Text>
-            <Text style={[rootStyles.stepBadge, { color: tokens.primary }]}>{language === 'vi' ? 'Kael hỗ trợ' : 'Kael assisted'}</Text>
+          <BookingFormulaMintAura
+            scope="BookingStep"
+            testIDPrefix="customer-v21-booking-step"
+          />
+          <View style={bookingStyles.bookingSourceStepContent}>
+            <View style={sharedStyles.rowBetween}>
+              <Text style={[rootStyles.stepLabel, { color: tokens.text }]}>{language === 'vi' ? 'Bước 1/4 · Chọn dịch vụ' : 'Step 1/4 · Choose service'}</Text>
+              <Text style={[rootStyles.stepBadge, { color: tokens.primary }]}>{language === 'vi' ? 'Kael hỗ trợ' : 'Kael assisted'}</Text>
+            </View>
+            <ProgressRail activeStep={1} style={bookingStyles.bookingProgressRail} testID="customer-v21-booking-progress" tokens={tokens} />
           </View>
-          <ProgressRail activeStep={1} style={bookingStyles.bookingProgressRail} testID="customer-v21-booking-progress" tokens={tokens} />
         </V21Card>
       ) : null}
 
       {isMediaScreen ? mediaPanelNode : null}
       {isMediaScreen && error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-booking-error">{error}</Text> : null}
-
-      {!isMediaScreen ? (
-        <View style={[rootStyles.searchShell, bookingStyles.bookingSourceSearch, bookingSourceSearchShadowStyle, { backgroundColor: 'transparent', borderColor: 'rgba(13,174,154,0.64)' }]}>
-          <SourceCardSkin testID="customer-v21-booking-search-source" />
-          <BookingSearchMintBorder reduceTransparency={reduceTransparency} />
-          <Image
-            resizeMode="contain"
-            source={customerV21Assets.request}
-            style={bookingStyles.bookingSearchImageIcon}
-            testID="customer-v21-booking-search-icon"
-          />
-          <KaelTextInput
-            accessibilityLabel={language === 'vi' ? 'Tìm dịch vụ hoặc vấn đề' : 'Search services or issues'}
-            onChangeText={onSearchQueryChange}
-            placeholder={selectedService
-              ? (language === 'vi' ? 'Tìm vấn đề: ống, vòi, toilet...' : 'Find an issue: pipe, faucet, toilet...')
-              : (language === 'vi' ? 'Chọn dịch vụ hoặc gợi ý bên dưới...' : 'Pick a service or suggestion below...')}
-            placeholderTextColor={tokens.muted}
-            returnKeyType="search"
-            style={[rootStyles.searchText, textInputNoOutlineStyle, { color: bookingSearchInputColor }]}
-            testID="customer-v21-booking-search-input"
-            value={serviceSearchQuery}
-          />
-        </View>
-      ) : null}
-      {!isMediaScreen ? (
-        <View style={bookingStyles.bookingSearchSuggestionPanel} testID="customer-v21-booking-search-suggestions">
-          <Text style={[bookingStyles.bookingSearchSuggestionTitle, { color: tokens.primary }]}>
-            {selectedService ? (language === 'vi' ? 'Có thể đặt' : 'You can book') : (language === 'vi' ? 'Gợi ý đặt' : 'Suggestions')}
-          </Text>
-          <View style={bookingStyles.bookingSearchSuggestionRow}>
-            {searchSuggestions.map((suggestion, index) => (
-              <KaelChip
-                accessibilityState={{ selected: suggestion.selected }}
-                key={suggestion.key}
-                label={suggestion.label}
-                onPress={() => onSearchSuggestionPress(suggestion)}
-                testID={`customer-v21-booking-search-suggestion-${index}`}
-                variant={suggestion.selected ? 'selected' : 'unselected'}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
 
       {!isMediaScreen ? (
         <>
@@ -261,22 +247,16 @@ export function CustomerBookingEntryView({
             onAction={selectedService ? onResetSelectedService : undefined}
             title={selectedService ? (language === 'vi' ? 'Dịch vụ đã chọn' : 'Selected service') : (language === 'vi' ? 'Chọn dịch vụ' : 'Choose service')}
           />
-          {selectedService && selectedServiceCopy ? (
-            <V21Card style={[rootStyles.selectedServiceCard, bookingStyles.bookingSelectedServiceCard]} testID="customer-v21-selected-service">
-              <SourceCardSkin testID="customer-v21-booking-selected-card-skin" />
-              <AssetTile image={customerV21BookingServiceAssets[selectedService]} label={selectedServiceCopy.label} size={44} sourceAura />
-              <View style={rootStyles.flex}>
-                <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{selectedServiceCopy.label}</Text>
-                <Text style={[rootStyles.bodyText, { color: tokens.muted }]}>{selectedServiceCopy.note}</Text>
-                <View style={sharedStyles.heroChipRow}>
-                  <View style={bookingStyles.bookingSuggestedChipFrame}>
-                    <BookingSuggestedChipAura reduceTransparency={reduceTransparency} />
-                    <KaelChip label={language === 'vi' ? 'Bạn đã chọn' : 'You selected'} style={bookingStyles.bookingSuggestedChip} variant="selected" />
-                  </View>
-                  <KaelChip label={dataPendingLabel} variant="unselected" />
-                </View>
-              </View>
-            </V21Card>
+          {selectedService ? (
+            <View style={bookingStyles.bookingSelectedServiceFrame}>
+              <ServiceTile
+                fullWidth
+                homeAura
+                selected
+                service={selectedService}
+                testID="customer-v21-selected-service"
+              />
+            </View>
           ) : null}
           {!selectedService ? (
             <View style={[sharedStyles.serviceGrid, bookingStyles.bookingServiceGrid]}>
@@ -298,6 +278,14 @@ export function CustomerBookingEntryView({
           />
           <V21Card style={[rootStyles.formCard, bookingStyles.bookingInfoCard]} testID="customer-v21-booking-info-card">
             <SourceCardSkin testID="customer-v21-booking-info-card-skin" />
+            <View
+              pointerEvents="none"
+              style={bookingStyles.bookingInfoMintAura}
+              testID="customer-v21-booking-info-card-aura-layer"
+            >
+              <CaseWideMintAura scope="BookingInfoWide" testID="customer-v21-booking-info-card-wide-mint-aura" />
+              <ZipMintAura scope="BookingInfoFine" testID="customer-v21-booking-info-card-mint-aura" />
+            </View>
             <View style={bookingStyles.bookingField}>
               <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Địa điểm' : 'Location'}</Text>
               <View
@@ -370,7 +358,13 @@ export function CustomerBookingEntryView({
             </View>
             <View style={bookingStyles.bookingField}>
               <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Thời gian mong muốn' : 'Preferred time'}</Text>
-              <View style={[bookingStyles.bookingSchedulePanel, { backgroundColor: tokens.mode === 'dark' ? tokens.base : '#FFFFFF', borderColor: tokens.border }]} testID="customer-v21-booking-schedule-panel">
+              <View style={[bookingStyles.bookingSchedulePanel, { backgroundColor: tokens.mode === 'dark' ? tokens.base : 'rgba(255,255,255,0.68)', borderColor: tokens.border }]} testID="customer-v21-booking-schedule-panel">
+                <BookingFormulaMintAura
+                  includeSkin={tokens.mode !== 'dark'}
+                  scope="BookingSchedule"
+                  testIDPrefix="customer-v21-booking-schedule"
+                />
+                <View style={bookingStyles.bookingScheduleContent}>
                 <View style={bookingStyles.bookingScheduleHeader}>
                   <Image resizeMode="contain" source={customerV21Assets.booking} style={bookingStyles.bookingInlineIcon} />
                   <Text numberOfLines={1} style={[bookingStyles.bookingReadonlyText, { color: scheduleLabel ? tokens.text : tokens.muted }]} testID="customer-v21-booking-schedule-summary">
@@ -378,6 +372,11 @@ export function CustomerBookingEntryView({
                   </Text>
                 </View>
                 <View style={bookingStyles.bookingDateGrid}>
+                  <CaseWideMintAura
+                    intensity="strong"
+                    scope="BookingDateGrid"
+                    testID="customer-v21-booking-date-grid-mint-aura"
+                  />
                   {scheduleDateOptions.map((option, index) => {
                     const selected = selectedScheduleDate === option.value
                     return (
@@ -389,7 +388,11 @@ export function CustomerBookingEntryView({
                         style={[
                           bookingStyles.bookingDateOption,
                           {
-                            backgroundColor: selected ? tokens.service : tokens.ghost,
+                            backgroundColor: selected
+                              ? tokens.service
+                              : tokens.mode === 'dark'
+                                ? tokens.ghost
+                                : 'rgba(255,255,255,0.72)',
                             borderColor: selected ? tokens.primary : tokens.border,
                           },
                         ]}
@@ -401,27 +404,124 @@ export function CustomerBookingEntryView({
                     )
                   })}
                 </View>
+                <View style={bookingStyles.bookingCustomScheduleField}>
+                  <Text style={[bookingStyles.bookingCustomScheduleLabel, { color: tokens.text }]}>
+                    {language === 'vi' ? 'Ngày khác' : 'Another date'}
+                  </Text>
+                  <KaelTextField
+                    inputShellAdornment={(
+                      <BookingFormulaMintAura
+                        scope="BookingCustomDate"
+                        testIDPrefix="customer-v21-booking-custom-date"
+                      />
+                    )}
+                    inputShellStyle={[
+                      bookingStyles.bookingCustomScheduleInputShell,
+                      {
+                        backgroundColor: tokens.mode === 'dark' ? tokens.ghost : 'rgba(255,255,255,0.72)',
+                        borderColor: customScheduleDateInput && selectedScheduleDate ? tokens.primary : tokens.border,
+                      },
+                    ]}
+                    accessibilityLabel={language === 'vi' ? 'Nhập ngày muốn đặt' : 'Enter desired date'}
+                    accessibilityHint={customScheduleDateError ?? (language === 'vi' ? 'Định dạng ngày tháng năm' : 'Day month year format')}
+                    keyboardType="number-pad"
+                    maxLength={10}
+                    onChangeText={onCustomScheduleDateChange}
+                    placeholder="DD/MM/YYYY"
+                    placeholderTextColor={tokens.subtleText}
+                    style={[bookingStyles.bookingCustomScheduleInput, textInputNoOutlineStyle, { color: tokens.text }]}
+                    testID="customer-v21-booking-custom-date"
+                    value={customScheduleDateInput}
+                  />
+                  <Text
+                    style={[bookingStyles.bookingCustomScheduleHint, { color: customScheduleDateError ? tokens.primary : tokens.muted }]}
+                    testID={customScheduleDateError ? 'customer-v21-booking-custom-date-error' : undefined}
+                  >
+                    {customScheduleDateError ?? (language === 'vi' ? 'Nhập ngày mong muốn nếu lịch nằm sau 7 ngày.' : 'Enter a desired date when it is more than 7 days away.')}
+                  </Text>
+                </View>
+                <View style={bookingStyles.bookingTimeStartSection}>
+                  <Text style={[bookingStyles.bookingCustomScheduleHint, { color: tokens.muted, fontWeight: '700' }]}>
+                    {language === 'vi'
+                      ? 'Chọn giờ bạn muốn dịch vụ bắt đầu.'
+                      : 'Choose when you want the service to start.'}
+                  </Text>
+                </View>
                 <View style={bookingStyles.bookingTimeGrid}>
                   {timeSlots.map((slot, index) => {
                     const selected = selectedScheduleTime === slot
                     return (
                       <KaelChip
                         accessibilityState={{ selected }}
+                        backgroundLayer={timeSlotAuraLayers[index]}
                         key={slot}
                         label={slot}
                         onPress={() => onScheduleTimeSelect(slot)}
+                        style={{
+                          backgroundColor: selected
+                            ? tokens.service
+                            : tokens.mode === 'dark'
+                              ? tokens.ghost
+                              : 'rgba(255,255,255,0.72)',
+                          borderColor: selected ? tokens.primary : tokens.border,
+                        }}
                         testID={`customer-v21-booking-time-${index}`}
                         variant={selected ? 'selected' : 'unselected'}
                       />
                     )
                   })}
                 </View>
+                <View style={bookingStyles.bookingCustomScheduleField}>
+                  <Text style={[bookingStyles.bookingCustomScheduleLabel, { color: tokens.text }]}>
+                    {language === 'vi' ? 'Giờ khác' : 'Another start time'}
+                  </Text>
+                  <KaelTextField
+                    inputShellAdornment={(
+                      <BookingFormulaMintAura
+                        scope="BookingCustomTime"
+                        testIDPrefix="customer-v21-booking-custom-time"
+                      />
+                    )}
+                    inputShellStyle={[
+                      bookingStyles.bookingCustomScheduleInputShell,
+                      {
+                        backgroundColor: tokens.mode === 'dark' ? tokens.ghost : 'rgba(255,255,255,0.72)',
+                        borderColor: customScheduleTimeInput && selectedScheduleTime ? tokens.primary : tokens.border,
+                      },
+                    ]}
+                    accessibilityLabel={language === 'vi' ? 'Nhập giờ bắt đầu mong muốn' : 'Enter desired start time'}
+                    accessibilityHint={customScheduleTimeError ?? (language === 'vi' ? 'Định dạng giờ và phút' : 'Hour and minute format')}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                    onChangeText={onCustomScheduleTimeChange}
+                    placeholder="HH:mm"
+                    placeholderTextColor={tokens.subtleText}
+                    style={[bookingStyles.bookingCustomScheduleInput, textInputNoOutlineStyle, { color: tokens.text }]}
+                    testID="customer-v21-booking-custom-time"
+                    value={customScheduleTimeInput}
+                  />
+                  {customScheduleTimeError ? (
+                    <Text
+                      style={[bookingStyles.bookingCustomScheduleHint, { color: tokens.primary }]}
+                      testID="customer-v21-booking-custom-time-error"
+                    >
+                      {customScheduleTimeError}
+                    </Text>
+                  ) : null}
+                </View>
+                </View>
               </View>
             </View>
             <View style={bookingStyles.bookingField}>
                 <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Mô tả sự cố' : 'Issue description'}</Text>
                 <KaelTextField
-                  inputShellStyle={[bookingStyles.bookingDescriptionInputShell, { backgroundColor: tokens.mode === 'dark' ? tokens.base : '#FFFFFF', borderColor: tokens.border }]}
+                  inputShellAdornment={(
+                    <BookingFormulaMintAura
+                      scope="BookingDescription"
+                      testIDPrefix="customer-v21-booking-description"
+                    />
+                  )}
+                  inputShellStyle={[bookingStyles.bookingDescriptionInputShell, { backgroundColor: tokens.mode === 'dark' ? tokens.base : 'rgba(255,255,255,0.70)', borderColor: tokens.border }]}
                   accessibilityLabel={language === 'vi' ? 'Mô tả vấn đề' : 'Issue description'}
                   multiline
                   onChangeText={onDescriptionChange}

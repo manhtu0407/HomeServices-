@@ -9,6 +9,7 @@ import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { workerV5TimeChoiceLabel } from '../ui/labels'
 import { textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
@@ -53,6 +54,11 @@ export function WorkerV5OpportunityCard({
     : textByLanguage(language, 'Chưa có broadcast', 'No broadcast yet')
   const content = (
     <>
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope={`Opportunity${deal.id}`}
+        testID={`worker-v5-opportunity-card-formula-mint-aura-${deal.id}`}
+      />
       <WorkerV5IntegratedIcon bleed={11} image={serviceIcon} reduceTransparency={reduceTransparency} tone="service" variant="compactPanel" />
       <View style={styles.opportunityTextColumn} testID="worker-v5-opportunity-copy">
         <Text style={styles.opportunityTitle} numberOfLines={1}>{serviceLabel}</Text>
@@ -133,6 +139,11 @@ export function WorkerV5OpportunityEmptyCard({
       : textByLanguage(language, 'Danh sách chỉ hiện cơ hội thật NestScout đã gửi tới thợ.', 'The list only shows real NestScout opportunities sent to the worker.')
   return (
     <View style={[styles.opportunityCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-opportunity-empty-card">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope={`OpportunityEmpty${tab}`}
+        testID="worker-v5-opportunity-empty-card-formula-mint-aura"
+      />
       <WorkerV5IntegratedIcon bleed={11} image={jobIcon} reduceTransparency={reduceTransparency} tone="service" variant="compactPanel" />
       <View style={styles.opportunityTextColumn}>
         <Text style={styles.opportunityTitle} numberOfLines={1}>

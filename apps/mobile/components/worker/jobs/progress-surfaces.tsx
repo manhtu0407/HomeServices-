@@ -9,6 +9,7 @@ import {
 
 import type { AppLanguage } from '@/lib/app-language'
 
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { styles } from './progress-styles'
 
@@ -30,7 +31,15 @@ function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
-export function WorkerV5ProgressRail({ activeStep, language }: { activeStep: number; language: AppLanguage }) {
+export function WorkerV5ProgressRail({
+  activeStep,
+  language,
+  reduceTransparency,
+}: {
+  activeStep: number
+  language: AppLanguage
+  reduceTransparency: boolean
+}) {
   const labels = [
     textByLanguage(language, 'Nhận', 'Accept'),
     textByLanguage(language, 'Đến', 'Arrive'),
@@ -38,7 +47,7 @@ export function WorkerV5ProgressRail({ activeStep, language }: { activeStep: num
     textByLanguage(language, 'Duyệt', 'Review'),
     textByLanguage(language, 'Đóng', 'Close'),
   ]
-  return <WorkerV5Rail labels={labels} activeStep={activeStep} testID="worker-v5-progress-rail" />
+  return <WorkerV5Rail labels={labels} activeStep={activeStep} reduceTransparency={reduceTransparency} testID="worker-v5-progress-rail" />
 }
 
 export function WorkerV5WorkProgressBoard({
@@ -71,9 +80,24 @@ export function WorkerV5WorkProgressBoard({
   )
 }
 
-function WorkerV5Rail({ activeStep, labels, testID }: { activeStep: number; labels: readonly string[]; testID: string }) {
+function WorkerV5Rail({
+  activeStep,
+  labels,
+  reduceTransparency,
+  testID,
+}: {
+  activeStep: number
+  labels: readonly string[]
+  reduceTransparency: boolean
+  testID: string
+}) {
   return (
-    <View style={styles.railCard} testID={testID}>
+    <View style={[styles.railCard, reduceTransparency && styles.opaqueCard]} testID={testID}>
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="ScopeChangeProgressRail"
+        testID="worker-v5-progress-rail-formula-mint-aura"
+      />
       <View style={styles.progressRail}>
         {labels.map((label, index) => {
           const step = index + 1

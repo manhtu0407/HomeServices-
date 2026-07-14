@@ -2,6 +2,11 @@ import {
   availabilityToggleSchema,
   customerCancellationRequestSchema,
   customerKaelFeedbackSchema,
+  customerKaelConversationCreateSchema,
+  customerKaelConversationModeSchema,
+  customerKaelConversationPinSchema,
+  customerKaelConversationRenameSchema,
+  customerKaelConversationTurnSchema,
   customerScopeDecisionSchema,
   updateKaelMemorySchema,
   disputeAdminDecisionSchema,
@@ -19,6 +24,9 @@ import {
   kaelChatMediaUploadSchema,
   kaelChatTurnSchema,
   workerKaelChatCreateSchema,
+  workerKaelChatModeSchema,
+  workerKaelChatPinSchema,
+  workerKaelChatRenameSchema,
   workerKaelChatTurnSchema,
   workerKaelFeedbackSchema,
   workerKaelTrainingConsentSchema,
@@ -29,14 +37,18 @@ import {
   workerCancellationDecisionSchema,
   workerCancellationRequestSchema,
   workerRegisterSchema,
+  workerAvatarUploadSchema,
+  workerAvatarUpdateSchema,
   workerServiceAreaUpdateSchema,
   workerScopeChangeSchema,
   LEARNING_CANDIDATE_STATUSES,
 } from "../../_shared/domain.ts";
 import type {
   ComplexityLevel,
+  EdgeCustomerKaelConversationMode,
   LearningCandidateStatus,
   ServiceType,
+  WorkerKaelChatCreateInput,
 } from "../../_shared/domain.ts";
 import { enforceKaelRuntimePathControl } from "./router-kael-path-control.ts";
 import { priceSynthesisAbCaseSchema } from "./kael/price-synthesis-ab.ts";
@@ -289,6 +301,39 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.answerKaelAssistant(ctx, input.data);
     }
+    case "customer.kaelConversations.create": {
+      const input = customerKaelConversationCreateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.createCustomerKaelConversation(ctx, input.data);
+    }
+    case "customer.kaelConversations.list":
+      return services.listCustomerKaelConversations(
+        ctx,
+        customerKaelConversationModeParam(new URL(request.url)),
+      );
+    case "customer.kaelConversations.archive":
+      return services.archiveCustomerKaelConversation(
+        ctx,
+        route.conversationId,
+        new URL(request.url).searchParams.get("confirm_case_work") === "true",
+      );
+    case "customer.kaelConversations.rename": {
+      const input = customerKaelConversationRenameSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.renameCustomerKaelConversation(ctx, route.conversationId, input.data);
+    }
+    case "customer.kaelConversations.pin": {
+      const input = customerKaelConversationPinSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.setCustomerKaelConversationPinned(ctx, route.conversationId, input.data);
+    }
+    case "customer.kaelConversations.get":
+      return services.getCustomerKaelConversation(ctx, route.conversationId);
+    case "customer.kaelConversations.turn": {
+      const input = customerKaelConversationTurnSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.sendCustomerKaelConversationTurn(ctx, route.conversationId, input.data);
+    }
     case "kael.chat.mediaUpload": {
       const input = kaelChatMediaUploadSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -453,6 +498,8 @@ async function dispatchRoute(
     }
     case "me.jobs.active":
       return services.listCustomerActiveJobs(ctx);
+    case "me.jobs.history":
+      return services.listCustomerServiceHistory(ctx);
     case "me.kaelFeedback": {
       const input = customerKaelFeedbackSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -485,6 +532,18 @@ async function dispatchRoute(
     }
     case "workers.me":
       return services.getWorkerProfile(ctx);
+    case "workers.avatarUpload": {
+      const input = workerAvatarUploadSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Ảnh đại diện không hợp lệ", 400);
+      return services.createWorkerAvatarUpload(ctx, input.data);
+    }
+    case "workers.avatar": {
+      const input = workerAvatarUpdateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Ảnh đại diện không hợp lệ", 400);
+      return services.updateWorkerAvatar(ctx, input.data);
+    }
+    case "workers.activityMinute":
+      return services.recordWorkerAppActiveMinute(ctx);
     case "workers.performanceInsights":
       return services.getWorkerPerformanceInsights(ctx);
     case "workers.serviceArea": {
@@ -500,7 +559,22 @@ async function dispatchRoute(
       return services.createWorkerKaelChat(ctx, input.data);
     }
     case "workers.kaelChat.list":
-      return services.listWorkerKaelChats(ctx);
+      return services.listWorkerKaelChats(
+        ctx,
+        workerKaelChatModeParam(new URL(request.url)),
+      );
+    case "workers.kaelChat.archive":
+      return services.archiveWorkerKaelChat(ctx, route.sessionId);
+    case "workers.kaelChat.pin": {
+      const input = workerKaelChatPinSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.setWorkerKaelChatPinned(ctx, route.sessionId, input.data);
+    }
+    case "workers.kaelChat.rename": {
+      const input = workerKaelChatRenameSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.renameWorkerKaelChat(ctx, route.sessionId, input.data);
+    }
     case "workers.kaelChat.get":
       return services.getWorkerKaelChat(ctx, route.sessionId);
     case "workers.kaelChat.stream": {
@@ -724,6 +798,26 @@ function kaelLearningCandidateListInput(url: URL): KaelLearningCandidateListInpu
     state,
     limit: optionalPositiveInt(url.searchParams.get("limit"), 1, 100),
   };
+}
+
+function workerKaelChatModeParam(url: URL): WorkerKaelChatCreateInput["mode"] {
+  const parsed = workerKaelChatModeSchema.safeParse(
+    url.searchParams.get("mode") ?? undefined,
+  );
+  if (!parsed.success) {
+    apiFailure("VALIDATION", "Chế độ trò chuyện Kael không hợp lệ", 400);
+  }
+  return parsed.data;
+}
+
+function customerKaelConversationModeParam(url: URL): EdgeCustomerKaelConversationMode {
+  const parsed = customerKaelConversationModeSchema.safeParse(
+    url.searchParams.get("mode") ?? undefined,
+  );
+  if (!parsed.success) {
+    apiFailure("VALIDATION", "Chế độ trò chuyện Kael không hợp lệ", 400);
+  }
+  return parsed.data;
 }
 
 function learningCandidateStatusParam(

@@ -220,6 +220,7 @@ export type EdgeCustomerProfileInsightsResponse = {
   completed_service_count: number;
   saved_address_count: number;
   preferred_service_count: number;
+  active_service_days: number;
   active_streak_days: number;
   positive_review_rate_percent: number;
   price_savings_vnd: number;
@@ -353,41 +354,6 @@ export type EdgeWorkerKaelClarifyResponse = {
     text: string;
     safety_notes: string[];
   };
-};
-export type EdgeWorkerKaelChatStatus = "active" | "closed" | "escalated" | "error";
-export type EdgeWorkerKaelChatTurnResponse = {
-  id: string;
-  session_id: string;
-  turn_index: number;
-  role: "worker" | "kael" | "system";
-  content_type: "text" | "clarification" | "guidance" | "photo_request" | "photo_attached" | "error";
-  text_content: string | null;
-  media_refs: string[];
-  safety_notes: string[];
-  created_at: string;
-};
-export type EdgeWorkerKaelChatSessionResponse = {
-  id: string;
-  job_id: string;
-  worker_id: string;
-  status: EdgeWorkerKaelChatStatus;
-  started_at: string;
-  closed_at: string | null;
-  total_turns: number;
-  progress: {
-    current_stage: string;
-    status: "queued" | "running" | "completed" | "failed";
-    progress: number;
-    failure_reason: string | null;
-    updated_at: string;
-  } | null;
-};
-export type EdgeWorkerKaelChatResponse = {
-  session: EdgeWorkerKaelChatSessionResponse;
-  turns: EdgeWorkerKaelChatTurnResponse[];
-};
-export type EdgeWorkerKaelChatListResponse = {
-  sessions: EdgeWorkerKaelChatSessionResponse[];
 };
 export type EdgeWorkerKaelFeedbackResponse = {
   feedback_id: string;
@@ -715,6 +681,9 @@ export type EdgeWorkerPerformanceInsightsResponse = {
 };
 export type EdgeWorkerProfileResponse = {
   id: string;
+  avatar_url: string | null;
+  active_minutes: number;
+  last_active_at: string | null;
   verification_status: WorkerVerificationStatus;
   is_available: boolean;
   is_approved: boolean;
@@ -735,6 +704,25 @@ export type EdgeWorkerProfileResponse = {
   bank_name: string | null;
   has_cccd: boolean;
   has_selfie: boolean;
+};
+export type EdgeWorkerAvatarUploadResponse = {
+  bucket_id: "worker-avatars";
+  object_path: string;
+  avatar_ref: string;
+  token: string;
+  signed_upload_url: string;
+  expires_in_seconds: number;
+};
+export type EdgeWorkerAvatarUpdateResponse = {
+  worker_id: string;
+  avatar_url: string;
+  updated_at: string;
+};
+export type EdgeWorkerActivityMinuteResponse = {
+  worker_id: string;
+  active_minutes: number;
+  last_active_at: string;
+  incremented: boolean;
 };
 export type EdgeJobDetailResponse = {
   job: {
@@ -770,6 +758,13 @@ export type EdgeJobDetailResponse = {
     paid_at: string | null;
     reviewed_at: string | null;
   };
+  worker: {
+    avatar_url: string | null;
+    full_name: string;
+    id: string;
+    rating: number;
+    total_jobs: number;
+  } | null;
   broadcast_state: {
     active_count: number;
     seconds_remaining: number | null;

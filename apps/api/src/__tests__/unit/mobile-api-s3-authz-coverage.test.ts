@@ -35,6 +35,10 @@ const caseWorkRouteLayerPath = resolve(
   here,
   '../../../../../supabase/functions/mobile-api/_shared/router/case-work-resource-routes.ts',
 )
+const workerKaelChatRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/router/worker-kael-chat-routes.ts',
+)
 
 /**
  * Every resource-scoped route -> the ownership mechanism that fails closed for it.
@@ -81,7 +85,10 @@ const GUARDED: Record<string, string> = {
   'kael.chat.confirm': 'confirm_kael_chat_atomic p_customer_id',
   'kael.chat.evidence': 'assertKaelSessionOwnership',
   // Kael worker chat sessions — readWorkerKaelSession ownership
+  'workers.kaelChat.archive': 'readWorkerKaelSession ownership + soft archive only',
   'workers.kaelChat.get': 'readWorkerKaelSession ownership',
+  'workers.kaelChat.pin': 'readWorkerKaelSession ownership before pin update',
+  'workers.kaelChat.rename': 'readWorkerKaelSession ownership before update',
   'workers.kaelChat.stream': 'readWorkerKaelSession ownership',
   'workers.kaelChat.turn': 'readWorkerKaelSession ownership',
   // worker route reads — job query is constrained to the authenticated worker id
@@ -103,7 +110,11 @@ function deriveResourceScopedRoutes(): Set<string> {
   const unionEnd = src.indexOf('function matchRoute(')
   expect(unionStart, 'Route union must exist in router routes layer').toBeGreaterThanOrEqual(0)
   expect(unionEnd, 'matchRoute must follow the Route union').toBeGreaterThan(unionStart)
-  const union = `${src.slice(unionStart, unionEnd)}\n${readFileSync(caseWorkRouteLayerPath, 'utf8')}`
+  const union = [
+    src.slice(unionStart, unionEnd),
+    readFileSync(caseWorkRouteLayerPath, 'utf8'),
+    readFileSync(workerKaelChatRouteLayerPath, 'utf8'),
+  ].join('\n')
 
   const kindRe = /kind:\s*"([^"]+)"/g
   const matches = [...union.matchAll(kindRe)]

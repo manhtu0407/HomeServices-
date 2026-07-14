@@ -7,6 +7,7 @@ import {
 } from 'react-native'
 
 import type { WorkerV5ScreenId } from '../dock/types'
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { WorkerV5IntegratedIcon, type WorkerV5IntegratedIconTone } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail, type WorkerV5DetailRailItem } from '../ui/worker-v5-detail-rail'
 import { styles } from './action-styles'
@@ -53,6 +54,11 @@ export function WorkerV5HomeQuickActionGrid({
           ]}
           testID={`worker-v5-quick-action-${index}`}
         >
+          <WorkerV5FormulaMintCardAura
+            reduceTransparency={reduceTransparency}
+            scope={`HomeQuickAction${index}`}
+            testID={`worker-v5-home-quick-action-formula-mint-aura-${index}`}
+          />
           <WorkerV5IntegratedIcon bleed={10} image={item.icon} reduceTransparency={reduceTransparency} tone={item.tone} variant="compactPanel" />
           <View style={styles.quickActionText}>
             <Text style={styles.quickActionTitle} numberOfLines={2} testID={`worker-v5-quick-action-title-${index}`}>{item.title}</Text>

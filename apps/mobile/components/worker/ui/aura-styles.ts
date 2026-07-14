@@ -1,6 +1,13 @@
 import { StyleSheet } from 'react-native'
 
 export const styles = StyleSheet.create({
+  workerV5FormulaMintCardAura: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  workerV5FormulaMintCardAuraOpaque: {
+    backgroundColor: '#EFFAF7',
+  },
   successCheckFill: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 0,

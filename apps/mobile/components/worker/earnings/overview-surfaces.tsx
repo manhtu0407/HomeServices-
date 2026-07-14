@@ -8,6 +8,7 @@ import {
 
 import type { AppLanguage } from '@/lib/app-language'
 
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { formatCompactVnd, formatVndDong, textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
@@ -67,6 +68,11 @@ export function WorkerV5EarningsHero({
   ]
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-earnings-hero">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="EarningsOverviewHero"
+        testID="worker-v5-earnings-hero-formula-mint-aura"
+      />
       <View style={styles.earningsHeroContent}>
         <View style={styles.earningsHeroMainRow}>
           <View style={styles.earningsHeroCopy}>
@@ -125,6 +131,11 @@ export function WorkerV5EarningsTransactionList({
 }) {
   return (
     <View style={[styles.earningsTransactionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-earnings-transactions">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="EarningsTransactionList"
+        testID="worker-v5-earnings-transactions-formula-mint-aura"
+      />
       {recent.length ? recent.map((row, index) => (
         <View key={row.date} style={styles.earningsTransactionRow} testID={`worker-v5-earnings-transaction-${index}`}>
           <WorkerV5IntegratedIcon bleed={13} image={documentIcon} reduceTransparency={reduceTransparency} tone="document" variant="panel" />

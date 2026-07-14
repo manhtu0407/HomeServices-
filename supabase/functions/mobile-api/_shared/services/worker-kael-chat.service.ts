@@ -8,14 +8,14 @@ import { ACTIVE_WORKER_JOB_STATUSES, compactMetadata } from "./_shared.ts";
 import { auditGuardrailTripBestEffort, isWorkerAssistGuardrailReason } from "./audit.ts";
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { runWorkerAssist, sanitizeKaelText, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type WorkerAssistProviderAttempt, type EdgeAiSecrets } from "../kael/index.ts";
+import { buildWorkerKaelSessionTitle, runWorkerAssist, sanitizeKaelText, sanitizeWorkerKaelSessionTitle, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type WorkerAssistProviderAttempt, type EdgeAiSecrets } from "../kael/index.ts";
 import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
 import { analyzeDescription } from "../kael/vision.ts";
 import { kaelChatProgressSchema, sanitizeForLLM } from "../../../_shared/domain.ts";
-import type { JobStatus, KaelWorkerClarifyInput, WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../../_shared/domain.ts";
+import type { EdgeWorkerKaelChatPinInput, EdgeWorkerKaelChatRenameInput, JobStatus, KaelWorkerClarifyInput, WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../../_shared/domain.ts";
 
 const WORKER_KAEL_SESSION_SELECT =
-  "id, job_id, worker_id, status, started_at, closed_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";
+  "id, job_id, chat_mode, worker_id, status, title, pinned_at, started_at, closed_at, archived_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";
 const WORKER_KAEL_TURN_SELECT =
   "id, session_id, job_id, turn_index, role, content_type, text_content, media_refs, safe_metadata, created_at";
 const WORKER_KAEL_PRIVATE_METADATA_KEY = "safe_" + "metadata";
@@ -97,6 +97,7 @@ export async function createWorkerKaelChat(
       client,
       ctx.user.id,
       input.job_id,
+      input.mode,
       input.client_request_id,
     );
     if (existing) return getWorkerKaelChat(ctx, existing);
@@ -108,6 +109,7 @@ export async function createWorkerKaelChat(
       .insert({
         worker_id: ctx.user.id,
         job_id: input.job_id,
+        chat_mode: input.mode,
         status: "active",
         client_request_id: input.client_request_id ?? null,
         safe_metadata: compactMetadata({
@@ -125,6 +127,7 @@ export async function createWorkerKaelChat(
       client,
       ctx.user.id,
       input.job_id,
+      input.mode,
       input.client_request_id,
     );
     if (recovered) return getWorkerKaelChat(ctx, recovered);
@@ -137,13 +140,19 @@ export async function createWorkerKaelChat(
   return getWorkerKaelChat(ctx, sessionId);
 }
 
-export async function listWorkerKaelChats(ctx: MobileApiContext) {
+export async function listWorkerKaelChats(
+  ctx: MobileApiContext,
+  mode: WorkerKaelChatCreateInput["mode"],
+) {
   const client = db(ctx);
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client
       .from("kael_worker_chat_sessions")
       .select(WORKER_KAEL_SESSION_SELECT)
       .eq("worker_id", ctx.user.id)
+      .eq("chat_mode", mode)
+      .is("archived_at", null)
+      .order("pinned_at", { ascending: false, nullsFirst: false })
       .order("updated_at", { ascending: false })
       .limit(20),
   );
@@ -153,6 +162,91 @@ export async function listWorkerKaelChats(ctx: MobileApiContext) {
   return {
     sessions: (result.data ?? []).map(serializeWorkerKaelSession),
   };
+}
+
+export async function archiveWorkerKaelChat(
+  ctx: MobileApiContext,
+  sessionId: string,
+) {
+  const client = db(ctx);
+  const session = await readWorkerKaelSession(client, ctx, sessionId);
+  const archivedAt = new Date().toISOString();
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_sessions")
+      .update({
+        archived_at: archivedAt,
+        closed_at: nullableString(session.closed_at) ?? archivedAt,
+        status: "closed",
+      })
+      .eq("id", sessionId)
+      .is("archived_at", null)
+      .select("id, archived_at")
+      .maybeSingle(),
+  );
+  const persistedArchivedAt = result.data
+    ? nullableString(result.data.archived_at)
+    : null;
+  if (result.error || !result.data || !persistedArchivedAt) {
+    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
+  }
+  return {
+    session_id: asString(result.data.id),
+    archived_at: persistedArchivedAt,
+  };
+}
+
+export async function renameWorkerKaelChat(
+  ctx: MobileApiContext,
+  sessionId: string,
+  input: EdgeWorkerKaelChatRenameInput,
+) {
+  const client = db(ctx);
+  await readWorkerKaelSession(client, ctx, sessionId);
+  const title = sanitizeWorkerKaelSessionTitle(input.title);
+  if (!title) {
+    apiFailure(
+      "VALIDATION",
+      "Tên phiên không được chứa thông tin liên hệ hoặc địa chỉ riêng tư",
+      400,
+    );
+  }
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_sessions")
+      .update({ title })
+      .eq("id", sessionId)
+      .is("archived_at", null)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
+  }
+  return getWorkerKaelChat(ctx, sessionId);
+}
+
+export async function setWorkerKaelChatPinned(
+  ctx: MobileApiContext,
+  sessionId: string,
+  input: EdgeWorkerKaelChatPinInput,
+) {
+  const client = db(ctx);
+  await readWorkerKaelSession(client, ctx, sessionId);
+  const pinnedAt = input.pinned ? new Date().toISOString() : null;
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_sessions")
+      .update({ pinned_at: pinnedAt })
+      .eq("id", sessionId)
+      .is("archived_at", null)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
+  }
+  return getWorkerKaelChat(ctx, sessionId);
 }
 
 export async function getWorkerKaelChat(
@@ -213,6 +307,7 @@ export async function sendWorkerKaelChatTurn(
   });
 
   const previousTurns = asNumber(session.total_turns);
+  const needsInitialTitle = previousTurns === 0 && !nullableString(session.title);
   const safeMessage = scrubSensitiveForLLM(sanitizeForLLM(input.message));
   await insertWorkerKaelTurn(client, {
     session_id: sessionId,
@@ -322,6 +417,29 @@ export async function sendWorkerKaelChatTurn(
     });
   }
 
+  if (needsInitialTitle) {
+    const title = buildWorkerKaelSessionTitle(
+      safeMessage,
+      answer.session_title,
+      input.language,
+    );
+    const titleResult = await dbQuery<Record<string, unknown>>(
+      client
+        .from("kael_worker_chat_sessions")
+        .update({ title })
+        .eq("id", sessionId)
+        .is("title", null)
+        .select("id")
+        .maybeSingle(),
+    );
+    if (titleResult.error) {
+      console.warn("worker Kael session title persistence failed", {
+        sessionId,
+        errorCode: titleResult.error.code ?? "DB_ERROR",
+      });
+    }
+  }
+
   await appendWorkerKaelAnswerTurn(client, session, answer);
   await updateKaelProgress(client, {
     table: "kael_worker_chat_sessions",
@@ -344,6 +462,7 @@ export async function readWorkerKaelSession(
       .from("kael_worker_chat_sessions")
       .select(WORKER_KAEL_SESSION_SELECT)
       .eq("id", sessionId)
+      .is("archived_at", null)
       .single(),
   );
   if (result.error || !result.data) {
@@ -363,8 +482,11 @@ export function serializeWorkerKaelSession(row: Record<string, unknown>) {
   return {
     id: asString(row.id),
     job_id: asString(row.job_id),
+    mode: asWorkerKaelChatMode(row.chat_mode),
     worker_id: asString(row.worker_id),
     status: asWorkerKaelChatStatus(row.status),
+    title: nullableString(row.title),
+    pinned_at: nullableString(row.pinned_at),
     started_at: asString(row.started_at),
     closed_at: nullableString(row.closed_at),
     total_turns: asNumber(row.total_turns),
@@ -433,6 +555,7 @@ async function findExistingWorkerKaelSessionByClientRequest(
   client: DbClient,
   workerId: string,
   jobId: string,
+  mode: WorkerKaelChatCreateInput["mode"],
   clientRequestId: string,
 ): Promise<string | null> {
   const result = await dbQuery<Record<string, unknown>>(
@@ -441,7 +564,9 @@ async function findExistingWorkerKaelSessionByClientRequest(
       .select("id")
       .eq("worker_id", workerId)
       .eq("job_id", jobId)
+      .eq("chat_mode", mode)
       .eq("client_request_id", clientRequestId)
+      .is("archived_at", null)
       .maybeSingle(),
   );
   if (result.error || !result.data) return null;
@@ -648,6 +773,10 @@ function asWorkerKaelChatStatus(
   return value === "closed" || value === "escalated" || value === "error"
     ? value
     : "active";
+}
+
+function asWorkerKaelChatMode(value: unknown): WorkerKaelChatCreateInput["mode"] {
+  return value === "normal" ? "normal" : "intake";
 }
 
 function asWorkerKaelTurnRole(value: unknown): "worker" | "kael" | "system" {

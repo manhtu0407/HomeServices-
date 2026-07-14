@@ -29,8 +29,20 @@ export function firstRouteParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
-export function routeForWorkerV5Screen(screen: WorkerV5ScreenDefinition) {
-  return `${workerV5Routes[screen.section]}?ns_worker_screen=${encodeURIComponent(screen.id)}`
+export function routeForWorkerV5Screen(
+  screen: WorkerV5ScreenDefinition,
+  params: WorkerV5RouteParams = {},
+) {
+  const query = [`ns_worker_screen=${encodeURIComponent(screen.id)}`]
+  const auditRole = firstRouteParam(params.ns_audit_role)
+  const language = firstRouteParam(params.ns_worker_lang)
+
+  if (auditRole === 'worker') query.push('ns_audit_role=worker')
+  if (language === 'en' || language === 'vi') {
+    query.push(`ns_worker_lang=${language}`)
+  }
+
+  return `${workerV5Routes[screen.section]}?${query.join('&')}`
 }
 
 export function resolveWorkerV5ScreenId(section: WorkerV5Section, params: WorkerV5RouteParams): WorkerV5ScreenId {

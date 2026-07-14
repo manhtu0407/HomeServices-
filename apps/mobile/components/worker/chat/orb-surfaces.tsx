@@ -32,17 +32,17 @@ function Text({ style, ...props }: TextProps) {
 export function WorkerV5KaelOrbBubble({
   align,
   body,
-  role,
+  speaker,
   strongFirstLine = false,
 }: {
   align?: 'right'
   body?: string
-  role: string
+  speaker: string
   strongFirstLine?: boolean
 }) {
   return (
     <View
-      accessibilityLabel={role}
+      accessibilityLabel={speaker}
       style={[styles.kaelOrbBubble, align === 'right' ? styles.kaelOrbBubbleRight : styles.kaelOrbBubbleLeft]}
       testID={`worker-v5-kael-bubble-${align === 'right' ? 'worker' : 'kael'}`}
     >

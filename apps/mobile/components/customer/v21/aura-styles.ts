@@ -40,21 +40,6 @@ export const customerV21AuraStyles = StyleSheet.create({
     top: -20,
     zIndex: 0,
   },
-  bookingSearchMintBorder: {
-    ...StyleSheet.absoluteFillObject,
-    borderColor: 'rgba(70,224,204,0.28)',
-    borderRadius: 23,
-    borderWidth: 1,
-    zIndex: 1,
-  },
-  bookingSuggestedChipAura: {
-    bottom: -9,
-    left: -14,
-    position: 'absolute',
-    right: -14,
-    top: -9,
-    zIndex: 0,
-  },
   homeEmptySourceAura: {
     bottom: -42,
     left: -28,

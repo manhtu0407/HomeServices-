@@ -61,13 +61,6 @@ export const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
-  caseClosedHeroAura: {
-    bottom: 'auto',
-    height: 172,
-    left: '22%',
-    right: -64,
-    top: -72,
-  },
   caseClosedHeroCard: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.79)',
@@ -116,6 +109,7 @@ export const styles = StyleSheet.create({
     borderRadius: 25,
     borderWidth: 1,
     overflow: 'hidden',
+    position: 'relative',
     ...shadow.soft,
   },
   caseTrailCopy: {

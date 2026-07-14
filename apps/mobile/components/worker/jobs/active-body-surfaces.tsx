@@ -79,11 +79,13 @@ export function WorkerV5RouteEtaBody({
       <RouteMapStage deal={deal} language={language} reduceTransparency={reduceTransparency} routePreview={routePreview} />
       <EtaSummaryCard deal={deal} language={language} reduceTransparency={reduceTransparency} route={routePreview.route} />
       <WorkerV5InfoGrid
+        auraScope="ActiveRoute"
         items={[
           { label: textByLanguage(language, 'Quãng đường', 'Distance'), value: distanceSignal.label },
           { label: textByLanguage(language, 'Tín hiệu đường đi', 'Route signal'), value: etaSignal.hasSignal ? etaSignal.label : textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data') },
           { label: textByLanguage(language, 'Vùng đến nơi', 'Arrival zone'), value: destinationSignal },
         ]}
+        reduceTransparency={reduceTransparency}
       />
       <WorkerV5ActionRail
         caseWideAura={caseWideAura}

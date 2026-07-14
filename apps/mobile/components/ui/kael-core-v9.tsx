@@ -4,6 +4,7 @@ import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient } from
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
 
 import { AlphaStop as Stop } from './svg-alpha-stop'
+import { startKaelCoreV9Autoplay } from './kael-core-v9-autoplay'
 import {
   KAEL_CORE_V9_BOW_DURATION_MS,
   KAEL_CORE_V9_CONTRACT,
@@ -13,7 +14,7 @@ import {
 } from './kael-core-v9-contract'
 
 type KaelCoreV9Props = {
-  motionClip?: 'autoplay-once'
+  motionClip?: 'autoplay-loop' | 'autoplay-once'
   onBowEnd?: (source: KaelCoreV9BowSource) => void
   onBowStart?: (source: KaelCoreV9BowSource) => void
   reduceMotion?: boolean
@@ -39,17 +40,20 @@ export function KaelCoreV9({
   const lastBowAt = useRef(Number.NEGATIVE_INFINITY)
   const bowResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoplayTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const runAutoplayClipRef = useRef<() => boolean>(() => false)
+  const runAutoplayClipRef = useRef<(repeat: boolean) => boolean>(() => false)
   const shellX = useSharedValue(0)
   const shellY = useSharedValue(0)
   const shellRoll = useSharedValue(0)
   const shellPitch = useSharedValue(0)
+  const shellScaleX = useSharedValue(1)
   const shellScaleY = useSharedValue(1)
   const leftEyeX = useSharedValue(0)
   const leftEyeY = useSharedValue(0)
+  const leftEyeScaleX = useSharedValue(1)
   const leftEyeScaleY = useSharedValue(1)
   const rightEyeX = useSharedValue(0)
   const rightEyeY = useSharedValue(0)
+  const rightEyeScaleX = useSharedValue(1)
   const rightEyeScaleY = useSharedValue(1)
   const monocleRotation = useSharedValue(0)
   const bowShadeOpacity = useSharedValue(0)
@@ -58,6 +62,7 @@ export function KaelCoreV9({
   const resolvedSize = Math.min(720, Math.max(18, size))
   const compact = resolvedSize < 78
   const micro = resolvedSize < 42
+  const motionScale = Math.max(0.72, Math.min(2.5, resolvedSize / 120))
   const shellStyle = useAnimatedStyle(() => ({
     transform: [
       { perspective: 620 },
@@ -65,14 +70,15 @@ export function KaelCoreV9({
       { translateY: shellY.value },
       { rotateZ: `${shellRoll.value}deg` },
       { rotateX: `${shellPitch.value}deg` },
+      { scaleX: shellScaleX.value },
       { scaleY: shellScaleY.value },
     ],
   }))
   const leftEyeStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: '-4deg' }, { translateX: leftEyeX.value }, { translateY: leftEyeY.value }, { scaleY: leftEyeScaleY.value }],
+    transform: [{ rotate: '-4deg' }, { translateX: leftEyeX.value }, { translateY: leftEyeY.value }, { scaleX: leftEyeScaleX.value }, { scaleY: leftEyeScaleY.value }],
   }))
   const rightEyeStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: '3deg' }, { translateX: rightEyeX.value }, { translateY: rightEyeY.value }, { scaleY: rightEyeScaleY.value }],
+    transform: [{ rotate: '3deg' }, { translateX: rightEyeX.value }, { translateY: rightEyeY.value }, { scaleX: rightEyeScaleX.value }, { scaleY: rightEyeScaleY.value }],
   }))
   const monocleStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${monocleRotation.value}deg` }] }))
   const bowShadeStyle = useAnimatedStyle(() => ({ opacity: bowShadeOpacity.value }))
@@ -91,10 +97,8 @@ export function KaelCoreV9({
     if (autoplayTimer.current) clearTimeout(autoplayTimer.current)
   }, [])
 
-  const runAutoplayClip = useCallback(() => {
-    if (reduceMotion) return false
-
-    for (const value of [shellX, shellY, shellRoll, shellPitch, shellScaleY, leftEyeX, leftEyeY, leftEyeScaleY, rightEyeX, rightEyeY, rightEyeScaleY, monocleRotation, bowShadeOpacity, lensGlintOpacity]) {
+  const stopAutoplayClip = useCallback(() => {
+    for (const value of [shellX, shellY, shellRoll, shellPitch, shellScaleX, shellScaleY, leftEyeX, leftEyeY, leftEyeScaleX, leftEyeScaleY, rightEyeX, rightEyeY, rightEyeScaleX, rightEyeScaleY, monocleRotation, bowShadeOpacity, lensGlintOpacity]) {
       cancelAnimation(value)
     }
 
@@ -102,43 +106,63 @@ export function KaelCoreV9({
     shellY.value = 0
     shellRoll.value = 0
     shellPitch.value = 0
+    shellScaleX.value = 1
     shellScaleY.value = 1
     leftEyeX.value = 0
     leftEyeY.value = 0
+    leftEyeScaleX.value = 1
     leftEyeScaleY.value = 1
     rightEyeX.value = 0
     rightEyeY.value = 0
+    rightEyeScaleX.value = 1
     rightEyeScaleY.value = 1
     monocleRotation.value = 0
     bowShadeOpacity.value = 0
-    lensGlintOpacity.value = 0.08
+    lensGlintOpacity.value = 0.16
+  }, [bowShadeOpacity, leftEyeScaleX, leftEyeScaleY, leftEyeX, leftEyeY, lensGlintOpacity, monocleRotation, rightEyeScaleX, rightEyeScaleY, rightEyeX, rightEyeY, shellPitch, shellRoll, shellScaleX, shellScaleY, shellX, shellY])
 
-    shellX.value = withSequence(withDelay(304, withTiming(-5.7, { duration: 532 })), withTiming(-6.4, { duration: 532 }), withTiming(-1.45, { duration: 532 }), withTiming(4.6, { duration: 494 }), withTiming(3.8, { duration: 342 }), withTiming(0.2, { duration: 380 }), withTiming(0, { duration: 342 }), withTiming(0, { duration: 342 }))
-    shellY.value = withSequence(withDelay(304, withTiming(-2, { duration: 532 })), withTiming(-1.7, { duration: 532 }), withTiming(-0.6, { duration: 532 }), withTiming(-2.35, { duration: 494 }), withTiming(-1.75, { duration: 342 }), withTiming(2.3, { duration: 380 }), withTiming(-0.78, { duration: 342 }), withTiming(0, { duration: 342 }))
-    shellRoll.value = withSequence(withDelay(304, withTiming(-3.4, { duration: 532 })), withTiming(-2.7, { duration: 532 }), withTiming(-0.4, { duration: 532 }), withTiming(2.8, { duration: 494 }), withTiming(1.9, { duration: 342 }), withTiming(0, { duration: 380 }), withTiming(-0.6, { duration: 342 }), withTiming(0, { duration: 342 }))
-    shellPitch.value = withSequence(withDelay(304, withTiming(-1, { duration: 532 })), withTiming(-0.4, { duration: 532 }), withTiming(0, { duration: 532 }), withTiming(-1, { duration: 494 }), withTiming(-0.4, { duration: 342 }), withTiming(7, { duration: 380 }), withTiming(-0.6, { duration: 342 }), withTiming(0, { duration: 342 }))
-    shellScaleY.value = withSequence(withDelay(304, withTiming(1.035, { duration: 532 })), withTiming(1.03, { duration: 532 }), withTiming(1.012, { duration: 532 }), withTiming(1.045, { duration: 494 }), withTiming(1.034, { duration: 342 }), withTiming(0.955, { duration: 380 }), withTiming(1.012, { duration: 342 }), withTiming(1, { duration: 342 }))
-    leftEyeX.value = withSequence(withDelay(798, withTiming(-1.55, { duration: 38 })), withTiming(-1.55, { duration: 722 }), withTiming(-0.18, { duration: 494 }), withTiming(0.28, { duration: 342 }), withTiming(0.1, { duration: 380 }), withTiming(0, { duration: 684 }))
-    rightEyeX.value = withSequence(withDelay(874, withTiming(-1.32, { duration: 38 })), withTiming(-1.32, { duration: 722 }), withTiming(0.14, { duration: 494 }), withTiming(-0.22, { duration: 342 }), withTiming(-0.08, { duration: 380 }), withTiming(0, { duration: 608 }))
-    leftEyeY.value = withSequence(withDelay(342, withTiming(0.18, { duration: 38 })), withTiming(0, { duration: 38 }), withTiming(-0.2, { duration: 380 }), withTiming(-0.08, { duration: 494 }), withTiming(-0.38, { duration: 342 }), withTiming(-0.2, { duration: 342 }), withTiming(1.32, { duration: 380 }), withTiming(-0.16, { duration: 342 }), withTiming(0, { duration: 342 }))
-    rightEyeY.value = withSequence(withDelay(380, withTiming(0.18, { duration: 38 })), withTiming(0, { duration: 38 }), withTiming(-0.18, { duration: 418 }), withTiming(-0.08, { duration: 494 }), withTiming(-0.38, { duration: 342 }), withTiming(-0.2, { duration: 342 }), withTiming(1.32, { duration: 380 }), withTiming(-0.16, { duration: 342 }), withTiming(0, { duration: 342 }))
-    leftEyeScaleY.value = withSequence(withDelay(342, withTiming(0.22, { duration: 38 })), withTiming(1, { duration: 38 }), withTiming(1.04, { duration: 380 }), withTiming(1.02, { duration: 494 }), withTiming(1.13, { duration: 342 }), withTiming(1.08, { duration: 342 }), withTiming(0.58, { duration: 380 }), withTiming(1.08, { duration: 342 }), withTiming(1, { duration: 342 }))
-    rightEyeScaleY.value = withSequence(withDelay(380, withTiming(0.22, { duration: 38 })), withTiming(1, { duration: 38 }), withTiming(1.04, { duration: 418 }), withTiming(1.02, { duration: 494 }), withTiming(1.13, { duration: 342 }), withTiming(1.08, { duration: 342 }), withTiming(0.58, { duration: 380 }), withTiming(1.08, { duration: 342 }), withTiming(1, { duration: 342 }))
-    monocleRotation.value = withSequence(withDelay(874, withTiming(-3.4, { duration: 456 })), withTiming(1.2, { duration: 608 }), withTiming(4, { duration: 494 }), withTiming(-1.8, { duration: 342 }), withTiming(5.8, { duration: 380 }), withTiming(-0.8, { duration: 342 }), withTiming(0, { duration: 342 }))
-    lensGlintOpacity.value = withSequence(withDelay(1026, withTiming(0.88, { duration: 76 })), withTiming(0.1, { duration: 266 }), withTiming(0.1, { duration: 798 }), withTiming(0.98, { duration: 76 }), withTiming(0.08, { duration: 152 }), withTiming(0.08, { duration: 1406 }))
+  const runAutoplayClip = useCallback((repeat: boolean) => {
+    if (reduceMotion) return false
+
+    stopAutoplayClip()
+    lensGlintOpacity.value = 0.08
+    startKaelCoreV9Autoplay({
+      leftEyeScaleX,
+      leftEyeScaleY,
+      leftEyeX,
+      leftEyeY,
+      lensGlintOpacity,
+      monocleRotation,
+      rightEyeScaleX,
+      rightEyeScaleY,
+      rightEyeX,
+      rightEyeY,
+      shellPitch,
+      shellRoll,
+      shellScaleX,
+      shellScaleY,
+      shellX,
+      shellY,
+    }, { motionScale, repeat })
     return true
-  }, [bowShadeOpacity, leftEyeScaleY, leftEyeX, leftEyeY, lensGlintOpacity, monocleRotation, reduceMotion, rightEyeScaleY, rightEyeX, rightEyeY, shellPitch, shellRoll, shellScaleY, shellX, shellY])
+  }, [leftEyeScaleX, leftEyeScaleY, leftEyeX, leftEyeY, lensGlintOpacity, monocleRotation, motionScale, reduceMotion, rightEyeScaleX, rightEyeScaleY, rightEyeX, rightEyeY, shellPitch, shellRoll, shellScaleX, shellScaleY, shellX, shellY, stopAutoplayClip])
   runAutoplayClipRef.current = runAutoplayClip
 
   useEffect(() => {
-    if (motionClip !== 'autoplay-once' || reduceMotion) return
+    if (autoplayTimer.current) clearTimeout(autoplayTimer.current)
+    if (!motionClip || reduceMotion) {
+      stopAutoplayClip()
+      return
+    }
+    const repeat = motionClip === 'autoplay-loop'
     autoplayTimer.current = setTimeout(() => {
-      runAutoplayClipRef.current()
+      runAutoplayClipRef.current(repeat)
     }, 0)
     return () => {
       if (autoplayTimer.current) clearTimeout(autoplayTimer.current)
+      stopAutoplayClip()
     }
-  }, [motionClip, reduceMotion])
+  }, [motionClip, reduceMotion, stopAutoplayClip])
 
   const bow = useCallback((source: KaelCoreV9BowSource = 'api') => {
     const now = Date.now()
@@ -148,11 +172,14 @@ export function KaelCoreV9({
     lastBowAt.current = now
     onBowStart?.(source)
 
-    for (const value of [shellX, shellY, shellRoll, shellPitch, shellScaleY, leftEyeX, leftEyeY, leftEyeScaleY, rightEyeX, rightEyeY, rightEyeScaleY, monocleRotation, bowShadeOpacity, lensGlintOpacity]) {
+    for (const value of [shellX, shellY, shellRoll, shellPitch, shellScaleX, shellScaleY, leftEyeX, leftEyeY, leftEyeScaleX, leftEyeScaleY, rightEyeX, rightEyeY, rightEyeScaleX, rightEyeScaleY, monocleRotation, bowShadeOpacity, lensGlintOpacity]) {
       cancelAnimation(value)
     }
     shellX.value = 0
     shellRoll.value = 0
+    shellScaleX.value = 1
+    leftEyeScaleX.value = 1
+    rightEyeScaleX.value = 1
 
     if (reduceMotion) {
       shellY.value = withSequence(withTiming(2.2, { duration: 220 }), withTiming(0, { duration: 260 }))
@@ -182,7 +209,7 @@ export function KaelCoreV9({
     lensGlintOpacity.value = withSequence(withTiming(0.52, { duration: 146 }), withTiming(0.2, { duration: 195 }), withTiming(0.1, { duration: 464 }), withTiming(0.26, { duration: 220 }), withTiming(0.16, { duration: 195 }))
     completeBow(source, KAEL_CORE_V9_BOW_DURATION_MS)
     return true
-  }, [bowShadeOpacity, completeBow, leftEyeScaleY, leftEyeX, leftEyeY, lensGlintOpacity, monocleRotation, onBowStart, reduceMotion, rightEyeScaleY, rightEyeX, rightEyeY, shellPitch, shellRoll, shellScaleY, shellX, shellY])
+  }, [bowShadeOpacity, completeBow, leftEyeScaleX, leftEyeScaleY, leftEyeX, leftEyeY, lensGlintOpacity, monocleRotation, onBowStart, reduceMotion, rightEyeScaleX, rightEyeScaleY, rightEyeX, rightEyeY, shellPitch, shellRoll, shellScaleX, shellScaleY, shellX, shellY])
 
   useImperativeHandle(ref, () => ({ bow }), [bow])
 

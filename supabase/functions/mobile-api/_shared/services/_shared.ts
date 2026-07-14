@@ -509,6 +509,9 @@ export function maskBankAccount(account: string | null): string | null {
 export function blankWorkerProfile(workerId: string) {
   return {
     id: workerId,
+    avatar_url: null,
+    active_minutes: 0,
+    last_active_at: null,
     verification_status: "draft" as const,
     is_available: false,
     is_approved: false,

@@ -52,6 +52,7 @@ import {
   sameWorkerProfile,
 } from './frontend-workflow/comparisons'
 import { localizeWorkflowError } from './frontend-workflow/errors'
+import { uploadWorkerAvatar, type WorkerAvatarDraft } from './worker-avatar-upload'
 import {
   ACTIVE_TIMELINE_STATUSES,
   currentWorkerMonthRange,
@@ -132,6 +133,7 @@ type FrontendWorkflowActions = {
   submitReview: (input: Omit<ReviewInput, 'job_id'>) => Promise<boolean>
   workerUpdateAvailability: (isAvailable: boolean) => Promise<boolean>
   workerUpdateServiceArea: (input: WorkerServiceAreaUpdateInput) => Promise<boolean>
+  workerUploadAvatar: (input: WorkerAvatarDraft) => Promise<boolean>
   workerSavePayoutMethod: (input: WorkerPayoutMethodSaveInput) => Promise<boolean | WorkerPayoutMethodSaveResult>
   refreshNotifications: () => Promise<boolean>
   markNotificationRead: (notificationId: string) => Promise<boolean>
@@ -230,6 +232,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const stateRef = useRef(state)
   const workerAvailabilityPreferenceRef = useRef<{ sessionUserId: string | null; value: boolean } | null>(null)
   const workerRefreshRequestIdRef = useRef(0)
+  const workerActivityHeartbeatBusyRef = useRef(false)
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
   const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
@@ -510,15 +513,17 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRefreshRequestIdRef.current = workerRefreshRequestId
     const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
-    const profile = await workerService.getProfile()
+    const [profile, earnings, performanceInsights, broadcasts, jobs] = await Promise.all([
+      workerService.getProfile(),
+      workerService.getEarnings(currentWorkerMonthRange()),
+      workerService.getPerformanceInsights(),
+      workerService.getBroadcasts(),
+      workerService.getJobs(),
+    ])
     if (!isCurrentWorkerRefresh()) return true
     if (!profile.success) return setRemoteError(profile.error)
 
-    const earnings = await workerService.getEarnings(currentWorkerMonthRange())
-    if (!isCurrentWorkerRefresh()) return true
     const nextEarnings = earnings.success ? earnings.data : null
-    const performanceInsights = await workerService.getPerformanceInsights()
-    if (!isCurrentWorkerRefresh()) return true
     const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
     const pendingAvailabilityPreference = workerAvailabilityPreferenceRef.current?.sessionUserId === sessionUserId
       ? workerAvailabilityPreferenceRef.current.value
@@ -551,13 +556,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
           }
     })
 
-    const broadcasts = await workerService.getBroadcasts()
-    if (!isCurrentWorkerRefresh()) return true
     if (!broadcasts.success) return setRemoteError(broadcasts.error)
     const nextBroadcast = broadcasts.data.broadcasts[0]
 
-    const jobs = await workerService.getJobs()
-    if (!isCurrentWorkerRefresh()) return true
     if (!jobs.success) {
       if (nextBroadcast) {
         dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
@@ -599,14 +600,17 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [role, sessionUserId, setRemoteError])
 
-  const workerUpdateAvailability = useCallback(async (isAvailable: boolean) => {
+  const workerUpdateAvailability = useCallback(async (
+    isAvailable: boolean,
+    options: { revalidate?: boolean } = {},
+  ) => {
     const updated = await workerService.updateAvailability({ is_available: isAvailable })
     if (!updated.success) return setRemoteError(updated.error)
     workerAvailabilityPreferenceRef.current = { sessionUserId, value: updated.data.is_available }
     setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
       ? { ...current, profile: { ...current.profile, is_available: updated.data.is_available } }
       : current)
-    void workerRefresh().catch(() => undefined)
+    if (options.revalidate !== false) void workerRefresh().catch(() => undefined)
     return true
   }, [sessionUserId, setRemoteError, workerRefresh])
 
@@ -624,6 +628,18 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     await workerRefresh()
     return true
   }, [sessionUserId, setRemoteError, workerRefresh])
+
+  const workerUploadAvatar = useCallback(async (input: WorkerAvatarDraft) => {
+    const uploaded = await uploadWorkerAvatar(input)
+    if (!uploaded.success) return setRemoteError(uploaded.error)
+    setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
+      ? {
+          ...current,
+          profile: { ...current.profile, avatar_url: uploaded.data.avatar_url },
+        }
+      : current)
+    return true
+  }, [sessionUserId, setRemoteError])
 
   const workerSavePayoutMethod = useCallback(async (input: WorkerPayoutMethodSaveInput) => {
     const result = await workerService.savePayoutMethod(input)
@@ -964,6 +980,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     submitReview,
     workerUpdateAvailability,
     workerUpdateServiceArea,
+    workerUploadAvatar,
     workerSavePayoutMethod,
     refreshNotifications,
     markNotificationRead,
@@ -1003,6 +1020,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerSubmitRegistration,
     workerUpdateAvailability,
     workerUpdateServiceArea,
+    workerUploadAvatar,
     workerUpdateStatus,
   ])
 
@@ -1065,7 +1083,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   useEffect(() => {
     if (!sessionUserId || role !== 'worker') return
     const initialRefresh = setTimeout(() => {
-      if (isAppForeground()) void workerUpdateAvailability(false)
+      if (!isAppForeground()) return
+      void workerRefresh()
+      void workerUpdateAvailability(false, { revalidate: false })
     }, 0)
     const interval = setInterval(() => {
       if (isAppForeground()) void workerRefresh()
@@ -1075,6 +1095,34 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       clearInterval(interval)
     }
   }, [role, sessionUserId, workerRefresh, workerUpdateAvailability])
+
+  useEffect(() => {
+    if (!sessionUserId || role !== 'worker') return
+    let cancelled = false
+    const interval = setInterval(() => {
+      if (!isAppForeground() || workerActivityHeartbeatBusyRef.current) return
+      workerActivityHeartbeatBusyRef.current = true
+      void workerService.recordActiveMinute().then((result) => {
+        if (cancelled || !result.success) return
+        setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
+          ? {
+              ...current,
+              profile: {
+                ...current.profile,
+                active_minutes: result.data.active_minutes,
+                last_active_at: result.data.last_active_at,
+              },
+            }
+          : current)
+      }).finally(() => {
+        workerActivityHeartbeatBusyRef.current = false
+      })
+    }, 60_000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [role, sessionUserId])
 
   // Realtime surfaces incoming broadcasts quickly; polling remains the fallback
   // and RLS scopes the channel to this worker's own rows.

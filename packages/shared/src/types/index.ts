@@ -41,6 +41,8 @@ export type {
   JobMessageListResponse,
   JobMessageSendResponse,
   WorkerProfileResponse,
+  WorkerAvatarUploadResponse,
+  WorkerActivityMinuteResponse,
   WorkerRegisterResponse,
   AvailabilityToggleResponse,
   BroadcastListResponse,

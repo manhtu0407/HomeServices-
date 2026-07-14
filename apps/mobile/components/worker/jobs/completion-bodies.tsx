@@ -308,11 +308,13 @@ export function WorkerV5CaseClosedBody({
         workerNet={workerNet}
       />
       <WorkerV5InfoGrid
+        auraScope="CaseClosed"
         items={[
           { label: textByLanguage(language, 'Đánh giá Case', 'Case rating'), value: hasRating ? `${rating.toFixed(rating % 1 === 0 ? 0 : 1)} ★` : textByLanguage(language, 'Chưa có', 'None') },
           { label: textByLanguage(language, 'Thời gian thực tế', 'Actual time'), value: workerV5ActualWorkDurationLabel(deal, language) },
           { label: textByLanguage(language, 'Điểm xếp hạng', 'Ranking points'), value: rankingDelta && rankingDelta > 0 ? `+${Math.round(rankingDelta)}` : textByLanguage(language, 'Chưa có', 'None') },
         ]}
+        reduceTransparency={reduceTransparency}
       />
       <WorkerV5CaseTrailCard
         caseWideAura={WorkerV5CustomerCaseWideMintAura}

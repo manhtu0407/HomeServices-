@@ -1,18 +1,21 @@
 import React, { useState } from 'react'
 import { Pressable, Text } from 'react-native'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
 const mockPushRoute = jest.fn()
 const mockUnsubscribe = jest.fn()
 const mockGetSession = jest.fn()
 const mockSignInWithPassword = jest.fn()
 const mockSignUp = jest.fn()
+const mockResend = jest.fn()
+const mockResetPasswordForEmail = jest.fn()
 const mockUpdateUser = jest.fn()
 const mockSignOut = jest.fn()
 const mockMaybeSingle = jest.fn()
 const mockEq = jest.fn(() => ({ maybeSingle: mockMaybeSingle }))
 const mockSelect = jest.fn(() => ({ eq: mockEq }))
 const mockFrom = jest.fn(() => ({ select: mockSelect }))
+let mockAuthStateChangeCallback: ((event: string, session: typeof mockSession | null) => void) | null = null
 
 const mockSession = {
   user: {
@@ -25,9 +28,14 @@ const mockSession = {
 const mockSupabase = {
   auth: {
     getSession: mockGetSession,
-    onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: mockUnsubscribe } } })),
+    onAuthStateChange: jest.fn((callback) => {
+      mockAuthStateChangeCallback = callback
+      return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+    }),
+    resetPasswordForEmail: mockResetPasswordForEmail,
     signInWithPassword: mockSignInWithPassword,
     signUp: mockSignUp,
+    resend: mockResend,
     signOut: mockSignOut,
     updateUser: mockUpdateUser,
   },
@@ -73,7 +81,7 @@ function PasswordHarness() {
 }
 
 function SignupHarness() {
-  const { signUpWithIdentifier } = useAuth()
+  const { resendSignupConfirmation, signUpWithIdentifier } = useAuth()
   const [result, setResult] = useState('idle')
 
   return (
@@ -84,11 +92,19 @@ function SignupHarness() {
             displayName: 'Tu Phan',
             identifier: 'TU@example.com',
             password: 'secret123',
-          }).then((nextResult) => setResult(nextResult.success ? 'success' : nextResult.error ?? 'error'))
+          }).then((nextResult) => setResult(nextResult.needsConfirmation ? 'confirmation' : nextResult.success ? 'success' : nextResult.error ?? 'error'))
         }}
         testID="signup-email"
       >
         <Text>signup</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          void resendSignupConfirmation('TU@example.com').then((nextResult) => setResult(nextResult.success ? 'resent' : nextResult.error ?? 'error'))
+        }}
+        testID="resend-signup-email"
+      >
+        <Text>resend</Text>
       </Pressable>
       <Text testID="signup-result">{result}</Text>
     </>
@@ -134,23 +150,56 @@ function IdentifierAuthHarness() {
   )
 }
 
+function PasswordRecoveryHarness() {
+  const { completePasswordRecovery, passwordRecoveryPending, requestPasswordRecovery } = useAuth()
+  const [result, setResult] = useState('idle')
+
+  return (
+    <>
+      <Text testID="password-recovery-pending">{passwordRecoveryPending ? 'pending' : 'idle'}</Text>
+      <Pressable
+        onPress={() => {
+          void requestPasswordRecovery('TU@example.com').then((nextResult) => setResult(nextResult.success ? 'sent' : nextResult.error ?? 'error'))
+        }}
+        testID="request-password-recovery"
+      >
+        <Text>request recovery</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          void completePasswordRecovery('NewSafe123').then((nextResult) => setResult(nextResult.success ? 'updated' : nextResult.error ?? 'error'))
+        }}
+        testID="complete-password-recovery"
+      >
+        <Text>complete recovery</Text>
+      </Pressable>
+      <Text testID="password-recovery-result">{result}</Text>
+    </>
+  )
+}
+
 beforeEach(() => {
   mockPushRoute.mockClear()
   mockUnsubscribe.mockClear()
   mockGetSession.mockReset()
   mockSignInWithPassword.mockReset()
   mockSignUp.mockReset()
+  mockResend.mockReset()
+  mockResetPasswordForEmail.mockReset()
   mockUpdateUser.mockReset()
   mockSignOut.mockReset()
   mockMaybeSingle.mockReset()
   mockEq.mockClear()
   mockSelect.mockClear()
   mockFrom.mockClear()
+  mockAuthStateChangeCallback = null
 
   mockGetSession.mockResolvedValue({ data: { session: mockSession } })
   mockMaybeSingle.mockResolvedValue({ data: { role: 'customer' }, error: null })
   mockSignInWithPassword.mockResolvedValue({ data: { session: mockSession }, error: null })
   mockSignUp.mockResolvedValue({ data: { session: mockSession, user: mockSession.user }, error: null })
+  mockResend.mockResolvedValue({ data: {}, error: null })
+  mockResetPasswordForEmail.mockResolvedValue({ data: {}, error: null })
   mockUpdateUser.mockResolvedValue({ error: null })
 })
 
@@ -230,10 +279,48 @@ describe('AuthProvider Email/SDT signup', () => {
     expect(JSON.stringify(mockSignUp.mock.calls[0][0])).not.toContain('role')
     expect(mockMaybeSingle).toHaveBeenCalled()
   })
+
+  it('returns a confirmation state instead of an error when Supabase creates the user without a session', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignUp.mockResolvedValueOnce({ data: { session: null, user: mockSession.user }, error: null })
+
+    render(
+      <AuthProvider>
+        <SignupHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signup-email'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('confirmation')
+    })
+    expect(mockMaybeSingle).not.toHaveBeenCalled()
+  })
+
+  it('resends a signup confirmation through Supabase without exposing provider errors', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+
+    render(
+      <AuthProvider>
+        <SignupHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('resend-signup-email'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('resent')
+    })
+    expect(mockResend).toHaveBeenCalledWith({
+      email: 'tu@example.com',
+      type: 'signup',
+    })
+  })
 })
 
 describe('AuthProvider Email/SDT credentials', () => {
-  it('normalizes Vietnamese phone credentials for Supabase sign-in and sign-up', async () => {
+  it('normalizes Vietnamese phone credentials for sign-in but blocks signup until SMS confirmation exists', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: null } })
 
     render(
@@ -255,18 +342,9 @@ describe('AuthProvider Email/SDT credentials', () => {
     fireEvent.press(screen.getByTestId('signup-phone'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('signup-success')
+      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('Đăng ký bằng SDT chưa sẵn sàng. Vui lòng dùng email.')
     })
-    expect(mockSignUp).toHaveBeenCalledWith({
-      phone: '+84912345678',
-      password: 'secret123',
-      options: {
-        data: {
-          full_name: 'Tu Phan',
-          name: 'Tu Phan',
-        },
-      },
-    })
+    expect(mockSignUp).not.toHaveBeenCalled()
   })
 
   it('rejects a malformed Vietnamese phone number before Supabase is called', async () => {
@@ -284,5 +362,54 @@ describe('AuthProvider Email/SDT credentials', () => {
       expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('SDT Việt Nam chưa đúng định dạng.')
     })
     expect(mockSignInWithPassword).not.toHaveBeenCalled()
+  })
+})
+
+describe('AuthProvider password recovery', () => {
+  it('requests an email reset through Supabase with an app callback URL', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+
+    render(
+      <AuthProvider>
+        <PasswordRecoveryHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('request-password-recovery'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('password-recovery-result')).toHaveTextContent('sent')
+    })
+    expect(mockResetPasswordForEmail).toHaveBeenCalledWith('tu@example.com', {
+      redirectTo: expect.stringContaining('auth_flow=password-recovery'),
+    })
+  })
+
+  it('keeps PASSWORD_RECOVERY out of normal role bootstrap and updates the recovered password', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+
+    render(
+      <AuthProvider>
+        <PasswordRecoveryHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(mockAuthStateChangeCallback).not.toBeNull()
+    })
+    await act(async () => {
+      mockAuthStateChangeCallback?.('PASSWORD_RECOVERY', mockSession)
+    })
+
+    expect(screen.getByTestId('password-recovery-pending')).toHaveTextContent('pending')
+    expect(mockMaybeSingle).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('complete-password-recovery'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('password-recovery-result')).toHaveTextContent('updated')
+    })
+    expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'NewSafe123' })
+    expect(screen.getByTestId('password-recovery-pending')).toHaveTextContent('pending')
   })
 })

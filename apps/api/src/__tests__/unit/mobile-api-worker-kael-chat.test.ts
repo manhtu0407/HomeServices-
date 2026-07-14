@@ -2,11 +2,13 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  buildWorkerKaelSessionTitle,
   guardWorkerAssistText,
   runWorkerAssist,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
 import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/ai-boundary-contract'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 
 const job = {
   id: 'job-1',
@@ -93,6 +95,45 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       provider: 'deepseek',
     })
     expect(answer.text).not.toMatch(/vnd|dong|status|trang thai/i)
+  })
+
+  it('derives a concise session title inside the existing first worker-assist call', async () => {
+    const callAI = vi.fn(async (_request: AIRequest) => ({
+      success: true as const,
+      content: JSON.stringify({
+        text: 'Kiểm tra van khóa và vị trí rò trước khi tháo bất kỳ bộ phận nào.',
+        safety_notes: ['Giữ trao đổi và bằng chứng trong ứng dụng.'],
+        redirect_scope_change: false,
+        session_title: 'Kiểm tra rò nước lavabo',
+      }),
+      usage: { inputTokens: 100, outputTokens: 40, costUsd: 0.0001 },
+      latencyMs: 120,
+    }))
+
+    const answer = await runWorkerAssist({
+      job,
+      question: 'Tôi muốn hỏi về rò nước lavabo',
+      language: 'vi',
+      secrets: {},
+      callAI,
+    })
+
+    expect(callAI).toHaveBeenCalledTimes(1)
+    expect(answer.session_title).toBe('Kiểm tra rò nước lavabo')
+    expect(JSON.stringify(callAI.mock.calls[0]?.[0].messages.at(-1)?.content)).toContain('session_title')
+  })
+
+  it('falls back to the first user question when a suggested title contains sensitive data', () => {
+    expect(buildWorkerKaelSessionTitle(
+      'Tôi muốn hỏi về rò nước lavabo',
+      'Gọi 090 123 4567 để sửa lavabo',
+      'vi',
+    )).toBe('Rò nước lavabo')
+    expect(buildWorkerKaelSessionTitle(
+      'Leaking sink tool preparation',
+      null,
+      'en',
+    )).toBe('Leaking sink tool preparation')
   })
 
   it('falls back when the model tries to set price or status', async () => {
@@ -413,6 +454,97 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(migration).toContain('alter column job_id set not null')
     expect(migration).toContain('(worker_id, job_id, client_request_id)')
     expect(migration).toContain('where client_request_id is not null')
+  })
+
+  it('archives a worker Kael session through the owned Edge boundary without deleting its evidence rows', () => {
+    const router = readMobileApiRouterLayer()
+    const services = readMobileApiServiceLayer()
+    const migrations = readdirSync(
+      new URL('../../../../../supabase/migrations/', import.meta.url),
+      { withFileTypes: true },
+    )
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+      .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
+      .join('\n')
+
+    expect(router).toContain('workers.kaelChat.archive')
+    expect(router).toContain('method: "DELETE"')
+    expect(services).toContain('archiveWorkerKaelChat')
+    expect(services).toContain('.is("archived_at", null)')
+    expect(migrations).toContain('add column if not exists archived_at timestamptz')
+  })
+
+  it('persists a bounded worker Kael session title without exposing provider metadata', () => {
+    const router = readMobileApiRouterLayer()
+    const services = readMobileApiServiceLayer()
+    const migrations = readdirSync(
+      new URL('../../../../../supabase/migrations/', import.meta.url),
+      { withFileTypes: true },
+    )
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+      .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
+      .join('\n')
+
+    expect(router).toContain('workers.kaelChat.rename')
+    expect(router).toContain('workerKaelChatRenameSchema.safeParse')
+    expect(services).toContain('renameWorkerKaelChat')
+    expect(services).toContain('title: nullableString(row.title)')
+    expect(migrations).toContain('add column if not exists title text')
+    expect(migrations).toContain('char_length(btrim(title)) between 1 and 64')
+  })
+
+  it('pins owned worker Kael sessions and lists pinned conversations before recent ones', () => {
+    const router = readMobileApiRouterLayer()
+    const services = readMobileApiServiceLayer()
+    const migrations = readdirSync(
+      new URL('../../../../../supabase/migrations/', import.meta.url),
+      { withFileTypes: true },
+    )
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+      .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
+      .join('\n')
+
+    expect(router).toContain('workers.kaelChat.pin')
+    expect(router).toContain('workerKaelChatPinSchema.safeParse')
+    expect(services).toContain('setWorkerKaelChatPinned')
+    expect(services).toContain('.update({ pinned_at: pinnedAt })')
+    expect(services).toContain('.order("pinned_at", { ascending: false, nullsFirst: false })')
+    expect(services).toContain('pinned_at: nullableString(row.pinned_at)')
+    expect(migrations).toContain('add column if not exists pinned_at timestamptz')
+    expect(migrations).toContain('where pinned_at is not null and archived_at is null')
+  })
+
+  it('persists and lists worker Kael sessions within their explicit chat mode', () => {
+    const edgeDomain = readFileSync(
+      new URL('../../../../../supabase/functions/_shared/domain.ts', import.meta.url),
+      'utf8',
+    )
+    const sharedValidation = readFileSync(
+      new URL('../../../../../packages/shared/src/validation.ts', import.meta.url),
+      'utf8',
+    )
+    const router = readMobileApiRouterLayer()
+    const services = readMobileApiServiceLayer()
+    const migrations = readdirSync(
+      new URL('../../../../../supabase/migrations/', import.meta.url),
+      { withFileTypes: true },
+    )
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+      .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
+      .join('\n')
+
+    for (const source of [edgeDomain, sharedValidation]) {
+      const createSchemaBlock = source.match(/export const workerKaelChatCreateSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
+      expect(source).toMatch(/workerKaelChatModeSchema = z\.enum\(\[["']normal["'],\s*["']intake["']\]\)/)
+      expect(createSchemaBlock).toMatch(/mode:\s*workerKaelChatModeSchema\.default\(["']intake["']\)/)
+    }
+    expect(router).toContain('workerKaelChatModeParam(new URL(request.url))')
+    expect(services).toContain('chat_mode: input.mode')
+    expect(services).toContain('.eq("chat_mode", mode)')
+    expect(services).toContain('mode: asWorkerKaelChatMode(row.chat_mode)')
+    expect(migrations).toContain('add column if not exists chat_mode text not null default \'intake\'')
+    expect(migrations).toContain("check (chat_mode in ('normal', 'intake'))")
+    expect(migrations).toContain('(worker_id, chat_mode, updated_at desc)')
   })
 
   it('keeps worker chat creation session-only and turn idempotency on the turn route', () => {

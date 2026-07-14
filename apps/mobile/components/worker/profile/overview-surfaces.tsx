@@ -14,6 +14,7 @@ import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import type { WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 import type { ServiceType } from '@nestscout/shared'
 
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { workerV5NumericInsight, workerV5ReliabilityPercentValue } from '../ui/performance'
@@ -107,6 +108,11 @@ export function WorkerV5ProfileDossierCard({
   ]
   return (
     <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-profile-dossier">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="ProfileDossier"
+        testID="worker-v5-profile-dossier-formula-mint-aura"
+      />
       {rows.map((row, index) => {
         const isServiceDossier = row.icon === 'services'
         const rowContent = (

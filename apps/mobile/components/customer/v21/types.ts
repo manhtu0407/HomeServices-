@@ -15,10 +15,6 @@ export type CustomerV21ScreenId =
   | '2.11-live-alert'
   | '2.12-job-accepted'
   | '2.13-job-progress'
-  | '5.1-agentic-home'
-  | '5.2-command-center'
-  | '5.3-approval-queue'
-  | '5.4-memory'
   | '6.1-profile-overview'
   | '6.2-usage-ranking'
   | '6.3-protect-money'
@@ -47,17 +43,11 @@ export const customerV21ScreenOrder: CustomerV21ScreenId[] = [
   '2.11-live-alert',
   '2.12-job-accepted',
   '2.13-job-progress',
-  '5.1-agentic-home',
-  '5.2-command-center',
-  '5.3-approval-queue',
-  '5.4-memory',
   '6.1-profile-overview',
   '6.2-usage-ranking',
   '6.3-protect-money',
 ]
 
 export const customerPrimaryTabs: CustomerPrimaryTab[] = ['home', 'services', 'activity', 'profile']
-
-export const customerV21AgenticScreenIds: CustomerV21ScreenId[] = ['5.1-agentic-home', '5.2-command-center', '5.3-approval-queue', '5.4-memory']
 
 export const customerV21ProfileStageIds: CustomerV21ScreenId[] = ['6.1-profile-overview', '6.2-usage-ranking', '6.3-protect-money']

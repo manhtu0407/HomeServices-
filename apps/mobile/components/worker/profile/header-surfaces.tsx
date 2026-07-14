@@ -1,19 +1,19 @@
 import type { ComponentType } from 'react'
 import {
+  ActivityIndicator,
   Image,
+  Pressable,
   Text as RNText,
   View,
-  type ImageSourcePropType,
   type TextProps,
 } from 'react-native'
+import Animated, { Easing, useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated'
 
 import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
-import { formatNullableRating, textByLanguage } from '../ui/format'
-import { workerAvailabilityLabel, workerVerificationLabel } from '../ui/labels'
-import { workerV5ProfileBackendSyncPercent } from '../ui/performance'
+import { textByLanguage } from '../ui/format'
 import { styles } from './header-styles'
 
 type WorkerV5ProfileHeaderProfile = WorkerProfileResponse | null | undefined
@@ -25,50 +25,113 @@ function Text({ style, ...props }: TextProps) {
 }
 
 export function WorkerV5ProfileHeader({
-  avatarIcon,
+  avatarUploadBusy,
   heroAura: HeroAura,
-  insights,
   language,
+  onPickAvatar,
   profile,
+  reduceMotion,
   reduceTransparency,
 }: {
-  avatarIcon: ImageSourcePropType
+  avatarUploadBusy: boolean
   heroAura: WorkerV5HeaderAura
-  insights: WorkerV5ProfileHeaderInsights
   language: AppLanguage
+  onPickAvatar: () => void
   profile: WorkerV5ProfileHeaderProfile
+  reduceMotion: boolean
   reduceTransparency: boolean
 }) {
   const legalName = profile?.legal_name?.trim() || ''
   const name = legalName || textByLanguage(language, 'Chưa có tên pháp lý', 'No legal name')
-  const syncPercent = workerV5ProfileBackendSyncPercent(insights)
+  const activeMinutes = clampWorkerActiveMinutes(profile?.active_minutes)
+  const lifetimeLabel = textByLanguage(language, 'Thời gian hoạt động', 'Active time')
+  const lifetimeValueText = workerLifetimeValueText(activeMinutes, language)
+  const targetProgress = activeMinutes / WORKER_LIFETIME_MAX_MINUTES
+  const progress = useDerivedValue(() => reduceMotion
+    ? targetProgress
+    : withTiming(targetProgress, {
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+      }), [reduceMotion, targetProgress])
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${Math.max(0, Math.min(1, progress.value)) * 100}%`,
+  }))
+
   return (
     <View style={[styles.profileHeader, reduceTransparency && styles.opaqueCard]} testID="worker-v5-worker-avatar">
       {!reduceTransparency ? <HeroAura testID="worker-v5-profile-mint-aura" /> : null}
-      <View style={styles.profileAvatar}>
+      <Pressable
+        accessibilityLabel={profile?.avatar_url
+          ? textByLanguage(language, 'Đổi ảnh đại diện', 'Change profile photo')
+          : textByLanguage(language, 'Thêm ảnh đại diện', 'Add profile photo')}
+        accessibilityRole="button"
+        accessibilityState={{ busy: avatarUploadBusy, disabled: avatarUploadBusy }}
+        disabled={avatarUploadBusy}
+        onPress={onPickAvatar}
+        style={({ pressed }) => [
+          styles.profileAvatar,
+          pressed && !reduceMotion ? styles.profileAvatarPressed : null,
+        ]}
+        testID="worker-v5-profile-avatar-picker"
+      >
         {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image resizeMode="contain" source={avatarIcon} style={styles.profileAvatarImage} testID="worker-v5-profile-avatar-image" />
-      </View>
+        {avatarUploadBusy ? (
+          <ActivityIndicator color="#078D7F" size="small" testID="worker-v5-profile-avatar-loading" />
+        ) : profile?.avatar_url ? (
+          <Image
+            resizeMode="cover"
+            source={{ uri: profile.avatar_url }}
+            style={styles.profileAvatarImage}
+            testID="worker-v5-profile-avatar-image"
+          />
+        ) : (
+          <View style={styles.profileAvatarEmpty} testID="worker-v5-profile-avatar-empty">
+            <Text style={styles.profileAvatarAddGlyph}>＋</Text>
+          </View>
+        )}
+      </Pressable>
       <View style={styles.profileHeaderText}>
-        <Text style={styles.profileHeaderName} numberOfLines={2} testID="worker-v5-profile-header-name">{name}</Text>
-        <View style={styles.profileHeaderChipRow}>
-          <Text style={styles.profileHeaderMiniChip} numberOfLines={1}>{workerVerificationLabel(profile?.verification_status, language)}</Text>
-          <Text style={styles.profileHeaderMiniChip} numberOfLines={1}>{formatNullableRating(profile?.rating, language)}</Text>
-          <Text style={styles.profileHeaderMiniChip} numberOfLines={1}>
-            {profile?.total_jobs && profile.total_jobs > 0
-              ? textByLanguage(language, `${profile.total_jobs} việc`, `${profile.total_jobs} jobs`)
-              : textByLanguage(language, 'Chưa có việc', 'No jobs')}
-          </Text>
+        <Text style={styles.profileHeaderName} numberOfLines={1} testID="worker-v5-profile-header-name">{name}</Text>
+        <View
+          accessibilityLabel={lifetimeLabel}
+          accessibilityRole="progressbar"
+          accessibilityValue={{ min: 0, max: WORKER_LIFETIME_MAX_MINUTES, now: activeMinutes, text: lifetimeValueText }}
+          style={styles.profileProgressTrack}
+          testID="worker-v5-profile-lifetime-progress"
+        >
+          <Animated.View
+            style={[styles.profileProgressFill, progressStyle]}
+            testID="worker-v5-profile-lifetime-progress-fill"
+          />
         </View>
-        <View style={styles.profileProgressTrack}>
-          <View style={[styles.profileProgressFill, { width: `${syncPercent}%` }]} testID="worker-v5-profile-sync-progress-fill" />
-        </View>
-        <Text style={styles.profileHeaderMeta} numberOfLines={1} testID="worker-v5-profile-sync-progress-label">{textByLanguage(language, `Hồ sơ đã đồng bộ ${syncPercent}%`, `Profile synced ${syncPercent}%`)}</Text>
-      </View>
-      <View style={styles.profileHeaderChip}>
-        <Text style={styles.profileHeaderChipText} numberOfLines={2} testID="worker-v5-profile-header-availability">{workerAvailabilityLabel(profile, language)}</Text>
+        <Text style={styles.profileHeaderMeta} numberOfLines={2} testID="worker-v5-profile-lifetime-progress-label">{lifetimeLabel}</Text>
       </View>
     </View>
+  )
+}
+
+export const WORKER_LIFETIME_MAX_MINUTES = 10_000 * 60
+
+function clampWorkerActiveMinutes(value: number | null | undefined) {
+  if (!Number.isFinite(value)) return 0
+  return Math.min(WORKER_LIFETIME_MAX_MINUTES, Math.max(0, Math.trunc(value ?? 0)))
+}
+
+function workerLifetimeValueText(activeMinutes: number, language: AppLanguage) {
+  const hours = Math.floor(activeMinutes / 60)
+  const minutes = activeMinutes % 60
+  const elapsed = language === 'vi'
+    ? hours > 0
+      ? `${hours.toLocaleString('vi-VN')} giờ${minutes > 0 ? ` ${minutes} phút` : ''}`
+      : `${minutes} phút`
+    : hours > 0
+      ? `${hours.toLocaleString('en-US')} hr${hours === 1 ? '' : 's'}${minutes > 0 ? ` ${minutes} min` : ''}`
+      : `${minutes} min`
+  return textByLanguage(
+    language,
+    `Thời gian hoạt động trên NestScout: ${elapsed} / 10.000 giờ`,
+    `Active time on NestScout: ${elapsed} / 10,000 hrs`,
   )
 }
 

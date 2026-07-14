@@ -42,6 +42,7 @@ function resolveEntryStep(value: EntryParam): EntryAccessStep | null {
   if (stage === '1.4' || stage === 'login') return 'login'
   if (stage === '1.5' || stage === 'register') return 'register'
   if (stage === '1.6' || stage === 'onboarding') return 'onboarding'
+  if (stage === 'password-reset') return 'password-reset'
   return null
 }
 
@@ -50,9 +51,7 @@ function resolveEntryRole(value: EntryParam): EntryRole {
 }
 
 const ENTRY_AUTH_COPY = {
-  recoveryVerificationPending: 'Khôi phục mật khẩu sẽ hoàn tất sau khi kênh liên hệ đối diện được xác minh.',
   accountNotReady: 'T\u00e0i kho\u1ea3n ch\u01b0a s\u1eb5n s\u00e0ng \u0111\u1ec3 v\u00e0o \u1ee9ng d\u1ee5ng. Vui l\u00f2ng ho\u00e0n t\u1ea5t \u0111\u0103ng nh\u1eadp tr\u01b0\u1edbc.',
-  emailConfirmation: 'Ki\u1ec3m tra email \u0111\u1ec3 x\u00e1c nh\u1eadn t\u00e0i kho\u1ea3n tr\u01b0\u1edbc khi ti\u1ebfp t\u1ee5c.',
   facebookPending: 'Facebook ch\u01b0a s\u1eb5n s\u00e0ng tr\u00ean b\u1ea3n d\u1ef1ng n\u00e0y.',
   forgotPasswordPending: '\u0110\u1eb7t l\u1ea1i m\u1eadt kh\u1ea9u ch\u01b0a s\u1eb5n s\u00e0ng.',
   gmailPending: 'Gmail ch\u01b0a s\u1eb5n s\u00e0ng tr\u00ean b\u1ea3n d\u1ef1ng n\u00e0y.',
@@ -66,18 +65,20 @@ export function LoginRoleSurface() {
   const router = useRouter()
   const reviewStep = resolveEntryStep(params.stage)
   const initialRole = resolveEntryRole(params.role)
+  const passwordRecoveryStep: EntryAccessStep | null = !reviewStep && auth.passwordRecoveryPending ? 'password-reset' : null
   const profileRecoveryStep: EntryAccessStep | null = !reviewStep && auth.session && auth.profileStatus === 'profile_missing' ? 'onboarding' : null
-  const initialStep = reviewStep ?? profileRecoveryStep ?? 'splash'
-  const flowKey = `${initialStep}:${initialRole}:${reviewStep ? 'review' : 'live'}:${profileRecoveryStep ? 'profile' : 'entry'}`
+  const initialStep = reviewStep ?? passwordRecoveryStep ?? profileRecoveryStep ?? 'splash'
+  const flowKey = `${initialStep}:${initialRole}:${reviewStep ? 'review' : 'live'}:${passwordRecoveryStep ? 'recovery' : profileRecoveryStep ? 'profile' : 'entry'}`
 
   useEffect(() => {
     if (reviewStep) return
+    if (auth.passwordRecoveryPending) return
     if (auth.loading || auth.profileStatus === 'profile_missing') return
     if (!auth.session || !auth.role) return
     if (auth.role === 'customer') router.replace('/(customer)/home' as never)
     if (auth.role === 'worker') router.replace('/(worker)/home' as never)
     if (auth.role === 'admin') router.replace('/(admin)/dashboard' as never)
-  }, [auth.loading, auth.profileStatus, auth.role, auth.session, reviewStep, router])
+  }, [auth.loading, auth.passwordRecoveryPending, auth.profileStatus, auth.role, auth.session, reviewStep, router])
 
   const actions = useMemo(() => ({
     onCompleteOnboarding: async (role: EntryRole) => {
@@ -102,10 +103,12 @@ export function LoginRoleSurface() {
       }
     },
     onPasswordLogin: async ({ identifier, password }: PasswordLoginInput) => auth.signInWithPassword(identifier, password),
-    onForgotPassword: async () => ({
-      success: false,
-      error: ENTRY_AUTH_COPY.recoveryVerificationPending,
-    }),
+    onForgotPassword: async ({ email }: { email: string }) => auth.requestPasswordRecovery(email),
+    onCompletePasswordRecovery: auth.completePasswordRecovery,
+    onExitPasswordRecovery: async () => {
+      await auth.signOut()
+      router.replace('/(auth)/login?stage=login' as never)
+    },
     onGoogleLogin: auth.signInWithGoogle,
     onRegister: async ({ identifier, fullName, password, role }: RegistrationInput) => {
       if (role === 'worker') {
@@ -122,14 +125,15 @@ export function LoginRoleSurface() {
       })
       if (result.success && result.needsConfirmation) {
         return {
-          success: false,
-          error: 'Kiểm tra kênh liên hệ để xác nhận tài khoản trước khi tiếp tục.',
+          success: true,
+          nextStep: 'signup-confirmation' as const,
         }
       }
       return result.success
         ? { success: true }
         : { success: false, error: result.error }
     },
+    onResendSignupConfirmation: auth.resendSignupConfirmation,
   }), [auth, language, router])
 
   return (

@@ -52,13 +52,6 @@ export const styles = StyleSheet.create({
     top: -82,
     width: 326,
   },
-  successAura: {
-    bottom: 'auto',
-    height: 172,
-    left: '22%',
-    right: -64,
-    top: -72,
-  },
   successBody: {
     color: color.text.secondary,
     fontSize: 13,

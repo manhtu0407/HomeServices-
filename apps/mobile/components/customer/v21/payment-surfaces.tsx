@@ -18,7 +18,7 @@ import { customerV21SharedStyles as sharedStyles } from './shared-styles'
 
 type CustomerV21PaymentBank = { key: CustomerV21BankKey; name: string; vietQrCode: string }
 type CustomerV21SourceSkin = ComponentType<{ testID?: string }>
-type CustomerV21ZipAura = ComponentType<{ scope: string; testID?: string }>
+type CustomerV21ZipAura = ComponentType<{ intensity?: 'default' | 'strong'; scope: string; testID?: string }>
 type FulfillmentStepState = 'active' | 'done' | 'pending'
 
 export function PaymentPriceLine({
@@ -77,6 +77,7 @@ export function PaymentBankTile({
   disabled,
   onPress,
   selected,
+  showMintAura = false,
   sourceCardSkin: SourceCardSkin,
   zipMintAura: ZipMintAura,
 }: {
@@ -84,6 +85,7 @@ export function PaymentBankTile({
   disabled: boolean
   onPress: () => void
   selected: boolean
+  showMintAura?: boolean
   sourceCardSkin: CustomerV21SourceSkin
   zipMintAura: CustomerV21ZipAura
 }) {
@@ -103,7 +105,7 @@ export function PaymentBankTile({
       testID={`customer-v21-payment-bank-tile-${bank.key}`}
     >
       <SourceCardSkin />
-      {selected ? <ZipMintAura scope={`PaymentBankTile${bank.key}`} testID={`customer-v21-payment-bank-tile-${bank.key}-mint-aura`} /> : null}
+      {selected || showMintAura ? <ZipMintAura intensity={showMintAura ? 'strong' : 'default'} scope={`PaymentBankTile${bank.key}`} testID={`customer-v21-payment-bank-tile-${bank.key}-mint-aura`} /> : null}
       <Image
         accessibilityIgnoresInvertColors
         resizeMode="contain"

@@ -1,11 +1,11 @@
 import type { ImageSourcePropType } from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
-import type { CustomerKaelMemoryPreferenceKey, LocalDeal, LocalDealStatus } from '@nestscout/shared'
+import type { CustomerKaelMemoryPreferenceKey } from '@nestscout/shared'
 
 import { customerV21Assets } from './assets'
 import { customerV21CommonCopy } from './copy'
-import { formatVnd, paymentAmountLabel } from './case-work-display-model'
+import { formatVnd } from './case-work-display-model'
 import { stringFromUnknown } from './value-display-model'
 
 export type AgenticMemoryRowModel = {
@@ -15,60 +15,6 @@ export type AgenticMemoryRowModel = {
   preferenceKey: CustomerKaelMemoryPreferenceKey
   value: string
 }
-export type AgenticProcessedApprovalRowModel = {
-  available: boolean
-  body: string
-  image: ImageSourcePropType
-  status: string
-  title: string
-}
-export function totalDealEvidenceCount(deal: LocalDeal | null) {
-  if (!deal) return 0
-  return Math.max(0, deal.draft.mediaCount ?? 0)
-    + (deal.scopeChange?.evidencePhotoUrls?.length ?? 0)
-    + (deal.completionPhotoUrls?.length ?? 0)
-    + (deal.completionNotes ? 1 : 0)
-}
-
-export function agenticCommandStep(status: LocalDealStatus) {
-  if (status === 'draft' || status === 'analyzing' || status === 'estimate_ready') return 1
-  if (status === 'awaiting_customer_confirm' || status === 'scope_change_pending') return 2
-  if (status === 'confirmed_by_customer') return 3
-  if (status === 'broadcasting' || status === 'worker_matched' || status === 'worker_on_way') return 4
-  return 5
-}
-
-export function agenticProcessedApprovalRows(deal: LocalDeal | null, language: AppLanguage): AgenticProcessedApprovalRowModel[] {
-  const copy = customerV21CommonCopy[language]
-  const step = deal ? agenticCommandStep(deal.status) : 0
-  const quoteReady = Boolean(deal?.estimate || deal?.payment || step >= 3)
-  const scheduleReady = Boolean(deal && step >= 3)
-  const quoteValue = deal?.payment
-    ? paymentAmountLabel(deal.payment, language, copy.dataPending)
-    : deal?.estimate?.priceRangeLabel ?? copy.dataPending
-  const scheduleValue = scheduleReady
-    ? (language === 'vi' ? 'Theo yêu cầu hiện tại' : 'Current request')
-    : copy.dataPending
-  const approvedLabel = language === 'vi' ? 'Đã có' : 'Ready'
-
-  return [
-    {
-      available: quoteReady,
-      body: quoteValue,
-      image: customerV21Assets.request,
-      status: quoteReady ? approvedLabel : copy.dataPending,
-      title: language === 'vi' ? 'Báo giá dịch vụ' : 'Service quote',
-    },
-    {
-      available: scheduleReady,
-      body: scheduleValue,
-      image: customerV21Assets.booking,
-      status: scheduleReady ? approvedLabel : copy.dataPending,
-      title: language === 'vi' ? 'Khung giờ làm việc' : 'Work window',
-    },
-  ]
-}
-
 export function agenticMemoryRowsFromUnknown(memory: unknown, language: AppLanguage): AgenticMemoryRowModel[] {
   const copy = customerV21CommonCopy[language]
   const record = memory && typeof memory === 'object' ? memory as Record<string, unknown> : null
@@ -105,10 +51,6 @@ export function agenticMemoryRowsFromUnknown(memory: unknown, language: AppLangu
       value: budget ?? copy.dataPending,
     },
   ]
-}
-
-export function agenticMemoryItemCount(rows: AgenticMemoryRowModel[]) {
-  return rows.filter((row) => row.enabled).length
 }
 
 function memoryPermissionEnabled(

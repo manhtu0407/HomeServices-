@@ -403,27 +403,6 @@ export const component = {
     dotsWidth: 7,
     dotsActiveWidth: 18,
   },
-  agenticCenter: {
-    maxWidth: 720,
-    scrollPaddingBottom: 34,
-    heroMinHeight: 184,
-    mascotImageSize: 54,
-    actionMinWidth: 126,
-    homeLinkMinHeight: 42,
-    homeLinkMinWidth: 116,
-    approvalActionMinWidth: 84,
-    phaseRailStepMinWidth: 118,
-    phaseRailDotSize: 10,
-    phaseRailActivePillMinWidth: 52,
-    cardShadow: '0 12px 26px rgba(8,95,87,0.07)',
-    primaryButtonShadow: '0 14px 28px rgba(5,159,142,0.27), 0 1px 0 rgba(255,255,255,0.56) inset',
-    primaryButtonBorderDark: 'rgba(190,210,205,0.18)',
-    primaryButtonBorderLight: 'rgba(255,255,255,0.62)',
-    orbBorderDark: 'rgba(190,210,205,0.20)',
-    orbBorderLight: 'rgba(255,255,255,0.76)',
-    orbShadowDark: '0 16px 32px rgba(0,0,0,0.30)',
-    orbShadowLight: '0 16px 34px rgba(5,159,142,0.28)',
-  },
 } as const
 
 export const customerTheme = {

@@ -1,15 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import type { LocalDeal, LocalScopeChange } from '@nestscout/shared'
-
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native'
 let mockSessionMetadata: Record<string, unknown>
 let mockCustomerKaelMemory: any
 let mockCustomerProfileInsights: any
 let mockPanelParam: string | undefined
 let mockScreenParam: string | undefined
 let mockUtilityParam: string | undefined
-let mockDeal: LocalDeal | null
 let mockNotificationUnreadCount: number
-let mockNotifications: Array<{
+let mockNotifications: {
   body: string
   created_at: string
   event_type: string
@@ -18,7 +15,7 @@ let mockNotifications: Array<{
   read_at: string | null
   status: string
   title: string
-}>
+}[]
 const mockReplace = jest.fn()
 const mockSignOut = jest.fn()
 const mockUpdateCustomerProfile = jest.fn()
@@ -71,7 +68,7 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
     notifications: mockNotifications,
     selectors: {},
     state: {
-      deal: mockDeal,
+      deal: null,
       lastError: null,
       lastRemoteSyncAt: null,
       workerGate: 'remote_backend',
@@ -130,77 +127,6 @@ jest.mock('../customer-theme', () => {
 
 import { CustomerDockOverlay, CustomerProfileSurface } from '../customer-surfaces'
 
-function buildDeal(): LocalDeal {
-  return {
-    backendStatus: 'worker_matched',
-    broadcast: {
-      broadcastId: 'broadcast_test_1',
-      fullAddressLabel: 'Tòa A, Quận 1',
-      fullAddressVisible: true,
-      generalArea: 'Quận 1',
-      jobId: 'job_test_1',
-      prebrief: ['Kael đã tóm tắt phạm vi.'],
-      problemSummary: 'Ổ cắm chập chờn',
-      secondsRemaining: null,
-      serviceType: 'electrical',
-      status: 'accepted',
-    },
-    completionNotes: null,
-    completionPhotoUrls: [],
-    draft: {
-      addressLabel: 'Tòa A, Quận 1',
-      description: 'Ổ cắm phòng khách chập chờn và có mùi khét nhẹ',
-      districtLabel: 'Quận 1',
-      inferredProblemLabel: null,
-      mediaCount: 1,
-      needsServiceChoice: false,
-      problemChips: ['Ổ cắm/công tắc hỏng'],
-      serviceType: 'electrical',
-      source: 'kael',
-      timeChoice: 'now',
-      unsupportedServiceLabel: null,
-    },
-    estimate: {
-      advisory: 'Kael có thể cập nhật nếu bằng chứng phạm vi thay đổi.',
-      complexity: 'medium',
-      confidenceLabel: '84%',
-      disclaimer: 'Ước tính dựa trên bằng chứng hiện tại.',
-      hasVndPrice: true,
-      priceRangeLabel: '180.000đ - 260.000đ',
-      problemLabel: 'Ổ cắm chập chờn',
-    },
-    finalPrice: null,
-    id: 'job_test_1',
-    payment: null,
-    scopeChange: null,
-    status: 'worker_matched',
-  }
-}
-
-function buildScopeChange(): LocalScopeChange {
-  return {
-    createdAt: '2026-06-01T00:00:00.000Z',
-    evidencePhotoUrls: [],
-    id: 'scope_test_1',
-    kaelProgress: null,
-    kaelReview: null,
-    priceMax: 50000,
-    priceMin: 50000,
-    reason: 'Cần bổ sung vật tư sau kiểm tra.',
-    requestedDescription: 'Bổ sung ổ cắm an toàn.',
-    status: 'waiting_customer_decision',
-  }
-}
-
-function buildDealWithScopeChange(): LocalDeal {
-  return {
-    ...buildDeal(),
-    backendStatus: 'scope_change_pending',
-    scopeChange: buildScopeChange(),
-    status: 'scope_change_pending',
-  }
-}
-
 beforeEach(() => {
   mockReplace.mockClear()
   mockSignOut.mockClear()
@@ -231,7 +157,6 @@ beforeEach(() => {
     status: 200,
     success: true,
   })
-  mockDeal = null
   mockSessionMetadata = {}
   mockCustomerKaelMemory = null
   mockCustomerProfileInsights = null
@@ -254,12 +179,24 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-services')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-protection-card')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-visual-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-icon-image')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-connector-dot')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-signals')).toHaveTextContent(/Tăng theo hoạt động thật/)
     expect(screen.queryByTestId('customer-v21-top-avatar')).toBeNull()
+    expect(screen.queryByText('⚙')).toBeNull()
     expect(screen.queryByText('--')).toBeNull()
+    const hero = screen.getByTestId('customer-v21-profile-hero')
+    expect(within(hero).queryByText('✓')).toBeNull()
+    expect(within(hero).queryByText('Tích cực')).toBeNull()
+    expect(within(hero).queryByText('Khách hàng đã xác minh')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-account-journey')).toBeOnTheScreen()
   })
 
   it('uses real profile insight metrics, including real zero values', () => {
     mockCustomerProfileInsights = {
+      active_service_days: 2,
       active_streak_days: 0,
       completed_service_count: 0,
       dispute_free_rate_percent: 100,
@@ -284,20 +221,47 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-protection-card')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-entry')).toHaveTextContent(/620 \/ 1.000/)
     expect(screen.getByTestId('customer-v21-profile-ranking-entry-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-ranking-entry-points-signal')).toHaveTextContent(/620 \/ 1.000/)
+    expect(screen.getByTestId('customer-v21-profile-account-start')).toHaveTextContent('Thành viên từ 01/06/2026')
+    expect(screen.getByTestId('customer-v21-profile-active-days')).toHaveTextContent('Dùng dịch vụ: 2 ngày')
+    expect(screen.getByTestId('customer-v21-profile-total-days')).toHaveTextContent(/Ngày thứ \d+/)
 
     fireEvent.press(screen.getByTestId('customer-v21-profile-ranking-cta'))
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?screen=6.2-usage-ranking')
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/Tin cậy/)
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
+    expect(screen.queryByRole('button', { name: 'i' })).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-status-chip')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-rank-node-3')).toHaveTextContent(/3/)
     expect(screen.getByTestId('customer-v21-profile-rank-process')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-rank-process-progress')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-profile-ranking-evaluation')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-evaluation')).toBeNull()
+    expect(screen.queryByText('Kael đánh giá dữ liệu thật')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-rule-completed-chip')).toHaveTextContent(/^0$/)
     expect(screen.getByTestId('customer-v21-profile-ranking-rule-review-chip')).toHaveTextContent(/^0%$/)
     expect(screen.getByTestId('customer-v21-profile-ranking-rule-protected-chip')).toHaveTextContent(/22 \/ 24/)
+    const rankingRules = [
+      ['completed', 'Theo trạng thái', 'Không bỏ đơn'],
+      ['review', 'Sau công việc', 'Phản hồi công bằng'],
+      ['protected', 'Trong hệ thống', 'Có đối soát'],
+    ] as const
+    const rankingRuleIconSources = rankingRules.map(([rule, firstDetail, secondDetail]) => {
+      const testID = `customer-v21-profile-ranking-rule-${rule}`
+
+      expect(screen.getByTestId(testID)).toHaveStyle({ flexDirection: 'row', minHeight: 112 })
+      expect(screen.getByTestId(`${testID}-visual-panel`)).toHaveStyle({ borderRightWidth: 1, width: 96 })
+      expect(screen.getByTestId(`${testID}-mint-aura`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-connector`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-connector-dot`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-title`)).toHaveStyle({ fontSize: 16, fontWeight: '700', lineHeight: 21 })
+      expect(screen.getByTestId(`${testID}-body`)).toHaveStyle({ fontSize: 14, lineHeight: 20 })
+      expect(screen.getByTestId(`${testID}-detail-rail-0`)).toHaveTextContent(firstDetail)
+      expect(screen.getByTestId(`${testID}-detail-rail-1`)).toHaveTextContent(secondDetail)
+
+      return screen.getByTestId(`${testID}-icon-image`).props.source
+    })
+    expect(new Set(rankingRuleIconSources).size).toBe(rankingRules.length)
     expect(screen.queryByTestId('customer-v21-profile-ranking-kael')).toBeNull()
 
     unmount()
@@ -308,12 +272,16 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-money')).toHaveTextContent(/2.150.000đ/)
   })
 
-  it('opens Agentic Center as a Profile utility instead of a primary tab', () => {
+  it('removes the smart utility section and Agentic Center entry from Profile', () => {
     render(<CustomerProfileSurface />)
 
-    fireEvent.press(screen.getByTestId('customer-v21-profile-agentic-entry'))
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?utility=agentic')
+    expect(screen.queryByText('Tiện ích thông minh')).toBeNull()
+    expect(screen.queryByText('Mặc định có sẵn')).toBeNull()
+    expect(screen.queryByText('Trung tâm điều phối Kael')).toBeNull()
+    expect(screen.queryByText('Tiện ích phụ')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-agentic-entry')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-profile-agentic-card')).toBeNull()
+    expect(screen.getByText('Tiện ích tài khoản')).toBeOnTheScreen()
   })
 
   it('opens account utility sections from the three profile utility tiles', () => {
@@ -331,6 +299,59 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?utility=settings')
   })
 
+  it('keeps the three profile utilities in one compact service-card rail', () => {
+    render(<CustomerProfileSurface />)
+
+    expect(screen.getByTestId('customer-v21-profile-utility-grid')).toHaveStyle({
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+    })
+
+    for (const utility of ['address', 'payment', 'settings']) {
+      const testID = `customer-v21-profile-utility-${utility}`
+
+      expect(screen.getByTestId(testID)).toHaveStyle({ flexDirection: 'column' })
+      expect(screen.getByTestId(testID)).toHaveStyle({
+        flexBasis: 0,
+        flexGrow: utility === 'payment' ? 1.16 : 1,
+      })
+      expect(screen.getByTestId(`${testID}-skin`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-formula-mint-aura`)).toHaveStyle({
+        bottom: 0,
+        left: 0,
+        opacity: 0.94,
+        position: 'absolute',
+        right: 0,
+        top: 0,
+      })
+      expect(screen.getByTestId(`${testID}-wide-mint-aura`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-mint-aura`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-visual-panel`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-icon`)).toHaveStyle({
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        height: 40,
+        minHeight: 40,
+        minWidth: 40,
+        width: 40,
+      })
+      expect(screen.getByTestId(`${testID}-connector`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-connector-dot`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-copy`)).toHaveStyle({
+        paddingLeft: 10,
+        paddingRight: 2,
+      })
+      expect(screen.getByTestId(`${testID}-title`)).toHaveProp('numberOfLines', 2)
+      expect(screen.getByTestId(`${testID}-detail-rail`)).toHaveStyle({
+        flexDirection: 'row',
+        flexWrap: 'nowrap',
+        justifyContent: 'center',
+      })
+      expect(screen.getByTestId(`${testID}-value`)).toHaveProp('numberOfLines', 1)
+      expect(within(screen.getByTestId(testID)).queryByText('›')).toBeNull()
+    }
+  })
+
   it('signs out from the profile overview action stack', () => {
     render(<CustomerProfileSurface />)
 
@@ -345,11 +366,35 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-payment-screen')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-connector-dot')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-signals')).toHaveTextContent(/Chủ tài khoản/)
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-signals')).toHaveTextContent(/Cần xác minh/)
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-title')).toHaveTextContent('Tài khoản nhận tiền')
+    await waitFor(() => expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa có'))
     expect(screen.getByTestId('customer-v21-profile-payment-bank-grid')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-payment-bank-logo-vietcombank')).toBeOnTheScreen()
+    for (const bank of ['vietcombank', 'techcombank', 'bidv', 'mbbank', 'acb', 'vietinbank']) {
+      expect(screen.getByTestId(`customer-v21-payment-bank-tile-${bank}-mint-aura`)).toBeOnTheScreen()
+    }
     expect(screen.queryByTestId('customer-v21-profile-payment-status')).toBeNull()
 
-    fireEvent.press(screen.getByTestId('customer-v21-payment-bank-tile-techcombank'))
+    for (const [bank, name] of [
+      ['vietcombank', 'Vietcombank'],
+      ['bidv', 'BIDV'],
+      ['mbbank', 'MBBank'],
+      ['acb', 'ACB'],
+      ['vietinbank', 'VietinBank'],
+      ['techcombank', 'Techcombank'],
+    ]) {
+      fireEvent.press(screen.getByTestId(`customer-v21-payment-bank-tile-${bank}`))
+      expect(screen.getByTestId('customer-v21-profile-payment-hero-title')).toHaveTextContent(name)
+      expect(screen.getByTestId(`customer-v21-payment-bank-tile-${bank}`)).toHaveProp('accessibilityState', {
+        disabled: false,
+        selected: true,
+      })
+    }
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa có')
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-payment-account-name-input'), 'PHAN MANH TU')
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-payment-account-number-input'), '123456789')
     fireEvent.changeText(screen.getByTestId('customer-v21-profile-payment-account-confirm-input'), '123456788')
@@ -373,6 +418,11 @@ describe('CustomerProfileSurface v2.1', () => {
     await waitFor(() => expect(screen.getByTestId('customer-v21-profile-payment-settings')).toHaveTextContent(/Techcombank/))
     expect(screen.getByTestId('customer-v21-profile-payment-settings')).toHaveTextContent(/\*\*\*\* 6789/)
     expect(screen.getByTestId('customer-v21-profile-payment-settings')).toHaveTextContent(/Chưa xác minh/)
+
+    fireEvent.press(screen.getByTestId('customer-v21-payment-bank-tile-bidv'))
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-title')).toHaveTextContent('BIDV')
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa có')
+    expect(screen.getByTestId('customer-v21-profile-payment-settings')).not.toHaveTextContent(/\*\*\*\* 6789/)
   })
 
   it('does not show backend endpoint errors on the payment utility screen', async () => {
@@ -437,6 +487,44 @@ describe('CustomerProfileSurface v2.1', () => {
 
     expect(screen.getByTestId('customer-v21-profile-utility-settings-screen')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-utility-notifications-screen')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-visual-panel')).toHaveStyle({ borderRightWidth: 1, width: 116 })
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-connector')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-connector-dot')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-title')).toHaveTextContent('Cài đặt tài khoản')
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-body')).toHaveStyle({ fontSize: 14, lineHeight: 20 })
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-detail-profile')).toHaveTextContent('Hồ sơ & bảo mật')
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-detail-language')).toHaveTextContent('Ngôn ngữ & dữ liệu')
+    expect(screen.getByTestId('customer-v21-profile-settings-hero-status')).toHaveTextContent('Tài khoản')
+    expect(screen.queryByRole('button', { name: 'i' })).toBeNull()
+
+    const settingsRows = [
+      ['account', 'Tên & liên hệ', 'Thông tin riêng'],
+      ['language', 'Ngôn ngữ', 'Giao diện'],
+      ['password', 'Mật khẩu', 'Xác nhận hiện tại'],
+      ['address', 'Địa chỉ chính', 'Địa chỉ phụ'],
+      ['memory', 'Quyền ghi nhớ', 'Bạn kiểm soát'],
+    ] as const
+    const settingsIconSources = settingsRows.map(([utility, firstDetail, secondDetail]) => {
+      const testID = `customer-v21-profile-settings-${utility}`
+
+      expect(screen.getByTestId(testID)).toHaveStyle({ flexDirection: 'row', minHeight: 112 })
+      expect(screen.getByTestId(`${testID}-visual-panel`)).toHaveStyle({ borderRightWidth: 1, width: 96 })
+      expect(screen.getByTestId(`${testID}-mint-aura`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-connector`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-connector-dot`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-copy`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`${testID}-title`)).toHaveProp('numberOfLines', 2)
+      expect(screen.getByTestId(`${testID}-body`)).toHaveProp('numberOfLines', 2)
+      expect(screen.getByTestId(`${testID}-detail-rail-0`)).toHaveTextContent(firstDetail)
+      expect(screen.getByTestId(`${testID}-detail-rail-1`)).toHaveTextContent(secondDetail)
+      expect(screen.getByTestId(`${testID}-status-frame`)).toHaveStyle({ alignSelf: 'center' })
+
+      return screen.getByTestId(`${testID}-icon-image`).props.source
+    })
+
+    expect(new Set(settingsIconSources).size).toBe(settingsRows.length)
 
     fireEvent.press(screen.getByTestId('customer-v21-profile-settings-password'))
     expect(screen.getByTestId('customer-v21-profile-settings-password-form')).toBeOnTheScreen()
@@ -561,78 +649,33 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-profile-utility-support-screen')).toBeNull()
   })
 
-  it('opens profile detail panels directly from safe query params', () => {
-    mockPanelParam = 'memory'
+  it('treats every retired Agentic Center query as the normal Profile overview', () => {
+    const retiredQueries = [
+      { panel: 'memory' },
+      { screen: '5.1-agentic-home' },
+      { screen: '5.2-command-center' },
+      { screen: '5.3-approval-queue' },
+      { screen: '5.4-memory' },
+      { utility: 'agentic' },
+    ]
 
-    render(<CustomerProfileSurface />)
+    retiredQueries.forEach((query) => {
+      mockPanelParam = query.panel
+      mockScreenParam = query.screen
+      mockUtilityParam = query.utility
 
-    expect(screen.getByTestId('customer-v21-profile-memory')).toBeOnTheScreen()
-    expect(screen.queryByText('Thông tin nhanh')).toBeNull()
-  })
+      const view = render(<CustomerProfileSurface />)
 
-  it('opens profile detail panels directly from zip screen ids', () => {
-    mockScreenParam = '5.4-memory'
+      expect(screen.getByTestId('customer-v21-profile-hero')).toBeOnTheScreen()
+      expect(screen.queryByTestId('customer-v21-agentic-center')).toBeNull()
+      expect(screen.queryByTestId('customer-v21-profile-memory')).toBeNull()
+      expect(screen.queryByText('Trung tâm điều phối Kael')).toBeNull()
 
-    render(<CustomerProfileSurface />)
-
-    expect(screen.getByTestId('customer-v21-profile-memory')).toBeOnTheScreen()
-    expect(screen.queryByText('ThÃ´ng tin nhanh')).toBeNull()
-  })
-
-  it('opens Agentic command center utility before a real process starts', () => {
-    mockUtilityParam = 'agentic'
-
-    render(<CustomerProfileSurface />)
-
-    expect(screen.queryByTestId('customer-v21-agentic-home-inactive')).toBeNull()
-    expect(screen.getByTestId('customer-v21-agentic-card-5.2-command-center')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-agentic-card-5.3-approval-queue')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-agentic-card-5.4-memory')).toBeOnTheScreen()
-  })
-
-  it('opens the direct approval queue screen without fake approval counts', () => {
-    mockScreenParam = '5.3-approval-queue'
-
-    render(<CustomerProfileSurface />)
-
-    expect(screen.getByTestId('customer-v21-agentic-approval-screen')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-agentic-approval-inactive')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-agentic-approval-queue')).toBeNull()
-    expect(screen.queryByText(/Ch.a c. g. c.n duy.t/)).toBeNull()
-    expect(screen.queryByText(/4\.9|AC|Vietcombank|paid_held/i)).toBeNull()
-  })
-
-  it('routes real Command Center actions to Case Chat and Approval Queue', () => {
-    mockDeal = buildDealWithScopeChange()
-    mockScreenParam = '5.2-command-center'
-
-    render(<CustomerProfileSurface />)
-
-    fireEvent.press(screen.getByTestId('customer-v21-agentic-open-case-chat'))
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-
-    mockReplace.mockClear()
-    fireEvent.press(screen.getByTestId('customer-v21-agentic-command-approval'))
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1&focus=approval')
-  })
-
-  it('renders memory preferences from real memory only and hides unsupported services', () => {
-    mockCustomerKaelMemory = {
-      language: 'vi',
-      preference_summary: 'Ưu tiên lịch sáng, cần xác nhận trước khi chia sẻ cho thợ.',
-      service_preferences: {
-        preferred_service: 'ac',
-      },
-    }
-
-    mockScreenParam = '5.4-memory'
-
-    render(<CustomerProfileSurface />)
-
-    expect(screen.getByTestId('customer-v21-profile-memory')).toHaveTextContent(/Thông tin được phép dùng/)
-    expect(screen.getByTestId('customer-v21-profile-memory')).toHaveTextContent(/Ranh giới dữ liệu/)
-    expect(screen.getByTestId('customer-v21-profile-memory')).toHaveTextContent(/Không trộn trò chuyện thường vào công việc/)
-    expect(screen.queryByText(/ac|máy lạnh/i)).toBeNull()
+      view.unmount()
+      mockPanelParam = undefined
+      mockScreenParam = undefined
+      mockUtilityParam = undefined
+    })
   })
 })
 

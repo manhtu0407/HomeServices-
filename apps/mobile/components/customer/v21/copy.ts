@@ -40,22 +40,28 @@ export const customerV21ServiceCopy: Localized<Record<ServiceType, { label: stri
   },
 }
 
-export const customerV21BookingServiceCopy: Localized<Record<CustomerServiceId, { label: string; note: string }>> = {
+type CustomerV21BookingServiceCardCopy = {
+  details: readonly [string, string]
+  label: string
+  note: string
+}
+
+export const customerV21BookingServiceCopy: Localized<Record<CustomerServiceId, CustomerV21BookingServiceCardCopy>> = {
   en: {
-    electrical: customerV21ServiceCopy.en.electrical,
-    plumbing: customerV21ServiceCopy.en.plumbing,
-    home_cleaning: { label: 'Home cleaning', note: 'Scope by size, condition and priority areas' },
-    hvac_basic_maintenance: { label: 'Air conditioning & air care', note: 'Cleaning, basic checks and safety review' },
-    upholstery_care: { label: 'Sofa, mattress, curtain & carpet care', note: 'Material, stain, odor and drying scope' },
-    handyman_minor_installation: { label: 'Minor repairs & installation', note: 'Small task bundles, tools and materials' },
+    electrical: { ...customerV21ServiceCopy.en.electrical, details: ['Outlets & breakers', 'Lighting'] },
+    plumbing: { ...customerV21ServiceCopy.en.plumbing, details: ['Leaks', 'Pipes'] },
+    home_cleaning: { details: ['Size', 'Condition & priority'], label: 'Home cleaning', note: 'Scope by size, condition and priority areas' },
+    hvac_basic_maintenance: { details: ['Cleaning & checks', 'Safety'], label: 'Air conditioning & air care', note: 'Cleaning, basic checks and safety review' },
+    upholstery_care: { details: ['Material & stains', 'Odor & drying'], label: 'Sofa, mattress, curtain & carpet care', note: 'Material, stain, odor and drying scope' },
+    handyman_minor_installation: { details: ['Materials & tools', 'Task boundaries'], label: 'Minor repairs & installation', note: 'Small task bundles, tools and materials' },
   },
   vi: {
-    electrical: customerV21ServiceCopy.vi.electrical,
-    plumbing: customerV21ServiceCopy.vi.plumbing,
-    home_cleaning: { label: 'Vệ sinh nhà cửa', note: 'Phạm vi theo diện tích · hiện trạng · ưu tiên' },
-    hvac_basic_maintenance: { label: 'Điều hòa & Không khí', note: 'Vệ sinh · kiểm tra cơ bản · duyệt an toàn' },
-    upholstery_care: { label: 'Sofa, nệm, rèm, thảm', note: 'Chất liệu · vết bẩn · mùi · thời gian khô' },
-    handyman_minor_installation: { label: 'Sửa vặt & Lắp đặt nhỏ', note: 'Gom việc · vật tư · dụng cụ · ranh giới' },
+    electrical: { ...customerV21ServiceCopy.vi.electrical, details: ['Ổ cắm · cầu dao', 'Đèn'] },
+    plumbing: { ...customerV21ServiceCopy.vi.plumbing, details: ['Rò rỉ', 'Đường ống'] },
+    home_cleaning: { details: ['Diện tích', 'Hiện trạng · ưu tiên'], label: 'Vệ sinh nhà cửa', note: 'Phạm vi theo diện tích · hiện trạng · ưu tiên' },
+    hvac_basic_maintenance: { details: ['Vệ sinh · kiểm tra', 'An toàn'], label: 'Điều hòa & Không khí', note: 'Vệ sinh · kiểm tra cơ bản · duyệt an toàn' },
+    upholstery_care: { details: ['Chất liệu · vết bẩn', 'Mùi · khô'], label: 'Sofa, nệm, rèm, thảm', note: 'Chất liệu · vết bẩn · mùi · thời gian khô' },
+    handyman_minor_installation: { details: ['Vật tư · dụng cụ', 'Ranh giới việc'], label: 'Sửa vặt & Lắp đặt nhỏ', note: 'Gom việc · vật tư · dụng cụ · ranh giới' },
   },
 }
 
@@ -106,7 +112,6 @@ export const customerV21StatusCopy: Localized<Record<LocalDealStatus | 'none', s
 
 export const customerV21CommonCopy: Localized<{
   activeCase: string
-  agenticCenter: string
   caseWork: string
   chatPlaceholder: string
   chatTitle: string
@@ -129,7 +134,6 @@ export const customerV21CommonCopy: Localized<{
 }> = {
   en: {
     activeCase: 'Active work',
-    agenticCenter: 'Agentic Center',
     caseWork: 'Work handling',
     chatPlaceholder: 'Briefly describe what needs handling',
     chatTitle: 'Kael Chat',
@@ -152,7 +156,6 @@ export const customerV21CommonCopy: Localized<{
   },
   vi: {
     activeCase: 'Công việc đang xử lý',
-    agenticCenter: 'Trung tâm điều phối Kael',
     caseWork: 'Xử lý công việc',
     chatPlaceholder: 'Mô tả ngắn việc bạn cần xử lý',
     chatTitle: 'Trò chuyện với Kael',
@@ -193,10 +196,6 @@ export const customerV21ScreenTitles: Localized<Record<CustomerV21ScreenId, stri
     '2.11-live-alert': 'Worker on the way',
     '2.12-job-accepted': 'Job accepted',
     '2.13-job-progress': 'Job in progress',
-    '5.1-agentic-home': 'Agentic Center',
-    '5.2-command-center': 'Active Work Command Center',
-    '5.3-approval-queue': 'Approval Queue',
-    '5.4-memory': 'Memory and Preferences',
     '6.1-profile-overview': 'Customer profile',
     '6.2-usage-ranking': 'Usage ranking',
     '6.3-protect-money': 'Money protection',
@@ -218,10 +217,6 @@ export const customerV21ScreenTitles: Localized<Record<CustomerV21ScreenId, stri
     '2.11-live-alert': 'Thợ đang tới',
     '2.12-job-accepted': 'Đơn đã được xác nhận',
     '2.13-job-progress': 'Công việc đang diễn ra',
-    '5.1-agentic-home': 'Trung tâm điều phối Kael',
-    '5.2-command-center': 'Trung tâm điều phối',
-    '5.3-approval-queue': 'Hàng chờ duyệt',
-    '5.4-memory': 'Ghi nhớ và tùy chọn',
     '6.1-profile-overview': 'Hồ sơ khách hàng',
     '6.2-usage-ranking': 'Xếp hạng sử dụng',
     '6.3-protect-money': 'Bảo vệ đồng tiền',

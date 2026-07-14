@@ -27,6 +27,8 @@ export const styles = StyleSheet.create({
   progressRail: {
     alignItems: 'flex-start',
     flexDirection: 'row',
+    position: 'relative',
+    zIndex: 1,
   },
   railCard: {
     backgroundColor: 'rgba(255,255,255,0.73)',
@@ -36,6 +38,7 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 13,
     paddingVertical: 12,
+    position: 'relative',
     ...shadow.soft,
   },
   railLabel: {

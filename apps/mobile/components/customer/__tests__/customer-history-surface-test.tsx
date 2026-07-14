@@ -1,9 +1,12 @@
-import { render, screen } from '@testing-library/react-native'
-import type { LocalCustomerSearchState, LocalDeal, LocalDealStatus, LocalWorkflowSelectors } from '@nestscout/shared'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { Alert } from 'react-native'
 
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockWorkflowValue: any
 const mockReplace = jest.fn()
+const mockListMyServiceHistory = jest.fn()
+const mockOpenDispute = jest.fn()
+const mockSetFavoriteWorker = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
@@ -37,6 +40,14 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
   useFrontendWorkflow: () => mockWorkflowValue,
 }))
 
+jest.mock('@/lib/services', () => ({
+  jobService: {
+    listMyServiceHistory: (...args: unknown[]) => mockListMyServiceHistory(...args),
+    openDispute: (...args: unknown[]) => mockOpenDispute(...args),
+    setFavoriteWorker: (...args: unknown[]) => mockSetFavoriteWorker(...args),
+  },
+}))
+
 jest.mock('@/lib/app-language', () => {
   const actual = jest.requireActual('@/lib/app-language')
   return {
@@ -47,175 +58,219 @@ jest.mock('@/lib/app-language', () => {
 
 import { CustomerHistorySurface } from '../customer-surfaces'
 
-const oldHistorySurfaceIds = [
-  'customer-history-repair-hero-panel',
-  'customer-history-phase-context',
-  'customer-history-chat-input',
-  'customer-history-price-tab-panel',
-  'customer-history-cancel-local-deal',
-  'customer-history-apartment-access-panel',
-]
-
-function buildDeal(status: LocalDealStatus, backendStatus: LocalDeal['backendStatus'] = status): LocalDeal {
-  const accepted = status !== 'broadcasting'
-  const paymentReady = backendStatus === 'payment_pending' || backendStatus === 'paid' || backendStatus === 'confirmed_by_customer'
-
-  return {
-    backendStatus,
-    broadcast: {
-      broadcastId: 'broadcast_test_1',
-      estimatedEarningLabel: '120.000đ - 180.000đ',
-      estimatedPriceLabel: '180.000đ - 260.000đ',
-      fullAddressLabel: accepted ? 'Tòa A, Quận 1' : null,
-      fullAddressVisible: accepted,
-      generalArea: 'Quận 1',
-      jobId: 'job_test_1',
-      prebrief: ['Kael đã tóm tắt phạm vi và giữ địa chỉ chi tiết theo chính sách.'],
-      problemSummary: 'Ổ cắm chập chờn',
-      secondsRemaining: status === 'broadcasting' ? 45 : null,
-      serviceType: 'electrical',
-      status: accepted ? 'accepted' : 'sent',
-    },
-    completionNotes: paymentReady ? 'Đã thay ổ cắm và kiểm tra tải.' : null,
-    completionPhotoUrls: paymentReady ? ['storage://job_test_1/after.jpg'] : [],
-    draft: {
-      addressLabel: 'Tòa A, Quận 1',
-      description: 'Ổ cắm phòng khách chập chờn và có mùi khét nhẹ',
-      districtLabel: 'Quận 1',
-      inferredProblemLabel: null,
-      mediaCount: 1,
-      needsServiceChoice: false,
-      problemChips: ['ổ cắm/công tắc hỏng'],
-      serviceType: 'electrical',
-      source: 'kael',
-      timeChoice: 'now',
-      unsupportedServiceLabel: null,
-    },
-    estimate: {
-      advisory: 'Kael có thể cập nhật nếu bằng chứng phạm vi thay đổi.',
-      complexity: 'medium',
-      confidenceLabel: '84%',
-      disclaimer: 'Giá do Kael khóa theo bằng chứng hiện có.',
-      hasVndPrice: true,
-      priceRangeLabel: '180.000đ - 260.000đ',
-      problemLabel: 'Ổ cắm chập chờn',
-    },
-    finalPrice: paymentReady ? 260000 : null,
-    id: 'job_test_1',
-    payment: paymentReady
-      ? {
-          grossAmount: 260000,
-          platformFee: 39000,
-          provider: 'sepay_vietqr',
-          status: backendStatus === 'paid' ? 'reconciled' : 'pending',
-          workerNet: 221000,
-        }
-      : null,
-    scopeChange: null,
-    status,
-  }
-}
-
-function customerSearchStateForStatus(status: LocalDealStatus): LocalCustomerSearchState {
-  if (status === 'broadcasting') return 'searching'
-  if (status === 'worker_matched') return 'matched'
-  if (status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'payment_pending' || status === 'paid' || status === 'reviewed') return 'completed'
-  if (['worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(status)) return 'active'
-  return 'idle'
-}
-
-function buildWorkflow(deal: LocalDeal | null) {
-  const currentStatus = deal?.status ?? null
-  const canCustomerSubmitReview = deal?.backendStatus === 'paid' || deal?.backendStatus === 'confirmed_by_customer'
-  const selectors: LocalWorkflowSelectors = {
-    canConfirmCustomerSearch: false,
-    canCustomerCancelDeal: Boolean(deal && currentStatus !== 'reviewed'),
-    canCustomerConfirmCompletion: false,
-    canCustomerSubmitReview,
-    canWorkerAccept: false,
-    canWorkerAdvance: false,
-    canWorkerSeeFullAddress: Boolean(deal?.broadcast?.fullAddressVisible),
-    currentBackendStatus: deal?.backendStatus ?? currentStatus,
-    currentStatus,
-    customerSearchState: currentStatus ? customerSearchStateForStatus(currentStatus) : 'idle',
-    draftValidationMessage: null,
-    hasLocalBroadcast: Boolean(deal?.broadcast),
-    paymentLocked: true,
-    reviewLocked: !canCustomerSubmitReview,
-    scheduleMode: 'now_only',
-  }
-
+function buildWorkflow() {
   mockWorkflowValue = {
     actions: {
-      authorizeApartmentAccess: jest.fn(async () => true),
-      cancelRemoteJob: jest.fn(async () => true),
-      decideScopeChange: jest.fn(async () => true),
       hydrateRemoteJobById: jest.fn(async () => true),
-      submitReview: jest.fn(async () => true),
     },
-    selectors,
     state: {
-      deal,
-      lastError: null,
-      lastRemoteSyncAt: null,
-      workerGate: 'remote_backend',
+      deal: null,
+    },
+  }
+}
+
+function serviceHistory() {
+  return {
+    success: true,
+    data: {
+      service_history: [
+        {
+          ended_at: '2026-07-13T08:52:00.000Z',
+          final_price: 320000,
+          id: 'job_paid',
+          service_type: 'electrical',
+          status: 'paid',
+          worker: {
+            avatar_url: 'https://example.test/worker-1.png',
+            display_name: 'Anh Minh',
+            id: 'worker_1',
+            is_favorite: false,
+          },
+        },
+        {
+          ended_at: '2026-07-12T06:30:00.000Z',
+          final_price: 180000,
+          id: 'job_reviewed',
+          service_type: 'plumbing',
+          status: 'reviewed',
+          worker: {
+            avatar_url: null,
+            display_name: 'Anh Minh',
+            id: 'worker_1',
+            is_favorite: false,
+          },
+        },
+        {
+          ended_at: '2026-07-03T12:00:00.000Z',
+          final_price: null,
+          id: 'job_cancelled',
+          service_type: 'cleaning',
+          status: 'cancelled',
+          worker: null,
+        },
+      ],
     },
   }
 }
 
 beforeEach(() => {
-  mockReplace.mockClear()
-  mockRouteParams = { screen: '2.6-case-overview' }
-  buildWorkflow(buildDeal('broadcasting'))
+  jest.clearAllMocks()
+  mockRouteParams = {}
+  buildWorkflow()
+  mockListMyServiceHistory.mockResolvedValue(serviceHistory())
+  mockOpenDispute.mockResolvedValue({
+    success: true,
+    data: { dispute_id: 'dispute_1' },
+  })
+  mockSetFavoriteWorker.mockResolvedValue({
+    success: true,
+    data: { is_favorite: true, worker_id: 'worker_1' },
+  })
 })
 
-describe('CustomerHistorySurface V21 routing', () => {
-  it('renders the PR72/V21 activity shell through the public customer barrel', () => {
+describe('CustomerHistorySurface service history', () => {
+  it('renders a date-grouped deal feed with real worker and price data', async () => {
     render(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-v21-activity')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-top-title')).toBeOnTheScreen()
-    for (const oldTestId of oldHistorySurfaceIds) {
-      expect(screen.queryByTestId(oldTestId)).toBeNull()
+    await waitFor(() => {
+      expect(screen.getByTestId('customer-v21-history-list')).toBeOnTheScreen()
+    })
+
+    expect(screen.getByText('Hoạt động gần đây')).toBeOnTheScreen()
+    expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
+    expect(screen.getAllByText('Anh Minh')).toHaveLength(2)
+    expect(screen.getByText('320.000 ₫')).toBeOnTheScreen()
+    expect(screen.getAllByText('Đã hoàn tất')).toHaveLength(2)
+    expect(screen.getByTestId('customer-v21-history-group-2026-07-13')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-group-2026-07-12')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-item-job_paid-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-item-job_paid-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-item-job_paid-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeNull()
+  })
+
+  it('uses a horizontal service filter rail and filters without inventing records', async () => {
+    render(<CustomerHistorySurface />)
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-list')).toBeOnTheScreen())
+    expect(screen.getByTestId('customer-v21-history-filter-scroll')).toHaveProp('horizontal', true)
+    expect(screen.getByTestId('customer-v21-history-filter-scroll')).toHaveProp('decelerationRate', 'normal')
+    expect(screen.getByTestId('customer-v21-history-filter-scroll')).toHaveProp('showsHorizontalScrollIndicator', false)
+    expect(screen.getByTestId('customer-v21-history-filter-scroll')).toHaveProp(
+      'accessibilityHint',
+      'Vuốt ngang để xem thêm bộ lọc dịch vụ',
+    )
+    expect(screen.getByTestId('customer-v21-history-filter-drag-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-filter-indicator')).toBeOnTheScreen()
+    for (const filter of ['all', 'saved', 'electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']) {
+      expect(screen.getByTestId(`customer-v21-history-filter-${filter}-wide-mint-aura`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`customer-v21-history-filter-${filter}-mint-aura`)).toBeOnTheScreen()
     }
+
+    fireEvent.press(screen.getByTestId('customer-v21-history-filter-cleaning'))
+
+    expect(screen.getByTestId('customer-v21-history-item-job_cancelled')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-history-item-job_paid')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-history-item-job_reviewed')).toBeNull()
   })
 
-  it('redirects real payment activity through V21 case-work instead of the deleted history surface', () => {
-    mockRouteParams = { screen: '3.3-payment-protected' }
-    buildWorkflow(buildDeal('payment_pending', 'payment_pending'))
-
+  it('reuses the profile mint aura formula for the saved-worker hint and unavailable card', async () => {
+    mockListMyServiceHistory.mockResolvedValue({ success: false })
     render(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-v21-activity')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-direct-empty-3.3-payment-protected')).toBeOnTheScreen()
-    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining('/(customer)/kael'))
-    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining('focus=payment'))
-    for (const oldTestId of oldHistorySurfaceIds) {
-      expect(screen.queryByTestId(oldTestId)).toBeNull()
-    }
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-error')).toBeOnTheScreen())
+
+    expect(screen.getByTestId('customer-v21-history-saved-hint-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-saved-hint-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-saved-hint-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-error-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-error-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-error-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByText('Vui lòng thử lại khi kết nối ổn định hơn.')).toBeNull()
   })
 
-  it('keeps legacy case links on the V21 case-work route instead of reviving old history UI', () => {
-    mockRouteParams = { screen: '2.7-matching' }
-    buildWorkflow(buildDeal('worker_matched'))
-
+  it('saves a worker and updates every completed deal from that worker', async () => {
     render(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-v21-activity')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-direct-empty-2.7-matching')).toBeOnTheScreen()
-    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining('/(customer)/kael'))
-    expect(screen.queryByTestId('customer-history-phase-context')).toBeNull()
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-favorite-job_paid')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('customer-v21-history-favorite-job_paid'))
+
+    await waitFor(() => {
+      expect(mockSetFavoriteWorker).toHaveBeenCalledWith('worker_1', true)
+      expect(screen.getByTestId('customer-v21-history-favorite-job_paid')).toHaveProp(
+        'accessibilityState',
+        expect.objectContaining({ selected: true }),
+      )
+      expect(screen.getByTestId('customer-v21-history-favorite-job_reviewed')).toHaveProp(
+        'accessibilityState',
+        expect.objectContaining({ selected: true }),
+      )
+    })
   })
 
-  it('hydrates route job ids without falling back to the deleted split surface directory', () => {
-    mockRouteParams = { job_id: 'job_from_route', screen: '2.6-case-overview' }
-    buildWorkflow(null)
-
+  it('shows saved-worker deals in the Đã lưu filter', async () => {
+    const result = serviceHistory()
+    result.data.service_history[1].worker!.is_favorite = true
+    mockListMyServiceHistory.mockResolvedValue(result)
     render(<CustomerHistorySurface />)
 
-    expect(mockWorkflowValue.actions.hydrateRemoteJobById).toHaveBeenCalledWith('job_from_route')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-history-repair-hero-panel')).toBeNull()
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-list')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('customer-v21-history-filter-saved'))
+
+    expect(screen.getByTestId('customer-v21-history-item-job_reviewed')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-history-item-job_paid')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-history-item-job_cancelled')).toBeNull()
+  })
+
+  it('rebooks the same service through the existing Case Work route', async () => {
+    render(<CustomerHistorySurface />)
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-rebook-job_paid')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('customer-v21-history-rebook-job_paid'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking?service=electrical')
+  })
+
+  it('requires confirmation before opening after-service support', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    render(<CustomerHistorySurface />)
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-support-job_paid')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('customer-v21-history-support-job_paid'))
+
+    const supportAlert = alertSpy.mock.calls.find(([title]) => title === 'Hỗ trợ sau dịch vụ')
+    expect(supportAlert).toBeDefined()
+    const actions = supportAlert?.[2] as { text: string; onPress?: () => void }[]
+    await act(async () => {
+      actions.find((action) => action.text === 'Mở yêu cầu hỗ trợ')?.onPress?.()
+    })
+
+    await waitFor(() => {
+      expect(mockOpenDispute).toHaveBeenCalledWith('job_paid', {
+        dispute_type: 'other',
+        evidence_photo_urls: [],
+        initiator_statement: 'Khách hàng cần hỗ trợ sau dịch vụ.',
+      })
+    })
+    alertSpy.mockRestore()
+  })
+
+  it('keeps notification job links functional by hydrating the referenced job', async () => {
+    mockRouteParams = { job_id: 'job_from_notification' }
+    render(<CustomerHistorySurface />)
+
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.hydrateRemoteJobById).toHaveBeenCalledWith('job_from_notification')
+    })
+  })
+
+  it('redirects legacy activity and scope-change links into Kael Case Work', async () => {
+    mockRouteParams = { job_id: 'job_scope_change', scope_change: 'scope_change_1', screen: '3.3-payment-protected' }
+    mockWorkflowValue.state.deal = { id: 'job_scope_change' }
+    render(<CustomerHistorySurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_scope_change&focus=approval')
+    })
   })
 })

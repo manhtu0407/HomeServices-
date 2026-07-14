@@ -8,7 +8,6 @@ import Svg, { Circle, Defs, LinearGradient } from 'react-native-svg'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated'
 import type { LocalDeal } from '@nestscout/shared'
 
-import { MintAura } from '@/components/ui/kael-primitives'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { color } from '@/design/theme'
 import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
@@ -17,6 +16,7 @@ import {
   WorkerV5CustomerCaseWideMintAura,
   WorkerV5CustomerCaseWorkCardAura,
   WorkerV5CustomerZipMintAura,
+  WorkerV5FormulaMintCardAura,
   WorkerV5SourceCardSkin,
   WorkerV5SuccessCheckFill,
   WorkerV5SuccessEmblemAura,
@@ -93,7 +93,11 @@ export function WorkerV5SuccessEmblem({
 }) {
   return (
     <View style={[styles.successCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-success-emblem">
-      {!reduceTransparency ? <MintAura intensity="component" style={styles.successAura} testID="worker-v5-completion-submitted-mint-aura" /> : null}
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="CompletionSubmitted"
+        testID="worker-v5-completion-submitted-mint-aura"
+      />
       <View style={styles.successEmblem} testID="worker-v5-completion-submitted-seal">
         {!reduceTransparency ? <WorkerV5SuccessEmblemAura scope="CompletionSubmitted" testID="worker-v5-success-emblem-aura" /> : null}
         <View style={styles.successCheck}>

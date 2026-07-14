@@ -19,6 +19,7 @@ import {
 import { asJobStatus, asNumber, asServiceType, asString, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { insertUserNotification, notifyCustomerWorkerMatched } from "./notifications.service.ts";
+import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
 
 export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
@@ -261,12 +262,13 @@ async function buildSafeWorkerCandidateView(
   }
   const totalJobs = Math.max(0, Math.trunc(asNumber(worker.data.total_jobs)));
   const rating = nullableNumber(worker.data.rating);
+  const avatarUrl = await resolveWorkerAvatarUrl(client, profile.data.avatar_url);
   return {
     candidate_id: asString(candidate.id),
     worker_id: workerId,
     status: status as "proposed" | "customer_confirmed" | "customer_declined" | "expired" | "withdrawn",
     display_name: nullableString(profile.data.full_name),
-    avatar_url: nullableString(profile.data.avatar_url),
+    avatar_url: avatarUrl,
     rating: totalJobs > 0 && rating !== null && rating > 0 ? rating : null,
     total_jobs: totalJobs,
     years_experience: Math.max(0, Math.trunc(asNumber(worker.data.years_experience))),

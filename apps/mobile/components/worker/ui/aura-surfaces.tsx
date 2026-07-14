@@ -5,6 +5,65 @@ import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { styles } from './aura-styles'
 
+export const WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY = 1.4
+
+const formulaMintCardAlpha = {
+  primary: 0.2 * WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY,
+  secondary: 0.12 * WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY,
+  soft: 0.08 * WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY,
+} as const
+
+function safeWorkerAuraScope(scope: string) {
+  return scope.replace(/[^a-zA-Z0-9]/g, '') || 'Card'
+}
+
+export function WorkerV5FormulaMintCardAura({
+  reduceTransparency = false,
+  scope,
+  style,
+  testID,
+}: {
+  reduceTransparency?: boolean
+  scope: string
+  style?: StyleProp<ViewStyle>
+  testID?: string
+}) {
+  const safeScope = safeWorkerAuraScope(scope)
+  const topRightId = `workerV5FormulaMintCardTopRight${safeScope}`
+  const bottomLeftId = `workerV5FormulaMintCardBottomLeft${safeScope}`
+
+  if (reduceTransparency) {
+    return (
+      <View
+        pointerEvents="none"
+        style={[styles.workerV5FormulaMintCardAura, styles.workerV5FormulaMintCardAuraOpaque, style]}
+        testID={testID}
+      />
+    )
+  }
+
+  return (
+    <View pointerEvents="none" style={[styles.workerV5FormulaMintCardAura, style]} testID={testID}>
+      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 160" width="100%">
+        <Defs>
+          <RadialGradient id={topRightId} cx="86%" cy="4%" r="74%">
+            <Stop offset="0" stopColor="#50E8D2" stopOpacity={formulaMintCardAlpha.primary} />
+            <Stop offset="0.46" stopColor="#97F6E8" stopOpacity={formulaMintCardAlpha.secondary} />
+            <Stop offset="0.8" stopColor="#F7FFFB" stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id={bottomLeftId} cx="4%" cy="100%" r="68%">
+            <Stop offset="0" stopColor="#53DCCE" stopOpacity={formulaMintCardAlpha.secondary} />
+            <Stop offset="0.58" stopColor="#E6FBF3" stopOpacity={formulaMintCardAlpha.soft} />
+            <Stop offset="0.86" stopColor="#F7FFFB" stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Rect fill={`url(#${topRightId})`} height="160" width="360" />
+        <Rect fill={`url(#${bottomLeftId})`} height="160" width="360" />
+      </Svg>
+    </View>
+  )
+}
+
 export function WorkerV5CustomerCaseWideMintAura({
   scope,
   style,

@@ -3,7 +3,8 @@ import type { ServiceType } from '@nestscout/shared'
 
 import { customerV21ServiceCopy } from './copy'
 
-export const bookingTimeSlots = ['08:00-10:00', '10:00-12:00', '14:00-16:00', '16:00-18:00'] as const
+export const bookingTimeSlots = ['08:00', '10:00', '14:00', '16:00'] as const
+const bookingScheduleWindowMinutes = 120
 export type BookingScheduleWindow = {
   date: string
   start: string
@@ -16,7 +17,8 @@ export function bookingScheduleDraft(
   selectedTime: string | null,
 ): { scheduledAt?: string; scheduleWindow?: BookingScheduleWindow } {
   if (!selectedDate || !selectedTime) return {}
-  const [start, end] = selectedTime.split('-')
+  const start = bookingCustomTimeValue(selectedTime)
+  const end = start ? bookingScheduleEndTime(start) : null
   if (!start || !end) return {}
   const scheduledAt = new Date(`${selectedDate}T${start}:00+07:00`)
   if (Number.isNaN(scheduledAt.getTime())) return {}
@@ -91,16 +93,60 @@ export function buildBookingScheduleDateOptions(language: AppLanguage, runtimeNo
   })
 }
 
+export function bookingCustomDateValue(input: string, runtimeNow: Date = new Date()) {
+  const match = input.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!match) return null
+  const [, day, month, year] = match
+  const value = `${year}-${month}-${day}`
+  return bookingScheduleDateIsBookable(value, runtimeNow) ? value : null
+}
+
+export function normalizeBookingCustomDateInput(input: string) {
+  const digits = input.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+}
+
+export function bookingCustomTimeValue(input: string) {
+  const match = input.trim().match(/^(\d{2}):(\d{2})$/)
+  if (!match) return null
+  const [, hour, minute] = match
+  if (Number(hour) > 23 || Number(minute) > 59) return null
+  return bookingScheduleEndTime(`${hour}:${minute}`) ? `${hour}:${minute}` : null
+}
+
+export function normalizeBookingCustomTimeInput(input: string) {
+  const digits = input.replace(/\D/g, '').slice(0, 4)
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2)}`
+}
+
+export function bookingScheduleDateIsBookable(value: string, runtimeNow: Date = new Date()) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return false
+  const [, year, month, day] = match
+  const candidate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+  const realDate = candidate.getUTCFullYear() === Number(year)
+    && candidate.getUTCMonth() === Number(month) - 1
+    && candidate.getUTCDate() === Number(day)
+  return realDate && value >= dateValue(runtimeNow)
+}
+
 export function bookingScheduleLabel(
   options: BookingScheduleDateOption[],
   selectedDate: string | null,
   selectedTime: string | null,
   language: AppLanguage,
 ) {
-  const dateLabel = selectedDate ? options.find((option) => option.value === selectedDate)?.label ?? selectedDate : null
-  if (dateLabel && selectedTime) return `${dateLabel} · ${selectedTime}`
+  const dateLabel = selectedDate
+    ? options.find((option) => option.value === selectedDate)?.label ?? customDateLabel(selectedDate, language)
+    : null
+  const timeLabel = selectedTime
+    ? (language === 'vi' ? `Bắt đầu lúc ${selectedTime}` : `Starts at ${selectedTime}`)
+    : null
+  if (dateLabel && timeLabel) return `${dateLabel} · ${timeLabel}`
   if (dateLabel) return `${dateLabel} · ${language === 'vi' ? 'Chưa chọn giờ' : 'No time'}`
-  if (selectedTime) return `${language === 'vi' ? 'Chưa chọn ngày' : 'No date'} · ${selectedTime}`
+  if (timeLabel) return `${language === 'vi' ? 'Chưa chọn ngày' : 'No date'} · ${timeLabel}`
   return null
 }
 
@@ -110,11 +156,27 @@ export function bookingScheduleDateParam(value: string | undefined) {
 
 export function bookingScheduleTimeParam(value: string | undefined) {
   if (!value) return null
-  return bookingTimeSlots.includes(value as (typeof bookingTimeSlots)[number]) ? value : null
+  return bookingCustomTimeValue(value.split('-')[0] ?? '')
 }
 
 function dateValue(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function customDateLabel(value: string, language: AppLanguage) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return value
+  const [, year, month, day] = match
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+  return `${weekdayLabel(date.getUTCDay(), language)} ${day}/${month}/${year}`
+}
+
+function bookingScheduleEndTime(start: string) {
+  const [hour, minute] = start.split(':').map(Number)
+  const startMinutes = hour * 60 + minute
+  if (!Number.isInteger(startMinutes) || startMinutes >= 23 * 60 + 59) return null
+  const endMinutes = Math.min(startMinutes + bookingScheduleWindowMinutes, 23 * 60 + 59)
+  return `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`
 }
 
 function weekdayLabel(day: number, language: AppLanguage) {

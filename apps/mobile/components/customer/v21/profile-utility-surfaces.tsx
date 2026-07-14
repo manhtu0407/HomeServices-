@@ -1,8 +1,11 @@
 import { Fragment, type ComponentType, type ReactNode } from 'react'
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Image } from 'expo-image'
+import { Pressable, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
+import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { useAppLanguage } from '@/lib/app-language'
 
 import {
@@ -12,15 +15,13 @@ import {
   type CustomerThemeTokens,
 } from '../customer-theme'
 import { CaseWideMintAura, SourceCardSkin, ZipMintAura } from './aura-surfaces'
-import { customerV21Assets, customerV21ServiceAssets, type CustomerV21Visual } from './assets'
-import { customerV21CommonCopy, customerV21ScreenTitles } from './copy'
-import { MemoryDivider, MemoryPermissionRow } from './agentic-surfaces'
-import { customerV21AgenticStyles as agenticStyles } from './agentic-styles'
-import { customerV21HistoryActiveStyles as historyActiveStyles } from './history-active-styles'
+import { customerV21Assets, type CustomerV21Visual } from './assets'
+import { customerV21CommonCopy } from './copy'
 import { CaseOverviewScoreAura } from './history-surfaces'
 import { ProfileCompactMintAura, ProfileLiquidScore, ProfileStatCard } from './profile-metrics-surfaces'
+import { customerV21ProfileSettingsStyles as settingsStyles } from './profile-settings-styles'
 import { customerV21ProfileUtilityStyles as styles } from './profile-utility-styles'
-import { AssetTile, EyebrowPill, SectionActionHeader, V21Card } from './shared-surfaces'
+import { AssetTile, SectionActionHeader, V21Card } from './shared-surfaces'
 
 function useCustomerV21ProfileTheme() {
   const mode = useCustomerThemeMode()
@@ -38,11 +39,6 @@ type CustomerV21UtilityAssetTile = ComponentType<{
   testID?: string
 }>
 
-type CustomerV21UtilityAura = ComponentType<{
-  scope: string
-  testID?: string
-}>
-
 type ProfilePanelMetric = {
   label: string
   value: string
@@ -55,7 +51,8 @@ type ProfileRankingNode = {
 }
 
 type ProfileInsightModel = {
-  image: CustomerV21Visual
+  details?: readonly CustomerV21SettingsDetail[]
+  image: ImageSourcePropType
   label: string
   status: string
   testID?: string
@@ -103,59 +100,9 @@ export function ProfileAuraCard({
   )
 }
 
-export function ProfileRankingEvaluation({
-  assetTile: AssetTile,
-  completed,
-  kaelHeadImage,
-  protectedTransactions,
-  reviewRate,
-}: {
-  assetTile: CustomerV21UtilityAssetTile
-  completed: string
-  kaelHeadImage: CustomerV21Visual
-  protectedTransactions: string
-  reviewRate: string
-}) {
-  const language = useAppLanguage()
-  const tokens = useCustomerV21ProfileTheme()
-  const sourceLine = language === 'vi'
-    ? 'Công việc, đánh giá, thanh toán.'
-    : 'Jobs, reviews, payments.'
-  const rows = [
-    { label: language === 'vi' ? 'Hoàn tất' : 'Completed', value: completed },
-    { label: language === 'vi' ? 'Đánh giá' : 'Reviews', value: reviewRate },
-    { label: language === 'vi' ? 'Bảo vệ' : 'Protected', value: protectedTransactions },
-  ]
-
-  return (
-    <ProfileAuraCard
-      cardStyle={styles.profileRankingEvaluationCard}
-      contentStyle={styles.profileRankingEvaluationContent}
-      scope="RankingEvaluation"
-      testID="customer-v21-profile-ranking-evaluation"
-    >
-      <AssetTile image={kaelHeadImage} label="Kael" size={42} sourceAura style={styles.infoNoticeIcon} />
-      <View style={styles.flex}>
-        <Text numberOfLines={1} style={[styles.cardTitle, { color: tokens.text }]}>
-          {language === 'vi' ? 'Kael đánh giá dữ liệu thật' : 'Kael reads real data'}
-        </Text>
-        <Text numberOfLines={1} style={[styles.bodyText, { color: tokens.muted }]}>{sourceLine}</Text>
-        <View style={styles.profileRankingEvaluationChips}>
-          {rows.map((row) => (
-            <View key={row.label} style={styles.profileRankingEvidenceChip}>
-              <ZipMintAura scope={`ProfileRankingEvidence${profileAuraScope(row.label)}`} />
-              <Text numberOfLines={1} style={[styles.profileRankingEvidenceLabel, { color: tokens.muted }]}>{row.label}</Text>
-              <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={1} style={[styles.profileRankingEvidenceValue, { color: tokens.primary }]}>{row.value}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </ProfileAuraCard>
-  )
-}
-
 export function ProfileInsightRow({
   assetTile: AssetTile,
+  details,
   iconStyle,
   image,
   label,
@@ -164,8 +111,9 @@ export function ProfileInsightRow({
   value,
 }: {
   assetTile: CustomerV21UtilityAssetTile
+  details?: readonly CustomerV21SettingsDetail[]
   iconStyle?: StyleProp<ViewStyle>
-  image: CustomerV21Visual
+  image: ImageSourcePropType
   label: string
   status: string
   testID?: string
@@ -176,6 +124,63 @@ export function ProfileInsightRow({
     || status === customerV21CommonCopy.en.dataPending
     || status === '0'
     || /^0\s*\/\s*0$/.test(status)
+
+  if (details) {
+    const auraScope = `ProfileRankingRuleIcon${profileAuraScope(label)}`
+    return (
+      <View
+        style={[settingsStyles.actionRow, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+        testID={testID}
+      >
+        <View
+          style={[
+            settingsStyles.visualPanel,
+            {
+              backgroundColor: tokens.mode === 'dark' ? tokens.ghost : '#EEFAF7',
+              borderRightColor: tokens.border,
+            },
+          ]}
+          testID={testID ? `${testID}-visual-panel` : undefined}
+        >
+          <View pointerEvents="none" style={settingsStyles.iconAura}>
+            <ZipMintAura intensity="strong" scope={auraScope} testID={testID ? `${testID}-mint-aura` : undefined} />
+          </View>
+          <Image contentFit="contain" source={image} style={settingsStyles.actionIcon} testID={testID ? `${testID}-icon-image` : undefined} />
+          <View
+            pointerEvents="none"
+            style={[settingsStyles.connector, { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' }]}
+            testID={testID ? `${testID}-connector` : undefined}
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              settingsStyles.connectorDot,
+              { backgroundColor: tokens.primary, borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)' },
+            ]}
+            testID={testID ? `${testID}-connector-dot` : undefined}
+          />
+        </View>
+        <View style={settingsStyles.actionCopy} testID={testID ? `${testID}-copy` : undefined}>
+          <Text numberOfLines={1} style={[styles.profileInsightTitle, { color: tokens.text }]} testID={testID ? `${testID}-title` : undefined}>{label}</Text>
+          <Text numberOfLines={2} style={[styles.bodyText, { color: tokens.muted }]} testID={testID ? `${testID}-body` : undefined}>{value}</Text>
+          <CustomerSettingsDetailRail details={details} testID={`${testID ?? 'profile-insight'}-detail-rail`} tokens={tokens} />
+        </View>
+        <View
+          style={[settingsStyles.statusFrame, styles.profileInsightChipFrame]}
+          testID={testID ? `${testID}-chip` : undefined}
+        >
+          <ZipMintAura scope={`ProfileInsight${profileAuraScope(label)}`} />
+          <KaelChip
+            label={status}
+            style={emptyStatus ? styles.profileInsightEmptyChip : styles.profileInsightChip}
+            textStyle={emptyStatus ? styles.profileInsightEmptyChipText : styles.profileMintChipText}
+            variant={emptyStatus ? 'unselected' : 'selected'}
+          />
+        </View>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.profileInsightRow} testID={testID}>
       <AssetTile image={image} label={label} size={54} sourceAura style={iconStyle} />
@@ -197,34 +202,28 @@ export function ProfileInsightRow({
 }
 
 export function ProfileRankingPanel({
-  completed,
   metrics,
   pointsText,
   progress,
   progressBar,
-  protectedTransactions,
   rank,
   rankNodes,
   rankProcess,
   rankStatusLabel,
   rankTitle,
-  reviewRate,
   rules,
   rulesAction,
   rulesTitle,
 }: {
-  completed: string
   metrics: ProfilePanelMetric[]
   pointsText: string
   progress: number
   progressBar: ReactNode
-  protectedTransactions: string
   rank: number
   rankNodes: ProfileRankingNode[]
   rankProcess: ReactNode
   rankStatusLabel: string
   rankTitle: string
-  reviewRate: string
   rules: ProfileInsightModel[]
   rulesAction: string
   rulesTitle: string
@@ -309,21 +308,15 @@ export function ProfileRankingPanel({
         ))}
       </View>
       {rankProcess}
-      <ProfileRankingEvaluation
-        assetTile={AssetTile}
-        completed={completed}
-        kaelHeadImage={customerV21Assets.kael}
-        protectedTransactions={protectedTransactions}
-        reviewRate={reviewRate}
-      />
 
       <SectionActionHeader action={rulesAction} title={rulesTitle} />
-      <ProfileAuraCard cardStyle={styles.profileListCard} contentStyle={styles.profileListContent} scope="RankingRules" testID="customer-v21-profile-ranking-rules">
+      <ProfileAuraCard cardStyle={styles.profileListCard} contentStyle={styles.profileSettingsListContent} scope="RankingRules" testID="customer-v21-profile-ranking-rules">
         {rules.map((rule, index) => (
           <Fragment key={rule.testID ?? rule.label}>
             {index > 0 ? <View style={[styles.profileListDivider, { backgroundColor: tokens.border }]} /> : null}
             <ProfileInsightRow
               assetTile={AssetTile}
+              details={rule.details}
               iconStyle={styles.profileInsightIcon}
               image={rule.image}
               label={rule.label}
@@ -442,138 +435,189 @@ export function ProfileMoneyPanel({
   )
 }
 
-export function ProfileMemoryPanel({
-  languageValue,
-  memoryRecordPresent,
-  preference,
-  servicePreference,
-}: {
-  languageValue: string
-  memoryRecordPresent: boolean
-  preference: string
-  servicePreference: string
-}) {
-  const language = useAppLanguage()
-  const tokens = useCustomerV21ProfileTheme()
-  const copy = customerV21CommonCopy[language]
+export type CustomerV21SettingsDetailGlyph =
+  | 'check'
+  | 'document'
+  | 'identity'
+  | 'language'
+  | 'location'
+  | 'memory'
+  | 'settings'
+  | 'shield'
+
+export type CustomerV21SettingsDetail = {
+  glyph: CustomerV21SettingsDetailGlyph
+  label: string
+}
+
+function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21SettingsDetailGlyph; tokens: CustomerThemeTokens }) {
+  const softFill = tokens.mode === 'dark' ? 'rgba(64,178,161,0.18)' : '#E5F9F5'
+
+  if (glyph === 'check') {
+    return (
+      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+        <Circle cx={8} cy={8} fill={softFill} r={6.1} />
+        <Path d="m4.9 8.1 2 2.1 4.4-4.7" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.55} />
+      </Svg>
+    )
+  }
+  if (glyph === 'document') {
+    return (
+      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+        <Path d="M4 2.2h5.1L12 5.1v8.1H4z" fill={softFill} stroke={tokens.primary} strokeLinejoin="round" strokeWidth={1.2} />
+        <Path d="M9.1 2.2v3h3M6 8h4M6 10.4h3" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeWidth={1.1} />
+      </Svg>
+    )
+  }
+  if (glyph === 'identity') {
+    return (
+      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+        <Circle cx={8} cy={5.3} fill={tokens.primary} r={2.45} />
+        <Path d="M3.5 13.1c.7-2.2 2.2-3.3 4.5-3.3s3.8 1.1 4.5 3.3" fill={softFill} stroke={tokens.primary} strokeLinecap="round" strokeWidth={1.1} />
+      </Svg>
+    )
+  }
+  if (glyph === 'language') {
+    return (
+      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+        <Circle cx={8} cy={8} fill={softFill} r={5.8} stroke={tokens.primary} strokeWidth={1.15} />
+        <Path d="M2.6 8h10.8M8 2.2c1.6 1.6 2.3 3.5 2.3 5.8S9.6 12.2 8 13.8C6.4 12.2 5.7 10.3 5.7 8S6.4 3.8 8 2.2Z" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeWidth={1} />
+      </Svg>
+    )
+  }
+  if (glyph === 'location') {
+    return (
+      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+        <Path d="M8 2.1a4.1 4.1 0 0 0-4.1 4.1c0 3.1 4.1 7.7 4.1 7.7s4.1-4.6 4.1-7.7A4.1 4.1 0 0 0 8 2.1Z" fill={softFill} stroke={tokens.primary} strokeWidth={1.2} />
+        <Circle cx={8} cy={6.2} fill={tokens.primary} r={1.35} />
+      </Svg>
+    )
+  }
+  if (glyph === 'memory') {
+    return (
+      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+        <Rect fill={softFill} height={9.5} rx={3.2} stroke={tokens.primary} strokeWidth={1.2} width={12} x={2} y={2.3} />
+        <Circle cx={5.5} cy={7} fill={tokens.primary} r={1.05} />
+        <Circle cx={8} cy={7} fill={tokens.primary} opacity={0.55} r={1.05} />
+        <Circle cx={10.5} cy={7} fill={tokens.primary} r={1.05} />
+        <Path d="M6.2 12.1 5.1 14l2.8-1.8" fill={softFill} stroke={tokens.primary} strokeLinejoin="round" strokeWidth={1.05} />
+      </Svg>
+    )
+  }
+  if (glyph === 'settings') {
+    return (
+      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+        <Path d="M3 4h10M3 8h10M3 12h10" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeWidth={1.3} />
+        <Circle cx={6} cy={4} fill={softFill} r={1.7} stroke={tokens.primary} strokeWidth={1.1} />
+        <Circle cx={10.6} cy={8} fill={softFill} r={1.7} stroke={tokens.primary} strokeWidth={1.1} />
+        <Circle cx={7.5} cy={12} fill={softFill} r={1.7} stroke={tokens.primary} strokeWidth={1.1} />
+      </Svg>
+    )
+  }
   return (
-    <View testID="customer-v21-profile-memory">
-      <V21Card glass style={styles.profileDetailHero}>
-        <AssetTile image={customerV21Assets.memory} label={customerV21ScreenTitles[language]['5.4-memory']} size={62} />
-        <View style={styles.flex}>
-          <EyebrowPill label={memoryRecordPresent ? (language === 'vi' ? 'BỘ NHỚ KAEL' : 'KAEL MEMORY') : copy.dataPending} tokens={tokens} />
-          <Text style={[historyActiveStyles.caseOverviewTitle, { color: tokens.text }]}>
-            {language === 'vi' ? 'Kael nhớ theo quyền bạn cho.' : 'Kael remembers with your permission.'}
-          </Text>
-          <Text style={[styles.bodyText, { color: tokens.muted }]}>{preference}</Text>
+    <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+      <Path d="M8 2.2 12.6 4v3.5c0 2.8-1.9 4.9-4.6 6.2-2.7-1.3-4.6-3.4-4.6-6.2V4L8 2.2Z" fill={softFill} stroke={tokens.primary} strokeLinejoin="round" strokeWidth={1.2} />
+      <Path d="m5.6 7.8 1.6 1.6 3.2-3.2" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.25} />
+    </Svg>
+  )
+}
+
+function CustomerSettingsDetailRail({
+  details,
+  testID,
+  tokens,
+}: {
+  details: readonly CustomerV21SettingsDetail[]
+  testID: string
+  tokens: CustomerThemeTokens
+}) {
+  return (
+    <View style={settingsStyles.detailRail} testID={testID}>
+      {details.map((detail, index) => (
+        <View key={`${detail.glyph}-${detail.label}`} style={settingsStyles.detailItem} testID={`${testID}-${index}`}>
+          <CustomerSettingsDetailGlyph glyph={detail.glyph} tokens={tokens} />
+          <Text numberOfLines={1} style={[settingsStyles.detailLabel, { color: tokens.muted }]}>{detail.label}</Text>
+          {index < details.length - 1 ? <View style={[settingsStyles.detailDivider, { backgroundColor: tokens.border }]} /> : null}
         </View>
-      </V21Card>
-
-      <SectionActionHeader
-        action={memoryRecordPresent ? (language === 'vi' ? 'Theo dữ liệu thật' : 'Real data') : copy.dataPending}
-        title={language === 'vi' ? 'Thông tin được phép dùng' : 'Allowed memory'}
-      />
-      <V21Card style={agenticStyles.memoryListCard}>
-        <MemoryPermissionRow
-          enabled={preference !== copy.dataPending}
-          image={customerV21Assets.memory}
-          label={language === 'vi' ? 'Tóm tắt sở thích' : 'Preference summary'}
-          value={preference}
-        />
-        <MemoryDivider />
-        <MemoryPermissionRow
-          enabled={languageValue !== copy.dataPending}
-          image={customerV21Assets.language}
-          label={language === 'vi' ? 'Ngôn ngữ' : 'Language'}
-          value={languageValue}
-        />
-        <MemoryDivider />
-        <MemoryPermissionRow
-          enabled={servicePreference !== copy.dataPending}
-          image={customerV21ServiceAssets.cleaning}
-          label={language === 'vi' ? 'Ưu tiên dịch vụ' : 'Service preference'}
-          value={servicePreference}
-        />
-      </V21Card>
-
-      <SectionActionHeader
-        action={language === 'vi' ? 'Quy tắc' : 'Rules'}
-        title={language === 'vi' ? 'Ranh giới dữ liệu' : 'Data boundaries'}
-      />
-      <V21Card style={agenticStyles.memoryListCard}>
-        <MemoryPermissionRow
-          enabled
-          image={customerV21Assets.privacy}
-          label={language === 'vi' ? 'Không trộn trò chuyện thường vào công việc' : 'Do not mix normal chat into jobs'}
-          value={language === 'vi' ? 'Bật theo quy trình' : 'Workflow enforced'}
-        />
-        <MemoryDivider />
-        <MemoryPermissionRow
-          enabled={false}
-          image={customerV21Assets.profile}
-          label={language === 'vi' ? 'Chia sẻ sở thích với thợ' : 'Share preferences with worker'}
-          value={copy.dataPending}
-        />
-        <MemoryDivider />
-        <MemoryPermissionRow
-          enabled
-          image={customerV21Assets.shield}
-          label={language === 'vi' ? 'Cảnh báo thanh toán ngoài nền tảng' : 'Off-platform payment warning'}
-          value={language === 'vi' ? 'Bật theo quy trình' : 'Workflow enforced'}
-        />
-      </V21Card>
+      ))}
     </View>
   )
 }
 
 export function SettingsActionRow({
-  assetTile: AssetTile,
   body,
+  details,
   image,
   onPress,
   status,
   testID,
   title,
   tokens,
-  zipMintAura: ZipMintAura,
 }: {
-  assetTile: CustomerV21UtilityAssetTile
   body: string
-  image: CustomerV21Visual
+  details: readonly CustomerV21SettingsDetail[]
+  image: ImageSourcePropType
   onPress: () => void
   status: string
   testID: string
   title: string
   tokens: CustomerThemeTokens
-  zipMintAura: CustomerV21UtilityAura
 }) {
-  const titleAuraScope = `ProfileSettings${title.replace(/[^a-zA-Z0-9]/g, '')}`
-  const statusAuraScope = `ProfileSettingsStatus${status.replace(/[^a-zA-Z0-9]/g, '')}`
+  const auraScope = `ProfileSettingsIcon${profileAuraScope(title)}`
+  const { reduceMotion } = useGlassAccessibility()
 
   return (
     <Pressable
+      accessibilityHint={body}
       accessibilityLabel={title}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
-        styles.profileSettingsActionRow,
+        settingsStyles.actionRow,
         { backgroundColor: tokens.raised, borderColor: tokens.border },
-        pressed ? styles.pressed : null,
+        reduceMotionAwarePressStyle(pressed, reduceMotion),
       ]}
       testID={testID}
     >
-      <ZipMintAura scope={titleAuraScope} />
-      <AssetTile image={image} label={title} size={48} sourceAura style={styles.profileSettingsActionIcon} />
-      <View style={styles.flex}>
-        <Text numberOfLines={1} style={[styles.profileInsightTitle, { color: tokens.text }]}>{title}</Text>
-        <Text numberOfLines={2} style={[styles.bodyText, { color: tokens.muted }]}>{body}</Text>
+      <View
+        style={[
+          settingsStyles.visualPanel,
+          {
+            backgroundColor: tokens.mode === 'dark' ? tokens.ghost : '#EEFAF7',
+            borderRightColor: tokens.border,
+          },
+        ]}
+        testID={`${testID}-visual-panel`}
+      >
+        <View pointerEvents="none" style={settingsStyles.iconAura}>
+          <ZipMintAura intensity="strong" scope={auraScope} testID={`${testID}-mint-aura`} />
+        </View>
+        <Image contentFit="contain" source={image} style={settingsStyles.actionIcon} testID={`${testID}-icon-image`} />
+        <View
+          pointerEvents="none"
+          style={[settingsStyles.connector, { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' }]}
+          testID={`${testID}-connector`}
+        />
+        <View
+          pointerEvents="none"
+          style={[
+            settingsStyles.connectorDot,
+            { backgroundColor: tokens.primary, borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)' },
+          ]}
+          testID={`${testID}-connector-dot`}
+        />
       </View>
-      <View style={styles.profileInsightChipFrame}>
-        <ZipMintAura scope={statusAuraScope} />
+      <View style={settingsStyles.actionCopy} testID={`${testID}-copy`}>
+        <Text numberOfLines={2} style={[settingsStyles.actionTitle, { color: tokens.text }]} testID={`${testID}-title`}>{title}</Text>
+        <Text numberOfLines={2} style={[settingsStyles.actionBody, { color: tokens.muted }]} testID={`${testID}-body`}>{body}</Text>
+        <CustomerSettingsDetailRail details={details} testID={`${testID}-detail-rail`} tokens={tokens} />
+      </View>
+      <View style={settingsStyles.statusFrame} testID={`${testID}-status-frame`}>
         <KaelChip
           label={status}
-          style={styles.profileInsightChip}
-          textStyle={styles.profileMintChipText}
+          style={settingsStyles.statusChip}
+          testID={`${testID}-status`}
+          textStyle={[styles.profileMintChipText, settingsStyles.statusText]}
           variant="selected"
         />
       </View>

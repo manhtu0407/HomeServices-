@@ -371,6 +371,9 @@ export type ReviewResponse = {
 
 export type WorkerProfileResponse = {
   id: string
+  avatar_url: string | null
+  active_minutes: number
+  last_active_at: string | null
   verification_status: WorkerVerificationStatus
   is_available: boolean
   is_approved: boolean
@@ -392,6 +395,22 @@ export type WorkerProfileResponse = {
   bank_name: string | null
   has_cccd: boolean
   has_selfie: boolean
+}
+
+export type WorkerAvatarUploadResponse = {
+  bucket_id: 'worker-avatars'
+  object_path: string
+  avatar_ref: string
+  token: string
+  signed_upload_url: string
+  expires_in_seconds: number
+}
+
+export type WorkerActivityMinuteResponse = {
+  worker_id: string
+  active_minutes: number
+  last_active_at: string
+  incremented: boolean
 }
 
 export type WorkerRegisterResponse = {

@@ -1,6 +1,7 @@
-import type { ComponentProps, ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,14 +22,16 @@ import type { KaelChatResponse } from '@/lib/api-types'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { SourceCardSkin } from './aura-surfaces'
 import { customerV21Assets } from './assets'
-import { ChatBubble, ChatCanvasAura, ChatComposerAura, ChatMediaCameraIcon, ChatModeSwitchAura } from './chat-surfaces'
+import { ChatBubble, ChatCanvasAura, ChatComposerAura, ChatMediaCameraIcon } from './chat-surfaces'
 import { customerV21ChatStyles as chatStyles } from './chat-styles'
 import { customerV21ServiceCopy } from './copy'
 import { customerV21HistoryActiveStyles as historyActiveStyles } from './history-active-styles'
 import { AgenticChatEstimateCardPanel } from './agentic-decision-surfaces'
 import { MediaRow } from './history-surfaces'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
-import { AssetTile, InactiveAgenticGate, V21Card, V21TopBar } from './shared-surfaces'
+import { CustomerKaelEmptyHero } from './kael-empty-hero'
+import { CustomerKaelChatHeader } from './kael-chat-header'
+import { AssetTile, InactiveAgenticGate, V21Card } from './shared-surfaces'
 import type { CustomerKaelMode } from './types'
 
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
@@ -53,9 +56,6 @@ type RootChatStyles = {
   composerTextFieldStack: StyleProp<ViewStyle>
   errorText: StyleProp<TextStyle>
   flex: StyleProp<ViewStyle>
-  modeButton: StyleProp<ViewStyle>
-  modeButtonText: StyleProp<TextStyle>
-  modeSwitch: StyleProp<ViewStyle>
   sendButton: StyleProp<ViewStyle>
   sendText: StyleProp<TextStyle>
 }
@@ -208,6 +208,7 @@ export function KaelChatSurfaceView({
   animatedModeMenuSheenStyle,
   animatedModeMenuStyle,
   canUseComposerMedia,
+  canStartNewConversation,
   caseThreadNode,
   caseWorkLabel,
   composerBusy,
@@ -231,15 +232,17 @@ export function KaelChatSurfaceView({
   onSendMessage,
   onSwitchMode,
   onToggleModeMenu,
+  onToggleSessionMenu,
   processLinesNode,
   reduceMotion,
   reduceTransparency,
   rootStyles,
+  sessionMenuNode,
+  sessionMenuOpen,
   showComposer,
-  showNormalGreeting,
+  showEmptyHero,
   showPendingDraftBubble,
   textInputNoOutlineStyle,
-  timelineHeadline,
   tokens,
   workerCandidateNode,
   caseAssistantTurns,
@@ -252,6 +255,7 @@ export function KaelChatSurfaceView({
   animatedModeMenuSheenStyle: AnimatedViewStyle
   animatedModeMenuStyle: AnimatedViewStyle
   canUseComposerMedia: boolean
+  canStartNewConversation: boolean
   caseAssistantTurns: ChatTurnView[]
   caseThreadNode: ReactNode
   caseWorkLabel: string
@@ -277,98 +281,76 @@ export function KaelChatSurfaceView({
   onSendMessage: () => void
   onSwitchMode: (mode: CustomerKaelMode) => void
   onToggleModeMenu: () => void
+  onToggleSessionMenu: () => void
   pendingDraftMessage: string
   processLinesNode: ReactNode
   reduceMotion: boolean
   reduceTransparency: boolean
   rootStyles: RootChatStyles
+  sessionMenuNode: ReactNode
+  sessionMenuOpen: boolean
   showComposer: boolean
-  showNormalGreeting: boolean
+  showEmptyHero: boolean
   showPendingDraftBubble: boolean
   textInputNoOutlineStyle: StyleProp<TextStyle>
-  timelineHeadline: string
   tokens: CustomerThemeTokens
   workerCandidateNode: ReactNode
 }) {
+  const [composerFocused, setComposerFocused] = useState(false)
+  const emptyHeroVisible = showEmptyHero && !composerFocused && draft.trim().length === 0
+
+  const toggleSessionMenu = () => {
+    Keyboard.dismiss()
+    setComposerFocused(false)
+    onToggleSessionMenu()
+  }
+
+  const selectMode = (nextMode: CustomerKaelMode) => {
+    Keyboard.dismiss()
+    setComposerFocused(false)
+    onSwitchMode(nextMode)
+  }
+
   return (
     <SafeAreaView style={[sharedStyles.safeArea, { backgroundColor: tokens.canvas }]} testID="customer-v21-kael-chat">
       <ChatCanvasAura reduceTransparency={reduceTransparency} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={rootStyles.flex}>
         <View style={[chatStyles.chatFrame, mode === 'case' ? historyActiveStyles.caseChatFrame : null]} testID={mode === 'normal' ? 'customer-v21-screen-2.4-chat-normal' : 'customer-v21-screen-2.5-chat-case'}>
-          <V21TopBar
-            actionAccessibilityLabel={language === 'vi' ? 'Chuyển chế độ chat' : 'Switch chat mode'}
-            actionLabel="⇄"
-            actionTestID="customer-v21-chat-mode-menu-button"
+          <CustomerKaelChatHeader
+            animatedModeMenuSheenStyle={animatedModeMenuSheenStyle}
+            animatedModeMenuStyle={animatedModeMenuStyle}
+            canStartNewConversation={canStartNewConversation}
+            caseWorkLabel={caseWorkLabel}
+            language={language}
+            mode={mode}
+            modeMenuOpen={modeMenuOpen}
+            normalChatLabel={normalChatLabel}
             onBack={onBack}
-            onAction={onToggleModeMenu}
-            subtitle=""
-            title={timelineHeadline}
-            titleContainerStyle={chatStyles.chatTopCopyCentered}
-            titleStyle={chatStyles.chatTimelineTitle}
+            onSwitchMode={selectMode}
+            onToggleModeMenu={onToggleModeMenu}
+            onToggleSessionMenu={toggleSessionMenu}
+            reduceMotion={reduceMotion}
+            reduceTransparency={reduceTransparency}
+            sessionMenuNode={sessionMenuNode}
+            sessionMenuOpen={sessionMenuOpen}
+            tokens={tokens}
           />
 
-          {modeMenuOpen ? (
-            <Animated.View style={[rootStyles.modeSwitch, chatStyles.chatModeSwitch, chatStyles.chatModeMenu, { backgroundColor: tokens.ghost, borderColor: 'rgba(255,255,255,0.88)' }, animatedModeMenuStyle]} testID="customer-v21-chat-mode-menu">
-              <SourceCardSkin />
-              <ChatModeSwitchAura reduceTransparency={reduceTransparency} />
-              {!reduceMotion && !reduceTransparency ? (
-                <Animated.View pointerEvents="none" style={[chatStyles.chatModeMenuSheen, animatedModeMenuSheenStyle]} testID="customer-v21-chat-mode-menu-sheen" />
-              ) : null}
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: mode === 'normal' }}
-                onPress={() => onSwitchMode('normal')}
-                style={[
-                  rootStyles.modeButton,
-                  chatStyles.chatModeButton,
-                  chatStyles.chatModeMenuButton,
-                  chatStyles.chatModeMenuOption,
-                  { backgroundColor: mode === 'normal' ? tokens.raised : 'rgba(255,255,255,0.42)', borderColor: mode === 'normal' ? 'rgba(255,255,255,0.92)' : 'rgba(13,167,151,0.12)' },
-                  mode === 'normal' ? chatStyles.chatModeButtonActive : null,
-                ]}
-                testID="customer-v21-chat-tab-normal"
-              >
-                <Text style={[rootStyles.modeButtonText, chatStyles.chatModeMenuText, { color: mode === 'normal' ? tokens.primary : tokens.muted }]}>{normalChatLabel}</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: mode === 'case' }}
-                onPress={() => onSwitchMode('case')}
-                style={[
-                  rootStyles.modeButton,
-                  chatStyles.chatModeButton,
-                  chatStyles.chatModeMenuButton,
-                  chatStyles.chatModeMenuOption,
-                  { backgroundColor: mode === 'case' ? tokens.raised : 'rgba(255,255,255,0.42)', borderColor: mode === 'case' ? 'rgba(255,255,255,0.92)' : 'rgba(13,167,151,0.12)' },
-                  mode === 'case' ? chatStyles.chatModeButtonActive : null,
-                ]}
-                testID="customer-v21-chat-tab-case-work"
-              >
-                <Text style={[rootStyles.modeButtonText, chatStyles.chatModeMenuText, { color: mode === 'case' ? tokens.primary : tokens.muted }]}>{caseWorkLabel}</Text>
-              </Pressable>
-            </Animated.View>
-          ) : null}
-
           <ScrollView
-            contentContainerStyle={[chatStyles.chatTranscript, modeMenuOpen ? chatStyles.chatTranscriptMenuOpen : null]}
+            contentContainerStyle={[chatStyles.chatTranscript, emptyHeroVisible ? chatStyles.chatTranscriptEmpty : null, modeMenuOpen || sessionMenuOpen ? chatStyles.chatTranscriptMenuOpen : null]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            style={hiddenScrollbarStyle}
+            style={[chatStyles.chatTranscriptScroll, hiddenScrollbarStyle]}
             testID="customer-v21-kael-thread"
           >
+            {emptyHeroVisible ? (
+              <CustomerKaelEmptyHero language={language} mode={mode} reduceMotion={reduceMotion} tokens={tokens} />
+            ) : null}
             {showPendingDraftBubble ? (
               <ChatBubble
                 role="customer"
                 testID="customer-v21-pending-draft-bubble"
                 text={pendingDraftMessage}
-                tokens={tokens}
-              />
-            ) : null}
-            {showNormalGreeting ? (
-              <ChatBubble
-                role="kael"
-                testID="customer-v21-normal-greeting-bubble"
-                text={language === 'vi' ? 'Chào bạn, mình là Kael. Bạn muốn hỏi gì hôm nay?' : 'Hi, I am Kael. What would you like to ask today?'}
                 tokens={tokens}
               />
             ) : null}
@@ -421,7 +403,9 @@ export function KaelChatSurfaceView({
             <KaelTextField
               editable={!composerBusy}
               inputShellStyle={rootStyles.composerTextFieldShell}
+              onBlur={() => setComposerFocused(false)}
               onChangeText={onDraftChange}
+              onFocus={() => setComposerFocused(true)}
               placeholder={composerPlaceholder}
               placeholderTextColor={tokens.subtleText}
               shellStyle={rootStyles.composerTextFieldStack}

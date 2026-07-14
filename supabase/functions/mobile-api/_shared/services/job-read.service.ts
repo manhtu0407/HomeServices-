@@ -10,6 +10,7 @@ import { projectAddressAccess } from "./apartment-access.service.ts";
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import type { JobStatus, ScopeChangeStatus } from "../../../_shared/domain.ts";
+import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
 
 const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
@@ -26,17 +27,23 @@ const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "payment_pending",
 ];
 
+const CUSTOMER_SERVICE_HISTORY_STATUSES: JobStatus[] = [
+  "paid",
+  "reviewed",
+  "cancelled",
+];
+
 export async function getJob(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     select: JOB_DETAIL_SELECT,
   });
-  const broadcastState = job.status === "broadcasting"
-    ? await getJobBroadcastState(client, jobId)
-    : null;
-  const currentScopeChange = job.status === "scope_change_pending"
-    ? await getCurrentScopeChange(client, jobId)
-    : null;
+  const workerId = nullableString(job.worker_id);
+  const [broadcastState, currentScopeChange, worker] = await Promise.all([
+    job.status === "broadcasting" ? getJobBroadcastState(client, jobId) : null,
+    job.status === "scope_change_pending" ? getCurrentScopeChange(client, jobId) : null,
+    workerId ? loadJobWorkerSummary(client, workerId) : null,
+  ]);
   const addressProjection = projectAddressAccess(job, ctx.role);
 
   return {
@@ -73,6 +80,7 @@ export async function getJob(ctx: MobileApiContext, jobId: string) {
       paid_at: nullableString(job.paid_at),
       reviewed_at: nullableString(job.reviewed_at),
     },
+    worker,
     broadcast_state: broadcastState,
     current_scope_change: currentScopeChange,
   };
@@ -96,6 +104,119 @@ export async function listCustomerActiveJobs(ctx: MobileApiContext) {
   if (!row) return { active_job: null };
   const detail = await getJob(ctx, row.id);
   return { active_job: detail };
+}
+
+export async function listCustomerServiceHistory(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("jobs")
+      .select("id, service_type, status, worker_id, final_price, completed_at, paid_at, reviewed_at, cancelled_at, created_at")
+      .eq("customer_id", ctx.user.id)
+      .in("status", CUSTOMER_SERVICE_HISTORY_STATUSES)
+      .order("updated_at", { ascending: false }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể tải lịch sử dịch vụ", 500);
+  }
+
+  const jobs = result.data ?? [];
+  const workerIds = Array.from(new Set(
+    jobs.map((job) => nullableString(job.worker_id)).filter((workerId): workerId is string => Boolean(workerId)),
+  ));
+  if (workerIds.length === 0) {
+    return { service_history: projectCustomerServiceHistoryRows(jobs, new Map(), new Set()) };
+  }
+
+  const [profileResult, favoriteResult] = await Promise.all([
+    dbQuery<Array<Record<string, unknown>>>(
+      client.from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", workerIds),
+    ),
+    dbQuery<Array<Record<string, unknown>>>(
+      client.from("customer_favorite_workers")
+        .select("worker_id")
+        .eq("customer_id", ctx.user.id)
+        .in("worker_id", workerIds),
+    ),
+  ]);
+  if (profileResult.error || favoriteResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải thông tin thợ trong lịch sử", 500);
+  }
+
+  const signedProfiles: Array<Record<string, unknown>> = await Promise.all(
+    (profileResult.data ?? []).map(async (profile): Promise<Record<string, unknown>> => ({
+      ...profile,
+      avatar_url: await resolveWorkerAvatarUrl(client, profile.avatar_url),
+    })),
+  );
+  const profilesByWorkerId = new Map(
+    signedProfiles.map((profile) => [asString(profile.id), profile]),
+  );
+  const favoriteWorkerIds = new Set(
+    (favoriteResult.data ?? []).map((favorite) => asString(favorite.worker_id)),
+  );
+
+  return {
+    service_history: projectCustomerServiceHistoryRows(
+      jobs,
+      profilesByWorkerId,
+      favoriteWorkerIds,
+    ),
+  };
+}
+
+async function loadJobWorkerSummary(client: DbClient, workerId: string) {
+  const [profile, worker] = await Promise.all([
+    dbQuery<Record<string, unknown>>(
+      client.from("profiles").select("full_name, avatar_url").eq("id", workerId).maybeSingle(),
+    ),
+    dbQuery<Record<string, unknown>>(
+      client.from("worker_profiles").select("legal_name, rating, total_jobs").eq("id", workerId).maybeSingle(),
+    ),
+  ]);
+  if (profile.error || worker.error || !profile.data || !worker.data) {
+    apiFailure("DB_ERROR", "Không thể tải thông tin thợ", 500);
+  }
+  return {
+    avatar_url: await resolveWorkerAvatarUrl(client, profile.data.avatar_url),
+    full_name: nullableString(profile.data.full_name) ?? nullableString(worker.data.legal_name) ?? "",
+    id: workerId,
+    rating: Math.max(0, asNumber(worker.data.rating)),
+    total_jobs: Math.max(0, Math.trunc(asNumber(worker.data.total_jobs))),
+  };
+}
+
+export function projectCustomerServiceHistoryRows(
+  jobs: Array<Record<string, unknown>>,
+  profilesByWorkerId: Map<string, Record<string, unknown>>,
+  favoriteWorkerIds: Set<string>,
+) {
+  return jobs.map((job) => {
+    const status = asJobStatus(job.status);
+    const createdAt = asString(job.created_at);
+    const endedAt = status === "cancelled"
+      ? nullableString(job.cancelled_at) ?? createdAt
+      : nullableString(job.reviewed_at) ?? nullableString(job.paid_at) ?? nullableString(job.completed_at) ?? createdAt;
+    const workerId = nullableString(job.worker_id);
+    const workerProfile = workerId ? profilesByWorkerId.get(workerId) : undefined;
+    return {
+      id: asString(job.id),
+      service_type: asServiceType(job.service_type),
+      status,
+      ended_at: endedAt,
+      final_price: nullableNumber(job.final_price),
+      worker: workerId
+        ? {
+            id: workerId,
+            display_name: nullableString(workerProfile?.full_name),
+            avatar_url: nullableString(workerProfile?.avatar_url),
+            is_favorite: favoriteWorkerIds.has(workerId),
+          }
+        : null,
+    };
+  });
 }
 
 export async function listMyPendingDecisions(ctx: MobileApiContext) {

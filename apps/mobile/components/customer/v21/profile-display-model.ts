@@ -1,19 +1,26 @@
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerProfileInsightsResponse } from '@/lib/api-types'
 
-import { customerV21CommonCopy, customerV21ServiceCopy } from './copy'
 import { formatNumber } from './case-work-display-model'
-import { customerV21AgenticScreenIds, customerV21ProfileStageIds, type CustomerV21ScreenId } from './types'
-import { serviceParam } from './route-params'
-import { metadataString, stringFromUnknown } from './value-display-model'
+import { customerV21ProfileStageIds, type CustomerV21ScreenId } from './types'
+import { metadataString } from './value-display-model'
 
-export type CustomerProfilePanel = 'overview' | 'ranking' | 'money' | 'memory'
+export type CustomerProfilePanel = 'overview' | 'ranking' | 'money'
 export type CustomerProfileUtility = 'address' | 'payment' | 'settings'
 
-const profileScreenIds: CustomerV21ScreenId[] = [
-  ...customerV21AgenticScreenIds,
-  ...customerV21ProfileStageIds,
-]
+const profileScreenIds: CustomerV21ScreenId[] = [...customerV21ProfileStageIds]
+const millisecondsPerDay = 86_400_000
+const hoChiMinhUtcOffsetMs = 7 * 60 * 60 * 1000
+
+export type CustomerAccountJourneyDisplay = {
+  accessibilityLabel: string
+  activeDaysLabel: string
+  activeDaysValue: string
+  memberSince: string
+  title: string
+  totalDaysLabel: string
+  totalDaysValue: string
+}
 
 export function insightNumber(
   insights: CustomerProfileInsightsResponse | null,
@@ -86,11 +93,6 @@ export function percentFromConfidenceLabel(value: string) {
   if (!Number.isFinite(parsed)) return 0
   return Math.max(0, Math.min(100, parsed))
 }
-export function servicePreferenceLabel(value: unknown, language: AppLanguage) {
-  const service = serviceParam(stringFromUnknown(value) ?? undefined)
-  return service ? customerV21ServiceCopy[language][service].label : null
-}
-
 export function profileName(metadata: Record<string, unknown> | undefined, language: AppLanguage) {
   return metadataString(metadata, 'nickname')
     ?? metadataString(metadata, 'full_name')
@@ -119,17 +121,76 @@ export function homeGreeting(name: string, language: AppLanguage) {
   return `${moment}, ${name}`
 }
 
+export function customerAccountJourneyDisplay({
+  activeServiceDays,
+  createdAt,
+  fallback,
+  language,
+  now = new Date(),
+}: {
+  activeServiceDays: number | null | undefined
+  createdAt: string | null | undefined
+  fallback: string
+  language: AppLanguage
+  now?: Date
+}): CustomerAccountJourneyDisplay {
+  const memberSince = memberSinceLabel(createdAt, language, fallback)
+  const totalDays = accountTotalDays(createdAt, now)
+  const safeActiveDays = typeof activeServiceDays === 'number' && Number.isFinite(activeServiceDays)
+    ? Math.max(0, Math.floor(activeServiceDays))
+    : null
+  const activeDaysValue = safeActiveDays === null
+    ? fallback
+    : language === 'vi'
+      ? `${formatNumber(safeActiveDays, language)} ngày`
+      : `${formatNumber(safeActiveDays, language)} ${safeActiveDays === 1 ? 'day' : 'days'}`
+  const totalDaysValue = totalDays === null
+    ? fallback
+    : language === 'vi'
+      ? `Ngày thứ ${formatNumber(totalDays, language)}`
+      : `Day ${formatNumber(totalDays, language)}`
+  const title = language === 'vi' ? 'Hành trình tài khoản' : 'Account journey'
+  const activeDaysLabel = language === 'vi' ? 'Dùng dịch vụ' : 'Service use'
+  const totalDaysLabel = language === 'vi' ? 'Từ khi tạo tài khoản' : 'Since account creation'
+
+  return {
+    accessibilityLabel: `${title}. ${memberSince}. ${activeDaysLabel}: ${activeDaysValue}. ${totalDaysLabel}: ${totalDaysValue}.`,
+    activeDaysLabel,
+    activeDaysValue,
+    memberSince,
+    title,
+    totalDaysLabel,
+    totalDaysValue,
+  }
+}
+
 export function memberSinceLabel(value: string | null | undefined, language: AppLanguage, fallback: string) {
-  if (!value) return fallback
+  const date = parseAccountDate(value)
+  if (!date) return fallback
+  const shiftedDate = new Date(date.getTime() + hoChiMinhUtcOffsetMs)
+  const day = String(shiftedDate.getUTCDate()).padStart(2, '0')
+  const month = String(shiftedDate.getUTCMonth() + 1).padStart(2, '0')
+  const year = String(shiftedDate.getUTCFullYear())
+  return language === 'vi' ? `Thành viên từ ${day}/${month}/${year}` : `Member since ${month}/${day}/${year}`
+}
+
+export function accountTotalDays(value: string | null | undefined, now = new Date()) {
+  const createdAt = parseAccountDate(value)
+  if (!createdAt || Number.isNaN(now.getTime())) return null
+  const createdDay = Math.floor((createdAt.getTime() + hoChiMinhUtcOffsetMs) / millisecondsPerDay)
+  const currentDay = Math.floor((now.getTime() + hoChiMinhUtcOffsetMs) / millisecondsPerDay)
+  if (currentDay < createdDay) return null
+  return currentDay - createdDay + 1
+}
+
+function parseAccountDate(value: string | null | undefined) {
+  if (!value) return null
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return fallback
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const year = String(date.getFullYear())
-  return language === 'vi' ? `Thành viên ${month}/${year}` : `Member ${month}/${year}`
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 export function profilePanelParam(value: string | undefined): CustomerProfilePanel | null {
-  return value === 'overview' || value === 'ranking' || value === 'money' || value === 'memory' ? value : null
+  return value === 'overview' || value === 'ranking' || value === 'money' ? value : null
 }
 
 export function profileUtilityParam(value: string | undefined): CustomerProfileUtility | null {
@@ -157,13 +218,7 @@ export function profileScreenParam(value: string | undefined): CustomerV21Screen
   return profileScreenIds.includes(value as CustomerV21ScreenId) ? value as CustomerV21ScreenId : null
 }
 
-export function agenticScreenParam(screenId: CustomerV21ScreenId | null, utility: string | undefined): CustomerV21ScreenId | null {
-  if (screenId && customerV21AgenticScreenIds.includes(screenId)) return screenId
-  return utility === 'agentic' ? '5.1-agentic-home' : null
-}
-
 export function profilePanelForScreen(screenId: CustomerV21ScreenId | null): CustomerProfilePanel | null {
-  if (screenId === '5.4-memory') return 'memory'
   if (screenId === '6.2-usage-ranking') return 'ranking'
   if (screenId === '6.3-protect-money') return 'money'
   if (screenId === '6.1-profile-overview') return 'overview'

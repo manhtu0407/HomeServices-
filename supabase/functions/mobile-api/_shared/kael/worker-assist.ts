@@ -60,6 +60,7 @@ export type WorkerAssistPreviousTurn = {
 export type WorkerAssistAnswer = {
   readonly schema_version: "worker_assist_answer.v1";
   readonly text: string;
+  readonly session_title?: string;
   readonly safety_notes: readonly string[];
   readonly redirect_scope_change: boolean;
   readonly fallback_used: boolean;
@@ -88,6 +89,7 @@ export type WorkerAssistProviderAttempt = {
 
 const workerAssistResponseSchema = z.preprocess(normalizeWorkerAssistPayload, z.object({
   text: z.string().trim().min(1).max(700),
+  session_title: z.string().trim().min(1).max(64).optional(),
   safety_notes: z.array(z.string().trim().min(1).max(180)).max(3).default([]),
   redirect_scope_change: z.boolean().default(false),
 }).strip());
@@ -227,6 +229,11 @@ export async function runWorkerAssist(
     return {
       schema_version: "worker_assist_answer.v1",
       text: checked.text,
+      session_title: buildWorkerKaelSessionTitle(
+        input.question,
+        result.data.session_title,
+        language,
+      ),
       safety_notes: normalizeSafetyNotes(result.data.safety_notes, language),
       redirect_scope_change:
         result.data.redirect_scope_change || shouldRedirectToScopeChange(input.question),
@@ -277,7 +284,8 @@ function buildWorkerAssistRequest(
       {
         role: "user",
         content: [
-          "Return JSON only with text, safety_notes, redirect_scope_change.",
+          "Return JSON only with text, session_title, safety_notes, redirect_scope_change.",
+          "session_title must summarize the worker's question in 3-8 words, contain no contact or address details, and stay under 64 characters.",
           "Do not include VND amounts, exact prices, direct contact, or lifecycle status updates.",
           `Worker question: ${scrubSensitiveForLLM(input.question).slice(0, 1200)}`,
         ].join("\n"),
@@ -381,12 +389,78 @@ function normalizeWorkerAssistPayload(value: unknown) {
     record.requires_scope_change,
     record.requiresScopeChange,
   );
+  const sessionTitle = normalizeWorkerKaelSessionTitle(firstString(
+    record.session_title,
+    record.sessionTitle,
+    record.title,
+  ), false);
   return {
     ...record,
     ...(text ? { text } : {}),
     safety_notes: safetyNotes ?? [],
     redirect_scope_change: redirectScopeChange ?? false,
+    ...(sessionTitle ? { session_title: sessionTitle } : {}),
   };
+}
+
+export function buildWorkerKaelSessionTitle(
+  question: string,
+  suggestedTitle: string | null | undefined,
+  language: KaelPromptLanguage,
+): string {
+  const safeSuggestion = normalizeWorkerKaelSessionTitle(suggestedTitle, false);
+  if (safeSuggestion) return safeSuggestion;
+
+  const scrubbedQuestion = scrubSensitiveForLLM(question)
+    .replace(/\[(?:phone|email|id-number|bank-account|building|floor|unit|house-no)\]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const withoutConversationalPrefix = language === "en"
+    ? scrubbedQuestion.replace(
+      /^(?:kael[,:]?\s*)?(?:i\s+(?:want|need|would like)\s+to\s+)?(?:ask|know|check|get help with)\s+(?:about\s+)?/i,
+      "",
+    )
+    : scrubbedQuestion.replace(
+      /^(?:kael[,:]?\s*)?(?:(?:tôi|mình|em)\s+)?(?:muốn\s+)?(?:hỏi|nhờ|cần)\s+(?:kael\s+)?(?:về|giúp|kiểm tra)?\s*/iu,
+      "",
+    );
+  return normalizeWorkerKaelSessionTitle(withoutConversationalPrefix, true) ??
+    (language === "en" ? "Work advisory" : "Trao đổi về công việc");
+}
+
+export function sanitizeWorkerKaelSessionTitle(value: string): string | null {
+  return normalizeWorkerKaelSessionTitle(value, false);
+}
+
+function normalizeWorkerKaelSessionTitle(
+  value: string | null | undefined,
+  removeSensitiveTokens: boolean,
+): string | null {
+  if (!value) return null;
+  const scrubbed = scrubSensitiveForLLM(value);
+  const hasSensitiveToken = /\[(?:phone|email|id-number|bank-account|building|floor|unit|house-no)\]/i
+    .test(scrubbed);
+  if (hasSensitiveToken && !removeSensitiveTokens) return null;
+
+  const normalized = (removeSensitiveTokens
+    ? scrubbed.replace(/\[(?:phone|email|id-number|bank-account|building|floor|unit|house-no)\]/gi, " ")
+    : scrubbed)
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
+    .replace(/[.!?,;:…]+$/u, "")
+    .trim();
+  if (normalized.length < 3) return null;
+
+  const bounded = truncateWorkerKaelSessionTitle(normalized, 64);
+  return `${bounded.charAt(0).toLocaleUpperCase()}${bounded.slice(1)}`;
+}
+
+function truncateWorkerKaelSessionTitle(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+  const slice = value.slice(0, maxLength + 1);
+  const wordBoundary = slice.lastIndexOf(" ");
+  return (wordBoundary >= 24 ? slice.slice(0, wordBoundary) : value.slice(0, maxLength)).trim();
 }
 
 function normalizeProviderSafetyNotes(record: Record<string, unknown>) {
