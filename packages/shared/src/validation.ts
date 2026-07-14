@@ -185,6 +185,27 @@ export const kaelAssistantSchema = z.object({
   }
 })
 
+export const customerKaelConversationModeSchema = z.enum(['normal', 'case'])
+
+export const customerKaelConversationCreateSchema = z.object({
+  mode: customerKaelConversationModeSchema,
+  client_request_id: z.string().uuid(),
+}).strict()
+
+export const customerKaelConversationTurnSchema = z.object({
+  message: z.string().trim().min(1).max(2000),
+  language: z.enum(['vi', 'en']).default('vi'),
+  client_request_id: z.string().uuid(),
+}).strict()
+
+export const customerKaelConversationRenameSchema = z.object({
+  title: z.string().trim().min(1).max(64),
+}).strict()
+
+export const customerKaelConversationPinSchema = z.object({
+  pinned: z.boolean(),
+}).strict()
+
 export const kaelChatProgressSchema = z.object({
   current_stage: z.enum([
     'intent_classification',
@@ -360,6 +381,22 @@ export const workerServiceAreaUpdateSchema = z.object({
   service_radius_km: z.number().int().min(1).max(30).nullable().optional(),
 }).strict()
 
+export const WORKER_AVATAR_MAX_BYTES = 5 * 1024 * 1024
+const workerAvatarRefSchema = z.string().regex(
+  /^supabase:\/\/worker-avatars\/[^/\s?#]+\/(?!.*(?:\.\.|\/\/))[A-Za-z0-9._-]+$/i,
+  'avatar_ref must be a private worker-avatars storage ref',
+)
+
+export const workerAvatarUploadSchema = z.object({
+  file_name: z.string().trim().min(1).max(180).optional(),
+  mime_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  file_size_bytes: z.number().int().positive().max(WORKER_AVATAR_MAX_BYTES),
+}).strict()
+
+export const workerAvatarUpdateSchema = z.object({
+  avatar_ref: workerAvatarRefSchema,
+}).strict()
+
 export const availabilityToggleSchema = z.object({
   is_available: z.boolean(),
 })
@@ -391,8 +428,11 @@ const workerKaelMediaRefSchema = z
 
 const workerKaelMediaRefsSchema = z.array(workerKaelMediaRefSchema).max(5).default([])
 
+export const workerKaelChatModeSchema = z.enum(['normal', 'intake'])
+
 export const workerKaelChatCreateSchema = z.object({
   job_id: z.string().uuid(),
+  mode: workerKaelChatModeSchema.default('intake'),
   language: z.enum(['vi', 'en']).default('vi'),
   client_request_id: z.string().uuid().optional(),
 }).strict()
@@ -402,6 +442,14 @@ export const workerKaelChatTurnSchema = z.object({
   media_refs: workerKaelMediaRefsSchema,
   language: z.enum(['vi', 'en']).default('vi'),
   client_request_id: z.string().uuid().optional(),
+}).strict()
+
+export const workerKaelChatRenameSchema = z.object({
+  title: z.string().trim().min(1).max(64),
+}).strict()
+
+export const workerKaelChatPinSchema = z.object({
+  pinned: z.boolean(),
 }).strict()
 
 export const workerKaelFeedbackSchema = z.object({
@@ -515,6 +563,11 @@ export type KaelChatMediaRevokeInput = z.infer<typeof kaelChatMediaRevokeSchema>
 export type KaelChatEvidenceInput = z.infer<typeof kaelChatEvidenceSchema>
 export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>
 export type KaelAssistantInput = z.infer<typeof kaelAssistantSchema>
+export type CustomerKaelConversationMode = z.infer<typeof customerKaelConversationModeSchema>
+export type CustomerKaelConversationCreateInput = z.infer<typeof customerKaelConversationCreateSchema>
+export type CustomerKaelConversationTurnInput = z.infer<typeof customerKaelConversationTurnSchema>
+export type CustomerKaelConversationRenameInput = z.infer<typeof customerKaelConversationRenameSchema>
+export type CustomerKaelConversationPinInput = z.infer<typeof customerKaelConversationPinSchema>
 export type KaelChatProgress = z.infer<typeof kaelChatProgressSchema>
 export type PlacesAutocompleteInput = z.infer<typeof placesAutocompleteSchema>
 export type PlacesResolveInput = z.infer<typeof placesResolveSchema>
@@ -528,11 +581,16 @@ export type ChatMessageInput = z.infer<typeof chatMessageSchema>
 export type JobMessageSendInput = z.infer<typeof jobMessageSendSchema>
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>
 export type WorkerServiceAreaUpdateInput = z.infer<typeof workerServiceAreaUpdateSchema>
+export type WorkerAvatarUploadInput = z.infer<typeof workerAvatarUploadSchema>
+export type WorkerAvatarUpdateInput = z.infer<typeof workerAvatarUpdateSchema>
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>
 export type KaelWorkerClarifyInput = z.infer<typeof kaelWorkerClarifySchema>
+export type WorkerKaelChatMode = z.infer<typeof workerKaelChatModeSchema>
 export type WorkerKaelChatCreateInput = z.infer<typeof workerKaelChatCreateSchema>
 export type WorkerKaelChatTurnInput = z.infer<typeof workerKaelChatTurnSchema>
+export type WorkerKaelChatRenameInput = z.infer<typeof workerKaelChatRenameSchema>
+export type WorkerKaelChatPinInput = z.infer<typeof workerKaelChatPinSchema>
 export type WorkerKaelFeedbackInput = z.infer<typeof workerKaelFeedbackSchema>
 export type WorkerKaelTrainingConsentInput = z.infer<typeof workerKaelTrainingConsentSchema>
 export type WorkerCancellationRequestInput = z.infer<typeof workerCancellationRequestSchema>

@@ -13,6 +13,7 @@ import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { WorkerV5IconName } from '../dock/types'
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { styles } from './shared-styles'
 
@@ -154,11 +155,24 @@ export function WorkerV5InfoRow({
   )
 }
 
-export function WorkerV5InfoGrid({ items }: { items: ReadonlyArray<WorkerV5InfoGridItem> }) {
+export function WorkerV5InfoGrid({
+  auraScope,
+  items,
+  reduceTransparency,
+}: {
+  auraScope: string
+  items: ReadonlyArray<WorkerV5InfoGridItem>
+  reduceTransparency: boolean
+}) {
   return (
     <View style={styles.infoGrid} testID="worker-v5-info-grid">
       {items.map((item, index) => (
-        <View key={`${item.label}-${item.value}`} style={styles.infoCell}>
+        <View key={`${item.label}-${item.value}`} style={[styles.infoCell, reduceTransparency && styles.opaqueCard]}>
+          <WorkerV5FormulaMintCardAura
+            reduceTransparency={reduceTransparency}
+            scope={`${auraScope}${index}`}
+            testID={`worker-v5-info-cell-${auraScope}-formula-mint-aura-${index}`}
+          />
           <Text style={styles.infoCellValue} numberOfLines={1} testID={`worker-v5-info-cell-value-${index}`}>{item.value}</Text>
           <Text style={styles.infoCellLabel} numberOfLines={2} testID={`worker-v5-info-cell-label-${index}`}>{item.label}</Text>
         </View>

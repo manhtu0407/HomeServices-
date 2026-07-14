@@ -118,24 +118,28 @@ type WorkerV5ReadOnlyToggleListComponent = ComponentType<{
   reduceTransparency: boolean
 }>
 export function WorkerV5ProfileOverviewBody({
-  avatarIcon,
+  avatarUploadBusy,
   caseWideAura,
   dossierIcons,
   heroAura,
   language,
   listAura,
   navigateToScreen,
+  onPickAvatar,
+  reduceMotion,
   reduceTransparency,
   runtime,
   zipAura,
 }: {
-  avatarIcon: ImageSourcePropType
+  avatarUploadBusy: boolean
   caseWideAura: WorkerV5ScopedAuraComponent
   dossierIcons: WorkerV5DossierIconMap
   heroAura: WorkerV5AuraComponent
   language: AppLanguage
   listAura: WorkerV5AuraComponent
   navigateToScreen: (id: WorkerV5ScreenId) => void
+  onPickAvatar: () => void
+  reduceMotion: boolean
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
   zipAura: WorkerV5ScopedAuraComponent
@@ -145,11 +149,12 @@ export function WorkerV5ProfileOverviewBody({
   return (
     <View style={styles.sectionStack}>
       <WorkerV5ProfileHeader
-        avatarIcon={avatarIcon}
+        avatarUploadBusy={avatarUploadBusy}
         heroAura={heroAura}
-        insights={insights}
         language={language}
+        onPickAvatar={onPickAvatar}
         profile={profile}
+        reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
       />
       <WorkerV5ProfileDashboardCards

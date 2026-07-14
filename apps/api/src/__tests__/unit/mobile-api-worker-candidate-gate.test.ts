@@ -81,6 +81,8 @@ describe('mobile-api worker-candidate gate', () => {
       /\b(phone|bank_account|bank_name|cccd|legal_name|address_|home_lat|home_lng)\b/,
     )
     expect(candidateServiceSource).toContain('.select("full_name, avatar_url")')
+    expect(candidateServiceSource).toContain('resolveWorkerAvatarUrl(client, profile.data.avatar_url)')
+    expect(candidateServiceSource).toContain('avatar_url: avatarUrl')
     expect(candidateServiceSource).not.toContain('phone,')
     expect(candidateServiceSource).not.toContain('bank_account')
     expect(candidateServiceSource).not.toContain('cccd_front_url')

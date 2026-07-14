@@ -151,11 +151,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     infoPlist: {
       NSCameraUsageDescription:
-        'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.',
+        'NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật, hiện trạng sửa chữa hoặc giấy tờ xác minh.',
       NSMicrophoneUsageDescription:
         'NestScout cần quyền micro để chuyển giọng nói thành bản chép lời có thể chỉnh sửa ngay trên thiết bị.',
       NSPhotoLibraryUsageDescription:
-        'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
+        'NestScout cần quyền chọn ảnh hoặc video để đặt ảnh đại diện thật, mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
       NSLocationWhenInUseUsageDescription:
         'NestScout cần vị trí của bạn khi mở lộ trình đến địa chỉ khách hàng.',
     },
@@ -194,9 +194,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-image-picker',
       {
         photosPermission:
-          'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.',
+          'NestScout cần quyền chọn ảnh hoặc video để đặt ảnh đại diện thật hoặc mô tả tình trạng sửa chữa.',
         cameraPermission:
-          'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
+          'NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật hoặc hiện trạng sửa chữa.',
       },
     ],
     [

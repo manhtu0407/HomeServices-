@@ -1,20 +1,31 @@
 import { useEffect, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from 'expo-speech-recognition'
 
 import { KaelTextInput } from '@/components/ui/kael-primitives'
 import type { OnDeviceVoiceTranscriptProps } from './on-device-voice-transcript.types'
 
-export function OnDeviceVoiceTranscript({
+type SpeechRecognitionRuntime = typeof import('expo-speech-recognition')
+
+const missingNativeModuleError = "Cannot find native module 'ExpoSpeechRecognition'"
+const speechRecognitionRuntime = loadSpeechRecognitionRuntime()
+
+export function OnDeviceVoiceTranscript(props: OnDeviceVoiceTranscriptProps) {
+  if (!speechRecognitionRuntime) {
+    return <UnavailableOnDeviceVoiceTranscript {...props} />
+  }
+
+  return <NativeOnDeviceVoiceTranscript {...props} runtime={speechRecognitionRuntime} />
+}
+
+function NativeOnDeviceVoiceTranscript({
   disabled,
   language,
   onChangeText,
+  runtime,
   transcript,
   tokens,
-}: OnDeviceVoiceTranscriptProps) {
+}: OnDeviceVoiceTranscriptProps & { runtime: SpeechRecognitionRuntime }) {
+  const { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } = runtime
   const [listening, setListening] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const locale = language === 'vi' ? 'vi-VN' : 'en-US'
@@ -35,7 +46,7 @@ export function OnDeviceVoiceTranscript({
 
   useEffect(() => () => {
     ExpoSpeechRecognitionModule.abort()
-  }, [])
+  }, [ExpoSpeechRecognitionModule])
 
   const startOnDeviceRecognition = async () => {
     if (disabled) return
@@ -122,6 +133,65 @@ export function OnDeviceVoiceTranscript({
       {error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: tokens.primary }]}>{error}</Text> : null}
     </View>
   )
+}
+
+function UnavailableOnDeviceVoiceTranscript({
+  disabled,
+  language,
+  onChangeText,
+  transcript,
+  tokens,
+}: OnDeviceVoiceTranscriptProps) {
+  return (
+    <View style={[styles.shell, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-v21-on-device-voice">
+      <View testID="customer-v21-on-device-voice-unavailable">
+        <View style={styles.header}>
+          <View style={styles.copy}>
+            <Text style={[styles.title, { color: tokens.text }]}>
+              {language === 'vi' ? 'Bản chép lời riêng tư' : 'Private transcript'}
+            </Text>
+            <Text style={[styles.note, { color: tokens.muted }]}>
+              {language === 'vi'
+                ? 'Nhận giọng nói chưa khả dụng trong bản chạy này. Bạn vẫn có thể nhập và sửa nội dung tại đây.'
+                : 'Speech recognition is unavailable in this build. You can still type and edit the transcript here.'}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityLabel={language === 'vi' ? 'Nhận giọng nói chưa khả dụng' : 'Speech recognition unavailable'}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: true }}
+            disabled
+            style={[styles.button, { backgroundColor: tokens.service, borderColor: tokens.border }]}
+            testID="customer-v21-on-device-voice-start"
+          >
+            <Text style={[styles.buttonText, { color: tokens.muted }]}>
+              {language === 'vi' ? 'Chưa khả dụng' : 'Unavailable'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+      <KaelTextInput
+        accessibilityLabel={language === 'vi' ? 'Chỉnh bản chép lời' : 'Edit transcript'}
+        editable={!disabled}
+        multiline
+        onChangeText={onChangeText}
+        placeholder={language === 'vi' ? 'Nhập nội dung bạn muốn Kael phân tích' : 'Type what you want Kael to analyze'}
+        placeholderTextColor={tokens.subtleText}
+        style={[styles.input, { borderColor: tokens.border, color: tokens.text }]}
+        testID="customer-v21-on-device-voice-transcript"
+        value={transcript}
+      />
+    </View>
+  )
+}
+
+function loadSpeechRecognitionRuntime(): SpeechRecognitionRuntime | null {
+  try {
+    return require('expo-speech-recognition') as SpeechRecognitionRuntime
+  } catch (error) {
+    if (String(error).includes(missingNativeModuleError)) return null
+    throw error
+  }
 }
 
 function voiceErrorLabel(code: string, language: 'vi' | 'en') {

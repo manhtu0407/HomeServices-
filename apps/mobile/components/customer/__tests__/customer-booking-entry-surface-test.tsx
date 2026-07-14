@@ -200,6 +200,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
   it('renders the six approved service paths without fake worker or priority data', () => {
     render(<CustomerBookingEntrySurface />)
 
+    expect(screen.queryByText('≡')).toBeNull()
     expect(screen.getByTestId('customer-v21-service-electrical')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-service-plumbing')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-service-home_cleaning')).toBeOnTheScreen()
@@ -207,16 +208,31 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-service-upholstery_care')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-service-handyman_minor_installation')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-step-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-step-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-step-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-progress-node-1')).toHaveTextContent('1')
     expect(screen.getByTestId('customer-v21-booking-progress-node-4')).toHaveTextContent('4')
     expect(screen.getByTestId('customer-v21-booking-progress-line-1')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-progress-line-3')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-search-source')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-search-mint-border')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-search-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-search-suggestions')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-booking-search-source')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-booking-search-mint-border')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-booking-search-icon')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-booking-search-input')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-booking-search-suggestions')).toBeNull()
+    expect(screen.queryByText('Gợi ý đặt')).toBeNull()
     expect(screen.getByTestId('customer-v21-booking-info-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-info-card-aura-layer')).toHaveStyle({ opacity: 0.8 })
+    expect(screen.getByTestId('customer-v21-booking-info-card-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-info-card-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-schedule-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-schedule-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-schedule-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-date-grid-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-custom-date-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-time-0-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-custom-time-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-description-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-description-mint-aura')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-booking-kael-context')).toBeNull()
     expect(screen.queryByTestId('customer-v21-booking-kael-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-booking-submit-mint-aura')).toBeOnTheScreen()
@@ -226,6 +242,97 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.queryByText('Sớm nhất có thể')).toBeNull()
     expect(screen.queryByTestId('customer-v21-screen-2.3-media')).toBeNull()
     expect(screen.queryByText(/rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
+  })
+
+  it('uses compact service-specific detail rails for all six customer services', () => {
+    render(<CustomerBookingEntrySurface />)
+
+    for (const [service, details] of [
+      ['electrical', ['Ổ cắm · cầu dao', 'Đèn']],
+      ['plumbing', ['Rò rỉ', 'Đường ống']],
+      ['home_cleaning', ['Diện tích', 'Hiện trạng · ưu tiên']],
+      ['hvac_basic_maintenance', ['Vệ sinh · kiểm tra', 'An toàn']],
+      ['upholstery_care', ['Chất liệu · vết bẩn', 'Mùi · khô']],
+      ['handyman_minor_installation', ['Vật tư · dụng cụ', 'Ranh giới việc']],
+    ] as const) {
+      expect(screen.getByTestId(`customer-v21-service-${service}-visual-panel`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`customer-v21-service-${service}-icon`)).toHaveStyle({
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+      })
+      expect(screen.getByTestId(`customer-v21-service-${service}-connector`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`customer-v21-service-${service}-connector-dot`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`customer-v21-service-${service}-heading`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`customer-v21-service-${service}-title`)).toHaveStyle({
+        fontSize: 14,
+        lineHeight: 18,
+        marginTop: 4,
+      })
+      expect(screen.getByTestId(`customer-v21-service-${service}-detail-0`)).toHaveTextContent(details[0])
+      expect(screen.getByTestId(`customer-v21-service-${service}-detail-1`)).toHaveTextContent(details[1])
+      expect(screen.getByTestId(`customer-v21-service-${service}-detail-rail`)).not.toHaveTextContent(/Mô tả nhu cầu|Bạn xác nhận/)
+      expect(screen.getByTestId(`customer-v21-service-${service}-detail-rail`)).toHaveStyle({
+        borderTopWidth: 0,
+        flexDirection: 'row',
+        marginTop: 6,
+        paddingTop: 0,
+      })
+    }
+
+    expect(screen.getByTestId('customer-v21-service-electrical')).toHaveStyle({
+      alignItems: 'stretch',
+      flexBasis: '48%',
+      flexDirection: 'row',
+      minHeight: 100,
+    })
+    expect(screen.getByTestId('customer-v21-service-electrical-visual-panel')).toHaveStyle({
+      borderRightWidth: 1,
+      minHeight: 100,
+      width: 80,
+    })
+    expect(screen.getByTestId('customer-v21-service-electrical-copy')).toHaveStyle({
+      justifyContent: 'center',
+      paddingLeft: 40,
+      paddingRight: 14,
+      paddingVertical: 10,
+    })
+    expect(screen.getByTestId('customer-v21-service-electrical')).toHaveProp(
+      'accessibilityLabel',
+      'Sửa điện. Ổ cắm · cầu dao · đèn',
+    )
+  })
+
+  it('keeps the redesigned service tile after the customer selects a service', () => {
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-service-electrical'))
+
+    expect(screen.getByTestId('customer-v21-selected-service')).toHaveStyle({
+      alignItems: 'stretch',
+      flexBasis: '100%',
+      flexDirection: 'row',
+      maxWidth: '100%',
+      minHeight: 100,
+    })
+    expect(screen.getByTestId('customer-v21-selected-service-visual-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-selected-service-formula-mint-aura')).toHaveStyle({
+      bottom: 0,
+      left: 0,
+      opacity: 0.94,
+      position: 'absolute',
+      right: 0,
+      top: 0,
+      zIndex: 0,
+    })
+    expect(screen.getByTestId('customer-v21-selected-service-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-selected-service-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-selected-service-connector')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-selected-service-connector-dot')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-selected-service-detail-0')).toHaveTextContent('Ổ cắm · cầu dao')
+    expect(screen.getByTestId('customer-v21-selected-service-detail-1')).toHaveTextContent('Đèn')
+    expect(screen.queryByTestId('customer-v21-booking-suggested-chip-aura')).toBeNull()
+    expect(screen.queryByText('Bạn đã chọn')).toBeNull()
+    expect(screen.queryByText('Chưa có')).toBeNull()
   })
 
   it.each([
@@ -321,7 +428,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can lap ke nho trong phong khach')
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
-    expect(screen.getByTestId('customer-v21-booking-error')).toHaveTextContent(/thời gian mong muốn/i)
+    expect(screen.getByTestId('customer-v21-booking-error')).toHaveTextContent(/giờ bắt đầu mong muốn/i)
     expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
 
     fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
@@ -331,14 +438,6 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     await waitFor(() => expect(mockSetPendingKaelChatDraft).toHaveBeenCalledTimes(1))
   })
 
-  it('finds expansion services through the existing booking search', () => {
-    render(<CustomerBookingEntrySurface />)
-
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-search-input'), 'điều hòa')
-
-    expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toHaveTextContent('Điều hòa & Không khí')
-  })
-
   it('uses mint text for booking guidance instead of red error copy', () => {
     render(<CustomerBookingEntrySurface />)
 
@@ -346,35 +445,6 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
     const errorStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-error').props.style)
     expect(errorStyle.color).toBe('#08AF9C')
-  })
-
-  it('filters booking suggestions from a typed service topic', async () => {
-    render(<CustomerBookingEntrySurface />)
-
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-search-input'), 'Nước')
-
-    const inputStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-search-input').props.style)
-    expect(inputStyle.color).toBe('#071A24')
-    expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toHaveTextContent(/Sửa nước/)
-    expect(screen.getByText(PROBLEM_CHIPS.plumbing[0])).toBeOnTheScreen()
-    expect(screen.getByText(PROBLEM_CHIPS.plumbing[2])).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByLabelText(PROBLEM_CHIPS.plumbing[2]))
-
-    expect(screen.getByTestId('customer-v21-selected-service')).toHaveTextContent(/Sửa nước/)
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Voi nuoc trong bep bi ro va can tho kiem tra')
-    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
-
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
-      problemChips: [PROBLEM_CHIPS.plumbing[2]],
-      serviceType: 'plumbing',
-    }))
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
-    })
   })
 
   it('keeps the booking location row balanced without a fake chevron', () => {
@@ -455,34 +525,14 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     render(<CustomerBookingEntrySurface />)
 
     expect(screen.getByTestId('customer-v21-selected-service')).toHaveTextContent(/Sửa nước/)
-    expect(screen.getByTestId('customer-v21-selected-service')).toHaveTextContent(/Rò rỉ · đường ống/)
-    expect(screen.getByTestId('customer-v21-booking-suggested-chip-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-selected-service-visual-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-selected-service-detail-0')).toHaveTextContent('Rò rỉ')
+    expect(screen.getByTestId('customer-v21-selected-service-detail-1')).toHaveTextContent('Đường ống')
+    expect(screen.queryByTestId('customer-v21-booking-suggested-chip-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-booking-problem-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-search-suggestions')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-booking-search-input')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-booking-search-suggestions')).toBeNull()
     expect(screen.queryByTestId('customer-v21-service-electrical')).toBeNull()
-  })
-
-  it('uses search suggestions as real booking problem shortcuts', async () => {
-    mockRouteParams = { service: 'plumbing' }
-
-    render(<CustomerBookingEntrySurface />)
-
-    fireEvent.press(screen.getByTestId('customer-v21-booking-search-suggestion-0'))
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Ong nuoc duoi lavabo bi ro ri rat nhieu')
-    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
-
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
-      problemChips: [PROBLEM_CHIPS.plumbing[0]],
-      serviceType: 'plumbing',
-    }))
-    expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
-    })
   })
 
   it('lets the customer choose a date and time without auto-selecting a slot', () => {
@@ -494,7 +544,98 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn giờ/)
 
     fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
-    expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/10:00-12:00/)
+    expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Bắt đầu lúc 10:00/)
+  })
+
+  it('accepts a desired date beyond the seven quick date options', () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date(2026, 6, 13, 9, 0, 0))
+
+    try {
+      render(<CustomerBookingEntrySurface />)
+
+      expect(screen.queryByTestId('customer-v21-booking-date-7')).toBeNull()
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-custom-date'), '23/07/2026')
+      fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
+
+      expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/23\/07\/2026/)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('uses a desired start time and preserves a custom start in the Kael draft', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date(2026, 6, 13, 9, 0, 0))
+    mockRouteParams = { service: 'handyman_minor_installation' }
+
+    try {
+      render(<CustomerBookingEntrySurface />)
+
+      expect(screen.queryByText('Giờ bắt đầu mong muốn')).toBeNull()
+      expect(screen.getByText('Chọn giờ bạn muốn dịch vụ bắt đầu.')).toHaveStyle({ fontWeight: '700' })
+      expect(screen.getByTestId('customer-v21-booking-time-1')).toHaveTextContent(/^10:00$/)
+      expect(screen.queryByText('10:00-12:00')).toBeNull()
+
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-custom-date'), '23072026')
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-custom-time'), '1030')
+      expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/23\/07\/2026.*Bắt đầu lúc 10:30/)
+
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can lap ke nho trong phong khach')
+      fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+      await waitFor(() => {
+        expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+          scheduleMode: 'scheduled',
+          scheduleWindow: {
+            date: '2026-07-23',
+            end: '12:30',
+            start: '10:30',
+            timeZone: 'Asia/Ho_Chi_Minh',
+          },
+          scheduledAt: '2026-07-23T03:30:00.000Z',
+        }))
+      })
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('rejects invalid custom dates and start times before creating a Kael draft', () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date(2026, 6, 13, 9, 0, 0))
+    mockRouteParams = { service: 'handyman_minor_installation' }
+
+    try {
+      render(<CustomerBookingEntrySurface />)
+
+      const customDate = screen.getByTestId('customer-v21-booking-custom-date')
+      const customTime = screen.getByTestId('customer-v21-booking-custom-time')
+      expect(customDate).toHaveProp('accessibilityLabel', 'Nhập ngày muốn đặt')
+      expect(customDate).toHaveProp('keyboardType', 'number-pad')
+      expect(customDate).toHaveProp('maxLength', 10)
+      expect(customTime).toHaveProp('accessibilityLabel', 'Nhập giờ bắt đầu mong muốn')
+      expect(customTime).toHaveProp('keyboardType', 'number-pad')
+      expect(customTime).toHaveProp('maxLength', 5)
+
+      fireEvent.changeText(customDate, '31022026')
+      fireEvent.changeText(customTime, '2460')
+
+      expect(screen.getByTestId('customer-v21-booking-custom-date-error')).toHaveTextContent(/ngày hợp lệ/i)
+      expect(screen.getByTestId('customer-v21-booking-custom-time-error')).toHaveTextContent(/HH:mm/)
+
+      fireEvent.changeText(customDate, '12072026')
+      expect(screen.getByTestId('customer-v21-booking-custom-date-error')).toHaveTextContent(/ngày hợp lệ/i)
+
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can lap ke nho trong phong khach')
+      fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+      expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it('refreshes booking dates from runtime while the screen stays open', () => {
@@ -557,7 +698,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
     fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
     fireEvent.press(screen.getByTestId('customer-v21-service-plumbing'))
-    expect(screen.getByTestId('customer-v21-booking-selected-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-selected-service-visual-panel')).toBeOnTheScreen()
 
     expect(screen.queryByTestId('customer-v21-booking-open-media')).toBeNull()
     expect(screen.queryByText('Tiếp tục mô tả')).toBeNull()
@@ -594,7 +735,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Dịch vụ: Sửa điện')
     expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Khu vực: Tòa A, Quận 7')
     expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Thời gian:')
-    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('14:00-16:00')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Bắt đầu lúc 14:00')
     expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain(`Mô tả: ${typedDescription}`)
     expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
     expect(mockReplace).not.toHaveBeenCalled()

@@ -14,6 +14,7 @@ export function sameCustomerProfileInsights(left: CustomerProfileInsightsRespons
     && left.completed_service_count === right.completed_service_count
     && left.saved_address_count === right.saved_address_count
     && left.preferred_service_count === right.preferred_service_count
+    && left.active_service_days === right.active_service_days
     && left.active_streak_days === right.active_streak_days
     && left.positive_review_rate_percent === right.positive_review_rate_percent
     && left.price_savings_vnd === right.price_savings_vnd
@@ -32,6 +33,9 @@ export function sameCustomerProfileInsights(left: CustomerProfileInsightsRespons
 export function sameWorkerProfile(left: WorkerProfileResponse | null, right: WorkerProfileResponse) {
   if (!left) return false
   return left.id === right.id
+    && left.avatar_url === right.avatar_url
+    && left.active_minutes === right.active_minutes
+    && left.last_active_at === right.last_active_at
     && left.verification_status === right.verification_status
     && left.is_available === right.is_available
     && left.is_approved === right.is_approved

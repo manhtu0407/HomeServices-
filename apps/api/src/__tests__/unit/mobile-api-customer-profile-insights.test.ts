@@ -2,6 +2,58 @@ import { describe, expect, it } from 'vitest'
 import { buildCustomerProfileInsights } from '../../../../../supabase/functions/mobile-api/_shared/services'
 
 describe('customer profile insights aggregation', () => {
+  it('counts distinct days with completed service activity', () => {
+    const insights = buildCustomerProfileInsights({
+      accountProfile: { created_at: '2026-07-01T00:00:00.000Z' },
+      customerId: '11111111-1111-4111-8111-111111111111',
+      customerProfile: null,
+      disputes: [],
+      kaelInteractionCount: 0,
+      jobs: [
+        {
+          id: 'job-1',
+          status: 'paid',
+          service_type: 'electrical',
+          created_at: '2026-07-02T01:00:00.000Z',
+          completed_at: '2026-07-02T02:00:00.000Z',
+          final_price: 500_000,
+          kael_price_min: 450_000,
+          kael_price_max: 550_000,
+          paid_at: '2026-07-02T03:00:00.000Z',
+          reviewed_at: null,
+        },
+        {
+          id: 'job-2',
+          status: 'reviewed',
+          service_type: 'cleaning',
+          created_at: '2026-07-02T04:00:00.000Z',
+          completed_at: '2026-07-02T05:00:00.000Z',
+          final_price: 600_000,
+          kael_price_min: 550_000,
+          kael_price_max: 650_000,
+          paid_at: '2026-07-02T06:00:00.000Z',
+          reviewed_at: '2026-07-02T07:00:00.000Z',
+        },
+        {
+          id: 'job-3',
+          status: 'completed',
+          service_type: 'plumbing',
+          created_at: '2026-07-05T01:00:00.000Z',
+          completed_at: '2026-07-05T02:00:00.000Z',
+          final_price: null,
+          kael_price_min: null,
+          kael_price_max: null,
+          paid_at: null,
+          reviewed_at: null,
+        },
+      ],
+      reviews: [],
+      savedAddressCount: 0,
+    })
+
+    expect(insights.active_service_days).toBe(2)
+  })
+
   it('derives profile metrics from real job, dispute, and Kael session rows', () => {
     const insights = buildCustomerProfileInsights({
       accountProfile: { created_at: '2025-12-15T00:00:00.000Z' },
@@ -104,6 +156,7 @@ describe('customer profile insights aggregation', () => {
     })
 
     expect(insights).toMatchObject({
+      active_service_days: 0,
       active_streak_days: 0,
       kael_interaction_count: 0,
       completed_service_count: 0,

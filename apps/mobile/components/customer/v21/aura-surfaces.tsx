@@ -112,18 +112,19 @@ export function CaseWorkCardAura({ scope, testID }: { scope: string; testID?: st
   )
 }
 
-export function ZipMintAura({ scope, testID }: { scope: string; testID?: string }) {
+export function ZipMintAura({ intensity = 'default', scope, testID }: { intensity?: 'default' | 'strong'; scope: string; testID?: string }) {
   const { reduceTransparency } = useGlassAccessibility()
   if (reduceTransparency) return null
 
   const fillId = `zipMintAura${scope}`
+  const strong = intensity === 'strong'
   return (
     <View pointerEvents="none" style={styles.zipMintAura} testID={testID}>
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 220 180" width="100%">
         <Defs>
           <RadialGradient id={fillId} cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="rgba(143,226,212,0.35)" />
-            <Stop offset="0.45" stopColor="rgba(230,251,243,0.15)" />
+            <Stop offset="0" stopColor={strong ? 'rgba(143,226,212,0.46)' : 'rgba(143,226,212,0.35)'} />
+            <Stop offset="0.45" stopColor={strong ? 'rgba(230,251,243,0.20)' : 'rgba(230,251,243,0.15)'} />
             <Stop offset="0.72" stopColor="rgba(230,251,243,0)" />
             <Stop offset="1" stopColor="rgba(230,251,243,0)" />
           </RadialGradient>
@@ -246,21 +247,6 @@ export function ProfileCanvasAura({
   )
 }
 
-export function AgenticCanvasAura({
-  reduceTransparency,
-  screenId,
-}: ReduceTransparencyProps & {
-  screenId: CustomerV21ScreenId
-}) {
-  return (
-    <FormulaMintCanvasAura
-      reduceTransparency={reduceTransparency}
-      scope={`CustomerAgentic${screenId}`}
-      testID={`customer-v21-agentic-canvas-aura-${screenId}`}
-    />
-  )
-}
-
 export function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
   return (
     <FormulaMintCanvasAura
@@ -296,9 +282,6 @@ export function CustomerScreenCanvasAura({
   if (screenId === '2.10-location-eta') return <LocationEtaCanvasAura reduceTransparency={reduceTransparency} />
   if (screenId === '2.11-live-alert' || screenId === '2.12-job-accepted' || screenId === '2.13-job-progress') {
     return <FulfillmentCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
-  }
-  if (screenId === '5.1-agentic-home' || screenId === '5.2-command-center' || screenId === '5.3-approval-queue' || screenId === '5.4-memory') {
-    return <AgenticCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
   }
   if (screenId === '6.1-profile-overview' || screenId === '6.2-usage-ranking' || screenId === '6.3-protect-money') {
     return <ProfileCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
@@ -430,27 +413,6 @@ export function BookingProblemChipAura({ reduceTransparency }: ReduceTransparenc
   )
 }
 
-export function BookingSuggestedChipAura({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
-    return null
-  }
-
-  return (
-    <View pointerEvents="none" style={styles.bookingSuggestedChipAura} testID="customer-v21-booking-suggested-chip-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 160 48" width="100%">
-        <Defs>
-          <RadialGradient id="bookingSuggestedChipAuraFill" cx="52%" cy="48%" r="70%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.28)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.12)" />
-            <Stop offset="0.82" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#bookingSuggestedChipAuraFill)" height="48" width="160" />
-      </Svg>
-    </View>
-  )
-}
-
 export function BookingDraftButtonAura({ reduceTransparency }: ReduceTransparencyProps) {
   if (reduceTransparency) {
     return null
@@ -474,15 +436,5 @@ export function BookingDraftButtonAura({ reduceTransparency }: ReduceTransparenc
         <Rect fill="url(#bookingDraftButtonAuraLeft)" height="58" width="340" />
       </Svg>
     </View>
-  )
-}
-
-export function BookingSearchMintBorder({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
-    return null
-  }
-
-  return (
-    <View pointerEvents="none" style={styles.bookingSearchMintBorder} testID="customer-v21-booking-search-mint-border" />
   )
 }

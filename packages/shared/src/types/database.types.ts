@@ -1954,6 +1954,7 @@ export type Database = {
           id: string
           job_id: string | null
           kael_progress: Json | null
+          pinned_at: string | null
           safe_metadata: Json
           scheduled_at: string | null
           service_type: Database["public"]["Enums"]["service_type"]
@@ -1974,6 +1975,7 @@ export type Database = {
           id?: string
           job_id?: string | null
           kael_progress?: Json | null
+          pinned_at?: string | null
           safe_metadata?: Json
           scheduled_at?: string | null
           service_type: Database["public"]["Enums"]["service_type"]
@@ -1994,6 +1996,7 @@ export type Database = {
           id?: string
           job_id?: string | null
           kael_progress?: Json | null
+          pinned_at?: string | null
           safe_metadata?: Json
           scheduled_at?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
@@ -2072,6 +2075,104 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "kael_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_customer_conversation_turns: {
+        Row: {
+          client_request_id: string | null
+          conversation_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          role: string
+          text_content: string
+          turn_index: number
+        }
+        Insert: {
+          client_request_id?: string | null
+          conversation_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          role: string
+          text_content: string
+          turn_index: number
+        }
+        Update: {
+          client_request_id?: string | null
+          conversation_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          role?: string
+          text_content?: string
+          turn_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_customer_conversation_turns_conversation_owner_fkey"
+            columns: ["conversation_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "kael_customer_conversations"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
+      kael_customer_conversations: {
+        Row: {
+          archived_at: string | null
+          case_session_id: string | null
+          chat_mode: string
+          client_request_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          pinned_at: string | null
+          title: string | null
+          total_turns: number
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          case_session_id?: string | null
+          chat_mode: string
+          client_request_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          pinned_at?: string | null
+          title?: string | null
+          total_turns?: number
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          case_session_id?: string | null
+          chat_mode?: string
+          client_request_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          pinned_at?: string | null
+          title?: string | null
+          total_turns?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_customer_conversations_case_session_id_fkey"
+            columns: ["case_session_id"]
+            isOneToOne: true
+            referencedRelation: "kael_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_customer_conversations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2856,6 +2957,8 @@ export type Database = {
       }
       kael_worker_chat_sessions: {
         Row: {
+          archived_at: string | null
+          chat_mode: string
           client_request_id: string | null
           closed_at: string | null
           created_at: string
@@ -2865,12 +2968,15 @@ export type Database = {
           safe_metadata: Json
           started_at: string
           status: string
+          title: string | null
           total_cost_usd: number
           total_turns: number
           updated_at: string
           worker_id: string
         }
         Insert: {
+          archived_at?: string | null
+          chat_mode?: string
           client_request_id?: string | null
           closed_at?: string | null
           created_at?: string
@@ -2880,12 +2986,15 @@ export type Database = {
           safe_metadata?: Json
           started_at?: string
           status?: string
+          title?: string | null
           total_cost_usd?: number
           total_turns?: number
           updated_at?: string
           worker_id: string
         }
         Update: {
+          archived_at?: string | null
+          chat_mode?: string
           client_request_id?: string | null
           closed_at?: string | null
           created_at?: string
@@ -2895,6 +3004,7 @@ export type Database = {
           safe_metadata?: Json
           started_at?: string
           status?: string
+          title?: string | null
           total_cost_usd?: number
           total_turns?: number
           updated_at?: string
@@ -4050,6 +4160,8 @@ export type Database = {
       }
       worker_profiles: {
         Row: {
+          app_active_minutes: number
+          app_last_active_minute: string | null
           bank_account: string | null
           bank_name: string | null
           cccd_back_url: string | null
@@ -4076,6 +4188,8 @@ export type Database = {
           years_experience: number
         }
         Insert: {
+          app_active_minutes?: number
+          app_last_active_minute?: string | null
           bank_account?: string | null
           bank_name?: string | null
           cccd_back_url?: string | null
@@ -4102,6 +4216,8 @@ export type Database = {
           years_experience?: number
         }
         Update: {
+          app_active_minutes?: number
+          app_last_active_minute?: string | null
           bank_account?: string | null
           bank_name?: string | null
           cccd_back_url?: string | null
@@ -4452,6 +4568,25 @@ export type Database = {
       }
     }
     Functions: {
+      append_customer_kael_conversation_exchange: {
+        Args: {
+          p_client_request_id: string
+          p_conversation_id: string
+          p_customer_id: string
+          p_customer_text: string
+          p_kael_text: string
+        }
+        Returns: number
+      }
+      record_worker_app_active_minute: {
+        Args: { p_worker_id: string }
+        Returns: {
+          active_minutes: number
+          incremented: boolean
+          last_active_at: string
+          worker_id: string
+        }[]
+      }
       claim_kael_chat_media_cleanup_batch: {
         Args: {
           p_claim_token: string

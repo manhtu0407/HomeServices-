@@ -12,6 +12,7 @@ import { KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerProfileResponse } from '@/lib/api-types'
 
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import {
   WorkerV5IntegratedIcon,
@@ -59,6 +60,11 @@ export function WorkerV5PayoutMethodHero({
   const identity = profile?.legal_name?.trim() || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')
   return (
     <View style={[styles.payoutMethodHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-method-hero">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="PayoutMethodHero"
+        testID="worker-v5-payout-method-hero-formula-mint-aura"
+      />
       <WorkerV5IntegratedIcon
         bleed={12}
         image={receivingAccountIcon}
@@ -194,6 +200,11 @@ export function WorkerV5PayoutAccountManagementRows({
   ]
   return (
     <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-account-management-list">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="PayoutAccountManagement"
+        testID="worker-v5-account-management-formula-mint-aura"
+      />
       {rows.map((row, index) => (
         <Pressable
           accessibilityLabel={row.title}

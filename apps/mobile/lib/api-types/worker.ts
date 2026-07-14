@@ -1,7 +1,9 @@
-import type { BroadcastStatus, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerVerificationStatus } from '@nestscout/shared'
+import type { BroadcastStatus, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerVerificationStatus } from '@nestscout/shared'
 import type { CustomerPaymentMethodSaveInput } from './customer'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView } from './shared'
+
+export type { WorkerActivityMinuteResponse, WorkerAvatarUploadResponse } from '@nestscout/shared'
 
 export type WorkerPayoutMethodSaveInput = CustomerPaymentMethodSaveInput
 
@@ -19,6 +21,9 @@ export type WorkerPayoutMethodResponse = {
 
 export type WorkerProfileResponse = {
   id: string
+  avatar_url: string | null
+  active_minutes: number
+  last_active_at: string | null
   verification_status: WorkerVerificationStatus
   is_available: boolean
   is_approved: boolean
@@ -39,6 +44,12 @@ export type WorkerProfileResponse = {
   bank_name: string | null
   has_cccd: boolean
   has_selfie: boolean
+}
+
+export type WorkerAvatarUpdateResponse = {
+  worker_id: string
+  avatar_url: string
+  updated_at: string
 }
 
 export type WorkerRegisterResponse = {
@@ -209,8 +220,11 @@ export type WorkerKaelChatTurn = {
 export type WorkerKaelChatSession = {
   id: string
   job_id: string
+  mode: WorkerKaelChatMode
   worker_id: string
   status: WorkerKaelChatStatus
+  title: string | null
+  pinned_at: string | null
   started_at: string
   closed_at: string | null
   total_turns: number
@@ -224,6 +238,11 @@ export type WorkerKaelChatResponse = {
 
 export type WorkerKaelChatListResponse = {
   sessions: WorkerKaelChatSession[]
+}
+
+export type WorkerKaelChatArchiveResponse = {
+  session_id: string
+  archived_at: string
 }
 
 export type WorkerKaelFeedbackResponse = {

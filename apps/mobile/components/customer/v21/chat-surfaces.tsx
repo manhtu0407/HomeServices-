@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native'
-import Svg, { Circle, Defs, RadialGradient, Rect } from 'react-native-svg'
+import Svg, { Circle, Defs, Path, RadialGradient, Rect } from 'react-native-svg'
 
 import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
@@ -88,5 +88,21 @@ export function ChatCanvasAura({ reduceTransparency }: { reduceTransparency: boo
       scope="CustomerChat"
       testID="customer-v21-chat-canvas-aura"
     />
+  )
+}
+
+export function ChatBackIcon({ color }: { color: string }) {
+  return (
+    <Svg fill="none" height={22} style={styles.chatBackIcon} viewBox="0 0 24 24" width={22}>
+      <Path d="M14.5 5.5 8 12l6.5 6.5" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} />
+    </Svg>
+  )
+}
+
+export function ChatNewConversationIcon({ color }: { color: string }) {
+  return (
+    <Svg fill="none" height={22} viewBox="0 0 24 24" width={22}>
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeLinecap="round" strokeWidth={2.1} />
+    </Svg>
   )
 }

@@ -21,9 +21,9 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.",
+        "NSCameraUsageDescription": "NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật, hiện trạng sửa chữa hoặc giấy tờ xác minh.",
         "NSMicrophoneUsageDescription": "NestScout cần quyền micro để chuyển giọng nói thành bản chép lời có thể chỉnh sửa ngay trên thiết bị.",
-        "NSPhotoLibraryUsageDescription": "NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh."
+        "NSPhotoLibraryUsageDescription": "NestScout cần quyền chọn ảnh hoặc video để đặt ảnh đại diện thật, mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh."
       }
     },
     "android": {
@@ -56,8 +56,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.",
-          "cameraPermission": "NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa."
+          "photosPermission": "NestScout cần quyền chọn ảnh hoặc video để đặt ảnh đại diện thật hoặc mô tả tình trạng sửa chữa.",
+          "cameraPermission": "NestScout cần quyền camera nếu bạn muốn chụp ảnh đại diện thật hoặc hiện trạng sửa chữa."
         }
       ]
     ],

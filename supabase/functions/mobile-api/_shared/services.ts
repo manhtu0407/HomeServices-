@@ -12,6 +12,7 @@ import {
 import {
   registerWorker,
   getWorkerProfile,
+  recordWorkerAppActiveMinute,
   submitWorkerApplication,
   updateWorkerServiceArea,
   updateWorkerAvailability,
@@ -34,12 +35,22 @@ import { confirmCompletion, submitReview } from "./services/completion-review.se
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/chat.service.ts";
 import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat.service.ts";
 import { answerKaelAssistant } from "./services/customer-assistant.service.ts";
-import { askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, sendWorkerKaelChatTurn } from "./services/worker-kael-chat.service.ts";
+import {
+  archiveCustomerKaelConversation,
+  createCustomerKaelConversation,
+  getCustomerKaelConversation,
+  listCustomerKaelConversations,
+  renameCustomerKaelConversation,
+  sendCustomerKaelConversationTurn,
+  setCustomerKaelConversationPinned,
+} from "./services/customer-kael-conversation.service.ts";
+import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, renameWorkerKaelChat, sendWorkerKaelChatTurn, setWorkerKaelChatPinned } from "./services/worker-kael-chat.service.ts";
 import { streamKaelChatTurn, streamWorkerKaelChatTurn } from "./services/kael-chat-stream.ts";
 import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin-learning.service.ts";
 import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./services/kael-feedback.service.ts";
 import { attachJobMedia } from "./services/job-media.service.ts";
-import { getJob, listCustomerActiveJobs, listMyPendingDecisions } from "./services/job-read.service.ts";
+import { getJob, listCustomerActiveJobs, listCustomerServiceHistory, listMyPendingDecisions } from "./services/job-read.service.ts";
+import { createWorkerAvatarUpload, updateWorkerAvatar } from "./services/worker-avatar.service.ts";
 import { cancelJob, requestCustomerCancellation } from "./services/customer-cancellation.service.ts";
 import { decideWorkerCancellation, requestWorkerCancellation } from "./services/worker-cancellation.service.ts";
 import {
@@ -69,10 +80,19 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     createJob: (ctx, input) => createJob(ctx, input, aiRuntime(ctx, secrets)),
     getJob,
     listCustomerActiveJobs,
+    listCustomerServiceHistory,
     createKaelChat: (ctx, input) =>
       createKaelChat(ctx, input, aiRuntime(ctx, secrets)),
     answerKaelAssistant: (ctx, input) =>
       answerKaelAssistant(ctx, input, aiRuntime(ctx, secrets)),
+    createCustomerKaelConversation,
+    listCustomerKaelConversations,
+    archiveCustomerKaelConversation,
+    renameCustomerKaelConversation,
+    setCustomerKaelConversationPinned,
+    getCustomerKaelConversation,
+    sendCustomerKaelConversationTurn: (ctx, conversationId, input) =>
+      sendCustomerKaelConversationTurn(ctx, conversationId, input, aiRuntime(ctx, secrets)),
     createKaelChatMediaUpload,
     revokeKaelChatMedia,
     getKaelChat,
@@ -107,6 +127,9 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     createWorkerKaelChat: (ctx, input) =>
       createWorkerKaelChat(ctx, input, aiRuntime(ctx, secrets)),
     listWorkerKaelChats,
+    archiveWorkerKaelChat,
+    setWorkerKaelChatPinned,
+    renameWorkerKaelChat,
     getWorkerKaelChat,
     sendWorkerKaelChatTurn: (ctx, sessionId, input) =>
       sendWorkerKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
@@ -140,6 +163,9 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listMyPendingDecisions,
     listMyThreads,
     getWorkerProfile,
+    createWorkerAvatarUpload,
+    updateWorkerAvatar,
+    recordWorkerAppActiveMinute,
     getWorkerPerformanceInsights,
     updateWorkerServiceArea,
     updateWorkerAvailability,

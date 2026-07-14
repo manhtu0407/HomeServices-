@@ -87,6 +87,24 @@ export type CustomerActiveJobResponse = {
   active_job: JobDetailResponse | null
 }
 
+export type CustomerServiceHistoryItem = {
+  ended_at: string
+  final_price: number | null
+  id: string
+  service_type: ServiceType
+  status: JobStatus
+  worker: {
+    avatar_url: string | null
+    display_name: string | null
+    id: string
+    is_favorite: boolean
+  } | null
+}
+
+export type CustomerServiceHistoryResponse = {
+  service_history: CustomerServiceHistoryItem[]
+}
+
 export type PendingDecisionItem = {
   kind: 'scope_change'
   scope_change_id: string

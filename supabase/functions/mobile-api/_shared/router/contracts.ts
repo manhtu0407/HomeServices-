@@ -1,6 +1,9 @@
 import type {
   AvailabilityToggleInput,
   CustomerCancellationRequestInput,
+  EdgeCustomerKaelConversationCreateInput,
+  EdgeCustomerKaelConversationMode,
+  EdgeCustomerKaelConversationTurnInput,
   CustomerKaelFeedbackInput,
   CustomerScopeDecisionInput,
   DevicePushTokenInput,
@@ -24,9 +27,15 @@ import type {
   UpdateKaelMemoryInput,
   UserRole,
   WorkerApplicationSubmitInput,
+  EdgeWorkerAvatarUpdateInput,
+  EdgeWorkerAvatarUploadInput,
   WorkerCancellationDecisionInput,
   WorkerCancellationRequestInput,
   WorkerKaelChatCreateInput,
+  EdgeWorkerKaelChatPinInput,
+  EdgeWorkerKaelChatRenameInput,
+  EdgeCustomerKaelConversationPinInput,
+  EdgeCustomerKaelConversationRenameInput,
   WorkerKaelChatTurnInput,
   WorkerKaelFeedbackInput,
   WorkerKaelTrainingConsentInput,
@@ -94,17 +103,29 @@ import type {
   EdgeWorkerCandidateResponse,
   EdgeWorkerJobListResponse,
   EdgeWorkerKaelClarifyResponse,
-  EdgeWorkerKaelChatListResponse,
-  EdgeWorkerKaelChatResponse,
   EdgeWorkerKaelFeedbackResponse,
   EdgeWorkerKaelTrainingConsentResponse,
   EdgeWorkerPerformanceInsightsResponse,
   EdgeWorkerProfileResponse,
+  EdgeWorkerAvatarUploadResponse,
+  EdgeWorkerAvatarUpdateResponse,
+  EdgeWorkerActivityMinuteResponse,
   EdgeWorkerRegisterResponse,
   EdgeWorkerRoutePreviewResponse,
   EdgeWorkerScopeChangeResponse,
   EdgeRejectWorkerCandidateResponse,
 } from "./dtos.ts";
+import type { EdgeCustomerServiceHistoryResponse } from "./job-history-dtos.ts";
+import type {
+  EdgeCustomerKaelConversationArchiveResponse,
+  EdgeCustomerKaelConversationListResponse,
+  EdgeCustomerKaelConversationResponse,
+} from "./customer-kael-conversation-dtos.ts";
+import type {
+  EdgeWorkerKaelChatArchiveResponse,
+  EdgeWorkerKaelChatListResponse,
+  EdgeWorkerKaelChatResponse,
+} from "./worker-kael-chat-dtos.ts";
 export type {
   KaelBatchResultsProcessInput,
   KaelBatchResultsProcessResponse,
@@ -239,6 +260,9 @@ export type MobileApiServices = {
   listCustomerActiveJobs(
     ctx: MobileApiContext,
   ): Promise<EdgeCustomerActiveJobResponse>;
+  listCustomerServiceHistory(
+    ctx: MobileApiContext,
+  ): Promise<EdgeCustomerServiceHistoryResponse>;
   createKaelChat(
     ctx: MobileApiContext,
     input: KaelChatCreateInput,
@@ -247,6 +271,38 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: KaelAssistantInput,
   ): Promise<EdgeKaelAssistantResponse>;
+  createCustomerKaelConversation(
+    ctx: MobileApiContext,
+    input: EdgeCustomerKaelConversationCreateInput,
+  ): Promise<EdgeCustomerKaelConversationResponse>;
+  listCustomerKaelConversations(
+    ctx: MobileApiContext,
+    mode: EdgeCustomerKaelConversationMode,
+  ): Promise<EdgeCustomerKaelConversationListResponse>;
+  archiveCustomerKaelConversation(
+    ctx: MobileApiContext,
+    conversationId: string,
+    confirmCaseWork: boolean,
+  ): Promise<EdgeCustomerKaelConversationArchiveResponse>;
+  renameCustomerKaelConversation(
+    ctx: MobileApiContext,
+    conversationId: string,
+    input: EdgeCustomerKaelConversationRenameInput,
+  ): Promise<EdgeCustomerKaelConversationResponse>;
+  setCustomerKaelConversationPinned(
+    ctx: MobileApiContext,
+    conversationId: string,
+    input: EdgeCustomerKaelConversationPinInput,
+  ): Promise<EdgeCustomerKaelConversationResponse>;
+  getCustomerKaelConversation(
+    ctx: MobileApiContext,
+    conversationId: string,
+  ): Promise<EdgeCustomerKaelConversationResponse>;
+  sendCustomerKaelConversationTurn(
+    ctx: MobileApiContext,
+    conversationId: string,
+    input: EdgeCustomerKaelConversationTurnInput,
+  ): Promise<EdgeCustomerKaelConversationResponse>;
   createKaelChatMediaUpload(
     ctx: MobileApiContext,
     input: EdgeKaelChatMediaUploadInput,
@@ -360,7 +416,24 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: WorkerKaelChatCreateInput,
   ): Promise<EdgeWorkerKaelChatResponse>;
-  listWorkerKaelChats(ctx: MobileApiContext): Promise<EdgeWorkerKaelChatListResponse>;
+  listWorkerKaelChats(
+    ctx: MobileApiContext,
+    mode: WorkerKaelChatCreateInput["mode"],
+  ): Promise<EdgeWorkerKaelChatListResponse>;
+  archiveWorkerKaelChat(
+    ctx: MobileApiContext,
+    sessionId: string,
+  ): Promise<EdgeWorkerKaelChatArchiveResponse>;
+  setWorkerKaelChatPinned(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: EdgeWorkerKaelChatPinInput,
+  ): Promise<EdgeWorkerKaelChatResponse>;
+  renameWorkerKaelChat(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: EdgeWorkerKaelChatRenameInput,
+  ): Promise<EdgeWorkerKaelChatResponse>;
   getWorkerKaelChat(
     ctx: MobileApiContext,
     sessionId: string,
@@ -469,6 +542,17 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
   ): Promise<EdgeCustomerProfileInsightsResponse>;
   getWorkerProfile(ctx: MobileApiContext): Promise<EdgeWorkerProfileResponse>;
+  createWorkerAvatarUpload(
+    ctx: MobileApiContext,
+    input: EdgeWorkerAvatarUploadInput,
+  ): Promise<EdgeWorkerAvatarUploadResponse>;
+  updateWorkerAvatar(
+    ctx: MobileApiContext,
+    input: EdgeWorkerAvatarUpdateInput,
+  ): Promise<EdgeWorkerAvatarUpdateResponse>;
+  recordWorkerAppActiveMinute(
+    ctx: MobileApiContext,
+  ): Promise<EdgeWorkerActivityMinuteResponse>;
   getWorkerPerformanceInsights(
     ctx: MobileApiContext,
   ): Promise<EdgeWorkerPerformanceInsightsResponse>;

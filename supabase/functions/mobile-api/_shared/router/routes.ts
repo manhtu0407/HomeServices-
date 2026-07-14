@@ -1,11 +1,15 @@
 import type { UserRole } from "../../../_shared/domain.ts";
 import { matchCaseWorkResourceRoute, type CaseWorkResourceRoute } from "./case-work-resource-routes.ts";
+import { matchWorkerKaelChatRoute, type WorkerKaelChatRoute } from "./worker-kael-chat-routes.ts";
+import { matchCustomerKaelConversationRoute, type CustomerKaelConversationRoute } from "./customer-kael-conversation-routes.ts";
 
 export type PublicRoute = { kind: "kael.charter"; method: "GET"; public: true };
 
 export type Route =
   | PublicRoute
   | CaseWorkResourceRoute
+  | WorkerKaelChatRoute
+  | CustomerKaelConversationRoute
   | { kind: "services"; method: "GET"; roles?: UserRole[] }
   | {
     kind: "places.autocomplete";
@@ -199,15 +203,14 @@ export type Route =
     successStatus: 201;
   }
   | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.jobs.history"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.avatarUpload"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workers.avatar"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.activityMinute"; method: "POST"; roles: UserRole[] }
   | { kind: "workers.performanceInsights"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.serviceArea"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
-  | { kind: "workers.kaelChat.create"; method: "POST"; roles: UserRole[]; successStatus: 201 }
-  | { kind: "workers.kaelChat.list"; method: "GET"; roles: UserRole[] }
-  | { kind: "workers.kaelChat.get"; method: "GET"; sessionId: string; roles: UserRole[] }
-  | { kind: "workers.kaelChat.stream"; method: "POST"; sessionId: string; roles: UserRole[] }
-  | { kind: "workers.kaelChat.turn"; method: "POST"; sessionId: string; roles: UserRole[] }
   | { kind: "workers.kaelFeedback"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | { kind: "workers.kaelTrainingConsent.get"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelTrainingConsent.set"; method: "PATCH"; roles: UserRole[] }
@@ -339,6 +342,9 @@ export function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/me/jobs/active") {
     return { kind: "me.jobs.active", method: "GET", roles: ["customer", "admin"] };
   }
+  if (method === "GET" && path === "/me/jobs/history") {
+    return { kind: "me.jobs.history", method: "GET", roles: ["customer", "admin"] };
+  }
   if (method === "GET" && path === "/me/pending-decisions") {
     return { kind: "me.pendingDecisions", method: "GET", roles: ["customer", "admin"] };
   }
@@ -373,6 +379,12 @@ export function matchRoute(request: Request): Route | null {
       roles: ["customer", "worker", "admin"],
     };
   }
+  const customerKaelConversationRoute = matchCustomerKaelConversationRoute(
+    path,
+    method,
+    safeDecodePathSegment,
+  );
+  if (customerKaelConversationRoute) return customerKaelConversationRoute;
   if (method === "POST" && path === "/kael/chat") {
     return {
       kind: "kael.chat.create",
@@ -477,6 +489,20 @@ export function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/workers/me") {
     return { kind: "workers.me", method: "GET", roles: ["worker", "admin"] };
   }
+  if (method === "POST" && path === "/workers/me/avatar-upload") {
+    return {
+      kind: "workers.avatarUpload",
+      method: "POST",
+      roles: ["worker", "admin"],
+      successStatus: 201,
+    };
+  }
+  if (method === "PATCH" && path === "/workers/me/avatar") {
+    return { kind: "workers.avatar", method: "PATCH", roles: ["worker", "admin"] };
+  }
+  if (method === "POST" && path === "/workers/me/activity-minute") {
+    return { kind: "workers.activityMinute", method: "POST", roles: ["worker", "admin"] };
+  }
   if (method === "GET" && path === "/workers/me/performance-insights") {
     return { kind: "workers.performanceInsights", method: "GET", roles: ["worker", "admin"] };
   }
@@ -486,9 +512,8 @@ export function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/workers/me/kael-memory") {
     return { kind: "workers.kaelMemory", method: "GET", roles: ["worker", "admin"] };
   }
-  if (method === "GET" && path === "/workers/me/kael/chat") {
-    return { kind: "workers.kaelChat.list", method: "GET", roles: ["worker", "admin"] };
-  }
+  const workerKaelChatRoute = matchWorkerKaelChatRoute(path, method, safeDecodePathSegment);
+  if (workerKaelChatRoute) return workerKaelChatRoute;
   if (method === "POST" && path === "/workers/me/kael-feedback") {
     return {
       kind: "workers.kaelFeedback",
@@ -502,46 +527,6 @@ export function matchRoute(request: Request): Route | null {
   }
   if (method === "PATCH" && path === "/workers/me/kael-training-consent") {
     return { kind: "workers.kaelTrainingConsent.set", method: "PATCH", roles: ["worker", "admin"] };
-  }
-  if (method === "POST" && path === "/workers/me/kael/chat") {
-    return {
-      kind: "workers.kaelChat.create",
-      method: "POST",
-      roles: ["worker", "admin"],
-      successStatus: 201,
-    };
-  }
-  const workerKaelChatStream = path.match(/^\/workers\/me\/kael\/chat\/([^/]+)\/stream$/);
-  if (workerKaelChatStream) {
-    const sessionId = safeDecodePathSegment(workerKaelChatStream[1] ?? "");
-    if (!sessionId) return null;
-    return {
-      kind: "workers.kaelChat.stream",
-      method: "POST",
-      sessionId,
-      roles: ["worker", "admin"],
-    };
-  }
-  const workerKaelChat = path.match(/^\/workers\/me\/kael\/chat\/([^/]+)$/);
-  if (workerKaelChat) {
-    const sessionId = safeDecodePathSegment(workerKaelChat[1] ?? "");
-    if (!sessionId) return null;
-    if (method === "GET") {
-      return {
-        kind: "workers.kaelChat.get",
-        method: "GET",
-        sessionId,
-        roles: ["worker", "admin"],
-      };
-    }
-    if (method === "POST") {
-      return {
-        kind: "workers.kaelChat.turn",
-        method: "POST",
-        sessionId,
-        roles: ["worker", "admin"],
-      };
-    }
   }
   if (method === "PATCH" && path === "/workers/me/availability") {
     return { kind: "workers.availability", method: "PATCH", roles: ["worker", "admin"] };

@@ -1,3 +1,60 @@
+import type {
+  CustomerKaelConversationCreateInput,
+  CustomerKaelConversationMode,
+  CustomerKaelConversationPinInput,
+  CustomerKaelConversationRenameInput,
+  CustomerKaelConversationTurnInput,
+} from '@nestscout/shared'
+
+export type {
+  CustomerKaelConversationCreateInput,
+  CustomerKaelConversationMode,
+  CustomerKaelConversationPinInput,
+  CustomerKaelConversationRenameInput,
+  CustomerKaelConversationTurnInput,
+}
+
+export type CustomerKaelConversationSession = {
+  id: string
+  mode: CustomerKaelConversationMode
+  customer_id: string
+  case_job_id: string | null
+  case_session_id: string | null
+  client_request_id: string
+  title: string | null
+  pinned_at: string | null
+  started_at: string
+  updated_at: string
+  total_turns: number
+}
+
+export type CustomerKaelConversationTurn = {
+  id: string
+  conversation_id: string
+  turn_index: number
+  role: 'customer' | 'kael' | 'system'
+  text_content: string
+  created_at: string
+}
+
+export type CustomerKaelConversationResponse = {
+  session: CustomerKaelConversationSession
+  turns: CustomerKaelConversationTurn[]
+}
+
+export type CustomerKaelConversationListResponse = {
+  sessions: CustomerKaelConversationSession[]
+}
+
+export type CustomerKaelConversationArchiveResponse = {
+  session_id: string
+  archived_at: string
+  case_session_id: string | null
+  job_id: string | null
+  job_status: import('@nestscout/shared').JobStatus | null
+  case_action: 'none' | 'abandoned' | 'cancelled' | 'review_requested' | 'already_closed'
+}
+
 export type CustomerProfileInsightsResponse = {
   customer_id: string
   member_since: string | null
@@ -5,6 +62,7 @@ export type CustomerProfileInsightsResponse = {
   completed_service_count: number
   saved_address_count: number
   preferred_service_count: number
+  active_service_days: number
   active_streak_days: number
   positive_review_rate_percent: number
   price_savings_vnd: number

@@ -17,6 +17,7 @@ export type {
   EdgeKaelChatMediaRevokeInput,
   EdgeKaelChatMediaUploadInput,
 } from "./kael-chat-media-contract.ts";
+export * from "./customer-kael-conversation-contract.ts";
 
 export const JOB_STATUSES = Object.freeze(
   [
@@ -541,6 +542,22 @@ export const workerServiceAreaUpdateSchema = z.object({
   service_radius_km: z.number().int().min(1).max(30).nullable().optional(),
 }).strict();
 
+export const WORKER_AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+const workerAvatarRefSchema = z.string().regex(
+  /^supabase:\/\/worker-avatars\/[^/\s?#]+\/(?!.*(?:\.\.|\/\/))[A-Za-z0-9._-]+$/i,
+  "avatar_ref must be a private worker-avatars storage ref",
+);
+
+export const workerAvatarUploadSchema = z.object({
+  file_name: z.string().trim().min(1).max(180).optional(),
+  mime_type: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  file_size_bytes: z.number().int().positive().max(WORKER_AVATAR_MAX_BYTES),
+}).strict();
+
+export const workerAvatarUpdateSchema = z.object({
+  avatar_ref: workerAvatarRefSchema,
+}).strict();
+
 export const availabilityToggleSchema = z.object({
   is_available: z.boolean(),
 });
@@ -572,8 +589,11 @@ const workerKaelMediaRefSchema = z
 
 const workerKaelMediaRefsSchema = z.array(workerKaelMediaRefSchema).max(5).default([]);
 
+export const workerKaelChatModeSchema = z.enum(["normal", "intake"]);
+
 export const workerKaelChatCreateSchema = z.object({
   job_id: z.string().uuid(),
+  mode: workerKaelChatModeSchema.default("intake"),
   language: z.enum(["vi", "en"]).default("vi"),
   client_request_id: z.string().uuid().optional(),
 }).strict();
@@ -583,6 +603,14 @@ export const workerKaelChatTurnSchema = z.object({
   media_refs: workerKaelMediaRefsSchema,
   language: z.enum(["vi", "en"]).default("vi"),
   client_request_id: z.string().uuid().optional(),
+}).strict();
+
+export const workerKaelChatRenameSchema = z.object({
+  title: z.string().trim().min(1).max(64),
+}).strict();
+
+export const workerKaelChatPinSchema = z.object({
+  pinned: z.boolean(),
 }).strict();
 
 export const workerKaelFeedbackSchema = z.object({
@@ -723,6 +751,8 @@ export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>;
 export type WorkerServiceAreaUpdateInput = z.infer<
   typeof workerServiceAreaUpdateSchema
 >;
+export type EdgeWorkerAvatarUploadInput = z.infer<typeof workerAvatarUploadSchema>;
+export type EdgeWorkerAvatarUpdateInput = z.infer<typeof workerAvatarUpdateSchema>;
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>;
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>;
 export type KaelWorkerClarifyInput = z.infer<typeof kaelWorkerClarifySchema>;
@@ -731,6 +761,12 @@ export type WorkerKaelChatCreateInput = z.infer<
 >;
 export type WorkerKaelChatTurnInput = z.infer<
   typeof workerKaelChatTurnSchema
+>;
+export type EdgeWorkerKaelChatRenameInput = z.infer<
+  typeof workerKaelChatRenameSchema
+>;
+export type EdgeWorkerKaelChatPinInput = z.infer<
+  typeof workerKaelChatPinSchema
 >;
 export type WorkerKaelFeedbackInput = z.infer<typeof workerKaelFeedbackSchema>;
 export type WorkerKaelTrainingConsentInput = z.infer<

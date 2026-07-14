@@ -130,6 +130,8 @@ const location = require('expo-location') as {
 
 function buildWorkerProfile(): WorkerProfileResponse {
   return {
+    active_minutes: 0,
+    avatar_url: null,
     bank_account_masked: null,
     bank_name: null,
     date_of_birth: null,
@@ -143,6 +145,7 @@ function buildWorkerProfile(): WorkerProfileResponse {
     is_approved: true,
     is_available: true,
     is_suspended: false,
+    last_active_at: null,
     legal_name: 'Worker Test',
     problem_specializations: [],
     rating: 4.8,

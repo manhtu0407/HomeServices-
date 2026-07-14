@@ -21,4 +21,11 @@ describe('Kael on-device voice privacy boundary', () => {
     expect(nativeVoice).toContain('onChangeText={onChangeText}')
     expect(nativeVoice).toContain('value={transcript}')
   })
+
+  it('does not crash Expo Go when the optional native speech module is absent', () => {
+    expect(nativeVoice).not.toMatch(/from ['"]expo-speech-recognition['"]/)
+    expect(nativeVoice).toContain("require('expo-speech-recognition')")
+    expect(nativeVoice).toContain("Cannot find native module 'ExpoSpeechRecognition'")
+    expect(nativeVoice).toContain('customer-v21-on-device-voice-unavailable')
+  })
 })

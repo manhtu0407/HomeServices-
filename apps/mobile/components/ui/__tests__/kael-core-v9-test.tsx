@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { KaelCoreV9 } from '../kael-core-v9'
 import {
   KAEL_CORE_V9_AUTOPLAY_CLIP_DURATION_MS,
+  KAEL_CORE_V9_AUTOPLAY_REPEAT_COUNT,
   KAEL_CORE_V9_BOW_DURATION_MS,
   KAEL_CORE_V9_CONTRACT,
   KAEL_CORE_V9_SIZE,
@@ -11,8 +12,8 @@ import {
 } from '../kael-core-v9-contract'
 
 describe('Kael Core v9', () => {
-  it('renders the approved 72px Obsidian Pearl model with the one-time v11 clip and no ground shadow', () => {
-    const { getAllByTestId, getByTestId, queryByTestId } = render(<KaelCoreV9 motionClip="autoplay-once" testID="kael-core-v9" />)
+  it('renders the approved 72px Obsidian Pearl model with the looping v11 clip and no ground shadow', () => {
+    const { getAllByTestId, getByTestId, queryByTestId } = render(<KaelCoreV9 motionClip="autoplay-loop" testID="kael-core-v9" />)
 
     expect(getByTestId('kael-core-v9')).toBeOnTheScreen()
     expect(getAllByTestId('kael-core-v9-eye')).toHaveLength(2)
@@ -20,6 +21,7 @@ describe('Kael Core v9', () => {
     expect(KAEL_CORE_V9_SIZE).toBe(72)
     expect(KAEL_CORE_V9_BOW_DURATION_MS).toBe(1220)
     expect(KAEL_CORE_V9_AUTOPLAY_CLIP_DURATION_MS).toBe(3800)
+    expect(KAEL_CORE_V9_AUTOPLAY_REPEAT_COUNT).toBe(-1)
     expect(queryByTestId('kael-core-v9-ground-shadow')).toBeNull()
     expect(KAEL_CORE_V9_CONTRACT).toMatchObject({
       defaultProximity: 112,
@@ -28,6 +30,7 @@ describe('Kael Core v9', () => {
       legacyMotionCount: 0,
       legacyStatusCount: 0,
       maxEyeTravelPx: 1.55,
+      autoplayRepeatCount: -1,
       motionVocabulary: ['autoplay-clip', 'formal-bow'],
       renderer: 'inline-svg',
       triggers: ['proximity', 'pointer-press', 'keyboard-focus', 'enter-space', 'api'],

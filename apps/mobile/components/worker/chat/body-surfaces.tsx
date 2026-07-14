@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { ScrollView, View, type ImageSourcePropType } from 'react-native'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
@@ -7,9 +7,9 @@ import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import {
   WorkerV5KaelOrbBubble,
-  WorkerV5KaelOrbMediaStrip,
   WorkerV5KaelOrbOpportunityResults,
 } from './orb-surfaces'
+import { WorkerV5KaelEmptyHero } from './empty-hero'
 import { styles } from './body-styles'
 
 type WorkerV5ServiceIconMap = Partial<Record<ServiceType, ImageSourcePropType>>
@@ -20,23 +20,32 @@ export type WorkerV5KaelOrbLiveTurn = {
   text: string
 }
 
+const EMPTY_LIVE_TURNS: WorkerV5KaelOrbLiveTurn[] = []
+
 export function WorkerV5KaelOrbBody({
+  activeSessionId = null,
   composer,
+  composerActive = false,
   deal,
   fallbackJobIcon,
+  keepIntakeContextAccessible = false,
   language,
   liveError = null,
   liveStatus = null,
-  liveTurns = [],
+  liveTurns = EMPTY_LIVE_TURNS,
   mode,
   modeMenuOpen = false,
   onOpenOpportunity,
+  reduceMotion = false,
   reduceTransparency,
   serviceIcons,
 }: {
+  activeSessionId?: string | null
   composer: ReactNode
+  composerActive?: boolean
   deal: LocalDeal | null
   fallbackJobIcon: ImageSourcePropType
+  keepIntakeContextAccessible?: boolean
   language: AppLanguage
   liveError?: string | null
   liveStatus?: string | null
@@ -44,27 +53,50 @@ export function WorkerV5KaelOrbBody({
   mode: 'intake' | 'normal'
   modeMenuOpen?: boolean
   onOpenOpportunity: () => void
+  reduceMotion?: boolean
   reduceTransparency: boolean
   serviceIcons: WorkerV5ServiceIconMap
 }) {
-  const hasLiveThread = liveTurns.length > 0 || Boolean(liveStatus) || Boolean(liveError)
+  const hasActiveSession = Boolean(activeSessionId)
+  const hasLiveTurns = liveTurns.length > 0
+  const hasLiveThread = hasLiveTurns || Boolean(liveStatus) || Boolean(liveError)
+  const showEmptyHero = !hasLiveTurns && !composerActive
+  const transcriptRef = useRef<ScrollView>(null)
+
+  useEffect(() => {
+    if (!activeSessionId || !hasLiveThread) return
+    transcriptRef.current?.scrollToEnd({ animated: !reduceMotion })
+  }, [activeSessionId, hasLiveThread, liveTurns.length, reduceMotion])
+
+  const scrollToRestoredThread = () => {
+    if (!activeSessionId || !hasLiveThread) return
+    transcriptRef.current?.scrollToEnd({ animated: !reduceMotion })
+  }
+
   return (
     <View style={styles.kaelOrbCustomerShell} testID={`worker-v5-kael-orb-${mode}`}>
       <ScrollView
         bounces={false}
-        contentContainerStyle={[styles.kaelOrbCustomerTranscript, modeMenuOpen ? styles.kaelOrbCustomerTranscriptMenuOpen : null]}
+        contentContainerStyle={[
+          styles.kaelOrbCustomerTranscript,
+          showEmptyHero ? styles.kaelOrbCustomerTranscriptEmpty : null,
+          modeMenuOpen ? styles.kaelOrbCustomerTranscriptMenuOpen : null,
+        ]}
         keyboardShouldPersistTaps="handled"
+        onContentSizeChange={scrollToRestoredThread}
+        ref={transcriptRef}
         showsVerticalScrollIndicator={false}
         style={styles.kaelOrbCustomerTranscriptScroll}
         testID="worker-v5-kael-orb-transcript"
       >
-        {mode === 'normal' ? (
-          <WorkerV5KaelOrbNormalThread
-            deal={deal}
+        {showEmptyHero ? (
+          <WorkerV5KaelEmptyHero
             language={language}
-            reduceTransparency={reduceTransparency}
+            mode={mode}
+            reduceMotion={reduceMotion}
           />
-        ) : (
+        ) : null}
+        {(!showEmptyHero || keepIntakeContextAccessible) && !hasActiveSession && !hasLiveThread && mode === 'intake' ? (
           <WorkerV5KaelOrbIntakeThread
             deal={deal}
             fallbackJobIcon={fallbackJobIcon}
@@ -73,7 +105,7 @@ export function WorkerV5KaelOrbBody({
             reduceTransparency={reduceTransparency}
             serviceIcons={serviceIcons}
           />
-        )}
+        ) : null}
         {hasLiveThread ? (
           <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-orb-live-thread">
             {liveTurns.slice(-8).map((turn) => (
@@ -81,59 +113,15 @@ export function WorkerV5KaelOrbBody({
                 align={turn.role === 'worker' ? 'right' : undefined}
                 body={turn.text}
                 key={turn.id}
-                role={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
+                speaker={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
               />
             ))}
-            {liveStatus ? <WorkerV5KaelOrbBubble body={liveStatus} role="Kael" /> : null}
-            {liveError ? <WorkerV5KaelOrbBubble body={liveError} role="Kael" /> : null}
+            {liveStatus ? <WorkerV5KaelOrbBubble body={liveStatus} speaker="Kael" /> : null}
+            {liveError ? <WorkerV5KaelOrbBubble body={liveError} speaker="Kael" /> : null}
           </View>
         ) : null}
       </ScrollView>
       {composer}
-    </View>
-  )
-}
-
-export function WorkerV5KaelOrbNormalThread({
-  deal,
-  language,
-  reduceTransparency,
-}: {
-  deal: LocalDeal | null
-  language: AppLanguage
-  reduceTransparency: boolean
-}) {
-  const service = deal?.draft.serviceType ? localizedServiceLabel(deal.draft.serviceType, language) : null
-  const area = deal?.draft.districtLabel || deal?.broadcast?.generalArea || null
-  const hasMedia = (deal?.draft.mediaCount ?? 0) > 0
-  const customerKaelBody = deal
-    ? textByLanguage(
-        language,
-        `Kael đang đọc dữ liệu thật${service ? ` của ${service}` : ''}${area ? ` tại ${area}` : ''}. Chat thường chỉ tư vấn và không ghi quyết định vào công việc.`,
-        `Kael is reading real data${service ? ` for ${service}` : ''}${area ? ` in ${area}` : ''}. Normal chat is advisory only and does not write case decisions.`,
-      )
-    : textByLanguage(
-        language,
-        'Chào bạn, mình là Kael. Bạn muốn hỏi gì hôm nay?',
-        'Hi, I am Kael. What would you like to ask today?',
-      )
-  const customerWorkerPrompt = textByLanguage(
-    language,
-    `Kael, hỗ trợ tôi chuẩn bị${service ? ` ${service}` : ''}${area ? ` tại ${area}` : ''}.`,
-    `Kael, help me prepare${service ? ` ${service}` : ''}${area ? ` in ${area}` : ''}.`,
-  )
-
-  return (
-    <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-normal-thread">
-      {deal ? (
-        <WorkerV5KaelOrbBubble
-          align="right"
-          body={customerWorkerPrompt}
-          role={textByLanguage(language, 'Bạn', 'You')}
-        />
-      ) : null}
-      <WorkerV5KaelOrbBubble body={customerKaelBody} role="Kael" strongFirstLine={Boolean(deal)} />
-      {hasMedia ? <WorkerV5KaelOrbMediaStrip count={Math.min(2, deal?.draft.mediaCount ?? 0)} reduceTransparency={reduceTransparency} /> : null}
     </View>
   )
 }
@@ -184,8 +172,8 @@ export function WorkerV5KaelOrbIntakeThread({
 
   return (
     <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-intake-thread">
-      <WorkerV5KaelOrbBubble align="right" body={customerWorkerRequest} role={textByLanguage(language, 'Bạn', 'You')} />
-      <WorkerV5KaelOrbBubble body={customerKaelReply} role="Kael" />
+      <WorkerV5KaelOrbBubble align="right" body={customerWorkerRequest} speaker={textByLanguage(language, 'Bạn', 'You')} />
+      <WorkerV5KaelOrbBubble body={customerKaelReply} speaker="Kael" />
       <WorkerV5KaelOrbOpportunityResults
         deal={deal}
         fallbackJobIcon={fallbackJobIcon}
@@ -201,7 +189,7 @@ export function WorkerV5KaelOrbIntakeThread({
             'Đề xuất: mở cơ hội đầu tiên nếu dữ liệu thật đạt đủ điều kiện và không ảnh hưởng lịch còn lại.',
             'Suggestion: open the first opportunity if real data meets the conditions and does not affect the remaining schedule.',
           )}
-          role="Kael"
+          speaker="Kael"
           strongFirstLine
         />
       ) : null}

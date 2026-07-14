@@ -12,10 +12,16 @@ import {
   workerRegisterSchema,
   workerCancellationRequestSchema,
   workerCancellationDecisionSchema,
+  workerAvatarUpdateSchema,
+  workerAvatarUploadSchema,
   jobMediaAttachSchema,
   devicePushTokenSchema,
   reviewSchema,
   chatMessageSchema,
+  customerKaelConversationCreateSchema,
+  customerKaelConversationPinSchema,
+  customerKaelConversationRenameSchema,
+  customerKaelConversationTurnSchema,
   sanitizeForLLM,
   scrubSensitiveForLLM,
   SERVICE_TYPES,
@@ -23,6 +29,42 @@ import {
 
 // Valid UUID for reuse
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
+
+describe('worker avatar contracts', () => {
+  it('accepts only bounded JPEG, PNG, or WebP profile images', () => {
+    expect(workerAvatarUploadSchema.parse({
+      file_name: 'avatar.webp',
+      mime_type: 'image/webp',
+      file_size_bytes: 5 * 1024 * 1024,
+    })).toMatchObject({ mime_type: 'image/webp' })
+
+    expect(() => workerAvatarUploadSchema.parse({
+      file_name: 'avatar.mp4',
+      mime_type: 'video/mp4',
+      file_size_bytes: 1024,
+    })).toThrow()
+    expect(() => workerAvatarUploadSchema.parse({
+      file_name: 'avatar.jpg',
+      mime_type: 'image/jpeg',
+      file_size_bytes: 5 * 1024 * 1024 + 1,
+    })).toThrow()
+  })
+
+  it('accepts only private worker-avatar refs without traversal', () => {
+    expect(workerAvatarUpdateSchema.parse({
+      avatar_ref: `supabase://worker-avatars/${UUID}/avatar.webp`,
+    })).toEqual({
+      avatar_ref: `supabase://worker-avatars/${UUID}/avatar.webp`,
+    })
+
+    expect(() => workerAvatarUpdateSchema.parse({
+      avatar_ref: `supabase://worker-avatars/${UUID}/../other-worker/avatar.webp`,
+    })).toThrow()
+    expect(() => workerAvatarUpdateSchema.parse({
+      avatar_ref: 'https://example.test/fake-avatar.jpg',
+    })).toThrow()
+  })
+})
 
 // ===================================================================
 // Rule #6: Kael chỉ trả lời về điện, nước, và vệ sinh — hard enforcement
@@ -297,6 +339,40 @@ describe('kaelChat schemas', () => {
         photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
       })
     ).toThrow()
+  })
+})
+
+describe('Customer Kael conversation schemas', () => {
+  it.each(['normal', 'case'] as const)('accepts the explicit %s catalog mode', (mode) => {
+    expect(customerKaelConversationCreateSchema.parse({
+      client_request_id: UUID,
+      mode,
+    })).toEqual({ client_request_id: UUID, mode })
+  })
+
+  it('keeps turns idempotent, bounded, and strict', () => {
+    expect(customerKaelConversationTurnSchema.parse({
+      client_request_id: UUID,
+      language: 'vi',
+      message: 'Kiểm tra máy lạnh phòng ngủ',
+    })).toMatchObject({ language: 'vi' })
+    expect(() => customerKaelConversationTurnSchema.parse({
+      client_request_id: UUID,
+      language: 'vi',
+      message: ' ',
+    })).toThrow()
+    expect(() => customerKaelConversationTurnSchema.parse({
+      client_request_id: UUID,
+      language: 'vi',
+      message: 'Nội dung',
+      service_type: 'plumbing',
+    })).toThrow()
+  })
+
+  it('validates rename and pin actions', () => {
+    expect(customerKaelConversationRenameSchema.parse({ title: 'Nhà bếp' })).toEqual({ title: 'Nhà bếp' })
+    expect(customerKaelConversationPinSchema.parse({ pinned: true })).toEqual({ pinned: true })
+    expect(() => customerKaelConversationRenameSchema.parse({ title: ' '.repeat(65) })).toThrow()
   })
 })
 

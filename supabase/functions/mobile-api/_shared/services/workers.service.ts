@@ -28,6 +28,7 @@ import type {
 import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
 import { projectAddressAccess } from "./apartment-access.service.ts";
 import { buildWorkerBriefOutput } from "../kael/index.ts";
+import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
 
 export async function registerWorker(
   ctx: MobileApiContext,
@@ -222,20 +223,32 @@ function serializeWorkerApplication(
 }
 
 export async function getWorkerProfile(ctx: MobileApiContext) {
-  const result = await dbQuery<Record<string, unknown>>(
-    db(ctx)
-      .from("worker_profiles")
-      .select(
-        "id, verification_status, is_available, is_approved, is_suspended, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations, years_experience, rating, total_jobs, legal_name, date_of_birth, gender, bank_account, bank_name, cccd_front_url, cccd_back_url, selfie_url",
-      )
-      .eq("id", ctx.user.id)
-      .maybeSingle(),
-  );
-  if (result.error) apiFailure("DB_ERROR", "Không thể tải hồ sơ", 500);
-  if (!result.data) return blankWorkerProfile(ctx.user.id);
+  const client = db(ctx);
+  const [result, account] = await Promise.all([
+    dbQuery<Record<string, unknown>>(
+      client
+        .from("worker_profiles")
+        .select(
+          "id, verification_status, is_available, is_approved, is_suspended, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations, years_experience, rating, total_jobs, legal_name, date_of_birth, gender, bank_account, bank_name, cccd_front_url, cccd_back_url, selfie_url, app_active_minutes, app_last_active_minute",
+        )
+        .eq("id", ctx.user.id)
+        .maybeSingle(),
+    ),
+    dbQuery<Record<string, unknown>>(
+      client.from("profiles").select("avatar_url").eq("id", ctx.user.id).maybeSingle(),
+    ),
+  ]);
+  if (result.error || account.error) apiFailure("DB_ERROR", "Không thể tải hồ sơ", 500);
+  const avatarUrl = await resolveWorkerAvatarUrl(ctx.supabase, account.data?.avatar_url);
+  if (!result.data) {
+    return { ...blankWorkerProfile(ctx.user.id), avatar_url: avatarUrl };
+  }
   const worker = result.data;
   return {
     id: asString(worker.id),
+    avatar_url: avatarUrl,
+    active_minutes: Math.min(600_000, Math.max(0, Math.trunc(asNumber(worker.app_active_minutes)))),
+    last_active_at: nullableString(worker.app_last_active_minute),
     verification_status: asWorkerVerificationStatus(worker.verification_status),
     is_available: Boolean(worker.is_available),
     is_approved: Boolean(worker.is_approved),
@@ -256,6 +269,27 @@ export async function getWorkerProfile(ctx: MobileApiContext) {
     bank_name: nullableString(worker.bank_name),
     has_cccd: Boolean(worker.cccd_front_url && worker.cccd_back_url),
     has_selfie: Boolean(worker.selfie_url),
+  };
+}
+
+export async function recordWorkerAppActiveMinute(ctx: MobileApiContext) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("record_worker_app_active_minute", {
+      p_worker_id: ctx.user.id,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể ghi nhận thời gian hoạt động", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) {
+    apiFailure("NOT_FOUND", "Vui lòng hoàn tất hồ sơ thợ trước", 404);
+  }
+  return {
+    worker_id: asString(row.worker_id),
+    active_minutes: Math.min(600_000, Math.max(0, Math.trunc(asNumber(row.active_minutes)))),
+    last_active_at: asString(row.last_active_at),
+    incremented: Boolean(row.incremented),
   };
 }
 

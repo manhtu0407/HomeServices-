@@ -1,3 +1,4 @@
+import { Image } from 'expo-image'
 import {
   Pressable,
   Text,
@@ -6,6 +7,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
+import Svg, { Path } from 'react-native-svg'
 
 import { KaelButton, KaelChip, KaelTextInput } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
@@ -15,6 +17,8 @@ import { CaseWideMintAura, SourceCardSkin, ZipMintAura } from './aura-surfaces'
 import { customerV21Assets, type CustomerV21BankKey } from './assets'
 import { customerV21PaymentStyles as paymentStyles } from './payment-styles'
 import { PaymentBankTile } from './payment-surfaces'
+import { customerV21ProfilePaymentStyles as profilePaymentStyles } from './profile-payment-styles'
+import { customerV21ProfileSettingsStyles as profileSettingsStyles } from './profile-settings-styles'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
 import { ProfileAuraCard, SettingsActionRow } from './profile-utility-surfaces'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
@@ -96,15 +100,85 @@ export function ProfileUtilitySettingsView({
 }) {
   return (
     <View style={profileUtilityStyles.profileUtilityStack} testID="customer-v21-profile-utility-settings-screen">
-      <ProfileAuraCard contentStyle={profileUtilityStyles.profileUtilityHero} scope="UtilitySettingsHero" testID="customer-v21-profile-settings-hero">
-        <AssetTile image={customerV21Assets.theme} label={title} size={58} sourceAura style={profileUtilityStyles.profileUtilityHeroIcon} />
-        <View style={rootStyles.flex}>
-          <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{language === 'vi' ? 'Cài đặt tài khoản' : 'Account settings'}</Text>
-          <Text style={[rootStyles.bodyText, { color: tokens.muted }]}>
-            {language === 'vi' ? 'Bảo mật, ngôn ngữ và dữ liệu Kael.' : 'Security, language, and Kael data.'}
-          </Text>
+      <ProfileAuraCard cardStyle={profileSettingsStyles.heroCard} contentStyle={profileSettingsStyles.heroContent} scope="UtilitySettingsHero" testID="customer-v21-profile-settings-hero">
+        <View
+          style={[
+            profileSettingsStyles.heroVisualPanel,
+            {
+              backgroundColor: tokens.mode === 'dark' ? 'rgba(12,62,57,0.68)' : 'rgba(239,252,249,0.70)',
+              borderRightColor: tokens.mode === 'dark' ? tokens.border : 'rgba(176,222,214,0.78)',
+            },
+          ]}
+          testID="customer-v21-profile-settings-hero-visual-panel"
+        >
+          <View pointerEvents="none" style={profileSettingsStyles.heroIconAura}>
+            <ZipMintAura intensity="strong" scope="ProfileSettingsHeroIcon" testID="customer-v21-profile-settings-hero-mint-aura" />
+          </View>
+          <Image
+            accessibilityIgnoresInvertColors
+            accessibilityLabel={title}
+            contentFit="contain"
+            source={customerV21Assets.theme}
+            style={profileSettingsStyles.heroIconImage}
+            testID="customer-v21-profile-settings-hero-icon"
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              profileSettingsStyles.heroConnector,
+              { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' },
+            ]}
+            testID="customer-v21-profile-settings-hero-connector"
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              profileSettingsStyles.heroConnectorDot,
+              {
+                backgroundColor: tokens.primary,
+                borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)',
+              },
+            ]}
+            testID="customer-v21-profile-settings-hero-connector-dot"
+          />
         </View>
-        <KaelChip label={language === 'vi' ? 'Tài khoản' : 'Account'} variant="selected" />
+        <View style={profileSettingsStyles.heroCopy} testID="customer-v21-profile-settings-hero-copy">
+          <View style={profileSettingsStyles.heroTitleCopy}>
+            <Text numberOfLines={1} style={[sharedStyles.cardTitle, { color: tokens.text }]} testID="customer-v21-profile-settings-hero-title">
+              {language === 'vi' ? 'Cài đặt tài khoản' : 'Account settings'}
+            </Text>
+            <Text numberOfLines={2} style={[rootStyles.bodyText, profileSettingsStyles.heroSummary, { color: tokens.muted }]} testID="customer-v21-profile-settings-hero-body">
+              {language === 'vi' ? 'Bảo mật, ngôn ngữ và dữ liệu Kael.' : 'Security, language, and Kael data.'}
+            </Text>
+          </View>
+          <View style={profileSettingsStyles.heroDetailRail} testID="customer-v21-profile-settings-hero-details">
+            <View style={profileSettingsStyles.heroDetail} testID="customer-v21-profile-settings-hero-detail-profile">
+              <Svg accessibilityElementsHidden height={14} viewBox="0 0 14 14" width={14}>
+                <Path d="M7 1.4 11 3v3.1c0 2.7-1.5 4.8-4 6.4-2.5-1.6-4-3.7-4-6.4V3l4-1.6Z" fill="none" stroke={tokens.primary} strokeLinejoin="round" strokeWidth={1.3} />
+                <Path d="m5.2 6.9 1.15 1.15L8.9 5.5" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.3} />
+              </Svg>
+              <Text numberOfLines={1} style={[profileSettingsStyles.heroDetailText, { color: tokens.muted }]}>
+                {language === 'vi' ? 'Hồ sơ & bảo mật' : 'Profile & security'}
+              </Text>
+            </View>
+            <View style={[profileSettingsStyles.heroDetailDivider, { backgroundColor: tokens.border }]} />
+            <View style={profileSettingsStyles.heroDetail} testID="customer-v21-profile-settings-hero-detail-language">
+              <Svg accessibilityElementsHidden height={14} viewBox="0 0 14 14" width={14}>
+                <Path d="M2.2 3.3h9.6M2.2 7h9.6M2.2 10.7h9.6" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeWidth={1.25} />
+                <Path d="M5 2v2.6M9 5.7v2.6M6.5 9.4V12" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeWidth={1.25} />
+              </Svg>
+              <Text numberOfLines={1} style={[profileSettingsStyles.heroDetailText, { color: tokens.muted }]}>
+                {language === 'vi' ? 'Ngôn ngữ & dữ liệu' : 'Language & data'}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <KaelChip
+          label={language === 'vi' ? 'Tài khoản' : 'Account'}
+          style={profileSettingsStyles.heroStatus}
+          testID="customer-v21-profile-settings-hero-status"
+          variant="selected"
+        />
       </ProfileAuraCard>
 
       <SectionActionHeader
@@ -113,15 +187,17 @@ export function ProfileUtilitySettingsView({
       />
       <ProfileAuraCard cardStyle={profileUtilityStyles.profileListCard} contentStyle={profileUtilityStyles.profileSettingsListContent} scope="UtilitySettingsList" testID="customer-v21-profile-settings-list">
         <SettingsActionRow
-          assetTile={AssetTile}
           body={language === 'vi' ? 'Cập nhật tên, số điện thoại và email liên hệ.' : 'Update name, phone, and contact email.'}
-          image={customerV21Assets.profile}
+          details={[
+            { glyph: 'identity', label: language === 'vi' ? 'Tên & liên hệ' : 'Name & contact' },
+            { glyph: 'shield', label: language === 'vi' ? 'Thông tin riêng' : 'Private details' },
+          ]}
+          image={customerV21Assets.identity}
           onPress={account.onToggle}
           status={account.open ? (language === 'vi' ? 'Ẩn' : 'Hide') : (language === 'vi' ? 'Sửa' : 'Edit')}
           testID="customer-v21-profile-settings-account"
           title={language === 'vi' ? 'Thông tin cá nhân' : 'Personal details'}
           tokens={tokens}
-          zipMintAura={ZipMintAura}
         />
         {account.open ? (
           <View style={profileUtilityStyles.profileSettingsPasswordForm} testID="customer-v21-profile-settings-account-form">
@@ -175,27 +251,31 @@ export function ProfileUtilitySettingsView({
         ) : null}
         <View style={[profileUtilityStyles.profileListDivider, { backgroundColor: tokens.border }]} />
         <SettingsActionRow
-          assetTile={AssetTile}
           body={language === 'vi' ? 'Chuyển ngôn ngữ giao diện.' : 'Switch app language.'}
+          details={[
+            { glyph: 'language', label: language === 'vi' ? 'Ngôn ngữ' : 'Language' },
+            { glyph: 'settings', label: language === 'vi' ? 'Giao diện' : 'Interface' },
+          ]}
           image={customerV21Assets.language}
           onPress={onToggleLanguage}
           status={language === 'vi' ? 'Tiếng Việt' : 'English'}
           testID="customer-v21-profile-settings-language"
           title={language === 'vi' ? 'Ngôn ngữ' : 'Language'}
           tokens={tokens}
-          zipMintAura={ZipMintAura}
         />
         <View style={[profileUtilityStyles.profileListDivider, { backgroundColor: tokens.border }]} />
         <SettingsActionRow
-          assetTile={AssetTile}
           body={language === 'vi' ? 'Xác nhận mật khẩu hiện tại trước khi đổi.' : 'Confirm the current password first.'}
-          image={customerV21Assets.shield}
+          details={[
+            { glyph: 'shield', label: language === 'vi' ? 'Mật khẩu' : 'Password' },
+            { glyph: 'check', label: language === 'vi' ? 'Xác nhận hiện tại' : 'Current check' },
+          ]}
+          image={customerV21Assets.password}
           onPress={password.onToggle}
           status={password.open ? (language === 'vi' ? 'Ẩn' : 'Hide') : (language === 'vi' ? 'Đổi' : 'Change')}
           testID="customer-v21-profile-settings-password"
           title={language === 'vi' ? 'Bảo mật đăng nhập' : 'Login security'}
           tokens={tokens}
-          zipMintAura={ZipMintAura}
         />
         {password.open ? (
           <View style={profileUtilityStyles.profileSettingsPasswordForm} testID="customer-v21-profile-settings-password-form">
@@ -254,20 +334,25 @@ export function ProfileUtilitySettingsView({
         ) : null}
         <View style={[profileUtilityStyles.profileListDivider, { backgroundColor: tokens.border }]} />
         <SettingsActionRow
-          assetTile={AssetTile}
           body={language === 'vi' ? 'Địa chỉ mặc định và địa chỉ phụ.' : 'Default and secondary addresses.'}
+          details={[
+            { glyph: 'location', label: language === 'vi' ? 'Địa chỉ chính' : 'Primary address' },
+            { glyph: 'document', label: language === 'vi' ? 'Địa chỉ phụ' : 'Secondary address' },
+          ]}
           image={customerV21Assets.address}
           onPress={onOpenAddress}
           status={language === 'vi' ? 'Mở' : 'Open'}
           testID="customer-v21-profile-settings-address"
           title={language === 'vi' ? 'Địa chỉ' : 'Addresses'}
           tokens={tokens}
-          zipMintAura={ZipMintAura}
         />
         <View style={[profileUtilityStyles.profileListDivider, { backgroundColor: tokens.border }]} />
         <SettingsActionRow
-          assetTile={AssetTile}
-          body={language === 'vi' ? 'Ghi nhớ tương tác tin nhắn. Dữ liệu công việc vẫn giữ để vận hành.' : 'Remember message interactions. Job data stays for operations.'}
+          body={language === 'vi' ? 'Ghi nhớ tương tác theo quyền bạn cho.' : 'Remember interactions only with your permission.'}
+          details={[
+            { glyph: 'memory', label: language === 'vi' ? 'Quyền ghi nhớ' : 'Memory permission' },
+            { glyph: 'shield', label: language === 'vi' ? 'Bạn kiểm soát' : 'You control' },
+          ]}
           image={customerV21Assets.memory}
           onPress={memory.onToggle}
           status={memory.pending
@@ -278,7 +363,6 @@ export function ProfileUtilitySettingsView({
           testID="customer-v21-profile-settings-memory"
           title={language === 'vi' ? 'Bộ nhớ Kael' : 'Kael memory'}
           tokens={tokens}
-          zipMintAura={ZipMintAura}
         />
       </ProfileAuraCard>
     </View>
@@ -462,6 +546,7 @@ export function ProfileUtilityPaymentView({
   accountNumberDraft,
   bankCountLabel,
   confirmedPaymentAccountMasked,
+  confirmedPaymentBankKey,
   confirmedPaymentBankName,
   confirmedPaymentReady,
   confirmedPaymentStatus,
@@ -491,6 +576,7 @@ export function ProfileUtilityPaymentView({
   accountNumberDraft: string
   bankCountLabel: string
   confirmedPaymentAccountMasked: string
+  confirmedPaymentBankKey: CustomerV21BankKey | null
   confirmedPaymentBankName: string
   confirmedPaymentReady: boolean
   confirmedPaymentStatus: string
@@ -514,19 +600,91 @@ export function ProfileUtilityPaymentView({
   title: string
   tokens: CustomerThemeTokens
 }) {
+  const selectedBank = selectedBankKey
+    ? paymentBankOptions.find((bank) => bank.key === selectedBankKey) ?? null
+    : null
+  const selectedBankHasRecordedAccount = Boolean(
+    confirmedPaymentReady
+    && confirmedPaymentBankKey
+    && selectedBankKey === confirmedPaymentBankKey,
+  )
+  const heroTitle = selectedBank?.name
+    || (selectedBankHasRecordedAccount ? confirmedPaymentBankName : '')
+    || (language === 'vi' ? 'Tài khoản nhận tiền' : 'Receiving account')
+  const heroStatus = selectedBankHasRecordedAccount ? confirmedPaymentStatus : dataPendingLabel
+
   return (
     <View style={profileUtilityStyles.profileUtilityStack} testID="customer-v21-profile-utility-payment-screen">
-      <ProfileAuraCard contentStyle={profileUtilityStyles.profileUtilityHero} scope="UtilityPaymentHero" testID="customer-v21-profile-payment-settings">
-        <AssetTile image={customerV21Assets.payment} label={title} size={58} sourceAura style={profileUtilityStyles.profileUtilityHeroIcon} />
-        <View style={rootStyles.flex}>
-          <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{language === 'vi' ? 'Tài khoản nhận tiền' : 'Receiving account'}</Text>
-          <Text style={[rootStyles.bodyText, { color: tokens.muted }]}>
-            {confirmedPaymentReady
-              ? `${confirmedPaymentBankName || dataPendingLabel} · ${confirmedPaymentAccountMasked}`
-              : (language === 'vi' ? 'Chọn ngân hàng và xác nhận số tài khoản.' : 'Choose a bank and confirm the account number.')}
-          </Text>
+      <ProfileAuraCard cardStyle={profilePaymentStyles.heroCard} contentStyle={profilePaymentStyles.heroContent} scope="UtilityPaymentHero" testID="customer-v21-profile-payment-settings">
+        <View
+          style={[
+            profilePaymentStyles.heroVisualPanel,
+            {
+              backgroundColor: tokens.mode === 'dark' ? 'rgba(12,62,57,0.68)' : 'rgba(239,252,249,0.70)',
+              borderRightColor: tokens.mode === 'dark' ? tokens.border : 'rgba(176,222,214,0.78)',
+            },
+          ]}
+          testID="customer-v21-profile-payment-hero-visual-panel"
+        >
+          <Image
+            accessibilityIgnoresInvertColors
+            accessibilityLabel={title}
+            contentFit="contain"
+            source={customerV21Assets.receivingAccount}
+            style={profilePaymentStyles.heroIconImage}
+            testID="customer-v21-profile-payment-hero-icon"
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              profilePaymentStyles.heroConnector,
+              { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' },
+            ]}
+            testID="customer-v21-profile-payment-hero-connector"
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              profilePaymentStyles.heroConnectorDot,
+              {
+                backgroundColor: tokens.primary,
+                borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)',
+              },
+            ]}
+            testID="customer-v21-profile-payment-hero-connector-dot"
+          />
         </View>
-        <KaelChip label={confirmedPaymentStatus} variant={confirmedPaymentReady ? 'selected' : 'unselected'} />
+        <View style={profilePaymentStyles.heroCopy}>
+          <View style={profilePaymentStyles.heroTitleCopy}>
+            <Text numberOfLines={1} style={[sharedStyles.cardTitle, { color: tokens.text }]} testID="customer-v21-profile-payment-hero-title">{heroTitle}</Text>
+            <Text numberOfLines={2} style={[profilePaymentStyles.heroSummary, { color: tokens.muted }]}>
+              {selectedBankHasRecordedAccount
+                ? `${confirmedPaymentBankName || dataPendingLabel} · ${confirmedPaymentAccountMasked}`
+                : (language === 'vi' ? 'Nhập thông tin rồi kiểm tra trước xác thực.' : 'Enter the details, then review before verification.')}
+            </Text>
+          </View>
+          <View style={profilePaymentStyles.heroSignalRail} testID="customer-v21-profile-payment-hero-signals">
+            <View style={profilePaymentStyles.heroSignal}>
+              <Svg accessibilityElementsHidden height={14} viewBox="0 0 14 14" width={14}>
+                <Path d="M7 6.4a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4 5.7c.35-2.1 1.8-3.35 4-3.35s3.65 1.25 4 3.35" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.35} />
+              </Svg>
+              <Text numberOfLines={1} style={[profilePaymentStyles.heroSignalText, { color: tokens.muted }]}>{language === 'vi' ? 'Chủ tài khoản' : 'Account holder'}</Text>
+            </View>
+            <View style={profilePaymentStyles.heroSignal}>
+              <Svg accessibilityElementsHidden height={14} viewBox="0 0 14 14" width={14}>
+                <Path d="M7 1.4 11 3v3.1c0 2.7-1.5 4.8-4 6.4-2.5-1.6-4-3.7-4-6.4V3l4-1.6Z" fill="none" stroke={tokens.primary} strokeLinejoin="round" strokeWidth={1.3} />
+                <Path d="m5.2 6.9 1.15 1.15L8.9 5.5" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.3} />
+              </Svg>
+              <Text numberOfLines={1} style={[profilePaymentStyles.heroSignalText, { color: tokens.muted }]}>{language === 'vi' ? 'Cần xác minh' : 'Verification required'}</Text>
+            </View>
+          </View>
+        </View>
+        <KaelChip
+          label={heroStatus}
+          style={profilePaymentStyles.heroStatus}
+          testID="customer-v21-profile-payment-hero-status"
+          variant={selectedBankHasRecordedAccount ? 'selected' : 'unselected'}
+        />
       </ProfileAuraCard>
 
       <SectionActionHeader
@@ -542,6 +700,7 @@ export function ProfileUtilityPaymentView({
             key={bank.key}
             onPress={() => onBankSelect(bank)}
             selected={bank.key === selectedBankKey}
+            showMintAura
             sourceCardSkin={SourceCardSkin}
             zipMintAura={ZipMintAura}
           />

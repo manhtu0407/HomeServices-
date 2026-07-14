@@ -1,18 +1,18 @@
 import type { ReactNode } from 'react'
-import { Pressable, Text, View, type ImageSourcePropType } from 'react-native'
+import { Text, View, type ImageSourcePropType } from 'react-native'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { useAppLanguage } from '@/lib/app-language'
 
-import { CaseWideMintAura, CaseWorkCardAura, SourceCardSkin } from './aura-surfaces'
+import { CaseWideMintAura, SourceCardSkin } from './aura-surfaces'
 import { customerV21Assets } from './assets'
 import { customerV21AgenticStyles as styles } from './agentic-styles'
 import { AgenticChatFact } from './agentic-surfaces'
 import { customerV21CommonCopy } from './copy'
 import { customerV21HistoryActiveStyles as historyActiveStyles } from './history-active-styles'
-import { CaseScopeStepRow, CustomerStatusPill } from './history-surfaces'
+import { CaseScopeStepRow } from './history-surfaces'
 import { CaseWorkSourceChip } from './history-active-surfaces'
-import { AssetTile, ProgressRail, useCustomerV21SurfaceTheme, V21Card } from './shared-surfaces'
+import { AssetTile, useCustomerV21SurfaceTheme, V21Card } from './shared-surfaces'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
 
 type AgenticCaseFactModel = {
@@ -24,61 +24,6 @@ type AgenticCaseScopeRowModel = {
   label: string
   state: 'active' | 'done' | 'pending'
   value: string
-}
-
-export function AgenticCasePriorityCardPanel({
-  activeStep,
-  caseWorkLabel,
-  footerLabel,
-  onOpenActivity,
-  onOpenCaseChat,
-  service,
-  serviceAsset,
-  statusLabel,
-  subtitle,
-}: {
-  activeStep: number
-  caseWorkLabel: string
-  footerLabel: string
-  onOpenActivity: () => void
-  onOpenCaseChat: () => void
-  service: string
-  serviceAsset: ImageSourcePropType
-  statusLabel: string
-  subtitle: string
-}) {
-  const language = useAppLanguage()
-  const { tokens } = useCustomerV21SurfaceTheme()
-  return (
-    <Pressable accessibilityRole="button" onPress={onOpenActivity} testID="customer-v21-agentic-active-case">
-      <V21Card style={styles.agenticCasePriorityCard}>
-        <SourceCardSkin />
-        <CaseWideMintAura scope="AgenticPriorityWide" testID="customer-v21-agentic-active-case-wide-mint-aura" />
-        <CaseWorkCardAura scope="AgenticPriority" testID="customer-v21-agentic-active-case-mint-aura" />
-        <View style={styles.agenticCaseHeader}>
-          <AssetTile image={serviceAsset} label={service} size={48} sourceAura style={styles.agenticCaseIcon} />
-          <View style={sharedStyles.flex}>
-            <Text numberOfLines={1} style={[styles.agenticCaseTitle, { color: tokens.text }]}>{service}</Text>
-            <Text numberOfLines={1} style={[sharedStyles.bodyText, { color: tokens.muted }]}>{subtitle}</Text>
-          </View>
-          <CustomerStatusPill label={statusLabel} tokens={tokens} />
-        </View>
-        <ProgressRail activeStep={activeStep} tokens={tokens} total={4} />
-        <Text numberOfLines={2} style={[styles.agenticCaseActionTitle, { color: tokens.text }]}>
-          {language === 'vi' ? 'Kael đang kiểm tra tiến độ & bằng chứng' : 'Kael is checking progress and evidence'}
-        </Text>
-        <View style={styles.agenticCaseFooterRow}>
-          <Text numberOfLines={1} style={[sharedStyles.bodyText, sharedStyles.flex, { color: tokens.muted }]}>
-            {footerLabel}
-          </Text>
-          <Pressable accessibilityRole="button" onPress={onOpenCaseChat} testID="customer-v21-agentic-open-case-chat">
-            <Text style={[sharedStyles.sectionActionText, { color: tokens.primary }]}>{caseWorkLabel}</Text>
-          </Pressable>
-          <Text style={[sharedStyles.sectionActionText, { color: tokens.primary }]}>›</Text>
-        </View>
-      </V21Card>
-    </Pressable>
-  )
 }
 
 export function AgenticCaseMatchingCardPanel({

@@ -1,24 +1,33 @@
 ﻿import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { Alert, StyleSheet } from 'react-native'
+import { Alert, Platform, StyleSheet } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { LocalDeal } from '@nestscout/shared'
 import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@nestscout/shared'
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
 let mockWorkflowValue: any
 let mockAuthRole: 'admin' | 'customer' | 'worker'
+let mockAuthSessionProvider: string | null
+let mockAuthSessionUserId: string
 let mockSignOut: jest.Mock
 let mockWorkerUpdateAvailability: jest.Mock
+let mockWorkerUploadAvatar: jest.Mock
 let mockPathname: string
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockAppLanguage = 'vi'
+let mockFocusCallback: (() => void | (() => void)) | null
+const mockWorkerKaelChatModes = new Map<string, 'normal' | 'intake'>()
 const mockReplace = jest.fn()
 const mockUseJobChatThread = jest.fn()
 const mockPlacesAutocomplete = jest.fn()
 const mockWorkerKaelChatService = {
+  archive: jest.fn(),
   create: jest.fn(),
   get: jest.fn(),
   getTrainingConsent: jest.fn(),
   list: jest.fn(),
+  rename: jest.fn(),
+  setPinned: jest.fn(),
   sendTurn: jest.fn(),
   setTrainingConsent: jest.fn(),
   streamTurn: jest.fn(),
@@ -39,7 +48,9 @@ jest.mock('expo-image', () => {
 
 jest.mock('expo-image-picker', () => ({
   MediaTypeOptions: { Images: 'Images' },
+  launchCameraAsync: jest.fn(),
   launchImageLibraryAsync: jest.fn(),
+  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
   requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
 }))
 
@@ -51,6 +62,17 @@ jest.mock('expo-location', () => ({
 }), { virtual: true })
 
 jest.mock('expo-router', () => ({
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    const React = require('react')
+    React.useEffect(() => {
+      mockFocusCallback = callback
+      const cleanup = callback()
+      return () => {
+        if (mockFocusCallback === callback) mockFocusCallback = null
+        if (typeof cleanup === 'function') cleanup()
+      }
+    }, [callback])
+  },
   useLocalSearchParams: () => mockRouteParams,
   usePathname: () => mockPathname,
   useRouter: () => ({ replace: mockReplace }),
@@ -70,7 +92,16 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
 }))
 
 jest.mock('@/lib/auth-provider', () => ({
-  useAuth: () => ({ role: mockAuthRole, session: { user: { id: 'worker_test_1' } }, signOut: mockSignOut }),
+  useAuth: () => ({
+    role: mockAuthRole,
+    session: {
+      user: {
+        app_metadata: mockAuthSessionProvider ? { provider: mockAuthSessionProvider } : {},
+        id: mockAuthSessionUserId,
+      },
+    },
+    signOut: mockSignOut,
+  }),
 }))
 
 jest.mock('@/lib/use-job-chat-thread', () => ({
@@ -86,10 +117,13 @@ jest.mock('@/lib/services', () => ({
     getPreview: jest.fn(),
   },
   workerKaelChatService: {
+    archive: (...args: unknown[]) => mockWorkerKaelChatService.archive(...args),
     create: (...args: unknown[]) => mockWorkerKaelChatService.create(...args),
     get: (...args: unknown[]) => mockWorkerKaelChatService.get(...args),
     getTrainingConsent: (...args: unknown[]) => mockWorkerKaelChatService.getTrainingConsent(...args),
     list: (...args: unknown[]) => mockWorkerKaelChatService.list(...args),
+    rename: (...args: unknown[]) => mockWorkerKaelChatService.rename(...args),
+    setPinned: (...args: unknown[]) => mockWorkerKaelChatService.setPinned(...args),
     sendTurn: (...args: unknown[]) => mockWorkerKaelChatService.sendTurn(...args),
     setTrainingConsent: (...args: unknown[]) => mockWorkerKaelChatService.setTrainingConsent(...args),
     streamTurn: (...args: unknown[]) => mockWorkerKaelChatService.streamTurn(...args),
@@ -115,11 +149,17 @@ import {
 import { resolveWorkerV5DockActive } from '../dock/routing'
 import { WorkerRebuildDockOverlay } from '../dock/worker-v5-dock-overlay'
 import { WorkerV5ScheduleList } from '../jobs/surfaces'
+import {
+  WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY,
+  WorkerV5FormulaMintCardAura,
+} from '../ui/aura-surfaces'
 import { workerV5CapturedIconAssets } from '../ui/worker-v5-icon-assets'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
   return {
+    active_minutes: 0,
+    avatar_url: null,
     bank_account_masked: null,
     bank_name: null,
     date_of_birth: null,
@@ -133,6 +173,7 @@ function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): Wor
     is_approved: true,
     is_available: false,
     is_suspended: false,
+    last_active_at: null,
     legal_name: 'Worker Test',
     problem_specializations: [],
     rating: 0,
@@ -323,6 +364,7 @@ function buildWorkflow({
   workerProfile?: WorkerProfileResponse | null
 } = {}) {
   mockWorkerUpdateAvailability = jest.fn(async () => true)
+  mockWorkerUploadAvatar = jest.fn(async () => true)
   mockWorkflowValue = {
     actions: {
       openKaelJobIncident: jest.fn(async () => ({ incident: null })),
@@ -332,6 +374,7 @@ function buildWorkflow({
       workerAcceptBroadcast: jest.fn(async () => true),
       workerDeclineBroadcast: jest.fn(async () => true),
       workerUpdateAvailability: mockWorkerUpdateAvailability,
+      workerUploadAvatar: mockWorkerUploadAvatar,
       workerUpdateStatus: jest.fn(async () => true),
     },
     selectors: {
@@ -354,9 +397,13 @@ function buildWorkflow({
   }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.useRealTimers()
+  await AsyncStorage.clear()
+  mockFocusCallback = null
   mockAuthRole = 'worker'
+  mockAuthSessionProvider = null
+  mockAuthSessionUserId = 'worker_test_1'
   mockSignOut = jest.fn(async () => undefined)
   mockReplace.mockClear()
   mockUseJobChatThread.mockClear()
@@ -370,34 +417,93 @@ beforeEach(() => {
     sending: false,
   })
   mockWorkerKaelChatService.create.mockReset()
+  mockWorkerKaelChatService.archive.mockReset()
   mockWorkerKaelChatService.get.mockReset()
   mockWorkerKaelChatService.getTrainingConsent.mockReset()
   mockWorkerKaelChatService.list.mockReset()
+  mockWorkerKaelChatService.rename.mockReset()
+  mockWorkerKaelChatService.setPinned.mockReset()
   mockWorkerKaelChatService.sendTurn.mockReset()
   mockWorkerKaelChatService.setTrainingConsent.mockReset()
   mockWorkerKaelChatService.streamTurn.mockReset()
   mockWorkerKaelChatService.submitFeedback.mockReset()
+  mockWorkerKaelChatModes.clear()
   mockWorkerKaelChatService.list.mockImplementation(pendingWorkerKaelServiceCall)
+  mockWorkerKaelChatService.get.mockImplementation(pendingWorkerKaelServiceCall)
   mockWorkerKaelChatService.getTrainingConsent.mockImplementation(pendingWorkerKaelServiceCall)
-  mockWorkerKaelChatService.create.mockResolvedValue({
+  mockWorkerKaelChatService.create.mockImplementation(async (input: { mode?: 'normal' | 'intake' }) => {
+    const mode = input.mode ?? 'intake'
+    mockWorkerKaelChatModes.set('worker-kael-session-1', mode)
+    return {
+      data: {
+        session: {
+          closed_at: null,
+          id: 'worker-kael-session-1',
+          job_id: 'job_test_1',
+          mode,
+          progress: null,
+          safe_metadata: {},
+          started_at: '2026-06-04T00:00:00.000Z',
+          status: 'active',
+          title: null,
+          total_cost_usd: 0,
+          total_turns: 0,
+          worker_id: 'worker_test_1',
+        },
+        turns: [],
+      },
+      status: 201,
+      success: true,
+    }
+  })
+  mockWorkerKaelChatService.archive.mockResolvedValue({
+    data: {
+      archived_at: '2026-07-13T07:45:00.000Z',
+      session_id: 'worker-kael-session-1',
+    },
+    status: 200,
+    success: true,
+  })
+  mockWorkerKaelChatService.rename.mockImplementation(async (sessionId: string, input: { title: string }) => ({
     data: {
       session: {
         closed_at: null,
-        id: 'worker-kael-session-1',
+        id: sessionId,
         job_id: 'job_test_1',
+        mode: 'normal',
+        pinned_at: null,
         progress: null,
-        safe_metadata: {},
-        started_at: '2026-06-04T00:00:00.000Z',
+        started_at: '2026-07-13T07:30:00.000Z',
         status: 'active',
-        total_cost_usd: 0,
-        total_turns: 0,
+        title: input.title,
+        total_turns: 4,
         worker_id: 'worker_test_1',
       },
       turns: [],
     },
-    status: 201,
+    status: 200,
     success: true,
-  })
+  }))
+  mockWorkerKaelChatService.setPinned.mockImplementation(async (sessionId: string, input: { pinned: boolean }) => ({
+    data: {
+      session: {
+        closed_at: null,
+        id: sessionId,
+        job_id: 'job_test_1',
+        mode: 'normal',
+        pinned_at: input.pinned ? '2026-07-13T08:00:00.000Z' : null,
+        progress: null,
+        started_at: '2026-07-13T07:30:00.000Z',
+        status: 'active',
+        title: 'Kiểm tra phạm vi lavabo',
+        total_turns: 4,
+        worker_id: 'worker_test_1',
+      },
+      turns: [],
+    },
+    status: 200,
+    success: true,
+  }))
   mockWorkerKaelChatService.streamTurn.mockImplementation(async (sessionId: string, input: { message: string }, handlers?: any) => {
     handlers?.onStage?.({
       progress: {
@@ -415,6 +521,7 @@ beforeEach(() => {
         closed_at: null,
         id: sessionId,
         job_id: 'job_test_1',
+        mode: mockWorkerKaelChatModes.get(sessionId) ?? 'normal',
         progress: {
           current_stage: 'worker_assist',
           failure_reason: null,
@@ -425,6 +532,7 @@ beforeEach(() => {
         safe_metadata: {},
         started_at: '2026-06-04T00:00:00.000Z',
         status: 'active',
+        title: 'Chuẩn bị cho công việc',
         total_cost_usd: 0,
         total_turns: 2,
         worker_id: 'worker_test_1',
@@ -459,6 +567,10 @@ beforeEach(() => {
     }
   })
   const imagePicker = jest.requireMock('expo-image-picker')
+  imagePicker.requestCameraPermissionsAsync.mockReset()
+  imagePicker.requestCameraPermissionsAsync.mockResolvedValue({ granted: true })
+  imagePicker.launchCameraAsync.mockReset()
+  imagePicker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: [] })
   imagePicker.requestMediaLibraryPermissionsAsync.mockReset()
   imagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
   imagePicker.launchImageLibraryAsync.mockReset()
@@ -527,7 +639,16 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerHomeSurface />)
 
     expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Đang tắt nhận việc')
-    fireEvent.press(screen.getByTestId('worker-v5-availability-switch'))
+    expect(screen.getByTestId('worker-v5-availability-switch-motion-shell')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-availability-switch-fill')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-availability-switch-sheen')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-availability-switch-knob')).toBeOnTheScreen()
+
+    const availabilitySwitch = screen.getByTestId('worker-v5-availability-switch')
+    fireEvent(availabilitySwitch, 'pressIn')
+    fireEvent(availabilitySwitch, 'pressOut')
+    expect(mockWorkerUpdateAvailability).not.toHaveBeenCalled()
+    fireEvent.press(availabilitySwitch)
 
     expect(mockWorkerUpdateAvailability).toHaveBeenCalledWith(true)
     expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Sẵn sàng nhận việc')
@@ -590,7 +711,7 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(availabilitySwitch)
     expect(mockWorkerUpdateAvailability).toHaveBeenCalledWith(true)
     await waitFor(() => {
-      expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Đã bật cho công việc tiếp theo')
+      expect(screen.getByTestId('worker-v5-availability-title')).toHaveTextContent('Đã bật nhận công việc')
     })
   })
 
@@ -719,14 +840,20 @@ describe('Worker runtime surface wiring', () => {
     })
   })
 
-  it('keeps Kael job intake connected to the current workflow state', async () => {
+  it('starts Kael job intake with its empty hero before revealing current workflow context', async () => {
     buildWorkflow({ deal: buildAcceptedDeal() })
     mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
 
     render(<WorkerChatSurface />)
-    expect(screen.getByText('120.000d - 180.000d')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-intake')).toBeOnTheScreen()
+    expect(screen.queryByText('120.000d - 180.000d')).toBeNull()
     expect(screen.queryByTestId('worker-v5-private-kael-chat-intake')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-orb-composer')).toBeOnTheScreen()
+
+    fireEvent(screen.getByTestId('worker-v5-kael-orb-input'), 'focus')
+
+    expect(screen.queryByTestId('worker-v5-kael-empty-hero-intake')).toBeNull()
+    expect(screen.getByText('120.000d - 180.000d')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('worker-v5-kael-orb-open-opportunity'))
 
     await waitFor(() => {
@@ -747,6 +874,7 @@ describe('Worker runtime surface wiring', () => {
       expect(mockWorkerKaelChatService.create).toHaveBeenCalledWith(expect.objectContaining({
         job_id: 'job_test_1',
         language: 'vi',
+        mode: 'intake',
       }))
     })
     await waitFor(() => {
@@ -772,6 +900,165 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
   })
 
+  it('opens normal Kael chat as a blank unsaved session', () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+
+    expect(screen.getByTestId('worker-v5-kael-orb-transcript')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-normal-thread')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
+    expect(screen.queryByText('Cuộc trò chuyện mới. Hãy gửi tin nhắn đầu tiên cho Kael.')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-orb-composer')).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
+  })
+
+  it('shows the Kael empty hero until the worker focuses or types in normal chat', () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-normal')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-model')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-copy').props.children.length).toBeGreaterThan(20)
+
+    fireEvent(screen.getByTestId('worker-v5-kael-empty-hero-normal'), 'layout', {
+      persist: jest.fn(),
+      nativeEvent: { layout: { height: 400, width: 320, x: 0, y: 0 } },
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-empty-hero-content').props.style).transform).toEqual([
+      { translateY: -60 },
+    ])
+
+    const input = screen.getByTestId('worker-v5-kael-orb-input')
+    fireEvent(input, 'focus')
+    expect(screen.queryByTestId('worker-v5-kael-empty-hero-normal')).toBeNull()
+
+    fireEvent(input, 'blur')
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-normal')).toBeOnTheScreen()
+
+    fireEvent.changeText(input, 'Kael, bắt đầu nhé')
+    expect(screen.queryByTestId('worker-v5-kael-empty-hero-normal')).toBeNull()
+  })
+
+  it('uses a dedicated job-intake empty hero when no real opportunity is present', () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+
+    render(<WorkerChatSurface />)
+
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-intake')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-copy').props.children.length).toBeGreaterThan(20)
+    expect(screen.queryByTestId('worker-v5-kael-empty-hero-normal')).toBeNull()
+  })
+
+  it('returns to normal Kael chat as a fresh blank draft without creating a backend session', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-before-refocus',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T09:30:00.000Z',
+          status: 'active',
+          title: 'Phiên trước khi quay lại',
+          total_turns: 2,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    mockWorkerKaelChatService.get.mockResolvedValue({
+      data: {
+        session: {
+          closed_at: null,
+          id: 'worker-kael-session-before-refocus',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T09:30:00.000Z',
+          status: 'active',
+          title: 'Phiên trước khi quay lại',
+          total_turns: 2,
+          worker_id: 'worker_test_1',
+        },
+        turns: [{
+          content_type: 'guidance',
+          created_at: '2026-07-13T09:31:00.000Z',
+          id: 'turn-before-refocus',
+          media_refs: [],
+          role: 'kael',
+          safety_notes: [],
+          session_id: 'worker-kael-session-before-refocus',
+          text_content: 'Nội dung của phiên trước khi quay lại Kael Chat.',
+          turn_index: 1,
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-before-refocus'))
+    expect(await screen.findByText('Nội dung của phiên trước khi quay lại Kael Chat.')).toBeOnTheScreen()
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Bản nháp không được mang sang phiên mới')
+
+    act(() => {
+      mockFocusCallback?.()
+    })
+
+    expect(screen.queryByText('Nội dung của phiên trước khi quay lại Kael Chat.')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-orb-input').props.value).toBe('')
+    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
+  })
+
+  it('keeps a refocused blank draft isolated from an in-flight previous turn', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    let rejectPreviousTurn: ((reason?: unknown) => void) | undefined
+    mockWorkerKaelChatService.streamTurn.mockImplementation(() => new Promise((_, reject) => {
+      rejectPreviousTurn = reject
+    }))
+
+    render(<WorkerChatSurface />)
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Tin nhắn thuộc phiên trước')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.getByText('Tin nhắn thuộc phiên trước')).toBeOnTheScreen()
+    expect(screen.getByText('Kael đang xử lý...')).toBeOnTheScreen()
+
+    act(() => {
+      mockFocusCallback?.()
+    })
+
+    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
+    expect(screen.queryByText('Tin nhắn thuộc phiên trước')).toBeNull()
+    expect(screen.queryByText('Kael đang xử lý...')).toBeNull()
+
+    await act(async () => {
+      rejectPreviousTurn?.(new Error('previous session failed after refocus'))
+      await Promise.resolve()
+    })
+
+    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
+    expect(screen.queryByText(/Kael đang không kết nối được/)).toBeNull()
+    expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(1)
+  })
+
   it('answers the normal Kael chat honestly when no active work session exists', async () => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
@@ -784,6 +1071,1066 @@ describe('Worker runtime surface wiring', () => {
     expect(await screen.findByText(/chưa có phiên Kael theo công việc/)).toBeOnTheScreen()
     expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
     expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
+  })
+  it.each([
+    ['Chat thường', '3.1-kael-chat-normal'],
+    ['Nhận việc', '3.2-kael-job-intake'],
+  ])('groups session management and %s mode selection in one header capsule', (modeLabel, workerScreen) => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: workerScreen }
+
+    render(<WorkerChatSurface />)
+
+    const headerActions = screen.getByTestId('worker-v5-kael-header-actions')
+    expect(headerActions.findAllByProps({ testID: 'worker-v5-kael-session-toggle' }).length).toBeGreaterThan(0)
+    expect(headerActions.findAllByProps({ testID: 'worker-v5-kael-mode-toggle' }).length).toBeGreaterThan(0)
+    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(modeLabel)
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(screen.getByTestId('worker-v5-kael-session-menu')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
+    expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-mode-menu')).toBeOnTheScreen()
+  })
+
+  it('opens the Kael mode menu from the combined header capsule and switches to job intake', async () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+
+    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent('Chat thường')
+    expect(screen.queryByText('⌄')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-kael-mode-menu')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
+
+    expect(screen.getByTestId('worker-v5-kael-mode-menu')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-mode-menu-options')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu').props.style)).toMatchObject({
+      maxWidth: 208,
+      width: '59%',
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-intake').props.style)).toMatchObject({
+      minHeight: 46,
+    })
+    expect(screen.getByTestId('worker-v5-kael-mode-toggle').props.accessibilityState).toEqual({ expanded: true })
+    expect(screen.getByText('Hỏi đáp và hỗ trợ nhanh')).toBeOnTheScreen()
+    expect(screen.getByText('Lọc và chuẩn bị cơ hội phù hợp')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-mode-menu-intake'))
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake')
+    })
+  })
+
+  it('keeps the Worker visual-audit role while switching Kael modes in Preview', async () => {
+    buildWorkflow()
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_screen: '3.1-kael-chat-normal',
+    }
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-mode-menu-intake'))
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith(
+        '/(worker)/chat?ns_worker_screen=3.2-kael-job-intake&ns_audit_role=worker',
+      )
+    })
+  })
+
+  it.each([
+    ['normal chat', '3.1-kael-chat-normal', 'normal', 'worker-kael-session-normal', 'worker-kael-session-intake'],
+    ['job intake', '3.2-kael-job-intake', 'intake', 'worker-kael-session-intake', 'worker-kael-session-normal'],
+  ])('keeps %s session catalog isolated from the other Kael mode', async (
+    _label,
+    workerScreen,
+    expectedMode,
+    visibleSessionId,
+    hiddenSessionId,
+  ) => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: workerScreen }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [
+          {
+            closed_at: null,
+            id: 'worker-kael-session-normal',
+            job_id: 'job_test_1',
+            mode: 'normal',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T09:00:00.000Z',
+            status: 'active',
+            title: 'Trò chuyện thường',
+            total_turns: 1,
+            worker_id: 'worker_test_1',
+          },
+          {
+            closed_at: null,
+            id: 'worker-kael-session-intake',
+            job_id: 'job_test_1',
+            mode: 'intake',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T09:05:00.000Z',
+            status: 'active',
+            title: 'Trao đổi nhận việc',
+            total_turns: 1,
+            worker_id: 'worker_test_1',
+          },
+        ],
+      },
+      status: 200,
+      success: true,
+    })
+
+    render(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledWith(expectedMode)
+    })
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+
+    expect(await screen.findByTestId(`worker-v5-kael-session-${visibleSessionId}`)).toBeOnTheScreen()
+    expect(screen.queryByTestId(`worker-v5-kael-session-${hiddenSessionId}`)).toBeNull()
+  })
+
+  it('ignores a late catalog response from the previous Kael mode', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    let resolveNormal: ((value: unknown) => void) | undefined
+    let resolveIntake: ((value: unknown) => void) | undefined
+    mockWorkerKaelChatService.list.mockImplementation((mode: 'normal' | 'intake') => (
+      new Promise((resolve) => {
+        if (mode === 'normal') resolveNormal = resolve
+        else resolveIntake = resolve
+      })
+    ))
+
+    const { rerender } = render(<WorkerChatSurface />)
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledWith('normal')
+    })
+
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+    rerender(<WorkerChatSurface />)
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledWith('intake')
+    })
+
+    await act(async () => {
+      resolveNormal?.({
+        data: {
+          sessions: [{
+            closed_at: null,
+            id: 'worker-kael-session-late-normal',
+            job_id: 'job_test_1',
+            mode: 'normal',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T09:10:00.000Z',
+            status: 'active',
+            title: 'Phiên thường đến muộn',
+            total_turns: 1,
+            worker_id: 'worker_test_1',
+          }],
+        },
+        status: 200,
+        success: true,
+      })
+      await Promise.resolve()
+    })
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(screen.queryByTestId('worker-v5-kael-session-worker-kael-session-late-normal')).toBeNull()
+
+    await act(async () => {
+      resolveIntake?.({
+        data: {
+          sessions: [{
+            closed_at: null,
+            id: 'worker-kael-session-current-intake',
+            job_id: 'job_test_1',
+            mode: 'intake',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T09:11:00.000Z',
+            status: 'active',
+            title: 'Phiên nhận việc hiện tại',
+            total_turns: 1,
+            worker_id: 'worker_test_1',
+          }],
+        },
+        status: 200,
+        success: true,
+      })
+      await Promise.resolve()
+    })
+
+    expect(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-current-intake')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-session-worker-kael-session-late-normal')).toBeNull()
+  })
+
+  it('preloads work-scoped Kael sessions and reuses the same in-flight request when the menu opens', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    let resolveList: ((value: unknown) => void) | undefined
+    mockWorkerKaelChatService.list.mockImplementation(() => new Promise((resolve) => {
+      resolveList = resolve
+    }))
+
+    render(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+    })
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(screen.getByText('Đang tải cuộc trò chuyện...')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveList?.({
+        data: {
+          sessions: [{
+            closed_at: null,
+            id: 'worker-kael-session-preloaded',
+            job_id: 'job_test_1',
+            mode: 'normal',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T08:30:00.000Z',
+            status: 'active',
+            title: 'Phiên đã tải trước',
+            total_turns: 2,
+            worker_id: 'worker_test_1',
+          }],
+        },
+        status: 200,
+        success: true,
+      })
+      await Promise.resolve()
+    })
+
+    expect(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-preloaded')).toBeOnTheScreen()
+    expect(screen.queryByText('Đang tải cuộc trò chuyện...')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(screen.getByTestId('worker-v5-kael-session-worker-kael-session-preloaded')).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps new conversation available while the existing session catalog is still loading', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+
+    const newSession = screen.getByTestId('worker-v5-kael-session-new')
+    expect(newSession.props.accessibilityState).toEqual(expect.objectContaining({ disabled: false }))
+    fireEvent.press(newSession)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('keeps a newly created intake conversation when Preview uses a visual-audit identity', async () => {
+    mockAuthSessionProvider = 'local-visual-audit'
+    mockAuthSessionUserId = 'local-visual-audit-worker'
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = {
+      ns_audit_role: 'worker',
+      ns_worker_screen: '3.2-kael-job-intake',
+    }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: { sessions: [] },
+      status: 200,
+      success: true,
+    })
+
+    render(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.create).toHaveBeenCalledWith(expect.objectContaining({
+        job_id: 'job_test_1',
+        language: 'vi',
+        mode: 'intake',
+      }))
+    })
+    await waitFor(() => {
+      expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
+    })
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+
+    expect(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-1')).toBeOnTheScreen()
+  })
+
+  it('keeps the empty hero mounted while a new conversation is being created', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    let resolveCreate: ((value: unknown) => void) | undefined
+    mockWorkerKaelChatService.create.mockImplementation(() => new Promise((resolve) => {
+      resolveCreate = resolve
+    }))
+
+    render(<WorkerChatSurface />)
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-normal')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-normal')).toBeOnTheScreen()
+
+    await act(async () => {
+      resolveCreate?.({
+        data: {
+          session: {
+            closed_at: null,
+            id: 'worker-kael-session-new-empty',
+            job_id: 'job_test_1',
+            mode: 'normal',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T10:45:00.000Z',
+            status: 'active',
+            title: null,
+            total_turns: 0,
+            worker_id: 'worker_test_1',
+          },
+          turns: [],
+        },
+        status: 201,
+        success: true,
+      })
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('worker-v5-kael-empty-hero-normal')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
+  })
+
+  it('prefetches the worker session catalog before the active job finishes hydrating', async () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-prefetched-before-job',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T08:40:00.000Z',
+          status: 'active',
+          title: 'Phiên sẵn sàng trước khi đồng bộ việc',
+          total_turns: 3,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+
+    const { rerender } = render(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+    })
+
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    rerender(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+
+    expect(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-prefetched-before-job')).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+  })
+
+  it('restores real session summaries from device cache while background refresh is pending', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-device-cache',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T08:42:00.000Z',
+          status: 'active',
+          title: 'Phiên đã lưu trên thiết bị',
+          total_turns: 5,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+
+    const firstRender = render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-device-cache')).toBeOnTheScreen()
+
+    await waitFor(async () => {
+      const keys = await AsyncStorage.getAllKeys()
+      expect(keys.some((key) => key.includes('worker.kael_session_catalog'))).toBe(true)
+    })
+    firstRender.unmount()
+
+    mockWorkerKaelChatService.list.mockImplementation(pendingWorkerKaelServiceCall)
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+
+    expect(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-device-cache')).toBeOnTheScreen()
+    expect(screen.queryByText('Đang tải cuộc trò chuyện...')).toBeNull()
+  })
+
+  it('loads Kael sessions when the active job hydrates after the session menu is already open', async () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-hydrated',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T08:45:00.000Z',
+          status: 'active',
+          title: 'Phiên sau đồng bộ',
+          total_turns: 4,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    const { rerender } = render(<WorkerChatSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(screen.getByText('Đang tải cuộc trò chuyện...')).toBeOnTheScreen()
+
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    rerender(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+    })
+    expect(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-hydrated')).toBeOnTheScreen()
+    expect(screen.queryByText('Chưa có cuộc trò chuyện cho công việc này.')).toBeNull()
+  })
+
+  it('does not show a false empty session state before worker jobs finish hydrating', async () => {
+    buildWorkflow({ workerJobsHydrated: false })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: { sessions: [] },
+      status: 200,
+      success: true,
+    })
+    const { rerender } = render(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+
+    expect(screen.getByText('Đang tải cuộc trò chuyện...')).toBeOnTheScreen()
+    expect(screen.queryByText('Chưa có cuộc trò chuyện cho công việc này.')).toBeNull()
+
+    buildWorkflow({ workerJobsHydrated: true })
+    rerender(<WorkerChatSurface />)
+
+    expect(await screen.findByText('Chưa có cuộc trò chuyện thường.')).toBeOnTheScreen()
+  })
+
+  it('keeps a newly-created Kael session visible when the initial list response arrives later', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    let resolveList: ((value: unknown) => void) | undefined
+    mockWorkerKaelChatService.list.mockImplementation(() => new Promise((resolve) => {
+      resolveList = resolve
+    }))
+
+    render(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Chuẩn bị dụng cụ ngay')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledWith(
+        'worker-kael-session-1',
+        expect.objectContaining({ message: 'Chuẩn bị dụng cụ ngay' }),
+        expect.any(Object),
+      )
+    })
+    expect(await screen.findByText('Kael saved this advisory. Keep the next step inside the app.')).toBeOnTheScreen()
+
+    await act(async () => {
+      resolveList?.({ data: { sessions: [] }, status: 200, success: true })
+      await Promise.resolve()
+    })
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    expect(screen.getByTestId('worker-v5-kael-session-worker-kael-session-1')).toBeOnTheScreen()
+    expect(screen.queryByText('Chưa có cuộc trò chuyện cho công việc này.')).toBeNull()
+  })
+
+  it('shares the prefetched transcript request when a Kael session is opened immediately', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-shared-load',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T09:00:00.000Z',
+          status: 'active',
+          title: 'Phiên đang tải',
+          total_turns: 2,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    let resolveGet: ((value: unknown) => void) | undefined
+    const sharedGet = new Promise((resolve) => {
+      resolveGet = resolve
+    })
+    mockWorkerKaelChatService.get.mockReturnValue(sharedGet)
+
+    render(<WorkerChatSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+      expect(mockWorkerKaelChatService.get).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-shared-load'))
+
+    expect(mockWorkerKaelChatService.get).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveGet?.({
+        data: {
+          session: {
+            closed_at: null,
+            id: 'worker-kael-session-shared-load',
+            job_id: 'job_test_1',
+            mode: 'normal',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T09:00:00.000Z',
+            status: 'active',
+            title: 'Phiên đang tải',
+            total_turns: 2,
+            worker_id: 'worker_test_1',
+          },
+          turns: [{
+            content_type: 'guidance',
+            created_at: '2026-07-13T09:01:00.000Z',
+            id: 'turn-shared-load',
+            media_refs: [],
+            role: 'kael',
+            safety_notes: [],
+            session_id: 'worker-kael-session-shared-load',
+            text_content: 'Transcript chỉ được tải một lần.',
+            turn_index: 1,
+          }],
+        },
+        status: 200,
+        success: true,
+      })
+      await Promise.resolve()
+    })
+
+    expect(await screen.findByText('Transcript chỉ được tải một lần.')).toBeOnTheScreen()
+  })
+
+  it('opens the real work-scoped Kael session manager without a count and switches complete transcripts', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [
+          {
+            closed_at: null,
+            id: 'worker-kael-session-2',
+            job_id: 'job_test_1',
+            mode: 'normal',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T07:30:00.000Z',
+            status: 'active',
+            title: 'Kiểm tra phạm vi lavabo',
+            total_turns: 4,
+            worker_id: 'worker_test_1',
+          },
+          {
+            closed_at: null,
+            id: 'worker-kael-session-1',
+            job_id: 'job_test_1',
+            mode: 'normal',
+            progress: null,
+            started_at: '2026-07-13T07:00:00.000Z',
+            status: 'active',
+            title: 'Chuẩn bị dụng cụ sửa ống',
+            total_turns: 2,
+            worker_id: 'worker_test_1',
+          },
+        ],
+      },
+      status: 200,
+      success: true,
+    })
+    mockWorkerKaelChatService.get.mockImplementation(async (sessionId: string) => ({
+      data: {
+        session: {
+          closed_at: null,
+          id: sessionId,
+          job_id: 'job_test_1',
+          mode: 'normal',
+          progress: null,
+          started_at: sessionId === 'worker-kael-session-2'
+            ? '2026-07-13T07:30:00.000Z'
+            : '2026-07-13T07:00:00.000Z',
+          status: 'active',
+          title: sessionId === 'worker-kael-session-2'
+            ? 'Kiểm tra phạm vi lavabo'
+            : 'Chuẩn bị dụng cụ sửa ống',
+          total_turns: sessionId === 'worker-kael-session-2' ? 4 : 2,
+          worker_id: 'worker_test_1',
+        },
+        turns: [{
+          content_type: 'guidance',
+          created_at: '2026-07-13T07:31:00.000Z',
+          id: `turn-${sessionId}`,
+          media_refs: [],
+          role: 'kael',
+          safety_notes: [],
+          session_id: sessionId,
+          text_content: sessionId === 'worker-kael-session-2'
+            ? 'Hãy kiểm tra phạm vi đã xác nhận trước.'
+            : 'Chuẩn bị kìm và khóa nước trước khi thao tác.',
+          turn_index: 1,
+        }],
+      },
+      status: 200,
+      success: true,
+    }))
+
+    render(<WorkerChatSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
+    })
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.get).toHaveBeenCalledTimes(2)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(screen.getByTestId('worker-v5-kael-session-menu')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-menu-shell').props.style).maxWidth).toBeLessThanOrEqual(224)
+    expect(screen.getByText('Cuộc trò chuyện mới')).toBeOnTheScreen()
+    expect(screen.queryByText('Phiên Kael')).toBeNull()
+    expect(screen.getByText('Kiểm tra phạm vi lavabo')).toBeOnTheScreen()
+    expect(screen.queryByText('2')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-session-worker-kael-session-2')).toBeOnTheScreen()
+
+    const prefetchedCalls = mockWorkerKaelChatService.get.mock.calls.length
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-worker-kael-session-2'))
+
+    expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
+    expect(screen.getByText('Hãy kiểm tra phạm vi đã xác nhận trước.')).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.get).toHaveBeenCalledTimes(prefetchedCalls)
+    expect(screen.queryByTestId('worker-v5-kael-normal-thread')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-1'))
+
+    expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
+    expect(screen.getByText('Chuẩn bị kìm và khóa nước trước khi thao tác.')).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.get).toHaveBeenCalledTimes(prefetchedCalls)
+    expect(screen.queryByText('Hãy kiểm tra phạm vi đã xác nhận trước.')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-actions-worker-kael-session-1'))
+    const actionMenu = screen.getByTestId('worker-v5-kael-session-action-menu-worker-kael-session-1')
+    expect(actionMenu).toBeOnTheScreen()
+    expect(StyleSheet.flatten(actionMenu.props.style)).toEqual(expect.objectContaining({
+      flexDirection: 'row',
+      minHeight: 44,
+      width: '100%',
+    }))
+    expect(screen.getByTestId('worker-v5-kael-session-pin-worker-kael-session-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-session-rename-worker-kael-session-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-session-delete-worker-kael-session-1')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-delete-worker-kael-session-1'))
+
+    expect(screen.getByTestId('worker-v5-kael-session-delete-confirm-worker-kael-session-1')).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.archive).not.toHaveBeenCalled()
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-delete-cancel-worker-kael-session-1'))
+    expect(screen.queryByTestId('worker-v5-kael-session-delete-confirm-worker-kael-session-1')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-actions-worker-kael-session-1'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-delete-worker-kael-session-1'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-delete-submit-worker-kael-session-1'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.archive).toHaveBeenCalledWith('worker-kael-session-1')
+    })
+  })
+
+  it('renames a work-scoped Kael session from its three-dot menu', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-2',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          progress: null,
+          started_at: '2026-07-13T07:30:00.000Z',
+          status: 'active',
+          title: 'Kiểm tra phạm vi lavabo',
+          total_turns: 4,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-actions-worker-kael-session-2'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-rename-worker-kael-session-2'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-session-title-input'), 'Kiểm tra rò nước lavabo')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-title-save'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.rename).toHaveBeenCalledWith(
+        'worker-kael-session-2',
+        { title: 'Kiểm tra rò nước lavabo' },
+      )
+    })
+    expect(await screen.findByText('Kiểm tra rò nước lavabo')).toBeOnTheScreen()
+  })
+
+  it('shows a renamed session immediately while the Edge write is still pending', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-2',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T07:30:00.000Z',
+          status: 'active',
+          title: 'Kiểm tra phạm vi lavabo',
+          total_turns: 4,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    let resolveRename: ((value: unknown) => void) | undefined
+    mockWorkerKaelChatService.rename.mockImplementation(() => new Promise((resolve) => {
+      resolveRename = resolve
+    }))
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-actions-worker-kael-session-2'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-rename-worker-kael-session-2'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-session-title-input'), 'Kiểm tra rò nước mới')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-title-save'))
+
+    expect(screen.getByText('Kiểm tra rò nước mới')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-session-rename-editor-worker-kael-session-2')).toBeNull()
+
+    await act(async () => {
+      resolveRename?.({
+        data: {
+          session: {
+            closed_at: null,
+            id: 'worker-kael-session-2',
+            job_id: 'job_test_1',
+            mode: 'normal',
+            pinned_at: null,
+            progress: null,
+            started_at: '2026-07-13T07:30:00.000Z',
+            status: 'active',
+            title: 'Kiểm tra rò nước mới',
+            total_turns: 4,
+            worker_id: 'worker_test_1',
+          },
+          turns: [],
+        },
+        status: 200,
+        success: true,
+      })
+      await Promise.resolve()
+    })
+  })
+
+  it('removes a session from the list immediately while its evidence-preserving delete is pending', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-delete',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T07:30:00.000Z',
+          status: 'active',
+          title: 'Phiên cần xóa',
+          total_turns: 2,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    let resolveArchive: ((value: unknown) => void) | undefined
+    mockWorkerKaelChatService.archive.mockImplementation(() => new Promise((resolve) => {
+      resolveArchive = resolve
+    }))
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-actions-worker-kael-session-delete'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-delete-worker-kael-session-delete'))
+    expect(screen.getByTestId('worker-v5-kael-session-delete-confirm-worker-kael-session-delete')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-delete-submit-worker-kael-session-delete'))
+
+    expect(screen.queryByTestId('worker-v5-kael-session-worker-kael-session-delete')).toBeNull()
+    expect(mockWorkerKaelChatService.archive).toHaveBeenCalledWith('worker-kael-session-delete')
+
+    await act(async () => {
+      resolveArchive?.({
+        data: {
+          archived_at: '2026-07-13T08:00:00.000Z',
+          session_id: 'worker-kael-session-delete',
+        },
+        status: 200,
+        success: true,
+      })
+      await Promise.resolve()
+    })
+  })
+
+  it('pins and unpins a Kael session from the three-dot menu', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-pin',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T07:30:00.000Z',
+          status: 'active',
+          title: 'Kiểm tra aptomat',
+          total_turns: 2,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-actions-worker-kael-session-pin'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-pin-worker-kael-session-pin'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.setPinned).toHaveBeenCalledWith(
+        'worker-kael-session-pin',
+        { pinned: true },
+      )
+    })
+    expect(screen.getByTestId('worker-v5-kael-session-pinned-worker-kael-session-pin')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-session-action-menu-worker-kael-session-pin')).toBeOnTheScreen()
+    expect(screen.getByText('Bỏ ghim')).toBeOnTheScreen()
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-kael-session-pin-worker-kael-session-pin').props.accessibilityState).toEqual({ disabled: false })
+    })
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-pin-worker-kael-session-pin'))
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.setPinned).toHaveBeenLastCalledWith(
+        'worker-kael-session-pin',
+        { pinned: false },
+      )
+    })
+    expect(screen.queryByTestId('worker-v5-kael-session-pinned-worker-kael-session-pin')).toBeNull()
+    expect(screen.getByText('Ghim')).toBeOnTheScreen()
+  })
+
+  it('starts a truly empty Kael session and sends its first turn to the new session id', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.list.mockResolvedValue({
+      data: {
+        sessions: [{
+          closed_at: null,
+          id: 'worker-kael-session-old',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T07:30:00.000Z',
+          status: 'active',
+          title: 'Phiên cũ',
+          total_turns: 2,
+          worker_id: 'worker_test_1',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    mockWorkerKaelChatService.get.mockResolvedValue({
+      data: {
+        session: {
+          closed_at: null,
+          id: 'worker-kael-session-old',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T07:30:00.000Z',
+          status: 'active',
+          title: 'Phiên cũ',
+          total_turns: 2,
+          worker_id: 'worker_test_1',
+        },
+        turns: [{
+          content_type: 'guidance',
+          created_at: '2026-07-13T07:31:00.000Z',
+          id: 'turn-old',
+          media_refs: [],
+          role: 'kael',
+          safety_notes: [],
+          session_id: 'worker-kael-session-old',
+          text_content: 'Nội dung chỉ thuộc phiên cũ.',
+          turn_index: 1,
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    mockWorkerKaelChatService.create.mockResolvedValue({
+      data: {
+        session: {
+          closed_at: null,
+          id: 'worker-kael-session-new',
+          job_id: 'job_test_1',
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-13T08:00:00.000Z',
+          status: 'active',
+          title: null,
+          total_turns: 0,
+          worker_id: 'worker_test_1',
+        },
+        turns: [],
+      },
+      status: 201,
+      success: true,
+    })
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-kael-session-new').props.accessibilityState).toEqual({ disabled: false })
+    })
+    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-old'))
+    expect(await screen.findByText('Nội dung chỉ thuộc phiên cũ.')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.create).toHaveBeenCalledWith(expect.objectContaining({
+        job_id: 'job_test_1',
+        language: 'vi',
+        mode: 'normal',
+      }))
+    })
+    expect(screen.queryByTestId('worker-v5-kael-orb-empty-session')).toBeNull()
+    expect(screen.queryByText('Cuộc trò chuyện mới. Hãy gửi tin nhắn đầu tiên cho Kael.')).toBeNull()
+    expect(screen.queryByText('Nội dung chỉ thuộc phiên cũ.')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-kael-normal-thread')).toBeNull()
+
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Tin nhắn đầu tiên của phiên mới')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledWith(
+        'worker-kael-session-new',
+        expect.objectContaining({ message: 'Tin nhắn đầu tiên của phiên mới' }),
+        expect.any(Object),
+      )
+    })
+    expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(1)
   })
 
   it('refuses a Kael orb photo attach without an active work session', async () => {
@@ -980,8 +2327,96 @@ describe('Worker runtime surface wiring', () => {
 
     const profile = render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-screen-5.1-profile-overview')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-profile-avatar-image')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-avatar-picker')).toBeOnTheScreen()
     profile.unmount()
+  })
+
+  it('keeps the profile hero compact with a real lifetime bar and no mock status chips', async () => {
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({
+        active_minutes: 90,
+        avatar_url: 'https://storage.example.test/signed/worker-avatar.jpg',
+        last_active_at: '2026-07-13T14:30:00.000Z',
+      }),
+    })
+
+    render(<WorkerProfileSurface />)
+
+    expect(screen.getByTestId('worker-v5-profile-header-name')).toHaveTextContent('Worker Test')
+    expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label').props.children).toBe('Thời gian hoạt động')
+    expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityLabel).toBe('Thời gian hoạt động')
+    expect(screen.getByTestId('worker-v5-profile-lifetime-progress')).toHaveAccessibilityValue({
+      text: 'Thời gian hoạt động trên NestScout: 1 giờ 30 phút / 10.000 giờ',
+    })
+    expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityValue).toMatchObject({
+      max: 600000,
+      min: 0,
+      now: 90,
+    })
+    expect(screen.getByTestId('worker-v5-profile-avatar-image').props.source).toEqual({
+      uri: 'https://storage.example.test/signed/worker-avatar.jpg',
+    })
+    expect(screen.queryByText('Đã duyệt')).toBeNull()
+    expect(screen.queryByText('Chưa có đánh giá')).toBeNull()
+    expect(screen.queryByText('Chưa có việc')).toBeNull()
+    expect(screen.queryByText('Sẵn sàng nhận việc')).toBeNull()
+  })
+
+  it('lets the worker choose a real avatar from camera or photo library', async () => {
+    buildWorkflow()
+    const imagePicker = jest.requireMock('expo-image-picker')
+    imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{
+        fileName: 'worker.jpg',
+        fileSize: 1234,
+        mimeType: 'image/jpeg',
+        uri: 'file:///worker.jpg',
+      }],
+    })
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      const library = buttons?.find((button) => button.text === 'Chọn từ thư viện')
+      void library?.onPress?.()
+    })
+
+    render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-profile-avatar-picker'))
+
+    await waitFor(() => {
+      expect(mockWorkerUploadAvatar).toHaveBeenCalledWith({
+        fileName: 'worker.jpg',
+        fileSizeBytes: 1234,
+        mimeType: 'image/jpeg',
+        uri: 'file:///worker.jpg',
+      })
+    })
+    expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1)
+    expect(alertSpy).toHaveBeenCalled()
+    alertSpy.mockRestore()
+  })
+
+  it('opens the real image library directly from the avatar button in web Preview', async () => {
+    const originalPlatform = Platform.OS
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    const alertSpy = jest.spyOn(Alert, 'alert')
+
+    try {
+      buildWorkflow()
+      const imagePicker = jest.requireMock('expo-image-picker')
+      imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ canceled: true, assets: [] })
+
+      render(<WorkerProfileSurface />)
+      fireEvent.press(screen.getByTestId('worker-v5-profile-avatar-picker'))
+
+      await waitFor(() => {
+        expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(1)
+      })
+      expect(imagePicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled()
+      expect(alertSpy).not.toHaveBeenCalled()
+    } finally {
+      alertSpy.mockRestore()
+      Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform })
+    }
   })
 
   it('keeps Worker V5 route params, language params, and money-impacting screens explicit', () => {
@@ -1106,6 +2541,88 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-profile-dossier-detail-2')).toHaveTextContent(/Bộ nhớ Kael/)
   })
 
+  it('applies the 1.4 Formula Mint Aura to every rounded card in the 14 captured Worker groups', () => {
+    expect(WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY).toBe(1.4)
+
+    buildWorkflow({ deal: buildIncomingDeal(), workerEarnings: buildNoEarnings() })
+    mockRouteParams = {}
+
+    const home = render(<WorkerHomeSurface />)
+    ;[0, 1, 2, 3].forEach((index) => {
+      expect(screen.getByTestId(`worker-v5-home-quick-action-formula-mint-aura-${index}`)).toBeOnTheScreen()
+    })
+    home.unmount()
+
+    const profile = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-profile-dossier-formula-mint-aura')).toBeOnTheScreen()
+    profile.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+    const earnings = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-earnings-hero-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-transactions-formula-mint-aura')).toBeOnTheScreen()
+    earnings.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
+    const payoutRequest = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-payout-account-formula-mint-aura')).toBeOnTheScreen()
+    payoutRequest.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
+    const payoutMethod = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-payout-method-hero-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-account-management-formula-mint-aura')).toBeOnTheScreen()
+    payoutMethod.unmount()
+
+    mockRouteParams = {}
+    const opportunity = render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-opportunity-card-formula-mint-aura-job_test_1')).toBeOnTheScreen()
+    opportunity.unmount()
+
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+    const activeRoute = render(<WorkerJobsSurface />)
+    ;[0, 1, 2].forEach((index) => {
+      expect(screen.getByTestId(`worker-v5-info-cell-ActiveRoute-formula-mint-aura-${index}`)).toBeOnTheScreen()
+    })
+    activeRoute.unmount()
+
+    buildWorkflow({ deal: buildRepairingDeal() })
+    mockRouteParams = { ns_audit_surface: 'worker_scope_change' }
+    const scopeChange = render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-progress-rail-formula-mint-aura')).toBeOnTheScreen()
+    scopeChange.unmount()
+
+    buildWorkflow({ deal: buildCompletedByWorkerDeal() })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+    const submitted = render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-completion-submitted-mint-aura')).toBeOnTheScreen()
+    submitted.unmount()
+
+    buildWorkflow({ deal: buildConfirmedCompletionDeal() })
+    mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
+    render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-case-closed-mint-aura')).toBeOnTheScreen()
+    ;[0, 1, 2].forEach((index) => {
+      expect(screen.getByTestId(`worker-v5-info-cell-CaseClosed-formula-mint-aura-${index}`)).toBeOnTheScreen()
+    })
+    expect(screen.getByTestId('worker-v5-case-trail-formula-mint-aura')).toBeOnTheScreen()
+  })
+
+  it('keeps the Formula Mint card identity with an opaque Reduce Transparency fallback', () => {
+    render(
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency
+        scope="ReduceTransparencyProbe"
+        testID="worker-v5-formula-mint-card-reduce-transparency"
+      />,
+    )
+
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-formula-mint-card-reduce-transparency').props.style)).toMatchObject({
+      backgroundColor: '#EFFAF7',
+    })
+  })
+
   it('renders contextual detail rails across all 17 captured Worker card clusters', () => {
     buildWorkflow({ deal: buildIncomingDeal() })
     mockRouteParams = {}
@@ -1129,7 +2646,7 @@ describe('Worker runtime surface wiring', () => {
     const payout = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-payout-account-icon-image').props.source).toBe(require('@/assets/worker-image-icons/utility-identity.png'))
     expect(screen.getByTestId('worker-v5-payout-account-detail')).toHaveTextContent(/Cần xác minh/)
-    expect(screen.queryByTestId('worker-v5-payout-account-mint-aura')).toBeNull()
+    expect(screen.getByTestId('worker-v5-payout-account-formula-mint-aura')).toBeOnTheScreen()
     payout.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
@@ -1142,14 +2659,14 @@ describe('Worker runtime surface wiring', () => {
       minWidth: 64,
       paddingVertical: 7,
     })
-    expect(screen.queryByTestId('worker-v5-payout-method-mint-aura')).toBeNull()
+    expect(screen.getByTestId('worker-v5-payout-method-hero-formula-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-account-management-icon-0-image').props.source).toBe(require('@/assets/worker-image-icons/payout-add-bank-account-core.png'))
     expect(screen.getByTestId('worker-v5-account-management-icon-1-image').props.source).toBe(require('@/assets/worker-image-icons/payout-limit-policy-core.png'))
     expect(screen.getByTestId('worker-v5-account-management-detail-0')).toHaveTextContent(/Chủ tài khoản/)
     expect(screen.getByTestId('worker-v5-account-management-detail-0')).toHaveTextContent(/Cần xác minh/)
     expect(screen.getByTestId('worker-v5-account-management-detail-1')).toHaveTextContent(/Theo hệ thống/)
     expect(screen.getByTestId('worker-v5-account-management-detail-1')).toHaveTextContent(/Không mức cố định/)
-    expect(screen.queryByTestId('worker-v5-account-management-mint-aura')).toBeNull()
+    expect(screen.getByTestId('worker-v5-account-management-formula-mint-aura')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('worker-v5-account-management-row-0'))
     expect(screen.getByTestId('worker-v5-bank-account-form')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('worker-v5-account-management-row-1'))

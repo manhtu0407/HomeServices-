@@ -1,13 +1,15 @@
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useReducer, useState } from 'react'
-import * as ExpoLinking from 'expo-linking'
 import { useRouter } from 'expo-router'
-import { Linking, Platform } from 'react-native'
+import { Platform } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { USER_ROLES, type UserRole } from '@nestscout/shared'
 import { addPushNotificationResponseListener, setupPushNotifications } from './push-notifications'
 import { generateClientRequestId } from './client-request-id'
 import { parseAuthIdentifier, validateAuthIdentifier } from './auth-identifier'
+import { createSessionFromAuthCallback, getRuntimeAuthCallbackUrl, isPasswordRecoveryCallbackUrl, startGoogleOAuthRequest, subscribeToAuthCallbackUrls } from './auth-callback'
+import { requestPasswordRecoveryEmail, updateRecoveredPassword } from './password-recovery'
+import { resendSignupConfirmationEmail } from './signup-confirmation'
 import { workerService } from './services'
 
 type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'config_missing'
@@ -19,10 +21,14 @@ type AuthState = {
   loading: boolean
   profileStatus: ProfileStatus
   authError: string | null
+  passwordRecoveryPending: boolean
   enterGuestMode: () => void
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>
+  resendSignupConfirmation: (email: string) => Promise<{ success: boolean; error?: string }>
+  requestPasswordRecovery: (email: string) => Promise<{ success: boolean; error?: string }>
+  completePasswordRecovery: (password: string) => Promise<{ success: boolean; error?: string }>
   submitWorkerApplication: (draft: WorkerApplicationDraft) => Promise<{ success: boolean; error?: string; applicationId?: string }>
   updateCustomerProfile: (profile: CustomerProfileDraft) => Promise<{ success: boolean; error?: string }>
   updatePassword: (passwords: CustomerPasswordUpdateDraft) => Promise<{ success: boolean; error?: string }>
@@ -76,10 +82,14 @@ const AuthContext = createContext<AuthState>({
   loading: true,
   profileStatus: 'idle',
   authError: null,
+  passwordRecoveryPending: false,
   enterGuestMode: () => undefined,
   signInWithGoogle: async () => ({ success: false, error: 'Đăng nhập Google chưa sẵn sàng' }),
   signInWithPassword: async () => ({ success: false, error: 'Đăng nhập chưa sẵn sàng' }),
   signUpWithIdentifier: async () => ({ success: false, error: 'Đăng ký chưa sẵn sàng' }),
+  resendSignupConfirmation: async () => ({ success: false, error: 'Gửi lại email xác nhận chưa sẵn sàng' }),
+  requestPasswordRecovery: async () => ({ success: false, error: 'Khôi phục mật khẩu chưa sẵn sàng' }),
+  completePasswordRecovery: async () => ({ success: false, error: 'Đặt lại mật khẩu chưa sẵn sàng' }),
   submitWorkerApplication: async () => ({ success: false, error: 'Gửi xét duyệt thợ chưa sẵn sàng' }),
   updateCustomerProfile: async () => ({ success: false, error: 'Lưu hồ sơ khách chưa sẵn sàng' }),
   updatePassword: async () => ({ success: false, error: 'Đổi mật khẩu chưa sẵn sàng' }),
@@ -116,7 +126,10 @@ function useAuthController(): AuthState {
   const { push: pushRoute } = useRouter()
   const [{ session, role, loading, profileStatus, authError }, patchAuth] = useReducer(authSnapshotReducer, localVisualAuditSnapshot ?? INITIAL_AUTH_SNAPSHOT)
   const [guestMode, setGuestMode] = useState(false)
+  const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(() => isPasswordRecoveryCallbackUrl(getRuntimeAuthCallbackUrl()))
   const loadingRef = useRef(INITIAL_AUTH_SNAPSHOT.loading)
+  const passwordRecoveryPendingRef = useRef(passwordRecoveryPending)
+  const passwordRecoverySessionReadyRef = useRef(false)
   const pushRegistrationKeyRef = useRef<string | null>(null)
   const sessionRef = useRef<Session | null>(INITIAL_AUTH_SNAPSHOT.session)
 
@@ -182,10 +195,17 @@ function useAuthController(): AuthState {
       })
       return null
     }
-  }, [])
+  }, [localVisualAuditRole])
 
-  const createSessionFromOAuthUrl = useCallback(async (url: string) => {
-    const result = await createSessionFromOAuthCallback(url)
+  const createSessionFromAuthUrl = useCallback(async (url: string) => {
+    const recoveryCallback = isPasswordRecoveryCallbackUrl(url)
+    if (recoveryCallback) {
+      passwordRecoveryPendingRef.current = true
+      setPasswordRecoveryPending(true)
+      patchAuth({ role: null, profileStatus: 'idle', authError: null, loading: true })
+    }
+
+    const result = await createSessionFromAuthCallback(url)
     if (result.error) {
       patchAuth({
         authError: result.error,
@@ -197,6 +217,14 @@ function useAuthController(): AuthState {
 
     if (!result.session?.user) return null
     setGuestMode(false)
+    if (result.recovery || passwordRecoveryPendingRef.current) {
+      passwordRecoveryPendingRef.current = true
+      passwordRecoverySessionReadyRef.current = result.recovery
+      setPasswordRecoveryPending(true)
+      patchAuth({ session: result.session, role: null, profileStatus: 'idle', authError: null, loading: false })
+      return result.session
+    }
+
     patchAuth({ session: result.session })
     await fetchRole(result.session.user.id)
     return result.session
@@ -219,10 +247,10 @@ function useAuthController(): AuthState {
   useEffect(() => {
     if (localVisualAuditRole) return () => undefined
     if (!supabase || Platform.OS === 'web') return () => undefined
-    return subscribeToOAuthCallbackUrls((url) => {
-      void createSessionFromOAuthUrl(url)
+    return subscribeToAuthCallbackUrls((url) => {
+      void createSessionFromAuthUrl(url)
     })
-  }, [createSessionFromOAuthUrl, localVisualAuditRole])
+  }, [createSessionFromAuthUrl, localVisualAuditRole])
 
   useEffect(() => {
     if (localVisualAuditRole) return
@@ -272,8 +300,12 @@ function useAuthController(): AuthState {
       .then(({ data: { session } }) => {
         if (session?.user) {
           setGuestMode(false)
-          patchAuth({ session })
-          void fetchRole(session.user.id)
+          if (passwordRecoveryPendingRef.current) {
+            patchAuth({ session, role: null, profileStatus: 'idle', authError: null, loading: false })
+          } else {
+            patchAuth({ session })
+            void fetchRole(session.user.id)
+          }
         } else {
           patchAuth({ session, role: null, profileStatus: 'idle', loading: false })
         }
@@ -290,12 +322,25 @@ function useAuthController(): AuthState {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setGuestMode(false)
+        if (event === 'PASSWORD_RECOVERY' || passwordRecoveryPendingRef.current) {
+          passwordRecoveryPendingRef.current = true
+          if (event === 'PASSWORD_RECOVERY') passwordRecoverySessionReadyRef.current = true
+          setPasswordRecoveryPending(true)
+          patchAuth({ session, role: null, profileStatus: 'idle', authError: null, loading: false })
+          return
+        }
+
         patchAuth({ session })
         void fetchRole(session.user.id)
       } else {
+        if (event === 'SIGNED_OUT') {
+          passwordRecoveryPendingRef.current = false
+          passwordRecoverySessionReadyRef.current = false
+          setPasswordRecoveryPending(false)
+        }
         patchAuth({ session, role: null, profileStatus: 'idle', authError: null, loading: false })
       }
     })
@@ -307,6 +352,9 @@ function useAuthController(): AuthState {
   }, [fetchRole, localVisualAuditSnapshot])
 
   const enterGuestMode = useCallback(() => {
+    passwordRecoveryPendingRef.current = false
+    passwordRecoverySessionReadyRef.current = false
+    setPasswordRecoveryPending(false)
     setGuestMode(true)
     patchAuth({
       session: null,
@@ -316,6 +364,19 @@ function useAuthController(): AuthState {
       loading: false,
     })
   }, [])
+
+  const completePasswordRecovery = useCallback(async (newPassword: string) => {
+    if (!passwordRecoveryPendingRef.current || !passwordRecoverySessionReadyRef.current || !session?.user) {
+      const error = 'Liên kết đặt lại mật khẩu không còn hiệu lực. Vui lòng yêu cầu liên kết mới.'
+      patchAuth({ authError: error, loading: false })
+      return { success: false, error }
+    }
+
+    patchAuth({ authError: null, loading: true })
+    const result = await updateRecoveredPassword(newPassword)
+    patchAuth({ authError: result.error ?? null, loading: false })
+    return result
+  }, [session?.user])
 
   const signInWithPassword = useCallback(async (identifierInput: string, password: string) => {
     if (!supabase) {
@@ -410,6 +471,11 @@ function useAuthController(): AuthState {
       patchAuth({ authError: error })
       return { success: false, error }
     }
+    if (identifier.kind !== 'email') {
+      const error = 'Đăng ký bằng SDT chưa sẵn sàng. Vui lòng dùng email.'
+      patchAuth({ authError: error })
+      return { success: false, error }
+    }
     if (password.length < 6) {
       const error = 'Mật khẩu cần ít nhất 6 ký tự'
       patchAuth({ authError: error })
@@ -418,11 +484,8 @@ function useAuthController(): AuthState {
 
     patchAuth({ loading: true, authError: null })
     try {
-      const credentials = identifier.kind === 'email'
-        ? { email: identifier.value }
-        : { phone: identifier.value }
       const { data, error } = await supabase.auth.signUp({
-        ...credentials,
+        email: identifier.value,
         password,
         options: {
           data: {
@@ -439,7 +502,7 @@ function useAuthController(): AuthState {
       }
 
       if (!data.session?.user) {
-        patchAuth({ loading: false, profileStatus: 'idle' })
+        patchAuth({ authError: null, loading: false, profileStatus: 'idle', role: null, session: null })
         return { success: true, needsConfirmation: true }
       }
 
@@ -484,7 +547,7 @@ function useAuthController(): AuthState {
     } catch {
       return { success: false, error: 'Không thể gửi xét duyệt lúc này. Vui lòng thử lại.' }
     }
-  }, [localVisualAuditRole])
+  }, [])
 
   const updateCustomerProfile = useCallback(async (profile: CustomerProfileDraft) => {
     if (!supabase || !session?.user) {
@@ -588,6 +651,9 @@ function useAuthController(): AuthState {
   }, [session])
 
   const signOut = useCallback(async () => {
+    passwordRecoveryPendingRef.current = false
+    passwordRecoverySessionReadyRef.current = false
+    setPasswordRecoveryPending(false)
     if (localVisualAuditSnapshot) {
       patchAuth(localVisualAuditSnapshot)
       return
@@ -625,8 +691,8 @@ function useAuthController(): AuthState {
   }, [fetchRole, localVisualAuditRole, session?.user])
 
   const authValue = useMemo(
-    () => ({ session, role, guestMode, loading, profileStatus, authError, enterGuestMode, signInWithGoogle, signInWithPassword, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
-    [authError, enterGuestMode, guestMode, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword],
+    () => ({ session, role, guestMode, loading, profileStatus, authError, passwordRecoveryPending, enterGuestMode, signInWithGoogle, signInWithPassword, signUpWithIdentifier, resendSignupConfirmation: resendSignupConfirmationEmail, requestPasswordRecovery: requestPasswordRecoveryEmail, completePasswordRecovery, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
+    [authError, completePasswordRecovery, enterGuestMode, guestMode, loading, passwordRecoveryPending, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword],
   )
 
   return authValue
@@ -682,96 +748,4 @@ function buildLocalVisualAuditSession(role: Extract<UserRole, 'customer' | 'work
       },
     },
   } as Session
-}
-
-function getOAuthRedirectUrl() {
-  const runtime = globalThis as typeof globalThis & { location?: { origin?: string } }
-  if (Platform.OS === 'web' && runtime.location?.origin) return `${runtime.location.origin}/`
-  return ExpoLinking.createURL('/')
-}
-
-function subscribeToOAuthCallbackUrls(onUrl: (url: string) => void) {
-  let cancelled = false
-  const handleUrl = (url: string | null) => {
-    if (cancelled || !url) return
-    onUrl(url)
-  }
-
-  Linking.getInitialURL().then(handleUrl).catch(() => undefined)
-  const subscription = Linking.addEventListener('url', ({ url }) => handleUrl(url))
-  return () => {
-    cancelled = true
-    subscription.remove()
-  }
-}
-
-async function startGoogleOAuthRequest(): Promise<{ success: boolean; error?: string; configMissing?: boolean }> {
-  if (!supabase) {
-    return {
-      success: false,
-      configMissing: true,
-      error: 'Dịch vụ đăng nhập chưa sẵn sàng. Vui lòng thử lại sau.',
-    }
-  }
-
-  try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: getOAuthRedirectUrl(),
-        skipBrowserRedirect: Platform.OS !== 'web',
-      },
-    })
-
-    if (error || (Platform.OS !== 'web' && !data.url)) {
-      return { success: false, error: 'Không thể mở đăng nhập Google. Vui lòng thử lại sau.' }
-    }
-
-    if (Platform.OS !== 'web') await Linking.openURL(data.url)
-    return { success: true }
-  } catch {
-    return { success: false, error: 'Không thể kết nối đăng nhập Google. Vui lòng thử lại sau.' }
-  }
-}
-
-async function createSessionFromOAuthCallback(url: string): Promise<{ session: Session | null; error?: string }> {
-  if (!supabase) return { session: null }
-  const params = extractOAuthParamsFromUrl(url)
-  if (params.error_code || params.error) {
-    return { session: null, error: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại sau.' }
-  }
-
-  try {
-    if (params.access_token && params.refresh_token) {
-      const { data, error } = await supabase.auth.setSession({
-        access_token: params.access_token,
-        refresh_token: params.refresh_token,
-      })
-      if (error || !data.session) throw error
-      return { session: data.session }
-    }
-
-    if (params.code) {
-      const { data, error } = await supabase.auth.exchangeCodeForSession(params.code)
-      if (error || !data.session) throw error
-      return { session: data.session }
-    }
-  } catch {
-    return { session: null, error: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại sau.' }
-  }
-
-  return { session: null }
-}
-
-function extractOAuthParamsFromUrl(url: string) {
-  const [, fragment = ''] = url.split('#')
-  const query = url.includes('?') ? url.slice(url.indexOf('?') + 1).split('#')[0] : ''
-  const search = new URLSearchParams([query, fragment].filter(Boolean).join('&'))
-  return {
-    access_token: search.get('access_token') ?? undefined,
-    code: search.get('code') ?? undefined,
-    error: search.get('error') ?? undefined,
-    error_code: search.get('error_code') ?? undefined,
-    refresh_token: search.get('refresh_token') ?? undefined,
-  }
 }

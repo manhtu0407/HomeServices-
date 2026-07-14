@@ -1,4 +1,4 @@
-import { memo, type ComponentType, type ReactNode, useMemo, useState } from 'react'
+import { memo, type ComponentType, type ReactNode, useCallback, useMemo, useState } from 'react'
 import { useEffect, useRef } from 'react'
 import {
   Alert,
@@ -17,7 +17,7 @@ import {
   type ViewStyle,
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient } from 'react-native-svg'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
@@ -77,6 +77,7 @@ import {
   WorkerV5VerificationDocumentsBody,
   WorkerV5WorkerRankingBody,
 } from './profile/body-surfaces'
+import { useWorkerAvatarPicker } from './profile/use-worker-avatar-picker'
 import type { WorkerV5MemoryPreferenceUiId } from './profile/memory'
 import { WORKER_V5_MEMORY_PREFERENCE_API_KEYS, workerV5MemoryPreferenceOverridesFromMemory } from './profile/memory'
 import {
@@ -232,6 +233,8 @@ import {
 import {
   WorkerV5KaelOrbBody,
 } from './chat/body-surfaces'
+import { WorkerV5KaelSessionMenu, WorkerV5KaelSessionPlusIcon } from './chat/session-menu'
+import { useWorkerV5KaelOrbChat } from './chat/use-kael-orb-chat'
 import {
   WorkerV5BoundaryNote,
   WorkerV5TimerCard,
@@ -276,7 +279,6 @@ const workerV5OpportunityServiceIcons: Record<ServiceType, ImageSourcePropType> 
   plumbing: workerV5CapturedIconAssets.opportunityPlumbing,
 }
 
-const workerV5AvatarIcon = require('@/assets/worker-image-icons/profile-avatar-core.png') as ImageSourcePropType
 const WORKER_V5_PROFILE_ICON_VISUAL_BOOST = new Set<WorkerV5IconName>(['document', 'scope'])
 
 const WORKER_V5_SUPPORTED_SERVICES: readonly ServiceType[] = ['electrical', 'plumbing', 'cleaning']
@@ -356,6 +358,12 @@ export function WorkerProfileSurface() {
 function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition }) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const language = resolveWorkerV5Language(params)
+  const auditRole = firstRouteParam(params.ns_audit_role)
+  const routeLanguage = firstRouteParam(params.ns_worker_lang)
+  const workerRouteContext = useMemo(() => ({
+    ns_audit_role: auditRole,
+    ns_worker_lang: routeLanguage,
+  }), [auditRole, routeLanguage])
   const screenId = screen.id
   const screenPrimaryNext = screen.primaryNext
   const onDockScroll = useDockScrollHandler()
@@ -366,6 +374,10 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const actionBusyRef = useRef(false)
   const { height } = useWindowDimensions()
   const glass = useGlassAccessibility()
+  const { avatarUploadBusy, openWorkerAvatarPicker } = useWorkerAvatarPicker({
+    language,
+    uploadAvatar: runtime.actions.workerUploadAvatar,
+  })
   const previousScreen = useMemo(
     () => {
       const index = WORKER_V5_SCREENS.findIndex((candidate) => candidate.id === screenId)
@@ -462,7 +474,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
 
   const openScreen = (target: WorkerV5ScreenDefinition | null) => {
     if (!target) return
-    router.replace(routeForWorkerV5Screen(target) as never)
+    router.replace(routeForWorkerV5Screen(target, workerRouteContext) as never)
   }
   const openScreenById = (id: WorkerV5ScreenId) => {
     openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === id) ?? null)
@@ -514,8 +526,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
 
   useEffect(() => {
     if (!screenRedirectId) return
-    router.replace(routeForWorkerV5Screen(requireWorkerV5Screen(screenRedirectId)) as never)
-  }, [router, screenRedirectId])
+    router.replace(routeForWorkerV5Screen(requireWorkerV5Screen(screenRedirectId), workerRouteContext) as never)
+  }, [router, screenRedirectId, workerRouteContext])
 
   if (screenRedirectId) return null
 
@@ -530,6 +542,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
         reduceTransparency={glass.reduceTransparency}
         screen={screen}
         surfaceStyle={surfaceStyle}
+        workerJobsHydrated={runtime.workerJobsHydrated}
       />
     )
   }
@@ -753,6 +766,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           openJobChat,
           actionBusy,
           routePreview,
+          openWorkerAvatarPicker,
+          avatarUploadBusy,
         )}
 
         {primaryAction && screen.id !== '5.4-reliability-insights' && screen.id !== '5.5-account-utilities' && screen.id !== '5.6-agent-memory-preferences' && screen.id !== '5.10-support-settings' && !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff ? (
@@ -1010,6 +1025,8 @@ function renderWorkerV5Body(
   navigateJobChat: () => void,
   actionBusy: boolean,
   routePreview: WorkerV5RoutePreviewState,
+  openWorkerAvatarPicker: () => void,
+  avatarUploadBusy: boolean,
 ) {
   switch (screen.id) {
     case '1.1-worker-home':
@@ -1156,13 +1173,15 @@ function renderWorkerV5Body(
     case '5.1-profile-overview':
       return (
         <WorkerV5ProfileOverviewBody
-          avatarIcon={workerV5AvatarIcon}
+          avatarUploadBusy={avatarUploadBusy}
           caseWideAura={WorkerV5CustomerCaseWideMintAura}
           dossierIcons={workerV5ProfileDossierIconAssets}
           heroAura={WorkerV5EarningsHomeHeroAura}
           language={language}
           listAura={WorkerV5EarningsHomeListAura}
           navigateToScreen={navigateToScreen}
+          onPickAvatar={openWorkerAvatarPicker}
+          reduceMotion={reduceMotion}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
           zipAura={WorkerV5CustomerZipMintAura}
@@ -1685,6 +1704,7 @@ function WorkerV5InProgressBody({
           client_request_id: generateClientRequestId(),
           job_id: currentJobId,
           language,
+          mode: 'intake',
         })
         if (!created.success || created.data.session.job_id !== currentJobId) {
           setFieldEvidenceKaelConfirmation(textByLanguage(language, 'Kael chưa mở được phiên xác nhận hiện trường.', 'Kael could not open the on-site confirmation session.'))
@@ -1986,7 +2006,7 @@ function WorkerV5ScopeChangeBody({
 
   return (
     <View style={styles.sectionStack}>
-      <WorkerV5ProgressRail activeStep={4} language={language} />
+      <WorkerV5ProgressRail activeStep={4} language={language} reduceTransparency={reduceTransparency} />
       <WorkerV5SectionHeader
         action={textByLanguage(language, 'Kael hỗ trợ soạn', 'Kael drafts')}
         title={textByLanguage(language, 'Đề xuất thay đổi', 'Change proposal')}
@@ -2063,6 +2083,7 @@ function WorkerV5KaelOrbScreenSurface({
   reduceTransparency,
   screen,
   surfaceStyle,
+  workerJobsHydrated,
 }: {
   deal: LocalDeal | null
   language: AppLanguage
@@ -2072,28 +2093,52 @@ function WorkerV5KaelOrbScreenSurface({
   reduceTransparency: boolean
   screen: WorkerV5ScreenDefinition
   surfaceStyle: StyleProp<ViewStyle>
+  workerJobsHydrated: boolean
 }) {
-  const title = mode === 'normal'
-    ? 'Kael'
-    : textByLanguage(language, 'Kael nhận việc', 'Kael intake')
+  const modeOptions = [
+    {
+      description: textByLanguage(language, 'Hỏi đáp và hỗ trợ nhanh', 'Quick questions and support'),
+      label: textByLanguage(language, 'Chat thường', 'Normal chat'),
+      value: 'normal' as const,
+    },
+    {
+      description: textByLanguage(language, 'Lọc và chuẩn bị cơ hội phù hợp', 'Filter and prepare matching work'),
+      label: textByLanguage(language, 'Nhận việc', 'Job intake'),
+      value: 'intake' as const,
+    },
+  ]
+  const activeMode = modeOptions.find((item) => item.value === mode) ?? modeOptions[0]
   const [modeMenuOpen, setModeMenuOpen] = useState(false)
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false)
+  const [chatEntryKey, setChatEntryKey] = useState(0)
+  const [composerActive, setComposerActive] = useState(false)
   const modeMenuOpacity = useSharedValue(reduceMotion ? 1 : 0)
-  const modeMenuScale = useSharedValue(reduceMotion ? 1 : 0.96)
+  const modeMenuScaleX = useSharedValue(reduceMotion ? 1 : 0.92)
+  const modeMenuScaleY = useSharedValue(reduceMotion ? 1 : 0.8)
+  const modeMenuContentOpacity = useSharedValue(reduceMotion ? 1 : 0)
+  const modeMenuContentTranslateY = useSharedValue(reduceMotion ? 0 : 8)
   const modeMenuSheenOpacity = useSharedValue(0)
   const modeMenuSheenX = useSharedValue(-92)
-  const modeMenuTranslateY = useSharedValue(reduceMotion ? 0 : -6)
+  const modeMenuTranslateY = useSharedValue(reduceMotion ? 0 : -4)
+  const modeMenuTriggerScale = useSharedValue(1)
 
-  const switchMode = (nextMode: WorkerV5KaelOrbMode) => {
-    setModeMenuOpen(false)
-    navigateToScreen(nextMode === 'normal' ? '3.1-kael-chat-normal' : '3.2-kael-job-intake')
-  }
   const toggleModeMenu = () => {
+    setSessionMenuOpen(false)
+    if (!reduceMotion) {
+      modeMenuTriggerScale.value = withSequence(
+        withTiming(0.985, { duration: motionDuration(70, reduceMotion) }),
+        withSpring(1, motionTokens.liquid.press),
+      )
+    }
     if (!modeMenuOpen) {
       modeMenuOpacity.value = reduceMotion ? 1 : 0
-      modeMenuScale.value = reduceMotion ? 1 : 0.96
+      modeMenuScaleX.value = reduceMotion ? 1 : 0.92
+      modeMenuScaleY.value = reduceMotion ? 1 : 0.8
+      modeMenuContentOpacity.value = reduceMotion ? 1 : 0
+      modeMenuContentTranslateY.value = reduceMotion ? 0 : 8
       modeMenuSheenOpacity.value = 0
       modeMenuSheenX.value = -92
-      modeMenuTranslateY.value = reduceMotion ? 0 : -6
+      modeMenuTranslateY.value = reduceMotion ? 0 : -4
     }
     setModeMenuOpen((current) => !current)
   }
@@ -2101,8 +2146,13 @@ function WorkerV5KaelOrbScreenSurface({
     opacity: modeMenuOpacity.value,
     transform: [
       { translateY: modeMenuTranslateY.value },
-      { scale: modeMenuScale.value },
+      { scaleX: modeMenuScaleX.value },
+      { scaleY: modeMenuScaleY.value },
     ],
+  }))
+  const animatedModeMenuContentStyle = useAnimatedStyle(() => ({
+    opacity: modeMenuContentOpacity.value,
+    transform: [{ translateY: modeMenuContentTranslateY.value }],
   }))
   const animatedModeMenuSheenStyle = useAnimatedStyle(() => ({
     opacity: modeMenuSheenOpacity.value,
@@ -2111,8 +2161,44 @@ function WorkerV5KaelOrbScreenSurface({
       { rotate: '-10deg' },
     ],
   }))
-  const orbChat = useWorkerV5KaelOrbChat(deal, language)
-  const composer = mode === 'intake' && !canUseWorkerV5PrivateKaelChat(deal)
+  const animatedModeTriggerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: modeMenuTriggerScale.value }],
+  }))
+  const orbChat = useWorkerV5KaelOrbChat(deal, language, mode, workerJobsHydrated)
+  const resetToNewSession = orbChat.resetToNewSession
+  const resetKaelSurface = useCallback(() => {
+    setModeMenuOpen(false)
+    setSessionMenuOpen(false)
+    setComposerActive(false)
+    setChatEntryKey((current) => current + 1)
+    resetToNewSession()
+  }, [resetToNewSession])
+  useFocusEffect(resetKaelSurface)
+  const switchMode = (nextMode: WorkerV5KaelOrbMode) => {
+    resetKaelSurface()
+    navigateToScreen(nextMode === 'normal' ? '3.1-kael-chat-normal' : '3.2-kael-job-intake')
+  }
+  const toggleSessionMenu = () => {
+    setModeMenuOpen(false)
+    const nextOpen = !sessionMenuOpen
+    setSessionMenuOpen(nextOpen)
+    if (nextOpen) void orbChat.refreshSessions()
+  }
+  const openNewSession = () => {
+    setComposerActive(false)
+    setChatEntryKey((current) => current + 1)
+    resetToNewSession()
+    void orbChat.startNewSession().then((created) => {
+      if (created) setSessionMenuOpen(false)
+    })
+  }
+  const openSession = (sessionId: string) => {
+    setComposerActive(false)
+    setSessionMenuOpen(false)
+    void orbChat.openSession(sessionId)
+  }
+  const hasPrivateIntakeChat = mode !== 'intake' || canUseWorkerV5PrivateKaelChat(deal)
+  const composer = !hasPrivateIntakeChat
     ? (
         <WorkerV5KaelIntakeReadinessActions
           language={language}
@@ -2123,9 +2209,11 @@ function WorkerV5KaelOrbScreenSurface({
     : (
       <WorkerV5KaelOrbComposer
         busy={orbChat.busy}
+        key={`${mode}:${getWorkerV5ChatJobId(deal) ?? 'no-job'}:${orbChat.activeSessionId ?? 'draft'}:${chatEntryKey}`}
         language={language}
         mediaCount={orbChat.mediaCount}
         mode={mode}
+        onActivityChange={setComposerActive}
         onPickMedia={() => void orbChat.pickMedia()}
         onSend={(message) => void orbChat.send(message)}
         reduceTransparency={reduceTransparency}
@@ -2136,15 +2224,21 @@ function WorkerV5KaelOrbScreenSurface({
     if (!modeMenuOpen) return
     if (reduceMotion) {
       modeMenuOpacity.value = 1
-      modeMenuScale.value = 1
+      modeMenuScaleX.value = 1
+      modeMenuScaleY.value = 1
+      modeMenuContentOpacity.value = 1
+      modeMenuContentTranslateY.value = 0
       modeMenuSheenOpacity.value = 0
       modeMenuTranslateY.value = 0
       return
     }
 
-    modeMenuOpacity.value = withTiming(1, { duration: motionDuration(140, reduceMotion) })
-    modeMenuScale.value = withSpring(1, motionTokens.liquid.entrance)
-    modeMenuTranslateY.value = withSpring(0, motionTokens.liquid.entrance)
+    modeMenuOpacity.value = withTiming(1, { duration: motionDuration(120, reduceMotion) })
+    modeMenuScaleX.value = withSpring(1, motionTokens.liquid.pill)
+    modeMenuScaleY.value = withSpring(1, motionTokens.liquid.entrance)
+    modeMenuTranslateY.value = withSpring(0, motionTokens.liquid.pill)
+    modeMenuContentOpacity.value = withDelay(55, withTiming(1, { duration: motionDuration(130, reduceMotion) }))
+    modeMenuContentTranslateY.value = withDelay(45, withSpring(0, motionTokens.liquid.entrance))
     if (!reduceTransparency) {
       modeMenuSheenOpacity.value = withSequence(
         withTiming(0.58, { duration: motionDuration(90, reduceMotion) }),
@@ -2152,7 +2246,7 @@ function WorkerV5KaelOrbScreenSurface({
       )
       modeMenuSheenX.value = withTiming(96, { duration: motionDuration(340, reduceMotion) })
     }
-  }, [modeMenuOpen, modeMenuOpacity, modeMenuScale, modeMenuSheenOpacity, modeMenuSheenX, modeMenuTranslateY, reduceMotion, reduceTransparency])
+  }, [modeMenuContentOpacity, modeMenuContentTranslateY, modeMenuOpen, modeMenuOpacity, modeMenuScaleX, modeMenuScaleY, modeMenuSheenOpacity, modeMenuSheenX, modeMenuTranslateY, reduceMotion, reduceTransparency])
 
   return (
     <SafeAreaView style={[styles.safeArea, surfaceStyle, styles.kaelOrbCustomerSafeArea]} testID={`worker-v5-screen-${screen.id}`}>
@@ -2188,26 +2282,56 @@ function WorkerV5KaelOrbScreenSurface({
             >
               <WorkerV5BackArrowIcon />
             </Pressable>
-            <View style={styles.kaelOrbCustomerTopCopy}>
-              <Text
-                adjustsFontSizeToFit
-                minimumFontScale={0.68}
-                numberOfLines={1}
-                style={styles.kaelOrbCustomerTopTitle}
-                testID="worker-v5-kael-source-title"
-              >
-                {title}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityLabel={textByLanguage(language, 'Chuyển chế độ chat', 'Switch chat mode')}
-              accessibilityRole="button"
-              onPress={toggleModeMenu}
-              style={({ pressed }) => [styles.kaelOrbCustomerTopControl, pressed ? styles.pressed : null]}
-              testID="worker-v5-kael-mode-toggle"
+            <View style={styles.kaelOrbCustomerTopSpacer} />
+            <View
+              style={[
+                styles.kaelOrbCustomerHeaderActions,
+                modeMenuOpen || sessionMenuOpen ? styles.kaelOrbCustomerHeaderActionsOpen : null,
+              ]}
+              testID="worker-v5-kael-header-actions"
             >
-              <Text style={styles.kaelOrbCustomerTopActionText}>⇄</Text>
-            </Pressable>
+              <Pressable
+                accessibilityLabel={textByLanguage(language, 'Quản lý các phiên Kael', 'Manage Kael conversations')}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: sessionMenuOpen }}
+                onPress={toggleSessionMenu}
+                style={({ pressed }) => [
+                  styles.kaelOrbCustomerSessionTrigger,
+                  sessionMenuOpen ? styles.kaelOrbCustomerSessionTriggerOpen : null,
+                  pressed ? (reduceMotion ? styles.kaelOrbCustomerSessionTriggerPressedReduced : styles.pressed) : null,
+                ]}
+                testID="worker-v5-kael-session-toggle"
+              >
+                <WorkerV5KaelSessionPlusIcon />
+              </Pressable>
+              <Pressable
+                accessibilityLabel={textByLanguage(
+                  language,
+                  `Chế độ Kael: ${activeMode.label}. Nhấn để đổi chế độ`,
+                  `Kael mode: ${activeMode.label}. Press to switch mode`,
+                )}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: modeMenuOpen }}
+                onPress={toggleModeMenu}
+                style={({ pressed }) => [
+                  styles.kaelOrbCustomerModeTrigger,
+                  modeMenuOpen ? styles.kaelOrbCustomerModeTriggerOpen : null,
+                  animatedModeTriggerStyle,
+                  pressed ? styles.pressed : null,
+                ]}
+                testID="worker-v5-kael-mode-toggle"
+              >
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.78}
+                  numberOfLines={1}
+                  style={styles.kaelOrbCustomerModeTriggerText}
+                  testID="worker-v5-kael-active-mode"
+                >
+                  {activeMode.label}
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           {modeMenuOpen ? (
@@ -2221,42 +2345,69 @@ function WorkerV5KaelOrbScreenSurface({
                   {!reduceMotion ? <Animated.View pointerEvents="none" style={[styles.kaelOrbCustomerModeMenuSheen, animatedModeMenuSheenStyle]} testID="worker-v5-kael-mode-menu-sheen" /> : null}
                 </>
               ) : null}
-              {([
-                { label: textByLanguage(language, 'Chat thường', 'Normal chat'), value: 'normal' as const },
-                { label: textByLanguage(language, 'Nhận việc', 'Job intake'), value: 'intake' as const },
-              ]).map((item) => {
-                const selected = mode === item.value
-                return (
-                  <Pressable
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected }}
-                    key={item.value}
-                    onPress={() => switchMode(item.value)}
-                    style={({ pressed }) => [
-                      styles.kaelOrbCustomerModeMenuOption,
-                      selected ? styles.kaelOrbCustomerModeMenuOptionActive : null,
-                      pressed ? styles.pressed : null,
-                    ]}
-                    testID={`worker-v5-kael-mode-menu-${item.value}`}
-                  >
-                    <Text style={[styles.kaelOrbCustomerModeMenuText, selected ? styles.kaelOrbCustomerModeMenuTextActive : null]}>{item.label}</Text>
-                  </Pressable>
-                )
-              })}
+              <Animated.View style={[styles.kaelOrbCustomerModeMenuOptions, animatedModeMenuContentStyle]} testID="worker-v5-kael-mode-menu-options">
+                {modeOptions.map((item) => {
+                  const selected = mode === item.value
+                  return (
+                    <Pressable
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected }}
+                      key={item.value}
+                      onPress={() => switchMode(item.value)}
+                      style={({ pressed }) => [
+                        styles.kaelOrbCustomerModeMenuOption,
+                        selected ? styles.kaelOrbCustomerModeMenuOptionActive : null,
+                        pressed ? styles.pressed : null,
+                      ]}
+                      testID={`worker-v5-kael-mode-menu-${item.value}`}
+                    >
+                      <View style={styles.kaelOrbCustomerModeMenuCopy}>
+                        <Text style={[styles.kaelOrbCustomerModeMenuText, selected ? styles.kaelOrbCustomerModeMenuTextActive : null]}>{item.label}</Text>
+                        <Text style={styles.kaelOrbCustomerModeMenuDescription}>{item.description}</Text>
+                      </View>
+                      {selected ? <Text style={styles.kaelOrbCustomerModeMenuCheck}>{'✓'}</Text> : null}
+                    </Pressable>
+                  )
+                })}
+              </Animated.View>
             </Animated.View>
           ) : null}
 
+          {sessionMenuOpen ? (
+            <WorkerV5KaelSessionMenu
+              activeSessionId={orbChat.activeSessionId}
+              canCreate={orbChat.canCreateSession}
+              error={orbChat.sessionsError}
+              language={language}
+              loading={orbChat.sessionsLoading}
+              mode={mode}
+              onArchive={orbChat.archiveSession}
+              onCreate={openNewSession}
+              onPin={orbChat.setSessionPinned}
+              onRename={orbChat.renameSession}
+              onSelect={openSession}
+              pendingSessionIds={orbChat.pendingSessionIds}
+              reduceMotion={reduceMotion}
+              reduceTransparency={reduceTransparency}
+              sessions={orbChat.sessions}
+            />
+          ) : null}
+
           <WorkerV5KaelOrbBody
+            activeSessionId={orbChat.activeSessionId}
             composer={composer}
+            composerActive={composerActive}
             deal={deal}
             fallbackJobIcon={workerV5Icons.jobs}
+            keepIntakeContextAccessible={!hasPrivateIntakeChat}
             language={language}
             liveError={orbChat.error}
             liveStatus={orbChat.busyLabel}
             liveTurns={orbChat.liveTurns}
             mode={mode}
-            modeMenuOpen={modeMenuOpen}
+            modeMenuOpen={modeMenuOpen || sessionMenuOpen}
             onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
+            reduceMotion={reduceMotion}
             reduceTransparency={reduceTransparency}
             serviceIcons={workerV5OpportunityServiceIcons}
           />
@@ -2302,157 +2453,12 @@ function WorkerV5KaelIntakeReadinessActions({
   )
 }
 
-function useWorkerV5KaelOrbChat(deal: LocalDeal | null, language: AppLanguage) {
-  const [turns, setTurns] = useState<WorkerV5PrivateKaelLocalTurn[]>([])
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState<KaelChatProgress | null>(null)
-  const [mediaItems, setMediaItems] = useState<WorkerV5PrivateKaelMediaPreview[]>([])
-  const jobId = getWorkerV5ChatJobId(deal)
-  const readOnly = isWorkerV5PrivateKaelReadOnly(deal)
-  const hasPrivateKaelSessionAccess = Boolean(jobId) && canUseWorkerV5PrivateKaelChat(deal) && !readOnly
-  const activeJobIdRef = useRef<string | null>(jobId)
-  const sessionRef = useRef<WorkerV5PrivateKaelSession | null>(null)
-  activeJobIdRef.current = jobId
-
-  useEffect(() => {
-    setTurns([])
-    setError(null)
-    setProgress(null)
-    setMediaItems([])
-    sessionRef.current = null
-  }, [jobId])
-
-  const advisoryUnavailableReply = readOnly
-    ? textByLanguage(language, 'Chat chỉ còn đọc lại sau cổng thanh toán.', 'Chat is read-only after the payment gate.')
-    : textByLanguage(
-        language,
-        'Mình chưa có phiên Kael theo công việc để gửi câu hỏi này. Khi bạn có việc đang thực hiện, tin nhắn sẽ được gửi qua kênh tư vấn riêng.',
-        'There is no job-scoped Kael session for this question yet. Once you have active work, messages go through the private advisory channel.',
-      )
-  const progressPercent = progress ? Math.max(0, Math.min(100, Math.round(progress.progress * 100))) : null
-  const busyLabel = busy
-    ? progressPercent != null
-      ? textByLanguage(language, `Kael đang xử lý... ${progressPercent}%`, `Kael is working... ${progressPercent}%`)
-      : textByLanguage(language, 'Kael đang xử lý...', 'Kael is working...')
-    : null
-
-  const pickMedia = async () => {
-    if (busy) return
-    if (!hasPrivateKaelSessionAccess) {
-      Alert.alert('Kael', textByLanguage(language, 'Cần việc đang thực hiện để gửi ảnh cho Kael.', 'Active work is needed to send a photo to Kael.'))
-      return
-    }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Kael', textByLanguage(language, 'Cần quyền thư viện ảnh để thêm ảnh cho Kael.', 'Photo library permission is needed to add a photo for Kael.'))
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: false,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.84,
-    })
-    if (result.canceled || result.assets.length === 0) return
-    const asset = result.assets[0]
-    setMediaItems([{ fileName: workerV5PrivateKaelMediaName(asset, 0, language), uri: asset.uri }])
-  }
-
-  const send = async (message: string) => {
-    const content = message.trim()
-    if (!content || busy) return
-    setError(null)
-    setTurns((current) => [...current, { id: `worker-orb-${Date.now()}`, role: 'worker', text: content }])
-
-    if (!hasPrivateKaelSessionAccess || !jobId) {
-      setTurns((current) => [...current, { id: `kael-orb-${Date.now()}`, role: 'kael', text: advisoryUnavailableReply }])
-      setMediaItems([])
-      return
-    }
-
-    setBusy(true)
-    const currentJobId = jobId
-    try {
-      let mediaRefs: string[] = []
-      if (mediaItems.length > 0) {
-        const uploadDrafts: LocalMediaUploadDraft[] = mediaItems.map((item) => ({
-          fileName: item.fileName,
-          type: 'image',
-          uri: item.uri,
-        }))
-        const uploaded = await uploadJobMediaDrafts(currentJobId, uploadDrafts, 'kael_reference')
-        if (!uploaded.success) {
-          setError(uploaded.error)
-          return
-        }
-        mediaRefs = uploaded.mediaRefs
-      }
-
-      let sessionId = sessionRef.current?.jobId === currentJobId ? sessionRef.current.sessionId : null
-      if (!sessionId) {
-        const created = await workerKaelChatService.create({
-          client_request_id: generateClientRequestId(),
-          job_id: currentJobId,
-          language,
-        })
-        if (!created.success || created.data.session.job_id !== currentJobId) {
-          setProgress(null)
-          setError(textByLanguage(language, 'Kael chưa mở được phiên riêng cho việc này.', 'Kael could not open the private work session yet.'))
-          return
-        }
-        sessionId = created.data.session.id
-        sessionRef.current = { jobId: currentJobId, sessionId }
-        if (created.data.session.progress && activeJobIdRef.current === currentJobId) {
-          setProgress(created.data.session.progress)
-        }
-      }
-
-      const streamed = await workerKaelChatService.streamTurn(sessionId, {
-        client_request_id: generateClientRequestId(),
-        language,
-        media_refs: mediaRefs,
-        message: content,
-      }, {
-        onStage: (event) => {
-          if (activeJobIdRef.current !== currentJobId) return
-          setProgress(event.progress)
-        },
-        onToken: () => undefined,
-      })
-
-      let finalResponse = streamed.success ? streamed : null
-      if (!finalResponse) {
-        const recovered = await workerKaelChatService.get(sessionId)
-        if (recovered.success) finalResponse = recovered
-      }
-
-      if (!finalResponse || finalResponse.data.session.job_id !== currentJobId) {
-        if (activeJobIdRef.current === currentJobId) setProgress(null)
-        setError(textByLanguage(language, 'Kael bỏ qua phản hồi không khớp việc hiện tại.', 'Kael ignored a response that did not match the current work.'))
-        return
-      }
-
-      if (activeJobIdRef.current === currentJobId) {
-        sessionRef.current = { jobId: currentJobId, sessionId: finalResponse.data.session.id }
-        setProgress(finalResponse.data.session.progress)
-        setTurns(workerV5PrivateKaelTurnsFromResponse(finalResponse.data.turns))
-        setMediaItems([])
-      }
-    } catch {
-      setError(textByLanguage(language, 'Kael đang không kết nối được. Không có hành động nào được ghi vào việc.', 'Kael is unavailable. No work action was written.'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return { busy, busyLabel, error, liveTurns: turns, mediaCount: mediaItems.length, pickMedia, send }
-}
-
 function WorkerV5KaelOrbComposer({
   busy,
   language,
   mediaCount,
   mode,
+  onActivityChange,
   onPickMedia,
   onSend,
   reduceTransparency,
@@ -2461,11 +2467,13 @@ function WorkerV5KaelOrbComposer({
   language: AppLanguage
   mediaCount: number
   mode: WorkerV5KaelOrbMode
+  onActivityChange?: (active: boolean) => void
   onPickMedia: () => void
   onSend: (message: string) => void
   reduceTransparency: boolean
 }) {
   const [draft, setDraft] = useState('')
+  const focusedRef = useRef(false)
   const trimmedDraft = draft.trim()
   const mediaLabel = mode === 'normal'
     ? textByLanguage(language, 'Thêm ảnh cho Kael', 'Add photo for Kael')
@@ -2474,7 +2482,23 @@ function WorkerV5KaelOrbComposer({
   const submitDraft = () => {
     if (!trimmedDraft || busy) return
     setDraft('')
+    onActivityChange?.(focusedRef.current)
     onSend(trimmedDraft)
+  }
+
+  const updateDraft = (nextDraft: string) => {
+    setDraft(nextDraft)
+    onActivityChange?.(focusedRef.current || nextDraft.trim().length > 0)
+  }
+
+  const focusComposer = () => {
+    focusedRef.current = true
+    onActivityChange?.(true)
+  }
+
+  const blurComposer = () => {
+    focusedRef.current = false
+    onActivityChange?.(draft.trim().length > 0)
   }
 
   return (
@@ -2508,7 +2532,9 @@ function WorkerV5KaelOrbComposer({
           accessibilityLabel={textByLanguage(language, 'Nhắn Kael', 'Message Kael')}
           inputShellStyle={styles.kaelOrbComposerInputShell}
           inputShellTestID="worker-v5-kael-orb-input-shell"
-          onChangeText={setDraft}
+          onBlur={blurComposer}
+          onChangeText={updateDraft}
+          onFocus={focusComposer}
           onSubmitEditing={submitDraft}
           placeholder={textByLanguage(language, 'Nhập tin nhắn cho Kael...', 'Message Kael...')}
           placeholderTextColor={color.text.muted}
@@ -2552,7 +2578,7 @@ function WorkerV5KaelChatBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
-  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language)
+  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language, 'normal', runtime.workerJobsHydrated)
   if (getWorkerV5ChatJobId(runtime.state.deal)) {
     return <WorkerV5SharedJobIncidentChat deal={runtime.state.deal} language={language} reduceTransparency={reduceTransparency} />
   }
@@ -2660,7 +2686,7 @@ function WorkerV5KaelJobIntakeBody({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
-  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language)
+  const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language, 'intake', runtime.workerJobsHydrated)
   return (
     <WorkerV5KaelOrbBody
       composer={(
@@ -3356,9 +3382,9 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
 }
 
 const availabilitySwitchSpring = {
-  damping: 24,
-  mass: 0.55,
-  stiffness: 420,
+  damping: 19,
+  mass: 0.68,
+  stiffness: 300,
 }
 
 function WorkerV5AvailabilityCard({
@@ -3383,9 +3409,13 @@ function WorkerV5AvailabilityCard({
   const [inlineFailure, setInlineFailure] = useState<string | null>(null)
   const availabilityInteractionRef = useRef(false)
   const availabilityRequestIdRef = useRef(0)
+  const availabilitySwitchDidMountRef = useRef(false)
+  const availabilitySwitchLastCheckedRef = useRef(false)
   const availabilityTitleDidMountRef = useRef(false)
   const availabilityTitleProgress = useSharedValue(1)
   const availabilitySwitchProgress = useSharedValue(profile?.is_available ? 1 : 0)
+  const availabilitySwitchPressProgress = useSharedValue(0)
+  const availabilitySwitchSheenProgress = useSharedValue(1)
   const profileAvailable = Boolean(profile?.is_available)
   if (!pending && optimisticAvailable !== null && profileAvailable === optimisticAvailable) {
     setOptimisticAvailable(null)
@@ -3397,7 +3427,7 @@ function WorkerV5AvailabilityCard({
     ?? (blockedByGuardLoading
       ? textByLanguage(language, 'Đang đồng bộ công việc', 'Syncing current work')
       : hasActiveJob && rawAvailable
-        ? textByLanguage(language, 'Đã bật cho công việc tiếp theo', 'Enabled for the next job')
+        ? textByLanguage(language, 'Đã bật nhận công việc', 'Enabled for the next job')
       : workerAvailabilityLabel(effectiveProfile, language))
   const checked = Boolean(rawAvailable && profile?.is_approved && !profile?.is_suspended)
   const canToggle = Boolean(
@@ -3428,21 +3458,77 @@ function WorkerV5AvailabilityCard({
 
   useEffect(() => {
     const target = checked ? 1 : 0
-    availabilitySwitchProgress.value = reduceMotion
-      ? target
-      : withSpring(target, availabilitySwitchSpring)
-  }, [availabilitySwitchProgress, checked, reduceMotion])
+    const checkedChanged = availabilitySwitchLastCheckedRef.current !== checked
+    availabilitySwitchLastCheckedRef.current = checked
+
+    if (reduceMotion || !availabilitySwitchDidMountRef.current || !checkedChanged) {
+      availabilitySwitchProgress.value = target
+      availabilitySwitchPressProgress.value = 0
+      availabilitySwitchSheenProgress.value = 1
+      availabilitySwitchDidMountRef.current = true
+      return
+    }
+
+    availabilitySwitchProgress.value = withSpring(target, availabilitySwitchSpring)
+    availabilitySwitchSheenProgress.value = 0
+    availabilitySwitchSheenProgress.value = withDelay(35, withTiming(1, {
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
+    }))
+  }, [
+    availabilitySwitchPressProgress,
+    availabilitySwitchProgress,
+    availabilitySwitchSheenProgress,
+    checked,
+    reduceMotion,
+  ])
 
   const availabilityTitleMotionStyle = useAnimatedStyle(() => ({
     opacity: availabilityTitleProgress.value,
     transform: [{ translateY: (1 - availabilityTitleProgress.value) * 8 }],
   }))
   const availabilitySwitchOnMotionStyle = useAnimatedStyle(() => ({
-    opacity: availabilitySwitchProgress.value,
+    opacity: Math.max(0, Math.min(1, availabilitySwitchProgress.value)),
   }))
-  const availabilityKnobMotionStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: availabilitySwitchProgress.value * 18 }],
+  const availabilitySwitchPressMotionStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - availabilitySwitchPressProgress.value * 0.018 }],
   }))
+  const availabilityKnobMotionStyle = useAnimatedStyle(() => {
+    const progress = Math.max(0, Math.min(1, availabilitySwitchProgress.value))
+    const travelStretch = 4 * progress * (1 - progress)
+    const pressProgress = availabilitySwitchPressProgress.value
+
+    return {
+      transform: [
+        { translateX: availabilitySwitchProgress.value * 18 },
+        { scaleX: 1 + travelStretch * 0.12 + pressProgress * 0.08 },
+        { scaleY: 1 - travelStretch * 0.03 - pressProgress * 0.03 },
+      ],
+    }
+  })
+  const availabilitySwitchSheenMotionStyle = useAnimatedStyle(() => {
+    const progress = availabilitySwitchSheenProgress.value
+    const isTravelling = progress > 0 && progress < 1
+
+    return {
+      opacity: isTravelling ? Math.sin(progress * Math.PI) * 0.24 : 0,
+      transform: [
+        { translateX: -12 + progress * 58 },
+        { skewX: '-12deg' },
+      ],
+    }
+  })
+
+  const handleSwitchPressIn = () => {
+    if (disabled || reduceMotion) return
+    availabilitySwitchPressProgress.value = withSpring(1, motionTokens.liquid.press)
+  }
+
+  const handleSwitchPressOut = () => {
+    availabilitySwitchPressProgress.value = reduceMotion
+      ? 0
+      : withSpring(0, motionTokens.liquid.press)
+  }
 
   const handleToggle = async () => {
     if (!onToggleAvailability || !canToggle || availabilityInteractionRef.current) return
@@ -3489,28 +3575,39 @@ function WorkerV5AvailabilityCard({
           {availabilityTitle}
         </Animated.Text>
       </View>
-      <Pressable
-        accessibilityLabel={textByLanguage(language, 'Bật tắt nhận việc', 'Toggle work availability')}
-        accessibilityRole="switch"
-        accessibilityState={{ busy: pending, checked, disabled }}
-        disabled={disabled}
-        onPress={handleToggle}
-        style={({ pressed }) => [
-          styles.availabilitySwitch,
-          disabled ? styles.availabilitySwitchDisabled : null,
-          pressed && !reduceMotion ? styles.pressed : null,
-        ]}
-        testID="worker-v5-availability-switch"
+      <Animated.View
+        style={availabilitySwitchPressMotionStyle}
+        testID="worker-v5-availability-switch-motion-shell"
       >
-        <Animated.View
-          style={[styles.availabilitySwitchOn, availabilitySwitchOnMotionStyle]}
-          testID="worker-v5-availability-switch-fill"
-        />
-        <Animated.View
-          style={[styles.availabilityKnob, availabilityKnobMotionStyle]}
-          testID="worker-v5-availability-switch-knob"
-        />
-      </Pressable>
+        <Pressable
+          accessibilityLabel={textByLanguage(language, 'Bật tắt nhận việc', 'Toggle work availability')}
+          accessibilityRole="switch"
+          accessibilityState={{ busy: pending, checked, disabled }}
+          disabled={disabled}
+          onPress={handleToggle}
+          onPressIn={handleSwitchPressIn}
+          onPressOut={handleSwitchPressOut}
+          style={[
+            styles.availabilitySwitch,
+            disabled ? styles.availabilitySwitchDisabled : null,
+          ]}
+          testID="worker-v5-availability-switch"
+        >
+          <Animated.View
+            style={[styles.availabilitySwitchOn, availabilitySwitchOnMotionStyle]}
+            testID="worker-v5-availability-switch-fill"
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.availabilitySwitchSheen, availabilitySwitchSheenMotionStyle]}
+            testID="worker-v5-availability-switch-sheen"
+          />
+          <Animated.View
+            style={[styles.availabilityKnob, availabilityKnobMotionStyle]}
+            testID="worker-v5-availability-switch-knob"
+          />
+        </Pressable>
+      </Animated.View>
     </View>
   )
 }
@@ -3990,6 +4087,7 @@ function WorkerV5PrivateKaelChat({
           client_request_id: generateClientRequestId(),
           job_id: currentJobId,
           language,
+          mode: 'intake',
         })
 
         if (!created.success || created.data.session.job_id !== currentJobId) {
@@ -5001,7 +5099,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 8,
     width: 20,
-    zIndex: 1,
+    zIndex: 2,
   },
   availabilitySwitch: {
     backgroundColor: '#DFE9E7',
@@ -5025,6 +5123,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
+  },
+  availabilitySwitchSheen: {
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderRadius: radius.pill,
+    height: 20,
+    left: 0,
+    position: 'absolute',
+    top: 3,
+    width: 8,
+    zIndex: 1,
   },
   availabilityTitle: {
     color: color.text.strong,
@@ -6184,7 +6292,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#08AF9C',
     borderColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 23,
+    borderRadius: 18,
     borderWidth: 3,
     height: 63,
     justifyContent: 'center',
@@ -6691,17 +6799,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.88)',
     borderRadius: 23,
     borderWidth: 1,
-    gap: 4,
+    gap: 3,
     minHeight: 0,
     overflow: 'hidden',
     paddingBottom: 4,
     paddingHorizontal: 4,
-    paddingTop: 7,
+    paddingTop: 4,
     position: 'absolute',
-    right: 21,
+    maxWidth: 208,
     boxShadow: '0 8px 16px rgba(8,125,114,0.05)',
+    right: 16,
     top: 68,
-    width: 172,
+    width: '59%',
     zIndex: 20,
   },
   kaelOrbCustomerModeMenuAura: {
@@ -6713,11 +6822,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.42)',
     borderColor: 'rgba(13,167,151,0.12)',
-    borderRadius: 16,
+    borderRadius: 13,
     borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 34,
-    paddingHorizontal: 9,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 46,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     position: 'relative',
     width: '100%',
     zIndex: 2,
@@ -6729,6 +6840,28 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 7, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
+  },
+  kaelOrbCustomerModeMenuCheck: {
+    color: color.brand.primary,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginLeft: 8,
+  },
+  kaelOrbCustomerModeMenuCopy: {
+    flex: 1,
+    gap: 1,
+    minWidth: 0,
+  },
+  kaelOrbCustomerModeMenuOptions: {
+    gap: 3,
+    zIndex: 2,
+  },
+  kaelOrbCustomerModeMenuDescription: {
+    color: color.text.muted,
+    fontSize: 10.5,
+    fontWeight: '500',
+    lineHeight: 14,
   },
   kaelOrbCustomerModeMenuInnerShadow: {
     borderBottomColor: 'rgba(12,181,159,0.12)',
@@ -6764,10 +6897,10 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   kaelOrbCustomerModeMenuText: {
-    color: color.text.muted,
-    fontSize: 12,
+    color: color.text.strong,
+    fontSize: 13,
     fontWeight: '700',
-    lineHeight: 15,
+    lineHeight: 17,
   },
   kaelOrbCustomerModeMenuTextActive: {
     color: color.brand.primaryDark,
@@ -6793,16 +6926,10 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
     paddingTop: 12,
   },
-  kaelOrbCustomerTopActionText: {
-    color: color.brand.primaryDark,
-    fontSize: 18,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
   kaelOrbCustomerTopBar: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
+    gap: 9,
     minHeight: 58,
   },
   kaelOrbCustomerTopControl: {
@@ -6816,23 +6943,57 @@ const styles = StyleSheet.create({
     width: 48,
     ...shadow.soft,
   },
-  kaelOrbCustomerTopCopy: {
-    alignItems: 'center',
+  kaelOrbCustomerTopSpacer: {
     flex: 1,
-    justifyContent: 'center',
     minWidth: 0,
-    paddingHorizontal: 6,
-    transform: [{ translateY: 4 }],
   },
-  kaelOrbCustomerTopTitle: {
+  kaelOrbCustomerHeaderActions: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderColor: 'rgba(216,235,232,0.92)',
+    borderRadius: 17,
+    borderWidth: 1,
+    flexDirection: 'row',
+    height: 44,
+    overflow: 'hidden',
+    ...shadow.soft,
+  },
+  kaelOrbCustomerHeaderActionsOpen: {
+    backgroundColor: 'rgba(246,255,252,0.98)',
+    borderColor: 'rgba(15,174,155,0.3)',
+  },
+  kaelOrbCustomerSessionTrigger: {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 21,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  kaelOrbCustomerSessionTriggerOpen: {
+    backgroundColor: 'rgba(224,249,243,0.82)',
+  },
+  kaelOrbCustomerSessionTriggerPressedReduced: {
+    opacity: 0.78,
+  },
+  kaelOrbCustomerModeTrigger: {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 21,
+    flexDirection: 'row',
+    height: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    width: 112,
+  },
+  kaelOrbCustomerModeTriggerOpen: {
+    backgroundColor: 'rgba(224,249,243,0.72)',
+  },
+  kaelOrbCustomerModeTriggerText: {
     color: color.text.strong,
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
-    includeFontPadding: true,
-    letterSpacing: 0,
-    lineHeight: 24,
-    minHeight: 26,
-    textAlign: 'center',
+    lineHeight: 18,
   },
   kaelOrbMediaAura: {
     bottom: -44,
@@ -7009,7 +7170,7 @@ const styles = StyleSheet.create({
   },
   kaelOrbQuickChipText: {
     color: color.text.secondary,
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
     lineHeight: 16,
   },
@@ -7153,7 +7314,7 @@ const styles = StyleSheet.create({
     color: color.brand.primaryDark,
     fontSize: 12,
     fontWeight: '700',
-    lineHeight: 17,
+    lineHeight: 16,
     paddingHorizontal: 4,
   },
   workerSettingsMessageError: {

@@ -18,6 +18,7 @@ import {
 } from "../../../_shared/domain.ts";
 import { advanceKaelChatEstimate, assertKaelSessionOwnership, findExistingKaelSessionByClientRequest, insertKaelTurn, maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn, updateKaelSession } from "./kael-chat-core.ts";
 import { getKaelChat } from "./kael-chat-read.service.ts";
+import { ensureCustomerCaseConversation } from "./customer-kael-conversation.service.ts";
 import { rejectKaelChatRateLimit } from "./kael-chat-rate-limit.ts";
 import {
   buildKaelVisionValidationEvidence,
@@ -32,6 +33,9 @@ export async function createKaelChat(
   input: KaelChatCreateInput,
   secrets: EdgeAiSecrets,
 ) {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được tạo phiên Kael Xử lý công việc", 403);
+  }
   if (input.session_id) {
     if (!input.message) return getKaelChat(ctx, input.session_id);
     return sendKaelChatTurn(ctx, input.session_id, {
@@ -59,6 +63,11 @@ export async function createKaelChat(
       input.client_request_id,
     );
     if (existingSession?.kind === "ready") {
+      await ensureCustomerCaseConversation(
+        ctx,
+        existingSession.sessionId,
+        input.client_request_id,
+      );
       return getKaelChat(ctx, existingSession.sessionId);
     }
     if (existingSession?.kind === "pending") {
@@ -177,7 +186,14 @@ export async function createKaelChat(
       ctx.user.id,
       input.client_request_id,
     );
-    if (recovered?.kind === "ready") return getKaelChat(ctx, recovered.sessionId);
+    if (recovered?.kind === "ready") {
+      await ensureCustomerCaseConversation(
+        ctx,
+        recovered.sessionId,
+        input.client_request_id,
+      );
+      return getKaelChat(ctx, recovered.sessionId);
+    }
     if (recovered?.kind === "pending") {
       apiFailure(
         "SESSION_PENDING",
@@ -189,10 +205,16 @@ export async function createKaelChat(
   if (sessionResult.error || !sessionResult.data) {
     apiFailure("DB_ERROR", "Không thể tạo phiên Kael", 500);
   }
+  const createdSessionId = asString(sessionResult.data.id);
+  await ensureCustomerCaseConversation(
+    ctx,
+    createdSessionId,
+    input.client_request_id ?? null,
+  );
 
   if (input.message) {
     const message = sanitizeForLLM(input.message);
-    const sessionId = asString(sessionResult.data.id);
+    const sessionId = createdSessionId;
     // Scrub PII (phone/CCCD/address/
     // building/unit) BEFORE persisting to kael_chat_turns.text_content so raw
     // PII never lands in the DB. The in-memory `message` (also sanitized) is
@@ -256,7 +278,7 @@ export async function createKaelChat(
     }
   }
 
-  return getKaelChat(ctx, asString(sessionResult.data.id));
+  return getKaelChat(ctx, createdSessionId);
 }
 
 export async function sendKaelChatTurn(

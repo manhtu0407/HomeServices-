@@ -1,6 +1,14 @@
-import { StyleSheet } from 'react-native'
+import { Platform, StyleSheet, type ViewStyle } from 'react-native'
+
+const customerV21WebFocusRing = Platform.OS === 'web'
+  ? ({ outlineColor: 'rgba(13,167,151,0.62)' } as unknown as ViewStyle)
+  : {}
 
 export const customerV21ChatStyles = StyleSheet.create({
+  chatBackIcon: {
+    height: 22,
+    width: 22,
+  },
   chatBubble: {
     borderRadius: 22,
     borderWidth: 1,
@@ -48,6 +56,33 @@ export const customerV21ChatStyles = StyleSheet.create({
     marginTop: -4,
     textAlign: 'center',
   },
+  chatEmptyHero: {
+    alignItems: 'center',
+    flexGrow: 1,
+    justifyContent: 'center',
+    minHeight: 300,
+    paddingBottom: 18,
+    paddingHorizontal: 24,
+    paddingTop: 22,
+  },
+  chatEmptyHeroContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  chatEmptyHeroCopy: {
+    fontSize: 20,
+    fontWeight: '400',
+    letterSpacing: -0.18,
+    lineHeight: 29,
+    maxWidth: 320,
+    textAlign: 'center',
+  },
+  chatEmptyHeroModelStage: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
   chatEvidenceStrip: {
     borderRadius: 22,
     borderWidth: 1,
@@ -60,6 +95,75 @@ export const customerV21ChatStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
     position: 'relative',
+  },
+  chatHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 9,
+    minHeight: 58,
+    zIndex: 21,
+  },
+  chatHeaderActions: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    height: 44,
+    overflow: 'hidden',
+    shadowColor: '#087D72',
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+  },
+  chatHeaderActionsOpen: {
+    borderColor: 'rgba(15,174,155,0.30)',
+  },
+  chatHeaderBackControl: {
+    ...customerV21WebFocusRing,
+    alignItems: 'center',
+    borderRadius: 24,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: 'center',
+    shadowColor: '#087D72',
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    width: 48,
+  },
+  chatHeaderModeLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  chatHeaderModeTrigger: {
+    ...customerV21WebFocusRing,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 21,
+    height: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    width: 112,
+  },
+  chatHeaderModeTriggerOpen: {
+    backgroundColor: 'rgba(224,249,243,0.72)',
+  },
+  chatHeaderNewConversation: {
+    ...customerV21WebFocusRing,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 21,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  chatHeaderNewConversationDisabled: {
+    opacity: 0.52,
+  },
+  chatHeaderSpacer: {
+    flex: 1,
+    minWidth: 0,
   },
   chatMediaBadge: {
     alignItems: 'center',
@@ -103,26 +207,47 @@ export const customerV21ChatStyles = StyleSheet.create({
   chatModeMenu: {
     alignSelf: 'flex-end',
     flexDirection: 'column',
-    gap: 4,
+    gap: 3,
     minHeight: 0,
     paddingBottom: 4,
     paddingHorizontal: 4,
-    paddingTop: 7,
+    paddingTop: 4,
     position: 'absolute',
-    right: 21,
+    maxWidth: 208,
+    right: 16,
     top: 68,
-    width: 172,
+    width: '59%',
     zIndex: 20,
   },
   chatModeMenuButton: {
-    borderRadius: 16,
+    borderRadius: 13,
     flex: 0,
-    minHeight: 34,
-    paddingHorizontal: 9,
+    minHeight: 46,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     zIndex: 2,
   },
+  chatModeMenuCheck: {
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginLeft: 8,
+  },
+  chatModeMenuCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  chatModeMenuDescription: {
+    fontSize: 10.5,
+    fontWeight: '500',
+    lineHeight: 14,
+  },
   chatModeMenuOption: {
+    alignItems: 'center',
     borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     width: '100%',
   },
   chatModeMenuSheen: {
@@ -136,36 +261,37 @@ export const customerV21ChatStyles = StyleSheet.create({
     zIndex: 1,
   },
   chatModeMenuText: {
-    fontSize: 12,
+    fontSize: 12.5,
+    fontWeight: '700',
+    lineHeight: 16,
+    textAlign: 'left',
   },
   chatModeSwitch: {
     borderColor: 'rgba(255,255,255,0.88)',
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 4,
     minHeight: 46,
     overflow: 'hidden',
+    padding: 4,
     position: 'relative',
     shadowColor: '#087D72',
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.05,
     shadowRadius: 16,
   },
-  chatTimelineTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
-    textAlign: 'center',
-  },
-  chatTopCopyCentered: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-    transform: [{ translateY: 4 }],
-  },
   chatTranscript: {
     flexGrow: 1,
     gap: 8,
     paddingVertical: 6,
   },
+  chatTranscriptEmpty: {
+    justifyContent: 'center',
+  },
   chatTranscriptMenuOpen: {
-    paddingTop: 94,
+    paddingTop: 112,
+  },
+  chatTranscriptScroll: {
+    flex: 1,
   },
 })

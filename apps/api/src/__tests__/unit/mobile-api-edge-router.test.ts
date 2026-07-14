@@ -65,6 +65,14 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     })),
     getJob: vi.fn(),
     listCustomerActiveJobs: vi.fn(),
+    listCustomerServiceHistory: vi.fn(),
+    createCustomerKaelConversation: vi.fn(),
+    listCustomerKaelConversations: vi.fn(async () => ({ sessions: [] })),
+    archiveCustomerKaelConversation: vi.fn(),
+    renameCustomerKaelConversation: vi.fn(),
+    setCustomerKaelConversationPinned: vi.fn(),
+    getCustomerKaelConversation: vi.fn(),
+    sendCustomerKaelConversationTurn: vi.fn(),
     createKaelChat: vi.fn(),
     answerKaelAssistant: vi.fn(),
     createKaelChatMediaUpload: vi.fn(async () => ({
@@ -112,6 +120,12 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     askKaelForWorker: vi.fn(),
     createWorkerKaelChat: vi.fn(),
     listWorkerKaelChats: vi.fn(),
+    archiveWorkerKaelChat: vi.fn(async () => ({
+      session_id: 'worker-session-1',
+      archived_at: '2026-07-13T07:45:00.000Z',
+    })),
+    renameWorkerKaelChat: vi.fn(),
+    setWorkerKaelChatPinned: vi.fn(),
     getWorkerKaelChat: vi.fn(),
     sendWorkerKaelChatTurn: vi.fn(),
     submitWorkerKaelFeedback: vi.fn(),
@@ -149,6 +163,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       completed_service_count: 0,
       saved_address_count: 0,
       preferred_service_count: 0,
+      active_service_days: 0,
       active_streak_days: 0,
       positive_review_rate_percent: 0,
       price_savings_vnd: 0,
@@ -164,6 +179,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       fair_price_status: null,
     })),
     getWorkerProfile: vi.fn(),
+    createWorkerAvatarUpload: vi.fn(),
+    updateWorkerAvatar: vi.fn(),
+    recordWorkerAppActiveMinute: vi.fn(),
     getWorkerPerformanceInsights: vi.fn(async () => ({
       worker_id: '33333333-3333-4333-8333-333333333333',
       completed_job_count: 0,
@@ -666,6 +684,38 @@ describe('mobile-api Edge router contract', () => {
 
     // The router passes the route's allowed roles to authenticate(); worker is
     // intentionally excluded so the real auth layer rejects it with 403.
+    expect(authenticate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining(['customer', 'admin']),
+    )
+    expect(authenticate).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining(['worker']),
+    )
+  })
+
+  it('routes customer GET /me/jobs/history to listCustomerServiceHistory', async () => {
+    const listCustomerServiceHistory = vi.fn(async () => ({ service_history: [] }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ listCustomerServiceHistory }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/jobs/history'))
+
+    expect(response.status).toBe(200)
+    expect(listCustomerServiceHistory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+  })
+
+  it('/me/jobs/history is role-gated to customer + admin', async () => {
+    const authenticate = vi.fn(async () => customerAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ listCustomerServiceHistory: vi.fn(async () => ({ service_history: [] })) }),
+    })
+
+    await handler(new Request('https://example.test/mobile-api/me/jobs/history'))
+
     expect(authenticate).toHaveBeenCalledWith(
       expect.anything(),
       expect.arrayContaining(['customer', 'admin']),
@@ -1235,6 +1285,413 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({ role: 'customer' }),
       'kael-session-1',
       { message: 'Outlet still sparks.', photo_urls: [], apartment_access_profile: {} },
+    )
+  })
+
+  it('routes private avatar upload, avatar confirmation, and activity-minute writes for workers', async () => {
+    const createWorkerAvatarUpload = vi.fn(async () => ({
+      avatar_ref: 'supabase://worker-avatars/33333333-3333-4333-8333-333333333333/avatar.jpg',
+      bucket_id: 'worker-avatars' as const,
+      expires_in_seconds: 7200,
+      object_path: '33333333-3333-4333-8333-333333333333/avatar.jpg',
+      signed_upload_url: 'https://storage.example.test/upload',
+      token: 'signed-token',
+    }))
+    const updateWorkerAvatar = vi.fn(async () => ({
+      avatar_url: 'https://storage.example.test/read/avatar.jpg',
+      updated_at: '2026-07-13T14:00:00.000Z',
+      worker_id: '33333333-3333-4333-8333-333333333333',
+    }))
+    const recordWorkerAppActiveMinute = vi.fn(async () => ({
+      active_minutes: 1,
+      incremented: true,
+      last_active_at: '2026-07-13T14:01:00.000Z',
+      worker_id: '33333333-3333-4333-8333-333333333333',
+    }))
+    const authenticate = vi.fn(async () => workerAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({
+        createWorkerAvatarUpload,
+        recordWorkerAppActiveMinute,
+        updateWorkerAvatar,
+      }),
+    })
+
+    const uploadResponse = await handler(new Request('https://example.test/mobile-api/workers/me/avatar-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_name: 'worker.jpg',
+        file_size_bytes: 1234,
+        mime_type: 'image/jpeg',
+      }),
+    }))
+    const avatarRef = 'supabase://worker-avatars/33333333-3333-4333-8333-333333333333/avatar.jpg'
+    const updateResponse = await handler(new Request('https://example.test/mobile-api/workers/me/avatar', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatar_ref: avatarRef }),
+    }))
+    const activityResponse = await handler(new Request('https://example.test/mobile-api/workers/me/activity-minute', {
+      method: 'POST',
+    }))
+
+    expect(uploadResponse.status).toBe(201)
+    expect(updateResponse.status).toBe(200)
+    expect(activityResponse.status).toBe(200)
+    expect(createWorkerAvatarUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      { file_name: 'worker.jpg', file_size_bytes: 1234, mime_type: 'image/jpeg' },
+    )
+    expect(updateWorkerAvatar).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      { avatar_ref: avatarRef },
+    )
+    expect(recordWorkerAppActiveMinute).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }))
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker', 'admin'])
+  })
+
+  it('does not dispatch Worker avatar or activity writes when role authorization fails', async () => {
+    const createWorkerAvatarUpload = vi.fn()
+    const recordWorkerAppActiveMinute = vi.fn()
+    const updateWorkerAvatar = vi.fn()
+    const authenticate = vi.fn(async (): Promise<MobileApiAuthResult> => ({
+      success: false,
+      status: 403,
+      error: 'forbidden',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ createWorkerAvatarUpload, recordWorkerAppActiveMinute, updateWorkerAvatar }),
+    })
+
+    const responses = await Promise.all([
+      handler(new Request('https://example.test/mobile-api/workers/me/avatar-upload', { method: 'POST' })),
+      handler(new Request('https://example.test/mobile-api/workers/me/avatar', { method: 'PATCH' })),
+      handler(new Request('https://example.test/mobile-api/workers/me/activity-minute', { method: 'POST' })),
+    ])
+
+    expect(responses.map((response) => response.status)).toEqual([403, 403, 403])
+    expect(createWorkerAvatarUpload).not.toHaveBeenCalled()
+    expect(updateWorkerAvatar).not.toHaveBeenCalled()
+    expect(recordWorkerAppActiveMinute).not.toHaveBeenCalled()
+    expect(authenticate).toHaveBeenCalledTimes(3)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker', 'admin'])
+  })
+
+  it('forwards the explicit Customer Kael mode when listing a catalog', async () => {
+    const listCustomerKaelConversations = vi.fn(async () => ({ sessions: [] }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ listCustomerKaelConversations }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/me/kael/conversations?mode=case',
+      { method: 'GET' },
+    ))
+
+    expect(response.status).toBe(200)
+    expect(listCustomerKaelConversations).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer', user: customerAuth.user }),
+      'case',
+    )
+  })
+
+  it('creates a mode-scoped Customer Kael session through the owned route', async () => {
+    const clientRequestId = '77777777-7777-4777-8777-777777777777'
+    const createCustomerKaelConversation = vi.fn(async () => ({
+      session: {
+        case_job_id: null,
+        case_session_id: null,
+        client_request_id: clientRequestId,
+        customer_id: customerAuth.user.id,
+        id: 'customer-conversation-1',
+        mode: 'normal' as const,
+        pinned_at: null,
+        started_at: '2026-07-13T17:00:00.000Z',
+        title: null,
+        total_turns: 0,
+        updated_at: '2026-07-13T17:00:00.000Z',
+      },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ createCustomerKaelConversation }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/kael/conversations', {
+      body: JSON.stringify({ client_request_id: clientRequestId, mode: 'normal' }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    }))
+
+    expect(response.status).toBe(201)
+    expect(createCustomerKaelConversation).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      { client_request_id: clientRequestId, mode: 'normal' },
+    )
+  })
+
+  it('forwards explicit Case Work closure confirmation when archiving a Customer session', async () => {
+    const archiveCustomerKaelConversation = vi.fn(async () => ({
+      archived_at: '2026-07-14T00:00:00.000Z',
+      case_action: 'cancelled' as const,
+      case_session_id: '33333333-3333-4333-8333-333333333333',
+      job_id: '44444444-4444-4444-8444-444444444444',
+      job_status: 'cancelled' as const,
+      session_id: '22222222-2222-4222-8222-222222222222',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ archiveCustomerKaelConversation }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/me/kael/conversations/22222222-2222-4222-8222-222222222222?confirm_case_work=true',
+      { method: 'DELETE' },
+    ))
+
+    expect(response.status).toBe(200)
+    expect(archiveCustomerKaelConversation).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      '22222222-2222-4222-8222-222222222222',
+      true,
+    )
+  })
+
+  it('rejects an unknown Customer Kael mode before listing sessions', async () => {
+    const listCustomerKaelConversations = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ listCustomerKaelConversations }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/me/kael/conversations?mode=combined',
+      { method: 'GET' },
+    ))
+
+    expect(response.status).toBe(400)
+    expect(listCustomerKaelConversations).not.toHaveBeenCalled()
+  })
+
+  it('does not dispatch Customer Kael session routes when the role is rejected', async () => {
+    const listCustomerKaelConversations = vi.fn()
+    const authenticate = vi.fn(async (): Promise<MobileApiAuthResult> => ({
+      error: 'forbidden',
+      status: 403,
+      success: false,
+    }))
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ listCustomerKaelConversations }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/me/kael/conversations?mode=normal',
+      { method: 'GET' },
+    ))
+
+    expect(response.status).toBe(403)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer'])
+    expect(listCustomerKaelConversations).not.toHaveBeenCalled()
+  })
+
+  it('forwards the explicit worker Kael chat mode when listing a catalog', async () => {
+    const listWorkerKaelChats = vi.fn(async () => ({ sessions: [] }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ listWorkerKaelChats }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/workers/me/kael/chat?mode=normal',
+      { method: 'GET' },
+    ))
+
+    expect(response.status).toBe(200)
+    expect(listWorkerKaelChats).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'normal',
+    )
+  })
+
+  it('rejects an unknown worker Kael chat mode before listing sessions', async () => {
+    const listWorkerKaelChats = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ listWorkerKaelChats }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/workers/me/kael/chat?mode=combined',
+      { method: 'GET' },
+    ))
+
+    expect(response.status).toBe(400)
+    expect(listWorkerKaelChats).not.toHaveBeenCalled()
+  })
+
+  it('persists the selected worker Kael chat mode when creating a session', async () => {
+    const createWorkerKaelChat = vi.fn(async () => ({
+      session: {
+        id: 'worker-session-normal',
+        job_id: '22222222-2222-4222-8222-222222222222',
+        mode: 'normal' as const,
+        worker_id: workerAuth.user.id,
+        status: 'active' as const,
+        title: null,
+        pinned_at: null,
+        started_at: '2026-07-13T07:30:00.000Z',
+        closed_at: null,
+        total_turns: 0,
+        progress: null,
+      },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ createWorkerKaelChat }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/workers/me/kael/chat',
+      {
+        body: JSON.stringify({
+          job_id: '22222222-2222-4222-8222-222222222222',
+          language: 'vi',
+          mode: 'normal',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    ))
+
+    expect(response.status).toBe(201)
+    expect(createWorkerKaelChat).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      {
+        job_id: '22222222-2222-4222-8222-222222222222',
+        language: 'vi',
+        mode: 'normal',
+      },
+    )
+  })
+
+  it('archives a worker Kael advisory session through the owned Edge route', async () => {
+    const archiveWorkerKaelChat = vi.fn(async () => ({
+      session_id: 'worker-session-1',
+      archived_at: '2026-07-13T07:45:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ archiveWorkerKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael/chat/worker-session-1', {
+      method: 'DELETE',
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      session_id: 'worker-session-1',
+      archived_at: '2026-07-13T07:45:00.000Z',
+    })
+    expect(archiveWorkerKaelChat).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'worker-session-1',
+    )
+  })
+
+  it('renames an owned worker Kael advisory session through a validated Edge route', async () => {
+    const renameWorkerKaelChat = vi.fn(async () => ({
+      session: {
+        id: 'worker-session-1',
+        job_id: '22222222-2222-4222-8222-222222222222',
+        mode: 'intake' as const,
+        worker_id: workerAuth.user.id,
+        status: 'active' as const,
+        title: 'Kiểm tra rò nước lavabo',
+        pinned_at: null,
+        started_at: '2026-07-13T07:30:00.000Z',
+        closed_at: null,
+        total_turns: 2,
+        progress: null,
+      },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ renameWorkerKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael/chat/worker-session-1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Kiểm tra rò nước lavabo' }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(renameWorkerKaelChat).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'worker-session-1',
+      { title: 'Kiểm tra rò nước lavabo' },
+    )
+  })
+
+  it('rejects an empty worker Kael session title before the service boundary', async () => {
+    const renameWorkerKaelChat = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ renameWorkerKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael/chat/worker-session-1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: '   ' }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(renameWorkerKaelChat).not.toHaveBeenCalled()
+  })
+
+  it('pins an owned worker Kael advisory session through a validated Edge route', async () => {
+    const setWorkerKaelChatPinned = vi.fn(async () => ({
+      session: {
+        id: 'worker-session-1',
+        job_id: '22222222-2222-4222-8222-222222222222',
+        mode: 'intake' as const,
+        worker_id: workerAuth.user.id,
+        status: 'active' as const,
+        title: 'Kiểm tra rò nước lavabo',
+        pinned_at: '2026-07-13T08:00:00.000Z',
+        started_at: '2026-07-13T07:30:00.000Z',
+        closed_at: null,
+        total_turns: 2,
+        progress: null,
+      },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ setWorkerKaelChatPinned }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael/chat/worker-session-1/pin', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned: true }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(setWorkerKaelChatPinned).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'worker-session-1',
+      { pinned: true },
     )
   })
 

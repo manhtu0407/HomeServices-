@@ -57,6 +57,7 @@ type CustomerProfileInsightsResponse = {
   completed_service_count: number;
   saved_address_count: number;
   preferred_service_count: number;
+  active_service_days: number;
   active_streak_days: number;
   positive_review_rate_percent: number;
   price_savings_vnd: number;
@@ -420,6 +421,7 @@ export function buildCustomerProfileInsights(
         .map((job) => job.service_type)
         .filter((serviceType) => CUSTOMER_PROFILE_SUPPORTED_SERVICES.has(serviceType)),
     ).size,
+    active_service_days: customerProfileActivityDays(completedJobs).length,
     active_streak_days: customerProfileActiveStreakDays(completedJobs),
     positive_review_rate_percent: customerProfilePositiveReviewRatePercent(input.reviews),
     price_savings_vnd: priceSavingsVnd,
@@ -594,13 +596,7 @@ function customerProfileSavedAddressCount(
 }
 
 function customerProfileActiveStreakDays(jobs: CustomerProfileInsightJobRow[]) {
-  const days = Array.from(
-    new Set(
-      jobs
-        .map(customerProfileActivityDateKey)
-        .filter((day): day is string => Boolean(day)),
-    ),
-  ).sort((a, b) => b.localeCompare(a));
+  const days = customerProfileActivityDays(jobs);
   if (days.length === 0) return 0;
   let streak = 1;
   let expectedPreviousDay = previousIsoDateKey(days[0]);
@@ -613,6 +609,16 @@ function customerProfileActiveStreakDays(jobs: CustomerProfileInsightJobRow[]) {
     if (day < expectedPreviousDay) break;
   }
   return streak;
+}
+
+function customerProfileActivityDays(jobs: CustomerProfileInsightJobRow[]) {
+  return Array.from(
+    new Set(
+      jobs
+        .map(customerProfileActivityDateKey)
+        .filter((day): day is string => Boolean(day)),
+    ),
+  ).sort((a, b) => b.localeCompare(a));
 }
 
 function customerProfileActivityDateKey(job: CustomerProfileInsightJobRow) {

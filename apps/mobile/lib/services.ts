@@ -12,6 +12,7 @@ import type {
   ServiceCatalogResponse,
   CreateJobResponse,
   CustomerActiveJobResponse,
+  CustomerServiceHistoryResponse,
   PendingDecisionsResponse,
   ThreadsResponse,
   KaelMemoryResponse,
@@ -23,6 +24,9 @@ import type {
   JobMessageSendResponse,
   ConfirmKaelChatResponse,
   CustomerCancellationResponse,
+  CustomerKaelConversationArchiveResponse,
+  CustomerKaelConversationListResponse,
+  CustomerKaelConversationResponse,
   CustomerKaelFeedbackResponse,
   CustomerPaymentMethodResponse,
   CustomerPaymentMethodSaveInput,
@@ -54,6 +58,9 @@ import type {
   WorkerPayoutMethodResponse,
   WorkerPayoutMethodSaveInput,
   WorkerProfileResponse,
+  WorkerAvatarUploadResponse,
+  WorkerAvatarUpdateResponse,
+  WorkerActivityMinuteResponse,
   WorkerRoutePreviewResponse,
   WorkerRegisterResponse,
   WorkerCancellationDecisionInput,
@@ -61,6 +68,7 @@ import type {
   WorkerCancellationRequestInput,
   WorkerCancellationResponse,
   WorkerKaelChatListResponse,
+  WorkerKaelChatArchiveResponse,
   WorkerKaelChatResponse,
   WorkerKaelFeedbackResponse,
   WorkerKaelTrainingConsentResponse,
@@ -74,6 +82,11 @@ import type {
 import type {
   AvailabilityToggleInput,
   CustomerCancellationRequestInput,
+  CustomerKaelConversationCreateInput,
+  CustomerKaelConversationMode,
+  CustomerKaelConversationPinInput,
+  CustomerKaelConversationRenameInput,
+  CustomerKaelConversationTurnInput,
   CustomerScopeDecisionInput,
   DisputeAdminDecisionInput,
   DisputeCounterStatementInput,
@@ -93,7 +106,12 @@ import type {
   WorkerApplicationSubmitInput,
   WorkerRegisterInput,
   WorkerServiceAreaUpdateInput,
+  WorkerAvatarUploadInput,
+  WorkerAvatarUpdateInput,
   WorkerKaelChatCreateInput,
+  WorkerKaelChatMode,
+  WorkerKaelChatPinInput,
+  WorkerKaelChatRenameInput,
   WorkerKaelFeedbackInput,
   WorkerKaelTrainingConsentInput,
   WorkerKaelChatTurnInput,
@@ -146,6 +164,10 @@ export const jobService = {
   // from the backend after a refresh / cold start.
   listMyActiveJob() {
     return api.get<CustomerActiveJobResponse>('/me/jobs/active')
+  },
+
+  listMyServiceHistory() {
+    return api.get<CustomerServiceHistoryResponse>('/me/jobs/history')
   },
 
   // the customer's pending decisions (validated scope proposals awaiting them).
@@ -345,6 +367,37 @@ export const kaelAssistantService = {
   },
 }
 
+export const customerKaelConversationService = {
+  create(input: CustomerKaelConversationCreateInput) {
+    return api.post<CustomerKaelConversationResponse>('/me/kael/conversations', input)
+  },
+
+  list(mode: CustomerKaelConversationMode) {
+    return api.get<CustomerKaelConversationListResponse>(`/me/kael/conversations?mode=${encodeURIComponent(mode)}`)
+  },
+
+  get(conversationId: string) {
+    return api.get<CustomerKaelConversationResponse>(`/me/kael/conversations/${conversationId}`)
+  },
+
+  archive(conversationId: string, confirmCaseWork = false) {
+    const confirmation = confirmCaseWork ? '?confirm_case_work=true' : ''
+    return api.delete<CustomerKaelConversationArchiveResponse>(`/me/kael/conversations/${conversationId}${confirmation}`)
+  },
+
+  rename(conversationId: string, input: CustomerKaelConversationRenameInput) {
+    return api.patch<CustomerKaelConversationResponse>(`/me/kael/conversations/${conversationId}`, input)
+  },
+
+  setPinned(conversationId: string, input: CustomerKaelConversationPinInput) {
+    return api.patch<CustomerKaelConversationResponse>(`/me/kael/conversations/${conversationId}/pin`, input)
+  },
+
+  sendTurn(conversationId: string, input: CustomerKaelConversationTurnInput) {
+    return api.post<CustomerKaelConversationResponse>(`/me/kael/conversations/${conversationId}/turn`, input)
+  },
+}
+
 export const kaelChatProgressService = {
   get(sessionId: string) {
     return api.get<KaelChatProgressResponse>(`/kael/chat/${sessionId}/progress`)
@@ -362,8 +415,20 @@ export const workerKaelChatService = {
     return api.post<WorkerKaelChatResponse>('/workers/me/kael/chat', input)
   },
 
-  list() {
-    return api.get<WorkerKaelChatListResponse>('/workers/me/kael/chat')
+  list(mode: WorkerKaelChatMode) {
+    return api.get<WorkerKaelChatListResponse>(`/workers/me/kael/chat?mode=${encodeURIComponent(mode)}`)
+  },
+
+  archive(sessionId: string) {
+    return api.delete<WorkerKaelChatArchiveResponse>(`/workers/me/kael/chat/${sessionId}`)
+  },
+
+  rename(sessionId: string, input: WorkerKaelChatRenameInput) {
+    return api.patch<WorkerKaelChatResponse>(`/workers/me/kael/chat/${sessionId}`, input)
+  },
+
+  setPinned(sessionId: string, input: WorkerKaelChatPinInput) {
+    return api.patch<WorkerKaelChatResponse>(`/workers/me/kael/chat/${sessionId}/pin`, input)
   },
 
   get(sessionId: string) {
@@ -451,6 +516,18 @@ export const workerService = {
 
   getProfile() {
     return api.get<WorkerProfileResponse>('/workers/me')
+  },
+
+  createAvatarUpload(input: WorkerAvatarUploadInput) {
+    return api.post<WorkerAvatarUploadResponse>('/workers/me/avatar-upload', input)
+  },
+
+  updateAvatar(input: WorkerAvatarUpdateInput) {
+    return api.patch<WorkerAvatarUpdateResponse>('/workers/me/avatar', input)
+  },
+
+  recordActiveMinute() {
+    return api.post<WorkerActivityMinuteResponse>('/workers/me/activity-minute')
   },
 
   savePayoutMethod(input: WorkerPayoutMethodSaveInput) {

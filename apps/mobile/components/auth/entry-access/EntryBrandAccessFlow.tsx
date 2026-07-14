@@ -17,13 +17,14 @@ import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'r
 import { parseAuthIdentifier, validateAuthIdentifier } from '@/lib/auth-identifier'
 import { clearRememberedAuthIdentifier, getRememberedAuthIdentifier, rememberAuthIdentifier } from '@/lib/remembered-auth-identifier'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
-import { AssetTile, GlassPanel, IconButton, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton, useEntryAccessibility } from './components/materials'
+import { AssetTile, GlassPanel, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { ProviderButton } from './components/provider-button'
 import { EntryIcon } from './components/icons'
-import { identifierFieldProps, validateIdentifierForRole } from './entry-identifier-fields'
+import { identifierFieldProps, validateIdentifierForRole, validateRegistrationIdentifier } from './entry-identifier-fields'
 import { LottieLogoMark } from './lottie-logo-mark'
-import { PasswordRecoveryScreen } from './password-recovery-screen'
+import { PasswordRecoveryScreen, PasswordResetScreen } from './password-recovery-screen'
+import { AuthTopBar, FormHeader, RegisterScreen, SignupConfirmationScreen } from './registration-screens'
 import { selectRoleGateGreeting, type RoleGateGreeting } from './role-gate-greeting'
 import { entryTheme } from './theme'
 import type {
@@ -64,16 +65,17 @@ export function EntryBrandAccessFlow({
   const [role, setRole] = useState<EntryRole>(initialRole)
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
-  const [recoveryIdentifier, setRecoveryIdentifier] = useState('')
   const [fullName, setFullName] = useState('')
   const [remember, setRemember] = useState(true)
   const [acceptedTerms, setAcceptedTerms] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [roleGateGreeting] = useState(() => selectRoleGateGreeting(new Date()))
 
   const go = useCallback((next: EntryAccessStep) => {
     setError(null)
+    setNotice(null)
     setStep(next)
     onStepChange?.(next)
   }, [onStepChange])
@@ -134,9 +136,10 @@ export function EntryBrandAccessFlow({
 
   const submitRegister = async () => {
     setError(null)
-    const identifierError = validateIdentifierForRole(identifier, role)
+    setNotice(null)
+    const identifierError = validateRegistrationIdentifier(identifier)
     if (!fullName.trim() || identifierError || password.length < 8) {
-      setError(identifierError ?? 'Kiểm tra họ tên, Email/SDT và mật khẩu tối thiểu 8 ký tự.')
+      setError(identifierError ?? 'Kiểm tra họ tên, email và mật khẩu tối thiểu 8 ký tự.')
       return
     }
     if (!acceptedTerms) {
@@ -150,7 +153,36 @@ export function EntryBrandAccessFlow({
         setError(result.error ?? 'Chưa thể tạo tài khoản. Vui lòng thử lại.')
         return
       }
-      go('onboarding')
+      setPassword('')
+      go(result.nextStep ?? 'onboarding')
+    } catch {
+      setError('Không thể kết nối. Vui lòng thử lại.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resendSignupConfirmation = async () => {
+    setError(null)
+    setNotice(null)
+    const parsedIdentifier = parseAuthIdentifier(identifier)
+    if (!parsedIdentifier || parsedIdentifier.kind !== 'email') {
+      setError('Email chưa đúng định dạng.')
+      return
+    }
+    if (!actions.onResendSignupConfirmation) {
+      setError('Gửi lại email xác nhận chưa sẵn sàng. Vui lòng thử lại sau.')
+      return
+    }
+
+    setBusy(true)
+    try {
+      const result = await actions.onResendSignupConfirmation(parsedIdentifier.value)
+      if (!result.success) {
+        setError(result.error ?? 'Chưa thể gửi lại email xác nhận. Vui lòng thử lại sau.')
+        return
+      }
+      setNotice('Email xác nhận mới đã được gửi.')
     } catch {
       setError('Không thể kết nối. Vui lòng thử lại.')
     } finally {
@@ -182,28 +214,29 @@ export function EntryBrandAccessFlow({
 
   const submitPasswordRecovery = async () => {
     setError(null)
-    const primary = parseAuthIdentifier(identifier)
-    const primaryError = validateAuthIdentifier(identifier)
-    if (!primary || primaryError) {
-      setError(primaryError ?? 'Nhập Email/SDT đã đăng ký để tiếp tục.')
+    setNotice(null)
+    const account = parseAuthIdentifier(identifier)
+    const identifierError = validateAuthIdentifier(identifier)
+    if (!account || identifierError) {
+      setError(identifierError ?? 'Nhập email đã đăng ký để tiếp tục.')
       return
     }
-
-    const recovery = parseAuthIdentifier(recoveryIdentifier)
-    const expectedRecoveryKind = primary.kind === 'email' ? 'phone' : 'email'
-    if (!recovery || recovery.kind !== expectedRecoveryKind) {
-      setError(expectedRecoveryKind === 'phone' ? 'Nhập SDT khôi phục đúng định dạng.' : 'Nhập email khôi phục đúng định dạng.')
+    if (account.kind === 'phone') {
+      setError('Khôi phục bằng SDT chưa sẵn sàng. Vui lòng dùng email.')
+      return
+    }
+    if (!actions.onForgotPassword) {
+      setError('Khôi phục mật khẩu chưa sẵn sàng. Vui lòng thử lại sau.')
       return
     }
 
     setBusy(true)
     try {
-      const result = await actions.onForgotPassword?.({
-        identifier: primary.value,
-        recoveryIdentifier: recovery.value,
-      })
-      if (result && !result.success) {
+      const result = await actions.onForgotPassword({ email: account.value })
+      if (!result.success) {
         setError(result.error ?? 'Khôi phục mật khẩu chưa sẵn sàng.')
+      } else {
+        setNotice('Nếu email thuộc một tài khoản NestScout, liên kết đặt lại mật khẩu đã được gửi.')
       }
     } catch {
       setError('Không thể kết nối. Vui lòng thử lại.')
@@ -273,17 +306,46 @@ export function EntryBrandAccessFlow({
             role={role}
           />
         )
+      case 'signup-confirmation':
+        return (
+          <SignupConfirmationScreen
+            busy={busy}
+            email={identifier}
+            error={error}
+            notice={notice}
+            onBack={() => go('register')}
+            onLogin={() => go('login')}
+            onResend={resendSignupConfirmation}
+          />
+        )
       case 'password-recovery':
         return (
           <PasswordRecoveryScreen
             busy={busy}
             error={error}
             identifier={identifier}
+            notice={notice}
             onBack={() => go('login')}
             onIdentifierChange={setIdentifier}
-            onRecoveryIdentifierChange={setRecoveryIdentifier}
             onSubmit={submitPasswordRecovery}
-            recoveryIdentifier={recoveryIdentifier}
+          />
+        )
+      case 'password-reset':
+        return (
+          <PasswordResetScreen
+            onComplete={async (newPassword) => {
+              if (!actions.onCompletePasswordRecovery) {
+                return { success: false, error: 'Đặt lại mật khẩu chưa sẵn sàng. Vui lòng yêu cầu liên kết mới.' }
+              }
+              return actions.onCompletePasswordRecovery(newPassword)
+            }}
+            onExit={async () => {
+              if (actions.onExitPasswordRecovery) {
+                await actions.onExitPasswordRecovery()
+                return
+              }
+              go('login')
+            }}
           />
         )
       case 'onboarding':
@@ -538,33 +600,6 @@ function RoleCard({ badge, description, meta, onPress, selected, source, testID,
   )
 }
 
-function AuthTopBar({ onBack, title }: { onBack: () => void; title: string }) {
-  return (
-    <View style={styles.topbar}>
-      <IconButton label="Quay lại" onPress={onBack} />
-      <Text style={styles.topbarTitle}>{title}</Text>
-      <View style={styles.topbarSpacer} />
-    </View>
-  )
-}
-
-function normalizeTitleBreaks(value: string) {
-  return value.replace(/\\n/g, '\n')
-}
-
-function FormHeader({ lead, title }: { lead: string; title: string }) {
-  return (
-    <View style={styles.formHead}>
-      <View style={styles.formHeadRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.formTitle}>{normalizeTitleBreaks(title)}</Text>
-          <Text style={[styles.lead, { marginTop: 6 }]}>{lead}</Text>
-        </View>
-      </View>
-    </View>
-  )
-}
-
 function LoginScreen(props: {
   busy: boolean
   canRegister: boolean
@@ -609,46 +644,6 @@ function LoginScreen(props: {
               </>
             ) : null}
             {props.canRegister ? <Text style={styles.formSwitch}>Chưa có tài khoản? <Text onPress={props.onRegister} style={styles.formSwitchLink} testID="auth-client-register-email">Đăng ký</Text></Text> : null}
-          </NativeSafeGlassPanel>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Screen>
-  )
-}
-
-function RegisterScreen(props: {
-  acceptedTerms: boolean
-  busy: boolean
-  identifier: string
-  error: string | null
-  fullName: string
-  onBack: () => void
-  onIdentifierChange: (value: string) => void
-  onFullNameChange: (value: string) => void
-  onLogin: () => void
-  onPasswordChange: (value: string) => void
-  onSubmit: () => void
-  onToggleTerms: () => void
-  password: string
-  role: EntryRole
-}) {
-  const identifierProps = identifierFieldProps(props.identifier, props.role)
-  return (
-    <Screen>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
-        <ScrollView bounces={false} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <AuthTopBar onBack={props.onBack} title="Đăng ký" />
-          <FormHeader lead={props.role === 'customer' ? 'Chỉ mất chưa đến một phút.' : 'Tạo tài khoản trước khi gửi hồ sơ xác thực.'} title={props.role === 'customer' ? 'Tạo tài khoản\ncủa bạn.' : 'Tạo hồ sơ\nđối tác.'} />
-          <NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">
-            <EntryTextField autoCapitalize="words" icon="user" label="Họ và tên" onChangeText={props.onFullNameChange} placeholder="Nguyễn Hoàng Minh" testID="auth-register-name-input" textContentType="name" value={props.fullName} />
-            <EntryTextField {...identifierProps} onChangeText={props.onIdentifierChange} testID="auth-register-email-input" value={props.identifier} />
-            <EntryTextField icon="lock" label="Mật khẩu" onChangeText={props.onPasswordChange} placeholder="Tối thiểu 8 ký tự" secureTextEntry testID="auth-register-password-input" textContentType="newPassword" value={props.password} />
-            <View style={styles.termsRow}>
-              <CheckRow checked={props.acceptedTerms} label="Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của NestScout." onPress={props.onToggleTerms} testID="auth-register-terms" />
-            </View>
-            {props.error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{props.error}</Text> : null}
-            <PrimaryButton disabled={props.busy} label={props.busy ? 'Đang xử lý…' : props.role === 'customer' ? 'Đăng ký' : 'Tạo tài khoản thợ'} onPress={props.onSubmit} testID="auth-register-submit" />
-            <Text style={styles.formSwitch}>Đã có tài khoản? <Text onPress={props.onLogin} style={styles.formSwitchLink}>Đăng nhập</Text></Text>
           </NativeSafeGlassPanel>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -712,13 +707,10 @@ const styles = StyleSheet.create({
   dividerLine: { backgroundColor: entryTheme.color.surface.stroke, flex: 1, height: 1 },
   dividerText: { color: entryTheme.color.text.muted, fontSize: 10 },
   error: { color: entryTheme.color.accent.destructive, fontSize: 11, lineHeight: 16, marginBottom: 10, marginTop: -2 },
-  formHead: { paddingBottom: 12, paddingHorizontal: 3, paddingTop: 6 },
-  formHeadRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   formPanel: { borderRadius: entryTheme.radius.sheet, paddingBottom: 15, paddingHorizontal: 15, paddingTop: 17 },
   formScroll: { flexGrow: 1, paddingBottom: 18, paddingHorizontal: entryTheme.spacing.screenX },
   formSwitch: { color: entryTheme.color.text.secondary, fontSize: 11.5, marginTop: 14, textAlign: 'center' },
   formSwitchLink: { color: entryTheme.color.mint.mint700, fontWeight: '700' },
-  formTitle: { color: entryTheme.color.text.strong, fontSize: 29, fontWeight: '700', letterSpacing: 0, lineHeight: 35 },
   formUtils: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9, marginHorizontal: 2, marginTop: -2, minHeight: 28 },
   gateBottom: { marginTop: 'auto', paddingTop: 12 },
   gateFoot: { marginTop: 10, textAlign: 'center' },
@@ -792,8 +784,4 @@ const styles = StyleSheet.create({
   splashSpark: { height: 18, left: -24, position: 'absolute', top: -8, width: 18 },
   splashTagline: { color: '#7792A8', fontSize: 11, fontWeight: '500', letterSpacing: 0, lineHeight: 16, marginTop: 4, textAlign: 'center' },
   splashWordmarkShell: { alignSelf: 'center', position: 'relative' },
-  termsRow: { marginBottom: 12, marginHorizontal: 2, marginTop: 2 },
-  topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 48 },
-  topbarSpacer: { width: 42 },
-  topbarTitle: { color: entryTheme.color.text.primary, fontSize: 15, fontWeight: '700', letterSpacing: 0 },
 })

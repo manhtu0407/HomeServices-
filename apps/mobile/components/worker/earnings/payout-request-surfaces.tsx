@@ -11,6 +11,7 @@ import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
+import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { formatVndDong, textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
@@ -74,6 +75,11 @@ export function WorkerV5PayoutAccountCard({
   const bankName = profile?.bank_name || textByLanguage(language, 'Ngân hàng đã ghi', 'Recorded bank')
   return (
     <View style={[styles.bankCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-account-card">
+      <WorkerV5FormulaMintCardAura
+        reduceTransparency={reduceTransparency}
+        scope="PayoutVerifiedAccount"
+        testID="worker-v5-payout-account-formula-mint-aura"
+      />
       <WorkerV5IntegratedIcon
         bleed={12}
         image={accountIcon}

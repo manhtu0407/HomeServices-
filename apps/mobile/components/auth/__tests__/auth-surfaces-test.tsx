@@ -8,6 +8,9 @@ const mockEnterGuestMode = jest.fn()
 const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
 const mockSignInWithPassword = jest.fn(async (): Promise<{ success: boolean; error?: string }> => ({ success: false, error: 'Không thể đăng nhập' }))
 const mockSignUpWithIdentifier = jest.fn(async () => ({ success: true, needsConfirmation: true }))
+const mockResendSignupConfirmation = jest.fn(async () => ({ success: true }))
+const mockRequestPasswordRecovery = jest.fn(async () => ({ success: true }))
+const mockCompletePasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockSignOut = jest.fn(async () => undefined)
 const mockSubmitWorkerApplication = jest.fn(async () => ({ success: true }))
 const mockUpdateCustomerProfile = jest.fn(async () => ({ success: true }))
@@ -35,8 +38,12 @@ jest.mock('@/lib/auth-provider', () => ({
     enterGuestMode: mockEnterGuestMode,
     guestMode: false,
     loading: false,
+    passwordRecoveryPending: false,
     profileStatus: 'idle',
     refreshProfile: mockRefreshProfile,
+    requestPasswordRecovery: mockRequestPasswordRecovery,
+    completePasswordRecovery: mockCompletePasswordRecovery,
+    resendSignupConfirmation: mockResendSignupConfirmation,
     role: null,
     session: null,
     signInWithGoogle: mockSignInWithGoogle,
@@ -158,6 +165,7 @@ describe('LoginRoleSurface', () => {
 
   it('keeps auth form inputs outside native glass containers on iOS', () => {
     const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
+    const registrationSource = readFileSync(resolve(__dirname, '../entry-access/registration-screens.tsx'), 'utf-8')
     const materialsSource = readFileSync(resolve(__dirname, '../entry-access/components/materials.tsx'), 'utf-8')
     const nativeSafeStart = materialsSource.indexOf('export function NativeSafeGlassPanel')
     const nativeSafeEnd = materialsSource.indexOf('function GlassHighlight', nativeSafeStart)
@@ -168,9 +176,9 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByTestId('auth-login-1-4')).toBeOnTheScreen()
     expect(flowSource).toContain('<NativeSafeGlassPanel style={styles.formPanel} testID="auth-login-1-4">')
-    expect(flowSource).toContain('<NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">')
+    expect(registrationSource).toContain('<NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">')
     expect(flowSource).not.toContain('<GlassPanel style={styles.formPanel} testID="auth-login-1-4">')
-    expect(flowSource).not.toContain('<GlassPanel style={styles.formPanel} testID="auth-register-1-5">')
+    expect(registrationSource).not.toContain('<GlassPanel style={styles.formPanel} testID="auth-register-1-5">')
     expect(nativeSafePanelSource).toContain('<View')
     expect(nativeSafePanelSource).not.toContain('<GlassView')
     expect(nativeSafePanelSource).not.toContain('<BlurView')
@@ -334,41 +342,105 @@ describe('LoginRoleSurface', () => {
     expect(mockSignInWithPassword).not.toHaveBeenCalled()
   })
 
-  it('asks for the opposite recovery channel without pretending a reset was sent', async () => {
+  it('sends a real password-recovery request without asking for an unsupported second channel', async () => {
     mockRouteParams = { stage: '1.4' }
     render(<LoginRoleSurface />)
 
     fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
 
     expect(screen.getByTestId('auth-password-recovery-panel')).toBeOnTheScreen()
+    expect(screen.getByText('Email đã đăng ký')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-recovery-secondary-input')).toBeNull()
     fireEvent.changeText(screen.getByTestId('auth-recovery-identifier-input'), 'tu@example.com')
-    expect(screen.getByText('SDT khôi phục')).toBeOnTheScreen()
-    fireEvent.changeText(screen.getByTestId('auth-recovery-secondary-input'), '090 123 4567')
     fireEvent.press(screen.getByTestId('auth-recovery-submit'))
 
     await waitFor(() => {
-      expect(screen.getByText('Khôi phục mật khẩu sẽ hoàn tất sau khi kênh liên hệ đối diện được xác minh.')).toBeOnTheScreen()
+      expect(mockRequestPasswordRecovery).toHaveBeenCalledWith('tu@example.com')
+      expect(screen.getByText('Nếu email thuộc một tài khoản NestScout, liên kết đặt lại mật khẩu đã được gửi.')).toBeOnTheScreen()
     })
   })
 
-  it('accepts a customer email or Vietnamese mobile number during registration', async () => {
+  it('does not advertise phone recovery before an SMS provider exists', () => {
+    mockRouteParams = { stage: '1.4' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
+    fireEvent.changeText(screen.getByTestId('auth-recovery-identifier-input'), '090 123 4567')
+    fireEvent.press(screen.getByTestId('auth-recovery-submit'))
+
+    expect(screen.getByText('Khôi phục bằng SDT chưa sẵn sàng. Vui lòng dùng email.')).toBeOnTheScreen()
+    expect(mockRequestPasswordRecovery).not.toHaveBeenCalled()
+  })
+
+  it('keeps a recovery session on the password-reset screen until the new password is saved', async () => {
+    mockAuthOverride = {
+      passwordRecoveryPending: true,
+      session: { user: { app_metadata: {}, id: 'customer_test_1', user_metadata: {} } },
+    }
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-password-reset-screen')).toBeOnTheScreen()
+    expect(mockReplace).not.toHaveBeenCalled()
+
+    fireEvent.changeText(screen.getByTestId('auth-reset-password-input'), 'NewSafe123')
+    fireEvent.changeText(screen.getByTestId('auth-reset-password-confirmation-input'), 'NewSafe123')
+    fireEvent.press(screen.getByTestId('auth-reset-password-submit'))
+
+    await waitFor(() => {
+      expect(mockCompletePasswordRecovery).toHaveBeenCalledWith('NewSafe123')
+      expect(screen.getByText('Mật khẩu đã được cập nhật.')).toBeOnTheScreen()
+    })
+
+    fireEvent.press(screen.getByTestId('auth-reset-password-login'))
+
+    await waitFor(() => {
+      expect(mockSignOut).toHaveBeenCalled()
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login?stage=login')
+    })
+  })
+
+  it('shows a successful email-confirmation step and lets the customer resend the message', async () => {
     mockRouteParams = { stage: '1.5' }
     render(<LoginRoleSurface />)
 
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
-    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), '0912345678')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
     await waitFor(() => {
       expect(mockSignUpWithIdentifier).toHaveBeenCalledWith({
         displayName: 'Tu Phan',
-        identifier: '0912345678',
+        identifier: 'tu@example.com',
         password: 'secret123',
       })
     })
-    expect(screen.getByText('Kiểm tra kênh liên hệ để xác nhận tài khoản trước khi tiếp tục.')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-signup-confirmation-screen')).toBeOnTheScreen()
+    expect(screen.getByText('Bước cuối: xác nhận email.')).toBeOnTheScreen()
+    expect(screen.getByText('tu@example.com')).toBeOnTheScreen()
+    expect(screen.queryByText('Kiểm tra kênh liên hệ để xác nhận tài khoản trước khi tiếp tục.')).toBeNull()
     expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('auth-signup-confirmation-resend'))
+
+    await waitFor(() => {
+      expect(mockResendSignupConfirmation).toHaveBeenCalledWith('tu@example.com')
+      expect(screen.getByText('Email xác nhận mới đã được gửi.')).toBeOnTheScreen()
+    })
+  })
+
+  it('keeps phone signup out of the customer form until SMS confirmation exists', () => {
+    mockRouteParams = { stage: '1.5' }
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByText('Email')).toBeOnTheScreen()
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), '0912345678')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    expect(screen.getByText('Đăng ký bằng SDT chưa sẵn sàng. Vui lòng dùng email.')).toBeOnTheScreen()
+    expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
   })
 
   it('routes worker registration through review and never exposes customer provider login', async () => {

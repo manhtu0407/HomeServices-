@@ -46,7 +46,8 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
   })
 
   it('reveals offers and completion/payment actions only at their server-confirmed phase', () => {
-    expect(surfaces).toContain("chat?.session.case_phase === 'offer_review'")
+    expect(surfaces).toContain("activeChat?.session.case_phase === 'offer_review'")
+    expect(surfaces).toContain('const activeChat = chatModeOwner === mode ? chat : null')
     expect(surfaces).toContain('agenticEstimateNode={offerReviewActive && chatEstimate')
     expect(surfaces).toContain("deal.status === 'completed_by_worker'")
     expect(completionCard).toContain('customer-v21-completion-confirm')

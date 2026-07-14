@@ -26,6 +26,7 @@ export const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     overflow: 'hidden',
+    position: 'relative',
     ...shadow.soft,
   },
   approvalDecisionMeta: {
