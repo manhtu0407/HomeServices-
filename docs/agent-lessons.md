@@ -1,5 +1,12 @@
 # Home Services Agent Lessons
 
+## 2026-07-14 - Docs conventions + Kael teaching playbooks
+
+- `README.md` is a locked filename in this project (the root `README.md` is on the locked list). Do NOT create new `README.md` files for folder indexes; use `INDEX.md`, matching the existing `docs/test-logs/INDEX.md` convention. `docs/INDEX.md` is the docs navigation map.
+- When archiving a doc, update references only in ACTIVE/forward-looking files (e.g. `governance/Plan.md`); leave historical snapshots (`docs/memory/*`, `docs/test-logs/*`) untouched as point-in-time records, and document the move in `docs/archive/INDEX.md`.
+- Never archive on a rubber-stamp when evidence contradicts. `kael-core-v9.md` was an approved archive candidate, but it is referenced by `governance/design/ASSET_MAP.md` and other docs read "Superseded by Kael Core v9" — it is the current direction. Kept it; verify supersession before moving design-lineage docs.
+- Teaching Kael = distilling reasoning into a playbook (prompt segment + knowledge) measured by an eval, NOT model training. The repeatable method is `docs/playbooks/process-distillation.md`. Bind every emitted token to the exact code contract; the clarification-question filter silently rejects any question containing " và ", and `customer_sentiment` only accepts `neutral|detail_oriented|pressure`.
+
 ## 2026-05-26 - Kael Cost Optimization Q1 Baseline
 
 - Keep baseline rows even when fixture jobs and provider logs are cleaned. Persist aggregate evidence in `kael_quality_baseline` and safe per-call flags/cost signals in `kael_optimization_metrics`.

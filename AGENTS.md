@@ -20,7 +20,10 @@ The docs are a supporting stack in authority order. Read only what the task need
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`) |
 | Continuing or deferred plan work | `governance/Plan.md` (referenced section only) |
-| Progress history, durable decisions, feature contracts | `README.md`, `docs/**/*.md` |
+| Where a doc lives; adding, moving, or naming docs (`README.md` is a LOCKED filename — use `INDEX.md`) | `docs/INDEX.md` (navigation map + conventions) |
+| Teaching Kael a service — knowledge distillation, playbooks | `docs/playbooks/process-distillation.md` (the SOP) + `docs/playbooks/INDEX.md` (status board) |
+| Cross-session lessons and gotchas | `docs/agent-lessons.md` |
+| Progress history, durable decisions, feature contracts | `README.md`, `docs/**/*.md` (navigate from `docs/INDEX.md`) |
 | Project identity, strategy, response modes | `CLAUDE.md` |
 
 ## Agent Lifecycle
@@ -70,7 +73,7 @@ Before enhancing, refactoring, reorganizing, or "cleaning up" code:
 
 Before any major implementation batch:
 - rebuild the important `.md` manifest outside generated/vendor folders
-- read every important `.md` file in authority order, including `governance/critical.md`, `governance/RULES.md`, `governance/STRUCTURES.md`, `governance/design.md` when relevant, `CLAUDE.md`, `governance/skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/**/*.md`, relevant `governance/Plan.md` sections, and `MEMORY.md` last
+- read every important `.md` file in authority order, including `governance/critical.md`, `governance/RULES.md`, `governance/STRUCTURES.md`, `governance/design.md` when relevant, `CLAUDE.md`, `governance/skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/INDEX.md` (docs map) then relevant `docs/**/*.md`, `docs/agent-lessons.md` for prior gotchas, relevant `governance/Plan.md` sections, and `MEMORY.md` last
 - re-check relevant PR findings and the current touched files
 - compare the intended UI work against the local recording and glass reference notes
 - run React Doctor regularly after UI or React performance changes and treat reported issues as objective audit input
