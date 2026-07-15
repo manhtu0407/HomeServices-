@@ -1,0 +1,379 @@
+[
+  {
+    "id": "el_01",
+    "input_text_vi": "aptomat nha em cu bat len la sap lien, rut het do ra van vay",
+    "expected": {
+      "problem_slug": "breaker_trip",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [
+        "fixed_wiring",
+        "protective_device"
+      ],
+      "needs_clarification": false,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "Branch A: re-trips instantly with loads unplugged = short in fixed wiring",
+    "detail": "Cầu dao tổng cứ bật lên là sập ngay, em rút hết tủ lạnh máy giặt ra rồi vẫn sập, không mùi khét không tia lửa."
+  },
+  {
+    "id": "el_02",
+    "input_text_vi": "cầu dao chống giật nhà em hay nhảy mỗi khi trời mưa to",
+    "expected": {
+      "problem_slug": "breaker_trip",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [
+        "protective_device"
+      ],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "Branch D: RCBO rain-day leakage pattern",
+    "detail": "Cầu dao chống giật hay nhảy mỗi khi trời mưa to, bật lại được một lúc rồi nhảy tiếp, trời khô thì không sao."
+  },
+  {
+    "id": "el_03",
+    "input_text_vi": "nhà em mất điện toàn bộ mà đèn hành lang vẫn sáng",
+    "expected": {
+      "problem_slug": "power_outage_whole_unit",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Corridor check answered; main CB state unknown -> ask branch 2 question",
+    "detail": "Cả căn hộ mất điện nhưng đèn hành lang và nhà hàng xóm cùng tầng vẫn sáng bình thường."
+  },
+  {
+    "id": "el_04",
+    "input_text_vi": "ca tang chung cu deu bi cup dien roi",
+    "expected": {
+      "problem_slug": "power_outage_whole_unit",
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Building-wide outage = BQL/EVN territory",
+    "detail": "Cả tầng chung cư đều bị cúp điện, hàng xóm cũng phản ánh mất điện giống nhà em, chắc sự cố chung của toà."
+  },
+  {
+    "id": "el_05",
+    "input_text_vi": "phòng ngủ mất điện cả đèn lẫn ổ cắm, các phòng khác vẫn bình thường",
+    "expected": {
+      "problem_slug": "power_outage_one_room",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "One area, both dead; branch CB state unknown -> ask section-2 question",
+    "detail": "Phòng ngủ mất cả đèn lẫn ổ cắm, các phòng khác vẫn có điện, em chưa kiểm tra được tủ điện."
+  },
+  {
+    "id": "el_06",
+    "input_text_vi": "o cam phong khach het dien het ca day luon, den van sang",
+    "expected": {
+      "problem_slug": "power_outage_one_room",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "PB0 boundary: >=2 dead outlets = circuit-level, NOT outlet_or_switch_broken",
+    "detail": "Cả dãy ổ cắm phòng khách mất điện nhưng đèn vẫn sáng, aptomat nhánh nhìn không thấy nhảy."
+  },
+  {
+    "id": "el_07",
+    "input_text_vi": "đèn phòng khách nhấp nháy liên tục, thay bóng mới rồi mà vẫn bị",
+    "expected": {
+      "problem_slug": "flickering_light",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Branch A: new bulb did not fix -> driver or holder, still single-fixture small",
+    "detail": "Chỉ một bóng đèn phòng khách nhấp nháy liên tục, em thay bóng mới rồi vẫn bị, các đèn khác bình thường."
+  },
+  {
+    "id": "el_08",
+    "input_text_vi": "den nha em cu sang roi toi moi khi may lanh chay",
+    "expected": {
+      "problem_slug": "flickering_light",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Branch B: voltage dip when high-power device starts",
+    "detail": "Nhiều đèn cùng khu vực sáng rồi tối, chỉ bị mỗi khi máy lạnh hoặc bình nóng lạnh khởi động."
+  },
+  {
+    "id": "el_09",
+    "input_text_vi": "ổ cắm chỗ tivi bị lỏng, cắm sạc cứ bị rớt ra",
+    "expected": {
+      "problem_slug": "outlet_or_switch_broken",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "small"
+    },
+    "difficulty": "easy",
+    "rationale": "Branch B: worn spring contacts, like-for-like swap",
+    "detail": "Chỉ một ổ cắm chỗ tivi bị lỏng, cắm sạc cứ rớt ra phải giữ mới có điện, các ổ khác bình thường."
+  },
+  {
+    "id": "el_10",
+    "input_text_vi": "công tắc đèn nhà tắm bấm hoài không lên",
+    "expected": {
+      "problem_slug": "outlet_or_switch_broken",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Branch F + bathroom -> water-proximity check question expected before closing",
+    "detail": "Công tắc đèn nhà tắm bấm hoài không lên đèn, công tắc lỏng không nghe tiếng tách, chỉ công tắc đó."
+  },
+  {
+    "id": "el_11",
+    "input_text_vi": "muốn lắp thêm một ổ cắm ngoài ban công",
+    "expected": {
+      "problem_slug": "install_device",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Install; wiring-path fork unanswered -> section-2 question",
+    "detail": "Em muốn lắp thêm một ổ cắm ngoài ban công, chỗ đó chưa có sẵn điểm điện nào cả."
+  },
+  {
+    "id": "el_12",
+    "input_text_vi": "lap binh nong lanh moi cho nha tam giup em",
+    "expected": {
+      "problem_slug": "install_device",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [
+        "new_circuit",
+        "distribution_board"
+      ],
+      "needs_clarification": true,
+      "complexity": "large"
+    },
+    "difficulty": "medium",
+    "rationale": "High-load install defaults to dedicated-circuit assumption",
+    "detail": "Em muốn lắp bình nóng lạnh mới cho nhà tắm, nhà chưa có đường điện riêng cho bình, thiết bị em đã mua."
+  },
+  {
+    "id": "el_13",
+    "input_text_vi": "em mới nhận nhà, nhờ thợ kiểm tra lại toàn bộ hệ thống điện căn hộ",
+    "expected": {
+      "problem_slug": "electrical-general",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "Clear but general multi-point request -> electrical-general",
+    "detail": "Em mới nhận căn hộ, muốn thợ kiểm tra tổng thể toàn bộ hệ thống điện xem có an toàn không, không có lỗi cụ thể."
+  },
+  {
+    "id": "el_14",
+    "input_text_vi": "dien nha em dao nay chap chon lam, nhieu thu ky lam",
+    "expected": {
+      "problem_slug": "other_electrical",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "hard",
+    "rationale": "Vague symptom -> one splitting question first; commits to other_electrical if still vague",
+    "detail": "Điện nhà em dạo này chập chờn lúc được lúc không, nhiều thứ kỳ lắm em thật sự không rõ nằm ở đâu."
+  },
+  {
+    "id": "el_15",
+    "input_text_vi": "sờ vào vỏ tủ lạnh thấy tê tê như bị giật nhẹ",
+    "expected": {
+      "problem_slug": "other_electrical",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [
+        "exposed_live_parts"
+      ],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Leakage/tingling casing -> other_electrical + exposed_live_parts per PB7",
+    "detail": "Sờ vào vỏ tủ lạnh thấy tê tê như bị giật nhẹ, các thiết bị khác em chưa thử, sàn khô ráo."
+  },
+  {
+    "id": "el_16",
+    "input_text_vi": "dien nha minh co van de, khong biet mo ta sao nua",
+    "expected": {
+      "problem_slug": "other_electrical",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": true,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Too vague -> clarify once, fallback slug, confidence <=0.4",
+    "detail": "Điện nhà mình có vấn đề mà em không biết mô tả sao cho đúng, nhờ thợ qua xem trực tiếp giúp em."
+  },
+  {
+    "id": "el_17",
+    "input_text_vi": "máy lạnh nhà em chảy nước quá trời, sửa giúp em",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "hvac",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "AC device internals -> hvac",
+    "detail": "Máy lạnh nhà em chảy nước quá trời xuống sàn, phần điện vẫn chạy, cần sửa cái máy lạnh gấp."
+  },
+  {
+    "id": "el_18",
+    "input_text_vi": "bình nóng lạnh bị rò nước nhỏ giọt dưới đáy bình",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "plumbing",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "medium",
+    "rationale": "Water heater WATER side -> plumbing (power side would stay electrical)",
+    "detail": "Bình nóng lạnh bị rò nước nhỏ giọt dưới đáy bình, phần điện vẫn nóng bình thường, chỉ bị rò nước thôi."
+  },
+  {
+    "id": "el_19",
+    "input_text_vi": "nhờ thợ qua khoan tường treo cái tivi 55 inch",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "service_mismatch",
+      "suggested_service": "handyman",
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Pure mounting, no electrical connection -> handyman",
+    "detail": "Em cần thợ khoan tường treo cái tivi 55 inch, chỉ treo lên tường thôi không đụng gì tới dây điện."
+  },
+  {
+    "id": "el_20",
+    "input_text_vi": "lắp trạm sạc ô tô điện dưới hầm xe chung cư được không",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "EV charging + building common area -> out_of_scope",
+    "detail": "Em muốn lắp trạm sạc ô tô điện dưới hầm xe chung cư cho xe nhà em."
+  },
+  {
+    "id": "el_21",
+    "input_text_vi": "em cần kéo điện 3 pha cho xưởng may nhỏ",
+    "expected": {
+      "problem_slug": null,
+      "scope_signal": "out_of_scope",
+      "suggested_service": null,
+      "safety_signals": [],
+      "needs_clarification": false,
+      "complexity": null
+    },
+    "difficulty": "easy",
+    "rationale": "Industrial 3-phase -> out_of_scope",
+    "detail": "Em cần kéo điện 3 pha cho xưởng may nhỏ của gia đình, công suất lớn."
+  },
+  {
+    "id": "el_22",
+    "input_text_vi": "ổ cắm trong bếp có khói bốc ra kèm mùi khét",
+    "expected": {
+      "problem_slug": "outlet_or_switch_broken",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [
+        "smoke_or_burning"
+      ],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "easy",
+    "rationale": "Safety signal + safety template must precede any question",
+    "detail": "Ổ cắm trong bếp có khói bốc ra kèm mùi khét, em đã rút phích và tắt aptomat khu đó rồi."
+  },
+  {
+    "id": "el_23",
+    "input_text_vi": "day dien may giat bi chuot can lo ca loi dong ra",
+    "expected": {
+      "problem_slug": "other_electrical",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [
+        "exposed_live_parts"
+      ],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "hard",
+    "rationale": "Exposed copper on an appliance cord; electrician-replaceable, hazard signal fires",
+    "detail": "Dây điện máy giặt bị chuột cắn lòi cả lõi đồng ra ngoài, em chưa dám đụng vào."
+  },
+  {
+    "id": "el_24",
+    "input_text_vi": "nuoc mua tat vao o dien ngoai ban cong, gio bat cau dao len la nhay lien",
+    "expected": {
+      "problem_slug": "breaker_trip",
+      "scope_signal": "in_scope",
+      "suggested_service": null,
+      "safety_signals": [
+        "water_near_power",
+        "protective_device"
+      ],
+      "needs_clarification": false,
+      "complexity": "medium"
+    },
+    "difficulty": "medium",
+    "rationale": "Rain ingress + RCBO trip: branch D with water hazard",
+    "detail": "Nước mưa tạt vào ổ điện ngoài ban công, giờ bật cầu dao lên là nhảy liền, khu đó vẫn còn ẩm."
+  }
+]

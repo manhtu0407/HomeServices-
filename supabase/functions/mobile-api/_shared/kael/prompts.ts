@@ -12,6 +12,7 @@ import {
   KAEL_CASE_WORK_SERVICE_TYPES,
 } from "./performance-profiles.ts";
 import { scrubSensitiveForLLM, sanitizeVisionPhotoUrls } from "./utils.ts";
+import { ELECTRICAL_PLAYBOOK_SEGMENT, isElectricalPlaybookEnabled } from "./playbooks/electrical.ts";
 
 const SUPPORTED_SERVICE_PROFILE_CONTRACT = KAEL_CASE_WORK_SERVICE_TYPES.map((serviceType) => {
   const profile = getKaelPerformanceProfile(serviceType);
@@ -169,7 +170,7 @@ Rules:
   asking for breakdowns/credentials/specifics, else "neutral".
 - Do not re-ask anything already answered earlier in the conversation.
 
-Use only the problem_slug values in the supported service profile contract above.`,
+Use only the problem_slug values in the supported service profile contract above.${electricalPlaybookAddendum(serviceType)}`,
     },
     {
       role: "user",
@@ -178,6 +179,14 @@ Problem chips: ${problemChips.join(", ")}
 ${conversationContext ? `Recent conversation:\n${conversationContext}\n` : ""}Latest customer message: ${description}`,
     },
   ];
+}
+
+// Gate the distilled electrical playbook onto the electrical intake system
+// prompt. Off by default; enabled per-environment via KAEL_PLAYBOOK_ELECTRICAL_ENABLED
+// so the before/after eval can A/B it without a code change.
+function electricalPlaybookAddendum(serviceType: string): string {
+  if (serviceType !== "electrical" || !isElectricalPlaybookEnabled()) return "";
+  return `\n\n${ELECTRICAL_PLAYBOOK_SEGMENT}`;
 }
 
 export function buildVisionMessages(

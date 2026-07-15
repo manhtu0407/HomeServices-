@@ -1,0 +1,761 @@
+{
+  "label": "baseline-w2",
+  "serviceType": "electrical",
+  "metrics": {
+    "overallPassRate": 0.4,
+    "passed": 6,
+    "total": 15,
+    "errored": 0,
+    "byField": {
+      "scope_signal": {
+        "gatedCases": 15,
+        "passed": 10,
+        "rate": 0.6667
+      },
+      "needs_clarification": {
+        "gatedCases": 15,
+        "passed": 8,
+        "rate": 0.5333
+      },
+      "problem_slug": {
+        "gatedCases": 5,
+        "passed": 0,
+        "rate": 0
+      },
+      "safety_signals": {
+        "gatedCases": 2,
+        "passed": 0,
+        "rate": 0
+      }
+    },
+    "byDifficulty": {
+      "easy": {
+        "total": 8,
+        "passed": 3
+      },
+      "medium": {
+        "total": 6,
+        "passed": 2
+      },
+      "hard": {
+        "total": 1,
+        "passed": 1
+      }
+    }
+  },
+  "scored": [
+    {
+      "id": "el_06",
+      "difficulty": "medium",
+      "expected": {
+        "problem_slug": "power_outage_one_room",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": true,
+        "complexity": "medium"
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": false,
+            "note": "expected clarification/decline first",
+            "expected": "power_outage_one_room",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_07",
+      "difficulty": "easy",
+      "expected": {
+        "problem_slug": "flickering_light",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": false,
+        "complexity": "small"
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": false,
+            "expected": "flickering_light",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_08",
+      "difficulty": "medium",
+      "expected": {
+        "problem_slug": "flickering_light",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": false,
+        "complexity": "medium"
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": false,
+            "expected": "flickering_light",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_09",
+      "difficulty": "easy",
+      "expected": {
+        "problem_slug": "outlet_or_switch_broken",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": false,
+        "complexity": "small"
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": false,
+            "expected": "outlet_or_switch_broken",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_10",
+      "difficulty": "medium",
+      "expected": {
+        "problem_slug": "outlet_or_switch_broken",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": true,
+        "complexity": null
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": false,
+            "note": "expected clarification/decline first",
+            "expected": "outlet_or_switch_broken",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_11",
+      "difficulty": "easy",
+      "expected": {
+        "problem_slug": "install_device",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": true,
+        "complexity": null
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": false,
+            "note": "expected clarification/decline first",
+            "expected": "install_device",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_12",
+      "difficulty": "medium",
+      "expected": {
+        "problem_slug": "install_device",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [
+          "new_circuit",
+          "distribution_board"
+        ],
+        "needs_clarification": true,
+        "complexity": "large"
+      },
+      "observed": {
+        "status": "unsupported",
+        "last_content_type": "error",
+        "needs_clarification": false,
+        "scope_signal": "out_of_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": false,
+            "expected": "in_scope",
+            "observed": "out_of_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": true,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": false,
+            "note": "expected clarification/decline first",
+            "expected": "install_device",
+            "observed": null
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": false,
+            "expected": [
+              "new_circuit",
+              "distribution_board"
+            ],
+            "observed": [],
+            "missing": [
+              "new_circuit",
+              "distribution_board"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "el_13",
+      "difficulty": "easy",
+      "expected": {
+        "problem_slug": "electrical-general",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": false,
+        "complexity": "medium"
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": false,
+            "expected": "electrical-general",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_14",
+      "difficulty": "hard",
+      "expected": {
+        "problem_slug": "other_electrical",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": true,
+        "complexity": null
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": false,
+            "note": "expected clarification/decline first",
+            "expected": "other_electrical",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_15",
+      "difficulty": "medium",
+      "expected": {
+        "problem_slug": "other_electrical",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "needs_clarification": false,
+        "complexity": "medium"
+      },
+      "observed": {
+        "status": "unsupported",
+        "last_content_type": "error",
+        "needs_clarification": false,
+        "scope_signal": "out_of_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": false,
+            "expected": "in_scope",
+            "observed": "out_of_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": false,
+            "expected": "other_electrical",
+            "observed": null
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": false,
+            "expected": [
+              "exposed_live_parts"
+            ],
+            "observed": [],
+            "missing": [
+              "exposed_live_parts"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "el_16",
+      "difficulty": "easy",
+      "expected": {
+        "problem_slug": "other_electrical",
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": true,
+        "complexity": null
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": false,
+            "note": "expected clarification/decline first",
+            "expected": "other_electrical",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_17",
+      "difficulty": "easy",
+      "expected": {
+        "problem_slug": null,
+        "scope_signal": "service_mismatch",
+        "suggested_service": "hvac",
+        "safety_signals": [],
+        "needs_clarification": false,
+        "complexity": null
+      },
+      "observed": {
+        "status": "unsupported",
+        "last_content_type": "error",
+        "needs_clarification": false,
+        "scope_signal": "service_mismatch",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "suggested_service": {
+            "gated": false,
+            "note": "not observable via API",
+            "expected": "hvac",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_18",
+      "difficulty": "medium",
+      "expected": {
+        "problem_slug": null,
+        "scope_signal": "service_mismatch",
+        "suggested_service": "plumbing",
+        "safety_signals": [],
+        "needs_clarification": false,
+        "complexity": null
+      },
+      "observed": {
+        "status": "unsupported",
+        "last_content_type": "error",
+        "needs_clarification": false,
+        "scope_signal": "out_of_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": false,
+            "expected": "service_mismatch",
+            "observed": "out_of_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "suggested_service": {
+            "gated": false,
+            "note": "not observable via API",
+            "expected": "plumbing",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_19",
+      "difficulty": "easy",
+      "expected": {
+        "problem_slug": null,
+        "scope_signal": "service_mismatch",
+        "suggested_service": "handyman",
+        "safety_signals": [],
+        "needs_clarification": false,
+        "complexity": null
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": false,
+            "expected": "service_mismatch",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          },
+          "suggested_service": {
+            "gated": false,
+            "note": "not observable via API",
+            "expected": "handyman",
+            "observed": null
+          }
+        }
+      }
+    },
+    {
+      "id": "el_20",
+      "difficulty": "easy",
+      "expected": {
+        "problem_slug": null,
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "safety_signals": [],
+        "needs_clarification": false,
+        "complexity": null
+      },
+      "observed": {
+        "status": "active",
+        "last_content_type": "clarification",
+        "needs_clarification": true,
+        "scope_signal": "in_scope",
+        "problem_slug": null,
+        "safety_signals": [],
+        "suggested_service": null
+      },
+      "error": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": false,
+            "expected": "out_of_scope",
+            "observed": "in_scope"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          }
+        }
+      }
+    }
+  ]
+}

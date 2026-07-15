@@ -3259,7 +3259,7 @@ Scope: Restructure 3 customer tab Home/Booking/Kael để mỗi tab có vai trò
 [ ] Read design.md FULLY (production glass contract + mint/cream/cyan tokens)
 [ ] Read AGENTS.md (language rules + glass + motion + data honesty)
 [ ] Read docs/architecture/code-ownership-map.md (booking row, kael row, home row, shared mobile state row)
-[ ] Read docs/design/frontend-redesign-production-contract-20260521.md
+[ ] Read docs/archive/design/frontend-redesign-production-contract-20260521.md
 [ ] Read docs/design/production-glass-motion-contract.md
 [ ] Read skills.md (Skill 2 Simplicity First strongly, Skill 3 Surgical Changes — KHÔNG drive-by refactor)
 [ ] Read MEMORY.md (PR #20-#25 design context)
@@ -3740,7 +3740,7 @@ STRUCTURES.md (LOCKED — Tu approve required)                   Phase 2.0f (B6/
 docs/copy/workflow-copy-{vi,en}.md                             Phase 4.4 (new)
 docs/architecture/status-vocabulary.md                         Phase 5.2 (new)
 docs/architecture/workflow-step-contracts.md                   Phase 5.3 (new)
-docs/architecture/kael-price-authority.md                      Phase 2.0 (new, contract spec)
+docs/architecture/kael-price-authority.md  (NOT created — contract folded into STRUCTURES.md + code)   Phase 2.0
 docs/workflow/worker-cancellation.md                           Phase 5.4 (new)
 ```
 
@@ -6508,7 +6508,7 @@ messages: [
 
 **Foundation Enhancement:**
 
-- Document caching strategy trong `docs/ai-cost-optimization.md`.
+- Document caching strategy (planned doc `docs/ai-cost-optimization.md` was NOT created; strategy captured in Plan §24 + code).
 - Plan caching cho Anthropic Haiku khi sang Q phase tương lai.
 
 **Acceptance Gate:**
@@ -6738,7 +6738,7 @@ Market lookup call:
 
 **Foundation Enhancement:**
 
-- Document batch architecture trong `docs/ai-cost-optimization.md`.
+- Document batch architecture (planned doc `docs/ai-cost-optimization.md` was NOT created; architecture captured in Plan §24 + code).
 - Future: similar batch pattern cho non-critical synthesis.
 
 **Acceptance Gate:**
@@ -6792,7 +6792,7 @@ Market lookup call:
   - Schema validation rate drop > 5%.
   - Customer satisfaction drop > 0.3 stars.
   - Cost spike unexpected.
-- T5.7 Document final state trong `docs/cost-optimization-2026-XX-results.md`.
+- T5.7 Document final state (planned doc `docs/cost-optimization-2026-XX-results.md` was NOT created; results in docs/cost-baseline-2026-05.md + progress-log).
 
 **Build Instructions:**
 
@@ -7320,7 +7320,7 @@ Nếu không đủ data: return { "error": "insufficient_trusted_data" }.
 
 **Foundation Enhancement:**
 
-- Document Tier 1 selection criteria trong `docs/ai-source-trust.md`.
+- Document Tier 1 selection criteria (planned doc `docs/ai-source-trust.md` was NOT created; see docs/foundation/source-trust-research.md + source-tier-rulebook.ts).
 
 **Acceptance Gate:**
 
@@ -7626,7 +7626,7 @@ function effectiveTrustScore(registry: SourceTrustRegistry, now: Date): number {
 
 **Verification Loop:** Registry sync issue → check seed migration.
 
-**Foundation Enhancement:** Document registry maintenance workflow trong `docs/source-trust-maintenance.md`.
+**Foundation Enhancement:** Document registry maintenance workflow trong `docs/foundation/source-trust-maintenance.md`.
 
 **Acceptance Gate:**
 
@@ -7785,7 +7785,7 @@ const OUTLIER_SIGMA = 2;         // ± 2σ
 
 **Foundation Enhancement:**
 
-- Document aggregation algorithm trong `docs/learning-aggregation.md`.
+- Document aggregation algorithm (planned doc `docs/learning-aggregation.md` was NOT created; implemented in supabase/functions/mobile-api/_shared/kael/skills/LS1-aggregation.ts).
 
 **Acceptance Gate:**
 
@@ -10784,7 +10784,7 @@ Skill mapping:  karpathy-guidelines (mọi phase) + glass-liquid-signature, kael
 2. critical.md         (§0 lifecycle, §8 verify, §15 security)
 3. STRUCTURES.md       (job/worker geo fields; address privacy gate; worker matching truth)
 4. design.md (+design/*)(glass-liquid signature; motion/loading contract cho map chrome)
-5. docs/design/worker-map-operation-balanced-20260531.md
+5. docs/archive/design/worker-map-operation-balanced-20260531.md
                         (privacy states + degrade — GIỮ; điểm "SVG-only, no real map / no key in mobile"
                          được §37 SUPERSEDE sau khi Tu chốt Hướng B + giải bằng Edge proxy. Doc này KHÔNG locked.)
 6. docs/foundation/geo-data-spike.md  (geocoding server-only, district fallback)
@@ -10896,7 +10896,7 @@ Directions (post-accept): POST /directions {jobId} -> {polyline, eta_minutes, di
 - **Edge proxy cost/latency** — mọi tile qua Edge → cache bắt buộc (Storage/CDN); spike MP0 đo latency thật.
 - **`@vietmap/vietmap-gl-react-native` + Expo newArch 0.81 compat** — có Expo guide nhưng vẫn cần dev client / prebuild (không phải Expo Go) → ảnh hưởng quy trình EAS. Nếu vướng → fallback WebView. MP0 spike.
 - **GPS chung cư HCMC kém** — MP4 fallback bấm tay.
-- **Locked-doc (cần Tu approve, KHÔNG tự sửa):** `RULES.md:41` — chỉ Option-2 mới cần amend (Option-1 né được). `design.md` nếu pin "map = SVG-only" → cần note. `docs/design/worker-map-operation-balanced-20260531.md` (KHÔNG locked) → đánh dấu §37 supersede điểm "no real map", GIỮ privacy/degrade. `code-ownership-map.md` (KHÔNG locked) → cập nhật owner B2/B4 + thêm owner map-proxy.
+- **Locked-doc (cần Tu approve, KHÔNG tự sửa):** `RULES.md:41` — chỉ Option-2 mới cần amend (Option-1 né được). `design.md` nếu pin "map = SVG-only" → cần note. `docs/archive/design/worker-map-operation-balanced-20260531.md` (KHÔNG locked) → đánh dấu §37 supersede điểm "no real map", GIỮ privacy/degrade. `code-ownership-map.md` (KHÔNG locked) → cập nhật owner B2/B4 + thêm owner map-proxy.
 
 ---
 

@@ -9,6 +9,65 @@
 > DB/RPC/Storage/Realtime -> AI providers. Do not use Vercel or hosted
 > Next.js as the mobile runtime; `apps/api` is reference/parity code only.
 
+### 2026-07-14 -- DEFINITIVE: playbook injected + active, but routing delta ≈ 0 (weak model does not act on it)
+
+- **Proved the flag is live**: deployed a throwaway `pb-flag-check` edge function that returns `Deno.env.get("KAEL_PLAYBOOK_ELECTRICAL_ENABLED")` → responded `"1"`. So the flag IS readable in the deployed runtime, `isElectricalPlaybookEnabled()` is true, and the playbook segment IS injected into the electrical intake-diagnosis prompt. (Ruled out "flag not read" and "wiring broken".)
+- **But the after-eval shows no behaviour change**: gap cases el_04 (building outage), el_19 (TV mount), el_20 (EV charger) all stayed `in_scope` + clarification — identical to baseline. The DeepSeek-class intake model, even with the playbook in its system prompt, does NOT apply the routing rules (it asks a clarification instead of declining). **Routing delta ≈ 0 on the tested gap cases.**
+- **Honest read**: injecting a distilled playbook into the prompt is necessary but NOT sufficient — a ~1.6k-token segment inside a large system prompt does not reliably move the weak runtime model's routing. This does not test diagnosis/safety quality (evidence-gated, unmeasured) or the stronger escalation model.
+- **Value delivered regardless**: the full teach→distill→deploy→measure loop is now proven end-to-end infrastructure.
+- **Staging left dirty — needs cleanup**: flag still ON; mobile-api v131 carries a now-reverted debug `console.warn`; `pb-flag-check` function still deployed (CLI delete was permission-denied). Access token was pasted in chat → REVOKE.
+- Not committed (debug revert + this entry).
+
+### 2026-07-14 -- Playbook committed + deployed to staging; routing after-eval running
+
+- **Committed** the playbook feature (13 files, playbook-only): `feat(kael): electrical teaching playbook + eval harness (flag-gated)` = `31dface4a`. Runtime wiring + docs/playbooks + eval harness + eval reports; docs-reorg/governance changes left separate.
+- **Deployed** `mobile-api` to staging via `npx supabase functions deploy` (Docker bundling): **v127 → v128** (entrypoint = this worktree, new bundle sha). Flag off by default → behaviour unchanged by the deploy itself.
+- **Enabled the flag** on staging: `supabase secrets set KAEL_PLAYBOOK_ELECTRICAL_ENABLED=1` (user explicitly named it — the secret-store write is permission-gated). Playbook now ACTIVE for electrical intake.
+- **Routing after-eval running** (background, single-turn, flag ON, paced 190s): `docs/test-logs/2026-07-14_kael-playbook-electrical-after.md`. Compares `scope_signal` routing vs the ~70% baseline / the 6 routing gaps.
+- Token hygiene: the Supabase access token was pasted in chat → to be REVOKED after; flag to be unset after the delta is captured.
+- Not committed (this entry / reorg).
+
+### 2026-07-14 -- Multi-turn run finding: estimates are evidence-gated → routing is the metric
+
+- Ran the paced multi-turn baseline. Two findings: (1) **estimates are photo-evidence-gated** — text-only conversation never reaches an estimate within 3 turns (every reached case had `problem_slug=null`, still clarifying), so `problem_slug`/`safety_signals` are NOT measurable via the text API without uploading real images; (2) **token-expiry bug** — the user JWT (~1h) expired mid paced-run → 13 tail cases failed HTTP 401. **Fixed:** runner now re-signs-in on a mid-run 401 (`config.refresh()`), plus stronger 429 pacing/retry.
+- **Conclusion: the honest measurable metric is `scope_signal` (turn-1 routing), ~70–73% consistent.** The playbook's routing/disambiguation section targets exactly the 6 baseline routing gaps, so before/after is measured on routing. slug/safety measurement is deferred (needs an image-uploading harness or a provider-level unit test).
+- Next: to get the routing delta, deploy the flag-off wiring + toggle `KAEL_PLAYBOOK_ELECTRICAL_ENABLED` on for the after-run — awaiting Tu's deploy decision.
+- Not committed.
+
+### 2026-07-14 -- Multi-turn harness + playbook wired behind flag (runs rate-gated)
+
+- **Step 1 (harness → multi-turn) DONE + mock-verified 21/24.** Runner now opens with the terse message and, while Kael keeps asking to clarify, answers with a per-case `detail` (added to all 24 corpus cases) up to `--max-turns`, so `problem_slug` + `safety_signals` become observable. Key fact verified in code: `sendKaelChatTurn` is NOT rate-limited (only the create is), so multi-turn costs one create per case.
+- **Step 3 (playbook wiring) CODE DONE + verified.** New `supabase/functions/mobile-api/_shared/kael/playbooks/electrical.ts` holds the compressed Appendix-A segment + `isElectricalPlaybookEnabled()` (env `KAEL_PLAYBOOK_ELECTRICAL_ENABLED`). Wired into `buildIntakeDiagnosisMessages` via `electricalPlaybookAddendum()` — off by default, electrical-only. `deno check` passes; gating test confirms {offElec:false, onElec:true, onPlumb:false}. NOT deployed.
+- **Step 2 (full live baseline) BLOCKED — hard 20/hour create cap** ("Bạn đã đạt giới hạn 20 phiên Kael trong 1 giờ"). I spent this hour's 20 creates on the single-turn baseline windows. A full multi-turn before/after = 24 baseline + 24 after = ~48 creates = a ~2.5-hour paced run on one throwaway user. Options to complete: pace over hours / Tu adds 2-3 more test users to parallelize / trim corpus / relax the staging limit. Deploy of the flag-off wiring to staging awaits Tu's OK (outward action).
+- Not committed.
+
+### 2026-07-14 -- Electrical baseline eval RAN live (20/24)
+
+- **Ran it end-to-end on staging** with a Tu-provisioned throwaway user (`pb-eval@test.local`), auth via GoTrue password-grant (dropped supabase-js to avoid its Node<22 WebSocket init). Report: `docs/test-logs/2026-07-14_kael-playbook-electrical-baseline.md`.
+- **Coverage 20/24** — the per-user Kael-chat cap is 5/min + **20/hour** (confirmed in `_shared/kael/rate-limit.ts`). First burst got 5, then paced 16s to beat 5/min for the next 15 (0 errored). el_21–24 deferred to the next hour window. Added `--delay/--offset/--limit` + retry-on-429 to the runner for this.
+- **Result: 8/20 overall (40%); the trustworthy number is turn-1 routing `scope_signal` = 14/20 (70%)** with 6 real routing gaps (building-wide outage & EV-charger not declined; valid heater-install & rò-điện wrongly declined out_of_scope; TV-mount not routed to handyman; heater-water-leak not routed to plumbing).
+- **Methodology finding (honest):** the harness is single-turn but Kael is multi-turn — every case returned `problem_slug = "-"` because Kael asks a clarification / requests evidence on turn 1 and only produces the estimate + safety_signals later. So `problem_slug` and `safety_signals` are NOT fairly measured yet; fix the harness to answer turn-1 before comparing an "after" delta on those.
+- Not committed.
+
+### 2026-07-14 -- Playbook eval runner + dry-run (electrical baseline pending token)
+
+- **Runner built**: `apps/api/scripts/kael-playbook-eval.mjs` — sends each of the 24 electrical corpus cases through the live `/kael/chat` intake-diagnosis path and scores observed intake fields (`scope_signal`, `needs_clarification`, `problem_slug`, `safety_signals` recall) against the corpus. `suggested_service` is not observable via the serialized API and is reported-not-gated. Verified against code that `llmClarificationEnabled = true` (intake-diagnosis always on) and that `createKaelChat` runs the pipeline synchronously, so a single POST returns the scored `{session, turns}`.
+- **Dry-run PASS**: `--mock` mode (fixture `apps/api/scripts/fixtures/kael-playbook-eval-mock.json`, generated from the corpus with 3 deliberately corrupted cases) scored 21/24, catching exactly the 3 corruptions (el_06 needs_clarification, el_08 clarification+slug cascade, el_24 safety recall). Report: `docs/test-logs/2026-07-14_kael-playbook-electrical-mock.md`. This proves the scoring wiring only — it is NOT a live baseline.
+- **Live baseline BLOCKED on credentials (honest)**: the real baseline needs a signed-in staging **user** JWT (route requires `ctx.user`); an agent cannot mint one and must not create accounts or handle credentials, and the classifier (correctly) blocked reading `auth.users`. Handoff: a human runs `KAEL_PB_EVAL_MOBILE_API_URL=... KAEL_PB_EVAL_ANON_KEY=... KAEL_PB_EVAL_BEARER_TOKEN=... node apps/api/scripts/kael-playbook-eval.mjs --label baseline`. Then inject Appendix A behind `KAEL_PLAYBOOK_ELECTRICAL_ENABLED` and re-run with `--label after`; the delta is the real measure.
+- Not committed.
+
+### 2026-07-14 -- docs reorganization 2026-07-14 + Kael teaching-playbook channel
+
+- **Context**: Tu asked Claude to "teach Kael" (logic/understanding/analysis/vision) by distilling reasoning into prompts/knowledge + eval (not model training), then to reorganize `docs/` and record the method.
+- **Electrical playbook (sample)**: produced `docs/playbooks/services/electrical.md` (v0.1) — 11 procedural diagnostic sections bound to the exact code contract (8 problem_slugs, 6 quote_drivers, both gates' trigger_signals, self-check limits), plus a compressed ~1.6k-token STABLE runtime segment (Appendix A, cache-friendly per Plan §43-C), a 24-case eval corpus (`docs/playbooks/eval/electrical-cases.json`, valid JSON), and an honest verification status (Appendix C). No runtime code changed; nothing injected. Awaiting Tu's [VERIFY] domain review + 3 product-policy calls before any baseline eval / injection.
+- **Distillation method recorded**: `docs/playbooks/process-distillation.md` — the repeatable SOP (three-artifact model, contract-extraction-first, the 8 weak-model output traps, adversarial authoring, compression, eval, the measurement loop). Approved by Tu.
+- **docs/ reorganization**: added `docs/INDEX.md` (navigation map — the missing structural piece); created `docs/playbooks/` and `docs/archive/` (each with an `INDEX.md`). Moved the ephemeral `handoff/` prompts to `archive/handoff/`. Archived two superseded design contracts to `archive/design/`: `worker-map-operation-balanced-20260531.md` (superseded by `worker-map-real-provider-20260608.md`, §37) and `frontend-redesign-production-contract-20260521.md`; Plan.md path references updated. Kept `design/kael-core-v9.md` active (evidence: it is the current identity/motion direction, referenced by `governance/design/ASSET_MAP.md`).
+- **Naming lesson**: `README.md` is a locked filename in this project; directory indexes use `INDEX.md` (matching `test-logs/INDEX.md`). The three new index files were named accordingly. See `docs/agent-lessons.md`.
+- **Left in place (deliberate)**: `docs/test-logs/` (referenced by `apps/api` tests/scripts, cannot relocate).
+- **Stale refs cleaned (Plan.md)**: the six planned doc paths were resolved — `source-trust-maintenance.md` repointed to the real file under `foundation/`; the five never-created ones (`ai-cost-optimization.md` ×2, `cost-optimization-2026-XX-results.md`, `ai-source-trust.md`, `learning-aggregation.md`, `architecture/kael-price-authority.md`) annotated in place as "NOT created" with a pointer to where the content actually lives (code / Plan §24 / STRUCTURES.md), rather than deleted — the plan intent is preserved, the dead links are gone.
+- **Cross-agent (Codex) wiring**: added routing rows to `AGENTS.md` so Codex (not just Claude Code) discovers `docs/INDEX.md` (docs map + the README-is-locked/use-INDEX rule), `docs/playbooks/process-distillation.md` (distillation SOP), and `docs/agent-lessons.md` (gotchas). The SOP and playbooks are plain repo files (no dependence on Claude Code's private memory), so a future distillation by any agent follows the same process.
+- Not committed.
+
 ### 2026-07-10 -- Kael Harness §42 W1 + §41 P2/P1/P3 / §40 M0
 
 - **Task**: Begin the PR #100 Kael Harness execution sequence from current `main`, with W1 first and then §41 P2 before durable guards.

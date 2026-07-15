@@ -1,0 +1,454 @@
+{
+  "el_01": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "breaker_trip",
+        "complexity": "large"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": [
+            "fixed_wiring",
+            "protective_device"
+          ]
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate",
+        "estimate": {
+          "problem_category": "breaker_trip"
+        }
+      }
+    ]
+  },
+  "el_02": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "breaker_trip",
+        "complexity": "medium"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": [
+            "protective_device"
+          ]
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate",
+        "estimate": {
+          "problem_category": "breaker_trip"
+        }
+      }
+    ]
+  },
+  "el_03": {
+    "session": {
+      "status": "active",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "clarification",
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+      }
+    ]
+  },
+  "el_04": {
+    "session": {
+      "status": "unsupported",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "error",
+        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM."
+      }
+    ]
+  },
+  "el_05": {
+    "session": {
+      "status": "active",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "clarification",
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+      }
+    ]
+  },
+  "el_06": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "outlet_or_switch_broken"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate"
+      }
+    ]
+  },
+  "el_07": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "flickering_light",
+        "complexity": "small"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate",
+        "estimate": {
+          "problem_category": "flickering_light"
+        }
+      }
+    ]
+  },
+  "el_08": {
+    "session": {
+      "status": "active",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "clarification",
+        "text_content": "..."
+      }
+    ]
+  },
+  "el_09": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "outlet_or_switch_broken",
+        "complexity": "small"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate",
+        "estimate": {
+          "problem_category": "outlet_or_switch_broken"
+        }
+      }
+    ]
+  },
+  "el_10": {
+    "session": {
+      "status": "active",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "clarification",
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+      }
+    ]
+  },
+  "el_11": {
+    "session": {
+      "status": "active",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "clarification",
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+      }
+    ]
+  },
+  "el_12": {
+    "session": {
+      "status": "active",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": [
+            "new_circuit",
+            "distribution_board"
+          ]
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "clarification",
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+      }
+    ]
+  },
+  "el_13": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "electrical-general",
+        "complexity": "medium"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate",
+        "estimate": {
+          "problem_category": "electrical-general"
+        }
+      }
+    ]
+  },
+  "el_14": {
+    "session": {
+      "status": "active",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "clarification",
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+      }
+    ]
+  },
+  "el_15": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "other_electrical",
+        "complexity": "medium"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": [
+            "exposed_live_parts"
+          ]
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate",
+        "estimate": {
+          "problem_category": "other_electrical"
+        }
+      }
+    ]
+  },
+  "el_16": {
+    "session": {
+      "status": "active",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "clarification",
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+      }
+    ]
+  },
+  "el_17": {
+    "session": {
+      "status": "unsupported",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "error",
+        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính."
+      }
+    ]
+  },
+  "el_18": {
+    "session": {
+      "status": "unsupported",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "error",
+        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính."
+      }
+    ]
+  },
+  "el_19": {
+    "session": {
+      "status": "unsupported",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "error",
+        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính."
+      }
+    ]
+  },
+  "el_20": {
+    "session": {
+      "status": "unsupported",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "error",
+        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM."
+      }
+    ]
+  },
+  "el_21": {
+    "session": {
+      "status": "unsupported",
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": []
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "error",
+        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM."
+      }
+    ]
+  },
+  "el_22": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "outlet_or_switch_broken",
+        "complexity": "medium"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": [
+            "smoke_or_burning"
+          ]
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate",
+        "estimate": {
+          "problem_category": "outlet_or_switch_broken"
+        }
+      }
+    ]
+  },
+  "el_23": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "other_electrical",
+        "complexity": "medium"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": [
+            "exposed_live_parts"
+          ]
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate",
+        "estimate": {
+          "problem_category": "other_electrical"
+        }
+      }
+    ]
+  },
+  "el_24": {
+    "session": {
+      "status": "active",
+      "estimate": {
+        "problem_category": "breaker_trip"
+      },
+      "diagnosis_scope": {
+        "facts": {
+          "safety_signals": [
+            "protective_device"
+          ]
+        }
+      }
+    },
+    "turns": [
+      {
+        "content_type": "estimate"
+      }
+    ]
+  }
+}
