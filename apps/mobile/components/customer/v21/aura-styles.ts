@@ -48,14 +48,6 @@ export const customerV21AuraStyles = StyleSheet.create({
     top: -34,
     zIndex: 0,
   },
-  homeHeroSourceAura: {
-    height: 210,
-    position: 'absolute',
-    right: -92,
-    top: -110,
-    width: 250,
-    zIndex: 0,
-  },
   sourceIconAura: {
     height: 92,
     left: -5,

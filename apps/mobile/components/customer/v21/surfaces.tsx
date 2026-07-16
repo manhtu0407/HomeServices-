@@ -18,7 +18,6 @@ import {
   type ServiceType,
 } from '@nestscout/shared'
 import { KaelButton } from '@/components/ui/kael-primitives'
-import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
@@ -35,12 +34,12 @@ import { MediaDraftPreviewTray } from '../kael-chat/media-draft-preview-tray'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
 import {
   CaseWideMintAura,
-  HomeHeroSourceAura,
   SourceCardSkin,
   ZipMintAura,
 } from './aura-surfaces'
 import { customerV21Assets, customerV21BankAssets } from './assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from './booking-entry-stateful-surfaces'
+import { HomeStorytellingCard } from './home-storytelling-card'
 import {
   bookingCustomDateValue,
   bookingCustomTimeValue,
@@ -107,7 +106,7 @@ import {
   type CustomerProfilePanel,
   type CustomerProfileUtility,
 } from './profile-display-model'
-import { AssetTile, EmptyState, SectionActionHeader, ServiceTile, V21Card, V21Screen, V21TopBar } from './shared-surfaces'
+import { AssetTile, EmptyState, SectionActionHeader, ServiceTile, V21Screen, V21TopBar } from './shared-surfaces'
 import {
   CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
   CUSTOMER_LIQUID_NAV_GAP,
@@ -254,7 +253,7 @@ export function CustomerHomeSurface() {
   const router = useRouter()
   const workflow = useFrontendWorkflow()
   const { session } = useAuth()
-  const { reduceTransparency, tokens } = useV21Theme()
+  const { reduceMotion, reduceTransparency, tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
   const deal = workflow.state.deal
   const isDraftDeal = deal?.status === 'draft'
@@ -279,33 +278,12 @@ export function CustomerHomeSurface() {
         title={homeGreeting(displayName, language)}
       />
 
-      <View style={sharedStyles.homeAuraFrame}>
-      <V21Card
-        glass
-        style={[
-          sharedStyles.homeHero,
-          {
-            backgroundColor: tokens.mode === 'dark' ? tokens.glassStrong : 'transparent',
-            borderColor: tokens.mode === 'dark' ? tokens.glassBorder : 'rgba(255,255,255,0.91)',
-            boxShadow: reduceTransparency
-              ? 'none'
-              : tokens.mode === 'dark'
-                ? '0 10px 24px rgba(0,0,0,0.16)'
-                : '0 10px 24px rgba(5,105,94,0.14)',
-          },
-        ]}
-        testID="customer-v21-home-hero"
-      >
-        <SourceCardSkin testID="customer-v21-home-card-skin" />
-        <HomeHeroSourceAura reduceTransparency={reduceTransparency} />
-        <KaelCoreV9 motionClip="autoplay-once" size={164} />
-        <View style={sharedStyles.heroCopy}>
-          <Text style={[sharedStyles.heroTitle, sharedStyles.homeHeroTitle, { color: tokens.text }]}>
-            {language === 'vi' ? 'Kael sẵn sàng hỗ trợ, công việc vẫn do bạn kiểm soát.' : 'Kael is ready to help while you keep work control.'}
-          </Text>
-        </View>
-      </V21Card>
-      </View>
+      <HomeStorytellingCard
+        language={language}
+        reduceMotion={reduceMotion}
+        reduceTransparency={reduceTransparency}
+        tokens={tokens}
+      />
 
       <SectionActionHeader
         action={language === 'vi' ? 'Xem tất cả ›' : 'See all ›'}

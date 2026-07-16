@@ -296,27 +296,6 @@ export function CustomerScreenCanvasAura({
   )
 }
 
-export function HomeHeroSourceAura({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
-    return null
-  }
-
-  return (
-    <View pointerEvents="none" style={styles.homeHeroSourceAura} testID="customer-v21-home-mint-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 250 210" width="100%">
-        <Defs>
-          <RadialGradient id="homeHeroSourceAuraFill" cx="50%" cy="50%" r="74%">
-            <Stop offset="0" stopColor="rgba(73,231,207,0.34)" />
-            <Stop offset="0.48" stopColor="rgba(149,246,229,0.12)" />
-            <Stop offset="0.74" stopColor="rgba(149,246,229,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#homeHeroSourceAuraFill)" height="210" width="250" />
-      </Svg>
-    </View>
-  )
-}
-
 export function CaseOverviewHeroAura({ reduceTransparency }: ReduceTransparencyProps) {
   if (reduceTransparency) {
     return null

@@ -10,6 +10,7 @@ describe('staging integration workflow', () => {
   it('targets the real API workspace and fails before tests when a staging secret is absent', () => {
     const workflow = readFileSync(workflowPath, 'utf8')
 
+    expect(workflow).toContain('node-version: 22')
     expect(workflow).toContain('pnpm --filter @nestscout/api exec vitest run src/__tests__/integration')
     expect(workflow).not.toContain('@home-services/api')
     expect(workflow).toContain('test -n "$NEXT_PUBLIC_SUPABASE_URL"')
