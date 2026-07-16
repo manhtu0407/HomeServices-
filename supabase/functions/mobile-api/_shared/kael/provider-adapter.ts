@@ -95,13 +95,15 @@ const ANTHROPIC_ADAPTER: ProviderAdapter = {
     };
   },
   parseResponse: ({ data, latencyMs, model, pricingAt, unknownModelPolicy }) => {
-    const content = getPath<string>(data, ["content", 0, "text"]) ?? "";
-    const inputTokens = getPath<number>(data, ["usage", "input_tokens"]) ?? 0;
-    const outputTokens = getPath<number>(data, ["usage", "output_tokens"]) ?? 0;
-    const cacheCreationInputTokens =
-      getPath<number>(data, ["usage", "cache_creation_input_tokens"]) ?? 0;
-    const cacheReadInputTokens =
-      getPath<number>(data, ["usage", "cache_read_input_tokens"]) ?? 0;
+    const content = requireProviderContent(getPath(data, ["content", 0, "text"]));
+    const inputTokens = providerTokenCount(getPath(data, ["usage", "input_tokens"]));
+    const outputTokens = providerTokenCount(getPath(data, ["usage", "output_tokens"]));
+    const cacheCreationInputTokens = providerTokenCount(
+      getPath(data, ["usage", "cache_creation_input_tokens"]),
+    );
+    const cacheReadInputTokens = providerTokenCount(
+      getPath(data, ["usage", "cache_read_input_tokens"]),
+    );
     const promptCacheEnabled = readKaelOptimizationFlags()
       .KAEL_OPT_PROMPT_CACHE_ENABLED;
     const cacheStatus = promptCacheEnabled
@@ -220,19 +222,23 @@ function parseOpenAiCompatibleResponse(
   { data, latencyMs, model, pricingAt, unknownModelPolicy, request }: ProviderAdapterResponseInput,
   adapter: ProviderAdapter,
 ): AIResponse {
-  const content = getPath<string>(data, ["choices", 0, "message", "content"]) ?? "";
-  const inputTokens = getPath<number>(data, ["usage", "prompt_tokens"]) ?? 0;
-  const outputTokens = getPath<number>(data, ["usage", "completion_tokens"]) ?? 0;
-  const cacheHitInputTokens = getPath<number>(
-    data,
-    ["usage", "prompt_cache_hit_tokens"],
-  ) ?? 0;
-  const cacheMissInputTokens = getPath<number>(
-    data,
-    ["usage", "prompt_cache_miss_tokens"],
-  ) ?? 0;
-  const providerReportedCostUsd = getPath<number>(data, ["usage", "cost", "total_cost"]);
-  const requestCostUsd = getPath<number>(data, ["usage", "cost", "request_cost"]);
+  const content = requireProviderContent(
+    getPath(data, ["choices", 0, "message", "content"]),
+  );
+  const inputTokens = providerTokenCount(getPath(data, ["usage", "prompt_tokens"]));
+  const outputTokens = providerTokenCount(getPath(data, ["usage", "completion_tokens"]));
+  const cacheHitInputTokens = providerTokenCount(
+    getPath(data, ["usage", "prompt_cache_hit_tokens"]),
+  );
+  const cacheMissInputTokens = providerTokenCount(
+    getPath(data, ["usage", "prompt_cache_miss_tokens"]),
+  );
+  const providerReportedCostUsd = optionalProviderMoney(
+    getPath(data, ["usage", "cost", "total_cost"]),
+  );
+  const requestCostUsd = optionalProviderMoney(
+    getPath(data, ["usage", "cost", "request_cost"]),
+  );
   const responseSearchContextSize = searchContextSizeOrUndefined(
     getPath<unknown>(data, ["usage", "search_context_size"]),
   );
@@ -339,6 +345,29 @@ function searchContextSizeOrUndefined(value: unknown): SearchContextSize | undef
   return value === "low" || value === "medium" || value === "high"
     ? value
     : undefined;
+}
+
+function requireProviderContent(value: unknown): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("AI_PROVIDER_RESPONSE_INVALID");
+  }
+  return value;
+}
+
+function providerTokenCount(value: unknown): number {
+  if (value === undefined) return 0;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error("AI_PROVIDER_RESPONSE_INVALID");
+  }
+  return Math.trunc(value);
+}
+
+function optionalProviderMoney(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error("AI_PROVIDER_RESPONSE_INVALID");
+  }
+  return value;
 }
 
 function aiMessageContentToText(content: AIMessageContent | undefined): string {

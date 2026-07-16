@@ -44,25 +44,32 @@ export function WorkerV5SkillsServiceHero({
   toolsIcon: ImageSourcePropType
 }) {
   const serviceCount = profile?.service_types?.length ?? 0
+  const serviceCountLabel = profile
+    ? textByLanguage(language, `${serviceCount} kỹ năng đang hoạt động`, `${serviceCount} active skills`)
+    : textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-skills-service-hero">
       <View style={[styles.earningsHeroCopy, styles.skillsServiceHeroCopy]} testID="worker-v5-skills-hero-copy">
         <Text style={[styles.earningsHeroAmount, styles.skillsServiceHeroAmount]} numberOfLines={2} testID="worker-v5-skills-service-count">
-          {textByLanguage(language, `${serviceCount} kỹ năng đang hoạt động`, `${serviceCount} active skills`)}
+          {serviceCountLabel}
         </Text>
         <WorkerV5DetailRail
           items={[
             {
               glyph: 'service',
-              label: serviceCount
-                ? textByLanguage(language, `${serviceCount} dịch vụ`, `${serviceCount} services`)
-                : textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile'),
+              label: !profile
+                ? textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
+                : serviceCount
+                  ? textByLanguage(language, `${serviceCount} dịch vụ`, `${serviceCount} services`)
+                  : textByLanguage(language, 'Chưa có dịch vụ', 'No services yet'),
             },
             {
               glyph: 'location',
-              label: profile?.districts?.length
-                ? textByLanguage(language, `${profile.districts.length} khu vực`, `${profile.districts.length} areas`)
-                : textByLanguage(language, 'Chưa có khu vực', 'No area yet'),
+              label: !profile
+                ? textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
+                : profile.districts.length
+                  ? textByLanguage(language, `${profile.districts.length} khu vực`, `${profile.districts.length} areas`)
+                  : textByLanguage(language, 'Chưa có khu vực', 'No area yet'),
             },
           ]}
           prominent
@@ -97,7 +104,9 @@ export function WorkerV5ServiceCardGrid({
           <WorkerV5IntegratedIcon bleed={11} edge="none" image={toolsIcon} reduceTransparency={reduceTransparency} style={styles.serviceSourceIntegratedIcon} tone="service" variant="stagePanel" />
           <View style={styles.serviceSourceCopy}>
             <Text style={styles.serviceSourceTitle} numberOfLines={2} testID="worker-v5-quick-action-empty-title">
-              {textByLanguage(language, 'Chưa có kỹ năng đã ghi', 'No saved skills')}
+              {profile
+                ? textByLanguage(language, 'Chưa có kỹ năng đã ghi', 'No saved skills')
+                : textByLanguage(language, 'Chờ dữ liệu kỹ năng', 'Skill data pending')}
             </Text>
             <Text style={styles.serviceSourceMeta} numberOfLines={2} testID="worker-v5-quick-action-empty-meta">
               {textByLanguage(language, 'Kỹ năng sẽ hiện khi hồ sơ thợ đồng bộ', 'Skills appear when the worker profile syncs')}
@@ -105,7 +114,9 @@ export function WorkerV5ServiceCardGrid({
             <WorkerV5DetailRail
               items={[
                 { glyph: 'sync', label: textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile') },
-                { glyph: 'service', label: textByLanguage(language, 'Chưa dùng để lọc', 'Not filtering yet') },
+                { glyph: 'service', label: profile
+                  ? textByLanguage(language, 'Chưa dùng để lọc', 'Not filtering yet')
+                  : textByLanguage(language, 'Chờ nguồn thật', 'Waiting for real source') },
               ]}
               layout="stacked"
               testID="worker-v5-service-card-empty-detail"

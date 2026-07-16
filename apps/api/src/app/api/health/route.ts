@@ -1,18 +1,24 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { env, ensureServerEnv } from '@/lib/env'
+import { env, ensureClientEnv, ensureServerEnv } from '@/lib/env'
+import { createTimedFetch, withTimeout } from '@/lib/supabase/timed-fetch'
+
+const HEALTH_QUERY_TIMEOUT_MS = 5_000
 
 export async function GET() {
   const checks: Record<string, 'ok' | 'fail' | 'skip'> = {
     env_client: 'fail',
     env_server: 'fail',
-    supabase: 'fail',
+    supabase: 'skip',
   }
 
+  let clientEnvReady = false
   try {
+    ensureClientEnv()
     checks.env_client = 'ok'
+    clientEnvReady = true
   } catch {
-    return NextResponse.json({ status: 'unhealthy', checks }, { status: 503 })
+    checks.env_client = 'fail'
   }
 
   try {
@@ -22,18 +28,25 @@ export async function GET() {
     checks.env_server = 'fail'
   }
 
-  try {
-    const supabase = createClient(env.supabaseUrl, env.supabasePublishableKey)
-    const { error } = await supabase.from('price_baselines').select('id').limit(1)
-    checks.supabase = error ? 'fail' : 'ok'
-  } catch {
-    checks.supabase = 'fail'
+  if (clientEnvReady) {
+    try {
+      const supabase = createClient(
+        env.supabaseUrl,
+        env.supabasePublishableKey,
+        { global: { fetch: createTimedFetch(HEALTH_QUERY_TIMEOUT_MS) } },
+      )
+      const query = supabase.from('price_baselines').select('id').limit(1)
+      const { error } = await withTimeout(query, HEALTH_QUERY_TIMEOUT_MS)
+      checks.supabase = error ? 'fail' : 'ok'
+    } catch {
+      checks.supabase = 'fail'
+    }
   }
 
   const allOk = Object.values(checks).every((v) => v === 'ok' || v === 'skip')
 
   return NextResponse.json(
     { status: allOk ? 'healthy' : 'degraded', checks },
-    { status: allOk ? 200 : 503 }
+    { status: allOk ? 200 : 503 },
   )
 }

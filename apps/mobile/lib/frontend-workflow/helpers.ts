@@ -5,6 +5,7 @@ import {
   type JobStatus,
   type LocalDealDraft,
   type LocalWorkflowState,
+  type WorkerScopeChangeInput,
 } from '@nestscout/shared'
 import type { KaelMemorySelfViewResponse } from '../api-types'
 import type { AppLanguage } from '../app-language'
@@ -100,6 +101,18 @@ export function jobCreateClientRequestFingerprint(
   })
 }
 
+export function scopeChangeClientRequestFingerprint(
+  jobId: string,
+  input: Pick<WorkerScopeChangeInput, 'new_description' | 'photo_urls' | 'reason'>,
+): string {
+  return JSON.stringify({
+    job_id: jobId,
+    new_description: input.new_description.trim(),
+    reason: input.reason.trim(),
+    photo_urls: input.photo_urls,
+  })
+}
+
 const WORKER_OPERATIONAL_JOB_STATUSES = new Set<JobStatus>([
   'worker_matched',
   'worker_on_way',
@@ -109,8 +122,6 @@ const WORKER_OPERATIONAL_JOB_STATUSES = new Set<JobStatus>([
   'scope_change_pending',
   'completed_by_worker',
 ])
-const vndFormatter = new Intl.NumberFormat('vi-VN')
-
 export function isWorkerOperationalJobStatus(status: JobStatus) {
   return WORKER_OPERATIONAL_JOB_STATUSES.has(status)
 }

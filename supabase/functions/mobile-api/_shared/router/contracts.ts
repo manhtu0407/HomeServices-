@@ -7,10 +7,12 @@ import type {
   CustomerKaelFeedbackInput,
   CustomerScopeDecisionInput,
   DevicePushTokenInput,
+  EdgeDevicePushTokenUnregisterInput,
   DisputeAdminDecisionInput,
   DisputeCounterStatementInput,
   DisputeOpenRequestInput,
   JobCreateInput,
+  EdgeJobIncidentScopeProposalInput,
   JobMediaAttachInput,
   JobMessageSendInput,
   JobStatus,
@@ -43,6 +45,12 @@ import type {
   WorkerServiceAreaUpdateInput,
   WorkerScopeChangeInput,
 } from "../../../_shared/domain.ts";
+import type {
+  JobMediaRevokeInput,
+  JobMediaRevokeResponse,
+  JobMediaUploadInput,
+  JobMediaUploadResponse,
+} from "../../../_shared/job-media-contract.ts";
 import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
 import type {
   PriceSynthesisAbCaseInput,
@@ -126,6 +134,9 @@ import type {
   EdgeWorkerKaelChatListResponse,
   EdgeWorkerKaelChatResponse,
 } from "./worker-kael-chat-dtos.ts";
+import type {
+  EdgeDevicePushTokenUnregisterResponse,
+} from "./notification-device.dtos.ts";
 export type {
   KaelBatchResultsProcessInput,
   KaelBatchResultsProcessResponse,
@@ -406,6 +417,7 @@ export type MobileApiServices = {
   proposeScopeChangeFromJobIncident(
     ctx: MobileApiContext,
     jobId: string,
+    input: EdgeJobIncidentScopeProposalInput,
   ): Promise<EdgeJobIncidentScopeProposalResponse>;
   askKaelForWorker(
     ctx: MobileApiContext,
@@ -489,6 +501,16 @@ export type MobileApiServices = {
     jobId: string,
     input: JobMediaAttachInput,
   ): Promise<EdgeJobMediaAttachResponse>;
+  createJobMediaUpload(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: JobMediaUploadInput,
+  ): Promise<JobMediaUploadResponse>;
+  revokeJobMediaUploads(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: JobMediaRevokeInput,
+  ): Promise<JobMediaRevokeResponse>;
   listJobMessages(
     ctx: MobileApiContext,
     jobId: string,
@@ -623,6 +645,10 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: DevicePushTokenInput,
   ): Promise<EdgeDevicePushTokenResponse>;
+  unregisterDevicePushToken(
+    ctx: MobileApiContext,
+    input: EdgeDevicePushTokenUnregisterInput,
+  ): Promise<EdgeDevicePushTokenUnregisterResponse>;
 };
 
 export type MobileApiHandlerDeps = {

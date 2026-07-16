@@ -1,32 +1,18 @@
 import type { ComplexityLevel, JobMediaAttachInput, JobStatus, ServiceType } from "../../../_shared/domain.ts";
 import { HCMC_DISTRICTS, kaelChatProgressSchema, normalizeDistrict } from "../../../_shared/domain.ts";
 import type { EstimatePriceSource, PipelineStageLog } from "../kael/index.ts";
-import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../_shared/contracts.ts";
-import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../kael/artifact-contract.ts";
-import { PRICE_DISCLAIMER } from "../kael/index.ts";
 import { apiFailure } from "../router.ts";
 import type { MobileApiContext } from "../router.ts";
 import type { EdgeAiSecrets } from "../kael/index.ts";
 import {
-  asBoolean,
-  asComplexity,
-  asKaelChatStatus,
-  asKaelContentType,
-  asKaelTurnRole,
-  asMessageSender,
   asNumber,
-  asRecord,
-  asServiceType,
-  asString,
-  asStringArray,
   nullableRecord,
-  nullableString,
 } from "./coercions.ts";
 export * from "./coercions.ts";
 export * from "./db.ts";
 export * from "./audit.ts";
+export * from "./serializers.ts";
 
-export const KAEL_CHAT_HARD_COST_CAP_USD = 1;
 const STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 const KAEL_SCOPE_PRICE_ERRORS = new Set(["KAEL_PRICE_MISSING", "KAEL_REVIEW_MISSING"]);
 
@@ -247,9 +233,9 @@ export function mapWorkerCancellationDecisionError(errorCode: string | null): ne
 
 export function mapScopeRequestError(errorCode: string | null): never {
   if (KAEL_SCOPE_PRICE_ERRORS.has(errorCode ?? "")) {
-    apiFailure("KAEL_PRICE_MISSING", "Kael chua tinh duoc gia phat sinh hop le", 409);
+    apiFailure("KAEL_PRICE_MISSING", "Kael chưa tính được giá phát sinh hợp lệ", 409);
   }
-  if (errorCode === "STATUS_CHANGED") {
+  if (errorCode === "STATUS_CHANGED" || errorCode === "INCIDENT_CLAIM_STALE") {
     apiFailure(
       "STATUS_CHANGED",
       "Trạng thái đã thay đổi. Vui lòng tải lại và thử lại.",
@@ -277,7 +263,7 @@ export function mapScopeRequestError(errorCode: string | null): never {
 
 export function mapScopeDecisionError(errorCode: string | null): never {
   if (errorCode === "KAEL_PRICE_MISSING") {
-    apiFailure("KAEL_PRICE_MISSING", "Kael chua chot gia phat sinh nen chua the duyet", 409);
+    apiFailure("KAEL_PRICE_MISSING", "Kael chưa chốt giá phát sinh nên chưa thể duyệt", 409);
   }
   if (errorCode === "STATUS_CHANGED") {
     apiFailure(
@@ -340,129 +326,6 @@ export function mapReviewError(errorCode: string | null): never {
 
 
 
-
-export function serializeKaelTurn(row: Record<string, unknown>) {
-  const metadata = asRecord(row.safe_metadata);
-  const contentType = asKaelContentType(row.content_type);
-  return {
-    id: asString(row.id),
-    session_id: asString(row.session_id),
-    turn_index: asNumber(row.turn_index),
-    role: asKaelTurnRole(row.role),
-    content_type: contentType,
-    text_content: nullableString(row.text_content),
-    media_refs: asStringArray(row.media_refs),
-    estimate: serializeKaelEstimate(metadata.estimate, metadata.estimate_card_v3),
-    // Surface what Kael still needs so the mobile
-    // thread can render slot-hint chips. Drawn from the missing-info artifact proposal.
-    clarification: serializeKaelClarification(contentType, metadata.artifact_proposal),
-    created_at: asString(row.created_at),
-  };
-}
-
-export function serializeKaelClarification(
-  contentType: string,
-  artifactProposal: unknown,
-): { question: string | null; missing_slots: string[] } | null {
-  if (contentType !== "clarification") return null;
-  const proposal = asRecord(artifactProposal);
-  const question = nullableString(proposal.recommended_next_question);
-  const missingSlots = asStringArray(proposal.missing_fields);
-  if (!question && missingSlots.length === 0) return null;
-  return { question, missing_slots: missingSlots };
-}
-
-export function serializeKaelSession(
-  row: Record<string, unknown>,
-  estimate: ReturnType<typeof serializeKaelEstimate>,
-  turns: Array<ReturnType<typeof serializeKaelTurn>>,
-) {
-  const status = asKaelChatStatus(row.status);
-  const lastTurn = turns[turns.length - 1];
-  const totalCostUsd = asNumber(row.total_cost_usd);
-  const diagnosisScopeResult = kaelDiagnosisScopeArtifactSchema.safeParse(row.diagnosis_scope);
-  const diagnosisScope = diagnosisScopeResult.success ? diagnosisScopeResult.data : null;
-  const rowCasePhase = typeof row.case_phase === "string" &&
-      (KAEL_CASE_WORK_PHASES as readonly string[]).includes(row.case_phase)
-    ? row.case_phase as EdgeKaelCaseWorkPhase
-    : "analysis";
-  return {
-    id: asString(row.id),
-    job_id: nullableString(row.job_id),
-    customer_id: asString(row.customer_id),
-    service_type: asServiceType(row.service_type),
-    status,
-    case_phase: rowCasePhase,
-    diagnosis_scope: diagnosisScope,
-    scheduled_at: nullableString(row.scheduled_at),
-    estimate,
-    started_at: asString(row.started_at),
-    estimate_ready_at: nullableString(row.estimate_ready_at),
-    total_turns: asNumber(row.total_turns),
-    total_cost_usd: totalCostUsd,
-    next_action: kaelNextAction(status, lastTurn?.content_type, totalCostUsd, diagnosisScope),
-  };
-}
-
-export function serializeKaelEstimate(value: unknown, cardV3?: unknown) {
-  const estimate = asRecord(value);
-  if (Object.keys(estimate).length === 0) return null;
-  // Surface the honesty fields the engine already computed in
-  // estimate_card_v3 (output-pipeline forces needs_inspection/price_source when
-  // confidence is low) so the customer estimate card can show "cần kiểm tra
-  // hiện trường" instead of an over-confident price. When no card is present
-  // (older turns / non-estimate), needs_inspection is honestly false.
-  const cardEnvelope = asRecord(cardV3);
-  const nestedCard = asRecord(cardEnvelope.card);
-  const card = Object.keys(nestedCard).length > 0 ? nestedCard : cardEnvelope;
-  const reasoning = asRecord(card.kael_reasoning);
-  return {
-    service_type: asServiceType(estimate.service_type),
-    problem_category: asString(estimate.problem_category),
-    problem_summary: asString(estimate.problem_summary),
-    complexity: asComplexity(estimate.complexity),
-    price_min: asNumber(estimate.price_min),
-    price_max: asNumber(estimate.price_max),
-    confidence: asNumber(estimate.confidence),
-    advisory: nullableString(estimate.advisory),
-    disclaimer: nullableString(estimate.disclaimer) ?? PRICE_DISCLAIMER,
-    needs_inspection: card.needs_inspection === true,
-    price_source: nullableString(card.price_source),
-    needs_inspection_reason: nullableString(reasoning.needs_inspection_reason),
-  };
-}
-
-export function serializeJobMessage(row: Record<string, unknown>) {
-  return {
-    id: asString(row.id),
-    job_id: asString(row.job_id),
-    sender_id: nullableString(row.sender_id),
-    sender_role: asMessageSender(row.sender_role),
-    content: asString(row.content),
-    is_read: asBoolean(row.is_read),
-    created_at: asString(row.created_at),
-  };
-}
-
-export function kaelNextAction(
-  status: KaelChatStatus,
-  lastContentType: string | undefined,
-  totalCostUsd: number,
-  diagnosisScope?: unknown,
-): KaelChatNextAction {
-  if (status === "confirmed") return "confirmed";
-  if (status === "unsupported") return "unsupported";
-  if (totalCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) return "budget_exceeded";
-  if (status === "collecting_evidence") return "collect_evidence";
-  if (status === "estimate_ready") return "estimate_ready";
-  const artifact = kaelDiagnosisScopeArtifactSchema.safeParse(diagnosisScope);
-  if (artifact.success && artifact.data.next_action.kind === "ask_question") return "ask_question";
-  if (artifact.success && artifact.data.next_action.kind === "request_evidence") return "request_evidence";
-  if (lastContentType === "photo_request") return "ask_photo";
-  if (lastContentType === "video_request") return "ask_video";
-  if (lastContentType === "error") return "unsupported";
-  return "await_input";
-}
 
 export function compactMetadata(input: Record<string, unknown>) {
   const result: Record<string, unknown> = {};
@@ -625,7 +488,8 @@ export function storageRef(objectPath: string) {
 }
 
 export function mergeLimitedRefs(existing: string[], incoming: string[], limit: number) {
-  return Array.from(new Set([...existing, ...incoming])).slice(0, limit);
+  if (limit <= 0) return [];
+  return Array.from(new Set([...existing, ...incoming])).slice(-limit);
 }
 
 export function readGoogleMapsApiKey(secrets: EdgeAiSecrets): string | null {
@@ -722,7 +586,7 @@ export const JOB_CHAT_SEND_STATUSES: JobStatus[] = [
 ];
 
 export const JOB_DETAIL_SELECT =
-  "id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, kael_progress, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
+  "id, display_code, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, kael_progress, customer_id, worker_id, final_price, payment_status, payment_provider, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
 
 export const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
 

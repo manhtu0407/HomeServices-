@@ -5,9 +5,12 @@ import {
   inferLocalDealDraftFromKael,
   isLocalDealStatus,
   LOCAL_DEAL_STATUSES,
+  LOCAL_WORKFLOW_PRICE_DISCLAIMER,
   localWorkflowReducer,
   selectLocalWorkflow,
+  statusLabel,
   toLocalDealStatus,
+  validateLocalDealDraft,
   type LocalWorkflowAction,
   type LocalWorkflowState,
 } from '../mobile-workflow'
@@ -172,26 +175,93 @@ describe('mobile local workflow state machine', () => {
     expect(draft.unsupportedServiceLabel).toBeNull()
   })
 
-  it('flags unsupported Kael service requests instead of treating them as supported deals', () => {
-    const draft = inferLocalDealDraftFromKael('Tôi muốn vệ sinh máy lạnh trong căn hộ')
+  it.each([
+    ['vi', 'electrical', 'Ổ cắm phòng khách bị chập điện và cần kiểm tra ngay'],
+    ['en', 'electrical', 'The bedroom electrical outlet is sparking and needs repair'],
+    ['vi', 'electrical', 'Cần lắp máy nước nóng mới trong phòng tắm'],
+    ['en', 'electrical', 'Need to install a new water heater in the bathroom'],
+    ['vi', 'plumbing', 'Ống nước dưới lavabo bị rò rỉ và cần sửa trong hôm nay'],
+    ['en', 'plumbing', 'The bathroom pipe is leaking and needs repair today'],
+    ['vi', 'cleaning', 'Cần tổng vệ sinh căn hộ sau khi chuyển đồ xong'],
+    ['en', 'cleaning', 'Need a full apartment cleaning after moving the furniture'],
+    ['vi', 'hvac', 'Máy lạnh phòng ngủ không mát và đang chảy nước'],
+    ['en', 'hvac', 'The air conditioner is not cooling and is leaking water'],
+    ['vi', 'upholstery', 'Cần vệ sinh sofa và nệm bị bẩn trong phòng khách'],
+    ['en', 'upholstery', 'Need sofa and mattress cleaning in the living room'],
+    ['vi', 'handyman', 'Cần khoan lắp kệ và sửa bản lề cửa bị lỏng'],
+    ['en', 'handyman', 'Need a shelf installed and a loose door hinge repaired'],
+  ] as const)('infers a valid %s %s Kael draft', (_language, expectedService, text) => {
+    const draft = inferLocalDealDraftFromKael(text)
 
-    expect(draft.serviceType).toBeNull()
-    expect(draft.needsServiceChoice).toBe(true)
-    expect(draft.problemChips).toEqual([])
-    expect(draft.unsupportedServiceLabel).toContain('chỉ hỗ trợ sửa điện, sửa nước và vệ sinh')
+    expect(draft.serviceType).toBe(expectedService)
+    expect(draft.needsServiceChoice).toBe(false)
+    expect(draft.problemChips).toHaveLength(1)
+    expect(draft.unsupportedServiceLabel).toBeNull()
+    expect(validateLocalDealDraft({ ...draft, addressLabel: 'Quận 7, TP.HCM' })).toBeNull()
   })
 
-  it('does not misclassify unsupported AC leak language as plumbing', () => {
-    const draft = inferLocalDealDraftFromKael('Máy lạnh phòng ngủ bị rò nước và cần kiểm tra')
+  it.each([
+    ['electrical', PROBLEM_CHIPS.electrical[4], 'Đèn phòng ngủ không sáng dù đã thay bóng'],
+    ['plumbing', PROBLEM_CHIPS.plumbing[4], 'Nước trong căn hộ rất yếu và cần kiểm tra đường cấp'],
+    ['cleaning', PROBLEM_CHIPS.cleaning[0], 'Căn hộ nhiều bụi và cần lau nhà trước cuối tuần'],
+  ] as const)('preserves common %s signals from the original three-service intake', (expectedService, expectedProblem, text) => {
+    const draft = inferLocalDealDraftFromKael(text)
+
+    expect(draft.serviceType).toBe(expectedService)
+    expect(draft.problemChips).toEqual([expectedProblem])
+  })
+
+  it.each([
+    ['vi', 'handyman', PROBLEM_CHIPS.handyman[1], 'Cần lắp thanh rèm mới trong phòng ngủ'],
+    ['en', 'handyman', PROBLEM_CHIPS.handyman[1], 'Need to install a curtain rod in the bedroom'],
+    ['vi', 'upholstery', PROBLEM_CHIPS.upholstery[2], 'Cần vệ sinh rèm bị bám bụi trong phòng ngủ'],
+    ['en', 'upholstery', PROBLEM_CHIPS.upholstery[2], 'Need curtain cleaning for the bedroom'],
+  ] as const)('distinguishes %s curtain installation from fabric care', (_language, expectedService, expectedProblem, text) => {
+    const draft = inferLocalDealDraftFromKael(text)
+
+    expect(draft.serviceType).toBe(expectedService)
+    expect(draft.problemChips).toEqual([expectedProblem])
+  })
+
+  it.each([
+    ['vi', 'Tôi cần sửa xe máy bị chết máy trong tầng hầm'],
+    ['en', 'I need motorcycle repair in the apartment basement'],
+  ] as const)('flags an unsupported %s Kael request', (_language, text) => {
+    const draft = inferLocalDealDraftFromKael(text)
 
     expect(draft.serviceType).toBeNull()
     expect(draft.needsServiceChoice).toBe(true)
     expect(draft.problemChips).toEqual([])
-    expect(draft.unsupportedServiceLabel).toContain('chỉ hỗ trợ sửa điện, sửa nước và vệ sinh')
+    expect(draft.unsupportedServiceLabel).toContain('điều hòa và không khí')
+    expect(draft.unsupportedServiceLabel).toContain('sửa vặt và lắp đặt nhỏ')
+  })
+
+  it('does not infer one service when HVAC and plumbing are both requested', () => {
+    const draft = inferLocalDealDraftFromKael('Máy lạnh đang chảy nước và vòi lavabo cũng bị rò')
+
+    expect(draft.serviceType).toBeNull()
+    expect(draft.needsServiceChoice).toBe(true)
+    expect(draft.problemChips).toEqual([])
+    expect(draft.unsupportedServiceLabel).toBeNull()
+  })
+
+  it('keeps curtain installation ambiguous when a separate fabric-care request is also present', () => {
+    const draft = inferLocalDealDraftFromKael('Cần vệ sinh sofa và lắp thanh rèm trong phòng ngủ')
+
+    expect(draft.serviceType).toBeNull()
+    expect(draft.needsServiceChoice).toBe(true)
+    expect(draft.problemChips).toEqual([])
+  })
+
+  it('names the complete supported service set when validation needs a service choice', () => {
+    const draft = inferLocalDealDraftFromKael('Trong căn hộ có vấn đề cần kiểm tra giúp tôi')
+
+    expect(validateLocalDealDraft(draft)).toBe('Chọn một trong sáu dịch vụ NestScout hỗ trợ')
   })
 
   it('clears unsupported Kael hints after the customer explicitly chooses a supported service in booking', () => {
-    const unsupported = reduce([{ type: 'submit_kael_draft', text: 'Tôi muốn vệ sinh máy lạnh trong căn hộ' }])
+    const unsupported = reduce([{ type: 'submit_kael_draft', text: 'Tôi cần sửa xe máy bị chết máy trong tầng hầm' }])
+    expect(unsupported.deal?.draft.unsupportedServiceLabel).not.toBeNull()
     const corrected = localWorkflowReducer(unsupported, {
       type: 'update_booking_draft',
       patch: {
@@ -385,12 +455,39 @@ describe('mobile local workflow state machine', () => {
     const selectors = selectLocalWorkflow(confirmed)
     expect(confirmed.deal?.status).toBe('confirmed_by_customer')
     expect(selectors.paymentLocked).toBe(true)
-    expect(selectors.reviewLocked).toBe(false)
-    expect(selectors.canCustomerSubmitReview).toBe(true)
+    expect(selectors.reviewLocked).toBe(true)
+    expect(selectors.canCustomerSubmitReview).toBe(false)
 
     const reviewed = localWorkflowReducer(confirmed, { type: 'customer_submit_review' })
-    expect(reviewed.deal?.status).toBe('reviewed')
+    expect(reviewed.deal?.status).toBe('confirmed_by_customer')
     expect(selectLocalWorkflow(reviewed).reviewLocked).toBe(true)
+  })
+
+  it('opens review only after paid and transitions the paid state cleanly', () => {
+    const confirmed = reduce([
+      ...validBookingActions,
+      { type: 'confirm_customer_search' },
+      { type: 'worker_accept_broadcast' },
+      { type: 'worker_start_travel' },
+      { type: 'worker_mark_arrived' },
+      { type: 'worker_start_inspection' },
+      { type: 'worker_start_repair' },
+      { type: 'worker_complete_job' },
+      { type: 'customer_confirm_completion' },
+    ])
+    expect(selectLocalWorkflow(confirmed).canCustomerSubmitReview).toBe(false)
+    expect(localWorkflowReducer(confirmed, { type: 'customer_submit_review' }).deal?.status).toBe(
+      'confirmed_by_customer',
+    )
+
+    const paid = confirmed.deal
+      ? {
+          ...confirmed,
+          deal: { ...confirmed.deal, status: 'paid' as const, backendStatus: 'paid' as const },
+        }
+      : confirmed
+    expect(selectLocalWorkflow(paid).canCustomerSubmitReview).toBe(true)
+    expect(localWorkflowReducer(paid, { type: 'customer_submit_review' }).deal?.status).toBe('reviewed')
   })
 
   it('blocks worker status progression when the local audit gate is closed', () => {
@@ -522,6 +619,166 @@ describe('mobile local workflow state machine', () => {
     expect(selectors.canWorkerAccept).toBe(false)
   })
 
+  it('hydrates a fully validated remote job snapshot with nested money and worker data', () => {
+    const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-paid',
+        status: 'paid',
+        backendStatus: 'paid',
+        serviceType: 'plumbing',
+        description: 'Ống nước rò rỉ đã được sửa.',
+        problemChips: ['Rò rỉ'],
+        addressLabel: 'Quận 7',
+        districtLabel: 'Quận 7',
+        estimate: {
+          problemLabel: 'Rò rỉ ống nước',
+          complexity: 'small',
+          priceRangeLabel: '200.000đ – 300.000đ',
+          confidenceLabel: 'Cao',
+          advisory: 'Kiểm tra thực tế trước khi làm.',
+          disclaimer: LOCAL_WORKFLOW_PRICE_DISCLAIMER,
+          hasVndPrice: true,
+        },
+        broadcast: {
+          status: 'accepted',
+          serviceType: 'plumbing',
+          problemSummary: 'Rò rỉ ống nước',
+          generalArea: 'Quận 7',
+          prebrief: ['Kiểm tra điểm rò'],
+          fullAddressVisible: false,
+          fullAddressLabel: null,
+          secondsRemaining: null,
+        },
+        finalPrice: 250_000,
+        payment: {
+          provider: 'sepay_vietqr',
+          status: 'received',
+          grossAmount: 250_000,
+          platformFee: 25_000,
+          workerNet: 225_000,
+        },
+        workerProfile: {
+          avatarUrl: null,
+          fullName: 'Nguyễn Văn A',
+          id: 'worker-1',
+          rating: 4.8,
+          totalJobs: 12,
+        },
+      },
+    })
+
+    expect(state.deal?.finalPrice).toBe(250_000)
+    expect(state.deal?.payment?.status).toBe('received')
+    expect(state.deal?.workerProfile?.rating).toBe(4.8)
+  })
+
+  it('rejects malformed remote snapshots without crashing or replacing valid local state', () => {
+    const initial = createInitialLocalWorkflowState()
+    const malformedBroadcast = {
+      type: 'hydrate_remote_broadcast',
+      broadcast: {
+        broadcastId: 'broadcast-1',
+        jobId: 'job-1',
+        status: 'sent',
+        serviceType: 'electrical',
+        problemSummary: 'Breaker keeps tripping.',
+        generalArea: 'Quận 7',
+        prebrief: [null, 42],
+        secondsRemaining: Number.NaN,
+      },
+    } as unknown as LocalWorkflowAction
+
+    expect(() => localWorkflowReducer(initial, malformedBroadcast)).not.toThrow()
+    const afterBroadcast = localWorkflowReducer(initial, malformedBroadcast)
+    expect(afterBroadcast.deal).toBeNull()
+    expect(afterBroadcast.lastError).toContain('backend')
+
+    const malformedJob = {
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-1',
+        status: 'paid',
+        serviceType: 'electrical',
+        description: 'Breaker keeps tripping.',
+        problemChips: null,
+        addressLabel: 'Quận 7',
+        districtLabel: 'Quận 7',
+      },
+    } as unknown as LocalWorkflowAction
+    expect(() => localWorkflowReducer(initial, malformedJob)).not.toThrow()
+    expect(localWorkflowReducer(initial, malformedJob).deal).toBeNull()
+
+    for (const invalidPatch of [
+      { backendStatus: 'repairing', finalPrice: 100_000 },
+      { backendStatus: 'paid', finalPrice: 0 },
+      { backendStatus: 'paid', finalPrice: -1 },
+      { backendStatus: 'paid', finalPrice: Number.MAX_SAFE_INTEGER + 1 },
+      {
+        backendStatus: 'paid',
+        payment: { provider: null, status: 'received', grossAmount: Number.NaN, platformFee: null, workerNet: null },
+      },
+      {
+        backendStatus: 'paid',
+        workerProfile: { avatarUrl: null, id: 'worker-1', fullName: 'Worker', rating: 9, totalJobs: 1 },
+      },
+      {
+        backendStatus: 'paid',
+        scopeChange: {
+          id: 'scope-1',
+          status: 'approved_by_customer',
+          requestedDescription: null,
+          reason: null,
+          priceMin: null,
+          priceMax: null,
+          kaelReview: null,
+          kaelProgress: null,
+          evidencePhotoUrls: [42],
+          createdAt: null,
+        },
+      },
+    ]) {
+      const invalidNestedJob = {
+        type: 'hydrate_remote_job',
+        job: {
+          id: 'job-1',
+          status: 'paid',
+          serviceType: 'electrical',
+          description: 'Breaker keeps tripping.',
+          problemChips: ['Breaker'],
+          addressLabel: 'Quận 7',
+          districtLabel: 'Quận 7',
+          ...invalidPatch,
+        },
+      } as unknown as LocalWorkflowAction
+
+      expect(localWorkflowReducer(initial, invalidNestedJob).deal).toBeNull()
+    }
+  })
+
+  it('fails closed for malformed runtime status labels and status conversions', () => {
+    expect(() => toLocalDealStatus('not-a-status' as never)).toThrow(/unknown job status/i)
+    expect(isLocalDealStatus(null as never)).toBe(false)
+    expect(statusLabel('not-a-status' as never)).toBe('Trạng thái không hợp lệ')
+  })
+
+  it('fails a malformed non-finite broadcast countdown closed', () => {
+    const broadcasting = reduce([...validBookingActions, { type: 'confirm_customer_search' }])
+    const malformed = broadcasting.deal?.broadcast
+      ? {
+          ...broadcasting,
+          deal: {
+            ...broadcasting.deal,
+            broadcast: { ...broadcasting.deal.broadcast, secondsRemaining: Number.NaN },
+          },
+        }
+      : broadcasting
+    const ticked = localWorkflowReducer(malformed, { type: 'tick_broadcast' })
+
+    expect(ticked.deal?.broadcast?.status).toBe('expired')
+    expect(ticked.deal?.broadcast?.secondsRemaining).toBe(0)
+  })
+
   it('does not let worker actions advance after worker completion or customer confirmation', () => {
     const completed = reduce([
       ...validBookingActions,
@@ -543,7 +800,7 @@ describe('mobile local workflow state machine', () => {
 
     expect(attemptedAfterConfirm.deal?.status).toBe('confirmed_by_customer')
     expect(selectors.paymentLocked).toBe(true)
-    expect(selectors.reviewLocked).toBe(false)
+    expect(selectors.reviewLocked).toBe(true)
   })
 
   it('keeps a worker decline as local no-worker UI without fake worker match', () => {
@@ -658,13 +915,13 @@ describe('mobile local workflow state machine', () => {
     expect(attempted.lastError).toContain('workflow đang chạy')
   })
 
-  it('expires a customer-cancelled broadcast before worker accept', () => {
+  it('marks a customer-cancelled broadcast as cancelled before worker accept', () => {
     const broadcasting = reduce([...validBookingActions, { type: 'confirm_customer_search' }])
     const cancelled = localWorkflowReducer(broadcasting, { type: 'cancel_deal' })
     const selectors = selectLocalWorkflow(cancelled)
 
     expect(cancelled.deal?.status).toBe('cancelled')
-    expect(cancelled.deal?.broadcast?.status).toBe('expired')
+    expect(cancelled.deal?.broadcast?.status).toBe('cancelled')
     expect(cancelled.deal?.broadcast?.fullAddressVisible).toBe(false)
     expect(cancelled.deal?.broadcast?.fullAddressLabel).toBeNull()
     expect(cancelled.workerGate).toBe('backend_pending')
@@ -674,13 +931,13 @@ describe('mobile local workflow state machine', () => {
     expect(selectors.canCustomerCancelDeal).toBe(false)
   })
 
-  it('cancels a local workflow after worker accepts while expiring worker address access', () => {
+  it('cancels a local workflow after worker accepts while revoking worker address access', () => {
     const accepted = reduce([...validBookingActions, { type: 'confirm_customer_search' }, { type: 'worker_accept_broadcast' }])
     const attempted = localWorkflowReducer(accepted, { type: 'cancel_deal' })
     const selectors = selectLocalWorkflow(attempted)
 
     expect(attempted.deal?.status).toBe('cancelled')
-    expect(attempted.deal?.broadcast?.status).toBe('expired')
+    expect(attempted.deal?.broadcast?.status).toBe('cancelled')
     expect(attempted.lastError).toBeNull()
     expect(selectors.canWorkerSeeFullAddress).toBe(false)
     expect(selectors.canCustomerCancelDeal).toBe(false)
@@ -766,5 +1023,17 @@ describe('mobile local workflow state machine', () => {
     expect(next.deal?.draft.serviceType).toBe('electrical')
     expect(next.deal?.broadcast).toBeNull()
     expect(selectLocalWorkflow(next).draftValidationMessage).toBeNull()
+  })
+
+  it('rejects blank problem chips and malformed media counts in booking drafts', () => {
+    const draft = inferLocalDealDraftFromKael('The bathroom pipe is leaking and needs repair today')
+    const otherwiseValid = {
+      ...draft,
+      addressLabel: 'District 7, HCMC',
+    }
+
+    expect(validateLocalDealDraft({ ...otherwiseValid, problemChips: ['   '] })).not.toBeNull()
+    expect(validateLocalDealDraft({ ...otherwiseValid, mediaCount: Number.NaN })).not.toBeNull()
+    expect(validateLocalDealDraft({ ...otherwiseValid, mediaCount: -1 })).not.toBeNull()
   })
 })

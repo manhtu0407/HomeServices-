@@ -76,15 +76,79 @@ describe('api-auth — authenticateRequest', () => {
   it('rejects when getUser fails', async () => {
     mockGetUser.mockResolvedValue({
       data: { user: null },
-      error: { message: 'invalid token' },
+      error: { message: 'invalid token', status: 401 },
     })
 
     const result = await authenticateRequest(makeRequest('bad-token'))
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.status).toBe(401)
+      expect(result.code).toBe('AUTH_MISSING')
       expect(result.error).toContain('hết hạn')
     }
+  })
+
+  it.each([
+    ['embedded whitespace', 'Bearer token second'],
+    ['combined credentials', 'Bearer token, Bearer other'],
+    ['non-ASCII credential', 'Bearer tokén'],
+    ['oversized credential', `Bearer ${'a'.repeat(8_193)}`],
+  ])('rejects %s before calling Supabase Auth', async (_label, authorization) => {
+    const req = new Request('http://localhost/api/test', {
+      headers: { authorization },
+    })
+
+    const result = await authenticateRequest(req)
+
+    expect(result).toMatchObject({
+      success: false,
+      code: 'AUTH_MISSING',
+      status: 401,
+    })
+    expect(mockGetUser).not.toHaveBeenCalled()
+  })
+
+  it('accepts the case-insensitive Bearer authentication scheme', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-1', email: 'test@test.com' } },
+      error: null,
+    })
+    mockSingle.mockResolvedValue({
+      data: { role: 'customer' },
+      error: null,
+    })
+    const req = new Request('http://localhost/api/test', {
+      headers: { authorization: 'bEaReR valid-token' },
+    })
+
+    const result = await authenticateRequest(req)
+
+    expect(result.success).toBe(true)
+    expect(mockGetUser).toHaveBeenCalledWith('valid-token')
+  })
+
+  it('returns a structured 503 when the auth service reports a transient failure', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'upstream unavailable', status: 503 },
+    })
+
+    const result = await authenticateRequest(makeRequest('valid-token'))
+    expect(result).toMatchObject({
+      success: false,
+      code: 'AUTH_UNAVAILABLE',
+      status: 503,
+    })
+  })
+
+  it('catches a rejected auth lookup and returns a structured 503', async () => {
+    mockGetUser.mockRejectedValue(new Error('network timeout'))
+
+    await expect(authenticateRequest(makeRequest('valid-token'))).resolves.toMatchObject({
+      success: false,
+      code: 'AUTH_UNAVAILABLE',
+      status: 503,
+    })
   })
 
   it('rejects when profile not found', async () => {
@@ -92,13 +156,49 @@ describe('api-auth — authenticateRequest', () => {
       data: { user: { id: 'user-1', email: 'test@test.com' } },
       error: null,
     })
-    mockSingle.mockResolvedValue({ data: null, error: { message: 'not found' } })
+    mockSingle.mockResolvedValue({
+      data: null,
+      error: { code: 'PGRST116', message: 'not found' },
+    })
 
     const result = await authenticateRequest(makeRequest('valid-token'))
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.status).toBe(401)
+      expect(result.code).toBe('AUTH_MISSING')
     }
+  })
+
+  it('returns a structured 503 for a transient profile database failure', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-1', email: 'test@test.com' } },
+      error: null,
+    })
+    mockSingle.mockResolvedValue({
+      data: null,
+      error: { code: '57014', message: 'statement timeout' },
+    })
+
+    const result = await authenticateRequest(makeRequest('valid-token'))
+    expect(result).toMatchObject({
+      success: false,
+      code: 'AUTH_UNAVAILABLE',
+      status: 503,
+    })
+  })
+
+  it('catches a rejected profile lookup and returns a structured 503', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-1', email: 'test@test.com' } },
+      error: null,
+    })
+    mockSingle.mockRejectedValue(new Error('database connection reset'))
+
+    await expect(authenticateRequest(makeRequest('valid-token'))).resolves.toMatchObject({
+      success: false,
+      code: 'AUTH_UNAVAILABLE',
+      status: 503,
+    })
   })
 
   it('succeeds with valid token and profile', async () => {
@@ -114,7 +214,7 @@ describe('api-auth — authenticateRequest', () => {
     const result = await authenticateRequest(makeRequest('valid-token'))
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.user.id).toBe('user-1')
+      expect(result.user).toEqual({ id: 'user-1' })
       expect(result.role).toBe('customer')
     }
   })
@@ -179,6 +279,7 @@ describe('api-auth — apiError', () => {
     expect(body.error).toBe('Vui lòng đăng nhập')
     expect(body.code).toBe('AUTH_MISSING')
     expect(response.status).toBe(401)
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
   })
 })
 
@@ -188,6 +289,7 @@ describe('api-auth — apiSuccess', () => {
     const body = await response.json()
     expect(body.job_id).toBe('123')
     expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
   })
 
   it('supports custom status code', async () => {

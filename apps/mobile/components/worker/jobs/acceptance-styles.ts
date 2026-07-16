@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, radius, shadow, typography } from '@/design/theme'
+import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   acceptBoundaryAura: {

@@ -1,5 +1,5 @@
 /**
- * S5 (Plan.md §38 security hardening) — PII-log lint guardrail.
+ * PII-log lint guardrail.
  *
  * RULES.md #9: "Logging Must Not Expose PII Or Secrets." The audit confirmed current
  * runtime logs carry only IDs / error codes / safe metadata. This lint keeps it that
@@ -121,6 +121,8 @@ const FORBIDDEN: { id: string; pattern: RegExp }[] = [
   { id: 'address_unit', pattern: new RegExp(String.raw`\baddress_(?:unit|floor|building|full|line)\b${TAIL}`, 'i') },
   { id: 'env_secret', pattern: /process\.env\.\w*(?:KEY|TOKEN|SECRET)\w*/i },
   { id: 'provider_key', pattern: /\b(?:ANTHROPIC|PERPLEXITY|DEEPSEEK)_API_KEY\b/ },
+  { id: 'runtime_error_message', pattern: /\b(?:error|err)\.message\b/i },
+  { id: 'raw_error_object', pattern: /\{\s*(?:error|err)\s*(?:[,}])/i },
 ]
 
 // Returns violation labels for every console.* call in `src` that references a
@@ -154,6 +156,8 @@ describe('S5 PII-log lint: no PII/secret fields in console.* calls (RULES #9)', 
     expect(findPiiLogViolations(`console.error(phoneNumber)`, 'f')).not.toEqual([])
     expect(findPiiLogViolations(`console.log('user', { cccd, name })`, 'f')).not.toEqual([])
     expect(findPiiLogViolations('console.log(`addr ${address_unit}`)', 'f')).not.toEqual([])
+    expect(findPiiLogViolations(`console.warn('provider failed', { reason: error.message })`, 'f')).not.toEqual([])
+    expect(findPiiLogViolations(`console.error('provider failed', { err })`, 'f')).not.toEqual([])
     // Safe: message text mentioning a field word, coarse metadata, and lookalike ids.
     expect(findPiiLogViolations(`console.log('user phone updated')`, 'f')).toEqual([])
     expect(findPiiLogViolations(`console.warn('x', { phoneVerified: true, district })`, 'f')).toEqual([])

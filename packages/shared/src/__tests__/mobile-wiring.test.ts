@@ -9,7 +9,7 @@ const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 const countOccurrences = (source: string, value: string) => source.split(value).length - 1
 
 // The Edge service layer is the services.ts factory plus the per-domain modules under
-// services/, so source-string assertions read the whole concatenated layer â€” otherwise a grep
+// services/, so source-string assertions read the whole concatenated layer — otherwise a grep
 // silently misses code that moved into a module.
 const EDGE_MOBILE_API_SHARED = resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared')
 const listEdgeServiceFiles = (absDir: string): string[] =>
@@ -289,7 +289,7 @@ describe('all screens export default function', () => {
 })
 
 // ===================================================================
-// Customer tabs - STRUCTURES.md A1: Trang chá»§ | YÃªu cáº§u | Kael | Hoáº¡t Ä‘á»™ng | Há»“ sÆ¡
+// Customer tabs - STRUCTURES.md A1: Trang chủ | Yêu cầu | Kael | Hoạt động | Hồ sơ
 // ===================================================================
 
 describe('customer tab labels (STRUCTURES.md A1)', () => {
@@ -455,9 +455,9 @@ describe('customer frontend shell surfaces', () => {
       'customer-v21-home',
       'customer-v21-home-hero',
       'customer-v21-home-card-skin',
-      'Kael sáºµn sÃ ng há»— trá»£, cÃ´ng viá»‡c váº«n do báº¡n kiá»ƒm soÃ¡t.',
-      'Báº¡n cáº§n gÃ¬ hÃ´m nay?',
-      'CÃ´ng viá»‡c Ä‘ang xá»­ lÃ½',
+      'Kael sẵn sàng hỗ trợ, công việc vẫn do bạn kiểm soát.',
+      'Bạn cần gì hôm nay?',
+      'Công việc đang xử lý',
     ]
     const offenders = entryGraphFiles
       .filter((path) => {
@@ -556,19 +556,38 @@ describe('customer Kael workflow view model wiring', () => {
   const v21Surface = () => read('components/customer/v21/surfaces.tsx')
   const v21ChatView = () => read('components/customer/v21/chat-stateful-surfaces.tsx')
   const v21ChatAura = () => read('components/customer/v21/chat-surfaces.tsx')
-  const pendingIntake = () => read('components/customer/kael-chat/pending-intake.ts')
+  const v21KaelSurface = () => read('components/customer/v21/kael-chat-surface.tsx')
+  const v21KaelContent = () => read('components/customer/v21/customer-kael-chat-content.tsx')
+  const v21KaelPresentation = () => read('components/customer/v21/customer-kael-presentation.ts')
+  const v21KaelOrchestration = () => [
+    read('components/customer/v21/use-customer-kael-surface-controller.ts'),
+    read('components/customer/v21/use-customer-kael-session-hydration.ts'),
+    read('components/customer/v21/use-customer-kael-evidence-actions.ts'),
+    read('components/customer/v21/use-customer-kael-message-actions.ts'),
+    read('components/customer/v21/use-customer-kael-decision-actions.ts'),
+  ].join('\n')
+  const v21KaelProcess = () => [
+    read('components/customer/v21/use-kael-process-line-controller.ts'),
+    read('components/customer/v21/kael-process-line-view.tsx'),
+  ].join('\n')
+  const pendingIntakeFacade = () => read('components/customer/kael-chat/pending-intake.ts')
+  const pendingIntake = () => read('lib/pending-kael-chat-draft.ts')
   const workflowHook = () => read('lib/use-service-workflow.ts')
 
   it('keeps active Customer Kael on the V21 route graph', () => {
     const src = v21Surface()
+    const surface = v21KaelSurface()
+    const content = v21KaelContent()
     const view = v21ChatView()
 
     expect(exists('components/customer/kael-chat/kael-chat-surface.tsx')).toBe(false)
     expect(exists('components/customer/kael-chat/thread.tsx')).toBe(false)
     expect(exists('components/customer/kael-chat/agentic-parts.tsx')).toBe(false)
     expect(src).toContain('export function CustomerKaelSurface')
-    expect(src).toContain('export function KaelChatSurface')
-    expect(src).toContain('KaelChatSurfaceView')
+    expect(surface).toContain('export function KaelChatSurface')
+    expect(src).toContain('accountId: session?.user.id ?? null')
+    expect(src).toContain('<KaelChatSurface key={stateScopeKey} stateScopeKey={stateScopeKey} />')
+    expect(content).toContain('KaelChatSurfaceView')
     expect(view).toContain('testID="customer-v21-kael-chat"')
     expect(view).toContain('customer-v21-screen-2.4-chat-normal')
     expect(view).toContain('customer-v21-screen-2.5-chat-case')
@@ -576,7 +595,7 @@ describe('customer Kael workflow view model wiring', () => {
   })
 
   it('keeps V21 Kael workflow state wired through the shared mobile boundary', () => {
-    const src = v21Surface()
+    const src = v21KaelOrchestration()
 
     expect(src).toContain('readPendingKaelChatDraft')
     expect(src).toContain('clearPendingKaelChatDraft')
@@ -585,8 +604,10 @@ describe('customer Kael workflow view model wiring', () => {
     expect(src).toContain('useFrontendWorkflow')
     expect(src).toContain('workflow.actions.confirmRemoteSearch')
     expect(src).toContain('workflow.actions.hydrateRemoteJobById')
-    expect(pendingIntake()).toContain('export function setPendingKaelChatDraft')
+    expect(pendingIntakeFacade()).toContain("export * from '@/lib/pending-kael-chat-draft'")
+    expect(pendingIntake()).toContain('export async function setPendingKaelChatDraft(ownerId: string')
     expect(pendingIntake()).toContain('export async function readPendingKaelChatDraft')
+    expect(pendingIntake()).toContain('PENDING_KAEL_CHAT_DRAFT_TTL_MS = 30 * 60 * 1000')
   })
 
   it('keeps the mobile workflow adapter memoized and side-effect free', () => {
@@ -599,14 +620,18 @@ describe('customer Kael workflow view model wiring', () => {
   })
 
   it('renders Kael process steps progressively from the ticket artifact mode', () => {
-    const src = v21Surface()
+    const src = v21KaelProcess()
     expect(src).toContain('buildKaelProcessSequence')
     expect(src).toContain('startProcessLines')
     expect(src).toContain('KaelProcessLines')
   })
 
   it('renders estimate-ready orchestration as Kael status instead of a customer gate', () => {
-    const src = v21Surface()
+    const src = [
+      v21KaelPresentation(),
+      v21KaelContent(),
+      read('components/customer/v21/use-customer-kael-decision-actions.ts'),
+    ].join('\n')
     expect(src).toContain("chat?.session.next_action === 'estimate_ready'")
     expect(src).toContain('confirmAgenticEstimate')
     expect(src).toContain('AgenticChatEstimateCard')
@@ -771,6 +796,9 @@ describe('frontend workflow provider wiring', () => {
 
     // Poll retained as a dropped-socket fallback (reduced 15s -> 30s), not removed.
     expect(provider).toContain('30_000')
+    // A local countdown is advisory. The backend may accept a worker at the
+    // deadline, so an expired local snapshot must never disable reconciliation.
+    expect(provider).not.toContain("customerBroadcast?.status === 'expired'")
 
     // The job chat thread gets live counterparty messages with cleanup.
     expect(chatThread).toContain('subscribeToJobMessages')
@@ -850,8 +878,8 @@ describe('frontend workflow provider wiring', () => {
     const requiredDisclaimer = 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
     expect(src).toContain(`const REQUIRED_PRICE_DISCLAIMER = '${requiredDisclaimer}'`)
     expect(src).toContain('disclaimer: REQUIRED_PRICE_DISCLAIMER')
-    expect(src).not.toContain('GiÃ¡ thá»±c táº¿ do thá»£ xÃ¡c nháº­n trÆ°á»›c khi báº¯t Ä‘áº§u.')
-    expect(src).not.toContain('ÄÃ¢y lÃ  Æ°á»›c tÃ­nh cáº§n thá»£ xÃ¡c nháº­n')
+    expect(src).not.toContain('Giá thực tế do thợ xác nhận trước khi bắt đầu.')
+    expect(src).not.toContain('Đây là ước tính cần thợ xác nhận')
     expect(src).not.toContain('disclaimer: data.estimate.disclaimer')
   })
 
@@ -877,21 +905,32 @@ describe('mobile push notification wiring', () => {
     expect(appJson).not.toContain('"expo-notifications"')
   })
 
-  it('registers Expo push tokens through the mobile API wrapper after authenticated profile load', () => {
+  it('registers and unregisters Expo push tokens through the authenticated mobile API wrapper', () => {
     const authProvider = read('lib/auth-provider.tsx')
+    const api = read('lib/api.ts')
     const push = read('lib/push-notifications.ts')
+    const pushSession = read('lib/use-session-push-registration.ts')
+    const services = read('lib/services.ts')
     expect(exists('lib/push-notifications.ts')).toBe(true)
     expect(authProvider).toContain("import { useRouter } from 'expo-router'")
-    expect(authProvider).toContain("import { addPushNotificationResponseListener, setupPushNotifications } from './push-notifications'")
-    expect(authProvider).toContain("profileStatus !== 'ready'")
-    expect(authProvider).toContain("const registrationKey = `${userId}:${role}`")
-    expect(authProvider).toContain('pushRegistrationKeyRef')
-    expect(authProvider).toContain('setupPushNotifications({ role })')
+    expect(authProvider).toContain('addPushNotificationResponseListener')
+    expect(authProvider).toContain('useSessionPushRegistration')
+    expect(authProvider).toContain("profileReady: profileStatus === 'ready'")
+    expect(pushSession).toContain("const registrationKey = `${userId}:${input.role}`")
+    expect(pushSession).toContain('registrationKeyRef')
+    expect(pushSession).toContain('accessToken: desiredRegistration.accessToken')
+    expect(pushSession).toContain('role: desiredRegistration.role')
+    expect(pushSession).toContain('unregisterPushNotifications')
     expect(push).toContain("require('expo-notifications')")
     expect(push).toContain('getPermissionsAsync')
     expect(push).toContain('requestPermissionsAsync')
     expect(push).toContain('getExpoPushTokenAsync')
-    expect(push).toContain('notificationService.registerDeviceToken(payload)')
+    expect(push).toContain('notificationService.registerDeviceToken(payload, input.accessToken)')
+    expect(push).toContain('notificationService.unregisterDeviceToken')
+    expect(services).toContain("api.postAuthenticated<DevicePushTokenResponse>(")
+    expect(services).toContain("api.deleteAuthenticated<DevicePushTokenUnregisterResponse>(")
+    expect(api).toContain("request<T>('POST', path, body, accessToken)")
+    expect(api).toContain("request<T>('DELETE', path, body, accessToken)")
     expect(push).toContain("permission_status: 'granted'")
     expect(push).toContain("source: 'expo-notifications'")
     expect(push).not.toContain('supabase.')
@@ -910,8 +949,9 @@ describe('mobile push notification wiring', () => {
     expect(push).toContain("'scope_change'")
     expect(push).toContain("`/(customer)/history?${params.toString()}`")
     expect(push).toContain("`/(worker)/jobs?${params.toString()}`")
-    expect(push).toContain("withoutScheme.startsWith('/(customer)/history')")
-    expect(push).toContain("withoutScheme.startsWith('/(worker)/jobs')")
+    expect(push).toContain("parsed.pathname === '/(customer)/history'")
+    expect(push).toContain("parsed.pathname === '/(worker)/jobs'")
+    expect(push).toContain('if (!allowedKeys) return null')
     expect(push).not.toContain('Linking.openURL')
   })
 })
@@ -993,9 +1033,9 @@ describe('prototype runtime cleanup', () => {
       'CustomerV21',
       'customer-v21-home',
       'customer-v21-home-hero',
-      'Kael sÃ¡ÂºÂµn sÃƒÂ ng hÃ¡Â»â€” trÃ¡Â»Â£, cÃƒÂ´ng viÃ¡Â»â€¡c vÃ¡ÂºÂ«n do bÃ¡ÂºÂ¡n kiÃ¡Â»Æ’m soÃƒÂ¡t.',
-      'BÃ¡ÂºÂ¡n cÃ¡ÂºÂ§n gÃƒÂ¬ hÃƒÂ´m nay?',
-      'CÃƒÂ´ng viÃ¡Â»â€¡c Ã„â€˜ang xÃ¡Â»Â­ lÃƒÂ½',
+      'Kael sẵn sàng hỗ trợ, công việc vẫn do bạn kiểm soát.',
+      'Bạn cần gì hôm nay?',
+      'Công việc đang xử lý',
     ]
     const offenders = routeGraphFiles
       .filter((path) => {
@@ -1060,7 +1100,7 @@ describe('prototype runtime cleanup', () => {
 })
 
 // ===================================================================
-// Worker tabs - STRUCTURES.md B1: Trang chá»§ | CÃ´ng viá»‡c | Tin nháº¯n | Thu nháº­p | Há»“ sÆ¡
+// Worker tabs - STRUCTURES.md B1: Trang chủ | Công việc | Tin nhắn | Thu nhập | Hồ sơ
 // ===================================================================
 describe('worker tab labels (STRUCTURES.md B1)', () => {
   const src = read('app/(worker)/_layout.tsx')
@@ -1185,8 +1225,8 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     const formulaCanvas = read('components/ui/formula-mint-canvas.tsx')
     const customerAura = read('components/customer/v21/aura-surfaces.tsx')
     const customerShared = read('components/customer/v21/shared-surfaces.tsx')
-    const customerHistoryView = read('components/customer/v21/history-surface-stateful-surfaces.tsx')
-    const customerAgenticView = read('components/customer/v21/agentic-center-stateful-surfaces.tsx')
+    const customerHistoryView = read('components/customer/v21/service-history-surface.tsx')
+    const customerChatAura = read('components/customer/v21/chat-surfaces.tsx')
     const workerAura = read('components/worker/ui/aura-surfaces.tsx')
     const workerFlow = read('components/worker/worker-v5-flow.tsx')
 
@@ -1240,7 +1280,6 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(customerAura).toContain('scope={`CustomerV21${screenId}`}')
     expect(customerAura).toContain('testID={`customer-v21-screen-canvas-aura-${screenId}`}')
     expect(customerAura).toContain('scope={`CustomerProfile${screenId}`}')
-    expect(customerAura).toContain('scope={`CustomerAgentic${screenId}`}')
     expect(customerAura).toContain('scope="CustomerLocationEta"')
     expect(customerAura).toContain('scope={`CustomerFulfillment${screenId}`}')
     expect(customerAura).toContain('testID="customer-v21-home-canvas-aura"')
@@ -1252,8 +1291,9 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(customerShared).not.toContain('usesFulfillmentMintCanvas')
     expect(customerShared).not.toContain('usesAgenticMintCanvas')
     expect(customerShared).not.toContain('usesProfileMintCanvas')
-    expect(customerHistoryView).toContain('<V21Screen screenId={activeScreen} testID="customer-v21-activity">')
-    expect(customerAgenticView).toContain('<V21Screen screenId={screenId} testID={testID}>')
+    expect(customerHistoryView).toContain('<V21Screen screenId="2.6-case-overview" testID="customer-v21-activity">')
+    expect(customerChatAura).toContain('FormulaMintCanvasAura')
+    expect(customerChatAura).toContain('scope="CustomerChat"')
     expect(workerAura).toContain('FormulaMintCanvasAura')
     expect(workerAura).toContain('reduceTransparency?: boolean')
     expect(workerAura).toContain('reduceTransparency={reduceTransparency}')
@@ -1374,8 +1414,8 @@ describe('auth layout wiring', () => {
     const verifyOtp = read('app/(auth)/verify-otp.tsx')
     expect(verifyOtp).toContain('Redirect')
     expect(verifyOtp).toContain('/(auth)/login')
-    expect(verifyOtp).not.toContain('XÃ¡c minh OTP')
-    expect(verifyOtp).not.toContain('Nháº­p mÃ£ OTP')
+    expect(verifyOtp).not.toContain('Xác minh OTP')
+    expect(verifyOtp).not.toContain('Nhập mã OTP')
   })
 })
 
@@ -1404,7 +1444,9 @@ describe('auth production login surface', () => {
   })
 
   it('requires role-first selection before routing and keeps password auth behind the selected role', () => {
-    expect(surface).toContain("const [role, setRole]")
+    expect(surface).toContain('useReducer(entryAccessStateReducer')
+    expect(surface).toContain('role: initialRole')
+    expect(surface).toContain('useEntryAccessState(initialRole, initialStep)')
     expect(surface).toContain('const chooseRole')
     expect(surface).toContain("onRoleChange('customer')")
     expect(surface).toContain("onRoleChange('worker')")
@@ -1414,7 +1456,7 @@ describe('auth production login surface', () => {
     expect(surface).toContain('auth-login-email-input')
     expect(surface).toContain('auth-login-password-input')
     expect(surface).toContain('auth-login-submit')
-    expect(surface).toContain("role === 'customer' ? features.customerRegistration : features.workerRegistration")
+    expect(surface).toContain("props.role === 'customer' ? props.features.customerRegistration : props.features.workerRegistration")
     expect(surface).toContain("props.role === 'customer' &&")
     expect(surface).toContain('auth-client-google-primary')
     expect(surface).not.toContain("onPress={() => router.replace('/(customer)/home')}")
@@ -1440,7 +1482,7 @@ describe('auth production login surface', () => {
     expect(surface).not.toContain('auth-client-gmail-secondary')
     expect(surface).not.toContain('auth-client-facebook-secondary')
     expect(surface).toContain("showProviders = props.role === 'customer' && props.features.customerGoogle")
-    expect(surface).toContain('Email/SDT')
+    expect(surface).toContain('Email/SĐT')
     expect(surface).toContain('auth-recovery-submit')
     expect(surface).toContain('workerRegistration')
     expect(surface).toContain('submitWorkerApplication')
@@ -1622,7 +1664,7 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
 // ===================================================================
 
 describe('auth-provider.tsx', () => {
-  const src = read('lib/auth-provider.tsx')
+  const src = [read('lib/auth-provider.tsx'), read('lib/auth-oauth-runtime.ts')].join('\n')
 
   it('creates React Context', () => {
     expect(src).toContain('createContext')
@@ -1663,11 +1705,13 @@ describe('auth-provider.tsx', () => {
   })
 
   it('exposes production auth actions and explicit profile status', () => {
+    const oauthRuntime = read('lib/auth-oauth-runtime.ts')
     expect(src).toContain('signInWithPassword')
     expect(src).toContain('signInWithGoogle')
     expect(src).toContain('supabase.auth.signInWithOAuth')
-    expect(src).toContain('createSessionFromOAuthUrl')
-    expect(src).toContain('exchangeCodeForSession')
+    expect(src).toContain('inspectOAuthCallbackUrl')
+    expect(src).toContain('exchangeOAuthCodeForSession')
+    expect(oauthRuntime).toContain('supabase.auth.exchangeCodeForSession(code)')
     expect(src).toContain('signOut')
     expect(src).toContain('refreshProfile')
     expect(src).toContain('profileStatus')
@@ -1888,13 +1932,21 @@ describe('web preview dependencies', () => {
   })
 
   it('provides a staging web preview runner that loads ignored public env without printing values', () => {
-    expect(rootPackage.scripts['preview:mobile:web:staging']).toBe('scripts\\run-mobile-web-staging-preview.cmd')
+    expect(rootPackage.scripts['preview:mobile:web:staging']).toBe(
+      'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-mobile-web-staging-preview.ps1',
+    )
     expect(stagingPreviewScript).toContain('apps/mobile/.env.staging')
     expect(stagingPreviewScript).toContain('NESTSCOUT_MOBILE_ENV_FILE')
     expect(stagingPreviewScript).toContain('EXPO_NO_DOTENV')
-    expect(stagingPreviewScript).toContain('Assert-StagingRef -Value $supabaseUrl')
+    expect(stagingPreviewScript).toContain('lib\\staging-target-safety.ps1')
+    expect(stagingPreviewScript).toContain(
+      'Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase',
+    )
     expect(stagingPreviewScript).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_URL'")
     expect(stagingPreviewScript).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'")
+    expect(stagingPreviewScript).toContain('$allowedEnvNames')
+    expect(stagingPreviewScript).toContain('if ($AllowedNames -notcontains $name)')
+    expect(stagingPreviewScript).toContain('Import-EnvFile -Path $EnvFile -AllowedNames $allowedEnvNames')
     expect(stagingPreviewScript).not.toMatch(/Write-(Host|Output).*publishableKey/)
     expect(stagingPreviewScript).not.toMatch(/Write-(Host|Output).*\$value/)
   })
@@ -2037,7 +2089,7 @@ describe('constants/colors.ts', () => {
 })
 
 // ===================================================================
-// Client intake production UI - customer YÃªu cáº§u A2-A5 slice
+// Client intake production UI - customer Yêu cầu A2-A5 slice
 // ===================================================================
 
 describe('removed legacy price-check production UI', () => {
@@ -2080,9 +2132,9 @@ describe('frontend-only workflow safety audit', () => {
       expect(countOccurrences(appLanguageStore, `${key}:`)).toBeGreaterThanOrEqual(2)
     }
 
-    expect(appLanguageStore).not.toContain('ChÆ°a cÃ³ dá»¯ liá»‡u tháº­t')
+    expect(appLanguageStore).not.toContain('Chưa có dữ liệu thật')
     expect(appLanguageStore).not.toContain('No real data yet')
-    expect(appLanguageStore).not.toContain('YÃªu cáº§u tháº­t')
+    expect(appLanguageStore).not.toContain('Yêu cầu thật')
     expect(appLanguageStore).not.toContain('Real request')
     expect(appLanguageStore).toContain("if (language === 'vi' && !nonAsciiPattern.test(problem)) return appCopy.vi.common.unknown")
     expect(appLanguageStore).toContain("if (language === 'en' && nonAsciiPattern.test(problem)) return appCopy.en.common.unknown")
@@ -2096,9 +2148,8 @@ describe('frontend-only workflow safety audit', () => {
     expect(provider).toContain('hydrateRemoteJobById')
     expect(provider).toContain('dispatch({ type: \'hydrate_remote_job\', job: jobDetailToSnapshot(result.data, role ===')
     expect(provider).toContain('Could not update the request. Try again.')
-    expect(provider).toContain("if (language === 'en' && !asciiOnlyPattern.test(error)) return workflowErrorCopy.en.fallback")
-    expect(provider).toContain("if (language === 'vi' && asciiOnlyPattern.test(error)) return workflowErrorCopy.vi.fallback")
-    expect(provider).toContain('const mediaError = localizeWorkflowError(uploaded.error, language)')
+    expect(provider).toContain('return workflowErrorCopy[language].fallback')
+    expect(provider).toContain('const mediaError = localizeMediaUploadFailure(uploaded, language)')
   })
 
 
@@ -2160,7 +2211,7 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerStatusUpdateSchema).toContain('if (record.final_price !== undefined)')
     expect(workerStatusUpdateSchema).toContain('result.completion_notes = record.completion_notes.slice(0, 2000)')
     expect(workerStatusUpdateSchema).toContain('result.completion_photo_urls = urls')
-    expect(workerStatusUpdateSchema).toContain('result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in)')
+    expect(workerStatusUpdateSchema).toContain('result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in, jobId)')
     expect(workerStatusUpdateSchema).toContain('if (status === "completed_by_worker")')
     expect(workerStatusUpdateSchema).toContain('Cần ghi chú hoàn tất trước khi báo hoàn tất')
     const createJobReturn = edgeServices.slice(edgeServices.indexOf('return {\n    job_id: jobId'), edgeServices.indexOf('async function cancelAnalyzingJob'))
@@ -2183,4 +2234,3 @@ describe('frontend-only workflow safety audit', () => {
     expect(edgeServices).toContain('if (access.release_stage === "area_only")')
   })
 })
-

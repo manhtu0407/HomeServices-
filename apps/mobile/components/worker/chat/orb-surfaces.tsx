@@ -1,5 +1,5 @@
+import { Image } from 'expo-image'
 import {
-  Image,
   Pressable,
   Text as RNText,
   View,
@@ -32,17 +32,17 @@ function Text({ style, ...props }: TextProps) {
 export function WorkerV5KaelOrbBubble({
   align,
   body,
-  speaker,
+  speakerLabel,
   strongFirstLine = false,
 }: {
   align?: 'right'
   body?: string
-  speaker: string
+  speakerLabel: string
   strongFirstLine?: boolean
 }) {
   return (
     <View
-      accessibilityLabel={speaker}
+      accessibilityLabel={speakerLabel}
       style={[styles.kaelOrbBubble, align === 'right' ? styles.kaelOrbBubbleRight : styles.kaelOrbBubbleLeft]}
       testID={`worker-v5-kael-bubble-${align === 'right' ? 'worker' : 'kael'}`}
     >
@@ -154,7 +154,7 @@ export function WorkerV5KaelOrbOpportunityResults({
   const title = matchScore == null ? serviceLabel : `${serviceLabel} · ${matchScore}%`
   const metaParts = [
     area,
-    workerV5TimeChoiceLabel(deal.draft.timeChoice, language),
+    workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt),
     distance.hasSignal ? distance.label : null,
   ].filter(Boolean)
   const meta = metaParts.length > 0

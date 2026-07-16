@@ -132,8 +132,22 @@ export async function runKaelPipeline(
     timeoutMs: KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs,
     run: () =>
       input.intakeDiagnosisEnabled
-        ? diagnoseIntake(serviceType, problemChips, description, secrets, input.conversationContext, language)
-        : classifyIntent(serviceType, problemChips, description, secrets),
+        ? diagnoseIntake(
+          serviceType,
+          problemChips,
+          description,
+          secrets,
+          spendGate,
+          input.conversationContext,
+          language,
+        )
+        : classifyIntent(
+          serviceType,
+          problemChips,
+          description,
+          secrets,
+          spendGate,
+        ),
     fallback: () => ({
       success: false as const,
       fallback: buildFallbackIntent(serviceType, problemChips, description),

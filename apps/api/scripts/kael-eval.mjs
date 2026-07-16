@@ -11,6 +11,8 @@ const DEFAULT_FIXTURE_PATH = resolve(REPO_ROOT, 'apps/api/fixtures/kael-eval/gol
 const DEFAULT_KNOWLEDGE_FIXTURE_PATH = resolve(REPO_ROOT, 'apps/api/fixtures/kael-eval/knowledge-cases.json')
 const DEFAULT_REPORT_PATH = resolve(REPO_ROOT, `docs/test-logs/${new Date().toISOString().slice(0, 10)}_kael-eval.md`)
 const KAEL_EVAL_MODE = process.env.KAEL_EVAL_MODE ?? 'deterministic'
+const STAGING_REF = 'xyylanuyflrjzbjzhqfl'
+const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
 
 const DEFAULT_THRESHOLDS = {
   serviceAccuracy: numberEnv('KAEL_EVAL_SERVICE_THRESHOLD', 0.85),
@@ -35,6 +37,21 @@ const PRICE_BANDS = {
     small: { min: 280000, max: 480000 },
     medium: { min: 520000, max: 880000 },
     large: { min: 1100000, max: 1700000 },
+  },
+  hvac: {
+    small: { min: 250000, max: 450000 },
+    medium: { min: 500000, max: 900000 },
+    large: { min: 1000000, max: 1800000 },
+  },
+  upholstery: {
+    small: { min: 300000, max: 500000 },
+    medium: { min: 600000, max: 1000000 },
+    large: { min: 1100000, max: 2000000 },
+  },
+  handyman: {
+    small: { min: 180000, max: 350000 },
+    medium: { min: 400000, max: 800000 },
+    large: { min: 900000, max: 1600000 },
   },
 }
 
@@ -106,6 +123,40 @@ const SERVICE_KEYWORDS = {
     'tong ve sinh',
     'sau sua chua',
   ],
+  hvac: [
+    'may lanh',
+    'dieu hoa',
+    'dan lanh',
+    'lam lanh',
+    'ma loi dieu hoa',
+    've sinh dieu hoa',
+    'chay nuoc dan lanh',
+  ],
+  upholstery: [
+    'sofa',
+    'nem',
+    'rem cua',
+    'tham trai san',
+    'ghe an',
+    've sinh sofa',
+    've sinh nem',
+    've sinh rem',
+    've sinh tham',
+    'giat sofa',
+    'giat nem',
+  ],
+  handyman: [
+    'khoan ke',
+    'lap ke',
+    'thanh rem',
+    'ban le',
+    'tay nam',
+    'treo tv',
+    'lap rap noi that',
+    'thiet bi phong tam nho',
+    'lap thiet bi nho',
+    'sua vat',
+  ],
 }
 
 const LARGE_KEYWORDS = [
@@ -132,6 +183,14 @@ const LARGE_KEYWORDS = [
   'gấp',
   'gap',
   'nang',
+  'ba may',
+  'moc nang',
+  'mui hoi nang',
+  'tham lon',
+  'tv 65',
+  'vat nang',
+  'vi tri cao',
+  'nhieu task',
 ]
 
 const SMALL_KEYWORDS = [
@@ -151,6 +210,12 @@ const SMALL_KEYWORDS = [
   'lau bui',
   'van con dung duoc',
   'chuong cua',
+  'mot may',
+  'mot ghe',
+  'mot nem',
+  'mot ke',
+  'mot ban le',
+  'vet ban nhe',
 ]
 
 async function main() {
@@ -252,7 +317,10 @@ function deterministicEvaluate(fixture) {
 }
 
 async function liveEvaluate(fixture, config) {
-  const response = await fetch(`${config.mobileApiUrl}/kael/chat`, {
+  const response = await timeoutFetch(
+    numberEnv('KAEL_EVAL_REQUEST_TIMEOUT_MS', 45_000),
+    `${config.mobileApiUrl}/kael/chat`,
+    {
     method: 'POST',
     headers: {
       ...(config.anonKey ? { apikey: config.anonKey } : {}),
@@ -266,7 +334,8 @@ async function liveEvaluate(fixture, config) {
       address_district: fixture.input.district,
       client_request_id: randomUUID(),
     }),
-  })
+    },
+  )
   const text = await response.text()
   const json = safeJson(text)
   if (!response.ok) {
@@ -346,6 +415,36 @@ function inferProblemSlug(service, text) {
     if (containsAny(text, ['don can ho', 'don nha', 'hut bui', 'lau bui'])) return 'standard_home_cleaning'
     return 'cleaning-general'
   }
+  if (service === 'hvac') {
+    if (containsAny(text, ['ve sinh dieu hoa', 've sinh may lanh'])) return 'routine_hvac_cleaning'
+    if (containsAny(text, ['lanh yeu', 'mat lau moi mat', 'lam lanh yeu'])) return 'weak_cooling'
+    if (containsAny(text, ['khong mat', 'khong lanh'])) return 'no_cooling'
+    if (containsAny(text, ['chay nuoc', 'ro nuoc dan lanh'])) return 'water_leak'
+    if (containsAny(text, ['keu', 'tieng on', 'rung'])) return 'unusual_noise'
+    if (containsAny(text, ['ma loi'])) return 'error_code'
+    return 'hvac-general'
+  }
+  if (service === 'upholstery') {
+    if (containsAny(text, ['moc', 'mui hoi'])) return 'odor_or_mold'
+    if (
+      containsAny(text, ['vet ban', 'o vang']) &&
+      !containsAny(text, ['chua co vet ban', 'khong co vet ban'])
+    ) return 'stain_treatment'
+    if (containsAny(text, ['sofa'])) return 'sofa_cleaning'
+    if (containsAny(text, ['nem'])) return 'mattress_cleaning'
+    if (containsAny(text, ['rem'])) return 'curtain_cleaning'
+    if (containsAny(text, ['tham'])) return 'carpet_cleaning'
+    return 'upholstery-general'
+  }
+  if (service === 'handyman') {
+    if (containsAny(text, ['treo tv', 'lap tv'])) return 'mount_tv_or_furniture'
+    if (containsAny(text, ['thiet bi phong tam'])) return 'install_bathroom_fixture'
+    if (containsAny(text, ['ban le', 'tay nam'])) return 'repair_hinge_or_handle'
+    if (containsAny(text, ['thanh rem'])) return 'install_curtain_rod'
+    if (containsAny(text, ['khoan ke', 'lap ke'])) return 'drill_or_mount_shelf'
+    if (containsAny(text, ['thiet bi nho', 'moc treo'])) return 'install_small_fixture'
+    return 'handyman-general'
+  }
   return 'unsupported'
 }
 
@@ -354,7 +453,8 @@ function inferComplexity(service, problemSlug, text) {
     return 'large'
   }
   if (problemSlug === 'power_outage_one_room') return 'medium'
-  if (containsAny(text, LARGE_KEYWORDS)) return 'large'
+  const evidenceText = text.replace(/(?:chua|khong) co vet ban nang/g, '')
+  if (containsAny(evidenceText, LARGE_KEYWORDS)) return 'large'
   if (containsAny(text, SMALL_KEYWORDS)) return 'small'
   if (problemSlug === 'clogged_drain_or_sink' && text.includes('thoat cham')) return 'small'
   if (service === 'cleaning' && problemSlug === 'window_cleaning' && text.includes('ban cong nho')) return 'small'
@@ -551,7 +651,7 @@ async function writeReport(input) {
     '## Verification',
     '',
     '- Deterministic mode uses local fixture scoring and does not call AI providers.',
-    '- Live mode requires KAEL_EVAL_MOBILE_API_URL and KAEL_EVAL_BEARER_TOKEN; KAEL_EVAL_ANON_KEY is optional for Edge deployments that require apikey.',
+    '- Live mode requires KAEL_EVAL_RUN_LIVE=yes, a staging/local KAEL_EVAL_MOBILE_API_URL, and KAEL_EVAL_BEARER_TOKEN; KAEL_EVAL_ANON_KEY is optional for Edge deployments that require apikey.',
     '- Runner exits non-zero when any threshold is below target.',
     '',
     '## Limitations',
@@ -579,7 +679,9 @@ async function readKnowledgeFixtures(path) {
 
 function buildConfig(mode) {
   if (mode !== 'live') return {}
+  assert(process.env.KAEL_EVAL_RUN_LIVE === 'yes', 'Set KAEL_EVAL_RUN_LIVE=yes for live evaluation')
   const mobileApiUrl = requiredEnv('KAEL_EVAL_MOBILE_API_URL').replace(/\/+$/, '')
+  assertStagingOrLocalUrl(mobileApiUrl, 'KAEL_EVAL_MOBILE_API_URL')
   return {
     mobileApiUrl,
     bearerToken: requiredEnv('KAEL_EVAL_BEARER_TOKEN'),
@@ -691,7 +793,35 @@ function numberOrNull(value) {
 }
 
 function asService(value) {
-  return value === 'electrical' || value === 'plumbing' || value === 'cleaning' ? value : null
+  return value === 'electrical' || value === 'plumbing' || value === 'cleaning' ||
+    value === 'hvac' || value === 'upholstery' || value === 'handyman'
+    ? value
+    : null
+}
+
+function assertStagingOrLocalUrl(value, label) {
+  const url = new URL(value)
+  const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]'
+  const isStaging = url.hostname === `${STAGING_REF}.supabase.co`
+  assert(!url.username && !url.password && !url.search && !url.hash, `${label} must not contain credentials, query, or hash`)
+  assert(isLocal || url.protocol === 'https:', `${label} must use HTTPS outside local development`)
+  assert(isLocal || isStaging, `${label} must target local or staging ref ${STAGING_REF}`)
+  assert(url.hostname !== `${PRODUCTION_REF}.supabase.co`, `${label} must not target production ref ${PRODUCTION_REF}`)
+  assert(url.pathname.replace(/\/+$/, '') === '/functions/v1/mobile-api', `${label} must target the mobile-api function`)
+}
+
+async function timeoutFetch(timeoutMs, url, options) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, {
+      ...options,
+      redirect: 'error',
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 function asComplexity(value) {

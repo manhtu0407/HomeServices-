@@ -192,7 +192,7 @@ export function caseReferenceRows(screenId: CustomerV21ScreenId, deal: LocalDeal
   const address = deal.broadcast?.fullAddressVisible
     ? deal.broadcast.fullAddressLabel || deal.draft.addressLabel || deal.broadcast.generalArea || copy.dataPending
     : deal.broadcast?.generalArea || deal.draft.districtLabel || deal.draft.addressLabel || copy.dataPending
-  const time = timeChoiceLabel(deal.draft.timeChoice, language)
+  const time = timeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)
   const evidence = formatEvidenceFileCount(deal.draft.mediaCount, language)
   const price = estimate?.priceRangeLabel || copy.dataPending
   const disclaimer = estimate?.disclaimer || copy.dataPending

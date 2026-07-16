@@ -1,5 +1,5 @@
+import { Image } from 'expo-image'
 import {
-  Image,
   View,
   type ImageSourcePropType,
   type StyleProp,
@@ -114,7 +114,7 @@ export function WorkerV5IntegratedIcon({
     >
       {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.mintAura} /> : null}
       <Image
-        resizeMode="contain"
+        contentFit="contain"
         source={image}
         style={[
           styles.iconImage,

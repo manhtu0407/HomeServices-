@@ -14,7 +14,12 @@
  * CCCD, full address, bank account, or raw chat content.
  */
 
-import type { ServiceType, ComplexityLevel } from '@nestscout/shared'
+import {
+  COMPLEXITY_LEVELS,
+  SERVICE_TYPES,
+  type ComplexityLevel,
+  type ServiceType,
+} from '@nestscout/shared'
 
 // =============================================================================
 // Candidate type discriminator (also matches DB candidate_type / rule_type column)
@@ -101,26 +106,100 @@ export type AnalysisRulePayload = {
 
 export type LearningCandidatePayload = PricePriorPayload | AnalysisRulePayload
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function isServiceType(value: unknown): value is ServiceType {
+  return typeof value === 'string' && SERVICE_TYPES.includes(value as ServiceType)
+}
+
+function isComplexityLevel(value: unknown): value is ComplexityLevel {
+  return typeof value === 'string' && COMPLEXITY_LEVELS.includes(value as ComplexityLevel)
+}
+
+function isLearningScope(value: unknown, includeComplexity: boolean): boolean {
+  if (!isRecord(value)) return false
+  return (
+    isServiceType(value.service_type) &&
+    isNonEmptyString(value.problem_slug) &&
+    isNonEmptyString(value.district_code) &&
+    (!includeComplexity || isComplexityLevel(value.complexity))
+  )
+}
+
 // Narrow + validate at runtime (defensive parsing for jsonb roundtrips).
 export function isPricePriorPayload(p: unknown): p is PricePriorPayload {
-  if (typeof p !== 'object' || p === null) return false
-  const obj = p as Record<string, unknown>
+  if (!isRecord(p) || !isLearningScope(p.scope, true)) return false
+  const observed = p.observed
+  const suggested = p.suggested
+  const window = p.window
+  if (!isRecord(observed) || !isRecord(suggested) || !isRecord(window)) return false
+
   return (
-    obj.candidate_type === 'price_prior_update' &&
-    typeof obj.scope === 'object' &&
-    typeof obj.observed === 'object' &&
-    typeof obj.suggested === 'object'
+    p.candidate_type === 'price_prior_update' &&
+    Number.isInteger(observed.sample_size) &&
+    (observed.sample_size as number) > 0 &&
+    isFiniteNumber(observed.baseline_used_min) &&
+    isFiniteNumber(observed.baseline_used_max) &&
+    isFiniteNumber(observed.median_final_price) &&
+    isFiniteNumber(observed.p25_final_price) &&
+    isFiniteNumber(observed.p75_final_price) &&
+    isFiniteNumber(observed.median_estimate_min) &&
+    isFiniteNumber(observed.median_estimate_max) &&
+    isFiniteNumber(suggested.shift_min) &&
+    isFiniteNumber(suggested.shift_max) &&
+    isFiniteNumber(suggested.new_min) &&
+    isFiniteNumber(suggested.new_max) &&
+    suggested.direction !== undefined &&
+    ['underestimate', 'overestimate', 'noisy'].includes(String(suggested.direction)) &&
+    isNonEmptyString(window.from_ts) &&
+    isNonEmptyString(window.to_ts)
   )
 }
 
 export function isAnalysisRulePayload(p: unknown): p is AnalysisRulePayload {
-  if (typeof p !== 'object' || p === null) return false
-  const obj = p as Record<string, unknown>
+  if (!isRecord(p) || !isLearningScope(p.scope, false)) return false
+  const observed = p.observed
+  const suggested = p.suggested
+  if (!isRecord(observed) || !isRecord(suggested)) return false
+  const kind = suggested.kind
+  const validSuggestion =
+    kind === 'raise_complexity_prior'
+      ? isComplexityLevel(suggested.from) &&
+        isComplexityLevel(suggested.to) &&
+        suggested.from !== 'large' &&
+        suggested.to !== 'small' &&
+        isNonEmptyString(suggested.rationale)
+      : kind === 'add_advisory'
+        ? isNonEmptyString(suggested.advisory_template_id) &&
+          isNonEmptyString(suggested.rationale)
+        : kind === 'add_clarification'
+          ? isNonEmptyString(suggested.question_template_id) &&
+            isNonEmptyString(suggested.rationale)
+          : false
+
   return (
-    obj.candidate_type === 'analysis_rule' &&
-    typeof obj.scope === 'object' &&
-    typeof obj.observed === 'object' &&
-    typeof obj.suggested === 'object'
+    p.candidate_type === 'analysis_rule' &&
+    Number.isInteger(observed.sample_size) &&
+    (observed.sample_size as number) > 0 &&
+    isFiniteNumber(observed.scope_change_rate) &&
+    observed.scope_change_rate >= 0 &&
+    observed.scope_change_rate <= 1 &&
+    isFiniteNumber(observed.avg_rating) &&
+    observed.avg_rating >= 0 &&
+    observed.avg_rating <= 5 &&
+    Array.isArray(observed.common_tags) &&
+    observed.common_tags.every((tag) => typeof tag === 'string') &&
+    validSuggestion
   )
 }
 

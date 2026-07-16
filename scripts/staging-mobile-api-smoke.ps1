@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
   [string]$EnvFile = '.env.local',
+  [ValidateLength(1, 200)]
   [string]$AutocompleteInput = 'Quan 1, Thanh pho Ho Chi Minh'
 )
 
@@ -8,12 +9,26 @@ $ErrorActionPreference = 'Stop'
 $stagingRef = 'xyylanuyflrjzbjzhqfl'
 $scriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
 $repoRoot = Resolve-Path -LiteralPath (Join-Path $scriptRoot '..')
+. (Join-Path $scriptRoot 'lib\staging-target-safety.ps1')
 if (-not [System.IO.Path]::IsPathRooted($EnvFile)) {
   $EnvFile = Join-Path $repoRoot $EnvFile
 }
+$allowedEnvNames = @(
+  'EXPO_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'SUPABASE_ANON_KEY',
+  'STAGING_ACCESS_TOKEN',
+  'SUPABASE_STAGING_ACCESS_TOKEN',
+  'EXPO_PUBLIC_API_BASE_URL'
+)
 
 function Import-EnvFile {
-  param([string]$Path)
+  param(
+    [string]$Path,
+    [string[]]$AllowedNames
+  )
 
   if (-not (Test-Path -LiteralPath $Path)) {
     return
@@ -30,6 +45,9 @@ function Import-EnvFile {
     }
 
     $name = $matches[1].Trim()
+    if ($AllowedNames -notcontains $name) {
+      continue
+    }
     $value = $matches[2].Trim()
     if ($value.Length -ge 2) {
       $first = $value.Substring(0, 1)
@@ -58,7 +76,7 @@ function Require-Env {
   throw "Missing required local environment variable: $($Names -join ' or ')"
 }
 
-Import-EnvFile -Path $EnvFile
+Import-EnvFile -Path $EnvFile -AllowedNames $allowedEnvNames
 
 $supabaseUrl = Require-Env @('EXPO_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL')
 $publishableKey = Require-Env @('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY')
@@ -69,9 +87,8 @@ if ([string]::IsNullOrWhiteSpace($apiBase)) {
   $apiBase = "$($supabaseUrl.TrimEnd('/'))/functions/v1/mobile-api"
 }
 
-if ($apiBase -notlike "*$stagingRef*") {
-  throw "Refusing to run mutable-auth smoke outside staging ref $stagingRef. Current API base does not match staging."
-}
+Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase
+Assert-SupabasePublishableKey -Value $publishableKey
 
 $headers = @{
   apikey = $publishableKey
@@ -83,8 +100,18 @@ Write-Host "Staging mobile-api smoke: $stagingRef"
 
 $servicesUri = "$($apiBase.TrimEnd('/'))/services"
 $services = Invoke-RestMethod -Method Get -Uri $servicesUri -Headers $headers -TimeoutSec 20
-if ($null -eq $services.services -or $services.services.Count -lt 3) {
-  throw "Unexpected /services response. Expected at least electrical, plumbing, and cleaning."
+$expectedServiceTypes = @('electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman')
+$actualServiceTypes = @($services.services | ForEach-Object { [string]$_.service_type } | Sort-Object -Unique)
+$serviceTypeDiff = @(
+  Compare-Object -ReferenceObject $expectedServiceTypes -DifferenceObject $actualServiceTypes
+)
+if (
+  $null -eq $services.services -or
+  $services.services.Count -ne $expectedServiceTypes.Count -or
+  $actualServiceTypes.Count -ne $expectedServiceTypes.Count -or
+  $serviceTypeDiff.Count -gt 0
+) {
+  throw "Unexpected /services response. Expected the exact six-service launch catalog."
 }
 
 $placesUri = "$($apiBase.TrimEnd('/'))/places/autocomplete"

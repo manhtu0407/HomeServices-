@@ -53,7 +53,9 @@ export function WorkerV5CaseClosedHero({
   workerNet: number | null
 }) {
   const hasIncome = Boolean(workerNet && workerNet > 0)
-  const amount = hasIncome ? formatVnd(workerNet ?? 0, language) : '0'
+  const amount = hasIncome
+    ? formatVnd(workerNet ?? 0, language)
+    : textByLanguage(language, 'Chờ đối soát', 'Settlement pending')
   const status = hasIncome
     ? textByLanguage(language, 'Có thể rút tiền', 'Payout available')
     : textByLanguage(language, 'Chờ đối soát', 'Waiting settlement')

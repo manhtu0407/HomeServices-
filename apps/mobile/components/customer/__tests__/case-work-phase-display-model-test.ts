@@ -2,6 +2,7 @@ import type { LocalDeal, LocalDealStatus, LocalScopeChange } from '@nestscout/sh
 
 import { screenIdsForStatus } from '../v21/case-stage-display-model'
 import {
+  buildAgenticCaseThreadMatchingCardModel,
   buildAgenticCaseThreadModel,
   isDealPaymentProtected,
   paymentLedgerConfirmationStep,
@@ -141,5 +142,15 @@ describe('Kael Case Work server-phase display model', () => {
     expect(scopeChangeAmountLabel(missingPrice, 'vi')).not.toBe('0')
     expect(scopeChangeAmountLabel(makeScopeChange({ priceMax: 0, priceMin: 0 }), 'vi')).toBe('Kael đang xét')
     expect(buildModel(makeDeal('scope_change_pending', { scopeChange: reviewedPrice })).approval).not.toBeNull()
+  })
+
+  it('does not invent zero confidence while matching has no estimate', () => {
+    const matching = buildAgenticCaseThreadMatchingCardModel(
+      makeDeal('broadcasting', { estimate: null }),
+      'vi',
+    )
+
+    expect(matching.confidence).toBe('Chưa có')
+    expect(matching.confidence).not.toBe('0')
   })
 })

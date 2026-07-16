@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   shouldPromote,
+  promoteCandidate,
   MIN_EVIDENCE,
   CONFIDENCE_THRESHOLD,
   CONTRADICTION_MAX_RATIO,
@@ -106,6 +107,20 @@ describe('shouldPromote — happy paths', () => {
     const decision = shouldPromote(analysisCandidate(), [])
     expect(decision.promote).toBe(true)
   })
+
+  it.each(['electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman'] as const)(
+    'accepts the supported %s service scope',
+    (serviceType) => {
+      const payload = pricePayload()
+      payload.scope.service_type = serviceType
+      const decision = shouldPromote(priceCandidate({
+        affected_service: serviceType,
+        suggested_payload: payload,
+      }), [])
+
+      expect(decision.promote).toBe(true)
+    },
+  )
 })
 
 // =============================================================================
@@ -232,10 +247,10 @@ describe('shouldPromote — forbidden autonomy guards', () => {
   it('rejects price payload with unsupported service_type', () => {
     const bad = pricePayload()
     // Force-cast to bypass TS scope_change_pending — testing runtime safety.
-    ;(bad.scope as { service_type: string }).service_type = 'hvac'
+    ;(bad.scope as { service_type: string }).service_type = 'painting'
     const decision = shouldPromote(priceCandidate({ suggested_payload: bad }), [])
     expect(decision.promote).toBe(false)
-    if (!decision.promote) expect(decision.reason).toBe('forbidden_autonomy')
+    if (!decision.promote) expect(decision.reason).toBe('invalid_payload')
   })
 
   it('rejects analysis payload with unknown suggestion kind', () => {
@@ -243,7 +258,7 @@ describe('shouldPromote — forbidden autonomy guards', () => {
     ;(bad.suggested as { kind: string }).kind = 'auto_book_worker'
     const decision = shouldPromote(analysisCandidate({ suggested_payload: bad }), [])
     expect(decision.promote).toBe(false)
-    if (!decision.promote) expect(decision.reason).toBe('forbidden_autonomy')
+    if (!decision.promote) expect(decision.reason).toBe('invalid_payload')
   })
 })
 
@@ -263,6 +278,68 @@ describe('shouldPromote — invalid payload', () => {
     const decision = shouldPromote(priceCandidate({ suggested_payload: null }), [])
     expect(decision.promote).toBe(false)
     if (!decision.promote) expect(decision.reason).toBe('invalid_payload')
+  })
+
+  it('rejects malformed nested objects without throwing', () => {
+    const bad = {
+      candidate_type: 'price_prior_update',
+      scope: null,
+      observed: {},
+      suggested: {},
+    }
+
+    expect(() => shouldPromote(priceCandidate({ suggested_payload: bad }), [])).not.toThrow()
+    expect(shouldPromote(priceCandidate({ suggested_payload: bad }), [])).toEqual({
+      promote: false,
+      reason: 'invalid_payload',
+    })
+  })
+
+  it('rejects a row whose discriminator disagrees with its payload', () => {
+    const decision = shouldPromote(priceCandidate({ candidate_type: 'analysis_rule' }), [])
+
+    expect(decision).toEqual({ promote: false, reason: 'invalid_payload' })
+  })
+})
+
+describe('promoteCandidate', () => {
+  it('delegates the write set to the atomic service-role RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{
+        ok: true,
+        error_code: null,
+        candidate_id: 'cand-1',
+        rule_id: 'rule-1',
+        rule_version: 2,
+        status: 'auto_promoted',
+      }],
+      error: null,
+    })
+
+    const result = await promoteCandidate({ rpc } as never, priceCandidate())
+
+    expect(rpc).toHaveBeenCalledWith('auto_promote_learning_candidate_atomic', {
+      p_candidate_id: 'cand-1',
+    })
+    expect(result).toEqual({ promoted: true, ruleId: 'rule-1', ruleVersion: 2 })
+  })
+
+  it('fails closed when the RPC rejects the candidate', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{
+        ok: false,
+        error_code: 'CANDIDATE_NOT_PROMOTABLE',
+        candidate_id: 'cand-1',
+        rule_id: null,
+        rule_version: null,
+        status: 'created',
+      }],
+      error: null,
+    })
+
+    const result = await promoteCandidate({ rpc } as never, priceCandidate())
+
+    expect(result).toEqual({ promoted: false, reason: 'CANDIDATE_NOT_PROMOTABLE' })
   })
 })
 

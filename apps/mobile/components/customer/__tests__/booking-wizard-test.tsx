@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 
 // Kael Autonomy v2 routes structured intake to the full-screen Kael chat. The
@@ -7,7 +7,9 @@ import { StyleSheet } from 'react-native'
 let mockConfirmRemoteSearch: jest.Mock
 let mockCreateRemoteJobFromDraft: jest.Mock
 let mockRouteParams: Record<string, string | string[] | undefined>
+let mockSessionUserId: string | null
 let mockWorkflowValue: any
+const mockClearPendingKaelChatDraft = jest.fn()
 const mockLaunchImageLibraryAsync = jest.fn()
 const mockRequestMediaLibraryPermissionsAsync = jest.fn()
 const mockSetPendingKaelChatDraft = jest.fn()
@@ -18,6 +20,9 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
 jest.mock('@/lib/app-language', () => ({
   useAppLanguage: () => 'vi',
 }))
+jest.mock('@/lib/auth-provider', () => ({
+  useAuth: () => ({ session: mockSessionUserId ? { user: { id: mockSessionUserId } } : null }),
+}))
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
 }))
@@ -27,7 +32,8 @@ jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: () => mockRequestMediaLibraryPermissionsAsync(),
 }))
 jest.mock('../kael-chat/pending-intake', () => ({
-  setPendingKaelChatDraft: (draft: unknown) => mockSetPendingKaelChatDraft(draft),
+  clearPendingKaelChatDraft: (ownerId: string) => mockClearPendingKaelChatDraft(ownerId),
+  setPendingKaelChatDraft: (ownerId: string, draft: unknown) => mockSetPendingKaelChatDraft(ownerId, draft),
 }))
 jest.mock('../address-autocomplete', () => {
   const React = require('react')
@@ -69,6 +75,9 @@ function buildWorkflow() {
 
 beforeEach(() => {
   mockRouteParams = {}
+  mockSessionUserId = 'customer_test_1'
+  mockClearPendingKaelChatDraft.mockReset()
+  mockClearPendingKaelChatDraft.mockResolvedValue(undefined)
   mockLaunchImageLibraryAsync.mockReset()
   mockLaunchImageLibraryAsync.mockResolvedValue({
     assets: [],
@@ -122,7 +131,7 @@ describe('BookingWizard Kael autonomy', () => {
     const onOpenKael = jest.fn()
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
     await submitDescribe(onOpenKael)
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
       addressLabel: 'Quận 1, TP.HCM',
       districtLabel: 'Quận 1',
       mediaCount: 0,
@@ -137,6 +146,88 @@ describe('BookingWizard Kael autonomy', () => {
     expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
   })
 
+  it('persists only one pending intake when the submit control is pressed twice', async () => {
+    let resolvePersist!: () => void
+    mockSetPendingKaelChatDraft.mockReturnValueOnce(new Promise<void>((resolve) => {
+      resolvePersist = resolve
+    }))
+    const onOpenKael = jest.fn()
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+    fireEvent.press(screen.getByTestId('booking-wizard-service-electrical'))
+    fireEvent.press(screen.getByTestId('booking-wizard-service-next'))
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Đèn phòng khách bị chập, có mùi khét nhẹ',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    const submitControl = screen.getByTestId('booking-wizard-submit-describe')
+
+    act(() => {
+      fireEvent.press(submitControl)
+      fireEvent.press(submitControl)
+    })
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      resolvePersist()
+      await Promise.resolve()
+    })
+    expect(onOpenKael).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a retryable error when pending-intake persistence rejects', async () => {
+    mockSetPendingKaelChatDraft.mockRejectedValueOnce(new Error('storage unavailable'))
+    const onOpenKael = jest.fn()
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+    fireEvent.press(screen.getByTestId('booking-wizard-service-electrical'))
+    fireEvent.press(screen.getByTestId('booking-wizard-service-next'))
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Đèn phòng khách bị chập, có mùi khét nhẹ',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Chưa thể lưu phiếu/)).toBeOnTheScreen()
+    })
+    expect(onOpenKael).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+    await waitFor(() => expect(onOpenKael).toHaveBeenCalledTimes(1))
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not open an old account draft after the signed-in customer changes', async () => {
+    let resolvePersist!: () => void
+    mockSetPendingKaelChatDraft.mockReturnValueOnce(new Promise<void>((resolve) => {
+      resolvePersist = resolve
+    }))
+    const onOpenKael = jest.fn()
+    const view = render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+    fireEvent.press(screen.getByTestId('booking-wizard-service-electrical'))
+    fireEvent.press(screen.getByTestId('booking-wizard-service-next'))
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Đèn phòng khách bị chập, có mùi khét nhẹ',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.any(Object))
+
+    mockSessionUserId = 'customer_test_2'
+    view.rerender(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+    expect(screen.getByTestId('booking-wizard-step-service')).toBeOnTheScreen()
+
+    await act(async () => {
+      resolvePersist()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => expect(mockClearPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1'))
+    expect(onOpenKael).not.toHaveBeenCalled()
+  })
+
   it('uses the service route as a direct describe handoff instead of making the user reselect', () => {
     mockRouteParams = { serviceType: 'plumbing' }
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={jest.fn()} />)
@@ -147,6 +238,18 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-media-upload-tray')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-voice-capsule')).toBeTruthy()
     expect(screen.queryByTestId('booking-wizard-step-service')).toBeNull()
+  })
+
+  it('restarts the intake when a mounted route changes to another service', () => {
+    const props = { onOpenHistory: jest.fn(), onOpenKael: jest.fn() }
+    mockRouteParams = { serviceType: 'plumbing' }
+    const view = render(<BookingWizard {...props} />)
+    expect(screen.getByTestId('booking-wizard-filter-service')).toHaveTextContent(/Sửa nước/)
+
+    mockRouteParams = { serviceType: 'electrical' }
+    view.rerender(<BookingWizard {...props} />)
+
+    expect(screen.getByTestId('booking-wizard-filter-service')).toHaveTextContent(/Sửa điện/)
   })
 
   it('previews selected media and hands the real photo drafts to Kael chat', async () => {
@@ -186,7 +289,7 @@ describe('BookingWizard Kael autonomy', () => {
     fireEvent.press(screen.getByTestId('mock-address-set'))
     fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
 
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
       mediaCount: 1,
       photoDrafts: [
         expect.objectContaining({
@@ -238,7 +341,7 @@ describe('BookingWizard Kael autonomy', () => {
     fireEvent.press(screen.getByTestId('mock-address-set'))
     fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
 
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
       mediaCount: 1,
       photoDrafts: [
         expect.objectContaining({
@@ -294,7 +397,7 @@ describe('BookingWizard Kael autonomy', () => {
     fireEvent.press(screen.getByTestId('mock-address-set'))
     fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
 
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
       message: expect.stringContaining('Ưu tiên: Nhanh'),
       problemChips: [],
     }))
@@ -320,7 +423,7 @@ describe('BookingWizard Kael autonomy', () => {
     fireEvent.press(screen.getByTestId('mock-address-set'))
     fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
 
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
       problemChips: ['Chập ổ cắm'],
     }))
     await waitFor(() => {

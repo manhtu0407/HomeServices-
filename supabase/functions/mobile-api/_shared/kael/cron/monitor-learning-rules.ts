@@ -93,6 +93,7 @@ export async function monitorLearningRules(
     : [];
   let monitored = 0;
   let rolledBack = 0;
+  let firstErrorCode: string | undefined;
 
   for (const rule of rules) {
     const samplesResult = await client
@@ -102,7 +103,14 @@ export async function monitorLearningRules(
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(500);
-    if (samplesResult.error || !Array.isArray(samplesResult.data)) continue;
+    if (samplesResult.error) {
+      firstErrorCode ??= samplesResult.error.code ?? "RULE_APPLICATION_READ_FAILED";
+      continue;
+    }
+    if (!Array.isArray(samplesResult.data)) {
+      firstErrorCode ??= "RULE_APPLICATION_READ_FAILED";
+      continue;
+    }
 
     const monitor = summarizeLearningMonitor(samplesResult.data);
     if (!monitor) continue;
@@ -123,7 +131,10 @@ export async function monitorLearningRules(
         satisfaction_drop_pts: monitor.satisfaction_drop_pts,
       },
     });
-    if (rollback.error) continue;
+    if (rollback.error) {
+      firstErrorCode ??= rollback.error.code ?? "ROLLBACK_RPC_FAILED";
+      continue;
+    }
     const row = Array.isArray(rollback.data)
       ? rollback.data.find(isRecord)
       : isRecord(rollback.data)
@@ -132,6 +143,13 @@ export async function monitorLearningRules(
     if (row?.ok === true) {
       rolledBack += 1;
       await notifyAdminRuleRollback(client, rule.id, monitor);
+      continue;
+    }
+    const decisionCode = typeof row?.error_code === "string"
+      ? row.error_code
+      : "ROLLBACK_RPC_INVALID_RESPONSE";
+    if (decisionCode !== "RULE_NOT_ACTIVE" && decisionCode !== "ROLLBACK_DISABLED") {
+      firstErrorCode ??= decisionCode;
     }
   }
 
@@ -142,6 +160,7 @@ export async function monitorLearningRules(
     monitored,
     rolled_back: rolledBack,
     loop_health: loopHealth,
+    ...(firstErrorCode ? { error_code: firstErrorCode } : {}),
   };
 }
 
@@ -198,7 +217,7 @@ async function notifyAdminRuleRollback(
   if (!client.rpc) return;
   const adminUserId = readRuntimeEnv("KAEL_LEARNING_ADMIN_USER_ID");
   if (!adminUserId) return;
-  await Promise.resolve(client.rpc("insert_notification_atomic", {
+  const result = await Promise.resolve(client.rpc("insert_notification_atomic", {
     p_user_id: adminUserId,
     p_job_id: null,
     p_event_type: "kael_learning_rule_rolled_back",
@@ -211,7 +230,12 @@ async function notifyAdminRuleRollback(
       accuracy_drop_pct: monitor.accuracy_drop_pct,
       satisfaction_drop_pts: monitor.satisfaction_drop_pts,
     },
-  })).catch(() => undefined);
+  })).catch(() => null);
+  if (result?.error) {
+    console.warn("kael learning rollback notification failed", {
+      errorCode: result.error.code ?? "DB_ERROR",
+    });
+  }
 }
 
 function summarizeLearningMonitor(rows: unknown[]): LearningRuleMonitor | null {

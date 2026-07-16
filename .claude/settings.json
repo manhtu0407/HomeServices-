@@ -5,8 +5,7 @@
       "Bash(corepack pnpm *)",
       "Bash(npm run *)",
       "Bash(npm install *)",
-      "Bash(scripts/run-*.cmd *)",
-      "Bash(scripts\\\\run-*.cmd *)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-*.ps1 *)",
       "Bash(npx next *)",
       "Bash(git status*)",
       "Bash(git diff*)",
@@ -31,12 +30,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-node.cmd\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-frontend-gates.mjs\"",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/scripts/run-node.ps1\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-frontend-gates.mjs\"",
             "timeout": 180
           },
           {
             "type": "command",
-            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-node.cmd\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-comment-hygiene.mjs\"",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/scripts/run-node.ps1\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-comment-hygiene.mjs\"",
             "timeout": 60
           }
         ]

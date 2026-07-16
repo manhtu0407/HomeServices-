@@ -8,10 +8,27 @@ import { ACTIVE_WORKER_JOB_STATUSES, clampServiceRadius, DEFAULT_WORKER_CANDIDAT
 import { notifyBroadcastWorkers } from "./notifications.service.ts";
 import { apiFailure } from "../router.ts";
 import { normalizeDistrict, type ServiceType } from "../../../_shared/domain.ts";
+import {
+  loadActiveJobRowsByWorker,
+  loadActiveReservationRowsByWorker,
+  loadWorkerMemoryRowsByWorker,
+} from "./broadcast-query-batches.ts";
 
 const DISINTERMEDIATION_RISK_PENALTY_THRESHOLD = 2;
 const DISINTERMEDIATION_RISK_SCORE_PENALTY = 15;
 const FAVORITE_WORKER_SCORE_BONUS = 25;
+const BROADCAST_RETRY_LEASE_SECONDS = 180;
+const BROADCAST_RETRY_CLAIM_FAILURE_CODES = [
+  "ACTIVE_BROADCAST",
+  "CLAIM_ACTIVE",
+  "INVALID_INPUT",
+  "INVALID_STATUS",
+  "NOT_FOUND",
+  "NOT_OWNER",
+] as const;
+
+export type BroadcastRetryClaimFailureCode =
+  typeof BROADCAST_RETRY_CLAIM_FAILURE_CODES[number];
 
 export async function createBroadcasts(
   client: DbClient,
@@ -123,24 +140,125 @@ export async function acquireBroadcastRetryLease(
   client: DbClient,
   jobId: string,
   customerId: string,
-  nowIso: string,
-): Promise<boolean> {
-  const guardIso = new Date(Date.parse(nowIso) - 1_000).toISOString();
-  const result = await dbQuery<{ id: string }>(
-    client
-      .from("jobs")
-      .update({ broadcast_at: nowIso, confirmed_search_at: nowIso })
-      .eq("id", jobId)
-      .eq("customer_id", customerId)
-      .eq("status", "broadcasting")
-      .or(`broadcast_at.is.null,broadcast_at.lte.${guardIso}`)
-      .select("id")
-      .maybeSingle(),
+): Promise<
+  | { acquired: true; claimToken: string }
+  | { acquired: false; reasonCode: BroadcastRetryClaimFailureCode }
+> {
+  const claimToken = crypto.randomUUID();
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("claim_job_broadcast_retry_atomic", {
+      p_job_id: jobId,
+      p_customer_id: customerId,
+      p_claim_token: claimToken,
+      p_lease_seconds: BROADCAST_RETRY_LEASE_SECONDS,
+    }),
   );
   if (result.error) {
     apiFailure("DB_ERROR", "Không thể bắt đầu tìm thợ", 500);
   }
-  return Boolean(result.data);
+  const row = result.data?.[0];
+  const reasonCode = nullableString(row?.error_code);
+  if (!row || typeof row.claimed !== "boolean" ||
+    (row.claimed && reasonCode !== null)) {
+    apiFailure(
+      "DB_ERROR",
+      "Phản hồi khóa thử lại broadcast không hợp lệ",
+      500,
+    );
+  }
+  if (row.claimed) return { acquired: true, claimToken };
+  if (!reasonCode ||
+    !(BROADCAST_RETRY_CLAIM_FAILURE_CODES as readonly string[]).includes(reasonCode)) {
+    apiFailure(
+      "DB_ERROR",
+      "Phản hồi khóa thử lại broadcast không hợp lệ",
+      500,
+    );
+  }
+  return {
+    acquired: false,
+    reasonCode: reasonCode as BroadcastRetryClaimFailureCode,
+  };
+}
+
+export async function releaseBroadcastRetryLease(
+  client: DbClient,
+  jobId: string,
+  customerId: string,
+  claimToken: string,
+): Promise<boolean> {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("release_job_broadcast_retry_claim_atomic", {
+      p_job_id: jobId,
+      p_customer_id: customerId,
+      p_claim_token: claimToken,
+    }),
+  );
+  const released = result.data?.[0]?.released;
+  if (result.error || typeof released !== "boolean" || !released) {
+    console.warn("mobile-api broadcast retry claim release failed", { jobId });
+    return false;
+  }
+  return true;
+}
+
+export async function runWithBroadcastRetryLease<T>(
+  client: DbClient,
+  jobId: string,
+  customerId: string,
+  work: () => Promise<T>,
+): Promise<
+  | { acquired: false; reasonCode: BroadcastRetryClaimFailureCode }
+  | { acquired: true; value: T }
+> {
+  const claim = await acquireBroadcastRetryLease(
+    client,
+    jobId,
+    customerId,
+  );
+  if (!claim.acquired) return claim;
+
+  try {
+    // The claim RPC waits for the previous owner and rechecks active rows after
+    // winning, so provider/worker queries can now run without a duplicate writer.
+    return { acquired: true, value: await work() };
+  } finally {
+    await releaseBroadcastRetryLease(
+      client,
+      jobId,
+      customerId,
+      claim.claimToken,
+    );
+  }
+}
+
+export function isBroadcastRetryContention(
+  reasonCode: BroadcastRetryClaimFailureCode,
+) {
+  return reasonCode === "ACTIVE_BROADCAST" || reasonCode === "CLAIM_ACTIVE";
+}
+
+export function failBroadcastRetryClaim(
+  reasonCode: BroadcastRetryClaimFailureCode,
+): never {
+  if (isBroadcastRetryContention(reasonCode)) {
+    apiFailure(
+      "BROADCAST_ACTIVE",
+      "Yêu cầu đang được gửi đến thợ. Vui lòng chờ phản hồi hiện tại.",
+      409,
+    );
+  }
+  if (reasonCode === "NOT_FOUND" || reasonCode === "NOT_OWNER") {
+    apiFailure("NOT_FOUND", "Không tìm thấy yêu cầu", 404);
+  }
+  if (reasonCode === "INVALID_STATUS") {
+    apiFailure(
+      "STATUS_CHANGED",
+      "Trạng thái đã thay đổi. Vui lòng tải lại và thử lại.",
+      409,
+    );
+  }
+  apiFailure("DB_ERROR", "Không thể bắt đầu tìm thợ", 500);
 }
 
 export async function getJobBroadcastState(client: DbClient, jobId: string) {
@@ -228,28 +346,35 @@ async function queryEligibleWorkers(
   );
   const workerProjection =
     "id, rating, total_jobs, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations";
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("worker_profiles")
-      .select(workerProjection)
-      .eq("is_approved", true)
-      .eq("is_available", true)
-      .eq("is_suspended", false)
-      .contains("service_types", [serviceType])
-      .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`)
-      .order("rating", { ascending: false })
-      .limit(candidateLimit),
-  );
-  if (result.error) {
-    console.warn("mobile-api worker eligibility query failed", {
-      serviceType,
-      district: districtCode,
-      errorCode: result.error.code,
-    });
-    return {
-      success: false as const,
-      reason: "Lỗi khi tìm thợ phù hợp",
-    };
+  const candidateRows: Array<Record<string, unknown>> = [];
+  for (let offset = 0;; offset += candidateLimit) {
+    const page = await dbQuery<Array<Record<string, unknown>>>(
+      client
+        .from("worker_profiles")
+        .select(workerProjection)
+        .eq("is_approved", true)
+        .eq("is_available", true)
+        .eq("is_suspended", false)
+        .contains("service_types", [serviceType])
+        .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`)
+        .order("rating", { ascending: false })
+        .order("id", { ascending: true })
+        .range(offset, offset + candidateLimit - 1),
+    );
+    if (page.error) {
+      console.warn("mobile-api worker eligibility query failed", {
+        serviceType,
+        district: districtCode,
+        errorCode: page.error.code,
+      });
+      return {
+        success: false as const,
+        reason: "Lỗi khi tìm thợ phù hợp",
+      };
+    }
+    const pageRows = page.data ?? [];
+    candidateRows.push(...pageRows);
+    if (pageRows.length < candidateLimit) break;
   }
   let favoriteCandidates: Array<Record<string, unknown>> = [];
   if (favoriteWorkerIds.size > 0) {
@@ -274,7 +399,7 @@ async function queryEligibleWorkers(
     }
   }
   const combinedCandidates = new Map<string, Record<string, unknown>>();
-  for (const worker of [...(result.data ?? []), ...favoriteCandidates]) {
+  for (const worker of [...candidateRows, ...favoriteCandidates]) {
     const workerId = asString(worker.id);
     if (workerId) combinedCandidates.set(workerId, worker);
   }
@@ -291,13 +416,10 @@ async function queryEligibleWorkers(
   if (candidateIds.length === 0) {
     return { success: true as const, workers: [] };
   }
-  const activeJobs = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("jobs")
-      .select("worker_id")
-      .in("worker_id", candidateIds)
-      .in("status", ACTIVE_WORKER_JOB_STATUSES)
-      .limit(candidateIds.length),
+  const activeJobs = await loadActiveJobRowsByWorker(
+    client,
+    candidateIds,
+    ACTIVE_WORKER_JOB_STATUSES,
   );
   if (activeJobs.error) {
     console.warn("mobile-api active worker job query failed", {
@@ -315,14 +437,10 @@ async function queryEligibleWorkers(
       .map((job) => asString(job.worker_id))
       .filter(Boolean),
   );
-  const activeReservations = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("job_worker_candidates")
-      .select("worker_id")
-      .in("worker_id", candidateIds)
-      .eq("status", "proposed")
-      .gt("expires_at", new Date().toISOString())
-      .limit(candidateIds.length),
+  const activeReservations = await loadActiveReservationRowsByWorker(
+    client,
+    candidateIds,
+    new Date().toISOString(),
   );
   if (activeReservations.error) {
     return { success: false as const, reason: "Lỗi khi kiểm tra thợ đang chờ xác nhận" };
@@ -365,12 +483,7 @@ async function loadDisintermediationRiskCounts(
 ): Promise<Map<string, number>> {
   const counts = new Map<string, number>();
   if (workerIds.length === 0) return counts;
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("worker_kael_memory")
-      .select("worker_id, red_flags")
-      .in("worker_id", workerIds),
-  );
+  const result = await loadWorkerMemoryRowsByWorker(client, workerIds);
   if (result.error) {
     // Fail open: a risk-signal read failure must not block matching.
     console.warn("mobile-api disintermediation risk load failed", {

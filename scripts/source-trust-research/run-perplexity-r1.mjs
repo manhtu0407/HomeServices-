@@ -2,11 +2,16 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  assertTrustedPerplexityUrl,
+  fetchWithTimeout,
+  resolveWorkspacePath,
+} from '../lib/research-network-safety.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../..')
 const DEFAULT_OUTPUT_DIR = resolve(REPO_ROOT, 'docs/foundation/source-trust-samples')
-const PERPLEXITY_URL = process.env.PERPLEXITY_API_URL ?? 'https://api.perplexity.ai/v1/sonar'
+const PERPLEXITY_URL = assertTrustedPerplexityUrl(process.env.PERPLEXITY_API_URL)
 
 const CANDIDATE_DOMAINS = [
   'btaskee.com',
@@ -54,7 +59,7 @@ function validDomain(domain) {
 }
 
 async function callPerplexity(apiKey, domain, query) {
-  const response = await fetch(PERPLEXITY_URL, {
+  const response = await fetchWithTimeout(PERPLEXITY_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -130,7 +135,11 @@ async function main() {
     if (!validDomain(domain)) throw new Error(`Invalid domain format: ${domain}`)
   }
 
-  const outputDir = resolve(REPO_ROOT, process.env.SOURCE_TRUST_OUTPUT_DIR ?? DEFAULT_OUTPUT_DIR)
+  const outputDir = resolveWorkspacePath(
+    REPO_ROOT,
+    process.env.SOURCE_TRUST_OUTPUT_DIR ?? DEFAULT_OUTPUT_DIR,
+    'SOURCE_TRUST_OUTPUT_DIR',
+  )
   await mkdir(outputDir, { recursive: true })
   const startedAt = new Date().toISOString()
   const domainResults = []

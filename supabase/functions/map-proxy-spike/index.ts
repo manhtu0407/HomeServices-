@@ -6,25 +6,27 @@
 //   GET /style?style=tm|lm|dm|hm|tf  -> fetch VietMap style.json with the server-side
 //        key, rewrite every tiles/glyphs/sprite URL to /u/{host}/{path}, strip ALL key
 //        params, return the rewritten style. Payload MUST contain zero "apikey".
-//   GET /u/{host}/{path}             -> allowlisted passthrough; injects the key
-//        server-side and streams the upstream response (tiles/glyphs/sprite).
+//   GET /u/{host}/{path}             -> allowlisted, byte-bounded passthrough;
+//        injects the key server-side for tiles, glyphs, and sprites.
 //
 // Security: key only lives in Edge env (VIETMAP_API_KEY); host allowlist; bounded
 // timeout (RULES.md #10); no PII in logs (only status codes + safe metadata).
 
 import {
   buildUpstreamUrl,
+  containsCredentialMaterial,
   rewriteVietmapStyleJson,
 } from "./style-rewrite.ts";
+import {
+  fetchBufferedWithTimeout,
+  readResponseJsonBounded,
+  ResponseBodyTooLargeError,
+} from "../_shared/network.ts";
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
+const STYLE_MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+const ASSET_MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 const STYLE_VARIANTS = new Set(["tm", "lm", "dm", "hm", "tf"]);
-
-function withTimeout(ms: number): { signal: AbortSignal; cancel: () => void } {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  return { signal: controller.signal, cancel: () => clearTimeout(timer) };
-}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -60,9 +62,14 @@ Deno.serve(async (request: Request) => {
       `https://maps.vietmap.vn/maps/styles/${variant}/style.json?apikey=${
         encodeURIComponent(apiKey)
       }`;
-    const { signal, cancel } = withTimeout(UPSTREAM_TIMEOUT_MS);
     try {
-      const response = await fetch(upstream, { signal });
+      const response = await fetchBufferedWithTimeout(upstream, {
+        redirect: "error",
+        signal: request.signal,
+      }, {
+        maxResponseBytes: STYLE_MAX_RESPONSE_BYTES,
+        timeoutMs: UPSTREAM_TIMEOUT_MS,
+      });
       if (!response.ok) {
         console.warn("map-proxy-spike style upstream failed", {
           status: response.status,
@@ -70,7 +77,10 @@ Deno.serve(async (request: Request) => {
         });
         return jsonResponse({ error: "UPSTREAM_FAILED" }, 502);
       }
-      const rawStyle = await response.json() as Record<string, unknown>;
+      const rawStyle = await readResponseJsonBounded(
+        response,
+        STYLE_MAX_RESPONSE_BYTES,
+      );
       // Rewritten sub-resource URLs must be reachable by the CLIENT, so the base
       // mirrors however this request arrived (hosted gateway vs local serve).
       const proxyBase = url.pathname.startsWith("/functions/v1/")
@@ -79,7 +89,7 @@ Deno.serve(async (request: Request) => {
       const result = rewriteVietmapStyleJson(rawStyle, proxyBase);
       const payload = JSON.stringify(result.style);
       // Hard gate G2: the rewritten payload must never contain key material.
-      if (payload.includes(apiKey) || /apikey/i.test(payload)) {
+      if (containsCredentialMaterial(payload, apiKey)) {
         console.error("map-proxy-spike rewrite leaked key material", {
           variant,
           rewrittenUrlCount: result.rewrittenUrlCount,
@@ -99,10 +109,8 @@ Deno.serve(async (request: Request) => {
           "cache-control": "public, max-age=300",
         },
       });
-    } catch (_error) {
-      return jsonResponse({ error: "UPSTREAM_TIMEOUT" }, 504);
-    } finally {
-      cancel();
+    } catch (error) {
+      return upstreamFailureResponse(error);
     }
   }
 
@@ -111,21 +119,40 @@ Deno.serve(async (request: Request) => {
     if (!upstream) {
       return jsonResponse({ error: "UPSTREAM_NOT_ALLOWED" }, 403);
     }
-    const { signal, cancel } = withTimeout(UPSTREAM_TIMEOUT_MS);
     try {
-      const response = await fetch(upstream, { signal });
+      const response = await fetchBufferedWithTimeout(upstream, {
+        redirect: "error",
+        signal: request.signal,
+      }, {
+        maxResponseBytes: ASSET_MAX_RESPONSE_BYTES,
+        timeoutMs: UPSTREAM_TIMEOUT_MS,
+      });
+      if (!response.ok) {
+        console.warn("map-proxy-spike asset upstream failed", {
+          status: response.status,
+        });
+        return jsonResponse({ error: "UPSTREAM_FAILED" }, 502);
+      }
       const headers = new Headers();
       const contentType = response.headers.get("content-type");
       if (contentType) headers.set("content-type", contentType);
       const cacheControl = response.headers.get("cache-control");
       headers.set("cache-control", cacheControl ?? "public, max-age=86400");
-      return new Response(response.body, { status: response.status, headers });
-    } catch (_error) {
-      return jsonResponse({ error: "UPSTREAM_TIMEOUT" }, 504);
-    } finally {
-      cancel();
+      return new Response(response.body, { status: 200, headers });
+    } catch (error) {
+      return upstreamFailureResponse(error);
     }
   }
 
   return jsonResponse({ error: "NOT_FOUND" }, 404);
 });
+
+function upstreamFailureResponse(error: unknown): Response {
+  if (error instanceof ResponseBodyTooLargeError) {
+    return jsonResponse({ error: "UPSTREAM_TOO_LARGE" }, 502);
+  }
+  if (error instanceof Error && error.name === "AbortError") {
+    return jsonResponse({ error: "UPSTREAM_TIMEOUT" }, 504);
+  }
+  return jsonResponse({ error: "UPSTREAM_UNAVAILABLE" }, 502);
+}

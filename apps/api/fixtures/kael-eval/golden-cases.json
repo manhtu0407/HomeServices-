@@ -484,5 +484,113 @@
     "category": "cleaning",
     "input": { "service_type": "cleaning", "description": "Dọn căn hộ ni gọn nhẹ, lau bụi với hút bụi cơ bản hè.", "problem_chips": ["Dọn dẹp nhà"], "district": "gv" },
     "expected": { "service_type": "cleaning", "problem_slug": "standard_home_cleaning", "complexity": "small", "price_band": { "min": 200000, "max": 500000 }, "decline": false }
+  },
+  {
+    "id": "H001",
+    "category": "hvac",
+    "input": { "service_type": "hvac", "description": "Một máy lạnh treo tường cần vệ sinh điều hòa định kỳ.", "problem_chips": ["Vệ sinh điều hòa"], "district": "q7" },
+    "expected": { "service_type": "hvac", "problem_slug": "routine_hvac_cleaning", "complexity": "small", "price_band": { "min": 250000, "max": 450000 }, "decline": false }
+  },
+  {
+    "id": "H002",
+    "category": "hvac",
+    "input": { "service_type": "hvac", "description": "Hai máy lạnh trong căn hộ làm lạnh yếu và mất lâu mới mát.", "problem_chips": ["Máy lạnh yếu"], "district": "q2" },
+    "expected": { "service_type": "hvac", "problem_slug": "weak_cooling", "complexity": "medium", "price_band": { "min": 500000, "max": 900000 }, "decline": false }
+  },
+  {
+    "id": "H003",
+    "category": "hvac",
+    "input": { "service_type": "hvac", "description": "Một máy điều hòa chạy nhưng không mát, cần kiểm tra cơ bản.", "problem_chips": ["Máy không mát"], "district": "q1" },
+    "expected": { "service_type": "hvac", "problem_slug": "no_cooling", "complexity": "small", "price_band": { "min": 250000, "max": 450000 }, "decline": false }
+  },
+  {
+    "id": "H004",
+    "category": "hvac",
+    "input": { "service_type": "hvac", "description": "Ba máy lạnh, một dàn lạnh chảy nước nhiều xuống sàn.", "problem_chips": ["Chảy nước"], "district": "q3" },
+    "expected": { "service_type": "hvac", "problem_slug": "water_leak", "complexity": "large", "price_band": { "min": 1000000, "max": 1800000 }, "decline": false }
+  },
+  {
+    "id": "H005",
+    "category": "hvac",
+    "input": { "service_type": "hvac", "description": "Dàn lạnh điều hòa kêu tiếng ồn và rung khi khởi động.", "problem_chips": ["Kêu bất thường"], "district": "bt" },
+    "expected": { "service_type": "hvac", "problem_slug": "unusual_noise", "complexity": "medium", "price_band": { "min": 500000, "max": 900000 }, "decline": false }
+  },
+  {
+    "id": "H006",
+    "category": "hvac",
+    "input": { "service_type": "hvac", "description": "Máy lạnh báo mã lỗi điều hòa và có mùi khét, cần duyệt an toàn.", "problem_chips": ["Có mã lỗi"], "district": "q4" },
+    "expected": { "service_type": "hvac", "problem_slug": "error_code", "complexity": "large", "price_band": { "min": 1000000, "max": 1800000 }, "decline": false }
+  },
+  {
+    "id": "U001",
+    "category": "upholstery",
+    "input": { "service_type": "upholstery", "description": "Một ghế sofa vải cần giặt sofa định kỳ, chưa có vết bẩn nặng.", "problem_chips": ["Vệ sinh sofa"], "district": "q7" },
+    "expected": { "service_type": "upholstery", "problem_slug": "sofa_cleaning", "complexity": "small", "price_band": { "min": 300000, "max": 500000 }, "decline": false }
+  },
+  {
+    "id": "U002",
+    "category": "upholstery",
+    "input": { "service_type": "upholstery", "description": "Một nệm đôi cần giặt nệm và hút bụi cơ bản.", "problem_chips": ["Vệ sinh nệm"], "district": "q2" },
+    "expected": { "service_type": "upholstery", "problem_slug": "mattress_cleaning", "complexity": "small", "price_band": { "min": 300000, "max": 500000 }, "decline": false }
+  },
+  {
+    "id": "U003",
+    "category": "upholstery",
+    "input": { "service_type": "upholstery", "description": "Rèm cửa phòng khách và hai phòng ngủ cần làm sạch.", "problem_chips": ["Vệ sinh rèm"], "district": "q1" },
+    "expected": { "service_type": "upholstery", "problem_slug": "curtain_cleaning", "complexity": "large", "price_band": { "min": 1100000, "max": 2000000 }, "decline": false }
+  },
+  {
+    "id": "U004",
+    "category": "upholstery",
+    "input": { "service_type": "upholstery", "description": "Thảm trải sàn phòng khách là thảm lớn, bám nhiều bụi.", "problem_chips": ["Vệ sinh thảm"], "district": "q3" },
+    "expected": { "service_type": "upholstery", "problem_slug": "carpet_cleaning", "complexity": "large", "price_band": { "min": 1100000, "max": 2000000 }, "decline": false }
+  },
+  {
+    "id": "U005",
+    "category": "upholstery",
+    "input": { "service_type": "upholstery", "description": "Hai ghế ăn có vết bẩn nhẹ cần xử lý đúng chất liệu.", "problem_chips": ["Vết bẩn"], "district": "bt" },
+    "expected": { "service_type": "upholstery", "problem_slug": "stain_treatment", "complexity": "small", "price_band": { "min": 300000, "max": 500000 }, "decline": false }
+  },
+  {
+    "id": "U006",
+    "category": "upholstery",
+    "input": { "service_type": "upholstery", "description": "Vệ sinh sofa bị mốc nặng và mùi hôi nặng sau thời gian dài.", "problem_chips": ["Mùi hôi/ẩm mốc"], "district": "q4" },
+    "expected": { "service_type": "upholstery", "problem_slug": "odor_or_mold", "complexity": "large", "price_band": { "min": 1100000, "max": 2000000 }, "decline": false }
+  },
+  {
+    "id": "M001",
+    "category": "handyman",
+    "input": { "service_type": "handyman", "description": "Khoan kệ và lắp một kệ nhỏ lên tường bê tông.", "problem_chips": ["Khoan/lắp kệ"], "district": "q7" },
+    "expected": { "service_type": "handyman", "problem_slug": "drill_or_mount_shelf", "complexity": "small", "price_band": { "min": 180000, "max": 350000 }, "decline": false }
+  },
+  {
+    "id": "M002",
+    "category": "handyman",
+    "input": { "service_type": "handyman", "description": "Sửa vặt lắp thanh rèm cho cửa phòng ngủ.", "problem_chips": ["Lắp thanh rèm"], "district": "q2" },
+    "expected": { "service_type": "handyman", "problem_slug": "install_curtain_rod", "complexity": "medium", "price_band": { "min": 400000, "max": 800000 }, "decline": false }
+  },
+  {
+    "id": "M003",
+    "category": "handyman",
+    "input": { "service_type": "handyman", "description": "Sửa vặt lắp thiết bị nhỏ là móc treo tại lối vào.", "problem_chips": ["Lắp đèn/thiết bị nhỏ"], "district": "q1" },
+    "expected": { "service_type": "handyman", "problem_slug": "install_small_fixture", "complexity": "medium", "price_band": { "min": 400000, "max": 800000 }, "decline": false }
+  },
+  {
+    "id": "M004",
+    "category": "handyman",
+    "input": { "service_type": "handyman", "description": "Sửa ba bản lề và thay tay nắm cho tủ bếp.", "problem_chips": ["Sửa bản lề/tay nắm"], "district": "q3" },
+    "expected": { "service_type": "handyman", "problem_slug": "repair_hinge_or_handle", "complexity": "medium", "price_band": { "min": 400000, "max": 800000 }, "decline": false }
+  },
+  {
+    "id": "M005",
+    "category": "handyman",
+    "input": { "service_type": "handyman", "description": "Sửa vặt lắp thiết bị phòng tắm nhỏ, phụ kiện đã có sẵn.", "problem_chips": ["Lắp thiết bị phòng tắm"], "district": "bt" },
+    "expected": { "service_type": "handyman", "problem_slug": "install_bathroom_fixture", "complexity": "medium", "price_band": { "min": 400000, "max": 800000 }, "decline": false }
+  },
+  {
+    "id": "M006",
+    "category": "handyman",
+    "input": { "service_type": "handyman", "description": "Treo TV 65 inch là vật nặng ở vị trí cao, cần kiểm tra tường.", "problem_chips": ["Lắp TV/nội thất"], "district": "q4" },
+    "expected": { "service_type": "handyman", "problem_slug": "mount_tv_or_furniture", "complexity": "large", "price_band": { "min": 900000, "max": 1600000 }, "decline": false }
   }
 ]

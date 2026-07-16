@@ -1,22 +1,11 @@
 import { resolve } from 'node:path'
-
-const { assertReleaseAuthConfig, resolveMobileEnvFiles } = require('../release-auth-config.cjs') as {
-  assertReleaseAuthConfig: (input: {
-    isEasBuild: boolean
-    supabasePublishableKey: string
-    supabaseUrl: string
-  }) => void
-  resolveMobileEnvFiles: (input: {
-    configDir: string
-    explicitEnvFiles: string[]
-    isEasBuild: boolean
-    repoRoot: string
-  }) => string[]
-}
+import { assertReleaseAuthConfig, resolveMobileEnvFiles } from '../release-auth-config.cjs'
 
 describe('assertReleaseAuthConfig', () => {
   it('blocks an EAS build that would ship without Supabase login config', () => {
     expect(() => assertReleaseAuthConfig({
+      apiBaseUrl: '',
+      buildProfile: 'preview',
       isEasBuild: true,
       supabasePublishableKey: '',
       supabaseUrl: '',
@@ -25,15 +14,80 @@ describe('assertReleaseAuthConfig', () => {
 
   it('allows local previews and configured EAS builds', () => {
     expect(() => assertReleaseAuthConfig({
+      apiBaseUrl: '',
+      buildProfile: '',
       isEasBuild: false,
       supabasePublishableKey: '',
       supabaseUrl: '',
     })).not.toThrow()
     expect(() => assertReleaseAuthConfig({
+      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      buildProfile: 'preview',
       isEasBuild: true,
-      supabasePublishableKey: 'public-key',
-      supabaseUrl: 'https://example.supabase.co',
+      supabasePublishableKey: 'sb_publishable_test-key',
+      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
     })).not.toThrow()
+  })
+
+  it('rejects server authority and a mismatched Edge target in EAS builds', () => {
+    const serviceRolePayload = Buffer.from(JSON.stringify({ role: 'service_role' })).toString('base64url')
+    const serviceRoleJwt = `header.${serviceRolePayload}.signature`
+    const base = {
+      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      buildProfile: 'preview',
+      isEasBuild: true,
+      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+    }
+
+    expect(() => assertReleaseAuthConfig({
+      ...base,
+      supabasePublishableKey: 'sb_secret_server-authority',
+    })).toThrow('publishable')
+    expect(() => assertReleaseAuthConfig({
+      ...base,
+      supabasePublishableKey: serviceRoleJwt,
+    })).toThrow('publishable')
+    expect(() => assertReleaseAuthConfig({
+      ...base,
+      apiBaseUrl: 'https://attacker.example/functions/v1/mobile-api',
+      supabasePublishableKey: 'sb_publishable_test-key',
+    })).toThrow('same Supabase origin')
+  })
+
+  it('accepts a legacy anon JWT but rejects non-default Supabase ports', () => {
+    const anonPayload = Buffer.from(JSON.stringify({ role: 'anon' })).toString('base64url')
+    const anonJwt = `header.${anonPayload}.signature`
+    const base = {
+      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      buildProfile: 'preview',
+      isEasBuild: true,
+      supabasePublishableKey: anonJwt,
+      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+    }
+
+    expect(() => assertReleaseAuthConfig(base)).not.toThrow()
+    expect(() => assertReleaseAuthConfig({
+      ...base,
+      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co:8443/functions/v1/mobile-api',
+      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co:8443',
+    })).toThrow('default HTTPS port')
+  })
+
+  it('pins production EAS builds to the production Supabase project', () => {
+    const input = {
+      apiBaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api',
+      buildProfile: 'production',
+      isEasBuild: true,
+      supabasePublishableKey: 'sb_publishable_test-key',
+      supabaseUrl: 'https://iwevizmsedyqozxlawwl.supabase.co',
+    }
+
+    expect(() => assertReleaseAuthConfig(input)).not.toThrow()
+    expect(() => assertReleaseAuthConfig({
+      ...input,
+      apiBaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api',
+      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+    })).toThrow('production Supabase project')
   })
 
   it('uses the ignored mobile staging config as a local fallback but never as an EAS build input', () => {

@@ -1,8 +1,17 @@
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalDeal, LocalScopeChange } from '@nestscout/shared'
 
+const NUMBER_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Intl.NumberFormat> = {
+  en: new Intl.NumberFormat('en-US'),
+  vi: new Intl.NumberFormat('vi-VN'),
+}
+const SHORT_CLOCK_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat('en-US', { hour: '2-digit', hour12: false, minute: '2-digit' }),
+  vi: new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', hour12: false, minute: '2-digit' }),
+}
+
 export function formatNumber(value: number, language: AppLanguage) {
-  return new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US').format(value)
+  return NUMBER_FORMATTER_BY_LANGUAGE[language].format(value)
 }
 
 export function formatVnd(value: number, language: AppLanguage) {
@@ -34,11 +43,7 @@ export function formatShortClockTime(value: string | null | undefined, language:
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
-  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
-    hour: '2-digit',
-    hour12: false,
-    minute: '2-digit',
-  }).format(date)
+  return SHORT_CLOCK_FORMATTER_BY_LANGUAGE[language].format(date)
 }
 
 export function scopeChangeAmountLabel(scopeChange: NonNullable<LocalDeal['scopeChange']>, language: AppLanguage) {

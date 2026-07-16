@@ -53,7 +53,7 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
   }),
   clarification: config("clarification", deepseek(), anthropic("claude-haiku-4-5-20251001"), 0.003, 2_000, true, 100),
   problem_synthesis: config("problem_synthesis", deepseek(), anthropic(), 0.005, 3_000, true, 250),
-  market_lookup: config("market_lookup", perplexity(), anthropic(), 0.002, 4_000, true, 300, {
+  market_lookup: config("market_lookup", perplexity(), undefined, 0.002, 4_000, true, 300, {
     route: perplexity("sonar-pro"),
     trigger: LOW_CONFIDENCE_ESCALATION,
   }),

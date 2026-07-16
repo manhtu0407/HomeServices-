@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 $AllArgs = @($args)
+. (Join-Path $PSScriptRoot "resolve-workspace-pnpm.ps1")
 
 function Find-CommandPath {
   param([string[]]$Candidates)
@@ -44,6 +45,9 @@ $forwardArgs = @()
 if ($AllArgs.Count -gt 2) {
   $forwardArgs = $AllArgs[2..($AllArgs.Count - 1)]
 }
+if ($forwardArgs.Count -gt 0 -and $forwardArgs[0] -eq "--") {
+  $forwardArgs = @($forwardArgs | Select-Object -Skip 1)
+}
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 $codexRuntimeRoot = Join-Path $HOME ".cache\codex-runtimes\codex-primary-runtime\dependencies"
@@ -74,14 +78,15 @@ if (-not $pnpm) {
   throw "Package script could not run: no pnpm executable found."
 }
 
-$pnpmArgs = @("--filter", $packageName, "run", $scriptName)
+$pnpmInvocation = Get-WorkspacePnpmInvocation -RepoRoot $repoRoot -PnpmPath $pnpm
+$pnpmArgs = @($pnpmInvocation.Prefix) + @("--filter", $packageName, "run", $scriptName)
 if ($forwardArgs.Count -gt 0) {
   $pnpmArgs += $forwardArgs
 }
 
 Push-Location $repoRoot
 try {
-  & $pnpm @pnpmArgs
+  & $pnpmInvocation.Command @pnpmArgs
   exit $LASTEXITCODE
 } finally {
   Pop-Location

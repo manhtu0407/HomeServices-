@@ -323,7 +323,16 @@ describe('active customer Kael chat surface wiring', () => {
     const kaelChatRoute = readMobileSource('app/(customer)/kael-chat.tsx')
     const bridge = readCustomerSource('customer-surfaces.tsx')
     const surface = readCustomerSource('v21/surfaces.tsx')
+    const chatSurface = readCustomerSource('v21/kael-chat-surface.tsx')
+    const chatController = readCustomerSource('v21/use-customer-kael-surface-controller.ts')
+    const guardedActions = [
+      readCustomerSource('v21/use-customer-kael-session-hydration.ts'),
+      readCustomerSource('v21/use-customer-kael-evidence-actions.ts'),
+      readCustomerSource('v21/use-customer-kael-message-actions.ts'),
+      readCustomerSource('v21/use-customer-kael-decision-actions.ts'),
+    ].join('\n')
     const chatView = readCustomerSource('v21/chat-stateful-surfaces.tsx')
+    const chatPrimitives = readCustomerSource('v21/chat-surfaces.tsx')
 
     expect(kaelRoute).toContain('CustomerKaelSurface')
     expect(kaelRoute).toContain('@/components/customer/customer-surfaces')
@@ -332,7 +341,16 @@ describe('active customer Kael chat surface wiring', () => {
     expect(kaelRoute).not.toContain('@/components/customer/kael-chat/kael-chat-surface')
     expect(kaelChatRoute).not.toContain('@/components/customer/kael-chat/kael-chat-surface')
     expect(bridge).toContain('CustomerKaelSurface')
-    expect(surface).toContain('export function KaelChatSurface')
+    expect(surface).toContain('key={stateScopeKey}')
+    expect(surface).toContain("from './kael-chat-surface'")
+    expect(chatSurface).toContain('export function KaelChatSurface')
+    expect(chatController).toContain('useCustomerKaelRequestGuard')
+    expect(surface).toContain('customerKaelStateScopeKey')
+    expect(guardedActions).toContain('.isCurrent(')
+    expect(chatPrimitives).toContain("speaker: 'customer' | 'worker' | 'kael'")
+    expect(chatPrimitives).not.toContain("role: 'customer' | 'worker' | 'kael'")
+    expect(chatView).toContain('speaker="customer"')
+    expect(chatView).not.toContain('<ChatBubble\n                role=')
     expect(chatView).toContain('testID="customer-v21-kael-chat"')
     expect(chatView).toContain('customer-v21-screen-2.4-chat-normal')
     expect(chatView).not.toContain('customer-kael-chat-stack-screen')
@@ -351,9 +369,12 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('keeps the Case Work activity action on Activity after retiring the Profile command center', () => {
-    const surface = readCustomerSource('v21/surfaces.tsx')
+    const surface = [
+      readCustomerSource('v21/surfaces.tsx'),
+      readCustomerSource('v21/customer-kael-chat-content.tsx'),
+    ].join('\n')
 
-    expect(surface).toContain("const openActivity = () => {\n    router.replace('/(customer)/history' as never)\n  }")
+    expect(surface).toContain("const onOpenActivity = () => {\n    router.replace('/(customer)/history' as never)\n  }")
     expect(surface).not.toContain('/(customer)/profile?utility=agentic')
     expect(surface).not.toContain('/(customer)/profile?screen=5.2-command-center')
     expect(surface).not.toContain('/(customer)/profile?screen=5.3-approval-queue')
@@ -386,21 +407,31 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('renders the Worker-parity Customer shell without copying Worker semantics', async () => {
-    render(<CustomerKaelSurface />)
+    jest.useFakeTimers()
+    const view = render(<CustomerKaelSurface />)
 
-    await waitForConversationCatalog('normal')
+    try {
+      await waitForConversationCatalog('normal')
+      await act(async () => {
+        jest.runOnlyPendingTimers()
+        await Promise.resolve()
+      })
 
-    expect(screen.getByTestId('customer-v21-kael-header-actions')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-new-conversation')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-mode-toggle')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent('Chat thường')
-    expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-empty-hero-model')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-input')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-kael-chat-disclaimer')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-normal-greeting-bubble')).toBeNull()
-    expect(screen.queryByText(/nhận việc|cơ hội việc/i)).toBeNull()
+      expect(screen.getByTestId('customer-v21-kael-header-actions')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-new-conversation')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-mode-toggle')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-active-mode')).toHaveTextContent('Chat thường')
+      expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-empty-hero-model')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-empty-hero-copy')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-input')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-kael-chat-disclaimer')).toBeOnTheScreen()
+      expect(screen.queryByTestId('customer-v21-normal-greeting-bubble')).toBeNull()
+      expect(screen.queryByText(/nhận việc|cơ hội việc/i)).toBeNull()
+    } finally {
+      view.unmount()
+      jest.useRealTimers()
+    }
   })
 
   it('keeps the Kael empty-state timeline looping while the app is active', () => {
@@ -532,6 +563,71 @@ describe('active customer Kael chat surface wiring', () => {
       resolveRefresh({ data: { sessions: [...mockSessionsByMode.normal] }, success: true })
       await Promise.all(refreshes)
     })
+  })
+
+  it('never exposes the previous customer catalog during an auth identity switch', async () => {
+    const customerA = mockCustomerId
+    const sessionA = makeConversationSession('normal', 'customer-a-session')
+    mockSessionsByMode.normal = [sessionA]
+    const renderSnapshots: {
+      activeSessionId: string | null
+      identityVersion: number
+      sessionIds: string[]
+    }[] = []
+    const { result, rerender } = renderHook(
+      ({ identityVersion }: { identityVersion: number }) => {
+        const conversations = useCustomerKaelConversations('normal', 'vi')
+        renderSnapshots.push({
+          activeSessionId: conversations.activeSessionId,
+          identityVersion,
+          sessionIds: conversations.sessions.map((session) => session.id),
+        })
+        return conversations
+      },
+      { initialProps: { identityVersion: 0 } },
+    )
+    await waitForConversationCatalog('normal')
+    await act(async () => {
+      await result.current.openSession(sessionA.id)
+    })
+    expect(result.current.activeSessionId).toBe(sessionA.id)
+
+    let resolveCustomerARefresh!: (value: {
+      data: { sessions: CustomerKaelConversationSession[] }
+      success: true
+    }) => void
+    const pendingCustomerARefresh = new Promise<{
+      data: { sessions: CustomerKaelConversationSession[] }
+      success: true
+    }>((resolve) => {
+      resolveCustomerARefresh = resolve
+    })
+    mockConversationList.mockImplementationOnce(() => pendingCustomerARefresh)
+    let customerARefresh!: Promise<CustomerKaelConversationSession[]>
+    act(() => {
+      customerARefresh = result.current.refreshSessions(true)
+    })
+
+    mockCustomerId = `${customerA}-switched`
+    const sessionB = makeConversationSession('normal', 'customer-b-session')
+    mockSessionsByMode.normal = [sessionB]
+    rerender({ identityVersion: 1 })
+
+    const switchedIdentitySnapshots = renderSnapshots.filter((snapshot) => snapshot.identityVersion === 1)
+    expect(switchedIdentitySnapshots.length).toBeGreaterThan(0)
+    expect(switchedIdentitySnapshots.every((snapshot) => (
+      snapshot.activeSessionId === null && !snapshot.sessionIds.includes(sessionA.id)
+    ))).toBe(true)
+    expect(result.current.sessions).not.toContainEqual(sessionA)
+    expect(result.current.activeSessionId).toBeNull()
+    await waitFor(() => expect(result.current.sessions).toEqual([sessionB]))
+
+    await act(async () => {
+      resolveCustomerARefresh({ data: { sessions: [sessionA] }, success: true })
+      await customerARefresh
+    })
+    expect(result.current.sessions).toEqual([sessionB])
+    expect(result.current.activeSessionId).toBeNull()
   })
 
   it('does not let a late job-route sync override the Case Work session the Customer just created', async () => {
@@ -795,6 +891,7 @@ describe('active customer Kael chat surface wiring', () => {
     await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith('authoritative-case-session'))
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    await flushLatestConversationList()
     expect(screen.getByText(/Đang mở · 0 lượt trao đổi/)).toBeOnTheScreen()
   })
 
@@ -873,27 +970,28 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('keeps Customer Kael isolated from Worker session services', () => {
-    const surface = readCustomerSource('v21/surfaces.tsx')
+    const controller = readCustomerSource('v21/use-customer-kael-surface-controller.ts')
+    const messageActions = readCustomerSource('v21/use-customer-kael-message-actions.ts')
     const chatView = readCustomerSource('v21/chat-stateful-surfaces.tsx')
-    const linkedCaseStart = surface.indexOf("if (mode === 'case' && deal)")
-    const linkedCaseEnd = surface.indexOf('const intakeIntent', linkedCaseStart)
-    const linkedCaseBranch = surface.slice(linkedCaseStart, linkedCaseEnd)
 
-    expect(surface).not.toContain('workerKaelChatService')
-    expect(linkedCaseBranch).toContain('conversations.sendConversationTurn(message)')
-    expect(linkedCaseBranch).not.toContain('kaelAssistantService.ask')
+    expect(controller).toContain('conversations,')
+    expect(messageActions).toContain('conversations.sendConversationTurn(message)')
+    expect(controller).not.toContain('workerKaelChatService')
+    expect(messageActions).not.toContain('workerKaelChatService')
     expect(chatView).not.toContain('/components/worker/')
     expect(chatView).not.toContain('worker-v5-')
   })
 
   it('wires a compact Customer-owned session menu with per-mode CRUD actions', () => {
-    const surface = readCustomerSource('v21/surfaces.tsx')
+    const controller = readCustomerSource('v21/use-customer-kael-surface-controller.ts')
+    const content = readCustomerSource('v21/customer-kael-chat-content.tsx')
     const header = readCustomerSource('v21/kael-chat-header.tsx')
     const menu = readCustomerSource('v21/kael-session-menu.tsx')
     const chatStyles = readCustomerSource('v21/chat-styles.ts')
     const mobileServices = readMobileSource('lib/services.ts')
 
-    expect(surface).toContain('useCustomerKaelConversations')
+    expect(controller).toContain('useCustomerKaelConversations')
+    expect(content).toContain('CustomerKaelSessionMenu')
     expect(header).toContain('sessionMenuOpen')
     expect(menu).toContain("'Ghim'")
     expect(menu).toContain("'Đổi tên'")
@@ -904,6 +1002,27 @@ describe('active customer Kael chat surface wiring', () => {
     expect(chatStyles).toContain("outlineColor: 'rgba(13,167,151,0.62)'")
     expect(chatStyles.toLowerCase()).not.toContain('orange')
     expect(mobileServices).toContain('customerKaelConversationService')
-    expect(surface).not.toContain('workerKaelChatService')
+    expect(controller).not.toContain('workerKaelChatService')
+    expect(content).not.toContain('workerKaelChatService')
+  })
+
+  it('keeps the Kael chat surface visual while bounded domain hooks own orchestration', () => {
+    const surfaceIndex = readCustomerSource('v21/surfaces.tsx')
+    const chatSurface = readCustomerSource('v21/kael-chat-surface.tsx')
+    const controller = readCustomerSource('v21/use-customer-kael-surface-controller.ts')
+
+    expect(surfaceIndex).toContain("from './kael-chat-surface'")
+    expect(surfaceIndex).not.toContain('function KaelChatSurface(')
+    expect(controller).toContain('useKaelProcessLineController')
+    expect(controller).toContain('useCustomerKaelSessionHydration')
+    expect(controller).toContain('useCustomerKaelEvidenceActions')
+    expect(controller).toContain('useCustomerKaelMessageActions')
+    expect(controller).toContain('useCustomerKaelDecisionActions')
+    expect(controller).toContain('deriveCustomerKaelPresentation')
+
+    const componentStart = chatSurface.indexOf('export function KaelChatSurface')
+    const componentBody = chatSurface.slice(componentStart)
+    const componentLineCount = componentBody.split('\n').length
+    expect(componentLineCount).toBeLessThanOrEqual(300)
   })
 })

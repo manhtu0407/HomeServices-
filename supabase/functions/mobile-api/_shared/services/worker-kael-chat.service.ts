@@ -8,10 +8,20 @@ import { ACTIVE_WORKER_JOB_STATUSES, compactMetadata } from "./_shared.ts";
 import { auditGuardrailTripBestEffort, isWorkerAssistGuardrailReason } from "./audit.ts";
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildWorkerKaelSessionTitle, runWorkerAssist, sanitizeKaelText, sanitizeWorkerKaelSessionTitle, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type WorkerAssistProviderAttempt, type EdgeAiSecrets } from "../kael/index.ts";
+import { buildWorkerKaelSessionTitle, runWorkerAssist, sanitizeKaelText, sanitizeWorkerKaelSessionTitle, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type EdgeAiSecrets } from "../kael/index.ts";
 import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
 import { analyzeDescription } from "../kael/vision.ts";
 import { kaelChatProgressSchema, sanitizeForLLM } from "../../../_shared/domain.ts";
+import type { WorkerVisionFinding } from "../kael/types.ts";
+import {
+  buildSafeWorkerVisionFinding,
+  prepareWorkerKaelVisionUrls,
+} from "./worker-kael-media.service.ts";
+import {
+  claimWorkerKaelChatTurn,
+  completeWorkerKaelChatTurn,
+  releaseWorkerKaelTurnClaim,
+} from "./worker-kael-chat-claims.service.ts";
 import type { EdgeWorkerKaelChatPinInput, EdgeWorkerKaelChatRenameInput, JobStatus, KaelWorkerClarifyInput, WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../../_shared/domain.ts";
 
 const WORKER_KAEL_SESSION_SELECT =
@@ -39,47 +49,43 @@ export async function askKaelForWorker(
     );
   }
 
-  const countResult = await dbQuery<null>(
-    client
-      .from("kael_worker_qa_log")
-      .select("id", { count: "exact", head: true })
-      .eq("job_id", jobId)
-      .eq("worker_id", ctx.user.id),
-  );
-  if (countResult.error) {
-    apiFailure("DB_ERROR", "Không thể kiểm tra số lần hỏi Kael", 500);
-  }
-  const usedQuestions = countResult.count ?? 0;
-  if (usedQuestions >= 3) {
-    apiFailure(
-      "KAEL_QA_LIMIT_REACHED",
-      "Mỗi việc chỉ có thể hỏi Kael thêm tối đa 3 lần",
-      429,
-    );
-  }
-
   const safeQuestion = sanitizeKaelText(input.question, 1000);
   const answer = buildWorkerKaelAnswer(safeQuestion, job);
-  const inserted = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_worker_qa_log")
-      .insert({
-        job_id: jobId,
-        worker_id: ctx.user.id,
-        question: safeQuestion,
-        answer,
-      })
-      .select("id, created_at")
-      .single(),
+  const recorded = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("record_worker_kael_qa_atomic", {
+      p_answer: answer,
+      p_job_id: jobId,
+      p_question: safeQuestion,
+      p_worker_id: ctx.user.id,
+    }),
   );
-  if (inserted.error || !inserted.data) {
+  if (recorded.error || !recorded.data?.[0]) {
     apiFailure("DB_ERROR", "Không thể lưu câu hỏi Kael", 500);
+  }
+  const row = recorded.data[0];
+  if (asBoolean(row.ok) !== true) {
+    const errorCode = nullableString(row.error_code);
+    if (errorCode === "KAEL_QA_LIMIT_REACHED") {
+      apiFailure(
+        "KAEL_QA_LIMIT_REACHED",
+        "Mỗi việc chỉ có thể hỏi Kael thêm tối đa 3 lần",
+        429,
+      );
+    }
+    if (errorCode === "INVALID_STATUS") {
+      apiFailure(
+        "INVALID_STATUS",
+        "Kael chỉ hỗ trợ thêm sau khi thợ đã nhận hoặc đang xử lý việc",
+        409,
+      );
+    }
+    apiFailure("AUTH_FORBIDDEN", "Không thể lưu câu hỏi Kael", 403);
   }
 
   return {
-    qa_id: asString(inserted.data.id),
+    qa_id: asString(row.qa_id),
     job_id: jobId,
-    remaining_questions: Math.max(0, 3 - usedQuestions - 1),
+    remaining_questions: Math.max(0, asNumber(row.remaining_questions)),
     answer,
   };
 }
@@ -279,24 +285,49 @@ export async function sendWorkerKaelChatTurn(
   options: { prefetchedJob?: Record<string, unknown>; skipRateLimit?: boolean } = {},
 ) {
   const client = db(ctx);
+  const spendGate = { client, actorId: ctx.user.id };
   const session = await readWorkerKaelSession(client, ctx, sessionId);
   if (asWorkerKaelChatStatus(session.status) !== "active") {
     apiFailure("INVALID_STATUS", "Phi\u00ean Kael n\u00e0y kh\u00f4ng c\u00f2n nh\u1eadn tin nh\u1eafn", 409);
   }
-  if (input.client_request_id) {
-    const existingTurn = await findExistingWorkerKaelTurnByClientRequest(
-      client,
-      sessionId,
-      input.client_request_id,
-    );
-    if (existingTurn) return getWorkerKaelChat(ctx, sessionId);
-  }
-  if (!options.skipRateLimit) {
-    await enforceWorkerKaelChatRateLimit(client, ctx, secrets);
-  }
-
   const job = options.prefetchedJob ??
     await requireWorkerKaelChatJob(client, ctx, asString(session.job_id));
+  const safeMessage = scrubSensitiveForLLM(sanitizeForLLM(input.message));
+  const visionPhotoUrls = input.media_refs.length > 0
+    ? await prepareWorkerKaelVisionUrls(
+      ctx,
+      client,
+      asString(session.job_id),
+      input.media_refs,
+    )
+    : [];
+  const claimId = crypto.randomUUID();
+  const claim = await claimWorkerKaelChatTurn(client, {
+    claimId,
+    clientRequestId: input.client_request_id,
+    contentType: input.media_refs.length > 0 ? "photo_attached" : "text",
+    jobId: asString(session.job_id),
+    mediaRefs: input.media_refs,
+    message: safeMessage,
+    sessionId,
+    workerId: ctx.user.id,
+  });
+  if (asBoolean(claim.completed)) return getWorkerKaelChat(ctx, sessionId);
+
+  if (!options.skipRateLimit) {
+    try {
+      await enforceWorkerKaelChatRateLimit(client, ctx, secrets);
+    } catch (error) {
+      await releaseWorkerKaelTurnClaim(client, {
+        claimId,
+        discard: true,
+        requestId: asString(claim.request_id),
+        sessionId,
+        workerId: ctx.user.id,
+      });
+      throw error;
+    }
+  }
   await updateKaelProgress(client, {
     table: "kael_worker_chat_sessions",
     id: sessionId,
@@ -308,27 +339,14 @@ export async function sendWorkerKaelChatTurn(
 
   const previousTurns = asNumber(session.total_turns);
   const needsInitialTitle = previousTurns === 0 && !nullableString(session.title);
-  const safeMessage = scrubSensitiveForLLM(sanitizeForLLM(input.message));
-  await insertWorkerKaelTurn(client, {
-    session_id: sessionId,
-    job_id: asString(session.job_id),
-    turn_index: previousTurns + 1,
-    role: "worker",
-    content_type: input.media_refs.length > 0 ? "photo_attached" : "text",
-    text_content: safeMessage,
-    media_refs: input.media_refs,
-    client_request_id: input.client_request_id ?? null,
-    safe_metadata: {},
-  });
-
   const recentTurns = await readWorkerKaelRecentTurns(client, sessionId);
   // Worker-assist was BLIND — it only knew the photo COUNT. When
   // the worker attaches photos, run server-side vision (schema-validated, same
   // analyzeDescription as the customer pipeline) so Kael's on-site advice can
   // reference what is actually in the image. Only surface a summary on real
   // success; on skip/fallback we pass null (no fabricated findings).
-  let workerVisionSummary: string | null = null;
-  if (input.media_refs.length > 0) {
+  let workerVisionFinding: WorkerVisionFinding | null = null;
+  if (visionPhotoUrls.length > 0) {
     // analyzeDescription is designed to return a structured success/fail, but an
     // unexpected throw (e.g. image fetch) must NOT crash the worker chat turn —
     // the W-1 contract is "null on failure, no fabricated findings", so degrade.
@@ -340,18 +358,23 @@ export async function sendWorkerKaelChatTurn(
       const vision = await analyzeDescription(
         safeMessage,
         visionContext,
-        input.media_refs,
+        visionPhotoUrls,
         secrets,
+        spendGate,
+        input.language,
       );
       if (vision.success) {
-        workerVisionSummary = summarizeWorkerVision(vision.analysis);
+        workerVisionFinding = buildSafeWorkerVisionFinding(
+          vision.analysis,
+          nullableString(job.service_type),
+        );
       }
     } catch (err) {
       console.warn("worker-assist vision analysis threw; continuing without findings", {
         sessionId,
-        error: err instanceof Error ? err.message : "unknown",
+        errorName: err instanceof Error ? err.name : typeof err,
       });
-      workerVisionSummary = null;
+      workerVisionFinding = null;
     }
   }
   let answer: WorkerAssistAnswer;
@@ -371,11 +394,19 @@ export async function sendWorkerKaelChatTurn(
       question: safeMessage,
       language: input.language,
       mediaRefs: input.media_refs,
-      visionSummary: workerVisionSummary,
+      visionFinding: workerVisionFinding,
       previousTurns: recentTurns,
       secrets,
+      spendGate,
     });
   } catch (err) {
+    await releaseWorkerKaelTurnClaim(client, {
+      claimId,
+      discard: false,
+      requestId: asString(claim.request_id),
+      sessionId,
+      workerId: ctx.user.id,
+    });
     await updateKaelProgress(client, {
       table: "kael_worker_chat_sessions",
       id: sessionId,
@@ -440,7 +471,34 @@ export async function sendWorkerKaelChatTurn(
     }
   }
 
-  await appendWorkerKaelAnswerTurn(client, session, answer);
+  let completed: Record<string, unknown>;
+  try {
+    completed = await completeWorkerKaelChatTurn(client, {
+      answer,
+      claimId,
+      jobId: asString(session.job_id),
+      requestId: asString(claim.request_id),
+      sessionId,
+      workerId: ctx.user.id,
+      workerTurnId: asString(claim.worker_turn_id),
+    });
+  } catch (error) {
+    await releaseWorkerKaelTurnClaim(client, {
+      claimId,
+      discard: false,
+      requestId: asString(claim.request_id),
+      sessionId,
+      workerId: ctx.user.id,
+    });
+    throw error;
+  }
+  if (asBoolean(completed.stale)) {
+    apiFailure(
+      "WORKFLOW_STALE",
+      "Trạng thái công việc đã đổi trong lúc Kael xử lý. Vui lòng gửi lại yêu cầu.",
+      409,
+    );
+  }
   await updateKaelProgress(client, {
     table: "kael_worker_chat_sessions",
     id: sessionId,
@@ -497,19 +555,6 @@ export function serializeWorkerKaelSession(row: Record<string, unknown>) {
       }
       : null,
   };
-}
-
-function summarizeWorkerVision(analysis: {
-  problem_identified: string;
-  severity_indicators: readonly string[];
-  complexity_hint: string;
-}): string {
-  const parts = [analysis.problem_identified.trim()];
-  if (analysis.severity_indicators.length > 0) {
-    parts.push(`Dấu hiệu: ${analysis.severity_indicators.join("; ")}`);
-  }
-  parts.push(`Mức độ ước tính từ ảnh: ${analysis.complexity_hint}`);
-  return parts.filter((part) => part.length > 0).join(". ").slice(0, 480);
 }
 
 function buildWorkerKaelAnswer(
@@ -573,23 +618,6 @@ async function findExistingWorkerKaelSessionByClientRequest(
   return asString(result.data.id);
 }
 
-async function findExistingWorkerKaelTurnByClientRequest(
-  client: DbClient,
-  sessionId: string,
-  clientRequestId: string,
-): Promise<string | null> {
-  const result = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_worker_chat_turns")
-      .select("id")
-      .eq("session_id", sessionId)
-      .eq("client_request_id", clientRequestId)
-      .maybeSingle(),
-  );
-  if (result.error || !result.data) return null;
-  return asString(result.data.id);
-}
-
 async function enforceWorkerKaelChatRateLimit(
   client: DbClient,
   ctx: MobileApiContext,
@@ -633,96 +661,6 @@ async function enforceWorkerKaelChatRateLimit(
       429,
     );
   }
-}
-
-async function insertWorkerKaelTurn(
-  client: DbClient,
-  value: Record<string, unknown>,
-) {
-  const result = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_worker_chat_turns")
-      .insert(value)
-      .select("id")
-      .single(),
-  );
-  if (result.error || !result.data) {
-    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 l\u01b0u l\u01b0\u1ee3t chat Kael", 500);
-  }
-  return result.data;
-}
-
-async function appendWorkerKaelAnswerTurn(
-  client: DbClient,
-  session: Record<string, unknown>,
-  answer: WorkerAssistAnswer,
-) {
-  const sessionId = asString(session.id);
-  const nextIndex = asNumber(session.total_turns) + 2;
-  await insertWorkerKaelTurn(client, {
-    session_id: sessionId,
-    job_id: asString(session.job_id),
-    turn_index: nextIndex,
-    role: "kael",
-    content_type: answer.redirect_scope_change ? "guidance" : "text",
-    text_content: answer.text,
-    media_refs: [],
-    safe_metadata: compactMetadata({
-      schema_version: answer.schema_version,
-      safety_notes: answer.safety_notes,
-      redirect_scope_change: answer.redirect_scope_change,
-      fallback_used: answer.fallback_used,
-      guardrail_reason: answer.guardrail_reason ?? null,
-      provider_attempts: formatWorkerAssistProviderAttempts(answer.provider_attempts ?? []),
-      kael_trace: answer.trace ?? [],
-      provider: answer.provider ?? null,
-      model: answer.model ?? null,
-      latency_ms: answer.latency_ms ?? null,
-    }),
-    ai_provider: answer.provider ?? null,
-    ai_model: answer.model ?? null,
-    latency_ms: answer.latency_ms ?? null,
-    cost_usd: answer.cost_usd ?? 0,
-  });
-
-  const update = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_worker_chat_sessions")
-      .update({
-        total_turns: nextIndex,
-        total_cost_usd: asNumber(session.total_cost_usd) + (answer.cost_usd ?? 0),
-        status: answer.fallback_used ? "active" : "active",
-        safe_metadata: compactMetadata({
-          ...asRecord(session.safe_metadata),
-          latest_redirect_scope_change: answer.redirect_scope_change,
-          latest_fallback_used: answer.fallback_used,
-        }),
-      })
-      .eq("id", sessionId)
-      .select("id")
-      .maybeSingle(),
-  );
-  if (update.error || !update.data) {
-    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt phi\u00ean Kael", 500);
-  }
-}
-
-function formatWorkerAssistProviderAttempts(
-  attempts: readonly WorkerAssistProviderAttempt[],
-) {
-  return attempts.map((attempt) =>
-    [
-      attempt.role,
-      attempt.provider,
-      attempt.model,
-      attempt.result,
-      attempt.code ?? "ok",
-      `timeout=${attempt.timeout_ms}`,
-      `prompt=${attempt.prompt_version}`,
-      `schema=${attempt.schema_version}`,
-      attempt.latency_ms !== undefined ? `latency=${attempt.latency_ms}` : "latency=n/a",
-    ].join(":")
-  );
 }
 
 async function readWorkerKaelRecentTurns(
@@ -770,9 +708,13 @@ function workerKaelSafetyNotes(metadata: unknown) {
 function asWorkerKaelChatStatus(
   value: unknown,
 ): "active" | "closed" | "escalated" | "error" {
-  return value === "closed" || value === "escalated" || value === "error"
-    ? value
-    : "active";
+  if (
+    value === "active" || value === "closed" ||
+    value === "escalated" || value === "error"
+  ) {
+    return value;
+  }
+  apiFailure("DB_ERROR", "Dữ liệu phiên Kael của thợ không hợp lệ", 500);
 }
 
 function asWorkerKaelChatMode(value: unknown): WorkerKaelChatCreateInput["mode"] {
@@ -780,18 +722,21 @@ function asWorkerKaelChatMode(value: unknown): WorkerKaelChatCreateInput["mode"]
 }
 
 function asWorkerKaelTurnRole(value: unknown): "worker" | "kael" | "system" {
-  return value === "worker" || value === "system" ? value : "kael";
+  if (value === "worker" || value === "kael" || value === "system") {
+    return value;
+  }
+  apiFailure("DB_ERROR", "Dữ liệu lượt chat Kael của thợ không hợp lệ", 500);
 }
 
 function asWorkerKaelContentType(
   value: unknown,
 ): "text" | "photo_attached" | "guidance" | "error" | "clarification" | "photo_request" {
   if (
-    value === "clarification" || value === "guidance" ||
+    value === "text" || value === "clarification" || value === "guidance" ||
     value === "photo_request" || value === "photo_attached" ||
     value === "error"
   ) {
     return value;
   }
-  return "text";
+  apiFailure("DB_ERROR", "Dữ liệu lượt chat Kael của thợ không hợp lệ", 500);
 }

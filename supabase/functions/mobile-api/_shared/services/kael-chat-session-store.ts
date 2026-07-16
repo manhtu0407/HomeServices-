@@ -60,7 +60,7 @@ export async function findExistingKaelSessionByClientRequest(
   const result = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_chat_sessions")
-      .select("id, job_id, status, estimate_ready_at, total_turns")
+      .select("id, job_id, status, estimate_ready_at, total_turns, safe_metadata")
       .eq("customer_id", customerId)
       .eq("client_request_id", clientRequestId)
       .maybeSingle(),
@@ -71,7 +71,9 @@ export async function findExistingKaelSessionByClientRequest(
   const hasMaterializedTurn = (nullableNumber(result.data.total_turns) ?? 0) > 0;
   const hasJob = nullableString(result.data.job_id) !== null;
   const hasEstimate = nullableString(result.data.estimate_ready_at) !== null;
-  if (!hasMaterializedTurn && !hasJob && !hasEstimate) {
+  const intentionallyEmpty = asRecord(result.data.safe_metadata)
+    .initial_turn_expected === false;
+  if (!hasMaterializedTurn && !hasJob && !hasEstimate && !intentionallyEmpty) {
     return { kind: "pending" };
   }
   return { kind: "ready", sessionId };

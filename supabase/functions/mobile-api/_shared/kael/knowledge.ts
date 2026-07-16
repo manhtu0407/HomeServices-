@@ -461,7 +461,18 @@ async function logKnowledgeUsageBestEffort(
     .filter((row) => row.knowledge_table && row.citation_id);
   if (payload.length === 0) return;
 
-  await withDbTimeout(query.insert(payload)).catch(() => undefined);
+  try {
+    const result = await withDbTimeout(query.insert(payload)) as KnowledgeQueryResult;
+    if (result?.error) {
+      console.warn("kael knowledge usage log failed", {
+        errorCode: result.error.code ?? "DB_ERROR",
+      });
+    }
+  } catch {
+    console.warn("kael knowledge usage log failed", {
+      errorCode: "KNOWLEDGE_USAGE_WRITE_REJECTED",
+    });
+  }
 }
 
 function localSemanticEmbedding(text: string): number[] {

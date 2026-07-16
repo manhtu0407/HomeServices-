@@ -5,6 +5,8 @@ type JobEventInsert = TablesInsert<'job_events'>
 
 export type EventActor = {
   id: string
+  // Server routes construct this audit value after authentication.
+  // react-doctor-disable-next-line react-doctor/supabase-client-owned-authz-field
   role: UserRole
 }
 

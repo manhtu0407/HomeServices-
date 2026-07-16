@@ -141,6 +141,7 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
     completionPhotoUrls: job.completion_photo_urls,
     completionNotes: job.completion_notes,
     workerProfile: workerProfileSummaryFromApi(data.worker),
+    scheduledAt: job.scheduled_at,
     createdAt: job.created_at,
     matchedAt: job.matched_at,
     completedAt: job.completed_at,
@@ -162,6 +163,7 @@ export function workerBroadcastToSnapshot(broadcast: WorkerBroadcastsResponse['b
     secondsRemaining: broadcast.seconds_remaining,
     estimatedPriceLabel: formatNullablePriceRange(broadcast.estimated_price_min, broadcast.estimated_price_max),
     estimatedEarningLabel: formatNullablePriceRange(broadcast.estimated_earning_min, broadcast.estimated_earning_max),
+    scheduledAt: broadcast.scheduled_at,
   }
 }
 
@@ -208,6 +210,7 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
     fieldEvidencePhotoUrls: job.photo_urls,
     completionPhotoUrls: job.completion_photo_urls,
     completionNotes: job.completion_notes,
+    scheduledAt: job.scheduled_at,
     createdAt: job.created_at,
     matchedAt: job.matched_at,
     completedAt: job.completed_at,
@@ -282,6 +285,7 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     completionPhotoUrls: deal.completionPhotoUrls ?? [],
     completionNotes: deal.completionNotes ?? null,
     workerProfile: deal.workerProfile ?? null,
+    scheduledAt: deal.scheduledAt ?? null,
     createdAt: deal.createdAt ?? null,
     matchedAt: deal.matchedAt ?? null,
     completedAt: deal.completedAt ?? null,

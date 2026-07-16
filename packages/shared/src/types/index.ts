@@ -21,10 +21,12 @@ export type {
 } from './ai.types'
 export { TIMEOUT_MS, MAX_RETRIES, AIProviderError } from './ai.types'
 export type {
+  AddressAccessView,
   KaelEstimate,
   ServiceCatalogResponse,
   CreateJobResponse,
   KaelChatStatus,
+  KaelCaseWorkPhase,
   KaelChatNextAction,
   KaelChatTurn,
   KaelChatSession,
@@ -36,6 +38,11 @@ export type {
   ConfirmKaelChatResponse,
   StatusUpdateResponse,
   ConfirmCompletionResponse,
+  PaymentIntentResponse,
+  CustomerCancellationResponse,
+  DisputeOpenResponse,
+  DisputeCounterStatementResponse,
+  DisputeAdminDecisionResponse,
   ReviewResponse,
   JobMessageResponse,
   JobMessageListResponse,
@@ -47,6 +54,7 @@ export type {
   AvailabilityToggleResponse,
   BroadcastListResponse,
   AcceptBroadcastResponse,
+  WorkerKaelClarifyResponse,
   DeclineBroadcastResponse,
   WorkerScopeChangeResponse,
   CustomerScopeDecisionResponse,
@@ -57,4 +65,5 @@ export type {
   NotificationListResponse,
   NotificationReadResponse,
   DevicePushTokenResponse,
+  DevicePushTokenUnregisterResponse,
 } from './api-responses'

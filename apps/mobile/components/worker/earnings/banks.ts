@@ -11,7 +11,7 @@ export const workerV5BankLogos: Record<WorkerV5BankLogoName, ImageSourcePropType
   vietinbank: require('@/assets/banks/vietinbank.png') as ImageSourcePropType,
 }
 
-export const WORKER_V5_BANK_OPTIONS: ReadonlyArray<{ code: WorkerV5BankLogoName; label: string }> = [
+export const WORKER_V5_BANK_OPTIONS: readonly { code: WorkerV5BankLogoName; label: string }[] = [
   { code: 'vietcombank', label: 'Vietcombank' },
   { code: 'techcombank', label: 'Techcombank' },
   { code: 'bidv', label: 'BIDV' },

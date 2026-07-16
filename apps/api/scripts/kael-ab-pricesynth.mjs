@@ -1,10 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import { performance } from 'node:perf_hooks'
+import {
+  assertLiveApproval,
+  assertSupabaseTargets,
+  createEphemeralPassword,
+  createTimeoutFetch,
+} from './lib/privileged-script-safety.mjs'
 
-const STAGING_REF = 'xyylanuyflrjzbjzhqfl'
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
 const EXPERIMENT_KEY = 'p17-price-synthesis-perplexity-vs-anthropic-2026-05-26'
-const PASSWORD = 'F26-ab-pricesynth-Temp-12345!'
 const SAMPLE_TARGET = 100
 const CONCURRENCY = 4
 
@@ -26,15 +29,10 @@ function requireEnv(name, fallbacks = []) {
   return value
 }
 
-function assertStagingUrl(value, label) {
-  assert(value.includes(STAGING_REF), `${label} must target staging ref ${STAGING_REF}`)
-  assert(!value.includes(PRODUCTION_REF), `${label} must not target production ref ${PRODUCTION_REF}`)
-}
-
 function createSupabase(url, key) {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch },
+    global: { fetch: createTimeoutFetch(60_000) },
   })
 }
 
@@ -44,21 +42,12 @@ async function must(query, label) {
   return data
 }
 
-async function timeoutFetch(timeoutMs, url, options) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(url, { ...options, signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 class PriceSynthesisAbRunner {
   constructor(config) {
     this.config = config
     this.admin = createSupabase(config.supabaseUrl, config.serviceRoleKey)
     this.runId = `f26-ab-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`
+    this.password = createEphemeralPassword('F26Ab')
     this.userIds = []
     this.timings = []
   }
@@ -67,17 +56,20 @@ class PriceSynthesisAbRunner {
     const experiment = await this.verifyExperiment()
     const adminActor = await this.createAdmin()
     const cases = await this.buildCases()
+    assert(cases.length === SAMPLE_TARGET, `expected ${SAMPLE_TARGET} A/B cases, got ${cases.length}`)
     const evaluations = await mapLimit(cases, CONCURRENCY, async (abCase, index) => {
       const started = performance.now()
       const evaluation = await this.evaluateCase(adminActor, abCase)
       this.timings.push(performance.now() - started)
       return this.toCaseRow(experiment.id, abCase, evaluation, index)
     })
+    assert(evaluations.length === SAMPLE_TARGET, `expected ${SAMPLE_TARGET} evaluations, got ${evaluations.length}`)
     await this.persistRows(evaluations)
     const metrics = computeMetrics(evaluations)
     const decision = thresholdDecision(metrics)
     await this.updateExperiment(experiment.id, metrics, decision)
     const dashboard = await this.fetchDashboard(experiment.id)
+    assert(dashboard, 'A/B dashboard did not expose the completed experiment')
     return {
       status: 'passed',
       runId: this.runId,
@@ -125,7 +117,7 @@ class PriceSynthesisAbRunner {
     const email = `${this.runId}-admin@f26.ab.test`
     const { data, error } = await this.admin.auth.admin.createUser({
       email,
-      password: PASSWORD,
+      password: this.password,
       email_confirm: true,
       user_metadata: { role: 'admin', full_name: 'F26 A/B Admin' },
     })
@@ -141,7 +133,7 @@ class PriceSynthesisAbRunner {
       'admin profile upsert',
     )
     const client = createSupabase(this.config.supabaseUrl, this.config.anonKey)
-    const signedIn = await client.auth.signInWithPassword({ email, password: PASSWORD })
+    const signedIn = await client.auth.signInWithPassword({ email, password: this.password })
     if (signedIn.error || !signedIn.data.session) {
       throw new Error(`sign in admin: ${signedIn.error?.message}`)
     }
@@ -208,7 +200,7 @@ class PriceSynthesisAbRunner {
   }
 
   async evaluateCase(actor, abCase) {
-    const response = await timeoutFetch(30_000, `${this.config.apiBaseUrl}/admin/kael-ab/price-synthesis`, {
+    const response = await createTimeoutFetch(30_000)(`${this.config.apiBaseUrl}/admin/kael-ab/price-synthesis`, {
       method: 'POST',
       headers: {
         apikey: this.config.anonKey,
@@ -222,6 +214,7 @@ class PriceSynthesisAbRunner {
     if (!response.ok) {
       throw new Error(`A/B case ${abCase.case_key} failed ${response.status}: ${JSON.stringify(json)}`)
     }
+    assertEvaluation(json, abCase.case_key)
     return json
   }
 
@@ -264,14 +257,30 @@ class PriceSynthesisAbRunner {
       .from('kael_ab_price_synthesis_cases')
       .upsert(rows, { onConflict: 'experiment_id,case_key' })
     if (error) throw new Error(`persist A/B cases: ${error.message}`)
+    const persisted = await must(
+      this.admin
+        .from('kael_ab_price_synthesis_cases')
+        .select('case_key,request_id')
+        .eq('experiment_id', rows[0].experiment_id)
+        .in('case_key', rows.map((row) => row.case_key)),
+      'verify persisted A/B cases',
+    )
+    assert(persisted.length === rows.length, `expected ${rows.length} persisted A/B cases, got ${persisted.length}`)
+    assert(
+      persisted.every((row) => row.request_id?.startsWith(`${this.runId}-`)),
+      'persisted A/B cases were not produced by this run',
+    )
   }
 
   async updateExperiment(experimentId, metrics, decision) {
-    const { data: existing } = await this.admin
-      .from('kael_ab_experiments')
-      .select('safe_metadata')
-      .eq('id', experimentId)
-      .single()
+    const existing = await must(
+      this.admin
+        .from('kael_ab_experiments')
+        .select('safe_metadata')
+        .eq('id', experimentId)
+        .single(),
+      'fetch A/B experiment metadata',
+    )
     const safeMetadata = {
       ...(existing?.safe_metadata ?? {}),
       f26_runner: {
@@ -305,10 +314,38 @@ class PriceSynthesisAbRunner {
   }
 
   async cleanup() {
+    const errors = []
     for (const userId of this.userIds) {
-      await this.admin.from('profiles').delete().eq('id', userId)
+      const { error: profileError } = await this.admin.from('profiles').delete().eq('id', userId)
+      if (profileError) errors.push(`delete admin profile: ${profileError.message}`)
       const { error } = await this.admin.auth.admin.deleteUser(userId)
-      if (error) throw new Error(`delete admin user: ${error.message}`)
+      if (error) errors.push(`delete admin user: ${error.message}`)
+    }
+    if (this.userIds.length > 0) {
+      const { count, error } = await this.admin
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .in('id', this.userIds)
+      if (error) errors.push(`verify admin profile cleanup: ${error.message}`)
+      else if ((count ?? 0) !== 0) errors.push(`admin profile cleanup left ${count ?? 0} rows`)
+    }
+    if (errors.length > 0) throw new Error(`cleanup incomplete: ${errors.join('; ')}`)
+  }
+}
+
+function assertEvaluation(value, caseKey) {
+  assert(value && typeof value === 'object', `${caseKey}: evaluation must be an object`)
+  assert(typeof value.fallback_used === 'boolean', `${caseKey}: fallback_used must be boolean`)
+  for (const providerName of ['perplexity', 'anthropic']) {
+    const provider = value[providerName]
+    assert(provider && typeof provider === 'object', `${caseKey}: missing ${providerName} evaluation`)
+    assert(typeof provider.schema_valid === 'boolean', `${caseKey}: ${providerName} schema_valid must be boolean`)
+    if (provider.schema_valid) {
+      assert(Number.isFinite(provider.price_min) && provider.price_min > 0, `${caseKey}: invalid ${providerName} price_min`)
+      assert(
+        Number.isFinite(provider.price_max) && provider.price_max >= provider.price_min,
+        `${caseKey}: invalid ${providerName} price_max`,
+      )
     }
   }
 }
@@ -398,9 +435,7 @@ async function mapLimit(items, limit, mapper) {
 }
 
 function loadConfig() {
-  if (process.env.F26_RUN_AB_PRICESYNTH !== '1') {
-    throw new Error('Set F26_RUN_AB_PRICESYNTH=1 to run the mutable staging price_synthesis A/B runner.')
-  }
+  assertLiveApproval('F26_RUN_AB_PRICESYNTH', '1')
   const supabaseUrl = requireEnv('F26_SUPABASE_URL', [
     'NEXT_PUBLIC_SUPABASE_URL',
     'EXPO_PUBLIC_SUPABASE_URL',
@@ -414,9 +449,8 @@ function loadConfig() {
   const apiBaseUrl =
     readEnv('F26_API_BASE_URL', ['EXPO_PUBLIC_API_BASE_URL']) ??
     `${supabaseUrl}/functions/v1/mobile-api`
-  assertStagingUrl(supabaseUrl, 'F26_SUPABASE_URL')
-  assertStagingUrl(apiBaseUrl, 'F26_API_BASE_URL')
-  return { supabaseUrl, anonKey, serviceRoleKey, apiBaseUrl }
+  assertSupabaseTargets('staging', supabaseUrl, apiBaseUrl)
+  return { supabaseUrl, anonKey, serviceRoleKey, apiBaseUrl: apiBaseUrl.replace(/\/$/, '') }
 }
 
 const runner = new PriceSynthesisAbRunner(loadConfig())
@@ -434,6 +468,7 @@ try {
   await runner.cleanup().catch((error) => {
     output = {
       ...(output ?? {}),
+      status: 'failed',
       cleanup_error: error instanceof Error ? error.message : String(error),
     }
     process.exitCode = 1

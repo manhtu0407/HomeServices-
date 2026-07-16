@@ -1,4 +1,8 @@
-import { roleGateGreetingVariants, selectRoleGateGreeting } from '../entry-access/role-gate-greeting'
+import {
+  roleGateGreetingVariants,
+  roleGateGreetingVariantsByLanguage,
+  selectRoleGateGreeting,
+} from '../entry-access/role-gate-greeting'
 
 describe('role gate greeting', () => {
   it.each([
@@ -26,6 +30,21 @@ describe('role gate greeting', () => {
     expect(greetings).toHaveLength(20)
     expect(new Set(greetings.map((greeting) => greeting.headline)).size).toBe(20)
     for (const greeting of greetings) {
+      expect(greeting.headline.trim()).not.toHaveLength(0)
+      expect(greeting.lead.trim()).not.toHaveLength(0)
+      expect(greeting.signature.trim()).not.toHaveLength(0)
+    }
+  })
+
+  it('provides a matching English greeting for every Vietnamese variant', () => {
+    const vietnamese = Object.values(roleGateGreetingVariantsByLanguage.vi).flat()
+    const english = Object.values(roleGateGreetingVariantsByLanguage.en).flat()
+
+    expect(english).toHaveLength(vietnamese.length)
+    expect(selectRoleGateGreeting(new Date(2026, 6, 12, 6), () => 0, 'en')).toEqual(
+      roleGateGreetingVariantsByLanguage.en.morning[0],
+    )
+    for (const greeting of english) {
       expect(greeting.headline.trim()).not.toHaveLength(0)
       expect(greeting.lead.trim()).not.toHaveLength(0)
       expect(greeting.signature.trim()).not.toHaveLength(0)

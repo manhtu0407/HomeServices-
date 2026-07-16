@@ -82,7 +82,9 @@ export function WorkerV5ReliabilityComponentList({
               })}
             </View>
           </View>
-          <Text style={styles.reliabilityAxisScore} numberOfLines={1} testID={`worker-v5-reliability-axis-score-${index}`}>{axis.score}/100</Text>
+          <Text style={styles.reliabilityAxisScore} numberOfLines={1} testID={`worker-v5-reliability-axis-score-${index}`}>
+            {axis.hasData ? `${axis.score}/100` : textByLanguage(language, 'Chờ', 'Pending')}
+          </Text>
         </View>
       ))}
     </View>

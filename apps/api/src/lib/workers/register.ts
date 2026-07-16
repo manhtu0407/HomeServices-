@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, WorkerRegisterInput, WorkerVerificationStatus } from '@nestscout/shared'
 import { HCMC_DISTRICTS, normalizeDistrict } from '@nestscout/shared'
-import { withDbTimeout } from '@/lib/db/query'
+import { postgresNullableRpcArg, withDbTimeout } from '@/lib/db/query'
 
 export type WorkerRegisterResult =
   | { success: true; workerId: string; verificationStatus: WorkerVerificationStatus; submittedAt: string }
@@ -10,9 +10,9 @@ export type WorkerRegisterResult =
 /**
  * B0 — Worker registration submission.
  *
- * Upserts the worker_profiles row, persists CCCD/bank/skills, and transitions
- * verification_status to 'submitted'. Admin must manually review and approve
- * (B1) before the worker can receive jobs.
+ * Persists CCCD/bank/skills and transitions verification_status to 'submitted'
+ * through the row-locking registration RPC. Admin must manually review and
+ * approve (B1) before the worker can receive jobs.
  *
  * Per RULES.md #9 — never log PII (legal_name, dob, bank account, CCCD urls).
  */
@@ -21,59 +21,6 @@ export async function registerWorker(
   input: WorkerRegisterInput,
   supabase: SupabaseClient<Database>,
 ): Promise<WorkerRegisterResult> {
-  // Pre-check: profile must be role=worker (avoid customer/admin path)
-  const { data: profile, error: profileErr } = await withDbTimeout(
-    supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single(),
-  )
-
-  if (profileErr || !profile) {
-    console.warn('Worker register: profile lookup failed', {
-      userId,
-      errorCode: profileErr?.code,
-    })
-    return { success: false, error: 'Không tìm thấy hồ sơ', code: 'NOT_FOUND', status: 404 }
-  }
-
-  if (profile.role !== 'worker') {
-    console.warn('Worker register: wrong role', { userId, role: profile.role })
-    return { success: false, error: 'Tài khoản này không phải tài khoản thợ', code: 'WRONG_ROLE', status: 403 }
-  }
-
-  // Check existing worker_profile state — block re-submission if already approved/suspended
-  const { data: existing, error: existingErr } = await withDbTimeout(
-    supabase
-      .from('worker_profiles')
-      .select('verification_status, is_suspended')
-      .eq('id', userId)
-      .maybeSingle(),
-  )
-
-  if (existingErr) {
-    console.warn('Worker register: existing lookup failed', { userId, errorCode: existingErr.code })
-    return { success: false, error: 'Không thể tải hồ sơ thợ', code: 'DB_ERROR', status: 500 }
-  }
-
-  if (
-    existing &&
-    (existing.verification_status === 'approved' ||
-      existing.verification_status === 'suspended' ||
-      existing.is_suspended === true)
-  ) {
-    return {
-      success: false,
-      error: 'Hồ sơ đã được duyệt hoặc bị khóa. Liên hệ hỗ trợ để cập nhật.',
-      code: 'ALREADY_FINALIZED',
-      status: 409,
-    }
-  }
-
-  const now = new Date().toISOString()
-  const submittedStatus: WorkerVerificationStatus = 'submitted'
-
   // Normalize districts to canonical slugs so broadcast.ts queries match.
   // De-dupe in case worker entered "Q1" and "q1" both.
   const canonicalDistricts = normalizeWorkerDistricts(input.districts)
@@ -86,43 +33,84 @@ export async function registerWorker(
     }
   }
 
-  const { data: upserted, error: upsertErr } = await withDbTimeout(
-    supabase
-      .from('worker_profiles')
-      .upsert({
-        id: userId,
-        legal_name: input.legal_name,
-        date_of_birth: input.date_of_birth,
-        gender: input.gender ?? null,
-        service_types: input.service_types,
-        years_experience: input.years_experience,
-        districts: canonicalDistricts,
-        cccd_front_url: input.cccd_front_url,
-        cccd_back_url: input.cccd_back_url,
-        selfie_url: input.selfie_url,
-        bank_account: input.bank_account,
-        bank_name: input.bank_name,
-        verification_status: submittedStatus,
-        is_approved: false,
-        is_available: false,
-        is_suspended: false,
-        updated_at: now,
-      })
-      .select('id, verification_status')
-      .single(),
+  const { data, error } = await withDbTimeout(
+    supabase.rpc('submit_worker_registration_atomic', {
+      p_actor_id: userId,
+      p_worker_id: userId,
+      p_legal_name: input.legal_name,
+      p_date_of_birth: input.date_of_birth,
+      p_gender: postgresNullableRpcArg(input.gender ?? null),
+      p_service_types: input.service_types,
+      p_years_experience: input.years_experience,
+      p_districts: canonicalDistricts,
+      p_home_lat: postgresNullableRpcArg(input.home_lat ?? null),
+      p_home_lng: postgresNullableRpcArg(input.home_lng ?? null),
+      p_service_radius_km: input.service_radius_km ?? 8,
+      p_problem_specializations: input.problem_specializations ?? [],
+      p_cccd_front_url: input.cccd_front_url,
+      p_cccd_back_url: input.cccd_back_url,
+      p_selfie_url: input.selfie_url,
+      p_bank_account: input.bank_account,
+      p_bank_name: input.bank_name,
+    }),
   )
+  const row = data?.[0]
 
-  if (upsertErr || !upserted) {
-    console.warn('Worker register: upsert failed', { userId, errorCode: upsertErr?.code })
+  if (error || !row) {
+    console.warn('Worker register: atomic RPC failed', { userId, errorCode: error?.code })
+    return { success: false, error: 'Không thể lưu hồ sơ', code: 'DB_ERROR', status: 500 }
+  }
+  if (!row.ok) return mapWorkerRegistrationError(row.error_code)
+  if (!row.worker_id_out || !row.verification_status_out || !row.submitted_at_ts) {
+    console.warn('Worker register: atomic RPC returned an incomplete success row', { userId })
     return { success: false, error: 'Không thể lưu hồ sơ', code: 'DB_ERROR', status: 500 }
   }
 
   return {
     success: true,
-    workerId: upserted.id,
-    verificationStatus: upserted.verification_status,
-    submittedAt: now,
+    workerId: row.worker_id_out,
+    verificationStatus: row.verification_status_out,
+    submittedAt: row.submitted_at_ts,
   }
+}
+
+function mapWorkerRegistrationError(errorCode: string | null): WorkerRegisterResult {
+  if (errorCode === 'NOT_FOUND') {
+    return { success: false, error: 'Không tìm thấy hồ sơ', code: 'NOT_FOUND', status: 404 }
+  }
+  if (errorCode === 'WRONG_ROLE') {
+    return {
+      success: false,
+      error: 'Tài khoản này không phải tài khoản thợ',
+      code: 'WRONG_ROLE',
+      status: 403,
+    }
+  }
+  if (errorCode === 'NOT_OWNER') {
+    return {
+      success: false,
+      error: 'Bạn chỉ có thể gửi hồ sơ của chính mình',
+      code: 'NOT_OWNER',
+      status: 403,
+    }
+  }
+  if (errorCode === 'ALREADY_FINALIZED') {
+    return {
+      success: false,
+      error: 'Hồ sơ đang được xem xét, đã được duyệt hoặc bị khóa. Liên hệ hỗ trợ để cập nhật.',
+      code: 'ALREADY_FINALIZED',
+      status: 409,
+    }
+  }
+  if (errorCode === 'INVALID_INPUT') {
+    return {
+      success: false,
+      error: 'Dữ liệu hồ sơ không hợp lệ',
+      code: 'VALIDATION',
+      status: 400,
+    }
+  }
+  return { success: false, error: 'Không thể lưu hồ sơ', code: 'DB_ERROR', status: 500 }
 }
 
 function normalizeWorkerDistricts(districts: string[]): string[] | null {

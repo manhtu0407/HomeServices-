@@ -49,7 +49,7 @@ export function CustomerV21DockOverlayView({
   liquidDockWidth: number
   liquidNavWidth: number
   mode: CustomerThemeTokens['mode']
-  navItems: Array<{ image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }>
+  navItems: { image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }[]
   onKaelPress: () => void
   onTabPress: (route: string) => void
   reduceMotion: boolean

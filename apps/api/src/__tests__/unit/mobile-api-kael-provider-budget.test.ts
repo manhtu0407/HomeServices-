@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   checkKaelProviderBudget,
   isKaelProviderCostCapEnabled,
@@ -6,7 +6,7 @@ import {
   recordKaelProviderSpend,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-budget'
 
-// C-1 (Notes.md): DB-backed daily provider spend cap. These tests pin the two
+// These tests pin both sides of the DB-backed daily provider spend cap:
 // contract guarantees that make it safe to ship before staging validation:
 // (1) disabled by default = zero DB calls, never blocks; (2) fail-open on every
 // uncertainty so the guard can never take down a real estimate.
@@ -17,6 +17,10 @@ const envFrom =
 const ENABLED = envFrom({ KAEL_PROVIDER_COST_CAP_ENABLED: 'true' })
 
 describe('kael provider budget (C-1)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('is disabled by default and parses the enable flag', () => {
     expect(isKaelProviderCostCapEnabled(envFrom({}))).toBe(false)
     expect(isKaelProviderCostCapEnabled(envFrom({ KAEL_PROVIDER_COST_CAP_ENABLED: 'false' }))).toBe(false)
@@ -62,6 +66,22 @@ describe('kael provider budget (C-1)', () => {
     const status = await checkKaelProviderBudget({ rpc }, ENABLED)
     expect(status.enforced).toBe(true)
     expect(status.exhausted).toBe(false)
+  })
+
+  it('does not write provider or transport error details to runtime logs', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: 'DB_DOWN', message: 'secret-provider-detail' },
+    })
+
+    await checkKaelProviderBudget({ rpc }, ENABLED)
+
+    expect(warn).toHaveBeenCalledWith(
+      'checkKaelProviderBudget: read failed, failing open',
+      { errorCode: 'DB_DOWN' },
+    )
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-provider-detail')
   })
 
   it('fails open when the rpc throws', async () => {

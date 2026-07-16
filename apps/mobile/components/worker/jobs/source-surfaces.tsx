@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Pressable,
   Text as RNText,
   View,
@@ -48,7 +48,7 @@ export function WorkerV5SourceRowList({
   caseWideAura: WorkerV5CaseAuraComponent
   icons: WorkerV5IconMap
   reduceTransparency: boolean
-  rows: ReadonlyArray<{ icon: WorkerV5IconName; meta: string; status: string; title: string }>
+  rows: readonly { icon: WorkerV5IconName; meta: string; status: string; title: string }[]
   scope?: string
   testID: string
   variant?: 'default' | 'shift'
@@ -68,7 +68,7 @@ export function WorkerV5SourceRowList({
         <View key={`${row.title}-${row.status}`} style={[styles.approvalDecisionRow, variant === 'shift' && styles.shiftSourceRow]}>
           <View style={styles.approvalDecisionIconShell}>
             <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-            <Image resizeMode="contain" source={icons[row.icon]} style={styles.approvalDecisionIcon} />
+            <Image contentFit="contain" source={icons[row.icon]} style={styles.approvalDecisionIcon} />
           </View>
           <View style={styles.approvalDecisionCopy}>
             <Text style={[styles.approvalDecisionTitle, variant === 'shift' && styles.shiftSourceTitle]} numberOfLines={2}>{row.title}</Text>

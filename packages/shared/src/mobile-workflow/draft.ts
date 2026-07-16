@@ -1,5 +1,6 @@
 import {
   PROBLEM_CHIPS,
+  SERVICE_TYPES,
   type ServiceType,
 } from '../constants'
 import {
@@ -13,6 +14,167 @@ import type {
   LocalDealDraft,
   LocalDealSource,
 } from './types'
+
+const HANDYMAN_CURTAIN_INSTALL_KEYWORDS = ['lap thanh rem', 'curtain rod', 'install curtain rod'] as const
+const INDEPENDENT_UPHOLSTERY_KEYWORDS = [
+  'sofa',
+  'nem',
+  'tham',
+  'boc ghe',
+  'upholstery',
+  'mattress',
+  'carpet',
+  'fabric care',
+  've sinh rem',
+  'curtain cleaning',
+  'clean curtain',
+] as const
+
+const SERVICE_INFERENCE_RULES: ReadonlyArray<{
+  serviceType: ServiceType
+  keywords: readonly string[]
+}> = [
+  {
+    serviceType: 'electrical',
+    keywords: [
+      'dien',
+      'o cam',
+      'o dien',
+      'cong tac',
+      'cau dao',
+      'aptomat',
+      'mat dien',
+      'den phong',
+      'den chap chon',
+      'den khong sang',
+      'may nuoc nong',
+      'electrical',
+      'electricity',
+      'power outlet',
+      'outlet',
+      'socket',
+      'light switch',
+      'circuit breaker',
+      'breaker',
+      'power outage',
+      'sparking',
+      'water heater',
+      'light not working',
+    ],
+  },
+  {
+    serviceType: 'plumbing',
+    keywords: [
+      'ong nuoc',
+      'ong',
+      'voi nuoc',
+      'voi',
+      'bon rua',
+      'bon cau',
+      'lavabo',
+      'toilet',
+      'ap nuoc',
+      'nuoc yeu',
+      'duong cap',
+      'tac nuoc',
+      'tac bon',
+      'tac cong',
+      'nghet',
+      'plumbing',
+      'water pipe',
+      'pipe',
+      'faucet',
+      'tap',
+      'drain',
+      'sink',
+      'clogged',
+      'water pressure',
+    ],
+  },
+  {
+    serviceType: 'cleaning',
+    keywords: [
+      'don dep',
+      'don nha',
+      'lau don',
+      'lau nha',
+      'nhieu bui',
+      'tong ve sinh',
+      've sinh can ho',
+      've sinh nha',
+      've sinh bep',
+      've sinh phong tam',
+      'cua kinh',
+      'sau sua chua',
+      'house cleaning',
+      'home cleaning',
+      'apartment cleaning',
+      'housekeeping',
+      'deep cleaning',
+    ],
+  },
+  {
+    serviceType: 'hvac',
+    keywords: [
+      'dieu hoa',
+      'may lanh',
+      'hvac',
+      'air conditioner',
+      'air conditioning',
+      'indoor air',
+    ],
+  },
+  {
+    serviceType: 'upholstery',
+    keywords: [
+      'sofa',
+      'nem',
+      'rem',
+      'tham',
+      'boc ghe',
+      'upholstery',
+      'mattress',
+      'curtain',
+      'carpet',
+      'fabric care',
+    ],
+  },
+  {
+    serviceType: 'handyman',
+    keywords: [
+      'tho sua vat',
+      'sua vat',
+      'khoan',
+      'lap ke',
+      ...HANDYMAN_CURTAIN_INSTALL_KEYWORDS,
+      'lap den',
+      'lap thiet bi nho',
+      'install light',
+      'small fixture',
+      'ban le',
+      'tay nam',
+      'treo tranh',
+      'lap thiet bi phong tam',
+      'bathroom fixture',
+      'lap tv',
+      'wall mount tv',
+      'noi that',
+      'lap rap noi that',
+      'assemble furniture',
+      'furniture assembly',
+      'gian phoi',
+      'drying rack',
+      'handyman',
+      'minor repair',
+      'shelf',
+      'hinge',
+      'door handle',
+      'mount tv',
+    ],
+  },
+]
+
+const UNSUPPORTED_SERVICE_MESSAGE = 'Yêu cầu này hiện chưa thuộc phạm vi NestScout. NestScout đang hỗ trợ sửa điện, sửa nước, vệ sinh nhà cửa, điều hòa và không khí, sofa/nệm/rèm/thảm, cùng sửa vặt và lắp đặt nhỏ.'
 
 export const emptyDraft = (source: LocalDealSource, serviceType: ServiceType | null = null): LocalDealDraft => ({
   serviceType,
@@ -41,57 +203,7 @@ export function inferLocalDealDraftFromKael(text: string): LocalDealDraft {
       unsupportedServiceLabel,
     }
   }
-  const electricalScore = scoreKeywords(normalized, [
-    'dien',
-    'o cam',
-    'o dien',
-    'cong tac',
-    'cau dao',
-    'aptomat',
-    'den',
-    'chap',
-    'mat dien',
-    'may nuoc nong',
-  ])
-  const plumbingScore = scoreKeywords(normalized, [
-    'nuoc',
-    'ro',
-    'ri',
-    'bon',
-    'toilet',
-    'voi',
-    'ong',
-    'ap nuoc',
-    'lavabo',
-  ]) + (hasStandalonePlumbingClog(normalized) ? 1 : 0)
-  const cleaningScore = scoreKeywords(normalized, [
-    've sinh',
-    'don dep',
-    'don nha',
-    'lau don',
-    'tong ve sinh',
-    've sinh bep',
-    've sinh phong tam',
-    'cua kinh',
-    'sau sua chua',
-    'rac',
-    'ban',
-    'bui',
-  ])
-  const electricalStrictScore = scoreKeywords(normalized, ['dien', 'o cam', 'o dien', 'cong tac', 'cau dao', 'aptomat', 'den', 'chap', 'mat dien'])
-  const plumbingStrictScore = scoreKeywords(normalized, ['nuoc', 'ro', 'ri', 'bon', 'toilet', 'voi', 'ong', 'ap nuoc', 'lavabo'])
-  const cleaningStrictScore = scoreKeywords(normalized, ['ve sinh', 'don dep', 'don nha', 'lau don', 'tong ve sinh', 'cua kinh'])
-  const supportedServiceMentions = [electricalStrictScore, plumbingStrictScore, cleaningStrictScore].filter((score) => score > 0).length
-  const serviceType: ServiceType | null =
-    supportedServiceMentions > 1
-      ? null
-      : electricalScore > plumbingScore && electricalScore > cleaningScore && electricalScore > 0
-        ? 'electrical'
-        : plumbingScore > electricalScore && plumbingScore > cleaningScore && plumbingScore > 0
-          ? 'plumbing'
-          : cleaningScore > electricalScore && cleaningScore > plumbingScore && cleaningScore > 0
-            ? 'cleaning'
-            : null
+  const serviceType = inferServiceType(normalized)
   const problemChips = serviceType ? inferProblemChips(normalized, serviceType) : []
 
   return {
@@ -106,8 +218,16 @@ export function inferLocalDealDraftFromKael(text: string): LocalDealDraft {
 }
 
 export function validateLocalDealDraft(draft: LocalDealDraft): string | null {
-  if (!draft.serviceType) return 'Chọn dịch vụ điện, nước hoặc vệ sinh'
-  if (draft.problemChips.length === 0) return 'Chọn ít nhất một vấn đề cần xử lý'
+  if (!draft.serviceType || !SERVICE_TYPES.includes(draft.serviceType)) return 'Chọn một trong sáu dịch vụ NestScout hỗ trợ'
+  if (
+    !Array.isArray(draft.problemChips) ||
+    draft.problemChips.length === 0 ||
+    draft.problemChips.length > 10 ||
+    draft.problemChips.some((chip) => typeof chip !== 'string' || !chip.trim() || chip.length > 100)
+  ) return 'Chọn ít nhất một vấn đề cần xử lý'
+  if (!Number.isInteger(draft.mediaCount) || draft.mediaCount < 0 || draft.mediaCount > 5) {
+    return 'Số lượng ảnh/video không hợp lệ'
+  }
   if (draft.description.trim().length < 12) return 'Mô tả cần đủ rõ để Kael tóm tắt'
   if (draft.addressLabel.trim().length < 4) return 'Nhập khu vực hoặc địa chỉ tổng quát'
   if (!extractKnownDistrictLabel(draft.addressLabel)) return 'Địa chỉ cần có quận TP.HCM rõ ràng'
@@ -116,68 +236,116 @@ export function validateLocalDealDraft(draft: LocalDealDraft): string | null {
 
 function inferProblemChips(normalized: string, serviceType: ServiceType): string[] {
   if (serviceType === 'cleaning') {
-    if (hasAny(normalized, ['bep'])) return [PROBLEM_CHIPS.cleaning[1]]
-    if (hasAny(normalized, ['phong tam', 'toilet', 'nha tam'])) return [PROBLEM_CHIPS.cleaning[2]]
-    if (hasAny(normalized, ['sau sua chua', 've sinh sau'])) return [PROBLEM_CHIPS.cleaning[4]]
-    if (hasAny(normalized, ['tong ve sinh'])) return [PROBLEM_CHIPS.cleaning[3]]
-    if (hasAny(normalized, ['cua kinh', 'kinh'])) return [PROBLEM_CHIPS.cleaning[5]]
-    if (hasAny(normalized, ['don dep', 'don nha', 'lau don', 've sinh'])) return [PROBLEM_CHIPS.cleaning[0]]
+    if (hasAny(normalized, ['bep', 'kitchen'])) return [PROBLEM_CHIPS.cleaning[1]]
+    if (hasAny(normalized, ['phong tam', 'toilet', 'nha tam', 'bathroom'])) return [PROBLEM_CHIPS.cleaning[2]]
+    if (hasAny(normalized, ['sau sua chua', 've sinh sau', 'post renovation'])) return [PROBLEM_CHIPS.cleaning[4]]
+    if (hasAny(normalized, ['tong ve sinh', 'full apartment cleaning', 'deep cleaning'])) return [PROBLEM_CHIPS.cleaning[3]]
+    if (hasAny(normalized, ['cua kinh', 'kinh', 'window cleaning'])) return [PROBLEM_CHIPS.cleaning[5]]
+    if (hasAny(normalized, ['don dep', 'don nha', 'lau don', 'lau nha', 'nhieu bui', 've sinh', 'house cleaning', 'home cleaning', 'apartment cleaning', 'housekeeping'])) return [PROBLEM_CHIPS.cleaning[0]]
     return []
   }
 
   if (serviceType === 'plumbing') {
-    if (hasAny(normalized, ['ro', 'ri', 'leak'])) return [PROBLEM_CHIPS.plumbing[0]]
-    if (hasAny(normalized, ['tac', 'nghet', 'cong', 'bon'])) return [PROBLEM_CHIPS.plumbing[1]]
-    if (hasAny(normalized, ['voi'])) return [PROBLEM_CHIPS.plumbing[2]]
-    if (hasAny(normalized, ['toilet', 'xa'])) return [PROBLEM_CHIPS.plumbing[3]]
-    if (hasAny(normalized, ['ap nuoc', 'yeu'])) return [PROBLEM_CHIPS.plumbing[4]]
+    if (hasAny(normalized, ['ro', 'ri', 'leak', 'leaking'])) return [PROBLEM_CHIPS.plumbing[0]]
+    if (hasStandalonePlumbingClog(normalized) || hasAny(normalized, ['nghet', 'drain', 'clog', 'clogged'])) return [PROBLEM_CHIPS.plumbing[1]]
+    if (hasAny(normalized, ['voi', 'faucet', 'tap'])) return [PROBLEM_CHIPS.plumbing[2]]
+    if (hasAny(normalized, ['toilet', 'xa', 'flush'])) return [PROBLEM_CHIPS.plumbing[3]]
+    if (hasAny(normalized, ['ap nuoc', 'nuoc yeu', 'yeu', 'low pressure'])) return [PROBLEM_CHIPS.plumbing[4]]
+    if (hasAny(normalized, ['lap', 'thay', 'install', 'replace'])) return [PROBLEM_CHIPS.plumbing[5]]
+    return []
+  }
+
+  if (serviceType === 'hvac') {
+    if (hasAny(normalized, ['ve sinh', 'bao tri', 'cleaning', 'maintenance'])) return [PROBLEM_CHIPS.hvac[0]]
+    if (hasAny(normalized, ['yeu', 'weak cooling'])) return [PROBLEM_CHIPS.hvac[1]]
+    if (hasAny(normalized, ['khong mat', 'not cooling', 'no cooling'])) return [PROBLEM_CHIPS.hvac[2]]
+    if (hasAny(normalized, ['chay nuoc', 'ro nuoc', 'leak', 'leaking'])) return [PROBLEM_CHIPS.hvac[3]]
+    if (hasAny(normalized, ['keu', 'tieng on', 'noise', 'noisy'])) return [PROBLEM_CHIPS.hvac[4]]
+    if (hasAny(normalized, ['ma loi', 'error code'])) return [PROBLEM_CHIPS.hvac[5]]
+    return []
+  }
+
+  if (serviceType === 'upholstery') {
+    if (hasAny(normalized, ['sofa'])) return [PROBLEM_CHIPS.upholstery[0]]
+    if (hasAny(normalized, ['nem', 'mattress'])) return [PROBLEM_CHIPS.upholstery[1]]
+    if (hasAny(normalized, ['rem', 'curtain'])) return [PROBLEM_CHIPS.upholstery[2]]
+    if (hasAny(normalized, ['tham', 'carpet'])) return [PROBLEM_CHIPS.upholstery[3]]
+    if (hasAny(normalized, ['vet ban', 'stain'])) return [PROBLEM_CHIPS.upholstery[4]]
+    if (hasAny(normalized, ['mui hoi', 'am moc', 'odor', 'mold'])) return [PROBLEM_CHIPS.upholstery[5]]
+    return []
+  }
+
+  if (serviceType === 'handyman') {
+    if (hasAny(normalized, ['khoan', 'lap ke', 'shelf'])) return [PROBLEM_CHIPS.handyman[0]]
+    if (hasAny(normalized, ['thanh rem', 'curtain rod'])) return [PROBLEM_CHIPS.handyman[1]]
+    if (hasAny(normalized, ['lap den', 'thiet bi nho', 'small fixture'])) return [PROBLEM_CHIPS.handyman[2]]
+    if (hasAny(normalized, ['ban le', 'tay nam', 'hinge', 'door handle'])) return [PROBLEM_CHIPS.handyman[3]]
+    if (hasAny(normalized, ['thiet bi phong tam', 'bathroom fixture'])) return [PROBLEM_CHIPS.handyman[4]]
+    if (hasAny(normalized, ['lap tv', 'noi that', 'mount tv', 'furniture'])) return [PROBLEM_CHIPS.handyman[5]]
     return []
   }
 
   if (hasAny(normalized, ['mat dien mot phong'])) return [PROBLEM_CHIPS.electrical[0]]
-  if (hasAny(normalized, ['mat dien toan can', 'mat dien ca can'])) return [PROBLEM_CHIPS.electrical[1]]
-  if (hasAny(normalized, ['o cam', 'o dien', 'cong tac'])) return [PROBLEM_CHIPS.electrical[2]]
-  if (hasAny(normalized, ['cau dao', 'aptomat', 'trip'])) return [PROBLEM_CHIPS.electrical[3]]
-  if (hasAny(normalized, ['den', 'chap chon'])) return [PROBLEM_CHIPS.electrical[4]]
+  if (hasAny(normalized, ['mat dien toan can', 'mat dien ca can', 'power outage'])) return [PROBLEM_CHIPS.electrical[1]]
+  if (hasAny(normalized, ['o cam', 'o dien', 'cong tac', 'outlet', 'socket', 'switch'])) return [PROBLEM_CHIPS.electrical[2]]
+  if (hasAny(normalized, ['cau dao', 'aptomat', 'trip', 'breaker'])) return [PROBLEM_CHIPS.electrical[3]]
+  if (hasAny(normalized, ['den', 'chap chon', 'den khong sang', 'sparking', 'flicker'])) return [PROBLEM_CHIPS.electrical[4]]
+  if (hasAny(normalized, ['lap', 'install'])) return [PROBLEM_CHIPS.electrical[5]]
   return []
 }
 
 function detectUnsupportedServiceLabel(normalized: string): string | null {
-  if (hasAny(normalized, ['dieu hoa', 'may lanh', 'tu lanh', 'may giat', 'internet', 'sua khoa', 'khoa cua', 'o khoa', 'son nha'])) {
-    return 'Dịch vụ này đang khóa. Kael hiện chỉ hỗ trợ sửa điện, sửa nước và vệ sinh.'
+  if (hasAny(normalized, [
+    'xe may',
+    'xe hoi',
+    'o to',
+    'motorcycle',
+    'motorbike',
+    'car repair',
+    'auto repair',
+    'tu lanh',
+    'may giat',
+    'may say',
+    'may rua chen',
+    'refrigerator',
+    'fridge',
+    'washing machine',
+    'dishwasher',
+    'internet',
+    'router',
+    'sua khoa',
+    'tho khoa',
+    'khoa cua',
+    'o khoa',
+    'locksmith',
+    'door lock',
+    'son nha',
+    'painting',
+    'diet con trung',
+    'diet moi',
+    'pest control',
+  ])) {
+    return UNSUPPORTED_SERVICE_MESSAGE
   }
 
-  const hasSupportedRepairIntent = hasAny(normalized, [
-    'dien',
-    'o cam',
-    'cong tac',
-    'cau dao',
-    'aptomat',
-    'den',
-    'chap',
-    'nuoc',
-    'ro',
-    'ri',
-    'tac',
-    'bon',
-    'toilet',
-    'voi',
-    'ong',
-    'ap nuoc',
-    'lavabo',
-    'van',
-    've sinh',
-    'don dep',
-    'don nha',
-    'lau don',
-    'tong ve sinh',
-    'cua kinh',
-  ])
-
-  if (!hasSupportedRepairIntent && hasAny(normalized, ['thiet bi', 'son', 'khoa'])) {
-    return 'Dịch vụ này đang khóa. Kael hiện chỉ hỗ trợ sửa điện, sửa nước và vệ sinh.'
+  if (!hasSupportedServiceSignal(normalized) && hasAny(normalized, ['thiet bi gia dung', 'appliance', 'son', 'khoa'])) {
+    return UNSUPPORTED_SERVICE_MESSAGE
   }
   return null
+}
+
+function inferServiceType(normalized: string): ServiceType | null {
+  const matches = SERVICE_INFERENCE_RULES.filter(({ keywords }) => scoreKeywords(normalized, keywords) > 0)
+  const curtainInstallationOnly = hasAny(normalized, [...HANDYMAN_CURTAIN_INSTALL_KEYWORDS])
+    && !hasAny(normalized, [...INDEPENDENT_UPHOLSTERY_KEYWORDS])
+  const disambiguatedMatches = curtainInstallationOnly
+    ? matches.filter(({ serviceType }) => serviceType !== 'upholstery')
+    : matches
+  return disambiguatedMatches.length === 1 ? disambiguatedMatches[0].serviceType : null
+}
+
+function hasSupportedServiceSignal(normalized: string): boolean {
+  return SERVICE_INFERENCE_RULES.some(({ keywords }) => scoreKeywords(normalized, keywords) > 0)
 }
 
 function hasStandalonePlumbingClog(normalized: string): boolean {
@@ -185,6 +353,6 @@ function hasStandalonePlumbingClog(normalized: string): boolean {
   return !normalized.includes('cong tac')
 }
 
-function scoreKeywords(input: string, keywords: string[]): number {
+function scoreKeywords(input: string, keywords: readonly string[]): number {
   return keywords.reduce((score, keyword) => score + (matchesKeyword(input, keyword) ? 1 : 0), 0)
 }

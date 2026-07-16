@@ -1,22 +1,8 @@
-// S4 / F1 + F4 (Plan.md §38 security hardening): durable, DB-backed AI-spend gate
-// + global kill-switch.
-//
-// This module is intentionally STATELESS — it holds no module-level counters. Every
-// reservation reads the durable ledger via RPC, so the caps survive across ephemeral,
-// horizontally-scaled Supabase Edge isolates and cold starts (the durability gap audit
-// F1 identified in the in-memory `costCounters`).
-//
-// Codex PR#68 P1 (race): the gate now RESERVES atomically before the provider call —
-// `reserve_kael_ai_spend` does check + insert of the estimated cost inside one
-// transaction under an advisory lock, so concurrent/parallel callers cannot all observe
-// the same below-cap total and overshoot. After the call we `finalizeAiSpend` to either
-// reconcile the reserved row to the ACTUAL cost (success) or release it (failure), so a
-// failed/aborted call never permanently counts against a real user.
-//
-// Codex PR#68 P2 (timeout): the reserve RPC is wrapped in a short timeout. On timeout we
-// fail OPEN (allow, no reservation) — consistent with the rest of the gate: a wiring/infra
-// hiccup never wrongly blocks a real user (RULES #8 / §38 risk control). The
-// KAEL_AI_KILL_SWITCH is the deliberate hard fail-closed lever for an incident.
+// Reservations live in the durable ledger and are created atomically before provider
+// I/O. callAI reserves the full bounded retry envelope, then reconciles successful
+// usage while retaining conservative estimates for attempts with unknown billing.
+// Reserve RPC failures remain fail-open for availability; the kill-switch is the
+// explicit fail-closed incident control.
 
 export type SpendGateClient = {
   rpc?(
@@ -28,8 +14,7 @@ export type SpendGateClient = {
 export type KaelSpendGate = {
   readonly client: SpendGateClient;
   readonly actorId: string | null;
-  // Optional override; when absent callAI derives a conservative estimate from the
-  // request purpose's route cost ceiling (Codex PR#68 P2).
+  // Per-attempt override; callAI multiplies it by the bounded attempt count.
   readonly estimatedCostUsd?: number;
 };
 
@@ -52,8 +37,7 @@ export const KAEL_AI_SPEND_CAPS = Object.freeze({
   userMonthlyUsd: 5,
 });
 
-// Codex PR#68 P2: bound the reserve RPC so a stalled DB call cannot outlive the stage
-// timeout and let an abandoned promise resume into a provider call after fallback.
+// Bound the reserve RPC so a stalled DB call cannot outlive the provider stage.
 const RESERVE_RPC_TIMEOUT_MS = 2_000;
 
 // Honest Vietnamese unavailable state for the kill-switch / hard-block path
@@ -95,8 +79,7 @@ async function withTimeout<T>(
   }
 }
 
-// Atomic check-and-reserve BEFORE the provider call. Inserts the estimated cost so
-// concurrent callers see each other's in-flight reservations (Codex PR#68 P1).
+// Atomic reservation makes concurrent callers observe each other's in-flight spend.
 export async function reserveAiSpend(
   client: SpendGateClient | null | undefined,
   args: { actorId: string | null; estimatedCostUsd?: number; purpose?: string },

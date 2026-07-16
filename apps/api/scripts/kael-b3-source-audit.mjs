@@ -2,12 +2,19 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  assertPublicHttpsUrl,
+  assertTrustedPerplexityUrl,
+  fetchTrustedPublicUrl,
+  fetchWithTimeout,
+  resolveWorkspacePath,
+} from '../../../scripts/lib/research-network-safety.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
 const DEFAULT_DOC = resolve(REPO_ROOT, 'docs/foundation/kael-knowledge-corpus.md')
 const DEFAULT_OUTPUT_DIR = resolve(REPO_ROOT, 'docs/foundation/source-trust-samples')
-const PERPLEXITY_URL = process.env.PERPLEXITY_API_URL ?? 'https://api.perplexity.ai/v1/sonar'
+const PERPLEXITY_URL = assertTrustedPerplexityUrl(process.env.PERPLEXITY_API_URL)
 
 main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error))
@@ -22,10 +29,16 @@ async function main() {
   if (!apiKey) throw new Error('Missing PERPLEXITY_API_KEY.')
 
   const args = parseArgs(process.argv.slice(2))
-  const docPath = args.doc ? resolve(process.cwd(), args.doc) : DEFAULT_DOC
-  const outputDir = args.outputDir
-    ? resolve(process.cwd(), args.outputDir)
-    : DEFAULT_OUTPUT_DIR
+  const docPath = resolveWorkspacePath(
+    REPO_ROOT,
+    args.doc ? resolve(process.cwd(), args.doc) : DEFAULT_DOC,
+    '--doc',
+  )
+  const outputDir = resolveWorkspacePath(
+    REPO_ROOT,
+    args.outputDir ? resolve(process.cwd(), args.outputDir) : DEFAULT_OUTPUT_DIR,
+    '--output-dir',
+  )
   const doc = await readFile(docPath, 'utf-8')
   const sources = parseSources(doc)
   if (sources.length < 8) throw new Error(`Expected at least 8 B3 sources, got ${sources.length}.`)
@@ -36,7 +49,7 @@ async function main() {
 
   for (const source of sources) {
     const response = await callPerplexity(apiKey, source)
-    const directUrl = await checkDirectUrl(source.url)
+    const directUrl = await checkDirectUrl(source)
     results.push({
       ...source,
       ...summarizeResult(source, response, directUrl),
@@ -106,8 +119,9 @@ function parseSources(doc) {
   for (const line of doc.split(/\r?\n/)) {
     const cells = markdownCells(line)
     if (cells.length < 4 || !/^S\d+$/.test(cells[0])) continue
-    const url = sourceUrls.get(cells[0])
-    if (!url) throw new Error(`Missing URL for source ${cells[0]}`)
+    const rawUrl = sourceUrls.get(cells[0])
+    if (!rawUrl) throw new Error(`Missing URL for source ${cells[0]}`)
+    const url = assertPublicHttpsUrl(rawUrl).href
     const hostname = hostnameFromUrl(url)
     sources.push({
       ref: cells[0],
@@ -142,7 +156,7 @@ function rootDomain(host) {
 }
 
 async function callPerplexity(apiKey, source) {
-  const response = await fetch(PERPLEXITY_URL, {
+  const response = await fetchWithTimeout(PERPLEXITY_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -197,25 +211,18 @@ Question: Does this source support the evidence claim for safe HCMC apartment el
   }
 }
 
-async function checkDirectUrl(url) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 15_000)
+async function checkDirectUrl(source) {
   try {
-    const head = await fetch(url, {
+    const head = await fetchTrustedPublicUrl(source.url, {
       method: 'HEAD',
-      redirect: 'follow',
-      signal: controller.signal,
     })
-    if (head.ok) {
-      return directResult(head, 'HEAD')
-    }
-    const get = await fetch(url, {
+    const headResult = directResult(head, 'HEAD', source)
+    if (headResult.ok) return headResult
+    const get = await fetchTrustedPublicUrl(source.url, {
       method: 'GET',
-      redirect: 'follow',
       headers: { Range: 'bytes=0-2047' },
-      signal: controller.signal,
     })
-    return directResult(get, 'GET')
+    return directResult(get, 'GET', source)
   } catch (error) {
     return {
       ok: false,
@@ -225,18 +232,17 @@ async function checkDirectUrl(url) {
       final_url_host_matches: false,
       error: error instanceof Error ? error.name : String(error),
     }
-  } finally {
-    clearTimeout(timer)
   }
 }
 
-function directResult(response, method) {
+function directResult(response, method, source) {
+  const finalUrlHostMatches = urlMatchesSource(response.url, source)
   return {
-    ok: response.ok,
+    ok: response.ok && finalUrlHostMatches,
     method,
     status: response.status,
     content_type: response.headers.get('content-type'),
-    final_url_host_matches: true,
+    final_url_host_matches: finalUrlHostMatches,
     error: null,
   }
 }

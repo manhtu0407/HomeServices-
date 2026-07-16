@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Pressable,
   Text,
   View,
@@ -22,6 +22,7 @@ import {
   ZipMintAura,
 } from './aura-surfaces'
 import { customerV21Assets } from './assets'
+import { availableBookingTimeSlots } from './booking-intake-display-model'
 import { customerV21BookingStyles as bookingStyles } from './booking-styles'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
 import { AssetTile, EmptyState, ProgressRail, SectionActionHeader, ServiceTile, V21Card, V21TopBar } from './shared-surfaces'
@@ -142,6 +143,7 @@ export function CustomerBookingEntryView({
   rootStyles,
   scheduleDateOptions,
   scheduleLabel,
+  scheduleRuntimeNow,
   selectedProblems,
   selectedScheduleDate,
   selectedScheduleTime,
@@ -191,6 +193,7 @@ export function CustomerBookingEntryView({
   rootStyles: RootBookingStyles
   scheduleDateOptions: BookingScheduleDateOptionView[]
   scheduleLabel: string | null
+  scheduleRuntimeNow: number
   selectedProblems: string[]
   selectedScheduleDate: string | null
   selectedScheduleTime: string | null
@@ -211,7 +214,11 @@ export function CustomerBookingEntryView({
     )),
     [timeSlots],
   )
-
+  const availableTimeSlots = availableBookingTimeSlots(
+    selectedScheduleDate,
+    new Date(scheduleRuntimeNow),
+  )
+  const availableTimeSlotSet = new Set<string>(availableTimeSlots)
   return (
     <>
       <V21TopBar
@@ -296,7 +303,7 @@ export function CustomerBookingEntryView({
                 ]}
                 testID="customer-v21-booking-address-row"
               >
-                <Image resizeMode="contain" source={customerV21Assets.map} style={bookingStyles.bookingInlineIcon} />
+                <Image contentFit="contain" source={customerV21Assets.map} style={bookingStyles.bookingInlineIcon} />
                 <KaelTextField
                   inputShellStyle={bookingStyles.bookingInlineTextFieldShell}
                   accessibilityLabel={language === 'vi' ? 'Khu vực căn hộ' : 'Apartment area'}
@@ -366,7 +373,7 @@ export function CustomerBookingEntryView({
                 />
                 <View style={bookingStyles.bookingScheduleContent}>
                 <View style={bookingStyles.bookingScheduleHeader}>
-                  <Image resizeMode="contain" source={customerV21Assets.booking} style={bookingStyles.bookingInlineIcon} />
+                  <Image contentFit="contain" source={customerV21Assets.booking} style={bookingStyles.bookingInlineIcon} />
                   <Text numberOfLines={1} style={[bookingStyles.bookingReadonlyText, { color: scheduleLabel ? tokens.text : tokens.muted }]} testID="customer-v21-booking-schedule-summary">
                     {scheduleLabel ?? (language === 'vi' ? 'Chưa chọn' : 'Not selected')}
                   </Text>
@@ -450,10 +457,12 @@ export function CustomerBookingEntryView({
                 <View style={bookingStyles.bookingTimeGrid}>
                   {timeSlots.map((slot, index) => {
                     const selected = selectedScheduleTime === slot
+                    const unavailable = !availableTimeSlotSet.has(slot)
                     return (
                       <KaelChip
                         accessibilityState={{ selected }}
                         backgroundLayer={timeSlotAuraLayers[index]}
+                        disabled={unavailable}
                         key={slot}
                         label={slot}
                         onPress={() => onScheduleTimeSelect(slot)}

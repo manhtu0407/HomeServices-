@@ -182,7 +182,9 @@ export async function searchMarketPrice(
     model: string;
     safeMetadata?: Record<string, unknown>;
   } | undefined;
-  for (const route of circuitAwareProviderCandidatesForPurpose("market_lookup")) {
+  const marketRoutes = circuitAwareProviderCandidatesForPurpose("market_lookup")
+    .filter((route) => route.provider === "perplexity");
+  for (const route of marketRoutes) {
     const trustedConfig = route.provider === "perplexity" && sourceTrustEnabled
       ? await trustedPerplexityMarketConfigForClient({
         serviceType,
@@ -653,9 +655,20 @@ async function incrementMarketCacheHit(
   cacheId: string,
 ) {
   if (!supabase.rpc) return;
-  await supabase.rpc("increment_kael_market_cache_hit", {
-    p_cache_id: cacheId,
-  }).then(() => null, () => null);
+  try {
+    const result = await supabase.rpc("increment_kael_market_cache_hit", {
+      p_cache_id: cacheId,
+    }) as { error?: { code?: string } | null };
+    if (result.error) {
+      console.warn("kael market cache-hit update failed", {
+        errorCode: result.error.code ?? "DB_ERROR",
+      });
+    }
+  } catch {
+    console.warn("kael market cache-hit update failed", {
+      errorCode: "MARKET_CACHE_HIT_WRITE_REJECTED",
+    });
+  }
 }
 
 async function maybeWriteMarketCache(
@@ -705,23 +718,33 @@ async function maybeWriteMarketArtifact(
   },
 ) {
   if (!supabase || input.provider !== "perplexity") return;
-  await supabase
-    .from("kael_market_artifacts")
-    .insert({
-      service_type: input.serviceType,
-      service_problem_id: null,
-      problem_slug: input.key.problem_slug,
-      district_code: input.key.district_code,
-      complexity: input.key.complexity,
-      provider: input.provider,
-      market_range_min: input.market?.market_range_min ?? null,
-      market_range_max: input.market?.market_range_max ?? null,
-      confidence: input.market?.confidence ?? null,
-      sources_summary: input.market?.sources_summary ?? null,
-      failure_reason: input.failureReason,
-      safe_metadata: input.safeMetadata,
-    })
-    .then(() => null, () => null);
+  try {
+    const result = await supabase
+      .from("kael_market_artifacts")
+      .insert({
+        service_type: input.serviceType,
+        service_problem_id: null,
+        problem_slug: input.key.problem_slug,
+        district_code: input.key.district_code,
+        complexity: input.key.complexity,
+        provider: input.provider,
+        market_range_min: input.market?.market_range_min ?? null,
+        market_range_max: input.market?.market_range_max ?? null,
+        confidence: input.market?.confidence ?? null,
+        sources_summary: input.market?.sources_summary ?? null,
+        failure_reason: input.failureReason,
+        safe_metadata: input.safeMetadata,
+      }) as { error?: { code?: string } | null };
+    if (result.error) {
+      console.warn("kael market artifact insert failed", {
+        errorCode: result.error.code ?? "DB_ERROR",
+      });
+    }
+  } catch {
+    console.warn("kael market artifact insert failed", {
+      errorCode: "MARKET_ARTIFACT_WRITE_REJECTED",
+    });
+  }
 }
 
 function numberOrNull(value: unknown): number | null {

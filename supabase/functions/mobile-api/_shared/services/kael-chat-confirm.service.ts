@@ -9,6 +9,7 @@ import { mapConfirmKaelChatError } from "./_shared.ts";
 import { geocodeConfirmedKaelJob } from "./places-geo.service.ts";
 import { confirmSearch } from "./matching.service.ts";
 import { hasActiveBroadcast } from "./broadcasts.service.ts";
+import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./scheduling.ts";
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { buildKaelAutonomyDecision, kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets, type KaelAutonomyDecision } from "../kael/index.ts";
@@ -23,7 +24,7 @@ export async function confirmKaelChat(
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_chat_sessions")
-      .select("id, customer_id, case_phase, diagnosis_scope")
+      .select("id, job_id, customer_id, case_phase, diagnosis_scope, scheduled_at")
       .eq("id", sessionId)
       .eq("customer_id", ctx.user.id)
       .maybeSingle(),
@@ -38,6 +39,12 @@ export async function confirmKaelChat(
     apiFailure("INVALID_STATUS", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
   }
   const diagnosisScope = diagnosisScopeResult.data;
+  if (
+    !nullableString(sessionResult.data.job_id) &&
+    validateFutureHcmcSchedule(nullableString(sessionResult.data.scheduled_at)) !== null
+  ) {
+    apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+  }
   const casePhase = sessionResult.data.case_phase;
   if (
     (casePhase !== "offer_review" && casePhase !== "matching") ||
@@ -77,6 +84,9 @@ export async function confirmKaelChat(
           .eq("customer_id", ctx.user.id)
           .maybeSingle(),
       );
+      if (sessionLookup.error) {
+        apiFailure("DB_ERROR", "Không thể khôi phục trạng thái xác nhận Kael", 500);
+      }
       existingJobId = nullableString(sessionLookup.data?.job_id ?? null);
     }
     if (errorCode === "ALREADY_CONFIRMED" && existingJobId) {

@@ -75,7 +75,7 @@ describe('createJobWithEstimate pipeline failure cleanup', () => {
     )
     expect(cancelCall?.operations).toContainEqual([
       'update',
-      { status: 'cancelled', cancelled_at: expect.any(String) },
+      expect.objectContaining({ status: 'cancelled', cancelled_at: expect.any(String) }),
     ])
     expect(cancelCall?.operations).toContainEqual(['eq', 'id', 'job-1'])
     expect(cancelCall?.operations).toContainEqual(['eq', 'status', 'analyzing'])

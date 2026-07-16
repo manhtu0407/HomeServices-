@@ -47,8 +47,11 @@ const CUSTOMER_THEME_TOKENS = {
 export const CustomerThemeContext = createContext<CustomerThemeTokens>(lightLayer)
 
 let customerThemeMode: ThemeMode = 'light'
-let customerThemeSubscribers: Array<() => void> = []
+let customerThemeSubscribers: (() => void)[] = []
 let customerThemeHydrated = false
+let customerThemeSelectionRevision = 0
+let pendingThemePersistence: ThemeMode | null = null
+let themePersistenceDrain: Promise<void> | null = null
 
 function getCustomerThemeModeSnapshot() {
   return customerThemeMode
@@ -62,18 +65,42 @@ function subscribeCustomerThemeMode(listener: () => void) {
 }
 
 export function setCustomerThemeMode(nextMode: ThemeMode) {
-  if (customerThemeMode === nextMode) return
+  customerThemeSelectionRevision += 1
+  const changed = customerThemeMode !== nextMode
   customerThemeMode = nextMode
-  AsyncStorage.setItem(CUSTOMER_THEME_STORAGE_KEY, nextMode).catch(() => undefined)
+  const persisted = persistCustomerThemeMode(nextMode)
+  if (!changed) return persisted
   for (const listener of customerThemeSubscribers) listener()
+  return persisted
+}
+
+function persistCustomerThemeMode(nextMode: ThemeMode) {
+  pendingThemePersistence = nextMode
+  if (themePersistenceDrain) return themePersistenceDrain
+  themePersistenceDrain = drainThemePersistence()
+  return themePersistenceDrain
+}
+
+async function drainThemePersistence() {
+  try {
+    while (pendingThemePersistence) {
+      const nextMode = pendingThemePersistence
+      pendingThemePersistence = null
+      await AsyncStorage.setItem(CUSTOMER_THEME_STORAGE_KEY, nextMode).catch(() => undefined)
+    }
+  } finally {
+    themePersistenceDrain = null
+  }
 }
 
 export function useCustomerThemeMode() {
   useEffect(() => {
     if (customerThemeHydrated) return
     customerThemeHydrated = true
+    const selectionRevisionAtStart = customerThemeSelectionRevision
     AsyncStorage.getItem(CUSTOMER_THEME_STORAGE_KEY)
       .then((stored) => {
+        if (customerThemeSelectionRevision !== selectionRevisionAtStart) return
         if (stored === 'light' || stored === 'dark') setCustomerThemeMode(stored)
       })
       .catch(() => undefined)

@@ -1,6 +1,7 @@
 type RateLimitEntry = {
   tokens: number;
   lastRefill: number;
+  safeToDeleteAt: number;
 };
 
 const store = new Map<string, RateLimitEntry>();
@@ -19,9 +20,8 @@ export const AI_SESSION_LIMIT: RateLimitConfig = {
   refillIntervalMs: 60_000,
 };
 
-// X2 (Plan.md §27.5 — 2026-05-29): per-user Kael chat POST limits. The plan
-// asks for 5/min and 20/hour; one token bucket cannot express both, so we
-// use two and require both to allow. Closes F-23.
+// One token bucket cannot express both per-minute and per-hour limits, so both
+// buckets must allow the request.
 export const KAEL_CHAT_PER_MINUTE_LIMIT: RateLimitConfig = {
   maxTokens: 5,
   refillRate: 5,
@@ -58,6 +58,7 @@ export function checkKaelChatRateLimit(
 // between cases. Do not call from production code paths.
 export function __resetRateLimitStoreForTests(): void {
   store.clear();
+  lastCleanup = Date.now();
 }
 
 export function checkRateLimit(
@@ -70,7 +71,11 @@ export function checkRateLimit(
   const now = Date.now();
   let entry = store.get(key);
   if (!entry) {
-    entry = { tokens: config.maxTokens, lastRefill: now };
+    entry = {
+      tokens: config.maxTokens,
+      lastRefill: now,
+      safeToDeleteAt: now + CLEANUP_INTERVAL,
+    };
     store.set(key, entry);
   }
 
@@ -86,11 +91,13 @@ export function checkRateLimit(
 
   if (entry.tokens >= cost) {
     entry.tokens -= cost;
+    scheduleSafeCleanup(entry, config, now);
     return { allowed: true, retryAfterMs: 0 };
   }
 
   const deficit = cost - entry.tokens;
   const refillsNeeded = Math.ceil(deficit / config.refillRate);
+  scheduleSafeCleanup(entry, config, now);
   return {
     allowed: false,
     retryAfterMs: refillsNeeded * config.refillIntervalMs,
@@ -101,8 +108,22 @@ function cleanup() {
   const now = Date.now();
   if (now - lastCleanup < CLEANUP_INTERVAL) return;
   lastCleanup = now;
-  const stale = now - 300_000;
   for (const [key, entry] of store) {
-    if (entry.lastRefill < stale) store.delete(key);
+    if (entry.safeToDeleteAt <= now) store.delete(key);
   }
+}
+
+function scheduleSafeCleanup(
+  entry: RateLimitEntry,
+  config: RateLimitConfig,
+  now: number,
+) {
+  // Forget a bucket only once it would have refilled to capacity. Replacing it
+  // with a fresh bucket any earlier silently bypasses long-window limits.
+  const missingTokens = Math.max(0, config.maxTokens - entry.tokens);
+  const refillIntervals = Math.ceil(missingTokens / config.refillRate);
+  entry.safeToDeleteAt = now + Math.max(
+    CLEANUP_INTERVAL,
+    refillIntervals * config.refillIntervalMs,
+  );
 }

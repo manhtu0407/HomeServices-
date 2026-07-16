@@ -34,11 +34,11 @@ const workerV5DockIcons: Record<Exclude<WorkerV5IconName, 'calendar' | 'camera' 
   profile: require('@/assets/worker-image-icons/nav-profile.png') as ImageSourcePropType,
 }
 
-const WORKER_V5_DOCK_ROUTE_ITEMS: ReadonlyArray<{
+const WORKER_V5_DOCK_ROUTE_ITEMS: readonly {
   icon: keyof typeof workerV5DockIcons
   id: Exclude<WorkerDockActive, 'kael'>
   label: Record<'en' | 'vi', string>
-}> = [
+}[] = [
   { icon: 'home', id: 'home', label: { en: 'Home', vi: 'Trang chủ' } },
   { icon: 'jobs', id: 'jobs', label: { en: 'Jobs', vi: 'Công việc' } },
   { icon: 'earnings', id: 'earnings', label: { en: 'Earnings', vi: 'Thu nhập' } },

@@ -8,6 +8,31 @@ const SEED = readFileSync(
 )
 
 describe('Test user profiles', () => {
+  it('creates deterministic auth parents before mutating trigger-created profiles', () => {
+    const lowerSeed = SEED.toLowerCase()
+    const authInsert = lowerSeed.indexOf('insert into auth.users')
+    const profileUpdate = lowerSeed.indexOf('update public.profiles')
+
+    expect(authInsert).toBeGreaterThanOrEqual(0)
+    expect(profileUpdate).toBeGreaterThan(authInsert)
+    expect(lowerSeed).not.toContain('insert into profiles')
+    expect(lowerSeed).not.toContain('insert into public.profiles')
+  })
+
+  it('keeps local auth parents phone-only and credential-free', () => {
+    const authSection = SEED.slice(
+      SEED.toLowerCase().indexOf('insert into auth.users'),
+      SEED.toLowerCase().indexOf('update public.profiles'),
+    )
+
+    expect(authSection).toContain('raw_app_meta_data')
+    expect(authSection).not.toMatch(/\bemail\b/i)
+    expect(authSection).not.toMatch(/password/i)
+    expect(authSection).toContain('000000000001')
+    expect(authSection).toContain('000000000002')
+    expect(authSection).toContain('000000000003')
+  })
+
   it('has all 3 roles: customer, worker, admin', () => {
     expect(SEED).toContain("'customer'")
     expect(SEED).toContain("'worker'")
@@ -64,9 +89,16 @@ describe('Worker profile seed', () => {
     expect(SEED).toMatch(/is_approved.*true/is)
   })
 
-  it('worker covers HCMC districts', () => {
-    expect(SEED).toContain('Binh Thanh')
-    expect(SEED).toContain('Quan 1')
+  it('approved worker includes required identity and canonical HCMC districts', () => {
+    const workerSection = SEED.match(
+      /insert\s+into\s+worker_profiles[\s\S]*?on\s+conflict\s+\(id\)\s+do\s+nothing;/i,
+    )?.[0] ?? ''
+
+    expect(workerSection).toContain('legal_name')
+    expect(workerSection).toContain('date_of_birth')
+    expect(workerSection).toContain("'binh_thanh'")
+    expect(workerSection).toContain("'q1'")
+    expect(workerSection).toContain("'thu_duc'")
   })
 
   it('worker has realistic rating (1-5 range)', () => {
@@ -145,9 +177,10 @@ describe('Seed data safety', () => {
   })
 
   it('phone numbers are obviously fake (test patterns)', () => {
-    const phones = SEED.match(/090\d{7}/g) || []
+    const phones = SEED.match(/'00000000000\d'/g) || []
+    expect(phones).toHaveLength(6)
     for (const phone of phones) {
-      expect(phone).toMatch(/^0901000\d{3}$/)
+      expect(phone).toMatch(/^'00000000000[123]'$/)
     }
   })
 

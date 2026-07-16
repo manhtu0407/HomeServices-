@@ -99,7 +99,7 @@ export function workerV5CustomerContactInfo(deal: LocalDeal | null, language: Ap
   return { meta, title }
 }
 
-export function buildWorkerV5CheckInChecklistItems(deal: LocalDeal | null, language: AppLanguage): Array<{ label: string; meta: string; state: WorkerV5CheckInState }> {
+export function buildWorkerV5CheckInChecklistItems(deal: LocalDeal | null, language: AppLanguage): { label: string; meta: string; state: WorkerV5CheckInState }[] {
   const arrived = workerV5HasReachedArrival(deal)
   const addressOpen = deal ? canShowWorkerAddress(deal) : false
   const contacted = workerV5CustomerContacted(deal)
@@ -329,7 +329,7 @@ function formatWorkerV5EtaSeconds(seconds: number, language: AppLanguage) {
 
 export function workerV5EtaLensValue(label: string) {
   const minuteMatch = label.match(/(\d{1,3})/)
-  return minuteMatch ? minuteMatch[1] : '0'
+  return minuteMatch ? minuteMatch[1] : null
 }
 
 function normalizeWorkerV5RouteDistanceLabel(raw: string, language: AppLanguage) {
@@ -348,19 +348,32 @@ function normalizeWorkerV5RouteDistanceLabel(raw: string, language: AppLanguage)
     .trim()
 }
 
+const ROUTE_KILOMETER_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Record<1 | 2, Intl.NumberFormat>> = {
+  en: {
+    1: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1, minimumFractionDigits: 0 }),
+    2: new Intl.NumberFormat('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 }),
+  },
+  vi: {
+    1: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1, minimumFractionDigits: 0 }),
+    2: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2, minimumFractionDigits: 0 }),
+  },
+}
+const ROUTE_METER_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Intl.NumberFormat> = {
+  en: new Intl.NumberFormat('en-US'),
+  vi: new Intl.NumberFormat('vi-VN'),
+}
+
 function formatWorkerV5RouteKilometers(kilometers: number, language: AppLanguage) {
   const safeKm = Math.max(0.1, kilometers)
-  const label = new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
-    maximumFractionDigits: safeKm >= 10 ? 1 : 2,
-    minimumFractionDigits: 0,
-  }).format(safeKm)
+  const maximumFractionDigits = safeKm >= 10 ? 1 : 2
+  const label = ROUTE_KILOMETER_FORMATTER_BY_LANGUAGE[language][maximumFractionDigits].format(safeKm)
   return `${label} km`
 }
 
 function formatWorkerV5RouteMeters(meters: number, language: AppLanguage) {
   if (meters >= 1000) return formatWorkerV5RouteKilometers(meters / 1000, language)
   const safeMeters = Math.max(1, Math.round(meters))
-  return `${new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US').format(safeMeters)} m`
+  return `${ROUTE_METER_FORMATTER_BY_LANGUAGE[language].format(safeMeters)} m`
 }
 
 export function workerV5StringFromUnknown(value: unknown) {

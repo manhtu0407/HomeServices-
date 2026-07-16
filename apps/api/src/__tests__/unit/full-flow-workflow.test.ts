@@ -275,6 +275,8 @@ function createMockSupabase(currentUserId: string) {
           contains: (_c: string, _v: unknown) => chain,
           or: (_filter: string) => chain,
           order: (_c: string, _opts?: unknown) => chain,
+          range: (_from: number, _to: number) =>
+            Promise.resolve({ data: mockWorkers, error: null }),
           limit: (_n: number) => {
             chain.then = undefined
             return Promise.resolve({ data: mockWorkers, error: null })
@@ -955,7 +957,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       const req = makeRequest('PATCH', { status: 'arrived' })
       const res = await updateStatus(req, makeParams(id))
 
-      expect(res.status).toBe(403)
+      expect(res.status).toBe(404)
 
       console.log('✓ Cross-worker status update blocked')
     })

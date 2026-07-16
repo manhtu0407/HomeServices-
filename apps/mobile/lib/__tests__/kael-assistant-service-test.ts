@@ -20,7 +20,7 @@ it('sends active Case Work questions to the authenticated Edge assistant route',
   const input = {
     job_id: '22222222-2222-4222-8222-222222222222',
     language: 'vi' as const,
-    message: 'Giáº£i thÃ­ch láº¡i pháº¡m vi nÃ y giÃºp tÃ´i.',
+    message: 'Giải thích lại phạm vi này giúp tôi.',
     surface: 'customer_case' as const,
   }
 

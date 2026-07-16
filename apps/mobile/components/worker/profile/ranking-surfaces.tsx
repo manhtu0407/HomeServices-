@@ -74,18 +74,20 @@ export function WorkerV5RankingStatsStrip({
   profile: WorkerV5RankingProfile
   reduceTransparency: boolean
 }) {
+  const pending = textByLanguage(language, 'Chờ', 'Pending')
+  const completedJobCount = insights?.completed_job_count ?? profile?.total_jobs
   const stats = [
     {
       label: textByLanguage(language, 'việc hoàn tất', 'completed'),
-      value: workerV5NumericInsight(insights?.completed_job_count ?? profile?.total_jobs),
+      value: workerV5HasNumber(completedJobCount) ? `${workerV5NumericInsight(completedJobCount)}` : pending,
     },
     {
       label: textByLanguage(language, 'đánh giá', 'reviews'),
-      value: workerV5NumericInsight(insights?.review_count),
+      value: workerV5HasNumber(insights?.review_count) ? `${workerV5NumericInsight(insights.review_count)}` : pending,
     },
     {
       label: textByLanguage(language, 'đúng quy trình', 'on time'),
-      value: `${workerV5NumericInsight(insights?.on_time_rate_percent)}%`,
+      value: workerV5HasNumber(insights?.on_time_rate_percent) ? `${workerV5NumericInsight(insights.on_time_rate_percent)}%` : pending,
     },
   ]
   return (
@@ -115,8 +117,12 @@ export function WorkerV5RankingLeaderboard({
   profileIcon: ImageSourcePropType
   reduceTransparency: boolean
 }) {
-  const score = workerV5NumericInsight(insights?.performance_score)
-  const completed = workerV5NumericInsight(insights?.completed_job_count ?? profile?.total_jobs)
+  const score = workerV5HasNumber(insights?.performance_score)
+    ? workerV5NumericInsight(insights.performance_score)
+    : null
+  const completedSource = insights?.completed_job_count ?? profile?.total_jobs
+  const completed = workerV5HasNumber(completedSource) ? workerV5NumericInsight(completedSource) : null
+  const hasRealSource = Boolean(insights || profile)
   const name = profile?.legal_name?.trim() || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')
   return (
     <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-ranking-leaderboard">
@@ -132,18 +138,22 @@ export function WorkerV5RankingLeaderboard({
         <View style={styles.approvalDecisionCopy}>
           <Text style={styles.approvalDecisionTitle} numberOfLines={2} testID="worker-v5-ranking-leaderboard-title">{name}</Text>
           <Text style={styles.approvalDecisionMeta} numberOfLines={2} testID="worker-v5-ranking-leaderboard-meta">
-            {textByLanguage(language, `Hồ sơ hiện tại · ${completed} việc hoàn tất · nguồn Supabase`, `Current profile · ${completed} completed jobs · Supabase source`)}
+            {completed === null
+              ? textByLanguage(language, 'Chờ dữ liệu việc hoàn tất thật', 'Waiting for real completed-job data')
+              : textByLanguage(language, `Hồ sơ hiện tại · ${completed} việc hoàn tất · nguồn Supabase`, `Current profile · ${completed} completed jobs · Supabase source`)}
           </Text>
           <WorkerV5DetailRail
             items={[
-              { glyph: 'document', label: textByLanguage(language, `${completed} việc`, `${completed} jobs`) },
-              { glyph: 'signal', label: `${score}/100` },
-              { glyph: 'sync', label: textByLanguage(language, 'Nguồn thật', 'Real source') },
+              { glyph: 'document', label: completed === null ? textByLanguage(language, 'Chờ dữ liệu việc', 'Jobs pending') : textByLanguage(language, `${completed} việc`, `${completed} jobs`) },
+              { glyph: 'signal', label: score === null ? textByLanguage(language, 'Chờ điểm thật', 'Score pending') : `${score}/100` },
+              { glyph: 'sync', label: hasRealSource ? textByLanguage(language, 'Nguồn thật', 'Real source') : textByLanguage(language, 'Chờ nguồn thật', 'Real source pending') },
             ]}
             testID="worker-v5-ranking-leaderboard-detail"
           />
         </View>
-        <Text style={styles.approvalDecisionStatus} numberOfLines={2} testID="worker-v5-ranking-leaderboard-status">{score}</Text>
+        <Text style={styles.approvalDecisionStatus} numberOfLines={2} testID="worker-v5-ranking-leaderboard-status">
+          {score === null ? textByLanguage(language, 'Chờ', 'Pending') : score}
+        </Text>
       </View>
     </View>
   )
@@ -169,9 +179,9 @@ export function WorkerV5RankingImprovementList({
       {rows.map((axis, index) => {
         const score = typeof axis.score === 'number' && Number.isFinite(axis.score) ? workerV5NumericInsight(axis.score) : null
         const progress = score ?? 0
-        const gain = Math.max(0, 100 - progress)
         const incidentCount = insights?.resolved_incident_case_count ?? 0
         const workResponseReviewCount = insights?.work_response_review_count ?? 0
+        const incidentBonus = workerV5HasNumber(insights?.incident_rank_bonus) ? insights.incident_rank_bonus : null
         return (
           <View key={axis.id} style={[styles.approvalDecisionRow, index > 0 && styles.offerDetailListDivider]}>
             <WorkerV5IntegratedIcon
@@ -196,7 +206,9 @@ export function WorkerV5RankingImprovementList({
                   ? incidentCount > 0
                     ? [
                       { glyph: 'document', label: textByLanguage(language, `${Math.min(4, incidentCount)}/4 ca đã chốt`, `${Math.min(4, incidentCount)}/4 cases closed`) },
-                      { glyph: 'spark', label: textByLanguage(language, `+${insights?.incident_rank_bonus ?? 0} điểm hạng`, `+${insights?.incident_rank_bonus ?? 0} rank points`) },
+                      { glyph: 'spark', label: incidentBonus === null
+                        ? textByLanguage(language, 'Chờ điểm hạng thật', 'Rank points pending')
+                        : textByLanguage(language, `+${incidentBonus} điểm hạng`, `+${incidentBonus} rank points`) },
                     ]
                     : [
                       { glyph: 'sync', label: textByLanguage(language, 'Chưa có phát sinh thật', 'No real incidents yet') },
@@ -219,7 +231,7 @@ export function WorkerV5RankingImprovementList({
                   ]
                   : [
                     { glyph: 'sync', label: textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data') },
-                    { glyph: 'spark', label: textByLanguage(language, `Có thể tăng +${gain}`, `Up to +${gain}`) },
+                    { glyph: 'spark', label: textByLanguage(language, 'Kael tính khi có dữ liệu', 'Kael scores when data arrives') },
                   ]}
                 testID={`worker-v5-ranking-improvement-detail-${index}`}
               />

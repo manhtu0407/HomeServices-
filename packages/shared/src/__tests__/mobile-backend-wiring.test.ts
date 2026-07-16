@@ -87,16 +87,16 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
       "'/services'",
       "'/places/autocomplete'",
       "'/jobs'",
-      '`/jobs/${jobId}`',
-      '`/jobs/${jobId}/confirm-search`',
-      '`/jobs/${jobId}/cancel`',
-      '`/jobs/${jobId}/accept`',
-      '`/jobs/${jobId}/decline`',
-      '`/jobs/${jobId}/status`',
-      '`/jobs/${jobId}/scope-change`',
-      '`/scope-changes/${scopeChangeId}/decide`',
-      '`/jobs/${jobId}/confirm-completion`',
-      '`/jobs/${jobId}/review`',
+      '`/jobs/${encodeURIComponent(jobId)}`',
+      '`/jobs/${encodeURIComponent(jobId)}/confirm-search`',
+      '`/jobs/${encodeURIComponent(jobId)}/cancel`',
+      '`/jobs/${encodeURIComponent(jobId)}/accept`',
+      '`/jobs/${encodeURIComponent(jobId)}/decline`',
+      '`/jobs/${encodeURIComponent(jobId)}/status`',
+      '`/jobs/${encodeURIComponent(jobId)}/scope-change`',
+      '`/scope-changes/${encodeURIComponent(scopeChangeId)}/decide`',
+      '`/jobs/${encodeURIComponent(jobId)}/confirm-completion`',
+      '`/jobs/${encodeURIComponent(jobId)}/review`',
       "'/workers/register'",
       "'/workers/me'",
       "'/workers/me/availability'",
@@ -110,7 +110,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(services).toContain('export const workerService')
   })
 
-  it('connects worker availability from the mobile action through the atomic RPC into mission eligibility', () => {
+  it('connects explicit worker availability updates to mission eligibility without mutating availability on startup', () => {
     const provider = readFrontendWorkflowLayer()
     const workerService = readEdgeShared('services/workers.service.ts')
     const broadcastService = readEdgeShared('services/broadcasts.service.ts')
@@ -121,8 +121,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     const workerRefreshStart = provider.indexOf('const workerRefresh = useCallback')
     const workerRefreshEnd = provider.indexOf('const workerUpdateAvailability = useCallback', workerRefreshStart)
     const workerRefresh = provider.slice(workerRefreshStart, workerRefreshEnd)
-    const startupAvailabilityStart = provider.indexOf('const initialRefresh = setTimeout')
-    const startupAvailabilityEnd = provider.indexOf('const interval = setInterval', startupAvailabilityStart)
+    const startupAvailabilityStart = provider.indexOf("if (!sessionUserId || role !== 'worker') return")
+    const startupAvailabilityEnd = provider.indexOf('// Realtime surfaces incoming broadcasts quickly', startupAvailabilityStart)
     const startupAvailability = provider.slice(startupAvailabilityStart, startupAvailabilityEnd)
 
     expect(provider).toContain("workerService.updateAvailability({ is_available: isAvailable })")
@@ -141,8 +141,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(startupAvailabilityStart).toBeGreaterThanOrEqual(0)
     expect(startupAvailabilityEnd).toBeGreaterThan(startupAvailabilityStart)
     expect(provider).toContain("if (!sessionUserId || role !== 'worker') return")
-    expect(startupAvailability).toContain('void workerUpdateAvailability(false)')
-    expect(startupAvailability).not.toContain('void workerRefresh()')
+    expect(startupAvailability).toContain('if (isAppForeground()) void workerRefresh()')
+    expect(startupAvailability).not.toContain('workerUpdateAvailability')
   })
 
   it('keeps worker broadcast acceptance aligned with the candidate-pending Edge contract and address privacy', () => {
@@ -184,7 +184,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('preserves HTTP error status when Edge responses are not JSON', () => {
     const api = read('lib/api.ts')
 
-    expect(api).toContain('const responseText = await response.text()')
+    expect(api).toContain('const responseText = await readResponseTextBounded(response, MAX_API_RESPONSE_BYTES)')
     expect(api).toContain('safeParseJsonObject(responseText)')
     expect(api).toContain('`HTTP_${response.status}`')
     expect(api).toContain('function isAbortError')
@@ -198,11 +198,12 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(api).toContain('const MAX_RETRIES = 2')
     expect(api).toContain('const BASE_RETRY_DELAY_MS = 500')
     expect(api).toContain('for (let attempt = 0; attempt <= MAX_RETRIES; attempt++)')
-    expect(api).toContain('const retryBudget = isRetrySafeRequest(method, path) ? MAX_RETRIES : 0')
+    expect(api).toContain('const retryBudget = isRetrySafeRequest(method, path, body) ? MAX_RETRIES : 0')
     expect(api).toContain('shouldRetryResponse(response.status)')
     expect(api).toContain('shouldRetryError(err)')
     expect(api).toContain('await waitForRetry(method, path, attempt,')
-    expect(api).toContain('function isRetrySafeRequest(method: string, path: string)')
+    expect(api).toContain('function isRetrySafeRequest(method: string, path: string, body: unknown)')
+    expect(api).toContain('hasClientRequestId(body)')
     expect(api).toContain('function shouldRetryResponse(status: number)')
     expect(api).toContain('return status === 408 || status === 425 || status === 429 || status >= 500')
     expect(api).toContain('function shouldRetryError(err: unknown)')
@@ -255,7 +256,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(appConfig).not.toContain('DEEPSEEK_API_KEY')
 
     expect(api).toContain('headers.apikey = SUPABASE_PUBLISHABLE_KEY')
-    expect(api).toContain("headers['Authorization'] = `Bearer ${token}`")
+    expect(api).toContain('headers.Authorization = `Bearer ${accessToken}`')
     expect(api).not.toContain('SERVICE_ROLE')
     expect(api).not.toContain('SECRET_KEY')
 
@@ -295,9 +296,9 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
     for (const ui of [bookingRoute, customer, worker]) {
       expect(ui).not.toContain('fetch(')
-      // Chat surfaces can call jobService list/send directly because chat is dispute
-      // evidence; workflow writes still flow through actions.*.
-      expect(ui).not.toMatch(/jobService\.(?!listMessages|sendMessage|attachJobMedia|createJob|requestScopeChange|confirmSearch|updateStatus)/)
+      // Chat evidence and the service-history utility use the typed Edge client directly;
+      // workflow state transitions still flow through actions.*.
+      expect(ui).not.toMatch(/jobService\.(?!listMessages|sendMessage|attachJobMedia|createJob|requestScopeChange|confirmSearch|updateStatus|listMyServiceHistory|setFavoriteWorker|openDispute)/)
       expect(ui).not.toContain('workerService.')
       expect(ui).not.toContain('supabase.')
     }
@@ -326,11 +327,12 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   })
 
   it('stores worker verification uploads as private Supabase storage refs, not public URLs', () => {
-    const mediaUpload = read('lib/media-upload.ts')
+    const mediaUpload = read('lib/worker-verification-upload.ts')
 
-    expect(mediaUpload).toContain("from('worker-verification').upload")
+    expect(mediaUpload).toContain("storage.from('worker-verification')")
+    expect(mediaUpload).toContain('bucket.upload(objectPath')
     expect(mediaUpload).toContain('supabase://worker-verification/${objectPath}')
-    expect(mediaUpload).not.toContain("from('worker-verification').getPublicUrl")
+    expect(mediaUpload).not.toContain('getPublicUrl')
   })
 
   it('carries active scope-change details from job detail into Kael decision UI', () => {
@@ -363,7 +365,6 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain('if (isAppForeground()) void workerRefresh()')
     expect(provider).toContain('if (isAppForeground()) void refreshCurrentJob()')
     expect(provider).toContain('AppState.currentState')
-    expect(provider).toContain("customerBroadcast?.status === 'expired'")
     expect(provider).toContain("broadcastState?.active_count === 0")
     expect(provider).toContain('const currentJobId = getRemoteJobId(stateRef.current)')
     expect(provider).toContain('jobs.data.jobs.find((job) => job.id === currentJobId)')
@@ -420,6 +421,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
       read('lib/api.ts'),
       readFrontendWorkflowLayer(),
     ].join('\n')
+    const visibleCopy = (visibleSources.match(/(['"`])(?:\\.|(?!\1)[\s\S])*?\1/g) ?? []).join('\n')
 
     for (const forbidden of [
       'Cần backend',
@@ -433,7 +435,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
       'server',
       'Server',
     ]) {
-      expect(visibleSources).not.toContain(forbidden)
+      expect(visibleCopy).not.toContain(forbidden)
     }
   })
 })

@@ -57,7 +57,7 @@ export type KaelAutonomyReplayRow = {
 
 export type KaelAutonomyAuditClient = {
   from(table: string): {
-    insert(value: Record<string, unknown>): PromiseLike<unknown>;
+    insert(value: Record<string, unknown>): PromiseLike<{ error: unknown }>;
   };
 };
 
@@ -239,7 +239,10 @@ export async function auditKaelAutonomyGateResult(
   },
 ) {
   const audit = input.gate.audit;
-  await client.from("kael_autonomy_decision_audit").insert({
+  await persistAutonomyRecord(
+    client,
+    "kael_autonomy_decision_audit",
+    {
     job_id: input.jobId,
     actor_id: input.actorId,
     actor_role: input.actorRole,
@@ -253,27 +256,49 @@ export async function auditKaelAutonomyGateResult(
     confidence: audit.confidence,
     resulting_event: audit.resulting_event,
     safe_metadata: audit.safe_metadata,
-  });
+    },
+    "KAEL_AUTONOMY_AUDIT_FAILED",
+  );
 
   if (input.gate.result === "escalate") {
-    await client.from("kael_admin_queue").insert({
-      job_id: input.jobId,
-      actor_id: input.actorId,
-      actor_role: input.actorRole,
-      queue_type: "autonomy_escalation",
-      priority: "high",
-      status: "open",
-      escalation_level: "hard",
-      reason_code: audit.reason_code,
-      response_summary: `Autonomy gate escalated ${audit.action ?? "unknown_action"}`.slice(0, 200),
-      safe_metadata: {
-        gate_result: audit.gate_result,
-        action: audit.action,
-        policy_id: audit.policy_id,
-        resulting_event: audit.resulting_event,
-        evidence_refs: audit.evidence_refs,
+    await persistAutonomyRecord(
+      client,
+      "kael_admin_queue",
+      {
+        job_id: input.jobId,
+        actor_id: input.actorId,
+        actor_role: input.actorRole,
+        queue_type: "autonomy_escalation",
+        priority: "high",
+        status: "open",
+        escalation_level: "hard",
+        reason_code: audit.reason_code,
+        response_summary: `Autonomy gate escalated ${audit.action ?? "unknown_action"}`.slice(0, 200),
+        safe_metadata: {
+          gate_result: audit.gate_result,
+          action: audit.action,
+          policy_id: audit.policy_id,
+          resulting_event: audit.resulting_event,
+          evidence_refs: audit.evidence_refs,
+        },
       },
-    });
+      "KAEL_AUTONOMY_ESCALATION_QUEUE_FAILED",
+    );
+  }
+}
+
+async function persistAutonomyRecord(
+  client: KaelAutonomyAuditClient,
+  table: string,
+  value: Record<string, unknown>,
+  failureCode: string,
+): Promise<void> {
+  try {
+    const result = await client.from(table).insert(value);
+    if (result.error) throw new Error(failureCode);
+  } catch {
+    // An autonomy result is not durable until its required audit/control row exists.
+    throw new Error(failureCode);
   }
 }
 

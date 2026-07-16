@@ -48,8 +48,10 @@ export type IntakeQuestion = Readonly<{
   required: boolean
   options?: readonly IntakeOption[]
   maxSelections?: number
+  integer?: boolean
   min?: number
   max?: number
+  maxLength?: number
   placeholderVi?: string
   placeholderEn?: string
 }>

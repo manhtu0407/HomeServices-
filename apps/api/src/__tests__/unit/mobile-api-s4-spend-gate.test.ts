@@ -1,18 +1,7 @@
 /**
- * S4 / F1 + F4 (Plan.md §38) — durable AI-spend gate + global kill-switch.
- *
- * The audit's F1 gap was DURABILITY: cost caps lived in an in-memory Map that resets
- * per Edge isolate / cold start, so they gated nothing at system scale. Codex PR#68 P1
- * added the atomic reserve-before-spend so concurrent callers cannot overshoot the cap.
- * These tests prove the replacement is durable, atomic, and fail-closed where it must be:
- *
- *  (1) cumulative reserved/recorded spend blocks once it reaches the cap;
- *  (2) a FRESH module import (simulated cold isolate) still blocks — purely from the
- *      ledger read, because the gate holds NO in-memory state;
- *  (3) the gate reserves against the DB BEFORE every call;
- *  (4) a reservation is reconciled to ACTUAL cost on success and RELEASED on failure;
- *  (5) callAI hard-stops on the kill-switch and on a spend-cap block WITHOUT touching
- *      the network (no fake success — returns an AIError the caller maps to fallback).
+ * Durable spend enforcement across ledger, provider, and reachable Edge seams.
+ * Failed provider attempts retain a conservative estimate because transport errors
+ * cannot prove that provider-side billing did not occur.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -21,7 +10,9 @@ import {
   KAEL_AI_SPEND_CAPS,
   reserveAiSpend,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/spend-gate'
+import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
 
 // A stateful mock that plays the role of the durable DB ledger. reserve_kael_ai_spend
 // does an ATOMIC check + insert of the estimate (returns the new row id); finalize
@@ -59,6 +50,8 @@ function makeLedgerClient(capUsd: number) {
 
 afterEach(() => {
   delete (globalThis as { Deno?: unknown }).Deno
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
@@ -191,3 +184,158 @@ describe('S4 callAI enforcement (fail-closed, no network, no fake success)', () 
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
+
+describe('S4 reachable Edge callers', () => {
+  it('blocks customer intent provider I/O when the durable ledger cap is zero', async () => {
+    const fetchSpy = vi.fn(async () => deepseekResponse())
+    vi.stubGlobal('fetch', fetchSpy)
+    const ledger = makeLedgerClient(0)
+
+    const result = await classifyIntent(
+      'plumbing',
+      ['Ống rò rỉ'],
+      'Lavabo rò nước',
+      { deepseekApiKey: 'deepseek-test', anthropicApiKey: 'anthropic-test' },
+      { client: ledger, actorId: 'customer-1' },
+    )
+
+    expect(result.success).toBe(false)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('blocks worker-assist provider I/O when the durable ledger cap is zero', async () => {
+    const fetchSpy = vi.fn(async () => deepseekResponse())
+    vi.stubGlobal('fetch', fetchSpy)
+    const ledger = makeLedgerClient(0)
+
+    const result = await runWorkerAssist({
+      job: {
+        id: 'job-1',
+        service_type: 'plumbing',
+        description: 'Lavabo rò nước',
+      },
+      question: 'Tôi nên kiểm tra gì trước?',
+      secrets: { deepseekApiKey: 'deepseek-test', anthropicApiKey: 'anthropic-test' },
+      spendGate: { client: ledger, actorId: 'worker-1' },
+    })
+
+    expect(result.fallback_used).toBe(true)
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('S4 retry accounting', () => {
+  it('reserves the full retry envelope before the first provider attempt', async () => {
+    const fetchSpy = vi.fn(async () => deepseekResponse())
+    vi.stubGlobal('fetch', fetchSpy)
+    const ledger = makeLedgerClient(0.5)
+
+    const res = await callAI({
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      messages: [],
+      purpose: 'intent_classification',
+      maxRetries: 1,
+    }, { deepseekApiKey: 'test-key' }, {
+      client: ledger,
+      actorId: null,
+      estimatedCostUsd: 0.3,
+    })
+
+    expect(res).toMatchObject({ success: false, code: 'SPEND_CAP' })
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('keeps conservative spend for failed attempts when a retry succeeds', async () => {
+    vi.useFakeTimers()
+    const fetchSpy = vi.fn()
+      .mockResolvedValueOnce(new Response('busy', { status: 500 }))
+      .mockResolvedValueOnce(deepseekResponse())
+    vi.stubGlobal('fetch', fetchSpy)
+    const ledger = makeLedgerClient(10)
+
+    const resultPromise = callAI({
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      messages: [],
+      purpose: 'intent_classification',
+      maxRetries: 1,
+    }, { deepseekApiKey: 'test-key' }, {
+      client: ledger,
+      actorId: 'customer-1',
+      estimatedCostUsd: 0.3,
+    })
+    await vi.runAllTimersAsync()
+    const result = await resultPromise
+
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error('expected provider success')
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    expect(ledger.getTotal()).toBeCloseTo(0.3 + result.usage.costUsd, 8)
+  })
+
+  it('keeps the estimate when a successful response omits usage metadata', async () => {
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: '{"ok":true}' } }],
+    })))
+    vi.stubGlobal('fetch', fetchSpy)
+    const ledger = makeLedgerClient(10)
+
+    const result = await callAI({
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      messages: [],
+      purpose: 'intent_classification',
+      maxRetries: 0,
+    }, { deepseekApiKey: 'test-key' }, {
+      client: ledger,
+      actorId: 'customer-1',
+      estimatedCostUsd: 0.25,
+    })
+
+    expect(result.success).toBe(true)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(ledger.getTotal()).toBeCloseTo(0.25, 8)
+  })
+
+  it('bounds retries and retains the conservative envelope after terminal failure', async () => {
+    vi.useFakeTimers()
+    const fetchSpy = vi.fn(async () => new Response('busy', { status: 500 }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const ledger = makeLedgerClient(10)
+
+    const resultPromise = callAI({
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      messages: [],
+      purpose: 'intent_classification',
+      maxRetries: 3,
+    }, { deepseekApiKey: 'test-key' }, {
+      client: ledger,
+      actorId: 'customer-1',
+      estimatedCostUsd: 0.2,
+    })
+    await vi.runAllTimersAsync()
+    const result = await resultPromise
+
+    expect(result).toMatchObject({ success: false, code: 'HTTP_500' })
+    expect(fetchSpy).toHaveBeenCalledTimes(3)
+    expect(ledger.getTotal()).toBeCloseTo(0.6, 8)
+  })
+})
+
+function deepseekResponse() {
+  return new Response(JSON.stringify({
+    choices: [{
+      message: {
+        content: JSON.stringify({
+          service_type: 'plumbing',
+          problem_slug: 'pipe_leak',
+          confidence: 0.9,
+          needs_clarification: false,
+        }),
+      },
+    }],
+    usage: { prompt_tokens: 20, completion_tokens: 10 },
+  }))
+}

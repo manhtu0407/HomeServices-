@@ -1,12 +1,21 @@
 #!/usr/bin/env node
 import { createClient } from '@supabase/supabase-js'
 import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { dirname, resolve } from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
 import { spawnSync } from 'child_process'
 import { performance } from 'perf_hooks'
+import {
+  assertLiveApproval,
+  assertSupabaseProjectRef,
+  assertSupabaseTargets,
+  createEphemeralPassword,
+  createTimeoutFetch,
+  resolveTrustedSupabaseCli,
+  resolveWorkspacePath,
+} from './lib/privileged-script-safety.mjs'
 
 export const P15_CASE_MATRIX = [
   { id: 'normal_transaction', plannedRuns: 10 },
@@ -22,8 +31,6 @@ export const P15_ACCEPTANCE_LIMITS = {
 }
 
 const STAGING_REF = 'xyylanuyflrjzbjzhqfl'
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
-const PASSWORD = 'P15-staging-e2e-Temp-12345!'
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
 const DEFAULT_REPORT_PATH = resolve(
@@ -113,31 +120,10 @@ function requireEnv(name, fallbackNames = []) {
   return value
 }
 
-function assertStagingUrl(value, label) {
-  if (!value.includes(STAGING_REF)) {
-    throw new Error(`${label} must target staging ref ${STAGING_REF}`)
-  }
-  if (value.includes(PRODUCTION_REF)) {
-    throw new Error(`${label} points at production ref ${PRODUCTION_REF}`)
-  }
-}
-
-function timeoutFetch(timeoutMs) {
-  return async (url, options = {}) => {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      return await fetch(url, { ...options, signal: controller.signal })
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-}
-
 function createSupabase(url, key, timeoutMs = 60_000) {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: timeoutFetch(timeoutMs) },
+    global: { fetch: createTimeoutFetch(timeoutMs) },
   })
 }
 
@@ -160,6 +146,7 @@ class P15Harness {
   constructor(config) {
     this.config = config
     this.runId = `p15-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+    this.password = createEphemeralPassword('P15Staging')
     this.admin = createSupabase(config.supabaseUrl, config.serviceRoleKey)
     this.anon = createSupabase(config.supabaseUrl, config.anonKey)
     this.fixtures = {
@@ -205,7 +192,7 @@ class P15Harness {
     const email = `${this.runId}-${role}-${index}@p15.staging.test`
     const { data, error } = await this.admin.auth.admin.createUser({
       email,
-      password: PASSWORD,
+      password: this.password,
       email_confirm: true,
       user_metadata: { role, full_name: `P15 ${role} ${index}` },
     })
@@ -258,15 +245,13 @@ class P15Harness {
           is_approved: true,
           is_available: true,
           is_suspended: false,
-          rating: 4.8,
-          total_jobs: 20 + index,
         }),
         `worker profile ${index}`,
       )
     }
 
     const client = createSupabase(this.config.supabaseUrl, this.config.anonKey)
-    const signedIn = await client.auth.signInWithPassword({ email, password: PASSWORD })
+    const signedIn = await client.auth.signInWithPassword({ email, password: this.password })
     if (signedIn.error || !signedIn.data.session) {
       throw new Error(`signIn ${role}-${index}: ${signedIn.error?.message}`)
     }
@@ -288,7 +273,7 @@ class P15Harness {
   async api(actor, method, path, body = undefined, timeoutMs = 75_000) {
     const url = `${this.config.apiBaseUrl}${path}`
     const started = performance.now()
-    const response = await timeoutFetch(timeoutMs)(url, {
+    const response = await createTimeoutFetch(timeoutMs)(url, {
       method,
       headers: {
         apikey: this.config.anonKey,
@@ -881,15 +866,28 @@ class P15Harness {
   }
 
   async cleanup() {
-    const cleanupSqlOk = await this.cleanupJobRowsWithSql()
+    let cleanupSqlOk = false
+    let cleanupSqlError = null
+    try {
+      cleanupSqlOk = await this.cleanupJobRowsWithSql()
+    } catch (error) {
+      cleanupSqlError = error instanceof Error ? error.message : String(error)
+    }
+    const authErrors = []
     for (const userId of this.fixtures.users) {
       const { error } = await this.admin.auth.admin.deleteUser(userId)
-      if (error) this.results.limitations.push(`delete auth user ${userId}: ${error.message}`)
+      if (error) authErrors.push(`delete auth user ${userId}: ${error.message}`)
     }
-    const verified = await this.verifyCleanup()
-    this.results.cleanup = { cleanupSqlOk, ...verified }
-    if (!verified.ok) {
-      throw new Error(`cleanup verification failed: ${JSON.stringify(verified)}`)
+    let verified = { ok: false, tableCounts: {}, error: null }
+    try {
+      verified = { ...await this.verifyCleanup(), error: null }
+    } catch (error) {
+      verified.error = error instanceof Error ? error.message : String(error)
+    }
+    const ok = cleanupSqlOk && cleanupSqlError === null && authErrors.length === 0 && verified.ok
+    this.results.cleanup = { cleanupSqlOk, cleanupSqlError, authErrors, ...verified, ok }
+    if (!ok) {
+      throw new Error(`cleanup verification failed: ${JSON.stringify(this.results.cleanup)}`)
     }
   }
 
@@ -907,6 +905,8 @@ class P15Harness {
       this.results.limitations.push('Cleanup SQL skipped because P15_SUPABASE_WORKDIR was unavailable.')
       return false
     }
+    resolveTrustedSupabaseCli(REPO_ROOT, cli)
+    assertSupabaseProjectRef('staging', readLinkedProjectRef(workdir))
     const uuidArray = `array[${jobIds.map((id) => `'${id}'`).join(',')}]::uuid[]`
     const runIdSql = this.runId.replace(/'/g, "''")
     const jobPredicate = jobIds.length > 0
@@ -959,10 +959,15 @@ commit;
           env: token ? { ...process.env, SUPABASE_ACCESS_TOKEN: token } : process.env,
           encoding: 'utf8',
           maxBuffer: 10 * 1024 * 1024,
+          timeout: 120_000,
+          windowsHide: true,
         },
       )
       if (result.status !== 0) {
-        throw new Error(result.error?.message || result.stderr || result.stdout || `supabase db query exited ${result.status}`)
+        const reason = result.error?.code === 'ETIMEDOUT'
+          ? 'timed out'
+          : `exited ${result.status ?? 'without a status'}`
+        throw new Error(`Supabase cleanup command ${reason}`)
       }
       return true
     } finally {
@@ -989,10 +994,16 @@ commit;
         'chat_messages',
         'reviews',
         'api_logs',
+        'notifications',
         'kael_admin_queue',
+        'kael_autonomy_decision_audit',
+        'kael_guardrail_trip_audit',
+        'kael_knowledge_usage_log',
         'kael_interaction_log',
         'worker_cancellation_requests',
         'customer_cancellation_records',
+        'scope_change_requests',
+        'job_media_assets',
         'disputes',
         'evidence_snapshots',
       ]) {
@@ -1005,12 +1016,14 @@ commit;
       }
     }
 
-    const { count: profileCount, error: profileError } = await this.admin
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .in('id', userIds)
-    if (profileError) throw new Error(`cleanup profile count: ${profileError.message}`)
-    tableCounts.profiles = profileCount ?? 0
+    for (const table of ['customer_profiles', 'worker_profiles', 'profiles']) {
+      const { count, error } = await this.admin
+        .from(table)
+        .select('id', { count: 'exact', head: true })
+        .in('id', userIds)
+      if (error) throw new Error(`cleanup ${table} count: ${error.message}`)
+      tableCounts[table] = count ?? 0
+    }
 
     return {
       ok: Object.values(tableCounts).every((value) => value === 0),
@@ -1074,9 +1087,7 @@ Next use:
 }
 
 function loadConfig() {
-  if (process.env.P15_RUN_LIVE !== '1') {
-    throw new Error('Set P15_RUN_LIVE=1 to run the mutable staging E2E harness.')
-  }
+  assertLiveApproval('P15_RUN_LIVE', '1')
   const supabaseUrl = requireEnv('P15_SUPABASE_URL', [
     'NEXT_PUBLIC_SUPABASE_URL',
     'EXPO_PUBLIC_SUPABASE_URL',
@@ -1093,26 +1104,37 @@ function loadConfig() {
     readEnv('P15_API_BASE_URL', ['EXPO_PUBLIC_API_BASE_URL']) ??
     `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api`
   ).replace(/\/$/, '')
-  assertStagingUrl(supabaseUrl, 'P15_SUPABASE_URL')
-  assertStagingUrl(apiBaseUrl, 'P15_API_BASE_URL')
-  const supabaseCli = requireEnv('P15_SUPABASE_CLI')
-  const supabaseWorkdir = requireEnv('P15_SUPABASE_WORKDIR')
-  if (!existsSync(supabaseCli)) {
-    throw new Error(`P15_SUPABASE_CLI does not exist: ${supabaseCli}`)
-  }
-  if (!existsSync(supabaseWorkdir)) {
-    throw new Error(`P15_SUPABASE_WORKDIR does not exist: ${supabaseWorkdir}`)
-  }
+  assertSupabaseTargets('staging', supabaseUrl, apiBaseUrl)
+  const supabaseCli = resolveTrustedSupabaseCli(REPO_ROOT, requireEnv('P15_SUPABASE_CLI'))
+  const supabaseWorkdir = resolveWorkspacePath(
+    REPO_ROOT,
+    requireEnv('P15_SUPABASE_WORKDIR'),
+    'P15_SUPABASE_WORKDIR',
+  )
+  if (!existsSync(supabaseWorkdir)) throw new Error(`P15_SUPABASE_WORKDIR does not exist: ${supabaseWorkdir}`)
+  assertSupabaseProjectRef('staging', readLinkedProjectRef(supabaseWorkdir))
   return {
     supabaseUrl,
     anonKey,
     serviceRoleKey,
     apiBaseUrl,
-    reportPath: resolve(REPO_ROOT, readEnv('P15_REPORT_PATH') ?? DEFAULT_REPORT_PATH),
+    reportPath: resolveWorkspacePath(
+      REPO_ROOT,
+      readEnv('P15_REPORT_PATH') ?? DEFAULT_REPORT_PATH,
+      'P15_REPORT_PATH',
+    ),
     supabaseCli,
     supabaseWorkdir,
     supabaseAccessToken: readEnv('SUPABASE_ACCESS_TOKEN'),
   }
+}
+
+function readLinkedProjectRef(workdir) {
+  const projectRefPath = resolve(workdir, 'supabase/.temp/project-ref')
+  if (!existsSync(projectRefPath)) {
+    throw new Error(`Supabase workdir is missing linked project ref: ${projectRefPath}`)
+  }
+  return readFileSync(projectRefPath, 'utf8').trim()
 }
 
 async function main() {
@@ -1132,12 +1154,14 @@ async function main() {
       cleanup: harness.results.cleanup,
     }, null, 2))
   } catch (error) {
-    try {
-      await harness.cleanup()
-    } catch (cleanupError) {
-      harness.results.limitations.push(
-        `Cleanup after failure also failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
-      )
+    if (!harness.results.cleanup) {
+      try {
+        await harness.cleanup()
+      } catch (cleanupError) {
+        harness.results.limitations.push(
+          `Cleanup after failure also failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        )
+      }
     }
     await harness.writeReport(status)
     throw error

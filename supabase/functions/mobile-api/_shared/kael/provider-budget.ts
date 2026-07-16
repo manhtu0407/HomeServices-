@@ -1,6 +1,5 @@
-// C-1 (Notes.md, 2026-06-13): DB-backed daily provider spend cap — the one
-// enforcement gap the audit found. Backed by record_kael_provider_spend /
-// get_kael_provider_spend_today (migration 20260613120000).
+// DB-backed daily provider spend cap using record_kael_provider_spend and
+// get_kael_provider_spend_today.
 //
 // Design contract:
 //  - DISABLED BY DEFAULT. Enforcement only runs when KAEL_PROVIDER_COST_CAP_ENABLED
@@ -71,13 +70,17 @@ export async function checkKaelProviderBudget(
   try {
     const { data, error } = await client.rpc("get_kael_provider_spend_today");
     if (error) {
-      console.warn("checkKaelProviderBudget: read failed, failing open", { error });
+      console.warn("checkKaelProviderBudget: read failed, failing open", {
+        errorCode: safeBudgetErrorCode(error, "DB_ERROR"),
+      });
       return { enforced: true, exhausted: false, spendUsd: 0, capUsd };
     }
     const spendUsd = toNonNegativeNumber(data);
     return { enforced: true, exhausted: spendUsd >= capUsd, spendUsd, capUsd };
-  } catch (err) {
-    console.warn("checkKaelProviderBudget: threw, failing open", { err });
+  } catch {
+    console.warn("checkKaelProviderBudget: threw, failing open", {
+      errorCode: "BUDGET_READ_FAILED",
+    });
     return { enforced: true, exhausted: false, spendUsd: 0, capUsd };
   }
 }
@@ -95,11 +98,22 @@ export async function recordKaelProviderSpend(
       p_cost_usd: costUsd,
     });
     if (error) {
-      console.warn("recordKaelProviderSpend: failed", { error });
+      console.warn("recordKaelProviderSpend: failed", {
+        errorCode: safeBudgetErrorCode(error, "DB_ERROR"),
+      });
     }
-  } catch (err) {
-    console.warn("recordKaelProviderSpend: threw", { err });
+  } catch {
+    console.warn("recordKaelProviderSpend: threw", {
+      errorCode: "BUDGET_WRITE_FAILED",
+    });
   }
+}
+
+function safeBudgetErrorCode(value: unknown, fallback: string) {
+  const code = (value as { code?: unknown } | null)?.code;
+  return typeof code === "string" && /^[A-Z0-9_]{1,64}$/i.test(code)
+    ? code
+    : fallback;
 }
 
 function isBudgetClient(client: unknown): client is BudgetDbClient {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ComplexityLevel, ServiceType } from "../../../../_shared/domain.ts";
+import { readBooleanEnvFlag } from "../utils.ts";
 import { buildLS1MarketMemoryCandidate } from "./LS1-market-memory.ts";
 import { buildLS2CaseReviewCandidate } from "./LS2-case-review.ts";
 import { buildLS3WorkerPatternCandidate } from "./LS3-worker-pattern.ts";
@@ -491,11 +492,11 @@ export function resolveLearningRuntimeConfig(
   getEnv: (name: string) => string | undefined,
   actorId?: string,
 ): LearningRuntimeConfig {
-  const readEnabled = readBoolean(getEnv("KAEL_LEARNING_READ_ENABLED"), false);
-  const writeEnabled = readBoolean(getEnv("KAEL_LEARNING_WRITE_ENABLED"), false);
-  const killSwitch = readBoolean(getEnv("KAEL_LEARNING_KILL_SWITCH"), false);
+  const readEnabled = readBooleanEnvFlag(getEnv("KAEL_LEARNING_READ_ENABLED"), false);
+  const writeEnabled = readBooleanEnvFlag(getEnv("KAEL_LEARNING_WRITE_ENABLED"), false);
+  const killSwitch = readBooleanEnvFlag(getEnv("KAEL_LEARNING_KILL_SWITCH"), false);
   const abPercentage = clampPercent(getEnv("KAEL_LEARNING_AB_PERCENTAGE"));
-  const autoRollbackEnabled = readBoolean(getEnv("KAEL_LEARNING_AUTO_ROLLBACK"), true);
+  const autoRollbackEnabled = readBooleanEnvFlag(getEnv("KAEL_LEARNING_AUTO_ROLLBACK"), true);
   const base: LearningRuntimeConfig = {
     read_enabled: readEnabled,
     write_enabled: writeEnabled,
@@ -519,11 +520,6 @@ export function shouldRunLearningForActor(
   if (config.ab_percentage >= 100) return true;
   if (config.ab_percentage <= 0) return false;
   return stableLearningBucket(actorId) < config.ab_percentage;
-}
-
-function readBoolean(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined || value === "") return fallback;
-  return value.toLowerCase() === "true";
 }
 
 function clampPercent(value: string | undefined): number {
@@ -671,14 +667,25 @@ async function notifyManualReviewIfConfigured(
     .filter((item) => item.queue_state === "manual_review")
     .map((item) => item.skill.id);
   if (manualSkillIds.length === 0) return;
-  await Promise.resolve(client.rpc("insert_notification_atomic", {
-    p_user_id: adminUserId,
-    p_job_id: nullableString(input.job_id),
-    p_event_type: "kael_learning_manual_review",
-    p_title: "Kael learning review",
-    p_body: "A Kael learning candidate needs admin review.",
-    p_safe_metadata: { skill_ids: manualSkillIds },
-  })).catch(() => undefined);
+  try {
+    const notification = await Promise.resolve(client.rpc("insert_notification_atomic", {
+      p_user_id: adminUserId,
+      p_job_id: nullableString(input.job_id),
+      p_event_type: "kael_learning_manual_review",
+      p_title: "Kael learning review",
+      p_body: "A Kael learning candidate needs admin review.",
+      p_safe_metadata: { skill_ids: manualSkillIds },
+    }));
+    if (notification.error) {
+      console.warn("kael learning manual-review notification failed", {
+        errorCode: notification.error.code ?? "DB_ERROR",
+      });
+    }
+  } catch {
+    console.warn("kael learning manual-review notification failed", {
+      errorCode: "NOTIFICATION_FAILED",
+    });
+  }
 }
 
 function readEdgeRuntimeEnv(name: string): string | undefined {

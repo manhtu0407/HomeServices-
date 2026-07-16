@@ -26,7 +26,7 @@ type WorkerV5TimelineRow = {
 export type WorkerV5StatusTimelineBaseProps = {
   formulaAura?: boolean
   reduceTransparency?: boolean
-  rows: ReadonlyArray<WorkerV5TimelineRow>
+  rows: readonly WorkerV5TimelineRow[]
   testID: string
 }
 

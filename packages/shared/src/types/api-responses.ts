@@ -236,6 +236,8 @@ export type JobDetailResponse = {
     kael_review: Record<string, unknown> | null
     kael_progress: KaelChatProgress | null
     evidence_photo_urls: string[]
+    request_timing: 'pre_arrival' | 'on_site'
+    resume_job_status: JobStatus | null
     created_at: string | null
   } | null
 }
@@ -438,6 +440,7 @@ export type BroadcastListResponse = {
     estimated_earning_min: number | null
     estimated_earning_max: number | null
     worker_brief_core?: Record<string, unknown> | null
+    scheduled_at: string | null
     sent_at: string | null
     expires_at: string | null
     seconds_remaining: number | null
@@ -550,6 +553,7 @@ export type WorkerJobListResponse = {
     completion_notes: string | null
     completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null
+    scheduled_at: string | null
     created_at: string
     matched_at: string | null
     completed_at: string | null
@@ -559,11 +563,18 @@ export type WorkerJobListResponse = {
 export type EarningsResponse = {
   worker_id: string
   total_jobs_paid: number
-  gross_earnings: number       // sum of final_price across paid jobs
-  platform_fee_total: number   // 10% of gross
-  net_earnings: number         // gross - platform_fee_total
+  gross_earnings: number       // sum of frozen gross_amount across paid jobs
+  platform_fee_total: number   // sum of frozen platform_fee across paid jobs
+  net_earnings: number         // sum of frozen worker_net across paid jobs
   pending_payment_count: number
   pending_payment_amount: number
+  daily_earnings: {
+    date: string
+    gross_earnings: number
+    platform_fee_total: number
+    net_earnings: number
+    paid_job_count: number
+  }[]
   from_date: string | null
   to_date: string | null
 }
@@ -591,5 +602,11 @@ export type NotificationReadResponse = {
 export type DevicePushTokenResponse = {
   token_id: string
   enabled: boolean
+  updated_at: string
+}
+
+export type DevicePushTokenUnregisterResponse = {
+  token_id: string | null
+  unregistered: boolean
   updated_at: string
 }

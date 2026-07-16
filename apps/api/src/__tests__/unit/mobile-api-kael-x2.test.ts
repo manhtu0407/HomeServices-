@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import {
@@ -19,7 +19,7 @@ const AUDIT_GAP_MIGRATION = readFileSync(
   'utf-8',
 )
 
-// X2 (Plan.md §27.5 — 2026-05-29):
+// Cross-layer safety contracts:
 // - F-04 client_request_id idempotency keys on jobs + kael chat sessions
 // - F-23 per-user rate limit on /kael/chat POST (5/min, 20/hour)
 // - F-11 confirm_kael_chat_atomic safety-net for ALREADY_CONFIRMED w/o job_id
@@ -132,6 +132,23 @@ describe('X2 rate-limit: per-minute bucket', () => {
     }
     expect(allowed).toBe(20)
     expect(rejected).toBe(5)
+  })
+
+  it('keeps the exhausted hour bucket after the five-minute cleanup threshold', () => {
+    vi.useFakeTimers()
+    try {
+      for (let index = 0; index < 20; index += 1) {
+        expect(checkRateLimit('long-window-user', KAEL_CHAT_PER_HOUR_LIMIT).allowed).toBe(true)
+      }
+      expect(checkRateLimit('long-window-user', KAEL_CHAT_PER_HOUR_LIMIT).allowed).toBe(false)
+
+      vi.advanceTimersByTime(6 * 60_000)
+      checkRateLimit('cleanup-trigger', KAEL_CHAT_PER_MINUTE_LIMIT)
+
+      expect(checkRateLimit('long-window-user', KAEL_CHAT_PER_HOUR_LIMIT).allowed).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

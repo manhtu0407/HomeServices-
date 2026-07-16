@@ -8,7 +8,11 @@ jest.mock('@/lib/supabase', () => ({
   },
 }))
 
-import { jobMediaObjectPathFromRef, resolveJobMediaPreviewUrl } from '../job-media-preview'
+import {
+  jobMediaObjectPathFromRef,
+  mergeJobMediaRefsNewestFirst,
+  resolveJobMediaPreviewUrl,
+} from '../job-media-preview'
 
 describe('job media previews', () => {
   const objectPath = '11111111-1111-4111-8111-111111111111/before/on-site-photo.jpg'
@@ -23,6 +27,17 @@ describe('job media previews', () => {
     expect(jobMediaObjectPathFromRef('supabase://worker-verification/user/selfie.jpg')).toBeNull()
     expect(jobMediaObjectPathFromRef('supabase://job-media/job-id/not-a-stage/photo.jpg')).toBeNull()
     expect(jobMediaObjectPathFromRef('supabase://job-media/job-id/before/../photo.jpg')).toBeNull()
+    expect(jobMediaObjectPathFromRef('supabase://job-media/11111111-1111-4111-8111-111111111111/before/..')).toBeNull()
+    expect(jobMediaObjectPathFromRef('supabase://job-media/11111111-1111-4111-8111-111111111111/before/.hidden.jpg')).toBeNull()
+  })
+
+  it('keeps newly uploaded scope evidence when the five-reference limit is full', () => {
+    const ref = (name: string) => `supabase://job-media/11111111-1111-4111-8111-111111111111/scope_change_evidence/${name}.jpg`
+
+    expect(mergeJobMediaRefsNewestFirst(
+      [ref('new')],
+      [ref('a'), ref('b'), ref('c'), ref('d'), ref('e')],
+    )).toEqual([ref('new'), ref('a'), ref('b'), ref('c'), ref('d')])
   })
 
   it('creates a short-lived signed URL for authorized private job media', async () => {
@@ -37,6 +52,23 @@ describe('job media previews', () => {
       15 * 60,
       expect.objectContaining({ transform: expect.objectContaining({ resize: 'contain' }) }),
     )
+  })
+
+  it('returns no preview when the storage client rejects instead of leaking an unhandled promise', async () => {
+    mockCreateSignedUrl.mockRejectedValue(new Error('private storage transport detail'))
+
+    await expect(resolveJobMediaPreviewUrl(storageRef)).resolves.toBeNull()
+  })
+
+  it('returns no preview when signed URL creation stalls', async () => {
+    jest.useFakeTimers()
+    mockCreateSignedUrl.mockReturnValue(new Promise(() => undefined))
+    const pending = resolveJobMediaPreviewUrl(storageRef)
+
+    await jest.advanceTimersByTimeAsync(10_000)
+
+    await expect(pending).resolves.toBeNull()
+    jest.useRealTimers()
   })
 
   it('does not convert unrelated Supabase references into previews', async () => {

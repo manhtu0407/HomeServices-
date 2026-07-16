@@ -3,8 +3,10 @@
 
 import type { MobileApiContext } from "../router.ts";
 import { HCMC_DISTRICTS, normalizeDistrict } from "../../../_shared/domain.ts";
+import { fetchBufferedWithTimeout } from "../../../_shared/network.ts";
 
 const MAPS_PROVIDER_TIMEOUT_MS = 5_000;
+export const MAPS_PROVIDER_MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 export type DbError = { code?: string; message?: string };
 
@@ -53,13 +55,10 @@ export async function fetchJsonWithTimeout(
   url: string,
   init: RequestInit,
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), MAPS_PROVIDER_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchBufferedWithTimeout(url, { ...init, redirect: "error" }, {
+    maxResponseBytes: MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    timeoutMs: MAPS_PROVIDER_TIMEOUT_MS,
+  });
 }
 
 export function db(ctx: MobileApiContext): DbClient {

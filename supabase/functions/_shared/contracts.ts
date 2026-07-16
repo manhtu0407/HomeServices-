@@ -1,8 +1,8 @@
 // Canonical mobile-api response contracts for the Edge runtime.
-// This is the Deno-side mirror of packages/shared/src/types/api-responses.ts. The Edge cannot import
-// packages/shared directly (Deno/npm + Supabase deploy-root boundary), so these contracts live here as
+// This is the Deno-side mirror of the mobile shared API-response contracts. The Edge cannot import
+// workspace packages directly (Deno/npm + Supabase deploy-root boundary), so these contracts live here as
 // the single Edge home and are kept byte-equivalent to the shared canonical. A value-level parity test
-// (packages/shared/src/__tests__/mobile-wiring.test.ts) fails CI if the two drift. Edit both together.
+// the shared mobile-wiring parity test fails CI if the two drift. Edit both together.
 import type { ComplexityLevel, JobStatus, ServiceType } from "./domain.ts";
 
 export type KaelEstimate = {

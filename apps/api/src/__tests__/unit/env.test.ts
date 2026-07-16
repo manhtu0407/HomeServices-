@@ -40,10 +40,23 @@ describe('env module', () => {
       expect(mod.env).toBeDefined()
     })
 
-    it('skips validation at build time (production without vars)', async () => {
+    it('defers production runtime validation to request entrypoints', async () => {
       vi.stubEnv('NODE_ENV', 'production')
       const mod = await import('@/lib/env')
+      expect(() => mod.ensureClientEnv()).toThrow(
+        'Missing required client environment variables'
+      )
+      expect(() => mod.env.supabaseUrl).toThrow('Supabase URL not configured')
+    })
+
+    it('skips eager validation only during the Next production build phase', async () => {
+      vi.stubEnv('NODE_ENV', 'production')
+      vi.stubEnv('NEXT_PHASE', 'phase-production-build')
+      const mod = await import('@/lib/env')
       expect(mod.env).toBeDefined()
+      expect(() => mod.ensureClientEnv()).toThrow(
+        'Missing required client environment variables'
+      )
     })
   })
 
@@ -92,17 +105,50 @@ describe('env module', () => {
 
   describe('client env getters', () => {
     it('env.supabaseUrl returns correct value', async () => {
-      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://my-project.supabase.co')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://abcdefghijklmnopqrst.supabase.co/')
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-key')
       const mod = await import('@/lib/env')
-      expect(mod.env.supabaseUrl).toBe('http://my-project.supabase.co')
+      expect(mod.env.supabaseUrl).toBe('https://abcdefghijklmnopqrst.supabase.co')
     })
 
     it('env.supabasePublishableKey returns correct value', async () => {
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost')
-      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'eyJ-test-key')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test-key')
       const mod = await import('@/lib/env')
-      expect(mod.env.supabasePublishableKey).toBe('eyJ-test-key')
+      expect(mod.env.supabasePublishableKey).toBe('sb_publishable_test-key')
+    })
+
+    it.each([
+      'https://abcdefghijklmnopqrst.supabase.co.attacker.example',
+      'https://user:secret@abcdefghijklmnopqrst.supabase.co',
+      'http://abcdefghijklmnopqrst.supabase.co',
+      'https://abcdefghijklmnopqrst.supabase.co/rest/v1',
+    ])('rejects an untrusted Supabase authority: %s', async (supabaseUrl) => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', supabaseUrl)
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test-key')
+      const mod = await import('@/lib/env')
+
+      expect(() => mod.env.supabaseUrl).toThrow('exact trusted project root')
+    })
+
+    it.each(['sb_secret_server-key', 'not-a-jwt', 'sb_publishable_'])(
+      'rejects server or malformed authority in the public key slot: %s',
+      async (publishableKey) => {
+        vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost:54321')
+        vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', publishableKey)
+        const mod = await import('@/lib/env')
+
+        expect(() => mod.env.supabasePublishableKey).toThrow('must not contain server authority')
+      },
+    )
+
+    it('accepts a legacy anon JWT without accepting arbitrary JWT payloads', async () => {
+      const payload = Buffer.from(JSON.stringify({ role: 'anon' })).toString('base64url')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost:54321')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', `header.${payload}.signature`)
+      const mod = await import('@/lib/env')
+
+      expect(mod.env.supabasePublishableKey).toContain(payload)
     })
   })
 

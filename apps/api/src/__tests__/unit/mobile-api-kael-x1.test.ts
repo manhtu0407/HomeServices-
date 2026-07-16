@@ -6,7 +6,7 @@ import {
   evaluateMessageBoundary,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/boundary-guard'
 
-// X1 (Plan.md §27.4 — 2026-05-29): boundary guard rejects out-of-scope,
+// The boundary guard rejects out-of-scope,
 // prompt-injection, and service-mismatch messages BEFORE any provider call.
 // These tests cover the 4 acceptance cases for F-18..F-21 plus regression
 // fixtures (in-scope messages must still pass).

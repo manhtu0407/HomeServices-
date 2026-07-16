@@ -2,11 +2,17 @@
 // (Kael AI re-pricing) + explicit customer decision. getCurrentScopeChange stays in
 // services.ts (uses the local parseKaelProgressSnapshot). Imported directly by services.ts.
 
-import { asComplexityOrNull, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "./coercions.ts";
+import { asComplexityOrNull, asRecord, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { mapScopeDecisionError, mapScopeRequestError, readEdgeEnvNumber } from "./_shared.ts";
 import { logApiCalls, logJobEvent, queueKaelLearningEvent } from "./audit.ts";
 import { notifyCustomerScopeChangeRequested, notifyWorkerScopeDecision } from "./notifications.service.ts";
+import {
+  buildDirectScopeEffectPayloads,
+  buildScopeChangeLearningInput,
+  drainDirectScopeChangeEffects,
+  parseDirectScopeEffectStates,
+} from "./scope-change-effects.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { requireJobAccess } from "../access.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
@@ -20,12 +26,22 @@ import {
 } from "../kael/index.ts";
 import type { ComplexityLevel, JobStatus, ScopeChangeStatus } from "../../../_shared/domain.ts";
 
+type PricedScopeChangeEstimate = Extract<
+  ScopeChangeKaelEstimate,
+  { fallback_used: false }
+>;
+
 export async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
+  client_request_id?: string;
   new_description: string;
   reason: string;
   photo_urls?: string[];
-}, secrets: EdgeAiSecrets) {
+}, secrets: EdgeAiSecrets, incidentProposal?: {
+  claimId: string;
+  incidentId: string;
+}) {
   const client = db(ctx);
+  const spendGate = { client, actorId: ctx.user.id };
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
     select:
@@ -38,14 +54,75 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     asString(job.customer_id),
     input.photo_urls ?? [],
   );
+  const directClaimId = incidentProposal ? null : crypto.randomUUID();
+  if (!incidentProposal) {
+    if (!input.client_request_id) {
+      apiFailure("VALIDATION", "Thiếu mã yêu cầu đổi phạm vi", 400);
+    }
+    const claimResult = await dbQuery<Array<Record<string, unknown>>>(
+      client.rpc("claim_scope_change_request_atomic", {
+        p_job_id: jobId,
+        p_worker_id: ctx.user.id,
+        p_client_request_id: input.client_request_id,
+        p_claim_id: directClaimId,
+        p_new_description: input.new_description,
+        p_reason: input.reason,
+        p_evidence_photo_urls: evidencePhotoRefs,
+      }),
+    );
+    if (claimResult.error) {
+      apiFailure("DB_ERROR", "Không thể giữ lượt tạo yêu cầu thay đổi", 500);
+    }
+    const claim = claimResult.data?.[0];
+    if (!claim) {
+      apiFailure("DB_ERROR", "Không thể giữ lượt tạo yêu cầu thay đổi", 500);
+    }
+    if (claim.replayed === true) {
+      const replay = parseScopeChangeReplay(claim.response_payload, jobId);
+      const effects = parseDirectScopeEffectStates(claim.side_effects_state);
+      await drainDirectScopeChangeEffects(
+        client,
+        ctx,
+        job,
+        input.client_request_id,
+        replay.scope_change_id,
+        effects,
+      );
+      return replay;
+    }
+    if (claim.ok !== true) {
+      mapDirectScopeClaimError(nullableString(claim.error_code));
+    }
+    if (claim.claimed !== true) {
+      apiFailure("DB_ERROR", "Không thể giữ lượt tạo yêu cầu thay đổi", 500);
+    }
+  }
   const originalPriceMax = nullableNumber(job.kael_price_max);
   const transition = validateWorkflowTransition({
     event: "scope_change_requested",
     from: job.status as JobStatus,
     to: "scope_change_pending",
   });
-  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+  if (!transition.valid) {
+    await releaseDirectScopeClaim(
+      client,
+      jobId,
+      ctx.user.id,
+      input.client_request_id,
+      directClaimId,
+      "INVALID_STATUS",
+    );
+    apiFailure("INVALID_STATUS", transition.error, 409);
+  }
   if (originalPriceMax === null || originalPriceMax <= 0) {
+    await releaseDirectScopeClaim(
+      client,
+      jobId,
+      ctx.user.id,
+      input.client_request_id,
+      directClaimId,
+      "KAEL_PRICE_MISSING",
+    );
     apiFailure(
       "KAEL_PRICE_MISSING",
       "Kael chưa có giá gốc hợp lệ để tính phạm vi phát sinh",
@@ -72,8 +149,16 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
       originalPriceMax,
       workerReportedDescription: input.new_description,
       workerReason: input.reason,
-    }, secrets);
+    }, secrets, spendGate);
   } catch (error) {
+    await releaseDirectScopeClaim(
+      client,
+      jobId,
+      ctx.user.id,
+      input.client_request_id,
+      directClaimId,
+      "SCOPE_REVIEW_FAILED",
+    );
     await updateKaelProgress(client, jobScopeProgressTarget, {
       stage: "scope_reviewing",
       status: "failed",
@@ -88,6 +173,14 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     progress: 0.68,
   });
   if (estimate.fallback_used || estimate.provider === null || estimate.failure_reason) {
+    await releaseDirectScopeClaim(
+      client,
+      jobId,
+      ctx.user.id,
+      input.client_request_id,
+      directClaimId,
+      estimate.failure_reason ?? "SCOPE_ESTIMATE_UNAVAILABLE",
+    );
     await updateKaelProgress(client, jobScopeProgressTarget, {
       stage: "scope_estimating",
       status: "failed",
@@ -101,6 +194,14 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     );
   }
   if (estimate.price_max <= 0 || estimate.price_max < estimate.price_min) {
+    await releaseDirectScopeClaim(
+      client,
+      jobId,
+      ctx.user.id,
+      input.client_request_id,
+      directClaimId,
+      "SCOPE_ESTIMATE_INVALID",
+    );
     await updateKaelProgress(client, jobScopeProgressTarget, {
       stage: "scope_estimating",
       status: "failed",
@@ -129,23 +230,51 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
       asComplexityOrNull(job.kael_complexity),
     ),
   });
-  const enrichedEstimate: ScopeChangeKaelEstimate = {
+  const enrichedEstimate: PricedScopeChangeEstimate = {
     ...estimate,
     anti_fraud: scopeChangeOutputs.anti_fraud,
     worker_challenge: scopeChangeOutputs.worker_challenge,
     customer_card: scopeChangeOutputs.customer_card,
   };
+  const learningInput = buildScopeChangeLearningInput(
+    ctx,
+    job,
+    jobId,
+    evidencePhotoRefs,
+    enrichedEstimate,
+    originalPriceMax,
+    scopeChangeOutputs.anti_fraud.challenge_required,
+  );
+  const directEffects = incidentProposal
+    ? null
+    : buildDirectScopeEffectPayloads(jobId, enrichedEstimate, learningInput);
+  const rpcName = incidentProposal
+    ? "request_job_incident_scope_change_atomic"
+    : "request_scope_change_atomic";
+  const rpcArgs: Record<string, unknown> = {
+    p_job_id: jobId,
+    p_worker_id: ctx.user.id,
+    p_new_description: input.new_description,
+    p_reason: input.reason,
+    p_evidence_photo_urls: evidencePhotoRefs,
+    p_kael_computed_min: enrichedEstimate.price_min,
+    p_kael_computed_max: enrichedEstimate.price_max,
+    p_kael_review: enrichedEstimate,
+  };
+  if (incidentProposal) {
+    rpcArgs.p_claim_id = incidentProposal.claimId;
+    rpcArgs.p_incident_id = incidentProposal.incidentId;
+  } else {
+    rpcArgs.p_client_request_id = input.client_request_id;
+    rpcArgs.p_claim_id = directClaimId;
+    rpcArgs.p_database_effect_id = directEffects?.database.effectId;
+    rpcArgs.p_database_effect_payload = directEffects?.database.payload;
+    rpcArgs.p_learning_effect_id = directEffects?.learning.effectId;
+    rpcArgs.p_learning_effect_payload = directEffects?.learning.payload;
+    rpcArgs.p_push_effect_id = directEffects?.push.effectId;
+  }
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("request_scope_change_atomic", {
-      p_job_id: jobId,
-      p_worker_id: ctx.user.id,
-      p_new_description: input.new_description,
-      p_reason: input.reason,
-      p_evidence_photo_urls: evidencePhotoRefs,
-      p_kael_computed_min: enrichedEstimate.price_min,
-      p_kael_computed_max: enrichedEstimate.price_max,
-      p_kael_review: enrichedEstimate,
-    }),
+    client.rpc(rpcName, rpcArgs),
   );
   if (result.error) {
     await updateKaelProgress(client, jobScopeProgressTarget, {
@@ -173,9 +302,56 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
       progress: 0.72,
       failureReason: nullableString(row.error_code) ?? "scope_request_rejected",
     });
-    mapScopeRequestError(nullableString(row.error_code));
+    const errorCode = nullableString(row.error_code);
+    if (errorCode === "SCOPE_CLAIM_STALE") {
+      apiFailure(
+        "REQUEST_IN_PROGRESS",
+        "Lượt tạo yêu cầu đã thay đổi. Vui lòng chờ rồi thử lại.",
+        409,
+      );
+    }
+    if (errorCode === "IDEMPOTENCY_CONFLICT") {
+      apiFailure(
+        "IDEMPOTENCY_CONFLICT",
+        "Mã yêu cầu đã được dùng cho nội dung khác.",
+        409,
+      );
+    }
+    mapScopeRequestError(errorCode);
   }
   const scopeChangeId = asString(row.scope_change_id);
+  const response = {
+    scope_change_id: scopeChangeId,
+    job_id: jobId,
+    status: row.scope_status as ScopeChangeStatus,
+    created_at: asString(row.created_at_ts),
+    kael_estimate: {
+      price_min: estimate.price_min,
+      price_max: estimate.price_max,
+      confidence: estimate.confidence,
+      problem_summary: estimate.problem_summary,
+      advisory: estimate.advisory ?? null,
+      complexity_assessment: estimate.complexity_assessment,
+      disclaimer: estimate.disclaimer,
+      fallback_used: estimate.fallback_used,
+    },
+    anti_fraud: scopeChangeOutputs.anti_fraud,
+    worker_challenge: scopeChangeOutputs.worker_challenge,
+    customer_card: scopeChangeOutputs.customer_card,
+  };
+  if (!incidentProposal) {
+    const effects = parseDirectScopeEffectStates(row.side_effects_state);
+    await drainDirectScopeChangeEffects(
+      client,
+      ctx,
+      job,
+      input.client_request_id,
+      scopeChangeId,
+      effects,
+    );
+    return response;
+  }
+
   const scopeProgressTarget = { table: "scope_change_requests" as const, id: scopeChangeId };
   await updateKaelProgress(client, scopeProgressTarget, {
     stage: "scope_estimating",
@@ -231,44 +407,120 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     "scope_change_pending",
     { scope_change_id: scopeChangeId, customer_confirmation_required: true },
   );
-  await queueKaelLearningEvent(client, 'post-B6', {
-    actor_id: ctx.user.id,
-    actor_role: ctx.role,
-    job_id: jobId,
-    customer_id: nullableString(job.customer_id) ?? undefined,
-    worker_id: ctx.user.id,
-    service_type: asServiceType(job.service_type),
-    problem_slug: nullableString(job.kael_problem_identified) ?? undefined,
-    district_code: nullableString(job.address_district) ?? undefined,
-    complexity: enrichedEstimate.complexity_assessment,
-    baseline_min: nullableNumber(job.kael_price_min) ?? undefined,
-    baseline_max: originalPriceMax,
-    scope_change_requested: true,
-    worker_report: {
-      has_photos: evidencePhotoRefs.length > 0,
-      reported_complexity: enrichedEstimate.complexity_assessment,
-      challenge_required: scopeChangeOutputs.anti_fraud.challenge_required,
-    },
-  });
+  await queueKaelLearningEvent(client, 'post-B6', learningInput);
+  return response;
+}
+
+function parseScopeChangeReplay(
+  value: unknown,
+  expectedJobId: string,
+) {
+  const payload = asRecord(value);
+  const estimate = asRecord(payload.kael_estimate);
+  const scopeChangeId = nullableString(payload.scope_change_id);
+  const jobId = nullableString(payload.job_id);
+  const status = nullableString(payload.status);
+  const createdAt = nullableString(payload.created_at);
+  const priceMin = nullableNumber(estimate.price_min);
+  const priceMax = nullableNumber(estimate.price_max);
+  const confidence = nullableNumber(estimate.confidence);
+  const problemSummary = nullableString(estimate.problem_summary);
+  const advisory = estimate.advisory === null ? null : nullableString(estimate.advisory);
+  const complexity = asComplexityOrNull(estimate.complexity_assessment);
+  const disclaimer = nullableString(estimate.disclaimer);
+  const fallbackUsed = typeof estimate.fallback_used === "boolean"
+    ? estimate.fallback_used
+    : null;
+  if (!scopeChangeId
+    || jobId !== expectedJobId
+    || !status
+    || !createdAt
+    || priceMin === null
+    || priceMin <= 0
+    || priceMax === null
+    || priceMax < priceMin
+    || confidence === null
+    || !problemSummary
+    || (estimate.advisory !== null && advisory === null)
+    || complexity === null
+    || !disclaimer
+    || fallbackUsed === null
+  ) {
+    apiFailure("DB_ERROR", "Không thể phát lại yêu cầu thay đổi đã hoàn tất", 500);
+  }
   return {
     scope_change_id: scopeChangeId,
     job_id: jobId,
-    status: row.scope_status as ScopeChangeStatus,
-    created_at: asString(row.created_at_ts),
+    status: status as ScopeChangeStatus,
+    created_at: createdAt,
     kael_estimate: {
-      price_min: estimate.price_min,
-      price_max: estimate.price_max,
-      confidence: estimate.confidence,
-      problem_summary: estimate.problem_summary,
-      advisory: estimate.advisory ?? null,
-      complexity_assessment: estimate.complexity_assessment,
-      disclaimer: estimate.disclaimer,
-      fallback_used: estimate.fallback_used,
+      price_min: priceMin,
+      price_max: priceMax,
+      confidence,
+      problem_summary: problemSummary,
+      advisory,
+      complexity_assessment: complexity,
+      disclaimer,
+      fallback_used: fallbackUsed,
     },
-    anti_fraud: scopeChangeOutputs.anti_fraud,
-    worker_challenge: scopeChangeOutputs.worker_challenge,
-    customer_card: scopeChangeOutputs.customer_card,
+    anti_fraud: asRecord(payload.anti_fraud),
+    worker_challenge: asRecord(payload.worker_challenge),
+    customer_card: asRecord(payload.customer_card),
   };
+}
+
+function mapDirectScopeClaimError(errorCode: string | null): never {
+  if (errorCode === "REQUEST_IN_PROGRESS") {
+    apiFailure(
+      "REQUEST_IN_PROGRESS",
+      "Kael đang tạo yêu cầu thay đổi này. Vui lòng chờ trong giây lát.",
+      409,
+    );
+  }
+  if (errorCode === "IDEMPOTENCY_CONFLICT") {
+    apiFailure(
+      "IDEMPOTENCY_CONFLICT",
+      "Mã yêu cầu đã được dùng cho nội dung khác.",
+      409,
+    );
+  }
+  if (errorCode === "INVALID_INPUT") {
+    apiFailure("VALIDATION", "Nội dung yêu cầu thay đổi không hợp lệ", 400);
+  }
+  mapScopeRequestError(errorCode);
+}
+
+async function releaseDirectScopeClaim(
+  client: DbClient,
+  jobId: string,
+  workerId: string,
+  clientRequestId: string | undefined,
+  claimId: string | null,
+  errorCode: string,
+) {
+  if (!clientRequestId || !claimId) return;
+  try {
+    const result = await dbQuery<Array<Record<string, unknown>>>(
+      client.rpc("release_scope_change_request_claim_atomic", {
+        p_job_id: jobId,
+        p_worker_id: workerId,
+        p_client_request_id: clientRequestId,
+        p_claim_id: claimId,
+        p_error_code: errorCode,
+      }),
+    );
+    if (result.error || result.data?.[0]?.released !== true) {
+      console.warn("mobile-api scope-change claim release failed", {
+        jobId,
+        errorCode,
+      });
+    }
+  } catch {
+    console.warn("mobile-api scope-change claim release threw", {
+      jobId,
+      errorCode,
+    });
+  }
 }
 
 export async function decideScopeChange(

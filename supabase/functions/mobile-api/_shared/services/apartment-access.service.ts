@@ -113,13 +113,13 @@ export async function persistApartmentAccessProfileFromMetadata(
         .eq("customer_id", input.customerId)
         .eq("address_fingerprint", fingerprint)
         .maybeSingle(),
-    ).catch((error) => {
+    );
+    if (existing.error) {
       console.warn("mobile-api apartment access memory lookup failed", {
         jobId: input.jobId,
-        errorName: error instanceof Error ? error.name : typeof error,
+        errorCode: existing.error.code,
       });
-      return { data: null, error: { code: "LOOKUP_FAILED" } };
-    });
+    }
     if (!existing.error && existing.data) {
       profile = sanitizeApartmentAccessProfile(existing.data.access_profile);
     }
@@ -144,7 +144,7 @@ export async function persistApartmentAccessProfileFromMetadata(
     });
   }
 
-  await dbQuery(
+  const memoryUpsert = await dbQuery(
     client
       .from("kael_chat_pre_intake_memory")
       .upsert({
@@ -158,12 +158,13 @@ export async function persistApartmentAccessProfileFromMetadata(
         access_profile: profile,
         last_used_job_id: input.jobId,
       }),
-  ).catch((error) => {
+  );
+  if (memoryUpsert.error) {
     console.warn("mobile-api apartment access memory upsert failed", {
       jobId: input.jobId,
-      errorName: error instanceof Error ? error.name : typeof error,
+      errorCode: memoryUpsert.error.code,
     });
-  });
+  }
 }
 
 export function mergeApartmentAccessProfiles(
@@ -236,16 +237,30 @@ export function buildCheckInAccessState(
   now: string,
   workerId: string | null,
 ) {
+  const previousState = asRecord(previous);
+  const previousCheckIn = nullableRecord(previousState.check_in);
+  const preserveAuthorizedRelease = previousState.exact_unit_released === true &&
+    previousState.customer_authorized === true &&
+    workerId !== null &&
+    nullableString(previousCheckIn?.worker_id) === workerId;
+
   return compactMetadata({
-    ...asRecord(previous),
-    release_stage: "building_released",
-    exact_unit_released: false,
+    ...previousState,
+    release_stage: preserveAuthorizedRelease ? "unit_released" : "building_released",
+    exact_unit_released: preserveAuthorizedRelease,
     worker_checked_in: true,
     worker_checked_in_at: now,
-    customer_authorization_required: true,
+    customer_authorized: preserveAuthorizedRelease,
+    customer_authorized_at: preserveAuthorizedRelease
+      ? previousState.customer_authorized_at
+      : undefined,
+    customer_authorization_required: !preserveAuthorizedRelease,
     check_in_required: false,
     identity_check_required: true,
-    customer_handoff_required: true,
+    customer_handoff_required: !preserveAuthorizedRelease,
+    unit_released_at: preserveAuthorizedRelease
+      ? previousState.unit_released_at
+      : undefined,
     evidence_mode: checkIn.mode,
     check_in: compactMetadata({
       mode: checkIn.mode,
@@ -257,7 +272,7 @@ export function buildCheckInAccessState(
       accuracy_m: checkIn.accuracy_m,
       photo_urls: checkIn.photo_urls,
       note: sanitizeApartmentAccessText(checkIn.note, 300),
-      checked_in_at: checkIn.checked_in_at ?? now,
+      checked_in_at: now,
     }),
   });
 }

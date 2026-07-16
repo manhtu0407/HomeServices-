@@ -59,7 +59,7 @@ export async function classifyIntent(
   }
 }
 
-// Intake-diagnosis (2026-06-04): upgraded classifier that also decides whether to
+// This conversation-aware classifier also decides whether to
 // ask ONE clarification question, using recent conversation context. Same provider
 // loop + fallback contract as classifyIntent; separate function so the legacy
 // classifyIntent path stays byte-identical when the clarification flag is off.

@@ -2,8 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 import type { EdgeEnv } from "./env.ts";
 import type { MobileApiAuthResult } from "./router.ts";
 import { USER_ROLES, type UserRole } from "../../_shared/domain.ts";
+import {
+  JOB_MEDIA_STORAGE_TIMEOUT_MS,
+  MAX_JOB_MEDIA_BYTES,
+} from "../../_shared/job-media-contract.ts";
+import { fetchBufferedWithTimeout } from "../../_shared/network.ts";
 
-const SUPABASE_TIMEOUT_MS = 10_000;
+const SUPABASE_TIMEOUT_MS = JOB_MEDIA_STORAGE_TIMEOUT_MS;
+const SUPABASE_MAX_RESPONSE_BYTES = MAX_JOB_MEDIA_BYTES;
 
 export function createEdgeAuthenticator(env: EdgeEnv) {
   return async function authenticateRequest(
@@ -79,9 +85,9 @@ function isUserRole(role: unknown): role is UserRole {
 }
 
 function timeoutFetch(input: RequestInfo | URL, init: RequestInit = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SUPABASE_TIMEOUT_MS);
-  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
-    clearTimeout(timer)
-  );
+  return fetchBufferedWithTimeout(input, init, {
+    maxResponseBytes: SUPABASE_MAX_RESPONSE_BYTES,
+    timeoutMs: SUPABASE_TIMEOUT_MS,
+    validateJsonResponses: true,
+  });
 }

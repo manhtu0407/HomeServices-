@@ -43,6 +43,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
       escalation: { provider: 'perplexity', model: 'sonar-pro' },
       escalationTrigger: { minConfidence: 0.82 },
     })
+    expect(KAEL_ROUTING_CONFIG.market_lookup.fallback).toBeUndefined()
     expect(KAEL_ROUTING_CONFIG.post_job_learning.primary).toMatchObject({
       provider: 'deepseek',
       model: 'deepseek-v4-pro',

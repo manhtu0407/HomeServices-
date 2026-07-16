@@ -28,6 +28,7 @@ import type { LearningSkillInput } from '../../../../../supabase/functions/mobil
 describe('Kael P7 learning skill setup', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('T7-test-1: registers LS1-LS7 with immutable scope constants', () => {
@@ -160,6 +161,43 @@ describe('Kael P7 learning skill setup', () => {
     expect(planLearningSkillTriggers('post-A14', learningInput(), config)).toEqual([])
   })
 
+  it('accepts the repository boolean aliases for learning flags and the emergency kill switch', async () => {
+    const enabled = resolveLearningRuntimeConfig((name) => ({
+      KAEL_LEARNING_READ_ENABLED: 'on',
+      KAEL_LEARNING_WRITE_ENABLED: 'yes',
+      KAEL_LEARNING_KILL_SWITCH: '0',
+      KAEL_LEARNING_AB_PERCENTAGE: '100',
+    })[name], 'customer-1')
+    expect(enabled).toMatchObject({
+      read_enabled: true,
+      write_enabled: true,
+      kill_switch: false,
+      enabled_for_actor: true,
+    })
+
+    vi.stubGlobal('Deno', {
+      env: {
+        get(name: string) {
+          return ({
+            KAEL_LEARNING_READ_ENABLED: 'true',
+            KAEL_LEARNING_WRITE_ENABLED: 'true',
+            KAEL_LEARNING_KILL_SWITCH: '1',
+          } as Record<string, string>)[name]
+        },
+      },
+    })
+    const client = makeSequenceClient([
+      { data: [{ id: 'must-not-be-read' }], error: null },
+    ])
+
+    await expect(recordLearningReviewOutcome(client as never, {
+      jobId: 'job-kill-switch',
+      finalPrice: 300000,
+      rating: 5,
+    })).resolves.toEqual({ source_applications: 0, inserted_samples: 0 })
+    expect(client.calls).toEqual([])
+  })
+
   it('T7-test-11: A/B percentage gates actors deterministically', () => {
     const config = resolveLearningRuntimeConfig((name) => ({
       KAEL_LEARNING_READ_ENABLED: 'true',
@@ -201,6 +239,46 @@ describe('Kael P7 learning skill setup', () => {
     expect(client.calls).toHaveLength(1)
     expect(client.calls[0].table).toBe('kael_rule_lifecycle_log')
     expect(JSON.stringify(client.calls)).not.toContain('raw comment')
+  })
+
+  it('reports a resolved manual-review notification error without failing the queued work', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const client = makeSequenceClient([
+      { data: null, error: null },
+      { data: null, error: { code: 'NOTIFY_DENIED' } },
+    ])
+
+    const summary = await queueLearningSkillTriggers(
+      client,
+      'post-A14',
+      learningInput({ admin_user_id: 'admin-1' }),
+      enabledConfig(),
+    )
+
+    expect(summary.queued + summary.manual_review).toBe(4)
+    expect(warn).toHaveBeenCalledWith('kael learning manual-review notification failed', {
+      errorCode: 'NOTIFY_DENIED',
+    })
+  })
+
+  it('reports a rejected manual-review notification transport without failing the queued work', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const client = makeSequenceClient([
+      { data: null, error: null },
+      { reject: new Error('private transport detail') },
+    ])
+
+    const summary = await queueLearningSkillTriggers(
+      client,
+      'post-A14',
+      learningInput({ admin_user_id: 'admin-1' }),
+      enabledConfig(),
+    )
+
+    expect(summary.queued + summary.manual_review).toBe(4)
+    expect(warn).toHaveBeenCalledWith('kael learning manual-review notification failed', {
+      errorCode: 'NOTIFICATION_FAILED',
+    })
   })
 
   it('wires Edge review completion to enqueue post-A14 learning work when write flag is enabled', async () => {
@@ -431,6 +509,129 @@ describe('Kael P7 learning skill setup', () => {
     expect(client.calls).toHaveLength(0)
   })
 
+  it('A3 monitor surfaces rule-application read failures instead of reporting a clean pass', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get(name: string) {
+          return ({
+            KAEL_LEARNING_READ_ENABLED: 'true',
+            KAEL_LEARNING_WRITE_ENABLED: 'true',
+            KAEL_LEARNING_AB_PERCENTAGE: '100',
+            KAEL_LEARNING_AUTO_ROLLBACK: 'true',
+          } as Record<string, string>)[name]
+        },
+      },
+    })
+    const client = makeSequenceClient([
+      {
+        data: [{
+          id: 'rule-1',
+          rule_type: 'price_prior_update',
+          status: 'active',
+          rollback_available: true,
+        }],
+        error: null,
+      },
+      { data: null, error: { code: 'RULE_APPLICATION_READ_FAILED' } },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+    ])
+
+    await expect(monitorLearningRules(client)).resolves.toMatchObject({
+      checked: 1,
+      monitored: 0,
+      rolled_back: 0,
+      error_code: 'RULE_APPLICATION_READ_FAILED',
+    })
+  })
+
+  it('A3 monitor surfaces rollback transport failures instead of silently skipping them', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get(name: string) {
+          return ({
+            KAEL_LEARNING_READ_ENABLED: 'true',
+            KAEL_LEARNING_WRITE_ENABLED: 'true',
+            KAEL_LEARNING_AB_PERCENTAGE: '100',
+            KAEL_LEARNING_AUTO_ROLLBACK: 'true',
+          } as Record<string, string>)[name]
+        },
+      },
+    })
+    const client = makeSequenceClient([
+      {
+        data: [{
+          id: 'rule-1',
+          rule_type: 'price_prior_update',
+          status: 'active',
+          rollback_available: true,
+        }],
+        error: null,
+      },
+      {
+        data: [
+          { rule_id: 'rule-1', skill_id: 'LS1', applied_count: 2, override_count: 2, accuracy_delta: 0.2, satisfaction_delta: 0.5 },
+        ],
+        error: null,
+      },
+      { data: null, error: { code: 'ROLLBACK_RPC_FAILED' } },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+    ])
+
+    await expect(monitorLearningRules(client)).resolves.toMatchObject({
+      checked: 1,
+      monitored: 1,
+      rolled_back: 0,
+      error_code: 'ROLLBACK_RPC_FAILED',
+    })
+  })
+
+  it('A3 monitor surfaces non-benign rollback RPC decisions', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get(name: string) {
+          return ({
+            KAEL_LEARNING_READ_ENABLED: 'true',
+            KAEL_LEARNING_WRITE_ENABLED: 'true',
+            KAEL_LEARNING_AB_PERCENTAGE: '100',
+            KAEL_LEARNING_AUTO_ROLLBACK: 'true',
+          } as Record<string, string>)[name]
+        },
+      },
+    })
+    const client = makeSequenceClient([
+      {
+        data: [{
+          id: 'rule-1',
+          rule_type: 'price_prior_update',
+          status: 'active',
+          rollback_available: true,
+        }],
+        error: null,
+      },
+      {
+        data: [
+          { rule_id: 'rule-1', skill_id: 'LS1', applied_count: 2, override_count: 2, accuracy_delta: 0.2, satisfaction_delta: 0.5 },
+        ],
+        error: null,
+      },
+      { data: [{ ok: false, error_code: 'RULE_NOT_FOUND', rule_id: null }], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+    ])
+
+    await expect(monitorLearningRules(client)).resolves.toMatchObject({
+      checked: 1,
+      monitored: 1,
+      rolled_back: 0,
+      error_code: 'RULE_NOT_FOUND',
+    })
+  })
+
   it('A4 admin lists and reviews manual learning candidates through review RPCs', async () => {
     const client = makeSequenceClient([
       {
@@ -463,13 +664,8 @@ describe('Kael P7 learning skill setup', () => {
           rule_id: 'rule-1',
           rule_version: 1,
           status: 'auto_promoted',
-        }],
-        error: null,
-      },
-      {
-        data: [{
-          ok: true,
-          error_code: null,
+          knowledge_ok: true,
+          knowledge_error_code: null,
           knowledge_table: 'service_knowledge_boxes',
           record_key: 'cleaning',
           knowledge_version: 2,
@@ -524,24 +720,18 @@ describe('Kael P7 learning skill setup', () => {
     expect(client.calls[0]).toMatchObject({ table: 'learning_candidates' })
     expect(client.calls[0].operations).toContainEqual(['eq', 'status', 'manual_review'])
     expect(client.calls.find((call) => call.table === 'learning_rules')).toBeUndefined()
-    expect(client.calls.find((call) => call.table === 'rpc:admin_approve_learning_candidate')?.operations)
+    expect(client.calls.find((call) => call.table === 'rpc:admin_approve_learning_candidate_atomic')?.operations)
       .toContainEqual([
         'rpc',
-        'admin_approve_learning_candidate',
+        'admin_approve_learning_candidate_atomic',
         expect.objectContaining({
           p_candidate_id: 'candidate-1',
           p_admin_id: 'admin-1',
         }),
       ])
-    expect(client.calls.find((call) => call.table === 'rpc:apply_approved_learning_candidate_to_knowledge')?.operations)
-      .toContainEqual([
-        'rpc',
-        'apply_approved_learning_candidate_to_knowledge',
-        expect.objectContaining({
-          p_candidate_id: 'candidate-1',
-          p_admin_id: 'admin-1',
-        }),
-      ])
+    expect(client.calls.find((call) =>
+      call.table === 'rpc:apply_approved_learning_candidate_to_knowledge'
+    )).toBeUndefined()
     expect(client.calls.find((call) => call.table === 'rpc:admin_reject_learning_candidate')?.operations)
       .toContainEqual([
         'rpc',

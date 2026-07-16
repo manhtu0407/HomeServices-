@@ -1,5 +1,7 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { withDbTimeout } from '@/lib/db/query'
+import { normalizeIsoTimestamp } from '@/lib/http/iso-timestamp'
+import { readJsonRequestBounded } from '@/lib/http/request-json'
 import { availabilityToggleSchema } from '@nestscout/shared'
 
 type AvailabilityRpcRow = {
@@ -20,7 +22,7 @@ export async function PATCH(request: Request) {
   const auth = await authenticateRequest(request, ['worker'])
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )
@@ -28,7 +30,7 @@ export async function PATCH(request: Request) {
 
   let body: unknown
   try {
-    body = await request.json()
+    body = await readJsonRequestBounded(request)
   } catch {
     return apiError('VALIDATION', 'Nội dung yêu cầu không hợp lệ', 400)
   }
@@ -50,15 +52,35 @@ export async function PATCH(request: Request) {
     return apiError('DB_ERROR', 'Không thể cập nhật trạng thái nhận việc', 500)
   }
 
-  const row = (Array.isArray(data) ? data[0] : data) as AvailabilityRpcRow | null
+  const row = availabilityRpcRow(Array.isArray(data) ? data[0] : data)
   if (!row) return apiError('DB_ERROR', 'Không thể cập nhật trạng thái nhận việc', 500)
   if (!row.ok) return mapAvailabilityRpcError(row.error_code)
 
+  if (
+    typeof row.is_available !== 'boolean' ||
+    typeof row.updated_at_ts !== 'string' ||
+    normalizeIsoTimestamp(row.updated_at_ts) === null
+  ) {
+    return apiError('DB_ERROR', 'Không thể cập nhật trạng thái nhận việc', 500)
+  }
+
   return apiSuccess({
     worker_id: auth.user.id,
-    is_available: Boolean(row.is_available),
+    is_available: row.is_available,
     updated_at: row.updated_at_ts,
   })
+}
+
+function availabilityRpcRow(value: unknown): AvailabilityRpcRow | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+  const row = value as Record<string, unknown>
+  if (
+    typeof row.ok !== 'boolean' ||
+    (row.error_code !== null && typeof row.error_code !== 'string') ||
+    (row.is_available !== null && typeof row.is_available !== 'boolean') ||
+    (row.updated_at_ts !== null && typeof row.updated_at_ts !== 'string')
+  ) return null
+  return row as AvailabilityRpcRow
 }
 
 function mapAvailabilityRpcError(errorCode: string | null) {

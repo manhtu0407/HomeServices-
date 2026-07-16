@@ -1,5 +1,5 @@
 /**
- * S5 / F6 (Plan.md §38 security hardening) — refreshed conversational-injection
+ * Conversational-injection
  * negatives. The deterministic deny-list is bypassable by novel phrasing (the F6
  * residual); the always-on semantic classifier (S2/F6) is the backstop. This test
  * pins both layers so a regression (someone weakening either) fails loud, and proves

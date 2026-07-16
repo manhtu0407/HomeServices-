@@ -2,6 +2,7 @@ import type { EdgeAiSecrets, ScopeChangeComputeInput, ScopeChangeEstimateBody, S
 import { PRICE_DISCLAIMER, scopeChangeEstimateSchema, scopeChangeReviewSchema } from "./types.ts";
 import { buildScopeChangeEstimateMessages, buildScopeChangeReviewMessages } from "./prompts.ts";
 import { callStructuredAI } from "./structured-call.ts";
+import type { KaelSpendGate } from "./spend-gate.ts";
 import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
@@ -29,6 +30,7 @@ const SCOPE_CHANGE_POLICY_ID = "kael.autonomy.v2.scope_change_review";
 export async function reviewScopeChange(
   input: ScopeChangeReviewInput,
   secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
 ): Promise<ScopeChangeKaelReview> {
   const fallback = buildScopeChangeFallbackReview(input);
   const route = chooseCircuitAwareProviderOrNull("scope_change");
@@ -50,7 +52,7 @@ export async function reviewScopeChange(
       temperature: 0.1,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
-    }, scopeChangeReviewSchema, secrets)
+    }, scopeChangeReviewSchema, secrets, spendGate)
   );
 
   if (!attempt.result.success) {
@@ -115,7 +117,7 @@ export async function reviewScopeChange(
         temperature: 0.1,
         timeoutMs: route.latencyBudgetMs,
         maxRetries: 0,
-      }, scopeChangeReviewSchema, secrets)
+      }, scopeChangeReviewSchema, secrets, spendGate)
     );
     if (escalatedAttempt.result.success) {
       selectedRoute = { ...route, ...escalation.route };
@@ -151,6 +153,7 @@ export async function reviewScopeChange(
 export async function computeScopeChangeEstimate(
   input: ScopeChangeComputeInput,
   secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
 ): Promise<ScopeChangeKaelEstimate> {
   const fallback = buildScopeChangeEstimateFallback(input);
   const route = chooseCircuitAwareProviderOrNull("scope_change");
@@ -172,7 +175,7 @@ export async function computeScopeChangeEstimate(
       temperature: 0.1,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
-    }, scopeChangeEstimateSchema, secrets)
+    }, scopeChangeEstimateSchema, secrets, spendGate)
   );
 
   if (!attempt.result.success) {
@@ -237,7 +240,7 @@ export async function computeScopeChangeEstimate(
         temperature: 0.1,
         timeoutMs: route.latencyBudgetMs,
         maxRetries: 0,
-      }, scopeChangeEstimateSchema, secrets)
+      }, scopeChangeEstimateSchema, secrets, spendGate)
     );
     if (escalatedAttempt.result.success) {
       selectedRoute = { ...route, ...escalation.route };

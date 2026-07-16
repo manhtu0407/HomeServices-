@@ -105,6 +105,20 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(functionFiles).toContain('Không thể lưu thiết bị nhận thông báo')
   })
 
+  it('keeps customer-visible mobile-api validation copy as accented Vietnamese', () => {
+    const functionFiles = [
+      'supabase/functions/mobile-api/_shared/router.ts',
+      'supabase/functions/mobile-api/_shared/services/_shared.ts',
+      'supabase/functions/mobile-api/_shared/services/admin-learning.service.ts',
+    ].map(read).join('\n')
+
+    expect(functionFiles).toContain('Dữ liệu A/B không hợp lệ')
+    expect(functionFiles).toContain('Kael chưa tính được giá phát sinh hợp lệ')
+    expect(functionFiles).toContain('Kael chưa chốt giá phát sinh nên chưa thể duyệt')
+    expect(functionFiles).toContain('Chỉ admin mới được chạy A/B price_synthesis')
+    expect(functionFiles).not.toMatch(/Du lieu A\/B khong hop le|Kael chua (?:tinh|chot)|Chi admin moi duoc/)
+  })
+
   it('requires a concrete HCMC district before customer job creation', () => {
     const edgeDomain = read('supabase/functions/_shared/domain.ts')
     const edgeServices = readEdgeServiceLayer()
@@ -403,7 +417,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('estimate_card.v3')
     expect(edgeKael).toContain('scope_change_worker_challenge.v1')
     expect(edgeServices).toContain('askKaelForWorker')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts')).toContain('kael_worker_qa_log')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts')).toContain('record_worker_kael_qa_atomic')
     expect(edgeRouter).toContain('jobs.kaelClarify')
     expect(edgeRouter).toContain('kael-clarify')
   })
@@ -732,7 +746,6 @@ describe('mobile-api Edge schema compatibility', () => {
 
     for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts') + read('supabase/functions/mobile-api/_shared/services/matching.service.ts'), nextConfirmSearch]) {
       expect(source).toContain('BROADCAST_ACTIVE')
-      expect(source).toContain('broadcast_at.lte.')
       expect(source).toContain('customer_retried_search')
       expect(source).toContain('job_broadcasts')
       expect(source).toContain('no_worker_found')
@@ -742,6 +755,8 @@ describe('mobile-api Edge schema compatibility', () => {
       expect(source).toContain('confirmed_search_at: null')
       expect(source).toContain('customer_id')
     }
+    expect(edgeServices).toContain('expireStaleBroadcasts')
+    expect(nextConfirmSearch).toContain('broadcast_at.lte.')
   })
 
   it('does not normalize unknown worker registration districts into city-wide coverage', () => {
@@ -785,7 +800,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const nextBroadcasts = read('apps/api/src/app/api/workers/me/broadcasts/route.ts')
 
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts')).toContain(
-      'jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)'
+      'jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)'
     )
     expect(nextBroadcasts).toContain(
       'jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)'
@@ -1082,6 +1097,9 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds Section 32 disintermediation risk queue without hard worker punishment', () => {
     const migration = readMigrationByName('disintermediation_admin_queue')
+    const atomicMemoryMigration = read(
+      'supabase/migrations/20260714106000_atomic_kael_memory_updates.sql',
+    )
     const edgeServices = read('supabase/functions/mobile-api/_shared/services/chat.service.ts')
     const guardStart = edgeServices.indexOf('async function recordWorkerDisintermediationRisk')
     const guardEnd = edgeServices.indexOf('async function maybeHandleDemandingCustomerJobChat')
@@ -1091,10 +1109,11 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeServices).toContain('evaluateJobChatContactGuard')
     expect(edgeServices).toContain('maybeHandleJobChatContactGuard')
     expect(edgeServices).toContain('recordWorkerDisintermediationRisk')
-    expect(guardBlock).toContain('queue_type: "disintermediation_risk"')
-    expect(guardBlock).toContain('disintermediation_contact_leak')
-    expect(guardBlock).not.toContain('is_suspended')
-    expect(guardBlock).not.toContain('verification_status')
+    expect(guardBlock).toContain('record_worker_disintermediation_memory_atomic')
+    expect(atomicMemoryMigration).toContain("'disintermediation_risk'")
+    expect(atomicMemoryMigration).toContain("'disintermediation_contact_leak', true")
+    expect(atomicMemoryMigration).not.toContain('is_suspended')
+    expect(atomicMemoryMigration).not.toContain('verification_status')
   })
 
   it('adds Section 32 apartment access staged release without worker-side exact unit leakage', () => {
@@ -1144,6 +1163,9 @@ describe('mobile-api Edge schema compatibility', () => {
     const workerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel.ts')
     const customerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-4-customer-cancel.ts')
     const dispute = read('supabase/functions/mobile-api/_shared/kael/agentic/case-5-dispute.ts')
+    const atomicMemoryMigration = read(
+      'supabase/migrations/20260714106000_atomic_kael_memory_updates.sql',
+    )
     const services = readEdgeServiceLayer()
 
     expect(boundaryContract).toContain('KAEL_DETERMINISTIC_DECISION_SURFACES')
@@ -1163,7 +1185,7 @@ describe('mobile-api Edge schema compatibility', () => {
     }
     expect(customerCancel).toContain('customerPenaltyAmount: null')
     expect(customerCancel).toContain('workerCompensationAmount: null')
-    expect(workerCancel).toContain('autonomous_suspension: false')
+    expect(atomicMemoryMigration).toContain("'autonomous_suspension', false")
     expect(services).toContain('validateKaelAutonomyTransition')
     expect(services + read('supabase/functions/mobile-api/_shared/services/dispute.service.ts')).toContain('open_dispute_atomic')
     expect(services + read('supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts')).toContain('request_customer_cancellation_atomic')

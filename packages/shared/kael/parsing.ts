@@ -10,35 +10,38 @@ const MAX_JSON_DEPTH = 100
 // (~500-2000 chars) but limits worst-case scan time to O(input length).
 const MAX_INPUT_LENGTH = 64 * 1024
 
+// Bound recovery attempts so prose containing many stray brackets cannot turn
+// fallback extraction into quadratic work.
+const MAX_JSON_CANDIDATES = 32
+
 export function safeParseJSON(text: string): unknown {
   if (text.length > MAX_INPUT_LENGTH) return null
 
-  const stripped = stripMarkdownFence(text)
+  const stripped = text.trim()
 
-  const startIdx = findJsonStart(stripped)
-  if (startIdx === -1) return null
+  let searchFrom = 0
+  for (let attempt = 0; attempt < MAX_JSON_CANDIDATES; attempt += 1) {
+    const startIdx = findJsonStart(stripped, searchFrom)
+    if (startIdx === -1) return null
 
-  const opener = stripped[startIdx]
-  const closer = opener === '{' ? '}' : ']'
-
-  const candidate = extractBalanced(stripped, startIdx, opener, closer)
-  if (!candidate) return null
-
-  try {
-    return JSON.parse(candidate)
-  } catch {
-    return null
+    const extracted = extractBalanced(stripped, startIdx)
+    if (extracted.tooDeep) return null
+    if (extracted.candidate) {
+      try {
+        return JSON.parse(extracted.candidate)
+      } catch {
+        // Bracketed prose is common around model JSON; keep scanning within
+        // the bounded attempt budget for the next real payload.
+      }
+    }
+    searchFrom = startIdx + 1
   }
+
+  return null
 }
 
-function stripMarkdownFence(text: string): string {
-  const fencePattern = /```(?:json)?\s*\n?([\s\S]*?)```/
-  const match = text.match(fencePattern)
-  return match ? match[1].trim() : text
-}
-
-function findJsonStart(text: string): number {
-  for (let i = 0; i < text.length; i++) {
+function findJsonStart(text: string, from: number): number {
+  for (let i = from; i < text.length; i++) {
     if (text[i] === '{' || text[i] === '[') return i
   }
   return -1
@@ -47,11 +50,8 @@ function findJsonStart(text: string): number {
 function extractBalanced(
   text: string,
   start: number,
-  opener: string,
-  closer: string,
-): string | null {
-  let depth = 0
-  let maxDepthSeen = 0
+): { candidate: string | null; tooDeep: boolean } {
+  const expectedClosers: string[] = []
   let inString = false
   let escape = false
 
@@ -75,17 +75,18 @@ function extractBalanced(
 
     if (inString) continue
 
-    if (ch === opener) {
-      depth++
-      if (depth > maxDepthSeen) maxDepthSeen = depth
-      if (maxDepthSeen > MAX_JSON_DEPTH) return null
+    if (ch === '{' || ch === '[') {
+      expectedClosers.push(ch === '{' ? '}' : ']')
+      if (expectedClosers.length > MAX_JSON_DEPTH) return { candidate: null, tooDeep: true }
+      continue
     }
-    if (ch === closer) depth--
-
-    if (depth === 0) {
-      return text.slice(start, i + 1)
+    if (ch === '}' || ch === ']') {
+      if (expectedClosers.pop() !== ch) return { candidate: null, tooDeep: false }
+    }
+    if (expectedClosers.length === 0) {
+      return { candidate: text.slice(start, i + 1), tooDeep: false }
     }
   }
 
-  return null
+  return { candidate: null, tooDeep: false }
 }

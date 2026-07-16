@@ -18,6 +18,32 @@ export type JobMediaAttachInput = {
   }[]
 }
 
+export type JobMediaUploadRequest = {
+  file_name: string
+  file_size_bytes: number
+  mime_type: string
+  stage: JobMediaStage
+}
+
+export type JobMediaUploadIntentResponse = {
+  bucket_id: 'job-media'
+  object_path: string
+  storage_ref: string
+  signed_upload_url: string
+  token: string
+  expires_in_seconds: number
+}
+
+export type JobMediaRevokeRequest = {
+  object_paths: string[]
+}
+
+export type JobMediaRevokeResult = {
+  job_id: string
+  revoked_count: number
+  deletion_pending: boolean
+}
+
 export type ApartmentAccessAuthorizeResponse = {
   job_id: string
   release_stage: string

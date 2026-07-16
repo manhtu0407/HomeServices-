@@ -1,7 +1,7 @@
 import {
   createDockScrollState,
   resolveDockScrollState,
-} from '../dock-scroll-state'
+} from '../dock-scroll-state-model'
 
 describe('dock scroll state', () => {
   it('collapses after a deliberate downward scroll and expands after an upward scroll', () => {

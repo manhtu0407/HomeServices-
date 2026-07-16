@@ -1,8 +1,9 @@
 import type { DeclineTemplateKey } from './permissions'
+import { sanitizeKaelText } from './sanitizers'
 
 export const DECLINE_TEMPLATES: Record<DeclineTemplateKey, string> = {
   out_of_scope_service:
-    'Hiện Kael chỉ hỗ trợ sửa điện, sửa nước và dọn dẹp tại các căn hộ HCMC. Bạn vui lòng quay lại khi Kael mở thêm dịch vụ.',
+    'Vấn đề này nằm ngoài sáu nhóm dịch vụ nhà ở Kael đang hỗ trợ tại TP.HCM.',
   out_of_domain_question:
     'Câu hỏi này nằm ngoài phạm vi của Kael. Bạn vui lòng liên hệ hỗ trợ tại tab hồ sơ để được giúp.',
   cannot_do_action:
@@ -23,7 +24,15 @@ export function renderDeclineTemplate(
   key: DeclineTemplateKey,
   values: { alternative?: string; seconds?: number } = {},
 ): string {
+  if (!Object.prototype.hasOwnProperty.call(DECLINE_TEMPLATES, key)) {
+    throw new RangeError(`Unknown decline template: ${String(key)}`)
+  }
+  const defaultAlternative = 'Bạn có thể tiếp tục trong luồng hỗ trợ phù hợp.'
+  const alternative = sanitizeKaelText(values.alternative ?? defaultAlternative, 220) || defaultAlternative
+  const seconds = typeof values.seconds === 'number' && Number.isFinite(values.seconds) && values.seconds > 0
+    ? Math.min(3600, Math.ceil(values.seconds))
+    : 60
   return DECLINE_TEMPLATES[key]
-    .replace('{alternative}', values.alternative ?? 'Bạn có thể tiếp tục trong luồng hỗ trợ phù hợp.')
-    .replace('{seconds}', String(values.seconds ?? 60))
+    .replace('{alternative}', alternative)
+    .replace('{seconds}', String(seconds))
 }

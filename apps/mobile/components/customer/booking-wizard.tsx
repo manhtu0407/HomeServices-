@@ -3,7 +3,7 @@
 // Kael can pre-analyze, ask for missing details, and orchestrate by policy.
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { createContext, type ReactNode, use, useEffect, useMemo, useReducer, useState } from 'react'
+import { createContext, type ReactNode, use, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
 import { Alert, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated'
@@ -16,6 +16,7 @@ import { motionTokens } from '@/components/ui/motion-tokens'
 import { type GlassMode } from '@/components/ui/tokens'
 import { color, typography } from '@/design/theme'
 import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
+import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { performanceProfileForServiceType } from '@/lib/kael-performance-intake'
@@ -26,102 +27,23 @@ import {
   bookingServiceOrder,
   bookingServiceSegmentWidthPercent,
   mediaDraftTypeFromAsset,
-  mergeBookingPhotoDrafts,
   parseRouteServiceType,
 } from './booking-wizard-support'
-import { setPendingKaelChatDraft } from './kael-chat/pending-intake'
+import {
+  bookingPriorityOrder,
+  bookingWizardReducer,
+  createInitialWizardState,
+  formatBookingMessageForKael,
+  type WizardAction,
+  type WizardState,
+  type WizardStep,
+} from './booking-wizard-state'
+import { clearPendingKaelChatDraft, setPendingKaelChatDraft } from './kael-chat/pending-intake'
 
 const BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL = 'BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL: standard content material, segmented selected service, Liquid Glass reserved for primary controls'
 const BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM = 'BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM: description field, photo picker, address control, progress, and action buttons use one Apple-style component material system'
 void BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL
 void BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM
-
-type WizardStep = 'service' | 'describe' | 'analyzing' | 'done'
-type BookingPriority = 'fast' | 'low' | 'normal'
-const bookingPriorityOrder: readonly BookingPriority[] = ['low', 'normal', 'fast']
-
-type WizardState = {
-  step: WizardStep
-  serviceType: ServiceType | null
-  description: string
-  priority: BookingPriority
-  problemChips: string[]
-  photoDrafts: LocalMediaUploadDraft[]
-  addressLabel: string
-  districtLabel: string | null
-  isSubmitting: boolean
-  error: string | null
-}
-
-type WizardAction =
-  | { type: 'select_service'; serviceType: ServiceType }
-  | { type: 'update_description'; description: string }
-  | { type: 'select_priority'; priority: BookingPriority }
-  | { type: 'toggle_problem_chip'; chip: string }
-  | { type: 'add_photos'; drafts: LocalMediaUploadDraft[] }
-  | { type: 'remove_photo'; index: number }
-  | { type: 'update_address'; label: string; district: string | null }
-  | { type: 'goto'; step: WizardStep }
-  | { type: 'set_submitting'; flag: boolean }
-  | { type: 'set_error'; error: string | null }
-  | { type: 'reset' }
-
-const INITIAL: WizardState = {
-  step: 'service',
-  serviceType: null,
-  description: '',
-  priority: 'normal',
-  problemChips: [],
-  photoDrafts: [],
-  addressLabel: '',
-  districtLabel: null,
-  isSubmitting: false,
-  error: null,
-}
-
-function createInitialWizardState(routeServiceType: ServiceType | null): WizardState {
-  return routeServiceType
-    ? { ...INITIAL, serviceType: routeServiceType, step: 'describe', photoDrafts: [] }
-    : { ...INITIAL, photoDrafts: [] }
-}
-
-function formatBookingMessageForKael(copy: WizardCopy, state: WizardState) {
-  const description = state.description.trim()
-  if (state.priority === 'normal') return description
-  return `${copy.priorityMessagePrefix}: ${copy.priorityOptions[state.priority]}\n${description}`
-}
-
-function reducer(state: WizardState, action: WizardAction): WizardState {
-  switch (action.type) {
-    case 'select_service':
-      return { ...state, serviceType: action.serviceType, problemChips: [], step: 'describe', error: null }
-    case 'update_description':
-      return { ...state, description: action.description }
-    case 'select_priority':
-      return { ...state, priority: action.priority }
-    case 'toggle_problem_chip':
-      return {
-        ...state,
-        problemChips: state.problemChips.includes(action.chip)
-          ? state.problemChips.filter((chip) => chip !== action.chip)
-          : [...state.problemChips, action.chip],
-      }
-    case 'add_photos':
-      return { ...state, photoDrafts: mergeBookingPhotoDrafts(state.photoDrafts, action.drafts) }
-    case 'remove_photo':
-      return { ...state, photoDrafts: state.photoDrafts.filter((_, index) => index !== action.index) }
-    case 'update_address':
-      return { ...state, addressLabel: action.label, districtLabel: action.district }
-    case 'goto':
-      return { ...state, step: action.step }
-    case 'set_submitting':
-      return { ...state, isSubmitting: action.flag }
-    case 'set_error':
-      return { ...state, error: action.error }
-    case 'reset':
-      return INITIAL
-  }
-}
 
 const copyMap = {
   vi: {
@@ -194,6 +116,7 @@ const copyMap = {
     addressLabel: 'Khu vực căn hộ',
     addressMissing: 'Cần địa chỉ quận TP.HCM rõ ràng để Kael ước tính đúng.',
     descriptionTooShort: 'Mô tả cần ít nhất 10 ký tự để Kael phân tích.',
+    draftPersistFailed: 'Chưa thể lưu phiếu để gửi Kael. Vui lòng thử lại.',
     next: 'Tiếp tục',
     back: 'Quay lại',
     submitDescribe: 'Tiếp tục',
@@ -279,6 +202,7 @@ const copyMap = {
     addressLabel: 'Apartment area',
     addressMissing: 'Kael needs a clear HCMC district to estimate accurately.',
     descriptionTooShort: 'Description must be at least 10 characters.',
+    draftPersistFailed: 'Could not save the intake for Kael. Please try again.',
     next: 'Continue',
     back: 'Back',
     submitDescribe: 'Continue',
@@ -304,16 +228,30 @@ type BookingWizardProps = {
   onOpenHistory: () => void
 }
 
-export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: BookingWizardProps) {
-  const language = useAppLanguage()
-  const copy = copyMap[language]
+export function BookingWizard(props: BookingWizardProps) {
   const params = useLocalSearchParams<{ serviceType?: string | string[] }>()
+  const routeServiceType = parseRouteServiceType(params.serviceType)
+  const { session } = useAuth()
+  const ownerKey = session?.user.id ?? 'guest'
+  return <BookingWizardRoute key={`${ownerKey}:${routeServiceType ?? 'none'}`} mode={props.mode ?? 'light'} onOpenHistory={props.onOpenHistory} onOpenKael={props.onOpenKael} routeServiceType={routeServiceType} />
+}
+
+function BookingWizardRoute({ mode, onOpenHistory, onOpenKael, routeServiceType }: BookingWizardProps & { mode: GlassMode; routeServiceType: ServiceType | null }) {
+  const language = useAppLanguage()
+  const { session } = useAuth()
+  const copy = copyMap[language]
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
-  const routeServiceType = useMemo(() => parseRouteServiceType(params.serviceType), [params.serviceType])
-  const [state, dispatch] = useReducer(reducer, routeServiceType, createInitialWizardState)
+  const [state, dispatch] = useReducer(bookingWizardReducer, routeServiceType, createInitialWizardState)
+  const submitDescribeInFlightRef = useRef(false)
+  const draftSubmissionActiveRef = useRef(true)
   const visual = useMemo(() => getBookingWizardVisual(mode, reduceTransparency), [mode, reduceTransparency])
   const visualContext = useMemo(() => ({ mode, reduceMotion, reduceTransparency, visual }), [mode, reduceMotion, reduceTransparency, visual])
-
+  useEffect(() => {
+    draftSubmissionActiveRef.current = true
+    return () => {
+      draftSubmissionActiveRef.current = false
+    }
+  }, [])
   const pickPhotos = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
@@ -338,6 +276,14 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
   }
 
   const submitDescribe = async () => {
+    const pendingDraftOwnerId = session?.user.id
+    if (!pendingDraftOwnerId) {
+      dispatch({
+        type: 'set_error',
+        error: language === 'vi' ? 'Phiên đăng nhập đã hết hạn. Đăng nhập lại để gửi yêu cầu.' : 'Your session expired. Sign in again to send this request.',
+      })
+      return
+    }
     if (state.description.trim().length < 10) {
       dispatch({ type: 'set_error', error: copy.descriptionTooShort })
       return
@@ -347,13 +293,17 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
       return
     }
     if (!state.serviceType) return
+    if (submitDescribeInFlightRef.current) return
+    submitDescribeInFlightRef.current = true
     dispatch({ type: 'set_submitting', flag: true })
     dispatch({ type: 'set_error', error: null })
     dispatch({ type: 'goto', step: 'analyzing' })
     try {
       const message = formatBookingMessageForKael(copy, state)
       const scheduledAt = new Date().toISOString()
-      await setPendingKaelChatDraft({
+      // The post-persistence lifecycle check prevents an old account or unmounted screen from navigating.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      await setPendingKaelChatDraft(pendingDraftOwnerId, {
         addressLabel: state.addressLabel.trim(),
         clientRequestId: generateClientRequestId(),
         createdAt: scheduledAt,
@@ -369,9 +319,21 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
         serviceType: state.serviceType,
         source: 'booking',
       })
+      if (!draftSubmissionActiveRef.current) {
+        await clearPendingKaelChatDraft(pendingDraftOwnerId)
+        return
+      }
       onOpenKael(state.serviceType)
+    } catch {
+      if (draftSubmissionActiveRef.current) {
+        dispatch({ type: 'set_error', error: copy.draftPersistFailed })
+        dispatch({ type: 'goto', step: 'describe' })
+      }
     } finally {
-      dispatch({ type: 'set_submitting', flag: false })
+      submitDescribeInFlightRef.current = false
+      if (draftSubmissionActiveRef.current) {
+        dispatch({ type: 'set_submitting', flag: false })
+      }
     }
   }
 

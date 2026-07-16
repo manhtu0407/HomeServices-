@@ -219,7 +219,7 @@ export function ProfileRankingPanel({
   pointsText: string
   progress: number
   progressBar: ReactNode
-  rank: number
+  rank: number | null
   rankNodes: ProfileRankingNode[]
   rankProcess: ReactNode
   rankStatusLabel: string
@@ -231,7 +231,12 @@ export function ProfileRankingPanel({
   const language = useAppLanguage()
   const glass = useGlassAccessibility()
   const tokens = useCustomerV21ProfileTheme()
-  const activeRank = rank > 0
+  const activeRank = rank !== null && rank > 0
+  const rankValue = rank === null
+    ? (language === 'vi' ? 'Chưa có' : 'Pending')
+    : rank === 0
+      ? (language === 'vi' ? 'Chưa xếp hạng' : 'Not ranked')
+      : String(rank)
 
   return (
     <View testID="customer-v21-profile-ranking">
@@ -243,7 +248,7 @@ export function ProfileRankingPanel({
           reduceTransparency={glass.reduceTransparency}
           scope="Ranking"
           tokens={tokens}
-          value={String(rank)}
+          value={rankValue}
         />
         <View style={styles.flex}>
           <View style={styles.profileRankingStatusChipFrame} testID="customer-v21-profile-ranking-status-chip">
@@ -353,28 +358,32 @@ export function ProfileMoneyPanel({
   latestStatus: string
   latestTitle: string
   metrics: ProfilePanelMetric[]
-  score: number
+  score: number | null
   scoreState: string
 }) {
   const language = useAppLanguage()
   const glass = useGlassAccessibility()
   const tokens = useCustomerV21ProfileTheme()
+  const scorePercent = score ?? 0
+  const scoreValue = score === null
+    ? (language === 'vi' ? 'Chưa có' : 'Pending')
+    : String(score)
   return (
     <View testID="customer-v21-profile-money">
       <ProfileAuraCard contentStyle={styles.profileMoneyHero} scope="MoneyHero" testID="customer-v21-profile-money-hero">
         <Text style={[styles.profileMoneyKicker, { color: tokens.text }]}>{language === 'vi' ? 'Chỉ số Bảo vệ đồng tiền' : 'Money protection score'}</Text>
         <ProfileLiquidScore
           caseOverviewScoreAura={CaseOverviewScoreAura}
-          label="/100"
-          percent={score}
+          label={score === null ? '' : '/100'}
+          percent={scorePercent}
           reduceTransparency={glass.reduceTransparency}
           scope="Money"
           secondaryLabel={scoreState}
           size="large"
           tokens={tokens}
-          value={String(score)}
+          value={scoreValue}
         />
-        <KaelChip label={chipLabel} variant={score > 0 ? 'selected' : 'unselected'} />
+        <KaelChip label={chipLabel} variant={score !== null && score > 0 ? 'selected' : 'unselected'} />
         <Text style={[styles.profileMoneyBody, { color: tokens.muted }]}>{body}</Text>
       </ProfileAuraCard>
 

@@ -4,6 +4,7 @@
 
 import { asBoolean, asJobStatus, asString, asWorkerCancellationAbuseSignals, asWorkerCancellationCategory, asWorkerCancellationReasonCode, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
+import { validateJobEvidenceRefs } from "./evidence-refs.service.ts";
 import { mapWorkerCancellationRequestError } from "./_shared.ts";
 import { logJobEvent } from "./audit.ts";
 import { runPolicyAutonomyGate } from "./autonomy-gate.ts";
@@ -38,10 +39,27 @@ export async function requestWorkerCancellation(
     );
     if (existing.error || !existing.data) return null;
 
+    const cancellationId = asString(existing.data.id);
+    const cancellationStatus = nullableString(existing.data.status) ??
+      "reviewing_by_kael";
+    if (cancellationStatus === "approved") {
+      await recordWorkerCancellationReview(client, {
+        jobId,
+        workerId: ctx.user.id,
+        cancellationId,
+        subCase: "explicit_cancel",
+      }).catch(() => {
+        console.warn("mobile-api worker cancellation memory repair failed", {
+          jobId,
+          cancellationId,
+        });
+      });
+    }
+
     return {
-      cancellation_id: asString(existing.data.id),
+      cancellation_id: cancellationId,
       job_id: jobId,
-      status: nullableString(existing.data.status) ?? "reviewing_by_kael",
+      status: cancellationStatus,
       job_status: jobStatus,
       broadcast_sent: false,
       message: "Yêu cầu hủy việc đang được xử lý.",
@@ -75,20 +93,27 @@ export async function requestWorkerCancellation(
   if (!command.valid) apiFailure("INVALID_STATUS", command.error, 409);
   const existingCancellation = await readExistingCancellation(job.status as JobStatus);
   if (existingCancellation) return existingCancellation;
+  const evidencePhotoRefs = await validateJobEvidenceRefs(client, {
+    jobId,
+    mediaRefs: input.evidence_photo_urls,
+    allowedStages: ["cancellation_evidence"],
+    ownerId: ctx.user.id,
+  });
+  const validatedInput = { ...input, evidence_photo_urls: evidencePhotoRefs };
   const preAutonomy = await gateWorkerCancellationBeforeMutation({
     client,
     ctx,
     job,
     jobId,
-    request: input,
+    request: validatedInput,
   });
 
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("request_worker_cancellation_atomic", {
       p_job_id: jobId,
       p_worker_id: ctx.user.id,
-      p_reason: input.reason,
-      p_evidence_photo_urls: input.evidence_photo_urls,
+      p_reason: validatedInput.reason,
+      p_evidence_photo_urls: validatedInput.evidence_photo_urls,
     }),
   );
   if (result.error) {
@@ -246,9 +271,6 @@ export async function requestWorkerCancellation(
       jobId,
       workerId: nullableString(row.worker_id_out) ?? ctx.user.id,
       cancellationId,
-      reason: input.reason,
-      classification,
-      abuse,
       subCase: "explicit_cancel",
     }).catch(() => {
       console.warn("mobile-api worker cancellation review write failed", {

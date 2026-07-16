@@ -28,6 +28,8 @@ vi.mock('@/lib/db/query', () => ({
 // per test without spinning up real Supabase.
 const mockAuthenticate = vi.fn()
 const mockCreateBroadcasts = vi.fn()
+const JOB_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+const SCOPE_CHANGE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 vi.mock('@/lib/auth/api-auth', async () => {
   const actual = await vi.importActual<typeof import('@/lib/auth/api-auth')>('@/lib/auth/api-auth')
   return {
@@ -75,6 +77,7 @@ function makeParams(id: string) {
 function authMissing() {
   mockAuthenticate.mockResolvedValue({
     success: false,
+    code: 'AUTH_MISSING',
     error: 'Vui lòng đăng nhập',
     status: 401,
   })
@@ -83,8 +86,18 @@ function authMissing() {
 function authForbidden() {
   mockAuthenticate.mockResolvedValue({
     success: false,
+    code: 'AUTH_FORBIDDEN',
     error: 'Bạn không có quyền thực hiện hành động này',
     status: 403,
+  })
+}
+
+function authUnavailable() {
+  mockAuthenticate.mockResolvedValue({
+    success: false,
+    code: 'AUTH_UNAVAILABLE',
+    error: 'Dịch vụ xác thực tạm thời không khả dụng',
+    status: 503,
   })
 }
 
@@ -96,6 +109,18 @@ beforeEach(() => {
     batchId: 'batch-1',
     broadcastCount: 1,
     workerIds: ['worker-1'],
+  })
+})
+
+describe('Transient auth failures', () => {
+  it('preserves AUTH_UNAVAILABLE and 503 at the route boundary', async () => {
+    authUnavailable()
+    const { GET } = await import('@/app/api/services/route')
+
+    const response = await GET(makeRequest())
+
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ code: 'AUTH_UNAVAILABLE' })
   })
 })
 
@@ -192,21 +217,21 @@ describe('Worker-only routes reject non-workers', () => {
   it('POST /jobs/[id]/accept: customer role → 403', async () => {
     authForbidden()
     const { POST } = await import('@/app/api/jobs/[id]/accept/route')
-    const res = await POST(makeRequest('POST'), makeParams('job-1'))
+    const res = await POST(makeRequest('POST'), makeParams(JOB_ID))
     expect(res.status).toBe(403)
   })
 
   it('POST /jobs/[id]/decline: customer role → 403', async () => {
     authForbidden()
     const { POST } = await import('@/app/api/jobs/[id]/decline/route')
-    const res = await POST(makeRequest('POST'), makeParams('job-1'))
+    const res = await POST(makeRequest('POST'), makeParams(JOB_ID))
     expect(res.status).toBe(403)
   })
 
   it('POST /jobs/[id]/scope-change: customer role → 403', async () => {
     authForbidden()
     const { POST } = await import('@/app/api/jobs/[id]/scope-change/route')
-    const res = await POST(makeRequest('POST', {}), makeParams('job-1'))
+    const res = await POST(makeRequest('POST', {}), makeParams(JOB_ID))
     expect(res.status).toBe(403)
   })
 
@@ -224,11 +249,12 @@ describe('Worker-only routes reject non-workers', () => {
     const { POST } = await import('@/app/api/jobs/[id]/scope-change/route')
     const res = await POST(
       makeRequest('POST', {
+        client_request_id: '11111111-1111-4111-8111-111111111111',
         new_description: 'Need extra pipe replacement',
         reason: 'Inspection found a larger leak',
         photo_urls: [],
       }),
-      makeParams('job-1'),
+      makeParams(JOB_ID),
     )
     const body = await res.json()
 
@@ -240,8 +266,28 @@ describe('Worker-only routes reject non-workers', () => {
   it('PATCH /jobs/[id]/status: customer role → 403', async () => {
     authForbidden()
     const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
-    const res = await PATCH(makeRequest('PATCH', { status: 'arrived' }), makeParams('job-1'))
+    const res = await PATCH(makeRequest('PATCH', { status: 'arrived' }), makeParams(JOB_ID))
     expect(res.status).toBe(403)
+  })
+
+  it('PATCH /jobs/[id]/status rejects a malformed id before privileged DB access', async () => {
+    const from = vi.fn()
+    mockAuthenticate.mockResolvedValue({
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: { from },
+    })
+    const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
+
+    const res = await PATCH(
+      makeRequest('PATCH', { status: 'arrived' }),
+      makeParams('not-a-uuid'),
+    )
+
+    expect(res.status).toBe(404)
+    expect(await res.json()).toMatchObject({ code: 'NOT_FOUND' })
+    expect(from).not.toHaveBeenCalled()
   })
 
   it('PATCH /jobs/[id]/status: concurrent status change → 409', async () => {
@@ -251,7 +297,7 @@ describe('Worker-only routes reject non-workers', () => {
       update: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({
         data: {
-          id: 'job-1',
+          id: JOB_ID,
           status: 'worker_on_way',
           worker_id: 'worker-1',
         },
@@ -273,7 +319,7 @@ describe('Worker-only routes reject non-workers', () => {
     })
 
     const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
-    const res = await PATCH(makeRequest('PATCH', { status: 'arrived' }), makeParams('job-1'))
+    const res = await PATCH(makeRequest('PATCH', { status: 'arrived' }), makeParams(JOB_ID))
     const body = await res.json()
 
     expect(res.status).toBe(409)
@@ -289,14 +335,14 @@ describe('Worker-only routes reject non-workers', () => {
       update: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({
         data: {
-          id: 'job-1',
+          id: JOB_ID,
           status: 'repairing',
           worker_id: 'worker-1',
         },
         error: null,
       }),
       maybeSingle: vi.fn().mockResolvedValue({
-        data: { id: 'job-1' },
+        data: { id: JOB_ID },
         error: null,
       }),
     }
@@ -318,7 +364,7 @@ describe('Worker-only routes reject non-workers', () => {
         completion_notes: 'Done',
         completion_photo_urls: ['https://example.com/after.jpg'],
       }),
-      makeParams('job-1'),
+      makeParams(JOB_ID),
     )
     const body = await res.json()
 
@@ -337,14 +383,14 @@ describe('Worker-only routes reject non-workers', () => {
       }),
       single: vi.fn().mockResolvedValue({
         data: {
-          id: 'job-1',
+          id: JOB_ID,
           status: 'repairing',
           worker_id: 'worker-1',
         },
         error: null,
       }),
       maybeSingle: vi.fn().mockResolvedValue({
-        data: { id: 'job-1' },
+        data: { id: JOB_ID },
         error: null,
       }),
     }
@@ -365,7 +411,7 @@ describe('Worker-only routes reject non-workers', () => {
         completion_notes: 'Done',
         completion_photo_urls: ['https://example.com/after.jpg'],
       }),
-      makeParams('job-1'),
+      makeParams(JOB_ID),
     )
 
     expect(res.status).toBe(200)
@@ -400,28 +446,28 @@ describe('Customer-only routes reject non-customers', () => {
   it('POST /jobs/[id]/confirm-search: worker role → 403', async () => {
     authForbidden()
     const { POST } = await import('@/app/api/jobs/[id]/confirm-search/route')
-    const res = await POST(makeRequest('POST'), makeParams('job-1'))
+    const res = await POST(makeRequest('POST'), makeParams(JOB_ID))
     expect(res.status).toBe(403)
   })
 
   it('POST /jobs/[id]/confirm-completion: worker role → 403', async () => {
     authForbidden()
     const { POST } = await import('@/app/api/jobs/[id]/confirm-completion/route')
-    const res = await POST(makeRequest('POST'), makeParams('job-1'))
+    const res = await POST(makeRequest('POST'), makeParams(JOB_ID))
     expect(res.status).toBe(403)
   })
 
   it('POST /jobs/[id]/review: worker role → 403', async () => {
     authForbidden()
     const { POST } = await import('@/app/api/jobs/[id]/review/route')
-    const res = await POST(makeRequest('POST', {}), makeParams('job-1'))
+    const res = await POST(makeRequest('POST', {}), makeParams(JOB_ID))
     expect(res.status).toBe(403)
   })
 
   it('POST /scope-changes/[id]/decide: worker role → 403', async () => {
     authForbidden()
     const { POST } = await import('@/app/api/scope-changes/[id]/decide/route')
-    const res = await POST(makeRequest('POST', { decision: 'approve' }), makeParams('sc-1'))
+    const res = await POST(makeRequest('POST', { decision: 'approve' }), makeParams(SCOPE_CHANGE_ID))
     expect(res.status).toBe(403)
   })
 })
@@ -438,7 +484,7 @@ describe('Kael-owned money path parity in Next reference routes', () => {
       }),
       single: vi.fn().mockResolvedValue({
         data: {
-          id: 'job-1',
+          id: JOB_ID,
           status: 'awaiting_customer_confirm',
           customer_id: 'customer-1',
           service_type: 'plumbing',
@@ -449,7 +495,7 @@ describe('Kael-owned money path parity in Next reference routes', () => {
         error: null,
       }),
       maybeSingle: vi.fn().mockResolvedValue({
-        data: { id: 'job-1' },
+        data: { id: JOB_ID },
         error: null,
       }),
     }
@@ -467,7 +513,7 @@ describe('Kael-owned money path parity in Next reference routes', () => {
     })
 
     const { POST } = await import('@/app/api/jobs/[id]/confirm-search/route')
-    const res = await POST(makeRequest('POST'), makeParams('job-1'))
+    const res = await POST(makeRequest('POST'), makeParams(JOB_ID))
 
     expect(res.status).toBe(200)
     expect(updates[0]).toMatchObject({
@@ -490,7 +536,7 @@ describe('Cross-owner access returns 404 (no info leak)', () => {
         eq: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
           data: {
-            id: 'job-1',
+            id: JOB_ID,
             status: 'awaiting_customer_confirm',
             customer_id: 'other-customer', // NOT user-1
             service_type: 'electrical',
@@ -508,20 +554,20 @@ describe('Cross-owner access returns 404 (no info leak)', () => {
     })
 
     const { POST } = await import('@/app/api/jobs/[id]/confirm-search/route')
-    const res = await POST(makeRequest('POST'), makeParams('job-1'))
+    const res = await POST(makeRequest('POST'), makeParams(JOB_ID))
     const body = await res.json()
     expect(res.status).toBe(404)
     expect(body.code).toBe('NOT_FOUND')
   })
 
-  it('Worker A updates Worker B job status → 403', async () => {
+  it('Worker A updates Worker B job status → 404', async () => {
     const supabase: any = {
       from: vi.fn(() => ({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
           data: {
-            id: 'job-1',
+            id: JOB_ID,
             status: 'arrived',
             worker_id: 'other-worker', // NOT user-1
           },
@@ -539,11 +585,11 @@ describe('Cross-owner access returns 404 (no info leak)', () => {
     const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
     const res = await PATCH(
       makeRequest('PATCH', { status: 'inspecting' }),
-      makeParams('job-1'),
+      makeParams(JOB_ID),
     )
     const body = await res.json()
-    expect(res.status).toBe(403)
-    expect(body.code).toBe('AUTH_FORBIDDEN')
+    expect(res.status).toBe(404)
+    expect(body.code).toBe('NOT_FOUND')
   })
 
   it('Customer decides scope change on another customer\'s job → 404', async () => {
@@ -572,7 +618,7 @@ describe('Cross-owner access returns 404 (no info leak)', () => {
     })
 
     const { POST } = await import('@/app/api/scope-changes/[id]/decide/route')
-    const res = await POST(makeRequest('POST', { decision: 'approve' }), makeParams('sc-1'))
+    const res = await POST(makeRequest('POST', { decision: 'approve' }), makeParams(SCOPE_CHANGE_ID))
     const body = await res.json()
     expect(res.status).toBe(404)
     expect(body.code).toBe('NOT_FOUND')
@@ -591,7 +637,7 @@ describe('Admin can bypass ownership check (Bug #6)', () => {
         eq: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({
           data: {
-            id: 'job-1',
+            id: JOB_ID,
             status: 'paid',
             customer_id: 'some-customer',
             worker_id: 'some-worker',
@@ -632,7 +678,7 @@ describe('Admin can bypass ownership check (Bug #6)', () => {
     })
 
     const { GET } = await import('@/app/api/jobs/[id]/route')
-    const res = await GET(makeRequest('GET'), makeParams('job-1'))
+    const res = await GET(makeRequest('GET'), makeParams(JOB_ID))
     expect(res.status).toBe(200)
   })
 })

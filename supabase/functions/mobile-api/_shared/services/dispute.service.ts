@@ -3,6 +3,7 @@
 
 import { asBoolean, asDisputePriority, asString, nullableString } from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
+import { validateJobEvidenceRefs, type JobEvidenceStage } from "./evidence-refs.service.ts";
 import { mapDisputeCounterError, mapDisputeDecisionError, mapDisputeOpenError } from "./_shared.ts";
 import { logJobEvent } from "./audit.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
@@ -15,6 +16,12 @@ export async function openDispute(
   input: DisputeOpenRequestInput,
 ) {
   const client = db(ctx);
+  const evidencePhotoRefs = await validateJobEvidenceRefs(client, {
+    jobId,
+    mediaRefs: input.evidence_photo_urls,
+    allowedStages: DISPUTE_EVIDENCE_STAGES,
+    ownerId: ctx.user.id,
+  });
   const localDecision = determineDisputeSubCase({
     disputeType: input.dispute_type as DisputeType,
     jobStatus: "unknown",
@@ -25,7 +32,7 @@ export async function openDispute(
     initiatorStatement: input.initiator_statement,
     evidenceCounts: {
       chatMessages: 0,
-      photoUrls: input.evidence_photo_urls.length,
+      photoUrls: evidencePhotoRefs.length,
       statusEvents: 0,
       scopeChanges: 0,
       kaelArtifacts: 0,
@@ -43,7 +50,7 @@ export async function openDispute(
       p_initiated_by: ctx.role,
       p_dispute_type: input.dispute_type,
       p_initiator_statement: input.initiator_statement,
-      p_evidence_photo_urls: input.evidence_photo_urls,
+      p_evidence_photo_urls: evidencePhotoRefs,
       p_kael_neutral_summary: neutralSummary,
     }),
   );
@@ -95,6 +102,15 @@ export async function openDispute(
     created_at: createdAt,
   };
 }
+
+const DISPUTE_EVIDENCE_STAGES = [
+  "before",
+  "after",
+  "kael_reference",
+  "cancellation_evidence",
+  "scope_change_evidence",
+  "access_check_in",
+] as const satisfies readonly JobEvidenceStage[];
 
 export async function submitDisputeCounterStatement(
   ctx: MobileApiContext,

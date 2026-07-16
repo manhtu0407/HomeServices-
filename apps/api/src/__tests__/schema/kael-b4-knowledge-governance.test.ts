@@ -52,12 +52,27 @@ describe('Plan §31 B4 knowledge governance', () => {
     const router = readEdgeRouterLayer()
     const mobileTypes = readMobileApiTypesLayer()
 
-    expect(services).toContain('apply_approved_learning_candidate_to_knowledge')
+    expect(services).toContain('admin_approve_learning_candidate_atomic')
+    expect(services).not.toContain('rpc("apply_approved_learning_candidate_to_knowledge"')
     expect(services).toContain('knowledge_apply')
     expect(router).toContain('knowledge_apply')
     expect(mobileTypes).toContain('knowledge_apply')
     expect(services).not.toContain('.from("worker_safety_patterns").insert')
     expect(services).not.toContain('.from("service_knowledge_boxes").insert')
+  })
+
+  it('commits manual approval and knowledge application through one retry-safe RPC', () => {
+    const sql = read('supabase/migrations/20260715114000_atomic_learning_admin_approval.sql')
+
+    expect(sql).toContain('create or replace function public.admin_approve_learning_candidate_atomic')
+    expect(sql).toContain('for update')
+    expect(sql).toMatch(
+      /version\.change_reason\s*=\s*'admin_approve_learning_candidate:'\s*\|\|\s*p_candidate_id::text/,
+    )
+    expect(sql).toContain("lifecycle.transition_reason = 'admin_approved_knowledge_upsert'")
+    expect(sql).toContain('public.apply_approved_learning_candidate_to_knowledge')
+    expect(sql).toContain("set search_path = ''")
+    expect(sql).toContain('grant execute on function public.admin_approve_learning_candidate_atomic')
   })
 
   it('preserves B1 retrieval tables while B4 governance migration is present', () => {

@@ -242,8 +242,8 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
     return lower as DistrictSlug
   }
 
-  // 3. Vietnamese label (case-insensitive). X3 (Plan.md \u00a727.6 \u2014 2026-05-29):
-  // F-08 fix \u2014 also match the diacritic-stripped form so ASCII "Binh Thanh"
+  // 3. Vietnamese label (case-insensitive). Also match the diacritic-stripped
+  // form so ASCII "Binh Thanh"
   // returned by Google Places autocomplete matches "B\u00ecnh Th\u1ea1nh". Note: NFD
   // does not decompose "\u0110"/"\u0111", so we map them explicitly to D/d.
   const stripVi = (value: string) =>
@@ -285,7 +285,7 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
 }
 
 /**
- * X3 (Plan.md §27.6 — 2026-05-29): F-14 fix. Free-form address labels like
+ * Free-form address labels like
  * "Vinhomes Central Park, Bình Thạnh" need substring scanning to extract the
  * district; `normalizeDistrict` alone returns hcmc_all because the whole
  * string is neither a slug nor a label. We split by common separators and

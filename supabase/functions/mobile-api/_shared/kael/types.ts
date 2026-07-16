@@ -106,6 +106,33 @@ export const visionResultSchema = z.object({
   complexity_hint: z.enum(["small", "medium", "large"]),
 });
 
+export const workerVisionFindingSchema = visionResultSchema.extend({
+  confidence: z.number().min(0).max(1),
+  requires_direct_verification: z.boolean(),
+  safety_flags: z.array(z.enum([
+    "electrical",
+    "water_near_electricity",
+    "sharp_or_exposed_part",
+    "structural_instability",
+    "uncertain_identification",
+  ])).max(5).default([]),
+}).strict().superRefine((value, ctx) => {
+  if (value.confidence < 0.75 && !value.requires_direct_verification) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Low-confidence worker vision must require direct verification",
+      path: ["requires_direct_verification"],
+    });
+  }
+  if (value.safety_flags.length > 0 && !value.requires_direct_verification) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Safety-relevant worker vision must require direct verification",
+      path: ["requires_direct_verification"],
+    });
+  }
+});
+
 export const marketSourceTrustSignalsSchema = z.object({
   identity_verified: z.boolean(),
   source_type: z.enum(["direct_pricing", "materials", "reference", "listing", "unknown"]),
@@ -200,6 +227,7 @@ Return the required JSON only. Any customer-visible free-text field must be shor
 
 export type IntentResult = z.infer<typeof intentResultSchema>;
 export type VisionResult = z.infer<typeof visionResultSchema>;
+export type WorkerVisionFinding = z.infer<typeof workerVisionFindingSchema>;
 export type MarketPriceResult = z.infer<typeof marketPriceResultSchema>;
 export type MarketSourceEvidence = z.infer<typeof marketSourceEvidenceSchema>;
 export type MarketSourceEvidenceResult = z.infer<typeof marketSourceEvidenceResultSchema>;

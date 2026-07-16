@@ -18,6 +18,7 @@ import { requestScopeChange, decideScopeChange } from '@/lib/jobs/scope-change'
 
 // worker không gửi price; Kael compute từ context.
 const VALID_INPUT = {
+  client_request_id: '11111111-1111-4111-8111-111111111111',
   new_description: 'Phát hiện ống chính bị hỏng, cần thay đoạn lớn hơn',
   reason: 'On-site inspection cho thấy vấn đề nghiêm trọng hơn',
   photo_urls: [],

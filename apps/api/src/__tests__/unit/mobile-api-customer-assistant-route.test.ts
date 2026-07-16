@@ -16,7 +16,7 @@ const customerAuth: MobileApiAuthResult = {
 describe('mobile-api customer Kael assistant route', () => {
   it('routes a job-scoped Case Work question through the authenticated Edge service', async () => {
     const answerKaelAssistant = vi.fn(async () => ({
-      answer: 'Kael Ä‘ang Ä‘á»c Ä‘Ãºng há»“ sÆ¡ cÃ´ng viá»‡c.',
+      answer: 'Kael đang đọc đúng hồ sơ công việc.',
       safety_notes: [],
       citations: ['NestScout platform scope'],
       suggested_actions: ['check_job'] as const,
@@ -34,7 +34,7 @@ describe('mobile-api customer Kael assistant route', () => {
       body: JSON.stringify({
         job_id: '22222222-2222-4222-8222-222222222222',
         language: 'vi',
-        message: 'BÃ¡o giÃ¡ nÃ y chÆ°a tÃ­nh pháº§n váº­t tÆ° Ä‘Ãºng khÃ´ng?',
+        message: 'Báo giá này chưa tính phần vật tư đúng không?',
         surface: 'customer_case',
       }),
     }))
@@ -70,7 +70,7 @@ describe('mobile-api customer Kael assistant route', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         language: 'vi',
-        message: 'Xem láº¡i bÃ¡o giÃ¡ giÃºp tÃ´i.',
+        message: 'Xem lại báo giá giúp tôi.',
         surface: 'customer_case',
       }),
     }))

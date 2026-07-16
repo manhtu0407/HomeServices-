@@ -12,6 +12,12 @@ const MIGRATIONS_DIR = resolve(ROOT, 'supabase/migrations')
 const SHARED_DATABASE_TYPES = resolve(ROOT, 'packages/shared/src/types/database.types.ts')
 const DROPPED_PUBLIC_TABLES = new Set(['worker_profiles_districts_backup_x3'])
 const DROPPED_PUBLIC_FUNCTIONS = new Set(['normalize_district_value'])
+// PostgREST excludes trigger-returning helpers from the generated callable RPC surface.
+const TRIGGER_ONLY_PUBLIC_FUNCTIONS = new Set([
+  'notify_worker_account_approved',
+  'prevent_evidence_snapshot_mutation',
+  'validate_customer_payment_method_customer',
+])
 
 const readText = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')
 const listMigrationSql = () =>
@@ -164,7 +170,9 @@ describe('Database.public.Tables completeness', () => {
     const migrationFunctions = uniqueMatches(
       migrations,
       /create\s+(?:or\s+replace\s+)?function\s+public\.([a-zA-Z0-9_]+)/gi,
-    ).filter((name) => !DROPPED_PUBLIC_FUNCTIONS.has(name))
+    ).filter(
+      (name) => !DROPPED_PUBLIC_FUNCTIONS.has(name) && !TRIGGER_ONLY_PUBLIC_FUNCTIONS.has(name),
+    )
     const generatedFunctions = new Set(generatedPublicKeys('Functions'))
     const missing = migrationFunctions.filter((fn) => !generatedFunctions.has(fn))
 
@@ -328,10 +336,10 @@ describe('Insert type requirements', () => {
       p_worker_id: workerId,
     } satisfies Database['public']['Functions']['check_kael_worker_chat_rate']['Args']
     const rateRow = {
-      allowed: true,
-      minute_count: 1,
-      hour_count: 1,
-      reason: null,
+      allowed: false,
+      minute_count: 5,
+      hour_count: 5,
+      reason: 'minute',
     } satisfies Database['public']['Functions']['check_kael_worker_chat_rate']['Returns'][number]
 
     expect(session.job_id).toBe(jobId)
@@ -339,7 +347,7 @@ describe('Insert type requirements', () => {
     expect(turn.client_request_id).toBe('turn-request-1')
     expect(rateLog.worker_id).toBe(workerId)
     expect(rateArgs.p_worker_id).toBe(workerId)
-    expect(rateRow.allowed).toBe(true)
+    expect(rateRow.allowed).toBe(false)
   })
 
   it('represents the durable circuit and generic rate contracts', () => {
@@ -467,6 +475,11 @@ describe('Insert type requirements', () => {
       p_candidate_id: '00000000-0000-0000-0000-000000000005',
       p_admin_id: '00000000-0000-0000-0000-000000000006',
     } satisfies Database['public']['Functions']['apply_approved_learning_candidate_to_knowledge']['Args']
+    const atomicApprovalArgs = {
+      p_candidate_id: '00000000-0000-0000-0000-000000000005',
+      p_admin_id: '00000000-0000-0000-0000-000000000006',
+      p_review_note: 'reviewed',
+    } satisfies Database['public']['Functions']['admin_approve_learning_candidate_atomic']['Args']
     const applyAutonomyArgs = {
       p_job_id: jobId,
       p_gate_audit_id: auditId,
@@ -479,6 +492,7 @@ describe('Insert type requirements', () => {
     expect(chatRateArgs.p_user_id).toBeTruthy()
     expect(matchArgs.p_query_embedding).toContain('[')
     expect(applyKnowledgeArgs.p_admin_id).toBeTruthy()
+    expect(atomicApprovalArgs.p_review_note).toBe('reviewed')
     expect(applyAutonomyArgs.p_gate_audit_id).toBe(auditId)
   })
 
@@ -489,6 +503,7 @@ describe('Insert type requirements', () => {
       priority: 'high',
       escalation_level: 'hard',
       reason_code: 'threat_complaint',
+      response_summary: 'Escalated for admin review.',
     } satisfies Database['public']['Tables']['kael_admin_queue']['Insert']
     const log = {
       actor_role: 'customer',
@@ -557,6 +572,7 @@ describe('Insert type requirements', () => {
       initiator_statement: 'Customer says completion is not accepted.',
       counter_party_response_deadline: '2026-05-27T00:00:00.000Z',
       evidence_snapshot_id: '00000000-0000-0000-0000-000000000000',
+      evidence_locked_at: snapshot.evidence_locked_at,
       kael_neutral_summary: 'Fact-only summary for admin review.',
       admin_review: { priority: 'high' },
       status: 'open',
@@ -598,7 +614,7 @@ describe('RPC type requirements', () => {
       Database['public']['Functions']['promote_learning_candidate']['Returns'][number]
     const row = {
       ok: true,
-      error_code: null,
+      error_code: 'UNUSED_ON_SUCCESS',
       candidate_id: '00000000-0000-0000-0000-000000000000',
       rule_id: '11111111-1111-4111-8111-111111111111',
       rule_version: 1,
@@ -613,7 +629,7 @@ describe('RPC type requirements', () => {
       Database['public']['Functions']['rollback_learning_rule']['Returns'][number]
     const row = {
       ok: true,
-      error_code: null,
+      error_code: 'UNUSED_ON_SUCCESS',
       rule_id: '11111111-1111-4111-8111-111111111111',
     } satisfies RollbackRow
 
@@ -624,11 +640,13 @@ describe('RPC type requirements', () => {
   it('Kael learning admin review RPCs return candidate review status', () => {
     type ApproveRow =
       Database['public']['Functions']['admin_approve_learning_candidate']['Returns'][number]
+    type AtomicApproveRow =
+      Database['public']['Functions']['admin_approve_learning_candidate_atomic']['Returns'][number]
     type RejectRow =
       Database['public']['Functions']['admin_reject_learning_candidate']['Returns'][number]
     const approved = {
       ok: true,
-      error_code: null,
+      error_code: 'UNUSED_ON_SUCCESS',
       candidate_id: '00000000-0000-0000-0000-000000000000',
       rule_id: '11111111-1111-4111-8111-111111111111',
       rule_version: 2,
@@ -636,12 +654,21 @@ describe('RPC type requirements', () => {
     } satisfies ApproveRow
     const rejected = {
       ok: true,
-      error_code: null,
+      error_code: 'UNUSED_ON_SUCCESS',
       candidate_id: '00000000-0000-0000-0000-000000000000',
       status: 'archived',
     } satisfies RejectRow
+    const atomicApproved = {
+      ...approved,
+      knowledge_ok: true,
+      knowledge_error_code: 'UNUSED_ON_SUCCESS',
+      knowledge_table: 'service_knowledge_boxes',
+      record_key: 'cleaning',
+      knowledge_version: 3,
+    } satisfies AtomicApproveRow
 
     expect(approved.rule_version).toBe(2)
+    expect(atomicApproved.knowledge_version).toBe(3)
     expect(rejected.status).toBe('archived')
   })
 
@@ -721,6 +748,26 @@ describe('RPC type requirements', () => {
 })
 
 describe('Type helper smoke tests', () => {
+  it('jobs types include idempotency, apartment access, and frozen payment columns', () => {
+    const job = {
+      customer_id: '00000000-0000-4000-8000-000000000001',
+      service_type: 'plumbing' as const,
+      description: 'Ống nước dưới bồn rửa đang bị rò rỉ.',
+      client_request_id: '00000000-0000-4000-8000-000000000002',
+      apartment_access_profile: { entry_method: 'Đăng ký tại quầy lễ tân' },
+      apartment_access_state: { release_stage: 'area_only' },
+      gross_amount: 900_000,
+      platform_fee: 45_000,
+      worker_net: 855_000,
+      payment_status: 'received',
+      payment_provider: 'sepay_vietqr',
+      payment_amount_received: 900_000,
+      sepay_transaction_id: 'sepay-transaction-1',
+    } satisfies Database['public']['Tables']['jobs']['Insert']
+
+    expect(job.worker_net).toBe(job.gross_amount - job.platform_fee)
+  })
+
   it('Tables<"jobs"> resolves to jobs Row type', () => {
     type JobRow = Tables<'jobs'>
     const _check: JobRow = {} as Database['public']['Tables']['jobs']['Row']

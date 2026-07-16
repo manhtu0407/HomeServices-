@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from 'react'
 import { View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
 import type { ServiceType } from '@nestscout/shared'
 
-import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
+import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 import type { WorkerV5IconName, WorkerV5ScreenId } from '../dock/types'
@@ -16,10 +16,7 @@ import {
   formatVnd,
   textByLanguage,
 } from '../ui/format'
-import {
-  formatWorkerDistrict,
-  workerDocumentSummary,
-} from '../ui/labels'
+import { workerDocumentSummary } from '../ui/labels'
 import {
   workerV5ReliabilityAxes,
   workerV5ReliabilityAxisScore,
@@ -64,8 +61,8 @@ import {
   WorkerV5VerificationChecklist,
   WorkerV5VerificationHero,
   WorkerV5VerificationRenewalCard,
-  workerV5VerificationChecks,
 } from './verification-surfaces'
+import { workerV5VerificationChecks } from './verification-model'
 import { styles } from './body-styles'
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type WorkerV5IconMap = Record<WorkerV5IconName, ImageSourcePropType>
@@ -114,7 +111,7 @@ type WorkerV5ReliabilityAxisFillComponent = ComponentType<{
   score: number
 }>
 type WorkerV5ReadOnlyToggleListComponent = ComponentType<{
-  items: ReadonlyArray<{ enabled: boolean; label: string; value: string }>
+  items: readonly { enabled: boolean; label: string; value: string }[]
   reduceTransparency: boolean
 }>
 export function WorkerV5ProfileOverviewBody({
@@ -268,6 +265,11 @@ export function WorkerV5SkillsServiceAreaBody({
   skillsHeroIcon: ImageSourcePropType
 }) {
   const profile = runtime.workerProfile
+  const serviceAreaOwnerKey = [
+    profile?.id ?? 'no-profile',
+    profile?.districts?.join('|') ?? '',
+    language,
+  ].join(':')
 
   return (
     <View style={styles.sectionStack}>
@@ -286,7 +288,12 @@ export function WorkerV5SkillsServiceAreaBody({
         serviceIcons={serviceIcons}
         toolsIcon={skillsGridEmptyIcon}
       />
-      <ServiceAreaMapCard language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
+      <ServiceAreaMapCard
+        key={serviceAreaOwnerKey}
+        language={language}
+        reduceTransparency={reduceTransparency}
+        runtime={runtime}
+      />
     </View>
   )
 }
@@ -320,8 +327,11 @@ export function WorkerV5ReliabilityInsightsBody({
   const profile = runtime.workerProfile
   const axes = workerV5ReliabilityAxes(insights)
   const syncedAxes = axes.filter((axis) => axis.hasData)
-  const weakestAxis = syncedAxes.slice().sort((left, right) => left.score - right.score)[0]
-  const onTimeValue = workerV5ReliabilityPercentValue(insights?.on_time_rate_percent)
+  const weakestAxis = syncedAxes.reduce<(typeof syncedAxes)[number] | undefined>(
+    (weakest, axis) => !weakest || axis.score < weakest.score ? axis : weakest,
+    undefined,
+  )
+  const onTimeValue = workerV5ReliabilityPercentValue(insights?.on_time_rate_percent, language)
   const ratingValue = workerV5ReliabilityRatingValue(insights?.average_rating ?? profile?.rating, language)
   return (
     <View style={styles.sectionStack}>
@@ -330,7 +340,7 @@ export function WorkerV5ReliabilityInsightsBody({
         <WorkerV5ReliabilityStatTile
           label={textByLanguage(language, 'Hoàn tất', 'Completion')}
           testID="worker-v5-reliability-stat-completion"
-          value={workerV5ReliabilityPercentValue(workerV5ReliabilityAxisScore(insights, 'completion'))}
+          value={workerV5ReliabilityPercentValue(workerV5ReliabilityAxisScore(insights, 'completion'), language)}
         />
         <WorkerV5ReliabilityStatTile
           label={textByLanguage(language, 'Đúng hẹn', 'On-time')}
@@ -417,12 +427,11 @@ export function WorkerV5VerificationDocumentsBody({
         zipAura={zipAura}
       />
       <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Kael theo dõi', 'Kael tracks')}
+        action={textByLanguage(language, 'Chưa khả dụng', 'Unavailable')}
         title={textByLanguage(language, 'Nhắc gia hạn', 'Renewal reminder')}
       />
       <WorkerV5VerificationRenewalCard
         language={language}
-        profile={profile}
         readOnlyToggleList={ReadOnlyToggleList}
         reduceTransparency={reduceTransparency}
       />
@@ -488,11 +497,11 @@ export function WorkerV5BankTaxBody({
           {
             label: hasBank ? profile?.bank_name ?? textByLanguage(language, 'Ngân hàng', 'Bank') : textByLanguage(language, 'Ngân hàng', 'Bank'),
             selected: hasBank,
-            value: hasBank ? profile?.bank_account_masked ?? textByLanguage(language, 'Đã xác minh', 'Verified') : textByLanguage(language, 'Chưa xác minh', 'Not verified'),
+            value: hasBank ? profile?.bank_account_masked ?? textByLanguage(language, 'Đã ghi nhận', 'Recorded') : textByLanguage(language, 'Chưa ghi nhận', 'Not recorded'),
           },
           {
-            label: textByLanguage(language, 'ĐẢnh danh', 'Identity'),
-            selected: Boolean(profile?.has_cccd && profile?.has_selfie),
+            label: textByLanguage(language, 'Giấy tờ định danh', 'Identity documents'),
+            selected: Boolean(profile?.has_cccd || profile?.has_selfie),
             value: workerDocumentSummary(profile, language),
           },
           {
@@ -504,7 +513,7 @@ export function WorkerV5BankTaxBody({
         reduceTransparency={reduceTransparency}
       />
       <View style={styles.metricsGrid}>
-        <MetricTile label={textByLanguage(language, 'Có thể rút', 'Available')} value={netEarnings} />
+        <MetricTile label={textByLanguage(language, 'Thu nhập ròng đã ghi nhận', 'Recorded net earnings')} value={netEarnings} />
         <MetricTile label={textByLanguage(language, 'Đang chờ', 'Pending')} value={pending} />
       </View>
       <WorkerV5AccountChangeGuard
@@ -515,11 +524,11 @@ export function WorkerV5BankTaxBody({
         zipAura={zipAura}
       />
       <InfoListCard reduceTransparency={reduceTransparency}>
-        <InfoRow icon="wallet" label={textByLanguage(language, 'Tài khoản nhận tiền', 'Payout account')} reduceTransparency={reduceTransparency} value={hasBank ? `${profile?.bank_name ?? textByLanguage(language, 'Ngân hàng', 'Bank')} · ${profile?.bank_account_masked}` : textByLanguage(language, 'Chưa xác minh tài khoản', 'No verified account')} />
-        <InfoRow icon="shield" label={textByLanguage(language, 'Trùng định danh hồ sơ', 'Profile identity match')} reduceTransparency={reduceTransparency} value={profile?.legal_name ? profile.legal_name : textByLanguage(language, 'Chưa có tên pháp lý', 'No legal name')} />
+        <InfoRow icon="wallet" label={textByLanguage(language, 'Tài khoản ngân hàng đã ghi nhận', 'Recorded bank account')} reduceTransparency={reduceTransparency} value={hasBank ? `${profile?.bank_name ?? textByLanguage(language, 'Ngân hàng', 'Bank')} · ${profile?.bank_account_masked}` : textByLanguage(language, 'Chưa có tài khoản trong hồ sơ', 'No bank account on file')} />
+        <InfoRow icon="shield" label={textByLanguage(language, 'Tên pháp lý trong hồ sơ', 'Legal name on file')} reduceTransparency={reduceTransparency} value={profile?.legal_name ? profile.legal_name : textByLanguage(language, 'Chưa có tên pháp lý', 'No legal name')} />
         <InfoRow icon="document" label={textByLanguage(language, 'Kỳ đối soát', 'Settlement period')} reduceTransparency={reduceTransparency} value={formatDateRange(earnings?.from_date, earnings?.to_date, language)} />
         <InfoRow icon="document" label={textByLanguage(language, 'Chứng từ thu nhập', 'Income document')} reduceTransparency={reduceTransparency} value={textByLanguage(language, 'Chưa có chứng từ thu nhập được đồng bộ', 'No synced income document')} />
-        <InfoRow icon="clock" label={textByLanguage(language, 'Đổi tài khoản', 'Change account')} reduceTransparency={reduceTransparency} value={textByLanguage(language, 'Cần xác minh lại trước khi dùng cho rút tiền', 'Requires verification before payout use')} />
+        <InfoRow icon="clock" label={textByLanguage(language, 'Đổi tài khoản', 'Change account')} reduceTransparency={reduceTransparency} value={textByLanguage(language, 'Chuyển tiền chưa khả dụng; thay đổi tài khoản sẽ cần kiểm tra lại.', 'Payout is unavailable; account changes will require another review.')} />
       </InfoListCard>
     </View>
   )
@@ -544,14 +553,20 @@ export function WorkerV5ReviewsFeedbackBody({
 }) {
   const insights = runtime.workerPerformanceInsights
   const profile = runtime.workerProfile
-  const reviewCount = insights?.review_count ?? 0
+  const hasReviewCount = typeof insights?.review_count === 'number' && Number.isFinite(insights.review_count)
+  const reviewCount = hasReviewCount ? insights.review_count : null
   return (
     <View style={styles.sectionStack}>
       <WorkerV5ReviewsHero insights={insights} language={language} profile={profile} reduceTransparency={reduceTransparency} />
       <WorkerV5ReviewSignalGrid insights={insights} language={language} metricTile={MetricTile} profile={profile} />
       <View style={styles.metricsGrid}>
         <MetricTile label={textByLanguage(language, 'Đánh giá', 'Rating')} value={formatNullableRating(insights?.average_rating ?? profile?.rating, language)} />
-        <MetricTile label={textByLanguage(language, 'Phản hồi', 'Reviews')} value={formatCountOrEmpty(reviewCount, textByLanguage(language, 'Chưa có', 'None yet'))} />
+        <MetricTile
+          label={textByLanguage(language, 'Phản hồi', 'Reviews')}
+          value={reviewCount === null
+            ? textByLanguage(language, 'Chưa có dữ liệu', 'No data')
+            : formatCountOrEmpty(reviewCount, textByLanguage(language, 'Chưa có', 'None yet'))}
+        />
         <MetricTile label={textByLanguage(language, 'Đúng hẹn', 'On-time')} value={formatNullablePercent(insights?.on_time_rate_percent, language)} />
       </View>
       <WorkerV5RecentFeedbackList chatIcon={icons.chat} insights={insights} language={language} reduceTransparency={reduceTransparency} />
@@ -562,7 +577,16 @@ export function WorkerV5ReviewsFeedbackBody({
         reduceTransparency={reduceTransparency}
       />
       <InfoListCard reduceTransparency={reduceTransparency}>
-        <InfoRow icon="chat" label={textByLanguage(language, 'Phản hồi gần đây', 'Recent feedback')} reduceTransparency={reduceTransparency} value={reviewCount > 0 ? textByLanguage(language, 'Chưa đồng bộ nội dung phản hồi chi tiết', 'Detailed review content is not synced') : textByLanguage(language, 'Chưa có phản hồi thật', 'No real feedback yet')} />
+        <InfoRow
+          icon="chat"
+          label={textByLanguage(language, 'Phản hồi gần đây', 'Recent feedback')}
+          reduceTransparency={reduceTransparency}
+          value={reviewCount === null
+            ? textByLanguage(language, 'Chưa có dữ liệu đánh giá', 'No review data')
+            : reviewCount > 0
+              ? textByLanguage(language, 'Chưa đồng bộ nội dung phản hồi chi tiết', 'Detailed review content is not synced')
+              : textByLanguage(language, 'Chưa có phản hồi thật', 'No real feedback yet')}
+        />
         <InfoRow icon="shield" label={textByLanguage(language, 'Tỷ lệ phản hồi', 'Response rate')} reduceTransparency={reduceTransparency} value={formatNullablePercent(insights?.response_rate_percent, language)} />
         <InfoRow icon="jobs" label={textByLanguage(language, 'Việc hoàn tất', 'Completed cases')} reduceTransparency={reduceTransparency} value={insights ? formatCountOrEmpty(insights.completed_job_count, textByLanguage(language, 'Chưa có', 'None yet')) : textByLanguage(language, 'Chưa có dữ liệu', 'No data')} />
         <InfoRow icon="document" label={textByLanguage(language, 'Gợi ý cải thiện', 'Improvement signal')} reduceTransparency={reduceTransparency} value={insights?.performance_score != null ? textByLanguage(language, 'Kael có thể giải thích từ dữ liệu hiệu suất hiện có', 'Kael can explain the current performance data') : textByLanguage(language, 'Cần thêm dữ liệu thật trước khi gợi ý', 'Needs more real data before suggestions')} />

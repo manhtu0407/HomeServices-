@@ -158,11 +158,16 @@ function bookingMode(phase: WorkflowPhase): WorkflowArtifactMode {
 }
 
 function scopeChangeMode(phase: WorkflowPhase, input: WorkflowViewModelInput): WorkflowArtifactMode {
-  if (!input.hasScopeChange && (phase === 'inspecting' || phase === 'repairing')) return 'basic'
+  const isActiveScopePhase = phase === 'worker_matched' ||
+    phase === 'worker_on_way' ||
+    phase === 'arrived' ||
+    phase === 'inspecting' ||
+    phase === 'repairing'
+  if (!input.hasScopeChange && isActiveScopePhase) return 'basic'
   if (!input.hasScopeChange && phase !== 'scope_change_pending') return 'hidden'
   if (phase === 'scope_change_pending') return 'review'
   if (phase === 'cancelled') return 'blocked'
-  if (phase === 'repairing' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
+  if (isActiveScopePhase || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
   if (phase === 'done') return 'done'
   return 'hidden'
 }

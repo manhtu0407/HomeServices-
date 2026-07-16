@@ -1,31 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 
-const DOCK_SCROLL_DIRECTION_THRESHOLD = 12
-const DOCK_SCROLL_TOP_THRESHOLD = 4
-
-export type DockScrollState = {
-  anchorY: number
-  collapsed: boolean
-}
-
-export function createDockScrollState(): DockScrollState {
-  return { anchorY: 0, collapsed: false }
-}
-
-export function resolveDockScrollState(previous: DockScrollState, offsetY: number): DockScrollState {
-  const nextY = Number.isFinite(offsetY) ? Math.max(0, offsetY) : 0
-
-  if (nextY <= DOCK_SCROLL_TOP_THRESHOLD) {
-    return { anchorY: nextY, collapsed: false }
-  }
-
-  const deltaY = nextY - previous.anchorY
-  if (Math.abs(deltaY) < DOCK_SCROLL_DIRECTION_THRESHOLD) return previous
-
-  return { anchorY: nextY, collapsed: deltaY > 0 }
-}
+import {
+  createDockScrollState,
+  resolveDockScrollState,
+  type DockScrollState,
+} from './dock-scroll-state-model'
 
 type DockScrollContextValue = {
   collapsed: boolean
@@ -42,11 +23,12 @@ const defaultDockScrollContext: DockScrollContextValue = {
 const DockScrollContext = createContext<DockScrollContextValue>(defaultDockScrollContext)
 
 export function DockScrollStateProvider({ children }: { children: ReactNode }) {
-  const stateRef = useRef(createDockScrollState())
+  const stateRef = useRef<DockScrollState | null>(null)
+  if (stateRef.current === null) stateRef.current = createDockScrollState()
   const [collapsed, setCollapsed] = useState(false)
 
   const reportScrollOffset = useCallback((offsetY: number) => {
-    const previous = stateRef.current
+    const previous = stateRef.current ?? createDockScrollState()
     const next = resolveDockScrollState(previous, offsetY)
     stateRef.current = next
     if (next.collapsed !== previous.collapsed) setCollapsed(next.collapsed)
@@ -63,7 +45,7 @@ export function DockScrollStateProvider({ children }: { children: ReactNode }) {
 }
 
 export function useDockScrollState() {
-  return useContext(DockScrollContext)
+  return use(DockScrollContext)
 }
 
 export function useDockScrollHandler() {

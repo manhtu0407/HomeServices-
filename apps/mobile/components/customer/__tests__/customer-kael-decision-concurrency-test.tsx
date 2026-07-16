@@ -1,0 +1,145 @@
+import { act, renderHook } from '@testing-library/react-native'
+
+import { createCustomerKaelRequestGuard } from '../v21/customer-kael-state-scope'
+import { useCustomerKaelDecisionActions } from '../v21/use-customer-kael-decision-actions'
+
+const mockConfirmEstimate = jest.fn()
+
+jest.mock('@/lib/services', () => ({
+  kaelAssistantService: { ask: jest.fn() },
+  kaelChatService: {
+    confirm: (...args: unknown[]) => mockConfirmEstimate(...args),
+    sendTurn: jest.fn(),
+  },
+}))
+
+function decisionHarness() {
+  const chatUi = {
+    agenticRejectReason: '',
+    caseQuoteRejectReason: '',
+    confirmingAgenticEstimate: false,
+    confirmingCaseQuote: false,
+    confirmingCompletion: false,
+    setAgenticRejectOpen: jest.fn(),
+    setAgenticRejectReason: jest.fn(),
+    setCaseEditOpen: jest.fn(),
+    setCaseQuoteRejectOpen: jest.fn(),
+    setCaseQuoteRejectReason: jest.fn(),
+    setConfirmingAgenticEstimate: jest.fn(),
+    setConfirmingCaseQuote: jest.fn(),
+    setConfirmingCompletion: jest.fn(),
+    setSubmittingAgenticRejectReason: jest.fn(),
+    setSubmittingCaseQuoteRejectReason: jest.fn(),
+    submittingAgenticRejectReason: false,
+    submittingCaseQuoteRejectReason: false,
+  } as any
+  const conversation = {
+    chat: {
+      session: {
+        id: 'session-a',
+        service_type: 'electrical',
+      },
+    },
+    setAssistantTurns: jest.fn(),
+    setChat: jest.fn(),
+    setError: jest.fn(),
+    setLoading: jest.fn(),
+    setLocalMode: jest.fn(),
+    setTurns: jest.fn(),
+    turns: [],
+  } as any
+  const workflow = {
+    actions: {
+      confirmRemoteSearch: jest.fn(async () => false),
+      customerConfirmCompletion: jest.fn(),
+      hydrateRemoteJobById: jest.fn(),
+    },
+  } as any
+  const deal = {
+    draft: { mediaCount: 0, serviceType: 'electrical' },
+    estimate: { complexity: 'standard' },
+    id: 'job-a',
+    status: 'completed_by_worker',
+  } as any
+  const input = {
+    chatEstimate: { complexity: 'standard' } as any,
+    chatUi,
+    conversation,
+    deal,
+    kaelRequestGuard: createCustomerKaelRequestGuard('customer-a:job-a'),
+    language: 'vi' as const,
+    mode: 'case' as const,
+    processController: {
+      startProcessLines: jest.fn(async () => undefined),
+      stopProcessLines: jest.fn(),
+    } as any,
+    router: { replace: jest.fn() } as any,
+    workflow,
+  }
+  return { chatUi, conversation, input, workflow }
+}
+
+describe('customer Kael decision concurrency', () => {
+  beforeEach(() => {
+    mockConfirmEstimate.mockReset()
+  })
+
+  it('starts only one estimate confirmation and releases the action after rejection', async () => {
+    let rejectConfirm!: (reason?: unknown) => void
+    mockConfirmEstimate.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectConfirm = reject
+    }))
+    const harness = decisionHarness()
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+    let firstConfirm!: Promise<void>
+    let secondConfirm!: Promise<void>
+
+    act(() => {
+      firstConfirm = result.current.confirmAgenticEstimate()
+      secondConfirm = result.current.confirmAgenticEstimate()
+    })
+
+    expect(mockConfirmEstimate).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      rejectConfirm(new Error('network unavailable'))
+      await Promise.all([firstConfirm, secondConfirm])
+    })
+    expect(harness.conversation.setError).toHaveBeenCalledWith('Chưa thể hoàn tất lựa chọn này. Vui lòng thử lại.')
+    expect(harness.chatUi.setConfirmingAgenticEstimate).toHaveBeenLastCalledWith(false)
+
+    mockConfirmEstimate.mockResolvedValueOnce({ error: 'not confirmed', success: false })
+    await act(async () => {
+      await result.current.confirmAgenticEstimate()
+    })
+    expect(mockConfirmEstimate).toHaveBeenCalledTimes(2)
+  })
+
+  it('serializes conflicting case decisions and releases the lane after rejection', async () => {
+    let rejectCompletion!: (reason?: unknown) => void
+    const harness = decisionHarness()
+    harness.workflow.actions.customerConfirmCompletion.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectCompletion = reject
+    }))
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+    let completion!: Promise<void>
+    let quote!: Promise<void>
+
+    act(() => {
+      completion = result.current.confirmCaseCompletion()
+      quote = result.current.confirmCaseQuote()
+    })
+
+    expect(harness.workflow.actions.customerConfirmCompletion).toHaveBeenCalledTimes(1)
+    expect(harness.workflow.actions.confirmRemoteSearch).not.toHaveBeenCalled()
+    await act(async () => {
+      rejectCompletion(new Error('network unavailable'))
+      await Promise.all([completion, quote])
+    })
+    expect(harness.chatUi.setConfirmingCompletion).toHaveBeenLastCalledWith(false)
+
+    await act(async () => {
+      await result.current.confirmCaseQuote()
+    })
+    expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenCalledTimes(1)
+  })
+})

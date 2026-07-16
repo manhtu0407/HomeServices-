@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -54,7 +54,8 @@ export function WorkerV5AcceptSummaryCard({
   const meta = deal
     ? `${deal.draft.description || textByLanguage(language, 'Yêu cầu từ khách', 'Customer request')} · ${routeDestinationLabel(deal, language)}`
     : textByLanguage(language, 'Chi tiết chỉ hiện khi NestScout gửi cơ hội tới thợ.', 'Details appear only after NestScout sends an opportunity to the worker.')
-  const earning = deal?.broadcast?.estimatedEarningLabel?.trim() || '0'
+  const earning = deal?.broadcast?.estimatedEarningLabel?.trim()
+    || textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning estimate')
 
   return (
     <View style={[styles.acceptSummaryCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-accept-summary-card">
@@ -75,7 +76,7 @@ export function WorkerV5AcceptSummaryCard({
       <View style={styles.acceptSummaryLine}>
         <View style={styles.acceptSummaryIconTile} testID="worker-v5-accept-summary-icon-tile">
           <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-          <Image resizeMode="contain" source={serviceIcon} style={styles.acceptSummaryIcon} />
+          <Image contentFit="contain" source={serviceIcon} style={styles.acceptSummaryIcon} />
         </View>
         <View style={styles.acceptSummaryCopy} testID="worker-v5-accept-summary-copy">
           <Text style={styles.acceptSummaryTitle} numberOfLines={2} testID="worker-v5-accept-summary-title">{serviceLabel}</Text>
@@ -165,7 +166,7 @@ export function WorkerV5AcceptCommitmentCard({
       ) : null}
       <View style={styles.acceptCommitmentIconTile}>
         <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-        <Image resizeMode="contain" source={clockIcon} style={styles.acceptCommitmentIcon} />
+        <Image contentFit="contain" source={clockIcon} style={styles.acceptCommitmentIcon} />
       </View>
       <View style={styles.acceptCommitmentCopy}>
         <Text style={styles.acceptCommitmentTitle} numberOfLines={2} testID="worker-v5-accept-commitment-title">

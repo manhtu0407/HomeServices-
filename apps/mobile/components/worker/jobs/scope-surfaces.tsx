@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Pressable,
   Text as RNText,
   View,

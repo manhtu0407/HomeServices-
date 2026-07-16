@@ -4,13 +4,29 @@ import { Platform } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { USER_ROLES, type UserRole } from '@nestscout/shared'
-import { addPushNotificationResponseListener, setupPushNotifications } from './push-notifications'
-import { generateClientRequestId } from './client-request-id'
+import { addPushNotificationResponseListener } from './push-notifications'
+import {
+  clearStableClientRequestId,
+  stableClientRequestId,
+  type PendingClientRequestId,
+} from './client-request-id'
 import { parseAuthIdentifier, validateAuthIdentifier } from './auth-identifier'
-import { createSessionFromAuthCallback, getRuntimeAuthCallbackUrl, isPasswordRecoveryCallbackUrl, startGoogleOAuthRequest, subscribeToAuthCallbackUrls } from './auth-callback'
+import { getRuntimeAuthCallbackUrl, isPasswordRecoveryCallbackUrl } from './auth-callback'
 import { requestPasswordRecoveryEmail, updateRecoveredPassword } from './password-recovery'
 import { resendSignupConfirmationEmail } from './signup-confirmation'
+import { isBoundedLoginPassword, validateNewPassword, validateSignupPassword } from './auth-password'
+import { buildLocalVisualAuditSession, getLocalVisualAuditRole } from './auth-visual-audit'
+import { clearPendingKaelChatDraft } from './pending-kael-chat-draft'
+import { buildCustomerProfileMetadata } from './customer-profile-metadata'
+import { inspectOAuthCallbackUrl } from './oauth-callback'
+import {
+  exchangeOAuthCodeForSession,
+  getOAuthRedirectUrl,
+  startGoogleOAuthRequest,
+  subscribeToOAuthCallbackUrls,
+} from './auth-oauth-runtime'
 import { workerService } from './services'
+import { useSessionPushRegistration } from './use-session-push-registration'
 
 type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'config_missing'
 
@@ -24,7 +40,7 @@ type AuthState = {
   passwordRecoveryPending: boolean
   enterGuestMode: () => void
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
-  signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>
   signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>
   resendSignupConfirmation: (email: string) => Promise<{ success: boolean; error?: string }>
   requestPasswordRecovery: (email: string) => Promise<{ success: boolean; error?: string }>
@@ -39,33 +55,15 @@ type AuthState = {
 type AuthSnapshot = Pick<AuthState, 'session' | 'role' | 'loading' | 'profileStatus' | 'authError'>
 
 type CustomerProfileDraft = {
-  birthDate?: string
-  defaultAddress?: string
-  displayName?: string
-  email?: string
-  fullName?: string
-  gender?: string
-  nickname?: string
-  phone?: string
-  salutation?: string
+  birthDate?: string; defaultAddress?: string; displayName?: string
+  email?: string; fullName?: string; gender?: string; nickname?: string
+  phone?: string; salutation?: string
   savedAddresses?: string[]
 }
 
-type CustomerIdentifierSignupDraft = {
-  displayName: string
-  identifier: string
-  password: string
-}
-
-type WorkerApplicationDraft = {
-  contact: string
-  language: 'vi' | 'en'
-}
-
-type CustomerPasswordUpdateDraft = {
-  currentPassword: string
-  newPassword: string
-}
+type CustomerIdentifierSignupDraft = { displayName: string; identifier: string; password: string }
+type WorkerApplicationDraft = { contact: string; language: 'vi' | 'en' }
+type CustomerPasswordUpdateDraft = { currentPassword: string; newPassword: string }
 
 const INITIAL_AUTH_SNAPSHOT: AuthSnapshot = {
   session: null,
@@ -103,12 +101,7 @@ function authSnapshotReducer(current: AuthSnapshot, patch: Partial<AuthSnapshot>
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const authValue = useAuthController()
-
-  return (
-    <AuthContext.Provider value={authValue}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
 }
 
 function useAuthController(): AuthState {
@@ -127,32 +120,66 @@ function useAuthController(): AuthState {
   const [{ session, role, loading, profileStatus, authError }, patchAuth] = useReducer(authSnapshotReducer, localVisualAuditSnapshot ?? INITIAL_AUTH_SNAPSHOT)
   const [guestMode, setGuestMode] = useState(false)
   const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(() => isPasswordRecoveryCallbackUrl(getRuntimeAuthCallbackUrl()))
-  const loadingRef = useRef(INITIAL_AUTH_SNAPSHOT.loading)
   const passwordRecoveryPendingRef = useRef(passwordRecoveryPending)
   const passwordRecoverySessionReadyRef = useRef(false)
-  const pushRegistrationKeyRef = useRef<string | null>(null)
-  const sessionRef = useRef<Session | null>(INITIAL_AUTH_SNAPSHOT.session)
+  const pendingWorkerApplicationRequestRef = useRef<PendingClientRequestId | null>(null)
+  const accountMutationSequenceRef = useRef(0)
+  const roleLookupSequenceRef = useRef(0)
+  const googleOAuthPromiseRef = useRef<Promise<{ success: boolean; error?: string }> | null>(null)
+  const lastOAuthCallbackCodeRef = useRef<string | null>(null)
+  const sessionRef = useRef<Session | null>(localVisualAuditSnapshot?.session ?? INITIAL_AUTH_SNAPSHOT.session)
+  const unregisterPushTokenForSession = useSessionPushRegistration({
+    disabled: Boolean(localVisualAuditRole),
+    profileReady: profileStatus === 'ready',
+    role,
+    session,
+    sessionRef,
+  })
+  const setCurrentSession = useCallback((nextSession: Session | null) => {
+    const previousSession = sessionRef.current
+    const previousUserId = previousSession?.user.id
+    const nextUserId = nextSession?.user.id
+    if (previousUserId !== nextUserId) accountMutationSequenceRef.current += 1
+    if (previousUserId && previousUserId !== nextUserId) {
+      unregisterPushTokenForSession(previousSession)
+      void clearPendingKaelChatDraft(previousUserId)
+    }
+    sessionRef.current = nextSession
+    roleLookupSequenceRef.current += 1
+  }, [unregisterPushTokenForSession])
 
   const fetchRole = useCallback(async (userId: string): Promise<UserRole | null> => {
+    const lookupSequence = ++roleLookupSequenceRef.current
+    const isCurrentLookup = () => (
+      roleLookupSequenceRef.current === lookupSequence &&
+      sessionRef.current?.user.id === userId
+    )
+
     if (localVisualAuditRole) {
+      if (!isCurrentLookup()) return null
       patchAuth({ role: localVisualAuditRole, profileStatus: 'ready', loading: false })
       return localVisualAuditRole
     }
 
     if (!supabase) {
+      if (!isCurrentLookup()) return null
       patchAuth({ role: null, profileStatus: 'config_missing', loading: false })
       return null
     }
 
+    if (!isCurrentLookup()) return null
     patchAuth({ loading: true, profileStatus: 'loading', authError: null })
 
     try {
+      // The post-I/O owner check prevents an older account lookup from committing into a newer session.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .maybeSingle()
 
+      if (!isCurrentLookup()) return null
       if (error) {
         patchAuth({
           role: null,
@@ -187,6 +214,7 @@ function useAuthController(): AuthState {
       patchAuth({ role: nextRole, profileStatus: 'ready', loading: false })
       return nextRole
     } catch {
+      if (!isCurrentLookup()) return null
       patchAuth({
         role: null,
         profileStatus: 'profile_error',
@@ -198,6 +226,18 @@ function useAuthController(): AuthState {
   }, [localVisualAuditRole])
 
   const createSessionFromAuthUrl = useCallback(async (url: string) => {
+    const callback = inspectOAuthCallbackUrl(url, getOAuthRedirectUrl())
+    if (callback.kind === 'error') {
+      patchAuth({
+        authError: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại sau.',
+        loading: false,
+        profileStatus: 'profile_error',
+      })
+      return null
+    }
+    if (callback.kind === 'ignored' || callback.code === lastOAuthCallbackCodeRef.current) return null
+    lastOAuthCallbackCodeRef.current = callback.code
+
     const recoveryCallback = isPasswordRecoveryCallbackUrl(url)
     if (recoveryCallback) {
       passwordRecoveryPendingRef.current = true
@@ -205,7 +245,7 @@ function useAuthController(): AuthState {
       patchAuth({ role: null, profileStatus: 'idle', authError: null, loading: true })
     }
 
-    const result = await createSessionFromAuthCallback(url)
+    const result = await exchangeOAuthCodeForSession(callback.code)
     if (result.error) {
       patchAuth({
         authError: result.error,
@@ -217,23 +257,19 @@ function useAuthController(): AuthState {
 
     if (!result.session?.user) return null
     setGuestMode(false)
-    if (result.recovery || passwordRecoveryPendingRef.current) {
+    setCurrentSession(result.session)
+    if (recoveryCallback || passwordRecoveryPendingRef.current) {
       passwordRecoveryPendingRef.current = true
-      passwordRecoverySessionReadyRef.current = result.recovery
+      passwordRecoverySessionReadyRef.current = recoveryCallback
       setPasswordRecoveryPending(true)
       patchAuth({ session: result.session, role: null, profileStatus: 'idle', authError: null, loading: false })
       return result.session
     }
 
-    patchAuth({ session: result.session })
+    patchAuth({ session: result.session, role: null })
     await fetchRole(result.session.user.id)
     return result.session
-  }, [fetchRole])
-
-  useEffect(() => {
-    loadingRef.current = loading
-    sessionRef.current = session
-  }, [loading, session])
+  }, [fetchRole, setCurrentSession])
 
   useEffect(() => {
     if (localVisualAuditRole) return () => undefined
@@ -247,45 +283,28 @@ function useAuthController(): AuthState {
   useEffect(() => {
     if (localVisualAuditRole) return () => undefined
     if (!supabase || Platform.OS === 'web') return () => undefined
-    return subscribeToAuthCallbackUrls((url) => {
-      void createSessionFromAuthUrl(url)
-    })
+    return subscribeToOAuthCallbackUrls(createSessionFromAuthUrl)
   }, [createSessionFromAuthUrl, localVisualAuditRole])
 
   useEffect(() => {
-    if (localVisualAuditRole) return
-
-    const userId = session?.user.id ?? null
-    if (!userId || !role || profileStatus !== 'ready') {
-      pushRegistrationKeyRef.current = null
-      return
-    }
-
-    const registrationKey = `${userId}:${role}`
-    if (pushRegistrationKeyRef.current === registrationKey) return
-    pushRegistrationKeyRef.current = registrationKey
-    void setupPushNotifications({ role }).then((result) => {
-      if (result.status === 'error') {
-        pushRegistrationKeyRef.current = null
-      }
-    })
-  }, [localVisualAuditRole, profileStatus, role, session?.user.id])
-
-  useEffect(() => {
     if (localVisualAuditSnapshot) {
+      setCurrentSession(localVisualAuditSnapshot.session)
       patchAuth(localVisualAuditSnapshot)
       return () => undefined
     }
 
     if (!supabase) {
+      setCurrentSession(null)
       patchAuth({ session: null, role: null, profileStatus: 'config_missing', loading: false })
       return
     }
 
+    const bootstrapSequence = roleLookupSequenceRef.current
+    let bootstrapPending = true
+
     const bootstrapTimeout = setTimeout(() => {
-      if (!loadingRef.current) {
-        return
-      }
+      if (!bootstrapPending || roleLookupSequenceRef.current !== bootstrapSequence) return
+      bootstrapPending = false
 
       patchAuth({
         session: sessionRef.current,
@@ -296,14 +315,23 @@ function useAuthController(): AuthState {
       })
     }, Platform.OS === 'web' ? 900 : 7000)
 
+    const settleBootstrap = () => {
+      if (!bootstrapPending) return false
+      bootstrapPending = false
+      clearTimeout(bootstrapTimeout)
+      return true
+    }
+
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
+        if (!settleBootstrap() || roleLookupSequenceRef.current !== bootstrapSequence) return
+        setCurrentSession(session)
         if (session?.user) {
           setGuestMode(false)
           if (passwordRecoveryPendingRef.current) {
             patchAuth({ session, role: null, profileStatus: 'idle', authError: null, loading: false })
           } else {
-            patchAuth({ session })
+            patchAuth({ session, role: null, profileStatus: 'loading', authError: null, loading: true })
             void fetchRole(session.user.id)
           }
         } else {
@@ -311,6 +339,8 @@ function useAuthController(): AuthState {
         }
       })
       .catch(() => {
+        if (!settleBootstrap() || roleLookupSequenceRef.current !== bootstrapSequence) return
+        setCurrentSession(null)
         patchAuth({
           session: null,
           role: null,
@@ -323,6 +353,8 @@ function useAuthController(): AuthState {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      settleBootstrap()
+      setCurrentSession(session)
       if (session?.user) {
         setGuestMode(false)
         if (event === 'PASSWORD_RECOVERY' || passwordRecoveryPendingRef.current) {
@@ -333,7 +365,7 @@ function useAuthController(): AuthState {
           return
         }
 
-        patchAuth({ session })
+        patchAuth({ session, role: null, profileStatus: 'loading', authError: null, loading: true })
         void fetchRole(session.user.id)
       } else {
         if (event === 'SIGNED_OUT') {
@@ -349,12 +381,13 @@ function useAuthController(): AuthState {
       clearTimeout(bootstrapTimeout)
       subscription.unsubscribe()
     }
-  }, [fetchRole, localVisualAuditSnapshot])
+  }, [fetchRole, localVisualAuditSnapshot, setCurrentSession])
 
   const enterGuestMode = useCallback(() => {
     passwordRecoveryPendingRef.current = false
     passwordRecoverySessionReadyRef.current = false
     setPasswordRecoveryPending(false)
+    setCurrentSession(null)
     setGuestMode(true)
     patchAuth({
       session: null,
@@ -363,7 +396,7 @@ function useAuthController(): AuthState {
       authError: null,
       loading: false,
     })
-  }, [])
+  }, [setCurrentSession])
 
   const completePasswordRecovery = useCallback(async (newPassword: string) => {
     if (!passwordRecoveryPendingRef.current || !passwordRecoverySessionReadyRef.current || !session?.user) {
@@ -387,8 +420,8 @@ function useAuthController(): AuthState {
 
     const identifier = parseAuthIdentifier(identifierInput)
     const identifierError = validateAuthIdentifier(identifierInput)
-    if (!identifier || !password) {
-      const error = identifierError ?? 'Nhập Email hoặc SDT và mật khẩu để tiếp tục'
+    if (!identifier || !isBoundedLoginPassword(password)) {
+      const error = identifierError ?? 'Mật khẩu đăng nhập không hợp lệ.'
       patchAuth({ authError: error })
       return { success: false, error }
     }
@@ -402,6 +435,7 @@ function useAuthController(): AuthState {
 
       if (error || !data.session?.user) {
         const message = 'Email/SDT hoặc mật khẩu không đúng'
+        setCurrentSession(null)
         patchAuth({
           session: null,
           role: null,
@@ -413,15 +447,17 @@ function useAuthController(): AuthState {
       }
 
       setGuestMode(false)
-      patchAuth({ session: data.session })
+      setCurrentSession(data.session)
+      patchAuth({ session: data.session, role: null })
       const nextRole = await fetchRole(data.session.user.id)
       if (!nextRole) {
         return { success: false, error: 'Không thể tải vai trò tài khoản' }
       }
 
-      return { success: true }
+      return { success: true, role: nextRole }
     } catch {
       const message = 'Không thể kết nối dịch vụ đăng nhập. Vui lòng thử lại sau.'
+      setCurrentSession(null)
       patchAuth({
         session: null,
         role: null,
@@ -431,23 +467,34 @@ function useAuthController(): AuthState {
       })
       return { success: false, error: message }
     }
-  }, [fetchRole])
+  }, [fetchRole, setCurrentSession])
 
-  const signInWithGoogle = useCallback(async () => {
-    setGuestMode(false)
-    patchAuth({ loading: true, authError: null })
-    const result = await startGoogleOAuthRequest()
-    if (!result.success) {
-      patchAuth({
-        authError: result.error ?? 'Không thể mở đăng nhập Google. Vui lòng thử lại sau.',
-        loading: false,
-        profileStatus: result.configMissing ? 'config_missing' : profileStatus,
-      })
-      return result
+  const signInWithGoogle = useCallback(() => {
+    const pendingRequest = googleOAuthPromiseRef.current
+    if (pendingRequest) return pendingRequest
+
+    const request = (async () => {
+      setGuestMode(false)
+      patchAuth({ loading: true, authError: null })
+      const result = await startGoogleOAuthRequest()
+      if (!result.success) {
+        patchAuth({
+          authError: result.error ?? 'Không thể mở đăng nhập Google. Vui lòng thử lại sau.',
+          loading: false,
+          profileStatus: result.configMissing ? 'config_missing' : profileStatus,
+        })
+        return result
+      }
+
+      if (Platform.OS !== 'web') patchAuth({ loading: false })
+      return { success: true }
+    })()
+    googleOAuthPromiseRef.current = request
+    const clearPendingRequest = () => {
+      if (googleOAuthPromiseRef.current === request) googleOAuthPromiseRef.current = null
     }
-
-    if (Platform.OS !== 'web') patchAuth({ loading: false })
-    return { success: true }
+    void request.then(clearPendingRequest, clearPendingRequest)
+    return request
   }, [profileStatus])
 
   const signUpWithIdentifier = useCallback(async ({ displayName, identifier: identifierInput, password }: CustomerIdentifierSignupDraft) => {
@@ -460,13 +507,15 @@ function useAuthController(): AuthState {
 
     const identifier = parseAuthIdentifier(identifierInput)
     const identifierError = validateAuthIdentifier(identifierInput)
-    const normalizedName = displayName.trim().replace(/\s+/g, ' ')
-    if (normalizedName.length < 2) {
+    const normalizedName = typeof displayName === 'string'
+      ? displayName.trim().replace(/\s+/g, ' ')
+      : ''
+    if (normalizedName.length < 2 || normalizedName.length > 100) {
       const error = 'Nhập họ tên để tạo tài khoản'
       patchAuth({ authError: error })
       return { success: false, error }
     }
-    if (!identifier || !password) {
+    if (!identifier) {
       const error = identifierError ?? 'Nhập Email hoặc SDT và mật khẩu để đăng ký'
       patchAuth({ authError: error })
       return { success: false, error }
@@ -476,8 +525,9 @@ function useAuthController(): AuthState {
       patchAuth({ authError: error })
       return { success: false, error }
     }
-    if (password.length < 6) {
-      const error = 'Mật khẩu cần ít nhất 6 ký tự'
+    const passwordError = validateSignupPassword(password)
+    if (passwordError) {
+      const error = passwordError
       patchAuth({ authError: error })
       return { success: false, error }
     }
@@ -507,7 +557,8 @@ function useAuthController(): AuthState {
       }
 
       setGuestMode(false)
-      patchAuth({ session: data.session })
+      setCurrentSession(data.session)
+      patchAuth({ session: data.session, role: null })
       const nextRole = await fetchRole(data.session.user.id)
       if (!nextRole) {
         return { success: false, error: 'Không thể tải vai trò tài khoản' }
@@ -516,6 +567,7 @@ function useAuthController(): AuthState {
       return { success: true }
     } catch {
       const message = 'Không thể kết nối dịch vụ đăng ký. Vui lòng thử lại sau.'
+      setCurrentSession(null)
       patchAuth({
         session: null,
         role: null,
@@ -525,24 +577,34 @@ function useAuthController(): AuthState {
       })
       return { success: false, error: message }
     }
-  }, [fetchRole])
+  }, [fetchRole, setCurrentSession])
 
   const submitWorkerApplication = useCallback(async ({ contact, language }: WorkerApplicationDraft) => {
-    const normalizedContact = contact.trim()
-    if (!normalizedContact) {
+    const parsedContact = parseAuthIdentifier(contact)
+    if (!parsedContact) {
       return { success: false, error: 'Nhập email hoặc số điện thoại để gửi xét duyệt.' }
     }
+    const normalizedContact = parsedContact.value
 
     try {
+      const requestFingerprint = JSON.stringify({
+        contact: normalizedContact,
+        language,
+        source: 'auth_worker_create',
+      })
       const result = await workerService.submitApplication({
         contact: normalizedContact,
         language,
         source: 'auth_worker_create',
-        client_request_id: generateClientRequestId(),
+        client_request_id: stableClientRequestId(
+          pendingWorkerApplicationRequestRef,
+          requestFingerprint,
+        ),
       })
       if (!result.success) {
         return { success: false, error: result.error }
       }
+      clearStableClientRequestId(pendingWorkerApplicationRequestRef, requestFingerprint)
       return { success: true, applicationId: result.data.application_id }
     } catch {
       return { success: false, error: 'Không thể gửi xét duyệt lúc này. Vui lòng thử lại.' }
@@ -556,51 +618,47 @@ function useAuthController(): AuthState {
       return { success: false, error }
     }
 
-    const birthDate = profile.birthDate?.trim()
-    const displayName = profile.displayName?.trim()
-    const email = profile.email?.trim()
-    const fullName = profile.fullName?.trim()
-    const gender = profile.gender?.trim()
-    const nickname = profile.nickname?.trim()
-    const phone = profile.phone?.trim()
-    const salutation = profile.salutation?.trim()
-    const defaultAddress = profile.defaultAddress?.trim()
-    const savedAddresses = profile.savedAddresses
-      ?.map((address) => address.trim())
-      .filter(Boolean)
-      .slice(0, 8)
-    const nextMetadata = {
-      ...session.user.user_metadata,
-      ...(displayName ? { full_name: displayName, name: displayName } : {}),
-      ...(fullName ? { full_name: fullName, name: fullName } : {}),
-      ...(nickname ? { nickname, preferred_name: nickname } : {}),
-      ...(salutation ? { salutation } : {}),
-      ...(gender ? { gender } : {}),
-      ...(birthDate ? { birth_date: birthDate } : {}),
-      ...(phone ? { phone_number: phone } : {}),
-      ...(email ? { contact_email: email } : {}),
-      ...(defaultAddress ? { default_address: defaultAddress } : {}),
-      ...(profile.savedAddresses ? { saved_addresses: savedAddresses ?? [] } : {}),
+    const metadata = buildCustomerProfileMetadata(profile)
+    if (!metadata.success) {
+      patchAuth({ authError: metadata.error, loading: false })
+      return metadata
     }
+
+    const ownerId = session.user.id
+    if (sessionRef.current?.user.id !== ownerId) return staleAccountMutation()
+    const mutationSequence = ++accountMutationSequenceRef.current
+    const isCurrentMutation = () => (
+      accountMutationSequenceRef.current === mutationSequence
+      && sessionRef.current?.user.id === ownerId
+    )
 
     patchAuth({ loading: true, authError: null })
     try {
-      const { error } = await supabase.auth.updateUser({ data: nextMetadata })
+      // The post-I/O guard prevents an earlier account mutation from committing after an account switch.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const { error } = await supabase.auth.updateUser({ data: metadata.data })
+      if (!isCurrentMutation()) return staleAccountMutation()
       if (error) {
         const message = 'Không thể lưu hồ sơ khách. Vui lòng thử lại sau.'
         patchAuth({ authError: message, loading: false })
         return { success: false, error: message }
       }
 
+      // react-doctor-disable-next-line react-doctor/async-defer-await
       const { data } = await supabase.auth.getSession()
-      patchAuth({ session: data.session ?? session, loading: false })
+      if (!isCurrentMutation()) return staleAccountMutation()
+      const nextSession = data.session ?? session
+      if (nextSession.user.id !== ownerId) return staleAccountMutation()
+      setCurrentSession(nextSession)
+      patchAuth({ session: nextSession, loading: false })
       return { success: true }
     } catch {
+      if (!isCurrentMutation()) return staleAccountMutation()
       const message = 'Không thể kết nối dịch vụ hồ sơ. Vui lòng thử lại sau.'
       patchAuth({ authError: message, loading: false })
       return { success: false, error: message }
     }
-  }, [session])
+  }, [session, setCurrentSession])
 
   const updatePassword = useCallback(async ({ currentPassword, newPassword }: CustomerPasswordUpdateDraft) => {
     if (!supabase || !session?.user) {
@@ -609,63 +667,79 @@ function useAuthController(): AuthState {
       return { success: false, error }
     }
 
+    const ownerId = session.user.id
+    if (sessionRef.current?.user.id !== ownerId) return staleAccountMutation()
+
     const email = session.user.email?.trim().toLowerCase()
     if (!email || !isValidEmail(email)) {
       const error = 'Tài khoản này chưa hỗ trợ đổi mật khẩu bằng mật khẩu hiện tại.'
       patchAuth({ authError: error, loading: false })
       return { success: false, error }
     }
-    if (!currentPassword || !newPassword) {
-      const error = 'Nhập mật khẩu hiện tại và mật khẩu mới để tiếp tục.'
+    const passwordError = validateNewPassword(currentPassword, newPassword)
+    if (passwordError) {
+      const error = passwordError
       patchAuth({ authError: error, loading: false })
       return { success: false, error }
     }
 
+    const mutationSequence = ++accountMutationSequenceRef.current
+    const isCurrentMutation = () => (
+      accountMutationSequenceRef.current === mutationSequence
+      && sessionRef.current?.user.id === ownerId
+    )
+
     patchAuth({ loading: true, authError: null })
     try {
+      // Each post-I/O owner check is intentional; password work must stop if the active account changes.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
       const { data: reauthData, error: reauthError } = await supabase.auth.signInWithPassword({
         email,
         password: currentPassword,
       })
+      if (!isCurrentMutation()) return staleAccountMutation()
       if (reauthError || reauthData.session?.user.id !== session.user.id) {
         const message = 'Mật khẩu hiện tại không đúng.'
         patchAuth({ authError: message, loading: false })
         return { success: false, error: message }
       }
 
+      // react-doctor-disable-next-line react-doctor/async-defer-await
       const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (!isCurrentMutation()) return staleAccountMutation()
       if (error) {
         const message = 'Không thể cập nhật mật khẩu. Vui lòng thử lại sau.'
         patchAuth({ authError: message, loading: false })
         return { success: false, error: message }
       }
 
+      // react-doctor-disable-next-line react-doctor/async-defer-await
       const { data } = await supabase.auth.getSession()
-      patchAuth({ session: data.session ?? reauthData.session ?? session, loading: false })
+      if (!isCurrentMutation()) return staleAccountMutation()
+      const nextSession = data.session ?? reauthData.session ?? session
+      if (nextSession.user.id !== ownerId) return staleAccountMutation()
+      setCurrentSession(nextSession)
+      patchAuth({ session: nextSession, loading: false })
       return { success: true }
     } catch {
+      if (!isCurrentMutation()) return staleAccountMutation()
       const message = 'Không thể kết nối dịch vụ tài khoản. Vui lòng thử lại sau.'
       patchAuth({ authError: message, loading: false })
       return { success: false, error: message }
     }
-  }, [session])
+  }, [session, setCurrentSession])
 
   const signOut = useCallback(async () => {
     passwordRecoveryPendingRef.current = false
     passwordRecoverySessionReadyRef.current = false
     setPasswordRecoveryPending(false)
     if (localVisualAuditSnapshot) {
+      setCurrentSession(localVisualAuditSnapshot.session)
       patchAuth(localVisualAuditSnapshot)
       return
     }
 
-    try {
-      if (supabase) {
-        await supabase.auth.signOut({ scope: 'local' })
-      }
-    } catch {
-      // Local auth state still needs to clear when the remote sign-out request fails.
-    }
+    setCurrentSession(null)
     patchAuth({
       session: null,
       role: null,
@@ -674,21 +748,30 @@ function useAuthController(): AuthState {
       loading: false,
     })
     setGuestMode(false)
-  }, [localVisualAuditSnapshot])
+    try {
+      if (supabase) {
+        await supabase.auth.signOut({ scope: 'local' })
+      }
+    } catch {
+      // Local auth state still needs to clear when the remote sign-out request fails.
+    }
+  }, [localVisualAuditSnapshot, setCurrentSession])
 
   const refreshProfile = useCallback(async () => {
     if (localVisualAuditRole) {
+      if (localVisualAuditSnapshot?.session) setCurrentSession(localVisualAuditSnapshot.session)
       patchAuth({ role: localVisualAuditRole, profileStatus: 'ready' })
       return localVisualAuditRole
     }
 
     if (!session?.user) {
+      setCurrentSession(null)
       patchAuth({ role: null, profileStatus: 'idle' })
       return null
     }
 
     return fetchRole(session.user.id)
-  }, [fetchRole, localVisualAuditRole, session?.user])
+  }, [fetchRole, localVisualAuditRole, localVisualAuditSnapshot?.session, session?.user, setCurrentSession])
 
   const authValue = useMemo(
     () => ({ session, role, guestMode, loading, profileStatus, authError, passwordRecoveryPending, enterGuestMode, signInWithGoogle, signInWithPassword, signUpWithIdentifier, resendSignupConfirmation: resendSignupConfirmationEmail, requestPasswordRecovery: requestPasswordRecoveryEmail, completePasswordRecovery, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
@@ -706,46 +789,9 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
-function getLocalVisualAuditRole(): Extract<UserRole, 'customer' | 'worker'> | null {
-  if (!__DEV__ || Platform.OS !== 'web') return null
-
-  const runtime = globalThis as typeof globalThis & {
-    location?: {
-      hostname?: string
-      search?: string
-    }
-  }
-  const hostname = runtime.location?.hostname ?? ''
-  if (!['localhost', '127.0.0.1', '::1'].includes(hostname)) return null
-
-  const role = new URLSearchParams(runtime.location?.search ?? '').get('ns_audit_role')
-  return role === 'customer' || role === 'worker' ? role : null
-}
-
-function buildLocalVisualAuditSession(role: Extract<UserRole, 'customer' | 'worker'>): Session {
-  const now = Math.floor(Date.now() / 1000)
-  const isoNow = new Date(now * 1000).toISOString()
-  const displayName = role === 'customer' ? 'Phan Manh Tu' : 'NestScout Worker'
-  const email = role === 'customer' ? 'manhtu0407+customer@gmail.com' : 'worker.audit@nestscout.local'
-
+function staleAccountMutation() {
   return {
-    access_token: 'local-visual-audit',
-    expires_at: now + 3600,
-    expires_in: 3600,
-    refresh_token: 'local-visual-audit',
-    token_type: 'bearer',
-    user: {
-      app_metadata: { provider: 'local-visual-audit', providers: ['local-visual-audit'] },
-      aud: 'authenticated',
-      created_at: isoNow,
-      email,
-      id: `local-visual-audit-${role}`,
-      role: 'authenticated',
-      updated_at: isoNow,
-      user_metadata: {
-        full_name: displayName,
-        name: displayName,
-      },
-    },
-  } as Session
+    success: false as const,
+    error: 'Phiên tài khoản đã thay đổi. Vui lòng thử lại.',
+  }
 }

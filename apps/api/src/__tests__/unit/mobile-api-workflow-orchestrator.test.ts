@@ -249,7 +249,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('customer_rejected_scope_change')
     expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('runPolicyAutonomyGate')
     expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('tryAutoApproveScopeChange')
-    // K-1 (Notes.md, Tu chốt 2026-06-13): scope-change auto-approve is disabled —
+    // Scope-change auto-approval is disabled because
     // a scope-change changes the deal price, so it is ALWAYS confirmed by the
     // customer (even low-risk). The auto-approve branch and autonomy policy id
     // are removed, and the worker request always

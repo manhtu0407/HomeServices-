@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
 import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
 import {
@@ -14,7 +15,6 @@ import {
   lookupTrustScore,
   resetSourceTrustRegistryCacheForTest,
   SOURCE_TRUST_VERSION,
-  TIER_1_SOURCE_TRUST_DOMAINS,
   validateCitations,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust'
 
@@ -22,6 +22,7 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     resetSourceTrustRegistryCacheForTest()
+    KAEL_CIRCUIT_BREAKER.reset()
   })
 
   it('keeps output caps behind KAEL_OPT_CAP_OUTPUT_ENABLED', () => {
@@ -318,6 +319,22 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     })
   })
 
+  it('B5 reports resolved usage-log write failures without breaking retrieval', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { client } = makeSemanticKnowledgeClient(false, true)
+
+    const result = await retrieveKnowledgeSemantic(client, {
+      queryText: 'nước rò sát ổ cắm',
+      serviceType: 'plumbing',
+    })
+
+    expect(result.rows).toHaveLength(1)
+    expect(warn).toHaveBeenCalledWith(
+      'kael knowledge usage log failed',
+      { errorCode: 'KNOWLEDGE_USAGE_WRITE_FAILED' },
+    )
+  })
+
   it('applies Section 25 R2 trusted Perplexity allowlist, recency, prompt, and safe metadata', async () => {
     stubDenoEnv({
       KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false',
@@ -411,7 +428,7 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     }
   })
 
-  it('continues to the configured fallback when the durable Perplexity circuit is open', async () => {
+  it('fails closed instead of fabricating market data when the Perplexity circuit is open', async () => {
     const fetchSpy = vi.fn(async (..._args: Parameters<typeof fetch>) => jsonResponse({
       content: [{
         type: 'text',
@@ -447,12 +464,11 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     )
 
     expect(result).toMatchObject({
-      success: true,
-      provider: 'anthropic',
-      model: 'claude-sonnet-5',
+      success: false,
+      provider: 'perplexity',
+      model: 'sonar',
     })
-    expect(fetchSpy).toHaveBeenCalledTimes(1)
-    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain('api.anthropic.com')
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it('loads F26 source trust scores from DB rows', async () => {
@@ -687,6 +703,66 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     expect(JSON.stringify(artifactInsert)).toContain('source_trust_citation_result')
   })
 
+  it('reports resolved F26 market-artifact write failures without logging evidence payloads', async () => {
+    stubDenoEnv({
+      KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'true',
+      KAEL_SOURCE_TRUST_HIGH_VALUE_VND: '1000000',
+    })
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      jsonResponse({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              confidence: 0.84,
+              sources_summary: '2 trusted Vietnamese domains.',
+              sources: [
+                {
+                  domain: 'btaskee.com',
+                  price_min: 160000,
+                  price_max: 280000,
+                  unit: 'per_visit',
+                  date: '2026-07-09',
+                  signals: trustedMarketSignals(),
+                },
+                {
+                  domain: 'jupviec.vn',
+                  price_min: 180000,
+                  price_max: 300000,
+                  unit: 'per_visit',
+                  date: '2026-07-09',
+                  signals: trustedMarketSignals(),
+                },
+              ],
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 52, completion_tokens: 38 },
+        citations: [
+          'https://btaskee.com/bang-gia',
+          'https://jupviec.vn/gia-dich-vu',
+        ],
+      })
+    ))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { client } = makeMarketTrustClient(true)
+
+    const result = await searchMarketPrice(
+      'cleaning',
+      'standard_home_cleaning',
+      'medium',
+      'q7',
+      { perplexityApiKey: 'pplx-test', sourceTrustPerplexityFilterEnabled: true },
+      client,
+    )
+
+    expect(result.success).toBe(true)
+    expect(warn).toHaveBeenCalledWith(
+      'kael market artifact insert failed',
+      { errorCode: 'MARKET_ARTIFACT_WRITE_FAILED' },
+    )
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('btaskee.com/bang-gia')
+  })
+
   it('precomputes Section 25 R2 market telemetry for outer stage timeouts', () => {
     const telemetry = marketLookupTelemetry({
       serviceType: 'plumbing',
@@ -846,7 +922,7 @@ function makeSourceTrustClient(rows: Array<Record<string, unknown>>) {
   }
 }
 
-function makeMarketTrustClient() {
+function makeMarketTrustClient(failArtifactWrite = false) {
   const calls: Array<{ table: string; operations: unknown[][] }> = []
   return {
     calls,
@@ -856,6 +932,9 @@ function makeMarketTrustClient() {
         calls,
         table === 'source_trust_registry'
           ? [registryRow('btaskee.com', 1), registryRow('jupviec.vn', 0.95)]
+          : null,
+        failArtifactWrite && table === 'kael_market_artifacts'
+          ? { code: 'MARKET_ARTIFACT_WRITE_FAILED' }
           : null,
       ),
       rpc: () => thenable({ data: null, error: null }),
@@ -901,7 +980,7 @@ function makeKnowledgeClient() {
   }
 }
 
-function makeSemanticKnowledgeClient(fail: boolean) {
+function makeSemanticKnowledgeClient(fail: boolean, failUsageLogWrite = false) {
   const calls: Array<{ table: string; operations: unknown[][] }> = []
   const rows = [{
     knowledge_table: 'worker_safety_patterns',
@@ -917,7 +996,14 @@ function makeSemanticKnowledgeClient(fail: boolean) {
   return {
     calls,
     client: {
-      from: (table: string) => makeTableQuery(table, calls, []),
+      from: (table: string) => makeTableQuery(
+        table,
+        calls,
+        [],
+        failUsageLogWrite && table === 'kael_knowledge_usage_log'
+          ? { code: 'KNOWLEDGE_USAGE_WRITE_FAILED' }
+          : null,
+      ),
       rpc: (name: string, args?: Record<string, unknown>) => {
         const call = { table: `rpc:${name}`, operations: [['rpc', name, args]] as unknown[][] }
         calls.push(call)
@@ -933,6 +1019,7 @@ function makeTableQuery(
   table: string,
   calls: Array<{ table: string; operations: unknown[][] }>,
   data: unknown,
+  writeError: { code?: string; message?: string } | null = null,
 ) {
   const call = { table, operations: [] as unknown[][] }
   calls.push(call)
@@ -974,7 +1061,7 @@ function makeTableQuery(
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ) => Promise.resolve(
       mode === 'insert' || mode === 'upsert'
-        ? { data: null, error: null }
+        ? { data: null, error: writeError }
         : { data: applyEqFilters(data, call.operations), error: null },
     ).then(onfulfilled, onrejected),
   }

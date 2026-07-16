@@ -7,10 +7,11 @@ import { db, dbQuery, type DbClient } from "./db.ts";
 import { mapAcceptError, relatedJob } from "./_shared.ts";
 import { logJobEvent, queueKaelLearningEvent } from "./audit.ts";
 import {
-  acquireBroadcastRetryLease,
   createBroadcasts,
   expireStaleBroadcasts,
+  failBroadcastRetryClaim,
   hasActiveBroadcast,
+  runWithBroadcastRetryLease,
 } from "./broadcasts.service.ts";
 import { insertUserNotification } from "./notifications.service.ts";
 import { notifyCustomerCandidateReady } from "./worker-candidate.service.ts";
@@ -40,6 +41,7 @@ export async function confirmSearch(
     select:
       "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, final_price",
   });
+  const retryingExistingSearch = job.status === "broadcasting";
 
   // Lock jobs.final_price = kael_price_max as initial
   // Kael baseline (only if not already locked, e.g. retry). Worker không có
@@ -67,21 +69,6 @@ export async function confirmSearch(
         409,
       );
     }
-    if (!(await acquireBroadcastRetryLease(client, jobId, ctx.user.id, now))) {
-      apiFailure(
-        "BROADCAST_ACTIVE",
-        "Yêu cầu đang được gửi đến thợ. Vui lòng chờ phản hồi hiện tại.",
-        409,
-      );
-    }
-    await logJobEvent(
-      client,
-      jobId,
-      "customer_retried_search",
-      ctx,
-      "broadcasting",
-      "broadcasting",
-    );
   } else {
     if (lockedFinalPrice === null || lockedFinalPrice <= 0) {
       apiFailure(
@@ -153,112 +140,136 @@ export async function confirmSearch(
     );
   }
 
-  const broadcast = await createBroadcasts(
-    client,
-    jobId,
-    job.service_type as ServiceType,
-    district,
-  );
-  if (!broadcast.success) {
-    if (broadcast.reasonCode === "DB_ERROR") {
-      if (rollbackStatus) {
-        const rolledBack = await rollbackFailedBroadcastStart(
-          client,
-          jobId,
-          ctx.user.id,
-          rollbackStatus,
-        );
-        if (!rolledBack) {
-          apiFailure(
-            "DB_ERROR",
-            "Không thể khôi phục yêu cầu sau lỗi gửi thợ",
-            500,
-          );
-        }
-        if (
-          options.kaelSessionId &&
-          !(await restoreKaelOfferAfterBroadcastFailure(
+  const sendBroadcast = async () => {
+    if (retryingExistingSearch) {
+      await logJobEvent(
+        client,
+        jobId,
+        "customer_retried_search",
+        ctx,
+        "broadcasting",
+        "broadcasting",
+      );
+    }
+    const broadcast = await createBroadcasts(
+      client,
+      jobId,
+      job.service_type as ServiceType,
+      district,
+    );
+    if (!broadcast.success) {
+      if (broadcast.reasonCode === "DB_ERROR") {
+        if (rollbackStatus) {
+          const rolledBack = await rollbackFailedBroadcastStart(
             client,
-            options.kaelSessionId,
             jobId,
             ctx.user.id,
-          ))
-        ) {
-          apiFailure(
-            "DB_ERROR",
-            "Kh\u00f4ng th\u1ec3 kh\u00f4i ph\u1ee5c phi\u00ean Kael sau l\u1ed7i g\u1eedi th\u1ee3",
-            500,
+            rollbackStatus,
+          );
+          if (!rolledBack) {
+            apiFailure(
+              "DB_ERROR",
+              "Không thể khôi phục yêu cầu sau lỗi gửi thợ",
+              500,
+            );
+          }
+          if (
+            options.kaelSessionId &&
+            !(await restoreKaelOfferAfterBroadcastFailure(
+              client,
+              options.kaelSessionId,
+              jobId,
+              ctx.user.id,
+            ))
+          ) {
+            apiFailure(
+              "DB_ERROR",
+              "Kh\u00f4ng th\u1ec3 kh\u00f4i ph\u1ee5c phi\u00ean Kael sau l\u1ed7i g\u1eedi th\u1ee3",
+              500,
+            );
+          }
+          await logJobEvent(
+            client,
+            jobId,
+            "broadcast_start_failed",
+            ctx,
+            "broadcasting",
+            rollbackStatus,
+            {
+              reason: broadcast.reason,
+              ...(autonomyDecision ? { autonomy_decision: autonomyDecision } : {}),
+            },
           );
         }
-        await logJobEvent(
-          client,
-          jobId,
-          "broadcast_start_failed",
-          ctx,
-          "broadcasting",
-          rollbackStatus,
-          {
-            reason: broadcast.reason,
-            ...(autonomyDecision ? { autonomy_decision: autonomyDecision } : {}),
-          },
-        );
+        apiFailure("DB_ERROR", "Không thể gửi yêu cầu đến thợ", 500);
       }
-      apiFailure("DB_ERROR", "Không thể gửi yêu cầu đến thợ", 500);
+      await logJobEvent(
+        client,
+        jobId,
+        "no_worker_found",
+        ctx,
+        "broadcasting",
+        null,
+        {
+          reason: broadcast.reason,
+          district,
+          service_type: job.service_type,
+          ...(autonomyDecision ? { autonomy_decision: autonomyDecision } : {}),
+        },
+      );
+      await insertUserNotification(client, {
+        userId: ctx.user.id,
+        jobId,
+        eventType: "no_worker_found",
+        title: "Chưa có thợ phù hợp",
+        body: "Hiện chưa có thợ phù hợp. Bạn có thể thử tìm lại sau.",
+        metadata: { district, service_type: asString(job.service_type) },
+      });
+      return {
+        job_id: jobId,
+        status: "broadcasting" as JobStatus,
+        broadcast_sent: false,
+        worker: null,
+        message: broadcast.reason,
+      };
     }
+
     await logJobEvent(
       client,
       jobId,
-      "no_worker_found",
+      "broadcast_sent",
       ctx,
       "broadcasting",
       null,
       {
-        reason: broadcast.reason,
-        district,
-        service_type: job.service_type,
+        batch_id: broadcast.batchId,
+        worker_count: broadcast.broadcastCount,
         ...(autonomyDecision ? { autonomy_decision: autonomyDecision } : {}),
       },
     );
-    // Notify customer when no eligible worker accepted.
-    await insertUserNotification(client, {
-      userId: ctx.user.id,
-      jobId,
-      eventType: "no_worker_found",
-      title: "Chưa có thợ phù hợp",
-      body: "Kael sẽ tiếp tục theo dõi và báo lại khi có thợ.",
-      metadata: { district, service_type: asString(job.service_type) },
-    });
+
     return {
       job_id: jobId,
       status: "broadcasting" as JobStatus,
-      broadcast_sent: false,
+      broadcast_sent: true,
       worker: null,
-      message: broadcast.reason,
+      message:
+        `Đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ. Đang chờ phản hồi.`,
     };
-  }
+  };
 
-  await logJobEvent(
+  if (!retryingExistingSearch) return sendBroadcast();
+
+  const claimResult = await runWithBroadcastRetryLease(
     client,
     jobId,
-    "broadcast_sent",
-    ctx,
-    "broadcasting",
-    null,
-    {
-      batch_id: broadcast.batchId,
-      worker_count: broadcast.broadcastCount,
-      ...(autonomyDecision ? { autonomy_decision: autonomyDecision } : {}),
-    },
+    ctx.user.id,
+    sendBroadcast,
   );
-
-  return {
-    job_id: jobId,
-    status: "broadcasting" as JobStatus,
-    broadcast_sent: true,
-    worker: null,
-    message:
-      `Đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ. Đang chờ phản hồi.`,
-  };
+  if (!claimResult.acquired) {
+    failBroadcastRetryClaim(claimResult.reasonCode);
+  }
+  return claimResult.value;
 }
 
 export async function acceptBroadcast(ctx: MobileApiContext, jobId: string) {

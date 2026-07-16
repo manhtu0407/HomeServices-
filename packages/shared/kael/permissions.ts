@@ -38,6 +38,9 @@ export const KAEL_ALLOWED_TOPICS = [
   'electrical_repair',
   'plumbing_repair',
   'home_cleaning',
+  'hvac_service',
+  'upholstery_care',
+  'handyman_service',
   'electrical_safety_education',
   'plumbing_self_diagnosis',
   'cleaning_best_practices',
@@ -131,7 +134,14 @@ export const KAEL_PERMISSION_MATRIX_VERSION = '2026-05-25.p5'
 
 const ALL_ALLOWED_TOPICS = KAEL_ALLOWED_TOPICS
 const ALL_FORBIDDEN_TOPICS = KAEL_FORBIDDEN_TOPICS
-const SERVICE_TOPICS = ['electrical_repair', 'plumbing_repair', 'home_cleaning'] as const
+const SERVICE_TOPICS = [
+  'electrical_repair',
+  'plumbing_repair',
+  'home_cleaning',
+  'hvac_service',
+  'upholstery_care',
+  'handyman_service',
+] as const
 const EDUCATIONAL_TOPICS = [
   'electrical_safety_education',
   'plumbing_self_diagnosis',

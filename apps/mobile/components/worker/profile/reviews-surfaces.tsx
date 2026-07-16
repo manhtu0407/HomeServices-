@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -18,6 +18,7 @@ import { styles } from './reviews-styles'
 
 type WorkerV5ReviewsProfile = WorkerProfileResponse | null | undefined
 type WorkerV5ReviewsInsights = WorkerPerformanceInsightsResponse | null | undefined
+type WorkerV5PerformanceAxis = WorkerPerformanceInsightsResponse['performance_axes'][number]
 type WorkerV5MetricTile = ComponentType<{ label: string; value: string }>
 type WorkerV5KaelBriefCard = ComponentType<{
   body?: string
@@ -28,6 +29,17 @@ type WorkerV5KaelBriefCard = ComponentType<{
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
+}
+
+function findWeakestPerformanceAxis(
+  axes: WorkerPerformanceInsightsResponse['performance_axes'] | undefined,
+): WorkerV5PerformanceAxis | undefined {
+  let weakest: WorkerV5PerformanceAxis | undefined
+  for (const axis of axes ?? []) {
+    if (typeof axis.score !== 'number' || !Number.isFinite(axis.score)) continue
+    if (!weakest || axis.score < (weakest.score ?? Number.POSITIVE_INFINITY)) weakest = axis
+  }
+  return weakest
 }
 
 export function WorkerV5ReviewsHero({
@@ -43,7 +55,9 @@ export function WorkerV5ReviewsHero({
 }) {
   const rating = insights?.average_rating ?? profile?.rating ?? null
   const hasRating = typeof rating === 'number' && rating > 0
-  const reviewCount = insights?.review_count ?? 0
+  const reviewCount = typeof insights?.review_count === 'number' && Number.isFinite(insights.review_count)
+    ? insights.review_count
+    : null
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-reviews-hero">
       {!reduceTransparency ? <MintAura intensity="component" style={styles.earningsHeroAura} testID="worker-v5-reviews-mint-aura" /> : null}
@@ -52,7 +66,13 @@ export function WorkerV5ReviewsHero({
         <Text style={styles.completionLensLabel} numberOfLines={1}>{textByLanguage(language, 'điểm', 'rating')}</Text>
       </View>
       <View style={styles.earningsHeroCopy}>
-        <Text style={styles.earningsHeroPill} numberOfLines={2} testID="worker-v5-reviews-count">{reviewCount > 0 ? textByLanguage(language, `${reviewCount} phản hồi`, `${reviewCount} reviews`) : textByLanguage(language, 'Chưa có phản hồi', 'No feedback yet')}</Text>
+        <Text style={styles.earningsHeroPill} numberOfLines={2} testID="worker-v5-reviews-count">
+          {reviewCount === null
+            ? textByLanguage(language, 'Chờ dữ liệu đánh giá', 'Review data pending')
+            : reviewCount > 0
+              ? textByLanguage(language, `${reviewCount} phản hồi`, `${reviewCount} reviews`)
+              : textByLanguage(language, 'Chưa có phản hồi', 'No feedback yet')}
+        </Text>
         <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-reviews-title">
           {hasRating ? textByLanguage(language, 'Tín hiệu chất lượng thật', 'Real quality signal') : textByLanguage(language, 'Chờ phản hồi thật', 'Waiting for real feedback')}
         </Text>
@@ -109,6 +129,9 @@ export function WorkerV5RecentFeedbackList({
   language: AppLanguage
   reduceTransparency: boolean
 }) {
+  const reviewCount = typeof insights?.review_count === 'number' && Number.isFinite(insights.review_count)
+    ? insights.review_count
+    : null
   const axes = insights?.performance_axes
     ?.filter((axis) => typeof axis.score === 'number' && Number.isFinite(axis.score))
     .slice(0, 3) ?? []
@@ -120,10 +143,12 @@ export function WorkerV5RecentFeedbackList({
     }))
     : [
       {
-        meta: insights?.review_count && insights.review_count > 0
-          ? textByLanguage(language, 'Có số lượt dánh giá nhưng chua đồng bộ nội dung chi tiết', 'Review count exists but detailed content is not synced')
-          : textByLanguage(language, 'Chưa có phản hồi thật để hiển thị', 'No real feedback to show yet'),
-        status: insights?.review_count && insights.review_count > 0 ? `${insights.review_count}` : textByLanguage(language, 'Chờ', 'Waiting'),
+        meta: reviewCount === null
+          ? textByLanguage(language, 'Chưa có dữ liệu đánh giá thật để hiển thị', 'No real review data is available yet')
+          : reviewCount > 0
+            ? textByLanguage(language, 'Có số lượt đánh giá nhưng chưa đồng bộ nội dung chi tiết', 'Review count exists but detailed content is not synced')
+            : textByLanguage(language, 'Chưa có phản hồi thật để hiển thị', 'No real feedback to show yet'),
+        status: reviewCount !== null && reviewCount > 0 ? `${reviewCount}` : textByLanguage(language, 'Chờ', 'Waiting'),
         title: textByLanguage(language, 'Phản hồi gần đây', 'Recent feedback'),
       },
     ]
@@ -133,7 +158,7 @@ export function WorkerV5RecentFeedbackList({
         <View key={row.title} style={styles.approvalDecisionRow}>
           <View style={styles.approvalDecisionIconShell}>
             {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image resizeMode="contain" source={chatIcon} style={styles.approvalDecisionIcon} />
+            <Image contentFit="contain" source={chatIcon} style={styles.approvalDecisionIcon} />
           </View>
           <View style={styles.approvalDecisionCopy}>
             <Text style={styles.approvalDecisionTitle} numberOfLines={2} testID={`worker-v5-feedback-title-${index}`}>{row.title}</Text>
@@ -157,9 +182,7 @@ export function WorkerV5ReviewImprovementPlan({
   language: AppLanguage
   reduceTransparency: boolean
 }) {
-  const weakestAxis = insights?.performance_axes
-    ?.filter((axis) => typeof axis.score === 'number' && Number.isFinite(axis.score))
-    .sort((left, right) => (left.score ?? 0) - (right.score ?? 0))[0]
+  const weakestAxis = findWeakestPerformanceAxis(insights?.performance_axes)
   const body = weakestAxis
     ? textByLanguage(
       language,

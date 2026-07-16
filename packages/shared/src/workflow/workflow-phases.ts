@@ -46,9 +46,12 @@ export const JOB_STATUS_TO_WORKFLOW_PHASE = Object.freeze({
 } satisfies Record<JobStatus, WorkflowPhase>)
 
 export function toWorkflowPhase(status: JobStatus): WorkflowPhase {
+  if (!Object.prototype.hasOwnProperty.call(JOB_STATUS_TO_WORKFLOW_PHASE, status)) {
+    throw new RangeError(`Unknown job status: ${String(status)}`)
+  }
   return JOB_STATUS_TO_WORKFLOW_PHASE[status]
 }
 
-export function isWorkflowPhase(value: string): value is WorkflowPhase {
-  return (WORKFLOW_PHASES as readonly string[]).includes(value)
+export function isWorkflowPhase(value: unknown): value is WorkflowPhase {
+  return typeof value === 'string' && (WORKFLOW_PHASES as readonly string[]).includes(value)
 }

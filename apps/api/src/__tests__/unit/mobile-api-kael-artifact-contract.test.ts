@@ -63,6 +63,48 @@ describe('Kael artifact proposal contract', () => {
     }).success).toBe(false)
   })
 
+  it('rejects owner traversal and blank facts in durable diagnosis artifacts', () => {
+    const artifact = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'hvac',
+      customerGoal: 'Máy lạnh chảy nước.',
+    })
+
+    expect(kaelDiagnosisScopeArtifactSchema.safeParse({
+      ...artifact,
+      evidence: [{
+        kind: 'video_frame',
+        ref: 'supabase://kael-chat-media/../kael-chat/model_vision/frame-1.jpg',
+        model_eligible: true,
+      }],
+    }).success).toBe(false)
+    expect(kaelDiagnosisScopeArtifactSchema.safeParse({
+      ...artifact,
+      facts: { customer_goal: '   ' },
+    }).success).toBe(false)
+  })
+
+  it('keeps offer preparation and stop-level safety consistent with quote readiness', () => {
+    const artifact = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'electrical',
+      customerGoal: 'Ổ cắm phát tia lửa.',
+    })
+
+    expect(kaelDiagnosisScopeArtifactSchema.safeParse({
+      ...artifact,
+      next_action: { kind: 'prepare_offer' },
+    }).success).toBe(false)
+    expect(kaelDiagnosisScopeArtifactSchema.safeParse({
+      ...artifact,
+      case_phase: 'offer_review',
+      missing_facts: [],
+      quote_blockers: [],
+      scope_summary: 'A complete electrical repair scope.',
+      quote_ready: true,
+      next_action: { kind: 'prepare_offer' },
+      safety_flags: [{ code: 'electrical_fire', severity: 'stop' }],
+    }).success).toBe(false)
+  })
+
   it('accepts a partial ticket update that cannot transition workflow state', () => {
     const result = kaelArtifactProposalSchema.parse({
       artifact_type: 'process_ticket',
@@ -212,7 +254,7 @@ describe('Kael artifact proposal contract', () => {
       missing_fields: [],
       may_transition: false,
       ticket_patch: {
-        problem_summary: 'VÃ²i lavabo rÃ² nÆ°á»›c liÃªn tá»¥c.',
+        problem_summary: 'Vòi lavabo rò nước liên tục.',
         job_status: 'reviewed',
         next_status: 'done',
       },

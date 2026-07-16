@@ -54,12 +54,11 @@ export function toLocalDealStatus(status: JobStatus): LocalDealStatus {
     case 'cancelled':
       return status
     default: {
-      const _exhaustive: never = status
-      return _exhaustive
+      throw new RangeError(`Unknown job status: ${String(status)}`)
     }
   }
 }
 
-export function isLocalDealStatus(status: JobStatus): status is LocalDealStatus {
-  return LOCAL_DEAL_STATUS_SET.has(status)
+export function isLocalDealStatus(status: unknown): status is LocalDealStatus {
+  return typeof status === 'string' && LOCAL_DEAL_STATUS_SET.has(status)
 }

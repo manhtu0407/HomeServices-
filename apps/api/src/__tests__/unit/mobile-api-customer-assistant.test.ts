@@ -167,7 +167,7 @@ describe('mobile-api customer Kael assistant', () => {
     const result = await runCustomerAssistant({
       callAI,
       language: 'vi',
-      message: 'Kael giáº£i thÃ­ch quy trÃ¬nh Ä‘áº·t lá»‹ch Ä‘iá»‡n giÃºp tÃ´i?',
+      message: 'Kael giải thích quy trình đặt lịch điện giúp tôi?',
       secrets: { knowledgeRetrievalEnabled: false },
       surface: 'customer_normal',
     })

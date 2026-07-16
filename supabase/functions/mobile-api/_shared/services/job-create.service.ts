@@ -3,7 +3,7 @@
 // (rollback via matching). Helpers: analyzing-job cleanup, learning-application record, idempotency
 // lookup + existing-job response. Imported by services.ts for wiring.
 
-import { asComplexityOrNull, asJobStatus, asNumber, asRecord, asServiceType, asString, nullableNumber, nullableString, positiveNumberFrom } from "./coercions.ts";
+import { asComplexityOrNull, asJobStatus, asRecord, asServiceType, asString, nullableNumber, nullableString, positiveNumberFrom } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { estimatePriceSourceFromStageLogs, sourceTrustSecretsForRequest } from "./_shared.ts";
 import { apiLogPurposeForPipelineStage, logApiCalls, logJobEvent } from "./audit.ts";
@@ -12,6 +12,7 @@ import { geocodeJobAddressForMatching } from "./places-geo.service.ts";
 import { createBroadcasts } from "./broadcasts.service.ts";
 import { rollbackFailedBroadcastStart } from "./matching.service.ts";
 import { insertUserNotification } from "./notifications.service.ts";
+import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./scheduling.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
@@ -24,14 +25,10 @@ export async function createJob(
   input: JobCreateInput,
   secrets: EdgeAiSecrets,
 ) {
-  const rateCheck = checkRateLimit(
-    `job_create:${ctx.user.id}`,
-    AI_SESSION_LIMIT,
-  );
-  if (!rateCheck.allowed) {
-    apiFailure("RATE_LIMITED", "Vui lòng thử lại sau", 429);
+  const scheduleValidation = validateFutureHcmcSchedule(input.scheduled_at);
+  if (scheduleValidation !== null && !input.client_request_id) {
+    apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
   }
-
   const client = db(ctx);
   const canonicalDistrict = normalizeServiceAreaDistrict(
     input.address_district,
@@ -53,9 +50,20 @@ export async function createJob(
     if (existingJobId) {
       return buildExistingJobCreateResponse(ctx, existingJobId);
     }
+    if (scheduleValidation !== null) {
+      apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+    }
   }
 
-  const inserted = await dbQuery<{ id: string }>(
+  const rateCheck = checkRateLimit(
+    `job_create:${ctx.user.id}`,
+    AI_SESSION_LIMIT,
+  );
+  if (!rateCheck.allowed) {
+    apiFailure("RATE_LIMITED", "Vui lòng thử lại sau", 429);
+  }
+
+  const inserted = await dbQuery<{ display_code?: unknown; id: string }>(
     client
       .from("jobs")
       .insert({
@@ -76,7 +84,7 @@ export async function createJob(
         status: "analyzing",
         client_request_id: input.client_request_id ?? null,
       })
-      .select("id")
+      .select("id, display_code")
       .single(),
   );
 
@@ -99,6 +107,7 @@ export async function createJob(
     apiFailure("DB_ERROR", "Không thể tạo yêu cầu", 500);
   }
   const jobId = inserted.data.id;
+  const displayCode = nullableString(inserted.data.display_code);
   await persistApartmentAccessProfileFromMetadata(client, {
     customerId: ctx.user.id,
     jobId,
@@ -228,34 +237,57 @@ export async function createJob(
     appealable: true,
     resultingEvent: "kael_started_matching",
   });
-  const autonomyRun = await runKaelAutonomyOrchestrator({
-    label: "estimate_to_matching",
-    decision: autonomyDecision,
-    from: "analyzing",
-    to: "broadcasting",
-    authority: {
-      purpose: "price_synthesis",
-      actor: "customer",
-      jobRelation: "own_customer_job",
-      action: "synthesize_price",
-      topic: "price_estimate",
-      intentConfidence: 1,
-      topicSource: "deterministic_rule",
-      boundarySignal: false,
-      actorId: ctx.user.id,
-      jobId,
-    },
-    knownEvidenceReferences: [jobId, "RULES.md#rule-7"],
-    source: "policy",
-    audit: {
+  let autonomyRun: Awaited<ReturnType<typeof runKaelAutonomyOrchestrator>>;
+  try {
+    autonomyRun = await runKaelAutonomyOrchestrator({
+      label: "estimate_to_matching",
+      decision: autonomyDecision,
+      from: "analyzing",
+      to: "broadcasting",
+      authority: {
+        purpose: "price_synthesis",
+        actor: "customer",
+        jobRelation: "own_customer_job",
+        action: "synthesize_price",
+        topic: "price_estimate",
+        intentConfidence: 1,
+        topicSource: "deterministic_rule",
+        boundarySignal: false,
+        actorId: ctx.user.id,
+        jobId,
+      },
+      knownEvidenceReferences: [jobId, "RULES.md#rule-7"],
+      source: "policy",
+      audit: {
+        client,
+        jobId,
+        actorId: ctx.user.id,
+        actorRole: ctx.role,
+        source: "policy",
+      },
+    });
+  } catch {
+    const retired = await cancelAnalyzingJob(
       client,
       jobId,
-      actorId: ctx.user.id,
-      actorRole: ctx.role,
-      source: "policy",
-    },
-  });
+      ctx,
+      "AUTONOMY_AUDIT_FAILED",
+    );
+    if (!retired) {
+      apiFailure("DB_ERROR", "Không thể đóng yêu cầu sau lỗi hệ thống", 500);
+    }
+    apiFailure("DB_ERROR", "Không thể ghi nhận quyết định điều phối", 500);
+  }
   if (autonomyRun.gate.result !== "allow") {
+    const retired = await cancelAnalyzingJob(
+      client,
+      jobId,
+      ctx,
+      autonomyRun.gate.audit.reason_code,
+    );
+    if (!retired) {
+      apiFailure("DB_ERROR", "Không thể đóng yêu cầu sau lỗi điều phối", 500);
+    }
     const transitionError = autonomyRun.gate.audit.safe_metadata.transition_error;
     apiFailure(
       "INVALID_STATUS",
@@ -290,6 +322,15 @@ export async function createJob(
   );
 
   if (updated.error) {
+    const retired = await cancelAnalyzingJob(
+      client,
+      jobId,
+      ctx,
+      "ESTIMATE_PERSIST_FAILED",
+    );
+    if (!retired) {
+      apiFailure("DB_ERROR", "Không thể đóng yêu cầu sau lỗi lưu ước tính", 500);
+    }
     apiFailure("DB_ERROR", "Không thể cập nhật kết quả phân tích", 500);
   }
   if (!updated.data) {
@@ -345,6 +386,19 @@ export async function createJob(
         "analyzing",
         { reason: broadcast.reason, autonomy_decision: autonomyDecision },
       );
+      const retired = await cancelAnalyzingJob(
+        client,
+        jobId,
+        ctx,
+        "BROADCAST_START_FAILED",
+      );
+      if (!retired) {
+        apiFailure(
+          "DB_ERROR",
+          "Không thể đóng yêu cầu sau lỗi gửi thợ",
+          500,
+        );
+      }
       apiFailure("DB_ERROR", "Không thể gửi yêu cầu đến thợ", 500);
     }
     await logJobEvent(
@@ -399,6 +453,7 @@ export async function createJob(
 
   return {
     job_id: jobId,
+    ...(displayCode ? { display_code: displayCode } : {}),
     status: "broadcasting" as JobStatus,
     estimate,
     estimate_card_v3: estimateCardV3,
@@ -434,7 +489,15 @@ async function cancelAnalyzingJob(
   const cancelResult = await dbQuery(
     client
       .from("jobs")
-      .update({ status: "cancelled", cancelled_at: cancelledAt })
+      .update({
+        status: "cancelled",
+        cancelled_at: cancelledAt,
+        // A terminal create failure must release the idempotency key. The
+        // mobile client intentionally keeps that key across retries; retaining
+        // it here would make every retry resolve to this cancelled shell and
+        // return JOB_PENDING forever.
+        client_request_id: null,
+      })
       .eq("id", jobId)
       .eq("status", "analyzing")
       .select("id")
@@ -520,7 +583,7 @@ async function buildExistingJobCreateResponse(
     client
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, final_price",
+        "id, display_code, status, service_type, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, final_price",
       )
       .eq("id", jobId)
       .single(),
@@ -528,10 +591,14 @@ async function buildExistingJobCreateResponse(
   if (job.error || !job.data) {
     apiFailure("DB_ERROR", "Không thể tải lại yêu cầu đã tạo", 500);
   }
+  const displayCode = nullableString(job.data.display_code);
   const cardV3 = asRecord(job.data.kael_estimate_card_v3);
   const cardEstimate = asRecord(cardV3.estimate);
   const complexity = asComplexityOrNull(job.data.kael_complexity) ??
     asComplexityOrNull(cardEstimate.complexity);
+  const confidence = nullableNumber(cardEstimate.confidence);
+  const problemCategory = nullableString(cardEstimate.problem_category);
+  const problemSummary = nullableString(job.data.kael_problem_identified);
   const priceMin = positiveNumberFrom(job.data.kael_price_min) ??
     positiveNumberFrom(cardEstimate.price_min);
   const priceMax = positiveNumberFrom(job.data.kael_price_max) ??
@@ -543,19 +610,26 @@ async function buildExistingJobCreateResponse(
       409,
     );
   }
+  if (
+    confidence === null || confidence < 0 || confidence > 1 ||
+    !problemCategory?.trim() || !problemSummary?.trim()
+  ) {
+    apiFailure("DB_ERROR", "Dữ liệu yêu cầu đã tạo không hợp lệ", 500);
+  }
   const estimate = {
     service_type: asServiceType(job.data.service_type),
-    problem_category: nullableString(cardEstimate.problem_category) ?? "",
-    problem_summary: nullableString(job.data.kael_problem_identified) ?? "",
+    problem_category: problemCategory,
+    problem_summary: problemSummary,
     complexity,
     price_min: priceMin,
     price_max: priceMax,
-    confidence: asNumber(cardEstimate.confidence),
+    confidence,
     advisory: nullableString(job.data.kael_advisory),
     disclaimer: PRICE_DISCLAIMER,
   };
   return {
     job_id: asString(job.data.id),
+    ...(displayCode ? { display_code: displayCode } : {}),
     status: asJobStatus(job.data.status),
     estimate,
     estimate_card_v3: Object.keys(cardV3).length > 0

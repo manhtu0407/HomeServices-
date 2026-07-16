@@ -113,6 +113,8 @@ export async function acceptBroadcast(
         supabase,
         jobId,
         'broadcast_expired',
+        // The authenticated server route derives workerId; this is not client-owned authorization.
+        // react-doctor-disable-next-line react-doctor/supabase-client-owned-authz-field
         { id: workerId, role: 'worker' },
         null,
         null,

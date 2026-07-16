@@ -2,13 +2,31 @@ import { readKaelOptimizationFlags } from "../cost-tracking.ts";
 import {
   retrieveAnthropicBatchResults,
   retrieveAnthropicMessageBatch,
-  type AnthropicBatchResult,
 } from "../provider-batch.ts";
 import {
   finalizeBatchItemSpend,
   recordBatchLearningOutputHealth,
 } from "./batch-result-guards.ts";
 import { parseBatchLearningCandidate } from "./batch-learning-candidate.ts";
+import {
+  claimBatchResults,
+  commitBatchItemResult,
+  completeBatchResultClaim,
+  fetchBatchItems,
+  fetchQueueRows,
+  recordBatchPollStatus,
+  releaseBatchClaims,
+  renewBatchResultClaim,
+} from "./batch-result-store.ts";
+import {
+  candidateStatusForGate,
+  type BatchLearningCandidateStatus,
+} from "./batch-learning-lifecycle.ts";
+import {
+  commitLearningEffectResult,
+  type LearningEffectCandidate,
+  type LearningEffectPlan,
+} from "./learning-effect-store.ts";
 import type { EdgeAiSecrets } from "../types.ts";
 import {
   KAEL_CASE_WORK_SERVICE_TYPES,
@@ -23,7 +41,6 @@ import {
   evaluateLearningEvidenceGate,
   getLearningSkill,
   resolveLearningRuntimeConfig,
-  transitionLearningLifecycle,
   type LearningEvidenceSnapshot,
   type LearningLifecycleState,
   type LearningSkillCandidate,
@@ -33,40 +50,11 @@ export { parseBatchLearningCandidate };
 
 const LEARNING_EVIDENCE_WINDOW_DAYS = 90;
 
-type BatchRow = {
-  id: string;
-  provider_batch_id: string | null;
-  status: string;
-  next_poll_at: string | null;
-  created_at: string;
-};
-
-type BatchItemRow = {
-  id: string;
-  batch_id: string;
-  queue_id: string | null;
-  custom_id: string;
-  skill_id: string;
-  request_payload?: unknown;
-};
-
-type LearningCandidateStatus =
-  | "created"
-  | "pending_evidence"
-  | "evidence_gate_passed"
-  | "manual_review"
-  | "auto_promoted"
-  | "rejected";
-
 type LearningRuleScope = {
   affected_service: KaelCaseWorkServiceType;
   affected_problem: string;
   affected_district: string;
 };
-
-type PromotionResult =
-  | { promoted: true; candidate_id: string; rule_id: string; rule_version: number }
-  | { promoted: false; reason: string };
 
 type LearningEvidenceCache = Map<string, AggregatedLearningEvidence | null>;
 
@@ -95,63 +83,173 @@ export async function processBatchResults(
     return { checked: 0, ended: 0, processed_items: 0, failed_items: 0, skipped_reason: "batch_api_disabled" };
   }
   const now = options.now ?? new Date();
-  let batchesQuery = client
-    .from("kael_ai_batches")
-    .select("id,provider_batch_id,status,next_poll_at,created_at")
-    .in("status", ["submitted", "in_progress", "ended"])
-  if (!options.forcePoll) {
-    batchesQuery = batchesQuery.lte("next_poll_at", now.toISOString());
-  }
-  const batchesResult = await batchesQuery
-    .order("created_at", { ascending: true })
-    .limit(options.limit ?? 10);
-
-  if (batchesResult.error) {
-    return { checked: 0, ended: 0, processed_items: 0, failed_items: 0, error_code: batchesResult.error.code ?? "DB_ERROR" };
-  }
-
-  const batches = Array.isArray(batchesResult.data)
-    ? batchesResult.data as BatchRow[]
-    : [];
+  const claim = await claimBatchResults(client, {
+    limit: options.limit,
+    now,
+    forcePoll: options.forcePoll,
+  });
+  if (!claim.ok) return emptyBatchSummary(claim.errorCode);
+  const { batches, claimToken } = claim;
   let ended = 0;
   let processedItems = 0;
   let failedItems = 0;
 
   for (const batch of batches) {
-    if (!batch.provider_batch_id) continue;
-    const remote = await retrieveAnthropicMessageBatch(secrets, batch.provider_batch_id);
+    let remote;
+    try {
+      remote = await retrieveAnthropicMessageBatch(secrets, batch.provider_batch_id);
+    } catch {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "BATCH_PROVIDER_POLL_FAILED",
+      );
+    }
     const remoteStatus = remote.processing_status === "ended" ? "ended" : "in_progress";
-    await client.from("kael_ai_batches").update({
+    const statusWritten = await recordBatchPollStatus(client, {
+      batchId: batch.id,
+      claimToken,
       status: remoteStatus,
-      processing_count: remote.request_counts?.processing ?? 0,
-      succeeded_count: remote.request_counts?.succeeded ?? 0,
-      errored_count: remote.request_counts?.errored ?? 0,
-      canceled_count: remote.request_counts?.canceled ?? 0,
-      expired_count: remote.request_counts?.expired ?? 0,
-      results_url: remote.results_url ?? null,
-      ended_at: remote.ended_at ?? null,
-      expires_at: remote.expires_at ?? null,
-      next_poll_at: remoteStatus === "ended"
+      processingCount: remote.request_counts?.processing ?? 0,
+      succeededCount: remote.request_counts?.succeeded ?? 0,
+      erroredCount: remote.request_counts?.errored ?? 0,
+      canceledCount: remote.request_counts?.canceled ?? 0,
+      expiredCount: remote.request_counts?.expired ?? 0,
+      resultsUrl: remote.results_url ?? null,
+      endedAt: remote.ended_at ?? null,
+      expiresAt: remote.expires_at ?? null,
+      nextPollAt: remoteStatus === "ended"
         ? now.toISOString()
         : new Date(now.getTime() + 60 * 60 * 1000).toISOString(),
-    }).eq("id", batch.id);
+    });
+    if (!statusWritten) {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "BATCH_STATUS_WRITE_FAILED",
+      );
+    }
 
     if (remote.processing_status !== "ended") continue;
     ended += 1;
 
-    const results = await retrieveAnthropicBatchResults(secrets, batch.provider_batch_id);
-    const itemRows = await fetchBatchItems(client, batch.id);
-    const queueRows = await fetchQueueRows(
+    let results;
+    try {
+      results = await retrieveAnthropicBatchResults(secrets, batch.provider_batch_id);
+    } catch {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "BATCH_PROVIDER_RESULTS_FAILED",
+      );
+    }
+    const itemResult = await fetchBatchItems(client, batch.id);
+    if (!itemResult.ok) {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "BATCH_ITEM_LOAD_FAILED",
+      );
+    }
+    const itemRows = itemResult.rows;
+    const queueResult = await fetchQueueRows(
       client,
       itemRows.map((item) => item.queue_id).filter((id): id is string => typeof id === "string"),
     );
+    if (!queueResult.ok) {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "LEARNING_QUEUE_LOAD_FAILED",
+      );
+    }
+    const queueRows = queueResult.rows;
     const queuesById = new Map(queueRows.map((row) => [row.id, row]));
     const itemsByCustomId = new Map(itemRows.map((item) => [item.custom_id, item]));
+    if (itemRows.some((item) => item.queue_id !== null && !queuesById.has(item.queue_id))) {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "LEARNING_QUEUE_ROW_MISSING",
+      );
+    }
+    const resultCustomIds = results.map((result) => result.custom_id);
+    if (
+      new Set(resultCustomIds).size !== resultCustomIds.length ||
+      resultCustomIds.some((customId) => !itemsByCustomId.has(customId))
+    ) {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "BATCH_RESULTS_MISMATCH",
+      );
+    }
+    const resultCustomIdSet = new Set(resultCustomIds);
+    if (itemRows.some((item) => !resultCustomIdSet.has(item.custom_id))) {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "BATCH_RESULTS_INCOMPLETE",
+      );
+    }
     const evidenceCache: LearningEvidenceCache = new Map();
 
     for (const result of results) {
       const item = itemsByCustomId.get(result.custom_id);
       if (!item) continue;
+      if (item.status !== undefined && item.status !== "pending") continue;
+      if (!await renewBatchResultClaim(client, batch.id, claimToken)) {
+        return failBatchSummary(
+          client,
+          claimToken,
+          now,
+          batches.length,
+          ended,
+          processedItems,
+          failedItems,
+          "BATCH_CLAIM_RENEW_FAILED",
+        );
+      }
       const queue = item.queue_id ? queuesById.get(item.queue_id) : undefined;
       await finalizeBatchItemSpend(client, item, queue?.actor_id, result);
       if (result.result.type === "succeeded" && queue) {
@@ -167,42 +265,83 @@ export async function processBatchResults(
           now,
           evidenceCache,
         );
-        if (!outcome.ok) {
-          await markItemProcessingError(client, item.id, result, outcome.error_code, now);
-          await client.from("kael_learning_queue").update({
-            queue_state: outcome.queue_state,
-            error_code: outcome.error_code,
-            processed_at: now.toISOString(),
-          }).eq("id", queue.id);
-          failedItems += 1;
-          continue;
+        const commit = await commitLearningEffectResult(client, {
+          sourceMode: "anthropic_batch",
+          batchId: batch.id,
+          itemId: item.id,
+          queueId: queue.id,
+          ownerToken: claimToken,
+          itemStatus: outcome.ok ? "succeeded" : "errored",
+          responsePayload: result.result.message ?? {},
+          errorPayload: outcome.ok
+            ? {}
+            : { type: "processing_error", error_code: outcome.error_code },
+          queueState: outcome.queue_state,
+          queueErrorCode: outcome.ok ? null : outcome.error_code,
+          processedAt: now.toISOString(),
+          effect: outcome.effect,
+        });
+        if (!commit.ok) {
+          return failBatchSummary(
+            client,
+            claimToken,
+            now,
+            batches.length,
+            ended,
+            processedItems,
+            failedItems,
+            commit.errorCode,
+          );
         }
-        await client.from("kael_ai_batch_items").update({
-          status: "succeeded",
-          response_payload: result.result.message ?? {},
-          processed_at: now.toISOString(),
-        }).eq("id", item.id);
-        await client.from("kael_learning_queue").update({
-          queue_state: outcome.queue_state,
-          processed_at: now.toISOString(),
-        }).eq("id", queue.id);
-        processedItems += 1;
+        if (outcome.ok) processedItems += 1;
+        else failedItems += 1;
       } else {
-        await markItemFailed(client, item.id, result, now);
-        if (queue) {
-          await client.from("kael_learning_queue").update({
-            queue_state: "failed",
-            error_code: result.result.type.toUpperCase(),
-          }).eq("id", queue.id);
+        const providerErrorCode = result.result.type === "succeeded"
+          ? "LEARNING_QUEUE_ROW_MISSING"
+          : result.result.type.toUpperCase();
+        const commit = await commitBatchItemResult(client, {
+          batchId: batch.id,
+          itemId: item.id,
+          queueId: queue?.id ?? null,
+          claimToken,
+          itemStatus: result.result.type === "succeeded" ? "errored" : result.result.type,
+          responsePayload: result.result.message ?? {},
+          errorPayload: result.result.error ?? {
+            type: result.result.type === "succeeded" ? "processing_error" : result.result.type,
+            error_code: providerErrorCode,
+          },
+          queueState: queue ? "failed" : null,
+          queueErrorCode: queue ? providerErrorCode : null,
+          processedAt: now.toISOString(),
+        });
+        if (!commit.ok) {
+          return failBatchSummary(
+            client,
+            claimToken,
+            now,
+            batches.length,
+            ended,
+            processedItems,
+            failedItems,
+            commit.errorCode,
+          );
         }
         failedItems += 1;
       }
     }
 
-    await client.from("kael_ai_batches").update({
-      status: "results_processed",
-      next_poll_at: null,
-    }).eq("id", batch.id);
+    if (!await completeBatchResultClaim(client, batch.id, claimToken)) {
+      return failBatchSummary(
+        client,
+        claimToken,
+        now,
+        batches.length,
+        ended,
+        processedItems,
+        failedItems,
+        "BATCH_FINALIZE_FAILED",
+      );
+    }
   }
 
   return {
@@ -213,9 +352,48 @@ export async function processBatchResults(
   };
 }
 
+function emptyBatchSummary(errorCode: string): ProcessBatchResultsSummary {
+  return {
+    checked: 0,
+    ended: 0,
+    processed_items: 0,
+    failed_items: 0,
+    error_code: errorCode,
+  };
+}
+
+async function failBatchSummary(
+  client: LearningQueueDbClient,
+  claimToken: string,
+  _now: Date,
+  checked: number,
+  ended: number,
+  processedItems: number,
+  failedItems: number,
+  errorCode: string,
+): Promise<ProcessBatchResultsSummary> {
+  await releaseBatchClaims(client, claimToken, errorCode);
+  return {
+    checked,
+    ended,
+    processed_items: processedItems,
+    failed_items: failedItems,
+    error_code: errorCode,
+  };
+}
+
 export type LearningCandidateProcessOutcome =
-  | { ok: true; queue_state: "processed" | "manual_review" }
-  | { ok: false; queue_state: "failed" | "rejected"; error_code: string };
+  | {
+    ok: true;
+    queue_state: "processed" | "manual_review";
+    effect: LearningEffectPlan;
+  }
+  | {
+    ok: false;
+    queue_state: "failed" | "rejected";
+    error_code: string;
+    effect: LearningEffectPlan | null;
+  };
 export async function processLearningCandidateResponse(
   client: LearningQueueDbClient,
   queue: QueuedLearningRow,
@@ -225,106 +403,121 @@ export async function processLearningCandidateResponse(
 ): Promise<LearningCandidateProcessOutcome> {
   const parsed = parseBatchLearningCandidate(message);
   if (!parsed.ok) {
-    return { ok: false, queue_state: "failed", error_code: parsed.reason };
+    return { ok: false, queue_state: "failed", error_code: parsed.reason, effect: null };
   }
   const candidate = parsed.candidate;
   const runtimeConfig = resolveLearningRuntimeConfig(readRuntimeEnv, queue.actor_id ?? undefined);
   if (!runtimeConfig.write_enabled || runtimeConfig.kill_switch || !runtimeConfig.enabled_for_actor) {
-    return { ok: false, queue_state: "failed", error_code: "LEARNING_WRITE_DISABLED" };
+    return {
+      ok: false,
+      queue_state: "failed",
+      error_code: "LEARNING_WRITE_DISABLED",
+      effect: null,
+    };
   }
   if (candidate.skill_id !== queue.skill_id) {
-    return { ok: false, queue_state: "failed", error_code: "LEARNING_SKILL_MISMATCH" };
+    return {
+      ok: false,
+      queue_state: "failed",
+      error_code: "LEARNING_SKILL_MISMATCH",
+      effect: null,
+    };
   }
   const skill = getLearningSkill(candidate.skill_id);
   if (!skill) {
-    return { ok: false, queue_state: "failed", error_code: "LEARNING_SKILL_UNKNOWN" };
+    return {
+      ok: false,
+      queue_state: "failed",
+      error_code: "LEARNING_SKILL_UNKNOWN",
+      effect: null,
+    };
   }
   const scopeDecision = enforceLearningScopeLimits(skill, candidate);
   if (!scopeDecision.allowed) {
-    const candidateId = await insertLearningCandidateRow(client, queue, candidate, {
-      status: "rejected",
-      audit_reason: `scope_rejected:${scopeDecision.reason}`,
-      evidence: emptyEvidenceSnapshot(),
-    });
-    if (!candidateId) {
-      return { ok: false, queue_state: "failed", error_code: "LEARNING_CANDIDATE_INSERT_FAILED" };
-    }
-    await insertBatchLifecycleRows(client, queue, candidate, [{
-      candidate_id: candidateId,
-      previous_state: "candidate",
-      next_state: "pending_evidence",
-      transition_reason: "scope_check_started",
-      safe_metadata: {
-        gate_reason: scopeDecision.reason,
-      },
-    }, {
-      candidate_id: candidateId,
-      previous_state: "pending_evidence",
-      next_state: "evidence_gate_check",
-      transition_reason: "scope_check_completed",
-      safe_metadata: {
-        gate_reason: scopeDecision.reason,
-      },
-    }, {
-      candidate_id: candidateId,
-      previous_state: "evidence_gate_check",
-      next_state: "rejected",
-      transition_reason: `scope_rejected:${scopeDecision.reason}`,
-      safe_metadata: {
-        gate_reason: scopeDecision.reason,
-      },
-    }]);
-    return { ok: false, queue_state: "rejected", error_code: "LEARNING_SCOPE_REJECTED" };
+    const evidence = emptyEvidenceSnapshot();
+    return {
+      ok: false,
+      queue_state: "rejected",
+      error_code: "LEARNING_SCOPE_REJECTED",
+      effect: candidateEffectPlan(candidate, evidence, {
+        mode: "candidate",
+        status: "rejected",
+        auditReason: `scope_rejected:${scopeDecision.reason}`,
+        gateState: "rejected",
+        lifecycleState: "rejected",
+        gateReason: scopeDecision.reason,
+        evidenceSource: "candidate_payload",
+        scopeRejected: true,
+      }),
+    };
   }
-  const aggregation = await aggregateCandidateEvidence(client, queue, candidate, now, evidenceCache);
+  let aggregation: AggregatedLearningEvidence;
+  try {
+    aggregation = await aggregateCandidateEvidence(client, queue, candidate, now, evidenceCache);
+  } catch {
+    return {
+      ok: false,
+      queue_state: "failed",
+      error_code: "LEARNING_EVIDENCE_LOAD_FAILED",
+      effect: null,
+    };
+  }
   const evidence = aggregation.evidence;
   const evaluatedCandidate = aggregation.candidate;
   const gate = evaluateLearningEvidenceGate(skill, evidence);
-  let activeRule: PromotionResult = { promoted: false, reason: "not_requested" };
-  let lifecycleState: LearningLifecycleState = gate.next_state;
-  let queueState: "processed" | "manual_review" = gate.next_state === "manual_review"
-    ? "manual_review"
-    : "processed";
-  let candidateId: string | null = null;
   if (gate.promote && gate.next_state === "auto_promoted") {
-    activeRule = await promoteCandidateToActiveRule(client, queue, evaluatedCandidate, evidence);
-    if (activeRule.promoted) {
-      candidateId = activeRule.candidate_id;
-      lifecycleState = "active";
-      queueState = "processed";
-    } else {
-      candidateId = await insertLearningCandidateRow(client, queue, evaluatedCandidate, {
+    const scope = requiredRuleScope(evaluatedCandidate);
+    const rulePayload = runtimePayloadFromCandidate(evaluatedCandidate);
+    const deferredReason = !scope
+      ? "missing_runtime_scope"
+      : !rulePayload
+      ? "runtime_rule_payload_unavailable"
+      : null;
+    if (deferredReason) {
+      return {
+        ok: true,
+        queue_state: "manual_review",
+        effect: candidateEffectPlan(evaluatedCandidate, evidence, {
+          mode: "candidate",
+          status: "evidence_gate_passed",
+          auditReason: `promotion_deferred:${deferredReason}`,
+          gateState: gate.next_state,
+          lifecycleState: "manual_review",
+          gateReason: gate.reason,
+          evidenceSource: aggregation.source,
+          promotionDeferredReason: deferredReason,
+        }),
+      };
+    }
+    return {
+      ok: true,
+      queue_state: "processed",
+      effect: candidateEffectPlan(evaluatedCandidate, evidence, {
+        mode: "promotion",
         status: "evidence_gate_passed",
-        audit_reason: `promotion_deferred:${activeRule.reason}`,
-        evidence,
-      });
-      if (!candidateId) {
-        return { ok: false, queue_state: "failed", error_code: "LEARNING_CANDIDATE_INSERT_FAILED" };
-      }
-      lifecycleState = "manual_review";
-      queueState = "manual_review";
-    }
-  } else {
-    candidateId = await insertLearningCandidateRow(client, queue, evaluatedCandidate, {
-      status: candidateStatusForGate(gate.next_state, gate.promote),
-      audit_reason: `batch_gate:${gate.reason}`,
-      evidence,
-    });
-    if (!candidateId) {
-      return { ok: false, queue_state: "failed", error_code: "LEARNING_CANDIDATE_INSERT_FAILED" };
-    }
+        auditReason: `batch_gate:${gate.reason}`,
+        gateState: gate.next_state,
+        lifecycleState: "active",
+        gateReason: gate.reason,
+        evidenceSource: aggregation.source,
+        rulePayload,
+      }),
+    };
   }
-
-  await insertBatchLifecycleRows(client, queue, evaluatedCandidate, lifecycleRowsForGate({
-    candidate_id: candidateId,
-    gate_state: gate.next_state,
-    lifecycle_state: lifecycleState,
-    gate_reason: gate.reason,
-    evidence,
-    active_rule: activeRule,
-    evidence_source: aggregation.source,
-  }));
-  return { ok: true, queue_state: queueState };
+  const queueState = gate.next_state === "manual_review" ? "manual_review" : "processed";
+  return {
+    ok: true,
+    queue_state: queueState,
+    effect: candidateEffectPlan(evaluatedCandidate, evidence, {
+      mode: "candidate",
+      status: candidateStatusForGate(gate.next_state, gate.promote),
+      auditReason: `batch_gate:${gate.reason}`,
+      gateState: gate.next_state,
+      lifecycleState: gate.next_state,
+      gateReason: gate.reason,
+      evidenceSource: aggregation.source,
+    }),
+  };
 }
 
 function evidenceSnapshotFrom(
@@ -413,8 +606,7 @@ async function aggregateLS1PriceEvidence(
     .order("reviewed_at", { ascending: false })
     .limit(50);
   if (result.error || !Array.isArray(result.data)) {
-    cache.set(cacheKey, null);
-    return null;
+    throw new Error("LEARNING_EVIDENCE_LOAD_FAILED");
   }
 
   const rawSamples = result.data
@@ -565,284 +757,54 @@ function emptyEvidenceSnapshot(): LearningEvidenceSnapshot {
   };
 }
 
-async function insertLearningCandidateRow(
-  client: LearningQueueDbClient,
-  queue: QueuedLearningRow,
+function candidateEffectPlan(
   candidate: LearningSkillCandidate,
+  evidence: LearningEvidenceSnapshot,
   options: {
-    status: LearningCandidateStatus;
-    audit_reason: string;
-    evidence: LearningEvidenceSnapshot;
+    mode: "candidate" | "promotion";
+    status: BatchLearningCandidateStatus;
+    auditReason: string;
+    gateState: LearningLifecycleState;
+    lifecycleState: LearningLifecycleState;
+    gateReason: string;
+    evidenceSource: "completed_reviewed_jobs" | "candidate_payload";
+    scopeRejected?: boolean;
+    promotionDeferredReason?: string | null;
+    rulePayload?: Record<string, unknown> | null;
   },
-): Promise<string | null> {
+): LearningEffectPlan {
   const scope = scopeFromCandidate(candidate);
-  const result = await client.from("learning_candidates").insert({
+  const effectCandidate: LearningEffectCandidate = {
+    skill_id: candidate.skill_id,
     candidate_type: candidate.candidate_type,
+    target: candidate.target,
+    effects: [...candidate.effects],
+    suggested_payload: candidateStoragePayload(candidate),
+    rule_payload: options.rulePayload ?? null,
     affected_service: scope.affected_service,
     affected_problem: scope.affected_problem,
     affected_district: scope.affected_district,
-    suggested_payload: candidateStoragePayload(candidate),
-    confidence: clampConfidence(options.evidence.confidence),
-    evidence_count: Math.max(0, Math.trunc(options.evidence.evidence_count)),
+    confidence: clampConfidence(evidence.confidence),
+    evidence_count: Math.max(0, Math.trunc(evidence.evidence_count)),
     status: options.status,
-    audit_reason: `${options.audit_reason}; queue=${queue.id}`,
-  }).select("id").single();
-  return isRecord(result.data) && typeof result.data.id === "string"
-    ? result.data.id
-    : null;
-}
-
-async function promoteCandidateToActiveRule(
-  client: LearningQueueDbClient,
-  queue: QueuedLearningRow,
-  candidate: LearningSkillCandidate,
-  evidence: LearningEvidenceSnapshot,
-): Promise<PromotionResult> {
-  if (!client.rpc) return { promoted: false, reason: "promotion_rpc_unavailable" };
-  const scope = requiredRuleScope(candidate);
-  if (!scope) return { promoted: false, reason: "missing_runtime_scope" };
-  const rulePayload = runtimePayloadFromCandidate(candidate);
-  if (!rulePayload) return { promoted: false, reason: "runtime_rule_payload_unavailable" };
-
-  const result = await client.rpc("promote_learning_candidate", {
-    p_skill_id: candidate.skill_id,
-    p_candidate_type: candidate.candidate_type,
-    p_target: candidate.target,
-    p_effects: [...candidate.effects],
-    p_candidate_payload: candidateStoragePayload(candidate),
-    p_rule_payload: rulePayload,
-    p_affected_service: scope.affected_service,
-    p_affected_problem: scope.affected_problem,
-    p_affected_district: scope.affected_district,
-    p_confidence: clampConfidence(evidence.confidence),
-    p_evidence_count: Math.max(0, Math.trunc(evidence.evidence_count)),
-    p_actor_id: queue.actor_id,
-    p_actor_role: queue.actor_role ?? "system",
-    p_job_id: queue.job_id,
-    p_audit_reason: `batch_gate:gate_passed; queue=${queue.id}`,
-  });
-  if (result.error) {
-    return { promoted: false, reason: `promotion_rpc_failed:${result.error.code ?? "DB_ERROR"}` };
-  }
-  const row = Array.isArray(result.data)
-    ? result.data.find(isRecord) ?? null
-    : isRecord(result.data)
-    ? result.data
-    : null;
-  if (!row || row.ok !== true) {
-    return { promoted: false, reason: stringFrom(row?.error_code) ?? "promotion_rpc_rejected" };
-  }
-  const candidateId = stringFrom(row.candidate_id);
-  const ruleId = stringFrom(row.rule_id);
-  const ruleVersion = integerFrom(row.rule_version);
-  if (!candidateId || !ruleId || ruleVersion === null) {
-    return { promoted: false, reason: "promotion_rpc_missing_result" };
-  }
-  return {
-    promoted: true,
-    candidate_id: candidateId,
-    rule_id: ruleId,
-    rule_version: ruleVersion,
+    audit_reason: options.auditReason,
+    prompt_version: candidate.prompt_version,
+    requires_manual_review: candidate.requires_manual_review,
   };
-}
-
-function lifecycleRowsForGate(input: {
-  candidate_id: string | null;
-  gate_state: LearningLifecycleState;
-  lifecycle_state: LearningLifecycleState;
-  gate_reason: string;
-  evidence: LearningEvidenceSnapshot;
-  active_rule: PromotionResult;
-  evidence_source: AggregatedLearningEvidence["source"];
-}) {
-  const rows: Array<{
-    candidate_id: string | null;
-    previous_state: LearningLifecycleState;
-    next_state: LearningLifecycleState;
-    transition_reason: string;
-    safe_metadata: Record<string, unknown>;
-  }> = [
-    lifecycleTransitionRow({
-      candidate_id: input.candidate_id,
-      previous_state: "candidate",
-      next_state: "pending_evidence",
-      transition_reason: "candidate_evidence_recorded",
-      safe_metadata: {
-        gate_reason: input.gate_reason,
-        evidence_source: input.evidence_source,
-        evidence: input.evidence,
-      },
-    }),
-  ];
-  if (input.gate_state !== "pending_evidence") {
-    rows.push(lifecycleTransitionRow({
-      candidate_id: input.candidate_id,
-      previous_state: "pending_evidence",
-      next_state: "evidence_gate_check",
-      transition_reason: "evidence_gate_check_started",
-      safe_metadata: {
-        gate_reason: input.gate_reason,
-        evidence_source: input.evidence_source,
-        evidence: input.evidence,
-      },
-    }));
-    const gateTerminalState = input.active_rule.promoted ? input.gate_state : input.lifecycle_state;
-    rows.push(lifecycleTransitionRow({
-      candidate_id: input.candidate_id,
-      previous_state: "evidence_gate_check",
-      next_state: gateTerminalState,
-      transition_reason: `evidence_gate:${input.gate_reason}`,
-      safe_metadata: {
-        gate_reason: input.gate_reason,
-        evidence_source: input.evidence_source,
-        evidence: input.evidence,
-      },
-    }));
-  }
-  if (input.active_rule.promoted) {
-    rows.push(lifecycleTransitionRow({
-      candidate_id: input.candidate_id,
-      previous_state: "auto_promoted",
-      next_state: "active",
-      transition_reason: "active_rule_written",
-      safe_metadata: {
-        gate_reason: input.gate_reason,
-        evidence_source: input.evidence_source,
-        evidence: input.evidence,
-        rule_id: input.active_rule.rule_id,
-        rule_version: input.active_rule.rule_version,
-      },
-    }));
-  } else if (
-    input.gate_state === "auto_promoted" &&
-    input.lifecycle_state === "manual_review"
-  ) {
-    rows[rows.length - 1] = lifecycleTransitionRow({
-      candidate_id: input.candidate_id,
-      previous_state: "evidence_gate_check",
-      next_state: "manual_review",
-      transition_reason: `promotion_deferred:${input.active_rule.reason}`,
-      safe_metadata: {
-        gate_reason: input.gate_reason,
-        evidence_source: input.evidence_source,
-        evidence: input.evidence,
-        promotion_reason: input.active_rule.reason,
-      },
-    });
-  }
-  return rows;
-}
-
-function lifecycleTransitionRow(row: {
-  candidate_id: string | null;
-  previous_state: LearningLifecycleState;
-  next_state: LearningLifecycleState;
-  transition_reason: string;
-  safe_metadata: Record<string, unknown>;
-}) {
-  const transition = transitionLearningLifecycle(row.previous_state, row.next_state);
-  if (!transition.valid) {
-    throw new Error(`Invalid learning lifecycle transition: ${row.previous_state}->${row.next_state}`);
-  }
-  return row;
-}
-
-async function insertBatchLifecycleRows(
-  client: LearningQueueDbClient,
-  queue: QueuedLearningRow,
-  candidate: LearningSkillCandidate,
-  rows: Array<{
-    candidate_id: string | null;
-    previous_state?: LearningLifecycleState | null;
-    next_state: LearningLifecycleState;
-    transition_reason: string;
-    safe_metadata: Record<string, unknown>;
-  }>,
-) {
-  if (rows.length === 0) return;
-  const ruleId = rows.find((row) => typeof row.safe_metadata.rule_id === "string")
-    ?.safe_metadata.rule_id ?? null;
-  await client.from("kael_rule_lifecycle_log").insert(rows.map((row) => ({
-    skill_id: candidate.skill_id,
-    job_id: queue.job_id,
-    rule_id: ruleId,
-    candidate_id: row.candidate_id,
-    previous_state: row.previous_state ?? null,
-    next_state: row.next_state,
-    transition_reason: row.transition_reason,
-    actor_id: queue.actor_id,
-    actor_role: queue.actor_role,
-    safe_metadata: {
-      q4_queue_id: queue.id,
-      event_type: queue.event_type,
-      target: candidate.target,
-      candidate_type: candidate.candidate_type,
-      prompt_version: candidate.prompt_version,
-      requires_manual_review: candidate.requires_manual_review,
-      ...row.safe_metadata,
+  return {
+    schema: "kael_learning_effect.v1",
+    mode: options.mode,
+    candidate: effectCandidate,
+    lifecycle: {
+      gate_state: options.gateState,
+      lifecycle_state: options.lifecycleState,
+      gate_reason: options.gateReason,
+      evidence,
+      evidence_source: options.evidenceSource,
+      scope_rejected: options.scopeRejected === true,
+      promotion_deferred_reason: options.promotionDeferredReason ?? null,
     },
-  })));
-}
-
-async function fetchBatchItems(
-  client: LearningQueueDbClient,
-  batchId: string,
-): Promise<BatchItemRow[]> {
-  const result = await client
-    .from("kael_ai_batch_items")
-    .select("id,batch_id,queue_id,custom_id,skill_id,request_payload")
-    .eq("batch_id", batchId);
-  return Array.isArray(result.data) ? result.data as BatchItemRow[] : [];
-}
-
-async function fetchQueueRows(
-  client: LearningQueueDbClient,
-  ids: string[],
-): Promise<QueuedLearningRow[]> {
-  if (ids.length === 0) return [];
-  const result = await client
-    .from("kael_learning_queue")
-    .select("id,event_type,skill_id,job_id,actor_id,actor_role,queue_state,input_payload,candidate_payload,attempts,created_at")
-    .in("id", ids);
-  return Array.isArray(result.data) ? result.data as QueuedLearningRow[] : [];
-}
-
-async function markItemFailed(
-  client: LearningQueueDbClient,
-  itemId: string,
-  result: AnthropicBatchResult,
-  now: Date,
-) {
-  await client.from("kael_ai_batch_items").update({
-    status: result.result.type,
-    error_payload: result.result.error ?? { type: result.result.type },
-    processed_at: now.toISOString(),
-  }).eq("id", itemId);
-}
-
-async function markItemProcessingError(
-  client: LearningQueueDbClient,
-  itemId: string,
-  result: AnthropicBatchResult,
-  errorCode: string,
-  now: Date,
-) {
-  await client.from("kael_ai_batch_items").update({
-    status: "errored",
-    response_payload: result.result.message ?? {},
-    error_payload: { type: "processing_error", error_code: errorCode },
-    processed_at: now.toISOString(),
-  }).eq("id", itemId);
-}
-
-function candidateStatusForGate(
-  nextState: LearningLifecycleState,
-  promote: boolean,
-): LearningCandidateStatus {
-  if (nextState === "manual_review") return "manual_review";
-  if (promote) return "evidence_gate_passed";
-  if (nextState === "rejected") return "rejected";
-  return "pending_evidence";
+  };
 }
 
 function runtimePayloadFromCandidate(candidate: LearningSkillCandidate): Record<string, unknown> | null {

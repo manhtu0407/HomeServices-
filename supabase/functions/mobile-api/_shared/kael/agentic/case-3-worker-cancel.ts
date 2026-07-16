@@ -74,23 +74,14 @@ export type RecordWorkerCancellationReviewInput = {
   readonly jobId: string | null;
   readonly workerId: string | null;
   readonly cancellationId: string | null;
-  readonly reason: string;
-  readonly classification: WorkerCancellationClassification;
-  readonly abuse: WorkerCancellationAbuseEvaluation;
   readonly subCase: "explicit_cancel" | "no_show";
 };
 
 export type WorkerCancellationReviewDbClient = {
-  from(table: string): {
-    select(columns?: string): WorkerCancellationReviewQuery;
-    insert(value: unknown): PromiseLike<WorkerCancellationDbResult>;
-    upsert(value: unknown): PromiseLike<WorkerCancellationDbResult>;
-  };
-};
-
-type WorkerCancellationReviewQuery = {
-  eq(column: string, value: unknown): WorkerCancellationReviewQuery;
-  maybeSingle(): PromiseLike<WorkerCancellationDbResult>;
+  rpc(
+    name: string,
+    args: Record<string, unknown>,
+  ): PromiseLike<WorkerCancellationDbResult>;
 };
 
 type WorkerCancellationDbResult = {
@@ -265,80 +256,17 @@ export async function recordWorkerCancellationReview(
   client: WorkerCancellationReviewDbClient,
   input: RecordWorkerCancellationReviewInput,
 ) {
-  if (!input.workerId) return;
+  if (!input.workerId || !input.jobId || !input.cancellationId) return;
 
-  const existing = await client
-    .from("worker_kael_memory")
-    .select("red_flags, reliability_signals, safe_metadata")
-    .eq("worker_id", input.workerId)
-    .maybeSingle();
-  const existingData = asRecord(existing?.data);
-  const redFlags = asRecord(existingData.red_flags);
-  const reliabilitySignals = asRecord(existingData.reliability_signals);
-  const safeMetadata = asRecord(existingData.safe_metadata);
-  const observedAt = new Date().toISOString();
-
-  await client.from("worker_kael_memory").upsert({
-    worker_id: input.workerId,
-    red_flags: {
-      ...redFlags,
-      ...input.abuse.redFlagPatch,
-    },
-    reliability_signals: {
-      ...reliabilitySignals,
-      last_worker_cancellation_reason: input.classification.reasonCode,
-      last_worker_cancellation_category: input.classification.category,
-      worker_cancellation_admin_review_required:
-        input.classification.adminReviewRequired ||
-        input.abuse.adminReviewRequired ||
-        input.subCase === "no_show",
-    },
-    safe_metadata: {
-      ...safeMetadata,
-      last_worker_cancellation_review: {
-        job_id: input.jobId,
-        cancellation_id: input.cancellationId,
-        reason_code: input.classification.reasonCode,
-        reason_category: input.classification.category,
-        sub_case: input.subCase,
-        abuse_signals: input.abuse.signals,
-        sanitized_reason: sanitizeReviewExcerpt(input.reason),
-        autonomous_suspension: false,
-        observed_at: observedAt,
-      },
-    },
-    last_observed_at: observedAt,
+  const result = await client.rpc("record_worker_cancellation_memory_atomic", {
+    p_cancellation_id: input.cancellationId,
+    p_worker_id: input.workerId,
+    p_job_id: input.jobId,
+    p_sub_case: input.subCase,
   });
-
-  const queueNeeded = input.classification.adminReviewRequired ||
-    input.abuse.adminReviewRequired ||
-    input.subCase === "no_show";
-  if (!queueNeeded) return;
-
-  await client.from("kael_admin_queue").insert({
-    job_id: input.jobId,
-    actor_id: input.workerId,
-    actor_role: "worker",
-    queue_type: input.subCase === "no_show"
-      ? "worker_no_show"
-      : "worker_cancellation_review",
-    priority: "medium",
-    status: "open",
-    escalation_level: "soft",
-    reason_code: input.classification.reasonCode,
-    response_summary: input.subCase === "no_show"
-      ? "admin_review_worker_no_show"
-      : "admin_review_before_suspension",
-    safe_metadata: {
-      case: "worker_cancel",
-      sub_case: input.subCase,
-      reason_category: input.classification.category,
-      abuse_signals: input.abuse.signals,
-      fallback_options: buildWorkerCancellationFallbackOptions(),
-      autonomous_suspension: false,
-      sanitized_reason: sanitizeReviewExcerpt(input.reason),
-    },
-  });
+  if (result.error) {
+    throw new Error("Worker cancellation memory RPC failed");
+  }
 }
 
 function classification(
@@ -372,17 +300,4 @@ function hasAny(text: string, needles: readonly string[]) {
 
 function minutesBetween(startMs: number, endMs: number) {
   return Math.max(0, Math.floor((endMs - startMs) / 60000));
-}
-
-function sanitizeReviewExcerpt(input: string): string {
-  return input
-    .replace(/\d{7,}/g, "[redacted-number]")
-    .replace(/[^\S\r\n]+/g, " ")
-    .trim()
-    .slice(0, 240);
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return value as Record<string, unknown>;
 }

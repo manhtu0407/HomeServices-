@@ -20,22 +20,42 @@ export type WorkerV5RoutePreviewState = {
 
 const ROUTE_REFRESH_DISTANCE_METERS = 80
 
+type LocationSnapshot = {
+  key: string
+  origin: WorkerV5RoutePreviewState['origin']
+  status: Exclude<WorkerV5RoutePreviewState['locationStatus'], 'loading'>
+}
+
+type RouteSnapshot = {
+  key: string
+  route: WorkerV5RoutePreview
+}
+
 export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean): WorkerV5RoutePreviewState {
   const jobId = deal?.broadcast?.jobId ?? deal?.id ?? null
   const hasRouteDestination = Boolean(
     jobId && deal?.broadcast?.addressAccess?.release_stage !== 'area_only',
   )
-  const [origin, setOrigin] = useState<WorkerV5RoutePreviewState['origin']>(null)
-  const [route, setRoute] = useState<WorkerV5RoutePreview | null>(null)
-  const [locationStatus, setLocationStatus] = useState<WorkerV5RoutePreviewState['locationStatus']>('loading')
+  const lifecycleKey = useRouteLifecycleKey(enabled && hasRouteDestination ? jobId : null)
+  const [locationSnapshot, setLocationSnapshot] = useState<LocationSnapshot | null>(null)
+  const [routeSnapshot, setRouteSnapshot] = useState<RouteSnapshot | null>(null)
   const previousOriginRef = useRef<WorkerV5RoutePreviewState['origin']>(null)
+  const origin = lifecycleKey && locationSnapshot?.key === lifecycleKey
+    ? locationSnapshot.origin
+    : null
+  const locationStatus: WorkerV5RoutePreviewState['locationStatus'] = !lifecycleKey
+    ? 'unavailable'
+    : locationSnapshot?.key === lifecycleKey
+      ? locationSnapshot.status
+      : 'loading'
+  const routeKey = lifecycleKey && jobId && origin
+    ? `${lifecycleKey}:${origin.latitude.toFixed(6)}:${origin.longitude.toFixed(6)}`
+    : null
+  const route = routeKey && routeSnapshot?.key === routeKey ? routeSnapshot.route : null
 
   useEffect(() => {
-    if (!enabled || !hasRouteDestination || !jobId) {
+    if (!lifecycleKey || !jobId) {
       previousOriginRef.current = null
-      setOrigin(null)
-      setRoute(null)
-      setLocationStatus('unavailable')
       return
     }
 
@@ -46,20 +66,19 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
       if (!next || cancelled) return
       if (previousOriginRef.current && distanceMeters(previousOriginRef.current, next) < ROUTE_REFRESH_DISTANCE_METERS) return
       previousOriginRef.current = next
-      setOrigin(next)
-      setLocationStatus('ready')
+      setLocationSnapshot({ key: lifecycleKey, origin: next, status: 'ready' })
     }
 
     void (async () => {
       const permission = await Location.requestForegroundPermissionsAsync()
       if (cancelled) return
       if (!permission.granted) {
-        setLocationStatus('denied')
+        setLocationSnapshot({ key: lifecycleKey, origin: null, status: 'denied' })
         return
       }
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
       updateOrigin({ latitude: current.coords.latitude, longitude: current.coords.longitude })
-      subscription = await Location.watchPositionAsync(
+      const nextSubscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
           distanceInterval: ROUTE_REFRESH_DISTANCE_METERS,
@@ -67,42 +86,57 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
         },
         (next) => updateOrigin({ latitude: next.coords.latitude, longitude: next.coords.longitude }),
       )
+      if (cancelled) nextSubscription.remove()
+      else subscription = nextSubscription
     })().catch(() => {
-      if (!cancelled) setLocationStatus('unavailable')
+      if (!cancelled) {
+        setLocationSnapshot({ key: lifecycleKey, origin: null, status: 'unavailable' })
+      }
     })
 
     return () => {
       cancelled = true
       subscription?.remove()
     }
-  }, [enabled, hasRouteDestination, jobId])
+  }, [jobId, lifecycleKey])
 
   useEffect(() => {
-    if (!enabled || !jobId || !origin) {
-      setRoute(null)
-      return
-    }
+    if (!jobId || !origin || !routeKey) return
     let cancelled = false
-    setRoute(null)
-    void workerRouteService.getPreview(jobId, origin).then((result) => {
-      if (cancelled || !result.success) return
-      setRoute({
-        distanceMeters: result.data.distance_meters,
-        durationSeconds: result.data.duration_seconds,
+    void workerRouteService.getPreview(jobId, origin)
+      .then((result) => {
+        if (cancelled || !result.success) return
+        setRouteSnapshot({
+          key: routeKey,
+          route: {
+            distanceMeters: result.data.distance_meters,
+            durationSeconds: result.data.duration_seconds,
+          },
+        })
       })
-    })
+      .catch(() => undefined)
     return () => {
       cancelled = true
     }
-  }, [enabled, jobId, origin?.latitude, origin?.longitude])
+  }, [jobId, origin, routeKey])
 
   const mapUri = useMemo(() => {
     if (!enabled || !hasRouteDestination || !jobId || !origin) return null
     const query = `?origin_lat=${encodeURIComponent(origin.latitude.toFixed(6))}&origin_lng=${encodeURIComponent(origin.longitude.toFixed(6))}`
     return mobileApiUrl(`/workers/me/jobs/${encodeURIComponent(jobId)}/route-map${query}`)
-  }, [enabled, hasRouteDestination, jobId, origin?.latitude, origin?.longitude])
+  }, [enabled, hasRouteDestination, jobId, origin])
 
   return { hasRouteDestination, locationStatus, mapUri, origin, route }
+}
+
+function useRouteLifecycleKey(descriptor: string | null) {
+  const [lifecycle, setLifecycle] = useState(() => ({ descriptor, version: 0 }))
+  if (lifecycle.descriptor === descriptor) {
+    return descriptor ? `${descriptor}:${lifecycle.version}` : null
+  }
+  const next = { descriptor, version: lifecycle.version + 1 }
+  setLifecycle(next)
+  return descriptor ? `${descriptor}:${next.version}` : null
 }
 
 function distanceMeters(

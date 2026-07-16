@@ -13,7 +13,9 @@ import {
   disputeCounterStatementSchema,
   disputeOpenRequestSchema,
   devicePushTokenSchema,
+  devicePushTokenUnregisterSchema,
   jobMediaAttachSchema,
+  edgeJobIncidentScopeProposalSchema,
   jobMessageSendSchema,
   jobCreateSchema,
   kaelWorkerClarifySchema,
@@ -43,6 +45,10 @@ import {
   workerScopeChangeSchema,
   LEARNING_CANDIDATE_STATUSES,
 } from "../../_shared/domain.ts";
+import {
+  jobMediaRevokeSchema,
+  jobMediaUploadSchema,
+} from "../../_shared/job-media-contract.ts";
 import type {
   ComplexityLevel,
   EdgeCustomerKaelConversationMode,
@@ -50,6 +56,11 @@ import type {
   ServiceType,
   WorkerKaelChatCreateInput,
 } from "../../_shared/domain.ts";
+import {
+  readJsonRequestBounded,
+  RequestJsonError,
+} from "../../_shared/request-json.ts";
+import { normalizeIsoTimestamp } from "./iso-timestamp.ts";
 import { enforceKaelRuntimePathControl } from "./router-kael-path-control.ts";
 import { priceSynthesisAbCaseSchema } from "./kael/price-synthesis-ab.ts";
 import {
@@ -246,7 +257,7 @@ async function dispatchRoute(
       );
     case "admin.kaelAb.priceSynthesis": {
       const input = priceSynthesisAbCaseSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Du lieu A/B khong hop le", 400);
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu A/B không hợp lệ", 400);
       return services.evaluatePriceSynthesisAbCase(ctx, input.data);
     }
     case "admin.kaelLearning.processQueue":
@@ -404,7 +415,7 @@ async function dispatchRoute(
       }
       return services.removeCustomerFavoriteWorker(ctx, route.workerId);
     case "jobs.status": {
-      const input = workerStatusUpdateSchema(await readJson(request));
+      const input = workerStatusUpdateSchema(await readJson(request), route.jobId);
       return services.updateJobStatus(ctx, route.jobId, input);
     }
     case "jobs.accessAuthorize":
@@ -421,8 +432,11 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
       return services.openJobIncident(ctx, route.jobId, input.data);
     }
-    case "jobs.kaelIncidentProposeScope":
-      return services.proposeScopeChangeFromJobIncident(ctx, route.jobId);
+    case "jobs.kaelIncidentProposeScope": {
+      const input = edgeJobIncidentScopeProposalSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+      return services.proposeScopeChangeFromJobIncident(ctx, route.jobId, input.data);
+    }
     case "jobs.kaelClarify": {
       const input = kaelWorkerClarifySchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -439,6 +453,16 @@ async function dispatchRoute(
       const input = jobMediaAttachSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.attachJobMedia(ctx, route.jobId, input.data);
+    }
+    case "jobs.mediaUpload": {
+      const input = jobMediaUploadSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.createJobMediaUpload(ctx, route.jobId, input.data);
+    }
+    case "jobs.mediaRevoke": {
+      const input = jobMediaRevokeSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.revokeJobMediaUploads(ctx, route.jobId, input.data);
     }
     case "jobs.messages.list":
       return services.listJobMessages(ctx, route.jobId);
@@ -636,6 +660,13 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.registerDevicePushToken(ctx, input.data);
     }
+    case "notifications.deviceToken.unregister": {
+      const input = devicePushTokenUnregisterSchema.safeParse(
+        await readJson(request),
+      );
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.unregisterDevicePushToken(ctx, input.data);
+    }
     case "notifications.read":
       return services.markNotificationRead(ctx, route.notificationId);
   }
@@ -660,9 +691,14 @@ function requiredWorkerRouteOrigin(url: URL): WorkerRouteOrigin {
 }
 
 function optionalWorkerRouteOrigin(url: URL): WorkerRouteOrigin | null {
-  const latitude = Number(url.searchParams.get("origin_lat"));
-  const longitude = Number(url.searchParams.get("origin_lng"));
-  if (Number.isNaN(latitude) && Number.isNaN(longitude)) return null;
+  const rawLatitude = url.searchParams.get("origin_lat");
+  const rawLongitude = url.searchParams.get("origin_lng");
+  if (rawLatitude === null && rawLongitude === null) return null;
+  if (rawLatitude === null || rawLongitude === null) {
+    apiFailure("VALIDATION", "Vị trí hiện tại không hợp lệ", 400);
+  }
+  const latitude = Number(rawLatitude);
+  const longitude = Number(rawLongitude);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < 10.4 || latitude > 11.2 || longitude < 106.4 || longitude > 107.1) {
     apiFailure("VALIDATION", "Vị trí hiện tại không hợp lệ", 400);
   }
@@ -681,25 +717,21 @@ async function dispatchPublicRoute(
 }
 
 async function readJson(request: Request): Promise<unknown> {
-  const contentLength = request.headers.get("content-length");
-  if (contentLength && Number(contentLength) > MAX_JSON_BODY_BYTES) {
-    apiFailure("PAYLOAD_TOO_LARGE", "Dữ liệu gửi lên quá lớn", 413);
-  }
-
-  let text: string;
   try {
-    text = await request.text();
-  } catch {
-    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-  }
-
-  if (new TextEncoder().encode(text).length > MAX_JSON_BODY_BYTES) {
-    apiFailure("PAYLOAD_TOO_LARGE", "Dữ liệu gửi lên quá lớn", 413);
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
+    return await readJsonRequestBounded(request, MAX_JSON_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof RequestJsonError) {
+      if (error.code === "PAYLOAD_TOO_LARGE") {
+        apiFailure("PAYLOAD_TOO_LARGE", "Dữ liệu gửi lên quá lớn", 413);
+      }
+      if (error.code === "UNSUPPORTED_MEDIA_TYPE") {
+        apiFailure(
+          "UNSUPPORTED_MEDIA_TYPE",
+          "Yêu cầu phải dùng dữ liệu JSON",
+          415,
+        );
+      }
+    }
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
 }
@@ -764,9 +796,10 @@ function kaelLearningQueueProcessInput(input: unknown): KaelLearningQueueProcess
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   const record = input as Record<string, unknown>;
+  assertAllowedKeys(record, ["limit", "force_realtime"]);
   return {
     limit: optionalPositiveInt(record.limit, 1, 100),
-    force_realtime: record.force_realtime === true,
+    force_realtime: optionalBoolean(record.force_realtime),
   };
 }
 
@@ -775,9 +808,10 @@ function kaelBatchResultsProcessInput(input: unknown): KaelBatchResultsProcessIn
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   const record = input as Record<string, unknown>;
+  assertAllowedKeys(record, ["limit", "force_poll"]);
   return {
     limit: optionalPositiveInt(record.limit, 1, 50),
-    force_poll: record.force_poll === true,
+    force_poll: optionalBoolean(record.force_poll),
   };
 }
 
@@ -786,6 +820,7 @@ function kaelLearningMonitorInput(input: unknown): KaelLearningMonitorInput {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   const record = input as Record<string, unknown>;
+  assertAllowedKeys(record, ["limit"]);
   return {
     limit: optionalPositiveInt(record.limit, 1, 100),
   };
@@ -796,7 +831,7 @@ function kaelLearningCandidateListInput(url: URL): KaelLearningCandidateListInpu
     "manual_review";
   return {
     state,
-    limit: optionalPositiveInt(url.searchParams.get("limit"), 1, 100),
+    limit: optionalPositiveIntQuery(url.searchParams.get("limit"), 1, 100),
   };
 }
 
@@ -839,10 +874,12 @@ function kaelLearningCandidateReviewInput(
   }
   const record = input as Record<string, unknown>;
   if (action === "approve") {
+    assertAllowedKeys(record, ["review_note"]);
     return {
       review_note: optionalBoundedText(record.review_note, 1000),
     };
   }
+  assertAllowedKeys(record, ["reason"]);
   return {
     reason: requiredBoundedText(record.reason, 200),
   };
@@ -871,15 +908,51 @@ function optionalPositiveInt(
   min: number,
   max: number,
 ): number | undefined {
-  if (value === undefined || value === null) return undefined;
-  const number = typeof value === "number" ? value : Number(value);
-  if (!Number.isInteger(number) || number < min || number > max) {
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < min ||
+    value > max
+  ) {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
-  return number;
+  return value;
 }
 
-function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
+function optionalPositiveIntQuery(
+  value: string | null,
+  min: number,
+  max: number,
+): number | undefined {
+  if (value === null) return undefined;
+  if (!/^\d+$/.test(value)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  return optionalPositiveInt(Number(value), min, max);
+}
+
+function optionalBoolean(value: unknown): boolean {
+  if (value === undefined) return false;
+  if (typeof value !== "boolean") {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  return value;
+}
+
+function assertAllowedKeys(
+  record: Record<string, unknown>,
+  allowed: readonly string[],
+): void {
+  if (Object.keys(record).some((key) => !allowed.includes(key))) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+}
+
+function workerStatusUpdateSchema(
+  input: unknown,
+  jobId: string,
+): WorkerStatusUpdateInput {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
@@ -924,7 +997,7 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   if (record.access_check_in !== undefined) {
-    result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in);
+    result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in, jobId);
   }
   if (status === "completed_by_worker") {
     const note = result.completion_notes?.trim() ?? "";
@@ -941,6 +1014,7 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
 
 function parseWorkerAccessCheckIn(
   value: unknown,
+  jobId: string,
 ): NonNullable<WorkerStatusUpdateInput["access_check_in"]> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
@@ -959,7 +1033,7 @@ function parseWorkerAccessCheckIn(
     }
     if (
       rawPhotoUrls.length > 5 ||
-      rawPhotoUrls.some((item) => !isAccessCheckInPhotoRef(item))
+      rawPhotoUrls.some((item) => !isAccessCheckInPhotoRef(item, jobId))
     ) {
       apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
     }
@@ -1019,11 +1093,11 @@ function optionalIsoString(value: unknown): string | undefined {
   if (typeof value !== "string") {
     apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
   }
-  const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) {
+  const parsed = normalizeIsoTimestamp(value);
+  if (!parsed) {
     apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
   }
-  return new Date(parsed).toISOString();
+  return parsed;
 }
 
 function isPositiveInteger(value: unknown): value is number {
@@ -1048,18 +1122,23 @@ function isCompletionPhotoRef(value: unknown): value is string {
 // so its refs MUST be uploads into the controlled access_check_in stage — no arbitrary
 // http(s) URLs and no completion-stage refs. (The completion validator keeps its legacy
 // http acceptance; this new flow has no legacy to honor.)
-function isAccessCheckInPhotoRef(value: unknown): value is string {
-  return isSupabaseJobMediaStageRef(value, "access_check_in");
+function isAccessCheckInPhotoRef(value: unknown, jobId: string): value is string {
+  return isSupabaseJobMediaStageRef(value, "access_check_in", jobId);
 }
 
-function isSupabaseJobMediaStageRef(value: unknown, stage: string): value is string {
+function isSupabaseJobMediaStageRef(
+  value: unknown,
+  stage: string,
+  jobId?: string,
+): value is string {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
     const pathParts = url.pathname.split("/").filter(Boolean);
     return url.protocol === "supabase:" &&
       url.hostname === "job-media" &&
-      pathParts.length >= 3 &&
+      pathParts.length === 3 &&
+      (jobId === undefined || pathParts[0] === jobId) &&
       pathParts[1] === stage &&
       !pathParts.some((part) => part === "." || part === "..");
   } catch {
@@ -1068,16 +1147,16 @@ function isSupabaseJobMediaStageRef(value: unknown, stage: string): value is str
 }
 
 function parseIsoParam(value: string | null, name: string): string | undefined {
-  if (!value) return undefined;
-  const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) {
+  if (value === null) return undefined;
+  const parsed = normalizeIsoTimestamp(value);
+  if (!parsed) {
     apiFailure(
       "VALIDATION",
       `Tham số "${name}" không phải định dạng ISO hợp lệ`,
       400,
     );
   }
-  return new Date(parsed).toISOString();
+  return parsed;
 }
 
 function json(data: unknown, status = 200): Response {

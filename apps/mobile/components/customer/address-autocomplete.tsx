@@ -12,17 +12,19 @@ import type { PlacesAutocompleteResponse } from '@/lib/api-types'
 type AddressSuggestion = PlacesAutocompleteResponse['suggestions'][number]
 type AddressLookupState = {
   fallbackUsed: boolean
+  query: string | null
   suggestions: AddressSuggestion[]
 }
 
 type AddressLookupAction =
-  | { type: 'failed' }
+  | { query: string; type: 'failed' }
   | { type: 'reset' }
-  | { fallbackUsed: boolean; suggestions: AddressSuggestion[]; type: 'resolved' }
+  | { fallbackUsed: boolean; query: string; suggestions: AddressSuggestion[]; type: 'resolved' }
 
 const EMPTY_ADDRESS_SUGGESTIONS: AddressSuggestion[] = []
 const EMPTY_ADDRESS_LOOKUP_STATE: AddressLookupState = {
   fallbackUsed: false,
+  query: null,
   suggestions: EMPTY_ADDRESS_SUGGESTIONS,
 }
 const ADDRESS_AUTOCOMPLETE_APPLE_IOS26_COMPONENT_SYSTEM = 'ADDRESS_AUTOCOMPLETE_APPLE_IOS26_COMPONENT_SYSTEM: address input and suggestions use Apple-style grouped field material, edge highlight, press state, and reduce-transparency fallback'
@@ -31,9 +33,9 @@ void ADDRESS_AUTOCOMPLETE_APPLE_IOS26_COMPONENT_SYSTEM
 function addressLookupReducer(_state: AddressLookupState, action: AddressLookupAction): AddressLookupState {
   switch (action.type) {
     case 'failed':
-      return { fallbackUsed: true, suggestions: EMPTY_ADDRESS_SUGGESTIONS }
+      return { fallbackUsed: true, query: action.query, suggestions: EMPTY_ADDRESS_SUGGESTIONS }
     case 'resolved':
-      return { fallbackUsed: action.fallbackUsed, suggestions: action.suggestions }
+      return { fallbackUsed: action.fallbackUsed, query: action.query, suggestions: action.suggestions }
     case 'reset':
       return EMPTY_ADDRESS_LOOKUP_STATE
   }
@@ -63,33 +65,44 @@ export function AddressAutocomplete({ language, onChange, value }: AddressAutoco
   const tokens = getCustomerThemeTokens(mode)
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const text = copy[language]
-  const [{ fallbackUsed, suggestions }, dispatchLookup] = useReducer(addressLookupReducer, EMPTY_ADDRESS_LOOKUP_STATE)
+  const [lookup, dispatchLookup] = useReducer(addressLookupReducer, EMPTY_ADDRESS_LOOKUP_STATE)
   const [open, setOpen] = useState(false)
+  const query = value.trim().length >= 2 ? value.trim() : null
+  const fallbackUsed = lookup.query === query ? lookup.fallbackUsed : false
+  const suggestions = lookup.query === query ? lookup.suggestions : EMPTY_ADDRESS_SUGGESTIONS
 
   useEffect(() => {
-    const trimmed = value.trim()
-    if (trimmed.length < 2) {
+    if (!query) {
       dispatchLookup({ type: 'reset' })
       return
     }
 
     let cancelled = false
     const timer = setTimeout(() => {
-      void placesService.autocomplete({ input: trimmed }).then((result) => {
-        if (cancelled) return
-        if (!result.success) {
-          dispatchLookup({ type: 'failed' })
-          return
-        }
-        dispatchLookup({ fallbackUsed: result.data.fallback_used, suggestions: result.data.suggestions, type: 'resolved' })
-      })
+      void placesService.autocomplete({ input: query })
+        .then((result) => {
+          if (cancelled) return
+          if (!result.success) {
+            dispatchLookup({ query, type: 'failed' })
+            return
+          }
+          dispatchLookup({
+            fallbackUsed: result.data.fallback_used,
+            query,
+            suggestions: result.data.suggestions,
+            type: 'resolved',
+          })
+        })
+        .catch(() => {
+          if (!cancelled) dispatchLookup({ query, type: 'failed' })
+        })
     }, 260)
 
     return () => {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [value])
+  }, [query])
 
   const updateValue = (nextValue: string) => {
     setOpen(true)

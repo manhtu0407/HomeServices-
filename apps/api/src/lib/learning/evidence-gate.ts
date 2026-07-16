@@ -7,19 +7,16 @@
  *   - no major contradiction in recent similar cases
  *   - payload does NOT touch money/scope autonomy (defense in depth)
  *
- * `shouldPromote` is pure. `promoteCandidate` is the side-effect:
- * INSERT into learning_rules + learning_rule_versions, UPDATE candidate
- * to status='auto_promoted'.
+ * `shouldPromote` is pure. `promoteCandidate` delegates the write set to one
+ * serialized database transaction.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, ServiceType } from '@nestscout/shared'
+import { SERVICE_TYPES, type Database } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 import {
   isPricePriorPayload,
   isAnalysisRulePayload,
-  type LearningCandidatePayload,
-  type CandidateType,
 } from './types'
 
 // =============================================================================
@@ -88,8 +85,7 @@ function touchesMoneyOrScope(payload: unknown): boolean {
     // Allowed: shift baselines via rule_payload. Forbidden: payload encoding any
     // mutation of jobs.final_price or service scope expansion. Schema constraints
     // already prevent this; runtime double-check.
-    const svc = payload.scope.service_type as string
-    if (svc !== 'electrical' && svc !== 'plumbing' && svc !== 'cleaning') return true
+    if (!SERVICE_TYPES.includes(payload.scope.service_type)) return true
     // Sanity: suggested.new_min must be positive integer; if negative, treat as
     // unsafe (would underflow baseline computation downstream).
     if (payload.suggested.new_min <= 0 || payload.suggested.new_max <= 0) return true
@@ -97,8 +93,7 @@ function touchesMoneyOrScope(payload: unknown): boolean {
     return false
   }
   if (isAnalysisRulePayload(payload)) {
-    const svc = payload.scope.service_type as string
-    if (svc !== 'electrical' && svc !== 'plumbing' && svc !== 'cleaning') return true
+    if (!SERVICE_TYPES.includes(payload.scope.service_type)) return true
     // Allowed suggestion kinds are explicitly enumerated in types.ts.
     // Any unknown kind is rejected as potentially unsafe.
     const k = payload.suggested.kind
@@ -116,7 +111,16 @@ export function shouldPromote(
   similarRecent: CandidateRow[],
 ): GateDecision {
   // Validate payload first — invalid shapes are never promoted.
-  if (!isPricePriorPayload(candidate.suggested_payload) && !isAnalysisRulePayload(candidate.suggested_payload)) {
+  const payload = candidate.suggested_payload
+  if (!isPricePriorPayload(payload) && !isAnalysisRulePayload(payload)) {
+    return { promote: false, reason: 'invalid_payload' }
+  }
+  if (
+    payload.candidate_type !== candidate.candidate_type ||
+    payload.scope.service_type !== candidate.affected_service ||
+    payload.scope.problem_slug !== candidate.affected_problem ||
+    payload.scope.district_code !== candidate.affected_district
+  ) {
     return { promote: false, reason: 'invalid_payload' }
   }
 
@@ -155,9 +159,9 @@ export type PromoteResult =
   | { promoted: false; reason: string }
 
 /**
- * Promote a candidate row to an active rule. Three DB writes, intentionally not
- * RPC-wrapped because each is idempotent and races at this layer would only
- * produce duplicate rules (caller checks for existing active rule first).
+ * Promote a candidate row to an active rule through the service-role-only RPC.
+ * Candidate locking and scope locking keep the rule/version/audit write set
+ * atomic and make timeout retries idempotent.
  *
  * Returns the new ruleId + version for caller to log via logJobEvent.
  */
@@ -165,111 +169,26 @@ export async function promoteCandidate(
   supabase: SupabaseClient<Database>,
   candidate: CandidateRow,
 ): Promise<PromoteResult> {
-  const ruleType: CandidateType = candidate.candidate_type as CandidateType
-  const payload = candidate.suggested_payload as LearningCandidatePayload
-
-  // Defense: candidate scope must be a supported service. Filter is also
-  // applied via affected_service column being typed service_type (enum).
-  const affectedService = candidate.affected_service as ServiceType | null
-  if (!affectedService) {
-    return { promoted: false, reason: 'missing_service_scope' }
-  }
-
-  // Step 1: check if active rule already exists for this scope (avoid dup).
-  const { data: existingRule } = await withDbTimeout(
-    supabase
-      .from('learning_rules')
-      .select('id, active_version')
-      .eq('rule_type', ruleType)
-      .eq('affected_service', affectedService)
-      .eq('affected_problem', candidate.affected_problem ?? '')
-      .eq('affected_district', candidate.affected_district ?? '')
-      .eq('status', 'active')
-      .maybeSingle(),
-  )
-
-  let ruleId: string
-  let version: number
-
-  if (existingRule) {
-    // Update existing rule with new payload + version bump.
-    version = existingRule.active_version + 1
-    const { error: updErr } = await withDbTimeout(
-      supabase
-        .from('learning_rules')
-        .update({
-          rule_payload: payload as never,
-          confidence: candidate.confidence,
-          evidence_count: candidate.evidence_count,
-          active_version: version,
-        })
-        .eq('id', existingRule.id),
-    )
-    if (updErr) {
-      return { promoted: false, reason: `rule_update_failed:${updErr.code}` }
-    }
-    ruleId = existingRule.id
-  } else {
-    // Insert new rule.
-    const { data: newRule, error: insErr } = await withDbTimeout(
-      supabase
-        .from('learning_rules')
-        .insert({
-          rule_type: ruleType,
-          affected_service: affectedService,
-          affected_problem: candidate.affected_problem,
-          affected_district: candidate.affected_district,
-          rule_payload: payload as never,
-          confidence: candidate.confidence,
-          evidence_count: candidate.evidence_count,
-          status: 'active',
-          active_version: 1,
-          rollback_available: true,
-        })
-        .select('id, active_version')
-        .single(),
-    )
-    if (insErr || !newRule) {
-      return { promoted: false, reason: `rule_insert_failed:${insErr?.code ?? 'no_row'}` }
-    }
-    ruleId = newRule.id
-    version = newRule.active_version
-  }
-
-  // Step 2: insert immutable version snapshot.
-  const { error: verErr } = await withDbTimeout(
-    supabase.from('learning_rule_versions').insert({
-      rule_id: ruleId,
-      version,
-      rule_payload: payload as never,
-      change_reason: `auto_promoted from candidate ${candidate.id} (n=${candidate.evidence_count}, conf=${candidate.confidence})`,
-      status: 'active',
+  const { data, error } = await withDbTimeout(
+    supabase.rpc('auto_promote_learning_candidate_atomic', {
+      p_candidate_id: candidate.id,
     }),
   )
-  if (verErr) {
-    console.warn('Promote: version insert failed (rule still active)', {
-      ruleId,
-      errorCode: verErr.code,
-    })
+  if (error) {
+    return { promoted: false, reason: `promotion_rpc_failed:${error.code}` }
   }
 
-  // Step 3: mark candidate as auto_promoted (audit trail).
-  const { error: candErr } = await withDbTimeout(
-    supabase
-      .from('learning_candidates')
-      .update({
-        status: 'auto_promoted',
-        promoted_at: new Date().toISOString(),
-        audit_reason: `gate_passed; ruleId=${ruleId}; version=${version}`,
-      })
-      .eq('id', candidate.id),
-  )
-  if (candErr) {
-    console.warn('Promote: candidate status update failed', {
-      candidateId: candidate.id,
-      errorCode: candErr.code,
-    })
+  const result = data?.[0]
+  if (!result?.ok || !result.rule_id || result.rule_version === null) {
+    return {
+      promoted: false,
+      reason: result?.error_code ?? 'promotion_rpc_no_result',
+    }
   }
 
-  return { promoted: true, ruleId, ruleVersion: version }
+  return {
+    promoted: true,
+    ruleId: result.rule_id,
+    ruleVersion: result.rule_version,
+  }
 }

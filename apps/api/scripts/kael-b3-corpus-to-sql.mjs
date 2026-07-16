@@ -233,13 +233,6 @@ function parseServiceKnowledgeRows(doc) {
   })
 }
 
-function parseGenericCandidateRows(doc, startMarker, endMarker, table) {
-  return candidateRowsBetween(doc, startMarker, endMarker, table).map((row) => ({
-    ...row,
-    refs: [],
-  }))
-}
-
 function parseInlineJson(value, label) {
   const trimmed = value.trim()
   const json = trimmed.startsWith('`') && trimmed.endsWith('`')
@@ -249,7 +242,7 @@ function parseInlineJson(value, label) {
     const parsed = JSON.parse(json)
     if (!isPlainObject(parsed)) throw new Error('not an object')
     return parsed
-  } catch (error) {
+  } catch {
     throw new Error(`${label}: invalid service knowledge metadata JSON`)
   }
 }

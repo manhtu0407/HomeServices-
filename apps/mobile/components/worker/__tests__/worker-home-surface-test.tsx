@@ -1,9 +1,8 @@
-﻿import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Alert, Platform, StyleSheet } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { LocalDeal } from '@nestscout/shared'
-import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@nestscout/shared'
-import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
+import type { EarningsResponse, WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
 let mockWorkflowValue: any
 let mockAuthRole: 'admin' | 'customer' | 'worker'
@@ -12,6 +11,7 @@ let mockAuthSessionUserId: string
 let mockSignOut: jest.Mock
 let mockWorkerUpdateAvailability: jest.Mock
 let mockWorkerUploadAvatar: jest.Mock
+let mockWorkerUpdateServiceArea: jest.Mock
 let mockPathname: string
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockAppLanguage = 'vi'
@@ -20,6 +20,10 @@ const mockWorkerKaelChatModes = new Map<string, 'normal' | 'intake'>()
 const mockReplace = jest.fn()
 const mockUseJobChatThread = jest.fn()
 const mockPlacesAutocomplete = jest.fn()
+const mockGetMyWorkerMemory = jest.fn()
+const mockUpdateMyWorkerPreference = jest.fn()
+const mockUpdateCustomerProfile = jest.fn()
+const mockUpdatePassword = jest.fn()
 const mockWorkerKaelChatService = {
   archive: jest.fn(),
   create: jest.fn(),
@@ -101,6 +105,8 @@ jest.mock('@/lib/auth-provider', () => ({
       },
     },
     signOut: mockSignOut,
+    updateCustomerProfile: mockUpdateCustomerProfile,
+    updatePassword: mockUpdatePassword,
   }),
 }))
 
@@ -109,6 +115,10 @@ jest.mock('@/lib/use-job-chat-thread', () => ({
 }))
 
 jest.mock('@/lib/services', () => ({
+  kaelMemoryService: {
+    getMyWorkerMemory: (...args: unknown[]) => mockGetMyWorkerMemory(...args),
+    updateMyWorkerPreference: (...args: unknown[]) => mockUpdateMyWorkerPreference(...args),
+  },
   placesService: {
     autocomplete: (...args: unknown[]) => mockPlacesAutocomplete(...args),
   },
@@ -182,6 +192,34 @@ function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): Wor
     total_jobs: 0,
     verification_status: 'approved',
     years_experience: 3,
+    ...overrides,
+  }
+}
+
+function buildWorkerPerformanceInsights(
+  overrides: Partial<WorkerPerformanceInsightsResponse> = {},
+): WorkerPerformanceInsightsResponse {
+  return {
+    accepted_broadcast_count: 0,
+    average_rating: null,
+    average_response_minutes: null,
+    badges: [],
+    completed_job_count: 0,
+    incident_rank_bonus: 0,
+    on_time_job_count: 0,
+    on_time_rate_percent: null,
+    paid_job_count: 0,
+    performance_axes: [],
+    performance_score: null,
+    reconciled_earnings_vnd: null,
+    resolved_incident_case_count: 0,
+    responded_broadcast_count: 0,
+    response_rate_percent: null,
+    review_count: 0,
+    scheduled_arrival_job_count: 0,
+    total_broadcast_count: 0,
+    work_response_review_count: 0,
+    worker_id: 'worker_test_1',
     ...overrides,
   }
 }
@@ -288,28 +326,6 @@ function buildAcceptedDealForJob(jobId: string): LocalDeal {
   }
 }
 
-function buildInspectingDeal(): LocalDeal {
-  const deal = buildAcceptedDeal()
-  return {
-    ...deal,
-    status: 'inspecting',
-  }
-}
-
-function buildInspectingDealWithReleasedAddress(): LocalDeal {
-  const deal = buildInspectingDeal()
-  return {
-    ...deal,
-    broadcast: deal.broadcast
-      ? {
-        ...deal.broadcast,
-        fullAddressLabel: 'Tòa A, Nguy?n Hu?, Qu?n 1',
-        fullAddressVisible: true,
-      }
-      : null,
-  }
-}
-
 function buildRepairingDeal(): LocalDeal {
   const deal = buildAcceptedDeal()
   return {
@@ -340,31 +356,26 @@ function buildCompletedByWorkerDeal(): LocalDeal {
   }
 }
 
-function buildPaymentPendingDeal(): LocalDeal {
-  const deal = buildConfirmedCompletionDeal()
-  return {
-    ...deal,
-    backendStatus: 'payment_pending',
-  }
-}
-
 function buildWorkflow({
   canWorkerAdvance = false,
   deal = null,
   workerEarnings = buildNoEarnings(),
   workerJobs = [],
   workerJobsHydrated = true,
+  workerPerformanceInsights = null,
   workerProfile = buildWorkerProfile(),
 }: {
   canWorkerAdvance?: boolean
   deal?: LocalDeal | null
   workerEarnings?: EarningsResponse | null
-  workerJobs?: Array<{ status: string }>
+  workerJobs?: { status: string }[]
   workerJobsHydrated?: boolean
+  workerPerformanceInsights?: WorkerPerformanceInsightsResponse | null
   workerProfile?: WorkerProfileResponse | null
 } = {}) {
   mockWorkerUpdateAvailability = jest.fn(async () => true)
   mockWorkerUploadAvatar = jest.fn(async () => true)
+  mockWorkerUpdateServiceArea = jest.fn(async () => true)
   mockWorkflowValue = {
     actions: {
       openKaelJobIncident: jest.fn(async () => ({ incident: null })),
@@ -375,6 +386,7 @@ function buildWorkflow({
       workerDeclineBroadcast: jest.fn(async () => true),
       workerUpdateAvailability: mockWorkerUpdateAvailability,
       workerUploadAvatar: mockWorkerUploadAvatar,
+      workerUpdateServiceArea: mockWorkerUpdateServiceArea,
       workerUpdateStatus: jest.fn(async () => true),
     },
     selectors: {
@@ -393,6 +405,7 @@ function buildWorkflow({
     workerEarnings,
     workerJobs,
     workerJobsHydrated,
+    workerPerformanceInsights,
     workerProfile,
   }
 }
@@ -405,6 +418,10 @@ beforeEach(async () => {
   mockAuthSessionProvider = null
   mockAuthSessionUserId = 'worker_test_1'
   mockSignOut = jest.fn(async () => undefined)
+  mockUpdateCustomerProfile.mockReset()
+  mockUpdateCustomerProfile.mockResolvedValue({ success: true })
+  mockUpdatePassword.mockReset()
+  mockUpdatePassword.mockResolvedValue({ success: true })
   mockReplace.mockClear()
   mockUseJobChatThread.mockClear()
   mockUseJobChatThread.mockReturnValue({
@@ -583,6 +600,18 @@ beforeEach(async () => {
     },
     success: true,
   })
+  mockGetMyWorkerMemory.mockReset()
+  mockGetMyWorkerMemory.mockResolvedValue({
+    data: { memory: { safe_metadata: { memory_preferences: { area_preference: true } } } },
+    status: 200,
+    success: true,
+  })
+  mockUpdateMyWorkerPreference.mockReset()
+  mockUpdateMyWorkerPreference.mockResolvedValue({
+    error: 'not saved',
+    status: 503,
+    success: false,
+  })
   mockPathname = '/(worker)/home'
   mockRouteParams = {}
   mockAppLanguage = 'vi'
@@ -608,6 +637,21 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.queryByText('Kael đã chuẩn bị việc phù hợp')).toBeNull()
     expect(screen.getByTestId('worker-v5-home-command-center')).toBeOnTheScreen()
+  })
+
+  it('keeps the worker home pending while profile, jobs, and earnings have not hydrated', () => {
+    buildWorkflow({
+      workerEarnings: null,
+      workerJobsHydrated: false,
+      workerProfile: null,
+    })
+
+    render(<WorkerHomeSurface />)
+
+    expect(screen.getByText('Đang chờ hồ sơ và dữ liệu nhận việc')).toBeOnTheScreen()
+    expect(screen.getAllByText('Chờ dữ liệu').length).toBeGreaterThanOrEqual(3)
+    expect(screen.getByTestId('worker-v5-quick-action-2').props.accessibilityLabel).toContain('Chờ hồ sơ')
+    expect(screen.getByTestId('worker-v5-quick-action-3').props.accessibilityLabel).toContain('Chờ dữ liệu')
   })
 
   it('removes dividers only from the four Home quick-action detail rails', () => {
@@ -779,6 +823,20 @@ describe('Worker runtime surface wiring', () => {
       expect(mockWorkflowValue.actions.workerAcceptBroadcast).toHaveBeenCalledTimes(1)
       expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
     })
+  })
+
+  it('does not invent zero earnings while an offer estimate is missing', () => {
+    const deal = buildIncomingDeal()
+    deal.broadcast = deal.broadcast
+      ? { ...deal.broadcast, estimatedEarningLabel: '   ' }
+      : null
+    buildWorkflow({ deal })
+    mockRouteParams = { ns_worker_screen: '2.2-offer-detail' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-offer-summary-price')).not.toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-offer-summary-price')).toHaveTextContent(/Kael/)
   })
 
   it('declines an open offer from the same decision screen and returns to the board', async () => {
@@ -2230,6 +2288,8 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
     expect(screen.getByTestId('worker-v5-case-closed-settlement-seal')).toHaveStyle({ borderRadius: 46, height: 92, width: 92 })
     expect(screen.getByTestId('worker-v5-case-closed-settlement-status')).toHaveTextContent('Chờ đối soát')
+    expect(screen.getByTestId('worker-v5-case-closed-amount')).toHaveTextContent('Chờ đối soát')
+    expect(screen.getByTestId('worker-v5-case-closed-amount')).not.toHaveTextContent(/^0$/)
   })
 
   it('removes the requested home, jobs, earnings, and settings header utilities', () => {
@@ -2477,6 +2537,26 @@ describe('Worker runtime surface wiring', () => {
     expect(emptyTransactionIcon.props.source).not.toBe(require('@/assets/worker-image-icons/utility-wallet.png'))
   })
 
+  it('distinguishes pending earnings from a hydrated zero ledger', () => {
+    buildWorkflow({ workerEarnings: null })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    const pending = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('Chờ dữ liệu thu nhập')
+    for (const index of [0, 1, 2]) {
+      expect(screen.getByTestId(`worker-v5-earnings-stat-value-${index}`)).toHaveTextContent('Chờ dữ liệu')
+    }
+    expect(screen.getByTestId('worker-v5-earnings-empty-transaction-title')).toHaveTextContent('Chờ dữ liệu giao dịch thật')
+    pending.unmount()
+
+    buildWorkflow({ workerEarnings: buildNoEarnings() })
+    render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('Chưa có thu nhập thật')
+    expect(screen.getByTestId('worker-v5-earnings-stat-value-0')).toHaveTextContent('Chưa có')
+    expect(screen.getByTestId('worker-v5-earnings-stat-value-1')).toHaveTextContent('Không có')
+    expect(screen.getByTestId('worker-v5-earnings-empty-transaction-title')).toHaveTextContent('Chưa có giao dịch gần đây')
+  })
+
   it('uses net earnings copy and one full-width payout action in ledger detail', () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.2-ledger-detail' }
@@ -2486,6 +2566,46 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getAllByText('Thu nhập ròng')).toHaveLength(3)
     expect(screen.getByTestId('worker-v5-ledger-payout-action')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-ledger-back-earnings-action')).toBeNull()
+  })
+
+  it('keeps payout controls honestly unavailable until a real payout rail exists', () => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    const overview = render(<WorkerEarningsSurface />)
+    const withdrawAction = screen.getByTestId('worker-v5-earnings-withdraw-action')
+    expect(withdrawAction.props.accessibilityState).toMatchObject({ disabled: true })
+    expect(withdrawAction).toHaveTextContent('Rút tiền chưa khả dụng')
+    fireEvent.press(withdrawAction)
+    expect(mockReplace).not.toHaveBeenCalled()
+    overview.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.2-ledger-detail' }
+    const ledger = render(<WorkerEarningsSurface />)
+    const ledgerPayoutAction = screen.getByTestId('worker-v5-ledger-payout-action')
+    expect(ledgerPayoutAction.props.accessibilityState).toMatchObject({ disabled: true })
+    expect(ledgerPayoutAction).toHaveTextContent('Rút tiền chưa khả dụng')
+    fireEvent.press(ledgerPayoutAction)
+    expect(mockReplace).not.toHaveBeenCalled()
+    ledger.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
+    const payoutRequest = render(<WorkerEarningsSurface />)
+    expect(screen.queryByText('Số dư khả dụng')).toBeNull()
+    expect(screen.getAllByText('Thu nhập ròng đã ghi nhận').length).toBeGreaterThan(0)
+    const confirmAction = screen.getByTestId('worker-v5-payout-request-confirm-action')
+    expect(confirmAction.props.accessibilityState).toMatchObject({ disabled: true })
+    expect(confirmAction).toHaveTextContent('Yêu cầu rút tiền chưa khả dụng')
+    expect(screen.queryByText(/^Xác nhận rút/)).toBeNull()
+    payoutRequest.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
+    render(<WorkerEarningsSurface />)
+    expect(screen.queryByTestId('worker-v5-payout-method-grid')).toBeNull()
+    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).not.toHaveTextContent(/Đã xác minh|Cần xác minh/)
+    const payoutMethodAction = screen.getByTestId('worker-v5-payout-method-use-action')
+    expect(payoutMethodAction.props.accessibilityState).toMatchObject({ disabled: true })
+    expect(payoutMethodAction).toHaveTextContent('Quản lý tài khoản chưa khả dụng')
   })
 
   it('keeps every captured Worker card icon distinct from the other captured card contexts', () => {
@@ -2571,7 +2691,7 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
     const payoutMethod = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-payout-method-hero-formula-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-account-management-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-payout-limit-policy-mint-aura')).toBeOnTheScreen()
     payoutMethod.unmount()
 
     mockRouteParams = {}
@@ -2645,32 +2765,26 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
     const payout = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-payout-account-icon-image').props.source).toBe(require('@/assets/worker-image-icons/utility-identity.png'))
-    expect(screen.getByTestId('worker-v5-payout-account-detail')).toHaveTextContent(/Cần xác minh/)
+    expect(screen.getByTestId('worker-v5-payout-account-detail')).toHaveTextContent(/Rút tiền chưa khả dụng/)
     expect(screen.getByTestId('worker-v5-payout-account-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-payout-account-mint-aura')).toBeNull()
     payout.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
     const payoutMethod = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-payout-method-hero-icon-image').props.source).toBe(require('@/assets/worker-image-icons/payout-receiving-account-core.png'))
-    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Chủ tài khoản/)
-    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Cần xác minh/)
+    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Chưa ghi nhận/)
+    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Chuyển tiền chưa khả dụng/)
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-payout-method-status').props.style)).toMatchObject({
       alignSelf: 'center',
       minWidth: 64,
       paddingVertical: 7,
     })
     expect(screen.getByTestId('worker-v5-payout-method-hero-formula-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-account-management-icon-0-image').props.source).toBe(require('@/assets/worker-image-icons/payout-add-bank-account-core.png'))
-    expect(screen.getByTestId('worker-v5-account-management-icon-1-image').props.source).toBe(require('@/assets/worker-image-icons/payout-limit-policy-core.png'))
-    expect(screen.getByTestId('worker-v5-account-management-detail-0')).toHaveTextContent(/Chủ tài khoản/)
-    expect(screen.getByTestId('worker-v5-account-management-detail-0')).toHaveTextContent(/Cần xác minh/)
-    expect(screen.getByTestId('worker-v5-account-management-detail-1')).toHaveTextContent(/Theo hệ thống/)
-    expect(screen.getByTestId('worker-v5-account-management-detail-1')).toHaveTextContent(/Không mức cố định/)
-    expect(screen.getByTestId('worker-v5-account-management-formula-mint-aura')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('worker-v5-account-management-row-0'))
-    expect(screen.getByTestId('worker-v5-bank-account-form')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('worker-v5-account-management-row-1'))
+    expect(screen.queryByTestId('worker-v5-payout-method-mint-aura')).toBeNull()
     expect(screen.getByTestId('worker-v5-payout-limit-policy')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-payout-limit-policy-copy')).toHaveTextContent(/chưa được bật/)
+    expect(screen.queryByTestId('worker-v5-account-management-list')).toBeNull()
     expect(screen.queryByTestId('worker-v5-bank-account-form')).toBeNull()
     payoutMethod.unmount()
 
@@ -2689,6 +2803,9 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = {}
     const profile = render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-profile-dossier-detail-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label')).not.toHaveTextContent(/0%/)
+    expect(screen.getByTestId('worker-v5-profile-dashboard-score-0')).not.toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-profile-dashboard-score-1')).not.toHaveTextContent(/^0$/)
     profile.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
@@ -2708,6 +2825,11 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '5.4-reliability-insights' }
     const reliability = render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-reliability-axis-detail-0')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-reliability-score')).not.toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-reliability-stat-completion-value')).not.toHaveTextContent(/^0%$/)
+    expect(screen.getByTestId('worker-v5-reliability-stat-arrival-value')).not.toHaveTextContent(/^0%$/)
+    expect(screen.getByTestId('worker-v5-reliability-axis-meta-0')).not.toHaveTextContent(/0\/100/)
+    expect(screen.getByTestId('worker-v5-reliability-axis-score-0')).not.toHaveTextContent(/^0\/100$/)
     reliability.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.5-account-utilities' }
@@ -2718,11 +2840,333 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '5.2-worker-ranking' }
     render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-ranking-title')).toHaveTextContent('Chưa có điểm xếp hạng')
+    expect(screen.getByTestId('worker-v5-ranking-score')).not.toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-ranking-stat-value-0')).toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-ranking-stat-value-1')).not.toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-ranking-stat-value-2')).not.toHaveTextContent(/^0%$/)
+    expect(screen.getByTestId('worker-v5-ranking-leaderboard-status')).not.toHaveTextContent(/^0$/)
     expect(screen.getByTestId('worker-v5-ranking-leaderboard-detail')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-ranking-improvement-detail-0')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-ranking-improvement-title-3')).toHaveTextContent('Phản hồi trong công việc')
     expect(screen.getByTestId('worker-v5-ranking-improvement-title-4')).toHaveTextContent('Xử lý phát sinh minh bạch')
     expect(screen.getByTestId('worker-v5-ranking-improvement-meta-3')).toHaveTextContent('Chờ khách đánh giá sau khi công việc hoàn tất')
     expect(screen.getByTestId('worker-v5-ranking-improvement-meta-4')).toHaveTextContent('Mỗi phát sinh chỉ tính khi Kael và khách đã chốt')
+  })
+
+  it('preserves zero performance values when they came from real worker insights', () => {
+    buildWorkflow({
+      workerPerformanceInsights: buildWorkerPerformanceInsights({
+        on_time_rate_percent: 0,
+        performance_axes: [
+          { id: 'arrival', score: 0 },
+          { id: 'completion', score: 0 },
+          { id: 'rating', score: 0 },
+        ],
+        performance_score: 0,
+      }),
+    })
+
+    mockRouteParams = {}
+    const profile = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-profile-dashboard-score-0')).toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityValue.now).toBe(0)
+    profile.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.2-worker-ranking' }
+    const ranking = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-ranking-score')).toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-ranking-stat-value-0')).toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-ranking-stat-value-1')).toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-ranking-stat-value-2')).toHaveTextContent(/^0%$/)
+    expect(screen.getByTestId('worker-v5-ranking-leaderboard-status')).toHaveTextContent(/^0$/)
+    ranking.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.4-reliability-insights' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-reliability-score')).toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-reliability-stat-completion-value')).toHaveTextContent(/^0%$/)
+    expect(screen.getByTestId('worker-v5-reliability-stat-arrival-value')).toHaveTextContent(/^0%$/)
+    expect(screen.getByTestId('worker-v5-reliability-axis-meta-0')).toHaveTextContent(/0\/100/)
+    expect(screen.getByTestId('worker-v5-reliability-axis-score-0')).toHaveTextContent(/^0\/100$/)
+  })
+
+  it('waits for the worker profile instead of inventing zero active skills', () => {
+    buildWorkflow({ workerProfile: null })
+
+    mockRouteParams = {}
+    const overview = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-profile-header-name')).toHaveTextContent('Chờ hồ sơ')
+    expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label')).toHaveTextContent('Thời gian hoạt động')
+    expect(screen.getByTestId('worker-v5-profile-dossier-meta-0')).toHaveTextContent('Chờ hồ sơ')
+    overview.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
+
+    render(<WorkerProfileSurface />)
+
+    expect(screen.getByTestId('worker-v5-skills-service-count')).not.toHaveTextContent(/^0/)
+    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('Chờ hồ sơ')
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Chờ hồ sơ/)
+    expect(screen.getByTestId('worker-v5-quick-action-empty-title')).toHaveTextContent('Chờ dữ liệu kỹ năng')
+  })
+
+  it('localizes worker account mutation errors in the selected English mode', async () => {
+    mockAppLanguage = 'en'
+    mockRouteParams = { ns_worker_lang: 'en', ns_worker_screen: '5.10-support-settings' }
+    mockUpdateCustomerProfile.mockResolvedValueOnce({
+      error: 'Thông tin hồ sơ chưa hợp lệ.',
+      success: false,
+    })
+    mockUpdatePassword.mockResolvedValueOnce({
+      error: 'Mật khẩu hiện tại không đúng.',
+      success: false,
+    })
+
+    render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-settings-account'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-settings-account-name-input'), 'Worker Test')
+    fireEvent.press(screen.getByTestId('worker-v5-settings-account-save'))
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-settings-account-message')).toHaveTextContent('Check the profile details.')
+    })
+    expect(screen.getByTestId('worker-v5-settings-account-message')).not.toHaveTextContent(/Thông tin|hồ sơ/)
+
+    fireEvent.press(screen.getByTestId('worker-v5-settings-password'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-settings-password-current-input'), 'old-password')
+    fireEvent.changeText(screen.getByTestId('worker-v5-settings-password-new-input'), 'new-password')
+    fireEvent.changeText(screen.getByTestId('worker-v5-settings-password-confirm-input'), 'new-password')
+    fireEvent.press(screen.getByTestId('worker-v5-settings-password-save'))
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-settings-password-message')).toHaveTextContent('The current password is incorrect.')
+    })
+    expect(screen.getByTestId('worker-v5-settings-password-message')).not.toHaveTextContent(/Mật khẩu/)
+  })
+
+  it('serializes worker settings writes and releases each control after rejection', async () => {
+    mockRouteParams = { ns_worker_screen: '5.10-support-settings' }
+    let rejectAccount!: (reason?: unknown) => void
+    let rejectPassword!: (reason?: unknown) => void
+    mockUpdateCustomerProfile.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectAccount = reject
+    }))
+    mockUpdatePassword.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectPassword = reject
+    }))
+
+    render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-settings-account'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-settings-account-name-input'), 'Worker Test')
+    const accountButton = screen.getByTestId('worker-v5-settings-account-save')
+    let accountPressTarget: typeof accountButton | null = accountButton
+    while (accountPressTarget && typeof accountPressTarget.props.onPress !== 'function') {
+      accountPressTarget = accountPressTarget.parent
+    }
+    expect(accountPressTarget).not.toBeNull()
+    const pressAccountSave = accountPressTarget?.props.onPress as (() => void)
+
+    act(() => {
+      pressAccountSave()
+      pressAccountSave()
+    })
+
+    expect(mockUpdateCustomerProfile).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      rejectAccount(new Error('network unavailable'))
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-settings-account-message')).toHaveTextContent(/Không thể lưu thay đổi/)
+      expect(accountButton).not.toBeDisabled()
+    })
+
+    fireEvent.press(screen.getByTestId('worker-v5-settings-password'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-settings-password-current-input'), 'old-password')
+    fireEvent.changeText(screen.getByTestId('worker-v5-settings-password-new-input'), 'new-password')
+    fireEvent.changeText(screen.getByTestId('worker-v5-settings-password-confirm-input'), 'new-password')
+    const passwordButton = screen.getByTestId('worker-v5-settings-password-save')
+    let passwordPressTarget: typeof passwordButton | null = passwordButton
+    while (passwordPressTarget && typeof passwordPressTarget.props.onPress !== 'function') {
+      passwordPressTarget = passwordPressTarget.parent
+    }
+    expect(passwordPressTarget).not.toBeNull()
+    const pressPasswordSave = passwordPressTarget?.props.onPress as (() => void)
+
+    act(() => {
+      pressPasswordSave()
+      pressPasswordSave()
+    })
+
+    expect(mockUpdatePassword).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      rejectPassword(new Error('network unavailable'))
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-settings-password-message')).toHaveTextContent(/Dịch vụ tài khoản chưa sẵn sàng/)
+      expect(passwordButton).not.toBeDisabled()
+    })
+  })
+
+  it('rolls a worker memory switch back when the backend rejects the preference', async () => {
+    mockRouteParams = { ns_worker_screen: '5.6-agent-memory-preferences' }
+
+    render(<WorkerProfileSurface />)
+
+    const areaPreference = await screen.findByTestId('worker-v5-memory-permission-list-row-0')
+    await waitFor(() => {
+      expect(areaPreference.props.accessibilityState).toMatchObject({ checked: true })
+    })
+    fireEvent.press(areaPreference)
+
+    await waitFor(() => {
+      expect(mockUpdateMyWorkerPreference).toHaveBeenCalledWith({
+        enabled: false,
+        key: 'area_preference',
+      })
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-memory-permission-list-row-0').props.accessibilityState).toMatchObject({
+        busy: false,
+        checked: true,
+      })
+    })
+  })
+
+  it('starts only one worker memory update when a switch is pressed twice in one render', async () => {
+    mockRouteParams = { ns_worker_screen: '5.6-agent-memory-preferences' }
+    let resolveUpdate!: (value: { error: string; status: number; success: false }) => void
+    mockUpdateMyWorkerPreference.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveUpdate = resolve
+    }))
+
+    render(<WorkerProfileSurface />)
+
+    const areaPreference = await screen.findByTestId('worker-v5-memory-permission-list-row-0')
+    await waitFor(() => {
+      expect(areaPreference.props.accessibilityState).toMatchObject({ checked: true })
+    })
+    let pressTarget: typeof areaPreference | null = areaPreference
+    while (pressTarget && typeof pressTarget.props.onPress !== 'function') {
+      pressTarget = pressTarget.parent
+    }
+    expect(pressTarget).not.toBeNull()
+    const pressMemorySwitch = pressTarget?.props.onPress as (() => void)
+
+    act(() => {
+      pressMemorySwitch()
+      pressMemorySwitch()
+    })
+
+    expect(mockUpdateMyWorkerPreference).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      resolveUpdate({ error: 'not saved', status: 503, success: false })
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-memory-permission-list-row-0').props.accessibilityState).toMatchObject({
+        busy: false,
+        checked: true,
+      })
+    })
+  })
+
+  it('does not surface a failed Kael response after the worker switches jobs', async () => {
+    let rejectFirstJobTurn: (reason?: unknown) => void = () => undefined
+    mockWorkerKaelChatService.streamTurn.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectFirstJobTurn = reject
+    }))
+    buildWorkflow({ deal: buildAcceptedDealForJob('job_test_1') })
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+    const view = render(<WorkerChatSurface />)
+
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Kiểm tra việc đầu tiên')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+    await waitFor(() => expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledTimes(1))
+
+    buildWorkflow({ deal: buildAcceptedDealForJob('job_test_2') })
+    view.rerender(<WorkerChatSurface />)
+    await act(async () => {
+      rejectFirstJobTurn(new Error('old job failed'))
+      await Promise.resolve()
+    })
+
+    expect(screen.queryByText('Kael đang không kết nối được. Không có hành động nào được ghi vào việc.')).toBeNull()
+    expect(screen.queryByText('Kiểm tra việc đầu tiên')).toBeNull()
+  })
+
+  it('starts a clean scope-change draft when the active job changes', () => {
+    buildWorkflow({ deal: buildAcceptedDealForJob('job_scope_a') })
+    mockRouteParams = { ns_scope_mode: 'edit', ns_worker_screen: '2.8-scope-change' }
+    const view = render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-price-total-value')).not.toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-price-total-value')).toHaveTextContent(/Kael/)
+    fireEvent.changeText(screen.getByTestId('worker-scope-change-new-description-input'), 'Dây điện của việc A đã cháy ở ổ cắm.')
+    fireEvent.changeText(screen.getByTestId('worker-scope-change-reason-input'), 'Việc A cần thay thêm dây do quá nhiệt.')
+
+    buildWorkflow({ deal: buildAcceptedDealForJob('job_scope_b') })
+    view.rerender(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-scope-change-new-description-input').props.value).toBe('')
+    expect(screen.getByTestId('worker-scope-change-reason-input').props.value).toBe('')
+  })
+
+  it('serializes service-area writes and releases the save control after rejection', async () => {
+    buildWorkflow({ workerProfile: buildWorkerProfile({ id: 'worker_a', districts: ['quan_1'] }) })
+    let rejectSave!: (reason?: unknown) => void
+    mockWorkerUpdateServiceArea.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectSave = reject
+    }))
+    mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
+    render(<WorkerProfileSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-v5-service-area-open-card'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-service-area-draft-input'), 'Bình Thạnh')
+    const saveButton = screen.getByTestId('worker-v5-service-area-save-inline')
+    let savePressTarget: typeof saveButton | null = saveButton
+    while (savePressTarget && typeof savePressTarget.props.onPress !== 'function') {
+      savePressTarget = savePressTarget.parent
+    }
+    expect(savePressTarget).not.toBeNull()
+    const pressSave = savePressTarget?.props.onPress as (() => void)
+
+    act(() => {
+      pressSave()
+      pressSave()
+    })
+
+    expect(mockWorkerUpdateServiceArea).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      rejectSave(new Error('network unavailable'))
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Chưa đồng bộ được với NestScout. Khu vực vừa nhập vẫn đang chờ lưu.')).toBeOnTheScreen()
+      expect(saveButton).not.toBeDisabled()
+    })
+  })
+
+  it('ignores an old service-area save result after the profile owner changes', async () => {
+    buildWorkflow({ workerProfile: buildWorkerProfile({ id: 'worker_a', districts: ['quan_1'] }) })
+    let resolveFirstProfileSave: (saved: boolean) => void = () => undefined
+    mockWorkerUpdateServiceArea.mockImplementationOnce(() => new Promise<boolean>((resolve) => {
+      resolveFirstProfileSave = resolve
+    }))
+    mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
+    const view = render(<WorkerProfileSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-v5-service-area-open-card'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-service-area-draft-input'), 'Bình Thạnh')
+    fireEvent.press(screen.getByTestId('worker-v5-service-area-save-inline'))
+    expect(mockWorkerUpdateServiceArea).toHaveBeenCalledWith({ districts: ['binh_thanh'] })
+
+    buildWorkflow({ workerProfile: buildWorkerProfile({ id: 'worker_b', districts: ['quan_7'] }) })
+    view.rerender(<WorkerProfileSurface />)
+    await act(async () => {
+      resolveFirstProfileSave(false)
+      await Promise.resolve()
+    })
+
+    expect(screen.queryByText('Chưa đồng bộ được với NestScout. Khu vực vừa nhập vẫn đang chờ lưu.')).toBeNull()
   })
 })

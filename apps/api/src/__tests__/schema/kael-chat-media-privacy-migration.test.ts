@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -14,6 +14,13 @@ const jobMediaGuardMigration = readFileSync(
   join(process.cwd(), '../../supabase/migrations/20260711065000_job_media_analysis_audio_guard.sql'),
   'utf8',
 )
+const qualificationMigrationPath = join(
+  process.cwd(),
+  '../../supabase/migrations/20260714104000_qualify_kael_media_intent_columns.sql',
+)
+const qualificationMigration = existsSync(qualificationMigrationPath)
+  ? readFileSync(qualificationMigrationPath, 'utf8')
+  : ''
 
 describe('Kael chat media privacy migration', () => {
   it('blocks raw audio at the private Storage bucket boundary', () => {
@@ -36,6 +43,13 @@ describe('Kael chat media privacy migration', () => {
     expect(intentMigration).toMatch(/grant execute on function public\.reserve_kael_chat_media_upload[\s\S]+to service_role/)
     expect(intentMigration).toContain("delete_after = greatest(expires_at, p_now) + interval '5 minutes'")
     expect(intentMigration).not.toMatch(/grant execute[\s\S]+to authenticated/)
+  })
+
+  it('keeps the quota expiry check unambiguous inside the table-returning RPC', () => {
+    expect(qualificationMigration).toContain('create or replace function public.reserve_kael_chat_media_upload')
+    expect(qualificationMigration).toContain('update public.kael_chat_media_upload_intents as intent')
+    expect(qualificationMigration).toContain('and intent.expires_at <= p_now')
+    expect(qualificationMigration).not.toMatch(/\band expires_at <= p_now/)
   })
 
   it('blocks raw audio at the direct job-media Storage boundary for Kael analysis stages', () => {

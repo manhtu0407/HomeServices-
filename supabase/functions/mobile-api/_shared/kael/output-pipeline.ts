@@ -311,12 +311,27 @@ export function buildScopeChangeOutputs(input: {
   };
 }
 
+const UNLABELLED_BANK_ACCOUNT_PATTERN = /\b\d{13,20}\b/g;
+const UNSAFE_TEXT_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF\uFFF9-\uFFFB]/g;
+
 export function sanitizeKaelText(input: string, maxLength = 500): string {
-  return stripVndPatterns(scrubKaelPiiText(input))
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+  const safeMaxLength = maxLength === Number.POSITIVE_INFINITY
+    ? 500
+    : Number.isFinite(maxLength)
+    ? Math.max(0, Math.floor(maxLength))
+    : 0;
+  const sanitized = stripVndPatterns(scrubKaelPiiText(input))
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, maxLength);
+    .trim();
+  return truncateWithoutSplittingSurrogate(sanitized, safeMaxLength);
+}
+
+function truncateWithoutSplittingSurrogate(value: string, maxLength: number): string {
+  const truncated = value.slice(0, maxLength);
+  const lastCodeUnit = truncated.charCodeAt(truncated.length - 1);
+  return lastCodeUnit >= 0xD800 && lastCodeUnit <= 0xDBFF
+    ? truncated.slice(0, -1)
+    : truncated;
 }
 
 export function sanitizeKaelOutputObject<T>(value: T): T {
@@ -355,8 +370,10 @@ function stripVndPatterns(input: string): string {
 
 export function scrubKaelPiiText(input: string): string {
   return input
+    .replace(UNSAFE_TEXT_CONTROL_PATTERN, "")
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
     .replace(/\b(?:stk|số tài khoản|so tai khoan|bank)\s*[:#-]?\s*\d{6,20}\b/gi, "[bank-account]")
+    .replace(UNLABELLED_BANK_ACCOUNT_PATTERN, "[bank-account]")
     .replace(/\b(?:\+?84|0)(?:[\s.-]?\d){8,10}\b/g, "[phone]")
     .replace(/\b\d{9,12}\b/g, "[id-number]")
     .replace(/\b(?:căn|can|unit|phòng|phong|apt)\s*[A-Z0-9.-]+\b/gi, "[unit]")

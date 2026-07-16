@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { scrubSensitiveForLLM } from '../../../../../supabase/functions/mobile-api/_shared/kael/utils'
 
-// X5 (Plan.md §27.8 — 2026-05-29): F-22. The same scrubber the Edge persist
+// The same scrubber the Edge persist
 // layer applies before writing kael_chat_turns.text_content. These assert raw
 // PII is removed so it never lands in the DB.
 

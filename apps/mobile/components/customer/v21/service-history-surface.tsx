@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Image } from 'expo-image'
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   Text,
   useWindowDimensions,
@@ -31,6 +31,30 @@ import { initialsForName } from './profile-display-model'
 import { ServiceHistoryFilterRail, type HistoryFilter } from './service-history-filter-rail'
 import { AssetTile, EmptyState, V21Card, V21Screen, V21TopBar, useCustomerV21SurfaceTheme } from './shared-surfaces'
 import { customerV21ServiceHistoryStyles as styles } from './service-history-styles'
+
+const historyDayFormatters = {
+  en: new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }),
+  vi: new Intl.DateTimeFormat('vi-VN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }),
+} satisfies Record<AppLanguage, Intl.DateTimeFormat>
+
+const historyTimeFormatters = {
+  en: new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+  vi: new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+} satisfies Record<AppLanguage, Intl.DateTimeFormat>
 
 function isCompletedHistoryItem(item: CustomerServiceHistoryItem) {
   return item.status === 'paid' || item.status === 'reviewed'
@@ -62,20 +86,13 @@ function historyDayLabel(value: string, language: AppLanguage) {
   if (dayDifference === 0) return language === 'vi' ? 'Hôm nay' : 'Today'
   if (dayDifference === 1) return language === 'vi' ? 'Hôm qua' : 'Yesterday'
 
-  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(date)
+  return historyDayFormatters[language].format(date)
 }
 
 function historyTimeLabel(value: string, language: AppLanguage) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return language === 'vi' ? 'Chưa có giờ' : 'Time unavailable'
-  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
+  return historyTimeFormatters[language].format(date)
 }
 
 function groupHistoryItems(items: CustomerServiceHistoryItem[], language: AppLanguage) {
@@ -389,7 +406,7 @@ function HistoryDealCard({
           item.worker ? (
             <View style={styles.workerRow}>
               {item.worker.avatar_url ? (
-                <Image accessibilityIgnoresInvertColors source={{ uri: item.worker.avatar_url }} style={styles.workerAvatar} />
+                <Image accessibilityIgnoresInvertColors contentFit="cover" source={{ uri: item.worker.avatar_url }} style={styles.workerAvatar} />
               ) : (
                 <View style={[styles.workerAvatar, styles.workerAvatarFallback, { backgroundColor: tokens.service }]}>
                   <Text style={[styles.workerAvatarText, { color: tokens.primary }]}>{initialsForName(workerName)}</Text>

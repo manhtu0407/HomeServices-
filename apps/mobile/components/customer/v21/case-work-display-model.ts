@@ -1,6 +1,7 @@
 import type { ImageSourcePropType } from 'react-native'
 
 import { appCopy, localizedProblemLabel, type AppLanguage } from '@/lib/app-language'
+import { formatHcmcScheduledAt } from '@/lib/hcmc-schedule'
 import {
   buildLocalJobDisplayCode,
   type LocalDeal,
@@ -315,7 +316,9 @@ export function agenticDealProblemLabel(deal: LocalDeal, language: AppLanguage) 
   return copy.dataPending
 }
 
-export function timeChoiceLabel(value: LocalDeal['draft']['timeChoice'], language: AppLanguage) {
+export function timeChoiceLabel(value: LocalDeal['draft']['timeChoice'], language: AppLanguage, scheduledAt?: string | null) {
+  const scheduledLabel = formatHcmcScheduledAt(scheduledAt)
+  if (scheduledLabel) return scheduledLabel
   if (value === 'now') return language === 'vi' ? 'Sớm nhất có thể' : 'As soon as possible'
   return customerV21CommonCopy[language].dataPending
 }
@@ -385,7 +388,7 @@ export function buildAgenticCaseThreadModel({
   const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
   const problem = agenticDealProblemLabel(deal, language)
   const address = deal.draft.addressLabel || deal.draft.districtLabel || copy.dataPending
-  const timeWindow = timeChoiceLabel(deal.draft.timeChoice, language)
+  const timeWindow = timeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)
   const evidenceLabel = formatEvidenceFileCount(deal.draft.mediaCount, language)
   const estimateLabel = estimate?.priceRangeLabel || copy.dataPending
   const confidenceLabel = estimate?.confidenceLabel || copy.dataPending
@@ -550,7 +553,7 @@ export function buildAgenticCaseThreadMatchingCardModel(
   const copy = customerV21CommonCopy[language]
   return {
     area: deal.broadcast?.generalArea || deal.draft.districtLabel || deal.draft.addressLabel || copy.dataPending,
-    confidence: deal.estimate?.confidenceLabel || '0',
+    confidence: deal.estimate?.confidenceLabel || copy.dataPending,
     service: deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending,
     status: customerV21StatusCopy[language][deal.status],
     workerLabel: deal.workerProfile?.fullName?.trim() || (language === 'vi' ? '\u0110ang t\u00ecm th\u1ee3' : 'Matching'),

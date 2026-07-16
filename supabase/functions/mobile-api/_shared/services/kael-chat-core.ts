@@ -11,9 +11,10 @@ import type { KaelChatStatus } from "../../../_shared/contracts.ts";
 import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "./audit.ts";
 import { guardDemandingResponseText } from "./chat.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, detectDemandingCustomerPatterns, getKaelPerformanceProfile, kaelDiagnosisScopeArtifactSchema, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, runKaelPipeline, scrubSensitiveForLLM, updateKaelProgress, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
+import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, detectDemandingCustomerPatterns, getKaelPerformanceProfile, kaelDiagnosisScopeArtifactSchema, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
 import { evaluateMessageBoundary } from "../kael/boundary-guard.ts";
 import { guardOutput } from "../kael/output-gateway.ts";
+import { frameUntrustedCustomerEvidenceForModel, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../kael/untrusted-evidence.ts";
 import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { KaelChatCreateInput, ServiceType } from "../../../_shared/domain.ts";
 
@@ -48,12 +49,15 @@ export async function advanceKaelChatEstimate(
   const llmClarificationEnabled = true;
   const language = input.language ?? "vi";
   const message = sanitizeForLLM(input.message ?? "");
-  const durableCustomerDetail = scrubSensitiveForLLM(message);
+  const safeCustomerEvidence = sanitizeUntrustedEvidenceText(message);
+  const modelCustomerEvidence = frameUntrustedCustomerEvidenceForModel(safeCustomerEvidence);
+  const durableCustomerDetail = safeCustomerEvidence;
+  const problemChips = sanitizeUntrustedEvidenceList(input.problem_chips ?? []);
   let artifact = await loadDiagnosisScopeArtifact(
     client,
     sessionId,
     input.service_type,
-    durableCustomerDetail || input.problem_chips?.join(" ") || input.service_type,
+    durableCustomerDetail || problemChips.join(" ") || input.service_type,
   );
   if (artifact.next_action.kind === "escalate") {
     const escalationArtifact = kaelDiagnosisScopeArtifactSchema.parse({
@@ -134,10 +138,9 @@ export async function advanceKaelChatEstimate(
     return;
   }
 
-  const problemChips = input.problem_chips?.filter(Boolean) ?? [];
   // When smart clarification is on, let intake-diagnosis ask a CONTEXTUAL question
   // instead of this generic length-heuristic prompt (STRUCTURES.md A4).
-  if (!llmClarificationEnabled && message.length < 10 && problemChips.length === 0) {
+  if (!llmClarificationEnabled && safeCustomerEvidence.length < 10 && problemChips.length === 0) {
     const question = buildFocusedClarificationQuestion("symptom", language);
     artifact = diagnosisScopeWithQuestion(artifact, ["description"], question, 0.3);
     await persistDiagnosisScopeArtifact(client, sessionId, artifact);
@@ -231,7 +234,7 @@ export async function advanceKaelChatEstimate(
       {
         serviceType: input.service_type,
         problemChips: problemChips.length > 0 ? problemChips : [input.service_type],
-        description: message,
+        description: modelCustomerEvidence,
         district,
         photoUrls: input.photo_urls ?? [],
         intakeDiagnosisEnabled: llmClarificationEnabled,
@@ -458,7 +461,7 @@ export async function advanceKaelChatEstimate(
   const evidenceRequest = requiredCaseWorkEvidenceRequest({
     serviceType: input.service_type,
     problemCategory: estimate.problem_category,
-    customerMessage: message,
+    customerMessage: safeCustomerEvidence,
     evidence: artifact.evidence,
     language,
   });
@@ -642,8 +645,9 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
   },
 ) {
   const alreadyHardStopped = input.metadata.demanding_customer_hard_escalation === true;
+  const safeInteractionEvidence = sanitizeUntrustedEvidenceText(input.message);
   const detection = detectDemandingCustomerPatterns({
-    message: input.message,
+    message: safeInteractionEvidence,
     qaCount: input.qaCount,
     cancelCount: asNumber(input.metadata.demanding_customer_cancel_count),
     // Prior-turn intake-diagnosis sentiment fills a keyword
@@ -681,7 +685,7 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
     jobId: input.jobId,
     actorId: input.actorId,
     actorRole: "customer",
-    message: input.message,
+    message: safeInteractionEvidence,
     detection: effectiveDetection,
     response,
   });

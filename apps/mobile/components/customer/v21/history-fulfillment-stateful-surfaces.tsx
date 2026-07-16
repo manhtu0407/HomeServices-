@@ -365,9 +365,10 @@ export function CaseLiveAlertStageView({
         <FulfillmentInfoRow
           assetTile={AssetTile}
           body={addressBody}
+          handoffChip={MatchingHandoffChip}
           image={customerV21Assets.home}
-          renderRightLabel={(label) => <MatchingHandoffChip label={label} tone="success" />}
           rightLabel={addressSharedLabel}
+          rightLabelTone="success"
           title={entryPointLabel}
           tokens={tokens}
         />

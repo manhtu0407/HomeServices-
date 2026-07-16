@@ -515,22 +515,35 @@ export function workflowSourceOfTruthLabel(source: WorkflowPhaseSourceOfTruth, l
 }
 
 export function workflowEventLabel(event: WorkflowEvent, locale: WorkflowLocale): string {
-  const labels: Partial<Record<WorkflowEvent, WorkflowLocalizedText>> = {
+  const labels: Record<WorkflowEvent, WorkflowLocalizedText> = {
+    customer_input_started: text('Bắt đầu nhập yêu cầu', 'Start intake'),
     customer_input_updated: text('Cập nhật mô tả', 'Update intake'),
+    kael_missing_info_requested: text('Kael yêu cầu bổ sung thông tin', 'Kael requests missing information'),
     ai_partial_ticket_updated: text('Kael cập nhật phiếu', 'Kael updates ticket'),
     ai_estimate_ready: text('Ước tính sẵn sàng', 'Estimate ready'),
+    kael_failed: text('Kael chưa thể xử lý', 'Kael could not complete processing'),
+    ai_explanation_ready: text('Giải thích sẵn sàng', 'Explanation ready'),
+    kael_confirmed_ticket: text('Kael xác nhận phiếu', 'Kael confirms ticket'),
     kael_started_matching: text('Kael bắt đầu điều phối', 'Kael starts matching'),
+    customer_confirmed_ticket: text('Khách xác nhận phiếu', 'Customer confirms ticket'),
+    matching_started: text('Bắt đầu tìm thợ', 'Matching starts'),
     worker_accepted: text('Thợ nhận việc', 'Worker accepts'),
     customer_confirmed_worker: text('Khách xác nhận thợ', 'Customer confirms worker'),
     worker_status_advanced: text('Cập nhật trạng thái', 'Status advances'),
+    scope_change_requested: text('Thợ yêu cầu đổi phạm vi', 'Worker requests scope change'),
+    scope_change_decided: text('Đã quyết định thay đổi phạm vi', 'Scope change decided'),
     worker_completed: text('Thợ gửi hoàn tất', 'Worker completes'),
     kael_decided_scope_change: text('Kael quyết định phạm vi', 'Kael decides scope'),
     kael_confirmed_completion: text('Kael xác nhận hoàn tất', 'Kael confirms completion'),
+    customer_confirmed_completion: text('Khách xác nhận hoàn tất', 'Customer confirms completion'),
     kael_decided_payment: text('Kael quyết định thanh toán', 'Kael decides payment'),
     payment_confirmed: text('Thanh toán xác nhận', 'Payment confirmed'),
+    kael_decided_dispute: text('Kael quyết định khiếu nại', 'Kael decides dispute'),
     review_submitted: text('Gửi đánh giá', 'Review submitted'),
+    kael_processed_cancellation: text('Kael xử lý yêu cầu hủy', 'Kael processes cancellation'),
+    cancel_requested: text('Đã yêu cầu hủy', 'Cancellation requested'),
   }
-  return labels[event]?.[locale] ?? event
+  return labels[event][locale]
 }
 
 export function workflowBlockedReasonLabel(reason: WorkflowPhaseBlockedReason, locale: WorkflowLocale): string {

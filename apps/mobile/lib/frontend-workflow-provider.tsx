@@ -20,7 +20,11 @@ import {
   type WorkerScopeChangeInput,
 } from '@nestscout/shared'
 import { useAuth } from './auth-provider'
-import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from './media-upload'
+import {
+  localizeMediaUploadFailure,
+  uploadJobMediaDrafts,
+  type LocalMediaUploadDraft,
+} from './media-upload'
 import { customerProfileService, jobService, kaelMemoryService, notificationService, workerService } from './services'
 import { subscribeToJobStatus, subscribeToWorkerBroadcasts } from './realtime'
 import {
@@ -64,6 +68,7 @@ import {
   jobCreateClientRequestFingerprint,
   mergeCustomerKaelMemoryPermission,
   readCustomerKaelMemoryPermission,
+  scopeChangeClientRequestFingerprint,
   usesBeforeAcceptCancelEndpoint,
 } from './frontend-workflow/helpers'
 import {
@@ -105,6 +110,10 @@ type WorkerPayoutMethodSaveResult = {
   status?: number
 }
 
+type WorkerScopeChangeDraftInput = Omit<WorkerScopeChangeInput, 'client_request_id'> & {
+  client_request_id?: string
+}
+
 type FrontendWorkflowActions = {
   createRemoteJobFromDraft: (
     draft?: LocalDealDraft,
@@ -121,9 +130,9 @@ type FrontendWorkflowActions = {
     status: WorkerStatusUpdate,
     extras?: { completion_notes?: string; completion_photo_urls?: string[]; access_check_in?: WorkerAccessCheckInInput },
   ) => Promise<boolean>
-  requestScopeChange: (input: WorkerScopeChangeInput) => Promise<boolean>
+  requestScopeChange: (input: WorkerScopeChangeDraftInput) => Promise<boolean>
   getKaelJobIncident: () => Promise<JobIncidentResponse | false>
-  openKaelJobIncident: (input: WorkerScopeChangeInput) => Promise<JobIncidentResponse | false>
+  openKaelJobIncident: (input: WorkerScopeChangeDraftInput) => Promise<JobIncidentResponse | false>
   proposeScopeChangeFromKaelIncident: () => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
   workerSubmitRegistration: (input: WorkerRegisterInput) => Promise<boolean>
@@ -258,6 +267,17 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     locallyReadNotificationIdsRef.current = new Set<string>()
   }
   const pendingJobCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
+  const pendingDirectScopeChangeClientRequestRef = useRef<PendingClientRequestId | null>(null)
+  const pendingIncidentOpenClientRequestRef = useRef<PendingClientRequestId | null>(null)
+  const pendingScopeProposalClientRequestRef = useRef<PendingClientRequestId | null>(null)
+  const pendingRequestOwnerRef = useRef(sessionUserId)
+  if (pendingRequestOwnerRef.current !== sessionUserId) {
+    pendingRequestOwnerRef.current = sessionUserId
+    pendingJobCreateClientRequestRef.current = null
+    pendingDirectScopeChangeClientRequestRef.current = null
+    pendingIncidentOpenClientRequestRef.current = null
+    pendingScopeProposalClientRequestRef.current = null
+  }
   // Holds the latest refresh callbacks so realtime/AppState effects can stay
   // subscribed across callback-identity changes (no channel churn) while always
   // invoking the freshest closure. Populated by the sync effect below once the
@@ -392,11 +412,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     mediaItems: LocalMediaUploadDraft[] = [],
   ) => {
     const draft = draftOverride ?? stateRef.current.deal?.draft
-    if (!draft?.serviceType) return setRemoteError('Chọn dịch vụ điện, nước hoặc vệ sinh trước khi tạo yêu cầu')
+    if (!draft?.serviceType) return setRemoteError('Chọn một trong sáu dịch vụ NestScout hỗ trợ trước khi tạo yêu cầu')
     if (draft.problemChips.length === 0) return setRemoteError('Chọn ít nhất một vấn đề cần xử lý')
     if (draft.description.trim().length < 10) return setRemoteError('Mô tả cần rõ hơn trước khi gửi yêu cầu')
     const districtLabel = extractKnownDistrictLabel(draft.districtLabel) || extractKnownDistrictLabel(draft.addressLabel)
-    if (!districtLabel) return setRemoteError('aịa chỉ cần có quận TP.HCM rõ ràng')
+    if (!districtLabel) return setRemoteError('Địa chỉ cần có quận TP.HCM rõ ràng')
 
     const requestFingerprint = jobCreateClientRequestFingerprint(draft, districtLabel)
     const input: JobCreateInput = {
@@ -425,7 +445,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
     const uploaded = await uploadJobMediaDrafts(created.data.job_id, mediaItems, 'before')
     if (!uploaded.success) {
-      const mediaError = localizeWorkflowError(uploaded.error, language)
+      const mediaError = localizeMediaUploadFailure(uploaded, language)
       dispatch({ type: 'set_workflow_error', error: mediaError })
       return { jobId: created.data.job_id, mediaError }
     }
@@ -513,6 +533,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRefreshRequestIdRef.current = workerRefreshRequestId
     const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
+    // The post-I/O generation check prevents an older refresh from committing after a newer refresh starts.
+    // react-doctor-disable-next-line react-doctor/async-defer-await
     const [profile, earnings, performanceInsights, broadcasts, jobs] = await Promise.all([
       workerService.getProfile(),
       workerService.getEarnings(currentWorkerMonthRange()),
@@ -718,11 +740,21 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [refreshCurrentJob, setRemoteError])
 
-  const requestScopeChange = useCallback(async (input: WorkerScopeChangeInput) => {
+  const requestScopeChange = useCallback(async (input: WorkerScopeChangeDraftInput) => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để đổi phạm vi')
-    const result = await workerService.requestScopeChange(jobId, input)
+    const requestFingerprint = scopeChangeClientRequestFingerprint(jobId, input)
+    const result = await workerService.requestScopeChange(jobId, {
+      ...input,
+      client_request_id: stableClientRequestId(
+        pendingDirectScopeChangeClientRequestRef,
+        requestFingerprint,
+      ),
+      new_description: input.new_description.trim(),
+      reason: input.reason.trim(),
+    })
     if (!result.success) return setRemoteError(result.error)
+    clearStableClientRequestId(pendingDirectScopeChangeClientRequestRef, requestFingerprint)
     await refreshCurrentJob()
     return true
   }, [refreshCurrentJob, setRemoteError])
@@ -738,25 +770,42 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return result.data
   }, [setRemoteError])
 
-  const openKaelJobIncident = useCallback(async (input: WorkerScopeChangeInput) => {
+  const openKaelJobIncident = useCallback(async (input: WorkerScopeChangeDraftInput) => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) {
       setRemoteError('Không có yêu cầu để mở Kael Công việc')
       return false
     }
-    const result = await workerService.openKaelJobIncident(jobId, input)
+    const requestFingerprint = scopeChangeClientRequestFingerprint(jobId, input)
+    const result = await workerService.openKaelJobIncident(jobId, {
+      ...input,
+      client_request_id: stableClientRequestId(
+        pendingIncidentOpenClientRequestRef,
+        requestFingerprint,
+      ),
+      new_description: input.new_description.trim(),
+      reason: input.reason.trim(),
+    })
     if (!result.success) {
       setRemoteError(result.error)
       return false
     }
+    clearStableClientRequestId(pendingIncidentOpenClientRequestRef, requestFingerprint)
     return result.data
   }, [setRemoteError])
 
   const proposeScopeChangeFromKaelIncident = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để tạo đề xuất')
-    const result = await workerService.proposeScopeChangeFromKaelIncident(jobId)
+    const requestFingerprint = `job-incident-scope-proposal:${jobId}`
+    const result = await workerService.proposeScopeChangeFromKaelIncident(jobId, {
+      client_request_id: stableClientRequestId(
+        pendingScopeProposalClientRequestRef,
+        requestFingerprint,
+      ),
+    })
     if (!result.success) return setRemoteError(result.error)
+    clearStableClientRequestId(pendingScopeProposalClientRequestRef, requestFingerprint)
     await refreshCurrentJob()
     return true
   }, [refreshCurrentJob, setRemoteError])
@@ -1082,19 +1131,14 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   useEffect(() => {
     if (!sessionUserId || role !== 'worker') return
-    const initialRefresh = setTimeout(() => {
-      if (!isAppForeground()) return
-      void workerRefresh()
-      void workerUpdateAvailability(false, { revalidate: false })
-    }, 0)
+    if (isAppForeground()) void workerRefresh()
     const interval = setInterval(() => {
       if (isAppForeground()) void workerRefresh()
     }, 20_000)
     return () => {
-      clearTimeout(initialRefresh)
       clearInterval(interval)
     }
-  }, [role, sessionUserId, workerRefresh, workerUpdateAvailability])
+  }, [role, sessionUserId, workerRefresh])
 
   useEffect(() => {
     if (!sessionUserId || role !== 'worker') return
@@ -1154,7 +1198,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   }, [role, sessionUserId, refreshCustomerProfileInsights])
 
   const broadcast = state.deal?.broadcast
-  const customerBroadcast = state.deal?.broadcast
   const remoteJobId = getRemoteJobId(state)
   const customerStatus = state.deal?.status
 
@@ -1169,8 +1212,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const customerTimelineActive =
     (role === 'customer' || role === 'admin') &&
     !!remoteJobId &&
-    !(customerStatus === 'broadcasting' && customerBroadcast?.status === 'expired') &&
     ACTIVE_TIMELINE_STATUSES.includes(customerStatus ?? '')
+
+  // The local countdown is advisory. Keep reconciling a broadcasting job with
+  // backend truth because a worker may be accepted at the deadline boundary.
 
   // Live customer timeline subscribes only while the job is active; polling is
   // the dropped-socket fallback and the latest-callback ref avoids churn.
@@ -1227,13 +1272,24 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   }
 }
 
-export function FrontendWorkflowProvider({ children }: { children: ReactNode }) {
+function FrontendWorkflowProviderValue({ children }: { children: ReactNode }) {
   const value = useFrontendWorkflowValue()
 
   return (
     <FrontendWorkflowContext.Provider value={value}>
       {children}
     </FrontendWorkflowContext.Provider>
+  )
+}
+
+export function FrontendWorkflowProvider({ children }: { children: ReactNode }) {
+  const { guestMode, role, session } = useAuth()
+  const isolationKey = `${session?.user.id ?? 'anonymous'}:${role ?? 'unresolved'}:${guestMode ? 'guest' : 'account'}`
+
+  return (
+    <FrontendWorkflowProviderValue key={isolationKey}>
+      {children}
+    </FrontendWorkflowProviderValue>
   )
 }
 

@@ -50,4 +50,41 @@ describe('remembered auth identifier', () => {
 
     expect(mockedSecureStore.deleteItemAsync).toHaveBeenCalledWith('nestscout.auth.remembered_identifier.v1')
   })
+
+  it('serializes remember and clear so a late write cannot resurrect the identifier', async () => {
+    let resolveWrite!: () => void
+    mockedSecureStore.setItemAsync.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      resolveWrite = resolve
+    }))
+
+    const remember = rememberAuthIdentifier('owner@example.com')
+    const clear = clearRememberedAuthIdentifier()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    try {
+      expect(mockedSecureStore.setItemAsync).toHaveBeenCalledTimes(1)
+      expect(mockedSecureStore.deleteItemAsync).not.toHaveBeenCalled()
+    } finally {
+      resolveWrite?.()
+    }
+    await Promise.all([remember, clear])
+
+    expect(mockedSecureStore.deleteItemAsync).toHaveBeenCalledTimes(1)
+    expect(mockedSecureStore.setItemAsync.mock.invocationCallOrder[0])
+      .toBeLessThan(mockedSecureStore.deleteItemAsync.mock.invocationCallOrder[0])
+  })
+
+  it('settles when SecureStore never returns a remembered identifier', async () => {
+    await clearRememberedAuthIdentifier()
+    jest.clearAllMocks()
+    jest.useFakeTimers()
+    mockedSecureStore.getItemAsync.mockReturnValueOnce(new Promise(() => undefined))
+    const pending = getRememberedAuthIdentifier()
+
+    await jest.advanceTimersByTimeAsync(5_000)
+
+    await expect(pending).resolves.toBeNull()
+    jest.useRealTimers()
+  })
 })

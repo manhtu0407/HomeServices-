@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { selectKaelEscalation } from '../../../../../supabase/functions/mobile-api/_shared/kael/escalation'
 import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
 import { reviewScopeChange } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
+import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 describe('Kael model escalation', () => {
   afterEach(() => {
@@ -44,13 +45,15 @@ describe('Kael model escalation', () => {
       clarification: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-haiku-4-5-20251001'),
       problem_synthesis: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
       market_lookup: {
-        ...routes('perplexity', 'sonar', 'anthropic', 'claude-sonnet-5'),
+        primary: { provider: 'perplexity', model: 'sonar' },
+        fallback: undefined,
         escalation: { provider: 'perplexity', model: 'sonar-pro' },
       },
       price_synthesis: { primary: { provider: 'anthropic', model: 'claude-sonnet-5' } },
       advisory_generation: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-haiku-4-5-20251001'),
       worker_brief: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
       scope_change: escalationRoute('anthropic', 'claude-sonnet-5', 'anthropic', 'claude-opus-4-8'),
+      job_incident: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
       post_job_learning: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-sonnet-5'),
       educational_response: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-haiku-4-5-20251001'),
       worker_assist: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
@@ -102,7 +105,7 @@ describe('Kael model escalation', () => {
       requestedPriceMin: 1_000_000,
       requestedPriceMax: 1_200_000,
       reason: 'Phát hiện hư hỏng phía trong tường',
-    }, { anthropicApiKey: 'anthropic-test' })
+    }, { anthropicApiKey: 'anthropic-test' }, allowKaelSpendForTest('worker-1'))
 
     expect(models).toEqual(['claude-sonnet-5', 'claude-opus-4-8'])
     expect(result).toMatchObject({ model: 'claude-opus-4-8', fallback_used: false })

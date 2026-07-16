@@ -133,9 +133,10 @@ describe('jobCreateSchema', () => {
 })
 
 describe('workerScopeChangeSchema (Phase 2.0 2026-05-23: Kael owns final price)', () => {
-  // Phase 2.0 (plan §22.7.B): worker không gửi price; Kael compute new estimate
+  // The worker does not send a price; Kael computes the new estimate
   // from worker's reported scope. Schema accepts description + reason + photos.
   const validScope = {
+    client_request_id: '11111111-1111-4111-8111-111111111111',
     new_description: 'Phát hiện thêm ống nước bị rỉ ở bếp, cần thay đoạn lớn hơn',
     reason: 'Ống nước bếp cũ, cần thay mới toàn bộ',
     photo_urls: [],

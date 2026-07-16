@@ -7,6 +7,7 @@ import {
   KAEL_PERMISSION_RULES,
   KAEL_PURPOSES,
   resolveKaelPermission,
+  type KaelTopic,
 } from '../../kael/permissions'
 import {
   DECLINE_TEMPLATES,
@@ -71,6 +72,21 @@ describe('Kael P5 permission matrix and response policy', () => {
     }
   })
 
+  it.each(['hvac_service', 'upholstery_care', 'handyman_service'] as const)(
+    'allows intent classification for the supported %s topic',
+    (topic) => {
+      expect(resolveKaelPermission({
+        purpose: 'intent_classification',
+        actor: 'customer',
+        jobRelation: 'none',
+        topic: topic as KaelTopic,
+        action: 'classify_intent',
+      })).toMatchObject({
+        decision: 'allow',
+      })
+    },
+  )
+
   it('denies worker pre-accept access to specific job or address details', () => {
     expect(resolveKaelPermission({
       purpose: 'worker_brief',
@@ -129,5 +145,20 @@ describe('Kael P5 permission matrix and response policy', () => {
       expect(text).toContain('Kael')
       expect(text).not.toMatch(/\b(Profile|Customer|Worker|Local|deal)\b/)
     }
+    expect(renderDeclineTemplate('out_of_scope_service')).toContain('sáu nhóm dịch vụ')
+    expect(renderDeclineTemplate('out_of_scope_service')).not.toContain('quay lại khi Kael mở thêm')
+  })
+
+  it('sanitizes decline substitutions and normalizes malformed wait durations', () => {
+    const alternative = renderDeclineTemplate('cannot_do_action', {
+      alternative: 'Gọi 0901234567 hoặc email test@example.com để xử lý.',
+    })
+    expect(alternative).not.toContain('0901234567')
+    expect(alternative).not.toContain('test@example.com')
+
+    expect(renderDeclineTemplate('rate_limit_hit', { seconds: Number.NaN })).toContain('60 giây')
+    expect(renderDeclineTemplate('rate_limit_hit', { seconds: -5 })).toContain('60 giây')
+    expect(renderDeclineTemplate('rate_limit_hit', { seconds: 1.2 })).toContain('2 giây')
+    expect(() => renderDeclineTemplate('missing' as never)).toThrow(/unknown decline template/i)
   })
 })

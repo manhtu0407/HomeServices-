@@ -86,4 +86,43 @@ describe('Kael Case Work shared contract', () => {
 
     expect(parsed.evidence[0]).not.toHaveProperty('ref')
   })
+
+  it('rejects traversal-like owner segments in private evidence refs', () => {
+    expect(() => diagnosisScopeArtifactSchema.parse({
+      ...baseArtifact,
+      evidence: [{
+        kind: 'video_frame',
+        ref: 'supabase://kael-chat-media/../kael-chat/model_vision/frame-1.jpg',
+        model_eligible: true,
+      }],
+    })).toThrow()
+  })
+
+  it('rejects whitespace facts and arrays masquerading as the facts record', () => {
+    expect(() => diagnosisScopeArtifactSchema.parse({
+      ...baseArtifact,
+      facts: { customer_goal: '   ' },
+    })).toThrow()
+    expect(() => diagnosisScopeArtifactSchema.parse({
+      ...baseArtifact,
+      facts: [] as unknown as DiagnosisScopeArtifact['facts'],
+    })).toThrow()
+  })
+
+  it('keeps offer preparation and stop-level safety flags consistent with quote readiness', () => {
+    expect(() => diagnosisScopeArtifactSchema.parse({
+      ...baseArtifact,
+      next_action: { kind: 'prepare_offer' },
+    })).toThrow()
+
+    expect(() => diagnosisScopeArtifactSchema.parse({
+      ...baseArtifact,
+      missing_facts: [],
+      quote_blockers: [],
+      scope_summary: 'A complete scope that otherwise appears ready for an offer.',
+      quote_ready: true,
+      next_action: { kind: 'prepare_offer' },
+      safety_flags: [{ code: 'electrical_fire', severity: 'stop' }],
+    })).toThrow()
+  })
 })

@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  insertKaelJobMessage: vi.fn(async () => undefined),
   logApiCalls: vi.fn(async () => undefined),
+  requestScopeChange: vi.fn(),
   runJobIncidentAssistant: vi.fn(),
 }))
 
@@ -15,11 +15,32 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/audit.ts'
   logApiCalls: mocks.logApiCalls,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/chat.service.ts', () => ({
-  insertKaelJobMessage: mocks.insertKaelJobMessage,
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/coercions.ts', () => ({
+  asNumber: (value: unknown) => Number(value ?? 0),
+  asRecord: (value: unknown) => typeof value === 'object' && value !== null ? value : {},
+  asString: (value: unknown) => typeof value === 'string' ? value : '',
+  nullableString: (value: unknown) => typeof value === 'string' ? value : null,
 }))
 
-import { recordJobIncidentChatMessage } from '../../../../../supabase/functions/mobile-api/_shared/services/job-incident.service'
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts', () => ({
+  requestScopeChange: mocks.requestScopeChange,
+  validateScopeChangeEvidenceRefs: vi.fn(),
+}))
+
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/router.ts', () => ({
+  apiFailure: (code: string, message: string) => {
+    throw new Error(`${code}: ${message}`)
+  },
+}))
+
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/access.ts', () => ({
+  requireJobAccess: vi.fn(),
+}))
+
+import {
+  proposeScopeChangeFromJobIncident,
+  recordJobIncidentChatMessage,
+} from '../../../../../supabase/functions/mobile-api/_shared/services/job-incident.service'
 
 const incident = {
   id: 'incident-1',
@@ -34,42 +55,55 @@ const incident = {
   last_next_actor: null,
   created_at: '2026-07-12T00:00:00.000Z',
   updated_at: '2026-07-12T00:00:00.000Z',
+  revision: 4,
 }
 
-function clientForScopeProposedChat(updates: Array<Record<string, unknown>>) {
+function clientForScopeProposedChat(options?: {
+  duplicate?: boolean
+  stale?: boolean
+}) {
+  const rpcCalls: Array<{ args: Record<string, unknown>; name: string }> = []
   return {
+    rpc(name: string, args: Record<string, unknown>) {
+      rpcCalls.push({ args, name })
+      if (name === 'claim_job_incident_chat_turn_atomic') {
+        return Promise.resolve({
+          data: [{
+            claimed: !options?.duplicate,
+            idempotent: Boolean(options?.duplicate),
+            incident,
+            ok: true,
+            revision: incident.revision,
+            source_event_id: 'event-message-1',
+          }],
+          error: null,
+        })
+      }
+      if (name === 'apply_job_incident_assistant_turn_atomic') {
+        return Promise.resolve({
+          data: [{
+            applied: !options?.stale,
+            incident,
+            ok: true,
+            stale: Boolean(options?.stale),
+          }],
+          error: null,
+        })
+      }
+      if (name === 'release_job_incident_assistant_claim_atomic') {
+        return Promise.resolve({ data: [{ released: true }], error: null })
+      }
+      throw new Error(`Unexpected RPC ${name}`)
+    },
     from(table: string) {
-      let action: 'select' | 'insert' | 'update' = 'select'
-      let statusValues: unknown[] = []
       const chain = {
         eq: () => chain,
-        in: (column: string, values: unknown[]) => {
-          if (table === 'kael_job_incidents' && column === 'status') statusValues = values
-          return chain
-        },
-        insert: () => {
-          action = 'insert'
-          return chain
-        },
+        in: () => chain,
         limit: () => chain,
-        maybeSingle: () => chain,
         order: () => chain,
-        select: () => {
-          if (action !== 'update') action = 'select'
-          return chain
-        },
-        single: () => chain,
-        update: (value: Record<string, unknown>) => {
-          action = 'update'
-          updates.push(value)
-          return chain
-        },
+        select: () => chain,
         then<TResult1 = unknown>(onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null) {
-          const result = table === 'kael_job_incidents' && action === 'select'
-            ? { data: statusValues.includes('scope_proposed') ? incident : null, error: null }
-            : table === 'kael_job_incidents' && action === 'update'
-            ? { data: { ...incident, ...updates.at(-1) }, error: null }
-            : table === 'kael_job_incident_events' && action === 'select'
+          const result = table === 'kael_job_incident_events'
             ? { data: [], error: null }
             : { data: null, error: null }
           return Promise.resolve(result).then(onfulfilled ?? undefined)
@@ -77,10 +111,152 @@ function clientForScopeProposedChat(updates: Array<Record<string, unknown>>) {
       }
       return chain
     },
+    rpcCalls,
   }
 }
 
 describe('Kael job incident chat after proposal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('surfaces a stale job phase before running scope proposal work', async () => {
+    const client = {
+      rpc(name: string) {
+        if (name === 'claim_job_incident_scope_proposal_atomic') {
+          return Promise.resolve({
+            data: [{
+              claimed: false,
+              error_code: 'STATUS_CHANGED',
+              idempotent: false,
+              incident: null,
+              ok: false,
+            }],
+            error: null,
+          })
+        }
+        throw new Error(`Unexpected RPC ${name}`)
+      },
+    }
+
+    await expect(proposeScopeChangeFromJobIncident(
+      {
+        role: 'worker',
+        supabase: client,
+        user: { id: 'worker-1' },
+      } as never,
+      'job-1',
+      { client_request_id: 'a7500000-0000-4000-8000-000000000009' },
+      {},
+    )).rejects.toThrow('STATUS_CHANGED:')
+    expect(mocks.requestScopeChange).not.toHaveBeenCalled()
+  })
+
+  it('returns the durable proposal when the successful response is retried', async () => {
+    const rpcCalls: string[] = []
+    const scopeChangeId = 'scope-change-1'
+    const finalizedIncident = {
+      ...incident,
+      scope_change_id: scopeChangeId,
+    }
+    const client = {
+      rpc(name: string) {
+        rpcCalls.push(name)
+        if (name === 'claim_job_incident_scope_proposal_atomic') {
+          return Promise.resolve({
+            data: [{
+              claimed: false,
+              idempotent: true,
+              incident: finalizedIncident,
+              ok: true,
+            }],
+            error: null,
+          })
+        }
+        throw new Error(`Unexpected RPC ${name}`)
+      },
+      from(table: string) {
+        const chain = {
+          eq: () => chain,
+          maybeSingle: () => chain,
+          select: () => chain,
+          then<TResult1 = unknown>(onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null) {
+            const result = table === 'scope_change_requests'
+              ? {
+                data: {
+                  created_at: '2026-07-12T00:00:00.000Z',
+                  id: scopeChangeId,
+                  job_id: 'job-1',
+                  status: 'waiting_customer_decision',
+                },
+                error: null,
+              }
+              : { data: null, error: null }
+            return Promise.resolve(result).then(onfulfilled ?? undefined)
+          },
+        }
+        return chain
+      },
+    }
+
+    const clientRequestId = 'a7500000-0000-4000-8000-000000000001'
+    await expect(proposeScopeChangeFromJobIncident(
+      {
+        role: 'worker',
+        supabase: client,
+        user: { id: 'worker-1' },
+      } as never,
+      'job-1',
+      { client_request_id: clientRequestId },
+      {},
+    )).resolves.toMatchObject({
+      incident: { id: 'incident-1', status: 'scope_proposed' },
+      scope_change: {
+        job_id: 'job-1',
+        scope_change_id: scopeChangeId,
+        status: 'waiting_customer_decision',
+      },
+    })
+    expect(mocks.requestScopeChange).not.toHaveBeenCalled()
+    expect(rpcCalls).toEqual(['claim_job_incident_scope_proposal_atomic'])
+  })
+
+  it('uses the durable client request id as the proposal claim id', async () => {
+    const clientRequestId = 'a7500000-0000-4000-8000-000000000002'
+    const rpcArgs: Record<string, unknown>[] = []
+    const client = {
+      rpc(name: string, args: Record<string, unknown>) {
+        if (name !== 'claim_job_incident_scope_proposal_atomic') {
+          throw new Error(`Unexpected RPC ${name}`)
+        }
+        rpcArgs.push(args)
+        return Promise.resolve({
+          data: [{
+            claimed: false,
+            error_code: 'INCIDENT_NOT_READY',
+            idempotent: false,
+            incident: null,
+            ok: false,
+          }],
+          error: null,
+        })
+      },
+    }
+
+    await expect(proposeScopeChangeFromJobIncident(
+      {
+        role: 'worker',
+        supabase: client,
+        user: { id: 'worker-1' },
+      } as never,
+      'job-1',
+      { client_request_id: clientRequestId },
+      {},
+    )).rejects.toThrow('INCIDENT_NOT_READY:')
+
+    expect(rpcArgs).toContainEqual(expect.objectContaining({ p_claim_id: clientRequestId }))
+  })
+
   it('keeps the customer approval hard-stop while Kael clarifies a real job message', async () => {
     mocks.runJobIncidentAssistant.mockResolvedValue({
       summary: 'Kael ghi nhận câu hỏi của thợ.',
@@ -92,10 +268,10 @@ describe('Kael job incident chat after proposal', () => {
       provider: null,
       model: null,
     })
-    const updates: Array<Record<string, unknown>> = []
+    const client = clientForScopeProposedChat()
 
     await recordJobIncidentChatMessage(
-      clientForScopeProposedChat(updates) as never,
+      client as never,
       { id: 'job-1', description: 'Sửa điện', service_type: 'electrical' },
       { id: 'message-1', sender_role: 'worker', content: 'Khách cần làm rõ vị trí dây cháy.' },
       { user: { id: 'worker-1' } } as never,
@@ -105,9 +281,70 @@ describe('Kael job incident chat after proposal', () => {
     expect(mocks.runJobIncidentAssistant).toHaveBeenCalledWith(expect.objectContaining({
       event: expect.objectContaining({ actor: 'worker' }),
     }))
-    expect(updates).toEqual(expect.arrayContaining([
-      expect.objectContaining({ status: 'scope_proposed' }),
-    ]))
-    expect(mocks.insertKaelJobMessage).toHaveBeenCalledWith(expect.anything(), 'job-1', expect.stringContaining('Kael Công việc:'))
+    expect(client.rpcCalls).toContainEqual(expect.objectContaining({
+      args: expect.objectContaining({
+        p_expected_revision: 4,
+        p_message_content: expect.stringContaining('Kael Công việc:'),
+        p_status: 'scope_proposed',
+      }),
+      name: 'apply_job_incident_assistant_turn_atomic',
+    }))
+  })
+
+  it('does not rerun Kael for a duplicate durable chat message source', async () => {
+    const client = clientForScopeProposedChat({ duplicate: true })
+
+    await recordJobIncidentChatMessage(
+      client as never,
+      { id: 'job-1', description: 'Sửa điện', service_type: 'electrical' },
+      { id: 'message-1', sender_role: 'worker', content: 'Khách cần làm rõ vị trí dây cháy.' },
+      { user: { id: 'worker-1' } } as never,
+      {},
+    )
+
+    expect(mocks.runJobIncidentAssistant).not.toHaveBeenCalled()
+    expect(client.rpcCalls.map((call) => call.name)).toEqual(['claim_job_incident_chat_turn_atomic'])
+  })
+
+  it('does not perform a second write when the assistant result is stale', async () => {
+    mocks.runJobIncidentAssistant.mockResolvedValue({
+      summary: 'Phản hồi cũ.',
+      next_actor: 'customer',
+      question: 'Câu hỏi cũ?',
+      evidence_status: 'needs_more',
+      evidence_gaps: [],
+      fallback_used: false,
+      provider: null,
+      model: null,
+    })
+    const client = clientForScopeProposedChat({ stale: true })
+
+    await recordJobIncidentChatMessage(
+      client as never,
+      { id: 'job-1', description: 'Sửa điện', service_type: 'electrical' },
+      { id: 'message-1', sender_role: 'worker', content: 'Tin nhắn mới hơn đã đến.' },
+      { user: { id: 'worker-1' } } as never,
+      {},
+    )
+
+    expect(client.rpcCalls.filter((call) => call.name === 'apply_job_incident_assistant_turn_atomic')).toHaveLength(1)
+  })
+
+  it('releases the durable assistant claim when provider work fails', async () => {
+    mocks.runJobIncidentAssistant.mockRejectedValue(new Error('provider unavailable'))
+    const client = clientForScopeProposedChat()
+
+    await expect(recordJobIncidentChatMessage(
+      client as never,
+      { id: 'job-1', description: 'Sửa điện', service_type: 'electrical' },
+      { id: 'message-1', sender_role: 'worker', content: 'Cần thử lại lượt Kael này.' },
+      { user: { id: 'worker-1' } } as never,
+      {},
+    )).rejects.toThrow('provider unavailable')
+
+    expect(client.rpcCalls.map((call) => call.name)).toEqual([
+      'claim_job_incident_chat_turn_atomic',
+      'release_job_incident_assistant_claim_atomic',
+    ])
   })
 })

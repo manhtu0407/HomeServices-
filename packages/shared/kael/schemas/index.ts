@@ -1,15 +1,16 @@
 import { z } from 'zod'
+import { SERVICE_TYPES } from '../../src/constants'
 
 export const KAEL_PRICE_DISCLAIMER_V3 =
   'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
 
-export const kaelServiceTypeSchema = z.enum(['electrical', 'plumbing', 'cleaning'])
+export const kaelServiceTypeSchema = z.enum(SERVICE_TYPES)
 export const kaelComplexitySchema = z.enum(['small', 'medium', 'large'])
 export const estimateConfidenceSchema = z.enum(['low', 'medium', 'high'])
 
 export const estimateCardV3Schema = z.object({
   service_type: kaelServiceTypeSchema,
-  problem_summary: z.string().min(10).max(200),
+  problem_summary: z.string().trim().min(10).max(200),
   complexity: kaelComplexitySchema,
   price_min: z.number().int().positive(),
   price_max: z.number().int().positive(),
@@ -22,13 +23,13 @@ export const estimateCardV3Schema = z.object({
     'inspection_required',
   ]),
   kael_reasoning: z.object({
-    vision_findings: z.string().max(300).optional(),
-    market_signals: z.string().max(300).optional(),
-    baseline_used: z.string().max(100),
-    complexity_reasoning: z.string().max(200),
-    needs_inspection_reason: z.string().max(200).optional(),
+    vision_findings: z.string().trim().max(300).optional(),
+    market_signals: z.string().trim().max(300).optional(),
+    baseline_used: z.string().trim().min(1).max(100),
+    complexity_reasoning: z.string().trim().min(1).max(200),
+    needs_inspection_reason: z.string().trim().max(200).optional(),
   }).strict(),
-  advisory: z.string().max(150).optional(),
+  advisory: z.string().trim().max(150).optional(),
   disclaimer: z.literal(KAEL_PRICE_DISCLAIMER_V3),
 }).strict().superRefine((data, ctx) => {
   if (data.price_max < data.price_min) {
@@ -66,20 +67,20 @@ export const workerBriefSchema = z.object({
   stage: z.enum(['core', 'guidance']),
   visibility: z.enum(['pre_accept', 'post_accept']),
   service_type: kaelServiceTypeSchema,
-  problem_summary: z.string().min(10).max(200),
-  district: z.string().min(1).max(100),
+  problem_summary: z.string().trim().min(10).max(200),
+  district: z.string().trim().min(1).max(100),
   full_address: z.object({
-    building: z.string().max(200).nullable(),
-    floor: z.string().max(50).nullable(),
-    unit: z.string().max(50).nullable(),
-    district: z.string().max(100).nullable(),
+    building: z.string().trim().max(200).nullable(),
+    floor: z.string().trim().max(50).nullable(),
+    unit: z.string().trim().max(50).nullable(),
+    district: z.string().trim().max(100).nullable(),
   }).strict().nullable(),
   estimated_earning_min: z.number().int().positive().nullable().optional(),
   estimated_earning_max: z.number().int().positive().nullable().optional(),
   sections: z.object({
-    context: z.array(z.string().min(1).max(180)).min(1).max(4),
-    guidance: z.array(z.string().min(1).max(180)).min(1).max(5),
-    safety: z.array(z.string().min(1).max(180)).max(4),
+    context: z.array(z.string().trim().min(1).max(180)).min(1).max(4),
+    guidance: z.array(z.string().trim().min(1).max(180)).min(1).max(5),
+    safety: z.array(z.string().trim().min(1).max(180)).max(4),
   }).strict(),
 }).strict().superRefine((data, ctx) => {
   if (data.visibility === 'pre_accept' && data.full_address !== null) {
@@ -103,20 +104,35 @@ export const workerBriefSchema = z.object({
       message: 'guidance worker brief must be post_accept',
     })
   }
+  const earningMin = data.estimated_earning_min ?? null
+  const earningMax = data.estimated_earning_max ?? null
+  if ((earningMin === null) !== (earningMax === null)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['estimated_earning_max'],
+      message: 'worker earnings require both range bounds or neither bound',
+    })
+  } else if (earningMin !== null && earningMax !== null && earningMax < earningMin) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['estimated_earning_max'],
+      message: 'estimated_earning_max must be >= estimated_earning_min',
+    })
+  }
 })
 
 export const scopeChangeWorkerChallengeSchema = z.object({
   schema_version: z.literal('scope_change_worker_challenge.v1'),
   challenge_required: z.boolean(),
-  challenge_reason: z.string().min(1).max(220),
-  requested_evidence: z.array(z.string().min(1).max(160)).min(1).max(5),
-  worker_message: z.string().min(1).max(240),
+  challenge_reason: z.string().trim().min(1).max(220),
+  requested_evidence: z.array(z.string().trim().min(1).max(160)).min(1).max(5),
+  worker_message: z.string().trim().min(1).max(240),
 }).strict()
 
 export const scopeChangeCustomerCardSchema = z.object({
   schema_version: z.literal('scope_change_customer_card.v1'),
   service_type: kaelServiceTypeSchema,
-  problem_summary: z.string().min(10).max(220),
+  problem_summary: z.string().trim().min(10).max(220),
   price_change: z.object({
     original_price_max: z.number().int().positive().nullable(),
     new_price_min: z.number().int().positive(),
@@ -124,7 +140,7 @@ export const scopeChangeCustomerCardSchema = z.object({
   }).strict(),
   kael_assessment: z.enum(['reasonable', 'high_increase', 'requires_attention']),
   decision_required: z.literal(true),
-  advisory: z.string().min(1).max(220),
+  advisory: z.string().trim().min(1).max(220),
   disclaimer: z.literal(KAEL_PRICE_DISCLAIMER_V3),
 }).strict().superRefine((data, ctx) => {
   if (data.price_change.new_price_max < data.price_change.new_price_min) {

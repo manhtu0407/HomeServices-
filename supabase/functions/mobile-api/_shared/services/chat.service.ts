@@ -2,7 +2,7 @@
 // the contact-guard + demanding-customer handlers. (kael-chat AI conversation stays in services.ts.)
 // Imported directly by services.ts.
 
-import { asBoolean, asNumber, asString, nullableRecord, nullableString } from "./coercions.ts";
+import { asBoolean, asString, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { evaluateJobChatContactGuard, JOB_CHAT_SEND_STATUSES, serializeJobMessage, type JobChatContactGuard } from "./_shared.ts";
 import { notifyJobMessageRecipient } from "./notifications.service.ts";
@@ -84,7 +84,7 @@ export async function sendJobMessage(
     apiFailure("DB_ERROR", "Không thể gửi tin nhắn", 500);
   }
   const message = serializeJobMessage(result.data);
-  await maybeHandleJobChatContactGuard(client, job, ctx, contactGuard);
+  await maybeHandleJobChatContactGuard(client, job, message.id, ctx, contactGuard);
   // Keep the demanding-customer detector OFF for
   // contact-guarded messages. The additive attempt (PR #64) re-ran the raw text through
   // the detector and (a) leaked an email into kael_interaction_log (excerpt sanitizer
@@ -177,6 +177,7 @@ export async function listMyThreads(ctx: MobileApiContext) {
 async function maybeHandleJobChatContactGuard(
   client: DbClient,
   job: Record<string, unknown>,
+  messageId: string,
   ctx: MobileApiContext,
   guard: JobChatContactGuard,
 ) {
@@ -191,6 +192,7 @@ async function maybeHandleJobChatContactGuard(
   if (ctx.role !== "worker") return;
   await recordWorkerDisintermediationRisk(client, {
     jobId: asString(job.id),
+    messageId,
     signals: guard.signals,
     workerId: ctx.user.id,
   });
@@ -198,63 +200,29 @@ async function maybeHandleJobChatContactGuard(
 
 async function recordWorkerDisintermediationRisk(
   client: DbClient,
-  input: { jobId: string; signals: string[]; workerId: string },
+  input: { jobId: string; messageId: string; signals: string[]; workerId: string },
 ) {
-  const observedAt = new Date().toISOString();
-  const existing = await dbQuery<Record<string, unknown>>(
-    client
-      .from("worker_kael_memory")
-      .select("red_flags, reliability_signals, safe_metadata")
-      .eq("worker_id", input.workerId)
-      .maybeSingle(),
+  const args = {
+    p_worker_id: input.workerId,
+    p_job_id: input.jobId,
+    p_message_id: input.messageId,
+    p_signals: input.signals,
+  };
+  let result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("record_worker_disintermediation_memory_atomic", args),
   );
-  const redFlags = nullableRecord(existing.data?.red_flags) ?? {};
-  const reliabilitySignals = nullableRecord(existing.data?.reliability_signals) ?? {};
-  const safeMetadata = nullableRecord(existing.data?.safe_metadata) ?? {};
-  const previousCount = asNumber(redFlags.disintermediation_risk_count);
-  await dbQuery(
-    client.from("worker_kael_memory").upsert({
-      worker_id: input.workerId,
-      red_flags: {
-        ...redFlags,
-        disintermediation_contact_leak: true,
-        disintermediation_risk_count: previousCount + 1,
-        last_disintermediation_at: observedAt,
-        last_disintermediation_job_id: input.jobId,
-        last_disintermediation_signals: input.signals,
-      },
-      reliability_signals: {
-        ...reliabilitySignals,
-        app_channel_guard_triggered: true,
-      },
-      safe_metadata: {
-        ...safeMetadata,
-        last_disintermediation_guard: {
-          job_id: input.jobId,
-          observed_at: observedAt,
-          signals: input.signals,
-        },
-      },
-      last_observed_at: observedAt,
-    }),
-  );
-  await dbQuery(
-    client.from("kael_admin_queue").insert({
-      job_id: input.jobId,
-      actor_id: input.workerId,
-      actor_role: "worker",
-      queue_type: "disintermediation_risk",
-      priority: "medium",
-      status: "open",
-      escalation_level: "soft",
-      reason_code: "worker_contact_or_off_app_solicitation",
-      response_summary: "worker_chat_contact_guard_triggered",
-      safe_metadata: {
-        guard: "chat_contact_redaction",
-        signals: input.signals,
-      },
-    }),
-  );
+  if (result.error) {
+    result = await dbQuery<Array<Record<string, unknown>>>(
+      client.rpc("record_worker_disintermediation_memory_atomic", args),
+    );
+  }
+  if (result.error) {
+    console.warn("mobile-api worker disintermediation memory write failed", {
+      jobId: input.jobId,
+      messageId: input.messageId,
+      errorCode: result.error.code,
+    });
+  }
 }
 
 export function selfCheckDemandingResponseText(

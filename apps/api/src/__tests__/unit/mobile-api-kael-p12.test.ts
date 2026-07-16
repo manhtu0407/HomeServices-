@@ -103,110 +103,39 @@ describe('Kael P12 customer cancellation case', () => {
     expect(JSON.stringify(abuse)).not.toContain('late_cancel_fee')
   })
 
-  it('T12.9: records customer cancellation review with sanitized admin queue metadata', async () => {
+  it('T12.9: records cancellation memory and review queue through one atomic RPC', async () => {
     const client = makeSequenceClient([
-      { data: { trust_signals: {}, safe_metadata: {} }, error: null },
-      { data: { customer_id: 'customer-1' }, error: null },
-      { data: { id: 'queue-1' }, error: null },
+      { data: [{ applied: true }], error: null },
     ])
-    const classification = classifyCustomerCancellationReason({
-      reason: 'Số tôi 0901234567, tôi đổi ý và muốn hủy.',
-    })
-    const abuse = evaluateCustomerCancellationAbuse({
-      cancellations30d: 4,
-      completedJobs30d: 10,
-      cancelsAfterAccept30d: 3,
-      sameDayCancels: 2,
-      noReasonCancels30d: 0,
-    })
 
     await recordCustomerCancellationReview(client, {
       jobId: 'job-1',
       customerId: 'customer-1',
-      workerId: 'worker-1',
       cancellationId: 'cancel-1',
-      reason: 'Số tôi 0901234567, tôi đổi ý và muốn hủy.',
-      subCase: 'after_worker_accept',
-      classification,
-      abuse,
-      phase0Outcome: buildCustomerCancellationPhase0Outcome({
-        subCase: 'after_worker_accept',
-        reasonCode: classification.reasonCode,
-        workerId: 'worker-1',
-      }),
     })
 
-    expect(client.calls.find((call) =>
-      call.table === 'customer_kael_memory' &&
-      call.operations.some((op) => op[0] === 'upsert')
-    )?.operations).toContainEqual([
-      'upsert',
-      expect.objectContaining({
-        customer_id: 'customer-1',
-        trust_signals: expect.objectContaining({
-          customer_cancellation_abuse_review: true,
-        }),
-      }),
-    ])
-    expect(client.calls.find((call) => call.table === 'kael_admin_queue')?.operations).toContainEqual([
-      'insert',
-      expect.objectContaining({
-        job_id: 'job-1',
-        actor_id: 'customer-1',
-        actor_role: 'customer',
-        queue_type: 'customer_cancellation_review',
-        priority: 'medium',
-        escalation_level: 'soft',
-      }),
-    ])
-    expect(JSON.stringify(client.calls)).not.toContain('0901234567')
+    expect(client.calls).toEqual([{
+      name: 'record_customer_cancellation_memory_atomic',
+      args: {
+        p_cancellation_id: 'cancel-1',
+        p_customer_id: 'customer-1',
+        p_job_id: 'job-1',
+      },
+    }])
+    expect(JSON.stringify(client.calls)).not.toContain('reason')
   })
 })
 
 type QueryResult = { data: unknown; error: { code?: string; message?: string } | null }
-type QueryCall = { table: string; operations: unknown[][] }
+type QueryCall = { name: string; args: Record<string, unknown> }
 
 function makeSequenceClient(results: QueryResult[]) {
   const calls: QueryCall[] = []
   return {
     calls,
-    from(table: string) {
-      const call: QueryCall = { table, operations: [] }
-      calls.push(call)
-      return makeQuery(call, results)
+    rpc(name: string, args: Record<string, unknown>) {
+      calls.push({ name, args })
+      return Promise.resolve(results.shift() ?? { data: null, error: null })
     },
   }
-}
-
-function makeQuery(call: QueryCall, results: QueryResult[]) {
-  const query = {
-    select(value: string) {
-      call.operations.push(['select', value])
-      return query
-    },
-    insert(value: unknown) {
-      call.operations.push(['insert', value])
-      return query
-    },
-    upsert(value: unknown) {
-      call.operations.push(['upsert', value])
-      return query
-    },
-    eq(column: string, value: unknown) {
-      call.operations.push(['eq', column, value])
-      return query
-    },
-    maybeSingle() {
-      call.operations.push(['maybeSingle'])
-      return query
-    },
-    then<TResult1 = QueryResult, TResult2 = never>(
-      onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
-      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
-    ): PromiseLike<TResult1 | TResult2> {
-      const result = results.shift() ?? { data: null, error: null }
-      return Promise.resolve(result).then(onfulfilled, onrejected)
-    },
-  }
-  return query
 }

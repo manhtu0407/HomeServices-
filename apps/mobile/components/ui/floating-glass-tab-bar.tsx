@@ -97,12 +97,10 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
   }, [appleLiquidAppearance, effectiveBarWidth, items.length])
   const { dockPadding, pillWidth, slotWidth } = slotMetrics
   const slotLeftForIndex = (index: number) => dockPadding + (slotWidth * index) + ((slotWidth - pillWidth) / 2)
-  const bridgeMetrics = useMemo(() => {
-    const previousLeft = slotLeftForIndex(previousIndex)
-    const activeLeft = slotLeftForIndex(activeIndex)
-    return { left: Math.min(previousLeft, activeLeft), width: Math.abs(previousLeft - activeLeft) + pillWidth }
-  }, [activeIndex, pillWidth, previousIndex, slotLeftForIndex])
-  const travelStartLeft = useMemo(() => slotLeftForIndex(previousIndex), [previousIndex, slotLeftForIndex])
+  const previousLeft = slotLeftForIndex(previousIndex)
+  const activeLeft = slotLeftForIndex(activeIndex)
+  const bridgeMetrics = { left: Math.min(previousLeft, activeLeft), width: Math.abs(previousLeft - activeLeft) + pillWidth }
+  const travelStartLeft = previousLeft
   const transitionActive = hasDisplayActive && (transitionVisible || Boolean(optimisticTransition && optimisticTransition.from !== optimisticTransition.to))
   const transitionDirection = activeIndex >= previousIndex ? 1 : -1
   const transitionVisibilityMs = appleLiquidAppearance ? 420 : 560

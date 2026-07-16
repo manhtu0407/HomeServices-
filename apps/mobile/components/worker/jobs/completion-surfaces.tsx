@@ -36,7 +36,7 @@ type WorkerV5TimelineRow = {
 type WorkerV5StatusTimelineComponent = ComponentType<{
   formulaAura?: boolean
   reduceTransparency?: boolean
-  rows: ReadonlyArray<WorkerV5TimelineRow>
+  rows: readonly WorkerV5TimelineRow[]
   testID: string
 }>
 

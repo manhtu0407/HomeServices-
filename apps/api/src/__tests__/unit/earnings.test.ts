@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/env', () => ({
   env: {
@@ -10,155 +10,244 @@ vi.mock('@/lib/env', () => ({
 }))
 
 vi.mock('@/lib/db/query', () => ({
-  withDbTimeout: <T,>(p: PromiseLike<T>) => p,
+  withDbTimeout: <T,>(promise: PromiseLike<T>) => promise,
   DbTimeoutError: class extends Error {},
 }))
 
 import { computeEarnings } from '@/lib/workers/earnings'
 
-type EarningsRow = { id: string; status: string; final_price: number | null; paid_at?: string | null; created_at?: string }
+type EarningsAggregateRow = {
+  worker_id: string
+  total_jobs_paid: number
+  gross_earnings: number
+  platform_fee_total: number
+  net_earnings: number
+  pending_payment_count: number
+  pending_payment_amount: number
+  daily_earnings: unknown
+  from_date: string | null
+  to_date: string | null
+}
 
-function makeSupabase(rows: Array<EarningsRow> | null, error: { code: string } | null = null) {
+function aggregateRow(overrides: Partial<EarningsAggregateRow> = {}): EarningsAggregateRow {
+  return {
+    worker_id: 'worker-1',
+    total_jobs_paid: 0,
+    gross_earnings: 0,
+    platform_fee_total: 0,
+    net_earnings: 0,
+    pending_payment_count: 0,
+    pending_payment_amount: 0,
+    daily_earnings: [],
+    from_date: null,
+    to_date: null,
+    ...overrides,
+  }
+}
+
+function makeSupabase(
+  row: EarningsAggregateRow | null,
+  error: { code: string } | null = null,
+) {
   return {
     from: vi.fn(() => {
-      const chain: any = {}
-      chain.select = vi.fn(() => chain)
-      chain.eq = vi.fn(() => chain)
-      chain.in = vi.fn(() => chain)
-      chain.gte = vi.fn(() => chain)
-      chain.lte = vi.fn(() => chain)
-      // Make chain thenable so `await query` resolves to the data
-      chain.then = (onFulfilled: (v: { data: typeof rows; error: typeof error }) => unknown) =>
-        Promise.resolve({ data: rows, error }).then(onFulfilled)
-      return chain
+      throw new Error('earnings must not fetch a capped jobs row list')
     }),
+    rpc: vi.fn(async () => ({ data: row ? [row] : null, error })),
   } as any
 }
 
 describe('computeEarnings', () => {
-  it('returns zeros for new worker (no jobs)', async () => {
-    const supabase = makeSupabase([])
-    const result = await computeEarnings(supabase, 'worker-1')
+  it('maps the exact all-time aggregate for a new worker', async () => {
+    const supabase = makeSupabase(aggregateRow())
 
-    expect(result.workerId).toBe('worker-1')
-    expect(result.totalJobsPaid).toBe(0)
-    expect(result.grossEarnings).toBe(0)
-    expect(result.platformFeeTotal).toBe(0)
-    expect(result.netEarnings).toBe(0)
-    expect(result.pendingPaymentCount).toBe(0)
-    expect(result.pendingPaymentAmount).toBe(0)
+    await expect(computeEarnings(supabase, 'worker-1')).resolves.toEqual({
+      workerId: 'worker-1',
+      totalJobsPaid: 0,
+      grossEarnings: 0,
+      platformFeeTotal: 0,
+      netEarnings: 0,
+      pendingPaymentCount: 0,
+      pendingPaymentAmount: 0,
+      dailyEarnings: [],
+      fromDate: null,
+      toDate: null,
+    })
+    expect(supabase.from).not.toHaveBeenCalled()
   })
 
-  it('sums only paid jobs as gross earnings while reviewed remains pending', async () => {
-    const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 500_000, paid_at: '2026-05-20T00:00:00Z' },
-      { id: 'j2', status: 'reviewed', final_price: 300_000, paid_at: null },
-      { id: 'j3', status: 'paid', final_price: 1_000_000, paid_at: '2026-05-20T00:01:00Z' },
-    ])
+  it('preserves database-reconciled frozen payment amounts', async () => {
+    const supabase = makeSupabase(aggregateRow({
+      total_jobs_paid: 2,
+      gross_earnings: 1_400_000,
+      platform_fee_total: 95_000,
+      net_earnings: 1_305_000,
+      pending_payment_count: 3,
+      pending_payment_amount: 1_200_000,
+    }))
 
     const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.totalJobsPaid).toBe(2)
-    expect(result.grossEarnings).toBe(1_500_000)
-    expect(result.pendingPaymentCount).toBe(1)
-    expect(result.pendingPaymentAmount).toBe(300_000)
+
+    expect(result).toMatchObject({
+      totalJobsPaid: 2,
+      grossEarnings: 1_400_000,
+      platformFeeTotal: 95_000,
+      netEarnings: 1_305_000,
+      pendingPaymentCount: 3,
+      pendingPaymentAmount: 1_200_000,
+    })
   })
 
-  it('counts reviewed jobs with paid_at as paid earnings', async () => {
-    const supabase = makeSupabase([
-      { id: 'j1', status: 'reviewed', final_price: 300_000, paid_at: '2026-05-20T00:00:00Z' },
-      { id: 'j2', status: 'payment_pending', final_price: 200_000, paid_at: null },
-    ])
+  it('maps newest-first daily earnings returned by the aggregate RPC', async () => {
+    const dailyEarnings = [
+      {
+        date: '2026-07-15',
+        gross_earnings: 700_000,
+        platform_fee_total: 70_000,
+        net_earnings: 630_000,
+        paid_job_count: 2,
+      },
+      {
+        date: '2026-07-14',
+        gross_earnings: 300_000,
+        platform_fee_total: 30_000,
+        net_earnings: 270_000,
+        paid_job_count: 1,
+      },
+    ]
+    const supabase = makeSupabase(aggregateRow({ daily_earnings: dailyEarnings }))
 
-    const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.totalJobsPaid).toBe(1)
-    expect(result.grossEarnings).toBe(300_000)
-    expect(result.pendingPaymentCount).toBe(1)
-    expect(result.pendingPaymentAmount).toBe(200_000)
+    await expect(computeEarnings(supabase, 'worker-1')).resolves.toMatchObject({
+      dailyEarnings: [
+        {
+          date: '2026-07-15',
+          grossEarnings: 700_000,
+          platformFeeTotal: 70_000,
+          netEarnings: 630_000,
+          paidJobCount: 2,
+        },
+        {
+          date: '2026-07-14',
+          grossEarnings: 300_000,
+          platformFeeTotal: 30_000,
+          netEarnings: 270_000,
+          paidJobCount: 1,
+        },
+      ],
+    })
   })
 
-  it('applies 10% platform fee correctly (RULES & STRUCTURES)', async () => {
-    const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 1_000_000, paid_at: '2026-05-20T00:00:00Z' },
-    ])
+  it.each([
+    null,
+    {},
+    [{
+      date: '2026-02-30',
+      gross_earnings: 700_000,
+      platform_fee_total: 70_000,
+      net_earnings: 630_000,
+      paid_job_count: 2,
+    }],
+    [{
+      date: '2026-07-15',
+      gross_earnings: 700_000,
+      platform_fee_total: 70_000,
+      net_earnings: 630_000,
+      paid_job_count: '2',
+    }],
+    [
+      {
+        date: '2026-07-14',
+        gross_earnings: 300_000,
+        platform_fee_total: 30_000,
+        net_earnings: 270_000,
+        paid_job_count: 1,
+      },
+      {
+        date: '2026-07-15',
+        gross_earnings: 700_000,
+        platform_fee_total: 70_000,
+        net_earnings: 630_000,
+        paid_job_count: 2,
+      },
+    ],
+  ])('rejects malformed daily earnings instead of hiding contract drift: %o', async (dailyEarnings) => {
+    const supabase = makeSupabase(aggregateRow({ daily_earnings: dailyEarnings }))
 
-    const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.grossEarnings).toBe(1_000_000)
-    expect(result.platformFeeTotal).toBe(100_000) // 10%
-    expect(result.netEarnings).toBe(900_000)
+    await expect(computeEarnings(supabase, 'worker-1')).rejects.toMatchObject({
+      name: 'EarningsQueryError',
+    })
   })
 
-  it('counts pending payments separately from earnings', async () => {
-    const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 500_000, paid_at: '2026-05-20T00:00:00Z' },
-      { id: 'j2', status: 'confirmed_by_customer', final_price: 300_000 },
-      { id: 'j3', status: 'payment_pending', final_price: 700_000 },
-      { id: 'j4', status: 'reviewed', final_price: 200_000 },
-    ])
+  it('rejects an unbounded daily earnings payload', async () => {
+    const dailyEarnings = Array.from({ length: 367 }, (_, index) => {
+      const date = new Date(Date.UTC(2026, 11, 31 - index)).toISOString().slice(0, 10)
+      return {
+        date,
+        gross_earnings: 100_000,
+        platform_fee_total: 10_000,
+        net_earnings: 90_000,
+        paid_job_count: 1,
+      }
+    })
+    const supabase = makeSupabase(aggregateRow({ daily_earnings: dailyEarnings }))
 
-    const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.totalJobsPaid).toBe(1)
-    expect(result.grossEarnings).toBe(500_000) // only j1
-    expect(result.pendingPaymentCount).toBe(3)
-    expect(result.pendingPaymentAmount).toBe(1_200_000) // j2 + j3 + j4
+    await expect(computeEarnings(supabase, 'worker-1')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    })
   })
 
-  it('handles null final_price gracefully', async () => {
-    const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: null, paid_at: '2026-05-20T00:00:00Z' },
-      { id: 'j2', status: 'paid', final_price: 500_000, paid_at: '2026-05-20T00:01:00Z' },
-    ])
+  it('rejects malformed aggregate totals', async () => {
+    const supabase = makeSupabase(aggregateRow({ gross_earnings: 1.5 }))
 
-    const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.totalJobsPaid).toBe(2)
-    expect(result.grossEarnings).toBe(500_000)
+    await expect(computeEarnings(supabase, 'worker-1')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    })
   })
 
-  it('rejects on DB error instead of faking zero earnings', async () => {
+  it('forwards actor, range, and the governed fee rate to the aggregate RPC', async () => {
+    const from = '2026-06-01T00:00:00.000Z'
+    const to = '2026-06-30T23:59:59.999Z'
+    const supabase = makeSupabase(aggregateRow({
+      from_date: '2026-06-01T00:00:00+00:00',
+      to_date: '2026-06-30T23:59:59.999+00:00',
+    }))
+
+    const result = await computeEarnings(supabase, 'worker-1', { from, to })
+
+    expect(result.fromDate).toBe(from)
+    expect(result.toDate).toBe(to)
+    expect(supabase.rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
+      p_worker_id: 'worker-1',
+      p_from: from,
+      p_to: to,
+      p_platform_fee_rate: 0.1,
+    })
+  })
+
+  it('omits all-time range bounds so the SQL null defaults apply', async () => {
+    const supabase = makeSupabase(aggregateRow())
+
+    await computeEarnings(supabase, 'worker-1')
+
+    expect(supabase.rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
+      p_worker_id: 'worker-1',
+      p_platform_fee_rate: 0.1,
+    })
+  })
+
+  it('rejects a database error instead of fabricating zero earnings', async () => {
     const supabase = makeSupabase(null, { code: 'PGRST500' })
+
     await expect(computeEarnings(supabase, 'worker-1')).rejects.toMatchObject({
       code: 'PGRST500',
     })
   })
 
-  it('rounds platform fee to nearest integer (no fractional VND)', async () => {
-    const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 123_457, paid_at: '2026-05-20T00:00:00Z' }, // 12345.7 * 0.1 -> rounds
-    ])
+  it('rejects a missing aggregate row instead of fabricating zero earnings', async () => {
+    const supabase = makeSupabase(null)
 
-    const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.platformFeeTotal).toBe(12_346) // rounded
-    expect(Number.isInteger(result.platformFeeTotal)).toBe(true)
-    expect(Number.isInteger(result.netEarnings)).toBe(true)
-  })
-
-  // ──── E8: date range filter ──────────────────────────────────
-
-  it('returns null fromDate/toDate when no range provided (all-time)', async () => {
-    const supabase = makeSupabase([])
-    const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.fromDate).toBeNull()
-    expect(result.toDate).toBeNull()
-  })
-
-  it('echoes range bounds in response when provided', async () => {
-    const supabase = makeSupabase([])
-    const from = '2026-01-01T00:00:00.000Z'
-    const to = '2026-12-31T23:59:59.999Z'
-    const result = await computeEarnings(supabase, 'worker-1', { from, to })
-    expect(result.fromDate).toBe(from)
-    expect(result.toDate).toBe(to)
-  })
-
-  it('applies gte/lte filters when range provided', async () => {
-    const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 500_000, paid_at: '2026-06-15T10:00:00Z', created_at: '2026-06-15T10:00:00Z' },
-    ])
-    const result = await computeEarnings(supabase, 'worker-1', {
-      from: '2026-06-01T00:00:00Z',
-      to: '2026-06-30T23:59:59Z',
+    await expect(computeEarnings(supabase, 'worker-1')).rejects.toMatchObject({
+      name: 'EarningsQueryError',
     })
-    expect(result.grossEarnings).toBe(500_000)
-    expect(result.fromDate).toBe('2026-06-01T00:00:00Z')
-    expect(result.toDate).toBe('2026-06-30T23:59:59Z')
   })
 })

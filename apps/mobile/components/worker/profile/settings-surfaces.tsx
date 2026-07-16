@@ -100,7 +100,7 @@ export function WorkerV5ReadOnlyToggleList({
   items,
   reduceTransparency,
 }: {
-  items: ReadonlyArray<{ enabled: boolean; label: string; value: string }>
+  items: readonly { enabled: boolean; label: string; value: string }[]
   reduceTransparency: boolean
 }) {
   return (

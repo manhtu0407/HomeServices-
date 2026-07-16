@@ -2,8 +2,6 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
-import type { AppLanguage } from '@/lib/app-language'
-
 import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWorkCardAura, SourceCardSkin, ZipMintAura } from './aura-surfaces'
 import { customerV21Assets } from './assets'
@@ -267,10 +265,11 @@ export function CaseOptionsStageView({
             assetTile={AssetTile}
             body={option.body}
             card={V21Card}
+            handoffChip={MatchingHandoffChip}
             image={option.image}
             key={option.title}
-            renderRightLabel={(label) => <MatchingHandoffChip label={label} tone="selected" />}
             rightLabel={option.rightLabel}
+            rightLabelTone="selected"
             sourceCardSkin={SourceCardSkin}
             testID={option.testID}
             title={option.title}

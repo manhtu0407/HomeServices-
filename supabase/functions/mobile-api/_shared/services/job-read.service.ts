@@ -11,6 +11,7 @@ import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import type { JobStatus, ScopeChangeStatus } from "../../../_shared/domain.ts";
 import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
+import type { EdgeJobDetailResponse } from "../router/dtos.ts";
 
 const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
@@ -33,7 +34,10 @@ const CUSTOMER_SERVICE_HISTORY_STATUSES: JobStatus[] = [
   "cancelled",
 ];
 
-export async function getJob(ctx: MobileApiContext, jobId: string) {
+export async function getJob(
+  ctx: MobileApiContext,
+  jobId: string,
+): Promise<EdgeJobDetailResponse> {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     select: JOB_DETAIL_SELECT,
@@ -45,10 +49,12 @@ export async function getJob(ctx: MobileApiContext, jobId: string) {
     workerId ? loadJobWorkerSummary(client, workerId) : null,
   ]);
   const addressProjection = projectAddressAccess(job, ctx.role);
+  const displayCode = nullableString(job.display_code);
 
   return {
     job: {
       id: asString(job.id),
+      ...(displayCode ? { display_code: displayCode } : {}),
       status: asJobStatus(job.status),
       service_type: asServiceType(job.service_type),
       description: asString(job.description),
@@ -70,6 +76,17 @@ export async function getJob(ctx: MobileApiContext, jobId: string) {
       kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
       kael_progress: parseKaelProgressSnapshot(job.kael_progress, jobId),
       final_price: nullableNumber(job.final_price),
+      payment_status: parsePaymentStatus(job.payment_status),
+      payment_provider: nullableString(job.payment_provider),
+      payment_code: nullableString(job.payment_code),
+      payment_transfer_content: nullableString(job.payment_transfer_content),
+      payment_qr_image_url: nullableString(job.payment_qr_image_url),
+      payment_expires_at: nullableString(job.payment_expires_at),
+      payment_received_at: nullableString(job.payment_received_at),
+      payment_amount_received: nullableNumber(job.payment_amount_received),
+      gross_amount: nullableNumber(job.gross_amount),
+      platform_fee: nullableNumber(job.platform_fee),
+      worker_net: nullableNumber(job.worker_net),
       completion_notes: nullableString(job.completion_notes),
       completion_photo_urls: asStringArray(job.completion_photo_urls),
       created_at: asString(job.created_at),
@@ -84,6 +101,26 @@ export async function getJob(ctx: MobileApiContext, jobId: string) {
     broadcast_state: broadcastState,
     current_scope_change: currentScopeChange,
   };
+}
+
+function parsePaymentStatus(
+  value: unknown,
+): EdgeJobDetailResponse["job"]["payment_status"] {
+  if (value === null || value === undefined) return null;
+  if (
+    value === "not_started" ||
+    value === "code_requested" ||
+    value === "vietqr_ready" ||
+    value === "pending" ||
+    value === "received" ||
+    value === "amount_mismatch" ||
+    value === "expired" ||
+    value === "failed" ||
+    value === "reconciled"
+  ) {
+    return value;
+  }
+  apiFailure("DB_ERROR", "Trạng thái thanh toán không hợp lệ", 500);
 }
 
 export async function listCustomerActiveJobs(ctx: MobileApiContext) {
@@ -167,7 +204,10 @@ export async function listCustomerServiceHistory(ctx: MobileApiContext) {
   };
 }
 
-async function loadJobWorkerSummary(client: DbClient, workerId: string) {
+async function loadJobWorkerSummary(
+  client: DbClient,
+  workerId: string,
+): Promise<EdgeJobDetailResponse["worker"]> {
   const [profile, worker] = await Promise.all([
     dbQuery<Record<string, unknown>>(
       client.from("profiles").select("full_name, avatar_url").eq("id", workerId).maybeSingle(),
@@ -183,7 +223,7 @@ async function loadJobWorkerSummary(client: DbClient, workerId: string) {
     avatar_url: await resolveWorkerAvatarUrl(client, profile.data.avatar_url),
     full_name: nullableString(profile.data.full_name) ?? nullableString(worker.data.legal_name) ?? "",
     id: workerId,
-    rating: Math.max(0, asNumber(worker.data.rating)),
+    rating: Math.max(0, Math.min(5, asNumber(worker.data.rating))),
     total_jobs: Math.max(0, Math.trunc(asNumber(worker.data.total_jobs))),
   };
 }
@@ -269,7 +309,10 @@ export async function listMyPendingDecisions(ctx: MobileApiContext) {
   return { pending_decisions: pendingDecisions };
 }
 
-async function getCurrentScopeChange(client: DbClient, jobId: string) {
+async function getCurrentScopeChange(
+  client: DbClient,
+  jobId: string,
+): Promise<EdgeJobDetailResponse["current_scope_change"]> {
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client
       .from("scope_change_requests")
@@ -302,8 +345,22 @@ async function getCurrentScopeChange(client: DbClient, jobId: string) {
     kael_review: nullableRecord(row.kael_review),
     kael_progress: parseKaelProgressSnapshot(row.kael_progress, asString(row.id)),
     evidence_photo_urls: asStringArray(row.evidence_photo_urls),
-    request_timing: nullableString(row.request_timing) === "pre_arrival" ? "pre_arrival" : "on_site",
-    resume_job_status: nullableString(row.resume_job_status),
+    request_timing: parseScopeRequestTiming(row.request_timing),
+    resume_job_status: parseNullableJobStatus(row.resume_job_status),
     created_at: nullableString(row.created_at),
   };
+}
+
+function parseScopeRequestTiming(value: unknown): "pre_arrival" | "on_site" {
+  if (value === "pre_arrival" || value === "on_site") return value;
+  apiFailure("DB_ERROR", "Thời điểm đổi phạm vi không hợp lệ", 500);
+}
+
+function parseNullableJobStatus(value: unknown): JobStatus | null {
+  if (value === null || value === undefined) return null;
+  const parsed = asJobStatus(value);
+  if (parsed === "draft" && value !== "draft") {
+    apiFailure("DB_ERROR", "Trạng thái tiếp tục công việc không hợp lệ", 500);
+  }
+  return parsed;
 }

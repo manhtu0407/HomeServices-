@@ -2,9 +2,12 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  accumulateRegionalScores,
   buildRegisterHint,
   DEFAULT_REGION,
   detectRegionalRegister,
+  resolveRegionalRegister,
+  scoreRegionalMarkers,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/regional-register'
 import { REGIONAL_LEXICON } from '../../../../../supabase/functions/mobile-api/_shared/kael/regional-lexicon'
 import { buildKaelSystemPrompt } from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
@@ -75,6 +78,33 @@ describe('KC2 Edge regional register — detector', () => {
   it('is deterministic for the same input', () => {
     const input = 'Bồn rửa chén nghẹt, muỗng rớt, anh coi giùm nha.'
     expect(detectRegionalRegister(input)).toEqual(detectRegionalRegister(input))
+  })
+
+  it('scores each distinct marker once instead of amplifying repeated particles', () => {
+    const scored = scoreRegionalMarkers('nha nha nha nha')
+
+    expect(scored.scores.nam).toBe(1)
+    expect(scored.hits).toHaveLength(1)
+    expect(detectRegionalRegister('nha nha nha nha').region).toBe('unknown')
+  })
+
+  it('canonicalizes runtime hits and saturates malformed accumulated scores', () => {
+    const resolved = resolveRegionalRegister(
+      { bac: 0, trung: 0, nam: 5 },
+      [
+        { term: 'send-money', tier: 'B', region: 'nam', mirrorEligible: true },
+        { term: 'chén', tier: 'B', region: 'nam', mirrorEligible: true },
+        { term: 'chén', tier: 'B', region: 'nam', mirrorEligible: true },
+      ],
+    )
+
+    expect(resolved.level).toBe('guess')
+    expect(resolved.hits.map((hit) => hit.term)).toEqual(['chén'])
+    expect(resolved.adapt.mirrorTerms).toEqual(['chén'])
+    expect(accumulateRegionalScores(
+      { bac: Number.MAX_SAFE_INTEGER, trung: Number.NaN, nam: -1 },
+      { bac: 10, trung: 2, nam: Number.POSITIVE_INFINITY },
+    )).toEqual({ bac: Number.MAX_SAFE_INTEGER, trung: 2, nam: 0 })
   })
 })
 

@@ -122,6 +122,7 @@ export type WorkerBroadcastsResponse = {
     estimated_earning_min: number | null
     estimated_earning_max: number | null
     worker_brief_core?: Record<string, unknown> | null
+    scheduled_at: string | null
     sent_at: string | null
     expires_at: string | null
     seconds_remaining: number | null
@@ -325,6 +326,7 @@ export type WorkerJobListResponse = {
     completion_notes: string | null
     completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null
+    scheduled_at: string | null
     created_at: string
     matched_at: string | null
     completed_at: string | null

@@ -33,5 +33,7 @@ export function statusLabel(status: LocalDealStatus | null): string {
     reviewed: 'Đã đánh giá',
     cancelled: 'Đã hủy',
   }
-  return labels[status]
+  return Object.prototype.hasOwnProperty.call(labels, status)
+    ? labels[status]
+    : 'Trạng thái không hợp lệ'
 }

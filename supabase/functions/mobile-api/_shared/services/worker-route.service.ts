@@ -3,8 +3,17 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import type { WorkerRouteOrigin } from "../router/contracts.ts";
 import { projectAddressAccess } from "./apartment-access.service.ts";
 import { nullableNumber } from "./coercions.ts";
-import { db, dbQuery, fetchJsonWithTimeout } from "./db.ts";
+import {
+  db,
+  dbQuery,
+  fetchJsonWithTimeout,
+  MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+} from "./db.ts";
 import { readVietmapApiKey } from "./_shared.ts";
+import {
+  readResponseJsonBounded,
+  ResponseBodyTooLargeError,
+} from "../../../_shared/network.ts";
 
 const VIETMAP_ROUTE_URL = "https://maps.vietmap.vn/api/route";
 const VIETMAP_STATIC_MAP_URL = "https://maps.vietmap.vn/api/maps/statics/tm";
@@ -43,17 +52,44 @@ export async function getWorkerRoutePreview(
   if (!response.ok) {
     apiFailure("ROUTE_UNAVAILABLE", "Chưa thể tính lộ trình lúc này", 502);
   }
-  const payload = await response.json().catch(() => ({})) as VietmapRouteResponse;
+  const payload = await readVietmapRouteResponse(response);
   const path = payload.code === "OK" ? payload.paths?.[0] : null;
-  const distance = nullableNumber(path?.distance);
-  const duration = nullableNumber(path?.time);
-  if (distance === null || distance <= 0 || duration === null || duration <= 0) {
+  const distance = positiveFiniteNumber(path?.distance);
+  const duration = positiveFiniteNumber(path?.time);
+  if (distance === null || duration === null) {
     apiFailure("ROUTE_UNAVAILABLE", "Chưa có quãng đường phù hợp", 502);
   }
   return {
     distance_meters: Math.round(distance),
     duration_seconds: Math.max(1, Math.round(duration / 1000)),
   };
+}
+
+async function readVietmapRouteResponse(response: Response): Promise<VietmapRouteResponse> {
+  let payload: unknown;
+  try {
+    payload = await readResponseJsonBounded(
+      response,
+      MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    );
+  } catch {
+    return invalidVietmapRouteResponse("INVALID_JSON");
+  }
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    return invalidVietmapRouteResponse("INVALID_SHAPE");
+  }
+  return payload as VietmapRouteResponse;
+}
+
+function invalidVietmapRouteResponse(errorCode: string): never {
+  console.warn("mobile-api VietMap route response invalid", { errorCode });
+  apiFailure("ROUTE_UNAVAILABLE", "Chưa thể đọc dữ liệu lộ trình lúc này", 502);
+}
+
+function positiveFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : null;
 }
 
 export async function getWorkerRouteMap(
@@ -149,6 +185,7 @@ async function vietmapFetch(url: string, init: RequestInit) {
       if (response.ok || response.status < 500 || attempt === VIETMAP_ATTEMPTS - 1) return response;
     } catch (error) {
       lastError = error;
+      if (error instanceof ResponseBodyTooLargeError) break;
     }
   }
   if (lastError) apiFailure("MAP_UNAVAILABLE", "Dịch vụ bản đồ chưa phản hồi", 502);

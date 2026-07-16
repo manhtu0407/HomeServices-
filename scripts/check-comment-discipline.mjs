@@ -16,10 +16,10 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, sep } from 'node:path'
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 
-const ROOTS = ['apps', 'packages', 'supabase/functions']
-const EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']
+const ROOTS = ['apps', 'packages', 'supabase/functions', 'scripts', '.claude/hooks']
+const EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next', '.expo',
   'coverage', '.turbo', 'ios', 'android',
@@ -32,9 +32,9 @@ const SKIP_DIRS = new Set([
 //   governance/STRUCTURES.md §X, governance/RULES.md #X, governance/design.md, governance/critical.md, bare "Phase 1" scope.
 // Banned is the dated/status/plan-tag narrative, not authority citations.
 const RULES = [
-  { re: /\b20\d\d-\d\d-\d\d\b/, why: 'date in comment' }, // ISO 2026-07-13
-  { re: /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/, why: 'date in comment' }, // 13/07/2026, 07-13-26
-  { re: /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+20\d\d\b/i, why: 'date in comment' }, // Jul 2026
+  { re: /\b20\d\d-\d\d-\d\d\b/, why: 'date in comment' }, // ISO calendar form
+  { re: /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/, why: 'date in comment' }, // Numeric calendar forms
+  { re: /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+20\d\d\b/i, why: 'date in comment' }, // Named-month calendar form
   { re: /\bphase\s+\d+\.\d+/i, why: 'phase tag' }, // "5.11" (a plan tag), not "Phase 1" scope
   { re: /\bstatus:\s*(wired|done|deferred|pending|blocked|todo)\b/i, why: 'status banner' },
   { re: /\bplan\s*§/i, why: 'plan reference' },
@@ -89,15 +89,17 @@ function violationsFor(text) {
   return hits
 }
 
-function scanContent(content) {
+function scanContent(content, includedLines = null) {
   const found = []
   const state = { inBlock: false }
   const lines = content.split('\n')
   for (let i = 0; i < lines.length; i++) {
     const text = commentText(lines[i], state)
     if (!text) continue
+    const lineNumber = i + 1
+    if (includedLines && !includedLines.has(lineNumber)) continue
     const hits = violationsFor(text)
-    if (hits.length) found.push({ line: i + 1, hits, snippet: lines[i].trim().slice(0, 90) })
+    if (hits.length) found.push({ line: lineNumber, hits, snippet: lines[i].trim().slice(0, 90) })
   }
   return found
 }
@@ -137,7 +139,7 @@ function fullScan() {
 // Ratchet: judge only added lines (`+`) from a git diff, so legacy files stay
 // until touched while any NEW banner comment is blocked.
 function parseAddedViolations(raw) {
-  const violations = []
+  const addedLinesByFile = new Map()
   let file = null
   let ok = false
   let newLine = 0
@@ -148,6 +150,7 @@ function parseAddedViolations(raw) {
       ok = !!file && eligible(file)
         && ROOTS.some((r) => file === r || file.startsWith(r + '/'))
         && !file.split('/').some((seg) => SKIP_DIRS.has(seg))
+      if (ok && !addedLinesByFile.has(file)) addedLinesByFile.set(file, new Set())
       continue
     }
     if (line.startsWith('@@')) {
@@ -157,48 +160,55 @@ function parseAddedViolations(raw) {
     }
     if (line.startsWith('+++') || line.startsWith('---')) continue
     if (line[0] === '+') {
-      if (ok) {
-        const text = commentText(line.slice(1), { inBlock: false })
-        const hits = text ? violationsFor(text) : []
-        if (hits.length) violations.push({ file, line: newLine, hits, snippet: line.slice(1).trim().slice(0, 90) })
-      }
+      if (ok) addedLinesByFile.get(file).add(newLine)
       newLine++
     } else if (line[0] !== '-') {
       newLine++
     }
   }
+
+  const violations = []
+  for (const [path, addedLines] of addedLinesByFile) {
+    let content
+    try { content = readFileSync(path, 'utf8') } catch { continue }
+    for (const violation of scanContent(content, addedLines)) {
+      violations.push({ file: path, ...violation })
+    }
+  }
   return violations
 }
 
-function runGitDiff(cmd) {
+function runGit(args) {
   try {
-    return execSync(cmd, { encoding: 'utf8', maxBuffer: 1 << 28 })
+    return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 })
   } catch (e) {
-    console.error(`comment-discipline: "${cmd}" failed: ${e.message}`)
+    console.error(`comment-discipline: git ${args[0]} failed: ${e.message}`)
     process.exit(2)
   }
 }
 
 // CI ratchet: added lines between a base ref and HEAD.
 function diffScan(ref) {
-  return parseAddedViolations(runGitDiff(`git diff --unified=0 ${ref}...HEAD`))
+  if (!ref) {
+    console.error('comment-discipline: --diff requires a base ref.')
+    process.exit(2)
+  }
+  const baseCommit = runGit([
+    'rev-parse',
+    '--verify',
+    '--end-of-options',
+    `${ref}^{commit}`,
+  ]).trim()
+  return parseAddedViolations(runGit(['diff', '--unified=0', `${baseCommit}...HEAD`, '--']))
 }
 
 // Stop-hook ratchet: the current uncommitted change only. Tracked edits come
 // from `git diff HEAD`; brand-new untracked code files are scanned whole, since
 // every one of their comment lines is effectively an added line.
 function workingScan() {
-  const violations = parseAddedViolations(runGitDiff('git diff --unified=0 HEAD'))
-  let untracked = ''
-  try {
-    untracked = execSync(`git ls-files --others --exclude-standard -- ${ROOTS.join(' ')}`, {
-      encoding: 'utf8',
-      maxBuffer: 1 << 28,
-    })
-  } catch {
-    return violations
-  }
-  for (const rel of untracked.split('\n').map((s) => s.trim()).filter(Boolean)) {
+  const violations = parseAddedViolations(runGit(['diff', '--unified=0', 'HEAD', '--']))
+  const untracked = runGit(['ls-files', '-z', '--others', '--exclude-standard', '--', ...ROOTS])
+  for (const rel of untracked.split('\0').filter(Boolean)) {
     if (!eligible(rel)) continue
     let content
     try {

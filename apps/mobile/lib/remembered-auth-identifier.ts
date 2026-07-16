@@ -1,10 +1,12 @@
 import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
 import { parseAuthIdentifier } from './auth-identifier'
+import { withSecureStoreDeadline } from './secure-store-deadline'
 
 const REMEMBERED_AUTH_IDENTIFIER_KEY = 'nestscout.auth.remembered_identifier.v1'
 
 let webRememberedIdentifier: string | null = null
+let rememberedIdentifierMutation: Promise<void> = Promise.resolve()
 
 function canUseSecureStore() {
   return Platform.OS !== 'web'
@@ -20,9 +22,18 @@ function toRememberedValue(value: string) {
 }
 
 export async function getRememberedAuthIdentifier() {
-  const stored = !canUseSecureStore()
-    ? webRememberedIdentifier
-    : await SecureStore.getItemAsync(REMEMBERED_AUTH_IDENTIFIER_KEY).catch(() => webRememberedIdentifier)
+  const secureStoreAvailable = canUseSecureStore()
+  const pendingMutationSettled = !secureStoreAvailable || await withSecureStoreDeadline(
+    rememberedIdentifierMutation,
+  ).then(() => true, () => false)
+  let stored: string | null
+  if (!secureStoreAvailable || !pendingMutationSettled) {
+    stored = webRememberedIdentifier
+  } else {
+    stored = await withSecureStoreDeadline(
+      SecureStore.getItemAsync(REMEMBERED_AUTH_IDENTIFIER_KEY),
+    ).catch(() => webRememberedIdentifier)
+  }
   const remembered = stored ? toRememberedValue(stored) : null
 
   if (stored && !remembered) {
@@ -39,12 +50,24 @@ export async function rememberAuthIdentifier(value: string) {
   webRememberedIdentifier = remembered
   if (!canUseSecureStore()) return
 
-  await SecureStore.setItemAsync(REMEMBERED_AUTH_IDENTIFIER_KEY, remembered).catch(() => undefined)
+  await queueRememberedIdentifierMutation(() =>
+    SecureStore.setItemAsync(REMEMBERED_AUTH_IDENTIFIER_KEY, remembered)
+  )
 }
 
 export async function clearRememberedAuthIdentifier() {
   webRememberedIdentifier = null
   if (!canUseSecureStore()) return
 
-  await SecureStore.deleteItemAsync(REMEMBERED_AUTH_IDENTIFIER_KEY).catch(() => undefined)
+  await queueRememberedIdentifierMutation(() =>
+    SecureStore.deleteItemAsync(REMEMBERED_AUTH_IDENTIFIER_KEY)
+  )
+}
+
+async function queueRememberedIdentifierMutation(operation: () => Promise<void>) {
+  const mutation = rememberedIdentifierMutation
+    .catch(() => undefined)
+    .then(operation)
+  rememberedIdentifierMutation = mutation.catch(() => undefined)
+  await withSecureStoreDeadline(mutation).catch(() => undefined)
 }

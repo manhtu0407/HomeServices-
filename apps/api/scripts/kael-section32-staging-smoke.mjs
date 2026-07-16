@@ -5,6 +5,13 @@ import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
 import { performance } from 'perf_hooks'
 import { createRequire } from 'module'
+import {
+  assertLiveApproval,
+  assertSupabaseTargets,
+  createEphemeralPassword,
+  createTimeoutFetch,
+  resolveWorkspacePath,
+} from './lib/privileged-script-safety.mjs'
 
 export const SECTION32_STAGING_CHECKS = [
   'worker_chat_job_scoped_idempotency',
@@ -14,7 +21,6 @@ export const SECTION32_STAGING_CHECKS = [
 ]
 
 const STAGING_REF = 'xyylanuyflrjzbjzhqfl'
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
 const require = createRequire(import.meta.url)
@@ -37,32 +43,11 @@ function requireEnv(name, fallbackNames = []) {
   return value
 }
 
-function assertStagingUrl(value, label) {
-  if (!value.includes(STAGING_REF)) {
-    throw new Error(`${label} must target staging ref ${STAGING_REF}`)
-  }
-  if (value.includes(PRODUCTION_REF)) {
-    throw new Error(`${label} points at production ref ${PRODUCTION_REF}`)
-  }
-}
-
-function timeoutFetch(timeoutMs) {
-  return async (url, options = {}) => {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      return await fetch(url, { ...options, signal: controller.signal })
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-}
-
 function createSupabase(url, key, timeoutMs = 60_000) {
   const { createClient } = require('@supabase/supabase-js/dist/index.cjs')
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: timeoutFetch(timeoutMs) },
+    global: { fetch: createTimeoutFetch(timeoutMs) },
   })
 }
 
@@ -115,7 +100,7 @@ class Section32Harness {
   constructor(config) {
     this.config = config
     this.runId = `section32-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
-    this.password = `Section32-${randomUUID()}-Temp-12345!`
+    this.password = createEphemeralPassword('Section32')
     this.admin = createSupabase(config.supabaseUrl, config.serviceRoleKey)
     this.anon = createSupabase(config.supabaseUrl, config.anonKey)
     this.fixtures = {
@@ -340,7 +325,7 @@ class Section32Harness {
   async api(actor, method, path, body = undefined, timeoutMs = 75_000) {
     const url = `${this.config.apiBaseUrl}${path}`
     const started = performance.now()
-    const response = await timeoutFetch(timeoutMs)(url, {
+    const response = await createTimeoutFetch(timeoutMs)(url, {
       method,
       headers: {
         apikey: this.config.anonKey,
@@ -368,7 +353,7 @@ class Section32Harness {
   async streamWorkerTurn(actor, sessionId, body) {
     const url = `${this.config.apiBaseUrl}/workers/me/kael/chat/${sessionId}/stream`
     const started = performance.now()
-    const response = await timeoutFetch(90_000)(url, {
+    const response = await createTimeoutFetch(90_000)(url, {
       method: 'POST',
       headers: {
         apikey: this.config.anonKey,
@@ -440,7 +425,7 @@ class Section32Harness {
       try {
         await fn()
       } catch (error) {
-        errors.push(`${label}: ${error.message}`)
+        errors.push(`${label}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
 
@@ -477,8 +462,10 @@ class Section32Harness {
     await safe('jobs', async () => {
       await this.deleteWhereIn('jobs', 'id', this.fixtures.jobIds)
     })
-    await safe('role profiles', async () => {
+    await safe('worker profiles', async () => {
       await this.deleteWhereIn('worker_profiles', 'id', this.fixtures.users)
+    })
+    await safe('customer profiles', async () => {
       await this.deleteWhereIn('customer_profiles', 'id', this.fixtures.users)
     })
     await safe('profiles', async () => {
@@ -576,6 +563,7 @@ class Section32Harness {
       `Date: ${new Date().toISOString()}`,
       `Run id: ${this.runId}`,
       `Status: ${this.results.status}`,
+      `Staging ref: ${STAGING_REF}`,
       '',
       '## Checks',
       '',
@@ -608,9 +596,7 @@ class Section32Harness {
 }
 
 function loadConfig() {
-  if (process.env.SECTION32_RUN_LIVE !== '1') {
-    throw new Error('Set SECTION32_RUN_LIVE=1 to run the mutable Section 32 staging smoke harness.')
-  }
+  assertLiveApproval('SECTION32_RUN_LIVE', '1')
   const supabaseUrl = requireEnv('SECTION32_SUPABASE_URL', ['P15_SUPABASE_URL', 'SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_URL'])
   const anonKey = requireEnv('SECTION32_SUPABASE_ANON_KEY', ['P15_SUPABASE_ANON_KEY', 'SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'])
   const serviceRoleKey = requireEnv('SECTION32_SUPABASE_SERVICE_ROLE_KEY', ['P15_SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY'])
@@ -618,15 +604,18 @@ function loadConfig() {
     readEnv('SECTION32_API_BASE_URL', ['P15_API_BASE_URL', 'EXPO_PUBLIC_API_BASE_URL']) ??
     `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api`
 
-  assertStagingUrl(supabaseUrl, 'SECTION32_SUPABASE_URL')
-  assertStagingUrl(apiBaseUrl, 'SECTION32_API_BASE_URL')
+  assertSupabaseTargets('staging', supabaseUrl, apiBaseUrl)
 
   return {
     supabaseUrl,
     anonKey,
     serviceRoleKey,
     apiBaseUrl: apiBaseUrl.replace(/\/$/, ''),
-    reportPath: resolve(REPO_ROOT, readEnv('SECTION32_REPORT_PATH') ?? DEFAULT_REPORT_PATH),
+    reportPath: resolveWorkspacePath(
+      REPO_ROOT,
+      readEnv('SECTION32_REPORT_PATH') ?? DEFAULT_REPORT_PATH,
+      'SECTION32_REPORT_PATH',
+    ),
     requireProvider: process.env.SECTION32_REQUIRE_PROVIDER === '1',
   }
 }
@@ -634,6 +623,9 @@ function loadConfig() {
 export async function main() {
   const harness = new Section32Harness(loadConfig())
   await harness.run()
+  if (harness.results.status !== 'passed') {
+    throw new Error(`Section 32 smoke did not produce complete evidence: ${harness.results.status}`)
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

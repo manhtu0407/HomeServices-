@@ -28,7 +28,7 @@ export type DemandingCustomerDetectionInput = {
   readonly message: string;
   readonly qaCount: number;
   readonly cancelCount?: number;
-  // LLM-assist (2026-06-04): intake-diagnosis sentiment from the prior turn. Used
+  // Prior-turn sentiment only fills a keyword gap;
   // only to fill a keyword gap (soft); keyword detection stays the primary path.
   readonly llmSentiment?: "neutral" | "detail_oriented" | "pressure";
 };
@@ -61,7 +61,7 @@ const LEGITIMATE_PATTERNS: ReadonlyArray<{
   },
   {
     signal: "wait_time_concern",
-    patterns: ["dung gio", "đúng giờ", "tre", "trễ", "cho", "chờ", "khi nao", "khi nào"],
+    patterns: ["dung gio", "tre", "cho lau", "phai cho", "dang cho", "doi bao lau", "khi nao"],
   },
   {
     signal: "service_quality_concern",
@@ -83,11 +83,11 @@ const PRESSURE_PATTERNS: ReadonlyArray<{
   },
   {
     signal: "demand_refund_no_reason",
-    patterns: ["hoan tien", "hoàn tiền", "tra tien", "trả tiền"],
+    patterns: ["hoan tien ngay", "hoan tien cho toi", "tra lai tien", "tra tien lai"],
   },
   {
     signal: "aggressive_language",
-    patterns: ["lay tien a", "lấy tiền à", "lua", "lừa", "vo van", "vớ vẩn", "te qua", "tệ quá"],
+    patterns: ["lay tien a", "lua dao", "dinh lua", "lua toi", "vo van", "te qua"],
   },
   {
     signal: "multiple_cancel_pattern",
@@ -115,7 +115,7 @@ export function detectDemandingCustomerPatterns(
     : legitimateConcernSignals.length > 0
     ? "detail_oriented"
     : "none";
-  // LLM-assist (2026-06-04): in an established conversation (qaCount >= 2), let the
+  // In an established conversation, let the
   // intake-diagnosis sentiment fill a keyword gap. Soft only — hard escalation still
   // depends on deterministic keyword signals via escalationLevel above, so the LLM
   // can make Kael more attentive but never trigger a hard stop on its own.
@@ -147,10 +147,19 @@ function matchSignals<T extends string>(
   configs: ReadonlyArray<{ signal: T; patterns: readonly string[] }>,
 ): T[] {
   return configs.flatMap((config) =>
-    config.patterns.some((pattern) => normalized.includes(normalize(pattern)))
+    config.patterns.some((pattern) => matchesNormalizedPhrase(normalized, pattern))
       ? [config.signal]
       : []
   );
+}
+
+function matchesNormalizedPhrase(input: string, phrase: string): boolean {
+  const words = normalize(phrase)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  if (words.length === 0) return false;
+  return new RegExp(`(^|[^a-z0-9])${words.join("\\s+")}([^a-z0-9]|$)`).test(input);
 }
 
 function scorePressure(
@@ -191,5 +200,6 @@ function normalize(value: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d");
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ");
 }

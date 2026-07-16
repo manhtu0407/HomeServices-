@@ -16,11 +16,15 @@ const config: EnvConfig = {
   ],
 }
 
-const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_SUPABASE_URL
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
 
-function validateClientEnv() {
-  if (isBuildTime) return
+function validateClientEnvAtImport() {
+  if (isBuildTime || process.env.NODE_ENV === 'production') return
 
+  ensureClientEnv()
+}
+
+export function ensureClientEnv() {
   const missing: string[] = []
 
   for (const key of config.client) {
@@ -36,6 +40,59 @@ function validateClientEnv() {
   }
 }
 
+function requireClientKey(key: string, label: string): string {
+  const value = process.env[key]
+  if (!value) {
+    throw new Error(`${label} not configured. Set ${key} in .env.local`)
+  }
+  return value
+}
+
+function requireTrustedSupabaseUrl(): string {
+  const raw = requireClientKey('NEXT_PUBLIC_SUPABASE_URL', 'Supabase URL').trim()
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    throw new Error('Supabase URL is invalid')
+  }
+  const isLoopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' ||
+    url.hostname === '[::1]'
+  const isHostedProject = url.protocol === 'https:' && url.port === '' &&
+    /^[a-z0-9]{20}\.supabase\.co$/.test(url.hostname)
+  const normalizedPath = url.pathname.replace(/\/+$/, '') || '/'
+  if (
+    (!isLoopback && !isHostedProject) ||
+    (isLoopback && url.protocol !== 'http:' && url.protocol !== 'https:') ||
+    url.username || url.password || url.search || url.hash || normalizedPath !== '/'
+  ) {
+    throw new Error('Supabase URL must use an exact trusted project root')
+  }
+  return url.origin
+}
+
+function requirePublishableSupabaseKey(): string {
+  const value = requireClientKey(
+    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+    'Supabase publishable key',
+  ).trim()
+  if (value.startsWith('sb_publishable_') && value.length > 'sb_publishable_'.length) {
+    return value
+  }
+  const parts = value.split('.')
+  if (parts.length === 3) {
+    try {
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+      const payload = JSON.parse(atob(padded)) as { role?: unknown }
+      if (payload.role === 'anon') return value
+    } catch {
+      // Fall through to the single safe configuration error below.
+    }
+  }
+  throw new Error('Supabase publishable key must not contain server authority')
+}
+
 function requireServerKey(key: string, label: string): string {
   const value = process.env[key]
   if (!value) {
@@ -46,10 +103,10 @@ function requireServerKey(key: string, label: string): string {
 
 export const env = {
   get supabaseUrl(): string {
-    return process.env.NEXT_PUBLIC_SUPABASE_URL!
+    return requireTrustedSupabaseUrl()
   },
   get supabasePublishableKey(): string {
-    return process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    return requirePublishableSupabaseKey()
   },
   get supabaseServiceRoleKey(): string {
     return requireServerKey('SUPABASE_SERVICE_ROLE_KEY', 'Supabase service role key')
@@ -81,7 +138,7 @@ export const env = {
   },
 } as const
 
-validateClientEnv()
+validateClientEnvAtImport()
 
 export function ensureServerEnv() {
   if (typeof window !== 'undefined') return

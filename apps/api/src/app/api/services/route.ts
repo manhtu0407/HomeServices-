@@ -5,7 +5,7 @@ import { HCMC_DISTRICTS } from '@nestscout/shared'
 export async function GET(request: Request) {
   const auth = await authenticateRequest(request)
   if (!auth.success) {
-    return apiError('AUTH_MISSING', auth.error, auth.status)
+    return apiError(auth.code, auth.error, auth.status)
   }
 
   // Parallelize the 3 catalog reads — they are independent. Single round-trip

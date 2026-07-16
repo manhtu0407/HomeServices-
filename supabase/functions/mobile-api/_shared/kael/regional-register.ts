@@ -90,17 +90,15 @@ export function scoreRegionalMarkers(text: string): {
   const seen = new Set<string>();
   for (const token of tokenize(text)) {
     const entry = MARKER_INDEX.get(token);
-    if (!entry) continue;
-    scores[entry.region] += entry.weight;
-    if (!seen.has(token)) {
-      seen.add(token);
-      hits.push({
-        term: token,
-        tier: entry.tier,
-        region: entry.region,
-        mirrorEligible: entry.mirrorEligible,
-      });
-    }
+    if (!entry || seen.has(token)) continue;
+    seen.add(token);
+    scores[entry.region] = addScores(scores[entry.region], entry.weight);
+    hits.push({
+      term: token,
+      tier: entry.tier,
+      region: entry.region,
+      mirrorEligible: entry.mirrorEligible,
+    });
   }
   return { scores, hits };
 }
@@ -110,9 +108,9 @@ export function accumulateRegionalScores(
   next: RegionalScores,
 ): RegionalScores {
   return {
-    bac: base.bac + next.bac,
-    trung: base.trung + next.trung,
-    nam: base.nam + next.nam,
+    bac: addScores(base?.bac, next?.bac),
+    trung: addScores(base?.trung, next?.trung),
+    nam: addScores(base?.nam, next?.nam),
   };
 }
 
@@ -120,21 +118,27 @@ export function resolveRegionalRegister(
   scores: RegionalScores,
   hits: readonly RegionalMarkerHit[],
 ): RegionalRegister {
-  const ranked = [...REGIONS].sort((a, b) => scores[b] - scores[a]);
+  const normalizedScores: RegionalScores = {
+    bac: normalizeScore(scores?.bac),
+    trung: normalizeScore(scores?.trung),
+    nam: normalizeScore(scores?.nam),
+  };
+  const normalizedHits = normalizeRegionalMarkerHits(hits);
+  const ranked = [...REGIONS].sort((a, b) => normalizedScores[b] - normalizedScores[a]);
   const top = ranked[0];
-  const topScore = scores[top];
-  const runnerScore = scores[ranked[1]];
+  const topScore = normalizedScores[top];
+  const runnerScore = normalizedScores[ranked[1]];
 
   const strongRegions = new Set(
-    hits.filter((hit) => hit.tier === "A" || hit.tier === "B").map((hit) => hit.region),
+    normalizedHits.filter((hit) => hit.tier === "A" || hit.tier === "B").map((hit) => hit.region),
   );
   const conflicted = strongRegions.size >= 2 &&
     topScore - runnerScore < CONFLICT_PENALTY;
 
-  const topTierBCount = hits.filter(
+  const topTierBCount = normalizedHits.filter(
     (hit) => hit.region === top && hit.tier === "B",
   ).length;
-  const topHasTierA = hits.some((hit) => hit.region === top && hit.tier === "A");
+  const topHasTierA = normalizedHits.some((hit) => hit.region === top && hit.tier === "A");
 
   let level: RegisterLevel = "unknown";
   if (!conflicted && topScore >= RECOGNIZE_THRESHOLD && (topHasTierA || topTierBCount >= 2)) {
@@ -150,14 +154,14 @@ export function resolveRegionalRegister(
 
   const mirrorTerms = level === "unknown"
     ? []
-    : dedupe(hits.filter((hit) => hit.mirrorEligible).map((hit) => hit.term));
+    : dedupe(normalizedHits.filter((hit) => hit.mirrorEligible).map((hit) => hit.term));
 
   return {
     region,
     level,
     confidence,
-    scores,
-    hits,
+    scores: normalizedScores,
+    hits: normalizedHits,
     adapt: { mirrorTerms, avoidStrongDialect: true },
   };
 }
@@ -195,4 +199,50 @@ function dedupe(values: readonly string[]): string[] {
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function normalizeScore(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.min(Number.MAX_SAFE_INTEGER, value)
+    : 0;
+}
+
+function addScores(left: unknown, right: unknown): number {
+  return Math.min(
+    Number.MAX_SAFE_INTEGER,
+    normalizeScore(left) + normalizeScore(right),
+  );
+}
+
+function canonicalRegionalMarkerHit(value: unknown): RegionalMarkerHit | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const hit = value as Partial<RegionalMarkerHit>;
+  if (typeof hit.term !== "string") return null;
+  const term = hit.term.trim().toLowerCase();
+  const entry = MARKER_INDEX.get(term);
+  if (
+    !entry || hit.tier !== entry.tier || hit.region !== entry.region ||
+    hit.mirrorEligible !== entry.mirrorEligible
+  ) {
+    return null;
+  }
+  return {
+    term,
+    tier: entry.tier,
+    region: entry.region,
+    mirrorEligible: entry.mirrorEligible,
+  };
+}
+
+function normalizeRegionalMarkerHits(values: unknown): RegionalMarkerHit[] {
+  if (!Array.isArray(values)) return [];
+  const hits: RegionalMarkerHit[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const hit = canonicalRegionalMarkerHit(value);
+    if (!hit || seen.has(hit.term)) continue;
+    seen.add(hit.term);
+    hits.push(hit);
+  }
+  return hits;
 }

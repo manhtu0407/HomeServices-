@@ -3,6 +3,8 @@ import type { UserRole } from "../../../_shared/domain.ts";
 export type CaseWorkResourceRoute =
   | { kind: "kael.chat.mediaUpload"; method: "POST"; roles: UserRole[] }
   | { kind: "kael.chat.mediaRevoke"; method: "POST"; roles: UserRole[] }
+  | { kind: "jobs.mediaUpload"; method: "POST"; jobId: string; roles: UserRole[]; successStatus: 201 }
+  | { kind: "jobs.mediaRevoke"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.workerCandidate"; method: "GET"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.workerCandidateConfirm"; method: "POST"; jobId: string; candidateId: string; roles: UserRole[] }
   | { kind: "jobs.workerCandidateReject"; method: "POST"; jobId: string; candidateId: string; roles: UserRole[] }
@@ -24,6 +26,33 @@ export function matchCaseWorkResourceRoute(
   }
   if (method === "POST" && path === "/kael/chat/media-revoke") {
     return { kind: "kael.chat.mediaRevoke", method: "POST", roles: ["customer", "admin"] };
+  }
+
+  const mediaUpload = path.match(/^\/jobs\/([^/]+)\/media-upload$/);
+  if (method === "POST" && mediaUpload) {
+    const jobId = decodePathSegment(mediaUpload[1] ?? "");
+    return jobId
+      ? {
+        kind: "jobs.mediaUpload",
+        method: "POST",
+        jobId,
+        roles: ["customer", "worker", "admin"],
+        successStatus: 201,
+      }
+      : null;
+  }
+
+  const mediaRevoke = path.match(/^\/jobs\/([^/]+)\/media-revoke$/);
+  if (method === "POST" && mediaRevoke) {
+    const jobId = decodePathSegment(mediaRevoke[1] ?? "");
+    return jobId
+      ? {
+        kind: "jobs.mediaRevoke",
+        method: "POST",
+        jobId,
+        roles: ["customer", "worker", "admin"],
+      }
+      : null;
   }
 
   const incident = path.match(/^\/jobs\/([^/]+)\/kael-incident(?:\/(propose-scope))?$/);

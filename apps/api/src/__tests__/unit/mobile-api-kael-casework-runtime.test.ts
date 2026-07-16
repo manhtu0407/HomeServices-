@@ -12,7 +12,10 @@ const confirmService = readFileSync(join(root, 'services/kael-chat-confirm.servi
 const completionReviewService = readFileSync(join(root, 'services/completion-review.service.ts'), 'utf8')
 const jobStatusService = readFileSync(join(root, 'services/job-status.service.ts'), 'utf8')
 const pipeline = readFileSync(join(root, 'kael/pipeline.ts'), 'utf8')
-const sharedService = readFileSync(join(root, 'services/_shared.ts'), 'utf8')
+const sharedService = [
+  readFileSync(join(root, 'services/_shared.ts'), 'utf8'),
+  readFileSync(join(root, 'services/serializers.ts'), 'utf8'),
+].join('\n')
 
 describe('Kael Case Work runtime wiring', () => {
   it('respects deferred Basic Intake handoff instead of analyzing during route submit', () => {
@@ -48,9 +51,10 @@ describe('Kael Case Work runtime wiring', () => {
     expect(sharedService).not.toContain('diagnosisScope?.case_phase ?? "analysis"')
   })
 
-  it('scrubs customer PII before persisting diagnosis facts', () => {
-    expect(service).toContain('customerGoal: scrubSensitiveForLLM')
-    expect(core).toContain('const durableCustomerDetail = scrubSensitiveForLLM(message)')
+  it('scrubs customer PII and control-plane text before persisting diagnosis facts', () => {
+    expect(service).toContain('customerGoal: sanitizeUntrustedEvidenceText')
+    expect(core).toContain('const safeCustomerEvidence = sanitizeUntrustedEvidenceText(message)')
+    expect(core).toContain('const durableCustomerDetail = safeCustomerEvidence')
     expect(core).toContain('latest_customer_detail: durableCustomerDetail')
     expect(core).not.toContain('latest_customer_detail: message')
   })
@@ -90,6 +94,8 @@ describe('Kael Case Work runtime wiring', () => {
     expect(service).toContain('withoutEphemeralKaelMediaUrls')
     expect(service).not.toContain('photo_urls: input.photo_urls')
     expect(service).toContain('media_refs: evidenceRefs')
+    expect(service).toContain('input.decision === "skipped"')
+    expect(service).toContain('Không thể gửi bằng chứng khi đã chọn bỏ qua')
   })
 
   it('validates this turn media before any durable case-work write', () => {

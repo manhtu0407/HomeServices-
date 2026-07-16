@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { performance } from 'node:perf_hooks'
-
-const STAGING_REF = 'xyylanuyflrjzbjzhqfl'
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
-const PASSWORD = 'F26-source-trust-Temp-12345!'
+import {
+  assertLiveApproval,
+  assertSupabaseTargets,
+  createEphemeralPassword,
+  createTimeoutFetch,
+} from './lib/privileged-script-safety.mjs'
 
 const CASES = [
   {
@@ -61,26 +63,11 @@ function requireEnv(name, fallbacks = []) {
   return value
 }
 
-function assertStagingUrl(value, label) {
-  assert(value.includes(STAGING_REF), `${label} must target staging ref ${STAGING_REF}`)
-  assert(!value.includes(PRODUCTION_REF), `${label} must not target production ref ${PRODUCTION_REF}`)
-}
-
 function createSupabase(url, key) {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch },
+    global: { fetch: createTimeoutFetch(60_000) },
   })
-}
-
-async function timeoutFetch(timeoutMs, url, options) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(url, { ...options, signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
 }
 
 async function must(query, label) {
@@ -94,10 +81,12 @@ class F26SourceTrustSmoke {
     this.config = config
     this.admin = createSupabase(config.supabaseUrl, config.serviceRoleKey)
     this.runId = `f26-src-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`
+    this.password = createEphemeralPassword('F26SourceTrust')
     this.startedAt = new Date().toISOString()
-    this.artifactSince = config.artifactSince ?? this.startedAt
+    this.artifactSince = validateArtifactSince(config.artifactSince, this.startedAt)
     this.userIds = []
     this.jobIds = []
+    this.artifactIdsBeforeRun = new Set()
     this.timings = []
     this.results = {
       runId: this.runId,
@@ -114,6 +103,7 @@ class F26SourceTrustSmoke {
 
   async run() {
     await this.verifyRegistry()
+    await this.snapshotArtifactIds()
     const customer = await this.createCustomer()
     for (let index = 0; index < CASES.length; index += 1) {
       await this.createJob(customer, CASES[index], index)
@@ -142,7 +132,7 @@ class F26SourceTrustSmoke {
     const email = `${this.runId}-customer@f26.source-trust.test`
     const { data, error } = await this.admin.auth.admin.createUser({
       email,
-      password: PASSWORD,
+      password: this.password,
       email_confirm: true,
       user_metadata: { role: 'customer', full_name: 'F26 Source Trust Smoke Customer' },
     })
@@ -170,16 +160,34 @@ class F26SourceTrustSmoke {
     )
 
     const client = createSupabase(this.config.supabaseUrl, this.config.anonKey)
-    const signedIn = await client.auth.signInWithPassword({ email, password: PASSWORD })
+    const signedIn = await client.auth.signInWithPassword({ email, password: this.password })
     if (signedIn.error || !signedIn.data.session) {
       throw new Error(`sign in smoke user: ${signedIn.error?.message}`)
     }
     return { id, accessToken: signedIn.data.session.access_token }
   }
 
+  async snapshotArtifactIds() {
+    const rows = await must(
+      this.artifactQuery('id'),
+      'snapshot source trust market artifacts',
+    )
+    this.artifactIdsBeforeRun = new Set(rows.map((row) => row.id))
+  }
+
+  artifactQuery(columns) {
+    return this.admin
+      .from('kael_market_artifacts')
+      .select(columns)
+      .eq('provider', 'perplexity')
+      .eq('service_type', 'cleaning')
+      .in('district_code', CASES.map((scenario) => scenario.district))
+      .gte('created_at', this.artifactSince)
+  }
+
   async api(actor, method, path, body = undefined) {
     const started = performance.now()
-    const response = await timeoutFetch(90_000, `${this.config.apiBaseUrl}${path}`, {
+    const response = await createTimeoutFetch(90_000)(`${this.config.apiBaseUrl}${path}`, {
       method,
       headers: {
         apikey: this.config.anonKey,
@@ -232,6 +240,8 @@ class F26SourceTrustSmoke {
         .eq('purpose', 'market_lookup'),
       'fetch source trust market api logs',
     )
+    const jobsWithoutMarketLogs = this.jobIds.filter((jobId) => !marketLogs.some((log) => log.job_id === jobId))
+    assert(jobsWithoutMarketLogs.length === 0, `jobs missing market_lookup logs: ${jobsWithoutMarketLogs.join(', ')}`)
     this.results.apiLogs = {
       marketCount: marketLogs.length,
       successes: marketLogs.filter((log) => log.success === true).length,
@@ -243,23 +253,25 @@ class F26SourceTrustSmoke {
     }
 
     const artifacts = await must(
-      this.admin
-        .from('kael_market_artifacts')
-        .select('id, provider, market_range_min, market_range_max, failure_reason, safe_metadata, created_at')
-        .gte('created_at', this.artifactSince)
+      this.artifactQuery('id, provider, service_type, district_code, market_range_min, market_range_max, failure_reason, safe_metadata, created_at')
         .order('created_at', { ascending: false })
-        .limit(20),
+        .limit(50),
       'fetch source trust market artifacts',
     )
-    const accepted = artifacts.filter((artifact) => {
+    const newArtifacts = artifacts.filter((artifact) => !this.artifactIdsBeforeRun.has(artifact.id))
+    const accepted = newArtifacts.filter((artifact) => {
       const metadata = artifact.safe_metadata ?? {}
       const citations = Array.isArray(metadata.citations) ? metadata.citations : []
       return metadata.source_trust_citation_result === 'passed' &&
         citations.filter((item) => item?.accepted === true).length >= 2
     })
-    assert(accepted.length >= CASES.length, `expected ${CASES.length} accepted citation artifacts, got ${accepted.length}`)
+    const acceptedDistricts = new Set(accepted.map((artifact) => artifact.district_code))
+    const missingDistricts = CASES
+      .map((scenario) => scenario.district)
+      .filter((district) => !acceptedDistricts.has(district))
+    assert(missingDistricts.length === 0, `missing accepted citation artifacts for districts: ${missingDistricts.join(', ')}`)
     this.results.artifacts = {
-      checked: artifacts.length,
+      checked: newArtifacts.length,
       acceptedCitationArtifacts: accepted.length,
       sampleDomains: accepted
         .flatMap((artifact) => artifact.safe_metadata.citations ?? [])
@@ -272,6 +284,7 @@ class F26SourceTrustSmoke {
 
   async cleanup() {
     const counts = {}
+    const errors = []
     if (this.jobIds.length > 0) {
       for (const table of [
         'kael_optimization_metrics',
@@ -285,41 +298,63 @@ class F26SourceTrustSmoke {
       ]) {
         const column = table === 'jobs' ? 'id' : 'job_id'
         const { error } = await this.admin.from(table).delete().in(column, this.jobIds)
-        if (error) this.results.limitations.push(`cleanup ${table}: ${error.message}`)
+        if (error) errors.push(`cleanup ${table}: ${error.message}`)
       }
-      for (const table of ['kael_optimization_metrics', 'jobs', 'job_events', 'job_broadcasts', 'api_logs', 'notifications']) {
+      for (const table of [
+        'kael_optimization_metrics',
+        'job_events',
+        'job_broadcasts',
+        'chat_messages',
+        'reviews',
+        'api_logs',
+        'notifications',
+        'jobs',
+      ]) {
         const column = table === 'jobs' ? 'id' : 'job_id'
         const { count, error } = await this.admin
           .from(table)
           .select('id', { count: 'exact', head: true })
           .in(column, this.jobIds)
-        if (error) throw new Error(`cleanup count ${table}: ${error.message}`)
-        counts[table] = count ?? 0
+        if (error) errors.push(`cleanup count ${table}: ${error.message}`)
+        else counts[table] = count ?? 0
       }
     }
     for (const userId of this.userIds) {
-      await this.admin.from('customer_profiles').delete().eq('id', userId)
-      await this.admin.from('profiles').delete().eq('id', userId)
+      const { error: customerProfileError } = await this.admin.from('customer_profiles').delete().eq('id', userId)
+      if (customerProfileError) errors.push(`cleanup customer_profiles: ${customerProfileError.message}`)
+      const { error: profileError } = await this.admin.from('profiles').delete().eq('id', userId)
+      if (profileError) errors.push(`cleanup profiles: ${profileError.message}`)
       const { error } = await this.admin.auth.admin.deleteUser(userId)
-      if (error) this.results.limitations.push(`delete auth user: ${error.message}`)
+      if (error) errors.push(`delete auth user: ${error.message}`)
     }
     if (this.userIds.length > 0) {
-      const { count, error } = await this.admin
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .in('id', this.userIds)
-      if (error) throw new Error(`cleanup count profiles: ${error.message}`)
-      counts.profiles = count ?? 0
+      for (const table of ['customer_profiles', 'profiles']) {
+        const { count, error } = await this.admin
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .in('id', this.userIds)
+        if (error) errors.push(`cleanup count ${table}: ${error.message}`)
+        else counts[table] = count ?? 0
+      }
     }
-    this.results.cleanup = { counts, ok: Object.values(counts).every((value) => value === 0) }
-    assert(this.results.cleanup.ok, `cleanup verification failed: ${JSON.stringify(counts)}`)
+    const ok = errors.length === 0 && Object.values(counts).every((value) => value === 0)
+    this.results.cleanup = { counts, errors, ok }
+    assert(ok, `cleanup verification failed: ${JSON.stringify({ counts, errors })}`)
   }
 }
 
-function loadConfig() {
-  if (process.env.F26_RUN_SOURCE_TRUST_SMOKE !== '1') {
-    throw new Error('Set F26_RUN_SOURCE_TRUST_SMOKE=1 to run the mutable staging source-trust smoke harness.')
+function validateArtifactSince(raw, startedAt) {
+  if (!raw) return startedAt
+  const parsed = Date.parse(raw)
+  const started = Date.parse(startedAt)
+  if (!Number.isFinite(parsed) || parsed > started || started - parsed > 5 * 60_000) {
+    throw new Error('F26_ARTIFACTS_SINCE must be a valid timestamp within five minutes before this run')
   }
+  return new Date(parsed).toISOString()
+}
+
+function loadConfig() {
+  assertLiveApproval('F26_RUN_SOURCE_TRUST_SMOKE', '1')
   const supabaseUrl = requireEnv('F26_SUPABASE_URL', [
     'NEXT_PUBLIC_SUPABASE_URL',
     'EXPO_PUBLIC_SUPABASE_URL',
@@ -335,9 +370,14 @@ function loadConfig() {
     `${supabaseUrl}/functions/v1/mobile-api`
   const artifactSince = readEnv('F26_ARTIFACTS_SINCE')
 
-  assertStagingUrl(supabaseUrl, 'F26_SUPABASE_URL')
-  assertStagingUrl(apiBaseUrl, 'F26_API_BASE_URL')
-  return { supabaseUrl, anonKey, serviceRoleKey, apiBaseUrl, artifactSince }
+  assertSupabaseTargets('staging', supabaseUrl, apiBaseUrl)
+  return {
+    supabaseUrl,
+    anonKey,
+    serviceRoleKey,
+    apiBaseUrl: apiBaseUrl.replace(/\/$/, ''),
+    artifactSince,
+  }
 }
 
 const harness = new F26SourceTrustSmoke(loadConfig())
@@ -349,7 +389,12 @@ try {
   harness.results.error = error instanceof Error ? error.message : String(error)
 } finally {
   await harness.cleanup().catch((error) => {
-    harness.results.cleanup = { ok: false, error: error instanceof Error ? error.message : String(error) }
+    status = 'failed'
+    harness.results.cleanup = {
+      ...(harness.results.cleanup ?? {}),
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
   })
 }
 

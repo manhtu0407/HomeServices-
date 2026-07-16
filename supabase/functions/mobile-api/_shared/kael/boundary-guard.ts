@@ -1,4 +1,4 @@
-// X1 (Plan.md §27.4 — 2026-05-29): pre-pipeline boundary guard for Kael chat.
+// Pre-pipeline boundary guard for Kael chat.
 // Rejects out-of-scope topics, prompt-injection attempts, and messages that
 // contradict the customer-selected service_type BEFORE any provider call,
 // so cost stays at 0 for declined turns and Kael never returns an estimate
@@ -6,8 +6,8 @@
 // estimates).
 //
 // Deterministic, server-side, dependency-free. An AI-driven off-topic
-// classifier may be layered on top in a later phase; the deterministic gate
-// alone covers F-18..F-21 from the 2026-05-28 production audit.
+// classifier may be layered on top; this deterministic gate remains the
+// zero-cost baseline.
 
 import type { ServiceType } from "../../../_shared/domain.ts";
 import { KAEL_CASE_WORK_SERVICE_TYPES } from "./performance-profiles.ts";

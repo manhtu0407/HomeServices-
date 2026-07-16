@@ -14,6 +14,16 @@ onlyBuiltDependencies:
   - unrs-resolver
 overrides:
   postcss: 8.5.14
+  "shell-quote@>=1.1.0 <=1.8.3": 1.8.4
+  "undici@>=6.0.0 <6.27.0": 6.27.0
+  "@babel/core@>=7.0.0 <7.29.1": 7.29.7
+  "js-yaml@>=3.0.0 <3.15.0": 3.15.0
+  "js-yaml@>=4.0.0 <4.1.2": 4.3.0
+  "tar@>=7.0.0 <7.5.16": 7.5.16
+  "uuid@>=7.0.0 <11.1.1": 11.1.1
+  "ws@>=6.0.0 <6.2.4": 6.2.4
+  "ws@>=7.0.0 <7.5.11": 7.5.11
+  "ws@>=8.0.0 <8.21.0": 8.21.0
 peerDependencyRules:
   allowedVersions:
     "@types/react-dom@19.2.3>@types/react": ">=19.1.10 <20"

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { normalizeDistrict, normalizeServiceAreaDistrict, HCMC_DISTRICTS, DEFAULT_DISTRICT } from '../constants'
+import { extractKnownDistrictLabel, hasSpecificWorkerRouteAddress } from '../mobile-workflow/address'
 
 describe('normalizeDistrict', () => {
   describe('exact slug match', () => {
@@ -157,6 +158,30 @@ describe('HCMC_DISTRICTS catalog', () => {
 
   it('is frozen (cannot mutate at runtime)', () => {
     expect(Object.isFrozen(HCMC_DISTRICTS)).toBe(true)
+  })
+})
+
+describe('extractKnownDistrictLabel', () => {
+  it.each([
+    ['123 Nguyễn Tri Phương, Quận 10, TP.HCM', 'Quận 10'],
+    ['45 Lạc Long Quân, Quận 11, TP.HCM', 'Quận 11'],
+    ['12 Hà Huy Giáp, Quận 12, TP.HCM', 'Quận 12'],
+    ['42 Example Street, District 10, HCMC', 'Quận 10'],
+  ])('keeps two-digit districts distinct in %s', (address, expected) => {
+    expect(extractKnownDistrictLabel(address)).toBe(expected)
+  })
+
+  it('does not collapse an unsupported district number into a valid prefix', () => {
+    expect(extractKnownDistrictLabel('Quận 0, TP.HCM')).toBe('')
+    expect(extractKnownDistrictLabel('Quận 99, TP.HCM')).toBe('')
+    expect(extractKnownDistrictLabel('Quận 100, TP.HCM')).toBe('')
+  })
+})
+
+describe('hasSpecificWorkerRouteAddress', () => {
+  it('does not treat an unsupported district-only label as a specific address', () => {
+    expect(hasSpecificWorkerRouteAddress('Quận 0, TP.HCM')).toBe(false)
+    expect(hasSpecificWorkerRouteAddress('District 99, HCMC')).toBe(false)
   })
 })
 

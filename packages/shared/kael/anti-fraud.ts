@@ -39,20 +39,58 @@ export function matchSuspiciousScopeKeywords(
   keywords: readonly string[] = DEFAULT_SUSPICIOUS_SCOPE_KEYWORDS,
 ): string[] {
   const normalized = normalizeText(text)
-  return keywords.filter((keyword) => normalized.includes(normalizeText(keyword)))
+  const matched: string[] = []
+  const seen = new Set<string>()
+  for (const keyword of keywords) {
+    const normalizedKeyword = normalizeText(keyword)
+    if (!normalizedKeyword || seen.has(normalizedKeyword)) continue
+    seen.add(normalizedKeyword)
+    if (normalized.includes(normalizedKeyword)) matched.push(keyword.trim())
+  }
+  return matched
 }
 
 export function calculateScopeChangeAnomaly(
   input: ScopeChangeAnomalyInput,
 ): ScopeChangeAnomalyResult {
-  const originalMax = input.originalPriceMax && input.originalPriceMax > 0
-    ? input.originalPriceMax
-    : input.newPriceMax
-  const driftRatio = Number((input.newPriceMax / originalMax).toFixed(2))
   const matchedKeywords = matchSuspiciousScopeKeywords(
     `${input.description} ${input.reason}`,
     input.suspiciousKeywords,
   )
+  if (
+    !isSafePositiveMoney(input.newPriceMax) ||
+    (input.originalPriceMax !== null && (
+      !Number.isSafeInteger(input.originalPriceMax) || input.originalPriceMax < 0
+    )) ||
+    !Number.isFinite(input.workerScopeChangeRate) ||
+    input.workerScopeChangeRate < 0 ||
+    input.workerScopeChangeRate > 1
+  ) {
+    return {
+      driftRatio: 1,
+      score: 1,
+      challengeRequired: true,
+      adminFlagRequired: true,
+      matchedKeywords,
+      reasons: ['invalid_scope_change_risk_input'],
+    }
+  }
+
+  const originalMax = input.originalPriceMax && input.originalPriceMax > 0
+    ? input.originalPriceMax
+    : input.newPriceMax
+  const rawDriftRatio = input.newPriceMax / originalMax
+  if (!Number.isFinite(rawDriftRatio)) {
+    return {
+      driftRatio: 1,
+      score: 1,
+      challengeRequired: true,
+      adminFlagRequired: true,
+      matchedKeywords,
+      reasons: ['invalid_scope_change_risk_input'],
+    }
+  }
+  const driftRatio = Number(rawDriftRatio.toFixed(2))
   const reasons: string[] = []
   let score = 0
 
@@ -98,9 +136,27 @@ export function calculateScopeChangeMargin(input: {
   adminAlert: boolean
 } {
   const hours = input.config.complexityHours[input.newComplexity]
-  const fairPriceMax = Math.round(
-    hours * input.config.hcmcHourlyRateVnd * input.config.baseMultiplier,
-  )
+  if (
+    !isSafePositiveMoney(input.newPriceMax) ||
+    !isFinitePositive(hours) ||
+    !isFinitePositive(input.config.hcmcHourlyRateVnd) ||
+    !isFinitePositive(input.config.baseMultiplier)
+  ) {
+    return {
+      fairPriceMax: 0,
+      assessment: 'requires_attention',
+      adminAlert: true,
+    }
+  }
+  const rawFairPriceMax = hours * input.config.hcmcHourlyRateVnd * input.config.baseMultiplier
+  if (!Number.isFinite(rawFairPriceMax) || rawFairPriceMax > Number.MAX_SAFE_INTEGER) {
+    return {
+      fairPriceMax: 0,
+      assessment: 'requires_attention',
+      adminAlert: true,
+    }
+  }
+  const fairPriceMax = Math.round(rawFairPriceMax)
   if (input.newPriceMax > fairPriceMax * 2) {
     return {
       fairPriceMax,
@@ -122,10 +178,21 @@ export function calculateScopeChangeMargin(input: {
   }
 }
 
+function isFinitePositive(value: number): boolean {
+  return Number.isFinite(value) && value > 0
+}
+
+function isSafePositiveMoney(value: number): boolean {
+  return Number.isSafeInteger(value) && value > 0
+}
+
 function normalizeText(value: string): string {
   return value
     .toLowerCase()
-    .normalize('NFC')
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
+    .replace(/đ/g, 'd')
+    .replace(/[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF\uFFF9-\uFFFB]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
 }

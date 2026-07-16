@@ -21,10 +21,10 @@ export const KAEL_CASE_WORK_PHASES = Object.freeze([
 ] as const);
 
 const kaelCaseFactValueSchema = z.union([
-  z.string().max(2000),
+  z.string().trim().min(1).max(2000),
   z.number().finite(),
   z.boolean(),
-  z.array(z.string().max(500)).max(30),
+  z.array(z.string().trim().min(1).max(500)).max(30),
   z.null(),
 ]);
 
@@ -59,14 +59,14 @@ export const kaelCaseEvidenceSchema = z.object({
   if (
     (value.kind === "photo" || value.kind === "video_frame") &&
     value.ref &&
-    !/^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/model_vision\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
+    !/^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/model_vision\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
   ) {
     ctx.addIssue({ code: "custom", path: ["ref"], message: "Model evidence requires a private model_vision ref" });
   }
   if (
     value.kind === "video_original_private" &&
     value.ref &&
-    !/^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/private_video_original\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
+    !/^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/private_video_original\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
   ) {
     ctx.addIssue({ code: "custom", path: ["ref"], message: "Original video requires a private human-evidence ref" });
   }
@@ -95,7 +95,7 @@ export const kaelDiagnosisScopeArtifactSchema = z.object({
   service_type: z.enum(KAEL_CASE_WORK_SERVICE_TYPES),
   profile_id: z.enum(KAEL_PERFORMANCE_PROFILE_IDS),
   case_phase: z.enum(KAEL_CASE_WORK_PHASES),
-  facts: z.record(z.string().min(1).max(120), kaelCaseFactValueSchema),
+  facts: z.record(z.string().trim().min(1).max(120), kaelCaseFactValueSchema),
   missing_facts: z.array(z.string().min(1).max(120)).max(64),
   evidence: z.array(kaelCaseEvidenceSchema).max(20),
   safety_flags: z.array(z.object({
@@ -128,6 +128,11 @@ export const kaelDiagnosisScopeArtifactSchema = z.object({
     if (value.next_action.kind !== "prepare_offer" || value.case_phase !== "offer_review") {
       ctx.addIssue({ code: "custom", path: ["next_action"], message: "Quote-ready case must enter offer review" });
     }
+    if (value.safety_flags.some((flag) => flag.severity === "stop")) {
+      ctx.addIssue({ code: "custom", path: ["safety_flags"], message: "Stop-level safety flags block quote readiness" });
+    }
+  } else if (value.next_action.kind === "prepare_offer") {
+    ctx.addIssue({ code: "custom", path: ["next_action"], message: "Offer preparation requires quote readiness" });
   }
 });
 

@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 $TurboArgs = $args
+. (Join-Path $PSScriptRoot "resolve-workspace-pnpm.ps1")
 
 function Find-CommandPath {
   param([string[]]$Candidates)
@@ -56,19 +57,8 @@ if ($nodeExe) {
   $env:Path = "$nodeBin;$env:Path"
 }
 
-$turboBin = Existing-Path @(
-  (Join-Path $repoRoot "node_modules\.bin\turbo.CMD"),
-  (Join-Path $repoRoot "node_modules\.bin\turbo.ps1"),
-  (Join-Path $repoRoot "node_modules\.bin\turbo")
-)
-
 Push-Location $repoRoot
 try {
-  if ($turboBin) {
-    & $turboBin @TurboArgs
-    exit $LASTEXITCODE
-  }
-
   $pnpm = Find-CommandPath @("pnpm.cmd", "pnpm")
   if (-not $pnpm) {
     $pnpm = Existing-Path @(
@@ -78,10 +68,12 @@ try {
   }
 
   if (-not $pnpm) {
-    throw "Turbo could not run: no workspace turbo binary and no pnpm executable found."
+    throw "Turbo could not run: no pnpm executable found."
   }
 
-  & $pnpm exec turbo @TurboArgs
+  $pnpmInvocation = Get-WorkspacePnpmInvocation -RepoRoot $repoRoot -PnpmPath $pnpm
+  $pnpmArgs = @($pnpmInvocation.Prefix) + @("exec", "turbo") + @($TurboArgs)
+  & $pnpmInvocation.Command @pnpmArgs
   exit $LASTEXITCODE
 } finally {
   Pop-Location

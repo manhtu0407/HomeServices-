@@ -1,5 +1,6 @@
 import { getServicePerformancePlaybook } from './catalog'
 import type { ComplexityLevel } from '../constants'
+import { jobCreateSchema } from '../validation'
 import type {
   AgenticPerformanceDecision,
   AgenticPerformanceInput,
@@ -21,19 +22,27 @@ export function createInitialPerformanceIntake(serviceLineId: ServiceIntakeState
 }
 
 export function applyPerformanceAnswer(state: ServiceIntakeState, questionId: string, value: IntakeAnswerValue): ServiceIntakeState {
+  const question = getServicePerformancePlaybook(state.serviceLineId).questions.find(
+    (entry) => entry.id === questionId,
+  )
+  if (!question) throw new RangeError(`Unknown performance intake question: ${questionId}`)
+
   return Object.freeze({
     ...state,
-    answers: Object.freeze({ ...state.answers, [questionId]: normalizeAnswerValue(value) }),
+    answers: Object.freeze({
+      ...state.answers,
+      [questionId]: normalizeAnswerValue(question, value),
+    }),
   })
 }
 
 export function setPerformanceMediaCount(state: ServiceIntakeState, mediaCount: number): ServiceIntakeState {
-  return Object.freeze({ ...state, mediaCount: Math.max(0, Math.floor(mediaCount)) })
+  return Object.freeze({ ...state, mediaCount: normalizeMediaCount(mediaCount) })
 }
 
 export function getMissingRequiredPerformanceQuestions(state: ServiceIntakeState): readonly IntakeQuestion[] {
   return getServicePerformancePlaybook(state.serviceLineId).questions.filter(
-    (question) => question.required && isEmptyAnswer(state.answers[question.id]),
+    (question) => question.required && !isValidRequiredAnswer(question, state.answers[question.id]),
   )
 }
 
@@ -43,15 +52,16 @@ export function getNextPerformanceQuestion(state: ServiceIntakeState): IntakeQue
 
 export function buildServiceScopeCard(state: ServiceIntakeState): ServiceScopeCard {
   const playbook = getServicePerformancePlaybook(state.serviceLineId)
-  const duration = estimateDuration(playbook, state.answers)
-  const complexity = estimateComplexity(playbook, state.answers, duration)
-  const risks = evaluateRiskRules(playbook, state.answers, state.mediaCount)
-  const mediaRequirement = deriveMediaRequirement(playbook, state.answers)
-  const confidenceScore = estimateConfidence(playbook, state, mediaRequirement, risks.reviewReasonsVi)
-  const quoteDriversVi = buildQuoteDrivers(playbook, state.answers, 'vi')
-  const quoteDriversEn = buildQuoteDrivers(playbook, state.answers, 'en')
-  const problemChips = buildProblemChips(playbook, state.answers)
-  const recommendedCrewSize = estimateCrewSize(playbook, state.answers, duration, risks.riskFlags)
+  const normalizedState = normalizePerformanceState(playbook, state)
+  const duration = estimateDuration(playbook, normalizedState.answers)
+  const complexity = estimateComplexity(playbook, normalizedState.answers, duration)
+  const risks = evaluateRiskRules(playbook, normalizedState.answers, normalizedState.mediaCount)
+  const mediaRequirement = deriveMediaRequirement(playbook, normalizedState.answers)
+  const confidenceScore = estimateConfidence(playbook, normalizedState, mediaRequirement, risks.reviewReasonsVi)
+  const quoteDriversVi = buildQuoteDrivers(playbook, normalizedState.answers, 'vi')
+  const quoteDriversEn = buildQuoteDrivers(playbook, normalizedState.answers, 'en')
+  const problemChips = buildProblemChips(playbook, normalizedState.answers)
+  const recommendedCrewSize = estimateCrewSize(playbook, normalizedState.answers, duration, risks.riskFlags)
   const scopeSummaryVi = buildScopeSummary(playbook, quoteDriversVi, complexity, duration, recommendedCrewSize, 'vi')
   const scopeSummaryEn = buildScopeSummary(playbook, quoteDriversEn, complexity, duration, recommendedCrewSize, 'en')
   const canCreateProductionJob = playbook.productionServiceType !== null
@@ -101,7 +111,10 @@ export function runKaelAgenticPerformanceStep(input: AgenticPerformanceInput): A
   if (nextQuestion) return { kind: 'ask_question', serviceLineId: input.state.serviceLineId, question: nextQuestion }
 
   const scopeCard = buildServiceScopeCard(input.state)
-  if (scopeCard.mediaRequirement.required && input.state.mediaCount < scopeCard.mediaRequirement.minPhotos) {
+  if (
+    scopeCard.mediaRequirement.required &&
+    normalizeMediaCount(input.state.mediaCount) < scopeCard.mediaRequirement.minPhotos
+  ) {
     return { kind: 'request_media', serviceLineId: input.state.serviceLineId, mediaRequirement: scopeCard.mediaRequirement, scopeCard }
   }
   if (scopeCard.reviewReasonsVi.length > 0) {
@@ -109,21 +122,47 @@ export function runKaelAgenticPerformanceStep(input: AgenticPerformanceInput): A
   }
   if (!input.customerAcceptedScope) return { kind: 'show_scope_card', scopeCard }
   if (!scopeCard.canCreateProductionJob || !scopeCard.productionServiceType) return { kind: 'beta_service_blocked', scopeCard }
-  if (!input.addressDistrict?.trim()) return { kind: 'show_scope_card', scopeCard }
+  const addressDistrict = input.addressDistrict?.trim()
+  if (!addressDistrict) return { kind: 'show_scope_card', scopeCard }
+  if (
+    scopeCard.mediaRequirement.required &&
+    (input.photoUrls?.length ?? 0) < scopeCard.mediaRequirement.minPhotos
+  ) {
+    return {
+      kind: 'request_media',
+      serviceLineId: input.state.serviceLineId,
+      mediaRequirement: scopeCard.mediaRequirement,
+      scopeCard,
+    }
+  }
+
+  const parsedJobPayload = jobCreateSchema.safeParse({
+    service_type: scopeCard.productionServiceType,
+    description: buildKaelBookingMessageFromScopeCard(scopeCard),
+    problem_chips: scopeCard.problemChips,
+    photo_urls: input.photoUrls ?? [],
+    address_district: addressDistrict,
+    ...(input.addressBuilding != null ? { address_building: input.addressBuilding } : {}),
+    ...(input.addressUnit != null ? { address_unit: input.addressUnit } : {}),
+    ...(input.addressFloor != null ? { address_floor: input.addressFloor } : {}),
+    ...(input.scheduledAt != null ? { scheduled_at: input.scheduledAt } : {}),
+  })
+  if (!parsedJobPayload.success) return { kind: 'show_scope_card', scopeCard }
+  const payload = parsedJobPayload.data
 
   return {
     kind: 'create_job_handoff',
     scopeCard,
     jobPayload: {
-      service_type: scopeCard.productionServiceType,
-      description: buildKaelBookingMessageFromScopeCard(scopeCard),
-      problem_chips: scopeCard.problemChips,
-      photo_urls: Object.freeze([...(input.photoUrls ?? [])]),
-      address_district: input.addressDistrict,
-      address_building: input.addressBuilding ?? null,
-      address_unit: input.addressUnit ?? null,
-      address_floor: input.addressFloor ?? null,
-      scheduled_at: input.scheduledAt ?? null,
+      service_type: payload.service_type,
+      description: payload.description,
+      problem_chips: Object.freeze([...payload.problem_chips]),
+      photo_urls: Object.freeze([...payload.photo_urls]),
+      address_district: payload.address_district ?? addressDistrict,
+      ...(payload.address_building !== undefined ? { address_building: payload.address_building } : {}),
+      ...(payload.address_unit !== undefined ? { address_unit: payload.address_unit } : {}),
+      ...(payload.address_floor !== undefined ? { address_floor: payload.address_floor } : {}),
+      ...(payload.scheduled_at !== undefined ? { scheduled_at: payload.scheduled_at } : {}),
     },
   }
 }
@@ -141,10 +180,62 @@ export function buildKaelBookingMessageFromScopeCard(scopeCard: ServiceScopeCard
   ].join('\n')
 }
 
-function normalizeAnswerValue(value: IntakeAnswerValue): IntakeAnswerValue {
-  if (Array.isArray(value)) return Object.freeze([...new Set(value.filter((entry): entry is string => typeof entry === 'string'))])
-  if (typeof value === 'string') return value.trim()
-  return value
+function normalizeAnswerValue(question: IntakeQuestion, value: IntakeAnswerValue): IntakeAnswerValue {
+  if (value === null) return null
+
+  if (question.type === 'number') {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new TypeError(`${question.id} must be a finite number`)
+    }
+    if (question.integer && !Number.isInteger(value)) {
+      throw new RangeError(`${question.id} must be a whole number`)
+    }
+    if (question.min !== undefined && value < question.min) {
+      throw new RangeError(`${question.id} is below its minimum`)
+    }
+    if (question.max !== undefined && value > question.max) {
+      throw new RangeError(`${question.id} is above its maximum`)
+    }
+    return value
+  }
+
+  if (question.type === 'text') {
+    if (typeof value !== 'string') throw new TypeError(`${question.id} must be text`)
+    const normalized = value.trim()
+    if (question.maxLength !== undefined && normalized.length > question.maxLength) {
+      throw new RangeError(`${question.id} is too long`)
+    }
+    return normalized || null
+  }
+
+  if (question.type === 'single_select') {
+    if (typeof value !== 'string') throw new TypeError(`${question.id} must be one option`)
+    const normalized = value.trim()
+    if (!normalized) return null
+    if (!question.options?.some((option) => option.value === normalized)) {
+      throw new RangeError(`${question.id} contains an unsupported option`)
+    }
+    return normalized
+  }
+
+  if (!Array.isArray(value)) throw new TypeError(`${question.id} must be an option list`)
+  const normalized = value.map((entry) => {
+    if (typeof entry !== 'string' || !entry.trim()) {
+      throw new TypeError(`${question.id} contains an invalid option`)
+    }
+    return entry.trim()
+  })
+  const unique = [...new Set(normalized)]
+  if (question.maxSelections !== undefined && unique.length > question.maxSelections) {
+    throw new RangeError(`${question.id} has too many selections`)
+  }
+  if (!unique.every((entry) => question.options?.some((option) => option.value === entry))) {
+    throw new RangeError(`${question.id} contains an unsupported option`)
+  }
+  if (unique.includes('none') && unique.length > 1) {
+    throw new RangeError(`${question.id} cannot combine none with another option`)
+  }
+  return Object.freeze(unique)
 }
 
 function isEmptyAnswer(value: IntakeAnswerValue | undefined): boolean {
@@ -152,6 +243,40 @@ function isEmptyAnswer(value: IntakeAnswerValue | undefined): boolean {
   if (typeof value === 'string') return value.trim().length === 0
   if (Array.isArray(value)) return value.length === 0
   return false
+}
+
+function isValidRequiredAnswer(question: IntakeQuestion, value: IntakeAnswerValue | undefined): boolean {
+  if (value === undefined) return false
+  try {
+    return !isEmptyAnswer(normalizeAnswerValue(question, value))
+  } catch {
+    return false
+  }
+}
+
+function normalizePerformanceState(
+  playbook: ServicePerformancePlaybook,
+  state: ServiceIntakeState,
+): ServiceIntakeState {
+  const answers: IntakeAnswers = {}
+  for (const question of playbook.questions) {
+    const value = state.answers[question.id]
+    if (value === undefined) continue
+    try {
+      answers[question.id] = normalizeAnswerValue(question, value)
+    } catch {
+      continue
+    }
+  }
+  return Object.freeze({
+    serviceLineId: state.serviceLineId,
+    answers: Object.freeze(answers),
+    mediaCount: normalizeMediaCount(state.mediaCount),
+  })
+}
+
+function normalizeMediaCount(value: number): number {
+  return Number.isFinite(value) ? Math.min(5, Math.max(0, Math.floor(value))) : 0
 }
 
 function answerString(answers: IntakeAnswers, id: string): string | null {

@@ -6,16 +6,19 @@
 //      exactly 1 session row created.
 //   2. 5x parallel POST /jobs with the same client_request_id ->
 //      exactly 1 job row created.
-//   3. 10x serial POST /kael/chat in a burst ->
-//      first 5 succeed, next 5 receive RATE_LIMITED (HTTP 429).
-//   4. Double confirm POST /kael/chat/:id/confirm (after estimate or in-progress)
-//      returns 200 with current session state, not 409.
+//   3. 10x serial POST /kael/chat after the idempotency case ->
+//      the shared per-user budget yields at least one RATE_LIMITED response.
 
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import crypto from "node:crypto";
+import {
+  assertStagingOrLocalTargets,
+  assertSupabaseCredentials,
+  fetchWithTimeout,
+} from "./lib/staging-smoke-safety.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
@@ -46,7 +49,7 @@ function requireEnv(name) {
 
 async function adminCreateUser(supabaseUrl, serviceRoleKey, email, password) {
   const url = `${supabaseUrl}/auth/v1/admin/users`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: {
       apikey: serviceRoleKey,
@@ -62,14 +65,14 @@ async function adminCreateUser(supabaseUrl, serviceRoleKey, email, password) {
   });
   const body = await response.text();
   if (!response.ok) {
-    throw new Error(`adminCreateUser failed: ${response.status} ${body}`);
+    throw new Error(`adminCreateUser failed with HTTP ${response.status}`);
   }
   return JSON.parse(body);
 }
 
 async function adminDeleteUser(supabaseUrl, serviceRoleKey, userId) {
   const url = `${supabaseUrl}/auth/v1/admin/users/${userId}`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "DELETE",
     headers: {
       apikey: serviceRoleKey,
@@ -77,31 +80,30 @@ async function adminDeleteUser(supabaseUrl, serviceRoleKey, userId) {
     },
   });
   if (!response.ok && response.status !== 404) {
-    const body = await response.text();
-    throw new Error(`adminDeleteUser failed: ${response.status} ${body}`);
+    throw new Error(`adminDeleteUser failed with HTTP ${response.status}`);
   }
 }
 
 async function signIn(supabaseUrl, apikey, email, password) {
   const url = `${supabaseUrl}/auth/v1/token?grant_type=password`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: { apikey, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const body = await response.text();
   if (!response.ok) {
-    throw new Error(`signIn failed: ${response.status} ${body}`);
+    throw new Error(`signIn failed with HTTP ${response.status}`);
   }
   const data = JSON.parse(body);
   if (!data?.access_token) {
-    throw new Error(`signIn returned no access_token: ${body}`);
+    throw new Error("signIn returned no access_token");
   }
   return data.access_token;
 }
 
 function postJson(url, apikey, accessToken, payload) {
-  return fetch(url, {
+  return fetchWithTimeout(url, {
     method: "POST",
     headers: {
       apikey,
@@ -167,11 +169,6 @@ async function caseIdempotentJob(apiBaseUrl, apikey, accessToken) {
     Array.from({ length: 5 }, () =>
       postJson(`${apiBaseUrl}/jobs`, apikey, accessToken, payload)),
   );
-  const jobIds = new Set();
-  for (const r of results) {
-    const id = r.body?.job_id;
-    if (id) jobIds.add(id);
-  }
   // Job creation triggers AI pipeline; without provider keys this may return
   // AI_FAILED 502 for some attempts. The idempotency invariant we check is:
   // all SUCCESSFUL attempts share the same job_id.
@@ -181,16 +178,16 @@ async function caseIdempotentJob(apiBaseUrl, apikey, accessToken) {
     .map((r) => r.body?.job_id)
     .filter(Boolean);
   const uniqueOkIds = new Set(okJobIds);
-  const pass = uniqueOkIds.size <= 1; // 0 (all failed) or 1 (idempotent)
+  const pass = okCount >= 1 && uniqueOkIds.size === 1;
   console.log(
     `  status_codes=${results.map((r) => r.status).join(",")} ok_count=${okCount} unique_ok_job_ids=${uniqueOkIds.size}`,
   );
-  console.log(`  expect: unique_ok_job_ids <= 1 -> ${pass ? "PASS" : "FAIL"}`);
+  console.log(`  expect: at least one success and exactly one successful job id -> ${pass ? "PASS" : "FAIL"}`);
   return { name: "idempotent_job", pass, jobId: [...uniqueOkIds][0] ?? null };
 }
 
 async function caseRateLimit(apiBaseUrl, apikey, accessToken) {
-  console.log("\n[smoke] Case 3: 10x serial POST /kael/chat burst (expect 5 OK + 5x 429)");
+  console.log("\n[smoke] Case 3: 10x serial POST /kael/chat against the remaining per-user budget");
   const results = [];
   for (let i = 0; i < 10; i++) {
     const payload = {
@@ -228,8 +225,10 @@ async function main() {
   const supabaseUrl = requireEnv("EXPO_PUBLIC_SUPABASE_URL");
   const apikey = requireEnv("EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
   const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+  assertSupabaseCredentials(apikey, serviceRoleKey);
   const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ??
     `${supabaseUrl}/functions/v1/mobile-api`;
+  assertStagingOrLocalTargets("KAEL_X2_RUN_LIVE", supabaseUrl, apiBaseUrl);
 
   const runId = `x2-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
   const email = `${runId}@x2.staging.test`;
@@ -240,6 +239,8 @@ async function main() {
   let userId = null;
   let summary = [];
   let allPass = true;
+  let cleanupFailed = false;
+  const keepUser = process.env.KEEP_USER === "yes";
 
   try {
     const user = await adminCreateUser(
@@ -262,17 +263,20 @@ async function main() {
 
     for (const result of summary) if (!result.pass) allPass = false;
   } finally {
-    if (userId && !process.env.KEEP_USER) {
+    if (userId && !keepUser) {
       try {
         await adminDeleteUser(supabaseUrl, serviceRoleKey, userId);
         console.log(`[smoke] cleaned up user ${userId}`);
       } catch (err) {
-        console.warn(`[smoke] cleanup failed: ${err.message}`);
+        cleanupFailed = true;
+        console.error(`[smoke] cleanup failed: ${err.message}`);
       }
     } else if (userId) {
-      console.log(`[smoke] KEEP_USER set, retained user ${userId}`);
+      console.log(`[smoke] KEEP_USER=yes, retained user ${userId}`);
     }
   }
+
+  if (cleanupFailed) allPass = false;
 
   console.log("\n[smoke] === summary ===");
   console.log(JSON.stringify(summary, null, 2));

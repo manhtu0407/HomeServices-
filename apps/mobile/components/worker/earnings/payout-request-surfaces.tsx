@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -38,19 +38,21 @@ export function WorkerV5PayoutRequestHero({
   reduceTransparency: boolean
   walletIcon: ImageSourcePropType
 }) {
-  const balanceValue = typeof earnings?.net_earnings === 'number' ? earnings.net_earnings : 0
+  const recordedEarnings = typeof earnings?.net_earnings === 'number'
+    ? formatVndDong(earnings.net_earnings, language)
+    : textByLanguage(language, 'Chưa có dữ liệu', 'No data')
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-request-hero">
       {!reduceTransparency ? <HeroAura testID="worker-v5-payout-request-mint-aura" /> : null}
       <View style={styles.earningsHeroMainRow}>
         <View style={styles.earningsHeroIconShell}>
           {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-          <Image resizeMode="contain" source={walletIcon} style={styles.earningsHeroIcon} />
+          <Image contentFit="contain" source={walletIcon} style={styles.earningsHeroIcon} />
         </View>
         <View style={styles.earningsHeroCopy}>
-          <Text style={styles.earningsHeroMeta} numberOfLines={1}>{textByLanguage(language, 'Số dư khả dụng', 'Available balance')}</Text>
+          <Text style={styles.earningsHeroMeta} numberOfLines={1}>{textByLanguage(language, 'Thu nhập ròng đã ghi nhận', 'Recorded net earnings')}</Text>
           <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-payout-request-amount">
-            {formatVndDong(balanceValue, language)}
+            {recordedEarnings}
           </Text>
         </View>
       </View>
@@ -72,7 +74,7 @@ export function WorkerV5PayoutAccountCard({
   reduceTransparency: boolean
 }) {
   const hasBank = Boolean(profile?.bank_account_masked)
-  const bankName = profile?.bank_name || textByLanguage(language, 'Ngân hàng đã ghi', 'Recorded bank')
+  const bankName = profile?.bank_name || textByLanguage(language, 'Ngân hàng đã lưu', 'Recorded bank')
   return (
     <View style={[styles.bankCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-account-card">
       <WorkerV5FormulaMintCardAura
@@ -89,17 +91,17 @@ export function WorkerV5PayoutAccountCard({
         variant="panel"
       />
       <View style={styles.opportunityTextColumn} testID="worker-v5-payout-account-copy">
-        <Text style={styles.opportunityTitle} numberOfLines={2} testID="worker-v5-payout-account-title">{hasBank ? bankName : textByLanguage(language, 'Chưa có tài khoản xác minh', 'No verified account')}</Text>
-        <Text style={styles.opportunityMeta} numberOfLines={2} testID="worker-v5-payout-account-meta">{hasBank ? profile?.bank_account_masked : textByLanguage(language, 'Dùng luồng xác minh hiện hữu trước khi rút tiền.', 'Use the existing verification flow before payout.')}</Text>
+        <Text style={styles.opportunityTitle} numberOfLines={2} testID="worker-v5-payout-account-title">{hasBank ? bankName : textByLanguage(language, 'Chưa có tài khoản đã lưu', 'No recorded account')}</Text>
+        <Text style={styles.opportunityMeta} numberOfLines={2} testID="worker-v5-payout-account-meta">{hasBank ? profile?.bank_account_masked : textByLanguage(language, 'Có thể lưu tài khoản nhận tiền trong hồ sơ; yêu cầu rút tiền hiện chưa khả dụng.', 'You can record a receiving account in the profile; payout requests are unavailable.')}</Text>
         <WorkerV5DetailRail
           items={hasBank
             ? [
-              { glyph: 'identity', label: textByLanguage(language, 'Danh tính khớp', 'Identity matched') },
-              { glyph: 'check', label: textByLanguage(language, 'Đã xác minh', 'Verified') },
+              { glyph: 'document', label: textByLanguage(language, 'Tài khoản hồ sơ', 'Profile account') },
+              { glyph: 'money', label: textByLanguage(language, 'Rút tiền chưa khả dụng', 'Payout unavailable') },
             ]
             : [
-              { glyph: 'shield', label: textByLanguage(language, 'Cần xác minh', 'Verification required') },
-              { glyph: 'money', label: textByLanguage(language, 'Trước khi rút tiền', 'Before payout') },
+              { glyph: 'shield', label: textByLanguage(language, 'Chưa lưu', 'Not recorded') },
+              { glyph: 'money', label: textByLanguage(language, 'Rút tiền chưa khả dụng', 'Payout unavailable') },
             ]}
           testID="worker-v5-payout-account-detail"
         />

@@ -1,5 +1,5 @@
+import { Image } from 'expo-image'
 import {
-  Image,
   Pressable,
   StyleSheet,
   Text as RNText,
@@ -71,7 +71,7 @@ export function WorkerV5BankCard({
       <View style={styles.bankIconTile}>
         {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
         <Image
-          resizeMode="contain"
+          contentFit="contain"
           source={bankLogo ?? walletIcon}
           style={bankLogo ? styles.bankCardLogoImage : styles.utilityIcon}
           testID="worker-v5-bank-card-logo"

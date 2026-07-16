@@ -16,10 +16,10 @@ const dtoSource = readFileSync(
   resolve(root, 'supabase/functions/mobile-api/_shared/router/dtos.ts'),
   'utf8',
 )
-const broadcastSource = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/broadcasts.service.ts'),
-  'utf8',
-)
+const broadcastSource = [
+  'supabase/functions/mobile-api/_shared/services/broadcasts.service.ts',
+  'supabase/functions/mobile-api/_shared/services/broadcast-query-batches.ts',
+].map((path) => readFileSync(resolve(root, path), 'utf8')).join('\n')
 const favoriteServiceSource = readFileSync(
   resolve(root, 'supabase/functions/mobile-api/_shared/services/customer-favorite-worker.service.ts'),
   'utf8',
@@ -90,7 +90,7 @@ describe('mobile-api worker-candidate gate', () => {
 
   it('prioritizes and labels a real customer-owned favorite without exposing preference data publicly', () => {
     expect(candidateServiceSource).toContain('customer_favorite_workers')
-    expect(candidateServiceSource).toContain('is_favorite: !favorite.error && favorite.data !== null')
+    expect(candidateServiceSource).toContain('is_favorite: favorite.data !== null')
     expect(broadcastSource).toContain('loadAllFavoriteWorkerIds')
     expect(broadcastSource).toContain('favoriteWorkerIds.has')
     expect(broadcastSource).toContain('FAVORITE_WORKER_SCORE_BONUS')

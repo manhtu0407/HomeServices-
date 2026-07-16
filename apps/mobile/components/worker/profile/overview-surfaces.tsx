@@ -17,7 +17,7 @@ import type { ServiceType } from '@nestscout/shared'
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
-import { workerV5NumericInsight, workerV5ReliabilityPercentValue } from '../ui/performance'
+import { workerV5HasNumber, workerV5NumericInsight, workerV5ReliabilityPercentValue } from '../ui/performance'
 import { WorkerV5DetailRail, type WorkerV5DetailRailItem } from '../ui/worker-v5-detail-rail'
 import { styles } from './overview-styles'
 
@@ -79,18 +79,25 @@ export function WorkerV5ProfileDossierCard({
   reduceTransparency: boolean
   zipAura: WorkerV5OverviewAura
 }) {
+  const hasTrustScore = workerV5HasNumber(insights?.performance_score)
   const trustScore = workerV5NumericInsight(insights?.performance_score)
-  const services = profile?.service_types?.length
-    ? profile.service_types.map((service) => localizedServiceLabel(service, language)).join(', ')
-    : textByLanguage(language, 'Chưa có dịch vụ đã duyệt', 'No approved services')
-  const reliabilityMeta = insights?.performance_score != null
-    ? textByLanguage(language, `${trustScore}/100 · ${workerV5ReliabilityPercentValue(insights.on_time_rate_percent)} đúng hẹn`, `${trustScore}/100 · ${workerV5ReliabilityPercentValue(insights.on_time_rate_percent)} on-time`)
+  const hasOnTimeRate = workerV5HasNumber(insights?.on_time_rate_percent)
+  const onTimeSummary = hasOnTimeRate
+    ? textByLanguage(language, `${workerV5ReliabilityPercentValue(insights.on_time_rate_percent, language)} đúng hẹn`, `${workerV5ReliabilityPercentValue(insights.on_time_rate_percent, language)} on-time`)
+    : textByLanguage(language, 'Chờ dữ liệu đúng hẹn', 'On-time data pending')
+  const services = !profile
+    ? textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
+    : profile.service_types.length
+      ? profile.service_types.map((service) => localizedServiceLabel(service, language)).join(', ')
+      : textByLanguage(language, 'Chưa có dịch vụ đã duyệt', 'No approved services')
+  const reliabilityMeta = hasTrustScore
+    ? `${trustScore}/100 · ${onTimeSummary}`
     : textByLanguage(language, 'Chưa có dữ liệu hiệu suất thật', 'No real performance data')
   const approvedServices = profile?.service_types ?? []
-  const reliabilityDetails: WorkerV5DetailRailItem[] = insights?.performance_score != null
+  const reliabilityDetails: WorkerV5DetailRailItem[] = hasTrustScore
     ? [
       { glyph: 'signal', label: `${trustScore}/100` },
-      { glyph: 'arrival', label: textByLanguage(language, `${workerV5ReliabilityPercentValue(insights.on_time_rate_percent)} đúng hẹn`, `${workerV5ReliabilityPercentValue(insights.on_time_rate_percent)} on-time`) },
+      { glyph: 'arrival', label: onTimeSummary },
     ]
     : [
       { glyph: 'signal', label: textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data') },

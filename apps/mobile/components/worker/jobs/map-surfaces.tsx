@@ -47,7 +47,8 @@ export function WorkerV5EtaSummaryCard({
   const distanceSignal = route
     ? liveDistanceSignal(route, language)
     : buildWorkerV5RouteDistanceSignal(deal, language)
-  const lensValue = etaSignal.hasSignal ? workerV5EtaLensValue(etaSignal.label) : '0'
+  const etaMinuteValue = etaSignal.hasSignal ? workerV5EtaLensValue(etaSignal.label) : null
+  const lensValue = etaMinuteValue ?? textByLanguage(language, 'Chờ', 'Wait')
   return (
     <View style={[styles.etaSummaryCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-eta-summary-card">
       {!reduceTransparency ? (
@@ -70,8 +71,10 @@ export function WorkerV5EtaSummaryCard({
         <Text style={styles.etaMeta} numberOfLines={2}>{distanceSignal.hasSignal ? distanceSignal.meta : (deal ? routeDestinationLabel(deal, language) : textByLanguage(language, 'Chưa có điểm đến', 'No destination'))}</Text>
       </View>
       <View style={styles.etaLens}>
-        <Text style={styles.etaLensValue}>{lensValue}</Text>
-        <Text style={styles.etaLensLabel}>{etaSignal.hasSignal ? textByLanguage(language, 'phút', 'min') : textByLanguage(language, 'chờ', 'wait')}</Text>
+        <Text style={styles.etaLensValue} testID="worker-v5-eta-lens-value">{lensValue}</Text>
+        <Text style={styles.etaLensLabel} testID="worker-v5-eta-lens-label">
+          {etaMinuteValue ? textByLanguage(language, 'phút', 'min') : textByLanguage(language, 'dữ liệu', 'data')}
+        </Text>
       </View>
     </View>
   )

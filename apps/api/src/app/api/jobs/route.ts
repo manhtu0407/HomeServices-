@@ -1,26 +1,21 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { jobCreateSchema } from '@nestscout/shared'
 import { createJobWithEstimate } from '@/lib/jobs/create-job'
-import { checkRateLimit, AI_SESSION_LIMIT } from '@/lib/rate-limit'
+import { readJsonRequestBounded } from '@/lib/http/request-json'
 
 export async function POST(request: Request) {
   const auth = await authenticateRequest(request, ['customer'])
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )
   }
 
-  const rateCheck = checkRateLimit(`job_create:${auth.user.id}`, AI_SESSION_LIMIT)
-  if (!rateCheck.allowed) {
-    return apiError('RATE_LIMITED', 'Vui lòng thử lại sau', 429)
-  }
-
   let body: unknown
   try {
-    body = await request.json()
+    body = await readJsonRequestBounded(request)
   } catch {
     return apiError('VALIDATION', 'Dữ liệu không hợp lệ', 400)
   }

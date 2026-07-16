@@ -7,18 +7,18 @@ import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
 
 export function ChatBubble({
-  role,
+  speaker,
   testID,
   text,
   tokens,
 }: {
-  role: 'customer' | 'worker' | 'kael'
+  speaker: 'customer' | 'worker' | 'kael'
   testID?: string
   text: string
   tokens: CustomerThemeTokens
 }) {
-  const isCustomer = role === 'customer'
-  const isWorker = role === 'worker'
+  const isCustomer = speaker === 'customer'
+  const isWorker = speaker === 'worker'
   return (
     <View style={[styles.chatBubble, isCustomer ? styles.chatBubbleCustomer : styles.chatBubbleKael, { backgroundColor: isCustomer ? tokens.primary : isWorker ? tokens.ghost : tokens.raised, borderColor: tokens.border }]} testID={testID}>
       <Text style={[styles.chatBubbleText, { color: isCustomer ? tokens.primaryText : tokens.text }]}>{text}</Text>

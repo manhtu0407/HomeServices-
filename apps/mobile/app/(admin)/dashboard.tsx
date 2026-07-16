@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { KaelTextField } from '@/components/ui/kael-primitives'
 import { typography } from '@/design/theme'
+import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { adminLearningService } from '@/lib/services'
 import type { KaelLearningCandidateSummary } from '@/lib/api-types'
@@ -10,7 +11,271 @@ import type { KaelLearningCandidateSummary } from '@/lib/api-types'
 type PendingAction = {
   candidateId: string
   action: 'approve' | 'reject'
+  requestId: number
 } | null
+
+type AdminDashboardErrorKey = 'approveFailed' | 'loadFailed' | 'rejectFailed' | 'rejectReasonRequired'
+type AdminDashboardNoticeKey = 'approved' | 'rejected'
+
+type AdminDashboardCopy = {
+  actions: {
+    approve: string
+    approving: string
+    refresh: string
+    reject: string
+    rejecting: string
+    signOut: string
+    switchAccount: string
+  }
+  candidateTypes: {
+    analysisRule: string
+    declineReason: string
+    fallback: string
+    pricePriorUpdate: string
+    safetyPattern: string
+    serviceKnowledge: string
+  }
+  detail: { problem: string; source: string }
+  empty: { body: string; title: string }
+  errors: Record<AdminDashboardErrorKey, string>
+  evidenceSources: {
+    candidatePayload: string
+    completedReviewedJobs: string
+    fallback: string
+    learningRuleMonitor: string
+  }
+  eyebrow: string
+  loading: string
+  metrics: { area: string; confidence: string; evidence: string }
+  notices: Record<AdminDashboardNoticeKey, string>
+  pendingCount: (count: number) => string
+  pendingCountLoading: string
+  pendingCountUnavailable: string
+  reasonPlaceholder: string
+  scopeAny: string
+  services: {
+    cleaning: string
+    electrical: string
+    handyman: string
+    hvac: string
+    plumbing: string
+    systemWide: string
+    upholstery: string
+  }
+  slaOverdue: (days: number) => string
+  statusPending: string
+  subtitle: string
+  title: string
+}
+
+const adminDashboardCopy: Record<AppLanguage, AdminDashboardCopy> = {
+  vi: {
+    actions: {
+      approve: 'Duyệt',
+      approving: 'Đang duyệt...',
+      refresh: 'Tải lại',
+      reject: 'Từ chối',
+      rejecting: 'Đang lưu...',
+      signOut: 'Đăng xuất',
+      switchAccount: 'Đổi tài khoản',
+    },
+    candidateTypes: {
+      analysisRule: 'Quy tắc phân tích',
+      declineReason: 'Lý do từ chối',
+      fallback: 'Đề xuất học',
+      pricePriorUpdate: 'Cập nhật khoảng giá',
+      safetyPattern: 'Mẫu an toàn',
+      serviceKnowledge: 'Tri thức dịch vụ',
+    },
+    detail: { problem: 'Mã vấn đề', source: 'Nguồn' },
+    empty: {
+      body: 'Kael sẽ hiển thị đề xuất mới sau khi đợt học tạo ra bằng chứng hợp lệ.',
+      title: 'Không có đề xuất cần duyệt',
+    },
+    errors: {
+      approveFailed: 'Không thể duyệt đề xuất lúc này. Vui lòng thử lại.',
+      loadFailed: 'Không thể tải danh sách duyệt lúc này. Vui lòng thử lại.',
+      rejectFailed: 'Không thể từ chối đề xuất lúc này. Vui lòng thử lại.',
+      rejectReasonRequired: 'Nhập lý do từ chối trước khi lưu quyết định.',
+    },
+    evidenceSources: {
+      candidatePayload: 'Dữ liệu đề xuất đã kiểm tra',
+      completedReviewedJobs: 'Việc đã hoàn tất và được đánh giá',
+      fallback: 'Bằng chứng đã lưu',
+      learningRuleMonitor: 'Giám sát quy tắc học',
+    },
+    eyebrow: 'Quản trị Kael',
+    loading: 'Đang tải danh sách duyệt...',
+    metrics: { area: 'Khu vực', confidence: 'Tin cậy', evidence: 'Bằng chứng' },
+    notices: {
+      approved: 'Đã duyệt đề xuất học của Kael.',
+      rejected: 'Đã từ chối và lưu trữ đề xuất học của Kael.',
+    },
+    pendingCount: (count) => `${count} đề xuất chờ duyệt`,
+    pendingCountLoading: 'Đang tải số đề xuất...',
+    pendingCountUnavailable: 'Chưa có số liệu duyệt',
+    reasonPlaceholder: 'Lý do từ chối',
+    scopeAny: 'Không giới hạn',
+    services: {
+      cleaning: 'Vệ sinh nhà',
+      electrical: 'Sửa điện',
+      handyman: 'Sửa chữa nhỏ và lắp đặt',
+      hvac: 'Điều hòa và không khí trong nhà',
+      plumbing: 'Sửa nước',
+      systemWide: 'Toàn hệ thống',
+      upholstery: 'Chăm sóc sofa và đồ vải',
+    },
+    slaOverdue: (days) => `Quá thời hạn duyệt ${days} ngày`,
+    statusPending: 'Chờ duyệt',
+    subtitle: 'Chỉ các đề xuất cần người duyệt mới xuất hiện ở đây. Mọi quyết định đều được ghi vào nhật ký kiểm tra của hệ thống.',
+    title: 'Duyệt đề xuất học',
+  },
+  en: {
+    actions: {
+      approve: 'Approve',
+      approving: 'Approving...',
+      refresh: 'Refresh',
+      reject: 'Reject',
+      rejecting: 'Saving...',
+      signOut: 'Sign out',
+      switchAccount: 'Switch account',
+    },
+    candidateTypes: {
+      analysisRule: 'Analysis rule',
+      declineReason: 'Decline reason',
+      fallback: 'Learning proposal',
+      pricePriorUpdate: 'Price range update',
+      safetyPattern: 'Safety pattern',
+      serviceKnowledge: 'Service knowledge',
+    },
+    detail: { problem: 'Problem code', source: 'Source' },
+    empty: {
+      body: 'Kael will show new proposals after the learning batch produces valid evidence.',
+      title: 'No proposals need review',
+    },
+    errors: {
+      approveFailed: 'Unable to approve this proposal right now. Please try again.',
+      loadFailed: 'Unable to load the review queue right now. Please try again.',
+      rejectFailed: 'Unable to reject this proposal right now. Please try again.',
+      rejectReasonRequired: 'Enter a rejection reason before saving this decision.',
+    },
+    evidenceSources: {
+      candidatePayload: 'Validated proposal payload',
+      completedReviewedJobs: 'Completed and reviewed jobs',
+      fallback: 'Saved evidence',
+      learningRuleMonitor: 'Learning rule monitor',
+    },
+    eyebrow: 'Kael administration',
+    loading: 'Loading the review queue...',
+    metrics: { area: 'Area', confidence: 'Confidence', evidence: 'Evidence' },
+    notices: {
+      approved: "Kael's learning proposal was approved.",
+      rejected: "Kael's learning proposal was rejected and archived.",
+    },
+    pendingCount: (count) => `${count} learning ${count === 1 ? 'proposal' : 'proposals'} awaiting review`,
+    pendingCountLoading: 'Loading review count...',
+    pendingCountUnavailable: 'Review count unavailable',
+    reasonPlaceholder: 'Rejection reason',
+    scopeAny: 'No restriction',
+    services: {
+      cleaning: 'Home cleaning',
+      electrical: 'Electrical repair',
+      handyman: 'Minor repair and installation',
+      hvac: 'Air conditioning and indoor air',
+      plumbing: 'Plumbing repair',
+      systemWide: 'System-wide',
+      upholstery: 'Sofa and fabric care',
+    },
+    slaOverdue: (days) => `Past the ${days}-day review window`,
+    statusPending: 'Awaiting review',
+    subtitle: 'Only proposals requiring manual review appear here. Every decision is recorded in the Edge audit log.',
+    title: 'Review learning proposals',
+  },
+}
+
+type AdminDashboardState = {
+  activeLoadRequestId: number
+  candidates: KaelLearningCandidateSummary[]
+  error: AdminDashboardErrorKey | null
+  hasLoadedCandidates: boolean
+  loading: boolean
+  notice: AdminDashboardNoticeKey | null
+  pendingAction: PendingAction
+  rejectReasons: Record<string, string>
+}
+
+type AdminDashboardAction =
+  | { type: 'loadStarted'; requestId: number }
+  | { type: 'loadSucceeded'; candidates: KaelLearningCandidateSummary[]; requestId: number }
+  | { type: 'loadFailed'; error: 'loadFailed'; requestId: number }
+  | { type: 'actionStarted'; pendingAction: Exclude<PendingAction, null> }
+  | { type: 'actionSucceeded'; clearRejectReasonFor?: string; notice: AdminDashboardNoticeKey; requestId: number }
+  | { type: 'actionFailed'; error: 'approveFailed' | 'rejectFailed'; requestId: number }
+  | { type: 'actionFinished'; requestId: number }
+  | { type: 'rejectReasonChanged'; candidateId: string; text: string }
+  | { type: 'validationFailed'; error: 'rejectReasonRequired' }
+
+const initialAdminDashboardState: AdminDashboardState = {
+  activeLoadRequestId: 0,
+  candidates: [],
+  error: null,
+  hasLoadedCandidates: false,
+  loading: true,
+  notice: null,
+  pendingAction: null,
+  rejectReasons: {},
+}
+
+function adminDashboardReducer(
+  state: AdminDashboardState,
+  action: AdminDashboardAction,
+): AdminDashboardState {
+  switch (action.type) {
+    case 'loadStarted':
+      return {
+        ...state,
+        activeLoadRequestId: action.requestId,
+        error: null,
+        loading: true,
+      }
+    case 'loadSucceeded':
+      if (state.activeLoadRequestId !== action.requestId) return state
+      return {
+        ...state,
+        candidates: action.candidates,
+        error: null,
+        hasLoadedCandidates: true,
+        loading: false,
+      }
+    case 'loadFailed':
+      if (state.activeLoadRequestId !== action.requestId) return state
+      return { ...state, error: action.error, loading: false }
+    case 'actionStarted':
+      return { ...state, error: null, notice: null, pendingAction: action.pendingAction }
+    case 'actionSucceeded': {
+      if (state.pendingAction?.requestId !== action.requestId) return state
+      if (!action.clearRejectReasonFor) {
+        return { ...state, error: null, notice: action.notice }
+      }
+      const rejectReasons = { ...state.rejectReasons }
+      delete rejectReasons[action.clearRejectReasonFor]
+      return { ...state, error: null, notice: action.notice, rejectReasons }
+    }
+    case 'actionFailed':
+      if (state.pendingAction?.requestId !== action.requestId) return state
+      return { ...state, error: action.error }
+    case 'actionFinished':
+      if (state.pendingAction?.requestId !== action.requestId) return state
+      return { ...state, pendingAction: null }
+    case 'rejectReasonChanged':
+      return {
+        ...state,
+        rejectReasons: { ...state.rejectReasons, [action.candidateId]: action.text },
+      }
+    case 'validationFailed':
+      return { ...state, error: action.error }
+  }
+}
 
 const MANUAL_REVIEW_SLA_DAYS = 3
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -18,114 +283,137 @@ const DAY_MS = 24 * 60 * 60 * 1000
 export default function AdminDashboard() {
   const { replace } = useRouter()
   const { signOut } = useAuth()
-  const [candidates, setCandidates] = useState<KaelLearningCandidateSummary[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null)
-  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({})
-
-  const manualCount = useMemo(() => candidates.length, [candidates.length])
+  const language = useAppLanguage()
+  const copy = adminDashboardCopy[language]
+  const [state, dispatch] = useReducer(adminDashboardReducer, initialAdminDashboardState)
+  const loadRequestIdRef = useRef(0)
+  const actionRequestIdRef = useRef(0)
+  const { candidates, error, hasLoadedCandidates, loading, notice, pendingAction, rejectReasons } = state
+  const manualCount = candidates.length
+  const pendingCountLabel = hasLoadedCandidates
+    ? copy.pendingCount(manualCount)
+    : loading
+      ? copy.pendingCountLoading
+      : copy.pendingCountUnavailable
 
   const loadCandidates = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const result = await adminLearningService.listCandidates('manual_review')
-    if (result.success) {
-      setCandidates(result.data.candidates)
-    } else {
-      setError(result.error)
+    const requestId = ++loadRequestIdRef.current
+    dispatch({ type: 'loadStarted', requestId })
+    try {
+      const result = await adminLearningService.listCandidates('manual_review')
+      if (result.success) {
+        dispatch({ type: 'loadSucceeded', candidates: result.data.candidates, requestId })
+      } else {
+        dispatch({ type: 'loadFailed', error: 'loadFailed', requestId })
+      }
+    } catch {
+      dispatch({ type: 'loadFailed', error: 'loadFailed', requestId })
     }
-    setLoading(false)
   }, [])
 
   useEffect(() => {
     let active = true
-    setLoading(true)
-    adminLearningService.listCandidates('manual_review').then((result) => {
-      if (!active) return
-      if (result.success) {
-        setCandidates(result.data.candidates)
-        setError(null)
-      } else {
-        setError(result.error)
-      }
-      setLoading(false)
-    })
+    void adminLearningService.listCandidates('manual_review')
+      .then((result) => {
+        if (!active) return
+        if (result.success) {
+          dispatch({ type: 'loadSucceeded', candidates: result.data.candidates, requestId: 0 })
+        } else {
+          dispatch({ type: 'loadFailed', error: 'loadFailed', requestId: 0 })
+        }
+      })
+      .catch(() => {
+        if (active) dispatch({ type: 'loadFailed', error: 'loadFailed', requestId: 0 })
+      })
     return () => {
       active = false
     }
   }, [])
 
   async function approveCandidate(candidateId: string) {
-    setPendingAction({ candidateId, action: 'approve' })
-    setNotice(null)
-    const result = await adminLearningService.approveCandidate(candidateId)
-    if (result.success) {
-      setNotice('Đã duyệt đề xuất học của Kael.')
-      await loadCandidates()
-    } else {
-      setError(result.error)
+    const requestId = ++actionRequestIdRef.current
+    dispatch({
+      type: 'actionStarted',
+      pendingAction: { candidateId, action: 'approve', requestId },
+    })
+    try {
+      const result = await adminLearningService.approveCandidate(candidateId)
+      if (result.success) {
+        dispatch({ type: 'actionSucceeded', notice: 'approved', requestId })
+        await loadCandidates()
+      } else {
+        dispatch({ type: 'actionFailed', error: 'approveFailed', requestId })
+      }
+    } catch {
+      dispatch({ type: 'actionFailed', error: 'approveFailed', requestId })
+    } finally {
+      dispatch({ type: 'actionFinished', requestId })
     }
-    setPendingAction(null)
   }
 
   async function rejectCandidate(candidateId: string) {
     const reason = rejectReasons[candidateId]?.trim()
     if (!reason) {
-      setError('Nhập lý do từ chối trước khi lưu quyết định.')
+      dispatch({ type: 'validationFailed', error: 'rejectReasonRequired' })
       return
     }
-    setPendingAction({ candidateId, action: 'reject' })
-    setNotice(null)
-    const result = await adminLearningService.rejectCandidate(candidateId, { reason })
-    if (result.success) {
-      setNotice('Đã từ chối và lưu trữ đề xuất học của Kael.')
-      setRejectReasons((current) => {
-        const next = { ...current }
-        delete next[candidateId]
-        return next
-      })
-      await loadCandidates()
-    } else {
-      setError(result.error)
+    const requestId = ++actionRequestIdRef.current
+    dispatch({
+      type: 'actionStarted',
+      pendingAction: { candidateId, action: 'reject', requestId },
+    })
+    try {
+      const result = await adminLearningService.rejectCandidate(candidateId, { reason })
+      if (result.success) {
+        dispatch({
+          type: 'actionSucceeded',
+          clearRejectReasonFor: candidateId,
+          notice: 'rejected',
+          requestId,
+        })
+        await loadCandidates()
+      } else {
+        dispatch({ type: 'actionFailed', error: 'rejectFailed', requestId })
+      }
+    } catch {
+      dispatch({ type: 'actionFailed', error: 'rejectFailed', requestId })
+    } finally {
+      dispatch({ type: 'actionFinished', requestId })
     }
-    setPendingAction(null)
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container} testID="admin-dashboard">
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Quản trị Kael</Text>
-        <Text style={styles.title}>Duyệt đề xuất học</Text>
-        <Text style={styles.subtitle}>
-          Chỉ các đề xuất cần người duyệt mới xuất hiện ở đây. Mọi quyết định được ghi audit ở Edge.
-        </Text>
+        <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
+        <Text style={styles.title}>{copy.title}</Text>
+        <Text style={styles.subtitle}>{copy.subtitle}</Text>
         <View style={styles.headerMeta}>
-          <Text style={styles.metaText}>{manualCount} đề xuất chờ duyệt</Text>
+          <Text style={styles.metaText}>{pendingCountLabel}</Text>
           <Pressable
+            accessibilityLabel={copy.actions.refresh}
             accessibilityRole="button"
             onPress={() => void loadCandidates()}
             style={styles.refreshButton}
             testID="admin-learning-refresh"
           >
-            <Text style={styles.refreshText}>Tải lại</Text>
+            <Text style={styles.refreshText}>{copy.actions.refresh}</Text>
           </Pressable>
         </View>
       </View>
 
-      {notice ? <Text style={styles.notice} testID="admin-learning-notice">{notice}</Text> : null}
-      {error ? <Text style={styles.error} testID="admin-learning-error">{error}</Text> : null}
+      {notice ? <Text style={styles.notice} testID="admin-learning-notice">{copy.notices[notice]}</Text> : null}
+      {error ? <Text style={styles.error} testID="admin-learning-error">{copy.errors[error]}</Text> : null}
 
       {loading ? (
         <View style={styles.stateBox} testID="admin-learning-loading">
           <ActivityIndicator />
-          <Text style={styles.stateText}>Đang tải danh sách duyệt...</Text>
+          <Text style={styles.stateText}>{copy.loading}</Text>
         </View>
       ) : candidates.length === 0 ? (
         <View style={styles.stateBox} testID="admin-learning-empty">
-          <Text style={styles.stateTitle}>Không có đề xuất cần duyệt</Text>
-          <Text style={styles.stateText}>Kael sẽ hiển thị đề xuất mới sau khi batch learning tạo bằng chứng hợp lệ.</Text>
+          <Text style={styles.stateTitle}>{copy.empty.title}</Text>
+          <Text style={styles.stateText}>{copy.empty.body}</Text>
         </View>
       ) : (
         <View style={styles.list} testID="admin-learning-list">
@@ -139,29 +427,33 @@ export default function AdminDashboard() {
               <View key={candidate.id} style={styles.candidateRow} testID={`admin-learning-candidate-${candidate.id}`}>
                 <View style={styles.rowHeader}>
                   <View>
-                    <Text style={styles.candidateTitle}>{candidateTypeLabel(candidate.candidate_type)}</Text>
-                    <Text style={styles.candidateMeta}>{candidateSkill(candidate)} · {serviceLabel(candidate.affected_service)}</Text>
+                    <Text style={styles.candidateTitle}>{candidateTypeLabel(candidate.candidate_type, copy)}</Text>
+                    <Text style={styles.candidateMeta}>{candidateSkill(candidate)} · {serviceLabel(candidate.affected_service, copy)}</Text>
                   </View>
                   <View style={styles.statusStack}>
-                    <Text style={styles.statusPill}>Chờ duyệt</Text>
-                    {slaOverdue ? <Text style={styles.slaWarning}>Quá hạn {MANUAL_REVIEW_SLA_DAYS} ngày</Text> : null}
+                    <Text style={styles.statusPill}>{copy.statusPending}</Text>
+                    {slaOverdue ? <Text style={styles.slaWarning}>{copy.slaOverdue(MANUAL_REVIEW_SLA_DAYS)}</Text> : null}
                   </View>
                 </View>
 
                 <View style={styles.metrics}>
-                  <Metric label="Bằng chứng" value={`${candidate.evidence_count}`} />
-                  <Metric label="Tin cậy" value={formatPercent(candidate.confidence)} />
-                  <Metric label="Khu vực" value={candidate.affected_district ?? 'Không giới hạn'} />
+                  <Metric label={copy.metrics.evidence} value={`${candidate.evidence_count}`} />
+                  <Metric label={copy.metrics.confidence} value={formatPercent(candidate.confidence)} />
+                  <Metric label={copy.metrics.area} value={candidate.affected_district ?? copy.scopeAny} />
                 </View>
 
-                <Text style={styles.detailText}>Mã vấn đề: {candidate.affected_problem ?? 'Không giới hạn'}</Text>
-                <Text style={styles.detailText}>Nguồn: {evidenceSource(candidate)}</Text>
+                <Text style={styles.detailText}>{copy.detail.problem}: {candidate.affected_problem ?? copy.scopeAny}</Text>
+                <Text style={styles.detailText}>{copy.detail.source}: {evidenceSource(candidate, copy)}</Text>
 
                 <KaelTextField
-                  accessibilityLabel="Lý do từ chối"
+                  accessibilityLabel={copy.reasonPlaceholder}
                   inputShellStyle={styles.reasonInputShell}
-                  onChangeText={(text) => setRejectReasons((current) => ({ ...current, [candidate.id]: text }))}
-                  placeholder="Lý do từ chối"
+                  onChangeText={(text) => dispatch({
+                    type: 'rejectReasonChanged',
+                    candidateId: candidate.id,
+                    text,
+                  })}
+                  placeholder={copy.reasonPlaceholder}
                   placeholderTextColor="#7A8B85"
                   style={styles.reasonInputText}
                   testID={`admin-learning-reason-${candidate.id}`}
@@ -170,6 +462,7 @@ export default function AdminDashboard() {
 
                 <View style={styles.actions}>
                   <Pressable
+                    accessibilityLabel={approving ? copy.actions.approving : copy.actions.approve}
                     accessibilityRole="button"
                     accessibilityState={{ disabled }}
                     disabled={disabled}
@@ -177,9 +470,10 @@ export default function AdminDashboard() {
                     style={[styles.actionButton, disabled ? styles.disabledButton : null]}
                     testID={`admin-learning-approve-${candidate.id}`}
                   >
-                    <Text style={styles.actionText}>{approving ? 'Đang duyệt...' : 'Duyệt'}</Text>
+                    <Text style={styles.actionText}>{approving ? copy.actions.approving : copy.actions.approve}</Text>
                   </Pressable>
                   <Pressable
+                    accessibilityLabel={rejecting ? copy.actions.rejecting : copy.actions.reject}
                     accessibilityRole="button"
                     accessibilityState={{ disabled }}
                     disabled={disabled}
@@ -187,7 +481,7 @@ export default function AdminDashboard() {
                     style={[styles.actionButton, styles.rejectButton, disabled ? styles.disabledButton : null]}
                     testID={`admin-learning-reject-${candidate.id}`}
                   >
-                    <Text style={styles.rejectText}>{rejecting ? 'Đang lưu...' : 'Từ chối'}</Text>
+                    <Text style={styles.rejectText}>{rejecting ? copy.actions.rejecting : copy.actions.reject}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -198,20 +492,22 @@ export default function AdminDashboard() {
 
       <View style={styles.accountActions}>
         <Pressable
+          accessibilityLabel={copy.actions.switchAccount}
           accessibilityRole="button"
           onPress={() => replace('/(auth)/login')}
           style={styles.accountButton}
           testID="admin-shell-switch-account"
         >
-          <Text style={styles.accountButtonText}>Đổi tài khoản</Text>
+          <Text style={styles.accountButtonText}>{copy.actions.switchAccount}</Text>
         </Pressable>
         <Pressable
+          accessibilityLabel={copy.actions.signOut}
           accessibilityRole="button"
           onPress={() => void signOut?.()}
           style={[styles.accountButton, styles.secondaryButton]}
           testID="admin-shell-sign-out"
         >
-          <Text style={styles.accountButtonText}>Đăng xuất</Text>
+          <Text style={styles.accountButtonText}>{copy.actions.signOut}</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -227,21 +523,21 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function candidateTypeLabel(type: string) {
+function candidateTypeLabel(type: string, copy: AdminDashboardCopy) {
   return ({
-    price_prior_update: 'Cập nhật khoảng giá',
-    analysis_rule: 'Quy tắc phân tích',
-    service_knowledge_candidate: 'Tri thức dịch vụ',
-    safety_pattern_candidate: 'Mẫu an toàn',
-    decline_reason_candidate: 'Lý do từ chối',
-  } as Record<string, string>)[type] ?? 'Đề xuất học'
+    price_prior_update: copy.candidateTypes.pricePriorUpdate,
+    analysis_rule: copy.candidateTypes.analysisRule,
+    service_knowledge_candidate: copy.candidateTypes.serviceKnowledge,
+    safety_pattern_candidate: copy.candidateTypes.safetyPattern,
+    decline_reason_candidate: copy.candidateTypes.declineReason,
+  } as Record<string, string>)[type] ?? copy.candidateTypes.fallback
 }
 
-function serviceLabel(service: KaelLearningCandidateSummary['affected_service']) {
-  if (service === 'electrical') return 'Sửa điện'
-  if (service === 'plumbing') return 'Sửa nước'
-  if (service === 'cleaning') return 'Vệ sinh nhà'
-  return 'Toàn hệ thống'
+function serviceLabel(
+  service: KaelLearningCandidateSummary['affected_service'],
+  copy: AdminDashboardCopy,
+) {
+  return service ? copy.services[service] : copy.services.systemWide
 }
 
 function candidateSkill(candidate: KaelLearningCandidateSummary) {
@@ -249,12 +545,12 @@ function candidateSkill(candidate: KaelLearningCandidateSummary) {
   return typeof skill === 'string' ? skill : 'Kael'
 }
 
-function evidenceSource(candidate: KaelLearningCandidateSummary) {
+function evidenceSource(candidate: KaelLearningCandidateSummary, copy: AdminDashboardCopy) {
   const source = candidate.evidence_snapshot?.source ?? candidate.suggested_payload.evidence_source
-  if (source === 'completed_reviewed_jobs') return 'Việc đã hoàn tất và được đánh giá'
-  if (source === 'candidate_payload') return 'Payload đề xuất đã kiểm tra'
-  if (source === 'learning_rule_monitor') return 'Giám sát quy tắc học'
-  return 'Bằng chứng đã lưu'
+  if (source === 'completed_reviewed_jobs') return copy.evidenceSources.completedReviewedJobs
+  if (source === 'candidate_payload') return copy.evidenceSources.candidatePayload
+  if (source === 'learning_rule_monitor') return copy.evidenceSources.learningRuleMonitor
+  return copy.evidenceSources.fallback
 }
 
 function isManualReviewSlaOverdue(createdAt: string) {

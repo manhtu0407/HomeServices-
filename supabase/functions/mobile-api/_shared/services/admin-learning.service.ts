@@ -42,9 +42,12 @@ export async function evaluatePriceSynthesisAbCaseAdmin(
   secrets: EdgeAiSecrets,
 ): Promise<PriceSynthesisAbEvaluation> {
   if (ctx.role !== "admin") {
-    apiFailure("AUTH_FORBIDDEN", "Chi admin moi duoc chay A/B price_synthesis", 403);
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được chạy A/B price_synthesis", 403);
   }
-  return runPriceSynthesisAbCase(input, secrets);
+  return runPriceSynthesisAbCase(input, secrets, {
+    client: db(ctx),
+    actorId: ctx.user.id,
+  });
 }
 
 export async function processKaelLearningQueueAdmin(
@@ -121,7 +124,7 @@ export async function approveKaelLearningCandidateAdmin(
     await denyKaelLearningCandidateAdminAccess(ctx, "approve", candidateId);
   }
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("admin_approve_learning_candidate", {
+    db(ctx).rpc("admin_approve_learning_candidate_atomic", {
       p_candidate_id: candidateId,
       p_admin_id: ctx.user.id,
       p_review_note: input.review_note ?? null,
@@ -137,31 +140,19 @@ export async function approveKaelLearningCandidateAdmin(
   if (row.ok !== true) {
     mapLearningCandidateReviewError(nullableString(row.error_code), "approve");
   }
-  const knowledgeApplyResult = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("apply_approved_learning_candidate_to_knowledge", {
-      p_candidate_id: candidateId,
-      p_admin_id: ctx.user.id,
-    }),
-  );
-  if (knowledgeApplyResult.error) {
-    apiFailure("DB_ERROR", "Không thể áp dụng tri thức Kael đã duyệt", 500);
-  }
-  const knowledgeApplyRow = knowledgeApplyResult.data?.[0] ?? null;
   return {
     ok: true,
     candidate_id: asString(row.candidate_id) || candidateId,
     rule_id: nullableString(row.rule_id),
     rule_version: nullableNumber(row.rule_version),
     status: asString(row.status) || "auto_promoted",
-    knowledge_apply: knowledgeApplyRow
-      ? {
-        ok: knowledgeApplyRow.ok === true,
-        error_code: nullableString(knowledgeApplyRow.error_code),
-        knowledge_table: nullableString(knowledgeApplyRow.knowledge_table),
-        record_key: nullableString(knowledgeApplyRow.record_key),
-        knowledge_version: nullableNumber(knowledgeApplyRow.knowledge_version),
-      }
-      : null,
+    knowledge_apply: {
+      ok: row.knowledge_ok === true,
+      error_code: nullableString(row.knowledge_error_code),
+      knowledge_table: nullableString(row.knowledge_table),
+      record_key: nullableString(row.record_key),
+      knowledge_version: nullableNumber(row.knowledge_version),
+    },
   };
 }
 

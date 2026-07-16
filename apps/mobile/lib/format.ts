@@ -1,6 +1,4 @@
-// Phase 5.8 (plan §22.10.I, 2026-05-23): one helper for VND formatting.
-// Locale aware so EN mode does not silently fall back to Vietnamese grouping.
-// Keeps every surface honest about currency presentation.
+// Locale-aware formatting prevents English mode from inheriting Vietnamese grouping.
 import type { AppLanguage } from './app-language'
 
 const vndFormatters: Record<AppLanguage, Intl.NumberFormat> = {

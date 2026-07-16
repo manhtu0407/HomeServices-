@@ -64,7 +64,7 @@ Description: ${description}`,
   ]
 }
 
-// Intake-diagnosis (2026-06-04): an upgraded intent classifier that also decides
+// The conversation-aware intent classifier also decides
 // whether Kael should ask ONE specific clarification question before estimating,
 // using recent conversation context. Drives smart clarification (STRUCTURES.md A4)
 // + LLM-assisted scope/sentiment signals. Returns intentResultSchema shape.

@@ -46,9 +46,11 @@ describe('KC7 voice transcript store (Plan.md §39)', () => {
   it('refuses to store a transcript that still carries raw PII or is empty', () => {
     // Empty after trim -> not storable.
     expect(scrubTranscriptForStorage('    ').ok).toBe(false)
-    // A long raw digit run that survives scrubbing is rejected by the residual guard.
+    // A long account-like digit run is scrubbed before the residual guard.
     const forced = scrubTranscriptForStorage('so tai khoan 1234567890123456789')
-    expect(forced.ok).toBe(false)
+    expect(forced.ok).toBe(true)
+    expect(forced.scrubbed).toContain('[bank-account]')
+    expect(forced.scrubbed).not.toContain('1234567890123456789')
   })
 
   it('buildVoiceTranscriptRow drops unstorable transcripts and defaults to on-device STT', () => {

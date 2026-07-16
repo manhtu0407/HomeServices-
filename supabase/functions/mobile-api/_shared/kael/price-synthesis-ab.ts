@@ -3,6 +3,7 @@ import { SERVICE_TYPES } from "../../../_shared/domain.ts";
 import type { AIProvider, EdgeAiSecrets } from "./types.ts";
 import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "./types.ts";
 import { callStructuredAI } from "./structured-call.ts";
+import type { KaelSpendGate } from "./spend-gate.ts";
 import { KAEL_ROUTING_CONFIG, maxTokensForPurpose } from "./routing.config.ts";
 
 export const priceSynthesisAbCaseSchema = z.object({
@@ -63,11 +64,18 @@ export type PriceSynthesisAbEvaluation = {
 export async function evaluatePriceSynthesisAbCase(
   input: PriceSynthesisAbCaseInput,
   secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
 ): Promise<PriceSynthesisAbEvaluation> {
   const route = KAEL_ROUTING_CONFIG.price_synthesis;
   const [perplexity, anthropic] = await Promise.all([
-    evaluateProvider("perplexity", "sonar", input, secrets),
-    evaluateProvider(route.primary.provider, route.primary.model, input, secrets),
+    evaluateProvider("perplexity", "sonar", input, secrets, spendGate),
+    evaluateProvider(
+      route.primary.provider,
+      route.primary.model,
+      input,
+      secrets,
+      spendGate,
+    ),
   ]);
 
   return {
@@ -84,6 +92,7 @@ async function evaluateProvider(
   model: string,
   input: PriceSynthesisAbCaseInput,
   secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
 ): Promise<ProviderEval> {
   const route = KAEL_ROUTING_CONFIG.price_synthesis;
   const result = await callStructuredAI({
@@ -95,7 +104,7 @@ async function evaluateProvider(
     temperature: 0.1,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 0,
-  }, priceSynthesisAbResultSchema, secrets);
+  }, priceSynthesisAbResultSchema, secrets, spendGate);
 
   if (!result.success) {
     const schemaResponse = result.code === "SCHEMA_INVALID"

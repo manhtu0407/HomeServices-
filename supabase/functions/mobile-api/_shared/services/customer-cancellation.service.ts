@@ -81,10 +81,21 @@ export async function requestCustomerCancellation(
     );
     if (existing.error || !existing.data) return null;
 
+    const cancellationId = asString(existing.data.id);
     const subCase = asCustomerCancellationSubCase(existing.data.sub_case);
     const reasonCode = nullableString(existing.data.reason_code) ?? input.reason_code;
+    await recordCustomerCancellationReview(client, {
+      jobId,
+      customerId: ctx.user.id,
+      cancellationId,
+    }).catch(() => {
+      console.warn("mobile-api customer cancellation memory repair failed", {
+        jobId,
+        cancellationId,
+      });
+    });
     return {
-      cancellation_id: asString(existing.data.id),
+      cancellation_id: cancellationId,
       job_id: jobId,
       status: "requested" as const,
       job_status: jobStatus,
@@ -230,24 +241,19 @@ export async function requestCustomerCancellation(
       .eq("id", jobId)
       .maybeSingle(),
   );
+  if (participants.error) {
+    console.warn("mobile-api cancellation participant lookup failed", {
+      jobId,
+      errorCode: participants.error.code,
+    });
+  }
   const customerId = nullableString(participants.data?.customer_id) ?? ctx.user.id;
   const workerId = workerIdFromRow ?? nullableString(participants.data?.worker_id);
 
   await recordCustomerCancellationReview(client, {
     jobId,
     customerId,
-    workerId,
     cancellationId,
-    reason: input.reason_note ?? reasonCode,
-    subCase,
-    classification: {
-      ...localClassification,
-      reasonCode: localClassification.reasonCode,
-      category: reasonCategory as typeof localClassification.category,
-      adminReviewRequired,
-    },
-    abuse,
-    phase0Outcome,
   }).catch(() => {
     console.warn("mobile-api customer cancellation review write failed", {
       jobId,

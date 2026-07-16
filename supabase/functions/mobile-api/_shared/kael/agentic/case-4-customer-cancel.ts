@@ -76,30 +76,14 @@ export type CustomerCancellationPhase0Outcome = {
 export type RecordCustomerCancellationReviewInput = {
   readonly jobId: string | null;
   readonly customerId: string | null;
-  readonly workerId: string | null;
   readonly cancellationId: string | null;
-  readonly reason: string;
-  readonly subCase: CustomerCancellationSubCase;
-  readonly classification: CustomerCancellationClassification;
-  readonly abuse: CustomerCancellationAbuseEvaluation;
-  readonly phase0Outcome: CustomerCancellationPhase0Outcome;
 };
 
 export type CustomerCancellationReviewDbClient = {
-  from(table: string): {
-    select(columns?: string): CustomerCancellationReviewQuery;
-    insert(value: unknown): CustomerCancellationReviewQuery;
-    upsert(value: unknown): CustomerCancellationReviewQuery;
-  };
-};
-
-type CustomerCancellationReviewQuery = {
-  eq(column: string, value: unknown): CustomerCancellationReviewQuery;
-  maybeSingle(): PromiseLike<CustomerCancellationDbResult>;
-  then<TResult1 = CustomerCancellationDbResult, TResult2 = never>(
-    onfulfilled?: ((value: CustomerCancellationDbResult) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
-  ): PromiseLike<TResult1 | TResult2>;
+  rpc(
+    name: string,
+    args: Record<string, unknown>,
+  ): PromiseLike<CustomerCancellationDbResult>;
 };
 
 type CustomerCancellationDbResult = {
@@ -274,76 +258,16 @@ export async function recordCustomerCancellationReview(
   client: CustomerCancellationReviewDbClient,
   input: RecordCustomerCancellationReviewInput,
 ) {
-  if (!input.customerId) return;
+  if (!input.customerId || !input.jobId || !input.cancellationId) return;
 
-  const existing = await client
-    .from("customer_kael_memory")
-    .select("trust_signals, safe_metadata")
-    .eq("customer_id", input.customerId)
-    .maybeSingle();
-  const existingData = asRecord(existing?.data);
-  const trustSignals = asRecord(existingData.trust_signals);
-  const safeMetadata = asRecord(existingData.safe_metadata);
-  const observedAt = new Date().toISOString();
-
-  await client.from("customer_kael_memory").upsert({
-    customer_id: input.customerId,
-    trust_signals: {
-      ...trustSignals,
-      ...input.abuse.trustSignalsPatch,
-      last_customer_cancellation_reason: input.classification.reasonCode,
-      last_customer_cancellation_category: input.classification.category,
-    },
-    safe_metadata: {
-      ...safeMetadata,
-      last_customer_cancellation_review: {
-        job_id: input.jobId,
-        cancellation_id: input.cancellationId,
-        worker_id: input.workerId,
-        reason_code: input.classification.reasonCode,
-        reason_category: input.classification.category,
-        sub_case: input.subCase,
-        abuse_signals: input.abuse.signals,
-        sanitized_reason: sanitizeReviewExcerpt(input.reason),
-        phase0_no_monetary_penalty: input.phase0Outcome.phase0NoMonetaryPenalty,
-        worker_goodwill: input.phase0Outcome.workerGoodwill,
-        autonomous_action: false,
-        observed_at: observedAt,
-      },
-    },
-    last_observed_at: observedAt,
+  const result = await client.rpc("record_customer_cancellation_memory_atomic", {
+    p_cancellation_id: input.cancellationId,
+    p_customer_id: input.customerId,
+    p_job_id: input.jobId,
   });
-
-  const queueNeeded =
-    input.classification.adminReviewRequired ||
-    input.abuse.adminReviewRequired ||
-    input.subCase === "after_worker_accept" ||
-    input.subCase === "after_worker_completed_trigger_dispute";
-  if (!queueNeeded) return;
-
-  await client.from("kael_admin_queue").insert({
-    job_id: input.jobId,
-    actor_id: input.customerId,
-    actor_role: "customer",
-    queue_type: "customer_cancellation_review",
-    priority: "medium",
-    status: "open",
-    escalation_level: input.subCase === "after_worker_completed_trigger_dispute" ? "hard" : "soft",
-    reason_code: input.classification.reasonCode,
-    response_summary: input.subCase === "after_worker_completed_trigger_dispute"
-      ? "defer_to_case_5_dispute"
-      : "customer_cancellation_review",
-    safe_metadata: {
-      case: "customer_cancel",
-      sub_case: input.subCase,
-      worker_id: input.workerId,
-      reason_category: input.classification.category,
-      abuse_signals: input.abuse.signals,
-      phase0_no_monetary_penalty: true,
-      worker_goodwill: input.phase0Outcome.workerGoodwill,
-      sanitized_reason: sanitizeReviewExcerpt(input.reason),
-    },
-  });
+  if (result.error) {
+    throw new Error("Customer cancellation memory RPC failed");
+  }
 }
 
 export function customerCancellationAbuseFromSignals(
@@ -413,18 +337,4 @@ function normalizeText(input: string): string {
 
 function hasAny(text: string, needles: readonly string[]) {
   return needles.some((needle) => text.includes(needle));
-}
-
-function sanitizeReviewExcerpt(input: string): string {
-  return input
-    .replace(/\b(?:0|\+?84)?\d{8,10}\b/g, "[redacted-number]")
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
-    .replace(/[^\S\r\n]+/g, " ")
-    .trim()
-    .slice(0, 240);
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return value as Record<string, unknown>;
 }

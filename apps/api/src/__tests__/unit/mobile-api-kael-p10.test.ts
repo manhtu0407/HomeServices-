@@ -130,6 +130,18 @@ describe('Kael P10 demanding customer case', () => {
     expect(unaccented.escalationLevel).toBe('hard')
   })
 
+  it.each([
+    ['Tôi muốn xem thêm lựa chọn trước khi đặt thợ.', 'detail_oriented'],
+    ['Ghế này bọc lụa nên cần vệ sinh nhẹ.', 'none'],
+    ['Tôi sẽ trả tiền cho thợ sau khi xác nhận hoàn tất.', 'none'],
+  ] as const)('does not hard-escalate benign Vietnamese wording: %s', (message, expectedNuance) => {
+    const detection = detectDemandingCustomerPatterns({ message, qaCount: 1 })
+
+    expect(detection.expectedNuance).toBe(expectedNuance)
+    expect(detection.pressureSignals).toEqual([])
+    expect(detection.escalationLevel).toBe('none')
+  })
+
   it('renders demanding-customer responses in English when English mode is selected', () => {
     const detailDetection = detectDemandingCustomerPatterns({
       message: 'Tôi muốn xem lý do tính giá và chứng chỉ của thợ.',
@@ -159,7 +171,7 @@ describe('Kael P10 demanding customer case', () => {
       { data: { id: 'queue-1' }, error: null },
     ])
     const detection = detectDemandingCustomerPatterns({
-      message: 'Số tôi 0901234567, giảm giá không tôi khiếu nại.',
+      message: 'Số tôi 0901234567, email tu@example.com, giảm giá không tôi khiếu nại.',
       qaCount: 5,
       cancelCount: 0,
     })
@@ -169,7 +181,7 @@ describe('Kael P10 demanding customer case', () => {
       jobId: 'job-1',
       actorId: 'customer-1',
       actorRole: 'customer',
-      message: 'Số tôi 0901234567, giảm giá không tôi khiếu nại.',
+      message: 'Số tôi 0901234567, email tu@example.com, giảm giá không tôi khiếu nại.',
       detection,
       response,
     })
@@ -188,6 +200,51 @@ describe('Kael P10 demanding customer case', () => {
     ])
     expect(client.calls[1]).toMatchObject({ table: 'kael_admin_queue' })
     expect(JSON.stringify(client.calls)).not.toContain('0901234567')
+    expect(JSON.stringify(client.calls)).not.toContain('tu@example.com')
+  })
+
+  it('fails closed when the defensive interaction log cannot be persisted', async () => {
+    const client = makeSequenceClient([
+      { data: null, error: { code: 'INTERACTION_LOG_UNAVAILABLE' } },
+    ])
+    const detection = detectDemandingCustomerPatterns({
+      message: 'Hoàn tiền ngay không tôi sẽ khiếu nại.',
+      qaCount: 5,
+    })
+
+    await expect(recordDemandingCustomerInteraction(client, {
+      jobId: 'job-1',
+      actorId: 'customer-1',
+      actorRole: 'customer',
+      message: 'Hoàn tiền ngay không tôi sẽ khiếu nại.',
+      detection,
+      response: buildDemandingCustomerResponse(detection),
+    })).rejects.toThrow('KAEL_DEMANDING_INTERACTION_LOG_FAILED')
+    expect(client.calls.map((call) => call.table)).toEqual(['kael_interaction_log'])
+  })
+
+  it('fails closed when a promised demanding-customer escalation cannot enter the admin queue', async () => {
+    const client = makeSequenceClient([
+      { data: { id: 'interaction-1' }, error: null },
+      { data: null, error: { code: 'ADMIN_QUEUE_UNAVAILABLE' } },
+    ])
+    const detection = detectDemandingCustomerPatterns({
+      message: 'Hoàn tiền ngay không tôi sẽ khiếu nại.',
+      qaCount: 5,
+    })
+
+    await expect(recordDemandingCustomerInteraction(client, {
+      jobId: 'job-1',
+      actorId: 'customer-1',
+      actorRole: 'customer',
+      message: 'Hoàn tiền ngay không tôi sẽ khiếu nại.',
+      detection,
+      response: buildDemandingCustomerResponse(detection),
+    })).rejects.toThrow('KAEL_DEMANDING_ESCALATION_QUEUE_FAILED')
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'kael_interaction_log',
+      'kael_admin_queue',
+    ])
   })
 
   it('T10-test-7: keeps detection accuracy above the Case 2 acceptance threshold', () => {

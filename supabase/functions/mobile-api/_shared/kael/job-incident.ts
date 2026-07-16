@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { AIRequest, EdgeAiSecrets } from "./types.ts";
 import { callStructuredAI, type StructuredAIInvoker } from "./structured-call.ts";
+import type { KaelSpendGate } from "./spend-gate.ts";
 import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
@@ -32,6 +33,7 @@ export type JobIncidentAssistantInput = {
   }[];
   readonly language?: KaelPromptLanguage;
   readonly secrets: EdgeAiSecrets;
+  readonly spendGate: KaelSpendGate;
   readonly callAI?: StructuredAIInvoker;
 };
 
@@ -97,7 +99,7 @@ export async function runJobIncidentAssistant(
       buildRequest(input, route, language),
       jobIncidentAnswerSchema,
       input.secrets,
-      undefined,
+      input.spendGate,
       input.callAI,
     );
     if (!result.success) continue;

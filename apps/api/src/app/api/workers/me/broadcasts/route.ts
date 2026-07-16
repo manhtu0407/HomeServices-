@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   const auth = await authenticateRequest(request, ['worker'])
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )

@@ -57,7 +57,7 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
 }))
 
 jest.mock('../kael-chat/pending-intake', () => ({
-  setPendingKaelChatDraft: (draft: unknown) => mockSetPendingKaelChatDraft(draft),
+  setPendingKaelChatDraft: (ownerId: string, draft: unknown) => mockSetPendingKaelChatDraft(ownerId, draft),
   takePendingKaelChatDraft: jest.fn(),
 }))
 
@@ -120,6 +120,11 @@ function buildWorkflow() {
   }
 }
 
+function selectTomorrowQuickSchedule(timeIndex = 0) {
+  fireEvent.press(screen.getByTestId('customer-v21-booking-date-1'))
+  fireEvent.press(screen.getByTestId(`customer-v21-booking-time-${timeIndex}`))
+}
+
 beforeEach(() => {
   mockRouteParams = {}
   mockAuthValue = {
@@ -131,13 +136,7 @@ beforeEach(() => {
   mockSetPendingKaelChatDraft.mockClear()
   mockSetPendingKaelChatDraft.mockResolvedValue(undefined)
   mockPlacesAutocomplete.mockReset()
-  mockPlacesAutocomplete.mockResolvedValue({
-    data: {
-      fallback_used: false,
-      suggestions: [],
-    },
-    success: true,
-  })
+  mockPlacesAutocomplete.mockImplementation(() => new Promise<never>(() => undefined))
   mockAudioRecorder.prepareToRecordAsync.mockReset()
   mockAudioRecorder.prepareToRecordAsync.mockResolvedValue(undefined)
   mockAudioRecorder.record.mockReset()
@@ -359,13 +358,12 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
       fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
       fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can Kael tim hieu them truoc khi bao gia')
-      fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
-      fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
+      selectTomorrowQuickSchedule()
       fireEvent.press(screen.getByTestId(`customer-v21-problem-${firstProblemChip}`))
       fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
       await waitFor(() => {
-        expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
           description: 'Can Kael tim hieu them truoc khi bao gia',
           problemChips: [firstProblemChip],
           profileId,
@@ -406,12 +404,11 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can lap ke nho trong phong khach')
-    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
+    selectTomorrowQuickSchedule()
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
     await waitFor(() => {
-      expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
         mediaCount: 1,
         photoDrafts: [expect.objectContaining({ fileName: 'wall.jpg', type: 'image', uri: 'file://wall.jpg' })],
         profileId: 'task_scope',
@@ -431,8 +428,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-booking-error')).toHaveTextContent(/giờ bắt đầu mong muốn/i)
     expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
 
-    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
+    selectTomorrowQuickSchedule()
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
     await waitFor(() => expect(mockSetPendingKaelChatDraft).toHaveBeenCalledTimes(1))
@@ -504,13 +500,12 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
     fireEvent.press(screen.getByTestId('customer-v21-booking-address-suggestion-0'))
     fireEvent.press(screen.getByTestId('customer-v21-service-plumbing'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
+    selectTomorrowQuickSchedule()
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Vòi nước bếp bị rò và cần thợ kiểm tra')
     fireEvent.press(screen.getByTestId(`customer-v21-problem-${PROBLEM_CHIPS.plumbing[2]}`))
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
       addressLabel: 'Tòa A, Vinhomes Grand Park, TP. Thủ Đức',
       serviceType: 'plumbing',
     }))
@@ -540,7 +535,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
     expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn/)
 
-    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-1'))
     expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn giờ/)
 
     fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
@@ -586,7 +581,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
       await waitFor(() => {
-        expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
           scheduleMode: 'scheduled',
           scheduleWindow: {
             date: '2026-07-23',
@@ -695,8 +690,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
   it('does not show a separate continue-to-media CTA on the service step', () => {
     render(<CustomerBookingEntrySurface />)
 
-    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
+    selectTomorrowQuickSchedule(1)
     fireEvent.press(screen.getByTestId('customer-v21-service-plumbing'))
     expect(screen.getByTestId('customer-v21-selected-service-visual-panel')).toBeOnTheScreen()
 
@@ -715,14 +709,13 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
     const typedDescription = 'Ổ cắm phòng khách bị nóng và có mùi khét'
     fireEvent.press(screen.getByTestId('customer-v21-service-electrical'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
-    fireEvent.press(screen.getByTestId('customer-v21-booking-time-2'))
+    selectTomorrowQuickSchedule(2)
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Tòa A, Quận 7')
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), typedDescription)
     fireEvent.press(screen.getByTestId(`customer-v21-problem-${PROBLEM_CHIPS.electrical[2]}`))
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
       addressLabel: 'Tòa A, Quận 7',
       clientRequestId: '11111111-1111-4111-8111-111111111111',
       description: typedDescription,
@@ -732,11 +725,11 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       serviceType: 'electrical',
       source: 'booking',
     }))
-    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Dịch vụ: Sửa điện')
-    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Khu vực: Tòa A, Quận 7')
-    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Thời gian:')
-    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Bắt đầu lúc 14:00')
-    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain(`Mô tả: ${typedDescription}`)
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain('Dịch vụ: Sửa điện')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain('Khu vực: Tòa A, Quận 7')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain('Thời gian:')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain('Bắt đầu lúc 14:00')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain(`Mô tả: ${typedDescription}`)
     expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
     expect(mockReplace).not.toHaveBeenCalled()
     await act(async () => {

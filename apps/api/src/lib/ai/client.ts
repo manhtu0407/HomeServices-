@@ -53,6 +53,9 @@ function isRetryable(error: unknown): boolean {
 }
 
 export async function callAI(request: AIRequest): Promise<AIResult> {
+  if (request.signal?.aborted) {
+    return abortedResult(request.provider)
+  }
   const providerFn = providers[request.provider]
   const timeout = TIMEOUT_MS[request.provider]
   let lastError: unknown
@@ -66,11 +69,16 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
         attempt,
         backoffMs: delay,
       })
-      await new Promise((resolve) => setTimeout(resolve, delay))
+      if (!(await waitForRetry(delay, request.signal))) {
+        lastError = request.signal?.reason ?? new DOMException('Aborted', 'AbortError')
+        break
+      }
     }
 
     // Fresh controller per attempt — aborting on retry would break retried call.
     const controller = new AbortController()
+    const relayCallerAbort = () => controller.abort(request.signal?.reason)
+    request.signal?.addEventListener('abort', relayCallerAbort, { once: true })
 
     try {
       const response = await withTimeout(
@@ -92,14 +100,18 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
     } catch (error) {
       lastError = error
 
-      if (!isRetryable(error) || attempt === MAX_RETRIES) {
+      if (request.signal?.aborted || !isRetryable(error) || attempt === MAX_RETRIES) {
         break
       }
+    } finally {
+      request.signal?.removeEventListener('abort', relayCallerAbort)
     }
   }
 
   const errorCode =
-    lastError instanceof AIProviderError
+    request.signal?.aborted
+      ? 'AI_CALL_ABORTED'
+      : lastError instanceof AIProviderError
       ? `HTTP_${lastError.statusCode}`
       : 'AI_CALL_FAILED'
 
@@ -108,7 +120,7 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
     model: request.model,
     error: errorCode,
     code: errorCode,
-    retriesExhausted: true,
+    retriesExhausted: !request.signal?.aborted,
   })
 
   return {
@@ -118,4 +130,29 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
     retryable: false,
     success: false,
   }
+}
+
+function abortedResult(provider: AIProvider): AIResult {
+  return {
+    provider,
+    error: 'AI_CALL_ABORTED',
+    code: 'AI_CALL_ABORTED',
+    retryable: false,
+    success: false,
+  }
+}
+
+function waitForRetry(ms: number, signal?: AbortSignal): Promise<boolean> {
+  if (signal?.aborted) return Promise.resolve(false)
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve(true)
+    }, ms)
+    const onAbort = () => {
+      clearTimeout(timer)
+      resolve(false)
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
 }

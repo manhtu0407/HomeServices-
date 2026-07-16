@@ -1,4 +1,9 @@
-import { createKaelSseParser } from '../kael-stream'
+import {
+  createKaelStreamUtf8Decoder,
+  createKaelSseParser,
+  isCustomerKaelStreamResult,
+  isWorkerKaelStreamResult,
+} from '../kael-stream'
 
 describe('Kael SSE parser', () => {
   it('parses split stage, token, result, and heartbeat frames', () => {
@@ -26,5 +31,86 @@ describe('Kael SSE parser', () => {
     const parser = createKaelSseParser()
 
     expect(parser.push('event: stage\ndata: {"stage":"market_lookup","status":"done","progress":2}\n\n')).toEqual([])
+    expect(parser.push('event: stage\ndata: {"stage":"invented","status":"running","progress":0.5,"updated_at":"2026-06-04T00:00:00.000Z"}\n\n')).toEqual([])
+    expect(parser.push('event: stage\ndata: {"stage":"market_lookup","status":"running","progress":2,"updated_at":"2026-06-04T00:00:00.000Z"}\n\n')).toEqual([])
+    expect(parser.push('event: stage\ndata: {"stage":"market_lookup","status":"running","progress":0.5}\n\n')).toEqual([])
+  })
+
+  it('sanitizes hostile error frames before handlers or UI receive them', () => {
+    const parser = createKaelSseParser()
+
+    expect(parser.push('event: error\ndata: {"code":"not_found","message":"private\\u202Edetail"}\n\n')).toEqual([
+      { code: 'STREAM_ERROR', message: 'Kael stream failed.', type: 'error' },
+    ])
+    expect(parser.push('event: error\ndata: {"code":"STREAM_BUSY","message":"Kael is busy"}\n\n')).toEqual([
+      { code: 'STREAM_BUSY', message: 'Kael is busy', type: 'error' },
+    ])
+  })
+
+  it('accepts only structurally complete customer stream results', () => {
+    const valid = {
+      session: {
+        id: 'session-1',
+        job_id: null,
+        customer_id: 'customer-1',
+        service_type: 'electrical',
+        status: 'active',
+        case_phase: 'analysis',
+        diagnosis_scope: null,
+        scheduled_at: null,
+        estimate: null,
+        started_at: '2026-07-15T00:00:00.000Z',
+        estimate_ready_at: null,
+        total_turns: 0,
+        total_cost_usd: 0,
+        next_action: 'await_input',
+      },
+      turns: [],
+    }
+
+    expect(isCustomerKaelStreamResult(valid)).toBe(true)
+    expect(isCustomerKaelStreamResult({ session: { id: 'session-1' }, turns: [] })).toBe(false)
+    expect(isCustomerKaelStreamResult({
+      ...valid,
+      session: { ...valid.session, total_cost_usd: Number.POSITIVE_INFINITY },
+    })).toBe(false)
+  })
+
+  it('accepts only structurally complete worker stream results', () => {
+    const valid = {
+      session: {
+        id: 'session-1',
+        job_id: 'job-1',
+        worker_id: 'worker-1',
+        status: 'active',
+        started_at: '2026-07-15T00:00:00.000Z',
+        closed_at: null,
+        total_turns: 0,
+        progress: null,
+      },
+      turns: [],
+    }
+
+    expect(isWorkerKaelStreamResult(valid)).toBe(true)
+    expect(isWorkerKaelStreamResult({ ...valid, turns: {} })).toBe(false)
+    expect(isWorkerKaelStreamResult({
+      ...valid,
+      session: { ...valid.session, total_turns: -1 },
+    })).toBe(false)
+  })
+
+  it('rejects an unterminated frame before its buffer can grow without bound', () => {
+    const parser = createKaelSseParser()
+
+    expect(() => parser.push('x'.repeat(300_000))).toThrow('STREAM_FRAME_TOO_LARGE')
+  })
+
+  it('rejects invalid and truncated UTF-8 stream bytes', () => {
+    const invalid = createKaelStreamUtf8Decoder()
+    expect(() => invalid.push(new Uint8Array([0xc3, 0x28]))).toThrow('STREAM_INVALID_ENCODING')
+
+    const truncated = createKaelStreamUtf8Decoder()
+    expect(truncated.push(new Uint8Array([0xe2, 0x82]))).toBe('')
+    expect(() => truncated.push(undefined, true)).toThrow('STREAM_INVALID_ENCODING')
   })
 })

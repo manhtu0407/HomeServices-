@@ -4,6 +4,7 @@ import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, intentResultSchema } from "./types.ts
 import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from "./prompts.ts";
 import { callStructuredAI } from "./structured-call.ts";
+import type { KaelSpendGate } from "./spend-gate.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
 import { hasUnsupportedRepairIntent, scrubSensitiveForLLM, timed } from "./utils.ts";
@@ -13,6 +14,7 @@ export async function classifyIntent(
   problemChips: string[],
   description: string,
   secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
 ): Promise<
   | { success: true; intent: IntentResult; attempts: IntentAttemptLog[] }
   | {
@@ -34,6 +36,7 @@ export async function classifyIntent(
       candidate,
       messages,
       secrets,
+      spendGate,
     );
     attempts.push(attempt.log);
     if (attempt.success) {
@@ -55,6 +58,7 @@ async function classifyIntentWithProvider(
   route: { provider: AIProvider; model: string; latencyBudgetMs: number },
   messages: AIMessage[],
   secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
 ): Promise<
   | { success: true; intent: IntentResult; log: IntentAttemptLog }
   | { success: false; log: IntentAttemptLog }
@@ -69,7 +73,7 @@ async function classifyIntentWithProvider(
       temperature: 0.1,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
-    }, intentResultSchema, secrets)
+    }, intentResultSchema, secrets, spendGate)
   );
   const baseLog = {
     provider: route.provider,
@@ -122,6 +126,7 @@ export async function diagnoseIntake(
   problemChips: string[],
   description: string,
   secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
   conversationContext?: string,
   language: "vi" | "en" = "vi",
 ): Promise<
@@ -143,7 +148,12 @@ export async function diagnoseIntake(
   const attempts: IntentAttemptLog[] = [];
 
   for (const candidate of circuitAwareProviderCandidatesForPurpose("intent_classification")) {
-    const attempt = await diagnoseIntakeWithProvider(candidate, messages, secrets);
+    const attempt = await diagnoseIntakeWithProvider(
+      candidate,
+      messages,
+      secrets,
+      spendGate,
+    );
     attempts.push(attempt.log);
     if (attempt.success) {
       return { success: true, intent: attempt.intent, attempts };
@@ -164,6 +174,7 @@ async function diagnoseIntakeWithProvider(
   route: { provider: AIProvider; model: string; latencyBudgetMs: number },
   messages: AIMessage[],
   secrets: EdgeAiSecrets,
+  spendGate: KaelSpendGate,
 ): Promise<
   | { success: true; intent: IntentResult; log: IntentAttemptLog }
   | { success: false; log: IntentAttemptLog }
@@ -180,7 +191,7 @@ async function diagnoseIntakeWithProvider(
       temperature: 0.2,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
-    }, intentResultSchema, secrets)
+    }, intentResultSchema, secrets, spendGate)
   );
   const baseLog = {
     provider: route.provider,
