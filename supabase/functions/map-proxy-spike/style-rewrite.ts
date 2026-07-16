@@ -10,8 +10,8 @@
 //   corrupt MapLibre tile templates like /{z}/{x}/{y}.pbf. String parsing keeps the
 //   braces literal.
 // - The /u/{host}/{path} passthrough mapping is a spike decision: it survives unknown
-//   style variants (tm/lm/dm/hm/tf) without per-resource routes. MP2 may keep it or
-//   specialize to /map/tiles|glyphs|sprite per Plan.md §37.5 — decide at MP2.
+//   style variants (tm/lm/dm/hm/tf) without per-resource routes. Keep this
+//   generic until the production proxy contract selects per-resource routes.
 
 const VIETMAP_HOST_ALLOWLIST = new Set([
   "maps.vietmap.vn",
@@ -34,6 +34,31 @@ export function isAllowedVietmapHost(host: string): boolean {
   return VIETMAP_HOST_ALLOWLIST.has(host.toLowerCase());
 }
 
+export function containsCredentialMaterial(
+  payload: string,
+  apiKey: string,
+): boolean {
+  const decoded = decodePercentEncoding(payload);
+  return decoded.includes(apiKey) || /apikey/i.test(decoded) ||
+    /[?&](?:api_key|key|access_token)=/i.test(decoded);
+}
+
+function decodePercentEncoding(value: string): string {
+  let decoded = value;
+  for (let pass = 0; pass < 4; pass += 1) {
+    const next = decoded.replace(/(?:%[0-9a-f]{2})+/gi, (encoded) => {
+      try {
+        return decodeURIComponent(encoded);
+      } catch {
+        return encoded;
+      }
+    });
+    if (next === decoded) break;
+    decoded = next;
+  }
+  return decoded;
+}
+
 function stripKeyParams(query: string | undefined): {
   query: string;
   stripped: number;
@@ -42,7 +67,9 @@ function stripKeyParams(query: string | undefined): {
   const pairs = query.slice(1).split("&").filter(Boolean);
   let stripped = 0;
   const kept = pairs.filter((pair) => {
-    const name = pair.split("=")[0]?.toLowerCase() ?? "";
+    const rawName = pair.split("=")[0] ?? "";
+    const name = decodePercentEncoding(rawName.replace(/\+/g, " "))
+      .toLowerCase();
     if (KEY_PARAM_NAMES.has(name)) {
       stripped += 1;
       return false;
@@ -78,9 +105,12 @@ export function rewriteVietmapUrl(
 }
 
 export function rewriteVietmapStyleJson(
-  rawStyle: Record<string, unknown>,
+  rawStyle: unknown,
   proxyBaseUrl: string,
 ): VietmapStyleRewriteResult {
+  if (!isMapLibreV8Style(rawStyle)) {
+    throw new TypeError("STYLE_RESPONSE_INVALID");
+  }
   let rewrittenUrlCount = 0;
   let strippedKeyCount = 0;
   const untouchedExternalUrls: string[] = [];
@@ -118,6 +148,18 @@ export function rewriteVietmapStyleJson(
   }
 
   return { style, rewrittenUrlCount, strippedKeyCount, untouchedExternalUrls };
+}
+
+function isMapLibreV8Style(
+  value: unknown,
+): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const style = value as Record<string, unknown>;
+  return style.version === 8 &&
+    Boolean(style.sources) &&
+    typeof style.sources === "object" &&
+    !Array.isArray(style.sources) &&
+    Array.isArray(style.layers);
 }
 
 // Inverse mapping for the proxy passthrough route: /u/{host}/{path}?{query} -> upstream

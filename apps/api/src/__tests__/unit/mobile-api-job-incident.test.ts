@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { runJobIncidentAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/job-incident'
 import type { StructuredAIInvoker } from '../../../../../supabase/functions/mobile-api/_shared/kael/structured-call'
+import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 const incidentInput = {
   job: {
@@ -27,6 +28,7 @@ const incidentInput = {
   }],
   language: 'vi' as const,
   secrets: {},
+  spendGate: allowKaelSpendForTest('worker-1'),
 }
 
 describe('Kael job incident assistant', () => {
@@ -56,7 +58,7 @@ describe('Kael job incident assistant', () => {
     })
     expect(callAI).toHaveBeenCalledWith(expect.objectContaining({
       purpose: 'job_incident',
-    }), expect.any(Object), undefined, expect.any(Object))
+    }), expect.any(Object), expect.any(Object), expect.any(Object))
     const request = requests[0]
     const prompt = request?.messages[0]?.content
     expect(typeof prompt).toBe('string')

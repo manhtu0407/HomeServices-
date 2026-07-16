@@ -1,6 +1,7 @@
 import { HCMC_DISTRICTS, normalizeDistrict, type LocalDeal } from '@nestscout/shared'
 
 import type { AppLanguage } from '@/lib/app-language'
+import { formatHcmcScheduledAt } from '@/lib/hcmc-schedule'
 
 import {
   firstNumberFromPriceLabel,
@@ -37,7 +38,10 @@ export function workerV5ShiftProfileCoverageLabel(profile: WorkerV5ProfileForLab
 }
 
 export function localizedWorkerBriefLines(lines: readonly string[] | null | undefined, language: AppLanguage) {
-  const normalized = (lines ?? []).map((line) => line.trim()).filter(Boolean)
+  const normalized = (lines ?? []).flatMap((line) => {
+    const trimmed = line.trim()
+    return trimmed ? [trimmed] : []
+  })
   const localized = normalized.filter((line) => {
     const hasVietnameseText = /[\u00C0-\u1EF9]/.test(line)
     if (language === 'en') return !hasVietnameseText
@@ -64,10 +68,12 @@ export function workerV5Initials(name: string) {
   return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('')
 }
 
-export function workerV5TimeChoiceLabel(value: string | null | undefined, language: AppLanguage) {
+export function workerV5TimeChoiceLabel(value: string | null | undefined, language: AppLanguage, scheduledAt?: string | null) {
+  const scheduledLabel = formatHcmcScheduledAt(scheduledAt)
+  if (scheduledLabel) return scheduledLabel
   if (value === 'now') return textByLanguage(language, 'Ngay', 'Now')
   if (value === 'scheduled') return textByLanguage(language, 'Đã hẹn', 'Scheduled')
-  return textByLanguage(language, 'Theo don', 'By work')
+  return textByLanguage(language, 'Chưa có lịch', 'Schedule pending')
 }
 
 export function canShowWorkerAddress(deal: LocalDeal) {
@@ -150,7 +156,7 @@ export function workerStatusStage(status: LocalDeal['status'] | null | undefined
 
 export function formatScopePriceRange(scope: LocalDeal['scopeChange'], language: AppLanguage) {
   if (!scope?.priceMin || !scope?.priceMax) {
-    return '0'
+    return textByLanguage(language, 'Chờ Kael tính giá', 'Waiting for Kael estimate')
   }
   const min = formatVnd(scope.priceMin, language)
   const max = formatVnd(scope.priceMax, language)
@@ -293,9 +299,13 @@ export function formatWorkerDistrict(value: string, language: AppLanguage) {
 
 export function normalizeWorkerV5DistrictSelectionList(values: string[]) {
   const districts: string[] = []
+  const seenDistricts = new Set<string>()
   for (const value of values) {
     const district = normalizeWorkerV5DistrictSelection(value)
-    if (district && !districts.includes(district)) districts.push(district)
+    if (district && !seenDistricts.has(district)) {
+      seenDistricts.add(district)
+      districts.push(district)
+    }
   }
   return districts
 }
@@ -322,12 +332,15 @@ export function workerV5DistrictDraftFromSelection(values: string[], language: A
 
 export function parseWorkerV5ServiceAreaDraft(value: string, _language: AppLanguage) {
   const districts: string[] = []
+  const seenDistricts = new Set<string>()
   const invalid: string[] = []
   const labels: string[] = []
   const entries = value
     .split(',')
-    .map((entry) => formatLooseLabel(entry))
-    .filter(Boolean)
+    .flatMap((entry) => {
+      const label = formatLooseLabel(entry)
+      return label ? [label] : []
+    })
   for (const entry of entries) {
     const district = normalizeWorkerV5DistrictSelection(entry)
     if (!district) {
@@ -336,7 +349,10 @@ export function parseWorkerV5ServiceAreaDraft(value: string, _language: AppLangu
       continue
     }
     labels.push(entry)
-    if (!districts.includes(district)) districts.push(district)
+    if (!seenDistricts.has(district)) {
+      seenDistricts.add(district)
+      districts.push(district)
+    }
   }
   return { districts, invalid, labels }
 }
@@ -344,8 +360,10 @@ export function parseWorkerV5ServiceAreaDraft(value: string, _language: AppLangu
 export function normalizeServiceAreaDraftText(value: string) {
   return value
     .split(',')
-    .map((entry) => formatLooseLabel(entry).toLowerCase())
-    .filter(Boolean)
+    .flatMap((entry) => {
+      const label = formatLooseLabel(entry).toLowerCase()
+      return label ? [label] : []
+    })
     .join('|')
 }
 

@@ -49,17 +49,32 @@ function readSupabaseSecretKey(
 ): string | undefined {
   const current = getEnv("SUPABASE_SECRET_KEYS");
   if (current) {
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(current) as Record<string, string>;
-      if (parsed.default) return parsed.default;
-      const first = Object.values(parsed)[0];
-      if (first) return first;
+      parsed = JSON.parse(current);
     } catch {
       throw new Error("SUPABASE_SECRET_KEYS must be valid JSON");
     }
+    if (!isNonEmptyStringRecord(parsed)) {
+      throw new Error(
+        "SUPABASE_SECRET_KEYS must be a JSON object of non-empty strings",
+      );
+    }
+    if (parsed.default) return parsed.default;
+    return Object.values(parsed)[0];
   }
   return getEnv("SUPABASE_SERVICE_ROLE_KEY") ?? getEnv("SUPABASE_SECRET_KEY") ??
     getEnv("APP_SECRET_KEY");
+}
+
+function isNonEmptyStringRecord(
+  value: unknown,
+): value is Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const entries = Object.entries(value);
+  return entries.length > 0 && entries.every(([, item]) =>
+    typeof item === "string" && item.trim().length > 0
+  );
 }
 
 function readBooleanFlag(value: string | undefined): boolean {

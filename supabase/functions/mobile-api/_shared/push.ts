@@ -1,4 +1,10 @@
 import { checkRateLimit, type RateLimitConfig } from "./rate-limit.ts";
+import {
+  createBufferedResponse,
+  readResponseBytesBounded,
+  readResponseJsonBounded,
+} from "../../_shared/network.ts";
+import { boundedCanonicalProviderCode } from "./provider-boundary.ts";
 
 type DbError = { code?: string; message?: string };
 type DbResult<T> = {
@@ -42,6 +48,8 @@ export type PushResult = {
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const EXPO_BATCH_SIZE = 100;
+const EXPO_PUSH_MAX_RESPONSE_BYTES = 1024 * 1024;
+const EXPO_TICKET_ERROR_MAX_LENGTH = 64;
 const PUSH_RATE_LIMIT: RateLimitConfig = {
   maxTokens: 5,
   refillRate: 5,
@@ -114,12 +122,12 @@ export async function sendPushToUsers(
   return result;
 }
 
-// Phase 4.3 (plan §22.9.D, 2026-05-23): bounded retry for Expo push delivery.
-// 2 retries, backoff 500ms -> 2s -> 8s (cap 10s). Retry only on
+// Bounded retry for Expo push delivery.
+// 2 retries, with 500ms then 2s backoff. Retry only on
 // EXPO_REQUEST_FAILED or HTTP 5xx. Skip retry on HTTP 4xx and per-ticket
 // DeviceNotRegistered (those are stable failures that disable token).
 const EXPO_PUSH_MAX_ATTEMPTS = 3;
-const EXPO_PUSH_BACKOFF_MS = [500, 2_000, 8_000];
+const EXPO_PUSH_BACKOFF_MS = [500, 2_000];
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -172,12 +180,13 @@ async function sendExpoBatchOnce(
 
   let response: Response;
   try {
-    response = await withTimeout(
-      fetch(EXPO_PUSH_URL, {
+    response = await fetchWithTimeout(
+      EXPO_PUSH_URL,
+      {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(messages),
-      }),
+      },
       10_000,
     );
   } catch {
@@ -198,25 +207,33 @@ async function sendExpoBatchOnce(
     };
   }
 
-  const parsed = await response.json().catch(() => null);
-  const tickets = Array.isArray(parsed?.data) ? parsed.data : [];
+  const parsed = await readResponseJsonBounded(
+    response,
+    EXPO_PUSH_MAX_RESPONSE_BYTES,
+  ).catch(() => null);
+  const envelope = asRecord(parsed);
+  const tickets = Array.isArray(envelope?.data) ? envelope.data : [];
   const result = emptyResult();
+  const tokenDisableWrites: Promise<void>[] = [];
   rows.forEach((row, index) => {
-    const ticket = tickets[index];
+    const ticket = asRecord(tickets[index]);
     if (ticket?.status === "ok") {
       result.delivered += 1;
       return;
     }
 
     result.failed += 1;
-    const errorCode = typeof ticket?.details?.error === "string"
-      ? ticket.details.error
-      : "UNKNOWN_PUSH_ERROR";
+    const providerErrorCode = boundedCanonicalProviderCode(
+      asRecord(ticket?.details)?.error,
+      EXPO_TICKET_ERROR_MAX_LENGTH,
+    );
+    const errorCode = providerErrorCode ?? "UNKNOWN_PUSH_ERROR";
     result.errors.push(errorCode);
     if (errorCode === "DeviceNotRegistered") {
-      void disablePushToken(client, row.id);
+      tokenDisableWrites.push(disablePushToken(client, row.id));
     }
   });
+  await Promise.all(tokenDisableWrites);
   return result;
 }
 
@@ -256,6 +273,12 @@ function asPushTokenRow(row: Record<string, unknown>): PushTokenRow | null {
   return { id, user_id: userId, push_token: pushToken };
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let index = 0; index < items.length; index += size) {
@@ -268,13 +291,33 @@ function emptyResult(): PushResult {
   return { delivered: 0, failed: 0, errors: [] };
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  ms: number,
+): Promise<Response> {
+  const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Timeout after ${ms}ms`));
+    }, ms);
   });
   try {
-    return await Promise.race([promise, timeout]);
+    const response = await Promise.race([
+      fetch(url, {
+        ...init,
+        redirect: "error",
+        signal: controller.signal,
+      }),
+      timeout,
+    ]);
+    const bytes = await Promise.race([
+      readResponseBytesBounded(response, EXPO_PUSH_MAX_RESPONSE_BYTES),
+      timeout,
+    ]);
+    return createBufferedResponse(response, bytes);
   } finally {
     if (timer !== undefined) clearTimeout(timer);
   }

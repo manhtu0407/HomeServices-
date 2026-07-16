@@ -81,7 +81,16 @@ describe('Secret hygiene baseline', () => {
       'SUPABASE_SECRET_KEY',
       'ANTHROPIC_API_KEY',
       'PERPLEXITY_API_KEY',
+      'PERPLEXITY_API_URL',
       'DEEPSEEK_API_KEY',
+      'KAEL_EVAL_FIXTURE_PATH',
+      'KAEL_EVAL_KNOWLEDGE_FIXTURE_PATH',
+      'KAEL_EVAL_REPORT_PATH',
+      'KAEL_B3_SOURCE_AUDIT_LIVE',
+      'SOURCE_TRUST_RUN_LIVE',
+      'SOURCE_TRUST_OUTPUT_DIR',
+      'SOURCE_RESEARCH_TIMEOUT_MS',
+      'KEEP_USER',
     ]
 
     for (const key of requiredKeys) {
@@ -106,6 +115,16 @@ describe('Secret hygiene baseline', () => {
     expect(gitignore).toMatch(/^\.env\*/m)
     expect(gitignore).toMatch(/^!config\/env\/workspace\.env\.example/m)
     expect(gitignore).toMatch(/^!apps\/mobile\/\.env\.example/m)
+  })
+
+  it('keeps mobile signing credentials out of Git and EAS upload contexts', () => {
+    const gitignore = read('.gitignore')
+    const easignore = read('.easignore')
+
+    for (const pattern of ['*.p8', '*.p12', '*.pem', '*.key', '*.mobileprovision', '*.jks', '*.keystore']) {
+      expect(gitignore).toContain(pattern)
+      expect(easignore).toContain(pattern)
+    }
   })
 
   it('does not persist Supabase management tokens in repo text files', () => {

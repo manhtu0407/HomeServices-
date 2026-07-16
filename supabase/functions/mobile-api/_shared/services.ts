@@ -1,6 +1,12 @@
 
 
-import { listNotifications, markNotificationRead, registerDevicePushToken, notifyCustomerScopeChangeRequested } from "./services/notifications.service.ts";
+import {
+  listNotifications,
+  markNotificationRead,
+  notifyCustomerScopeChangeRequested,
+  registerDevicePushToken,
+  unregisterDevicePushToken,
+} from "./services/notifications.service.ts";
 import { listServices } from "./services/catalog.service.ts";
 import { placesAutocomplete, placesResolve } from "./services/places-geo.service.ts";
 import {
@@ -48,7 +54,11 @@ import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorke
 import { streamKaelChatTurn, streamWorkerKaelChatTurn } from "./services/kael-chat-stream.ts";
 import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin-learning.service.ts";
 import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./services/kael-feedback.service.ts";
-import { attachJobMedia } from "./services/job-media.service.ts";
+import {
+  attachJobMedia,
+  createJobMediaUpload,
+  revokeJobMediaUploads,
+} from "./services/job-media.service.ts";
 import { getJob, listCustomerActiveJobs, listCustomerServiceHistory, listMyPendingDecisions } from "./services/job-read.service.ts";
 import { createWorkerAvatarUpload, updateWorkerAvatar } from "./services/worker-avatar.service.ts";
 import { cancelJob, requestCustomerCancellation } from "./services/customer-cancellation.service.ts";
@@ -121,8 +131,8 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     getJobIncident,
     openJobIncident: (ctx, jobId, input) =>
       openJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
-    proposeScopeChangeFromJobIncident: (ctx, jobId) =>
-      proposeScopeChangeFromJobIncident(ctx, jobId, aiRuntime(ctx, secrets)),
+    proposeScopeChangeFromJobIncident: (ctx, jobId, input) =>
+      proposeScopeChangeFromJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
     askKaelForWorker,
     createWorkerKaelChat: (ctx, input) =>
       createWorkerKaelChat(ctx, input, aiRuntime(ctx, secrets)),
@@ -144,6 +154,8 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     submitDisputeCounterStatement,
     decideDispute,
     attachJobMedia,
+    createJobMediaUpload,
+    revokeJobMediaUploads,
     listJobMessages,
     sendJobMessage: (ctx, jobId, input) =>
       sendJobMessage(ctx, jobId, input, aiRuntime(ctx, secrets)),
@@ -194,6 +206,7 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listNotifications,
     markNotificationRead,
     registerDevicePushToken,
+    unregisterDevicePushToken,
   };
 }
 

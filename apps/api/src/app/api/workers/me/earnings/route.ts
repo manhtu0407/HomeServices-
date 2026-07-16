@@ -1,5 +1,6 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { computeEarnings, EarningsQueryError, type EarningsRange } from '@/lib/workers/earnings'
+import { normalizeIsoTimestamp } from '@/lib/http/iso-timestamp'
 
 /**
  * GET /api/workers/me/earnings — B8
@@ -7,8 +8,8 @@ import { computeEarnings, EarningsQueryError, type EarningsRange } from '@/lib/w
  * Worker earnings summary: gross, platform fee (10%), net, pending payments.
  *
  * Query params (optional):
- *   ?from=ISO8601   — filter jobs.created_at >= from
- *   ?to=ISO8601     — filter jobs.created_at <= to
+ *   ?from=ISO8601   — filter settled jobs by paid_at and pending jobs by created_at
+ *   ?to=ISO8601     — apply the same inclusive upper bound
  *
  * Default returns all-time. Returns the effective range in the response.
  */
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   const auth = await authenticateRequest(request, ['worker'])
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )
@@ -28,19 +29,19 @@ export async function GET(request: Request) {
   const fromParam = url.searchParams.get('from')
   const toParam = url.searchParams.get('to')
 
-  if (fromParam) {
-    const parsed = Date.parse(fromParam)
-    if (Number.isNaN(parsed)) {
+  if (fromParam !== null) {
+    const parsed = normalizeIsoTimestamp(fromParam)
+    if (!parsed) {
       return apiError('VALIDATION', 'Tham số "from" không phải định dạng ISO hợp lệ', 400)
     }
-    range.from = new Date(parsed).toISOString()
+    range.from = parsed
   }
-  if (toParam) {
-    const parsed = Date.parse(toParam)
-    if (Number.isNaN(parsed)) {
+  if (toParam !== null) {
+    const parsed = normalizeIsoTimestamp(toParam)
+    if (!parsed) {
       return apiError('VALIDATION', 'Tham số "to" không phải định dạng ISO hợp lệ', 400)
     }
-    range.to = new Date(parsed).toISOString()
+    range.to = parsed
   }
 
   if (range.from && range.to && range.from > range.to) {
@@ -65,6 +66,13 @@ export async function GET(request: Request) {
     net_earnings: summary.netEarnings,
     pending_payment_count: summary.pendingPaymentCount,
     pending_payment_amount: summary.pendingPaymentAmount,
+    daily_earnings: summary.dailyEarnings.map((daily) => ({
+      date: daily.date,
+      gross_earnings: daily.grossEarnings,
+      platform_fee_total: daily.platformFeeTotal,
+      net_earnings: daily.netEarnings,
+      paid_job_count: daily.paidJobCount,
+    })),
     from_date: summary.fromDate,
     to_date: summary.toDate,
   })

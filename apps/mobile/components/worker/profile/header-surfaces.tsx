@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   Text as RNText,
   View,
@@ -14,6 +14,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
 import { textByLanguage } from '../ui/format'
+import { workerV5HasNumber } from '../ui/performance'
 import { styles } from './header-styles'
 
 type WorkerV5ProfileHeaderProfile = WorkerProfileResponse | null | undefined
@@ -42,7 +43,9 @@ export function WorkerV5ProfileHeader({
   reduceTransparency: boolean
 }) {
   const legalName = profile?.legal_name?.trim() || ''
-  const name = legalName || textByLanguage(language, 'Chưa có tên pháp lý', 'No legal name')
+  const name = profile
+    ? legalName || textByLanguage(language, 'Chưa có tên pháp lý', 'No legal name')
+    : textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
   const activeMinutes = clampWorkerActiveMinutes(profile?.active_minutes)
   const lifetimeLabel = textByLanguage(language, 'Thời gian hoạt động', 'Active time')
   const lifetimeValueText = workerLifetimeValueText(activeMinutes, language)
@@ -57,7 +60,6 @@ export function WorkerV5ProfileHeader({
   const progressStyle = useAnimatedStyle(() => ({
     width: `${Math.max(0, Math.min(1, progress.value)) * 100}%`,
   }))
-
   return (
     <View style={[styles.profileHeader, reduceTransparency && styles.opaqueCard]} testID="worker-v5-worker-avatar">
       {!reduceTransparency ? <HeroAura testID="worker-v5-profile-mint-aura" /> : null}
@@ -80,7 +82,7 @@ export function WorkerV5ProfileHeader({
           <ActivityIndicator color="#078D7F" size="small" testID="worker-v5-profile-avatar-loading" />
         ) : profile?.avatar_url ? (
           <Image
-            resizeMode="cover"
+            contentFit="cover"
             source={{ uri: profile.avatar_url }}
             style={styles.profileAvatarImage}
             testID="worker-v5-profile-avatar-image"
@@ -150,18 +152,18 @@ export function WorkerV5ProfileDashboardCards({
 }) {
   const score = insights?.performance_score ?? null
   const rating = insights?.average_rating ?? profile?.rating ?? null
-  const hasScore = score != null && Number.isFinite(score)
-  const hasRating = rating != null && rating > 0
+  const hasScore = workerV5HasNumber(score)
+  const hasRating = typeof rating === 'number' && Number.isFinite(rating) && rating > 0
   const cards = [
     {
       icon: 'profile' as const,
-      score: hasScore ? `${score}` : '0',
+      score: hasScore ? `${score}` : textByLanguage(language, 'Chờ', 'Pending'),
       scoreLabel: textByLanguage(language, 'xếp hạng', 'ranking'),
       title: hasScore ? textByLanguage(language, 'Điểm xếp hạng', 'Ranking score') : textByLanguage(language, 'Chưa có xếp hạng thật', 'No real ranking yet'),
     },
     {
       icon: 'shield' as const,
-      score: hasRating ? `${rating}` : '0',
+      score: hasRating ? `${rating}` : textByLanguage(language, 'Chờ', 'Pending'),
       scoreLabel: textByLanguage(language, 'đánh giá', 'rating'),
       title: hasRating ? textByLanguage(language, 'Độ tin cậy có nguồn', 'Sourced reliability') : textByLanguage(language, 'Chưa có đánh giá thật', 'No real rating yet'),
     },

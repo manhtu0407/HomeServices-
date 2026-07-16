@@ -100,6 +100,16 @@ describe('callAI', () => {
         })
       )
     })
+
+    it('does not start provider I/O when the caller signal is already aborted', async () => {
+      const caller = new AbortController()
+      caller.abort(new DOMException('Request closed', 'AbortError'))
+
+      const result = await callAI({ ...makeRequest(), signal: caller.signal })
+
+      expect(result).toMatchObject({ success: false, code: 'AI_CALL_ABORTED' })
+      expect(mockAnthropic).not.toHaveBeenCalled()
+    })
   })
 
   describe('provider routing', () => {

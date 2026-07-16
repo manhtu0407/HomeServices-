@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildUpstreamUrl,
+  containsCredentialMaterial,
   rewriteVietmapStyleJson,
   rewriteVietmapUrl,
 } from '../../../../../supabase/functions/map-proxy-spike/style-rewrite'
@@ -33,6 +34,19 @@ function buildVietmapStyle(): Record<string, unknown> {
 }
 
 describe('§37 MP0 map-proxy-spike style rewrite', () => {
+  it.each([
+    null,
+    [],
+    'style',
+    42,
+    {},
+    { version: 7, sources: {}, layers: [] },
+    { version: 8, sources: [], layers: [] },
+    { version: 8, sources: {}, layers: {} },
+  ])('rejects a malformed top-level style payload: %j', (payload) => {
+    expect(() => rewriteVietmapStyleJson(payload, PROXY_BASE)).toThrow('STYLE_RESPONSE_INVALID')
+  })
+
   it('rewrites every VietMap tiles/glyphs/sprite/TileJSON URL to the proxy and strips all key params', () => {
     const result = rewriteVietmapStyleJson(buildVietmapStyle(), PROXY_BASE)
     const payload = JSON.stringify(result.style)
@@ -101,5 +115,31 @@ describe('§37 MP0 map-proxy-spike style rewrite', () => {
   it('strips a client-smuggled apikey from the passthrough query before injecting the real key', () => {
     expect(buildUpstreamUrl('/u/maps.vietmap.vn/api/tiles/1/2/3.pbf?apikey=attacker-key', 'real-key'))
       .toBe('https://maps.vietmap.vn/api/tiles/1/2/3.pbf?apikey=real-key')
+  })
+
+  it('strips percent-encoded credential parameter names before proxying', () => {
+    expect(rewriteVietmapUrl(
+      'https://maps.vietmap.vn/api/tiles/{z}/{x}/{y}.pbf?api%6bey=encoded-secret&format=pbf',
+      PROXY_BASE,
+    )).toEqual({
+      kind: 'rewritten',
+      url: `${PROXY_BASE}/u/maps.vietmap.vn/api/tiles/{z}/{x}/{y}.pbf?format=pbf`,
+      stripped: 1,
+    })
+    expect(buildUpstreamUrl(
+      '/u/maps.vietmap.vn/api/tiles/1/2/3.pbf?access%255ftoken=attacker-key&format=pbf',
+      'real-key',
+    )).toBe('https://maps.vietmap.vn/api/tiles/1/2/3.pbf?format=pbf&apikey=real-key')
+  })
+
+  it('detects percent-encoded provider credentials before returning a style payload', () => {
+    expect(containsCredentialMaterial(
+      '{"url":"https://external.test/tiles?api%256bey=secret%252Fkey"}',
+      'secret/key',
+    )).toBe(true)
+    expect(containsCredentialMaterial(
+      '{"url":"https://external.test/public-tiles?format=pbf"}',
+      'secret/key',
+    )).toBe(false)
   })
 })

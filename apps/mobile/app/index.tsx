@@ -21,8 +21,7 @@ export default function Index() {
     return <Redirect href="/(auth)/login" />
   }
 
-  // Phase 5.1 (plan §22.10.B, 2026-05-23): admin gets its own (admin) shell so
-  // admin actions are visually + structurally separated from customer/worker.
+  // Admin actions stay visually and structurally separate from customer and worker flows.
   if (role === 'admin') {
     return <Redirect href="/(admin)/dashboard" />
   }

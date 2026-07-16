@@ -4,6 +4,7 @@ import type {
 } from "./demanding-customer-detect.ts";
 import { renderEmpathyTemplateV2 } from "../decline-templates.ts";
 import { detectForbiddenAiDecisionText } from "../ai-boundary-contract.ts";
+import { scrubSensitiveForLLM } from "../utils.ts";
 
 export type DemandingCustomerStrategyId =
   | "transparency_expansion"
@@ -161,7 +162,7 @@ export async function recordDemandingCustomerInteraction(
     legitimate_signal_count: input.detection.legitimateConcernSignals.length,
     stop_ai_loop: input.response.stopAiLoop,
   };
-  await client.from("kael_interaction_log").insert({
+  await persistDemandingInteractionRecord(client, "kael_interaction_log", {
     job_id: input.jobId,
     actor_id: input.actorId,
     actor_role: input.actorRole,
@@ -174,10 +175,10 @@ export async function recordDemandingCustomerInteraction(
     strategy_ids: input.response.strategyIds,
     sanitized_excerpt: sanitizeInteractionExcerpt(input.message),
     safe_metadata: safeMetadata,
-  });
+  }, "KAEL_DEMANDING_INTERACTION_LOG_FAILED");
 
   if (input.response.adminQueuePriority === "none") return;
-  await client.from("kael_admin_queue").insert({
+  await persistDemandingInteractionRecord(client, "kael_admin_queue", {
     job_id: input.jobId,
     actor_id: input.actorId,
     actor_role: input.actorRole,
@@ -188,7 +189,21 @@ export async function recordDemandingCustomerInteraction(
     reason_code: reasonCode(input.detection),
     response_summary: responseSummary(input.detection.escalationLevel),
     safe_metadata: safeMetadata,
-  });
+  }, "KAEL_DEMANDING_ESCALATION_QUEUE_FAILED");
+}
+
+async function persistDemandingInteractionRecord(
+  client: DemandingInteractionDbClient,
+  table: string,
+  value: Record<string, unknown>,
+  failureCode: string,
+): Promise<void> {
+  try {
+    const result = await client.from(table).insert(value);
+    if (result.error) throw new Error(failureCode);
+  } catch {
+    throw new Error(failureCode);
+  }
 }
 
 function reasonCode(detection: DemandingCustomerDetection): string {
@@ -202,7 +217,7 @@ function responseSummary(level: DemandingCustomerEscalationLevel): string {
 }
 
 function sanitizeInteractionExcerpt(message: string): string {
-  return message
+  return scrubSensitiveForLLM(message)
     .replace(/\d{7,}/g, "[redacted-number]")
     .replace(/[^\S\r\n]+/g, " ")
     .trim()

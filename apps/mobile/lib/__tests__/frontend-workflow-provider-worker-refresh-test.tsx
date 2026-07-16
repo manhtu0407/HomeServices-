@@ -184,7 +184,7 @@ it('does not count activity minutes while the app is backgrounded', async () => 
   }
 })
 
-it('starts worker hydration without waiting for the startup availability write', async () => {
+it('starts worker hydration without a startup availability write', async () => {
   mockAuthRole = 'worker'
   const originalAppState = AppState.currentState
   Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' })
@@ -193,13 +193,11 @@ it('starts worker hydration without waiting for the startup availability write',
   const performance = deferred<any>()
   const broadcasts = deferred<any>()
   const jobs = deferred<any>()
-  const availability = deferred<any>()
   mockWorkerService.getProfile.mockReturnValue(profile.promise)
   mockWorkerService.getEarnings.mockReturnValue(earnings.promise)
   mockWorkerService.getPerformanceInsights.mockReturnValue(performance.promise)
   mockWorkerService.getBroadcasts.mockReturnValue(broadcasts.promise)
   mockWorkerService.getJobs.mockReturnValue(jobs.promise)
-  mockWorkerService.updateAvailability.mockReturnValue(availability.promise)
 
   const view = render(
     <FrontendWorkflowProvider>
@@ -209,13 +207,13 @@ it('starts worker hydration without waiting for the startup availability write',
 
   try {
     await waitFor(() => {
-      expect(mockWorkerService.updateAvailability).toHaveBeenCalledWith({ is_available: false })
       expect(mockWorkerService.getProfile).toHaveBeenCalledTimes(1)
     })
     expect(mockWorkerService.getEarnings).toHaveBeenCalledTimes(1)
     expect(mockWorkerService.getPerformanceInsights).toHaveBeenCalledTimes(1)
     expect(mockWorkerService.getBroadcasts).toHaveBeenCalledTimes(1)
     expect(mockWorkerService.getJobs).toHaveBeenCalledTimes(1)
+    expect(mockWorkerService.updateAvailability).not.toHaveBeenCalled()
   } finally {
     view.unmount()
     Object.defineProperty(AppState, 'currentState', { configurable: true, value: originalAppState })

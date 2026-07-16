@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { detectDemandingCustomerPatterns } from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/demanding-customer-detect'
 
-// LLM-assist for the demanding-customer gate (2026-06-04): intake-diagnosis
+// Intake-diagnosis sentiment
 // sentiment fills a keyword gap, but only softly and only in an established
 // conversation. Keyword detection stays the primary, deterministic path.
 describe('demanding-customer detection — LLM sentiment assist', () => {

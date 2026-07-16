@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Pressable,
   Text as RNText,
   View,
@@ -37,7 +37,7 @@ export function WorkerV5ScheduleList({
   rows,
 }: {
   reduceTransparency: boolean
-  rows: ReadonlyArray<WorkerV5SchedulePlanRow>
+  rows: readonly WorkerV5SchedulePlanRow[]
 }) {
   return (
     <View style={styles.scheduleList} testID="worker-v5-schedule-list">

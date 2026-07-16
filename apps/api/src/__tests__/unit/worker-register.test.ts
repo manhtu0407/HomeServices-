@@ -12,6 +12,7 @@ vi.mock('@/lib/env', () => ({
 
 vi.mock('@/lib/db/query', () => ({
   withDbTimeout: <T,>(p: PromiseLike<T>) => p,
+  postgresNullableRpcArg: <T,>(value: T | null) => value as T,
   DbTimeoutError: class extends Error {},
 }))
 
@@ -29,9 +30,9 @@ describe('workerRegisterSchema', () => {
     service_types: ['electrical' as const],
     years_experience: 5,
     districts: ['Quận 1', 'Quận 3'],
-    cccd_front_url: 'https://storage.example.com/cccd-front.jpg',
-    cccd_back_url: 'https://storage.example.com/cccd-back.jpg',
-    selfie_url: 'https://storage.example.com/selfie.jpg',
+    cccd_front_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-front/front.jpg',
+    cccd_back_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-back/back.jpg',
+    selfie_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/selfie/selfie.jpg',
     bank_account: '0123456789',
     bank_name: 'Vietcombank',
   }
@@ -43,9 +44,9 @@ describe('workerRegisterSchema', () => {
   it('accepts private Supabase worker-verification storage refs', () => {
     const result = workerRegisterSchema.safeParse({
       ...VALID_INPUT,
-      cccd_front_url: 'supabase://worker-verification/user-1/cccd-front/front.jpg',
-      cccd_back_url: 'supabase://worker-verification/user-1/cccd-back/back.jpg',
-      selfie_url: 'supabase://worker-verification/user-1/selfie/selfie.jpg',
+      cccd_front_url: 'supabase://worker-verification/22222222-2222-4222-8222-222222222222/cccd-front/front.jpg',
+      cccd_back_url: 'supabase://worker-verification/22222222-2222-4222-8222-222222222222/cccd-back/back.jpg',
+      selfie_url: 'supabase://worker-verification/22222222-2222-4222-8222-222222222222/selfie/selfie.jpg',
     })
 
     expect(result.success).toBe(true)
@@ -209,38 +210,89 @@ function makeMockSupabase(opts: {
   existingError?: { code: string } | null
   upsertResult?: { id: string; verification_status: string } | null
   upsertError?: { code: string } | null
+  rpcResult?: Array<{
+    ok: boolean
+    error_code: string | null
+    worker_id_out: string | null
+    verification_status_out: string | null
+    submitted_at_ts: string | null
+    idempotent_out: boolean
+  }> | null
+  rpcError?: { code: string } | null
 }) {
-  let callCount = 0
-  return {
-    from: vi.fn((_table: string) => {
-      callCount++
-      const isProfile = callCount === 1
-      const isExisting = callCount === 2
-      const isUpsert = callCount === 3
-
-      const chain: any = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        upsert: vi.fn().mockReturnThis(),
-        single: vi.fn(async () => {
-          if (isProfile) {
-            return { data: opts.profile ?? null, error: opts.profileError ?? null }
-          }
-          if (isUpsert) {
-            return { data: opts.upsertResult ?? null, error: opts.upsertError ?? null }
-          }
-          return { data: null, error: null }
-        }),
-        maybeSingle: vi.fn(async () => {
-          if (isExisting) {
-            return { data: opts.existingWorker ?? null, error: opts.existingError ?? null }
-          }
-          return { data: null, error: null }
-        }),
+  const client = {
+    from: vi.fn(() => {
+      throw new Error('registerWorker must not bypass the atomic RPC')
+    }),
+    rpc: vi.fn(async () => {
+      if (opts.rpcResult !== undefined || opts.rpcError) {
+        return { data: opts.rpcResult ?? null, error: opts.rpcError ?? null }
       }
-      return chain
+      if (opts.profileError || !opts.profile) {
+        return {
+          data: [{
+            ok: false,
+            error_code: 'NOT_FOUND',
+            worker_id_out: null,
+            verification_status_out: null,
+            submitted_at_ts: null,
+            idempotent_out: false,
+          }],
+          error: null,
+        }
+      }
+      if (opts.profile.role !== 'worker') {
+        return {
+          data: [{
+            ok: false,
+            error_code: 'WRONG_ROLE',
+            worker_id_out: null,
+            verification_status_out: null,
+            submitted_at_ts: null,
+            idempotent_out: false,
+          }],
+          error: null,
+        }
+      }
+      if (opts.existingError) {
+        return { data: null, error: opts.existingError }
+      }
+      if (
+        opts.existingWorker &&
+        (opts.existingWorker.verification_status === 'under_review' ||
+          opts.existingWorker.verification_status === 'approved' ||
+          opts.existingWorker.verification_status === 'suspended' ||
+          opts.existingWorker.is_suspended === true)
+      ) {
+        return {
+          data: [{
+            ok: false,
+            error_code: 'ALREADY_FINALIZED',
+            worker_id_out: 'user-1',
+            verification_status_out: opts.existingWorker.verification_status,
+            submitted_at_ts: '2026-07-14T10:50:00.000Z',
+            idempotent_out: false,
+          }],
+          error: null,
+        }
+      }
+      if (opts.upsertError || !opts.upsertResult) {
+        return { data: null, error: opts.upsertError ?? { code: 'PGRST500' } }
+      }
+      return {
+        data: [{
+          ok: true,
+          error_code: null,
+          worker_id_out: opts.upsertResult.id,
+          verification_status_out: opts.upsertResult.verification_status,
+          submitted_at_ts: '2026-07-14T10:50:00.000Z',
+          idempotent_out: false,
+        }],
+        error: null,
+      }
     }),
   } as any
+  return client
 }
 
 const VALID_INPUT = {
@@ -250,14 +302,52 @@ const VALID_INPUT = {
   service_types: ['electrical' as const],
   years_experience: 5,
   districts: ['Quận 1'],
-  cccd_front_url: 'https://x.com/a.jpg',
-  cccd_back_url: 'https://x.com/b.jpg',
-  selfie_url: 'https://x.com/c.jpg',
+  cccd_front_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-front/front.jpg',
+  cccd_back_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-back/back.jpg',
+  selfie_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/selfie/selfie.jpg',
   bank_account: '0123456789',
   bank_name: 'Vietcombank',
 }
 
 describe('registerWorker', () => {
+  it('delegates profile validation and finalization to the atomic registration RPC', async () => {
+    const supabase = makeMockSupabase({
+      profile: { role: 'worker' },
+      existingWorker: null,
+      upsertResult: { id: 'user-1', verification_status: 'submitted' },
+      rpcResult: [{
+        ok: true,
+        error_code: null,
+        worker_id_out: 'user-1',
+        verification_status_out: 'submitted',
+        submitted_at_ts: '2026-07-14T10:50:00.000Z',
+        idempotent_out: false,
+      }],
+    })
+
+    const result = await registerWorker('user-1', VALID_INPUT, supabase)
+
+    expect(result).toMatchObject({
+      success: true,
+      workerId: 'user-1',
+      verificationStatus: 'submitted',
+      submittedAt: '2026-07-14T10:50:00.000Z',
+    })
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      'submit_worker_registration_atomic',
+      expect.objectContaining({
+        p_actor_id: 'user-1',
+        p_worker_id: 'user-1',
+        p_districts: ['q1'],
+        p_home_lat: null,
+        p_home_lng: null,
+        p_service_radius_km: 8,
+        p_problem_specializations: [],
+      }),
+    )
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
   it('succeeds when profile is worker and no existing worker_profile', async () => {
     const supabase = makeMockSupabase({
       profile: { role: 'worker' },
@@ -341,8 +431,23 @@ describe('registerWorker', () => {
     }
   })
 
-  it('allows re-submission when status is draft/submitted/under_review/rejected', async () => {
-    for (const status of ['draft', 'submitted', 'under_review', 'rejected']) {
+  it('preserves an under-review submission instead of resetting the review queue', async () => {
+    const supabase = makeMockSupabase({
+      profile: { role: 'worker' },
+      existingWorker: { verification_status: 'under_review' },
+    })
+
+    const result = await registerWorker('user-1', VALID_INPUT, supabase)
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe('ALREADY_FINALIZED')
+      expect(result.status).toBe(409)
+    }
+  })
+
+  it('allows re-submission when status is draft, submitted, or rejected', async () => {
+    for (const status of ['draft', 'submitted', 'rejected']) {
       const supabase = makeMockSupabase({
         profile: { role: 'worker' },
         existingWorker: { verification_status: status },
@@ -369,7 +474,8 @@ describe('registerWorker', () => {
       expect(result.code).toBe('VALIDATION')
       expect(result.status).toBe(400)
     }
-    expect(supabase.from).toHaveBeenCalledTimes(2)
+    expect(supabase.rpc).not.toHaveBeenCalled()
+    expect(supabase.from).not.toHaveBeenCalled()
   })
 
   it('allows explicit city-wide coverage only when the worker selects hcmc_all', async () => {
@@ -385,10 +491,11 @@ describe('registerWorker', () => {
     }, supabase)
 
     expect(result.success).toBe(true)
-    expect(supabase.from).toHaveBeenCalledTimes(3)
+    expect(supabase.rpc).toHaveBeenCalledTimes(1)
+    expect(supabase.from).not.toHaveBeenCalled()
   })
 
-  it('returns DB_ERROR when upsert fails', async () => {
+  it('returns DB_ERROR when the registration RPC fails', async () => {
     const supabase = makeMockSupabase({
       profile: { role: 'worker' },
       existingWorker: null,

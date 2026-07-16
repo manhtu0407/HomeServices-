@@ -732,7 +732,7 @@ PR metadata re-check:
 gh pr view 60 --json number,title,state,mergedAt,mergeCommit,headRefName,baseRefName,files,comments
 ```
 
-Result: FAIL before network/API data because GitHub CLI is not authenticated in this shell (`gh auth login` or `GH_TOKEN` required). Local git evidence still identifies PR #60's merged commit as `8b82ab66` (`#60 Plan.md Â§32`) and latest `origin/main` as `b09592e6` (`#61 Complete Kael AI core rollout`).
+Result: FAIL before network/API data because GitHub CLI is not authenticated in this shell (`gh auth login` or `GH_TOKEN` required). Local git evidence still identifies PR #60's merged commit as `8b82ab66` (`#60 Plan.md §32`) and latest `origin/main` as `b09592e6` (`#61 Complete Kael AI core rollout`).
 
 Final mechanical commands:
 

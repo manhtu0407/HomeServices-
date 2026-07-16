@@ -33,7 +33,7 @@ export function WorkerV5HomeQuickActionGrid({
   reduceMotion,
   reduceTransparency,
 }: {
-  items: ReadonlyArray<WorkerV5HomeQuickActionItem>
+  items: readonly WorkerV5HomeQuickActionItem[]
   onOpen: (id: WorkerV5ScreenId) => void
   reduceMotion: boolean
   reduceTransparency: boolean

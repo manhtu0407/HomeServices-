@@ -3,9 +3,11 @@ import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { validateTransition } from '@/lib/jobs/lifecycle'
 import { logJobEvent } from '@/lib/jobs/event-log'
 import { withDbTimeout } from '@/lib/db/query'
+import { readJsonRequestBounded } from '@/lib/http/request-json'
+import { isUuidRouteParam } from '@/lib/http/route-param'
 import type { JobStatus, TablesUpdate } from '@nestscout/shared'
 
-const statusUpdateSchema = z.object({
+const statusUpdateSchema = z.strictObject({
   status: z.enum([
     'worker_on_way',
     'arrived',
@@ -14,8 +16,8 @@ const statusUpdateSchema = z.object({
     'completed_by_worker',
   ]),
   completion_notes: z.string().max(2000).optional(),
-  completion_photo_urls: z.array(z.string().url()).max(10).optional(),
-}).strict()
+  completion_photo_urls: z.array(z.url()).max(10).optional(),
+})
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -23,17 +25,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   const auth = await authenticateRequest(request, ['worker'])
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )
   }
 
   const { id } = await params
+  if (!isUuidRouteParam(id)) {
+    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
+  }
 
   let body: unknown
   try {
-    body = await request.json()
+    body = await readJsonRequestBounded(request)
   } catch {
     return apiError('VALIDATION', 'Dữ liệu không hợp lệ', 400)
   }
@@ -58,7 +63,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   if (job.worker_id !== auth.user.id) {
-    return apiError('AUTH_FORBIDDEN', 'Bạn không có quyền thực hiện hành động này', 403)
+    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
   }
 
   if (job.status === 'scope_change_pending') {

@@ -7,7 +7,7 @@ export const KAEL_OPTIMIZATION_FLAG_NAMES = [
   "KAEL_OPT_MARKET_CACHE_ENABLED",
   "KAEL_OPT_BATCH_LEARNING_ENABLED",
   "KAEL_OPT_BATCH_API_ENABLED",
-  // Smart-clarification intake-diagnosis (2026-06-04). Off = legacy hardcoded
+  // Off keeps the deterministic clarification path;
   // clarification path; on = conversation-aware diagnose + ONE specific question.
   "KAEL_OPT_LLM_CLARIFICATION_ENABLED",
 ] as const;

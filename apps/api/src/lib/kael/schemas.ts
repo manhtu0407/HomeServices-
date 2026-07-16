@@ -3,7 +3,7 @@ import { SERVICE_TYPES } from '@nestscout/shared'
 
 const serviceTypeWithUnsupported = [...SERVICE_TYPES, 'unsupported'] as const
 
-// Smart-clarification intake-diagnosis slots (2026-06-04). The pieces of context
+// These slots capture the context
 // Kael may still need before a reliable estimate. Used to drive ONE specific
 // follow-up question (STRUCTURES.md A4), never a generic "please add more info".
 export const KAEL_INTAKE_MISSING_SLOTS = [
@@ -20,7 +20,7 @@ export const intentResultSchema = z.object({
   problem_slug: z.string().min(1).max(100),
   confidence: z.number().min(0).max(1),
   needs_clarification: z.boolean(),
-  // Intake-diagnosis fields (2026-06-04). Optional so legacy AI responses and the
+  // Optional so legacy AI responses and the
   // deterministic fallback stay valid (additive, backward compatible). Consumers
   // default at read time.
   missing_slots: z
@@ -44,7 +44,7 @@ export const visionResultSchema = z.object({
 
 export type VisionResult = z.infer<typeof visionResultSchema>
 
-export const marketSourceTrustSignalsSchema = z.object({
+export const marketSourceTrustSignalsSchema = z.strictObject({
   identity_verified: z.boolean(),
   source_type: z.enum(['direct_pricing', 'materials', 'reference', 'listing', 'unknown']),
   hcmc_relevant: z.boolean(),
@@ -53,7 +53,7 @@ export const marketSourceTrustSignalsSchema = z.object({
   evidence_verified: z.boolean(),
   review_overdue: z.boolean(),
   price_jump_suspected: z.boolean(),
-}).strict()
+})
 
 export const marketSourceEvidenceSchema = z.object({
   domain: z.string().min(1).max(253),
@@ -92,7 +92,7 @@ export const kaelEstimateSchema = z.object({
 export type { KaelEstimate } from '@nestscout/shared'
 
 export const workerPrebriefSchema = z.object({
-  job_id: z.string().uuid(),
+  job_id: z.uuid(),
   service_type: z.enum(SERVICE_TYPES),
   problem_summary: z.string().min(1).max(500),
   customer_description: z.string().min(1).max(2000),

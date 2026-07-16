@@ -335,12 +335,23 @@ export function isTrustedKaelVisionTransformPayload(
 export async function inspectTrustedKaelVisionTransform(
   signedUrl: string,
 ): Promise<"valid" | "invalid" | "unavailable"> {
+  const signatureBytes = 16;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
-    const response = await fetch(signedUrl, { signal: controller.signal });
+    const response = await fetch(signedUrl, {
+      headers: { Range: `bytes=0-${signatureBytes - 1}` },
+      redirect: "error",
+      signal: controller.signal,
+    });
     if (!response.ok || !response.body) {
+      await response.body?.cancel().catch(() => undefined);
       return response.status >= 400 && response.status < 500 ? "invalid" : "unavailable";
+    }
+    const contentLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > signatureBytes) {
+      await response.body.cancel().catch(() => undefined);
+      return "unavailable";
     }
     const reader = response.body.getReader();
     const next = await reader.read();
@@ -348,7 +359,7 @@ export async function inspectTrustedKaelVisionTransform(
     if (next.done || !next.value?.length) return "invalid";
     return isTrustedKaelVisionTransformPayload(
         response.headers.get("content-type"),
-        next.value.slice(0, 16),
+        next.value.slice(0, signatureBytes),
       )
       ? "valid"
       : "invalid";
@@ -364,13 +375,18 @@ async function revokeKaelMediaIntent(
   customerId: string,
   objectPath: string,
 ) {
-  await dbQuery(
+  const revoked = await dbQuery(
     client
       .from("kael_chat_media_upload_intents")
       .update({ status: "revoked", updated_at: new Date().toISOString() })
       .eq("customer_id", customerId)
       .eq("object_path", objectPath),
   );
+  if (revoked.error) {
+    console.warn("mobile-api kael media intent revoke failed", {
+      errorCode: revoked.error.code,
+    });
+  }
 }
 
 function safeKaelChatObjectName(fileName: string | undefined, mimeType: string) {

@@ -2,7 +2,7 @@
 // feedback submission and worker training-consent get/set. Simple owner-scoped DB writes, no workflow
 // coupling. Imported by services.ts for wiring.
 
-import { asBoolean, asString, nullableString } from "./coercions.ts";
+import { nullableString } from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { scrubSensitiveForLLM } from "../kael/index.ts";
@@ -36,9 +36,9 @@ export async function submitWorkerKaelFeedback(
     apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 l\u01b0u ph\u1ea3n h\u1ed3i Kael", 500);
   }
   return {
-    feedback_id: asString(result.data.id),
+    feedback_id: requiredFeedbackString(result.data.id),
     status: "new" as const,
-    created_at: asString(result.data.created_at),
+    created_at: requiredFeedbackString(result.data.created_at),
   };
 }
 
@@ -53,9 +53,14 @@ export async function getWorkerKaelTrainingConsent(ctx: MobileApiContext) {
   if (result.error) {
     apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i tu\u1ef3 ch\u1ecdn Kael", 500);
   }
+  if (result.data && requiredFeedbackString(result.data.worker_id) !== ctx.user.id) {
+    apiFailure("DB_ERROR", "Dữ liệu tuỳ chọn Kael không hợp lệ", 500);
+  }
   return {
     worker_id: ctx.user.id,
-    training_consent: result.data ? asBoolean(result.data.training_consent) : false,
+    training_consent: result.data
+      ? requiredFeedbackBoolean(result.data.training_consent)
+      : false,
     updated_at: result.data ? nullableString(result.data.updated_at) : null,
   };
 }
@@ -82,9 +87,13 @@ export async function setWorkerKaelTrainingConsent(
   if (result.error || !result.data) {
     apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 l\u01b0u tu\u1ef3 ch\u1ecdn Kael", 500);
   }
+  const workerId = requiredFeedbackString(result.data.worker_id);
+  if (workerId !== ctx.user.id) {
+    apiFailure("DB_ERROR", "Dữ liệu tuỳ chọn Kael không hợp lệ", 500);
+  }
   return {
-    worker_id: asString(result.data.worker_id),
-    training_consent: asBoolean(result.data.training_consent),
+    worker_id: workerId,
+    training_consent: requiredFeedbackBoolean(result.data.training_consent),
     updated_at: nullableString(result.data.updated_at),
   };
 }
@@ -94,7 +103,6 @@ export async function submitCustomerKaelFeedback(
   input: CustomerKaelFeedbackInput,
 ) {
   const client = db(ctx);
-  const now = new Date().toISOString();
   const message = input.message.trim();
   const result = await dbQuery<Record<string, unknown>>(
     client
@@ -122,8 +130,23 @@ export async function submitCustomerKaelFeedback(
   }
 
   return {
-    feedback_id: asString(result.data.id),
+    feedback_id: requiredFeedbackString(result.data.id),
     status: "new" as const,
-    created_at: nullableString(result.data.created_at) ?? now,
+    created_at: requiredFeedbackString(result.data.created_at),
   };
+}
+
+function requiredFeedbackString(value: unknown): string {
+  const parsed = nullableString(value);
+  if (!parsed?.trim()) {
+    apiFailure("DB_ERROR", "Dữ liệu phản hồi Kael không hợp lệ", 500);
+  }
+  return parsed;
+}
+
+function requiredFeedbackBoolean(value: unknown): boolean {
+  if (typeof value !== "boolean") {
+    apiFailure("DB_ERROR", "Dữ liệu tuỳ chọn Kael không hợp lệ", 500);
+  }
+  return value;
 }

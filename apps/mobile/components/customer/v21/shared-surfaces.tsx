@@ -1,5 +1,6 @@
 import { Fragment, type ComponentType, type ReactNode } from 'react'
-import { Image, Pressable, ScrollView, Text, useWindowDimensions, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { Image } from 'expo-image'
+import { Pressable, ScrollView, Text, useWindowDimensions, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
@@ -86,7 +87,7 @@ function CustomerV21AssetVisual({
   size: number
 }) {
   if (isKaelCoreV9Visual(image)) return <KaelCoreV9 reduceMotion={reduceMotion} size={size} />
-  return <Image resizeMode="contain" source={image} style={{ height: size, width: size }} />
+  return <Image contentFit="contain" source={image} style={{ height: size, width: size }} />
 }
 
 export function SectionHeader({ eyebrow, title }: { eyebrow?: string; title: string }) {
@@ -328,7 +329,7 @@ export function V21Card({
       backgroundColor: tokens.raised,
       borderColor: tokens.border,
     },
-    tokens.mode === 'dark' ? styles.cardShadowDark : styles.cardShadowLight,
+    glass ? null : tokens.mode === 'dark' ? styles.cardShadowDark : styles.cardShadowLight,
     style,
   ]
 
@@ -393,7 +394,7 @@ export function V21TopBar({
       ) : shouldShowAvatar ? (
         <View style={styles.topAvatarWrap} testID="customer-v21-top-avatar">
           {avatarImage ? (
-            <Image resizeMode="contain" source={avatarImage} style={styles.topAvatarImage} />
+            <Image contentFit="contain" source={avatarImage} style={styles.topAvatarImage} />
           ) : (
             <Text style={styles.topAvatarText}>{avatarText ?? 'NS'}</Text>
           )}

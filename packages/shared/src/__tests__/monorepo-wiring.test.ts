@@ -40,7 +40,7 @@ function listSourceFiles(rel: string): string[] {
 }
 
 // ===================================================================
-// Workspace structure â€” Turborepo + pnpm
+// Workspace structure — Turborepo + pnpm
 // ===================================================================
 
 describe('monorepo directory structure', () => {
@@ -65,7 +65,7 @@ describe('monorepo directory structure', () => {
     // If src/ exists at root, the move was incomplete
     const rootSrc = resolve(REPO_ROOT, 'src')
     if (existsSync(rootSrc)) {
-      // It could exist as an empty dir or leftover â€” check for actual code
+      // It could exist as an empty dir or leftover — check for actual code
       expect(exists('src/lib')).toBe(false)
       expect(exists('src/app')).toBe(false)
     }
@@ -114,7 +114,7 @@ describe('root product contract alignment', () => {
     const claude = readText('CLAUDE.md')
     expect(claude).toMatch(/Production fix and foundation hardening/i)
     expect(claude).toMatch(/Mobile and Supabase Edge workflow slices exist/i)
-    expect(claude).not.toContain('ChÆ°a cÃ³ feature code')
+    expect(claude).not.toContain('Chưa có feature code')
   })
   it('keeps production source files free from mojibake Vietnamese strings', () => {
     const productionFiles = [
@@ -219,7 +219,7 @@ describe('config/turbo/turbo.json', () => {
 })
 
 // ===================================================================
-// Root package.json â€” workspace root
+// Root package.json — workspace root
 // ===================================================================
 
 describe('root package.json', () => {
@@ -239,12 +239,46 @@ describe('root package.json', () => {
     expect(pkg.scripts['type-check']).toContain('turbo')
   })
 
+  it('runs skills maintenance through the bundled Node PowerShell launcher', () => {
+    expect(pkg.scripts['skills:sync']).toContain('-File scripts/run-node.ps1 scripts/sync-skills.mjs')
+    expect(pkg.scripts['skills:check']).toContain('-File scripts/run-node.ps1 scripts/check-skills-sync.mjs')
+  })
+
+  it('removes cmd forwarding shims that can reinterpret shell metacharacters', () => {
+    for (const wrapper of [
+      'scripts/run-node.cmd',
+      'scripts/run-package-script.cmd',
+      'scripts/run-turbo.cmd',
+      'scripts/run-supabase.cmd',
+      'scripts/run-react-doctor.cmd',
+      'scripts/run-mobile-web-staging-preview.cmd',
+    ]) {
+      expect(exists(wrapper)).toBe(false)
+    }
+    for (const command of Object.values(pkg.scripts) as string[]) {
+      expect(command).not.toMatch(/run-(?:node|package-script|turbo|supabase|react-doctor|mobile-web-staging-preview)\.cmd/i)
+    }
+  })
+
+  it('runs the skills ratchet with portable Node on Ubuntu CI', () => {
+    const securityWorkflow = readText('.github/workflows/security.yml')
+    expect(securityWorkflow).toContain('node scripts/check-skills-sync.mjs')
+    expect(securityWorkflow).not.toContain('run: pnpm skills:check')
+  })
+
+  it('derives the forbidden API package alias for the runtime-boundary ratchet', () => {
+    const structureLint = readText('scripts/lint-structure.mjs')
+    expect(structureLint).toContain("readJson('apps/api/package.json').name")
+    expect(structureLint).toContain('API_PACKAGE_NAME')
+    expect(structureLint).not.toContain('@home-services/api')
+  })
+
   it('has turbo in devDependencies', () => {
     expect(pkg.devDependencies.turbo).toBeDefined()
   })
 
   it('does NOT have app-specific deps at root', () => {
-    // Root should only have turbo â€” app deps live in apps/
+    // Root should only have turbo — app deps live in apps/
     expect(pkg.dependencies).toBeUndefined()
     expect(pkg.devDependencies.next).toBeUndefined()
     expect(pkg.devDependencies.react).toBeUndefined()
@@ -344,12 +378,34 @@ describe('apps/mobile/package.json', () => {
   })
 
   it('does NOT have vitest (no tests in mobile yet)', () => {
-    // Mobile doesn't run vitest â€” it uses Expo testing tools
+    // Mobile doesn't run vitest — it uses Expo testing tools
     expect(pkg.devDependencies?.vitest).toBeUndefined()
   })
 
   it('has type-check script', () => {
     expect(pkg.scripts['type-check']).toBeDefined()
+  })
+
+  it('participates in the root Turbo lint task', () => {
+    expect(pkg.scripts.lint).toBe('eslint .')
+  })
+
+  it('pins EAS CLI commands to the workspace package manager', () => {
+    const easScripts = [
+      pkg.scripts['eas:login'],
+      pkg.scripts['eas:whoami'],
+      pkg.scripts.testflight,
+      pkg.scripts['submit:ios:latest'],
+      pkg.scripts['play:internal'],
+      pkg.scripts['submit:android:latest'],
+    ]
+
+    for (const script of easScripts) {
+      expect(script).toContain('pnpm dlx eas-cli@21.0.0')
+      expect(script).not.toContain('npx')
+      expect(script).not.toContain('@latest')
+    }
+    expect(readJSON('apps/mobile/eas.json').cli.version).toBe('21.0.0')
   })
 })
 
@@ -450,7 +506,7 @@ describe('apps/api source structure after move', () => {
     expect(exists('apps/api/vitest.config.mts')).toBe(true)
   })
 
-  it('has proxy.ts (Next.js 16 â€” not middleware.ts at root)', () => {
+  it('has proxy.ts (Next.js 16 — not middleware.ts at root)', () => {
     expect(exists('apps/api/src/proxy.ts')).toBe(true)
   })
 

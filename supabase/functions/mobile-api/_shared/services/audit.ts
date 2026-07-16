@@ -24,8 +24,9 @@ export async function logJobEvent(
   toStatus: JobStatus | null,
   metadata: Record<string, unknown> = {},
 ) {
-  await dbQuery(
-    client.from("job_events").insert({
+  let failed = false;
+  try {
+    const result = await dbQuery(client.from("job_events").insert({
       job_id: jobId,
       actor_id: actor.user.id,
       actor_role: actor.role,
@@ -33,10 +34,14 @@ export async function logJobEvent(
       from_status: fromStatus,
       to_status: toStatus,
       safe_metadata: metadata,
-    }),
-  ).catch(() => {
+    }));
+    failed = Boolean(result.error);
+  } catch {
+    failed = true;
+  }
+  if (failed) {
     console.warn("mobile-api job event log failed", { jobId, eventType });
-  });
+  }
 }
 
 export async function auditGuardrailTripBestEffort(
@@ -117,8 +122,9 @@ export async function logMemoryAudit(
     purpose: string;
   },
 ) {
-  await dbQuery(
-    client.from("kael_memory_audit").insert({
+  let failed = false;
+  try {
+    const result = await dbQuery(client.from("kael_memory_audit").insert({
       subject_type: input.subjectType,
       subject_id: input.subjectId,
       actor_id: input.actorId,
@@ -126,13 +132,17 @@ export async function logMemoryAudit(
       layer: input.layer,
       purpose: input.purpose,
       safe_metadata: {},
-    }),
-  ).catch(() => {
+    }));
+    failed = Boolean(result.error);
+  } catch {
+    failed = true;
+  }
+  if (failed) {
     console.warn("mobile-api kael memory audit failed", {
       subjectType: input.subjectType,
       operation: input.operation,
     });
-  });
+  }
 }
 
 export async function logApiCalls(

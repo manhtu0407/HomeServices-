@@ -5,7 +5,7 @@ import {
   workerRegisterSchema,
 } from '@nestscout/shared'
 
-// X3 (Plan.md §27.6 — 2026-05-29): Matching layer unblock fixes.
+// Matching-layer normalization contracts.
 // - F-08 normalizeDistrict should match ASCII labels via diacritic strip
 // - F-14 extractDistrictFromAddressLabel parses comma-separated address
 // - F-09/F-31 workerRegisterSchema rejects districts that don't normalize
@@ -80,9 +80,9 @@ describe('X3 workerRegisterSchema — F-09/F-31 reject non-slug districts', () =
     date_of_birth: '1990-01-01',
     service_types: ['electrical'],
     years_experience: 5,
-    cccd_front_url: 'https://example.com/cccd_front.jpg',
-    cccd_back_url: 'https://example.com/cccd_back.jpg',
-    selfie_url: 'https://example.com/selfie.jpg',
+    cccd_front_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-front/front.jpg',
+    cccd_back_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-back/back.jpg',
+    selfie_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/selfie/selfie.jpg',
     bank_account: '1234567890',
     bank_name: 'Vietcombank',
   }

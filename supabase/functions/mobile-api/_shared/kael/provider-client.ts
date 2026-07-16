@@ -18,6 +18,9 @@ import {
   type KaelSpendGate,
   reserveAiSpend,
 } from "./spend-gate.ts";
+import { readResponseTextBounded } from "../../../_shared/network.ts";
+
+const AI_PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 export type CallAIOptions = {
   readonly deferCircuitSuccess?: boolean;
@@ -29,9 +32,7 @@ export async function callAI(
   gate?: KaelSpendGate,
   options: CallAIOptions = {},
 ): Promise<AIResponse | AIError> {
-  // S4/F1 (§38): global kill-switch — hard-stop ALL provider calls during an
-  // incident, before any network/cost. Honest failure (no fake success, RULES #8);
-  // callers map AIError -> safe fallback / VI unavailable state.
+  // The kill-switch stops provider I/O before any cost and returns an honest failure.
   if (isKaelAiKillSwitchEnabled()) {
     console.warn("AI call blocked by KAEL_AI_KILL_SWITCH", {
       provider: request.provider,
@@ -93,12 +94,11 @@ export async function callAI(
     };
   }
 
-  // S4/F1 (§38) — Codex PR#68 P1/P2: reserve spend ATOMICALLY before the provider call.
-  // The estimate comes from the purpose's route cost ceiling when the caller didn't
-  // override it, so a call that WOULD push past a cap is blocked up-front (not only
-  // after it has already overshot). Reconciled to actual on success / released on
-  // failure below. reservationId stays null on any fail-open path (nothing to reconcile).
+  const maxRetries = boundedRetryCount(request.maxRetries);
+
+  // The ledger must cover the entire retry envelope before any provider I/O.
   let reservationId: number | null = null;
+  let estimatedCostPerAttemptUsd = 0;
   if (gate) {
     const configuredEstimate = gate.estimatedCostUsd ??
       (request.purpose ? KAEL_ROUTING_CONFIG[request.purpose]?.costCeilingUsd ?? 0 : 0);
@@ -111,7 +111,9 @@ export async function callAI(
       at: pricingAt,
       unknownModelPolicy,
     });
-    const estimatedCostUsd = Math.max(configuredEstimate, modelEstimate);
+    estimatedCostPerAttemptUsd = Math.max(configuredEstimate, modelEstimate);
+    const estimatedCostUsd = estimatedCostPerAttemptUsd *
+      (maxRetries + 1);
     const reservation = await reserveAiSpend(gate.client, {
       actorId: gate.actorId,
       estimatedCostUsd,
@@ -138,8 +140,8 @@ export async function callAI(
     : request.provider === "perplexity"
     ? 15_000
     : 10_000);
-  const maxRetries = request.maxRetries ?? 2;
   let lastError: unknown;
+  let attemptsStarted = 0;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
       const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10_000);
@@ -153,6 +155,7 @@ export async function callAI(
     }
 
     const controller = new AbortController();
+    attemptsStarted += 1;
     try {
       const response = await withTimeout(
         callProvider(
@@ -189,13 +192,18 @@ export async function callAI(
           KAEL_CIRCUIT_BREAKER.recordSuccess(request.purpose, request.provider);
         }
       }
-      // S4/F1 (§38): reconcile the reservation to ACTUAL cost (best-effort).
       if (gate) {
+        // Zero usage can mean omitted billing metadata, not a free request.
+        const successfulAttemptCostUsd = Number.isFinite(response.usage.costUsd) &&
+            response.usage.costUsd > 0
+          ? response.usage.costUsd
+          : estimatedCostPerAttemptUsd;
         await finalizeAiSpend(gate.client, {
           reservationId,
           actorId: gate.actorId,
           purpose: request.purpose ?? "unknown",
-          actualUsd: response.usage.costUsd,
+          actualUsd: successfulAttemptCostUsd +
+            estimatedCostPerAttemptUsd * (attemptsStarted - 1),
         });
       }
       return response;
@@ -236,14 +244,14 @@ export async function callAI(
       KAEL_CIRCUIT_BREAKER.recordFailure(failure);
     }
   }
-  // S4/F1 (§38) — Codex PR#68 P1: release the reservation. A failed/aborted call must
-  // not permanently count against the user's or global cap (reconcile-or-release).
+  // Provider-side cost is unknowable after transport failure, so retain the
+  // conservative estimate for every attempt that crossed the network boundary.
   if (gate) {
     await finalizeAiSpend(gate.client, {
       reservationId,
       actorId: gate.actorId,
       purpose: request.purpose ?? "unknown",
-      actualUsd: 0,
+      actualUsd: estimatedCostPerAttemptUsd * attemptsStarted,
     });
   }
   return {
@@ -252,6 +260,12 @@ export async function callAI(
     code,
     error: code,
   };
+}
+
+function boundedRetryCount(value: number | undefined): number {
+  if (value === undefined) return 2;
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(Math.max(Math.trunc(value), 0), 2);
 }
 
 async function callProvider(
@@ -268,18 +282,27 @@ async function callProvider(
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    redirect: "error",
     signal,
   });
   const latencyMs = Date.now() - start;
+  const text = await readResponseTextBounded(
+    response,
+    AI_PROVIDER_MAX_RESPONSE_BYTES,
+  );
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new ProviderHttpError(response.status, text);
+    throw new ProviderHttpError(response.status);
+  }
+
+  const parsed = JSON.parse(text) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("AI_PROVIDER_RESPONSE_INVALID");
   }
 
   return adapter.parseResponse({
     request,
-    data: await response.json(),
+    data: parsed as Record<string, unknown>,
     latencyMs,
     model: request.model,
     pricingAt,
@@ -328,7 +351,7 @@ function isProviderTimeout(error: unknown): boolean {
 }
 
 class ProviderHttpError extends Error {
-  constructor(public readonly status: number, body: string) {
-    super(`HTTP ${status}: ${body.slice(0, 160)}`);
+  constructor(public readonly status: number) {
+    super(`HTTP ${status}`);
   }
 }

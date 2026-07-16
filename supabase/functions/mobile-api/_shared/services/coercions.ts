@@ -43,7 +43,8 @@ export function nullableString(value: unknown): string | null {
 }
 
 export function asNumber(value: unknown): number {
-  return typeof value === "number" ? value : Number(value ?? 0);
+  const parsed = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function asBoolean(value: unknown): boolean {
@@ -56,7 +57,7 @@ export function positiveNumberFrom(value: unknown): number | null {
 }
 
 export function nullableNumber(value: unknown): number | null {
-  if (typeof value === "number") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (value === null || value === undefined) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;

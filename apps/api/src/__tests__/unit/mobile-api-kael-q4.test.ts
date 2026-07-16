@@ -89,6 +89,21 @@ describe('Kael Q4 background optimization', () => {
       'insert',
       expect.objectContaining({ provider: 'deepseek', purpose: 'post_job_learning' }),
     ])
+    expect(client.calls).toContainEqual(expect.objectContaining({
+      table: 'rpc:commit_kael_learning_effect_atomic',
+      operations: [[
+        'rpc',
+        'commit_kael_learning_effect_atomic',
+        expect.objectContaining({
+          p_source_mode: 'deepseek_direct',
+          p_queue_state: 'manual_review',
+          p_effect_payload: expect.objectContaining({
+            mode: 'candidate',
+            lifecycle: expect.objectContaining({ lifecycle_state: 'manual_review' }),
+          }),
+        }),
+      ]],
+    }))
   })
 
   it('falls back to the Sonnet 5 Anthropic batch when DeepSeek cannot run', async () => {
@@ -301,9 +316,9 @@ describe('Kael Q4 background optimization', () => {
         error: null,
       },
       { data: [queueRow], error: null },
+      { data: null, error: null },
       { data: reviewedJobRows(4), error: null },
       { data: { id: '66666666-6666-4666-8666-666666666666' }, error: null },
-      { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
@@ -328,23 +343,36 @@ describe('Kael Q4 background optimization', () => {
     const summary = await processBatchResults(client, { anthropicApiKey: 'anthropic-test' }, { limit: 1 })
 
     expect(summary).toEqual({ checked: 1, ended: 1, processed_items: 1, failed_items: 0 })
-    const lifecycle = client.calls.find((call) => call.table === 'kael_rule_lifecycle_log')
-    expect(JSON.stringify(lifecycle)).toContain('"next_state":"pending_evidence"')
-    expect(JSON.stringify(lifecycle)).toContain('insufficient_evidence')
-    expect(JSON.stringify(lifecycle)).toContain('completed_reviewed_jobs')
-    const candidateInsert = client.calls.find((call) => call.table === 'learning_candidates')
-    expect(candidateInsert?.operations).toContainEqual([
-      'insert',
+    const effectCommit = client.calls.find((call) =>
+      call.table === 'rpc:commit_kael_learning_effect_atomic'
+    )
+    expect(effectCommit?.operations).toContainEqual([
+      'rpc',
+      'commit_kael_learning_effect_atomic',
       expect.objectContaining({
-        suggested_payload: expect.objectContaining({
-          candidate_type: 'price_prior_update',
-          skill_id: 'LS1',
-          target: 'price_prior',
-          effects: [],
-          prompt_version: expect.any(String),
+        p_queue_state: 'processed',
+        p_effect_payload: expect.objectContaining({
+          mode: 'candidate',
+          candidate: expect.objectContaining({
+            suggested_payload: expect.objectContaining({
+              candidate_type: 'price_prior_update',
+              skill_id: 'LS1',
+              target: 'price_prior',
+              effects: [],
+              prompt_version: expect.any(String),
+            }),
+          }),
+          lifecycle: expect.objectContaining({
+            gate_state: 'pending_evidence',
+            lifecycle_state: 'pending_evidence',
+            gate_reason: 'insufficient_evidence',
+            evidence_source: 'completed_reviewed_jobs',
+          }),
         }),
       }),
     ])
+    expect(client.calls.some((call) => call.table === 'learning_candidates')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'kael_rule_lifecycle_log')).toBe(false)
     expect(client.calls.some((call) => call.table === 'rpc:promote_learning_candidate')).toBe(false)
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
@@ -376,6 +404,7 @@ describe('Kael Q4 background optimization', () => {
         error: null,
       },
       { data: [queueRow], error: null },
+      { data: null, error: null },
       { data: reviewedJobRowsWithNoise(), error: null },
       {
         data: {
@@ -387,7 +416,6 @@ describe('Kael Q4 background optimization', () => {
         },
         error: null,
       },
-      { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
@@ -414,47 +442,60 @@ describe('Kael Q4 background optimization', () => {
 
     expect(summary).toEqual({ checked: 1, ended: 1, processed_items: 1, failed_items: 0 })
     const jobsQuery = client.calls.find((call) => call.table === 'jobs')
+    const renewalIndex = client.calls.findIndex((call) => call.table === 'rpc:renew_kael_ai_batch_results_claim')
+    const jobsIndex = client.calls.findIndex((call) => call.table === 'jobs')
+    expect(renewalIndex).toBeGreaterThan(-1)
+    expect(renewalIndex).toBeLessThan(jobsIndex)
     expect(jobsQuery?.operations).toContainEqual(['eq', 'service_type', 'plumbing'])
     expect(jobsQuery?.operations).toContainEqual(['eq', 'kael_problem_identified', 'pipe_leak'])
     expect(jobsQuery?.operations).toContainEqual(['eq', 'address_district', 'q7'])
     expect(jobsQuery?.operations.some((operation) => operation[0] === 'gte' && operation[1] === 'reviewed_at')).toBe(true)
-    const promotionRpc = client.calls.find((call) => call.table === 'rpc:promote_learning_candidate')
-    expect(promotionRpc?.operations).toContainEqual([
+    const effectCommit = client.calls.find((call) =>
+      call.table === 'rpc:commit_kael_learning_effect_atomic'
+    )
+    expect(effectCommit?.operations).toContainEqual([
       'rpc',
-      'promote_learning_candidate',
+      'commit_kael_learning_effect_atomic',
       expect.objectContaining({
-        p_skill_id: 'LS1',
-        p_candidate_type: 'price_prior_update',
-        p_target: 'price_prior',
-        p_affected_service: 'plumbing',
-        p_affected_problem: 'pipe_leak',
-        p_affected_district: 'q7',
-        p_evidence_count: 5,
-        p_confidence: expect.any(Number),
-        p_candidate_payload: expect.objectContaining({
-          skill_id: 'LS1',
-          target: 'price_prior',
-          effects: [],
-          prompt_version: expect.any(String),
-        }),
-        p_rule_payload: expect.objectContaining({
-          candidate_type: 'price_prior_update',
-          suggested: expect.objectContaining({
-            new_min: expect.any(Number),
-            new_max: expect.any(Number),
+        p_queue_state: 'processed',
+        p_effect_payload: expect.objectContaining({
+          mode: 'promotion',
+          candidate: expect.objectContaining({
+            skill_id: 'LS1',
+            candidate_type: 'price_prior_update',
+            target: 'price_prior',
+            affected_service: 'plumbing',
+            affected_problem: 'pipe_leak',
+            affected_district: 'q7',
+            evidence_count: 5,
+            confidence: expect.any(Number),
+            suggested_payload: expect.objectContaining({
+              skill_id: 'LS1',
+              target: 'price_prior',
+              effects: [],
+              prompt_version: expect.any(String),
+            }),
+            rule_payload: expect.objectContaining({
+              candidate_type: 'price_prior_update',
+              suggested: expect.objectContaining({
+                new_min: expect.any(Number),
+                new_max: expect.any(Number),
+              }),
+            }),
+          }),
+          lifecycle: expect.objectContaining({
+            gate_state: 'auto_promoted',
+            lifecycle_state: 'active',
+            evidence_source: 'completed_reviewed_jobs',
           }),
         }),
       }),
     ])
     expect(client.calls.some((call) => call.table === 'learning_rules')).toBe(false)
     expect(client.calls.some((call) => call.table === 'learning_rule_versions')).toBe(false)
-    const lifecycle = client.calls.find((call) => call.table === 'kael_rule_lifecycle_log')
-    expect(JSON.stringify(lifecycle)).toContain('"next_state":"pending_evidence"')
-    expect(JSON.stringify(lifecycle)).toContain('"next_state":"evidence_gate_check"')
-    expect(JSON.stringify(lifecycle)).toContain('"next_state":"auto_promoted"')
-    expect(JSON.stringify(lifecycle)).toContain('"next_state":"active"')
-    expect(JSON.stringify(lifecycle)).toContain('completed_reviewed_jobs')
-    expect(JSON.stringify(lifecycle)).toContain('77777777-7777-4777-8777-777777777777')
+    expect(client.calls.some((call) => call.table === 'learning_candidates')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'kael_rule_lifecycle_log')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'rpc:promote_learning_candidate')).toBe(false)
   })
 
   it('does not trust provider-supplied LS1 evidence when reviewed-job aggregation is unavailable', async () => {
@@ -494,10 +535,8 @@ describe('Kael Q4 background optimization', () => {
         error: null,
       },
       { data: [queueRow], error: null },
+      { data: null, error: null },
       { data: null, error: { code: 'DB_ERROR' } },
-      { data: { id: '66666666-6666-4666-8666-666666666666' }, error: null },
-      { data: null, error: null },
-      { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
     ])
@@ -519,12 +558,11 @@ describe('Kael Q4 background optimization', () => {
 
     const summary = await processBatchResults(client, { anthropicApiKey: 'anthropic-test' }, { limit: 1 })
 
-    expect(summary).toEqual({ checked: 1, ended: 1, processed_items: 1, failed_items: 0 })
+    expect(summary).toEqual({ checked: 1, ended: 1, processed_items: 0, failed_items: 1 })
     expect(client.calls.some((call) => call.table === 'rpc:promote_learning_candidate')).toBe(false)
-    const lifecycle = client.calls.find((call) => call.table === 'kael_rule_lifecycle_log')
-    expect(JSON.stringify(lifecycle)).toContain('"next_state":"pending_evidence"')
-    expect(JSON.stringify(lifecycle)).toContain('insufficient_evidence')
-    expect(JSON.stringify(lifecycle)).toContain('completed_reviewed_jobs')
+    expect(client.calls.some((call) => call.table === 'learning_candidates')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'kael_rule_lifecycle_log')).toBe(false)
+    expect(JSON.stringify(client.calls)).toContain('LEARNING_EVIDENCE_LOAD_FAILED')
   })
 
   it('caches LS1 evidence aggregation by scope across multiple results in one batch', async () => {
@@ -565,6 +603,7 @@ describe('Kael Q4 background optimization', () => {
         error: null,
       },
       { data: [queueRowA, queueRowB], error: null },
+      { data: null, error: null },
       { data: reviewedJobRowsWithNoise(), error: null },
       {
         data: {
@@ -592,7 +631,6 @@ describe('Kael Q4 background optimization', () => {
       { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
-      { data: null, error: null },
     ])
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith('/results')) {
@@ -617,7 +655,14 @@ describe('Kael Q4 background optimization', () => {
 
     expect(summary).toEqual({ checked: 1, ended: 1, processed_items: 2, failed_items: 0 })
     expect(client.calls.filter((call) => call.table === 'jobs')).toHaveLength(1)
-    expect(client.calls.filter((call) => call.table === 'rpc:promote_learning_candidate')).toHaveLength(2)
+    const effectCommits = client.calls.filter((call) =>
+      call.table === 'rpc:commit_kael_learning_effect_atomic'
+    )
+    expect(effectCommits).toHaveLength(2)
+    expect(effectCommits.every((call) =>
+      (call.operations[0]?.[2] as { p_effect_payload?: { mode?: string } } | undefined)
+        ?.p_effect_payload?.mode === 'promotion'
+    )).toBe(true)
   })
 
   it('rejects successful provider results that do not contain a valid learning candidate', async () => {
@@ -733,8 +778,8 @@ describe('Kael Q4 background optimization', () => {
         error: null,
       },
       { data: [queueRow], error: null },
-      { data: { id: '66666666-6666-4666-8666-666666666666' }, error: null },
       { data: null, error: null },
+      { data: { id: '66666666-6666-4666-8666-666666666666' }, error: null },
       { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
@@ -760,12 +805,23 @@ describe('Kael Q4 background optimization', () => {
     expect(summary).toEqual({ checked: 1, ended: 1, processed_items: 1, failed_items: 0 })
     expect(client.calls.some((call) => call.table === 'jobs')).toBe(false)
     expect(client.calls.some((call) => call.table === 'learning_rules')).toBe(false)
-    const queueUpdates = client.calls
-      .filter((call) => call.table === 'kael_learning_queue')
-      .flatMap((call) => call.operations.filter((operation) => operation[0] === 'update'))
-    expect(queueUpdates).toContainEqual([
-      'update',
-      expect.objectContaining({ queue_state: 'manual_review' }),
+    const itemCommit = client.calls.find((call) =>
+      call.table === 'rpc:commit_kael_learning_effect_atomic'
+    )
+    expect(itemCommit?.operations).toContainEqual([
+      'rpc',
+      'commit_kael_learning_effect_atomic',
+      expect.objectContaining({
+        p_queue_state: 'manual_review',
+        p_effect_payload: expect.objectContaining({
+          mode: 'candidate',
+          candidate: expect.objectContaining({ status: 'manual_review' }),
+          lifecycle: expect.objectContaining({
+            gate_state: 'manual_review',
+            lifecycle_state: 'manual_review',
+          }),
+        }),
+      }),
     ])
   })
 
@@ -821,6 +877,17 @@ describe('Kael Q4 background optimization', () => {
     expect(summary).toEqual({ checked: 1, ended: 1, processed_items: 0, failed_items: 1 })
     expect(client.calls.some((call) => call.table === 'rpc:promote_learning_candidate')).toBe(false)
     expect(client.calls.some((call) => call.table === 'learning_candidates')).toBe(false)
+    expect(client.calls).toContainEqual(expect.objectContaining({
+      table: 'rpc:commit_kael_learning_effect_atomic',
+      operations: [[
+        'rpc',
+        'commit_kael_learning_effect_atomic',
+        expect.objectContaining({
+          p_queue_state: 'failed',
+          p_effect_payload: expect.objectContaining({ mode: 'none' }),
+        }),
+      ]],
+    }))
     expect(JSON.stringify(client.calls)).toContain('LEARNING_WRITE_DISABLED')
   })
 
@@ -860,9 +927,9 @@ describe('Kael Q4 background optimization', () => {
         error: null,
       },
       { data: [queueRow], error: null },
+      { data: null, error: null },
       { data: reviewedJobRows(4), error: null },
       { data: { id: '66666666-6666-4666-8666-666666666666' }, error: null },
-      { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
@@ -890,9 +957,16 @@ describe('Kael Q4 background optimization', () => {
       now: new Date('2026-05-26T00:05:00.000Z'),
     })
 
-    const batchSelect = client.calls[0]
+    const batchClaim = client.calls[0]
     expect(summary.processed_items).toBe(1)
-    expect(batchSelect.operations.some((operation) => operation[0] === 'lte')).toBe(false)
+    expect(batchClaim).toMatchObject({
+      table: 'rpc:claim_kael_ai_batch_results',
+      operations: [[
+        'rpc',
+        'claim_kael_ai_batch_results',
+        expect.objectContaining({ p_force_poll: true }),
+      ]],
+    })
   })
 })
 

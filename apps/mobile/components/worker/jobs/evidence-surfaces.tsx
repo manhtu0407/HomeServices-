@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Pressable,
   Text as RNText,
   View,
@@ -27,6 +27,8 @@ type WorkerV5SourceCardSkinComponent = ComponentType<{
   testID?: string
 }>
 
+const EVIDENCE_TRAY_SLOTS = [0, 1, 2] as const
+
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
@@ -50,11 +52,10 @@ export function WorkerV5EvidenceTray({
   uploadingSlot?: number | null
   urls: readonly (string | null | undefined)[]
 }) {
-  const slots = [0, 1, 2]
   const previewUrls = useJobMediaPreviewUrls(urls)
   return (
     <View style={styles.evidenceTray} testID="worker-v5-evidence-tray">
-      {slots.map((slot) => {
+      {EVIDENCE_TRAY_SLOTS.map((slot) => {
         const mediaRef = urls[slot] ?? null
         const previewUrl = previewUrls[slot] ?? null
         const overflowCount = slot === 2 && urls.length > 3 ? urls.length - 2 : 0

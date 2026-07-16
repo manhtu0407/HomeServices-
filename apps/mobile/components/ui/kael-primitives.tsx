@@ -136,6 +136,7 @@ type KaelChipProps = {
   accessibilityLabel?: string
   accessibilityState?: AccessibilityState
   backgroundLayer?: ReactNode
+  disabled?: boolean
   label: string
   onPress?: () => void
   style?: StyleProp<ViewStyle>
@@ -144,7 +145,7 @@ type KaelChipProps = {
   variant?: KaelChipVariant
 }
 
-export function KaelChip({ accessibilityLabel, accessibilityState, backgroundLayer, label, onPress, style, testID, textStyle, variant = 'unselected' }: KaelChipProps) {
+export function KaelChip({ accessibilityLabel, accessibilityState, backgroundLayer, disabled = false, label, onPress, style, testID, textStyle, variant = 'unselected' }: KaelChipProps) {
   const chipToken = component.chip[variant]
   const content = (
     <Text style={[styles.chipText, { color: chipToken.text }, backgroundLayer ? styles.chipTextRaised : null, textStyle]} numberOfLines={1}>
@@ -170,9 +171,10 @@ export function KaelChip({ accessibilityLabel, accessibilityState, backgroundLay
     <Pressable
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
-      accessibilityState={accessibilityState}
+      accessibilityState={{ ...accessibilityState, disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.chip, { backgroundColor: chipToken.bg, borderColor: chipToken.border }, pressed ? styles.pressed : null, style]}
+      style={({ pressed }) => [styles.chip, { backgroundColor: chipToken.bg, borderColor: chipToken.border }, disabled ? styles.disabled : null, pressed ? styles.pressed : null, style]}
       testID={testID}
     >
       {backgroundLayer}
@@ -407,7 +409,7 @@ type KaelSegmentedControlProps<T extends string> = {
   inactiveSegmentStyle?: StyleProp<ViewStyle>
   inactiveTextStyle?: StyleProp<TextStyle>
   onChange: (value: T) => void
-  options: ReadonlyArray<{ accessibilityLabel?: string; icon?: ReactNode; label: string; testID?: string; value: T }>
+  options: readonly { accessibilityLabel?: string; icon?: ReactNode; label: string; testID?: string; value: T }[]
   segmentStyle?: StyleProp<ViewStyle>
   style?: StyleProp<ViewStyle>
   testID?: string

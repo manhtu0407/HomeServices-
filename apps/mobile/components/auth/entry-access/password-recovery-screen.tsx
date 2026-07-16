@@ -1,9 +1,11 @@
 import { useReducer } from 'react'
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import type { AppLanguage } from '@/lib/app-language'
 import { NativeSafeGlassPanel, PrimaryButton } from './components/materials'
 import { EntryTextField } from './components/fields'
 import { EntryIcon } from './components/icons'
+import { entryAccessCopy } from './copy'
 import { entryTheme } from './theme'
 import type { EntryActionResult } from './types'
 
@@ -11,22 +13,24 @@ export function PasswordRecoveryScreen(props: {
   busy: boolean
   error: string | null
   identifier: string
+  language: AppLanguage
   notice: string | null
   onBack: () => void
   onIdentifierChange: (value: string) => void
   onSubmit: () => void
 }) {
+  const copy = RECOVERY_SCREEN_COPY[props.language]
   return (
-    <RecoveryPage onBack={props.onBack} title="Khôi phục mật khẩu">
+    <RecoveryPage language={props.language} onBack={props.onBack} title={copy.recoveryTopbar}>
       <View style={styles.header}>
-        <Text style={styles.title}>Lấy lại{`\n`}mật khẩu.</Text>
-        <Text style={styles.lead}>Nhập email đã đăng ký. NestScout sẽ gửi một liên kết đặt lại mật khẩu.</Text>
+        <Text style={styles.title}>{copy.recoveryTitle}</Text>
+        <Text style={styles.lead}>{copy.recoveryLead}</Text>
       </View>
       <NativeSafeGlassPanel style={styles.panel} testID="auth-password-recovery-panel">
         <EntryTextField
           icon="mail"
           keyboardType="email-address"
-          label="Email đã đăng ký"
+          label={copy.emailLabel}
           onChangeText={props.onIdentifierChange}
           placeholder="email@example.com"
           testID="auth-recovery-identifier-input"
@@ -35,16 +39,18 @@ export function PasswordRecoveryScreen(props: {
         />
         {props.error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{props.error}</Text> : null}
         {props.notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{props.notice}</Text> : null}
-        <PrimaryButton disabled={props.busy} label={props.busy ? 'Đang gửi…' : 'Gửi liên kết'} onPress={props.onSubmit} testID="auth-recovery-submit" />
+        <PrimaryButton disabled={props.busy} label={props.busy ? copy.sending : copy.sendLink} onPress={props.onSubmit} testID="auth-recovery-submit" />
       </NativeSafeGlassPanel>
     </RecoveryPage>
   )
 }
 
 export function PasswordResetScreen(props: {
+  language: AppLanguage
   onComplete: (password: string) => Promise<EntryActionResult>
   onExit: () => Promise<void> | void
 }) {
+  const copy = RECOVERY_SCREEN_COPY[props.language]
   const [{ password, confirmation, busy, complete, error }, patchReset] = useReducer(
     (current: PasswordResetState, patch: Partial<PasswordResetState>) => ({ ...current, ...patch }),
     INITIAL_PASSWORD_RESET_STATE,
@@ -53,11 +59,11 @@ export function PasswordResetScreen(props: {
   const submit = async () => {
     patchReset({ error: null })
     if (password.length < 8) {
-      patchReset({ error: 'Mật khẩu mới cần ít nhất 8 ký tự.' })
+      patchReset({ error: copy.passwordShort })
       return
     }
     if (password !== confirmation) {
-      patchReset({ error: 'Mật khẩu xác nhận chưa trùng khớp.' })
+      patchReset({ error: copy.passwordMismatch })
       return
     }
 
@@ -65,36 +71,36 @@ export function PasswordResetScreen(props: {
     try {
       const result = await props.onComplete(password)
       if (!result.success) {
-        patchReset({ error: result.error ?? 'Chưa thể cập nhật mật khẩu. Vui lòng yêu cầu liên kết mới.' })
+        patchReset({ error: result.error ?? copy.updateUnavailable })
         return
       }
       patchReset({ complete: true })
     } catch {
-      patchReset({ error: 'Không thể kết nối. Vui lòng thử lại.' })
+      patchReset({ error: copy.connectionFailed })
     } finally {
       patchReset({ busy: false })
     }
   }
 
   return (
-    <RecoveryPage onBack={() => void props.onExit()} title="Đặt lại mật khẩu">
+    <RecoveryPage language={props.language} onBack={() => void props.onExit()} title={copy.resetTopbar}>
       <View style={styles.header}>
-        <Text style={styles.title}>Tạo mật khẩu{`\n`}mới.</Text>
-        <Text style={styles.lead}>Chọn mật khẩu mới cho tài khoản NestScout của bạn.</Text>
+        <Text style={styles.title}>{copy.resetTitle}</Text>
+        <Text style={styles.lead}>{copy.resetLead}</Text>
       </View>
       <NativeSafeGlassPanel style={styles.panel} testID="auth-password-reset-panel">
         {complete ? (
           <View style={styles.successBlock}>
-            <Text accessibilityLiveRegion="polite" style={styles.successTitle}>Mật khẩu đã được cập nhật.</Text>
-            <Text style={styles.successLead}>Bạn có thể đăng nhập lại bằng mật khẩu mới.</Text>
-            <PrimaryButton label="Đăng nhập" onPress={() => void props.onExit()} testID="auth-reset-password-login" />
+            <Text accessibilityLiveRegion="polite" style={styles.successTitle}>{copy.successTitle}</Text>
+            <Text style={styles.successLead}>{copy.successLead}</Text>
+            <PrimaryButton label={copy.login} onPress={() => void props.onExit()} testID="auth-reset-password-login" />
           </View>
         ) : (
           <>
-            <EntryTextField icon="lock" label="Mật khẩu mới" onChangeText={(value) => patchReset({ password: value })} placeholder="Ít nhất 8 ký tự" secureTextEntry testID="auth-reset-password-input" textContentType="newPassword" value={password} />
-            <EntryTextField icon="lock" label="Xác nhận mật khẩu" onChangeText={(value) => patchReset({ confirmation: value })} placeholder="Nhập lại mật khẩu mới" secureTextEntry testID="auth-reset-password-confirmation-input" textContentType="newPassword" value={confirmation} />
+            <EntryTextField icon="lock" label={copy.newPasswordLabel} onChangeText={(value) => patchReset({ password: value })} placeholder={copy.newPasswordPlaceholder} secureTextEntry testID="auth-reset-password-input" textContentType="newPassword" value={password} />
+            <EntryTextField icon="lock" label={copy.confirmPasswordLabel} onChangeText={(value) => patchReset({ confirmation: value })} placeholder={copy.confirmPasswordPlaceholder} secureTextEntry testID="auth-reset-password-confirmation-input" textContentType="newPassword" value={confirmation} />
             {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
-            <PrimaryButton disabled={busy} label={busy ? 'Đang cập nhật…' : 'Cập nhật mật khẩu'} onPress={() => void submit()} testID="auth-reset-password-submit" />
+            <PrimaryButton disabled={busy} label={busy ? copy.updating : copy.updatePassword} onPress={() => void submit()} testID="auth-reset-password-submit" />
           </>
         )}
       </NativeSafeGlassPanel>
@@ -118,13 +124,14 @@ const INITIAL_PASSWORD_RESET_STATE: PasswordResetState = {
   error: null,
 }
 
-function RecoveryPage(props: { children: React.ReactNode; onBack: () => void; title: string }) {
+function RecoveryPage(props: { children: React.ReactNode; language: AppLanguage; onBack: () => void; title: string }) {
+  const accessibilityCopy = entryAccessCopy[props.language].accessibility
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
         <ScrollView bounces={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.topbar}>
-            <Pressable accessibilityLabel="Quay lại" accessibilityRole="button" onPress={props.onBack} style={styles.backButton}>
+            <Pressable accessibilityLabel={accessibilityCopy.back} accessibilityRole="button" onPress={props.onBack} style={styles.backButton}>
               <EntryIcon color={entryTheme.color.text.strong} name="back" size={18} />
             </Pressable>
             <Text style={styles.topbarTitle}>{props.title}</Text>
@@ -136,6 +143,57 @@ function RecoveryPage(props: { children: React.ReactNode; onBack: () => void; ti
     </SafeAreaView>
   )
 }
+
+const RECOVERY_SCREEN_COPY = {
+  vi: {
+    confirmPasswordLabel: 'Xác nhận mật khẩu',
+    confirmPasswordPlaceholder: 'Nhập lại mật khẩu mới',
+    connectionFailed: 'Không thể kết nối. Vui lòng thử lại.',
+    emailLabel: 'Email đã đăng ký',
+    login: 'Đăng nhập',
+    newPasswordLabel: 'Mật khẩu mới',
+    newPasswordPlaceholder: 'Ít nhất 8 ký tự',
+    passwordMismatch: 'Mật khẩu xác nhận chưa trùng khớp.',
+    passwordShort: 'Mật khẩu mới cần ít nhất 8 ký tự.',
+    recoveryLead: 'Nhập email đã đăng ký. NestScout sẽ gửi một liên kết đặt lại mật khẩu.',
+    recoveryTitle: 'Lấy lại\nmật khẩu.',
+    recoveryTopbar: 'Khôi phục mật khẩu',
+    resetLead: 'Chọn mật khẩu mới cho tài khoản NestScout của bạn.',
+    resetTitle: 'Tạo mật khẩu\nmới.',
+    resetTopbar: 'Đặt lại mật khẩu',
+    sendLink: 'Gửi liên kết',
+    sending: 'Đang gửi…',
+    successLead: 'Bạn có thể đăng nhập lại bằng mật khẩu mới.',
+    successTitle: 'Mật khẩu đã được cập nhật.',
+    updatePassword: 'Cập nhật mật khẩu',
+    updateUnavailable: 'Chưa thể cập nhật mật khẩu. Vui lòng yêu cầu liên kết mới.',
+    updating: 'Đang cập nhật…',
+  },
+  en: {
+    confirmPasswordLabel: 'Confirm password',
+    confirmPasswordPlaceholder: 'Enter the new password again',
+    connectionFailed: 'Unable to connect. Please try again.',
+    emailLabel: 'Registered email',
+    login: 'Sign in',
+    newPasswordLabel: 'New password',
+    newPasswordPlaceholder: 'At least 8 characters',
+    passwordMismatch: 'The password confirmation does not match.',
+    passwordShort: 'The new password must contain at least 8 characters.',
+    recoveryLead: 'Enter your registered email. NestScout will send a password-reset link.',
+    recoveryTitle: 'Recover your\npassword.',
+    recoveryTopbar: 'Password recovery',
+    resetLead: 'Choose a new password for your NestScout account.',
+    resetTitle: 'Create a new\npassword.',
+    resetTopbar: 'Reset password',
+    sendLink: 'Send link',
+    sending: 'Sending…',
+    successLead: 'You can now sign in with your new password.',
+    successTitle: 'Your password has been updated.',
+    updatePassword: 'Update password',
+    updateUnavailable: 'Unable to update the password. Please request a new link.',
+    updating: 'Updating…',
+  },
+} as const
 
 const styles = StyleSheet.create({
   backButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.70)', borderColor: 'rgba(255,255,255,0.92)', borderRadius: 21, borderWidth: 1, height: 42, justifyContent: 'center', width: 42, ...entryTheme.shadow.soft },

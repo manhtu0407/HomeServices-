@@ -1,9 +1,9 @@
 import { type PropsWithChildren, useEffect, useState } from 'react'
 import { BlurView } from 'expo-blur'
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect'
+import { Image } from 'expo-image'
 import {
   AccessibilityInfo,
-  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -13,8 +13,10 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
+import { useAppLanguage } from '@/lib/app-language'
+import { entryAccessCopy } from '../copy'
 import { entryTheme } from '../theme'
 import { EntryIcon, type EntryIconName } from './icons'
 
@@ -200,22 +202,24 @@ export function IconButton({ icon = 'back', label, onPress }: { icon?: EntryIcon
 }
 
 export function NestScoutBrandMark({ size = 102, source }: { size?: number; source: ImageSourcePropType }) {
+  const language = useAppLanguage()
   return (
     <View
-      accessibilityLabel="NestScout — Aurora Nest"
+      accessibilityLabel={entryAccessCopy[language].accessibility.logo}
       accessible
       style={[styles.brandMarkShell, { borderRadius: Math.round(size * 0.30), height: size, width: size }]}
     >
-      <Image resizeMode="cover" source={source} style={styles.brandMarkImage} />
+      <Image contentFit="cover" source={source} style={styles.brandMarkImage} />
       <View pointerEvents="none" style={[styles.brandMarkHighlight, { borderRadius: Math.round(size * 0.25) }]} />
     </View>
   )
 }
 
 export function KaelCoreHero({ compact = false }: { compact?: boolean }) {
+  const language = useAppLanguage()
   const { reduceMotion } = useEntryAccessibility()
   return (
-    <View accessibilityLabel="Kael, trợ lý gia đình" accessible style={[styles.kaelCoreHero, compact && styles.kaelCoreHeroCompact]}>
+    <View accessibilityLabel={entryAccessCopy[language].accessibility.kaelAssistant} accessible style={[styles.kaelCoreHero, compact && styles.kaelCoreHeroCompact]}>
       <KaelCoreV9 reduceMotion={reduceMotion} size={compact ? 136 : 188} />
     </View>
   )
@@ -233,7 +237,7 @@ export function Eyebrow({ children }: PropsWithChildren) {
 export function AssetTile({ source }: { source: ImageSourcePropType }) {
   return (
     <View style={styles.assetTile}>
-      <Image resizeMode="contain" source={source} style={styles.assetImage} />
+      <Image contentFit="contain" source={source} style={styles.assetImage} />
     </View>
   )
 }
@@ -255,12 +259,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.94)',
     borderColor: entryTheme.color.surface.stroke,
     borderWidth: 1,
+    boxShadow: '0 12px 17px rgba(62,104,169,0.14)',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: '#3E68A9',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 17,
   },
   assetTile: {
     alignItems: 'center',

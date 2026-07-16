@@ -16,7 +16,7 @@ export type PipelineInput = {
   district: string
   photoUrls?: string[]
   language?: 'vi' | 'en'
-  // Smart-clarification intake-diagnosis (2026-06-04). When enabled, the intent
+  // When smart clarification is enabled, the intent
   // stage uses diagnoseIntake (conversation-aware) and the pipeline may short-circuit
   // to ask ONE clarification question or flag a scope mismatch before vision/market.
   intakeDiagnosisEnabled?: boolean

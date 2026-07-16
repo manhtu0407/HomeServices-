@@ -26,7 +26,7 @@ export type WorkerV5SchedulePlan = {
 
 export function buildWorkerV5SchedulePlan(
   deal: LocalDeal | null,
-  workerJobs: ReadonlyArray<WorkerJobListResponse['jobs'][number]>,
+  workerJobs: readonly WorkerJobListResponse['jobs'][number][],
   language: AppLanguage,
 ): WorkerV5SchedulePlan {
   const scheduleJobs = workerJobs
@@ -35,7 +35,7 @@ export function buildWorkerV5SchedulePlan(
     .sort(compareWorkerV5ScheduleJobs)
 
   if (scheduleJobs.length > 0) {
-    const rows = scheduleJobs.map((job, index) => buildWorkerV5ScheduleRowFromJob(job, index, language))
+    const rows = scheduleJobs.map((job) => buildWorkerV5ScheduleRowFromJob(job, language))
     return {
       actionLabel: textByLanguage(language, 'Theo tín hiệu thật', 'Real signals'),
       amount: scheduleJobs.length === 1
@@ -144,14 +144,13 @@ function workerV5ScheduleLocationRank(job: WorkerJobListResponse['jobs'][number]
 }
 
 function workerV5ScheduleTimestamp(job: WorkerJobListResponse['jobs'][number]) {
-  const value = job.matched_at ?? job.created_at
+  const value = job.scheduled_at ?? job.matched_at ?? job.created_at
   const timestamp = Date.parse(value)
   return Number.isFinite(timestamp) ? timestamp : Number.MAX_SAFE_INTEGER
 }
 
 function buildWorkerV5ScheduleRowFromJob(
   job: WorkerJobListResponse['jobs'][number],
-  index: number,
   language: AppLanguage,
 ): WorkerV5SchedulePlanRow {
   const problem = job.problem_summary?.trim() || localizedServiceLabel(job.service_type, language)
@@ -162,16 +161,19 @@ function buildWorkerV5ScheduleRowFromJob(
   return {
     aside: earning,
     meta: `${destination} · ${problem}`,
-    time: String(index + 1).padStart(2, '0'),
+    time: workerV5TimeChoiceLabel(undefined, language, job.scheduled_at),
     title: localizedServiceLabel(job.service_type, language),
   }
 }
 
 function buildWorkerV5ScheduleJobMeta(
-  jobs: ReadonlyArray<WorkerJobListResponse['jobs'][number]>,
+  jobs: readonly WorkerJobListResponse['jobs'][number][],
   language: AppLanguage,
 ) {
-  const districtCount = new Set(jobs.map((job) => job.district?.trim()).filter(Boolean)).size
+  const districtCount = new Set(jobs.flatMap((job) => {
+    const district = job.district?.trim()
+    return district ? [district] : []
+  })).size
   return textByLanguage(
     language,
     `${jobs.length} việc thật · ${districtCount || 1} khu vực`,
@@ -183,8 +185,10 @@ function workerV5JobDestinationLabel(job: WorkerJobListResponse['jobs'][number],
   const district = job.district?.trim() ? formatWorkerDistrict(job.district, language) : textByLanguage(language, 'Khu vực đang ẩn', 'Area hidden')
   if (!workerV5JobExactAddressReleased(job)) return district
   const parts = [job.address_building, job.address_floor, job.address_unit, district]
-    .map((part) => part?.trim())
-    .filter((part): part is string => Boolean(part))
+    .flatMap((part) => {
+      const trimmed = part?.trim()
+      return trimmed ? [trimmed] : []
+    })
   return parts.length > 0 ? parts.join(', ') : district
 }
 
@@ -199,7 +203,7 @@ function buildWorkerV5ScheduleRow(deal: LocalDeal, language: AppLanguage): Worke
   return {
     aside: deal.broadcast?.estimatedEarningLabel ?? textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning'),
     meta,
-    time: workerV5TimeChoiceLabel(deal.draft.timeChoice, language),
+    time: workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt),
     title: localizedServiceLabel(deal.draft.serviceType, language),
   }
 }

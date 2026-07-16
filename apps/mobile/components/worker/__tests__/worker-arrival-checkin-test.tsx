@@ -1,6 +1,6 @@
-﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import type { LocalDeal } from '@nestscout/shared'
-import { act } from '@testing-library/react-native'
+
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 import { Alert } from 'react-native'
 
@@ -24,6 +24,7 @@ const mockWorkerRouteService = {
   getMapImage: jest.fn(),
   getPreview: jest.fn(),
 }
+const mockGetMobileApiAuthHeaders = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
@@ -69,6 +70,14 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
   useFrontendWorkflow: () => mockWorkflowValue,
 }))
 
+jest.mock('@/lib/api', () => {
+  const actual = jest.requireActual('@/lib/api')
+  return {
+    ...actual,
+    getMobileApiAuthHeaders: (...args: unknown[]) => mockGetMobileApiAuthHeaders(...args),
+  }
+})
+
 jest.mock('@/lib/auth-provider', () => ({
   useAuth: () => ({ role: 'worker', session: { user: { id: 'worker_test_1' } }, signOut: jest.fn(async () => undefined) }),
 }))
@@ -111,7 +120,7 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
-import { WorkerJobsSurface } from '../worker-surfaces'
+import { WorkerJobsSurface, WorkerProfileSurface } from '../worker-surfaces'
 
 const imagePicker = require('expo-image-picker') as {
   launchCameraAsync: jest.Mock
@@ -271,10 +280,13 @@ describe('Worker V5 arrival check-in', () => {
     mockWorkerKaelChatService.list.mockImplementation(pendingWorkerKaelServiceCall)
     mockWorkerKaelChatService.getTrainingConsent.mockImplementation(pendingWorkerKaelServiceCall)
     mockWorkerKaelChatService.create.mockReset()
+    mockWorkerKaelChatService.get.mockReset()
     mockWorkerKaelChatService.streamTurn.mockReset()
     mediaUpload.uploadJobMediaDrafts.mockReset()
     imagePicker.launchCameraAsync.mockReset()
     imagePicker.launchImageLibraryAsync.mockReset()
+    imagePicker.requestCameraPermissionsAsync.mockReset()
+    imagePicker.requestMediaLibraryPermissionsAsync.mockReset()
     imagePicker.requestCameraPermissionsAsync.mockResolvedValue({ granted: true })
     imagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
     location.requestForegroundPermissionsAsync.mockImplementation(() => new Promise(() => undefined))
@@ -287,6 +299,8 @@ describe('Worker V5 arrival check-in', () => {
       data: { distance_meters: 3200, duration_seconds: 720 },
       success: true,
     })
+    mockGetMobileApiAuthHeaders.mockReset()
+    mockGetMobileApiAuthHeaders.mockResolvedValue({ Authorization: 'Bearer test', 'Content-Type': 'application/json' })
     buildWorkflow(buildOnWayDeal())
   })
 
@@ -296,6 +310,8 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.getByTestId('worker-v5-screen-2.7-in-progress')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-route-map-panel')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-eta-summary-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-eta-lens-value')).not.toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-eta-lens-label')).toHaveTextContent('dữ liệu')
     expect(screen.getByTestId('worker-v5-route-arrival-action')).toBeOnTheScreen()
     expect(screen.getByText('Xác nhận đã tới')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-route-pre-arrival-scope-action')).toBeNull()
@@ -337,6 +353,36 @@ describe('Worker V5 arrival check-in', () => {
     })
     expect(dealWithoutRouteCoordinates.broadcast!.fullAddressVisible).toBe(false)
   }, 10_000)
+
+  it('settles the demand-map preview when auth headers cannot be loaded', async () => {
+    mockGetMobileApiAuthHeaders.mockRejectedValue(new Error('session storage failed'))
+    mockWorkflowValue.workerProfile = {
+      ...buildWorkerProfile(),
+      home_lat: 10.7692,
+      home_lng: 106.6819,
+    }
+    mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
+
+    render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-service-area-open-card'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-vietmap-image-error')).toBeOnTheScreen()
+    })
+    expect(screen.queryByTestId('worker-v5-vietmap-image-loading')).toBeNull()
+  })
+
+  it('settles the route-map preview when auth headers cannot be loaded', async () => {
+    location.requestForegroundPermissionsAsync.mockResolvedValue({ granted: true })
+    mockGetMobileApiAuthHeaders.mockRejectedValue(new Error('session storage failed'))
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-route-map-image-error')).toBeOnTheScreen()
+    })
+    expect(screen.queryByTestId('worker-v5-route-map-image-loading')).toBeNull()
+  })
 
   it('shows the one-time arrival gate before execution when resuming an arrived job', async () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress', ns_arrival_gate: '1' }
@@ -455,7 +501,7 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.getAllByText('+')).toHaveLength(3)
     fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
 
-    const actions = alertSpy.mock.calls[0]?.[2] as Array<{ onPress?: () => void; text?: string }> | undefined
+    const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const selectLibrary = actions?.find((action) => action.text === 'Kho ảnh')
     await act(async () => {
       selectLibrary?.onPress?.()
@@ -478,6 +524,163 @@ describe('Worker V5 arrival check-in', () => {
     alertSpy.mockRestore()
   })
 
+  it('serializes the field-evidence picker and releases it after a permission rejection', async () => {
+    buildWorkflow(buildInProgressDeal())
+    let rejectPermission!: (reason?: unknown) => void
+    imagePicker.requestMediaLibraryPermissionsAsync.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectPermission = reject
+    }))
+    imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({ assets: [], canceled: true })
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    try {
+      render(<WorkerJobsSurface />)
+
+      fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
+      const firstActions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
+      const firstLibraryAction = firstActions?.find((action) => action.text === 'Kho ảnh')
+      act(() => {
+        firstLibraryAction?.onPress?.()
+        firstLibraryAction?.onPress?.()
+      })
+
+      expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        rejectPermission(new Error('permission bridge unavailable'))
+        await Promise.resolve()
+      })
+      await waitFor(() => {
+        expect(screen.getByText('Chưa thể mở hoặc gửi ảnh hiện trường lúc này.')).toBeOnTheScreen()
+      })
+
+      fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-1'))
+      const retryActions = alertSpy.mock.calls[1]?.[2] as { onPress?: () => void; text?: string }[] | undefined
+      const retryLibraryAction = retryActions?.find((action) => action.text === 'Kho ảnh')
+      await act(async () => {
+        retryLibraryAction?.onPress?.()
+      })
+
+      expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(2)
+      expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(1)
+      expect(mediaUpload.uploadJobMediaDrafts).not.toHaveBeenCalled()
+    } finally {
+      alertSpy.mockRestore()
+    }
+  })
+
+  it('reuses the field-evidence session key and upload after an ambiguous create failure', async () => {
+    buildWorkflow(buildInProgressDeal())
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({
+      assets: [{ fileName: 'onsite.jpg', fileSize: 1024, mimeType: 'image/jpeg', uri: 'file://onsite.jpg' }],
+      canceled: false,
+    })
+    mediaUpload.uploadJobMediaDrafts.mockResolvedValue({
+      mediaRefs: ['supabase://job-media/job_test_1/kael_reference/onsite.jpg'],
+      success: true,
+    })
+    mockWorkerKaelChatService.create.mockResolvedValue({
+      code: 'NETWORK_ERROR',
+      error: 'ambiguous failure',
+      status: 0,
+      success: false,
+    })
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    render(<WorkerJobsSurface />)
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      fireEvent.press(screen.getByTestId(`worker-v5-evidence-tray-add-${attempt}`))
+      const actions = alertSpy.mock.calls[attempt]?.[2] as { onPress?: () => void; text?: string }[] | undefined
+      const selectLibrary = actions?.[1]
+      act(() => selectLibrary?.onPress?.())
+      await waitFor(() => expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(attempt + 1))
+    }
+
+    expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledTimes(1)
+    const firstKey = mockWorkerKaelChatService.create.mock.calls[0][0].client_request_id
+    const retryKey = mockWorkerKaelChatService.create.mock.calls[1][0].client_request_id
+    expect(retryKey).toBe(firstKey)
+    alertSpy.mockRestore()
+  })
+
+  it('reuses the field-evidence turn key after an ambiguous stream failure', async () => {
+    buildWorkflow(buildInProgressDeal())
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({
+      assets: [{ fileName: 'onsite.jpg', fileSize: 1024, mimeType: 'image/jpeg', uri: 'file://onsite.jpg' }],
+      canceled: false,
+    })
+    mediaUpload.uploadJobMediaDrafts.mockResolvedValue({
+      mediaRefs: ['supabase://job-media/job_test_1/kael_reference/onsite.jpg'],
+      success: true,
+    })
+    mockWorkerKaelChatService.create.mockResolvedValue({
+      data: { session: { id: 'worker-kael-session-1', job_id: 'job_test_1' } },
+      success: true,
+    })
+    mockWorkerKaelChatService.streamTurn.mockResolvedValue({
+      code: 'STREAM_TIMEOUT',
+      error: 'ambiguous failure',
+      status: 0,
+      success: false,
+    })
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    render(<WorkerJobsSurface />)
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      fireEvent.press(screen.getByTestId(`worker-v5-evidence-tray-add-${attempt}`))
+      const actions = alertSpy.mock.calls[attempt]?.[2] as { onPress?: () => void; text?: string }[] | undefined
+      const selectLibrary = actions?.[1]
+      act(() => selectLibrary?.onPress?.())
+      await waitFor(() => expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledTimes(attempt + 1))
+    }
+
+    expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledTimes(1)
+    const firstKey = mockWorkerKaelChatService.streamTurn.mock.calls[0][1].client_request_id
+    const retryKey = mockWorkerKaelChatService.streamTurn.mock.calls[1][1].client_request_id
+    expect(retryKey).toBe(firstKey)
+    alertSpy.mockRestore()
+  })
+
+  it('does not surface an old field-evidence confirmation after the active job changes', async () => {
+    buildWorkflow(buildInProgressDeal())
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({
+      assets: [{ fileName: 'onsite.jpg', fileSize: 1024, mimeType: 'image/jpeg', uri: 'file://onsite.jpg' }],
+      canceled: false,
+    })
+    mediaUpload.uploadJobMediaDrafts.mockResolvedValue({
+      mediaRefs: ['supabase://job-media/job_test_1/kael_reference/onsite.jpg'],
+      success: true,
+    })
+    let resolveCreate!: (value: { error: string; success: false }) => void
+    mockWorkerKaelChatService.create.mockImplementation(() => new Promise((resolve) => {
+      resolveCreate = resolve
+    }))
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    const { rerender } = render(<WorkerJobsSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
+    const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
+    const selectLibrary = actions?.find((action) => action.text === 'Kho ảnh')
+    await act(async () => {
+      selectLibrary?.onPress?.()
+    })
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.create).toHaveBeenCalled()
+    })
+
+    const nextDeal = buildInProgressDeal()
+    nextDeal.id = 'job_test_2'
+    if (nextDeal.broadcast) nextDeal.broadcast.jobId = 'job_test_2'
+    buildWorkflow(nextDeal)
+    rerender(<WorkerJobsSurface />)
+    await act(async () => {
+      resolveCreate({ error: 'old job failed', success: false })
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Kael chưa mở được phiên xác nhận hiện trường.')).toBeNull()
+    })
+    alertSpy.mockRestore()
+  })
+
   it('offers the camera path from an on-site evidence slot', async () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
     buildWorkflow(buildInProgressDeal())
@@ -486,7 +689,7 @@ describe('Worker V5 arrival check-in', () => {
 
     render(<WorkerJobsSurface />)
     fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-1'))
-    const actions = alertSpy.mock.calls[0]?.[2] as Array<{ onPress?: () => void; text?: string }> | undefined
+    const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const takePhoto = actions?.find((action) => action.text === 'Chụp ảnh')
     await act(async () => {
       takePhoto?.onPress?.()
@@ -508,7 +711,7 @@ describe('Worker V5 arrival check-in', () => {
 
     render(<WorkerJobsSurface />)
     fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
-    const actions = alertSpy.mock.calls[0]?.[2] as Array<{ onPress?: () => void; text?: string }> | undefined
+    const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const selectLibrary = actions?.find((action) => action.text === 'Kho ảnh')
     await act(async () => {
       selectLibrary?.onPress?.()
@@ -556,6 +759,89 @@ describe('Worker V5 arrival check-in', () => {
       expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
     })
     expect(screen.queryByText('Hồ sơ hoàn tất')).toBeNull()
+  })
+
+  it('serializes scope-evidence submission and releases the control after rejection', async () => {
+    buildWorkflow(buildInProgressDeal())
+    let rejectIncident!: (reason?: unknown) => void
+    mockWorkflowValue.actions.openKaelJobIncident.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectIncident = reject
+    }))
+    mockRouteParams = { ns_scope_mode: 'edit', ns_worker_screen: '2.8-scope-change' }
+    render(<WorkerJobsSurface />)
+    fireEvent.changeText(screen.getByTestId('worker-scope-change-new-description-input'), 'Cần thay dây cháy tại ổ cắm.')
+    fireEvent.changeText(screen.getByTestId('worker-scope-change-reason-input'), 'Dây bên trong đã cháy do quá nhiệt.')
+    const submitButton = screen.getByTestId('worker-scope-change-confirm-submit')
+    let submitPressTarget: typeof submitButton | null = submitButton
+    while (submitPressTarget && typeof submitPressTarget.props.onPress !== 'function') {
+      submitPressTarget = submitPressTarget.parent
+    }
+    expect(submitPressTarget).not.toBeNull()
+    const pressSubmit = submitPressTarget?.props.onPress as (() => void)
+
+    act(() => {
+      pressSubmit()
+      pressSubmit()
+    })
+
+    expect(mockWorkflowValue.actions.openKaelJobIncident).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      rejectIncident(new Error('network unavailable'))
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Chưa gửi được bằng chứng đổi phạm vi. Vui lòng thử lại.')).toBeOnTheScreen()
+      expect(submitButton).not.toBeDisabled()
+    })
+  })
+
+  it('serializes the final scope proposal and releases it after rejection', async () => {
+    const deal = buildInProgressDeal()
+    buildWorkflow(deal)
+    mockWorkflowValue.actions.openKaelJobIncident.mockResolvedValueOnce({
+      incident: {
+        id: 'incident-ready',
+        job_id: deal.id,
+        status: 'ready_for_scope_proposal',
+        evidence_status: 'sufficient',
+        last_summary: null,
+        last_question: null,
+        last_next_actor: 'worker',
+        created_at: '2026-07-15T00:00:00.000Z',
+        updated_at: '2026-07-15T00:00:00.000Z',
+      },
+    })
+    let rejectProposal!: (reason?: unknown) => void
+    mockWorkflowValue.actions.proposeScopeChangeFromKaelIncident.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectProposal = reject
+    }))
+    mockRouteParams = { ns_scope_mode: 'edit', ns_worker_screen: '2.8-scope-change' }
+    render(<WorkerJobsSurface />)
+    fireEvent.changeText(screen.getByTestId('worker-scope-change-new-description-input'), 'Cần thay dây cháy tại ổ cắm.')
+    fireEvent.changeText(screen.getByTestId('worker-scope-change-reason-input'), 'Dây bên trong đã cháy do quá nhiệt.')
+    fireEvent.press(screen.getByTestId('worker-scope-change-confirm-submit'))
+    await waitFor(() => expect(screen.getByText('Tạo đề xuất gửi khách')).toBeOnTheScreen())
+
+    const proposalButton = screen.getByTestId('worker-v5-scope-change-send-action')
+    let proposalPressTarget: typeof proposalButton | null = proposalButton
+    while (proposalPressTarget && typeof proposalPressTarget.props.onPress !== 'function') {
+      proposalPressTarget = proposalPressTarget.parent
+    }
+    expect(proposalPressTarget).not.toBeNull()
+    const pressProposal = proposalPressTarget?.props.onPress as (() => void)
+    act(() => {
+      pressProposal()
+      pressProposal()
+    })
+
+    expect(mockWorkflowValue.actions.proposeScopeChangeFromKaelIncident).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      rejectProposal(new Error('network unavailable'))
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Chưa tạo được đề xuất phạm vi. Vui lòng thử lại.')).toBeOnTheScreen()
+    })
   })
 
   it('keeps the case-trail heading removed while showing the two dedicated case icons without redundant row aura', () => {

@@ -14,6 +14,8 @@ const ROOTS = ['apps/api/src', 'apps/mobile', 'packages/shared/src', 'supabase/f
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.next', '.expo', '.turbo', 'coverage', '__tests__'])
 const BASELINE = resolve(root, 'scripts/structure-baseline.json')
 const rel = (f) => relative(root, f).split('\\').join('/')
+const readJson = (path) => JSON.parse(readFileSync(resolve(root, path), 'utf-8'))
+const API_PACKAGE_NAME = readJson('apps/api/package.json').name
 
 function isSource(name) {
   if (!/\.(ts|tsx)$/.test(name)) return false
@@ -103,7 +105,11 @@ for (const f of files) {
   const text = readFileSync(f, 'utf-8')
   for (const m of text.matchAll(/(?:from|import\(|require\()\s*['"]([^'"]+)['"]/g)) {
     const spec = m[1]
-    if (spec.includes('apps/api') || /@home-services\/api(\/|$)/.test(spec)) {
+    if (
+      spec.includes('apps/api') ||
+      spec === API_PACKAGE_NAME ||
+      spec.startsWith(`${API_PACKAGE_NAME}/`)
+    ) {
       problems.push(`runtime boundary: ${r} imports apps/api ("${spec}") — RN/Edge must not depend on apps/api (Edge is the canonical Kael brain, C3)`)
       break
     }

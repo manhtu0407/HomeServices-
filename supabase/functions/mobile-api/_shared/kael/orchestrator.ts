@@ -68,7 +68,7 @@ export async function runKaelPurposeStage<T>(
         failureReason: permission.reasonCode,
       };
     }
-    // P-1 (Notes.md): clear the timeout when the race settles. The provider
+    // Clear the timeout when the race settles. The provider
     // call already self-aborts at its budget (AbortController, maxRetries:0), so
     // this race is a belt; leaving its setTimeout pending after stage.run() wins
     // would keep a dangling timer and later reject a promise nobody awaits.

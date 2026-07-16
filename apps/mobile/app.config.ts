@@ -3,31 +3,17 @@ import { execFileSync } from 'node:child_process'
 import { isAbsolute, resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
 import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins'
-
-type ReleaseAuthConfigModule = {
-  assertReleaseAuthConfig: (input: {
-    isEasBuild: boolean
-    supabasePublishableKey: string
-    supabaseUrl: string
-  }) => void
-  resolveMobileEnvFiles: (input: {
-    configDir: string
-    explicitEnvFiles: string[]
-    isEasBuild: boolean
-    repoRoot: string
-  }) => string[]
-}
-
-const { assertReleaseAuthConfig, resolveMobileEnvFiles }: ReleaseAuthConfigModule = require('./config/release-auth-config.cjs')
+import { assertReleaseAuthConfig, resolveMobileEnvFiles } from './config/release-auth-config.cjs'
 
 const configDir = __dirname
 const repoRoot = resolve(configDir, '../..')
 
 const explicitEnvFiles = (process.env.NESTSCOUT_MOBILE_ENV_FILE ?? '')
   .split(/[;,\n]/)
-  .map((value: string) => value.trim())
-  .filter(Boolean)
-  .map((filePath: string) => (isAbsolute(filePath) ? filePath : resolve(repoRoot, filePath)))
+  .flatMap((value: string) => {
+    const filePath = value.trim()
+    return filePath ? [isAbsolute(filePath) ? filePath : resolve(repoRoot, filePath)] : []
+  })
 
 const isEasBuild = Boolean(process.env.EAS_BUILD_ID || process.env.EAS_BUILD_PLATFORM || process.env.EAS_BUILD_PROFILE)
 
@@ -63,7 +49,7 @@ const fromEnv = (...keys: string[]) => {
     const value = process.env[key] ?? localEnv[key]
 
     if (value && value.trim().length > 0) {
-      return value
+      return value.trim()
     }
   }
 
@@ -85,13 +71,15 @@ const fromGit = (...args: string[]) => {
 const supabaseUrl = fromEnv('EXPO_PUBLIC_SUPABASE_URL')
 const supabasePublishableKey = fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
 const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
+const apiBaseUrl =
+  configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
 assertReleaseAuthConfig({
+  apiBaseUrl,
+  buildProfile: fromEnv('EAS_BUILD_PROFILE'),
   isEasBuild,
   supabasePublishableKey,
   supabaseUrl,
 })
-const apiBaseUrl =
-  configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
 const buildGitSha = fromEnv('NESTSCOUT_BUILD_GIT_SHA', 'EAS_BUILD_GIT_COMMIT_HASH', 'GITHUB_SHA') || fromGit('rev-parse', 'HEAD')
 const buildGitBranch = fromEnv('NESTSCOUT_BUILD_GIT_BRANCH', 'EAS_BUILD_GIT_COMMIT_REF', 'GITHUB_REF_NAME') || fromGit('rev-parse', '--abbrev-ref', 'HEAD')
 const runtimeBuildInfo = {

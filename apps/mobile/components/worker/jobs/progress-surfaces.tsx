@@ -58,7 +58,7 @@ export function WorkerV5WorkProgressBoard({
   zipAura,
 }: {
   caseWideAura: WorkerV5ProgressAuraComponent
-  items: ReadonlyArray<WorkerV5ProgressItem>
+  items: readonly WorkerV5ProgressItem[]
   language: AppLanguage
   reduceTransparency: boolean
   zipAura: WorkerV5ProgressAuraComponent
@@ -130,7 +130,7 @@ function WorkerV5StepList({
 }: {
   caseWideAura: WorkerV5ProgressAuraComponent
   formulaAura?: boolean
-  items: ReadonlyArray<WorkerV5ProgressItem>
+  items: readonly WorkerV5ProgressItem[]
   reduceTransparency?: boolean
   testID?: string
   zipAura: WorkerV5ProgressAuraComponent

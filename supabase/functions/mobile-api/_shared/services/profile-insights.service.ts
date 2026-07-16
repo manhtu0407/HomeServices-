@@ -1,6 +1,6 @@
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { SERVICE_TYPES } from "../../../_shared/domain.ts";
-import { asNumber, asString, nullableNumber, nullableString } from "./coercions.ts";
+import { nullableString } from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
 import {
   calculateKaelWorkResponseScore,
@@ -8,7 +8,6 @@ import {
   type WorkerPerformanceInsightIncidentCaseRow,
   type WorkerPerformanceInsightReviewRow,
 } from "./worker-performance-policy.ts";
-
 type CustomerProfileInsightJobRow = {
   id: string;
   status: string;
@@ -22,17 +21,11 @@ type CustomerProfileInsightJobRow = {
   kael_price_min: number | null;
   kael_price_max: number | null;
 };
-
-type CustomerProfileInsightReviewRow = {
-  job_id: string | null;
-  rating: number | null;
-};
-
+type CustomerProfileInsightReviewRow = { job_id: string | null; rating: number | null };
 type CustomerProfileInsightDisputeRow = {
   job_id: string | null;
   status: string | null;
 };
-
 type CustomerProfileInsightInput = {
   accountProfile?: { created_at: string | null } | null;
   customerId: string;
@@ -49,7 +42,6 @@ type CustomerProfileInsightInput = {
   reviews: CustomerProfileInsightReviewRow[];
   savedAddressCount: number;
 };
-
 type CustomerProfileInsightsResponse = {
   customer_id: string;
   member_since: string | null;
@@ -59,6 +51,7 @@ type CustomerProfileInsightsResponse = {
   preferred_service_count: number;
   active_service_days: number;
   active_streak_days: number;
+  reviewed_service_count: number;
   positive_review_rate_percent: number;
   price_savings_vnd: number;
   total_spend_vnd: number;
@@ -72,14 +65,31 @@ type CustomerProfileInsightsResponse = {
   dispute_free_rate_percent: number;
   fair_price_status: "verified" | "mixed" | "pending" | null;
 };
-
+type CustomerProfileInsightAggregate = {
+  activeServiceDays: number;
+  activeStreakDays: number;
+  completedServiceCount: number;
+  customerId: string;
+  disputedTransactionCount: number;
+  fairPriceServiceCount: number;
+  kaelInteractionCount: number;
+  memberSince: string | null;
+  positiveReviewRatePercent: number;
+  preferredServiceCount: number;
+  priceSavingsVnd: number;
+  protectedTransactionCount: number;
+  protectedValueVnd: number;
+  reviewedServiceCount: number;
+  savedAddressCount: number;
+  totalSpendVnd: number;
+  totalTransactionCount: number;
+};
 type WorkerPerformanceInsightBroadcastRow = {
   broadcast_at: string | null;
   responded_at: string | null;
   sent_at: string | null;
   status: string;
 };
-
 type WorkerPerformanceInsightJobRow = {
   arrived_at: string | null;
   completed_at: string | null;
@@ -89,7 +99,6 @@ type WorkerPerformanceInsightJobRow = {
   scheduled_at: string | null;
   status: string;
 };
-
 type WorkerPerformanceInsightInput = {
   broadcasts: WorkerPerformanceInsightBroadcastRow[];
   incidentCases: WorkerPerformanceInsightIncidentCaseRow[];
@@ -135,208 +144,159 @@ type WorkerPerformanceInsightsResponse = {
   }>;
 };
 
+type WorkerPerformanceInsightAggregate = {
+  acceptedBroadcastCount: number;
+  averageResponseMinutes: number | null;
+  averageReviewRating: number | null;
+  completedJobCount: number;
+  onTimeJobCount: number;
+  paidJobCount: number;
+  reconciledEarningsVnd: number;
+  resolvedIncidentCaseCount: number;
+  respondedBroadcastCount: number;
+  reviewCount: number;
+  scheduledArrivalJobCount: number;
+  totalBroadcastCount: number;
+  workResponseReviewCount: number;
+  workResponseScore: number | null;
+  workerId: string;
+  workerProfile: WorkerPerformanceInsightInput["workerProfile"];
+};
+
 export async function getCustomerProfileInsights(ctx: MobileApiContext) {
-  const client = db(ctx);
-  const accountProfile = await dbQuery<Record<string, unknown>>(
-    client.from("profiles").select("created_at").eq("id", ctx.user.id).maybeSingle(),
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("get_customer_profile_insights_aggregate", {
+      p_customer_id: ctx.user.id,
+    }),
   );
-  if (accountProfile.error) {
-    apiFailure("DB_ERROR", "Không thể tải hồ sơ khách", 500);
+  const row = result.data?.[0];
+  if (result.error || !row) {
+    apiFailure("DB_ERROR", "Không thể tải thống kê hồ sơ khách", 500);
   }
 
-  const customerProfile = await dbQuery<Record<string, unknown>>(
-    client
-      .from("customer_profiles")
-      .select("building_name, unit_number, floor, district, created_at")
-      .eq("id", ctx.user.id)
-      .maybeSingle(),
-  );
-  if (customerProfile.error) {
-    apiFailure("DB_ERROR", "Không thể tải hồ sơ căn hộ", 500);
-  }
-
-  const jobs = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("jobs")
-      .select(
-        "id, status, service_type, created_at, completed_at, confirmed_at, paid_at, reviewed_at, final_price, kael_price_min, kael_price_max",
-      )
-      .eq("customer_id", ctx.user.id)
-      .order("created_at", { ascending: false })
-      .limit(500),
-  );
-  if (jobs.error) apiFailure("DB_ERROR", "Không thể tải lịch sử công việc", 500);
-
-  const reviews = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("reviews")
-      .select("job_id, rating")
-      .eq("customer_id", ctx.user.id)
-      .limit(500),
-  );
-  if (reviews.error) apiFailure("DB_ERROR", "Không thể tải đánh giá", 500);
-
-  const sessions = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("kael_chat_sessions")
-      .select("id")
-      .eq("customer_id", ctx.user.id)
-      .limit(500),
-  );
-  if (sessions.error) {
-    apiFailure("DB_ERROR", "Không thể tải lịch sử Kael", 500);
-  }
-
-  const jobIds = (jobs.data ?? [])
-    .map((job) => nullableString(job.id))
-    .filter((jobId): jobId is string => Boolean(jobId));
-  const disputes = jobIds.length > 0
-    ? await dbQuery<Array<Record<string, unknown>>>(
-      client
-        .from("disputes")
-        .select("job_id, status")
-        .in("job_id", jobIds)
-        .limit(500),
-    )
-    : { data: [], error: null };
-  if (disputes.error) apiFailure("DB_ERROR", "Không thể tải tranh chấp", 500);
-
-  return buildCustomerProfileInsights({
-    accountProfile: accountProfile.data
-      ? { created_at: nullableString(accountProfile.data.created_at) }
-      : null,
+  return buildCustomerProfileInsightsFromAggregate({
+    activeServiceDays: requiredAggregateInteger(row, "active_service_days"),
+    activeStreakDays: requiredAggregateInteger(row, "active_streak_days"),
+    completedServiceCount: requiredAggregateInteger(row, "completed_service_count"),
     customerId: ctx.user.id,
-    customerProfile: customerProfile.data
-      ? {
-        building_name: nullableString(customerProfile.data.building_name),
-        created_at: nullableString(customerProfile.data.created_at),
-        district: nullableString(customerProfile.data.district),
-        floor: nullableString(customerProfile.data.floor),
-        unit_number: nullableString(customerProfile.data.unit_number),
-      }
-      : null,
-    disputes: (disputes.data ?? []).map((row) => ({
-      job_id: nullableString(row.job_id),
-      status: nullableString(row.status),
-    })),
-    jobs: (jobs.data ?? []).map((job) => ({
-      id: asString(job.id),
-      status: asString(job.status),
-      service_type: asString(job.service_type),
-      created_at: nullableString(job.created_at),
-      completed_at: nullableString(job.completed_at),
-      confirmed_at: nullableString(job.confirmed_at),
-      paid_at: nullableString(job.paid_at),
-      reviewed_at: nullableString(job.reviewed_at),
-      final_price: nullableNumber(job.final_price),
-      kael_price_min: nullableNumber(job.kael_price_min),
-      kael_price_max: nullableNumber(job.kael_price_max),
-    })),
-    kaelInteractionCount: sessions.data?.length ?? 0,
-    reviews: (reviews.data ?? []).map((review) => ({
-      job_id: nullableString(review.job_id),
-      rating: nullableNumber(review.rating),
-    })),
-    savedAddressCount: 0,
+    disputedTransactionCount: requiredAggregateInteger(row, "disputed_transaction_count"),
+    fairPriceServiceCount: requiredAggregateInteger(row, "fair_price_service_count"),
+    kaelInteractionCount: requiredAggregateInteger(row, "kael_interaction_count"),
+    memberSince: nullableString(row.member_since),
+    positiveReviewRatePercent: requiredAggregateInteger(
+      row,
+      "positive_review_rate_percent",
+      100,
+    ),
+    preferredServiceCount: requiredAggregateInteger(row, "preferred_service_count"),
+    priceSavingsVnd: requiredAggregateInteger(row, "price_savings_vnd"),
+    protectedTransactionCount: requiredAggregateInteger(row, "protected_transaction_count"),
+    protectedValueVnd: requiredAggregateInteger(row, "protected_value_vnd"),
+    reviewedServiceCount: requiredAggregateInteger(row, "reviewed_service_count"),
+    savedAddressCount: requiredAggregateBoolean(row, "has_primary_address") ? 1 : 0,
+    totalSpendVnd: requiredAggregateInteger(row, "total_spend_vnd"),
+    totalTransactionCount: requiredAggregateInteger(row, "total_transaction_count"),
   });
 }
 
 export async function getWorkerPerformanceInsights(ctx: MobileApiContext) {
-  const client = db(ctx);
-  const [workerProfile, broadcasts, jobs, reviews, incidentCases] = await Promise.all([
-    dbQuery<Record<string, unknown>>(
-      client
-        .from("worker_profiles")
-        .select(
-          "is_approved, is_available, is_suspended, rating, total_jobs, verification_status",
-        )
-        .eq("id", ctx.user.id)
-        .maybeSingle(),
-    ),
-    dbQuery<Array<Record<string, unknown>>>(
-      client
-        .from("job_broadcasts")
-        .select("status, broadcast_at, sent_at, responded_at")
-        .eq("worker_id", ctx.user.id)
-        .order("broadcast_at", { ascending: false })
-        .limit(500),
-    ),
-    dbQuery<Array<Record<string, unknown>>>(
-      client
-        .from("jobs")
-        .select(
-          "status, scheduled_at, arrived_at, completed_at, paid_at, reviewed_at, final_price",
-        )
-        .eq("worker_id", ctx.user.id)
-        .order("created_at", { ascending: false })
-        .limit(500),
-    ),
-    dbQuery<Array<Record<string, unknown>>>(
-      client
-        .from("reviews")
-        .select("rating, tags")
-        .eq("worker_id", ctx.user.id)
-        .limit(500),
-    ),
-    dbQuery<Array<Record<string, unknown>>>(
-      client
-        .from("scope_change_requests")
-        .select("status, kael_review")
-        .eq("worker_id", ctx.user.id)
-        .in("status", ["approved_by_customer", "rejected_by_customer"])
-        .limit(100),
-    ),
-  ]);
-  if (workerProfile.error) {
-    apiFailure("DB_ERROR", "Không thể tải hồ sơ thợ", 500);
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("get_worker_performance_insights_aggregate", {
+      p_worker_id: ctx.user.id,
+    }),
+  );
+  const row = result.data?.[0];
+  if (result.error || !row) {
+    apiFailure("DB_ERROR", "Không thể tải thống kê hiệu suất thợ", 500);
   }
+  const profileExists = requiredAggregateBoolean(row, "profile_exists");
 
-  if (broadcasts.error) {
-    apiFailure("DB_ERROR", "Không thể tải lịch sử nhận việc", 500);
-  }
-
-  if (jobs.error) apiFailure("DB_ERROR", "Không thể tải công việc của thợ", 500);
-
-  if (reviews.error) apiFailure("DB_ERROR", "Không thể tải đánh giá thợ", 500);
-
-  if (incidentCases.error) apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i d\u1eef li\u1ec7u ph\u00e1t sinh", 500);
-
-  return buildWorkerPerformanceInsights({
-    broadcasts: (broadcasts.data ?? []).map((row) => ({
-      broadcast_at: nullableString(row.broadcast_at),
-      responded_at: nullableString(row.responded_at),
-      sent_at: nullableString(row.sent_at),
-      status: asString(row.status),
-    })),
-    jobs: (jobs.data ?? []).map((job) => ({
-      arrived_at: nullableString(job.arrived_at),
-      completed_at: nullableString(job.completed_at),
-      final_price: nullableNumber(job.final_price),
-      paid_at: nullableString(job.paid_at),
-      reviewed_at: nullableString(job.reviewed_at),
-      scheduled_at: nullableString(job.scheduled_at),
-      status: asString(job.status),
-    })),
-    reviews: (reviews.data ?? []).map((review) => ({
-      rating: nullableNumber(review.rating),
-      tags: stringArray(review.tags),
-    })),
-    incidentCases: (incidentCases.data ?? []).map((incident) => ({
-      kael_review: objectRecordOrNull(incident.kael_review),
-      status: asString(incident.status),
-    })),
+  return buildWorkerPerformanceInsightsFromAggregate({
+    acceptedBroadcastCount: requiredAggregateInteger(row, "accepted_broadcast_count"),
+    averageResponseMinutes: nullableAggregateNumber(row, "average_response_minutes"),
+    averageReviewRating: nullableAggregateNumber(row, "average_review_rating", 5),
+    completedJobCount: requiredAggregateInteger(row, "completed_job_count"),
+    onTimeJobCount: requiredAggregateInteger(row, "on_time_job_count"),
+    paidJobCount: requiredAggregateInteger(row, "paid_job_count"),
+    reconciledEarningsVnd: requiredAggregateInteger(row, "reconciled_earnings_vnd"),
+    resolvedIncidentCaseCount: requiredAggregateInteger(row, "resolved_incident_case_count"),
+    respondedBroadcastCount: requiredAggregateInteger(row, "responded_broadcast_count"),
+    reviewCount: requiredAggregateInteger(row, "review_count"),
+    scheduledArrivalJobCount: requiredAggregateInteger(row, "scheduled_arrival_job_count"),
+    totalBroadcastCount: requiredAggregateInteger(row, "total_broadcast_count"),
+    workResponseReviewCount: requiredAggregateInteger(row, "work_response_review_count"),
+    workResponseScore: nullableAggregateNumber(row, "work_response_score", 100),
     workerId: ctx.user.id,
-    workerProfile: workerProfile.data
+    workerProfile: profileExists
       ? {
-        is_approved: workerProfile.data.is_approved === true,
-        is_available: workerProfile.data.is_available === true,
-        is_suspended: workerProfile.data.is_suspended === true,
-        rating: asNumber(workerProfile.data.rating),
-        total_jobs: asNumber(workerProfile.data.total_jobs),
-        verification_status: asString(workerProfile.data.verification_status),
+        is_approved: requiredAggregateBoolean(row, "is_approved"),
+        is_available: requiredAggregateBoolean(row, "is_available"),
+        is_suspended: requiredAggregateBoolean(row, "is_suspended"),
+        rating: requiredAggregateNumber(row, "profile_rating", 5),
+        total_jobs: requiredAggregateInteger(row, "profile_total_jobs"),
+        verification_status: requiredAggregateString(row, "verification_status"),
       }
       : null,
   });
+}
+
+function requiredAggregateInteger(
+  row: Record<string, unknown>,
+  key: string,
+  max = Number.MAX_SAFE_INTEGER,
+): number {
+  const value = requiredAggregateNumber(row, key, max);
+  if (!Number.isSafeInteger(value)) {
+    apiFailure("DB_ERROR", "Dữ liệu thống kê không hợp lệ", 500);
+  }
+  return value;
+}
+
+function requiredAggregateNumber(
+  row: Record<string, unknown>,
+  key: string,
+  max = Number.MAX_SAFE_INTEGER,
+): number {
+  const raw = row[key];
+  const value = typeof raw === "number"
+    ? raw
+    : typeof raw === "string" && raw.trim().length > 0
+    ? Number(raw)
+    : Number.NaN;
+  if (!Number.isFinite(value) || value < 0 || value > max) {
+    apiFailure("DB_ERROR", "Dữ liệu thống kê không hợp lệ", 500);
+  }
+  return value;
+}
+
+function nullableAggregateNumber(
+  row: Record<string, unknown>,
+  key: string,
+  max = Number.MAX_SAFE_INTEGER,
+): number | null {
+  if (row[key] === null) return null;
+  return requiredAggregateNumber(row, key, max);
+}
+
+function requiredAggregateBoolean(
+  row: Record<string, unknown>,
+  key: string,
+): boolean {
+  if (typeof row[key] !== "boolean") {
+    apiFailure("DB_ERROR", "Dữ liệu thống kê không hợp lệ", 500);
+  }
+  return row[key];
+}
+
+function requiredAggregateString(
+  row: Record<string, unknown>,
+  key: string,
+): string {
+  const value = nullableString(row[key]);
+  if (!value?.trim()) {
+    apiFailure("DB_ERROR", "Dữ liệu thống kê không hợp lệ", 500);
+  }
+  return value;
 }
 
 const CUSTOMER_PROFILE_COMPLETED_STATUSES = new Set([
@@ -390,9 +350,6 @@ export function buildCustomerProfileInsights(
   );
   const disputedTransactionCount = transactionJobs.filter((job) => disputedJobIds.has(job.id)).length;
   const totalTransactionCount = transactionJobs.length;
-  const disputeFreeRatePercent = totalTransactionCount > 0
-    ? Math.round(((totalTransactionCount - disputedTransactionCount) / totalTransactionCount) * 100)
-    : 0;
   const protectedTransactionCount = protectedJobs.length;
   const protectedValueVnd = sumPositiveMoney(protectedJobs.map((job) => job.final_price));
   const totalSpendVnd = sumPositiveMoney(transactionJobs.map((job) => job.final_price));
@@ -402,48 +359,80 @@ export function buildCustomerProfileInsights(
   const kaelInteractionCount = Number.isFinite(input.kaelInteractionCount)
     ? Math.max(0, Math.floor(input.kaelInteractionCount))
     : 0;
-  const usageRankPoints = customerProfileUsageRankPoints({
-    completedCount: completedJobs.length,
-    fairPriceCount: fairPriceJobs.length,
-    kaelInteractionCount,
-    protectedCount: protectedTransactionCount,
-    reviewedCount: completedJobs.filter(isCustomerProfileReviewedJob).length,
-  });
 
-  return {
-    customer_id: input.customerId,
-    member_since: customerProfileMemberSince(input.accountProfile, input.customerProfile, jobs),
-    kael_interaction_count: kaelInteractionCount,
-    completed_service_count: completedJobs.length,
-    saved_address_count: customerProfileSavedAddressCount(input.customerProfile, input.savedAddressCount),
-    preferred_service_count: new Set(
+  return buildCustomerProfileInsightsFromAggregate({
+    activeServiceDays: customerProfileActivityDays(completedJobs).length,
+    activeStreakDays: customerProfileActiveStreakDays(completedJobs),
+    completedServiceCount: completedJobs.length,
+    customerId: input.customerId,
+    disputedTransactionCount,
+    fairPriceServiceCount: fairPriceJobs.length,
+    kaelInteractionCount,
+    memberSince: customerProfileMemberSince(input.accountProfile, input.customerProfile, jobs),
+    positiveReviewRatePercent: customerProfilePositiveReviewRatePercent(input.reviews),
+    preferredServiceCount: new Set(
       completedJobs
         .map((job) => job.service_type)
         .filter((serviceType) => CUSTOMER_PROFILE_SUPPORTED_SERVICES.has(serviceType)),
     ).size,
-    active_service_days: customerProfileActivityDays(completedJobs).length,
-    active_streak_days: customerProfileActiveStreakDays(completedJobs),
-    positive_review_rate_percent: customerProfilePositiveReviewRatePercent(input.reviews),
-    price_savings_vnd: priceSavingsVnd,
-    total_spend_vnd: totalSpendVnd,
+    priceSavingsVnd,
+    protectedTransactionCount,
+    protectedValueVnd,
+    reviewedServiceCount: completedJobs.filter(isCustomerProfileReviewedJob).length,
+    savedAddressCount: customerProfileSavedAddressCount(input.customerProfile, input.savedAddressCount),
+    totalSpendVnd,
+    totalTransactionCount,
+  });
+}
+
+function buildCustomerProfileInsightsFromAggregate(
+  input: CustomerProfileInsightAggregate,
+): CustomerProfileInsightsResponse {
+  const disputeFreeRatePercent = input.totalTransactionCount > 0
+    ? Math.round(
+      ((input.totalTransactionCount - input.disputedTransactionCount) /
+        input.totalTransactionCount) * 100,
+    )
+    : 0;
+  const usageRankPoints = customerProfileUsageRankPoints({
+    completedCount: input.completedServiceCount,
+    fairPriceCount: input.fairPriceServiceCount,
+    kaelInteractionCount: input.kaelInteractionCount,
+    protectedCount: input.protectedTransactionCount,
+    reviewedCount: input.reviewedServiceCount,
+  });
+
+  return {
+    customer_id: input.customerId,
+    member_since: input.memberSince,
+    kael_interaction_count: input.kaelInteractionCount,
+    completed_service_count: input.completedServiceCount,
+    saved_address_count: input.savedAddressCount,
+    preferred_service_count: input.preferredServiceCount,
+    active_service_days: input.activeServiceDays,
+    active_streak_days: input.activeStreakDays,
+    reviewed_service_count: input.reviewedServiceCount,
+    positive_review_rate_percent: input.positiveReviewRatePercent,
+    price_savings_vnd: input.priceSavingsVnd,
+    total_spend_vnd: input.totalSpendVnd,
     usage_rank_level: usageRankPoints <= 0
       ? 0
       : Math.min(CUSTOMER_PROFILE_USAGE_RANK_MAX, Math.max(1, Math.floor(usageRankPoints / CUSTOMER_PROFILE_USAGE_RANK_STEP) + 1)),
     usage_rank_points: usageRankPoints,
-    fair_price_service_count: fairPriceJobs.length,
+    fair_price_service_count: input.fairPriceServiceCount,
     money_protection_score: customerProfileMoneyProtectionScore({
-      disputedTransactionCount,
-      protectedTransactionCount,
-      totalTransactionCount,
+      disputedTransactionCount: input.disputedTransactionCount,
+      protectedTransactionCount: input.protectedTransactionCount,
+      totalTransactionCount: input.totalTransactionCount,
     }),
-    protected_value_vnd: protectedValueVnd,
-    protected_transaction_count: protectedTransactionCount,
-    total_transaction_count: totalTransactionCount,
+    protected_value_vnd: input.protectedValueVnd,
+    protected_transaction_count: input.protectedTransactionCount,
+    total_transaction_count: input.totalTransactionCount,
     dispute_free_rate_percent: disputeFreeRatePercent,
     fair_price_status: customerProfileFairPriceStatus({
       disputeFreeRatePercent,
-      fairPriceCount: fairPriceJobs.length,
-      totalTransactionCount,
+      fairPriceCount: input.fairPriceServiceCount,
+      totalTransactionCount: input.totalTransactionCount,
     }),
   };
 }
@@ -456,48 +445,75 @@ export function buildWorkerPerformanceInsights(
   const responseDurations = respondedBroadcasts
     .map(workerPerformanceResponseDurationMs)
     .filter((duration): duration is number => duration !== null);
-  const responseRatePercent = broadcasts.length > 0
-    ? Math.round((respondedBroadcasts.length / broadcasts.length) * 100)
-    : null;
   const averageResponseMinutes = responseDurations.length > 0
     ? Math.round(responseDurations.reduce((total, duration) => total + duration, 0) / responseDurations.length / 60_000)
     : null;
   const completedJobs = input.jobs.filter(isWorkerPerformanceCompletedJob);
   const scheduledArrivalJobs = input.jobs.filter((job) => Boolean(job.scheduled_at && job.arrived_at));
   const onTimeJobs = scheduledArrivalJobs.filter(isWorkerPerformanceOnTimeJob);
-  const onTimeRatePercent = scheduledArrivalJobs.length > 0
-    ? Math.round((onTimeJobs.length / scheduledArrivalJobs.length) * 100)
-    : null;
   const paidJobs = input.jobs.filter(isWorkerPerformancePaidJob);
   const reconciledEarningsVnd = sumPositiveMoney(paidJobs.map((job) => job.final_price));
   const reviewRatings = input.reviews
     .map((review) => review.rating)
     .filter((rating): rating is number => typeof rating === "number" && Number.isFinite(rating) && rating > 0 && rating <= 5);
-  const averageRating = reviewRatings.length > 0
-    ? roundToOneDecimal(reviewRatings.reduce((total, rating) => total + rating, 0) / reviewRatings.length)
+  const workResponse = calculateKaelWorkResponseScore(input.reviews);
+  const resolvedIncidentCaseCount = input.incidentCases.filter(isWorkerPerformanceResolvedIncidentCase).length;
+
+  return buildWorkerPerformanceInsightsFromAggregate({
+    acceptedBroadcastCount: broadcasts.filter((row) => row.status === "accepted").length,
+    averageResponseMinutes,
+    averageReviewRating: reviewRatings.length > 0
+      ? roundToOneDecimal(reviewRatings.reduce((total, rating) => total + rating, 0) / reviewRatings.length)
+      : null,
+    completedJobCount: completedJobs.length,
+    onTimeJobCount: onTimeJobs.length,
+    paidJobCount: paidJobs.length,
+    reconciledEarningsVnd,
+    resolvedIncidentCaseCount,
+    respondedBroadcastCount: respondedBroadcasts.length,
+    reviewCount: input.reviews.length,
+    scheduledArrivalJobCount: scheduledArrivalJobs.length,
+    totalBroadcastCount: broadcasts.length,
+    workResponseReviewCount: workResponse.reviewCount,
+    workResponseScore: workResponse.score,
+    workerId: input.workerId,
+    workerProfile: input.workerProfile,
+  });
+}
+
+function buildWorkerPerformanceInsightsFromAggregate(
+  input: WorkerPerformanceInsightAggregate,
+): WorkerPerformanceInsightsResponse {
+  const responseRatePercent = input.totalBroadcastCount > 0
+    ? Math.round((input.respondedBroadcastCount / input.totalBroadcastCount) * 100)
+    : null;
+  const onTimeRatePercent = input.scheduledArrivalJobCount > 0
+    ? Math.round((input.onTimeJobCount / input.scheduledArrivalJobCount) * 100)
+    : null;
+  const averageRating = input.averageReviewRating !== null
+    ? roundToOneDecimal(input.averageReviewRating)
     : input.workerProfile && input.workerProfile.total_jobs > 0 && input.workerProfile.rating > 0
     ? roundToOneDecimal(Math.min(5, Math.max(1, input.workerProfile.rating)))
     : null;
   const ratingScore = averageRating === null ? null : Math.round((averageRating / 5) * 100);
-  const workResponse = calculateKaelWorkResponseScore(input.reviews);
-  const resolvedIncidentCaseCount = input.incidentCases.filter(isWorkerPerformanceResolvedIncidentCase).length;
+  const resolvedIncidentCaseCount = input.resolvedIncidentCaseCount;
   const incidentHandlingScore = resolvedIncidentCaseCount > 0
     ? Math.min(100, resolvedIncidentCaseCount * 25)
     : null;
   const incidentRankBonus = Math.min(20, resolvedIncidentCaseCount * 5);
-  const completionScore = respondedBroadcasts.length > 0
-    ? Math.min(100, Math.round((completedJobs.length / respondedBroadcasts.length) * 100))
-    : completedJobs.length > 0
+  const completionScore = input.respondedBroadcastCount > 0
+    ? Math.min(100, Math.round((input.completedJobCount / input.respondedBroadcastCount) * 100))
+    : input.completedJobCount > 0
     ? 100
     : null;
-  const earningsScore = paidJobs.length > 0 ? Math.min(100, paidJobs.length * 20) : null;
+  const earningsScore = input.paidJobCount > 0 ? Math.min(100, input.paidJobCount * 20) : null;
   const performance_axes: WorkerPerformanceInsightsResponse["performance_axes"] = [
     { id: "rating", score: ratingScore },
     { id: "response", score: responseRatePercent },
     { id: "arrival", score: onTimeRatePercent },
     { id: "completion", score: completionScore },
     { id: "earnings", score: earningsScore },
-    { id: "work_response", score: workResponse.score },
+    { id: "work_response", score: input.workResponseScore },
     { id: "incident_handling", score: incidentHandlingScore },
   ];
   const routineAxisScores = performance_axes
@@ -510,33 +526,33 @@ export function buildWorkerPerformanceInsights(
 
   return {
     worker_id: input.workerId,
-    completed_job_count: completedJobs.length,
-    review_count: input.reviews.length,
+    completed_job_count: input.completedJobCount,
+    review_count: input.reviewCount,
     average_rating: averageRating,
     response_rate_percent: responseRatePercent,
-    average_response_minutes: averageResponseMinutes,
+    average_response_minutes: input.averageResponseMinutes,
     on_time_rate_percent: onTimeRatePercent,
-    total_broadcast_count: broadcasts.length,
-    responded_broadcast_count: respondedBroadcasts.length,
-    accepted_broadcast_count: broadcasts.filter((row) => row.status === "accepted").length,
-    scheduled_arrival_job_count: scheduledArrivalJobs.length,
-    on_time_job_count: onTimeJobs.length,
-    paid_job_count: paidJobs.length,
-    reconciled_earnings_vnd: reconciledEarningsVnd > 0 ? reconciledEarningsVnd : null,
-    work_response_review_count: workResponse.reviewCount,
+    total_broadcast_count: input.totalBroadcastCount,
+    responded_broadcast_count: input.respondedBroadcastCount,
+    accepted_broadcast_count: input.acceptedBroadcastCount,
+    scheduled_arrival_job_count: input.scheduledArrivalJobCount,
+    on_time_job_count: input.onTimeJobCount,
+    paid_job_count: input.paidJobCount,
+    reconciled_earnings_vnd: input.reconciledEarningsVnd > 0 ? input.reconciledEarningsVnd : null,
+    work_response_review_count: input.workResponseReviewCount,
     resolved_incident_case_count: resolvedIncidentCaseCount,
     incident_rank_bonus: incidentRankBonus,
     performance_score: performanceScore,
     badges: workerPerformanceBadges({
       averageRating,
-      averageResponseMinutes,
+      averageResponseMinutes: input.averageResponseMinutes,
       onTimeRatePercent,
-      paidJobCount: paidJobs.length,
-      reconciledEarningsVnd,
-      respondedBroadcastCount: respondedBroadcasts.length,
+      paidJobCount: input.paidJobCount,
+      reconciledEarningsVnd: input.reconciledEarningsVnd,
+      respondedBroadcastCount: input.respondedBroadcastCount,
       responseRatePercent,
-      reviewCount: input.reviews.length,
-      scheduledArrivalJobCount: scheduledArrivalJobs.length,
+      reviewCount: input.reviewCount,
+      scheduledArrivalJobCount: input.scheduledArrivalJobCount,
       workerProfile: input.workerProfile,
     }),
     performance_axes,
@@ -720,16 +736,6 @@ function isWorkerPerformanceOnTimeJob(row: WorkerPerformanceInsightJobRow) {
   const arrived = timestampMs(row.arrived_at);
   if (scheduled === null || arrived === null) return false;
   return arrived <= scheduled + WORKER_PERFORMANCE_ON_TIME_GRACE_MS;
-}
-
-function stringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function objectRecordOrNull(value: unknown) {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
 }
 
 function workerPerformanceBadges(input: {

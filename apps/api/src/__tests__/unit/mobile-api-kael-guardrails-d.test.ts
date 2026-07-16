@@ -210,6 +210,27 @@ describe('Kael Track D guardrails', () => {
     ])
   })
 
+  it('D6 surfaces a rejected guardrail audit write to the best-effort caller', async () => {
+    const client = {
+      from() {
+        return {
+          insert() {
+            return Promise.resolve({ data: null, error: { code: 'AUDIT_UNAVAILABLE' } })
+          },
+        }
+      },
+    }
+
+    await expect(auditKaelGuardrailTrip(client, {
+      jobId: 'job-1',
+      actorId: 'customer-1',
+      actorRole: 'customer',
+      surface: 'kael_chat',
+      reason: 'semantic_guardrail',
+      source: 'semantic_self_check',
+    })).rejects.toThrow('KAEL_GUARDRAIL_AUDIT_FAILED')
+  })
+
   it('D4 keeps regex injection at cost 0 and classifies semantic injection only on the opted-in edge', () => {
     const classifier = vi.fn(() => ({ detected: true, signals: ['should_not_run'] }))
     const regex = evaluateMessageBoundary(

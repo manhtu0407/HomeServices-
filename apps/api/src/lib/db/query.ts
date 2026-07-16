@@ -6,6 +6,15 @@ export class DbTimeoutError extends Error {
 }
 
 /**
+ * Preserve an intentional SQL NULL at an RPC boundary. PostgreSQL functions
+ * accept nullable arguments, but generated Supabase Args cannot encode that
+ * metadata. Use this only where the function explicitly handles NULL.
+ */
+export function postgresNullableRpcArg<T>(value: T | null): T {
+  return value as T
+}
+
+/**
  * Race a DB promise against a timeout. Clears the timer whichever way the race
  * settles so we do not keep the event loop alive past resolution.
  *

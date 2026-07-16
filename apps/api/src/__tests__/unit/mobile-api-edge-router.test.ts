@@ -138,6 +138,19 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     submitDisputeCounterStatement: vi.fn(),
     decideDispute: vi.fn(),
     attachJobMedia: vi.fn(),
+    createJobMediaUpload: vi.fn(async () => ({
+      bucket_id: 'job-media' as const,
+      object_path: 'job/before/photo.jpg',
+      storage_ref: 'supabase://job-media/job/before/photo.jpg',
+      signed_upload_url: 'https://storage.example.test/upload',
+      token: 'signed-token',
+      expires_in_seconds: 7200,
+    })),
+    revokeJobMediaUploads: vi.fn(async () => ({
+      job_id: '22222222-2222-4222-8222-222222222222',
+      revoked_count: 1,
+      deletion_pending: false,
+    })),
     listJobMessages: vi.fn(),
     sendJobMessage: vi.fn(),
     decideWorkerCancellation: vi.fn(),
@@ -165,6 +178,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       preferred_service_count: 0,
       active_service_days: 0,
       active_streak_days: 0,
+      reviewed_service_count: 0,
       positive_review_rate_percent: 0,
       price_savings_vnd: 0,
       total_spend_vnd: 0,
@@ -268,6 +282,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     listNotifications: vi.fn(),
     markNotificationRead: vi.fn(),
     registerDevicePushToken: vi.fn(),
+    unregisterDevicePushToken: vi.fn(),
     ...overrides,
   }
 }
@@ -403,6 +418,7 @@ describe('mobile-api Edge router contract', () => {
         message: 'Kael cần giải thích biên giá rõ hơn.',
         source: 'profile',
       }),
+      headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     }))
 
@@ -427,6 +443,7 @@ describe('mobile-api Edge router contract', () => {
 
     const response = await handler(new Request('https://example.test/mobile-api/me/kael-feedback', {
       body: JSON.stringify({ message: 'short' }),
+      headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     }))
 
@@ -453,6 +470,7 @@ describe('mobile-api Edge router contract', () => {
 
     const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/kael-clarify', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: 'Tôi nên giải thích phát sinh thế nào?' }),
     }))
 
@@ -488,6 +506,7 @@ describe('mobile-api Edge router contract', () => {
 
     const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/customer-cancellation', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         reason_code: 'changed_mind',
         reason_note: 'Tôi đổi ý và muốn hủy lịch này.',
@@ -510,9 +529,10 @@ describe('mobile-api Edge router contract', () => {
   })
 
   it('routes P13 dispute open through the job-scoped endpoint', async () => {
+    const jobId = '11111111-1111-4111-8111-111111111111'
     const openDispute = vi.fn(async () => ({
       dispute_id: 'dispute-1',
-      job_id: 'job-1',
+      job_id: jobId,
       status: 'open',
       dispute_type: 'completion_rejected',
       evidence_snapshot_id: 'snapshot-1',
@@ -527,12 +547,13 @@ describe('mobile-api Edge router contract', () => {
       services: makeServices({ openDispute } as Partial<MobileApiServices>),
     })
 
-    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/disputes', {
+    const response = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/disputes`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         dispute_type: 'completion_rejected',
         initiator_statement: 'Cong viec chua hoan tat nhu thong tin ban dau.',
-        evidence_photo_urls: ['supabase://job-media/job-1/after/a.jpg'],
+        evidence_photo_urls: [`supabase://job-media/${jobId}/after/a.jpg`],
       }),
     }))
 
@@ -543,7 +564,7 @@ describe('mobile-api Edge router contract', () => {
     })
     expect(openDispute).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
-      'job-1',
+      jobId,
       expect.objectContaining({ dispute_type: 'completion_rejected' }),
     )
   })
@@ -573,10 +594,12 @@ describe('mobile-api Edge router contract', () => {
 
     const counterResponse = await handler(new Request('https://example.test/mobile-api/disputes/dispute-1/counter-statement', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ statement: 'Toi da lam dung pham vi ban dau.' }),
     }))
     const decisionResponse = await handler(new Request('https://example.test/mobile-api/disputes/dispute-1/admin-decision', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         outcome: 'no_fault_both',
         customer_trust_impact: 'none',
@@ -757,7 +780,11 @@ describe('mobile-api Edge router contract', () => {
         platform: 'ios',
         push_token: 'ExponentPushToken[valid-token]',
         permission_status: 'granted',
-        safe_metadata: { device: 'expo-go' },
+        safe_metadata: {
+          project_id_available: true,
+          role: 'customer',
+          source: 'expo-notifications',
+        },
       }),
     }))
 
@@ -996,6 +1023,42 @@ describe('mobile-api Edge router contract', () => {
     })
     expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker', 'admin'])
     expect(updateJobStatus).not.toHaveBeenCalled()
+  })
+
+  it('allows the optional worker route map origin to be omitted', async () => {
+    const getWorkerRouteMap = vi.fn(async () => new Response('map', {
+      headers: { 'content-type': 'image/png' },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ getWorkerRouteMap }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/workers/me/jobs/job-1/route-map',
+    ))
+
+    expect(response.status).toBe(200)
+    expect(getWorkerRouteMap).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'job-1',
+      null,
+    )
+  })
+
+  it('rejects explicit invalid route-map coordinates instead of treating them as omitted', async () => {
+    const getWorkerRouteMap = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ getWorkerRouteMap }),
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/workers/me/jobs/job-1/route-map?origin_lat=bad&origin_lng=bad',
+    ))
+
+    expect(response.status).toBe(400)
+    expect(getWorkerRouteMap).not.toHaveBeenCalled()
   })
 
   it('validates POST /jobs before creating a job', async () => {
@@ -1275,6 +1338,7 @@ describe('mobile-api Edge router contract', () => {
 
     const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1/stream', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: 'Outlet still sparks.' }),
     }))
 
@@ -1710,9 +1774,11 @@ describe('mobile-api Edge router contract', () => {
       services: makeServices({ streamWorkerKaelChatTurn }),
     })
 
+    const clientRequestId = 'a7400000-0000-4000-8000-000000000001'
     const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael/chat/worker-session-1/stream', {
       method: 'POST',
-      body: JSON.stringify({ language: 'vi', media_refs: [], message: 'Need scope advice.' }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_request_id: clientRequestId, language: 'vi', media_refs: [], message: 'Need scope advice.' }),
     }))
 
     expect(response.status).toBe(200)
@@ -1721,9 +1787,88 @@ describe('mobile-api Edge router contract', () => {
     expect(streamWorkerKaelChatTurn).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'worker' }),
       'worker-session-1',
-      { language: 'vi', media_refs: [], message: 'Need scope advice.' },
+      { client_request_id: clientRequestId, language: 'vi', media_refs: [], message: 'Need scope advice.' },
     )
   })
+
+  it('rejects client-controlled push metadata outside the safe allowlist', async () => {
+    const registerDevicePushToken = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ registerDevicePushToken }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/notifications/device-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'ios',
+        push_token: 'ExponentPushToken[valid-token]',
+        permission_status: 'granted',
+        safe_metadata: { phone: '0901234567' },
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(registerDevicePushToken).not.toHaveBeenCalled()
+  })
+
+  it('routes current-device token unregister without accepting a user id', async () => {
+    const unregisterDevicePushToken = vi.fn(async () => ({
+      token_id: '44444444-4444-4444-8444-444444444444',
+      unregistered: true,
+      updated_at: '2026-07-14T00:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ unregisterDevicePushToken }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/notifications/device-token', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        push_token: 'ExponentPushToken[valid-token]',
+        user_id: 'another-user',
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(unregisterDevicePushToken).not.toHaveBeenCalled()
+
+    const validResponse = await handler(new Request('https://example.test/mobile-api/notifications/device-token', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ push_token: 'ExponentPushToken[valid-token]' }),
+    }))
+
+    expect(validResponse.status).toBe(200)
+    expect(await validResponse.json()).toMatchObject({ unregistered: true })
+    expect(unregisterDevicePushToken).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer', user: customerAuth.user }),
+      { push_token: 'ExponentPushToken[valid-token]' },
+    )
+  })
+
+  it.each(['GET', 'PATCH', 'PUT', 'DELETE'])(
+    'rejects %s on the POST-only worker Kael stream route',
+    async (method) => {
+      const streamWorkerKaelChatTurn = vi.fn()
+      const authenticate = vi.fn(async () => workerAuth)
+      const handler = createMobileApiHandler({
+        authenticate,
+        services: makeServices({ streamWorkerKaelChatTurn }),
+      })
+      const response = await handler(new Request(
+        'https://example.test/mobile-api/workers/me/kael/chat/worker-session-1/stream',
+        { method },
+      ))
+
+      expect(response.status).toBe(404)
+      expect(authenticate).not.toHaveBeenCalled()
+      expect(streamWorkerKaelChatTurn).not.toHaveBeenCalled()
+    },
+  )
 
   it('routes Kael chat follow-up turns with validated payloads', async () => {
     const sendKaelChatTurn = vi.fn(async () => ({
@@ -1938,25 +2083,47 @@ describe('mobile-api Edge router contract', () => {
       services: makeServices({ openJobIncident, getJobIncident, proposeScopeChangeFromJobIncident }),
     })
     const jobId = '22222222-2222-4222-8222-222222222222'
+    const incidentRequestId = 'a7400000-0000-4000-8000-000000000002'
 
     const opened = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        client_request_id: incidentRequestId,
         new_description: 'Có thêm đoạn ống bị nứt sau lavabo.',
         reason: 'Phần nứt này chưa thuộc phạm vi đã chốt.',
         photo_urls: [],
       }),
     }))
     const read = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident`))
-    const proposed = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident/propose-scope`, { method: 'POST' }))
+    const rejectedProposal = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident/propose-scope`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    }))
+    const proposalRequestId = 'a7500000-0000-4000-8000-000000000003'
+    const proposed = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident/propose-scope`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_request_id: proposalRequestId }),
+    }))
 
     expect(opened.status).toBe(201)
     expect(read.status).toBe(200)
+    expect(rejectedProposal.status).toBe(400)
     expect(proposed.status).toBe(200)
-    expect(openJobIncident).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }), jobId, expect.objectContaining({ photo_urls: [] }))
+    expect(openJobIncident).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      jobId,
+      expect.objectContaining({ client_request_id: incidentRequestId, photo_urls: [] }),
+    )
     expect(getJobIncident).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }), jobId)
-    expect(proposeScopeChangeFromJobIncident).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }), jobId)
+    expect(proposeScopeChangeFromJobIncident).toHaveBeenCalledTimes(1)
+    expect(proposeScopeChangeFromJobIncident).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      jobId,
+      { client_request_id: proposalRequestId },
+    )
   })
 
   it('rejects invalid worker completion price before service mutation', async () => {
@@ -2174,6 +2341,48 @@ describe('mobile-api Edge router contract', () => {
     expect(updateJobStatus).not.toHaveBeenCalled()
   })
 
+  it('rejects apartment check-in evidence that belongs to a different job', async () => {
+    const updateJobStatus = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ updateJobStatus }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'arrived',
+        access_check_in: {
+          mode: 'manual_photo',
+          photo_urls: ['supabase://job-media/job-2/access_check_in/lobby.jpg'],
+        },
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'VALIDATION' })
+    expect(updateJobStatus).not.toHaveBeenCalled()
+  })
+
+  it('rejects a JSON mutation sent with a non-JSON content type', async () => {
+    const createJob = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ createJob }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs', {
+      body: '{}',
+      headers: { 'Content-Type': 'text/plain' },
+      method: 'POST',
+    }))
+
+    expect(response.status).toBe(415)
+    expect(await response.json()).toMatchObject({ code: 'UNSUPPORTED_MEDIA_TYPE' })
+    expect(createJob).not.toHaveBeenCalled()
+  })
+
   it('rejects oversized JSON bodies before service mutation', async () => {
     const createJob = vi.fn()
     const handler = createMobileApiHandler({
@@ -2196,6 +2405,44 @@ describe('mobile-api Edge router contract', () => {
       code: 'PAYLOAD_TOO_LARGE',
       error: 'Dữ liệu gửi lên quá lớn',
     })
+    expect(createJob).not.toHaveBeenCalled()
+  })
+
+  it('stops reading an oversized chunked JSON body near the byte limit', async () => {
+    const createJob = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ createJob }),
+    })
+    let pullCount = 0
+    let cancelled = false
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pullCount += 1
+        if (pullCount > 200) {
+          controller.close()
+          return
+        }
+        controller.enqueue(new Uint8Array(8 * 1024).fill(120))
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/jobs',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        duplex: 'half',
+      } as RequestInit & { duplex: 'half' },
+    ))
+
+    expect(response.status).toBe(413)
+    expect(pullCount).toBeLessThanOrEqual(10)
+    expect(cancelled).toBe(true)
     expect(createJob).not.toHaveBeenCalled()
   })
 

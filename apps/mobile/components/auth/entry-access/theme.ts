@@ -68,25 +68,13 @@ export const entryTheme = {
   },
   shadow: {
     soft: {
-      shadowColor: '#085F57',
-      shadowOpacity: 0.08,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 12 },
-      elevation: 3,
+      boxShadow: '0px 12px 14px rgba(8,95,87,0.08)',
     } satisfies ViewStyle,
     raised: {
-      shadowColor: '#085F57',
-      shadowOpacity: 0.14,
-      shadowRadius: 24,
-      shadowOffset: { width: 0, height: 20 },
-      elevation: 6,
+      boxShadow: '0px 20px 24px rgba(8,95,87,0.14)',
     } satisfies ViewStyle,
     primary: {
-      shadowColor: '#088779',
-      shadowOpacity: 0.24,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 14 },
-      elevation: 7,
+      boxShadow: '0px 14px 16px rgba(8,135,121,0.24)',
     } satisfies ViewStyle,
   },
 } as const

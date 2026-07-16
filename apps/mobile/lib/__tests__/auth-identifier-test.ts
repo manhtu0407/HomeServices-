@@ -31,4 +31,11 @@ describe('auth identifier validation', () => {
     expect(validateAuthIdentifier('84912345678')).toBe('SDT Việt Nam chưa đúng định dạng.')
     expect(validateAuthIdentifier('+14155552671')).toBe('SDT Việt Nam chưa đúng định dạng.')
   })
+
+  it('rejects oversized identifiers before they reach the auth provider', () => {
+    const oversizedEmail = `${'a'.repeat(245)}@example.com`
+    expect(parseAuthIdentifier(oversizedEmail)).toBeNull()
+    expect(validateAuthIdentifier(oversizedEmail)).toBe('Email chưa đúng định dạng.')
+    expect(parseAuthIdentifier('0'.repeat(10_000))).toBeNull()
+  })
 })

@@ -1,4 +1,5 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'

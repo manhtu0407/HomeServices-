@@ -1,4 +1,5 @@
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'

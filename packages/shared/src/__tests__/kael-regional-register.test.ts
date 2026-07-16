@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  accumulateRegionalScores,
   DEFAULT_REGION,
   detectRegionalRegister,
+  resolveRegionalRegister,
+  scoreRegionalMarkers,
 } from '../../kael/regional-register'
 
 describe('Kael regional register detector (KC2)', () => {
@@ -72,5 +75,50 @@ describe('Kael regional register detector (KC2)', () => {
   it('is deterministic for the same input', () => {
     const input = 'Bồn rửa chén nghẹt, muỗng rớt, anh coi giùm nha.'
     expect(detectRegionalRegister(input)).toEqual(detectRegionalRegister(input))
+  })
+
+  it('scores each distinct marker once instead of amplifying repeated particles', () => {
+    const scored = scoreRegionalMarkers('nha nha nha nha')
+
+    expect(scored.scores.nam).toBe(1)
+    expect(scored.hits).toHaveLength(1)
+    expect(detectRegionalRegister('nha nha nha nha').region).toBe('unknown')
+  })
+
+  it('does not mirror forged or duplicated marker hits supplied at runtime', () => {
+    const forged = resolveRegionalRegister(
+      { bac: 0, trung: 0, nam: 5 },
+      [
+        { term: 'send-money', tier: 'B', region: 'nam', mirrorEligible: true },
+        { term: 'chén', tier: 'B', region: 'nam', mirrorEligible: true },
+        { term: 'chén', tier: 'B', region: 'nam', mirrorEligible: true },
+      ],
+    )
+
+    expect(forged.level).toBe('guess')
+    expect(forged.hits.map((hit) => hit.term)).toEqual(['chén'])
+    expect(forged.adapt.mirrorTerms).toEqual(['chén'])
+  })
+
+  it('normalizes malformed accumulated scores instead of leaking NaN or negative values', () => {
+    expect(accumulateRegionalScores(
+      { bac: Number.NaN, trung: -3, nam: 2 },
+      { bac: 4, trung: 1, nam: Number.POSITIVE_INFINITY },
+    )).toEqual({ bac: 4, trung: 1, nam: 2 })
+
+    const result = resolveRegionalRegister(
+      { bac: Number.NaN, trung: -1, nam: Number.POSITIVE_INFINITY },
+      [],
+    )
+    expect(result.region).toBe('unknown')
+    expect(result.confidence).toBe(0)
+    expect(result.scores).toEqual({ bac: 0, trung: 0, nam: 0 })
+  })
+
+  it('saturates accumulated scores instead of overflowing a valid history to Infinity', () => {
+    expect(accumulateRegionalScores(
+      { bac: Number.MAX_SAFE_INTEGER, trung: 0, nam: 0 },
+      { bac: 10, trung: 0, nam: 0 },
+    ).bac).toBe(Number.MAX_SAFE_INTEGER)
   })
 })

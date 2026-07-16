@@ -14,9 +14,9 @@ describe('Section 32 staging smoke harness contract', () => {
 
     expect(source).toContain('SECTION32_RUN_LIVE')
     expect(source).toContain('xyylanuyflrjzbjzhqfl')
-    expect(source).toContain('iwevizmsedyqozxlawwl')
-    expect(source).toContain('assertStagingUrl(supabaseUrl')
-    expect(source).toContain('assertStagingUrl(apiBaseUrl')
+    expect(source).toContain("assertSupabaseTargets('staging', supabaseUrl, apiBaseUrl)")
+    expect(source).toContain('createTimeoutFetch')
+    expect(source).not.toContain('value.includes(STAGING_REF)')
     expect(source).toContain('SECTION32_REQUIRE_PROVIDER')
   })
 
@@ -69,9 +69,10 @@ describe('Section 32 Android native recording harness contract', () => {
 
     expect(source).toContain('SECTION32_NATIVE_RUN')
     expect(source).toContain('xyylanuyflrjzbjzhqfl')
-    expect(source).toContain('iwevizmsedyqozxlawwl')
-    expect(source).toContain('Assert-StagingRef -Value $supabaseUrl')
-    expect(source).toContain('Assert-StagingRef -Value $apiBase')
+    expect(source).toContain('lib\\staging-target-safety.ps1')
+    expect(source).toContain(
+      'Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase',
+    )
     expect(source).toContain('$env:EXPO_NO_DOTENV = \'1\'')
     expect(source).toContain('$env:EXPO_PUBLIC_SUPABASE_URL = $supabaseUrl')
     expect(source).toContain('$env:EXPO_PUBLIC_API_BASE_URL = $apiBase')
@@ -79,6 +80,11 @@ describe('Section 32 Android native recording harness contract', () => {
     expect(source).toContain('SECTION32_NATIVE_CUSTOMER_PASSWORD')
     expect(source).toContain('SECTION32_NATIVE_WORKER_EMAIL')
     expect(source).toContain('SECTION32_NATIVE_WORKER_PASSWORD')
+    expect(source).toContain('$allowedEnvNames')
+    expect(source).toContain('if ($AllowedNames -notcontains $name)')
+    expect(source).toContain('Import-EnvFile -Path $EnvFile -AllowedNames $allowedEnvNames')
+    expect(source).toContain('$credentialEnvNames')
+    expect(source).toContain("[Environment]::SetEnvironmentVariable($name, $null, 'Process')")
   })
 
   it('captures real Android device evidence instead of web/pre-auth proof', () => {
@@ -90,6 +96,22 @@ describe('Section 32 Android native recording harness contract', () => {
     expect(source).toContain('screencap')
     expect(source).toContain('recorded_unreviewed')
     expect(source).toContain('G3 is not complete until a reviewer annotates the checklist')
+  })
+
+  it('fails closed when the Android capture toolchain cannot produce real evidence', () => {
+    const source = readFileSync(nativeRecordingPath, 'utf8')
+
+    expect(source).toContain('[ValidateRange(1, 65535)]')
+    expect(source).toContain('[ValidateRange(1, 180)]')
+    expect(source).toContain('[int]$DurationSeconds = 180')
+    expect(source).toContain('$adbExitCode = $LASTEXITCODE')
+    expect(source).toContain('adb command failed with exit code')
+    expect(source).toContain('$resolvedAndroidSdk = Split-Path -Parent (Split-Path -Parent $adbPath)')
+    expect(source).toContain('$env:ANDROID_HOME = $resolvedAndroidSdk')
+    expect(source).toContain('Quote-NativeArgument -Value $expoCli')
+    expect(source).toContain('Assert-ExpoProcessHealthy -Process $expoProcess')
+    expect(source).toContain('Assert-NonEmptyFile -Path $localVideo')
+    expect(source).toContain('Assert-NonEmptyFile -Path $localScreenshot')
   })
 
   it('requires the Section 32 scenes and accessibility modes in the checklist', () => {

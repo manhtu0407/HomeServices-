@@ -1,4 +1,4 @@
-import type { ServiceType } from '../constants'
+import { type ServiceType } from '../constants'
 import {
   extractDistrictLabel,
   GENERIC_AREA,
@@ -15,6 +15,11 @@ import {
   LOCAL_WORKFLOW_PRICE_DISCLAIMER,
   type LocalDealStatus,
 } from './status'
+import {
+  isLocalWorkerGate,
+  isValidRemoteBroadcastSnapshot,
+  isValidRemoteJobSnapshot,
+} from './remote-snapshot-validation'
 import type {
   LocalDeal,
   LocalDealDraft,
@@ -35,7 +40,9 @@ export const NEXT_WORKER_STATUS: Partial<Record<LocalDealStatus, LocalDealStatus
 }
 
 export function hasLocalDealCompletionEvidence(deal: Pick<LocalDeal, 'completionNotes' | 'completionPhotoUrls'> | null | undefined): boolean {
-  return Boolean((deal?.completionNotes?.trim().length ?? 0) >= 5 && (deal?.completionPhotoUrls?.length ?? 0) > 0)
+  const notes = typeof deal?.completionNotes === 'string' ? deal.completionNotes.trim() : ''
+  const photos = Array.isArray(deal?.completionPhotoUrls) ? deal.completionPhotoUrls : []
+  return notes.length >= 5 && photos.length > 0
 }
 
 export function createInitialLocalWorkflowState(): LocalWorkflowState {
@@ -59,20 +66,29 @@ export function localWorkflowReducer(
         ...state,
         lastError: action.error,
       }
-    case 'hydrate_remote_job':
+    case 'hydrate_remote_job': {
+      const deal = createDealFromRemoteJob(action.job)
+      const workerGate = action.workerGate ?? 'remote_backend'
+      if (!deal || !isLocalWorkerGate(workerGate)) {
+        return withError(state, 'Dữ liệu đồng bộ từ backend không hợp lệ')
+      }
       return {
-        deal: createDealFromRemoteJob(action.job),
-        workerGate: action.workerGate ?? 'remote_backend',
+        deal,
+        workerGate,
         lastError: null,
         lastRemoteSyncAt: new Date().toISOString(),
       }
-    case 'hydrate_remote_broadcast':
+    }
+    case 'hydrate_remote_broadcast': {
+      const deal = createDealFromRemoteBroadcast(action.broadcast)
+      if (!deal) return withError(state, 'Dữ liệu đồng bộ từ backend không hợp lệ')
       return {
-        deal: createDealFromRemoteBroadcast(action.broadcast),
+        deal,
         workerGate: 'remote_backend',
         lastError: null,
         lastRemoteSyncAt: new Date().toISOString(),
       }
+    }
     case 'mark_remote_broadcast_expired': {
       if (!state.deal || state.deal.status !== 'broadcasting' || state.deal.broadcast?.status !== 'sent') return state
       return {
@@ -281,7 +297,10 @@ export function localWorkflowReducer(
     }
     case 'tick_broadcast': {
       if (!state.deal || state.deal.status !== 'broadcasting' || state.deal.broadcast?.status !== 'sent') return state
-      const currentSeconds = state.deal.broadcast.secondsRemaining ?? 0
+      const rawSeconds = state.deal.broadcast.secondsRemaining
+      const currentSeconds = typeof rawSeconds === 'number' && Number.isFinite(rawSeconds)
+        ? Math.max(0, Math.floor(rawSeconds))
+        : 0
       const nextSeconds = Math.max(0, currentSeconds - 1)
       if (nextSeconds <= 0) {
         return {
@@ -332,7 +351,7 @@ export function localWorkflowReducer(
     }
     case 'customer_submit_review': {
       if (!state.deal) return withError(state, 'Không có phiếu để đánh giá')
-      if (state.deal.status !== 'confirmed_by_customer') return invalidTransition(state, state.deal.status, 'reviewed')
+      if (state.deal.status !== 'paid') return invalidTransition(state, state.deal.status, 'reviewed')
       if (!canSubmitCustomerReview(state.deal)) return withError(state, 'Đánh giá chỉ mở sau khi hệ thống xác nhận đúng bước')
       return setCustomerReviewSubmitted(state)
     }
@@ -349,7 +368,7 @@ export function localWorkflowReducer(
           broadcast: state.deal.broadcast
             ? {
                 ...state.deal.broadcast,
-                status: 'expired',
+                status: 'cancelled',
                 fullAddressVisible: false,
                 fullAddressLabel: null,
               }
@@ -383,9 +402,7 @@ export function canCancelLocalDeal(status: LocalDealStatus): boolean {
 
 export function canSubmitCustomerReview(deal: LocalDeal): boolean {
   const backendStatus = deal.backendStatus ?? deal.status
-  return backendStatus === 'paid' ||
-    backendStatus === 'confirmed_by_customer' ||
-    (!deal.backendStatus && deal.status === 'confirmed_by_customer')
+  return backendStatus === 'paid'
 }
 
 function canReplaceLocalDeal(status: LocalDealStatus): boolean {
@@ -415,6 +432,7 @@ function createDeal(draft: LocalDealDraft): LocalDeal {
     completionPhotoUrls: [],
     completionNotes: null,
     workerProfile: null,
+    scheduledAt: null,
     createdAt: null,
     matchedAt: null,
     completedAt: null,
@@ -424,7 +442,9 @@ function createDeal(draft: LocalDealDraft): LocalDeal {
   }
 }
 
-function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
+function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal | null {
+  if (!isValidRemoteJobSnapshot(job)) return null
+  const problemChips = normalizeRemoteTextArray(job.problemChips)
   return {
     id: job.id,
     displayCode: job.displayCode ?? null,
@@ -432,15 +452,15 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
     backendStatus: job.backendStatus,
     draft: {
       serviceType: job.serviceType,
-      problemChips: job.problemChips,
-      description: job.description,
-      mediaCount: job.mediaCount ?? 0,
-      addressLabel: job.addressLabel,
-      districtLabel: job.districtLabel,
+      problemChips,
+      description: job.description.trim(),
+      mediaCount: normalizeRemoteMediaCount(job.mediaCount),
+      addressLabel: job.addressLabel.trim(),
+      districtLabel: job.districtLabel.trim(),
       timeChoice: 'now',
       source: 'booking',
       needsServiceChoice: false,
-      inferredProblemLabel: job.problemChips[0] ?? null,
+      inferredProblemLabel: problemChips[0] ?? null,
       unsupportedServiceLabel: null,
     },
     estimate: job.estimate ?? null,
@@ -448,10 +468,11 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
     scopeChange: job.scopeChange ?? null,
     finalPrice: job.finalPrice ?? null,
     payment: job.payment ?? null,
-    fieldEvidencePhotoUrls: job.fieldEvidencePhotoUrls ?? [],
-    completionPhotoUrls: job.completionPhotoUrls ?? [],
+    fieldEvidencePhotoUrls: [...(job.fieldEvidencePhotoUrls ?? [])],
+    completionPhotoUrls: [...(job.completionPhotoUrls ?? [])],
     completionNotes: job.completionNotes ?? null,
     workerProfile: job.workerProfile ?? null,
+    scheduledAt: job.scheduledAt ?? null,
     createdAt: job.createdAt ?? null,
     matchedAt: job.matchedAt ?? null,
     completedAt: job.completedAt ?? null,
@@ -461,7 +482,8 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
   }
 }
 
-function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot): LocalDeal {
+function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot): LocalDeal | null {
+  if (!isValidRemoteBroadcastSnapshot(broadcast)) return null
   const remotePrebrief: string[] = []
   for (const line of broadcast.prebrief ?? []) {
     const trimmed = line.trim()
@@ -479,6 +501,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
     id: broadcast.jobId,
     displayCode: null,
     status: broadcast.status === 'accepted' ? 'worker_matched' : 'broadcasting',
+    scheduledAt: broadcast.scheduledAt ?? null,
     draft,
     estimate: null,
     broadcast: {
@@ -494,7 +517,9 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
       ],
       fullAddressVisible: false,
       fullAddressLabel: null,
-      secondsRemaining: broadcast.secondsRemaining,
+      secondsRemaining: broadcast.secondsRemaining === null
+        ? null
+        : Math.max(0, Math.floor(broadcast.secondsRemaining)),
       estimatedPriceLabel: broadcast.estimatedPriceLabel,
       estimatedEarningLabel: broadcast.estimatedEarningLabel,
     },
@@ -503,6 +528,14 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
     completionPhotoUrls: [],
     completionNotes: null,
   }
+}
+
+function normalizeRemoteTextArray(values: readonly string[]): string[] {
+  return values.map((value) => value.trim()).filter(Boolean)
+}
+
+function normalizeRemoteMediaCount(value: number | undefined): number {
+  return value === undefined ? 0 : value
 }
 
 function createLocalEstimate(draft: LocalDealDraft): LocalDealEstimate {
@@ -555,7 +588,7 @@ function setStatus(
 }
 
 function setCustomerReviewSubmitted(state: LocalWorkflowState): LocalWorkflowState {
-  const next = setStatus(state, 'confirmed_by_customer', 'reviewed')
+  const next = setStatus(state, 'paid', 'reviewed')
   if (!next.deal || !state.deal?.backendStatus) return next
   return {
     ...next,

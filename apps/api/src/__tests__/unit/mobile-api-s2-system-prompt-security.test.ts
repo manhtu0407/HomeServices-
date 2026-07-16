@@ -1,5 +1,5 @@
 /**
- * S2 / F6 (Plan.md §38 security hardening) — the Kael system prompt must carry
+ * The Kael system prompt must carry
  * explicit refuse-and-never-reveal rails (defense-in-depth against prompt injection
  * that asks Kael to leak the prompt/secrets or act outside Home Services scope).
  *

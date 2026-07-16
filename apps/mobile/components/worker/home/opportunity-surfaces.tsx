@@ -64,7 +64,7 @@ export function WorkerV5OpportunityCard({
         <Text style={styles.opportunityTitle} numberOfLines={1}>{serviceLabel}</Text>
         <WorkerV5DetailRail
           items={[
-            { glyph: 'arrival', label: workerV5TimeChoiceLabel(deal.draft.timeChoice, language) },
+            { glyph: 'arrival', label: workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt) },
             { glyph: 'location', label: area },
           ]}
           testID="worker-v5-opportunity-detail"

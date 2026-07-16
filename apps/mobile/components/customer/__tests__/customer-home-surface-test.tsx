@@ -174,7 +174,7 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/profile?utility=agentic')
   })
 
-  it('renders the Section 2.1 mint aura layers', () => {
+  it('renders the Section 2.1 mint aura with the inline Kael Core', () => {
     render(<CustomerHomeSurface />)
 
     expect(screen.getByTestId('customer-v21-home-canvas-aura')).toBeOnTheScreen()
@@ -186,8 +186,8 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-stage-logo-lottie')).toBeNull()
     expect(screen.queryByTestId('customer-v21-stage-logo-static')).toBeNull()
     expect(screen.queryByTestId('customer-v21-top-avatar')).toBeNull()
-    expect(screen.queryByTestId('kael-core-v9-monocle')).toBeNull()
-    expect(screen.queryAllByTestId('kael-core-v9-eye')).toHaveLength(0)
+    expect(screen.getByTestId('kael-core-v9-monocle')).toBeOnTheScreen()
+    expect(screen.getAllByTestId('kael-core-v9-eye')).toHaveLength(2)
     expect(screen.queryByText('◌')).toBeNull()
     expect(screen.queryByTestId('customer-v21-home-butler-pill')).toBeNull()
     expect(screen.queryByTestId('customer-v21-home-status-chip')).toBeNull()

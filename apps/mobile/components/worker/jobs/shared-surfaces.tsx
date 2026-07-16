@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -90,7 +90,7 @@ export function WorkerV5PriceLines({
   caseWideAura: WorkerV5SharedAuraComponent
   formulaAura?: boolean
   reduceTransparency?: boolean
-  rows: ReadonlyArray<WorkerV5PriceLine>
+  rows: readonly WorkerV5PriceLine[]
   total?: WorkerV5PriceLine
   zipAura: WorkerV5SharedAuraComponent
 }) {
@@ -138,7 +138,7 @@ export function WorkerV5InfoRow({
       <View style={styles.infoIconShell} testID="worker-v5-info-icon-shell">
         {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
         <Image
-          resizeMode="contain"
+          contentFit="contain"
           source={icons[icon]}
           style={[
             styles.infoIcon,
@@ -161,7 +161,7 @@ export function WorkerV5InfoGrid({
   reduceTransparency,
 }: {
   auraScope: string
-  items: ReadonlyArray<WorkerV5InfoGridItem>
+  items: readonly WorkerV5InfoGridItem[]
   reduceTransparency: boolean
 }) {
   return (

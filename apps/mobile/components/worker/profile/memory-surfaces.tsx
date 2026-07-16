@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Pressable,
   Text as RNText,
   View,
@@ -46,7 +46,7 @@ export function WorkerV5MemoryHero({
       {!reduceTransparency ? <HeroAura testID="worker-v5-memory-mint-aura" /> : null}
       <View style={styles.earningsHeroIconShell}>
         {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image resizeMode="contain" source={shieldIcon} style={styles.earningsHeroIcon} />
+        <Image contentFit="contain" source={shieldIcon} style={styles.earningsHeroIcon} />
       </View>
       <View style={styles.earningsHeroCopy}>
         <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-memory-title">{textByLanguage(language, 'Kael nhớ theo quyền bạn cho.', 'Kael remembers only what you allow.')}</Text>
@@ -70,9 +70,9 @@ export function WorkerV5MemorySwitchList({
   auraTestID: string
   iconVisualBoost: ReadonlySet<WorkerV5IconName>
   icons: WorkerV5MemoryIcons
-  items: ReadonlyArray<WorkerV5MemorySwitchItem>
+  items: readonly WorkerV5MemorySwitchItem[]
   listAura: WorkerV5MemoryAura
-  onChange: (id: WorkerV5MemoryPreferenceUiId, enabled: boolean) => void
+  onChange: (id: WorkerV5MemoryPreferenceUiId, enabled: boolean, previousEnabled: boolean) => void
   reduceTransparency: boolean
   savingIds: Partial<Record<WorkerV5MemoryPreferenceUiId, boolean>>
   testID: string
@@ -88,7 +88,8 @@ export function WorkerV5MemorySwitchList({
             accessibilityLabel={`${item.label}. ${item.value}`}
             accessibilityRole="switch"
             accessibilityState={{ checked: item.enabled, busy: saving }}
-            onPress={() => onChange(item.id, !item.enabled)}
+            disabled={saving}
+            onPress={() => onChange(item.id, !item.enabled, item.enabled)}
             style={({ pressed }) => [
               styles.memorySwitchRow,
               index === items.length - 1 ? styles.memorySwitchRowLast : null,
@@ -99,7 +100,7 @@ export function WorkerV5MemorySwitchList({
             <View style={styles.memorySwitchIconShell} testID={`${testID}-icon-shell-${index}`}>
               {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
               <Image
-                resizeMode="contain"
+                contentFit="contain"
                 source={icons[item.icon]}
                 style={[
                   styles.memorySwitchIcon,

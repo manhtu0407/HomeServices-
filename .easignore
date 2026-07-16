@@ -29,6 +29,8 @@ coverage/
 *.pem
 *.key
 *.mobileprovision
+*.jks
+*.keystore
 
 # Platform/editor noise
 .DS_Store

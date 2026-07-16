@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { EntryBrandAccessFlow } from './entry-access/EntryBrandAccessFlow'
+import { entryAccessCopy, localizeEntryAuthError } from './entry-access/copy'
 import type { EntryAccessStep, EntryRole, PasswordLoginInput, RegistrationInput } from './entry-access/types'
 import { useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
@@ -50,19 +51,14 @@ function resolveEntryRole(value: EntryParam): EntryRole {
   return firstParam(value) === 'worker' ? 'worker' : 'customer'
 }
 
-const ENTRY_AUTH_COPY = {
-  accountNotReady: 'T\u00e0i kho\u1ea3n ch\u01b0a s\u1eb5n s\u00e0ng \u0111\u1ec3 v\u00e0o \u1ee9ng d\u1ee5ng. Vui l\u00f2ng ho\u00e0n t\u1ea5t \u0111\u0103ng nh\u1eadp tr\u01b0\u1edbc.',
-  facebookPending: 'Facebook ch\u01b0a s\u1eb5n s\u00e0ng tr\u00ean b\u1ea3n d\u1ef1ng n\u00e0y.',
-  forgotPasswordPending: '\u0110\u1eb7t l\u1ea1i m\u1eadt kh\u1ea9u ch\u01b0a s\u1eb5n s\u00e0ng.',
-  gmailPending: 'Gmail ch\u01b0a s\u1eb5n s\u00e0ng tr\u00ean b\u1ea3n d\u1ef1ng n\u00e0y.',
-  workerReviewPending: 'H\u1ed3 s\u01a1 th\u1ee3 \u0111\u00e3 \u0111\u01b0\u1ee3c g\u1eedi x\u00e9t duy\u1ec7t. NestScout s\u1ebd li\u00ean h\u1ec7 tr\u01b0\u1edbc khi c\u1ea5p quy\u1ec1n th\u1ee3.',
-} as const
-
 export function LoginRoleSurface() {
   const auth = useAuth()
   const language = useAppLanguage()
+  const copy = entryAccessCopy[language]
   const params = useLocalSearchParams<{ role?: EntryParam; stage?: EntryParam }>()
   const router = useRouter()
+  const workerApplicationSubmittedRef = useRef(false)
+  const workerRegistrationIntentRef = useRef(false)
   const reviewStep = resolveEntryStep(params.stage)
   const initialRole = resolveEntryRole(params.role)
   const passwordRecoveryStep: EntryAccessStep | null = !reviewStep && auth.passwordRecoveryPending ? 'password-reset' : null
@@ -72,7 +68,7 @@ export function LoginRoleSurface() {
 
   useEffect(() => {
     if (reviewStep) return
-    if (auth.passwordRecoveryPending) return
+    if (auth.passwordRecoveryPending || workerRegistrationIntentRef.current) return
     if (auth.loading || auth.profileStatus === 'profile_missing') return
     if (!auth.session || !auth.role) return
     if (auth.role === 'customer') router.replace('/(customer)/home' as never)
@@ -83,6 +79,22 @@ export function LoginRoleSurface() {
   const actions = useMemo(() => ({
     onCompleteOnboarding: async (role: EntryRole) => {
       const nextRole = auth.role ?? await auth.refreshProfile()
+      if (role === 'worker') {
+        if (nextRole === 'worker') {
+          router.replace('/(worker)/home' as never)
+          return { success: true }
+        }
+        if (workerApplicationSubmittedRef.current) {
+          return {
+            success: false,
+            error: copy.errors.workerReviewPending,
+          }
+        }
+        return {
+          success: false,
+          error: copy.errors.workerApplicationNotSubmitted,
+        }
+      }
       if (nextRole === 'customer') {
         router.replace('/(customer)/home' as never)
         return { success: true }
@@ -91,33 +103,84 @@ export function LoginRoleSurface() {
         router.replace('/(worker)/home' as never)
         return { success: true }
       }
-      if (!auth.session && role === 'worker') {
-        return {
-          success: false,
-          error: ENTRY_AUTH_COPY.workerReviewPending,
-        }
-      }
       return {
         success: false,
-        error: ENTRY_AUTH_COPY.accountNotReady,
+        error: copy.errors.accountNotReady,
       }
     },
-    onPasswordLogin: async ({ identifier, password }: PasswordLoginInput) => auth.signInWithPassword(identifier, password),
+    onPasswordLogin: async ({ identifier, password, role }: PasswordLoginInput) => {
+      workerApplicationSubmittedRef.current = false
+      workerRegistrationIntentRef.current = role === 'worker'
+      const result = await auth.signInWithPassword(identifier, password)
+      if (!result.success) {
+        workerRegistrationIntentRef.current = false
+        return {
+          success: false,
+          error: localizeEntryAuthError(result.error, language, 'signInFailed'),
+        }
+      }
+      if (role === 'worker' && result.role === 'customer') {
+        const application = await auth.submitWorkerApplication({ contact: identifier, language })
+        workerApplicationSubmittedRef.current = application.success
+        return application.success
+          ? { success: true }
+          : {
+              success: false,
+              error: localizeEntryAuthError(application.error, language, 'workerApplicationFailed'),
+            }
+      }
+      workerRegistrationIntentRef.current = false
+      return result
+    },
     onForgotPassword: async ({ email }: { email: string }) => auth.requestPasswordRecovery(email),
     onCompletePasswordRecovery: auth.completePasswordRecovery,
     onExitPasswordRecovery: async () => {
       await auth.signOut()
       router.replace('/(auth)/login?stage=login' as never)
     },
-    onGoogleLogin: auth.signInWithGoogle,
+    onGoogleLogin: async () => {
+      workerApplicationSubmittedRef.current = false
+      workerRegistrationIntentRef.current = false
+      const result = await auth.signInWithGoogle()
+      return result.success
+        ? result
+        : {
+            success: false,
+            error: localizeEntryAuthError(result.error, language, 'googleSignInFailed'),
+          }
+    },
     onRegister: async ({ identifier, fullName, password, role }: RegistrationInput) => {
       if (role === 'worker') {
+        workerApplicationSubmittedRef.current = false
+        workerRegistrationIntentRef.current = true
+        const signup = await auth.signUpWithIdentifier({
+          displayName: fullName,
+          identifier,
+          password,
+        })
+        if (!signup.success) {
+          workerRegistrationIntentRef.current = false
+          return {
+            success: false,
+            error: localizeEntryAuthError(signup.error, language, 'signupFailed'),
+          }
+        }
+        if (signup.needsConfirmation) {
+          return { success: false, error: copy.errors.emailConfirmation }
+        }
+
         const result = await auth.submitWorkerApplication({ contact: identifier, language })
+        workerApplicationSubmittedRef.current = result.success
         return result.success
           ? { success: true }
-          : { success: false, error: result.error }
+          : {
+              success: false,
+              error: localizeEntryAuthError(result.error, language, 'workerApplicationFailed'),
+            }
       }
 
+      workerApplicationSubmittedRef.current = false
+      workerRegistrationIntentRef.current = false
       const result = await auth.signUpWithIdentifier({
         displayName: fullName,
         identifier,
@@ -131,10 +194,13 @@ export function LoginRoleSurface() {
       }
       return result.success
         ? { success: true }
-        : { success: false, error: result.error }
+        : {
+            success: false,
+            error: localizeEntryAuthError(result.error, language, 'signupFailed'),
+          }
     },
     onResendSignupConfirmation: auth.resendSignupConfirmation,
-  }), [auth, language, router])
+  }), [auth, copy, language, router])
 
   return (
     <EntryBrandAccessFlow

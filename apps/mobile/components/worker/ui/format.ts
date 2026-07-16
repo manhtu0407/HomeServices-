@@ -1,8 +1,26 @@
 import type { AppLanguage } from '@/lib/app-language'
 
+const WHOLE_NUMBER_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Intl.NumberFormat> = {
+  en: new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }),
+  vi: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }),
+}
+const SCOPE_EVENT_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat('en-US', { day: '2-digit', hour: '2-digit', minute: '2-digit', month: '2-digit' }),
+  vi: new Intl.DateTimeFormat('vi-VN', { day: '2-digit', hour: '2-digit', minute: '2-digit', month: '2-digit' }),
+}
+const COMPACT_NUMBER_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Record<1 | 2, Intl.NumberFormat>> = {
+  en: {
+    1: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }),
+    2: new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }),
+  },
+  vi: {
+    1: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }),
+    2: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }),
+  },
+}
+
 export function formatApprovalVnd(value: number, language: AppLanguage) {
-  const locale = language === 'vi' ? 'vi-VN' : 'en-US'
-  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value)
+  const formatted = WHOLE_NUMBER_FORMATTER_BY_LANGUAGE[language].format(value)
   return textByLanguage(language, `${formatted}đ`, `${formatted} VND`)
 }
 
@@ -10,12 +28,7 @@ export function formatScopeEventTime(value: string | null | undefined, language:
   if (!value) return textByLanguage(language, 'Chưa có mốc', 'No timestamp')
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return textByLanguage(language, 'Chưa có mốc', 'No timestamp')
-  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: '2-digit',
-  }).format(parsed)
+  return SCOPE_EVENT_FORMATTER_BY_LANGUAGE[language].format(parsed)
 }
 
 export function formatScopeWaitElapsed(value: string | null | undefined, language: AppLanguage) {
@@ -87,20 +100,18 @@ export function formatDateRange(from: string | null | undefined, to: string | nu
 }
 
 export function formatVnd(value: number, language: AppLanguage) {
-  const locale = language === 'vi' ? 'vi-VN' : 'en-US'
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value)} VND`
+  return `${WHOLE_NUMBER_FORMATTER_BY_LANGUAGE[language].format(value)} VND`
 }
 
 export function formatVndDong(value: number, language: AppLanguage) {
-  const locale = language === 'vi' ? 'vi-VN' : 'en-US'
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value)}đ`
+  return `${WHOLE_NUMBER_FORMATTER_BY_LANGUAGE[language].format(value)}đ`
 }
 
 export function formatCompactVnd(value: number, language: AppLanguage) {
   if (value >= 1_000_000) {
-    const compact = new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
-      maximumFractionDigits: value >= 10_000_000 ? 1 : 2,
-    }).format(value / 1_000_000)
+    const maximumFractionDigits = value >= 10_000_000 ? 1 : 2
+    const compact = COMPACT_NUMBER_FORMATTER_BY_LANGUAGE[language][maximumFractionDigits]
+      .format(value / 1_000_000)
     return textByLanguage(language, `${compact}tr`, `${compact}m`)
   }
   if (value >= 1_000) return `${Math.round(value / 1_000)}k`

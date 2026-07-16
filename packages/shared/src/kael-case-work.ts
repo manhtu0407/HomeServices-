@@ -20,10 +20,10 @@ export const CASE_WORK_PHASES = Object.freeze([
 export type CaseWorkPhase = (typeof CASE_WORK_PHASES)[number]
 
 const factValueSchema = z.union([
-  z.string().max(2000),
+  z.string().trim().min(1).max(2000),
   z.number().finite(),
   z.boolean(),
-  z.array(z.string().max(500)).max(30),
+  z.array(z.string().trim().min(1).max(500)).max(30),
   z.null(),
 ])
 
@@ -55,14 +55,14 @@ export const caseWorkEvidenceSchema = z.object({
   if (
     (value.kind === 'photo' || value.kind === 'video_frame') &&
     value.ref &&
-    !/^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/model_vision\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
+    !/^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/model_vision\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
   ) {
     ctx.addIssue({ code: 'custom', path: ['ref'], message: 'Model evidence requires a private model_vision ref' })
   }
   if (
     value.kind === 'video_original_private' &&
     value.ref &&
-    !/^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/private_video_original\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
+    !/^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/private_video_original\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
   ) {
     ctx.addIssue({ code: 'custom', path: ['ref'], message: 'Original video requires a private human-evidence ref' })
   }
@@ -106,7 +106,7 @@ export const diagnosisScopeArtifactSchema = z.object({
   service_type: z.enum(SERVICE_TYPES),
   profile_id: z.enum(KAEL_PERFORMANCE_PROFILE_IDS),
   case_phase: z.enum(CASE_WORK_PHASES),
-  facts: z.record(z.string().min(1).max(120), factValueSchema),
+  facts: z.record(z.string().trim().min(1).max(120), factValueSchema),
   missing_facts: z.array(z.string().min(1).max(120)).max(64),
   evidence: z.array(caseWorkEvidenceSchema).max(20),
   safety_flags: z.array(safetyFlagSchema).max(20),
@@ -136,6 +136,11 @@ export const diagnosisScopeArtifactSchema = z.object({
     if (value.next_action.kind !== 'prepare_offer') {
       ctx.addIssue({ code: 'custom', path: ['next_action'], message: 'Quote-ready artifact must prepare the offer' })
     }
+    if (value.safety_flags.some((flag) => flag.severity === 'stop')) {
+      ctx.addIssue({ code: 'custom', path: ['safety_flags'], message: 'Stop-level safety flags block quote readiness' })
+    }
+  } else if (value.next_action.kind === 'prepare_offer') {
+    ctx.addIssue({ code: 'custom', path: ['next_action'], message: 'Offer preparation requires quote readiness' })
   }
 })
 

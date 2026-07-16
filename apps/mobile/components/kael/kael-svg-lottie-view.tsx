@@ -108,6 +108,9 @@ type RenderStyle = {
   strokeWidth: number
 }
 
+const lottieNodeKeys = new WeakMap<object, string>()
+let nextLottieNodeKey = 0
+
 const DEFAULT_FRAME_RATE = 60
 const APPROVED_LOGO_TRANSPARENT_SOURCE = require('@/assets/lottie/nestscout-aurora-nest-approved-logo-transparent.png') as ImageSourcePropType
 
@@ -162,7 +165,7 @@ export function KaelLottieView({
   return (
     <View style={style} testID={testID}>
       <Svg height="100%" viewBox={`0 0 ${animation.w} ${animation.h}`} width="100%">
-        {animation.layers.map((layer, index) => renderLayer(layer, frame, assetById, `layer-${index}`))}
+        {animation.layers.map((layer) => renderLayer(layer, frame, assetById, lottieNodeKey(layer, 'layer')))}
       </Svg>
     </View>
   )
@@ -190,7 +193,7 @@ function renderLayer(layer: LottieLayer, frame: number, assetById: Map<string, L
   if (layer.ty === 4 && layer.shapes) {
     return (
       <G key={key} opacity={opacity} transform={transform}>
-        {renderShapes(layer.shapes, frame, key, layer.nm)}
+        <LottieShapes frame={frame} keyPrefix={key} layerName={layer.nm} shapes={layer.shapes} />
       </G>
     )
   }
@@ -198,15 +201,31 @@ function renderLayer(layer: LottieLayer, frame: number, assetById: Map<string, L
   return null
 }
 
-function renderShapes(shapes: LottieShape[], frame: number, keyPrefix: string, layerName?: string) {
+function LottieShapes({
+  frame,
+  keyPrefix,
+  layerName,
+  shapes,
+}: {
+  frame: number
+  keyPrefix: string
+  layerName?: string
+  shapes: LottieShape[]
+}) {
   const shapeTransform = shapes.find((shape) => shape.ty === 'tr')
   const rendered: ReactNode[] = []
 
   shapes.forEach((shape, index) => {
+    const shapeKey = lottieNodeKey(shape, shape.ty)
     if (shape.ty === 'gr' && shape.it) {
       rendered.push(
-        <G key={`${keyPrefix}-group-${index}`}>
-          {renderShapes(shape.it, frame, `${keyPrefix}-group-${index}`, layerName)}
+        <G key={`${keyPrefix}-group-${shapeKey}`}>
+          <LottieShapes
+            frame={frame}
+            keyPrefix={`${keyPrefix}-group-${shapeKey}`}
+            layerName={layerName}
+            shapes={shape.it}
+          />
         </G>,
       )
       return
@@ -232,9 +251,9 @@ function renderShapes(shapes: LottieShape[], frame: number, keyPrefix: string, l
       const [cx, cy] = vectorValue(shape.p, frame, [0, 0])
       const [width, height] = vectorValue(shape.s, frame, [0, 0])
       if (glowProps) {
-        rendered.push(<Ellipse key={`${keyPrefix}-ellipse-glow-${index}`} cx={cx} cy={cy} rx={width / 2} ry={height / 2} {...glowProps} />)
+        rendered.push(<Ellipse key={`${keyPrefix}-ellipse-glow-${shapeKey}`} cx={cx} cy={cy} rx={width / 2} ry={height / 2} {...glowProps} />)
       }
-      rendered.push(<Ellipse key={`${keyPrefix}-ellipse-${index}`} cx={cx} cy={cy} rx={width / 2} ry={height / 2} {...commonProps} />)
+      rendered.push(<Ellipse key={`${keyPrefix}-ellipse-${shapeKey}`} cx={cx} cy={cy} rx={width / 2} ry={height / 2} {...commonProps} />)
       return
     }
 
@@ -245,7 +264,7 @@ function renderShapes(shapes: LottieShape[], frame: number, keyPrefix: string, l
       if (glowProps) {
         rendered.push(
           <Rect
-            key={`${keyPrefix}-rect-glow-${index}`}
+            key={`${keyPrefix}-rect-glow-${shapeKey}`}
             height={height}
             rx={radius}
             ry={radius}
@@ -258,7 +277,7 @@ function renderShapes(shapes: LottieShape[], frame: number, keyPrefix: string, l
       }
       rendered.push(
         <Rect
-          key={`${keyPrefix}-rect-${index}`}
+          key={`${keyPrefix}-rect-${shapeKey}`}
           height={height}
           rx={radius}
           ry={radius}
@@ -275,8 +294,8 @@ function renderShapes(shapes: LottieShape[], frame: number, keyPrefix: string, l
       const shapePath = shapePathValue(shape.ks)
       const path = shapePath ? pathValue(shapePath) : null
       if (path) {
-        if (glowProps) rendered.push(<Path key={`${keyPrefix}-path-glow-${index}`} d={path} {...glowProps} />)
-        rendered.push(<Path key={`${keyPrefix}-path-${index}`} d={path} {...commonProps} />)
+        if (glowProps) rendered.push(<Path key={`${keyPrefix}-path-glow-${shapeKey}`} d={path} {...glowProps} />)
+        rendered.push(<Path key={`${keyPrefix}-path-${shapeKey}`} d={path} {...commonProps} />)
       }
     }
   })
@@ -289,6 +308,15 @@ function renderShapes(shapes: LottieShape[], frame: number, keyPrefix: string, l
       {rendered}
     </G>
   )
+}
+
+function lottieNodeKey(node: object, prefix: string) {
+  const current = lottieNodeKeys.get(node)
+  if (current) return current
+  nextLottieNodeKey += 1
+  const key = `${prefix}-${nextLottieNodeKey}`
+  lottieNodeKeys.set(node, key)
+  return key
 }
 
 function strokeGlowProps(layerName: string | undefined, style: RenderStyle) {
@@ -413,7 +441,7 @@ function colorValue(property: LottieProperty | undefined, frame: number) {
   return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`
 }
 
-function isKeyframeList(value: Array<number | LottieKeyframe>): value is LottieKeyframe[] {
+function isKeyframeList(value: (number | LottieKeyframe)[]): value is LottieKeyframe[] {
   return typeof value[0] === 'object'
 }
 

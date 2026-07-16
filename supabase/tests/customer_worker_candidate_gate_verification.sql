@@ -130,7 +130,8 @@ begin
     'b1200000-0000-4000-8000-000000000001',
     'b1100000-0000-4000-8000-000000000004'
   );
-  if v_second.ok is true or v_second.error_code <> 'ALREADY_TAKEN' then
+  -- Reassigned broadcasts fail the pre-status membership privacy check.
+  if v_second.ok is true or v_second.error_code <> 'NOT_FOUND' then
     raise exception 'second worker accept won the same job';
   end if;
 

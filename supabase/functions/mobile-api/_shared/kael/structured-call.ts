@@ -55,7 +55,7 @@ export async function callStructuredAI<T>(
   request: AIRequest,
   schema: StructuredSchema<T>,
   secrets: EdgeAiSecrets,
-  gate?: KaelSpendGate,
+  gate: KaelSpendGate | undefined,
   invoke: StructuredAIInvoker = callAI,
 ): Promise<StructuredAIResponse<T> | StructuredAIError> {
   const response = await invoke(request, secrets, gate, {

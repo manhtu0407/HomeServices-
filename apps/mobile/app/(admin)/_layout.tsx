@@ -1,7 +1,5 @@
-// Phase 5.1 (plan §22.10.B, 2026-05-23): admin shell. Separated from
-// customer/worker shells to avoid admin clicking customer or worker CTAs and
-// triggering production workflow side effects. Admin uses Edge admin/audit
-// routes only — never mutates customer/worker workflow rows directly.
+// Keep admin navigation separate so privileged actions cannot trigger
+// customer or worker workflow side effects.
 import { Redirect, Stack } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
 import { useAuth } from '@/lib/auth-provider'

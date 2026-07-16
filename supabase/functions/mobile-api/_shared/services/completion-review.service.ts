@@ -1,7 +1,7 @@
 // Edge service completion-review domain (C4 6a, services/* split): explicit customer
 // confirm-completion + submit-review (rating -> learning + normal-transaction memory).
 
-import { asComplexityOrNull, asJobStatus, asServiceType, asString, asStringArray, nullableNumber, nullableRecord, nullableString } from "./coercions.ts";
+import { asComplexityOrNull, asJobStatus, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { mapReviewError } from "./_shared.ts";
 import { logJobEvent, logMemoryAudit, queueKaelLearningEvent } from "./audit.ts";
@@ -10,17 +10,12 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import { requireJobAccess } from "../access.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
 import { recordLearningReviewOutcome } from "../kael/index.ts";
-import type { JobStatus, ServiceType } from "../../../_shared/domain.ts";
+import type { JobStatus } from "../../../_shared/domain.ts";
 
 type NormalTransactionMemoryInput = {
   jobId: string;
   customerId: string;
   workerId: string | null;
-  serviceType: ServiceType;
-  problemSummary: string | null;
-  district: string | null;
-  rating: number;
-  finalPrice: number | null;
 };
 
 export async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
@@ -139,6 +134,11 @@ export async function submitReview(ctx: MobileApiContext, jobId: string, input: 
     if (existing.error || !existing.data) {
       apiFailure("INVALID_STATUS", "Yêu cầu đã được đánh giá nhưng chưa tìm thấy bản ghi đánh giá", 409);
     }
+    await recordNormalTransactionMemory(client, {
+      jobId,
+      customerId: ctx.user.id,
+      workerId: nullableString(job.worker_id),
+    });
     return {
       review_id: asString(existing.data.id),
       job_id: jobId,
@@ -212,11 +212,6 @@ export async function submitReview(ctx: MobileApiContext, jobId: string, input: 
     jobId,
     customerId: ctx.user.id,
     workerId: nullableString(job.worker_id),
-    serviceType: asServiceType(job.service_type),
-    problemSummary: nullableString(job.kael_problem_identified),
-    district: nullableString(job.address_district),
-    rating: input.rating,
-    finalPrice: nullableNumber(job.final_price),
   });
   await insertUserNotification(client, {
     userId: ctx.user.id,
@@ -237,143 +232,20 @@ async function recordNormalTransactionMemory(
   client: DbClient,
   input: NormalTransactionMemoryInput,
 ) {
-  const observedAt = new Date().toISOString();
-  const customerExisting = await dbQuery<Record<string, unknown>>(
-    client
-      .from("customer_kael_memory")
-      .select("service_preferences, trust_signals, safe_metadata")
-      .eq("customer_id", input.customerId)
-      .maybeSingle(),
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("record_normal_transaction_memory_atomic", {
+      p_job_id: input.jobId,
+      p_customer_id: input.customerId,
+    }),
   );
-  const servicePreferences = nullableRecord(
-    customerExisting.data?.service_preferences,
-  ) ?? {};
-  const previousServicePreference = nullableRecord(
-    servicePreferences[input.serviceType],
-  ) ?? {};
-  const trustSignals = nullableRecord(customerExisting.data?.trust_signals) ?? {};
-  const customerMetadata = nullableRecord(customerExisting.data?.safe_metadata) ??
-    {};
-
-  await dbQuery(
-    client.from("customer_kael_memory").upsert({
-      customer_id: input.customerId,
-      preference_summary:
-        `Normal ${input.serviceType} transaction reviewed with rating ${input.rating}.`,
-      service_preferences: {
-        ...servicePreferences,
-        [input.serviceType]: {
-          ...previousServicePreference,
-          last_rating: input.rating,
-          last_district: input.district,
-          last_normal_job_id: input.jobId,
-          observed_at: observedAt,
-        },
-      },
-      trust_signals: {
-        ...trustSignals,
-        reviewed_after_completion: true,
-        last_rating: input.rating,
-        last_normal_job_id: input.jobId,
-      },
-      safe_metadata: {
-        ...customerMetadata,
-        last_normal_transaction: {
-          job_id: input.jobId,
-          service_type: input.serviceType,
-          district: input.district,
-          final_price_present: input.finalPrice !== null,
-          problem_summary_present: input.problemSummary !== null,
-          layers: ["L2", "L3", "L5"],
-          observed_at: observedAt,
-        },
-      },
-      last_observed_at: observedAt,
-    }),
-  ).catch(() => {
-    console.warn("mobile-api customer kael memory write failed", {
+  if (result.error) {
+    console.warn("mobile-api normal transaction memory write failed", {
       jobId: input.jobId,
+      errorCode: result.error.code,
     });
-  });
-
-  if (input.workerId) {
-    const workerExisting = await dbQuery<Record<string, unknown>>(
-      client
-        .from("worker_kael_memory")
-        .select("service_skill_proficiency, reliability_signals, safe_metadata")
-        .eq("worker_id", input.workerId)
-        .maybeSingle(),
-    );
-    const proficiency = nullableRecord(
-      workerExisting.data?.service_skill_proficiency,
-    ) ?? {};
-    const previousProficiency = nullableRecord(proficiency[input.serviceType]) ??
-      {};
-    const reliabilitySignals = nullableRecord(
-      workerExisting.data?.reliability_signals,
-    ) ?? {};
-    const workerMetadata = nullableRecord(workerExisting.data?.safe_metadata) ??
-      {};
-
-    await dbQuery(
-      client.from("worker_kael_memory").upsert({
-        worker_id: input.workerId,
-        service_skill_summary:
-          `Normal ${input.serviceType} job completed with customer rating ${input.rating}.`,
-        service_skill_proficiency: {
-          ...proficiency,
-          [input.serviceType]: {
-            ...previousProficiency,
-            last_rating: input.rating,
-            last_normal_job_id: input.jobId,
-            observed_at: observedAt,
-          },
-        },
-        reliability_signals: {
-          ...reliabilitySignals,
-          customer_reviewed_after_completion: true,
-          last_rating: input.rating,
-          last_normal_job_id: input.jobId,
-        },
-        safe_metadata: {
-          ...workerMetadata,
-          last_normal_transaction: {
-            job_id: input.jobId,
-            service_type: input.serviceType,
-            final_price_present: input.finalPrice !== null,
-            layers: ["L2", "L4", "L5"],
-            observed_at: observedAt,
-          },
-        },
-        last_observed_at: observedAt,
-      }),
-    ).catch(() => {
-      console.warn("mobile-api worker kael memory write failed", {
-        jobId: input.jobId,
-      });
-    });
+    return;
   }
-
-  await dbQuery(
-    client.from("job_events").insert({
-      job_id: input.jobId,
-      actor_id: input.customerId,
-      actor_role: "customer",
-      event_type: "kael_memory_l2_observed",
-      from_status: null,
-      to_status: null,
-      safe_metadata: {
-        normal_case: true,
-        layers: ["L2", "L3", "L4", "L5"],
-        service_type: input.serviceType,
-        final_price_present: input.finalPrice !== null,
-      },
-    }),
-  ).catch(() => {
-    console.warn("mobile-api job memory event write failed", {
-      jobId: input.jobId,
-    });
-  });
+  if (result.data?.[0]?.applied !== true) return;
 
   await logMemoryAudit(client, {
     subjectType: "job",

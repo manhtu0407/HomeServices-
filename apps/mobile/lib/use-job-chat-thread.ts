@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AppLanguage } from './app-language'
 import { jobService } from './services'
 import { subscribeToJobMessages } from './realtime'
 import type { JobMessageResponse } from './api-types'
@@ -10,6 +11,10 @@ type JobChatThreadState = {
   sending: boolean
 }
 
+type JobChatThreadSnapshot = JobChatThreadState & {
+  key: string | null
+}
+
 const initialJobChatThreadState: JobChatThreadState = {
   error: null,
   loading: false,
@@ -17,67 +22,193 @@ const initialJobChatThreadState: JobChatThreadState = {
   sending: false,
 }
 
-export function useJobChatThread(jobId: string | null, enabled: boolean) {
-  const [state, setState] = useState<JobChatThreadState>(initialJobChatThreadState)
+const messageErrorCopy: Record<AppLanguage, {
+  load: string
+  send: string
+  tooLong: string
+}> = {
+  vi: {
+    load: 'Không thể tải tin nhắn. Vui lòng thử lại.',
+    send: 'Không thể gửi tin nhắn. Vui lòng thử lại.',
+    tooLong: 'Tin nhắn không được dài quá 5.000 ký tự.',
+  },
+  en: {
+    load: 'Could not load messages. Try again.',
+    send: 'Could not send the message. Try again.',
+    tooLong: 'Messages cannot exceed 5,000 characters.',
+  },
+}
+
+export function useJobChatThread(
+  jobId: string | null,
+  enabled: boolean,
+  language: AppLanguage = 'vi',
+) {
+  const threadKey = enabled && jobId ? jobId : null
+  const [snapshot, setSnapshot] = useState<JobChatThreadSnapshot>({
+    ...initialJobChatThreadState,
+    key: null,
+  })
   const requestIdRef = useRef(0)
+  const sendInFlightRef = useRef<{ generation: number; threadKey: string } | null>(null)
+  const threadGenerationRef = useRef(0)
   const reloadRef = useRef<() => Promise<boolean>>(async () => false)
+  const { key: snapshotKey, ...snapshotState } = snapshot
+  const state: JobChatThreadState = snapshotKey === threadKey
+    ? snapshotState
+    : { ...initialJobChatThreadState, loading: Boolean(threadKey) }
 
   const reload = useCallback(async () => {
-    if (!jobId || !enabled) {
-      setState(initialJobChatThreadState)
-      return false
-    }
+    if (!threadKey) return false
 
     requestIdRef.current += 1
     const requestId = requestIdRef.current
-    setState((current) => ({ ...current, error: null, loading: true }))
-    const result = await jobService.listMessages(jobId)
-    if (requestIdRef.current !== requestId) return false
+    const threadGeneration = threadGenerationRef.current
+    setSnapshot((current) => ({
+      ...(current.key === threadKey ? current : initialJobChatThreadState),
+      error: null,
+      key: threadKey,
+      loading: true,
+    }))
+    let result: Awaited<ReturnType<typeof jobService.listMessages>>
+    try {
+      result = await jobService.listMessages(threadKey)
+    } catch {
+      if (
+        requestIdRef.current !== requestId
+        || threadGenerationRef.current !== threadGeneration
+      ) return false
+      setSnapshot((current) => ({
+        ...(current.key === threadKey ? current : initialJobChatThreadState),
+        error: messageErrorCopy[language].load,
+        key: threadKey,
+        loading: false,
+      }))
+      return false
+    }
+    if (
+      requestIdRef.current !== requestId ||
+      threadGenerationRef.current !== threadGeneration
+    ) return false
 
     if (!result.success) {
-      setState((current) => ({ ...current, error: result.error, loading: false }))
+      setSnapshot((current) => ({
+        ...(current.key === threadKey ? current : initialJobChatThreadState),
+        error: messageErrorCopy[language].load,
+        key: threadKey,
+        loading: false,
+      }))
       return false
     }
 
-    setState((current) => ({
-      ...current,
+    setSnapshot((current) => ({
+      ...(current.key === threadKey ? current : initialJobChatThreadState),
       error: null,
+      key: threadKey,
       loading: false,
       messages: result.data.messages,
     }))
     return true
-  }, [enabled, jobId])
+  }, [language, threadKey])
 
   const send = useCallback(async (content: string) => {
+    if (typeof content !== 'string') return false
     const trimmed = content.trim()
-    if (!jobId || !enabled || !trimmed) return false
-
-    setState((current) => ({ ...current, error: null, sending: true }))
-    const result = await jobService.sendMessage(jobId, { content: trimmed })
-    if (!result.success) {
-      setState((current) => ({ ...current, error: result.error, sending: false }))
+    if (!threadKey || !trimmed) return false
+    if (trimmed.length > 5_000) {
+      setSnapshot((current) => ({
+        ...(current.key === threadKey ? current : initialJobChatThreadState),
+        error: messageErrorCopy[language].tooLong,
+        key: threadKey,
+        sending: false,
+      }))
       return false
     }
 
-    const refreshed = await jobService.listMessages(jobId)
-    if (refreshed.success) {
-      setState((current) => ({
-        ...current,
+    const threadGeneration = threadGenerationRef.current
+    if (
+      sendInFlightRef.current?.threadKey === threadKey &&
+      sendInFlightRef.current.generation === threadGeneration
+    ) return false
+    const sendToken = { generation: threadGeneration, threadKey }
+    sendInFlightRef.current = sendToken
+    try {
+      setSnapshot((current) => ({
+        ...(current.key === threadKey ? current : initialJobChatThreadState),
         error: null,
-        messages: refreshed.data.messages,
+        key: threadKey,
+        sending: true,
+      }))
+      let result: Awaited<ReturnType<typeof jobService.sendMessage>>
+      try {
+        result = await jobService.sendMessage(threadKey, { content: trimmed })
+      } catch {
+        if (threadGenerationRef.current !== threadGeneration) return false
+        setSnapshot((current) => ({
+          ...(current.key === threadKey ? current : initialJobChatThreadState),
+          error: messageErrorCopy[language].send,
+          key: threadKey,
+          sending: false,
+        }))
+        return false
+      }
+      if (threadGenerationRef.current !== threadGeneration) return false
+      if (!result.success) {
+        setSnapshot((current) => ({
+          ...(current.key === threadKey ? current : initialJobChatThreadState),
+          error: messageErrorCopy[language].send,
+          key: threadKey,
+          sending: false,
+        }))
+        return false
+      }
+
+      let refreshed: Awaited<ReturnType<typeof jobService.listMessages>> | null = null
+      try {
+        refreshed = await jobService.listMessages(threadKey)
+      } catch {
+        // The send already committed; retain its response when the follow-up refresh fails.
+      }
+      if (threadGenerationRef.current !== threadGeneration) return false
+      if (refreshed?.success) {
+        setSnapshot((current) => ({
+          ...(current.key === threadKey ? current : initialJobChatThreadState),
+          error: null,
+          key: threadKey,
+          messages: refreshed.data.messages,
+          sending: false,
+        }))
+        return true
+      }
+
+      setSnapshot((current) => ({
+        ...(current.key === threadKey ? current : initialJobChatThreadState),
+        error: messageErrorCopy[language].load,
+        key: threadKey,
+        messages: [
+          ...(current.key === threadKey ? current.messages : []),
+          result.data.message,
+        ],
         sending: false,
       }))
       return true
+    } finally {
+      if (sendInFlightRef.current === sendToken) sendInFlightRef.current = null
     }
+  }, [language, threadKey])
 
-    setState((current) => ({
-      ...current,
-      error: refreshed.error,
-      messages: [...current.messages, result.data.message],
-      sending: false,
-    }))
-    return true
-  }, [enabled, jobId])
+  useEffect(() => {
+    const generation = threadGenerationRef.current + 1
+    threadGenerationRef.current = generation
+    requestIdRef.current += 1
+
+    return () => {
+      if (threadGenerationRef.current === generation) {
+        threadGenerationRef.current += 1
+      }
+      requestIdRef.current += 1
+    }
+  }, [threadKey])
 
   useEffect(() => {
     reloadRef.current = reload
@@ -87,13 +218,8 @@ export function useJobChatThread(jobId: string | null, enabled: boolean) {
     void reload()
   }, [reload])
 
-  // H9-1 (Notes.md): live delivery of the counterparty's messages. Without this
-  // the thread only refreshed on mount and after the user's own send, so a
-  // worker asking "đồng hồ điện ở đâu?" stayed invisible until the customer
-  // happened to send something. Subscribe to INSERTs and re-fetch the
-  // authoritative list (server-ordered, deduped) instead of trusting the
-  // payload shape. Poll is not added back; realtime is the delivery path and the
-  // mount reload covers the cold open. unsubscribe runs on jobId/enabled change.
+  // Re-fetch the server-ordered thread on realtime inserts instead of trusting
+  // the payload shape. The mount reload covers the cold open.
   useEffect(() => {
     if (!jobId || !enabled) return
     const handle = subscribeToJobMessages(jobId, () => {

@@ -83,20 +83,21 @@ export function synthesizePrice(input: {
     };
   }
 
-  const complexityMultiplier = input.complexityHint === "large"
+  // The baseline row is already selected for the effective complexity. Market
+  // lookup runs in parallel at medium complexity, so only its half of the blend
+  // needs the small/large adjustment.
+  const marketComplexityMultiplier = input.complexityHint === "large"
     ? 1.2
     : input.complexityHint === "small"
     ? 0.85
     : 1;
   let priceMin = Math.round(
-    (market.market_range_min * MARKET_BLEND_WEIGHT +
-      input.baselineMin * (1 - MARKET_BLEND_WEIGHT)) *
-      complexityMultiplier,
+    market.market_range_min * marketComplexityMultiplier * MARKET_BLEND_WEIGHT +
+      input.baselineMin * (1 - MARKET_BLEND_WEIGHT),
   );
   let priceMax = Math.round(
-    (market.market_range_max * MARKET_BLEND_WEIGHT +
-      input.baselineMax * (1 - MARKET_BLEND_WEIGHT)) *
-      complexityMultiplier,
+    market.market_range_max * marketComplexityMultiplier * MARKET_BLEND_WEIGHT +
+      input.baselineMax * (1 - MARKET_BLEND_WEIGHT),
   );
 
   priceMin = Math.round(priceMin / 1000) * 1000;

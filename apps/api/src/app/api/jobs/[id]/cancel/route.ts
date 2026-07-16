@@ -1,5 +1,6 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { logJobEvent } from '@/lib/jobs/event-log'
+import { isUuidRouteParam } from '@/lib/http/route-param'
 import type { JobStatus } from '@nestscout/shared'
 
 type RouteParams = { params: Promise<{ id: string }> }
@@ -15,13 +16,16 @@ export async function POST(request: Request, { params }: RouteParams) {
   const auth = await authenticateRequest(request, ['customer'])
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )
   }
 
   const { id } = await params
+  if (!isUuidRouteParam(id)) {
+    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
+  }
   const { data, error } = await auth.supabase.rpc('cancel_job_before_accept_atomic', {
     p_job_id: id,
     p_customer_id: auth.user.id,

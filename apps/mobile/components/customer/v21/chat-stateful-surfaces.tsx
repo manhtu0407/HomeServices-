@@ -1,15 +1,16 @@
-import { useState, type ComponentProps, type ReactNode } from 'react'
+import { useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import {
   ActivityIndicator,
+  FlatList,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
   type StyleProp,
   type TextStyle,
+  type ListRenderItemInfo,
   type ViewStyle,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -46,6 +47,20 @@ type AgenticTurnView = {
   id: string
   role: string
   text_content?: string | null
+}
+
+type ChatTranscriptRow = {
+  key: string
+  node: ReactNode
+}
+
+function appendChatTranscriptRow(rows: ChatTranscriptRow[], key: string, node: ReactNode) {
+  if (node === null || node === undefined || node === false) return
+  rows.push({ key, node })
+}
+
+function renderChatTranscriptRow({ item }: ListRenderItemInfo<ChatTranscriptRow>) {
+  return <>{item.node}</>
 }
 
 type RootChatStyles = {
@@ -208,7 +223,7 @@ export function KaelChatSurfaceView({
   animatedModeMenuSheenStyle,
   animatedModeMenuStyle,
   canUseComposerMedia,
-  canStartNewConversation,
+  canStartNewConversation = false,
   caseThreadNode,
   caseWorkLabel,
   composerBusy,
@@ -237,10 +252,11 @@ export function KaelChatSurfaceView({
   reduceMotion,
   reduceTransparency,
   rootStyles,
-  sessionMenuNode,
-  sessionMenuOpen,
+  sessionMenuNode = null,
+  sessionMenuOpen = false,
   showComposer,
-  showEmptyHero,
+  showEmptyHero = false,
+  showNormalGreeting = false,
   showPendingDraftBubble,
   textInputNoOutlineStyle,
   tokens,
@@ -255,7 +271,7 @@ export function KaelChatSurfaceView({
   animatedModeMenuSheenStyle: AnimatedViewStyle
   animatedModeMenuStyle: AnimatedViewStyle
   canUseComposerMedia: boolean
-  canStartNewConversation: boolean
+  canStartNewConversation?: boolean
   caseAssistantTurns: ChatTurnView[]
   caseThreadNode: ReactNode
   caseWorkLabel: string
@@ -281,18 +297,20 @@ export function KaelChatSurfaceView({
   onSendMessage: () => void
   onSwitchMode: (mode: CustomerKaelMode) => void
   onToggleModeMenu: () => void
-  onToggleSessionMenu: () => void
+  onToggleSessionMenu?: () => void
   pendingDraftMessage: string
   processLinesNode: ReactNode
   reduceMotion: boolean
   reduceTransparency: boolean
   rootStyles: RootChatStyles
-  sessionMenuNode: ReactNode
-  sessionMenuOpen: boolean
+  sessionMenuNode?: ReactNode
+  sessionMenuOpen?: boolean
   showComposer: boolean
-  showEmptyHero: boolean
+  showEmptyHero?: boolean
+  showNormalGreeting?: boolean
   showPendingDraftBubble: boolean
   textInputNoOutlineStyle: StyleProp<TextStyle>
+  timelineHeadline?: string
   tokens: CustomerThemeTokens
   workerCandidateNode: ReactNode
 }) {
@@ -302,7 +320,7 @@ export function KaelChatSurfaceView({
   const toggleSessionMenu = () => {
     Keyboard.dismiss()
     setComposerFocused(false)
-    onToggleSessionMenu()
+    onToggleSessionMenu?.()
   }
 
   const selectMode = (nextMode: CustomerKaelMode) => {
@@ -310,6 +328,91 @@ export function KaelChatSurfaceView({
     setComposerFocused(false)
     onSwitchMode(nextMode)
   }
+
+  const transcriptRows = useMemo(() => {
+    const rows: ChatTranscriptRow[] = []
+    if (emptyHeroVisible) {
+      appendChatTranscriptRow(rows, 'empty-hero', (
+        <CustomerKaelEmptyHero language={language} mode={mode} reduceMotion={reduceMotion} tokens={tokens} />
+      ))
+    }
+    if (showPendingDraftBubble) {
+      appendChatTranscriptRow(rows, 'pending-draft', (
+        <ChatBubble
+          speaker="customer"
+          testID="customer-v21-pending-draft-bubble"
+          text={pendingDraftMessage}
+          tokens={tokens}
+        />
+      ))
+    }
+    if (showNormalGreeting) {
+      appendChatTranscriptRow(rows, 'normal-greeting', (
+        <ChatBubble
+          speaker="kael"
+          testID="customer-v21-normal-greeting-bubble"
+          text={language === 'vi' ? 'Chào bạn, mình là Kael. Bạn muốn hỏi gì hôm nay?' : 'Hi, I am Kael. What would you like to ask today?'}
+          tokens={tokens}
+        />
+      ))
+    }
+    if (mode === 'case' && hydratingCase) {
+      appendChatTranscriptRow(rows, 'case-hydrating', (
+        <V21Card style={historyActiveStyles.caseLoadingCard} testID="customer-v21-case-hydrating">
+          <ActivityIndicator color={tokens.primary} />
+          <Text style={[rootStyles.bodyText, { color: tokens.muted }]}>{language === 'vi' ? 'Đang tải công việc' : 'Loading job'}</Text>
+        </V21Card>
+      ))
+    }
+    appendChatTranscriptRow(rows, 'case-thread', caseThreadNode)
+    appendChatTranscriptRow(rows, 'worker-candidate', workerCandidateNode)
+    for (const turn of agenticVisibleTurns) {
+      appendChatTranscriptRow(rows, `agentic-${turn.id}`, (
+        <ChatBubble speaker={turn.role === 'customer' ? 'customer' : 'kael'} text={turn.text_content ?? ''} tokens={tokens} />
+      ))
+    }
+    appendChatTranscriptRow(rows, 'analysis-evidence', analysisEvidenceNode)
+    appendChatTranscriptRow(rows, 'agentic-estimate', agenticEstimateNode)
+    if (mode === 'normal') {
+      for (const turn of normalAssistantTurns) {
+        appendChatTranscriptRow(rows, `normal-${turn.id}`, (
+          <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
+        ))
+      }
+    }
+    for (const turn of caseAssistantTurns) {
+      appendChatTranscriptRow(rows, `case-${turn.id}`, (
+        <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
+      ))
+    }
+    appendChatTranscriptRow(rows, 'process-lines', processLinesNode)
+    if (missingCaseWorkDeal && !hydratingCase) {
+      appendChatTranscriptRow(rows, 'case-work-inactive', (
+        <InactiveAgenticGate testID="customer-v21-case-work-inactive" />
+      ))
+    }
+    return rows
+  }, [
+    agenticEstimateNode,
+    agenticVisibleTurns,
+    analysisEvidenceNode,
+    caseAssistantTurns,
+    caseThreadNode,
+    emptyHeroVisible,
+    hydratingCase,
+    language,
+    missingCaseWorkDeal,
+    mode,
+    normalAssistantTurns,
+    pendingDraftMessage,
+    processLinesNode,
+    reduceMotion,
+    rootStyles,
+    showNormalGreeting,
+    showPendingDraftBubble,
+    tokens,
+    workerCandidateNode,
+  ])
 
   return (
     <SafeAreaView style={[sharedStyles.safeArea, { backgroundColor: tokens.canvas }]} testID="customer-v21-kael-chat">
@@ -336,46 +439,20 @@ export function KaelChatSurfaceView({
             tokens={tokens}
           />
 
-          <ScrollView
+          <FlatList
             contentContainerStyle={[chatStyles.chatTranscript, emptyHeroVisible ? chatStyles.chatTranscriptEmpty : null, modeMenuOpen || sessionMenuOpen ? chatStyles.chatTranscriptMenuOpen : null]}
+            data={transcriptRows}
+            initialNumToRender={12}
+            keyExtractor={(item) => item.key}
             keyboardShouldPersistTaps="handled"
+            maxToRenderPerBatch={8}
+            removeClippedSubviews={Platform.OS === 'android'}
+            renderItem={renderChatTranscriptRow}
             showsVerticalScrollIndicator={false}
             style={[chatStyles.chatTranscriptScroll, hiddenScrollbarStyle]}
             testID="customer-v21-kael-thread"
-          >
-            {emptyHeroVisible ? (
-              <CustomerKaelEmptyHero language={language} mode={mode} reduceMotion={reduceMotion} tokens={tokens} />
-            ) : null}
-            {showPendingDraftBubble ? (
-              <ChatBubble
-                role="customer"
-                testID="customer-v21-pending-draft-bubble"
-                text={pendingDraftMessage}
-                tokens={tokens}
-              />
-            ) : null}
-            {mode === 'case' && hydratingCase ? (
-              <V21Card style={historyActiveStyles.caseLoadingCard} testID="customer-v21-case-hydrating">
-                <ActivityIndicator color={tokens.primary} />
-                <Text style={[rootStyles.bodyText, { color: tokens.muted }]}>{language === 'vi' ? 'Đang tải công việc' : 'Loading job'}</Text>
-              </V21Card>
-            ) : null}
-            {caseThreadNode}
-            {workerCandidateNode}
-            {agenticVisibleTurns.length > 0 ? agenticVisibleTurns.map((turn) => (
-              <ChatBubble key={turn.id} role={turn.role === 'customer' ? 'customer' : 'kael'} text={turn.text_content ?? ''} tokens={tokens} />
-            )) : null}
-            {analysisEvidenceNode}
-            {agenticEstimateNode}
-            {mode === 'normal' ? normalAssistantTurns.map((turn) => (
-              <ChatBubble key={turn.id} role={turn.role} text={turn.text_content} tokens={tokens} />
-            )) : null}
-            {caseAssistantTurns.map((turn) => (
-              <ChatBubble key={turn.id} role={turn.role} text={turn.text_content} tokens={tokens} />
-            ))}
-            {processLinesNode}
-            {missingCaseWorkDeal && !hydratingCase ? <InactiveAgenticGate testID="customer-v21-case-work-inactive" /> : null}
-          </ScrollView>
+            windowSize={7}
+          />
 
           {normalEvidenceNode}
           {composerVoiceNode}

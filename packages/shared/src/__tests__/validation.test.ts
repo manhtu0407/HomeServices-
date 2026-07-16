@@ -4,12 +4,15 @@ import {
   jobCreateSchema,
   kaelChatCreateSchema,
   kaelChatEvidenceSchema,
+  kaelChatMediaRevokeSchema,
   kaelChatMediaUploadSchema,
   kaelChatProgressSchema,
   kaelChatTurnSchema,
   placesAutocompleteSchema,
   workerScopeChangeSchema,
+  workerKaelChatTurnSchema,
   workerRegisterSchema,
+  workerServiceAreaUpdateSchema,
   workerCancellationRequestSchema,
   workerCancellationDecisionSchema,
   workerAvatarUpdateSchema,
@@ -22,6 +25,8 @@ import {
   customerKaelConversationPinSchema,
   customerKaelConversationRenameSchema,
   customerKaelConversationTurnSchema,
+  jobMessageSendSchema,
+  disputeOpenRequestSchema,
   sanitizeForLLM,
   scrubSensitiveForLLM,
   SERVICE_TYPES,
@@ -129,9 +134,9 @@ describe('workerRegisterSchema districts', () => {
     service_types: ['plumbing'],
     years_experience: 5,
     districts: ['q7'],
-    cccd_front_url: 'https://example.test/front.jpg',
-    cccd_back_url: 'https://example.test/back.jpg',
-    selfie_url: 'https://example.test/selfie.jpg',
+    cccd_front_url: `supabase://worker-verification/${UUID}/cccd-front/front.jpg`,
+    cccd_back_url: `supabase://worker-verification/${UUID}/cccd-back/back.jpg`,
+    selfie_url: `supabase://worker-verification/${UUID}/selfie/selfie.jpg`,
     bank_account: '123456789',
     bank_name: 'VCB',
   }
@@ -161,6 +166,56 @@ describe('workerRegisterSchema districts', () => {
     })
 
     expect(parsed.service_types).toEqual([...SERVICE_TYPES])
+  })
+
+  it('rejects public or cross-owner worker verification references', () => {
+    expect(workerRegisterSchema.safeParse({
+      ...validWorker,
+      cccd_front_url: 'https://attacker.example/front.jpg',
+    }).success).toBe(false)
+
+    expect(workerRegisterSchema.safeParse({
+      ...validWorker,
+      selfie_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/selfie/selfie.jpg',
+    }).success).toBe(false)
+  })
+
+  it('rejects future birth dates and one-sided home coordinates', () => {
+    expect(workerRegisterSchema.safeParse({
+      ...validWorker,
+      date_of_birth: '2099-01-01',
+    }).success).toBe(false)
+    expect(workerRegisterSchema.safeParse({
+      ...validWorker,
+      home_lat: 10.762622,
+    }).success).toBe(false)
+    expect(workerRegisterSchema.safeParse({
+      ...validWorker,
+      home_lat: 10.762622,
+      home_lng: 106.660172,
+    }).success).toBe(true)
+  })
+
+  it('rejects one-sided service-area coordinate updates', () => {
+    expect(workerServiceAreaUpdateSchema.safeParse({
+      districts: ['q7'],
+      home_lat: 10.762622,
+    }).success).toBe(false)
+    expect(workerServiceAreaUpdateSchema.safeParse({
+      districts: ['q7'],
+      home_lat: null,
+      home_lng: null,
+    }).success).toBe(true)
+    expect(workerServiceAreaUpdateSchema.safeParse({
+      districts: ['q7'],
+      home_lat: null,
+      home_lng: 106.660172,
+    }).success).toBe(false)
+    expect(workerServiceAreaUpdateSchema.safeParse({
+      districts: ['q7'],
+      home_lat: 10.762622,
+      home_lng: null,
+    }).success).toBe(false)
   })
 })
 
@@ -258,6 +313,21 @@ describe('jobCreateSchema', () => {
     expect(() =>
       jobCreateSchema.parse({ ...validJob, scheduled_at: 'tomorrow' })
     ).toThrow()
+    expect(jobCreateSchema.safeParse({
+      ...validJob,
+      scheduled_at: '2026-02-31T10:00:00.000Z',
+    }).success).toBe(false)
+  })
+
+  it('rejects whitespace-only booking text and non-v4 retry ids', () => {
+    expect(jobCreateSchema.safeParse({
+      ...validJob,
+      description: ' '.repeat(12),
+    }).success).toBe(false)
+    expect(jobCreateSchema.safeParse({
+      ...validJob,
+      client_request_id: '550e8400-e29b-11d4-a716-446655440000',
+    }).success).toBe(false)
   })
 })
 
@@ -266,6 +336,18 @@ describe('jobCreateSchema', () => {
 // ===================================================================
 
 describe('kaelChat schemas', () => {
+  it('rejects whitespace-only messages and problem chips', () => {
+    expect(kaelChatTurnSchema.safeParse({ message: '   ' }).success).toBe(false)
+    expect(kaelChatCreateSchema.safeParse({
+      service_type: 'electrical',
+      message: '   ',
+    }).success).toBe(false)
+    expect(kaelChatCreateSchema.safeParse({
+      service_type: 'electrical',
+      problem_chips: ['   '],
+    }).success).toBe(false)
+  })
+
   it('accepts a Kael chat session start with text and district', () => {
     const result = kaelChatCreateSchema.parse({
       service_type: 'plumbing',
@@ -319,6 +401,22 @@ describe('kaelChat schemas', () => {
     expect(evidence.evidence_items?.[0].kind).toBe('voice_transcript')
   })
 
+  it('rejects a skipped evidence decision that still carries evidence', () => {
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+      evidence_items: [{
+        kind: 'voice_transcript',
+        transcript: 'This transcript should not be retained after skipping.',
+        model_eligible: true,
+      }],
+    }).success).toBe(false)
+
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+      media_refs: [`supabase://kael-chat-media/${UUID}/kael-chat/model_vision/photo.jpg`],
+    }).success).toBe(false)
+  })
+
   it('validates Places autocomplete input for the Edge proxy', () => {
     expect(placesAutocompleteSchema.parse({ input: 'Bình Thạnh' }).input).toBe('Bình Thạnh')
     expect(() => placesAutocompleteSchema.parse({ input: 'x' })).toThrow()
@@ -339,6 +437,23 @@ describe('kaelChat schemas', () => {
         photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
       })
     ).toThrow()
+  })
+
+  it('rejects traversal-like Kael media refs for customer and worker turns', () => {
+    expect(kaelChatMediaRevokeSchema.safeParse({
+      media_refs: ['supabase://kael-chat-media/../kael-chat/model_vision/photo.jpg'],
+    }).success).toBe(false)
+
+    expect(workerKaelChatTurnSchema.safeParse({
+      message: 'Please inspect this reference.',
+      media_refs: [`supabase://job-media/${UUID}/kael_reference/../../after/photo.jpg`],
+      client_request_id: UUID,
+    }).success).toBe(false)
+    expect(workerKaelChatTurnSchema.safeParse({
+      message: 'Please inspect this reference.',
+      media_refs: [`supabase://job-media/${UUID}/kael_reference/nested/photo.jpg`],
+      client_request_id: UUID,
+    }).success).toBe(false)
   })
 })
 
@@ -422,13 +537,13 @@ describe('kaelChatProgressSchema', () => {
   })
 })
 
-describe('workerScopeChangeSchema (Phase 2.0 2026-05-23: no price fields)', () => {
-  // Phase 2.0 (plan §22.7.B): worker does not propose price. Kael compute new
+describe('workerScopeChangeSchema price authority', () => {
+  // Workers do not propose price. Kael computes a new
   // estimate from worker's reported scope. Schema accepts description + reason
-  // + optional photo_urls only. Price tests were removed because workers no
-  // longer pass price; the price authority moved to Kael per Tu's decision
-  // 2026-05-23.
+  // + retry key + optional photo_urls only. Price tests were removed because workers no
+  // longer pass price; Kael owns price authority.
   const validScope = {
+    client_request_id: '11111111-1111-4111-8111-111111111111',
     new_description: 'Phạm vi thay đổi do ống chính bị hỏng',
     reason: 'Phát hiện ống chính rỉ nước nghiêm trọng',
     photo_urls: [],
@@ -500,6 +615,13 @@ describe('workerScopeChangeSchema (Phase 2.0 2026-05-23: no price fields)', () =
       workerScopeChangeSchema.parse({ ...validScope, reason: 'short' })
     ).toThrow()
   })
+
+  it('rejects a non-v4 scope-change retry id', () => {
+    expect(workerScopeChangeSchema.safeParse({
+      ...validScope,
+      client_request_id: '550e8400-e29b-11d4-a716-446655440000',
+    }).success).toBe(false)
+  })
 })
 
 // ===================================================================
@@ -508,17 +630,20 @@ describe('workerScopeChangeSchema (Phase 2.0 2026-05-23: no price fields)', () =
 
 describe('workflow support schemas', () => {
   it('validates worker cancellation request evidence safely', () => {
+    const jobId = '11111111-1111-4111-8111-111111111111'
     expect(workerCancellationRequestSchema.parse({
       reason: 'Thợ không thể tiếp tục vì cần thiết bị an toàn bổ sung.',
-      evidence_photo_urls: ['https://example.com/evidence.jpg'],
+      evidence_photo_urls: [`supabase://job-media/${jobId}/cancellation_evidence/evidence.jpg`],
     }).evidence_photo_urls).toHaveLength(1)
 
-    expect(() =>
-      workerCancellationRequestSchema.parse({
-        reason: 'quá ngắn',
-        evidence_photo_urls: ['not-a-url'],
-      })
-    ).toThrow()
+    expect(workerCancellationRequestSchema.safeParse({
+      reason: 'Thợ không thể tiếp tục vì cần thiết bị an toàn bổ sung.',
+      evidence_photo_urls: ['https://attacker.example/evidence.jpg'],
+    }).success).toBe(false)
+    expect(workerCancellationRequestSchema.safeParse({
+      reason: 'quá ngắn',
+      evidence_photo_urls: [`supabase://job-media/${jobId}/cancellation_evidence/evidence.jpg`],
+    }).success).toBe(false)
   })
 
   it('validates worker cancellation decisions', () => {
@@ -530,7 +655,7 @@ describe('workflow support schemas', () => {
     expect(() =>
       jobMediaAttachSchema.parse({
         assets: [{
-          object_path: 'job-1/before/photo.jpg',
+          object_path: `${UUID}/before/photo.jpg`,
           stage: 'before',
           mime_type: 'image/jpeg',
           file_size_bytes: 1200,
@@ -541,18 +666,60 @@ describe('workflow support schemas', () => {
     expect(() =>
       jobMediaAttachSchema.parse({
         assets: Array.from({ length: 6 }, (_, index) => ({
-          object_path: `job-1/before/${index}.jpg`,
+          object_path: `${UUID}/before/${index}.jpg`,
           stage: 'before',
         })),
       })
     ).toThrow()
   })
 
+  it('rejects arbitrary remote dispute evidence URLs', () => {
+    const base = {
+      dispute_type: 'damage_claim' as const,
+      initiator_statement: 'The completed work caused visible damage that needs review.',
+    }
+    expect(disputeOpenRequestSchema.safeParse({
+      ...base,
+      evidence_photo_urls: ['https://attacker.example/evidence.jpg'],
+    }).success).toBe(false)
+    expect(disputeOpenRequestSchema.safeParse({
+      ...base,
+      evidence_photo_urls: [`supabase://job-media/${UUID}/after/evidence.jpg`],
+    }).success).toBe(true)
+    expect(disputeOpenRequestSchema.safeParse({
+      ...base,
+      evidence_photo_urls: [`supabase://job-media/${UUID}/after/nested/evidence.jpg`],
+    }).success).toBe(false)
+  })
+
+  it('rejects unsafe, stage-mismatched, empty, or duplicate media attachments', () => {
+    const asset = {
+      object_path: `${UUID}/before/photo.jpg`,
+      stage: 'before' as const,
+      mime_type: 'image/jpeg',
+      file_size_bytes: 1200,
+    }
+
+    expect(jobMediaAttachSchema.safeParse({
+      assets: [{ ...asset, object_path: `${UUID}/before/../after/photo.jpg` }],
+    }).success).toBe(false)
+    expect(jobMediaAttachSchema.safeParse({
+      assets: [{ ...asset, object_path: `${UUID}/after/photo.jpg` }],
+    }).success).toBe(false)
+    expect(jobMediaAttachSchema.safeParse({
+      assets: [{ ...asset, object_path: `${UUID}/before/nested/photo.jpg` }],
+    }).success).toBe(false)
+    expect(jobMediaAttachSchema.safeParse({
+      assets: [{ ...asset, file_size_bytes: 0 }],
+    }).success).toBe(false)
+    expect(jobMediaAttachSchema.safeParse({ assets: [asset, asset] }).success).toBe(false)
+  })
+
   it('accepts scope-change evidence as its own media stage', () => {
     expect(() =>
       jobMediaAttachSchema.parse({
         assets: [{
-          object_path: '11111111-1111-1111-1111-111111111111/scope_change_evidence/evidence.jpg',
+          object_path: '11111111-1111-4111-8111-111111111111/scope_change_evidence/evidence.jpg',
           stage: 'scope_change_evidence',
           mime_type: 'image/jpeg',
           file_size_bytes: 1200,
@@ -565,7 +732,7 @@ describe('workflow support schemas', () => {
     expect(() =>
       jobMediaAttachSchema.parse({
         assets: [{
-          object_path: '11111111-1111-1111-1111-111111111111/access_check_in/lobby.jpg',
+          object_path: '11111111-1111-4111-8111-111111111111/access_check_in/lobby.jpg',
           stage: 'access_check_in',
           mime_type: 'image/jpeg',
           file_size_bytes: 1200,
@@ -627,6 +794,10 @@ describe('reviewSchema', () => {
     expect(() => reviewSchema.parse({ ...validReview, tags })).toThrow()
   })
 
+  it('rejects whitespace-only tags', () => {
+    expect(reviewSchema.safeParse({ ...validReview, tags: ['   '] }).success).toBe(false)
+  })
+
   it('rejects comment > 1000 chars', () => {
     expect(() =>
       reviewSchema.parse({ ...validReview, comment: 'A'.repeat(1001) })
@@ -649,6 +820,11 @@ describe('chatMessageSchema', () => {
     expect(() =>
       chatMessageSchema.parse({ job_id: UUID, content: '' })
     ).toThrow()
+  })
+
+  it('rejects whitespace-only content on both chat message boundaries', () => {
+    expect(chatMessageSchema.safeParse({ job_id: UUID, content: '   ' }).success).toBe(false)
+    expect(jobMessageSendSchema.safeParse({ content: '\n\t ' }).success).toBe(false)
   })
 
   it('rejects content > 5000 chars', () => {
@@ -697,6 +873,13 @@ describe('sanitizeForLLM', () => {
     expect(sanitizeForLLM(long)).toHaveLength(5000)
   })
 
+  it('does not split a Unicode surrogate pair at the length boundary', () => {
+    const sanitized = sanitizeForLLM(`${'A'.repeat(4999)}😀`)
+
+    expect(sanitized).toBe('A'.repeat(4999))
+    expect(sanitized).not.toMatch(/[\uD800-\uDFFF]$/)
+  })
+
   it('handles empty string', () => {
     expect(sanitizeForLLM('')).toBe('')
   })
@@ -713,6 +896,10 @@ describe('sanitizeForLLM', () => {
   it('strips DEL character (0x7F)', () => {
     expect(sanitizeForLLM('before\x7Fafter')).toBe('beforeafter')
   })
+
+  it('removes C1, bidi, and zero-width formatting controls from prompt text', () => {
+    expect(sanitizeForLLM('safe\u0085\u200B\u202E\u2066text')).toBe('safetext')
+  })
 })
 
 describe('scrubSensitiveForLLM', () => {
@@ -720,5 +907,10 @@ describe('scrubSensitiveForLLM', () => {
     const input = '  SĐT 0901234567, email tu@example.com, CCCD 001234567890\x00  '
 
     expect(scrubSensitiveForLLM(input)).toBe('SĐT [phone], email [email], CCCD [id-number]')
+  })
+
+  it('removes long unlabelled bank-account numbers', () => {
+    expect(scrubSensitiveForLLM('STK 1234567890123456')).toBe('STK [bank-account]')
+    expect(scrubSensitiveForLLM('Tài khoản 12345678901234567890')).toBe('Tài khoản [bank-account]')
   })
 })

@@ -1,21 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
-type Candidate = {
-  id: string;
-  candidate_type: string;
-  affected_service: "electrical" | "plumbing" | "cleaning" | null;
-  affected_problem: string | null;
-  affected_district: string | null;
-  confidence: number;
-  evidence_count: number;
-  status: string;
-  audit_reason: string | null;
-  created_at: string;
-  suggested_payload: Record<string, unknown>;
-  evidence_snapshot: Record<string, unknown> | null;
-};
+import { useReducer, useRef } from "react";
+import {
+  edgeAdminFetch,
+  resolveTrustedMobileApiBase,
+  serviceLabel,
+} from "./client";
+import {
+  adminLearningReducer,
+  createAdminLearningState,
+  type AdminLearningCandidate as Candidate,
+} from "./state";
 
 type CandidateListResponse = {
   candidates: Candidate[];
@@ -29,94 +24,144 @@ type ReviewResult = {
   rule_version?: number | null;
 };
 
-const DEFAULT_API_BASE = process.env.NEXT_PUBLIC_MOBILE_API_URL ?? "";
+const TRUSTED_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const CONFIGURED_API_BASE = resolveTrustedMobileApiBase(
+  process.env.NEXT_PUBLIC_MOBILE_API_URL,
+  TRUSTED_SUPABASE_URL,
+);
 const MANUAL_REVIEW_SLA_DAYS = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export default function KaelLearningAdminPage() {
-  const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
-  const [bearerToken, setBearerToken] = useState("");
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-  const [actionId, setActionId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(adminLearningReducer, undefined, createAdminLearningState);
+  const loadRequestIdRef = useRef(0);
+  const actionRequestIdRef = useRef(0);
+  const ownerVersionRef = useRef(0);
+  const {
+    activeAction,
+    bearerToken,
+    candidates,
+    error,
+    loading,
+    notice,
+    ownerVersion,
+    rejectReasons,
+  } = state;
+  const actionId = activeAction?.candidateId ?? null;
+  const canRequest = CONFIGURED_API_BASE !== null && bearerToken.trim().length > 0;
 
-  const canRequest = useMemo(
-    () => apiBase.trim().length > 0 && bearerToken.trim().length > 0,
-    [apiBase, bearerToken],
-  );
-
-  async function loadCandidates() {
-    setError(null);
-    setNotice(null);
-    if (!canRequest) {
-      setError("Cần mobile-api URL và admin bearer token.");
+  async function loadCandidates({
+    clearNotice = true,
+    requestOwnerVersion = ownerVersion,
+    token = bearerToken,
+  }: {
+    clearNotice?: boolean;
+    requestOwnerVersion?: number;
+    token?: string;
+  } = {}) {
+    if (!CONFIGURED_API_BASE) {
+      dispatch({ type: "validationFailed", error: "Mobile-api quản trị chưa được cấu hình an toàn." });
       return;
     }
-    setLoading(true);
+    if (!token.trim()) {
+      dispatch({ type: "validationFailed", error: "Cần token phiên admin." });
+      return;
+    }
+    if (ownerVersionRef.current !== requestOwnerVersion) {
+      return;
+    }
+    const requestId = ++loadRequestIdRef.current;
+    dispatch({ type: "loadStarted", clearNotice, ownerVersion: requestOwnerVersion, requestId });
     try {
-      const data = await edgeFetch<CandidateListResponse>(
-        apiBase,
-        bearerToken,
+      const data = await edgeAdminFetch<CandidateListResponse>(
+        CONFIGURED_API_BASE,
+        token,
         "/admin/kael/learning/candidates?state=manual_review",
+        { trustedSupabaseUrl: TRUSTED_SUPABASE_URL },
       );
-      setCandidates(data.candidates);
+      dispatch({
+        type: "loadSucceeded",
+        candidates: data.candidates,
+        ownerVersion: requestOwnerVersion,
+        requestId,
+      });
     } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setLoading(false);
+      dispatch({
+        type: "loadFailed",
+        error: errorMessage(err),
+        ownerVersion: requestOwnerVersion,
+        requestId,
+      });
     }
   }
 
   async function approveCandidate(candidateId: string) {
-    setActionId(candidateId);
-    setError(null);
-    setNotice(null);
+    if (!CONFIGURED_API_BASE) return;
+    const requestId = ++actionRequestIdRef.current;
+    const requestOwnerVersion = ownerVersion;
+    const token = bearerToken;
+    dispatch({ type: "actionStarted", candidateId, ownerVersion: requestOwnerVersion, requestId });
     try {
-      const result = await edgeFetch<ReviewResult>(
-        apiBase,
-        bearerToken,
+      const result = await edgeAdminFetch<ReviewResult>(
+        CONFIGURED_API_BASE,
+        token,
         `/admin/kael/learning/candidates/${encodeURIComponent(candidateId)}/approve`,
-        { method: "POST", body: {} },
+        { method: "POST", body: {}, trustedSupabaseUrl: TRUSTED_SUPABASE_URL },
       );
-      setNotice(`Đã duyệt đề xuất ${result.candidate_id}.`);
-      await loadCandidates();
+      dispatch({
+        type: "actionSucceeded",
+        notice: `Đã duyệt đề xuất ${result.candidate_id}.`,
+        ownerVersion: requestOwnerVersion,
+        requestId,
+      });
+      await loadCandidates({ clearNotice: false, requestOwnerVersion, token });
     } catch (err) {
-      setError(errorMessage(err));
+      dispatch({
+        type: "actionFailed",
+        error: errorMessage(err),
+        ownerVersion: requestOwnerVersion,
+        requestId,
+      });
     } finally {
-      setActionId(null);
+      dispatch({ type: "actionFinished", ownerVersion: requestOwnerVersion, requestId });
     }
   }
 
   async function rejectCandidate(candidateId: string) {
+    if (!CONFIGURED_API_BASE) return;
     const reason = rejectReasons[candidateId]?.trim();
     if (!reason) {
-      setError("Nhập lý do từ chối trước khi lưu quyết định.");
+      dispatch({ type: "validationFailed", error: "Nhập lý do từ chối trước khi lưu quyết định." });
       return;
     }
-    setActionId(candidateId);
-    setError(null);
-    setNotice(null);
+    const requestId = ++actionRequestIdRef.current;
+    const requestOwnerVersion = ownerVersion;
+    const token = bearerToken;
+    dispatch({ type: "actionStarted", candidateId, ownerVersion: requestOwnerVersion, requestId });
     try {
-      const result = await edgeFetch<ReviewResult>(
-        apiBase,
-        bearerToken,
+      const result = await edgeAdminFetch<ReviewResult>(
+        CONFIGURED_API_BASE,
+        token,
         `/admin/kael/learning/candidates/${encodeURIComponent(candidateId)}/reject`,
-        { method: "POST", body: { reason } },
+        { method: "POST", body: { reason }, trustedSupabaseUrl: TRUSTED_SUPABASE_URL },
       );
-      setNotice(`Đã từ chối và lưu trữ đề xuất ${result.candidate_id}.`);
-      setRejectReasons((current) => {
-        const next = { ...current };
-        delete next[candidateId];
-        return next;
+      dispatch({
+        type: "actionSucceeded",
+        clearRejectReasonFor: candidateId,
+        notice: `Đã từ chối và lưu trữ đề xuất ${result.candidate_id}.`,
+        ownerVersion: requestOwnerVersion,
+        requestId,
       });
-      await loadCandidates();
+      await loadCandidates({ clearNotice: false, requestOwnerVersion, token });
     } catch (err) {
-      setError(errorMessage(err));
+      dispatch({
+        type: "actionFailed",
+        error: errorMessage(err),
+        ownerVersion: requestOwnerVersion,
+        requestId,
+      });
     } finally {
-      setActionId(null);
+      dispatch({ type: "actionFinished", ownerVersion: requestOwnerVersion, requestId });
     }
   }
 
@@ -127,26 +172,22 @@ export default function KaelLearningAdminPage() {
           <p className="text-xs font-bold uppercase text-[#0e7c66]">Quản trị Kael</p>
           <h1 className="mt-2 text-3xl font-black">Duyệt đề xuất học</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#52615c]">
-            Trang này gọi trực tiếp Edge mobile-api bằng token admin hiện có. Không lưu khóa service,
-            không ghi trực tiếp bảng học từ Next.js.
+            Trang này chỉ gọi Edge mobile-api cố định đã cấu hình bằng token phiên admin. Không lưu
+            khóa service và không ghi trực tiếp bảng học từ Next.js.
           </p>
         </div>
 
-        <div className="grid gap-3 rounded-2xl border border-[#d8e8e1] bg-white p-4 md:grid-cols-[1.2fr_1.4fr_auto]">
-          <label className="grid gap-1 text-sm font-bold text-[#31564f]">
-            Đường dẫn mobile-api
-            <input
-              className="min-h-11 rounded-xl border border-[#c7dcd4] px-3 font-normal text-[#0e2f2a] outline-none focus:border-[#0e7c66]"
-              onChange={(event) => setApiBase(event.target.value)}
-              placeholder="https://.../functions/v1/mobile-api"
-              value={apiBase}
-            />
-          </label>
+        <div className="grid gap-3 rounded-2xl border border-[#d8e8e1] bg-white p-4 md:grid-cols-[1fr_auto]">
           <label className="grid gap-1 text-sm font-bold text-[#31564f]">
             Token admin
             <input
               className="min-h-11 rounded-xl border border-[#c7dcd4] px-3 font-normal text-[#0e2f2a] outline-none focus:border-[#0e7c66]"
-              onChange={(event) => setBearerToken(event.target.value)}
+              onChange={(event) => {
+                const nextToken = event.target.value;
+                if (nextToken === bearerToken) return;
+                ownerVersionRef.current += 1;
+                dispatch({ type: "tokenChanged", bearerToken: nextToken });
+              }}
               placeholder="Dán token phiên admin"
               type="password"
               value={bearerToken}
@@ -154,12 +195,17 @@ export default function KaelLearningAdminPage() {
           </label>
           <button
             className="min-h-11 self-end rounded-xl bg-[#0e7c66] px-5 text-sm font-black text-white disabled:opacity-50"
-            disabled={loading}
+            disabled={loading || !canRequest}
             onClick={() => void loadCandidates()}
             type="button"
           >
             {loading ? "Đang tải..." : "Tải danh sách"}
           </button>
+          {!CONFIGURED_API_BASE ? (
+            <p className="text-sm font-bold text-[#8a1f1f] md:col-span-2">
+              Thiếu NEXT_PUBLIC_MOBILE_API_URL hợp lệ; thao tác quản trị đang bị khóa.
+            </p>
+          ) : null}
         </div>
 
         {notice ? <p className="rounded-xl border border-[#a8deb7] bg-[#e9f8ef] p-3 text-sm font-bold text-[#155b35]">{notice}</p> : null}
@@ -210,11 +256,13 @@ export default function KaelLearningAdminPage() {
 
                     <div className="space-y-3">
                       <textarea
+                        aria-label={`Lý do từ chối ứng viên ${candidate.id}`}
                         className="min-h-24 w-full resize-none rounded-xl border border-[#c7dcd4] p-3 text-sm outline-none focus:border-[#0e7c66]"
-                        onChange={(event) => setRejectReasons((current) => ({
-                          ...current,
-                          [candidate.id]: event.target.value,
-                        }))}
+                        onChange={(event) => dispatch({
+                          type: "rejectReasonChanged",
+                          candidateId: candidate.id,
+                          text: event.target.value,
+                        })}
                         placeholder="Lý do từ chối"
                         value={rejectReasons[candidate.id] ?? ""}
                       />
@@ -257,29 +305,6 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-async function edgeFetch<T>(
-  apiBase: string,
-  bearerToken: string,
-  path: string,
-  init: { method?: "GET" | "POST"; body?: Record<string, unknown> } = {},
-): Promise<T> {
-  const base = apiBase.replace(/\/+$/, "");
-  const response = await fetch(`${base}${path}`, {
-    method: init.method ?? "GET",
-    headers: {
-      Authorization: `Bearer ${bearerToken.trim()}`,
-      "Content-Type": "application/json",
-    },
-    body: init.body ? JSON.stringify(init.body) : undefined,
-  });
-  const text = await response.text();
-  const json = safeJson(text);
-  if (!response.ok) {
-    throw new Error(json.error ?? `HTTP ${response.status}`);
-  }
-  return json as T;
-}
-
 function candidateTypeLabel(type: string) {
   return ({
     price_prior_update: "Cập nhật khoảng giá",
@@ -288,13 +313,6 @@ function candidateTypeLabel(type: string) {
     safety_pattern_candidate: "Mẫu an toàn",
     decline_reason_candidate: "Lý do từ chối",
   } as Record<string, string>)[type] ?? "Đề xuất học";
-}
-
-function serviceLabel(service: Candidate["affected_service"]) {
-  if (service === "electrical") return "Sửa điện";
-  if (service === "plumbing") return "Sửa nước";
-  if (service === "cleaning") return "Vệ sinh nhà";
-  return "Toàn hệ thống";
 }
 
 function candidateSkill(candidate: Candidate) {
@@ -313,18 +331,6 @@ function evidenceSource(candidate: Candidate) {
 function isManualReviewSlaOverdue(createdAt: string) {
   const createdMs = Date.parse(createdAt);
   return Number.isFinite(createdMs) && Date.now() - createdMs > MANUAL_REVIEW_SLA_DAYS * DAY_MS;
-}
-
-function safeJson(text: string): { error?: string } & Record<string, unknown> {
-  if (!text.trim()) return {};
-  try {
-    const parsed = JSON.parse(text) as unknown;
-    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
-      ? parsed as { error?: string } & Record<string, unknown>
-      : {};
-  } catch {
-    return {};
-  }
 }
 
 function errorMessage(err: unknown) {

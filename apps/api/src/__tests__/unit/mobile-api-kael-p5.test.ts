@@ -352,6 +352,27 @@ describe('Kael P5 permission scope and response policy', () => {
     ])
   })
 
+  it('surfaces a failed permission audit write', async () => {
+    const decision = evaluateKaelPermissionGate({
+      purpose: 'worker_brief',
+      actor: 'worker',
+      jobRelation: 'none',
+      topic: 'other_jobs_specific',
+      action: 'generate_worker_brief',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
+      jobId: 'job-1',
+      actorId: 'worker-1',
+    })
+    const client = makeSequenceClient([
+      { data: null, error: { code: 'PERMISSION_AUDIT_UNAVAILABLE' } },
+    ])
+
+    await expect(auditKaelPermissionDecision(client, decision))
+      .rejects.toThrow('KAEL_PERMISSION_AUDIT_FAILED')
+  })
+
   it('enforces worker brief rate limit without running the LLM stage', async () => {
     const request = {
       actor: 'worker' as const,
@@ -428,6 +449,29 @@ describe('Kael P5 permission scope and response policy', () => {
         }),
       }),
     ])
+  })
+
+  it('surfaces a failed cost-cap advisory audit write', async () => {
+    const client = makeSequenceClient([
+      { data: null, error: { code: 'ADVISORY_AUDIT_UNAVAILABLE' } },
+    ])
+
+    await expect(auditKaelPermissionDecision(client, {
+      allowed: false,
+      decision: 'deny',
+      reasonCode: 'COST_CAP_HIT',
+      declineTemplateKey: 'cost_cap_hit',
+      purpose: 'price_synthesis',
+      action: 'synthesize_price',
+      topic: 'price_estimate',
+      actor: 'customer',
+      actorId: 'customer-1',
+      jobId: 'job-1',
+      jobRelation: 'own_customer_job',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
+    })).rejects.toThrow('KAEL_ADVISORY_AUDIT_FAILED')
   })
 })
 

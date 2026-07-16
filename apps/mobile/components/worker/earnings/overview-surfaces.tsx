@@ -49,21 +49,36 @@ export function WorkerV5EarningsHero({
   walletIcon: ImageSourcePropType
 }) {
   const hasGross = Boolean(earnings?.gross_earnings && earnings.gross_earnings > 0)
-  const amount = hasGross
-    ? formatVndDong(earnings?.gross_earnings ?? 0, language)
-    : textByLanguage(language, 'Chưa có thu nhập thật', 'No real income yet')
+  const pending = textByLanguage(language, 'Chờ dữ liệu', 'Pending')
+  const amount = !earnings
+    ? textByLanguage(language, 'Chờ dữ liệu thu nhập', 'Earnings data pending')
+    : hasGross
+      ? formatVndDong(earnings.gross_earnings ?? 0, language)
+      : textByLanguage(language, 'Chưa có thu nhập thật', 'No real income yet')
   const stats = [
     {
       label: textByLanguage(language, 'Đã thanh toán', 'Settled'),
-      value: earnings?.net_earnings && earnings.net_earnings > 0 ? formatCompactVnd(earnings.net_earnings, language) : textByLanguage(language, 'Chưa có', 'None'),
+      value: !earnings
+        ? pending
+        : earnings.net_earnings && earnings.net_earnings > 0
+          ? formatCompactVnd(earnings.net_earnings, language)
+          : textByLanguage(language, 'Chưa có', 'None'),
     },
     {
       label: textByLanguage(language, 'Đang chờ', 'Pending'),
-      value: earnings?.pending_payment_amount && earnings.pending_payment_amount > 0 ? formatCompactVnd(earnings.pending_payment_amount, language) : textByLanguage(language, 'Không có', 'None'),
+      value: !earnings
+        ? pending
+        : earnings.pending_payment_amount && earnings.pending_payment_amount > 0
+          ? formatCompactVnd(earnings.pending_payment_amount, language)
+          : textByLanguage(language, 'Không có', 'None'),
     },
     {
-      label: textByLanguage(language, 'Có thể rút', 'Available'),
-      value: earnings?.net_earnings && earnings.net_earnings > 0 ? formatCompactVnd(earnings.net_earnings, language) : textByLanguage(language, 'Chưa có', 'None'),
+      label: textByLanguage(language, 'Thu nhập ròng', 'Net earnings'),
+      value: !earnings
+        ? pending
+        : earnings.net_earnings && earnings.net_earnings > 0
+          ? formatCompactVnd(earnings.net_earnings, language)
+          : textByLanguage(language, 'Chưa có', 'None'),
     },
   ]
   return (
@@ -77,9 +92,20 @@ export function WorkerV5EarningsHero({
         <View style={styles.earningsHeroMainRow}>
           <View style={styles.earningsHeroCopy}>
             <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-earnings-amount">{amount}</Text>
-            <Text style={styles.earningsHeroMeta} numberOfLines={2}>{hasGross ? textByLanguage(language, 'Đã ghi sổ thu nhập', 'Income ledger recorded') : textByLanguage(language, 'Chờ hệ thống ghi sổ thu nhập', 'Waiting for system income ledger')}</Text>
+            <Text style={styles.earningsHeroMeta} numberOfLines={2}>
+              {!earnings
+                ? textByLanguage(language, 'Đang chờ nguồn thu nhập thật', 'Waiting for the real earnings source')
+                : hasGross
+                  ? textByLanguage(language, 'Đã ghi sổ thu nhập', 'Income ledger recorded')
+                  : textByLanguage(language, 'Chờ hệ thống ghi sổ thu nhập', 'Waiting for system income ledger')}
+            </Text>
             <WorkerV5DetailRail
-              items={hasGross
+              items={!earnings
+                ? [
+                  { glyph: 'sync', label: textByLanguage(language, 'Chờ nguồn thật', 'Waiting for real source') },
+                  { glyph: 'shield', label: textByLanguage(language, 'Chỉ hiện số liệu đã ghi sổ', 'Recorded figures only') },
+                ]
+                : hasGross
                 ? [
                   { glyph: 'document', label: textByLanguage(language, 'Đã ghi sổ', 'Recorded') },
                   { glyph: 'money', label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
@@ -115,6 +141,7 @@ export function WorkerV5EarningsHero({
 }
 
 export function WorkerV5EarningsTransactionList({
+  dataAvailable,
   documentIcon,
   emptyStateIcon,
   language,
@@ -122,6 +149,7 @@ export function WorkerV5EarningsTransactionList({
   recent,
   reduceTransparency,
 }: {
+  dataAvailable: boolean
   documentIcon: ImageSourcePropType
   emptyStateIcon: ImageSourcePropType
   language: AppLanguage
@@ -162,10 +190,14 @@ export function WorkerV5EarningsTransactionList({
             variant="panel"
           />
           <View style={styles.earningsTransactionCopy}>
-            <Text style={styles.earningsTransactionTitle} numberOfLines={2}>{textByLanguage(language, 'Chưa có giao dịch gần đây', 'No recent transactions')}</Text>
+            <Text style={styles.earningsTransactionTitle} numberOfLines={2} testID="worker-v5-earnings-empty-transaction-title">
+              {dataAvailable
+                ? textByLanguage(language, 'Chưa có giao dịch gần đây', 'No recent transactions')
+                : textByLanguage(language, 'Chờ dữ liệu giao dịch thật', 'Transaction data pending')}
+            </Text>
             <WorkerV5DetailRail
               items={[
-                { glyph: 'sync', label: textByLanguage(language, 'Chờ đồng bộ', 'Waiting to sync') },
+                { glyph: 'sync', label: dataAvailable ? textByLanguage(language, 'Chờ đồng bộ', 'Waiting to sync') : textByLanguage(language, 'Chờ nguồn thật', 'Waiting for real source') },
                 { glyph: 'document', label: textByLanguage(language, 'Sổ đối soát thật', 'Real ledger only') },
               ]}
               testID="worker-v5-earnings-empty-transaction-detail"

@@ -4,7 +4,7 @@ export type KaelAssistantResponse = {
   answer: string
   safety_notes: string[]
   citations: string[]
-  suggested_actions: Array<'open_booking' | 'check_job' | 'message_worker' | 'contact_support' | 'request_scope_change'>
+  suggested_actions: ('open_booking' | 'check_job' | 'message_worker' | 'contact_support' | 'request_scope_change')[]
   boundary: 'answered' | 'educational_only' | 'redirect' | 'unsupported' | 'fallback'
   fallback_used: boolean
 }

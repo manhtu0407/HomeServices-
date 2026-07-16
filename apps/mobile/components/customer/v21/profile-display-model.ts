@@ -42,6 +42,7 @@ export function protectedTransactionLabel(
   if (typeof insights?.protected_transaction_count !== 'number' || typeof insights?.total_transaction_count !== 'number') {
     return fallback
   }
+  if (insights.total_transaction_count <= 0) return fallback
   return `${formatNumber(insights.protected_transaction_count, language)} / ${formatNumber(insights.total_transaction_count, language)}`
 }
 
@@ -82,15 +83,18 @@ export function profileStageSubtitle(screenId: CustomerV21ScreenId, language: Ap
 }
 
 export function formatWorkerJobs(value: number | null | undefined, language: AppLanguage) {
-  const count = typeof value === 'number' ? value : 0
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return language === 'vi' ? 'Chưa có dữ liệu' : 'Data pending'
+  }
+  const count = value
   return language === 'vi' ? `${formatNumber(count, language)} đơn` : `${formatNumber(count, language)} jobs`
 }
 
 export function percentFromConfidenceLabel(value: string) {
   const match = value.match(/(\d+(?:[.,]\d+)?)/)
-  if (!match) return 0
+  if (!match) return null
   const parsed = Number(match[1].replace(',', '.'))
-  if (!Number.isFinite(parsed)) return 0
+  if (!Number.isFinite(parsed)) return null
   return Math.max(0, Math.min(100, parsed))
 }
 export function profileName(metadata: Record<string, unknown> | undefined, language: AppLanguage) {
@@ -103,8 +107,10 @@ export function profileName(metadata: Record<string, unknown> | undefined, langu
 export function initialsForName(name: string) {
   const parts = name
     .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
+    .flatMap((part) => {
+      const trimmed = part.trim()
+      return trimmed ? [trimmed] : []
+    })
   if (parts.length === 0) return 'NS'
   const first = parts[0]?.[0] ?? 'N'
   const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : parts[0]?.[1]

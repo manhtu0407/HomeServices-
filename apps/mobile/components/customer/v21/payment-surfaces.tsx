@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from 'react'
-import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-native'
+import { Image } from 'expo-image'
+import { Pressable, Text, View, type ImageSourcePropType } from 'react-native'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { useAppLanguage } from '@/lib/app-language'
@@ -54,7 +55,7 @@ export function PaymentHeroMethodIcon({
       {bank ? (
         <Image
           accessibilityIgnoresInvertColors
-          resizeMode="contain"
+          contentFit="contain"
           source={customerV21BankAssets[bank.key]}
           style={styles.paymentMethodHeroBankLogo}
           testID={`customer-v21-payment-method-hero-bank-logo-${bank.key}`}
@@ -62,7 +63,7 @@ export function PaymentHeroMethodIcon({
       ) : (
         <Image
           accessibilityIgnoresInvertColors
-          resizeMode="contain"
+          contentFit="contain"
           source={customerV21Assets.wallet}
           style={styles.paymentMethodHeroWalletImage}
           testID="customer-v21-payment-method-hero-wallet-icon"
@@ -108,7 +109,7 @@ export function PaymentBankTile({
       {selected || showMintAura ? <ZipMintAura intensity={showMintAura ? 'strong' : 'default'} scope={`PaymentBankTile${bank.key}`} testID={`customer-v21-payment-bank-tile-${bank.key}-mint-aura`} /> : null}
       <Image
         accessibilityIgnoresInvertColors
-        resizeMode="contain"
+        contentFit="contain"
         source={customerV21BankAssets[bank.key]}
         style={styles.paymentBankLogo}
         testID={`customer-v21-payment-bank-logo-${bank.key}`}
@@ -142,7 +143,7 @@ export function PaymentMethodIconFrame({
       <Image
         accessibilityIgnoresInvertColors
         accessibilityLabel={label}
-        resizeMode="contain"
+        contentFit="contain"
         source={image}
         style={styles.paymentMethodAssetIcon}
         testID={testID}
@@ -237,7 +238,7 @@ export function PaymentMethodStagePanel({
             {selectedBank ? (
               <Image
                 accessibilityIgnoresInvertColors
-                resizeMode="contain"
+                contentFit="contain"
                 source={customerV21BankAssets[selectedBank.key]}
                 style={styles.paymentBankRecommendedLogo}
                 testID={`customer-v21-payment-bank-recommended-logo-${selectedBank.key}`}
@@ -245,7 +246,7 @@ export function PaymentMethodStagePanel({
             ) : (
               <View style={styles.paymentBankRecommendedFallbackIcon} testID="customer-v21-payment-bank-recommended-wallet-icon">
                 <SourceCardSkin />
-                <Image accessibilityIgnoresInvertColors resizeMode="contain" source={customerV21Assets.wallet} style={styles.paymentMethodHeroWalletImage} />
+                <Image accessibilityIgnoresInvertColors contentFit="contain" source={customerV21Assets.wallet} style={styles.paymentMethodHeroWalletImage} />
               </View>
             )}
           </View>

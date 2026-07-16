@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
   [string]$EnvFile = 'apps/mobile/.env.staging',
+  [ValidateRange(1, 65535)]
   [int]$Port = 8082,
   [switch]$NoClear
 )
@@ -8,17 +9,25 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $stagingRef = 'xyylanuyflrjzbjzhqfl'
-$productionRef = 'iwevizmsedyqozxlawwl'
 $scriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $scriptRoot '..')).Path
+. (Join-Path $scriptRoot 'lib\staging-target-safety.ps1')
 
 if (-not [System.IO.Path]::IsPathRooted($EnvFile)) {
   $EnvFile = Join-Path $repoRoot $EnvFile
 }
 $EnvFile = (Resolve-Path -LiteralPath $EnvFile).Path
+$allowedEnvNames = @(
+  'EXPO_PUBLIC_SUPABASE_URL',
+  'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'EXPO_PUBLIC_API_BASE_URL'
+)
 
 function Import-EnvFile {
-  param([string]$Path)
+  param(
+    [string]$Path,
+    [string[]]$AllowedNames
+  )
 
   foreach ($line in Get-Content -LiteralPath $Path -Encoding UTF8) {
     $trimmed = $line.Trim()
@@ -30,6 +39,9 @@ function Import-EnvFile {
     }
 
     $name = $matches[1].Trim()
+    if ($AllowedNames -notcontains $name) {
+      continue
+    }
     $value = $matches[2].Trim()
     if ($value.Length -ge 2) {
       $first = $value.Substring(0, 1)
@@ -56,21 +68,7 @@ function Require-Env {
   throw "Missing required local environment variable: $Name"
 }
 
-function Assert-StagingRef {
-  param(
-    [string]$Value,
-    [string]$Label
-  )
-
-  if ([string]::IsNullOrWhiteSpace($Value) -or -not $Value.Contains($stagingRef)) {
-    throw "$Label must target staging ref $stagingRef."
-  }
-  if ($Value.Contains($productionRef)) {
-    throw "$Label points at production ref $productionRef."
-  }
-}
-
-Import-EnvFile -Path $EnvFile
+Import-EnvFile -Path $EnvFile -AllowedNames $allowedEnvNames
 
 $supabaseUrl = Require-Env 'EXPO_PUBLIC_SUPABASE_URL'
 $publishableKey = Require-Env 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'
@@ -80,9 +78,8 @@ if ([string]::IsNullOrWhiteSpace($apiBase)) {
   [Environment]::SetEnvironmentVariable('EXPO_PUBLIC_API_BASE_URL', $apiBase, 'Process')
 }
 
-Assert-StagingRef -Value $supabaseUrl -Label 'EXPO_PUBLIC_SUPABASE_URL'
-Assert-StagingRef -Value $apiBase -Label 'EXPO_PUBLIC_API_BASE_URL'
-[void]$publishableKey
+Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase
+Assert-SupabasePublishableKey -Value $publishableKey
 
 $env:EXPO_NO_DOTENV = '1'
 $env:NESTSCOUT_MOBILE_ENV_FILE = $EnvFile

@@ -229,20 +229,20 @@ begin
     raise exception 'positive accept expected ok=true';
   end if;
 
-  if v_eligible_accept_status <> 'worker_matched'::public.job_status then
-    raise exception 'positive accept expected worker_matched, got %', v_eligible_accept_status;
+  if v_eligible_accept_status <> 'worker_candidate_pending'::public.job_status then
+    raise exception 'positive accept expected worker_candidate_pending, got %', v_eligible_accept_status;
   end if;
 
-  if v_job_status_after <> 'worker_matched'::public.job_status then
-    raise exception 'job status expected worker_matched, got %', v_job_status_after;
+  if v_job_status_after <> 'worker_candidate_pending'::public.job_status then
+    raise exception 'job status expected worker_candidate_pending, got %', v_job_status_after;
   end if;
 
   if v_broadcast_status_after <> 'accepted'::public.broadcast_status then
     raise exception 'broadcast status expected accepted, got %', v_broadcast_status_after;
   end if;
 
-  if v_worker_available_after is not false then
-    raise exception 'worker availability expected false';
+  if v_worker_available_after is not true then
+    raise exception 'worker availability preference changed during candidate proposal';
   end if;
 
   raise notice

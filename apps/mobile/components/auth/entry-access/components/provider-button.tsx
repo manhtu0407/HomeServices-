@@ -2,13 +2,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { entryTheme } from '../theme'
 import { ProviderBrandIcon } from './icons'
 
-export function ProviderButton({ label, onPress, testID }: { label: string; onPress: () => void; testID: string }) {
+export function ProviderButton({ accessibilityLabel, disabled, label, onPress, testID }: { accessibilityLabel: string; disabled?: boolean; label: string; onPress: () => void; testID: string }) {
   return (
     <Pressable
-      accessibilityLabel={`Tiếp tục với ${label}`}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }: { pressed: boolean }) => [styles.button, pressed && styles.pressed]}
+      style={({ pressed }: { pressed: boolean }) => [styles.button, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
       testID={testID}
     >
       <View style={styles.mark}><ProviderBrandIcon provider="google" size={18} /></View>
@@ -19,6 +20,7 @@ export function ProviderButton({ label, onPress, testID }: { label: string; onPr
 
 const styles = StyleSheet.create({
   button: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.90)', borderColor: entryTheme.color.surface.stroke, borderRadius: 18, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 6, height: 46, justifyContent: 'center', minWidth: 0, paddingHorizontal: 6 },
+  disabled: { opacity: 0.52 },
   label: { color: entryTheme.color.text.strong, flexShrink: 1, fontSize: 11, fontWeight: '700', letterSpacing: 0 },
   mark: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 8, height: 22, justifyContent: 'center', width: 22, ...entryTheme.shadow.soft },
   pressed: { opacity: 0.78 },

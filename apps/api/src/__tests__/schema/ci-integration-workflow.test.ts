@@ -15,5 +15,8 @@ describe('staging integration workflow', () => {
     expect(workflow).toContain('test -n "$NEXT_PUBLIC_SUPABASE_URL"')
     expect(workflow).toContain('test -n "$SUPABASE_SERVICE_ROLE_KEY"')
     expect(workflow).toContain('test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"')
+    expect(workflow).toContain(
+      'test "$NEXT_PUBLIC_SUPABASE_URL" = "https://xyylanuyflrjzbjzhqfl.supabase.co"',
+    )
   })
 })

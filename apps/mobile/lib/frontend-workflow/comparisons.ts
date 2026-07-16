@@ -16,6 +16,7 @@ export function sameCustomerProfileInsights(left: CustomerProfileInsightsRespons
     && left.preferred_service_count === right.preferred_service_count
     && left.active_service_days === right.active_service_days
     && left.active_streak_days === right.active_streak_days
+    && left.reviewed_service_count === right.reviewed_service_count
     && left.positive_review_rate_percent === right.positive_review_rate_percent
     && left.price_savings_vnd === right.price_savings_vnd
     && left.total_spend_vnd === right.total_spend_vnd
@@ -117,6 +118,7 @@ function sameWorkerJob(
     && left.estimated_earning === right.estimated_earning
     && sameStringArray(left.photo_urls, right.photo_urls)
     && left.completion_notes === right.completion_notes
+    && left.scheduled_at === right.scheduled_at
     && left.created_at === right.created_at
     && left.matched_at === right.matched_at
     && left.completed_at === right.completed_at

@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from 'react'
-import { Image, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Image } from 'expo-image'
+import { Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
 
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
@@ -31,6 +32,10 @@ type CustomerV21Card = ComponentType<{
   testID?: string
 }>
 type CustomerV21CaseAura = ComponentType<{ scope: string; testID?: string }>
+type CustomerV21HandoffChip = ComponentType<{
+  label: string
+  tone: 'selected' | 'success'
+}>
 
 export function CaseMetric({
   auraScope,
@@ -71,12 +76,12 @@ export function CaseFactGrid({
   tokens,
   zipMintAura,
 }: {
-  metrics: Array<{
+  metrics: {
     auraScope: string
     label: string
     testID: string
     value: string
-  }>
+  }[]
   sourceCardSkin: CustomerV21SourceSkin
   tokens: CustomerThemeTokens
   zipMintAura: CustomerV21ZipAura
@@ -150,7 +155,7 @@ export function CaseWorkerAvatar({
   return (
     <View style={[styles.caseWorkerAvatar, { backgroundColor: '#E6FBF3', borderColor: 'rgba(216,235,232,0.92)' }]}>
       {uri ? (
-        <Image resizeMode="cover" source={{ uri }} style={styles.caseWorkerAvatarImage} />
+        <Image contentFit="cover" source={{ uri }} style={styles.caseWorkerAvatarImage} />
       ) : (
         <Text style={[styles.caseWorkerAvatarText, { color: tokens.primary }]}>{initials}</Text>
       )}
@@ -231,7 +236,7 @@ export function MatchingKaelStatusIcon({
           <Rect fill="url(#matchingKaelStatusAura)" height="86" width="86" />
         </Svg>
       </View>
-      {isKaelCoreV9Visual(image) ? <KaelCoreV9 size={54} /> : <Image resizeMode="contain" source={image} style={styles.matchingKaelStatusImage} />}
+      {isKaelCoreV9Visual(image) ? <KaelCoreV9 size={54} /> : <Image contentFit="contain" source={image} style={styles.matchingKaelStatusImage} />}
     </View>
   )
 }
@@ -326,17 +331,19 @@ export function ArrivalCodeBox({
 export function FulfillmentInfoRow({
   assetTile: AssetTile,
   body,
+  handoffChip: HandoffChip,
   image,
-  renderRightLabel,
   rightLabel,
+  rightLabelTone,
   title,
   tokens,
 }: {
   assetTile: CustomerV21AssetTile
   body: string
+  handoffChip?: CustomerV21HandoffChip
   image: CustomerV21Visual
-  renderRightLabel?: (label: string) => ReactNode
   rightLabel?: string
+  rightLabelTone?: 'selected' | 'success'
   title: string
   tokens: CustomerThemeTokens
 }) {
@@ -347,7 +354,7 @@ export function FulfillmentInfoRow({
         <Text numberOfLines={1} style={[styles.fulfillmentRowTitle, { color: tokens.text }]}>{title}</Text>
         <Text numberOfLines={2} style={[styles.fulfillmentRowBody, { color: tokens.muted }]}>{body}</Text>
       </View>
-      {rightLabel && renderRightLabel ? renderRightLabel(rightLabel) : null}
+      {rightLabel && HandoffChip && rightLabelTone ? <HandoffChip label={rightLabel} tone={rightLabelTone} /> : null}
     </View>
   )
 }
@@ -459,9 +466,10 @@ export function CaseOptionChoiceCard({
   assetTile: AssetTile,
   body,
   card: Card,
+  handoffChip: HandoffChip,
   image,
-  renderRightLabel,
   rightLabel,
+  rightLabelTone,
   sourceCardSkin: SourceCardSkin,
   testID,
   title,
@@ -471,9 +479,10 @@ export function CaseOptionChoiceCard({
   assetTile: CustomerV21AssetTile
   body: string
   card: CustomerV21Card
+  handoffChip: CustomerV21HandoffChip
   image: CustomerV21Visual
-  renderRightLabel: (label: string) => ReactNode
   rightLabel: string
+  rightLabelTone: 'selected' | 'success'
   sourceCardSkin: CustomerV21SourceSkin
   testID: string
   title: string
@@ -491,7 +500,7 @@ export function CaseOptionChoiceCard({
             <Text numberOfLines={1} style={[styles.caseOptionChoiceTitle, { color: tokens.text }]}>{title}</Text>
             <Text numberOfLines={2} style={[styles.caseOptionChoiceBody, { color: tokens.muted }]}>{body}</Text>
           </View>
-          {renderRightLabel(rightLabel)}
+          <HandoffChip label={rightLabel} tone={rightLabelTone} />
         </View>
       </View>
     </Card>

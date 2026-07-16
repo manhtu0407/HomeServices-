@@ -3,13 +3,18 @@
 // and verify next_action='unsupported' + no provider cost.
 //
 // Reads from .env.local: EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-// SUPABASE_ACCESS_TOKEN (for Management API admin user create/delete).
+// SUPABASE_SERVICE_ROLE_KEY (for disposable fixture user create/delete).
 
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import crypto from "node:crypto";
+import {
+  assertStagingOrLocalTargets,
+  assertSupabaseCredentials,
+  fetchWithTimeout,
+} from "./lib/staging-smoke-safety.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
@@ -40,7 +45,7 @@ function requireEnv(name) {
 
 async function adminCreateUser(supabaseUrl, serviceRoleKey, email, password) {
   const url = `${supabaseUrl}/auth/v1/admin/users`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: {
       apikey: serviceRoleKey,
@@ -56,14 +61,14 @@ async function adminCreateUser(supabaseUrl, serviceRoleKey, email, password) {
   });
   const body = await response.text();
   if (!response.ok) {
-    throw new Error(`adminCreateUser failed: ${response.status} ${body}`);
+    throw new Error(`adminCreateUser failed with HTTP ${response.status}`);
   }
   return JSON.parse(body);
 }
 
 async function adminDeleteUser(supabaseUrl, serviceRoleKey, userId) {
   const url = `${supabaseUrl}/auth/v1/admin/users/${userId}`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "DELETE",
     headers: {
       apikey: serviceRoleKey,
@@ -71,26 +76,25 @@ async function adminDeleteUser(supabaseUrl, serviceRoleKey, userId) {
     },
   });
   if (!response.ok && response.status !== 404) {
-    const body = await response.text();
-    throw new Error(`adminDeleteUser failed: ${response.status} ${body}`);
+    throw new Error(`adminDeleteUser failed with HTTP ${response.status}`);
   }
 }
 
 async function signIn(supabaseUrl, apikey, email, password) {
   const url =
     `${supabaseUrl}/auth/v1/token?grant_type=password`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: { apikey, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const body = await response.text();
   if (!response.ok) {
-    throw new Error(`signIn failed: ${response.status} ${body}`);
+    throw new Error(`signIn failed with HTTP ${response.status}`);
   }
   const data = JSON.parse(body);
   if (!data?.access_token) {
-    throw new Error(`signIn returned no access_token: ${body}`);
+    throw new Error("signIn returned no access_token");
   }
   return data.access_token;
 }
@@ -98,7 +102,7 @@ async function signIn(supabaseUrl, apikey, email, password) {
 async function postKaelChat(apiBaseUrl, apikey, accessToken, payload) {
   const url = `${apiBaseUrl}/kael/chat`;
   const started = Date.now();
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: {
       apikey,
@@ -120,10 +124,10 @@ async function postKaelChat(apiBaseUrl, apikey, accessToken, payload) {
 
 const CASES = [
   {
-    id: "F-18 AC repair / electrical",
+    id: "F-18 Unsupported appliance repair / electrical",
     service_type: "electrical",
     message:
-      "Máy lạnh phòng ngủ của tôi không lạnh nữa, cần thợ tới sửa máy lạnh gấp trong hôm nay",
+      "Máy giặt không vắt và báo lỗi động cơ, cần sửa thiết bị gia dụng tại nhà",
     expectReason: "out_of_scope",
   },
   {
@@ -154,8 +158,10 @@ async function main() {
   const supabaseUrl = requireEnv("EXPO_PUBLIC_SUPABASE_URL");
   const apikey = requireEnv("EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
   const serviceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+  assertSupabaseCredentials(apikey, serviceRoleKey);
   const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ??
     `${supabaseUrl}/functions/v1/mobile-api`;
+  assertStagingOrLocalTargets("KAEL_X1_RUN_LIVE", supabaseUrl, apiBaseUrl);
   const projectRef = new URL(supabaseUrl).host.split(".")[0];
 
   const runId = `x1-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
@@ -168,6 +174,8 @@ async function main() {
   let userId = null;
   let summary = [];
   let allPass = true;
+  let cleanupFailed = false;
+  const keepUser = process.env.KEEP_USER === "yes";
 
   try {
     console.log(`[smoke] creating disposable customer ${email}`);
@@ -224,17 +232,20 @@ async function main() {
       );
     }
   } finally {
-    if (userId && !process.env.KEEP_USER) {
+    if (userId && !keepUser) {
       try {
         await adminDeleteUser(supabaseUrl, serviceRoleKey, userId);
         console.log(`[smoke] cleaned up user ${userId}`);
       } catch (err) {
-        console.warn(`[smoke] cleanup failed: ${err.message}`);
+        cleanupFailed = true;
+        console.error(`[smoke] cleanup failed: ${err.message}`);
       }
     } else if (userId) {
-      console.log(`[smoke] KEEP_USER set, retained user ${userId} for DB inspection`);
+      console.log(`[smoke] KEEP_USER=yes, retained user ${userId} for DB inspection`);
     }
   }
+
+  if (cleanupFailed) allPass = false;
 
   console.log("\n[smoke] === summary ===");
   console.log(JSON.stringify(summary, null, 2));

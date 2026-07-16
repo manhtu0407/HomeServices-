@@ -348,7 +348,7 @@ export async function auditKaelPermissionDecision(
   decision: KaelPermissionGateDecision,
 ) {
   if (decision.reasonCode === "COST_CAP_HIT") {
-    await client.from("kael_advisory_audit").insert({
+    await persistPermissionAudit(client, "kael_advisory_audit", {
       job_id: decision.jobId ?? null,
       actor_id: decision.actorId ?? null,
       purpose: decision.purpose,
@@ -364,11 +364,11 @@ export async function auditKaelPermissionDecision(
         boundary_signal: decision.boundarySignal,
         ...(decision.safeMetadata ?? {}),
       },
-    });
+    }, "KAEL_ADVISORY_AUDIT_FAILED");
     return;
   }
 
-  await client.from("kael_permission_audit").insert({
+  await persistPermissionAudit(client, "kael_permission_audit", {
     job_id: decision.jobId ?? null,
     actor_id: decision.actorId ?? null,
     actor_role: decision.actor,
@@ -385,7 +385,26 @@ export async function auditKaelPermissionDecision(
       boundary_signal: decision.boundarySignal,
       ...(decision.safeMetadata ?? {}),
     },
-  });
+  }, "KAEL_PERMISSION_AUDIT_FAILED");
+}
+
+async function persistPermissionAudit(
+  client: AuditClient,
+  table: string,
+  value: Record<string, unknown>,
+  failureCode: string,
+): Promise<void> {
+  try {
+    const result = await client.from(table).insert(value);
+    if (
+      !result || typeof result !== "object" || !("error" in result) ||
+      Boolean((result as { error: unknown }).error)
+    ) {
+      throw new Error(failureCode);
+    }
+  } catch {
+    throw new Error(failureCode);
+  }
 }
 
 function allow(

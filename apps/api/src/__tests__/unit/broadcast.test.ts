@@ -64,11 +64,13 @@ describe('secondsRemaining', () => {
 
 function makeBroadcastSupabase(opts: {
   eligibleWorkers?: Array<{ id: string; rating: number; total_jobs: number; service_types: string[]; districts: string[] }>
+  eligibleWorkerPages?: Array<Array<{ id: string; rating: number; total_jobs: number; service_types: string[]; districts: string[] }>>
   activeJobs?: Array<{ worker_id: string }>
   workerQueryError?: { code: string }
   activeJobQueryError?: { code: string }
   insertError?: { code: string }
 }) {
+  let workerPageIndex = 0
   return {
     from: vi.fn((table: string) => {
       if (table === 'worker_profiles') {
@@ -78,6 +80,10 @@ function makeBroadcastSupabase(opts: {
           contains: vi.fn().mockReturnThis(),
           or: vi.fn().mockReturnThis(),
           order: vi.fn().mockReturnThis(),
+          range: vi.fn().mockImplementation(async () => ({
+            data: opts.eligibleWorkerPages?.[workerPageIndex++] ?? opts.eligibleWorkers ?? [],
+            error: opts.workerQueryError ?? null,
+          })),
           limit: vi.fn().mockResolvedValue({
             data: opts.eligibleWorkers ?? [],
             error: opts.workerQueryError ?? null,
@@ -199,6 +205,68 @@ describe('queryEligibleWorkers', () => {
     if (result.success) {
       expect(result.workers.map((worker) => worker.id)).toEqual(['w-replacement'])
     }
+  })
+
+  it('continues past a full excluded page to find later eligible workers', async () => {
+    const excludedWorkers = Array.from({ length: 50 }, (_, index) => ({
+      id: `w-excluded-${index}`,
+      rating: 5,
+      total_jobs: 100 - index,
+      service_types: ['plumbing'],
+      districts: ['Q7'],
+    }))
+    const supabase = makeBroadcastSupabase({
+      eligibleWorkerPages: [
+        excludedWorkers,
+        [{ id: 'w-later', rating: 4.5, total_jobs: 10, service_types: ['plumbing'], districts: ['Q7'] }],
+      ],
+    })
+
+    const result = await queryEligibleWorkers(supabase, 'plumbing', 'Q7', 5, {
+      excludeWorkerIds: excludedWorkers.map((worker) => worker.id),
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.workers.map((worker) => worker.id)).toEqual(['w-later'])
+    const workerQueries = (supabase.from as any).mock.results
+      .map((entry: { value: { range?: ReturnType<typeof vi.fn> } }) => entry.value)
+      .filter((query: { range?: ReturnType<typeof vi.fn> }) => query.range)
+    expect(workerQueries).toHaveLength(2)
+    expect(workerQueries[0].range).toHaveBeenCalledWith(0, 49)
+    expect(workerQueries[1].range).toHaveBeenCalledWith(50, 99)
+  })
+
+  it('chunks large active-job filters instead of building an oversized PostgREST URL', async () => {
+    const workers = Array.from({ length: 250 }, (_, index) => ({
+      id: `w-${index}`,
+      rating: 5 - index / 1000,
+      total_jobs: 250 - index,
+      service_types: ['plumbing'],
+      districts: ['Q7'],
+    }))
+    const supabase = makeBroadcastSupabase({
+      eligibleWorkerPages: [
+        workers.slice(0, 50),
+        workers.slice(50, 100),
+        workers.slice(100, 150),
+        workers.slice(150, 200),
+        workers.slice(200, 250),
+        [],
+      ],
+    })
+
+    const result = await queryEligibleWorkers(supabase, 'plumbing', 'Q7')
+
+    expect(result.success).toBe(true)
+    const jobQueries = (supabase.from as any).mock.results
+      .map((entry: { value: { in?: ReturnType<typeof vi.fn> } }) => entry.value)
+      .filter((query: { in?: ReturnType<typeof vi.fn> }) => query.in)
+    const workerIdBatches: string[][] = jobQueries.map((query: { in: ReturnType<typeof vi.fn> }) =>
+      query.in.mock.calls.find((call: unknown[]) => call[0] === 'worker_id')?.[1] as string[],
+    )
+    expect(workerIdBatches).toHaveLength(3)
+    expect(workerIdBatches.flat()).toEqual(workers.map((worker) => worker.id))
+    expect(Math.max(...workerIdBatches.map((batch) => batch.length))).toBeLessThanOrEqual(100)
   })
 
   it('returns DB_ERROR when active job lookup fails', async () => {

@@ -7,6 +7,7 @@ import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import {
   WorkerV5KaelOrbBubble,
+  WorkerV5KaelOrbMediaStrip,
   WorkerV5KaelOrbOpportunityResults,
 } from './orb-surfaces'
 import { WorkerV5KaelEmptyHero } from './empty-hero'
@@ -20,7 +21,7 @@ export type WorkerV5KaelOrbLiveTurn = {
   text: string
 }
 
-const EMPTY_LIVE_TURNS: WorkerV5KaelOrbLiveTurn[] = []
+const EMPTY_WORKER_V5_KAEL_ORB_LIVE_TURNS: WorkerV5KaelOrbLiveTurn[] = []
 
 export function WorkerV5KaelOrbBody({
   activeSessionId = null,
@@ -32,7 +33,7 @@ export function WorkerV5KaelOrbBody({
   language,
   liveError = null,
   liveStatus = null,
-  liveTurns = EMPTY_LIVE_TURNS,
+  liveTurns = EMPTY_WORKER_V5_KAEL_ORB_LIVE_TURNS,
   mode,
   modeMenuOpen = false,
   onOpenOpportunity,
@@ -113,15 +114,59 @@ export function WorkerV5KaelOrbBody({
                 align={turn.role === 'worker' ? 'right' : undefined}
                 body={turn.text}
                 key={turn.id}
-                speaker={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
+                speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
               />
             ))}
-            {liveStatus ? <WorkerV5KaelOrbBubble body={liveStatus} speaker="Kael" /> : null}
-            {liveError ? <WorkerV5KaelOrbBubble body={liveError} speaker="Kael" /> : null}
+            {liveStatus ? <WorkerV5KaelOrbBubble body={liveStatus} speakerLabel="Kael" /> : null}
+            {liveError ? <WorkerV5KaelOrbBubble body={liveError} speakerLabel="Kael" /> : null}
           </View>
         ) : null}
       </ScrollView>
       {composer}
+    </View>
+  )
+}
+
+export function WorkerV5KaelOrbNormalThread({
+  deal,
+  language,
+  reduceTransparency,
+}: {
+  deal: LocalDeal | null
+  language: AppLanguage
+  reduceTransparency: boolean
+}) {
+  const service = deal?.draft.serviceType ? localizedServiceLabel(deal.draft.serviceType, language) : null
+  const area = deal?.draft.districtLabel || deal?.broadcast?.generalArea || null
+  const hasMedia = (deal?.draft.mediaCount ?? 0) > 0
+  const customerKaelBody = deal
+    ? textByLanguage(
+        language,
+        `Kael đang đọc dữ liệu thật${service ? ` của ${service}` : ''}${area ? ` tại ${area}` : ''}. Chat thường chỉ tư vấn và không ghi quyết định vào công việc.`,
+        `Kael is reading real data${service ? ` for ${service}` : ''}${area ? ` in ${area}` : ''}. Normal chat is advisory only and does not write case decisions.`,
+      )
+    : textByLanguage(
+        language,
+        'Chào bạn, mình là Kael. Bạn muốn hỏi gì hôm nay?',
+        'Hi, I am Kael. What would you like to ask today?',
+      )
+  const customerWorkerPrompt = textByLanguage(
+    language,
+    `Kael, hỗ trợ tôi chuẩn bị${service ? ` ${service}` : ''}${area ? ` tại ${area}` : ''}.`,
+    `Kael, help me prepare${service ? ` ${service}` : ''}${area ? ` in ${area}` : ''}.`,
+  )
+
+  return (
+    <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-normal-thread">
+      {deal ? (
+        <WorkerV5KaelOrbBubble
+          align="right"
+          body={customerWorkerPrompt}
+          speakerLabel={textByLanguage(language, 'Bạn', 'You')}
+        />
+      ) : null}
+      <WorkerV5KaelOrbBubble body={customerKaelBody} speakerLabel="Kael" strongFirstLine={Boolean(deal)} />
+      {hasMedia ? <WorkerV5KaelOrbMediaStrip count={Math.min(2, deal?.draft.mediaCount ?? 0)} reduceTransparency={reduceTransparency} /> : null}
     </View>
   )
 }
@@ -172,8 +217,8 @@ export function WorkerV5KaelOrbIntakeThread({
 
   return (
     <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-intake-thread">
-      <WorkerV5KaelOrbBubble align="right" body={customerWorkerRequest} speaker={textByLanguage(language, 'Bạn', 'You')} />
-      <WorkerV5KaelOrbBubble body={customerKaelReply} speaker="Kael" />
+      <WorkerV5KaelOrbBubble align="right" body={customerWorkerRequest} speakerLabel={textByLanguage(language, 'Bạn', 'You')} />
+      <WorkerV5KaelOrbBubble body={customerKaelReply} speakerLabel="Kael" />
       <WorkerV5KaelOrbOpportunityResults
         deal={deal}
         fallbackJobIcon={fallbackJobIcon}
@@ -189,7 +234,7 @@ export function WorkerV5KaelOrbIntakeThread({
             'Đề xuất: mở cơ hội đầu tiên nếu dữ liệu thật đạt đủ điều kiện và không ảnh hưởng lịch còn lại.',
             'Suggestion: open the first opportunity if real data meets the conditions and does not affect the remaining schedule.',
           )}
-          speaker="Kael"
+          speakerLabel="Kael"
           strongFirstLine
         />
       ) : null}

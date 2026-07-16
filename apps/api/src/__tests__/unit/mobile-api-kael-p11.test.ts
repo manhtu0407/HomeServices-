@@ -118,58 +118,28 @@ describe('Kael P11 worker cancellation case', () => {
     expect(JSON.stringify(abuse)).not.toContain('is_suspended')
   })
 
-  it('T11.8/9: records admin review queue and L4 red flag with safe metadata only', async () => {
+  it('T11.8/9: records cancellation memory and review queue through one atomic RPC', async () => {
     const client = makeSequenceClient([
-      { data: { red_flags: { previous_flag: true }, reliability_signals: {}, safe_metadata: {} }, error: null },
-      { data: { worker_id: 'worker-1' }, error: null },
-      { data: { id: 'queue-1' }, error: null },
+      { data: [{ applied: true }], error: null },
     ])
-    const classification = classifyWorkerCancellationReason({
-      reason: 'Tôi đổi ý vì có việc khác trả cao hơn.',
-      evidencePhotoUrls: [],
-    })
-    const abuse = evaluateWorkerCancellationAbuse({
-      completedJobs30d: 10,
-      cancellations30d: 4,
-      consecutiveCancellations: 3,
-      noReasonCancellations30d: 0,
-      cancellationsAfterArrival30d: 0,
-    })
 
     await recordWorkerCancellationReview(client, {
       jobId: 'job-1',
       workerId: 'worker-1',
       cancellationId: 'cancel-1',
-      reason: 'Số điện thoại tôi 0901234567, tôi đổi ý vì có việc khác trả cao hơn.',
-      classification,
-      abuse,
       subCase: 'explicit_cancel',
     })
 
-    const memoryUpsert = client.calls.find((call) =>
-      call.table === 'worker_kael_memory' &&
-      call.operations.some((op) => op[0] === 'upsert')
-    )?.operations.find((op) => op[0] === 'upsert')?.[1] as Record<string, unknown>
-    expect(memoryUpsert).toMatchObject({
-      worker_id: 'worker-1',
-      red_flags: expect.objectContaining({
-        previous_flag: true,
-        worker_cancellation_abuse_review: true,
-      }),
-    })
-
-    const queueInsert = client.calls.find((call) => call.table === 'kael_admin_queue')
-      ?.operations.find((op) => op[0] === 'insert')?.[1] as Record<string, unknown>
-    expect(queueInsert).toMatchObject({
-      job_id: 'job-1',
-      actor_id: 'worker-1',
-      actor_role: 'worker',
-      queue_type: 'worker_cancellation_review',
-      priority: 'medium',
-      escalation_level: 'soft',
-      reason_code: classification.reasonCode,
-    })
-    expect(JSON.stringify(client.calls)).not.toContain('0901234567')
+    expect(client.calls).toEqual([{
+      name: 'record_worker_cancellation_memory_atomic',
+      args: {
+        p_cancellation_id: 'cancel-1',
+        p_job_id: 'job-1',
+        p_sub_case: 'explicit_cancel',
+        p_worker_id: 'worker-1',
+      },
+    }])
+    expect(JSON.stringify(client.calls)).not.toContain('reason')
   })
 
   it('T11-quality: keeps scenario classification above the 95% case target', () => {
@@ -202,49 +172,15 @@ describe('Kael P11 worker cancellation case', () => {
 })
 
 type QueryResult = { data: unknown; error: { code?: string; message?: string } | null }
-type QueryCall = { table: string; operations: unknown[][] }
+type QueryCall = { name: string; args: Record<string, unknown> }
 
 function makeSequenceClient(results: QueryResult[]) {
   const calls: QueryCall[] = []
   return {
     calls,
-    from(table: string) {
-      const call: QueryCall = { table, operations: [] }
-      calls.push(call)
-      return makeQuery(call, results)
+    rpc(name: string, args: Record<string, unknown>) {
+      calls.push({ name, args })
+      return Promise.resolve(results.shift() ?? { data: null, error: null })
     },
   }
-}
-
-function makeQuery(call: QueryCall, results: QueryResult[]) {
-  const query = {
-    select(columns?: string) {
-      call.operations.push(['select', columns])
-      return query
-    },
-    insert(value: unknown) {
-      call.operations.push(['insert', value])
-      return query
-    },
-    upsert(value: unknown) {
-      call.operations.push(['upsert', value])
-      return query
-    },
-    eq(column: string, value: unknown) {
-      call.operations.push(['eq', column, value])
-      return query
-    },
-    maybeSingle() {
-      call.operations.push(['maybeSingle'])
-      return query
-    },
-    then<TResult1 = QueryResult, TResult2 = never>(
-      onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
-      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
-    ): PromiseLike<TResult1 | TResult2> {
-      const next = results.shift() ?? { data: null, error: null }
-      return Promise.resolve(next).then(onfulfilled, onrejected)
-    },
-  }
-  return query
 }

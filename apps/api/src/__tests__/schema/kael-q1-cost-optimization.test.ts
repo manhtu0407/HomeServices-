@@ -134,7 +134,8 @@ describe('Q1 cost optimization baseline telemetry', () => {
   it('adds service-role-only RPC for atomic Kael learning promotion', () => {
     const migration = readMigrationByName('promote_learning_candidate_rpc')
     const lintFix = read('supabase/migrations/20260605004000_fix_plan31_rpc_lint_warnings.sql')
-    const batchProcessor = read('supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts')
+    const atomicEffect = readMigrationByName('atomic_learning_effect_commits')
+    const effectStore = read('supabase/functions/mobile-api/_shared/kael/cron/learning-effect-store.ts')
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
     expect(migration).toContain('create or replace function public.promote_learning_candidate')
@@ -151,7 +152,8 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(lintFix).toContain('insert into public.kael_rule_lifecycle_log')
     expect(lintFix).toContain("'actor_id', p_actor_id")
     expect(lintFix).toContain("'job_id', p_job_id")
-    expect(batchProcessor).toContain('rpc("promote_learning_candidate"')
+    expect(atomicEffect).toContain('from public.promote_learning_candidate')
+    expect(effectStore).toContain('rpc("commit_kael_learning_effect_atomic"')
     expect(sharedTypes).toContain('promote_learning_candidate')
   })
 
@@ -188,7 +190,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const nextHome = read('apps/api/src/app/page.tsx')
     const mobileServices = read('apps/mobile/lib/services.ts')
     const mobileAdmin = read('apps/mobile/app/(admin)/dashboard.tsx')
-    const batchProcessor = read('supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts')
+    const batchLifecycle = read('supabase/functions/mobile-api/_shared/kael/cron/batch-learning-lifecycle.ts')
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
     expect(statusMigration).toContain("add value if not exists 'manual_review'")
@@ -212,7 +214,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(mobileServices).toContain('adminLearningService')
     expect(mobileAdmin).toContain('adminLearningService.listCandidates')
     expect(mobileAdmin).toContain('isManualReviewSlaOverdue')
-    expect(batchProcessor).toContain('return "manual_review"')
+    expect(batchLifecycle).toContain('return "manual_review"')
     expect(sharedTypes).toContain('admin_approve_learning_candidate')
     expect(sharedTypes).toContain('admin_reject_learning_candidate')
   })

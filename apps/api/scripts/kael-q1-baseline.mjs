@@ -4,10 +4,16 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { performance } from 'node:perf_hooks'
+import {
+  assertLiveApproval,
+  assertSupabaseTargets,
+  createEphemeralPassword,
+  createTimeoutFetch,
+  readBoundedInteger,
+  resolveWorkspacePath,
+} from './lib/privileged-script-safety.mjs'
 
 const STAGING_REF = 'xyylanuyflrjzbjzhqfl'
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
-const PASSWORD = 'Q1-baseline-Temp-12345!'
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
 const DEFAULT_REPORT_PATH = resolve(REPO_ROOT, 'docs/cost-baseline-2026-05.md')
@@ -82,36 +88,10 @@ function requireEnv(name, fallbackNames = []) {
   return value
 }
 
-function assertStagingUrl(value, label) {
-  if (!value.includes(STAGING_REF)) throw new Error(`${label} must target staging ${STAGING_REF}`)
-  if (value.includes(PRODUCTION_REF)) throw new Error(`${label} points at production ${PRODUCTION_REF}`)
-}
-
-function timeoutFetch(timeoutMs) {
-  return async (url, options = {}) => {
-    const attempts = Number(readEnv('Q1_FETCH_RETRIES') ?? '2') + 1
-    let lastError = null
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), timeoutMs)
-      try {
-        return await fetch(url, { ...options, signal: controller.signal })
-      } catch (error) {
-        lastError = error
-        if (attempt === attempts) throw error
-        await new Promise((resolve) => setTimeout(resolve, 500 * attempt))
-      } finally {
-        clearTimeout(timer)
-      }
-    }
-    throw lastError
-  }
-}
-
 function createSupabase(url, key, timeoutMs = 60_000) {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: timeoutFetch(timeoutMs) },
+    global: { fetch: createTimeoutFetch(timeoutMs) },
   })
 }
 
@@ -135,6 +115,7 @@ class Q1BaselineHarness {
   constructor(config) {
     this.config = config
     this.runId = `q1-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+    this.password = createEphemeralPassword('Q1Baseline')
     this.admin = createSupabase(config.supabaseUrl, config.serviceRoleKey)
     this.jobIds = []
     this.userIds = []
@@ -214,7 +195,7 @@ class Q1BaselineHarness {
     const email = `${this.runId}-customer@q1.staging.test`
     const { data, error } = await this.admin.auth.admin.createUser({
       email,
-      password: PASSWORD,
+      password: this.password,
       email_confirm: true,
       user_metadata: { role: 'customer', full_name: 'Q1 baseline customer' },
     })
@@ -231,7 +212,7 @@ class Q1BaselineHarness {
     }), 'customer profile')
 
     const client = createSupabase(this.config.supabaseUrl, this.config.anonKey)
-    const signedIn = await client.auth.signInWithPassword({ email, password: PASSWORD })
+    const signedIn = await client.auth.signInWithPassword({ email, password: this.password })
     if (signedIn.error || !signedIn.data.session) throw new Error(`sign in baseline user: ${signedIn.error?.message}`)
     return { id, accessToken: signedIn.data.session.access_token }
   }
@@ -239,7 +220,7 @@ class Q1BaselineHarness {
   async createBaselineJob(customer, index) {
     const scenario = SCENARIOS[index % SCENARIOS.length]
     const started = performance.now()
-    const response = await timeoutFetch(75_000)(`${this.config.apiBaseUrl}/jobs`, {
+    const response = await createTimeoutFetch(75_000)(`${this.config.apiBaseUrl}/jobs`, {
       method: 'POST',
       headers: {
         apikey: this.config.anonKey,
@@ -252,6 +233,7 @@ class Q1BaselineHarness {
         address_unit: `A-${index + 1}`,
         address_floor: '5',
         address_district: 'q7',
+        client_request_id: `${this.runId}-job-${index + 1}`,
         photo_urls: this.config.usePhotos && index < Math.min(10, this.config.sampleSize)
           ? [DEFAULT_PHOTO_URL]
           : [],
@@ -277,6 +259,7 @@ class Q1BaselineHarness {
         purpose,
         route,
         providerKeys: this.config.providerKeys,
+        fetchRetries: this.config.fetchRetries,
       })
       rows.push({
         job_id: this.jobIds[index % this.jobIds.length],
@@ -332,6 +315,7 @@ class Q1BaselineHarness {
   }
 
   async cleanup() {
+    const errors = []
     if (this.jobIds.length > 0) {
       for (const table of [
         'job_events',
@@ -345,22 +329,36 @@ class Q1BaselineHarness {
       ]) {
         const column = table === 'jobs' ? 'id' : 'job_id'
         const { error } = await this.admin.from(table).delete().in(column, this.jobIds)
-        if (error) this.limitations.push(`cleanup ${table}: ${error.message}`)
+        if (error) errors.push(`cleanup ${table}: ${error.message}`)
       }
     }
     for (const userId of this.userIds) {
-      await this.admin.from('customer_profiles').delete().eq('id', userId)
-      await this.admin.from('profiles').delete().eq('id', userId)
+      const { error: customerProfileError } = await this.admin.from('customer_profiles').delete().eq('id', userId)
+      if (customerProfileError) errors.push(`cleanup customer_profiles: ${customerProfileError.message}`)
+      const { error: profileError } = await this.admin.from('profiles').delete().eq('id', userId)
+      if (profileError) errors.push(`cleanup profiles: ${profileError.message}`)
       const { error } = await this.admin.auth.admin.deleteUser(userId)
-      if (error) this.limitations.push(`delete auth user: ${error.message}`)
+      if (error) errors.push(`delete auth user: ${error.message}`)
     }
     await this.verifyCleanup()
+    if (errors.length > 0) {
+      throw new Error(`cleanup incomplete: ${errors.join('; ')}`)
+    }
   }
 
   async verifyCleanup() {
     const counts = {}
     if (this.jobIds.length > 0) {
-      for (const table of ['jobs', 'job_events', 'job_broadcasts', 'kael_optimization_metrics', 'api_logs', 'notifications']) {
+      for (const table of [
+        'job_events',
+        'job_broadcasts',
+        'chat_messages',
+        'reviews',
+        'kael_optimization_metrics',
+        'api_logs',
+        'notifications',
+        'jobs',
+      ]) {
         const column = table === 'jobs' ? 'id' : 'job_id'
         const { count, error } = await this.admin
           .from(table)
@@ -371,12 +369,14 @@ class Q1BaselineHarness {
       }
     }
     if (this.userIds.length > 0) {
-      const { count, error } = await this.admin
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .in('id', this.userIds)
-      if (error) throw new Error(`cleanup count profiles: ${error.message}`)
-      counts.profiles = count ?? 0
+      for (const table of ['customer_profiles', 'profiles']) {
+        const { count, error } = await this.admin
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .in('id', this.userIds)
+        if (error) throw new Error(`cleanup count ${table}: ${error.message}`)
+        counts[table] = count ?? 0
+      }
     }
     this.cleanupCounts = counts
     if (!Object.values(counts).every((value) => value === 0)) {
@@ -427,7 +427,7 @@ Plan.md section 24 live baseline/comparison measurement for Kael cost optimizati
 - Q1.5 purpose probes are direct server-side provider calls tagged with \`${PURPOSE_PROBE_SOURCE}\`; they measure real provider availability for purposes not exposed by the current mobile workflow route.
 - No fixture job, api log, event, profile, or auth user is intentionally retained.
 - Persisted aggregate baseline row remains in \`kael_quality_baseline\`.
-- Safe per-call metric rows remain in \`kael_optimization_metrics\` with fixture job ids nulled by cleanup.
+- No fixture-scoped per-call metric row is intentionally retained.
 
 ## Limitations
 
@@ -535,14 +535,14 @@ function number(value) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-async function callPurposeProbe({ purpose, route, providerKeys }) {
+async function callPurposeProbe({ purpose, route, providerKeys, fetchRetries }) {
   const apiKey = providerKeys[route.provider]
   if (!apiKey) throw new Error(`missing provider key for ${route.provider}`)
   const started = performance.now()
   try {
     const result = route.provider === 'anthropic'
-      ? await callAnthropicProbe({ purpose, route, apiKey })
-      : await callOpenAiCompatibleProbe({ purpose, route, apiKey })
+      ? await callAnthropicProbe({ purpose, route, apiKey, fetchRetries })
+      : await callOpenAiCompatibleProbe({ purpose, route, apiKey, fetchRetries })
     return {
       ...result,
       latencyMs: Math.round(performance.now() - started),
@@ -561,8 +561,8 @@ async function callPurposeProbe({ purpose, route, providerKeys }) {
   }
 }
 
-async function callAnthropicProbe({ purpose, route, apiKey }) {
-  const response = await timeoutFetch(20_000)('https://api.anthropic.com/v1/messages', {
+async function callAnthropicProbe({ purpose, route, apiKey, fetchRetries }) {
+  const response = await createTimeoutFetch(20_000, { retries: fetchRetries })('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -580,6 +580,10 @@ async function callAnthropicProbe({ purpose, route, apiKey }) {
   const text = await response.text()
   if (!response.ok) throw new Error(`HTTP_${response.status}`)
   const data = text ? JSON.parse(text) : {}
+  assertJsonObjectContent(
+    data.content?.find((item) => item?.type === 'text')?.text,
+    'Anthropic purpose probe',
+  )
   const inputTokens = number(data.usage?.input_tokens)
   const outputTokens = number(data.usage?.output_tokens)
   const isHaiku = route.model.includes('haiku')
@@ -592,9 +596,9 @@ async function callAnthropicProbe({ purpose, route, apiKey }) {
   }
 }
 
-async function callOpenAiCompatibleProbe({ purpose, route, apiKey }) {
+async function callOpenAiCompatibleProbe({ purpose, route, apiKey, fetchRetries }) {
   const isPerplexity = route.provider === 'perplexity'
-  const response = await timeoutFetch(isPerplexity ? 20_000 : 12_000)(
+  const response = await createTimeoutFetch(isPerplexity ? 20_000 : 12_000, { retries: fetchRetries })(
     isPerplexity ? 'https://api.perplexity.ai/v1/sonar' : 'https://api.deepseek.com/chat/completions',
     {
       method: 'POST',
@@ -620,6 +624,7 @@ async function callOpenAiCompatibleProbe({ purpose, route, apiKey }) {
   const text = await response.text()
   if (!response.ok) throw new Error(`HTTP_${response.status}`)
   const data = text ? JSON.parse(text) : {}
+  assertJsonObjectContent(data.choices?.[0]?.message?.content, `${route.provider} purpose probe`)
   const inputTokens = number(data.usage?.prompt_tokens)
   const outputTokens = number(data.usage?.completion_tokens)
   const costUsd = isPerplexity
@@ -630,6 +635,17 @@ async function callOpenAiCompatibleProbe({ purpose, route, apiKey }) {
     outputTokens,
     costUsd: round(costUsd, 6),
   }
+}
+
+function assertJsonObjectContent(content, label) {
+  assert(typeof content === 'string' && content.trim().length > 0, `${label} returned no content`)
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    throw new Error(`${label} returned invalid JSON`)
+  }
+  assert(parsed && typeof parsed === 'object' && !Array.isArray(parsed), `${label} returned a non-object payload`)
 }
 
 function purposeProbeSystem(purpose) {
@@ -659,9 +675,7 @@ function purposeProbeUser(purpose) {
 }
 
 function loadConfig() {
-  if (process.env.Q1_BASELINE_RUN_LIVE !== '1') {
-    throw new Error('Set Q1_BASELINE_RUN_LIVE=1 to run the mutable staging baseline harness.')
-  }
+  assertLiveApproval('Q1_BASELINE_RUN_LIVE', '1')
   const supabaseUrl = requireEnv('Q1_SUPABASE_URL', ['P15_SUPABASE_URL'])
   const anonKey = requireEnv('Q1_SUPABASE_ANON_KEY', ['P15_SUPABASE_ANON_KEY'])
   const serviceRoleKey = requireEnv('Q1_SUPABASE_SERVICE_ROLE_KEY', ['P15_SUPABASE_SERVICE_ROLE_KEY'])
@@ -669,14 +683,14 @@ function loadConfig() {
     readEnv('Q1_API_BASE_URL', ['P15_API_BASE_URL']) ??
     `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api`
   ).replace(/\/$/, '')
-  assertStagingUrl(supabaseUrl, 'Q1_SUPABASE_URL')
-  assertStagingUrl(apiBaseUrl, 'Q1_API_BASE_URL')
+  assertSupabaseTargets('staging', supabaseUrl, apiBaseUrl)
   const providerKeys = {
     anthropic: readEnv('ANTHROPIC_API_KEY'),
     deepseek: readEnv('DEEPSEEK_API_KEY'),
     perplexity: readEnv('PERPLEXITY_API_KEY'),
   }
   const enablePurposeProbes = readEnv('Q1_PURPOSE_PROBES') !== '0'
+  const fetchRetries = readBoundedInteger(readEnv('Q1_FETCH_RETRIES') ?? '0', 'Q1_FETCH_RETRIES', 0, 2)
   if (enablePurposeProbes) {
     for (const [provider, key] of Object.entries(providerKeys)) {
       if (!key) throw new Error(`Missing provider key for Q1 purpose probes: ${provider}`)
@@ -687,9 +701,14 @@ function loadConfig() {
     anonKey,
     serviceRoleKey,
     apiBaseUrl,
-    sampleSize: Number(readEnv('Q1_SAMPLE_SIZE') ?? '50'),
-    reportPath: resolve(REPO_ROOT, readEnv('Q1_BASELINE_REPORT_PATH') ?? DEFAULT_REPORT_PATH),
+    sampleSize: readBoundedInteger(readEnv('Q1_SAMPLE_SIZE') ?? '50', 'Q1_SAMPLE_SIZE', 1, 100),
+    reportPath: resolveWorkspacePath(
+      REPO_ROOT,
+      readEnv('Q1_BASELINE_REPORT_PATH') ?? DEFAULT_REPORT_PATH,
+      'Q1_BASELINE_REPORT_PATH',
+    ),
     enablePurposeProbes,
+    fetchRetries,
     usePhotos: readEnv('Q1_USE_PHOTOS') !== '0',
     providerKeys,
   }
@@ -699,27 +718,38 @@ async function main() {
   const harness = new Q1BaselineHarness(loadConfig())
   let status = 'failed'
   let summary = null
+  let runError = null
+  let cleanupError = null
   try {
     summary = await harness.run()
     status = 'passed'
-  } finally {
-    await harness.cleanup()
-    const reportPath = await harness.writeReport(status, summary)
-    if (status !== 'passed') {
-      console.error(JSON.stringify({ ok: false, run_id: harness.runId, report_path: reportPath }, null, 2))
-    } else {
-      console.log(JSON.stringify({
-        ok: true,
-        run_id: harness.runId,
-        report_path: reportPath,
-        baseline_key: harness.baselineRow?.baseline_key,
-        sample_size: summary.baseline.sample_size,
-        api_log_count: summary.baseline.api_log_count,
-        cost_summary: summary.baseline.cost_summary,
-        cleanup: harness.cleanupCounts,
-      }, null, 2))
-    }
+  } catch (error) {
+    runError = error
   }
+  try {
+    await harness.cleanup()
+  } catch (error) {
+    cleanupError = error
+    status = 'failed'
+    harness.limitations.push(`Cleanup failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  const reportPath = await harness.writeReport(status, summary)
+  if (status !== 'passed') {
+    console.error(JSON.stringify({ ok: false, run_id: harness.runId, report_path: reportPath }, null, 2))
+  } else {
+    console.log(JSON.stringify({
+      ok: true,
+      run_id: harness.runId,
+      report_path: reportPath,
+      baseline_key: harness.baselineRow?.baseline_key,
+      sample_size: summary.baseline.sample_size,
+      api_log_count: summary.baseline.api_log_count,
+      cost_summary: summary.baseline.cost_summary,
+      cleanup: harness.cleanupCounts,
+    }, null, 2))
+  }
+  if (runError) throw runError
+  if (cleanupError) throw cleanupError
 }
 
 main().catch((error) => {

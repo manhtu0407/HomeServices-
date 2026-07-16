@@ -31,7 +31,13 @@ apps/mobile/dist/
 
 # misc
 .DS_Store
+*.p8
+*.p12
 *.pem
+*.key
+*.mobileprovision
+*.jks
+*.keystore
 
 # debug
 npm-debug.log*
@@ -43,7 +49,6 @@ tmp-*.log
 # local agent/workbench artifacts
 /.codex/
 /.pnpm-store/
-/sandbox/
 .claude/.mcp.json
 
 # env files

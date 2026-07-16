@@ -2,6 +2,8 @@ import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { customerScopeDecisionSchema } from '@nestscout/shared'
 import { decideScopeChange } from '@/lib/jobs/scope-change'
 import { logJobEvent } from '@/lib/jobs/event-log'
+import { readJsonRequestBounded } from '@/lib/http/request-json'
+import { isUuidRouteParam } from '@/lib/http/route-param'
 import type { JobStatus } from '@nestscout/shared'
 
 type RouteParams = { params: Promise<{ id: string }> }
@@ -20,17 +22,20 @@ export async function POST(request: Request, { params }: RouteParams) {
   const auth = await authenticateRequest(request, ['customer'])
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )
   }
 
   const { id } = await params
+  if (!isUuidRouteParam(id)) {
+    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu thay đổi', 404)
+  }
 
   let body: unknown
   try {
-    body = await request.json()
+    body = await readJsonRequestBounded(request)
   } catch {
     return apiError('VALIDATION', 'Dữ liệu không hợp lệ', 400)
   }

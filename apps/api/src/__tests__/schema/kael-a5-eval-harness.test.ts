@@ -11,13 +11,13 @@ type EvalFixture = {
   id: string
   category: string
   input: {
-    service_type: 'electrical' | 'plumbing' | 'cleaning'
+    service_type: 'electrical' | 'plumbing' | 'cleaning' | 'hvac' | 'upholstery' | 'handyman'
     description: string
     problem_chips: string[]
     district?: string
   }
   expected: {
-    service_type: 'electrical' | 'plumbing' | 'cleaning' | 'unsupported'
+    service_type: 'electrical' | 'plumbing' | 'cleaning' | 'hvac' | 'upholstery' | 'handyman' | 'unsupported'
     problem_slug: string
     complexity: 'small' | 'medium' | 'large' | null
     price_band: { min: number; max: number } | null
@@ -35,9 +35,9 @@ describe('Kael A5 offline evaluation harness', () => {
 
     expect(fixtures.length).toBeGreaterThanOrEqual(75)
     expect(ids.size).toBe(fixtures.length)
-    for (const service of ['electrical', 'plumbing', 'cleaning'] as const) {
+    for (const service of ['electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman'] as const) {
       expect(fixtures.filter((item) => item.input.service_type === service && item.expected.decline === false).length)
-        .toBeGreaterThanOrEqual(20)
+        .toBeGreaterThanOrEqual(6)
     }
     expect(fixtures.filter((item) => item.expected.decline).length).toBeGreaterThanOrEqual(15)
     expect(new Set(fixtures.filter((item) => item.expected.decline).map((item) => item.category))).toEqual(
@@ -81,6 +81,12 @@ describe('Kael A5 offline evaluation harness', () => {
     expect(source).toContain('docs/test-logs')
     expect(source).toContain('KAEL_EVAL_MOBILE_API_URL')
     expect(source).toContain('KAEL_EVAL_BEARER_TOKEN')
+    expect(source).toContain('KAEL_EVAL_RUN_LIVE')
+    expect(source).toContain('assertStagingOrLocalUrl')
+    expect(source).toContain('AbortController')
+    expect(source).toContain("hvac: {")
+    expect(source).toContain("upholstery: {")
+    expect(source).toContain("handyman: {")
     expect(pkg.scripts['kael:eval']).toBe('node scripts/kael-eval.mjs')
   })
 })

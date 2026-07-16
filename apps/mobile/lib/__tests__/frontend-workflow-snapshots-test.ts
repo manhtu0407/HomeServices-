@@ -1,5 +1,7 @@
-import type { WorkerJobListResponse } from '../api-types'
-import { workerJobToSnapshot } from '../frontend-workflow/snapshots'
+import type { JobDetailResponse, WorkerBroadcastsResponse, WorkerJobListResponse } from '../api-types'
+import { buildWorkerV5SchedulePlan } from '../../components/worker/jobs/schedule'
+import { sameWorkerJobs } from '../frontend-workflow/comparisons'
+import { jobDetailToSnapshot, workerBroadcastToSnapshot, workerJobToSnapshot } from '../frontend-workflow/snapshots'
 
 type WorkerJob = WorkerJobListResponse['jobs'][number]
 
@@ -29,10 +31,61 @@ function buildWorkerJob(overrides: Partial<WorkerJob> = {}): WorkerJob {
     photo_urls: [],
     completion_notes: null,
     completion_photo_urls: [],
+    scheduled_at: '2026-07-15T01:00:00.000Z',
     created_at: '2026-07-11T00:00:00.000Z',
     matched_at: null,
     completed_at: null,
     ...overrides,
+  }
+}
+
+function buildCustomerJobDetail(): JobDetailResponse {
+  return {
+    job: {
+      id: 'job-customer-scheduled',
+      status: 'broadcasting',
+      service_type: 'electrical',
+      description: 'Ổ cắm mất điện cần kiểm tra',
+      problem_chips: ['outlet_not_working'],
+      photo_urls: [],
+      address_building: 'Tòa A',
+      address_unit: null,
+      address_floor: null,
+      address_district: 'district_7',
+      address_access: {
+        release_stage: 'area_only',
+        exact_unit_released: false,
+        worker_checked_in: false,
+        check_in_required: false,
+        identity_check_required: false,
+        customer_handoff_required: false,
+        evidence_mode: 'none',
+        access_profile: {},
+      },
+      scheduled_at: '2026-07-15T01:00:00.000Z',
+      kael_problem_identified: null,
+      kael_complexity: null,
+      kael_price_min: null,
+      kael_price_max: null,
+      kael_advisory: null,
+      kael_estimate_card_v3: null,
+      kael_worker_brief_core: null,
+      kael_worker_brief_guidance: null,
+      kael_progress: null,
+      final_price: null,
+      completion_notes: null,
+      completion_photo_urls: [],
+      created_at: '2026-07-14T00:00:00.000Z',
+      matched_at: null,
+      arrived_at: null,
+      completed_at: null,
+      confirmed_at: null,
+      paid_at: null,
+      reviewed_at: null,
+    },
+    worker: null,
+    broadcast_state: null,
+    current_scope_change: null,
   }
 }
 
@@ -41,6 +94,65 @@ describe('frontend workflow payment truth', () => {
     const snapshot = workerJobToSnapshot(buildWorkerJob({ status: 'estimate_ready' }))
 
     expect(snapshot.status).toBe('estimate_ready')
+  })
+
+  it('preserves the real scheduled instant returned for a worker job', () => {
+    const snapshot = workerJobToSnapshot(buildWorkerJob())
+
+    expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
+  })
+
+  it('preserves the real scheduled instant returned in a worker broadcast', () => {
+    const broadcast: WorkerBroadcastsResponse['broadcasts'][number] = {
+      broadcast_id: 'broadcast-scheduled',
+      job_id: 'job-scheduled',
+      status: 'sent',
+      service_type: 'electrical',
+      problem_summary: 'Ổ cắm mất điện',
+      district: 'district_7',
+      estimated_price_min: null,
+      estimated_price_max: null,
+      estimated_earning_min: null,
+      estimated_earning_max: null,
+      scheduled_at: '2026-07-15T01:00:00.000Z',
+      sent_at: '2026-07-14T01:00:00.000Z',
+      expires_at: '2026-07-14T01:05:00.000Z',
+      seconds_remaining: 300,
+    }
+
+    expect(workerBroadcastToSnapshot(broadcast).scheduledAt).toBe(
+      '2026-07-15T01:00:00.000Z',
+    )
+  })
+
+  it('preserves the real scheduled instant returned in customer job detail', () => {
+    const snapshot = jobDetailToSnapshot(buildCustomerJobDetail())
+
+    expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
+  })
+
+  it('renders and orders a worker schedule from scheduled_at instead of its list position', () => {
+    const later = buildWorkerJob({
+      id: 'job-later',
+      status: 'worker_matched',
+      scheduled_at: '2026-07-15T03:00:00.000Z',
+    })
+    const earlier = buildWorkerJob({
+      id: 'job-earlier',
+      status: 'worker_matched',
+      scheduled_at: '2026-07-15T01:00:00.000Z',
+    })
+
+    const schedule = buildWorkerV5SchedulePlan(null, [later, earlier], 'vi')
+
+    expect(schedule.rows.map((row) => row.time)).toEqual(['15/07 · 08:00', '15/07 · 10:00'])
+  })
+
+  it('detects a worker schedule-only refresh instead of retaining a stale time', () => {
+    const current = buildWorkerJob({ scheduled_at: '2026-07-15T01:00:00.000Z' })
+    const rescheduled = buildWorkerJob({ scheduled_at: '2026-07-15T03:00:00.000Z' })
+
+    expect(sameWorkerJobs([current], [rescheduled])).toBe(false)
   })
 
   it('does not fabricate payment or provider from final price and estimated earnings', () => {

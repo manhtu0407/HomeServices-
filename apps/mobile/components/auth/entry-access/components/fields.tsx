@@ -10,6 +10,8 @@ import {
   type TextInputProps,
 } from 'react-native'
 import { KaelTextInput } from '@/components/ui/kael-primitives'
+import { useAppLanguage } from '@/lib/app-language'
+import { entryAccessCopy } from '../copy'
 import { entryTheme } from '../theme'
 import { EntryIcon, type EntryIconName } from './icons'
 
@@ -36,6 +38,8 @@ export function EntryTextField({
   textContentType?: TextInputProps['textContentType']
   value: string
 }) {
+  const language = useAppLanguage()
+  const accessibilityCopy = entryAccessCopy[language].accessibility
   const [focused, setFocused] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const isSecure = Boolean(secureTextEntry) && !revealed
@@ -65,7 +69,7 @@ export function EntryTextField({
           value={value}
         />
         {secureTextEntry ? (
-          <Pressable accessibilityLabel={revealed ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} hitSlop={8} onPress={() => setRevealed((current) => !current)}>
+          <Pressable accessibilityLabel={revealed ? accessibilityCopy.hidePassword : accessibilityCopy.showPassword} hitSlop={8} onPress={() => setRevealed((current) => !current)}>
             <EntryIcon color={entryTheme.color.text.muted} name="eye" size={18} />
           </Pressable>
         ) : null}
@@ -112,10 +116,7 @@ const styles = StyleSheet.create({
   },
   fieldFocused: {
     borderColor: 'rgba(36,179,161,0.65)',
-    shadowColor: '#088779',
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 0 },
+    boxShadow: '0px 0px 3px rgba(8,135,121,0.08)',
   },
   group: { gap: 7, marginBottom: 12 },
   iconRail: {

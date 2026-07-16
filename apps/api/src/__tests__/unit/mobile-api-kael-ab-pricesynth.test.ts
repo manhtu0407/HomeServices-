@@ -4,6 +4,7 @@ import {
   evaluatePriceSynthesisAbCase,
   priceSynthesisAbCaseSchema,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/price-synthesis-ab'
+import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 describe('Kael F26 price_synthesis A/B evaluator', () => {
   afterEach(() => {
@@ -41,7 +42,7 @@ describe('Kael F26 price_synthesis A/B evaluator', () => {
     const result = await evaluatePriceSynthesisAbCase(caseInput(), {
       perplexityApiKey: 'pplx-test',
       anthropicApiKey: 'anthropic-test',
-    })
+    }, allowKaelSpendForTest('admin-1'))
 
     expect(result).toMatchObject({
       case_key: 'case-1',
@@ -81,7 +82,7 @@ describe('Kael F26 price_synthesis A/B evaluator', () => {
     const result = await evaluatePriceSynthesisAbCase(caseInput(), {
       perplexityApiKey: 'pplx-test',
       anthropicApiKey: 'anthropic-test',
-    })
+    }, allowKaelSpendForTest('admin-1'))
 
     expect(result.fallback_used).toBe(true)
     expect(result.perplexity.schema_valid).toBe(false)

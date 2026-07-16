@@ -63,9 +63,12 @@ export const ARTIFACT_LIFECYCLE_BY_TYPE = Object.freeze({
 } satisfies Record<WorkflowArtifactType, readonly WorkflowArtifactMode[]>)
 
 export function getArtifactLifecycle(type: WorkflowArtifactType): readonly WorkflowArtifactMode[] {
+  if (!Object.prototype.hasOwnProperty.call(ARTIFACT_LIFECYCLE_BY_TYPE, type)) {
+    throw new RangeError(`Unknown workflow artifact: ${String(type)}`)
+  }
   return ARTIFACT_LIFECYCLE_BY_TYPE[type]
 }
 
-export function isWorkflowArtifactMode(value: string): value is WorkflowArtifactMode {
-  return (WORKFLOW_ARTIFACT_MODES as readonly string[]).includes(value)
+export function isWorkflowArtifactMode(value: unknown): value is WorkflowArtifactMode {
+  return typeof value === 'string' && (WORKFLOW_ARTIFACT_MODES as readonly string[]).includes(value)
 }

@@ -1,8 +1,8 @@
 import { memo, type ComponentType, type ReactNode, useCallback, useMemo, useState } from 'react'
 import { useEffect, useRef } from 'react'
+import { Image } from 'expo-image'
 import {
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,7 +19,7 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient } from 'react-native-svg'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { buildLocalJobDisplayCode, type LocalDeal, type ServiceType } from '@nestscout/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
@@ -27,16 +27,24 @@ import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { KaelButton, KaelTextField, MintAura } from '@/components/ui/kael-primitives'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color, glass, radius, shadow, signature, typography } from '@/design/theme'
-import type { JobIncidentResponse, KaelChatProgress, WorkerKaelChatTurn } from '@/lib/api-types'
 import { getMobileApiAuthHeaders, mobileApiUrl } from '@/lib/api'
+import { localizeAccountMutationError } from '@/lib/account-mutation-error'
 import { setAppLanguage, type AppLanguage, localizedServiceLabel, localizedStatusLabel } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
-import { generateClientRequestId } from '@/lib/client-request-id'
+import {
+  clearStableClientRequestId,
+  stableClientRequestId,
+  type PendingClientRequestRef,
+} from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
-import { jobMediaObjectPathFromRef } from '@/lib/job-media-preview'
-import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { mergeJobMediaRefsNewestFirst } from '@/lib/job-media-preview'
+import {
+  localizeMediaUploadFailure,
+  uploadJobMediaDrafts,
+  type LocalMediaUploadDraft,
+} from '@/lib/media-upload'
 import { kaelMemoryService, workerKaelChatService, workerRouteService } from '@/lib/services'
 import type {
   WorkerV5IconName,
@@ -100,13 +108,8 @@ import {
 import {
   WorkerV5ActionRail,
   WorkerV5ChatBubble,
-  WorkerV5OnsiteAdvisoryRail,
   WorkerV5SingleSourceActionButton,
-  WorkerV5SuggestionChips,
 } from './jobs/advisory-surfaces'
-import {
-  WorkerV5CaseMessagePreview,
-} from './jobs/case-surfaces'
 import {
   WorkerV5ApprovalWaitBody,
   WorkerV5CaseClosedBody,
@@ -122,17 +125,7 @@ import {
 } from './earnings/body-surfaces'
 import { WorkerV5LedgerHero } from './earnings/ledger-surfaces'
 import { WorkerV5PayoutLimitPolicyCard } from './earnings/payout-surfaces'
-import {
-  WorkerV5PayoutAccountManagementRows,
-  WorkerV5PayoutBankAccountForm,
-  WorkerV5PayoutMethodBankGrid,
-  WorkerV5PayoutMethodHero,
-} from './earnings/payout-method-surfaces'
-import {
-  resolveWorkerV5BankLogoName,
-  workerV5BankLabel,
-  type WorkerV5BankLogoName,
-} from './earnings/banks'
+import { WorkerV5PayoutMethodHero } from './earnings/payout-method-surfaces'
 import {
   buildWorkerV5OfferAddressRows,
   buildWorkerV5OfferRequestRows,
@@ -145,51 +138,28 @@ import {
   WorkerV5StatusTimeline as WorkerV5StatusTimelineSurface,
   type WorkerV5StatusTimelineBaseProps,
 } from './jobs/timeline-surfaces'
-import {
-  WorkerV5InfoGrid,
-  WorkerV5KaelDraftCard,
-  WorkerV5PriceLines,
-} from './jobs/shared-surfaces'
+import { WorkerV5PriceLines } from './jobs/shared-surfaces'
 import { WorkerV5ScopeEvidenceGate } from './jobs/scope-surfaces'
+import { useWorkerV5ScopeChangeDraft } from './jobs/use-worker-scope-change-draft'
+import { formatVnd, textByLanguage } from './ui/format'
 import {
-  formatResponseSpeed,
-  formatScopeEventTime,
-  formatScopeWaitElapsed,
-  formatVnd,
-  textByLanguage,
-} from './ui/format'
-import {
-  documentBooleanLabel,
   formatScopePriceRange,
   formatWorkerDistrict,
   getWorkerV5ChatJobId,
   normalizeServiceAreaDraftText,
-  normalizeWorkerV5DistrictSelection,
   normalizeWorkerV5DistrictSelectionList,
   parseWorkerV5ServiceAreaDraft,
-  paymentStatusLabel,
-  scopeChangeApprovalAmountLabel,
   workerAvailabilityLabel,
   workerDocumentSummary,
-  workerPerformanceAxisLabel,
-  workerPerformanceAxisShortLabel,
-  workerStatusStage,
-  workerV5ChatGreetingName,
   workerV5DistrictDraftFromSelection,
   workerV5HomeDisplayName,
-  workerV5Initials,
-  workerV5ShiftProfileCoverageLabel,
-  workerV5TimeChoiceLabel,
-  workerVerificationLabel,
 } from './ui/labels'
 import {
   workerV5HasNumber,
   workerV5NumericInsight,
-  workerV5ProfileBackendSyncPercent,
 } from './ui/performance'
 import {
   workerV5ArrivalDestinationLabel,
-  workerV5KaelOpportunityMatchScore,
   workerV5StringFromUnknown,
   type WorkerV5MapLocation,
 } from './ui/route'
@@ -206,7 +176,6 @@ import {
 } from './ui/worker-v5-icon-assets'
 import {
   WorkerV5CustomerCaseWideMintAura,
-  WorkerV5CustomerCaseWorkCardAura,
   WorkerV5CustomerFulfillmentCanvasAura,
   WorkerV5CustomerMapMintAura,
   WorkerV5CustomerZipMintAura,
@@ -226,15 +195,17 @@ import {
   WorkerV5PrimaryButtonFill,
   WorkerV5SectionHeader,
 } from './ui/primitives-surfaces'
-import {
-  WorkerV5KaelOrbCameraIcon,
-  WorkerV5KaelOrbQuickChips,
-} from './chat/orb-surfaces'
+import { WorkerV5KaelOrbCameraIcon } from './chat/orb-surfaces'
 import {
   WorkerV5KaelOrbBody,
 } from './chat/body-surfaces'
 import { WorkerV5KaelSessionMenu, WorkerV5KaelSessionPlusIcon } from './chat/session-menu'
 import { useWorkerV5KaelOrbChat } from './chat/use-kael-orb-chat'
+import {
+  canUseWorkerV5PrivateKaelChat,
+  workerV5PrivateKaelMediaName,
+  type WorkerV5PrivateKaelSession,
+} from './chat/use-worker-kael-orb-chat'
 import {
   WorkerV5BoundaryNote,
   WorkerV5TimerCard,
@@ -243,6 +214,13 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSequ
 
 export type { WorkerDockActive } from './dock/types'
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+type WorkerV5FieldEvidenceRequest = {
+  createRef: PendingClientRequestRef
+  fingerprint: string
+  jobId: string
+  mediaRefs: string[] | null
+  turnRef: PendingClientRequestRef
+}
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -281,8 +259,6 @@ const workerV5OpportunityServiceIcons: Record<ServiceType, ImageSourcePropType> 
 
 const WORKER_V5_PROFILE_ICON_VISUAL_BOOST = new Set<WorkerV5IconName>(['document', 'scope'])
 
-const WORKER_V5_SUPPORTED_SERVICES: readonly ServiceType[] = ['electrical', 'plumbing', 'cleaning']
-
 function workerV5JobsDestinationScreenId(deal: LocalDeal | null): WorkerV5ScreenId {
   if (!deal) return '2.1-opportunity-inbox'
   const status = deal.backendStatus ?? deal.status
@@ -298,19 +274,6 @@ function workerV5JobsDestinationScreenId(deal: LocalDeal | null): WorkerV5Screen
     || status === 'paid'
   ) return '2.12-case-closed'
   return '2.1-opportunity-inbox'
-}
-
-function canUseWorkerV5PrivateKaelChat(deal: LocalDeal | null) {
-  const status = deal?.backendStatus ?? deal?.status
-  return Boolean(status && [
-    'worker_matched',
-    'worker_on_way',
-    'arrived',
-    'inspecting',
-    'repairing',
-    'scope_change_pending',
-    'completed_by_worker',
-  ].includes(status))
 }
 
 function workerV5DisplayCode(deal: LocalDeal | null, language: AppLanguage) {
@@ -368,7 +331,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const screenPrimaryNext = screen.primaryNext
   const onDockScroll = useDockScrollHandler()
   const router = useRouter()
-  const { signOut } = useAuth()
+  const { session, signOut } = useAuth()
   const runtime = useFrontendWorkflow()
   const [actionBusy, setActionBusy] = useState(false)
   const actionBusyRef = useRef(false)
@@ -425,7 +388,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     : usesPayoutRequestHandoff
       ? null
     : usesPayoutMethodHandoff
-      ? textByLanguage(language, 'Chọn ngân hàng đã xác minh', 'Choose a verified bank')
+      ? textByLanguage(language, 'Chỉ hiển thị dữ liệu tài khoản đã ghi nhận', 'Recorded account data only')
     : screen.id === '5.4-reliability-insights'
       ? textByLanguage(language, 'Chỉ số có thể kiểm chứng, không phải cảm tính', 'Verifiable signals, not sentiment')
     : screen.id === '5.5-account-utilities' || screen.id === '5.10-support-settings'
@@ -753,22 +716,23 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           </View>
         ) : null}
 
-        {renderWorkerV5Body(
-          screen,
-          runtime,
-          language,
-          glass.reduceMotion,
-          glass.reduceTransparency,
-          () => openScreen(nextScreen),
-          openScreenById,
-          runWorkerAction,
-          runRouteAction,
-          openJobChat,
-          actionBusy,
-          routePreview,
-          openWorkerAvatarPicker,
-          avatarUploadBusy,
-        )}
+        <WorkerV5Body
+          key={session?.user.id ?? 'guest-worker'}
+          actionBusy={actionBusy}
+          avatarUploadBusy={avatarUploadBusy}
+          language={language}
+          navigateJobChat={openJobChat}
+          navigateNext={() => openScreen(nextScreen)}
+          navigateToScreen={openScreenById}
+          openWorkerAvatarPicker={openWorkerAvatarPicker}
+          reduceMotion={glass.reduceMotion}
+          reduceTransparency={glass.reduceTransparency}
+          routePreview={routePreview}
+          runRouteAction={runRouteAction}
+          runWorkerAction={runWorkerAction}
+          runtime={runtime}
+          screen={screen}
+        />
 
         {primaryAction && screen.id !== '5.4-reliability-insights' && screen.id !== '5.5-account-utilities' && screen.id !== '5.6-agent-memory-preferences' && screen.id !== '5.10-support-settings' && !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff ? (
           <WorkerV5PrimaryActionButton
@@ -840,19 +804,23 @@ function WorkerV5HomeScreenSurface({
   const scoreRingRadius = 36
   const scoreCircumference = 2 * Math.PI * scoreRingRadius
   const scoreStroke = score == null ? 0 : (score / 100) * scoreCircumference
-  const pendingSettlementCount = earnings?.pending_payment_count && earnings.pending_payment_count > 0
-    ? String(earnings.pending_payment_count)
-    : earnings?.pending_payment_amount && earnings.pending_payment_amount > 0
-      ? '1'
-      : textByLanguage(language, 'Chưa có', 'None')
+  const dataPending = textByLanguage(language, 'Chờ dữ liệu', 'Data pending')
+  const jobsEmpty = textByLanguage(language, 'Chưa có', 'None')
+  const pendingSettlementCount = !earnings
+    ? dataPending
+    : earnings.pending_payment_count > 0
+      ? String(earnings.pending_payment_count)
+      : earnings.pending_payment_amount > 0
+        ? '1'
+        : jobsEmpty
   const stats = [
     {
       label: textByLanguage(language, 'Cơ hội mới', 'New opportunities'),
-      value: deal?.broadcast ? '1' : textByLanguage(language, 'Chưa có', 'None'),
+      value: deal?.broadcast ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
     },
     {
       label: textByLanguage(language, 'Việc đang chạy', 'Active work'),
-      value: deal ? '1' : textByLanguage(language, 'Chưa có', 'None'),
+      value: deal ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
     },
     {
       label: textByLanguage(language, 'Chờ đối soát', 'Settlement'),
@@ -866,7 +834,11 @@ function WorkerV5HomeScreenSurface({
         { glyph: 'check' as const, label: textByLanguage(language, 'Bạn quyết định', 'You decide') },
       ],
       icon: workerV5HomeQuickIconAssets.incoming,
-      meta: deal?.broadcast ? textByLanguage(language, '1 cơ hội đã lọc', '1 filtered opportunity') : textByLanguage(language, 'Chưa có cơ hội thật', 'No real opportunity'),
+      meta: deal?.broadcast
+        ? textByLanguage(language, '1 cơ hội đã lọc', '1 filtered opportunity')
+        : runtime.workerJobsHydrated
+          ? textByLanguage(language, 'Chưa có cơ hội thật', 'No real opportunity')
+          : dataPending,
       targetId: '2.1-opportunity-inbox' as const,
       tone: 'document' as const,
       title: textByLanguage(language, 'Nhận việc ngay', 'Open work'),
@@ -879,7 +851,9 @@ function WorkerV5HomeScreenSurface({
       icon: workerV5HomeQuickIconAssets.kael,
       meta: deal?.broadcast
         ? textByLanguage(language, 'Giải thích cơ hội hiện tại', 'Explain the current opportunity')
-        : textByLanguage(language, 'Lọc theo kỹ năng & khu vực', 'Filter by skills and area'),
+        : runtime.workerJobsHydrated
+          ? textByLanguage(language, 'Lọc theo kỹ năng & khu vực', 'Filter by skills and area')
+          : dataPending,
       targetId: '3.2-kael-job-intake' as const,
       tone: 'signal' as const,
       title: textByLanguage(language, 'Kael nhận việc', 'Kael job intake'),
@@ -890,9 +864,11 @@ function WorkerV5HomeScreenSurface({
         { glyph: 'location' as const, label: textByLanguage(language, 'Khu vực', 'Area') },
       ],
       icon: workerV5HomeQuickIconAssets.skillsArea,
-      meta: profile?.districts?.length
-        ? textByLanguage(language, `${profile.districts.length} khu vực phục vụ`, `${profile.districts.length} service areas`)
-        : textByLanguage(language, 'Bổ sung để tăng cơ hội phù hợp', 'Complete this for better matches'),
+      meta: !profile
+        ? textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
+        : profile.districts.length
+          ? textByLanguage(language, `${profile.districts.length} khu vực phục vụ`, `${profile.districts.length} service areas`)
+          : textByLanguage(language, 'Bổ sung để tăng cơ hội phù hợp', 'Complete this for better matches'),
       targetId: '5.3-skills-service-area' as const,
       tone: 'location' as const,
       title: textByLanguage(language, 'Kỹ năng & khu vực', 'Skills and area'),
@@ -903,9 +879,11 @@ function WorkerV5HomeScreenSurface({
         { glyph: 'money' as const, label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
       ],
       icon: workerV5HomeQuickIconAssets.earnings,
-      meta: earnings?.net_earnings
-        ? formatVnd(earnings.net_earnings, language)
-        : textByLanguage(language, 'Chưa có đối soát', 'No settlement yet'),
+      meta: !earnings
+        ? dataPending
+        : earnings.net_earnings > 0
+          ? formatVnd(earnings.net_earnings, language)
+          : textByLanguage(language, 'Chưa có đối soát', 'No settlement yet'),
       targetId: '4.1-earnings-overview' as const,
       tone: 'money' as const,
       title: textByLanguage(language, 'Thu nhập', 'Earnings'),
@@ -931,7 +909,9 @@ function WorkerV5HomeScreenSurface({
             <Text style={styles.homeSourceSubtitle} numberOfLines={2}>
               {deal
                 ? textByLanguage(language, 'Kael đã đồng bộ lịch, khu vực và việc đang chạy', 'Kael synced schedule, area, and active work')
-                : textByLanguage(language, 'Kael đã đồng bộ hồ sơ và khu vực nhận việc', 'Kael synced profile and service area')}
+                : profile
+                  ? textByLanguage(language, 'Kael đã đồng bộ hồ sơ và khu vực nhận việc', 'Kael synced profile and service area')
+                  : textByLanguage(language, 'Đang chờ hồ sơ và dữ liệu nhận việc', 'Waiting for profile and work data')}
             </Text>
           </View>
         </View>
@@ -1012,22 +992,37 @@ function WorkerV5HomeScreenSurface({
   )
 }
 
-function renderWorkerV5Body(
-  screen: WorkerV5ScreenDefinition,
-  runtime: WorkerV5Runtime,
-  language: AppLanguage,
-  reduceMotion: boolean,
-  reduceTransparency: boolean,
-  navigateNext: () => void,
-  navigateToScreen: (id: WorkerV5ScreenId) => void,
-  runWorkerAction: (action: () => Promise<boolean>) => void | Promise<void>,
-  runRouteAction: () => void | Promise<void>,
-  navigateJobChat: () => void,
-  actionBusy: boolean,
-  routePreview: WorkerV5RoutePreviewState,
-  openWorkerAvatarPicker: () => void,
-  avatarUploadBusy: boolean,
-) {
+function WorkerV5Body({
+  actionBusy,
+  avatarUploadBusy,
+  language,
+  navigateJobChat,
+  navigateNext,
+  navigateToScreen,
+  openWorkerAvatarPicker,
+  reduceMotion,
+  reduceTransparency,
+  routePreview,
+  runRouteAction,
+  runWorkerAction,
+  runtime,
+  screen,
+}: {
+  actionBusy: boolean
+  avatarUploadBusy: boolean
+  language: AppLanguage
+  navigateJobChat: () => void
+  navigateNext: () => void
+  navigateToScreen: (id: WorkerV5ScreenId) => void
+  openWorkerAvatarPicker: () => void
+  reduceMotion: boolean
+  reduceTransparency: boolean
+  routePreview: WorkerV5RoutePreviewState
+  runRouteAction: () => void | Promise<void>
+  runWorkerAction: (action: () => Promise<boolean>) => void | Promise<void>
+  runtime: WorkerV5Runtime
+  screen: WorkerV5ScreenDefinition
+}) {
   switch (screen.id) {
     case '1.1-worker-home':
       return <WorkerV5HomeBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
@@ -1145,7 +1140,6 @@ function renderWorkerV5Body(
           language={language}
           ledgerHero={WorkerV5LedgerHero}
           listAura={WorkerV5EarningsHomeListAura}
-          navigateToScreen={navigateToScreen}
           primaryFill={WorkerV5PrimaryButtonFill}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
@@ -1161,7 +1155,6 @@ function renderWorkerV5Body(
           icons={workerV5Icons}
           language={language}
           listAura={WorkerV5EarningsHomeListAura}
-          navigateToScreen={navigateToScreen}
           primaryFill={WorkerV5PrimaryButtonFill}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
@@ -1169,7 +1162,7 @@ function renderWorkerV5Body(
         />
       )
     case '4.4-payout-method':
-      return <WorkerV5PayoutMethodBody language={language} navigateToScreen={navigateToScreen} reduceTransparency={reduceTransparency} runtime={runtime} />
+      return <WorkerV5PayoutMethodBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '5.1-profile-overview':
       return (
         <WorkerV5ProfileOverviewBody
@@ -1230,9 +1223,9 @@ function renderWorkerV5Body(
         />
       )
     case '5.5-account-utilities':
-      return <WorkerV5SettingsBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
+      return <WorkerV5SettingsBody key={runtime.workerProfile?.id ?? 'worker-settings-loading'} language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '5.6-agent-memory-preferences':
-      return <WorkerV5AgentMemoryBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
+      return <WorkerV5AgentMemoryBody key={runtime.workerProfile?.id ?? 'worker-memory-loading'} language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '5.7-verification-documents':
       return (
         <WorkerV5VerificationDocumentsBody
@@ -1273,7 +1266,7 @@ function renderWorkerV5Body(
         />
       )
     case '5.10-support-settings':
-      return <WorkerV5SettingsBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
+      return <WorkerV5SettingsBody key={runtime.workerProfile?.id ?? 'worker-settings-loading'} language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     default:
       return null
   }
@@ -1607,11 +1600,13 @@ function WorkerV5InProgressBody({
   const briefLines = deal?.broadcast?.prebrief?.filter(Boolean).slice(0, 5) ?? []
   const evidenceUrls = deal?.fieldEvidencePhotoUrls ?? []
   const currentJobId = deal?.broadcast?.jobId ?? deal?.id ?? null
-  const [fieldEvidenceUrls, setFieldEvidenceUrls] = useState<Array<string | null>>([null, null, null])
+  const [fieldEvidenceUrls, setFieldEvidenceUrls] = useState<(string | null)[]>([null, null, null])
   const [fieldEvidenceBusy, setFieldEvidenceBusy] = useState(false)
   const [fieldEvidenceBusySlot, setFieldEvidenceBusySlot] = useState<number | null>(null)
   const [fieldEvidenceKaelConfirmation, setFieldEvidenceKaelConfirmation] = useState<string | null>(null)
   const fieldEvidenceSessionRef = useRef<WorkerV5PrivateKaelSession | null>(null)
+  const fieldEvidenceRequestRef = useRef<WorkerV5FieldEvidenceRequest | null>(null)
+  const fieldEvidenceOperationRef = useRef<{ jobId: string; slot: number } | null>(null)
   const activeFieldEvidenceJobIdRef = useRef<string | null>(null)
   const previousFieldEvidenceJobIdRef = useRef(currentJobId)
   if (previousFieldEvidenceJobIdRef.current !== currentJobId) {
@@ -1621,6 +1616,8 @@ function WorkerV5InProgressBody({
     setFieldEvidenceBusySlot(null)
     setFieldEvidenceKaelConfirmation(null)
     fieldEvidenceSessionRef.current = null
+    fieldEvidenceRequestRef.current = null
+    fieldEvidenceOperationRef.current = null
   }
   activeFieldEvidenceJobIdRef.current = currentJobId
   const visibleEvidenceUrls = [0, 1, 2].map((slot) => evidenceUrls[slot] ?? fieldEvidenceUrls[slot] ?? null)
@@ -1632,101 +1629,155 @@ function WorkerV5InProgressBody({
   }))
 
   const addFieldEvidence = async (source: 'camera' | 'library', slot: number) => {
-    if (fieldEvidenceBusy) return
-
-    const permission = source === 'camera'
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert(
-        'Kael',
-        textByLanguage(
-          language,
-          source === 'camera'
-            ? 'Cần quyền camera để chụp ảnh hiện trường cho Kael.'
-            : 'Cần quyền kho ảnh để gửi ảnh hiện trường cho Kael.',
-          source === 'camera'
-            ? 'Camera permission is needed to capture on-site evidence for Kael.'
-            : 'Photo-library permission is needed to send on-site evidence to Kael.',
-        ),
-      )
-      return
-    }
-
-    const result = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.82,
-        })
-      : await ImagePicker.launchImageLibraryAsync({
-          allowsMultipleSelection: false,
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.82,
-        })
-    if (result.canceled || result.assets.length === 0) return
-    if (!currentJobId) {
+    if (fieldEvidenceBusy || fieldEvidenceOperationRef.current) return
+    const requestJobId = currentJobId
+    if (!requestJobId) {
       Alert.alert('Kael', textByLanguage(language, 'Chưa tìm thấy việc đang thực hiện để gắn ảnh.', 'No active job was found to attach this photo.'))
       return
     }
+    const operation = { jobId: requestJobId, slot }
+    fieldEvidenceOperationRef.current = operation
+    let evidenceAttached = false
 
-    const asset = result.assets[0]
-    setFieldEvidenceBusy(true)
-    setFieldEvidenceBusySlot(slot)
-    setFieldEvidenceKaelConfirmation(textByLanguage(language, 'Kael đang nhận ảnh hiện trường…', 'Kael is receiving the on-site photo…'))
     try {
-      const uploaded = await uploadJobMediaDrafts(currentJobId, [{
-        fileName: workerV5PrivateKaelMediaName(asset, slot, language),
-        fileSizeBytes: asset.fileSize ?? undefined,
-        mimeType: asset.mimeType ?? undefined,
-        type: 'image',
+      // The post-I/O job guard prevents a picker result from crossing into a newly active job.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const permission = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
+      if (!permission.granted) {
+        Alert.alert(
+          'Kael',
+          textByLanguage(
+            language,
+            source === 'camera'
+              ? 'Cần quyền camera để chụp ảnh hiện trường cho Kael.'
+              : 'Cần quyền kho ảnh để gửi ảnh hiện trường cho Kael.',
+            source === 'camera'
+              ? 'Camera permission is needed to capture on-site evidence for Kael.'
+              : 'Photo-library permission is needed to send on-site evidence to Kael.',
+          ),
+        )
+        return
+      }
+
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.82,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            allowsMultipleSelection: false,
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.82,
+          })
+      if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
+      if (result.canceled || result.assets.length === 0) return
+
+      const asset = result.assets[0]
+      const fieldEvidenceFingerprint = JSON.stringify({
+        fileName: asset.fileName?.trim() ?? null,
+        fileSizeBytes: asset.fileSize ?? null,
+        job_id: requestJobId,
+        language,
+        mimeType: asset.mimeType ?? null,
         uri: asset.uri,
-      }], 'kael_reference')
-      if (!uploaded.success) {
-        if (activeFieldEvidenceJobIdRef.current === currentJobId) {
+      })
+      let pendingRequest = fieldEvidenceRequestRef.current
+      if (
+        !pendingRequest ||
+        pendingRequest.jobId !== requestJobId ||
+        pendingRequest.fingerprint !== fieldEvidenceFingerprint
+      ) {
+        pendingRequest = {
+          createRef: { current: null },
+          fingerprint: fieldEvidenceFingerprint,
+          jobId: requestJobId,
+          mediaRefs: null,
+          turnRef: { current: null },
+        }
+        fieldEvidenceRequestRef.current = pendingRequest
+      }
+      setFieldEvidenceBusy(true)
+      setFieldEvidenceBusySlot(slot)
+      setFieldEvidenceKaelConfirmation(textByLanguage(language, 'Kael đang nhận ảnh hiện trường…', 'Kael is receiving the on-site photo…'))
+      let uploadedMediaRefs = pendingRequest.mediaRefs
+      if (uploadedMediaRefs === null) {
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        const uploadResult = await uploadJobMediaDrafts(requestJobId, [{
+          fileName: workerV5PrivateKaelMediaName(asset, slot, language),
+          fileSizeBytes: asset.fileSize ?? undefined,
+          mimeType: asset.mimeType ?? undefined,
+          type: 'image',
+          uri: asset.uri,
+        }], 'kael_reference')
+        if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
+        if (!uploadResult.success) {
           setFieldEvidenceKaelConfirmation(textByLanguage(
             language,
             'Chưa thể gắn ảnh hiện trường vào việc lúc này.',
             'The on-site photo could not be attached to the job right now.',
           ))
+          return
         }
-        return
+        uploadedMediaRefs = uploadResult.mediaRefs
+        pendingRequest.mediaRefs = uploadedMediaRefs
       }
+      evidenceAttached = true
 
-      if (activeFieldEvidenceJobIdRef.current !== currentJobId) return
-      setFieldEvidenceUrls((current) => current.map((url, index) => index === slot ? uploaded.mediaRefs[0] ?? asset.uri : url))
-      void runtime.actions.workerRefresh()
+      setFieldEvidenceUrls((current) => current.map((url, index) => index === slot ? uploadedMediaRefs[0] ?? asset.uri : url))
+      void runtime.actions.workerRefresh().catch(() => undefined)
 
-      let sessionId = fieldEvidenceSessionRef.current?.jobId === currentJobId
+      let sessionId = fieldEvidenceSessionRef.current?.jobId === requestJobId
         ? fieldEvidenceSessionRef.current.sessionId
         : null
       if (!sessionId) {
-        const created = await workerKaelChatService.create({
-          client_request_id: generateClientRequestId(),
-          job_id: currentJobId,
+        const createFingerprint = JSON.stringify({
+          job_id: requestJobId,
           language,
           mode: 'intake',
         })
-        if (!created.success || created.data.session.job_id !== currentJobId) {
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        const created = await workerKaelChatService.create({
+          client_request_id: stableClientRequestId(pendingRequest.createRef, createFingerprint),
+          job_id: requestJobId,
+          language,
+          mode: 'intake',
+        })
+        if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
+        if (!created.success || created.data.session.job_id !== requestJobId) {
           setFieldEvidenceKaelConfirmation(textByLanguage(language, 'Kael chưa mở được phiên xác nhận hiện trường.', 'Kael could not open the on-site confirmation session.'))
           return
         }
         sessionId = created.data.session.id
-        fieldEvidenceSessionRef.current = { jobId: currentJobId, sessionId }
+        fieldEvidenceSessionRef.current = { jobId: requestJobId, sessionId }
+        clearStableClientRequestId(pendingRequest.createRef, createFingerprint)
       }
 
-      const confirmed = await workerKaelChatService.streamTurn(sessionId, {
-        client_request_id: generateClientRequestId(),
+      const confirmationMessage = textByLanguage(
         language,
-        media_refs: uploaded.mediaRefs,
-        message: textByLanguage(
-          language,
-          'Tôi đã gửi ảnh hiện trường. Hãy đối chiếu ảnh với phạm vi đang thực hiện, chỉ nêu quan sát có căn cứ và hướng dẫn báo đổi phạm vi nếu có phần phát sinh.',
-          'I uploaded an on-site photo. Compare it with the active scope, state only grounded observations, and direct me to report a scope change if extra work is present.',
-        ),
+        'Tôi đã gửi ảnh hiện trường. Hãy đối chiếu ảnh với phạm vi đang thực hiện, chỉ nêu quan sát có căn cứ và hướng dẫn báo đổi phạm vi nếu có phần phát sinh.',
+        'I uploaded an on-site photo. Compare it with the active scope, state only grounded observations, and direct me to report a scope change if extra work is present.',
+      )
+      const turnFingerprint = JSON.stringify({
+        language,
+        media_refs: uploadedMediaRefs,
+        message: confirmationMessage,
+        session_id: sessionId,
+      })
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const confirmed = await workerKaelChatService.streamTurn(sessionId, {
+        client_request_id: stableClientRequestId(pendingRequest.turnRef, turnFingerprint),
+        language,
+        media_refs: uploadedMediaRefs,
+        message: confirmationMessage,
       }, {
         onStage: () => undefined,
         onToken: () => undefined,
       })
+      if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
       if (!confirmed.success) {
         setFieldEvidenceKaelConfirmation(textByLanguage(
           language,
@@ -1735,7 +1786,10 @@ function WorkerV5InProgressBody({
         ))
         return
       }
-      if (activeFieldEvidenceJobIdRef.current !== currentJobId) return
+      clearStableClientRequestId(pendingRequest.turnRef, turnFingerprint)
+      if (fieldEvidenceRequestRef.current === pendingRequest) {
+        fieldEvidenceRequestRef.current = null
+      }
       const confirmation = [...confirmed.data.turns]
         .reverse()
         .find((turn) => turn.role === 'kael' && turn.text_content?.trim())
@@ -1747,11 +1801,16 @@ function WorkerV5InProgressBody({
         'The photo was attached to the job. Kael has not returned a new confirmation.',
       ))
     } catch {
-      if (activeFieldEvidenceJobIdRef.current === currentJobId) {
-        setFieldEvidenceKaelConfirmation(textByLanguage(language, 'Kael chưa xác nhận được ảnh lúc này. Ảnh vẫn không làm thay đổi trạng thái việc.', 'Kael could not confirm this photo right now. The photo did not change the job status.'))
+      if (activeFieldEvidenceJobIdRef.current === requestJobId) {
+        setFieldEvidenceKaelConfirmation(evidenceAttached
+          ? textByLanguage(language, 'Kael chưa xác nhận được ảnh lúc này. Ảnh vẫn không làm thay đổi trạng thái việc.', 'Kael could not confirm this photo right now. The photo did not change the job status.')
+          : textByLanguage(language, 'Chưa thể mở hoặc gửi ảnh hiện trường lúc này.', 'The on-site photo could not be opened or uploaded right now.'))
       }
     } finally {
-      if (activeFieldEvidenceJobIdRef.current === currentJobId) {
+      if (fieldEvidenceOperationRef.current === operation) {
+        fieldEvidenceOperationRef.current = null
+      }
+      if (activeFieldEvidenceJobIdRef.current === requestJobId) {
         setFieldEvidenceBusy(false)
         setFieldEvidenceBusySlot(null)
       }
@@ -1899,22 +1958,28 @@ function WorkerV5ScopeChangeBody({
   const scope = runtime.state.deal?.scopeChange ?? null
   const price = formatScopePriceRange(scope, language)
   const scopeRouteMode = firstRouteParam(params.ns_scope_mode)
-  const [scopeEvidenceOpenLocal, setScopeEvidenceOpenLocal] = useState(false)
+  const {
+    ownerKey: scopeDraftOwnerKey,
+    state: scopeDraft,
+    updateOwnerState: updateScopeDraftOwnerState,
+  } = useWorkerV5ScopeChangeDraft(deal)
+  const {
+    description: scopeDescription,
+    evidenceOpenLocal: scopeEvidenceOpenLocal,
+    evidenceSent: scopeEvidenceSent,
+    incident: jobIncident,
+    mediaNotice: scopeMediaNotice,
+    photos: scopePhotos,
+    proposing: scopeProposing,
+    reason: scopeReason,
+    submitting: scopeSubmitting,
+    uploadedEvidenceRefs: scopeUploadedEvidenceRefs,
+  } = scopeDraft
+  const updateScopeDraft = (
+    update: Parameters<typeof updateScopeDraftOwnerState>[1],
+  ) => updateScopeDraftOwnerState(scopeDraftOwnerKey, update)
+  const scopeMutationInFlightRef = useRef<{ kind: 'evidence' | 'proposal'; ownerKey: string } | null>(null)
   const scopeEvidenceOpen = scopeRouteMode === 'edit' || scopeEvidenceOpenLocal
-  const [scopeDescription, setScopeDescription] = useState('')
-  const [scopeReason, setScopeReason] = useState('')
-  const [scopePhotos, setScopePhotos] = useState<WorkerV5PrivateKaelMediaPreview[]>([])
-  const [scopeUploadedEvidenceRefs, setScopeUploadedEvidenceRefs] = useState<string[]>([])
-  const [scopeSubmitting, setScopeSubmitting] = useState(false)
-  const [scopeProposing, setScopeProposing] = useState(false)
-  const [scopeEvidenceSent, setScopeEvidenceSent] = useState(false)
-  const [jobIncident, setJobIncident] = useState<JobIncidentResponse['incident']>(null)
-  const [scopeMediaNotice, setScopeMediaNotice] = useState<string | null>(null)
-  useEffect(() => {
-    if (!scope) return
-    setScopeDescription((current) => current.trim() ? current : scope.requestedDescription || '')
-    setScopeReason((current) => current.trim() ? current : scope.reason || '')
-  }, [scope?.id, scope?.reason, scope?.requestedDescription])
   const fieldEvidenceUrls = deal?.fieldEvidencePhotoUrls ?? []
   const scopeEvidenceUrls = Array.from(new Set([
     ...fieldEvidenceUrls,
@@ -1929,59 +1994,108 @@ function WorkerV5ScopeChangeBody({
   const scopeReasonReady = scopeReason.trim().length >= 10
   const scopeSubmitDisabled = !canDraftScopeEvidence || !scopeDescriptionReady || !scopeReasonReady || scopeSubmitting || Boolean(scope && !jobIncident)
   const openScopeEditPath = () => {
-    setScopeEvidenceOpenLocal(true)
+    updateScopeDraft((current) => ({ ...current, evidenceOpenLocal: true }))
     router.replace('/(worker)/jobs?ns_worker_screen=2.8-scope-change&ns_scope_mode=edit' as never)
   }
   const submitScopeEvidence = async () => {
-    if (!deal || scopeSubmitDisabled) return
+    if (!deal || scopeSubmitDisabled || scopeMutationInFlightRef.current?.ownerKey === scopeDraftOwnerKey) return
+    const operation = { kind: 'evidence' as const, ownerKey: scopeDraftOwnerKey }
+    scopeMutationInFlightRef.current = operation
     const jobId = deal.broadcast?.jobId ?? deal.id
     const scopeMediaDrafts: LocalMediaUploadDraft[] = scopePhotos.slice(0, 5).map((item) => ({
       fileName: item.fileName,
       type: 'image',
       uri: item.uri,
     }))
-    setScopeSubmitting(true)
-    setScopeMediaNotice(null)
-    let uploadedRefs: string[] = []
-    if (scopeMediaDrafts.length > 0) {
-      const uploaded = await uploadJobMediaDrafts(jobId, scopeMediaDrafts, 'scope_change_evidence')
-      if (!uploaded.success) {
-        setScopeSubmitting(false)
-        setScopeMediaNotice(uploaded.error)
-        return
+    updateScopeDraft((current) => ({ ...current, mediaNotice: null, submitting: true }))
+    try {
+      let uploadedRefs: string[] = []
+      if (scopeMediaDrafts.length > 0) {
+        const uploaded = await uploadJobMediaDrafts(jobId, scopeMediaDrafts, 'scope_change_evidence')
+        if (!uploaded.success) {
+          updateScopeDraft((current) => ({
+            ...current,
+            mediaNotice: localizeMediaUploadFailure(uploaded, language),
+          }))
+          return
+        }
+        uploadedRefs = uploaded.mediaRefs
       }
-      uploadedRefs = uploaded.mediaRefs
+      const nextEvidenceRefs = mergeJobMediaRefsNewestFirst(
+        uploadedRefs,
+        scopeUploadedEvidenceRefs,
+        fieldEvidenceUrls,
+        scope?.evidencePhotoUrls ?? [],
+      )
+      updateScopeDraft((current) => ({
+        ...current,
+        uploadedEvidenceRefs: Array.from(new Set([...current.uploadedEvidenceRefs, ...uploadedRefs])),
+      }))
+      const opened = await runtime.actions.openKaelJobIncident({
+        new_description: scopeDescription.trim(),
+        photo_urls: nextEvidenceRefs,
+        reason: scopeReason.trim(),
+      })
+      updateScopeDraft((current) => opened
+        ? {
+          ...current,
+          evidenceSent: true,
+          incident: opened.incident,
+          photos: [],
+        }
+        : {
+          ...current,
+          mediaNotice: textByLanguage(language, 'Chưa gửi được bằng chứng đổi phạm vi. Vui lòng thử lại.', 'Scope evidence could not be sent. Try again.'),
+        })
+      if (!opened) return
+      router.replace('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal' as never)
+    } catch {
+      updateScopeDraft((current) => ({
+        ...current,
+        mediaNotice: textByLanguage(language, 'Chưa gửi được bằng chứng đổi phạm vi. Vui lòng thử lại.', 'Scope evidence could not be sent. Try again.'),
+      }))
+    } finally {
+      if (scopeMutationInFlightRef.current === operation) scopeMutationInFlightRef.current = null
+      updateScopeDraft((current) => ({ ...current, submitting: false }))
     }
-    const nextEvidenceRefs = Array.from(new Set([
-      ...fieldEvidenceUrls,
-      ...(scope?.evidencePhotoUrls ?? []),
-      ...scopeUploadedEvidenceRefs,
-      ...uploadedRefs,
-    ])).filter((ref) => Boolean(jobMediaObjectPathFromRef(ref))).slice(0, 5)
-    setScopeUploadedEvidenceRefs((current) => Array.from(new Set([...current, ...uploadedRefs])))
-    const opened = await runtime.actions.openKaelJobIncident({
-      new_description: scopeDescription.trim(),
-      photo_urls: nextEvidenceRefs,
-      reason: scopeReason.trim(),
-    })
-    setScopeSubmitting(false)
-    if (!opened) return
-    setJobIncident(opened.incident)
-    setScopePhotos([])
-    setScopeEvidenceSent(true)
-    router.replace('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal' as never)
   }
   const submitScopeProposal = async () => {
-    if (scopeProposing || jobIncident?.status !== 'ready_for_scope_proposal') return
-    setScopeProposing(true)
-    const submitted = await runtime.actions.proposeScopeChangeFromKaelIncident()
-    setScopeProposing(false)
-    if (submitted) setJobIncident((current) => current ? { ...current, status: 'scope_proposed' } : current)
+    if (
+      scopeProposing ||
+      jobIncident?.status !== 'ready_for_scope_proposal' ||
+      scopeMutationInFlightRef.current?.ownerKey === scopeDraftOwnerKey
+    ) return
+    const operation = { kind: 'proposal' as const, ownerKey: scopeDraftOwnerKey }
+    scopeMutationInFlightRef.current = operation
+    updateScopeDraft((current) => ({ ...current, proposing: true }))
+    try {
+      const submitted = await runtime.actions.proposeScopeChangeFromKaelIncident()
+      updateScopeDraft((current) => ({
+        ...current,
+        incident: submitted && current.incident
+          ? { ...current.incident, status: 'scope_proposed' }
+          : current.incident,
+        mediaNotice: submitted
+          ? current.mediaNotice
+          : textByLanguage(language, 'Chưa tạo được đề xuất phạm vi. Vui lòng thử lại.', 'The scope proposal could not be created. Try again.'),
+      }))
+    } catch {
+      updateScopeDraft((current) => ({
+        ...current,
+        mediaNotice: textByLanguage(language, 'Chưa tạo được đề xuất phạm vi. Vui lòng thử lại.', 'The scope proposal could not be created. Try again.'),
+      }))
+    } finally {
+      if (scopeMutationInFlightRef.current === operation) scopeMutationInFlightRef.current = null
+      updateScopeDraft((current) => ({ ...current, proposing: false }))
+    }
   }
   const attachScopePhotos = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      setScopeMediaNotice(textByLanguage(language, 'Cần quyền thư viện ảnh để đính kèm bằng chứng đổi phạm vi.', 'Photo library permission is needed to attach scope evidence.'))
+      updateScopeDraft((current) => ({
+        ...current,
+        mediaNotice: textByLanguage(language, 'Cần quyền thư viện ảnh để đính kèm bằng chứng đổi phạm vi.', 'Photo library permission is needed to attach scope evidence.'),
+      }))
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -1991,14 +2105,17 @@ function WorkerV5ScopeChangeBody({
       selectionLimit: 5,
     })
     if (result.canceled || result.assets.length === 0) return
-    setScopePhotos((current) => {
+    updateScopeDraft((current) => {
       const picked = result.assets.map((asset, index) => ({
-        fileName: asset.fileName?.trim() || textByLanguage(language, `anh-phat-sinh-${current.length + index + 1}.jpg`, `scope-evidence-${current.length + index + 1}.jpg`),
+        fileName: asset.fileName?.trim() || textByLanguage(language, `anh-phat-sinh-${current.photos.length + index + 1}.jpg`, `scope-evidence-${current.photos.length + index + 1}.jpg`),
         uri: asset.uri,
       }))
-      return [...current, ...picked].slice(0, 5)
+      return {
+        ...current,
+        mediaNotice: null,
+        photos: [...current.photos, ...picked].slice(0, 5),
+      }
     })
-    setScopeMediaNotice(null)
   }
   const viewScopeDetails = () => {
     router.replace('/(worker)/chat' as never)
@@ -2034,8 +2151,12 @@ function WorkerV5ScopeChangeBody({
         deal={deal}
         language={language}
         onAddPhotos={attachScopePhotos}
-        onScopeDescriptionChange={setScopeDescription}
-        onScopeReasonChange={setScopeReason}
+        onScopeDescriptionChange={(description) => {
+          updateScopeDraft((current) => ({ ...current, description }))
+        }}
+        onScopeReasonChange={(reason) => {
+          updateScopeDraft((current) => ({ ...current, reason }))
+        }}
         onSubmitScopeEvidence={submitScopeEvidence}
         onViewDetails={viewScopeDetails}
         primaryButtonFill={!scopeSubmitDisabled ? <WorkerV5PrimaryButtonFill disabled={false} variant="source" /> : null}
@@ -2619,7 +2740,11 @@ function WorkerV5SharedJobIncidentChat({
   reduceTransparency: boolean
 }) {
   const jobId = getWorkerV5ChatJobId(deal)
-  const { error, loading, messages, send, sending } = useJobChatThread(jobId, Boolean(jobId))
+  const { error, loading, messages, send, sending } = useJobChatThread(
+    jobId,
+    Boolean(jobId),
+    language,
+  )
   const [draft, setDraft] = useState('')
   const submit = async () => {
     const content = draft.trim()
@@ -2716,152 +2841,39 @@ function WorkerV5KaelJobIntakeBody({
 
 function WorkerV5PayoutMethodBody({
   language,
-  navigateToScreen,
   reduceTransparency,
   runtime,
 }: {
   language: AppLanguage
-  navigateToScreen: (id: WorkerV5ScreenId) => void
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
   const profile = runtime.workerProfile
-  const hasBank = Boolean(profile?.bank_account_masked)
-  const [selectedBank, setSelectedBank] = useState<WorkerV5BankLogoName | null>(() => resolveWorkerV5BankLogoName(profile?.bank_name))
-  const [accountFormOpen, setAccountFormOpen] = useState(false)
-  const [limitPolicyOpen, setLimitPolicyOpen] = useState(false)
-  const [accountOwnerName, setAccountOwnerName] = useState(profile?.legal_name?.trim() ?? '')
-  const [accountNumber, setAccountNumber] = useState('')
-  const [precheckMessage, setPrecheckMessage] = useState<string | null>(null)
-  const [payoutSaveMessage, setPayoutSaveMessage] = useState<string | null>(null)
-  const [savingPayoutMethod, setSavingPayoutMethod] = useState(false)
-  const accountOwnerNameReady = accountOwnerName.trim().length >= 2
-  const accountNumberReady = /^\d{6,20}$/.test(accountNumber.trim())
-  const canConfirmPayoutMethod = Boolean(selectedBank && accountOwnerNameReady && accountNumberReady)
-  const runAccountPrecheck = () => {
-    if (!selectedBank) {
-      setPrecheckMessage(textByLanguage(language, 'Chọn ngân hàng nhận tiền trước khi kiểm tra.', 'Choose a receiving bank before checking.'))
-      return
-    }
-    if (!accountOwnerNameReady || !accountNumberReady) {
-      setPrecheckMessage(textByLanguage(language, 'Cần tên chủ tài khoản và số tài khoản hợp lệ để kiểm tra trước xác thực.', 'A valid account owner and account number are required before verification.'))
-      return
-    }
-    setPrecheckMessage(textByLanguage(language, 'Đã kiểm tra định dạng. Tài khoản sẽ chờ xác thực qua hệ thống trước khi dùng để rút tiền.', 'Format checked. The account still waits for system verification before payout use.'))
-  }
-  const confirmPayoutMethod = async () => {
-    if (!selectedBank || !accountOwnerNameReady || !accountNumberReady) {
-      setPayoutSaveMessage(textByLanguage(language, 'Nhập đủ thông tin tài khoản hợp lệ trước khi xác nhận.', 'Enter valid receiving account details before confirming.'))
-      return
-    }
-    setSavingPayoutMethod(true)
-    setPayoutSaveMessage(null)
-    const result = await runtime.actions.workerSavePayoutMethod({
-      account_holder_name: accountOwnerName.trim(),
-      bank_account: accountNumber.trim(),
-      bank_key: selectedBank,
-      bank_name: workerV5BankLabel(selectedBank),
-    })
-    setSavingPayoutMethod(false)
-    if (result !== true) {
-      setPayoutSaveMessage(result && typeof result === 'object' ? result.error : textByLanguage(language, 'Chưa lưu được tài khoản nhận tiền.', 'Could not save receiving account.'))
-      return
-    }
-    setPayoutSaveMessage(textByLanguage(language, 'Đã gửi tài khoản nhận tiền để hệ thống xác thực. Tài khoản sẽ được dùng cho lượt rút tiền sau khi đối soát xong.', 'Receiving account sent for system verification. It will be used for payout after reconciliation.'))
-  }
   return (
     <View style={styles.sectionStack}>
       <WorkerV5PayoutMethodHero
         language={language}
-        listAura={WorkerV5EarningsHomeListAura}
         profile={profile}
         receivingAccountIcon={workerV5CapturedIconAssets.payoutReceivingAccount}
         reduceTransparency={reduceTransparency}
-        selectedBank={selectedBank}
       />
       <WorkerV5SectionHeader
-        action={textByLanguage(language, '6 ngân hàng', '6 banks')}
-        title={textByLanguage(language, 'Ngân hàng Việt Nam', 'Vietnamese banks')}
+        action={textByLanguage(language, 'Chưa khả dụng', 'Unavailable')}
+        title={textByLanguage(language, 'Trạng thái tài khoản', 'Account status')}
       />
-      <WorkerV5PayoutMethodBankGrid
+      <WorkerV5PayoutLimitPolicyCard
         language={language}
         listAura={WorkerV5EarningsHomeListAura}
-        onSelectBank={(bank) => {
-          setSelectedBank(bank)
-          setPayoutSaveMessage(null)
-        }}
-        profile={profile}
-        reduceTransparency={reduceTransparency}
-        selectedBank={selectedBank}
-      />
-      <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Cơ bản', 'Basic')}
-        title={textByLanguage(language, 'Quản lý tài khoản', 'Account management')}
-      />
-      <WorkerV5PayoutAccountManagementRows
-        accountIcon={workerV5CapturedIconAssets.payoutBankAccount}
-        accountFormOpen={accountFormOpen}
-        language={language}
-        limitIcon={workerV5CapturedIconAssets.payoutLimitPolicy}
-        limitPolicyOpen={limitPolicyOpen}
-        listAura={WorkerV5EarningsHomeListAura}
-        onOpenAccountForm={() => {
-          setAccountFormOpen(true)
-          setLimitPolicyOpen(false)
-        }}
-        onOpenLimitPolicy={() => {
-          setLimitPolicyOpen(true)
-          setAccountFormOpen(false)
-        }}
-        profile={profile}
         reduceTransparency={reduceTransparency}
       />
-      {accountFormOpen ? (
-        <WorkerV5PayoutBankAccountForm
-          accountNumber={accountNumber}
-          accountOwnerName={accountOwnerName}
-          language={language}
-          listAura={WorkerV5EarningsHomeListAura}
-          onAccountNumberChange={(value) => {
-            setAccountNumber(value.replace(/[^\d]/g, '').slice(0, 20))
-            setPrecheckMessage(null)
-            setPayoutSaveMessage(null)
-          }}
-          onAccountOwnerNameChange={(value) => {
-            setAccountOwnerName(value)
-            setPrecheckMessage(null)
-            setPayoutSaveMessage(null)
-          }}
-          onPrecheck={runAccountPrecheck}
-          precheckMessage={precheckMessage}
-          reduceTransparency={reduceTransparency}
-          selectedBank={selectedBank}
-        />
-      ) : null}
-      {limitPolicyOpen ? (
-        <WorkerV5PayoutLimitPolicyCard
-          language={language}
-          listAura={WorkerV5EarningsHomeListAura}
-          reduceTransparency={reduceTransparency}
-        />
-      ) : null}
       <WorkerV5SingleSourceActionButton
         primaryButtonFill={WorkerV5PrimaryButtonFill}
-        disabled={savingPayoutMethod || (!hasBank && !canConfirmPayoutMethod)}
-        label={textByLanguage(language, 'Dùng tài khoản đã chọn', 'Use selected account')}
-        onPress={() => {
-          if (canConfirmPayoutMethod) {
-            void confirmPayoutMethod()
-            return
-          }
-          navigateToScreen('4.3-payout-request')
-        }}
+        disabled
+        label={textByLanguage(language, 'Quản lý tài khoản chưa khả dụng', 'Account management unavailable')}
+        onPress={() => undefined}
         reduceTransparency={reduceTransparency}
         testID="worker-v5-payout-method-use-action"
       />
-      {payoutSaveMessage ? (
-        <Text style={styles.payoutMethodSaveStatus} numberOfLines={3} testID="worker-v5-payout-method-save-status">{payoutSaveMessage}</Text>
-      ) : null}
     </View>
   )
 }
@@ -2881,15 +2893,21 @@ function WorkerV5RankingHero({
 }) {
   const score = workerV5NumericInsight(insights?.performance_score)
   const hasScore = workerV5HasNumber(insights?.performance_score)
-  const completed = workerV5NumericInsight(insights?.completed_job_count ?? profile?.total_jobs)
+  const completedSource = insights?.completed_job_count ?? profile?.total_jobs
+  const hasCompleted = workerV5HasNumber(completedSource)
+  const completed = workerV5NumericInsight(completedSource)
   const progressWidth = `${Math.max(0, Math.min(100, score))}%` as ViewStyle['width']
+  const scoreLabel = hasScore ? `${score}` : textByLanguage(language, 'Chờ', 'Pending')
+  const completedLabel = hasCompleted
+    ? textByLanguage(language, `${completed} việc hoàn tất`, `${completed} completed jobs`)
+    : textByLanguage(language, 'Chờ dữ liệu việc hoàn tất', 'Completed-job data pending')
   return (
     <View style={[rankingStyles.earningsHeroCard, reduceTransparency && rankingStyles.opaqueCard]} testID="worker-v5-ranking-hero">
       {!reduceTransparency ? <HeroAura testID="worker-v5-ranking-mint-aura" /> : null}
       <View style={rankingStyles.rankingHeroRow}>
         <View style={rankingStyles.rankingScoreOrb} testID="worker-v5-ranking-score-orb">
           {!reduceTransparency ? <MintAura intensity="component" style={rankingStyles.rankingScoreOrbAura} /> : null}
-          <Text style={rankingStyles.rankingScoreOrbValue} numberOfLines={1} testID="worker-v5-ranking-score">{score}</Text>
+          <Text style={rankingStyles.rankingScoreOrbValue} numberOfLines={1} testID="worker-v5-ranking-score">{scoreLabel}</Text>
           <Text style={rankingStyles.rankingScoreOrbLabel} numberOfLines={2} testID="worker-v5-ranking-score-label">{textByLanguage(language, 'điểm hạng', 'rank points')}</Text>
         </View>
         <View style={rankingStyles.earningsHeroCopy}>
@@ -2899,10 +2917,10 @@ function WorkerV5RankingHero({
           <Text style={rankingStyles.rankingHeroTitle} numberOfLines={2} testID="worker-v5-ranking-title">
             {hasScore
               ? textByLanguage(language, `${score}/100 điểm xếp hạng`, `${score}/100 ranking points`)
-              : textByLanguage(language, '0 điểm xếp hạng', '0 ranking points')}
+              : textByLanguage(language, 'Chưa có điểm xếp hạng', 'No ranking score yet')}
           </Text>
           <Text style={rankingStyles.earningsHeroMeta} numberOfLines={2} testID="worker-v5-ranking-name">
-            {profile?.legal_name || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')} · {completed} {textByLanguage(language, 'việc hoàn tất', 'completed jobs')}
+            {profile?.legal_name || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')} · {completedLabel}
           </Text>
           <View style={rankingStyles.rankingProgressTrack} testID="worker-v5-ranking-progress">
             <View style={[rankingStyles.rankingProgressFill, { width: progressWidth }]} />
@@ -2917,11 +2935,13 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
   const profile = runtime.workerProfile
   const [memoryToggleOverrides, setMemoryToggleOverrides] = useState<Partial<Record<WorkerV5MemoryPreferenceUiId, boolean>>>({})
   const [savingMemoryToggleIds, setSavingMemoryToggleIds] = useState<Partial<Record<WorkerV5MemoryPreferenceUiId, boolean>>>({})
+  const memoryToggleInFlightIds = useRef<Partial<Record<WorkerV5MemoryPreferenceUiId, true>>>({})
   const memoryToggleRequestIds = useRef<Partial<Record<WorkerV5MemoryPreferenceUiId, number>>>({})
   const memoryTouchedToggleIds = useRef<Partial<Record<WorkerV5MemoryPreferenceUiId, true>>>({})
   const readMemoryToggle = (id: WorkerV5MemoryPreferenceUiId, initialValue: boolean) => memoryToggleOverrides[id] ?? initialValue
   useEffect(() => {
     let mounted = true
+    memoryToggleInFlightIds.current = {}
     memoryTouchedToggleIds.current = {}
     memoryToggleRequestIds.current = {}
     kaelMemoryService.getMyWorkerMemory()
@@ -2931,7 +2951,7 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
           const remoteOverrides = workerV5MemoryPreferenceOverridesFromMemory(response.data.memory)
           setMemoryToggleOverrides((current) => {
             const next = { ...current }
-            for (const [id, enabled] of Object.entries(remoteOverrides) as Array<[WorkerV5MemoryPreferenceUiId, boolean]>) {
+            for (const [id, enabled] of Object.entries(remoteOverrides) as [WorkerV5MemoryPreferenceUiId, boolean][]) {
               if (!memoryTouchedToggleIds.current[id]) {
                 next[id] = enabled
               }
@@ -2947,7 +2967,9 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
       mounted = false
     }
   }, [profile?.id])
-  const setMemoryItemEnabled = (id: WorkerV5MemoryPreferenceUiId, nextEnabled: boolean) => {
+  const setMemoryItemEnabled = (id: WorkerV5MemoryPreferenceUiId, nextEnabled: boolean, previousEnabled: boolean) => {
+    if (memoryToggleInFlightIds.current[id]) return
+    memoryToggleInFlightIds.current[id] = true
     const requestId = (memoryToggleRequestIds.current[id] ?? 0) + 1
     memoryToggleRequestIds.current[id] = requestId
     memoryTouchedToggleIds.current[id] = true
@@ -2963,13 +2985,14 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
       .then((response) => {
         if (memoryToggleRequestIds.current[id] !== requestId) return
         if (!response.success) {
+          setMemoryToggleOverrides((current) => ({ ...current, [id]: previousEnabled }))
           return
         }
         const remoteOverrides = workerV5MemoryPreferenceOverridesFromMemory(response.data.memory)
         setMemoryToggleOverrides((current) => ({
           ...current,
           ...Object.fromEntries(
-            (Object.entries(remoteOverrides) as Array<[WorkerV5MemoryPreferenceUiId, boolean]>)
+            (Object.entries(remoteOverrides) as [WorkerV5MemoryPreferenceUiId, boolean][])
               .filter(([remoteId]) => remoteId === id || !memoryTouchedToggleIds.current[remoteId]),
           ),
           [id]: remoteOverrides[id] ?? nextEnabled,
@@ -2977,10 +3000,11 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
       })
       .catch(() => {
         if (memoryToggleRequestIds.current[id] !== requestId) return
-        return undefined
+        setMemoryToggleOverrides((current) => ({ ...current, [id]: previousEnabled }))
       })
       .finally(() => {
         if (memoryToggleRequestIds.current[id] !== requestId) return
+        delete memoryToggleInFlightIds.current[id]
         setSavingMemoryToggleIds((current) => ({ ...current, [id]: false }))
       })
   }
@@ -3002,7 +3026,7 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
     ? (profile?.service_types ?? []).map((service) => localizedServiceLabel(service, language)).join(', ')
     : textByLanguage(language, 'Chưa có kỹ năng ưu tiên', 'No priority skills')
   const canFilterFromProfile = hasDistricts || hasServices || hasRadius
-  const permissionItems: Array<{ enabled: boolean; icon: WorkerV5IconName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }> = [
+  const permissionItems: { enabled: boolean; icon: WorkerV5IconName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }[] = [
     {
       id: 'area-preference',
       enabled: readMemoryToggle('area-preference', hasDistricts),
@@ -3025,7 +3049,7 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
       value: services,
     },
   ]
-  const boundaryItems: Array<{ enabled: boolean; icon: WorkerV5IconName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }> = [
+  const boundaryItems: { enabled: boolean; icon: WorkerV5IconName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }[] = [
     {
       id: 'opportunity-filter',
       enabled: readMemoryToggle('opportunity-filter', canFilterFromProfile),
@@ -3091,18 +3115,36 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
   const metadataFullName = workerV5StringFromUnknown(metadata?.full_name ?? metadata?.name)
   const metadataPhone = workerV5StringFromUnknown(metadata?.phone_number ?? metadata?.phone)
   const metadataEmail = workerV5StringFromUnknown(metadata?.contact_email) ?? session?.user.email ?? ''
-  const [accountPanelOpen, setAccountPanelOpen] = useState(false)
-  const [accountFullNameDraft, setAccountFullNameDraft] = useState(metadataFullName ?? '')
-  const [accountPhoneDraft, setAccountPhoneDraft] = useState(metadataPhone ?? '')
-  const [accountEmailDraft, setAccountEmailDraft] = useState(metadataEmail)
-  const [accountSaving, setAccountSaving] = useState(false)
-  const [accountMessage, setAccountMessage] = useState<string | null>(null)
-  const [passwordPanelOpen, setPasswordPanelOpen] = useState(false)
-  const [currentPasswordDraft, setCurrentPasswordDraft] = useState('')
-  const [newPasswordDraft, setNewPasswordDraft] = useState('')
-  const [confirmPasswordDraft, setConfirmPasswordDraft] = useState('')
-  const [passwordSaving, setPasswordSaving] = useState(false)
-  const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
+  const [settingsState, setSettingsState] = useState(() => ({
+    accountEmailDraft: metadataEmail,
+    accountFullNameDraft: metadataFullName ?? '',
+    accountMessage: null as string | null,
+    accountPanelOpen: false,
+    accountPhoneDraft: metadataPhone ?? '',
+    accountSaving: false,
+    confirmPasswordDraft: '',
+    currentPasswordDraft: '',
+    newPasswordDraft: '',
+    passwordMessage: null as string | null,
+    passwordPanelOpen: false,
+    passwordSaving: false,
+  }))
+  const accountSaveInFlightRef = useRef(false)
+  const passwordSaveInFlightRef = useRef(false)
+  const {
+    accountEmailDraft,
+    accountFullNameDraft,
+    accountMessage,
+    accountPanelOpen,
+    accountPhoneDraft,
+    accountSaving,
+    confirmPasswordDraft,
+    currentPasswordDraft,
+    newPasswordDraft,
+    passwordMessage,
+    passwordPanelOpen,
+    passwordSaving,
+  } = settingsState
   const currentLanguage = language === 'vi' ? 'Tiếng Việt' : 'English'
   const hasServiceArea = Boolean(runtime.workerProfile?.districts?.length || runtime.workerProfile?.service_radius_km)
   const accountCanSave = accountFullNameDraft.trim().length >= 2 || accountPhoneDraft.trim().length >= 6 || accountEmailDraft.trim().length >= 4
@@ -3110,32 +3152,58 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
   const passwordCanSave = currentPasswordDraft.trim().length > 0 && newPasswordDraft.length >= 8 && passwordMatches
 
   const saveAccountSettings = async () => {
-    if (accountSaving || !accountCanSave) return
-    setAccountSaving(true)
-    setAccountMessage(null)
-    const result = await updateCustomerProfile({
-      email: accountEmailDraft.trim(),
-      fullName: accountFullNameDraft.trim(),
-      phone: accountPhoneDraft.trim(),
-    })
-    setAccountSaving(false)
-    setAccountMessage(result.success ? textByLanguage(language, 'Đã lưu thông tin.', 'Saved') : (result.error ?? textByLanguage(language, 'Chưa thể lưu thông tin.', 'Could not save details.')))
+    if (accountSaveInFlightRef.current || accountSaving || !accountCanSave) return
+    accountSaveInFlightRef.current = true
+    setSettingsState((current) => ({ ...current, accountMessage: null, accountSaving: true }))
+    try {
+      const result = await updateCustomerProfile({
+        email: accountEmailDraft.trim(),
+        fullName: accountFullNameDraft.trim(),
+        phone: accountPhoneDraft.trim(),
+      })
+      setSettingsState((current) => ({
+        ...current,
+        accountMessage: result.success
+          ? textByLanguage(language, 'Đã lưu thông tin.', 'Saved')
+          : localizeAccountMutationError(result.error, language, 'profile'),
+      }))
+    } catch {
+      setSettingsState((current) => ({
+        ...current,
+        accountMessage: localizeAccountMutationError(null, language, 'profile'),
+      }))
+    } finally {
+      accountSaveInFlightRef.current = false
+      setSettingsState((current) => ({ ...current, accountSaving: false }))
+    }
   }
 
   const savePasswordSettings = async () => {
-    if (passwordSaving || !passwordCanSave) return
-    setPasswordSaving(true)
-    setPasswordMessage(null)
-    const result = await updatePassword({
-      currentPassword: currentPasswordDraft.trim(),
-      newPassword: newPasswordDraft,
-    })
-    setPasswordSaving(false)
-    setPasswordMessage(result.success ? textByLanguage(language, 'Đã đổi mật khẩu.', 'Password changed') : (result.error ?? textByLanguage(language, 'Chưa thể đổi mật khẩu.', 'Could not change password.')))
-    if (result.success) {
-      setCurrentPasswordDraft('')
-      setNewPasswordDraft('')
-      setConfirmPasswordDraft('')
+    if (passwordSaveInFlightRef.current || passwordSaving || !passwordCanSave) return
+    passwordSaveInFlightRef.current = true
+    setSettingsState((current) => ({ ...current, passwordMessage: null, passwordSaving: true }))
+    try {
+      const result = await updatePassword({
+        currentPassword: currentPasswordDraft.trim(),
+        newPassword: newPasswordDraft,
+      })
+      setSettingsState((current) => ({
+        ...current,
+        confirmPasswordDraft: result.success ? '' : current.confirmPasswordDraft,
+        currentPasswordDraft: result.success ? '' : current.currentPasswordDraft,
+        newPasswordDraft: result.success ? '' : current.newPasswordDraft,
+        passwordMessage: result.success
+          ? textByLanguage(language, 'Đã đổi mật khẩu.', 'Password changed')
+          : localizeAccountMutationError(result.error, language, 'password'),
+      }))
+    } catch {
+      setSettingsState((current) => ({
+        ...current,
+        passwordMessage: localizeAccountMutationError(null, language, 'password'),
+      }))
+    } finally {
+      passwordSaveInFlightRef.current = false
+      setSettingsState((current) => ({ ...current, passwordSaving: false }))
     }
   }
 
@@ -3167,8 +3235,11 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
           icon={workerV5SettingsIconAssets.personal}
           listAura={WorkerV5EarningsHomeListAura}
           onPress={() => {
-            setAccountPanelOpen((current) => !current)
-            setAccountMessage(null)
+            setSettingsState((current) => ({
+              ...current,
+              accountMessage: null,
+              accountPanelOpen: !current.accountPanelOpen,
+            }))
           }}
           reduceTransparency={reduceTransparency}
           status={accountPanelOpen ? textByLanguage(language, 'Ẩn', 'Hide') : textByLanguage(language, 'Sửa', 'Edit')}
@@ -3182,8 +3253,7 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
               accessibilityLabel={textByLanguage(language, 'Họ và tên', 'Full name')}
               inputShellStyle={styles.workerSettingsInputShell}
               onChangeText={(value) => {
-                setAccountFullNameDraft(value)
-                setAccountMessage(null)
+                setSettingsState((current) => ({ ...current, accountFullNameDraft: value, accountMessage: null }))
               }}
               placeholder={textByLanguage(language, 'Họ và tên', 'Full name')}
               style={styles.workerSettingsInput}
@@ -3195,8 +3265,7 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
               inputShellStyle={styles.workerSettingsInputShell}
               keyboardType="phone-pad"
               onChangeText={(value) => {
-                setAccountPhoneDraft(value)
-                setAccountMessage(null)
+                setSettingsState((current) => ({ ...current, accountMessage: null, accountPhoneDraft: value }))
               }}
               placeholder={textByLanguage(language, 'Số điện thoại', 'Phone number')}
               style={styles.workerSettingsInput}
@@ -3209,8 +3278,7 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
               inputShellStyle={styles.workerSettingsInputShell}
               keyboardType="email-address"
               onChangeText={(value) => {
-                setAccountEmailDraft(value)
-                setAccountMessage(null)
+                setSettingsState((current) => ({ ...current, accountEmailDraft: value, accountMessage: null }))
               }}
               placeholder={textByLanguage(language, 'Email liên hệ', 'Contact email')}
               style={styles.workerSettingsInput}
@@ -3261,8 +3329,11 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
           icon={workerV5SettingsIconAssets.security}
           listAura={WorkerV5EarningsHomeListAura}
           onPress={() => {
-            setPasswordPanelOpen((current) => !current)
-            setPasswordMessage(null)
+            setSettingsState((current) => ({
+              ...current,
+              passwordMessage: null,
+              passwordPanelOpen: !current.passwordPanelOpen,
+            }))
           }}
           reduceTransparency={reduceTransparency}
           status={passwordPanelOpen ? textByLanguage(language, 'Ẩn', 'Hide') : textByLanguage(language, 'Đổi', 'Change')}
@@ -3276,8 +3347,7 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
               accessibilityLabel={textByLanguage(language, 'Mật khẩu hiện tại', 'Current password')}
               inputShellStyle={styles.workerSettingsInputShell}
               onChangeText={(value) => {
-                setCurrentPasswordDraft(value)
-                setPasswordMessage(null)
+                setSettingsState((current) => ({ ...current, currentPasswordDraft: value, passwordMessage: null }))
               }}
               placeholder={textByLanguage(language, 'Mật khẩu hiện tại', 'Current password')}
               secureTextEntry
@@ -3289,8 +3359,7 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
               accessibilityLabel={textByLanguage(language, 'Mật khẩu mới', 'New password')}
               inputShellStyle={styles.workerSettingsInputShell}
               onChangeText={(value) => {
-                setNewPasswordDraft(value)
-                setPasswordMessage(null)
+                setSettingsState((current) => ({ ...current, newPasswordDraft: value, passwordMessage: null }))
               }}
               placeholder={textByLanguage(language, 'Mật khẩu mới', 'New password')}
               secureTextEntry
@@ -3302,8 +3371,7 @@ function WorkerV5SettingsBody({ language, reduceTransparency, runtime }: { langu
               accessibilityLabel={textByLanguage(language, 'Nhập lại mật khẩu mới', 'Confirm new password')}
               inputShellStyle={[styles.workerSettingsInputShell, confirmPasswordDraft.length > 0 && !passwordMatches ? styles.workerSettingsInputShellError : null]}
               onChangeText={(value) => {
-                setConfirmPasswordDraft(value)
-                setPasswordMessage(null)
+                setSettingsState((current) => ({ ...current, confirmPasswordDraft: value, passwordMessage: null }))
               }}
               placeholder={textByLanguage(language, 'Nhập lại mật khẩu mới', 'Confirm new password')}
               secureTextEntry
@@ -3439,6 +3507,8 @@ function WorkerV5AvailabilityCard({
   const disabled = !canToggle || pending
 
   useEffect(() => {
+    // The title is derived from profile props; this effect synchronizes animation to external state.
+    // react-doctor-disable-next-line react-doctor/no-event-handler
     if (reduceMotion) {
       availabilityTitleProgress.value = 1
       availabilityTitleDidMountRef.current = true
@@ -3540,6 +3610,8 @@ function WorkerV5AvailabilityCard({
     setOptimisticAvailable(nextAvailability)
     setPending(true)
     try {
+      // The request-id guard must run after the mutation so an older toggle cannot overwrite the latest one.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
       const saved = await onToggleAvailability(nextAvailability)
       if (availabilityRequestIdRef.current !== requestId) return
       if (!saved) {
@@ -3669,19 +3741,34 @@ function WorkerV5VietMapStaticPreview({
   language: AppLanguage
   location: WorkerV5MapLocation
 }) {
+  const uri = mobileApiUrl(`/maps/vietmap/static?lat=${encodeURIComponent(location.lat.toFixed(6))}&lng=${encodeURIComponent(location.lng.toFixed(6))}&zoom=13`)
+  return <WorkerV5VietMapStaticImage key={uri} label={label} language={language} uri={uri} />
+}
+
+function WorkerV5VietMapStaticImage({
+  label,
+  language,
+  uri,
+}: {
+  label: string
+  language: AppLanguage
+  uri: string
+}) {
   const [headers, setHeaders] = useState<Record<string, string> | null>(null)
   const [failed, setFailed] = useState(false)
-  const uri = mobileApiUrl(`/maps/vietmap/static?lat=${encodeURIComponent(location.lat.toFixed(6))}&lng=${encodeURIComponent(location.lng.toFixed(6))}&zoom=13`)
 
   useEffect(() => {
     let cancelled = false
-    setFailed(false)
-    void getMobileApiAuthHeaders().then((nextHeaders) => {
-      if (cancelled) return
-      const imageHeaders = { ...nextHeaders }
-      delete imageHeaders['Content-Type']
-      setHeaders(imageHeaders)
-    })
+    void getMobileApiAuthHeaders()
+      .then((nextHeaders) => {
+        if (cancelled) return
+        const imageHeaders = { ...nextHeaders }
+        delete imageHeaders['Content-Type']
+        setHeaders(imageHeaders)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
     return () => {
       cancelled = true
     }
@@ -3709,7 +3796,7 @@ function WorkerV5VietMapStaticPreview({
     <Image
       accessibilityLabel={textByLanguage(language, `Bản đồ VietMap cho ${label}`, `VietMap for ${label}`)}
       onError={() => setFailed(true)}
-      resizeMode="cover"
+      contentFit="cover"
       source={{ headers, uri }}
       style={styles.mapStaticImage}
       testID="worker-v5-vietmap-static-image"
@@ -3805,12 +3892,16 @@ function WorkerV5AuthenticatedRouteMapImage({
 
   useEffect(() => {
     let cancelled = false
-    void getMobileApiAuthHeaders().then((nextHeaders) => {
-      if (cancelled) return
-      const imageHeaders = { ...nextHeaders }
-      delete imageHeaders['Content-Type']
-      setHeaders(imageHeaders)
-    })
+    void getMobileApiAuthHeaders()
+      .then((nextHeaders) => {
+        if (cancelled) return
+        const imageHeaders = { ...nextHeaders }
+        delete imageHeaders['Content-Type']
+        setHeaders(imageHeaders)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
     return () => {
       cancelled = true
     }
@@ -3854,7 +3945,7 @@ function WorkerV5AuthenticatedRouteMapImage({
     <Image
       accessibilityLabel={textByLanguage(language, `Bản đồ tuyến đường đến ${label}`, `Route map to ${label}`)}
       onError={() => setFailed(true)}
-      resizeMode="cover"
+      contentFit="cover"
       source={Platform.OS === 'web' ? { uri: webUri! } : { headers, uri }}
       style={styles.mapStaticImage}
       testID="worker-v5-route-map-live-image"
@@ -3872,404 +3963,6 @@ function WorkerV5StatusTimeline(props: WorkerV5StatusTimelineBaseProps) {
   )
 }
 
-function WorkerV5IntakeOpportunityStack({
-  deal,
-  language,
-  onOpenOpportunity,
-  reduceTransparency,
-}: {
-  deal: LocalDeal | null
-  language: AppLanguage
-  onOpenOpportunity: () => void
-  reduceTransparency: boolean
-}) {
-  return (
-    <View style={styles.intakeStack} testID="worker-v5-intake-opportunity-stack">
-      {deal ? (
-        <WorkerV5OpportunityCard
-          deal={deal}
-          fallbackJobIcon={workerV5Icons.jobs}
-          language={language}
-          onOpenOpportunity={onOpenOpportunity}
-          reduceTransparency={reduceTransparency}
-          serviceIcons={workerV5OpportunityServiceIcons}
-        />
-      ) : (
-        <View style={[styles.intakeEmptyRow, reduceTransparency && styles.opaqueCard]} testID="worker-v5-intake-empty-state">
-          <View style={styles.intakeEmptyIconShell}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image source={workerV5Icons.jobs} style={styles.intakeEmptyIcon} />
-          </View>
-          <View style={styles.intakeEmptyCopy}>
-            <Text style={styles.intakeEmptyTitle} numberOfLines={2}>{textByLanguage(language, 'Chưa có cơ hội thật', 'No real opportunities')}</Text>
-            <Text style={styles.intakeEmptyMeta} numberOfLines={2}>{textByLanguage(language, 'Danh sách chỉ hiện cơ hội thật từ NestScout.', 'The list only shows real NestScout broadcasts.')}</Text>
-          </View>
-        </View>
-      )}
-    </View>
-  )
-}
-
-type WorkerV5PrivateKaelMode = 'normal'
-
-type WorkerV5PrivateKaelLocalTurn = {
-  id: string
-  role: 'kael' | 'worker'
-  text: string
-}
-
-type WorkerV5PrivateKaelMediaPreview = {
-  fileName: string
-  uri: string
-}
-
-type WorkerV5PrivateKaelSession = {
-  jobId: string
-  sessionId: string
-}
-
-function WorkerV5PrivateKaelChat({
-  deal,
-  language,
-  mode,
-  reduceTransparency,
-}: {
-  deal: LocalDeal | null
-  language: AppLanguage
-  mode: WorkerV5PrivateKaelMode
-  reduceTransparency: boolean
-}) {
-  const [draft, setDraft] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState<KaelChatProgress | null>(null)
-  const [turns, setTurns] = useState<WorkerV5PrivateKaelLocalTurn[]>([])
-  const [mediaItems, setMediaItems] = useState<WorkerV5PrivateKaelMediaPreview[]>([])
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
-  const [workerKaelSession, setWorkerKaelSession] = useState<WorkerV5PrivateKaelSession | null>(null)
-  const jobId = getWorkerV5ChatJobId(deal)
-  const activeJobIdRef = useRef<string | null>(jobId)
-  const workerKaelSessionRef = useRef<WorkerV5PrivateKaelSession | null>(workerKaelSession)
-  activeJobIdRef.current = jobId
-  workerKaelSessionRef.current = workerKaelSession
-  const readOnly = isWorkerV5PrivateKaelReadOnly(deal)
-  const placeholder = textByLanguage(
-    language,
-    'Hỏi Kael riêng về chuẩn bị giải quyết công việc hoặc xử lý trong app.',
-    'Privately ask Kael about work resolution prep or in-app handling.',
-  )
-  const introText = textByLanguage(
-    language,
-    'Kael có thể tư vấn cách chuẩn bị và thao tác trong ứng dụng; mọi quyết định theo việc vẫn đi qua màn có thẩm quyền riêng.',
-    'Kael can advise on prep and in-app handling; work decisions still go through authorized work screens.',
-  )
-  const noJobReply = textByLanguage(
-    language,
-    'Mình chưa có phiên Kael theo công việc để gửi qua kênh riêng. Khi có việc thật, câu hỏi này sẽ được gửi qua private worker Kael.',
-    'There is no job-scoped Kael session yet. Once real work exists, this question will go through private worker Kael.',
-  )
-  const readOnlyReason = textByLanguage(language, 'Chat chỉ còn đọc lại sau cổng thanh toán.', 'Chat is read-only after the payment gate.')
-  const feedbackPlaceholder = textByLanguage(language, 'Góp ý để Kael giải quyết công việc tốt hơn.', 'Share feedback so Kael can improve worker support.')
-  const inputPlaceholder = feedbackOpen ? feedbackPlaceholder : readOnly ? readOnlyReason : placeholder
-
-  const renderedTurns = turns.length > 0
-    ? turns.slice(-8)
-    : [{ id: 'kael-intro', role: 'kael' as const, text: introText }]
-  const progressPercent = progress ? Math.max(0, Math.min(100, Math.round(progress.progress * 100))) : null
-
-  useEffect(() => {
-    setError(null)
-    setProgress(null)
-    setTurns([])
-    setMediaItems([])
-    setFeedbackOpen(false)
-    workerKaelSessionRef.current = null
-    setWorkerKaelSession(null)
-  }, [jobId])
-
-  const rememberWorkerKaelSession = (currentJobId: string, sessionId: string) => {
-    const nextSession = { jobId: currentJobId, sessionId }
-    workerKaelSessionRef.current = nextSession
-    setWorkerKaelSession(nextSession)
-  }
-
-  const attachPrivateKaelMedia = async () => {
-    if (busy || readOnly) return
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Kael', textByLanguage(language, 'Cần quyền thư viện ảnh để đính kèm bằng chứng cho Kael.', 'Photo library permission is needed to attach evidence for Kael.'))
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: true,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.82,
-      selectionLimit: 5,
-    })
-    if (result.canceled || result.assets.length === 0) return
-
-    const picked = result.assets.slice(0, 5).map((asset, index) => ({
-      fileName: workerV5PrivateKaelMediaName(asset, index, language),
-      uri: asset.uri,
-    }))
-    setMediaItems(picked)
-    setDraft((current) => [current.trim(), picked.map((asset) => asset.fileName).join(', ')].filter(Boolean).join('\n'))
-  }
-
-  const submitPrivateKaelFeedback = async () => {
-    const message = draft.trim()
-    if (!message || busy) return
-
-    setBusy(true)
-    setError(null)
-    try {
-      const submitted = await workerKaelChatService.submitFeedback({
-        language,
-        message,
-        source: 'worker_chat',
-      })
-      if (!submitted.success) {
-        setError(textByLanguage(language, 'Kael chưa nhận được góp ý. Không có dữ liệu huấn luyện nào được bật tự động.', 'Kael could not receive this feedback. No training consent was enabled automatically.'))
-        return
-      }
-      setTurns((current) => [
-        ...current,
-        { id: `worker-feedback-${Date.now()}`, role: 'worker', text: message },
-        { id: `kael-feedback-${submitted.data.feedback_id}`, role: 'kael', text: textByLanguage(language, 'Đã ghi nhận góp ý cho đội Kael. Mình không bật consent học máy từ màn chat.', 'Feedback was sent to the Kael team. This chat did not enable training consent.') },
-      ])
-      setDraft('')
-      setFeedbackOpen(false)
-    } catch {
-      setError(textByLanguage(language, 'Kael chua gửi được góp ý lúc này.', 'Kael could not send feedback right now.'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const submitPrivateKaelMessage = async () => {
-    const message = draft.trim()
-    if (!message || busy || readOnly || feedbackOpen) return
-
-    setDraft('')
-    setError(null)
-    setTurns((current) => [...current, { id: `worker-local-${Date.now()}`, role: 'worker', text: message }])
-
-    if (!jobId) {
-      setTurns((current) => [...current, { id: `kael-local-${Date.now()}`, role: 'kael', text: noJobReply }])
-      setMediaItems([])
-      return
-    }
-
-    setBusy(true)
-    const currentJobId = jobId
-    try {
-      let mediaRefs: string[] = []
-      if (mediaItems.length > 0) {
-        const uploadDrafts: LocalMediaUploadDraft[] = mediaItems.map((item) => ({
-          fileName: item.fileName,
-          type: 'image',
-          uri: item.uri,
-        }))
-        const uploaded = await uploadJobMediaDrafts(currentJobId, uploadDrafts, 'kael_reference')
-        if (!uploaded.success) {
-          setError(uploaded.error)
-          return
-        }
-        mediaRefs = uploaded.mediaRefs
-      }
-
-      let sessionId = workerKaelSessionRef.current?.jobId === currentJobId
-        ? workerKaelSessionRef.current.sessionId
-        : null
-
-      if (!sessionId) {
-        const created = await workerKaelChatService.create({
-          client_request_id: generateClientRequestId(),
-          job_id: currentJobId,
-          language,
-          mode: 'intake',
-        })
-
-        if (!created.success || created.data.session.job_id !== currentJobId) {
-          setProgress(null)
-          setError(textByLanguage(language, 'Kael chưa mở được phiên riêng cho việc này.', 'Kael could not open the private work session yet.'))
-          return
-        }
-
-        sessionId = created.data.session.id
-        rememberWorkerKaelSession(currentJobId, sessionId)
-
-        if (created.data.session.progress && activeJobIdRef.current === currentJobId) {
-          setProgress(created.data.session.progress)
-        }
-      }
-
-      const streamed = await workerKaelChatService.streamTurn(sessionId, {
-        client_request_id: generateClientRequestId(),
-        language,
-        media_refs: mediaRefs,
-        message,
-      }, {
-        onStage: (event) => {
-          if (activeJobIdRef.current !== currentJobId) return
-          setProgress(event.progress)
-        },
-        onToken: () => undefined,
-      })
-
-      let finalResponse = streamed.success ? streamed : null
-      if (!finalResponse) {
-        const recovered = await workerKaelChatService.get(sessionId)
-        if (recovered.success) finalResponse = recovered
-      }
-
-      if (!finalResponse || finalResponse.data.session.job_id !== currentJobId) {
-        if (activeJobIdRef.current === currentJobId) setProgress(null)
-        setError(textByLanguage(language, 'Kael bỏ qua phản hồi không khớp việc hiện tại.', 'Kael ignored a response that did not match the current work.'))
-        return
-      }
-
-      if (activeJobIdRef.current === currentJobId) {
-        rememberWorkerKaelSession(currentJobId, finalResponse.data.session.id)
-        setProgress(finalResponse.data.session.progress)
-        setTurns(workerV5PrivateKaelTurnsFromResponse(finalResponse.data.turns))
-        setMediaItems([])
-      }
-    } catch {
-      setError(textByLanguage(language, 'Kael đang không kết nối được. Không có hành động nào được ghi vào việc.', 'Kael is unavailable. No work action was written.'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <View style={[styles.jobRoomThreadCard, reduceTransparency && styles.opaqueCard]} testID={`worker-v5-private-kael-chat-${mode}`}>
-      {!reduceTransparency ? <MintAura intensity="component" style={styles.jobRoomThreadAura} /> : null}
-      <View style={styles.jobRoomBubbleStack}>
-        {renderedTurns.map((turn) => (
-          <WorkerV5ChatBubble
-            align={turn.role === 'worker' ? 'right' : undefined}
-            body={turn.text}
-            key={turn.id}
-            label={turn.role === 'worker'
-              ? textByLanguage(language, 'Thợ · riêng tư', 'Worker · private')
-              : textByLanguage(language, 'Kael · tư vấn riêng', 'Kael · private advisory')}
-          />
-        ))}
-        {progressPercent != null ? (
-          <View style={styles.boundaryNote} testID="worker-kael-chat-progress">
-            <Text style={styles.boundaryTitle}>{textByLanguage(language, 'Kael đang xử lý', 'Kael is working')}</Text>
-            <Text style={styles.boundaryBody}>{`${progressPercent}%`}</Text>
-          </View>
-        ) : null}
-        {error ? (
-          <WorkerV5ChatBubble
-            body={error}
-            label={textByLanguage(language, 'Kael · fallback', 'Kael · fallback')}
-          />
-        ) : null}
-      </View>
-      {mediaItems.length > 0 ? (
-        <View style={styles.privateKaelMediaRail} testID="worker-chat-media-preview-rail">
-          {mediaItems.map((item, index) => (
-            <View key={`${item.uri}-${index}`} style={styles.privateKaelMediaPreview} testID={`worker-chat-media-preview-${index}`}>
-              <Image source={{ uri: item.uri }} style={styles.privateKaelMediaImage} testID={`worker-chat-media-preview-image-${index}`} />
-              <Text numberOfLines={1} style={styles.privateKaelMediaText}>{item.fileName}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-      <View
-        accessibilityLabel={inputPlaceholder}
-        accessibilityState={{ busy, disabled: busy || readOnly }}
-        style={[styles.composerShell, reduceTransparency && styles.opaqueCard]}
-        testID="worker-v5-composer-shell"
-      >
-        <Pressable
-          accessibilityLabel={textByLanguage(language, 'Đính kèm bằng chứng cho Kael', 'Attach evidence for Kael')}
-          accessibilityRole="button"
-          disabled={busy || readOnly}
-          onPress={attachPrivateKaelMedia}
-          style={[styles.composerUtility, (busy || readOnly) && styles.jobRoomSendDisabled]}
-          testID="worker-kael-chat-attach"
-        >
-          <Image source={workerV5Icons.document} style={styles.composerIcon} />
-        </Pressable>
-        <Pressable
-          accessibilityLabel={textByLanguage(language, 'Góp ý về Kael', 'Send Kael feedback')}
-          accessibilityRole="button"
-          accessibilityState={{ busy, disabled: busy || (feedbackOpen && !draft.trim()) }}
-          disabled={busy || (feedbackOpen && !draft.trim())}
-          onPress={feedbackOpen ? submitPrivateKaelFeedback : () => {
-            setFeedbackOpen(true)
-            setError(null)
-          }}
-          style={[styles.composerUtility, busy && styles.jobRoomSendDisabled]}
-          testID={feedbackOpen ? 'worker-kael-feedback-submit' : 'worker-kael-feedback-open'}
-        >
-          <Image source={workerV5Icons.chat} style={styles.composerIcon} />
-        </Pressable>
-        <Pressable
-          accessibilityLabel={textByLanguage(language, 'Ghi âm cho Kael', 'Record for Kael')}
-          accessibilityRole="button"
-          disabled={busy || readOnly}
-          onPress={() => Alert.alert('Mic', textByLanguage(language, 'Kael chưa có dictation trong bản mobile này. Bạn có thể nhập tin nhắn hoặc đính kèm ảnh.', 'Kael dictation is not enabled in this mobile build. You can type a message or attach a photo.'))}
-          style={[styles.composerUtility, (busy || readOnly) && styles.jobRoomSendDisabled]}
-          testID="worker-kael-chat-mic"
-        >
-          <Image source={workerV5Icons.scope} style={styles.composerIcon} />
-        </Pressable>
-        <KaelTextField
-          accessibilityLabel={inputPlaceholder}
-          editable={!busy && !readOnly}
-          inputShellStyle={styles.workerChatTextFieldShell}
-          multiline
-          onChangeText={setDraft}
-          placeholder={inputPlaceholder}
-          placeholderTextColor={color.text.muted}
-          scrollEnabled={false}
-          shellStyle={styles.workerChatTextFieldStack}
-          style={styles.jobRoomComposerInput}
-          testID="worker-kael-chat-input"
-          value={draft}
-        />
-        <Pressable
-          accessibilityLabel={textByLanguage(language, 'Gửi cho Kael', 'Send to Kael')}
-          accessibilityRole="button"
-          accessibilityState={{ busy, disabled: busy || readOnly || feedbackOpen || !draft.trim() }}
-          disabled={busy || readOnly || feedbackOpen || !draft.trim()}
-          onPress={submitPrivateKaelMessage}
-          style={[styles.composerSend, (busy || readOnly || feedbackOpen || !draft.trim()) && styles.jobRoomSendDisabled]}
-          testID="worker-kael-send-button"
-        >
-          <Image source={workerV5Icons.chat} style={styles.composerSendIcon} />
-        </Pressable>
-      </View>
-    </View>
-  )
-}
-
-function workerV5PrivateKaelTurnsFromResponse(turns: WorkerKaelChatTurn[]): WorkerV5PrivateKaelLocalTurn[] {
-  return turns
-    .filter((turn) => (turn.role === 'worker' || turn.role === 'kael') && turn.text_content)
-    .map((turn) => ({
-      id: turn.id,
-      role: turn.role as 'kael' | 'worker',
-      text: turn.text_content ?? '',
-    }))
-}
-
-function workerV5PrivateKaelMediaName(asset: ImagePicker.ImagePickerAsset, index: number, language: AppLanguage) {
-  const fileName = asset.fileName?.trim()
-  if (fileName) return fileName
-  return textByLanguage(language, `anh-hien-truong-${index + 1}.jpg`, `onsite-photo-${index + 1}.jpg`)
-}
-
-function isWorkerV5PrivateKaelReadOnly(deal: LocalDeal | null) {
-  const status = deal?.backendStatus ?? deal?.status ?? null
-  return status === 'payment_pending' || status === 'paid' || status === 'reviewed'
-}
-
 function WorkerV5ServiceAreaMapCard({
   language,
   reduceTransparency,
@@ -4280,50 +3973,77 @@ function WorkerV5ServiceAreaMapCard({
   runtime: WorkerV5Runtime
 }) {
   const profile = runtime.workerProfile
-  const [expanded, setExpanded] = useState(false)
   const savedDistricts = normalizeWorkerV5DistrictSelectionList(profile?.districts ?? [])
-  const [selectedDistricts, setSelectedDistricts] = useState(() => savedDistricts)
-  const [areaDraft, setAreaDraft] = useState(() => workerV5DistrictDraftFromSelection(savedDistricts, language))
-  const [savingAreas, setSavingAreas] = useState(false)
-  const [serviceAreaMessage, setServiceAreaMessage] = useState('')
-  const savedDistrictKey = savedDistricts.join('|')
+  const [serviceAreaState, setServiceAreaState] = useState(() => ({
+    areaDraft: workerV5DistrictDraftFromSelection(savedDistricts, language),
+    expanded: false,
+    savingAreas: false,
+    selectedDistricts: savedDistricts,
+    serviceAreaMessage: '',
+  }))
+  const serviceAreaSaveInFlightRef = useRef(false)
+  const {
+    areaDraft,
+    expanded,
+    savingAreas,
+    selectedDistricts,
+    serviceAreaMessage,
+  } = serviceAreaState
   const selectedDistrictDraft = workerV5DistrictDraftFromSelection(selectedDistricts, language)
   const draftParse = parseWorkerV5ServiceAreaDraft(areaDraft, language)
   const draftHasChanges = normalizeServiceAreaDraftText(areaDraft) !== normalizeServiceAreaDraftText(selectedDistrictDraft)
 
-  useEffect(() => {
-    setSelectedDistricts(savedDistricts)
-    setAreaDraft(workerV5DistrictDraftFromSelection(savedDistricts, language))
-    setServiceAreaMessage('')
-  }, [language, savedDistrictKey])
-
   const saveServiceAreas = async () => {
-    if (savingAreas) return
+    if (serviceAreaSaveInFlightRef.current || savingAreas) return
     const parsed = parseWorkerV5ServiceAreaDraft(areaDraft, language)
     const nextDistricts = parsed.districts
     if (!nextDistricts.length) {
-      setServiceAreaMessage(textByLanguage(language, 'Nhập ít nhất một khu vực phục vụ.', 'Enter at least one service area.'))
+      setServiceAreaState((current) => ({
+        ...current,
+        serviceAreaMessage: textByLanguage(language, 'Nhập ít nhất một khu vực phục vụ.', 'Enter at least one service area.'),
+      }))
       return
     }
     if (parsed.invalid.length) {
-      setServiceAreaMessage(textByLanguage(language, 'Kiểm tra lại tên khu vực trước khi lưu.', 'Check service area names before saving.'))
+      setServiceAreaState((current) => ({
+        ...current,
+        serviceAreaMessage: textByLanguage(language, 'Kiểm tra lại tên khu vực trước khi lưu.', 'Check service area names before saving.'),
+      }))
       return
     }
     const previousDistricts = selectedDistricts
-    setSelectedDistricts(nextDistricts)
-    setSavingAreas(true)
-    setServiceAreaMessage('')
-    const saved = await runtime.actions.workerUpdateServiceArea({
-      districts: nextDistricts,
-    })
-    setSavingAreas(false)
+    serviceAreaSaveInFlightRef.current = true
+    setServiceAreaState((current) => ({
+      ...current,
+      savingAreas: true,
+      selectedDistricts: nextDistricts,
+      serviceAreaMessage: '',
+    }))
+    let saved = false
+    try {
+      saved = await runtime.actions.workerUpdateServiceArea({
+        districts: nextDistricts,
+      })
+    } catch {
+      saved = false
+    } finally {
+      serviceAreaSaveInFlightRef.current = false
+    }
     if (!saved) {
-      setSelectedDistricts(previousDistricts)
-      setServiceAreaMessage(textByLanguage(language, 'Chưa đồng bộ được với NestScout. Khu vực vừa nhập vẫn đang chờ lưu.', 'Could not sync with NestScout. Your entered areas are still pending.'))
+      setServiceAreaState((current) => ({
+        ...current,
+        savingAreas: false,
+        selectedDistricts: previousDistricts,
+        serviceAreaMessage: textByLanguage(language, 'Chưa đồng bộ được với NestScout. Khu vực vừa nhập vẫn đang chờ lưu.', 'Could not sync with NestScout. Your entered areas are still pending.'),
+      }))
       return
     }
-    setAreaDraft(workerV5DistrictDraftFromSelection(nextDistricts, language))
-    setServiceAreaMessage(textByLanguage(language, 'Đã lưu khu vực phục vụ.', 'Service area saved.'))
+    setServiceAreaState((current) => ({
+      ...current,
+      areaDraft: workerV5DistrictDraftFromSelection(nextDistricts, language),
+      savingAreas: false,
+      serviceAreaMessage: textByLanguage(language, 'Đã lưu khu vực phục vụ.', 'Service area saved.'),
+    }))
   }
   const profileLocation = typeof profile?.home_lat === 'number' &&
     Number.isFinite(profile.home_lat) &&
@@ -4351,7 +4071,10 @@ function WorkerV5ServiceAreaMapCard({
         accessibilityLabel={`${textByLanguage(language, 'Khu vực phục vụ', 'Service area')}. ${collapsedSummary}`}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        onPress={() => setExpanded((current) => !current)}
+        onPress={() => setServiceAreaState((current) => ({
+          ...current,
+          expanded: !current.expanded,
+        }))}
         style={({ pressed }) => [
           styles.kaelBriefCard,
           styles.serviceAreaOpenCard,
@@ -4426,7 +4149,10 @@ function WorkerV5ServiceAreaMapCard({
                 inputShellTestID="worker-v5-service-area-draft-shell"
                 label={textByLanguage(language, 'Nhập khu vực ưu tiên', 'Enter priority areas')}
                 labelStyle={styles.serviceAreaDraftLabel}
-                onChangeText={setAreaDraft}
+                onChangeText={(areaDraftValue) => setServiceAreaState((current) => ({
+                  ...current,
+                  areaDraft: areaDraftValue,
+                }))}
                 placeholder={textByLanguage(language, 'Ví dụ: Bình Thạnh, Quận 1, Thủ Đức', 'Example: Binh Thanh, District 1, Thu Duc')}
                 spellCheck={false}
                 style={styles.serviceAreaDraftInput}
@@ -4497,7 +4223,9 @@ function WorkerV5ReliabilityHero({
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-reliability-hero">
       {!reduceTransparency ? <WorkerV5EarningsHomeHeroAura testID="worker-v5-reliability-mint-aura" /> : null}
       <View style={styles.completionLens}>
-        <Text style={styles.completionLensValue} numberOfLines={1} testID="worker-v5-reliability-score">{score}</Text>
+        <Text style={styles.completionLensValue} numberOfLines={1} testID="worker-v5-reliability-score">
+          {hasScore ? score : textByLanguage(language, 'Chờ', 'Pending')}
+        </Text>
         <Text style={styles.completionLensLabel} numberOfLines={2}>{textByLanguage(language, 'điểm tin cậy', 'trust score')}</Text>
       </View>
       <View style={styles.earningsHeroCopy}>
@@ -4527,6 +4255,8 @@ function WorkerV5ReliabilityAxisFill({
   }))
 
   useEffect(() => {
+    // The fill follows score props and must also react to background data refreshes.
+    // react-doctor-disable-next-line react-doctor/no-event-handler
     if (!hasData || reduceMotion) {
       progress.value = target
       return
@@ -4856,7 +4586,6 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
 }
 
 function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtime, language: AppLanguage) {
-  const deal = runtime.state.deal
   switch (screen.id) {
     case '1.1-worker-home':
       return textByLanguage(
@@ -5092,12 +4821,9 @@ const styles = StyleSheet.create({
   availabilityKnob: {
     backgroundColor: color.mint.white,
     borderRadius: 10,
+    boxShadow: '0 3px 8px rgba(7,26,36,0.16)',
     height: 20,
     position: 'relative',
-    shadowColor: color.text.primary,
-    shadowOffset: { height: 3, width: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
     width: 20,
     zIndex: 2,
   },
@@ -5462,7 +5188,7 @@ const styles = StyleSheet.create({
   },
   jobRoomSendDisabled: {
     backgroundColor: 'rgba(133,154,148,0.44)',
-    shadowOpacity: 0,
+    boxShadow: 'none',
   },
   privateKaelMediaImage: {
     backgroundColor: color.mint.mint100,
@@ -6710,10 +6436,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 8,
     position: 'relative',
-    shadowColor: '#059B8A',
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 24,
+    boxShadow: '0 10px 24px rgba(5,155,138,0.10)',
   },
   kaelOrbComposerCameraButton: {
     alignItems: 'center',
@@ -6836,10 +6559,7 @@ const styles = StyleSheet.create({
   kaelOrbCustomerModeMenuOptionActive: {
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderColor: 'rgba(255,255,255,0.92)',
-    shadowColor: '#046358',
-    shadowOffset: { height: 7, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
+    boxShadow: '0 7px 16px rgba(4,99,88,0.08)',
   },
   kaelOrbCustomerModeMenuCheck: {
     color: color.brand.primary,
@@ -7194,11 +6914,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: 44,
     zIndex: 1,
-    ...shadow.primary,
+    boxShadow: '0 14px 16px rgba(8,125,114,0.24)',
   },
   kaelOrbSendButtonDisabled: {
     backgroundColor: 'rgba(133,154,148,0.38)',
-    shadowOpacity: 0,
+    boxShadow: 'none',
   },
   kaelOrbSendIcon: {
     height: 21,

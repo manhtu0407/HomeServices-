@@ -12,6 +12,7 @@ import { apiFailure } from "../router.ts";
 import { compactMetadata, type KaelChatTurnRole } from "./_shared.ts";
 import { asKaelTurnRole, asNumber, asString, nullableString } from "./coercions.ts";
 import { dbQuery, type DbClient } from "./db.ts";
+import { buildUntrustedConversationContext } from "../kael/untrusted-evidence.ts";
 
 export async function loadDiagnosisScopeArtifact(
   client: DbClient,
@@ -115,15 +116,17 @@ export async function buildKaelConversationContext(
     client.from("kael_chat_turns").select("turn_index, role, content_type, text_content")
       .eq("session_id", sessionId).order("turn_index", { ascending: true }),
   );
+  if (turnsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải lịch sử trao đổi Kael", 500);
+  }
   const rows = Array.isArray(turnsResult.data) ? turnsResult.data : [];
   const clarificationCount = rows.filter((row) =>
     asString(row.content_type) === "clarification" && asKaelTurnRole(row.role) !== "customer"
   ).length;
   const recent = rows.map((row) => ({ role: asKaelTurnRole(row.role), text: nullableString(row.text_content) }))
     .filter((turn): turn is { role: KaelChatTurnRole; text: string } => Boolean(turn.text))
-    .slice(-8)
-    .map((turn) => `${turn.role === "customer" ? "khách" : "kael"}: ${turn.text}`);
-  return { context: recent.length > 0 ? recent.join("\n") : undefined, clarificationCount };
+    .slice(-8);
+  return { context: buildUntrustedConversationContext(recent), clarificationCount };
 }
 
 export function demandingCustomerTurnMetadata(

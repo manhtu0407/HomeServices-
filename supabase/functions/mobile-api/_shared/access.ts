@@ -98,7 +98,7 @@ function asJobStatus(value: unknown): JobStatus {
   ) {
     return value as JobStatus;
   }
-  return "draft";
+  apiFailure("DB_ERROR", "Dữ liệu trạng thái yêu cầu không hợp lệ", 500);
 }
 
 function nullableString(value: unknown): string | null {

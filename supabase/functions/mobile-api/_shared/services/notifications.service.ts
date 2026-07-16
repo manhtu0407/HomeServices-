@@ -6,7 +6,12 @@ import { db, dbQuery, type DbClient } from "./db.ts";
 import { districtLabel, serviceLabel } from "./_shared.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { sendPushToUser } from "../push.ts";
-import type { DevicePushTokenInput, JobStatus, ServiceType } from "../../../_shared/domain.ts";
+import type {
+  DevicePushTokenInput,
+  EdgeDevicePushTokenUnregisterInput,
+  JobStatus,
+  ServiceType,
+} from "../../../_shared/domain.ts";
 import {
   NORMAL_TRANSACTION_SILENT_STATUSES,
   type CustomerCancellationSubCase,
@@ -44,6 +49,13 @@ export async function listNotifications(ctx: MobileApiContext) {
   if (unreadResult.error) {
     apiFailure("DB_ERROR", "Không thể tải số thông báo chưa đọc", 500);
   }
+  if (
+    typeof unreadResult.count !== "number" ||
+    !Number.isSafeInteger(unreadResult.count) ||
+    unreadResult.count < 0
+  ) {
+    apiFailure("DB_ERROR", "Dữ liệu số thông báo chưa đọc không hợp lệ", 500);
+  }
   const result = await dbQuery<Array<Record<string, unknown>>>(
     db(ctx)
       .from("notifications")
@@ -56,17 +68,17 @@ export async function listNotifications(ctx: MobileApiContext) {
     apiFailure("DB_ERROR", "Không thể tải thông báo", 500);
   }
   const notifications = (result.data ?? []).map((row) => ({
-    id: asString(row.id),
-    title: asString(row.title),
-    body: asString(row.body),
-    event_type: asString(row.event_type),
-    status: asString(row.status),
+    id: requiredNotificationString(row.id),
+    title: requiredNotificationString(row.title),
+    body: requiredNotificationString(row.body),
+    event_type: requiredNotificationString(row.event_type),
+    status: requiredNotificationString(row.status),
     job_id: nullableString(row.job_id),
-    created_at: asString(row.created_at),
+    created_at: requiredNotificationString(row.created_at),
     read_at: nullableString(row.read_at),
   }));
   return {
-    unread_count: unreadResult.count ?? 0,
+    unread_count: unreadResult.count,
     notifications,
   };
 }
@@ -102,13 +114,20 @@ export async function registerDevicePushToken(
   ctx: MobileApiContext,
   input: DevicePushTokenInput,
 ) {
+  const safeMetadata = {
+    ...(typeof input.safe_metadata.project_id_available === "boolean"
+      ? { project_id_available: input.safe_metadata.project_id_available }
+      : {}),
+    role: ctx.role,
+    source: "expo-notifications",
+  };
   const result = await dbQuery<Array<Record<string, unknown>>>(
     db(ctx).rpc("register_device_push_token_atomic", {
       p_user_id: ctx.user.id,
       p_platform: input.platform,
       p_push_token: input.push_token,
       p_permission_status: input.permission_status,
-      p_safe_metadata: input.safe_metadata,
+      p_safe_metadata: safeMetadata,
     }),
   );
   if (result.error) {
@@ -118,9 +137,47 @@ export async function registerDevicePushToken(
   if (!row) {
     apiFailure("VALIDATION", "Dữ liệu thiết bị nhận thông báo không hợp lệ", 400);
   }
+  if (
+    typeof row.enabled_out !== "boolean" ||
+    typeof row.token_id !== "string" || !row.token_id.trim() ||
+    typeof row.updated_at_ts !== "string" || !row.updated_at_ts.trim()
+  ) {
+    apiFailure("DB_ERROR", "Dữ liệu thiết bị nhận thông báo không hợp lệ", 500);
+  }
   return {
-    token_id: asString(row.token_id),
-    enabled: asBoolean(row.enabled_out),
+    token_id: row.token_id,
+    enabled: row.enabled_out,
+    updated_at: row.updated_at_ts,
+  };
+}
+
+function requiredNotificationString(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) {
+    apiFailure("DB_ERROR", "Dữ liệu thông báo không hợp lệ", 500);
+  }
+  return value;
+}
+
+export async function unregisterDevicePushToken(
+  ctx: MobileApiContext,
+  input: EdgeDevicePushTokenUnregisterInput,
+) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("unregister_device_push_token_atomic", {
+      p_user_id: ctx.user.id,
+      p_push_token: input.push_token,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể gỡ thiết bị nhận thông báo", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) {
+    apiFailure("VALIDATION", "Dữ liệu thiết bị nhận thông báo không hợp lệ", 400);
+  }
+  return {
+    token_id: nullableString(row.token_id),
+    unregistered: asBoolean(row.unregistered_out),
     updated_at: asString(row.updated_at_ts),
   };
 }

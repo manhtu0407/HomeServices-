@@ -1,6 +1,17 @@
 import type { AIMessageContent, AIRequest, AIResponse } from '../types'
 import { AIProviderError } from '../types'
 import { env } from '../../env'
+import {
+  providerUsageCount,
+  readBoundedProviderJson,
+  readBoundedProviderText,
+  requireProviderContent,
+} from '../provider-response'
+
+type AnthropicResponse = {
+  content?: Array<{ text?: string }>
+  usage?: { input_tokens?: number; output_tokens?: number }
+}
 
 export async function callAnthropic(request: AIRequest): Promise<AIResponse> {
   const apiKey = env.anthropicApiKey
@@ -23,20 +34,21 @@ export async function callAnthropic(request: AIRequest): Promise<AIResponse> {
       ),
       system: aiMessageContentToText(request.messages.find((m) => m.role === 'system')?.content),
     }),
+    redirect: 'error',
     signal: request.signal,
   })
 
   const latencyMs = Date.now() - start
 
   if (!res.ok) {
-    const body = await res.text()
+    const body = await readBoundedProviderText(res)
     throw new AIProviderError('anthropic', res.status, body)
   }
 
-  const data = await res.json()
-  const content = data.content?.[0]?.text ?? ''
-  const inputTokens = data.usage?.input_tokens ?? 0
-  const outputTokens = data.usage?.output_tokens ?? 0
+  const data = await readBoundedProviderJson<AnthropicResponse>(res)
+  const content = requireProviderContent(data.content?.[0]?.text)
+  const inputTokens = providerUsageCount(data.usage?.input_tokens)
+  const outputTokens = providerUsageCount(data.usage?.output_tokens)
 
   // Sonnet: $3/M input, $15/M output | Haiku: $0.25/M input, $1.25/M output
   const isHaiku = request.model.includes('haiku')
@@ -56,7 +68,6 @@ function aiMessageContentToText(content: AIMessageContent | undefined): string {
   if (!content) return ''
   if (typeof content === 'string') return content
   return content
-    .filter((block) => block.type === 'text')
-    .map((block) => block.text)
+    .flatMap((block) => block.type === 'text' ? [block.text] : [])
     .join('\n')
 }

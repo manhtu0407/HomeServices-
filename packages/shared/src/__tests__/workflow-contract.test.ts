@@ -13,7 +13,10 @@ import {
   WORKFLOW_PHASE_SECTION_IDS,
   WORKFLOW_PHASES,
   buildWorkflowViewModel,
+  getArtifactLifecycle,
+  isWorkflowArtifactMode,
   isWorkflowCommandEvent,
+  isWorkflowEvent,
   isWorkflowPhase,
   orderWorkflowPhaseSectionsForSummary,
   toWorkflowPhase,
@@ -25,6 +28,15 @@ import {
 } from '../workflow'
 
 describe('workflow phase contract', () => {
+  it('fails closed for malformed runtime enum values', () => {
+    expect(() => toWorkflowPhase('not-a-job-status' as never)).toThrow(/unknown job status/i)
+    expect(() => getArtifactLifecycle('not-an-artifact' as never)).toThrow(/unknown workflow artifact/i)
+    expect(isWorkflowPhase(null as never)).toBe(false)
+    expect(isWorkflowEvent([] as never)).toBe(false)
+    expect(isWorkflowCommandEvent({} as never)).toBe(false)
+    expect(isWorkflowArtifactMode(Number.NaN as never)).toBe(false)
+  })
+
   it('defines Kael as a first-class workflow actor without making raw AI a status writer', () => {
     expect([...WORKFLOW_ACTORS]).toEqual([
       'customer',
@@ -382,6 +394,13 @@ describe('workflow phase context contract', () => {
     expect(workflowArtifactModeLabel('final', 'en')).toBe('Final')
   })
 
+  it('provides localized product copy for every workflow event instead of leaking event keys', () => {
+    for (const event of WORKFLOW_EVENTS) {
+      expect(workflowEventLabel(event, 'vi')).not.toBe(event)
+      expect(workflowEventLabel(event, 'en')).not.toBe(event)
+    }
+  })
+
   it('builds a source-of-truth context for every backend status fixture', () => {
     const expected = {
       draft: ['intake_started', 'pending_intake', 'service_request', 'customer_input_updated'],
@@ -583,5 +602,25 @@ describe('workflow phase context contract', () => {
     expect(done.phaseContext.sections.find((section) => section.id === 'review')?.lockedReason).toBeNull()
     expect(cancelled.phaseContext.primaryArtifact?.artifact).toBe('cancellation_review')
     expect(cancelled.phaseContext.blockedReason).toBe('job_cancelled')
+  })
+
+  it('keeps scope-change entry and prior decisions visible across every server-eligible active phase', () => {
+    const eligibleStatuses = [
+      'worker_matched',
+      'worker_on_way',
+      'arrived',
+      'inspecting',
+      'repairing',
+    ] as const
+
+    for (const status of eligibleStatuses) {
+      const available = buildWorkflowViewModel({ status, hasScopeChange: false })
+      const historical = buildWorkflowViewModel({ status, hasScopeChange: true })
+
+      expect(available.artifacts.scope_change.mode).toBe('basic')
+      expect(available.phaseContext.sections.find((section) => section.id === 'scope_change')?.visible).toBe(true)
+      expect(historical.artifacts.scope_change.mode).toBe('final')
+      expect(historical.phaseContext.sections.find((section) => section.id === 'scope_change')?.visible).toBe(true)
+    }
   })
 })

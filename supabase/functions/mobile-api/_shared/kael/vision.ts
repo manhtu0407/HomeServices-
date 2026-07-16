@@ -12,6 +12,7 @@ import { maxTokensForPurpose } from "./routing.config.ts";
 import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
 import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
 import { sanitizeVisionPhotoUrls } from "./utils.ts";
+import { readResponseBytesBounded } from "../../../_shared/network.ts";
 
 const VISION_MAX_TOKENS = 320;
 const VISION_IMAGE_FETCH_TIMEOUT_MS = 5_000;
@@ -46,7 +47,7 @@ export async function analyzeDescription(
   intentContext: string,
   photoUrls: string[],
   secrets: EdgeAiSecrets,
-  gate?: KaelSpendGate,
+  gate: KaelSpendGate,
   language: "vi" | "en" = "vi",
 ): Promise<VisionAnalysisResult> {
   const outputSchema = visionSchemaForLanguage(language);
@@ -175,12 +176,41 @@ function visionSchemaForLanguage(language: "vi" | "en") {
 async function fetchVisionImageBlocks(
   photoUrls: string[],
 ): Promise<AIImageContent[]> {
+  const supabaseUrl = readSupabaseUrl();
+  if (!supabaseUrl) return [];
   const blocks: AIImageContent[] = [];
   for (const url of photoUrls) {
+    if (!isTrustedVisionImageUrl(url, supabaseUrl)) continue;
     const block = await fetchVisionImageBlock(url);
     if (block) blocks.push(block);
   }
   return blocks;
+}
+
+export function isTrustedVisionImageUrl(
+  rawUrl: string,
+  supabaseUrl: string,
+): boolean {
+  try {
+    const candidate = new URL(rawUrl);
+    const trusted = new URL(supabaseUrl);
+    if (
+      candidate.origin !== trusted.origin || candidate.username ||
+      candidate.password || candidate.hash
+    ) return false;
+    return /^\/storage\/v1\/(?:object\/(?:authenticated|public|sign)|render\/image\/(?:authenticated|public))\//
+      .test(candidate.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function readSupabaseUrl(): string | null {
+  const deno = (globalThis as {
+    Deno?: { env?: { get?: (name: string) => string | undefined } };
+  }).Deno;
+  const value = deno?.env?.get?.("SUPABASE_URL")?.trim();
+  return value || null;
 }
 
 async function fetchVisionImageBlock(url: string): Promise<AIImageContent | null> {
@@ -189,17 +219,24 @@ async function fetchVisionImageBlock(url: string): Promise<AIImageContent | null
   try {
     const response = await fetch(url, {
       headers: { accept: "image/jpeg,image/png,image/webp,image/gif" },
+      redirect: "error",
       signal: controller.signal,
     });
-    if (!response.ok) return null;
-    const mediaType = normalizeVisionImageMediaType(
-      response.headers.get("content-type"),
-    ) ?? inferVisionImageMediaTypeFromUrl(url);
-    if (!mediaType) return null;
-    const contentLength = Number(response.headers.get("content-length") ?? "0");
-    if (contentLength > VISION_IMAGE_MAX_BYTES) return null;
-    const buffer = await response.arrayBuffer();
-    if (buffer.byteLength === 0 || buffer.byteLength > VISION_IMAGE_MAX_BYTES) {
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
+      return null;
+    }
+    const contentType = response.headers.get("content-type");
+    const mediaType = normalizeVisionImageMediaType(contentType) ??
+      (canInferVisionMediaType(contentType)
+        ? inferVisionImageMediaTypeFromUrl(url)
+        : null);
+    if (!mediaType) {
+      await response.body?.cancel().catch(() => undefined);
+      return null;
+    }
+    const bytes = await readResponseBytesBounded(response, VISION_IMAGE_MAX_BYTES);
+    if (bytes.byteLength === 0) {
       return null;
     }
     return {
@@ -207,12 +244,12 @@ async function fetchVisionImageBlock(url: string): Promise<AIImageContent | null
       source: {
         type: "base64",
         media_type: mediaType,
-        data: arrayBufferToBase64(buffer),
+        data: arrayBufferToBase64(bytes.buffer),
       },
     };
-  } catch (error) {
+  } catch {
     console.warn("mobile-api vision image fetch failed", {
-      reason: error instanceof Error ? error.message : "unknown",
+      errorCode: controller.signal.aborted ? "IMAGE_FETCH_TIMEOUT" : "IMAGE_FETCH_FAILED",
     });
     return null;
   } finally {
@@ -227,6 +264,12 @@ function inferVisionImageMediaTypeFromUrl(url: string): VisionImageMediaType | n
   if (pathname.endsWith(".gif")) return "image/gif";
   if (pathname.endsWith(".webp")) return "image/webp";
   return null;
+}
+
+function canInferVisionMediaType(contentType: string | null): boolean {
+  if (!contentType?.trim()) return true;
+  return contentType.split(";", 1)[0]?.trim().toLowerCase() ===
+    "application/octet-stream";
 }
 
 function normalizeVisionImageMediaType(
@@ -245,7 +288,7 @@ function normalizeVisionImageMediaType(
   return null;
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
+function arrayBufferToBase64(buffer: ArrayBufferLike): string {
   const bytes = new Uint8Array(buffer);
   const bufferCtor = (globalThis as unknown as {
     Buffer?: { from(input: Uint8Array): { toString(encoding: "base64"): string } };

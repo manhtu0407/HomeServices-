@@ -2,8 +2,10 @@
 param(
   [string]$EnvFile = 'apps/mobile/.env.staging',
   [string]$OutputDir = 'tmp/section32-native-recordings',
+  [ValidateRange(1, 65535)]
   [int]$Port = 8092,
-  [int]$DurationSeconds = 240,
+  [ValidateRange(1, 180)]
+  [int]$DurationSeconds = 180,
   [string]$AndroidSdk = 'C:\Android\Sdk',
   [string]$DeviceSerial = '',
   [switch]$NoExpoStart
@@ -12,9 +14,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $stagingRef = 'xyylanuyflrjzbjzhqfl'
-$productionRef = 'iwevizmsedyqozxlawwl'
 $scriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $PSScriptRoot }
 $repoRoot = Resolve-Path -LiteralPath (Join-Path $scriptRoot '..')
+. (Join-Path $scriptRoot 'lib\staging-target-safety.ps1')
 
 if (-not [System.IO.Path]::IsPathRooted($EnvFile)) {
   $EnvFile = Join-Path $repoRoot $EnvFile
@@ -22,9 +24,33 @@ if (-not [System.IO.Path]::IsPathRooted($EnvFile)) {
 if (-not [System.IO.Path]::IsPathRooted($OutputDir)) {
   $OutputDir = Join-Path $repoRoot $OutputDir
 }
+$allowedEnvNames = @(
+  'EXPO_PUBLIC_SUPABASE_URL',
+  'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'EXPO_PUBLIC_API_BASE_URL',
+  'SECTION32_SUPABASE_URL',
+  'SECTION32_SUPABASE_ANON_KEY',
+  'P15_SUPABASE_URL',
+  'P15_SUPABASE_ANON_KEY',
+  'SECTION32_NATIVE_RUN',
+  'SECTION32_NATIVE_CUSTOMER_EMAIL',
+  'SECTION32_NATIVE_CUSTOMER_PASSWORD',
+  'SECTION32_NATIVE_WORKER_EMAIL',
+  'SECTION32_NATIVE_WORKER_PASSWORD',
+  'SECTION32_NODE_PATH'
+)
+$credentialEnvNames = @(
+  'SECTION32_NATIVE_CUSTOMER_EMAIL',
+  'SECTION32_NATIVE_CUSTOMER_PASSWORD',
+  'SECTION32_NATIVE_WORKER_EMAIL',
+  'SECTION32_NATIVE_WORKER_PASSWORD'
+)
 
 function Import-EnvFile {
-  param([string]$Path)
+  param(
+    [string]$Path,
+    [string[]]$AllowedNames
+  )
 
   if (-not (Test-Path -LiteralPath $Path)) {
     return
@@ -40,6 +66,9 @@ function Import-EnvFile {
     }
 
     $name = $matches[1].Trim()
+    if ($AllowedNames -notcontains $name) {
+      continue
+    }
     $value = $matches[2].Trim()
     if ($value.Length -ge 2) {
       $first = $value.Substring(0, 1)
@@ -66,20 +95,6 @@ function Require-Env {
   }
 
   throw "Missing required local environment variable: $($Names -join ' or ')"
-}
-
-function Assert-StagingRef {
-  param(
-    [string]$Value,
-    [string]$Label
-  )
-
-  if ([string]::IsNullOrWhiteSpace($Value) -or -not $Value.Contains($stagingRef)) {
-    throw "$Label must target staging ref $stagingRef."
-  }
-  if ($Value.Contains($productionRef)) {
-    throw "$Label points at production ref $productionRef."
-  }
 }
 
 function Resolve-FirstExistingPath {
@@ -122,9 +137,51 @@ function Invoke-Adb {
   }
   $actualArgs += $Arguments
   & $AdbPath @actualArgs
+  $adbExitCode = $LASTEXITCODE
+  if ($adbExitCode -ne 0) {
+    $operation = if ($Arguments.Count -gt 0) { $Arguments[0] } else { '<none>' }
+    throw "adb command failed with exit code $adbExitCode while running '$operation'."
+  }
 }
 
-Import-EnvFile -Path $EnvFile
+function Quote-NativeArgument {
+  param([string]$Value)
+
+  if ($Value.Contains('"')) {
+    throw 'Native process arguments must not contain quote characters.'
+  }
+  if ($Value -notmatch '\s') {
+    return $Value
+  }
+
+  return '"' + $Value + '"'
+}
+
+function Assert-ExpoProcessHealthy {
+  param([System.Diagnostics.Process]$Process)
+
+  if (-not $Process) {
+    return
+  }
+  $Process.Refresh()
+  if ($Process.HasExited) {
+    throw "Expo process exited early with code $($Process.ExitCode)."
+  }
+}
+
+function Assert-NonEmptyFile {
+  param([string]$Path)
+
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    throw "Expected recording artifact was not created: $Path"
+  }
+  $artifact = Get-Item -LiteralPath $Path
+  if ($artifact.Length -le 0) {
+    throw "Expected recording artifact is empty: $Path"
+  }
+}
+
+Import-EnvFile -Path $EnvFile -AllowedNames $allowedEnvNames
 
 if ([Environment]::GetEnvironmentVariable('SECTION32_NATIVE_RUN') -ne '1') {
   throw 'Set SECTION32_NATIVE_RUN=1 to run the mutable/manual Section 32 native recording harness.'
@@ -138,15 +195,18 @@ if ([string]::IsNullOrWhiteSpace($apiBase)) {
   [Environment]::SetEnvironmentVariable('EXPO_PUBLIC_API_BASE_URL', $apiBase, 'Process')
 }
 
-Assert-StagingRef -Value $supabaseUrl -Label 'EXPO_PUBLIC_SUPABASE_URL'
-Assert-StagingRef -Value $apiBase -Label 'EXPO_PUBLIC_API_BASE_URL'
+Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase
+Assert-SupabasePublishableKey -Value $publishableKey
 
 # These values are never printed. Their presence prevents a pre-auth-only capture from being mistaken for G3 proof.
 [void](Require-Env @('SECTION32_NATIVE_CUSTOMER_EMAIL'))
 [void](Require-Env @('SECTION32_NATIVE_CUSTOMER_PASSWORD'))
 [void](Require-Env @('SECTION32_NATIVE_WORKER_EMAIL'))
 [void](Require-Env @('SECTION32_NATIVE_WORKER_PASSWORD'))
-[void]$publishableKey
+
+foreach ($name in $credentialEnvNames) {
+  [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+}
 
 # Expo automatically loads .env files unless disabled. Keep this harness pinned
 # to the staging values already imported/validated above, so an app-level
@@ -177,6 +237,7 @@ $adbPath = Resolve-FirstExistingPath @(
 if ([string]::IsNullOrWhiteSpace($adbPath)) {
   throw "adb.exe not found. Set -AndroidSdk or ANDROID_HOME/ANDROID_SDK_ROOT."
 }
+$resolvedAndroidSdk = Split-Path -Parent (Split-Path -Parent $adbPath)
 
 $nodePath = Resolve-FirstExistingPath @(
   $section32NodePath,
@@ -192,8 +253,8 @@ if (-not $NoExpoStart -and -not (Test-Path -LiteralPath $expoCli)) {
   throw "Expo CLI not found at $expoCli."
 }
 
-$env:ANDROID_HOME = $AndroidSdk
-$env:ANDROID_SDK_ROOT = $AndroidSdk
+$env:ANDROID_HOME = $resolvedAndroidSdk
+$env:ANDROID_SDK_ROOT = $resolvedAndroidSdk
 
 New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 $runId = "section32-native-$((Get-Date).ToString('yyyyMMdd-HHmmss'))"
@@ -242,9 +303,19 @@ Set-Content -LiteralPath $checklistPath -Value $checklist -Encoding UTF8
 $expoProcess = $null
 try {
   if (-not $NoExpoStart) {
-    $expoArgs = @($expoCli, 'start', 'apps/mobile', '--android', '--localhost', '--port', "$Port", '--go')
+    $expoArgs = @(
+      (Quote-NativeArgument -Value $expoCli),
+      'start',
+      'apps/mobile',
+      '--android',
+      '--localhost',
+      '--port',
+      "$Port",
+      '--go'
+    ) -join ' '
     $expoProcess = Start-Process -FilePath $nodePath -ArgumentList $expoArgs -WorkingDirectory $repoRoot -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 12
+    Assert-ExpoProcessHealthy -Process $expoProcess
   }
 
   Invoke-Adb -AdbPath $adbPath -Arguments @('wait-for-device') | Out-Null
@@ -256,9 +327,12 @@ try {
   Invoke-Adb -AdbPath $adbPath -Arguments @('shell', 'rm', '-f', $remoteVideo, $remoteScreenshot) | Out-Null
   Invoke-Adb -AdbPath $adbPath -Arguments @('shell', 'screenrecord', '--time-limit', "$DurationSeconds", $remoteVideo)
   Invoke-Adb -AdbPath $adbPath -Arguments @('pull', $remoteVideo, $localVideo) | Out-Null
+  Assert-NonEmptyFile -Path $localVideo
   Invoke-Adb -AdbPath $adbPath -Arguments @('shell', 'screencap', '-p', $remoteScreenshot) | Out-Null
   Invoke-Adb -AdbPath $adbPath -Arguments @('pull', $remoteScreenshot, $localScreenshot) | Out-Null
+  Assert-NonEmptyFile -Path $localScreenshot
   Invoke-Adb -AdbPath $adbPath -Arguments @('shell', 'rm', '-f', $remoteVideo, $remoteScreenshot) | Out-Null
+  Assert-ExpoProcessHealthy -Process $expoProcess
 
   $report = @"
 # Section 32 Android Native Recording Report

@@ -1,5 +1,5 @@
 /**
- * S3 / negative security tests (Plan.md §38) — the Edge IDOR lynchpin.
+ * Negative security tests for the Edge IDOR lynchpin.
  *
  * `requireJobAccess` is the ownership gate for job-scoped routes. Because the Edge
  * uses the service-role client (RLS bypassed), this function returning 404 on a
@@ -84,5 +84,15 @@ describe('S3: requireJobAccess fails closed on cross-tenant access (IDOR)', () =
         statuses: ['completed_by_worker'],
       }),
     ).rejects.toMatchObject({ status: 409, code: 'INVALID_STATUS' })
+  })
+
+  it('fails closed when the database returns an unknown job status', async () => {
+    await expect(
+      requireJobAccess(
+        jobClient({ ...OWNED, status: 'corrupted_status' }),
+        'job-1',
+        ctxFor('customer', 'owner-customer'),
+      ),
+    ).rejects.toMatchObject({ status: 500, code: 'DB_ERROR' })
   })
 })

@@ -1,38 +1,86 @@
--- =============================================================================
--- Seed data for local development
--- Run: supabase db reset (applies migrations + seed)
---
--- Test accounts (use Supabase Studio > Authentication to create auth.users,
--- then this seed populates public.profiles and related tables)
--- =============================================================================
+-- Local-only deterministic fixtures applied by `supabase db reset`.
 
 -- Test UUIDs (deterministic for local dev)
 -- Customer: 00000000-0000-0000-0000-000000000001
 -- Worker:   00000000-0000-0000-0000-000000000002
 -- Admin:    00000000-0000-0000-0000-000000000003
 
--- Note: In production, profiles are created by the handle_new_user() trigger.
--- For local dev, we insert directly since we don't go through auth.users signup.
-
-insert into profiles (id, role, full_name, phone) values
-  ('00000000-0000-0000-0000-000000000001', 'customer', 'Nguyen Van A', '0901000001'),
-  ('00000000-0000-0000-0000-000000000002', 'worker',   'Tran Van B',   '0901000002'),
-  ('00000000-0000-0000-0000-000000000003', 'admin',    'Admin Dev',    '0901000003')
+insert into auth.users (
+  id,
+  aud,
+  role,
+  phone,
+  phone_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+) values
+  (
+    '00000000-0000-0000-0000-000000000001',
+    'authenticated',
+    'authenticated',
+    '000000000001',
+    now(),
+    '{"provider":"phone","providers":["phone"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000002',
+    'authenticated',
+    'authenticated',
+    '000000000002',
+    now(),
+    '{"provider":"phone","providers":["phone"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000003',
+    'authenticated',
+    'authenticated',
+    '000000000003',
+    now(),
+    '{"provider":"phone","providers":["phone"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now()
+  )
 on conflict (id) do nothing;
+
+update public.profiles as profile
+set
+  role = fixture.role,
+  full_name = fixture.full_name,
+  phone = fixture.phone,
+  updated_at = now()
+from (values
+  ('00000000-0000-0000-0000-000000000001'::uuid, 'customer'::user_role, 'Nguyen Van A', '000000000001'),
+  ('00000000-0000-0000-0000-000000000002'::uuid, 'worker'::user_role, 'Tran Van B', '000000000002'),
+  ('00000000-0000-0000-0000-000000000003'::uuid, 'admin'::user_role, 'Admin Dev', '000000000003')
+) as fixture(id, role, full_name, phone)
+where profile.id = fixture.id;
 
 insert into customer_profiles (id, building_name, unit_number, floor, district) values
   ('00000000-0000-0000-0000-000000000001', 'Vinhomes Central Park', 'A-1205', '12', 'Binh Thanh')
 on conflict (id) do nothing;
 
 insert into worker_profiles (
-  id, service_types, years_experience, districts,
+  id, legal_name, date_of_birth, gender,
+  service_types, years_experience, districts,
   is_approved, is_available, verification_status, rating, total_jobs
 ) values
   (
     '00000000-0000-0000-0000-000000000002',
+    'Tran Van B',
+    '1990-01-01',
+    'male',
     array['electrical', 'plumbing', 'cleaning']::service_type[],
     5,
-    array['Binh Thanh', 'Quan 1', 'Quan 2'],
+    array['binh_thanh', 'q1', 'thu_duc'],
     true, true, 'approved', 4.50, 12
   )
 on conflict (id) do nothing;

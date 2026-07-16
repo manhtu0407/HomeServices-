@@ -11,6 +11,7 @@ import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kae
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   KAEL_CIRCUIT_BREAKER.reset()
 })
@@ -183,7 +184,10 @@ describe('mobile-api Kael callAI durable circuit wiring', () => {
   })
 
   it('records transport failure in the durable provider-global scope', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('credit', { status: 402 })))
+    const sensitiveBody = 'provider-private-credit-detail'
+    const fetchSpy = vi.fn(async () => new Response(sensitiveBody, { status: 402 }))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.stubGlobal('fetch', fetchSpy)
     const calls: Array<{ fn: string; args: Record<string, unknown> }> = []
     const rpc = vi.fn(async (fn: string, args: Record<string, unknown> = {}) => {
       calls.push({ fn, args })
@@ -195,6 +199,12 @@ describe('mobile-api Kael callAI durable circuit wiring', () => {
       durableGuardsEnabled: true,
       durableGuardClient: { rpc },
     })).resolves.toMatchObject({ success: false, code: 'HTTP_402' })
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ redirect: 'error' }),
+    )
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(sensitiveBody)
+    errorSpy.mockRestore()
     expect(calls).toContainEqual({
       fn: 'record_circuit_failure',
       args: expect.objectContaining({

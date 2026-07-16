@@ -117,6 +117,7 @@ export type LocalDeal = {
   completionPhotoUrls?: string[]
   completionNotes?: string | null
   workerProfile?: LocalWorkerProfileSummary | null
+  scheduledAt?: string | null
   createdAt?: string | null
   matchedAt?: string | null
   completedAt?: string | null
@@ -175,6 +176,7 @@ export type LocalRemoteJobSnapshot = {
   completionPhotoUrls?: string[]
   completionNotes?: string | null
   workerProfile?: LocalWorkerProfileSummary | null
+  scheduledAt?: string | null
   createdAt?: string | null
   matchedAt?: string | null
   completedAt?: string | null
@@ -194,6 +196,7 @@ export type LocalRemoteBroadcastSnapshot = {
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string
+  scheduledAt?: string | null
 }
 
 export type LocalDealDraftPatch = Partial<

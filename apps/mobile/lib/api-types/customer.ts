@@ -64,6 +64,7 @@ export type CustomerProfileInsightsResponse = {
   preferred_service_count: number
   active_service_days: number
   active_streak_days: number
+  reviewed_service_count?: number
   positive_review_rate_percent: number
   price_savings_vnd: number
   total_spend_vnd: number

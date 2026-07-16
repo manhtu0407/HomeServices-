@@ -103,6 +103,25 @@ describe('checkRateLimit', () => {
     // deficit = 3-0 = 3, refillsNeeded = ceil(3/2) = 2, retryAfter = 2*1000
     expect(result.retryAfterMs).toBe(2000)
   })
+
+  it('does not evict an exhausted long-window bucket during five-minute cleanup', () => {
+    const hourConfig: RateLimitConfig = {
+      maxTokens: 20,
+      refillRate: 20,
+      refillIntervalMs: 3_600_000,
+    }
+    for (let index = 0; index < 20; index += 1) {
+      expect(checkRateLimit('hour-window', hourConfig).allowed).toBe(true)
+    }
+    expect(checkRateLimit('hour-window', hourConfig).allowed).toBe(false)
+
+    vi.advanceTimersByTime(6 * 60_000)
+    checkRateLimit('cleanup-trigger', testConfig)
+
+    expect(checkRateLimit('hour-window', hourConfig).allowed).toBe(false)
+    resetRateLimit('hour-window')
+    resetRateLimit('cleanup-trigger')
+  })
 })
 
 describe('resetRateLimit', () => {

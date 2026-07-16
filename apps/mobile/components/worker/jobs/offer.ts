@@ -95,7 +95,7 @@ export function buildWorkerV5OfferSummaryChips(deal: LocalDeal, language: AppLan
   const destination = routeDestinationLabel(deal, language)
   const timing = deal.broadcast?.secondsRemaining != null
     ? textByLanguage(language, `${deal.broadcast.secondsRemaining} giây còn lại`, `${deal.broadcast.secondsRemaining}s left`)
-    : workerV5TimeChoiceLabel(deal.draft.timeChoice, language)
+    : workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)
   const source = deal.broadcast?.status === 'sent'
     ? textByLanguage(language, 'Đã gửi tới bạn', 'Sent to you')
     : localizedStatusLabel(deal.status, language)

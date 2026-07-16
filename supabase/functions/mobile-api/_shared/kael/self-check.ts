@@ -61,7 +61,7 @@ export type KaelSemanticGuardClassifier = (input: {
 
 export type KaelGuardrailTripClient = {
   from(table: string): {
-    insert(value: Record<string, unknown>): PromiseLike<unknown>;
+    insert(value: Record<string, unknown>): PromiseLike<{ error: unknown }>;
   };
 };
 
@@ -294,16 +294,21 @@ export async function auditKaelGuardrailTrip(
     readonly safeMetadata?: Record<string, unknown>;
   },
 ) {
-  await client.from("kael_guardrail_trip_audit").insert({
-    job_id: input.jobId ?? null,
-    actor_id: input.actorId ?? null,
-    actor_role: input.actorRole,
-    surface: input.surface,
-    reason_code: input.reason,
-    guardrail_label: input.guardrailLabel ?? null,
-    source: input.source,
-    safe_metadata: input.safeMetadata ?? {},
-  });
+  try {
+    const result = await client.from("kael_guardrail_trip_audit").insert({
+      job_id: input.jobId ?? null,
+      actor_id: input.actorId ?? null,
+      actor_role: input.actorRole,
+      surface: input.surface,
+      reason_code: input.reason,
+      guardrail_label: input.guardrailLabel ?? null,
+      source: input.source,
+      safe_metadata: input.safeMetadata ?? {},
+    });
+    if (result.error) throw new Error("KAEL_GUARDRAIL_AUDIT_FAILED");
+  } catch {
+    throw new Error("KAEL_GUARDRAIL_AUDIT_FAILED");
+  }
 }
 
 function looksEnglishOnly(lower: string): boolean {

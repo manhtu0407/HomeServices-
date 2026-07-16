@@ -295,3 +295,80 @@ export const customerV21ChatStyles = StyleSheet.create({
     flex: 1,
   },
 })
+
+export const customerV21KaelChatRootStyles = StyleSheet.create({
+  bodyText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  composer: {
+    alignItems: 'center',
+    borderRadius: 26,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 8,
+  },
+  composerInput: {
+    flex: 1,
+    fontSize: 15,
+    minHeight: 44,
+    paddingHorizontal: 10,
+    position: 'relative',
+    zIndex: 1,
+  },
+  composerTextFieldShell: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  composerTextFieldStack: {
+    flex: 1,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 10,
+  },
+  flex: {
+    flex: 1,
+  },
+  modeButton: {
+    alignItems: 'center',
+    borderRadius: 18,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 12,
+  },
+  modeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  modeSwitch: {
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    padding: 5,
+  },
+  sendButton: {
+    alignItems: 'center',
+    borderRadius: 22,
+    height: 44,
+    justifyContent: 'center',
+    minWidth: 44,
+    position: 'relative',
+    width: 44,
+    zIndex: 1,
+  },
+  sendText: {
+    fontSize: 22,
+    fontWeight: '600',
+    lineHeight: 24,
+  },
+})

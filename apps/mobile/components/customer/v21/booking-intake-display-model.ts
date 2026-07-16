@@ -1,4 +1,5 @@
 import { localizedProblemLabel, type AppLanguage } from '@/lib/app-language'
+import { HCMC_TIME_ZONE, hcmcCalendarDate, hcmcScheduledAt } from '@/lib/hcmc-schedule'
 import type { ServiceType } from '@nestscout/shared'
 
 import { customerV21ServiceCopy } from './copy'
@@ -15,20 +16,21 @@ export type BookingScheduleWindow = {
 export function bookingScheduleDraft(
   selectedDate: string | null,
   selectedTime: string | null,
+  runtimeNow: Date = new Date(),
 ): { scheduledAt?: string; scheduleWindow?: BookingScheduleWindow } {
   if (!selectedDate || !selectedTime) return {}
   const start = bookingCustomTimeValue(selectedTime)
   const end = start ? bookingScheduleEndTime(start) : null
   if (!start || !end) return {}
-  const scheduledAt = new Date(`${selectedDate}T${start}:00+07:00`)
-  if (Number.isNaN(scheduledAt.getTime())) return {}
+  const scheduledAt = hcmcScheduledAt(selectedDate, start)
+  if (!scheduledAt || Date.parse(scheduledAt) <= runtimeNow.getTime()) return {}
   return {
-    scheduledAt: scheduledAt.toISOString(),
+    scheduledAt,
     scheduleWindow: {
       date: selectedDate,
       start,
       end,
-      timeZone: 'Asia/Ho_Chi_Minh',
+      timeZone: HCMC_TIME_ZONE,
     },
   }
 }
@@ -75,20 +77,17 @@ type BookingScheduleDateOption = {
 }
 
 export function buildBookingScheduleDateOptions(language: AppLanguage, runtimeNow: Date = new Date()): BookingScheduleDateOption[] {
-  const now = new Date(runtimeNow)
-  now.setHours(0, 0, 0, 0)
   return Array.from({ length: 7 }).map((_, index) => {
-    const date = new Date(now)
-    date.setDate(now.getDate() + index)
+    const date = hcmcCalendarDate(runtimeNow, index)
     const dayLabel = index === 0
       ? (language === 'vi' ? 'Hôm nay' : 'Today')
-      : weekdayLabel(date.getDay(), language)
-    const dateLabel = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`
+      : weekdayLabel(date.weekday, language)
+    const dateLabel = `${String(date.day).padStart(2, '0')}/${String(date.month).padStart(2, '0')}`
     return {
       dateLabel,
       dayLabel,
       label: `${dayLabel} ${dateLabel}`,
-      value: dateValue(date),
+      value: date.date,
     }
   })
 }
@@ -129,7 +128,15 @@ export function bookingScheduleDateIsBookable(value: string, runtimeNow: Date = 
   const realDate = candidate.getUTCFullYear() === Number(year)
     && candidate.getUTCMonth() === Number(month) - 1
     && candidate.getUTCDate() === Number(day)
-  return realDate && value >= dateValue(runtimeNow)
+  return realDate && value >= hcmcCalendarDate(runtimeNow).date
+}
+
+export function availableBookingTimeSlots(selectedDate: string | null, runtimeNow: Date = new Date()) {
+  if (!selectedDate) return [...bookingTimeSlots]
+  return bookingTimeSlots.filter((slot) => {
+    const scheduledAt = hcmcScheduledAt(selectedDate, slot.split('-')[0] ?? '')
+    return Boolean(scheduledAt && Date.parse(scheduledAt) > runtimeNow.getTime())
+  })
 }
 
 export function bookingScheduleLabel(
@@ -159,10 +166,6 @@ export function bookingScheduleTimeParam(value: string | undefined) {
   return bookingCustomTimeValue(value.split('-')[0] ?? '')
 }
 
-function dateValue(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
 function customDateLabel(value: string, language: AppLanguage) {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!match) return value
@@ -178,7 +181,6 @@ function bookingScheduleEndTime(start: string) {
   const endMinutes = Math.min(startMinutes + bookingScheduleWindowMinutes, 23 * 60 + 59)
   return `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`
 }
-
 function weekdayLabel(day: number, language: AppLanguage) {
   const vi = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
   const en = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

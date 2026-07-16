@@ -3,6 +3,8 @@ import type { Database } from '@nestscout/shared'
 import { PLATFORM_FEE_WORKER } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 
+const MAX_DAILY_EARNINGS_ROWS = 366
+
 export type EarningsSummary = {
   workerId: string
   totalJobsPaid: number
@@ -11,8 +13,17 @@ export type EarningsSummary = {
   netEarnings: number
   pendingPaymentCount: number
   pendingPaymentAmount: number
+  dailyEarnings: DailyEarningsSummary[]
   fromDate: string | null
   toDate: string | null
+}
+
+export type DailyEarningsSummary = {
+  date: string
+  grossEarnings: number
+  platformFeeTotal: number
+  netEarnings: number
+  paidJobCount: number
 }
 
 export type EarningsRange = {
@@ -32,14 +43,13 @@ export class EarningsQueryError extends Error {
 /**
  * B8 — Worker earnings summary.
  *
- * Aggregates from jobs table:
- *   - gross_earnings:        sum(final_price) where paid_at is set
- *   - platform_fee_total:    gross * PLATFORM_FEE_WORKER (10%)
- *   - net_earnings:          gross - platform_fee_total
+ * The database aggregates the complete worker history in one snapshot:
+ *   - paid amounts:          frozen gross_amount/platform_fee/worker_net
+ *   - legacy paid fallback:  final_price and current worker fee rate
  *   - pending_payment:       jobs in confirmed_by_customer, payment_pending, or reviewed state
  *
- * `range.from` / `range.to` filter on jobs.created_at (ISO timestamptz).
- * Both bounds optional. Returns the effective range in the response.
+ * Range bounds use paid_at for settled work and created_at for pending work.
+ * Both bounds are optional and echoed in the response.
  *
  * Per RULES.md #8 — returns honest counts; never fabricates numbers.
  */
@@ -48,50 +58,94 @@ export async function computeEarnings(
   workerId: string,
   range: EarningsRange = {},
 ): Promise<EarningsSummary> {
-  let query = supabase
-    .from('jobs')
-    .select('id, status, final_price, paid_at, created_at')
-    .eq('worker_id', workerId)
-    .in('status', ['paid', 'reviewed', 'confirmed_by_customer', 'payment_pending'])
+  const { data: rows, error } = await withDbTimeout(
+    supabase.rpc('get_worker_earnings_summary', {
+      p_worker_id: workerId,
+      p_platform_fee_rate: PLATFORM_FEE_WORKER,
+      ...(range.from == null ? {} : { p_from: range.from }),
+      ...(range.to == null ? {} : { p_to: range.to }),
+    }),
+  )
+  const row = rows?.[0]
 
-  if (range.from) query = query.gte('created_at', range.from)
-  if (range.to) query = query.lte('created_at', range.to)
-
-  const { data: rows, error } = await withDbTimeout(query)
-
-  if (error || !rows) {
+  if (error || !row) {
     console.warn('Earnings: query failed', { workerId, errorCode: error?.code })
     throw new EarningsQueryError(error?.code)
   }
 
-  let gross = 0
-  let paidCount = 0
-  let pendingCount = 0
-  let pendingAmount = 0
-
-  for (const row of rows) {
-    const price = row.final_price ?? 0
-    if (row.paid_at) {
-      gross += price
-      paidCount++
-    } else if (row.status === 'confirmed_by_customer' || row.status === 'payment_pending' || row.status === 'reviewed') {
-      pendingAmount += price
-      pendingCount++
-    }
+  let validated: {
+    totalJobsPaid: number
+    grossEarnings: number
+    platformFeeTotal: number
+    netEarnings: number
+    pendingPaymentCount: number
+    pendingPaymentAmount: number
+    dailyEarnings: DailyEarningsSummary[]
   }
-
-  const platformFee = Math.round(gross * PLATFORM_FEE_WORKER)
-  const net = gross - platformFee
+  try {
+    if (row.worker_id !== workerId) throw new Error('INVALID_EARNINGS_OWNER')
+    validated = {
+      totalJobsPaid: nonnegativeSafeInteger(row.total_jobs_paid),
+      grossEarnings: nonnegativeSafeInteger(row.gross_earnings),
+      platformFeeTotal: nonnegativeSafeInteger(row.platform_fee_total),
+      netEarnings: nonnegativeSafeInteger(row.net_earnings),
+      pendingPaymentCount: nonnegativeSafeInteger(row.pending_payment_count),
+      pendingPaymentAmount: nonnegativeSafeInteger(row.pending_payment_amount),
+      dailyEarnings: parseDailyEarnings(
+        (row as typeof row & { daily_earnings?: unknown }).daily_earnings,
+      ),
+    }
+  } catch {
+    console.warn('Earnings: invalid aggregate response', { workerId })
+    throw new EarningsQueryError('INVALID_RESPONSE')
+  }
 
   return {
     workerId,
-    totalJobsPaid: paidCount,
-    grossEarnings: gross,
-    platformFeeTotal: platformFee,
-    netEarnings: net,
-    pendingPaymentCount: pendingCount,
-    pendingPaymentAmount: pendingAmount,
+    ...validated,
     fromDate: range.from ?? null,
     toDate: range.to ?? null,
   }
+}
+
+function parseDailyEarnings(value: unknown): DailyEarningsSummary[] {
+  if (!Array.isArray(value) || value.length > MAX_DAILY_EARNINGS_ROWS) {
+    throw new Error('INVALID_DAILY_EARNINGS')
+  }
+
+  let previousDate: string | null = null
+  return value.map((entry) => {
+    if (!isRecord(entry) || !isIsoDate(entry.date)) {
+      throw new Error('INVALID_DAILY_EARNINGS')
+    }
+    if (previousDate !== null && entry.date >= previousDate) {
+      throw new Error('INVALID_DAILY_EARNINGS')
+    }
+    previousDate = entry.date
+
+    return {
+      date: entry.date,
+      grossEarnings: nonnegativeSafeInteger(entry.gross_earnings),
+      platformFeeTotal: nonnegativeSafeInteger(entry.platform_fee_total),
+      netEarnings: nonnegativeSafeInteger(entry.net_earnings),
+      paidJobCount: nonnegativeSafeInteger(entry.paid_job_count),
+    }
+  })
+}
+
+function nonnegativeSafeInteger(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error('INVALID_DAILY_EARNINGS')
+  }
+  return value
+}
+
+function isIsoDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const timestamp = Date.parse(`${value}T00:00:00.000Z`)
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

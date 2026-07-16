@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 $SupabaseArgs = $args
+. (Join-Path $PSScriptRoot "resolve-workspace-pnpm.ps1")
 
 function Find-CommandPath {
   param([string[]]$Candidates)
@@ -79,7 +80,9 @@ try {
     throw "Supabase CLI could not run: no workspace supabase binary and no pnpm executable found."
   }
 
-  & $pnpm --filter "@nestscout/api" exec supabase @SupabaseArgs
+  $pnpmInvocation = Get-WorkspacePnpmInvocation -RepoRoot $repoRoot -PnpmPath $pnpm
+  $pnpmArgs = @($pnpmInvocation.Prefix) + @("--filter", "@nestscout/api", "exec", "supabase") + @($SupabaseArgs)
+  & $pnpmInvocation.Command @pnpmArgs
   exit $LASTEXITCODE
 } finally {
   Pop-Location

@@ -21,7 +21,7 @@ function workerContext(supabase: unknown): MobileApiContext {
 
 describe('worker avatar and app-activity Edge boundary', () => {
   it('creates a signed private upload path owned by the authenticated worker', async () => {
-    const createSignedUploadUrl = vi.fn(async (path: string) => ({
+    const createSignedUploadUrl = vi.fn(async () => ({
       data: { signedUrl: 'https://storage.example.test/upload', token: 'signed-token' },
       error: null,
     }))

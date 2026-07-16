@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { safeParseJSON } from '../../../../../supabase/functions/mobile-api/_shared/kael/utils'
+import {
+  safeParseJSON,
+  scrubSensitiveForLLM,
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/utils'
 
-// J-1 (Notes.md): the Edge safeParseJSON fallback now walks the FIRST balanced
-// JSON object (string-aware) instead of indexOf("{")..lastIndexOf("}"). These
-// are BEHAVIORAL tests against the actual Edge function (it is used on the
-// money-sensitive intent/vision/market/scope-change AI-parse paths).
+function nestedJson(depth: number): string {
+  let value = '0'
+  for (let index = 0; index < depth; index += 1) {
+    value = index % 2 === 0 ? `[${value}]` : `{"value":${value}}`
+  }
+  return value
+}
+
+// Behavioral tests run against the parser used by money-sensitive Edge AI paths.
 
 describe('Edge safeParseJSON brace-counting (J-1)', () => {
   it('parses plain JSON directly', () => {
@@ -45,5 +53,21 @@ describe('Edge safeParseJSON brace-counting (J-1)', () => {
 
   it('returns null on an unterminated object', () => {
     expect(safeParseJSON('{"a":1')).toBeNull()
+  })
+
+  it('recovers the first valid object or array after bracketed prose', () => {
+    expect(safeParseJSON('Kael [analysis pending] result: {"ok":true}')).toEqual({ ok: true })
+    expect(safeParseJSON('Prefix [ without a closer, then [1,2,3]')).toEqual([1, 2, 3])
+  })
+
+  it('enforces input and structural limits before parsing model output', () => {
+    expect(safeParseJSON(nestedJson(100))).not.toBeNull()
+    expect(safeParseJSON(nestedJson(101))).toBeNull()
+    expect(safeParseJSON(`${'x'.repeat(64 * 1024)}{"ok":true}`)).toBeNull()
+  })
+
+  it('scrubs long unlabelled bank-account numbers', () => {
+    expect(scrubSensitiveForLLM('STK 1234567890123456')).toBe('STK [bank-account]')
+    expect(scrubSensitiveForLLM('Tài khoản 12345678901234567890')).toBe('Tài khoản [bank-account]')
   })
 })

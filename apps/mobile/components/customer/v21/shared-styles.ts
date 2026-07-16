@@ -8,16 +8,13 @@ export const customerV21SharedStyles = StyleSheet.create({
     marginTop: 14,
     maxWidth: '100%',
     padding: 16,
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 24,
     width: '100%',
   },
   cardShadowDark: {
-    shadowColor: '#000000',
+    boxShadow: '0 10px 24px rgba(0,0,0,0.10)',
   },
   cardShadowLight: {
-    shadowColor: '#6BAA9D',
+    boxShadow: '0 10px 24px rgba(107,170,157,0.10)',
   },
   safeArea: {
     flex: 1,

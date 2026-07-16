@@ -239,6 +239,11 @@ export type Route =
   | { kind: "notifications"; method: "GET"; roles: UserRole[] }
   | { kind: "notifications.deviceToken"; method: "POST"; roles: UserRole[] }
   | {
+    kind: "notifications.deviceToken.unregister";
+    method: "DELETE";
+    roles: UserRole[];
+  }
+  | {
     kind: "notifications.read";
     method: "POST";
     notificationId: string;
@@ -467,6 +472,13 @@ export function matchRoute(request: Request): Route | null {
     return {
       kind: "notifications.deviceToken",
       method: "POST",
+      roles: ["customer", "worker", "admin"],
+    };
+  }
+  if (method === "DELETE" && path === "/notifications/device-token") {
+    return {
+      kind: "notifications.deviceToken.unregister",
+      method: "DELETE",
       roles: ["customer", "worker", "admin"],
     };
   }

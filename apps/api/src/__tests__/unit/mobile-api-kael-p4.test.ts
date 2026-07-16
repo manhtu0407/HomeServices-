@@ -5,11 +5,14 @@ import {
   buildScopeChangeOutputs,
   buildWorkerBriefOutput,
   runKaelOutputPipeline,
+  sanitizeKaelText,
+  scrubKaelPiiText,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
 import {
   KAEL_PRICE_DISCLAIMER_V3,
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
+  matchSuspiciousScopeKeywords,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
 import { kaelArtifactProposalSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
 
@@ -104,6 +107,15 @@ describe('mobile-api Kael P4 output pipeline', () => {
     expect(result.output.value).not.toMatch(/\d/)
   })
 
+  it('removes hidden controls before PII matching and truncates Unicode safely', () => {
+    expect(sanitizeKaelText('SĐT 0901\u200B234567')).toBe('SĐT [phone]')
+    expect(sanitizeKaelText('safe\u0085\u00AD\u202E\u2066text')).toBe('safetext')
+    expect(scrubKaelPiiText('STK 1234567890123456')).not.toContain('1234567890123456')
+    expect(sanitizeKaelText('A😀', 2)).toBe('A')
+    expect(sanitizeKaelText('abcdef', -1)).toBe('')
+    expect(sanitizeKaelText('a'.repeat(600), Number.POSITIVE_INFINITY)).toHaveLength(500)
+  })
+
   it('builds Worker Brief core without address and guidance with address after accept', () => {
     const core = buildWorkerBriefOutput({
       stage: 'core',
@@ -187,5 +199,52 @@ describe('mobile-api Kael P4 anti-fraud helpers', () => {
         baseMultiplier: 1.5,
       },
     }).assessment).toBe('requires_attention')
+  })
+
+  it('fails closed with finite output for malformed scope-risk numbers', () => {
+    const anomaly = calculateScopeChangeAnomaly({
+      originalPriceMax: Number.POSITIVE_INFINITY,
+      newPriceMax: Number.NaN,
+      hasPhotos: true,
+      workerScopeChangeRate: Number.NaN,
+      description: 'Scope changed.',
+      reason: 'Needs review.',
+    })
+
+    expect(Number.isFinite(anomaly.driftRatio)).toBe(true)
+    expect(anomaly).toMatchObject({
+      score: 1,
+      challengeRequired: true,
+      adminFlagRequired: true,
+      reasons: ['invalid_scope_change_risk_input'],
+    })
+
+    const margin = calculateScopeChangeMargin({
+      newComplexity: 'medium',
+      newPriceMax: Number.POSITIVE_INFINITY,
+      config: {
+        complexityHours: { small: 1, medium: Number.NaN, large: 6 },
+        hcmcHourlyRateVnd: 100000,
+        baseMultiplier: 1.5,
+      },
+    })
+    expect(Number.isFinite(margin.fairPriceMax)).toBe(true)
+    expect(margin).toEqual({
+      fairPriceMax: 0,
+      assessment: 'requires_attention',
+      adminAlert: true,
+    })
+  })
+
+  it('ignores blank and duplicate suspicious keyword configuration', () => {
+    expect(matchSuspiciousScopeKeywords(
+      'A normal scope update.',
+      [' ', 'scope', ' scope '],
+    )).toEqual(['scope'])
+  })
+
+  it('matches Vietnamese suspicious scope phrases with or without diacritics', () => {
+    expect(matchSuspiciousScopeKeywords('phai thay het duong ong nay')).toContain('phải thay hết')
+    expect(matchSuspiciousScopeKeywords('Phải thay hết đường ống này')).toContain('phải thay hết')
   })
 })

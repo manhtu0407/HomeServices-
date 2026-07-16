@@ -1,9 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { performance } from 'node:perf_hooks'
-
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
-const STAGING_REF = 'xyylanuyflrjzbjzhqfl'
-const PASSWORD = 'F26-production-smoke-Temp-12345!'
+import {
+  assertLiveApproval,
+  assertSupabaseTargets,
+  createEphemeralPassword,
+  createTimeoutFetch,
+} from './lib/privileged-script-safety.mjs'
 
 const CASES = [
   {
@@ -61,26 +63,11 @@ function requireEnv(name, fallbacks = []) {
   return value
 }
 
-function assertProductionUrl(value, label) {
-  assert(value.includes(PRODUCTION_REF), `${label} must target production ref ${PRODUCTION_REF}`)
-  assert(!value.includes(STAGING_REF), `${label} must not target staging ref ${STAGING_REF}`)
-}
-
 function createSupabase(url, key) {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch },
+    global: { fetch: createTimeoutFetch(60_000) },
   })
-}
-
-async function timeoutFetch(timeoutMs, url, options) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(url, { ...options, signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
 }
 
 async function must(query, label) {
@@ -94,6 +81,7 @@ class F26ProductionSmoke {
     this.config = config
     this.admin = createSupabase(config.supabaseUrl, config.serviceRoleKey)
     this.runId = `f26-prod-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`
+    this.password = createEphemeralPassword('F26Production')
     this.userIds = []
     this.jobIds = []
     this.timings = []
@@ -122,7 +110,7 @@ class F26ProductionSmoke {
     const email = `${this.runId}-customer@f26.production.test`
     const { data, error } = await this.admin.auth.admin.createUser({
       email,
-      password: PASSWORD,
+      password: this.password,
       email_confirm: true,
       user_metadata: { role: 'customer', full_name: 'F26 Production Smoke Customer' },
     })
@@ -150,7 +138,7 @@ class F26ProductionSmoke {
     )
 
     const client = createSupabase(this.config.supabaseUrl, this.config.anonKey)
-    const signedIn = await client.auth.signInWithPassword({ email, password: PASSWORD })
+    const signedIn = await client.auth.signInWithPassword({ email, password: this.password })
     if (signedIn.error || !signedIn.data.session) {
       throw new Error(`sign in production smoke user: ${signedIn.error?.message}`)
     }
@@ -159,7 +147,7 @@ class F26ProductionSmoke {
 
   async api(actor, method, path, body = undefined) {
     const started = performance.now()
-    const response = await timeoutFetch(90_000, `${this.config.apiBaseUrl}${path}`, {
+    const response = await createTimeoutFetch(90_000)(`${this.config.apiBaseUrl}${path}`, {
       method,
       headers: {
         apikey: this.config.anonKey,
@@ -255,6 +243,7 @@ class F26ProductionSmoke {
 
   async cleanup() {
     const counts = {}
+    const errors = []
     if (this.jobIds.length > 0) {
       for (const table of [
         'kael_optimization_metrics',
@@ -268,45 +257,57 @@ class F26ProductionSmoke {
       ]) {
         const column = table === 'jobs' ? 'id' : 'job_id'
         const { error } = await this.admin.from(table).delete().in(column, this.jobIds)
-        if (error) this.results.limitations.push(`cleanup ${table}: ${error.message}`)
+        if (error) errors.push(`cleanup ${table}: ${error.message}`)
       }
 
-      for (const table of ['kael_optimization_metrics', 'jobs', 'job_events', 'job_broadcasts', 'api_logs', 'notifications']) {
+      for (const table of [
+        'kael_optimization_metrics',
+        'job_events',
+        'job_broadcasts',
+        'chat_messages',
+        'reviews',
+        'api_logs',
+        'notifications',
+        'jobs',
+      ]) {
         const column = table === 'jobs' ? 'id' : 'job_id'
         const { count, error } = await this.admin
           .from(table)
           .select('id', { count: 'exact', head: true })
           .in(column, this.jobIds)
-        if (error) throw new Error(`cleanup count ${table}: ${error.message}`)
-        counts[table] = count ?? 0
+        if (error) errors.push(`cleanup count ${table}: ${error.message}`)
+        else counts[table] = count ?? 0
       }
     }
 
     for (const userId of this.userIds) {
-      await this.admin.from('customer_profiles').delete().eq('id', userId)
-      await this.admin.from('profiles').delete().eq('id', userId)
+      const { error: customerProfileError } = await this.admin.from('customer_profiles').delete().eq('id', userId)
+      if (customerProfileError) errors.push(`cleanup customer_profiles: ${customerProfileError.message}`)
+      const { error: profileError } = await this.admin.from('profiles').delete().eq('id', userId)
+      if (profileError) errors.push(`cleanup profiles: ${profileError.message}`)
       const { error } = await this.admin.auth.admin.deleteUser(userId)
-      if (error) this.results.limitations.push(`delete auth user: ${error.message}`)
+      if (error) errors.push(`delete auth user: ${error.message}`)
     }
 
     if (this.userIds.length > 0) {
-      const { count, error } = await this.admin
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .in('id', this.userIds)
-      if (error) throw new Error(`cleanup count profiles: ${error.message}`)
-      counts.profiles = count ?? 0
+      for (const table of ['customer_profiles', 'profiles']) {
+        const { count, error } = await this.admin
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .in('id', this.userIds)
+        if (error) errors.push(`cleanup count ${table}: ${error.message}`)
+        else counts[table] = count ?? 0
+      }
     }
 
-    this.results.cleanup = { counts, ok: Object.values(counts).every((value) => value === 0) }
-    assert(this.results.cleanup.ok, `cleanup verification failed: ${JSON.stringify(counts)}`)
+    const ok = errors.length === 0 && Object.values(counts).every((value) => value === 0)
+    this.results.cleanup = { counts, errors, ok }
+    assert(ok, `cleanup verification failed: ${JSON.stringify({ counts, errors })}`)
   }
 }
 
 function loadConfig() {
-  if (process.env.F26_RUN_PRODUCTION !== '1') {
-    throw new Error('Set F26_RUN_PRODUCTION=1 to run the mutable production smoke harness.')
-  }
+  assertLiveApproval('F26_RUN_PRODUCTION', 'I_UNDERSTAND_PRODUCTION_MUTATION')
   const supabaseUrl = requireEnv('F26_SUPABASE_URL', [
     'NEXT_PUBLIC_SUPABASE_URL',
     'EXPO_PUBLIC_SUPABASE_URL',
@@ -321,9 +322,8 @@ function loadConfig() {
     readEnv('F26_API_BASE_URL', ['EXPO_PUBLIC_API_BASE_URL']) ??
     `${supabaseUrl}/functions/v1/mobile-api`
 
-  assertProductionUrl(supabaseUrl, 'F26_SUPABASE_URL')
-  assertProductionUrl(apiBaseUrl, 'F26_API_BASE_URL')
-  return { supabaseUrl, anonKey, serviceRoleKey, apiBaseUrl }
+  assertSupabaseTargets('production', supabaseUrl, apiBaseUrl)
+  return { supabaseUrl, anonKey, serviceRoleKey, apiBaseUrl: apiBaseUrl.replace(/\/$/, '') }
 }
 
 const harness = new F26ProductionSmoke(loadConfig())
@@ -335,7 +335,12 @@ try {
   harness.results.error = error instanceof Error ? error.message : String(error)
 } finally {
   await harness.cleanup().catch((error) => {
-    harness.results.cleanup = { ok: false, error: error instanceof Error ? error.message : String(error) }
+    status = 'failed'
+    harness.results.cleanup = {
+      ...(harness.results.cleanup ?? {}),
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
   })
 }
 

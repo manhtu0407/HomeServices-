@@ -34,7 +34,7 @@ export function workerV5MemoryPreferenceOverridesFromMemory(memory: KaelMemoryPa
   const preferences = workerV5RecordFromUnknown(safeMetadata?.memory_preferences)
   const overrides: Partial<Record<WorkerV5MemoryPreferenceUiId, boolean>> = {}
   if (!preferences) return overrides
-  for (const [uiId, apiKey] of Object.entries(WORKER_V5_MEMORY_PREFERENCE_API_KEYS) as Array<[WorkerV5MemoryPreferenceUiId, WorkerV5MemoryPreferenceApiKey]>) {
+  for (const [uiId, apiKey] of Object.entries(WORKER_V5_MEMORY_PREFERENCE_API_KEYS) as [WorkerV5MemoryPreferenceUiId, WorkerV5MemoryPreferenceApiKey][]) {
     if (typeof preferences[apiKey] === 'boolean') {
       overrides[uiId] = preferences[apiKey]
     }

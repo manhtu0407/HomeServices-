@@ -3,6 +3,9 @@ import { supabase } from './supabase'
 import * as VideoThumbnails from 'expo-video-thumbnails'
 import type { CaseWorkEvidence } from '@nestscout/shared'
 import type { JobMediaAttachInput, JobMediaStage } from './api-types'
+import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
+
+export { uploadWorkerVerificationDrafts } from './worker-verification-upload'
 
 export type LocalMediaUploadDraft = {
   uri: string
@@ -13,61 +16,57 @@ export type LocalMediaUploadDraft = {
   durationMillis?: number
 }
 
-type WorkerVerificationDrafts = {
-  cccdFront: LocalMediaUploadDraft
-  cccdBack: LocalMediaUploadDraft
-  selfie: LocalMediaUploadDraft
-}
-
-type WorkerVerificationUrls = {
-  cccd_front_url: string
-  cccd_back_url: string
-  selfie_url: string
-}
-
 type MediaUploadFailure = {
   success: false
   code?: string
   error: string
 }
 
+const MAX_JOB_MEDIA_BYTES = 26_214_400
+const MAX_KAEL_CHAT_MEDIA_BYTES = 50 * 1024 * 1024
+const LOCAL_MEDIA_READ_TIMEOUT_MS = 15_000
+const JOB_MEDIA_UPLOAD_TIMEOUT_MS = 60_000
+const JOB_MEDIA_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+])
+
 export function localizeMediaUploadFailure(
   failure: { code?: string; error: string },
   language: 'vi' | 'en',
 ) {
-  if (language === 'vi') return failure.error
-  switch (failure.code) {
-    case 'RAW_AUDIO_PRIVATE':
-      return 'Raw voice audio stays on your device. Send the reviewed transcript instead.'
-    case 'VIDEO_FRAME_EXTRACTION_UNAVAILABLE':
-      return 'This device could not extract video frames. The original video was not uploaded.'
-    case 'MEDIA_STORAGE_UNAVAILABLE':
-      return 'Media storage is not configured yet.'
-    case 'MEDIA_READ_FAILED':
-      return 'The selected media could not be read.'
-    case 'MEDIA_UPLOAD_FAILED':
-      return 'The selected media could not be uploaded. Please try again.'
-    case 'UNSUPPORTED_MEDIA':
-      return 'Use a compatible JPEG, PNG, or WebP image for Kael analysis.'
-    default:
-      return 'The selected media could not be processed. Please try again.'
-  }
+  const localized = mediaUploadFailureCopy[language]
+  return localized.byCode[failure.code ?? ''] ?? localized.fallback
 }
 
-type JobMediaUploadResult =
-  | {
-      success: true
-      asset: JobMediaAttachInput['assets'][number]
-    }
-  | MediaUploadFailure
-
-type WorkerVerificationUploadResult =
-  | {
-      success: true
-      field: keyof WorkerVerificationUrls
-      url: string
-    }
-  | MediaUploadFailure
+const mediaUploadFailureCopy = {
+  vi: {
+    byCode: {
+      RAW_AUDIO_PRIVATE: 'Giọng nói gốc chỉ ở trên thiết bị. Hãy gửi bản chép lời đã kiểm tra.',
+      VIDEO_FRAME_EXTRACTION_UNAVAILABLE: 'Thiết bị này không thể trích khung hình video. Video gốc không được tải lên.',
+      MEDIA_STORAGE_UNAVAILABLE: 'Kho media chưa được cấu hình.',
+      MEDIA_READ_FAILED: 'Không thể đọc media đã chọn.',
+      MEDIA_TOO_LARGE: 'Media đã chọn vượt giới hạn dung lượng.',
+      MEDIA_UPLOAD_FAILED: 'Không thể tải media đã chọn lên. Vui lòng thử lại.',
+      UNSUPPORTED_MEDIA: 'Hãy chọn tệp JPEG, PNG, WebP hoặc MP4 phù hợp với bước này.',
+    } as Record<string, string>,
+    fallback: 'Không thể xử lý media đã chọn. Vui lòng thử lại.',
+  },
+  en: {
+    byCode: {
+      RAW_AUDIO_PRIVATE: 'Raw voice audio stays on your device. Send the reviewed transcript instead.',
+      VIDEO_FRAME_EXTRACTION_UNAVAILABLE: 'This device could not extract video frames. The original video was not uploaded.',
+      MEDIA_STORAGE_UNAVAILABLE: 'Media storage is not configured yet.',
+      MEDIA_READ_FAILED: 'The selected media could not be read.',
+      MEDIA_TOO_LARGE: 'The selected media exceeds the allowed size limit.',
+      MEDIA_UPLOAD_FAILED: 'The selected media could not be uploaded. Please try again.',
+      UNSUPPORTED_MEDIA: 'Use a compatible JPEG, PNG, WebP, or MP4 file for this step.',
+    } as Record<string, string>,
+    fallback: 'The selected media could not be processed. Please try again.',
+  },
+} as const
 
 export async function uploadJobMediaDrafts(
   jobId: string,
@@ -95,57 +94,139 @@ export async function uploadJobMediaDrafts(
     }
   }
 
-  const uploadResults = await Promise.all(
-    mediaItems.slice(0, 5).map(async (item, index): Promise<JobMediaUploadResult> => {
-      const mimeType = item.mimeType ?? fallbackMimeType(item)
-      const objectPath = `${jobId}/${stage}/${safeObjectName(item.fileName, item.uri, index, mimeType)}`
-      const localBlob = await readLocalMediaBlob(item.uri)
-      if (!localBlob.success) {
-        return {
-          success: false,
-          error: 'Không thể đọc tệp media đã chọn',
-        }
-      }
-      const { error } = await client.storage.from('job-media').upload(objectPath, localBlob.blob, {
-        contentType: mimeType,
-        upsert: false,
-      })
-      if (error) {
-        return {
-          success: false,
-          error: 'Không thể tải tệp media lên kho media',
-        }
-      }
-      return {
-        success: true,
-        asset: {
-          object_path: objectPath,
-          stage,
-          mime_type: mimeType,
-          file_size_bytes: item.fileSizeBytes ?? localBlob.blob.size,
-        },
-      }
-    }),
-  )
-  const failedUpload = uploadResults.find((result) => !result.success)
-  if (failedUpload && !failedUpload.success) {
-    return {
-      success: false as const,
-      error: failedUpload.error,
-    }
+  const storageApi = client.storage.from('job-media') as unknown as {
+    uploadToSignedUrl: (
+      path: string,
+      token: string,
+      fileBody: Blob,
+      fileOptions?: { contentType?: string; upsert?: boolean },
+    ) => Promise<{ error: unknown }>
   }
-  const uploadedAssets = uploadResults.flatMap((result) => (result.success ? [result.asset] : []))
+  const reservedObjectPaths: string[] = []
+  const uploadedAssets: JobMediaAttachInput['assets'] = []
 
-  const attached = await jobService.attachJobMedia(jobId, { assets: uploadedAssets })
-  if (!attached.success) {
-    return {
-      success: false as const,
-      error: attached.error,
+  for (const [index, item] of mediaItems.slice(0, 5).entries()) {
+    if (
+      typeof item.fileSizeBytes === 'number' &&
+      Number.isFinite(item.fileSizeBytes) &&
+      item.fileSizeBytes > MAX_JOB_MEDIA_BYTES
+    ) {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure('MEDIA_TOO_LARGE', 'Tệp media vượt quá giới hạn 25 MB')
     }
+
+    const mimeType = mimeTypeForUpload(item)
+    if (
+      !JOB_MEDIA_MIME_TYPES.has(mimeType) ||
+      (mimeType === 'video/mp4' && stage !== 'before' && stage !== 'kael_reference')
+    ) {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure(
+        'UNSUPPORTED_MEDIA',
+        'Tệp media phải ở định dạng JPEG, PNG, WebP hoặc MP4 phù hợp với bước này',
+      )
+    }
+
+    const localBlob = await readLocalMediaBlob(item.uri, MAX_JOB_MEDIA_BYTES)
+    if (!localBlob.success) {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure('MEDIA_READ_FAILED', 'Không thể đọc tệp media đã chọn')
+    }
+    const fileSizeBytes = positiveUploadFileSize(localBlob.blob.size)
+    if (!fileSizeBytes) {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure('MEDIA_READ_FAILED', 'Tệp media rỗng hoặc không thể đọc')
+    }
+    if (fileSizeBytes > MAX_JOB_MEDIA_BYTES) {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure('MEDIA_TOO_LARGE', 'Tệp media vượt quá giới hạn 25 MB')
+    }
+
+    let uploadIntent: Awaited<ReturnType<typeof jobService.createJobMediaUpload>>
+    try {
+      uploadIntent = await jobService.createJobMediaUpload(jobId, {
+        file_name: safeUploadRequestFileName(item.fileName, item.uri, index, mimeType),
+        file_size_bytes: fileSizeBytes,
+        mime_type: mimeType,
+        stage,
+      })
+    } catch {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure('MEDIA_UPLOAD_FAILED', 'Không thể chuẩn bị tệp media')
+    }
+    if (!uploadIntent.success) {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure(uploadIntent.code, uploadIntent.error)
+    }
+
+    const { object_path: objectPath, token } = uploadIntent.data
+    reservedObjectPaths.push(objectPath)
+    try {
+      const { error } = await withJobMediaUploadTimeout(
+        storageApi.uploadToSignedUrl(
+          objectPath,
+          token,
+          localBlob.blob,
+          { contentType: mimeType, upsert: false },
+        ),
+      )
+      if (error) {
+        await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+        return jobMediaFailure('MEDIA_UPLOAD_FAILED', 'Không thể tải tệp media lên kho media')
+      }
+    } catch {
+      await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+      return jobMediaFailure('MEDIA_UPLOAD_FAILED', 'Không thể tải tệp media lên kho media')
+    }
+
+    uploadedAssets.push({
+      object_path: uploadIntent.data.object_path,
+      stage,
+      mime_type: mimeType,
+      file_size_bytes: fileSizeBytes,
+    })
+  }
+
+  let attached: Awaited<ReturnType<typeof jobService.attachJobMedia>>
+  try {
+    attached = await jobService.attachJobMedia(jobId, { assets: uploadedAssets })
+  } catch {
+    await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+    return jobMediaFailure('MEDIA_UPLOAD_FAILED', 'Không thể gắn media vào yêu cầu')
+  }
+  if (!attached.success) {
+    await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
+    return jobMediaFailure(attached.code, attached.error)
   }
   return {
     success: true as const,
     mediaRefs: attached.data.media.map((item) => item.storage_ref),
+  }
+}
+
+function jobMediaFailure(code: string, error: string): MediaUploadFailure {
+  return { success: false, code, error }
+}
+
+async function revokeJobMediaUploadsBestEffort(jobId: string, objectPaths: string[]) {
+  const uniquePaths = [...new Set(objectPaths)].slice(0, 5)
+  if (uniquePaths.length === 0) return
+  try {
+    await jobService.revokeJobMediaUploads(jobId, { object_paths: uniquePaths })
+  } catch {
+    return
+  }
+}
+
+async function withJobMediaUploadTimeout<T>(promise: Promise<T>) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Job media upload timeout')), JOB_MEDIA_UPLOAD_TIMEOUT_MS)
+  })
+  try {
+    return await Promise.race([promise, timeout])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
   }
 }
 
@@ -330,11 +411,11 @@ async function uploadKaelChatEvidenceObject(
       error: 'Ảnh cần ở định dạng JPEG, PNG hoặc WebP để Kael phân tích',
     }
   }
-  const localBlob = await readLocalMediaBlob(item.uri)
+  const localBlob = await readLocalMediaBlob(item.uri, MAX_KAEL_CHAT_MEDIA_BYTES)
   if (!localBlob.success) {
     return { success: false, code: 'MEDIA_READ_FAILED', error: 'Không thể đọc tệp media đã chọn' }
   }
-  const fileSizeBytes = positiveUploadFileSize(item.fileSizeBytes) ?? positiveUploadFileSize(localBlob.blob.size)
+  const fileSizeBytes = positiveUploadFileSize(localBlob.blob.size)
   if (!fileSizeBytes) {
     return {
       success: false,
@@ -342,38 +423,68 @@ async function uploadKaelChatEvidenceObject(
       error: 'Tệp media rỗng hoặc không thể đọc',
     }
   }
-  const signedUpload = await kaelChatService.createMediaUpload({
-    file_name: safeUploadRequestFileName(item.fileName, item.uri, index, mimeType),
-    mime_type: mimeType,
-    purpose: options.kind === 'video_original_private' ? 'private_video_original' : 'model_vision',
-    file_size_bytes: fileSizeBytes,
-  })
+  if (fileSizeBytes > MAX_KAEL_CHAT_MEDIA_BYTES) {
+    return {
+      success: false,
+      code: 'MEDIA_TOO_LARGE',
+      error: 'Tệp media vượt quá giới hạn dung lượng cho phép',
+    }
+  }
+  let signedUpload: Awaited<ReturnType<typeof kaelChatService.createMediaUpload>>
+  try {
+    signedUpload = await withJobMediaUploadTimeout(kaelChatService.createMediaUpload({
+      file_name: safeUploadRequestFileName(item.fileName, item.uri, index, mimeType),
+      mime_type: mimeType,
+      purpose: options.kind === 'video_original_private' ? 'private_video_original' : 'model_vision',
+      file_size_bytes: fileSizeBytes,
+    }))
+  } catch {
+    return {
+      success: false,
+      code: 'MEDIA_UPLOAD_FAILED',
+      error: 'Không thể chuẩn bị tệp media để tải lên',
+    }
+  }
   if (!signedUpload.success) {
     return { success: false, code: signedUpload.code, error: signedUpload.error }
   }
-  const { error: uploadError } = await storageApi.uploadToSignedUrl(
-    signedUpload.data.object_path,
-    signedUpload.data.token,
-    localBlob.blob,
-    { contentType: mimeType, upsert: false },
-  )
-  if (uploadError) {
-    return { success: false, code: 'MEDIA_UPLOAD_FAILED', error: 'Không thể tải ảnh/video lên kho media' }
+  try {
+    const { error: uploadError } = await withJobMediaUploadTimeout(storageApi.uploadToSignedUrl(
+      signedUpload.data.object_path,
+      signedUpload.data.token,
+      localBlob.blob,
+      { contentType: mimeType, upsert: false },
+    ))
+    if (!uploadError) {
+      return {
+        success: true,
+        mediaRef: signedUpload.data.media_ref,
+        evidence: {
+          kind: options.kind,
+          ref: signedUpload.data.media_ref,
+          model_eligible: options.modelEligible,
+        },
+      }
+    }
+  } catch {
+    // The upload may have reached Storage before the client observed failure.
   }
+  await cleanupKaelChatMediaRefs([signedUpload.data.media_ref])
   return {
-    success: true,
-    mediaRef: signedUpload.data.media_ref,
-    evidence: {
-      kind: options.kind,
-      ref: signedUpload.data.media_ref,
-      model_eligible: options.modelEligible,
-    },
+    success: false,
+    code: 'MEDIA_UPLOAD_FAILED',
+    error: 'Không thể tải ảnh/video lên kho media',
   }
 }
 
 function kaelChatObjectPath(mediaRef: string) {
   const prefix = 'supabase://kael-chat-media/'
-  return mediaRef.startsWith(prefix) ? mediaRef.slice(prefix.length) : null
+  if (!mediaRef.startsWith(prefix)) return null
+  const objectPath = mediaRef.slice(prefix.length)
+  if (objectPath.includes('..') || objectPath.includes('//')) return null
+  return /^[^/\s?#]{1,128}\/kael-chat\/(?:model_vision|private_video_original)\/[A-Za-z0-9][A-Za-z0-9._-]{0,220}$/.test(objectPath)
+    ? objectPath
+    : null
 }
 
 async function extractPrivateVideoFrames(
@@ -411,110 +522,28 @@ export function videoFrameTimes(durationMillis: number | undefined, limit = 3) {
   return [...new Set(ratios.map((ratio) => Math.max(0, Math.round(durationMillis * ratio))))]
 }
 
-
-export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDrafts) {
-  const client = supabase
-  if (!client) {
-    return {
-      success: false as const,
-      error: 'Kho xác minh thợ chưa được cấu hình',
-    }
-  }
-
-  const user = await client.auth.getUser()
-  const userId = user.data.user?.id
-  if (user.error || !userId) {
-    return {
-      success: false as const,
-      error: 'Cần đăng nhập tài khoản thợ trước khi gửi hồ sơ',
-    }
-  }
-
-  const uploaded: Partial<WorkerVerificationUrls> = {}
-  const entries = [
-    ['cccd_front_url', 'cccd-front', files.cccdFront],
-    ['cccd_back_url', 'cccd-back', files.cccdBack],
-    ['selfie_url', 'selfie', files.selfie],
-  ] as const
-
-  const uploadResults = await Promise.all(
-    entries.map(async ([field, folder, item]): Promise<WorkerVerificationUploadResult> => {
-      const mimeType = item.mimeType ?? fallbackMimeType(item)
-      const objectPath = `${userId}/${folder}/${safeObjectName(item.fileName, item.uri, 0, mimeType)}`
-      const localBlob = await readLocalMediaBlob(item.uri)
-      if (!localBlob.success) {
-        return {
-          success: false,
-          error: 'Không thể đọc file xác minh đã chọn',
-        }
-      }
-      const { error } = await client.storage.from('worker-verification').upload(objectPath, localBlob.blob, {
-        contentType: mimeType,
-        upsert: false,
-      })
-      if (error) {
-        return {
-          success: false,
-          error: 'Không thể tải file xác minh lên kho bảo mật',
-        }
+async function readLocalMediaBlob(
+  uri: string,
+  maxBytes: number,
+): Promise<{ success: true; blob: Blob } | { success: false }> {
+  try {
+    return await withNetworkDeadline(async (signal) => {
+      const response = await fetch(uri, { signal })
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined)
+        return { success: false as const }
       }
       return {
-        success: true,
-        field,
-        url: `supabase://worker-verification/${objectPath}`,
+        success: true as const,
+        blob: await readResponseBlobBounded(response, maxBytes),
       }
-    }),
-  )
-  const failedUpload = uploadResults.find((result) => !result.success)
-  if (failedUpload && !failedUpload.success) {
-    return {
-      success: false as const,
-      error: failedUpload.error,
-    }
-  }
-  for (const result of uploadResults) {
-    if (result.success) uploaded[result.field] = result.url
-  }
-
-  if (!uploaded.cccd_front_url || !uploaded.cccd_back_url || !uploaded.selfie_url) {
-    return {
-      success: false as const,
-      error: 'Hồ sơ xác minh chưa đủ file bắt buộc',
-    }
-  }
-  return {
-    success: true as const,
-    urls: uploaded as WorkerVerificationUrls,
-  }
-}
-
-async function readLocalMediaBlob(uri: string): Promise<{ success: true; blob: Blob } | { success: false }> {
-  try {
-    const response = await fetch(uri)
-    if (!response.ok) return { success: false }
-    return { success: true, blob: await response.blob() }
+    }, LOCAL_MEDIA_READ_TIMEOUT_MS)
   } catch {
     return { success: false }
   }
 }
 
-function safeObjectName(fileName: string | undefined, uri: string, index: number, mimeType: string) {
-  const rawName = fileName || uri.split('/').pop() || `media-${index}${extensionForMimeType(mimeType)}`
-  const dotIndex = rawName.lastIndexOf('.')
-  const base = dotIndex > 0 ? rawName.slice(0, dotIndex) : rawName
-  const extension = dotIndex > 0 ? rawName.slice(dotIndex) : extensionForMimeType(mimeType)
-  const safeBase = base
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9._-]/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 70) || `media-${index}`
-  return `${Date.now()}-${index}-${safeBase}${safeExtension(extension, mimeType)}`
-}
-
-function safeExtension(extension: string, mimeType: string) {
-  const normalized = extension.toLowerCase().replace(/[^a-z0-9.]/g, '')
-  if (/^\.[a-z0-9]{2,5}$/.test(normalized)) return normalized
+function safeExtension(mimeType: string) {
   return extensionForMimeType(mimeType)
 }
 
@@ -541,8 +570,7 @@ function safeUploadRequestFileName(fileName: string | undefined, uri: string, in
   const rawName = (fileName || uri.split('/').pop() || `media-${index}${extensionForMimeType(mimeType)}`).split(/[?#]/)[0]
   const dotIndex = rawName.lastIndexOf('.')
   const rawBase = dotIndex > 0 ? rawName.slice(0, dotIndex) : rawName
-  const rawExtension = dotIndex > 0 ? rawName.slice(dotIndex) : extensionForMimeType(mimeType)
-  const extension = safeExtension(rawExtension, mimeType)
+  const extension = safeExtension(mimeType)
   const safeBase = rawBase
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -551,22 +579,6 @@ function safeUploadRequestFileName(fileName: string | undefined, uri: string, in
     .replace(/^-+|-+$/g, '')
     .slice(0, Math.max(12, 170 - extension.length)) || `media-${index}`
   return `${safeBase}${extension}`
-}
-
-function fallbackMimeType(item: LocalMediaUploadDraft) {
-  if (item.type === 'video') return 'video/mp4'
-  if (item.type === 'audio') {
-    const name = (item.fileName ?? item.uri).toLowerCase()
-    if (name.endsWith('.mp3')) return 'audio/mpeg'
-    if (name.endsWith('.wav')) return 'audio/wav'
-    if (name.endsWith('.aac')) return 'audio/aac'
-    if (name.endsWith('.mp4')) return 'audio/mp4'
-    return 'audio/m4a'
-  }
-  const name = (item.fileName ?? item.uri).toLowerCase()
-  if (name.endsWith('.png')) return 'image/png'
-  if (name.endsWith('.webp')) return 'image/webp'
-  return 'image/jpeg'
 }
 
 function fallbackKaelChatMimeType(item: LocalMediaUploadDraft) {

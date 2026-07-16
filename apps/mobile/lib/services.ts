@@ -1,4 +1,5 @@
-import { api, type ApiResult } from './api'
+import { api, mobileApiUrl, type ApiResult } from './api'
+import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
 import { streamKaelChatTurn, streamWorkerKaelChatTurn, type KaelChatStreamHandlers, type WorkerKaelChatStreamHandlers } from './kael-stream'
 import type {
   AcceptBroadcastResponse,
@@ -18,6 +19,10 @@ import type {
   KaelMemoryResponse,
   JobDetailResponse,
   JobMediaAttachInput,
+  JobMediaRevokeRequest,
+  JobMediaRevokeResult,
+  JobMediaUploadRequest,
+  JobMediaUploadIntentResponse,
   ApartmentAccessAuthorizeResponse,
   JobMediaAttachResponse,
   JobMessageListResponse,
@@ -79,6 +84,7 @@ import type {
   WorkerCandidateDecisionResponse,
   WorkerCandidateResponse,
 } from './api-types'
+
 import type {
   AvailabilityToggleInput,
   CustomerCancellationRequestInput,
@@ -91,7 +97,10 @@ import type {
   DisputeAdminDecisionInput,
   DisputeCounterStatementInput,
   DisputeOpenRequestInput,
+  DevicePushTokenUnregisterInput,
+  DevicePushTokenUnregisterResponse,
   JobCreateInput,
+  JobIncidentScopeProposalInput,
   JobStatus,
   CustomerKaelFeedbackInput,
   CustomerKaelMemoryPreferenceUpdateInput,
@@ -118,6 +127,11 @@ import type {
   WorkerKaelMemoryPreferenceUpdateInput,
   WorkerScopeChangeInput,
 } from '@nestscout/shared'
+
+const ROUTE_MAP_FETCH_TIMEOUT_MS = 15_000
+const ROUTE_MAP_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+const ROUTE_MAP_MAX_URI_LENGTH = 2_048
+const ROUTE_MAP_COORDINATE_PATTERN = /^-?(?:\d+(?:\.\d+)?|\.\d+)$/
 
 type MobileKaelScheduleWindowInput = {
   date: string
@@ -157,7 +171,7 @@ export const jobService = {
   },
 
   getJob(jobId: string) {
-    return api.get<JobDetailResponse>(`/jobs/${jobId}`)
+    return api.get<JobDetailResponse>(`/jobs/${encodeURIComponent(jobId)}`)
   },
 
   // Resume the customer's active job
@@ -187,23 +201,37 @@ export const jobService = {
   },
 
   listMessages(jobId: string) {
-    return api.get<JobMessageListResponse>(`/jobs/${jobId}/messages`)
+    return api.get<JobMessageListResponse>(`/jobs/${encodeURIComponent(jobId)}/messages`)
   },
 
   sendMessage(jobId: string, input: { content: string }) {
-    return api.post<JobMessageSendResponse>(`/jobs/${jobId}/messages`, input)
+    return api.post<JobMessageSendResponse>(`/jobs/${encodeURIComponent(jobId)}/messages`, input)
   },
 
   attachJobMedia(jobId: string, input: JobMediaAttachInput) {
-    return api.post<JobMediaAttachResponse>(`/jobs/${jobId}/media`, input)
+    return api.post<JobMediaAttachResponse>(`/jobs/${encodeURIComponent(jobId)}/media`, input)
+  },
+
+  createJobMediaUpload(jobId: string, input: JobMediaUploadRequest) {
+    return api.post<JobMediaUploadIntentResponse>(
+      `/jobs/${encodeURIComponent(jobId)}/media-upload`,
+      input,
+    )
+  },
+
+  revokeJobMediaUploads(jobId: string, input: JobMediaRevokeRequest) {
+    return api.post<JobMediaRevokeResult>(
+      `/jobs/${encodeURIComponent(jobId)}/media-revoke`,
+      input,
+    )
   },
 
   confirmSearch(jobId: string) {
-    return api.post<ConfirmSearchResponse>(`/jobs/${jobId}/confirm-search`)
+    return api.post<ConfirmSearchResponse>(`/jobs/${encodeURIComponent(jobId)}/confirm-search`)
   },
 
   cancelJob(jobId: string) {
-    return api.post<{ job_id: string; status: JobStatus }>(`/jobs/${jobId}/cancel`)
+    return api.post<{ job_id: string; status: JobStatus }>(`/jobs/${encodeURIComponent(jobId)}/cancel`)
   },
 
   getWorkerCandidate(jobId: string) {
@@ -235,7 +263,7 @@ export const jobService = {
     access_check_in?: WorkerAccessCheckInInput
   }) {
     // worker không nhập final_price; Kael giữ authority.
-    return api.patch<StatusUpdateResponse>(`/jobs/${jobId}/status`, {
+    return api.patch<StatusUpdateResponse>(`/jobs/${encodeURIComponent(jobId)}/status`, {
       status,
       ...extras,
     })
@@ -244,60 +272,60 @@ export const jobService = {
   // Customer "Cho thợ lên" releases the exact unit. Backend rejects with
   // ACCESS_NOT_READY (409) when the worker has not checked in at the lobby yet.
   authorizeApartmentAccess(jobId: string) {
-    return api.post<ApartmentAccessAuthorizeResponse>(`/jobs/${jobId}/access/authorize`)
+    return api.post<ApartmentAccessAuthorizeResponse>(`/jobs/${encodeURIComponent(jobId)}/access/authorize`)
   },
 
   requestScopeChange(jobId: string, input: WorkerScopeChangeInput) {
-    return api.post<WorkerScopeChangeResponse>(`/jobs/${jobId}/scope-change`, input)
+    return api.post<WorkerScopeChangeResponse>(`/jobs/${encodeURIComponent(jobId)}/scope-change`, input)
   },
 
   getKaelJobIncident(jobId: string) {
-    return api.get<JobIncidentResponse>(`/jobs/${jobId}/kael-incident`)
+    return api.get<JobIncidentResponse>(`/jobs/${encodeURIComponent(jobId)}/kael-incident`)
   },
 
   openKaelJobIncident(jobId: string, input: WorkerScopeChangeInput) {
-    return api.post<JobIncidentResponse>(`/jobs/${jobId}/kael-incident`, input)
+    return api.post<JobIncidentResponse>(`/jobs/${encodeURIComponent(jobId)}/kael-incident`, input)
   },
 
-  proposeScopeChangeFromKaelIncident(jobId: string) {
-    return api.post<JobIncidentScopeProposalResponse>(`/jobs/${jobId}/kael-incident/propose-scope`)
+  proposeScopeChangeFromKaelIncident(jobId: string, input: JobIncidentScopeProposalInput) {
+    return api.post<JobIncidentScopeProposalResponse>(`/jobs/${encodeURIComponent(jobId)}/kael-incident/propose-scope`, input)
   },
 
   askKaelForWorker(jobId: string, input: KaelWorkerClarifyInput) {
-    return api.post<WorkerKaelClarifyResponse>(`/jobs/${jobId}/kael-clarify`, input)
+    return api.post<WorkerKaelClarifyResponse>(`/jobs/${encodeURIComponent(jobId)}/kael-clarify`, input)
   },
 
   requestWorkerCancellation(jobId: string, input: WorkerCancellationRequestInput) {
-    return api.post<WorkerCancellationResponse>(`/jobs/${jobId}/worker-cancellation`, input)
+    return api.post<WorkerCancellationResponse>(`/jobs/${encodeURIComponent(jobId)}/worker-cancellation`, input)
   },
 
   requestCustomerCancellation(jobId: string, input: CustomerCancellationRequestInput) {
-    return api.post<CustomerCancellationResponse>(`/jobs/${jobId}/customer-cancellation`, input)
+    return api.post<CustomerCancellationResponse>(`/jobs/${encodeURIComponent(jobId)}/customer-cancellation`, input)
   },
 
   openDispute(jobId: string, input: DisputeOpenRequestInput) {
-    return api.post<DisputeOpenResponse>(`/jobs/${jobId}/disputes`, input)
+    return api.post<DisputeOpenResponse>(`/jobs/${encodeURIComponent(jobId)}/disputes`, input)
   },
 
   submitDisputeCounterStatement(disputeId: string, input: DisputeCounterStatementInput) {
-    return api.post<DisputeCounterStatementResponse>(`/disputes/${disputeId}/counter-statement`, input)
+    return api.post<DisputeCounterStatementResponse>(`/disputes/${encodeURIComponent(disputeId)}/counter-statement`, input)
   },
 
   decideDispute(disputeId: string, input: DisputeAdminDecisionInput) {
-    return api.post<DisputeAdminDecisionResponse>(`/disputes/${disputeId}/admin-decision`, input)
+    return api.post<DisputeAdminDecisionResponse>(`/disputes/${encodeURIComponent(disputeId)}/admin-decision`, input)
   },
 
   decideScopeChange(scopeChangeId: string, input: CustomerScopeDecisionInput) {
-    return api.post<CustomerScopeDecisionResponse>(`/scope-changes/${scopeChangeId}/decide`, input)
+    return api.post<CustomerScopeDecisionResponse>(`/scope-changes/${encodeURIComponent(scopeChangeId)}/decide`, input)
   },
 
   // Đã bỏ: hủy việc của thợ được xử lý tự động qua requestWorkerCancellation.
   decideWorkerCancellation(cancellationId: string, input: WorkerCancellationDecisionInput) {
-    return api.post<WorkerCancellationDecisionResponse>(`/worker-cancellations/${cancellationId}/decide`, input)
+    return api.post<WorkerCancellationDecisionResponse>(`/worker-cancellations/${encodeURIComponent(cancellationId)}/decide`, input)
   },
 
   confirmCompletion(jobId: string) {
-    return api.post<ConfirmCompletionResponse>(`/jobs/${jobId}/confirm-completion`)
+    return api.post<ConfirmCompletionResponse>(`/jobs/${encodeURIComponent(jobId)}/confirm-completion`)
   },
 
   createPaymentIntent(jobId: string) {
@@ -306,7 +334,7 @@ export const jobService = {
   },
 
   submitReview(jobId: string, input: Omit<ReviewInput, 'job_id'>) {
-    return api.post<ReviewResponse>(`/jobs/${jobId}/review`, {
+    return api.post<ReviewResponse>(`/jobs/${encodeURIComponent(jobId)}/review`, {
       ...input,
       job_id: jobId,
     })
@@ -329,11 +357,11 @@ export const kaelChatService = {
   },
 
   get(sessionId: string) {
-    return api.get<KaelChatResponse>(`/kael/chat/${sessionId}`)
+    return api.get<KaelChatResponse>(`/kael/chat/${encodeURIComponent(sessionId)}`)
   },
 
   sendTurn(sessionId: string, input: KaelChatTurnInput) {
-    return api.post<KaelChatResponse>(`/kael/chat/${sessionId}`, input)
+    return api.post<KaelChatResponse>(`/kael/chat/${encodeURIComponent(sessionId)}`, input)
   },
 
   createMediaUpload(input: {
@@ -353,11 +381,11 @@ export const kaelChatService = {
   },
 
   submitEvidence(sessionId: string, input: KaelChatEvidenceInput) {
-    return api.post<KaelChatResponse>(`/kael/chat/${sessionId}/evidence`, input)
+    return api.post<KaelChatResponse>(`/kael/chat/${encodeURIComponent(sessionId)}/evidence`, input)
   },
 
   confirm(sessionId: string) {
-    return api.post<ConfirmKaelChatResponse>(`/kael/chat/${sessionId}/confirm`)
+    return api.post<ConfirmKaelChatResponse>(`/kael/chat/${encodeURIComponent(sessionId)}/confirm`)
   },
 }
 
@@ -400,7 +428,7 @@ export const customerKaelConversationService = {
 
 export const kaelChatProgressService = {
   get(sessionId: string) {
-    return api.get<KaelChatProgressResponse>(`/kael/chat/${sessionId}/progress`)
+    return api.get<KaelChatProgressResponse>(`/kael/chat/${encodeURIComponent(sessionId)}/progress`)
   },
 }
 
@@ -432,11 +460,11 @@ export const workerKaelChatService = {
   },
 
   get(sessionId: string) {
-    return api.get<WorkerKaelChatResponse>(`/workers/me/kael/chat/${sessionId}`)
+    return api.get<WorkerKaelChatResponse>(`/workers/me/kael/chat/${encodeURIComponent(sessionId)}`)
   },
 
   sendTurn(sessionId: string, input: WorkerKaelChatTurnInput) {
-    return api.post<WorkerKaelChatResponse>(`/workers/me/kael/chat/${sessionId}`, input)
+    return api.post<WorkerKaelChatResponse>(`/workers/me/kael/chat/${encodeURIComponent(sessionId)}`, input)
   },
 
   streamTurn(sessionId: string, input: WorkerKaelChatTurnInput, handlers?: WorkerKaelChatStreamHandlers) {
@@ -565,11 +593,11 @@ export const workerService = {
   },
 
   acceptBroadcast(jobId: string) {
-    return api.post<AcceptBroadcastResponse>(`/jobs/${jobId}/accept`)
+    return api.post<AcceptBroadcastResponse>(`/jobs/${encodeURIComponent(jobId)}/accept`)
   },
 
   declineBroadcast(jobId: string) {
-    return api.post<DeclineBroadcastResponse>(`/jobs/${jobId}/decline`)
+    return api.post<DeclineBroadcastResponse>(`/jobs/${encodeURIComponent(jobId)}/decline`)
   },
 
   updateJobStatus(jobId: string, status: WorkerStatusUpdate, extras?: {
@@ -592,8 +620,8 @@ export const workerService = {
     return jobService.openKaelJobIncident(jobId, input)
   },
 
-  proposeScopeChangeFromKaelIncident(jobId: string) {
-    return jobService.proposeScopeChangeFromKaelIncident(jobId)
+  proposeScopeChangeFromKaelIncident(jobId: string, input: JobIncidentScopeProposalInput) {
+    return jobService.proposeScopeChangeFromKaelIncident(jobId, input)
   },
 
   askKael(jobId: string, input: KaelWorkerClarifyInput) {
@@ -615,10 +643,79 @@ export const workerRouteService = {
   },
 
   async getMapImage(uri: string, headers: Record<string, string>) {
-    const response = await fetch(uri, { headers })
-    if (!response.ok) throw new Error('Route map unavailable')
-    return response.blob()
+    if (!isTrustedWorkerRouteMapUri(uri)) {
+      throw new Error('Untrusted route map URL')
+    }
+    return withNetworkDeadline(async (signal) => {
+      const response = await fetch(uri, { headers, redirect: 'error', signal })
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined)
+        throw new Error('Route map unavailable')
+      }
+      return readResponseBlobBounded(response, ROUTE_MAP_MAX_RESPONSE_BYTES)
+    }, ROUTE_MAP_FETCH_TIMEOUT_MS)
   },
+}
+
+function isTrustedWorkerRouteMapUri(uri: string) {
+  try {
+    const baseUrl = mobileApiUrl('')
+    if (uri.length === 0 || uri.length > ROUTE_MAP_MAX_URI_LENGTH || baseUrl.length === 0) return false
+
+    const base = new URL(baseUrl)
+    const candidate = new URL(uri)
+    const basePath = base.pathname.replace(/\/+$/, '')
+    const relativePath = candidate.pathname.slice(basePath.length)
+    const originLat = candidate.searchParams.getAll('origin_lat')
+    const originLng = candidate.searchParams.getAll('origin_lng')
+    const allowedQueryKeys = new Set(['origin_lat', 'origin_lng'])
+
+    if (
+      candidate.origin !== base.origin
+      || candidate.username
+      || candidate.password
+      || candidate.hash
+      || base.username
+      || base.password
+      || base.search
+      || base.hash
+      || !hasCanonicalAbsoluteUrlPath(uri, candidate)
+      || !hasCanonicalAbsoluteUrlPath(baseUrl, base)
+      || !candidate.pathname.startsWith(`${basePath}/`)
+      || !/^\/workers\/me\/jobs\/[^/]+\/route-map$/.test(relativePath)
+      || [...candidate.searchParams.keys()].some((key) => !allowedQueryKeys.has(key))
+      || originLat.length !== 1
+      || originLng.length !== 1
+    ) {
+      return false
+    }
+
+    const latitude = Number(originLat[0])
+    const longitude = Number(originLng[0])
+    return ROUTE_MAP_COORDINATE_PATTERN.test(originLat[0])
+      && ROUTE_MAP_COORDINATE_PATTERN.test(originLng[0])
+      && Number.isFinite(latitude)
+      && latitude >= -90
+      && latitude <= 90
+      && Number.isFinite(longitude)
+      && longitude >= -180
+      && longitude <= 180
+  } catch {
+    return false
+  }
+}
+
+function hasCanonicalAbsoluteUrlPath(value: string, parsed: URL) {
+  const targetEnd = value.search(/[?#]/)
+  const target = targetEnd === -1 ? value : value.slice(0, targetEnd)
+  const schemeIndex = target.indexOf(':')
+  if (schemeIndex <= 0) return false
+
+  const remainder = target.slice(schemeIndex + 1)
+  if (!remainder.startsWith('//')) return false
+  const pathIndex = remainder.indexOf('/', 2)
+  const rawPath = pathIndex === -1 ? '/' : remainder.slice(pathIndex)
+  return rawPath === parsed.pathname
 }
 
 export const notificationService = {
@@ -627,11 +724,23 @@ export const notificationService = {
   },
 
   markRead(notificationId: string) {
-    return api.post<NotificationReadResponse>(`/notifications/${notificationId}/read`)
+    return api.post<NotificationReadResponse>(`/notifications/${encodeURIComponent(notificationId)}/read`)
   },
 
-  registerDeviceToken(input: DevicePushTokenInput) {
-    return api.post<DevicePushTokenResponse>('/notifications/device-token', input)
+  registerDeviceToken(input: DevicePushTokenInput, accessToken: string) {
+    return api.postAuthenticated<DevicePushTokenResponse>(
+      '/notifications/device-token',
+      input,
+      accessToken,
+    )
+  },
+
+  unregisterDeviceToken(input: DevicePushTokenUnregisterInput, accessToken: string) {
+    return api.deleteAuthenticated<DevicePushTokenUnregisterResponse>(
+      '/notifications/device-token',
+      input,
+      accessToken,
+    )
   },
 }
 

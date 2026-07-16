@@ -15,6 +15,11 @@ import {
 import { db, dbQuery, normalizeWorkerDistricts } from "./db.ts";
 import { blankWorkerProfile, clampServiceRadius, compactMetadata, mapAvailabilityError, maskBankAccount, secondsRemaining } from "./_shared.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
+import type {
+  EdgeEarningsResponse,
+  EdgeWorkerJobListResponse,
+} from "../router/dtos.ts";
+import { normalizeIsoTimestamp } from "../iso-timestamp.ts";
 import { PLATFORM_FEE_WORKER } from "../../../_shared/domain.ts";
 import type {
   BroadcastStatus,
@@ -42,87 +47,108 @@ export async function registerWorker(
     apiFailure("RATE_LIMITED", "Vui lòng thử lại sau", 429);
   }
 
-  const client = db(ctx);
-  const profile = await dbQuery<Record<string, unknown>>(
-    client.from("profiles").select("role").eq("id", ctx.user.id).single(),
-  );
-  if (profile.error || !profile.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ", 404);
-  }
-  if (profile.data.role !== "worker") {
-    apiFailure("WRONG_ROLE", "Tài khoản này không phải tài khoản thợ", 403);
-  }
-
-  const existing = await dbQuery<Record<string, unknown>>(
-    client.from("worker_profiles").select("verification_status, is_suspended")
-      .eq(
-        "id",
-        ctx.user.id,
-      ).maybeSingle(),
-  );
-  if (existing.error) apiFailure("DB_ERROR", "Không thể tải hồ sơ thợ", 500);
-  if (
-    existing.data &&
-    (
-      ["approved", "suspended"].includes(
-        existing.data.verification_status as string,
-      ) ||
-      existing.data.is_suspended === true
-    )
-  ) {
-    apiFailure(
-      "ALREADY_FINALIZED",
-      "Hồ sơ đã được duyệt hoặc bị khóa. Liên hệ hỗ trợ để cập nhật.",
-      409,
-    );
-  }
-
-  const now = new Date().toISOString();
   const districts = normalizeWorkerDistricts(input.districts);
   if (!districts) {
     apiFailure("VALIDATION", "Khu vực làm việc không hợp lệ", 400);
   }
-  const upserted = await dbQuery<
-    { id: string; verification_status: WorkerVerificationStatus }
-  >(
-    client
-      .from("worker_profiles")
-      .upsert({
-        id: ctx.user.id,
-        legal_name: input.legal_name,
-        date_of_birth: input.date_of_birth,
-        gender: input.gender ?? null,
-        service_types: input.service_types,
-        years_experience: input.years_experience,
-        districts,
-        home_lat: input.home_lat ?? null,
-        home_lng: input.home_lng ?? null,
-        service_radius_km: input.service_radius_km ?? 8,
-        problem_specializations: input.problem_specializations ?? [],
-        cccd_front_url: input.cccd_front_url,
-        cccd_back_url: input.cccd_back_url,
-        selfie_url: input.selfie_url,
-        bank_account: input.bank_account,
-        bank_name: input.bank_name,
-        verification_status: "submitted",
-        is_approved: false,
-        is_available: false,
-        is_suspended: false,
-        updated_at: now,
-      })
-      .select("id, verification_status")
-      .single(),
+  if (
+    !isOwnedWorkerVerificationRef(input.cccd_front_url, ctx.user.id, "cccd-front") ||
+    !isOwnedWorkerVerificationRef(input.cccd_back_url, ctx.user.id, "cccd-back") ||
+    !isOwnedWorkerVerificationRef(input.selfie_url, ctx.user.id, "selfie")
+  ) {
+    apiFailure(
+      "INVALID_MEDIA_REF",
+      "File xác minh không thuộc tài khoản hiện tại",
+      400,
+    );
+  }
+  const result = await dbQuery<Array<WorkerRegistrationRpcRow>>(
+    db(ctx).rpc("submit_worker_registration_atomic", {
+      p_actor_id: ctx.user.id,
+      p_worker_id: ctx.user.id,
+      p_legal_name: input.legal_name,
+      p_date_of_birth: input.date_of_birth,
+      p_gender: input.gender ?? null,
+      p_service_types: input.service_types,
+      p_years_experience: input.years_experience,
+      p_districts: districts,
+      p_home_lat: input.home_lat ?? null,
+      p_home_lng: input.home_lng ?? null,
+      p_service_radius_km: input.service_radius_km ?? 8,
+      p_problem_specializations: input.problem_specializations ?? [],
+      p_cccd_front_url: input.cccd_front_url,
+      p_cccd_back_url: input.cccd_back_url,
+      p_selfie_url: input.selfie_url,
+      p_bank_account: input.bank_account,
+      p_bank_name: input.bank_name,
+    }),
   );
-  if (upserted.error || !upserted.data) {
+  const row = result.data?.[0];
+  if (result.error || !row) {
+    console.warn("mobile-api worker registration RPC failed", {
+      userId: ctx.user.id,
+      errorCode: result.error?.code,
+    });
+    apiFailure("DB_ERROR", "Không thể lưu hồ sơ", 500);
+  }
+  if (!row.ok) mapWorkerRegistrationError(nullableString(row.error_code));
+  if (
+    !row.worker_id_out || !row.verification_status_out ||
+    !row.submitted_at_ts
+  ) {
     apiFailure("DB_ERROR", "Không thể lưu hồ sơ", 500);
   }
   return {
-    worker_id: upserted.data.id,
+    worker_id: row.worker_id_out,
     verification_status: asWorkerVerificationStatus(
-      upserted.data.verification_status,
+      row.verification_status_out,
     ),
-    submitted_at: now,
+    submitted_at: row.submitted_at_ts,
   };
+}
+
+function isOwnedWorkerVerificationRef(
+  value: string,
+  workerId: string,
+  folder: "cccd-front" | "cccd-back" | "selfie",
+) {
+  const prefix = `supabase://worker-verification/${workerId}/${folder}/`;
+  if (!value.startsWith(prefix)) return false;
+  const fileName = value.slice(prefix.length);
+  return fileName.length > 0 && fileName.length <= 180 &&
+    /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(fileName);
+}
+
+type WorkerRegistrationRpcRow = {
+  ok: boolean;
+  error_code: string | null;
+  worker_id_out: string | null;
+  verification_status_out: WorkerVerificationStatus | null;
+  submitted_at_ts: string | null;
+  idempotent_out: boolean;
+};
+
+function mapWorkerRegistrationError(errorCode: string | null): never {
+  if (errorCode === "NOT_FOUND") {
+    apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ", 404);
+  }
+  if (errorCode === "WRONG_ROLE") {
+    apiFailure("WRONG_ROLE", "Tài khoản này không phải tài khoản thợ", 403);
+  }
+  if (errorCode === "NOT_OWNER") {
+    apiFailure("NOT_OWNER", "Bạn chỉ có thể gửi hồ sơ của chính mình", 403);
+  }
+  if (errorCode === "ALREADY_FINALIZED") {
+    apiFailure(
+      "ALREADY_FINALIZED",
+      "Hồ sơ đang được xem xét, đã được duyệt hoặc bị khóa. Liên hệ hỗ trợ để cập nhật.",
+      409,
+    );
+  }
+  if (errorCode === "INVALID_INPUT") {
+    apiFailure("VALIDATION", "Dữ liệu hồ sơ không hợp lệ", 400);
+  }
+  apiFailure("DB_ERROR", "Không thể lưu hồ sơ", 500);
 }
 
 export async function submitWorkerApplication(
@@ -341,15 +367,34 @@ export async function updateWorkerAvailability(
   if (result.error) {
     apiFailure("DB_ERROR", "Không thể cập nhật trạng thái", 500);
   }
-  const row = result.data?.[0];
+  const row = availabilityRpcRow(result.data?.[0]);
   if (!row) apiFailure("DB_ERROR", "Không thể cập nhật trạng thái", 500);
   if (!row.ok) mapAvailabilityError(nullableString(row.error_code));
+  if (
+    typeof row.is_available !== "boolean" ||
+    typeof row.updated_at_ts !== "string" ||
+    normalizeIsoTimestamp(row.updated_at_ts) === null
+  ) {
+    apiFailure("DB_ERROR", "Không thể cập nhật trạng thái", 500);
+  }
 
   return {
     worker_id: ctx.user.id,
-    is_available: Boolean(row.is_available),
-    updated_at: asString(row.updated_at_ts),
+    is_available: row.is_available,
+    updated_at: row.updated_at_ts,
   };
+}
+
+function availabilityRpcRow(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (
+    typeof row.ok !== "boolean" ||
+    (row.error_code !== null && typeof row.error_code !== "string") ||
+    (row.is_available !== null && typeof row.is_available !== "boolean") ||
+    (row.updated_at_ts !== null && typeof row.updated_at_ts !== "string")
+  ) return null;
+  return row;
 }
 
 export async function listWorkerBroadcasts(ctx: MobileApiContext) {
@@ -370,7 +415,7 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
     db(ctx)
       .from("job_broadcasts")
       .select(
-        "id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)",
+        "id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)",
       )
       .eq("worker_id", ctx.user.id)
       .eq("status", "sent")
@@ -401,6 +446,7 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
           ? null
           : Math.round(max * (1 - PLATFORM_FEE_WORKER)),
         worker_brief_core: nullableRecord(job.kael_worker_brief_core),
+        scheduled_at: nullableString(job.scheduled_at),
         sent_at: nullableString(row.sent_at),
         expires_at: nullableString(row.expires_at),
         seconds_remaining: secondsRemaining(
@@ -417,58 +463,105 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
 export async function getWorkerEarnings(
   ctx: MobileApiContext,
   range: { from?: string; to?: string },
-) {
-  let query = db(ctx)
-    .from("jobs")
-    .select("id, status, final_price, paid_at, created_at")
-    .eq("worker_id", ctx.user.id)
-    .in("status", [
-      "paid",
-      "reviewed",
-      "confirmed_by_customer",
-      "payment_pending",
-    ]);
-  if (range.from) query = query.gte("created_at", range.from);
-  if (range.to) query = query.lte("created_at", range.to);
-
-  const result = await dbQuery<Array<Record<string, unknown>>>(query);
-  if (result.error) {
+): Promise<EdgeEarningsResponse> {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("get_worker_earnings_summary", {
+      p_worker_id: ctx.user.id,
+      p_from: range.from ?? null,
+      p_to: range.to ?? null,
+      p_platform_fee_rate: PLATFORM_FEE_WORKER,
+    }),
+  );
+  const row = result.data?.[0];
+  if (result.error || !row) {
     console.warn("mobile-api earnings query failed", {
-      errorCode: result.error.code,
+      errorCode: result.error?.code,
     });
     apiFailure("DB_ERROR", "Không thể tải thu nhập", 500);
   }
-  const rows = result.data ?? [];
-  let gross = 0;
-  let paidCount = 0;
-  let pendingCount = 0;
-  let pendingAmount = 0;
-  for (const row of rows) {
-    const price = nullableNumber(row.final_price) ?? 0;
-    if (nullableString(row.paid_at)) {
-      gross += price;
-      paidCount++;
-    } else if (
-      row.status === "confirmed_by_customer" ||
-      row.status === "payment_pending" ||
-      row.status === "reviewed"
-    ) {
-      pendingAmount += price;
-      pendingCount++;
-    }
+  let aggregate: ReturnType<typeof parseWorkerEarningsAggregate>;
+  try {
+    aggregate = parseWorkerEarningsAggregate(row, ctx.user.id);
+  } catch {
+    console.warn("mobile-api earnings aggregate response invalid", {
+      userId: ctx.user.id,
+    });
+    apiFailure("DB_ERROR", "Không thể tải thu nhập", 500);
   }
-  const fee = Math.round(gross * PLATFORM_FEE_WORKER);
+
   return {
     worker_id: ctx.user.id,
-    total_jobs_paid: paidCount,
-    gross_earnings: gross,
-    platform_fee_total: fee,
-    net_earnings: gross - fee,
-    pending_payment_count: pendingCount,
-    pending_payment_amount: pendingAmount,
+    ...aggregate,
     from_date: range.from ?? null,
     to_date: range.to ?? null,
   };
+}
+
+const MAX_DAILY_EARNINGS_ROWS = 366;
+
+function parseWorkerEarningsAggregate(
+  row: Record<string, unknown>,
+  expectedWorkerId: string,
+): Omit<EdgeEarningsResponse, "worker_id" | "from_date" | "to_date"> {
+  if (row.worker_id !== expectedWorkerId) {
+    throw new Error("INVALID_EARNINGS_OWNER");
+  }
+  return {
+    total_jobs_paid: nonnegativeSafeInteger(row.total_jobs_paid),
+    gross_earnings: nonnegativeSafeInteger(row.gross_earnings),
+    platform_fee_total: nonnegativeSafeInteger(row.platform_fee_total),
+    net_earnings: nonnegativeSafeInteger(row.net_earnings),
+    pending_payment_count: nonnegativeSafeInteger(row.pending_payment_count),
+    pending_payment_amount: nonnegativeSafeInteger(row.pending_payment_amount),
+    daily_earnings: parseDailyEarnings(row.daily_earnings),
+  };
+}
+
+function parseDailyEarnings(
+  value: unknown,
+): EdgeEarningsResponse["daily_earnings"] {
+  if (!Array.isArray(value) || value.length > MAX_DAILY_EARNINGS_ROWS) {
+    throw new Error("INVALID_DAILY_EARNINGS");
+  }
+
+  let previousDate: string | null = null;
+  return value.map((entry) => {
+    if (!isRecord(entry) || !isIsoDate(entry.date)) {
+      throw new Error("INVALID_DAILY_EARNINGS");
+    }
+    if (previousDate !== null && entry.date >= previousDate) {
+      throw new Error("INVALID_DAILY_EARNINGS");
+    }
+    previousDate = entry.date;
+
+    return {
+      date: entry.date,
+      gross_earnings: nonnegativeSafeInteger(entry.gross_earnings),
+      platform_fee_total: nonnegativeSafeInteger(entry.platform_fee_total),
+      net_earnings: nonnegativeSafeInteger(entry.net_earnings),
+      paid_job_count: nonnegativeSafeInteger(entry.paid_job_count),
+    };
+  });
+}
+
+function nonnegativeSafeInteger(value: unknown): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error("INVALID_EARNINGS_AGGREGATE");
+  }
+  return value;
+}
+
+function isIsoDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+  const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isFinite(timestamp) &&
+    new Date(timestamp).toISOString().slice(0, 10) === value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function listWorkerJobs(ctx: MobileApiContext) {
@@ -476,7 +569,7 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
     db(ctx)
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
+        "id, display_code, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, payment_status, payment_provider, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
       )
       .eq("worker_id", ctx.user.id)
       .order("created_at", { ascending: false })
@@ -507,6 +600,7 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
       }).brief;
       return {
         id: asString(row.id),
+        display_code: nullableString(row.display_code),
         status: row.status as JobStatus,
         service_type: row.service_type as ServiceType,
         problem_summary: nullableString(row.kael_problem_identified),
@@ -519,17 +613,49 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
         estimated_earning: finalPrice
           ? Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER))
           : null,
+        payment_status: parseWorkerJobPaymentStatus(row.payment_status),
+        payment_provider: nullableString(row.payment_provider),
+        payment_code: nullableString(row.payment_code),
+        payment_transfer_content: nullableString(row.payment_transfer_content),
+        payment_qr_image_url: nullableString(row.payment_qr_image_url),
+        payment_expires_at: nullableString(row.payment_expires_at),
+        payment_received_at: nullableString(row.payment_received_at),
+        payment_amount_received: nullableNumber(row.payment_amount_received),
+        gross_amount: nullableNumber(row.gross_amount),
+        platform_fee: nullableNumber(row.platform_fee),
+        worker_net: nullableNumber(row.worker_net),
         photo_urls: asStringArray(row.photo_urls),
         completion_notes: nullableString(row.completion_notes),
         completion_photo_urls: asStringArray(row.completion_photo_urls),
         worker_brief_guidance:
           nullableRecord(row.kael_worker_brief_guidance) ?? fallbackBrief,
+        scheduled_at: nullableString(row.scheduled_at),
         created_at: asString(row.created_at),
         matched_at: nullableString(row.matched_at),
         completed_at: nullableString(row.completed_at),
       };
     }),
   };
+}
+
+function parseWorkerJobPaymentStatus(
+  value: unknown,
+): EdgeWorkerJobListResponse["jobs"][number]["payment_status"] {
+  if (value === null || value === undefined) return null;
+  if (
+    value === "not_started" ||
+    value === "code_requested" ||
+    value === "vietqr_ready" ||
+    value === "pending" ||
+    value === "received" ||
+    value === "amount_mismatch" ||
+    value === "expired" ||
+    value === "failed" ||
+    value === "reconciled"
+  ) {
+    return value;
+  }
+  apiFailure("DB_ERROR", "Trạng thái thanh toán không hợp lệ", 500);
 }
 
 function workerApplicationContactMetadata(contact: string) {

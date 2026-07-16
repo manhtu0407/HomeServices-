@@ -1,6 +1,5 @@
 import type { JobMediaAttachInput } from "../../../_shared/domain.ts";
-
-export const MAX_JOB_MEDIA_BYTES = 26_214_400;
+export { MAX_JOB_MEDIA_BYTES } from "../../../_shared/job-media-contract.ts";
 
 export type TrustedJobMediaMime =
   | "image/jpeg"
@@ -23,6 +22,34 @@ export function inspectJobMediaContent(bytes: Uint8Array): JobMediaContentInspec
     return { kind: "trusted", mimeType: "video/mp4" };
   }
   if (mp4.hasFtyp && mp4.hasAudio) return { kind: "audio", mimeType: null };
+  return { kind: "unsupported", mimeType: null };
+}
+
+export async function inspectJobMediaBlob(blob: Blob): Promise<JobMediaContentInspection> {
+  const prefix = await readBlobSlice(blob, 0, Math.min(blob.size, 16));
+  if (hasAudioSignature(prefix)) return { kind: "audio", mimeType: null };
+  if (hasJpegSignature(prefix)) return { kind: "trusted", mimeType: "image/jpeg" };
+  if (hasPngSignature(prefix)) return { kind: "trusted", mimeType: "image/png" };
+  if (
+    prefix.length >= 12 &&
+    ascii(prefix, 0, 4) === "RIFF" &&
+    ascii(prefix, 8, 12) === "WEBP" &&
+    readUint32LittleEndian(prefix, 4) === blob.size - 8
+  ) {
+    return { kind: "trusted", mimeType: "image/webp" };
+  }
+
+  const state = {
+    boxesRemaining: 4096,
+    hasAudio: false,
+    hasFtyp: false,
+    hasVideo: false,
+    valid: true,
+  };
+  await scanIsoBlobBoxes(blob, 0, blob.size, 0, false, state);
+  if (!state.valid || !state.hasFtyp) return { kind: "unsupported", mimeType: null };
+  if (state.hasVideo) return { kind: "trusted", mimeType: "video/mp4" };
+  if (state.hasAudio) return { kind: "audio", mimeType: null };
   return { kind: "unsupported", mimeType: null };
 }
 
@@ -73,6 +100,81 @@ function inspectIsoMediaHandlers(bytes: Uint8Array) {
   scanIsoBoxes(bytes, 0, bytes.length, 0, false, state);
   if (!state.valid) return { hasAudio: false, hasFtyp: false, hasVideo: false };
   return state;
+}
+
+async function scanIsoBlobBoxes(
+  blob: Blob,
+  start: number,
+  end: number,
+  depth: number,
+  insideMedia: boolean,
+  state: {
+    boxesRemaining: number;
+    hasAudio: boolean;
+    hasFtyp: boolean;
+    hasVideo: boolean;
+    valid: boolean;
+  },
+) {
+  if (!state.valid || depth > 4) {
+    state.valid = false;
+    return;
+  }
+  let offset = start;
+  while (offset < end) {
+    state.boxesRemaining -= 1;
+    if (state.boxesRemaining < 0 || end - offset < 8) {
+      state.valid = false;
+      return;
+    }
+    const header = await readBlobSlice(blob, offset, Math.min(offset + 16, end));
+    if (header.length < 8) {
+      state.valid = false;
+      return;
+    }
+    const size32 = readUint32BigEndian(header, 0);
+    const type = ascii(header, 4, 8);
+    let headerSize = 8;
+    let boxSize = size32;
+    if (size32 === 1) {
+      if (header.length < 16 || readUint32BigEndian(header, 8) !== 0) {
+        state.valid = false;
+        return;
+      }
+      headerSize = 16;
+      boxSize = readUint32BigEndian(header, 12);
+    } else if (size32 === 0) {
+      boxSize = end - offset;
+    }
+    if (boxSize < headerSize || offset + boxSize > end) {
+      state.valid = false;
+      return;
+    }
+    const payloadStart = offset + headerSize;
+    const boxEnd = offset + boxSize;
+    if (depth === 0 && type === "ftyp") state.hasFtyp = true;
+    if (insideMedia && type === "hdlr" && payloadStart + 12 <= boxEnd) {
+      const handlerBytes = await readBlobSlice(blob, payloadStart + 8, payloadStart + 12);
+      const handler = ascii(handlerBytes, 0, 4);
+      if (handler === "vide") state.hasVideo = true;
+      if (handler === "soun") state.hasAudio = true;
+    }
+    if (type === "moov" || type === "trak" || type === "mdia") {
+      await scanIsoBlobBoxes(
+        blob,
+        payloadStart,
+        boxEnd,
+        depth + 1,
+        insideMedia || type === "mdia",
+        state,
+      );
+    }
+    offset = boxEnd;
+  }
+}
+
+async function readBlobSlice(blob: Blob, start: number, end: number) {
+  return new Uint8Array(await blob.slice(start, end).arrayBuffer());
 }
 
 function scanIsoBoxes(

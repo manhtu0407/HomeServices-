@@ -3,13 +3,14 @@
 // kael-chat-core.ts. The streaming wrappers + confirm bridge stay in services.ts (import one-way).
 
 import { asBoolean, asNumber, asRecord, asString, asStringArray, asKaelChatStatus, asServiceType, nullableString } from "./coercions.ts";
-import { db, dbQuery } from "./db.ts";
+import { db, dbQuery, type DbClient } from "./db.ts";
 import { compactMetadata, mergeLimitedRefs } from "./_shared.ts";
 import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { checkKaelChatRateLimit } from "../rate-limit.ts";
 import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
 import { buildInitialDiagnosisScopeArtifact, kaelDiagnosisScopeArtifactSchema, scrubSensitiveForLLM, type EdgeAiSecrets, type KaelDiagnosisScopeArtifact } from "../kael/index.ts";
+import { sanitizeUntrustedEvidenceItem, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../kael/untrusted-evidence.ts";
 import {
   sanitizeForLLM,
   type KaelChatCreateInput,
@@ -20,6 +21,7 @@ import { advanceKaelChatEstimate, assertKaelSessionOwnership, findExistingKaelSe
 import { getKaelChat } from "./kael-chat-read.service.ts";
 import { ensureCustomerCaseConversation } from "./customer-kael-conversation.service.ts";
 import { rejectKaelChatRateLimit } from "./kael-chat-rate-limit.ts";
+import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./scheduling.ts";
 import {
   buildKaelVisionValidationEvidence,
   createKaelChatMediaUpload,
@@ -36,6 +38,16 @@ export async function createKaelChat(
   if (ctx.role !== "customer") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được tạo phiên Kael Xử lý công việc", 403);
   }
+  const scheduleValidation = validateFutureHcmcSchedule(
+    input.scheduled_at,
+    input.schedule_window,
+  );
+  if (
+    scheduleValidation !== null &&
+    (!input.client_request_id || input.session_id)
+  ) {
+    apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+  }
   if (input.session_id) {
     if (!input.message) return getKaelChat(ctx, input.session_id);
     return sendKaelChatTurn(ctx, input.session_id, {
@@ -46,12 +58,15 @@ export async function createKaelChat(
       language: input.language,
       address_label: input.address_label,
       address_district: input.address_district,
+      scheduled_at: input.scheduled_at,
+      schedule_window: input.schedule_window,
       apartment_access_profile: input.apartment_access_profile,
     }, secrets);
   }
 
   const client = db(ctx);
   const language = input.language ?? "vi";
+  const safeProblemChips = sanitizeUntrustedEvidenceList(input.problem_chips);
 
   // Idempotent re-POST runs BEFORE the
   // rate limiter so harmless retries with the same client_request_id do not
@@ -76,6 +91,9 @@ export async function createKaelChat(
         "Phiên Kael đang được tạo. Vui lòng thử lại sau.",
         409,
       );
+    }
+    if (scheduleValidation !== null) {
+      apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
     }
   }
 
@@ -126,8 +144,12 @@ export async function createKaelChat(
   );
   const initialVoiceTranscript = caseWorkVoiceTranscript(initialEvidenceItems);
   const metadata = compactMetadata({
-    problem_chips: input.problem_chips,
+    problem_chips: safeProblemChips,
     language,
+    // A zero-turn session is valid when the caller intentionally starts an
+    // empty conversation. Persist that distinction so an idempotent replay is
+    // not mistaken for an in-flight session forever.
+    initial_turn_expected: Boolean(input.message),
     profile_id: input.profile_id ?? null,
     address_label: input.address_label ?? null,
     address_district: input.address_district ?? null,
@@ -144,8 +166,8 @@ export async function createKaelChat(
   });
   const initialArtifact = buildInitialDiagnosisScopeArtifact({
     serviceType: input.service_type,
-    customerGoal: scrubSensitiveForLLM(input.message?.trim() ?? "") ||
-      input.problem_chips.join(" ") || input.service_type,
+    customerGoal: sanitizeUntrustedEvidenceText(input.message?.trim() ?? "") ||
+      safeProblemChips.join(" ") || input.service_type,
   });
   const initialDiagnosisScope = kaelDiagnosisScopeArtifactSchema.parse({
     ...initialArtifact,
@@ -153,7 +175,7 @@ export async function createKaelChat(
     facts: {
       ...initialArtifact.facts,
       ...(initialVoiceTranscript
-        ? { latest_voice_transcript: scrubSensitiveForLLM(initialVoiceTranscript) }
+        ? { latest_voice_transcript: sanitizeUntrustedEvidenceText(initialVoiceTranscript) }
         : {}),
     },
     updated_at: new Date().toISOString(),
@@ -220,21 +242,29 @@ export async function createKaelChat(
     // PII never lands in the DB. The in-memory `message` (also sanitized) is
     // still used for boundary detection + analysis; the pipeline scrubs again
     // before any LLM call.
-    await insertKaelTurn(client, {
-      session_id: sessionId,
-      turn_index: 1,
-      role: "customer",
-      content_type: "text",
-      text_content: scrubSensitiveForLLM(message),
-      media_refs: initialEvidenceRefs,
-      safe_metadata: compactMetadata({
-        evidence_kinds: initialEvidenceItems.map((evidence) => evidence.kind),
-      }),
-    });
-    await updateKaelSession(client, sessionId, {
-      total_turns: 1,
-      safe_metadata: metadata,
-    });
+    try {
+      await insertKaelTurn(client, {
+        session_id: sessionId,
+        turn_index: 1,
+        role: "customer",
+        content_type: "text",
+        text_content: scrubSensitiveForLLM(message),
+        media_refs: initialEvidenceRefs,
+        safe_metadata: compactMetadata({
+          evidence_kinds: initialEvidenceItems.map((evidence) => evidence.kind),
+        }),
+      });
+      await updateKaelSession(client, sessionId, {
+        total_turns: 1,
+        safe_metadata: metadata,
+      });
+    } catch (error) {
+      // The session insert and first turn are separate PostgREST calls. Retire
+      // an empty shell if the second step fails so the client's stable
+      // idempotency key can safely create a fresh session on retry.
+      await retireFailedKaelSessionCreate(client, sessionId, ctx.user.id);
+      throw error;
+    }
     if (!input.defer_analysis) {
     // Apply boundary guard FIRST so
     // out-of-scope / injection / mismatch messages are declined before the
@@ -281,12 +311,39 @@ export async function createKaelChat(
   return getKaelChat(ctx, createdSessionId);
 }
 
+async function retireFailedKaelSessionCreate(
+  client: DbClient,
+  sessionId: string,
+  customerId: string,
+) {
+  const retired = await dbQuery<{ id: string }>(
+    client
+      .from("kael_chat_sessions")
+      .update({ client_request_id: null, status: "abandoned" })
+      .eq("id", sessionId)
+      .eq("customer_id", customerId)
+      .eq("status", "active")
+      .eq("total_turns", 0)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (retired.error) {
+    console.warn("mobile-api Kael session create cleanup failed", {
+      sessionId,
+      errorCode: retired.error.code,
+    });
+  }
+}
+
 export async function sendKaelChatTurn(
   ctx: MobileApiContext,
   sessionId: string,
   input: KaelChatTurnInput,
   secrets: EdgeAiSecrets,
 ) {
+  if (validateFutureHcmcSchedule(input.scheduled_at, input.schedule_window) !== null) {
+    apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+  }
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
@@ -315,6 +372,9 @@ export async function sendKaelChatTurn(
   const language = input.language ?? (previousMetadata.language === "en" ? "en" : "vi");
   const durablePreviousMetadata = withoutEphemeralKaelMediaUrls(previousMetadata);
   const qaCount = asNumber(previousMetadata.demanding_customer_qa_count) + 1;
+  const safeProblemChips = sanitizeUntrustedEvidenceList(
+    input.problem_chips ?? asStringArray(previousMetadata.problem_chips),
+  );
   const sanitizedEvidenceItems = sanitizeCaseWorkEvidenceItems(input.evidence_items ?? []);
   const evidenceRefs = await validateAndConsumeKaelChatEvidenceMediaRefs(
     ctx,
@@ -334,8 +394,7 @@ export async function sendKaelChatTurn(
   const metadata = compactMetadata({
     ...durablePreviousMetadata,
     language,
-    problem_chips: input.problem_chips ??
-      asStringArray(previousMetadata.problem_chips),
+    problem_chips: safeProblemChips,
     address_label: input.address_label ??
       nullableString(previousMetadata.address_label),
     address_district: input.address_district ??
@@ -378,7 +437,7 @@ export async function sendKaelChatTurn(
       facts: {
         ...currentArtifact.data.facts,
         ...(voiceTranscript
-          ? { latest_voice_transcript: scrubSensitiveForLLM(voiceTranscript) }
+          ? { latest_voice_transcript: sanitizeUntrustedEvidenceText(voiceTranscript) }
           : {}),
       },
       quote_ready: false,
@@ -466,6 +525,17 @@ export async function submitKaelChatEvidence(
     apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận bằng chứng", 409);
   }
 
+  if (
+    input.decision === "skipped" &&
+    (
+      input.media_refs.length > 0 ||
+      input.photo_urls.length > 0 ||
+      (input.evidence_items?.length ?? 0) > 0
+    )
+  ) {
+    apiFailure("VALIDATION", "Không thể gửi bằng chứng khi đã chọn bỏ qua", 400);
+  }
+
   const sanitizedEvidenceItems = sanitizeCaseWorkEvidenceItems(input.evidence_items ?? []);
   const visionValidationEvidence = buildKaelVisionValidationEvidence(
     sanitizedEvidenceItems,
@@ -496,6 +566,9 @@ export async function submitKaelChatEvidence(
   const language = input.language ?? (previousMetadata.language === "en" ? "en" : "vi");
   const durablePreviousMetadata = withoutEphemeralKaelMediaUrls(previousMetadata);
   const previousTurns = asNumber(session.total_turns);
+  const safeProblemChips = sanitizeUntrustedEvidenceList(
+    input.problem_chips ?? asStringArray(previousMetadata.problem_chips),
+  );
   const transcriptText = sanitizedEvidenceItems
     .filter((evidence) => evidence.kind === "voice_transcript")
     .map((evidence) => evidence.transcript)
@@ -537,7 +610,7 @@ export async function submitKaelChatEvidence(
       facts: {
         ...currentArtifact.data.facts,
         ...(transcriptText
-          ? { latest_voice_transcript: scrubSensitiveForLLM(transcriptText) }
+          ? { latest_voice_transcript: sanitizeUntrustedEvidenceText(transcriptText) }
           : {}),
       },
       quote_ready: false,
@@ -561,8 +634,7 @@ export async function submitKaelChatEvidence(
         5,
       ),
       evidence_updated_at: now,
-      problem_chips: input.problem_chips ??
-        asStringArray(previousMetadata.problem_chips),
+      problem_chips: safeProblemChips,
       skip_reason: input.skip_reason ?? nullableString(previousMetadata.skip_reason),
     }),
   });
@@ -570,7 +642,7 @@ export async function submitKaelChatEvidence(
   await advanceKaelChatEstimate(ctx, sessionId, {
     service_type: asServiceType(session.service_type),
     message,
-    problem_chips: input.problem_chips ?? asStringArray(previousMetadata.problem_chips),
+    problem_chips: safeProblemChips,
     photo_urls: signedVisionUrls,
     address_district: nullableString(previousMetadata.address_district) ?? undefined,
     language,
@@ -592,15 +664,14 @@ function sanitizeCaseWorkEvidenceItems(
     if (expectedPurpose && !ref.includes(expectedPurpose)) {
       apiFailure("VALIDATION", "Loại media bằng chứng không khớp mục đích upload", 400);
     }
-    return {
-      ...evidence,
-      ...(evidence.transcript
-        ? { transcript: scrubSensitiveForLLM(sanitizeForLLM(evidence.transcript)) }
-        : {}),
-      ...(evidence.summary
-        ? { summary: scrubSensitiveForLLM(sanitizeForLLM(evidence.summary)) }
-        : {}),
-    };
+    const sanitizedEvidence = sanitizeUntrustedEvidenceItem(evidence);
+    if (
+      (evidence.kind === "voice_transcript" || evidence.kind === "text_note") &&
+      !sanitizedEvidence.transcript
+    ) {
+      apiFailure("VALIDATION", "Nội dung bằng chứng không có quan sát hợp lệ", 400);
+    }
+    return sanitizedEvidence;
   });
 }
 

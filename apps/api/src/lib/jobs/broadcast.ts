@@ -25,6 +25,7 @@ type BroadcastOptions = {
 export const DEFAULT_BROADCAST_EXPIRY_SEC = 60
 export const DEFAULT_BROADCAST_BATCH_SIZE = 5
 const DEFAULT_CANDIDATE_POOL_SIZE = 50
+const POSTGREST_ID_BATCH_SIZE = 100
 const ACTIVE_WORKER_JOB_STATUSES = [
   'worker_matched',
   'worker_on_way',
@@ -125,59 +126,76 @@ export async function queryEligibleWorkers(
   const candidateLimit = Math.max(limit, DEFAULT_CANDIDATE_POOL_SIZE)
   const districtCode = normalizeDistrict(district)
   const excludedWorkerIds = new Set(options.excludeWorkerIds ?? [])
-  const { data, error } = await withDbTimeout(
-    supabase
-      .from('worker_profiles')
-      .select('id, rating, total_jobs, service_types, districts')
-      .eq('is_approved', true)
-    .eq('is_available', true)
-    .eq('is_suspended', false)
-    .contains('service_types', [serviceType])
-    .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`)
-    .order('rating', { ascending: false })
-      .limit(candidateLimit),
-  )
-
-  if (error) {
-    console.warn('Broadcast: worker query failed', {
-      serviceType,
-      district: districtCode,
-      errorCode: error.code,
-    })
-    return {
-      success: false,
-      reasonCode: 'DB_ERROR',
-      reason: 'Lỗi khi tìm thợ phù hợp',
+  const candidateRows: Array<{
+    id: string
+    rating: number
+    total_jobs: number
+    service_types: ServiceType[]
+    districts: string[]
+  }> = []
+  for (let offset = 0;; offset += candidateLimit) {
+    const { data, error } = await withDbTimeout(
+      supabase
+        .from('worker_profiles')
+        .select('id, rating, total_jobs, service_types, districts')
+        .eq('is_approved', true)
+        .eq('is_available', true)
+        .eq('is_suspended', false)
+        .contains('service_types', [serviceType])
+        .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`)
+        .order('rating', { ascending: false })
+        .order('id', { ascending: true })
+        .range(offset, offset + candidateLimit - 1),
+    )
+    if (error) {
+      console.warn('Broadcast: worker query failed', {
+        serviceType,
+        district: districtCode,
+        errorCode: error.code,
+      })
+      return {
+        success: false,
+        reasonCode: 'DB_ERROR',
+        reason: 'Lỗi khi tìm thợ phù hợp',
+      }
     }
+    const pageRows = data ?? []
+    candidateRows.push(...pageRows)
+    if (pageRows.length < candidateLimit) break
   }
-  if (!data) return { success: true, workers: [] }
 
-  const candidates = data.filter((w) => !excludedWorkerIds.has(w.id))
+  const candidates = candidateRows.filter((worker) => !excludedWorkerIds.has(worker.id))
   const candidateIds = candidates.map((w) => w.id)
   if (candidateIds.length === 0) return { success: true, workers: [] }
 
-  const { data: activeJobs, error: activeErr } = await withDbTimeout(
-    supabase
-      .from('jobs')
-      .select('worker_id')
-      .in('worker_id', candidateIds)
-      .in('status', [...ACTIVE_WORKER_JOB_STATUSES])
-      .limit(candidateIds.length),
-  )
-  if (activeErr) {
-    console.warn('Broadcast: active worker job query failed', {
-      serviceType,
-      district: districtCode,
-      errorCode: activeErr.code,
-    })
-    return {
-      success: false,
-      reasonCode: 'DB_ERROR',
-      reason: 'Lỗi khi tìm thợ phù hợp',
+  const busyWorkerIds = new Set<string>()
+  for (let offset = 0; offset < candidateIds.length; offset += POSTGREST_ID_BATCH_SIZE) {
+    const workerIdBatch = candidateIds.slice(offset, offset + POSTGREST_ID_BATCH_SIZE)
+    const { data: activeJobs, error: activeErr } = await withDbTimeout(
+      supabase
+        .from('jobs')
+        .select('worker_id')
+        .in('worker_id', workerIdBatch)
+        .in('status', [...ACTIVE_WORKER_JOB_STATUSES])
+        .limit(workerIdBatch.length),
+    )
+    if (activeErr) {
+      console.warn('Broadcast: active worker job query failed', {
+        serviceType,
+        district: districtCode,
+        errorCode: activeErr.code,
+      })
+      return {
+        success: false,
+        reasonCode: 'DB_ERROR',
+        reason: 'Lỗi khi tìm thợ phù hợp',
+      }
+    }
+    for (const job of activeJobs ?? []) {
+      if (job.worker_id) busyWorkerIds.add(job.worker_id)
     }
   }
 
-  const busyWorkerIds = new Set((activeJobs ?? []).flatMap((job) => job.worker_id ? [job.worker_id] : []))
   return {
     success: true,
     workers: candidates

@@ -5,10 +5,12 @@ import type { CustomerThemeTokens } from '../customer-theme'
 import { V21Card } from '../v21/shared-surfaces'
 import { localizedQuoteReviewReason } from './case-work-localization'
 
+const EMPTY_SAFETY_MESSAGES: string[] = []
+
 export function QuoteReadinessReviewCard({
   language,
   reason,
-  safetyMessages = [],
+  safetyMessages = EMPTY_SAFETY_MESSAGES,
   tokens,
 }: {
   language: AppLanguage

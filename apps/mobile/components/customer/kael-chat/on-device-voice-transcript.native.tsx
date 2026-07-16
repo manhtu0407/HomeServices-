@@ -187,6 +187,7 @@ function UnavailableOnDeviceVoiceTranscript({
 
 function loadSpeechRecognitionRuntime(): SpeechRecognitionRuntime | null {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Expo Go omits the native module, so static import would throw before the fallback renders.
     return require('expo-speech-recognition') as SpeechRecognitionRuntime
   } catch (error) {
     if (String(error).includes(missingNativeModuleError)) return null

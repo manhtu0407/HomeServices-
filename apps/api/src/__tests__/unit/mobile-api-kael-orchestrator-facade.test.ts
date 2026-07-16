@@ -168,4 +168,114 @@ describe('Kael orchestrator facade', () => {
       status: 'open',
     })
   })
+
+  it('fails closed when the autonomy audit row cannot be persisted', async () => {
+    const client = {
+      from() {
+        return {
+          insert() {
+            return Promise.resolve({ data: null, error: { code: 'AUDIT_UNAVAILABLE' } })
+          },
+        }
+      },
+    }
+
+    await expect(runKaelAutonomyOrchestrator({
+      label: 'estimate_to_matching',
+      decision: {
+        actor: 'kael_system',
+        action: 'start_matching',
+        policy_id: 'kael.autonomy.v2.estimate_to_matching',
+        evidence: [
+          { kind: 'artifact', reference_id: 'job-1', summary: 'Validated estimate exists.' },
+          { kind: 'policy', reference_id: 'RULES.md#rule-7', summary: 'Matching policy applies.' },
+        ],
+        confidence: 0.9,
+        reversible: true,
+        appealable: true,
+        resulting_event: 'kael_started_matching',
+      },
+      from: 'analyzing',
+      to: 'broadcasting',
+      authority: {
+        purpose: 'price_synthesis',
+        actor: 'customer',
+        jobRelation: 'own_customer_job',
+        action: 'synthesize_price',
+        topic: 'price_estimate',
+        intentConfidence: 1,
+        topicSource: 'deterministic_rule',
+        boundarySignal: false,
+        actorId: 'customer-1',
+        jobId: 'job-1',
+      },
+      knownEvidenceReferences: ['job-1', 'RULES.md#rule-7'],
+      source: 'policy',
+      audit: {
+        client,
+        jobId: 'job-1',
+        actorId: 'customer-1',
+        actorRole: 'customer',
+      },
+    })).rejects.toThrow('KAEL_AUTONOMY_AUDIT_FAILED')
+  })
+
+  it('fails closed when an autonomy escalation cannot enter the admin queue', async () => {
+    const insertedTables: string[] = []
+    const client = {
+      from(table: string) {
+        return {
+          insert() {
+            insertedTables.push(table)
+            return Promise.resolve(table === 'kael_admin_queue'
+              ? { data: null, error: { code: 'QUEUE_UNAVAILABLE' } }
+              : { data: { id: 'audit-1' }, error: null })
+          },
+        }
+      },
+    }
+
+    await expect(runKaelAutonomyOrchestrator({
+      label: 'low_confidence_dispute',
+      decision: {
+        actor: 'kael_system',
+        action: 'decide_dispute',
+        policy_id: 'kael.autonomy.v2.dispute_resolution',
+        evidence: [
+          { kind: 'artifact', reference_id: 'dispute-1', summary: 'Locked dispute snapshot exists.' },
+          { kind: 'job_event', reference_id: 'confirmed-1', summary: 'Customer confirmation exists.' },
+          { kind: 'policy', reference_id: 'STRUCTURES.md#dispute', summary: 'Dispute policy applies.' },
+        ],
+        confidence: 0.61,
+        reversible: true,
+        appealable: true,
+        resulting_event: 'kael_decided_dispute',
+      },
+      from: 'confirmed_by_customer',
+      to: 'reviewed',
+      authority: {
+        purpose: 'scope_change',
+        actor: 'customer',
+        jobRelation: 'own_customer_job',
+        action: 'review_scope_change',
+        topic: 'job_status',
+        intentConfidence: 1,
+        topicSource: 'deterministic_rule',
+        boundarySignal: false,
+        actorId: 'customer-1',
+        jobId: 'job-1',
+      },
+      knownEvidenceReferences: ['dispute-1', 'confirmed-1', 'STRUCTURES.md#dispute'],
+      amountVnd: 2_000_000,
+      source: 'policy',
+      featureFlags: { fullAutonomyEnabled: true },
+      audit: {
+        client,
+        jobId: 'job-1',
+        actorId: 'customer-1',
+        actorRole: 'customer',
+      },
+    })).rejects.toThrow('KAEL_AUTONOMY_ESCALATION_QUEUE_FAILED')
+    expect(insertedTables).toEqual(['kael_autonomy_decision_audit', 'kael_admin_queue'])
+  })
 })

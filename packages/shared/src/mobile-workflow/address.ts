@@ -9,13 +9,14 @@ export function extractKnownDistrictLabel(input: string): string {
   const normalized = normalizeSearchText(input)
   if (!normalized) return ''
 
+  const numberedDistrict = normalized.match(/\b(?:quan|q|district|dist)\s*\.?\s*(1[0-2]|[1-9])\b/)
+  if (numberedDistrict) return `Quận ${numberedDistrict[1]}`
+
   for (const [slug, label] of Object.entries(HCMC_DISTRICTS) as Array<[DistrictSlug, string]>) {
     if (slug === 'hcmc_all') continue
-    if (normalized.includes(normalizeSearchText(label))) return label
+    const normalizedLabel = escapeRegExp(normalizeSearchText(label))
+    if (new RegExp(`(^|[^a-z0-9])${normalizedLabel}([^a-z0-9]|$)`).test(normalized)) return label
   }
-
-  const numberedDistrict = normalized.match(/\b(?:quan|q|district|dist)\s*\.?\s*(1[0-2]|\d)\b/)
-  if (numberedDistrict) return `Quận ${numberedDistrict[1]}`
 
   return ''
 }
@@ -43,7 +44,7 @@ export function hasSpecificWorkerRouteAddress(addressLabel: string | null | unde
   }
 
   specificPart = specificPart
-    .replace(/\b(?:quan|q|district|dist)\s*\.?\s*(1[0-2]|\d)\b/g, ' ')
+    .replace(/\b(?:quan|q|district|dist)\s*\.?\s*\d+\b/g, ' ')
     .replace(/\b(?:phuong|p|ward)\s*\.?\s*\d+\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

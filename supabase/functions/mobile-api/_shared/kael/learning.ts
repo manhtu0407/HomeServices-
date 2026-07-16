@@ -1,5 +1,5 @@
 import type { ComplexityLevel, EdgeAiSecrets, ServiceType, SupabaseLike } from "./types.ts";
-import { withDbTimeout } from "./utils.ts";
+import { readBooleanEnvFlag, withDbTimeout } from "./utils.ts";
 
 type AppliedComplexityRule = {
   newComplexity: ComplexityLevel;
@@ -184,11 +184,11 @@ export async function applyLearnedPriceRule(
   };
 }
 
-// A-1 (Notes.md): defense-in-depth clamp applied at price-apply time. Promotion
+// Apply a defense-in-depth clamp at price-application time. Promotion
 // is already evidence-gated and IQR-grounded (real reviewed jobs, outliers
 // rejected), so a learned range that is e.g. ~2x the admin baseline is a
 // LEGITIMATE market correction and must be allowed through. This clamp only
-// catches the pathological case the audit worried about — a rule promoted on
+// catches the pathological case of a rule promoted on
 // broken data that pushes the price "off by many times" (a decimal / unit
 // error, orders of magnitude). If either endpoint falls outside
 // [baseline / FACTOR, baseline * FACTOR] the rule is ignored for this estimate
@@ -423,15 +423,10 @@ function stringFrom(value: unknown): string | null {
 
 function learningReviewOutcomeEnabled(): boolean {
   const deno = (globalThis as { Deno?: { env?: { get?: (key: string) => string | undefined } } }).Deno;
-  const readEnabled = readBoolean(deno?.env?.get?.("KAEL_LEARNING_READ_ENABLED"), false);
-  const writeEnabled = readBoolean(deno?.env?.get?.("KAEL_LEARNING_WRITE_ENABLED"), false);
-  const killSwitch = readBoolean(deno?.env?.get?.("KAEL_LEARNING_KILL_SWITCH"), false);
+  const readEnabled = readBooleanEnvFlag(deno?.env?.get?.("KAEL_LEARNING_READ_ENABLED"), false);
+  const writeEnabled = readBooleanEnvFlag(deno?.env?.get?.("KAEL_LEARNING_WRITE_ENABLED"), false);
+  const killSwitch = readBooleanEnvFlag(deno?.env?.get?.("KAEL_LEARNING_KILL_SWITCH"), false);
   return readEnabled && writeEnabled && !killSwitch;
-}
-
-function readBoolean(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined || value === "") return fallback;
-  return value.toLowerCase() === "true";
 }
 
 function asComplexityLevel(value: unknown): ComplexityLevel | null {

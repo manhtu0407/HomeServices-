@@ -1,5 +1,5 @@
 /**
- * S2 / F2 (Plan.md §38 security hardening) — learning-candidate routes are admin-only
+ * Learning-candidate routes are admin-only
  * at the Edge ROUTER, not merely at the service layer.
  *
  * Before the fix, `admin.kaelLearning.candidates.{list,approve,reject}` carried

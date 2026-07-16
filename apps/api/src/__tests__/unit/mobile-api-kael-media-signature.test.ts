@@ -59,4 +59,27 @@ describe('Kael trusted model-vision transform gate', () => {
       globalThis.fetch = previousFetch
     }
   })
+
+  it('requests only the signature prefix from the trusted Storage transform', async () => {
+    const previousFetch = globalThis.fetch
+    let requestInit: RequestInit | undefined
+    globalThis.fetch = async (_url, init) => {
+      requestInit = init
+      return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
+        headers: {
+          'content-length': '4',
+          'content-range': 'bytes 0-3/1024',
+          'content-type': 'image/jpeg',
+        },
+        status: 206,
+      })
+    }
+    try {
+      await expect(inspectTrustedKaelVisionTransform('https://storage.test/transform'))
+        .resolves.toBe('valid')
+      expect(new Headers(requestInit?.headers).get('range')).toBe('bytes=0-15')
+    } finally {
+      globalThis.fetch = previousFetch
+    }
+  })
 })

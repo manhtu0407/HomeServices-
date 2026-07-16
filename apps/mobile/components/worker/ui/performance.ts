@@ -1,11 +1,11 @@
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { WorkerV5IconName } from '../dock/types'
-import { formatLooseLabel, textByLanguage } from './format'
+import { textByLanguage } from './format'
 import { workerPerformanceAxisLabel } from './labels'
 
 type WorkerV5PerformanceAxisSource = {
-  performance_axes: ReadonlyArray<{ id: string; score: number | null | undefined }>
+  performance_axes: readonly { id: string; score: number | null | undefined }[]
 } | null | undefined
 
 type WorkerV5PerformanceScoreSource = {
@@ -55,12 +55,14 @@ export function workerV5ReliabilityAxes(insights: WorkerV5PerformanceAxisSource)
   })
 }
 
-export function workerV5ReliabilityPercentValue(value: number | null | undefined) {
-  return workerV5HasNumber(value) ? `${Math.max(0, Math.round(value))}%` : '0%'
+export function workerV5ReliabilityPercentValue(value: number | null | undefined, language: AppLanguage) {
+  return workerV5HasNumber(value)
+    ? `${Math.max(0, Math.round(value))}%`
+    : textByLanguage(language, 'Chờ', 'Pending')
 }
 
-export function workerV5ReliabilityRatingValue(value: number | null | undefined, language?: AppLanguage) {
-  if (!workerV5HasNumber(value) || value <= 0) return '0'
+export function workerV5ReliabilityRatingValue(value: number | null | undefined, language: AppLanguage) {
+  if (!workerV5HasNumber(value) || value <= 0) return textByLanguage(language, 'Chờ', 'Pending')
   const normalized = `${Math.round(value * 10) / 10}`
   return language === 'vi' ? normalized.replace('.', ',') : normalized
 }
@@ -88,10 +90,10 @@ export function workerV5ReliabilityAxisTitle(id: string, language: AppLanguage) 
 export function workerV5ReliabilityAxisMeta(axis: WorkerV5ReliabilityAxis, language: AppLanguage) {
   return axis.hasData
     ? textByLanguage(language, `${axis.score}/100 · dữ liệu thật`, `${axis.score}/100 · real data`)
-    : textByLanguage(language, '0/100 · chưa có dữ liệu thật', '0/100 · no real data yet')
+    : textByLanguage(language, 'Chưa có dữ liệu thật', 'No real data yet')
 }
 
-export function workerV5ProfileBackendSyncPercent(insights: WorkerV5PerformanceScoreSource) {
+export function workerV5PerformanceProgressPercent(insights: WorkerV5PerformanceScoreSource) {
   const score = insights?.performance_score
   if (!workerV5HasNumber(score)) return 0
   return Math.max(0, Math.min(100, Math.round(score)))

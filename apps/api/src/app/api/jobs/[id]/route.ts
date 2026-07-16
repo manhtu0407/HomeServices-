@@ -1,5 +1,6 @@
 import { authenticateRequest, assertOwnership, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { withDbTimeout } from '@/lib/db/query'
+import { isUuidRouteParam } from '@/lib/http/route-param'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -7,13 +8,16 @@ export async function GET(request: Request, { params }: RouteParams) {
   const auth = await authenticateRequest(request)
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )
   }
 
   const { id } = await params
+  if (!isUuidRouteParam(id)) {
+    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
+  }
 
   const selectColumns = 'id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at'
 

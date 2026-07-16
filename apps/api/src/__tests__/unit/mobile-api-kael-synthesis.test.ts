@@ -40,6 +40,40 @@ describe('Kael deterministic price synthesis', () => {
     })
   })
 
+  it('adjusts only the medium market half when large complexity already selected a large baseline', () => {
+    expect(synthesizePrice({
+      baselineMin: 100_000,
+      baselineMax: 200_000,
+      market: {
+        market_range_min: 200_000,
+        market_range_max: 400_000,
+        confidence: 0.8,
+      },
+      complexityHint: 'large',
+    })).toEqual({
+      price_min: 170_000,
+      price_max: 340_000,
+      confidence: 0.65,
+    })
+  })
+
+  it('does not discount an already small-complexity baseline a second time', () => {
+    expect(synthesizePrice({
+      baselineMin: 100_000,
+      baselineMax: 200_000,
+      market: {
+        market_range_min: 200_000,
+        market_range_max: 400_000,
+        confidence: 0.8,
+      },
+      complexityHint: 'small',
+    })).toEqual({
+      price_min: 135_000,
+      price_max: 270_000,
+      confidence: 0.65,
+    })
+  })
+
   it('keeps a valid market correction within the four-times baseline clamp', () => {
     const market = {
       market_range_min: 400_000,

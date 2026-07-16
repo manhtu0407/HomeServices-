@@ -11,7 +11,7 @@ import {
 describe('mobile-api Kael Q1 cost tracking', () => {
   it('keeps all optimization flags disabled by default and toggles independently', () => {
     const defaults = readKaelOptimizationFlags(() => undefined)
-    // 6 flags since 2026-06-04 (added KAEL_OPT_LLM_CLARIFICATION_ENABLED).
+// The configuration surface includes KAEL_OPT_LLM_CLARIFICATION_ENABLED.
     expect(Object.values(defaults)).toEqual([false, false, false, false, false, false])
 
     const flags = readKaelOptimizationFlags((name) =>

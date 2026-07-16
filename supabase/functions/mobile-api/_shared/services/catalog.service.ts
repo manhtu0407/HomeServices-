@@ -1,10 +1,15 @@
 // Edge service catalog domain (C4 6a, services/* split): listServices catalog/price-baseline
 // lookup + its baseline-mapping helpers. Imported directly by services.ts.
 
-import { asComplexity, asString, positiveNumberFrom } from "./coercions.ts";
+import {
+  asComplexity,
+  asString,
+  nullableServiceType,
+  positiveNumberFrom,
+} from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { HCMC_DISTRICTS, type ServiceType } from "../../../_shared/domain.ts";
+import { HCMC_DISTRICTS } from "../../../_shared/domain.ts";
 
 export async function listServices(ctx: MobileApiContext) {
   const client = db(ctx);
@@ -49,23 +54,29 @@ export async function listServices(ctx: MobileApiContext) {
   const baselines = baseResult.data ?? [];
 
   return {
-    services: categories.map((cat) => ({
-      id: asString(cat.id),
-      service_type: cat.service_type as ServiceType,
-      label_vi: asString(cat.label_vi),
-      problems: problems
-        .filter((p) => p.service_category_id === cat.id)
-        .map((p) => ({
-          id: asString(p.id),
-          slug: asString(p.slug),
-          label_vi: asString(p.label_vi),
-          default_complexity: asComplexity(p.default_complexity),
-        })),
-      baselines: baselines
-        .filter((b) => b.service_type === cat.service_type)
-        .map(toCatalogBaseline)
-        .filter(uniqueCatalogBaseline),
-    })),
+    services: categories.map((cat) => {
+      const serviceType = nullableServiceType(cat.service_type);
+      if (!serviceType) {
+        apiFailure("DB_ERROR", "Danh mục dịch vụ có dữ liệu không hợp lệ", 500);
+      }
+      return {
+        id: asString(cat.id),
+        service_type: serviceType,
+        label_vi: asString(cat.label_vi),
+        problems: problems
+          .filter((p) => p.service_category_id === cat.id)
+          .map((p) => ({
+            id: asString(p.id),
+            slug: asString(p.slug),
+            label_vi: asString(p.label_vi),
+            default_complexity: asComplexity(p.default_complexity),
+          })),
+        baselines: baselines
+          .filter((b) => b.service_type === cat.service_type)
+          .map(toCatalogBaseline)
+          .filter(uniqueCatalogBaseline),
+      };
+    }),
   };
 }
 

@@ -10,13 +10,15 @@ import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
 import { projectAddressAccess } from "./apartment-access.service.ts";
 import { logJobEvent } from "./audit.ts";
 import {
-  acquireBroadcastRetryLease,
   createBroadcasts,
   expireStaleBroadcasts,
+  failBroadcastRetryClaim,
   hasActiveBroadcast,
+  isBroadcastRetryContention,
   listBroadcastRecipientWorkerIds,
+  runWithBroadcastRetryLease,
 } from "./broadcasts.service.ts";
-import { asJobStatus, asNumber, asServiceType, asString, nullableNumber, nullableString } from "./coercions.ts";
+import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { insertUserNotification, notifyCustomerWorkerMatched } from "./notifications.service.ts";
 import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
@@ -200,6 +202,13 @@ export async function notifyCustomerCandidateReady(
   const owner = await dbQuery<Record<string, unknown>>(
     client.from("jobs").select("customer_id").eq("id", jobId).maybeSingle(),
   );
+  if (owner.error) {
+    console.warn("mobile-api candidate notification owner lookup failed", {
+      jobId,
+      errorCode: owner.error.code,
+    });
+    return;
+  }
   const customerId = owner.data ? nullableString(owner.data.customer_id) : null;
   if (!customerId) return;
   await insertUserNotification(client, {
@@ -250,7 +259,7 @@ async function buildSafeWorkerCandidateView(
         .eq("customer_id", customerId).eq("worker_id", workerId).maybeSingle(),
     ),
   ]);
-  if (worker.error || profile.error || !worker.data || !profile.data) {
+  if (worker.error || profile.error || favorite.error || !worker.data || !profile.data) {
     apiFailure("DB_ERROR", "Không thể tải hồ sơ thợ đề xuất", 500);
   }
   const status = nullableString(candidate.status);
@@ -260,24 +269,54 @@ async function buildSafeWorkerCandidateView(
   ) {
     apiFailure("DB_ERROR", "Trạng thái thợ đề xuất không hợp lệ", 500);
   }
-  const totalJobs = Math.max(0, Math.trunc(asNumber(worker.data.total_jobs)));
+  const candidateId = requiredCandidateString(candidate.id);
+  const proposedAt = requiredCandidateString(candidate.proposed_at);
+  const totalJobs = requiredCandidateInteger(worker.data.total_jobs);
+  const yearsExperience = requiredCandidateInteger(worker.data.years_experience);
+  const verificationStatus = requiredCandidateString(
+    worker.data.verification_status,
+  );
   const rating = nullableNumber(worker.data.rating);
+  if (worker.data.rating !== null && worker.data.rating !== undefined &&
+    (rating === null || rating < 0 || rating > 5)) {
+    apiFailure("DB_ERROR", "Dữ liệu hồ sơ thợ đề xuất không hợp lệ", 500);
+  }
   const avatarUrl = await resolveWorkerAvatarUrl(client, profile.data.avatar_url);
   return {
-    candidate_id: asString(candidate.id),
+    candidate_id: candidateId,
     worker_id: workerId,
     status: status as "proposed" | "customer_confirmed" | "customer_declined" | "expired" | "withdrawn",
     display_name: nullableString(profile.data.full_name),
     avatar_url: avatarUrl,
     rating: totalJobs > 0 && rating !== null && rating > 0 ? rating : null,
     total_jobs: totalJobs,
-    years_experience: Math.max(0, Math.trunc(asNumber(worker.data.years_experience))),
-    verification_status: asString(worker.data.verification_status),
-    is_favorite: !favorite.error && favorite.data !== null,
-    proposed_at: asString(candidate.proposed_at),
+    years_experience: yearsExperience,
+    verification_status: verificationStatus,
+    is_favorite: favorite.data !== null,
+    proposed_at: proposedAt,
     expires_at: nullableString(candidate.expires_at),
     customer_decided_at: nullableString(candidate.customer_decided_at),
   };
+}
+
+function requiredCandidateInteger(value: unknown): number {
+  const parsed = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim().length > 0
+    ? Number(value)
+    : Number.NaN;
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    apiFailure("DB_ERROR", "Dữ liệu hồ sơ thợ đề xuất không hợp lệ", 500);
+  }
+  return parsed;
+}
+
+function requiredCandidateString(value: unknown): string {
+  const parsed = nullableString(value);
+  if (!parsed?.trim()) {
+    apiFailure("DB_ERROR", "Dữ liệu hồ sơ thợ đề xuất không hợp lệ", 500);
+  }
+  return parsed;
 }
 
 async function resumeMatchingAfterCandidateRejection(
@@ -297,32 +336,63 @@ async function resumeMatchingAfterCandidateRejection(
   if (await hasActiveBroadcast(client, jobId, now)) {
     return { broadcastSent: true, message: "Kael đang tiếp tục tìm thợ phù hợp." };
   }
-  if (!(await acquireBroadcastRetryLease(client, jobId, ctx.user.id, now))) {
-    return { broadcastSent: false, message: "Kael đang tiếp tục tìm thợ phù hợp." };
-  }
   const district = normalizeServiceAreaDistrict(nullableString(job.address_district) ?? "");
   if (!district) apiFailure("VALIDATION", "Địa chỉ cần có quận TP.HCM rõ ràng", 400);
   const recipients = await listBroadcastRecipientWorkerIds(client, jobId);
   if (!recipients.success) apiFailure("DB_ERROR", "Không thể tiếp tục tìm thợ", 500);
-  const broadcast = await createBroadcasts(client, jobId, asServiceType(job.service_type), district, {
-    excludeWorkerIds: recipients.workerIds,
-  });
-  if (!broadcast.success) {
-    if (broadcast.reasonCode === "DB_ERROR") apiFailure("DB_ERROR", "Không thể tiếp tục tìm thợ", 500);
-    await logJobEvent(client, jobId, "no_worker_found_after_candidate_rejection", ctx,
-      "broadcasting", null, { excluded_worker_count: recipients.workerIds.length });
-    return { broadcastSent: false, message: broadcast.reason };
+  const claimResult = await runWithBroadcastRetryLease(
+    client,
+    jobId,
+    ctx.user.id,
+    async () => {
+      const broadcast = await createBroadcasts(
+        client,
+        jobId,
+        asServiceType(job.service_type),
+        district,
+        { excludeWorkerIds: recipients.workerIds },
+      );
+      if (!broadcast.success) {
+        if (broadcast.reasonCode === "DB_ERROR") {
+          apiFailure("DB_ERROR", "Không thể tiếp tục tìm thợ", 500);
+        }
+        await logJobEvent(
+          client,
+          jobId,
+          "no_worker_found_after_candidate_rejection",
+          ctx,
+          "broadcasting",
+          null,
+          { excluded_worker_count: recipients.workerIds.length },
+        );
+        return { broadcastSent: false, message: broadcast.reason };
+      }
+      await logJobEvent(
+        client,
+        jobId,
+        "broadcast_sent_after_candidate_rejection",
+        ctx,
+        "broadcasting",
+        null,
+        {
+          batch_id: broadcast.batchId,
+          worker_count: broadcast.broadcastCount,
+          excluded_worker_count: recipients.workerIds.length,
+        },
+      );
+      return {
+        broadcastSent: true,
+        message: `Kael đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ tiếp theo.`,
+      };
+    },
+  );
+  if (!claimResult.acquired) {
+    if (isBroadcastRetryContention(claimResult.reasonCode)) {
+      return { broadcastSent: false, message: "Kael đang tiếp tục tìm thợ phù hợp." };
+    }
+    failBroadcastRetryClaim(claimResult.reasonCode);
   }
-  await logJobEvent(client, jobId, "broadcast_sent_after_candidate_rejection", ctx,
-    "broadcasting", null, {
-      batch_id: broadcast.batchId,
-      worker_count: broadcast.broadcastCount,
-      excluded_worker_count: recipients.workerIds.length,
-    });
-  return {
-    broadcastSent: true,
-    message: `Kael đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ tiếp theo.`,
-  };
+  return claimResult.value;
 }
 
 function mapWorkerCandidateDecisionError(errorCode: string | null): never {
@@ -375,7 +445,10 @@ async function persistWorkerBriefGuidanceAfterAccept(
     estimatedEarningMin: priceMin === null ? null : Math.round(priceMin * (1 - PLATFORM_FEE_WORKER)),
     estimatedEarningMax: finalPrice === null ? null : Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER)),
   });
-  await dbQuery(
+  const guidanceUpdate = await dbQuery(
     client.from("jobs").update({ kael_worker_brief_guidance: guidance }).eq("id", jobId),
-  ).catch(() => console.warn("mobile-api worker brief guidance persist failed", { jobId }));
+  );
+  if (guidanceUpdate.error) {
+    console.warn("mobile-api worker brief guidance persist failed", { jobId });
+  }
 }

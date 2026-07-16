@@ -2,6 +2,7 @@ import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { workerRegisterSchema } from '@nestscout/shared'
 import { registerWorker } from '@/lib/workers/register'
 import { checkRateLimit, AI_SESSION_LIMIT } from '@/lib/rate-limit'
+import { readJsonRequestBounded } from '@/lib/http/request-json'
 
 /**
  * POST /api/workers/register — B0
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
   const auth = await authenticateRequest(request, ['worker'])
   if (!auth.success) {
     return apiError(
-      auth.status === 401 ? 'AUTH_MISSING' : 'AUTH_FORBIDDEN',
+      auth.code,
       auth.error,
       auth.status,
     )
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
 
   let body: unknown
   try {
-    body = await request.json()
+    body = await readJsonRequestBounded(request)
   } catch {
     return apiError('VALIDATION', 'Dữ liệu không hợp lệ', 400)
   }

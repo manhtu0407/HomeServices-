@@ -1,7 +1,7 @@
 import type { CustomerV21BankKey } from './assets'
 import { stringFromUnknown } from './value-display-model'
 
-export const paymentBankOptions: Array<{ key: CustomerV21BankKey; name: string; vietQrCode: string }> = [
+export const paymentBankOptions: { key: CustomerV21BankKey; name: string; vietQrCode: string }[] = [
   { key: 'vietcombank', name: 'Vietcombank', vietQrCode: 'VCB' },
   { key: 'techcombank', name: 'Techcombank', vietQrCode: 'TCB' },
   { key: 'bidv', name: 'BIDV', vietQrCode: 'BIDV' },

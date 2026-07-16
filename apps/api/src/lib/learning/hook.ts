@@ -181,15 +181,8 @@ async function maybePromote(
     return null
   }
 
-  // Gate passed. Flip status to evidence_gate_passed before calling promote
-  // (so we have a checkpoint if promote crashes mid-way).
-  await withDbTimeout(
-    supabase
-      .from('learning_candidates')
-      .update({ status: 'evidence_gate_passed' })
-      .eq('id', candidateId),
-  )
-
+  // The RPC owns the evidence_gate_passed checkpoint and promotion write set;
+  // keeping both in one transaction avoids a stranded intermediate status.
   const result = await promoteCandidate(supabase, candidate as CandidateRow)
   if (!result.promoted) return null
   return { ruleId: result.ruleId, ruleVersion: result.ruleVersion }

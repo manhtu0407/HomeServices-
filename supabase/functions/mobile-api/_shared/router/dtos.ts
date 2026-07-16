@@ -222,6 +222,7 @@ export type EdgeCustomerProfileInsightsResponse = {
   preferred_service_count: number;
   active_service_days: number;
   active_streak_days: number;
+  reviewed_service_count: number;
   positive_review_rate_percent: number;
   price_savings_vnd: number;
   total_spend_vnd: number;
@@ -609,6 +610,7 @@ export type EdgeBroadcastListResponse = {
     estimated_earning_min: number | null;
     estimated_earning_max: number | null;
     worker_brief_core?: Record<string, unknown> | null;
+    scheduled_at: string | null;
     sent_at: string | null;
     expires_at: string | null;
     seconds_remaining: number | null;
@@ -617,6 +619,7 @@ export type EdgeBroadcastListResponse = {
 export type EdgeWorkerJobListResponse = {
   jobs: {
     id: string;
+    display_code: string | null;
     status: JobStatus;
     service_type: ServiceType;
     problem_summary: string | null;
@@ -627,10 +630,32 @@ export type EdgeWorkerJobListResponse = {
     address_access: EdgeAddressAccessView;
     final_price: number | null;
     estimated_earning: number | null;
+    payment_status:
+      | "not_started"
+      | "code_requested"
+      | "vietqr_ready"
+      | "pending"
+      | "received"
+      | "amount_mismatch"
+      | "expired"
+      | "failed"
+      | "reconciled"
+      | null;
+    payment_provider: string | null;
+    payment_code: string | null;
+    payment_transfer_content: string | null;
+    payment_qr_image_url: string | null;
+    payment_expires_at: string | null;
+    payment_received_at: string | null;
+    payment_amount_received: number | null;
+    gross_amount: number | null;
+    platform_fee: number | null;
+    worker_net: number | null;
     photo_urls: string[];
     completion_notes: string | null;
     completion_photo_urls: string[];
     worker_brief_guidance?: Record<string, unknown> | null;
+    scheduled_at: string | null;
     created_at: string;
     matched_at: string | null;
     completed_at: string | null;
@@ -648,6 +673,13 @@ export type EdgeEarningsResponse = {
   net_earnings: number;
   pending_payment_count: number;
   pending_payment_amount: number;
+  daily_earnings: {
+    date: string;
+    gross_earnings: number;
+    platform_fee_total: number;
+    net_earnings: number;
+    paid_job_count: number;
+  }[];
   from_date: string | null;
   to_date: string | null;
 };
@@ -724,67 +756,4 @@ export type EdgeWorkerActivityMinuteResponse = {
   last_active_at: string;
   incremented: boolean;
 };
-export type EdgeJobDetailResponse = {
-  job: {
-    id: string;
-    status: JobStatus;
-    service_type: ServiceType;
-    description: string;
-    problem_chips: string[];
-    photo_urls: string[];
-    address_building: string | null;
-    address_unit: string | null;
-    address_floor: string | null;
-    address_district: string | null;
-    address_access: EdgeAddressAccessView;
-    scheduled_at: string | null;
-    kael_problem_identified: string | null;
-    kael_complexity: ComplexityLevel | null;
-    kael_price_min: number | null;
-    kael_price_max: number | null;
-    kael_advisory: string | null;
-    kael_estimate_card_v3: Record<string, unknown> | null;
-    kael_worker_brief_core: Record<string, unknown> | null;
-    kael_worker_brief_guidance: Record<string, unknown> | null;
-    kael_progress: EdgeKaelChatProgressResponse["progress"];
-    final_price: number | null;
-    completion_notes: string | null;
-    completion_photo_urls: string[];
-    created_at: string;
-    matched_at: string | null;
-    arrived_at: string | null;
-    completed_at: string | null;
-    confirmed_at: string | null;
-    paid_at: string | null;
-    reviewed_at: string | null;
-  };
-  worker: {
-    avatar_url: string | null;
-    full_name: string;
-    id: string;
-    rating: number;
-    total_jobs: number;
-  } | null;
-  broadcast_state: {
-    active_count: number;
-    seconds_remaining: number | null;
-  } | null;
-  current_scope_change: {
-    id: string;
-    status: ScopeChangeStatus;
-    requested_description: string | null;
-    reason: string | null;
-    price_min: number | null;
-    price_max: number | null;
-    kael_computed_min: number | null;
-    kael_computed_max: number | null;
-    kael_review: Record<string, unknown> | null;
-    kael_progress: EdgeKaelChatProgressResponse["progress"];
-    evidence_photo_urls: string[];
-    created_at: string | null;
-  } | null;
-};
-
-export type EdgeCustomerActiveJobResponse = {
-  active_job: EdgeJobDetailResponse | null;
-};
+export type { EdgeCustomerActiveJobResponse, EdgeJobDetailResponse } from "./job-detail-dtos.ts";

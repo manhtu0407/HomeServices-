@@ -3,20 +3,45 @@
   "configurations": [
     {
       "name": "mobile-web",
-      "runtimeExecutable": "C:\\tmp\\hs-toolchain\\node-v20.18.0-win-x64\\pnpm.CMD",
-      "runtimeArgs": ["--filter", "@nestscout/mobile", "web"],
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/run-package-script.ps1",
+        "@nestscout/mobile",
+        "web"
+      ],
       "port": 8081
     },
     {
       "name": "mobile-web-staging",
-      "runtimeExecutable": "C:\\tmp\\hs-toolchain\\node-v20.18.0-win-x64\\pnpm.CMD",
-      "runtimeArgs": ["run", "preview:mobile:web:staging"],
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/run-mobile-web-staging-preview.ps1"
+      ],
       "port": 8082
     },
     {
       "name": "api-nextjs",
-      "runtimeExecutable": "C:\\tmp\\hs-toolchain\\node-v20.18.0-win-x64\\pnpm.CMD",
-      "runtimeArgs": ["--filter", "@nestscout/api", "dev"],
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/run-package-script.ps1",
+        "@nestscout/api",
+        "dev"
+      ],
       "port": 3000
     }
   ]

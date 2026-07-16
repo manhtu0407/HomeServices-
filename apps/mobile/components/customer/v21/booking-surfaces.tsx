@@ -1,4 +1,5 @@
-import { Image, Pressable, Text, View } from 'react-native'
+import { Image } from 'expo-image'
+import { Pressable, Text, View } from 'react-native'
 import Svg, { Defs, RadialGradient, Rect } from 'react-native-svg'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
@@ -7,7 +8,7 @@ import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { customerV21Assets, isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
+import { isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
 import { customerV21BookingStyles as styles } from './booking-styles'
 
 type CustomerV21BookingTokens = CustomerThemeTokens
@@ -181,6 +182,8 @@ export function MediaEvidenceSlot({
   )
 }
 
+const MEDIA_VOICE_WAVE_BARS = [8, 17, 12, 23, 15, 10, 18, 13] as const
+
 export function MediaVoiceNote({
   isRecording,
   language,
@@ -198,7 +201,6 @@ export function MediaVoiceNote({
   tokens: CustomerV21BookingTokens
   value: string
 }) {
-  const bars = [8, 17, 12, 23, 15, 10, 18, 13]
   const title = isRecording
     ? (language === 'vi' ? 'Đang ghi · chạm để lưu' : 'Recording · tap to save')
     : (language === 'vi' ? 'Ghi chú bằng giọng nói' : 'Voice note')
@@ -223,7 +225,7 @@ export function MediaVoiceNote({
       <View style={styles.mediaVoiceBody}>
         <Text numberOfLines={1} style={[styles.mediaVoiceTitle, { color: tokens.text }]}>{title}</Text>
         <View style={styles.mediaWave} testID="customer-v21-media-wave">
-          {bars.map((height, index) => (
+          {MEDIA_VOICE_WAVE_BARS.map((height, index) => (
             <View
               key={`${height}-${index}`}
               style={[styles.mediaWaveBar, { backgroundColor: isRecording || index < 3 ? tokens.primary : tokens.border, height: isRecording ? Math.max(8, height + (index % 2 === 0 ? 4 : 0)) : height }]}
@@ -238,7 +240,7 @@ export function MediaVoiceNote({
 
 function MediaEvidenceVisual({ image }: { image: CustomerV21Visual }) {
   if (isKaelCoreV9Visual(image)) return <KaelCoreV9 size={30} />
-  return <Image resizeMode="contain" source={image} style={styles.mediaSlotIcon} />
+  return <Image contentFit="contain" source={image} style={styles.mediaSlotIcon} />
 }
 
 export function MediaPrepRow({

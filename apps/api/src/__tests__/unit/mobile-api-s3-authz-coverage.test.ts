@@ -1,9 +1,9 @@
 /**
- * S3 / authz-coverage (Plan.md §38 security hardening) — durable IDOR guardrail.
+ * Durable IDOR guardrail.
  *
  * The Edge builds its downstream Supabase client with the service-role key, so RLS
  * is bypassed inside handlers and authorization rests ENTIRELY on explicit Edge
- * checks (audit §2 "structural note"). Consequence: one resource-scoped route that
+ * checks. Consequently, one resource-scoped route that
  * forgets its ownership guard = IDOR / money-state manipulation.
  *
  * This test DERIVES the resource-scoped route list directly from the `Route` union
@@ -13,7 +13,7 @@
  * i.e. it targets one specific owned instance.
  *
  * It then asserts the derived set EQUALS the GUARDED registry below — every entry of
- * which was verified (audit §2/§4.1 + spot-checks) to enforce ownership via one of:
+ * which must enforce ownership via one of:
  * requireJobAccess (404), session-ownership preflight, an atomic RPC SQL owner/admin
  * check, or admin-role. If someone adds a NEW resource-scoped route later, the
  * derived set changes and this test FAILS LOUD until the route is reviewed and
@@ -42,8 +42,8 @@ const workerKaelChatRouteLayerPath = resolve(
 
 /**
  * Every resource-scoped route -> the ownership mechanism that fails closed for it.
- * Verified against audit §2 ("Verified-strong") / §4.1 (exhaustive route authz) and
- * direct source spot-checks (e.g. markNotificationRead `.eq("user_id", ctx.user.id)`;
+ * Keep this registry grounded in direct source checks (for example,
+ * markNotificationRead `.eq("user_id", ctx.user.id)`;
  * getKaelChatProgress `assertKaelSessionOwnership`). Keep in lockstep with the router layer.
  */
 const GUARDED: Record<string, string> = {
@@ -53,6 +53,8 @@ const GUARDED: Record<string, string> = {
   // job-scoped writes — service ownership check or atomic RPC owner/participant SQL check
   'jobs.messages.send': 'service participant check',
   'jobs.media': 'service participant + stage check',
+  'jobs.mediaUpload': 'requireJobAccess + owner/stage reservation RPC',
+  'jobs.mediaRevoke': 'requireJobAccess + owner-scoped revocation RPC',
   'jobs.status': 'service worker-owner check (403)',
   'jobs.confirmSearch': 'RPC customer-owner (atomic)',
   'jobs.cancel': 'service owner check',

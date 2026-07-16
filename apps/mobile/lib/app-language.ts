@@ -14,6 +14,7 @@ const LEGACY_LANGUAGE_STORAGE_KEYS = [
 
 let appLanguage: AppLanguage = 'vi'
 let hydrated = false
+let languageSelectionRevision = 0
 const listeners = new Set<() => void>()
 
 export const appCopy = {
@@ -184,6 +185,8 @@ const genericProblemLabels: Record<AppLanguage, Record<string, string>> = {
 }
 
 const nonAsciiPattern = /[^\x00-\x7F]/
+let pendingLanguagePersistence: AppLanguage | null = null
+let languagePersistenceDrain: Promise<void> | null = null
 
 export function getAppLanguageSnapshot() {
   return appLanguage
@@ -197,19 +200,40 @@ export function subscribeAppLanguage(listener: () => void) {
 }
 
 export function setAppLanguage(nextLanguage: AppLanguage) {
-  applyAppLanguage(nextLanguage)
+  languageSelectionRevision += 1
+  return applyAppLanguage(nextLanguage)
 }
 
 function applyAppLanguage(nextLanguage: AppLanguage) {
   const changed = appLanguage !== nextLanguage
   appLanguage = nextLanguage
-  void AsyncStorage.setItem(APP_LANGUAGE_STORAGE_KEY, nextLanguage).catch(() => undefined)
-  if (!changed) return
+  const persisted = persistAppLanguage(nextLanguage)
+  if (!changed) return persisted
   listeners.forEach((listener) => listener())
+  return persisted
+}
+
+function persistAppLanguage(nextLanguage: AppLanguage) {
+  pendingLanguagePersistence = nextLanguage
+  if (languagePersistenceDrain) return languagePersistenceDrain
+  languagePersistenceDrain = drainLanguagePersistence()
+  return languagePersistenceDrain
+}
+
+async function drainLanguagePersistence() {
+  try {
+    while (pendingLanguagePersistence) {
+      const nextLanguage = pendingLanguagePersistence
+      pendingLanguagePersistence = null
+      await AsyncStorage.setItem(APP_LANGUAGE_STORAGE_KEY, nextLanguage).catch(() => undefined)
+    }
+  } finally {
+    languagePersistenceDrain = null
+  }
 }
 
 export function toggleAppLanguage() {
-  setAppLanguage(appLanguage === 'vi' ? 'en' : 'vi')
+  return setAppLanguage(appLanguage === 'vi' ? 'en' : 'vi')
 }
 
 export function useAppLanguage() {
@@ -259,17 +283,20 @@ export function nextLanguageLabel(language: AppLanguage) {
 }
 
 export async function hydrateAppLanguage() {
+  const selectionRevisionAtStart = languageSelectionRevision
   const stored = await AsyncStorage.getItem(APP_LANGUAGE_STORAGE_KEY).catch(() => null)
+  if (languageSelectionRevision !== selectionRevisionAtStart) return
   if (stored === 'vi' || stored === 'en') {
-    applyAppLanguage(stored)
+    await applyAppLanguage(stored)
     return
   }
 
   const legacyValues = await Promise.all(
     LEGACY_LANGUAGE_STORAGE_KEYS.map((key) => AsyncStorage.getItem(key).catch(() => null)),
   )
+  if (languageSelectionRevision !== selectionRevisionAtStart) return
   const legacy = legacyValues.find((value): value is AppLanguage => value === 'vi' || value === 'en')
   if (legacy) {
-    applyAppLanguage(legacy)
+    await applyAppLanguage(legacy)
   }
 }

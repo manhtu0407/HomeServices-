@@ -1,4 +1,4 @@
-import type { ComplexityLevel, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType } from '@nestscout/shared'
+import type { ComplexityLevel, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, UserRole } from '@nestscout/shared'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView } from './shared'
 
@@ -283,7 +283,11 @@ export type DevicePushTokenInput = {
   platform: 'ios' | 'android' | 'web' | 'unknown'
   push_token: string
   permission_status: 'granted' | 'denied' | 'undetermined'
-  safe_metadata?: Record<string, unknown>
+  safe_metadata?: {
+    project_id_available?: boolean
+    role?: UserRole | null
+    source?: 'expo-notifications'
+  }
 }
 
 export type DevicePushTokenResponse = {

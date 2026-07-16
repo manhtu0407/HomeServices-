@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { supabase } from './supabase'
+import { withNetworkDeadline } from './response-guard'
 
 const JOB_MEDIA_REF_PREFIX = 'supabase://job-media/'
+const JOB_MEDIA_SIGNED_URL_TIMEOUT_MS = 10_000
 const JOB_MEDIA_STAGES = new Set([
   'access_check_in',
   'after',
@@ -21,11 +23,19 @@ export function jobMediaObjectPathFromRef(ref: string): string | null {
 
   const path = ref.slice(JOB_MEDIA_REF_PREFIX.length)
   const match = path.match(
-    /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([A-Za-z_]+)\/([A-Za-z0-9._-]+)$/i,
+    /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([A-Za-z_]+)\/([A-Za-z0-9][A-Za-z0-9._-]{0,220})$/i,
   )
-  if (!match || !JOB_MEDIA_STAGES.has(match[2])) return null
+  if (!match || path.includes('..') || !JOB_MEDIA_STAGES.has(match[2])) return null
 
   return path
+}
+
+export function mergeJobMediaRefsNewestFirst(
+  ...groups: readonly (readonly string[])[]
+) {
+  return [...new Set(groups.flat())]
+    .filter((ref) => Boolean(jobMediaObjectPathFromRef(ref)))
+    .slice(0, 5)
 }
 
 function isLocalMediaPreviewUri(ref: string) {
@@ -37,21 +47,29 @@ export async function resolveJobMediaPreviewUrl(ref: string): Promise<string | n
   if (!ref.startsWith('supabase://')) return null
 
   const objectPath = jobMediaObjectPathFromRef(ref)
-  if (!objectPath || !supabase) return null
+  const client = supabase
+  if (!objectPath || !client) return null
 
-  const { data, error } = await supabase.storage.from('job-media').createSignedUrl(
-    objectPath,
-    15 * 60,
-    {
-      transform: {
-        height: 1200,
-        quality: 82,
-        resize: 'contain',
-        width: 1200,
-      },
-    },
-  )
-  return error || !data?.signedUrl ? null : data.signedUrl
+  try {
+    const { data, error } = await withNetworkDeadline(
+      () => client.storage.from('job-media').createSignedUrl(
+        objectPath,
+        15 * 60,
+        {
+          transform: {
+            height: 1200,
+            quality: 82,
+            resize: 'contain',
+            width: 1200,
+          },
+        },
+      ),
+      JOB_MEDIA_SIGNED_URL_TIMEOUT_MS,
+    )
+    return error || !data?.signedUrl ? null : data.signedUrl
+  } catch {
+    return null
+  }
 }
 
 /**

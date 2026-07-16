@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { inspectJobMediaContent } from '../../../../../supabase/functions/mobile-api/_shared/services/job-media-content'
+import {
+  inspectJobMediaBlob,
+  inspectJobMediaContent,
+} from '../../../../../supabase/functions/mobile-api/_shared/services/job-media-content'
 import { attachJobMedia } from '../../../../../supabase/functions/mobile-api/_shared/services/job-media.service'
 
 type QueryResult = { data: unknown; error: { code?: string; message?: string } | null }
@@ -32,6 +35,27 @@ describe('job media Storage byte verification', () => {
       kind: 'unsupported',
       mimeType: null,
     })
+  })
+
+  it('sniffs a stored object through bounded Blob slices instead of a whole-file copy', async () => {
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0xff, 0xd9])
+    const wholeFileRead = vi.fn(() => {
+      throw new Error('whole-file reads are forbidden')
+    })
+    const slice = vi.fn((start?: number, end?: number) =>
+      new Blob([bytes.slice(start ?? 0, end ?? bytes.length)]))
+    const blob = {
+      size: bytes.byteLength,
+      slice,
+      arrayBuffer: wholeFileRead,
+    } as unknown as Blob
+
+    await expect(inspectJobMediaBlob(blob)).resolves.toEqual({
+      kind: 'trusted',
+      mimeType: 'image/jpeg',
+    })
+    expect(wholeFileRead).not.toHaveBeenCalled()
+    expect(slice).toHaveBeenCalledWith(0, bytes.byteLength)
   })
 
   it('rejects audio bytes disguised as a JPEG before durable insert and removes the object', async () => {
@@ -169,6 +193,39 @@ describe('job media Storage byte verification', () => {
       call.table === 'job_media_assets' && call.operations.some((operation) => operation[0] === 'insert')
     )).toBe(false)
   })
+
+  it('does not delete an object when a concurrent attach already made it durable', async () => {
+    const objectPath = `${JOB_ID}/before/concurrent.jpg`
+    const jpegBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0xff, 0xd9])
+    const results = successfulAttachResults()
+    results[2] = { data: null, error: { code: '23505', message: 'duplicate key' } }
+    const client = makeMediaClient({
+      blob: new Blob([jpegBytes], { type: 'image/jpeg' }),
+      results,
+      revokedPaths: [],
+    })
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(attachJobMedia(ctx, JOB_ID, {
+      assets: [{
+        file_size_bytes: jpegBytes.byteLength,
+        mime_type: 'image/jpeg',
+        object_path: objectPath,
+        stage: 'before',
+      }],
+    })).rejects.toMatchObject({ code: 'DB_ERROR', status: 500 })
+
+    expect(client.storageCalls).not.toContainEqual({
+      bucket: 'job-media',
+      operation: 'remove',
+      paths: [objectPath],
+    })
+  })
 })
 
 function successfulAttachResults(jobOverrides: Record<string, unknown> = {}): QueryResult[] {
@@ -228,7 +285,15 @@ function concatBytes(...parts: Uint8Array[]) {
   return bytes
 }
 
-function makeMediaClient({ blob, results }: { blob: Blob; results: QueryResult[] }) {
+function makeMediaClient({
+  blob,
+  results,
+  revokedPaths,
+}: {
+  blob: Blob
+  results: QueryResult[]
+  revokedPaths?: string[]
+}) {
   const calls: QueryCall[] = []
   const storageCalls: StorageCall[] = []
   return {
@@ -239,8 +304,27 @@ function makeMediaClient({ blob, results }: { blob: Blob; results: QueryResult[]
       calls.push(call)
       return makeQuery(call, results)
     },
-    rpc() {
-      return Promise.resolve({ data: null, error: null })
+    rpc(name: string, args: Record<string, unknown>) {
+      if (name === 'consume_job_media_uploads') {
+        const paths = Array.isArray(args.p_object_paths) ? args.p_object_paths : []
+        return Promise.resolve({
+          data: [{ consumed_count: paths.length, ok: true, reason: null }],
+          error: null,
+        })
+      }
+      if (name === 'fail_job_media_uploads') {
+        const requestedPaths = Array.isArray(args.p_object_paths) ? args.p_object_paths : []
+        const paths = revokedPaths ?? requestedPaths
+        return Promise.resolve({
+          data: [{
+            ok: paths.length === requestedPaths.length,
+            reason: paths.length === requestedPaths.length ? null : 'MEDIA_INTENT_STATE_CHANGED',
+            revoked_paths: paths,
+          }],
+          error: null,
+        })
+      }
+      throw new Error(`Unexpected RPC ${name}`)
     },
     storage: {
       from(bucket: string) {

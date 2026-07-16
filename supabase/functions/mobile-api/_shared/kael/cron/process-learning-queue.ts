@@ -15,6 +15,7 @@ import {
   type SpendGateClient,
 } from "../spend-gate.ts";
 import type { EdgeAiSecrets } from "../types.ts";
+import { commitLearningEffectResult } from "./learning-effect-store.ts";
 import { processLearningCandidateResponse } from "./process-batch-results.ts";
 import {
   learningSkillCandidateSchema,
@@ -128,13 +129,15 @@ export async function processLearningQueue(
   }
 
   const now = options.now ?? new Date();
-  const rowsResult = await client
-    .from("kael_learning_queue")
-    .select("id,event_type,skill_id,job_id,actor_id,actor_role,queue_state,input_payload,candidate_payload,attempts,created_at")
-    .eq("queue_state", "pending")
-    .lte("run_after", now.toISOString())
-    .order("created_at", { ascending: true })
-    .limit(options.limit ?? 50);
+  const claimId = crypto.randomUUID();
+  if (!client.rpc) {
+    return { selected: 0, submitted: 0, realtime_fallback: 0, error_code: "CLAIM_RPC_UNAVAILABLE" };
+  }
+  const rowsResult = await client.rpc("claim_kael_learning_queue_atomic", {
+    p_claim_id: claimId,
+    p_limit: options.limit ?? 50,
+    p_now: now.toISOString(),
+  });
   if (rowsResult.error) {
     return { selected: 0, submitted: 0, realtime_fallback: 0, error_code: rowsResult.error.code ?? "DB_ERROR" };
   }
@@ -144,11 +147,12 @@ export async function processLearningQueue(
   if (rows.length === 0) return { selected: 0, submitted: 0, realtime_fallback: 0 };
 
   if (options.forceRealtime || !flags.KAEL_OPT_BATCH_API_ENABLED) {
-    await insertLearningLifecycleRows(client, rows, "realtime_fallback");
-    await updateQueueRows(client, rows.map((row) => row.id), {
-      queue_state: "realtime_fallback",
-      processed_at: now.toISOString(),
-    });
+    await completeRealtimeFallbackRows(
+      client,
+      claimId,
+      rows.map((row) => row.id),
+      now,
+    );
     return { selected: rows.length, submitted: 0, realtime_fallback: rows.length };
   }
 
@@ -158,6 +162,7 @@ export async function processLearningQueue(
       client,
       secrets,
       rows,
+      claimId,
       now,
       route.primary.model,
     );
@@ -166,6 +171,7 @@ export async function processLearningQueue(
         client,
         secrets,
         direct.fallbackRows,
+        claimId,
         now,
         route.fallback.model,
       );
@@ -174,6 +180,14 @@ export async function processLearningQueue(
         selected: rows.length,
         submitted: direct.completed + fallback.submitted,
       };
+    }
+    if (direct.fallbackRows.length > 0) {
+      await releaseQueueRows(
+        client,
+        claimId,
+        direct.fallbackRows.map((row) => row.id),
+        "DEEPSEEK_LEARNING_FAILED",
+      );
     }
     return {
       selected: rows.length,
@@ -190,6 +204,7 @@ export async function processLearningQueue(
     client,
     secrets,
     rows,
+    claimId,
     now,
     options.model ?? route.fallback?.model ?? "claude-sonnet-5",
   );
@@ -206,6 +221,7 @@ type DeepSeekLearningRowResult = {
   completed: boolean;
   fallback: boolean;
   terminalErrorCode?: string;
+  persistenceError?: string;
 };
 
 const DEEPSEEK_LEARNING_CONCURRENCY = 4;
@@ -214,6 +230,7 @@ async function processDeepSeekLearningQueue(
   client: LearningQueueDbClient,
   secrets: EdgeAiSecrets,
   rows: readonly QueuedLearningRow[],
+  claimId: string,
   now: Date,
   model: string,
 ): Promise<DeepSeekLearningQueueResult> {
@@ -242,7 +259,8 @@ async function processDeepSeekLearningQueue(
     return { batchId: null, completed: 0, fallbackRows: [...rows] };
   }
 
-  const itemInsert = await client.from("kael_ai_batch_items").insert(rows.map((row) => ({
+  const batchItems = rows.map((row) => ({
+    id: crypto.randomUUID(),
     batch_id: batchId,
     queue_id: row.id,
     custom_id: queueCustomId(row.id),
@@ -253,16 +271,18 @@ async function processDeepSeekLearningQueue(
       purpose: "post_job_learning",
       schema: "learning_candidate.v1",
     },
-  })));
+  }));
+  const itemInsert = await client.from("kael_ai_batch_items").insert(batchItems);
   if (itemInsert.error) {
-    await client.from("kael_ai_batches").update({
+    await updateAiBatch(client, batchId, {
       status: "failed",
       processing_count: 0,
       error_code: itemInsert.error.code ?? "BATCH_ITEM_ROW_FAILED",
       ended_at: now.toISOString(),
-    }).eq("id", batchId);
+    });
     return { batchId, completed: 0, fallbackRows: [...rows] };
   }
+  const itemIdsByQueue = new Map(batchItems.map((item) => [item.queue_id, item.id]));
 
   const results = await mapWithConcurrency(rows, DEEPSEEK_LEARNING_CONCURRENCY, async (row) => {
     const result = await callStructuredAI(
@@ -289,6 +309,9 @@ async function processDeepSeekLearningQueue(
       const terminalErrorCode = isGlobalLearningPolicyBlock(result.code)
         ? result.code
         : undefined;
+      if (terminalErrorCode) {
+        await releaseQueueRows(client, claimId, [row.id], terminalErrorCode);
+      }
       return {
         completed: false,
         fallback: terminalErrorCode === undefined,
@@ -302,49 +325,65 @@ async function processDeepSeekLearningQueue(
       { candidate: result.data.candidate },
       now,
     );
-    if (!outcome.ok) {
-      await updateDeepSeekBatchItem(client, batchId, row.id, {
-        status: "errored",
-        error_payload: { processing_code: outcome.error_code },
-        response_payload: safeLearningResponseMetadata(model, result),
-        processed_at: now.toISOString(),
-      });
-      await updateQueueRows(client, [row.id], {
-        queue_state: outcome.queue_state,
-        batch_id: batchId,
-        attempts: row.attempts + 1,
-        error_code: outcome.error_code,
-        processed_at: now.toISOString(),
-      });
-      return { completed: false, fallback: false } satisfies DeepSeekLearningRowResult;
+    const itemId = itemIdsByQueue.get(row.id);
+    if (!itemId) {
+      return {
+        completed: false,
+        fallback: false,
+        persistenceError: "DEEPSEEK_BATCH_ITEM_WRITE_FAILED:ROW_NOT_FOUND",
+      } satisfies DeepSeekLearningRowResult;
     }
-
-    await updateDeepSeekBatchItem(client, batchId, row.id, {
-      status: "succeeded",
-      response_payload: safeLearningResponseMetadata(model, result),
-      processed_at: now.toISOString(),
+    const commit = await commitLearningEffectResult(client, {
+      sourceMode: "deepseek_direct",
+      batchId,
+      itemId,
+      queueId: row.id,
+      ownerToken: claimId,
+      itemStatus: outcome.ok ? "succeeded" : "errored",
+      responsePayload: safeLearningResponseMetadata(model, result),
+      errorPayload: outcome.ok ? {} : { processing_code: outcome.error_code },
+      queueState: outcome.queue_state,
+      queueErrorCode: outcome.ok ? null : outcome.error_code,
+      processedAt: now.toISOString(),
+      effect: outcome.effect,
     });
-    await updateQueueRows(client, [row.id], {
-      queue_state: outcome.queue_state,
-      batch_id: batchId,
-      attempts: row.attempts + 1,
-      processed_at: now.toISOString(),
-    });
-    return { completed: true, fallback: false } satisfies DeepSeekLearningRowResult;
+    if (!commit.ok) {
+      return {
+        completed: false,
+        fallback: false,
+        persistenceError: commit.errorCode,
+      } satisfies DeepSeekLearningRowResult;
+    }
+    return {
+      completed: outcome.ok,
+      fallback: false,
+    } satisfies DeepSeekLearningRowResult;
   });
 
   const completed = results.filter((result) => result.completed).length;
+  const persistenceError = results.find((result) => result.persistenceError)
+    ?.persistenceError;
+  if (persistenceError) {
+    await updateAiBatch(client, batchId, {
+      status: "failed",
+      processing_count: 0,
+      error_code: persistenceError.slice(0, 120),
+      ended_at: now.toISOString(),
+      next_poll_at: null,
+    });
+    throw new Error(persistenceError);
+  }
   const fallbackRows = rows.filter((_, index) => results[index]?.fallback);
   const terminalErrorCode = results.find((result) => result.terminalErrorCode)
     ?.terminalErrorCode;
-  await client.from("kael_ai_batches").update({
+  await updateAiBatch(client, batchId, {
     status: "results_processed",
     processing_count: 0,
     succeeded_count: completed,
     errored_count: rows.length - completed,
     ended_at: now.toISOString(),
     next_poll_at: null,
-  }).eq("id", batchId);
+  });
   return { batchId, completed, fallbackRows, terminalErrorCode };
 }
 
@@ -413,11 +452,38 @@ async function updateDeepSeekBatchItem(
   queueId: string,
   patch: Record<string, unknown>,
 ) {
-  await client
+  const result = await client
     .from("kael_ai_batch_items")
     .update(patch)
     .eq("batch_id", batchId)
-    .eq("queue_id", queueId);
+    .eq("queue_id", queueId)
+    .select("id");
+  if (result.error) {
+    throw new Error(
+      `DEEPSEEK_BATCH_ITEM_WRITE_FAILED:${result.error.code ?? "DB_ERROR"}`,
+    );
+  }
+  if (Array.isArray(result.data) && result.data.length !== 1) {
+    throw new Error("DEEPSEEK_BATCH_ITEM_WRITE_FAILED:ROW_NOT_FOUND");
+  }
+}
+
+async function updateAiBatch(
+  client: LearningQueueDbClient,
+  batchId: string,
+  patch: Record<string, unknown>,
+) {
+  const result = await client
+    .from("kael_ai_batches")
+    .update(patch)
+    .eq("id", batchId)
+    .select("id");
+  if (result.error) {
+    throw new Error(`LEARNING_BATCH_WRITE_FAILED:${result.error.code ?? "DB_ERROR"}`);
+  }
+  if (Array.isArray(result.data) && result.data.length !== 1) {
+    throw new Error("LEARNING_BATCH_WRITE_FAILED:ROW_NOT_FOUND");
+  }
 }
 
 async function mapWithConcurrency<T, R>(
@@ -442,10 +508,12 @@ async function submitAnthropicLearningBatch(
   client: LearningQueueDbClient,
   secrets: EdgeAiSecrets,
   rows: readonly QueuedLearningRow[],
+  claimId: string,
   now: Date,
   model: string,
 ): Promise<ProcessLearningQueueSummary> {
   if (isKaelAiKillSwitchEnabled()) {
+    await releaseQueueRows(client, claimId, rows.map((row) => row.id), "AI_DISABLED");
     return {
       selected: rows.length,
       submitted: 0,
@@ -461,6 +529,7 @@ async function submitAnthropicLearningBatch(
     )
     : KAEL_CIRCUIT_BREAKER.isOpen("post_job_learning", "anthropic");
   if (circuitOpen) {
+    await releaseQueueRows(client, claimId, rows.map((row) => row.id), "OPEN_CIRCUIT");
     return {
       selected: rows.length,
       submitted: 0,
@@ -483,6 +552,12 @@ async function submitAnthropicLearningBatch(
     ? batchInsert.data.id
     : null;
   if (batchInsert.error || !localBatchId) {
+    await releaseQueueRows(
+      client,
+      claimId,
+      rows.map((row) => row.id),
+      batchInsert.error?.code ?? "BATCH_ROW_FAILED",
+    );
     return { selected: rows.length, submitted: 0, realtime_fallback: 0, error_code: batchInsert.error?.code ?? "BATCH_ROW_FAILED" };
   }
 
@@ -515,11 +590,11 @@ async function submitAnthropicLearningBatch(
           actualUsd: 0,
         })
       ));
-      await client.from("kael_ai_batches").update({
+      await updateAiBatch(client, localBatchId, {
         status: "failed",
         error_code: "SPEND_CAP",
-      }).eq("id", localBatchId);
-      await updateQueueRows(client, rows.map((item) => item.id), {
+      });
+      await updateQueueRows(client, claimId, rows.map((item) => item.id), {
         queue_state: "failed",
         error_code: "SPEND_CAP",
       });
@@ -537,8 +612,10 @@ async function submitAnthropicLearningBatch(
       actorId: row.actor_id,
     });
   }
+  let providerSubmitted = false;
   try {
     const providerBatch = await createAnthropicMessageBatch(secrets, requests);
+    providerSubmitted = true;
     const itemsInsert = await client.from("kael_ai_batch_items").insert(rows.map((row, index) => ({
       batch_id: localBatchId,
       queue_id: row.id,
@@ -551,23 +628,9 @@ async function submitAnthropicLearningBatch(
       },
     })));
     if (itemsInsert.error) {
-      await Promise.all(reservations.map((item) =>
-        finalizeAiSpend(client as SpendGateClient, {
-          reservationId: item.reservationId,
-          actorId: item.actorId,
-          purpose: "post_job_learning",
-          actualUsd: item.estimatedCostUsd,
-        })
-      ));
       throw new Error("BATCH_ITEM_ROW_FAILED");
     }
-    await updateQueueRows(client, rows.map((row) => row.id), {
-      queue_state: "batched",
-      batch_id: localBatchId,
-      provider_batch_id: providerBatch.id,
-      attempts: rows[0]?.attempts ? rows[0].attempts + 1 : 1,
-    });
-    await client.from("kael_ai_batches").update({
+    await updateAiBatch(client, localBatchId, {
       provider_batch_id: providerBatch.id,
       status: providerBatch.processing_status === "ended" ? "ended" : "submitted",
       processing_count: providerBatch.request_counts?.processing ?? rows.length,
@@ -580,7 +643,13 @@ async function submitAnthropicLearningBatch(
       ended_at: providerBatch.ended_at ?? null,
       expires_at: providerBatch.expires_at ?? null,
       next_poll_at: new Date(now.getTime() + 60 * 60 * 1000).toISOString(),
-    }).eq("id", localBatchId);
+    });
+    await updateQueueRows(client, claimId, rows.map((row) => row.id), {
+      queue_state: "batched",
+      batch_id: localBatchId,
+      provider_batch_id: providerBatch.id,
+      error_code: null,
+    });
     return {
       selected: rows.length,
       submitted: rows.length,
@@ -589,21 +658,19 @@ async function submitAnthropicLearningBatch(
       provider_batch_id: providerBatch.id,
     };
   } catch (error) {
-    if (!(error instanceof Error && error.message === "BATCH_ITEM_ROW_FAILED")) {
-      await Promise.all(reservations.map((item) =>
-        finalizeAiSpend(client as SpendGateClient, {
-          reservationId: item.reservationId,
-          actorId: item.actorId,
-          purpose: "post_job_learning",
-          actualUsd: 0,
-        })
-      ));
-    }
-    await client.from("kael_ai_batches").update({
+    await Promise.all(reservations.map((item) =>
+      finalizeAiSpend(client as SpendGateClient, {
+        reservationId: item.reservationId,
+        actorId: item.actorId,
+        purpose: "post_job_learning",
+        actualUsd: providerSubmitted ? item.estimatedCostUsd : 0,
+      })
+    ));
+    await updateAiBatch(client, localBatchId, {
       status: "failed",
       error_code: error instanceof Error ? error.message.slice(0, 120) : "BATCH_SUBMIT_FAILED",
-    }).eq("id", localBatchId);
-    await updateQueueRows(client, rows.map((row) => row.id), {
+    });
+    await updateQueueRows(client, claimId, rows.map((row) => row.id), {
       queue_state: "failed",
       error_code: "BATCH_SUBMIT_FAILED",
     });
@@ -633,41 +700,62 @@ function buildBatchRequest(
   };
 }
 
-export async function insertLearningLifecycleRows(
+async function completeRealtimeFallbackRows(
   client: LearningQueueDbClient,
-  rows: readonly QueuedLearningRow[],
-  reason: "batch_processed" | "realtime_fallback",
+  claimId: string,
+  ids: string[],
+  now: Date,
 ) {
-  if (rows.length === 0) return;
-  await client.from("kael_rule_lifecycle_log").insert(rows.map((row) => ({
-    skill_id: row.skill_id,
-    job_id: row.job_id,
-    rule_id: null,
-    candidate_id: null,
-    previous_state: null,
-    next_state: row.candidate_payload.requires_manual_review ? "manual_review" : "candidate",
-    transition_reason: reason,
-    actor_id: row.actor_id,
-    actor_role: row.actor_role,
-    safe_metadata: {
-      event_type: row.event_type,
-      target: row.candidate_payload.target,
-      prompt_version: row.candidate_payload.prompt_version,
-      requires_manual_review: row.candidate_payload.requires_manual_review,
-      payload: row.candidate_payload.payload,
-      q4_queue_id: row.id,
-      q4_reason: reason,
-    },
-  })));
+  if (ids.length === 0) return;
+  if (!client.rpc) {
+    throw new Error("LEARNING_QUEUE_COMPLETION_FAILED:RPC_UNAVAILABLE");
+  }
+  const result = await client.rpc("complete_kael_learning_queue_realtime_atomic", {
+    p_claim_id: claimId,
+    p_queue_ids: ids,
+    p_now: now.toISOString(),
+  });
+  if (result.error) {
+    throw new Error(`LEARNING_QUEUE_COMPLETION_FAILED:${result.error.code ?? "DB_ERROR"}`);
+  }
+  if (!Array.isArray(result.data) || result.data.length !== ids.length) {
+    throw new Error("LEARNING_QUEUE_COMPLETION_FAILED:RESULT_MISMATCH");
+  }
 }
 
 async function updateQueueRows(
   client: LearningQueueDbClient,
+  claimId: string,
   ids: string[],
   patch: Record<string, unknown>,
 ) {
   if (ids.length === 0) return;
-  await client.from("kael_learning_queue").update(patch).in("id", ids);
+  const result = await client
+    .from("kael_learning_queue")
+    .update({ ...patch, claim_id: null, claimed_at: null })
+    .in("id", ids)
+    .eq("claim_id", claimId)
+    .eq("queue_state", "processing")
+    .select("id");
+  if (result.error) {
+    throw new Error(`LEARNING_QUEUE_WRITE_FAILED:${result.error.code ?? "DB_ERROR"}`);
+  }
+  if (Array.isArray(result.data) && result.data.length !== ids.length) {
+    throw new Error("LEARNING_QUEUE_WRITE_FAILED:CLAIM_STALE");
+  }
+}
+
+async function releaseQueueRows(
+  client: LearningQueueDbClient,
+  claimId: string,
+  ids: string[],
+  errorCode: string,
+) {
+  await updateQueueRows(client, claimId, ids, {
+    queue_state: "pending",
+    error_code: errorCode.slice(0, 120),
+    processed_at: null,
+  });
 }
 
 function queueCustomId(id: string): string {

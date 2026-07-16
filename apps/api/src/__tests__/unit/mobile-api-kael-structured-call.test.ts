@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import ts from 'typescript'
 import { z } from 'zod'
 
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
@@ -10,6 +11,7 @@ import { reviewScopeChange, computeScopeChangeEstimate } from '../../../../../su
 import { callStructuredAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/structured-call'
 import type { AIRequest, EdgeGuardClient } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
+import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 const request: AIRequest = {
   purpose: 'worker_assist',
@@ -36,19 +38,19 @@ describe('mobile-api Kael structured output health', () => {
     }
     const schema = z.object({ answer: z.string() })
 
-    await expect(callStructuredAI(request, schema, secrets)).resolves.toMatchObject({
+    await expect(callStructuredAI(request, schema, secrets, undefined)).resolves.toMatchObject({
       success: false,
       code: 'SCHEMA_INVALID',
     })
     expect(guard.isOpen('worker_assist:deepseek')).toBe(false)
     expect(guard.successCalls).toBe(0)
 
-    await callStructuredAI(request, schema, secrets)
-    await callStructuredAI(request, schema, secrets)
+    await callStructuredAI(request, schema, secrets, undefined)
+    await callStructuredAI(request, schema, secrets, undefined)
     expect(guard.isOpen('worker_assist:deepseek')).toBe(true)
     expect(guard.successCalls).toBe(0)
 
-    await expect(callStructuredAI(request, schema, secrets)).resolves.toMatchObject({
+    await expect(callStructuredAI(request, schema, secrets, undefined)).resolves.toMatchObject({
       success: false,
       code: 'OPEN_CIRCUIT',
     })
@@ -82,6 +84,7 @@ describe('mobile-api Kael structured output health', () => {
         ['Ống rò rỉ'],
         'Lavabo rò nước',
         secrets,
+        allowKaelSpendForTest('customer-1'),
       )).resolves.toMatchObject({ success: true })
     }
 
@@ -101,7 +104,7 @@ describe('mobile-api Kael structured output health', () => {
       deepseekApiKey: 'deepseek-test',
       durableGuardsEnabled: true,
       durableGuardClient: { rpc },
-    })).resolves.toMatchObject({
+    }, undefined)).resolves.toMatchObject({
       success: true,
       data: { answer: 'safe' },
     })
@@ -152,6 +155,7 @@ describe('mobile-api Kael structured output health', () => {
       },
       question: 'Tôi nên kiểm tra gì trước?',
       secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
       callAI: invalidCall,
     })
     expect(worker).toMatchObject({
@@ -192,7 +196,7 @@ describe('mobile-api Kael structured output health', () => {
       requestedPriceMin: 250_000,
       requestedPriceMax: 420_000,
       reason: 'Siphon nứt tại hiện trường',
-    }, secrets)
+    }, secrets, allowKaelSpendForTest('worker-1'))
     expect(review).toMatchObject({
       fallback_used: true,
       failure_reason: 'INVALID_SCHEMA',
@@ -209,7 +213,7 @@ describe('mobile-api Kael structured output health', () => {
       originalPriceMax: 250_000,
       workerReportedDescription: 'Siphon nứt, cần thay',
       workerReason: 'Bằng chứng hiện trường cho thấy vết nứt',
-    }, secrets)
+    }, secrets, allowKaelSpendForTest('worker-1'))
     expect(estimate).toMatchObject({
       outcome: 'inspection_required',
       requires_human_inspection: true,
@@ -230,7 +234,9 @@ describe('mobile-api Kael structured output health', () => {
       'scope-change.ts': 4,
       'worker-assist.ts': 1,
       'customer-assistant.ts': 1,
+      'job-incident.ts': 1,
       'price-synthesis-ab.ts': 1,
+      'cron/process-learning-queue.ts': 1,
     }
     for (const [file, expectedCalls] of Object.entries(callers)) {
       const source = readFileSync(
@@ -242,7 +248,64 @@ describe('mobile-api Kael structured output health', () => {
       expect(source).not.toContain('function parseJsonObject')
     }
   })
+
+  it('requires every live structured Edge callsite to declare spend handling', () => {
+    const missingSpendPolicy = structuredEdgeCallsites()
+      .filter((callsite) => callsite.argumentCount < 4 || callsite.spendArgument === 'undefined')
+
+    expect(missingSpendPolicy).toEqual([])
+  })
 })
+
+function structuredEdgeCallsites() {
+  const root = new URL(
+    '../../../../../supabase/functions/mobile-api/_shared/kael/',
+    import.meta.url,
+  )
+  const files = walkTypeScriptFiles(root)
+  const callsites: Array<{
+    file: string
+    line: number
+    argumentCount: number
+    spendArgument: string | null
+  }> = []
+
+  for (const file of files) {
+    const source = readFileSync(file.url, 'utf8')
+    const parsed = ts.createSourceFile(file.name, source, ts.ScriptTarget.Latest, true)
+    const visit = (node: ts.Node) => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === 'callStructuredAI'
+      ) {
+        callsites.push({
+          file: file.name,
+          line: parsed.getLineAndCharacterOfPosition(node.getStart(parsed)).line + 1,
+          argumentCount: node.arguments.length,
+          spendArgument: node.arguments[3]?.getText(parsed) ?? null,
+        })
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(parsed)
+  }
+  return callsites
+}
+
+function walkTypeScriptFiles(
+  directory: URL,
+  prefix = '',
+): Array<{ name: string; url: URL }> {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const name = prefix ? `${prefix}/${entry.name}` : entry.name
+    const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), directory)
+    if (entry.isDirectory()) return walkTypeScriptFiles(url, name)
+    return entry.isFile() && entry.name.endsWith('.ts')
+      ? [{ name, url }]
+      : []
+  })
+}
 
 function makeCircuitRpc() {
   const schemaFailures = new Map<string, number>()

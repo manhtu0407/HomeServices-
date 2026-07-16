@@ -122,6 +122,32 @@ describe('mobile-api Kael provider adapters', () => {
     })
   })
 
+  it.each([
+    ['anthropic', {
+      content: [{ text: { private: 'unexpected' } }],
+      usage: { input_tokens: 'bad', output_tokens: 2 },
+    }],
+    ['deepseek', {
+      choices: [{ message: { content: { private: 'unexpected' } } }],
+      usage: { prompt_tokens: 'bad', completion_tokens: 2 },
+    }],
+    ['perplexity', {
+      choices: [{ message: { content: { private: 'unexpected' } } }],
+      usage: { prompt_tokens: 'bad', completion_tokens: 2 },
+    }],
+  ] as const)('rejects a malformed successful %s response before cost accounting', (provider, data) => {
+    const request = requestFor(provider)
+
+    expect(() => providerAdapterFor(provider).parseResponse({
+      request,
+      data,
+      latencyMs: 12,
+      model: request.model,
+      pricingAt,
+      unknownModelPolicy: 'throw',
+    })).toThrow('AI_PROVIDER_RESPONSE_INVALID')
+  })
+
   it('keeps current circuit failure classifications stable', () => {
     const adapter = providerAdapterFor('deepseek')
     expect(adapter.classifyFailure({ httpStatus: 402 })).toBe('credit')

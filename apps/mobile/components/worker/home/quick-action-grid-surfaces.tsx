@@ -1,5 +1,5 @@
+import { Image } from 'expo-image'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -28,7 +28,7 @@ export function WorkerV5QuickActionGrid({
   reduceTransparency,
 }: {
   icons: WorkerV5IconMap
-  items: ReadonlyArray<WorkerV5QuickActionItem>
+  items: readonly WorkerV5QuickActionItem[]
   reduceTransparency: boolean
 }) {
   return (

@@ -61,6 +61,7 @@ import { CustomerHistorySurface } from '../customer-surfaces'
 function buildWorkflow() {
   mockWorkflowValue = {
     actions: {
+      decideScopeChange: jest.fn(async () => true),
       hydrateRemoteJobById: jest.fn(async () => true),
     },
     state: {
@@ -264,13 +265,76 @@ describe('CustomerHistorySurface service history', () => {
     })
   })
 
-  it('redirects legacy activity and scope-change links into Kael Case Work', async () => {
+  it('keeps a scope-change deep link on the A11 hard stop and submits explicit decisions', async () => {
     mockRouteParams = { job_id: 'job_scope_change', scope_change: 'scope_change_1', screen: '3.3-payment-protected' }
-    mockWorkflowValue.state.deal = { id: 'job_scope_change' }
+    mockWorkflowValue.state.deal = {
+      broadcast: null,
+      draft: {
+        addressLabel: 'Quận 1',
+        description: 'Sửa ổ cắm bị chập',
+        districtLabel: 'Quận 1',
+        inferredProblemLabel: null,
+        mediaCount: 0,
+        needsServiceChoice: false,
+        problemChips: ['outlet_switch'],
+        serviceType: 'electrical',
+        source: 'kael',
+        timeChoice: 'now',
+        unsupportedServiceLabel: null,
+      },
+      estimate: {
+        advisory: 'Tạm dừng công việc cho đến khi khách hàng quyết định.',
+        complexity: 'medium',
+        confidenceLabel: '82%',
+        disclaimer: 'Ước tính từ dữ liệu hiện có.',
+        fallbackUsed: false,
+        hasVndPrice: true,
+        priceRangeLabel: '300.000đ - 450.000đ',
+        problemLabel: 'Ổ cắm bị chập',
+      },
+      id: 'job_scope_change',
+      scopeChange: {
+        createdAt: '2026-07-15T10:00:00.000Z',
+        evidencePhotoUrls: [],
+        id: 'scope_change_1',
+        kaelProgress: null,
+        kaelReview: {
+          advisory: 'Nên thay đoạn dây bị hỏng.',
+          complexity_assessment: 'medium',
+          confidence: 0.82,
+          fallback_used: false,
+          problem_summary: 'Phát hiện dây âm tường bị chập.',
+        },
+        priceMax: 520000,
+        priceMin: 420000,
+        reason: 'Phát hiện hư hỏng ẩn.',
+        requestTiming: 'on_site',
+        requestedDescription: 'Thay dây âm tường bị chập',
+        resumeJobStatus: 'repairing',
+        status: 'waiting_customer_decision',
+      },
+      status: 'scope_change_pending',
+    }
     render(<CustomerHistorySurface />)
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_scope_change&focus=approval')
+      expect(screen.getByTestId('customer-scope-change-hard-stop-modal')).toBeOnTheScreen()
+    })
+
+    expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_scope_change&focus=approval')
+
+    fireEvent.press(screen.getByTestId('customer-scope-change-modal-approve'))
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.decideScopeChange).toHaveBeenCalledWith('scope_change_1', { decision: 'approve' })
+      expect(screen.getByTestId('customer-scope-change-modal-approve')).toHaveProp(
+        'accessibilityState',
+        expect.objectContaining({ busy: false, disabled: false }),
+      )
+    })
+
+    fireEvent.press(screen.getByTestId('customer-scope-change-modal-reject'))
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.decideScopeChange).toHaveBeenCalledWith('scope_change_1', { decision: 'reject' })
     })
   })
 })

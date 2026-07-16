@@ -98,10 +98,10 @@ export const WORKFLOW_COMMAND_EVENTS = Object.freeze([
 
 export type WorkflowCommandEvent = (typeof WORKFLOW_COMMAND_EVENTS)[number]
 
-export function isWorkflowEvent(value: string): value is WorkflowEvent {
-  return (WORKFLOW_EVENTS as readonly string[]).includes(value)
+export function isWorkflowEvent(value: unknown): value is WorkflowEvent {
+  return typeof value === 'string' && (WORKFLOW_EVENTS as readonly string[]).includes(value)
 }
 
-export function isWorkflowCommandEvent(value: string): value is WorkflowCommandEvent {
-  return (WORKFLOW_COMMAND_EVENTS as readonly string[]).includes(value)
+export function isWorkflowCommandEvent(value: unknown): value is WorkflowCommandEvent {
+  return typeof value === 'string' && (WORKFLOW_COMMAND_EVENTS as readonly string[]).includes(value)
 }

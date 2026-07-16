@@ -1,4 +1,7 @@
 param(
+  [Parameter(Position = 0)]
+  [ValidateSet("", "changed", "lines")]
+  [string]$Scope = "",
   [switch]$Changed,
   [switch]$Lines,
   [string]$Base,
@@ -9,6 +12,12 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($Scope -eq "changed") {
+  $Changed = $true
+} elseif ($Scope -eq "lines") {
+  $Lines = $true
+}
 
 function Find-CommandPath {
   param([string[]]$Candidates)

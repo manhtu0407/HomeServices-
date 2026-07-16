@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const kaelChatMediaRefSchema = z.string().regex(
-  /^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/(?:model_vision|private_video_original)\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,
+  /^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/(?:model_vision|private_video_original)\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,
   "Kael chat media_refs must be Supabase kael-chat-media storage refs",
 ).refine(
   (value) => !/\.(?:aac|flac|m4a|mp3|oga|opus|wav)$/i.test(value),

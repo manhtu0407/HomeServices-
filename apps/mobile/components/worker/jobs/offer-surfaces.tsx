@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -48,12 +48,13 @@ export function WorkerV5OfferDetailSummaryCard({
 }) {
   const serviceLabel = localizedServiceLabel(deal.draft.serviceType, language)
   const serviceIcon = deal.draft.serviceType ? serviceIcons[deal.draft.serviceType] : jobIcon
-  const earning = deal.broadcast?.estimatedEarningLabel ?? textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning')
+  const earning = deal.broadcast?.estimatedEarningLabel?.trim()
+    || textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning')
   const area = routeDestinationLabel(deal, language)
   const problem = deal.broadcast?.problemSummary || deal.draft.inferredProblemLabel || deal.draft.description
   const meta = problem
-    ? `${workerV5TimeChoiceLabel(deal.draft.timeChoice, language)} · ${problem}`
-    : `${workerV5TimeChoiceLabel(deal.draft.timeChoice, language)} · ${area}`
+    ? `${workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)} · ${problem}`
+    : `${workerV5TimeChoiceLabel(deal.draft.timeChoice, language, deal.scheduledAt)} · ${area}`
   const status = deal.broadcast?.status === 'sent'
     ? textByLanguage(language, 'Mới từ nguồn thật', 'New from real source')
     : localizedStatusLabel(deal.status, language)
@@ -78,7 +79,7 @@ export function WorkerV5OfferDetailSummaryCard({
       <View style={styles.offerDetailSummaryLine}>
         <View style={styles.offerDetailIconTile}>
           <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-          <Image resizeMode="contain" source={serviceIcon} style={styles.offerDetailIcon} />
+          <Image contentFit="contain" source={serviceIcon} style={styles.offerDetailIcon} />
         </View>
         <View style={styles.offerDetailSummaryCopy}>
           <Text style={styles.offerDetailStatusChip} numberOfLines={1}>{status}</Text>
@@ -128,7 +129,7 @@ export function WorkerV5OfferDetailEmptyCard({
       <View style={styles.offerDetailSummaryLine}>
         <View style={styles.offerDetailIconTile}>
           <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-          <Image resizeMode="contain" source={jobIcon} style={styles.offerDetailIcon} />
+          <Image contentFit="contain" source={jobIcon} style={styles.offerDetailIcon} />
         </View>
         <View style={styles.offerDetailSummaryCopy}>
           <Text style={styles.offerDetailStatusChip} numberOfLines={1}>{textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')}</Text>
@@ -181,7 +182,7 @@ export function WorkerV5OfferDetailListCard({
         <View key={`${row.title}-${row.status}`} style={[styles.offerDetailListRow, index > 0 && styles.offerDetailListDivider]}>
           <View style={styles.offerDetailRowIconTile}>
             <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-            <Image resizeMode="contain" source={iconSources[row.icon]} style={styles.offerDetailRowIcon} />
+            <Image contentFit="contain" source={iconSources[row.icon]} style={styles.offerDetailRowIcon} />
           </View>
           <View style={styles.offerDetailRowCopy}>
             <Text style={styles.offerDetailRowTitle} numberOfLines={2}>{row.title}</Text>

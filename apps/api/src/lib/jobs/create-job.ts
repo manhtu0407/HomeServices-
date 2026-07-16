@@ -1,27 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, JobCreateInput } from '@nestscout/shared'
+import type {
+  ApartmentAccessProfileInput,
+  Database,
+  JobCreateInput,
+  KaelEstimate,
+} from '@nestscout/shared'
 import { sanitizeForLLM, normalizeServiceAreaDistrict } from '@nestscout/shared'
 import { runKaelPipeline, type PipelineResult } from '@/lib/kael/pipeline'
 import { logJobEvent, type EventActor } from '@/lib/jobs/event-log'
 import { withDbTimeout } from '@/lib/db/query'
 import { logApiCalls, generateRequestId, type ApiCallLog } from '@/lib/kael/log-api-call'
+import { AI_SESSION_LIMIT, checkRateLimit } from '@/lib/rate-limit'
 
 export type CreateJobResult =
   | {
       success: true
       jobId: string
       status: string
-      estimate: {
-        service_type: string
-        problem_category: string
-        problem_summary: string
-        complexity: string
-        price_min: number
-        price_max: number
-        confidence: number
-        advisory: string | null
-        disclaimer: string
-      }
+      estimate: KaelEstimate
       fallbackUsed: boolean
     }
   | { success: false; error: string; code: string; status: number }
@@ -34,6 +30,24 @@ const PROVIDER_MAP = {
 } as const
 
 type LoggableStage = keyof typeof PROVIDER_MAP
+type JobRow = Database['public']['Tables']['jobs']['Row']
+type ExistingJobRow = Pick<JobRow, 'id' | 'status' | 'service_type' | 'kael_estimate_card_v3'>
+
+const EXISTING_JOB_SELECT = 'id, status, service_type, kael_estimate_card_v3'
+const APARTMENT_ACCESS_PROFILE_KEYS = [
+  'entry_method',
+  'parking_note',
+  'guard_note',
+  'building_note',
+  'customer_handoff_note',
+] as const satisfies ReadonlyArray<keyof ApartmentAccessProfileInput>
+const OFF_APP_CONTACT_PATTERNS = [
+  /\b(?:\+?84|0)(?:[\s.-]?\d){8,10}\b/i,
+  /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+  /\b(?:sdt|so dien thoai|zalo|za lo)\b/i,
+  /\b(?:goi em|goi anh|goi rieng|so rieng)\b/i,
+  /\b(?:tien mat|cash|khong qua app|ngoai app|truc tiep|ra ngoai app)\b/i,
+] as const
 
 function isLoggableStage(s: string): s is LoggableStage {
   return s === 'intent' || s === 'vision' || s === 'market'
@@ -79,6 +93,32 @@ export async function createJobWithEstimate(
     }
   }
 
+  if (input.client_request_id) {
+    const existing = await findExistingJobByClientRequest(
+      supabase,
+      actor.id,
+      input.client_request_id,
+    )
+    if (existing.error) {
+      return { success: false, error: 'Không thể kiểm tra yêu cầu đã tạo', code: 'DB_ERROR', status: 500 }
+    }
+    if (existing.data) return buildExistingJobResult(existing.data)
+  }
+
+  if (isInvalidNewSchedule(input.scheduled_at)) {
+    return {
+      success: false,
+      error: 'Thời gian hẹn phải ở tương lai và khớp múi giờ TP.HCM',
+      code: 'VALIDATION',
+      status: 400,
+    }
+  }
+
+  const rateCheck = checkRateLimit(`job_create:${actor.id}`, AI_SESSION_LIMIT)
+  if (!rateCheck.allowed) {
+    return { success: false, error: 'Vui lòng thử lại sau', code: 'RATE_LIMITED', status: 429 }
+  }
+
   // Correlation ID — every AI call in this pipeline run shares this id, so a
   // debugger can trace one user request through all 3 provider calls.
   const requestId = generateRequestId()
@@ -99,12 +139,27 @@ export async function createJobWithEstimate(
         address_unit: input.address_unit ?? null,
         address_floor: input.address_floor ?? null,
         address_district: canonicalDistrict,
+        apartment_access_profile: sanitizeApartmentAccessProfile(input.apartment_access_profile),
+        apartment_access_state: buildInitialApartmentAccessState(),
         scheduled_at: input.scheduled_at ?? null,
         status: 'analyzing',
+        client_request_id: input.client_request_id ?? null,
       })
       .select('id')
       .single(),
   )
+
+  if (insertError?.code === '23505' && input.client_request_id) {
+    const existing = await findExistingJobByClientRequest(
+      supabase,
+      actor.id,
+      input.client_request_id,
+    )
+    if (existing.error) {
+      return { success: false, error: 'Không thể tải lại yêu cầu đã tạo', code: 'DB_ERROR', status: 500 }
+    }
+    if (existing.data) return buildExistingJobResult(existing.data)
+  }
 
   if (insertError || !job) {
     return { success: false, error: 'Không thể tạo yêu cầu', code: 'DB_ERROR', status: 500 }
@@ -211,6 +266,10 @@ export async function createJobWithEstimate(
         kael_price_min: estimate.price_min,
         kael_price_max: estimate.price_max,
         kael_advisory: estimate.advisory,
+        kael_estimate_card_v3: {
+          estimate,
+          fallback_used: fallbackUsed,
+        },
         service_problem_id: pipelineResult.serviceProblemId,
         estimate_ready_at: now,
       })
@@ -221,6 +280,15 @@ export async function createJobWithEstimate(
   )
 
   if (estUpdateErr) {
+    const cleanupOk = await cancelAnalyzingJob(
+      supabase,
+      job.id,
+      actor,
+      'ESTIMATE_PERSIST_FAILED',
+    )
+    if (!cleanupOk) {
+      return { success: false, error: 'Không thể đóng yêu cầu sau lỗi hệ thống', code: 'DB_ERROR', status: 500 }
+    }
     return { success: false, error: 'Không thể cập nhật kết quả phân tích', code: 'DB_ERROR', status: 500 }
   }
 
@@ -269,6 +337,123 @@ export async function createJobWithEstimate(
   }
 }
 
+async function findExistingJobByClientRequest(
+  supabase: SupabaseClient<Database>,
+  customerId: string,
+  clientRequestId: string,
+) {
+  return withDbTimeout(
+    supabase
+      .from('jobs')
+      .select(EXISTING_JOB_SELECT)
+      .eq('customer_id', customerId)
+      .eq('client_request_id', clientRequestId)
+      .maybeSingle(),
+  )
+}
+
+function buildExistingJobResult(job: ExistingJobRow): CreateJobResult {
+  const card = asRecord(job.kael_estimate_card_v3)
+  const estimate = readEstimateSnapshot(card?.estimate, job.service_type)
+  const fallbackUsed = card?.fallback_used
+  if (!estimate || typeof fallbackUsed !== 'boolean') {
+    return {
+      success: false,
+      error: 'Yêu cầu đã được tạo và đang được Kael phân tích. Vui lòng tải lại sau.',
+      code: 'JOB_PENDING',
+      status: 409,
+    }
+  }
+  return {
+    success: true,
+    jobId: job.id,
+    status: job.status,
+    estimate,
+    fallbackUsed,
+  }
+}
+
+function readEstimateSnapshot(value: unknown, serviceType: JobRow['service_type']): KaelEstimate | null {
+  const estimate = asRecord(value)
+  if (!estimate || estimate.service_type !== serviceType) return null
+  if (typeof estimate.problem_category !== 'string' || !estimate.problem_category.trim()) return null
+  if (typeof estimate.problem_summary !== 'string' || !estimate.problem_summary.trim()) return null
+  if (!isComplexity(estimate.complexity)) return null
+  if (!isPositiveFiniteNumber(estimate.price_min) || !isPositiveFiniteNumber(estimate.price_max)) return null
+  if (estimate.price_max < estimate.price_min) return null
+  if (typeof estimate.confidence !== 'number' || !Number.isFinite(estimate.confidence)) return null
+  if (estimate.confidence < 0 || estimate.confidence > 1) return null
+  if (estimate.advisory !== null && typeof estimate.advisory !== 'string') return null
+  if (typeof estimate.disclaimer !== 'string' || !estimate.disclaimer.trim()) return null
+  return {
+    service_type: serviceType,
+    problem_category: estimate.problem_category,
+    problem_summary: estimate.problem_summary,
+    complexity: estimate.complexity,
+    price_min: estimate.price_min,
+    price_max: estimate.price_max,
+    confidence: estimate.confidence,
+    advisory: estimate.advisory,
+    disclaimer: estimate.disclaimer,
+  }
+}
+
+function sanitizeApartmentAccessProfile(
+  input: ApartmentAccessProfileInput | undefined,
+): ApartmentAccessProfileInput {
+  const profile: ApartmentAccessProfileInput = {}
+  for (const key of APARTMENT_ACCESS_PROFILE_KEYS) {
+    const raw = input?.[key]
+    if (typeof raw !== 'string') continue
+    const value = sanitizeForLLM(raw).slice(0, 300)
+    if (!value || containsOffAppContact(value)) continue
+    profile[key] = value
+  }
+  return profile
+}
+
+function buildInitialApartmentAccessState() {
+  return {
+    release_stage: 'area_only',
+    exact_unit_released: false,
+    check_in_required: true,
+    identity_check_required: true,
+    customer_handoff_required: true,
+    evidence_mode: 'none',
+  }
+}
+
+function containsOffAppContact(value: string) {
+  const normalized = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/đ/g, 'd')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return OFF_APP_CONTACT_PATTERNS.some((pattern) => pattern.test(value) || pattern.test(normalized))
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function isComplexity(value: unknown): value is KaelEstimate['complexity'] {
+  return value === 'small' || value === 'medium' || value === 'large'
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+}
+
+function isInvalidNewSchedule(value: string | undefined) {
+  if (!value) return false
+  const scheduledMs = Date.parse(value)
+  return !Number.isFinite(scheduledMs) || scheduledMs <= Date.now()
+}
+
 async function cancelAnalyzingJob(
   supabase: SupabaseClient<Database>,
   jobId: string,
@@ -280,7 +465,11 @@ async function cancelAnalyzingJob(
     const { data, error } = await withDbTimeout(
       supabase
         .from('jobs')
-        .update({ status: 'cancelled', cancelled_at: cancelledAt })
+        .update({
+          status: 'cancelled',
+          cancelled_at: cancelledAt,
+          client_request_id: null,
+        })
         .eq('id', jobId)
         .eq('status', 'analyzing')
         .select('id')

@@ -47,6 +47,24 @@ const validEstimateCard = {
 }
 
 describe('Kael P4 output schemas', () => {
+  it.each(['hvac', 'upholstery', 'handyman'] as const)(
+    'accepts the supported %s service in Kael cards and deterministic fallbacks',
+    (serviceType) => {
+      expect(estimateCardV3Schema.safeParse({
+        ...validEstimateCard,
+        service_type: serviceType,
+      }).success).toBe(true)
+      expect(estimateCardV3Schema.safeParse(buildEstimateCardFallback({
+        serviceType,
+        problemSummary: 'A supported apartment service needs an on-site scope review.',
+        complexity: 'medium',
+        priceMin: 300000,
+        priceMax: 500000,
+        baselineUsed: `${serviceType}:default:medium`,
+      })).success).toBe(true)
+    },
+  )
+
   it('accepts valid Estimate Card v3 and rejects invalid cross-field output', () => {
     expect(estimateCardV3Schema.parse(validEstimateCard)).toMatchObject({
       service_type: 'plumbing',
@@ -118,6 +136,34 @@ describe('Kael P4 output schemas', () => {
       }),
     ).success).toBe(true)
   })
+
+  it('rejects inverted worker earnings and whitespace-only required output text', () => {
+    const workerBrief = buildWorkerBriefFallback({
+      stage: 'core',
+      serviceType: 'electrical',
+      district: 'District 7',
+      problemSummary: 'The outlet has burn marks and needs an inspection.',
+      fullAddress: null,
+    })
+    expect(workerBriefSchema.safeParse({
+      ...workerBrief,
+      estimated_earning_min: 500000,
+      estimated_earning_max: 300000,
+    }).success).toBe(false)
+
+    expect(estimateCardV3Schema.safeParse({
+      ...validEstimateCard,
+      problem_summary: ' '.repeat(12),
+    }).success).toBe(false)
+
+    expect(scopeChangeWorkerChallengeSchema.safeParse({
+      schema_version: 'scope_change_worker_challenge.v1',
+      challenge_required: true,
+      challenge_reason: '   ',
+      requested_evidence: ['photo'],
+      worker_message: 'Please add evidence.',
+    }).success).toBe(false)
+  })
 })
 
 describe('Kael P4 sanitizers, fallbacks, and renderers', () => {
@@ -188,6 +234,83 @@ describe('Kael P4 sanitizers, fallbacks, and renderers', () => {
     expect(postRendered).toContain('Landmark 81')
     expect(postRendered).toContain('1205')
   })
+
+  it('does not emit invalid prices or one-sided worker earnings from malformed fallback input', () => {
+    expect(() => buildEstimateCardFallback({
+      serviceType: 'cleaning',
+      problemSummary: 'The apartment needs a scoped cleaning visit.',
+      complexity: 'medium',
+      priceMin: Number.NaN,
+      priceMax: 500000,
+      baselineUsed: 'cleaning:default:medium',
+    })).toThrow(/finite positive price/i)
+
+    expect(() => buildScopeChangeCustomerCardFallback({
+      serviceType: 'plumbing',
+      originalPriceMax: 300000,
+      newPriceMin: 400000,
+      newPriceMax: Number.POSITIVE_INFINITY,
+      problemSummary: 'The reported pipe damage needs a new scope review.',
+    })).toThrow(/finite positive price/i)
+
+    const brief = buildWorkerBriefFallback({
+      stage: 'core',
+      serviceType: 'electrical',
+      district: 'Quận 7',
+      problemSummary: 'The breaker repeatedly trips and needs an inspection.',
+      fullAddress: null,
+      estimatedEarningMin: 250000,
+      estimatedEarningMax: Number.NaN,
+    })
+    expect(brief.estimated_earning_min).toBeNull()
+    expect(brief.estimated_earning_max).toBeNull()
+    expect(workerBriefSchema.safeParse(brief).success).toBe(true)
+  })
+
+  it('bounds sanitizer length inputs instead of treating negative or infinite limits as valid', () => {
+    expect(sanitizeKaelText('abcdef', -1)).toBe('')
+    expect(sanitizeKaelText('abcdef', Number.NaN)).toBe('')
+    expect(sanitizeKaelText('a'.repeat(600), Number.POSITIVE_INFINITY)).toHaveLength(500)
+    expect(sanitizeKaelText('A😀', 2)).toBe('A')
+  })
+
+  it('removes invisible direction and C1 controls from rendered Kael text', () => {
+    expect(sanitizeKaelText('safe\u0085\u200B\u202E\u2066text')).toBe('safetext')
+    expect(sanitizeKaelText('SĐT 0901\u200B234567')).toBe('SĐT [phone]')
+    expect(scrubPiiText('STK 1234567890123456')).not.toContain('1234567890123456')
+  })
+
+  it('keeps deterministic fallbacks schema-valid after hostile text sanitizes below minima', () => {
+    const estimate = buildEstimateCardFallback({
+      serviceType: 'cleaning',
+      problemSummary: 'x',
+      complexity: 'small',
+      priceMin: 100000,
+      priceMax: 150000,
+      baselineUsed: '   ',
+    })
+    const brief = buildWorkerBriefFallback({
+      stage: 'core',
+      serviceType: 'cleaning',
+      district: '   ',
+      problemSummary: 'x'.repeat(200),
+      fullAddress: null,
+    })
+    const scopeChange = buildScopeChangeCustomerCardFallback({
+      serviceType: 'plumbing',
+      originalPriceMax: Number.MAX_SAFE_INTEGER + 1,
+      newPriceMin: 100000,
+      newPriceMax: 150000,
+      problemSummary: 'x',
+    })
+
+    expect(estimateCardV3Schema.safeParse(estimate).success).toBe(true)
+    expect(workerBriefSchema.safeParse(brief).success).toBe(true)
+    expect(scopeChangeCustomerCardSchema.safeParse(scopeChange).success).toBe(true)
+    expect(scopeChange.price_change.original_price_max).toBeNull()
+    expect(estimate.kael_reasoning.baseline_used).not.toMatch(/baseline/i)
+    expect(brief.sections.guidance.join(' ')).not.toMatch(/scope-change/i)
+  })
 })
 
 describe('Kael P4 scope-change anti-fraud', () => {
@@ -233,5 +356,80 @@ describe('Kael P4 scope-change anti-fraud', () => {
       'Thợ nói phải thay hết vì đường ống chính hỏng.',
       ['phải thay hết', 'đường ống chính'],
     )).toEqual(['phải thay hết', 'đường ống chính'])
+  })
+
+  it('matches configured Vietnamese risk phrases when the report omits diacritics', () => {
+    expect(matchSuspiciousScopeKeywords(
+      'Tho bao phai dao tuong vi duong ong chinh bi hong.',
+      ['phải đào tường', 'đường ống chính'],
+    )).toEqual(['phải đào tường', 'đường ống chính'])
+  })
+
+  it('fails closed without emitting non-finite values for malformed risk numbers', () => {
+    const anomaly = calculateScopeChangeAnomaly({
+      originalPriceMax: 300000,
+      newPriceMax: Number.NaN,
+      hasPhotos: true,
+      description: 'Scope changed.',
+      reason: 'Needs review.',
+      workerScopeChangeRate: Number.NaN,
+    })
+    expect(Number.isFinite(anomaly.driftRatio)).toBe(true)
+    expect(anomaly.score).toBe(1)
+    expect(anomaly.challengeRequired).toBe(true)
+    expect(anomaly.adminFlagRequired).toBe(true)
+    expect(anomaly.reasons).toContain('invalid_scope_change_risk_input')
+
+    const margin = calculateScopeChangeMargin({
+      newComplexity: 'medium',
+      newPriceMax: Number.POSITIVE_INFINITY,
+      config: {
+        complexityHours: { small: 1, medium: 3, large: 6 },
+        hcmcHourlyRateVnd: 100000,
+        baseMultiplier: 1.5,
+      },
+    })
+    expect(Number.isFinite(margin.fairPriceMax)).toBe(true)
+    expect(margin.assessment).toBe('requires_attention')
+    expect(margin.adminAlert).toBe(true)
+
+    const overflowAnomaly = calculateScopeChangeAnomaly({
+      originalPriceMax: Number.MIN_VALUE,
+      newPriceMax: Number.MAX_VALUE,
+      hasPhotos: true,
+      description: 'Scope changed.',
+      reason: 'Needs review.',
+      workerScopeChangeRate: 0.1,
+    })
+    expect(Number.isFinite(overflowAnomaly.driftRatio)).toBe(true)
+    expect(overflowAnomaly.adminFlagRequired).toBe(true)
+
+    const unsafeIntegerAnomaly = calculateScopeChangeAnomaly({
+      originalPriceMax: Number.MAX_SAFE_INTEGER + 1,
+      newPriceMax: Number.MAX_SAFE_INTEGER + 1,
+      hasPhotos: true,
+      description: 'Scope changed.',
+      reason: 'Needs review.',
+      workerScopeChangeRate: 0.1,
+    })
+    expect(unsafeIntegerAnomaly.reasons).toContain('invalid_scope_change_risk_input')
+
+    const overflowMargin = calculateScopeChangeMargin({
+      newComplexity: 'large',
+      newPriceMax: Number.MAX_VALUE,
+      config: {
+        complexityHours: { small: 1, medium: 3, large: Number.MAX_VALUE },
+        hcmcHourlyRateVnd: Number.MAX_VALUE,
+        baseMultiplier: 2,
+      },
+    })
+    expect(Number.isFinite(overflowMargin.fairPriceMax)).toBe(true)
+    expect(overflowMargin.adminAlert).toBe(true)
+  })
+
+  it('ignores blank and duplicate suspicious-keyword configuration entries', () => {
+    expect(matchSuspiciousScopeKeywords('A normal scope update.', [' ', 'scope', 'scope'])).toEqual([
+      'scope',
+    ])
   })
 })

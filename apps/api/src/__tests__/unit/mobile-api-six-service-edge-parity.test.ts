@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   JOB_STATUSES,
   SERVICE_TYPES,
+  jobMediaAttachSchema,
   kaelChatCreateSchema,
   kaelChatEvidenceSchema,
   kaelChatMediaUploadSchema,
   kaelChatTurnSchema,
   serviceTypeSchema,
+  workerCancellationRequestSchema,
   workerRegisterSchema,
 } from '../../../../../supabase/functions/_shared/domain'
 import {
@@ -69,9 +71,9 @@ describe('Edge six-service domain parity', () => {
       service_types: [...SIX_SERVICES],
       years_experience: 5,
       districts: ['q1'],
-      cccd_front_url: 'https://example.com/front.jpg',
-      cccd_back_url: 'https://example.com/back.jpg',
-      selfie_url: 'https://example.com/selfie.jpg',
+      cccd_front_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-front/front.jpg',
+      cccd_back_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-back/back.jpg',
+      selfie_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/selfie/selfie.jpg',
       bank_account: '1234567890',
       bank_name: 'Vietcombank',
     })
@@ -80,6 +82,51 @@ describe('Edge six-service domain parity', () => {
     expect(validateTransition('broadcasting', 'worker_matched').valid).toBe(false)
     expect(validateTransition('broadcasting', 'worker_candidate_pending').valid).toBe(true)
     expect(validateTransition('worker_candidate_pending', 'worker_matched').valid).toBe(true)
+  })
+
+  it('rejects public, cross-owner, traversal, and contradictory private media inputs', () => {
+    const worker = {
+      legal_name: 'Nguyen Van A',
+      date_of_birth: '1990-01-01',
+      service_types: ['electrical'],
+      years_experience: 5,
+      districts: ['q1'],
+      cccd_front_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-front/front.jpg',
+      cccd_back_url: 'supabase://worker-verification/11111111-1111-4111-8111-111111111111/cccd-back/back.jpg',
+      selfie_url: 'supabase://worker-verification/22222222-2222-4222-8222-222222222222/selfie/selfie.jpg',
+      bank_account: '1234567890',
+      bank_name: 'Vietcombank',
+    }
+    expect(workerRegisterSchema.safeParse(worker).success).toBe(false)
+    expect(workerRegisterSchema.safeParse({
+      ...worker,
+      cccd_front_url: 'https://example.test/front.jpg',
+    }).success).toBe(false)
+
+    expect(workerCancellationRequestSchema.safeParse({
+      reason: 'The worker cannot safely continue this job.',
+      evidence_photo_urls: ['https://example.test/cancellation.jpg'],
+    }).success).toBe(false)
+    expect(workerCancellationRequestSchema.safeParse({
+      reason: 'The worker cannot safely continue this job.',
+      evidence_photo_urls: [
+        'supabase://job-media/11111111-1111-4111-8111-111111111111/cancellation_evidence/photo.jpg',
+      ],
+    }).success).toBe(true)
+
+    const objectPath = '11111111-1111-4111-8111-111111111111/before/photo.jpg'
+    expect(jobMediaAttachSchema.safeParse({
+      assets: [{ object_path: objectPath, stage: 'after', file_size_bytes: 1 }],
+    }).success).toBe(false)
+    expect(jobMediaAttachSchema.safeParse({
+      assets: [
+        { object_path: objectPath, stage: 'before', file_size_bytes: 1 },
+        { object_path: objectPath.toUpperCase(), stage: 'before', file_size_bytes: 1 },
+      ],
+    }).success).toBe(false)
+    expect(jobMediaAttachSchema.safeParse({
+      assets: [{ object_path: objectPath, stage: 'before', file_size_bytes: 0 }],
+    }).success).toBe(false)
   })
 
   it('coerces all six services and fails closed instead of silently becoming electrical', () => {
@@ -180,6 +227,22 @@ describe('Edge six-service domain parity', () => {
       decision: 'confirmed',
       evidence_items: [voiceTranscript],
     }).success).toBe(true)
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+      evidence_items: [voiceTranscript],
+    }).success).toBe(false)
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+      media_refs: ['supabase://kael-chat-media/user-1/kael-chat/model_vision/frame.jpg'],
+    }).success).toBe(false)
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+      photo_urls: ['https://example.test/private-evidence.jpg'],
+    }).success).toBe(false)
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'confirmed',
+      media_refs: ['supabase://kael-chat-media/../kael-chat/model_vision/frame.jpg'],
+    }).success).toBe(false)
 
     const rawAudioRef = 'supabase://kael-chat-media/user-1/kael-chat/session/evidence.m4a'
     expect(kaelChatEvidenceSchema.safeParse({

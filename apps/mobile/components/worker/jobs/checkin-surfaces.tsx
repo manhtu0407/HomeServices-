@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
+import { Image } from 'expo-image'
 import {
-  Image,
   Text as RNText,
   View,
   type ImageSourcePropType,
@@ -118,10 +118,10 @@ export function WorkerV5CustomerContactCard({
       {showContactIcons ? (
         <View style={styles.contactIconRow} testID="worker-v5-customer-contact-icons">
           <View style={styles.contactMiniIcon}>
-            <Image resizeMode="contain" source={phoneIcon} style={styles.contactMiniIconImage} />
+            <Image contentFit="contain" source={phoneIcon} style={styles.contactMiniIconImage} />
           </View>
           <View style={styles.contactMiniIcon}>
-            <Image resizeMode="contain" source={chatIcon} style={styles.contactMiniIconImage} />
+            <Image contentFit="contain" source={chatIcon} style={styles.contactMiniIconImage} />
           </View>
         </View>
       ) : null}

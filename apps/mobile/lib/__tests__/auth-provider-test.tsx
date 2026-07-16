@@ -11,13 +11,22 @@ const mockResend = jest.fn()
 const mockResetPasswordForEmail = jest.fn()
 const mockUpdateUser = jest.fn()
 const mockSignOut = jest.fn()
+const mockSetupPushNotifications = jest.fn()
+const mockUnregisterPushNotifications = jest.fn()
 const mockMaybeSingle = jest.fn()
-const mockEq = jest.fn(() => ({ maybeSingle: mockMaybeSingle }))
+const mockEq = jest.fn((_column: string, _value: string) => ({ maybeSingle: mockMaybeSingle }))
 const mockSelect = jest.fn(() => ({ eq: mockEq }))
 const mockFrom = jest.fn(() => ({ select: mockSelect }))
-let mockAuthStateChangeCallback: ((event: string, session: typeof mockSession | null) => void) | null = null
+const mockClearPendingKaelChatDraft = jest.fn(async (_ownerId: string) => undefined)
+const mockSubmitWorkerApplication = jest.fn()
+let mockAuthStateListener: ((event: string, session: typeof mockSession | null) => void) | null = null
+const mockOnAuthStateChange = jest.fn((listener: typeof mockAuthStateListener) => {
+  mockAuthStateListener = listener
+  return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
+})
 
 const mockSession = {
+  access_token: 'customer-access-token',
   user: {
     email: 'manhtu0407@gmail.com',
     id: 'customer_test_1',
@@ -28,10 +37,7 @@ const mockSession = {
 const mockSupabase = {
   auth: {
     getSession: mockGetSession,
-    onAuthStateChange: jest.fn((callback) => {
-      mockAuthStateChangeCallback = callback
-      return { data: { subscription: { unsubscribe: mockUnsubscribe } } }
-    }),
+    onAuthStateChange: mockOnAuthStateChange,
     resetPasswordForEmail: mockResetPasswordForEmail,
     signInWithPassword: mockSignInWithPassword,
     signUp: mockSignUp,
@@ -52,7 +58,18 @@ jest.mock('../supabase', () => ({
 
 jest.mock('../push-notifications', () => ({
   addPushNotificationResponseListener: jest.fn(() => ({ remove: jest.fn() })),
-  setupPushNotifications: jest.fn(async () => ({ status: 'unsupported' })),
+  setupPushNotifications: (...args: unknown[]) => mockSetupPushNotifications(...args),
+  unregisterPushNotifications: (...args: unknown[]) => mockUnregisterPushNotifications(...args),
+}))
+
+jest.mock('../pending-kael-chat-draft', () => ({
+  clearPendingKaelChatDraft: (ownerId: string) => mockClearPendingKaelChatDraft(ownerId),
+}))
+
+jest.mock('../services', () => ({
+  workerService: {
+    submitApplication: (...args: unknown[]) => mockSubmitWorkerApplication(...args),
+  },
 }))
 
 const { AuthProvider, useAuth } = require('../auth-provider') as typeof import('../auth-provider')
@@ -178,6 +195,79 @@ function PasswordRecoveryHarness() {
   )
 }
 
+function ProfileHarness() {
+  const { session, updateCustomerProfile } = useAuth()
+  const [result, setResult] = useState('idle')
+
+  return (
+    <>
+      <Text testID="profile-session-id">{session?.user.id ?? 'none'}</Text>
+      <Pressable
+        onPress={() => {
+          void updateCustomerProfile({
+            defaultAddress: ' ',
+            email: '',
+            fullName: 'Test Customer',
+            phone: ' ',
+          }).then((nextResult) => setResult(nextResult.success ? 'success' : nextResult.error ?? 'error'))
+        }}
+        testID="clear-optional-profile"
+      >
+        <Text>clear optional profile</Text>
+      </Pressable>
+      <Text testID="profile-result">{result}</Text>
+    </>
+  )
+}
+
+function AuthStateHarness() {
+  const { loading, role, session, signOut } = useAuth()
+
+  return (
+    <>
+      <Text testID="auth-state-session">{session?.user.id ?? 'none'}</Text>
+      <Text testID="auth-state-role">{role ?? 'none'}</Text>
+      <Text testID="auth-state-loading">{loading ? 'loading' : 'ready'}</Text>
+      <Pressable testID="auth-state-sign-out" onPress={() => void signOut()}>
+        <Text>sign out</Text>
+      </Pressable>
+    </>
+  )
+}
+
+function BootstrapSigninHarness() {
+  const { authError, loading, signInWithPassword } = useAuth()
+
+  return (
+    <>
+      <Text testID="bootstrap-signin-loading">{loading ? 'loading' : 'ready'}</Text>
+      <Text testID="bootstrap-signin-error">{authError ?? 'none'}</Text>
+      <Pressable
+        testID="bootstrap-signin-submit"
+        onPress={() => void signInWithPassword('tu@example.com', 'secret123')}
+      >
+        <Text>sign in</Text>
+      </Pressable>
+    </>
+  )
+}
+
+let latestSubmitWorkerApplication: ReturnType<typeof useAuth>['submitWorkerApplication'] | null = null
+
+function WorkerApplicationHarness() {
+  const { submitWorkerApplication } = useAuth()
+  latestSubmitWorkerApplication = submitWorkerApplication
+  return <Text testID="worker-application-ready">ready</Text>
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((next) => {
+    resolve = next
+  })
+  return { promise, resolve }
+}
+
 beforeEach(() => {
   mockPushRoute.mockClear()
   mockUnsubscribe.mockClear()
@@ -188,11 +278,18 @@ beforeEach(() => {
   mockResetPasswordForEmail.mockReset()
   mockUpdateUser.mockReset()
   mockSignOut.mockReset()
+  mockSetupPushNotifications.mockReset()
+  mockUnregisterPushNotifications.mockReset()
   mockMaybeSingle.mockReset()
-  mockEq.mockClear()
+  mockEq.mockReset()
+  mockEq.mockImplementation((_column: string, _value: string) => ({ maybeSingle: mockMaybeSingle }))
   mockSelect.mockClear()
   mockFrom.mockClear()
-  mockAuthStateChangeCallback = null
+  mockClearPendingKaelChatDraft.mockClear()
+  mockSubmitWorkerApplication.mockReset()
+  mockOnAuthStateChange.mockClear()
+  mockAuthStateListener = null
+  latestSubmitWorkerApplication = null
 
   mockGetSession.mockResolvedValue({ data: { session: mockSession } })
   mockMaybeSingle.mockResolvedValue({ data: { role: 'customer' }, error: null })
@@ -201,6 +298,473 @@ beforeEach(() => {
   mockResend.mockResolvedValue({ data: {}, error: null })
   mockResetPasswordForEmail.mockResolvedValue({ data: {}, error: null })
   mockUpdateUser.mockResolvedValue({ error: null })
+  mockSignOut.mockResolvedValue({ error: null })
+  mockSetupPushNotifications.mockResolvedValue({
+    status: 'registered',
+    token: 'ExponentPushToken[shared-device]',
+  })
+  mockUnregisterPushNotifications.mockResolvedValue({ status: 'unregistered' })
+  mockSubmitWorkerApplication.mockResolvedValue({
+    code: 'NETWORK_ERROR',
+    error: 'ambiguous failure',
+    status: 0,
+    success: false,
+  })
+})
+
+describe('AuthProvider worker application idempotency', () => {
+  it('reuses the key for the same manual retry and rotates it when the application changes', async () => {
+    render(
+      <AuthProvider>
+        <WorkerApplicationHarness />
+      </AuthProvider>,
+    )
+    await waitFor(() => expect(latestSubmitWorkerApplication).not.toBeNull())
+
+    await act(async () => {
+      await latestSubmitWorkerApplication?.({ contact: ' worker@example.com ', language: 'vi' })
+      await latestSubmitWorkerApplication?.({ contact: 'worker@example.com', language: 'vi' })
+      await latestSubmitWorkerApplication?.({ contact: 'worker-next@example.com', language: 'vi' })
+    })
+
+    const firstKey = mockSubmitWorkerApplication.mock.calls[0][0].client_request_id
+    const retryKey = mockSubmitWorkerApplication.mock.calls[1][0].client_request_id
+    const changedInputKey = mockSubmitWorkerApplication.mock.calls[2][0].client_request_id
+    expect(retryKey).toBe(firstKey)
+    expect(changedInputKey).not.toBe(firstKey)
+  })
+})
+
+describe('AuthProvider account isolation', () => {
+  it('does not let a settled bootstrap timeout overwrite a later sign-in attempt', async () => {
+    jest.useFakeTimers()
+    const pendingSignin = deferred<never>()
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignInWithPassword.mockImplementationOnce(() => pendingSignin.promise)
+
+    try {
+      render(
+        <AuthProvider>
+          <BootstrapSigninHarness />
+        </AuthProvider>,
+      )
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(screen.getByTestId('bootstrap-signin-loading')).toHaveTextContent('ready')
+
+      act(() => jest.advanceTimersByTime(6_900))
+      fireEvent.press(screen.getByTestId('bootstrap-signin-submit'))
+      expect(screen.getByTestId('bootstrap-signin-loading')).toHaveTextContent('loading')
+
+      act(() => jest.advanceTimersByTime(200))
+
+      expect(screen.getByTestId('bootstrap-signin-loading')).toHaveTextContent('loading')
+      expect(screen.getByTestId('bootstrap-signin-error')).toHaveTextContent('none')
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('starts authenticated push-token unregister before local sign-out completes', async () => {
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-session')).toHaveTextContent('customer_test_1')
+      expect(mockSetupPushNotifications).toHaveBeenCalledWith({
+        accessToken: 'customer-access-token',
+        role: 'customer',
+      })
+    })
+
+    fireEvent.press(screen.getByTestId('auth-state-sign-out'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-session')).toHaveTextContent('none')
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+    })
+    expect(mockUnregisterPushNotifications).toHaveBeenCalledWith({
+      accessToken: 'customer-access-token',
+      token: 'ExponentPushToken[shared-device]',
+    })
+    expect(mockUnregisterPushNotifications.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSignOut.mock.invocationCallOrder[0],
+    )
+  })
+
+  it('cleans up a push setup that settles after sign-out without restarting the departed account', async () => {
+    const pendingRegistration = deferred<{
+      status: 'registered'
+      token: string
+    }>()
+    mockSetupPushNotifications.mockImplementationOnce(() => pendingRegistration.promise)
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(1))
+    fireEvent.press(screen.getByTestId('auth-state-sign-out'))
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-session')).toHaveTextContent('none')
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+    })
+
+    await act(async () => {
+      pendingRegistration.resolve({
+        status: 'registered',
+        token: 'ExponentPushToken[late-sign-out]',
+      })
+      await pendingRegistration.promise
+    })
+
+    await waitFor(() => expect(mockUnregisterPushNotifications).toHaveBeenCalledWith({
+      accessToken: 'customer-access-token',
+      token: 'ExponentPushToken[late-sign-out]',
+    }))
+    expect(mockSetupPushNotifications).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a shared device token bound to each account transition', async () => {
+    const workerSession = {
+      access_token: 'worker-access-token',
+      user: {
+        email: 'worker@nestscout.local',
+        id: 'worker_test_2',
+        user_metadata: {},
+      },
+    }
+    mockEq.mockImplementation((_column: string, userId: string) => ({
+      maybeSingle: jest.fn(async () => ({
+        data: { role: userId === workerSession.user.id ? 'worker' as const : 'customer' as const },
+        error: null,
+      })),
+    }))
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(1))
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', workerSession)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-session')).toHaveTextContent('worker_test_2')
+      expect(mockSetupPushNotifications).toHaveBeenCalledTimes(2)
+    })
+    expect(mockUnregisterPushNotifications).toHaveBeenNthCalledWith(1, {
+      accessToken: 'customer-access-token',
+      token: 'ExponentPushToken[shared-device]',
+    })
+
+    fireEvent.press(screen.getByTestId('auth-state-sign-out'))
+
+    await waitFor(() => expect(mockUnregisterPushNotifications).toHaveBeenCalledTimes(2))
+    expect(mockUnregisterPushNotifications).toHaveBeenNthCalledWith(2, {
+      accessToken: 'worker-access-token',
+      token: 'ExponentPushToken[shared-device]',
+    })
+  })
+
+  it('unregisters a late token registration with the account that started it', async () => {
+    const lateCustomerRegistration = deferred<{
+      status: 'registered'
+      token: string
+    }>()
+    const workerSession = {
+      access_token: 'worker-access-token',
+      user: {
+        email: 'worker@nestscout.local',
+        id: 'worker_test_2',
+        user_metadata: {},
+      },
+    }
+    mockSetupPushNotifications
+      .mockImplementationOnce(() => lateCustomerRegistration.promise)
+      .mockResolvedValueOnce({
+        status: 'registered',
+        token: 'ExponentPushToken[shared-device]',
+      })
+    mockEq.mockImplementation((_column: string, userId: string) => ({
+      maybeSingle: jest.fn(async () => ({
+        data: { role: userId === workerSession.user.id ? 'worker' as const : 'customer' as const },
+        error: null,
+      })),
+    }))
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(1))
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', workerSession)
+    })
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(2))
+
+    await act(async () => {
+      lateCustomerRegistration.resolve({
+        status: 'registered',
+        token: 'ExponentPushToken[shared-device]',
+      })
+      await lateCustomerRegistration.promise
+    })
+
+    expect(mockUnregisterPushNotifications).toHaveBeenCalledWith({
+      accessToken: 'customer-access-token',
+      token: 'ExponentPushToken[shared-device]',
+    })
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(3))
+    expect(mockSetupPushNotifications).toHaveBeenLastCalledWith({
+      accessToken: 'worker-access-token',
+      role: 'worker',
+    })
+  })
+
+  it('restarts a pending registration with the refreshed bearer for the same account', async () => {
+    const pendingRegistration = deferred<{
+      status: 'registered'
+      token: string
+    }>()
+    const refreshedSession = {
+      ...mockSession,
+      access_token: 'customer-refreshed-access-token',
+    }
+    mockSetupPushNotifications
+      .mockImplementationOnce(() => pendingRegistration.promise)
+      .mockResolvedValueOnce({
+        status: 'registered',
+        token: 'ExponentPushToken[refreshed-customer]',
+      })
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(1))
+    act(() => {
+      mockAuthStateListener?.('TOKEN_REFRESHED', refreshedSession)
+    })
+
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(2))
+    expect(mockSetupPushNotifications).toHaveBeenLastCalledWith({
+      accessToken: 'customer-refreshed-access-token',
+      role: 'customer',
+    })
+  })
+
+  it('keeps the newest same-account push registration across an A-to-B-to-A race', async () => {
+    const firstCustomerRegistration = deferred<{
+      status: 'registered'
+      token: string
+    }>()
+    const workerSession = {
+      access_token: 'worker-access-token',
+      user: {
+        email: 'worker@nestscout.local',
+        id: 'worker_test_2',
+        user_metadata: {},
+      },
+    }
+    mockSetupPushNotifications
+      .mockImplementationOnce(() => firstCustomerRegistration.promise)
+      .mockResolvedValueOnce({
+        status: 'registered',
+        token: 'ExponentPushToken[worker]',
+      })
+      .mockResolvedValueOnce({
+        status: 'registered',
+        token: 'ExponentPushToken[new-customer]',
+      })
+    mockEq.mockImplementation((_column: string, userId: string) => ({
+      maybeSingle: jest.fn(async () => ({
+        data: { role: userId === workerSession.user.id ? 'worker' as const : 'customer' as const },
+        error: null,
+      })),
+    }))
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(1))
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', workerSession)
+    })
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(2))
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', mockSession)
+    })
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(3))
+
+    await act(async () => {
+      firstCustomerRegistration.resolve({
+        status: 'registered',
+        token: 'ExponentPushToken[old-customer]',
+      })
+      await firstCustomerRegistration.promise
+    })
+    fireEvent.press(screen.getByTestId('auth-state-sign-out'))
+
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' }))
+    expect(mockUnregisterPushNotifications).toHaveBeenLastCalledWith({
+      accessToken: 'customer-access-token',
+      token: 'ExponentPushToken[new-customer]',
+    })
+  })
+
+  it('clears the local session when push-token unregister never settles', async () => {
+    mockUnregisterPushNotifications.mockImplementationOnce(() => new Promise(() => undefined))
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(mockSetupPushNotifications).toHaveBeenCalledTimes(1))
+    fireEvent.press(screen.getByTestId('auth-state-sign-out'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-session')).toHaveTextContent('none')
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+    })
+  })
+
+  it('ignores a late role lookup from the previous account', async () => {
+    const lateCustomerRole = deferred<{ data: { role: 'customer' }; error: null }>()
+    const workerSession = {
+      access_token: 'worker-access-token',
+      user: {
+        email: 'worker@nestscout.local',
+        id: 'worker_test_2',
+        user_metadata: {},
+      },
+    }
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockEq.mockImplementation((_column: string, userId: string) => ({
+      maybeSingle: jest.fn(() => userId === mockSession.user.id
+        ? lateCustomerRole.promise
+        : Promise.resolve({ data: { role: 'worker' as const }, error: null })),
+    }))
+
+    render(
+      <AuthProvider>
+        <AuthStateHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(mockAuthStateListener).not.toBeNull())
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', mockSession)
+      mockAuthStateListener?.('SIGNED_IN', workerSession)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-state-session')).toHaveTextContent('worker_test_2')
+      expect(screen.getByTestId('auth-state-role')).toHaveTextContent('worker')
+    })
+    expect(mockClearPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1')
+
+    await act(async () => {
+      lateCustomerRole.resolve({ data: { role: 'customer' }, error: null })
+      await lateCustomerRole.promise
+    })
+
+    expect(screen.getByTestId('auth-state-session')).toHaveTextContent('worker_test_2')
+    expect(screen.getByTestId('auth-state-role')).toHaveTextContent('worker')
+  })
+
+  it('does not let a late profile mutation restore the previous account', async () => {
+    const pendingUpdate = deferred<{ error: null }>()
+    const workerSession = {
+      access_token: 'worker-access-token',
+      user: {
+        email: 'worker@nestscout.local',
+        id: 'worker_test_2',
+        user_metadata: {},
+      },
+    }
+    mockUpdateUser.mockImplementationOnce(() => pendingUpdate.promise)
+
+    render(
+      <AuthProvider>
+        <ProfileHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('profile-session-id')).toHaveTextContent('customer_test_1'))
+    fireEvent.press(screen.getByTestId('clear-optional-profile'))
+    await waitFor(() => expect(mockUpdateUser).toHaveBeenCalledTimes(1))
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', workerSession)
+    })
+    await waitFor(() => expect(screen.getByTestId('profile-session-id')).toHaveTextContent('worker_test_2'))
+
+    await act(async () => {
+      pendingUpdate.resolve({ error: null })
+      await pendingUpdate.promise
+    })
+
+    expect(screen.getByTestId('profile-session-id')).toHaveTextContent('worker_test_2')
+    expect(mockGetSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not update a password after the active account changes during reauthentication', async () => {
+    const pendingReauthentication = deferred<{
+      data: { session: typeof mockSession }
+      error: null
+    }>()
+    const workerSession = {
+      access_token: 'worker-access-token',
+      user: {
+        email: 'worker@nestscout.local',
+        id: 'worker_test_2',
+        user_metadata: {},
+      },
+    }
+    mockSignInWithPassword.mockImplementationOnce(() => pendingReauthentication.promise)
+
+    render(
+      <AuthProvider>
+        <PasswordHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('session-id')).toHaveTextContent('customer_test_1'))
+    fireEvent.press(screen.getByTestId('update-password'))
+    await waitFor(() => expect(mockSignInWithPassword).toHaveBeenCalledTimes(1))
+    act(() => {
+      mockAuthStateListener?.('SIGNED_IN', workerSession)
+    })
+    await waitFor(() => expect(screen.getByTestId('session-id')).toHaveTextContent('worker_test_2'))
+
+    await act(async () => {
+      pendingReauthentication.resolve({ data: { session: mockSession }, error: null })
+      await pendingReauthentication.promise
+    })
+
+    expect(mockUpdateUser).not.toHaveBeenCalled()
+    expect(screen.getByTestId('session-id')).toHaveTextContent('worker_test_2')
+  })
 })
 
 describe('AuthProvider password update', () => {
@@ -248,6 +812,28 @@ describe('AuthProvider password update', () => {
     })
     expect(mockUpdateUser).not.toHaveBeenCalled()
     expect(screen.getByTestId('session-id')).toHaveTextContent('customer_test_1')
+  })
+})
+
+describe('AuthProvider customer profile updates', () => {
+  it('clears optional contact and address metadata when the user submits blank values', async () => {
+    render(
+      <AuthProvider>
+        <ProfileHarness />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('clear-optional-profile')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('clear-optional-profile'))
+
+    await waitFor(() => expect(screen.getByTestId('profile-result')).toHaveTextContent('success'))
+    expect(mockUpdateUser).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        contact_email: null,
+        default_address: null,
+        phone_number: null,
+      }),
+    })
   })
 })
 
@@ -395,10 +981,10 @@ describe('AuthProvider password recovery', () => {
     )
 
     await waitFor(() => {
-      expect(mockAuthStateChangeCallback).not.toBeNull()
+      expect(mockAuthStateListener).not.toBeNull()
     })
     await act(async () => {
-      mockAuthStateChangeCallback?.('PASSWORD_RECOVERY', mockSession)
+      mockAuthStateListener?.('PASSWORD_RECOVERY', mockSession)
     })
 
     expect(screen.getByTestId('password-recovery-pending')).toHaveTextContent('pending')

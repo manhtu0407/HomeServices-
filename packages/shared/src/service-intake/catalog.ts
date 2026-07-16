@@ -39,7 +39,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
         ],
       },
       { id: 'area_sqm', type: 'number', required: false, labelVi: 'Diện tích khoảng bao nhiêu m²?', labelEn: 'Approximate area in m²?', min: 15, max: 300 },
-      { id: 'bathroom_count', type: 'number', required: true, labelVi: 'Có mấy toilet hoặc phòng tắm?', labelEn: 'How many bathrooms?', min: 0, max: 8 },
+      { id: 'bathroom_count', type: 'number', required: true, labelVi: 'Có mấy toilet hoặc phòng tắm?', labelEn: 'How many bathrooms?', integer: true, min: 0, max: 8 },
       {
         id: 'condition_level', type: 'single_select', required: true,
         labelVi: 'Hiện trạng hiện tại ở mức nào?', labelEn: 'What is the current condition?',
@@ -126,7 +126,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
           { value: 'basic_check', labelVi: 'Kiểm tra cơ bản', labelEn: 'Basic check' },
         ],
       },
-      { id: 'unit_count', type: 'number', required: true, labelVi: 'Có bao nhiêu máy?', labelEn: 'How many units?', min: 1, max: 10 },
+      { id: 'unit_count', type: 'number', required: true, labelVi: 'Có bao nhiêu máy?', labelEn: 'How many units?', integer: true, min: 1, max: 10 },
       {
         id: 'unit_type', type: 'single_select', required: false, labelVi: 'Loại máy điều hòa?', labelEn: 'What type of unit?',
         options: [
@@ -199,7 +199,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
           { value: 'dining_chair', labelVi: 'Ghế ăn', labelEn: 'Dining chair' }, { value: 'office_chair', labelVi: 'Ghế văn phòng', labelEn: 'Office chair' },
         ],
       },
-      { id: 'fabric_quantity_size', type: 'text', required: true, labelVi: 'Số lượng và kích thước khoảng bao nhiêu?', labelEn: 'Approximate quantity and size?', placeholderVi: 'Ví dụ: sofa chữ L 3 chỗ', placeholderEn: 'Example: three-seat L-shaped sofa' },
+      { id: 'fabric_quantity_size', type: 'text', required: true, labelVi: 'Số lượng và kích thước khoảng bao nhiêu?', labelEn: 'Approximate quantity and size?', maxLength: 200, placeholderVi: 'Ví dụ: sofa chữ L 3 chỗ', placeholderEn: 'Example: three-seat L-shaped sofa' },
       {
         id: 'fabric_material', type: 'single_select', required: false, labelVi: 'Chất liệu chính là gì?', labelEn: 'What is the main material?',
         options: [
@@ -244,7 +244,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
     serviceLineId: 'handyman_minor_installation', productionServiceType: 'handyman',
     labelVi: 'Sửa vặt & Lắp đặt nhỏ', labelEn: 'Minor repairs & installation',
     professionalName: 'Multi-Skill Handyman & Minor Installation Scope Planning', kaelScopeName: 'Kael TaskScope', mode: 'task_scope',
-    performanceGoalVi: 'Gom các việc nhỏ thành task bundle có vật tư, dụng cụ và ranh giới rõ ràng.',
+    performanceGoalVi: 'Gom các việc nhỏ thành nhóm công việc có vật tư, dụng cụ và ranh giới rõ ràng.',
     performanceGoalEn: 'Turn small jobs into a clear task bundle with materials, tools, and boundaries.',
     quoteDriverSlots: ['task_bundle_type', 'task_types', 'task_count', 'materials_ready', 'wall_surface', 'requires_drilling', 'task_risk_flags'],
     defaultProblemChips: ['Sửa vặt/lắp đặt nhỏ'],
@@ -266,7 +266,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
           { value: 'other', labelVi: 'Việc nhỏ khác', labelEn: 'Other small task' },
         ],
       },
-      { id: 'task_count', type: 'number', required: true, labelVi: 'Tổng cộng khoảng bao nhiêu task?', labelEn: 'How many tasks in total?', min: 1, max: 12 },
+      { id: 'task_count', type: 'number', required: true, labelVi: 'Tổng cộng khoảng bao nhiêu việc?', labelEn: 'How many tasks in total?', integer: true, min: 1, max: 12 },
       {
         id: 'materials_ready', type: 'single_select', required: true, labelVi: 'Vật tư hoặc phụ kiện đã sẵn sàng?', labelEn: 'Are materials and fixtures ready?',
         options: [
@@ -299,10 +299,10 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
     ],
     requiredToolsVi: ['Khoan và mũi khoan cơ bản', 'Bộ tua vít', 'Thước hoặc nivo'], requiredToolsEn: ['Basic drill and bits', 'Screwdriver set', 'Level or measuring tools'],
     customerPrepVi: ['Chuẩn bị vật tư chính', 'Xác nhận quyền khoan với ban quản lý', 'Dọn khu vực thao tác'], customerPrepEn: ['Prepare main fixtures', 'Confirm drilling permission', 'Clear the work area'],
-    completionChecklistVi: ['Ảnh trước và sau từng task', 'Trạng thái từng task rõ ràng', 'Ghi lại vật tư phát sinh'], completionChecklistEn: ['Before and after photos for every task', 'Clear status for every task', 'Record additional materials'],
+    completionChecklistVi: ['Ảnh trước và sau từng việc', 'Trạng thái từng việc rõ ràng', 'Ghi lại vật tư phát sinh'], completionChecklistEn: ['Before and after photos for every task', 'Clear status for every task', 'Record additional materials'],
     scopeChangeTriggersVi: ['Thiếu vật tư chính', 'Có rủi ro dây hoặc ống âm tường', 'Task vượt sửa vặt và cần chuyên gia'], scopeChangeTriggersEn: ['Main materials are missing', 'Hidden wire or pipe risk exists', 'Task exceeds minor handyman scope'],
     unsupportedBoundariesVi: ['Khoan cắt kết cấu lớn', 'Giấu dây âm tường', 'Điện hoặc nước chuyên sâu'], unsupportedBoundariesEn: ['Major structural drilling or cutting', 'Concealed wiring work', 'Specialist electrical or plumbing work'],
-    mediaRequirement: { required: true, recommended: true, minPhotos: 1, promptsVi: ['Chụp vị trí của từng task', 'Chụp vật cần lắp và phụ kiện'], promptsEn: ['Photograph each task location', 'Photograph the item and available fixtures'] },
+    mediaRequirement: { required: true, recommended: true, minPhotos: 1, promptsVi: ['Chụp vị trí của từng việc', 'Chụp vật cần lắp và phụ kiện'], promptsEn: ['Photograph each task location', 'Photograph the item and available fixtures'] },
     riskRules: [
       { id: 'handyman_hidden_wire_pipe', labelVi: 'Có rủi ro dây hoặc ống âm tường', labelEn: 'Hidden wire or pipe concern', severity: 'review', when: { slot: 'task_risk_flags', operator: 'includes_any', value: ['hidden_wire_pipe'] } },
       { id: 'handyman_heavy_item', labelVi: 'Vật nặng cần duyệt tải trọng', labelEn: 'Heavy item needs load review', severity: 'review', when: { slot: 'task_risk_flags', operator: 'includes_any', value: ['heavy_item'] } },
@@ -316,7 +316,9 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
 })
 
 export function getServicePerformancePlaybook(serviceLineId: LaunchServiceLineId): ServicePerformancePlaybook {
-  return SERVICE_PERFORMANCE_PLAYBOOKS[serviceLineId]
+  const playbook = SERVICE_PERFORMANCE_PLAYBOOKS[serviceLineId]
+  if (!playbook) throw new RangeError(`Unknown service performance playbook: ${serviceLineId}`)
+  return playbook
 }
 
 export function listServicePerformancePlaybooks(): readonly ServicePerformancePlaybook[] {

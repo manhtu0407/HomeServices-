@@ -1,8 +1,14 @@
 // Edge service places-geo domain (C4 6a, services/* split): Vietmap/Google places-autocomplete
 // + address geocoding (write-back to jobs) + the maps URL consts. Imported directly by services.ts.
 
-import { asRecord, nullableNumber, nullableString } from "./coercions.ts";
-import { dbQuery, fetchJsonWithTimeout, type DbClient } from "./db.ts";
+import { asRecord, nullableNumber, nullableRecord, nullableString } from "./coercions.ts";
+import {
+  dbQuery,
+  fetchJsonWithTimeout,
+  MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+  type DbClient,
+} from "./db.ts";
+import { readResponseJsonBounded } from "../../../_shared/network.ts";
 import { compactMetadata, districtLabel, readGoogleMapsApiKey, readVietmapApiKey } from "./_shared.ts";
 import {
   apiFailure,
@@ -16,6 +22,10 @@ import {
 } from "../../../_shared/domain.ts";
 import type { EdgeAiSecrets } from "../kael/index.ts";
 import { persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
+import {
+  boundedProviderIdentifier,
+  boundedProviderText,
+} from "../provider-boundary.ts";
 
 type MapsGeoSource = "vietmap" | "google_maps";
 type GeocodeResult = { lat: number; lng: number; geoSource: MapsGeoSource };
@@ -145,8 +155,14 @@ async function vietmapPlacesAutocomplete(
       return { suggestions: [], fallback_used: true };
     }
 
-    const body = await response.json().catch(() => []) as unknown;
-    const rows = Array.isArray(body) ? body : [];
+    const body = await readResponseJsonBounded(
+      response,
+      MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    );
+    if (!Array.isArray(body)) {
+      throw new Error("Invalid VietMap autocomplete response");
+    }
+    const rows = body;
     const suggestions = rows
       .map(vietmapAutocompleteSuggestion)
       .filter((item): item is PlacesAutocompleteResponse["suggestions"][number] =>
@@ -199,31 +215,37 @@ async function googlePlacesAutocomplete(
       return { suggestions: [], fallback_used: true };
     }
 
-    const body = await response.json().catch(() => ({})) as {
-      suggestions?: Array<{
-        placePrediction?: {
-          placeId?: string;
-          text?: { text?: string };
-          structuredFormat?: {
-            mainText?: { text?: string };
-            secondaryText?: { text?: string };
-          };
-        };
-      }>;
-    };
-    const suggestions = (body.suggestions ?? [])
-      .map((suggestion) => {
-        const prediction = suggestion.placePrediction;
-        const label = prediction?.text?.text?.trim() ?? "";
-        const placeId = prediction?.placeId?.trim() ?? "";
+    const body = nullableRecord(await readResponseJsonBounded(
+      response,
+      MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    ));
+    if (!body) throw new Error("Invalid Google autocomplete response");
+    const rows = body.suggestions;
+    if (rows !== undefined && !Array.isArray(rows)) {
+      throw new Error("Invalid Google autocomplete suggestions");
+    }
+    const suggestions = (rows ?? [])
+      .map((value) => {
+        const suggestion = nullableRecord(value);
+        const prediction = nullableRecord(suggestion?.placePrediction);
+        const label = boundedProviderText(
+          nullableRecord(prediction?.text)?.text,
+          240,
+        );
+        const placeId = boundedProviderIdentifier(prediction?.placeId, 256);
         if (!label || !placeId) return null;
+        const structured = nullableRecord(prediction?.structuredFormat);
         return {
           place_id: placeId,
           label,
-          main_text: prediction?.structuredFormat?.mainText?.text?.trim() ??
-            label,
-          secondary_text:
-            prediction?.structuredFormat?.secondaryText?.text?.trim() ?? null,
+          main_text: boundedProviderText(
+            nullableRecord(structured?.mainText)?.text,
+            160,
+          ) || label,
+          secondary_text: boundedProviderText(
+            nullableRecord(structured?.secondaryText)?.text,
+            240,
+          ) || null,
         };
       })
       .filter((item): item is PlacesAutocompleteResponse["suggestions"][number] =>
@@ -258,10 +280,14 @@ async function vietmapPlacesResolve(
       return null;
     }
 
-    const body = asRecord(await response.json().catch(() => ({})));
+    const body = nullableRecord(await readResponseJsonBounded(
+      response,
+      MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    ));
+    if (!body) throw new Error("Invalid VietMap place response");
     const lat = nullableNumber(body.lat);
     const lng = nullableNumber(body.lng);
-    if (lat === null || lng === null) return null;
+    if (lat === null || lng === null || !validCoordinates(lat, lng)) return null;
     return {
       fallback_used: false,
       label: vietmapDisplayText(body) || input.label || null,
@@ -294,26 +320,22 @@ async function googlePlacesResolve(
       return null;
     }
 
-    const body = await response.json().catch(() => ({})) as {
-      status?: string;
-      results?: Array<{
-        formatted_address?: string;
-        geometry?: { location?: { lat?: number; lng?: number } };
-      }>;
-    };
-    const first = body.results?.[0];
-    const location = first?.geometry?.location;
-    if (
-      body.status !== "OK" ||
-      typeof location?.lat !== "number" ||
-      typeof location.lng !== "number"
-    ) {
-      return null;
-    }
+    const body = nullableRecord(await readResponseJsonBounded(
+      response,
+      MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    ));
+    if (!body) throw new Error("Invalid Google place response");
+    const results = body.results;
+    if (body.status !== "OK" || !Array.isArray(results)) return null;
+    const first = nullableRecord(results[0]);
+    const location = nullableRecord(nullableRecord(first?.geometry)?.location);
+    const lat = nullableNumber(location?.lat);
+    const lng = nullableNumber(location?.lng);
+    if (lat === null || lng === null || !validCoordinates(lat, lng)) return null;
     return {
       fallback_used: false,
-      label: first?.formatted_address?.trim() || input.label || null,
-      location: { lat: location.lat, lng: location.lng },
+      label: boundedProviderText(first?.formatted_address, 240) || input.label || null,
+      location: { lat, lng },
       place_id: input.place_id,
       provider: "google_maps",
     };
@@ -351,7 +373,10 @@ async function geocodeWithVietmap(
       return null;
     }
 
-    const searchBody = await searchResponse.json().catch(() => []) as unknown;
+    const searchBody = await readResponseJsonBounded(
+      searchResponse,
+      MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    );
     const refId = firstVietmapRefId(searchBody);
     if (!refId) return null;
 
@@ -369,10 +394,14 @@ async function geocodeWithVietmap(
       return null;
     }
 
-    const placeBody = asRecord(await placeResponse.json().catch(() => ({})));
+    const placeBody = nullableRecord(await readResponseJsonBounded(
+      placeResponse,
+      MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    ));
+    if (!placeBody) throw new Error("Invalid VietMap geocode response");
     const lat = nullableNumber(placeBody.lat);
     const lng = nullableNumber(placeBody.lng);
-    if (lat === null || lng === null) return null;
+    if (lat === null || lng === null || !validCoordinates(lat, lng)) return null;
     return { lat, lng, geoSource: "vietmap" };
   } catch (error) {
     console.warn("mobile-api geocoding threw", {
@@ -401,21 +430,19 @@ async function geocodeWithGoogleMaps(
       });
       return null;
     }
-    const body = await response.json().catch(() => ({})) as {
-      status?: string;
-      results?: Array<{
-        geometry?: { location?: { lat?: number; lng?: number } };
-      }>;
-    };
-    const location = body.results?.[0]?.geometry?.location;
-    if (
-      body.status !== "OK" ||
-      typeof location?.lat !== "number" ||
-      typeof location.lng !== "number"
-    ) {
-      return null;
-    }
-    return { lat: location.lat, lng: location.lng, geoSource: "google_maps" };
+    const body = nullableRecord(await readResponseJsonBounded(
+      response,
+      MAPS_PROVIDER_MAX_RESPONSE_BYTES,
+    ));
+    if (!body) throw new Error("Invalid Google geocode response");
+    const results = body.results;
+    if (body.status !== "OK" || !Array.isArray(results)) return null;
+    const first = nullableRecord(results[0]);
+    const location = nullableRecord(nullableRecord(first?.geometry)?.location);
+    const lat = nullableNumber(location?.lat);
+    const lng = nullableNumber(location?.lng);
+    if (lat === null || lng === null || !validCoordinates(lat, lng)) return null;
+    return { lat, lng, geoSource: "google_maps" };
   } catch (error) {
     console.warn("mobile-api geocoding threw", {
       provider: "google_maps",
@@ -443,12 +470,12 @@ function vietmapAutocompleteSuggestion(
   value: unknown,
 ): PlacesAutocompleteResponse["suggestions"][number] | null {
   const record = asRecord(value);
-  const placeId = nullableString(record.ref_id)?.trim() ?? "";
+  const placeId = boundedProviderIdentifier(record.ref_id, 256);
   const label = vietmapDisplayText(record);
   if (!placeId || !label) return null;
 
-  const mainText = nullableString(record.name)?.trim() || label;
-  const secondaryText = nullableString(record.address)?.trim() || null;
+  const mainText = boundedProviderText(record.name, 160) || label;
+  const secondaryText = boundedProviderText(record.address, 240) || null;
   return {
     place_id: placeId,
     label,
@@ -461,20 +488,27 @@ function firstVietmapRefId(value: unknown): string | null {
   if (!Array.isArray(value)) return null;
   for (const item of value) {
     const record = asRecord(item);
-    const refId = nullableString(record.ref_id)?.trim();
+    const refId = boundedProviderIdentifier(record.ref_id, 256);
     if (refId) return refId;
   }
   return null;
 }
 
 function vietmapDisplayText(record: Record<string, unknown>): string {
-  const display = nullableString(record.display)?.trim();
+  const display = boundedProviderText(record.display, 240);
   if (display) return display;
   const parts = [
-    nullableString(record.name)?.trim(),
-    nullableString(record.address)?.trim(),
+    boundedProviderText(record.name, 160),
+    boundedProviderText(record.address, 240),
   ].filter((part): part is string => Boolean(part));
-  return parts.join(" ");
+  return parts.join(" ").slice(0, 240).trim();
+}
+
+function validCoordinates(
+  lat: number,
+  lng: number,
+): boolean {
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }
 
 function buildVietmapUrl(
