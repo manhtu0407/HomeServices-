@@ -488,7 +488,7 @@ describe('LoginRoleSurface', () => {
     await waitFor(() => {
       expect(mockSignInWithGoogle).toHaveBeenCalledTimes(1)
     })
-    expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
   })
 
   it('accepts a Vietnamese mobile number for customer login, remembers the latest identifier, and sends it as E.164', async () => {
@@ -505,7 +505,8 @@ describe('LoginRoleSurface', () => {
       expect(mockSignInWithPassword).toHaveBeenCalledWith('+84901234567', 'secret123')
     })
     expect(mockRememberAuthIdentifier).toHaveBeenCalledWith('090 123 4567')
-    expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
   })
 
   it('prefills the latest remembered identifier when the login screen reopens', async () => {
@@ -629,6 +630,22 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByText('Đăng ký bằng SĐT chưa sẵn sàng. Vui lòng dùng email.')).toBeOnTheScreen()
     expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
+  })
+
+  it('routes a ready customer registration directly to Customer Home', async () => {
+    mockRouteParams = { stage: '1.5' }
+    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: true, needsConfirmation: false })
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
+    })
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
   })
 
   it('creates the worker auth account before application review and waits when confirmation has no session', async () => {

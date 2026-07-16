@@ -69,7 +69,7 @@ const WORKER_EMAIL = `test-learning-worker-${TS}@learning.test`
 
 const TEST_SERVICE = 'plumbing' as const
 const TEST_PROBLEM = 'pipe_leak'
-const TEST_DISTRICT = 'q1'
+const TEST_DISTRICT = 'quan_1'
 const TEST_COMPLEXITY = 'medium' as const
 const BASELINE_MIN = 200_000
 const BASELINE_MAX = 400_000

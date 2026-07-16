@@ -309,10 +309,6 @@ export const customerV21SharedStyles = StyleSheet.create({
     letterSpacing: 0,
     lineHeight: 34,
   },
-  homeAuraFrame: {
-    marginTop: 2,
-    position: 'relative',
-  },
   homeAuraServiceTile: {
     alignItems: 'stretch',
     borderRadius: 22,
@@ -344,20 +340,6 @@ export const customerV21SharedStyles = StyleSheet.create({
   homeAuraServiceTileWide: {
     flexBasis: '48%',
     maxWidth: '49%',
-  },
-  homeHero: {
-    alignItems: 'center',
-    borderRadius: 30,
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 178,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  homeHeroTitle: {
-    fontSize: 24,
-    lineHeight: 28,
-    textAlign: 'center',
   },
   homeServiceGrid: {
     flexWrap: 'wrap',

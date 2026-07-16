@@ -185,7 +185,7 @@ export function EntryBrandAccessFlow({
         await clearRememberedAuthIdentifier()
       }
       if (!isCurrentAction(actionVersion)) return
-      go('onboarding')
+      if (role === 'worker') go('onboarding')
     } catch {
       if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
     } finally {
@@ -216,7 +216,8 @@ export function EntryBrandAccessFlow({
         return
       }
       setPassword('')
-      go(result.nextStep ?? 'onboarding')
+      if (result.nextStep) go(result.nextStep)
+      else if (role === 'worker') go('onboarding')
     } catch {
       if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
     } finally {
@@ -272,7 +273,7 @@ export function EntryBrandAccessFlow({
         setError(localizeEntryAuthError(result.error, language, 'googleSignInFailed'))
         return
       }
-      go('onboarding')
+      if (role === 'worker') go('onboarding')
     } catch {
       if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
     } finally {

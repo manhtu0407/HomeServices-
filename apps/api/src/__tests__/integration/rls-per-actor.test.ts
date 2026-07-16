@@ -105,6 +105,16 @@ describeReal('RLS per-actor — fixture setup', () => {
 
     // Trigger defaults new profiles to role=customer (security hardening C2); upgrade workers.
     await new Promise((r) => setTimeout(r, 700))
+    for (const customer of ['customerA', 'customerB'] as const) {
+      const { error } = await admin.from('customer_profiles').upsert({
+        id: ids[customer],
+        building_name: 'RLS Test Tower',
+        unit_number: customer === 'customerA' ? 'A1' : 'B1',
+        floor: '1',
+        district: 'quan_1',
+      })
+      if (error) throw new Error(`customer_profile ${customer}: ${error.message}`)
+    }
     for (const w of ['workerA', 'workerB'] as const) {
       await admin.from('profiles').update({ role: 'worker' as const }).eq('id', ids[w])
       const { error } = await admin.from('worker_profiles').upsert({
@@ -163,8 +173,10 @@ describeReal('RLS per-actor — fixture setup', () => {
       .eq('id', jobId)
     if (matched.error) throw new Error(`assign worker: ${matched.error.message}`)
 
-    await admin.from('worker_stats').upsert({ worker_id: ids.workerA })
-    await admin.from('customer_stats').upsert({ customer_id: ids.customerA })
+    const workerStats = await admin.from('worker_stats').upsert({ worker_id: ids.workerA })
+    if (workerStats.error) throw new Error(`worker_stats: ${workerStats.error.message}`)
+    const customerStats = await admin.from('customer_stats').upsert({ customer_id: ids.customerA })
+    if (customerStats.error) throw new Error(`customer_stats: ${customerStats.error.message}`)
 
     authed.customerA = await signIn(emails.customerA)
     authed.customerB = await signIn(emails.customerB)

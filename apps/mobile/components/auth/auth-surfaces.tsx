@@ -130,6 +130,7 @@ export function LoginRoleSurface() {
             }
       }
       workerRegistrationIntentRef.current = false
+      if (role === 'customer') router.replace('/(customer)/home' as never)
       return result
     },
     onForgotPassword: async ({ email }: { email: string }) => auth.requestPasswordRecovery(email),
@@ -192,12 +193,14 @@ export function LoginRoleSurface() {
           nextStep: 'signup-confirmation' as const,
         }
       }
-      return result.success
-        ? { success: true }
-        : {
-            success: false,
-            error: localizeEntryAuthError(result.error, language, 'signupFailed'),
-          }
+      if (result.success) {
+        router.replace('/(customer)/home' as never)
+        return { success: true }
+      }
+      return {
+        success: false,
+        error: localizeEntryAuthError(result.error, language, 'signupFailed'),
+      }
     },
     onResendSignupConfirmation: auth.resendSignupConfirmation,
   }), [auth, copy, language, router])
