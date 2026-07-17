@@ -108,7 +108,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('keeps customer-visible mobile-api validation copy as accented Vietnamese', () => {
     const functionFiles = [
       'supabase/functions/mobile-api/_shared/router.ts',
-      'supabase/functions/mobile-api/_shared/services/_shared.ts',
+      'supabase/functions/mobile-api/_shared/services/_runtime/shared.ts',
       'supabase/functions/mobile-api/_shared/services/admin-learning.service.ts',
     ].map(read).join('\n')
 
@@ -351,9 +351,9 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(services).toContain('purpose: apiLogPurposeForPipelineStage(stage.stage)')
     expect(services).toContain('purpose: "scope_change"')
     expect(services).toContain('surface: "kael_chat"')
-    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('return "intent_classification"')
-    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('return "vision_analysis"')
-    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('return "market_lookup"')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/_runtime/audit.ts')).toContain('return "intent_classification"')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/_runtime/audit.ts')).toContain('return "vision_analysis"')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/_runtime/audit.ts')).toContain('return "market_lookup"')
     expect(logApiCall).toContain('purpose: string')
     expect(logApiCall).toContain('purpose: log.purpose')
     expect(createJob).toContain('purpose: apiLogPurposeForPipelineStage(stage.stage)')
@@ -761,7 +761,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('does not normalize unknown worker registration districts into city-wide coverage', () => {
     const edgeServices = readEdgeServiceLayer()
-    const edgeDb = read('supabase/functions/mobile-api/_shared/services/db.ts')
+    const edgeDb = read('supabase/functions/mobile-api/_shared/services/_runtime/db.ts')
     const nextRegister = read('apps/api/src/lib/workers/register.ts')
 
     expect(edgeServices).toContain('normalizeWorkerDistricts')
@@ -932,7 +932,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('private.is_job_customer')
     expect(migration).toContain("(storage.foldername(name))[2] in ('after', 'cancellation_evidence')")
     expect(migration).toContain('private.is_job_worker')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_shared.ts')).toContain(
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_runtime/shared.ts')).toContain(
       'JOB_NOT_CANCELLABLE',
     )
   })
@@ -968,11 +968,11 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('is_suspended = true')
     expect(migration).not.toMatch(/rating\s*=/i)
     expect(vietmapMigration).toContain("'vietmap'")
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_shared.ts')).toContain('VIETMAP_API_KEY')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_runtime/shared.ts')).toContain('VIETMAP_API_KEY')
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://maps.vietmap.vn/api/autocomplete/v4')
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://maps.vietmap.vn/api/search/v4')
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://maps.vietmap.vn/api/place/v4')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_shared.ts')).toContain('GOOGLE_MAPS_API_KEY')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_runtime/shared.ts')).toContain('GOOGLE_MAPS_API_KEY')
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://places.googleapis.com/v1/places:autocomplete')
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://maps.googleapis.com/maps/api/geocode/json')
     expect(edgeServices).toContain('placesAutocomplete')

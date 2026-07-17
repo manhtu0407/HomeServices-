@@ -1,9 +1,9 @@
 // Edge service db layer (C4 6a, services/* split): Supabase-client types (DbClient/Chain) plus
 // the db/dbQuery/fetch helpers the service runs queries through. Re-exported via ./_shared.ts.
 
-import type { MobileApiContext } from "../router.ts";
-import { HCMC_DISTRICTS, normalizeDistrict } from "../../../_shared/domain.ts";
-import { fetchBufferedWithTimeout } from "../../../_shared/network.ts";
+import type { MobileApiContext } from "../../router.ts";
+import { HCMC_DISTRICTS, normalizeDistrict } from "../../../../_shared/domain.ts";
+import { fetchBufferedWithTimeout } from "../../../../_shared/network.ts";
 
 const MAPS_PROVIDER_TIMEOUT_MS = 5_000;
 export const MAPS_PROVIDER_MAX_RESPONSE_BYTES = 4 * 1024 * 1024;

@@ -8,10 +8,10 @@ import type {
 } from "../../../../_shared/domain.ts";
 import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../../kael/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
-import { asJobStatus, asNumber, asString, nullableString } from "../coercions.ts";
+import { asJobStatus, asNumber, asString, nullableString } from "../_runtime/coercions.ts";
 import { answerKaelAssistant } from "./assistant.ts";
 import { cancelJob, requestCustomerCancellation } from "../customer-cancellation.service.ts";
-import { db, dbQuery, type DbClient } from "../db.ts";
+import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import type {
   EdgeCustomerKaelConversationCaseAction,
   EdgeCustomerKaelConversationSessionResponse,

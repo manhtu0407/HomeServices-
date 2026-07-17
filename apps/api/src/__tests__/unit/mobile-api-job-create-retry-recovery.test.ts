@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   runKaelPipeline: vi.fn(),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/_shared.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared.ts', () => ({
   estimatePriceSourceFromStageLogs: () => 'baseline',
   sourceTrustSecretsForRequest: (secrets: unknown) => secrets,
 }))
@@ -41,7 +41,7 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/notificat
   insertUserNotification: vi.fn(async () => undefined),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/audit.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/_runtime/audit.ts', () => ({
   apiLogPurposeForPipelineStage: () => 'job_analysis',
   logApiCalls: vi.fn(async () => undefined),
   logJobEvent: mocks.logJobEvent,

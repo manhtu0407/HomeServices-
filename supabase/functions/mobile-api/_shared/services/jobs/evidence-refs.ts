@@ -5,7 +5,7 @@ import { apiFailure } from "../../router.ts";
 import {
   JOB_MEDIA_STAGES,
 } from "../../../../_shared/domain-evidence.ts";
-import { dbQuery, type DbClient } from "../db.ts";
+import { dbQuery, type DbClient } from "../_runtime/db.ts";
 
 const JOB_MEDIA_REF_PATTERN = new RegExp(
   `^supabase://job-media/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/(${JOB_MEDIA_STAGES.join("|")})/((?!.*(?:\\.\\.|//))[^\\s?#/]+)$`,

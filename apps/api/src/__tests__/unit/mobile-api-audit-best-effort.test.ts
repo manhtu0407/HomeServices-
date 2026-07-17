@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   logJobEvent,
   logMemoryAudit,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/audit'
-import type { DbClient } from '../../../../../supabase/functions/mobile-api/_shared/services/db'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/audit'
+import type { DbClient } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/db'
 
 describe('mobile-api best-effort audit visibility', () => {
   afterEach(() => {

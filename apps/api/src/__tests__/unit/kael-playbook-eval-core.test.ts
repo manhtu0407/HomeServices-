@@ -501,7 +501,7 @@ describe('Kael playbook eval core', () => {
     expect(runner).toContain('**NEEDS_HOLDOUT**')
     for (const sourceFile of [
       'supabase/functions/mobile-api/_shared/kael/index.ts',
-      'supabase/functions/mobile-api/_shared/services/serializers.ts',
+      'supabase/functions/mobile-api/_shared/services/_runtime/serializers.ts',
     ]) {
       expect(runner).toContain(`'${sourceFile}'`)
     }

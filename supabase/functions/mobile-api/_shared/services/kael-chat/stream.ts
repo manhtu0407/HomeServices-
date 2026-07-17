@@ -2,7 +2,7 @@
 // worker Kael chat turn pipelines (poll progress -> emit stage/result/heartbeat). Imports the chat APIs
 // one-way. Imported by services.ts for the createEdgeServices wiring.
 
-import { db } from "../db.ts";
+import { db } from "../_runtime/db.ts";
 import { getKaelChat, readKaelChatProgressSnapshot, sendKaelChatTurn } from "./index.ts";
 import { readWorkerKaelSession, sendWorkerKaelChatTurn, serializeWorkerKaelSession } from "../worker-kael-chat.service.ts";
 import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../../sse.ts";

@@ -2,9 +2,9 @@
 // session create/turn + progress reads. The turn/estimate/boundary/demanding engine lives in
 // kael-chat-core.ts. The streaming wrappers + confirm bridge stay in services.ts (import one-way).
 
-import { asBoolean, asNumber, asRecord, asString, asStringArray, asKaelChatStatus, asServiceType, nullableString } from "../coercions.ts";
-import { db, dbQuery, type DbClient } from "../db.ts";
-import { compactMetadata, mergeLimitedRefs } from "../_shared.ts";
+import { asBoolean, asNumber, asRecord, asString, asStringArray, asKaelChatStatus, asServiceType, nullableString } from "../_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
+import { compactMetadata, mergeLimitedRefs } from "../_runtime/shared.ts";
 import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "../apartment-access.service.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { checkKaelChatRateLimit } from "../../rate-limit.ts";

@@ -8,7 +8,7 @@ import { buildWorkerBriefOutput } from "../kael/index.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
 import { projectAddressAccess } from "./apartment-access.service.ts";
-import { logJobEvent } from "./audit.ts";
+import { logJobEvent } from "./_runtime/audit.ts";
 import {
   createBroadcasts,
   expireStaleBroadcasts,
@@ -18,8 +18,8 @@ import {
   listBroadcastRecipientWorkerIds,
   runWithBroadcastRetryLease,
 } from "./broadcasts.service.ts";
-import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
+import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "./_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "./_runtime/db.ts";
 import { insertUserNotification, notifyCustomerWorkerMatched } from "./notifications.service.ts";
 import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
 

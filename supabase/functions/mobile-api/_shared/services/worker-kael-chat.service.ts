@@ -2,10 +2,10 @@
 // one-shot Q&A (askKaelForWorker) + the worker chat session pipeline (create/turn/list/get) with vision
 // + runWorkerAssist. The worker stream wrapper stays in services.ts and imports these one-way.
 
-import { asBoolean, asNumber, asRecord, asString, asStringArray, nullableRecord, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { ACTIVE_WORKER_JOB_STATUSES, compactMetadata } from "./_shared.ts";
-import { auditGuardrailTripBestEffort, isWorkerAssistGuardrailReason } from "./audit.ts";
+import { asBoolean, asNumber, asRecord, asString, asStringArray, nullableRecord, nullableString } from "./_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "./_runtime/db.ts";
+import { ACTIVE_WORKER_JOB_STATUSES, compactMetadata } from "./_runtime/shared.ts";
+import { auditGuardrailTripBestEffort, isWorkerAssistGuardrailReason } from "./_runtime/audit.ts";
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { buildWorkerKaelSessionTitle, runWorkerAssist, sanitizeKaelText, sanitizeWorkerKaelSessionTitle, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type EdgeAiSecrets } from "../kael/index.ts";

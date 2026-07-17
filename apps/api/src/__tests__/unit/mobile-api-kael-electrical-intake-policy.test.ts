@@ -18,7 +18,7 @@ import { maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn }
 import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
 import { buildInitialDiagnosisScopeArtifact, buildKaelMissingInfoArtifactProposal } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
 import { diagnosisScopeWithQuestion } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/case-work'
-import { formatKaelEstimateText, serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+import { formatKaelEstimateText, serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 
 describe('Kael electrical minimum-slot policy', () => {
   it('gates an installation estimate on device, wiring path, and parts only', () => {

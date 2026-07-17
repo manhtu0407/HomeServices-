@@ -29,7 +29,7 @@ describe('Edge fetch guard wiring', () => {
 
   it.each([
     'supabase/functions/mobile-api/_shared/auth.ts',
-    'supabase/functions/mobile-api/_shared/services/db.ts',
+    'supabase/functions/mobile-api/_shared/services/_runtime/db.ts',
   ])('buffers bounded SDK/provider responses through the shared deadline guard: %s', (file) => {
     const source = read(file)
     expect(source).toContain('fetchBufferedWithTimeout')
@@ -67,7 +67,7 @@ describe('Edge fetch guard wiring', () => {
   })
 
   it('rejects redirects on every Edge fetch that carries provider credentials or signed URLs', () => {
-    expect(read('supabase/functions/mobile-api/_shared/services/db.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/services/_runtime/db.ts'))
       .toContain('redirect: "error"')
     expect(read('supabase/functions/mobile-api/_shared/push.ts'))
       .toContain('redirect: "error"')

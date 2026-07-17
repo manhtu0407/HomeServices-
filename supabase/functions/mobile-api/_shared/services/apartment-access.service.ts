@@ -1,14 +1,14 @@
 // Edge service apartment-access domain (C4 6a, services/* split): the X-2 unit-access projection
 // + sanitize/persist/state-builder helpers + authorizeApartmentAccess. Imported directly by services.ts.
 
-import { asJobStatus, asRecord, nullableRecord, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { ACTIVE_WORKER_JOB_STATUSES, compactMetadata, evaluateJobChatContactGuard, normalizeGuardText } from "./_shared.ts";
+import { asJobStatus, asRecord, nullableRecord, nullableString } from "./_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "./_runtime/db.ts";
+import { ACTIVE_WORKER_JOB_STATUSES, compactMetadata, evaluateJobChatContactGuard, normalizeGuardText } from "./_runtime/shared.ts";
 import { apiFailure, type MobileApiContext, type WorkerStatusUpdateInput } from "../router.ts";
 import { sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { ApartmentAccessProfileInput, JobStatus } from "../../../_shared/domain.ts";
 import { requireJobAccess } from "../access.ts";
-import { logJobEvent } from "./audit.ts";
+import { logJobEvent } from "./_runtime/audit.ts";
 
 type AddressAccessStage = "area_only" | "building_released" | "unit_released";
 

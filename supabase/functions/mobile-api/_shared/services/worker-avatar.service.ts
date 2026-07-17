@@ -5,9 +5,9 @@ import {
 } from "../../../_shared/domain.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { checkRateLimit, type RateLimitConfig } from "../rate-limit.ts";
-import { db, dbQuery } from "./db.ts";
+import { db, dbQuery } from "./_runtime/db.ts";
 import { inspectJobMediaContent } from "./jobs/media-content-policy.ts";
-import { nullableString } from "./coercions.ts";
+import { nullableString } from "./_runtime/coercions.ts";
 
 type WorkerAvatarBucket = {
   createSignedUploadUrl(path: string): Promise<{

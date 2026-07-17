@@ -4,22 +4,22 @@
 import {
   SERVICE_TYPES,
   type ServiceType,
-} from "../../../_shared/domain.ts";
+} from "../../../../_shared/domain.ts";
 import type {
   ComplexityLevel,
   JobStatus,
   LearningCandidateStatus,
   MessageSender,
   WorkerVerificationStatus,
-} from "../../../_shared/domain.ts";
-import type { KaelChatStatus } from "../../../_shared/contracts.ts";
+} from "../../../../_shared/domain.ts";
+import type { KaelChatStatus } from "../../../../_shared/contracts.ts";
 import type {
   CustomerCancellationAbuseSignal,
   CustomerCancellationSubCase,
   WorkerCancellationAbuseSignal,
   WorkerCancellationExpectedCategory,
   WorkerCancellationReasonCode,
-} from "../kael/index.ts";
+} from "../../kael/index.ts";
 
 export type KaelChatTurnRole = "customer" | "kael" | "system";
 

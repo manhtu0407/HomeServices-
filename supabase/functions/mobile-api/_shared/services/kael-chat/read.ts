@@ -1,9 +1,9 @@
-import { db, dbQuery } from "../db.ts";
+import { db, dbQuery } from "../_runtime/db.ts";
 import {
   parseKaelProgressSnapshot,
   serializeKaelSession,
   serializeKaelTurn,
-} from "../_shared.ts";
+} from "../_runtime/shared.ts";
 import { assertKaelSessionOwnership } from "./session-store.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 

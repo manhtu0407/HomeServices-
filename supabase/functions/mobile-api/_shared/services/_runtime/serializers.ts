@@ -1,11 +1,11 @@
-import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../_shared/contracts.ts";
-import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../kael/artifact-contract.ts";
+import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../../_shared/contracts.ts";
+import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../../kael/artifact-contract.ts";
 import {
   PRICE_DISCLAIMER,
   intakeEvalObservationSchema,
   isIntakeEvalObservationExposureEnabled,
-} from "../kael/index.ts";
-import { apiFailure } from "../router.ts";
+} from "../../kael/index.ts";
+import { apiFailure } from "../../router.ts";
 import {
   asComplexityOrNull,
   asRecord,

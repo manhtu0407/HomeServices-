@@ -2,10 +2,10 @@
 // (Kael AI re-pricing) + explicit customer decision. getCurrentScopeChange stays in
 // services.ts (uses the local parseKaelProgressSnapshot). Imported directly by services.ts.
 
-import { asComplexityOrNull, asRecord, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { mapScopeDecisionError, mapScopeRequestError, readEdgeEnvNumber } from "./_shared.ts";
-import { logApiCalls, logJobEvent, queueKaelLearningEvent } from "./audit.ts";
+import { asComplexityOrNull, asRecord, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "./_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "./_runtime/db.ts";
+import { mapScopeDecisionError, mapScopeRequestError, readEdgeEnvNumber } from "./_runtime/shared.ts";
+import { logApiCalls, logJobEvent, queueKaelLearningEvent } from "./_runtime/audit.ts";
 import { notifyCustomerScopeChangeRequested, notifyWorkerScopeDecision } from "./notifications.service.ts";
 import {
   buildDirectScopeEffectPayloads,

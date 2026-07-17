@@ -7,7 +7,7 @@ import {
   serializeKaelEstimate,
   serializeKaelSession,
   serializeKaelTurn,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,

@@ -2,9 +2,9 @@
 // job detail (getJob), the customer's active job (listCustomerActiveJobs), pending scope decisions
 // (listMyPendingDecisions), and the current scope-change reader. No workflow mutation. Imported by services.ts.
 
-import { asJobStatus, asNumber, asServiceType, asString, asStringArray, nullableComplexity, nullableNumber, nullableRecord, nullableString } from "../coercions.ts";
-import { db, dbQuery, type DbClient } from "../db.ts";
-import { JOB_DETAIL_SELECT, parseKaelProgressSnapshot } from "../_shared.ts";
+import { asJobStatus, asNumber, asServiceType, asString, asStringArray, nullableComplexity, nullableNumber, nullableRecord, nullableString } from "../_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
+import { JOB_DETAIL_SELECT, parseKaelProgressSnapshot } from "../_runtime/shared.ts";
 import { getJobBroadcastState } from "../broadcasts.service.ts";
 import { projectAddressAccess } from "../apartment-access.service.ts";
 import { requireJobAccess } from "../../access.ts";

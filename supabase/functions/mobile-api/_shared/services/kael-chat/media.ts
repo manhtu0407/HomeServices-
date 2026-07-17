@@ -8,8 +8,8 @@ import type {
   EdgeKaelChatMediaUploadInput,
 } from "../../../../_shared/domain.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
-import { asBoolean, asNumber, nullableString } from "../coercions.ts";
-import { db, dbQuery } from "../db.ts";
+import { asBoolean, asNumber, nullableString } from "../_runtime/coercions.ts";
+import { db, dbQuery } from "../_runtime/db.ts";
 
 type KaelMediaStorage = {
   storage?: {

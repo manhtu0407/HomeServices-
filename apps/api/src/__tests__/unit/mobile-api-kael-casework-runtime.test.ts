@@ -14,8 +14,8 @@ const completionReviewService = readFileSync(join(root, 'services/completion-rev
 const jobStatusService = readFileSync(join(root, 'services/jobs/status.ts'), 'utf8')
 const pipeline = readFileSync(join(root, 'kael/pipeline.ts'), 'utf8')
 const sharedService = [
-  readFileSync(join(root, 'services/_shared.ts'), 'utf8'),
-  readFileSync(join(root, 'services/serializers.ts'), 'utf8'),
+  readFileSync(join(root, 'services/_runtime/shared.ts'), 'utf8'),
+  readFileSync(join(root, 'services/_runtime/serializers.ts'), 'utf8'),
 ].join('\n')
 const jobCreateService = readFileSync(join(root, 'services/jobs/create.ts'), 'utf8')
 

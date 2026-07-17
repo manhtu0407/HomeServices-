@@ -68,7 +68,7 @@ describe('Kael orchestrator facade', () => {
     ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/jobs/create.ts'), 'utf8')
 
     const autonomyGateSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/autonomy-gate.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/_runtime/autonomy-gate.ts'),
       'utf8',
     )
     const scopeChangeSource = readFileSync(

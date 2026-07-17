@@ -8,8 +8,8 @@ import { ELECTRICAL_PLAYBOOK_VERSION, isElectricalPlaybookEnabled } from "../../
 import { kaelIntakeDiagnosisPromptVersion } from "../../kael/prompts.ts";
 import { isKaelAiKillSwitchEnabled } from "../../kael/spend-gate.ts";
 import { intakeEvalObservationSchema, updateKaelProgress, type IntakeEvalObservation } from "../../kael/index.ts";
-import { auditGuardrailTripBestEffort } from "../audit.ts";
-import type { DbClient } from "../db.ts";
+import { auditGuardrailTripBestEffort } from "../_runtime/audit.ts";
+import type { DbClient } from "../_runtime/db.ts";
 import { appendKaelSystemTurn } from "./session-store.ts";
 import { mergeBoundarySafetyGuidance, persistentKaelSafetySignals } from "./intake-safety.ts";
 

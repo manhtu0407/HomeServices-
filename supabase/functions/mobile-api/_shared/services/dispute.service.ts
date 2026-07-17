@@ -1,11 +1,11 @@
 // Edge service dispute domain (C4 6a, services/* split): open / counter-statement / admin-decide,
 // each via an atomic RPC with Kael neutral-summary guarding. Imported directly by services.ts.
 
-import { asBoolean, asDisputePriority, asString, nullableString } from "./coercions.ts";
-import { db, dbQuery } from "./db.ts";
+import { asBoolean, asDisputePriority, asString, nullableString } from "./_runtime/coercions.ts";
+import { db, dbQuery } from "./_runtime/db.ts";
 import { validateJobEvidenceRefs, type JobEvidenceStage } from "./jobs/evidence-refs.ts";
-import { mapDisputeCounterError, mapDisputeDecisionError, mapDisputeOpenError } from "./_shared.ts";
-import { logJobEvent } from "./audit.ts";
+import { mapDisputeCounterError, mapDisputeDecisionError, mapDisputeOpenError } from "./_runtime/shared.ts";
+import { logJobEvent } from "./_runtime/audit.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { assertNeutralDisputeLanguage, buildNeutralDisputeSummary, determineDisputeSubCase, type DisputeType } from "../kael/index.ts";
 import type { DisputeAdminDecisionInput, DisputeCounterStatementInput, DisputeOpenRequestInput } from "../../../_shared/domain.ts";

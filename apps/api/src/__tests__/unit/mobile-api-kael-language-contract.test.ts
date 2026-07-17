@@ -10,7 +10,7 @@ import {
   unsupportedServiceMessage,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
-import { formatKaelEstimateText } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+import { formatKaelEstimateText } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 
 describe('mobile-api Kael customer-visible language contract', () => {
   it('localizes deterministic unsupported, advisory, and disclaimer copy', () => {

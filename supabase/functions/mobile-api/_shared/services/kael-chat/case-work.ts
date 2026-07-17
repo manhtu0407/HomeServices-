@@ -9,9 +9,9 @@ import {
   type KaelDiagnosisScopeArtifact,
 } from "../../kael/index.ts";
 import { apiFailure } from "../../router.ts";
-import { compactMetadata, type KaelChatTurnRole } from "../_shared.ts";
-import { asKaelTurnRole, asNumber, asString, nullableString } from "../coercions.ts";
-import { dbQuery, type DbClient } from "../db.ts";
+import { compactMetadata, type KaelChatTurnRole } from "../_runtime/shared.ts";
+import { asKaelTurnRole, asNumber, asString, nullableString } from "../_runtime/coercions.ts";
+import { dbQuery, type DbClient } from "../_runtime/db.ts";
 import { buildUntrustedConversationContext } from "../../kael/untrusted-evidence.ts";
 
 export async function loadDiagnosisScopeArtifact(

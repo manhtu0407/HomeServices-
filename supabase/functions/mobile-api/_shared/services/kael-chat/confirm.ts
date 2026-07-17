@@ -3,9 +3,9 @@
 // (matching) with a chat-matching autonomy decision. Internal: matching-decision builder +
 // confirmed-state reader. Imported by services.ts for wiring.
 
-import { asBoolean, asString, nullableString } from "../coercions.ts";
-import { db, dbQuery } from "../db.ts";
-import { mapConfirmKaelChatError } from "../_shared.ts";
+import { asBoolean, asString, nullableString } from "../_runtime/coercions.ts";
+import { db, dbQuery } from "../_runtime/db.ts";
+import { mapConfirmKaelChatError } from "../_runtime/shared.ts";
 import { geocodeConfirmedKaelJob } from "../places-geo.service.ts";
 import { confirmSearch } from "../matching.service.ts";
 import { hasActiveBroadcast } from "../broadcasts.service.ts";

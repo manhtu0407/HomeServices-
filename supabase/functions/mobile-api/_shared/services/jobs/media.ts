@@ -2,10 +2,10 @@
 // job (role + workflow-stage gated, dedup by object_path, mirrors before/after refs onto the job).
 // Imported by services.ts for wiring.
 
-import { asBoolean, asNumber, asServiceType, asStringArray, nullableString } from "../coercions.ts";
-import { db, dbQuery } from "../db.ts";
-import { logJobEvent } from "../audit.ts";
-import { canAttachJobMediaStage, mergeLimitedRefs, storageRef, validateJobMediaPath } from "../_shared.ts";
+import { asBoolean, asNumber, asServiceType, asStringArray, nullableString } from "../_runtime/coercions.ts";
+import { db, dbQuery } from "../_runtime/db.ts";
+import { logJobEvent } from "../_runtime/audit.ts";
+import { canAttachJobMediaStage, mergeLimitedRefs, storageRef, validateJobMediaPath } from "../_runtime/shared.ts";
 import { requireJobAccess } from "../../access.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { validateWorkflowCommand } from "../../workflow-orchestrator.ts";

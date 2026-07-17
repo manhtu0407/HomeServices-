@@ -8,7 +8,7 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work-controls'
 import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
 import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
-import { serializeKaelEstimate } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+import { serializeKaelEstimate } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 
 describe('Kael Case Work deterministic controls', () => {
   it('requires every selected profile quote driver to have a structured fact', () => {

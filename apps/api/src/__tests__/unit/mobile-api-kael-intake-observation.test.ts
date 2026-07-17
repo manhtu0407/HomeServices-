@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+import { serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 import { intakeEvalObservationSchema, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import { runKaelPipeline } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline'
 import { buildFocusedClarificationQuestion, resolveIntakeFactCoverage } from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-runtime'
@@ -642,7 +642,7 @@ describe('Kael intake eval observation boundary', () => {
       process.cwd(),
       'scripts/kael-playbook-eval.mjs',
     ), 'utf8')
-    expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/_shared.ts'")
+    expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/_runtime/shared.ts'")
     expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/kael-chat/intake-safety.ts'")
     expect(runner).toContain("'supabase/functions/mobile-api/_shared/kael/performance-profiles.ts'")
   })

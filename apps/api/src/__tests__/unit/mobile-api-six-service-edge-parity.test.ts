@@ -15,7 +15,7 @@ import {
   asServiceType,
   asServiceTypeArray,
   nullableServiceType,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/coercions'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/coercions'
 import {
   buildFallbackIntent,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
@@ -40,7 +40,7 @@ import {
 import {
   kaelServiceLabelVi,
   serviceLabel,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 import {
   buildCustomerProfileInsights,
 } from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'

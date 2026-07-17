@@ -3,17 +3,17 @@
 
 import { dbQuery, type DbClient } from "./db.ts";
 import { nullableString } from "./coercions.ts";
-import type { MobileApiContext } from "../router.ts";
-import type { JobStatus } from "../../../_shared/domain.ts";
-import { buildKaelOptimizationMetricRows, readKaelOptimizationFlags } from "../kael/cost-tracking.ts";
+import type { MobileApiContext } from "../../router.ts";
+import type { JobStatus } from "../../../../_shared/domain.ts";
+import { buildKaelOptimizationMetricRows, readKaelOptimizationFlags } from "../../kael/cost-tracking.ts";
 import {
   queueLearningForBatch,
   queueLearningSkillTriggers,
   type LearningSkillInput,
   type LearningSkillTrigger,
   type PipelineStageLog,
-} from "../kael/index.ts";
-import { auditKaelGuardrailTrip } from "../kael/self-check.ts";
+} from "../../kael/index.ts";
+import { auditKaelGuardrailTrip } from "../../kael/self-check.ts";
 
 export async function logJobEvent(
   client: DbClient,

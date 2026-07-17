@@ -4,8 +4,8 @@ import { runCustomerAssistant, type EdgeAiSecrets } from "../../kael/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../../rate-limit.ts";
 import type { JobStatus, KaelAssistantInput } from "../../../../_shared/domain.ts";
-import { asString, nullableString } from "../coercions.ts";
-import { db } from "../db.ts";
+import { asString, nullableString } from "../_runtime/coercions.ts";
+import { db } from "../_runtime/db.ts";
 
 const CUSTOMER_CASE_ACTIVE_STATUSES: readonly JobStatus[] = [
   "awaiting_customer_confirm",

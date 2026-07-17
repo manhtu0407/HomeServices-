@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   asNumber,
   nullableNumber,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/coercions'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/coercions'
 
 describe('mobile-api service numeric coercions', () => {
   it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, 'Infinity'])(

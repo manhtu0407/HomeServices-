@@ -3,9 +3,9 @@ import type {
   WorkerAssistProviderAttempt,
 } from "../kael/index.ts";
 import { apiFailure } from "../router.ts";
-import { compactMetadata } from "./_shared.ts";
-import { asBoolean, nullableString } from "./coercions.ts";
-import { dbQuery, type DbClient } from "./db.ts";
+import { compactMetadata } from "./_runtime/shared.ts";
+import { asBoolean, nullableString } from "./_runtime/coercions.ts";
+import { dbQuery, type DbClient } from "./_runtime/db.ts";
 
 export async function claimWorkerKaelChatTurn(
   client: DbClient,

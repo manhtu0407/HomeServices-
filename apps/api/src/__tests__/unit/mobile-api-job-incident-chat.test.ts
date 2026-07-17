@@ -11,11 +11,11 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/kael/index.ts', ()
   scrubSensitiveForLLM: (value: string) => value,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/audit.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/_runtime/audit.ts', () => ({
   logApiCalls: mocks.logApiCalls,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/coercions.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/_runtime/coercions.ts', () => ({
   asNumber: (value: unknown) => Number(value ?? 0),
   asRecord: (value: unknown) => typeof value === 'object' && value !== null ? value : {},
   asString: (value: unknown) => typeof value === 'string' ? value : '',

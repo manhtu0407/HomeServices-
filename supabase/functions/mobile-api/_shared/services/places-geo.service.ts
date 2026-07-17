@@ -1,15 +1,15 @@
 // Edge service places-geo domain (C4 6a, services/* split): Vietmap/Google places-autocomplete
 // + address geocoding (write-back to jobs) + the maps URL consts. Imported directly by services.ts.
 
-import { asRecord, nullableNumber, nullableRecord, nullableString } from "./coercions.ts";
+import { asRecord, nullableNumber, nullableRecord, nullableString } from "./_runtime/coercions.ts";
 import {
   dbQuery,
   fetchJsonWithTimeout,
   MAPS_PROVIDER_MAX_RESPONSE_BYTES,
   type DbClient,
-} from "./db.ts";
+} from "./_runtime/db.ts";
 import { readResponseJsonBounded } from "../../../_shared/network.ts";
-import { compactMetadata, districtLabel, readGoogleMapsApiKey, readVietmapApiKey } from "./_shared.ts";
+import { compactMetadata, districtLabel, readGoogleMapsApiKey, readVietmapApiKey } from "./_runtime/shared.ts";
 import {
   apiFailure,
   type MobileApiContext,

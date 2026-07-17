@@ -1,9 +1,9 @@
 // Edge service notifications domain (C4 6a, services/* split): notification list/read/device
 // API endpoints + notify* push senders + insertUserNotification. Imported directly by services.ts.
 
-import { asBoolean, asString, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { districtLabel, serviceLabel } from "./_shared.ts";
+import { asBoolean, asString, nullableString } from "./_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "./_runtime/db.ts";
+import { districtLabel, serviceLabel } from "./_runtime/shared.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { sendPushToUser } from "../push.ts";
 import type {
