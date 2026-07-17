@@ -1,6 +1,6 @@
 import { KAEL_ROUTING_CONFIG, type ProviderRoute } from "./routing.config.ts";
 import { KAEL_PURPOSES, type AIProvider, type KaelPurpose } from "./types.ts";
-import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
+import { KAEL_CIRCUIT_BREAKER } from "./guards/circuit-breaker.ts";
 
 export type ProviderChoice = ProviderRoute & {
   readonly purpose: KaelPurpose;

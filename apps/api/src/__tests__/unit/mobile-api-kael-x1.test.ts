@@ -4,7 +4,7 @@ import {
   detectPromptInjection,
   detectServiceMismatch,
   evaluateMessageBoundary,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/boundary-guard'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/boundary-guard'
 
 // The boundary guard rejects out-of-scope,
 // prompt-injection, and service-mismatch messages BEFORE any provider call.

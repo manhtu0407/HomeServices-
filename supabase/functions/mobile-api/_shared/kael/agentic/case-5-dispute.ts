@@ -1,4 +1,4 @@
-import { detectForbiddenAiDecisionText } from "../ai-boundary-contract.ts";
+import { detectForbiddenAiDecisionText } from "../guards/ai-boundary-contract.ts";
 
 export type DisputeType =
   | "completion_rejected"

@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
 import {
   isDurableCircuitOpen,
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
   takeDurableKaelChatRateLimit,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/durable-guards'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/durable-guards'
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
 
 afterEach(() => {

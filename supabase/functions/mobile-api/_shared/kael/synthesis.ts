@@ -1,6 +1,6 @@
 import type { ComplexityLevel, MarketPriceResult, ServiceType, SupabaseLike } from "./types.ts";
 import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, PROBLEM_SLUGS_BY_SERVICE } from "./types.ts";
-import { positiveNumberFrom, withDbTimeout } from "./utils.ts";
+import { positiveNumberFrom, withDbTimeout } from "./_runtime/utils.ts";
 
 const COMPLEXITIES: ComplexityLevel[] = ["small", "medium", "large"];
 const MARKET_BLEND_WEIGHT = 0.5;

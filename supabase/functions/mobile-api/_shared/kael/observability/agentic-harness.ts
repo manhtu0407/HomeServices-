@@ -3,10 +3,10 @@ import {
   type KaelMobileAction,
   type KaelWorkflowPhase,
   type KaelEdgeRoute,
-} from "./path-control.ts";
+} from "../path-control.ts";
 import { buildKaelTraceEvent, type KaelSafeTraceEvent } from "./trace.ts";
-import type { AIProvider, KaelPurpose } from "./types.ts";
-import type { KaelActorRole } from "./permission-gate.ts";
+import type { AIProvider, KaelPurpose } from "../types.ts";
+import type { KaelActorRole } from "../guards/permission-gate.ts";
 
 export type KaelAgenticGoldenScenario = {
   readonly id: "P9" | "P10" | "P11" | "P12" | "P13";

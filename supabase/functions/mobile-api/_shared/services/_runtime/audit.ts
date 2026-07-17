@@ -13,7 +13,7 @@ import {
   type LearningSkillTrigger,
   type PipelineStageLog,
 } from "../../kael/index.ts";
-import { auditKaelGuardrailTrip } from "../../kael/self-check.ts";
+import { auditKaelGuardrailTrip } from "../../kael/guards/self-check.ts";
 
 export async function logJobEvent(
   client: DbClient,

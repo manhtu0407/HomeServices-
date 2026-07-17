@@ -16,7 +16,7 @@ import {
   evaluateKaelPermissionGateWithBoundaries,
   hasKaelForbiddenTopicBoundarySignal,
   type KaelTopic,
-} from "./permission-gate.ts";
+} from "./guards/permission-gate.ts";
 import {
   isKaelKnowledgeRetrievalEnabled,
   type KaelKnowledgeContext,
@@ -26,7 +26,7 @@ import {
 } from "./knowledge.ts";
 import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
-import { guardOutput } from "./output-gateway.ts";
+import { guardOutput } from "./guards/output-gateway.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
 import { buildRegisterHint, detectRegionalRegister } from "./regional-register.ts";
 import { getKaelPerformanceProfile } from "./performance-profiles.ts";
@@ -34,9 +34,9 @@ import {
   buildNoProviderTrace,
   buildProviderAttemptTrace,
   type KaelSafeTraceEvent,
-} from "./trace.ts";
-import { scrubSensitiveForLLM } from "./utils.ts";
-import type { KaelSpendGate, SpendGateClient } from "./spend-gate.ts";
+} from "./observability/trace.ts";
+import { scrubSensitiveForLLM } from "./_runtime/utils.ts";
+import type { KaelSpendGate, SpendGateClient } from "./guards/spend-gate.ts";
 
 type AssistantClient = Parameters<typeof retrieveKaelKnowledgeContextIfEnabled>[0];
 

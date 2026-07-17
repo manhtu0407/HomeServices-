@@ -1,4 +1,4 @@
-import type { KaelPurpose } from "./types.ts";
+import type { KaelPurpose } from "../types.ts";
 
 export type KaelProgressStatus = "queued" | "running" | "completed" | "failed";
 export type KaelProgressStage = KaelPurpose | "scope_reviewing" | "scope_estimating";

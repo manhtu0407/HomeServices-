@@ -3,8 +3,8 @@ import type {
   DemandingCustomerEscalationLevel,
 } from "./demanding-customer-detect.ts";
 import { renderEmpathyTemplateV2 } from "../decline-templates.ts";
-import { detectForbiddenAiDecisionText } from "../ai-boundary-contract.ts";
-import { scrubSensitiveForLLM } from "../utils.ts";
+import { detectForbiddenAiDecisionText } from "../guards/ai-boundary-contract.ts";
+import { scrubSensitiveForLLM } from "../_runtime/utils.ts";
 
 export type DemandingCustomerStrategyId =
   | "transparency_expansion"

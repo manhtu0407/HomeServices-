@@ -1,4 +1,4 @@
-import { scrubSensitiveForLLM } from "./utils.ts";
+import { scrubSensitiveForLLM } from "./_runtime/utils.ts";
 
 export type VoiceTranscriptActor = "customer" | "worker";
 export type VoiceTranscriptSource = "on_device_stt" | "typed";

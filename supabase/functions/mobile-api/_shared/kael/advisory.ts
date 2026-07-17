@@ -1,4 +1,4 @@
-import { scrubSensitiveForLLM } from "./utils.ts";
+import { scrubSensitiveForLLM } from "./_runtime/utils.ts";
 
 export function buildAdvisory(
   indicators: string[],

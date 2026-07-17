@@ -6,7 +6,7 @@ import {
 import {
   checkKaelResponse,
   runKaelSelfCheckPipeline,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/self-check'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/self-check'
 import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
 import { createMobileApiHandler, type MobileApiServices } from '../../../../../supabase/functions/mobile-api/_shared/router'
 

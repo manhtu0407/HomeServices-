@@ -11,7 +11,7 @@ import {
   getKaelPerformanceProfile,
   KAEL_CASE_WORK_SERVICE_TYPES,
 } from "./performance-profiles.ts";
-import { scrubSensitiveForLLM, sanitizeVisionPhotoUrls } from "./utils.ts";
+import { scrubSensitiveForLLM, sanitizeVisionPhotoUrls } from "./_runtime/utils.ts";
 import { ELECTRICAL_PLAYBOOK_SEGMENT, isElectricalPlaybookEnabled } from "./playbooks/electrical.ts";
 import { buildRequiredSlotPolicyPrompt } from "./electrical-intake-policy.ts";
 

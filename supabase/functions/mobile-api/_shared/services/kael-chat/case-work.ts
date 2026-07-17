@@ -12,7 +12,7 @@ import { apiFailure } from "../../router.ts";
 import { compactMetadata, type KaelChatTurnRole } from "../_runtime/shared.ts";
 import { asKaelTurnRole, asNumber, asString, nullableString } from "../_runtime/coercions.ts";
 import { dbQuery, type DbClient } from "../_runtime/db.ts";
-import { buildUntrustedConversationContext } from "../../kael/untrusted-evidence.ts";
+import { buildUntrustedConversationContext } from "../../kael/guards/untrusted-evidence.ts";
 
 export async function loadDiagnosisScopeArtifact(
   client: DbClient,

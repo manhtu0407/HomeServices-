@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { guardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-gateway'
+import { guardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/output-gateway'
 
 const repoRoot = join(__dirname, '../../../../../')
 

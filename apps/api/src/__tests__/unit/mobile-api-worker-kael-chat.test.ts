@@ -12,8 +12,8 @@ import {
   prepareWorkerKaelVisionUrls,
   validateWorkerKaelMediaRefs,
 } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael/media'
-import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/ai-boundary-contract'
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/ai-boundary-contract'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
 import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 

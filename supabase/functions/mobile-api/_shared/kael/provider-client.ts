@@ -1,10 +1,10 @@
 import type { AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets } from "./types.ts";
-import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
+import { KAEL_CIRCUIT_BREAKER } from "./guards/circuit-breaker.ts";
 import {
   isDurableCircuitOpen,
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
-} from "./durable-guards.ts";
+} from "./guards/durable-guards.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
 import {
   estimateModelRequestCostUsd,
@@ -17,7 +17,7 @@ import {
   isKaelAiKillSwitchEnabled,
   type KaelSpendGate,
   reserveAiSpend,
-} from "./spend-gate.ts";
+} from "./guards/spend-gate.ts";
 import { readResponseTextBounded } from "../../../_shared/network.ts";
 
 const AI_PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import ts from 'typescript'
 import { z } from 'zod'
 
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
 import { runCustomerAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/customer-assistant'
 import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
 import { searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'

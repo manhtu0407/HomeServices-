@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ComplexityLevel, ServiceType } from "../../../_shared/domain.ts";
 import type { KaelEstimate } from "../../../_shared/contracts.ts";
-import type { KaelSafeTraceEvent } from "./trace.ts";
+import type { KaelSafeTraceEvent } from "./observability/trace.ts";
 import {
   KAEL_CASE_WORK_SERVICE_TYPES,
   listKaelPerformanceProfiles,

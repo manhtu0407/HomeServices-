@@ -1,4 +1,4 @@
-import { sanitizeForLLM } from "../../../_shared/domain.ts";
+import { sanitizeForLLM } from "../../../../_shared/domain.ts";
 
 export function readBooleanEnvFlag(
   value: string | undefined,

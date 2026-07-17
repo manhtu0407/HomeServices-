@@ -1,5 +1,5 @@
 import { requireJobAccess } from "../../access.ts";
-import { takeDurableKaelChatRateLimit } from "../../kael/durable-guards.ts";
+import { takeDurableKaelChatRateLimit } from "../../kael/guards/durable-guards.ts";
 import { runCustomerAssistant, type EdgeAiSecrets } from "../../kael/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../../rate-limit.ts";

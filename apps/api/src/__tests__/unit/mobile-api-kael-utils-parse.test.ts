@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   safeParseJSON,
   scrubSensitiveForLLM,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/utils'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/_runtime/utils'
 
 function nestedJson(depth: number): string {
   let value = '0'

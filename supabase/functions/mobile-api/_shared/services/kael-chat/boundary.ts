@@ -2,11 +2,11 @@
 // sanitized observation metadata, guardrail audit, and terminal progress settlement.
 
 import type { ServiceType } from "../../../../_shared/domain.ts";
-import { evaluateMessageBoundary, type BoundaryDecision } from "../../kael/boundary-guard.ts";
+import { evaluateMessageBoundary, type BoundaryDecision } from "../../kael/guards/boundary-guard.ts";
 import { isIntakeEvalObservationExposureEnabled } from "../../kael/intake-runtime.ts";
 import { ELECTRICAL_PLAYBOOK_VERSION, isElectricalPlaybookEnabled } from "../../kael/playbooks/electrical.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "../../kael/prompts.ts";
-import { isKaelAiKillSwitchEnabled } from "../../kael/spend-gate.ts";
+import { isKaelAiKillSwitchEnabled } from "../../kael/guards/spend-gate.ts";
 import { intakeEvalObservationSchema, updateKaelProgress, type IntakeEvalObservation } from "../../kael/index.ts";
 import { auditGuardrailTripBestEffort } from "../_runtime/audit.ts";
 import type { DbClient } from "../_runtime/db.ts";

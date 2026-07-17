@@ -5,25 +5,25 @@ import {
   type StructuredAIInvoker,
   type StructuredValidationIssue,
 } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./guards/spend-gate.ts";
 import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { buildKaelSystemPrompt } from "./system-prompt.ts";
 import {
   evaluateKaelPermissionGate,
   hasKaelForbiddenTopicBoundarySignal,
-} from "./permission-gate.ts";
-import { guardOutput } from "./output-gateway.ts";
-import { scrubSensitiveForLLM } from "./utils.ts";
+} from "./guards/permission-gate.ts";
+import { guardOutput } from "./guards/output-gateway.ts";
+import { scrubSensitiveForLLM } from "./_runtime/utils.ts";
 import type { KaelPromptLanguage } from "./system-prompt.ts";
-import { detectForbiddenAiDecisionText } from "./ai-boundary-contract.ts";
+import { detectForbiddenAiDecisionText } from "./guards/ai-boundary-contract.ts";
 import {
   buildNoProviderTrace,
   buildProviderAttemptTrace,
   promptVersionForPurpose,
   schemaVersionForPurpose,
   type KaelSafeTraceEvent,
-} from "./trace.ts";
+} from "./observability/trace.ts";
 
 export type WorkerAssistJobContext = {
   readonly id: string;

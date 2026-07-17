@@ -7,7 +7,7 @@ import type {
   MarketSourceEvidenceResult,
   ServiceType,
 } from "./types.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./guards/spend-gate.ts";
 import {
   marketPriceResultSchema,
   marketSourceEvidenceResultSchema,
@@ -34,8 +34,8 @@ import {
   validateCitations,
   type CitationValidationResult,
   type TrustedPerplexityMarketConfig,
-} from "./source-trust.ts";
-import { aggregateTrustedMarketSources } from "./source-trust-aggregation.ts";
+} from "./source-trust/source-trust.ts";
+import { aggregateTrustedMarketSources } from "./source-trust/source-trust-aggregation.ts";
 
 const MARKET_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const MARKET_RANGE_ORDER_INVALID = "MARKET_RANGE_ORDER_INVALID";

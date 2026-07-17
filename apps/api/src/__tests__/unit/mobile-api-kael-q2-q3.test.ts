@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
 import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
 import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
 import {
@@ -16,7 +16,7 @@ import {
   resetSourceTrustRegistryCacheForTest,
   SOURCE_TRUST_VERSION,
   validateCitations,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust/source-trust'
 
 describe('mobile-api Kael Q2/Q3 cost optimization', () => {
   afterEach(() => {

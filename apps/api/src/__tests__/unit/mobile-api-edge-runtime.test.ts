@@ -7,7 +7,7 @@ import {
 import { readEdgeEnv } from '../../../../../supabase/functions/mobile-api/_shared/env'
 import { requireJobAccess } from '../../../../../supabase/functions/mobile-api/_shared/access'
 import { runKaelPipeline, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael'
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
 import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_shared/push'
 import { __resetRateLimitStoreForTests } from '../../../../../supabase/functions/mobile-api/_shared/rate-limit'
 import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'

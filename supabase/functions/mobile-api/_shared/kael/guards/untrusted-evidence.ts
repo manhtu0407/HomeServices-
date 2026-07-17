@@ -1,5 +1,5 @@
-import type { KaelDiagnosisScopeArtifact } from "./artifact-contract.ts";
-import { scrubSensitiveForLLM } from "./utils.ts";
+import type { KaelDiagnosisScopeArtifact } from "../artifact-contract.ts";
+import { scrubSensitiveForLLM } from "../_runtime/utils.ts";
 
 type ConversationEvidenceTurn = {
   readonly role: "customer" | "kael" | "system";

@@ -11,7 +11,7 @@ function read(path: string) {
 describe('Kael Track D guardrail observability schema', () => {
   it('adds an append-only guardrail trip audit table with admin-read/service-role-write RLS', () => {
     const migration = read('supabase/migrations/20260604221500_kael_d_guardrail_trip_audit.sql')
-    const selfCheck = read('supabase/functions/mobile-api/_shared/kael/self-check.ts')
+    const selfCheck = read('supabase/functions/mobile-api/_shared/kael/guards/self-check.ts')
 
     expect(migration).toContain('create table if not exists public.kael_guardrail_trip_audit')
     expect(migration).toContain("source text not null check (source in ('self_check', 'semantic_self_check', 'boundary_guard', 'autonomy_gate'))")

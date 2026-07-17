@@ -7,11 +7,11 @@ import {
   hasStructuredValidationIssue,
   type StructuredAIResponse,
 } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./guards/spend-gate.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
 import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
-import { sanitizeVisionPhotoUrls } from "./utils.ts";
+import { sanitizeVisionPhotoUrls } from "./_runtime/utils.ts";
 import { readResponseBytesBounded } from "../../../_shared/network.ts";
 
 const VISION_MAX_TOKENS = 320;

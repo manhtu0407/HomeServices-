@@ -6,7 +6,7 @@ import {
 import {
   evaluateKaelPermissionGate,
   type KaelPermissionGateRequest,
-} from "./permission-gate.ts";
+} from "./guards/permission-gate.ts";
 import { validateKaelAutonomyTransition } from "../workflow-orchestrator.ts";
 
 export type KaelAutonomyDecisionSource = "policy" | "llm_proposed";

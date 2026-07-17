@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { KAEL_PURPOSES, type AIProvider, type KaelPurpose, type PipelineInput, type PipelineStageLog } from "./types.ts";
-import type { KaelActorRole } from "./permission-gate.ts";
+import { KAEL_PURPOSES, type AIProvider, type KaelPurpose, type PipelineInput, type PipelineStageLog } from "../types.ts";
+import type { KaelActorRole } from "../guards/permission-gate.ts";
 
 export const KAEL_TRACE_SCHEMA_VERSION = "kael_trace.v1";
 

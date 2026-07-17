@@ -9,7 +9,7 @@ import { auditGuardrailTripBestEffort, isWorkerAssistGuardrailReason } from "../
 import { requireJobAccess } from "../../access.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { buildWorkerKaelSessionTitle, runWorkerAssist, sanitizeKaelText, sanitizeWorkerKaelSessionTitle, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type EdgeAiSecrets } from "../../kael/index.ts";
-import { takeDurableKaelChatRateLimit } from "../../kael/durable-guards.ts";
+import { takeDurableKaelChatRateLimit } from "../../kael/guards/durable-guards.ts";
 import { analyzeDescription } from "../../kael/vision.ts";
 import { kaelChatProgressSchema, sanitizeForLLM } from "../../../../_shared/domain.ts";
 import type { WorkerVisionFinding } from "../../kael/types.ts";

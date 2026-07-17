@@ -1157,7 +1157,7 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('locks Section 32 LLM boundary to edge phrasing while decisions stay deterministic', () => {
-    const boundaryContract = read('supabase/functions/mobile-api/_shared/kael/ai-boundary-contract.ts')
+    const boundaryContract = read('supabase/functions/mobile-api/_shared/kael/guards/ai-boundary-contract.ts')
     const workerAssist = read('supabase/functions/mobile-api/_shared/kael/worker-assist.ts')
     const demanding = read('supabase/functions/mobile-api/_shared/kael/agentic/case-2-demanding.ts')
     const workerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel.ts')

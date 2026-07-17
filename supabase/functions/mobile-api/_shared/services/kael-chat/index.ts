@@ -8,9 +8,9 @@ import { compactMetadata, mergeLimitedRefs } from "../_runtime/shared.ts";
 import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "../apartment-access/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { checkKaelChatRateLimit } from "../../rate-limit.ts";
-import { takeDurableKaelChatRateLimit } from "../../kael/durable-guards.ts";
+import { takeDurableKaelChatRateLimit } from "../../kael/guards/durable-guards.ts";
 import { buildInitialDiagnosisScopeArtifact, kaelDiagnosisScopeArtifactSchema, scrubSensitiveForLLM, type EdgeAiSecrets, type KaelDiagnosisScopeArtifact } from "../../kael/index.ts";
-import { sanitizeUntrustedEvidenceItem, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../../kael/untrusted-evidence.ts";
+import { sanitizeUntrustedEvidenceItem, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../../kael/guards/untrusted-evidence.ts";
 import {
   sanitizeForLLM,
   type KaelChatCreateInput,

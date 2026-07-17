@@ -29,17 +29,17 @@ import {
 } from "./learning.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
 import { runKaelParallel, runKaelPurposeStage } from "./orchestrator.ts";
-import { updateKaelProgress } from "./streaming.ts";
-import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "./utils.ts";
+import { updateKaelProgress } from "./observability/streaming.ts";
+import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "./_runtime/utils.ts";
 import { retrieveKaelKnowledgeContextIfEnabled } from "./knowledge.ts";
 import {
   isKaelAiKillSwitchEnabled,
   KAEL_AI_UNAVAILABLE_VI,
   type KaelSpendGate,
   type SpendGateClient,
-} from "./spend-gate.ts";
+} from "./guards/spend-gate.ts";
 import { checkKaelProviderBudget, recordKaelProviderSpend } from "./provider-budget.ts";
-import { pushPipelineStageLog } from "./trace.ts";
+import { pushPipelineStageLog } from "./observability/trace.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "./prompts.ts";
 
 type EstimateParallelValue =

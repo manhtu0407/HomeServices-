@@ -14,7 +14,7 @@ import {
   buildScopeChangeEstimateMessages,
   buildScopeChangeReviewMessages,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
-import { trustedPerplexityMarketConfig } from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust'
+import { trustedPerplexityMarketConfig } from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust/source-trust'
 import {
   KAEL_BUSINESS_GUARDRAILS as EDGE_KAEL_BUSINESS_GUARDRAILS,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'

@@ -2,7 +2,7 @@ import type { EdgeAiSecrets, ScopeChangeComputeInput, ScopeChangeEstimateBody, S
 import { PRICE_DISCLAIMER, scopeChangeEstimateSchema, scopeChangeReviewSchema } from "./types.ts";
 import { buildScopeChangeEstimateMessages, buildScopeChangeReviewMessages } from "./prompts.ts";
 import { callStructuredAI } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./guards/spend-gate.ts";
 import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
@@ -10,14 +10,14 @@ import {
   buildNoProviderTrace,
   buildProviderAttemptTrace,
   type KaelSafeTraceEvent,
-} from "./trace.ts";
+} from "./observability/trace.ts";
 export {
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
   matchSuspiciousScopeKeywords,
   type ScopeChangeRiskConfig,
 } from "./scope-risk.ts";
-import { timed } from "./utils.ts";
+import { timed } from "./_runtime/utils.ts";
 
 type ScopeChangeEstimateFallback = Extract<
   ScopeChangeKaelEstimate,

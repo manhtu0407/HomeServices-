@@ -1,4 +1,4 @@
-import type { MarketPriceResult, MarketSourceEvidence } from "./types.ts";
+import type { MarketPriceResult, MarketSourceEvidence } from "../types.ts";
 import {
   normalizeSourceTrustDomain,
   sourceTrustQuorumForMarketAmount,

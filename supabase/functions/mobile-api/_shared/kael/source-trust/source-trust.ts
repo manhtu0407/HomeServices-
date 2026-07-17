@@ -1,5 +1,5 @@
-import type { AIMessage, ComplexityLevel, ServiceType } from "./types.ts";
-import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "./types.ts";
+import type { AIMessage, ComplexityLevel, ServiceType } from "../types.ts";
+import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "../types.ts";
 
 export const SOURCE_TRUST_VERSION = "source-trust-r3-2026-07-10";
 export const SOURCE_TRUST_CACHE_TTL_MS = 5 * 60 * 1000;

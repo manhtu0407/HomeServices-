@@ -1,6 +1,6 @@
 import { readKaelOptimizationFlags } from "../cost-tracking.ts";
-import { KAEL_CIRCUIT_BREAKER } from "../circuit-breaker.ts";
-import { isDurableCircuitOpen } from "../durable-guards.ts";
+import { KAEL_CIRCUIT_BREAKER } from "../guards/circuit-breaker.ts";
+import { isDurableCircuitOpen } from "../guards/durable-guards.ts";
 import {
   anthropicMessageBatchCostUsd,
   estimateModelRequestCostUsd,
@@ -13,7 +13,7 @@ import {
   isKaelAiKillSwitchEnabled,
   reserveAiSpend,
   type SpendGateClient,
-} from "../spend-gate.ts";
+} from "../guards/spend-gate.ts";
 import type { EdgeAiSecrets } from "../types.ts";
 import { commitLearningEffectResult } from "./learning-effect-store.ts";
 import { processLearningCandidateResponse } from "./process-batch-results.ts";

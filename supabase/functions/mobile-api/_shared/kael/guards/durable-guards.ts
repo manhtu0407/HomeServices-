@@ -7,7 +7,7 @@ import type {
   AIProvider,
   EdgeGuardClient,
   KaelPurpose,
-} from "./types.ts";
+} from "../types.ts";
 
 const GUARD_RPC_TIMEOUT_MS = 2_000;
 const RPC_TIMEOUT = Symbol("guard_rpc_timeout");

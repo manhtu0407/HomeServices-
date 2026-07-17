@@ -1,5 +1,5 @@
 import type { ComplexityLevel, EdgeAiSecrets, ServiceType, SupabaseLike } from "./types.ts";
-import { readBooleanEnvFlag, withDbTimeout } from "./utils.ts";
+import { readBooleanEnvFlag, withDbTimeout } from "./_runtime/utils.ts";
 
 type AppliedComplexityRule = {
   newComplexity: ComplexityLevel;

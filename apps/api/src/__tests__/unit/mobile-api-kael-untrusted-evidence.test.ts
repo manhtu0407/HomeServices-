@@ -7,7 +7,7 @@ import {
   sanitizeUntrustedEvidenceItem,
   sanitizeUntrustedEvidenceList,
   sanitizeUntrustedEvidenceText,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/untrusted-evidence'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/untrusted-evidence'
 
 const edgeRoot = join(process.cwd(), '../../supabase/functions/mobile-api/_shared')
 

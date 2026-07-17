@@ -1,5 +1,5 @@
 import type { KaelPurpose } from "./types.ts";
-import type { KaelActorRole } from "./permission-gate.ts";
+import type { KaelActorRole } from "./guards/permission-gate.ts";
 
 export type KaelWorkflowPhase =
   | "intake"

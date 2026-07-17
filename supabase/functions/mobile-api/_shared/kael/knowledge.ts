@@ -1,5 +1,5 @@
 import type { EdgeAiSecrets, ServiceType } from "./types.ts";
-import { scrubSensitiveForLLM, withDbTimeout } from "./utils.ts";
+import { scrubSensitiveForLLM, withDbTimeout } from "./_runtime/utils.ts";
 
 export const KAEL_KNOWLEDGE_CONTEXT_VERSION = "knowledge-b1-2026-06-04";
 const DEFAULT_KNOWLEDGE_TOKEN_BUDGET = 240;

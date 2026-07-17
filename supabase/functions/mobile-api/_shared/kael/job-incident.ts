@@ -1,13 +1,13 @@
 import { z } from "zod";
 import type { AIRequest, EdgeAiSecrets } from "./types.ts";
 import { callStructuredAI, type StructuredAIInvoker } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./guards/spend-gate.ts";
 import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
-import { evaluateKaelPermissionGate } from "./permission-gate.ts";
-import { guardOutput } from "./output-gateway.ts";
-import { scrubSensitiveForLLM } from "./utils.ts";
+import { evaluateKaelPermissionGate } from "./guards/permission-gate.ts";
+import { guardOutput } from "./guards/output-gateway.ts";
+import { scrubSensitiveForLLM } from "./_runtime/utils.ts";
 
 export type JobIncidentAssistantInput = {
   readonly job: {

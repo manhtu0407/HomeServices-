@@ -4,10 +4,10 @@ import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, intentResultSchema } from "./types.ts
 import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from "./prompts.ts";
 import { callStructuredAI } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./guards/spend-gate.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
-import { hasUnsupportedRepairIntent, scrubSensitiveForLLM, timed } from "./utils.ts";
+import { hasUnsupportedRepairIntent, scrubSensitiveForLLM, timed } from "./_runtime/utils.ts";
 import { applyHardRoutingPolicy, hasElectricalInfrastructureContext } from "./electrical-intake-policy.ts";
 
 export async function classifyIntent(

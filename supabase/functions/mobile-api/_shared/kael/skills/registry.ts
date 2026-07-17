@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ComplexityLevel, ServiceType } from "../../../../_shared/domain.ts";
-import { readBooleanEnvFlag } from "../utils.ts";
+import { readBooleanEnvFlag } from "../_runtime/utils.ts";
 import { buildLS1MarketMemoryCandidate } from "./LS1-market-memory.ts";
 import { buildLS2CaseReviewCandidate } from "./LS2-case-review.ts";
 import { buildLS3WorkerPatternCandidate } from "./LS3-worker-pattern.ts";

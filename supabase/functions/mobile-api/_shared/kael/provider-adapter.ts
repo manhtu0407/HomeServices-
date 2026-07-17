@@ -1,4 +1,4 @@
-import type { FailureKind as CircuitFailureKind } from "./circuit-breaker.ts";
+import type { FailureKind as CircuitFailureKind } from "./guards/circuit-breaker.ts";
 import { readKaelOptimizationFlags } from "./cost-tracking.ts";
 import {
   calculateModelCostUsd,

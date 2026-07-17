@@ -1,20 +1,20 @@
-import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
+import { KAEL_CIRCUIT_BREAKER } from "./guards/circuit-breaker.ts";
 import {
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
-} from "./durable-guards.ts";
+} from "./guards/durable-guards.ts";
 import {
   callAI,
   type CallAIOptions,
 } from "./provider-client.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./guards/spend-gate.ts";
 import type {
   AIError,
   AIRequest,
   AIResponse,
   EdgeAiSecrets,
 } from "./types.ts";
-import { safeParseJSON } from "./utils.ts";
+import { safeParseJSON } from "./_runtime/utils.ts";
 
 type SchemaIssue = {
   readonly code?: unknown;
