@@ -1,0 +1,124 @@
+{
+  "$doc": "Declarative home for every Edge source file under _shared/services and _shared/kael. Read by scripts/check-reorg-drift.mjs. This is a convergence LAW, not a one-shot move list: a file that appears later is claimed by a rule and needs no human memory. Canonical domain map: docs/architecture/backend-domain-map.md (authored during the services move).",
+  "roots": {
+    "services": {
+      "dir": "supabase/functions/mobile-api/_shared/services",
+      "match": "regex",
+      "rootAllowlist": ["index.ts"],
+      "keepDirs": [],
+      "renamesExpected": true,
+      "$note": "Regex mode: prefix families are stable and self-describing, so a new kael-chat-* file is absorbed automatically. Rules must be mutually exclusive; two matches is treated as undecided, not as a priority contest. renamesExpected: the move drops the .service suffix (job-create.service.ts becomes jobs/create.ts), so a file inside a folder whose name no longer matches any rule is accepted as already-renamed rather than flagged.",
+      "rules": {
+        "_runtime": "^(db|coercions|serializers|audit|_shared|autonomy-gate)\\.ts$",
+        "kael-chat": "^(kael-chat[-.]|customer-kael-conversation|customer-assistant)",
+        "jobs": "^(job-|chat\\.service|scheduling|evidence-refs)",
+        "matching": "^(matching|broadcasts|broadcast-query|worker-candidate|customer-favorite-worker)",
+        "cancellation": "^(customer|worker)-cancellation[-.]",
+        "workers": "^(workers\\.|worker-avatar|worker-route)",
+        "worker-kael": "^worker-kael-",
+        "scope-change": "^scope-change[-.]",
+        "completion-review": "^(completion-review|dispute)",
+        "profile-insights": "^(profile-insights|worker-performance-policy)",
+        "kael-memory": "^(kael-memory|kael-feedback)",
+        "notifications": "^notifications",
+        "places-geo": "^places-geo",
+        "apartment-access": "^apartment-access",
+        "admin": "^admin-learning",
+        "catalog": "^catalog"
+      }
+    },
+    "kael": {
+      "dir": "supabase/functions/mobile-api/_shared/kael",
+      "match": "explicit",
+      "rootAllowlist": ["index.ts", "types.ts"],
+      "keepDirs": ["agentic", "cron", "playbooks", "skills"],
+      "renamesExpected": false,
+      "$note": "Explicit mode on purpose: kael filenames carry no domain prefix, so no honest regex exists. A new file here matches nothing and fails the drift check by design, which routes the classification decision to a human instead of guessing a folder. renamesExpected false: the move keeps every filename, so a file inside a folder that is not on that folder's list is genuinely misplaced or unclassified.",
+      "rules": {
+        "case-work": [
+          "electrical-intake-policy.ts",
+          "autonomy-gate.ts",
+          "performance-profiles.ts",
+          "scope-change.ts",
+          "artifact-contract.ts",
+          "intake-runtime.ts",
+          "job-incident.ts",
+          "case-work-controls.ts",
+          "scope-risk.ts"
+        ],
+        "guards": [
+          "permission-gate.ts",
+          "boundary-guard.ts",
+          "self-check.ts",
+          "rate-limit.ts",
+          "durable-guards.ts",
+          "spend-gate.ts",
+          "untrusted-evidence.ts",
+          "circuit-breaker.ts",
+          "ai-boundary-contract.ts",
+          "output-gateway.ts"
+        ],
+        "stages": [
+          "worker-assist.ts",
+          "customer-assistant.ts",
+          "output-pipeline.ts",
+          "intent.ts",
+          "vision.ts",
+          "voice-transcript.ts",
+          "advisory.ts"
+        ],
+        "provider": [
+          "provider-adapter.ts",
+          "provider-client.ts",
+          "provider-batch.ts",
+          "model-pricing.ts",
+          "cost-tracking.ts",
+          "structured-call.ts",
+          "provider-budget.ts"
+        ],
+        "routing": [
+          "pipeline.ts",
+          "path-control.ts",
+          "orchestrator.ts",
+          "routing.ts",
+          "routing.config.ts",
+          "orchestrator-facade.ts",
+          "escalation.ts"
+        ],
+        "memory": [
+          "knowledge.ts",
+          "learning.ts",
+          "memory.ts",
+          "memory-sanitizer.ts"
+        ],
+        "market": [
+          "market.ts",
+          "synthesis.ts",
+          "price-synthesis-ab.ts",
+          "market-verdict.ts"
+        ],
+        "source-trust": [
+          "source-trust.ts",
+          "source-trust-aggregation.ts",
+          "source-tier-rulebook.ts"
+        ],
+        "charter": [
+          "prompts.ts",
+          "regional-register.ts",
+          "system-prompt.ts",
+          "regional-lexicon.ts",
+          "canonicalize-vn.ts",
+          "decline-templates.ts"
+        ],
+        "observability": [
+          "trace.ts",
+          "agentic-harness.ts",
+          "streaming.ts"
+        ],
+        "_runtime": [
+          "utils.ts"
+        ]
+      }
+    }
+  }
+}
