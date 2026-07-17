@@ -22,7 +22,7 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/_runtime/
   nullableString: (value: unknown) => typeof value === 'string' ? value : null,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts', () => ({
   requestScopeChange: mocks.requestScopeChange,
   validateScopeChangeEvidenceRefs: vi.fn(),
 }))

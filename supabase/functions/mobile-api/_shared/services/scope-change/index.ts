@@ -2,20 +2,20 @@
 // (Kael AI re-pricing) + explicit customer decision. getCurrentScopeChange stays in
 // services.ts (uses the local parseKaelProgressSnapshot). Imported directly by services.ts.
 
-import { asComplexityOrNull, asRecord, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "./_runtime/coercions.ts";
-import { db, dbQuery, type DbClient } from "./_runtime/db.ts";
-import { mapScopeDecisionError, mapScopeRequestError, readEdgeEnvNumber } from "./_runtime/shared.ts";
-import { logApiCalls, logJobEvent, queueKaelLearningEvent } from "./_runtime/audit.ts";
-import { notifyCustomerScopeChangeRequested, notifyWorkerScopeDecision } from "./notifications.service.ts";
+import { asComplexityOrNull, asRecord, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "../_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
+import { mapScopeDecisionError, mapScopeRequestError, readEdgeEnvNumber } from "../_runtime/shared.ts";
+import { logApiCalls, logJobEvent, queueKaelLearningEvent } from "../_runtime/audit.ts";
+import { notifyCustomerScopeChangeRequested, notifyWorkerScopeDecision } from "../notifications.service.ts";
 import {
   buildDirectScopeEffectPayloads,
   buildScopeChangeLearningInput,
   drainDirectScopeChangeEffects,
   parseDirectScopeEffectStates,
-} from "./scope-change-effects.service.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { requireJobAccess } from "../access.ts";
-import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
+} from "./effects.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { requireJobAccess } from "../../access.ts";
+import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
 import {
   buildScopeChangeOutputs,
   computeScopeChangeEstimate,
@@ -23,8 +23,8 @@ import {
   type EdgeAiSecrets,
   type ScopeChangeKaelEstimate,
   type ScopeChangeRiskConfig,
-} from "../kael/index.ts";
-import type { ComplexityLevel, JobStatus, ScopeChangeStatus } from "../../../_shared/domain.ts";
+} from "../../kael/index.ts";
+import type { ComplexityLevel, JobStatus, ScopeChangeStatus } from "../../../../_shared/domain.ts";
 
 type PricedScopeChangeEstimate = Extract<
   ScopeChangeKaelEstimate,

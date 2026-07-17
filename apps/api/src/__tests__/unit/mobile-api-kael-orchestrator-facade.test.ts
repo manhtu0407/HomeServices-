@@ -72,7 +72,7 @@ describe('Kael orchestrator facade', () => {
       'utf8',
     )
     const scopeChangeSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts'),
       'utf8',
     )
     const completionReviewSource = readFileSync(

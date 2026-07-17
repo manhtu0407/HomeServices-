@@ -7,12 +7,12 @@ const migration = () => readFileSync(
 )
 
 const service = () => readFileSync(
-  new URL('../../../../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts', import.meta.url),
+  new URL('../../../../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts', import.meta.url),
   'utf8',
 )
 
 const effectService = () => readFileSync(
-  new URL('../../../../../supabase/functions/mobile-api/_shared/services/scope-change-effects.service.ts', import.meta.url),
+  new URL('../../../../../supabase/functions/mobile-api/_shared/services/scope-change/effects.ts', import.meta.url),
   'utf8',
 )
 

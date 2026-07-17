@@ -244,11 +244,11 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       'utf8',
     ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching/index.ts'), 'utf8')
     expect(servicesSource).toContain('event: "worker_accepted"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('event: "scope_change_requested"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('customer_confirmed_scope_change')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('customer_rejected_scope_change')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('runPolicyAutonomyGate')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('tryAutoApproveScopeChange')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts'), 'utf8')).toContain('event: "scope_change_requested"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts'), 'utf8')).toContain('customer_confirmed_scope_change')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts'), 'utf8')).toContain('customer_rejected_scope_change')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts'), 'utf8')).not.toContain('runPolicyAutonomyGate')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts'), 'utf8')).not.toContain('tryAutoApproveScopeChange')
     // Scope-change auto-approval is disabled because
     // a scope-change changes the deal price, so it is ALWAYS confirmed by the
     // customer (even low-risk). The auto-approve branch and autonomy policy id
@@ -256,8 +256,8 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     // routes to the customer-decide path. This assertion guards against the
     // auto-approve wiring being silently re-introduced.
     expect(servicesSource).not.toContain('policyId: "kael.autonomy.v2.scope_change_auto_approve"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('notifyCustomerScopeChangeRequested')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('notifyCustomerScopeChangeDecided')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts'), 'utf8')).toContain('notifyCustomerScopeChangeRequested')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change/index.ts'), 'utf8')).not.toContain('notifyCustomerScopeChangeDecided')
     expect(
       servicesSource +
         readFileSync(

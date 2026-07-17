@@ -8,7 +8,7 @@ const sql = readFileSync(
   'utf8',
 )
 const service = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/scope-change.service.ts'),
+  resolve(root, 'supabase/functions/mobile-api/_shared/services/scope-change/index.ts'),
   'utf8',
 )
 const orchestrator = readFileSync(

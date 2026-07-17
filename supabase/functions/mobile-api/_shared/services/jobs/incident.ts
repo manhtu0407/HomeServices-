@@ -1,7 +1,7 @@
 import { asNumber, asRecord, asString, nullableString } from "../_runtime/coercions.ts";
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import { logApiCalls } from "../_runtime/audit.ts";
-import { requestScopeChange, validateScopeChangeEvidenceRefs } from "../scope-change.service.ts";
+import { requestScopeChange, validateScopeChangeEvidenceRefs } from "../scope-change/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import type { EdgeJobIncident } from "../../router/dtos.ts";
 import { requireJobAccess } from "../../access.ts";

@@ -35,7 +35,7 @@ import {
   decideDispute,
 } from "./services/dispute.service.ts";
 
-import { decideScopeChange, requestScopeChange } from "./services/scope-change.service.ts";
+import { decideScopeChange, requestScopeChange } from "./services/scope-change/index.ts";
 import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./services/jobs/incident.ts";
 import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/jobs/chat.ts";
