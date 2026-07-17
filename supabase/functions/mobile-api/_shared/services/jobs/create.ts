@@ -1,4 +1,4 @@
-// Edge service job-create domain (C4 6a, services/* split): the createJob orchestrator — rate-limit,
+// Edge service job-create domain: the createJob orchestrator — rate-limit,
 // idempotent insert, geocode, runKaelPipeline, autonomy gate, estimate persist, then createBroadcasts
 // (rollback via matching). Helpers: analyzing-job cleanup, learning-application record, idempotency
 // lookup + existing-job response. Imported by services.ts for wiring.

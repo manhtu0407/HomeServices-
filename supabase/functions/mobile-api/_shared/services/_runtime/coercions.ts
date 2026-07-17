@@ -1,4 +1,4 @@
-// Edge service value coercions (C4 6a, services/* split): pure unknown->typed converters
+// Edge service value coercions: pure unknown->typed converters
 // plus the Kael-chat enum types. Re-exported through ./_shared.ts so callers import from one place.
 
 import {

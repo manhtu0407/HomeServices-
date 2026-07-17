@@ -1,4 +1,4 @@
-// Edge service job-status domain (C4 6a, services/* split): the worker-driven status machine —
+// Edge service job-status domain: the worker-driven status machine —
 // updateJobStatus (transition validate, geofenced check-in -> access state, completion evidence ->
 // customer confirmation gate + check-in nudge). Imported by services.ts for wiring.
 

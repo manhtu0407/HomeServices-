@@ -1,4 +1,4 @@
-// Edge service completion-review domain (C4 6a, services/* split): explicit customer
+// Edge service completion-review domain: explicit customer
 // confirm-completion + submit-review (rating -> learning + normal-transaction memory).
 
 import { asComplexityOrNull, asJobStatus, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "../_runtime/coercions.ts";

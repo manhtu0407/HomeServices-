@@ -1,4 +1,4 @@
-// Edge service kael-chat domain (C4 6a, services/* split): the customer Kael AI-conversation API —
+// Edge service kael-chat domain: the customer Kael AI-conversation API —
 // session create/turn + progress reads. The turn/estimate/boundary/demanding engine lives in
 // kael-chat-core.ts. The streaming wrappers + confirm bridge stay in services.ts (import one-way).
 

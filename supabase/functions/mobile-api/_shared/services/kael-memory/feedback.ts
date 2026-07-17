@@ -1,4 +1,4 @@
-// Edge service Kael feedback/consent domain (C4 6a, services/* split): customer + worker Kael
+// Edge service Kael feedback/consent domain: customer + worker Kael
 // feedback submission and worker training-consent get/set. Simple owner-scoped DB writes, no workflow
 // coupling. Imported by services.ts for wiring.
 

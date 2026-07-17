@@ -1,4 +1,4 @@
-// Edge service worker-cancellation domain (C4 6a, services/* split): worker cancel-request flow with
+// Edge service worker-cancellation domain: worker cancel-request flow with
 // autonomy gating, classification, and (on approve) apartment-access reset + replacement re-broadcast via
 // createBroadcasts; decideWorkerCancellation is the deprecated 410 stub. Imported by services.ts for wiring.
 

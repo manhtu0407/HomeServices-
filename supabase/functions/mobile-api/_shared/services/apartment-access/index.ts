@@ -1,4 +1,4 @@
-// Edge service apartment-access domain (C4 6a, services/* split): the X-2 unit-access projection
+// Edge service apartment-access domain: the X-2 unit-access projection
 // + sanitize/persist/state-builder helpers + authorizeApartmentAccess. Imported directly by services.ts.
 
 import { asJobStatus, asRecord, nullableRecord, nullableString } from "../_runtime/coercions.ts";

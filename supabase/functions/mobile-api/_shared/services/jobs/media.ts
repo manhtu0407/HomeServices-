@@ -1,4 +1,4 @@
-// Edge service job-media domain (C4 6a, services/* split): attach customer/worker media assets to a
+// Edge service job-media domain: attach customer/worker media assets to a
 // job (role + workflow-stage gated, dedup by object_path, mirrors before/after refs onto the job).
 // Imported by services.ts for wiring.
 

@@ -1,4 +1,4 @@
-// Edge service autonomy gate (C4 6a, services/* split): thin wrapper over the Kael autonomy
+// Edge service autonomy gate: thin wrapper over the Kael autonomy
 // orchestrator for money/status policy decisions (cancellation / scope-change / completion).
 // Imported directly by services.ts and the decision sub-domains.
 

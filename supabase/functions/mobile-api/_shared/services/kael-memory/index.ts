@@ -1,4 +1,4 @@
-// Edge service kael-memory domain (C4 6a, services/* split): the user's own Kael memory CRUD
+// Edge service kael-memory domain: the user's own Kael memory CRUD
 // (read/edit/delete; customer L3 + worker L4) with memory-audit logging. Imported by services.ts.
 
 import { db, dbQuery } from "../_runtime/db.ts";

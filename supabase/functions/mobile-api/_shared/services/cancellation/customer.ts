@@ -1,4 +1,4 @@
-// Edge service customer-cancellation domain (C4 6a, services/* split): customer cancel flows —
+// Edge service customer-cancellation domain: customer cancel flows —
 // early cancel-before-accept (cancelJob) + the Phase-0 cancellation request with autonomy gating,
 // preview, classification + worker-goodwill outcome. Imported by services.ts for wiring.
 

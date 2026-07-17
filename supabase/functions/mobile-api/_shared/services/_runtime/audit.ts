@@ -1,4 +1,4 @@
-// Edge service audit & logging (C4 6a, services/* split): best-effort writes to job_events,
+// Edge service audit & logging: best-effort writes to job_events,
 // kael_memory_audit, and api_logs, plus learning-queue dispatch. Re-exported through ./_shared.ts.
 
 import { dbQuery, type DbClient } from "./db.ts";

@@ -1,4 +1,4 @@
-// Edge service catalog domain (C4 6a, services/* split): listServices catalog/price-baseline
+// Edge service catalog domain: listServices catalog/price-baseline
 // lookup + its baseline-mapping helpers. Imported directly by services.ts.
 
 import {

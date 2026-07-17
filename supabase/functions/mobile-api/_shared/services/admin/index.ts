@@ -1,4 +1,4 @@
-// Edge service admin learning-queue domain (C4 6a, services/* split): admin-only ops over Kael
+// Edge service admin learning-queue domain: admin-only ops over Kael
 // learning candidates (list/approve/reject), the learning queue + batch processors, rule monitoring,
 // A/B price-synthesis eval, and market-cache invalidation. Imported by services.ts for wiring.
 

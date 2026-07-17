@@ -1,4 +1,4 @@
-// Edge service kael-chat streaming (C4 6a, services/* split): SSE stream wrappers over the customer +
+// Edge service kael-chat streaming: SSE stream wrappers over the customer +
 // worker Kael chat turn pipelines (poll progress -> emit stage/result/heartbeat). Imports the chat APIs
 // one-way. Imported by services.ts for the createEdgeServices wiring.
 

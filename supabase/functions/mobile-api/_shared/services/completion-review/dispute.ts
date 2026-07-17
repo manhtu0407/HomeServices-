@@ -1,4 +1,4 @@
-// Edge service dispute domain (C4 6a, services/* split): open / counter-statement / admin-decide,
+// Edge service dispute domain: open / counter-statement / admin-decide,
 // each via an atomic RPC with Kael neutral-summary guarding. Imported directly by services.ts.
 
 import { asBoolean, asDisputePriority, asString, nullableString } from "../_runtime/coercions.ts";

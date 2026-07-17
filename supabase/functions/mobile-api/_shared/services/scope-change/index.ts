@@ -1,4 +1,4 @@
-// Edge service scope-change domain (C4 6a, services/* split): worker scope-change request
+// Edge service scope-change domain: worker scope-change request
 // (Kael AI re-pricing) + explicit customer decision. getCurrentScopeChange stays in
 // services.ts (uses the local parseKaelProgressSnapshot). Imported directly by services.ts.
 

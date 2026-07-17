@@ -1,4 +1,4 @@
-// Edge service workers domain (C4 6a, services/* split): worker profile, availability, broadcast
+// Edge service workers domain: worker profile, availability, broadcast
 // inbox, earnings, registration, and the worker job list. Imported directly by services.ts.
 
 import {

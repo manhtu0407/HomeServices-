@@ -16,7 +16,7 @@ export * from "./serializers.ts";
 const STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 const KAEL_SCOPE_PRICE_ERRORS = new Set(["KAEL_PRICE_MISSING", "KAEL_REVIEW_MISSING"]);
 
-// Cross-cutting Edge service helpers (C4 6a, services/* split): error mappers, serializers,
+// Cross-cutting Edge service helpers: error mappers, serializers,
 // formatters, and utils. Value coercions live in ./coercions.ts (re-exported above).
 
 
@@ -520,7 +520,7 @@ export function readEdgeEnvNumber(name: string): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-// Anti-disintermediation contact guard (C4 6a): pure detector for off-app contact/payment
+// Anti-disintermediation contact guard: pure detector for off-app contact/payment
 // asks in job-chat + apartment-access free text. Cross-cutting (chat + apartment-access).
 export type JobChatContactGuard = {
   flagged: boolean;
@@ -563,7 +563,7 @@ export function normalizeGuardText(content: string) {
     .trim();
 }
 
-// Shared job-status sets + selects (C4 6a): used across jobs/status/chat/apartment-access.
+// Shared job-status sets + selects: used across jobs/status/chat/apartment-access.
 export const ACTIVE_WORKER_JOB_STATUSES: JobStatus[] = [
   "worker_matched",
   "worker_on_way",

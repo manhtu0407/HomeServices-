@@ -1,4 +1,4 @@
-// Edge service worker-kael-chat domain (C4 6a, services/* split): the worker-assist Kael surface —
+// Edge service worker-kael-chat domain: the worker-assist Kael surface —
 // one-shot Q&A (askKaelForWorker) + the worker chat session pipeline (create/turn/list/get) with vision
 // + runWorkerAssist. The worker stream wrapper stays in services.ts and imports these one-way.
 

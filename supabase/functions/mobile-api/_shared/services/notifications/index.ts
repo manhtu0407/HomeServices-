@@ -1,4 +1,4 @@
-// Edge service notifications domain (C4 6a, services/* split): notification list/read/device
+// Edge service notifications domain: notification list/read/device
 // API endpoints + notify* push senders + insertUserNotification. Imported directly by services.ts.
 
 import { asBoolean, asString, nullableString } from "../_runtime/coercions.ts";

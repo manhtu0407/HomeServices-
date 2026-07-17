@@ -1,4 +1,4 @@
-// Edge service kael-chat engine (C4 6a): the turn/estimate/boundary/demanding pipeline + session
+// Edge service kael-chat engine: the turn/estimate/boundary/demanding pipeline + session
 // primitives behind the kael-chat API (kael-chat.service.ts). Split from the API layer to stay under
 // the structure cap. Imported one-way by kael-chat.service.ts (no back-import).
 

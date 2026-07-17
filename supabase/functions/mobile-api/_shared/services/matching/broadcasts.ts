@@ -1,4 +1,4 @@
-// Edge service broadcasts/matching domain (C4 6a, services/* split): job-broadcast CRUD/lifecycle
+// Edge service broadcasts/matching domain: job-broadcast CRUD/lifecycle
 // + worker eligibility/ranking (geo + specialization + disintermediation soft-penalty). Imported
 // directly by services.ts; calls notifyBroadcastWorkers (notifications domain).
 

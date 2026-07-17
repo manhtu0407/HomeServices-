@@ -1,5 +1,5 @@
 // Canonical npm-side parser for Kael LLM JSON output. apps/api imports this; the Edge runtime
-// keeps its own copy in supabase/functions/mobile-api/_shared/kael/utils.ts because Deno cannot
+// keeps its own copy in supabase/functions/mobile-api/_shared/kael/_runtime/utils.ts because Deno cannot
 // import packages/shared (the boundary-forced mirror is intentional — see code-ownership-map.md).
 
 // Adversarial inputs like {{{{... could exhaust stack/memory during JSON.parse.

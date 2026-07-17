@@ -1,4 +1,4 @@
-// Edge service db layer (C4 6a, services/* split): Supabase-client types (DbClient/Chain) plus
+// Edge service db layer: Supabase-client types (DbClient/Chain) plus
 // the db/dbQuery/fetch helpers the service runs queries through. Re-exported via ./_shared.ts.
 
 import type { MobileApiContext } from "../../router.ts";

@@ -1,4 +1,4 @@
-// Edge service matching/broadcast domain (C4 6a, services/* split): the broadcast lifecycle —
+// Edge service matching/broadcast domain: the broadcast lifecycle —
 // customer confirm-search -> createBroadcasts (with retry-lease + rollback), worker proposal,
 // customer candidate decision, and worker decline. Address release starts only after confirmation.
 

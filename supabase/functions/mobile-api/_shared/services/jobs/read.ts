@@ -1,4 +1,4 @@
-// Edge service job-read domain (C4 6a, services/* split): read/query endpoints over jobs + scope —
+// Edge service job-read domain: read/query endpoints over jobs + scope —
 // job detail (getJob), the customer's active job (listCustomerActiveJobs), pending scope decisions
 // (listMyPendingDecisions), and the current scope-change reader. No workflow mutation. Imported by services.ts.
 

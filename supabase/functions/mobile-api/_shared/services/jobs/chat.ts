@@ -1,4 +1,4 @@
-// Edge service chat domain (C4 6a, services/* split): in-app job messaging (list/send/threads) with
+// Edge service chat domain: in-app job messaging (list/send/threads) with
 // the contact-guard + demanding-customer handlers. (kael-chat AI conversation stays in services.ts.)
 // Imported directly by services.ts.
 

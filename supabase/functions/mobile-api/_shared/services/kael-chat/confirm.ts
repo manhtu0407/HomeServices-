@@ -1,4 +1,4 @@
-// Edge service kael-chat confirm-bridge (C4 6a, services/* split): confirmKaelChat — the customer
+// Edge service kael-chat confirm-bridge: confirmKaelChat — the customer
 // confirms a Kael chat estimate -> confirm_kael_chat_atomic creates the job -> geocode -> confirmSearch
 // (matching) with a chat-matching autonomy decision. Internal: matching-decision builder +
 // confirmed-state reader. Imported by services.ts for wiring.
