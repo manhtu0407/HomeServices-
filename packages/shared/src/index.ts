@@ -1,9 +1,9 @@
-export * from './types'
-export * from './constants'
-export * from './mobile-workflow'
-export * from './workflow'
-export * from './service-intake'
-export * from './kael-case-work'
+export * from './types/index.ts'
+export * from './constants.ts'
+export * from './mobile-workflow.ts'
+export * from './workflow/index.ts'
+export * from './service-intake/index.ts'
+export * from './kael-case-work.ts'
 export type {
   KaelEstimate,
   ServiceCatalogResponse,
@@ -48,7 +48,7 @@ export type {
   NotificationReadResponse,
   DevicePushTokenResponse,
   DevicePushTokenUnregisterResponse,
-} from './types/api-responses'
+} from './types/api-responses.ts'
 export {
   serviceTypeSchema,
   apartmentAccessProfileSchema,
@@ -106,7 +106,7 @@ export {
   sanitizeForLLM,
   scrubSensitiveForLLM,
   WORKER_AVATAR_MAX_BYTES,
-} from './validation'
+} from './validation.ts'
 export type {
   JobCreateInput,
   ApartmentAccessProfileInput,
@@ -160,4 +160,4 @@ export type {
   DisputeOpenRequestInput,
   DisputeCounterStatementInput,
   DisputeAdminDecisionInput,
-} from './validation'
+} from './validation.ts'

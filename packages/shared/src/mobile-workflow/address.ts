@@ -1,7 +1,7 @@
 import {
   HCMC_DISTRICTS,
   type DistrictSlug,
-} from '../constants'
+} from '../constants.ts'
 
 export const GENERIC_AREA = 'Khu vực TP.HCM'
 

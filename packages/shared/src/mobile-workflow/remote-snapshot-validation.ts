@@ -5,14 +5,14 @@ import {
   SCOPE_CHANGE_STATUSES,
   type JobStatus,
   type ServiceType,
-} from '../constants'
-import { isLocalDealStatus } from './status'
+} from '../constants.ts'
+import { isLocalDealStatus } from './status.ts'
 import type {
   LocalRemoteBroadcastSnapshot,
   LocalRemoteJobSnapshot,
   LocalWorkerBroadcastStatus,
   LocalWorkerGate,
-} from './types'
+} from './types.ts'
 
 const JOB_STATUS_SET = new Set<string>(JOB_STATUSES)
 const SERVICE_TYPE_SET = new Set<string>(SERVICE_TYPES)

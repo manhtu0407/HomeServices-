@@ -1,5 +1,5 @@
-import type { ServiceType } from '../constants'
-import type { LocalDealStatus } from './status'
+import type { ServiceType } from '../constants.ts'
+import type { LocalDealStatus } from './status.ts'
 
 export function serviceLabel(serviceType: ServiceType | null): string {
   if (serviceType === 'electrical') return 'Sửa điện'

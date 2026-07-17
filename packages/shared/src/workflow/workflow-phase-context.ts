@@ -1,6 +1,6 @@
-import type { WorkflowArtifactMode, WorkflowArtifactType } from './artifact-lifecycle'
-import type { WorkflowEvent } from './workflow-events'
-import type { WorkflowPhase } from './workflow-phases'
+import type { WorkflowArtifactMode, WorkflowArtifactType } from './artifact-lifecycle.ts'
+import type { WorkflowEvent } from './workflow-events.ts'
+import type { WorkflowPhase } from './workflow-phases.ts'
 
 export type WorkflowLocale = 'vi' | 'en'
 

@@ -5,8 +5,8 @@ export type {
   Tables,
   TablesInsert,
   TablesUpdate,
-} from './database.types'
-export { Constants } from './database.types'
+} from './database.types.ts'
+export { Constants } from './database.types.ts'
 export type {
   AIProvider,
   AITextContent,
@@ -18,8 +18,8 @@ export type {
   AIResponse,
   AIError,
   AIResult,
-} from './ai.types'
-export { TIMEOUT_MS, MAX_RETRIES, AIProviderError } from './ai.types'
+} from './ai.types.ts'
+export { TIMEOUT_MS, MAX_RETRIES, AIProviderError } from './ai.types.ts'
 export type {
   AddressAccessView,
   KaelEstimate,
@@ -66,4 +66,4 @@ export type {
   NotificationReadResponse,
   DevicePushTokenResponse,
   DevicePushTokenUnregisterResponse,
-} from './api-responses'
+} from './api-responses.ts'

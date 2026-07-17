@@ -1,25 +1,25 @@
-import { type ServiceType } from '../constants'
+import { type ServiceType } from '../constants.ts'
 import {
   extractDistrictLabel,
   GENERIC_AREA,
   hasSpecificWorkerRouteAddress,
-} from './address'
+} from './address.ts'
 import {
   emptyDraft,
   inferLocalDealDraftFromKael,
   validateLocalDealDraft,
-} from './draft'
-import { serviceLabel } from './labels'
+} from './draft.ts'
+import { serviceLabel } from './labels.ts'
 import {
   LOCAL_DEAL_ID,
   LOCAL_WORKFLOW_PRICE_DISCLAIMER,
   type LocalDealStatus,
-} from './status'
+} from './status.ts'
 import {
   isLocalWorkerGate,
   isValidRemoteBroadcastSnapshot,
   isValidRemoteJobSnapshot,
-} from './remote-snapshot-validation'
+} from './remote-snapshot-validation.ts'
 import type {
   LocalDeal,
   LocalDealDraft,
@@ -29,7 +29,7 @@ import type {
   LocalWorkerBroadcast,
   LocalWorkflowAction,
   LocalWorkflowState,
-} from './types'
+} from './types.ts'
 
 export const NEXT_WORKER_STATUS: Partial<Record<LocalDealStatus, LocalDealStatus>> = {
   worker_matched: 'worker_on_way',

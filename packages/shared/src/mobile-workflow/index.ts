@@ -2,37 +2,37 @@ export {
   extractDistrictLabel,
   extractKnownDistrictLabel,
   hasSpecificWorkerRouteAddress,
-} from './address'
+} from './address.ts'
 export {
   buildLocalJobDisplayCode,
   buildLocalWorkerDisplayCode,
-} from './display-code'
+} from './display-code.ts'
 export {
   inferLocalDealDraftFromKael,
   validateLocalDealDraft,
-} from './draft'
+} from './draft.ts'
 export {
   serviceLabel,
   statusLabel,
-} from './labels'
+} from './labels.ts'
 export {
   createInitialLocalWorkflowState,
   hasLocalDealCompletionEvidence,
   localWorkflowReducer,
-} from './reducer'
+} from './reducer.ts'
 export {
   isLocalDealStatus,
   LOCAL_DEAL_ID,
   LOCAL_DEAL_STATUSES,
   LOCAL_WORKFLOW_PRICE_DISCLAIMER,
   toLocalDealStatus,
-} from './status'
+} from './status.ts'
 export {
   selectLocalWorkflow,
-} from './selectors'
+} from './selectors.ts'
 export type {
   LocalDealStatus,
-} from './status'
+} from './status.ts'
 export type {
   LocalAddressAccess,
   LocalCustomerSearchState,
@@ -55,4 +55,4 @@ export type {
   LocalWorkflowAction,
   LocalWorkflowSelectors,
   LocalWorkflowState,
-} from './types'
+} from './types.ts'

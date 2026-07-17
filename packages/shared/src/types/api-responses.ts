@@ -5,9 +5,9 @@ import type {
   WorkerVerificationStatus,
   BroadcastStatus,
   ScopeChangeStatus,
-} from '../constants'
-import type { LocalPaymentStatus } from '../mobile-workflow'
-import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation'
+} from '../constants.ts'
+import type { LocalPaymentStatus } from '../mobile-workflow.ts'
+import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation.ts'
 
 export type AddressAccessView = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'

@@ -1,4 +1,4 @@
-import type { JobStatus } from '../constants'
+import type { JobStatus } from '../constants.ts'
 
 export const LOCAL_WORKFLOW_PRICE_DISCLAIMER =
   'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'

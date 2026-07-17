@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
-import { SERVICE_TYPES } from './constants'
-import { KAEL_PERFORMANCE_PROFILE_IDS } from './service-intake'
+import { SERVICE_TYPES } from './constants.ts'
+import { KAEL_PERFORMANCE_PROFILE_IDS } from './service-intake/index.ts'
 
 export const CASE_WORK_PHASES = Object.freeze([
   'analysis',

@@ -1,6 +1,6 @@
-import { getServicePerformancePlaybook } from './catalog'
-import type { ComplexityLevel } from '../constants'
-import { jobCreateSchema } from '../validation'
+import { getServicePerformancePlaybook } from './catalog.ts'
+import type { ComplexityLevel } from '../constants.ts'
+import { jobCreateSchema } from '../validation.ts'
 import type {
   AgenticPerformanceDecision,
   AgenticPerformanceInput,
@@ -14,7 +14,7 @@ import type {
   ServiceIntakeState,
   ServicePerformancePlaybook,
   ServiceScopeCard,
-} from './types'
+} from './types.ts'
 
 export function createInitialPerformanceIntake(serviceLineId: ServiceIntakeState['serviceLineId']): ServiceIntakeState {
   getServicePerformancePlaybook(serviceLineId)

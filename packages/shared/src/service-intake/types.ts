@@ -1,4 +1,4 @@
-import type { ComplexityLevel, ServiceType } from '../constants'
+import type { ComplexityLevel, ServiceType } from '../constants.ts'
 
 export const LAUNCH_SERVICE_LINE_IDS = Object.freeze([
   'home_cleaning',

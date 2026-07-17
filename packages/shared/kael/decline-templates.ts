@@ -1,5 +1,5 @@
-import type { DeclineTemplateKey } from './permissions'
-import { sanitizeKaelText } from './sanitizers'
+import type { DeclineTemplateKey } from './permissions.ts'
+import { sanitizeKaelText } from './sanitizers/index.ts'
 
 export const DECLINE_TEMPLATES: Record<DeclineTemplateKey, string> = {
   out_of_scope_service:

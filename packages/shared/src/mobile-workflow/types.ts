@@ -1,5 +1,5 @@
-import type { JobStatus, ScopeChangeStatus, ServiceType } from '../constants'
-import type { LocalDealStatus } from './status'
+import type { JobStatus, ScopeChangeStatus, ServiceType } from '../constants.ts'
+import type { LocalDealStatus } from './status.ts'
 
 export type LocalDealSource = 'home' | 'kael' | 'booking'
 export type LocalWorkerBroadcastStatus = 'pending' | 'sent' | 'accepted' | 'declined' | 'expired' | 'reassigned' | 'cancelled'

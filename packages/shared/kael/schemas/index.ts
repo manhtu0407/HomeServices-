@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { SERVICE_TYPES } from '../../src/constants'
+import { SERVICE_TYPES } from '../../src/constants.ts'
 
 export const KAEL_PRICE_DISCLAIMER_V3 =
   'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'

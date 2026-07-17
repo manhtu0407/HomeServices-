@@ -1,11 +1,11 @@
-import type { JobStatus } from '../constants'
+import type { JobStatus } from '../constants.ts'
 import {
   type WorkflowArtifactMode,
   type WorkflowArtifactType,
   WORKFLOW_ARTIFACT_TYPES,
-} from './artifact-lifecycle'
-import { buildWorkflowPhaseContext, isWorkflowJobChatReadable, isWorkflowJobChatSendable, type WorkflowAllowedActionsSnapshot, type WorkflowPhaseContext } from './workflow-phase-context'
-import { type WorkflowPhase, toWorkflowPhase } from './workflow-phases'
+} from './artifact-lifecycle.ts'
+import { buildWorkflowPhaseContext, isWorkflowJobChatReadable, isWorkflowJobChatSendable, type WorkflowAllowedActionsSnapshot, type WorkflowPhaseContext } from './workflow-phase-context.ts'
+import { type WorkflowPhase, toWorkflowPhase } from './workflow-phases.ts'
 
 export type WorkflowViewModelInput = {
   status: JobStatus | null

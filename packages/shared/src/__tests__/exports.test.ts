@@ -16,15 +16,15 @@ describe('packages/shared barrel export completeness', () => {
   const indexSrc = read('index.ts')
 
   it('re-exports from types/', () => {
-    expect(indexSrc).toContain("from './types'")
+    expect(indexSrc).toContain("from './types/index.ts'")
   })
 
   it('re-exports from constants', () => {
-    expect(indexSrc).toContain("from './constants'")
+    expect(indexSrc).toContain("from './constants.ts'")
   })
 
   it('re-exports from workflow contracts', () => {
-    expect(indexSrc).toContain("from './workflow'")
+    expect(indexSrc).toContain("from './workflow/index.ts'")
   })
 
   it('re-exports validation schemas by name (not wildcard)', () => {
@@ -50,7 +50,7 @@ describe('types/index.ts barrel export completeness', () => {
 
   it('re-exports Database type', () => {
     expect(typesSrc).toContain('Database')
-    expect(typesSrc).toContain("from './database.types'")
+    expect(typesSrc).toContain("from './database.types.ts'")
   })
 
   it('re-exports AI types', () => {

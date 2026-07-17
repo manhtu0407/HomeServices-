@@ -1,1 +1,1 @@
-export * from './mobile-workflow/index'
+export * from './mobile-workflow/index.ts'

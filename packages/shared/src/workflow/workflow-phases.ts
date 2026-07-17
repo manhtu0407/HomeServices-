@@ -1,4 +1,4 @@
-import type { JobStatus } from '../constants'
+import type { JobStatus } from '../constants.ts'
 
 export const WORKFLOW_PHASES = Object.freeze([
   'intake_started',

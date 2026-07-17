@@ -3,9 +3,9 @@ import {
   type EstimateCardV3,
   type ScopeChangeCustomerCard,
   type WorkerBrief,
-} from '../schemas'
-import { sanitizeKaelText } from '../sanitizers'
-import type { ServiceType } from '../../src/constants'
+} from '../schemas/index.ts'
+import { sanitizeKaelText } from '../sanitizers/index.ts'
+import type { ServiceType } from '../../src/constants.ts'
 
 type Complexity = 'small' | 'medium' | 'large'
 

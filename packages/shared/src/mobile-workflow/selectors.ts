@@ -1,14 +1,14 @@
-import { validateLocalDealDraft } from './draft'
+import { validateLocalDealDraft } from './draft.ts'
 import {
   canCancelLocalDeal,
   canSubmitCustomerReview,
   NEXT_WORKER_STATUS,
-} from './reducer'
+} from './reducer.ts'
 import type {
   LocalCustomerSearchState,
   LocalWorkflowSelectors,
   LocalWorkflowState,
-} from './types'
+} from './types.ts'
 
 export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSelectors {
   const deal = state.deal

@@ -1,4 +1,4 @@
-import type { LaunchServiceLineId, ServicePerformancePlaybook } from './types'
+import type { LaunchServiceLineId, ServicePerformancePlaybook } from './types.ts'
 
 export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId, ServicePerformancePlaybook>> = Object.freeze({
   home_cleaning: {

@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { HCMC_DISTRICTS, normalizeDistrict, SERVICE_TYPES, USER_ROLES } from './constants'
-import { KAEL_PERFORMANCE_PROFILE_IDS } from './service-intake/types'
-import { caseWorkEvidenceSchema } from './kael-case-work'
+import { HCMC_DISTRICTS, normalizeDistrict, SERVICE_TYPES, USER_ROLES } from './constants.ts'
+import { KAEL_PERFORMANCE_PROFILE_IDS } from './service-intake/types.ts'
+import { caseWorkEvidenceSchema } from './kael-case-work.ts'
 
 export const serviceTypeSchema = z.enum(SERVICE_TYPES)
 const clientRequestIdSchema = z.uuidv4()

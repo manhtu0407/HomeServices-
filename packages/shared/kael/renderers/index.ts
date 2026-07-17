@@ -3,8 +3,8 @@ import type {
   ScopeChangeCustomerCard,
   ScopeChangeWorkerChallenge,
   WorkerBrief,
-} from '../schemas'
-import { sanitizeKaelOutputObject } from '../sanitizers'
+} from '../schemas/index.ts'
+import { sanitizeKaelOutputObject } from '../sanitizers/index.ts'
 
 export function renderEstimateCardV3(card: EstimateCardV3): EstimateCardV3 {
   return sanitizeKaelOutputObject(card)

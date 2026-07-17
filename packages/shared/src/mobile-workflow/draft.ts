@@ -2,18 +2,18 @@ import {
   PROBLEM_CHIPS,
   SERVICE_TYPES,
   type ServiceType,
-} from '../constants'
+} from '../constants.ts'
 import {
   extractDistrictLabel,
   extractKnownDistrictLabel,
   hasAny,
   matchesKeyword,
   normalizeSearchText,
-} from './address'
+} from './address.ts'
 import type {
   LocalDealDraft,
   LocalDealSource,
-} from './types'
+} from './types.ts'
 
 const HANDYMAN_CURTAIN_INSTALL_KEYWORDS = ['lap thanh rem', 'curtain rod', 'install curtain rod'] as const
 const INDEPENDENT_UPHOLSTERY_KEYWORDS = [
