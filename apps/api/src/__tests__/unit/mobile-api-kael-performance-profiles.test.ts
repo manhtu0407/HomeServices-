@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   getKaelPerformanceProfile,
   KAEL_PERFORMANCE_PROFILES,
   listKaelPerformanceProfiles,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
-import { buildIntakeDiagnosisMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
+import { buildIntakeDiagnosisMessages, kaelIntakeDiagnosisPromptVersion } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
 import { intentResultSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 
 describe('Kael six-service performance profiles', () => {
@@ -102,5 +102,44 @@ describe('Kael six-service performance profiles', () => {
       ...base,
       missing_slots: ['invented_quote_driver'],
     }).success).toBe(false)
+  })
+
+  it('injects minimum electrical slots without requiring every quote driver', () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get: (key: string) => key === 'KAEL_PLAYBOOK_ELECTRICAL_ENABLED' ? 'true' : undefined,
+      },
+    })
+    try {
+      const prompt = String(buildIntakeDiagnosisMessages(
+        'electrical',
+        ['Lắp thêm thiết bị'],
+        'Cần lắp thêm một ổ cắm.',
+      )[0]?.content)
+
+      expect(prompt).toContain('Electrical minimum-slot policy:')
+      expect(prompt).toContain('install_device: minimum=[device_or_circuit_type, access_and_concealed_wiring, parts_or_new_device_requirement]')
+      expect(prompt).toContain('Only missing minimum slots may block an estimate.')
+      expect(prompt).not.toContain('Every selected-profile quote_driver must have a grounded value')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('preserves the non-treatment slot contract while versioning safer base copy', () => {
+    vi.stubGlobal('Deno', { env: { get: () => undefined } })
+    try {
+      const prompt = String(buildIntakeDiagnosisMessages(
+        'electrical',
+        ['Lắp thêm thiết bị'],
+        'Cần lắp thêm một ổ cắm.',
+      )[0]?.content)
+
+      expect(prompt).not.toContain('Electrical minimum-slot policy:')
+      expect(prompt).toContain('Every selected-profile quote_driver must have a grounded value')
+      expect(kaelIntakeDiagnosisPromptVersion('electrical')).toBe('2026-07-16.v2-base-safety')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

@@ -11,13 +11,16 @@ import type { KaelChatStatus } from "../../../_shared/contracts.ts";
 import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "./audit.ts";
 import { guardDemandingResponseText } from "./chat.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, detectDemandingCustomerPatterns, getKaelPerformanceProfile, kaelDiagnosisScopeArtifactSchema, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
-import { evaluateMessageBoundary } from "../kael/boundary-guard.ts";
+import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, intakeEvalObservationSchema, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, resolveRequiredSlotCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type IntakeEvalObservation, type PipelineResult } from "../kael/index.ts";
+import { isElectricalPlaybookEnabled } from "../kael/playbooks/electrical.ts";
 import { guardOutput } from "../kael/output-gateway.ts";
+import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
 import { frameUntrustedCustomerEvidenceForModel, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../kael/untrusted-evidence.ts";
 import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { KaelChatCreateInput, ServiceType } from "../../../_shared/domain.ts";
-
+import { buildSafetyFirstKaelClarification, persistentKaelSafetySignals, resolveKaelResponseSafetySignals } from "./kael-chat-intake-safety.ts";
+import { maybeApplyKaelBoundaryGuard } from "./kael-chat-boundary.ts";
+export { maybeApplyKaelBoundaryGuard };
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 
 function kaelServiceLabelEn(serviceType: string) {
@@ -32,6 +35,25 @@ function kaelServiceLabelEn(serviceType: string) {
   return labels[serviceType] ?? "another supported service";
 }
 
+function intakeObservationMetadata(observation: IntakeEvalObservation | undefined) {
+  if (!observation) return {};
+  return { intake_observation: intakeEvalObservationSchema.parse(observation) };
+}
+
+function withIntakeSafetyGuidance(
+  text: string,
+  safetySignals: readonly string[],
+  language: "vi" | "en",
+  trustedText = true,
+) {
+  return prependDeterministicSafetyGuidance(
+    text,
+    safetySignals,
+    language,
+    { trustedText },
+  );
+}
+
 export async function advanceKaelChatEstimate(
   ctx: MobileApiContext,
   sessionId: string,
@@ -41,6 +63,7 @@ export async function advanceKaelChatEstimate(
     photo_urls?: string[];
     address_district?: string;
     language?: "vi" | "en";
+    persisted_safety_signals?: string[];
   },
   secrets: EdgeAiSecrets,
 ) {
@@ -48,11 +71,31 @@ export async function advanceKaelChatEstimate(
   const progressTarget = { table: "kael_chat_sessions" as const, id: sessionId };
   const llmClarificationEnabled = true;
   const language = input.language ?? "vi";
+  const electricalPlaybookEnabled = input.service_type === "electrical" &&
+    isElectricalPlaybookEnabled();
   const message = sanitizeForLLM(input.message ?? "");
   const safeCustomerEvidence = sanitizeUntrustedEvidenceText(message);
   const modelCustomerEvidence = frameUntrustedCustomerEvidenceForModel(safeCustomerEvidence);
   const durableCustomerDetail = safeCustomerEvidence;
   const problemChips = sanitizeUntrustedEvidenceList(input.problem_chips ?? []);
+  const earlySafetySignals = persistentKaelSafetySignals(
+    message,
+    input.service_type,
+    input.persisted_safety_signals,
+  );
+  if (await maybeApplyKaelBoundaryGuard(
+    client,
+    sessionId,
+    message,
+    input.service_type,
+    {
+      actorId: ctx.user.id,
+      jobId: null,
+      language,
+      persistedSafetySignals: earlySafetySignals,
+      progressTarget,
+    },
+  )) return;
   let artifact = await loadDiagnosisScopeArtifact(
     client,
     sessionId,
@@ -69,9 +112,13 @@ export async function advanceKaelChatEstimate(
     await persistDiagnosisScopeArtifact(client, sessionId, escalationArtifact);
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "clarification",
-      text: language === "en"
-        ? "Kael is not yet confident enough to provide a safe offer. A support specialist needs to review the collected information."
-        : "Kael chưa đủ chắc chắn để báo giá an toàn. Yêu cầu này cần người hỗ trợ xem lại thông tin đã thu thập.",
+      text: prependDeterministicSafetyGuidance(
+        language === "en"
+          ? "Kael is not yet confident enough to provide a safe offer. A support specialist needs to review the collected information."
+          : "Kael chưa đủ chắc chắn để báo giá an toàn. Yêu cầu này cần người hỗ trợ xem lại thông tin đã thu thập.",
+        earlySafetySignals,
+        language,
+      ),
       nextStatus: "active",
       metadata: {
         diagnosis_scope: escalationArtifact,
@@ -91,9 +138,13 @@ export async function advanceKaelChatEstimate(
   if (currentCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) {
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "error",
-      text: language === "en"
-        ? "Kael has paused further analysis in this session to keep AI usage safe. You can use an existing validated offer or start a new session if needed."
-        : "Kael tạm dừng phân tích thêm cho phiên này để giữ ngân sách AI an toàn. Bạn có thể đặt thợ từ ước tính đã có hoặc tạo phiên mới nếu cần.",
+      text: prependDeterministicSafetyGuidance(
+        language === "en"
+          ? "Kael has paused further analysis in this session to keep AI usage safe. You can use an existing validated offer or start a new session if needed."
+          : "Kael tạm dừng phân tích thêm cho phiên này để giữ ngân sách AI an toàn. Bạn có thể đặt thợ từ ước tính đã có hoặc tạo phiên mới nếu cần.",
+        earlySafetySignals,
+        language,
+      ),
       nextStatus: "active",
       metadata: {
         budget_exceeded: true,
@@ -113,9 +164,13 @@ export async function advanceKaelChatEstimate(
 
   const district = normalizeServiceAreaDistrict(input.address_district);
   if (!district) {
-    const question = language === "en"
-      ? "Which Ho Chi Minh City district is the apartment in? Kael uses it to validate the area and eligible workers."
-      : "Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.";
+    const question = prependDeterministicSafetyGuidance(
+      language === "en"
+        ? "Which Ho Chi Minh City district is the apartment in? Kael uses it to validate the area and eligible workers."
+        : "Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.",
+      earlySafetySignals,
+      language,
+    );
     artifact = diagnosisScopeWithQuestion(artifact, ["address_district"], question, 0.25);
     await persistDiagnosisScopeArtifact(client, sessionId, artifact);
     await appendKaelSystemTurn(client, sessionId, {
@@ -141,7 +196,11 @@ export async function advanceKaelChatEstimate(
   // When smart clarification is on, let intake-diagnosis ask a CONTEXTUAL question
   // instead of this generic length-heuristic prompt (STRUCTURES.md A4).
   if (!llmClarificationEnabled && safeCustomerEvidence.length < 10 && problemChips.length === 0) {
-    const question = buildFocusedClarificationQuestion("symptom", language);
+    const question = prependDeterministicSafetyGuidance(
+      buildFocusedClarificationQuestion("symptom", language),
+      earlySafetySignals,
+      language,
+    );
     artifact = diagnosisScopeWithQuestion(artifact, ["description"], question, 0.3);
     await persistDiagnosisScopeArtifact(client, sessionId, artifact);
     await appendKaelSystemTurn(client, sessionId, {
@@ -160,56 +219,6 @@ export async function advanceKaelChatEstimate(
       stage: "clarification",
       status: "completed",
       progress: 1,
-    });
-    return;
-  }
-
-  // Boundary guard rejects
-  // out-of-scope / prompt-injection / service-mismatch BEFORE any provider
-  // call so cost stays zero for declined turns and Kael never emits an
-  // estimate that would violate RULES.md #6 (service scope) or #8 (no
-  // fake/off-topic data).
-  // S2/F6 (§38): semantic injection classifier is intentionally always-on here
-  // (do not gate off) — defense-in-depth on the customer Kael chat turn path.
-  const boundary = evaluateMessageBoundary(message, input.service_type, {
-    semanticInjectionClassifierEnabled: true,
-  });
-  if (!boundary.ok) {
-    console.warn("kael_chat boundary decline", {
-      sessionId,
-      reason: boundary.reason,
-      signalCount: boundary.detectedSignals.length,
-    });
-    await auditGuardrailTripBestEffort(client, {
-      jobId: null,
-      actorId: ctx.user.id,
-      actorRole: "customer",
-      surface: "kael_chat_boundary",
-      reason: boundary.reason,
-      source: "boundary_guard",
-      safeMetadata: {
-        session_id: sessionId,
-        service_type: input.service_type,
-        boundary_signals: boundary.detectedSignals,
-      },
-    });
-    await appendKaelSystemTurn(client, sessionId, {
-      contentType: "error",
-      text: boundary.declineText,
-      nextStatus: "unsupported",
-      metadata: {
-        boundary_reason: boundary.reason,
-        boundary_signals: boundary.detectedSignals,
-        ...(boundary.suggestedService
-          ? { suggested_service: boundary.suggestedService }
-          : {}),
-      },
-    });
-    await updateKaelProgress(client, progressTarget, {
-      stage: "intent_classification",
-      status: "failed",
-      progress: 1,
-      failureReason: boundary.reason,
     });
     return;
   }
@@ -240,6 +249,7 @@ export async function advanceKaelChatEstimate(
         intakeDiagnosisEnabled: llmClarificationEnabled,
         conversationContext,
         clarificationCount: priorClarificationCount,
+        priorSafetySignals: earlySafetySignals,
         language,
         progressTarget,
         actorId: ctx.user.id, // S4/F1 (§38): per-user AI-spend attribution
@@ -256,13 +266,28 @@ export async function advanceKaelChatEstimate(
     });
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "error",
-      text: language === "en"
-        ? "Kael cannot analyze this right now. Please try again in a few minutes."
-        : "Kael chưa thể phân tích lúc này. Bạn thử gửi lại sau ít phút.",
+      text: prependDeterministicSafetyGuidance(
+        language === "en"
+          ? "Kael cannot analyze this right now. Please try again in a few minutes."
+          : "Kael chưa thể phân tích lúc này. Bạn thử gửi lại sau ít phút.",
+        earlySafetySignals,
+        language,
+      ),
       nextStatus: "active",
     });
     return;
   }
+
+  const responseSafetySignals = resolveKaelResponseSafetySignals({
+    electricalPlaybookEnabled,
+    earlySafetySignals,
+    pipelineSafetySignals: pipeline.success ? pipeline.safetySignals : undefined,
+    intakeObservation: pipeline.intakeObservation,
+  });
+  const criticalSafetyGuidance = deterministicSafetyGuidance(
+    responseSafetySignals,
+    language,
+  );
 
   await logApiCalls(
     client,
@@ -323,28 +348,40 @@ export async function advanceKaelChatEstimate(
           },
         });
       }
+      const safetyFirstClarification = buildSafetyFirstKaelClarification({
+        providerText: checked.text,
+        focusedFallback,
+        safetySignals: responseSafetySignals,
+        language,
+      });
+      const safeQuestion = safetyFirstClarification.question;
       const sentiment = pipeline.clarification?.customerSentiment;
       artifact = diagnosisScopeWithQuestion(
         artifact,
         missingSlots.length > 0 ? missingSlots : ["description"],
-        checked.text,
+        safeQuestion,
         0.4,
         durableCustomerDetail,
       );
       await persistDiagnosisScopeArtifact(client, sessionId, artifact);
       await appendKaelSystemTurn(client, sessionId, {
         contentType: "clarification",
-        text: checked.text,
+        text: safetyFirstClarification.visibleText,
         nextStatus: "active",
         metadata: {
           artifact_proposal: buildKaelMissingInfoArtifactProposal({
             missingFields: missingSlots.length > 0 ? missingSlots : ["description"],
-            question: checked.text,
+            question: safeQuestion,
             confidence: 0.4,
             artifactType: "ai_notes",
           }),
-          clarification_source: checked.used_fallback ? "fallback" : "ai",
+          clarification_source: safetyFirstClarification.safetyFallbackUsed
+            ? "safety_fallback"
+            : checked.used_fallback
+            ? "fallback"
+            : "ai",
           diagnosis_scope: artifact,
+          ...intakeObservationMetadata(pipeline.intakeObservation),
           ...(sentiment ? { customer_sentiment: sentiment } : {}),
         },
         ...(sentiment
@@ -369,10 +406,18 @@ export async function advanceKaelChatEstimate(
           : "Mô tả của bạn không khớp với dịch vụ đang chọn. Bạn quay lại chọn đúng dịch vụ phù hợp để Kael ước tính.");
       await appendKaelSystemTurn(client, sessionId, {
         contentType: "error",
-        text: mismatchText,
+        text: withIntakeSafetyGuidance(
+          mismatchText,
+          responseSafetySignals,
+          language,
+        ),
         nextStatus: "unsupported",
         metadata: {
           boundary_reason: "service_mismatch_llm",
+          ...(pipeline.policyReasonCode
+            ? { policy_reason_code: pipeline.policyReasonCode }
+            : {}),
+          ...intakeObservationMetadata(pipeline.intakeObservation),
           ...(suggested ? { suggested_service: suggested } : {}),
         },
       });
@@ -392,13 +437,18 @@ export async function advanceKaelChatEstimate(
       await persistDiagnosisScopeArtifact(client, sessionId, artifact);
       await appendKaelSystemTurn(client, sessionId, {
         contentType: "error",
-        text: language === "en"
-          ? "Kael has identified the scope but does not have validated price evidence for this case. It needs review before any offer is shown."
-          : "Kael đã xác định phạm vi nhưng chưa có dữ liệu giá đã kiểm chứng cho trường hợp này. Yêu cầu cần được rà soát trước khi hiển thị báo giá.",
+        text: withIntakeSafetyGuidance(
+          language === "en"
+            ? "Kael has identified the scope but does not have validated price evidence for this case. It needs review before any offer is shown."
+            : "Kael đã xác định phạm vi nhưng chưa có dữ liệu giá đã kiểm chứng cho trường hợp này. Yêu cầu cần được rà soát trước khi hiển thị báo giá.",
+          responseSafetySignals,
+          language,
+        ),
         nextStatus: "active",
         metadata: {
           diagnosis_scope: artifact,
           quote_readiness: "validated_price_evidence_unavailable",
+          ...intakeObservationMetadata(pipeline.intakeObservation),
         },
       });
       await updateKaelProgress(client, progressTarget, {
@@ -426,11 +476,18 @@ export async function advanceKaelChatEstimate(
     }
     await appendKaelSystemTurn(client, sessionId, {
       contentType: pipeline.code === "UNSUPPORTED" ? "error" : "clarification",
-      text: clarificationText,
+      text: withIntakeSafetyGuidance(
+        clarificationText,
+        responseSafetySignals,
+        language,
+      ),
       nextStatus: "active",
-      metadata: pipeline.code === "UNSUPPORTED"
-        ? undefined
-        : {
+      metadata: {
+        ...intakeObservationMetadata(pipeline.intakeObservation),
+        ...(pipeline.policyReasonCode
+          ? { policy_reason_code: pipeline.policyReasonCode }
+          : {}),
+        ...(pipeline.code === "UNSUPPORTED" ? {} : {
           artifact_proposal: buildKaelMissingInfoArtifactProposal({
             missingFields: ["description_or_photo"],
             question: clarificationText,
@@ -438,7 +495,8 @@ export async function advanceKaelChatEstimate(
             artifactType: "ai_notes",
           }),
           diagnosis_scope: artifact,
-        },
+        }),
+      },
     });
     await updateKaelProgress(client, progressTarget, {
       stage: pipeline.code === "UNSUPPORTED" ? "intent_classification" : "clarification",
@@ -453,7 +511,11 @@ export async function advanceKaelChatEstimate(
     (sum, stage) => sum + (stage.costUsd ?? 0),
     0,
   );
-  const estimate = pipeline.estimate;
+  const estimate = buildSafetyFirstElectricalEstimate(
+    pipeline.estimate,
+    responseSafetySignals,
+    language,
+  );
   const profile = getKaelPerformanceProfile(input.service_type);
   if (!profile) {
     apiFailure("UNSUPPORTED_SERVICE", language === "en" ? "This service does not have a valid Case Work profile" : "Dịch vụ chưa có hồ sơ Case Work hợp lệ", 400);
@@ -465,7 +527,7 @@ export async function advanceKaelChatEstimate(
     evidence: artifact.evidence,
     language,
   });
-  if (evidenceRequest) {
+  if (evidenceRequest && !criticalSafetyGuidance) {
     artifact = diagnosisScopeWithEvidenceRequest(
       artifact,
       evidenceRequest,
@@ -481,7 +543,11 @@ export async function advanceKaelChatEstimate(
     await persistDiagnosisScopeArtifact(client, sessionId, artifact);
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "clarification",
-      text: evidenceRequest.prompt,
+      text: withIntakeSafetyGuidance(
+        evidenceRequest.prompt,
+        responseSafetySignals,
+        language,
+      ),
       nextStatus: "active",
       metadata: {
         artifact_proposal: buildKaelMissingInfoArtifactProposal({
@@ -491,6 +557,7 @@ export async function advanceKaelChatEstimate(
           artifactType: "ai_notes",
         }),
         diagnosis_scope: artifact,
+        ...intakeObservationMetadata(pipeline.intakeObservation),
       },
     });
     await updateKaelProgress(client, progressTarget, {
@@ -500,8 +567,14 @@ export async function advanceKaelChatEstimate(
     });
     return;
   }
-  const profileFactCoverage = resolveProfileFactCoverage(profile, pipeline.profileFacts ?? {});
-  const safetyFlags = buildProfileSafetyFlags(profile, pipeline.safetySignals ?? [], language);
+  const profileFactCoverage = electricalPlaybookEnabled
+    ? resolveRequiredSlotCoverage(
+      profile,
+      estimate.problem_category,
+      pipeline.profileFacts ?? {},
+    )
+    : resolveProfileFactCoverage(profile, pipeline.profileFacts ?? {});
+  const safetyFlags = buildProfileSafetyFlags(profile, responseSafetySignals, language);
   const quoteBlockers = [
     ...profileFactCoverage.missing.map((driver) => `missing_profile_fact:${driver}`),
     ...safetyFlags.map((flag) => `safety_gate:${flag.code}`),
@@ -521,7 +594,7 @@ export async function advanceKaelChatEstimate(
       complexity: estimate.complexity,
       problem_chips: problemChips,
       needs_inspection: estimate.needs_inspection === true,
-      safety_signals: pipeline.safetySignals ?? [],
+      safety_signals: responseSafetySignals,
     },
     missing_facts: [...profileFactCoverage.missing],
     evidence: artifact.evidence,
@@ -559,7 +632,11 @@ export async function advanceKaelChatEstimate(
   });
   await appendKaelSystemTurn(client, sessionId, {
     contentType: "estimate",
-    text: formatKaelEstimateText(estimate, language),
+    text: withIntakeSafetyGuidance(
+      formatKaelEstimateText(estimate, language),
+      responseSafetySignals,
+      language,
+    ),
     nextStatus: quoteReady ? "estimate_ready" : "active",
     estimate,
     costUsd,
@@ -570,6 +647,7 @@ export async function advanceKaelChatEstimate(
       diagnosis_scope: quoteReadyArtifact,
       fallback_used: pipeline.fallbackUsed,
       service_problem_id: pipeline.serviceProblemId,
+      ...intakeObservationMetadata(pipeline.intakeObservation),
       photo_count: input.photo_urls?.length ?? 0,
       budget_soft_cap_reached:
         currentCostUsd + costUsd >= KAEL_CHAT_SOFT_COST_CAP_USD,
@@ -578,57 +656,6 @@ export async function advanceKaelChatEstimate(
       ? { sessionMetadata: { last_customer_sentiment: pipeline.customerSentiment } }
       : {}),
   });
-}
-
-export async function maybeApplyKaelBoundaryGuard(
-  client: DbClient,
-  sessionId: string,
-  message: string,
-  serviceType: ServiceType,
-  auditContext: {
-    readonly actorId: string | null;
-    readonly jobId: string | null;
-    readonly language?: "vi" | "en";
-  } = { actorId: null, jobId: null },
-): Promise<boolean> {
-  // S2/F6 (§38): semantic injection classifier is intentionally always-on here
-  // (do not gate off) — defense-in-depth on the customer Kael chat path.
-  const boundary = evaluateMessageBoundary(message, serviceType, {
-    semanticInjectionClassifierEnabled: true,
-    language: auditContext.language,
-  });
-  if (boundary.ok) return false;
-  console.warn("kael_chat boundary decline", {
-    sessionId,
-    reason: boundary.reason,
-    signalCount: boundary.detectedSignals.length,
-  });
-  await auditGuardrailTripBestEffort(client, {
-    jobId: auditContext.jobId,
-    actorId: auditContext.actorId,
-    actorRole: "customer",
-    surface: "kael_chat_boundary",
-    reason: boundary.reason,
-    source: "boundary_guard",
-    safeMetadata: {
-      session_id: sessionId,
-      service_type: serviceType,
-      boundary_signals: boundary.detectedSignals,
-    },
-  });
-  await appendKaelSystemTurn(client, sessionId, {
-    contentType: "error",
-    text: boundary.declineText,
-    nextStatus: "unsupported",
-    metadata: {
-      boundary_reason: boundary.reason,
-      boundary_signals: boundary.detectedSignals,
-      ...(boundary.suggestedService
-        ? { suggested_service: boundary.suggestedService }
-        : {}),
-    },
-  });
-  return true;
 }
 
 export async function maybeHandleDemandingCustomerKaelChatTurn(
@@ -644,6 +671,7 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
     language?: "vi" | "en";
   },
 ) {
+  if (isKaelAiKillSwitchEnabled()) return false;
   const alreadyHardStopped = input.metadata.demanding_customer_hard_escalation === true;
   const safeInteractionEvidence = sanitizeUntrustedEvidenceText(input.message);
   const detection = detectDemandingCustomerPatterns({

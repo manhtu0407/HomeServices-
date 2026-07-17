@@ -10,7 +10,15 @@
 // zero-cost baseline.
 
 import type { ServiceType } from "../../../_shared/domain.ts";
+import {
+  applyHardRoutingPolicy,
+  hasElectricalInfrastructureContext,
+  prependDeterministicSafetyGuidance,
+  scanIntakeSafetySignals,
+  type HardRoutingPolicyDecision,
+} from "./electrical-intake-policy.ts";
 import { KAEL_CASE_WORK_SERVICE_TYPES } from "./performance-profiles.ts";
+import { isElectricalPlaybookEnabled } from "./playbooks/electrical.ts";
 
 export type BoundaryReason =
   | "prompt_injection"
@@ -25,6 +33,8 @@ export type BoundaryDecision =
     declineText: string;
     detectedSignals: string[];
     suggestedService?: ServiceType;
+    policyReasonCode?: HardRoutingPolicyDecision["reasonCode"];
+    safetySignals?: string[];
   };
 
 export type BoundaryInjectionClassifier = (input: {
@@ -37,6 +47,7 @@ export type BoundaryGuardOptions = {
   readonly semanticInjectionClassifierEnabled?: boolean;
   readonly injectionClassifier?: BoundaryInjectionClassifier;
   readonly language?: "vi" | "en";
+  readonly electricalPlaybookEnabled?: boolean;
 };
 
 const SUPPORTED_SERVICES: readonly ServiceType[] = KAEL_CASE_WORK_SERVICE_TYPES;
@@ -295,8 +306,12 @@ export function detectPromptInjection(
 
 export function detectOutOfScope(
   text: string,
+  selectedService?: ServiceType,
 ): { detected: boolean; signals: string[] } {
   const normalized = normalize(text);
+  if (selectedService === "electrical" && hasElectricalInfrastructureContext(text)) {
+    return { detected: false, signals: [] };
+  }
   const signals: string[] = [];
   for (const keyword of OUT_OF_SCOPE_KEYWORDS) {
     if (keyword === "may bom" && isSupportedWaterPumpMention(normalized)) {
@@ -367,14 +382,24 @@ export function evaluateMessageBoundary(
   const language = options.language ?? "vi";
   const declineCopy = DECLINE_COPY[language];
   if (trimmed.length === 0) return { ok: true };
+  const electricalPolicyEnabled = selectedService === "electrical" &&
+    (options.electricalPlaybookEnabled ?? isElectricalPlaybookEnabled());
+  const safetySignals = electricalPolicyEnabled
+    ? scanIntakeSafetySignals(selectedService, trimmed)
+    : [];
 
   const injection = detectPromptInjection(trimmed);
   if (injection.detected) {
     return {
       ok: false,
       reason: "prompt_injection",
-      declineText: declineCopy.prompt_injection,
+      declineText: prependDeterministicSafetyGuidance(
+        declineCopy.prompt_injection,
+        safetySignals,
+        language,
+      ),
       detectedSignals: injection.signals,
+      safetySignals,
     };
   }
 
@@ -387,22 +412,62 @@ export function evaluateMessageBoundary(
       return {
         ok: false,
         reason: "prompt_injection",
-        declineText: declineCopy.prompt_injection,
+        declineText: prependDeterministicSafetyGuidance(
+          declineCopy.prompt_injection,
+          safetySignals,
+          language,
+        ),
         detectedSignals: [
           "semantic_injection_classifier",
           ...semanticInjection.signals,
         ],
+        safetySignals,
       };
     }
   }
 
-  const outOfScope = detectOutOfScope(trimmed);
+  const hardRoute = electricalPolicyEnabled
+    ? applyHardRoutingPolicy({ selectedService, text: trimmed })
+    : null;
+  if (hardRoute) {
+    const baseDecline = hardRoute.scopeSignal === "out_of_scope"
+      ? declineCopy.out_of_scope
+      : hardRoute.suggestedService
+      ? language === "en"
+        ? `${declineCopy.service_mismatch} Kael identified ${SERVICE_LABEL.en[hardRoute.suggestedService]} as the closer match.`
+        : `${declineCopy.service_mismatch} Kael nghĩ vấn đề thuộc dịch vụ ${SERVICE_LABEL.vi[hardRoute.suggestedService]}.`
+      : declineCopy.service_mismatch;
+    return {
+      ok: false,
+      reason: hardRoute.scopeSignal,
+      declineText: prependDeterministicSafetyGuidance(baseDecline, safetySignals, language),
+      detectedSignals: [`policy:${hardRoute.reasonCode}`],
+      suggestedService: hardRoute.suggestedService ?? undefined,
+      policyReasonCode: hardRoute.reasonCode,
+      safetySignals,
+    };
+  }
+
+  // The flagged electrical path uses the high-precision deterministic policy
+  // above and leaves ambiguous cases to the structured intent model. The broad
+  // legacy keyword gate remains byte-for-byte available when the flag is off.
+  if (electricalPolicyEnabled) return { ok: true };
+
+  const outOfScope = detectOutOfScope(
+    trimmed,
+    undefined,
+  );
   if (outOfScope.detected) {
     return {
       ok: false,
       reason: "out_of_scope",
-      declineText: declineCopy.out_of_scope,
+      declineText: prependDeterministicSafetyGuidance(
+        declineCopy.out_of_scope,
+        safetySignals,
+        language,
+      ),
       detectedSignals: outOfScope.signals,
+      safetySignals,
     };
   }
 
@@ -417,9 +482,10 @@ export function evaluateMessageBoundary(
     return {
       ok: false,
       reason: "service_mismatch",
-      declineText,
+      declineText: prependDeterministicSafetyGuidance(declineText, safetySignals, language),
       detectedSignals: mismatch.signals,
       suggestedService: suggestion ?? undefined,
+      safetySignals,
     };
   }
 

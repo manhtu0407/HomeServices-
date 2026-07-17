@@ -6,6 +6,7 @@ const root = join(process.cwd(), '../../supabase/functions/mobile-api/_shared')
 const service = readFileSync(join(root, 'services/kael-chat.service.ts'), 'utf8')
 const mediaService = readFileSync(join(root, 'services/kael-chat-media.service.ts'), 'utf8')
 const core = readFileSync(join(root, 'services/kael-chat-core.ts'), 'utf8')
+const boundary = readFileSync(join(root, 'services/kael-chat-boundary.ts'), 'utf8')
 const caseWork = readFileSync(join(root, 'services/kael-chat-case-work.ts'), 'utf8')
 const services = readFileSync(join(root, 'services.ts'), 'utf8')
 const confirmService = readFileSync(join(root, 'services/kael-chat-confirm.service.ts'), 'utf8')
@@ -16,6 +17,7 @@ const sharedService = [
   readFileSync(join(root, 'services/_shared.ts'), 'utf8'),
   readFileSync(join(root, 'services/serializers.ts'), 'utf8'),
 ].join('\n')
+const jobCreateService = readFileSync(join(root, 'services/job-create.service.ts'), 'utf8')
 
 describe('Kael Case Work runtime wiring', () => {
   it('respects deferred Basic Intake handoff instead of analyzing during route submit', () => {
@@ -29,6 +31,13 @@ describe('Kael Case Work runtime wiring', () => {
     expect(service).toMatch(/submitKaelChatEvidence\([\s\S]*secrets:\s*EdgeAiSecrets/)
     expect(service).toMatch(/submitKaelChatEvidence[\s\S]*await advanceKaelChatEstimate\(/)
     expect(services).toContain('submitKaelChatEvidence: (ctx, sessionId, input) =>')
+  })
+
+  it('settles progress when either real chat boundary call declines early', () => {
+    const boundaryCalls = service.match(/maybeApplyKaelBoundaryGuard\([\s\S]*?progressTarget: \{ table: "kael_chat_sessions", id: sessionId \}[\s\S]*?\);/g) ?? []
+
+    expect(boundaryCalls).toHaveLength(2)
+    expect(boundary).toMatch(/if \(auditContext\.progressTarget\)[\s\S]*updateKaelProgress\([\s\S]*status: "failed"[\s\S]*failureReason: boundary\.reason/)
   })
 
   it('hydrates Basic Intake evidence into the first artifact without signing private video', () => {
@@ -121,7 +130,8 @@ describe('Kael Case Work runtime wiring', () => {
   it('does not force a best-effort estimate after a fixed clarification count', () => {
     expect(pipeline).not.toContain('CLARIFICATION_CAP')
     expect(pipeline).not.toMatch(/clarificationCount[^\n]+</)
-    expect(pipeline).toContain('if (intent.needs_clarification || missingSlots.length > 0)')
+    expect(pipeline).toContain('const needsClarification = coverage.needsClarification')
+    expect(pipeline).toContain('if (needsClarification)')
     expect(core).not.toContain('KAEL_CASE_WORK_TURN_SAFETY_LIMIT')
     expect(core).toContain('artifact.next_action.kind === "escalate"')
     expect(core).toContain('KAEL_CHAT_HARD_COST_CAP_USD')
@@ -135,6 +145,11 @@ describe('Kael Case Work runtime wiring', () => {
     expect(core).toContain('pipeline.code === "NO_BASELINE"')
     expect(core).toContain('buildPriceEvidenceUnavailableArtifact')
     expect(core).toContain('validated_price_evidence_unavailable')
+  })
+
+  it('retains hard-route reason telemetry on the job-create failure event', () => {
+    expect(jobCreateService).toContain('policy_reason_code: pipeline.policyReasonCode')
+    expect(jobCreateService).toMatch(/reason_code: reasonCode, \.\.\.metadata/)
   })
 
   it('enforces server-requested visual evidence before a quote-ready artifact', () => {

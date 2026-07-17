@@ -8,6 +8,7 @@ import type { KaelSpendGate } from "./spend-gate.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
 import { hasUnsupportedRepairIntent, scrubSensitiveForLLM, timed } from "./utils.ts";
+import { applyHardRoutingPolicy, hasElectricalInfrastructureContext } from "./electrical-intake-policy.ts";
 
 export async function classifyIntent(
   serviceType: string,
@@ -15,6 +16,7 @@ export async function classifyIntent(
   description: string,
   secrets: EdgeAiSecrets,
   spendGate: KaelSpendGate,
+  electricalPlaybookEnabled = false,
 ): Promise<
   | { success: true; intent: IntentResult; attempts: IntentAttemptLog[] }
   | {
@@ -46,12 +48,44 @@ export async function classifyIntent(
 
   return {
     success: false,
-    fallback: buildFallbackIntent(serviceType, problemChips, description),
+    fallback: buildFallbackIntent(
+      serviceType,
+      problemChips,
+      description,
+      electricalPlaybookEnabled,
+    ),
     failureReason: attempts.map((attempt) =>
       `${attempt.provider ?? "unknown"}:${attempt.failureReason ?? "failed"}`
     ).join("; "),
     attempts,
   };
+}
+
+export function resolveIntakeScopeConsistency(
+  selectedService: string,
+  intent: IntentResult,
+) {
+  const selected = getKaelPerformanceProfile(selectedService)?.service_type ?? null;
+  const returned = intent.service_type === "unsupported"
+    ? null
+    : getKaelPerformanceProfile(intent.service_type)?.service_type ?? null;
+  const suggested = intent.suggested_service
+    ? getKaelPerformanceProfile(intent.suggested_service)?.service_type ?? null
+    : null;
+
+  if (!selected || intent.service_type === "unsupported" || intent.scope_signal === "out_of_scope") {
+    return { scopeSignal: "out_of_scope" as const, suggestedService: null };
+  }
+  if (returned && returned !== selected) {
+    return { scopeSignal: "service_mismatch" as const, suggestedService: returned };
+  }
+  if (intent.scope_signal === "service_mismatch") {
+    if (suggested && suggested !== selected) {
+      return { scopeSignal: "service_mismatch" as const, suggestedService: suggested };
+    }
+    return { scopeSignal: "out_of_scope" as const, suggestedService: null };
+  }
+  return { scopeSignal: "in_scope" as const, suggestedService: null };
 }
 
 async function classifyIntentWithProvider(
@@ -129,6 +163,7 @@ export async function diagnoseIntake(
   spendGate: KaelSpendGate,
   conversationContext?: string,
   language: "vi" | "en" = "vi",
+  electricalPlaybookEnabled = false,
 ): Promise<
   | { success: true; intent: IntentResult; attempts: IntentAttemptLog[] }
   | {
@@ -162,7 +197,12 @@ export async function diagnoseIntake(
 
   return {
     success: false,
-    fallback: buildFallbackIntent(serviceType, problemChips, description),
+    fallback: buildFallbackIntent(
+      serviceType,
+      problemChips,
+      description,
+      electricalPlaybookEnabled,
+    ),
     failureReason: attempts.map((attempt) =>
       `${attempt.provider ?? "unknown"}:${attempt.failureReason ?? "failed"}`
     ).join("; "),
@@ -239,8 +279,35 @@ export function buildFallbackIntent(
   serviceType: string,
   problemChips: string[],
   description: string,
+  electricalPlaybookEnabled = false,
 ): IntentResult {
-  if (hasUnsupportedRepairIntent(description)) {
+  const hardRoute = electricalPlaybookEnabled && serviceType === "electrical"
+    ? applyHardRoutingPolicy({ selectedService: "electrical", text: description })
+    : null;
+  if (hardRoute?.scopeSignal === "out_of_scope") {
+    return {
+      service_type: "unsupported",
+      problem_slug: "unsupported",
+      confidence: 1,
+      needs_clarification: false,
+      scope_signal: "out_of_scope",
+      suggested_service: null,
+    };
+  }
+  if (hardRoute?.scopeSignal === "service_mismatch" && hardRoute.suggestedService) {
+    return {
+      service_type: hardRoute.suggestedService,
+      problem_slug: FALLBACK_PROBLEM_SLUG_BY_SERVICE[hardRoute.suggestedService],
+      confidence: 1,
+      needs_clarification: false,
+      scope_signal: "service_mismatch",
+      suggested_service: hardRoute.suggestedService,
+    };
+  }
+  const supportedElectricalContext = electricalPlaybookEnabled &&
+    serviceType === "electrical" &&
+    hasElectricalInfrastructureContext(description);
+  if (hasUnsupportedRepairIntent(description) && !supportedElectricalContext) {
     return {
       service_type: "unsupported",
       problem_slug: "unsupported",

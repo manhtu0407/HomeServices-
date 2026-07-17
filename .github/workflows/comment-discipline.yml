@@ -25,7 +25,7 @@ jobs:
           node-version: 20
       - name: Ensure base ref is available
         if: github.event_name == 'pull_request'
-        run: git fetch --no-tags origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+        run: git rev-parse --verify "refs/remotes/origin/${{ github.base_ref }}"
       - name: Check added lines (PR ratchet)
         if: github.event_name == 'pull_request'
         run: node scripts/check-comment-discipline.mjs --diff "origin/${{ github.base_ref }}"

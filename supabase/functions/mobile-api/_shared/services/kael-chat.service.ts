@@ -18,6 +18,7 @@ import {
   type KaelChatTurnInput,
 } from "../../../_shared/domain.ts";
 import { advanceKaelChatEstimate, assertKaelSessionOwnership, findExistingKaelSessionByClientRequest, insertKaelTurn, maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn, updateKaelSession } from "./kael-chat-core.ts";
+import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./kael-chat-intake-safety.ts";
 import { getKaelChat } from "./kael-chat-read.service.ts";
 import { ensureCustomerCaseConversation } from "./customer-kael-conversation.service.ts";
 import { rejectKaelChatRateLimit } from "./kael-chat-rate-limit.ts";
@@ -67,6 +68,10 @@ export async function createKaelChat(
   const client = db(ctx);
   const language = input.language ?? "vi";
   const safeProblemChips = sanitizeUntrustedEvidenceList(input.problem_chips);
+  const initialSafetySignals = persistentKaelSafetySignals(
+    sanitizeForLLM(input.message ?? ""),
+    input.service_type,
+  );
 
   // Idempotent re-POST runs BEFORE the
   // rate limiter so harmless retries with the same client_request_id do not
@@ -163,6 +168,7 @@ export async function createKaelChat(
     ).length,
     schedule_window: input.schedule_window ?? null,
     demanding_customer_qa_count: input.message ? 1 : undefined,
+    intake_safety_signals: initialSafetySignals.length > 0 ? initialSafetySignals : undefined,
   });
   const initialArtifact = buildInitialDiagnosisScopeArtifact({
     serviceType: input.service_type,
@@ -275,11 +281,22 @@ export async function createKaelChat(
       sessionId,
       message,
       input.service_type,
-      { actorId: ctx.user.id, jobId: null, language },
+      {
+        actorId: ctx.user.id,
+        jobId: null,
+        language,
+        persistedSafetySignals: initialSafetySignals,
+        progressTarget: { table: "kael_chat_sessions", id: sessionId },
+      },
     );
     if (!boundaryHandled) {
+      const safetyPath = requiresImmediateKaelSafetyPath(
+        message,
+        input.service_type,
+        initialSafetySignals,
+      );
       const handledDemandingCustomer =
-        await maybeHandleDemandingCustomerKaelChatTurn(
+        safetyPath ? false : await maybeHandleDemandingCustomerKaelChatTurn(
           client,
           {
             sessionId,
@@ -300,6 +317,7 @@ export async function createKaelChat(
             ...input,
             message,
             photo_urls: initialSignedVisionUrls,
+            persisted_safety_signals: initialSafetySignals,
           },
           secrets,
         );
@@ -391,6 +409,12 @@ export async function sendKaelChatTurn(
     asString(session.customer_id),
   );
   const voiceTranscript = caseWorkVoiceTranscript(sanitizedEvidenceItems);
+  const message = sanitizeForLLM(input.message || voiceTranscript);
+  const persistedSafetySignals = persistentKaelSafetySignals(
+    message,
+    asServiceType(session.service_type),
+    asStringArray(previousMetadata.intake_safety_signals),
+  );
   const metadata = compactMetadata({
     ...durablePreviousMetadata,
     language,
@@ -411,8 +435,10 @@ export async function sendKaelChatTurn(
     evidence_kinds: sanitizedEvidenceItems.map((evidence) => evidence.kind),
     schedule_window: input.schedule_window ?? previousMetadata.schedule_window,
     demanding_customer_qa_count: qaCount,
+    intake_safety_signals: persistedSafetySignals.length > 0
+      ? persistedSafetySignals
+      : undefined,
   });
-  const message = sanitizeForLLM(input.message || voiceTranscript);
   // Scrub PII before persisting.
   await insertKaelTurn(client, {
     session_id: sessionId,
@@ -463,11 +489,22 @@ export async function sendKaelChatTurn(
     sessionId,
     message,
     asServiceType(session.service_type),
-    { actorId: ctx.user.id, jobId: nullableString(session.job_id), language },
+    {
+      actorId: ctx.user.id,
+      jobId: nullableString(session.job_id),
+      language,
+      persistedSafetySignals,
+      progressTarget: { table: "kael_chat_sessions", id: sessionId },
+    },
   );
   if (boundaryHandled) return getKaelChat(ctx, sessionId);
 
-  const handledDemandingCustomer = await maybeHandleDemandingCustomerKaelChatTurn(
+  const safetyPath = requiresImmediateKaelSafetyPath(
+    message,
+    asServiceType(session.service_type),
+    persistedSafetySignals,
+  );
+  const handledDemandingCustomer = safetyPath ? false : await maybeHandleDemandingCustomerKaelChatTurn(
     client,
     {
       sessionId,
@@ -489,6 +526,7 @@ export async function sendKaelChatTurn(
     photo_urls: signedVisionUrls,
     address_district: nullableString(metadata.address_district) ?? undefined,
     language,
+    persisted_safety_signals: persistedSafetySignals,
   }, secrets);
 
   return getKaelChat(ctx, sessionId);
@@ -583,6 +621,11 @@ export async function submitKaelChatEvidence(
         : (language === "en" ? "Evidence skipped." : "Bỏ qua bằng chứng."))
     ),
   );
+  const persistedSafetySignals = persistentKaelSafetySignals(
+    message,
+    asServiceType(session.service_type),
+    asStringArray(previousMetadata.intake_safety_signals),
+  );
   await insertKaelTurn(client, {
     session_id: sessionId,
     turn_index: previousTurns + 1,
@@ -636,6 +679,9 @@ export async function submitKaelChatEvidence(
       evidence_updated_at: now,
       problem_chips: safeProblemChips,
       skip_reason: input.skip_reason ?? nullableString(previousMetadata.skip_reason),
+      intake_safety_signals: persistedSafetySignals.length > 0
+        ? persistedSafetySignals
+        : undefined,
     }),
   });
 
@@ -646,6 +692,7 @@ export async function submitKaelChatEvidence(
     photo_urls: signedVisionUrls,
     address_district: nullableString(previousMetadata.address_district) ?? undefined,
     language,
+    persisted_safety_signals: persistedSafetySignals,
   }, secrets);
 
   return getKaelChat(ctx, sessionId);

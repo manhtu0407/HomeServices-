@@ -1,6 +1,10 @@
 import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../_shared/contracts.ts";
 import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../kael/artifact-contract.ts";
-import { PRICE_DISCLAIMER } from "../kael/index.ts";
+import {
+  PRICE_DISCLAIMER,
+  intakeEvalObservationSchema,
+  isIntakeEvalObservationExposureEnabled,
+} from "../kael/index.ts";
 import { apiFailure } from "../router.ts";
 import {
   asComplexityOrNull,
@@ -40,10 +44,28 @@ export function serializeKaelTurn(row: Record<string, unknown>) {
     // Surface what Kael still needs so the mobile
     // thread can render slot-hint chips. Drawn from the missing-info artifact proposal.
     clarification: serializeKaelClarification(contentType, metadata.artifact_proposal),
+    ...(isIntakeEvalObservationExposureEnabled()
+      ? { intake_observation: serializeIntakeEvalObservation(metadata.intake_observation) }
+      : {}),
     created_at: requiredDbString(
       row.created_at,
       "Dữ liệu lượt chat Kael không hợp lệ",
     ),
+  };
+}
+
+export function serializeIntakeEvalObservation(value: unknown) {
+  const parsed = intakeEvalObservationSchema.safeParse(value);
+  if (!parsed.success) return null;
+  return {
+    scope_signal: parsed.data.scopeSignal,
+    suggested_service: parsed.data.suggestedService,
+    problem_slug: parsed.data.problemSlug,
+    needs_clarification: parsed.data.needsClarification,
+    safety_signals: parsed.data.safetySignals,
+    model_id: parsed.data.modelId,
+    prompt_version: parsed.data.promptVersion,
+    playbook_version: parsed.data.playbookVersion,
   };
 }
 

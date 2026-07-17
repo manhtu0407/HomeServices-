@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "kael:eval": "node scripts/kael-eval.mjs",
+    "kael:eval:playbook": "node scripts/kael-playbook-eval.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"

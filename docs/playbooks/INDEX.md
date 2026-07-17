@@ -9,18 +9,19 @@ Distilled reasoning that teaches Kael how to think about each service — the "t
 ```
 playbooks/
   process-distillation.md      ← the method (read before authoring)
+  codex-kael-capability-guide.md ← the three-task implementation + measurement guide
   INDEX.md                     ← this file (index + status board)
   services/<service>.md        ← the full textbook per service (human source of truth)
   eval/<service>-cases.json    ← ground-truth eval corpus per service
 ```
 
-The compressed runtime segment (Appendix A of each textbook) does NOT live here — it becomes a code constant next to `prompts.ts` when injected (see the SOP §5). This folder is the source of truth and the measurement; the runtime copy is generated from it.
+The compressed runtime segment (Appendix A of each textbook) does NOT live here — it becomes a code constant next to `prompts.ts` when injected (see the SOP §5). This folder holds the review source and measurement contract. A runtime copy is not proven equivalent merely because both files exist: generate it or enforce a bounded parity/hash gate before claiming source/runtime parity.
 
 ## Status board
 
 | Service | Textbook | Runtime segment injected | Eval baseline | Last delta |
 |---|---|---|---|---|
-| electrical | [services/electrical.md](services/electrical.md) — v0.1, Tu approved | **wired behind `KAEL_PLAYBOOK_ELECTRICAL_ENABLED` (off; not deployed)** | single-turn baseline 20/24 (routing 70%, 6 gaps); multi-turn harness ready; full before/after rate-gated (20 creates/hour/user) | — (awaiting deploy + paced runs) |
+| electrical | [services/electrical.md](services/electrical.md) — v0.1 draft; Tu/domain review pending | local hardening implemented behind existing `KAEL_PLAYBOOK_ELECTRICAL_ENABLED`; **not deployed in this pass**; Appendix/runtime byte parity is unit-tested, but no deployed bundle is attested | historical live baseline: 20 cases, overall 40%, routing 70%; structured harness contract is local/mock only; live baseline/After requires approved matched staging slices | **NEEDS_HOLDOUT** — no comparable live After/delta or independent holdout yet |
 | plumbing | — | no | — | — |
 | cleaning | — | no | — | — |
 | hvac | — | no | — | — |
@@ -31,4 +32,4 @@ Update this row whenever a playbook advances a stage. "Kael got smarter" is only
 
 ## The 1% (what needs Tu before electrical ships)
 
-See `services/electrical.md` Appendix C: resolve the `[VERIFY]` domain tags and three product-policy calls, then run the baseline eval before any injection.
+See `services/electrical.md` Appendix C: resolve the `[VERIFY]` domain tags and three product-policy calls, attest the reviewed runtime segment, then run matched live baseline/After arms plus an independent holdout before shipping or claiming improvement.

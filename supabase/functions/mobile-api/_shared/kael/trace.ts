@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { KAEL_PURPOSES, type AIProvider, type KaelPurpose } from "./types.ts";
+import { KAEL_PURPOSES, type AIProvider, type KaelPurpose, type PipelineInput, type PipelineStageLog } from "./types.ts";
 import type { KaelActorRole } from "./permission-gate.ts";
 
 export const KAEL_TRACE_SCHEMA_VERSION = "kael_trace.v1";
@@ -126,6 +126,7 @@ export function buildProviderAttemptTrace(input: {
   readonly code?: string;
   readonly fallbackUsed: boolean;
   readonly confidence?: number | null;
+  readonly promptVersion?: string;
   readonly safeMetadata?: Record<string, unknown>;
 }): KaelSafeTraceEvent {
   return buildKaelTraceEvent({
@@ -147,6 +148,7 @@ export function buildProviderAttemptTrace(input: {
       reason_code: input.fallbackUsed ? input.code ?? "FALLBACK" : null,
     },
     confidence: input.confidence ?? null,
+    ...(input.promptVersion ? { prompt_version: input.promptVersion } : {}),
     safe_metadata: input.safeMetadata ?? {},
   });
 }
@@ -181,6 +183,81 @@ export function buildNoProviderTrace(input: {
     confidence: null,
     safe_metadata: input.safeMetadata ?? {},
   });
+}
+
+export function pushPipelineStageLog(
+  stageLogs: PipelineStageLog[],
+  input: PipelineInput,
+  log: PipelineStageLog,
+  options: { readonly promptVersion?: string } = {},
+): void {
+  const workflowPhase = input.intakeDiagnosisEnabled ? "offer_ready" : "intake";
+  const action = input.intakeDiagnosisEnabled
+    ? "customer.open_case_chat"
+    : "customer.submit_intake";
+  const policyId = input.intakeDiagnosisEnabled
+    ? "kael.path.customer_case_chat_revision.v1"
+    : "kael.path.customer_intake_to_estimate.v1";
+  const purpose = purposeForPipelineStage(log.stage);
+  const safeMetadata = {
+    stage: log.stage,
+    ...(log.cacheStatus ? { cache_status: log.cacheStatus } : {}),
+  };
+  const trace = log.provider && log.model
+    ? buildProviderAttemptTrace({
+      workflowPhase,
+      actorRole: "customer",
+      action,
+      policyId,
+      purpose,
+      provider: log.provider,
+      model: log.model,
+      latencyMs: log.latencyMs,
+      costUsd: log.costUsd,
+      result: log.success ? "success" : "error",
+      code: log.failureReason,
+      fallbackUsed: log.fallbackUsed,
+      promptVersion: options.promptVersion,
+      safeMetadata,
+    })
+    : buildKaelTraceEvent({
+      workflow_phase: workflowPhase,
+      actor_role: "customer",
+      action,
+      policy_id: policyId,
+      purpose,
+      provider: null,
+      model: null,
+      latency_ms: log.latencyMs,
+      cost_usd: log.costUsd ?? null,
+      validation: {
+        status: log.success ? "pass" : "fail",
+        reason_code: log.failureReason ?? null,
+      },
+      fallback: {
+        used: log.fallbackUsed,
+        reason_code: log.fallbackUsed ? log.failureReason ?? "FALLBACK" : null,
+      },
+      confidence: null,
+      ...(options.promptVersion ? { prompt_version: options.promptVersion } : {}),
+      safe_metadata: safeMetadata,
+    });
+  stageLogs.push({ ...log, trace });
+}
+
+function purposeForPipelineStage(stage: PipelineStageLog["stage"]) {
+  switch (stage) {
+    case "intent":
+      return "intent_classification";
+    case "vision":
+      return "vision_analysis";
+    case "baseline":
+      return "problem_synthesis";
+    case "market":
+      return "market_lookup";
+    case "synthesis":
+      return "price_synthesis";
+  }
 }
 
 function assertSafeTraceValue(value: unknown, path: readonly string[]): void {

@@ -44,6 +44,11 @@ const KAEL_GENERIC_INTAKE_MISSING_SLOTS = [
   "photo",
   "district",
 ] as const;
+export const KAEL_ELECTRICAL_BRANCH_CLARIFICATION_SLOTS = [
+  "breaker_state",
+  "safety_water_proximity",
+  "safety_spark_marks",
+] as const;
 const KAEL_PROFILE_QUOTE_DRIVER_SLOTS = listKaelPerformanceProfiles()
   .flatMap((profile) => [...profile.quote_drivers]);
 const KAEL_PROFILE_SAFETY_SIGNALS = listKaelPerformanceProfiles()
@@ -51,6 +56,7 @@ const KAEL_PROFILE_SAFETY_SIGNALS = listKaelPerformanceProfiles()
 export const KAEL_INTAKE_MISSING_SLOTS = Object.freeze([
   ...new Set([
     ...KAEL_GENERIC_INTAKE_MISSING_SLOTS,
+    ...KAEL_ELECTRICAL_BRANCH_CLARIFICATION_SLOTS,
     ...KAEL_PROFILE_QUOTE_DRIVER_SLOTS,
   ]),
 ]);
@@ -323,6 +329,51 @@ export const FALLBACK_PROBLEM_SLUG_BY_SERVICE: Record<ServiceType, string> = {
   handyman: "other_handyman",
 };
 
+const KAEL_KNOWN_PROBLEM_SLUGS = Object.freeze([
+  ...new Set(Object.values(PROBLEM_SLUGS_BY_SERVICE).flatMap((slugs) => [...slugs])),
+]);
+const intakeObservationVersionSchema = z.string().min(1).max(120).regex(
+  /^[A-Za-z0-9._:/-]+$/,
+);
+export const intakeEvalObservationSchema = z.object({
+  scopeSignal: z.enum(["in_scope", "out_of_scope", "service_mismatch"]),
+  suggestedService: z.enum(KAEL_CASE_WORK_SERVICE_TYPES).nullable(),
+  problemSlug: z.string().min(1).max(100).refine((value) =>
+    KAEL_KNOWN_PROBLEM_SLUGS.includes(value)
+  ).nullable(),
+  needsClarification: z.boolean(),
+  safetySignals: z.array(z.string().refine((value) =>
+    KAEL_PROFILE_SAFETY_SIGNALS.includes(value)
+  )).max(8).refine((values) => new Set(values).size === values.length),
+  modelId: intakeObservationVersionSchema,
+  promptVersion: intakeObservationVersionSchema,
+  playbookVersion: intakeObservationVersionSchema.nullable(),
+}).strict().superRefine((value, context) => {
+  if (value.scopeSignal === "in_scope") {
+    if (value.suggestedService !== null) {
+      context.addIssue({ code: "custom", path: ["suggestedService"], message: "in_scope cannot suggest another service" });
+    }
+    if (value.problemSlug === null) {
+      context.addIssue({ code: "custom", path: ["problemSlug"], message: "in_scope requires a known problem slug" });
+    }
+    return;
+  }
+  if (value.problemSlug !== null) {
+    context.addIssue({ code: "custom", path: ["problemSlug"], message: "declined scope cannot expose a problem slug" });
+  }
+  if (value.needsClarification) {
+    context.addIssue({ code: "custom", path: ["needsClarification"], message: "declined scope cannot request clarification" });
+  }
+  if (value.scopeSignal === "out_of_scope" && value.suggestedService !== null) {
+    context.addIssue({ code: "custom", path: ["suggestedService"], message: "out_of_scope cannot suggest a service" });
+  }
+  if (value.scopeSignal === "service_mismatch" && value.suggestedService === null) {
+    context.addIssue({ code: "custom", path: ["suggestedService"], message: "service_mismatch requires a suggested service" });
+  }
+});
+
+export type IntakeEvalObservation = z.infer<typeof intakeEvalObservationSchema>;
+
 // Edge AI provider contract. Intentionally divergent from the shared AI types (the apps/api +
 // mobile canonical): the Edge runtime adds Anthropic prompt-caching (cache_control / cacheStatus),
 // Perplexity multi-provider search params, base64 image sources, and response citations. Deno
@@ -435,6 +486,7 @@ export type PipelineInput = {
   intakeDiagnosisEnabled?: boolean;
   conversationContext?: string;
   clarificationCount?: number;
+  priorSafetySignals?: string[];
 };
 
 export type PipelineClarification = {
@@ -560,6 +612,7 @@ export type PipelineResult =
     customerSentiment?: "neutral" | "detail_oriented" | "pressure";
     profileFacts?: Record<string, string>;
     safetySignals?: string[];
+    intakeObservation?: IntakeEvalObservation;
     learningApplications?: Array<{
       ruleId: string;
       ruleVersion: number;
@@ -575,6 +628,8 @@ export type PipelineResult =
     stageLogs: PipelineStageLog[];
     clarification?: PipelineClarification;
     suggestedService?: ServiceType;
+    policyReasonCode?: string;
+    intakeObservation?: IntakeEvalObservation;
   };
 
 export type SupabaseLike = {
