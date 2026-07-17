@@ -12,7 +12,7 @@ import {
 } from "../../../../../supabase/functions/_shared/domain";
 import {
   validateJobEvidenceRefs,
-} from "../../../../../supabase/functions/mobile-api/_shared/services/evidence-refs.service";
+} from "../../../../../supabase/functions/mobile-api/_shared/services/jobs/evidence-refs";
 import {
   mergeLimitedRefs,
 } from "../../../../../supabase/functions/mobile-api/_shared/services/_shared";

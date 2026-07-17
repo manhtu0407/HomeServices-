@@ -9,7 +9,7 @@ import { mapConfirmKaelChatError } from "../_shared.ts";
 import { geocodeConfirmedKaelJob } from "../places-geo.service.ts";
 import { confirmSearch } from "../matching.service.ts";
 import { hasActiveBroadcast } from "../broadcasts.service.ts";
-import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "../scheduling.ts";
+import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "../jobs/schedule-policy.ts";
 import { requireJobAccess } from "../../access.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { buildKaelAutonomyDecision, kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets, type KaelAutonomyDecision } from "../../kael/index.ts";

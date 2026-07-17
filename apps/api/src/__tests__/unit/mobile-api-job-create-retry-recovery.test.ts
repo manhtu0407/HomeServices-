@@ -68,7 +68,7 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/router.ts', () => 
   },
 }))
 
-import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/job-create.service'
+import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/create'
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
 
 describe('mobile-api failed job-create retry recovery', () => {

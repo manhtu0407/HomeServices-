@@ -26,7 +26,7 @@ describe('Section 25 R1 source trust research handoff', () => {
     const router = read('supabase/functions/mobile-api/_shared/router.ts')
     const services = read('supabase/functions/mobile-api/_shared/services.ts')
     const sharedHelpers = read('supabase/functions/mobile-api/_shared/services/_shared.ts')
-    const edgeServiceLayer = services + sharedHelpers + read('supabase/functions/mobile-api/_shared/services/job-create.service.ts')
+    const edgeServiceLayer = services + sharedHelpers + read('supabase/functions/mobile-api/_shared/services/jobs/create.ts')
     const env = read('supabase/functions/mobile-api/_shared/env.ts')
 
     expect(router).toContain('requestUrl: request.url')

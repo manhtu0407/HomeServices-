@@ -36,9 +36,9 @@ import {
 } from "./services/dispute.service.ts";
 
 import { decideScopeChange, requestScopeChange } from "./services/scope-change.service.ts";
-import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./services/job-incident.service.ts";
+import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./services/jobs/incident.ts";
 import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
-import { listJobMessages, listMyThreads, sendJobMessage } from "./services/chat.service.ts";
+import { listJobMessages, listMyThreads, sendJobMessage } from "./services/jobs/chat.ts";
 import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat/index.ts";
 import { answerKaelAssistant } from "./services/kael-chat/assistant.ts";
 import {
@@ -58,8 +58,8 @@ import {
   attachJobMedia,
   createJobMediaUpload,
   revokeJobMediaUploads,
-} from "./services/job-media.service.ts";
-import { getJob, listCustomerActiveJobs, listCustomerServiceHistory, listMyPendingDecisions } from "./services/job-read.service.ts";
+} from "./services/jobs/media.ts";
+import { getJob, listCustomerActiveJobs, listCustomerServiceHistory, listMyPendingDecisions } from "./services/jobs/read.ts";
 import { createWorkerAvatarUpload, updateWorkerAvatar } from "./services/worker-avatar.service.ts";
 import { cancelJob, requestCustomerCancellation } from "./services/customer-cancellation.service.ts";
 import { decideWorkerCancellation, requestWorkerCancellation } from "./services/worker-cancellation.service.ts";
@@ -70,8 +70,8 @@ import {
 } from "./services/matching.service.ts";
 import { confirmWorkerCandidate, getWorkerCandidate, rejectWorkerCandidate } from "./services/worker-candidate.service.ts";
 import { removeCustomerFavoriteWorker, saveCustomerFavoriteWorker } from "./services/customer-favorite-worker.service.ts";
-import { createJob } from "./services/job-create.service.ts";
-import { updateJobStatus } from "./services/job-status.service.ts";
+import { createJob } from "./services/jobs/create.ts";
+import { updateJobStatus } from "./services/jobs/status.ts";
 import { confirmKaelChat } from "./services/kael-chat/confirm.ts";
 import {
   getCustomerProfileInsights,

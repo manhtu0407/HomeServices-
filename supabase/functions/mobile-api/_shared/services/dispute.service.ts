@@ -3,7 +3,7 @@
 
 import { asBoolean, asDisputePriority, asString, nullableString } from "./coercions.ts";
 import { db, dbQuery } from "./db.ts";
-import { validateJobEvidenceRefs, type JobEvidenceStage } from "./evidence-refs.service.ts";
+import { validateJobEvidenceRefs, type JobEvidenceStage } from "./jobs/evidence-refs.ts";
 import { mapDisputeCounterError, mapDisputeDecisionError, mapDisputeOpenError } from "./_shared.ts";
 import { logJobEvent } from "./audit.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";

@@ -74,7 +74,7 @@ describe('Kael output gateway', () => {
       'supabase/functions/mobile-api/_shared/kael/customer-assistant.ts',
       'supabase/functions/mobile-api/_shared/kael/worker-assist.ts',
       'supabase/functions/mobile-api/_shared/kael/orchestrator.ts',
-      'supabase/functions/mobile-api/_shared/services/chat.service.ts',
+      'supabase/functions/mobile-api/_shared/services/jobs/chat.ts',
       'supabase/functions/mobile-api/_shared/services/kael-chat/core.ts',
     ]
 

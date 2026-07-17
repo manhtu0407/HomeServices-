@@ -6,7 +6,7 @@ import {
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { checkRateLimit, type RateLimitConfig } from "../rate-limit.ts";
 import { db, dbQuery } from "./db.ts";
-import { inspectJobMediaContent } from "./job-media-content.ts";
+import { inspectJobMediaContent } from "./jobs/media-content-policy.ts";
 import { nullableString } from "./coercions.ts";
 
 type WorkerAvatarBucket = {

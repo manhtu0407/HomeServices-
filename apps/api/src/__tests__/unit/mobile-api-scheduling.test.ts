@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/job-create.service'
+import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/create'
 import { createKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/index'
 import { confirmKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/confirm'
 import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import {
   validateFutureHcmcSchedule,
   type HcmcScheduleWindow,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/scheduling'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/schedule-policy'
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
 
 const now = new Date('2026-07-14T18:30:00.000Z')

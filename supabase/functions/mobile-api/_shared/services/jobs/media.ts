@@ -2,26 +2,26 @@
 // job (role + workflow-stage gated, dedup by object_path, mirrors before/after refs onto the job).
 // Imported by services.ts for wiring.
 
-import { asBoolean, asNumber, asServiceType, asStringArray, nullableString } from "./coercions.ts";
-import { db, dbQuery } from "./db.ts";
-import { logJobEvent } from "./audit.ts";
-import { canAttachJobMediaStage, mergeLimitedRefs, storageRef, validateJobMediaPath } from "./_shared.ts";
-import { requireJobAccess } from "../access.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { validateWorkflowCommand } from "../workflow-orchestrator.ts";
-import type { JobMediaAttachInput, JobStatus } from "../../../_shared/domain.ts";
-import { JOB_MEDIA_STORAGE_TIMEOUT_MS } from "../../../_shared/job-media-contract.ts";
+import { asBoolean, asNumber, asServiceType, asStringArray, nullableString } from "../coercions.ts";
+import { db, dbQuery } from "../db.ts";
+import { logJobEvent } from "../audit.ts";
+import { canAttachJobMediaStage, mergeLimitedRefs, storageRef, validateJobMediaPath } from "../_shared.ts";
+import { requireJobAccess } from "../../access.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { validateWorkflowCommand } from "../../workflow-orchestrator.ts";
+import type { JobMediaAttachInput, JobStatus } from "../../../../_shared/domain.ts";
+import { JOB_MEDIA_STORAGE_TIMEOUT_MS } from "../../../../_shared/job-media-contract.ts";
 import type {
   JobMediaRevokeInput,
   JobMediaRevokeResponse,
   JobMediaUploadInput,
-} from "../../../_shared/job-media-contract.ts";
+} from "../../../../_shared/job-media-contract.ts";
 import {
   inspectJobMediaBlob,
   jobMediaStageAllowsVideo,
   MAX_JOB_MEDIA_BYTES,
   normalizeDeclaredJobMediaMime,
-} from "./job-media-content.ts";
+} from "./media-content-policy.ts";
 
 const JOB_MEDIA_UPLOAD_EXPIRES_IN_SECONDS = 2 * 60 * 60;
 const JOB_MEDIA_ALLOWED_MIME_TYPES = new Set([

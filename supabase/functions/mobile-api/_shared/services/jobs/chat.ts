@@ -2,18 +2,18 @@
 // the contact-guard + demanding-customer handlers. (kael-chat AI conversation stays in services.ts.)
 // Imported directly by services.ts.
 
-import { asBoolean, asString, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { evaluateJobChatContactGuard, JOB_CHAT_SEND_STATUSES, serializeJobMessage, type JobChatContactGuard } from "./_shared.ts";
-import { notifyJobMessageRecipient } from "./notifications.service.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { requireJobAccess } from "../access.ts";
-import { buildDemandingCustomerResponse, detectDemandingCustomerPatterns, recordDemandingCustomerInteraction } from "../kael/index.ts";
-import { guardOutput } from "../kael/output-gateway.ts";
-import { auditGuardrailTripBestEffort } from "./audit.ts";
-import { recordJobIncidentChatMessage } from "./job-incident.service.ts";
-import type { EdgeAiSecrets } from "../kael/index.ts";
-import type { JobMessageSendInput, JobStatus } from "../../../_shared/domain.ts";
+import { asBoolean, asString, nullableString } from "../coercions.ts";
+import { db, dbQuery, type DbClient } from "../db.ts";
+import { evaluateJobChatContactGuard, JOB_CHAT_SEND_STATUSES, serializeJobMessage, type JobChatContactGuard } from "../_shared.ts";
+import { notifyJobMessageRecipient } from "../notifications.service.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { requireJobAccess } from "../../access.ts";
+import { buildDemandingCustomerResponse, detectDemandingCustomerPatterns, recordDemandingCustomerInteraction } from "../../kael/index.ts";
+import { guardOutput } from "../../kael/output-gateway.ts";
+import { auditGuardrailTripBestEffort } from "../audit.ts";
+import { recordJobIncidentChatMessage } from "./incident.ts";
+import type { EdgeAiSecrets } from "../../kael/index.ts";
+import type { JobMessageSendInput, JobStatus } from "../../../../_shared/domain.ts";
 
 const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK =
   "Kael đã ghi nhận và lưu lại đầy đủ trao đổi của bạn. Nếu cần, bạn có thể yêu cầu admin can thiệp.";

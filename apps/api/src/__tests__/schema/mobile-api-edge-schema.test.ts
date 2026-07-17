@@ -579,7 +579,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('recordDemandingCustomerInteraction')
     expect(edgeServices).toContain('recordDemandingCustomerInteraction')
     expect(edgeServices).toContain('maybeHandleDemandingCustomerKaelChatTurn')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/chat.service.ts')).toContain('maybeHandleDemandingCustomerJobChat')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/jobs/chat.ts')).toContain('maybeHandleDemandingCustomerJobChat')
   })
 
   it('consolidates admin RLS reads without reopening authenticated workflow DML grants', () => {
@@ -1100,7 +1100,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const atomicMemoryMigration = read(
       'supabase/migrations/20260714106000_atomic_kael_memory_updates.sql',
     )
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services/chat.service.ts')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services/jobs/chat.ts')
     const guardStart = edgeServices.indexOf('async function recordWorkerDisintermediationRisk')
     const guardEnd = edgeServices.indexOf('async function maybeHandleDemandingCustomerJobChat')
     const guardBlock = edgeServices.slice(guardStart, guardEnd)

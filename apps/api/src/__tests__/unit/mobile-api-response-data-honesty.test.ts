@@ -14,8 +14,8 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
 import { getWorkerCandidate } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-candidate.service'
 import { serializeWorkerKaelSession } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat.service'
-import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/job-create.service'
-import { getJobIncident } from '../../../../../supabase/functions/mobile-api/_shared/services/job-incident.service'
+import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/create'
+import { getJobIncident } from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/incident'
 import {
   listNotifications,
   registerDevicePushToken,

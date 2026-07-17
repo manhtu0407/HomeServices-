@@ -13,7 +13,7 @@ const verificationPath = resolve(
 )
 const servicePath = resolve(
   root,
-  'supabase/functions/mobile-api/_shared/services/job-incident.service.ts',
+  'supabase/functions/mobile-api/_shared/services/jobs/incident.ts',
 )
 const databaseTypesPath = resolve(root, 'packages/shared/src/types/database.types.ts')
 

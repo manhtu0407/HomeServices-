@@ -3,23 +3,23 @@
 // (rollback via matching). Helpers: analyzing-job cleanup, learning-application record, idempotency
 // lookup + existing-job response. Imported by services.ts for wiring.
 
-import { asComplexityOrNull, asJobStatus, asRecord, asServiceType, asString, nullableNumber, nullableString, positiveNumberFrom } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { estimatePriceSourceFromStageLogs, sourceTrustSecretsForRequest } from "./_shared.ts";
-import { apiLogPurposeForPipelineStage, logApiCalls, logJobEvent } from "./audit.ts";
-import { buildInitialApartmentAccessState, persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
-import { geocodeJobAddressForMatching } from "./places-geo.service.ts";
-import { createBroadcasts } from "./broadcasts.service.ts";
-import { rollbackFailedBroadcastStart } from "./matching.service.ts";
-import { insertUserNotification } from "./notifications.service.ts";
-import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./scheduling.ts";
-import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
-import { buildEstimateCardOutput, buildKaelAutonomyDecision, buildWorkerBriefOutput, prependDeterministicSafetyGuidance, PRICE_DISCLAIMER, recordLearningRuleApplication, resolveElectricalIntakeRuntime, runKaelAutonomyOrchestrator, runKaelPipeline, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
-import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
-import { normalizeServiceAreaDistrict, PLATFORM_FEE_WORKER, sanitizeForLLM } from "../../../_shared/domain.ts";
-import type { JobCreateInput, JobStatus } from "../../../_shared/domain.ts";
+import { asComplexityOrNull, asJobStatus, asRecord, asServiceType, asString, nullableNumber, nullableString, positiveNumberFrom } from "../coercions.ts";
+import { db, dbQuery, type DbClient } from "../db.ts";
+import { estimatePriceSourceFromStageLogs, sourceTrustSecretsForRequest } from "../_shared.ts";
+import { apiLogPurposeForPipelineStage, logApiCalls, logJobEvent } from "../audit.ts";
+import { buildInitialApartmentAccessState, persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "../apartment-access.service.ts";
+import { geocodeJobAddressForMatching } from "../places-geo.service.ts";
+import { createBroadcasts } from "../broadcasts.service.ts";
+import { rollbackFailedBroadcastStart } from "../matching.service.ts";
+import { insertUserNotification } from "../notifications.service.ts";
+import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./schedule-policy.ts";
+import { AI_SESSION_LIMIT, checkRateLimit } from "../../rate-limit.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
+import { buildEstimateCardOutput, buildKaelAutonomyDecision, buildWorkerBriefOutput, prependDeterministicSafetyGuidance, PRICE_DISCLAIMER, recordLearningRuleApplication, resolveElectricalIntakeRuntime, runKaelAutonomyOrchestrator, runKaelPipeline, type EdgeAiSecrets, type PipelineResult } from "../../kael/index.ts";
+import { isKaelAiKillSwitchEnabled } from "../../kael/spend-gate.ts";
+import { normalizeServiceAreaDistrict, PLATFORM_FEE_WORKER, sanitizeForLLM } from "../../../../_shared/domain.ts";
+import type { JobCreateInput, JobStatus } from "../../../../_shared/domain.ts";
 
 export async function createJob(
   ctx: MobileApiContext,

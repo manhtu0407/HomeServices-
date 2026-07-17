@@ -11,13 +11,13 @@ const caseWork = readFileSync(join(root, 'services/kael-chat/case-work.ts'), 'ut
 const services = readFileSync(join(root, 'services.ts'), 'utf8')
 const confirmService = readFileSync(join(root, 'services/kael-chat/confirm.ts'), 'utf8')
 const completionReviewService = readFileSync(join(root, 'services/completion-review.service.ts'), 'utf8')
-const jobStatusService = readFileSync(join(root, 'services/job-status.service.ts'), 'utf8')
+const jobStatusService = readFileSync(join(root, 'services/jobs/status.ts'), 'utf8')
 const pipeline = readFileSync(join(root, 'kael/pipeline.ts'), 'utf8')
 const sharedService = [
   readFileSync(join(root, 'services/_shared.ts'), 'utf8'),
   readFileSync(join(root, 'services/serializers.ts'), 'utf8'),
 ].join('\n')
-const jobCreateService = readFileSync(join(root, 'services/job-create.service.ts'), 'utf8')
+const jobCreateService = readFileSync(join(root, 'services/jobs/create.ts'), 'utf8')
 
 describe('Kael Case Work runtime wiring', () => {
   it('respects deferred Basic Intake handoff instead of analyzing during route submit', () => {

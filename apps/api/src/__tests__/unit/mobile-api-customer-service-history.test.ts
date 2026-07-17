@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { projectCustomerServiceHistoryRows } from '../../../../../supabase/functions/mobile-api/_shared/services/job-read.service'
+import { projectCustomerServiceHistoryRows } from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/read'
 
 describe('customer service history projection', () => {
   it('returns only deal summary and safe worker fields with favorite state', () => {

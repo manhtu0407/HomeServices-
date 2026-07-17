@@ -344,7 +344,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
-    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/job-create.service.ts'), 'utf8')
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/jobs/create.ts'), 'utf8')
 
     expect(transition.valid).toBe(true)
     expect(servicesSource).toContain('event: "kael_failed"')

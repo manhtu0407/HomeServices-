@@ -42,7 +42,7 @@ const SOURCE_FILES = [
   'supabase/functions/mobile-api/_shared/kael/types.ts',
   'supabase/functions/mobile-api/_shared/kael/utils.ts',
   'supabase/functions/mobile-api/_shared/services/_shared.ts',
-  'supabase/functions/mobile-api/_shared/services/job-create.service.ts',
+  'supabase/functions/mobile-api/_shared/services/jobs/create.ts',
   'supabase/functions/mobile-api/_shared/services/kael-chat/boundary.ts',
   'supabase/functions/mobile-api/_shared/services/kael-chat/core.ts',
   'supabase/functions/mobile-api/_shared/services/kael-chat/intake-safety.ts',

@@ -2,16 +2,16 @@
 // job detail (getJob), the customer's active job (listCustomerActiveJobs), pending scope decisions
 // (listMyPendingDecisions), and the current scope-change reader. No workflow mutation. Imported by services.ts.
 
-import { asJobStatus, asNumber, asServiceType, asString, asStringArray, nullableComplexity, nullableNumber, nullableRecord, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { JOB_DETAIL_SELECT, parseKaelProgressSnapshot } from "./_shared.ts";
-import { getJobBroadcastState } from "./broadcasts.service.ts";
-import { projectAddressAccess } from "./apartment-access.service.ts";
-import { requireJobAccess } from "../access.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import type { JobStatus, ScopeChangeStatus } from "../../../_shared/domain.ts";
-import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
-import type { EdgeJobDetailResponse } from "../router/dtos.ts";
+import { asJobStatus, asNumber, asServiceType, asString, asStringArray, nullableComplexity, nullableNumber, nullableRecord, nullableString } from "../coercions.ts";
+import { db, dbQuery, type DbClient } from "../db.ts";
+import { JOB_DETAIL_SELECT, parseKaelProgressSnapshot } from "../_shared.ts";
+import { getJobBroadcastState } from "../broadcasts.service.ts";
+import { projectAddressAccess } from "../apartment-access.service.ts";
+import { requireJobAccess } from "../../access.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import type { JobStatus, ScopeChangeStatus } from "../../../../_shared/domain.ts";
+import { resolveWorkerAvatarUrl } from "../worker-avatar.service.ts";
+import type { EdgeJobDetailResponse } from "../../router/dtos.ts";
 
 const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",

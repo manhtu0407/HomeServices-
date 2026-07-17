@@ -2,17 +2,17 @@
 // updateJobStatus (transition validate, geofenced check-in -> access state, completion evidence ->
 // customer confirmation gate + check-in nudge). Imported by services.ts for wiring.
 
-import { asStringArray, nullableNumber, nullableString } from "./coercions.ts";
-import { db, dbQuery } from "./db.ts";
-import { mergeLimitedRefs } from "./_shared.ts";
-import { logJobEvent, queueKaelLearningEvent } from "./audit.ts";
-import { notifyCustomerJobStatus, notifyCustomerWorkerCheckedIn } from "./notifications.service.ts";
-import { distanceKmBetween } from "./broadcasts.service.ts";
-import { ACCESS_GEOFENCE_RADIUS_KM, buildCheckInAccessState } from "./apartment-access.service.ts";
-import { requireJobAccess } from "../access.ts";
-import { apiFailure, type MobileApiContext, type WorkerStatusUpdateInput } from "../router.ts";
-import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
-import type { JobStatus } from "../../../_shared/domain.ts";
+import { asStringArray, nullableNumber, nullableString } from "../coercions.ts";
+import { db, dbQuery } from "../db.ts";
+import { mergeLimitedRefs } from "../_shared.ts";
+import { logJobEvent, queueKaelLearningEvent } from "../audit.ts";
+import { notifyCustomerJobStatus, notifyCustomerWorkerCheckedIn } from "../notifications.service.ts";
+import { distanceKmBetween } from "../broadcasts.service.ts";
+import { ACCESS_GEOFENCE_RADIUS_KM, buildCheckInAccessState } from "../apartment-access.service.ts";
+import { requireJobAccess } from "../../access.ts";
+import { apiFailure, type MobileApiContext, type WorkerStatusUpdateInput } from "../../router.ts";
+import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
+import type { JobStatus } from "../../../../_shared/domain.ts";
 
 export async function updateJobStatus(
   ctx: MobileApiContext,

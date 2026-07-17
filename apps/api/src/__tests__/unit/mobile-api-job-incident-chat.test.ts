@@ -40,7 +40,7 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/access.ts', () => 
 import {
   proposeScopeChangeFromJobIncident,
   recordJobIncidentChatMessage,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/job-incident.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/incident'
 
 const incident = {
   id: 'incident-1',

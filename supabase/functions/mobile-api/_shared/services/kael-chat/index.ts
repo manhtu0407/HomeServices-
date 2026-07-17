@@ -22,7 +22,7 @@ import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./
 import { getKaelChat } from "./read.ts";
 import { ensureCustomerCaseConversation } from "./conversations.ts";
 import { rejectKaelChatRateLimit } from "./rate-limit.ts";
-import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "../scheduling.ts";
+import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "../jobs/schedule-policy.ts";
 import {
   buildKaelVisionValidationEvidence,
   createKaelChatMediaUpload,

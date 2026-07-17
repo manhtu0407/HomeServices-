@@ -9,7 +9,7 @@ import { buildKaelConversationContext, demandingCustomerSessionMetadata, demandi
 import { appendKaelSystemTurn, getKaelChatCostUsd, updateKaelSession } from "./session-store.ts";
 import type { KaelChatStatus } from "../../../../_shared/contracts.ts";
 import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "../audit.ts";
-import { guardDemandingResponseText } from "../chat.service.ts";
+import { guardDemandingResponseText } from "../jobs/chat.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, intakeEvalObservationSchema, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, resolveRequiredSlotCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type IntakeEvalObservation, type PipelineResult } from "../../kael/index.ts";
 import { isElectricalPlaybookEnabled } from "../../kael/playbooks/electrical.ts";

@@ -1,17 +1,17 @@
-import { asNumber, asRecord, asString, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { logApiCalls } from "./audit.ts";
-import { requestScopeChange, validateScopeChangeEvidenceRefs } from "./scope-change.service.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import type { EdgeJobIncident } from "../router/dtos.ts";
-import { requireJobAccess } from "../access.ts";
-import { runJobIncidentAssistant, scrubSensitiveForLLM, type EdgeAiSecrets } from "../kael/index.ts";
+import { asNumber, asRecord, asString, nullableString } from "../coercions.ts";
+import { db, dbQuery, type DbClient } from "../db.ts";
+import { logApiCalls } from "../audit.ts";
+import { requestScopeChange, validateScopeChangeEvidenceRefs } from "../scope-change.service.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import type { EdgeJobIncident } from "../../router/dtos.ts";
+import { requireJobAccess } from "../../access.ts";
+import { runJobIncidentAssistant, scrubSensitiveForLLM, type EdgeAiSecrets } from "../../kael/index.ts";
 import type {
   EdgeJobIncidentScopeProposalInput,
   JobStatus,
   ScopeChangeStatus,
   WorkerScopeChangeInput,
-} from "../../../_shared/domain.ts";
+} from "../../../../_shared/domain.ts";
 
 const OPENABLE_JOB_STATUSES = new Set<JobStatus>([
   "worker_matched",

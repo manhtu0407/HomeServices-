@@ -4,7 +4,7 @@
 
 import { asBoolean, asJobStatus, asString, asWorkerCancellationAbuseSignals, asWorkerCancellationCategory, asWorkerCancellationReasonCode, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
-import { validateJobEvidenceRefs } from "./evidence-refs.service.ts";
+import { validateJobEvidenceRefs } from "./jobs/evidence-refs.ts";
 import { mapWorkerCancellationRequestError } from "./_shared.ts";
 import { logJobEvent } from "./audit.ts";
 import { runPolicyAutonomyGate } from "./autonomy-gate.ts";

@@ -1,5 +1,5 @@
-import type { JobMediaAttachInput } from "../../../_shared/domain.ts";
-export { MAX_JOB_MEDIA_BYTES } from "../../../_shared/job-media-contract.ts";
+import type { JobMediaAttachInput } from "../../../../_shared/domain.ts";
+export { MAX_JOB_MEDIA_BYTES } from "../../../../_shared/job-media-contract.ts";
 
 export type TrustedJobMediaMime =
   | "image/jpeg"

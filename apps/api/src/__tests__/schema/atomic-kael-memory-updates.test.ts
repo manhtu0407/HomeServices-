@@ -35,7 +35,7 @@ describe('atomic Kael memory updates', () => {
 
   it('removes read-merge-upsert memory writes from every production caller', () => {
     const callerPaths = [
-      'supabase/functions/mobile-api/_shared/services/chat.service.ts',
+      'supabase/functions/mobile-api/_shared/services/jobs/chat.ts',
       'supabase/functions/mobile-api/_shared/services/completion-review.service.ts',
       'supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel.ts',
       'supabase/functions/mobile-api/_shared/kael/agentic/case-4-customer-cancel.ts',
