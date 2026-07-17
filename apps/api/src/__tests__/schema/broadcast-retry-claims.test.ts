@@ -24,9 +24,9 @@ describe('broadcast retry claims', () => {
   })
 
   it('rechecks active rows under the claim and always releases the exact token', () => {
-    const broadcasts = read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts')
-    const matching = read('supabase/functions/mobile-api/_shared/services/matching.service.ts')
-    const candidate = read('supabase/functions/mobile-api/_shared/services/worker-candidate.service.ts')
+    const broadcasts = read('supabase/functions/mobile-api/_shared/services/matching/broadcasts.ts')
+    const matching = read('supabase/functions/mobile-api/_shared/services/matching/index.ts')
+    const candidate = read('supabase/functions/mobile-api/_shared/services/matching/candidates.ts')
 
     expect(broadcasts).toContain('claim_job_broadcast_retry_atomic')
     expect(broadcasts).toContain('release_job_broadcast_retry_claim_atomic')
@@ -41,7 +41,7 @@ describe('broadcast retry claims', () => {
   })
 
   it('does not promise background matching when no such worker exists', () => {
-    const matching = read('supabase/functions/mobile-api/_shared/services/matching.service.ts')
+    const matching = read('supabase/functions/mobile-api/_shared/services/matching/index.ts')
 
     expect(matching).not.toContain('Kael sẽ tiếp tục theo dõi và báo lại khi có thợ.')
     expect(matching).toContain('Bạn có thể thử tìm lại sau')

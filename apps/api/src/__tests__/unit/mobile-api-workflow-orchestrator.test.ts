@@ -242,7 +242,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
-    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8')
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching/index.ts'), 'utf8')
     expect(servicesSource).toContain('event: "worker_accepted"')
     expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('event: "scope_change_requested"')
     expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('customer_confirmed_scope_change')
@@ -309,7 +309,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
-    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat/confirm.ts'), 'utf8')
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching/index.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat/confirm.ts'), 'utf8')
 
     expect(transition.valid).toBe(true)
     expect(servicesSource).toContain('resultingEvent: "kael_started_matching"')

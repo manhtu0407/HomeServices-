@@ -1,8 +1,8 @@
 // Customer-owned favorite-worker mutation boundary. Matching may read these
 // preferences, but only the owning customer can create or remove one.
 
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { db, dbQuery } from "./_runtime/db.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { db, dbQuery } from "../_runtime/db.ts";
 
 export async function saveCustomerFavoriteWorker(
   ctx: MobileApiContext,

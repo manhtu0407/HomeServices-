@@ -12,7 +12,7 @@ import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,
 } from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
-import { getWorkerCandidate } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-candidate.service'
+import { getWorkerCandidate } from '../../../../../supabase/functions/mobile-api/_shared/services/matching/candidates'
 import { serializeWorkerKaelSession } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat.service'
 import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/create'
 import { getJobIncident } from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/incident'

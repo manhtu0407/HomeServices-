@@ -29,11 +29,11 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/places-ge
   geocodeJobAddressForMatching: vi.fn(async () => undefined),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/broadcasts.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/matching/broadcasts.ts', () => ({
   createBroadcasts: mocks.createBroadcasts,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/matching.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/matching/index.ts', () => ({
   rollbackFailedBroadcastStart: mocks.rollbackFailedBroadcastStart,
 }))
 

@@ -1,14 +1,14 @@
 // Customer-confirmed worker proposal gate. Keeps jobs.worker_id and address
 // release locked until the owning customer confirms an exact candidate id.
 
-import { normalizeServiceAreaDistrict, PLATFORM_FEE_WORKER } from "../../../_shared/domain.ts";
-import type { JobStatus } from "../../../_shared/domain.ts";
-import { requireJobAccess } from "../access.ts";
-import { buildWorkerBriefOutput } from "../kael/index.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
-import { projectAddressAccess } from "./apartment-access.service.ts";
-import { logJobEvent } from "./_runtime/audit.ts";
+import { normalizeServiceAreaDistrict, PLATFORM_FEE_WORKER } from "../../../../_shared/domain.ts";
+import type { JobStatus } from "../../../../_shared/domain.ts";
+import { requireJobAccess } from "../../access.ts";
+import { buildWorkerBriefOutput } from "../../kael/index.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
+import { projectAddressAccess } from "../apartment-access.service.ts";
+import { logJobEvent } from "../_runtime/audit.ts";
 import {
   createBroadcasts,
   expireStaleBroadcasts,
@@ -17,11 +17,11 @@ import {
   isBroadcastRetryContention,
   listBroadcastRecipientWorkerIds,
   runWithBroadcastRetryLease,
-} from "./broadcasts.service.ts";
-import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "./_runtime/coercions.ts";
-import { db, dbQuery, type DbClient } from "./_runtime/db.ts";
-import { insertUserNotification, notifyCustomerWorkerMatched } from "./notifications.service.ts";
-import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
+} from "./broadcasts.ts";
+import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "../_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
+import { insertUserNotification, notifyCustomerWorkerMatched } from "../notifications.service.ts";
+import { resolveWorkerAvatarUrl } from "../worker-avatar.service.ts";
 
 export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);

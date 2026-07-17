@@ -67,9 +67,9 @@ import {
   acceptBroadcast,
   confirmSearch,
   declineBroadcast,
-} from "./services/matching.service.ts";
-import { confirmWorkerCandidate, getWorkerCandidate, rejectWorkerCandidate } from "./services/worker-candidate.service.ts";
-import { removeCustomerFavoriteWorker, saveCustomerFavoriteWorker } from "./services/customer-favorite-worker.service.ts";
+} from "./services/matching/index.ts";
+import { confirmWorkerCandidate, getWorkerCandidate, rejectWorkerCandidate } from "./services/matching/candidates.ts";
+import { removeCustomerFavoriteWorker, saveCustomerFavoriteWorker } from "./services/matching/favorite-worker.ts";
 import { createJob } from "./services/jobs/create.ts";
 import { updateJobStatus } from "./services/jobs/status.ts";
 import { confirmKaelChat } from "./services/kael-chat/confirm.ts";

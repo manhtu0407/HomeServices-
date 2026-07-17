@@ -9,7 +9,7 @@ import { mapWorkerCancellationRequestError } from "./_runtime/shared.ts";
 import { logJobEvent } from "./_runtime/audit.ts";
 import { runPolicyAutonomyGate } from "./_runtime/autonomy-gate.ts";
 import { notifyCustomerWorkerReplacementSearch } from "./notifications.service.ts";
-import { createBroadcasts, listBroadcastRecipientWorkerIds } from "./broadcasts.service.ts";
+import { createBroadcasts, listBroadcastRecipientWorkerIds } from "./matching/broadcasts.ts";
 import { requireJobAccess, type JobAccessRecord } from "../access.ts";
 import { apiFailure, type MobileApiContext, type MobileApiServices } from "../router.ts";
 import { validateWorkflowCommand } from "../workflow-orchestrator.ts";

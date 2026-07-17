@@ -716,8 +716,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).not.toContain("v_job_district := coalesce(v_job_state.address_district, 'hcmc_all')")
     expect(migration).toContain("'hcmc_all' = any(v_worker.districts)")
     expect(migration).toContain("set status = 'reassigned'::public.broadcast_status,\n        responded_at = v_now")
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts')).toContain('const districtCode = normalizeDistrict(district)')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts')).toContain('districts.cs.{${districtCode}},districts.cs.{hcmc_all}')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/matching/broadcasts.ts')).toContain('const districtCode = normalizeDistrict(district)')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/matching/broadcasts.ts')).toContain('districts.cs.{${districtCode}},districts.cs.{hcmc_all}')
     expect(nextBroadcast).toContain('const districtCode = normalizeDistrict(district)')
     expect(nextBroadcast).toContain('districts.cs.{${districtCode}},districts.cs.{hcmc_all}')
   })
@@ -744,7 +744,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeServices = readEdgeServiceLayer()
     const nextConfirmSearch = read('apps/api/src/app/api/jobs/[id]/confirm-search/route.ts')
 
-    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts') + read('supabase/functions/mobile-api/_shared/services/matching.service.ts'), nextConfirmSearch]) {
+    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/matching/broadcasts.ts') + read('supabase/functions/mobile-api/_shared/services/matching/index.ts'), nextConfirmSearch]) {
       expect(source).toContain('BROADCAST_ACTIVE')
       expect(source).toContain('customer_retried_search')
       expect(source).toContain('job_broadcasts')
@@ -815,7 +815,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeServices = readEdgeServiceLayer()
     const nextAcceptBroadcast = read('apps/api/src/lib/jobs/accept-broadcast.ts')
 
-    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/matching.service.ts'), nextAcceptBroadcast]) {
+    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/matching/index.ts'), nextAcceptBroadcast]) {
       expect(source).toContain('jobs(status)')
       expect(source).toMatch(/parentJob\.status !== ["']broadcasting["']/)
       expect(source).toContain('BROADCAST_NOT_ACTIVE')

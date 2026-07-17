@@ -7,7 +7,7 @@ import { db, dbQuery } from "../_runtime/db.ts";
 import { mergeLimitedRefs } from "../_runtime/shared.ts";
 import { logJobEvent, queueKaelLearningEvent } from "../_runtime/audit.ts";
 import { notifyCustomerJobStatus, notifyCustomerWorkerCheckedIn } from "../notifications.service.ts";
-import { distanceKmBetween } from "../broadcasts.service.ts";
+import { distanceKmBetween } from "../matching/broadcasts.ts";
 import { ACCESS_GEOFENCE_RADIUS_KM, buildCheckInAccessState } from "../apartment-access.service.ts";
 import { requireJobAccess } from "../../access.ts";
 import { apiFailure, type MobileApiContext, type WorkerStatusUpdateInput } from "../../router.ts";

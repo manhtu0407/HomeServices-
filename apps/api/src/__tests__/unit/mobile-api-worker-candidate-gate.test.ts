@@ -5,11 +5,11 @@ import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared
 
 const root = resolve(__dirname, '../../../../../')
 const serviceSource = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/matching.service.ts'),
+  resolve(root, 'supabase/functions/mobile-api/_shared/services/matching/index.ts'),
   'utf8',
 )
 const candidateServiceSource = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/worker-candidate.service.ts'),
+  resolve(root, 'supabase/functions/mobile-api/_shared/services/matching/candidates.ts'),
   'utf8',
 )
 const dtoSource = readFileSync(
@@ -17,11 +17,11 @@ const dtoSource = readFileSync(
   'utf8',
 )
 const broadcastSource = [
-  'supabase/functions/mobile-api/_shared/services/broadcasts.service.ts',
-  'supabase/functions/mobile-api/_shared/services/broadcast-query-batches.ts',
+  'supabase/functions/mobile-api/_shared/services/matching/broadcasts.ts',
+  'supabase/functions/mobile-api/_shared/services/matching/query-batches.ts',
 ].map((path) => readFileSync(resolve(root, path), 'utf8')).join('\n')
 const favoriteServiceSource = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/customer-favorite-worker.service.ts'),
+  resolve(root, 'supabase/functions/mobile-api/_shared/services/matching/favorite-worker.ts'),
   'utf8',
 )
 

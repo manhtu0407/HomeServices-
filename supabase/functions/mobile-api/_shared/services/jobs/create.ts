@@ -9,8 +9,8 @@ import { estimatePriceSourceFromStageLogs, sourceTrustSecretsForRequest } from "
 import { apiLogPurposeForPipelineStage, logApiCalls, logJobEvent } from "../_runtime/audit.ts";
 import { buildInitialApartmentAccessState, persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "../apartment-access.service.ts";
 import { geocodeJobAddressForMatching } from "../places-geo.service.ts";
-import { createBroadcasts } from "../broadcasts.service.ts";
-import { rollbackFailedBroadcastStart } from "../matching.service.ts";
+import { createBroadcasts } from "../matching/broadcasts.ts";
+import { rollbackFailedBroadcastStart } from "../matching/index.ts";
 import { insertUserNotification } from "../notifications.service.ts";
 import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./schedule-policy.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../../rate-limit.ts";

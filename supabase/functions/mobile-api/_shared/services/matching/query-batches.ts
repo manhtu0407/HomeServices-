@@ -6,7 +6,7 @@ import {
   type DbClient,
   type DbResult,
   type QueryLike,
-} from './_runtime/db.ts'
+} from '../_runtime/db.ts'
 
 const WORKER_ID_FILTER_BATCH_SIZE = 100
 
