@@ -2,14 +2,14 @@
 // job, mint a short transformed URL, and convert vision output into untrusted,
 // direct-verification-only evidence for the advisory service.
 
-import { sanitizeForLLM } from "../../../_shared/domain.ts";
-import type { WorkerVisionFinding } from "../kael/types.ts";
-import { workerVisionFindingSchema } from "../kael/types.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { validateJobMediaPath } from "./_runtime/shared.ts";
-import { nullableString } from "./_runtime/coercions.ts";
-import { type DbClient, dbQuery } from "./_runtime/db.ts";
-import { inspectTrustedKaelVisionTransform } from "./kael-chat/media.ts";
+import { sanitizeForLLM } from "../../../../_shared/domain.ts";
+import type { WorkerVisionFinding } from "../../kael/types.ts";
+import { workerVisionFindingSchema } from "../../kael/types.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { validateJobMediaPath } from "../_runtime/shared.ts";
+import { nullableString } from "../_runtime/coercions.ts";
+import { type DbClient, dbQuery } from "../_runtime/db.ts";
+import { inspectTrustedKaelVisionTransform } from "../kael-chat/media.ts";
 
 const WORKER_KAEL_MEDIA_PREFIX = "supabase://job-media/";
 

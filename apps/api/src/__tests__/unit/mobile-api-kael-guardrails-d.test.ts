@@ -299,7 +299,7 @@ describe('Kael Track D guardrails', () => {
       join(repoRoot, 'supabase/functions/mobile-api/_shared/services/kael-chat/core.ts'),
       'utf8',
     ) + readFileSync(
-      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts'),
+      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/worker-kael/index.ts'),
       'utf8',
     )
     const outputGateway = readFileSync(

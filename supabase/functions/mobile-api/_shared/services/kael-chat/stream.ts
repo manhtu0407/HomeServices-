@@ -4,7 +4,7 @@
 
 import { db } from "../_runtime/db.ts";
 import { getKaelChat, readKaelChatProgressSnapshot, sendKaelChatTurn } from "./index.ts";
-import { readWorkerKaelSession, sendWorkerKaelChatTurn, serializeWorkerKaelSession } from "../worker-kael-chat.service.ts";
+import { readWorkerKaelSession, sendWorkerKaelChatTurn, serializeWorkerKaelSession } from "../worker-kael/index.ts";
 import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../../sse.ts";
 import type { MobileApiContext } from "../../router.ts";
 import type { EdgeAiSecrets } from "../../kael/index.ts";

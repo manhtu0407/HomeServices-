@@ -2,27 +2,27 @@
 // one-shot Q&A (askKaelForWorker) + the worker chat session pipeline (create/turn/list/get) with vision
 // + runWorkerAssist. The worker stream wrapper stays in services.ts and imports these one-way.
 
-import { asBoolean, asNumber, asRecord, asString, asStringArray, nullableRecord, nullableString } from "./_runtime/coercions.ts";
-import { db, dbQuery, type DbClient } from "./_runtime/db.ts";
-import { ACTIVE_WORKER_JOB_STATUSES, compactMetadata } from "./_runtime/shared.ts";
-import { auditGuardrailTripBestEffort, isWorkerAssistGuardrailReason } from "./_runtime/audit.ts";
-import { requireJobAccess } from "../access.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildWorkerKaelSessionTitle, runWorkerAssist, sanitizeKaelText, sanitizeWorkerKaelSessionTitle, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type EdgeAiSecrets } from "../kael/index.ts";
-import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
-import { analyzeDescription } from "../kael/vision.ts";
-import { kaelChatProgressSchema, sanitizeForLLM } from "../../../_shared/domain.ts";
-import type { WorkerVisionFinding } from "../kael/types.ts";
+import { asBoolean, asNumber, asRecord, asString, asStringArray, nullableRecord, nullableString } from "../_runtime/coercions.ts";
+import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
+import { ACTIVE_WORKER_JOB_STATUSES, compactMetadata } from "../_runtime/shared.ts";
+import { auditGuardrailTripBestEffort, isWorkerAssistGuardrailReason } from "../_runtime/audit.ts";
+import { requireJobAccess } from "../../access.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { buildWorkerKaelSessionTitle, runWorkerAssist, sanitizeKaelText, sanitizeWorkerKaelSessionTitle, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type EdgeAiSecrets } from "../../kael/index.ts";
+import { takeDurableKaelChatRateLimit } from "../../kael/durable-guards.ts";
+import { analyzeDescription } from "../../kael/vision.ts";
+import { kaelChatProgressSchema, sanitizeForLLM } from "../../../../_shared/domain.ts";
+import type { WorkerVisionFinding } from "../../kael/types.ts";
 import {
   buildSafeWorkerVisionFinding,
   prepareWorkerKaelVisionUrls,
-} from "./worker-kael-media.service.ts";
+} from "./media.ts";
 import {
   claimWorkerKaelChatTurn,
   completeWorkerKaelChatTurn,
   releaseWorkerKaelTurnClaim,
-} from "./worker-kael-chat-claims.service.ts";
-import type { EdgeWorkerKaelChatPinInput, EdgeWorkerKaelChatRenameInput, JobStatus, KaelWorkerClarifyInput, WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../../_shared/domain.ts";
+} from "./claims.ts";
+import type { EdgeWorkerKaelChatPinInput, EdgeWorkerKaelChatRenameInput, JobStatus, KaelWorkerClarifyInput, WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../../../_shared/domain.ts";
 
 const WORKER_KAEL_SESSION_SELECT =
   "id, job_id, chat_mode, worker_id, status, title, pinned_at, started_at, closed_at, archived_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";

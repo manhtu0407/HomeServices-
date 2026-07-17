@@ -417,7 +417,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('estimate_card.v3')
     expect(edgeKael).toContain('scope_change_worker_challenge.v1')
     expect(edgeServices).toContain('askKaelForWorker')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts')).toContain('record_worker_kael_qa_atomic')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-kael/index.ts')).toContain('record_worker_kael_qa_atomic')
     expect(edgeRouter).toContain('jobs.kaelClarify')
     expect(edgeRouter).toContain('kael-clarify')
   })

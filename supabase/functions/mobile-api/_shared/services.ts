@@ -50,7 +50,7 @@ import {
   sendCustomerKaelConversationTurn,
   setCustomerKaelConversationPinned,
 } from "./services/kael-chat/conversations.ts";
-import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, renameWorkerKaelChat, sendWorkerKaelChatTurn, setWorkerKaelChatPinned } from "./services/worker-kael-chat.service.ts";
+import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, renameWorkerKaelChat, sendWorkerKaelChatTurn, setWorkerKaelChatPinned } from "./services/worker-kael/index.ts";
 import { streamKaelChatTurn, streamWorkerKaelChatTurn } from "./services/kael-chat/stream.ts";
 import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin-learning.service.ts";
 import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./services/kael-feedback.service.ts";

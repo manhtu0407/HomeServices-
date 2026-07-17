@@ -11,7 +11,7 @@ import {
   buildSafeWorkerVisionFinding,
   prepareWorkerKaelVisionUrls,
   validateWorkerKaelMediaRefs,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-media.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael/media'
 import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/ai-boundary-contract'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
