@@ -34,6 +34,7 @@
     "skills:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/sync-skills.mjs",
     "skills:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/check-skills-sync.mjs",
     "lint:structure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/lint-structure.mjs",
+    "lint:reorg": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/check-reorg-drift.mjs",
     "lint:comments": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/check-comment-discipline.mjs"
   },
   "reactDoctor": {

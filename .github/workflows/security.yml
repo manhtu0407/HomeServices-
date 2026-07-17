@@ -74,3 +74,5 @@ jobs:
         run: node scripts/check-skills-sync.mjs
       - name: Structure ratchet (Core Skill 6)
         run: node scripts/lint-structure.mjs
+      - name: Reorg drift check (Core Skill 6)
+        run: node scripts/check-reorg-drift.mjs
