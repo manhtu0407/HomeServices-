@@ -53,6 +53,11 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/kael/index.ts', ()
   buildKaelAutonomyDecision: () => ({ resulting_event: 'kael_started_matching' }),
   buildWorkerBriefOutput: () => ({}),
   recordLearningRuleApplication: vi.fn(async () => undefined),
+  resolveElectricalIntakeRuntime: () => ({
+    enabled: false,
+    safetySignals: [],
+    hardRoute: null,
+  }),
   runKaelAutonomyOrchestrator: mocks.runKaelAutonomyOrchestrator,
   runKaelPipeline: mocks.runKaelPipeline,
 }))

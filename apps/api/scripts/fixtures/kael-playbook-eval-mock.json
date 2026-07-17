@@ -20,6 +20,19 @@
         "content_type": "estimate",
         "estimate": {
           "problem_category": "breaker_trip"
+        },
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "breaker_trip",
+          "needs_clarification": false,
+          "safety_signals": [
+            "fixed_wiring",
+            "protective_device"
+          ],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
         }
       }
     ]
@@ -44,6 +57,18 @@
         "content_type": "estimate",
         "estimate": {
           "problem_category": "breaker_trip"
+        },
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "breaker_trip",
+          "needs_clarification": false,
+          "safety_signals": [
+            "protective_device"
+          ],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
         }
       }
     ]
@@ -60,7 +85,17 @@
     "turns": [
       {
         "content_type": "clarification",
-        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "power_outage_whole_unit",
+          "needs_clarification": true,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -76,7 +111,17 @@
     "turns": [
       {
         "content_type": "error",
-        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM."
+        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM.",
+        "intake_observation": {
+          "scope_signal": "out_of_scope",
+          "suggested_service": null,
+          "problem_slug": null,
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -92,7 +137,17 @@
     "turns": [
       {
         "content_type": "clarification",
-        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "power_outage_one_room",
+          "needs_clarification": true,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -110,7 +165,17 @@
     },
     "turns": [
       {
-        "content_type": "estimate"
+        "content_type": "estimate",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "outlet_or_switch_broken",
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -132,6 +197,16 @@
         "content_type": "estimate",
         "estimate": {
           "problem_category": "flickering_light"
+        },
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "flickering_light",
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
         }
       }
     ]
@@ -148,7 +223,17 @@
     "turns": [
       {
         "content_type": "clarification",
-        "text_content": "..."
+        "text_content": "...",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "flickering_light",
+          "needs_clarification": true,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -170,6 +255,16 @@
         "content_type": "estimate",
         "estimate": {
           "problem_category": "outlet_or_switch_broken"
+        },
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "outlet_or_switch_broken",
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
         }
       }
     ]
@@ -186,7 +281,17 @@
     "turns": [
       {
         "content_type": "clarification",
-        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "outlet_or_switch_broken",
+          "needs_clarification": true,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -202,7 +307,17 @@
     "turns": [
       {
         "content_type": "clarification",
-        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "install_device",
+          "needs_clarification": true,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -221,7 +336,20 @@
     "turns": [
       {
         "content_type": "clarification",
-        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "install_device",
+          "needs_clarification": true,
+          "safety_signals": [
+            "new_circuit",
+            "distribution_board"
+          ],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -243,6 +371,16 @@
         "content_type": "estimate",
         "estimate": {
           "problem_category": "electrical-general"
+        },
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "electrical-general",
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
         }
       }
     ]
@@ -259,7 +397,17 @@
     "turns": [
       {
         "content_type": "clarification",
-        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "other_electrical",
+          "needs_clarification": true,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -283,6 +431,18 @@
         "content_type": "estimate",
         "estimate": {
           "problem_category": "other_electrical"
+        },
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "other_electrical",
+          "needs_clarification": false,
+          "safety_signals": [
+            "exposed_live_parts"
+          ],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
         }
       }
     ]
@@ -299,7 +459,17 @@
     "turns": [
       {
         "content_type": "clarification",
-        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?"
+        "text_content": "Bạn cho Kael hỏi thêm một chi tiết nhé?",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "other_electrical",
+          "needs_clarification": true,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -315,7 +485,17 @@
     "turns": [
       {
         "content_type": "error",
-        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính."
+        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính.",
+        "intake_observation": {
+          "scope_signal": "service_mismatch",
+          "suggested_service": "hvac",
+          "problem_slug": null,
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -331,7 +511,17 @@
     "turns": [
       {
         "content_type": "error",
-        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính."
+        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính.",
+        "intake_observation": {
+          "scope_signal": "service_mismatch",
+          "suggested_service": "plumbing",
+          "problem_slug": null,
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -347,7 +537,17 @@
     "turns": [
       {
         "content_type": "error",
-        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính."
+        "text_content": "Mô tả của bạn nghiêng về dịch vụ khác. Bạn quay lại chọn đúng dịch vụ để Kael ước tính.",
+        "intake_observation": {
+          "scope_signal": "service_mismatch",
+          "suggested_service": "handyman",
+          "problem_slug": null,
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -363,7 +563,17 @@
     "turns": [
       {
         "content_type": "error",
-        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM."
+        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM.",
+        "intake_observation": {
+          "scope_signal": "out_of_scope",
+          "suggested_service": null,
+          "problem_slug": null,
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -379,7 +589,17 @@
     "turns": [
       {
         "content_type": "error",
-        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM."
+        "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM.",
+        "intake_observation": {
+          "scope_signal": "out_of_scope",
+          "suggested_service": null,
+          "problem_slug": null,
+          "needs_clarification": false,
+          "safety_signals": [],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   },
@@ -403,6 +623,18 @@
         "content_type": "estimate",
         "estimate": {
           "problem_category": "outlet_or_switch_broken"
+        },
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "outlet_or_switch_broken",
+          "needs_clarification": false,
+          "safety_signals": [
+            "smoke_or_burning"
+          ],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
         }
       }
     ]
@@ -427,6 +659,18 @@
         "content_type": "estimate",
         "estimate": {
           "problem_category": "other_electrical"
+        },
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "other_electrical",
+          "needs_clarification": false,
+          "safety_signals": [
+            "exposed_live_parts"
+          ],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
         }
       }
     ]
@@ -447,7 +691,19 @@
     },
     "turns": [
       {
-        "content_type": "estimate"
+        "content_type": "estimate",
+        "intake_observation": {
+          "scope_signal": "in_scope",
+          "suggested_service": null,
+          "problem_slug": "breaker_trip",
+          "needs_clarification": false,
+          "safety_signals": [
+            "protective_device"
+          ],
+          "model_id": "mock-contract",
+          "prompt_version": "2026-07-16.v2",
+          "playbook_version": "electrical-playbook-2026-07-16.v2"
+        }
       }
     ]
   }

@@ -1,228 +1,313 @@
 #!/usr/bin/env node
-// Playbook eval runner (SOP: docs/playbooks/process-distillation.md §6/§7).
-// Sends each corpus case through the live electrical intake-diagnosis flow and
-// scores the OBSERVED intake fields against the corpus expectations, so a
-// before/after (baseline vs playbook-injected) delta is measurable.
-//
-// It never sets prices and never fabricates results: --mock replays canned
-// responses so the scoring logic can be proven without live credentials; a real
-// baseline requires a staging user bearer token (see --help).
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { createHash, randomUUID } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
+import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { randomUUID } from 'node:crypto'
+import {
+  aggregatePlaybookResults,
+  aggregateRepetitionStability,
+  buildSanitizedRawArtifact,
+  createRunManifest,
+  extractIntakeObservation,
+  normalizeEvalEvidenceForRunMode,
+  requestedSlotsFromResponse,
+  resolveRetryWaitSeconds,
+  scorePlaybookCase,
+  selectUserTurn,
+  validateEvalDistrict,
+  validatePlaybookCorpus,
+  validateStagingEvalTargets,
+} from './lib/kael-playbook-eval-core.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
 const DEFAULT_CORPUS = resolve(REPO_ROOT, 'docs/playbooks/eval/electrical-cases.json')
+const MOCK_FIXTURE_DIR = resolve(REPO_ROOT, 'apps/api/scripts/fixtures')
+const PLAYBOOK_SOURCE = resolve(REPO_ROOT, 'supabase/functions/mobile-api/_shared/kael/playbooks/electrical.ts')
+const APPROVED_STAGING_PROJECT_REF = 'xyylanuyflrjzbjzhqfl'
+const SOURCE_FILES = [
+  'apps/api/scripts/kael-playbook-eval.mjs',
+  'apps/api/scripts/lib/kael-playbook-eval-core.mjs',
+  'supabase/functions/mobile-api/_shared/kael/boundary-guard.ts',
+  'supabase/functions/mobile-api/_shared/kael/electrical-intake-policy.ts',
+  'supabase/functions/mobile-api/_shared/kael/index.ts',
+  'supabase/functions/mobile-api/_shared/kael/intake-runtime.ts',
+  'supabase/functions/mobile-api/_shared/kael/intent.ts',
+  'supabase/functions/mobile-api/_shared/kael/pipeline.ts',
+  'supabase/functions/mobile-api/_shared/kael/performance-profiles.ts',
+  'supabase/functions/mobile-api/_shared/kael/prompts.ts',
+  'supabase/functions/mobile-api/_shared/kael/trace.ts',
+  'supabase/functions/mobile-api/_shared/kael/types.ts',
+  'supabase/functions/mobile-api/_shared/kael/utils.ts',
+  'supabase/functions/mobile-api/_shared/services/_shared.ts',
+  'supabase/functions/mobile-api/_shared/services/job-create.service.ts',
+  'supabase/functions/mobile-api/_shared/services/kael-chat-boundary.ts',
+  'supabase/functions/mobile-api/_shared/services/kael-chat-core.ts',
+  'supabase/functions/mobile-api/_shared/services/kael-chat-intake-safety.ts',
+  'supabase/functions/mobile-api/_shared/services/kael-chat.service.ts',
+  'supabase/functions/mobile-api/_shared/services/serializers.ts',
+]
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) return printHelp()
-
+  validateRunArgs(args)
+  const startedAt = new Date().toISOString()
   const label = args.label ?? process.env.KAEL_PB_EVAL_LABEL ?? 'baseline'
   const serviceType = args.service ?? 'electrical'
-  const corpusPath = args.corpus ?? process.env.KAEL_PB_EVAL_CORPUS ?? DEFAULT_CORPUS
-  const reportPath = args.report ?? process.env.KAEL_PB_EVAL_REPORT_PATH ??
-    resolve(REPO_ROOT, `docs/test-logs/${todayFromEnvOrArg(args)}_kael-playbook-${serviceType}-${label}.md`)
-  const mockPath = args.mock ?? process.env.KAEL_PB_EVAL_MOCK ?? null
-
-  const full = JSON.parse(await readFile(corpusPath, 'utf8'))
-  if (!Array.isArray(full) || full.length === 0) throw new Error('corpus must be a non-empty array')
-  // Kael chat is rate-limited (5/min + 20/hour per user). --delay spaces requests
-  // under the per-minute cap; --offset/--limit run a window across hour-cap windows.
+  const corpusPath = resolve(
+    REPO_ROOT,
+    args.corpus ?? process.env.KAEL_PB_EVAL_CORPUS ?? DEFAULT_CORPUS,
+  )
+  ensureInsideRepo(corpusPath, 'corpus')
+  if (!repoRelative(corpusPath).startsWith('docs/playbooks/eval/') || !corpusPath.endsWith('.json')) {
+    throw new Error('corpus_path_outside_eval_directory')
+  }
+  const corpusText = await readFile(corpusPath, 'utf8')
+  const fullCorpus = validatePlaybookCorpus(JSON.parse(corpusText))
   const offset = args.offset ?? 0
-  const corpus = args.limit != null ? full.slice(offset, offset + args.limit) : full.slice(offset)
-  const delayMs = (args.delay ?? 0) * 1000
-
+  const corpus = args.limit == null
+    ? fullCorpus.slice(offset)
+    : fullCorpus.slice(offset, offset + args.limit)
+  if (corpus.length === 0) throw new Error('selected_corpus_is_empty')
+  const repetitions = args.repetitions ?? 1
+  if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 10) {
+    throw new Error('repetitions must be an integer from 1 to 10')
+  }
+  const reportPath = resolve(
+    REPO_ROOT,
+    args.report ?? process.env.KAEL_PB_EVAL_REPORT_PATH ??
+      `docs/test-logs/${todayFromEnvOrArg(args)}_kael-playbook-${serviceType}-${label}.md`,
+  )
+  ensureInsideRepo(reportPath, 'report')
+  const reportRelativePath = repoRelative(reportPath)
+  if (!/^docs\/test-logs\/20\d{2}-\d{2}-\d{2}_kael-playbook-electrical-[a-z0-9._-]+\.md$/i.test(reportRelativePath)) {
+    throw new Error('report_path_outside_test_logs')
+  }
+  const mockInput = args.mock ?? process.env.KAEL_PB_EVAL_MOCK ?? null
+  const mockPath = mockInput ? await resolveMockFixturePath(mockInput) : null
+  const mode = mockPath ? 'mock' : 'live'
+  if (mode === 'live' && args.playbookEnabled === undefined) {
+    throw new Error('live_run_requires_explicit_playbook_enabled')
+  }
   const maxTurns = args.maxTurns ?? 3
+  const district = validateEvalDistrict(args.district ?? process.env.KAEL_PB_EVAL_DISTRICT ?? 'q7')
+  const delaySeconds = args.delay ?? (mode === 'live' ? 190 : 0)
+  const retryWaitSeconds = args.retryWait ?? (mode === 'live' ? 190 : 0)
+  const delayMs = delaySeconds * 1000
+  if (mode === 'live' && delaySeconds < 190) throw new Error('live_delay_below_safe_minimum_190_seconds')
+  if (mode === 'live' && retryWaitSeconds < 190) {
+    throw new Error('live_retry_wait_below_safe_minimum_190_seconds')
+  }
+  if (mode === 'live' && corpus.length * repetitions > 18) {
+    throw new Error('live_run_exceeds_safe_hourly_batch_use_offset_limit')
+  }
+  let mockText = null
   let caseRunner
   if (mockPath) {
-    const mockPost = await mockTransport(mockPath)
-    caseRunner = async (tc) => ({ response: await mockPost(tc.id), turns: 1 })
-  } else {
-    const post = livePost(await buildLiveConfig(), args.retryWait ?? Math.max(args.delay ?? 0, 30))
-    caseRunner = async (tc) => runCaseLive(post, tc, serviceType, maxTurns)
-  }
-
-  const results = []
-  for (let index = 0; index < corpus.length; index += 1) {
-    const testCase = corpus[index]
-    if (index > 0 && delayMs > 0) await sleep(delayMs)
-    let observed
-    let error = null
-    let turns = 0
-    try {
-      const outcome = await caseRunner(testCase)
-      turns = outcome.turns
-      observed = observe(outcome.response)
-    } catch (caught) {
-      observed = emptyObserved()
-      error = caught instanceof Error ? caught.message : String(caught)
+    mockText = await readFile(mockPath, 'utf8')
+    const transport = mockTransport(mockText)
+    caseRunner = async (testCase) => {
+      const response = await transport(testCase.id)
+      return {
+        response,
+        initialObservation: extractIntakeObservation(response),
+        clarificationTurns: lastContentType(response) === 'clarification' ? 1 : 0,
+        turns: 1,
+      }
     }
-    results.push({ id: testCase.id, difficulty: testCase.difficulty, expected: testCase.expected, observed, error, turns })
+  } else {
+    const post = livePost(
+      await buildLiveConfig(),
+      retryWaitSeconds,
+      5,
+      args.timeout ?? 45,
+    )
+    caseRunner = (testCase) => runCaseLive(post, testCase, serviceType, maxTurns, district)
   }
 
-  const scored = results.map((result) => ({ ...result, score: scoreCase(result.expected, result.observed, result.error) }))
-  const metrics = aggregate(scored)
-  await writeReport({ reportPath, label, serviceType, corpusPath, mock: Boolean(mockPath), scored, metrics })
+  const runs = []
+  let executionIndex = 0
+  for (let repetition = 1; repetition <= repetitions; repetition += 1) {
+    for (const testCase of corpus) {
+      if (executionIndex > 0 && delayMs > 0) await sleep(delayMs)
+      executionIndex += 1
+      const began = Date.now()
+      let observed = null
+      let finalObserved = null
+      let clarificationTurns = 0
+      let error = null
+      let turns = 0
+      try {
+        const outcome = await caseRunner(testCase)
+        turns = outcome.turns
+        observed = outcome.initialObservation ?? extractIntakeObservation(outcome.response)
+        finalObserved = extractIntakeObservation(outcome.response)
+        clarificationTurns = outcome.clarificationTurns ?? 0
+      } catch (caught) {
+        error = caught instanceof Error ? caught : new Error(String(caught))
+      }
+      runs.push({
+        id: testCase.id,
+        difficulty: testCase.difficulty,
+        repetition,
+        expected: testCase.expected,
+        observed,
+        finalObserved,
+        clarificationTurns,
+        error,
+        turns,
+        latency_ms: Date.now() - began,
+      })
+    }
+  }
 
+  const scored = runs.map((run) => ({
+    ...run,
+    score: scorePlaybookCase(run.expected, run.observed, run.error),
+  }))
+  const evidence = normalizeEvalEvidenceForRunMode(
+    mode,
+    aggregatePlaybookResults(scored),
+    aggregateRepetitionStability(scored),
+  )
+  const { metrics, stability } = evidence
+  const observations = scored.filter((run) => run.observed).map((run) => run.observed)
+  const observedPlaybook = singleObservedField(observations, 'playbook_version', true)
+  const observedPrompt = singleObservedField(observations, 'prompt_version')
+  if (observedPrompt === 'mixed') throw new Error('mixed_observed_prompt_versions')
+  if (observedPlaybook === 'mixed') throw new Error('mixed_observed_playbook_versions')
+  if (
+    observations.length > 0 &&
+    args.playbookEnabled !== undefined &&
+    args.playbookEnabled !== (observedPlaybook !== null)
+  ) throw new Error('playbook_flag_observation_mismatch')
+  const deploymentVersion = process.env.KAEL_PB_EVAL_DEPLOYMENT_VERSION?.trim()
+  if (mode === 'live' && !deploymentVersion) throw new Error('missing_live_deployment_version')
+  const manifestInput = {
+    git_sha: gitSha(),
+    git_sha_scope: 'local_base_commit',
+    deployment_version: mode === 'mock' ? 'local-mock' : deploymentVersion,
+    deployment_version_source: mode === 'mock' ? 'local_mock_constant' : 'operator_supplied',
+    deployment_attestation: 'not_performed',
+    model_id: singleObservedField(observations, 'model_id') ?? 'unobserved',
+    model_ids: [...new Set(observations.map((item) => item.model_id))].sort(),
+    provider: 'unobserved',
+    sampling_config: null,
+    prompt_version: observedPrompt ?? 'unobserved',
+    playbook_version: observedPlaybook,
+    observed_playbook_state: observations.length === 0
+      ? 'unobserved'
+      : observedPlaybook === null ? 'off' : 'on',
+    playbook_hash: `sha256:${sha256(await readFile(PLAYBOOK_SOURCE, 'utf8'))}`,
+    playbook_hash_scope: 'full_local_source_file',
+    playbook_source_path: repoRelative(PLAYBOOK_SOURCE),
+    source_tree_hash: `sha256:${await sourceTreeHash()}`,
+    source_scope: 'local_curated_source_set',
+    source_files: SOURCE_FILES,
+    source_hash_algorithm: 'sha256_path_and_file_sha256_v1',
+    source_state: gitIsDirty() ? 'base_sha_with_uncommitted_sources' : 'clean_commit',
+    fixture_hash: mockText ? `sha256:${sha256(mockText)}` : null,
+    selected_case_hash: `sha256:${sha256(JSON.stringify(corpus))}`,
+    corpus_path: repoRelative(corpusPath),
+    feature_flags: {
+      electrical_playbook: args.playbookEnabled,
+    },
+    corpus_version: `sha256:${sha256(corpusText)}`,
+    run_mode: mode,
+    started_at: startedAt,
+    repetitions,
+    repetition_strategy: mode === 'mock' ? 'deterministic_fixture_replay' : 'independent_live_sessions',
+    run_config: {
+      offset,
+      limit: args.limit ?? null,
+      max_turns: maxTurns,
+      retry_wait_seconds: retryWaitSeconds,
+      timeout_seconds: args.timeout ?? 45,
+      district,
+      allow_failures: args.allowFailures === true,
+    },
+  }
+  const manifest = createRunManifest(manifestInput)
+  const rawArtifact = buildSanitizedRawArtifact(manifestInput, scored)
+  await writeReports({
+    reportPath,
+    label,
+    serviceType,
+    corpusPath,
+    manifest,
+    rawArtifact,
+    scored,
+    metrics,
+    stability,
+    mode,
+  })
   console.log(JSON.stringify({
     label,
-    mode: mockPath ? 'mock' : 'live',
-    cases: scored.length,
+    mode,
+    cases: corpus.length,
+    repetitions,
     reportPath,
     metrics,
-  }, null, 2))
-}
-
-// --- Observation: map the live {session, turns} response to intake fields ------
-
-function observe(response) {
-  const session = record(response?.session)
-  const turns = Array.isArray(response?.turns) ? response.turns : []
-  const last = turns.length > 0 ? record(turns[turns.length - 1]) : {}
-  const status = str(session.status)
-  const lastType = str(last.content_type)
-  const estimate = record(session.estimate ?? last.estimate)
-  const scope = record(session.diagnosis_scope)
-  const facts = record(scope.facts)
-  const safety = Array.isArray(facts.safety_signals) ? facts.safety_signals.filter((s) => typeof s === 'string') : []
-
-  const declined = status === 'unsupported' || lastType === 'error'
-  const needsClarification = lastType === 'clarification'
-  let scopeSignal
-  if (declined) {
-    const text = str(last.text_content)
-    scopeSignal = /quay lại chọn|nghiêng về dịch vụ|match .* service|select that service/i.test(text)
-      ? 'service_mismatch'
-      : 'out_of_scope'
-  } else {
-    scopeSignal = 'in_scope'
-  }
-
-  return {
-    status: status ?? null,
-    last_content_type: lastType ?? null,
-    needs_clarification: needsClarification,
-    scope_signal: scopeSignal,
-    problem_slug: str(estimate.problem_category) ?? null,
-    safety_signals: safety,
-    // suggested_service is not exposed by the serialized API response; left null
-    // and reported as not-observable rather than guessed.
-    suggested_service: null,
-  }
-}
-
-function emptyObserved() {
-  return {
-    status: null, last_content_type: null, needs_clarification: false,
-    scope_signal: null, problem_slug: null, safety_signals: [], suggested_service: null,
-  }
-}
-
-// --- Scoring -------------------------------------------------------------------
-
-function scoreCase(expected, observed, error) {
-  const fields = {}
-  if (error) {
-    return { pass: false, error: true, fields: {} }
-  }
-  // scope_signal: always gated
-  fields.scope_signal = { gated: true, pass: observed.scope_signal === expected.scope_signal, expected: expected.scope_signal, observed: observed.scope_signal }
-
-  // needs_clarification: gated when expected specifies a boolean
-  if (typeof expected.needs_clarification === 'boolean') {
-    fields.needs_clarification = { gated: true, pass: observed.needs_clarification === expected.needs_clarification, expected: expected.needs_clarification, observed: observed.needs_clarification }
-  }
-
-  // problem_slug: gated only when an in_scope slug is expected AND we did not expect a clarification turn
-  if (expected.problem_slug && expected.scope_signal === 'in_scope' && expected.needs_clarification !== true) {
-    fields.problem_slug = { gated: true, pass: observed.problem_slug === expected.problem_slug, expected: expected.problem_slug, observed: observed.problem_slug }
-  } else if (expected.problem_slug) {
-    fields.problem_slug = { gated: false, note: 'expected clarification/decline first', expected: expected.problem_slug, observed: observed.problem_slug }
-  }
-
-  // safety_signals: gated when the corpus expects at least one; expected ⊆ observed
-  if (Array.isArray(expected.safety_signals) && expected.safety_signals.length > 0) {
-    const missing = expected.safety_signals.filter((sig) => !observed.safety_signals.includes(sig))
-    fields.safety_signals = { gated: true, pass: missing.length === 0, expected: expected.safety_signals, observed: observed.safety_signals, missing }
-  }
-
-  // suggested_service: reported, never gated (not observable via API)
-  if (expected.suggested_service) {
-    fields.suggested_service = { gated: false, note: 'not observable via API', expected: expected.suggested_service, observed: observed.suggested_service }
-  }
-
-  const gated = Object.values(fields).filter((f) => f.gated)
-  const pass = gated.every((f) => f.pass)
-  return { pass, error: false, fields }
-}
-
-function aggregate(scored) {
-  const passed = scored.filter((s) => s.score.pass && !s.score.error).length
-  const errored = scored.filter((s) => s.score.error).length
-  const field = (name) => {
-    const rows = scored.map((s) => s.score.fields[name]).filter((f) => f && f.gated)
-    const ok = rows.filter((f) => f.pass).length
-    return { gatedCases: rows.length, passed: ok, rate: rows.length ? round(ok / rows.length) : null }
-  }
-  return {
-    overallPassRate: round(passed / scored.length),
-    passed,
-    total: scored.length,
-    errored,
-    byField: {
-      scope_signal: field('scope_signal'),
-      needs_clarification: field('needs_clarification'),
-      problem_slug: field('problem_slug'),
-      safety_signals: field('safety_signals'),
+    stability: {
+      repetition_evidence_available: stability.repetition_evidence_available,
+      fully_consistent_rate: stability.fully_consistent_rate,
+      outcome_mode_consistency_rate: stability.consistency_rate,
+      errored_cases: stability.errored_cases,
+      errored_runs: stability.errored_runs,
+      worst_run_required_signal_misses: stability.worst_run_required_signal_misses,
+      worst_run_immediate_critical_misses: stability.worst_run_immediate_critical_misses,
+      worst_run_capability_misses: stability.worst_run_capability_misses,
     },
-    byDifficulty: ['easy', 'medium', 'hard'].reduce((acc, d) => {
-      const rows = scored.filter((s) => s.difficulty === d)
-      acc[d] = rows.length ? { total: rows.length, passed: rows.filter((s) => s.score.pass && !s.score.error).length } : { total: 0, passed: 0 }
-      return acc
-    }, {}),
+  }, null, 2))
+  if (!args.allowFailures && scored.some((run) => !run.score.pass || run.score.error)) {
+    throw new Error('eval_gate_failed_use_allow_failures_for_diagnostic_fixture')
   }
 }
 
-// --- Transports ----------------------------------------------------------------
-
-// Drive one case as a real multi-turn conversation: open with the terse
-// customer message, then — while Kael keeps asking to clarify — answer with the
-// case's fuller `detail` (a customer who elaborates when asked). Stop when Kael
-// produces an estimate, declines, or maxTurns is reached. Follow-up turns are
-// NOT rate-limited server-side (only the create is), so this costs one create.
-async function runCaseLive(post, testCase, serviceType, maxTurns) {
+async function runCaseLive(post, testCase, serviceType, maxTurns, district) {
   let response = await post({
     service_type: serviceType,
     message: testCase.input_text_vi,
     problem_chips: [],
     client_request_id: randomUUID(),
+    address_district: district,
   })
+  const initialObservation = extractIntakeObservation(response)
   let sessionId = response?.session?.id ?? null
   let turns = 1
+  let clarificationTurns = lastContentType(response) === 'clarification' ? 1 : 0
+  let detailUsed = false
+  const usedUserTurns = []
   while (turns < maxTurns && sessionId && lastContentType(response) === 'clarification') {
+    const selected = selectUserTurn(
+      testCase,
+      requestedSlotsFromResponse(response),
+      usedUserTurns,
+    )
+    if (selected) usedUserTurns.push(selected.index)
+    if (selected?.fixture) throw new Error('fixture_turn_requires_multimodal_harness')
+    const message = selected?.reply ?? (!detailUsed ? testCase.detail : null)
+    if (!message) break
+    detailUsed ||= !selected?.reply
     response = await post({
       service_type: serviceType,
       session_id: sessionId,
-      message: testCase.detail ?? testCase.input_text_vi,
+      message,
+      address_district: district,
     })
+    if (lastContentType(response) === 'clarification') clarificationTurns += 1
     sessionId = response?.session?.id ?? sessionId
     turns += 1
   }
-  return { response, turns }
+  return { response, initialObservation, clarificationTurns, turns }
 }
 
-function lastContentType(response) {
-  const turns = Array.isArray(response?.turns) ? response.turns : []
-  return turns.length ? (str(turns[turns.length - 1]?.content_type)) : null
-}
-
-function livePost(config, retryWaitSec = 30, maxAttempts = 5) {
+function livePost(config, retryWaitSec, maxAttempts, timeoutSec) {
   return async (request) => {
-    let refreshedThisCall = false
+    let refreshed = false
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const response = await fetch(`${config.baseUrl}/kael/chat`, {
         method: 'POST',
@@ -232,211 +317,398 @@ function livePost(config, retryWaitSec = 30, maxAttempts = 5) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+        signal: AbortSignal.timeout(timeoutSec * 1000),
       })
-      const text = await response.text()
-      if (response.status === 401 && config.canRefresh && !refreshedThisCall) {
-        // Token expired mid-run — re-sign-in once and retry with the new JWT.
-        refreshedThisCall = true
+      if (response.status === 401 && config.canRefresh && !refreshed) {
+        refreshed = true
         await config.refresh()
         continue
       }
       if (response.status === 429 && attempt < maxAttempts - 1) {
-        // Ride the token-bucket refill (hour bucket = 1 token / 3 min). Wait the
-        // larger of the server hint and the configured pace, so paced runs recover.
-        const retryS = Number(response.headers.get('retry-after'))
-        const waitSec = Math.max(Number.isFinite(retryS) && retryS > 0 ? retryS : 0, retryWaitSec)
-        await sleep(Math.min(waitSec, 210) * 1000)
+        const waitSec = resolveRetryWaitSeconds(
+          response.headers.get('retry-after'),
+          retryWaitSec,
+        )
+        await sleep(waitSec * 1000)
         continue
       }
-      if (!response.ok) throw new Error(`http_${response.status}: ${text.slice(0, 160)}`)
+      if (!response.ok) throw new Error(`http_${response.status}`)
+      const text = await response.text()
       return text ? JSON.parse(text) : {}
     }
-    throw new Error('http_429: rate limited after retries')
+    throw new Error('http_429')
   }
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-async function mockTransport(mockPath) {
-  const mock = JSON.parse(await readFile(resolve(mockPath), 'utf8'))
+function mockTransport(mockText) {
+  const mock = JSON.parse(mockText)
   return async (id) => {
-    if (!(id in mock)) throw new Error(`mock has no response for case ${id}`)
+    if (!(id in mock)) throw new Error('missing_mock_case')
     return mock[id]
   }
 }
 
-// GoTrue password grant via fetch (no supabase-js → avoids its realtime/WebSocket
-// init on Node < 22). Returns a fresh user JWT.
-async function signInToken(supabaseUrl, anonKey, email, password) {
-  const res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { apikey: anonKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok || !body.access_token) {
-    throw new Error(`sign-in failed (${res.status}): ${body.error_description ?? body.msg ?? body.error ?? 'no access_token'}`)
-  }
-  return body.access_token
-}
-
 async function buildLiveConfig() {
-  const baseUrl = requireEnv('KAEL_PB_EVAL_MOBILE_API_URL').replace(/\/+$/, '')
+  const rawBaseUrl = requireEnv('KAEL_PB_EVAL_MOBILE_API_URL')
   const anonKey = process.env.KAEL_PB_EVAL_ANON_KEY?.trim() || null
   const email = process.env.KAEL_PB_EVAL_EMAIL?.trim()
   const password = process.env.KAEL_PB_EVAL_PASSWORD
   const supabaseUrl = process.env.KAEL_PB_EVAL_SUPABASE_URL?.trim()
+  const targets = validateStagingEvalTargets(
+    rawBaseUrl,
+    supabaseUrl,
+    APPROVED_STAGING_PROJECT_REF,
+  )
   const canRefresh = Boolean(email && password && supabaseUrl && anonKey)
   const config = {
-    baseUrl,
+    baseUrl: targets.mobileApiUrl,
     anonKey,
     bearerToken: process.env.KAEL_PB_EVAL_BEARER_TOKEN?.trim() || null,
     canRefresh,
-    // The user JWT expires (~1h); a paced run outlives it. refresh() re-signs-in so
-    // livePost can recover from a mid-run 401 instead of failing the tail of the run.
     async refresh() {
       if (!canRefresh) return false
-      this.bearerToken = await signInToken(supabaseUrl, anonKey, email, password)
+      const response = await fetch(`${targets.supabaseUrl}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        signal: AbortSignal.timeout(30000),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.access_token) throw new Error(`sign_in_http_${response.status}`)
+      this.bearerToken = body.access_token
       return true
     },
   }
-  if (!config.bearerToken) {
-    if (!canRefresh) {
-      throw new Error('Missing auth: set KAEL_PB_EVAL_BEARER_TOKEN, or KAEL_PB_EVAL_EMAIL + KAEL_PB_EVAL_PASSWORD + KAEL_PB_EVAL_SUPABASE_URL + KAEL_PB_EVAL_ANON_KEY (run with --help)')
-    }
-    await config.refresh()
-  }
+  if (!config.bearerToken && !(await config.refresh())) throw new Error('missing_eval_auth')
   return config
 }
 
-// --- Report --------------------------------------------------------------------
-
-async function writeReport({ reportPath, label, serviceType, corpusPath, mock, scored, metrics }) {
-  await mkdir(dirname(reportPath), { recursive: true })
-  const pct = (v) => (v == null ? 'n/a' : `${Math.round(v * 1000) / 10}%`)
+async function writeReports(input) {
+  await mkdir(dirname(input.reportPath), { recursive: true })
+  const pct = (value) => value == null ? 'n/a' : `${Math.round(value * 1000) / 10}%`
+  const matrix = input.metrics.routing.confusion_matrix
+  const diagnosticHeading = input.mode === 'mock'
+    ? '## Local diagnostic metrics (not After)'
+    : '## Live staging arm metrics (not a paired delta)'
   const lines = [
-    `# Kael Playbook Eval — ${serviceType} (${label})`,
+    `# Kael Playbook Eval - ${input.serviceType} (${input.label})`,
     '',
-    'Document type: playbook eval report',
-    `Run mode: ${mock ? 'MOCK (dry-run — scoring logic only, NOT a live baseline)' : 'LIVE (staging intake-diagnosis)'}`,
-    `Corpus: ${corpusPath.replace(REPO_ROOT + '/', '').replace(/\\/g, '/')}`,
-    `Cases: ${metrics.total} (errored: ${metrics.errored})`,
+    '## Hypothesis',
     '',
-    '## Metrics',
+    '- The electrical playbook may improve supported-service routing and safety handling without increasing false declines or unnecessary clarification.',
     '',
-    '| Metric | Value |',
-    '| --- | ---: |',
-    `| overall pass rate | ${pct(metrics.overallPassRate)} (${metrics.passed}/${metrics.total}) |`,
-    `| scope_signal | ${pct(metrics.byField.scope_signal.rate)} (${metrics.byField.scope_signal.passed}/${metrics.byField.scope_signal.gatedCases}) |`,
-    `| needs_clarification | ${pct(metrics.byField.needs_clarification.rate)} (${metrics.byField.needs_clarification.passed}/${metrics.byField.needs_clarification.gatedCases}) |`,
-    `| problem_slug | ${pct(metrics.byField.problem_slug.rate)} (${metrics.byField.problem_slug.passed}/${metrics.byField.problem_slug.gatedCases}) |`,
-    `| safety_signals (recall) | ${pct(metrics.byField.safety_signals.rate)} (${metrics.byField.safety_signals.passed}/${metrics.byField.safety_signals.gatedCases}) |`,
+    '## Changed',
     '',
-    `By difficulty — easy ${metrics.byDifficulty.easy.passed}/${metrics.byDifficulty.easy.total}, medium ${metrics.byDifficulty.medium.passed}/${metrics.byDifficulty.medium.total}, hard ${metrics.byDifficulty.hard.passed}/${metrics.byDifficulty.hard.total}`,
+    input.mode === 'mock'
+      ? '- Local fixture replay exercised the evaluator contract only; no deployed runtime was exercised or changed.'
+      : `- Requested live arm: electrical playbook ${input.manifest.feature_flags.electrical_playbook ? 'enabled' : 'disabled'}. This report does not infer a deployment change.`,
     '',
-    '## Per-case',
+    '## Baseline',
     '',
-    '| id | diff | pass | expected slug/scope | observed slug/scope | needs_clar e/o | safety miss |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
-    ...scored.map((s) => {
-      const e = s.expected
-      const o = s.observed
-      const clarE = typeof e.needs_clarification === 'boolean' ? e.needs_clarification : '-'
-      const safetyMiss = s.score.fields.safety_signals && !s.score.fields.safety_signals.pass
-        ? (s.score.fields.safety_signals.missing ?? []).join(',') : ''
-      const mark = s.score.error ? 'ERR' : (s.score.pass ? 'PASS' : 'FAIL')
-      return `| ${s.id} | ${s.difficulty} | ${mark} | ${e.problem_slug ?? '-'} / ${e.scope_signal} | ${o.problem_slug ?? '-'} / ${o.scope_signal ?? '-'} | ${clarE}/${o.needs_clarification} | ${safetyMiss} |`
+    '- Not captured in this report. Historical results are not treated as a matched baseline.',
+    '',
+    '## After',
+    '',
+    input.mode === 'mock'
+      ? '- **NOT RUN.** Deterministic fixture replay is not deployed-runtime After evidence.'
+      : '- **NOT ESTABLISHED.** This is one live arm; improvement requires a matched baseline and independent holdout.',
+    '',
+    '## Delta',
+    '',
+    '- Routing macro-F1: N/A',
+    '- Suggested-service accuracy: N/A',
+    '- Immediate-critical misses: N/A',
+    '- Clarification turns: N/A',
+    '- Latency p95: N/A',
+    '- Cost per case: N/A',
+    '',
+    '## Run manifest',
+    '',
+    '```json',
+    JSON.stringify(input.manifest, null, 2),
+    '```',
+    '',
+    diagnosticHeading,
+    '',
+    `- Overall: ${pct(input.metrics.overall_pass_rate)} (${input.metrics.passed}/${input.metrics.total})`,
+    `- Routing accuracy: ${pct(input.metrics.routing.accuracy)} (${input.metrics.total - input.metrics.routing.unclassified}/${input.metrics.total} classified runs)`,
+    `- Routing macro-F1: ${input.metrics.routing.macro_f1 ?? 'n/a'}`,
+    `- False-decline rate: ${pct(input.metrics.routing.false_decline_rate)} (${input.metrics.routing.false_declines}/${input.metrics.routing.valid_jobs})`,
+    `- Suggested-service accuracy: ${pct(input.metrics.by_field.suggested_service.rate)}`,
+    `- Clarification accuracy: ${pct(input.metrics.by_field.needs_clarification.rate)}`,
+    `- Observed clarification rate: ${pct(input.metrics.conversation.clarification_rate)}`,
+    `- Problem-slug accuracy: ${pct(input.metrics.by_field.problem_slug.rate)}`,
+    `- Required-safety recall: ${pct(input.metrics.safety.required_signal_recall)} (${input.metrics.safety.observed_required_signals}/${input.metrics.safety.expected_required_signals}); misses: ${input.metrics.safety.required_signal_misses}`,
+    `- Immediate-critical recall: ${pct(input.metrics.safety.immediate_critical_recall)} (${input.metrics.safety.observed_immediate_critical_signals}/${input.metrics.safety.expected_immediate_critical_signals}); misses: ${input.metrics.safety.immediate_critical_misses}`,
+    `- Capability-signal recall: ${pct(input.metrics.safety.capability_recall)} (${input.metrics.safety.observed_capability_signals}/${input.metrics.safety.expected_capability_signals}); misses: ${input.metrics.safety.capability_misses}`,
+    `- Safety false-positive rate: ${pct(input.metrics.safety.false_positive_rate)} (${input.metrics.safety.false_positives}/${input.metrics.safety.forbidden_signal_checks})`,
+    `- Average turns: ${input.metrics.conversation.average_turns ?? 'n/a'}`,
+    `- Latency p50 / p95: ${input.metrics.conversation.latency_ms_p50 ?? 'n/a'} / ${input.metrics.conversation.latency_ms_p95 ?? 'n/a'} ms`,
+    `- Repeated-run fully-consistent rate (error-aware): ${pct(input.stability.fully_consistent_rate)}`,
+    `- Outcome-mode agreement (diagnostic; errored outcomes can agree): ${pct(input.stability.consistency_rate)}`,
+    `- Errored case groups / runs: ${input.stability.errored_cases} / ${input.stability.errored_runs}`,
+    `- Release gate: ${input.manifest.run_config.allow_failures ? 'diagnostic override enabled' : 'strict'}`,
+    '',
+    '## Routing confusion matrix',
+    '',
+    `Run-level counts: ${input.stability.cases} unique cases x ${input.manifest.repetitions} repetition(s).`,
+    '',
+    '| expected \\ observed | in_scope | out_of_scope | service_mismatch |',
+    '|---|---:|---:|---:|',
+    ...['in_scope', 'out_of_scope', 'service_mismatch'].map((expected) =>
+      `| ${expected} | ${matrix[expected].in_scope} | ${matrix[expected].out_of_scope} | ${matrix[expected].service_mismatch} |`
+    ),
+    '',
+    '## Runs',
+    '',
+    '| Case | Rep | Result | Expected | Observed | Suggested | Clarify | Slug | Safety misses |',
+    '|---|---:|---|---|---|---|---|---|---|',
+    ...input.scored.map((run) => {
+      const observed = run.observed?.scope_signal ?? 'error'
+      const suggestion = run.observed?.suggested_service ?? '-'
+      const misses = run.score.fields.safety_signals?.missing?.join(',') || '-'
+      const clarify = fieldMark(run.score.fields.needs_clarification)
+      const slug = fieldMark(run.score.fields.problem_slug)
+      return `| ${run.id} | ${run.repetition} | ${run.score.pass ? 'PASS' : run.score.error ? 'ERR' : 'FAIL'} | ${run.expected.scope_signal} | ${observed} | ${suggestion} | ${clarify} | ${slug} | ${misses} |`
     }),
     '',
-    '## Notes',
+    '## Verification actually run',
     '',
-    '- `suggested_service` is NOT gated: the serialized API response does not expose it, so it cannot be scored here; the mismatch decline is scored via `scope_signal` only.',
-    '- `problem_slug` is gated only for in_scope cases that expect no clarification first; when the flow legitimately asks for clarification/evidence, the slug is not yet produced and is not penalized.',
-    '- `safety_signals` scoring is recall (expected ⊆ observed); extra grounded signals do not fail a case.',
-    mock
-      ? '- MOCK run: proves the runner + scoring wiring only. Replace with a live run for a real baseline.'
-      : '- LIVE run: numbers reflect the staging intake-diagnosis path with NO playbook injected (baseline) unless the label says otherwise.',
+    `- Runner completed ${input.metrics.total} scored record(s); release gate: ${input.manifest.run_config.allow_failures ? 'diagnostic override enabled' : 'strict'}.`,
+    '- Structured observations, scoring, sanitized sidecar generation, and manifest validation completed before report writing.',
     '',
+    '## Human/domain review still required',
+    '',
+    '- Tu/domain approval of the electrical textbook, safety wording, and product-policy calls remains pending; this harness cannot provide that approval.',
+    '',
+    '## Risks/Limitations',
+    '',
+    `- Corpus: ${repoRelative(input.corpusPath)}`,
+    '- Routing is read only from the sanitized `intake_observation` contract; customer-facing copy is never used as a label.',
+    '- Raw sidecar contains whitelisted observations and error codes only; it excludes response text, session IDs, credentials, and customer data.',
+    '- Feature flags are requested configuration; `observed_playbook_state` is the structured runtime observation.',
+    '- Git SHA, playbook hash, and source-tree hash describe bounded local sources only; deployment attestation was not performed.',
+    '- Provider identity and sampling configuration are unobserved.',
+    '- Mock runs validate harness behavior only. Live improvement requires an approved staging deployment and an independent holdout.',
+    '- Safety-order, repeated-question, generic-fallback, complexity/slot completeness, token/cost, escalation, and repair metrics are not exposed by this structured contract and remain n/a.',
+    '',
+    '## Decision',
+    '',
+    '- **NEEDS_HOLDOUT**',
+    '',
+    '## Next Step',
+    '',
+    input.mode === 'mock'
+      ? '- Complete owner/domain review, attest the staged deployment/source boundary, then run approved matched live baseline and After arms plus an independent holdout.'
+      : '- Run the matched counterpart arm under the same approved corpus/configuration, then evaluate an independent holdout before any rollout claim.',
   ]
-  await writeFile(reportPath, lines.join('\n') + '\n')
-  // machine-readable sidecar so multiple rate-limit windows can be merged later
-  await writeFile(reportPath.replace(/\.md$/, '.json'), JSON.stringify({ label, serviceType, metrics, scored }, null, 2) + '\n')
+  const jsonPath = sidecarPath(input.reportPath, '.json')
+  const rawPath = sidecarPath(input.reportPath, '.raw.json')
+  const safeRuns = input.scored.map((run, index) => ({
+    id: run.id,
+    difficulty: run.difficulty,
+    repetition: run.repetition,
+    expected: sanitizeExpected(run.expected),
+    observed: input.rawArtifact.observations[index].observation,
+    error_code: input.rawArtifact.observations[index].error_code,
+    score: run.score,
+  }))
+  await Promise.all([
+    writeFile(input.reportPath, `${lines.join('\n')}\n`),
+    writeFile(jsonPath, `${JSON.stringify({ manifest: input.manifest, metrics: input.metrics, stability: input.stability, runs: safeRuns }, null, 2)}\n`),
+    writeFile(rawPath, `${JSON.stringify(input.rawArtifact, null, 2)}\n`),
+  ])
 }
 
-// --- helpers -------------------------------------------------------------------
+function sanitizeExpected(expected) {
+  return Object.fromEntries([
+    'scope_signal',
+    'suggested_service',
+    'problem_slug',
+    'acceptable_problem_slugs',
+    'needs_clarification',
+    'safety_signals',
+    'required_safety_signals',
+    'forbidden_safety_signals',
+    'complexity',
+  ].filter((key) => Object.hasOwn(expected, key)).map((key) => [key, expected[key]]))
+}
 
 function parseArgs(argv) {
   const out = {}
-  for (let i = 0; i < argv.length; i += 1) {
-    const a = argv[i]
-    if (a === '--help' || a === '-h') out.help = true
-    else if (a === '--mock') out.mock = argv[++i]
-    else if (a === '--label') out.label = argv[++i]
-    else if (a === '--corpus') out.corpus = argv[++i]
-    else if (a === '--report') out.report = argv[++i]
-    else if (a === '--service') out.service = argv[++i]
-    else if (a === '--date') out.date = argv[++i]
-    else if (a === '--delay') out.delay = Number(argv[++i])
-    else if (a === '--offset') out.offset = Number(argv[++i])
-    else if (a === '--limit') out.limit = Number(argv[++i])
-    else if (a === '--max-turns') out.maxTurns = Number(argv[++i])
-    else if (a === '--retry-wait') out.retryWait = Number(argv[++i])
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index]
+    const nextValue = () => {
+      const value = argv[index + 1]
+      if (value === undefined || value.startsWith('--')) throw new Error(`missing_value_${arg}`)
+      index += 1
+      return value
+    }
+    if (arg === '--') continue
+    else if (arg === '--help' || arg === '-h') out.help = true
+    else if (arg === '--mock') out.mock = nextValue()
+    else if (arg === '--label') out.label = nextValue()
+    else if (arg === '--corpus') out.corpus = nextValue()
+    else if (arg === '--report') out.report = nextValue()
+    else if (arg === '--service') out.service = nextValue()
+    else if (arg === '--date') out.date = nextValue()
+    else if (arg === '--delay') out.delay = Number(nextValue())
+    else if (arg === '--offset') out.offset = Number(nextValue())
+    else if (arg === '--limit') out.limit = Number(nextValue())
+    else if (arg === '--max-turns') out.maxTurns = Number(nextValue())
+    else if (arg === '--retry-wait') out.retryWait = Number(nextValue())
+    else if (arg === '--timeout') out.timeout = Number(nextValue())
+    else if (arg === '--repetitions') out.repetitions = Number(nextValue())
+    else if (arg === '--district') out.district = nextValue()
+    else if (arg === '--allow-failures') out.allowFailures = true
+    else if (arg === '--playbook-enabled') out.playbookEnabled = parseBoolean(nextValue())
+    else throw new Error(`unknown_arg_${arg}`)
   }
   return out
 }
 
-function todayFromEnvOrArg(args) {
-  return args.date ?? process.env.KAEL_PB_EVAL_DATE ?? 'undated'
+function printHelp() {
+  console.log(`kael-playbook-eval
+
+Mock contract run:
+  node apps/api/scripts/kael-playbook-eval.mjs --mock <fixture.json> --label mock --date YYYY-MM-DD --repetitions 3 --allow-failures
+
+Live staging run requires KAEL_PB_EVAL_MOBILE_API_URL, KAEL_PB_EVAL_DEPLOYMENT_VERSION, an explicit --playbook-enabled arm, and either KAEL_PB_EVAL_BEARER_TOKEN or KAEL_PB_EVAL_EMAIL, KAEL_PB_EVAL_PASSWORD, KAEL_PB_EVAL_SUPABASE_URL, KAEL_PB_EVAL_ANON_KEY.
+
+Flags: --mock, --label, --corpus, --report, --service, --date, --delay, --offset, --limit, --max-turns, --retry-wait, --timeout, --repetitions, --district, --playbook-enabled, --allow-failures.`)
 }
 
-function printHelp() {
-  console.log(`kael-playbook-eval — run the playbook eval corpus through the live intake flow.
+function lastContentType(response) {
+  const turns = Array.isArray(response?.turns) ? response.turns : []
+  return typeof turns.at(-1)?.content_type === 'string' ? turns.at(-1).content_type : null
+}
 
-Dry-run (no credentials, proves scoring):
-  node apps/api/scripts/kael-playbook-eval.mjs --mock apps/api/scripts/fixtures/kael-playbook-eval-mock.json --label mock --date 2026-07-14
+function singleObservedField(observations, key, nullable = false) {
+  const values = [...new Set(observations.map((item) => item[key]))]
+  if (values.length === 0) return nullable ? null : undefined
+  if (values.length === 1) return values[0]
+  return values.every((value) => value === null) ? null : 'mixed'
+}
 
-Live baseline — option A, you already have a user JWT:
-  KAEL_PB_EVAL_MOBILE_API_URL="https://<ref>.supabase.co/functions/v1/mobile-api" \\
-  KAEL_PB_EVAL_ANON_KEY="<anon key>" \\
-  KAEL_PB_EVAL_BEARER_TOKEN="<a signed-in staging user JWT>" \\
-  node apps/api/scripts/kael-playbook-eval.mjs --label baseline --date 2026-07-14
+function sidecarPath(reportPath, suffix) {
+  return reportPath.endsWith('.md') ? reportPath.slice(0, -3) + suffix : reportPath + suffix
+}
 
-Live baseline — option B, sign in on your machine (GoTrue password grant, no deps):
-  KAEL_PB_EVAL_MOBILE_API_URL="https://<ref>.supabase.co/functions/v1/mobile-api" \\
-  KAEL_PB_EVAL_SUPABASE_URL="https://<ref>.supabase.co" \\
-  KAEL_PB_EVAL_ANON_KEY="<anon key>" \\
-  KAEL_PB_EVAL_EMAIL="<staging test user email>" \\
-  KAEL_PB_EVAL_PASSWORD="<password>" \\
-  node apps/api/scripts/kael-playbook-eval.mjs --label baseline --date 2026-07-14
+function gitSha() {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim()
+  } catch {
+    return 'unknown'
+  }
+}
 
-Env: KAEL_PB_EVAL_MOBILE_API_URL, then either KAEL_PB_EVAL_BEARER_TOKEN, or
-KAEL_PB_EVAL_EMAIL + KAEL_PB_EVAL_PASSWORD + KAEL_PB_EVAL_SUPABASE_URL + KAEL_PB_EVAL_ANON_KEY.
-Claude cannot mint or handle the token; a human runs the live command.
-Flags: --mock <file>, --label <baseline|after|mock>, --corpus <path>, --report <path>, --service <name>, --date <YYYY-MM-DD>.`)
+function gitIsDirty() {
+  try {
+    return execFileSync('git', ['status', '--porcelain'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim().length > 0
+  } catch {
+    return true
+  }
+}
+
+async function sourceTreeHash() {
+  const parts = await Promise.all(SOURCE_FILES.map(async (path) =>
+    `${path}\n${sha256(await readFile(resolve(REPO_ROOT, path), 'utf8'))}`
+  ))
+  return sha256(parts.join('\n'))
+}
+
+function repoRelative(path) {
+  return relative(REPO_ROOT, path).replaceAll('\\', '/')
+}
+
+function fieldMark(field) {
+  if (!field?.gated) return '-'
+  return field.pass ? 'PASS' : `FAIL (${String(field.observed)})`
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex')
+}
+
+function parseBoolean(value) {
+  if (['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase())) return true
+  if (['0', 'false', 'no', 'off'].includes(String(value).toLowerCase())) return false
+  throw new Error('playbook-enabled must be true or false')
+}
+
+function validateRunArgs(args) {
+  const label = args.label ?? process.env.KAEL_PB_EVAL_LABEL ?? 'baseline'
+  if (!/^[a-z0-9][a-z0-9._-]{0,79}$/i.test(label)) throw new Error('invalid_label')
+  const date = args.date ?? process.env.KAEL_PB_EVAL_DATE
+  if (date !== undefined && !/^20\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/.test(date)) {
+    throw new Error('invalid_date')
+  }
+  if ((args.service ?? 'electrical') !== 'electrical') throw new Error('unsupported_playbook_service')
+  for (const [key, minimum, maximum] of [
+    ['offset', 0, 10000], ['limit', 1, 10000], ['maxTurns', 1, 10],
+    ['retryWait', 0, 3600], ['timeout', 1, 600], ['delay', 0, 3600],
+  ]) {
+    const value = args[key]
+    if (value !== undefined && (!Number.isInteger(value) || value < minimum || value > maximum)) {
+      throw new Error(`invalid_${key}`)
+    }
+  }
+}
+
+function ensureInsideRepo(path, label) {
+  const candidate = relative(REPO_ROOT, path)
+  if (candidate === '' || candidate.startsWith('..') || resolve(REPO_ROOT, candidate) !== resolve(path)) {
+    throw new Error(`${label}_path_outside_repo`)
+  }
+}
+
+async function resolveMockFixturePath(input) {
+  const candidates = isAbsolute(input)
+    ? [resolve(input)]
+    : [resolve(process.cwd(), input), resolve(REPO_ROOT, input)]
+  const candidate = [...new Set(candidates)].find((path) => (
+    path.endsWith('.json') && isPathInside(MOCK_FIXTURE_DIR, path)
+  ))
+  if (!candidate) throw new Error('mock_path_outside_fixture_directory')
+  ensureInsideRepo(candidate, 'mock')
+
+  let canonicalFixtureDirectory
+  let canonicalCandidate
+  try {
+    [canonicalFixtureDirectory, canonicalCandidate] = await Promise.all([
+      realpath(MOCK_FIXTURE_DIR),
+      realpath(candidate),
+    ])
+  } catch {
+    throw new Error('mock_fixture_not_found')
+  }
+  if (!isPathInside(canonicalFixtureDirectory, canonicalCandidate)) {
+    throw new Error('mock_path_outside_fixture_directory')
+  }
+  return canonicalCandidate
+}
+
+function isPathInside(directory, candidate) {
+  const nestedPath = relative(directory, candidate)
+  return nestedPath !== '' && nestedPath !== '..' &&
+    !nestedPath.startsWith(`..${sep}`) && !isAbsolute(nestedPath)
+}
+
+function todayFromEnvOrArg(args) {
+  return args.date ?? process.env.KAEL_PB_EVAL_DATE ?? new Date().toISOString().slice(0, 10)
 }
 
 function requireEnv(name) {
-  const v = process.env[name]?.trim()
-  if (!v) throw new Error(`Missing required env: ${name} (run with --help)`)
-  return v
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`missing_env_${name}`)
+  return value
 }
 
-function record(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
-}
-
-function str(value) {
-  return typeof value === 'string' ? value : null
-}
-
-function round(value, places = 4) {
-  const f = 10 ** places
-  return Math.round(Number(value || 0) * f) / f
+function sleep(ms) {
+  return new Promise((resolveSleep) => setTimeout(resolveSleep, ms))
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.stack ?? error.message : error)
+  console.error(error instanceof Error ? error.message : String(error))
   process.exitCode = 1
 })

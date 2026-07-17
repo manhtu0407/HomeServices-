@@ -10,7 +10,7 @@ A playbook lives as **three artifacts**, never one:
 
 | Artifact | Home | Role | Goes to the LLM? |
 |---|---|---|---|
-| Textbook (full playbook) | `docs/playbooks/services/<service>.md` | human-readable source of truth, reviewed by Tu | No |
+| Textbook (full playbook) | `docs/playbooks/services/<service>.md` | human-readable review source; Tu/domain approval must remain pending until evidenced | No |
 | Runtime segment (compressed) | a code constant (see §5) | the actual instructions injected into the system prompt | Yes, cached |
 | Eval corpus | `docs/playbooks/eval/<service>-cases.json` | ground truth that proves improvement | No (it drives the runner) |
 
@@ -86,11 +86,15 @@ Guardrails learned: this can hit session usage caps — checkpoint per section, 
 - Realistic Vietnamese customer messages — include no-diacritics and typo'd variants, because that is how users type.
 - Each case: `{ id, input_text_vi, expected{ problem_slug, scope_signal, suggested_service, safety_signals[], needs_clarification, complexity }, difficulty, rationale }`.
 - `expected` follows the playbook's trees, not the author's private opinion.
-- Scoring: exact match on problem_slug / scope_signal / needs_clarification; `safety_signals` expected set must be a subset of emitted (extra grounded signals do not fail); `complexity` informative only in v0. `suggested_service` is NOT observable via the serialized API response, so the mismatch decline is scored through `scope_signal` only.
+- Validate the complete corpus before slicing or running it: reject unknown fields, duplicate IDs, invented slugs/signals, invalid enums, ambiguous required-safety aliases, and overlaps between required and forbidden safety signals.
+- Scoring: exact match on problem_slug / scope_signal / needs_clarification / suggested_service; `safety_signals` expected set must be a subset of emitted (extra grounded signals do not fail); `complexity` is informative only in v0. `suggested_service` is observable only through the default-off sanitized `intake_observation` eval contract, never inferred from customer-facing copy. Report clarification accuracy separately from the observed clarification rate; neither is a turn-count delta.
+- Report safety in separate, denominator-bearing groups. For electrical, immediate-critical signals are `smoke_or_burning`, `sparking`, `exposed_live_parts`, and `water_near_power`; capability signals are `distribution_board`, `fixed_wiring`, `protective_device`, and `new_circuit`. Also report the total required-signal recall. Never relabel all required signals as "critical".
 
 **Runner:** `apps/api/scripts/kael-playbook-eval.mjs` (Node, matches the repo's other `scripts/*.mjs`). It POSTs each case through the live electrical intake at `/kael/chat`, reads `{session, turns}`, and scores the observed intake fields.
-- Dry-run (no credentials — proves the scoring wiring): `node apps/api/scripts/kael-playbook-eval.mjs --mock apps/api/scripts/fixtures/kael-playbook-eval-mock.json --label mock --date <YYYY-MM-DD>`.
-- Live: set `KAEL_PB_EVAL_MOBILE_API_URL`, `KAEL_PB_EVAL_ANON_KEY`, `KAEL_PB_EVAL_BEARER_TOKEN` (a signed-in staging **user** JWT), then `node apps/api/scripts/kael-playbook-eval.mjs --label baseline`. An agent cannot mint the user token; a human runs the live command.
+- Dry-run (no credentials — proves scorer/fixture sensitivity only): `node apps/api/scripts/kael-playbook-eval.mjs --mock apps/api/scripts/fixtures/kael-playbook-eval-mock.json --label mock --date <YYYY-MM-DD> --repetitions 3 --allow-failures`. The override is only for a deliberately corrupted diagnostic fixture; omit it for release-gating corpora. Mock turns, latency, and stochastic consistency are `null`/N/A; they are not evidence about a provider or deployed runtime.
+- Live: set `KAEL_PB_EVAL_MOBILE_API_URL`, `KAEL_PB_EVAL_DEPLOYMENT_VERSION`, and either a signed-in staging **user** `KAEL_PB_EVAL_BEARER_TOKEN` or the documented staging sign-in variables. Run an explicit arm, for example `node apps/api/scripts/kael-playbook-eval.mjs --label baseline --playbook-enabled false --limit <approved-slice>`; use the same corpus slice/configuration for `--label after --playbook-enabled true`. The runner enforces the approved staging host, rate-safe pacing, and batch limit. An agent must not invent credentials or deployment provenance.
+- Manifest hashes describe the bounded local source file/set named in the manifest. They do not attest the deployed Edge bundle. Mock always records `deployment_version=local-mock`; a live deployment version is operator-supplied and still marked unattested unless separately verified.
+- Every report must contain: Hypothesis, Changed, Baseline, After, Delta, diagnostic/live metrics, Verification actually run, Human/domain review still required, Risks/Limitations, Decision, and Next Step. Mock results live under a local-diagnostic section, `After` is `NOT RUN`, all deltas are N/A, and the decision remains `NEEDS_HOLDOUT`.
 
 ## 7. The measurement loop (this is what makes "smarter" real)
 
@@ -121,9 +125,12 @@ Ratchet: each playbook/prompt change re-runs the corpus in CI (§43 Workstream E
 - [ ] Textbook written; every emitted token verified exact; every uncertain claim `[VERIFY]`-tagged.
 - [ ] All customer-visible Vietnamese passes the §3 checks (grep for ` và ` inside `ask vi:"..."`, for `:` inside questions, for digit-money).
 - [ ] Eval corpus mirrored to `eval/<service>-cases.json` and JSON-valid.
+- [ ] The strict expected-corpus validator accepts the full corpus; negative tests reject unknown fields, duplicate IDs, invented tokens, and required/forbidden overlaps.
 - [ ] Appendix C lists exactly what Tu must review (the 1%).
 - [ ] Nothing injected into the runtime before a baseline eval exists.
-- [ ] Tu resolved the [VERIFY] tags and any product-policy calls.
+- [ ] Textbook/runtime parity is generated or hash-gated, and the staged deployment/source boundary is separately attested.
+- [ ] Matched live baseline and After arms use the same approved corpus/configuration; an independent holdout confirms no regression.
+- [ ] Tu/domain reviewers resolved the [VERIFY] tags and any product-policy calls; status stays pending until evidence exists.
 
 ## 9. Where each service stands
 

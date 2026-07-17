@@ -1,0 +1,4832 @@
+{
+  "manifest": {
+    "git_sha": "09a1f95f02451fc5b3671bb03a8aaa03bbd04232",
+    "git_sha_scope": "local_base_commit",
+    "deployment_version": "local-mock",
+    "deployment_version_source": "local_mock_constant",
+    "deployment_attestation": "not_performed",
+    "model_id": "mock-contract",
+    "model_ids": [
+      "mock-contract"
+    ],
+    "provider": "unobserved",
+    "sampling_config": null,
+    "prompt_version": "2026-07-16.v2",
+    "playbook_version": "electrical-playbook-2026-07-16.v2",
+    "observed_playbook_state": "on",
+    "playbook_hash": "sha256:274681372326482ff6a6811a1e213a0264515e2301999a51d4df70d9d4540bf3",
+    "playbook_hash_scope": "full_local_source_file",
+    "playbook_source_path": "supabase/functions/mobile-api/_shared/kael/playbooks/electrical.ts",
+    "source_tree_hash": "sha256:32f57196fa1e08ba2b5399b31292abcf9e57e1f7695b2353ac5ef4d2fbb41207",
+    "source_scope": "local_curated_source_set",
+    "source_files": [
+      "apps/api/scripts/kael-playbook-eval.mjs",
+      "apps/api/scripts/lib/kael-playbook-eval-core.mjs",
+      "supabase/functions/mobile-api/_shared/kael/boundary-guard.ts",
+      "supabase/functions/mobile-api/_shared/kael/electrical-intake-policy.ts",
+      "supabase/functions/mobile-api/_shared/kael/index.ts",
+      "supabase/functions/mobile-api/_shared/kael/intake-runtime.ts",
+      "supabase/functions/mobile-api/_shared/kael/intent.ts",
+      "supabase/functions/mobile-api/_shared/kael/pipeline.ts",
+      "supabase/functions/mobile-api/_shared/kael/performance-profiles.ts",
+      "supabase/functions/mobile-api/_shared/kael/prompts.ts",
+      "supabase/functions/mobile-api/_shared/kael/trace.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts",
+      "supabase/functions/mobile-api/_shared/kael/utils.ts",
+      "supabase/functions/mobile-api/_shared/services/_shared.ts",
+      "supabase/functions/mobile-api/_shared/services/job-create.service.ts",
+      "supabase/functions/mobile-api/_shared/services/kael-chat-boundary.ts",
+      "supabase/functions/mobile-api/_shared/services/kael-chat-core.ts",
+      "supabase/functions/mobile-api/_shared/services/kael-chat-intake-safety.ts",
+      "supabase/functions/mobile-api/_shared/services/kael-chat.service.ts",
+      "supabase/functions/mobile-api/_shared/services/serializers.ts"
+    ],
+    "source_hash_algorithm": "sha256_path_and_file_sha256_v1",
+    "source_state": "base_sha_with_uncommitted_sources",
+    "fixture_hash": "sha256:2f35e5515832b2601e4653aec6d2397e901de018a4ec5d7ff129f28a35122daf",
+    "selected_case_hash": "sha256:2b181c20a6ccef5bba476b171c35d03dd73517773a1197ebbfbdf4d2ff2a7d8a",
+    "corpus_path": "docs/playbooks/eval/electrical-cases.json",
+    "feature_flags": {
+      "electrical_playbook": true
+    },
+    "corpus_version": "sha256:751810b88622f9a7a61a16de9632eaef0a3eb523c827ddbc2e34df609921e636",
+    "run_mode": "mock",
+    "started_at": "2026-07-17T01:27:47.845Z",
+    "repetitions": 3,
+    "repetition_strategy": "deterministic_fixture_replay",
+    "run_config": {
+      "offset": 0,
+      "limit": null,
+      "max_turns": 3,
+      "retry_wait_seconds": 0,
+      "timeout_seconds": 45,
+      "district": "q7",
+      "allow_failures": true
+    }
+  },
+  "metrics": {
+    "overall_pass_rate": 0.875,
+    "passed": 63,
+    "total": 72,
+    "errored": 0,
+    "by_field": {
+      "scope_signal": {
+        "gated_cases": 72,
+        "passed": 72,
+        "rate": 1
+      },
+      "suggested_service": {
+        "gated_cases": 72,
+        "passed": 72,
+        "rate": 1
+      },
+      "needs_clarification": {
+        "gated_cases": 72,
+        "passed": 66,
+        "rate": 0.9167
+      },
+      "problem_slug": {
+        "gated_cases": 54,
+        "passed": 51,
+        "rate": 0.9444
+      },
+      "safety_signals": {
+        "gated_cases": 24,
+        "passed": 21,
+        "rate": 0.875
+      }
+    },
+    "routing": {
+      "accuracy": 1,
+      "macro_f1": 1,
+      "confusion_matrix": {
+        "in_scope": {
+          "in_scope": 54,
+          "out_of_scope": 0,
+          "service_mismatch": 0
+        },
+        "out_of_scope": {
+          "in_scope": 0,
+          "out_of_scope": 9,
+          "service_mismatch": 0
+        },
+        "service_mismatch": {
+          "in_scope": 0,
+          "out_of_scope": 0,
+          "service_mismatch": 9
+        }
+      },
+      "per_category": {
+        "in_scope": {
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "support": 54
+        },
+        "out_of_scope": {
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "support": 9
+        },
+        "service_mismatch": {
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "support": 9
+        }
+      },
+      "false_declines": 0,
+      "valid_jobs": 54,
+      "false_decline_rate": 0,
+      "unclassified": 0
+    },
+    "safety": {
+      "expected_required_signals": 30,
+      "observed_required_signals": 27,
+      "required_signal_misses": 3,
+      "required_signal_recall": 0.9,
+      "expected_immediate_critical_signals": 12,
+      "observed_immediate_critical_signals": 9,
+      "immediate_critical_misses": 3,
+      "immediate_critical_recall": 0.75,
+      "expected_capability_signals": 18,
+      "observed_capability_signals": 18,
+      "capability_misses": 0,
+      "capability_recall": 1,
+      "forbidden_signal_checks": 3,
+      "false_positives": 0,
+      "false_positive_rate": 0,
+      "by_signal": {
+        "distribution_board": {
+          "kind": "capability",
+          "expected": 3,
+          "observed": 3,
+          "recall": 1
+        },
+        "exposed_live_parts": {
+          "kind": "immediate_critical",
+          "expected": 6,
+          "observed": 6,
+          "recall": 1
+        },
+        "fixed_wiring": {
+          "kind": "capability",
+          "expected": 3,
+          "observed": 3,
+          "recall": 1
+        },
+        "new_circuit": {
+          "kind": "capability",
+          "expected": 3,
+          "observed": 3,
+          "recall": 1
+        },
+        "protective_device": {
+          "kind": "capability",
+          "expected": 9,
+          "observed": 9,
+          "recall": 1
+        },
+        "smoke_or_burning": {
+          "kind": "immediate_critical",
+          "expected": 3,
+          "observed": 3,
+          "recall": 1
+        },
+        "water_near_power": {
+          "kind": "immediate_critical",
+          "expected": 3,
+          "observed": 0,
+          "recall": 0
+        }
+      }
+    },
+    "conversation": {
+      "average_turns": null,
+      "clarification_rate": 0.3333,
+      "latency_ms_p50": null,
+      "latency_ms_p95": null
+    }
+  },
+  "stability": {
+    "cases": 24,
+    "min_repetitions": 3,
+    "max_repetitions": 3,
+    "repetition_evidence_available": false,
+    "fully_consistent_cases": null,
+    "fully_consistent_rate": null,
+    "consistency_rate": null,
+    "errored_cases": 0,
+    "errored_runs": 0,
+    "worst_run_required_signal_misses": 1,
+    "worst_run_immediate_critical_misses": 1,
+    "worst_run_capability_misses": 0,
+    "cases_with_any_required_signal_miss": 1,
+    "cases_with_any_immediate_critical_miss": 1,
+    "cases_with_any_capability_miss": 0,
+    "per_case": [
+      {
+        "id": "el_01",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_02",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_03",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_04",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_05",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_06",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_07",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_08",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_09",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_10",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_11",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_12",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_13",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_14",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_15",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_16",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_17",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_18",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_19",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_20",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_21",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_22",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_23",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 0,
+        "worst_run_immediate_critical_misses": 0,
+        "worst_run_capability_misses": 0
+      },
+      {
+        "id": "el_24",
+        "repetitions": 3,
+        "consistency_rate": null,
+        "fully_consistent": null,
+        "errored_runs": 0,
+        "worst_run_required_signal_misses": 1,
+        "worst_run_immediate_critical_misses": 1,
+        "worst_run_capability_misses": 0
+      }
+    ]
+  },
+  "runs": [
+    {
+      "id": "el_01",
+      "difficulty": "medium",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "fixed_wiring",
+          "protective_device"
+        ],
+        "complexity": "large"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "fixed_wiring",
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "fixed_wiring",
+              "protective_device"
+            ],
+            "observed": [
+              "fixed_wiring",
+              "protective_device"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_02",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "protective_device"
+            ],
+            "observed": [
+              "protective_device"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_03",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_whole_unit",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_whole_unit",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "power_outage_whole_unit"
+            ],
+            "observed": "power_outage_whole_unit"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_04",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_05",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "power_outage_one_room"
+            ],
+            "observed": "power_outage_one_room"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_06",
+      "difficulty": "medium",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": true,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": false,
+            "expected": [
+              "power_outage_one_room"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_07",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "small"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "flickering_light"
+            ],
+            "observed": "flickering_light"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_08",
+      "difficulty": "medium",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "flickering_light"
+            ],
+            "observed": "flickering_light"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_09",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "small"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_10",
+      "difficulty": "medium",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_11",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "install_device"
+            ],
+            "observed": "install_device"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_12",
+      "difficulty": "medium",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [
+          "new_circuit",
+          "distribution_board"
+        ],
+        "complexity": "large"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [
+          "new_circuit",
+          "distribution_board"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "install_device"
+            ],
+            "observed": "install_device"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "new_circuit",
+              "distribution_board"
+            ],
+            "observed": [
+              "new_circuit",
+              "distribution_board"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_13",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "electrical-general",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "electrical-general",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "electrical-general"
+            ],
+            "observed": "electrical-general"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_14",
+      "difficulty": "hard",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_15",
+      "difficulty": "medium",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "exposed_live_parts"
+            ],
+            "observed": [
+              "exposed_live_parts"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_16",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_17",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "hvac",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "hvac",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "hvac",
+            "observed": "hvac"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_18",
+      "difficulty": "medium",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "plumbing",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "forbidden_safety_signals": [
+          "water_near_power"
+        ],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "plumbing",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "plumbing",
+            "observed": "plumbing"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [],
+            "observed": [],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_19",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "handyman",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "handyman",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "handyman",
+            "observed": "handyman"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_20",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_21",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_22",
+      "difficulty": "easy",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [
+          "smoke_or_burning"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [
+          "smoke_or_burning"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "smoke_or_burning"
+            ],
+            "observed": [
+              "smoke_or_burning"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_23",
+      "difficulty": "hard",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "exposed_live_parts"
+            ],
+            "observed": [
+              "exposed_live_parts"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_24",
+      "difficulty": "medium",
+      "repetition": 1,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "water_near_power",
+          "protective_device"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": false,
+            "expected": [
+              "water_near_power",
+              "protective_device"
+            ],
+            "observed": [
+              "protective_device"
+            ],
+            "missing": [
+              "water_near_power"
+            ],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_01",
+      "difficulty": "medium",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "fixed_wiring",
+          "protective_device"
+        ],
+        "complexity": "large"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "fixed_wiring",
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "fixed_wiring",
+              "protective_device"
+            ],
+            "observed": [
+              "fixed_wiring",
+              "protective_device"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_02",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "protective_device"
+            ],
+            "observed": [
+              "protective_device"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_03",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_whole_unit",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_whole_unit",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "power_outage_whole_unit"
+            ],
+            "observed": "power_outage_whole_unit"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_04",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_05",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "power_outage_one_room"
+            ],
+            "observed": "power_outage_one_room"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_06",
+      "difficulty": "medium",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": true,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": false,
+            "expected": [
+              "power_outage_one_room"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_07",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "small"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "flickering_light"
+            ],
+            "observed": "flickering_light"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_08",
+      "difficulty": "medium",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "flickering_light"
+            ],
+            "observed": "flickering_light"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_09",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "small"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_10",
+      "difficulty": "medium",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_11",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "install_device"
+            ],
+            "observed": "install_device"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_12",
+      "difficulty": "medium",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [
+          "new_circuit",
+          "distribution_board"
+        ],
+        "complexity": "large"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [
+          "new_circuit",
+          "distribution_board"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "install_device"
+            ],
+            "observed": "install_device"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "new_circuit",
+              "distribution_board"
+            ],
+            "observed": [
+              "new_circuit",
+              "distribution_board"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_13",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "electrical-general",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "electrical-general",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "electrical-general"
+            ],
+            "observed": "electrical-general"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_14",
+      "difficulty": "hard",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_15",
+      "difficulty": "medium",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "exposed_live_parts"
+            ],
+            "observed": [
+              "exposed_live_parts"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_16",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_17",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "hvac",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "hvac",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "hvac",
+            "observed": "hvac"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_18",
+      "difficulty": "medium",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "plumbing",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "forbidden_safety_signals": [
+          "water_near_power"
+        ],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "plumbing",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "plumbing",
+            "observed": "plumbing"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [],
+            "observed": [],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_19",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "handyman",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "handyman",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "handyman",
+            "observed": "handyman"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_20",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_21",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_22",
+      "difficulty": "easy",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [
+          "smoke_or_burning"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [
+          "smoke_or_burning"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "smoke_or_burning"
+            ],
+            "observed": [
+              "smoke_or_burning"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_23",
+      "difficulty": "hard",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "exposed_live_parts"
+            ],
+            "observed": [
+              "exposed_live_parts"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_24",
+      "difficulty": "medium",
+      "repetition": 2,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "water_near_power",
+          "protective_device"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": false,
+            "expected": [
+              "water_near_power",
+              "protective_device"
+            ],
+            "observed": [
+              "protective_device"
+            ],
+            "missing": [
+              "water_near_power"
+            ],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_01",
+      "difficulty": "medium",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "fixed_wiring",
+          "protective_device"
+        ],
+        "complexity": "large"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "fixed_wiring",
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "fixed_wiring",
+              "protective_device"
+            ],
+            "observed": [
+              "fixed_wiring",
+              "protective_device"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_02",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "protective_device"
+            ],
+            "observed": [
+              "protective_device"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_03",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_whole_unit",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_whole_unit",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "power_outage_whole_unit"
+            ],
+            "observed": "power_outage_whole_unit"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_04",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_05",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "power_outage_one_room"
+            ],
+            "observed": "power_outage_one_room"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_06",
+      "difficulty": "medium",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "power_outage_one_room",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": true,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": false,
+            "expected": [
+              "power_outage_one_room"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_07",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "small"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "flickering_light"
+            ],
+            "observed": "flickering_light"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_08",
+      "difficulty": "medium",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "flickering_light",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": false,
+            "expected": false,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "flickering_light"
+            ],
+            "observed": "flickering_light"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_09",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "small"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_10",
+      "difficulty": "medium",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_11",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "install_device"
+            ],
+            "observed": "install_device"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_12",
+      "difficulty": "medium",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [
+          "new_circuit",
+          "distribution_board"
+        ],
+        "complexity": "large"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "install_device",
+        "needs_clarification": true,
+        "safety_signals": [
+          "new_circuit",
+          "distribution_board"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "install_device"
+            ],
+            "observed": "install_device"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "new_circuit",
+              "distribution_board"
+            ],
+            "observed": [
+              "new_circuit",
+              "distribution_board"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_13",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "electrical-general",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "electrical-general",
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "electrical-general"
+            ],
+            "observed": "electrical-general"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_14",
+      "difficulty": "hard",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_15",
+      "difficulty": "medium",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "exposed_live_parts"
+            ],
+            "observed": [
+              "exposed_live_parts"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_16",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": true,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": true,
+            "observed": true
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_17",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "hvac",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "hvac",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "hvac",
+            "observed": "hvac"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_18",
+      "difficulty": "medium",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "plumbing",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "forbidden_safety_signals": [
+          "water_near_power"
+        ],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "plumbing",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "plumbing",
+            "observed": "plumbing"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [],
+            "observed": [],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_19",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "handyman",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "service_mismatch",
+        "suggested_service": "handyman",
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "service_mismatch",
+            "observed": "service_mismatch"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": "handyman",
+            "observed": "handyman"
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_20",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_21",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "complexity": null
+      },
+      "observed": {
+        "scope_signal": "out_of_scope",
+        "suggested_service": null,
+        "problem_slug": null,
+        "needs_clarification": false,
+        "safety_signals": [],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "out_of_scope",
+            "observed": "out_of_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": null,
+          "safety_signals": null
+        }
+      }
+    },
+    {
+      "id": "el_22",
+      "difficulty": "easy",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [
+          "smoke_or_burning"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "outlet_or_switch_broken",
+        "needs_clarification": false,
+        "safety_signals": [
+          "smoke_or_burning"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "outlet_or_switch_broken"
+            ],
+            "observed": "outlet_or_switch_broken"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "smoke_or_burning"
+            ],
+            "observed": [
+              "smoke_or_burning"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_23",
+      "difficulty": "hard",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "other_electrical",
+        "needs_clarification": false,
+        "safety_signals": [
+          "exposed_live_parts"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": true,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "other_electrical"
+            ],
+            "observed": "other_electrical"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "exposed_live_parts"
+            ],
+            "observed": [
+              "exposed_live_parts"
+            ],
+            "missing": [],
+            "forbidden_observed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "el_24",
+      "difficulty": "medium",
+      "repetition": 3,
+      "expected": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "water_near_power",
+          "protective_device"
+        ],
+        "complexity": "medium"
+      },
+      "observed": {
+        "scope_signal": "in_scope",
+        "suggested_service": null,
+        "problem_slug": "breaker_trip",
+        "needs_clarification": false,
+        "safety_signals": [
+          "protective_device"
+        ],
+        "model_id": "mock-contract",
+        "prompt_version": "2026-07-16.v2",
+        "playbook_version": "electrical-playbook-2026-07-16.v2"
+      },
+      "error_code": null,
+      "score": {
+        "pass": false,
+        "error": false,
+        "fields": {
+          "scope_signal": {
+            "gated": true,
+            "pass": true,
+            "expected": "in_scope",
+            "observed": "in_scope"
+          },
+          "suggested_service": {
+            "gated": true,
+            "pass": true,
+            "expected": null,
+            "observed": null
+          },
+          "needs_clarification": {
+            "gated": true,
+            "pass": true,
+            "expected": false,
+            "observed": false
+          },
+          "problem_slug": {
+            "gated": true,
+            "pass": true,
+            "expected": [
+              "breaker_trip"
+            ],
+            "observed": "breaker_trip"
+          },
+          "safety_signals": {
+            "gated": true,
+            "pass": false,
+            "expected": [
+              "water_near_power",
+              "protective_device"
+            ],
+            "observed": [
+              "protective_device"
+            ],
+            "missing": [
+              "water_near_power"
+            ],
+            "forbidden_observed": []
+          }
+        }
+      }
+    }
+  ]
+}

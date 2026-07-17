@@ -53,7 +53,7 @@
     "id": "el_04",
     "input_text_vi": "ca tang chung cu deu bi cup dien roi",
     "expected": {
-      "problem_slug": "power_outage_whole_unit",
+      "problem_slug": null,
       "scope_signal": "out_of_scope",
       "suggested_service": null,
       "safety_signals": [],
@@ -272,6 +272,9 @@
       "scope_signal": "service_mismatch",
       "suggested_service": "plumbing",
       "safety_signals": [],
+      "forbidden_safety_signals": [
+        "water_near_power"
+      ],
       "needs_clarification": false,
       "complexity": null
     },

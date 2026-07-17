@@ -1,12 +1,18 @@
-import type { EdgeAiSecrets, PipelineInput, PipelineResult, PipelineStageLog, SupabaseLike } from "./types.ts";
+import type { EdgeAiSecrets, IntakeEvalObservation, PipelineInput, PipelineResult, PipelineStageLog, SupabaseLike } from "./types.ts";
 import {
   isSingleFocusedClarificationQuestion,
   priceDisclaimer,
   unsupportedServiceMessage,
 } from "./types.ts";
-import { buildFallbackIntent, classifyIntent, diagnoseIntake } from "./intent.ts";
-import { resolveProfileFactCoverage } from "./case-work-controls.ts";
-import { getKaelPerformanceProfile } from "./performance-profiles.ts";
+import { buildFallbackIntent, classifyIntent, diagnoseIntake, resolveIntakeScopeConsistency } from "./intent.ts";
+import {
+  buildFocusedClarificationQuestion,
+  buildIntakeObservation,
+  mergeIntakeSafetySignals,
+  resolveElectricalIntakeRuntime,
+  resolveIntakeFactCoverage,
+} from "./intake-runtime.ts";
+import { buildSafetyFirstElectricalEstimate, prependDeterministicSafetyGuidance } from "./electrical-intake-policy.ts";
 import { analyzeDescription } from "./vision.ts";
 import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
 import {
@@ -33,7 +39,8 @@ import {
   type SpendGateClient,
 } from "./spend-gate.ts";
 import { checkKaelProviderBudget, recordKaelProviderSpend } from "./provider-budget.ts";
-import { buildKaelTraceEvent, buildProviderAttemptTrace } from "./trace.ts";
+import { pushPipelineStageLog } from "./trace.ts";
+import { kaelIntakeDiagnosisPromptVersion } from "./prompts.ts";
 
 type EstimateParallelValue =
   | { kind: "vision"; result: Awaited<ReturnType<typeof analyzeDescription>> }
@@ -42,9 +49,6 @@ type EstimateParallelValue =
     kind: "baseline";
     result: Awaited<ReturnType<typeof fetchBaselineCandidates>>;
   };
-
-const CUSTOMER_INTAKE_POLICY_ID = "kael.path.customer_intake_to_estimate.v1";
-const CUSTOMER_CASE_CHAT_POLICY_ID = "kael.path.customer_case_chat_revision.v1";
 
 export async function runKaelPipeline(
   input: PipelineInput,
@@ -62,10 +66,9 @@ export async function runKaelPipeline(
   const progressTarget = input.progressTarget ?? input.progressJobId;
 
   // S4/F1 (§38) — Codex PR#68 P1: the kill-switch must HARD-STOP customer-facing AI
-  // output, not just block network spend. Check it up-front and surface the honest
-  // Vietnamese unavailable state BEFORE any stage runs, so an incident never degrades
-  // silently into a baseline estimate/job. callAI keeps a per-call kill-switch as a
-  // backstop for non-pipeline AI paths (worker assist, scope change).
+  // output, including deterministic playbook routing. Check it before any intake stage
+  // so an incident cannot surface a diagnosis, observation, estimate, or provider call.
+  // callAI keeps a per-call kill-switch as a backstop for non-pipeline AI paths.
   if (isKaelAiKillSwitchEnabled()) {
     console.warn("kael pipeline: KAEL_AI_KILL_SWITCH on — returning unavailable state");
     return {
@@ -73,6 +76,49 @@ export async function runKaelPipeline(
       error: KAEL_AI_UNAVAILABLE_VI,
       code: "AI_DISABLED",
       stageLogs,
+    };
+  }
+
+  const electricalIntake = resolveElectricalIntakeRuntime({
+    intakeDiagnosisEnabled: input.intakeDiagnosisEnabled === true,
+    serviceType,
+    problemChips,
+    description,
+    priorSafetySignals: input.priorSafetySignals,
+  });
+  const electricalPlaybookEnabled = electricalIntake.enabled;
+  const deterministicSafetySignals = electricalIntake.safetySignals;
+  const withDeterministicSafetyGuidance = (
+    message: string,
+    signals: readonly string[] = deterministicSafetySignals,
+  ) => prependDeterministicSafetyGuidance(message, signals, language);
+  const hardRoute = electricalIntake.hardRoute;
+  if (hardRoute) {
+    const intakeObservation = buildIntakeObservation({
+      scopeSignal: hardRoute.scopeSignal,
+      suggestedService: hardRoute.suggestedService,
+      problemSlug: null,
+      needsClarification: false,
+      safetySignals: deterministicSafetySignals,
+      modelId: "deterministic",
+      serviceType,
+      electricalPlaybookEnabled,
+    });
+    const hardRouteMessage = hardRoute.scopeSignal === "out_of_scope"
+      ? unsupportedServiceMessage(language)
+      : language === "en"
+      ? "Your description does not match the selected service."
+      : "Mô tả của bạn không khớp với dịch vụ đang chọn.";
+    return {
+      success: false,
+      error: withDeterministicSafetyGuidance(hardRouteMessage),
+      code: hardRoute.scopeSignal === "out_of_scope"
+        ? "UNSUPPORTED"
+        : "SERVICE_MISMATCH",
+      stageLogs,
+      suggestedService: hardRoute.suggestedService ?? undefined,
+      policyReasonCode: hardRoute.reasonCode,
+      intakeObservation: input.intakeDiagnosisEnabled ? intakeObservation : undefined,
     };
   }
 
@@ -98,7 +144,11 @@ export async function runKaelPipeline(
     });
     return {
       success: false,
-      error: "Kael đang tạm quá tải. Vui lòng thử lại sau ít phút.",
+      error: withDeterministicSafetyGuidance(
+        language === "en"
+          ? "Kael is temporarily overloaded. Please try again in a few minutes."
+          : "Kael đang tạm quá tải. Vui lòng thử lại sau ít phút.",
+      ),
       code: "BUDGET_EXCEEDED",
       stageLogs,
     };
@@ -140,6 +190,7 @@ export async function runKaelPipeline(
           spendGate,
           input.conversationContext,
           language,
+          electricalPlaybookEnabled,
         )
         : classifyIntent(
           serviceType,
@@ -147,10 +198,16 @@ export async function runKaelPipeline(
           description,
           secrets,
           spendGate,
+          electricalPlaybookEnabled,
         ),
     fallback: () => ({
       success: false as const,
-      fallback: buildFallbackIntent(serviceType, problemChips, description),
+      fallback: buildFallbackIntent(
+        serviceType,
+        problemChips,
+        description,
+        electricalPlaybookEnabled,
+      ),
       failureReason: "TIMEOUT",
       attempts: [{
         provider: KAEL_ROUTING_CONFIG.intent_classification.primary.provider,
@@ -170,11 +227,15 @@ export async function runKaelPipeline(
     : intentStage.fallback;
   fallbackUsed ||= !intentStage.success;
   intentStage.attempts.forEach((attempt, index) => {
-    pushStageLog(stageLogs, input, {
+    pushPipelineStageLog(stageLogs, input, {
       stage: "intent",
       ...attempt,
       fallbackUsed: !intentStage.success &&
         index === intentStage.attempts.length - 1,
+    }, {
+      promptVersion: input.intakeDiagnosisEnabled
+        ? kaelIntakeDiagnosisPromptVersion(serviceType)
+        : undefined,
     });
   });
   void updateKaelProgress(supabase, progressTarget, {
@@ -184,13 +245,52 @@ export async function runKaelPipeline(
     failureReason: intentStage.success ? undefined : intentStage.failureReason,
   });
 
-  if (intent.service_type === "unsupported" || intent.scope_signal === "out_of_scope") {
+  const intentModelId = intentStage.success
+    ? intentStage.attempts.find((attempt) => attempt.success)?.model ?? "unreported-model"
+    : "deterministic-fallback";
+  const intakeScope = input.intakeDiagnosisEnabled && electricalPlaybookEnabled
+    ? resolveIntakeScopeConsistency(serviceType, intent)
+    : null;
+  const effectiveScopeSignal = intakeScope?.scopeSignal ?? intent.scope_signal;
+  const validServiceType = intent.service_type === "unsupported"
+    ? null
+    : intent.service_type;
+  const normalizedProblem = validServiceType
+    ? normalizeProblemSlugForService(validServiceType, intent.problem_slug)
+    : null;
+  const problemSlug = normalizedProblem?.slug ?? null;
+  if (normalizedProblem) fallbackUsed ||= normalizedProblem.normalized;
+  const mergedSafetySignals = mergeIntakeSafetySignals({
+    serviceType,
+    deterministic: deterministicSafetySignals,
+    reported: intent.safety_signals ?? [],
+  });
+
+  if (
+    intent.service_type === "unsupported" ||
+    effectiveScopeSignal === "out_of_scope"
+  ) {
     await recordProviderSpendIfEnforced();
     return {
       success: false,
-      error: unsupportedServiceMessage(language),
+      error: withDeterministicSafetyGuidance(
+        unsupportedServiceMessage(language),
+        mergedSafetySignals,
+      ),
       code: "UNSUPPORTED",
       stageLogs,
+      intakeObservation: input.intakeDiagnosisEnabled
+        ? buildIntakeObservation({
+          scopeSignal: "out_of_scope",
+          suggestedService: null,
+          problemSlug: null,
+          needsClarification: false,
+          safetySignals: mergedSafetySignals,
+          modelId: intentModelId,
+          serviceType,
+          electricalPlaybookEnabled,
+        })
+        : undefined,
     };
   }
 
@@ -198,29 +298,49 @@ export async function runKaelPipeline(
   // Stop BEFORE the parallel vision/market block so a clarification/mismatch turn
   // costs no downstream AI.
   let profileFacts: Record<string, string> | undefined;
-  let safetySignals: string[] | undefined;
+  let safetySignals: string[] | undefined = electricalPlaybookEnabled
+    ? mergedSafetySignals
+    : undefined;
+  let intakeObservation: IntakeEvalObservation | undefined;
   if (input.intakeDiagnosisEnabled) {
-    if (intent.scope_signal === "service_mismatch") {
+    if (effectiveScopeSignal === "service_mismatch") {
+      const suggestedService = intakeScope?.suggestedService ??
+        intent.suggested_service ?? null;
       await recordProviderSpendIfEnforced();
       return {
         success: false,
-        error: language === "en"
-          ? "Your description does not match the selected service."
-          : "Mô tả của bạn không khớp với dịch vụ đang chọn.",
+        error: withDeterministicSafetyGuidance(
+          language === "en"
+            ? "Your description does not match the selected service."
+            : "Mô tả của bạn không khớp với dịch vụ đang chọn.",
+          mergedSafetySignals,
+        ),
         code: "SERVICE_MISMATCH",
         stageLogs,
-        suggestedService: intent.suggested_service ?? undefined,
+        suggestedService: suggestedService ?? undefined,
+        intakeObservation: buildIntakeObservation({
+          scopeSignal: "service_mismatch",
+          suggestedService,
+          problemSlug: null,
+          needsClarification: false,
+          safetySignals: mergedSafetySignals,
+          modelId: intentModelId,
+          serviceType,
+          electricalPlaybookEnabled,
+        }),
       };
     }
-    const profile = getKaelPerformanceProfile(intent.service_type);
-    const coverage = profile
-      ? resolveProfileFactCoverage(profile, intent.profile_facts ?? {})
-      : { facts: {}, missing: [] as readonly string[] };
-    const missingSlots = [...new Set([
-      ...coverage.missing,
-      ...(intent.missing_slots ?? []),
-    ])];
-    if (intent.needs_clarification || missingSlots.length > 0) {
+    const coverage = resolveIntakeFactCoverage({
+      serviceType: intent.service_type,
+      problemSlug: problemSlug ?? intent.problem_slug,
+      profileFacts: intent.profile_facts ?? {},
+      providerMissingSlots: intent.missing_slots ?? [],
+      providerNeedsClarification: intent.needs_clarification,
+      electricalPlaybookEnabled,
+    });
+    const missingSlots = coverage.missing;
+    const needsClarification = coverage.needsClarification;
+    if (needsClarification) {
       const firstMissing = missingSlots[0] ?? "service_scope";
       const proposedQuestion = intent.clarification_question ??
         (language === "vi" ? intent.clarification_question_vi : null) ??
@@ -236,7 +356,7 @@ export async function runKaelPipeline(
       await recordProviderSpendIfEnforced();
       return {
         success: false,
-        error: question,
+        error: withDeterministicSafetyGuidance(question, mergedSafetySignals),
         code: "NEEDS_CLARIFICATION",
         stageLogs,
         clarification: {
@@ -246,24 +366,35 @@ export async function runKaelPipeline(
           missingSlots: [firstMissing],
           customerSentiment: intent.customer_sentiment,
         },
+        intakeObservation: buildIntakeObservation({
+          scopeSignal: "in_scope",
+          suggestedService: null,
+          problemSlug,
+          needsClarification: true,
+          safetySignals: mergedSafetySignals,
+          modelId: intentModelId,
+          serviceType,
+          electricalPlaybookEnabled,
+        }),
       };
     }
     profileFacts = coverage.facts;
-    const allowedSafetySignals = new Set(
-      profile?.safety_capability_gates.flatMap((gate) => [...gate.trigger_signals]) ?? [],
-    );
-    safetySignals = (intent.safety_signals ?? []).filter((signal) =>
-      allowedSafetySignals.has(signal)
-    );
+    safetySignals = mergedSafetySignals;
+    intakeObservation = buildIntakeObservation({
+      scopeSignal: "in_scope",
+      suggestedService: null,
+      problemSlug,
+      needsClarification: false,
+      safetySignals,
+      modelId: intentModelId,
+      serviceType,
+      electricalPlaybookEnabled,
+    });
   }
 
-  const validServiceType = intent.service_type;
-  const normalizedProblem = normalizeProblemSlugForService(
-    validServiceType,
-    intent.problem_slug,
-  );
-  const problemSlug = normalizedProblem.slug;
-  fallbackUsed ||= normalizedProblem.normalized;
+  if (!validServiceType || !problemSlug) {
+    throw new Error("intent normalization failed");
+  }
   const knowledgeContext = await retrieveKaelKnowledgeContextIfEnabled(supabase, {
     serviceType: validServiceType,
     problemSlug,
@@ -396,7 +527,7 @@ export async function runKaelPipeline(
   const visionSkipped = !visionResult.success && visionResult.skipped === true;
   fallbackUsed ||= !visionResult.success && !visionSkipped;
   if (!visionSkipped) {
-    pushStageLog(stageLogs, input, {
+    pushPipelineStageLog(stageLogs, input, {
       stage: "vision",
       provider: visionResult.success
         ? visionResult.provider
@@ -452,7 +583,7 @@ export async function runKaelPipeline(
     },
     effectiveComplexity,
   );
-  pushStageLog(stageLogs, input, {
+  pushPipelineStageLog(stageLogs, input, {
     stage: "baseline",
     latencyMs: baselineStage.elapsedMs,
     success: Boolean(baselineResult?.success),
@@ -472,10 +603,15 @@ export async function runKaelPipeline(
     await recordProviderSpendIfEnforced();
     return {
       success: false,
-      error:
-        "Không có dữ liệu giá tham khảo cho dịch vụ này. Vui lòng thử lại sau.",
+      error: withDeterministicSafetyGuidance(
+        language === "en"
+          ? "No reference price is available for this service. Please try again later."
+          : "Không có dữ liệu giá tham khảo cho dịch vụ này. Vui lòng thử lại sau.",
+        mergedSafetySignals,
+      ),
       code: "NO_BASELINE",
       stageLogs,
+      intakeObservation,
     };
   }
 
@@ -489,7 +625,7 @@ export async function runKaelPipeline(
     throw new Error(marketStage?.failureReason ?? "market stage failed");
   }
   fallbackUsed ||= !marketResult.success;
-  pushStageLog(stageLogs, input, {
+  pushPipelineStageLog(stageLogs, input, {
     stage: "market",
     provider: marketResult.provider ?? "perplexity",
     model: marketResult.model ?? "sonar",
@@ -573,7 +709,7 @@ export async function runKaelPipeline(
   if (!synthesized) {
     throw new Error(synthesizedStage.failureReason ?? "synthesis stage failed");
   }
-  pushStageLog(stageLogs, input, {
+  pushPipelineStageLog(stageLogs, input, {
     stage: "synthesis",
     latencyMs: synthesizedStage.elapsedMs,
     success: true,
@@ -597,9 +733,10 @@ export async function runKaelPipeline(
     customerSentiment: input.intakeDiagnosisEnabled ? intent.customer_sentiment : undefined,
     profileFacts,
     safetySignals,
+    intakeObservation,
     knowledgeContext: knowledgeContext.safeMetadata ? knowledgeContext : undefined,
     learningApplications,
-    estimate: {
+    estimate: buildSafetyFirstElectricalEstimate({
       service_type: validServiceType,
       problem_category: problemSlug,
       problem_summary: analysis.problem_identified,
@@ -621,128 +758,6 @@ export async function runKaelPipeline(
       market_signals: marketResult.success
         ? marketResult.market.sources_summary ?? null
         : null,
-    },
+    }, electricalPlaybookEnabled ? mergedSafetySignals : [], language),
   };
-}
-
-function pushStageLog(
-  stageLogs: PipelineStageLog[],
-  input: PipelineInput,
-  log: PipelineStageLog,
-): void {
-  stageLogs.push({
-    ...log,
-    trace: buildPipelineStageTrace(input, log),
-  });
-}
-
-function buildPipelineStageTrace(
-  input: PipelineInput,
-  log: PipelineStageLog,
-): PipelineStageLog["trace"] {
-  const workflowPhase = input.intakeDiagnosisEnabled ? "offer_ready" : "intake";
-  const action = input.intakeDiagnosisEnabled
-    ? "customer.open_case_chat"
-    : "customer.submit_intake";
-  const policyId = input.intakeDiagnosisEnabled
-    ? CUSTOMER_CASE_CHAT_POLICY_ID
-    : CUSTOMER_INTAKE_POLICY_ID;
-  const purpose = purposeForPipelineStage(log.stage);
-  const safeMetadata = {
-    stage: log.stage,
-    ...(log.cacheStatus ? { cache_status: log.cacheStatus } : {}),
-  };
-  if (log.provider && log.model) {
-    return buildProviderAttemptTrace({
-      workflowPhase,
-      actorRole: "customer",
-      action,
-      policyId,
-      purpose,
-      provider: log.provider,
-      model: log.model,
-      latencyMs: log.latencyMs,
-      costUsd: log.costUsd,
-      result: log.success ? "success" : "error",
-      code: log.failureReason,
-      fallbackUsed: log.fallbackUsed,
-      safeMetadata,
-    });
-  }
-  return buildKaelTraceEvent({
-    workflow_phase: workflowPhase,
-    actor_role: "customer",
-    action,
-    policy_id: policyId,
-    purpose,
-    provider: null,
-    model: null,
-    latency_ms: log.latencyMs,
-    cost_usd: log.costUsd ?? null,
-    validation: {
-      status: log.success ? "pass" : "fail",
-      reason_code: log.failureReason ?? null,
-    },
-    fallback: {
-      used: log.fallbackUsed,
-      reason_code: log.fallbackUsed ? log.failureReason ?? "FALLBACK" : null,
-    },
-    confidence: null,
-    safe_metadata: safeMetadata,
-  });
-}
-
-export function buildFocusedClarificationQuestion(
-  missingSlot: string,
-  language: "vi" | "en",
-) {
-  const slot = missingSlot.toLowerCase();
-  if (/(?:time|window|schedule|urgency|duration|history)/.test(slot)) {
-    return language === "en"
-      ? "When do you need this work completed?"
-      : "Bạn muốn công việc được thực hiện vào thời điểm nào?";
-  }
-  if (/(?:area|room|location|access|concealed|occupancy|height)/.test(slot)) {
-    return language === "en"
-      ? "Where exactly is the affected area in the apartment?"
-      : "Khu vực cần xử lý nằm chính xác ở đâu trong căn hộ?";
-  }
-  if (/(?:count|quantity|volume|task)/.test(slot)) {
-    return language === "en"
-      ? "How many items need to be handled?"
-      : "Có bao nhiêu hạng mục cần được xử lý?";
-  }
-  if (/(?:material|surface|fabric|pipe|fixture|device|circuit|unit_type|capacity)/.test(slot)) {
-    return language === "en"
-      ? "What type of material or device needs service?"
-      : "Loại vật liệu hoặc thiết bị cần xử lý là gì?";
-  }
-  if (/(?:part|supply|equipment|consumable|hardware|new_device)/.test(slot)) {
-    return language === "en"
-      ? "Do you already have the required part?"
-      : "Bạn đã có sẵn vật tư cần dùng chưa?";
-  }
-  if (/(?:symptom|condition|severity|damage|fault|sign|stain|odor|mold)/.test(slot)) {
-    return language === "en"
-      ? "What is the clearest symptom you can observe?"
-      : "Dấu hiệu rõ nhất bạn đang quan sát được là gì?";
-  }
-  return language === "en"
-    ? "Which specific task do you want Kael to handle?"
-    : "Bạn muốn Kael xử lý hạng mục cụ thể nào?";
-}
-
-function purposeForPipelineStage(stage: PipelineStageLog["stage"]) {
-  switch (stage) {
-    case "intent":
-      return "intent_classification";
-    case "vision":
-      return "vision_analysis";
-    case "baseline":
-      return "problem_synthesis";
-    case "market":
-      return "market_lookup";
-    case "synthesis":
-      return "price_synthesis";
-  }
 }

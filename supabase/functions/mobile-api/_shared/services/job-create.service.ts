@@ -16,7 +16,8 @@ import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./
 import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
-import { buildEstimateCardOutput, buildKaelAutonomyDecision, buildWorkerBriefOutput, PRICE_DISCLAIMER, recordLearningRuleApplication, runKaelAutonomyOrchestrator, runKaelPipeline, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
+import { buildEstimateCardOutput, buildKaelAutonomyDecision, buildWorkerBriefOutput, prependDeterministicSafetyGuidance, PRICE_DISCLAIMER, recordLearningRuleApplication, resolveElectricalIntakeRuntime, runKaelAutonomyOrchestrator, runKaelPipeline, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
+import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
 import { normalizeServiceAreaDistrict, PLATFORM_FEE_WORKER, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { JobCreateInput, JobStatus } from "../../../_shared/domain.ts";
 
@@ -121,6 +122,19 @@ export async function createJob(
   }, secrets);
   await logJobEvent(client, jobId, "job_created", ctx, null, "analyzing");
 
+  const jobIntakeSafetySignals = resolveElectricalIntakeRuntime({
+    intakeDiagnosisEnabled: false,
+    serviceType: input.service_type,
+    problemChips: input.problem_chips,
+    description: input.description,
+  }).safetySignals;
+  const withJobIntakeSafetyGuidance = (message: string) =>
+    prependDeterministicSafetyGuidance(
+      message,
+      isKaelAiKillSwitchEnabled() ? [] : jobIntakeSafetySignals,
+      "vi",
+    );
+
   let pipeline: PipelineResult;
   try {
     pipeline = await runKaelPipeline(
@@ -150,7 +164,11 @@ export async function createJob(
       jobId,
       reasonCode: "PIPELINE_THROW",
     });
-    apiFailure("AI_FAILED", "Hệ thống đang xử lý. Vui lòng thử lại.", 502);
+    apiFailure(
+      "AI_FAILED",
+      withJobIntakeSafetyGuidance("Hệ thống đang xử lý. Vui lòng thử lại."),
+      502,
+    );
   }
 
   await logApiCalls(
@@ -182,17 +200,24 @@ export async function createJob(
       jobId,
       ctx,
       pipeline.code,
+      pipeline.policyReasonCode
+        ? { policy_reason_code: pipeline.policyReasonCode }
+        : {},
     );
     if (!cleanupOk) {
       apiFailure("DB_ERROR", "Không thể đóng yêu cầu sau lỗi hệ thống", 500);
     }
-    if (pipeline.code === "UNSUPPORTED") {
+    if (pipeline.code === "UNSUPPORTED" || pipeline.code === "SERVICE_MISMATCH") {
       apiFailure("UNSUPPORTED", pipeline.error, 400);
     }
     if (pipeline.code === "NO_BASELINE") {
       apiFailure("NO_BASELINE", pipeline.error, 502);
     }
-    apiFailure("AI_FAILED", "Hệ thống đang xử lý. Vui lòng thử lại.", 502);
+    apiFailure(
+      "AI_FAILED",
+      withJobIntakeSafetyGuidance("Hệ thống đang xử lý. Vui lòng thử lại."),
+      502,
+    );
   }
 
   const estimate = pipeline.estimate;
@@ -471,6 +496,7 @@ async function cancelAnalyzingJob(
   jobId: string,
   actor: MobileApiContext,
   reasonCode: string,
+  metadata: Record<string, unknown> = {},
 ): Promise<boolean> {
   const cancelledAt = new Date().toISOString();
   const transition = validateWorkflowTransition({
@@ -533,7 +559,7 @@ async function cancelAnalyzingJob(
     actor,
     "analyzing",
     "cancelled",
-    { reason_code: reasonCode },
+    { reason_code: reasonCode, ...metadata },
   );
   return true;
 }

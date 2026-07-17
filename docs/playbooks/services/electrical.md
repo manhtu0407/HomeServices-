@@ -12,11 +12,11 @@ Kael's runtime intelligence = rented LLMs + this kind of distilled procedure. Th
 3. **Analysis** — complexity calibration + hypothesis-driven clarification (ask the question that splits the top-2 branches).
 4. **Vision** — photo elicitation checklists mapped to the exact vision output contract.
 
-## Injection plan (no code changed yet)
+## Runtime integration status (updated 2026-07-16)
 
-- **Primary channel:** Appendix A is a compressed STABLE prompt segment (~1.6k tokens) appended to the electrical intake-diagnosis system prompt. STABLE = cacheable, aligning with Plan §43 Workstream C (prompt cache); marginal cost per call approaches the cache-read rate.
+- **Primary channel:** Appendix A exists as the byte-parity-tested runtime segment and is appended to the electrical intake-diagnosis system prompt only behind `KAEL_PLAYBOOK_ELECTRICAL_ENABLED`. STABLE content remains cacheable; this local hardening pass does not attest a deployment or enable the flag.
 - **Secondary channel:** per-slug knowledge rows through the existing `knowledge.ts` retrieval (240-token runtime budget — only the per-slug distilled lines fit there, not this document).
-- **Measurement:** Appendix B is a 24-case ground-truth mini-corpus (subset of §43 E0). Inject nothing before a baseline run exists, or improvement claims are unfalsifiable.
+- **Measurement:** Appendix B is a 24-case ground-truth mini-corpus (subset of §43 E0). Local fixture replay validates the harness contract only; improvement still requires matched live baseline/After arms plus an independent holdout.
 
 ## Binding contract snapshot (verified against code 2026-07-14)
 
@@ -46,17 +46,18 @@ These conventions fix the systemic failure modes a weak runtime model exhibits. 
 |---|---|
 | `set problem_slug=<slug>` | emit that exact slug in the intake JSON |
 | `add <signal> to safety_signals` | append the exact trigger_signal string to the `safety_signals[]` array (both safety AND capability gate signals live in this one array) |
-| `record <quote_driver_key>="<Vietnamese fact>"` | write a grounded fact into `profile_facts` under that exact key |
-| `ask vi:"<question>"` | set `needs_clarification=true`, put the question in `clarification_question`, list the driving key in `missing_slots` |
+| `record <quote_driver_key\|breaker_state>="<Vietnamese fact>"` | write a grounded fact into `profile_facts` under that exact key |
+| `ask vi:"<question>"` | set `needs_clarification=true`, put the question in `clarification_question`, list the driving minimum-slot key or approved branch marker in `missing_slots` |
 | `set scope_signal=<value>` (+ `suggested_service`) | in_scope / out_of_scope / service_mismatch |
 | `advise vi:"<text>"` | advisory/safety text delivered by the chat-response or advisory step — NEVER placed inside the intake JSON; `clarification_question` holds questions only |
 | `complexity: small\|medium\|large` | internal note guiding the vision/synthesis stages — NOT an intake JSON field; never emit a `complexity_hint` key from intake |
 
 ## Grounding rules for profile_facts
 
-- Vietnamese, ≤500 chars, one fact per quote_driver key.
+- Vietnamese, ≤500 chars, one fact per quote_driver key or `breaker_state`.
 - Record ONLY what the customer stated or confirmed. Never record an instruction or expectation as a fact ("đã cắt điện" is forbidden until the customer says they did).
 - Template placeholders `<...>` must be replaced by the customer's actual words; if the customer gave no timing/quantity, omit that fragment instead of inventing it.
+- `safety_water_proximity` and `safety_spark_marks` are approved branch markers for `missing_slots` only; never store either marker in `profile_facts`.
 
 ## Clarification question rules (hard filter in types.ts)
 
@@ -64,6 +65,23 @@ These conventions fix the systemic failure modes a weak runtime model exhibits. 
 - NEVER use standalone " và " or " and " — the harness rejects the question and swaps in a generic one. Use "hay" / "hoặc" for choices; split two-fact questions into two turns.
 - Ask the question that best splits the two strongest hypotheses, not the first missing slot.
 - Never re-ask anything already answered in the conversation.
+
+## Exact minimum-slot policy exposed for review
+
+Only these minimum facts may block an estimate while the electrical playbook flag is on. `breaker_state` is a branch-state fact; `safety_water_proximity` and `safety_spark_marks` may appear only as approved one-turn safety checks in `missing_slots`.
+
+| problem_slug | minimum slots |
+|---|---|
+| `breaker_trip` | `affected_area_and_power_state`, `device_or_circuit_type`, `breaker_state` |
+| `power_outage_whole_unit` | `affected_area_and_power_state`, `breaker_state` |
+| `power_outage_one_room` | `affected_area_and_power_state`, `device_or_circuit_type`, `breaker_state` |
+| `flickering_light` | `affected_area_and_power_state`, `device_or_circuit_type`, `symptom_and_duration` |
+| `outlet_or_switch_broken` | `affected_area_and_power_state`, `device_or_circuit_type`, `symptom_and_duration` |
+| `install_device` | `device_or_circuit_type`, `access_and_concealed_wiring`, `parts_or_new_device_requirement` |
+| `electrical-general` | `affected_area_and_power_state`, `symptom_and_duration` |
+| `other_electrical` | `affected_area_and_power_state`, `device_or_circuit_type`, `symptom_and_duration` |
+
+All other quote-driver facts are optional for that slug and cannot independently force another question or a photo.
 
 ## Confidence bands (numeric only)
 
@@ -111,31 +129,34 @@ HCMC chung cư context: each unit has an in-apartment distribution box (tủ đi
 
 ## 1. Safety gate — check FIRST, before any branch
 
-- Burning smell / khét / smoke from panel, outlet, or device -> add smoke_or_burning to safety_signals; advise vi:"Anh/chị tắt aptomat tổng, giữ khoảng cách và chờ thợ đến kiểm tra."
+- Burning smell / khét / smoke from panel, outlet, or device -> add smoke_or_burning to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
 - Sparks / lửa xẹt when the CB trips or at any outlet -> add sparking to safety_signals; same advisory.
-- Broken outlet or panel with visible copper/wires -> add exposed_live_parts to safety_signals; advise vi:"Anh/chị tắt aptomat tổng và không chạm vào chỗ hở đó."
-- Rain leak, wet wall, or water near outlets/panel/water heater -> add water_near_power to safety_signals; advise vi:"Anh/chị tắt aptomat khu vực bị ướt và không cắm thiết bị ở đó."
+- Broken outlet or panel with visible copper/wires -> add exposed_live_parts to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- Rain leak, wet wall, or water near outlets/panel/water heater -> add water_near_power to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
 - Any safety signal emitted -> record affected_area_and_power_state from the customer's OWN words about which area is affected and whether power is currently on or off (never assert they already cut power); skip the reset test entirely; complexity: medium at minimum.
 
 ## 2. Reset-once rule (customer-safe actions only)
 
-- Allowed once: unplug appliances -> switch the tripped CB fully OFF -> switch ON one time.
-- Advise vi:"Anh/chị chỉ bật lại aptomat một lần sau khi rút hết thiết bị." Then vi:"Nếu aptomat nhảy tiếp, anh/chị để nguyên và chờ thợ kiểm tra."
+- This diagnostic is allowed only when there is NO immediate-critical signal, the loads are already safely disconnected without approaching a hazard, and the panel is dry and safely reachable.
+- Ask whether loads are already disconnected; never instruct the customer to approach or unplug anything for this test. The dry, safely reachable tripped CB may be switched fully OFF -> ON one time.
+- Advise vi:"Nếu thiết bị đã được ngắt an toàn và bảng điện khô ráo, dễ tiếp cận, anh/chị chỉ bật lại aptomat một lần." Then vi:"Nếu aptomat nhảy tiếp, anh/chị để nguyên và chờ thợ kiểm tra."
 - Never instruct: opening the panel cover, removing or swapping a CB, touching any wire, or holding/taping the handle ON. If the customer proposes it, advise vi:"Anh/chị không dùng băng keo hay vật gì giữ cần aptomat ở vị trí bật." and vi:"Anh/chị không mở nắp tủ điện và không chạm vào dây bên trong."
 
 ## 3. Differential branches
 
-Best single discriminator when the pattern is unknown -> ask vi:"Anh/chị rút hết thiết bị ra rồi bật lại aptomat, nó có nhảy ngay không?"
+Best single discriminator when the pattern is unknown -> ask vi:"Khi các thiết bị đã được ngắt an toàn, aptomat có nhảy lại ngay sau một lần bật không?" Never ask this when an immediate-critical signal is present.
 
-### A. Trips again immediately on reset, loads unplugged -> dead short in fixed wiring
-- record affected_area_and_power_state="aptomat nhảy ngay khi bật lại dù đã rút hết thiết bị"
+### A. Trips again immediately on reset, loads already safely disconnected -> dead short in fixed wiring
+- record breaker_state="aptomat nhảy lại ngay sau một lần bật lại"
+- record affected_area_and_power_state="aptomat nhảy ngay khi bật lại dù thiết bị đã được ngắt an toàn"
 - record access_and_concealed_wiring="nghi chạm chập dây âm tường, cần dò tuyến dây"
 - record symptom_and_duration only from the customer's words about when it started; omit if unstated.
 - Add fixed_wiring and protective_device to safety_signals (qualified_worker gate). Expect scope_change hidden_wiring_damage or unexpected_wall_or_ceiling_access on site.
-- complexity: large. Advise vi:"Anh/chị giữ aptomat đó ở vị trí tắt cho tới khi thợ đến."
+- complexity: large. If the breaker is already off, advise vi:"Anh/chị để nguyên aptomat ở vị trí tắt cho tới khi thợ đến." Never ask the customer to approach it.
 
-### B. Holds when unplugged, trips under combined load -> overload
+### B. Holds with loads already safely disconnected, trips under combined load -> overload
 - ask vi:"Aptomat thường nhảy khi anh/chị bật cùng lúc những thiết bị nào?"
+- record breaker_state="aptomat giữ trạng thái bật khi tải đã ngắt, rồi nhảy khi chạy đồng thời nhiều thiết bị"
 - record device_or_circuit_type="quá tải khi chạy đồng thời nhiều thiết bị công suất lớn"
 - record urgency_and_repeat_fault only if the customer states the trips repeat; use their timing words.
 - Typical HCMC combo: bếp từ + máy lạnh + bình nóng lạnh on one branch [see: hcmc-context].
@@ -145,9 +166,10 @@ Best single discriminator when the pattern is unknown -> ask vi:"Anh/chị rút 
 
 ### C. Trips only when ONE specific device runs -> device fault
 - ask vi:"Aptomat có nhảy đúng lúc một thiết bị cụ thể chạy không, ví dụ bình nóng lạnh?"
+- record breaker_state="aptomat nhảy khi một thiết bị cụ thể hoạt động"
 - record device_or_circuit_type="lỗi theo một thiết bị cụ thể" plus the device name the customer gave.
 - record parts_or_new_device_requirement="có thể cần sửa hoặc thay thiết bị đó"
-- Advise vi:"Anh/chị rút hoặc tắt thiết bị đó và không dùng lại cho tới khi kiểm tra."
+- Only with NO immediate-critical signal and a device already safely disconnected without approaching a hazard, advise vi:"Nếu thiết bị đã được ngắt an toàn, anh/chị không dùng lại cho tới khi kiểm tra." Otherwise deliver the matching canonical PB11 immediate-hazard template and wait for the worker.
 - Deterministic scope split:
   - Device is an air conditioner with an internal fault -> set scope_signal=service_mismatch; suggested_service=hvac.
   - Customer wants a portable plug-in appliance (quạt, nồi cơm) itself repaired -> set scope_signal=out_of_scope.
@@ -156,8 +178,9 @@ Best single discriminator when the pattern is unknown -> ask vi:"Anh/chị rút 
 
 ### D. RCBO/ELCB (CB chống giật) trips -> leakage / rò điện
 - ask vi:"Aptomat chống giật có hay nhảy khi bật bình nóng lạnh hoặc lúc trời mưa không?"
+- record breaker_state="aptomat chống giật bị nhảy"
 - Trips on rainy days / mùa mưa -> record symptom_and_duration using the customer's words about rain-day timing; moisture ingress at outdoor-facing outlets or damp walls is the common HCMC pattern [see: hcmc-context].
-- Trips when the water heater runs -> record device_or_circuit_type="nghi rò điện bình nóng lạnh"; advise vi:"Anh/chị tắt aptomat bình nóng lạnh và ngưng dùng cho tới khi kiểm tra."
+- Trips when the water heater runs -> record device_or_circuit_type="nghi rò điện bình nóng lạnh". With no immediate-critical signal and the heater already safely disconnected, use PB11 section 5.3; otherwise deliver the matching canonical PB11 immediate-hazard template.
 - Visible water near any outlet/panel -> add water_near_power to safety_signals.
 - record affected_area_and_power_state="chỉ nhánh chống giật bị ngắt, khu vực còn lại vẫn có điện" (only if the customer confirms this state).
 - Add protective_device to safety_signals. If leakage traces into walls, also add fixed_wiring; expect scope_change hidden_wiring_damage.
@@ -167,6 +190,7 @@ Best single discriminator when the pattern is unknown -> ask vi:"Anh/chị rút 
 - ask vi:"Aptomat có nhảy lúc nhà dùng rất ít thiết bị, không theo quy luật nào không?"
 - Signs: random trips at low load, loose or hot handle, buzzing at the panel, CB cũ nhiều năm.
 - Buzzing or hot smell at the panel -> re-run section 1 first (smoke_or_burning if khét).
+- record breaker_state="aptomat nhảy ngẫu nhiên khi tải thấp"
 - record symptom_and_duration="nhảy ngẫu nhiên khi tải thấp, không theo quy luật"
 - record parts_or_new_device_requirement="có thể cần thay aptomat cùng thông số"
 - Replacement happens inside the panel -> add protective_device and distribution_board to safety_signals. Expect scope_change panel_or_protective_device_damage if the board itself is degraded.
@@ -182,8 +206,8 @@ Best single discriminator when the pattern is unknown -> ask vi:"Anh/chị rút 
 | D leakage | symptom_and_duration, device_or_circuit_type, affected_area_and_power_state | medium |
 | E aging CB | symptom_and_duration, parts_or_new_device_requirement | small |
 
-- Confidence: single clean branch match -> 0.8–0.9; two candidate branches -> 0.5–0.6, needs_clarification=true with the one question that splits them; report unfilled keys in missing_slots (exact quote_driver keys only).
-- Customer confirms trips but no pattern fits after one clarification -> keep problem_slug=breaker_trip, needs_clarification=true. Only if breaker involvement itself is unclear -> fall back per [see: fallback-disambig].
+- Confidence: single clean branch match -> 0.8–0.9; two candidate branches -> 0.5–0.6, needs_clarification=true with the one question that splits them; report unfilled minimum-slot keys in missing_slots (exact quote_driver keys or `breaker_state`). Use an approved safety branch marker only for its unresolved branch-specific check.
+- Customer confirms trips but no pattern fits after one clarification -> keep problem_slug=breaker_trip, needs_clarification=true. Only if `breaker_state` remains unclear after that single question -> fall back per [see: fallback-disambig].
 - Repeat visits for the same trip -> record urgency_and_repeat_fault="sự cố tái diễn sau lần sửa trước"; raise complexity one level.
 
 
@@ -213,16 +237,19 @@ The unit has one main aptomat (CB tổng) plus branch CBs. The meter, riser, and
 
 ## 2. Main aptomat (CB tổng) state
 
-- ask vi:"Aptomat tổng trong căn hộ đang bật hay đã sập xuống vị trí tắt?"
+- With no immediate-critical signal and only if the panel is already dry and safely reachable, ask vi:"Aptomat tổng trong căn hộ đang bật hay đã sập xuống vị trí tắt?" Otherwise do not ask the customer to approach it; keep `breaker_state` unresolved and use the canonical PB11 template when a hazard is active.
 - CB tổng DOWN / tripped:
+  - record breaker_state="aptomat tổng đang ở vị trí tắt" or "aptomat tổng đã bị nhảy", matching the customer's confirmed wording.
   - record device_or_circuit_type="aptomat tổng bị sập"
   - Follow [see: breaker-trip] for the reset-once test and overload-vs-short logic.
-  - Reset holds after unplugging heavy devices -> set problem_slug=breaker_trip; complexity: small.
+  - The one-time reset holds with heavy loads already safely disconnected -> set problem_slug=breaker_trip; complexity: small.
   - Re-trips immediately or will not stay on -> set problem_slug=breaker_trip; add protective_device to safety_signals; complexity: medium [see: breaker-trip].
-- CB tổng ON but the unit is still dead -> go to 3.
+- CB tổng ON but the unit is still dead:
+  - record breaker_state="aptomat tổng đang bật nhưng căn hộ vẫn mất điện"
+  - go to 3.
 - Customer cannot find or reach the panel:
   - record access_and_concealed_wiring="khách chưa xác định được vị trí aptomat tổng"
-  - needs_clarification=true; missing_slots=[device_or_circuit_type]; keep problem_slug=power_outage_whole_unit; complexity: medium.
+  - needs_clarification=true; missing_slots=[breaker_state]; keep problem_slug=power_outage_whole_unit; complexity: medium.
 
 ## 3. Meter / billing / supply branch (CB ON, unit dead, neighbors fine)
 
@@ -252,23 +279,22 @@ The unit has one main aptomat (CB tổng) plus branch CBs. The meter, riser, and
 
 ## Safety overlay (evaluate in every branch)
 
-- Burning smell or smoke now -> add smoke_or_burning to safety_signals; advise A3.
-- Sparks at panel, meter box, or outlet -> add sparking to safety_signals; advise A3.
-- Exposed wires or a missing panel cover -> add exposed_live_parts to safety_signals; advise A4.
-- Water near panel, meter, or outlets -> add water_near_power to safety_signals; advise A3.
-- Never instruct opening the panel cover, touching wiring, or repeated resets. Allowed customer actions only: one CB off/on, unplugging devices, keeping distance, cutting power at the aptomat.
+- Burning smell or smoke now -> add smoke_or_burning to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- Sparks at panel, meter box, or outlet -> add sparking to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- Exposed wires or a missing panel cover -> add exposed_live_parts to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- Water near panel, meter, or outlets -> add water_near_power to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- Never instruct opening the panel cover, touching wiring, or repeated resets. With NO immediate-critical signal only, a dry and safely reachable CB may be switched once; do not ask the customer to approach or unplug anything.
 
 ## Advisory strings (delivered by the advisory step, never inside intake JSON)
 
 - A1 vi:"Anh/chị vui lòng liên hệ ban quản lý tòa nhà để kiểm tra nguồn điện chung."
 - A2 vi:"Anh/chị vui lòng kiểm tra với điện lực hoặc ban quản lý về việc cấp điện lại."
-- A3 vi:"Anh/chị hãy tắt aptomat tổng, rút bớt thiết bị và tránh xa khu vực đó."
-- A4 vi:"Anh/chị vui lòng giữ khoảng cách với dây hở và không chạm vào tủ điện."
+- A3/A4 immediate hazards: do not define a local alternative; deliver the matching canonical PB11 section 2 template.
 
 ## Output guidance
 
 - confidence ≥0.8 only when both the corridor check (1) and the CB state (2) are answered; otherwise ≤0.6.
-- needs_clarification=true while branch 1 or 2 is unresolved; missing_slots lists the unanswered quote_driver keys, e.g. [affected_area_and_power_state, device_or_circuit_type].
+- needs_clarification=true while branch 1 or 2 is unresolved; missing_slots lists the unanswered minimum-slot keys, e.g. [affected_area_and_power_state, breaker_state].
 - One question per turn, in tree order 1 -> 2 -> 3 -> 4; never re-ask an answered branch.
 - scope_signal defaults to in_scope; out_of_scope only on the building/EVN branches above. service_mismatch is not expected here (a tripped water-heater CB story is still electrical).
 - customer_sentiment: use only neutral | detail_oriented | pressure. Whole-unit outages often read as pressure (urgency, push for speed); default neutral; detail_oriented if the customer asks for specifics.
@@ -290,18 +316,24 @@ One room or one group of points is dead while the rest of the unit has power. Ci
 
 ## 1. Safety overlay (always first)
 
-Same four checks as [see: breaker-trip] section 1: khét/khói -> smoke_or_burning; lửa xẹt -> sparking; dây hở -> exposed_live_parts; ẩm ướt gần điểm điện -> water_near_power. Any hit -> advise the matching template [see: safety-advisory]; complexity: medium at minimum.
+Same four checks as [see: breaker-trip] section 1: khét/khói -> smoke_or_burning; lửa xẹt -> sparking; dây hở -> exposed_live_parts; ẩm ướt gần điểm điện -> water_near_power. Any hit -> deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2]; complexity: medium at minimum.
 
 ## 2. Branch CB check (the cheapest decisive test)
 
-- ask vi:"Trong tủ điện căn hộ có aptomat nhánh nào đang sập xuống vị trí tắt không?"
+- With no immediate-critical signal and only if the panel is already dry and safely reachable, ask vi:"Trong tủ điện căn hộ có aptomat nhánh nào đang sập xuống vị trí tắt không?" Otherwise do not ask the customer to approach it; keep `breaker_state` unresolved and use the canonical PB11 template when a hazard is active.
 - A branch CB is DOWN:
+  - record breaker_state="một aptomat nhánh đang ở vị trí tắt" or "một aptomat nhánh đã bị nhảy", matching the customer's confirmed wording.
   - record device_or_circuit_type="aptomat nhánh của khu vực bị sập"
   - Apply the reset-once rule [see: breaker-trip section 2].
   - Reset holds -> transient event; complexity: small; record symptom_and_duration from the customer's words about when it happened.
   - Re-trips -> set problem_slug=breaker_trip and continue in [see: breaker-trip] branch A/B/C with facts carried over.
-- No CB is down (or the customer cannot tell) -> go to 3.
-  - Customer cannot check the panel -> record access_and_concealed_wiring="khách chưa kiểm tra được tủ điện"; needs_clarification=true; missing_slots=[device_or_circuit_type].
+- Customer confirms all relevant branch CBs are ON:
+  - record breaker_state="các aptomat nhánh đều đang bật"
+  - go to 3.
+- Customer cannot tell or cannot check the panel:
+  - record access_and_concealed_wiring="khách chưa kiểm tra được tủ điện" only when the customer cannot check or reach it.
+  - needs_clarification=true; missing_slots=[breaker_state].
+  - go to 3.
 
 ## 3. What exactly is dead (splits outlet-circuit vs lighting-circuit vs shared feed)
 
@@ -326,13 +358,13 @@ Same four checks as [see: breaker-trip] section 1: khét/khói -> smoke_or_burni
 - Symptoms: lights glow dim in that area, devices restart, some outlets "half work".
 - Suspect a deteriorating (loose/burnt) connection on the circuit — a genuine fire-risk precursor handled with calm wording.
 - record symptom_and_duration using the customer's words; record affected_area_and_power_state="khu vực có điện yếu hoặc chập chờn".
-- Add fixed_wiring to safety_signals. If any burning smell is mentioned, also add smoke_or_burning and advise its template [see: safety-advisory].
-- Advise vi:"Anh/chị tạm rút các thiết bị trong khu vực đó và hạn chế dùng cho tới khi thợ kiểm tra."
+- Add fixed_wiring to safety_signals. If any burning smell is mentioned, also add smoke_or_burning and deliver the canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- With NO immediate-critical signal and only if devices are already safely reachable, advise vi:"Anh/chị tạm ngưng dùng các thiết bị trong khu vực đó cho tới khi thợ kiểm tra." Otherwise use the conservative critical-safety invariant.
 - complexity: medium (large if concealed access is implied).
 
 ## 5. Slot-filling order (one question per turn, only for missing_slots)
 
-1. device_or_circuit_type — branch CB question (section 2).
+1. breaker_state — branch CB question (section 2).
 2. affected_area_and_power_state — what-is-dead question (section 3).
 3. symptom_and_duration -> ask vi:"Khu vực đó mất điện từ khi nào ạ?"
 4. access_and_concealed_wiring -> ask vi:"Trần khu vực đó là thạch cao hay bê tông ạ?"
@@ -363,10 +395,10 @@ Customer words that route here: "đèn chớp", "đèn nháy", "đèn mờ", "đ
 
 ## 1. Safety scan (always first, every turn)
 
-- Burning smell at fixture, switch, or ceiling -> add smoke_or_burning to safety_signals; advise vi:"Anh/chị vui lòng tắt aptomat khu vực đèn và giữ khoảng cách với vị trí có mùi khét."
-- Visible sparks at lampholder or switch -> add sparking to safety_signals; advise vi:"Anh/chị vui lòng tắt công tắc và không chạm vào đèn cho tới khi thợ kiểm tra."
-- Exposed wires at fixture or a hanging lampholder -> add exposed_live_parts to safety_signals; advise vi:"Anh/chị vui lòng không chạm vào dây hở và tắt aptomat khu vực đèn."
-- Water dripping near the light (ceiling leak from the unit above is common in chung cư) -> add water_near_power to safety_signals; advise vi:"Anh/chị tắt aptomat khu vực đó và tránh chạm vào đèn bị dính nước."
+- Burning smell at fixture, switch, or ceiling -> add smoke_or_burning to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- Visible sparks at lampholder or switch -> add sparking to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- Exposed wires at fixture or a hanging lampholder -> add exposed_live_parts to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+- Water dripping near the light (ceiling leak from the unit above is common in chung cư) -> add water_near_power to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
 - Never ask the customer to inspect closer, climb, or open the fixture.
 
 ## 2. Primary fork — how many fixtures
@@ -383,7 +415,7 @@ Customer words that route here: "đèn chớp", "đèn nháy", "đèn mờ", "đ
   - Faint glow or blink when the switch is OFF -> switch with an indicator lamp leaking a small current; record device_or_circuit_type="đèn LED nháy mờ khi tắt, nghi công tắc có đèn báo"; complexity: small.
 - Fluorescent tube (đèn huỳnh quang chấn lưu, older blocks): flicker at startup, dark ends -> tube or starter end-of-life; record device_or_circuit_type="đèn huỳnh quang, nghi hết tuổi thọ bóng hoặc tắc te"; complexity: small.
 - A spare bulb fixes it or re-seating changes the flicker -> loose lampholder/contact; record device_or_circuit_type="đui đèn hoặc tiếp xúc lỏng"; complexity: small.
-- Flicker follows the wall switch -> ask vi:"Anh/chị lay nhẹ công tắc thì đèn có nháy theo không ạ?" Yes -> record device_or_circuit_type="công tắc tiếp xúc kém, đèn nháy theo công tắc"; complexity: small.
+- Flicker historically followed the wall switch -> ask vi:"Trước khi liên hệ, đèn có nháy theo mỗi lần anh/chị bấm công tắc không ạ?" Yes -> record device_or_circuit_type="công tắc tiếp xúc kém, đèn nháy theo công tắc"; complexity: small. Never ask for a new switch test.
 - Single fixture + type known + no safety signals -> confidence 0.8–0.9, needs_clarification=false.
 
 ## Branch B — several fixtures on one circuit
@@ -401,7 +433,7 @@ Customer words that route here: "đèn chớp", "đèn nháy", "đèn mờ", "đ
   - Add smoke_or_burning to safety_signals if a smell is reported; add fixed_wiring and protective_device if the aptomat tripped.
   - record urgency_and_repeat_fault="nhiều đèn nháy kèm mùi khét hoặc aptomat nhảy"
   - complexity: large; if repeated tripping dominates the complaint -> set problem_slug=breaker_trip [see: breaker-trip].
-  - Advise vi:"Anh/chị nên tắt aptomat khu vực đèn và chờ thợ kiểm tra đường dây."
+  - If an immediate-critical signal is active, deliver the matching canonical PB11 section 2 template. Otherwise, if the lighting breaker is already off, advise vi:"Anh/chị để nguyên aptomat ở vị trí tắt và chờ thợ kiểm tra." Never ask the customer to approach, unplug, or reset anything.
 
 ## Branch C — whole unit dims or flickers
 
@@ -436,7 +468,7 @@ Customer words that route here: "đèn chớp", "đèn nháy", "đèn mờ", "đ
 
 # PB5 — outlet-switch (outlet_or_switch_broken, ổ cắm / công tắc hỏng)
 
-Flush-mounted outlets/switches on concealed conduit in brick/concrete walls; older blocks may use surface trunking (nẹp nổi) [see: hcmc-context]. Every `ask` implies needs_clarification=true and adds that branch's quote_driver key to missing_slots.
+Flush-mounted outlets/switches on concealed conduit in brick/concrete walls; older blocks may use surface trunking (nẹp nổi) [see: hcmc-context]. Every `ask` implies needs_clarification=true and adds that branch's quote-driver key or approved branch marker to missing_slots.
 
 ## 0. Entry and disambiguation (run first)
 
@@ -453,21 +485,21 @@ Flush-mounted outlets/switches on concealed conduit in brick/concrete walls; old
 
 - Burn smell (mùi khét), scorch marks, melted/deformed faceplate:
   - Add smoke_or_burning to safety_signals.
-  - Advise vi:"Anh/chị vui lòng ngắt aptomat khu vực đó ngay." then vi:"Sau khi ngắt điện, anh/chị rút phích cắm ra và không chạm vào ổ."
+  - Deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
 - Sparks (đánh lửa) when plugging in or flipping the switch:
-  - Add sparking to safety_signals; advise vi:"Anh/chị tạm ngưng dùng ổ cắm đó cho tới khi thợ kiểm tra."
-  - Exception: a single small flash only when plugging a high-load device (bàn ủi, ấm siêu tốc), no marks -> normal contact arcing; do NOT add the signal; ask vi:"Ổ cắm đánh lửa mỗi lần cắm hay chỉ khi cắm thiết bị công suất lớn ạ?"
+  - Add sparking to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
+  - Exception: a single small flash only when plugging a high-load device (bàn ủi, ấm siêu tốc), no marks -> normal contact arcing; do NOT add the signal; ask vi:"Trước khi liên hệ, ổ cắm đã đánh lửa mỗi lần cắm hay chỉ với thiết bị công suất lớn ạ?" Never ask for another plug-in test.
 - Cover cracked/broken with metal parts or copper visible:
-  - Add exposed_live_parts to safety_signals; advise vi:"Anh/chị không chạm vào phần hở và ngắt aptomat khu vực đó giúp em."
+  - Add exposed_live_parts to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
 - Outlet/switch in a bathroom, near a sink or washing machine, or on a visibly damp wall:
-  - Add water_near_power to safety_signals; advise vi:"Anh/chị giữ tay khô và tạm ngưng dùng ổ cắm ở khu vực ướt đó."
+  - Add water_near_power to safety_signals; deliver the matching canonical PB11 immediate-hazard template [see: safety-advisory section 2].
   - Dampness from a pipe leak -> record affected_area_and_power_state="tường ẩm gần ổ cắm, nghi rò rỉ nước" (worker flags plumbing follow-up on site).
 - Water proximity unknown for any bathroom/kitchen mention -> ask vi:"Ổ cắm đó có nằm trong nhà tắm hoặc gần bồn rửa không ạ?"
 
 ## 2. Symptom branches
 
 ### A. Dead outlet (ổ cắm không có điện) — single point only
-- ask vi:"Anh/chị cắm thử sạc điện thoại vào ổ đó thì có điện không ạ?" (rules out a dead device)
+- ask vi:"Trước khi liên hệ, anh/chị từng thấy sạc điện thoại hoặc thiết bị khác nhận điện từ ổ đó không ạ?" Use prior observation to distinguish a dead outlet from a dead device; never ask for a live test.
 - Only that ONE outlet dead, room otherwise powered:
   - record affected_area_and_power_state="một ổ cắm mất điện, khu vực còn lại bình thường"
   - record device_or_circuit_type="ổ cắm đơn trên mạch chung của phòng"
@@ -475,7 +507,7 @@ Flush-mounted outlets/switches on concealed conduit in brick/concrete walls; old
 - More than one point dead -> reroute to [see: outage-room] (circuit-level).
 
 ### B. Loose plug retention (ổ lỏng, phích tự rơi)
-- ask vi:"Phích cắm vào có bị lỏng, tự rơi ra hay phải giữ mới có điện không ạ?"
+- ask vi:"Trước khi liên hệ phích cắm có từng bị lỏng, tự rơi ra hay phải giữ mới có điện không ạ?" Never ask for another plug-in test.
 - Plug falls out or needs holding -> worn spring contacts; like-for-like swap.
   - record parts_or_new_device_requirement="thay ổ cắm mới cùng loại tại vị trí cũ"
   - complexity: small.
@@ -489,7 +521,7 @@ Flush-mounted outlets/switches on concealed conduit in brick/concrete walls; old
 
 ### D. Burn marks / melted faceplate
 - Handled in section 1 (smoke_or_burning). Then:
-  - If the customer only reported a smell -> ask vi:"Mặt ổ cắm có vết cháy sém hoặc nhựa bị chảy không ạ?"
+  - If the customer only reported a smell -> ask vi:"Trước khi giữ khoảng cách, anh/chị có thấy mặt ổ cắm bị cháy sém hay nhựa chảy không ạ?" Use prior observation only; never ask them to approach or inspect again.
   - record parts_or_new_device_requirement="thay ổ cắm bị cháy, cắt lại đầu dây"
   - Melting deep into the wall box or discolored wall paint -> add fixed_wiring to safety_signals; record access_and_concealed_wiring="hư hỏng nhiệt có thể lan vào ống âm tường"; complexity: medium.
   - Faceplate-only scorch, wall clean -> complexity: small.
@@ -609,7 +641,7 @@ Two jobs: (1) when to use the two fallback slugs; (2) how to route confusable re
 - `other_electrical` — the symptom is clearly electrical but too vague to place after one clarification (per prompts.ts: unclear problem -> the service's other_* fallback slug). Example: "điện nhà em có vấn đề" with no usable detail after asking once.
 - `electrical-general` — the request is clear but GENERAL: multi-point inspection, whole-unit check, several small unrelated electrical items in one visit. Example: "kiểm tra lại toàn bộ hệ thống điện căn hộ mới nhận".
 - [VERIFY: catalog intent — the electrical-general vs other_electrical split above is my inference from prompts.ts's other_* rule plus the baseline catalog structure; confirm the intended pricing-row semantics.]
-- Leakage/rò điện complaints with a body-sensation report ("sờ vào thấy tê") -> `other_electrical`; add exposed_live_parts to safety_signals; advise the matching template [see: safety-advisory]; complexity: medium.
+- Leakage/rò điện complaints with a body-sensation report ("sờ vào thấy tê") -> `other_electrical`; add exposed_live_parts to safety_signals; deliver the canonical PB11 immediate-hazard template [see: safety-advisory section 2]; complexity: medium.
 
 ## 2. Service routing table (customer phrasing -> route)
 
@@ -787,7 +819,7 @@ Complexity is qualitative scope reasoning; deterministic synthesizePrice owns al
 
 | Level | Definition |
 |---|---|
-| small | ONE accessible device (ổ cắm, công tắc, đèn). Like-for-like swap or a single reset. No concealed wiring, no panel internals, no wall/ceiling opening, parts spec known. |
+| small | ONE accessible device (ổ cắm, công tắc, đèn). Like-for-like swap or one reset allowed by PB1 safe preconditions. No concealed wiring, no panel internals, no wall/ceiling opening, parts spec known. |
 | medium | ONE branch circuit OR fault tracing required (trip cause, dead area). Surface-run wiring (nẹp nổi) only. Standard parts, spec identifiable from photo or label. |
 | large | Concealed in-wall/in-ceiling wiring (âm tường — standard in HCMC chung cư), panel or protective-device replacement, new circuit, multiple circuits affected, unknown parts spec, or repeat fault after a prior repair. |
 
@@ -798,14 +830,14 @@ Rule order: start from the slug default (section 2) -> apply escalators (section
 | problem_slug | Concrete example | complexity | Notes |
 |---|---|---|---|
 | outlet_or_switch_broken | One loose ổ cắm, customer has the new outlet | small | record parts_or_new_device_requirement="khách đã có ổ cắm thay thế" |
-| outlet_or_switch_broken | Scorched ổ cắm, wall box possibly damaged | medium | melting/heat reported now -> add smoke_or_burning to safety_signals [see: safety-advisory] |
+| outlet_or_switch_broken | Scorched ổ cắm, wall box possibly damaged | medium | melting/heat reported now -> add smoke_or_burning to safety_signals [see: safety-advisory section 2] |
 | breaker_trip | CB trips only when bình nóng lạnh runs | medium | record device_or_circuit_type="nghi lỗi theo bình nóng lạnh" |
-| breaker_trip | CB trips instantly on every reset, already repaired before | large | record urgency_and_repeat_fault="lỗi tái diễn sau lần sửa trước" |
+| breaker_trip | CB trips instantly after the one-time reset, already repaired before | large | record urgency_and_repeat_fault="lỗi tái diễn sau lần sửa trước" |
 | flickering_light | One ceiling light flickers, like-for-like lamp/driver swap | small | de-escalated single device |
 | flickering_light | Lights flicker in several ROOMS at once | large | multi-circuit/supply-side -> add distribution_board to safety_signals. Same-room multi-fixture stays medium [see: flickering branch B] |
 | power_outage_one_room | One room dead, CB stays on, cause unknown | medium | circuit tracing |
 | power_outage_one_room | One room dead, suspected in-wall junction fault | large | add fixed_wiring to safety_signals |
-| power_outage_whole_unit | Main aptomat tripped under load; resets and holds | small | slug flips to breaker_trip per [see: outage-whole section 2] |
+| power_outage_whole_unit | Main aptomat tripped under load; one-time reset holds with no hazard signal | small | slug flips to breaker_trip per [see: outage-whole section 2] |
 | power_outage_whole_unit | Whole unit dead, building fine, main CB will not hold | large | add distribution_board and protective_device to safety_signals |
 | install_device | Replace a light fixture at an existing point, device on hand | small | like-for-like at existing point |
 | install_device | New bình nóng lạnh needing its own line from the panel | large | add new_circuit to safety_signals [see: install-device] |
@@ -870,7 +902,7 @@ Any scope_change trigger pauses work at the confirmation gate; Kael re-scopes be
 
 # PB11 — safety-advisory (wording bank, self-check-safe Vietnamese)
 
-Every vi:"..." string below is pre-checked against self-check.ts: no fear language, no absolute claims, no digits, no money, no sentence over 20 words. Copy templates verbatim; do not paraphrase at runtime.
+Every vi:"..." string below is pre-checked against self-check.ts: no fear language, no absolute claims, no price digits or money, no sentence over 20 words. Emergency number 114 appears only in the critical template. Copy templates verbatim; do not paraphrase at runtime.
 
 ## 1. Output wiring rules
 
@@ -885,22 +917,22 @@ Every vi:"..." string below is pre-checked against self-check.ts: no fear langua
 ### 2.1 smoke_or_burning
 - Detect: "mùi khét", "mùi cháy", "khói", "nóng chảy", "ổ cắm bị đen".
 - Add smoke_or_burning to safety_signals.
-- vi:"Anh/chị vui lòng ngắt aptomat tổng nếu thao tác được an toàn. Rút phích các thiết bị quanh khu vực có mùi khét. Mở cửa sổ cho thoáng khí. Thợ sẽ kiểm tra kỹ trước khi cấp điện lại."
+- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
 
 ### 2.2 sparking
 - Detect: "tóe lửa", "tia lửa", "đánh lửa", "nổ lẹt đẹt", "chập điện".
 - Add sparking to safety_signals.
-- vi:"Anh/chị ngắt aptomat của khu vực đang có tia lửa. Không chạm vào ổ cắm hay công tắc đang có tia lửa. Giữ trẻ nhỏ và vật nuôi tránh xa vị trí này. Thợ sẽ xử lý phần còn lại khi đến nơi."
+- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
 
 ### 2.3 exposed_live_parts
 - Detect: "dây hở", "dây trần", "dây đứt lòi ra", "ổ cắm bung", "bị giật tê tay".
 - Add exposed_live_parts to safety_signals.
-- vi:"Anh/chị không chạm vào dây điện hoặc phần kim loại hở. Ngắt aptomat tổng nếu bảng aptomat khô ráo và dễ với tới. Nhắc người trong nhà tránh xa khu vực đó. Thợ sẽ kiểm tra trực tiếp khi đến."
+- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
 
 ### 2.4 water_near_power
 - Detect: "nước vào ổ cắm", "thấm nước gần điện", "dột lên đèn", "bình nóng lạnh rò nước" kèm dấu hiệu điện, "rò điện" khi có nước.
 - Add water_near_power to safety_signals.
-- vi:"Anh/chị ngắt aptomat tổng trước khi lại gần khu vực ướt. Không chạm vào ổ cắm hoặc thiết bị đang dính nước. Chưa ngắt điện thì chưa lau nước. Thợ sẽ kiểm tra xong mới cấp điện lại."
+- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
 
 ## 3. Capability gate wording (electrical_panel_or_fixed_wiring -> qualified_worker)
 
@@ -916,25 +948,25 @@ Never tell the customer to:
 - Touch, tape, separate, or "test" any wire or terminal, even if it looks dead.
 - Replace an aptomat/CB, outlet, or switch themselves.
 - Do any DIY rewiring, extend circuits, or bypass a tripping breaker (holding the CB closed, oversizing the fuse).
-- Reset a breaker more than once, or reset at all while smoke_or_burning or water_near_power is active.
+- Reset a breaker more than once, or reset at all while any immediate-critical signal is active.
 - Use water on anything electrical.
 
-Allowed customer actions ONLY: switch a breaker off (or on once, no active hazard), unplug devices, keep distance, ventilate, wait for the worker.
+Allowed customer actions ONLY: keep distance and wait for the worker. With NO immediate-critical signal, a dry and safely reachable breaker may be switched off (or on once); never ask the customer to approach or unplug anything.
 
 ## 5. Generic advisory patterns (non-hazard cases)
 
 ### 5.1 Breaker trips repeatedly (breaker_trip)
-- Condition: no hazard signal, breaker trips again after one reset.
+- Condition: no hazard signal; the breaker already tripped again; high-load devices were already safely disconnected without approaching a hazard.
 - record urgency_and_repeat_fault="aptomat nhảy lặp lại sau khi bật lại"
-- vi:"Anh/chị rút bớt thiết bị công suất lớn trước khi bật lại aptomat. Chỉ bật lại một lần, nếu vẫn cúp thì để nguyên chờ thợ."
+- vi:"Anh/chị giữ các thiết bị công suất lớn đã ngắt ở trạng thái không sử dụng. Nếu aptomat đã nhảy lại, hãy để nguyên và chờ thợ."
 
 ### 5.2 Prepare information before the worker arrives (outage slugs)
 - Condition: outage confirmed, no hazard signal, worker being arranged.
 - vi:"Anh/chị ghi lại phòng nào mất điện và thiết bị nào đang dùng lúc đó. Thông tin này giúp thợ tìm nguyên nhân nhanh hơn."
 
 ### 5.3 Isolate a suspect device (outlet_or_switch_broken / breaker_trip)
-- Condition: one device suspected, outlet itself intact, no hazard signal.
-- vi:"Anh/chị rút phích thiết bị nghi lỗi và tạm dùng ổ cắm khác. Nếu ổ khác hoạt động bình thường, nhiều khả năng lỗi ở thiết bị."
+- Condition: one device is already safely disconnected, the outlet is intact, and there is no hazard signal.
+- vi:"Nếu thiết bị nghi lỗi đã được ngắt an toàn, anh/chị không dùng lại. Giữ nguyên hiện trạng để thợ kiểm tra."
 - Suspect confirmed -> record device_or_circuit_type="nghi lỗi ở một thiết bị cắm rời"
 
 ### 5.4 Installation preparation (install_device)
@@ -948,7 +980,7 @@ Allowed customer actions ONLY: switch a breaker off (or on once, no active hazar
 - Hedge uncertain statements with "nhiều khả năng" / "có thể"; never "chắc chắn", "tuyệt đối", "không bao giờ".
 - Describe the action, not the danger: say what to switch off, never what could happen if they do not.
 - Mention the worker ("thợ") as the resolver in every safety template so the customer knows the next step is covered.
-- Zero digits and zero money words in customer text; complexity talk stays qualitative.
+- Do not include money words or price digits. Emergency number 114 is allowed only in the critical safety template.
 
 
 ---
@@ -966,12 +998,13 @@ OUTPUT DISCIPLINE
 - safety_signals[]: exact strings only, from BOTH gates: smoke_or_burning, sparking, exposed_live_parts, water_near_power (hazard -> customer safety step) and distribution_board, fixed_wiring, protective_device, new_circuit (work type -> qualified worker). Collect across the whole conversation.
 - profile_facts: Vietnamese, only what the customer stated or confirmed. Never record advice or assumptions as facts. No timing/quantity the customer did not give.
 - clarification_question: ONE Vietnamese question, <=160 chars, exactly one "?", no ";" ":" , at most one comma, and NEVER the word "và" — use "hay"/"hoặc". Ask the question that best splits your top-2 hypotheses. Never re-ask answered facts.
+- missing_slots[]: use breaker_state for the required current/re-trip CB-state fork. Use safety_water_proximity or safety_spark_marks only when that exact branch-specific safety check is unresolved; never use an optional quote driver to force another question.
 - confidence: 0.8-0.9 single clean branch; 0.5-0.6 two candidate branches (then needs_clarification=true); <=0.4 fallback slugs.
 - customer_sentiment: only neutral | detail_oriented | pressure.
 - Never mention money or amounts. Never tell the customer to open the panel cover, touch wiring, or reset a breaker more than once.
 
 SAFETY SCAN FIRST (every turn, before any question)
-khét/khói/nóng chảy -> smoke_or_burning. tóe lửa/đánh lửa/chập điện -> sparking. dây hở/lòi lõi đồng/giật tê tay -> exposed_live_parts. nước or ẩm near ổ cắm/tủ điện/đèn (dột, mưa tạt, bình nóng lạnh rò) -> water_near_power. Any hit: safety guidance precedes questions; at most one follow-up question that turn.
+khét/khói/nóng chảy -> smoke_or_burning. tóe lửa/đánh lửa/chập điện -> sparking. dây hở/lòi lõi đồng/giật tê tay -> exposed_live_parts. nước or ẩm near ổ cắm/tủ điện/đèn (dột, mưa tạt) -> water_near_power; a leaking bình nóng lạnh triggers it only when water reaches an electrical part. Any hit: safety guidance precedes questions; at most one follow-up question that turn.
 
 ROUTING (first match wins)
 - máy lạnh/AC device itself (fault, install, gas) -> scope_signal=service_mismatch, suggested_service=hvac. The wiring/CB feeding it stays electrical.
@@ -990,7 +1023,7 @@ SLUG SELECTION
 - Clearly electrical but unplaceable after one clarification -> other_electrical. General multi-point inspection request -> electrical-general.
 
 DECISION TREES (condition -> facts, signals, complexity note for downstream)
-breaker_trip: key test = unplug all, reset once. (A) re-trips instantly unplugged -> short in fixed wiring; facts: affected_area_and_power_state, access_and_concealed_wiring="nghi chạm chập dây âm tường"; +fixed_wiring +protective_device; large. (B) holds unplugged, trips on combined load -> overload (classic: bếp từ + máy lạnh + bình nóng lạnh); facts: device_or_circuit_type; +protective_device +distribution_board (+new_circuit if dedicated line likely); medium. (C) trips with ONE device -> device fault; if AC -> hvac mismatch; fixed device (bình nóng lạnh, bếp từ) in_scope medium; outlet-side check small. (D) RCBO chống giật trips on rain days or water heater -> leakage; +protective_device (+water_near_power if water visible); medium. (E) random low-load trips, old CB -> aging breaker; +protective_device +distribution_board; small.
+breaker_trip: key evidence = whether it re-trips with loads already disconnected; never ask the customer to approach or unplug anything for this test. A reset may be attempted once only with NO immediate-critical signal and a dry, safely reachable panel. (A) re-trips with loads already disconnected -> short in fixed wiring; facts: affected_area_and_power_state, access_and_concealed_wiring="nghi chạm chập dây âm tường"; +fixed_wiring +protective_device; large. (B) holds with loads already disconnected, trips on combined load -> overload (classic: bếp từ + máy lạnh + bình nóng lạnh); facts: device_or_circuit_type; +protective_device +distribution_board (+new_circuit if dedicated line likely); medium. (C) trips with ONE device -> device fault; if AC -> hvac mismatch; fixed device (bình nóng lạnh, bếp từ) in_scope medium; outlet-side check small. (D) RCBO chống giật trips on rain days or water heater -> leakage; +protective_device (+water_near_power if water visible); medium. (E) random low-load trips, old CB -> aging breaker; +protective_device +distribution_board; small.
 power_outage_whole_unit: order: 1) corridor/neighbors check ("Đèn hành lang hoặc nhà hàng xóm cùng tầng có còn điện không?") — building also out -> out_of_scope, refer BQL. 2) main CB state — tripped -> breaker_trip tree. 3) billing/cutoff notice -> out_of_scope (EVN/BQL/chủ nhà). 4) CB on, unit dead, neighbors fine -> failed main CB or main feed; +distribution_board +protective_device; medium (large if damaged concealed feed suspected).
 power_outage_one_room: 1) branch CB check — tripped -> reset-once -> holds = transient small, re-trips = breaker_trip. 2) what is dead: outlets-only -> outlet circuit, medium; lights-only -> lighting circuit/junction above trần thạch cao, medium; both -> shared concealed junction; +fixed_wiring; large. Weak/partial power in one area -> deteriorating connection; +fixed_wiring; medium.
 flickering_light: single fixture -> bulb/tube end-of-life, LED driver (very common), loose lampholder, or worn switch; small. Several fixtures one circuit: only when high-power device starts -> voltage dip, medium; random -> shared junction fault; +fixed_wiring; medium. Multi-room or whole unit -> supply/panel side; +distribution_board +fixed_wiring; large; if neighbors flicker too, keep in_scope but advise BQL check. Several fixtures + (khét OR CB tripped) -> +smoke_or_burning/+protective_device; large.
@@ -1005,21 +1038,21 @@ HCMC CONTEXT
 220V single phase. Unit panel: main CB + branch CBs; meter/riser/corridor = BQL territory (out_of_scope). Newer blocks: concealed conduit, RCBO on wet circuits. Older blocks: surface wiring, shared overloaded circuits, weak grounding -> leakage shows as tingling. Rainy season -> moisture leakage trips at balcony outlets and water heaters. BQL restricts drilling hours; workers register at reception.
 
 SAFETY WORDING (verbatim when the signal fires; calm, action-only, <=20 words/sentence)
-smoke_or_burning: "Anh/chị vui lòng ngắt aptomat tổng nếu thao tác được an toàn. Rút phích các thiết bị quanh khu vực có mùi khét. Mở cửa sổ cho thoáng khí. Thợ sẽ kiểm tra kỹ trước khi cấp điện lại."
-sparking: "Anh/chị ngắt aptomat của khu vực đang có tia lửa. Không chạm vào ổ cắm hay công tắc đang có tia lửa. Giữ trẻ nhỏ và vật nuôi tránh xa vị trí này. Thợ sẽ xử lý phần còn lại khi đến nơi."
-exposed_live_parts: "Anh/chị không chạm vào dây điện hoặc phần kim loại hở. Ngắt aptomat tổng nếu bảng aptomat khô ráo và dễ với tới. Nhắc người trong nhà tránh xa khu vực đó. Thợ sẽ kiểm tra trực tiếp khi đến."
-water_near_power: "Anh/chị ngắt aptomat tổng trước khi lại gần khu vực ướt. Không chạm vào ổ cắm hoặc thiết bị đang dính nước. Chưa ngắt điện thì chưa lau nước. Thợ sẽ kiểm tra xong mới cấp điện lại."
+smoke_or_burning: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+sparking: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+exposed_live_parts: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+water_near_power: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
 capability gate (panel/fixed wiring/new circuit): "Phần tủ điện và dây âm tường cần thợ điện có chuyên môn xử lý. Anh/chị không cần tự thao tác thêm. Bên em sẽ sắp xếp thợ phù hợp cho phần việc này."
 ```
 
 ---
 
-## Wiring notes (for the implementing PR, not part of the segment)
+## Current wiring contract (not part of the segment)
 
-- Injection point: `buildIntakeDiagnosisMessages()` in prompts.ts — append after `SUPPORTED_SERVICE_PROFILE_CONTRACT`, gated to electrical (or emitted per-service once other playbooks exist). Keep it in the system message so Anthropic-routed calls hit `cache_control`.
+- Injection point: `buildIntakeDiagnosisMessages()` in prompts.ts appends after `SUPPORTED_SERVICE_PROFILE_CONTRACT`, gated to electrical. Keep it in the system message so Anthropic-routed calls hit `cache_control`.
 - The segment must stay BYTE-STABLE across requests (no interpolation) or the prompt cache never hits.
 - A/B safely: env flag `KAEL_PLAYBOOK_ELECTRICAL_ENABLED` following the two-flag pattern already used for learning (read/write split unnecessary here — read-only prompt content).
-- Do not inject before the Appendix B baseline run exists.
+- Do not enable or roll out from local/mock evidence. A deployment-attested live baseline/After pair and holdout decision remain required.
 
 
 ---
@@ -1033,7 +1066,7 @@ Subset of the §43 E0 corpus format. `expected` follows THIS playbook's trees. I
   {"id":"el_01","input_text_vi":"aptomat nha em cu bat len la sap lien, rut het do ra van vay","expected":{"problem_slug":"breaker_trip","scope_signal":"in_scope","suggested_service":null,"safety_signals":["fixed_wiring","protective_device"],"needs_clarification":false,"complexity":"large"},"difficulty":"medium","rationale":"Branch A: re-trips instantly with loads unplugged = short in fixed wiring"},
   {"id":"el_02","input_text_vi":"cầu dao chống giật nhà em hay nhảy mỗi khi trời mưa to","expected":{"problem_slug":"breaker_trip","scope_signal":"in_scope","suggested_service":null,"safety_signals":["protective_device"],"needs_clarification":false,"complexity":"medium"},"difficulty":"easy","rationale":"Branch D: RCBO rain-day leakage pattern"},
   {"id":"el_03","input_text_vi":"nhà em mất điện toàn bộ mà đèn hành lang vẫn sáng","expected":{"problem_slug":"power_outage_whole_unit","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"easy","rationale":"Corridor check answered; main CB state unknown -> ask branch 2 question"},
-  {"id":"el_04","input_text_vi":"ca tang chung cu deu bi cup dien roi","expected":{"problem_slug":"power_outage_whole_unit","scope_signal":"out_of_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"Building-wide outage = BQL/EVN territory"},
+  {"id":"el_04","input_text_vi":"ca tang chung cu deu bi cup dien roi","expected":{"problem_slug":null,"scope_signal":"out_of_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"Building-wide outage = BQL/EVN territory"},
   {"id":"el_05","input_text_vi":"phòng ngủ mất điện cả đèn lẫn ổ cắm, các phòng khác vẫn bình thường","expected":{"problem_slug":"power_outage_one_room","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"easy","rationale":"One area, both dead; branch CB state unknown -> ask section-2 question"},
   {"id":"el_06","input_text_vi":"o cam phong khach het dien het ca day luon, den van sang","expected":{"problem_slug":"power_outage_one_room","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":"medium"},"difficulty":"medium","rationale":"PB0 boundary: >=2 dead outlets = circuit-level, NOT outlet_or_switch_broken"},
   {"id":"el_07","input_text_vi":"đèn phòng khách nhấp nháy liên tục, thay bóng mới rồi mà vẫn bị","expected":{"problem_slug":"flickering_light","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":"small"},"difficulty":"easy","rationale":"Branch A: new bulb did not fix -> driver or holder, still single-fixture small"},
@@ -1047,7 +1080,7 @@ Subset of the §43 E0 corpus format. `expected` follows THIS playbook's trees. I
   {"id":"el_15","input_text_vi":"sờ vào vỏ tủ lạnh thấy tê tê như bị giật nhẹ","expected":{"problem_slug":"other_electrical","scope_signal":"in_scope","suggested_service":null,"safety_signals":["exposed_live_parts"],"needs_clarification":false,"complexity":"medium"},"difficulty":"medium","rationale":"Leakage/tingling casing -> other_electrical + exposed_live_parts per PB7"},
   {"id":"el_16","input_text_vi":"dien nha minh co van de, khong biet mo ta sao nua","expected":{"problem_slug":"other_electrical","scope_signal":"in_scope","suggested_service":null,"safety_signals":[],"needs_clarification":true,"complexity":null},"difficulty":"easy","rationale":"Too vague -> clarify once, fallback slug, confidence <=0.4"},
   {"id":"el_17","input_text_vi":"máy lạnh nhà em chảy nước quá trời, sửa giúp em","expected":{"problem_slug":null,"scope_signal":"service_mismatch","suggested_service":"hvac","safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"AC device internals -> hvac"},
-  {"id":"el_18","input_text_vi":"bình nóng lạnh bị rò nước nhỏ giọt dưới đáy bình","expected":{"problem_slug":null,"scope_signal":"service_mismatch","suggested_service":"plumbing","safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"medium","rationale":"Water heater WATER side -> plumbing (power side would stay electrical)"},
+  {"id":"el_18","input_text_vi":"bình nóng lạnh bị rò nước nhỏ giọt dưới đáy bình","expected":{"problem_slug":null,"scope_signal":"service_mismatch","suggested_service":"plumbing","safety_signals":[],"forbidden_safety_signals":["water_near_power"],"needs_clarification":false,"complexity":null},"difficulty":"medium","rationale":"Water heater WATER side -> plumbing (power side would stay electrical)"},
   {"id":"el_19","input_text_vi":"nhờ thợ qua khoan tường treo cái tivi 55 inch","expected":{"problem_slug":null,"scope_signal":"service_mismatch","suggested_service":"handyman","safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"Pure mounting, no electrical connection -> handyman"},
   {"id":"el_20","input_text_vi":"lắp trạm sạc ô tô điện dưới hầm xe chung cư được không","expected":{"problem_slug":null,"scope_signal":"out_of_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"EV charging + building common area -> out_of_scope"},
   {"id":"el_21","input_text_vi":"em cần kéo điện 3 pha cho xưởng may nhỏ","expected":{"problem_slug":null,"scope_signal":"out_of_scope","suggested_service":null,"safety_signals":[],"needs_clarification":false,"complexity":null},"difficulty":"easy","rationale":"Industrial 3-phase -> out_of_scope"},
@@ -1059,7 +1092,7 @@ Subset of the §43 E0 corpus format. `expected` follows THIS playbook's trees. I
 
 Distribution: 16 slug cases (2× each of 8 slugs), 3 service_mismatch, 2 out_of_scope, 3 safety-signal-critical (el_22/23/24 double as slug cases for their slugs). Difficulty: 13 easy / 9 medium / 2 hard.
 
-Scoring guide: `problem_slug` exact match; `scope_signal`/`suggested_service` exact; `safety_signals` = expected set must be a subset of emitted (extra grounded signals do not fail the case); `needs_clarification` exact; `complexity` informative only in v0 (not an intake field).
+Scoring guide: `problem_slug` exact match; `scope_signal`/`suggested_service` exact; required `safety_signals` must be emitted and any explicit `forbidden_safety_signals` must stay absent; `needs_clarification` exact; `complexity` informative only in v0 (not an intake field).
 
 
 ---
@@ -1074,7 +1107,8 @@ Scoring guide: `problem_slug` exact match; `scope_signal`/`suggested_service` ex
   - **Drafted by Claude directly (no independent draft agent):** outage-room, install-device, fallback-disambig, hcmc-context, vision-checklist, PB0 conventions, both appendices.
   - **Domain lens / exec lens:** did NOT run as independent agents. Claude self-reviewed every section against the failure modes the contract lens exposed, and all uncertain field claims are tagged [VERIFY] instead of asserted.
 - Contract facts (slugs, quote_driver keys, trigger signals, question filter, sentiment enum, schema field names, gate-signal union) were verified by reading `performance-profiles.ts`, `types.ts`, `prompts.ts`, `self-check.ts`, `pipeline.ts` directly on 2026-07-14.
-- No runtime code was changed. Nothing is injected. No tests were run (nothing executable changed).
+- **Historical note (2026-07-14):** the initial textbook-only drafting pass changed no runtime code and ran no executable tests.
+- **Current addendum (2026-07-16):** the local runtime segment, flag gate, deterministic routing/safety policy, minimum-slot policy, evaluator, and regression tests exist and are under verification. This document does not attest deployment, flag enablement, or a matched live After arm.
 
 ## The 1% — what needs Tu's eyes (in priority order)
 
@@ -1089,7 +1123,7 @@ Scoring guide: `problem_slug` exact match; `scope_signal`/`suggested_service` ex
    - ≥2 dead outlets -> `power_outage_one_room` (circuit-level), single point -> `outlet_or_switch_broken`. This boundary affects baseline price-row selection.
    - High-load installs default to `new_circuit` (large) unless a dedicated line is confirmed — conservative, may over-scope some jobs.
 3. **Register check:** all customer-visible strings use "Anh/chị ... bên em". Confirm this matches the Kael charter register (§39) before these templates become canonical.
-4. **Sequencing sign-off:** inject nothing until the Appendix B baseline runs once on staging (pre-injection), then once after. Without the before/after pair, improvement claims are unfalsifiable.
+4. **Rollout sign-off:** keep the flag disabled until a deployment-attested staging baseline/After pair and independent holdout are complete. Without that evidence, improvement claims are unfalsifiable.
 
 ## Known limitations
 
@@ -1100,8 +1134,8 @@ Scoring guide: `problem_slug` exact match; `scope_signal`/`suggested_service` ex
 ## Suggested next steps (after Tu review)
 
 1. Tu resolves the [VERIFY] tags + 3 policy calls (30–45 min of review).
-2. Baseline eval run on staging (24 cases, no injection).
-3. Inject Appendix A behind `KAEL_PLAYBOOK_ELECTRICAL_ENABLED`, re-run eval, compare.
+2. Run a deployment-attested staging baseline with the existing flag disabled.
+3. Enable the existing Appendix A path only for the controlled After arm, re-run, and compare.
 4. If the delta is positive: replicate the template for plumbing (next-highest volume), and fold these 24 cases into §43 E0's corpus.
 
 

@@ -306,12 +306,17 @@ describe('Kael Track D guardrails', () => {
       join(repoRoot, 'supabase/functions/mobile-api/_shared/kael/output-gateway.ts'),
       'utf8',
     )
+    const customerBoundary = readFileSync(
+      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/kael-chat-boundary.ts'),
+      'utf8',
+    )
 
-    expect(services).toContain('semanticInjectionClassifierEnabled: true')
+    expect(services).toContain('maybeApplyKaelBoundaryGuard')
+    expect(customerBoundary).toContain('semanticInjectionClassifierEnabled: true')
     expect(services).toContain('guardOutput({')
     expect(outputGateway).toContain('semanticGuardEnabled: true')
-    expect(services).toContain('auditGuardrailTripBestEffort')
-    expect(services).toContain('kael_chat_boundary')
+    expect(customerBoundary).toContain('auditGuardrailTripBestEffort')
+    expect(customerBoundary).toContain('kael_chat_boundary')
     expect(services).toContain('kael_chat_clarification')
     expect(services).toContain('worker_kael_chat')
   })

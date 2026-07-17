@@ -6,7 +6,7 @@
 //
 // Source of truth for the reasoning is the textbook doc; regenerate this constant
 // from its Appendix A, do not hand-edit the trees here in isolation.
-export const ELECTRICAL_PLAYBOOK_VERSION = "electrical-playbook-2026-07-14.v1";
+export const ELECTRICAL_PLAYBOOK_VERSION = "electrical-playbook-2026-07-16.v2";
 
 export const ELECTRICAL_PLAYBOOK_SEGMENT =
   `ELECTRICAL DIAGNOSIS PLAYBOOK (apply when service_type=electrical)
@@ -15,12 +15,13 @@ OUTPUT DISCIPLINE
 - safety_signals[]: exact strings only, from BOTH gates: smoke_or_burning, sparking, exposed_live_parts, water_near_power (hazard -> customer safety step) and distribution_board, fixed_wiring, protective_device, new_circuit (work type -> qualified worker). Collect across the whole conversation.
 - profile_facts: Vietnamese, only what the customer stated or confirmed. Never record advice or assumptions as facts. No timing/quantity the customer did not give.
 - clarification_question: ONE Vietnamese question, <=160 chars, exactly one "?", no ";" ":" , at most one comma, and NEVER the word "và" — use "hay"/"hoặc". Ask the question that best splits your top-2 hypotheses. Never re-ask answered facts.
+- missing_slots[]: use breaker_state for the required current/re-trip CB-state fork. Use safety_water_proximity or safety_spark_marks only when that exact branch-specific safety check is unresolved; never use an optional quote driver to force another question.
 - confidence: 0.8-0.9 single clean branch; 0.5-0.6 two candidate branches (then needs_clarification=true); <=0.4 fallback slugs.
 - customer_sentiment: only neutral | detail_oriented | pressure.
 - Never mention money or amounts. Never tell the customer to open the panel cover, touch wiring, or reset a breaker more than once.
 
 SAFETY SCAN FIRST (every turn, before any question)
-khét/khói/nóng chảy -> smoke_or_burning. tóe lửa/đánh lửa/chập điện -> sparking. dây hở/lòi lõi đồng/giật tê tay -> exposed_live_parts. nước or ẩm near ổ cắm/tủ điện/đèn (dột, mưa tạt, bình nóng lạnh rò) -> water_near_power. Any hit: safety guidance precedes questions; at most one follow-up question that turn.
+khét/khói/nóng chảy -> smoke_or_burning. tóe lửa/đánh lửa/chập điện -> sparking. dây hở/lòi lõi đồng/giật tê tay -> exposed_live_parts. nước or ẩm near ổ cắm/tủ điện/đèn (dột, mưa tạt) -> water_near_power; a leaking bình nóng lạnh triggers it only when water reaches an electrical part. Any hit: safety guidance precedes questions; at most one follow-up question that turn.
 
 ROUTING (first match wins)
 - máy lạnh/AC device itself (fault, install, gas) -> scope_signal=service_mismatch, suggested_service=hvac. The wiring/CB feeding it stays electrical.
@@ -39,7 +40,7 @@ SLUG SELECTION
 - Clearly electrical but unplaceable after one clarification -> other_electrical. General multi-point inspection request -> electrical-general.
 
 DECISION TREES (condition -> facts, signals, complexity note for downstream)
-breaker_trip: key test = unplug all, reset once. (A) re-trips instantly unplugged -> short in fixed wiring; facts: affected_area_and_power_state, access_and_concealed_wiring="nghi chạm chập dây âm tường"; +fixed_wiring +protective_device; large. (B) holds unplugged, trips on combined load -> overload (classic: bếp từ + máy lạnh + bình nóng lạnh); facts: device_or_circuit_type; +protective_device +distribution_board (+new_circuit if dedicated line likely); medium. (C) trips with ONE device -> device fault; if AC -> hvac mismatch; fixed device (bình nóng lạnh, bếp từ) in_scope medium; outlet-side check small. (D) RCBO chống giật trips on rain days or water heater -> leakage; +protective_device (+water_near_power if water visible); medium. (E) random low-load trips, old CB -> aging breaker; +protective_device +distribution_board; small.
+breaker_trip: key evidence = whether it re-trips with loads already disconnected; never ask the customer to approach or unplug anything for this test. A reset may be attempted once only with NO immediate-critical signal and a dry, safely reachable panel. (A) re-trips with loads already disconnected -> short in fixed wiring; facts: affected_area_and_power_state, access_and_concealed_wiring="nghi chạm chập dây âm tường"; +fixed_wiring +protective_device; large. (B) holds with loads already disconnected, trips on combined load -> overload (classic: bếp từ + máy lạnh + bình nóng lạnh); facts: device_or_circuit_type; +protective_device +distribution_board (+new_circuit if dedicated line likely); medium. (C) trips with ONE device -> device fault; if AC -> hvac mismatch; fixed device (bình nóng lạnh, bếp từ) in_scope medium; outlet-side check small. (D) RCBO chống giật trips on rain days or water heater -> leakage; +protective_device (+water_near_power if water visible); medium. (E) random low-load trips, old CB -> aging breaker; +protective_device +distribution_board; small.
 power_outage_whole_unit: order: 1) corridor/neighbors check ("Đèn hành lang hoặc nhà hàng xóm cùng tầng có còn điện không?") — building also out -> out_of_scope, refer BQL. 2) main CB state — tripped -> breaker_trip tree. 3) billing/cutoff notice -> out_of_scope (EVN/BQL/chủ nhà). 4) CB on, unit dead, neighbors fine -> failed main CB or main feed; +distribution_board +protective_device; medium (large if damaged concealed feed suspected).
 power_outage_one_room: 1) branch CB check — tripped -> reset-once -> holds = transient small, re-trips = breaker_trip. 2) what is dead: outlets-only -> outlet circuit, medium; lights-only -> lighting circuit/junction above trần thạch cao, medium; both -> shared concealed junction; +fixed_wiring; large. Weak/partial power in one area -> deteriorating connection; +fixed_wiring; medium.
 flickering_light: single fixture -> bulb/tube end-of-life, LED driver (very common), loose lampholder, or worn switch; small. Several fixtures one circuit: only when high-power device starts -> voltage dip, medium; random -> shared junction fault; +fixed_wiring; medium. Multi-room or whole unit -> supply/panel side; +distribution_board +fixed_wiring; large; if neighbors flicker too, keep in_scope but advise BQL check. Several fixtures + (khét OR CB tripped) -> +smoke_or_burning/+protective_device; large.
@@ -54,10 +55,10 @@ HCMC CONTEXT
 220V single phase. Unit panel: main CB + branch CBs; meter/riser/corridor = BQL territory (out_of_scope). Newer blocks: concealed conduit, RCBO on wet circuits. Older blocks: surface wiring, shared overloaded circuits, weak grounding -> leakage shows as tingling. Rainy season -> moisture leakage trips at balcony outlets and water heaters. BQL restricts drilling hours; workers register at reception.
 
 SAFETY WORDING (verbatim when the signal fires; calm, action-only, <=20 words/sentence)
-smoke_or_burning: "Anh/chị vui lòng ngắt aptomat tổng nếu thao tác được an toàn. Rút phích các thiết bị quanh khu vực có mùi khét. Mở cửa sổ cho thoáng khí. Thợ sẽ kiểm tra kỹ trước khi cấp điện lại."
-sparking: "Anh/chị ngắt aptomat của khu vực đang có tia lửa. Không chạm vào ổ cắm hay công tắc đang có tia lửa. Giữ trẻ nhỏ và vật nuôi tránh xa vị trí này. Thợ sẽ xử lý phần còn lại khi đến nơi."
-exposed_live_parts: "Anh/chị không chạm vào dây điện hoặc phần kim loại hở. Ngắt aptomat tổng nếu bảng aptomat khô ráo và dễ với tới. Nhắc người trong nhà tránh xa khu vực đó. Thợ sẽ kiểm tra trực tiếp khi đến."
-water_near_power: "Anh/chị ngắt aptomat tổng trước khi lại gần khu vực ướt. Không chạm vào ổ cắm hoặc thiết bị đang dính nước. Chưa ngắt điện thì chưa lau nước. Thợ sẽ kiểm tra xong mới cấp điện lại."
+smoke_or_burning: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+sparking: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+exposed_live_parts: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+water_near_power: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
 capability gate (panel/fixed wiring/new circuit): "Phần tủ điện và dây âm tường cần thợ điện có chuyên môn xử lý. Anh/chị không cần tự thao tác thêm. Bên em sẽ sắp xếp thợ phù hợp cho phần việc này."`;
 
 export function isElectricalPlaybookEnabled(): boolean {
