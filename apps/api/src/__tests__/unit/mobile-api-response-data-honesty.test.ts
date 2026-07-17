@@ -11,7 +11,7 @@ import {
 import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights/index'
 import { getWorkerCandidate } from '../../../../../supabase/functions/mobile-api/_shared/services/matching/candidates'
 import { serializeWorkerKaelSession } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael/index'
 import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/jobs/create'

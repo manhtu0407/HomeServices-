@@ -43,7 +43,7 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 import {
   buildCustomerProfileInsights,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights/index'
 import {
   validateTransition,
 } from '../../../../../supabase/functions/mobile-api/_shared/lifecycle'

@@ -31,7 +31,7 @@ describe('exact profile and earnings aggregate migration', () => {
 
   it('does not retain capped list aggregation in the runtime services', () => {
     const profileService = readFileSync(
-      resolve(root, 'supabase/functions/mobile-api/_shared/services/profile-insights.service.ts'),
+      resolve(root, 'supabase/functions/mobile-api/_shared/services/profile-insights/index.ts'),
       'utf8',
     )
     const workerService = readFileSync(

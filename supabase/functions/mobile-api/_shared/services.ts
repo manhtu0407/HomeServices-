@@ -76,7 +76,7 @@ import { confirmKaelChat } from "./services/kael-chat/confirm.ts";
 import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,
-} from "./services/profile-insights.service.ts";
+} from "./services/profile-insights/index.ts";
 
 import { type MobileApiContext, type MobileApiServices } from "./router.ts";
 
@@ -225,7 +225,7 @@ function aiRuntime(
   };
 }
 
-export { buildCustomerProfileInsights, buildWorkerPerformanceInsights } from "./services/profile-insights.service.ts";
+export { buildCustomerProfileInsights, buildWorkerPerformanceInsights } from "./services/profile-insights/index.ts";
 
 // Idempotent Kael chat session helpers.
 

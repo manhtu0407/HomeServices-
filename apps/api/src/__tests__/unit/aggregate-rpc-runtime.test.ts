@@ -18,7 +18,7 @@ import type { MobileApiContext } from '../../../../../supabase/functions/mobile-
 import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights/index'
 import { getWorkerEarnings } from '../../../../../supabase/functions/mobile-api/_shared/services/workers/index'
 import { computeEarnings } from '@/lib/workers/earnings'
 
