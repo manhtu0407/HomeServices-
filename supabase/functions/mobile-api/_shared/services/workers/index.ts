@@ -11,16 +11,16 @@ import {
   nullableRecord,
   nullableString,
   relatedJob,
-} from "./_runtime/coercions.ts";
-import { db, dbQuery, normalizeWorkerDistricts } from "./_runtime/db.ts";
-import { blankWorkerProfile, clampServiceRadius, compactMetadata, mapAvailabilityError, maskBankAccount, secondsRemaining } from "./_runtime/shared.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
+} from "../_runtime/coercions.ts";
+import { db, dbQuery, normalizeWorkerDistricts } from "../_runtime/db.ts";
+import { blankWorkerProfile, clampServiceRadius, compactMetadata, mapAvailabilityError, maskBankAccount, secondsRemaining } from "../_runtime/shared.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
 import type {
   EdgeEarningsResponse,
   EdgeWorkerJobListResponse,
-} from "../router/dtos.ts";
-import { normalizeIsoTimestamp } from "../iso-timestamp.ts";
-import { PLATFORM_FEE_WORKER } from "../../../_shared/domain.ts";
+} from "../../router/dtos.ts";
+import { normalizeIsoTimestamp } from "../../iso-timestamp.ts";
+import { PLATFORM_FEE_WORKER } from "../../../../_shared/domain.ts";
 import type {
   BroadcastStatus,
   JobStatus,
@@ -29,11 +29,11 @@ import type {
   WorkerRegisterInput,
   WorkerServiceAreaUpdateInput,
   WorkerVerificationStatus,
-} from "../../../_shared/domain.ts";
-import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
-import { projectAddressAccess } from "./apartment-access.service.ts";
-import { buildWorkerBriefOutput } from "../kael/index.ts";
-import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
+} from "../../../../_shared/domain.ts";
+import { AI_SESSION_LIMIT, checkRateLimit } from "../../rate-limit.ts";
+import { projectAddressAccess } from "../apartment-access.service.ts";
+import { buildWorkerBriefOutput } from "../../kael/index.ts";
+import { resolveWorkerAvatarUrl } from "./avatar.ts";
 
 export async function registerWorker(
   ctx: MobileApiContext,

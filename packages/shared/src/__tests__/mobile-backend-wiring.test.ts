@@ -112,7 +112,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('connects explicit worker availability updates to mission eligibility without mutating availability on startup', () => {
     const provider = readFrontendWorkflowLayer()
-    const workerService = readEdgeShared('services/workers.service.ts')
+    const workerService = readEdgeShared('services/workers/index.ts')
     const broadcastService = readEdgeShared('services/matching/broadcasts.ts')
     const migration = readRoot('supabase/migrations/20260518010500_availability_offline_expires_sent_broadcasts.sql')
     const availabilityActionStart = provider.indexOf('const workerUpdateAvailability = useCallback')

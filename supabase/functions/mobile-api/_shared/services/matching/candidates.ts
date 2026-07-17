@@ -21,7 +21,7 @@ import {
 import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "../_runtime/coercions.ts";
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import { insertUserNotification, notifyCustomerWorkerMatched } from "../notifications.service.ts";
-import { resolveWorkerAvatarUrl } from "../worker-avatar.service.ts";
+import { resolveWorkerAvatarUrl } from "../workers/avatar.ts";
 
 export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);

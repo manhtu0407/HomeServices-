@@ -19,7 +19,7 @@ import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,
 } from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
-import { getWorkerEarnings } from '../../../../../supabase/functions/mobile-api/_shared/services/workers.service'
+import { getWorkerEarnings } from '../../../../../supabase/functions/mobile-api/_shared/services/workers/index'
 import { computeEarnings } from '@/lib/workers/earnings'
 
 function rpcOnlyClient(row: Record<string, unknown>) {

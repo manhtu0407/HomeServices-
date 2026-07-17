@@ -5,8 +5,8 @@ import {
   type MobileApiContext,
   type MobileApiServices,
 } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { getWorkerRoutePreview } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-route.service'
-import { updateWorkerAvailability } from '../../../../../supabase/functions/mobile-api/_shared/services/workers.service'
+import { getWorkerRoutePreview } from '../../../../../supabase/functions/mobile-api/_shared/services/workers/route'
+import { updateWorkerAvailability } from '../../../../../supabase/functions/mobile-api/_shared/services/workers/index'
 
 const nextMocks = vi.hoisted(() => ({
   authenticateRequest: vi.fn(),

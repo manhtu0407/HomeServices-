@@ -110,7 +110,7 @@ describe('atomic worker registration migration', () => {
     const next = source(resolve(root, 'apps/api/src/lib/workers/register.ts'))
     const edge = source(resolve(
       root,
-      'supabase/functions/mobile-api/_shared/services/workers.service.ts',
+      'supabase/functions/mobile-api/_shared/services/workers/index.ts',
     ))
     const types = normalized(resolve(root, 'packages/shared/src/types/database.types.ts'))
     const nextRegister = next.match(/export async function registerworker[\s\S]*?\nfunction normalizeworkerdistricts/)?.[0] ?? ''

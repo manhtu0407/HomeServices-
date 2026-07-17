@@ -2,12 +2,12 @@ import {
   WORKER_AVATAR_MAX_BYTES,
   type EdgeWorkerAvatarUpdateInput,
   type EdgeWorkerAvatarUploadInput,
-} from "../../../_shared/domain.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { checkRateLimit, type RateLimitConfig } from "../rate-limit.ts";
-import { db, dbQuery } from "./_runtime/db.ts";
-import { inspectJobMediaContent } from "./jobs/media-content-policy.ts";
-import { nullableString } from "./_runtime/coercions.ts";
+} from "../../../../_shared/domain.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { checkRateLimit, type RateLimitConfig } from "../../rate-limit.ts";
+import { db, dbQuery } from "../_runtime/db.ts";
+import { inspectJobMediaContent } from "../jobs/media-content-policy.ts";
+import { nullableString } from "../_runtime/coercions.ts";
 
 type WorkerAvatarBucket = {
   createSignedUploadUrl(path: string): Promise<{

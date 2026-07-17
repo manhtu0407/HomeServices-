@@ -25,8 +25,8 @@ import {
   listWorkerBroadcasts,
   getWorkerEarnings,
   listWorkerJobs,
-} from "./services/workers.service.ts";
-import { getWorkerRouteMap, getWorkerRoutePreview } from "./services/worker-route.service.ts";
+} from "./services/workers/index.ts";
+import { getWorkerRouteMap, getWorkerRoutePreview } from "./services/workers/route.ts";
 import { projectAddressAccess, authorizeApartmentAccess } from "./services/apartment-access.service.ts";
 
 import {
@@ -60,7 +60,7 @@ import {
   revokeJobMediaUploads,
 } from "./services/jobs/media.ts";
 import { getJob, listCustomerActiveJobs, listCustomerServiceHistory, listMyPendingDecisions } from "./services/jobs/read.ts";
-import { createWorkerAvatarUpload, updateWorkerAvatar } from "./services/worker-avatar.service.ts";
+import { createWorkerAvatarUpload, updateWorkerAvatar } from "./services/workers/avatar.ts";
 import { cancelJob, requestCustomerCancellation } from "./services/customer-cancellation.service.ts";
 import { decideWorkerCancellation, requestWorkerCancellation } from "./services/worker-cancellation.service.ts";
 import {

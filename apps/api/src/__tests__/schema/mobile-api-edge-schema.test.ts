@@ -789,7 +789,7 @@ describe('mobile-api Edge schema compatibility', () => {
       migration.indexOf('from public.worker_profiles')
     )
     expect(migration).toContain('grant execute on function public.set_worker_availability_atomic(uuid, boolean) to service_role')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts')).toContain('set_worker_availability_atomic')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers/index.ts')).toContain('set_worker_availability_atomic')
     expect(nextRoute).toContain('set_worker_availability_atomic')
     expect(nextBroadcasts).not.toContain(".update(")
     expect(nextBroadcasts).toContain(".gt('expires_at', nowIso)")
@@ -799,14 +799,14 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeServices = readEdgeServiceLayer()
     const nextBroadcasts = read('apps/api/src/app/api/workers/me/broadcasts/route.ts')
 
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts')).toContain(
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers/index.ts')).toContain(
       'jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)'
     )
     expect(nextBroadcasts).toContain(
       'jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)'
     )
 
-    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts'), nextBroadcasts]) {
+    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/workers/index.ts'), nextBroadcasts]) {
       expect(source).toMatch(/job\.status !== ["']broadcasting["']/)
     }
   })
@@ -1134,7 +1134,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('for each row execute function update_updated_at()')
     expect(migration).not.toContain('private.set_updated_at()')
     expect(migration).toContain('Exact unit unlocks only after valid lobby/last-50m check-in')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts')).toContain('projectAddressAccess(row, "worker")')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers/index.ts')).toContain('projectAddressAccess(row, "worker")')
     expect(edgeServices).toContain('forcedStage: "building_released"')
     expect(edgeServices).toContain('buildCheckInAccessState')
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/apartment-access.service.ts')).toContain('buildAuthorizedReleaseAccessState')

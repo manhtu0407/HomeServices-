@@ -35,7 +35,7 @@ describe('exact profile and earnings aggregate migration', () => {
       'utf8',
     )
     const workerService = readFileSync(
-      resolve(root, 'supabase/functions/mobile-api/_shared/services/workers.service.ts'),
+      resolve(root, 'supabase/functions/mobile-api/_shared/services/workers/index.ts'),
       'utf8',
     )
     const nextEarnings = readFileSync(

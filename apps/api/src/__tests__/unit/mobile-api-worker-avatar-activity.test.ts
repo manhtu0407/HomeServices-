@@ -5,8 +5,8 @@ import {
   createWorkerAvatarUpload,
   updateWorkerAvatar,
   workerAvatarObjectPath,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/worker-avatar.service'
-import { recordWorkerAppActiveMinute } from '../../../../../supabase/functions/mobile-api/_shared/services/workers.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/workers/avatar'
+import { recordWorkerAppActiveMinute } from '../../../../../supabase/functions/mobile-api/_shared/services/workers/index'
 
 const workerId = '33333333-3333-4333-8333-333333333333'
 

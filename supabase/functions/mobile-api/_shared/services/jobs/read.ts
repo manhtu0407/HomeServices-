@@ -10,7 +10,7 @@ import { projectAddressAccess } from "../apartment-access.service.ts";
 import { requireJobAccess } from "../../access.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import type { JobStatus, ScopeChangeStatus } from "../../../../_shared/domain.ts";
-import { resolveWorkerAvatarUrl } from "../worker-avatar.service.ts";
+import { resolveWorkerAvatarUrl } from "../workers/avatar.ts";
 import type { EdgeJobDetailResponse } from "../../router/dtos.ts";
 
 const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
