@@ -261,7 +261,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     expect(
       servicesSource +
         readFileSync(
-          join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/notifications.service.ts'),
+          join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/notifications/index.ts'),
           'utf8',
         ),
     ).not.toContain('scope_change_auto_approved')
@@ -329,7 +329,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     )
 
     expect(transition.valid).toBe(true)
-    const completionSource = servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')
+    const completionSource = servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review/index.ts'), 'utf8')
     expect(completionSource).toContain('event: "customer_confirmed_completion"')
     expect(completionSource).toContain('customer_input: "accepted_completion"')
     expect(completionSource).not.toContain('runPolicyAutonomyGate')
@@ -398,7 +398,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
     )
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts'), 'utf8')).toContain('event: "cancel_requested"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/cancellation/customer.ts'), 'utf8')).toContain('event: "cancel_requested"')
   })
 
   it('models cancellation and media attachment commands without letting terminal jobs mutate', () => {

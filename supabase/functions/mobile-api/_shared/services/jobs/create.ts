@@ -7,11 +7,11 @@ import { asComplexityOrNull, asJobStatus, asRecord, asServiceType, asString, nul
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import { estimatePriceSourceFromStageLogs, sourceTrustSecretsForRequest } from "../_runtime/shared.ts";
 import { apiLogPurposeForPipelineStage, logApiCalls, logJobEvent } from "../_runtime/audit.ts";
-import { buildInitialApartmentAccessState, persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "../apartment-access.service.ts";
-import { geocodeJobAddressForMatching } from "../places-geo.service.ts";
+import { buildInitialApartmentAccessState, persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "../apartment-access/index.ts";
+import { geocodeJobAddressForMatching } from "../places-geo/index.ts";
 import { createBroadcasts } from "../matching/broadcasts.ts";
 import { rollbackFailedBroadcastStart } from "../matching/index.ts";
-import { insertUserNotification } from "../notifications.service.ts";
+import { insertUserNotification } from "../notifications/index.ts";
 import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./schedule-policy.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../../rate-limit.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";

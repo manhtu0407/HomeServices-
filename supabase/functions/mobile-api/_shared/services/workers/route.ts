@@ -1,7 +1,7 @@
 import type { EdgeAiSecrets } from "../../kael/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import type { WorkerRouteOrigin } from "../../router/contracts.ts";
-import { projectAddressAccess } from "../apartment-access.service.ts";
+import { projectAddressAccess } from "../apartment-access/index.ts";
 import { nullableNumber } from "../_runtime/coercions.ts";
 import {
   db,

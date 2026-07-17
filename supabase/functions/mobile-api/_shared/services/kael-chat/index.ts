@@ -5,7 +5,7 @@
 import { asBoolean, asNumber, asRecord, asString, asStringArray, asKaelChatStatus, asServiceType, nullableString } from "../_runtime/coercions.ts";
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import { compactMetadata, mergeLimitedRefs } from "../_runtime/shared.ts";
-import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "../apartment-access.service.ts";
+import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "../apartment-access/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { checkKaelChatRateLimit } from "../../rate-limit.ts";
 import { takeDurableKaelChatRateLimit } from "../../kael/durable-guards.ts";

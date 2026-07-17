@@ -76,12 +76,12 @@ describe('Kael orchestrator facade', () => {
       'utf8',
     )
     const completionReviewSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review/index.ts'),
       'utf8',
     )
     const autonomyEligibleSources = servicesSource +
-      readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts'), 'utf8') +
-      readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/worker-cancellation.service.ts'), 'utf8')
+      readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/cancellation/customer.ts'), 'utf8') +
+      readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/cancellation/worker.ts'), 'utf8')
 
     expect(autonomyGateSource).toContain('runKaelAutonomyOrchestrator')
     expect(servicesSource).toContain('label: "estimate_to_matching"')

@@ -6,7 +6,7 @@
 import { asBoolean, asString, nullableString } from "../_runtime/coercions.ts";
 import { db, dbQuery } from "../_runtime/db.ts";
 import { mapConfirmKaelChatError } from "../_runtime/shared.ts";
-import { geocodeConfirmedKaelJob } from "../places-geo.service.ts";
+import { geocodeConfirmedKaelJob } from "../places-geo/index.ts";
 import { confirmSearch } from "../matching/index.ts";
 import { hasActiveBroadcast } from "../matching/broadcasts.ts";
 import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "../jobs/schedule-policy.ts";

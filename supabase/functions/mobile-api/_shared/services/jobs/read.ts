@@ -6,7 +6,7 @@ import { asJobStatus, asNumber, asServiceType, asString, asStringArray, nullable
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import { JOB_DETAIL_SELECT, parseKaelProgressSnapshot } from "../_runtime/shared.ts";
 import { getJobBroadcastState } from "../matching/broadcasts.ts";
-import { projectAddressAccess } from "../apartment-access.service.ts";
+import { projectAddressAccess } from "../apartment-access/index.ts";
 import { requireJobAccess } from "../../access.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import type { JobStatus, ScopeChangeStatus } from "../../../../_shared/domain.ts";

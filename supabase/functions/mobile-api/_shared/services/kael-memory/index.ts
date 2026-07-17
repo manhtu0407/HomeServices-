@@ -1,11 +1,11 @@
 // Edge service kael-memory domain (C4 6a, services/* split): the user's own Kael memory CRUD
 // (read/edit/delete; customer L3 + worker L4) with memory-audit logging. Imported by services.ts.
 
-import { db, dbQuery } from "./_runtime/db.ts";
-import { logMemoryAudit } from "./_runtime/audit.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import type { UpdateKaelMemoryInput } from "../../../_shared/domain.ts";
-import { sanitizeMemoryObject, scrubSensitiveForLLM } from "../kael/index.ts";
+import { db, dbQuery } from "../_runtime/db.ts";
+import { logMemoryAudit } from "../_runtime/audit.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import type { UpdateKaelMemoryInput } from "../../../../_shared/domain.ts";
+import { sanitizeMemoryObject, scrubSensitiveForLLM } from "../../kael/index.ts";
 
 export async function getMyKaelMemory(ctx: MobileApiContext) {
   if (ctx.role === "worker") return getWorkerKaelMemory(ctx);

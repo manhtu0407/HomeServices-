@@ -19,13 +19,13 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/rate-limit.ts', ()
   checkRateLimit: mocks.checkRateLimit,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/apartment-access.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/apartment-access/index.ts', () => ({
   buildInitialApartmentAccessState: () => ({ release_stage: 'area_only' }),
   persistApartmentAccessProfileFromMetadata: vi.fn(async () => undefined),
   sanitizeApartmentAccessProfile: () => ({}),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/places-geo.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/places-geo/index.ts', () => ({
   geocodeJobAddressForMatching: vi.fn(async () => undefined),
 }))
 
@@ -37,7 +37,7 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/matching/
   rollbackFailedBroadcastStart: mocks.rollbackFailedBroadcastStart,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/notifications.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/notifications/index.ts', () => ({
   insertUserNotification: vi.fn(async () => undefined),
 }))
 

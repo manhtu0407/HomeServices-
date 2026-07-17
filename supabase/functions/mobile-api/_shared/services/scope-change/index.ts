@@ -6,7 +6,7 @@ import { asComplexityOrNull, asRecord, asServiceType, asString, asStringArray, n
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import { mapScopeDecisionError, mapScopeRequestError, readEdgeEnvNumber } from "../_runtime/shared.ts";
 import { logApiCalls, logJobEvent, queueKaelLearningEvent } from "../_runtime/audit.ts";
-import { notifyCustomerScopeChangeRequested, notifyWorkerScopeDecision } from "../notifications.service.ts";
+import { notifyCustomerScopeChangeRequested, notifyWorkerScopeDecision } from "../notifications/index.ts";
 import {
   buildDirectScopeEffectPayloads,
   buildScopeChangeLearningInput,

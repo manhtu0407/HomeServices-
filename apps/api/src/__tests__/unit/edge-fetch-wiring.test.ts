@@ -49,7 +49,7 @@ describe('Edge fetch guard wiring', () => {
   it.each([
     'supabase/functions/map-proxy-spike/index.ts',
     'supabase/functions/mobile-api/_shared/push.ts',
-    'supabase/functions/mobile-api/_shared/services/places-geo.service.ts',
+    'supabase/functions/mobile-api/_shared/services/places-geo/index.ts',
     'supabase/functions/mobile-api/_shared/services/workers/route.ts',
   ])('strictly decodes bounded JSON responses before provider parsing: %s', (file) => {
     expect(read(file)).toContain('readResponseJsonBounded')

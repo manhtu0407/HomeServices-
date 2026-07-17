@@ -16,7 +16,7 @@ const orchestrator = readFileSync(
   'utf8',
 )
 const notifications = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/notifications.service.ts'),
+  resolve(root, 'supabase/functions/mobile-api/_shared/services/notifications/index.ts'),
   'utf8',
 )
 const scopeMediaSql = readFileSync(

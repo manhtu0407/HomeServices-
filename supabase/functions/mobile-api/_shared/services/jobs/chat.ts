@@ -5,7 +5,7 @@
 import { asBoolean, asString, nullableString } from "../_runtime/coercions.ts";
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import { evaluateJobChatContactGuard, JOB_CHAT_SEND_STATUSES, serializeJobMessage, type JobChatContactGuard } from "../_runtime/shared.ts";
-import { notifyJobMessageRecipient } from "../notifications.service.ts";
+import { notifyJobMessageRecipient } from "../notifications/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { requireJobAccess } from "../../access.ts";
 import { buildDemandingCustomerResponse, detectDemandingCustomerPatterns, recordDemandingCustomerInteraction } from "../../kael/index.ts";

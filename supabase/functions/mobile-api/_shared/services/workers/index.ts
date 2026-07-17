@@ -31,7 +31,7 @@ import type {
   WorkerVerificationStatus,
 } from "../../../../_shared/domain.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../../rate-limit.ts";
-import { projectAddressAccess } from "../apartment-access.service.ts";
+import { projectAddressAccess } from "../apartment-access/index.ts";
 import { buildWorkerBriefOutput } from "../../kael/index.ts";
 import { resolveWorkerAvatarUrl } from "./avatar.ts";
 

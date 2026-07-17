@@ -10,7 +10,7 @@ import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../../kael/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { asJobStatus, asNumber, asString, nullableString } from "../_runtime/coercions.ts";
 import { answerKaelAssistant } from "./assistant.ts";
-import { cancelJob, requestCustomerCancellation } from "../customer-cancellation.service.ts";
+import { cancelJob, requestCustomerCancellation } from "../cancellation/customer.ts";
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
 import type {
   EdgeCustomerKaelConversationCaseAction,

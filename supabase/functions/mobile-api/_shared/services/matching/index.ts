@@ -13,7 +13,7 @@ import {
   hasActiveBroadcast,
   runWithBroadcastRetryLease,
 } from "./broadcasts.ts";
-import { insertUserNotification } from "../notifications.service.ts";
+import { insertUserNotification } from "../notifications/index.ts";
 import { notifyCustomerCandidateReady } from "./candidates.ts";
 import { requireJobAccess } from "../../access.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";

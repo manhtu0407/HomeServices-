@@ -1,31 +1,31 @@
 // Edge service places-geo domain (C4 6a, services/* split): Vietmap/Google places-autocomplete
 // + address geocoding (write-back to jobs) + the maps URL consts. Imported directly by services.ts.
 
-import { asRecord, nullableNumber, nullableRecord, nullableString } from "./_runtime/coercions.ts";
+import { asRecord, nullableNumber, nullableRecord, nullableString } from "../_runtime/coercions.ts";
 import {
   dbQuery,
   fetchJsonWithTimeout,
   MAPS_PROVIDER_MAX_RESPONSE_BYTES,
   type DbClient,
-} from "./_runtime/db.ts";
-import { readResponseJsonBounded } from "../../../_shared/network.ts";
-import { compactMetadata, districtLabel, readGoogleMapsApiKey, readVietmapApiKey } from "./_runtime/shared.ts";
+} from "../_runtime/db.ts";
+import { readResponseJsonBounded } from "../../../../_shared/network.ts";
+import { compactMetadata, districtLabel, readGoogleMapsApiKey, readVietmapApiKey } from "../_runtime/shared.ts";
 import {
   apiFailure,
   type MobileApiContext,
   type PlacesAutocompleteResponse,
-} from "../router.ts";
+} from "../../router.ts";
 import {
   normalizeServiceAreaDistrict,
   type PlacesAutocompleteInput,
   type PlacesResolveInput,
-} from "../../../_shared/domain.ts";
-import type { EdgeAiSecrets } from "../kael/index.ts";
-import { persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
+} from "../../../../_shared/domain.ts";
+import type { EdgeAiSecrets } from "../../kael/index.ts";
+import { persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "../apartment-access/index.ts";
 import {
   boundedProviderIdentifier,
   boundedProviderText,
-} from "../provider-boundary.ts";
+} from "../../provider-boundary.ts";
 
 type MapsGeoSource = "vietmap" | "google_maps";
 type GeocodeResult = { lat: number; lng: number; geoSource: MapsGeoSource };

@@ -7,7 +7,7 @@ import { requireJobAccess } from "../../access.ts";
 import { buildWorkerBriefOutput } from "../../kael/index.ts";
 import { apiFailure, type MobileApiContext } from "../../router.ts";
 import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
-import { projectAddressAccess } from "../apartment-access.service.ts";
+import { projectAddressAccess } from "../apartment-access/index.ts";
 import { logJobEvent } from "../_runtime/audit.ts";
 import {
   createBroadcasts,
@@ -20,7 +20,7 @@ import {
 } from "./broadcasts.ts";
 import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } from "../_runtime/coercions.ts";
 import { db, dbQuery, type DbClient } from "../_runtime/db.ts";
-import { insertUserNotification, notifyCustomerWorkerMatched } from "../notifications.service.ts";
+import { insertUserNotification, notifyCustomerWorkerMatched } from "../notifications/index.ts";
 import { resolveWorkerAvatarUrl } from "../workers/avatar.ts";
 
 export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {

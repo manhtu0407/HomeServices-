@@ -6,15 +6,15 @@ import {
   notifyCustomerScopeChangeRequested,
   registerDevicePushToken,
   unregisterDevicePushToken,
-} from "./services/notifications.service.ts";
-import { listServices } from "./services/catalog.service.ts";
-import { placesAutocomplete, placesResolve } from "./services/places-geo.service.ts";
+} from "./services/notifications/index.ts";
+import { listServices } from "./services/catalog/index.ts";
+import { placesAutocomplete, placesResolve } from "./services/places-geo/index.ts";
 import {
   getMyKaelMemory,
   getWorkerKaelMemory,
   deleteMyKaelMemory,
   updateMyKaelMemory,
-} from "./services/kael-memory.service.ts";
+} from "./services/kael-memory/index.ts";
 import {
   registerWorker,
   getWorkerProfile,
@@ -27,17 +27,17 @@ import {
   listWorkerJobs,
 } from "./services/workers/index.ts";
 import { getWorkerRouteMap, getWorkerRoutePreview } from "./services/workers/route.ts";
-import { projectAddressAccess, authorizeApartmentAccess } from "./services/apartment-access.service.ts";
+import { projectAddressAccess, authorizeApartmentAccess } from "./services/apartment-access/index.ts";
 
 import {
   openDispute,
   submitDisputeCounterStatement,
   decideDispute,
-} from "./services/dispute.service.ts";
+} from "./services/completion-review/dispute.ts";
 
 import { decideScopeChange, requestScopeChange } from "./services/scope-change/index.ts";
 import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./services/jobs/incident.ts";
-import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
+import { confirmCompletion, submitReview } from "./services/completion-review/index.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/jobs/chat.ts";
 import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat/index.ts";
 import { answerKaelAssistant } from "./services/kael-chat/assistant.ts";
@@ -52,8 +52,8 @@ import {
 } from "./services/kael-chat/conversations.ts";
 import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, renameWorkerKaelChat, sendWorkerKaelChatTurn, setWorkerKaelChatPinned } from "./services/worker-kael/index.ts";
 import { streamKaelChatTurn, streamWorkerKaelChatTurn } from "./services/kael-chat/stream.ts";
-import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin-learning.service.ts";
-import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./services/kael-feedback.service.ts";
+import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin/index.ts";
+import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./services/kael-memory/feedback.ts";
 import {
   attachJobMedia,
   createJobMediaUpload,
@@ -61,8 +61,8 @@ import {
 } from "./services/jobs/media.ts";
 import { getJob, listCustomerActiveJobs, listCustomerServiceHistory, listMyPendingDecisions } from "./services/jobs/read.ts";
 import { createWorkerAvatarUpload, updateWorkerAvatar } from "./services/workers/avatar.ts";
-import { cancelJob, requestCustomerCancellation } from "./services/customer-cancellation.service.ts";
-import { decideWorkerCancellation, requestWorkerCancellation } from "./services/worker-cancellation.service.ts";
+import { cancelJob, requestCustomerCancellation } from "./services/cancellation/customer.ts";
+import { decideWorkerCancellation, requestWorkerCancellation } from "./services/cancellation/worker.ts";
 import {
   acceptBroadcast,
   confirmSearch,

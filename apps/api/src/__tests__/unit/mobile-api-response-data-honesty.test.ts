@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { listServices } from '../../../../../supabase/functions/mobile-api/_shared/services/catalog.service'
+import { listServices } from '../../../../../supabase/functions/mobile-api/_shared/services/catalog/index'
 import {
   serializeJobMessage,
   serializeKaelEstimate,
@@ -19,11 +19,11 @@ import { getJobIncident } from '../../../../../supabase/functions/mobile-api/_sh
 import {
   listNotifications,
   registerDevicePushToken,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/notifications.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/notifications/index'
 import {
   setWorkerKaelTrainingConsent,
   submitCustomerKaelFeedback,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/kael-feedback.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/services/kael-memory/feedback'
 
 type QueryResult = {
   data: unknown
