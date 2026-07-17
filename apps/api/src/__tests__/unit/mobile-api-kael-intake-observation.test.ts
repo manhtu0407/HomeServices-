@@ -3,11 +3,11 @@ import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 import { intakeEvalObservationSchema, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import { runKaelPipeline } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline'
-import { buildFocusedClarificationQuestion, resolveIntakeFactCoverage } from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-runtime'
+import { runKaelPipeline } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/pipeline'
+import { buildFocusedClarificationQuestion, resolveIntakeFactCoverage } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/intake-runtime'
 import { isSingleFocusedClarificationQuestion } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import { ELECTRICAL_PLAYBOOK_SEGMENT, ELECTRICAL_PLAYBOOK_VERSION } from '../../../../../supabase/functions/mobile-api/_shared/kael/playbooks/electrical'
-import { buildIntakeDiagnosisMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
+import { buildIntakeDiagnosisMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/charter/prompts'
 
 const validObservation = {
   scopeSignal: 'in_scope',
@@ -644,7 +644,7 @@ describe('Kael intake eval observation boundary', () => {
     ), 'utf8')
     expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/_runtime/shared.ts'")
     expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/kael-chat/intake-safety.ts'")
-    expect(runner).toContain("'supabase/functions/mobile-api/_shared/kael/performance-profiles.ts'")
+    expect(runner).toContain("'supabase/functions/mobile-api/_shared/kael/case-work/performance-profiles.ts'")
   })
 
   it('keeps the injected playbook byte-aligned with Appendix A and free of old unsafe advice', () => {

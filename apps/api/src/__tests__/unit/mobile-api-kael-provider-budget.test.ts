@@ -4,7 +4,7 @@ import {
   isKaelProviderCostCapEnabled,
   kaelProviderDailyCapUsd,
   recordKaelProviderSpend,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-budget'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/provider-budget'
 
 // These tests pin both sides of the DB-backed daily provider spend cap:
 // contract guarantees that make it safe to ship before staging validation:

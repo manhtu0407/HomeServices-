@@ -5,7 +5,7 @@ import type { KaelSafeTraceEvent } from "./observability/trace.ts";
 import {
   KAEL_CASE_WORK_SERVICE_TYPES,
   listKaelPerformanceProfiles,
-} from "./performance-profiles.ts";
+} from "./case-work/performance-profiles.ts";
 
 export type { ComplexityLevel, ServiceType };
 export type { KaelEstimate };

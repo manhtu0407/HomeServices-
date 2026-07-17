@@ -13,7 +13,7 @@ import {
   buildVisionMessages as buildEdgeVisionMessages,
   buildScopeChangeEstimateMessages,
   buildScopeChangeReviewMessages,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/charter/prompts'
 import { trustedPerplexityMarketConfig } from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust/source-trust'
 import {
   KAEL_BUSINESS_GUARDRAILS as EDGE_KAEL_BUSINESS_GUARDRAILS,

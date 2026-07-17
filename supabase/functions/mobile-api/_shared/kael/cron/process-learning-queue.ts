@@ -1,13 +1,13 @@
-import { readKaelOptimizationFlags } from "../cost-tracking.ts";
+import { readKaelOptimizationFlags } from "../provider/cost-tracking.ts";
 import { KAEL_CIRCUIT_BREAKER } from "../guards/circuit-breaker.ts";
 import { isDurableCircuitOpen } from "../guards/durable-guards.ts";
 import {
   anthropicMessageBatchCostUsd,
   estimateModelRequestCostUsd,
-} from "../model-pricing.ts";
-import { createAnthropicMessageBatch, type AnthropicBatchRequest } from "../provider-batch.ts";
-import { KAEL_ROUTING_CONFIG } from "../routing.config.ts";
-import { callStructuredAI } from "../structured-call.ts";
+} from "../provider/model-pricing.ts";
+import { createAnthropicMessageBatch, type AnthropicBatchRequest } from "../provider/provider-batch.ts";
+import { KAEL_ROUTING_CONFIG } from "../routing/routing.config.ts";
+import { callStructuredAI } from "../provider/structured-call.ts";
 import {
   finalizeAiSpend,
   isKaelAiKillSwitchEnabled,

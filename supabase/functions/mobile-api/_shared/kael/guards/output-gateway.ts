@@ -1,4 +1,4 @@
-import { scrubKaelPiiText } from "../output-pipeline.ts";
+import { scrubKaelPiiText } from "../stages/output-pipeline.ts";
 import {
   runKaelSelfCheckPipeline,
   type KaelSelfCheckPipelineInput,

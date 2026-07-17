@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { runKaelAutonomyOrchestrator } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator-facade'
+import { runKaelAutonomyOrchestrator } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/orchestrator-facade'
 
 describe('Kael orchestrator facade', () => {
   it('runs autonomy decisions through the purpose stage and emits unified telemetry', async () => {

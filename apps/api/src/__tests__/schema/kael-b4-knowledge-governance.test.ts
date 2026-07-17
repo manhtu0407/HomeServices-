@@ -77,7 +77,7 @@ describe('Plan §31 B4 knowledge governance', () => {
 
   it('preserves B1 retrieval tables while B4 governance migration is present', () => {
     const allSql = migrations()
-    const knowledge = read('supabase/functions/mobile-api/_shared/kael/knowledge.ts')
+    const knowledge = read('supabase/functions/mobile-api/_shared/kael/memory/knowledge.ts')
 
     expect(allSql).toContain('20260604210000')
     expect(allSql).toContain('grant execute on function public.apply_approved_learning_candidate_to_knowledge')

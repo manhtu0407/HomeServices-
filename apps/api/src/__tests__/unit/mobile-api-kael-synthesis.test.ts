@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   clampMarketPriceToBaseline,
   synthesizePrice,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/synthesis'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/market/synthesis'
 
 describe('Kael deterministic price synthesis', () => {
   it('locks the live medium-complexity blend at 50% baseline and 50% market', () => {

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { evaluateMessageBoundary } from '../../../../../../supabase/functions/mobile-api/_shared/kael/guards/boundary-guard'
 import { checkKaelResponse } from '../../../../../../supabase/functions/mobile-api/_shared/kael/guards/self-check'
-import { gateAutonomyDecision } from '../../../../../../supabase/functions/mobile-api/_shared/kael/autonomy-gate'
+import { gateAutonomyDecision } from '../../../../../../supabase/functions/mobile-api/_shared/kael/case-work/autonomy-gate'
 
 type RedteamCase = {
   id: string

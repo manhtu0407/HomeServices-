@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildVoiceTranscriptRow,
   scrubTranscriptForStorage,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/voice-transcript'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/voice-transcript'
 
 const migrationsDir = resolve(__dirname, '../../../../../supabase/migrations')
 const migration = readdirSync(migrationsDir)

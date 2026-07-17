@@ -36,11 +36,11 @@ import type {
   WorkerVerificationStatus,
 } from "../../../_shared/domain.ts";
 import type { EdgeKaelCaseWorkPhase } from "../../../_shared/contracts.ts";
-import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
+import type { KaelPublicCharterResponse } from "../kael/charter/system-prompt.ts";
 import type {
   PriceSynthesisAbCaseInput,
   PriceSynthesisAbEvaluation,
-} from "../kael/price-synthesis-ab.ts";
+} from "../kael/market/price-synthesis-ab.ts";
 
 export type EdgeKaelEstimate = {
   service_type: ServiceType;

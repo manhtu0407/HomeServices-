@@ -213,8 +213,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('applies learned Kael price and complexity rules inside the deployed Edge runtime', () => {
     const edgeKael = readRoot('supabase/functions/mobile-api/_shared/kael.ts')
     const edgeKaelTypes = readRoot('supabase/functions/mobile-api/_shared/kael/types.ts')
-    const edgeKaelLearning = readRoot('supabase/functions/mobile-api/_shared/kael/learning.ts')
-    const edgeKaelPipeline = readRoot('supabase/functions/mobile-api/_shared/kael/pipeline.ts')
+    const edgeKaelLearning = readRoot('supabase/functions/mobile-api/_shared/kael/memory/learning.ts')
+    const edgeKaelPipeline = readRoot('supabase/functions/mobile-api/_shared/kael/routing/pipeline.ts')
     const edgeEnv = readRoot('supabase/functions/mobile-api/_shared/env.ts')
 
     expect(edgeEnv).toContain('learningEnabled')

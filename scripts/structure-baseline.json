@@ -17,7 +17,7 @@
     ],
     "BaselineResult": [
       "apps/api/src/lib/kael/baseline.ts",
-      "supabase/functions/mobile-api/_shared/kael/synthesis.ts"
+      "supabase/functions/mobile-api/_shared/kael/market/synthesis.ts"
     ],
     "PipelineInput": [
       "apps/api/src/lib/kael/pipeline.ts",
@@ -495,7 +495,7 @@
     ],
     "KaelAutonomyDecision": [
       "packages/shared/src/workflow/workflow-events.ts",
-      "supabase/functions/mobile-api/_shared/kael/artifact-contract.ts"
+      "supabase/functions/mobile-api/_shared/kael/case-work/artifact-contract.ts"
     ],
     "WorkflowCommandEvent": [
       "packages/shared/src/workflow/workflow-events.ts",

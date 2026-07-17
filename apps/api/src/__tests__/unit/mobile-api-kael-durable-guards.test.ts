@@ -7,7 +7,7 @@ import {
   recordDurableCircuitSuccess,
   takeDurableKaelChatRateLimit,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/durable-guards'
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/provider-client'
 
 afterEach(() => {
   vi.useRealTimers()

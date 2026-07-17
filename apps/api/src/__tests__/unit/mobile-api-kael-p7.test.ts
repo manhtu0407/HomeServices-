@@ -5,7 +5,7 @@ import { monitorLearningRules } from '../../../../../supabase/functions/mobile-a
 import {
   recordLearningReviewOutcome,
   recordLearningRuleApplication,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/memory/learning'
 import {
   ALLOWED_LEARNING_TARGETS,
   FORBIDDEN_LEARNING_EFFECTS,

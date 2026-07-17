@@ -4,7 +4,7 @@ import {
   createAnthropicMessageBatch,
   retrieveAnthropicBatchResults,
   retrieveAnthropicMessageBatch,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-batch'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/provider-batch'
 
 const secrets = { anthropicApiKey: 'test-key' }
 const requests = [{

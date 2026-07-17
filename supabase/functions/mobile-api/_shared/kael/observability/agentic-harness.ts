@@ -3,7 +3,7 @@ import {
   type KaelMobileAction,
   type KaelWorkflowPhase,
   type KaelEdgeRoute,
-} from "../path-control.ts";
+} from "../routing/path-control.ts";
 import { buildKaelTraceEvent, type KaelSafeTraceEvent } from "./trace.ts";
 import type { AIProvider, KaelPurpose } from "../types.ts";
 import type { KaelActorRole } from "../guards/permission-gate.ts";

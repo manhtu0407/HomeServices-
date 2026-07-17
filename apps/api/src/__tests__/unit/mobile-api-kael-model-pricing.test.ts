@@ -7,8 +7,8 @@ import {
   MODEL_PRICE_TABLE,
   resolveModelPrice,
   runtimeUnknownModelPolicy,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/model-pricing'
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/model-pricing'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/provider-client'
 
 const CURRENT_PRICING_AT = new Date('2026-07-10T00:00:00.000Z')
 

@@ -6,7 +6,7 @@ import {
   hasKaelForbiddenTopicBoundarySignal,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/permission-gate'
 import { checkKaelActorRateLimit, recordKaelCostForTests, resetKaelRateLimitForTests } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/rate-limit'
-import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
+import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/orchestrator'
 
 describe('Kael P5 permission scope and response policy', () => {
   beforeEach(() => {

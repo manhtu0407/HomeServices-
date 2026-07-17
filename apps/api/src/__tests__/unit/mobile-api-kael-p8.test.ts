@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildKaelSystemPrompt,
   getPublicKaelCharter,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/charter/system-prompt'
 import {
   checkKaelResponse,
   runKaelSelfCheckPipeline,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/self-check'
-import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
+import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/orchestrator'
 import { createMobileApiHandler, type MobileApiServices } from '../../../../../supabase/functions/mobile-api/_shared/router'
 
 describe('Kael P9 charter, prompt, and self-check', () => {

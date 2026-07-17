@@ -4,14 +4,14 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   KAEL_CHARTER_VERSION,
   getPublicKaelCharter,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/charter/system-prompt'
 import {
   KAEL_SELF_CHECK_FORBIDDEN_PHRASES,
   auditKaelGuardrailTrip,
   checkKaelResponse,
   runKaelSelfCheckPipeline,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/self-check'
-import { canonicalizeVN } from '../../../../../supabase/functions/mobile-api/_shared/kael/canonicalize-vn'
+import { canonicalizeVN } from '../../../../../supabase/functions/mobile-api/_shared/kael/charter/canonicalize-vn'
 import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/boundary-guard'
 
 const repoRoot = join(__dirname, '../../../../../')

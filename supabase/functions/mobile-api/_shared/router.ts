@@ -62,7 +62,7 @@ import {
 } from "../../_shared/request-json.ts";
 import { normalizeIsoTimestamp } from "./iso-timestamp.ts";
 import { enforceKaelRuntimePathControl } from "./router-kael-path-control.ts";
-import { priceSynthesisAbCaseSchema } from "./kael/price-synthesis-ab.ts";
+import { priceSynthesisAbCaseSchema } from "./kael/market/price-synthesis-ab.ts";
 import {
   isPublicRoute,
   matchRoute,

@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/provider-client'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
-import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
-import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
+import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/routing.config'
+import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market/market'
 import {
   isKaelKnowledgeRetrievalEnabled,
   retrieveKaelKnowledgeContext,
   retrieveKnowledgeSemantic,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/knowledge'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/memory/knowledge'
 import {
   effectiveTrustScore,
   isSourceTrustPerplexityFilterEnabled,

@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildKaelSystemPrompt,
   type KaelPromptActor,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/charter/system-prompt'
 
 const prompt = buildKaelSystemPrompt({
   purpose: 'price_synthesis',

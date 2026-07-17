@@ -4,13 +4,13 @@ import ts from 'typescript'
 import { z } from 'zod'
 
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
-import { runCustomerAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/customer-assistant'
-import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
-import { searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
-import { reviewScopeChange, computeScopeChangeEstimate } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
-import { callStructuredAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/structured-call'
+import { runCustomerAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/customer-assistant'
+import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/intent'
+import { searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market/market'
+import { reviewScopeChange, computeScopeChangeEstimate } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/scope-change'
+import { callStructuredAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/structured-call'
 import type { AIRequest, EdgeGuardClient } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
+import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/worker-assist'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 const request: AIRequest = {
@@ -228,14 +228,14 @@ describe('mobile-api Kael structured output health', () => {
 
   it('routes every live structured Edge caller through the shared wrapper', () => {
     const callers: Record<string, number> = {
-      'intent.ts': 2,
-      'vision.ts': 2,
-      'market.ts': 2,
-      'scope-change.ts': 4,
-      'worker-assist.ts': 1,
-      'customer-assistant.ts': 1,
-      'job-incident.ts': 1,
-      'price-synthesis-ab.ts': 1,
+      'stages/intent.ts': 2,
+      'stages/vision.ts': 2,
+      'market/market.ts': 2,
+      'case-work/scope-change.ts': 4,
+      'stages/worker-assist.ts': 1,
+      'stages/customer-assistant.ts': 1,
+      'case-work/job-incident.ts': 1,
+      'market/price-synthesis-ab.ts': 1,
       'cron/process-learning-queue.ts': 1,
     }
     for (const [file, expectedCalls] of Object.entries(callers)) {

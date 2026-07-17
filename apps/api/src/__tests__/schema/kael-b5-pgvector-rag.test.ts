@@ -23,7 +23,7 @@ describe('Plan §31 B5 pgvector knowledge RAG', () => {
 
   it('adds a safe usage log for knowledge citations without PII or provider secrets', () => {
     const sql = read('supabase/migrations/20260604213000_kael_b5_pgvector_rag.sql')
-    const knowledge = read('supabase/functions/mobile-api/_shared/kael/knowledge.ts')
+    const knowledge = read('supabase/functions/mobile-api/_shared/kael/memory/knowledge.ts')
 
     expect(sql).toContain('create table if not exists public.kael_knowledge_usage_log')
     expect(sql).toContain('knowledge_table')

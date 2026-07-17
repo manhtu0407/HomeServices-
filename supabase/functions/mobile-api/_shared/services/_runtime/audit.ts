@@ -5,7 +5,7 @@ import { dbQuery, type DbClient } from "./db.ts";
 import { nullableString } from "./coercions.ts";
 import type { MobileApiContext } from "../../router.ts";
 import type { JobStatus } from "../../../../_shared/domain.ts";
-import { buildKaelOptimizationMetricRows, readKaelOptimizationFlags } from "../../kael/cost-tracking.ts";
+import { buildKaelOptimizationMetricRows, readKaelOptimizationFlags } from "../../kael/provider/cost-tracking.ts";
 import {
   queueLearningForBatch,
   queueLearningSkillTriggers,

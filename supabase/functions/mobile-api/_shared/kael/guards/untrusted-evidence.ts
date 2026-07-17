@@ -1,4 +1,4 @@
-import type { KaelDiagnosisScopeArtifact } from "../artifact-contract.ts";
+import type { KaelDiagnosisScopeArtifact } from "../case-work/artifact-contract.ts";
 import { scrubSensitiveForLLM } from "../_runtime/utils.ts";
 
 type ConversationEvidenceTurn = {

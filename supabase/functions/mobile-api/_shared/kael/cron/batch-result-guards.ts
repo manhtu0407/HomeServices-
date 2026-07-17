@@ -6,8 +6,8 @@ import {
 import {
   anthropicMessageBatchCostUsd,
   calculateModelCostUsd,
-} from "../model-pricing.ts";
-import type { AnthropicBatchResult } from "../provider-batch.ts";
+} from "../provider/model-pricing.ts";
+import type { AnthropicBatchResult } from "../provider/provider-batch.ts";
 import { finalizeAiSpend, type SpendGateClient } from "../guards/spend-gate.ts";
 import type { EdgeAiSecrets } from "../types.ts";
 import type { LearningQueueDbClient } from "./process-learning-queue.ts";

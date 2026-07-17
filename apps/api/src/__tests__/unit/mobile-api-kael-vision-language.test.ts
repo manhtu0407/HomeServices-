@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
-import { analyzeDescription } from '../../../../../supabase/functions/mobile-api/_shared/kael/vision'
+import { analyzeDescription } from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/vision'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 describe('mobile-api Kael vision language boundary', () => {

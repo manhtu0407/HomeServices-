@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { KAEL_PURPOSES } from '../../../../../supabase/functions/mobile-api/_shared/kael'
-import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
-import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider, providerCandidatesForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing'
+import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/routing.config'
+import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider, providerCandidatesForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/routing'
 import { createKaelCircuitBreaker, KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
-import { runKaelParallel, runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
+import { runKaelParallel, runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/orchestrator'
 import { updateKaelProgress } from '../../../../../supabase/functions/mobile-api/_shared/kael/observability/streaming'
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/provider-client'
 
 describe('mobile-api Kael P3 routing foundation', () => {
   afterEach(() => {
@@ -57,7 +57,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
       { provider: 'anthropic', model: 'claude-sonnet-5', role: 'primary' },
     ])
     const pipelineSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/routing/pipeline.ts', import.meta.url),
       'utf8',
     )
     expect(pipelineSource).toMatch(
@@ -82,7 +82,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
 
   it('uses the measured DeepSeek intent budget through the provider route', () => {
     const intentSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/intent.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/stages/intent.ts', import.meta.url),
       'utf8',
     )
 
@@ -198,7 +198,7 @@ describe('mobile-api Kael P3 circuit breaker', () => {
 describe('mobile-api Kael P3 orchestrator and streaming', () => {
   it('wires post-intent estimate stages through the parallel orchestrator', () => {
     const pipelineSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/routing/pipeline.ts', import.meta.url),
       'utf8',
     )
 
@@ -371,7 +371,7 @@ describe('mobile-api Kael P3 orchestrator and streaming', () => {
 
   it('lets chat sessions carry pipeline stage progress without writing jobs', () => {
     const pipelineSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/routing/pipeline.ts', import.meta.url),
       'utf8',
     )
 

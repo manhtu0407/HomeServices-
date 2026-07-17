@@ -12,7 +12,7 @@ const services = readFileSync(join(root, 'services.ts'), 'utf8')
 const confirmService = readFileSync(join(root, 'services/kael-chat/confirm.ts'), 'utf8')
 const completionReviewService = readFileSync(join(root, 'services/completion-review/index.ts'), 'utf8')
 const jobStatusService = readFileSync(join(root, 'services/jobs/status.ts'), 'utf8')
-const pipeline = readFileSync(join(root, 'kael/pipeline.ts'), 'utf8')
+const pipeline = readFileSync(join(root, 'kael/routing/pipeline.ts'), 'utf8')
 const sharedService = [
   readFileSync(join(root, 'services/_runtime/shared.ts'), 'utf8'),
   readFileSync(join(root, 'services/_runtime/serializers.ts'), 'utf8'),

@@ -18,14 +18,14 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/coercions'
 import {
   buildFallbackIntent,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/intent'
 import {
   evaluateMessageBoundary,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/boundary-guard'
 import {
   buildIntakeDiagnosisMessages,
   buildIntentMessages,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/charter/prompts'
 import {
   FALLBACK_PROBLEM_SLUG_BY_SERVICE,
   intentResultSchema,
@@ -33,10 +33,10 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import {
   getPublicKaelCharter,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/charter/system-prompt'
 import {
   getKaelPerformanceProfile,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/performance-profiles'
 import {
   kaelServiceLabelVi,
   serviceLabel,

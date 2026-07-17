@@ -4,7 +4,7 @@ import {
   type KaelEdgeRoute,
   type KaelMobileAction,
   type KaelWorkflowPhase,
-} from "./kael/path-control.ts";
+} from "./kael/routing/path-control.ts";
 import type { KaelPurpose } from "./kael/types.ts";
 
 type RouteLike = {

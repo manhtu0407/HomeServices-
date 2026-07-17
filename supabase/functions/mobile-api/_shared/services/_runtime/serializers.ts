@@ -1,5 +1,5 @@
 import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../../_shared/contracts.ts";
-import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../../kael/artifact-contract.ts";
+import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../../kael/case-work/artifact-contract.ts";
 import {
   PRICE_DISCLAIMER,
   intakeEvalObservationSchema,

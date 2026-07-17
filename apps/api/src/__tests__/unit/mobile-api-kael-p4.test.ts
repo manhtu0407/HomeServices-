@@ -7,14 +7,14 @@ import {
   runKaelOutputPipeline,
   sanitizeKaelText,
   scrubKaelPiiText,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/output-pipeline'
 import {
   KAEL_PRICE_DISCLAIMER_V3,
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
   matchSuspiciousScopeKeywords,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
-import { kaelArtifactProposalSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/scope-change'
+import { kaelArtifactProposalSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/artifact-contract'
 
 describe('mobile-api Kael P4 output pipeline', () => {
   it('renders a sanitized Estimate Card v3 from a pipeline estimate', () => {

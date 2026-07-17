@@ -2,7 +2,7 @@ import type {
   DemandingCustomerDetection,
   DemandingCustomerEscalationLevel,
 } from "./demanding-customer-detect.ts";
-import { renderEmpathyTemplateV2 } from "../decline-templates.ts";
+import { renderEmpathyTemplateV2 } from "../charter/decline-templates.ts";
 import { detectForbiddenAiDecisionText } from "../guards/ai-boundary-contract.ts";
 import { scrubSensitiveForLLM } from "../_runtime/utils.ts";
 

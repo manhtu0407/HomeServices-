@@ -8,7 +8,7 @@ import {
   kaelAutonomyDecisionSchema,
   kaelArtifactProposalSchema,
   kaelDiagnosisScopeArtifactSchema,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/artifact-contract'
 
 describe('Kael artifact proposal contract', () => {
   it('builds a durable six-profile diagnosis/scope artifact without workflow authority', () => {

@@ -8,15 +8,15 @@ import {
   prependDeterministicSafetyGuidance,
   resolveRequiredSlotCoverage,
   scanIntakeSafetySignals,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/electrical-intake-policy'
-import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/electrical-intake-policy'
+import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/performance-profiles'
 import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/boundary-guard'
-import { buildFallbackIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
-import { resolveElectricalIntakeRuntime } from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-runtime'
+import { buildFallbackIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/intent'
+import { resolveElectricalIntakeRuntime } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/intake-runtime'
 import { buildSafetyFirstKaelClarification, mergeBoundarySafetyGuidance, persistentKaelSafetySignals, requiresImmediateKaelSafetyPath, resolveKaelResponseSafetySignals } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/intake-safety'
 import { maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/core'
-import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
-import { buildInitialDiagnosisScopeArtifact, buildKaelMissingInfoArtifactProposal } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
+import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/output-pipeline'
+import { buildInitialDiagnosisScopeArtifact, buildKaelMissingInfoArtifactProposal } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/artifact-contract'
 import { diagnosisScopeWithQuestion } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/case-work'
 import { formatKaelEstimateText, serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 

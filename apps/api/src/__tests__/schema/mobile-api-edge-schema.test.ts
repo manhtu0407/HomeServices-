@@ -444,7 +444,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('keeps self-memory CRUD live while quarantining the unused L1-L6 context engine', () => {
     const migrations = readMigrations()
     const edgeKaelIndex = read('supabase/functions/mobile-api/_shared/kael/index.ts')
-    const quarantinedMemory = read('supabase/functions/mobile-api/_shared/kael/memory.ts')
+    const quarantinedMemory = read('supabase/functions/mobile-api/_shared/kael/memory/memory.ts')
     const edgeServices = readEdgeServiceLayer()
     const edgeRouter = readEdgeRouterLayer()
 
@@ -453,8 +453,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migrations).toContain('customer_id uuid primary key references public.profiles(id) on delete cascade')
     expect(migrations).toContain('worker_id uuid primary key references public.profiles(id) on delete cascade')
     expect(migrations).toContain('grant all on public.kael_memory_archive to service_role')
-    expect(edgeKaelIndex).toContain('export * from "./memory-sanitizer.ts"')
-    expect(edgeKaelIndex).not.toContain('export * from "./memory.ts"')
+    expect(edgeKaelIndex).toContain('export * from "./memory/memory-sanitizer.ts"')
+    expect(edgeKaelIndex).not.toContain('export * from "./memory/memory.ts"')
     expect(quarantinedMemory).toContain('QUARANTINED')
     expect(quarantinedMemory).toContain('not part of the production mobile-api runtime')
     expect(edgeRouter).toContain('/me/kael-memory')
@@ -1158,7 +1158,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('locks Section 32 LLM boundary to edge phrasing while decisions stay deterministic', () => {
     const boundaryContract = read('supabase/functions/mobile-api/_shared/kael/guards/ai-boundary-contract.ts')
-    const workerAssist = read('supabase/functions/mobile-api/_shared/kael/worker-assist.ts')
+    const workerAssist = read('supabase/functions/mobile-api/_shared/kael/stages/worker-assist.ts')
     const demanding = read('supabase/functions/mobile-api/_shared/kael/agentic/case-2-demanding.ts')
     const workerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel.ts')
     const customerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-4-customer-cancel.ts')

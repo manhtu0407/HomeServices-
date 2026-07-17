@@ -54,7 +54,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
 
   it('hooks Edge api_logs into optimization metrics without enabling optimizations', () => {
     const services = readEdgeServiceLayer()
-    const costTracking = read('supabase/functions/mobile-api/_shared/kael/cost-tracking.ts')
+    const costTracking = read('supabase/functions/mobile-api/_shared/kael/provider/cost-tracking.ts')
 
     expect(services + read('supabase/functions/mobile-api/_shared/services/_runtime/audit.ts')).toContain('buildKaelOptimizationMetricRows(rows)')
     expect(services + read('supabase/functions/mobile-api/_shared/services/_runtime/audit.ts')).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
@@ -125,7 +125,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(services).toContain('recordLearningReviewOutcome')
     expect(read('supabase/functions/mobile-api/_shared/kael/cron/monitor-learning-rules.ts')).toContain('loop_health')
     expect(read('supabase/functions/mobile-api/_shared/kael/cron/monitor-learning-rules.ts')).toContain('manual_review_overdue_count')
-    expect(read('supabase/functions/mobile-api/_shared/kael/pipeline.ts')).toContain('learningApplications')
+    expect(read('supabase/functions/mobile-api/_shared/kael/routing/pipeline.ts')).toContain('learningApplications')
     expect(index).toContain('./cron/process-learning-queue.ts')
     expect(index).toContain('./cron/process-batch-results.ts')
     expect(index).toContain('./cron/monitor-learning-rules.ts')

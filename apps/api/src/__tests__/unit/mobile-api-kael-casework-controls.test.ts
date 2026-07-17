@@ -5,9 +5,9 @@ import {
   buildPriceEvidenceUnavailableArtifact,
   requiredCaseWorkEvidenceRequest,
   resolveProfileFactCoverage,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work-controls'
-import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
-import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/case-work-controls'
+import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/artifact-contract'
+import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/performance-profiles'
 import { serializeKaelEstimate } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 
 describe('Kael Case Work deterministic controls', () => {

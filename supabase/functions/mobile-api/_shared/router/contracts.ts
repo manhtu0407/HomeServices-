@@ -51,11 +51,11 @@ import type {
   JobMediaUploadInput,
   JobMediaUploadResponse,
 } from "../../../_shared/job-media-contract.ts";
-import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
+import type { KaelPublicCharterResponse } from "../kael/charter/system-prompt.ts";
 import type {
   PriceSynthesisAbCaseInput,
   PriceSynthesisAbEvaluation,
-} from "../kael/price-synthesis-ab.ts";
+} from "../kael/market/price-synthesis-ab.ts";
 import type {
   EdgeAcceptBroadcastResponse,
   EdgeConfirmWorkerCandidateResponse,

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   KAEL_OPTIMIZATION_FLAG_NAMES,
   readKaelOptimizationFlags,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/cost-tracking'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/provider/cost-tracking'
 
 // Verifies the smart-clarification feature flag is wired into the edge
 // optimization-flag system (off by default; opt-in via env). Imports the edge

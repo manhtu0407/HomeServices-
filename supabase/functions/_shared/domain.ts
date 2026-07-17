@@ -2,8 +2,8 @@ import { z } from "zod";
 import {
   getKaelPerformanceProfile,
   KAEL_PERFORMANCE_PROFILE_IDS,
-} from "../mobile-api/_shared/kael/performance-profiles.ts";
-import { kaelCaseEvidenceSchema } from "../mobile-api/_shared/kael/artifact-contract.ts";
+} from "../mobile-api/_shared/kael/case-work/performance-profiles.ts";
+import { kaelCaseEvidenceSchema } from "../mobile-api/_shared/kael/case-work/artifact-contract.ts";
 import { SERVICE_TYPES, type ServiceType } from "./service-taxonomy.ts";
 import { kaelChatMediaRefSchema } from "./kael-chat-media-contract.ts";
 import {

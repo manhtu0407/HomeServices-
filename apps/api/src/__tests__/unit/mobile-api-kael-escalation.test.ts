@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { selectKaelEscalation } from '../../../../../supabase/functions/mobile-api/_shared/kael/escalation'
-import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
-import { reviewScopeChange } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
+import { selectKaelEscalation } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/escalation'
+import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing/routing.config'
+import { reviewScopeChange } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work/scope-change'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 describe('Kael model escalation', () => {

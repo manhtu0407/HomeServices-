@@ -3,9 +3,9 @@
 
 import type { ServiceType } from "../../../../_shared/domain.ts";
 import { evaluateMessageBoundary, type BoundaryDecision } from "../../kael/guards/boundary-guard.ts";
-import { isIntakeEvalObservationExposureEnabled } from "../../kael/intake-runtime.ts";
+import { isIntakeEvalObservationExposureEnabled } from "../../kael/case-work/intake-runtime.ts";
 import { ELECTRICAL_PLAYBOOK_VERSION, isElectricalPlaybookEnabled } from "../../kael/playbooks/electrical.ts";
-import { kaelIntakeDiagnosisPromptVersion } from "../../kael/prompts.ts";
+import { kaelIntakeDiagnosisPromptVersion } from "../../kael/charter/prompts.ts";
 import { isKaelAiKillSwitchEnabled } from "../../kael/guards/spend-gate.ts";
 import { intakeEvalObservationSchema, updateKaelProgress, type IntakeEvalObservation } from "../../kael/index.ts";
 import { auditGuardrailTripBestEffort } from "../_runtime/audit.ts";

@@ -5,7 +5,7 @@ import {
   buildWorkerKaelSessionTitle,
   guardWorkerAssistText,
   runWorkerAssist,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/worker-assist'
 import { workerVisionFindingSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import {
   buildSafeWorkerVisionFinding,

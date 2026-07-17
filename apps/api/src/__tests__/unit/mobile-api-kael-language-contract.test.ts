@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAdvisory } from '../../../../../supabase/functions/mobile-api/_shared/kael/advisory'
+import { buildAdvisory } from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/advisory'
 import {
   evaluateMarketVerdict,
   marketVerdictReason,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/market-verdict'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/market/market-verdict'
 import {
   priceDisclaimer,
   unsupportedServiceMessage,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
+import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/output-pipeline'
 import { formatKaelEstimateText } from '../../../../../supabase/functions/mobile-api/_shared/services/_runtime/shared'
 
 describe('mobile-api Kael customer-visible language contract', () => {

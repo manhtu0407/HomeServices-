@@ -1,8 +1,8 @@
-import { readKaelOptimizationFlags } from "../cost-tracking.ts";
+import { readKaelOptimizationFlags } from "../provider/cost-tracking.ts";
 import {
   retrieveAnthropicBatchResults,
   retrieveAnthropicMessageBatch,
-} from "../provider-batch.ts";
+} from "../provider/provider-batch.ts";
 import {
   finalizeBatchItemSpend,
   recordBatchLearningOutputHealth,
@@ -31,7 +31,7 @@ import type { EdgeAiSecrets } from "../types.ts";
 import {
   KAEL_CASE_WORK_SERVICE_TYPES,
   type KaelCaseWorkServiceType,
-} from "../performance-profiles.ts";
+} from "../case-work/performance-profiles.ts";
 import {
   type LearningQueueDbClient,
   type QueuedLearningRow,

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   runCustomerAssistant,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/customer-assistant'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/stages/customer-assistant'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/guards/circuit-breaker'
 import type {
   AIRequest,
