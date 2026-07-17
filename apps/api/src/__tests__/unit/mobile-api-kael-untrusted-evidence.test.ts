@@ -112,9 +112,9 @@ describe('Kael untrusted customer evidence boundary', () => {
   })
 
   it('wires the safe evidence into model input, durable facts, and demanding-customer audit', () => {
-    const core = readFileSync(join(edgeRoot, 'services/kael-chat-core.ts'), 'utf8')
-    const caseWork = readFileSync(join(edgeRoot, 'services/kael-chat-case-work.ts'), 'utf8')
-    const service = readFileSync(join(edgeRoot, 'services/kael-chat.service.ts'), 'utf8')
+    const core = readFileSync(join(edgeRoot, 'services/kael-chat/core.ts'), 'utf8')
+    const caseWork = readFileSync(join(edgeRoot, 'services/kael-chat/case-work.ts'), 'utf8')
+    const service = readFileSync(join(edgeRoot, 'services/kael-chat/index.ts'), 'utf8')
 
     expect(core).toContain('sanitizeUntrustedEvidenceText')
     expect(core).toContain('sanitizeUntrustedEvidenceList(input.problem_chips ?? [])')

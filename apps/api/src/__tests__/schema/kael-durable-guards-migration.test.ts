@@ -67,7 +67,7 @@ describe('Kael durable guards migration', () => {
       'utf8',
     )
     const customerChat = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services/kael-chat.service.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/index.ts', import.meta.url),
       'utf8',
     )
     const workerChat = readFileSync(

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/job-create.service'
-import { createKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat.service'
-import { confirmKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-confirm.service'
+import { createKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/index'
+import { confirmKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/confirm'
 import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import {
   validateFutureHcmcSchedule,

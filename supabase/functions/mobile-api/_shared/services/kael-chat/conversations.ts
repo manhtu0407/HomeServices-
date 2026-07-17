@@ -5,18 +5,18 @@ import type {
   EdgeCustomerKaelConversationPinInput,
   EdgeCustomerKaelConversationRenameInput,
   JobStatus,
-} from "../../../_shared/domain.ts";
-import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../kael/index.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { asJobStatus, asNumber, asString, nullableString } from "./coercions.ts";
-import { answerKaelAssistant } from "./customer-assistant.service.ts";
-import { cancelJob, requestCustomerCancellation } from "./customer-cancellation.service.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
+} from "../../../../_shared/domain.ts";
+import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../../kael/index.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { asJobStatus, asNumber, asString, nullableString } from "../coercions.ts";
+import { answerKaelAssistant } from "./assistant.ts";
+import { cancelJob, requestCustomerCancellation } from "../customer-cancellation.service.ts";
+import { db, dbQuery, type DbClient } from "../db.ts";
 import type {
   EdgeCustomerKaelConversationCaseAction,
   EdgeCustomerKaelConversationSessionResponse,
   EdgeCustomerKaelConversationTurnResponse,
-} from "../router/customer-kael-conversation-dtos.ts";
+} from "../../router/customer-kael-conversation-dtos.ts";
 
 const CUSTOMER_CONVERSATION_SELECT =
   "id, customer_id, chat_mode, case_session_id, client_request_id, title, pinned_at, archived_at, total_turns, created_at, updated_at";

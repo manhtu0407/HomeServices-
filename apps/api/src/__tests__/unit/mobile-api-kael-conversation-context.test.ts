@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildKaelConversationContext } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-case-work'
+import { buildKaelConversationContext } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/case-work'
 import type { DbClient, DbResult } from '../../../../../supabase/functions/mobile-api/_shared/services/db'
 
 describe('Kael conversation-context persistence boundary', () => {

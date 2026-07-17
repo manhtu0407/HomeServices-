@@ -361,7 +361,7 @@ describe('Kael artifact proposal contract', () => {
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
     ) + readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat-core.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat/core.ts'),
       'utf8',
     )
 

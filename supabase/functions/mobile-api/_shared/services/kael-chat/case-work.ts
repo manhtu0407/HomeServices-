@@ -1,4 +1,4 @@
-import type { ServiceType } from "../../../_shared/domain.ts";
+import type { ServiceType } from "../../../../_shared/domain.ts";
 import {
   buildDemandingCustomerResponse,
   buildInitialDiagnosisScopeArtifact,
@@ -7,12 +7,12 @@ import {
   kaelDiagnosisScopeArtifactSchema,
   requiredCaseWorkEvidenceRequest,
   type KaelDiagnosisScopeArtifact,
-} from "../kael/index.ts";
-import { apiFailure } from "../router.ts";
-import { compactMetadata, type KaelChatTurnRole } from "./_shared.ts";
-import { asKaelTurnRole, asNumber, asString, nullableString } from "./coercions.ts";
-import { dbQuery, type DbClient } from "./db.ts";
-import { buildUntrustedConversationContext } from "../kael/untrusted-evidence.ts";
+} from "../../kael/index.ts";
+import { apiFailure } from "../../router.ts";
+import { compactMetadata, type KaelChatTurnRole } from "../_shared.ts";
+import { asKaelTurnRole, asNumber, asString, nullableString } from "../coercions.ts";
+import { dbQuery, type DbClient } from "../db.ts";
+import { buildUntrustedConversationContext } from "../../kael/untrusted-evidence.ts";
 
 export async function loadDiagnosisScopeArtifact(
   client: DbClient,

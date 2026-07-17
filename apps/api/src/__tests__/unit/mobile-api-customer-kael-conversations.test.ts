@@ -30,14 +30,14 @@ function readServiceLayer() {
 
 function readCustomerConversationService() {
   return readUtf8(new URL(
-    '../../../../../supabase/functions/mobile-api/_shared/services/customer-kael-conversation.service.ts',
+    '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/conversations.ts',
     import.meta.url,
   ))
 }
 
 function readCustomerCaseWorkService() {
   return readUtf8(new URL(
-    '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat.service.ts',
+    '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/index.ts',
     import.meta.url,
   ))
 }

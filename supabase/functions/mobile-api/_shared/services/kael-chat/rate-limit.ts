@@ -1,4 +1,4 @@
-import { apiFailure } from "../router.ts";
+import { apiFailure } from "../../router.ts";
 
 export function rejectKaelChatRateLimit(reason: string | null): never {
   apiFailure(

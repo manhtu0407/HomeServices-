@@ -632,7 +632,7 @@ describe('Kael intake eval observation boundary', () => {
   it('wires validated observation persistence and minimum-slot quote readiness', () => {
     const source = readFileSync(resolve(
       process.cwd(),
-      '../../supabase/functions/mobile-api/_shared/services/kael-chat-core.ts',
+      '../../supabase/functions/mobile-api/_shared/services/kael-chat/core.ts',
     ), 'utf8')
 
     expect(source).toContain('intakeEvalObservationSchema.parse(observation)')
@@ -643,7 +643,7 @@ describe('Kael intake eval observation boundary', () => {
       'scripts/kael-playbook-eval.mjs',
     ), 'utf8')
     expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/_shared.ts'")
-    expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/kael-chat-intake-safety.ts'")
+    expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/kael-chat/intake-safety.ts'")
     expect(runner).toContain("'supabase/functions/mobile-api/_shared/kael/performance-profiles.ts'")
   })
 

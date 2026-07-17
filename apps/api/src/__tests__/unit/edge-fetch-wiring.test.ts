@@ -77,7 +77,7 @@ describe('Edge fetch guard wiring', () => {
       .toContain('redirect: "error"')
     expect(read('supabase/functions/mobile-api/_shared/kael/vision.ts'))
       .toContain('redirect: "error"')
-    expect(read('supabase/functions/mobile-api/_shared/services/kael-chat-media.service.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/services/kael-chat/media.ts'))
       .toContain('redirect: "error"')
     expect(read('supabase/functions/map-proxy-spike/index.ts').match(/redirect: "error"/g))
       .toHaveLength(2)

@@ -9,7 +9,7 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import { validateJobMediaPath } from "./_shared.ts";
 import { nullableString } from "./coercions.ts";
 import { type DbClient, dbQuery } from "./db.ts";
-import { inspectTrustedKaelVisionTransform } from "./kael-chat-media.service.ts";
+import { inspectTrustedKaelVisionTransform } from "./kael-chat/media.ts";
 
 const WORKER_KAEL_MEDIA_PREFIX = "supabase://job-media/";
 

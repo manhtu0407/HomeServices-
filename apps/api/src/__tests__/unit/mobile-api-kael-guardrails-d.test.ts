@@ -296,7 +296,7 @@ describe('Kael Track D guardrails', () => {
       join(repoRoot, 'supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
     ) + readFileSync(
-      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/kael-chat-core.ts'),
+      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/kael-chat/core.ts'),
       'utf8',
     ) + readFileSync(
       join(repoRoot, 'supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts'),
@@ -307,7 +307,7 @@ describe('Kael Track D guardrails', () => {
       'utf8',
     )
     const customerBoundary = readFileSync(
-      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/kael-chat-boundary.ts'),
+      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/kael-chat/boundary.ts'),
       'utf8',
     )
 

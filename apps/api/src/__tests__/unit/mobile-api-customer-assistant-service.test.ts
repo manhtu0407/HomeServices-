@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import { __resetRateLimitStoreForTests } from '../../../../../supabase/functions/mobile-api/_shared/rate-limit'
-import { answerKaelAssistant } from '../../../../../supabase/functions/mobile-api/_shared/services/customer-assistant.service'
+import { answerKaelAssistant } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat/assistant'
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
 
 const customerId = '11111111-1111-4111-8111-111111111111'

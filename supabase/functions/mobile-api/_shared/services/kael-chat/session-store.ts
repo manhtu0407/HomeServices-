@@ -1,7 +1,7 @@
-import { asNumber, asRecord, asString, nullableNumber, nullableString } from "./coercions.ts";
-import { compactMetadata } from "./_shared.ts";
-import { dbQuery, type DbClient } from "./db.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
+import { asNumber, asRecord, asString, nullableNumber, nullableString } from "../coercions.ts";
+import { compactMetadata } from "../_shared.ts";
+import { dbQuery, type DbClient } from "../db.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
 
 type ExistingKaelSessionByClientRequest =
   | { kind: "ready"; sessionId: string }

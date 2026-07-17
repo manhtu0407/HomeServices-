@@ -309,7 +309,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
-    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat-confirm.service.ts'), 'utf8')
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat/confirm.ts'), 'utf8')
 
     expect(transition.valid).toBe(true)
     expect(servicesSource).toContain('resultingEvent: "kael_started_matching"')

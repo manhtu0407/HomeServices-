@@ -1,11 +1,11 @@
-import { db, dbQuery } from "./db.ts";
+import { db, dbQuery } from "../db.ts";
 import {
   parseKaelProgressSnapshot,
   serializeKaelSession,
   serializeKaelTurn,
-} from "./_shared.ts";
-import { assertKaelSessionOwnership } from "./kael-chat-session-store.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
+} from "../_shared.ts";
+import { assertKaelSessionOwnership } from "./session-store.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
 
 export async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
   const client = db(ctx);

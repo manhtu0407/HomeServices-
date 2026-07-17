@@ -2,13 +2,13 @@
 // worker Kael chat turn pipelines (poll progress -> emit stage/result/heartbeat). Imports the chat APIs
 // one-way. Imported by services.ts for the createEdgeServices wiring.
 
-import { db } from "./db.ts";
-import { getKaelChat, readKaelChatProgressSnapshot, sendKaelChatTurn } from "./kael-chat.service.ts";
-import { readWorkerKaelSession, sendWorkerKaelChatTurn, serializeWorkerKaelSession } from "./worker-kael-chat.service.ts";
-import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../sse.ts";
-import type { MobileApiContext } from "../router.ts";
-import type { EdgeAiSecrets } from "../kael/index.ts";
-import type { KaelChatTurnInput, WorkerKaelChatTurnInput } from "../../../_shared/domain.ts";
+import { db } from "../db.ts";
+import { getKaelChat, readKaelChatProgressSnapshot, sendKaelChatTurn } from "./index.ts";
+import { readWorkerKaelSession, sendWorkerKaelChatTurn, serializeWorkerKaelSession } from "../worker-kael-chat.service.ts";
+import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../../sse.ts";
+import type { MobileApiContext } from "../../router.ts";
+import type { EdgeAiSecrets } from "../../kael/index.ts";
+import type { KaelChatTurnInput, WorkerKaelChatTurnInput } from "../../../../_shared/domain.ts";
 
 const KAEL_CHAT_STREAM_POLL_MS = 800;
 const KAEL_CHAT_STREAM_MAX_MS = 15_000;

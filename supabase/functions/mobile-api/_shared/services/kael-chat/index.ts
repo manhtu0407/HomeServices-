@@ -2,34 +2,34 @@
 // session create/turn + progress reads. The turn/estimate/boundary/demanding engine lives in
 // kael-chat-core.ts. The streaming wrappers + confirm bridge stay in services.ts (import one-way).
 
-import { asBoolean, asNumber, asRecord, asString, asStringArray, asKaelChatStatus, asServiceType, nullableString } from "./coercions.ts";
-import { db, dbQuery, type DbClient } from "./db.ts";
-import { compactMetadata, mergeLimitedRefs } from "./_shared.ts";
-import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { checkKaelChatRateLimit } from "../rate-limit.ts";
-import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
-import { buildInitialDiagnosisScopeArtifact, kaelDiagnosisScopeArtifactSchema, scrubSensitiveForLLM, type EdgeAiSecrets, type KaelDiagnosisScopeArtifact } from "../kael/index.ts";
-import { sanitizeUntrustedEvidenceItem, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../kael/untrusted-evidence.ts";
+import { asBoolean, asNumber, asRecord, asString, asStringArray, asKaelChatStatus, asServiceType, nullableString } from "../coercions.ts";
+import { db, dbQuery, type DbClient } from "../db.ts";
+import { compactMetadata, mergeLimitedRefs } from "../_shared.ts";
+import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "../apartment-access.service.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { checkKaelChatRateLimit } from "../../rate-limit.ts";
+import { takeDurableKaelChatRateLimit } from "../../kael/durable-guards.ts";
+import { buildInitialDiagnosisScopeArtifact, kaelDiagnosisScopeArtifactSchema, scrubSensitiveForLLM, type EdgeAiSecrets, type KaelDiagnosisScopeArtifact } from "../../kael/index.ts";
+import { sanitizeUntrustedEvidenceItem, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../../kael/untrusted-evidence.ts";
 import {
   sanitizeForLLM,
   type KaelChatCreateInput,
   type KaelChatEvidenceInput,
   type KaelChatTurnInput,
-} from "../../../_shared/domain.ts";
-import { advanceKaelChatEstimate, assertKaelSessionOwnership, findExistingKaelSessionByClientRequest, insertKaelTurn, maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn, updateKaelSession } from "./kael-chat-core.ts";
-import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./kael-chat-intake-safety.ts";
-import { getKaelChat } from "./kael-chat-read.service.ts";
-import { ensureCustomerCaseConversation } from "./customer-kael-conversation.service.ts";
-import { rejectKaelChatRateLimit } from "./kael-chat-rate-limit.ts";
-import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "./scheduling.ts";
+} from "../../../../_shared/domain.ts";
+import { advanceKaelChatEstimate, assertKaelSessionOwnership, findExistingKaelSessionByClientRequest, insertKaelTurn, maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn, updateKaelSession } from "./core.ts";
+import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./intake-safety.ts";
+import { getKaelChat } from "./read.ts";
+import { ensureCustomerCaseConversation } from "./conversations.ts";
+import { rejectKaelChatRateLimit } from "./rate-limit.ts";
+import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "../scheduling.ts";
 import {
   buildKaelVisionValidationEvidence,
   createKaelChatMediaUpload,
   createSignedVisionUrls,
   revokeKaelChatMedia,
   validateAndConsumeKaelChatEvidenceMediaRefs,
-} from "./kael-chat-media.service.ts";
+} from "./media.ts";
 
 export async function createKaelChat(
   ctx: MobileApiContext,
@@ -762,4 +762,4 @@ export {
   getKaelChat,
   getKaelChatProgress,
   readKaelChatProgressSnapshot,
-} from "./kael-chat-read.service.ts";
+} from "./read.ts";

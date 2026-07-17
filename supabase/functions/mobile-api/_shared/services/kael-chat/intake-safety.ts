@@ -1,12 +1,12 @@
-import type { ServiceType } from "../../../_shared/domain.ts";
+import type { ServiceType } from "../../../../_shared/domain.ts";
 import {
   deterministicSafetyGuidance,
   getKaelPerformanceProfile,
   prependDeterministicSafetyGuidance,
   scanIntakeSafetySignals,
-} from "../kael/index.ts";
-import { isElectricalPlaybookEnabled } from "../kael/playbooks/electrical.ts";
-import type { IntakeEvalObservation } from "../kael/types.ts";
+} from "../../kael/index.ts";
+import { isElectricalPlaybookEnabled } from "../../kael/playbooks/electrical.ts";
+import type { IntakeEvalObservation } from "../../kael/types.ts";
 
 export function persistentKaelSafetySignals(
   message: string,

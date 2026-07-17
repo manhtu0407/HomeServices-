@@ -2,14 +2,14 @@
 // trusted Storage image transforms, and retention cleanup. Raw video originals
 // remain private evidence; only decoded/re-encoded image outputs reach a model.
 
-import type { KaelDiagnosisScopeArtifact } from "../kael/index.ts";
+import type { KaelDiagnosisScopeArtifact } from "../../kael/index.ts";
 import type {
   EdgeKaelChatMediaRevokeInput,
   EdgeKaelChatMediaUploadInput,
-} from "../../../_shared/domain.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { asBoolean, asNumber, nullableString } from "./coercions.ts";
-import { db, dbQuery } from "./db.ts";
+} from "../../../../_shared/domain.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { asBoolean, asNumber, nullableString } from "../coercions.ts";
+import { db, dbQuery } from "../db.ts";
 
 type KaelMediaStorage = {
   storage?: {

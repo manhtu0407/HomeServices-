@@ -2,24 +2,24 @@
 // primitives behind the kael-chat API (kael-chat.service.ts). Split from the API layer to stay under
 // the structure cap. Imported one-way by kael-chat.service.ts (no back-import).
 
-import { asNumber } from "./coercions.ts";
-import { db, type DbClient } from "./db.ts";
-import { KAEL_CHAT_HARD_COST_CAP_USD, asKaelStoredSentiment, estimatePriceSourceFromStageLogs, formatKaelEstimateText, kaelServiceLabelVi, sourceTrustSecretsForRequest } from "./_shared.ts";
-import { buildKaelConversationContext, demandingCustomerSessionMetadata, demandingCustomerTurnMetadata, diagnosisScopeWithEvidenceRequest, diagnosisScopeWithQuestion, getKaelChatTurnCount, loadDiagnosisScopeArtifact, persistDiagnosisScopeArtifact } from "./kael-chat-case-work.ts";
-import { appendKaelSystemTurn, getKaelChatCostUsd, updateKaelSession } from "./kael-chat-session-store.ts";
-import type { KaelChatStatus } from "../../../_shared/contracts.ts";
-import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "./audit.ts";
-import { guardDemandingResponseText } from "./chat.service.ts";
-import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, intakeEvalObservationSchema, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, resolveRequiredSlotCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type IntakeEvalObservation, type PipelineResult } from "../kael/index.ts";
-import { isElectricalPlaybookEnabled } from "../kael/playbooks/electrical.ts";
-import { guardOutput } from "../kael/output-gateway.ts";
-import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
-import { frameUntrustedCustomerEvidenceForModel, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../kael/untrusted-evidence.ts";
-import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
-import type { KaelChatCreateInput, ServiceType } from "../../../_shared/domain.ts";
-import { buildSafetyFirstKaelClarification, persistentKaelSafetySignals, resolveKaelResponseSafetySignals } from "./kael-chat-intake-safety.ts";
-import { maybeApplyKaelBoundaryGuard } from "./kael-chat-boundary.ts";
+import { asNumber } from "../coercions.ts";
+import { db, type DbClient } from "../db.ts";
+import { KAEL_CHAT_HARD_COST_CAP_USD, asKaelStoredSentiment, estimatePriceSourceFromStageLogs, formatKaelEstimateText, kaelServiceLabelVi, sourceTrustSecretsForRequest } from "../_shared.ts";
+import { buildKaelConversationContext, demandingCustomerSessionMetadata, demandingCustomerTurnMetadata, diagnosisScopeWithEvidenceRequest, diagnosisScopeWithQuestion, getKaelChatTurnCount, loadDiagnosisScopeArtifact, persistDiagnosisScopeArtifact } from "./case-work.ts";
+import { appendKaelSystemTurn, getKaelChatCostUsd, updateKaelSession } from "./session-store.ts";
+import type { KaelChatStatus } from "../../../../_shared/contracts.ts";
+import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "../audit.ts";
+import { guardDemandingResponseText } from "../chat.service.ts";
+import { apiFailure, type MobileApiContext } from "../../router.ts";
+import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, intakeEvalObservationSchema, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, resolveRequiredSlotCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type IntakeEvalObservation, type PipelineResult } from "../../kael/index.ts";
+import { isElectricalPlaybookEnabled } from "../../kael/playbooks/electrical.ts";
+import { guardOutput } from "../../kael/output-gateway.ts";
+import { isKaelAiKillSwitchEnabled } from "../../kael/spend-gate.ts";
+import { frameUntrustedCustomerEvidenceForModel, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../../kael/untrusted-evidence.ts";
+import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../../_shared/domain.ts";
+import type { KaelChatCreateInput, ServiceType } from "../../../../_shared/domain.ts";
+import { buildSafetyFirstKaelClarification, persistentKaelSafetySignals, resolveKaelResponseSafetySignals } from "./intake-safety.ts";
+import { maybeApplyKaelBoundaryGuard } from "./boundary.ts";
 export { maybeApplyKaelBoundaryGuard };
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 
@@ -742,4 +742,4 @@ export {
   findExistingKaelSessionByClientRequest,
   insertKaelTurn,
   updateKaelSession,
-} from "./kael-chat-session-store.ts";
+} from "./session-store.ts";

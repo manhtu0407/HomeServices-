@@ -39,8 +39,8 @@ import { decideScopeChange, requestScopeChange } from "./services/scope-change.s
 import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./services/job-incident.service.ts";
 import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/chat.service.ts";
-import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat.service.ts";
-import { answerKaelAssistant } from "./services/customer-assistant.service.ts";
+import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat/index.ts";
+import { answerKaelAssistant } from "./services/kael-chat/assistant.ts";
 import {
   archiveCustomerKaelConversation,
   createCustomerKaelConversation,
@@ -49,9 +49,9 @@ import {
   renameCustomerKaelConversation,
   sendCustomerKaelConversationTurn,
   setCustomerKaelConversationPinned,
-} from "./services/customer-kael-conversation.service.ts";
+} from "./services/kael-chat/conversations.ts";
 import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, renameWorkerKaelChat, sendWorkerKaelChatTurn, setWorkerKaelChatPinned } from "./services/worker-kael-chat.service.ts";
-import { streamKaelChatTurn, streamWorkerKaelChatTurn } from "./services/kael-chat-stream.ts";
+import { streamKaelChatTurn, streamWorkerKaelChatTurn } from "./services/kael-chat/stream.ts";
 import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin-learning.service.ts";
 import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./services/kael-feedback.service.ts";
 import {
@@ -72,7 +72,7 @@ import { confirmWorkerCandidate, getWorkerCandidate, rejectWorkerCandidate } fro
 import { removeCustomerFavoriteWorker, saveCustomerFavoriteWorker } from "./services/customer-favorite-worker.service.ts";
 import { createJob } from "./services/job-create.service.ts";
 import { updateJobStatus } from "./services/job-status.service.ts";
-import { confirmKaelChat } from "./services/kael-chat-confirm.service.ts";
+import { confirmKaelChat } from "./services/kael-chat/confirm.ts";
 import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,

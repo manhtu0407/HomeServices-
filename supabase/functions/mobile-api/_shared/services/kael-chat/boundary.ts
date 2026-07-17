@@ -1,17 +1,17 @@
 // Deterministic customer-chat boundary handling, including safety-first decline copy,
 // sanitized observation metadata, guardrail audit, and terminal progress settlement.
 
-import type { ServiceType } from "../../../_shared/domain.ts";
-import { evaluateMessageBoundary, type BoundaryDecision } from "../kael/boundary-guard.ts";
-import { isIntakeEvalObservationExposureEnabled } from "../kael/intake-runtime.ts";
-import { ELECTRICAL_PLAYBOOK_VERSION, isElectricalPlaybookEnabled } from "../kael/playbooks/electrical.ts";
-import { kaelIntakeDiagnosisPromptVersion } from "../kael/prompts.ts";
-import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
-import { intakeEvalObservationSchema, updateKaelProgress, type IntakeEvalObservation } from "../kael/index.ts";
-import { auditGuardrailTripBestEffort } from "./audit.ts";
-import type { DbClient } from "./db.ts";
-import { appendKaelSystemTurn } from "./kael-chat-session-store.ts";
-import { mergeBoundarySafetyGuidance, persistentKaelSafetySignals } from "./kael-chat-intake-safety.ts";
+import type { ServiceType } from "../../../../_shared/domain.ts";
+import { evaluateMessageBoundary, type BoundaryDecision } from "../../kael/boundary-guard.ts";
+import { isIntakeEvalObservationExposureEnabled } from "../../kael/intake-runtime.ts";
+import { ELECTRICAL_PLAYBOOK_VERSION, isElectricalPlaybookEnabled } from "../../kael/playbooks/electrical.ts";
+import { kaelIntakeDiagnosisPromptVersion } from "../../kael/prompts.ts";
+import { isKaelAiKillSwitchEnabled } from "../../kael/spend-gate.ts";
+import { intakeEvalObservationSchema, updateKaelProgress, type IntakeEvalObservation } from "../../kael/index.ts";
+import { auditGuardrailTripBestEffort } from "../audit.ts";
+import type { DbClient } from "../db.ts";
+import { appendKaelSystemTurn } from "./session-store.ts";
+import { mergeBoundarySafetyGuidance, persistentKaelSafetySignals } from "./intake-safety.ts";
 
 function intakeObservationMetadata(observation: IntakeEvalObservation | undefined) {
   if (!observation) return {};
