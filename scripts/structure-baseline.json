@@ -7,8 +7,7 @@
     "apps/mobile/components/ui/kael-primitives.tsx": 1101,
     "apps/mobile/components/worker/worker-v5-flow.tsx": 7184,
     "apps/mobile/lib/frontend-workflow-provider.tsx": 1303,
-    "supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts": 948,
-    "supabase/functions/mobile-api/_shared/router.ts": 1174
+    "supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts": 948
   },
   "grandfatheredDupTypes": {
     "TransitionResult": [

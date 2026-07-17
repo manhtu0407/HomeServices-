@@ -2221,7 +2221,7 @@ describe('frontend-only workflow safety audit', () => {
     expect(frontendWorkflowProvider).toContain('job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress')
     expect(frontendWorkflowProvider).toContain('addressAccess,')
     expect(frontendWorkflowProvider).not.toContain('final_price?: number')
-    const workerStatusUpdateSchema = edgeRouter.slice(edgeRouter.indexOf('function workerStatusUpdateSchema'), edgeRouter.indexOf('function isPositiveInteger'))
+    const workerStatusUpdateSchema = edgeRouter.slice(edgeRouter.indexOf('function workerStatusUpdateSchema'), edgeRouter.indexOf('function parseWorkerAccessCheckIn'))
     expect(workerStatusUpdateSchema).toContain('if (record.final_price !== undefined)')
     expect(workerStatusUpdateSchema).toContain('result.completion_notes = record.completion_notes.slice(0, 2000)')
     expect(workerStatusUpdateSchema).toContain('result.completion_photo_urls = urls')
