@@ -30,6 +30,8 @@ The docs are a supporting stack in authority order. Read only what the task need
 
 Use the lightweight lifecycle **Define → Plan → Build → Verify → Review → Ship**. Canonical step definitions: `governance/critical.md` §0 (Agent-Skills Lifecycle) — single-sourced there.
 
+Run `kael-subagent-orchestration` for every task or mission before decomposition. It requires an explicit decision to stay local or delegate; it does not require spawning subagents. When delegation is justified, use the smallest set of independent, non-overlapping slices and keep integration, final review, and the user-facing response with the main agent.
+
 When alignment is unclear, ask one focused question at a time with a stated hypothesis and confidence level until Tu explicitly confirms. For non-trivial decisions, use a bounded doubt cycle: `CLAIM -> EXTRACT -> DOUBT -> RECONCILE -> STOP`.
 
 ## Execution Gates (parity with `governance/critical.md`)
@@ -40,7 +42,7 @@ Before editing code:
 
 - Run `kael-preflight` and state the pre-edit status (`governance/critical.md` §5).
 - Classify the task (`governance/critical.md` §2), then load only the matching protocol file from `governance/protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `governance/critical.md`.
-- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, plus `karpathy-guidelines`. `kael-core-hygiene` is always on for any code change (comments/headers/notes) and is enforced by `pnpm lint:comments`, the comment-hygiene Stop hook, and CI.
+- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-subagent-orchestration`, `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, plus `karpathy-guidelines`. `kael-core-hygiene` is always on for any code change (comments/headers/notes) and is enforced by `pnpm lint:comments`, the comment-hygiene Stop hook, and CI.
 
 Core quality gates (`governance/critical.md` §3) — do not bypass:
 

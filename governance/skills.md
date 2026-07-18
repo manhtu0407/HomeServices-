@@ -20,6 +20,7 @@ Use these control loops when needed:
 - Ownership loop for code enhancement: open `docs/architecture/code-ownership-map.md`, map workflow step to owner files, preserve layer boundaries, then choose the narrowest verification gate.
 - Doubt loop for non-trivial decisions: `CLAIM -> EXTRACT -> DOUBT -> RECONCILE -> STOP`.
 - Verification loop for every change: define evidence before editing, run the relevant check, read the output, and report only what actually happened.
+- Delegation gate for every task or mission: apply `kael-subagent-orchestration` before decomposition, make an explicit `local` or `delegated` decision, and dispatch only bounded, independent work that has clear net value. The procedure is canonical in `governance/protocols/subagent-orchestration.md`; this rule does not require spawning subagents.
 
 Anti-rationalization rule: do not skip a step because the task "seems simple" if skipping it would make the result depend on hidden assumptions.
 
