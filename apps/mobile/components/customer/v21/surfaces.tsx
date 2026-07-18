@@ -6,7 +6,6 @@ import {
   useWindowDimensions,
   type ImageSourcePropType,
 } from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
 import Svg, { Defs, LinearGradient, Rect } from 'react-native-svg'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -27,10 +26,8 @@ import { localizedProblemOptions, setAppLanguage, useAppLanguage } from '@/lib/a
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
-import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { CustomerProfileInsightsResponse, CustomerServiceHistoryItem } from '@/lib/api-types'
 import { clearPendingKaelChatDraft, setPendingKaelChatDraft } from '../kael-chat/pending-intake'
-import { MediaDraftPreviewTray } from '../kael-chat/media-draft-preview-tray'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
 import {
   CaseWideMintAura,
@@ -137,7 +134,6 @@ import {
   customerV21InvisibleTextInputScrollbar,
   customerV21WebTextInputNoOutline,
 } from './platform-styles'
-import { mergeMediaDrafts } from './customer-media-draft-helpers'
 
 
 const customerBookingServiceIdForHistory: Record<ServiceType, CustomerServiceId> = {
@@ -354,8 +350,6 @@ function CustomerBookingEntrySurfaceRoute() {
   const [customScheduleDateInput, setCustomScheduleDateInput] = useState('')
   const [selectedScheduleTime, setSelectedScheduleTime] = useState<string | null>(directScheduleTime)
   const [customScheduleTimeInput, setCustomScheduleTimeInput] = useState('')
-  const [photoDrafts, setPhotoDrafts] = useState<LocalMediaUploadDraft[]>([])
-  const mediaCount = photoDrafts.length
   const [error, setError] = useState<string | null>(null)
   const scheduleRuntimeNow = useBookingScheduleRuntimeNow()
   useEffect(() => {
@@ -437,32 +431,6 @@ function CustomerBookingEntrySurfaceRoute() {
     setCustomScheduleDateInput('')
     setSelectedScheduleTime(null)
     setCustomScheduleTimeInput('')
-    setPhotoDrafts([])
-    setError(null)
-  }
-
-  const pickBasicIntakePhotos = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      setError(language === 'vi' ? 'Cho phép truy cập thư viện để thêm ảnh hiện trạng.' : 'Allow photo-library access to add current-condition photos.')
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: true,
-      mediaTypes: ['images'],
-      preferredAssetRepresentationMode: 'compatible' as ImagePicker.UIImagePickerPreferredAssetRepresentationMode,
-      quality: 0.82,
-      selectionLimit: Math.max(1, 5 - photoDrafts.length),
-    })
-    if (result.canceled) return
-    const drafts: LocalMediaUploadDraft[] = result.assets.map((asset) => ({
-      fileName: asset.fileName ?? undefined,
-      fileSizeBytes: asset.fileSize,
-      mimeType: asset.mimeType ?? undefined,
-      type: 'image',
-      uri: asset.uri,
-    }))
-    setPhotoDrafts((current) => mergeMediaDrafts(current, drafts, 5))
     setError(null)
   }
 
@@ -536,9 +504,7 @@ function CustomerBookingEntrySurfaceRoute() {
         description: draftDescription,
         districtLabel: normalizedDistrict,
         locale: language,
-        mediaCount,
         message,
-        photoDrafts: photoDrafts.length > 0 ? photoDrafts : undefined,
         problemChips: draftProblemChips,
         profileId,
         scheduleMode: 'scheduled',
@@ -586,16 +552,6 @@ function CustomerBookingEntrySurfaceRoute() {
         invisibleTextInputScrollbarStyle={customerV21InvisibleTextInputScrollbar}
         isMediaScreen={isMediaScreen}
         language={language}
-        mediaCount={mediaCount}
-        mediaDraftPreviewNode={(
-          <MediaDraftPreviewTray
-            busy={false}
-            drafts={photoDrafts}
-            language={language}
-            onRemove={(index) => setPhotoDrafts((current) => current.filter((_, currentIndex) => currentIndex !== index))}
-            tokens={tokens}
-          />
-        )}
         mediaPanelNode={null}
         onAddressChange={updateAddress}
         onAddressFocus={() => setAddressLookupOpen(true)}
@@ -604,12 +560,10 @@ function CustomerBookingEntrySurfaceRoute() {
         onCustomScheduleDateChange={updateCustomScheduleDate}
         onCustomScheduleTimeChange={updateCustomScheduleTime}
         onDescriptionChange={setDescription}
-        onMediaAdd={() => void pickBasicIntakePhotos()}
         onProblemToggle={toggleProblem}
         onResetSelectedService={() => {
           setSelectedService(null)
           setSelectedProblems([])
-          setPhotoDrafts([])
           router.replace('/(customer)/booking' as never)
         }}
         onScheduleDateSelect={(value) => {
@@ -625,7 +579,6 @@ function CustomerBookingEntrySurfaceRoute() {
         onServiceSelect={(service) => {
           setSelectedService(service)
           setSelectedProblems([])
-          setPhotoDrafts([])
         }}
         onSubmit={submitDraft}
         problemOptions={problemOptions}

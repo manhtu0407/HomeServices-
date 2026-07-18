@@ -14,5 +14,6 @@ it('keeps the booking route on Basic Intake instead of wiring the static perform
   expect(bookingView).not.toContain('usesPerformanceIntake')
   expect(bookingView).not.toContain('PerformanceIntakePanel')
   expect(bookingView).toContain('testID="customer-v21-booking-description"')
-  expect(bookingView).toContain('testID="customer-v21-booking-add-media"')
+  expect(bookingView).not.toContain('customer-v21-booking-add-media')
+  expect(bookingView).not.toContain('customer-v21-booking-media-count')
 })
