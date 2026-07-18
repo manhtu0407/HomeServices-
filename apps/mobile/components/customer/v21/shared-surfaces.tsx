@@ -34,6 +34,7 @@ export function useCustomerV21SurfaceTheme() {
 }
 
 type CustomerV21AssetTile = ComponentType<{
+  bare?: boolean
   image: CustomerV21Visual
   label: string
   size?: number
@@ -43,6 +44,7 @@ type CustomerV21AssetTile = ComponentType<{
 }>
 
 export function AssetTile({
+  bare = false,
   image,
   label,
   size = 52,
@@ -50,6 +52,7 @@ export function AssetTile({
   style,
   testID,
 }: {
+  bare?: boolean
   image: CustomerV21Visual
   label: string
   size?: number
@@ -71,7 +74,15 @@ export function AssetTile({
   }
 
   return (
-    <View accessibilityLabel={label} style={[styles.assetTile, { backgroundColor: tokens.ghost, borderColor: tokens.border }, style]} testID={testID}>
+    <View
+      accessibilityLabel={label}
+      style={[
+        styles.assetTile,
+        bare ? styles.bareAssetTile : { backgroundColor: tokens.ghost, borderColor: tokens.border },
+        style,
+      ]}
+      testID={testID}
+    >
       <CustomerV21AssetVisual image={image} reduceMotion={reduceMotion} size={size} />
     </View>
   )
@@ -425,7 +436,9 @@ export function V21TopBar({
 export function EmptyState({
   action,
   assetTile: AssetTile,
+  bareAsset = false,
   body,
+  formulaMintAura = false,
   image,
   mintAura = false,
   testID,
@@ -433,13 +446,24 @@ export function EmptyState({
 }: {
   action?: ReactNode
   assetTile: CustomerV21AssetTile
+  bareAsset?: boolean
   body: string
+  formulaMintAura?: boolean
   image: CustomerV21Visual
   mintAura?: boolean
   testID?: string
   title: string
 }) {
   const { reduceTransparency, tokens } = useCustomerV21SurfaceTheme()
+  const formulaMintAuraScope = `EmptyState${(testID ?? title).replace(/[^A-Za-z0-9]/g, '') || 'Card'}`
+  const standardContent = (
+    <>
+      <AssetTile bare={bareAsset} image={image} label={title} size={64} testID={testID ? `${testID}-asset` : undefined} />
+      <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
+      <Text style={[styles.bodyText, styles.centerText, { color: tokens.muted }]}>{body}</Text>
+      {action}
+    </>
+  )
 
   if (mintAura) {
     return (
@@ -468,11 +492,14 @@ export function EmptyState({
   }
 
   return (
-    <V21Card style={styles.emptyState} testID={testID}>
-      <AssetTile image={image} label={title} size={64} />
-      <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
-      <Text style={[styles.bodyText, styles.centerText, { color: tokens.muted }]}>{body}</Text>
-      {action}
+    <V21Card style={[styles.emptyState, formulaMintAura ? styles.emptyStateFormulaMintAuraCard : null]} testID={testID}>
+      {formulaMintAura ? (
+        <View pointerEvents="none" style={styles.emptyStateFormulaMintAura} testID={`${testID}-formula-mint-aura`}>
+          <CaseWideMintAura intensity="strong" scope={`${formulaMintAuraScope}Wide`} testID={`${testID}-wide-mint-aura`} />
+          <ZipMintAura scope={`${formulaMintAuraScope}Fine`} testID={`${testID}-mint-aura`} />
+        </View>
+      ) : null}
+      {formulaMintAura ? <View style={styles.emptyStateFormulaMintAuraContent}>{standardContent}</View> : standardContent}
     </V21Card>
   )
 }

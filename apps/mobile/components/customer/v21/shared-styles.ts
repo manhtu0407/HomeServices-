@@ -43,6 +43,21 @@ export const customerV21SharedStyles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
   },
+  emptyStateFormulaMintAura: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.94,
+    zIndex: 0,
+  },
+  emptyStateFormulaMintAuraCard: {
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  emptyStateFormulaMintAuraContent: {
+    alignItems: 'center',
+    gap: 14,
+    position: 'relative',
+    zIndex: 1,
+  },
   emptyStateContent: {
     alignItems: 'center',
     gap: 12,
@@ -79,6 +94,9 @@ export const customerV21SharedStyles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 64,
     minWidth: 64,
+  },
+  bareAssetTile: {
+    borderWidth: 0,
   },
   topControlIcon: {
     flexShrink: 0,

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { Alert } from 'react-native'
+import { Alert, StyleSheet } from 'react-native'
 
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockWorkflowValue: any
@@ -188,6 +188,24 @@ describe('CustomerHistorySurface service history', () => {
     expect(screen.getByTestId('customer-v21-history-error-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-error-mint-aura')).toBeOnTheScreen()
     expect(screen.queryByText('Vui lòng thử lại khi kết nối ổn định hơn.')).toBeNull()
+  })
+
+  it('uses the Formula Mint Aura with an unframed activity asset when history is empty', async () => {
+    mockListMyServiceHistory.mockResolvedValue({
+      success: true,
+      data: { service_history: [] },
+    })
+    render(<CustomerHistorySurface />)
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-empty')).toBeOnTheScreen())
+
+    expect(screen.getByTestId('customer-v21-history-empty-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-empty-wide-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-history-empty-mint-aura')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-empty-asset').props.style)).toMatchObject({
+      borderWidth: 0,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-empty-asset').props.style).backgroundColor).toBeUndefined()
   })
 
   it('saves a worker and updates every completed deal from that worker', async () => {

@@ -121,8 +121,6 @@ export function CustomerBookingEntryView({
   invisibleTextInputScrollbarStyle,
   isMediaScreen,
   language,
-  mediaCount,
-  mediaDraftPreviewNode,
   mediaPanelNode,
   onAddressChange,
   onAddressFocus,
@@ -131,7 +129,6 @@ export function CustomerBookingEntryView({
   onCustomScheduleDateChange,
   onCustomScheduleTimeChange,
   onDescriptionChange,
-  onMediaAdd,
   onProblemToggle,
   onResetSelectedService,
   onScheduleDateSelect,
@@ -171,8 +168,6 @@ export function CustomerBookingEntryView({
   invisibleTextInputScrollbarStyle: StyleProp<TextStyle>
   isMediaScreen: boolean
   language: AppLanguage
-  mediaCount: number
-  mediaDraftPreviewNode: ReactNode
   mediaPanelNode: ReactNode
   onAddressChange: (value: string) => void
   onAddressFocus: () => void
@@ -181,7 +176,6 @@ export function CustomerBookingEntryView({
   onCustomScheduleDateChange: (value: string) => void
   onCustomScheduleTimeChange: (value: string) => void
   onDescriptionChange: (value: string) => void
-  onMediaAdd: () => void
   onProblemToggle: (problem: string) => void
   onResetSelectedService: () => void
   onScheduleDateSelect: (value: string) => void
@@ -558,25 +552,6 @@ export function CustomerBookingEntryView({
                     />
                   ))}
                 </View>
-              </View>
-            ) : null}
-            {selectedService ? (
-              <View style={bookingStyles.bookingField}>
-                <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>
-                  {language === 'vi' ? 'Ảnh hiện trạng (không bắt buộc)' : 'Current photos (optional)'}
-                </Text>
-                <View style={rootStyles.chipWrap}>
-                  <KaelChip
-                    label={language === 'vi' ? 'Thêm ảnh' : 'Add photos'}
-                    onPress={onMediaAdd}
-                    testID="customer-v21-booking-add-media"
-                    variant="unselected"
-                  />
-                  <Text style={[rootStyles.bodyText, { color: tokens.muted }]} testID="customer-v21-booking-media-count">
-                    {mediaCount}/5
-                  </Text>
-                </View>
-                {mediaDraftPreviewNode}
               </View>
             ) : null}
           </V21Card>

@@ -11,8 +11,6 @@ const mockSetPendingKaelChatDraft = jest.fn()
 const mockPlacesAutocomplete = jest.fn()
 const mockRequestRecordingPermissionsAsync = jest.fn()
 const mockSetAudioModeAsync = jest.fn()
-const mockRequestMediaLibraryPermissionsAsync = jest.fn()
-const mockLaunchImageLibraryAsync = jest.fn()
 const mockAudioRecorder = {
   prepareToRecordAsync: jest.fn(),
   record: jest.fn(),
@@ -36,11 +34,6 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: (options: unknown) => mockSetAudioModeAsync(options),
   useAudioRecorder: () => mockAudioRecorder,
   useAudioRecorderState: () => mockAudioRecorderState,
-}))
-
-jest.mock('expo-image-picker', () => ({
-  launchImageLibraryAsync: (...args: unknown[]) => mockLaunchImageLibraryAsync(...args),
-  requestMediaLibraryPermissionsAsync: () => mockRequestMediaLibraryPermissionsAsync(),
 }))
 
 jest.mock('expo-router', () => ({
@@ -156,10 +149,6 @@ beforeEach(() => {
   mockRequestRecordingPermissionsAsync.mockResolvedValue({ granted: true })
   mockSetAudioModeAsync.mockReset()
   mockSetAudioModeAsync.mockResolvedValue(undefined)
-  mockRequestMediaLibraryPermissionsAsync.mockReset()
-  mockRequestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
-  mockLaunchImageLibraryAsync.mockReset()
-  mockLaunchImageLibraryAsync.mockResolvedValue({ canceled: true })
   buildWorkflow()
 })
 
@@ -351,7 +340,8 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       expect(screen.getByTestId('customer-v21-booking-description')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-booking-schedule-panel')).toBeOnTheScreen()
       expect(screen.getByTestId(`customer-v21-problem-${firstProblemChip}`)).toBeOnTheScreen()
-      expect(screen.getByTestId('customer-v21-booking-add-media')).toBeOnTheScreen()
+      expect(screen.queryByTestId('customer-v21-booking-add-media')).toBeNull()
+      expect(screen.queryByTestId('customer-v21-booking-media-count')).toBeNull()
       expect(screen.queryByTestId('customer-v21-performance-intake')).toBeNull()
       expect(screen.queryByTestId('customer-v21-performance-scope-card')).toBeNull()
       expect(screen.queryByTestId('customer-v21-performance-question-hvac_goal')).toBeNull()
@@ -381,41 +371,6 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
     },
   )
-
-  it('keeps optional photo evidence with the Basic Intake without building a local scope card', async () => {
-    mockRouteParams = { service: 'handyman_minor_installation' }
-    mockLaunchImageLibraryAsync.mockResolvedValueOnce({
-      canceled: false,
-      assets: [{ fileName: 'wall.jpg', fileSize: 2048, mimeType: 'image/jpeg', uri: 'file://wall.jpg' }],
-    })
-    render(<CustomerBookingEntrySurface />)
-
-    fireEvent.press(screen.getByTestId('customer-v21-booking-add-media'))
-
-    await waitFor(() => {
-      expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({
-        allowsMultipleSelection: true,
-        mediaTypes: ['images'],
-        selectionLimit: 5,
-      }))
-      expect(screen.getByTestId('customer-v21-booking-media-count')).toHaveTextContent('1/5')
-    })
-    expect(screen.queryByTestId('customer-v21-performance-scope-card')).toBeNull()
-
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
-    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Can lap ke nho trong phong khach')
-    selectTomorrowQuickSchedule()
-    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
-
-    await waitFor(() => {
-      expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith('customer_test_1', expect.objectContaining({
-        mediaCount: 1,
-        photoDrafts: [expect.objectContaining({ fileName: 'wall.jpg', type: 'image', uri: 'file://wall.jpg' })],
-        profileId: 'task_scope',
-        serviceType: 'handyman',
-      }))
-    })
-  })
 
   it('requires a complete desired time before handing Basic Intake to Kael Case Work', async () => {
     mockRouteParams = { service: 'handyman_minor_installation' }
@@ -720,11 +675,12 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       clientRequestId: '11111111-1111-4111-8111-111111111111',
       description: typedDescription,
       locale: 'vi',
-      mediaCount: 0,
       problemChips: ['Ổ cắm/công tắc hỏng'],
       serviceType: 'electrical',
       source: 'booking',
     }))
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][1]).not.toHaveProperty('mediaCount')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][1]).not.toHaveProperty('photoDrafts')
     expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain('Dịch vụ: Sửa điện')
     expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain('Khu vực: Tòa A, Quận 7')
     expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain('Thời gian:')
