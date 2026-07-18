@@ -30,6 +30,8 @@ Before editing files, the agent MUST:
 12. Select the smallest sufficient protocol set.
 13. State the selected protocols before editing.
 
+For every task or mission, before task decomposition, the agent MUST apply `kael-subagent-orchestration` and record a `local` or `delegated` decision. This is a developer-agent decision gate, not authorization for product/runtime multi-agent orchestration.
+
 The agent MUST distinguish:
 
 - `Asked task`: what Tu literally asked for.
@@ -82,6 +84,10 @@ For small tasks, protocol outputs MUST be short. A simple preflight or review sh
 
 When information is missing, ask focused questions until the task is clear. For alignment-sensitive work, ask one question at a time with a stated hypothesis and confidence level, then wait for Tu's reaction. For simple factual gaps, ask 1-3 concise questions and provide a recommended answer when possible.
 
+### Always-On Delegation Gate: `kael-subagent-orchestration`
+
+Apply this protocol before decomposing every task or mission. It requires a deliberate `local` or `delegated` decision; it does not require spawning subagents. Load `protocols/subagent-orchestration.md` for the canonical decision, scale, ownership, stop-condition, and integration rules.
+
 ### Agent-Skills Lifecycle
 
 Use the distilled lifecycle from `addyosmani/agent-skills` without copying its repo structure:
@@ -106,6 +112,7 @@ Asked task:
 Real goal:
 Task class:
 Selected protocols:
+Delegation decision:
 Risk notes:
 Verification plan:
 ```
@@ -118,6 +125,7 @@ Use this index when deciding what to run.
 
 | If the task is... | Required protocols |
 |---|---|
+| Every task or mission | `kael-subagent-orchestration`, then the smallest sufficient task-specific protocols |
 | Any coding change | `kael-preflight`, relevant primary protocol, `kael-review` |
 | Bug, failing test, build failure, runtime failure | `kael-preflight`, `kael-diagnose`, `kael-tdd`, `kael-review` |
 | Feature work | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd`, `kael-review` |
@@ -144,6 +152,7 @@ critical.md keeps `kael-preflight` (§5) and `kael-review` (§8) inline because 
 
 | Protocol(s) | File |
 |---|---|
+| `kael-subagent-orchestration` | `protocols/subagent-orchestration.md` |
 | `kael-diagnose` | `protocols/diagnose.md` |
 | `kael-tdd` | `protocols/tdd.md` |
 | `kael-architecture-deepening`, `kael-code-enhancement`, `kael-zoom-out` | `protocols/architecture.md` |
@@ -300,9 +309,10 @@ Use for every coding task before editing files.
 5. Check "do not build now" risk.
 6. Identify applicable rules from `RULES.md`.
 7. Identify security, PII, AI, Supabase, and test impact.
-8. Select protocols.
-9. State verification plan.
-10. Only then edit files.
+8. Apply `kael-subagent-orchestration` and record the `local` or `delegated` decision.
+9. Select protocols.
+10. State verification plan.
+11. Only then edit files.
 
 ### Output Format
 
@@ -313,6 +323,7 @@ Scope:
 Survival:
 Applicable rules:
 Selected protocols:
+Delegation decision:
 Security/PII notes:
 Verification plan:
 ```
