@@ -151,6 +151,8 @@ Rules:
 - One concept = one canonical home. Import it; never re-declare a type, contract, or constant across files or runtimes. Shared logic lives in `packages/shared`; Edge and mobile import it.
 - Group by domain into cohesive modules. Never append a new concern to a catch-all god-file.
 - Size is a guardrail, not a target. A file past ~600-800 lines, or one mixing unrelated domains, is a signal to split by domain first — but right-size to the domain (some modules are larger, some smaller). Do NOT fragment into many tiny uniform files; that recreates the mess. Success = understandable at a glance, not lines-per-file. (See `docs/architecture/code-ownership-map.md` §0.5 and the C1 target map.)
+- A folder must earn its place as one chain. It is justified by ≥2 tightly-related files (they call each other, share state, or serve one workflow domain) or by a single file large enough (~400+ lines) to stand as its own domain. Do not create a folder for one small file, and do not split a file just to populate a folder — the folder boundary, not file count, is what is being right-sized.
+- Position in a folder encodes role, replacing ad-hoc filename suffixes: `<domain>/index.ts` is the chain's public face — the only file an assembling factory imports; `policy.ts` (or `*-policy.ts`) is pure decision logic with no I/O — no `db`, no `fetch`, testable without mocks; `<domain>/<name>.ts` is internal to that chain; `_runtime/*` is shared infrastructure any domain may import. Drop the redundant `.service.ts` suffix — the folder already carries that meaning.
 - No duplicated logic across runtimes (Edge vs Next.js vs mobile). Share one source via `packages/shared`.
 
 Red flags — stop and find the home first:
@@ -167,7 +169,7 @@ Red flags — stop and find the home first:
 | "Splitting now is over-engineering." | Splitting by domain is right-sizing, not abstraction. | Split by cohesion; do not invent layers. |
 | "Edge cannot import shared, so copy it." | Copying spawned a 628-line `domain.ts` clone. | Resolve the import (C2/OQ5); share, do not clone. |
 
-Enforcement: `pnpm lint:structure` (`scripts/lint-structure.mjs`) is a CI ratchet that fails on a NEW oversized file, a grandfathered god-file that grows, or a NEW cross-file duplicate exported type. Today's god-files and duplicate-type groups are grandfathered in `scripts/structure-baseline.json`; the reorg removes entries as it splits files and collapses contracts (regenerate intentionally with `node scripts/lint-structure.mjs --init`).
+Enforcement: `pnpm lint:structure` (`scripts/lint-structure.mjs`) is a CI ratchet that fails on a NEW oversized file, a grandfathered god-file that grows, a NEW cross-file duplicate exported type, or a flat source file at a reorg root — every module under `services/` and `kael/` must live in a domain folder, and only each root's `rootAllowlist` (`scripts/reorg-manifest.json`) may sit flat. Today's god-files and duplicate-type groups are grandfathered in `scripts/structure-baseline.json`; the reorg removes entries as it splits files and collapses contracts (regenerate intentionally with `node scripts/lint-structure.mjs --init`).
 
 ## Anti-Patterns To Avoid
 

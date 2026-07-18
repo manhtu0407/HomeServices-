@@ -1,6 +1,8 @@
-// Structure ratchet (Core Skill 6 / governance/skills.md). Two checks on source .ts/.tsx:
+// Structure ratchet (Core Skill 6 / governance/skills.md). Checks on source .ts/.tsx:
 //   1. file-size cap — no NEW file over MAX_LINES, and no grandfathered god-file may grow.
 //   2. duplicate exported type/interface — one concept = one home; no NEW cross-file re-declaration.
+//   3. flat-dir invariants I1/I2 — every module under a reorg root lives in a domain folder;
+//      only each root's rootAllowlist may sit flat. Makes the §44 reorg permanent.
 // Today's god-files and contract dups are grandfathered in scripts/structure-baseline.json
 // (regenerate with `node scripts/lint-structure.mjs --init`); the reorg removes entries as it
 // splits files / collapses contracts. Run via `pnpm lint:structure`.
@@ -112,6 +114,28 @@ for (const f of files) {
     ) {
       problems.push(`runtime boundary: ${r} imports apps/api ("${spec}") — RN/Edge must not depend on apps/api (Edge is the canonical Kael brain, C3)`)
       break
+    }
+  }
+}
+
+// Flat-dir invariants I1/I2 (§44.4 D7): every module under a reorg root belongs in a domain
+// folder. Only the files in each root's rootAllowlist may sit directly at the root, so the
+// B2/B3 split cannot silently re-form into a god-directory — a new flat file fails CI here.
+// Reuses scripts/reorg-manifest.json so the allowlist has a single source, never a hardcoded
+// copy that could drift from the manifest.
+const manifest = readJson('scripts/reorg-manifest.json')
+for (const [name, spec] of Object.entries(manifest.roots ?? {})) {
+  if (!spec.dir || !Array.isArray(spec.rootAllowlist)) continue
+  const allow = new Set(spec.rootAllowlist)
+  for (const f of files) {
+    const r = rel(f)
+    if (!r.startsWith(`${spec.dir}/`)) continue
+    const rest = r.slice(spec.dir.length + 1)
+    if (rest.includes('/')) continue // inside a domain folder — allowed
+    if (!allow.has(rest)) {
+      problems.push(
+        `flat file at ${name}/ root: ${r} — every module belongs in a domain folder (invariant I1/I2); only [${[...allow].join(', ')}] may sit at the ${name}/ root`,
+      )
     }
   }
 }
