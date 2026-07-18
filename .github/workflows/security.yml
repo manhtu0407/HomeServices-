@@ -76,3 +76,5 @@ jobs:
         run: node scripts/lint-structure.mjs
       - name: Reorg drift check (Core Skill 6)
         run: node scripts/check-reorg-drift.mjs
+      - name: Domain map drift check (§44.4 D3)
+        run: pnpm --filter @nestscout/api exec vitest run backend-domain-map-drift
