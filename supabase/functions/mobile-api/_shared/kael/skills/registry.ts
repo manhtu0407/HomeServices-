@@ -1,5 +1,10 @@
 import { z } from "zod";
 import type { ComplexityLevel, ServiceType } from "../../../../_shared/domain.ts";
+import {
+  EDGE_CONFIDENCE_THRESHOLD,
+  EDGE_MIN_EVIDENCE,
+  ROLLING_WINDOW_DAYS,
+} from "../learning-constants.ts";
 import { readBooleanEnvFlag } from "../utils.ts";
 import { buildLS1MarketMemoryCandidate } from "./LS1-market-memory.ts";
 import { buildLS2CaseReviewCandidate } from "./LS2-case-review.ts";
@@ -171,9 +176,9 @@ const PERFORMANCE_METRICS = [
 
 function evidenceGate(): LearningEvidenceGateConfig {
   return {
-    min_evidence_count: 5,
-    confidence_threshold: 0.6,
-    recency_window_days: 90,
+    min_evidence_count: EDGE_MIN_EVIDENCE,
+    confidence_threshold: EDGE_CONFIDENCE_THRESHOLD,
+    recency_window_days: ROLLING_WINDOW_DAYS,
     require_completed_transactions: true,
   };
 }

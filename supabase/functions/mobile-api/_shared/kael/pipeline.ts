@@ -563,6 +563,23 @@ export async function runKaelPipeline(
   );
   const effectiveComplexity = learnedComplexity?.newComplexity ??
     analysis.complexity_hint;
+  // Without this application log the rule never accumulates monitor samples
+  // and auto-rollback can never trigger for analysis rules.
+  if (learnedComplexity) {
+    learningApplications.push({
+      ruleId: learnedComplexity.ruleId,
+      ruleVersion: learnedComplexity.ruleVersion,
+      skillId: "LS2",
+      appliedTarget: "analysis_prompt",
+      safeMetadata: {
+        service_type: validServiceType,
+        problem_slug: problemSlug,
+        district,
+        from_complexity: learnedComplexity.fromComplexity,
+        to_complexity: learnedComplexity.newComplexity,
+      },
+    });
+  }
 
   const baselineStage = parallelRun.results.find((stage) =>
     stage.label === "baseline"

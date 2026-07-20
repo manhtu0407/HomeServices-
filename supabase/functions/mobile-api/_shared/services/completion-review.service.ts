@@ -10,6 +10,7 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import { requireJobAccess } from "../access.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
 import { recordLearningReviewOutcome } from "../kael/index.ts";
+import { runLearningHook } from "../kael/learning-hook.ts";
 import type { JobStatus } from "../../../_shared/domain.ts";
 
 type NormalTransactionMemoryInput = {
@@ -207,6 +208,14 @@ export async function submitReview(ctx: MobileApiContext, jobId: string, input: 
     review_tags: input.tags ?? [],
     scope_change_requested: false,
     reviewed_at: new Date().toISOString(),
+  });
+  // Deterministic observation + evidence-gated promotion. Failures never
+  // block the review response.
+  await runLearningHook(client, jobId).catch((error) => {
+    console.warn("mobile-api learning hook failed", {
+      jobId,
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
   });
   await recordNormalTransactionMemory(client, {
     jobId,
