@@ -47,6 +47,18 @@ describe('learning gate constants: one source across Edge, apps/api, and SQL', (
     )
   })
 
+  it('observation RPC windows its aggregates on the same rolling window', () => {
+    const migration = readFileSync(
+      join(MIGRATIONS_DIR, '20260721100000_learning_observation_rolling_window.sql'),
+      'utf8',
+    )
+    const windowClause =
+      `receipt.reviewed_at >= p_reviewed_at - interval '${EDGE_ROLLING_WINDOW_DAYS} days'`
+    // One clause per observation CTE: price priors, analysis-rule aggregates, and the
+    // separate tag-frequency pass. Miss one and that leg silently keeps every receipt.
+    expect(migration.split(windowClause)).toHaveLength(4)
+  })
+
   it('edge skill registry consumes the shared constants, not literals', () => {
     const registry = readFileSync(
       join(
