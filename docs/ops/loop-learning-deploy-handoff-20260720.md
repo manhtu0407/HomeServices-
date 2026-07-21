@@ -1,6 +1,12 @@
 # Loop Learning Deploy Handoff — 2026-07-20
 
-Deploy runbook for the deterministic learning-loop fix (branch `worktree-loop-learning-production-fix`, base `e275530eb` = origin/main). Executor: Tu. Every step that mutates staging/production is Tu's call; nothing here auto-runs.
+Deploy runbook for the deterministic learning-loop fix (branch `worktree-loop-learning-production-fix`, base `e275530eb` = origin/main). Executor: Tu. Every step that mutates staging/production is Tu's call.
+
+**One thing does run on a schedule once deployed.** Migration `20260721105000` installs a daily `kael-learning-monitor` pg_cron job (02:00 UTC / 09:00 ICT) that posts to the `kael-learning-monitor` Edge Function. It stays uninstalled until both Vault secrets exist (`project_url`, `kael_learning_monitor_secret`), so applying the migration alone changes nothing.
+
+**Before provisioning those secrets, set `KAEL_LEARNING_AUTO_ROLLBACK=false`.** That flag defaults to *true*: with it unset, the first scheduled run is allowed to roll back a rule on its own. With it false the run is observe-only and returns `loop_health` (overdue manual reviews, failed queue rows, failed batches). Turn rollback on only after real transaction data has accumulated and the health output has looked sane for a couple of weeks.
+
+To stop it: `select cron.unschedule('kael-learning-monitor');` or remove the Vault secret.
 
 ## What ships
 
