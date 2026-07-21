@@ -14,9 +14,25 @@ No new migration. No new secret value — one new flag name.
 |---|---|---|
 | Migrations | through `20260719035350` — all 5 learning RPCs present | **stops at `20260707051654` — 46 migrations behind; only `rollback_learning_rule` exists** |
 | `mobile-api` version | v153 | v30 (deployed ~2026-06-05) |
-| Verdict | **ready for this deploy** | **NOT deployable for this change** — needs the full migration catch-up first, which is a separate, larger operation (`ops/production-migration-checklist.md`) |
+| Verdict | **DEPLOYED — mobile-api v154, smoke passed** | **NOT deployable for this change** — needs the full migration catch-up first (see the production section below) |
 
 Do not deploy current Edge code to production before that catch-up: v30 → current jumps ~6 weeks of code that assumes the missing schema.
+
+## Staging result (executed 2026-07-20)
+
+`mobile-api` deployed from this branch, **v153 → v154**, function ACTIVE. Flags confirmed unchanged; `KAEL_LEARNING_AUTOPROMOTE_ENABLED` deliberately not set, so the hook is observe-only.
+
+Observation engine smoke-tested directly against the deployed schema using the one real reviewed job on staging (`plumbing / pipe_leak / q7`, rating 5):
+
+| Call | Result |
+|---|---|
+| 1st `record_learning_observation_atomic` (`price_prior_update`) | `ok=true`, `is_new=true`, `evidence_count=1`, `confidence=0.95` |
+| 2nd identical call | `ok=true`, `is_new=false`, **`idempotent=true`, `evidence_count` stayed 1** |
+| same job as `analysis_rule` | `ok=false`, `error_code=NO_SIGNAL_YET` (correct: rating 5, no scope change → no signal) |
+
+That is the F2 fix demonstrated on real infrastructure: evidence came from the `jobs`/`reviews` rows, replay did not inflate the count, and a no-signal case was refused rather than invented. Test rows (1 receipt, 1 candidate) were deleted afterwards; staging returned to 1 pre-existing candidate / 1 pre-existing rule, 0 receipts.
+
+Not yet exercised on staging: promotion (needs ≥5 reviewed jobs in one scope — staging has 1), and the hook firing through a real HTTP review call.
 
 ## Staging deploy (the actual runbook)
 
@@ -44,6 +60,34 @@ Do not deploy current Edge code to production before that catch-up: v30 → curr
 - `deno check index.ts` (full Edge graph): clean. `lint:comments` / `lint:structure`: clean.
 - Known-failing-at-HEAD, unrelated: none besides the junction artifact above.
 
-## Out of scope
+## Production catch-up — analysed, NOT applied
 
-Production migration catch-up (46 migrations, `20260708`→`20260719`) and the production Edge jump v30→current. Schedule as its own operation with `ops/production-migration-checklist.md`.
+Production needs 46 migrations (`20260710082120` → `20260719035350`) before any of this can ship there. I analysed the chain read-only and stopped at the apply gate. Reasons are concrete, not caution-theatre:
+
+**1. Production holds real data now.** 4 auth users, 4 profiles, 25 jobs (16 plumbing / 5 electrical / 4 cleaning), 9 storage objects. `ops/production-migration-checklist.md` lists "production has real app data and no backup/export exists" as an explicit **stop condition**, and its apply preconditions require a Tu-approved backup first. The historical evidence in that checklist was written when production had 0 rows — it no longer applies.
+
+**2. The chain requires per-migration transaction boundaries.** `20260711030833_six_service_casework_foundation.sql` runs `alter type public.service_type add value 'hvac'` (also `upholstery`, `handyman`), and `20260711060000_six_service_taxonomy_verified_prices.sql` then **uses** `'hvac'::public.service_type` in INSERTs. Postgres forbids using an enum value in the transaction that added it. Applying these two in one transaction fails with `unsafe use of new value "hvac"`. `supabase db push` gets this right per-file; a bulk paste does not. **Do not batch.**
+
+**3. Apply requires the production DB password**, which I must not handle. This is Tu's step by construction.
+
+Verified low-risk findings (so the apply is less scary than it looks):
+- Production enum is still `{electrical, plumbing, cleaning}` — the chain is genuinely needed and `add value` is additive, so the 25 existing jobs stay valid.
+- The chain's only destructive data statement, the duplicate-dedup `delete from public.device_push_tokens` in `20260714084815`, is a **no-op**: production has 0 push tokens.
+- No `drop table` / `truncate` / new `set not null` against `jobs`, `profiles`, or `reviews` anywhere in the 46.
+- Security advisor on production is currently clean except the long-standing `auth_leaked_password_protection` WARN.
+
+### Procedure (Tu executes)
+
+```powershell
+# repo-local CLI 2.98.2 (already installed, already authenticated)
+$cli = "<repo>\node_modules\.pnpm\supabase@2.98.2*\node_modules\supabase\bin\supabase.exe"
+$env:SUPABASE_DB_PASSWORD = "<production-db-password>"   # process env only, never a file
+& $cli link --project-ref iwevizmsedyqozxlawwl
+& $cli db push --dry-run --linked
+```
+
+Stop unless the dry-run lists **exactly** these 46 and nothing else: `20260710082120`, `20260710082345`, `20260710123000`, `20260711030833`, `20260711033644`, `20260711050000`, `20260711053000`, `20260711060000`, `20260711061000`, `20260711062000`, `20260711063000`, `20260711064000`, `20260711065000`, `20260711066000`, `20260711067000`, `20260712031420`, `20260712042000`, `20260712124241`, `20260713042558`, `20260713051818`, `20260713124007`, `20260713132500`, `20260713143000`, `20260713163851`, `20260714024500`, `20260714074000`, `20260714080000`, `20260714084815`, `20260714092842`, `20260714101000`, `20260714102000`, `20260714103000`, `20260714104000`, `20260714105000`, `20260714106000`, `20260714107000`, `20260714108000`, `20260714109000`, `20260714110000`, `20260714111000`, `20260715011209`, `20260715105143`, `20260715113000`, `20260715114000`, `20260715115000`, `20260716121927`, `20260719013933`, `20260719035350`.
+
+Then, after taking a backup: `& $cli db push --linked`, and immediately `& $cli link --project-ref xyylanuyflrjzbjzhqfl` to restore the staging link.
+
+Post-apply checks: security + performance advisors clean (bar the known Auth warning); `select count(*) from jobs` still 25; the 5 learning RPCs present. Only then decide on the Edge jump v30 → current, which is its own risk review — six weeks of code, not just this change.
