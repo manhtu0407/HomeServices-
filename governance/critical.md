@@ -249,12 +249,15 @@ Current service scope is only:
 - electrical repair,
 - plumbing repair,
 - home cleaning / housekeeping,
+- air conditioning and indoor air service,
+- sofa, mattress, curtain, and carpet care,
+- minor repair and installation,
 - HCMC apartment residents,
 - Kael as the primary AI assistant for intake, diagnosis, price analysis, worker briefing, and customer/worker workflow support.
 
 The agent MUST NOT implement:
 
-- service expansion beyond electrical/plumbing/cleaning,
+- service expansion beyond the six services above,
 - multi-city expansion,
 - raw-AI/client-side autonomous booking,
 - multi-agent orchestration,
@@ -509,7 +512,7 @@ Prevention: use `kael-diagnose`. If no local repro exists, report limitation and
 
 Risk: pre-revenue rebuild wastes time on future systems.
 
-Prevention: apply survival test and scope check. The approved 2026-05-19 scope is electrical, plumbing, and cleaning in HCMC only; stop for Tu approval on any scope beyond that.
+Prevention: apply survival test and scope check. The approved scope is the six services in §4 (`RULES.md` #6) in HCMC only; stop for Tu approval on any scope beyond that.
 
 ### 5. Over-Engineering
 
