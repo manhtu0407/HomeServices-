@@ -58,6 +58,10 @@ describe('atomic learning observation boundary', () => {
       p_review_tags: ['Đúng giờ'],
       p_reviewed_at: '2026-07-14T02:00:00.000Z',
       p_scope_change_requested: false,
+      // Absent on jobs quoted before the reference columns existed; the RPC only
+      // enforces its reference pin when a value is supplied.
+      p_reference_min: null,
+      p_reference_max: null,
     })
     expect(result).toEqual({
       ok: true,
