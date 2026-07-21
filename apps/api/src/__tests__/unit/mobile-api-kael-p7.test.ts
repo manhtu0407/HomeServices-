@@ -234,8 +234,8 @@ describe('Kael P7 learning skill setup', () => {
       enabledConfig(),
     )
 
-    expect(summary.queued + summary.manual_review).toBe(4)
-    expect(summary.skill_ids.sort()).toEqual(['LS1', 'LS2', 'LS4', 'LS5'])
+    expect(summary.queued + summary.manual_review).toBe(3)
+    expect(summary.skill_ids.sort()).toEqual(['LS2', 'LS4', 'LS5'])
     expect(client.calls).toHaveLength(1)
     expect(client.calls[0].table).toBe('kael_rule_lifecycle_log')
     expect(JSON.stringify(client.calls)).not.toContain('raw comment')
@@ -255,7 +255,7 @@ describe('Kael P7 learning skill setup', () => {
       enabledConfig(),
     )
 
-    expect(summary.queued + summary.manual_review).toBe(4)
+    expect(summary.queued + summary.manual_review).toBe(3)
     expect(warn).toHaveBeenCalledWith('kael learning manual-review notification failed', {
       errorCode: 'NOTIFY_DENIED',
     })
@@ -275,7 +275,7 @@ describe('Kael P7 learning skill setup', () => {
       enabledConfig(),
     )
 
-    expect(summary.queued + summary.manual_review).toBe(4)
+    expect(summary.queued + summary.manual_review).toBe(3)
     expect(warn).toHaveBeenCalledWith('kael learning manual-review notification failed', {
       errorCode: 'NOTIFICATION_FAILED',
     })
@@ -323,7 +323,7 @@ describe('Kael P7 learning skill setup', () => {
       'insert',
       expect.arrayContaining([
         expect.objectContaining({
-          skill_id: 'LS1',
+          skill_id: 'LS2',
           job_id: 'job-1',
           next_state: 'candidate',
         }),

@@ -32,7 +32,9 @@ describe('Kael Q4 background optimization', () => {
     const insertCall = client.calls.find((call) => call.table === 'kael_learning_queue')
     expect(insertCall?.operations[0]?.[0]).toBe('insert')
     expect(JSON.stringify(insertCall?.operations[0]?.[1])).toContain('"queue_state":"pending"')
-    expect(JSON.stringify(insertCall?.operations[0]?.[1])).toContain('"skill_id":"LS1"')
+    // LS1 is not queued here: price priors belong to the deterministic hook.
+    expect(JSON.stringify(insertCall?.operations[0]?.[1])).toContain('"skill_id":"LS2"')
+    expect(JSON.stringify(insertCall?.operations[0]?.[1])).not.toContain('"skill_id":"LS1"')
   })
 
   it('runs due post-job learning through DeepSeek V4 Pro with structured output', async () => {

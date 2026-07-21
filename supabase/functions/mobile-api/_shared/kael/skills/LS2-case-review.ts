@@ -1,6 +1,14 @@
 // P7 skill file: LS2-case-review
 import type { LearningSkillCandidate, LearningSkillInput } from "./registry.ts";
 
+// `case_review_pattern` is deliberately outside the promotable set. Both promotion
+// RPCs accept only price_prior_update and analysis_rule, so an LS2 candidate can be
+// raised for an admin to read but can never become an active rule on its own. The
+// analysis_rule vocabulary belongs to the deterministic learning hook, which derives
+// its evidence from reviewed jobs rather than model output. Renaming this to
+// analysis_rule would let model output reach an active rule — and it still would not
+// apply, because the payload below carries `signal` where an analysis rule needs a
+// `kind` of raise_complexity_prior / add_advisory / add_clarification.
 export function buildLS2CaseReviewCandidate(
   input: LearningSkillInput,
 ): LearningSkillCandidate {

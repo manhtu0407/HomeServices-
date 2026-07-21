@@ -550,8 +550,13 @@ export type PlannedLearningTrigger = {
   audit?: Extract<LearningScopeDecision, { allowed: false }>;
 };
 
+// LS1 is absent from post-A14 on purpose. Price priors are owned end to end by the
+// deterministic learning hook, which reads evidence from reviewed jobs server-side;
+// routing LS1 through the LLM queue as well produced a second, weaker writer for the
+// same candidate scope. The LS1 skill definition below stays: rule-application logs,
+// the auto-rollback thresholds, and the promotion RPC all still refer to it by id.
 const SKILLS_BY_EVENT: Record<LearningSkillTrigger, readonly LearningSkillId[]> = {
-  "post-A14": ["LS1", "LS2", "LS4", "LS5"],
+  "post-A14": ["LS2", "LS4", "LS5"],
   "post-B6": ["LS3"],
   "post-B7": ["LS3"],
   "post-decline": ["LS7"],
