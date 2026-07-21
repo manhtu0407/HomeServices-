@@ -9,6 +9,7 @@ import {
   shouldPromoteLearningCandidate,
   touchesMoneyOrScope,
   type EdgeLearningCandidateRow,
+  type LearningHookDbClient,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning-hook'
 import {
   CONFIDENCE_THRESHOLD,
@@ -273,7 +274,15 @@ function hookClient(options: {
       return chainFor(result)
     }),
   }
-  return { client, rpcCalls, updateCalls, queryCalls }
+  // The chain mock is structural, not nominal: it answers every builder method the hook
+  // reaches for but cannot satisfy QueryBuilder's declared shape. Assert the contract
+  // here so adding a builder method does not scatter type errors across every call site.
+  return {
+    client: client as unknown as LearningHookDbClient,
+    rpcCalls,
+    updateCalls,
+    queryCalls,
+  }
 }
 
 const REVIEWED_JOB = {
@@ -410,6 +419,66 @@ describe('Edge learning hook: runLearningHook', () => {
     })
     const summary = await runLearningHook(client, 'j1')
     expect(summary.marketPromoted).toEqual({ ruleId: 'r1', ruleVersion: 1 })
+  })
+
+  it('passes the admin reference band to the observation RPC', async () => {
+    stubDenoEnv(LEARNING_ON)
+    const { client, rpcCalls } = hookClient({
+      job: { ...REVIEWED_JOB, kael_reference_price_min: 180_000, kael_reference_price_max: 300_000 },
+      review: { rating: 5, tags: [] },
+      rpcResults: {
+        record_learning_observation_atomic: {
+          data: [{
+            ok: true,
+            error_code: null,
+            candidate_id: 'c1',
+            is_new: false,
+            confidence: 0.8,
+            evidence_count: 6,
+            status: 'created',
+            idempotent: false,
+          }],
+          error: null,
+        },
+      },
+    })
+    await runLearningHook(client, 'j1')
+    const observation = rpcCalls.find(
+      (call) => call.name === 'record_learning_observation_atomic',
+    )
+    expect(observation?.args.p_reference_min).toBe(180_000)
+    expect(observation?.args.p_reference_max).toBe(300_000)
+    // The estimate is still pinned separately — both numbers reach the RPC.
+    expect(observation?.args.p_baseline_min).toBe(200_000)
+  })
+
+  it('still records when the job predates the reference columns', async () => {
+    stubDenoEnv(LEARNING_ON)
+    const { client, rpcCalls } = hookClient({
+      job: REVIEWED_JOB,
+      review: { rating: 5, tags: [] },
+      rpcResults: {
+        record_learning_observation_atomic: {
+          data: [{
+            ok: true,
+            error_code: null,
+            candidate_id: 'c1',
+            is_new: false,
+            confidence: 0.8,
+            evidence_count: 6,
+            status: 'created',
+            idempotent: false,
+          }],
+          error: null,
+        },
+      },
+    })
+    const summary = await runLearningHook(client, 'j1')
+    expect(summary.ok).toBe(true)
+    const observation = rpcCalls.find(
+      (call) => call.name === 'record_learning_observation_atomic',
+    )
+    expect(observation?.args.p_reference_min).toBeNull()
   })
 
   it('bounds the similar-candidate lookup to the contradiction window', async () => {

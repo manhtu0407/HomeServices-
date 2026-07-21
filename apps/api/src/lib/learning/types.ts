@@ -213,8 +213,14 @@ export type LearningHookInput = {
   problemSlug: string                  // from jobs.kael_problem_identified or service_problems lookup
   districtCode: string                 // canonical
   complexityHint: ComplexityLevel      // from jobs.kael_complexity
+  // What Kael quoted, learned rule and market blend already applied. Kept for the
+  // replay pin; drift is measured against referenceMin/Max, not against these.
   baselineMin: number                  // jobs.kael_price_min
   baselineMax: number                  // jobs.kael_price_max
+  // Admin-owned price_baselines band captured at estimate time. Null for jobs quoted
+  // before jobs.kael_reference_price_min/max existed.
+  referenceMin?: number | null         // jobs.kael_reference_price_min
+  referenceMax?: number | null         // jobs.kael_reference_price_max
   finalPrice: number | null            // jobs.final_price — may be null if never set
   rating: number                       // reviews.rating (1-5)
   reviewTags: string[]                 // reviews.tags

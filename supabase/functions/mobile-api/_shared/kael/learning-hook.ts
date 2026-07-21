@@ -64,6 +64,9 @@ export type EdgeLearningHookInput = {
   complexityHint: ComplexityLevel;
   baselineMin: number;
   baselineMax: number;
+  // Admin-owned band from price_baselines, absent on jobs quoted before it was stored.
+  referenceMin: number | null;
+  referenceMax: number | null;
   finalPrice: number | null;
   rating: number;
   reviewTags: string[];
@@ -284,7 +287,7 @@ export async function loadLearningHookInput(
     client
       .from("jobs")
       .select(
-        "id, service_type, address_district, kael_complexity, kael_price_min, kael_price_max, kael_problem_identified, final_price, reviewed_at, status, service_problem_id",
+        "id, service_type, address_district, kael_complexity, kael_price_min, kael_price_max, kael_reference_price_min, kael_reference_price_max, kael_problem_identified, final_price, reviewed_at, status, service_problem_id",
       )
       .eq("id", jobId)
       .maybeSingle() as QueryLike<Record<string, unknown>>,
@@ -343,6 +346,12 @@ export async function loadLearningHookInput(
     complexityHint: job.kael_complexity,
     baselineMin,
     baselineMax,
+    referenceMin: isFiniteNumber(job.kael_reference_price_min)
+      ? job.kael_reference_price_min
+      : null,
+    referenceMax: isFiniteNumber(job.kael_reference_price_max)
+      ? job.kael_reference_price_max
+      : null,
     finalPrice: isFiniteNumber(job.final_price) ? job.final_price : null,
     rating: isFiniteNumber(review?.rating) ? review.rating : 0,
     reviewTags: Array.isArray(review?.tags)
@@ -378,6 +387,8 @@ async function recordObservation(
         .filter((tag) => input.reviewTags.includes(tag)),
       p_scope_change_requested: input.scopeChangeRequested,
       p_reviewed_at: input.reviewedAt,
+      p_reference_min: input.referenceMin,
+      p_reference_max: input.referenceMax,
     }) as QueryLike<Array<Record<string, unknown>>>,
   );
   if (result.error) {

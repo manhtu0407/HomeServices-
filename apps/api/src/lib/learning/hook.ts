@@ -52,7 +52,7 @@ async function loadHookInput(
     supabase
       .from('jobs')
       .select(
-        'id, service_type, address_district, kael_complexity, kael_price_min, kael_price_max, kael_problem_identified, final_price, reviewed_at, status, service_problem_id',
+        'id, service_type, address_district, kael_complexity, kael_price_min, kael_price_max, kael_reference_price_min, kael_reference_price_max, kael_problem_identified, final_price, reviewed_at, status, service_problem_id',
       )
       .eq('id', jobId)
       .maybeSingle(),
@@ -107,6 +107,8 @@ async function loadHookInput(
     complexityHint: job.kael_complexity as ComplexityLevel,
     baselineMin: job.kael_price_min,
     baselineMax: job.kael_price_max,
+    referenceMin: job.kael_reference_price_min ?? null,
+    referenceMax: job.kael_reference_price_max ?? null,
     finalPrice: job.final_price,
     rating: review?.rating ?? 0,
     reviewTags: (review?.tags as string[] | null) ?? [],
