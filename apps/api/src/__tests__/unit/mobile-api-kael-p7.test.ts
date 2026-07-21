@@ -496,7 +496,9 @@ describe('Kael P7 learning skill setup', () => {
     ])
   })
 
-  it('A3 monitor respects the auto-rollback flag before reading rules', async () => {
+  it('A3 monitor still reports loop health when auto-rollback is off', async () => {
+    // Observe-only is the intended first posture for the scheduled monitor: rollback
+    // stays off, but the health signal is the entire reason to run it on a schedule.
     vi.stubGlobal('Deno', {
       env: {
         get(name: string) {
@@ -509,13 +511,42 @@ describe('Kael P7 learning skill setup', () => {
         },
       },
     })
+    const client = makeSequenceClient([
+      { data: [{ id: 'cand-stale' }], error: null },
+      { data: [], error: null },
+      { data: [{ id: 'batch-failed' }], error: null },
+    ])
+
+    const summary = await monitorLearningRules(client, { now: new Date('2026-07-20T00:00:00Z') })
+
+    expect(summary.skipped_reason).toBe('auto_rollback_disabled')
+    expect(summary.rolled_back).toBe(0)
+    expect(summary.loop_health?.manual_review_overdue_count).toBe(1)
+    expect(summary.loop_health?.failed_batch_count).toBe(1)
+    // No rule scan and no rollback RPC — it only observes.
+    expect(client.calls.some((call) => call.table === 'learning_rules')).toBe(false)
+    expect(client.calls.some((call) => call.table.startsWith('rpc:'))).toBe(false)
+  })
+
+  it('A3 monitor reads nothing at all when the loop itself is disabled', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get(name: string) {
+          return ({
+            KAEL_LEARNING_READ_ENABLED: 'false',
+            KAEL_LEARNING_WRITE_ENABLED: 'false',
+            KAEL_LEARNING_AB_PERCENTAGE: '100',
+          } as Record<string, string>)[name]
+        },
+      },
+    })
     const client = makeSequenceClient([])
 
     await expect(monitorLearningRules(client)).resolves.toEqual({
       checked: 0,
       monitored: 0,
       rolled_back: 0,
-      skipped_reason: 'auto_rollback_disabled',
+      skipped_reason: 'learning_disabled',
     })
     expect(client.calls).toHaveLength(0)
   })

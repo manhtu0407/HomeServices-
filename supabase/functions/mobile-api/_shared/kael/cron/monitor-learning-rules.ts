@@ -60,17 +60,25 @@ export async function monitorLearningRules(
   options: { limit?: number; now?: Date } = {},
 ): Promise<MonitorLearningRulesSummary> {
   const runtimeConfig = resolveLearningRuntimeConfig(readRuntimeEnv);
+  const now = options.now ?? new Date();
   if (!runtimeConfig.enabled) {
     return { checked: 0, monitored: 0, rolled_back: 0, skipped_reason: "learning_disabled" };
   }
+  // Observe-only: rollback is off, but loop health is the reason to run this on a
+  // schedule at all. Returning early without it would make a scheduled monitor report
+  // nothing, which is how the flag was expected to be used before promotion is trusted.
   if (!runtimeConfig.auto_rollback_enabled) {
-    return { checked: 0, monitored: 0, rolled_back: 0, skipped_reason: "auto_rollback_disabled" };
+    return {
+      checked: 0,
+      monitored: 0,
+      rolled_back: 0,
+      loop_health: await readLearningLoopHealth(client, now),
+      skipped_reason: "auto_rollback_disabled",
+    };
   }
   if (!client.rpc) {
     return { checked: 0, monitored: 0, rolled_back: 0, error_code: "ROLLBACK_RPC_UNAVAILABLE" };
   }
-
-  const now = options.now ?? new Date();
   const since = new Date(now.getTime() - MONITOR_WINDOW_DAYS * 24 * 60 * 60 * 1000)
     .toISOString();
   const rulesResult = await client

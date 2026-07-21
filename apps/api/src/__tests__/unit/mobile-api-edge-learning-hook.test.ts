@@ -216,7 +216,19 @@ function chainFor(
   record?: (method: string, args: unknown[]) => void,
 ) {
   const chain: Record<string, unknown> = {}
-  for (const method of ['select', 'eq', 'neq', 'gte', 'order', 'limit', 'update', 'maybeSingle']) {
+  for (
+    const method of [
+      'select',
+      'eq',
+      'neq',
+      'gte',
+      'order',
+      'limit',
+      'update',
+      'insert',
+      'maybeSingle',
+    ]
+  ) {
     chain[method] = vi.fn((...args: unknown[]) => {
       record?.(method, args)
       return chain
@@ -518,6 +530,47 @@ describe('Edge learning hook: runLearningHook', () => {
     const cutoff = new Date(String(gte?.args[1]))
     const expected = now.getTime() - CONTRADICTION_WINDOW_DAYS * 24 * 60 * 60 * 1000
     expect(cutoff.getTime()).toBe(expected)
+  })
+
+  it('shadow mode logs the decision instead of promoting', async () => {
+    stubDenoEnv({
+      ...LEARNING_ON,
+      KAEL_LEARNING_AUTOPROMOTE_ENABLED: 'true',
+      KAEL_LEARNING_SHADOW_MODE: 'true',
+    })
+    const { client, rpcCalls, queryCalls } = hookClient({
+      job: REVIEWED_JOB,
+      review: { rating: 5, tags: [] },
+      candidate: pricePriorCandidate(),
+      rpcResults: {
+        record_learning_observation_atomic: {
+          data: [{
+            ok: true,
+            error_code: null,
+            candidate_id: 'c1',
+            is_new: false,
+            confidence: 0.8,
+            evidence_count: 6,
+            status: 'created',
+            idempotent: false,
+          }],
+          error: null,
+        },
+      },
+    })
+    const summary = await runLearningHook(client, 'j1')
+
+    expect(summary.marketPromoted).toBeUndefined()
+    expect(rpcCalls.some((call) => call.name === 'auto_promote_learning_candidate_atomic'))
+      .toBe(false)
+    const logged = queryCalls.find(
+      (call) => call.table === 'kael_rule_lifecycle_log' && call.method === 'insert',
+    )
+    const row = logged?.args[0] as Record<string, unknown>
+    expect(row.next_state).toBe('evidence_gate_check')
+    expect(String(row.transition_reason).length).toBeLessThanOrEqual(200)
+    expect((row.safe_metadata as Record<string, unknown>).would_promote).toBe(true)
+    expect((row.safe_metadata as Record<string, unknown>).proposed_min).toBe(250_000)
   })
 
   it('routes a structurally invalid candidate to manual review, not pending evidence', async () => {

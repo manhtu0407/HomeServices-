@@ -42,6 +42,7 @@ type QueryLike<T = unknown> = PromiseLike<DbResult<T>>;
 type QueryBuilder<T = unknown> = {
   select(columns?: string, options?: Record<string, unknown>): QueryBuilder<T>;
   update(value: unknown): QueryBuilder<T>;
+  insert(value: unknown): QueryBuilder<T>;
   eq(column: string, value: unknown): QueryBuilder<T>;
   neq(column: string, value: unknown): QueryBuilder<T>;
   gte(column: string, value: unknown): QueryBuilder<T>;
@@ -474,6 +475,11 @@ async function maybePromote(
     return null;
   }
 
+  if (isLearningShadowModeEnabled()) {
+    await recordShadowPromotion(client, candidate);
+    return null;
+  }
+
   const promoteResult = await withDbTimeout<DbResult<Array<Record<string, unknown>>>>(
     client.rpc("auto_promote_learning_candidate_atomic", {
       p_candidate_id: candidate.id,
@@ -484,6 +490,42 @@ async function maybePromote(
   if (!isRecord(row) || row.ok !== true) return null;
   if (!isNonEmptyString(row.rule_id) || !isFiniteNumber(row.rule_version)) return null;
   return { ruleId: row.rule_id, ruleVersion: row.rule_version };
+}
+
+// Dry run: the gate has passed and the rule would go active, but the decision is only
+// written to the lifecycle log so the change can be read before it is trusted. Lets a
+// scope be watched for a few weeks of real reviews before autopromote is turned on.
+export function isLearningShadowModeEnabled(): boolean {
+  return readBooleanEnvFlag(readRuntimeEnv("KAEL_LEARNING_SHADOW_MODE"), false);
+}
+
+async function recordShadowPromotion(
+  client: LearningHookDbClient,
+  candidate: EdgeLearningCandidateRow,
+): Promise<void> {
+  const payload = candidate.suggested_payload;
+  const proposed = isPricePriorPayload(payload) ? payload.suggested : null;
+  await withDbTimeout<DbResult<unknown>>(
+    client.from("kael_rule_lifecycle_log").insert({
+      rule_id: null,
+      candidate_id: candidate.id,
+      skill_id: candidate.candidate_type === "price_prior_update" ? "LS1" : "LS2",
+      previous_state: candidate.status === "created" ? "candidate" : "pending_evidence",
+      next_state: "evidence_gate_check",
+      // kael_rule_lifecycle_log.transition_reason is capped at 200 characters.
+      transition_reason: "shadow mode: gate passed, promotion withheld".slice(0, 200),
+      actor_role: "system",
+      safe_metadata: {
+        would_promote: true,
+        candidate_type: candidate.candidate_type,
+        evidence_count: candidate.evidence_count,
+        confidence: candidate.confidence,
+        proposed_min: proposed?.new_min ?? null,
+        proposed_max: proposed?.new_max ?? null,
+        direction: proposed?.direction ?? null,
+      },
+    }) as unknown as QueryLike<unknown>,
+  );
 }
 
 // A rejected candidate keeps `created` only while it is still gathering evidence.
