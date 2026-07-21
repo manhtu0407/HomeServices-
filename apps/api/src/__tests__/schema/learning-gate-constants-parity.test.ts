@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   CONTRADICTION_MAX_RATIO as EDGE_CONTRADICTION_MAX_RATIO,
+  CONTRADICTION_MIN_SAMPLE,
+  CONTRADICTION_WINDOW_DAYS,
   EDGE_CONFIDENCE_THRESHOLD,
   EDGE_MIN_EVIDENCE,
   ROLLING_WINDOW_DAYS as EDGE_ROLLING_WINDOW_DAYS,
@@ -25,6 +27,14 @@ describe('learning gate constants: one source across Edge, apps/api, and SQL', (
     expect(EDGE_CONFIDENCE_THRESHOLD).toBe(CONFIDENCE_THRESHOLD)
     expect(EDGE_CONTRADICTION_MAX_RATIO).toBe(CONTRADICTION_MAX_RATIO)
     expect(EDGE_ROLLING_WINDOW_DAYS).toBe(ROLLING_WINDOW_DAYS)
+  })
+
+  it('contradiction window and sample floor stay pinned', () => {
+    // The window is the recency bound on the similar-candidate lookup; the floor is
+    // the smallest directional sample a ratio may be read from. Both are read by the
+    // Edge hook only, so this is the single guard against a silent retune.
+    expect(CONTRADICTION_WINDOW_DAYS).toBe(90)
+    expect(CONTRADICTION_MIN_SAMPLE).toBe(3)
   })
 
   it('promotion RPC migration pins the same evidence gate numbers', () => {

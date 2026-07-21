@@ -16,17 +16,21 @@ import {
   type ComplexityLevel,
   type ServiceType,
 } from "../../../_shared/domain.ts";
-import { withDbTimeout } from "./utils.ts";
+import { readBooleanEnvFlag, withDbTimeout } from "./utils.ts";
 import { resolveLearningRuntimeConfig } from "./skills/registry.ts";
 
 export {
   CONTRADICTION_MAX_RATIO,
+  CONTRADICTION_MIN_SAMPLE,
+  CONTRADICTION_WINDOW_DAYS,
   EDGE_CONFIDENCE_THRESHOLD,
   EDGE_MIN_EVIDENCE,
   ROLLING_WINDOW_DAYS,
 } from "./learning-constants.ts";
 import {
   CONTRADICTION_MAX_RATIO,
+  CONTRADICTION_MIN_SAMPLE,
+  CONTRADICTION_WINDOW_DAYS,
   EDGE_CONFIDENCE_THRESHOLD,
   EDGE_MIN_EVIDENCE,
 } from "./learning-constants.ts";
@@ -40,6 +44,8 @@ type QueryBuilder<T = unknown> = {
   update(value: unknown): QueryBuilder<T>;
   eq(column: string, value: unknown): QueryBuilder<T>;
   neq(column: string, value: unknown): QueryBuilder<T>;
+  gte(column: string, value: unknown): QueryBuilder<T>;
+  order(column: string, options?: Record<string, unknown>): QueryBuilder<T>;
   limit(count: number): QueryBuilder<T>;
   maybeSingle(): QueryBuilder<T>;
   then: QueryLike<T>["then"];
@@ -101,7 +107,10 @@ export type EdgeLearningHookSummary = {
 };
 
 export function isLearningAutopromoteEnabled(): boolean {
-  return readRuntimeEnv("KAEL_LEARNING_AUTOPROMOTE_ENABLED") === "true";
+  return readBooleanEnvFlag(
+    readRuntimeEnv("KAEL_LEARNING_AUTOPROMOTE_ENABLED"),
+    false,
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -208,13 +217,11 @@ function oppositeDirection(
 // shape could reach money or service-scope state.
 export function touchesMoneyOrScope(payload: unknown): boolean {
   if (isPricePriorPayload(payload)) {
-    if (!isServiceType(payload.scope.service_type)) return true;
     if (payload.suggested.new_min <= 0 || payload.suggested.new_max <= 0) return true;
     if (payload.suggested.new_max < payload.suggested.new_min) return true;
     return false;
   }
   if (isAnalysisRulePayload(payload)) {
-    if (!isServiceType(payload.scope.service_type)) return true;
     const kind = payload.suggested.kind;
     return kind !== "raise_complexity_prior" && kind !== "add_advisory" &&
       kind !== "add_clarification";
@@ -249,10 +256,16 @@ export function shouldPromoteLearningCandidate(
     return { promote: false, reason: "low_confidence" };
   }
 
-  if (similarRecent.length > 0) {
-    const contradictions = similarRecent
+  // Price priors are the whole denominator: an analysis rule carries no direction, so
+  // it can neither agree nor disagree and must not pad the sample into looking large
+  // enough to read. The floor only rules out the degenerate tiny samples — a 1-row
+  // history reading as a 100% contradiction; the caller's recency window is what stops
+  // a real disagreement from blocking the scope forever.
+  const directional = similarRecent.filter((row) => isPricePriorPayload(row.suggested_payload));
+  if (directional.length >= CONTRADICTION_MIN_SAMPLE) {
+    const contradictions = directional
       .filter((row) => oppositeDirection(row, candidate)).length;
-    if (contradictions / similarRecent.length > CONTRADICTION_MAX_RATIO) {
+    if (contradictions / directional.length > CONTRADICTION_MAX_RATIO) {
       return { promote: false, reason: "contradicted_by_recent" };
     }
   }
@@ -386,9 +399,15 @@ async function recordObservation(
   };
 }
 
+function contradictionWindowStart(now: Date): string {
+  return new Date(now.getTime() - CONTRADICTION_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+    .toISOString();
+}
+
 async function maybePromote(
   client: LearningHookDbClient,
   candidateId: string,
+  now: Date,
 ): Promise<{ ruleId: string; ruleVersion: number } | null> {
   if (!isLearningAutopromoteEnabled()) return null;
 
@@ -423,6 +442,8 @@ async function maybePromote(
       .eq("affected_problem", candidate.affected_problem ?? "")
       .eq("affected_district", candidate.affected_district ?? "")
       .neq("id", candidate.id)
+      .gte("updated_at", contradictionWindowStart(now))
+      .order("updated_at", { ascending: false })
       .limit(50) as QueryLike<Array<Record<string, unknown>>>,
   );
   const similar = Array.isArray(similarResult.data)
@@ -434,7 +455,8 @@ async function maybePromote(
     const patch: Record<string, unknown> = {
       audit_reason: `gate evaluated: ${decision.reason}`,
     };
-    if (decision.reason !== "insufficient_evidence") patch.status = "pending_evidence";
+    const nextStatus = gateRejectionStatus(decision.reason);
+    if (nextStatus) patch.status = nextStatus;
     await withDbTimeout<DbResult<unknown>>(
       client.from("learning_candidates").update(patch).eq("id", candidateId) as QueryLike<unknown>,
     );
@@ -453,6 +475,26 @@ async function maybePromote(
   return { ruleId: row.rule_id, ruleVersion: row.rule_version };
 }
 
+// A rejected candidate keeps `created` only while it is still gathering evidence.
+// `invalid_payload` / `forbidden_autonomy` mean the payload itself is broken, so an
+// admin has to look rather than the row waiting forever. `manual_review` sits outside
+// the `learning_candidates_pending_scope_unique` predicate, which frees the scope: the
+// next observation opens a fresh candidate that counts evidence from its own receipts.
+function gateRejectionStatus(
+  reason: Extract<EdgeLearningGateDecision, { promote: false }>["reason"],
+): "pending_evidence" | "manual_review" | null {
+  switch (reason) {
+    case "insufficient_evidence":
+      return null;
+    case "low_confidence":
+    case "contradicted_by_recent":
+      return "pending_evidence";
+    case "invalid_payload":
+    case "forbidden_autonomy":
+      return "manual_review";
+  }
+}
+
 function isEdgeCandidateRow(value: unknown): value is EdgeLearningCandidateRow {
   return isRecord(value) &&
     typeof value.id === "string" &&
@@ -467,6 +509,7 @@ function isEdgeCandidateRow(value: unknown): value is EdgeLearningCandidateRow {
 export async function runLearningHook(
   client: LearningHookDbClient,
   jobId: string,
+  now: Date = new Date(),
 ): Promise<EdgeLearningHookSummary> {
   const summary: EdgeLearningHookSummary = { ok: false };
 
@@ -489,7 +532,7 @@ export async function runLearningHook(
     if (marketResult.ok) {
       summary.marketCandidateId = marketResult.candidateId;
       summary.marketEvidence = marketResult.evidenceCount;
-      const promoted = await maybePromote(client, marketResult.candidateId);
+      const promoted = await maybePromote(client, marketResult.candidateId, now);
       if (promoted) summary.marketPromoted = promoted;
       summary.ok = true;
     }
@@ -500,7 +543,7 @@ export async function runLearningHook(
   if (caseResult.ok) {
     summary.caseCandidateId = caseResult.candidateId;
     summary.caseEvidence = caseResult.evidenceCount;
-    const promoted = await maybePromote(client, caseResult.candidateId);
+    const promoted = await maybePromote(client, caseResult.candidateId, now);
     if (promoted) summary.casePromoted = promoted;
     summary.ok = true;
   }
