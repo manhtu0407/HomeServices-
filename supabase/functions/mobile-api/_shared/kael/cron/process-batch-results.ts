@@ -423,6 +423,23 @@ export async function processLearningCandidateResponse(
       effect: null,
     };
   }
+  // Pin the model response to the queued candidate. The queue row's
+  // candidate_payload was built server-side; a response that renames the
+  // candidate_type, retargets, or moves scope is a cross-skill escalation
+  // and never proceeds.
+  const queuedCandidate = queue.candidate_payload;
+  if (
+    candidate.candidate_type !== queuedCandidate.candidate_type ||
+    candidate.target !== queuedCandidate.target ||
+    !scopesMatch(candidate, queuedCandidate)
+  ) {
+    return {
+      ok: false,
+      queue_state: "failed",
+      error_code: "LEARNING_CANDIDATE_MISMATCH",
+      effect: null,
+    };
+  }
   const skill = getLearningSkill(candidate.skill_id);
   if (!skill) {
     return {
@@ -846,6 +863,17 @@ function candidateStoragePayload(candidate: LearningSkillCandidate): Record<stri
     requires_manual_review: candidate.requires_manual_review,
     lifecycle_state: candidate.lifecycle_state,
   };
+}
+
+function scopesMatch(
+  response: LearningSkillCandidate,
+  queued: LearningSkillCandidate,
+): boolean {
+  const responseScope = scopeFromCandidate(response);
+  const queuedScope = scopeFromCandidate(queued);
+  return responseScope.affected_service === queuedScope.affected_service &&
+    responseScope.affected_problem === queuedScope.affected_problem &&
+    responseScope.affected_district === queuedScope.affected_district;
 }
 
 function scopeFromCandidate(candidate: LearningSkillCandidate): {

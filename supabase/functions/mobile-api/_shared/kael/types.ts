@@ -616,8 +616,8 @@ export type PipelineResult =
     learningApplications?: Array<{
       ruleId: string;
       ruleVersion: number;
-      skillId: "LS1";
-      appliedTarget: "price_prior";
+      skillId: "LS1" | "LS2";
+      appliedTarget: "price_prior" | "analysis_prompt";
       safeMetadata: Record<string, unknown>;
     }>;
   }

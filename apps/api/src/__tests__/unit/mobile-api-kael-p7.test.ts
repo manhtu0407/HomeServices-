@@ -363,6 +363,14 @@ describe('Kael P7 learning skill setup', () => {
         }],
         error: null,
       },
+      {
+        data: [
+          { safe_metadata: { rating: 5 } },
+          { safe_metadata: { rating: 4 } },
+          { safe_metadata: { rating: 5 } },
+        ],
+        error: null,
+      },
       { data: null, error: null },
     ])
 
@@ -397,16 +405,19 @@ describe('Kael P7 learning skill setup', () => {
         }),
       }),
     ])
-    const outcomeInsert = client.calls[2]
+    const outcomeInsert = client.calls[3]
     expect(outcomeInsert.operations).toContainEqual([
       'insert',
       expect.arrayContaining([
         expect.objectContaining({
           override_count: 1,
           accuracy_delta: 0.2,
-          satisfaction_delta: 0.4,
+          // Drop in rating points vs the prior-sample baseline:
+          // mean(5, 4, 5) - 3 = 1.667.
+          satisfaction_delta: 1.667,
           safe_metadata: expect.objectContaining({
             source: 'review_outcome',
+            rating: 3,
           }),
         }),
       ]),

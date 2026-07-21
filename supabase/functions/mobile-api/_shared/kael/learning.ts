@@ -298,8 +298,9 @@ export async function recordLearningReviewOutcome(
     const rows = Array.isArray(sourceResult.data)
       ? sourceResult.data.filter(isRecord)
       : [];
+    const priorRatings = await loadPriorOutcomeRatings(client, rows);
     const samples = rows
-      .map((row) => reviewOutcomeSample(row, input))
+      .map((row) => reviewOutcomeSample(row, input, priorRatings))
       .filter((sample): sample is Record<string, unknown> => sample !== null);
     if (samples.length === 0) {
       return { source_applications: rows.length, inserted_samples: 0 };
@@ -359,9 +360,65 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// A drop needs a reference point: fewer prior samples than this and the
+// satisfaction delta stays null instead of pretending a baseline exists.
+const MIN_PRIOR_SATISFACTION_SAMPLES = 3;
+
+async function loadPriorOutcomeRatings(
+  client: LearningLogDbClient,
+  sourceRows: Array<Record<string, unknown>>,
+): Promise<Map<string, number[]>> {
+  const ruleIds = [
+    ...new Set(
+      sourceRows
+        .map((row) => stringFrom(row.rule_id))
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  const ratings = new Map<string, number[]>();
+  for (const ruleId of ruleIds) {
+    try {
+      const result = await withDbTimeout<{
+        data: unknown;
+        error: { code?: string; message?: string } | null;
+      }>(
+        client
+          .from("kael_rule_application_log")
+          .select("safe_metadata")
+          .eq("rule_id", ruleId)
+          .eq("applied_count", 0)
+          .limit(20),
+      );
+      if (result.error || !Array.isArray(result.data)) continue;
+      const values = result.data
+        .filter(isRecord)
+        .map((row) => isRecord(row.safe_metadata) ? row.safe_metadata.rating : null)
+        .map((value) => integerFrom(value))
+        .filter((value): value is number => value !== null && value >= 1 && value <= 5);
+      ratings.set(ruleId, values);
+    } catch {
+      // Missing baseline keeps the delta null; never blocks the outcome write.
+    }
+  }
+  return ratings;
+}
+
+function satisfactionDropPoints(
+  priorRatings: number[] | undefined,
+  rating: number,
+): number | null {
+  if (!priorRatings || priorRatings.length < MIN_PRIOR_SATISFACTION_SAMPLES) {
+    return null;
+  }
+  const baseline = priorRatings.reduce((sum, value) => sum + value, 0) /
+    priorRatings.length;
+  return roundMetric(Math.max(0, baseline - rating));
+}
+
 function reviewOutcomeSample(
   row: Record<string, unknown>,
   input: LearningReviewOutcomeInput,
+  priorRatings: Map<string, number[]>,
 ): Record<string, unknown> | null {
   const ruleId = stringFrom(row.rule_id);
   const skillId = stringFrom(row.skill_id);
@@ -373,7 +430,10 @@ function reviewOutcomeSample(
     integerFrom(metadata.applied_price_min),
     integerFrom(metadata.applied_price_max),
   );
-  const satisfactionDelta = Math.max(0, Math.min(1, (5 - input.rating) / 5));
+  const satisfactionDelta = satisfactionDropPoints(
+    priorRatings.get(ruleId),
+    input.rating,
+  );
   return {
     rule_id: ruleId,
     skill_id: skillId,
@@ -389,6 +449,7 @@ function reviewOutcomeSample(
       source_application_log_id: stringFrom(row.id),
       final_price_present: input.finalPrice !== null,
       rating_present: true,
+      rating: input.rating,
     },
   };
 }
