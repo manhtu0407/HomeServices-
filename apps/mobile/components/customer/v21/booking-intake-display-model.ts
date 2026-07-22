@@ -1,5 +1,6 @@
 import { localizedProblemLabel, type AppLanguage } from '@/lib/app-language'
 import { HCMC_TIME_ZONE, hcmcCalendarDate, hcmcScheduledAt } from '@/lib/hcmc-schedule'
+import type { PendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
 import type { ServiceType } from '@nestscout/shared'
 
 import { customerV21ServiceCopy } from './copy'
@@ -69,6 +70,25 @@ export function buildBookingDraftMessage({
     `Description: ${description.trim()}`,
   ].join('\n')
 }
+
+export function localizedPendingBookingDraftMessage(
+  draft: PendingKaelChatDraft | null,
+  language: AppLanguage,
+) {
+  if (!draft) return null
+  if (draft.locale === language || !draft.serviceType) return draft.message
+  return buildBookingDraftMessage({
+    address: draft.addressLabel ?? draft.districtLabel ?? '',
+    description: draft.description ?? '',
+    language,
+    problems: draft.problemChips ?? [],
+    scheduleLabel: draft.scheduleWindow
+      ? `${draft.scheduleWindow.date} · ${draft.scheduleWindow.start}-${draft.scheduleWindow.end}`
+      : null,
+    serviceType: draft.serviceType,
+  })
+}
+
 type BookingScheduleDateOption = {
   dateLabel: string
   dayLabel: string

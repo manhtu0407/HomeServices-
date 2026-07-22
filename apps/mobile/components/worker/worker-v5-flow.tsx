@@ -1,4 +1,4 @@
-import { memo, type ComponentType, type ReactNode, useCallback, useMemo, useState } from 'react'
+import { memo, type ComponentType, type ReactNode, type SetStateAction, useCallback, useMemo, useState } from 'react'
 import { useEffect, useRef } from 'react'
 import { Image } from 'expo-image'
 import {
@@ -113,9 +113,9 @@ import {
 import {
   WorkerV5ApprovalWaitBody,
   WorkerV5CaseClosedBody,
-  WorkerV5CompletionEvidenceBody,
   WorkerV5CompletionSubmittedBody,
 } from './jobs/completion-bodies'
+import { WorkerV5CompletionEvidenceScreenBody } from './jobs/completion-evidence-screen-body'
 import { WorkerV5RouteEtaBody } from './jobs/active-body-surfaces'
 import { WorkerV5EvidenceTray } from './jobs/evidence-surfaces'
 import {
@@ -221,6 +221,12 @@ type WorkerV5FieldEvidenceRequest = {
   mediaRefs: string[] | null
   turnRef: PendingClientRequestRef
 }
+type WorkerV5FieldEvidenceUiState = {
+  busy: boolean
+  busySlot: number | null
+  confirmation: string | null
+  urls: (string | null)[]
+}
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -263,6 +269,7 @@ function workerV5JobsDestinationScreenId(deal: LocalDeal | null): WorkerV5Screen
   if (!deal) return '2.1-opportunity-inbox'
   const status = deal.backendStatus ?? deal.status
   if (deal.status === 'broadcasting' && deal.broadcast?.status === 'sent') return '2.2-offer-detail'
+  if (status === 'worker_candidate_pending') return '2.3-customer-confirmation-wait'
   if (status === 'worker_matched' || status === 'worker_on_way') return '2.7-in-progress'
   if (status === 'arrived' || status === 'inspecting' || status === 'repairing') return '2.7-in-progress'
   if (status === 'scope_change_pending') return '2.9-approval-wait'
@@ -357,11 +364,12 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const surfaceStyle = glass.reduceTransparency ? styles.surfaceSolid : styles.surfaceGlass
   const usesOpportunityInboxHandoff = screen.id === '2.1-opportunity-inbox'
   const usesOfferDetailHandoff = screen.id === '2.2-offer-detail'
+  const usesCustomerConfirmationWaitHandoff = screen.id === '2.3-customer-confirmation-wait'
   const usesRouteEtaHandoff = screen.id === '2.4-route-eta'
   const routePreview = useWorkerV5RoutePreview(runtime.state.deal, usesRouteEtaHandoff)
   const usesTravelHandoff = usesRouteEtaHandoff
   const usesInProgressHandoff = screen.id === '2.7-in-progress'
-  const headerBackScreen = usesRouteEtaHandoff || usesInProgressHandoff
+  const headerBackScreen = usesCustomerConfirmationWaitHandoff || usesRouteEtaHandoff || usesInProgressHandoff
     ? getWorkerV5Screen('2.1-opportunity-inbox') ?? previousScreen
     : previousScreen
   const usesScopeChangeHandoff = screen.id === '2.8-scope-change'
@@ -377,7 +385,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesPayoutMethodHandoff = screen.id === '4.4-payout-method'
   const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.8-bank-tax-center' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings'
   const hidesHeaderUtility = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.10-support-settings'
-  const usesCaseExecutionHandoff = usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
+  const usesCaseExecutionHandoff = usesCustomerConfirmationWaitHandoff || usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
   const usesHandoffStage = usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
   const handoffHeaderSubtitle = usesOpportunityInboxHandoff
     ? textByLanguage(language, 'Kael đã lọc theo kỹ năng, bán kính và lịch trống', 'Kael has filtered by skills, radius, and open schedule')
@@ -403,6 +411,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       ? workerV5TravelHeaderSubtitle(runtime.state.deal, language)
       : usesCaseClosedHandoff
         ? null
+      : usesCustomerConfirmationWaitHandoff
+        ? workerV5OfferHeaderSubtitle(runtime.state.deal, language)
       : usesApprovalWaitHandoff || usesCompletionSubmittedHandoff
         ? workerV5CaseHeaderSubtitle(runtime.state.deal, language)
       : usesInProgressHandoff
@@ -479,12 +489,22 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   }
   const primaryAction = getWorkerV5PrimaryAction(screen, runtime, language, actionBusy, runWorkerAction, () => openScreen(nextScreen))
   const workflowDestinationScreenId = workerV5JobsDestinationScreenId(runtime.state.deal)
-  const screenRedirectId = runtime.state.workerGate === 'backend_pending'
+  const workflowStatus = runtime.state.deal?.backendStatus ?? runtime.state.deal?.status ?? null
+  const workflowHydrationPending = runtime.state.workerGate === 'backend_pending' && !runtime.workerJobsHydrated
+  const screenRedirectId = workflowHydrationPending
     ? null
     : usesOfferDetailHandoff && !workerV5CanAcceptOpenOffer(runtime.state.deal, runtime.state.workerGate)
       ? workflowDestinationScreenId
+      : usesCustomerConfirmationWaitHandoff && workflowDestinationScreenId !== '2.3-customer-confirmation-wait'
+        ? workflowDestinationScreenId
       : usesRouteEtaHandoff && workflowDestinationScreenId !== '2.4-route-eta'
         ? workflowDestinationScreenId
+      : usesInProgressHandoff && workflowDestinationScreenId !== '2.7-in-progress'
+        ? workflowDestinationScreenId
+      : usesCompletionEvidenceHandoff && workflowStatus !== 'repairing'
+        ? workflowDestinationScreenId
+      : usesCompletionSubmittedHandoff && workflowDestinationScreenId !== '2.11-completion-submitted'
+        ? workflowStatus === 'repairing' ? '2.10-completion-evidence' : workflowDestinationScreenId
         : null
 
   useEffect(() => {
@@ -1030,6 +1050,8 @@ function WorkerV5Body({
       return <WorkerV5OpportunityInboxBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '2.2-offer-detail':
       return <WorkerV5OfferDetailBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
+    case '2.3-customer-confirmation-wait':
+      return <WorkerV5CustomerConfirmationWaitBody language={language} runtime={runtime} />
     case '2.4-route-eta':
       return (
         <WorkerV5RouteEtaBody
@@ -1077,7 +1099,7 @@ function WorkerV5Body({
       )
     case '2.10-completion-evidence':
       return (
-        <WorkerV5CompletionEvidenceBody
+        <WorkerV5CompletionEvidenceScreenBody
           icons={workerV5Icons}
           language={language}
           navigateNext={navigateNext}
@@ -1459,7 +1481,7 @@ function WorkerV5OfferDetailBody({
     setAcceptBusy(true)
     try {
       const ok = await runtime.actions.workerAcceptBroadcast()
-      if (ok) router.replace('/(worker)/jobs?ns_worker_screen=2.7-in-progress' as never)
+      if (ok) router.replace('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait' as never)
     } finally {
       decisionBusyRef.current = false
       setAcceptBusy(false)
@@ -1572,6 +1594,53 @@ function WorkerV5OfferDetailBody({
   )
 }
 
+function WorkerV5CustomerConfirmationWaitBody({
+  language,
+  runtime,
+}: {
+  language: AppLanguage
+  runtime: WorkerV5Runtime
+}) {
+  const deal = runtime.state.deal
+  const code = workerV5DisplayCode(deal, language)
+  const service = deal ? localizedServiceLabel(deal.draft.serviceType, language) : null
+
+  return (
+    <View
+      accessibilityLiveRegion="polite"
+      style={styles.customerConfirmationWait}
+      testID="worker-v5-customer-confirmation-wait"
+    >
+      <View style={styles.customerConfirmationWaitRule} />
+      <View style={styles.customerConfirmationWaitStatusRow}>
+        <View style={styles.customerConfirmationWaitDot} />
+        <Text style={styles.customerConfirmationWaitStatus}>
+          {textByLanguage(language, 'Đã gửi nhận việc', 'Acceptance sent')}
+        </Text>
+      </View>
+      <Text style={styles.customerConfirmationWaitTitle}>
+        {textByLanguage(
+          language,
+          'Đang chờ khách xác nhận bạn cho công việc này.',
+          'Waiting for the customer to confirm you for this job.',
+        )}
+      </Text>
+      <Text style={styles.customerConfirmationWaitBody}>
+        {textByLanguage(
+          language,
+          'NestScout sẽ tự mở bước di chuyển khi khách chọn bạn. Địa chỉ chi tiết và thao tác thi công vẫn được khóa trong lúc chờ.',
+          'NestScout will open travel after the customer chooses you. Exact address and execution actions remain locked while waiting.',
+        )}
+      </Text>
+      {service || code ? (
+        <Text style={styles.customerConfirmationWaitMeta}>
+          {[service, code ? textByLanguage(language, `Mã việc ${code}`, `Work ${code}`) : null].filter(Boolean).join(' · ')}
+        </Text>
+      ) : null}
+    </View>
+  )
+}
+
 function WorkerV5InProgressBody({
   actionBusy,
   language,
@@ -1600,10 +1669,31 @@ function WorkerV5InProgressBody({
   const briefLines = deal?.broadcast?.prebrief?.filter(Boolean).slice(0, 5) ?? []
   const evidenceUrls = deal?.fieldEvidencePhotoUrls ?? []
   const currentJobId = deal?.broadcast?.jobId ?? deal?.id ?? null
-  const [fieldEvidenceUrls, setFieldEvidenceUrls] = useState<(string | null)[]>([null, null, null])
-  const [fieldEvidenceBusy, setFieldEvidenceBusy] = useState(false)
-  const [fieldEvidenceBusySlot, setFieldEvidenceBusySlot] = useState<number | null>(null)
-  const [fieldEvidenceKaelConfirmation, setFieldEvidenceKaelConfirmation] = useState<string | null>(null)
+  const [fieldEvidenceState, setFieldEvidenceState] = useState<WorkerV5FieldEvidenceUiState>({
+    busy: false,
+    busySlot: null,
+    confirmation: null,
+    urls: [null, null, null],
+  })
+  const {
+    busy: fieldEvidenceBusy,
+    busySlot: fieldEvidenceBusySlot,
+    confirmation: fieldEvidenceKaelConfirmation,
+    urls: fieldEvidenceUrls,
+  } = fieldEvidenceState
+  const setFieldEvidenceBusy = (busy: boolean) => setFieldEvidenceState((current) => ({ ...current, busy }))
+  const setFieldEvidenceBusySlot = (busySlot: number | null) => setFieldEvidenceState((current) => ({ ...current, busySlot }))
+  const setFieldEvidenceKaelConfirmation = (confirmation: string | null) => setFieldEvidenceState((current) => ({ ...current, confirmation }))
+  const setFieldEvidenceUrls = (next: SetStateAction<(string | null)[]>) => setFieldEvidenceState((current) => ({
+    ...current,
+    urls: typeof next === 'function' ? next(current.urls) : next,
+  }))
+  const [{ busy: phaseActionBusy, notice: phaseActionNotice }, setPhaseActionState] = useState<{
+    busy: boolean
+    notice: string | null
+  }>({ busy: false, notice: null })
+  const setPhaseActionBusy = (busy: boolean) => setPhaseActionState((current) => ({ ...current, busy }))
+  const setPhaseActionNotice = (notice: string | null) => setPhaseActionState((current) => ({ ...current, notice }))
   const fieldEvidenceSessionRef = useRef<WorkerV5PrivateKaelSession | null>(null)
   const fieldEvidenceRequestRef = useRef<WorkerV5FieldEvidenceRequest | null>(null)
   const fieldEvidenceOperationRef = useRef<{ jobId: string; slot: number } | null>(null)
@@ -1611,10 +1701,7 @@ function WorkerV5InProgressBody({
   const previousFieldEvidenceJobIdRef = useRef(currentJobId)
   if (previousFieldEvidenceJobIdRef.current !== currentJobId) {
     previousFieldEvidenceJobIdRef.current = currentJobId
-    setFieldEvidenceUrls([null, null, null])
-    setFieldEvidenceBusy(false)
-    setFieldEvidenceBusySlot(null)
-    setFieldEvidenceKaelConfirmation(null)
+    setFieldEvidenceState({ busy: false, busySlot: null, confirmation: null, urls: [null, null, null] })
     fieldEvidenceSessionRef.current = null
     fieldEvidenceRequestRef.current = null
     fieldEvidenceOperationRef.current = null
@@ -1829,6 +1916,127 @@ function WorkerV5InProgressBody({
     )
   }
 
+  const addressAccess = deal?.broadcast?.addressAccess ?? null
+  const workerCheckedIn = addressAccess?.worker_checked_in === true
+  const exactUnitReleased = addressAccess?.exact_unit_released === true
+  const visiblePhaseActionNotice = exactUnitReleased ? null : phaseActionNotice
+  const submitLobbyCheckIn = async () => {
+    if (phaseActionBusy || !currentJobId) return
+    setPhaseActionBusy(true)
+    setPhaseActionNotice(null)
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        setPhaseActionNotice(textByLanguage(
+          language,
+          'Cần quyền kho ảnh để gửi ảnh check-in tại sảnh.',
+          'Photo-library access is needed to send lobby check-in evidence.',
+        ))
+        return
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsMultipleSelection: false,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.84,
+      })
+      if (result.canceled || result.assets.length === 0) return
+      const asset = result.assets[0]
+      const uploaded = await uploadJobMediaDrafts(currentJobId, [{
+        fileName: workerV5PrivateKaelMediaName(asset, 0, language),
+        fileSizeBytes: asset.fileSize ?? undefined,
+        mimeType: asset.mimeType ?? undefined,
+        type: 'image',
+        uri: asset.uri,
+      }], 'access_check_in')
+      if (!uploaded.success) {
+        setPhaseActionNotice(localizeMediaUploadFailure(uploaded, language))
+        return
+      }
+      const checkedIn = await runtime.actions.workerUpdateStatus('arrived', {
+        access_check_in: {
+          checked_in_at: new Date().toISOString(),
+          mode: 'manual_photo',
+          note: textByLanguage(language, 'Ảnh xác nhận check-in tại sảnh', 'Lobby check-in evidence'),
+          photo_urls: uploaded.mediaRefs,
+        },
+      })
+      if (checkedIn) {
+        setPhaseActionNotice(textByLanguage(
+          language,
+          'Đã check-in tại sảnh. Đang chờ khách cho phép lên căn hộ.',
+          'Lobby check-in recorded. Waiting for the customer to release unit access.',
+        ))
+      }
+    } catch {
+      setPhaseActionNotice(textByLanguage(
+        language,
+        'Chưa thể hoàn tất check-in lúc này. Vui lòng thử lại.',
+        'Check-in could not be completed. Please try again.',
+      ))
+    } finally {
+      setPhaseActionBusy(false)
+    }
+  }
+
+  const advanceWorkPhase = async () => {
+    if (phaseActionBusy || !deal) return
+    if (deal.status === 'repairing') {
+      router.replace('/(worker)/jobs?ns_worker_screen=2.10-completion-evidence' as never)
+      return
+    }
+    const nextStatus = deal.status === 'arrived'
+      ? 'inspecting'
+      : deal.status === 'inspecting'
+        ? 'repairing'
+        : null
+    if (!nextStatus) return
+    setPhaseActionBusy(true)
+    try {
+      await runtime.actions.workerUpdateStatus(nextStatus)
+    } finally {
+      setPhaseActionBusy(false)
+    }
+  }
+
+  const phaseAction = deal?.status === 'arrived' && addressAccess && !workerCheckedIn
+    ? {
+        disabled: phaseActionBusy,
+        label: phaseActionBusy
+          ? textByLanguage(language, 'Đang check-in', 'Checking in')
+          : textByLanguage(language, 'Check-in bằng ảnh tại sảnh', 'Check in with a lobby photo'),
+        onPress: () => void submitLobbyCheckIn(),
+        testID: 'worker-v5-arrival-check-in-action',
+      }
+    : deal?.status === 'arrived' && addressAccess && !exactUnitReleased
+      ? {
+          disabled: true,
+          label: textByLanguage(language, 'Chờ khách cho thợ lên', 'Waiting for unit access'),
+          onPress: () => undefined,
+          testID: 'worker-v5-phase-advance-action',
+        }
+      : deal?.status === 'arrived'
+        ? {
+            disabled: phaseActionBusy,
+            label: textByLanguage(language, 'Bắt đầu kiểm tra', 'Start inspection'),
+            onPress: () => void advanceWorkPhase(),
+            testID: 'worker-v5-phase-advance-action',
+          }
+        : deal?.status === 'inspecting'
+          ? {
+              disabled: phaseActionBusy,
+              label: textByLanguage(language, 'Bắt đầu sửa chữa', 'Start work'),
+              onPress: () => void advanceWorkPhase(),
+              testID: 'worker-v5-phase-advance-action',
+            }
+          : deal?.status === 'repairing'
+            ? {
+                disabled: phaseActionBusy,
+                label: textByLanguage(language, 'Chuẩn bị hồ sơ hoàn tất', 'Prepare completion evidence'),
+                onPress: () => void advanceWorkPhase(),
+                testID: 'worker-v5-phase-advance-action',
+              }
+            : null
+
   if (isAwaitingArrival) {
     return (
       <WorkerV5InProgressTravelGate
@@ -1876,6 +2084,21 @@ function WorkerV5InProgressBody({
           testID="worker-v5-field-evidence-kael-confirmation"
         >
           {fieldEvidenceKaelConfirmation}
+        </Text>
+      ) : null}
+      {phaseAction ? (
+        <WorkerV5SingleSourceActionButton
+          disabled={phaseAction.disabled}
+          label={phaseAction.label}
+          onPress={phaseAction.onPress}
+          primaryButtonFill={WorkerV5PrimaryButtonFill}
+          reduceTransparency={reduceTransparency}
+          testID={phaseAction.testID}
+        />
+      ) : null}
+      {visiblePhaseActionNotice ? (
+        <Text style={styles.fieldEvidenceKaelConfirmation} testID="worker-v5-phase-action-notice">
+          {visiblePhaseActionNotice}
         </Text>
       ) : null}
       <WorkerV5ActionRail
@@ -2287,6 +2510,11 @@ function WorkerV5KaelOrbScreenSurface({
   }))
   const orbChat = useWorkerV5KaelOrbChat(deal, language, mode, workerJobsHydrated)
   const resetToNewSession = orbChat.resetToNewSession
+  const prepareKaelSurfaceFocus = useCallback(() => {
+    setModeMenuOpen(false)
+    setSessionMenuOpen(false)
+    setComposerActive(false)
+  }, [])
   const resetKaelSurface = useCallback(() => {
     setModeMenuOpen(false)
     setSessionMenuOpen(false)
@@ -2294,7 +2522,7 @@ function WorkerV5KaelOrbScreenSurface({
     setChatEntryKey((current) => current + 1)
     resetToNewSession()
   }, [resetToNewSession])
-  useFocusEffect(resetKaelSurface)
+  useFocusEffect(prepareKaelSurfaceFocus)
   const switchMode = (nextMode: WorkerV5KaelOrbMode) => {
     resetKaelSurface()
     navigateToScreen(nextMode === 'normal' ? '3.1-kael-chat-normal' : '3.2-kael-job-intake')
@@ -5957,6 +6185,55 @@ const styles = StyleSheet.create({
     paddingBottom: 126,
     paddingHorizontal: 16,
     paddingTop: 18,
+  },
+  customerConfirmationWait: {
+    gap: 12,
+    paddingHorizontal: 8,
+    paddingTop: 22,
+  },
+  customerConfirmationWaitBody: {
+    color: color.text.secondary,
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 21,
+    maxWidth: 520,
+  },
+  customerConfirmationWaitDot: {
+    backgroundColor: color.brand.primary,
+    borderRadius: 4,
+    height: 7,
+    width: 7,
+  },
+  customerConfirmationWaitMeta: {
+    color: color.text.muted,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  customerConfirmationWaitRule: {
+    backgroundColor: 'rgba(13,167,151,0.24)',
+    height: 1,
+    marginBottom: 8,
+    width: '100%',
+  },
+  customerConfirmationWaitStatus: {
+    color: color.brand.primaryDark,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  customerConfirmationWaitStatusRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  customerConfirmationWaitTitle: {
+    color: color.text.strong,
+    fontSize: 21,
+    fontWeight: '700',
+    lineHeight: 28,
+    maxWidth: 520,
   },
   sectionStack: {
     gap: 14,

@@ -20,6 +20,7 @@ function decisionHarness() {
     confirmingAgenticEstimate: false,
     confirmingCaseQuote: false,
     confirmingCompletion: false,
+    retryingWorkerSearch: false,
     setAgenticRejectOpen: jest.fn(),
     setAgenticRejectReason: jest.fn(),
     setCaseEditOpen: jest.fn(),
@@ -28,6 +29,7 @@ function decisionHarness() {
     setConfirmingAgenticEstimate: jest.fn(),
     setConfirmingCaseQuote: jest.fn(),
     setConfirmingCompletion: jest.fn(),
+    setRetryingWorkerSearch: jest.fn(),
     setSubmittingAgenticRejectReason: jest.fn(),
     setSubmittingCaseQuoteRejectReason: jest.fn(),
     submittingAgenticRejectReason: false,
@@ -141,5 +143,35 @@ describe('customer Kael decision concurrency', () => {
       await result.current.confirmCaseQuote()
     })
     expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenCalledTimes(1)
+    expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenLastCalledWith('job-a')
+  })
+
+  it('sends only one worker-search retry while the expired broadcast is being renewed', async () => {
+    let resolveRetry!: (value: boolean) => void
+    const harness = decisionHarness()
+    harness.input.deal = {
+      ...harness.input.deal,
+      broadcast: { status: 'expired' },
+      status: 'broadcasting',
+    }
+    harness.workflow.actions.confirmRemoteSearch.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveRetry = resolve
+    }))
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+    let firstRetry!: Promise<void>
+    let secondRetry!: Promise<void>
+
+    act(() => {
+      firstRetry = result.current.retryWorkerSearch()
+      secondRetry = result.current.retryWorkerSearch()
+    })
+
+    expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenCalledTimes(1)
+    expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenLastCalledWith('job-a')
+    await act(async () => {
+      resolveRetry(true)
+      await Promise.all([firstRetry, secondRetry])
+    })
+    expect(harness.chatUi.setRetryingWorkerSearch).toHaveBeenLastCalledWith(false)
   })
 })

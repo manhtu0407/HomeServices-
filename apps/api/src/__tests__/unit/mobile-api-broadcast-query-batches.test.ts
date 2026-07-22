@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   loadActiveJobRowsByWorker,
   loadActiveReservationRowsByWorker,
+  loadWorkerAvailabilityRows,
   loadWorkerMemoryRowsByWorker,
 } from '../../../../../supabase/functions/mobile-api/_shared/services/broadcast-query-batches'
 
@@ -44,5 +45,43 @@ describe('broadcast worker-id query batches', () => {
       100, 100, 50,
     ])
     expect(workerIdBatches.every((batch) => batch.length <= 100)).toBe(true)
+  })
+
+  it('starts independent availability reads together instead of stacking staging latency', async () => {
+    const startedTables: string[] = []
+    const resolvers = new Map<string, (value: { data: unknown[]; error: null }) => void>()
+    const client = {
+      from: (table: string) => {
+        const chain: Record<string, unknown> = {}
+        const returnChain = () => chain
+        Object.assign(chain, {
+          select: returnChain,
+          eq: returnChain,
+          gt: returnChain,
+          limit: returnChain,
+          in: returnChain,
+          then: (onFulfilled: (value: { data: unknown[]; error: null }) => unknown) => {
+            startedTables.push(table)
+            return new Promise<{ data: unknown[]; error: null }>((resolve) => {
+              resolvers.set(table, resolve)
+            }).then(onFulfilled)
+          },
+        })
+        return chain
+      },
+    }
+
+    const pending = loadWorkerAvailabilityRows(
+      client as never,
+      ['worker-1'],
+      ['worker_matched'],
+      '2026-07-19T00:00:00.000Z',
+    )
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(startedTables).toEqual(['jobs', 'job_worker_candidates', 'worker_kael_memory'])
+    for (const resolve of resolvers.values()) resolve({ data: [], error: null })
+    await expect(pending).resolves.toHaveLength(3)
   })
 })

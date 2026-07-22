@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Platform, View } from 'react-native'
 
-import { KaelTextInput } from '@/components/ui/kael-primitives'
+import { OnDeviceVoiceTranscriptControl } from './on-device-voice-transcript-control'
 import type { OnDeviceVoiceTranscriptProps } from './on-device-voice-transcript.types'
 
 type SpeechRecognitionRuntime = typeof import('expo-speech-recognition')
@@ -16,7 +16,6 @@ export function OnDeviceVoiceTranscript(props: OnDeviceVoiceTranscriptProps) {
 
   return <NativeOnDeviceVoiceTranscript {...props} runtime={speechRecognitionRuntime} />
 }
-
 function NativeOnDeviceVoiceTranscript({
   disabled,
   language,
@@ -91,47 +90,20 @@ function NativeOnDeviceVoiceTranscript({
   }
 
   return (
-    <View style={[styles.shell, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-v21-on-device-voice">
-      <View style={styles.header}>
-        <View style={styles.copy}>
-          <Text style={[styles.title, { color: tokens.text }]}>
-            {language === 'vi' ? 'Giọng nói → bản chép lời' : 'Voice → editable transcript'}
-          </Text>
-          <Text style={[styles.note, { color: tokens.muted }]}>
-            {language === 'vi'
-              ? 'Nhận ngay trên thiết bị; NestScout không lưu hoặc tải tệp âm thanh gốc.'
-              : 'Recognized on device; NestScout never stores or uploads the raw audio file.'}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityLabel={listening
-            ? (language === 'vi' ? 'Dừng nhận giọng nói' : 'Stop speech recognition')
-            : (language === 'vi' ? 'Nhận giọng nói trên thiết bị' : 'Recognize speech on device')}
-          accessibilityRole="button"
-          accessibilityState={{ busy: listening, disabled }}
-          disabled={disabled}
-          onPress={() => void startOnDeviceRecognition()}
-          style={[styles.button, { backgroundColor: listening ? tokens.primary : tokens.service, borderColor: tokens.border }]}
-          testID="customer-v21-on-device-voice-start"
-        >
-          <Text style={[styles.buttonText, { color: listening ? tokens.primaryText : tokens.primary }]}>
-            {listening ? (language === 'vi' ? 'Dừng' : 'Stop') : (language === 'vi' ? 'Nói' : 'Speak')}
-          </Text>
-        </Pressable>
-      </View>
-      <KaelTextInput
-        accessibilityLabel={language === 'vi' ? 'Chỉnh bản chép lời' : 'Edit transcript'}
-        editable={!disabled}
-        multiline
-        onChangeText={onChangeText}
-        placeholder={language === 'vi' ? 'Bản chép lời sẽ hiện ở đây để bạn kiểm tra' : 'Review and edit the transcript here'}
-        placeholderTextColor={tokens.subtleText}
-        style={[styles.input, { borderColor: tokens.border, color: tokens.text }]}
-        testID="customer-v21-on-device-voice-transcript"
-        value={transcript}
-      />
-      {error ? <Text accessibilityLiveRegion="polite" style={[styles.error, { color: tokens.primary }]}>{error}</Text> : null}
-    </View>
+    <OnDeviceVoiceTranscriptControl
+      buttonLabel={listening
+        ? (language === 'vi' ? 'Dừng thu giọng nói' : 'Stop recording voice')
+        : (language === 'vi' ? 'Thu giọng nói' : 'Record voice')}
+      disabled={disabled}
+      editorVisible={Boolean(transcript.trim())}
+      error={error}
+      language={language}
+      listening={listening}
+      onChangeText={onChangeText}
+      onPress={() => void startOnDeviceRecognition()}
+      transcript={transcript}
+      tokens={tokens}
+    />
   )
 }
 
@@ -142,44 +114,21 @@ function UnavailableOnDeviceVoiceTranscript({
   transcript,
   tokens,
 }: OnDeviceVoiceTranscriptProps) {
+  const [editorVisible, setEditorVisible] = useState(Boolean(transcript.trim()))
+
   return (
-    <View style={[styles.shell, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-v21-on-device-voice">
-      <View testID="customer-v21-on-device-voice-unavailable">
-        <View style={styles.header}>
-          <View style={styles.copy}>
-            <Text style={[styles.title, { color: tokens.text }]}>
-              {language === 'vi' ? 'Bản chép lời riêng tư' : 'Private transcript'}
-            </Text>
-            <Text style={[styles.note, { color: tokens.muted }]}>
-              {language === 'vi'
-                ? 'Nhận giọng nói chưa khả dụng trong bản chạy này. Bạn vẫn có thể nhập và sửa nội dung tại đây.'
-                : 'Speech recognition is unavailable in this build. You can still type and edit the transcript here.'}
-            </Text>
-          </View>
-          <Pressable
-            accessibilityLabel={language === 'vi' ? 'Nhận giọng nói chưa khả dụng' : 'Speech recognition unavailable'}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: true }}
-            disabled
-            style={[styles.button, { backgroundColor: tokens.service, borderColor: tokens.border }]}
-            testID="customer-v21-on-device-voice-start"
-          >
-            <Text style={[styles.buttonText, { color: tokens.muted }]}>
-              {language === 'vi' ? 'Chưa khả dụng' : 'Unavailable'}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-      <KaelTextInput
-        accessibilityLabel={language === 'vi' ? 'Chỉnh bản chép lời' : 'Edit transcript'}
-        editable={!disabled}
-        multiline
+    <View testID="customer-v21-on-device-voice-unavailable">
+      <OnDeviceVoiceTranscriptControl
+        buttonLabel={language === 'vi' ? 'Thêm giọng nói' : 'Add voice'}
+        disabled={disabled}
+        editorVisible={editorVisible || Boolean(transcript.trim())}
+        error={null}
+        language={language}
+        listening={false}
         onChangeText={onChangeText}
-        placeholder={language === 'vi' ? 'Nhập nội dung bạn muốn Kael phân tích' : 'Type what you want Kael to analyze'}
-        placeholderTextColor={tokens.subtleText}
-        style={[styles.input, { borderColor: tokens.border, color: tokens.text }]}
-        testID="customer-v21-on-device-voice-transcript"
-        value={transcript}
+        onPress={() => setEditorVisible(true)}
+        transcript={transcript}
+        tokens={tokens}
       />
     </View>
   )
@@ -206,15 +155,3 @@ function voiceErrorLabel(code: string, language: 'vi' | 'en') {
     ? 'Không thể nhận giọng nói ngoại tuyến. Bạn vẫn có thể nhập nội dung.'
     : 'Offline speech recognition is unavailable. You can still type the transcript.'
 }
-
-const styles = StyleSheet.create({
-  button: { alignItems: 'center', borderRadius: 18, borderWidth: 1, justifyContent: 'center', minHeight: 40, minWidth: 62, paddingHorizontal: 12 },
-  buttonText: { fontSize: 13, fontWeight: '700' },
-  copy: { flex: 1, gap: 3 },
-  error: { fontSize: 12, lineHeight: 17 },
-  header: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  input: { borderRadius: 16, borderWidth: 1, fontSize: 14, minHeight: 72, padding: 12, textAlignVertical: 'top' },
-  note: { fontSize: 12, lineHeight: 17 },
-  shell: { borderRadius: 22, borderWidth: 1, gap: 10, marginHorizontal: 18, marginBottom: 8, padding: 12 },
-  title: { fontSize: 14, fontWeight: '700' },
-})

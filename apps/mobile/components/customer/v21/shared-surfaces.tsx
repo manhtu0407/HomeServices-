@@ -285,10 +285,14 @@ export function InactiveAgenticGate({ testID }: { testID: string }) {
 
 export function V21Screen({
   children,
+  frameStyle,
+  frameTestID,
   screenId,
   testID,
 }: {
   children: ReactNode
+  frameStyle?: StyleProp<ViewStyle>
+  frameTestID?: string
   screenId: CustomerV21ScreenId
   testID: string
 }) {
@@ -306,7 +310,7 @@ export function V21Screen({
         showsVerticalScrollIndicator={false}
         testID="customer-v21-scroll"
       >
-        <View style={styles.frame}>
+        <View style={[styles.frame, frameStyle]} testID={frameTestID}>
           {children}
         </View>
       </ScrollView>

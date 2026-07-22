@@ -507,6 +507,10 @@ async function dispatchRoute(
     }
     case "jobs.confirmCompletion":
       return services.confirmCompletion(ctx, route.jobId);
+    case "jobs.paymentIntent":
+      return services.createPaymentIntent(ctx, route.jobId);
+    case "jobs.stagingPaymentConfirm":
+      return services.confirmStagingPayment(ctx, route.jobId);
     case "jobs.review": {
       const body = await readJson(request);
       if (typeof body !== "object" || body === null || Array.isArray(body)) {

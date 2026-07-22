@@ -65,6 +65,7 @@ export function useCustomerKaelDecisionActions({
     confirmingAgenticEstimate,
     confirmingCaseQuote,
     confirmingCompletion,
+    retryingWorkerSearch,
     setAgenticRejectOpen,
     setAgenticRejectReason,
     setCaseEditOpen,
@@ -73,6 +74,7 @@ export function useCustomerKaelDecisionActions({
     setConfirmingAgenticEstimate,
     setConfirmingCaseQuote,
     setConfirmingCompletion,
+    setRetryingWorkerSearch,
     setSubmittingAgenticRejectReason,
     setSubmittingCaseQuoteRejectReason,
     submittingAgenticRejectReason,
@@ -217,7 +219,7 @@ export function useCustomerKaelDecisionActions({
       },
     )
     try {
-      const confirmed = await workflow.actions.confirmRemoteSearch()
+      const confirmed = await workflow.actions.confirmRemoteSearch(deal.id)
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       if (confirmed) {
         await processDone
@@ -320,10 +322,39 @@ export function useCustomerKaelDecisionActions({
     }
   }
 
+  const retryWorkerSearch = async () => {
+    if (
+      deal?.status !== 'broadcasting' ||
+      deal.broadcast?.status !== 'expired' ||
+      retryingWorkerSearch ||
+      typeof workflow.actions.confirmRemoteSearch !== 'function'
+    ) return
+    const operation = beginDecisionOperation('retry-worker-search')
+    if (!operation) return
+    const requestToken = kaelRequestGuard.begin('conversation')
+    setRetryingWorkerSearch(true)
+    setError(null)
+    try {
+      const retried = await workflow.actions.confirmRemoteSearch(deal.id)
+      if (!kaelRequestGuard.isCurrent(requestToken)) return
+      if (!retried) {
+        setError(language === 'vi'
+          ? 'Chưa thể tìm lại thợ lúc này. Vui lòng thử lại.'
+          : 'The worker search could not be retried. Try again.')
+      }
+    } catch {
+      if (kaelRequestGuard.isCurrent(requestToken)) setError(decisionFailure)
+    } finally {
+      finishDecisionOperation(operation)
+      if (kaelRequestGuard.isCurrent(requestToken)) setRetryingWorkerSearch(false)
+    }
+  }
+
   return {
     confirmAgenticEstimate,
     confirmCaseCompletion,
     confirmCaseQuote,
+    retryWorkerSearch,
     submitAgenticRejectReason,
     submitCaseQuoteRejectReason,
   }

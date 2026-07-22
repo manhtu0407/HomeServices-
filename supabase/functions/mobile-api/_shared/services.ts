@@ -38,6 +38,7 @@ import {
 import { decideScopeChange, requestScopeChange } from "./services/scope-change.service.ts";
 import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./services/job-incident.service.ts";
 import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
+import { confirmStagingPayment, createStagingPaymentIntent } from "./services/staging-payment.service.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/chat.service.ts";
 import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat.service.ts";
 import { answerKaelAssistant } from "./services/customer-assistant.service.ts";
@@ -162,6 +163,10 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     decideWorkerCancellation,
     decideScopeChange,
     confirmCompletion,
+    createPaymentIntent: (ctx, jobId) =>
+      createStagingPaymentIntent(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
+    confirmStagingPayment: (ctx, jobId) =>
+      confirmStagingPayment(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
     submitReview,
     submitCustomerKaelFeedback,
     getKaelCharter,

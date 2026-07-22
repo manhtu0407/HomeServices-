@@ -28,4 +28,18 @@ describe('localizeKaelRequestFailure', () => {
       'Kael could not complete that step. Please try again.',
     )
   })
+
+  it.each(['TIMEOUT', 'STREAM_TIMEOUT', 'STREAM_NETWORK'])(
+    'keeps %s failures actionable without exposing provider details',
+    (code) => {
+      const failure = { code, error: 'private transport detail' }
+
+      expect(localizeKaelRequestFailure(failure, 'vi')).toBe(
+        'Phản hồi của Kael đang mất nhiều thời gian hơn bình thường. Vui lòng gửi lại sau ít phút.',
+      )
+      expect(localizeKaelRequestFailure(failure, 'en')).toBe(
+        'Kael is taking longer than usual to respond. Please try again shortly.',
+      )
+    },
+  )
 })

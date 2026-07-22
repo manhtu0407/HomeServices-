@@ -1,13 +1,20 @@
 import { sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { AIMessage, AIProvider, EdgeAiSecrets, IntentAttemptLog, IntentResult } from "./types.ts";
-import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, intentResultSchema } from "./types.ts";
+import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, intentProviderResultSchema } from "./types.ts";
 import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from "./prompts.ts";
 import { callStructuredAI } from "./structured-call.ts";
 import type { KaelSpendGate } from "./spend-gate.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
-import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
-import { hasUnsupportedRepairIntent, scrubSensitiveForLLM, timed } from "./utils.ts";
+import {
+  circuitAwareProviderCandidatesForPurpose,
+  shouldSkipProviderSiblingModels,
+} from "./routing.ts";
+import {
+  hasUnsupportedRepairIntent,
+  scrubCustomerCaseContextForLLM,
+  timed,
+} from "./utils.ts";
 import { applyHardRoutingPolicy, hasElectricalInfrastructureContext } from "./electrical-intake-policy.ts";
 
 export async function classifyIntent(
@@ -32,8 +39,10 @@ export async function classifyIntent(
     description,
   );
   const attempts: IntentAttemptLog[] = [];
+  const blockedProviders = new Set<AIProvider>();
 
   for (const candidate of circuitAwareProviderCandidatesForPurpose("intent_classification")) {
+    if (blockedProviders.has(candidate.provider)) continue;
     const attempt = await classifyIntentWithProvider(
       candidate,
       messages,
@@ -43,6 +52,9 @@ export async function classifyIntent(
     attempts.push(attempt.log);
     if (attempt.success) {
       return { success: true, intent: attempt.intent, attempts };
+    }
+    if (shouldSkipProviderSiblingModels(attempt.code)) {
+      blockedProviders.add(candidate.provider);
     }
   }
 
@@ -95,7 +107,7 @@ async function classifyIntentWithProvider(
   spendGate: KaelSpendGate,
 ): Promise<
   | { success: true; intent: IntentResult; log: IntentAttemptLog }
-  | { success: false; log: IntentAttemptLog }
+  | { success: false; code: string; log: IntentAttemptLog }
 > {
   const attempt = await timed(() =>
     callStructuredAI({
@@ -107,7 +119,7 @@ async function classifyIntentWithProvider(
       temperature: 0.1,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
-    }, intentResultSchema, secrets, spendGate)
+    }, intentProviderResultSchema, secrets, spendGate)
   );
   const baseLog = {
     provider: route.provider,
@@ -121,6 +133,7 @@ async function classifyIntentWithProvider(
       : undefined;
     return {
       success: false,
+      code: attempt.result.code,
       log: {
         ...baseLog,
         success: false,
@@ -177,12 +190,14 @@ export async function diagnoseIntake(
     sanitizeForLLM(serviceType),
     problemChips.map(sanitizeForLLM),
     description,
-    conversationContext ? scrubSensitiveForLLM(conversationContext) : undefined,
+    conversationContext ? scrubCustomerCaseContextForLLM(conversationContext) : undefined,
     language,
   );
   const attempts: IntentAttemptLog[] = [];
+  const blockedProviders = new Set<AIProvider>();
 
   for (const candidate of circuitAwareProviderCandidatesForPurpose("intent_classification")) {
+    if (blockedProviders.has(candidate.provider)) continue;
     const attempt = await diagnoseIntakeWithProvider(
       candidate,
       messages,
@@ -192,6 +207,9 @@ export async function diagnoseIntake(
     attempts.push(attempt.log);
     if (attempt.success) {
       return { success: true, intent: attempt.intent, attempts };
+    }
+    if (shouldSkipProviderSiblingModels(attempt.code)) {
+      blockedProviders.add(candidate.provider);
     }
   }
 
@@ -217,7 +235,7 @@ async function diagnoseIntakeWithProvider(
   spendGate: KaelSpendGate,
 ): Promise<
   | { success: true; intent: IntentResult; log: IntentAttemptLog }
-  | { success: false; log: IntentAttemptLog }
+  | { success: false; code: string; log: IntentAttemptLog }
 > {
   // Raw maxTokens (not maxTokensForPurpose) so the richer structured diagnosis JSON
   // is not truncated by the intent route's tighter output cap.
@@ -231,7 +249,7 @@ async function diagnoseIntakeWithProvider(
       temperature: 0.2,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
-    }, intentResultSchema, secrets, spendGate)
+    }, intentProviderResultSchema, secrets, spendGate)
   );
   const baseLog = {
     provider: route.provider,
@@ -245,6 +263,7 @@ async function diagnoseIntakeWithProvider(
       : undefined;
     return {
       success: false,
+      code: attempt.result.code,
       log: {
         ...baseLog,
         success: false,

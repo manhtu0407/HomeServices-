@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import { runCustomerAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/customer-assistant'
-import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
+import { classifyIntent, diagnoseIntake } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
 import { searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
 import { reviewScopeChange, computeScopeChangeEstimate } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
 import { callStructuredAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/structured-call'
@@ -94,6 +94,58 @@ describe('mobile-api Kael structured output health', () => {
     expect(guard.isOpen('intent_classification:deepseek')).toBe(true)
   })
 
+  it('accepts a valid intent core while discarding malformed optional model enrichment', async () => {
+    const fetchSpy = vi.fn(async () => deepseekResponse(JSON.stringify({
+      service_type: 'handyman',
+      problem_slug: 'drill_or_mount_shelf',
+      confidence: '0.86',
+      needs_clarification: true,
+      missing_slots: [
+        'task_types_and_total_count',
+        'invented_slot',
+        'task_types_and_total_count',
+      ],
+      profile_facts: {
+        task_types_and_total_count: 'Một vị trí cần khoan',
+        invented_driver: 'Không được đưa vào artifact',
+      },
+      safety_signals: ['invented_hazard'],
+      clarification_question: 'Kael cần biết: có bao nhiêu việc, và cần dụng cụ nào?',
+      scope_signal: 'in_scope',
+      suggested_service: 'painting',
+      customer_sentiment: 'confused',
+    })))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const result = await diagnoseIntake(
+      'handyman',
+      ['Khoan/lắp kệ'],
+      'Tôi cần khoan tường để lắp giá treo máy tập.',
+      { deepseekApiKey: 'deepseek-test' },
+      allowKaelSpendForTest('customer-1'),
+      undefined,
+      'vi',
+    )
+
+    expect(result).toMatchObject({
+      success: true,
+      intent: {
+        service_type: 'handyman',
+        problem_slug: 'drill_or_mount_shelf',
+        confidence: 0.86,
+        needs_clarification: true,
+        missing_slots: ['task_types_and_total_count'],
+        profile_facts: { task_types_and_total_count: 'Một vị trí cần khoan' },
+        safety_signals: [],
+        clarification_question: null,
+        scope_signal: 'in_scope',
+      },
+    })
+    expect(result.success && result.intent).not.toHaveProperty('suggested_service')
+    expect(result.success && result.intent).not.toHaveProperty('customer_sentiment')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
   it('fails open when durable circuit RPCs throw', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => deepseekResponse('{"answer":"safe"}')))
     const rpc = vi.fn(async () => {
@@ -163,6 +215,7 @@ describe('mobile-api Kael structured output health', () => {
       provider_attempts: [
         expect.objectContaining({ result: 'schema_invalid' }),
         expect.objectContaining({ result: 'schema_invalid' }),
+        expect.objectContaining({ result: 'schema_invalid' }),
       ],
     })
 
@@ -224,6 +277,24 @@ describe('mobile-api Kael structured output health', () => {
     expect(estimate).not.toHaveProperty('price_min')
     expect(estimate).not.toHaveProperty('price_max')
     expect(estimate).not.toHaveProperty('complexity_assessment')
+  })
+
+  it('persists scope-change attempts exactly once across failure, direct, and incident paths', () => {
+    const source = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts', import.meta.url),
+      'utf8',
+    )
+    const failClosedGuard = source.indexOf('if (estimate.fallback_used')
+    const failureAudit = source.indexOf('await logScopeChangeEstimateApiCall(client, jobId, estimate)', failClosedGuard)
+    const durableDirectAudit = source.indexOf('buildDirectScopeEffectPayloads(jobId, enrichedEstimate, learningInput)')
+    const directReturn = source.indexOf('return response')
+    const incidentAudit = source.indexOf('await logScopeChangeEstimateApiCall(client, jobId, enrichedEstimate)', directReturn)
+
+    expect(failureAudit).toBeGreaterThan(failClosedGuard)
+    expect(durableDirectAudit).toBeGreaterThan(failureAudit)
+    expect(durableDirectAudit).toBeLessThan(directReturn)
+    expect(incidentAudit).toBeGreaterThan(directReturn)
+    expect(source.match(/logScopeChangeEstimateApiCall\(client, jobId,/g)).toHaveLength(2)
   })
 
   it('routes every live structured Edge caller through the shared wrapper', () => {

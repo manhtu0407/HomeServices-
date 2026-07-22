@@ -56,8 +56,15 @@ describe('mobile-api customer Kael assistant', () => {
       fallback: { used: false },
     })
     expect(callAI).toHaveBeenCalledTimes(1)
+    expect(seenRequests[0]).toMatchObject({
+      model: 'deepseek-v4-flash',
+      maxRetries: 0,
+      timeoutMs: 6_000,
+    })
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('Runtime knowledge')
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('worker onboarding')
+    expect(JSON.stringify(seenRequests[0]?.messages)).toContain('at most 3 short sentences')
+    expect(JSON.stringify(seenRequests[0]?.messages)).toContain('do not tell the customer to drill')
     expect(JSON.stringify(seenRequests[0]?.messages)).not.toContain('0901234567')
     expect(calls).toContainEqual({
       kind: 'rpc',
@@ -218,6 +225,276 @@ describe('mobile-api customer Kael assistant', () => {
     expect(result.citations).toEqual(['NestScout platform scope'])
     expect(JSON.stringify(result)).not.toContain('090-123-4567')
     expect(JSON.stringify(result)).not.toContain('evil.example')
+  })
+
+  it('canonicalizes harmless provider shape drift without accepting invented actions', async () => {
+    const longAnswer = `Kael sẽ hướng dẫn bạn kiểm tra an toàn. ${'Chi tiết. '.repeat(120)}`
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        response: longAnswer,
+        safetyNotes: ['Giữ khoảng cách an toàn.', 42],
+        sources: ['platform:worker_verification', { title: 'invented' }],
+        suggestedActions: ['OPEN_BOOKING', 'approve_payment', 'contact_support'],
+        boundary: 'educational',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Tôi nên kiểm tra ổ cắm bị nóng như thế nào?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(result.answer.length).toBeLessThanOrEqual(900)
+    expect(result.boundary).toBe('educational_only')
+    expect(result.suggested_actions).toEqual(['open_booking', 'contact_support'])
+    expect(JSON.stringify(result)).not.toContain('approve_payment')
+  })
+
+  it('accepts bounded provider aliases and string metadata without trusting invented actions', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        answer_text: 'Keep the wall untouched until a trained worker checks the hidden wiring and pipes on site.',
+        safety_notes: 'Do not drill before the on-site check.',
+        citations: 'provider-invented-source',
+        suggested_actions: ['Book a worker now', 'approve_payment'],
+        boundary: 'This is general safety guidance only.',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'en',
+      message: 'Can I drill into this wall if I do not know where hidden wiring or pipes run?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: expect.stringContaining('trained worker'),
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['check_job', 'message_worker'],
+    })
+    expect(result.safety_notes).toEqual([
+      "Use NestScout's in-app workflow for booking, scope, payment, and support.",
+    ])
+    expect(result.citations).toEqual(['NestScout platform scope'])
+    expect(JSON.stringify(result)).not.toContain('approve_payment')
+    expect(JSON.stringify(result)).not.toContain('provider-invented-source')
+    expect(callAI).toHaveBeenCalledTimes(1)
+  })
+
+  it('recovers a closed answer field from fenced JSON truncated after that field', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: [
+        '```json',
+        '{"answer":"Keep the wall untouched until a trained worker checks hidden wiring and pipes on site.","safety_notes":[',
+      ].join('\n'),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'en',
+      message: 'Can I drill into this wall if I do not know where hidden wiring or pipes run?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result.answer).toContain('trained worker')
+    expect(result.fallback_used).toBe(true)
+    expect(result.suggested_actions).toEqual(['check_job', 'message_worker'])
+    expect(callAI).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not recover arbitrary strings from malformed provider JSON', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: '{"safety_notes":"Send money to provider-invented-source before the visit",',
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'en',
+      message: 'What should I do before the worker visits?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result.fallback_used).toBe(true)
+    expect(result.boundary).toBe('fallback')
+    expect(JSON.stringify(result)).not.toContain('provider-invented-source')
+    expect(callAI).toHaveBeenCalledTimes(3)
+  })
+
+  it('unwraps one common provider envelope before structured validation', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        result: {
+          data: {
+            final_answer: 'Tắt aptomat nhánh nếu thao tác đó an toàn, tránh chạm vào ổ cắm và chờ thợ kiểm tra.',
+            actions: ['CONTACT-SUPPORT'],
+            boundary: 'education',
+          },
+        },
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Ổ cắm kêu lép bép, tôi cần làm gì để an toàn?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result).toMatchObject({
+      answer: expect.stringContaining('Tắt aptomat'),
+      boundary: 'educational_only',
+      fallback_used: false,
+      suggested_actions: ['contact_support'],
+    })
+    expect(callAI).toHaveBeenCalledTimes(1)
+  })
+
+  it('recovers only safe answer text when provider metadata violates the schema', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: 'Ngắt nguồn điện nếu bạn có thể làm an toàn. Không chạm vào ổ cắm và giữ mọi người tránh xa khu vực.',
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Ổ cắm kêu lép bép, tôi cần làm gì để an toàn?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.answer).toContain('Ngắt nguồn điện')
+    expect(result.fallback_used).toBe(true)
+    expect(result.suggested_actions).toEqual([])
+    expect(callAI).toHaveBeenCalledTimes(1)
+  })
+
+  it('reflows a safe long provider sentence instead of replacing it with a generic fallback', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        answer: 'Bạn nên ngắt aptomat nhánh nếu có thể thao tác an toàn, không chạm vào ổ cắm, giữ người khác tránh xa và chờ thợ kiểm tra trực tiếp.',
+        safety_notes: [],
+        citations: [],
+        suggested_actions: [],
+        boundary: 'answered',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'anthropic' as const,
+      model: 'claude-haiku-4-5-20251001',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Ổ cắm kêu lép bép, tôi cần làm gì để an toàn?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(result.answer).toContain('ngắt aptomat')
+    expect(result.answer).toContain('. ')
+    expect(callAI).toHaveBeenCalledTimes(1)
+  })
+
+  it('reflows at an early clause boundary instead of splitting a noun phrase', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        answer: 'Before any drilling, ask a trained worker to locate hidden wiring and plumbing routes with a detector before work starts safely.',
+        safety_notes: [],
+        citations: [],
+        suggested_actions: [],
+        boundary: 'answered',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'en',
+      message: 'Can I drill before hidden wiring and plumbing routes are located?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(result.answer).toContain('Before any drilling. Ask a trained worker')
+    expect(result.answer).not.toContain('detector before. Work')
+  })
+
+  it('does not strand a Vietnamese connector at a reflow boundary', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        answer: 'Máy lạnh chảy nước dù đã vệ sinh lưới lọc thường do ống thoát nước bị tắc hoặc, máng hứng nước bị nghiêng nên nước tràn ra ngoài.',
+        safety_notes: [],
+        citations: [],
+        suggested_actions: [],
+        boundary: 'answered',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Máy lạnh chảy nước dù tôi đã vệ sinh lưới lọc.',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(result.answer).toContain('bị tắc. Máng hứng nước')
+    expect(result.answer).not.toContain('hoặc. Máng')
+    expect(result.answer).not.toContain('hoặc,')
   })
 
   it.each(['Giá khoảng 200k.', 'Giá khoảng 300.000.'])(

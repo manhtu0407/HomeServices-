@@ -23,6 +23,10 @@ export function localizeKaelRequestFailure(
       return copy.invalidStatus
     case 'SESSION_PENDING':
       return copy.sessionPending
+    case 'TIMEOUT':
+    case 'STREAM_TIMEOUT':
+    case 'STREAM_NETWORK':
+      return copy.slowResponse
     case 'AI_DISABLED':
     case 'NO_PROVIDER_AVAILABLE':
     case 'MEDIA_VALIDATION_UNAVAILABLE':
@@ -41,6 +45,7 @@ const kaelRequestFailureCopy = {
     notFound: 'Không tìm thấy công việc này hoặc công việc không còn khả dụng.',
     rateLimited: 'Kael đã tạm đạt giới hạn yêu cầu. Vui lòng thử lại sau.',
     sessionPending: 'Kael đang chuẩn bị công việc này. Vui lòng thử lại sau ít phút.',
+    slowResponse: 'Phản hồi của Kael đang mất nhiều thời gian hơn bình thường. Vui lòng gửi lại sau ít phút.',
     unavailable: 'Kael tạm thời không khả dụng. Vui lòng thử lại sau ít phút.',
     validation: 'Một số thông tin yêu cầu chưa hợp lệ. Hãy kiểm tra và thử lại.',
   },
@@ -50,6 +55,7 @@ const kaelRequestFailureCopy = {
     notFound: 'This case could not be found or is no longer available.',
     rateLimited: 'Kael has reached a temporary request limit. Please try again later.',
     sessionPending: 'Kael is still preparing this case. Please try again shortly.',
+    slowResponse: 'Kael is taking longer than usual to respond. Please try again shortly.',
     unavailable: 'Kael is temporarily unavailable. Please try again shortly.',
     validation: 'Some request information is invalid. Please review it and try again.',
   },

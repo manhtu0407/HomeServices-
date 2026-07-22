@@ -6,6 +6,7 @@ import type {
   KaelCaseWorkServiceType,
   KaelPerformanceProfile,
 } from "./performance-profiles.ts";
+import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 
 export function resolveProfileFactCoverage(
   profile: Readonly<KaelPerformanceProfile>,
@@ -69,9 +70,13 @@ function safetyGateCustomerMessage(
 }
 
 export type CaseWorkEvidenceRequest = {
-  blocker: "handyman_visual_evidence" | "upholstery_condition_visual_evidence";
-  evidenceKind: "photo";
+  blocker:
+    | "handyman_visual_evidence"
+    | "profile_evidence_review"
+    | "upholstery_condition_visual_evidence";
+  evidenceKind: "any" | "photo" | "video_frame" | "voice_transcript";
   prompt: string;
+  required: boolean;
 };
 
 const UPHOLSTERY_VISUAL_PROBLEM_SLUGS = new Set([
@@ -93,8 +98,9 @@ export function requiredCaseWorkEvidenceRequest(input: {
       blocker: "handyman_visual_evidence",
       evidenceKind: "photo",
       prompt: input.language === "en"
-        ? "Send one clear photo of the item and the installation area so Kael can check the surface, size, and tools needed."
-        : "Bạn gửi một ảnh thấy rõ vật cần sửa/lắp và vị trí thi công để Kael kiểm tra bề mặt, kích thước và dụng cụ cần chuẩn bị.",
+        ? "Send a clear photo of the item and work area so Kael can check the surface, size, and tools needed."
+        : "Gửi ảnh rõ vật cần sửa/lắp và vị trí thi công để Kael kiểm tra bề mặt, kích thước, dụng cụ cần dùng.",
+      required: true,
     };
   }
 
@@ -111,10 +117,33 @@ export function requiredCaseWorkEvidenceRequest(input: {
       prompt: input.language === "en"
         ? "Send one photo of the whole item and one close-up of the material or stain so Kael does not misstate the cleaning scope."
         : "Bạn gửi một ảnh toàn bộ món đồ và một ảnh cận chất liệu/vết cần xử lý để Kael không báo sai phạm vi vệ sinh.",
+      required: true,
     };
   }
 
   return null;
+}
+
+export function resolveCaseWorkEvidenceRequest(input: {
+  serviceType: KaelCaseWorkServiceType;
+  problemCategory: string;
+  customerMessage: string;
+  evidence: KaelDiagnosisScopeArtifact["evidence"];
+  evidenceDecision?: "confirmed" | "skipped";
+  language?: "vi" | "en";
+}): CaseWorkEvidenceRequest | null {
+  const requiredRequest = requiredCaseWorkEvidenceRequest(input);
+  if (requiredRequest) return requiredRequest;
+  if (input.evidenceDecision || hasModelEligibleEvidence(input.evidence)) return null;
+
+  const profile = getKaelPerformanceProfile(input.serviceType);
+  if (!profile || profile.evidence_suggestions.length === 0) return null;
+  return {
+    blocker: "profile_evidence_review",
+    evidenceKind: "any",
+    prompt: optionalEvidencePrompt(input.serviceType, input.language ?? "vi"),
+    required: false,
+  };
 }
 
 export function buildPriceEvidenceUnavailableArtifact(
@@ -158,6 +187,39 @@ function hasModelEligibleVisualEvidence(
     item.model_eligible &&
     (item.kind === "photo" || item.kind === "video_frame")
   );
+}
+
+function hasModelEligibleEvidence(
+  evidence: KaelDiagnosisScopeArtifact["evidence"],
+) {
+  return evidence.some((item) =>
+    item.model_eligible &&
+    (item.kind === "photo" || item.kind === "video_frame" || item.kind === "voice_transcript")
+  );
+}
+
+function optionalEvidencePrompt(
+  serviceType: KaelCaseWorkServiceType,
+  language: "vi" | "en",
+) {
+  const prompts = language === "en"
+    ? {
+      electrical: "If convenient, add a photo or video of the affected electrical area, or an editable voice transcript describing the symptom sequence.",
+      plumbing: "If convenient, add a photo or video showing the leak, blockage, or water flow, or an editable voice transcript describing when it happens.",
+      cleaning: "If convenient, add representative photos or video of the areas, or an editable voice transcript describing priorities and areas to avoid.",
+      hvac: "If convenient, add a photo or video of the unit and its symptom, or an editable voice transcript describing operation and recent changes.",
+      upholstery: "If convenient, add photos or video of the item, material, and affected area, or an editable voice transcript describing its condition.",
+      handyman: "If convenient, add photos or video of the item and work area, or an editable voice transcript describing the intended finished state.",
+    }
+    : {
+      electrical: "Nếu thuận tiện, bạn thêm ảnh/video khu vực điện bị ảnh hưởng hoặc bản chép lời có thể chỉnh sửa về diễn biến sự cố.",
+      plumbing: "Nếu thuận tiện, bạn thêm ảnh/video chỗ rò, nghẹt hoặc dòng nước, hoặc bản chép lời có thể chỉnh sửa về thời điểm xảy ra.",
+      cleaning: "Nếu thuận tiện, bạn thêm ảnh/video đại diện các khu vực hoặc bản chép lời có thể chỉnh sửa về ưu tiên và nơi cần tránh.",
+      hvac: "Nếu thuận tiện, bạn thêm ảnh/video thiết bị và biểu hiện lỗi hoặc bản chép lời có thể chỉnh sửa về cách máy vận hành.",
+      upholstery: "Nếu thuận tiện, bạn thêm ảnh/video món đồ, chất liệu và vùng cần xử lý hoặc bản chép lời có thể chỉnh sửa về hiện trạng.",
+      handyman: "Nếu thuận tiện, bạn thêm ảnh/video vật và khu vực thi công hoặc bản chép lời có thể chỉnh sửa về kết quả mong muốn.",
+    };
+  return prompts[serviceType];
 }
 
 function upholsteryConditionNeedsVisual(value: string) {

@@ -40,6 +40,9 @@ export function readEdgeEnv(
     durableGuardsEnabled: readBooleanFlag(
       getEnv("KAEL_DURABLE_GUARDS_ENABLED"),
     ),
+    stagingPaymentRailEnabled:
+      isStagingProjectUrl(supabaseUrl) &&
+      readBooleanFlag(getEnv("NESTSCOUT_STAGING_PAYMENT_RAIL_ENABLED")),
     aiKillSwitch: readBooleanFlag(getEnv("KAEL_AI_KILL_SWITCH")),
   };
 }

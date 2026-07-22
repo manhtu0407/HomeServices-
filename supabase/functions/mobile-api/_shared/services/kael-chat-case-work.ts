@@ -5,38 +5,49 @@ import {
   detectDemandingCustomerPatterns,
   getKaelPerformanceProfile,
   kaelDiagnosisScopeArtifactSchema,
-  requiredCaseWorkEvidenceRequest,
+  type CaseWorkEvidenceRequest,
   type KaelDiagnosisScopeArtifact,
 } from "../kael/index.ts";
 import { apiFailure } from "../router.ts";
 import { compactMetadata, type KaelChatTurnRole } from "./_shared.ts";
 import { asKaelTurnRole, asNumber, asString, nullableString } from "./coercions.ts";
 import { dbQuery, type DbClient } from "./db.ts";
-import { buildUntrustedConversationContext } from "../kael/untrusted-evidence.ts";
+import {
+  buildUntrustedCustomerCaseConversationContext,
+  sanitizeCustomerCaseEvidenceText,
+} from "../kael/untrusted-evidence.ts";
 
-export async function loadDiagnosisScopeArtifact(
+export async function loadKaelChatAnalysisState(
   client: DbClient,
   sessionId: string,
   serviceType: ServiceType,
   customerGoal: string,
-): Promise<KaelDiagnosisScopeArtifact> {
+): Promise<{
+  artifact: KaelDiagnosisScopeArtifact;
+  currentCostUsd: number;
+  persistedTurnCount: number;
+}> {
   const result = await dbQuery<Record<string, unknown>>(
-    client.from("kael_chat_sessions").select("id, diagnosis_scope").eq("id", sessionId).single(),
+    client.from("kael_chat_sessions")
+      .select("id, diagnosis_scope, total_turns, total_cost_usd")
+      .eq("id", sessionId)
+      .single(),
   );
   if (result.error || !result.data) apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
   const parsed = kaelDiagnosisScopeArtifactSchema.safeParse(result.data.diagnosis_scope);
-  if (parsed.success && parsed.data.service_type === serviceType) return parsed.data;
-  const profile = getKaelPerformanceProfile(serviceType);
-  if (!profile) apiFailure("UNSUPPORTED_SERVICE", "Dịch vụ chưa có hồ sơ Case Work hợp lệ", 400);
-  return buildInitialDiagnosisScopeArtifact({ serviceType: profile.service_type, customerGoal });
-}
-
-export async function getKaelChatTurnCount(client: DbClient, sessionId: string): Promise<number> {
-  const result = await dbQuery<Record<string, unknown>>(
-    client.from("kael_chat_sessions").select("id, total_turns").eq("id", sessionId).single(),
-  );
-  if (result.error || !result.data) apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
-  return asNumber(result.data.total_turns);
+  let artifact = parsed.success && parsed.data.service_type === serviceType
+    ? parsed.data
+    : null;
+  if (!artifact) {
+    const profile = getKaelPerformanceProfile(serviceType);
+    if (!profile) apiFailure("UNSUPPORTED_SERVICE", "Dịch vụ chưa có hồ sơ Case Work hợp lệ", 400);
+    artifact = buildInitialDiagnosisScopeArtifact({ serviceType: profile.service_type, customerGoal });
+  }
+  return {
+    artifact,
+    currentCostUsd: asNumber(result.data.total_cost_usd),
+    persistedTurnCount: asNumber(result.data.total_turns),
+  };
 }
 
 export function diagnosisScopeWithQuestion(
@@ -62,9 +73,89 @@ export function diagnosisScopeWithQuestion(
   });
 }
 
+export function diagnosisScopeWithGroundedAnswer(
+  artifact: KaelDiagnosisScopeArtifact,
+  missingFact: string,
+  answer: string,
+): KaelDiagnosisScopeArtifact {
+  const normalizedAnswer = answer.trim().slice(0, 2000);
+  return kaelDiagnosisScopeArtifactSchema.parse({
+    ...artifact,
+    case_phase: "analysis",
+    facts: {
+      ...artifact.facts,
+      [missingFact]: normalizedAnswer,
+      latest_customer_detail: normalizedAnswer,
+    },
+    missing_facts: artifact.missing_facts.filter((fact) => fact !== missingFact),
+    quote_ready: false,
+    quote_blockers: artifact.quote_blockers.filter((blocker) =>
+      blocker !== missingFact && blocker !== `missing_profile_fact:${missingFact}`
+    ),
+    confidence: Math.max(artifact.confidence, 0.45),
+    next_action: { kind: "wait" },
+    updated_at: new Date().toISOString(),
+  });
+}
+
+export function diagnosisScopeWithUncertainAnswer(
+  artifact: KaelDiagnosisScopeArtifact,
+  missingFact: string,
+  reason: string,
+): KaelDiagnosisScopeArtifact {
+  const normalizedFact = missingFact.trim().slice(0, 120) || "unverified_detail";
+  const reviewReason = reason.trim().slice(0, 500) || "Cần xác minh tại chỗ trước khi chốt phạm vi.";
+  return kaelDiagnosisScopeArtifactSchema.parse({
+    ...artifact,
+    case_phase: "analysis",
+    facts: {
+      ...artifact.facts,
+      latest_unavailable_fact: normalizedFact,
+    },
+    missing_facts: [...new Set([normalizedFact, ...artifact.missing_facts])].slice(0, 64),
+    quote_ready: false,
+    quote_blockers: [...new Set([
+      `missing_profile_fact:${normalizedFact}`,
+      "onsite_inspection_required",
+      ...artifact.quote_blockers,
+    ])].slice(0, 30),
+    confidence: Math.max(artifact.confidence, 0.4),
+    next_action: { kind: "escalate", reason: reviewReason },
+    updated_at: new Date().toISOString(),
+  });
+}
+
+export function diagnosisScopeForIncomingTurn(
+  artifact: KaelDiagnosisScopeArtifact,
+  input: {
+    evidence: KaelDiagnosisScopeArtifact["evidence"];
+    hasNewEvidence?: boolean;
+    voiceTranscript?: string | null;
+  },
+): KaelDiagnosisScopeArtifact {
+  const voiceTranscript = input.voiceTranscript
+    ? sanitizeCustomerCaseEvidenceText(input.voiceTranscript).slice(0, 2000) || null
+    : null;
+  const preservePendingQuestion = artifact.next_action.kind === "ask_question" &&
+    input.hasNewEvidence !== true && !voiceTranscript;
+  return kaelDiagnosisScopeArtifactSchema.parse({
+    ...artifact,
+    case_phase: "analysis",
+    evidence: input.evidence,
+    facts: {
+      ...artifact.facts,
+      ...(voiceTranscript ? { latest_voice_transcript: voiceTranscript } : {}),
+    },
+    quote_ready: false,
+    quote_blockers: preservePendingQuestion ? artifact.quote_blockers : [],
+    next_action: preservePendingQuestion ? artifact.next_action : { kind: "wait" },
+    updated_at: new Date().toISOString(),
+  });
+}
+
 export function diagnosisScopeWithEvidenceRequest(
   artifact: KaelDiagnosisScopeArtifact,
-  request: NonNullable<ReturnType<typeof requiredCaseWorkEvidenceRequest>>,
+  request: CaseWorkEvidenceRequest,
   input: {
     customerDetail: string;
     problemSummary: string;
@@ -90,7 +181,12 @@ export function diagnosisScopeWithEvidenceRequest(
     quote_blockers: [request.blocker],
     worker_requirements: [...input.workerRequirements],
     confidence: Math.min(input.confidence, 0.65),
-    next_action: { kind: "request_evidence", evidence_kind: request.evidenceKind, prompt: request.prompt },
+    next_action: {
+      kind: "request_evidence",
+      evidence_kind: request.evidenceKind,
+      prompt: request.prompt,
+      required: request.required,
+    },
     updated_at: new Date().toISOString(),
   });
 }
@@ -126,7 +222,10 @@ export async function buildKaelConversationContext(
   const recent = rows.map((row) => ({ role: asKaelTurnRole(row.role), text: nullableString(row.text_content) }))
     .filter((turn): turn is { role: KaelChatTurnRole; text: string } => Boolean(turn.text))
     .slice(-8);
-  return { context: buildUntrustedConversationContext(recent), clarificationCount };
+  return {
+    context: buildUntrustedCustomerCaseConversationContext(recent),
+    clarificationCount,
+  };
 }
 
 export function demandingCustomerTurnMetadata(

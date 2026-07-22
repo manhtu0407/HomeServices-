@@ -173,6 +173,7 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     progress: 0.68,
   });
   if (estimate.fallback_used || estimate.provider === null || estimate.failure_reason) {
+    await logScopeChangeEstimateApiCall(client, jobId, estimate);
     await releaseDirectScopeClaim(
       client,
       jobId,

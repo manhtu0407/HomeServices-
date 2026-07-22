@@ -27,9 +27,17 @@ type SuccessfulPendingDraftUpload = Extract<
   Awaited<ReturnType<typeof uploadKaelChatMediaDrafts>>,
   { success: true }
 >
+type FailedPendingDraftUpload = Exclude<
+  Awaited<ReturnType<typeof uploadKaelChatMediaDrafts>>,
+  SuccessfulPendingDraftUpload
+>
+type PendingDraftCreateResult =
+  | Awaited<ReturnType<typeof kaelChatService.create>>
+  | FailedPendingDraftUpload
 type PendingDraftCreateRequest = {
   fingerprint: string
   ownerKey: string
+  promise: Promise<PendingDraftCreateResult> | null
   requestRef: PendingClientRequestRef
   upload: SuccessfulPendingDraftUpload | null
 }
@@ -91,6 +99,7 @@ export function useCustomerKaelSessionHydration({
   conversation,
   kaelRequestGuard,
   language,
+  onCaseSessionReady,
   pendingDraftLocalizedMessage,
   pendingDraftOwnerId,
   routeJobId,
@@ -102,6 +111,7 @@ export function useCustomerKaelSessionHydration({
   conversation: Conversation
   kaelRequestGuard: CustomerKaelRequestGuard
   language: AppLanguage
+  onCaseSessionReady: (caseSessionId: string) => Promise<unknown>
   pendingDraftLocalizedMessage: string | null | undefined
   pendingDraftOwnerId: string | null
   routeJobId: string | null
@@ -176,6 +186,7 @@ export function useCustomerKaelSessionHydration({
         pendingCreate = {
           fingerprint: requestFingerprint,
           ownerKey: requestOwnerKey,
+          promise: null,
           requestRef: pendingDraftRequestRef(pendingDraft, requestFingerprint),
           upload: null,
         }
@@ -191,27 +202,18 @@ export function useCustomerKaelSessionHydration({
             pendingDraft.clientRequestFingerprint !== requestFingerprint
           )
         ) {
-          await setPendingKaelChatDraft(pendingDraftOwnerId, {
+          void setPendingKaelChatDraft(pendingDraftOwnerId, {
             ...pendingDraft,
             clientRequestFingerprint: requestFingerprint,
             clientRequestId,
-          })
+          }).catch(() => undefined)
         }
-        if (!kaelRequestGuard.isCurrent(requestToken)) return null
         let uploaded = pendingCreate.upload
-        const uploadedDuringThisAttempt = uploaded === null
         if (uploaded === null) {
           const uploadResult = await uploadKaelChatMediaDrafts(pendingDraft.photoDrafts ?? [])
           if (!uploadResult.success) return uploadResult
           uploaded = uploadResult
           pendingCreate.upload = uploaded
-        }
-        if (!kaelRequestGuard.isCurrent(requestToken)) {
-          if (uploadedDuringThisAttempt) {
-            await cleanupKaelChatMediaRefs(uploaded.mediaRefs)
-            pendingCreate.upload = null
-          }
-          return null
         }
         const created = await kaelChatService.create({
           address_district: pendingDraft.districtLabel ?? undefined,
@@ -242,13 +244,29 @@ export function useCustomerKaelSessionHydration({
         if (pendingCreateRef.current === pendingCreate) pendingCreateRef.current = null
         return created
       }
-      createFromBasicIntake()
+      if (!pendingCreate.promise) {
+        const sharedPromise = createFromBasicIntake()
+        pendingCreate.promise = sharedPromise
+        void sharedPromise.then(
+          () => {
+            if (pendingCreate.promise === sharedPromise) pendingCreate.promise = null
+          },
+          () => {
+            if (pendingCreate.promise === sharedPromise) pendingCreate.promise = null
+          },
+        )
+      }
+      const sharedCreate = pendingCreate.promise
+      sharedCreate
         .then((result) => {
-          if (!result || !kaelRequestGuard.isCurrent(requestToken)) return
+          if (!kaelRequestGuard.isCurrent(requestToken)) return
           if (result.success) {
-            if (pendingDraftOwnerId) void clearPendingKaelChatDraft(pendingDraftOwnerId)
             selectedServiceRef.current = result.data.session.service_type
             resolveHydration(result.data, true)
+            if (pendingDraftOwnerId) void clearPendingKaelChatDraft(pendingDraftOwnerId)
+            // The authoritative Agentic response is ready now. Catalog synchronization is
+            // menu metadata and must not hold the first usable Case Work session hostage.
+            void onCaseSessionReady(result.data.session.id).catch(() => undefined)
           } else {
             rejectHydration(localizeKaelRequestFailure(result, language))
           }
@@ -262,5 +280,5 @@ export function useCustomerKaelSessionHydration({
       }
     }
     return undefined
-  }, [beginHydration, kaelRequestGuard, language, pendingDraft, pendingDraftLocalizedMessage, pendingDraftOwnerId, rejectHydration, resolveHydration, routeSessionId, selectedServiceRef, sessionAccessToken])
+  }, [beginHydration, kaelRequestGuard, language, onCaseSessionReady, pendingDraft, pendingDraftLocalizedMessage, pendingDraftOwnerId, rejectHydration, resolveHydration, routeSessionId, selectedServiceRef, sessionAccessToken])
 }

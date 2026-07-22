@@ -29,6 +29,7 @@ describe('mobile-api Kael vision language boundary', () => {
       if (target.includes('anthropic.com')) {
         return new Response(JSON.stringify({
           content: [{
+            type: 'text',
             text: JSON.stringify({
               problem_identified: 'Ro ri lavabo can kiem tra tai cho',
               severity_indicators: [],
@@ -72,6 +73,7 @@ describe('mobile-api Kael vision language boundary', () => {
       models.push(body.model)
       return new Response(JSON.stringify({
         content: [{
+          type: 'text',
           text: JSON.stringify({
             problem_identified: 'Rò rỉ đường ống cần kiểm tra kỹ.',
             severity_indicators: ['vết ẩm'],
@@ -104,6 +106,7 @@ describe('mobile-api Kael vision language boundary', () => {
       }
       return new Response(JSON.stringify({
         content: [{
+          type: 'text',
           text: JSON.stringify({
             problem_identified: 'Cầu dao tự nhảy sau khi bật lại.',
             severity_indicators: [],

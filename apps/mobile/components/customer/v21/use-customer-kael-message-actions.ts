@@ -3,6 +3,8 @@ import { inferLocalDealDraftFromKael } from '@nestscout/shared'
 import { useRef, type MutableRefObject } from 'react'
 
 import type { AppLanguage } from '@/lib/app-language'
+import type { ApiResult } from '@/lib/api'
+import type { KaelChatResponse } from '@/lib/api-types'
 import {
   clearStableClientRequestId,
   shouldRetainClientRequestId,
@@ -14,7 +16,12 @@ import {
   localizeMediaUploadFailure,
   uploadKaelChatMediaDrafts,
 } from '@/lib/media-upload'
-import { jobService, kaelAssistantService, kaelChatService } from '@/lib/services'
+import {
+  jobService,
+  kaelAssistantService,
+  kaelChatService,
+  kaelChatStreamService,
+} from '@/lib/services'
 import type { useJobChatThread } from '@/lib/use-job-chat-thread'
 
 import {
@@ -36,6 +43,16 @@ type Conversation = ReturnType<typeof useCustomerKaelConversationState>
 type Conversations = ReturnType<typeof useCustomerKaelConversations>
 type JobIncidentThread = ReturnType<typeof useJobChatThread>
 type ProcessController = ReturnType<typeof useKaelProcessLineController>
+
+const RECONCILABLE_KAEL_STREAM_FAILURES = new Set([
+  'STREAM_BODY_UNREADABLE',
+  'STREAM_ENDED',
+  'STREAM_INVALID_ENCODING',
+  'STREAM_NETWORK',
+  'STREAM_RESPONSE_TOO_LARGE',
+  'STREAM_RESULT_INVALID',
+  'STREAM_TIMEOUT',
+])
 
 type PendingCustomerKaelCreate = {
   fingerprint: string
@@ -110,6 +127,21 @@ export function useCustomerKaelMessageActions({
     const sendOperation = { ownerKey: requestOwnerKey }
     sendOperationRef.current = sendOperation
     const requestToken = kaelRequestGuard.begin('conversation')
+    let composerCleared = false
+    const clearSubmittedComposer = () => {
+      setDraft('')
+      setVoiceTranscript('')
+      composerCleared = true
+    }
+    const commitSubmittedComposer = () => {
+      composerCleared = false
+    }
+    const restoreSubmittedComposer = () => {
+      if (!composerCleared) return
+      setDraft(draft)
+      setVoiceTranscript(voiceTranscript)
+      composerCleared = false
+    }
 
     try {
       if (mode === 'normal' && conversations) {
@@ -123,19 +155,19 @@ export function useCustomerKaelMessageActions({
           complexity: null,
           mediaCount: 0,
           mode: 'normal',
+          replyReveal: 'composer_message',
           serviceType: null,
         })
+        clearSubmittedComposer()
         setLoading(true)
         setError(null)
         try {
-          const result = await conversations.sendConversationTurn(message)
+          const result = await conversations.sendConversationTurn(message, { revealAfter: processDone })
           if (!kaelRequestGuard.isCurrent(requestToken)) return
           if (result) {
-            await processDone
-            if (!kaelRequestGuard.isCurrent(requestToken)) return
-            setDraft('')
-            setVoiceTranscript('')
+            commitSubmittedComposer()
           } else {
+            restoreSubmittedComposer()
             setError(conversations.sessionsError ?? (language === 'vi'
               ? 'Kael chưa thể trả lời lúc này.'
               : 'Kael could not reply right now.'))
@@ -150,98 +182,94 @@ export function useCustomerKaelMessageActions({
       }
 
       if (mode === 'case' && deal) {
-      if (hasComposerMedia) {
-        setError(language === 'vi' ? 'Ảnh/video cần gửi qua công việc thật.' : 'Media requires a real job.')
-        return
-      }
-      if (!deal.id) {
-        setError(language === 'vi' ? 'Chưa có' : 'Empty')
-        return
-      }
-      if (hasSharedJobIncident) {
-        setLoading(true)
-        setError(null)
-        const sent = await jobIncidentThread.send(message)
-        if (!kaelRequestGuard.isCurrent(requestToken)) return
-        setLoading(false)
-        if (sent) {
-          setDraft('')
-          setVoiceTranscript('')
-        } else {
-          setError(jobIncidentThread.error ?? (language === 'vi'
-            ? 'Chưa thể gửi vào Kael Công việc.'
-            : 'Kael Work could not send this message.'))
+        if (hasComposerMedia) {
+          setError(language === 'vi' ? 'Ảnh/video cần gửi qua công việc thật.' : 'Media requires a real job.')
+          return
         }
-        return
-      }
-      if (conversations) {
+
+        const activeAgenticChat = chat && !['confirmed', 'abandoned', 'unsupported'].includes(chat.session.status)
+          ? chat
+          : null
+        if (activeAgenticChat) {
+          const processDone = startProcessLines(message, {
+            complexity: deal.estimate?.complexity ?? null,
+            mediaCount: deal.draft.mediaCount ?? 0,
+            mode: 'case',
+            replyReveal: 'composer_message',
+            serviceType: deal.draft.serviceType,
+          })
+          clearSubmittedComposer()
+          setLoading(true)
+          setError(null)
+          try {
+            const streamed = await kaelChatStreamService.sendTurn(activeAgenticChat.session.id, {
+              language,
+              message,
+              photo_urls: [],
+            })
+            const result = await reconcileCommittedKaelTurn(activeAgenticChat, streamed)
+            if (!kaelRequestGuard.isCurrent(requestToken)) return
+            if (result.success) {
+              await processDone
+              if (!kaelRequestGuard.isCurrent(requestToken)) return
+              setChat(result.data)
+              setTurns(result.data.turns)
+              commitSubmittedComposer()
+              if (conversations) void conversations.syncLinkedCaseSession(result.data.session.id)
+            } else {
+              restoreSubmittedComposer()
+              setError(localizeKaelRequestFailure(result, language))
+            }
+          } finally {
+            if (kaelRequestGuard.isCurrent(requestToken)) {
+              setLoading(false)
+              stopProcessLines()
+            }
+          }
+          return
+        }
+
+        if (!deal.id) {
+          setError(language === 'vi' ? 'Chưa có' : 'Empty')
+          return
+        }
+        if (hasSharedJobIncident) {
+          clearSubmittedComposer()
+          setLoading(true)
+          setError(null)
+          const sent = await jobIncidentThread.send(message)
+          if (!kaelRequestGuard.isCurrent(requestToken)) return
+          setLoading(false)
+          if (sent) {
+            commitSubmittedComposer()
+          } else {
+            restoreSubmittedComposer()
+            setError(jobIncidentThread.error ?? (language === 'vi'
+              ? 'Chưa thể gửi vào Kael Công việc.'
+              : 'Kael Work could not send this message.'))
+          }
+          return
+        }
+
         const processDone = startProcessLines(message, {
           complexity: deal.estimate?.complexity ?? null,
           mediaCount: deal.draft.mediaCount ?? 0,
           mode: 'case',
+          replyReveal: 'composer_message',
           serviceType: deal.draft.serviceType,
         })
+        clearSubmittedComposer()
         setLoading(true)
         setError(null)
         try {
-          const result = await conversations.sendConversationTurn(message)
+          const result = await kaelAssistantService.ask({
+            job_id: deal.id,
+            language,
+            message,
+            surface: 'customer_case',
+          })
           if (!kaelRequestGuard.isCurrent(requestToken)) return
-          if (result) {
-            await processDone
-            if (!kaelRequestGuard.isCurrent(requestToken)) return
-            setDraft('')
-          } else {
-            setError(conversations.sessionsError ?? (language === 'vi'
-              ? 'Kael chưa thể trả lời lúc này.'
-              : 'Kael could not reply right now.'))
-          }
-        } finally {
-          if (kaelRequestGuard.isCurrent(requestToken)) {
-            setLoading(false)
-            stopProcessLines()
-          }
-        }
-        return
-      }
-      const processDone = startProcessLines(message, {
-        complexity: deal.estimate?.complexity ?? null,
-        mediaCount: deal.draft.mediaCount ?? 0,
-        mode: 'case',
-        serviceType: deal.draft.serviceType,
-      })
-      setLoading(true)
-      setError(null)
-      try {
-        const result = await kaelAssistantService.ask({
-          job_id: deal.id,
-          language,
-          message,
-          surface: 'customer_case',
-        })
-        if (!kaelRequestGuard.isCurrent(requestToken)) return
-        if (result.success) {
-          await processDone
-          if (!kaelRequestGuard.isCurrent(requestToken)) return
-          setAssistantTurns((current) => [
-            ...current,
-            {
-              id: makeAssistantTurnId('customer_case', 'customer'),
-              role: 'customer',
-              surface: 'customer_case',
-              text_content: message,
-            },
-            {
-              id: makeAssistantTurnId('customer_case', 'kael'),
-              role: 'kael',
-              surface: 'customer_case',
-              text_content: formatAssistantAnswer(result.data, language),
-            },
-          ])
-          setDraft('')
-        } else if (shouldFallbackCaseAssistantToJobChat(result)) {
-          const stored = await jobService.sendMessage(deal.id, { content: message })
-          if (!kaelRequestGuard.isCurrent(requestToken)) return
-          if (stored.success) {
+          if (result.success) {
             await processDone
             if (!kaelRequestGuard.isCurrent(requestToken)) return
             setAssistantTurns((current) => [
@@ -252,20 +280,44 @@ export function useCustomerKaelMessageActions({
                 surface: 'customer_case',
                 text_content: message,
               },
+              {
+                id: makeAssistantTurnId('customer_case', 'kael'),
+                role: 'kael',
+                surface: 'customer_case',
+                text_content: formatAssistantAnswer(result.data, language),
+              },
             ])
-            setDraft('')
+            commitSubmittedComposer()
+          } else if (shouldFallbackCaseAssistantToJobChat(result)) {
+            const stored = await jobService.sendMessage(deal.id, { content: message })
+            if (!kaelRequestGuard.isCurrent(requestToken)) return
+            if (stored.success) {
+              await processDone
+              if (!kaelRequestGuard.isCurrent(requestToken)) return
+              setAssistantTurns((current) => [
+                ...current,
+                {
+                  id: makeAssistantTurnId('customer_case', 'customer'),
+                  role: 'customer',
+                  surface: 'customer_case',
+                  text_content: message,
+                },
+              ])
+              commitSubmittedComposer()
+            } else {
+              restoreSubmittedComposer()
+              setError(localizeKaelRequestFailure(stored, language))
+            }
           } else {
-            setError(localizeKaelRequestFailure(stored, language))
+            restoreSubmittedComposer()
+            setError(localizeKaelRequestFailure(result, language))
           }
-        } else {
-          setError(localizeKaelRequestFailure(result, language))
+        } finally {
+          if (kaelRequestGuard.isCurrent(requestToken)) {
+            setLoading(false)
+            stopProcessLines()
+          }
         }
-      } finally {
-        if (kaelRequestGuard.isCurrent(requestToken)) {
-          setLoading(false)
-          stopProcessLines()
-        }
-      }
         return
       }
 
@@ -281,11 +333,13 @@ export function useCustomerKaelMessageActions({
         complexity: null,
         mediaCount: 0,
         mode: conversations ? 'case' : 'normal',
+        replyReveal: 'composer_message',
         serviceType: null,
       })
+      clearSubmittedComposer()
       try {
         const catalogResult = conversations
-          ? await conversations.sendConversationTurn(message)
+          ? await conversations.sendConversationTurn(message, { revealAfter: processDone })
           : null
         const result = conversations
           ? null
@@ -296,9 +350,7 @@ export function useCustomerKaelMessageActions({
             })
         if (!kaelRequestGuard.isCurrent(requestToken)) return
         if (catalogResult) {
-          await processDone
-          if (!kaelRequestGuard.isCurrent(requestToken)) return
-          setDraft('')
+          commitSubmittedComposer()
         } else if (result?.success) {
           await processDone
           if (!kaelRequestGuard.isCurrent(requestToken)) return
@@ -317,10 +369,12 @@ export function useCustomerKaelMessageActions({
               text_content: formatAssistantAnswer(result.data, language),
             },
           ])
-          setDraft('')
+          commitSubmittedComposer()
         } else if (result) {
+          restoreSubmittedComposer()
           setError(localizeKaelRequestFailure(result, language))
         } else {
+          restoreSubmittedComposer()
           setError(conversations?.sessionsError ?? (language === 'vi'
             ? 'Kael chưa thể tiếp nhận nội dung này.'
             : 'Kael could not receive this message.'))
@@ -346,10 +400,10 @@ export function useCustomerKaelMessageActions({
     }
     const catalogConversation = conversations
       ? chat
-        ? await conversations.syncLinkedCaseSession(chat.session.id) ?? await conversations.ensureActiveSession()
+        ? conversations.activeResponse
         : await conversations.ensureActiveSession()
       : null
-    if (conversations && !catalogConversation) {
+    if (conversations && !chat && !catalogConversation) {
       setError(language === 'vi'
         ? 'Chưa thể mở phiên Xử lý công việc.'
         : 'A Work handling session could not be opened.')
@@ -433,15 +487,17 @@ export function useCustomerKaelMessageActions({
       complexity: null,
       mediaCount: composerMediaDrafts.length + (reviewedVoiceTranscript ? 1 : 0),
       mode: conversations ? 'case' : 'normal',
+      replyReveal: 'composer_message',
       serviceType: inferredService,
     })
+    clearSubmittedComposer()
     const result = chat
-      ? await kaelChatService.sendTurn(chat.session.id, {
+      ? await kaelChatStreamService.sendTurn(chat.session.id, {
           evidence_items: evidenceItems,
           language,
           message: outgoingMessage,
           photo_urls: photoUrls,
-        })
+        }).then((streamed) => reconcileCommittedKaelTurn(chat, streamed))
       : await kaelChatService.create({
           client_request_id: stableClientRequestId(
             pendingCreate?.requestRef ?? { current: null },
@@ -454,7 +510,7 @@ export function useCustomerKaelMessageActions({
           problem_chips: inferredDraft?.problemChips ?? [],
           service_type: inferredService,
         })
-      if (result.success) {
+    if (result.success) {
       if (!chat && pendingCreate) {
         clearStableClientRequestId(pendingCreate.requestRef, createFingerprint)
         if (pendingCreateRef.current === pendingCreate) pendingCreateRef.current = null
@@ -465,13 +521,12 @@ export function useCustomerKaelMessageActions({
       stopProcessLines()
       setChat(result.data)
       setTurns(result.data.turns)
-      setDraft('')
-      setVoiceTranscript('')
+      commitSubmittedComposer()
       setComposerMediaDrafts([])
       setAgenticRejectOpen(false)
       setAgenticRejectReason('')
-      if (conversations) await conversations.syncLinkedCaseSession(result.data.session.id)
-      } else {
+      if (conversations) void conversations.syncLinkedCaseSession(result.data.session.id)
+    } else {
       const retainPendingCreate = Boolean(
         !chat && pendingCreate && shouldRetainClientRequestId(result),
       )
@@ -485,13 +540,15 @@ export function useCustomerKaelMessageActions({
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       setLoading(false)
       stopProcessLines()
-        setError(localizeKaelRequestFailure(result, language))
-      }
+      restoreSubmittedComposer()
+      setError(localizeKaelRequestFailure(result, language))
+    }
     } catch {
       if (kaelRequestGuard.isCurrent(requestToken)) {
         setLoading(false)
         setUploadingMedia(false)
         stopProcessLines()
+        restoreSubmittedComposer()
         setError(language === 'vi'
           ? 'Kael đang không kết nối được. Vui lòng thử lại.'
           : 'Kael is unavailable. Try again.')
@@ -502,4 +559,22 @@ export function useCustomerKaelMessageActions({
   }
 
   return { sendMessage }
+}
+
+async function reconcileCommittedKaelTurn(
+  previous: KaelChatResponse,
+  streamed: ApiResult<KaelChatResponse>,
+): Promise<ApiResult<KaelChatResponse>> {
+  if (streamed.success || !RECONCILABLE_KAEL_STREAM_FAILURES.has(streamed.code)) return streamed
+  try {
+    const recovered = await kaelChatService.get(previous.session.id)
+    if (!recovered.success) return streamed
+    const previousTurnIndex = previous.session.total_turns
+    const newTurns = recovered.data.turns.filter((turn) => turn.turn_index > previousTurnIndex)
+    const completed = newTurns.some((turn) => turn.role === 'customer') &&
+      newTurns.some((turn) => turn.role === 'kael')
+    return completed ? recovered : streamed
+  } catch {
+    return streamed
+  }
 }

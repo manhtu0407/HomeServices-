@@ -6,12 +6,12 @@ import type { KaelPromptActor, KaelPromptLanguage } from "./system-prompt.ts";
 export type KaelOrchestratorStage<T> = {
   readonly label: string;
   readonly purpose: KaelPurpose;
-  readonly timeoutMs: number;
+  readonly timeoutMs?: number;
   readonly permission?: {
     readonly check: () => Promise<KaelStagePermissionDecision> | KaelStagePermissionDecision;
   };
   readonly run: () => Promise<T>;
-  readonly fallback?: () => T | Promise<T>;
+  readonly fallback?: (failureReason: string) => T | Promise<T>;
   readonly selfCheck?: {
     readonly actor: KaelPromptActor;
     readonly language?: KaelPromptLanguage;
@@ -68,15 +68,12 @@ export async function runKaelPurposeStage<T>(
         failureReason: permission.reasonCode,
       };
     }
-    // Clear the timeout when the race settles. The provider
-    // call already self-aborts at its budget (AbortController, maxRetries:0), so
-    // this race is a belt; leaving its setTimeout pending after stage.run() wins
-    // would keep a dangling timer and later reject a promise nobody awaits.
-    const timeout = createStageTimeout(stage.timeoutMs);
-    const value = await Promise.race([
-      stage.run(),
-      timeout.promise,
-    ]).finally(() => timeout.cancel());
+    // Provider failover ladders already own per-attempt AbortController budgets.
+    // They omit this outer timer so a completed fallback cannot continue as
+    // unobserved work after a competing stage race has already returned.
+    const value = stage.timeoutMs === undefined
+      ? await stage.run()
+      : await runWithStageTimeout(stage.run, stage.timeoutMs);
     if (stage.selfCheck && typeof value === "string") {
       const checked = guardOutput({
         text: value,
@@ -125,7 +122,7 @@ export async function runKaelPurposeStage<T>(
         label: stage.label,
         purpose: stage.purpose,
         status: "degraded",
-        value: await stage.fallback(),
+        value: await stage.fallback(failureReason),
         elapsedMs: Date.now() - started,
         fallbackUsed: true,
         failureReason,
@@ -157,6 +154,14 @@ class StageTimeoutError extends Error {
   constructor(timeoutMs: number) {
     super(`TIMEOUT:${timeoutMs}`);
   }
+}
+
+async function runWithStageTimeout<T>(run: () => Promise<T>, timeoutMs: number): Promise<T> {
+  const timeout = createStageTimeout(timeoutMs);
+  return Promise.race([
+    run(),
+    timeout.promise,
+  ]).finally(() => timeout.cancel());
 }
 
 function createStageTimeout(ms: number): { promise: Promise<never>; cancel: () => void } {

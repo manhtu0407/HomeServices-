@@ -33,6 +33,10 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+export function looksLikePrivateUnitIdentifier(value: string) {
+  return /\d/u.test(value) || /^[A-Z](?:[A-Z0-9._/-]*)$/.test(value);
+}
+
 export function scrubSensitiveForLLM(input: string): string {
   return sanitizeForLLM(input)
     .replace(/(?<!\d)(?:\+?84|0)[\s().-]*(?:\d[\s().-]*){8,10}(?!\d)/g, "[phone]")
@@ -46,15 +50,34 @@ export function scrubSensitiveForLLM(input: string): string {
     )
     .replace(/\b(?:tầng|tang|lầu|lau)\s*\d{1,3}\b/gi, "[floor]")
     .replace(
-      /\b(?:căn(?:\s+hộ)?|can(?:\s+ho)?|phòng|phong|block|toà|tòa|toa)\s+[A-Za-z0-9.\-_/]+/gi,
-      "[unit]",
+      /(?<![\p{L}\p{N}])(?:căn(?:[^\S\r\n]+hộ)?|can(?:[^\S\r\n]+ho)?|phòng|phong|block|toà|tòa|toa)[^\S\r\n]+([\p{L}\p{N}](?:[\p{L}\p{N}._/-]*[\p{L}\p{N}])?)/giu,
+      (match, identifier: string) => looksLikePrivateUnitIdentifier(identifier) ? "[unit]" : match,
     )
-    .replace(/\b(?:số|so)\s+\d+[A-Za-z]?\b/gi, "[house-no]")
+    .replace(/\b(?:số|so)[^\S\r\n]+\d+[A-Za-z]?\b/gi, "[house-no]")
     .replace(
-      /(?<![\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=\s+(?:(?:đường|duong|phố|pho|hẻm|hem)\s+)?\p{Lu}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*){0,3}\b)/gu,
+      /(?<![:\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=[^\S\r\n]+(?:(?:đường|duong|phố|pho|hẻm|hem)[^\S\r\n]+)?\p{Lu}[\p{L}'-]*(?:[^\S\r\n]+\p{Lu}[\p{L}'-]*){0,3}\b)/gu,
       "[house-no]",
     )
-    .replace(/(?<![\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=\s+(?:đường|duong|phố|pho|hẻm|hem)\s+\p{L})/giu, "[house-no]");
+    .replace(/(?<![:\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=[^\S\r\n]+(?:đường|duong|phố|pho|hẻm|hem)[^\S\r\n]+\p{L})/giu, "[house-no]");
+}
+
+// Customer Case Work needs coarse in-home context; exact unit, building, contact,
+// identity, account, and street-address fields still pass through the strict scrubber.
+export function scrubCustomerCaseContextForLLM(input: string): string {
+  const floors: Array<{ token: string; value: string }> = [];
+  const protectedInput = sanitizeForLLM(input).replace(
+    /\b(?:tầng|tang|lầu|lau|floor)\s*\d{1,3}\b/gi,
+    (value) => {
+      const token = `\uE000${floors.length.toString(36)}\uE001`;
+      floors.push({ token, value });
+      return token;
+    },
+  );
+  let scrubbed = scrubSensitiveForLLM(protectedInput);
+  for (const floor of floors) {
+    scrubbed = scrubbed.replaceAll(floor.token, floor.value);
+  }
+  return scrubbed;
 }
 
 export function hasUnsupportedRepairIntent(input: string): boolean {

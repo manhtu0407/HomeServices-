@@ -30,6 +30,10 @@ function extraRecord(key: string) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as ExpoExtra : {}
 }
 
+function extraBoolean(key: string) {
+  return (manifestExtra as ExpoExtra)[key] === true
+}
+
 function recordString(record: ExpoExtra, key: string) {
   const value = record[key]
   return typeof value === 'string' ? value.trim() : ''
@@ -50,6 +54,9 @@ function envString(...keys: string[]) {
 const supabaseUrl = envString('EXPO_PUBLIC_SUPABASE_URL') || extraString('supabaseUrl')
 const supabasePublishableKey = envString('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || extraString('supabasePublishableKey')
 const configuredApiBaseUrl = envString('EXPO_PUBLIC_API_BASE_URL') || extraString('apiBaseUrl')
+const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
+  envString('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
+) || extraBoolean('stagingPaymentRailEnabled')
 const runtimeBuildInfoExtra = extraRecord('runtimeBuildInfo')
 const runtimeBuildInfo: RuntimeBuildInfo = {
   builtAt: envString('EXPO_PUBLIC_NESTSCOUT_BUILD_CREATED_AT') || recordString(runtimeBuildInfoExtra, 'builtAt'),
@@ -64,6 +71,7 @@ const runtimeBuildInfo: RuntimeBuildInfo = {
 export const mobileRuntimeConfig = {
   apiBaseUrl: configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : ''),
   runtimeBuildInfo,
+  stagingPaymentRailEnabled,
   supabasePublishableKey,
   supabaseUrl,
 }

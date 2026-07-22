@@ -1,7 +1,9 @@
 import type { ComponentType } from 'react'
-import { View, type ImageSourcePropType } from 'react-native'
+import { Pressable, Text, View, type ImageSourcePropType } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
+import { KaelTextField } from '@/components/ui/kael-primitives'
+import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
@@ -48,9 +50,14 @@ type WorkerV5PrimaryFillComponent = ComponentType<{
 }>
 type WorkerV5StatusTimelineComponent = ComponentType<WorkerV5StatusTimelineBaseProps>
 
-function buildCompletionChecks(deal: LocalDeal | null, language: AppLanguage): WorkerV5FinalCheck[] {
-  const photoDone = Boolean(deal?.completionPhotoUrls?.length)
-  const notesDone = Boolean(deal?.completionNotes?.trim())
+function buildCompletionChecks(
+  deal: LocalDeal | null,
+  language: AppLanguage,
+  draftPhotoReady = false,
+  draftNoteReady = false,
+): WorkerV5FinalCheck[] {
+  const photoDone = Boolean(deal?.completionPhotoUrls?.length) || draftPhotoReady
+  const notesDone = Boolean(deal?.completionNotes?.trim()) || draftNoteReady
   const scope = deal?.scopeChange
   const scopeDone = !scope || scope.status === 'approved_by_customer'
   return [
@@ -131,28 +138,43 @@ export function WorkerV5ApprovalWaitBody({
 }
 
 export function WorkerV5CompletionEvidenceBody({
+  completionNote,
+  draftPhotoUris,
   icons,
   language,
-  navigateNext,
+  notice,
+  onAddPhoto,
+  onCompletionNoteChange,
+  onSubmit,
   primaryFill,
   reduceTransparency,
   runtime,
+  submitBusy,
+  submitDisabled,
 }: {
+  completionNote: string
+  draftPhotoUris: string[]
   icons: WorkerV5IconMap
   language: AppLanguage
-  navigateNext: () => void
+  notice: string | null
+  onAddPhoto: () => void
+  onCompletionNoteChange: (value: string) => void
+  onSubmit: () => void
   primaryFill: WorkerV5PrimaryFillComponent
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
+  submitBusy: boolean
+  submitDisabled: boolean
 }) {
   const deal = runtime.state.deal
-  const notes = deal?.completionNotes?.trim()
+  const notes = completionNote.trim() || deal?.completionNotes?.trim()
   const evidencePhotoUrls = Array.from(new Set([
     ...(deal?.fieldEvidencePhotoUrls ?? []),
     ...(deal?.completionPhotoUrls ?? []),
+    ...draftPhotoUris,
   ]))
   const photoCount = evidencePhotoUrls.length
-  const checks = buildCompletionChecks(deal, language)
+  const checks = buildCompletionChecks(deal, language, draftPhotoUris.length > 0, Boolean(completionNote.trim()))
   const passedCount = checks.filter((check) => check.done).length
 
   return (
@@ -188,11 +210,46 @@ export function WorkerV5CompletionEvidenceBody({
         reduceTransparency={reduceTransparency}
         zipAura={WorkerV5CustomerZipMintAura}
       />
+      <View style={styles.completionDraftStack}>
+        <KaelTextField
+          editable={!submitBusy}
+          inputShellStyle={styles.completionNoteShell}
+          label={textByLanguage(language, 'Ghi chú hoàn tất', 'Completion note')}
+          maxLength={1000}
+          multiline
+          onChangeText={onCompletionNoteChange}
+          placeholder={textByLanguage(language, 'Mô tả việc đã làm và kết quả kiểm tra cuối.', 'Describe the completed work and final check.')}
+          placeholderTextColor={color.text.muted}
+          style={styles.completionNoteInput}
+          testID="worker-v5-completion-note-input"
+          value={completionNote}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: submitBusy }}
+          disabled={submitBusy}
+          onPress={onAddPhoto}
+          style={({ pressed }) => [styles.completionPhotoAction, pressed && !submitBusy ? styles.completionPhotoActionPressed : null]}
+          testID="worker-v5-completion-add-photo-action"
+        >
+          <Text style={styles.completionPhotoActionLabel}>
+            {textByLanguage(language, 'Thêm ảnh hoàn tất', 'Add completion photo')}
+          </Text>
+          <Text style={styles.completionPhotoActionMeta}>
+            {draftPhotoUris.length > 0
+              ? textByLanguage(language, `${draftPhotoUris.length} ảnh đã chọn`, `${draftPhotoUris.length} selected`)
+              : textByLanguage(language, 'Cần ít nhất 1 ảnh', 'At least 1 photo required')}
+          </Text>
+        </Pressable>
+        {notice ? <Text accessibilityLiveRegion="polite" style={styles.completionNotice}>{notice}</Text> : null}
+      </View>
       <WorkerV5SingleSourceActionButton
         primaryButtonFill={primaryFill}
-        disabled={false}
-        label={textByLanguage(language, 'Gửi hồ sơ hoàn tất', 'Submit completion')}
-        onPress={navigateNext}
+        disabled={submitDisabled}
+        label={submitBusy
+          ? textByLanguage(language, 'Đang gửi hồ sơ', 'Submitting completion')
+          : textByLanguage(language, 'Gửi hồ sơ hoàn tất', 'Submit completion')}
+        onPress={onSubmit}
         reduceTransparency={reduceTransparency}
         testID="worker-v5-completion-submit-action"
       />

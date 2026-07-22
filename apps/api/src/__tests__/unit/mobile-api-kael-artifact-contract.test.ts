@@ -9,8 +9,69 @@ import {
   kaelArtifactProposalSchema,
   kaelDiagnosisScopeArtifactSchema,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
+import {
+  diagnosisScopeForIncomingTurn,
+  diagnosisScopeWithUncertainAnswer,
+} from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-case-work'
 
 describe('Kael artifact proposal contract', () => {
+  it('preserves the pending question until the core classifies a text reply', () => {
+    const initial = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'handyman',
+      customerGoal: 'Khoan một vị trí để treo giá máy tập.',
+    })
+    const pending = kaelDiagnosisScopeArtifactSchema.parse({
+      ...initial,
+      missing_facts: ['task_types_and_total_count'],
+      quote_blockers: ['task_types_and_total_count'],
+      next_action: {
+        kind: 'ask_question',
+        question: 'Có bao nhiêu hạng mục cần được xử lý?',
+      },
+    })
+
+    const textTurn = diagnosisScopeForIncomingTurn(pending, {
+      evidence: pending.evidence,
+      voiceTranscript: null,
+    })
+
+    expect(textTurn.next_action).toEqual(pending.next_action)
+    expect(textTurn.quote_blockers).toEqual(['task_types_and_total_count'])
+  })
+
+  it('stops an unknown-answer loop without inventing the missing fact', () => {
+    const initial = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'electrical',
+      customerGoal: 'Một phòng đang mất điện.',
+    })
+    const pending = kaelDiagnosisScopeArtifactSchema.parse({
+      ...initial,
+      missing_facts: ['affected_area_and_power_state'],
+      quote_blockers: ['missing_profile_fact:affected_area_and_power_state'],
+      next_action: {
+        kind: 'ask_question',
+        question: 'Tình trạng cấp điện hiện tại tại khu vực bị ảnh hưởng là gì?',
+      },
+    })
+
+    const resolved = diagnosisScopeWithUncertainAnswer(
+      pending,
+      'affected_area_and_power_state',
+      'Cần xác minh tình trạng cấp điện tại chỗ.',
+    )
+
+    expect(resolved.facts).not.toHaveProperty('affected_area_and_power_state')
+    expect(resolved.facts).toMatchObject({
+      latest_unavailable_fact: 'affected_area_and_power_state',
+    })
+    expect(resolved.missing_facts).toContain('affected_area_and_power_state')
+    expect(resolved.quote_blockers).toContain('onsite_inspection_required')
+    expect(resolved.next_action).toEqual({
+      kind: 'escalate',
+      reason: 'Cần xác minh tình trạng cấp điện tại chỗ.',
+    })
+  })
+
   it('builds a durable six-profile diagnosis/scope artifact without workflow authority', () => {
     const artifact = buildInitialDiagnosisScopeArtifact({
       serviceType: 'hvac',
@@ -103,6 +164,33 @@ describe('Kael artifact proposal contract', () => {
       next_action: { kind: 'prepare_offer' },
       safety_flags: [{ code: 'electrical_fire', severity: 'stop' }],
     }).success).toBe(false)
+  })
+
+  it('carries evidence requirement policy and defaults older evidence requests to mandatory', () => {
+    const artifact = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'electrical',
+      customerGoal: 'Ổ cắm không hoạt động.',
+    })
+    const optional = kaelDiagnosisScopeArtifactSchema.parse({
+      ...artifact,
+      next_action: {
+        kind: 'request_evidence',
+        evidence_kind: 'any',
+        prompt: 'Thêm ảnh, video hoặc bản chép lời nếu thuận tiện.',
+        required: false,
+      },
+    })
+    const legacyMandatory = kaelDiagnosisScopeArtifactSchema.parse({
+      ...artifact,
+      next_action: {
+        kind: 'request_evidence',
+        evidence_kind: 'photo',
+        prompt: 'Cần ảnh hiện trạng.',
+      },
+    })
+
+    expect(optional.next_action).toMatchObject({ kind: 'request_evidence', evidence_kind: 'any', required: false })
+    expect(legacyMandatory.next_action).toMatchObject({ kind: 'request_evidence', required: true })
   })
 
   it('accepts a partial ticket update that cannot transition workflow state', () => {

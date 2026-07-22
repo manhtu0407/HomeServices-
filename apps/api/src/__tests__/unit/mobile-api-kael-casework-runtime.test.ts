@@ -33,6 +33,22 @@ describe('Kael Case Work runtime wiring', () => {
     expect(services).toContain('submitKaelChatEvidence: (ctx, sessionId, input) =>')
   })
 
+  it('rejects a skipped mandatory gate before writes and records accepted evidence decisions', () => {
+    const submitEvidence = service.match(
+      /export async function submitKaelChatEvidence[\s\S]*?(?=function sanitizeCaseWorkEvidenceItems)/,
+    )?.[0] ?? ''
+
+    expect(submitEvidence).toContain('requestedEvidence.data.next_action.required')
+    expect(submitEvidence).toContain('Không thể bỏ qua bằng chứng bắt buộc')
+    expect(submitEvidence.indexOf('requestedEvidence.data.next_action.required')).toBeLessThan(
+      submitEvidence.indexOf('insertKaelTurn('),
+    )
+    expect(submitEvidence).toContain('const safeSkipReason = input.skip_reason')
+    expect(submitEvidence).toContain('sanitizeUntrustedEvidenceText(input.skip_reason)')
+    expect(submitEvidence).toContain('skip_reason: safeSkipReason')
+    expect(submitEvidence).toContain('evidence_gate_decision: input.decision')
+  })
+
   it('settles progress when either real chat boundary call declines early', () => {
     const boundaryCalls = service.match(/maybeApplyKaelBoundaryGuard\([\s\S]*?progressTarget: \{ table: "kael_chat_sessions", id: sessionId \}[\s\S]*?\);/g) ?? []
 
@@ -48,10 +64,23 @@ describe('Kael Case Work runtime wiring', () => {
   })
 
   it('persists one current diagnosis/scope artifact and snapshots it on turns', () => {
-    expect(core).toContain('loadDiagnosisScopeArtifact')
+    expect(core).toContain('loadKaelChatAnalysisState')
+    expect(core).not.toContain('getKaelChatTurnCount')
+    expect(core).not.toContain('getKaelChatCostUsd')
+    expect(caseWork).toMatch(/select\("id, diagnosis_scope, total_turns, total_cost_usd"\)/)
     expect(core).toContain('persistDiagnosisScopeArtifact')
     expect(core).toContain('diagnosis_scope: artifact')
     expect(core).toContain('diagnosis_scope: quoteReadyArtifact')
+  })
+
+  it('settles a clarification artifact, turn, and progress concurrently after model analysis', () => {
+    const clarificationBranch = core.match(
+      /if \(pipeline\.code === "NEEDS_CLARIFICATION"\)[\s\S]*?(?=if \(pipeline\.code === "SERVICE_MISMATCH"\))/,
+    )?.[0] ?? ''
+
+    expect(clarificationBranch).toMatch(
+      /await Promise\.all\(\[[\s\S]*persistDiagnosisScopeArtifact[\s\S]*appendKaelSystemTurn[\s\S]*updateKaelProgress/,
+    )
   })
 
   it('keeps the row and artifact phase aligned when a customer reopens analysis', () => {
@@ -61,8 +90,8 @@ describe('Kael Case Work runtime wiring', () => {
   })
 
   it('scrubs customer PII and control-plane text before persisting diagnosis facts', () => {
-    expect(service).toContain('customerGoal: sanitizeUntrustedEvidenceText')
-    expect(core).toContain('const safeCustomerEvidence = sanitizeUntrustedEvidenceText(message)')
+    expect(service).toContain('customerGoal: sanitizeCustomerCaseEvidenceText')
+    expect(core).toContain('const safeCustomerEvidence = sanitizeCustomerCaseEvidenceText(message)')
     expect(core).toContain('const durableCustomerDetail = safeCustomerEvidence')
     expect(core).toContain('latest_customer_detail: durableCustomerDetail')
     expect(core).not.toContain('latest_customer_detail: message')
@@ -71,9 +100,23 @@ describe('Kael Case Work runtime wiring', () => {
   it('requires a quote-ready artifact before the offer confirmation handoff', () => {
     expect(confirmService).toContain('kaelDiagnosisScopeArtifactSchema.safeParse')
     expect(confirmService).toContain('diagnosisScope.quote_ready')
+    expect(confirmService).toContain('diagnosisScope.quote_blockers.length > 0')
     expect(confirmService).toContain('diagnosisScope.confidence')
     expect(confirmService).toContain('diagnosisScope.facts.needs_inspection')
-    expect(confirmService).toContain('diagnosisScope.confidence < 0.7')
+    expect(confirmService).not.toContain('diagnosisScope.confidence < 0.7')
+  })
+
+  it('keeps the database confirmation gate aligned with the quote-ready artifact', () => {
+    const migration = readFileSync(
+      join(process.cwd(), '../../supabase/migrations/20260722033000_align_kael_confirm_quote_ready_gate.sql'),
+      'utf8',
+    )
+
+    expect(migration).toContain('create or replace function public.confirm_kael_chat_atomic')
+    expect(migration).toContain("v_session.diagnosis_scope ->> 'quote_ready' <> 'true'")
+    expect(migration).toContain("v_session.diagnosis_scope -> 'facts' ->> 'needs_inspection'")
+    expect(migration).toContain("v_session.diagnosis_scope -> 'next_action' ->> 'kind' <> 'prepare_offer'")
+    expect(migration).not.toMatch(/diagnosis_scope[^\n]+confidence[^\n]+0\.7/)
   })
 
   it('keeps completion behind an explicit customer confirmation', () => {
@@ -147,14 +190,23 @@ describe('Kael Case Work runtime wiring', () => {
     expect(core).toContain('validated_price_evidence_unavailable')
   })
 
+  it('uses the validated baseline fallback without turning low market confidence into a permanent blocker', () => {
+    expect(core).toContain('resolveIntakeFactCoverage')
+    expect(core).not.toContain('confidence_below_offer_threshold')
+    expect(core).toContain('onsite_inspection_required')
+    expect(core).toContain('prepare_offer')
+  })
+
   it('retains hard-route reason telemetry on the job-create failure event', () => {
     expect(jobCreateService).toContain('policy_reason_code: pipeline.policyReasonCode')
     expect(jobCreateService).toMatch(/reason_code: reasonCode, \.\.\.metadata/)
   })
 
-  it('enforces server-requested visual evidence before a quote-ready artifact', () => {
-    expect(core).toContain('requiredCaseWorkEvidenceRequest')
+  it('resolves profile evidence after clarification and records the server-owned requirement level', () => {
+    expect(core).toContain('resolveCaseWorkEvidenceRequest')
+    expect(core).toContain('evidence_gate_decision')
     expect(core).toContain('diagnosisScopeWithEvidenceRequest')
     expect(caseWork).toContain('kind: "request_evidence"')
+    expect(caseWork).toContain('required: request.required')
   })
 })

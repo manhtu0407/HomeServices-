@@ -329,8 +329,11 @@ export const jobService = {
   },
 
   createPaymentIntent(jobId: string) {
-    void jobId
-    return parkedMobileApiResult<PaymentIntentResponse>('PAYMENT_NOT_ENABLED', 'Thanh toán chưa được bật cho mobile-api')
+    return api.post<PaymentIntentResponse>(`/jobs/${encodeURIComponent(jobId)}/payment-intent`)
+  },
+
+  confirmStagingPayment(jobId: string) {
+    return api.post<PaymentIntentResponse>(`/jobs/${encodeURIComponent(jobId)}/staging-payment-confirm`)
   },
 
   submitReview(jobId: string, input: Omit<ReviewInput, 'job_id'>) {

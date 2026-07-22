@@ -1,4 +1,9 @@
-import type { EdgeCustomerKaelConversationMode, JobStatus } from "../../../_shared/domain.ts";
+import type {
+  EdgeCustomerKaelConversationMode,
+  JobStatus,
+  ServiceType,
+} from "../../../_shared/domain.ts";
+import type { KaelPerformanceProfileId } from "../kael/performance-profiles.ts";
 
 export type EdgeCustomerKaelConversationCaseAction =
   | "none"
@@ -16,6 +21,8 @@ export type EdgeCustomerKaelConversationSessionResponse = {
   client_request_id: string;
   title: string | null;
   pinned_at: string | null;
+  profile_id: KaelPerformanceProfileId | null;
+  service_type: ServiceType | null;
   started_at: string;
   updated_at: string;
   total_turns: number;
@@ -24,6 +31,7 @@ export type EdgeCustomerKaelConversationSessionResponse = {
 export type EdgeCustomerKaelConversationTurnResponse = {
   id: string;
   conversation_id: string;
+  client_request_id: string | null;
   turn_index: number;
   role: "customer" | "kael" | "system";
   text_content: string;

@@ -15,9 +15,21 @@ import {
   readCustomerKaelSessionCatalog,
   writeCustomerKaelSessionCatalog,
 } from './customer-kael-session-catalog-cache'
+import {
+  customerCatalogKey,
+  customerConversationCopy as copy,
+  sortSessions,
+  upsertSession,
+} from './customer-kael-conversation-catalog'
+import {
+  fetchCustomerConversation,
+  isAmbiguousConversationTurnFailure,
+  recoverCommittedConversationTurn,
+} from './customer-kael-conversation-requests'
 
 const catalogMemory = new Map<string, CustomerKaelConversationSession[]>()
 const responseMemory = new Map<string, CustomerKaelConversationResponse>()
+const CUSTOMER_SESSION_PREFETCH_LIMIT = 6
 
 type CustomerKaelCatalogState = {
   activeResponse: CustomerKaelConversationResponse | null
@@ -30,7 +42,6 @@ type CustomerKaelCatalogState = {
   sessionsError: string | null
   sessionsLoading: boolean
 }
-
 export function useCustomerKaelConversations(
   mode: CustomerKaelConversationMode,
   language: AppLanguage,
@@ -44,9 +55,19 @@ export function useCustomerKaelConversations(
   const activeResponseByCatalogRef = useRef(new Map<string, CustomerKaelConversationResponse | null>())
   const visualAuditOwnerByCatalogRef = useRef(new Map<string, string>())
   const listRequestRef = useRef(new Map<string, Promise<CustomerKaelConversationSession[]>>())
+  const sessionCreateRequestRef = useRef<Promise<CustomerKaelConversationResponse | null> | null>(null)
   const operationRequestRef = useRef(0)
   const operationLockRef = useRef<number | null>(null)
   const pendingSessionIdSetRef = useRef(new Set<string>())
+  const archivedSessionIdsByCatalogRef = useRef(new Map<string, Set<string>>())
+  const archiveTombstones = useMemo(() => {
+    if (!catalogKey) return new Set<string>()
+    const existing = archivedSessionIdsByCatalogRef.current.get(catalogKey)
+    if (existing) return existing
+    const created = new Set<string>()
+    archivedSessionIdsByCatalogRef.current.set(catalogKey, created)
+    return created
+  }, [catalogKey])
   const [storedCatalogState, setCatalogState] = useState(() => createCatalogState(
     catalogKey,
     activeResponseByCatalogRef.current,
@@ -88,7 +109,9 @@ export function useCustomerKaelConversations(
       visualAuditOwnerByCatalogRef.current.set(catalogKey, catalogOwnerId)
     }
     const scoped = sortSessions(nextSessions.filter((session) => (
-      session.customer_id === catalogOwnerId && session.mode === mode
+      !archiveTombstones.has(session.id)
+      && session.customer_id === catalogOwnerId
+      && session.mode === mode
     ))).slice(0, 20)
     catalogMemory.set(catalogKey, scoped)
     if (activeKeyRef.current === catalogKey) {
@@ -98,7 +121,7 @@ export function useCustomerKaelConversations(
       void writeCustomerKaelSessionCatalog(customerId, mode, scoped)
     }
     return scoped
-  }, [catalogKey, customerId, localVisualAuditSession, mode])
+  }, [archiveTombstones, catalogKey, customerId, localVisualAuditSession, mode])
 
   const activateResponse = useCallback((response: CustomerKaelConversationResponse) => {
     if (
@@ -138,7 +161,9 @@ export function useCustomerKaelConversations(
           visualAuditOwnerByCatalogRef.current.set(catalogKey, catalogOwnerId)
         }
         const scoped = sortSessions(result.data.sessions.filter((session) => (
-          session.customer_id === catalogOwnerId && session.mode === mode
+          !archiveTombstones.has(session.id)
+          && session.customer_id === catalogOwnerId
+          && session.mode === mode
         )))
         catalogMemory.set(catalogKey, scoped)
         if (!localVisualAuditSession) {
@@ -169,11 +194,12 @@ export function useCustomerKaelConversations(
       })
     listRequestRef.current.set(catalogKey, request)
     return request
-  }, [catalogKey, customerId, language, localVisualAuditSession, mode])
+  }, [archiveTombstones, catalogKey, customerId, language, localVisualAuditSession, mode])
 
   useEffect(() => {
     operationRequestRef.current += 1
     operationLockRef.current = null
+    sessionCreateRequestRef.current = null
     pendingSessionIdSetRef.current.clear()
     if (!customerId || !catalogKey) return
     if (localVisualAuditSession) {
@@ -184,7 +210,9 @@ export function useCustomerKaelConversations(
     void readCustomerKaelSessionCatalog(customerId, mode).then((cached) => {
       if (cancelled || !cached || activeKeyRef.current !== catalogKey) return
       const scoped = sortSessions(cached.filter((item) => (
-        item.customer_id === customerId && item.mode === mode
+        !archiveTombstones.has(item.id)
+        && item.customer_id === customerId
+        && item.mode === mode
       )))
       catalogMemory.set(catalogKey, scoped)
       patchCatalogState(setCatalogState, catalogKey, activeResponseByCatalogRef.current, {
@@ -197,11 +225,32 @@ export function useCustomerKaelConversations(
     return () => {
       cancelled = true
     }
-  }, [catalogKey, customerId, localVisualAuditSession, mode, refreshSessions])
+  }, [archiveTombstones, catalogKey, customerId, localVisualAuditSession, mode, refreshSessions])
+
+  useEffect(() => {
+    if (!customerId || !catalogKey) return
+    sessions
+      .filter((summary) => !summary.case_session_id)
+      .slice(0, CUSTOMER_SESSION_PREFETCH_LIMIT)
+      .forEach((summary) => {
+        const cached = responseMemory.get(summary.id)
+        if (cached && matchesCatalogCustomer(cached.session.customer_id) && cached.session.mode === mode) return
+        void fetchCustomerConversation(summary.id).then((loaded) => {
+          if (
+            !loaded?.success ||
+            activeKeyRef.current !== catalogKey ||
+            !matchesCatalogCustomer(loaded.data.session.customer_id) ||
+            loaded.data.session.mode !== mode
+          ) return
+          responseMemory.set(summary.id, loaded.data)
+        })
+      })
+  }, [catalogKey, customerId, matchesCatalogCustomer, mode, sessions])
 
   const resetToBlank = useCallback(() => {
     operationRequestRef.current += 1
     operationLockRef.current = null
+    sessionCreateRequestRef.current = null
     if (catalogKey) activeResponseByCatalogRef.current.set(catalogKey, null)
     patchCatalogState(setCatalogState, catalogKey, activeResponseByCatalogRef.current, {
       activeResponse: null,
@@ -212,8 +261,11 @@ export function useCustomerKaelConversations(
     })
   }, [catalogKey])
 
-  const startNewSession = useCallback(async (clientRequestId = generateClientRequestId()) => {
-    if (!customerId || !catalogKey || operationLockRef.current !== null) return null
+  const startNewSession = useCallback((clientRequestId = generateClientRequestId()) => {
+    if (!customerId || !catalogKey) return Promise.resolve(null)
+    const inFlight = sessionCreateRequestRef.current
+    if (inFlight) return inFlight
+    if (operationLockRef.current !== null) return Promise.resolve(null)
     const requestId = operationRequestRef.current + 1
     operationRequestRef.current = requestId
     operationLockRef.current = requestId
@@ -221,19 +273,35 @@ export function useCustomerKaelConversations(
       creatingSession: true,
       sessionsError: null,
     })
-    try {
-      const created = await customerKaelConversationService.create({
-        client_request_id: clientRequestId,
-        mode,
-      })
-      if (
-        !created.success
-        || operationRequestRef.current !== requestId
-        || activeKeyRef.current !== catalogKey
-        || !matchesCatalogCustomer(created.data.session.customer_id)
-        || created.data.session.mode !== mode
-      ) {
-        if (!created.success && activeKeyRef.current === catalogKey) {
+    let request!: Promise<CustomerKaelConversationResponse | null>
+    request = (async () => {
+      try {
+        const created = await customerKaelConversationService.create({
+          client_request_id: clientRequestId,
+          mode,
+        })
+        if (
+          !created.success
+          || operationRequestRef.current !== requestId
+          || activeKeyRef.current !== catalogKey
+          || !matchesCatalogCustomer(created.data.session.customer_id)
+          || created.data.session.mode !== mode
+        ) {
+          if (!created.success && activeKeyRef.current === catalogKey) {
+            setCatalogStateField(
+              setCatalogState,
+              catalogKey,
+              activeResponseByCatalogRef.current,
+              'sessionsError',
+              copy(language, 'Chưa thể tạo cuộc trò chuyện mới.', 'A new conversation could not be created.'),
+            )
+          }
+          return null
+        }
+        activateResponse(created.data)
+        return created.data
+      } catch {
+        if (activeKeyRef.current === catalogKey) {
           setCatalogStateField(
             setCatalogState,
             catalogKey,
@@ -243,44 +311,55 @@ export function useCustomerKaelConversations(
           )
         }
         return null
-      }
-      activateResponse(created.data)
-      return created.data
-    } catch {
-      if (activeKeyRef.current === catalogKey) {
-        setCatalogStateField(
-          setCatalogState,
-          catalogKey,
-          activeResponseByCatalogRef.current,
-          'sessionsError',
-          copy(language, 'Chưa thể tạo cuộc trò chuyện mới.', 'A new conversation could not be created.'),
-        )
-      }
-      return null
-    } finally {
-      if (operationLockRef.current === requestId) {
-        operationLockRef.current = null
-        if (activeKeyRef.current === catalogKey) {
-          setCatalogStateField(setCatalogState, catalogKey, activeResponseByCatalogRef.current, 'creatingSession', false)
+      } finally {
+        if (operationLockRef.current === requestId) {
+          operationLockRef.current = null
+          if (activeKeyRef.current === catalogKey) {
+            setCatalogStateField(setCatalogState, catalogKey, activeResponseByCatalogRef.current, 'creatingSession', false)
+          }
         }
+        if (sessionCreateRequestRef.current === request) sessionCreateRequestRef.current = null
       }
-    }
+    })()
+    sessionCreateRequestRef.current = request
+    return request
   }, [activateResponse, catalogKey, customerId, language, matchesCatalogCustomer, mode])
 
   const ensureActiveSession = useCallback(async (clientRequestId?: string) => {
     if (visibleResponse) return visibleResponse
+    const currentResponse = catalogKey ? activeResponseByCatalogRef.current.get(catalogKey) : null
+    if (currentResponse?.session.mode === mode) return currentResponse
+    const inFlight = sessionCreateRequestRef.current
+    if (inFlight) return inFlight
     return startNewSession(clientRequestId)
-  }, [startNewSession, visibleResponse])
+  }, [catalogKey, mode, startNewSession, visibleResponse])
 
   const openSession = useCallback(async (sessionId: string) => {
-    if (!customerId || !catalogKey || operationLockRef.current !== null) return null
+    if (!customerId || !catalogKey) return null
     const summary = sessions.find((session) => session.id === sessionId)
     if (!summary || !matchesCatalogCustomer(summary.customer_id) || summary.mode !== mode) return null
     const cached = responseMemory.get(sessionId)
     if (cached && matchesCatalogCustomer(cached.session.customer_id) && cached.session.mode === mode) {
+      operationRequestRef.current += 1
+      operationLockRef.current = null
+      patchCatalogState(setCatalogState, catalogKey, activeResponseByCatalogRef.current, {
+        openingSessionId: null,
+        sessionsError: null,
+      })
       activateResponse(cached)
       return cached
     }
+    if (summary.case_session_id) {
+      operationRequestRef.current += 1
+      operationLockRef.current = null
+      patchCatalogState(setCatalogState, catalogKey, activeResponseByCatalogRef.current, {
+        openingSessionId: null,
+        sessionsError: null,
+      })
+      const linkedResponse = { session: summary, turns: [] }
+      return activateResponse(linkedResponse) ? linkedResponse : null
+    }
+    if (operationLockRef.current !== null) return null
 
     const requestId = operationRequestRef.current + 1
     operationRequestRef.current = requestId
@@ -290,15 +369,15 @@ export function useCustomerKaelConversations(
       sessionsError: null,
     })
     try {
-      const loaded = await customerKaelConversationService.get(sessionId)
+      const loaded = await fetchCustomerConversation(sessionId)
       if (
-        !loaded.success
+        !loaded?.success
         || operationRequestRef.current !== requestId
         || activeKeyRef.current !== catalogKey
         || !matchesCatalogCustomer(loaded.data.session.customer_id)
         || loaded.data.session.mode !== mode
       ) {
-        if (!loaded.success && activeKeyRef.current === catalogKey) {
+        if (!loaded?.success && activeKeyRef.current === catalogKey) {
           setCatalogStateField(
             setCatalogState,
             catalogKey,
@@ -332,11 +411,25 @@ export function useCustomerKaelConversations(
     }
   }, [activateResponse, catalogKey, customerId, language, matchesCatalogCustomer, mode, sessions])
 
-  const sendConversationTurn = useCallback(async (message: string) => {
+  const sendConversationTurn = useCallback(async (
+    message: string,
+    options?: { revealAfter?: Promise<void> },
+  ) => {
     const content = message.trim()
-    if (!content || operationLockRef.current !== null) return null
+    if (!content) return null
+    if (operationLockRef.current !== null && !sessionCreateRequestRef.current) return null
     const target = await ensureActiveSession()
     if (!target || target.session.mode !== mode || operationLockRef.current !== null) return null
+    if (target.session.case_session_id) {
+      setCatalogStateField(
+        setCatalogState,
+        catalogKey,
+        activeResponseByCatalogRef.current,
+        'sessionsError',
+        copy(language, 'Hãy tiếp tục trong phiên Xử lý công việc đang liên kết.', 'Continue in the linked Work handling session.'),
+      )
+      return null
+    }
     const targetId = target.session.id
     const requestId = operationRequestRef.current + 1
     operationRequestRef.current = requestId
@@ -346,18 +439,24 @@ export function useCustomerKaelConversations(
       sessionsError: null,
     })
     try {
+      const clientRequestId = generateClientRequestId()
       const sent = await customerKaelConversationService.sendTurn(targetId, {
-        client_request_id: generateClientRequestId(),
+        client_request_id: clientRequestId,
         language,
         message: content,
       })
+      const committed = sent.success
+        ? sent.data
+        : isAmbiguousConversationTurnFailure(sent)
+          ? await recoverCommittedConversationTurn(targetId, clientRequestId)
+          : null
       if (
-        !sent.success
+        !committed
         || operationRequestRef.current !== requestId
         || activeModeRef.current !== mode
         || activeKeyRef.current !== catalogKey
       ) {
-        if (!sent.success && operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
+        if (!committed && operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
           setCatalogStateField(
             setCatalogState,
             catalogKey,
@@ -368,8 +467,14 @@ export function useCustomerKaelConversations(
         }
         return null
       }
-      activateResponse(sent.data)
-      return sent.data
+      await options?.revealAfter
+      if (
+        operationRequestRef.current !== requestId
+        || activeModeRef.current !== mode
+        || activeKeyRef.current !== catalogKey
+      ) return null
+      activateResponse(committed)
+      return committed
     } catch {
       if (operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
         setCatalogStateField(
@@ -396,6 +501,7 @@ export function useCustomerKaelConversations(
     if (!target || target.mode !== mode || !matchesCatalogCustomer(target.customer_id) || pendingSessionIdSetRef.current.has(sessionId)) return false
     const previous = sessions
     const linkedCaseWork = Boolean(target.case_session_id)
+    archiveTombstones.add(sessionId)
     pendingSessionIdSetRef.current.add(sessionId)
     setCatalogStateField(
       setCatalogState,
@@ -422,6 +528,7 @@ export function useCustomerKaelConversations(
       responseMemory.delete(sessionId)
       return true
     } catch {
+      archiveTombstones.delete(sessionId)
       if (!linkedCaseWork) {
         persistCatalog(upsertSession(
           catalogKey ? catalogMemory.get(catalogKey) ?? [] : previous,
@@ -450,7 +557,7 @@ export function useCustomerKaelConversations(
         )
       }
     }
-  }, [catalogKey, language, matchesCatalogCustomer, mode, persistCatalog, resetToBlank, sessions, visibleResponse?.session.id])
+  }, [archiveTombstones, catalogKey, language, matchesCatalogCustomer, mode, persistCatalog, resetToBlank, sessions, visibleResponse?.session.id])
 
   const renameSession = useCallback(async (sessionId: string, title: string) => {
     const trimmed = title.trim()
@@ -546,14 +653,19 @@ export function useCustomerKaelConversations(
   }, [activateResponse, catalogKey, language, matchesCatalogCustomer, mode, persistCatalog, sessions, visibleResponse?.session.id])
 
   const syncLinkedCaseSession = useCallback(async (caseSessionId: string) => {
-    if (mode !== 'case') return null
+    if (mode !== 'case' || !customerId || !catalogKey) return null
+    const syncVersion = operationRequestRef.current
     const refreshed = await refreshSessions(true)
     const linked = refreshed.find((session) => session.case_session_id === caseSessionId)
-    if (!linked) return null
-    const loaded = await customerKaelConversationService.get(linked.id)
-    if (!loaded.success || loaded.data.session.mode !== 'case') return null
-    return activateResponse(loaded.data) ? loaded.data : null
-  }, [activateResponse, mode, refreshSessions])
+    if (
+      !linked
+      || operationRequestRef.current !== syncVersion
+      || operationLockRef.current !== null
+      || activeKeyRef.current !== catalogKey
+    ) return null
+    const linkedResponse = { session: linked, turns: [] }
+    return activateResponse(linkedResponse) ? linkedResponse : null
+  }, [activateResponse, catalogKey, customerId, mode, refreshSessions])
 
   const syncLinkedJobSession = useCallback(async (jobId: string) => {
     if (mode !== 'case' || !customerId || !catalogKey) return null
@@ -566,33 +678,8 @@ export function useCustomerKaelConversations(
     ) return null
     const linked = refreshed.find((session) => session.case_job_id === jobId)
     if (!linked) return null
-    const requestId = operationRequestRef.current + 1
-    operationRequestRef.current = requestId
-    operationLockRef.current = requestId
-    setCatalogStateField(
-      setCatalogState,
-      catalogKey,
-      activeResponseByCatalogRef.current,
-      'openingSessionId',
-      linked.id,
-    )
-    try {
-      const loaded = await customerKaelConversationService.get(linked.id)
-      if (
-        !loaded.success
-        || loaded.data.session.mode !== 'case'
-        || operationRequestRef.current !== requestId
-        || activeKeyRef.current !== catalogKey
-      ) return null
-      return activateResponse(loaded.data) ? loaded.data : null
-    } finally {
-      if (operationLockRef.current === requestId) {
-        operationLockRef.current = null
-        if (activeKeyRef.current === catalogKey) {
-          setCatalogStateField(setCatalogState, catalogKey, activeResponseByCatalogRef.current, 'openingSessionId', null)
-        }
-      }
-    }
+    const linkedResponse = { session: linked, turns: [] }
+    return activateResponse(linkedResponse) ? linkedResponse : null
   }, [activateResponse, catalogKey, customerId, mode, refreshSessions])
 
   return useMemo(() => ({
@@ -601,6 +688,7 @@ export function useCustomerKaelConversations(
     archiveSession,
     busy: creatingSession || Boolean(openingSessionId) || sending,
     canCreateSession: Boolean(customerId) && !creatingSession && !openingSessionId && !sending,
+    creatingSession,
     ensureActiveSession,
     openSession,
     openingSessionId,
@@ -609,6 +697,7 @@ export function useCustomerKaelConversations(
     renameSession,
     resetToBlank,
     sendConversationTurn,
+    sending,
     sessions,
     sessionsError,
     sessionsLoading,
@@ -697,28 +786,4 @@ function setCatalogStateField<
       : next
     return { ...scoped, [field]: value } as CustomerKaelCatalogState
   })
-}
-
-function customerCatalogKey(customerId: string, mode: CustomerKaelConversationMode) {
-  return `${customerId}:${mode}`
-}
-
-function upsertSession(
-  sessions: CustomerKaelConversationSession[],
-  next: CustomerKaelConversationSession,
-) {
-  return sortSessions([next, ...sessions.filter((session) => session.id !== next.id)])
-}
-
-function sortSessions(sessions: CustomerKaelConversationSession[]) {
-  return [...sessions].sort((left, right) => {
-    const leftPinned = left.pinned_at ? 1 : 0
-    const rightPinned = right.pinned_at ? 1 : 0
-    if (leftPinned !== rightPinned) return rightPinned - leftPinned
-    return Date.parse(right.updated_at) - Date.parse(left.updated_at)
-  })
-}
-
-function copy(language: AppLanguage, vi: string, en: string) {
-  return language === 'vi' ? vi : en
 }

@@ -201,8 +201,9 @@ describe('mobile-api Edge schema compatibility', () => {
 
     expect(source).toContain('deepseek-v4-flash')
     expect(source).not.toContain('deepseek-chat')
-    expect(source).toMatch(/thinking:\s*\{\s*type:\s*request\.model === "deepseek-v4-pro" \? "enabled" : "disabled"\s*\}/)
-    expect(source).toContain('reasoning_effort: "high"')
+    expect(source).toMatch(/const deepseekThinkingEnabled = request\.model === "deepseek-v4-pro" &&\s*request\.purpose === "post_job_learning"/)
+    expect(source).toMatch(/thinking:\s*\{\s*type:\s*deepseekThinkingEnabled \? "enabled" : "disabled"\s*\}/)
+    expect(source).toMatch(/deepseekThinkingEnabled \? \{ reasoning_effort: "high" \} : \{\}/)
     expect(source).toMatch(/response_format:\s*\{\s*type:\s*["']json_object["']\s*\}/)
   })
 
@@ -229,7 +230,8 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeKael = readEdgeKaelModules()
 
     expect(edgeKael).toContain('const problemChips = input.problemChips.map(scrubSensitiveForLLM)')
-    expect(edgeKael).toContain('const description = scrubSensitiveForLLM(input.description)')
+    expect(edgeKael).toContain('const description = scrubCustomerCaseContextForLLM(input.description)')
+    expect(edgeKael).toContain('let scrubbed = scrubSensitiveForLLM(protectedInput)')
     expect(edgeKael).toContain('(?:\\+?84|0)')
     expect(edgeKael).toContain('[\\s().-]*')
     expect(edgeKael).toContain('{8,10}(?!\\d)')

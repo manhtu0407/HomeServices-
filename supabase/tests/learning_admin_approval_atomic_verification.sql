@@ -1,5 +1,29 @@
 begin;
 
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+) values (
+  '00000000-0000-0000-0000-000000000003',
+  'authenticated',
+  'authenticated',
+  'atomic-learning-admin@example.test',
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{}'::jsonb,
+  pg_catalog.clock_timestamp(),
+  pg_catalog.clock_timestamp()
+) on conflict (id) do nothing;
+
+update public.profiles
+set role = 'admin'::public.user_role
+where id = '00000000-0000-0000-0000-000000000003';
+
 do $$
 declare
   v_admin_id constant uuid := '00000000-0000-0000-0000-000000000003';

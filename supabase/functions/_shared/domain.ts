@@ -349,6 +349,13 @@ export const kaelChatEvidenceSchema = z.object({
   language: z.enum(["vi", "en"]).optional(),
   skip_reason: z.string().trim().max(500).optional(),
 }).superRefine((value, ctx) => {
+  if (value.decision === "skipped" && !value.skip_reason?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Skipping optional evidence requires a short reason.",
+      path: ["skip_reason"],
+    });
+  }
   if (
     value.decision === "confirmed" &&
     value.media_refs.length === 0 &&

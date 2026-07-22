@@ -90,11 +90,11 @@ export function resolveIntakeFactCoverage(input: {
       ? resolveRequiredSlotCoverage(profile, input.problemSlug, input.profileFacts)
       : resolveProfileFactCoverage(profile, input.profileFacts)
     : { facts: {} as Record<string, string>, missing: [] as readonly string[] };
-  const providerMissing = requiredPolicy
-    ? input.providerMissingSlots.filter((slot) =>
-      requiredPolicy.minimumSlots.includes(slot) && !coverage.facts[slot]
-    )
-    : input.providerMissingSlots;
+  const providerMissing = input.providerMissingSlots.filter((slot) => {
+    if (coverage.facts[slot]) return false;
+    if (!requiredPolicy) return input.providerNeedsClarification;
+    return requiredPolicy.minimumSlots.includes(slot);
+  });
   const safetyClarificationMissing = input.providerNeedsClarification
     ? input.providerMissingSlots.filter((slot) =>
       KAEL_ELECTRICAL_BRANCH_CLARIFICATION_SLOTS.includes(
@@ -102,17 +102,19 @@ export function resolveIntakeFactCoverage(input: {
       ) && slot.startsWith("safety_")
     )
     : [];
-  const missing = [...new Set([
-    ...coverage.missing,
-    ...providerMissing,
-    ...safetyClarificationMissing,
-  ])];
+  const missing = [...new Set(requiredPolicy
+    ? [
+      ...coverage.missing,
+      ...providerMissing,
+      ...safetyClarificationMissing,
+    ]
+    : providerMissing)];
   return {
     facts: coverage.facts,
     missing,
     needsClarification: requiredPolicy
       ? missing.length > 0
-      : input.providerNeedsClarification || coverage.missing.length > 0,
+      : input.providerNeedsClarification,
   };
 }
 
@@ -148,6 +150,70 @@ export function buildIntakeObservation(input: {
   return parsed.success ? parsed.data : undefined;
 }
 
+export function isClarificationExplanationRequest(message: string) {
+  const normalized = normalizeClarificationReply(message);
+  return [
+    "nghia la sao",
+    "la sao",
+    "la nhu nao",
+    "y la gi",
+    "giai thich",
+    "noi ro hon",
+    "what do you mean",
+    "what does that mean",
+    "explain",
+    "clarify",
+  ].some((pattern) => normalized.includes(pattern));
+}
+
+export function isGroundedClarificationAnswer(message: string) {
+  const normalized = normalizeClarificationReply(message);
+  if (
+    normalized.length < 2 ||
+    isClarificationExplanationRequest(message) ||
+    isUnknownClarificationAnswer(message)
+  ) return false;
+  return true;
+}
+
+export function isUnknownClarificationAnswer(message: string) {
+  const normalized = normalizeClarificationReply(message);
+  return [
+    "khong biet",
+    "khong ro",
+    "chua ro",
+    "chua biet",
+    "khong chac",
+    "not sure",
+    "unsure",
+    "do not know",
+    "dont know",
+    "don't know",
+  ].some((pattern) => normalized.includes(pattern));
+}
+
+export function buildClarificationExplanationQuestion(
+  missingSlot: string,
+  language: "vi" | "en",
+) {
+  if (missingSlot === "task_types_and_total_count") {
+    return language === "en"
+      ? "Kael needs each task separated for a reliable labor estimate. Is this the only task or is there another one?"
+      : "Kael cần tách từng việc để ước lượng đúng công, dụng cụ. Yêu cầu này chỉ có một việc hay còn việc nào khác?";
+  }
+  const focusedQuestion = buildFocusedClarificationQuestion(missingSlot, language);
+  return language === "en"
+    ? `Kael needs this detail to confirm the work scope. ${focusedQuestion}`
+    : `Kael cần chi tiết này để xác định đúng phạm vi công việc. ${focusedQuestion}`;
+}
+
+function normalizeClarificationReply(value: string) {
+  return value.trim().toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ");
+}
+
 export function buildFocusedClarificationQuestion(
   missingSlot: string,
   language: "vi" | "en",
@@ -181,6 +247,30 @@ export function buildFocusedClarificationQuestion(
     parts_or_new_device_requirement: {
       vi: "Thiết bị hoặc vật tư cần lắp đã có sẵn chưa?",
       en: "Is the required device or part already available?",
+    },
+    task_types_and_total_count: {
+      vi: "Có bao nhiêu hạng mục cần được xử lý?",
+      en: "How many tasks need to be handled?",
+    },
+    item_dimensions_weight_and_quantity: {
+      vi: "Vật cần treo có kích thước, trọng lượng ước chừng bao nhiêu?",
+      en: "What are the approximate dimensions and weight of the item?",
+    },
+    wall_surface_or_substrate: {
+      vi: "Bề mặt cần khoan là bê tông, gạch hay vật liệu nào?",
+      en: "Is the mounting surface concrete, tile or another material?",
+    },
+    mounting_location_access_and_height: {
+      vi: "Vị trí lắp cao khoảng bao nhiêu so với sàn?",
+      en: "Approximately how high is the mounting point above the floor?",
+    },
+    parts_hardware_and_tools_available: {
+      vi: "Bạn đã có sẵn phụ kiện lắp đặt chưa?",
+      en: "Do you already have the mounting hardware?",
+    },
+    concealed_services_and_load_requirement: {
+      vi: "Khu vực khoan có đường điện hoặc ống nước âm tường đã biết không?",
+      en: "Are there known concealed electrical or water lines at the drilling point?",
     },
   };
   const compositeQuestion = compositeQuestions[slot]?.[language];

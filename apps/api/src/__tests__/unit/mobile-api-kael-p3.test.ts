@@ -3,11 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { KAEL_PURPOSES } from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
-import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider, providerCandidatesForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing'
+import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider, providerCandidatesForPurpose, shouldSkipProviderSiblingModels } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing'
 import { createKaelCircuitBreaker, KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
 import { runKaelParallel, runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
 import { updateKaelProgress } from '../../../../../supabase/functions/mobile-api/_shared/kael/streaming'
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 describe('mobile-api Kael P3 routing foundation', () => {
   afterEach(() => {
@@ -80,15 +82,99 @@ describe('mobile-api Kael P3 routing foundation', () => {
     })
   })
 
+  it('routes interactive DeepSeek work through Flash then Pro before cross-provider fallback', async () => {
+    expect(providerCandidatesForPurpose('intent_classification').map(({ provider, model }) => ({
+      provider,
+      model,
+    }))).toEqual([
+      { provider: 'deepseek', model: 'deepseek-v4-flash' },
+      { provider: 'deepseek', model: 'deepseek-v4-pro' },
+      { provider: 'anthropic', model: 'claude-sonnet-5' },
+    ])
+
+    const requestedModels: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
+      requestedModels.push(body.model ?? 'unknown')
+      if (body.model === 'deepseek-v4-flash') {
+        return new Response('{"error":"flash unavailable"}', { status: 503 })
+      }
+      if (body.model !== 'deepseek-v4-pro') {
+        throw new Error(`unexpected model ${body.model ?? 'unknown'}`)
+      }
+      return new Response(JSON.stringify({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              service_type: 'electrical',
+              problem_slug: 'outlet_or_switch_broken',
+              confidence: 0.91,
+              needs_clarification: false,
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 40, completion_tokens: 12 },
+      }))
+    }))
+
+    await expect(classifyIntent(
+      'electrical',
+      ['Ổ cắm/công tắc hỏng'],
+      'Ổ cắm không hoạt động.',
+      { deepseekApiKey: 'deepseek-test', anthropicApiKey: 'anthropic-test' },
+      allowKaelSpendForTest('customer-1'),
+    )).resolves.toMatchObject({ success: true })
+    expect(requestedModels).toEqual(['deepseek-v4-flash', 'deepseek-v4-pro'])
+  })
+
+  it('skips sibling models for provider-wide failures but keeps model failover for model-scoped failures', () => {
+    expect(shouldSkipProviderSiblingModels('HTTP_402')).toBe(true)
+    expect(shouldSkipProviderSiblingModels('HTTP_429')).toBe(true)
+    expect(shouldSkipProviderSiblingModels('KEY_MISSING')).toBe(true)
+    expect(shouldSkipProviderSiblingModels('OPEN_CIRCUIT')).toBe(true)
+    expect(shouldSkipProviderSiblingModels('HTTP_503')).toBe(false)
+    expect(shouldSkipProviderSiblingModels('TIMEOUT')).toBe(false)
+    expect(shouldSkipProviderSiblingModels('SCHEMA_INVALID')).toBe(false)
+  })
+
+  it('lets the intent failover ladder own its provider deadlines without a competing outer timeout', () => {
+    const pipelineSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      'utf8',
+    )
+
+    expect(pipelineSource).not.toContain('providerFailoverEnvelopeMsForPurpose')
+    expect(pipelineSource).not.toMatch(/label: "intent"[\s\S]{0,180}timeoutMs:/)
+  })
+
   it('uses the measured DeepSeek intent budget through the provider route', () => {
     const intentSource = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/kael/intent.ts', import.meta.url),
       'utf8',
     )
 
-    expect(KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs).toBe(2_500)
+    expect(KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs).toBe(4_000)
     expect(intentSource).toContain('timeoutMs: route.latencyBudgetMs')
     expect(intentSource).not.toContain('timeoutMs: 1_000')
+  })
+
+  it('gives interactive educational responses enough time to finish before model failover', () => {
+    expect(KAEL_ROUTING_CONFIG.educational_response).toMatchObject({
+      primary: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+      modelFallback: { provider: 'deepseek', model: 'deepseek-v4-pro' },
+      fallback: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' },
+      latencyBudgetMs: 6_000,
+    })
+  })
+
+  it('keeps scope-change on the locked Anthropic roster with a provider-safe deadline', () => {
+    expect(KAEL_ROUTING_CONFIG.scope_change).toMatchObject({
+      primary: { provider: 'anthropic', model: 'claude-sonnet-5' },
+      escalation: { provider: 'anthropic', model: 'claude-opus-4-8' },
+      latencyBudgetMs: 20_000,
+    })
+    expect(KAEL_ROUTING_CONFIG.scope_change.modelFallback).toBeUndefined()
+    expect(KAEL_ROUTING_CONFIG.scope_change.fallback).toBeUndefined()
   })
 
   it('rejects invalid purposes and over-budget calls before provider selection', () => {
@@ -196,6 +282,23 @@ describe('mobile-api Kael P3 circuit breaker', () => {
 })
 
 describe('mobile-api Kael P3 orchestrator and streaming', () => {
+  it('allows an internally bounded provider ladder to run without a second stage timer', async () => {
+    vi.useFakeTimers()
+    const pending = runKaelPurposeStage({
+      label: 'intent',
+      purpose: 'intent_classification',
+      run: () => delayedValue('provider-result', 50),
+    })
+
+    await vi.advanceTimersByTimeAsync(50)
+
+    await expect(pending).resolves.toMatchObject({
+      status: 'ok',
+      value: 'provider-result',
+      fallbackUsed: false,
+    })
+  })
+
   it('wires post-intent estimate stages through the parallel orchestrator', () => {
     const pipelineSource = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
@@ -204,7 +307,8 @@ describe('mobile-api Kael P3 orchestrator and streaming', () => {
 
     expect(pipelineSource).toMatch(/runKaelParallel(?:<[^>]+>)?\(\[/)
     expect(pipelineSource).toMatch(/label: "vision"[\s\S]*label: "market"[\s\S]*label: "baseline"/)
-    expect(pipelineSource).toContain('provider: KAEL_ROUTING_CONFIG.intent_classification.primary.provider')
+    expect(pipelineSource).not.toContain('provider: KAEL_ROUTING_CONFIG.intent_classification.primary.provider')
+    expect(pipelineSource).toContain('attempts: []')
     expect(pipelineSource).not.toMatch(
       /const visionStage = await runKaelPurposeStage[\s\S]*const baselineStage = await runKaelPurposeStage[\s\S]*const marketStage = await runKaelPurposeStage/,
     )

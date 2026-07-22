@@ -50,7 +50,6 @@ export async function confirmKaelChat(
     (casePhase !== "offer_review" && casePhase !== "matching") ||
     !diagnosisScope.quote_ready ||
     diagnosisScope.quote_blockers.length > 0 ||
-    diagnosisScope.confidence < 0.7 ||
     diagnosisScope.facts.needs_inspection === true ||
     diagnosisScope.next_action.kind !== "prepare_offer"
   ) {

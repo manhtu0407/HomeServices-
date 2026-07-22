@@ -6,7 +6,11 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/router'
 import { readEdgeEnv } from '../../../../../supabase/functions/mobile-api/_shared/env'
 import { requireJobAccess } from '../../../../../supabase/functions/mobile-api/_shared/access'
-import { runKaelPipeline, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael'
+import {
+  buildInitialDiagnosisScopeArtifact,
+  runKaelPipeline,
+  type SupabaseLike,
+} from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_shared/push'
 import { __resetRateLimitStoreForTests } from '../../../../../supabase/functions/mobile-api/_shared/rate-limit'
@@ -203,6 +207,21 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(productionEnv.sourceTrustPerplexityFilterExplicit).toBe(false)
   })
 
+  it('enables the payment simulator only when both the explicit flag and staging project match', () => {
+    const read = (supabaseUrl: string, enabled?: string) => readEdgeEnv((name) => {
+      const values: Record<string, string | undefined> = {
+        SUPABASE_URL: supabaseUrl,
+        APP_SECRET_KEY: 'sb_secret_project',
+        NESTSCOUT_STAGING_PAYMENT_RAIL_ENABLED: enabled,
+      }
+      return values[name]
+    })
+
+    expect(read('https://xyylanuyflrjzbjzhqfl.supabase.co').stagingPaymentRailEnabled).toBe(false)
+    expect(read('https://xyylanuyflrjzbjzhqfl.supabase.co', 'true').stagingPaymentRailEnabled).toBe(true)
+    expect(read('https://iwevizmsedyqozxlawwl.supabase.co', 'true').stagingPaymentRailEnabled).toBe(false)
+  })
+
   it('lets an explicit Section 25 R2 false flag override the staging fallback', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
@@ -263,12 +282,14 @@ describe('mobile-api Edge runtime helpers', () => {
       'confirmKaelChat',
       'confirmCompletion',
       'confirmSearch',
+      'confirmStagingPayment',
       'confirmWorkerCandidate',
       'createCustomerKaelConversation',
       'createKaelChat',
       'createKaelChatMediaUpload',
       'createJob',
       'createJobMediaUpload',
+      'createPaymentIntent',
       'createWorkerAvatarUpload',
       'createWorkerKaelChat',
       'decideScopeChange',
@@ -890,14 +911,17 @@ describe('mobile-api Edge runtime helpers', () => {
     )
   })
 
-  it('confirms Kael chat through the atomic RPC before starting worker broadcast', async () => {
+  it('confirms a quote-ready artifact through the production RPC without a duplicate confidence gate', async () => {
     const client = makeSequenceClient([
       {
         data: {
           id: 'kael-session-1',
           customer_id: 'customer-1',
           case_phase: 'offer_review',
-          diagnosis_scope: quoteReadyPlumbingDiagnosisScope(),
+          diagnosis_scope: {
+            ...quoteReadyPlumbingDiagnosisScope(),
+            confidence: 0.4,
+          },
         },
         error: null,
       },
@@ -1227,9 +1251,10 @@ describe('mobile-api Edge runtime helpers', () => {
       },
       { data: { id: 'turn-customer' }, error: null },
       { data: { id: 'kael-session-1' }, error: null },
-      { data: { id: 'kael-session-1', diagnosis_scope: null }, error: null },
-      { data: { id: 'kael-session-1', total_turns: 1 }, error: null },
-      { data: { id: 'kael-session-1', total_cost_usd: 1 }, error: null },
+      {
+        data: { id: 'kael-session-1', diagnosis_scope: null, total_turns: 1, total_cost_usd: 1 },
+        error: null,
+      },
       { data: { id: 'kael-session-1', total_turns: 3, total_cost_usd: 1 }, error: null },
       { data: { id: 'turn-budget' }, error: null },
       { data: { id: 'kael-session-1' }, error: null },
@@ -1319,9 +1344,10 @@ describe('mobile-api Edge runtime helpers', () => {
       },
       { data: { id: 'turn-customer' }, error: null },
       { data: { id: 'kael-session-1' }, error: null },
-      { data: { id: 'kael-session-1', diagnosis_scope: null }, error: null },
-      { data: { id: 'kael-session-1', total_turns: 1 }, error: null },
-      { data: { id: 'kael-session-1', total_cost_usd: 0 }, error: null },
+      {
+        data: { id: 'kael-session-1', diagnosis_scope: null, total_turns: 1, total_cost_usd: 0 },
+        error: null,
+      },
       { data: { id: 'kael-session-1' }, error: null },
       { data: { id: 'kael-session-1', total_turns: 1, total_cost_usd: 0, safe_metadata: {} }, error: null },
       { data: { id: 'turn-clarify' }, error: null },
@@ -1453,9 +1479,10 @@ describe('mobile-api Edge runtime helpers', () => {
       },
       { data: { id: 'turn-customer' }, error: null },
       { data: { id: 'kael-session-1' }, error: null },
-      { data: { id: 'kael-session-1', diagnosis_scope: null }, error: null },
-      { data: { id: 'kael-session-1', total_turns: 1 }, error: null },
-      { data: { id: 'kael-session-1', total_cost_usd: 0 }, error: null },
+      {
+        data: { id: 'kael-session-1', diagnosis_scope: null, total_turns: 1, total_cost_usd: 0 },
+        error: null,
+      },
       {
         data: [{
           turn_index: 1,
@@ -1734,6 +1761,17 @@ describe('mobile-api Edge runtime helpers', () => {
       return new Response('{}', { status: 404 })
     })
     vi.stubGlobal('fetch', fetchMock)
+    const initialDiagnosisScope = buildInitialDiagnosisScopeArtifact({
+      customerGoal: 'Ổ cắm bị cháy đen và có mùi khét',
+      serviceType: 'electrical',
+    })
+    const diagnosisScopeAfterEvidenceReview = {
+      ...initialDiagnosisScope,
+      facts: {
+        ...initialDiagnosisScope.facts,
+        evidence_gate_decision: 'skipped',
+      },
+    }
 
     const client = makeSequenceClient([
       {
@@ -1753,9 +1791,15 @@ describe('mobile-api Edge runtime helpers', () => {
       },
       { data: { id: 'turn-customer' }, error: null },
       { data: { id: 'kael-session-1' }, error: null },
-      { data: { id: 'kael-session-1', diagnosis_scope: null }, error: null },
-      { data: { id: 'kael-session-1', total_turns: 2 }, error: null },
-      { data: { id: 'kael-session-1', total_cost_usd: 0 }, error: null },
+      {
+        data: {
+          id: 'kael-session-1',
+          diagnosis_scope: diagnosisScopeAfterEvidenceReview,
+          total_turns: 2,
+          total_cost_usd: 0,
+        },
+        error: null,
+      },
       {
         data: [{
           turn_index: 2,
@@ -3437,6 +3481,7 @@ describe('mobile-api Edge runtime helpers', () => {
       if (target.includes('anthropic.com') && body.max_tokens === 200) {
         return new Response(JSON.stringify({
           content: [{
+            type: 'text',
             text: JSON.stringify({
               service_type: 'plumbing',
               problem_slug: 'pipe_leak',
@@ -3451,6 +3496,7 @@ describe('mobile-api Edge runtime helpers', () => {
       if (target.includes('anthropic.com') && body.max_tokens === 320) {
         return new Response(JSON.stringify({
           content: [{
+            type: 'text',
             text: JSON.stringify({
               problem_identified: 'Kitchen sink pipe leak',
               severity_indicators: ['steady leak'],
@@ -3649,6 +3695,7 @@ describe('mobile-api Edge runtime helpers', () => {
       if (target.includes('anthropic.com') && body.max_tokens === 320) {
         return new Response(JSON.stringify({
           content: [{
+            type: 'text',
             text: JSON.stringify({
               problem_identified: 'Rò nước nhìn thấy dưới lavabo',
               severity_indicators: ['nước rỉ liên tục'],
@@ -3732,6 +3779,7 @@ describe('mobile-api Edge runtime helpers', () => {
       if (target.includes('anthropic.com') && body.max_tokens === 200) {
         return new Response(JSON.stringify({
           content: [{
+            type: 'text',
             text: JSON.stringify({
               service_type: 'electrical',
               problem_slug: 'short_circuit',
@@ -3746,6 +3794,7 @@ describe('mobile-api Edge runtime helpers', () => {
       if (target.includes('anthropic.com') && body.max_tokens === 500) {
         return new Response(JSON.stringify({
           content: [{
+            type: 'text',
             text: JSON.stringify({
               problem_identified: 'Breaker trips repeatedly',
               severity_indicators: ['burning smell'],
@@ -3992,6 +4041,104 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(client.calls.map((call) => call.table)).toEqual(['jobs'])
   })
 
+  it('creates and confirms a staging-only payment through guarded server transitions', async () => {
+    const startClient = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'confirmed_by_customer',
+          customer_id: 'customer-1',
+          final_price: 250000,
+          payment_provider: null,
+          payment_status: 'not_started',
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+    ])
+    const startCtx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: startClient,
+    }
+
+    await expect(createEdgeServices({ stagingPaymentRailEnabled: true }).createPaymentIntent(startCtx, 'job-1'))
+      .resolves.toMatchObject({
+        job_id: 'job-1',
+        status: 'payment_pending',
+        payment: {
+          provider: 'staging_simulator',
+          status: 'pending',
+          gross_amount: 250000,
+          platform_fee: 25000,
+          worker_net: 225000,
+        },
+      })
+
+    const startUpdate = startClient.calls.find((call) =>
+      call.table === 'jobs' && call.operations.some((operation) => operation[0] === 'update')
+    )
+    expect(startUpdate?.operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
+    expect(startUpdate?.operations).toContainEqual(['eq', 'status', 'confirmed_by_customer'])
+
+    const confirmClient = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'payment_pending',
+          customer_id: 'customer-1',
+          final_price: 250000,
+          payment_provider: 'staging_simulator',
+          payment_status: 'pending',
+          payment_code: 'STG-job-1',
+          payment_transfer_content: 'STAGING ONLY STG-job-1',
+          payment_expires_at: '2026-07-22T13:00:00.000Z',
+          gross_amount: 250000,
+          platform_fee: 25000,
+          worker_net: 225000,
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+    ])
+    const confirmCtx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: confirmClient,
+    }
+
+    await expect(createEdgeServices({ stagingPaymentRailEnabled: true }).confirmStagingPayment(confirmCtx, 'job-1'))
+      .resolves.toMatchObject({
+        job_id: 'job-1',
+        status: 'paid',
+        payment: {
+          provider: 'staging_simulator',
+          status: 'received',
+          amount_received: 250000,
+        },
+      })
+  })
+
+  it('keeps the staging payment simulator closed when the server capability is off', async () => {
+    const client = makeSequenceClient([])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).createPaymentIntent(ctx, 'job-1')).rejects.toMatchObject({
+      code: 'PAYMENT_NOT_ENABLED',
+      status: 409,
+    })
+    expect(client.calls).toHaveLength(0)
+  })
+
   it('returns broadcast_state on job detail after expiring stale broadcasts', async () => {
     const client = makeSequenceClient([
       {
@@ -4189,11 +4336,23 @@ describe('mobile-api Edge runtime helpers', () => {
     }])
   })
 
-  it('exposes the linked job id on each Customer Case Work catalog session', async () => {
+  it('enriches and reorders Customer Case Work sessions by authoritative activity', async () => {
     const client = makeSequenceClient([
       { data: [], error: null },
       {
         data: [{
+          archived_at: null,
+          case_session_id: 'case-session-2',
+          chat_mode: 'case',
+          client_request_id: '22222222-2222-4222-8222-222222222222',
+          created_at: '2026-07-14T00:30:00.000Z',
+          customer_id: 'customer-1',
+          id: 'conversation-2',
+          pinned_at: null,
+          title: null,
+          total_turns: 0,
+          updated_at: '2026-07-14T02:00:00.000Z',
+        }, {
           archived_at: null,
           case_session_id: 'case-session-1',
           chat_mode: 'case',
@@ -4209,7 +4368,21 @@ describe('mobile-api Edge runtime helpers', () => {
         error: null,
       },
       {
-        data: [{ id: 'case-session-1', job_id: 'job-1', total_turns: 2 }],
+        data: [{
+          id: 'case-session-2',
+          job_id: 'job-2',
+          safe_metadata: { profile_id: 'clean_scope' },
+          service_type: 'cleaning',
+          total_turns: 1,
+          updated_at: '2026-07-14T02:00:00.000Z',
+        }, {
+          id: 'case-session-1',
+          job_id: 'job-1',
+          safe_metadata: { profile_id: 'water_diagnose' },
+          service_type: 'plumbing',
+          total_turns: 2,
+          updated_at: '2026-07-14T03:00:00.000Z',
+        }],
         error: null,
       },
     ])
@@ -4227,11 +4400,26 @@ describe('mobile-api Edge runtime helpers', () => {
         case_job_id: 'job-1',
         case_session_id: 'case-session-1',
         id: 'conversation-1',
+        profile_id: 'water_diagnose',
+        service_type: 'plumbing',
         total_turns: 3,
+        updated_at: '2026-07-14T03:00:00.000Z',
+      }, {
+        case_job_id: 'job-2',
+        case_session_id: 'case-session-2',
+        id: 'conversation-2',
+        profile_id: 'clean_scope',
+        service_type: 'cleaning',
+        total_turns: 1,
+        updated_at: '2026-07-14T02:00:00.000Z',
       }],
     })
     expect(client.calls[2]?.operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
-    expect(client.calls[2]?.operations).toContainEqual(['in', 'id', ['case-session-1']])
+    expect(client.calls[2]?.operations).toContainEqual(['in', 'id', ['case-session-2', 'case-session-1']])
+    expect(client.calls[2]?.operations).toContainEqual([
+      'select',
+      'id, job_id, service_type, safe_metadata, total_turns, updated_at',
+    ])
   })
 
   it('requires confirmation before closing a linked Customer Case Work conversation', async () => {
@@ -6085,6 +6273,62 @@ describe('mobile-api Edge runtime helpers', () => {
     ])
   })
 
+  it('restores the worker candidate-pending mission without assigning jobs.worker_id', async () => {
+    const pendingJob = {
+      id: 'job-candidate-pending',
+      display_code: 'NS-PENDING-1',
+      status: 'worker_candidate_pending',
+      service_type: 'electrical',
+      kael_problem_identified: 'Ổ cắm mất điện',
+      address_building: 'Tòa S1.07',
+      address_unit: '3701',
+      address_floor: '37',
+      address_district: 'Thủ Đức',
+      apartment_access_profile: {},
+      apartment_access_state: { release_stage: 'area_only', exact_unit_released: false },
+      scheduled_at: '2026-07-22T06:00:00.000Z',
+      kael_price_min: 150000,
+      kael_price_max: 250000,
+      kael_worker_brief_guidance: null,
+      final_price: null,
+      payment_status: null,
+      photo_urls: [],
+      completion_photo_urls: [],
+      created_at: '2026-07-22T05:00:00.000Z',
+      matched_at: null,
+      completed_at: null,
+    }
+    const client = makeSequenceClient([
+      { data: [], error: null },
+      {
+        data: [{ job_id: pendingJob.id, jobs: pendingJob }],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-candidate' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).listWorkerJobs(ctx)).resolves.toMatchObject({
+      jobs: [{
+        id: pendingJob.id,
+        status: 'worker_candidate_pending',
+        address_building: null,
+        address_unit: null,
+        address_floor: null,
+        district: 'Thủ Đức',
+      }],
+    })
+    expect(client.calls.map((call) => call.table)).toEqual(['jobs', 'job_worker_candidates'])
+    expect(client.calls[1].operations).toContainEqual(['eq', 'worker_id', 'worker-candidate'])
+    expect(client.calls[1].operations).toContainEqual(['eq', 'status', 'proposed'])
+    expect(client.calls[1].operations).toContainEqual(['eq', 'jobs.status', 'worker_candidate_pending'])
+    expect(client.calls[1].operations).toContainEqual(['gt', 'expires_at', expect.any(String)])
+  })
+
   it('fails closed when a worker job contains an unsupported payment status', async () => {
     const client = makeSequenceClient([{
       data: [{
@@ -6157,6 +6401,7 @@ describe('mobile-api Edge runtime helpers', () => {
       if (target.includes('api.anthropic.com')) {
         return new Response(JSON.stringify({
           content: [{
+            type: 'text',
             text: JSON.stringify({
               complexity_assessment: 'medium',
               price_min: 200000,
@@ -6987,21 +7232,21 @@ describe('mobile-api Edge runtime helpers', () => {
       ],
     })
 
-    const broadcastInsert = client.calls.find((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((op) => op[0] === 'insert')
+    const broadcastActivation = client.calls.find((call) =>
+      call.table === 'rpc:activate_job_broadcast_batch_atomic'
     )
     const workerCancelCallOrder = client.calls.map((call) => call.table)
     expect(workerCancelCallOrder.indexOf('worker_cancellation_requests'))
       .toBeLessThan(workerCancelCallOrder.indexOf('kael_autonomy_decision_audit'))
     expect(workerCancelCallOrder.indexOf('kael_autonomy_decision_audit'))
       .toBeLessThan(workerCancelCallOrder.indexOf('rpc:request_worker_cancellation_atomic'))
-    const insertOp = broadcastInsert?.operations.find((op) => op[0] === 'insert')
-    expect(insertOp?.[1]).toEqual([
-      expect.objectContaining({ worker_id: 'worker-new', job_id: 'job-1' }),
+    expect(broadcastActivation?.operations).toContainEqual([
+      'rpc',
+      'activate_job_broadcast_batch_atomic',
+      expect.objectContaining({ p_job_id: 'job-1', p_worker_ids: ['worker-new'] }),
     ])
-    expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-cancelled')
-    expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-prior')
+    expect(JSON.stringify(broadcastActivation?.operations)).not.toContain('worker-cancelled')
+    expect(JSON.stringify(broadcastActivation?.operations)).not.toContain('worker-prior')
 
     const customerNotification = client.calls.find((call) =>
       call.table === 'rpc:insert_notification_atomic' &&
@@ -7388,6 +7633,7 @@ describe('mobile-api Edge runtime helpers', () => {
       const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({
         content: [{
+          type: 'text',
           text: JSON.stringify({
             complexity_assessment: 'medium',
             price_min: 200000,
@@ -7808,11 +8054,14 @@ describe('mobile-api Edge runtime helpers', () => {
 
     const workerQuery = client.calls.find((call) => call.table === 'worker_profiles')
     expect(workerQuery?.operations).toContainEqual(['contains', 'service_types', ['plumbing']])
-    const insert = client.calls.find((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((operation) => operation[0] === 'insert')
+    const activation = client.calls.find((call) =>
+      call.table === 'rpc:activate_job_broadcast_batch_atomic'
     )
-    expect(insert).toBeDefined()
+    expect(activation?.operations).toContainEqual([
+      'rpc',
+      'activate_job_broadcast_batch_atomic',
+      expect.objectContaining({ p_job_id: 'job-1', p_worker_ids: ['worker-legacy'] }),
+    ])
   })
 
   it('still rejects an explicitly mismatched granular worker capability', async () => {
@@ -7840,8 +8089,7 @@ describe('mobile-api Edge runtime helpers', () => {
       worker: null,
     })
     expect(client.calls.some((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((operation) => operation[0] === 'insert')
+      call.table === 'rpc:activate_job_broadcast_batch_atomic'
     )).toBe(false)
   })
 
@@ -7887,12 +8135,13 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(workerQueries).toHaveLength(2)
     expect(workerQueries[0]?.operations).toContainEqual(['range', 0, 49])
     expect(workerQueries[1]?.operations).toContainEqual(['range', 50, 99])
-    const insert = client.calls.find((call) =>
-      call.table === 'job_broadcasts' && call.operations.some((operation) => operation[0] === 'insert')
+    const activation = client.calls.find((call) =>
+      call.table === 'rpc:activate_job_broadcast_batch_atomic'
     )
-    expect(insert?.operations).toContainEqual([
-      'insert',
-      [expect.objectContaining({ worker_id: 'worker-eligible' })],
+    expect(activation?.operations).toContainEqual([
+      'rpc',
+      'activate_job_broadcast_batch_atomic',
+      expect.objectContaining({ p_job_id: 'job-1', p_worker_ids: ['worker-eligible'] }),
     ])
   })
 
@@ -7936,11 +8185,10 @@ describe('mobile-api Edge runtime helpers', () => {
 
     const riskCall = client.calls.find((call) => call.table === 'worker_kael_memory')
     expect(riskCall?.operations).toContainEqual(['select', 'worker_id, red_flags'])
-    const insertOp = client.calls.find((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((op) => op[0] === 'insert')
-    )?.operations.find((op) => op[0] === 'insert')
-    const insertedWorkers = (insertOp?.[1] as Array<{ worker_id: string }>).map((row) => row.worker_id)
+    const activationOp = client.calls.find((call) =>
+      call.table === 'rpc:activate_job_broadcast_batch_atomic'
+    )?.operations.find((op) => op[0] === 'rpc')
+    const insertedWorkers = (activationOp?.[2] as { p_worker_ids?: string[] } | undefined)?.p_worker_ids
     // Penalty: equal-rating clean worker ranks first; risky worker is demoted, NOT excluded.
     expect(insertedWorkers).toEqual(['worker-clean', 'worker-risky'])
   })
@@ -7982,11 +8230,10 @@ describe('mobile-api Edge runtime helpers', () => {
       broadcast_sent: true,
     })
 
-    const insertOp = client.calls.find((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((op) => op[0] === 'insert')
-    )?.operations.find((op) => op[0] === 'insert')
-    const insertedWorkers = (insertOp?.[1] as Array<{ worker_id: string }>).map((row) => row.worker_id)
+    const activationOp = client.calls.find((call) =>
+      call.table === 'rpc:activate_job_broadcast_batch_atomic'
+    )?.operations.find((op) => op[0] === 'rpc')
+    const insertedWorkers = (activationOp?.[2] as { p_worker_ids?: string[] } | undefined)?.p_worker_ids
     // Below the threshold (count 1 < 2) the ranking is untouched.
     expect(insertedWorkers).toEqual(['worker-risky', 'worker-clean'])
   })

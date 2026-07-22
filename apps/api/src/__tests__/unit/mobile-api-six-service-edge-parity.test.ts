@@ -240,6 +240,13 @@ describe('Edge six-service domain parity', () => {
       photo_urls: ['https://example.test/private-evidence.jpg'],
     }).success).toBe(false)
     expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+    }).success).toBe(false)
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+      skip_reason: 'Không có ảnh hiện trạng lúc này.',
+    }).success).toBe(true)
+    expect(kaelChatEvidenceSchema.safeParse({
       decision: 'confirmed',
       media_refs: ['supabase://kael-chat-media/../kael-chat/model_vision/frame.jpg'],
     }).success).toBe(false)

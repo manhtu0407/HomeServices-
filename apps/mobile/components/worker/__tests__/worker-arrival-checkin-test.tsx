@@ -474,6 +474,69 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.getByTestId('worker-v5-in-progress-kael-action')).toBeOnTheScreen()
   })
 
+  it('attaches lobby evidence before marking the worker as checked in', async () => {
+    const deal = buildInProgressDeal()
+    deal.broadcast!.addressAccess = {
+      access_profile: {},
+      check_in_required: true,
+      customer_handoff_required: true,
+      evidence_mode: 'none',
+      exact_unit_released: false,
+      identity_check_required: true,
+      release_stage: 'building_released',
+      worker_checked_in: false,
+    }
+    buildWorkflow(deal)
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({
+      assets: [{ fileName: 'lobby.jpg', fileSize: 1024, mimeType: 'image/jpeg', uri: 'file://lobby.jpg' }],
+      canceled: false,
+    })
+    mediaUpload.uploadJobMediaDrafts.mockResolvedValue({
+      mediaRefs: ['supabase://job-media/job_test_1/access_check_in/lobby.jpg'],
+      success: true,
+    })
+
+    render(<WorkerJobsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-arrival-check-in-action'))
+
+    await waitFor(() => {
+      expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledWith(
+        'job_test_1',
+        [expect.objectContaining({ type: 'image', uri: 'file://lobby.jpg' })],
+        'access_check_in',
+      )
+      expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('arrived', {
+        access_check_in: expect.objectContaining({
+          checked_in_at: expect.any(String),
+          mode: 'manual_photo',
+          photo_urls: ['supabase://job-media/job_test_1/access_check_in/lobby.jpg'],
+        }),
+      })
+    })
+  })
+
+  it('opens inspection only after the customer releases the exact unit', async () => {
+    const deal = buildInProgressDeal()
+    deal.broadcast!.addressAccess = {
+      access_profile: {},
+      check_in_required: false,
+      customer_handoff_required: false,
+      evidence_mode: 'manual_photo',
+      exact_unit_released: true,
+      identity_check_required: false,
+      release_stage: 'unit_released',
+      worker_checked_in: true,
+    }
+    buildWorkflow(deal)
+
+    render(<WorkerJobsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-phase-advance-action'))
+
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('inspecting')
+    })
+  })
+
   it('adds on-site evidence from the photo library and sends it to Kael for field confirmation', async () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
     buildWorkflow(buildInProgressDeal())
@@ -751,6 +814,8 @@ describe('Worker V5 arrival check-in', () => {
     })
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal')
 
+    deal.backendStatus = 'repairing'
+    deal.status = 'repairing'
     mockRouteParams = { ns_worker_screen: '2.10-completion-evidence' }
     rerender(<WorkerJobsSurface />)
 
@@ -759,6 +824,67 @@ describe('Worker V5 arrival check-in', () => {
       expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
     })
     expect(screen.queryByText('Hồ sơ hoàn tất')).toBeNull()
+  })
+
+  it('collects real completion evidence before opening the submitted phase', async () => {
+    const deal = {
+      ...buildInProgressDeal(),
+      backendStatus: 'repairing' as const,
+      status: 'repairing' as const,
+    }
+    buildWorkflow(deal)
+    mockRouteParams = { ns_worker_screen: '2.10-completion-evidence' }
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({
+      assets: [{ fileName: 'completed.jpg', fileSize: 2048, mimeType: 'image/jpeg', uri: 'file://completed.jpg' }],
+      canceled: false,
+    })
+    mediaUpload.uploadJobMediaDrafts.mockResolvedValue({
+      mediaRefs: ['supabase://job-media/job_test_1/after/completed.jpg'],
+      success: true,
+    })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-completion-submit-action').props.accessibilityState).toEqual({ disabled: true })
+    fireEvent.changeText(
+      screen.getByTestId('worker-v5-completion-note-input'),
+      'Đã khoan tường, lắp giá và kiểm tra tải an toàn.',
+    )
+    fireEvent.press(screen.getByTestId('worker-v5-completion-add-photo-action'))
+
+    await waitFor(() => {
+      expect(screen.getByText('1 ảnh đã chọn')).toBeOnTheScreen()
+      expect(screen.getByTestId('worker-v5-completion-submit-action').props.accessibilityState).toEqual({ disabled: false })
+    })
+    fireEvent.press(screen.getByTestId('worker-v5-completion-submit-action'))
+
+    await waitFor(() => {
+      expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledWith(
+        'job_test_1',
+        [expect.objectContaining({ type: 'image', uri: 'file://completed.jpg' })],
+        'after',
+      )
+      expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('completed_by_worker', {
+        completion_notes: 'Đã khoan tường, lắp giá và kiểm tra tải an toàn.',
+        completion_photo_urls: ['supabase://job-media/job_test_1/after/completed.jpg'],
+      })
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.11-completion-submitted')
+    })
+  })
+
+  it('does not show the submitted phase while the backend is still repairing', async () => {
+    buildWorkflow({
+      ...buildInProgressDeal(),
+      backendStatus: 'repairing',
+      status: 'repairing',
+    })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.10-completion-evidence')
+    })
   })
 
   it('serializes scope-evidence submission and releases the control after rejection', async () => {
@@ -877,6 +1003,11 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.queryByText('Không tự thực hiện phần phát sinh')).toBeNull()
     expect(screen.queryByText('Hồ sơ giữ nguyên phạm vi cũ cho tới khi khách phê duyệt trên hệ thống.')).toBeNull()
 
+    buildWorkflow({
+      ...buildInProgressDeal(),
+      backendStatus: 'repairing',
+      status: 'repairing',
+    })
     mockRouteParams = { ns_worker_screen: '2.10-completion-evidence' }
     rerender(<WorkerJobsSurface />)
 

@@ -101,10 +101,10 @@ const viScenarios: Record<KaelProcessScenarioId, KaelProcessCatalogScenario> = {
     ],
   },
   work_plan: {
-    collapse: 'Kael đã dựng checklist theo loại việc và yêu cầu của bạn.',
+    collapse: 'Kael đã dựng danh sách kiểm tra theo loại việc và yêu cầu của bạn.',
     lines: [
       line('observe', 'Kael đang đọc yêu cầu chính của bạn…', 1260),
-      line('retrieve', 'Kael đang lấy checklist chuẩn cho {{jobType}}…', 1460),
+      line('retrieve', 'Kael đang lấy danh sách kiểm tra chuẩn cho {{jobType}}…', 1460),
       line('context', 'Kael đang kiểm tra ghi chú và ảnh/video đính kèm…', 1580),
       line('analyze', 'Kael đang chia việc thành các bước dễ xác nhận…', 1440),
       line('compose', 'Kael đang chuẩn bị hướng xử lý phù hợp…', 1500),
@@ -367,11 +367,18 @@ function selectScenario(input: BuildKaelProcessSequenceInput): KaelProcessScenar
   if (containsAny(normalized, ['xep hang', 'ranking', 'hang', 'diem tin cay', 'diem su dung'])) return 'ranking_explain'
   if (input.mode === 'normal' && isPriceQuestion) return 'service_price_advice'
   if (looksLikeServiceDraft) return 'work_plan'
-  if (containsAny(normalized, ['tien', 'thanh toan', 'bao ve dong tien', 'rut', 'giai ngan', 'payout', 'hoa don']) || containsWholeWord(normalized, 'vi')) return 'payout_review'
+  if (
+    containsWholeWord(normalized, 'tien') ||
+    containsAny(normalized, ['thanh toan', 'bao ve dong tien', 'giai ngan', 'payout', 'hoa don']) ||
+    containsWholeWord(normalized, 'rut') ||
+    containsWholeWord(normalized, 'vi')
+  ) return 'payout_review'
   if (containsAny(normalized, ['phat sinh', 'ngoai pham vi', 'them viec', 'them phan', 'scope', 'doi pham vi'])) return 'scope_change'
   if (containsAny(normalized, ['check in', 'check-in', 'toi noi', 'den noi', 'da den'])) return 'checkin_ready'
   if (containsAny(normalized, ['eta', 'vi tri', 'dia chi', 'duong di', 'lo trinh', 'toi kip', 'thoi gian den'])) return 'route_eta'
-  if (mediaCount > 0 || containsAny(normalized, ['anh', 'hinh', 'video', 'bang chung', 'tep', 'ghi am', 'voice', 'giong noi'])) return 'evidence_check'
+  const hasMediaCue = ['anh', 'hinh', 'video', 'bang chung', 'tep', 'ghi am', 'voice', 'giong noi']
+    .some((cue) => containsWholeWord(normalized, cue))
+  if (mediaCount > 0 || hasMediaCue) return 'evidence_check'
   if (input.hasRealCase && containsAny(normalized, ['tho', 'ghep', 'phu hop', 'nhan viec', 'chon nguoi'])) return 'job_match'
   if (input.mode === 'case' || containsAny(normalized, ['dat lich', 'dat dich vu', 'tao ca', 'can tho', 'bao tho', 'hen lich', 'xu ly giup', 'kiem tra giup', 'sua giup', 'don giup'])) return 'work_plan'
   return 'normal_chat'

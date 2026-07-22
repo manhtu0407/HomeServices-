@@ -25,6 +25,7 @@ type CustomerKaelChatUiState = {
   confirmingCompletion: boolean
   draft: string
   modeMenuOpen: boolean
+  retryingWorkerSearch: boolean
   sessionMenuOpen: boolean
   submittingAgenticEvidence: boolean
   submittingAgenticRejectReason: boolean
@@ -58,6 +59,7 @@ const initialCustomerKaelChatUiState: CustomerKaelChatUiState = {
   confirmingCompletion: false,
   draft: '',
   modeMenuOpen: false,
+  retryingWorkerSearch: false,
   sessionMenuOpen: false,
   submittingAgenticEvidence: false,
   submittingAgenticRejectReason: false,
@@ -104,6 +106,7 @@ export function useCustomerKaelChatUiState() {
     setConfirmingCompletion: createSetter(dispatch, 'confirmingCompletion'),
     setDraft: createSetter(dispatch, 'draft'),
     setModeMenuOpen: createSetter(dispatch, 'modeMenuOpen'),
+    setRetryingWorkerSearch: createSetter(dispatch, 'retryingWorkerSearch'),
     setSessionMenuOpen: createSetter(dispatch, 'sessionMenuOpen'),
     setSubmittingAgenticEvidence: createSetter(dispatch, 'submittingAgenticEvidence'),
     setSubmittingAgenticRejectReason: createSetter(dispatch, 'submittingAgenticRejectReason'),

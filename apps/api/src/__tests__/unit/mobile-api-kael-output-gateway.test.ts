@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { sanitizeMemoryText } from '../../../../../supabase/functions/mobile-api/_shared/kael/memory-sanitizer'
 import { guardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-gateway'
 
 const repoRoot = join(__dirname, '../../../../../')
@@ -67,6 +68,35 @@ describe('Kael output gateway', () => {
         source: 'self_check',
       },
     })
+  })
+
+  it('keeps ordinary apartment wording while still scrubbing a real unit identifier', () => {
+    const ordinaryQuestion = 'Khu vực cần xử lý nằm chính xác ở đâu trong căn hộ?'
+    const guardedQuestion = guardOutput({
+      text: ordinaryQuestion,
+      actor: 'customer',
+      language: 'vi',
+      surface: 'kael_chat_clarification',
+      fallbackText: 'Kael cần thêm thông tin về khu vực cần xử lý.',
+    })
+    const guardedUnit = guardOutput({
+      text: 'Khu vực cần xử lý là căn hộ A.25.07.',
+      actor: 'customer',
+      language: 'vi',
+      surface: 'kael_chat_clarification',
+      fallbackText: 'Kael cần thêm thông tin về khu vực cần xử lý.',
+    })
+
+    expect(guardedQuestion.text).toBe(ordinaryQuestion)
+    expect(guardedUnit.text).toContain('[unit]')
+    expect(guardedUnit.text).not.toContain('A.25.07')
+  })
+
+  it('uses the same apartment-safe rule when sanitizing Kael memory', () => {
+    expect(sanitizeMemoryText('Khu vực nào trong căn hộ cần xử lý?')).toBe(
+      'Khu vực nào trong căn hộ cần xử lý?',
+    )
+    expect(sanitizeMemoryText('Khu vực là căn hộ A.25.07.')).toContain('[unit]')
   })
 
   it('routes all user-facing and orchestrator self-check paths through the shared gateway', () => {

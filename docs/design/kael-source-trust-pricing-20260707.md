@@ -15,18 +15,20 @@ Status: implemented, locally verified, and schema-verified on staging `xyylanuyf
 
 | Job family | Primary | Escalation / fallback | Role boundary |
 |---|---|---|---|
-| Intent and fast classification | `deepseek-v4-flash` | Sonnet 5 fallback | Low-latency structured classification |
+| Intent and fast classification | `deepseek-v4-flash` | V4 Pro model failover; Sonnet 5 provider fallback | Low-latency structured classification |
 | Vision | `claude-sonnet-5` | Opus 4.8 for hard/low-confidence images | No Haiku or DeepSeek vision path |
-| Clarification | `deepseek-v4-flash` | Haiku 4.5 fallback | Cheap user-facing clarification |
-| Problem synthesis | `deepseek-v4-flash` | Sonnet 5 fallback | Structured synthesis, not LIVE price authority |
+| Clarification | `deepseek-v4-flash` | V4 Pro model failover; Haiku 4.5 provider fallback | Cheap user-facing clarification |
+| Problem synthesis | `deepseek-v4-flash` | V4 Pro model failover; Sonnet 5 provider fallback | Structured synthesis, not LIVE price authority |
 | Market lookup | `sonar` | Sonar Pro below confidence floor; Sonnet 5 transport fallback | Perplexity only supplies cited evidence |
 | Price A/B evaluator | Sonnet 5 | Existing Sonar comparison | Shadow/evaluation only; LIVE math remains deterministic |
-| Advisory / education | `deepseek-v4-flash` | Haiku 4.5 fallback | Low-cost bounded prose through output guards |
-| Worker brief / worker assist | `deepseek-v4-flash` | Sonnet 5 fallback | Operational structured assistance |
+| Advisory / education | `deepseek-v4-flash` | V4 Pro model failover; Haiku 4.5 provider fallback | Low-cost bounded prose through output guards |
+| Worker brief / worker assist | `deepseek-v4-flash` | V4 Pro model failover; Sonnet 5 provider fallback | Operational structured assistance |
 | Scope change | Sonnet 5 | Opus 4.8 for low confidence or configured high stakes | Server-only threshold; validated decision path |
 | Post-job learning | `deepseek-v4-pro` | Sonnet 5 Message Batch fallback | Bounded concurrency, structured candidate, durable queue/audit |
 
 `claude-sonnet-4-6` remains only as a historical pricing row. The runtime roster test fails if it appears in `KAEL_ROUTING_CONFIG`.
+
+Interactive DeepSeek routes use one attempt per model: Flash → V4 Pro → cross-provider fallback. Provider-wide authentication, credit, rate-limit, missing-key, or open-circuit failures skip the remaining DeepSeek model instead of wasting another request.
 
 Official verification on 2026-07-10:
 

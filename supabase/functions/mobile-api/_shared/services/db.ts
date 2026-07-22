@@ -23,7 +23,7 @@ export type Chain = {
   insert(value: unknown): Chain;
   delete(): Chain;
   update(value: unknown): Chain;
-  upsert(value: unknown): Chain;
+  upsert(value: unknown, options?: unknown): Chain;
   eq(column: string, value: unknown): Chain;
   neq(column: string, value: unknown): Chain;
   gt(column: string, value: unknown): Chain;

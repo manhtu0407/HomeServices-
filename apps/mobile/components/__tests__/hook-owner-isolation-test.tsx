@@ -170,7 +170,6 @@ describe('hook owner isolation', () => {
     >(
       ({ routeJobId }) => useCustomerCaseHydration({
         active: true,
-        currentDealId: null,
         hydrate,
         routeJobId,
       }),

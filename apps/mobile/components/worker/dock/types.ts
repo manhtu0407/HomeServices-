@@ -25,6 +25,7 @@ export type WorkerV5ScreenId =
   | '1.1-worker-home'
   | '2.1-opportunity-inbox'
   | '2.2-offer-detail'
+  | '2.3-customer-confirmation-wait'
   | '2.4-route-eta'
   | '2.7-in-progress'
   | '2.8-scope-change'

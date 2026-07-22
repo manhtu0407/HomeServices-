@@ -1,25 +1,29 @@
 // Edge service kael-chat engine (C4 6a): the turn/estimate/boundary/demanding pipeline + session
 // primitives behind the kael-chat API (kael-chat.service.ts). Split from the API layer to stay under
 // the structure cap. Imported one-way by kael-chat.service.ts (no back-import).
-
 import { asNumber } from "./coercions.ts";
 import { db, type DbClient } from "./db.ts";
 import { KAEL_CHAT_HARD_COST_CAP_USD, asKaelStoredSentiment, estimatePriceSourceFromStageLogs, formatKaelEstimateText, kaelServiceLabelVi, sourceTrustSecretsForRequest } from "./_shared.ts";
-import { buildKaelConversationContext, demandingCustomerSessionMetadata, demandingCustomerTurnMetadata, diagnosisScopeWithEvidenceRequest, diagnosisScopeWithQuestion, getKaelChatTurnCount, loadDiagnosisScopeArtifact, persistDiagnosisScopeArtifact } from "./kael-chat-case-work.ts";
-import { appendKaelSystemTurn, getKaelChatCostUsd, updateKaelSession } from "./kael-chat-session-store.ts";
+import { buildKaelConversationContext, demandingCustomerSessionMetadata, demandingCustomerTurnMetadata, diagnosisScopeWithEvidenceRequest, diagnosisScopeWithGroundedAnswer, diagnosisScopeWithQuestion, loadKaelChatAnalysisState, persistDiagnosisScopeArtifact } from "./kael-chat-case-work.ts";
+import { appendKaelSystemTurn, updateKaelSession } from "./kael-chat-session-store.ts";
 import type { KaelChatStatus } from "../../../_shared/contracts.ts";
 import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "./audit.ts";
 import { guardDemandingResponseText } from "./chat.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, intakeEvalObservationSchema, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, requiredCaseWorkEvidenceRequest, resolveProfileFactCoverage, resolveRequiredSlotCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type IntakeEvalObservation, type PipelineResult } from "../kael/index.ts";
+import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, intakeEvalObservationSchema, isGroundedClarificationAnswer, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, resolveCaseWorkEvidenceRequest, resolveIntakeFactCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type IntakeEvalObservation, type PipelineResult } from "../kael/index.ts";
 import { isElectricalPlaybookEnabled } from "../kael/playbooks/electrical.ts";
 import { guardOutput } from "../kael/output-gateway.ts";
 import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
-import { frameUntrustedCustomerEvidenceForModel, sanitizeUntrustedEvidenceList, sanitizeUntrustedEvidenceText } from "../kael/untrusted-evidence.ts";
+import {
+  frameUntrustedCustomerCaseEvidenceForModel,
+  sanitizeCustomerCaseEvidenceText,
+  sanitizeUntrustedEvidenceList,
+} from "../kael/untrusted-evidence.ts";
 import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { KaelChatCreateInput, ServiceType } from "../../../_shared/domain.ts";
 import { buildSafetyFirstKaelClarification, persistentKaelSafetySignals, resolveKaelResponseSafetySignals } from "./kael-chat-intake-safety.ts";
 import { maybeApplyKaelBoundaryGuard } from "./kael-chat-boundary.ts";
+import { maybeHandleDeterministicClarificationReply } from "./kael-chat-clarification.service.ts";
 export { maybeApplyKaelBoundaryGuard };
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 
@@ -74,8 +78,8 @@ export async function advanceKaelChatEstimate(
   const electricalPlaybookEnabled = input.service_type === "electrical" &&
     isElectricalPlaybookEnabled();
   const message = sanitizeForLLM(input.message ?? "");
-  const safeCustomerEvidence = sanitizeUntrustedEvidenceText(message);
-  const modelCustomerEvidence = frameUntrustedCustomerEvidenceForModel(safeCustomerEvidence);
+  const safeCustomerEvidence = sanitizeCustomerCaseEvidenceText(message);
+  const modelCustomerEvidence = frameUntrustedCustomerCaseEvidenceForModel(safeCustomerEvidence);
   const durableCustomerDetail = safeCustomerEvidence;
   const problemChips = sanitizeUntrustedEvidenceList(input.problem_chips ?? []);
   const earlySafetySignals = persistentKaelSafetySignals(
@@ -96,12 +100,37 @@ export async function advanceKaelChatEstimate(
       progressTarget,
     },
   )) return;
-  let artifact = await loadDiagnosisScopeArtifact(
+  const { artifact: initialArtifact, currentCostUsd, persistedTurnCount } = await loadKaelChatAnalysisState(
     client,
     sessionId,
     input.service_type,
     durableCustomerDetail || problemChips.join(" ") || input.service_type,
   );
+  let artifact = initialArtifact;
+  const pendingClarificationSlot = artifact.next_action.kind === "ask_question" &&
+      artifact.missing_facts.length === 1
+    ? artifact.missing_facts[0]
+    : null;
+  if (pendingClarificationSlot && await maybeHandleDeterministicClarificationReply(
+    client,
+    {
+      artifact,
+      customerEvidence: safeCustomerEvidence,
+      language,
+      pendingSlot: pendingClarificationSlot,
+      progressTarget,
+      safetySignals: earlySafetySignals,
+      sessionId,
+    },
+  )) return;
+  if (pendingClarificationSlot && isGroundedClarificationAnswer(safeCustomerEvidence)) {
+    artifact = diagnosisScopeWithGroundedAnswer(
+      artifact,
+      pendingClarificationSlot,
+      durableCustomerDetail,
+    );
+    await persistDiagnosisScopeArtifact(client, sessionId, artifact);
+  }
   if (artifact.next_action.kind === "escalate") {
     const escalationArtifact = kaelDiagnosisScopeArtifactSchema.parse({
       ...artifact,
@@ -133,8 +162,6 @@ export async function advanceKaelChatEstimate(
     });
     return;
   }
-  const persistedTurnCount = await getKaelChatTurnCount(client, sessionId);
-  const currentCostUsd = await getKaelChatCostUsd(client, sessionId);
   if (currentCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) {
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "error",
@@ -249,6 +276,7 @@ export async function advanceKaelChatEstimate(
         intakeDiagnosisEnabled: llmClarificationEnabled,
         conversationContext,
         clarificationCount: priorClarificationCount,
+        priorProfileFacts: artifact.facts,
         priorSafetySignals: earlySafetySignals,
         language,
         progressTarget,
@@ -363,36 +391,38 @@ export async function advanceKaelChatEstimate(
         0.4,
         durableCustomerDetail,
       );
-      await persistDiagnosisScopeArtifact(client, sessionId, artifact);
-      await appendKaelSystemTurn(client, sessionId, {
-        contentType: "clarification",
-        text: safetyFirstClarification.visibleText,
-        nextStatus: "active",
-        metadata: {
-          artifact_proposal: buildKaelMissingInfoArtifactProposal({
-            missingFields: missingSlots.length > 0 ? missingSlots : ["description"],
-            question: safeQuestion,
-            confidence: 0.4,
-            artifactType: "ai_notes",
-          }),
-          clarification_source: safetyFirstClarification.safetyFallbackUsed
-            ? "safety_fallback"
-            : checked.used_fallback
-            ? "fallback"
-            : "ai",
-          diagnosis_scope: artifact,
-          ...intakeObservationMetadata(pipeline.intakeObservation),
-          ...(sentiment ? { customer_sentiment: sentiment } : {}),
-        },
-        ...(sentiment
-          ? { sessionMetadata: { last_customer_sentiment: sentiment } }
-          : {}),
-      });
-      await updateKaelProgress(client, progressTarget, {
-        stage: "clarification",
-        status: "completed",
-        progress: 1,
-      });
+      await Promise.all([
+        persistDiagnosisScopeArtifact(client, sessionId, artifact),
+        appendKaelSystemTurn(client, sessionId, {
+          contentType: "clarification",
+          text: safetyFirstClarification.visibleText,
+          nextStatus: "active",
+          metadata: {
+            artifact_proposal: buildKaelMissingInfoArtifactProposal({
+              missingFields: missingSlots.length > 0 ? missingSlots : ["description"],
+              question: safeQuestion,
+              confidence: 0.4,
+              artifactType: "ai_notes",
+            }),
+            clarification_source: safetyFirstClarification.safetyFallbackUsed
+              ? "safety_fallback"
+              : checked.used_fallback
+              ? "fallback"
+              : "ai",
+            diagnosis_scope: artifact,
+            ...intakeObservationMetadata(pipeline.intakeObservation),
+            ...(sentiment ? { customer_sentiment: sentiment } : {}),
+          },
+          ...(sentiment
+            ? { sessionMetadata: { last_customer_sentiment: sentiment } }
+            : {}),
+        }),
+        updateKaelProgress(client, progressTarget, {
+          stage: "clarification",
+          status: "completed",
+          progress: 1,
+        }),
+      ]);
       return;
     }
     if (pipeline.code === "SERVICE_MISMATCH") {
@@ -520,11 +550,15 @@ export async function advanceKaelChatEstimate(
   if (!profile) {
     apiFailure("UNSUPPORTED_SERVICE", language === "en" ? "This service does not have a valid Case Work profile" : "Dịch vụ chưa có hồ sơ Case Work hợp lệ", 400);
   }
-  const evidenceRequest = requiredCaseWorkEvidenceRequest({
+  const evidenceGateDecision = artifact.facts.evidence_gate_decision;
+  const evidenceRequest = resolveCaseWorkEvidenceRequest({
     serviceType: input.service_type,
     problemCategory: estimate.problem_category,
     customerMessage: safeCustomerEvidence,
     evidence: artifact.evidence,
+    evidenceDecision: evidenceGateDecision === "confirmed" || evidenceGateDecision === "skipped"
+      ? evidenceGateDecision
+      : undefined,
     language,
   });
   if (evidenceRequest && !criticalSafetyGuidance) {
@@ -567,19 +601,19 @@ export async function advanceKaelChatEstimate(
     });
     return;
   }
-  const profileFactCoverage = electricalPlaybookEnabled
-    ? resolveRequiredSlotCoverage(
-      profile,
-      estimate.problem_category,
-      pipeline.profileFacts ?? {},
-    )
-    : resolveProfileFactCoverage(profile, pipeline.profileFacts ?? {});
+  const profileFactCoverage = resolveIntakeFactCoverage({
+    serviceType: input.service_type,
+    problemSlug: estimate.problem_category,
+    profileFacts: pipeline.profileFacts ?? {},
+    providerMissingSlots: [],
+    providerNeedsClarification: false,
+    electricalPlaybookEnabled,
+  });
   const safetyFlags = buildProfileSafetyFlags(profile, responseSafetySignals, language);
   const quoteBlockers = [
     ...profileFactCoverage.missing.map((driver) => `missing_profile_fact:${driver}`),
     ...safetyFlags.map((flag) => `safety_gate:${flag.code}`),
     ...(estimate.needs_inspection ? ["onsite_inspection_required"] : []),
-    ...(estimate.confidence < 0.7 ? ["confidence_below_offer_threshold"] : []),
   ];
   const quoteReady = quoteBlockers.length === 0;
   const quoteReadyArtifact = kaelDiagnosisScopeArtifactSchema.parse({
@@ -678,7 +712,7 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
 ) {
   if (isKaelAiKillSwitchEnabled()) return false;
   const alreadyHardStopped = input.metadata.demanding_customer_hard_escalation === true;
-  const safeInteractionEvidence = sanitizeUntrustedEvidenceText(input.message);
+  const safeInteractionEvidence = sanitizeCustomerCaseEvidenceText(input.message);
   const detection = detectDemandingCustomerPatterns({
     message: safeInteractionEvidence,
     qaCount: input.qaCount,
@@ -687,7 +721,9 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
     // gap (soft only). Keyword detection above stays the primary, deterministic path.
     llmSentiment: asKaelStoredSentiment(input.metadata.last_customer_sentiment),
   });
-  if (!alreadyHardStopped && detection.expectedNuance === "none") return false;
+  const hasExplicitDemandSignal = detection.pressureSignals.length > 0 ||
+    detection.legitimateConcernSignals.some((signal) => signal !== "qa_loop_above_3");
+  if (!alreadyHardStopped && !hasExplicitDemandSignal) return false;
 
   const effectiveDetection = alreadyHardStopped && detection.escalationLevel !== "hard"
     ? {

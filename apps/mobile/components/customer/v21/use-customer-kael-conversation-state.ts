@@ -18,6 +18,7 @@ export type CustomerKaelConversationState = {
   chat: KaelChatResponse | null
   composerMediaDrafts: LocalMediaUploadDraft[]
   error: string | null
+  intakeDisplayMessage: string | null
   loading: boolean
   localMode: CustomerKaelMode
   pendingDraft: PendingKaelChatDraft | null
@@ -70,8 +71,14 @@ export function customerKaelConversationReducer(
       )
       return { ...state, error: clearsMissingServiceError ? null : state.error, localMode }
     }
-    case 'set-pending-draft':
-      return { ...state, pendingDraft: resolveStateAction(state.pendingDraft, action.value) }
+    case 'set-pending-draft': {
+      const pendingDraft = resolveStateAction(state.pendingDraft, action.value)
+      return {
+        ...state,
+        intakeDisplayMessage: pendingDraft?.message ?? null,
+        pendingDraft,
+      }
+    }
     case 'set-route-draft-evidence':
       return { ...state, routeDraftEvidencePending: resolveStateAction(state.routeDraftEvidencePending, action.value) }
     case 'set-turns':
@@ -80,6 +87,7 @@ export function customerKaelConversationReducer(
       return {
         ...state,
         composerMediaDrafts: action.draft.photoDrafts ? [...action.draft.photoDrafts] : [],
+        intakeDisplayMessage: action.draft.message,
         loading: action.loading,
         localMode: 'case',
         pendingDraft: action.draft,
@@ -109,6 +117,7 @@ export function customerKaelConversationReducer(
         chat: null,
         composerMediaDrafts: [],
         error: null,
+        intakeDisplayMessage: null,
         loading: false,
         localMode: action.mode,
         turns: [],
@@ -126,6 +135,7 @@ export function createCustomerKaelConversationState(input: {
     chat: null,
     composerMediaDrafts: input.pendingDraft?.photoDrafts ? [...input.pendingDraft.photoDrafts] : [],
     error: null,
+    intakeDisplayMessage: input.pendingDraft?.message ?? null,
     loading: input.initialLoading,
     localMode: input.initialMode,
     pendingDraft: input.pendingDraft,

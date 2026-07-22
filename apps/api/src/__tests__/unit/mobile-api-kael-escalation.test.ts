@@ -84,14 +84,17 @@ describe('Kael model escalation', () => {
       const body = JSON.parse(String(init.body)) as { model: string }
       models.push(body.model)
       return new Response(JSON.stringify({
-        content: [{ text: JSON.stringify({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
           recommendation: 'ask_worker',
           price_assessment: 'high_risk',
           problem_summary: 'Cần kiểm tra kỹ phạm vi phát sinh.',
           advisory: null,
           complexity_assessment: 'large',
           confidence: 0.92,
-        }) }],
+          }),
+        }],
         usage: { input_tokens: 80, output_tokens: 20 },
       }))
     })

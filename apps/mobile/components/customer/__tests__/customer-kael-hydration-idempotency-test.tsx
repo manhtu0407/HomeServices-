@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { render, waitFor } from '@testing-library/react-native'
+import { act, render, waitFor } from '@testing-library/react-native'
 import { Text } from 'react-native'
 
 import {
@@ -16,6 +16,7 @@ const mockKaelChatCreate = jest.fn()
 const mockKaelChatGet = jest.fn()
 const mockCleanupKaelChatMediaRefs = jest.fn()
 const mockUploadKaelChatMediaDrafts = jest.fn()
+const mockCaseSessionReady = jest.fn()
 
 jest.mock('@/lib/media-upload', () => ({
   cleanupKaelChatMediaRefs: (...args: unknown[]) => mockCleanupKaelChatMediaRefs(...args),
@@ -51,9 +52,11 @@ const pendingDraft: PendingKaelChatDraft = {
 function HydrationProbe({
   accessToken,
   draft = pendingDraft,
+  onCaseSessionReady = mockCaseSessionReady,
 }: {
   accessToken: string
   draft?: PendingKaelChatDraft
+  onCaseSessionReady?: (caseSessionId: string) => Promise<unknown>
 }) {
   const conversation = useCustomerKaelConversationState({
     initialLoading: false,
@@ -65,6 +68,7 @@ function HydrationProbe({
     conversation,
     kaelRequestGuard: requestGuard,
     language: 'en',
+    onCaseSessionReady,
     pendingDraftLocalizedMessage: draft.message,
     pendingDraftOwnerId: 'customer-a',
     routeJobId: null,
@@ -73,7 +77,12 @@ function HydrationProbe({
     selectedServiceRef,
     sessionAccessToken: accessToken,
   })
-  return <Text testID="hydration-state">{conversation.error ?? 'pending'}</Text>
+  return (
+    <>
+      <Text testID="hydration-state">{conversation.error ?? 'pending'}</Text>
+      <Text testID="hydration-chat-state">{conversation.chat?.session.id ?? 'none'}</Text>
+    </>
+  )
 }
 
 function successfulKaelCreate(mediaRefs: string[]) {
@@ -101,6 +110,7 @@ describe('customer Kael pending-draft hydration idempotency', () => {
       urls: [],
     })
     mockCleanupKaelChatMediaRefs.mockResolvedValue(true)
+    mockCaseSessionReady.mockResolvedValue({ session: { id: 'session-a' }, turns: [] })
     mockKaelChatCreate.mockResolvedValue({
       code: 'NETWORK_ERROR',
       error: 'ambiguous failure',
@@ -152,5 +162,68 @@ describe('customer Kael pending-draft hydration idempotency', () => {
     expect(mockCleanupKaelChatMediaRefs).toHaveBeenCalledWith([
       'supabase://kael-chat-media/customer-a/retry-outlet.jpg',
     ])
+  })
+
+  it('activates the authoritative Case Work catalog session created from Basic Intake', async () => {
+    mockKaelChatCreate.mockResolvedValue(successfulKaelCreate([
+      'supabase://kael-chat-media/customer-a/outlet.jpg',
+    ]))
+    mockCaseSessionReady.mockResolvedValue({ session: { id: 'session-a' }, turns: [] })
+
+    render(<HydrationProbe accessToken="token-a" />)
+
+    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mockCaseSessionReady).toHaveBeenCalledWith('session-a'))
+  })
+
+  it('reveals the created Agentic session without waiting for a catalog refresh round trip', async () => {
+    mockKaelChatCreate.mockResolvedValue(successfulKaelCreate([
+      'supabase://kael-chat-media/customer-a/outlet.jpg',
+    ]))
+    let resolveCatalog!: (value: unknown) => void
+    mockCaseSessionReady.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveCatalog = resolve
+    }))
+
+    const screen = render(<HydrationProbe accessToken="token-a" />)
+
+    await waitFor(() => expect(mockCaseSessionReady).toHaveBeenCalledWith('session-a'))
+    await waitFor(() => expect(screen.getByTestId('hydration-chat-state').props.children).toBe('session-a'))
+
+    await act(async () => {
+      resolveCatalog({ session: { id: 'session-a' }, turns: [] })
+    })
+  })
+
+  it('keeps one pending create alive across an effect restart and hydrates the newest subscriber', async () => {
+    let resolveCreate!: (value: ReturnType<typeof successfulKaelCreate>) => void
+    mockKaelChatCreate.mockImplementation(() => new Promise((resolve) => {
+      if (!resolveCreate) resolveCreate = resolve
+    }))
+    const firstReady = jest.fn().mockResolvedValue({ session: { id: 'session-a' }, turns: [] })
+    const latestReady = jest.fn().mockResolvedValue({ session: { id: 'session-a' }, turns: [] })
+    const screen = render(
+      <HydrationProbe accessToken="token-a" onCaseSessionReady={firstReady} />,
+    )
+    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      screen.rerender(
+        <HydrationProbe accessToken="token-a" onCaseSessionReady={latestReady} />,
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockKaelChatCreate).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      resolveCreate(successfulKaelCreate([
+        'supabase://kael-chat-media/customer-a/outlet.jpg',
+      ]))
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(screen.getByTestId('hydration-chat-state').props.children).toBe('session-a'))
+    expect(latestReady).toHaveBeenCalledWith('session-a')
+    expect(firstReady).not.toHaveBeenCalled()
   })
 })

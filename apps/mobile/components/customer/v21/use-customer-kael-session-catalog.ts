@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import type { useRouter } from 'expo-router'
 
 import type { AppLanguage } from '@/lib/app-language'
+import type { KaelChatResponse } from '@/lib/api-types'
+import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelChatService } from '@/lib/services'
 
@@ -20,6 +22,11 @@ type Conversations = ReturnType<typeof useCustomerKaelConversations>
 type ProcessController = ReturnType<typeof useKaelProcessLineController>
 type Router = ReturnType<typeof useRouter>
 type WorkflowActions = ReturnType<typeof useFrontendWorkflow>['actions']
+type CaseSessionFetchResult = Awaited<ReturnType<typeof kaelChatService.get>>
+
+const CASE_SESSION_PREFETCH_LIMIT = 6
+const CASE_SESSION_MEMORY_LIMIT = 40
+const caseSessionMemory = new Map<string, KaelChatResponse>()
 
 export function useCustomerKaelSessionCatalog({
   blankCaseWorkRoute,
@@ -52,55 +59,129 @@ export function useCustomerKaelSessionCatalog({
   workflowActions: WorkflowActions
   workflowCaseDeal: LocalDeal | null
 }) {
-  const caseSessionLoadsRef = useRef(new Map<string, Promise<boolean>>())
+  const caseSessionLoadsRef = useRef(new Map<string, Promise<CaseSessionFetchResult | null>>())
   const loadGenerationRef = useRef(0)
   const activeCatalogCaseJobId = conversations.activeResponse?.session.case_job_id ?? null
   const activeCatalogCaseSessionId = conversations.activeResponse?.session.case_session_id ?? null
+  const hydrateRemoteJobById = workflowActions.hydrateRemoteJobById
+  const rejectConversationHydration = conversation.rejectHydration
+  const resolveConversationHydration = conversation.resolveHydration
+  const setConversationLoading = conversation.setLoading
   const syncLinkedJobSession = conversations.syncLinkedJobSession
 
-  const loadCatalogCaseSession = useCallback((caseSessionId: string) => {
-    const inFlight = caseSessionLoadsRef.current.get(caseSessionId)
+  const findCatalogCaseSession = useCallback((caseSessionId: string) => (
+    conversations.sessions.find((session) => session.case_session_id === caseSessionId) ?? null
+  ), [conversations.sessions])
+
+  const fetchCatalogCaseSession = useCallback((target: CustomerKaelConversationSession) => {
+    const caseSessionId = target.case_session_id
+    if (!caseSessionId) return Promise.resolve(null)
+    const cacheKey = caseSessionCacheKey(target.customer_id, caseSessionId)
+    const inFlight = caseSessionLoadsRef.current.get(cacheKey)
     if (inFlight) return inFlight
 
-    const generation = loadGenerationRef.current + 1
-    loadGenerationRef.current = generation
-    conversation.setLoading(true)
     const request = kaelChatService.get(caseSessionId)
       .then((loaded) => {
-        if (loadGenerationRef.current !== generation) return false
-        if (!loaded.success) {
-          conversation.rejectHydration(localizeKaelRequestFailure(loaded, language))
-          return false
+        if (loaded.success && matchesCatalogCaseSession(target, loaded.data)) {
+          rememberCaseSession(cacheKey, loaded.data)
         }
-        selectedServiceRef.current = loaded.data.session.service_type
-        conversation.resolveHydration(loaded.data, false)
-        if (
-          loaded.data.session.job_id &&
-          typeof workflowActions.hydrateRemoteJobById === 'function'
-        ) {
-          void workflowActions.hydrateRemoteJobById(loaded.data.session.job_id)
-        }
-        return true
+        return loaded
       })
-      .catch(() => {
-        if (loadGenerationRef.current === generation) {
-          conversation.rejectHydration(language === 'vi'
-            ? 'Kael tạm thời chưa phản hồi.'
-            : 'Kael is temporarily unavailable.')
-        }
-        return false
-      })
+      .catch(() => null)
       .finally(() => {
-        if (caseSessionLoadsRef.current.get(caseSessionId) === request) {
-          caseSessionLoadsRef.current.delete(caseSessionId)
+        if (caseSessionLoadsRef.current.get(cacheKey) === request) {
+          caseSessionLoadsRef.current.delete(cacheKey)
         }
       })
-    caseSessionLoadsRef.current.set(caseSessionId, request)
+    caseSessionLoadsRef.current.set(cacheKey, request)
     return request
-  }, [conversation, language, selectedServiceRef, workflowActions])
+  }, [])
+
+  const resolveCatalogCaseSession = useCallback((loaded: KaelChatResponse) => {
+    selectedServiceRef.current = loaded.session.service_type
+    resolveConversationHydration(loaded, false)
+    if (
+      loaded.session.job_id &&
+      typeof hydrateRemoteJobById === 'function'
+    ) {
+      void hydrateRemoteJobById(loaded.session.job_id)
+    }
+  }, [hydrateRemoteJobById, resolveConversationHydration, selectedServiceRef])
+
+  const loadCatalogCaseSession = useCallback((caseSessionId: string) => {
+    const target = findCatalogCaseSession(caseSessionId)
+    if (!target) return Promise.resolve(false)
+    const generation = loadGenerationRef.current + 1
+    loadGenerationRef.current = generation
+    const cached = readRememberedCaseSession(target)
+
+    if (cached) {
+      resolveCatalogCaseSession(cached)
+      void fetchCatalogCaseSession(target).then((refreshed) => {
+        if (
+          loadGenerationRef.current === generation &&
+          refreshed?.success &&
+          matchesCatalogCaseSession(target, refreshed.data)
+        ) {
+          resolveCatalogCaseSession(refreshed.data)
+        }
+      })
+      return Promise.resolve(true)
+    }
+
+    setConversationLoading(true)
+    return fetchCatalogCaseSession(target).then((loaded) => {
+      if (loadGenerationRef.current !== generation) return false
+      if (!loaded) {
+        rejectConversationHydration(language === 'vi'
+          ? 'Kael tạm thời chưa phản hồi.'
+          : 'Kael is temporarily unavailable.')
+        return false
+      }
+      if (!loaded.success) {
+        rejectConversationHydration(localizeKaelRequestFailure(loaded, language))
+        return false
+      }
+      if (!matchesCatalogCaseSession(target, loaded.data)) {
+        rejectConversationHydration(language === 'vi'
+          ? 'Không thể mở phiên xử lý công việc này.'
+          : 'This Work handling session could not be opened.')
+        return false
+      }
+      resolveCatalogCaseSession(loaded.data)
+      return true
+    })
+  }, [
+    fetchCatalogCaseSession,
+    findCatalogCaseSession,
+    language,
+    rejectConversationHydration,
+    resolveCatalogCaseSession,
+    setConversationLoading,
+  ])
+
+  useEffect(() => {
+    if (mode !== 'case') return
+    conversations.sessions
+      .filter((session) => Boolean(session.case_session_id))
+      .slice(0, CASE_SESSION_PREFETCH_LIMIT)
+      .forEach((session) => {
+        if (!readRememberedCaseSession(session)) void fetchCatalogCaseSession(session)
+      })
+  }, [conversations.sessions, fetchCatalogCaseSession, mode])
+
+  useEffect(() => {
+    if (mode !== 'case' || !conversation.chat) return
+    const target = findCatalogCaseSession(conversation.chat.session.id)
+    if (!target || !matchesCatalogCaseSession(target, conversation.chat)) return
+    rememberCaseSession(
+      caseSessionCacheKey(target.customer_id, conversation.chat.session.id),
+      conversation.chat,
+    )
+  }, [conversation.chat, findCatalogCaseSession, mode])
 
   const automaticCaseJobId = mode === 'case' && !chatUi.blankCaseTransition
-    ? routeJobId ?? (!conversations.activeSessionId ? workflowCaseDeal?.id ?? null : null)
+    ? routeJobId
     : null
 
   useEffect(() => {
@@ -132,7 +213,6 @@ export function useCustomerKaelSessionCatalog({
 
   const resetConversationVisualState = useCallback(() => {
     loadGenerationRef.current += 1
-    caseSessionLoadsRef.current.clear()
     chatUi.setModeMenuOpen(false)
     chatUi.setSessionMenuOpen(false)
     chatUi.setCaseEditOpen(false)
@@ -164,10 +244,11 @@ export function useCustomerKaelSessionCatalog({
   }, [chatUi, conversation, mode, pendingDraftOwnerId, processController, selectedServiceRef])
 
   const startNewConversation = useCallback(async () => {
-    if (conversation.loading || chatUi.uploadingMedia || conversations.busy) return
+    if (conversation.loading || chatUi.uploadingMedia || !conversations.canCreateSession) return
     chatUi.setBlankCaseTransition(mode === 'case')
     resetConversationVisualState()
     conversations.resetToBlank()
+    router.replace(mode === 'case' ? blankCaseWorkRoute as never : normalChatRoute as never)
     const created = await conversations.startNewSession()
     if (!created) {
       chatUi.setBlankCaseTransition(false)
@@ -177,7 +258,6 @@ export function useCustomerKaelSessionCatalog({
       return
     }
     chatUi.setBlankCaseTransition(false)
-    router.replace(mode === 'case' ? blankCaseWorkRoute as never : normalChatRoute as never)
   }, [
     blankCaseWorkRoute,
     chatUi,
@@ -191,29 +271,57 @@ export function useCustomerKaelSessionCatalog({
   ])
 
   const openConversation = useCallback(async (conversationId: string) => {
-    if (conversation.loading || chatUi.uploadingMedia || conversations.busy) return
+    const target = conversations.sessions.find((session) => session.id === conversationId)
+    if (!target) return
+    const opensLinkedCaseImmediately = Boolean(target.case_session_id)
+    if (
+      chatUi.uploadingMedia ||
+      conversations.sending ||
+      (!opensLinkedCaseImmediately && (conversation.loading || conversations.openingSessionId))
+    ) return
+    const cachedCaseSession = target.case_session_id
+      ? readRememberedCaseSession(target)
+      : null
     chatUi.setBlankCaseTransition(false)
     chatUi.setSessionMenuOpen(false)
-    const opened = await conversations.openSession(conversationId)
-    if (!opened) return
     resetConversationVisualState()
+    const mustResetRoutedJob = target.mode === 'case' && Boolean(
+      routeJobId && routeJobId !== target.case_job_id,
+    )
+    if (target.mode !== mode || mustResetRoutedJob) {
+      router.replace(target.mode === 'case' ? blankCaseWorkRoute as never : normalChatRoute as never)
+    }
+    if (cachedCaseSession) {
+      resolveCatalogCaseSession(cachedCaseSession)
+    } else {
+      conversation.setLoading(true)
+    }
+    const opened = await conversations.openSession(conversationId)
+    if (!opened) {
+      conversation.setLoading(false)
+      conversation.setError(conversations.sessionsError ?? (language === 'vi'
+        ? 'Chưa thể mở cuộc trò chuyện này.'
+        : 'This conversation could not be opened.'))
+      return
+    }
     if (opened.session.mode === 'normal' || !opened.session.case_session_id) {
-      router.replace(opened.session.mode === 'case'
-        ? blankCaseWorkRoute as never
-        : normalChatRoute as never)
+      conversation.setLoading(false)
       return
     }
 
-    const loaded = await loadCatalogCaseSession(opened.session.case_session_id)
-    if (loaded) router.replace(blankCaseWorkRoute as never)
+    await loadCatalogCaseSession(opened.session.case_session_id)
   }, [
     blankCaseWorkRoute,
     chatUi,
-    conversation.loading,
+    conversation,
     conversations,
+    language,
     loadCatalogCaseSession,
+    mode,
     normalChatRoute,
     resetConversationVisualState,
+    resolveCatalogCaseSession,
+    routeJobId,
     router,
   ])
 
@@ -262,5 +370,36 @@ export function useCustomerKaelSessionCatalog({
     resetConversationVisualState,
     startNewConversation,
     toggleSessionMenu,
+  }
+}
+
+function caseSessionCacheKey(customerId: string, caseSessionId: string) {
+  return `${customerId}:${caseSessionId}`
+}
+
+function matchesCatalogCaseSession(
+  target: CustomerKaelConversationSession,
+  response: KaelChatResponse,
+) {
+  return Boolean(
+    target.case_session_id &&
+    response.session.id === target.case_session_id &&
+    response.session.customer_id === target.customer_id,
+  )
+}
+
+function readRememberedCaseSession(target: CustomerKaelConversationSession) {
+  if (!target.case_session_id) return null
+  const remembered = caseSessionMemory.get(caseSessionCacheKey(target.customer_id, target.case_session_id)) ?? null
+  return remembered && matchesCatalogCaseSession(target, remembered) ? remembered : null
+}
+
+function rememberCaseSession(cacheKey: string, response: KaelChatResponse) {
+  caseSessionMemory.delete(cacheKey)
+  caseSessionMemory.set(cacheKey, response)
+  while (caseSessionMemory.size > CASE_SESSION_MEMORY_LIMIT) {
+    const oldestKey = caseSessionMemory.keys().next().value
+    if (!oldestKey) break
+    caseSessionMemory.delete(oldestKey)
   }
 }

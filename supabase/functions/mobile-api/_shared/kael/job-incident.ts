@@ -2,7 +2,11 @@ import { z } from "zod";
 import type { AIRequest, EdgeAiSecrets } from "./types.ts";
 import { callStructuredAI, type StructuredAIInvoker } from "./structured-call.ts";
 import type { KaelSpendGate } from "./spend-gate.ts";
-import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
+import {
+  circuitAwareProviderCandidatesForPurpose,
+  shouldSkipProviderSiblingModels,
+  type ProviderChoice,
+} from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
 import { evaluateKaelPermissionGate } from "./permission-gate.ts";
@@ -94,7 +98,9 @@ export async function runJobIncidentAssistant(
   });
   if (!permission.allowed) return fallback(language);
 
+  const blockedProviders = new Set<string>();
   for (const route of circuitAwareProviderCandidatesForPurpose("job_incident")) {
+    if (blockedProviders.has(route.provider)) continue;
     const result = await callStructuredAI(
       buildRequest(input, route, language),
       jobIncidentAnswerSchema,
@@ -102,7 +108,12 @@ export async function runJobIncidentAssistant(
       input.spendGate,
       input.callAI,
     );
-    if (!result.success) continue;
+    if (!result.success) {
+      if (shouldSkipProviderSiblingModels(result.code)) {
+        blockedProviders.add(route.provider);
+      }
+      continue;
+    }
 
     const guarded = guardIncidentAnswer(result.data, input.event.actor, language);
     if (!guarded) return fallback(language);
@@ -131,7 +142,7 @@ function buildRequest(
     maxTokens: maxTokensForPurpose("job_incident", 250),
     temperature: 0.1,
     timeoutMs: route.latencyBudgetMs,
-    maxRetries: 1,
+    maxRetries: 0,
     messages: [
       {
         role: "system",

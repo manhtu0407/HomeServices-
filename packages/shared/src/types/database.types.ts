@@ -5329,6 +5329,19 @@ export type Database = {
           ok: boolean
         }[]
       }
+      activate_job_broadcast_batch_atomic: {
+        Args: {
+          p_batch_id: string
+          p_expires_at: string
+          p_job_id: string
+          p_sent_at: string
+          p_worker_ids: string[]
+        }
+        Returns: {
+          id: string
+          worker_id: string
+        }[]
+      }
       admin_approve_learning_candidate: {
         Args: {
           p_admin_id: string
@@ -6065,6 +6078,10 @@ export type Database = {
           similarity: number
           title: string
         }[]
+      }
+      normalize_hcmc_district_code: {
+        Args: { p_input: string }
+        Returns: string
       }
       next_job_display_code: { Args: never; Returns: string }
       open_dispute_atomic: {

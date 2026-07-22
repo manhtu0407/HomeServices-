@@ -79,8 +79,9 @@ const kaelCaseNextActionSchema = z.discriminatedUnion("kind", [
   }).strict(),
   z.object({
     kind: z.literal("request_evidence"),
-    evidence_kind: z.enum(["photo", "video_frame", "voice_transcript"]),
+    evidence_kind: z.enum(["any", "photo", "video_frame", "voice_transcript"]),
     prompt: z.string().trim().min(1).max(500),
+    required: z.boolean().default(true),
   }).strict(),
   z.object({ kind: z.literal("prepare_offer") }).strict(),
   z.object({

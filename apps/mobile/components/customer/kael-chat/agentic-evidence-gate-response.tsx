@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { type StyleProp, type TextStyle } from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
@@ -9,7 +10,7 @@ import { formatKnownCount } from '../v21/case-stage-display-model'
 import { OnDeviceVoiceTranscript } from './on-device-voice-transcript'
 import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 
-export function AgenticEvidenceGateCard({
+export function AgenticEvidenceGateResponse({
   allowSkip = true,
   busy,
   language,
@@ -22,6 +23,7 @@ export function AgenticEvidenceGateCard({
   onSkip,
   onVoiceTranscriptChange,
   prompt,
+  reduceMotion = true,
   rejectOpen,
   rejectReason,
   requiredEvidenceKind,
@@ -41,6 +43,7 @@ export function AgenticEvidenceGateCard({
   onSkip: () => void
   onVoiceTranscriptChange: (value: string) => void
   prompt?: string
+  reduceMotion?: boolean
   rejectOpen: boolean
   rejectReason: string
   requiredEvidenceKind?: 'photo' | 'video_frame' | 'voice_transcript'
@@ -56,6 +59,24 @@ export function AgenticEvidenceGateCard({
     : requiredEvidenceKind === 'voice_transcript'
       ? voiceCount > 0
       : totalFileCount > 0
+  const mediaPreviewNode = useMemo(() => mediaDrafts.length > 0 ? (
+    <MediaDraftPreviewTray
+      busy={busy}
+      drafts={mediaDrafts}
+      language={language}
+      onRemove={onRemoveMedia}
+      tokens={tokens}
+    />
+  ) : null, [busy, language, mediaDrafts, onRemoveMedia, tokens])
+  const voiceTranscriptNode = useMemo(() => (
+    <OnDeviceVoiceTranscript
+      disabled={busy}
+      language={language}
+      onChangeText={onVoiceTranscriptChange}
+      tokens={tokens}
+      transcript={voiceTranscript}
+    />
+  ), [busy, language, onVoiceTranscriptChange, tokens, voiceTranscript])
 
   return (
     <AgenticEvidenceGateView
@@ -64,15 +85,14 @@ export function AgenticEvidenceGateCard({
       canConfirm={hasRequiredEvidence && !busy}
       fileValue={formatKnownCount(totalFileCount, language)}
       language={language}
-      mediaPreviewNode={mediaDrafts.length > 0 ? (
-        <MediaDraftPreviewTray busy={busy} drafts={mediaDrafts} language={language} onRemove={onRemoveMedia} tokens={tokens} />
-      ) : null}
+      mediaPreviewNode={mediaPreviewNode}
       onAddMedia={onAddMedia}
       onConfirm={onConfirm}
       onReasonChange={onReasonChange}
       onReject={onReject}
       onSkip={onSkip}
       prompt={prompt}
+      reduceMotion={reduceMotion}
       rejectOpen={rejectOpen}
       rejectReason={rejectReason}
       textInputNoOutlineStyle={textInputNoOutlineStyle}
@@ -81,15 +101,7 @@ export function AgenticEvidenceGateCard({
       visualMediaValue={formatKnownCount(visualMediaCount, language)}
       voiceError={null}
       voiceValue={formatKnownCount(voiceCount, language)}
-      voiceTranscriptNode={(
-        <OnDeviceVoiceTranscript
-          disabled={busy}
-          language={language}
-          onChangeText={onVoiceTranscriptChange}
-          tokens={tokens}
-          transcript={voiceTranscript}
-        />
-      )}
+      voiceTranscriptNode={voiceTranscriptNode}
     />
   )
 }

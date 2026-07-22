@@ -71,6 +71,9 @@ const fromGit = (...args: string[]) => {
 const supabaseUrl = fromEnv('EXPO_PUBLIC_SUPABASE_URL')
 const supabasePublishableKey = fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
 const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
+const stagingPaymentRailEnabled = ['1', 'true', 'yes', 'on'].includes(
+  fromEnv('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
+)
 const apiBaseUrl =
   configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
 assertReleaseAuthConfig({
@@ -200,6 +203,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl,
     supabasePublishableKey,
     apiBaseUrl,
+    stagingPaymentRailEnabled,
     runtimeBuildInfo,
     eas: {
       projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',

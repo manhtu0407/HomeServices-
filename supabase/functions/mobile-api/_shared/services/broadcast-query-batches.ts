@@ -67,3 +67,20 @@ export function loadWorkerMemoryRowsByWorker(
       .limit(workerIdBatch.length)
   )
 }
+
+export function loadWorkerAvailabilityRows(
+  client: DbClient,
+  workerIds: string[],
+  activeStatuses: readonly string[],
+  nowIso: string,
+): Promise<[
+  DbResult<Array<Record<string, unknown>>>,
+  DbResult<Array<Record<string, unknown>>>,
+  DbResult<Array<Record<string, unknown>>>,
+]> {
+  return Promise.all([
+    loadActiveJobRowsByWorker(client, workerIds, activeStatuses),
+    loadActiveReservationRowsByWorker(client, workerIds, nowIso),
+    loadWorkerMemoryRowsByWorker(client, workerIds),
+  ])
+}

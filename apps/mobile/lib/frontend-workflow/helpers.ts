@@ -126,6 +126,10 @@ export function isWorkerOperationalJobStatus(status: JobStatus) {
   return WORKER_OPERATIONAL_JOB_STATUSES.has(status)
 }
 
+export function isWorkerCurrentJobStatus(status: JobStatus) {
+  return status === 'worker_candidate_pending' || isWorkerOperationalJobStatus(status)
+}
+
 export function hasStaleRemoteBroadcast(state: LocalWorkflowState) {
   return state.workerGate === 'remote_backend' &&
     state.deal?.status === 'broadcasting' &&

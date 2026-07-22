@@ -80,7 +80,72 @@ const focusedClarificationQuestionSchema = z.string().trim().max(160).refine(
   "clarification question must ask exactly one focused question",
 );
 
-export const intentResultSchema = z.object({
+const KAEL_PROFILE_FACT_KEYS = new Set([
+  ...KAEL_PROFILE_QUOTE_DRIVER_SLOTS,
+  "breaker_state",
+]);
+const KAEL_PROFILE_SAFETY_SIGNAL_SET = new Set(KAEL_PROFILE_SAFETY_SIGNALS);
+const KAEL_SCOPE_SIGNALS = new Set(["in_scope", "out_of_scope", "service_mismatch"]);
+const KAEL_CUSTOMER_SENTIMENTS = new Set(["neutral", "detail_oriented", "pressure"]);
+
+function normalizeIntentResultCandidate(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const normalized = { ...(value as Record<string, unknown>) };
+  if (typeof normalized.confidence === "string" && /^\d+(?:\.\d+)?$/.test(normalized.confidence.trim())) {
+    normalized.confidence = Number(normalized.confidence);
+  }
+  if (normalized.needs_clarification === "true") normalized.needs_clarification = true;
+  if (normalized.needs_clarification === "false") normalized.needs_clarification = false;
+
+  normalized.missing_slots = Array.isArray(normalized.missing_slots)
+    ? [...new Set(normalized.missing_slots.filter((slot): slot is string =>
+      typeof slot === "string" && KAEL_INTAKE_MISSING_SLOTS.includes(slot)
+    ))].slice(0, 6)
+    : undefined;
+
+  const candidateFacts = normalized.profile_facts;
+  normalized.profile_facts = candidateFacts && typeof candidateFacts === "object" && !Array.isArray(candidateFacts)
+    ? Object.fromEntries(Object.entries(candidateFacts)
+      .filter(([key, fact]) =>
+        KAEL_PROFILE_FACT_KEYS.has(key) && typeof fact === "string" && Boolean(fact.trim())
+      )
+      .slice(0, 24)
+      .map(([key, fact]) => [key, (fact as string).trim().slice(0, 500)]))
+    : undefined;
+
+  normalized.safety_signals = Array.isArray(normalized.safety_signals)
+    ? [...new Set(normalized.safety_signals.filter((signal): signal is string =>
+      typeof signal === "string" && KAEL_PROFILE_SAFETY_SIGNAL_SET.has(signal)
+    ))].slice(0, 12)
+    : undefined;
+
+  for (const key of ["clarification_question", "clarification_question_vi"] as const) {
+    const question = normalized[key];
+    if (question === null || question === undefined) continue;
+    normalized[key] = typeof question === "string" && isSingleFocusedClarificationQuestion(question)
+      ? question.trim()
+      : null;
+  }
+  if (typeof normalized.scope_signal !== "string" || !KAEL_SCOPE_SIGNALS.has(normalized.scope_signal)) {
+    delete normalized.scope_signal;
+  }
+  if (
+    normalized.suggested_service !== null &&
+    (typeof normalized.suggested_service !== "string" ||
+      !KAEL_CASE_WORK_SERVICE_TYPES.includes(normalized.suggested_service as never))
+  ) {
+    delete normalized.suggested_service;
+  }
+  if (
+    typeof normalized.customer_sentiment !== "string" ||
+    !KAEL_CUSTOMER_SENTIMENTS.has(normalized.customer_sentiment)
+  ) {
+    delete normalized.customer_sentiment;
+  }
+  return normalized;
+}
+
+const intentResultCoreSchema = z.object({
   service_type: z.enum([...KAEL_CASE_WORK_SERVICE_TYPES, "unsupported"]),
   problem_slug: z.string().min(1).max(100),
   confidence: z.number().min(0).max(1),
@@ -105,6 +170,15 @@ export const intentResultSchema = z.object({
   suggested_service: z.enum(KAEL_CASE_WORK_SERVICE_TYPES).nullable().optional(),
   customer_sentiment: z.enum(["neutral", "detail_oriented", "pressure"]).optional(),
 });
+
+export const intentResultSchema = intentResultCoreSchema;
+
+// Provider JSON may drift in optional enrichment fields. Normalize only at the
+// external model boundary; internal callers keep the strict canonical schema.
+export const intentProviderResultSchema = z.preprocess(
+  normalizeIntentResultCandidate,
+  intentResultCoreSchema,
+);
 
 export const visionResultSchema = z.object({
   problem_identified: z.string().min(1).max(500),
@@ -466,6 +540,7 @@ export type EdgeAiSecrets = {
   sourceTrustPerplexityFilterExplicit?: boolean;
   durableGuardsEnabled?: boolean;
   durableGuardClient?: EdgeGuardClient;
+  stagingPaymentRailEnabled?: boolean;
 };
 
 export type PipelineInput = {
@@ -487,6 +562,7 @@ export type PipelineInput = {
   conversationContext?: string;
   clarificationCount?: number;
   priorSafetySignals?: string[];
+  priorProfileFacts?: Record<string, unknown>;
 };
 
 export type PipelineClarification = {

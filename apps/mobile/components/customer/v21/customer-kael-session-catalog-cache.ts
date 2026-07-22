@@ -1,4 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  KAEL_PERFORMANCE_PROFILE_IDS,
+  SERVICE_TYPES,
+  type KaelPerformanceMode,
+  type ServiceType,
+} from '@nestscout/shared'
 
 import type {
   CustomerKaelConversationMode,
@@ -107,6 +113,8 @@ function parseCachedSession(
     id: session.id,
     mode,
     pinned_at: nullableString(session.pinned_at),
+    profile_id: nullablePerformanceProfile(session.profile_id),
+    service_type: nullableServiceType(session.service_type),
     started_at: session.started_at,
     title: nullableString(session.title),
     total_turns: Math.max(0, Math.floor(session.total_turns)),
@@ -116,4 +124,16 @@ function parseCachedSession(
 
 function nullableString(value: unknown) {
   return typeof value === 'string' ? value : null
+}
+
+function nullablePerformanceProfile(value: unknown): KaelPerformanceMode | null {
+  return typeof value === 'string' && (KAEL_PERFORMANCE_PROFILE_IDS as readonly string[]).includes(value)
+    ? value as KaelPerformanceMode
+    : null
+}
+
+function nullableServiceType(value: unknown): ServiceType | null {
+  return typeof value === 'string' && (SERVICE_TYPES as readonly string[]).includes(value)
+    ? value as ServiceType
+    : null
 }

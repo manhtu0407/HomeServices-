@@ -214,7 +214,7 @@ type QueryResult = { data: unknown; error: { code?: string } | null; count?: num
 function chainFor(
   result: QueryResult,
   record?: (method: string, args: unknown[]) => void,
-) {
+): ReturnType<LearningHookDbClient['from']> {
   const chain: Record<string, unknown> = {}
   for (
     const method of [
@@ -235,7 +235,7 @@ function chainFor(
     })
   }
   chain.then = (resolve: (value: QueryResult) => unknown) => Promise.resolve(result).then(resolve)
-  return chain
+  return chain as ReturnType<LearningHookDbClient['from']>
 }
 
 function hookClient(options: {
@@ -280,7 +280,7 @@ function hookClient(options: {
         }
       })
     }),
-    rpc: vi.fn((name: string, args: Record<string, unknown>) => {
+    rpc: vi.fn((name: string, args: Record<string, unknown> = {}) => {
       rpcCalls.push({ name, args })
       const result = options.rpcResults?.[name] ?? { data: [], error: null }
       return chainFor(result)

@@ -4,6 +4,8 @@ import type {
   CustomerKaelConversationPinInput,
   CustomerKaelConversationRenameInput,
   CustomerKaelConversationTurnInput,
+  KaelPerformanceMode,
+  ServiceType,
 } from '@nestscout/shared'
 
 export type {
@@ -23,6 +25,8 @@ export type CustomerKaelConversationSession = {
   client_request_id: string
   title: string | null
   pinned_at: string | null
+  profile_id: KaelPerformanceMode | null
+  service_type: ServiceType | null
   started_at: string
   updated_at: string
   total_turns: number
@@ -31,6 +35,7 @@ export type CustomerKaelConversationSession = {
 export type CustomerKaelConversationTurn = {
   id: string
   conversation_id: string
+  client_request_id?: string | null
   turn_index: number
   role: 'customer' | 'kael' | 'system'
   text_content: string

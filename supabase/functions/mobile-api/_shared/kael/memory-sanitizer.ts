@@ -1,10 +1,15 @@
+import { looksLikePrivateUnitIdentifier } from "./utils.ts";
+
 export function sanitizeMemoryText(input: string, maxLength = 1000): string {
   return input
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
     .replace(/\b(?:\+?84|0)(?:[\s.-]?\d){8,10}\b/g, "[phone]")
     .replace(/\b\d{11,12}\b/g, "[id-number]")
     .replace(/\b(?:cccd|cmnd|id)\s*[:#-]?\s*\d{6,20}\b/gi, "[id-number]")
-    .replace(/\b(?:căn|can|unit|phòng|phong|apt)\s*[A-Z0-9.-]+\b/gi, "[unit]")
+    .replace(
+      /(?<![\p{L}\p{N}])(?:căn(?:[^\S\r\n]+hộ)?|can(?:[^\S\r\n]+ho)?|unit|phòng|phong|apt)[^\S\r\n]+([\p{L}\p{N}](?:[\p{L}\p{N}._/-]*[\p{L}\p{N}])?)/giu,
+      (match, identifier: string) => looksLikePrivateUnitIdentifier(identifier) ? "[unit]" : match,
+    )
     .replace(/\b(?:tầng|tang|lầu|lau|floor)\s*\d+\b/gi, "[floor]")
     .replace(/\b(?:số nhà|so nha|nhà số|nha so)\s*[A-Z0-9./-]+\b/gi, "[house-no]")
     .replace(/\b(?:stk|số tài khoản|so tai khoan|bank)\s*[:#-]?\s*\d{6,20}\b/gi, "[bank-account]")
