@@ -44,13 +44,32 @@ export type PriceObservation = {
   reviewedAt: string
 }
 
+// Mirrors the SQL aggregate in record_learning_observation_atomic: the cutoff is
+// anchored on the newest observation rather than wall-clock now(), so recomputing an
+// old payload reproduces the numbers it was promoted on.
+function withinRollingWindow(
+  observations: PriceObservation[],
+  windowDays: number,
+): PriceObservation[] {
+  if (observations.length === 0) return observations
+  const anchor = observations.reduce(
+    (latest, observation) => (observation.reviewedAt > latest ? observation.reviewedAt : latest),
+    observations[0]!.reviewedAt,
+  )
+  const cutoff = new Date(anchor).getTime() - windowDays * 24 * 60 * 60 * 1000
+  return observations.filter(
+    (observation) => new Date(observation.reviewedAt).getTime() >= cutoff,
+  )
+}
+
 export function computePricePriorPayload(
   scope: PricePriorPayload['scope'],
   baselineUsedMin: number,
   baselineUsedMax: number,
-  observations: PriceObservation[],
-  _windowDays: number = ROLLING_WINDOW_DAYS,
+  allObservations: PriceObservation[],
+  windowDays: number = ROLLING_WINDOW_DAYS,
 ): PricePriorPayload {
+  const observations = withinRollingWindow(allObservations, windowDays)
   const finalPrices = observations.map((observation) => observation.finalPrice)
   const estimateMins = observations.map((observation) => observation.estimateMin)
   const estimateMaxes = observations.map((observation) => observation.estimateMax)

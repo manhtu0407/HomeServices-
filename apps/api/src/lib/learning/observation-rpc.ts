@@ -39,6 +39,8 @@ export async function recordLearningObservation(
       p_review_tags: canonicalReviewTags(input.reviewTags),
       p_scope_change_requested: input.scopeChangeRequested,
       p_reviewed_at: input.reviewedAt,
+      p_reference_min: postgresNullableRpcArg(input.referenceMin ?? null),
+      p_reference_max: postgresNullableRpcArg(input.referenceMax ?? null),
     }),
   )
 

@@ -1148,6 +1148,8 @@ export type Database = {
           kael_price_max: number | null
           kael_price_min: number | null
           kael_problem_identified: string | null
+          kael_reference_price_max: number | null
+          kael_reference_price_min: number | null
           kael_progress: Json | null
           kael_worker_brief_core: Json | null
           kael_worker_brief_guidance: Json | null
@@ -1220,6 +1222,8 @@ export type Database = {
           kael_price_max?: number | null
           kael_price_min?: number | null
           kael_problem_identified?: string | null
+          kael_reference_price_max?: number | null
+          kael_reference_price_min?: number | null
           kael_progress?: Json | null
           kael_worker_brief_core?: Json | null
           kael_worker_brief_guidance?: Json | null
@@ -1292,6 +1296,8 @@ export type Database = {
           kael_price_max?: number | null
           kael_price_min?: number | null
           kael_problem_identified?: string | null
+          kael_reference_price_max?: number | null
+          kael_reference_price_min?: number | null
           kael_progress?: Json | null
           kael_worker_brief_core?: Json | null
           kael_worker_brief_guidance?: Json | null

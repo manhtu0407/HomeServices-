@@ -600,6 +600,16 @@ export async function runKaelPipeline(
     },
     effectiveComplexity,
   );
+  // Second pick at the pre-learning complexity. effectiveComplexity may already have
+  // been raised by an LS2 rule, so selecting on it would leave a learned input in the
+  // reference band. Same rows, no extra I/O.
+  const referenceBaseline = pickBaselineCandidate(
+    baselineCandidates ?? {
+      success: false,
+      error: baselineStage.failureReason ?? "baseline stage failed",
+    },
+    analysis.complexity_hint,
+  );
   pushPipelineStageLog(stageLogs, input, {
     stage: "baseline",
     latencyMs: baselineStage.elapsedMs,
@@ -747,6 +757,8 @@ export async function runKaelPipeline(
     fallbackUsed,
     stageLogs,
     serviceProblemId: baselineResult.serviceProblemId,
+    referencePriceMin: referenceBaseline.success ? referenceBaseline.priceMin : undefined,
+    referencePriceMax: referenceBaseline.success ? referenceBaseline.priceMax : undefined,
     customerSentiment: input.intakeDiagnosisEnabled ? intent.customer_sentiment : undefined,
     profileFacts,
     safetySignals,
