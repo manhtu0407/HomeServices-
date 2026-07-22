@@ -118,7 +118,7 @@ describe('processLearningQueue atomic ownership', () => {
         expect.objectContaining({
           status: 'failed',
           processing_count: 0,
-          error_code: 'LEARNING_EFFECT_COMMIT_FAILED',
+          error_code: 'LEARNING_EFFECT_COMMIT_FAILED:WRITE_FAILED',
         }),
       ])
   })

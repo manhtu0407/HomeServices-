@@ -681,6 +681,11 @@ export async function advanceKaelChatEstimate(
       diagnosis_scope: quoteReadyArtifact,
       fallback_used: pipeline.fallbackUsed,
       service_problem_id: pipeline.serviceProblemId,
+      // Kept beside `estimate`, not inside it: the estimate object is the customer-facing
+      // shape, and the reference band is server-only learning input. Turn reads for the
+      // client select text columns and never safe_metadata.
+      reference_price_min: pipeline.referencePriceMin ?? null,
+      reference_price_max: pipeline.referencePriceMax ?? null,
       ...intakeObservationMetadata(pipeline.intakeObservation),
       photo_count: input.photo_urls?.length ?? 0,
       budget_soft_cap_reached:

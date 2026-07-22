@@ -110,6 +110,36 @@ describe('computePricePriorPayload', () => {
     complexity: 'medium' as const,
   }
 
+  it('drops observations older than the rolling window', () => {
+    const observations: PriceObservation[] = [
+      // Two years stale — must not count toward the sample or move the median.
+      { finalPrice: 100_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2024-01-10T00:00:00Z' },
+      { finalPrice: 110_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2024-01-12T00:00:00Z' },
+      { finalPrice: 350_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2026-01-10T00:00:00Z' },
+      { finalPrice: 360_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2026-01-15T00:00:00Z' },
+      { finalPrice: 370_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2026-01-20T00:00:00Z' },
+    ]
+
+    const payload = computePricePriorPayload(scope, 200_000, 400_000, observations)
+
+    expect(payload.observed.sample_size).toBe(3)
+    expect(payload.observed.median_final_price).toBe(360_000)
+    expect(payload.window.from_ts).toBe('2026-01-10T00:00:00Z')
+  })
+
+  it('anchors the window on the newest observation, not wall-clock now', () => {
+    // Every row is years old; anchoring on now() would empty the sample entirely.
+    const observations: PriceObservation[] = [
+      { finalPrice: 350_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2020-01-10T00:00:00Z' },
+      { finalPrice: 360_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2020-01-15T00:00:00Z' },
+      { finalPrice: 370_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2020-01-20T00:00:00Z' },
+    ]
+
+    const payload = computePricePriorPayload(scope, 200_000, 400_000, observations)
+
+    expect(payload.observed.sample_size).toBe(3)
+  })
+
   it('produces full payload from 5 observations matching plan example', () => {
     const observations: PriceObservation[] = [
       { finalPrice: 350_000, estimateMin: 250_000, estimateMax: 350_000, reviewedAt: '2026-01-10T00:00:00Z' },

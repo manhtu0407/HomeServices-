@@ -331,6 +331,8 @@ export async function createJob(
         kael_complexity: estimate.complexity,
         kael_price_min: estimate.price_min,
         kael_price_max: estimate.price_max,
+        kael_reference_price_min: pipeline.referencePriceMin ?? null,
+        kael_reference_price_max: pipeline.referencePriceMax ?? null,
         kael_advisory: estimate.advisory,
         kael_estimate_card_v3: estimateCardV3,
         kael_worker_brief_core: workerBriefCore,

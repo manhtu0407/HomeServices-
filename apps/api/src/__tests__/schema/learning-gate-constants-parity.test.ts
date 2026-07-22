@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   CONTRADICTION_MAX_RATIO as EDGE_CONTRADICTION_MAX_RATIO,
+  CONTRADICTION_MIN_SAMPLE,
+  CONTRADICTION_WINDOW_DAYS,
   EDGE_CONFIDENCE_THRESHOLD,
   EDGE_MIN_EVIDENCE,
   ROLLING_WINDOW_DAYS as EDGE_ROLLING_WINDOW_DAYS,
@@ -27,6 +29,14 @@ describe('learning gate constants: one source across Edge, apps/api, and SQL', (
     expect(EDGE_ROLLING_WINDOW_DAYS).toBe(ROLLING_WINDOW_DAYS)
   })
 
+  it('contradiction window and sample floor stay pinned', () => {
+    // The window is the recency bound on the similar-candidate lookup; the floor is
+    // the smallest directional sample a ratio may be read from. Both are read by the
+    // Edge hook only, so this is the single guard against a silent retune.
+    expect(CONTRADICTION_WINDOW_DAYS).toBe(90)
+    expect(CONTRADICTION_MIN_SAMPLE).toBe(3)
+  })
+
   it('promotion RPC migration pins the same evidence gate numbers', () => {
     const migration = readFileSync(
       join(MIGRATIONS_DIR, '20260714101000_atomic_learning_autopromotion.sql'),
@@ -35,6 +45,18 @@ describe('learning gate constants: one source across Edge, apps/api, and SQL', (
     expect(migration).toContain(
       `v_candidate.evidence_count < ${EDGE_MIN_EVIDENCE} or v_candidate.confidence < ${EDGE_CONFIDENCE_THRESHOLD}`,
     )
+  })
+
+  it('observation RPC windows its aggregates on the same rolling window', () => {
+    const migration = readFileSync(
+      join(MIGRATIONS_DIR, '20260721100000_learning_observation_rolling_window.sql'),
+      'utf8',
+    )
+    const windowClause =
+      `receipt.reviewed_at >= p_reviewed_at - interval '${EDGE_ROLLING_WINDOW_DAYS} days'`
+    // One clause per observation CTE: price priors, analysis-rule aggregates, and the
+    // separate tag-frequency pass. Miss one and that leg silently keeps every receipt.
+    expect(migration.split(windowClause)).toHaveLength(4)
   })
 
   it('edge skill registry consumes the shared constants, not literals', () => {

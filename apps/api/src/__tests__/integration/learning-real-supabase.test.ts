@@ -84,7 +84,18 @@ const createdCandidateIds: string[] = []
 const createdRuleIds: string[] = []
 
 // Helper to seed one completed-reviewed job with chosen final price.
-async function seedReviewedJob(finalPrice: number, idx: number): Promise<string> {
+type SeedOverrides = {
+  quotedMin?: number
+  quotedMax?: number
+  referenceMin?: number | null
+  referenceMax?: number | null
+}
+
+async function seedReviewedJob(
+  finalPrice: number,
+  idx: number,
+  overrides: SeedOverrides = {},
+): Promise<string> {
   // 1. Insert job at status='reviewed' directly with kael fields + final_price.
   const now = new Date().toISOString()
   const { data: job, error: jobErr } = await supabase
@@ -103,8 +114,10 @@ async function seedReviewedJob(finalPrice: number, idx: number): Promise<string>
       status: 'reviewed',
       kael_problem_identified: TEST_PROBLEM,
       kael_complexity: TEST_COMPLEXITY,
-      kael_price_min: BASELINE_MIN,
-      kael_price_max: BASELINE_MAX,
+      kael_price_min: overrides.quotedMin ?? BASELINE_MIN,
+      kael_price_max: overrides.quotedMax ?? BASELINE_MAX,
+      kael_reference_price_min: overrides.referenceMin ?? null,
+      kael_reference_price_max: overrides.referenceMax ?? null,
       final_price: finalPrice,
       reviewed_at: now,
       completed_at: now,
@@ -328,6 +341,60 @@ describeReal('Kael learning services — real Supabase integration', () => {
       .maybeSingle()
     expect(version).not.toBeNull()
     expect(version?.version).toBeGreaterThanOrEqual(1)
+  }, 60_000)
+
+  it('measures drift against the admin reference, not the quote it produced', async () => {
+    // The ratchet this guards against: a promoted rule raises the quote, workers price
+    // from the quote, final prices converge on it, and a loop that reads the quote back
+    // as its baseline sees agreement and calls that confidence. Here the quote is
+    // already drifted well above the admin band and the final prices sit on the quote.
+    // Anchored on the quote, the drift reads as zero; anchored on the reference, it is
+    // real and points up.
+    vi.stubEnv('LEARNING_ENABLED', 'true')
+    vi.stubEnv('LEARNING_AUTOPROMOTE_ENABLED', 'false')
+    const { runLearningHook } = await import('@/lib/learning/hook')
+
+    const DRIFTED_QUOTE_MIN = 500_000
+    const DRIFTED_QUOTE_MAX = 900_000
+    const ON_QUOTE_PRICES = [690_000, 700_000, 700_000, 710_000, 720_000]
+
+    await purgeLearningRowsForScope()
+    for (let i = 0; i < ON_QUOTE_PRICES.length; i++) {
+      const jobId = await seedReviewedJob(ON_QUOTE_PRICES[i]!, 400 + i, {
+        quotedMin: DRIFTED_QUOTE_MIN,
+        quotedMax: DRIFTED_QUOTE_MAX,
+        referenceMin: BASELINE_MIN,
+        referenceMax: BASELINE_MAX,
+      })
+      await runLearningHook(supabase, jobId)
+    }
+
+    const { data: candidate } = await supabase
+      .from('learning_candidates')
+      .select('id, suggested_payload, evidence_count')
+      .eq('candidate_type', 'price_prior_update')
+      .eq('affected_service', TEST_SERVICE)
+      .eq('affected_problem', TEST_PROBLEM)
+      .eq('affected_district', TEST_DISTRICT)
+      .maybeSingle()
+
+    expect(candidate).not.toBeNull()
+    if (candidate) createdCandidateIds.push(candidate.id)
+
+    const payload = candidate?.suggested_payload as {
+      observed: Record<string, number>
+      suggested: Record<string, unknown>
+    }
+
+    // The payload keeps both numbers and labels them apart.
+    expect(payload.observed.baseline_used_min).toBe(BASELINE_MIN)
+    expect(payload.observed.baseline_used_max).toBe(BASELINE_MAX)
+    expect(payload.observed.kael_estimate_min).toBe(DRIFTED_QUOTE_MIN)
+    expect(payload.observed.kael_estimate_max).toBe(DRIFTED_QUOTE_MAX)
+
+    // Against the quote's midpoint (700k) these finals are noise. Against the admin
+    // midpoint (300k) they are a genuine underestimate.
+    expect(payload.suggested.direction).toBe('underestimate')
   }, 60_000)
 
   // ─── Read-path: fetchBaseline returns learned range ────────────────

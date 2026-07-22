@@ -85,10 +85,18 @@ export async function commitLearningEffectResult(
       p_effect_payload: input.effect ?? NO_LEARNING_EFFECT,
     });
     if (result.error) {
-      return { ok: false, errorCode: "LEARNING_EFFECT_COMMIT_FAILED" };
+      return { ok: false, errorCode: commitFailureCode(result.error.code) };
     }
     return { ok: true };
   } catch {
-    return { ok: false, errorCode: "LEARNING_EFFECT_COMMIT_FAILED" };
+    return { ok: false, errorCode: commitFailureCode("throw") };
   }
+}
+
+// A duplicate-scope 23505, a permission denial, and a lost claim all surface here.
+// Without the SQLSTATE the batch only ever reports "commit failed", which is not
+// enough to tell a retryable conflict from a broken grant. kael_ai_batches.error_code
+// is capped at 80 characters.
+function commitFailureCode(sqlState: string | undefined): string {
+  return `LEARNING_EFFECT_COMMIT_FAILED:${sqlState ?? "unknown"}`.slice(0, 80);
 }

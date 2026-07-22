@@ -13,6 +13,25 @@ import { recordLearningReviewOutcome } from "../kael/index.ts";
 import { runLearningHook } from "../kael/learning-hook.ts";
 import type { JobStatus } from "../../../_shared/domain.ts";
 
+// jobs.kael_problem_identified holds the free-text Vietnamese problem summary, not a
+// taxonomy slug, so learning candidates keyed on it fragment one scope into as many
+// scopes as there are phrasings and never accumulate evidence. The slug lives on
+// service_problems; fall back to the summary only when a job predates that link.
+async function resolveProblemSlug(
+  client: DbClient,
+  job: Record<string, unknown>,
+): Promise<string | null> {
+  const problemId = nullableString(job.service_problem_id);
+  if (!problemId) return nullableString(job.kael_problem_identified);
+  const problem = await dbQuery<Record<string, unknown>>(
+    client.from("service_problems").select("slug").eq("id", problemId).maybeSingle(),
+  );
+  if (problem.error || !problem.data) {
+    return nullableString(job.kael_problem_identified);
+  }
+  return nullableString(problem.data.slug) ?? nullableString(job.kael_problem_identified);
+}
+
 type NormalTransactionMemoryInput = {
   jobId: string;
   customerId: string;
@@ -121,7 +140,7 @@ export async function submitReview(ctx: MobileApiContext, jobId: string, input: 
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
     select:
-      "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, final_price",
+      "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, final_price, service_problem_id",
   });
   if (job.status === "reviewed") {
     const existing = await dbQuery<Record<string, unknown>>(
@@ -198,7 +217,7 @@ export async function submitReview(ctx: MobileApiContext, jobId: string, input: 
     customer_id: ctx.user.id,
     worker_id: nullableString(job.worker_id) ?? undefined,
     service_type: asServiceType(job.service_type),
-    problem_slug: nullableString(job.kael_problem_identified) ?? undefined,
+    problem_slug: await resolveProblemSlug(client, job) ?? undefined,
     district_code: nullableString(job.address_district) ?? undefined,
     complexity: asComplexityOrNull(job.kael_complexity) ?? undefined,
     baseline_min: nullableNumber(job.kael_price_min) ?? undefined,

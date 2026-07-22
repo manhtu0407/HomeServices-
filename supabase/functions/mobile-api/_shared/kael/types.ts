@@ -684,6 +684,11 @@ export type PipelineResult =
     serviceProblemId: string;
     fallbackUsed: boolean;
     stageLogs: PipelineStageLog[];
+    // Admin-owned price_baselines band behind this estimate, before any learned rule
+    // or market blending. Persisted so the learning loop measures against a price it
+    // did not produce. Absent when no baseline row matched the analysis complexity.
+    referencePriceMin?: number;
+    referencePriceMax?: number;
     knowledgeContext?: PipelineKnowledgeContext;
     customerSentiment?: "neutral" | "detail_oriented" | "pressure";
     profileFacts?: Record<string, string>;
