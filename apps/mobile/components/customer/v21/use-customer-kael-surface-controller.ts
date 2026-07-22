@@ -8,7 +8,7 @@ import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 
 import { peekPendingKaelChatDraft } from '../kael-chat/pending-intake'
-import { buildBookingDraftMessage } from './booking-intake-display-model'
+import { localizedPendingBookingDraftMessage } from './booking-intake-display-model'
 import { customerV21CommonCopy, customerV21ServiceCopy } from './copy'
 import {
   cleanRouteJobId,
@@ -77,38 +77,36 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     initialMode: routeDerivedMode,
     pendingDraft: initialPendingDraft,
   })
-  const pendingDraftLocalizedMessage = conversation.pendingDraft
-    ? conversation.pendingDraft.description?.trim() || (
-        conversation.pendingDraft.locale === language || !conversation.pendingDraft.serviceType
-          ? conversation.pendingDraft.message
-          : buildBookingDraftMessage({
-              address: conversation.pendingDraft.addressLabel ?? conversation.pendingDraft.districtLabel ?? '',
-              description: '',
-              language,
-              problems: conversation.pendingDraft.problemChips ?? [],
-              scheduleLabel: conversation.pendingDraft.scheduleWindow
-                ? `${conversation.pendingDraft.scheduleWindow.date} · ${conversation.pendingDraft.scheduleWindow.start}-${conversation.pendingDraft.scheduleWindow.end}`
-                : null,
-              serviceType: conversation.pendingDraft.serviceType,
-            })
-      )
-    : null
+  const pendingDraftLocalizedMessage = localizedPendingBookingDraftMessage(
+    conversation.pendingDraft,
+    language,
+  )
   const chatUi = useCustomerKaelChatUiState()
   const mode: CustomerKaelMode = conversation.localMode
   const conversations = useCustomerKaelConversations(mode, language)
   const activeCatalogCaseSessionId = conversations.activeResponse?.session.case_session_id ?? null
-  const catalogCaseOwnsSurface = mode === 'case' && (
-    chatUi.blankCaseTransition || Boolean(conversations.activeSessionId)
-  )
   const activeCatalogCaseMatchesWorkflowDeal = Boolean(
     activeCatalogCaseSessionId &&
     conversation.chat?.session.id === activeCatalogCaseSessionId &&
     conversation.chat.session.job_id &&
     conversation.chat.session.job_id === workflowCaseDeal?.id
   )
-  const deal = catalogCaseOwnsSurface
-    ? activeCatalogCaseMatchesWorkflowDeal ? workflowCaseDeal : null
-    : workflowCaseDeal
+  const routedCaseMatchesWorkflowDeal = Boolean(
+    routeJobId && workflowCaseDeal?.id === routeJobId
+  )
+  const candidateDeal = mode !== 'case'
+    ? null
+    : routeJobId
+      ? routedCaseMatchesWorkflowDeal ? workflowCaseDeal : null
+      : activeCatalogCaseMatchesWorkflowDeal ? workflowCaseDeal : null
+  const caseHydration = useCustomerCaseHydration({
+    active: mode === 'case',
+    hydrate: workflow.actions.hydrateRemoteJobById,
+    routeJobId,
+  })
+  const deal = routeJobId && (caseHydration.hydrating || caseHydration.failed)
+    ? null
+    : candidateDeal
   const candidateJobId = deal?.status === 'worker_candidate_pending' ? deal.id : null
   const caseServiceLabel = deal?.draft.serviceType
     ? customerV21ServiceCopy[language][deal.draft.serviceType].label
@@ -118,20 +116,14 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     Boolean(deal && mode === 'case'),
     language,
   )
-  const caseHydration = useCustomerCaseHydration({
-    active: mode === 'case',
-    currentDealId: deal?.id ?? null,
-    hydrate: workflow.actions.hydrateRemoteJobById,
-    routeJobId,
-  })
   const visibleError = caseHydration.failed
     ? (language === 'vi' ? 'Chưa có công việc thật.' : 'No job yet.')
-    : conversation.error
+    : workflow.state.lastError ?? conversation.error
   const selectedServiceRef = useRef<ServiceType | null>(
     initialPendingDraft?.serviceType ??
-    deal?.draft.serviceType ??
     serviceParam(firstParam(params.service)),
   )
+  if (deal?.draft.serviceType) selectedServiceRef.current = deal.draft.serviceType
   const selectedService = selectedServiceRef.current
   const caseUi = useCustomerKaelCaseUiState({
     evidenceOwnerKey: deal ? `${deal.id}:${deal.draft.mediaCount ?? 0}` : null,
@@ -148,6 +140,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     conversation,
     kaelRequestGuard,
     language,
+    onCaseSessionReady: conversations.syncLinkedCaseSession,
     pendingDraftLocalizedMessage,
     pendingDraftOwnerId,
     routeJobId,
@@ -184,6 +177,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     catalogTurns: conversations.turns,
     chat: conversation.chat,
     deal,
+    intakeDisplayMessage: conversation.intakeDisplayMessage,
     jobIncidentMessages: jobIncidentThread.messages,
     language,
     loading: conversation.loading,

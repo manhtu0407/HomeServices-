@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { AppState, Pressable } from 'react-native'
+import { AppState, Pressable, Text } from 'react-native'
 
 let mockAuthRole: 'admin' | 'worker' = 'admin'
 
@@ -21,7 +21,13 @@ jest.mock('../realtime', () => ({
 
 jest.mock('../services', () => ({
   customerProfileService: {},
-  jobService: {},
+  jobService: {
+    getWorkerCandidate: jest.fn(async () => ({
+      data: { candidate: null, job_id: 'job-candidate-pending', status: 'worker_candidate_pending' },
+      status: 200,
+      success: true,
+    })),
+  },
   kaelMemoryService: {},
   notificationService: {
     list: jest.fn(async () => ({
@@ -50,14 +56,18 @@ const { workerService: mockWorkerService } = jest.requireMock('../services') as 
 let refreshPromise: Promise<boolean> | undefined
 
 function WorkerRefreshProbe() {
-  const { actions } = useFrontendWorkflow()
+  const { actions, state } = useFrontendWorkflow()
   return (
-    <Pressable
-      onPress={() => {
-        refreshPromise = actions.workerRefresh()
-      }}
-      testID="worker-refresh"
-    />
+    <>
+      <Pressable
+        onPress={() => {
+          refreshPromise = actions.workerRefresh()
+        }}
+        testID="worker-refresh"
+      />
+      <Text testID="worker-refresh-deal">{state.deal?.id ?? 'none'}</Text>
+      <Text testID="worker-refresh-error">{state.lastError ?? 'none'}</Text>
+    </>
   )
 }
 
@@ -281,4 +291,214 @@ it('starts all independent worker hydration requests without serial round trips'
     jobs.resolve({ data: { jobs: [] }, status: 200, success: true })
     await refreshPromise
   })
+})
+
+it('hydrates an incoming mission without waiting for unrelated worker requests', async () => {
+  const profile = deferred<any>()
+  const earnings = deferred<any>()
+  const performance = deferred<any>()
+  const broadcasts = deferred<any>()
+  const jobs = deferred<any>()
+  mockWorkerService.getProfile.mockReturnValue(profile.promise)
+  mockWorkerService.getEarnings.mockReturnValue(earnings.promise)
+  mockWorkerService.getPerformanceInsights.mockReturnValue(performance.promise)
+  mockWorkerService.getBroadcasts.mockReturnValue(broadcasts.promise)
+  mockWorkerService.getJobs.mockReturnValue(jobs.promise)
+
+  render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+  fireEvent.press(screen.getByTestId('worker-refresh'))
+
+  await act(async () => {
+    broadcasts.resolve({
+      data: {
+        broadcasts: [{
+          broadcast_id: 'broadcast-fast',
+          district: 'thu_duc',
+          estimated_earning_max: 405_000,
+          estimated_earning_min: 170_100,
+          estimated_price_max: 450_000,
+          estimated_price_min: 189_000,
+          expires_at: '2026-07-22T05:19:29.849Z',
+          job_id: 'job-fast',
+          problem_summary: 'Ổ cắm mất điện',
+          scheduled_at: '2026-07-23T03:00:00.000Z',
+          seconds_remaining: 60,
+          sent_at: '2026-07-22T05:18:29.849Z',
+          service_type: 'electrical',
+          status: 'sent',
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    await Promise.resolve()
+  })
+
+  expect(screen.getByTestId('worker-refresh-deal')).toHaveTextContent('job-fast')
+
+  await act(async () => {
+    profile.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+    earnings.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+    performance.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+    jobs.resolve({ data: { jobs: [] }, status: 200, success: true })
+    await refreshPromise
+  })
+})
+
+it('restores a candidate-pending mission from the worker job list after reload', async () => {
+  mockAuthRole = 'worker'
+  arrangeSuccessfulWorkerRuntime()
+  mockWorkerService.getJobs.mockResolvedValue({
+    data: {
+      jobs: [{
+        address_access: {
+          access_profile: {},
+          check_in_required: true,
+          customer_handoff_required: true,
+          evidence_mode: 'none',
+          exact_unit_released: false,
+          identity_check_required: true,
+          release_stage: 'area_only',
+        },
+        address_building: null,
+        address_floor: null,
+        address_unit: null,
+        completed_at: null,
+        completion_notes: null,
+        completion_photo_urls: [],
+        created_at: '2026-07-22T05:00:00.000Z',
+        display_code: 'NS-PENDING-1',
+        district: 'Thủ Đức',
+        estimated_earning: null,
+        final_price: null,
+        gross_amount: null,
+        id: 'job-candidate-pending',
+        matched_at: null,
+        payment_amount_received: null,
+        payment_code: null,
+        payment_expires_at: null,
+        payment_provider: null,
+        payment_qr_image_url: null,
+        payment_received_at: null,
+        payment_status: null,
+        payment_transfer_content: null,
+        photo_urls: [],
+        platform_fee: null,
+        problem_summary: 'Ổ cắm mất điện',
+        scheduled_at: '2026-07-22T06:00:00.000Z',
+        service_type: 'electrical',
+        status: 'worker_candidate_pending',
+        worker_brief_guidance: null,
+        worker_net: null,
+      }],
+    },
+    status: 200,
+    success: true,
+  })
+
+  render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+  fireEvent.press(screen.getByTestId('worker-refresh'))
+
+  await waitFor(() => {
+    expect(screen.getByTestId('worker-refresh-deal')).toHaveTextContent('job-candidate-pending')
+  })
+  const { jobService } = jest.requireMock('../services')
+  expect(jobService.getWorkerCandidate).not.toHaveBeenCalled()
+  expect(screen.getByTestId('worker-refresh-error')).toHaveTextContent('none')
+})
+
+it('clears a stale candidate-pending mission after the authoritative worker lists become empty', async () => {
+  arrangeSuccessfulWorkerRuntime()
+  mockWorkerService.getJobs
+    .mockResolvedValueOnce({
+      data: {
+        jobs: [{
+          address_access: {
+            access_profile: {},
+            check_in_required: true,
+            customer_handoff_required: true,
+            evidence_mode: 'none',
+            exact_unit_released: false,
+            identity_check_required: true,
+            release_stage: 'area_only',
+          },
+          address_building: null,
+          address_floor: null,
+          address_unit: null,
+          completed_at: null,
+          completion_notes: null,
+          completion_photo_urls: [],
+          created_at: '2026-07-22T05:00:00.000Z',
+          display_code: 'NS-PENDING-1',
+          district: 'thu_duc',
+          estimated_earning: null,
+          final_price: null,
+          gross_amount: null,
+          id: 'job-candidate-pending',
+          matched_at: null,
+          payment_amount_received: null,
+          payment_code: null,
+          payment_expires_at: null,
+          payment_provider: null,
+          payment_qr_image_url: null,
+          payment_received_at: null,
+          payment_status: null,
+          payment_transfer_content: null,
+          photo_urls: [],
+          platform_fee: null,
+          problem_summary: 'Socket lost power',
+          scheduled_at: '2026-07-22T06:00:00.000Z',
+          service_type: 'electrical',
+          status: 'worker_candidate_pending',
+          worker_brief_guidance: null,
+          worker_net: null,
+        }],
+      },
+      status: 200,
+      success: true,
+    })
+    .mockResolvedValue({ data: { jobs: [] }, status: 200, success: true })
+
+  render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+
+  fireEvent.press(screen.getByTestId('worker-refresh'))
+
+  await waitFor(() => {
+    expect(screen.getByTestId('worker-refresh-deal')).toHaveTextContent('job-candidate-pending')
+  })
+
+  const profileResult = await mockWorkerService.getProfile()
+  const slowProfile = deferred<any>()
+  const slowEarnings = deferred<any>()
+  const slowPerformance = deferred<any>()
+  mockWorkerService.getProfile.mockReturnValue(slowProfile.promise)
+  mockWorkerService.getEarnings.mockReturnValue(slowEarnings.promise)
+  mockWorkerService.getPerformanceInsights.mockReturnValue(slowPerformance.promise)
+  fireEvent.press(screen.getByTestId('worker-refresh'))
+
+  try {
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-refresh-deal')).toHaveTextContent('none')
+    })
+  } finally {
+    await act(async () => {
+      slowProfile.resolve(profileResult)
+      slowEarnings.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+      slowPerformance.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+      await refreshPromise
+    })
+  }
+  expect(screen.getByTestId('worker-refresh-error')).toHaveTextContent('none')
 })

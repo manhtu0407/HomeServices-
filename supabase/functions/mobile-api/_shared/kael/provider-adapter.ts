@@ -95,7 +95,7 @@ const ANTHROPIC_ADAPTER: ProviderAdapter = {
     };
   },
   parseResponse: ({ data, latencyMs, model, pricingAt, unknownModelPolicy }) => {
-    const content = requireProviderContent(getPath(data, ["content", 0, "text"]));
+    const content = requireProviderContent(anthropicTextContent(data));
     const inputTokens = providerTokenCount(getPath(data, ["usage", "input_tokens"]));
     const outputTokens = providerTokenCount(getPath(data, ["usage", "output_tokens"]));
     const cacheCreationInputTokens = providerTokenCount(
@@ -192,6 +192,8 @@ function openAiCompatibleRequest(input: {
   provider: "deepseek" | "perplexity";
 }): ProviderRequestSpec {
   const { request, apiKey, url, provider } = input;
+  const deepseekThinkingEnabled = request.model === "deepseek-v4-pro" &&
+    request.purpose === "post_job_learning";
   return {
     url,
     headers: {
@@ -204,8 +206,8 @@ function openAiCompatibleRequest(input: {
       temperature: request.temperature ?? 0.2,
       ...(provider === "deepseek"
         ? {
-          thinking: { type: request.model === "deepseek-v4-pro" ? "enabled" : "disabled" },
-          ...(request.model === "deepseek-v4-pro" ? { reasoning_effort: "high" } : {}),
+          thinking: { type: deepseekThinkingEnabled ? "enabled" : "disabled" },
+          ...(deepseekThinkingEnabled ? { reasoning_effort: "high" } : {}),
           response_format: { type: "json_object" },
         }
         : {}),
@@ -352,6 +354,20 @@ function requireProviderContent(value: unknown): string {
     throw new Error("AI_PROVIDER_RESPONSE_INVALID");
   }
   return value;
+}
+
+function anthropicTextContent(data: Record<string, unknown>): string | undefined {
+  const blocks = data.content;
+  if (!Array.isArray(blocks)) return undefined;
+  const text = blocks
+    .filter((block): block is Record<string, unknown> =>
+      typeof block === "object" && block !== null && !Array.isArray(block)
+    )
+    .filter((block) => block.type === "text" && typeof block.text === "string")
+    .map((block) => block.text as string)
+    .filter((value) => value.trim().length > 0)
+    .join("\n");
+  return text || undefined;
 }
 
 function providerTokenCount(value: unknown): number {

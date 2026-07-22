@@ -1,5 +1,8 @@
 import type { KaelDiagnosisScopeArtifact } from "./artifact-contract.ts";
-import { scrubSensitiveForLLM } from "./utils.ts";
+import {
+  scrubCustomerCaseContextForLLM,
+  scrubSensitiveForLLM,
+} from "./utils.ts";
 
 type ConversationEvidenceTurn = {
   readonly role: "customer" | "kael" | "system";
@@ -81,8 +84,11 @@ function boundedTextEnvelope(
   return best;
 }
 
-export function sanitizeUntrustedEvidenceText(input: string): string {
-  const redacted = scrubSensitiveForLLM(input);
+function sanitizeEvidenceText(
+  input: string,
+  scrubber: (value: string) => string,
+): string {
+  const redacted = scrubber(input);
   const withoutQuotedSteering = redacted.replace(
     QUOTED_BLOCK_PATTERN,
     (quoted) => controlPlaneStart(quoted) === null ? quoted : " ",
@@ -97,6 +103,14 @@ export function sanitizeUntrustedEvidenceText(input: string): string {
     .slice(0, 5000);
 }
 
+export function sanitizeUntrustedEvidenceText(input: string): string {
+  return sanitizeEvidenceText(input, scrubSensitiveForLLM);
+}
+
+export function sanitizeCustomerCaseEvidenceText(input: string): string {
+  return sanitizeEvidenceText(input, scrubCustomerCaseContextForLLM);
+}
+
 export function sanitizeUntrustedEvidenceList(
   items: readonly string[],
 ): string[] {
@@ -109,11 +123,24 @@ export function sanitizeUntrustedEvidenceList(
 export function sanitizeUntrustedEvidenceItem(
   evidence: KaelEvidenceItem,
 ): KaelEvidenceItem {
+  return sanitizeEvidenceItem(evidence, sanitizeUntrustedEvidenceText);
+}
+
+export function sanitizeCustomerCaseEvidenceItem(
+  evidence: KaelEvidenceItem,
+): KaelEvidenceItem {
+  return sanitizeEvidenceItem(evidence, sanitizeCustomerCaseEvidenceText);
+}
+
+function sanitizeEvidenceItem(
+  evidence: KaelEvidenceItem,
+  sanitizer: (value: string) => string,
+): KaelEvidenceItem {
   const transcript = evidence.transcript
-    ? sanitizeUntrustedEvidenceText(evidence.transcript)
+    ? sanitizer(evidence.transcript)
     : undefined;
   const summary = evidence.summary
-    ? sanitizeUntrustedEvidenceText(evidence.summary)
+    ? sanitizer(evidence.summary)
     : undefined;
   return {
     kind: evidence.kind,
@@ -132,11 +159,32 @@ export function frameUntrustedCustomerEvidenceForModel(input: string): string {
   }));
 }
 
+export function frameUntrustedCustomerCaseEvidenceForModel(input: string): string {
+  const text = sanitizeCustomerCaseEvidenceText(input);
+  if (!text) return "";
+  return boundedTextEnvelope(CUSTOMER_EVIDENCE_PREFIX, text, (boundedText) => ({
+    text: boundedText,
+  }));
+}
+
 export function buildUntrustedConversationContext(
   turns: readonly ConversationEvidenceTurn[],
 ): string | undefined {
+  return buildConversationContext(turns, sanitizeUntrustedEvidenceText);
+}
+
+export function buildUntrustedCustomerCaseConversationContext(
+  turns: readonly ConversationEvidenceTurn[],
+): string | undefined {
+  return buildConversationContext(turns, sanitizeCustomerCaseEvidenceText);
+}
+
+function buildConversationContext(
+  turns: readonly ConversationEvidenceTurn[],
+  sanitizer: (value: string) => string,
+): string | undefined {
   const safeTurns = turns.flatMap((turn) => {
-    const text = sanitizeUntrustedEvidenceText(turn.text);
+    const text = sanitizer(turn.text);
     return text ? [{ role: turn.role, text }] : [];
   });
   if (safeTurns.length === 0) return undefined;

@@ -1,4 +1,5 @@
-import { WorkerCandidateReviewCard } from '../kael-chat/worker-candidate-review-card'
+import { useCustomerSavedWorkers } from '../kael-chat/customer-saved-workers'
+import { WorkerCandidateReviewResponse } from '../kael-chat/worker-candidate-review-response'
 import type { useCustomerKaelSurfaceController } from './use-customer-kael-surface-controller'
 
 type Controller = ReturnType<typeof useCustomerKaelSurfaceController>
@@ -8,13 +9,15 @@ export function CustomerWorkerCandidateNode({ controller }: { controller: Contro
     candidateJobId,
     language,
     mode,
+    reduceMotion,
     tokens,
     workflow,
   } = controller
+  const savedWorkers = useCustomerSavedWorkers(mode === 'case' ? candidateJobId : null)
   if (mode !== 'case' || !candidateJobId) return null
 
   return (
-    <WorkerCandidateReviewCard
+    <WorkerCandidateReviewResponse
       busy={workflow.customerWorkerCandidateBusy}
       candidate={workflow.customerWorkerCandidate}
       error={workflow.customerWorkerCandidateError}
@@ -22,7 +25,15 @@ export function CustomerWorkerCandidateNode({ controller }: { controller: Contro
       onConfirm={() => void workflow.actions.decideWorkerCandidate('confirm')}
       onReject={() => void workflow.actions.decideWorkerCandidate('reject')}
       onRetry={() => void workflow.actions.refreshWorkerCandidate(candidateJobId)}
-      onToggleFavorite={(isFavorite) => void workflow.actions.setWorkerCandidateFavorite(isFavorite)}
+      onRetrySavedWorkers={savedWorkers.reload}
+      onToggleFavorite={(isFavorite) => {
+        void workflow.actions.setWorkerCandidateFavorite(isFavorite).then((updated) => {
+          if (updated) savedWorkers.reload()
+        })
+      }}
+      reduceMotion={reduceMotion}
+      savedWorkers={savedWorkers.workers}
+      savedWorkersStatus={savedWorkers.status}
       tokens={tokens}
     />
   )

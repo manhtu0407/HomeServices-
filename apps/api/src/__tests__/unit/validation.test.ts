@@ -8,6 +8,7 @@ import {
   sanitizeForLLM,
   scrubSensitiveForLLM,
 } from '@nestscout/shared'
+import { scrubSensitiveForLLM as scrubEdgeSensitiveForLLM } from '../../../../../supabase/functions/mobile-api/_shared/kael/utils'
 
 describe('serviceTypeSchema (Rule #6: six launched services)', () => {
   it.each(['electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman'])(
@@ -382,6 +383,7 @@ describe('scrubSensitiveForLLM', () => {
 
   it('strips floor and unit identifiers', () => {
     expect(scrubSensitiveForLLM('tầng 25 căn A.25.07')).toBe('[floor] [unit]')
+    expect(scrubSensitiveForLLM('căn hộ A.25.07')).toBe('[unit]')
     expect(scrubSensitiveForLLM('lầu 10 phòng 1234')).toBe('[floor] [unit]')
     expect(scrubSensitiveForLLM('block A toà B2')).toContain('[unit]')
   })
@@ -404,6 +406,20 @@ describe('scrubSensitiveForLLM', () => {
     expect(scrubSensitiveForLLM('Hẹn tại 45A Lê Lợi')).toBe(
       'Hẹn tại [house-no] Lê Lợi',
     )
+  })
+
+  it('does not treat a schedule or ordinary apartment wording as an address identifier', () => {
+    const intake = [
+      'Thời gian: CN 19/07 · Bắt đầu lúc 14:00',
+      'Mô tả: Ổ điện trong căn hộ bị hỏng.',
+    ].join('\n')
+
+    expect(scrubSensitiveForLLM(intake)).toBe(intake)
+    expect(scrubEdgeSensitiveForLLM(intake)).toBe(intake)
+
+    const flattened = 'Thời gian: CN 19/07 · Bắt đầu lúc 14:00 Mô tả: Ổ điện bị hỏng.'
+    expect(scrubSensitiveForLLM(flattened)).toBe(flattened)
+    expect(scrubEdgeSensitiveForLLM(flattened)).toBe(flattened)
   })
 
   it('combines patterns in a realistic customer message', () => {

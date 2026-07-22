@@ -244,6 +244,102 @@ describe('mobile API response guard', () => {
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
+  it('gives Agentic session creation one complete deadline without retrying an in-flight timeout', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(0)
+    const abortTimes: number[] = []
+    mockFetch.mockImplementation((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        abortTimes.push(Date.now())
+        const error = new Error('request aborted')
+        error.name = 'AbortError'
+        reject(error)
+      }, { once: true })
+    }))
+
+    const pending = api.post('/kael/chat', {
+      client_request_id: 'd6c9fe68-ae24-4f17-8d15-6eecaa9b7c70',
+      message: 'Air conditioner is leaking water.',
+      service_type: 'hvac',
+    })
+    await jest.runAllTimersAsync()
+
+    await expect(pending).resolves.toMatchObject({ success: false, code: 'TIMEOUT' })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(abortTimes).toEqual([30_000])
+  })
+
+  it('gives a persisted Customer Kael turn one complete deadline without retrying an in-flight timeout', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(0)
+    const abortTimes: number[] = []
+    mockFetch.mockImplementation((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        abortTimes.push(Date.now())
+        const error = new Error('request aborted')
+        error.name = 'AbortError'
+        reject(error)
+      }, { once: true })
+    }))
+
+    const pending = api.post('/me/kael/conversations/conversation-1/turn', {
+      client_request_id: '4d390451-29df-4bb1-b05b-b7446f9237db',
+      language: 'vi',
+      message: 'Ổ cắm kêu lép bép.',
+    })
+    await jest.runAllTimersAsync()
+
+    await expect(pending).resolves.toMatchObject({ success: false, code: 'TIMEOUT' })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(abortTimes).toEqual([30_000])
+  })
+
+  it('gives idempotent Kael estimate confirmation the complete Agentic deadline', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(0)
+    const abortTimes: number[] = []
+    mockFetch.mockImplementation((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        abortTimes.push(Date.now())
+        const error = new Error('request aborted')
+        error.name = 'AbortError'
+        reject(error)
+      }, { once: true })
+    }))
+
+    const pending = api.post('/kael/chat/session-1/confirm')
+    await jest.runAllTimersAsync()
+
+    await expect(pending).resolves.toMatchObject({ success: false, code: 'TIMEOUT' })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(abortTimes).toEqual([30_000])
+  })
+
+  it('retries Kael estimate confirmation after a lost response', async () => {
+    jest.useFakeTimers()
+    const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    mockFetch
+      .mockRejectedValueOnce(new TypeError('response lost after confirmation commit'))
+      .mockResolvedValueOnce({
+        body: null,
+        headers: { get: () => null },
+        ok: true,
+        status: 200,
+        text: jest.fn(async () => '{"job_id":"job-1","status":"broadcasting"}'),
+      })
+
+    const pending = api.post('/kael/chat/session-1/confirm')
+    await jest.runAllTimersAsync()
+
+    await expect(pending).resolves.toMatchObject({ success: true })
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(warning).toHaveBeenCalledWith('mobile-api retry', expect.objectContaining({
+      method: 'POST',
+      path: '/kael/chat/session-1/confirm',
+      reason: 'NETWORK_ERROR',
+    }))
+  })
+
   it('does not retry worker application creation without an idempotency key', async () => {
     jest.useFakeTimers()
     mockFetch.mockRejectedValue(new TypeError('connection reset after upload'))

@@ -263,26 +263,38 @@ export async function notifyBroadcastWorkers(
     }
   });
 
-  for (const target of targets) {
-    const push = await sendPushToUser(client, target.workerId, {
-      title: "Có yêu cầu mới gần bạn",
-      body,
-      data: {
-        event_type: "broadcast_received",
-        job_id: jobId,
-        broadcast_id: target.broadcastId,
-        deep_link: `/(worker)/jobs?broadcast_id=${target.broadcastId}`,
-      },
-      sound: "default",
-    });
-    if (push.failed > 0) {
+  const pushResults = await Promise.allSettled(
+    targets.map((target) =>
+      sendPushToUser(client, target.workerId, {
+        title: "Có yêu cầu mới gần bạn",
+        body,
+        data: {
+          event_type: "broadcast_received",
+          job_id: jobId,
+          broadcast_id: target.broadcastId,
+          deep_link: `/(worker)/jobs?broadcast_id=${target.broadcastId}`,
+        },
+        sound: "default",
+      })
+    ),
+  );
+  pushResults.forEach((result, index) => {
+    const target = targets[index];
+    if (result.status === "rejected") {
+      console.warn("mobile-api worker push delivery threw", {
+        jobId,
+        workerId: target?.workerId,
+      });
+      return;
+    }
+    if (result.value.failed > 0) {
       console.warn("mobile-api worker push delivery had failures", {
         jobId,
-        workerId: target.workerId,
-        failed: push.failed,
+        workerId: target?.workerId,
+        failed: result.value.failed,
       });
     }
-  }
+  });
 }
 
 export async function notifyCustomerWorkerMatched(

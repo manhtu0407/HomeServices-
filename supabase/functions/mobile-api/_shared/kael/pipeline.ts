@@ -30,7 +30,11 @@ import {
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
 import { runKaelParallel, runKaelPurposeStage } from "./orchestrator.ts";
 import { updateKaelProgress } from "./streaming.ts";
-import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "./utils.ts";
+import {
+  sanitizeVisionPhotoUrls,
+  scrubCustomerCaseContextForLLM,
+  scrubSensitiveForLLM,
+} from "./utils.ts";
 import { retrieveKaelKnowledgeContextIfEnabled } from "./knowledge.ts";
 import {
   isKaelAiKillSwitchEnabled,
@@ -58,7 +62,7 @@ export async function runKaelPipeline(
   const { serviceType, district } = input;
   const language = input.language ?? "vi";
   const problemChips = input.problemChips.map(scrubSensitiveForLLM);
-  const description = scrubSensitiveForLLM(input.description);
+  const description = scrubCustomerCaseContextForLLM(input.description);
   const photoUrls = sanitizeVisionPhotoUrls(input.photoUrls ?? []);
   const stageLogs: PipelineStageLog[] = [];
   const learningApplications: Extract<PipelineResult, { success: true }>["learningApplications"] = [];
@@ -179,7 +183,6 @@ export async function runKaelPipeline(
   const intentRun = await runKaelPurposeStage({
     label: "intent",
     purpose: "intent_classification",
-    timeoutMs: KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs,
     run: () =>
       input.intakeDiagnosisEnabled
         ? diagnoseIntake(
@@ -200,7 +203,7 @@ export async function runKaelPipeline(
           spendGate,
           electricalPlaybookEnabled,
         ),
-    fallback: () => ({
+    fallback: (failureReason) => ({
       success: false as const,
       fallback: buildFallbackIntent(
         serviceType,
@@ -208,14 +211,8 @@ export async function runKaelPipeline(
         description,
         electricalPlaybookEnabled,
       ),
-      failureReason: "TIMEOUT",
-      attempts: [{
-        provider: KAEL_ROUTING_CONFIG.intent_classification.primary.provider,
-        model: KAEL_ROUTING_CONFIG.intent_classification.primary.model,
-        latencyMs: KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs,
-        success: false,
-        failureReason: "TIMEOUT",
-      }],
+      failureReason,
+      attempts: [],
     }),
   });
   const intentStage = intentRun.value;
@@ -333,7 +330,10 @@ export async function runKaelPipeline(
     const coverage = resolveIntakeFactCoverage({
       serviceType: intent.service_type,
       problemSlug: problemSlug ?? intent.problem_slug,
-      profileFacts: intent.profile_facts ?? {},
+      profileFacts: {
+        ...(intent.profile_facts ?? {}),
+        ...(input.priorProfileFacts ?? {}),
+      },
       providerMissingSlots: intent.missing_slots ?? [],
       providerNeedsClarification: intent.needs_clarification,
       electricalPlaybookEnabled,
@@ -342,6 +342,10 @@ export async function runKaelPipeline(
     const needsClarification = coverage.needsClarification;
     if (needsClarification) {
       const firstMissing = missingSlots[0] ?? "service_scope";
+      const hasPriorProfileFact = Object.entries(input.priorProfileFacts ?? {})
+        .some(([key, value]) =>
+          typeof value === "string" && coverage.facts[key] === value.trim().slice(0, 500)
+        );
       const proposedQuestion = intent.clarification_question ??
         (language === "vi" ? intent.clarification_question_vi : null) ??
         (language === "en"
@@ -349,7 +353,7 @@ export async function runKaelPipeline(
           : `Bạn cho Kael biết thêm về ${firstMissing.replaceAll("_", " ")} nhé?`);
       const providerQuestion = intent.clarification_question ??
         (language === "vi" ? intent.clarification_question_vi : null);
-      const question = providerQuestion &&
+      const question = !hasPriorProfileFact && providerQuestion &&
           isSingleFocusedClarificationQuestion(proposedQuestion)
         ? proposedQuestion.trim()
         : buildFocusedClarificationQuestion(firstMissing, language);

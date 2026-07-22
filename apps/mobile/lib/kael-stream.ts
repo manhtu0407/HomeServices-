@@ -1,3 +1,9 @@
+import {
+  SERVICE_TYPES as CANONICAL_SERVICE_TYPES,
+  type KaelChatTurnInput,
+  type WorkerKaelChatTurnInput,
+} from '@nestscout/shared'
+
 import type { KaelChatProgress, KaelChatResponse, WorkerKaelChatResponse } from './api-types'
 import {
   type ApiResult,
@@ -7,7 +13,6 @@ import {
   safeServerError,
   safeServerErrorCode,
 } from './api'
-import type { KaelChatTurnInput, WorkerKaelChatTurnInput } from '@nestscout/shared'
 import {
   readResponseTextBounded,
   ResponseBodyInvalidEncodingError,
@@ -462,7 +467,7 @@ const KAEL_PROGRESS_STAGES = new Set<KaelChatProgress['current_stage']>([
   'educational_response',
 ])
 
-const SERVICE_TYPES = new Set(['electrical', 'plumbing', 'cleaning', 'air_conditioning', 'upholstery', 'handyman'])
+const SERVICE_TYPES = new Set<string>(CANONICAL_SERVICE_TYPES)
 const CUSTOMER_SESSION_STATUSES = new Set(['active', 'collecting_evidence', 'estimate_ready', 'confirmed', 'abandoned', 'unsupported'])
 const CUSTOMER_CASE_PHASES = new Set([
   'analysis', 'offer_review', 'matching', 'worker_candidate_review', 'worker_en_route',

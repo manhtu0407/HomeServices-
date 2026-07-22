@@ -1,22 +1,22 @@
-import { AgenticEvidenceGateCard } from '../kael-chat/agentic-evidence-gate-card'
+import { useCallback, useMemo } from 'react'
+
+import { AgenticEvidenceGateResponse } from '../kael-chat/agentic-evidence-gate-response'
 import { MediaDraftPreviewTray } from '../kael-chat/media-draft-preview-tray'
-import { OnDeviceVoiceTranscript } from '../kael-chat/on-device-voice-transcript'
-import { QuoteReadinessReviewCard } from '../kael-chat/quote-readiness-review-card'
+import { QuoteReadinessReviewResponse } from '../kael-chat/quote-readiness-review-response'
 import {
   agenticEstimatePriceExplanation,
   agenticEstimateProblemLabel,
   agenticEstimateSourceExplanation,
   formatPriceRange,
 } from './agentic-estimate-display-model'
-import {
-  AgenticChatEstimateCard,
-  ChatEvidenceStrip,
-  KaelChatSurfaceView,
-} from './chat-stateful-surfaces'
+import { AgenticChatEstimateResponse } from './agentic-chat-estimate-response'
+import { ChatEvidenceStrip } from './chat-evidence-strip'
+import { KaelChatSurfaceView } from './chat-stateful-surfaces'
 import { customerV21KaelChatRootStyles as rootStyles } from './chat-styles'
 import { ChatBubble } from './chat-surfaces'
 import { formatKnownCount } from './case-stage-display-model'
 import { CustomerKaelCaseThreadNode } from './customer-kael-case-thread-node'
+import { CustomerKaelIntakeResponseNode } from './customer-kael-intake-response-node'
 import { CustomerWorkerCandidateNode } from './customer-worker-candidate-node'
 import { CustomerKaelSessionMenu } from './kael-session-menu'
 import { KaelProcessLines } from './kael-process-line-view'
@@ -52,7 +52,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     tokens,
     visibleError,
   } = controller
-  const composerBusy = conversation.loading || chatUi.uploadingMedia || conversations.busy
+  const composerBusy = conversation.loading || chatUi.uploadingMedia || conversations.sending
   const canUseComposerMedia = mode === 'normal' ||
     (mode === 'case' && !deal) ||
     presentation.caseEvidenceGateActive ||
@@ -86,10 +86,27 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         conversation.composerMediaDrafts.length > 0 ||
         chatUi.voiceTranscript.trim()
       )
-  const showEmptyHero = !hasCurrentConversation && !conversation.loading && !conversations.busy
-  const onOpenActivity = () => {
+  const showEmptyHero = !hasCurrentConversation && !conversation.loading
+  const onOpenActivity = useCallback(() => {
     router.replace('/(customer)/history' as never)
-  }
+  }, [router])
+  const caseIntakeResponseNode = useMemo(
+    () => <CustomerKaelIntakeResponseNode controller={controller} />,
+    [controller],
+  )
+  const caseThreadNode = useMemo(
+    () => (
+      <CustomerKaelCaseThreadNode
+        controller={controller}
+        onOpenActivity={onOpenActivity}
+      />
+    ),
+    [controller, onOpenActivity],
+  )
+  const workerCandidateNode = useMemo(
+    () => <CustomerWorkerCandidateNode controller={controller} />,
+    [controller],
+  )
 
   return (
     <KaelChatSurfaceView
@@ -98,7 +115,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         !processController.processLines &&
         !chatUi.submittingAgenticRejectReason &&
         !chatUi.confirmingAgenticEstimate ? (
-          <AgenticChatEstimateCard
+          <AgenticChatEstimateResponse
             canConfirm={presentation.canConfirmAgenticEstimate}
             confirming={chatUi.confirmingAgenticEstimate}
             confirmed={presentation.agenticEstimateConfirmed}
@@ -122,8 +139,8 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
           />
         ) : null}
       analysisEvidenceNode={presentation.agenticEvidenceGateActive ? (
-        <AgenticEvidenceGateCard
-          allowSkip={false}
+        <AgenticEvidenceGateResponse
+          allowSkip={!presentation.serverEvidenceRequired}
           busy={conversation.loading ||
             chatUi.uploadingMedia ||
             chatUi.submittingAgenticEvidence ||
@@ -142,6 +159,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
           onSkip={() => void evidenceActions.submitAgenticEvidence('skipped')}
           onVoiceTranscriptChange={chatUi.setVoiceTranscript}
           prompt={presentation.serverEvidencePrompt}
+          reduceMotion={reduceMotion}
           rejectOpen={chatUi.agenticEvidenceRejectOpen}
           rejectReason={chatUi.agenticEvidenceReason}
           requiredEvidenceKind={presentation.serverEvidenceKind}
@@ -150,8 +168,9 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
           voiceTranscript={chatUi.voiceTranscript}
         />
       ) : presentation.serverPriceReviewBlocked ? (
-        <QuoteReadinessReviewCard
+        <QuoteReadinessReviewResponse
           language={language}
+          reduceMotion={reduceMotion}
           reason={typeof presentation.artifactNextAction?.reason === 'string'
             ? presentation.artifactNextAction.reason
             : undefined}
@@ -159,13 +178,16 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
           tokens={tokens}
         />
       ) : null}
-      agenticVisibleTurns={presentation.agenticIntakeModeActive ? presentation.agenticVisibleTurns : []}
+      agenticVisibleTurns={mode === 'case' || presentation.agenticIntakeModeActive
+        ? presentation.agenticVisibleTurns
+        : []}
       animatedModeMenuSheenStyle={modeMenu.animatedModeMenuSheenStyle}
       animatedModeMenuStyle={modeMenu.animatedModeMenuStyle}
-      canStartNewConversation={!composerBusy}
+      canStartNewConversation={conversations.canCreateSession}
       canUseComposerMedia={canUseComposerMedia}
       caseAssistantTurns={presentation.showCaseConversation ? presentation.caseAssistantTurns : []}
-      caseThreadNode={<CustomerKaelCaseThreadNode controller={controller} onOpenActivity={onOpenActivity} />}
+      caseIntakeResponseNode={caseIntakeResponseNode}
+      caseThreadNode={caseThreadNode}
       caseWorkLabel={copy.caseWork}
       composerBusy={composerBusy}
       composerMediaDraftCount={conversation.composerMediaDrafts.length}
@@ -180,15 +202,6 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         />
       )}
       composerPlaceholder={composerPlaceholder}
-      composerVoiceNode={presentation.agenticAnalysisActive && !presentation.agenticEvidenceGateActive ? (
-        <OnDeviceVoiceTranscript
-          disabled={composerBusy}
-          language={language}
-          onChangeText={chatUi.setVoiceTranscript}
-          tokens={tokens}
-          transcript={chatUi.voiceTranscript}
-        />
-      ) : null}
       draft={chatUi.draft}
       error={visibleError}
       hiddenScrollbarStyle={customerV21HiddenScrollbar}
@@ -252,7 +265,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
       timelineHeadline={timelineHeadline}
       tokens={tokens}
-      workerCandidateNode={<CustomerWorkerCandidateNode controller={controller} />}
+      workerCandidateNode={workerCandidateNode}
       missingCaseWorkDeal={presentation.missingCaseWorkDeal}
     />
   )

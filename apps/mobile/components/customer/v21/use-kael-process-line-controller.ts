@@ -9,14 +9,15 @@ import { buildKaelProcessSequence } from './kael-process-lines'
 import type { CustomerKaelMode } from './types'
 import type { KaelProcessLineRuntime } from './use-customer-kael-chat-ui-state'
 
-const kaelProcessAnswerSettleMs = 1100
-
 type StartProcessLineOptions = {
   complexity?: string | null
   mediaCount?: number
   mode: CustomerKaelMode
+  replyReveal?: 'composer_message'
   serviceType?: ServiceType | null
 }
+
+export const KAEL_COMPOSER_REPLY_REVEAL_MS = 900
 
 export function useKaelProcessLineController({
   caseServiceLabel,
@@ -30,27 +31,26 @@ export function useKaelProcessLineController({
   selectedService: ServiceType | null
 }) {
   const [processLines, setProcessLines] = useState<KaelProcessLineRuntime | null>(null)
+  const revealWaitersRef = useRef(new Map<number, () => void>())
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const runRef = useRef(0)
-  const waitersRef = useRef<(() => void)[]>([])
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((timer) => clearTimeout(timer))
     timersRef.current = []
   }, [])
 
-  const resolveWaiters = useCallback(() => {
-    const waiters = waitersRef.current
-    waitersRef.current = []
-    waiters.forEach((resolve) => resolve())
+  const settleRevealWaiters = useCallback(() => {
+    revealWaitersRef.current.forEach((resolve) => resolve())
+    revealWaitersRef.current.clear()
   }, [])
 
   const stopProcessLines = useCallback(() => {
     runRef.current += 1
     clearTimers()
-    resolveWaiters()
+    settleRevealWaiters()
     setProcessLines(null)
-  }, [clearTimers, resolveWaiters])
+  }, [clearTimers, settleRevealWaiters])
 
   const startProcessLines = useCallback((prompt: string, options: StartProcessLineOptions) => {
     const safePrompt = prompt.trim() || (language === 'vi' ? 'Đã gửi ảnh/video.' : 'Sent media.')
@@ -69,7 +69,7 @@ export function useKaelProcessLineController({
     const runId = runRef.current + 1
     runRef.current = runId
     clearTimers()
-    resolveWaiters()
+    settleRevealWaiters()
     setProcessLines({
       activeIndex: sequence.lines.length > 0 ? 0 : null,
       collapse: null,
@@ -102,29 +102,26 @@ export function useKaelProcessLineController({
       }, elapsedMs))
     })
 
+    // Session/menu/evidence actions never wait on presentation. A composer send gets one
+    // short reveal window while its API request is already running, so Process Lines remain
+    // perceptible without slowing the rest of Kael Chat.
+    if (options.replyReveal !== 'composer_message') return Promise.resolve()
     return new Promise<void>((resolve) => {
-      let settled = false
-      const finish = () => {
-        if (settled) return
-        settled = true
-        waitersRef.current = waitersRef.current.filter((waiter) => waiter !== finish)
-        resolve()
-      }
-      waitersRef.current.push(finish)
+      revealWaitersRef.current.set(runId, resolve)
       timersRef.current.push(setTimeout(() => {
-        if (runRef.current !== runId) return
-        finish()
-      }, elapsedMs + kaelProcessAnswerSettleMs))
+        revealWaitersRef.current.delete(runId)
+        resolve()
+      }, KAEL_COMPOSER_REPLY_REVEAL_MS))
     })
-  }, [caseServiceLabel, clearTimers, deal, language, resolveWaiters, selectedService])
+  }, [caseServiceLabel, clearTimers, deal, language, selectedService, settleRevealWaiters])
 
   // Unmount invalidates the latest generation; capturing an older ref value would leave newer timers live.
   // react-doctor-disable-next-line react-doctor/exhaustive-deps
   useEffect(() => () => {
     runRef.current += 1
     clearTimers()
-    resolveWaiters()
-  }, [clearTimers, resolveWaiters])
+    settleRevealWaiters()
+  }, [clearTimers, settleRevealWaiters])
 
   return { processLines, startProcessLines, stopProcessLines }
 }

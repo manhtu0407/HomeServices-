@@ -4,10 +4,12 @@ import {
   buildProfileSafetyFlags,
   buildPriceEvidenceUnavailableArtifact,
   requiredCaseWorkEvidenceRequest,
+  resolveCaseWorkEvidenceRequest,
   resolveProfileFactCoverage,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work-controls'
 import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
 import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
+import { diagnosisScopeWithEvidenceRequest } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-case-work'
 import { serializeKaelEstimate } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
 
 describe('Kael Case Work deterministic controls', () => {
@@ -42,6 +44,7 @@ describe('Kael Case Work deterministic controls', () => {
     })).toMatchObject({
       blocker: 'handyman_visual_evidence',
       evidenceKind: 'photo',
+      prompt: 'Gửi ảnh rõ vật cần sửa/lắp và vị trí thi công để Kael kiểm tra bề mặt, kích thước, dụng cụ cần dùng.',
     })
 
     expect(requiredCaseWorkEvidenceRequest({
@@ -79,6 +82,76 @@ describe('Kael Case Work deterministic controls', () => {
       customerMessage: 'Giặt định kỳ sofa vải, không có vết bẩn riêng.',
       evidence: [],
     })).toBeNull()
+  })
+
+  it.each([
+    ['electrical', 'outlet_or_switch_broken'],
+    ['plumbing', 'leaking_faucet'],
+    ['cleaning', 'routine_cleaning'],
+    ['hvac', 'routine_hvac_cleaning'],
+    ['upholstery', 'sofa_cleaning'],
+  ] as const)('offers skippable profile evidence after clarification for %s', (serviceType, problemCategory) => {
+    expect(resolveCaseWorkEvidenceRequest({
+      serviceType,
+      problemCategory,
+      customerMessage: 'Đã cung cấp đủ thông tin mô tả để Kael tiếp tục.',
+      evidence: [],
+      language: 'vi',
+    })).toMatchObject({
+      blocker: 'profile_evidence_review',
+      evidenceKind: 'any',
+      required: false,
+    })
+  })
+
+  it('does not reopen skippable evidence after a recorded decision', () => {
+    expect(resolveCaseWorkEvidenceRequest({
+      serviceType: 'electrical',
+      problemCategory: 'outlet_or_switch_broken',
+      customerMessage: 'Ổ cắm đã hỏng hai ngày.',
+      evidence: [],
+      evidenceDecision: 'skipped',
+    })).toBeNull()
+  })
+
+  it('keeps mandatory visual evidence mandatory even if a client claims it was skipped', () => {
+    expect(resolveCaseWorkEvidenceRequest({
+      serviceType: 'handyman',
+      problemCategory: 'drill_or_mount_shelf',
+      customerMessage: 'Treo một kệ lên tường bê tông.',
+      evidence: [],
+      evidenceDecision: 'skipped',
+    })).toMatchObject({
+      blocker: 'handyman_visual_evidence',
+      evidenceKind: 'photo',
+      required: true,
+    })
+  })
+
+  it('persists optional evidence policy in the server-owned next action', () => {
+    const initial = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'electrical',
+      customerGoal: 'Ổ cắm không hoạt động.',
+    })
+    const request = resolveCaseWorkEvidenceRequest({
+      serviceType: 'electrical',
+      problemCategory: 'outlet_or_switch_broken',
+      customerMessage: 'Ổ cắm không hoạt động trong hai ngày.',
+      evidence: [],
+    })!
+
+    expect(diagnosisScopeWithEvidenceRequest(initial, request, {
+      customerDetail: 'Ổ cắm không hoạt động trong hai ngày.',
+      problemSummary: 'Kiểm tra ổ cắm không hoạt động.',
+      complexity: 'small',
+      problemChips: ['outlet_or_switch_broken'],
+      workerRequirements: ['electrical_fault_isolation'],
+      confidence: 0.8,
+    }).next_action).toMatchObject({
+      kind: 'request_evidence',
+      evidence_kind: 'any',
+      required: false,
+    })
   })
 
   it('turns a missing validated price source into a terminal review artifact, not another generic question', () => {

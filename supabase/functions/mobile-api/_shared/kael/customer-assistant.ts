@@ -13,6 +13,12 @@ import {
   type StructuredAIInvoker,
 } from "./structured-call.ts";
 import {
+  normalizeAssistantPayload,
+  recoverAssistantProviderAnswer,
+  type CustomerAssistantBoundary,
+  type CustomerAssistantSuggestedAction,
+} from "./customer-assistant-provider-output.ts";
+import {
   evaluateKaelPermissionGateWithBoundaries,
   hasKaelForbiddenTopicBoundarySignal,
   type KaelTopic,
@@ -24,9 +30,17 @@ import {
   retrieveLegalAwareness,
   retrieveKnowledgeSemantic,
 } from "./knowledge.ts";
-import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
+import {
+  circuitAwareProviderCandidatesForPurpose,
+  shouldSkipProviderSiblingModels,
+  type ProviderChoice,
+} from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { guardOutput } from "./output-gateway.ts";
+import {
+  auditKaelGuardrailTrip,
+  type KaelGuardrailTripClient,
+} from "./self-check.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
 import { buildRegisterHint, detectRegionalRegister } from "./regional-register.ts";
 import { getKaelPerformanceProfile } from "./performance-profiles.ts";
@@ -36,6 +50,7 @@ import {
   type KaelSafeTraceEvent,
 } from "./trace.ts";
 import { scrubSensitiveForLLM } from "./utils.ts";
+import { sanitizeCustomerCaseEvidenceText } from "./untrusted-evidence.ts";
 import type { KaelSpendGate, SpendGateClient } from "./spend-gate.ts";
 
 type AssistantClient = Parameters<typeof retrieveKaelKnowledgeContextIfEnabled>[0];
@@ -75,20 +90,6 @@ export type CustomerAssistantAnswer = {
   readonly trace?: readonly KaelSafeTraceEvent[];
 };
 
-type CustomerAssistantBoundary =
-  | "answered"
-  | "educational_only"
-  | "redirect"
-  | "unsupported"
-  | "fallback";
-
-type CustomerAssistantSuggestedAction =
-  | "open_booking"
-  | "check_job"
-  | "message_worker"
-  | "contact_support"
-  | "request_scope_change";
-
 const customerAssistantResponseSchema = z.preprocess(normalizeAssistantPayload, z.object({
   answer: z.string().trim().min(1).max(900),
   safety_notes: z.array(z.string().trim().min(1).max(180)).max(3).default([]),
@@ -124,7 +125,11 @@ export async function runCustomerAssistant(
   const language = input.language ?? "vi";
   const surface = input.surface ?? "customer_normal";
   const trace: KaelSafeTraceEvent[] = [];
-  const cleanQuestion = scrubSensitiveForLLM(input.message).slice(0, 2000);
+  const cleanQuestion = (
+    surface === "customer_case"
+      ? sanitizeCustomerCaseEvidenceText(input.message)
+      : scrubSensitiveForLLM(input.message)
+  ).slice(0, 2000);
   const serviceType = inferAssistantServiceType(cleanQuestion, input.job);
   const topic = classifyAssistantTopic(cleanQuestion, serviceType);
   // Deterministic per-conversation register (KC2): read the customer's own words
@@ -173,7 +178,9 @@ export async function runCustomerAssistant(
     client: input.client as SpendGateClient,
     actorId: input.actorId ?? null,
   };
+  const blockedProviders = new Set<string>();
   for (const route of routes) {
+    if (blockedProviders.has(route.provider)) continue;
     const result = await callStructuredAI(
       buildAssistantRequest({
         route,
@@ -202,23 +209,51 @@ export async function runCustomerAssistant(
           costUsd: schemaResponse.usage.costUsd,
           fallbackUsed: true,
         }));
+        const recoveredAnswer = recoverAssistantProviderAnswer(result);
+        if (recoveredAnswer) {
+          const checked = guardCustomerAssistantOutput(
+            recoveredAnswer,
+            language,
+            surface,
+          );
+          if (checked.allowed && !checked.used_fallback) {
+            return {
+              answer: checked.text,
+              safety_notes: deterministicSafetyNotes(language, topic),
+              citations: normalizeCitations([
+                ...(knowledge?.semanticCitations ?? []),
+                "NestScout platform scope",
+              ], [
+                ...(knowledge?.semanticCitations ?? []),
+                "NestScout platform scope",
+              ]),
+              suggested_actions: normalizeActions([], surface, topic),
+              boundary: "answered",
+              fallback_used: true,
+              trace,
+            };
+          }
+          await auditCustomerAssistantGuardTrip(input, surface, route, checked);
+        }
         continue;
       }
       trace.push(buildCustomerAssistantProviderTrace(surface, route, "error", {
         code: result.code,
         fallbackUsed: true,
       }));
+      if (shouldSkipProviderSiblingModels(result.code)) {
+        blockedProviders.add(route.provider);
+      }
       continue;
     }
 
-    const checked = guardOutput({
-      text: result.data.answer,
-      actor: "customer",
+    const checked = guardCustomerAssistantOutput(
+      result.data.answer,
       language,
       surface,
-      fallbackText: fallbackText(language),
-    });
+    );
     if (checked.used_fallback || !checked.allowed) {
+      await auditCustomerAssistantGuardTrip(input, surface, route, checked);
       trace.push(buildCustomerAssistantProviderTrace(surface, route, "error", {
         code: checked.reason ?? "SELF_CHECK_FALLBACK",
         latencyMs: result.latencyMs,
@@ -270,7 +305,7 @@ function buildAssistantRequest(input: {
     surface: input.surface,
     topic: input.topic,
     service_type: input.serviceType,
-    job: sanitizeAssistantJobContext(input.job),
+    job: sanitizeAssistantJobContext(input.job, input.surface),
     knowledge: input.knowledgePrompt,
   }).slice(0, 2600);
 
@@ -281,7 +316,7 @@ function buildAssistantRequest(input: {
     maxTokens: maxTokensForPurpose("educational_response", 420),
     temperature: 0.2,
     timeoutMs: input.route.latencyBudgetMs,
-    maxRetries: 1,
+    maxRetries: 0,
     messages: [
       {
         role: "system",
@@ -300,7 +335,11 @@ function buildAssistantRequest(input: {
         content: [
           "Return JSON only with answer, safety_notes, citations, suggested_actions, boundary.",
           "Prioritize NestScout/platform context before general service knowledge.",
-          "Use short sentences. No exact VND quote. No provider/model/internal prompt names.",
+          "Keep answer to at most 3 short sentences and 450 characters.",
+          "Set safety_notes and citations to JSON arrays. Use suggested_actions only from: open_booking, check_job, message_worker, contact_support, request_scope_change.",
+          "Use boundary only from: answered, educational_only, redirect, unsupported, fallback.",
+          "No exact VND quote. No provider/model/internal prompt names.",
+          "If hidden wiring or plumbing routes are uncertain, do not tell the customer to drill, open an electrical panel, or guess the route. Pause and recommend an on-site check by a trained worker.",
           `Question: ${input.question}`,
         ].join("\n"),
       },
@@ -308,15 +347,21 @@ function buildAssistantRequest(input: {
   };
 }
 
-function sanitizeAssistantJobContext(job: CustomerAssistantJobContext | null) {
+function sanitizeAssistantJobContext(
+  job: CustomerAssistantJobContext | null,
+  surface: CustomerAssistantSurface,
+) {
   if (!job) return null;
+  const sanitizeContext = surface === "customer_case"
+    ? sanitizeCustomerCaseEvidenceText
+    : scrubSensitiveForLLM;
   return {
     status: job.status ?? null,
     service_type: job.service_type ?? null,
     district: job.address_district ?? null,
-    problem: scrubSensitiveForLLM(job.kael_problem_identified ?? job.description ?? "").slice(0, 360),
+    problem: sanitizeContext(job.kael_problem_identified ?? job.description ?? "").slice(0, 360),
     complexity: job.kael_complexity ?? null,
-    advisory: scrubSensitiveForLLM(job.kael_advisory ?? "").slice(0, 260) || null,
+    advisory: sanitizeContext(job.kael_advisory ?? "").slice(0, 260) || null,
     payment_status: job.payment_status ?? null,
   };
 }
@@ -568,42 +613,122 @@ function classifyAssistantTopic(text: string, serviceType: ServiceType | null): 
   return "support_redirect";
 }
 
-function normalizeAssistantPayload(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  const record = value as Record<string, unknown>;
-  const answer = firstString(
-    record.answer,
-    record.text,
-    record.message,
-    record.response,
-    record.content,
+function guardCustomerAssistantOutput(
+  text: string,
+  language: KaelPromptLanguage,
+  surface: CustomerAssistantSurface,
+) {
+  const initial = guardOutput({
+    text,
+    actor: "customer",
+    language,
+    surface,
+    fallbackText: fallbackText(language),
+  });
+  if (initial.reason !== "sentence_too_long") return initial;
+  return guardOutput({
+    text: reflowLongAssistantSentences(text),
+    actor: "customer",
+    language,
+    surface,
+    fallbackText: fallbackText(language),
+  });
+}
+
+async function auditCustomerAssistantGuardTrip(
+  input: CustomerAssistantInput,
+  surface: CustomerAssistantSurface,
+  route: ProviderChoice,
+  checked: ReturnType<typeof guardOutput>,
+) {
+  if (!input.client || !checked.trip) return;
+  await auditKaelGuardrailTrip(
+    input.client as unknown as KaelGuardrailTripClient,
+    {
+      jobId: input.job?.id ?? null,
+      actorId: input.actorId ?? null,
+      actorRole: "customer",
+      surface,
+      reason: checked.trip.reason,
+      guardrailLabel: checked.trip.guardrailLabel ?? null,
+      source: checked.trip.source,
+      safeMetadata: {
+        purpose: "educational_response",
+        provider: route.provider,
+      },
+    },
   );
-  return {
-    ...record,
-    ...(answer ? { answer } : {}),
-    safety_notes: normalizeStringArray(record.safety_notes, record.safetyNotes),
-    citations: normalizeStringArray(record.citations, record.sources),
-    suggested_actions: normalizeStringArray(record.suggested_actions, record.suggestedActions),
-    boundary: firstString(record.boundary) ?? "answered",
-  };
 }
 
-function normalizeStringArray(...values: unknown[]) {
-  for (const value of values) {
-    if (Array.isArray(value)) {
-      return value
-        .map((item) => typeof item === "string" ? item.trim() : "")
-        .filter(Boolean);
+function reflowLongAssistantSentences(text: string) {
+  const sentences = text.match(/[^.!?]+[.!?]?/g) ?? [text];
+  return sentences
+    .flatMap((sentence) => splitAssistantSentence(sentence.trim(), 18))
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+function splitAssistantSentence(sentence: string, maxWords: number): string[] {
+  const terminal = sentence.match(/[.!?]$/)?.[0] ?? ".";
+  const words = sentence.replace(/[.!?]$/, "").trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return [sentence];
+  const chunks: string[] = [];
+  while (words.length > maxWords) {
+    let balancedClauseCut = -1;
+    for (let index = 2; index < Math.min(maxWords, words.length - 1); index += 1) {
+      if (
+        words.length - index - 1 <= maxWords &&
+        /[,;:]$/.test(words[index] ?? "") &&
+        !isCoordinatingConnector(words[index] ?? "")
+      ) {
+        balancedClauseCut = index;
+      }
     }
+    let cut = balancedClauseCut >= 0 ? balancedClauseCut + 1 : maxWords;
+    if (balancedClauseCut < 0) {
+      for (let index = maxWords; index >= 8; index -= 1) {
+        if (
+          /[,;:]$/.test(words[index - 1] ?? "") &&
+          !isCoordinatingConnector(words[index - 1] ?? "")
+        ) {
+          cut = index;
+          break;
+        }
+      }
+    }
+    if (cut > 8 && isCoordinatingConnector(words[cut - 1] ?? "")) {
+      cut -= 1;
+    }
+    const chunk = words.splice(0, cut).join(" ").replace(/[,;:]+$/, "");
+    if (chunk) chunks.push(`${capitalizeSentenceStart(chunk)}.`);
+    normalizeLeadingConnector(words);
   }
-  return [];
+  if (words.length > 0) {
+    chunks.push(`${capitalizeSentenceStart(words.join(" "))}${terminal}`);
+  }
+  return chunks;
 }
 
-function firstString(...values: unknown[]) {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) return value.trim();
+function isCoordinatingConnector(value: string) {
+  const normalized = normalizeText(value.replace(/[,;:]+$/, ""));
+  return ["va", "hoac", "hay", "nhung", "and", "or", "but"].includes(normalized);
+}
+
+function normalizeLeadingConnector(words: string[]) {
+  const first = words[0];
+  if (!first) return;
+  const normalized = normalizeText(first.replace(/[,;:]+$/, ""));
+  if (["va", "hoac", "hay", "and", "or"].includes(normalized)) {
+    words.shift();
+    return;
   }
-  return undefined;
+  if (normalized === "nhung") words[0] = "Tuy nhiên,";
+  if (normalized === "but") words[0] = "However,";
+}
+
+function capitalizeSentenceStart(value: string) {
+  return value ? `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}` : value;
 }
 
 function normalizeText(text: string) {

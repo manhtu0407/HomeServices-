@@ -18,7 +18,10 @@ export type KaelAgenticGoldenScenario = {
   readonly kaelPurpose: KaelPurpose;
   readonly policyId: string;
   readonly expectedFallback: boolean;
-  readonly expectedProviderRouting: readonly AIProvider[];
+  readonly expectedModelRouting: readonly {
+    readonly provider: AIProvider;
+    readonly model: string;
+  }[];
 };
 
 export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[] = Object.freeze([
@@ -32,7 +35,11 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     kaelPurpose: "intent_classification",
     policyId: "kael.path.customer_intake_to_estimate.v1",
     expectedFallback: false,
-    expectedProviderRouting: ["deepseek", "anthropic"],
+    expectedModelRouting: [
+      { provider: "deepseek", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-pro" },
+      { provider: "anthropic", model: "claude-sonnet-5" },
+    ],
   },
   {
     id: "P10",
@@ -44,7 +51,11 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     kaelPurpose: "clarification",
     policyId: "kael.path.customer_case_chat_revision.v1",
     expectedFallback: true,
-    expectedProviderRouting: ["deepseek", "anthropic"],
+    expectedModelRouting: [
+      { provider: "deepseek", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-pro" },
+      { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
+    ],
   },
   {
     id: "P11",
@@ -56,7 +67,11 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     kaelPurpose: "educational_response",
     policyId: "kael.autonomy.v2.worker_cancel_to_rematch",
     expectedFallback: true,
-    expectedProviderRouting: ["deepseek", "anthropic"],
+    expectedModelRouting: [
+      { provider: "deepseek", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-pro" },
+      { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
+    ],
   },
   {
     id: "P12",
@@ -68,7 +83,11 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     kaelPurpose: "educational_response",
     policyId: "kael.autonomy.v2.customer_cancel_after_accept",
     expectedFallback: true,
-    expectedProviderRouting: ["deepseek", "anthropic"],
+    expectedModelRouting: [
+      { provider: "deepseek", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-pro" },
+      { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
+    ],
   },
   {
     id: "P13",
@@ -80,7 +99,11 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     kaelPurpose: "educational_response",
     policyId: "kael.autonomy.v2.dispute_resolution",
     expectedFallback: true,
-    expectedProviderRouting: ["deepseek", "anthropic"],
+    expectedModelRouting: [
+      { provider: "deepseek", model: "deepseek-v4-flash" },
+      { provider: "deepseek", model: "deepseek-v4-pro" },
+      { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
+    ],
   },
 ]);
 
@@ -100,8 +123,8 @@ export function evaluateKaelAgenticGoldenScenario(
     action: scenario.mobileAction,
     policy_id: scenario.policyId,
     purpose: scenario.kaelPurpose,
-    provider: scenario.expectedProviderRouting[0] as "anthropic" | "perplexity" | "deepseek",
-    model: "scenario-fixture",
+    provider: scenario.expectedModelRouting[0]?.provider ?? null,
+    model: scenario.expectedModelRouting[0]?.model ?? null,
     latency_ms: 0,
     cost_usd: 0,
     validation: { status: "pass" },
@@ -112,7 +135,7 @@ export function evaluateKaelAgenticGoldenScenario(
     confidence: scenario.expectedFallback ? 0.4 : 0.8,
     safe_metadata: {
       scenario_id: scenario.id,
-      route_count: scenario.expectedProviderRouting.length,
+      route_count: scenario.expectedModelRouting.length,
     },
   });
   return { allowed: path.allowed, trace };

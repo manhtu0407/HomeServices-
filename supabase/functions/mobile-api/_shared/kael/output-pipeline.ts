@@ -6,6 +6,7 @@ import {
   type ScopeChangeRiskConfig,
 } from "./scope-risk.ts";
 import { kaelArtifactProposalSchema } from "./artifact-contract.ts";
+import { looksLikePrivateUnitIdentifier } from "./utils.ts";
 
 export type EstimatePriceSource =
   | "perplexity_validated"
@@ -88,8 +89,8 @@ export function buildEstimateCardOutput(input: {
 }) {
   const language = input.language ?? "vi";
   const confidence = numericConfidenceToLabel(input.estimate.confidence);
-  const needsInspection = input.priceSource === "inspection_required" ||
-    confidence === "low";
+  const needsInspection = input.estimate.needs_inspection === true ||
+    input.priceSource === "inspection_required";
   const card: EstimateCardV3 = {
     service_type: input.estimate.service_type,
     problem_summary: sanitizeKaelText(input.estimate.problem_summary, 200),
@@ -376,7 +377,10 @@ export function scrubKaelPiiText(input: string): string {
     .replace(UNLABELLED_BANK_ACCOUNT_PATTERN, "[bank-account]")
     .replace(/\b(?:\+?84|0)(?:[\s.-]?\d){8,10}\b/g, "[phone]")
     .replace(/\b\d{9,12}\b/g, "[id-number]")
-    .replace(/\b(?:căn|can|unit|phòng|phong|apt)\s*[A-Z0-9.-]+\b/gi, "[unit]")
+    .replace(
+      /(?<![\p{L}\p{N}])(?:căn(?:[^\S\r\n]+hộ)?|can(?:[^\S\r\n]+ho)?|unit|phòng|phong|apt)[^\S\r\n]+([\p{L}\p{N}](?:[\p{L}\p{N}._/-]*[\p{L}\p{N}])?)/giu,
+      (match, identifier: string) => looksLikePrivateUnitIdentifier(identifier) ? "[unit]" : match,
+    )
     .replace(/\b(?:tầng|tang|lầu|lau|floor)\s*\d+\b/gi, "[floor]")
     .replace(/\b(?:số nhà|so nha|nhà số|nha so)\s*[A-Z0-9./-]+\b/gi, "[house-no]");
 }

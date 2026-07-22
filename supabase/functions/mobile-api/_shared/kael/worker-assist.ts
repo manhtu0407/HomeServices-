@@ -6,7 +6,11 @@ import {
   type StructuredValidationIssue,
 } from "./structured-call.ts";
 import type { KaelSpendGate } from "./spend-gate.ts";
-import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
+import {
+  circuitAwareProviderCandidatesForPurpose,
+  shouldSkipProviderSiblingModels,
+  type ProviderChoice,
+} from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { buildKaelSystemPrompt } from "./system-prompt.ts";
 import {
@@ -130,6 +134,7 @@ export async function runWorkerAssist(
   let lastProviderFailure = "AI_UNAVAILABLE";
   const providerAttempts: WorkerAssistProviderAttempt[] = [];
   const trace: KaelSafeTraceEvent[] = [];
+  const blockedProviders = new Set<string>();
 
   if (routes.length === 0) {
     trace.push(buildNoProviderTrace({
@@ -153,6 +158,7 @@ export async function runWorkerAssist(
   }
 
   for (const route of routes) {
+    if (blockedProviders.has(route.provider)) continue;
     const request = buildWorkerAssistRequest(input, route, language);
     const result = await callStructuredAI(
       request,
@@ -185,6 +191,9 @@ export async function runWorkerAssist(
       });
       providerAttempts.push(attempt);
       trace.push(traceForAttempt(attempt, "worker.ask_kael", true));
+      if (shouldSkipProviderSiblingModels(result.code)) {
+        blockedProviders.add(route.provider);
+      }
       continue;
     }
 
@@ -273,7 +282,7 @@ function buildWorkerAssistRequest(
     maxTokens: maxTokensForPurpose("worker_assist", 220),
     temperature: 0.2,
     timeoutMs: route.latencyBudgetMs,
-    maxRetries: 1,
+    maxRetries: 0,
     messages: [
       {
         role: "system",

@@ -27,7 +27,7 @@ import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
 import type { CustomerProfileInsightsResponse, CustomerServiceHistoryItem } from '@/lib/api-types'
-import { clearPendingKaelChatDraft, setPendingKaelChatDraft } from '../kael-chat/pending-intake'
+import { setPendingKaelChatDraft } from '../kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
 import {
   CaseWideMintAura,
@@ -126,6 +126,7 @@ import {
   customerCaseWorkRouteForDeal,
   customerKaelChatRoute,
   customerKaelWorkRoute,
+  customerKaelWorkRouteForHandoff,
   isRealCaseDeal,
 } from './customer-kael-routing'
 import { useV21Theme } from './use-v21-theme'
@@ -342,7 +343,6 @@ function CustomerBookingEntrySurfaceRoute() {
   const [address, setAddress] = useState('')
   const addressDistrictLabel = useRef<string | null>(null)
   const submitDraftInFlightRef = useRef(false)
-  const draftSubmissionActiveRef = useRef(true)
   const [addressLookupOpen, setAddressLookupOpen] = useState(false)
   const addressLookup = useBookingAddressLookup(address, addressLookupOpen)
   const [description, setDescription] = useState('')
@@ -352,12 +352,6 @@ function CustomerBookingEntrySurfaceRoute() {
   const [customScheduleTimeInput, setCustomScheduleTimeInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const scheduleRuntimeNow = useBookingScheduleRuntimeNow()
-  useEffect(() => {
-    draftSubmissionActiveRef.current = true
-    return () => {
-      draftSubmissionActiveRef.current = false
-    }
-  }, [])
   useEffect(() => {
     if (!legacyMediaScreenRequested) return
     router.replace(customerKaelWorkRoute as never)
@@ -448,7 +442,7 @@ function CustomerBookingEntrySurfaceRoute() {
     setError(null)
   }
 
-  const submitDraft = async () => {
+  const submitDraft = () => {
     if (!selectedService) {
       setError(language === 'vi' ? 'Chọn dịch vụ trước khi gửi Kael.' : 'Choose a service before sending to Kael.')
       return
@@ -494,40 +488,27 @@ function CustomerBookingEntrySurfaceRoute() {
     const normalizedDistrict = addressDistrictLabel.current ?? extractKnownDistrictLabel(normalizedAddress) ?? normalizedAddress
     if (submitDraftInFlightRef.current) return
     submitDraftInFlightRef.current = true
-    try {
-      // The post-persistence lifecycle check prevents an old account or unmounted screen from resetting or navigating.
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      await setPendingKaelChatDraft(session.user.id, {
-        addressLabel: normalizedAddress,
-        clientRequestId: generateClientRequestId(),
-        createdAt: new Date().toISOString(),
-        description: draftDescription,
-        districtLabel: normalizedDistrict,
-        locale: language,
-        message,
-        problemChips: draftProblemChips,
-        profileId,
-        scheduleMode: 'scheduled',
-        scheduledAt: scheduleDraft.scheduledAt,
-        scheduleWindow: scheduleDraft.scheduleWindow,
-        serviceType: draftServiceType,
-        source: 'booking',
-      })
-      if (!draftSubmissionActiveRef.current) {
-        await clearPendingKaelChatDraft(session.user.id)
-        return
-      }
-      resetBookingBoard()
-      router.replace(customerKaelWorkRoute as never)
-    } catch {
-      if (draftSubmissionActiveRef.current) {
-        setError(language === 'vi'
-          ? 'Chưa thể lưu phiếu để gửi Kael. Vui lòng thử lại.'
-          : 'Could not save the intake for Kael. Please try again.')
-      }
-    } finally {
-      submitDraftInFlightRef.current = false
-    }
+    const clientRequestId = generateClientRequestId()
+    // Pending intake is memory-first: the destination can hydrate immediately while
+    // the same owner-scoped envelope continues to durable storage in the background.
+    void setPendingKaelChatDraft(session.user.id, {
+      addressLabel: normalizedAddress,
+      clientRequestId,
+      createdAt: new Date().toISOString(),
+      description: draftDescription,
+      districtLabel: normalizedDistrict,
+      locale: language,
+      message,
+      problemChips: draftProblemChips,
+      profileId,
+      scheduleMode: 'scheduled',
+      scheduledAt: scheduleDraft.scheduledAt,
+      scheduleWindow: scheduleDraft.scheduleWindow,
+      serviceType: draftServiceType,
+      source: 'booking',
+    }).catch(() => undefined)
+    resetBookingBoard()
+    router.replace(customerKaelWorkRouteForHandoff(clientRequestId) as never)
   }
   const createDraftLabel = copy.createDraft
 
@@ -821,8 +802,20 @@ export function CustomerProfileSurface() {
   )
 }
 
+type CustomerKaelRouteParams = {
+  handoff?: string | string[]
+  jobId?: string | string[]
+  mode?: string | string[]
+  screen?: string | string[]
+  sessionId?: string | string[]
+}
+
 export function CustomerKaelSurface() {
-  const params = useLocalSearchParams<{ jobId?: string | string[]; mode?: string | string[]; screen?: string | string[]; sessionId?: string | string[] }>()
+  const params = useLocalSearchParams<CustomerKaelRouteParams>()
+  return <CustomerKaelRuntimeSurface params={params} />
+}
+
+function CustomerKaelRuntimeSurface({ params }: { params: CustomerKaelRouteParams }) {
   const workflow = useFrontendWorkflow()
   const { session } = useAuth()
   const routeModeParam = firstParam(params.mode)
@@ -838,6 +831,7 @@ export function CustomerKaelSurface() {
   const stateScopeKey = customerKaelStateScopeKey({
     accountId: session?.user.id ?? null,
     caseId: mode === 'case' ? routeJobId ?? deal?.id ?? null : null,
+    handoffId: firstParam(params.handoff) ?? null,
     mode,
     sessionId: firstParam(params.sessionId) ?? null,
   })

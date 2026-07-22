@@ -2,6 +2,7 @@ import type { UserRole } from "../../../_shared/domain.ts";
 import { matchCaseWorkResourceRoute, type CaseWorkResourceRoute } from "./case-work-resource-routes.ts";
 import { matchWorkerKaelChatRoute, type WorkerKaelChatRoute } from "./worker-kael-chat-routes.ts";
 import { matchCustomerKaelConversationRoute, type CustomerKaelConversationRoute } from "./customer-kael-conversation-routes.ts";
+import { matchStagingPaymentRoute } from "./staging-payment-routes.ts";
 
 export type PublicRoute = { kind: "kael.charter"; method: "GET"; public: true };
 
@@ -167,6 +168,18 @@ export type Route =
   }
   | {
     kind: "jobs.confirmCompletion";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "jobs.paymentIntent";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "jobs.stagingPaymentConfirm";
     method: "POST";
     jobId: string;
     roles: UserRole[];
@@ -680,6 +693,8 @@ export function matchRoute(request: Request): Route | null {
         roles: ["customer", "admin"],
       };
     }
+    const stagingPaymentRoute = matchStagingPaymentRoute(action, method, jobId);
+    if (stagingPaymentRoute) return stagingPaymentRoute;
     if (action === "review" && method === "POST") {
       return {
         kind: "jobs.review",

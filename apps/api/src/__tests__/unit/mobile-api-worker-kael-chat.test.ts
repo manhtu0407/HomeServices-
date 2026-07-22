@@ -440,6 +440,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
 
   it('tries the fallback provider when the primary worker-assist call times out', async () => {
     const attemptedProviders: string[] = []
+    const attemptedModels: string[] = []
     const attemptedTimeouts: Array<number | undefined> = []
 
     const answer = await runWorkerAssist({
@@ -450,6 +451,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       spendGate: allowKaelSpendForTest('worker-1'),
       callAI: async (request) => {
         attemptedProviders.push(request.provider)
+        attemptedModels.push(request.model)
         attemptedTimeouts.push(request.timeoutMs)
         if (request.provider === 'deepseek') {
           return {
@@ -472,7 +474,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       },
     })
 
-    expect(attemptedProviders).toEqual(['deepseek', 'anthropic'])
+    expect(attemptedProviders).toEqual(['deepseek', 'deepseek', 'anthropic'])
+    expect(attemptedModels).toEqual(['deepseek-v4-flash', 'deepseek-v4-pro', 'claude-sonnet-5'])
     expect(Math.min(...attemptedTimeouts.map((value) => value ?? 0))).toBeGreaterThanOrEqual(4000)
     expect(answer).toMatchObject({
       fallback_used: false,
@@ -481,6 +484,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       cost_usd: 0.00042,
       provider_attempts: [
         expect.objectContaining({ provider: 'deepseek', role: 'primary', result: 'error', code: 'TIMEOUT' }),
+        expect.objectContaining({ provider: 'deepseek', model: 'deepseek-v4-pro', role: 'fallback', result: 'error', code: 'TIMEOUT' }),
         expect.objectContaining({ provider: 'anthropic', role: 'fallback', result: 'success' }),
       ],
     })

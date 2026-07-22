@@ -63,8 +63,8 @@ import {
   defaultCustomerCancellationInput,
   getRemoteJobId,
   hasStaleRemoteBroadcast,
+  isWorkerCurrentJobStatus,
   isStaleBroadcastError,
-  isWorkerOperationalJobStatus,
   jobCreateClientRequestFingerprint,
   mergeCustomerKaelMemoryPermission,
   readCustomerKaelMemoryPermission,
@@ -120,7 +120,7 @@ type FrontendWorkflowActions = {
     mediaItems?: LocalMediaUploadDraft[],
   ) => Promise<{ jobId: string; mediaError?: string } | false | null>
   hydrateRemoteJobById: (jobId: string) => Promise<boolean>
-  confirmRemoteSearch: () => Promise<boolean>
+  confirmRemoteSearch: (jobIdOverride?: string) => Promise<boolean>
   cancelRemoteJob: () => Promise<boolean>
   refreshCurrentJob: () => Promise<boolean>
   workerRefresh: () => Promise<boolean>
@@ -138,6 +138,8 @@ type FrontendWorkflowActions = {
   workerSubmitRegistration: (input: WorkerRegisterInput) => Promise<boolean>
   decideScopeChange: (scopeChangeId: string, input: CustomerScopeDecisionInput) => Promise<boolean>
   customerConfirmCompletion: () => Promise<boolean>
+  createPaymentIntent: () => Promise<boolean>
+  confirmStagingPayment: () => Promise<boolean>
   authorizeApartmentAccess: () => Promise<boolean>
   submitReview: (input: Omit<ReviewInput, 'job_id'>) => Promise<boolean>
   workerUpdateAvailability: (isAvailable: boolean) => Promise<boolean>
@@ -456,8 +458,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return { jobId: created.data.job_id }
   }, [language, setRemoteError])
 
-  const confirmRemoteSearch = useCallback(async () => {
-    const jobId = getRemoteJobId(stateRef.current)
+  const confirmRemoteSearch = useCallback(async (jobIdOverride?: string) => {
+    const jobId = jobIdOverride ?? getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Chưa có yêu cầu để tìm thợ')
     const confirmed = await jobService.confirmSearch(jobId)
     if (!confirmed.success) return setRemoteError(confirmed.error)
@@ -533,14 +535,66 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRefreshRequestIdRef.current = workerRefreshRequestId
     const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
+    const profileRequest = workerService.getProfile()
+    const earningsRequest = workerService.getEarnings(currentWorkerMonthRange())
+    const performanceInsightsRequest = workerService.getPerformanceInsights()
+    const broadcastsRequest = workerService.getBroadcasts()
+    const jobsRequest = workerService.getJobs()
+
+    // Incoming work is time-sensitive. Hydrate it as soon as its dedicated
+    // request returns instead of waiting for profile and reporting data.
+    // react-doctor-disable-next-line react-doctor/async-defer-await
+    const broadcasts = await broadcastsRequest
+    if (!isCurrentWorkerRefresh()) return true
+    const nextBroadcast = broadcasts.success ? broadcasts.data.broadcasts[0] : undefined
+    if (nextBroadcast) {
+      dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
+    }
+
+    // Job state drives routing and must not wait for profile or reporting data.
+    // react-doctor-disable-next-line react-doctor/async-defer-await
+    const jobs = await jobsRequest
+    if (!isCurrentWorkerRefresh()) return true
+    let workflowError = broadcasts.success ? null : broadcasts.error
+    if (jobs.success) {
+      setWorkerRemoteState((current) => {
+        const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
+        if (current.sessionUserId === sessionUserId && current.jobsHydrated && sameWorkerJobs(currentJobs, jobs.data.jobs)) return current
+        return {
+          earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
+          jobs: jobs.data.jobs,
+          jobsHydrated: true,
+          performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
+          profile: current.sessionUserId === sessionUserId ? current.profile : null,
+          sessionUserId,
+        }
+      })
+      const activeJob = jobs.data.jobs.find((job) => isWorkerCurrentJobStatus(job.status))
+      const currentJobId = getRemoteJobId(stateRef.current)
+      const currentJob = currentJobId ? jobs.data.jobs.find((job) => job.id === currentJobId) : undefined
+      if (activeJob) {
+        dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(activeJob), workerGate: 'remote_backend' })
+      } else if (!nextBroadcast && currentJob) {
+        dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(currentJob), workerGate: 'remote_backend' })
+      } else if (
+        !nextBroadcast
+        && stateRef.current.workerGate === 'remote_backend'
+        && stateRef.current.deal?.backendStatus === 'worker_candidate_pending'
+      ) {
+        dispatch({ type: 'reset_workflow' })
+      } else if (!nextBroadcast && hasStaleRemoteBroadcast(stateRef.current)) {
+        dispatch({ type: 'mark_remote_broadcast_expired' })
+      }
+    } else if (!nextBroadcast) {
+      workflowError = jobs.error
+    }
+
     // The post-I/O generation check prevents an older refresh from committing after a newer refresh starts.
     // react-doctor-disable-next-line react-doctor/async-defer-await
-    const [profile, earnings, performanceInsights, broadcasts, jobs] = await Promise.all([
-      workerService.getProfile(),
-      workerService.getEarnings(currentWorkerMonthRange()),
-      workerService.getPerformanceInsights(),
-      workerService.getBroadcasts(),
-      workerService.getJobs(),
+    const [profile, earnings, performanceInsights] = await Promise.all([
+      profileRequest,
+      earningsRequest,
+      performanceInsightsRequest,
     ])
     if (!isCurrentWorkerRefresh()) return true
     if (!profile.success) return setRemoteError(profile.error)
@@ -577,48 +631,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
             sessionUserId,
           }
     })
-
-    if (!broadcasts.success) return setRemoteError(broadcasts.error)
-    const nextBroadcast = broadcasts.data.broadcasts[0]
-
-    if (!jobs.success) {
-      if (nextBroadcast) {
-        dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
-        return true
-      }
-      return setRemoteError(jobs.error)
-    }
-    setWorkerRemoteState((current) => {
-      const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
-      if (current.sessionUserId === sessionUserId && current.jobsHydrated && sameWorkerJobs(currentJobs, jobs.data.jobs)) return current
-      return {
-        earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
-        jobs: jobs.data.jobs,
-        jobsHydrated: true,
-        performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
-        profile: current.sessionUserId === sessionUserId ? current.profile : null,
-        sessionUserId,
-      }
-    })
-    const activeJob = jobs.data.jobs.find((job) => isWorkerOperationalJobStatus(job.status))
-    if (activeJob) {
-      dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(activeJob), workerGate: 'remote_backend' })
-      return true
-    }
-    if (nextBroadcast) {
-      dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
-      return true
-    }
-    const currentJobId = getRemoteJobId(stateRef.current)
-    const currentJob = currentJobId ? jobs.data.jobs.find((job) => job.id === currentJobId) : undefined
-    if (currentJob) {
-      dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(currentJob), workerGate: 'remote_backend' })
-      return true
-    }
-
-    if (hasStaleRemoteBroadcast(stateRef.current)) {
-      dispatch({ type: 'mark_remote_broadcast_expired' })
-    }
+    if (workflowError) return setRemoteError(workflowError)
     return true
   }, [role, sessionUserId, setRemoteError])
 
@@ -874,6 +887,24 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [refreshCurrentJob, setRemoteError])
 
+  const createPaymentIntent = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để tạo thanh toán')
+    const created = await jobService.createPaymentIntent(jobId)
+    if (!created.success) return setRemoteError(created.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError])
+
+  const confirmStagingPayment = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để xác nhận thanh toán Staging')
+    const confirmed = await jobService.confirmStagingPayment(jobId)
+    if (!confirmed.success) return setRemoteError(confirmed.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError])
+
   // Releases the exact unit after the worker's lobby check-in.
   const authorizeApartmentAccess = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
@@ -1025,6 +1056,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerSubmitRegistration,
     decideScopeChange,
     customerConfirmCompletion,
+    createPaymentIntent,
+    confirmStagingPayment,
     authorizeApartmentAccess,
     submitReview,
     workerUpdateAvailability,
@@ -1045,6 +1078,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     confirmRemoteSearch,
     createRemoteJobFromDraft,
     customerConfirmCompletion,
+    createPaymentIntent,
+    confirmStagingPayment,
     decideScopeChange,
     decideWorkerCandidate,
     setWorkerCandidateFavorite,
@@ -1202,12 +1237,16 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const customerStatus = state.deal?.status
 
   useEffect(() => {
-    if (!remoteJobId || customerStatus !== 'worker_candidate_pending') {
+    if (
+      (role !== 'customer' && role !== 'admin') ||
+      !remoteJobId ||
+      customerStatus !== 'worker_candidate_pending'
+    ) {
       setCustomerWorkerCandidateState(initialCustomerWorkerCandidateState)
       return
     }
     void refreshWorkerCandidate(remoteJobId)
-  }, [customerStatus, refreshWorkerCandidate, remoteJobId])
+  }, [customerStatus, refreshWorkerCandidate, remoteJobId, role])
 
   const customerTimelineActive =
     (role === 'customer' || role === 'admin') &&

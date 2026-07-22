@@ -137,11 +137,9 @@ export function serializeKaelSession(
 export function serializeKaelEstimate(value: unknown, cardV3?: unknown) {
   const estimate = asRecord(value);
   if (Object.keys(estimate).length === 0) return null;
-  // Surface the honesty fields the engine already computed in
-  // estimate_card_v3 (output-pipeline forces needs_inspection/price_source when
-  // confidence is low) so the customer estimate card can show "cần kiểm tra
-  // hiện trường" instead of an over-confident price. When no card is present
-  // (older turns / non-estimate), needs_inspection is honestly false.
+  // Surface the honesty fields already computed in estimate_card_v3 so the
+  // customer sees a real inspection requirement without treating low price
+  // confidence alone as a workflow blocker. Older turns default to false.
   const cardEnvelope = asRecord(cardV3);
   const nestedCard = asRecord(cardEnvelope.card);
   const card = Object.keys(nestedCard).length > 0 ? nestedCard : cardEnvelope;

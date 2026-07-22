@@ -9,6 +9,9 @@ import {
 const API_BASE_URL = mobileRuntimeConfig.apiBaseUrl.replace(/\/+$/, '')
 const SUPABASE_PUBLISHABLE_KEY = mobileRuntimeConfig.supabasePublishableKey
 const TIMEOUT_MS = 15_000
+const KAEL_CHAT_CREATE_TIMEOUT_MS = 30_000
+const KAEL_CHAT_CONFIRM_TIMEOUT_MS = 30_000
+const CUSTOMER_KAEL_TURN_TIMEOUT_MS = 30_000
 const MAX_RETRIES = 2
 const BASE_RETRY_DELAY_MS = 500
 const MAX_RETRY_DELAY_MS = 10_000
@@ -17,6 +20,8 @@ const MAX_API_ERROR_LENGTH = 512
 const API_ERROR_CODE_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
 const API_ERROR_CONTROL_PATTERN = /[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF\uFFF9-\uFFFB]/u
 const MOBILE_API_BASE_PATH = /(?:\/functions\/v1)?\/mobile-api$/i
+const KAEL_CHAT_CONFIRM_PATH = /^\/kael\/chat\/[^/]+\/confirm$/
+const CUSTOMER_KAEL_TURN_PATH = /^\/me\/kael\/conversations\/[^/]+\/turn$/
 
 export type ApiResult<T> =
   | { success: true; data: T; status: number }
@@ -79,10 +84,11 @@ async function request<T>(
   }
 
   const retryBudget = isRetrySafeRequest(method, path, body) ? MAX_RETRIES : 0
+  const timeoutMs = requestTimeoutMs(method, path)
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
     let responseStatus = 0
 
     try {
@@ -127,7 +133,7 @@ async function request<T>(
 
       return { success: true, data: json as T, status: response.status }
     } catch (err) {
-      if (attempt < retryBudget && shouldRetryError(err)) {
+      if (attempt < retryBudget && shouldRetryRequestError(err, method, path)) {
         await waitForRetry(method, path, attempt, isAbortError(err) ? 'TIMEOUT' : 'NETWORK_ERROR')
         continue
       }
@@ -251,6 +257,7 @@ function isRetrySafeRequest(method: string, path: string, body: unknown) {
     (path === '/jobs' || path === '/kael/chat') &&
     hasClientRequestId(body)
   ) return true
+  if (method === 'POST' && KAEL_CHAT_CONFIRM_PATH.test(path)) return true
   if (
     method === 'POST' &&
     /^\/jobs\/[^/]+\/scope-change$/.test(path) &&
@@ -328,6 +335,23 @@ function shouldRetryResponse(status: number) {
 
 function shouldRetryError(err: unknown) {
   return isAbortError(err) || err instanceof TypeError
+}
+
+function shouldRetryRequestError(err: unknown, method: string, path: string) {
+  if (
+    isAbortError(err) &&
+    method === 'POST' &&
+    (path === '/kael/chat' || KAEL_CHAT_CONFIRM_PATH.test(path))
+  ) return false
+  return shouldRetryError(err)
+}
+
+function requestTimeoutMs(method: string, path: string) {
+  if (method !== 'POST') return TIMEOUT_MS
+  if (path === '/kael/chat') return KAEL_CHAT_CREATE_TIMEOUT_MS
+  if (KAEL_CHAT_CONFIRM_PATH.test(path)) return KAEL_CHAT_CONFIRM_TIMEOUT_MS
+  if (CUSTOMER_KAEL_TURN_PATH.test(path)) return CUSTOMER_KAEL_TURN_TIMEOUT_MS
+  return TIMEOUT_MS
 }
 
 async function waitForRetry(method: string, path: string, attempt: number, reason: string) {

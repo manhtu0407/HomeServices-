@@ -29,14 +29,14 @@ jest.mock('@/lib/services', () => ({
   },
 }))
 
-function evidenceHarness() {
+function evidenceHarness(agenticEvidenceReason = 'Không có ảnh hiện trạng lúc này') {
   const caseUi = {
     clearCaseEvidenceDraft: jest.fn(),
     setSubmittingCaseEvidence: jest.fn(),
     submittingCaseEvidence: false,
   } as any
   const chatUi = {
-    agenticEvidenceReason: '',
+    agenticEvidenceReason,
     setAgenticEvidenceReason: jest.fn(),
     setAgenticEvidenceRejectOpen: jest.fn(),
     setSubmittingAgenticEvidence: jest.fn(),
@@ -130,6 +130,20 @@ describe('customer Kael evidence concurrency', () => {
     expect(mockSubmitEvidence).toHaveBeenCalledTimes(2)
   })
 
+  it('requires a short reason before skipping an optional evidence request', async () => {
+    const harness = evidenceHarness('   ')
+    const { result } = renderHook(() => useCustomerKaelEvidenceActions(harness.input))
+
+    await act(async () => {
+      await result.current.submitAgenticEvidence('skipped')
+    })
+
+    expect(mockSubmitEvidence).not.toHaveBeenCalled()
+    expect(harness.conversation.setError).toHaveBeenCalledWith(
+      'Nhập lý do ngắn trước khi tiếp tục không có bằng chứng.',
+    )
+  })
+
   it('starts one case evidence refresh per job and releases the lane after rejection', async () => {
     let rejectHydration!: (reason?: unknown) => void
     mockHydrateRemoteJobById.mockImplementationOnce(() => new Promise((_, reject) => {
@@ -176,5 +190,31 @@ describe('customer Kael evidence concurrency', () => {
     })
     expect(mockRequestMediaLibraryPermissions).toHaveBeenCalledTimes(2)
     expect(mockLaunchImageLibrary).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the case composer media picker available after the evidence gate closes', async () => {
+    mockLaunchImageLibrary.mockResolvedValueOnce({
+      assets: [{
+        duration: null,
+        fileName: 'outlet-evidence.png',
+        fileSize: 2048,
+        mimeType: 'image/png',
+        type: 'image',
+        uri: 'file:///outlet-evidence.png',
+      }],
+      canceled: false,
+    })
+    const harness = evidenceHarness()
+    harness.input.agenticEvidenceGateActive = false
+    harness.input.caseEvidenceGateActive = false
+    const { result } = renderHook(() => useCustomerKaelEvidenceActions(harness.input))
+
+    await act(async () => {
+      await result.current.pickComposerMedia()
+    })
+
+    expect(mockRequestMediaLibraryPermissions).toHaveBeenCalledTimes(1)
+    expect(mockLaunchImageLibrary).toHaveBeenCalledTimes(1)
+    expect(harness.conversation.setComposerMediaDrafts).toHaveBeenCalledTimes(1)
   })
 })

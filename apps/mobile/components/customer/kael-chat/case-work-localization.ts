@@ -43,8 +43,8 @@ export function localizedCaseWorkEvidencePrompt(input: {
 }) {
   if (input.blockers.includes('handyman_visual_evidence')) {
     return input.language === 'vi'
-      ? 'Bạn gửi một ảnh thấy rõ vật cần sửa/lắp và vị trí thi công để Kael kiểm tra bề mặt, kích thước và dụng cụ cần chuẩn bị.'
-      : 'Send one clear photo of the item and the installation area so Kael can check the surface, size, and tools needed.'
+      ? 'Gửi ảnh rõ vật cần sửa/lắp và vị trí thi công để Kael kiểm tra bề mặt, kích thước, dụng cụ cần dùng.'
+      : 'Send a clear photo of the item and work area so Kael can check the surface, size, and tools needed.'
   }
   if (input.blockers.includes('upholstery_condition_visual_evidence')) {
     return input.language === 'vi'

@@ -52,6 +52,7 @@ import type {
   JobMediaUploadResponse,
 } from "../../../_shared/job-media-contract.ts";
 import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
+import type { EdgeStagingPaymentResponse } from "../services/staging-payment.service.ts";
 import type {
   PriceSynthesisAbCaseInput,
   PriceSynthesisAbEvaluation,
@@ -534,6 +535,14 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     jobId: string,
   ): Promise<EdgeConfirmCompletionResponse>;
+  createPaymentIntent(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeStagingPaymentResponse>;
+  confirmStagingPayment(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeStagingPaymentResponse>;
   submitReview(
     ctx: MobileApiContext,
     jobId: string,

@@ -45,6 +45,30 @@ describe('mobile-api Kael P4 output pipeline', () => {
     })
   })
 
+  it('does not invent an inspection blocker from low price confidence alone', () => {
+    const output = buildEstimateCardOutput({
+      estimate: {
+        service_type: 'electrical',
+        problem_category: 'outlet_or_switch_broken',
+        problem_summary: 'Một ổ cắm âm tường bị xém, cầu dao nhánh đã ngắt.',
+        complexity: 'medium',
+        price_min: 300000,
+        price_max: 700000,
+        confidence: 0.4,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+        needs_inspection: false,
+      },
+      priceSource: 'baseline_only',
+      baselineUsed: 'electrical:outlet_or_switch_broken:medium',
+    })
+
+    expect(output.card.confidence).toBe('low')
+    expect(output.card.needs_inspection).toBe(false)
+    expect(output.card.price_source).toBe('baseline_only')
+    expect(output.artifact_proposal.missing_fields).toEqual([])
+  })
+
   it('marks missing inspection information without allowing AI to transition workflow', () => {
     const output = buildEstimateCardOutput({
       estimate: {

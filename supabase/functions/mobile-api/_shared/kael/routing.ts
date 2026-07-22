@@ -5,6 +5,7 @@ import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
 export type ProviderChoice = ProviderRoute & {
   readonly purpose: KaelPurpose;
   readonly role: "primary" | "fallback";
+  readonly fallbackKind?: "model" | "provider";
   readonly score: number;
   readonly costCeilingUsd: number;
   readonly latencyBudgetMs: number;
@@ -19,6 +20,20 @@ export type ChooseProviderOptions = {
 };
 
 export type CircuitAwareProviderOptions = Omit<ChooseProviderOptions, "isCircuitOpen">;
+
+// Account/provider failures cannot be repaired by changing models on the same provider.
+const PROVIDER_WIDE_FAILURE_CODES = new Set([
+  "HTTP_401",
+  "HTTP_402",
+  "HTTP_403",
+  "HTTP_429",
+  "KEY_MISSING",
+  "OPEN_CIRCUIT",
+]);
+
+export function shouldSkipProviderSiblingModels(errorCode: string): boolean {
+  return PROVIDER_WIDE_FAILURE_CODES.has(errorCode);
+}
 
 export function chooseProvider(
   purposeInput: string,
@@ -59,11 +74,23 @@ export function providerCandidatesForPurpose(
       latencyBudgetMs: config.latencyBudgetMs,
     },
   ];
+  if (config.modelFallback) {
+    routes.push({
+      ...config.modelFallback,
+      purpose,
+      role: "fallback",
+      fallbackKind: "model",
+      score: 90,
+      costCeilingUsd: config.costCeilingUsd,
+      latencyBudgetMs: config.latencyBudgetMs,
+    });
+  }
   if (config.fallback) {
     routes.push({
       ...config.fallback,
       purpose,
       role: "fallback",
+      fallbackKind: "provider",
       score: 80,
       costCeilingUsd: config.costCeilingUsd,
       latencyBudgetMs: config.latencyBudgetMs,

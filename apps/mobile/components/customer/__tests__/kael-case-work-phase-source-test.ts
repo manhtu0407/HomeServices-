@@ -11,9 +11,11 @@ const candidateNode = readFileSync(join(mobileRoot, 'components/customer/v21/cus
 const kaelFeature = [presentation, content, controller, evidenceActions, caseThreadNode, candidateNode].join('\n')
 const chatView = readFileSync(join(mobileRoot, 'components/customer/v21/chat-stateful-surfaces.tsx'), 'utf8')
 const evidenceView = readFileSync(join(mobileRoot, 'components/customer/v21/agentic-evidence-stateful-surfaces.tsx'), 'utf8')
-const candidateCard = readFileSync(join(mobileRoot, 'components/customer/kael-chat/worker-candidate-review-card.tsx'), 'utf8')
-const completionCard = readFileSync(join(mobileRoot, 'components/customer/kael-chat/completion-review-card.tsx'), 'utf8')
-const caseModel = readFileSync(join(mobileRoot, 'components/customer/v21/case-work-display-model.ts'), 'utf8')
+const estimateResponse = readFileSync(join(mobileRoot, 'components/customer/v21/agentic-chat-estimate-response.tsx'), 'utf8')
+const candidateResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/worker-candidate-review-response.tsx'), 'utf8')
+const completionResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/completion-review-response.tsx'), 'utf8')
+const responseModel = readFileSync(join(mobileRoot, 'components/customer/v21/case-work-response-model.ts'), 'utf8')
+const caseThread = readFileSync(join(mobileRoot, 'components/customer/v21/chat-case-thread-stateful-surfaces.tsx'), 'utf8')
 
 describe('Kael Case Work phase-gated mobile wiring', () => {
   it('starts analysis after Basic Intake and derives evidence UI from the server artifact', () => {
@@ -23,31 +25,44 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
     expect(kaelFeature).not.toMatch(/pendingDraft[\s\S]{0,1600}defer_analysis:\s*true/)
   })
 
-  it('keeps analysis media and editable on-device voice available without revealing later phases', () => {
+  it('formats only the pending Basic Intake bubble for readable customer display', () => {
+    expect(chatView).toContain('customerVisibleIntakeSummaryText')
+    expect(chatView).toContain('text={customerVisibleIntakeSummaryText(pendingDraftMessage, language)}')
+    expect(chatView).toContain("text={turn.text_content ?? ''}")
+  })
+
+  it('keeps analysis media and editable voice inside the evidence response without revealing later phases', () => {
     expect(chatView).toContain('analysisEvidenceNode')
-    expect(chatView).toContain('composerVoiceNode')
+    expect(chatView).not.toContain('composerVoiceNode')
+    expect(content).not.toContain('<OnDeviceVoiceTranscript')
     expect(chatView).not.toContain('debugRevealAllPhases')
   })
 
-  it('renders the exact server evidence request and prevents skipping mandatory visual proof', () => {
+  it('renders the exact server evidence request and follows its mandatory or optional policy', () => {
     expect(presentation).toContain("artifactNextAction?.evidence_kind")
+    expect(presentation).toContain('artifactNextAction?.required !== false')
+    expect(presentation).toContain("typeof artifactNextAction?.prompt === 'string'")
     expect(presentation).toContain('localizedCaseWorkEvidencePrompt({')
     expect(presentation).toContain('diagnosisScope?.quote_blockers')
-    expect(content).toContain('allowSkip={false}')
+    expect(content).toContain('allowSkip={!presentation.serverEvidenceRequired}')
     expect(evidenceView).toContain('allowSkip')
     expect(evidenceView).toContain('{allowSkip ? (')
+    expect(evidenceView).toContain("'Bổ sung hiện trạng nếu thuận tiện'")
+    expect(evidenceView).toContain("'Bỏ qua'")
+    expect(evidenceView).toContain('const canSkip = rejectReason.trim().length > 0 && !busy')
+    expect(evidenceView).toContain('disabled={!canSkip}')
   })
 
   it('shows inspection/source honesty from estimate_card.v3 instead of confidence-only copy', () => {
-    expect(chatView).toContain('estimate.needs_inspection === true')
-    expect(chatView).toContain('estimate.needs_inspection_reason')
-    expect(chatView).toContain('estimate.price_source')
+    expect(estimateResponse).toContain('estimate.needs_inspection === true')
+    expect(estimateResponse).toContain('estimate.needs_inspection_reason')
+    expect(estimateResponse).toContain('estimate.price_source')
     expect(presentation).toContain('chatEstimate.needs_inspection !== true')
   })
 
   it('shows a structured no-fake-price review state when the server blocks quote readiness', () => {
     expect(presentation).toContain("artifactNextAction?.kind === 'escalate'")
-    expect(content).toContain('<QuoteReadinessReviewCard')
+    expect(content).toContain('<QuoteReadinessReviewResponse')
     expect(content).toContain('safetyMessages={presentation.serverSafetyMessages}')
   })
 
@@ -55,11 +70,19 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
     expect(presentation).toContain("chat?.session.case_phase === 'offer_review'")
     expect(content).toContain('agenticEstimateNode={presentation.offerReviewActive &&')
     expect(caseThreadNode).toContain("deal.status === 'completed_by_worker'")
-    expect(completionCard).toContain('customer-v21-completion-confirm')
-    expect(caseModel).toContain("deal.status !== 'completed_by_worker'")
-    expect(caseModel).toContain("['payment_pending', 'paid', 'reviewed'].includes(deal.status)")
-    expect(caseModel).not.toContain("['confirmed_by_customer', 'reviewed'].includes(deal.status)")
-    expect(caseModel).not.toContain("focus === 'payment'")
+    expect(completionResponse).toContain('customer-v21-completion-confirm')
+    expect(responseModel).toContain("customer_confirmed_completion: 'payment'")
+    expect(responseModel).toContain("payment_pending: 'payment'")
+    expect(responseModel).toContain("paid: 'review'")
+    expect(caseThread).toContain("phase === 'customer_confirmed_completion' && stagingPaymentRailEnabled")
+    expect(caseThread).toContain("phase === 'payment_pending' && deal.payment?.provider === 'staging_simulator' && stagingPaymentRailEnabled")
+    expect(caseThread).toContain('customer-v21-case-staging-payment-start')
+    expect(caseThread).toContain('customer-v21-case-staging-payment-confirm')
+    expect(caseThread).not.toContain("focus === 'payment'")
+  })
+
+  it('shows scope controls only after the authoritative customer-decision state', () => {
+    expect(caseThread).toContain('canCustomerDecideScopeChange(deal.scopeChange)')
   })
 
   it('does not re-enter a client-invented evidence gate after matching starts', () => {
@@ -69,10 +92,12 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
   it('reveals the safe worker card only at the server candidate-review phase', () => {
     expect(controller).toContain("deal?.status === 'worker_candidate_pending'")
     expect(candidateNode).toContain("if (mode !== 'case' || !candidateJobId) return null")
-    expect(content).toContain('workerCandidateNode={<CustomerWorkerCandidateNode controller={controller} />}')
+    expect(content).toContain('const workerCandidateNode = useMemo(')
+    expect(content).toContain('<CustomerWorkerCandidateNode controller={controller} />')
+    expect(content).toContain('workerCandidateNode={workerCandidateNode}')
     expect(content).not.toContain('workerCandidateNode={candidateJobId ?')
-    expect(candidateCard).toContain('candidate.rating !== null && candidate.total_jobs > 0')
-    expect(candidateCard).toContain('Địa chỉ chi tiết vẫn được khóa')
-    expect(candidateCard).not.toMatch(/\b(?:phone|cccd|bank_account|address_unit|eta)\b/i)
+    expect(candidateResponse).toContain('candidate.rating !== null && candidate.total_jobs > 0')
+    expect(candidateResponse).toContain('Địa chỉ chi tiết vẫn được khóa')
+    expect(candidateResponse).not.toMatch(/\b(?:phone|cccd|bank_account|address_unit|eta)\b/i)
   })
 })

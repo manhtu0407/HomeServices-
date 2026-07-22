@@ -147,7 +147,7 @@ describe('Kael Phase 4 agentic harness guardrails', () => {
       expect(result.trace.fallback.used).toBe(scenario.expectedFallback)
       expect(result.trace.safe_metadata).toEqual({
         scenario_id: scenario.id,
-        route_count: scenario.expectedProviderRouting.length,
+        route_count: scenario.expectedModelRouting.length,
       })
       expect(JSON.stringify(result.trace)).not.toMatch(/0901234567|sk-|pplx-|raw_text|message|description/i)
     }
@@ -155,11 +155,11 @@ describe('Kael Phase 4 agentic harness guardrails', () => {
 
   it('checks P9-P13 provider routing against the real circuit-aware route helper', () => {
     for (const scenario of KAEL_AGENTIC_GOLDEN_SCENARIOS) {
-      const providers = circuitAwareProviderCandidatesForPurpose(scenario.kaelPurpose)
-        .map((route) => route.provider)
-      expect(providers).toEqual(scenario.expectedProviderRouting)
+      const routes = circuitAwareProviderCandidatesForPurpose(scenario.kaelPurpose)
+        .map(({ provider, model }) => ({ provider, model }))
+      expect(routes).toEqual(scenario.expectedModelRouting)
 
-      const primary = scenario.expectedProviderRouting[0]
+      const primary = scenario.expectedModelRouting[0]?.provider
       if (!primary) continue
       KAEL_CIRCUIT_BREAKER.recordFailure({
         purpose: scenario.kaelPurpose,
@@ -167,9 +167,11 @@ describe('Kael Phase 4 agentic harness guardrails', () => {
         errorCode: 'HTTP_402',
       })
       const afterOpen = circuitAwareProviderCandidatesForPurpose(scenario.kaelPurpose)
-        .map((route) => route.provider)
-      expect(afterOpen).not.toContain(primary)
-      expect(afterOpen).toEqual(scenario.expectedProviderRouting.slice(1))
+        .map(({ provider, model }) => ({ provider, model }))
+      expect(afterOpen.map((route) => route.provider)).not.toContain(primary)
+      expect(afterOpen).toEqual(
+        scenario.expectedModelRouting.filter((route) => route.provider !== primary),
+      )
       KAEL_CIRCUIT_BREAKER.reset()
     }
   })

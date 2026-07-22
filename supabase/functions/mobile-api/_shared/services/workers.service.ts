@@ -564,22 +564,59 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const WORKER_JOB_LIST_COLUMNS =
+  "id, display_code, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, payment_status, payment_provider, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
+
 export async function listWorkerJobs(ctx: MobileApiContext) {
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx)
+  const client = db(ctx);
+  const assignedJobsRequest = dbQuery<Array<Record<string, unknown>>>(
+    client
       .from("jobs")
-      .select(
-        "id, display_code, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, payment_status, payment_provider, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
-      )
+      .select(WORKER_JOB_LIST_COLUMNS)
       .eq("worker_id", ctx.user.id)
       .order("created_at", { ascending: false })
       .limit(100),
   );
-  if (result.error) {
+  const candidateJobsRequest = dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("job_worker_candidates")
+      .select(`job_id, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)
+      .eq("worker_id", ctx.user.id)
+      .eq("status", "proposed")
+      .eq("jobs.status", "worker_candidate_pending")
+      .gt("expires_at", new Date().toISOString())
+      .order("proposed_at", { ascending: false })
+      .limit(20),
+  );
+  const [assignedJobs, candidateJobs] = await Promise.all([
+    assignedJobsRequest,
+    candidateJobsRequest,
+  ]);
+  if (assignedJobs.error || candidateJobs.error) {
     apiFailure("DB_ERROR", "Không thể tải danh sách công việc", 500);
   }
+
+  const pendingRows = (candidateJobs.data ?? []).map((candidate) => {
+    const related = candidate.jobs;
+    const job = isRecord(related)
+      ? related
+      : Array.isArray(related) && isRecord(related[0])
+      ? related[0]
+      : null;
+    if (!job) apiFailure("DB_ERROR", "Không thể tải công việc đang chờ xác nhận", 500);
+    return job;
+  });
+  const uniqueRows = new Map<string, Record<string, unknown>>();
+  for (const row of [...(assignedJobs.data ?? []), ...pendingRows]) {
+    const id = asString(row.id);
+    if (!uniqueRows.has(id)) uniqueRows.set(id, row);
+  }
+  const rows = [...uniqueRows.values()]
+    .sort((left, right) => Date.parse(asString(right.created_at)) - Date.parse(asString(left.created_at)))
+    .slice(0, 100);
+
   return {
-    jobs: (result.data ?? []).map((row) => {
+    jobs: rows.map((row) => {
       const finalPrice = nullableNumber(row.final_price);
       const max = finalPrice ?? nullableNumber(row.kael_price_max);
       const min = nullableNumber(row.kael_price_min);

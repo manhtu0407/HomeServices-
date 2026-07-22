@@ -11,16 +11,14 @@ type CustomerCaseHydrationOwner = {
 
 export function useCustomerCaseHydration({
   active,
-  currentDealId,
   hydrate,
   routeJobId,
 }: {
   active: boolean
-  currentDealId: string | null
   hydrate: ((jobId: string) => Promise<boolean>) | null | undefined
   routeJobId: string | null
 }) {
-  const targetJobId = active && hydrate && routeJobId && currentDealId !== routeJobId
+  const targetJobId = active && hydrate && routeJobId
     ? routeJobId
     : null
   const [snapshot, setSnapshot] = useState<CustomerCaseHydrationSnapshot>(() => ({

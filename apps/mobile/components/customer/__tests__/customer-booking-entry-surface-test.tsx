@@ -465,7 +465,9 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       serviceType: 'plumbing',
     }))
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
+      expect(mockReplace).toHaveBeenCalledWith(
+        '/(customer)/kael-chat?mode=case&handoff=11111111-1111-4111-8111-111111111111',
+      )
     })
   })
 
@@ -655,7 +657,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
   })
 
-  it('creates a pending Kael draft only, then opens full-screen Kael chat after the draft is persisted', async () => {
+  it('opens full-screen Kael chat as soon as the pending draft is staged in memory', async () => {
     let resolvePersist!: () => void
     mockSetPendingKaelChatDraft.mockReturnValueOnce(new Promise<void>((resolve) => {
       resolvePersist = resolve
@@ -687,16 +689,16 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain('Bắt đầu lúc 14:00')
     expect(mockSetPendingKaelChatDraft.mock.calls[0][1].message).toContain(`Mô tả: ${typedDescription}`)
     expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
-    expect(mockReplace).not.toHaveBeenCalled()
+    expect(mockReplace).toHaveBeenCalledWith(
+      '/(customer)/kael-chat?mode=case&handoff=11111111-1111-4111-8111-111111111111',
+    )
+    expect(screen.queryByTestId('customer-v21-selected-service')).toBeNull()
+    expect(screen.getByTestId('customer-v21-booking-address')).toHaveProp('value', '')
+    expect(screen.getByTestId('customer-v21-booking-description')).toHaveProp('value', '')
     await act(async () => {
       resolvePersist()
       await Promise.resolve()
     })
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
-      expect(screen.queryByTestId('customer-v21-selected-service')).toBeNull()
-      expect(screen.getByTestId('customer-v21-booking-address')).toHaveProp('value', '')
-      expect(screen.getByTestId('customer-v21-booking-description')).toHaveProp('value', '')
-    })
+    expect(mockReplace).toHaveBeenCalledTimes(1)
   })
 })

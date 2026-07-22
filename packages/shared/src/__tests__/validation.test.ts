@@ -417,6 +417,16 @@ describe('kaelChat schemas', () => {
     }).success).toBe(false)
   })
 
+  it('requires a short reason before continuing without optional evidence', () => {
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+    }).success).toBe(false)
+    expect(kaelChatEvidenceSchema.safeParse({
+      decision: 'skipped',
+      skip_reason: 'Không có ảnh hiện trạng lúc này.',
+    }).success).toBe(true)
+  })
+
   it('validates Places autocomplete input for the Edge proxy', () => {
     expect(placesAutocompleteSchema.parse({ input: 'Bình Thạnh' }).input).toBe('Bình Thạnh')
     expect(() => placesAutocompleteSchema.parse({ input: 'x' })).toThrow()
@@ -912,5 +922,12 @@ describe('scrubSensitiveForLLM', () => {
   it('removes long unlabelled bank-account numbers', () => {
     expect(scrubSensitiveForLLM('STK 1234567890123456')).toBe('STK [bank-account]')
     expect(scrubSensitiveForLLM('Tài khoản 12345678901234567890')).toBe('Tài khoản [bank-account]')
+  })
+
+  it('preserves ordinary apartment wording and redacts only a real unit identifier', () => {
+    expect(scrubSensitiveForLLM('Vị trí nào trong căn hộ cần xử lý?')).toBe(
+      'Vị trí nào trong căn hộ cần xử lý?',
+    )
+    expect(scrubSensitiveForLLM('Vị trí là căn hộ A.25.07.')).toBe('Vị trí là [unit].')
   })
 })

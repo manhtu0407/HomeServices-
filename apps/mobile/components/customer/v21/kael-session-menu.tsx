@@ -13,6 +13,7 @@ import type {
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { SourceCardSkin } from './aura-surfaces'
+import { customerV21ServiceCopy } from './copy'
 import { KaelLiquidPressable, KaelLiquidReveal } from './kael-liquid-pressable'
 
 type Props = {
@@ -365,13 +366,21 @@ function sessionTitle(
   mode: CustomerKaelConversationMode,
 ) {
   if (session.title?.trim()) return session.title.trim()
+  const serviceLabel = sessionServiceLabel(session, language)
+  if (serviceLabel) return serviceLabel
   if (language === 'en') return mode === 'normal' ? 'Normal chat' : 'Work handling'
   return mode === 'normal' ? 'Chat thường' : 'Xử lý công việc'
 }
 
 function sessionMeta(session: CustomerKaelConversationSession, selected: boolean, language: AppLanguage) {
   const turns = language === 'vi' ? `${session.total_turns} lượt trao đổi` : `${session.total_turns} turns`
-  return selected ? `${language === 'vi' ? 'Đang mở' : 'Open'} · ${turns}` : turns
+  const serviceLabel = session.title?.trim() ? sessionServiceLabel(session, language) : null
+  const detail = serviceLabel ? `${serviceLabel} · ${turns}` : turns
+  return selected ? `${language === 'vi' ? 'Đang mở' : 'Open'} · ${detail}` : detail
+}
+
+function sessionServiceLabel(session: CustomerKaelConversationSession, language: AppLanguage) {
+  return session.service_type ? customerV21ServiceCopy[language][session.service_type].label : null
 }
 
 function sessionMenuCopy(language: AppLanguage, mode: CustomerKaelConversationMode) {

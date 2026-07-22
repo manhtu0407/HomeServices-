@@ -6,6 +6,7 @@ import {
   runLearningHook,
   shouldPromoteLearningCandidate,
   type EdgeLearningCandidateRow,
+  type LearningHookDbClient,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning-hook'
 import {
   CONFIDENCE_THRESHOLD,
@@ -144,14 +145,14 @@ describe('Edge learning hook: constants parity with apps/api reference', () => {
 
 type QueryResult = { data: unknown; error: { code?: string } | null; count?: number | null }
 
-function chainFor(result: QueryResult) {
+function chainFor(result: QueryResult): ReturnType<LearningHookDbClient['from']> {
   const chain: Record<string, unknown> = {}
   const self = () => chain
   for (const method of ['select', 'eq', 'neq', 'limit', 'update', 'maybeSingle']) {
     chain[method] = vi.fn(self)
   }
   chain.then = (resolve: (value: QueryResult) => unknown) => Promise.resolve(result).then(resolve)
-  return chain
+  return chain as ReturnType<LearningHookDbClient['from']>
 }
 
 function hookClient(options: {
@@ -172,9 +173,9 @@ function hookClient(options: {
     },
     learning_candidates: { data: options.candidate ? [options.candidate] : [], error: null },
   }
-  const client = {
+  const client: LearningHookDbClient = {
     from: vi.fn((table: string) => chainFor(tableResults[table] ?? { data: null, error: null })),
-    rpc: vi.fn((name: string, args: Record<string, unknown>) => {
+    rpc: vi.fn((name: string, args: Record<string, unknown> = {}) => {
       rpcCalls.push({ name, args })
       const result = options.rpcResults?.[name] ?? { data: [], error: null }
       return chainFor(result)

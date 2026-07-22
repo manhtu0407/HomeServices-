@@ -25,6 +25,7 @@ import {
 } from './kael-orb-chat-model'
 import { readWorkerKaelSessionCatalog, writeWorkerKaelSessionCatalog } from './session-catalog-cache'
 import { useWorkerV5KaelOrbScopedState } from './use-kael-orb-scoped-state'
+import { useLatestWorkerSessionRestore } from './use-latest-worker-session-restore'
 
 export function useWorkerV5KaelOrbChat(
   deal: LocalDeal | null,
@@ -81,8 +82,7 @@ export function useWorkerV5KaelOrbChat(
   pendingSessionIdsRef.current = pendingSessionIds
   const advisoryUnavailableReply = workerV5KaelAdvisoryUnavailableReply(readOnly, language)
   const progressPercent = progress ? Math.max(0, Math.min(100, Math.round(progress.progress * 100))) : null
-  const busyLabel = openingSessionId || creatingSession
-    ? textByLanguage(language, 'Đang mở cuộc trò chuyện...', 'Opening conversation...')
+  const busyLabel = openingSessionId || creatingSession ? textByLanguage(language, 'Đang mở cuộc trò chuyện...', 'Opening conversation...')
     : busy ? textByLanguage(language, `Kael đang xử lý...${progressPercent != null ? ` ${progressPercent}%` : ''}`, `Kael is working...${progressPercent != null ? ` ${progressPercent}%` : ''}`) : null
   const setSessionPending = (sessionId: string, pending: boolean) => {
     setPendingSessionIds((current) => {
@@ -108,7 +108,6 @@ export function useWorkerV5KaelOrbChat(
       void writeWorkerKaelSessionCatalog(requestedWorkerId, requestedMode, scopedCatalog)
     }
   }, [])
-
   const commitSessionSummary = (nextSession: WorkerKaelChatSession) => {
     const requestedWorkerId = activeWorkerIdRef.current
     if (!requestedWorkerId) return
@@ -124,7 +123,6 @@ export function useWorkerV5KaelOrbChat(
       setSessions((current) => upsertWorkerV5KaelOrbSession(current, nextSession))
     }
   }
-
   const removeSessionSummary = (sessionId: string) => {
     persistSessionCatalog(sessionCatalogRef.current.filter((session) => session.id !== sessionId))
     setSessions((current) => current.filter((session) => session.id !== sessionId))
@@ -449,6 +447,8 @@ export function useWorkerV5KaelOrbChat(
       }
     }
   }
+
+  useLatestWorkerSessionRestore({ activeSessionId, jobId, openSession, openingSessionId, ownerKey, sessions, sessionsLoading })
 
   const resetToNewSession = useCallback(() => {
     openRequestRef.current += 1

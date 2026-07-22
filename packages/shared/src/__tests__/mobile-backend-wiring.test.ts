@@ -309,7 +309,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     // owns the decision callsite.
     expect(customer).not.toContain('customer-scope-change-decision')
     expect(customer).toContain('actions.customerConfirmCompletion')
-    expect(customer).toContain('CompletionReviewCard')
+    expect(customer).toContain('CompletionReviewResponse')
+    expect(customer).not.toContain('CompletionReviewCard')
     expect(customer).toContain('actions.decideScopeChange')
     expect(worker).toContain('actions.workerAcceptBroadcast')
     expect(worker).toContain('actions.workerDeclineBroadcast')
@@ -359,7 +360,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(worker).toContain('worker-v5-scope-change-send-action')
   })
 
-  it('polls remote workflow state without overwriting explicit no-worker fallback', () => {
+  it('hydrates time-sensitive broadcasts before job state without overwriting explicit no-worker fallback', () => {
     const provider = readFrontendWorkflowLayer()
 
     expect(provider).toContain('if (isAppForeground()) void workerRefresh()')
@@ -368,15 +369,16 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain("broadcastState?.active_count === 0")
     expect(provider).toContain('const currentJobId = getRemoteJobId(stateRef.current)')
     expect(provider).toContain('jobs.data.jobs.find((job) => job.id === currentJobId)')
-    expect(provider).toContain('isWorkerOperationalJobStatus(job.status)')
+    expect(provider).toContain('isWorkerCurrentJobStatus(job.status)')
     expect(provider).toContain('hasStaleRemoteBroadcast(stateRef.current)')
     expect(provider).toContain("dispatch({ type: 'mark_remote_broadcast_expired' })")
     expect(provider).toContain('isStaleBroadcastError')
     expect(provider).not.toContain("job.status !== 'cancelled' && job.status !== 'reviewed'")
-    const activeJobSyncIndex = provider.indexOf('const activeJob = jobs.data.jobs.find((job) => isWorkerOperationalJobStatus(job.status))')
-    const broadcastSyncIndex = provider.indexOf("if (nextBroadcast) {\n      dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })", activeJobSyncIndex)
+    const activeJobSyncIndex = provider.indexOf('const activeJob = jobs.data.jobs.find((job) => isWorkerCurrentJobStatus(job.status))')
+    const broadcastSyncIndex = provider.indexOf("if (nextBroadcast) {\n      dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })")
     expect(activeJobSyncIndex).toBeGreaterThan(-1)
-    expect(broadcastSyncIndex).toBeGreaterThan(activeJobSyncIndex)
+    expect(broadcastSyncIndex).toBeGreaterThan(-1)
+    expect(activeJobSyncIndex).toBeGreaterThan(broadcastSyncIndex)
 
     const operationalStatusSet = provider.match(/WORKER_OPERATIONAL_JOB_STATUSES = new Set<JobStatus>\(\[([\s\S]*?)\]\)/)?.[1] ?? ''
     expect(operationalStatusSet).toContain("'completed_by_worker'")

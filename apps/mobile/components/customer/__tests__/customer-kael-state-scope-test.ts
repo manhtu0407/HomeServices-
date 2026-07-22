@@ -91,6 +91,25 @@ describe('customer Kael async state scope', () => {
     expect(guard.isCurrent(firstRequest)).toBe(false)
   })
 
+  it('gives every booking handoff its own conversation scope', () => {
+    const firstScope = customerKaelStateScopeKey({
+      accountId: 'customer-a',
+      caseId: null,
+      handoffId: 'draft-a',
+      mode: 'case',
+      sessionId: null,
+    })
+    const secondScope = customerKaelStateScopeKey({
+      accountId: 'customer-a',
+      caseId: null,
+      handoffId: 'draft-b',
+      mode: 'case',
+      sessionId: null,
+    })
+
+    expect(secondScope).not.toBe(firstScope)
+  })
+
   it('invalidates hook-owned requests after a committed scope change and unmount', () => {
     const { result, rerender, unmount } = renderHook<
       CustomerKaelRequestGuard,
@@ -145,6 +164,7 @@ describe('customer Kael async state scope', () => {
       chat: response,
       composerMediaDrafts: [],
       error: null,
+      intakeDisplayMessage: pendingDraft.message,
       loading: false,
       pendingDraft: null,
       routeDraftEvidencePending: false,
@@ -172,6 +192,7 @@ describe('customer Kael async state scope', () => {
       chat: null,
       composerMediaDrafts: [],
       error: null,
+      intakeDisplayMessage: null,
       loading: false,
       localMode: 'normal',
       turns: [],

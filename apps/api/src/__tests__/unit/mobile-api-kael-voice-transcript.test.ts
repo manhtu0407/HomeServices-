@@ -12,6 +12,14 @@ const migration = readdirSync(migrationsDir)
   .sort()
   .map((name) => readFileSync(join(migrationsDir, name), 'utf8'))
   .join('\n')
+const kaelChatService = readFileSync(
+  resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat.service.ts'),
+  'utf8',
+)
+const kaelChatPersistence = readFileSync(
+  resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-persistence.service.ts'),
+  'utf8',
+)
 
 describe('KC7 voice transcript store (Plan.md §39)', () => {
   it('creates a per-user RLS transcript table with service-role-only writes', () => {
@@ -62,5 +70,17 @@ describe('KC7 voice transcript store (Plan.md §39)', () => {
     expect(row?.user_id).toBe('u1')
     expect(row?.scrubbed_text.length ?? 0).toBeGreaterThan(0)
     expect(row?.scrubbed_text).not.toContain('[phone]')
+  })
+
+  it('persists reviewed transcripts from create, turn, and evidence flows without an audio payload', () => {
+    expect(kaelChatService).toContain('from "./kael-chat-persistence.service.ts"')
+    expect(kaelChatService.match(/await persistInitialVoiceTranscripts\(/g)).toHaveLength(1)
+    expect(kaelChatService.match(/await persistReviewedVoiceTranscripts\(/g)).toHaveLength(2)
+    expect(kaelChatPersistence).toContain('import { buildVoiceTranscriptRow } from "../kael/voice-transcript.ts"')
+    expect(kaelChatPersistence).toContain('.from("kael_voice_transcript")')
+    expect(kaelChatPersistence).toContain('buildVoiceTranscriptRow({')
+    expect(kaelChatPersistence).toContain('.insert(rows)')
+    expect(kaelChatPersistence).toContain('scrubbed_text')
+    expect(kaelChatPersistence).not.toMatch(/audio_(?:url|ref|bytes)|raw_audio|recording/i)
   })
 })

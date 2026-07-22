@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native'
 
-import { CompletionReviewCard } from '../kael-chat/completion-review-card'
+import { CompletionReviewResponse } from '../kael-chat/completion-review-response'
 import { getCustomerThemeTokens } from '../customer-theme'
 import type { LocalDeal } from '@nestscout/shared'
 
@@ -13,7 +13,7 @@ it('requires an explicit customer action before completion can advance', () => {
   const onConfirm = jest.fn()
   const onReportIssue = jest.fn()
   const view = render(
-    <CompletionReviewCard
+    <CompletionReviewResponse
       busy={false}
       deal={deal}
       language="vi"

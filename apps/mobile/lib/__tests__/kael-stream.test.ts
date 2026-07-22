@@ -4,6 +4,7 @@ import {
   isCustomerKaelStreamResult,
   isWorkerKaelStreamResult,
 } from '../kael-stream'
+import { SERVICE_TYPES } from '@nestscout/shared'
 
 describe('Kael SSE parser', () => {
   it('parses split stage, token, result, and heartbeat frames', () => {
@@ -68,7 +69,16 @@ describe('Kael SSE parser', () => {
       turns: [],
     }
 
-    expect(isCustomerKaelStreamResult(valid)).toBe(true)
+    for (const serviceType of SERVICE_TYPES) {
+      expect(isCustomerKaelStreamResult({
+        ...valid,
+        session: { ...valid.session, service_type: serviceType },
+      })).toBe(true)
+    }
+    expect(isCustomerKaelStreamResult({
+      ...valid,
+      session: { ...valid.session, service_type: 'air_conditioning' },
+    })).toBe(false)
     expect(isCustomerKaelStreamResult({ session: { id: 'session-1' }, turns: [] })).toBe(false)
     expect(isCustomerKaelStreamResult({
       ...valid,

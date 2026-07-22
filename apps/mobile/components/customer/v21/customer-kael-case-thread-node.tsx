@@ -1,12 +1,11 @@
-import { AgenticEvidenceGateCard } from '../kael-chat/agentic-evidence-gate-card'
-import { CompletionReviewCard } from '../kael-chat/completion-review-card'
+import { AgenticEvidenceGateResponse } from '../kael-chat/agentic-evidence-gate-response'
+import { CompletionReviewResponse } from '../kael-chat/completion-review-response'
 import { AgenticCaseThreadPanel } from './chat-case-thread-stateful-surfaces'
-import { AnimatedStageProgressBar } from './animated-stage-progress-bar'
-import { canCustomerDecideScopeChange, caseDisplayCode } from './case-work-display-model'
-import { caseWorkDataSourceFooterLabel } from './case-source-display-model'
+import { canCustomerDecideScopeChange } from './case-work-display-model'
 import { customerV21TabCopy } from './copy'
 import { makeAssistantTurnId } from './customer-kael-chat-helpers'
 import { customerV21WebTextInputNoOutline } from './platform-styles'
+import { mobileRuntimeConfig } from '@/lib/runtime-config'
 import { customerV21KaelChatRootStyles as rootStyles } from './chat-styles'
 import type { useCustomerKaelSurfaceController } from './use-customer-kael-surface-controller'
 
@@ -29,16 +28,17 @@ export function CustomerKaelCaseThreadNode({
     language,
     mode,
     presentation,
+    reduceMotion,
     tokens,
     workflow,
   } = controller
   if (mode !== 'case' || !deal) return null
+  if (deal.status === 'worker_candidate_pending') return null
 
   return (
     <AgenticCaseThreadPanel
       activityLabel={customerV21TabCopy[language].activity}
       deal={deal}
-      editing={chatUi.caseEditOpen}
       language={language}
       onApproveScopeChange={(scopeChangeId) => {
         if (
@@ -69,13 +69,9 @@ export function CustomerKaelCaseThreadNode({
           },
         ])
       }}
-      onRequestEdit={() => {
-        chatUi.setCaseEditOpen(true)
-        conversation.setError(null)
-      }}
       caseEvidenceGateActive={presentation.caseEvidenceGateActive}
       caseEvidenceGateNode={(
-        <AgenticEvidenceGateCard
+        <AgenticEvidenceGateResponse
           busy={caseUi.submittingCaseEvidence || chatUi.uploadingMedia}
           language={language}
           mediaDrafts={conversation.composerMediaDrafts}
@@ -92,6 +88,7 @@ export function CustomerKaelCaseThreadNode({
           onVoiceTranscriptChange={chatUi.setVoiceTranscript}
           rejectOpen={caseUi.caseEvidenceRejectOpen}
           rejectReason={caseUi.caseEvidenceReason}
+          reduceMotion={reduceMotion}
           textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
           tokens={tokens}
           voiceTranscript={chatUi.voiceTranscript}
@@ -102,7 +99,7 @@ export function CustomerKaelCaseThreadNode({
       caseOptionsAcknowledged={caseUi.caseOptionsAcknowledged}
       confirmingCaseQuote={chatUi.confirmingCaseQuote}
       completionReviewNode={deal.status === 'completed_by_worker' ? (
-        <CompletionReviewCard
+        <CompletionReviewResponse
           busy={chatUi.confirmingCompletion}
           deal={deal}
           language={language}
@@ -111,10 +108,16 @@ export function CustomerKaelCaseThreadNode({
             chatUi.setCaseEditOpen(true)
             conversation.setError(null)
           }}
+          reduceMotion={reduceMotion}
           tokens={tokens}
         />
       ) : null}
       onAcknowledgeOptions={() => caseUi.setCaseOptionsAcknowledged(true)}
+      onAuthorizeApartmentAccess={async () => {
+        await workflow.actions.authorizeApartmentAccess()
+      }}
+      onConfirmStagingPayment={workflow.actions.confirmStagingPayment}
+      onCreatePaymentIntent={workflow.actions.createPaymentIntent}
       onApproveQuote={() => void decisionActions.confirmCaseQuote()}
       onQuoteRejectReasonChange={chatUi.setCaseQuoteRejectReason}
       onQuoteRejectReasonSubmit={() => void decisionActions.submitCaseQuoteRejectReason()}
@@ -122,12 +125,12 @@ export function CustomerKaelCaseThreadNode({
         chatUi.setCaseQuoteRejectOpen(true)
         conversation.setError(null)
       }}
-      renderJobProgressBar={(active, progress) => (
-        <AnimatedStageProgressBar active={active} progress={progress} />
-      )}
-      sourceFooterLabel={caseWorkDataSourceFooterLabel(caseDisplayCode(deal, language), language)}
-      submittingCaseEvidence={caseUi.submittingCaseEvidence || chatUi.uploadingMedia}
+      onRetryWorkerSearch={() => void decisionActions.retryWorkerSearch()}
+      onSubmitReview={workflow.actions.submitReview}
+      reduceMotion={reduceMotion}
+      retryingWorkerSearch={chatUi.retryingWorkerSearch}
       submittingCaseQuoteRejectReason={chatUi.submittingCaseQuoteRejectReason}
+      stagingPaymentRailEnabled={mobileRuntimeConfig.stagingPaymentRailEnabled}
       textInputStyle={[rootStyles.composerInput, customerV21WebTextInputNoOutline]}
       tokens={tokens}
     />

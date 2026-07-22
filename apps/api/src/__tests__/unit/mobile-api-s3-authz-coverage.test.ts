@@ -73,6 +73,8 @@ const GUARDED: Record<string, string> = {
   'jobs.kaelIncidentOpen': 'service worker-owner (Edge)',
   'jobs.kaelIncidentProposeScope': 'service worker-owner + ready-case guard',
   'jobs.confirmCompletion': 'RPC customer-owner',
+  'jobs.paymentIntent': 'requireJobAccess customer-owner + server staging capability',
+  'jobs.stagingPaymentConfirm': 'requireJobAccess customer-owner + server staging capability',
   'jobs.review': 'service customer-owner',
   // scope/cancellation/dispute by id — atomic RPC owner/admin SQL check
   'scope.decide': 'decide_scope_change_atomic p_customer_id',

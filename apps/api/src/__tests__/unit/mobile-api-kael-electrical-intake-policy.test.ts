@@ -767,6 +767,23 @@ describe('Kael electrical deterministic safety pre-scan', () => {
     }
   })
 
+  it('does not let QA count alone hijack a normal Agentic clarification answer', async () => {
+    vi.stubGlobal('Deno', { env: { get: () => undefined } })
+    try {
+      await expect(maybeHandleDemandingCustomerKaelChatTurn({} as never, {
+        sessionId: 'session-1',
+        actorId: 'customer-1',
+        jobId: null,
+        status: 'active',
+        metadata: {},
+        message: 'Chỉ có một hạng mục, khoan một vị trí để lắp giá treo.',
+        qaCount: 4,
+      })).resolves.toBe(false)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('bypasses demanding-customer handling only for a flag-enabled critical hazard', () => {
     vi.stubGlobal('Deno', {
       env: {

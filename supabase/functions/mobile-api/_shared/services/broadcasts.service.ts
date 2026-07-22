@@ -3,15 +3,13 @@
 // directly by services.ts; calls notifyBroadcastWorkers (notifications domain).
 
 import { asNumber, asString, asStringArray, nullableNumber, nullableRecord, nullableString } from "./coercions.ts";
-import { dbQuery, type DbClient } from "./db.ts";
+import { dbQuery, type DbClient, type DbResult } from "./db.ts";
 import { ACTIVE_WORKER_JOB_STATUSES, clampServiceRadius, DEFAULT_WORKER_CANDIDATE_POOL_SIZE, secondsRemaining } from "./_shared.ts";
 import { notifyBroadcastWorkers } from "./notifications.service.ts";
 import { apiFailure } from "../router.ts";
 import { normalizeDistrict, type ServiceType } from "../../../_shared/domain.ts";
 import {
-  loadActiveJobRowsByWorker,
-  loadActiveReservationRowsByWorker,
-  loadWorkerMemoryRowsByWorker,
+  loadWorkerAvailabilityRows,
 } from "./broadcast-query-batches.ts";
 
 const DISINTERMEDIATION_RISK_PENALTY_THRESHOLD = 2;
@@ -29,6 +27,48 @@ const BROADCAST_RETRY_CLAIM_FAILURE_CODES = [
 
 export type BroadcastRetryClaimFailureCode =
   typeof BROADCAST_RETRY_CLAIM_FAILURE_CODES[number];
+
+type ActivateBroadcastBatchInput = {
+  jobId: string;
+  workerIds: string[];
+  batchId: string;
+  sentAt: string;
+  expiresAt: string;
+};
+
+export async function activateBroadcastBatch(
+  client: DbClient,
+  input: ActivateBroadcastBatchInput,
+) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("activate_job_broadcast_batch_atomic", {
+      p_job_id: input.jobId,
+      p_worker_ids: input.workerIds,
+      p_batch_id: input.batchId,
+      p_sent_at: input.sentAt,
+      p_expires_at: input.expiresAt,
+    }),
+  );
+  if (result.error) {
+    return {
+      success: false as const,
+      reasonCode: "DB_ERROR" as const,
+      reason: "Lỗi khi gửi yêu cầu đến thợ",
+    };
+  }
+  const targets = (result.data ?? []).map((row) => ({
+    broadcastId: asString(row.id),
+    workerId: asString(row.worker_id),
+  })).filter((row) => row.broadcastId && row.workerId);
+  if (targets.length === 0) {
+    return {
+      success: false as const,
+      reasonCode: "NO_WORKER" as const,
+      reason: "Không còn thợ phù hợp để gửi lại yêu cầu",
+    };
+  }
+  return { success: true as const, targets };
+}
 
 export async function createBroadcasts(
   client: DbClient,
@@ -62,38 +102,27 @@ export async function createBroadcasts(
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 60_000);
   const batchId = crypto.randomUUID();
-  const rows = eligible.map((worker) => ({
-    job_id: jobId,
-    worker_id: worker.id,
-    status: "sent",
-    broadcast_at: now.toISOString(),
-    sent_at: now.toISOString(),
-    expires_at: expiresAt.toISOString(),
-    batch_id: batchId,
-  }));
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.from("job_broadcasts").insert(rows).select("id, worker_id"),
-  );
-  if (result.error) {
-    return {
-      success: false as const,
-      reasonCode: "DB_ERROR" as const,
-      reason: "Lỗi khi gửi yêu cầu đến thợ",
-    };
-  }
-  const broadcastTargets = (result.data ?? []).map((row) => ({
-    broadcastId: asString(row.id),
-    workerId: asString(row.worker_id),
-  })).filter((row) => row.broadcastId && row.workerId);
+  const activation = await activateBroadcastBatch(client, {
+    jobId,
+    workerIds: eligible.map((worker) => worker.id),
+    batchId,
+    sentAt: now.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+  });
+  if (!activation.success) return activation;
   await notifyBroadcastWorkers(
     client,
     jobId,
     serviceType,
     district,
     expiresAt.toISOString(),
-    broadcastTargets,
+    activation.targets,
   );
-  return { success: true as const, batchId, broadcastCount: eligible.length };
+  return {
+    success: true as const,
+    batchId,
+    broadcastCount: activation.targets.length,
+  };
 }
 
 export async function expireStaleBroadcasts(
@@ -416,10 +445,11 @@ async function queryEligibleWorkers(
   if (candidateIds.length === 0) {
     return { success: true as const, workers: [] };
   }
-  const activeJobs = await loadActiveJobRowsByWorker(
+  const [activeJobs, activeReservations, workerMemory] = await loadWorkerAvailabilityRows(
     client,
     candidateIds,
     ACTIVE_WORKER_JOB_STATUSES,
+    new Date().toISOString(),
   );
   if (activeJobs.error) {
     console.warn("mobile-api active worker job query failed", {
@@ -437,18 +467,13 @@ async function queryEligibleWorkers(
       .map((job) => asString(job.worker_id))
       .filter(Boolean),
   );
-  const activeReservations = await loadActiveReservationRowsByWorker(
-    client,
-    candidateIds,
-    new Date().toISOString(),
-  );
   if (activeReservations.error) {
     return { success: false as const, reason: "Lỗi khi kiểm tra thợ đang chờ xác nhận" };
   }
   const reservedWorkerIds = new Set(
     (activeReservations.data ?? []).map((row) => asString(row.worker_id)).filter(Boolean),
   );
-  const riskCounts = await loadDisintermediationRiskCounts(client, candidateIds);
+  const riskCounts = readDisintermediationRiskCounts(workerMemory, candidateIds.length);
   const deprioritizedIds = candidateIds.filter((id) =>
     (riskCounts.get(id) ?? 0) >= DISINTERMEDIATION_RISK_PENALTY_THRESHOLD
   );
@@ -477,18 +502,16 @@ async function queryEligibleWorkers(
   };
 }
 
-async function loadDisintermediationRiskCounts(
-  client: DbClient,
-  workerIds: string[],
-): Promise<Map<string, number>> {
+function readDisintermediationRiskCounts(
+  result: DbResult<Array<Record<string, unknown>>>,
+  workerCount: number,
+): Map<string, number> {
   const counts = new Map<string, number>();
-  if (workerIds.length === 0) return counts;
-  const result = await loadWorkerMemoryRowsByWorker(client, workerIds);
   if (result.error) {
     // Fail open: a risk-signal read failure must not block matching.
     console.warn("mobile-api disintermediation risk load failed", {
       errorCode: result.error.code,
-      workerCount: workerIds.length,
+      workerCount,
     });
     return counts;
   }

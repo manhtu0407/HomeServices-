@@ -79,6 +79,33 @@ describe('mobile-api Kael provider adapters', () => {
     })
   })
 
+  it('keeps the Pro intake fallback non-thinking while preserving reasoning for learning work', () => {
+    const adapter = providerAdapterFor('deepseek')
+    const intent = adapter.buildRequest({
+      request: {
+        ...requestFor('deepseek'),
+        model: 'deepseek-v4-pro',
+        purpose: 'intent_classification',
+      },
+      apiKey: 'deepseek-key',
+    })
+    const learning = adapter.buildRequest({
+      request: {
+        ...requestFor('deepseek'),
+        model: 'deepseek-v4-pro',
+        purpose: 'post_job_learning',
+      },
+      apiKey: 'deepseek-key',
+    })
+
+    expect(intent.body).toMatchObject({ thinking: { type: 'disabled' } })
+    expect(intent.body).not.toHaveProperty('reasoning_effort')
+    expect(learning.body).toMatchObject({
+      thinking: { type: 'enabled' },
+      reasoning_effort: 'high',
+    })
+  })
+
   it('omits unsupported sampling parameters from current Sonnet and Opus requests', () => {
     const adapter = providerAdapterFor('anthropic')
     const sonnet = adapter.buildRequest({
@@ -120,6 +147,36 @@ describe('mobile-api Kael provider adapters', () => {
       usage: { inputTokens: 12, outputTokens: 7, costUsd: 0.0123 },
       citations: ['https://example.com/source'],
     })
+  })
+
+  it('extracts Anthropic text after adaptive-thinking blocks without exposing reasoning', () => {
+    const request = requestFor('anthropic')
+    const response = providerAdapterFor('anthropic').parseResponse({
+      request,
+      data: {
+        content: [
+          { type: 'thinking', thinking: '', signature: 'opaque-signature' },
+          { type: 'text', text: '{"answer":"safe"}' },
+        ],
+        usage: {
+          input_tokens: 24,
+          output_tokens: 12,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
+      },
+      latencyMs: 18,
+      model: request.model,
+      pricingAt,
+      unknownModelPolicy: 'throw',
+    })
+
+    expect(response).toMatchObject({
+      success: true,
+      content: '{"answer":"safe"}',
+      usage: { inputTokens: 24, outputTokens: 12 },
+    })
+    expect(response.content).not.toContain('opaque-signature')
   })
 
   it.each([

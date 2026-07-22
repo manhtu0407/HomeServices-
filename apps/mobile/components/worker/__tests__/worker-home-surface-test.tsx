@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Alert, Platform, StyleSheet } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import type { LocalDeal } from '@nestscout/shared'
+import type { LocalDeal, LocalWorkerGate } from '@nestscout/shared'
 import type { EarningsResponse, WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
 let mockWorkflowValue: any
@@ -308,6 +308,16 @@ function buildAcceptedDeal(): LocalDeal {
   }
 }
 
+function buildCandidatePendingDeal(): LocalDeal {
+  const deal = buildIncomingDeal()
+  return {
+    ...deal,
+    backendStatus: 'worker_candidate_pending',
+    broadcast: deal.broadcast ? { ...deal.broadcast, status: 'accepted' } : null,
+    status: 'worker_candidate_pending',
+  }
+}
+
 function buildCancelledDeal(): LocalDeal {
   const deal = buildIncomingDeal()
   return {
@@ -362,6 +372,7 @@ function buildWorkflow({
   workerEarnings = buildNoEarnings(),
   workerJobs = [],
   workerJobsHydrated = true,
+  workerGate = 'remote_backend',
   workerPerformanceInsights = null,
   workerProfile = buildWorkerProfile(),
 }: {
@@ -370,6 +381,7 @@ function buildWorkflow({
   workerEarnings?: EarningsResponse | null
   workerJobs?: { status: string }[]
   workerJobsHydrated?: boolean
+  workerGate?: LocalWorkerGate
   workerPerformanceInsights?: WorkerPerformanceInsightsResponse | null
   workerProfile?: WorkerProfileResponse | null
 } = {}) {
@@ -400,7 +412,7 @@ function buildWorkflow({
       deal,
       lastError: null,
       lastRemoteSyncAt: null,
-      workerGate: 'remote_backend',
+      workerGate,
     },
     workerEarnings,
     workerJobs,
@@ -821,8 +833,43 @@ describe('Worker runtime surface wiring', () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerAcceptBroadcast).toHaveBeenCalledTimes(1)
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait')
     })
+  })
+
+  it('keeps a candidate-pending mission in the customer confirmation phase', () => {
+    buildWorkflow({ deal: buildCandidatePendingDeal() })
+    mockRouteParams = { ns_worker_screen: '2.3-customer-confirmation-wait' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-screen-2.3-customer-confirmation-wait')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-customer-confirmation-wait')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-screen-2.7-in-progress')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-in-progress-scope-action')).toBeNull()
+  })
+
+  it('leaves customer confirmation after an authoritative empty worker refresh', async () => {
+    buildWorkflow({ deal: null, workerJobs: [], workerJobsHydrated: true, workerGate: 'backend_pending' })
+    mockRouteParams = { ns_worker_screen: '2.3-customer-confirmation-wait' }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
+    })
+  })
+
+  it('redirects a stale in-progress route back to customer confirmation', async () => {
+    buildWorkflow({ deal: buildCandidatePendingDeal() })
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait')
+    })
+    expect(screen.queryByTestId('worker-v5-in-progress-scope-action')).toBeNull()
   })
 
   it('does not invent zero earnings while an offer estimate is missing', () => {
@@ -1012,7 +1059,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-kael-empty-hero-normal')).toBeNull()
   })
 
-  it('returns to normal Kael chat as a fresh blank draft without creating a backend session', async () => {
+  it('restores the latest job conversation and keeps it intact when Kael chat refocuses', async () => {
     buildWorkflow({ deal: buildAcceptedDeal() })
     mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
     mockWorkerKaelChatService.list.mockResolvedValue({
@@ -1066,22 +1113,21 @@ describe('Worker runtime surface wiring', () => {
     })
 
     render(<WorkerChatSurface />)
-    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
-    fireEvent.press(await screen.findByTestId('worker-v5-kael-session-worker-kael-session-before-refocus'))
     expect(await screen.findByText('Nội dung của phiên trước khi quay lại Kael Chat.')).toBeOnTheScreen()
-    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Bản nháp không được mang sang phiên mới')
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Bản nháp vẫn thuộc phiên hiện tại')
 
     act(() => {
       mockFocusCallback?.()
     })
 
-    expect(screen.queryByText('Nội dung của phiên trước khi quay lại Kael Chat.')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
-    expect(screen.getByTestId('worker-v5-kael-orb-input').props.value).toBe('')
+    expect(screen.getByText('Nội dung của phiên trước khi quay lại Kael Chat.')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-orb-live-thread')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-orb-input').props.value).toBe('Bản nháp vẫn thuộc phiên hiện tại')
+    expect(mockWorkerKaelChatService.get).toHaveBeenCalledWith('worker-kael-session-before-refocus')
     expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
   })
 
-  it('keeps a refocused blank draft isolated from an in-flight previous turn', async () => {
+  it('keeps an in-flight turn in the same conversation when Kael chat refocuses', async () => {
     buildWorkflow({ deal: buildAcceptedDeal() })
     mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
     let rejectPreviousTurn: ((reason?: unknown) => void) | undefined
@@ -1103,17 +1149,17 @@ describe('Worker runtime surface wiring', () => {
       mockFocusCallback?.()
     })
 
-    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
-    expect(screen.queryByText('Tin nhắn thuộc phiên trước')).toBeNull()
-    expect(screen.queryByText('Kael đang xử lý...')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-orb-live-thread')).toBeOnTheScreen()
+    expect(screen.getByText('Tin nhắn thuộc phiên trước')).toBeOnTheScreen()
+    expect(screen.getByText('Kael đang xử lý...')).toBeOnTheScreen()
 
     await act(async () => {
       rejectPreviousTurn?.(new Error('previous session failed after refocus'))
       await Promise.resolve()
     })
 
-    expect(screen.queryByTestId('worker-v5-kael-orb-live-thread')).toBeNull()
-    expect(screen.queryByText(/Kael đang không kết nối được/)).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-orb-live-thread')).toBeOnTheScreen()
+    expect(screen.getByText(/Kael đang không kết nối được/)).toBeOnTheScreen()
     expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(1)
   })
 
@@ -2268,7 +2314,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-completion-submitted-status-waiting-dots').children).toHaveLength(3)
   })
 
-  it('runs the pending confirmation dots only until the customer confirms, then uses the rebuilt settlement seal', () => {
+  it('runs the pending confirmation dots only until the customer confirms, then routes to the rebuilt settlement seal', () => {
     buildWorkflow({ deal: buildCompletedByWorkerDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
 
@@ -2281,7 +2327,7 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const confirmed = render(<WorkerJobsSurface />)
     expect(screen.queryByTestId('worker-v5-completion-submitted-status-waiting-dots')).toBeNull()
-    expect(screen.getByTestId('worker-v5-completion-submitted-status-static-dots')).toBeOnTheScreen()
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
     confirmed.unmount()
 
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }

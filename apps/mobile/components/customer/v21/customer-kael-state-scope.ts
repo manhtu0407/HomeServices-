@@ -23,6 +23,7 @@ export type CustomerKaelRequestGuard = {
 export function customerKaelStateScopeKey(input: {
   accountId: string | null
   caseId: string | null
+  handoffId?: string | null
   mode: CustomerKaelMode
   sessionId: string | null
 }) {
@@ -31,6 +32,7 @@ export function customerKaelStateScopeKey(input: {
     input.mode,
     input.caseId ?? '',
     input.sessionId ?? '',
+    input.handoffId ?? '',
   ])
 }
 

@@ -5,6 +5,10 @@ const nativeVoice = readFileSync(
   join(process.cwd(), 'components/customer/kael-chat/on-device-voice-transcript.native.tsx'),
   'utf8',
 )
+const voiceControl = readFileSync(
+  join(process.cwd(), 'components/customer/kael-chat/on-device-voice-transcript-control.tsx'),
+  'utf8',
+)
 
 describe('Kael on-device voice privacy boundary', () => {
   it('requires local recognition and never persists or uploads raw audio', () => {
@@ -19,7 +23,9 @@ describe('Kael on-device voice privacy boundary', () => {
 
   it('keeps the transcript editable before it becomes evidence', () => {
     expect(nativeVoice).toContain('onChangeText={onChangeText}')
-    expect(nativeVoice).toContain('value={transcript}')
+    expect(nativeVoice).toContain('transcript={transcript}')
+    expect(voiceControl).toContain('onChangeText={onChangeText}')
+    expect(voiceControl).toContain('value={transcript}')
   })
 
   it('does not crash Expo Go when the optional native speech module is absent', () => {

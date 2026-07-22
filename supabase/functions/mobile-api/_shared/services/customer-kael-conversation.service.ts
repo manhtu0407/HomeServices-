@@ -7,8 +7,15 @@ import type {
   JobStatus,
 } from "../../../_shared/domain.ts";
 import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../kael/index.ts";
+import { sanitizeCustomerCaseEvidenceText } from "../kael/untrusted-evidence.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { asJobStatus, asNumber, asString, nullableString } from "./coercions.ts";
+import {
+  asJobStatus,
+  asNumber,
+  asString,
+  nullableServiceType,
+  nullableString,
+} from "./coercions.ts";
 import { answerKaelAssistant } from "./customer-assistant.service.ts";
 import { cancelJob, requestCustomerCancellation } from "./customer-cancellation.service.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
@@ -17,11 +24,19 @@ import type {
   EdgeCustomerKaelConversationSessionResponse,
   EdgeCustomerKaelConversationTurnResponse,
 } from "../router/customer-kael-conversation-dtos.ts";
+import {
+  isVisibleCustomerConversationCatalogRow,
+  latestIsoTimestamp,
+  nullablePerformanceProfile,
+  projectCustomerCaseCatalogDetail,
+  sortCustomerConversationSessions,
+  type CustomerCaseCatalogDetail,
+} from "./customer-kael-conversation-projection.ts";
 
 const CUSTOMER_CONVERSATION_SELECT =
   "id, customer_id, chat_mode, case_session_id, client_request_id, title, pinned_at, archived_at, total_turns, created_at, updated_at";
 const CUSTOMER_CONVERSATION_TURN_SELECT =
-  "id, conversation_id, customer_id, turn_index, role, text_content, created_at";
+  "id, conversation_id, customer_id, client_request_id, turn_index, role, text_content, created_at";
 const CUSTOMER_CASE_CATALOG_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
   "broadcasting",
@@ -105,28 +120,28 @@ export async function listCustomerKaelConversations(
   const caseSessionIds = rows
     .map((row) => nullableString(row.case_session_id))
     .filter((value): value is string => Boolean(value));
-  const caseDetails = new Map<string, { jobId: string | null; totalTurns: number }>();
+  const caseDetails = new Map<string, CustomerCaseCatalogDetail>();
   if (caseSessionIds.length > 0) {
     const caseSessions = await dbQuery<Array<Record<string, unknown>>>(
       client
         .from("kael_chat_sessions")
-        .select("id, job_id, total_turns")
+        .select("id, job_id, service_type, safe_metadata, total_turns, updated_at")
         .eq("customer_id", ctx.user.id)
+        .neq("status", "abandoned")
         .in("id", caseSessionIds),
     );
     if (caseSessions.error) {
       apiFailure("DB_ERROR", "Không thể tải lịch sử Xử lý công việc", 500);
     }
     for (const row of caseSessions.data ?? []) {
-      caseDetails.set(asString(row.id), {
-        jobId: nullableString(row.job_id),
-        totalTurns: asNumber(row.total_turns),
-      });
+      caseDetails.set(asString(row.id), projectCustomerCaseCatalogDetail(row));
     }
   }
 
-  return {
-    sessions: rows.map((row) => {
+  const availableCaseSessionIds = new Set(caseDetails.keys());
+  const sessions = rows
+    .filter((row) => isVisibleCustomerConversationCatalogRow(row, availableCaseSessionIds))
+    .map((row) => {
       const caseSessionId = nullableString(row.case_session_id);
       const caseDetail = caseSessionId ? caseDetails.get(caseSessionId) : null;
       return serializeCustomerConversation(
@@ -134,12 +149,15 @@ export async function listCustomerKaelConversations(
           ? {
             ...row,
             case_job_id: caseDetail.jobId,
+            profile_id: caseDetail.profileId,
+            service_type: caseDetail.serviceType,
             total_turns: asNumber(row.total_turns) + caseDetail.totalTurns,
+            updated_at: latestIsoTimestamp(asString(row.updated_at), caseDetail.updatedAt),
           }
           : row,
       );
-    }),
-  };
+    });
+  return { sessions: sortCustomerConversationSessions(sessions) };
 }
 
 export async function getCustomerKaelConversation(
@@ -158,7 +176,10 @@ export async function getCustomerKaelConversation(
       ? {
         ...session,
         case_job_id: linkedCase.jobId,
+        profile_id: linkedCase.profileId,
+        service_type: linkedCase.serviceType,
         total_turns: asNumber(session.total_turns) + linkedCase.totalTurns,
+        updated_at: latestIsoTimestamp(asString(session.updated_at), linkedCase.updatedAt),
       }
       : session),
     turns,
@@ -287,6 +308,13 @@ export async function sendCustomerKaelConversationTurn(
   const linkedCase = caseSessionId
     ? await readLinkedCustomerCaseSession(client, ctx.user.id, caseSessionId)
     : null;
+  if (linkedCase) {
+    apiFailure(
+      "CASE_WORK_SESSION_REQUIRED",
+      "Hãy tiếp tục qua phiên Agentic Xử lý công việc đang liên kết",
+      409,
+    );
+  }
 
   const existingTurn = await dbQuery<Record<string, unknown>>(
     client
@@ -303,18 +331,25 @@ export async function sendCustomerKaelConversationTurn(
   if (existingTurn.data) return getCustomerKaelConversation(ctx, conversationId);
 
   const answer = await answerKaelAssistant(ctx, {
-    ...(linkedCase?.jobId ? { job_id: linkedCase.jobId } : {}),
     language: input.language,
     message: input.message,
-    surface: linkedCase?.jobId ? "customer_case" : "customer_normal",
+    surface: "customer_normal",
   }, secrets);
-  const customerText = scrubSensitiveForLLM(input.message).slice(0, 2000);
+  const customerText = (
+    conversationMode === "case"
+      ? sanitizeCustomerCaseEvidenceText(input.message)
+      : scrubSensitiveForLLM(input.message)
+  ).slice(0, 2000);
   const notes = answer.safety_notes.filter((note) => note.trim().length > 0);
   const noteLabel = input.language === "en" ? "Note" : "Lưu ý";
   const answerWithSafety = notes.length > 0
     ? `${answer.answer}\n\n${noteLabel}: ${notes.join(" ")}`
     : answer.answer;
-  const kaelText = scrubSensitiveForLLM(answerWithSafety).slice(0, 4000);
+  const kaelText = (
+    conversationMode === "case"
+      ? sanitizeCustomerCaseEvidenceText(answerWithSafety)
+      : scrubSensitiveForLLM(answerWithSafety)
+  ).slice(0, 4000);
   if (!customerText || !kaelText) {
     apiFailure("AI_INVALID_OUTPUT", "Kael chưa thể tạo câu trả lời an toàn", 502);
   }
@@ -428,6 +463,21 @@ export async function ensureCustomerCaseConversation(
   );
 }
 
+export async function linkCreatedCustomerCaseConversation(
+  ctx: MobileApiContext,
+  caseSessionId: string,
+  clientRequestId: string | null,
+) {
+  // createKaelChat has just inserted this owner-scoped session, so repeating the
+  // ownership read here only adds a network round trip to the first handoff.
+  return linkCustomerCaseConversation(
+    customerConversationDb(ctx),
+    ctx.user.id,
+    caseSessionId,
+    clientRequestId,
+  );
+}
+
 async function linkCustomerCaseConversation(
   client: DbClient,
   customerId: string,
@@ -438,12 +488,15 @@ async function linkCustomerCaseConversation(
   const linked = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_customer_conversations")
-      .update({ archived_at: null, case_session_id: caseSessionId })
-      .eq("customer_id", customerId)
-      .eq("chat_mode", "case")
-      .eq("client_request_id", requestId)
+      .upsert({
+        customer_id: customerId,
+        chat_mode: "case",
+        case_session_id: caseSessionId,
+        client_request_id: requestId,
+        archived_at: null,
+      }, { onConflict: "customer_id,chat_mode,client_request_id" })
       .select("id")
-      .maybeSingle(),
+      .single(),
   );
   if (linked.error?.code === "23505") {
     const restored = await restoreCustomerConversationByCaseSession(
@@ -576,7 +629,7 @@ async function readLinkedCustomerCaseSession(
   const result = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_chat_sessions")
-      .select("id, job_id, total_turns")
+      .select("id, job_id, service_type, safe_metadata, total_turns, updated_at")
       .eq("id", caseSessionId)
       .eq("customer_id", customerId)
       .single(),
@@ -584,10 +637,7 @@ async function readLinkedCustomerCaseSession(
   if (result.error || !result.data) {
     apiFailure("NOT_FOUND", "Không tìm thấy phiên Xử lý công việc", 404);
   }
-  return {
-    jobId: nullableString(result.data.job_id),
-    totalTurns: asNumber(result.data.total_turns),
-  };
+  return projectCustomerCaseCatalogDetail(result.data);
 }
 
 async function closeLinkedCustomerJob(
@@ -710,6 +760,8 @@ function serializeCustomerConversation(
     client_request_id: asString(row.client_request_id),
     title: nullableString(row.title),
     pinned_at: nullableString(row.pinned_at),
+    profile_id: nullablePerformanceProfile(row.profile_id),
+    service_type: nullableServiceType(row.service_type),
     started_at: asString(row.created_at),
     updated_at: asString(row.updated_at),
     total_turns: asNumber(row.total_turns),
@@ -724,6 +776,7 @@ function serializeCustomerConversationTurn(
   return {
     id: asString(row.id),
     conversation_id: asString(row.conversation_id),
+    client_request_id: nullableString(row.client_request_id),
     turn_index: asNumber(row.turn_index),
     role,
     text_content: asString(row.text_content),

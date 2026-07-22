@@ -298,7 +298,7 @@ export type PaymentIntentResponse = {
   job_id: string
   status: JobStatus
   payment: {
-    provider: 'sepay_vietqr'
+    provider: 'sepay_vietqr' | 'staging_simulator'
     status: LocalPaymentStatus
     gross_amount: number | null
     platform_fee: number | null

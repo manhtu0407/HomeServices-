@@ -11,6 +11,8 @@ import {
   localizedCaseWorkSafetyMessage,
 } from '../kael-chat/case-work-localization'
 import {
+  customerVisibleIntakeSummaryText,
+  customerVisibleKaelTurnText,
   isScriptedKaelAcknowledgementTurn,
   totalMediaRefs,
 } from './kael-chat-turn-display-model'
@@ -26,6 +28,7 @@ export function deriveCustomerKaelPresentation({
   catalogTurns,
   chat,
   deal,
+  intakeDisplayMessage,
   jobIncidentMessages,
   language,
   loading,
@@ -42,6 +45,7 @@ export function deriveCustomerKaelPresentation({
   catalogTurns: CustomerKaelConversationTurn[]
   chat: KaelChatResponse | null
   deal: LocalDeal | null
+  intakeDisplayMessage: string | null
   jobIncidentMessages: JobIncidentMessages
   language: AppLanguage
   loading: boolean
@@ -54,13 +58,22 @@ export function deriveCustomerKaelPresentation({
   turns: KaelChatTurn[]
 }) {
   const chatEstimate = chat?.session.estimate ?? turns.find((turn) => turn.estimate)?.estimate ?? null
-  const normalVisibleTurns = turns.filter((turn) =>
-    turn.content_type !== 'estimate' &&
-    !isScriptedKaelAcknowledgementTurn(turn))
+  const normalVisibleTurns = turns
+    .filter((turn) =>
+      turn.content_type !== 'estimate' &&
+      !isScriptedKaelAcknowledgementTurn(turn))
+    .map((turn) => ({
+      ...turn,
+      text_content: turn.role === 'customer'
+        ? customerVisibleIntakeSummaryText(turn.text_content, language)
+        : customerVisibleKaelTurnText(turn.text_content, language),
+    }))
   const catalogConversationTurns = catalogTurns.map((turn) => ({
     id: turn.id,
     role: turn.role === 'customer' ? 'customer' as const : 'kael' as const,
-    text_content: turn.text_content,
+    text_content: turn.role === 'customer'
+      ? customerVisibleIntakeSummaryText(turn.text_content, language)
+      : customerVisibleKaelTurnText(turn.text_content, language),
   }))
   const normalAssistantTurns = mode === 'normal' ? catalogConversationTurns : []
   const hasSharedJobIncident = jobIncidentMessages.some((message) =>
@@ -71,21 +84,24 @@ export function deriveCustomerKaelPresentation({
       id: `job-incident-${message.id}`,
       role: message.sender_role,
       surface: 'customer_case' as const,
-      text_content: message.sender_role === 'worker'
+      text_content: customerVisibleKaelTurnText(message.sender_role === 'worker'
         ? `${language === 'vi' ? 'Thợ: ' : 'Worker: '}${message.content}`
-        : message.content,
+        : message.content, language),
     }))
     : []
   const caseAssistantTurns = [
-    ...(mode === 'case' ? catalogConversationTurns : []),
     ...assistantTurns.filter((turn) => turn.surface === 'customer_case'),
     ...sharedJobIncidentTurns,
   ]
-  const backendDraftCustomerTurn = routeDraftEvidencePending
+  const backendDraftCustomerTurn = routeDraftEvidencePending || intakeDisplayMessage
     ? normalVisibleTurns.find((turn) => turn.role === 'customer' && turn.text_content?.trim())
     : null
-  const pendingDraftMessage = pendingDraftLocalizedMessage?.trim() ?? backendDraftCustomerTurn?.text_content?.trim() ?? ''
-  const routeDraftOwnsIntake = Boolean(pendingDraft || routeDraftEvidencePending)
+  const pendingDraftMessage = pendingDraftLocalizedMessage?.trim() ??
+    intakeDisplayMessage?.trim() ??
+    backendDraftCustomerTurn?.text_content?.trim() ??
+    ''
+  const routeDraftHydrationPending = Boolean(pendingDraft || routeDraftEvidencePending)
+  const routeDraftOwnsIntake = routeDraftHydrationPending || Boolean(intakeDisplayMessage)
   const hasPendingDraftTurn = pendingDraftMessage.length > 0 &&
     normalVisibleTurns.some((turn) => turn.role === 'customer' && turn.text_content?.trim() === pendingDraftMessage)
   const hasActionableAgenticTurn = normalVisibleTurns.some((turn) =>
@@ -95,7 +111,9 @@ export function deriveCustomerKaelPresentation({
       turn.content_type === 'error' ||
       turn.content_type === 'photo_request' ||
       turn.content_type === 'video_request'))
-  const routeIntakeHasWorkState = Boolean(pendingDraft || chat || loading || normalVisibleTurns.length > 0)
+  const routeIntakeHasWorkState = Boolean(
+    pendingDraft || intakeDisplayMessage || chat || loading || normalVisibleTurns.length > 0,
+  )
   const workIntakeActive = mode === 'case' && !deal && routeIntakeHasWorkState
   const normalIntakeActive = mode === 'normal' && !routeDraftOwnsIntake && routeIntakeHasWorkState
   const agenticIntakeModeActive = normalIntakeActive || workIntakeActive
@@ -104,20 +122,28 @@ export function deriveCustomerKaelPresentation({
     ? diagnosisScope.next_action as Record<string, unknown>
     : null
   const serverRequestsEvidence = artifactNextAction?.kind === 'request_evidence'
+  const serverEvidenceRequired = serverRequestsEvidence && artifactNextAction?.required !== false
   const serverEvidenceKind: 'photo' | 'video_frame' | 'voice_transcript' | undefined =
     artifactNextAction?.evidence_kind === 'photo' ||
       artifactNextAction?.evidence_kind === 'video_frame' ||
       artifactNextAction?.evidence_kind === 'voice_transcript'
       ? artifactNextAction.evidence_kind
       : undefined
+  const artifactEvidencePrompt = typeof artifactNextAction?.prompt === 'string'
+    ? artifactNextAction.prompt.trim()
+    : ''
+  const evidenceBlockers = Array.isArray(diagnosisScope?.quote_blockers)
+    ? diagnosisScope.quote_blockers.filter((value: unknown): value is string => typeof value === 'string')
+    : []
+  const localizedEvidencePrompt = localizedCaseWorkEvidencePrompt({
+    blockers: evidenceBlockers,
+    evidenceKind: serverEvidenceKind,
+    language,
+  })
   const serverEvidencePrompt = serverRequestsEvidence
-    ? localizedCaseWorkEvidencePrompt({
-        blockers: Array.isArray(diagnosisScope?.quote_blockers)
-          ? diagnosisScope.quote_blockers.filter((value: unknown): value is string => typeof value === 'string')
-          : [],
-        evidenceKind: serverEvidenceKind,
-        language,
-      })
+    ? evidenceBlockers.includes('handyman_visual_evidence')
+      ? localizedEvidencePrompt
+      : artifactEvidencePrompt || localizedEvidencePrompt
     : undefined
   const serverPriceReviewBlocked = artifactNextAction?.kind === 'escalate'
   const serverSafetyMessages = Array.isArray(diagnosisScope?.safety_flags)
@@ -144,15 +170,14 @@ export function deriveCustomerKaelPresentation({
     chat?.session.next_action === 'confirmed',
   )
   const routeDraftAwaitingAgenticStep = workIntakeActive &&
-    routeDraftOwnsIntake &&
+    routeDraftHydrationPending &&
     !processLines &&
     !routeDraftHasStructuredOutcome &&
     (routeDraftEvidencePending || !chat || chat.session.status === 'collecting_evidence' || !hasActionableAgenticTurn)
   const showPendingDraftBubble = workIntakeActive &&
     pendingDraftMessage.length > 0 &&
-    !processLines &&
     (routeDraftOwnsIntake || routeDraftAwaitingAgenticStep || !hasPendingDraftTurn)
-  const routeDraftBackendCustomerTurnId = routeDraftOwnsIntake
+  const routeDraftBackendCustomerTurnId = showPendingDraftBubble && routeDraftOwnsIntake
     ? normalVisibleTurns.find((turn) => turn.role === 'customer')?.id ?? null
     : null
   const agenticVisibleTurns = routeDraftAwaitingAgenticStep
@@ -170,7 +195,6 @@ export function deriveCustomerKaelPresentation({
   const canConfirmAgenticEstimate = offerReviewActive && Boolean(
     chat?.session.id &&
     chatEstimate &&
-    chatEstimate.confidence >= 0.7 &&
     chatEstimate.needs_inspection !== true &&
     chat?.session.status === 'estimate_ready' &&
     chat?.session.next_action === 'estimate_ready',
@@ -203,6 +227,7 @@ export function deriveCustomerKaelPresentation({
     pendingDraftMessage,
     serverEvidenceKind,
     serverEvidencePrompt,
+    serverEvidenceRequired,
     serverPriceReviewBlocked,
     serverSafetyMessages,
     showCaseConversation: mode === 'case' && Boolean(deal) && (caseEditOpen || caseAssistantTurns.length > 0),

@@ -4,7 +4,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
 import { intakeEvalObservationSchema, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import { runKaelPipeline } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline'
-import { buildFocusedClarificationQuestion, resolveIntakeFactCoverage } from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-runtime'
+import {
+  buildClarificationExplanationQuestion,
+  buildFocusedClarificationQuestion,
+  isClarificationExplanationRequest,
+  isGroundedClarificationAnswer,
+  isUnknownClarificationAnswer,
+  resolveIntakeFactCoverage,
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-runtime'
 import { isSingleFocusedClarificationQuestion } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import { ELECTRICAL_PLAYBOOK_SEGMENT, ELECTRICAL_PLAYBOOK_VERSION } from '../../../../../supabase/functions/mobile-api/_shared/kael/playbooks/electrical'
 import { buildIntakeDiagnosisMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
@@ -48,6 +55,86 @@ function stubElectricalIntake(intent: Record<string, unknown>) {
 }
 
 describe('Kael intake eval observation boundary', () => {
+  it('explains a pending profile slot without treating the request as its answer', () => {
+    expect(isClarificationExplanationRequest('Nghĩa là sao? Giải thích đi.')).toBe(true)
+    expect(isClarificationExplanationRequest('Là như nào?')).toBe(true)
+    expect(isGroundedClarificationAnswer('Nghĩa là sao? Giải thích đi.')).toBe(false)
+    expect(isGroundedClarificationAnswer('Tôi cũng chưa rõ')).toBe(false)
+    expect(isUnknownClarificationAnswer('Tôi cũng chưa rõ')).toBe(true)
+    expect(isUnknownClarificationAnswer('Aptomat vẫn đang bật.')).toBe(false)
+    expect(isGroundedClarificationAnswer('Chỉ có một hạng mục: khoan một vị trí.')).toBe(true)
+
+    const question = buildClarificationExplanationQuestion(
+      'task_types_and_total_count',
+      'vi',
+    )
+    expect(question).toContain('ước lượng')
+    expect(question).not.toBe('Có bao nhiêu hạng mục cần được xử lý?')
+    expect(isSingleFocusedClarificationQuestion(question)).toBe(true)
+  })
+
+  it('does not invent mandatory quote-driver questions when provider inference falls back', async () => {
+    const result = await runKaelPipeline({
+      serviceType: 'handyman',
+      problemChips: ['Khoan/lắp kệ'],
+      description: 'Tôi chỉ cần khoan một vị trí.',
+      district: 'Thủ Đức',
+      intakeDiagnosisEnabled: true,
+      priorProfileFacts: {
+        task_types_and_total_count: 'Một hạng mục, một vị trí khoan',
+      },
+      language: 'vi',
+    }, emptySupabase(), {})
+
+    expect(result).toMatchObject({
+      success: false,
+      code: 'NO_BASELINE',
+    })
+    expect(result).not.toHaveProperty('clarification')
+  })
+
+  it('does not reuse a provider question for a profile slot already answered', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({
+        service_type: 'handyman',
+        problem_slug: 'drill_or_mount_shelf',
+        confidence: 0.86,
+        needs_clarification: true,
+        missing_slots: ['item_dimensions_weight_and_quantity'],
+        profile_facts: {},
+        safety_signals: [],
+        clarification_question: 'Có bao nhiêu hạng mục cần được xử lý?',
+        scope_signal: 'in_scope',
+      }) } }],
+      usage: { prompt_tokens: 50, completion_tokens: 20 },
+    }))))
+    try {
+      const result = await runKaelPipeline({
+        serviceType: 'handyman',
+        problemChips: ['Khoan/lắp kệ'],
+        description: 'Chỉ có một hạng mục, khoan một vị trí.',
+        district: 'Thủ Đức',
+        intakeDiagnosisEnabled: true,
+        priorProfileFacts: {
+          task_types_and_total_count: 'Một hạng mục, một vị trí khoan',
+        },
+        language: 'vi',
+      }, emptySupabase(), { deepseekApiKey: 'deepseek-test' })
+
+      expect(result).toMatchObject({
+        success: false,
+        code: 'NEEDS_CLARIFICATION',
+        clarification: {
+          missingSlots: ['item_dimensions_weight_and_quantity'],
+        },
+      })
+      expect(!result.success && result.clarification?.question)
+        .toBe('Vật cần treo có kích thước, trọng lượng ước chừng bao nhiêu?')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it.each([
     ['affected_area_and_power_state', 'vi', 'Tình trạng cấp điện hiện tại tại khu vực bị ảnh hưởng là gì?'],
     ['affected_area_and_power_state', 'en', 'What is the current power state in the affected area?'],
@@ -109,6 +196,45 @@ describe('Kael intake eval observation boundary', () => {
     expect(coverage.facts.breaker_state).toBe('aptomat nhánh hiện vẫn bật và chưa nhảy')
     expect(coverage.missing).toEqual([])
     expect(coverage.needsClarification).toBe(false)
+  })
+
+  it('does not turn every plumbing quote driver into a mandatory intake question', () => {
+    const coverage = resolveIntakeFactCoverage({
+      serviceType: 'plumbing',
+      problemSlug: 'fixture_leak',
+      profileFacts: {
+        fixture_pipe_or_drain_type: 'khớp ống mềm dưới lavabo',
+        leak_or_blockage_severity: 'chỉ rò khi mở vòi',
+        water_isolation_availability: 'van khóa vẫn hoạt động',
+      },
+      providerMissingSlots: [],
+      providerNeedsClarification: false,
+      electricalPlaybookEnabled: false,
+    })
+
+    expect(coverage.facts).toMatchObject({
+      fixture_pipe_or_drain_type: 'khớp ống mềm dưới lavabo',
+      leak_or_blockage_severity: 'chỉ rò khi mở vòi',
+      water_isolation_availability: 'van khóa vẫn hoạt động',
+    })
+    expect(coverage.missing).toEqual([])
+    expect(coverage.needsClarification).toBe(false)
+  })
+
+  it('asks only the provider-selected plumbing clarification instead of every unfilled driver', () => {
+    const coverage = resolveIntakeFactCoverage({
+      serviceType: 'plumbing',
+      problemSlug: 'fixture_leak',
+      profileFacts: {
+        fixture_pipe_or_drain_type: 'khớp ống mềm dưới lavabo',
+      },
+      providerMissingSlots: ['leak_or_blockage_severity'],
+      providerNeedsClarification: true,
+      electricalPlaybookEnabled: false,
+    })
+
+    expect(coverage.missing).toEqual(['leak_or_blockage_severity'])
+    expect(coverage.needsClarification).toBe(true)
   })
 
   it('tells the enabled intake model how to persist breaker state without changing the legacy schema', () => {
@@ -637,7 +763,8 @@ describe('Kael intake eval observation boundary', () => {
 
     expect(source).toContain('intakeEvalObservationSchema.parse(observation)')
     expect(source).toContain('...intakeObservationMetadata(pipeline.intakeObservation)')
-    expect(source).toContain('resolveRequiredSlotCoverage(')
+    expect(source).toContain('resolveIntakeFactCoverage({')
+    expect(source).toContain('electricalPlaybookEnabled,')
     const runner = readFileSync(resolve(
       process.cwd(),
       'scripts/kael-playbook-eval.mjs',

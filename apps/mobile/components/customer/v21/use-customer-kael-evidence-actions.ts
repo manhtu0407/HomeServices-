@@ -100,7 +100,6 @@ export function useCustomerKaelEvidenceActions({
   const evidenceSubmissionRef = useRef<{ ownerKey: string } | null>(null)
 
   const pickComposerMedia = async () => {
-    if (mode === 'case' && !caseEvidenceGateActive && !agenticEvidenceGateActive) return
     if (mode !== 'normal' && mode !== 'case') return
     const requestToken = kaelRequestGuard.begin('media-picker')
     try {
@@ -147,6 +146,13 @@ export function useCustomerKaelEvidenceActions({
     if (!chatSession?.id || submittingAgenticEvidence) return
     const sessionId = chatSession.id
     const reviewedVoiceTranscript = voiceTranscript.trim()
+    const skipReason = agenticEvidenceReason.trim()
+    if (decision === 'skipped' && !skipReason) {
+      setError(language === 'vi'
+        ? 'Nhập lý do ngắn trước khi tiếp tục không có bằng chứng.'
+        : 'Add a short reason before continuing without evidence.')
+      return
+    }
     if (decision === 'confirmed' && composerMediaDrafts.length === 0 && !reviewedVoiceTranscript) {
       setError(language === 'vi'
         ? 'Thêm ảnh, video hoặc bản chép lời trước khi xác nhận.'
@@ -208,7 +214,7 @@ export function useCustomerKaelEvidenceActions({
         photo_urls: photoUrls,
         media_refs: [],
         problem_chips: pendingDraft?.problemChips ?? [],
-        skip_reason: decision === 'skipped' ? agenticEvidenceReason.trim() || undefined : undefined,
+        skip_reason: decision === 'skipped' ? skipReason : undefined,
       })
       if (result.success) {
         mediaAccepted = true
