@@ -48,6 +48,14 @@ describe('learning monitor: scheduled invocation', () => {
     expect(edgeFunction).toContain('MAX_LIMIT = 100')
   })
 
+  it('turns platform JWT verification off so pg_cron can reach it', () => {
+    // Without this the gateway rejects the cron call before the function's own
+    // secret-header auth ever runs — the job fires daily and silently 401s.
+    const config = read('supabase/config.toml')
+    const section = config.split('[functions.kael-learning-monitor]')[1]?.split('[')[0] ?? ''
+    expect(section).toContain('verify_jwt = false')
+  })
+
   it('declares the secret in the env example without a value', () => {
     const env = read('config/env/workspace.env.example')
     expect(env).toMatch(/^KAEL_LEARNING_MONITOR_SECRET=\s*$/m)

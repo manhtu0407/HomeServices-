@@ -391,6 +391,11 @@ verify_jwt = false
 # can call it without exposing a customer/admin JWT.
 verify_jwt = false
 
+[functions.kael-learning-monitor]
+# Dedicated secret authentication is enforced inside the function so pg_cron
+# can call it without exposing a customer/admin JWT.
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
