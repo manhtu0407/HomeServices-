@@ -16,7 +16,7 @@ export type EdgeWorkerKaelChatTurnResponse = {
 
 export type EdgeWorkerKaelChatSessionResponse = {
   id: string;
-  job_id: string;
+  job_id: string | null;
   mode: WorkerKaelChatCreateInput["mode"];
   worker_id: string;
   status: EdgeWorkerKaelChatStatus;

@@ -11,6 +11,7 @@ import {
   workerServiceAreaUpdateSchema,
 } from "../../../../../supabase/functions/_shared/domain";
 import {
+  listJobEvidenceRefsByStage,
   validateJobEvidenceRefs,
 } from "../../../../../supabase/functions/mobile-api/_shared/services/evidence-refs.service";
 import {
@@ -119,6 +120,45 @@ describe("Edge domain hardening parity", () => {
 });
 
 describe("job evidence route ownership", () => {
+  it("lists only canonical attached refs for the requested job, stage, and owner", async () => {
+    const objectPath = `${JOB_ID}/kael_reference/field.jpg`;
+    const { client, eq } = mockDb({
+      data: [{
+        created_at: "2026-07-23T00:00:00.000Z",
+        job_id: JOB_ID,
+        object_path: objectPath,
+      }],
+      error: null,
+    });
+
+    const refsByJob = await listJobEvidenceRefsByStage(client, {
+      jobIds: [JOB_ID],
+      ownerId: OWNER_ID,
+      stage: "kael_reference",
+    });
+
+    expect(refsByJob.get(JOB_ID)).toEqual([`supabase://job-media/${objectPath}`]);
+    expect(eq).toHaveBeenCalledWith("stage", "kael_reference");
+    expect(eq).toHaveBeenCalledWith("owner_id", OWNER_ID);
+  });
+
+  it("fails closed when a stored evidence path is not canonical", async () => {
+    const { client } = mockDb({
+      data: [{
+        created_at: "2026-07-23T00:00:00.000Z",
+        job_id: JOB_ID,
+        object_path: `${JOB_ID}/kael_reference/../private.jpg`,
+      }],
+      error: null,
+    });
+
+    await expect(listJobEvidenceRefsByStage(client, {
+      jobIds: [JOB_ID],
+      ownerId: OWNER_ID,
+      stage: "kael_reference",
+    })).rejects.toMatchObject({ code: "DB_ERROR", status: 500 });
+  });
+
   it("returns deduplicated refs only when an attached asset matches job, stage, and owner", async () => {
     const ref = `supabase://job-media/${JOB_ID}/cancellation_evidence/photo.jpg`;
     const { client, eq } = mockDb({
@@ -201,16 +241,19 @@ function mockDb(result: DbResult<Array<Record<string, unknown>>>) {
   const select = vi.fn();
   const eq = vi.fn();
   const inFilter = vi.fn();
+  const order = vi.fn();
   const chain: Record<string, unknown> = {
     select,
     eq,
     in: inFilter,
+    order,
     then: (onFulfilled?: (value: typeof result) => unknown, onRejected?: (reason: unknown) => unknown) =>
       Promise.resolve(result).then(onFulfilled, onRejected),
   };
   select.mockReturnValue(chain);
   eq.mockReturnValue(chain);
   inFilter.mockReturnValue(chain);
+  order.mockReturnValue(chain);
   const from = vi.fn(() => chain);
   return {
     client: { from, rpc: vi.fn() } as unknown as DbClient,

@@ -17,7 +17,7 @@ export type WorkerV5KaelOrbMediaPreview = {
 }
 
 export type WorkerV5KaelOrbSession = {
-  jobId: string
+  jobId: string | null
   mode: WorkerKaelChatMode
   sessionId: string
 }
@@ -116,6 +116,14 @@ export function reconcileWorkerV5KaelSessionCatalog(
 
 export function workerKaelSessionCatalogKey(workerId: string, mode: WorkerKaelChatMode) {
   return `${workerId}:${mode}`
+}
+
+export function workerKaelSessionMatchesScope(
+  session: Pick<WorkerKaelChatSession, 'job_id' | 'mode'>,
+  jobId: string | null,
+  mode: WorkerKaelChatMode,
+) {
+  return session.job_id === jobId && session.mode === mode
 }
 
 export function workerV5KaelOrbTurnsFromResponse(

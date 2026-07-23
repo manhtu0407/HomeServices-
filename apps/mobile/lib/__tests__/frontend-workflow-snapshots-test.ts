@@ -29,6 +29,8 @@ function buildWorkerJob(overrides: Partial<WorkerJob> = {}): WorkerJob {
     final_price: 420_000,
     estimated_earning: 336_000,
     photo_urls: [],
+    customer_evidence_photo_urls: [],
+    field_evidence_photo_urls: [],
     completion_notes: null,
     completion_photo_urls: [],
     scheduled_at: '2026-07-15T01:00:00.000Z',
@@ -48,6 +50,8 @@ function buildCustomerJobDetail(): JobDetailResponse {
       description: 'Ổ cắm mất điện cần kiểm tra',
       problem_chips: ['outlet_not_working'],
       photo_urls: [],
+      customer_evidence_photo_urls: [],
+      field_evidence_photo_urls: [],
       address_building: 'Tòa A',
       address_unit: null,
       address_floor: null,
@@ -114,15 +118,16 @@ describe('frontend workflow payment truth', () => {
       estimated_price_max: null,
       estimated_earning_min: null,
       estimated_earning_max: null,
+      media_count: 2,
       scheduled_at: '2026-07-15T01:00:00.000Z',
       sent_at: '2026-07-14T01:00:00.000Z',
       expires_at: '2026-07-14T01:05:00.000Z',
       seconds_remaining: 300,
     }
 
-    expect(workerBroadcastToSnapshot(broadcast).scheduledAt).toBe(
-      '2026-07-15T01:00:00.000Z',
-    )
+    const snapshot = workerBroadcastToSnapshot(broadcast)
+    expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
+    expect(snapshot.mediaCount).toBe(2)
   })
 
   it('preserves the real scheduled instant returned in customer job detail', () => {
@@ -160,6 +165,19 @@ describe('frontend workflow payment truth', () => {
 
     expect(snapshot.finalPrice).toBe(420_000)
     expect(snapshot.payment).toBeNull()
+  })
+
+  it('keeps customer and worker evidence in separate post-confirmation stages', () => {
+    const customerRef = 'supabase://job-media/11111111-1111-4111-8111-111111111111/before/customer.jpg'
+    const fieldRef = 'supabase://job-media/11111111-1111-4111-8111-111111111111/kael_reference/field.jpg'
+    const snapshot = workerJobToSnapshot(buildWorkerJob({
+      customer_evidence_photo_urls: [customerRef],
+      field_evidence_photo_urls: [fieldRef],
+      photo_urls: [customerRef],
+    }))
+
+    expect(snapshot.customerEvidencePhotoUrls).toEqual([customerRef])
+    expect(snapshot.fieldEvidencePhotoUrls).toEqual([fieldRef])
   })
 
   it('hydrates only explicit payment amounts and provider returned by the server', () => {

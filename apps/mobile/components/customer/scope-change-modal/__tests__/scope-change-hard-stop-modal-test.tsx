@@ -89,6 +89,18 @@ describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
     expect(screen.getByText(/ước tính do Kael tính theo dữ liệu hiện có/)).toBeOnTheScreen()
   })
 
+  it('shows every scope evidence image without cropping and opens the full viewer', () => {
+    const refs = Array.from({ length: 4 }, (_, index) => `file:///scope-evidence-${index + 1}.jpg`)
+    setup({ scopeChange: makeScopeChange({ evidencePhotoUrls: refs }) })
+
+    refs.forEach((_, index) => {
+      expect(screen.getByTestId(`customer-scope-change-evidence-gallery-tile-${index}`)).toBeOnTheScreen()
+      expect(screen.getByTestId(`customer-scope-change-evidence-gallery-image-${index}`).props.contentFit).toBe('contain')
+    })
+    fireEvent.press(screen.getByTestId('customer-scope-change-evidence-gallery-tile-3'))
+    expect(screen.getByTestId('customer-scope-change-evidence-gallery-viewer-counter')).toHaveTextContent('4 / 4')
+  })
+
   it('does not auto-approve or auto-reject on mount', () => {
     const { onApprove, onReject } = setup()
     expect(onApprove).not.toHaveBeenCalled()

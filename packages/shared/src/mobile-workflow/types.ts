@@ -113,6 +113,7 @@ export type LocalDeal = {
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
   payment?: LocalDealPayment | null
+  customerEvidencePhotoUrls?: string[]
   fieldEvidencePhotoUrls?: string[]
   completionPhotoUrls?: string[]
   completionNotes?: string | null
@@ -172,6 +173,7 @@ export type LocalRemoteJobSnapshot = {
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
   payment?: LocalDealPayment | null
+  customerEvidencePhotoUrls?: string[]
   fieldEvidencePhotoUrls?: string[]
   completionPhotoUrls?: string[]
   completionNotes?: string | null
@@ -193,6 +195,7 @@ export type LocalRemoteBroadcastSnapshot = {
   problemSummary: string
   generalArea: string
   prebrief?: string[]
+  mediaCount?: number
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string

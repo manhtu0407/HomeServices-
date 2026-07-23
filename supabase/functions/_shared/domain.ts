@@ -583,6 +583,18 @@ export const workerServiceAreaUpdateSchema = z.object({
   }
 });
 
+export const workerServicePreferencesUpdateSchema = z.object({
+  selected_service_types: z.array(serviceTypeSchema).min(1).max(SERVICE_TYPES.length),
+}).strict().superRefine((value, ctx) => {
+  if (new Set(value.selected_service_types).size !== value.selected_service_types.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["selected_service_types"],
+      message: "selected_service_types must not contain duplicates",
+    });
+  }
+});
+
 export const WORKER_AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 const workerAvatarRefSchema = z.string().regex(
   /^supabase:\/\/worker-avatars\/[^/\s?#]+\/(?!.*(?:\.\.|\/\/))[A-Za-z0-9._-]+$/i,
@@ -638,11 +650,18 @@ const workerKaelMediaRefsSchema = z.array(workerKaelMediaRefSchema).max(5).defau
 export const workerKaelChatModeSchema = z.enum(["normal", "intake"]);
 
 export const workerKaelChatCreateSchema = z.object({
-  job_id: z.string().uuid(),
+  job_id: z.string().uuid().optional(),
   mode: workerKaelChatModeSchema.default("intake"),
   language: z.enum(["vi", "en"]).default("vi"),
   client_request_id: clientRequestIdSchema.optional(),
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (value.mode === "intake" && !value.job_id) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Worker intake chat requires an active job.", path: ["job_id"] });
+  }
+  if (value.mode === "normal" && value.job_id) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Worker normal chat must not be tied to a job.", path: ["job_id"] });
+  }
+});
 
 export const workerKaelChatTurnSchema = z.object({
   message: z.string().trim().min(1).max(1200),
@@ -741,6 +760,9 @@ export type ReviewInput = z.infer<typeof reviewSchema>;
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>;
 export type WorkerServiceAreaUpdateInput = z.infer<
   typeof workerServiceAreaUpdateSchema
+>;
+export type WorkerServicePreferencesUpdateInput = z.infer<
+  typeof workerServicePreferencesUpdateSchema
 >;
 export type EdgeWorkerAvatarUploadInput = z.infer<typeof workerAvatarUploadSchema>;
 export type EdgeWorkerAvatarUpdateInput = z.infer<typeof workerAvatarUpdateSchema>;

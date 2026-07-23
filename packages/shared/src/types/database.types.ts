@@ -3501,7 +3501,7 @@ export type Database = {
           closed_at: string | null
           created_at: string
           id: string
-          job_id: string
+          job_id: string | null
           kael_progress: Json | null
           pinned_at: string | null
           safe_metadata: Json
@@ -3520,7 +3520,7 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           id?: string
-          job_id: string
+          job_id?: string | null
           kael_progress?: Json | null
           pinned_at?: string | null
           safe_metadata?: Json
@@ -3539,7 +3539,7 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           id?: string
-          job_id?: string
+          job_id?: string | null
           kael_progress?: Json | null
           pinned_at?: string | null
           safe_metadata?: Json
@@ -3579,10 +3579,10 @@ export type Database = {
           content_type: string
           created_at: string
           id: string
-          job_id: string
+          job_id: string | null
           media_refs: string[]
           session_id: string
-          source_job_status: Database["public"]["Enums"]["job_status"]
+          source_job_status: Database["public"]["Enums"]["job_status"] | null
           status: string
           text_content: string
           updated_at: string
@@ -3599,10 +3599,10 @@ export type Database = {
           content_type: string
           created_at?: string
           id?: string
-          job_id: string
+          job_id?: string | null
           media_refs?: string[]
           session_id: string
-          source_job_status: Database["public"]["Enums"]["job_status"]
+          source_job_status?: Database["public"]["Enums"]["job_status"] | null
           status: string
           text_content: string
           updated_at?: string
@@ -3619,10 +3619,10 @@ export type Database = {
           content_type?: string
           created_at?: string
           id?: string
-          job_id?: string
+          job_id?: string | null
           media_refs?: string[]
           session_id?: string
-          source_job_status?: Database["public"]["Enums"]["job_status"]
+          source_job_status?: Database["public"]["Enums"]["job_status"] | null
           status?: string
           text_content?: string
           updated_at?: string
@@ -3676,7 +3676,7 @@ export type Database = {
           cost_usd: number | null
           created_at: string
           id: string
-          job_id: string
+          job_id: string | null
           latency_ms: number | null
           media_refs: string[]
           role: string
@@ -3694,7 +3694,7 @@ export type Database = {
           cost_usd?: number | null
           created_at?: string
           id?: string
-          job_id: string
+          job_id?: string | null
           latency_ms?: number | null
           media_refs?: string[]
           role: string
@@ -3712,7 +3712,7 @@ export type Database = {
           cost_usd?: number | null
           created_at?: string
           id?: string
-          job_id?: string
+          job_id?: string | null
           latency_ms?: number | null
           media_refs?: string[]
           role?: string
@@ -4959,6 +4959,7 @@ export type Database = {
       }
       worker_profiles: {
         Row: {
+          active_service_types: Database["public"]["Enums"]["service_type"][] | null
           app_active_minutes: number
           app_last_active_minute: string | null
           bank_account: string | null
@@ -4978,6 +4979,7 @@ export type Database = {
           legal_name: string | null
           problem_specializations: string[]
           rating: number
+          selected_service_types: Database["public"]["Enums"]["service_type"][]
           selfie_url: string | null
           service_radius_km: number
           service_types: Database["public"]["Enums"]["service_type"][]
@@ -4987,6 +4989,7 @@ export type Database = {
           years_experience: number
         }
         Insert: {
+          active_service_types?: Database["public"]["Enums"]["service_type"][] | null
           app_active_minutes?: number
           app_last_active_minute?: string | null
           bank_account?: string | null
@@ -5006,6 +5009,7 @@ export type Database = {
           legal_name?: string | null
           problem_specializations?: string[]
           rating?: number
+          selected_service_types?: Database["public"]["Enums"]["service_type"][]
           selfie_url?: string | null
           service_radius_km?: number
           service_types?: Database["public"]["Enums"]["service_type"][]
@@ -5015,6 +5019,7 @@ export type Database = {
           years_experience?: number
         }
         Update: {
+          active_service_types?: Database["public"]["Enums"]["service_type"][] | null
           app_active_minutes?: number
           app_last_active_minute?: string | null
           bank_account?: string | null
@@ -5034,6 +5039,7 @@ export type Database = {
           legal_name?: string | null
           problem_specializations?: string[]
           rating?: number
+          selected_service_types?: Database["public"]["Enums"]["service_type"][]
           selfie_url?: string | null
           service_radius_km?: number
           service_types?: Database["public"]["Enums"]["service_type"][]
@@ -5191,6 +5197,26 @@ export type Database = {
       }
     }
     Views: {
+      worker_service_quality_status: {
+        Row: {
+          average_rating: number | null
+          is_locked: boolean | null
+          last_reviewed_at: string | null
+          locked_until: string | null
+          review_count: number | null
+          service_type: Database["public"]["Enums"]["service_type"] | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_overview: {
         Row: {
           bookings_30d: number | null
@@ -5754,6 +5780,29 @@ export type Database = {
           worker_turn_index: number
         }[]
       }
+      claim_worker_kael_general_turn_atomic: {
+        Args: {
+          p_claim_id: string
+          p_client_request_id: string
+          p_content_type: string
+          p_media_refs: string[]
+          p_now?: string
+          p_session_id: string
+          p_text_content: string
+          p_worker_id: string
+        }
+        Returns: {
+          assistant_turn_id: string
+          claimed: boolean
+          completed: boolean
+          error_code: string
+          lease_expires_at: string
+          ok: boolean
+          request_id: string
+          worker_turn_id: string
+          worker_turn_index: number
+        }[]
+      }
       cleanup_orphan_analyzing_jobs: {
         Args: { p_cutoff?: string }
         Returns: {
@@ -5832,6 +5881,33 @@ export type Database = {
           p_content_type: string
           p_cost_usd: number
           p_job_id: string
+          p_latency_ms: number
+          p_now?: string
+          p_request_id: string
+          p_safe_metadata: Json
+          p_session_id: string
+          p_session_metadata_patch: Json
+          p_text_content: string
+          p_worker_id: string
+          p_worker_turn_id: string
+        }
+        Returns: {
+          applied: boolean
+          assistant_turn_id: string
+          assistant_turn_index: number
+          completed: boolean
+          error_code: string
+          ok: boolean
+          stale: boolean
+        }[]
+      }
+      complete_worker_kael_general_turn_atomic: {
+        Args: {
+          p_ai_model: string
+          p_ai_provider: Database["public"]["Enums"]["api_provider"]
+          p_claim_id: string
+          p_content_type: string
+          p_cost_usd: number
           p_latency_ms: number
           p_now?: string
           p_request_id: string

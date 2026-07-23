@@ -10,9 +10,8 @@ import {
   type ViewStyle,
 } from 'react-native'
 
-import { MintAura } from '@/components/ui/kael-primitives'
+import { JobEvidenceGallery } from '@/components/ui/job-evidence-gallery'
 import type { AppLanguage } from '@/lib/app-language'
-import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
 
 import { textByLanguage } from '../ui/format'
 import { styles } from './evidence-styles'
@@ -27,8 +26,6 @@ type WorkerV5SourceCardSkinComponent = ComponentType<{
   testID?: string
 }>
 
-const EVIDENCE_TRAY_SLOTS = [0, 1, 2] as const
-
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
@@ -36,84 +33,37 @@ function Text({ style, ...props }: TextProps) {
 export function WorkerV5EvidenceTray({
   addPhotoDisabled = false,
   emptyLabel,
-  evidenceIcon,
   language,
   onAddPhoto,
   reduceTransparency,
+  stageLabel,
+  testID = 'worker-v5-evidence-tray',
   uploadingSlot = null,
   urls,
 }: {
   addPhotoDisabled?: boolean
   emptyLabel: string
-  evidenceIcon: ImageSourcePropType
   language: AppLanguage
   onAddPhoto?: (slot: number) => void
   reduceTransparency: boolean
+  stageLabel?: string
+  testID?: string
   uploadingSlot?: number | null
   urls: readonly (string | null | undefined)[]
 }) {
-  const previewUrls = useJobMediaPreviewUrls(urls)
   return (
-    <View style={styles.evidenceTray} testID="worker-v5-evidence-tray">
-      {EVIDENCE_TRAY_SLOTS.map((slot) => {
-        const mediaRef = urls[slot] ?? null
-        const previewUrl = previewUrls[slot] ?? null
-        const overflowCount = slot === 2 && urls.length > 3 ? urls.length - 2 : 0
-        const canAddPhoto = !mediaRef && Boolean(onAddPhoto)
-        const isUploading = uploadingSlot === slot
-        return (
-          canAddPhoto ? (
-            <Pressable
-              accessibilityLabel={textByLanguage(language, `Thêm ảnh hiện trường ${slot + 1}`, `Add on-site photo ${slot + 1}`)}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: addPhotoDisabled }}
-              disabled={addPhotoDisabled}
-              key={slot}
-              onPress={() => onAddPhoto?.(slot)}
-              style={({ pressed }) => [
-                styles.evidenceTrayTile,
-                reduceTransparency && styles.opaqueCard,
-                addPhotoDisabled && styles.navButtonDisabled,
-                pressed && !addPhotoDisabled ? styles.pressed : null,
-              ]}
-              testID={`worker-v5-evidence-tray-add-${slot}`}
-            >
-              <View style={styles.evidenceTrayIconShell}>
-                {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-                <Text style={styles.evidenceTrayAddMark}>+</Text>
-              </View>
-              <Text style={styles.evidenceTrayBadge} numberOfLines={1} testID={`worker-v5-evidence-tray-badge-${slot}`}>
-                {isUploading
-                  ? textByLanguage(language, 'Đang gửi', 'Uploading')
-                  : textByLanguage(language, 'Thêm ảnh', 'Add photo')}
-              </Text>
-            </Pressable>
-          ) : (
-            <View
-              key={slot}
-              style={[styles.evidenceTrayTile, reduceTransparency && styles.opaqueCard]}
-              testID={`worker-v5-evidence-tray-tile-${slot}`}
-            >
-              {mediaRef && previewUrl ? (
-                <Image source={{ uri: previewUrl }} style={styles.evidenceTrayImage} testID={`worker-v5-evidence-tray-image-${slot}`} />
-              ) : (
-                <View style={styles.evidenceTrayIconShell}>
-                  {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-                  <Image source={evidenceIcon} style={styles.evidenceTrayIcon} />
-                </View>
-              )}
-              <Text style={styles.evidenceTrayBadge} numberOfLines={1} testID={`worker-v5-evidence-tray-badge-${slot}`}>
-                {mediaRef
-                  ? overflowCount
-                    ? `+${overflowCount}`
-                    : textByLanguage(language, 'Đã có', 'Added')
-                  : emptyLabel}
-              </Text>
-            </View>
-          )
-        )
-      })}
-    </View>
+    <JobEvidenceGallery
+      addPhotoDisabled={addPhotoDisabled}
+      emptyLabel={emptyLabel}
+      language={language}
+      minimumSlots={onAddPhoto ? 3 : 0}
+      onAddPhoto={onAddPhoto}
+      reduceTransparency={reduceTransparency}
+      refs={urls}
+      stageLabel={stageLabel ?? textByLanguage(language, 'Bằng chứng công việc', 'Job evidence')}
+      testID={testID}
+      uploadingSlot={uploadingSlot}
+    />
   )
 }
 

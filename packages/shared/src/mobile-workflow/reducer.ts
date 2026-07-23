@@ -428,6 +428,7 @@ function createDeal(draft: LocalDealDraft): LocalDeal {
     scopeChange: null,
     finalPrice: null,
     payment: null,
+    customerEvidencePhotoUrls: [],
     fieldEvidencePhotoUrls: [],
     completionPhotoUrls: [],
     completionNotes: null,
@@ -468,6 +469,7 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal | null 
     scopeChange: job.scopeChange ?? null,
     finalPrice: job.finalPrice ?? null,
     payment: job.payment ?? null,
+    customerEvidencePhotoUrls: [...(job.customerEvidencePhotoUrls ?? [])],
     fieldEvidencePhotoUrls: [...(job.fieldEvidencePhotoUrls ?? [])],
     completionPhotoUrls: [...(job.completionPhotoUrls ?? [])],
     completionNotes: job.completionNotes ?? null,
@@ -494,6 +496,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
     description: broadcast.problemSummary,
     districtLabel: broadcast.generalArea,
     problemChips: broadcast.problemSummary ? [broadcast.problemSummary] : [],
+    mediaCount: broadcast.mediaCount ?? 0,
     needsServiceChoice: false,
   }
 
@@ -525,6 +528,8 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
     },
     scopeChange: null,
     finalPrice: null,
+    customerEvidencePhotoUrls: [],
+    fieldEvidencePhotoUrls: [],
     completionPhotoUrls: [],
     completionNotes: null,
   }
@@ -562,7 +567,9 @@ function createBroadcast(draft: LocalDealDraft): LocalWorkerBroadcast {
     prebrief: [
       `${serviceLabel(draft.serviceType)} · ${problemSummary}`,
       `Khu vực: ${generalArea}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`,
-      draft.mediaCount > 0 ? `Có ${draft.mediaCount} ảnh/video để khách bổ sung sau.` : 'Chưa có ảnh/video.',
+      draft.mediaCount > 0
+        ? `Có ${draft.mediaCount} ảnh/video hiện trạng. Nội dung chỉ mở sau khi khách xác nhận thợ.`
+        : 'Chưa có ảnh/video hiện trạng.',
     ],
     fullAddressVisible: false,
     fullAddressLabel: null,

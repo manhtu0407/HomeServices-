@@ -1,9 +1,8 @@
-import { Image } from 'expo-image'
-import { Modal, StyleSheet, Text, View } from 'react-native'
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native'
 import type { LocalScopeChange } from '@nestscout/shared'
+import { JobEvidenceGallery } from '@/components/ui/job-evidence-gallery'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
-import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
 import { canCustomerDecideScopeChange } from '../v21/case-work-money-display-model'
 
 type ScopeChangeModalTokens = {
@@ -104,7 +103,6 @@ export function ScopeChangeHardStopModal({
   const fallbackUsed = readBoolean(scopeChange?.kaelReview, 'fallback_used')
   const decisionEnabled = Boolean(scopeChange && canCustomerDecideScopeChange(scopeChange))
   const evidencePhotoUrls = scopeChange?.evidencePhotoUrls ?? []
-  const evidencePreviewUrls = useJobMediaPreviewUrls(evidencePhotoUrls)
   const newEstimate = decisionEnabled && scopeChange?.priceMin && scopeChange.priceMax
     ? formatPriceRange(scopeChange.priceMin, scopeChange.priceMax)
     : text.pending
@@ -122,7 +120,13 @@ export function ScopeChangeHardStopModal({
   return (
     <Modal animationType="fade" onRequestClose={() => undefined} transparent visible={visible}>
       <View accessibilityViewIsModal style={styles.scrim} testID="customer-scope-change-hard-stop-modal">
-        <View style={[styles.sheet, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
+        <ScrollView
+          bounces={false}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+        >
+          <View style={[styles.sheet, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
           <Text style={[styles.eyebrow, { color: tokens.copper }]} numberOfLines={1}>
             {text.pending}
           </Text>
@@ -170,15 +174,12 @@ export function ScopeChangeHardStopModal({
                 <Text style={[styles.noteLabel, { color: tokens.copper }]} numberOfLines={1}>
                   {photosLabel}
                 </Text>
-                <View style={styles.evidenceRow}>
-                  {evidencePreviewUrls.slice(0, 3).filter((uri): uri is string => Boolean(uri)).map((uri) => (
-                    <Image
-                      key={uri}
-                      source={{ uri }}
-                      style={[styles.evidenceImage, { borderColor: tokens.borderStrong }]}
-                    />
-                  ))}
-                </View>
+                <JobEvidenceGallery
+                  language={language}
+                  refs={evidencePhotoUrls}
+                  stageLabel={photosLabel}
+                  testID="customer-scope-change-evidence-gallery"
+                />
               </View>
             ) : null}
           </View>
@@ -208,7 +209,8 @@ export function ScopeChangeHardStopModal({
               textStyle={[styles.primaryText, { color: tokens.primaryText }]}
             />
           </View>
-        </View>
+          </View>
+        </ScrollView>
       </View>
     </Modal>
   )
@@ -262,16 +264,6 @@ const styles = StyleSheet.create({
   evidenceGrid: {
     gap: 8,
     paddingTop: 4,
-  },
-  evidenceImage: {
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 62,
-    width: 62,
-  },
-  evidenceRow: {
-    flexDirection: 'row',
-    gap: 8,
   },
   eyebrow: {
     fontSize: 12,
@@ -371,6 +363,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 16,
+  },
+  scroll: {
+    width: '100%',
+  },
+  scrollContent: {
+    alignItems: 'center',
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: 4,
   },
   secondaryButton: {
     alignItems: 'center',

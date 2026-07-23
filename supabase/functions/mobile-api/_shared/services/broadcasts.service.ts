@@ -11,6 +11,10 @@ import { normalizeDistrict, type ServiceType } from "../../../_shared/domain.ts"
 import {
   loadWorkerAvailabilityRows,
 } from "./broadcast-query-batches.ts";
+import {
+  isWorkerServiceQualityLocked,
+  workerAcceptsService,
+} from "./worker-service-preferences.ts";
 
 const DISINTERMEDIATION_RISK_PENALTY_THRESHOLD = 2;
 const DISINTERMEDIATION_RISK_SCORE_PENALTY = 15;
@@ -374,7 +378,7 @@ async function queryEligibleWorkers(
     jobGeo?.customerId ?? null,
   );
   const workerProjection =
-    "id, rating, total_jobs, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations";
+    "id, rating, total_jobs, service_types, selected_service_types, active_service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations";
   const candidateRows: Array<Record<string, unknown>> = [];
   for (let offset = 0;; offset += candidateLimit) {
     const page = await dbQuery<Array<Record<string, unknown>>>(
@@ -384,7 +388,7 @@ async function queryEligibleWorkers(
         .eq("is_approved", true)
         .eq("is_available", true)
         .eq("is_suspended", false)
-        .contains("service_types", [serviceType])
+        .contains("selected_service_types", [serviceType])
         .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`)
         .order("rating", { ascending: false })
         .order("id", { ascending: true })
@@ -415,7 +419,7 @@ async function queryEligibleWorkers(
         .eq("is_approved", true)
         .eq("is_available", true)
         .eq("is_suspended", false)
-        .contains("service_types", [serviceType])
+        .contains("selected_service_types", [serviceType])
         .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`),
     );
     if (favoriteResult.error) {
@@ -432,7 +436,20 @@ async function queryEligibleWorkers(
     const workerId = asString(worker.id);
     if (workerId) combinedCandidates.set(workerId, worker);
   }
+  const qualityLocks = await loadQualityLockedWorkerIds(
+    client,
+    Array.from(combinedCandidates.keys()),
+    serviceType,
+  );
+  if (!qualityLocks.success) {
+    return {
+      success: false as const,
+      reason: "Lỗi khi kiểm tra chất lượng dịch vụ của thợ",
+    };
+  }
   const candidates = Array.from(combinedCandidates.values()).filter((worker) =>
+    workerAcceptsService(worker, serviceType) &&
+    !qualityLocks.workerIds.has(asString(worker.id)) &&
     !excludedWorkerIds.has(asString(worker.id)) &&
     hasEveryRequiredCapability(
       asStringArray(worker.problem_specializations),
@@ -502,6 +519,39 @@ async function queryEligibleWorkers(
   };
 }
 
+async function loadQualityLockedWorkerIds(
+  client: DbClient,
+  workerIds: string[],
+  serviceType: ServiceType,
+) {
+  const lockedWorkerIds = new Set<string>();
+  if (workerIds.length === 0) {
+    return { success: true as const, workerIds: lockedWorkerIds };
+  }
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("worker_service_quality_status")
+      .select("worker_id, locked_until, is_locked")
+      .in("worker_id", workerIds)
+      .eq("service_type", serviceType),
+  );
+  if (result.error) {
+    console.warn("mobile-api worker service quality load failed", {
+      errorCode: result.error.code,
+      serviceType,
+      workerCount: workerIds.length,
+    });
+    return { success: false as const, workerIds: lockedWorkerIds };
+  }
+  for (const row of result.data ?? []) {
+    const workerId = asString(row.worker_id);
+    if (workerId && isWorkerServiceQualityLocked(row)) {
+      lockedWorkerIds.add(workerId);
+    }
+  }
+  return { success: true as const, workerIds: lockedWorkerIds };
+}
+
 function readDisintermediationRiskCounts(
   result: DbResult<Array<Record<string, unknown>>>,
   workerCount: number,
@@ -560,8 +610,8 @@ function hasEveryRequiredCapability(
   requiredCapabilities: string[],
 ) {
   if (requiredCapabilities.length === 0) return true;
-  // Legacy approved profiles predate granular capability capture; their
-  // canonical service_types + district eligibility remains the qualification.
+  // Legacy profiles predate granular capability capture; their selected
+  // service plus district eligibility remains the qualification.
   if (workerCapabilities.length === 0) return true;
   const available = specializationKeys(workerCapabilities);
   return requiredCapabilities.every((requirement) =>

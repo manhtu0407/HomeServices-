@@ -609,6 +609,7 @@ export type EdgeBroadcastListResponse = {
     estimated_price_max: number | null;
     estimated_earning_min: number | null;
     estimated_earning_max: number | null;
+    media_count: number;
     worker_brief_core?: Record<string, unknown> | null;
     scheduled_at: string | null;
     sent_at: string | null;
@@ -652,6 +653,8 @@ export type EdgeWorkerJobListResponse = {
     platform_fee: number | null;
     worker_net: number | null;
     photo_urls: string[];
+    customer_evidence_photo_urls: string[];
+    field_evidence_photo_urls: string[];
     completion_notes: string | null;
     completion_photo_urls: string[];
     worker_brief_guidance?: Record<string, unknown> | null;
@@ -721,6 +724,7 @@ export type EdgeWorkerProfileResponse = {
   is_approved: boolean;
   is_suspended: boolean;
   service_types: ServiceType[];
+  active_service_types: ServiceType[];
   districts: string[];
   home_lat: number | null;
   home_lng: number | null;

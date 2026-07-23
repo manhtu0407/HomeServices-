@@ -416,6 +416,7 @@ export function CaseJobProgressStageView({
   completionNode,
   dataPendingLabel,
   evidenceCount,
+  evidencePhotoUrls,
   evidenceLabel,
   language,
   onOpenKael,
@@ -438,6 +439,7 @@ export function CaseJobProgressStageView({
   completionNode: ReactNode
   dataPendingLabel: string
   evidenceCount: number
+  evidencePhotoUrls: string[]
   evidenceLabel: string
   language: AppLanguage
   onOpenKael: () => void
@@ -494,7 +496,7 @@ export function CaseJobProgressStageView({
       <V21Card style={historyActiveStyles.fulfillmentListCard} testID="customer-v21-job-progress-evidence">
         <SourceCardSkin />
         <CaseWideMintAura scope="JobProgressEvidence" testID="customer-v21-job-progress-evidence-mint-aura" />
-        <CaseStageMediaStrip count={evidenceCount} dataPending={dataPendingLabel} tokens={tokens} />
+        <CaseStageMediaStrip dataPending={dataPendingLabel} language={language} refs={evidencePhotoUrls} />
       </V21Card>
 
       <V21Card style={historyActiveStyles.fulfillmentListCard} testID="customer-v21-job-progress-risk">

@@ -13,23 +13,26 @@ export async function claimWorkerKaelChatTurn(
     claimId: string;
     clientRequestId: string;
     contentType: "text" | "photo_attached";
-    jobId: string;
+    jobId: string | null;
     mediaRefs: string[];
     message: string;
     sessionId: string;
     workerId: string;
   },
 ) {
+  const rpcName = input.jobId
+    ? "claim_worker_kael_chat_turn_atomic"
+    : "claim_worker_kael_general_turn_atomic";
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("claim_worker_kael_chat_turn_atomic", {
+    client.rpc(rpcName, {
       p_claim_id: input.claimId,
       p_client_request_id: input.clientRequestId,
       p_content_type: input.contentType,
-      p_job_id: input.jobId,
       p_media_refs: input.mediaRefs,
       p_session_id: input.sessionId,
       p_text_content: input.message,
       p_worker_id: input.workerId,
+      ...(input.jobId ? { p_job_id: input.jobId } : {}),
     }),
   );
   if (result.error || !result.data?.[0]) {
@@ -81,7 +84,7 @@ export async function completeWorkerKaelChatTurn(
   input: {
     answer: WorkerAssistAnswer;
     claimId: string;
-    jobId: string;
+    jobId: string | null;
     requestId: string;
     sessionId: string;
     workerId: string;
@@ -104,14 +107,16 @@ export async function completeWorkerKaelChatTurn(
     latest_redirect_scope_change: input.answer.redirect_scope_change,
     latest_fallback_used: input.answer.fallback_used,
   });
+  const rpcName = input.jobId
+    ? "complete_worker_kael_chat_turn_atomic"
+    : "complete_worker_kael_general_turn_atomic";
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("complete_worker_kael_chat_turn_atomic", {
+    client.rpc(rpcName, {
       p_ai_model: input.answer.model ?? null,
       p_ai_provider: input.answer.provider ?? null,
       p_claim_id: input.claimId,
       p_content_type: input.answer.redirect_scope_change ? "guidance" : "text",
       p_cost_usd: input.answer.cost_usd ?? 0,
-      p_job_id: input.jobId,
       p_latency_ms: input.answer.latency_ms ?? null,
       p_request_id: input.requestId,
       p_safe_metadata: answerMetadata,
@@ -120,6 +125,7 @@ export async function completeWorkerKaelChatTurn(
       p_text_content: input.answer.text,
       p_worker_id: input.workerId,
       p_worker_turn_id: input.workerTurnId,
+      ...(input.jobId ? { p_job_id: input.jobId } : {}),
     }),
   );
   if (result.error || !result.data?.[0]) {

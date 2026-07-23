@@ -103,9 +103,11 @@ function parseCachedSession(
 ): WorkerKaelChatSession | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const session = value as Record<string, unknown>
+  const jobId = typeof session.job_id === 'string' ? session.job_id : null
   if (
     typeof session.id !== 'string'
-    || typeof session.job_id !== 'string'
+    || (mode === 'normal' && jobId !== null)
+    || (mode === 'intake' && jobId === null)
     || session.mode !== mode
     || session.worker_id !== workerId
     || typeof session.started_at !== 'string'
@@ -117,7 +119,7 @@ function parseCachedSession(
   return {
     closed_at: nullableString(session.closed_at),
     id: session.id,
-    job_id: session.job_id,
+    job_id: jobId,
     mode,
     pinned_at: nullableString(session.pinned_at),
     progress: null,

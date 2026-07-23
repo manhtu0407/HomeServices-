@@ -43,6 +43,7 @@ import type {
   WorkerKaelTrainingConsentInput,
   WorkerRegisterInput,
   WorkerServiceAreaUpdateInput,
+  WorkerServicePreferencesUpdateInput,
   WorkerScopeChangeInput,
 } from "../../../_shared/domain.ts";
 import type {
@@ -590,6 +591,10 @@ export type MobileApiServices = {
   updateWorkerServiceArea(
     ctx: MobileApiContext,
     input: WorkerServiceAreaUpdateInput,
+  ): Promise<EdgeWorkerProfileResponse>;
+  updateWorkerServicePreferences(
+    ctx: MobileApiContext,
+    input: WorkerServicePreferencesUpdateInput,
   ): Promise<EdgeWorkerProfileResponse>;
   updateWorkerAvailability(
     ctx: MobileApiContext,

@@ -13,6 +13,7 @@ import {
   workerKaelChatTurnSchema,
   workerRegisterSchema,
   workerServiceAreaUpdateSchema,
+  workerServicePreferencesUpdateSchema,
   workerCancellationRequestSchema,
   workerCancellationDecisionSchema,
   workerAvatarUpdateSchema,
@@ -215,6 +216,26 @@ describe('workerRegisterSchema districts', () => {
       districts: ['q7'],
       home_lat: 10.762622,
       home_lng: null,
+    }).success).toBe(false)
+  })
+})
+
+describe('workerServicePreferencesUpdateSchema', () => {
+  it('accepts only a non-empty unique set of worker-selected services', () => {
+    expect(workerServicePreferencesUpdateSchema.parse({
+      selected_service_types: ['plumbing', 'electrical'],
+    })).toEqual({
+      selected_service_types: ['plumbing', 'electrical'],
+    })
+
+    expect(workerServicePreferencesUpdateSchema.safeParse({
+      selected_service_types: [],
+    }).success).toBe(false)
+    expect(workerServicePreferencesUpdateSchema.safeParse({
+      selected_service_types: ['plumbing', 'plumbing'],
+    }).success).toBe(false)
+    expect(workerServicePreferencesUpdateSchema.safeParse({
+      selected_service_types: ['painting'],
     }).success).toBe(false)
   })
 })
@@ -930,4 +951,5 @@ describe('scrubSensitiveForLLM', () => {
     )
     expect(scrubSensitiveForLLM('Vị trí là căn hộ A.25.07.')).toBe('Vị trí là [unit].')
   })
+
 })

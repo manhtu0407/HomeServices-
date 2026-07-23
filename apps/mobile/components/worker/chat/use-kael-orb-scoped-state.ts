@@ -136,7 +136,7 @@ function createState({
     openingSessionId: null,
     pendingSessionIds: [],
     progress: null,
-    sessions: jobId
+    sessions: mode === 'normal' || jobId
       ? catalogSessions.filter((session) => (
           session.job_id === jobId
           && session.mode === mode

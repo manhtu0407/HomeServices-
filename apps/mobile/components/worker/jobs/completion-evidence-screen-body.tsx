@@ -1,5 +1,4 @@
 import { useRef, useState, type ComponentType } from 'react'
-import type { ImageSourcePropType } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 
 import type { AppLanguage } from '@/lib/app-language'
@@ -10,7 +9,6 @@ import {
   type LocalMediaUploadDraft,
 } from '@/lib/media-upload'
 
-import type { WorkerV5IconName } from '../dock/types'
 import { workerV5PrivateKaelMediaName } from '../chat/use-worker-kael-orb-chat'
 import { textByLanguage } from '../ui/format'
 import { WorkerV5CompletionEvidenceBody } from './completion-bodies'
@@ -22,14 +20,12 @@ type WorkerV5PrimaryFillComponent = ComponentType<{
 }>
 
 export function WorkerV5CompletionEvidenceScreenBody({
-  icons,
   language,
   navigateNext,
   primaryFill,
   reduceTransparency,
   runtime,
 }: {
-  icons: Record<WorkerV5IconName, ImageSourcePropType>
   language: AppLanguage
   navigateNext: () => void
   primaryFill: WorkerV5PrimaryFillComponent
@@ -147,7 +143,6 @@ export function WorkerV5CompletionEvidenceScreenBody({
     <WorkerV5CompletionEvidenceBody
       completionNote={completionNote}
       draftPhotoUris={completionPhotos.map((photo) => photo.uri)}
-      icons={icons}
       language={language}
       notice={notice}
       onAddPhoto={() => void addCompletionPhoto()}

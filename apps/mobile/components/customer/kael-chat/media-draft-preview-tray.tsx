@@ -30,7 +30,7 @@ export function MediaDraftPreviewTray({
           style={[styles.previewItem, { backgroundColor: tokens.service, borderColor: tokens.border }]}
         >
           {draft.type === 'image' ? (
-            <Image accessibilityIgnoresInvertColors source={{ uri: draft.uri }} style={styles.previewImage} />
+            <Image accessibilityIgnoresInvertColors contentFit="contain" source={{ uri: draft.uri }} style={styles.previewImage} />
           ) : (
             <View style={[styles.previewImage, styles.videoBadge, { backgroundColor: tokens.ghost }]}>
               <Text style={[styles.videoText, { color: tokens.primary }]}>VIDEO</Text>

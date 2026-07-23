@@ -537,6 +537,24 @@ describe('Worker V5 arrival check-in', () => {
     })
   })
 
+  it('shows customer photos and worker field photos as separate post-confirmation galleries', () => {
+    const deal = buildInProgressDeal()
+    deal.customerEvidencePhotoUrls = [
+      'file:///customer-condition-1.jpg',
+      'file:///customer-condition-2.jpg',
+    ]
+    deal.fieldEvidencePhotoUrls = Array.from({ length: 4 }, (_, index) => `file:///worker-field-${index + 1}.jpg`)
+    buildWorkflow(deal)
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-customer-evidence-gallery-tile-0')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-customer-evidence-gallery-image-1').props.contentFit).toBe('contain')
+    expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-evidence-tray-image-0').props.contentFit).toBe('contain')
+    expect(screen.getByTestId('worker-v5-evidence-tray-tile-3')).toBeOnTheScreen()
+  })
+
   it('adds on-site evidence from the photo library and sends it to Kael for field confirmation', async () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
     buildWorkflow(buildInProgressDeal())
@@ -800,7 +818,6 @@ describe('Worker V5 arrival check-in', () => {
 
     expect(screen.queryByTestId('worker-v5-scope-change-hero')).toBeNull()
     await waitFor(() => {
-      expect(screen.getByText('Đã có')).toBeOnTheScreen()
       expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
     })
     fireEvent.changeText(screen.getByTestId('worker-scope-change-new-description-input'), 'Cần thay dây cháy tại ổ cắm.')
@@ -820,8 +837,7 @@ describe('Worker V5 arrival check-in', () => {
     rerender(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(screen.getByText('Đã có')).toBeOnTheScreen()
-      expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
+      expect(screen.getByTestId('worker-v5-completion-field-gallery-tile-0')).toBeOnTheScreen()
     })
     expect(screen.queryByText('Hồ sơ hoàn tất')).toBeNull()
   })

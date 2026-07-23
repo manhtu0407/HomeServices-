@@ -221,6 +221,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       performance_axes: [],
     })),
     updateWorkerServiceArea: vi.fn(),
+    updateWorkerServicePreferences: vi.fn(),
     updateWorkerAvailability: vi.fn(),
     listWorkerBroadcasts: vi.fn(),
     listWorkerJobs: vi.fn(),
@@ -1607,7 +1608,7 @@ describe('mobile-api Edge router contract', () => {
     const createWorkerKaelChat = vi.fn(async () => ({
       session: {
         id: 'worker-session-normal',
-        job_id: '22222222-2222-4222-8222-222222222222',
+        job_id: null,
         mode: 'normal' as const,
         worker_id: workerAuth.user.id,
         status: 'active' as const,
@@ -1629,7 +1630,6 @@ describe('mobile-api Edge router contract', () => {
       'https://example.test/mobile-api/workers/me/kael/chat',
       {
         body: JSON.stringify({
-          job_id: '22222222-2222-4222-8222-222222222222',
           language: 'vi',
           mode: 'normal',
         }),
@@ -1642,7 +1642,6 @@ describe('mobile-api Edge router contract', () => {
     expect(createWorkerKaelChat).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'worker' }),
       {
-        job_id: '22222222-2222-4222-8222-222222222222',
         language: 'vi',
         mode: 'normal',
       },

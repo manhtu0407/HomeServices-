@@ -104,7 +104,7 @@ function workerChatSuccess(sessionId: string, jobId: string, workerId = mockWork
         closed_at: null,
         id: sessionId,
         job_id: jobId,
-        mode: 'normal' as const,
+        mode: 'intake' as const,
         pinned_at: null,
         progress: null,
         started_at: '2026-07-15T00:00:00.000Z',
@@ -155,6 +155,61 @@ describe('worker Kael orb owner isolation', () => {
     })
   })
 
+  it('keeps general chat creation available without an active job', () => {
+    const { result } = renderHook(() =>
+      useWorkerV5KaelOrbChat(null, 'vi', 'normal', true),
+    )
+
+    expect(result.current.canCreateSession).toBe(true)
+  })
+
+  it('keeps job intake creation locked without an active job', () => {
+    const { result } = renderHook(() =>
+      useWorkerV5KaelOrbChat(null, 'vi', 'intake', true),
+    )
+
+    expect(result.current.canCreateSession).toBe(false)
+  })
+
+  it('creates a general conversation without sending a job id', async () => {
+    mockWorkerKaelChatCreate.mockResolvedValue({
+      data: {
+        session: {
+          closed_at: null,
+          id: 'session-general',
+          job_id: null,
+          mode: 'normal',
+          pinned_at: null,
+          progress: null,
+          started_at: '2026-07-23T00:00:00.000Z',
+          status: 'active',
+          title: null,
+          total_turns: 0,
+          worker_id: mockWorkerId,
+        },
+        turns: [],
+      },
+      status: 200,
+      success: true,
+    })
+    const { result } = renderHook(() =>
+      useWorkerV5KaelOrbChat(null, 'vi', 'normal', true),
+    )
+
+    let created = false
+    await act(async () => {
+      created = await result.current.startNewSession()
+    })
+
+    expect(created).toBe(true)
+    expect(mockWorkerKaelChatCreate).toHaveBeenCalledWith(expect.objectContaining({
+      language: 'vi',
+      mode: 'normal',
+    }))
+    expect(mockWorkerKaelChatCreate.mock.calls[0][0]).not.toHaveProperty('job_id')
+    expect(result.current.activeSessionId).toBe('session-general')
+  })
+
   it('hides the previous job state in the first render for the next job', async () => {
     mockWorkerKaelChatCreate.mockResolvedValue(workerChatSuccess('session-a', 'job-a'))
     const renders: RenderSnapshot[] = []
@@ -162,7 +217,7 @@ describe('worker Kael orb owner isolation', () => {
       ReturnType<typeof useWorkerV5KaelOrbChat>,
       { deal: LocalDeal }
     >(({ deal }) => {
-      const chat = useWorkerV5KaelOrbChat(deal, 'vi', 'normal', true)
+      const chat = useWorkerV5KaelOrbChat(deal, 'vi', 'intake', true)
       renders.push(snapshot(chat))
       return chat
     }, { initialProps: { deal: workerDeal('job-a') } })
@@ -193,7 +248,7 @@ describe('worker Kael orb owner isolation', () => {
     mockWorkerKaelChatCreate.mockResolvedValue(workerChatSuccess('session-a', 'job-a'))
     const renders: RenderSnapshot[] = []
     const { result, rerender } = renderHook(() => {
-      const chat = useWorkerV5KaelOrbChat(workerDeal('job-a'), 'vi', 'normal', true)
+      const chat = useWorkerV5KaelOrbChat(workerDeal('job-a'), 'vi', 'intake', true)
       renders.push(snapshot(chat))
       return chat
     })
@@ -221,7 +276,7 @@ describe('worker Kael orb owner isolation', () => {
       ReturnType<typeof useWorkerV5KaelOrbChat>,
       { deal: LocalDeal }
     >(
-      ({ deal }) => useWorkerV5KaelOrbChat(deal, 'vi', 'normal', true),
+      ({ deal }) => useWorkerV5KaelOrbChat(deal, 'vi', 'intake', true),
       { initialProps: { deal: workerDeal('job-a') } },
     )
     let pendingStart!: Promise<boolean>

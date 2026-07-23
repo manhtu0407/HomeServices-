@@ -19,6 +19,14 @@ export type WorkerPayoutMethodResponse = {
   worker_profile: WorkerProfileResponse
 }
 
+export type WorkerServiceQualityStatus = {
+  average_rating: number | null
+  locked_until: string | null
+  review_count: number
+  service_type: ServiceType
+  status: 'available' | 'quality_locked'
+}
+
 export type WorkerProfileResponse = {
   id: string
   avatar_url: string | null
@@ -29,6 +37,9 @@ export type WorkerProfileResponse = {
   is_approved: boolean
   is_suspended: boolean
   service_types: ServiceType[]
+  active_service_types?: ServiceType[]
+  selected_service_types?: ServiceType[]
+  service_quality?: WorkerServiceQualityStatus[]
   districts: string[]
   home_lat: number | null
   home_lng: number | null
@@ -121,6 +132,7 @@ export type WorkerBroadcastsResponse = {
     estimated_price_max: number | null
     estimated_earning_min: number | null
     estimated_earning_max: number | null
+    media_count: number
     worker_brief_core?: Record<string, unknown> | null
     scheduled_at: string | null
     sent_at: string | null
@@ -220,7 +232,7 @@ export type WorkerKaelChatTurn = {
 
 export type WorkerKaelChatSession = {
   id: string
-  job_id: string
+  job_id: string | null
   mode: WorkerKaelChatMode
   worker_id: string
   status: WorkerKaelChatStatus
@@ -323,6 +335,8 @@ export type WorkerJobListResponse = {
     platform_fee?: number | null
     worker_net?: number | null
     photo_urls: string[]
+    customer_evidence_photo_urls: string[]
+    field_evidence_photo_urls: string[]
     completion_notes: string | null
     completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null
