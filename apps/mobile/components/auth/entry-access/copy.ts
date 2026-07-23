@@ -3,9 +3,7 @@ import type { AppLanguage } from '@/lib/app-language'
 export type EntryAuthErrorKey =
   | 'accountExists'
   | 'accountNotReady'
-  | 'confirmationRequired'
   | 'connectionFailed'
-  | 'emailConfirmation'
   | 'fullNameRequired'
   | 'googleSignInFailed'
   | 'invalidCredentials'
@@ -154,9 +152,7 @@ const viCopy: EntryAccessCopy = {
   errors: {
     accountExists: 'Tài khoản này đã tồn tại. Hãy đăng nhập hoặc dùng thông tin khác.',
     accountNotReady: 'Tài khoản chưa sẵn sàng để vào ứng dụng. Vui lòng hoàn tất đăng nhập trước.',
-    confirmationRequired: 'Kiểm tra kênh liên hệ để xác nhận tài khoản trước khi tiếp tục.',
     connectionFailed: 'Không thể kết nối. Vui lòng thử lại.',
-    emailConfirmation: 'Kiểm tra email để xác nhận tài khoản trước khi tiếp tục.',
     fullNameRequired: 'Nhập họ tên để tạo tài khoản.',
     googleSignInFailed: 'Chưa thể đăng nhập bằng Google. Vui lòng thử lại.',
     invalidCredentials: 'Email/SĐT hoặc mật khẩu không đúng.',
@@ -288,9 +284,7 @@ const enCopy: EntryAccessCopy = {
   errors: {
     accountExists: 'This account already exists. Sign in or use different details.',
     accountNotReady: 'Your account is not ready to enter the app. Complete sign-in first.',
-    confirmationRequired: 'Check your contact channel and confirm your account before continuing.',
     connectionFailed: 'Unable to connect. Please try again.',
-    emailConfirmation: 'Check your email and confirm your account before continuing.',
     fullNameRequired: 'Enter your full name to create an account.',
     googleSignInFailed: 'Unable to sign in with Google. Please try again.',
     invalidCredentials: 'Email/phone or password is incorrect.',
@@ -492,7 +486,6 @@ const errorMatchers: readonly Readonly<{
   { key: 'signupPasswordLong', patterns: [/mật khẩu.*dài quá 128/i, /password.*128/i] },
   { key: 'fullNameRequired', patterns: [/nhập họ tên/i, /enter.*full name/i] },
   { key: 'accountExists', patterns: [/user already registered/i, /already exists/i, /tài khoản.*đã tồn tại/i] },
-  { key: 'confirmationRequired', patterns: [/email not confirmed/i, /confirm.*account/i, /xác nhận tài khoản/i] },
   { key: 'roleUnavailable', patterns: [/không thể tải vai trò/i, /load.*account role/i] },
   { key: 'workerApplicationContact', patterns: [/nhập email.*số điện thoại.*xét duyệt/i, /email.*phone.*application/i] },
   { key: 'workerApplicationFailed', patterns: [/không thể gửi.*xét duyệt/i, /không thể gửi hồ sơ/i, /submit.*worker application/i] },

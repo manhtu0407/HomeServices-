@@ -26,7 +26,6 @@ import { identifierAvailabilityError, identifierFieldProps, localizeIdentifierAv
 import { entryBrandAccessFlowStyles as styles, SPLASH_LOADER_WIDTH } from './entry-brand-access-flow-styles'
 import { LottieLogoMark } from './lottie-logo-mark'
 import { PasswordRecoveryScreen, PasswordResetScreen } from './password-recovery-screen'
-import { SignupConfirmationScreen } from './registration-screens'
 import { RoleGateScreen } from './role-gate-screen'
 import { selectRoleGateGreeting } from './role-gate-greeting'
 import type {
@@ -225,37 +224,6 @@ export function EntryBrandAccessFlow({
     }
   }
 
-  const resendSignupConfirmation = async () => {
-    setError(null)
-    setNotice(null)
-    const parsedIdentifier = parseAuthIdentifier(identifier)
-    if (!parsedIdentifier || parsedIdentifier.kind !== 'email') {
-      setError('Email chưa đúng định dạng.')
-      return
-    }
-    if (!actions.onResendSignupConfirmation) {
-      setError('Gửi lại email xác nhận chưa sẵn sàng. Vui lòng thử lại sau.')
-      return
-    }
-
-    const actionVersion = beginAction()
-    if (actionVersion === null) return
-    try {
-      // react-doctor-disable-next-line react-doctor/async-defer-await
-      const result = await actions.onResendSignupConfirmation(parsedIdentifier.value)
-      if (!isCurrentAction(actionVersion)) return
-      if (!result.success) {
-        setError(localizeEntryAuthError(result.error, language, 'confirmationRequired'))
-        return
-      }
-      setNotice(language === 'vi' ? 'Email xác nhận mới đã được gửi.' : 'A new confirmation email has been sent.')
-    } catch {
-      if (isCurrentAction(actionVersion)) setError(copy.errors.connectionFailed)
-    } finally {
-      finishAction(actionVersion)
-    }
-  }
-
   const providerLogin = async () => {
     const action = actions.onGoogleLogin
     if (!action) {
@@ -361,7 +329,6 @@ export function EntryBrandAccessFlow({
         password={password}
         providerLogin={providerLogin}
         remember={remember}
-        resendSignupConfirmation={resendSignupConfirmation}
         role={role}
         roleGateGreeting={roleGateGreeting}
         setAcceptedTerms={setAcceptedTerms}
@@ -388,7 +355,7 @@ type EntryAccessStepContentProps = {
   go: (step: EntryAccessStep) => void; setAcceptedTerms: () => void; setRemember: () => void
   language: AppLanguage; role: EntryRole; splashDurationMs: number; step: EntryAccessStep
   onCompletePasswordRecovery?: (password: string) => Promise<{ success: boolean; error?: string }>
-  onExitPasswordRecovery?: () => Promise<void> | void; resendSignupConfirmation: () => void
+  onExitPasswordRecovery?: () => Promise<void> | void
   setFullName: (value: string) => void; setIdentifier: (value: string) => void; setPassword: (value: string) => void
   submitLogin: () => void; submitPasswordRecovery: () => void; submitRegister: () => void
 }
@@ -441,18 +408,6 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
           onToggleTerms={props.setAcceptedTerms}
           password={props.password}
           role={props.role}
-        />
-      )
-    case 'signup-confirmation':
-      return (
-        <SignupConfirmationScreen
-          busy={props.busy}
-          email={props.identifier}
-          error={props.error}
-          notice={props.notice}
-          onBack={() => props.go('register')}
-          onLogin={() => props.go('login')}
-          onResend={props.resendSignupConfirmation}
         />
       )
     case 'password-recovery':

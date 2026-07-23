@@ -41,7 +41,7 @@ export function validateIdentifierForRole(value: string, role: EntryRole, langua
 
 export function validateRegistrationIdentifier(value: string, language: AppLanguage) {
   const trimmed = value.trim()
-  if (!trimmed) return language === 'vi' ? 'Nhập email để tiếp tục.' : 'Enter your email to continue.'
+  if (!trimmed) return entryAccessCopy[language].errors.registrationDetails
 
   const identifier = parseAuthIdentifier(trimmed)
   if (identifier?.kind === 'phone') {

@@ -13,7 +13,6 @@ import {
 import { parseAuthIdentifier, validateAuthIdentifier } from './auth-identifier'
 import { getRuntimeAuthCallbackUrl, isPasswordRecoveryCallbackUrl } from './auth-callback'
 import { requestPasswordRecoveryEmail, updateRecoveredPassword } from './password-recovery'
-import { resendSignupConfirmationEmail } from './signup-confirmation'
 import { isBoundedLoginPassword, validateNewPassword, validateSignupPassword } from './auth-password'
 import { buildLocalVisualAuditSession, getLocalVisualAuditRole } from './auth-visual-audit'
 import { clearPendingKaelChatDraft } from './pending-kael-chat-draft'
@@ -41,8 +40,7 @@ type AuthState = {
   enterGuestMode: () => void
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>
-  signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>
-  resendSignupConfirmation: (email: string) => Promise<{ success: boolean; error?: string }>
+  signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string }>
   requestPasswordRecovery: (email: string) => Promise<{ success: boolean; error?: string }>
   completePasswordRecovery: (password: string) => Promise<{ success: boolean; error?: string }>
   submitWorkerApplication: (draft: WorkerApplicationDraft) => Promise<{ success: boolean; error?: string; applicationId?: string }>
@@ -85,7 +83,6 @@ const AuthContext = createContext<AuthState>({
   signInWithGoogle: async () => ({ success: false, error: 'Đăng nhập Google chưa sẵn sàng' }),
   signInWithPassword: async () => ({ success: false, error: 'Đăng nhập chưa sẵn sàng' }),
   signUpWithIdentifier: async () => ({ success: false, error: 'Đăng ký chưa sẵn sàng' }),
-  resendSignupConfirmation: async () => ({ success: false, error: 'Gửi lại email xác nhận chưa sẵn sàng' }),
   requestPasswordRecovery: async () => ({ success: false, error: 'Khôi phục mật khẩu chưa sẵn sàng' }),
   completePasswordRecovery: async () => ({ success: false, error: 'Đặt lại mật khẩu chưa sẵn sàng' }),
   submitWorkerApplication: async () => ({ success: false, error: 'Gửi xét duyệt thợ chưa sẵn sàng' }),
@@ -552,8 +549,9 @@ function useAuthController(): AuthState {
       }
 
       if (!data.session?.user) {
-        patchAuth({ authError: null, loading: false, profileStatus: 'idle', role: null, session: null })
-        return { success: true, needsConfirmation: true }
+        const message = 'Không thể tạo tài khoản. Vui lòng thử lại sau.'
+        patchAuth({ authError: message, loading: false, profileStatus: 'idle', role: null, session: null })
+        return { success: false, error: message }
       }
 
       setGuestMode(false)
@@ -774,7 +772,7 @@ function useAuthController(): AuthState {
   }, [fetchRole, localVisualAuditRole, localVisualAuditSnapshot?.session, session?.user, setCurrentSession])
 
   const authValue = useMemo(
-    () => ({ session, role, guestMode, loading, profileStatus, authError, passwordRecoveryPending, enterGuestMode, signInWithGoogle, signInWithPassword, signUpWithIdentifier, resendSignupConfirmation: resendSignupConfirmationEmail, requestPasswordRecovery: requestPasswordRecoveryEmail, completePasswordRecovery, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
+    () => ({ session, role, guestMode, loading, profileStatus, authError, passwordRecoveryPending, enterGuestMode, signInWithGoogle, signInWithPassword, signUpWithIdentifier, requestPasswordRecovery: requestPasswordRecoveryEmail, completePasswordRecovery, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
     [authError, completePasswordRecovery, enterGuestMode, guestMode, loading, passwordRecoveryPending, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword],
   )
 
