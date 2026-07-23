@@ -7,8 +7,7 @@ const mockRefreshProfile = jest.fn(async () => null)
 const mockEnterGuestMode = jest.fn()
 const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
 const mockSignInWithPassword = jest.fn(async (): Promise<{ success: boolean; error?: string; role?: 'admin' | 'customer' | 'worker' }> => ({ success: false, error: 'Không thể đăng nhập' }))
-const mockSignUpWithIdentifier = jest.fn(async () => ({ success: true, needsConfirmation: true }))
-const mockResendSignupConfirmation = jest.fn(async () => ({ success: true }))
+const mockSignUpWithIdentifier = jest.fn(async (): Promise<{ success: boolean; error?: string }> => ({ success: true }))
 const mockRequestPasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockCompletePasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockSignOut = jest.fn(async () => undefined)
@@ -47,7 +46,6 @@ jest.mock('@/lib/auth-provider', () => ({
     refreshProfile: mockRefreshProfile,
     requestPasswordRecovery: mockRequestPasswordRecovery,
     completePasswordRecovery: mockCompletePasswordRecovery,
-    resendSignupConfirmation: mockResendSignupConfirmation,
     role: null,
     session: null,
     signInWithGoogle: mockSignInWithGoogle,
@@ -588,13 +586,46 @@ describe('LoginRoleSurface', () => {
     })
   })
 
-  it('shows a successful email-confirmation step and lets the customer resend the message', async () => {
+  it('requires explicit terms consent before customer registration', async () => {
+    mockRouteParams = { stage: '1.5' }
+    render(<LoginRoleSurface />)
+
+    const terms = screen.getByTestId('auth-register-terms')
+    expect(terms).toHaveProp('accessibilityState', { checked: false })
+
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
+    expect(screen.getByText('Bạn cần đồng ý với điều khoản để tiếp tục.')).toBeOnTheScreen()
+
+    fireEvent.press(terms)
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    await waitFor(() => expect(mockSignUpWithIdentifier).toHaveBeenCalledTimes(1))
+  })
+
+  it('shows registration guidance instead of a connection error for an empty form', () => {
+    mockRouteParams = { stage: '1.5' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    expect(screen.getByText('Kiểm tra họ tên, email/SĐT và mật khẩu tối thiểu 8 ký tự.')).toBeOnTheScreen()
+    expect(screen.queryByText('Không thể kết nối. Vui lòng thử lại.')).toBeNull()
+    expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
+  })
+
+  it('completes customer registration without an email-confirmation step', async () => {
     mockRouteParams = { stage: '1.5' }
     render(<LoginRoleSurface />)
 
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
     await waitFor(() => {
@@ -604,21 +635,13 @@ describe('LoginRoleSurface', () => {
         password: 'secret123',
       })
     })
-    expect(screen.getByTestId('auth-signup-confirmation-screen')).toBeOnTheScreen()
-    expect(screen.getByText('Bước cuối: xác nhận email.')).toBeOnTheScreen()
-    expect(screen.getByText('tu@example.com')).toBeOnTheScreen()
-    expect(screen.queryByText('Kiểm tra kênh liên hệ để xác nhận tài khoản trước khi tiếp tục.')).toBeNull()
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
+    expect(screen.queryByTestId('auth-signup-confirmation-screen')).toBeNull()
+    expect(screen.queryByText('Bước cuối: xác nhận email.')).toBeNull()
     expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
-
-    fireEvent.press(screen.getByTestId('auth-signup-confirmation-resend'))
-
-    await waitFor(() => {
-      expect(mockResendSignupConfirmation).toHaveBeenCalledWith('tu@example.com')
-      expect(screen.getByText('Email xác nhận mới đã được gửi.')).toBeOnTheScreen()
-    })
   })
 
-  it('keeps phone signup out of the customer form until SMS confirmation exists', () => {
+  it('keeps unsupported phone signup out of the customer form', () => {
     mockRouteParams = { stage: '1.5' }
     render(<LoginRoleSurface />)
 
@@ -634,12 +657,13 @@ describe('LoginRoleSurface', () => {
 
   it('routes a ready customer registration directly to Customer Home', async () => {
     mockRouteParams = { stage: '1.5' }
-    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: true, needsConfirmation: false })
+    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: true })
     render(<LoginRoleSurface />)
 
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
     await waitFor(() => {
@@ -648,7 +672,8 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
   })
 
-  it('creates the worker auth account before application review and waits when confirmation has no session', async () => {
+  it('keeps a failed worker account creation out of application review', async () => {
+    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: false, error: 'Không thể tạo tài khoản. Vui lòng thử lại sau.' })
     mockRouteParams = { stage: '1.3', role: 'worker' }
     render(<LoginRoleSurface />)
 
@@ -663,6 +688,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
     await waitFor(() => {
@@ -673,11 +699,11 @@ describe('LoginRoleSurface', () => {
       })
     })
     expect(mockSubmitWorkerApplication).not.toHaveBeenCalled()
-    expect(screen.getByText('Kiểm tra email để xác nhận tài khoản trước khi tiếp tục.')).toBeOnTheScreen()
+    expect(screen.getByText('Chưa thể tạo tài khoản. Vui lòng thử lại.')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
   })
 
-  it('submits the deferred worker application after confirmation and customer-role login', async () => {
+  it('submits the deferred worker application after customer-role login', async () => {
     mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
     mockAuthOverride = {
       profileStatus: 'ready',
@@ -747,7 +773,7 @@ describe('LoginRoleSurface', () => {
   })
 
   it('submits worker review only after signup returns an authenticated session', async () => {
-    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: true, needsConfirmation: false })
+    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: true })
     mockAuthOverride = {
       profileStatus: 'ready',
       role: 'customer',
@@ -761,6 +787,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
     await waitFor(() => {
@@ -784,7 +811,7 @@ describe('LoginRoleSurface', () => {
   })
 
   it('does not redirect an in-flight worker signup to customer home when the hardened trigger resolves customer role', async () => {
-    let resolveSignup!: (result: { success: boolean; needsConfirmation: boolean }) => void
+    let resolveSignup!: (result: { success: boolean }) => void
     mockSignUpWithIdentifier.mockImplementationOnce(() => new Promise((resolve) => {
       resolveSignup = resolve
     }))
@@ -800,6 +827,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
     await waitFor(() => expect(mockSignUpWithIdentifier).toHaveBeenCalledTimes(1))
@@ -813,7 +841,7 @@ describe('LoginRoleSurface', () => {
     expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/home')
 
     await act(async () => {
-      resolveSignup({ success: true, needsConfirmation: false })
+      resolveSignup({ success: true })
     })
     await waitFor(() => expect(mockSubmitWorkerApplication).toHaveBeenCalledTimes(1))
     expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()

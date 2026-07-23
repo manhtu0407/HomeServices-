@@ -7,7 +7,6 @@ const mockUnsubscribe = jest.fn()
 const mockGetSession = jest.fn()
 const mockSignInWithPassword = jest.fn()
 const mockSignUp = jest.fn()
-const mockResend = jest.fn()
 const mockResetPasswordForEmail = jest.fn()
 const mockUpdateUser = jest.fn()
 const mockSignOut = jest.fn()
@@ -41,7 +40,6 @@ const mockSupabase = {
     resetPasswordForEmail: mockResetPasswordForEmail,
     signInWithPassword: mockSignInWithPassword,
     signUp: mockSignUp,
-    resend: mockResend,
     signOut: mockSignOut,
     updateUser: mockUpdateUser,
   },
@@ -98,7 +96,7 @@ function PasswordHarness() {
 }
 
 function SignupHarness() {
-  const { resendSignupConfirmation, signUpWithIdentifier } = useAuth()
+  const { signUpWithIdentifier } = useAuth()
   const [result, setResult] = useState('idle')
 
   return (
@@ -109,19 +107,11 @@ function SignupHarness() {
             displayName: 'Tu Phan',
             identifier: 'TU@example.com',
             password: 'secret123',
-          }).then((nextResult) => setResult(nextResult.needsConfirmation ? 'confirmation' : nextResult.success ? 'success' : nextResult.error ?? 'error'))
+          }).then((nextResult) => setResult(nextResult.success ? 'success' : nextResult.error ?? 'error'))
         }}
         testID="signup-email"
       >
         <Text>signup</Text>
-      </Pressable>
-      <Pressable
-        onPress={() => {
-          void resendSignupConfirmation('TU@example.com').then((nextResult) => setResult(nextResult.success ? 'resent' : nextResult.error ?? 'error'))
-        }}
-        testID="resend-signup-email"
-      >
-        <Text>resend</Text>
       </Pressable>
       <Text testID="signup-result">{result}</Text>
     </>
@@ -274,7 +264,6 @@ beforeEach(() => {
   mockGetSession.mockReset()
   mockSignInWithPassword.mockReset()
   mockSignUp.mockReset()
-  mockResend.mockReset()
   mockResetPasswordForEmail.mockReset()
   mockUpdateUser.mockReset()
   mockSignOut.mockReset()
@@ -295,7 +284,6 @@ beforeEach(() => {
   mockMaybeSingle.mockResolvedValue({ data: { role: 'customer' }, error: null })
   mockSignInWithPassword.mockResolvedValue({ data: { session: mockSession }, error: null })
   mockSignUp.mockResolvedValue({ data: { session: mockSession, user: mockSession.user }, error: null })
-  mockResend.mockResolvedValue({ data: {}, error: null })
   mockResetPasswordForEmail.mockResolvedValue({ data: {}, error: null })
   mockUpdateUser.mockResolvedValue({ error: null })
   mockSignOut.mockResolvedValue({ error: null })
@@ -866,7 +854,7 @@ describe('AuthProvider Email/SDT signup', () => {
     expect(mockMaybeSingle).toHaveBeenCalled()
   })
 
-  it('returns a confirmation state instead of an error when Supabase creates the user without a session', async () => {
+  it('fails closed when Supabase creates the user without an immediately usable session', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: null } })
     mockSignUp.mockResolvedValueOnce({ data: { session: null, user: mockSession.user }, error: null })
 
@@ -879,34 +867,14 @@ describe('AuthProvider Email/SDT signup', () => {
     fireEvent.press(screen.getByTestId('signup-email'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('signup-result')).toHaveTextContent('confirmation')
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('Không thể tạo tài khoản. Vui lòng thử lại sau.')
     })
     expect(mockMaybeSingle).not.toHaveBeenCalled()
-  })
-
-  it('resends a signup confirmation through Supabase without exposing provider errors', async () => {
-    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
-
-    render(
-      <AuthProvider>
-        <SignupHarness />
-      </AuthProvider>,
-    )
-
-    fireEvent.press(screen.getByTestId('resend-signup-email'))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('signup-result')).toHaveTextContent('resent')
-    })
-    expect(mockResend).toHaveBeenCalledWith({
-      email: 'tu@example.com',
-      type: 'signup',
-    })
   })
 })
 
 describe('AuthProvider Email/SDT credentials', () => {
-  it('normalizes Vietnamese phone credentials for sign-in but blocks signup until SMS confirmation exists', async () => {
+  it('normalizes Vietnamese phone credentials for sign-in but keeps unsupported phone signup unavailable', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: null } })
 
     render(

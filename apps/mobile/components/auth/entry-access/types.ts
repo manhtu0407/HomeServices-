@@ -3,7 +3,6 @@ export type EntryAccessStep =
   | 'role-gate'
   | 'login'
   | 'register'
-  | 'signup-confirmation'
   | 'password-recovery'
   | 'password-reset'
   | 'onboarding'
@@ -30,7 +29,7 @@ export type PasswordRecoveryInput = {
 export type EntryActionResult = {
   success: boolean
   error?: string
-  nextStep?: Extract<EntryAccessStep, 'onboarding' | 'signup-confirmation'>
+  nextStep?: Extract<EntryAccessStep, 'onboarding'>
 }
 
 export type EntryAccessFeatureFlags = {
@@ -42,7 +41,6 @@ export type EntryAccessFeatureFlags = {
 export type EntryAccessActions = {
   onPasswordLogin: (input: PasswordLoginInput) => Promise<EntryActionResult>
   onRegister: (input: RegistrationInput) => Promise<EntryActionResult>
-  onResendSignupConfirmation?: (email: string) => Promise<EntryActionResult>
   onGoogleLogin?: () => Promise<EntryActionResult>
   onForgotPassword?: (input: PasswordRecoveryInput) => Promise<EntryActionResult>
   onCompletePasswordRecovery?: (password: string) => Promise<EntryActionResult>

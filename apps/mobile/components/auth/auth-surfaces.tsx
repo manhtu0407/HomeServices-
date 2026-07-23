@@ -166,10 +166,6 @@ export function LoginRoleSurface() {
             error: localizeEntryAuthError(signup.error, language, 'signupFailed'),
           }
         }
-        if (signup.needsConfirmation) {
-          return { success: false, error: copy.errors.emailConfirmation }
-        }
-
         const result = await auth.submitWorkerApplication({ contact: identifier, language })
         workerApplicationSubmittedRef.current = result.success
         return result.success
@@ -187,12 +183,6 @@ export function LoginRoleSurface() {
         identifier,
         password,
       })
-      if (result.success && result.needsConfirmation) {
-        return {
-          success: true,
-          nextStep: 'signup-confirmation' as const,
-        }
-      }
       if (result.success) {
         router.replace('/(customer)/home' as never)
         return { success: true }
@@ -202,7 +192,6 @@ export function LoginRoleSurface() {
         error: localizeEntryAuthError(result.error, language, 'signupFailed'),
       }
     },
-    onResendSignupConfirmation: auth.resendSignupConfirmation,
   }), [auth, copy, language, router])
 
   return (

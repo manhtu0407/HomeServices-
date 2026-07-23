@@ -35,7 +35,7 @@ function entryAccessStateReducer(
 
 export function useEntryAccessState(initialRole: EntryRole, initialStep: EntryAccessStep) {
   const [state, dispatch] = useReducer(entryAccessStateReducer, {
-    acceptedTerms: true,
+    acceptedTerms: false,
     busy: false,
     error: null,
     fullName: '',

@@ -1,8 +1,7 @@
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { CheckRow, EntryTextField } from './components/fields'
 import { IconButton, NativeSafeGlassPanel, PrimaryButton } from './components/materials'
-import { EntryIcon } from './components/icons'
 import { registrationIdentifierFieldProps } from './entry-identifier-fields'
 import { entryTheme } from './theme'
 import type { EntryRole } from './types'
@@ -70,54 +69,11 @@ export function RegisterScreen(props: {
   )
 }
 
-export function SignupConfirmationScreen(props: {
-  busy: boolean
-  email: string
-  error: string | null
-  notice: string | null
-  onBack: () => void
-  onLogin: () => void
-  onResend: () => void
-}) {
-  return (
-    <EntryScreen>
-      <View style={styles.screen}>
-        <AuthTopBar onBack={props.onBack} title="Xác nhận email" />
-        <View style={styles.confirmationBody}>
-          <View style={styles.confirmationIcon}>
-            <EntryIcon color={entryTheme.color.mint.mint700} name="mail" size={28} />
-          </View>
-          <Text style={styles.confirmationTitle}>Bước cuối: xác nhận email.</Text>
-          <Text style={styles.confirmationLead}>Nếu email này chưa được xác nhận, NestScout sẽ gửi liên kết đến</Text>
-          <Text selectable style={styles.confirmationEmail}>{props.email.trim().toLowerCase()}</Text>
-          <Text style={styles.confirmationHint}>Mở email và nhấn vào liên kết xác nhận, sau đó quay lại đăng nhập. Nếu bạn đã có tài khoản, có thể đăng nhập ngay.</Text>
-        </View>
-        <NativeSafeGlassPanel style={styles.confirmationPanel} testID="auth-signup-confirmation-panel">
-          {props.notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{props.notice}</Text> : null}
-          {props.error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{props.error}</Text> : null}
-          <PrimaryButton disabled={props.busy} label={props.busy ? 'Đang gửi…' : 'Gửi lại email xác nhận'} onPress={props.onResend} testID="auth-signup-confirmation-resend" />
-          <Pressable accessibilityRole="button" onPress={props.onLogin} style={styles.confirmationLogin} testID="auth-signup-confirmation-login">
-            <Text style={styles.formSwitch}>Đã xác nhận? <Text style={styles.formSwitchLink}>Đăng nhập</Text></Text>
-          </Pressable>
-        </NativeSafeGlassPanel>
-      </View>
-    </EntryScreen>
-  )
-}
-
 function EntryScreen({ children }: { children: React.ReactNode }) {
   return <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>{children}</SafeAreaView>
 }
 
 const styles = StyleSheet.create({
-  confirmationBody: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingHorizontal: 18, paddingVertical: 28 },
-  confirmationEmail: { color: entryTheme.color.mint.mint800, fontSize: 16, fontWeight: '700', lineHeight: 22, marginTop: 7, textAlign: 'center' },
-  confirmationHint: { color: entryTheme.color.text.muted, fontSize: 12, lineHeight: 18, marginTop: 18, maxWidth: 300, textAlign: 'center' },
-  confirmationIcon: { alignItems: 'center', backgroundColor: entryTheme.color.mint.mint50, borderColor: entryTheme.color.surface.strokeStrong, borderRadius: 25, borderWidth: 1, height: 50, justifyContent: 'center', marginBottom: 18, width: 50 },
-  confirmationLead: { color: entryTheme.color.text.secondary, fontSize: 14, lineHeight: 20, marginTop: 10, textAlign: 'center' },
-  confirmationLogin: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  confirmationPanel: { borderRadius: entryTheme.radius.sheet, paddingBottom: 12, paddingHorizontal: 15, paddingTop: 15 },
-  confirmationTitle: { color: entryTheme.color.text.strong, fontSize: 25, fontWeight: '700', lineHeight: 32, textAlign: 'center' },
   error: { color: entryTheme.color.accent.destructive, fontSize: 11, lineHeight: 16, marginBottom: 10, marginTop: -2 },
   formHead: { paddingBottom: 12, paddingHorizontal: 3, paddingTop: 6 },
   formHeadCopy: { flex: 1 },
@@ -129,9 +85,7 @@ const styles = StyleSheet.create({
   formSwitchLink: { color: entryTheme.color.mint.mint700, fontWeight: '700' },
   formTitle: { color: entryTheme.color.text.strong, fontSize: 29, fontWeight: '700', letterSpacing: 0, lineHeight: 35 },
   keyboard: { flex: 1 },
-  notice: { color: entryTheme.color.accent.success, fontSize: 11, lineHeight: 16, marginBottom: 10, textAlign: 'center' },
   safe: { flex: 1 },
-  screen: { flex: 1, paddingBottom: 18, paddingHorizontal: entryTheme.spacing.screenX, paddingTop: 8 },
   termsRow: { marginBottom: 12, marginHorizontal: 2, marginTop: 2 },
   topbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: -3, marginBottom: 6, minHeight: 48 },
   topbarSpacer: { width: 42 },
