@@ -512,7 +512,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
         ? workflowDestinationScreenId
       : usesCompletionEvidenceHandoff && workflowStatus !== 'repairing'
         ? workflowDestinationScreenId
-      : usesCompletionSubmittedHandoff && workflowDestinationScreenId !== '2.11-completion-submitted'
+      : usesCompletionSubmittedHandoff && runtime.state.deal && workflowDestinationScreenId !== '2.11-completion-submitted'
         ? workflowStatus === 'repairing' ? '2.10-completion-evidence' : workflowDestinationScreenId
         : null
 

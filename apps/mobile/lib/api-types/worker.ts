@@ -1,9 +1,10 @@
-import type { BroadcastStatus, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerVerificationStatus } from '@nestscout/shared'
+import type { BroadcastStatus, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
 import type { CustomerPaymentMethodSaveInput } from './customer'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView } from './shared'
 
 export type { WorkerActivityMinuteResponse, WorkerAvatarUploadResponse } from '@nestscout/shared'
+export type { WorkerServiceQualityStatus }
 
 export type WorkerPayoutMethodSaveInput = CustomerPaymentMethodSaveInput
 
@@ -17,14 +18,6 @@ export type WorkerPayoutMethodResponse = {
     updated_at: string
   }
   worker_profile: WorkerProfileResponse
-}
-
-export type WorkerServiceQualityStatus = {
-  average_rating: number | null
-  locked_until: string | null
-  review_count: number
-  service_type: ServiceType
-  status: 'available' | 'quality_locked'
 }
 
 export type WorkerProfileResponse = {

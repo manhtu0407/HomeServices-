@@ -138,6 +138,7 @@ describe('worker evidence privacy and stage projection', () => {
         }],
         error: null,
       },
+      { data: [], error: null },
     ])
 
     const result = await listWorkerJobs(workerContext(client))
@@ -150,7 +151,10 @@ describe('worker evidence privacy and stage projection', () => {
     })
     expect(JSON.stringify(result)).not.toContain(customerRef)
     expect(JSON.stringify(result)).not.toContain(completionRef)
-    expect(client.calls.map((call) => call.table)).toEqual(['jobs'])
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'job_worker_candidates',
+    ])
   })
 
   it('keeps a pre-confirmation cancellation private when no match was finalized', async () => {
@@ -173,6 +177,7 @@ describe('worker evidence privacy and stage projection', () => {
         }],
         error: null,
       },
+      { data: [], error: null },
     ])
 
     const result = await listWorkerJobs(workerContext(client))
@@ -185,7 +190,10 @@ describe('worker evidence privacy and stage projection', () => {
     })
     expect(JSON.stringify(result)).not.toContain(customerRef)
     expect(JSON.stringify(result)).not.toContain(completionRef)
-    expect(client.calls.map((call) => call.table)).toEqual(['jobs'])
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'job_worker_candidates',
+    ])
   })
 
   it('retains evidence access after a confirmed match is later cancelled', async () => {
@@ -208,6 +216,7 @@ describe('worker evidence privacy and stage projection', () => {
         }],
         error: null,
       },
+      { data: [], error: null },
       {
         data: [{
           created_at: '2026-07-23T00:10:00.000Z',
@@ -245,6 +254,7 @@ describe('worker evidence privacy and stage projection', () => {
         }],
         error: null,
       },
+      { data: [], error: null },
       {
         data: [{
           created_at: '2026-07-23T00:10:00.000Z',
@@ -261,7 +271,8 @@ describe('worker evidence privacy and stage projection', () => {
       customer_evidence_photo_urls: [customerRef],
       field_evidence_photo_urls: [`supabase://job-media/${fieldObjectPath}`],
     })
-    expect(client.calls[1]?.operations).toContainEqual([
+    expect(client.calls[2]?.table).toBe('job_media_assets')
+    expect(client.calls[2]?.operations).toContainEqual([
       'eq',
       'owner_id',
       '33333333-3333-4333-8333-333333333333',

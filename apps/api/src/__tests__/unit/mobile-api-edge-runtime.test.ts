@@ -8113,12 +8113,13 @@ describe('mobile-api Edge runtime helpers', () => {
       call.table === 'worker_service_quality_status'
     )
     expect(qualityCall?.operations).toContainEqual(['eq', 'service_type', 'plumbing'])
-    const insertOp = client.calls.find((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((operation) => operation[0] === 'insert')
-    )?.operations.find((operation) => operation[0] === 'insert')
-    expect(insertOp?.[1]).toEqual([
-      expect.objectContaining({ worker_id: 'worker-open' }),
+    const activation = client.calls.find((call) =>
+      call.table === 'rpc:activate_job_broadcast_batch_atomic'
+    )
+    expect(activation?.operations).toContainEqual([
+      'rpc',
+      'activate_job_broadcast_batch_atomic',
+      expect.objectContaining({ p_job_id: 'job-1', p_worker_ids: ['worker-open'] }),
     ])
   })
 

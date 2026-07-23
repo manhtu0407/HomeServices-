@@ -2760,6 +2760,8 @@ describe('Worker runtime surface wiring', () => {
   it('keeps dossier visual panels aligned while giving every dossier card a contextual detail rail', () => {
     buildWorkflow({
       workerProfile: buildWorkerProfile({
+        active_service_types: ['plumbing', 'electrical', 'cleaning'],
+        selected_service_types: ['plumbing', 'electrical', 'cleaning'],
         service_types: ['plumbing', 'electrical', 'cleaning'],
       }),
     })
@@ -2922,7 +2924,9 @@ describe('Worker runtime surface wiring', () => {
 
     buildWorkflow({
       workerProfile: buildWorkerProfile({
+        active_service_types: ['plumbing', 'electrical', 'cleaning'],
         districts: ['quan_1', 'quan_binh_thanh'],
+        selected_service_types: ['plumbing', 'electrical', 'cleaning'],
         service_types: ['plumbing', 'electrical', 'cleaning'],
       }),
     })
@@ -2939,7 +2943,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText('Chỉ hiển thị dữ liệu sử dụng trực tiếp trong workflow.')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-hero-copy').props.style)).toMatchObject({ justifyContent: 'center' })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-service-count').props.style)).toMatchObject({ fontSize: 26 })
-    expect(StyleSheet.flatten(screen.getByText('3 dịch vụ').props.style)).toMatchObject({ fontSize: 11 })
+    expect(StyleSheet.flatten(screen.getByText('3 dịch vụ đã chọn').props.style)).toMatchObject({ fontSize: 11 })
     expect(screen.getByTestId('worker-v5-skills-hero-detail')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-service-card-detail-0').props.style)).toMatchObject({
       alignItems: 'flex-start',
