@@ -16,7 +16,7 @@ Split "where glass goes" from "what glass looks like". New decision nan `governa
 
 ## P3 — Router axle + auto-trigger + mirror-sync
 
-_Placeholder. `governance/design/runtime.md` router, `description` template, mirror-sync reuse, `kael-ui-rn-execution` clean-up._
+Assembled the axle. New `governance/design/runtime.md` routes every design task (11 classes: flow / screen / component / design-system / material / motion / accessibility / adaptive-layout / visual-bug / polish / research) → skill (5 live + 6 P4-pending, each with an interim fallback) → preflight + hard gates ("zero glass / zero motion is valid", anti-slop, money / scope = solid) + a verification matrix (widths / text-scale / VI-EN / light-dark / Reduce Motion+Transparency / states). The router is thin — it points to the nan (material-direction, signature, motion, AGENTS.md), never copies them. Wired the same entry into both agents: `AGENTS.md` routing row (Codex), `design.md` Reference Files table, and `critical.md` §1 index. Tightened auto-trigger descriptions for `kael-motion` (and fixed three `RULES.md` → `AGENTS.md` motion-rule refs in its body) and `kael-frontend-test` (glass-liquid → material / glass). `kael-ui-rn-execution` is named as a protocol (`protocols/ui.md` §16), not a skill. `kael-prototype` / `kael-research` left unchanged (shared skills). Mirror synced (`.claude` → `.agents`); skills:check green. See plan §44.3.
 
 ## P4 — Six missing spokes/skills
 

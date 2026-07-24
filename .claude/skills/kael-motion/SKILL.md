@@ -1,18 +1,18 @@
 ---
 name: kael-motion
-description: Design and audit UI motion/animation for the Home Services Expo React Native app. Use when adding or reviewing animations, transitions, micro-interactions, screen or tab transitions, bottom sheets, skeleton loaders, or Kael mascot motion. Two modes — create (choose motion that fits the moment) and audit (find missing motion + AI-slop). Enforces Reanimated, Reduce Motion / Reduce Transparency, and the Performance Budget.
+description: Design, audit, or polish UI motion/animation for the Home Services Expo React Native app. Use when adding or reviewing animation, transitions, micro-interactions, gestures, screen or tab transitions, bottom sheets, skeleton / shimmer loaders, or Kael mascot motion. Two modes — create (choose motion that fits the moment) and audit (find missing motion + AI-slop). Enforces Reanimated, Reduce Motion / Reduce Transparency, and the Performance Budget.
 ---
 
 # kael-motion
 
-Motion skill for Home Services (Expo RN / Reanimated), adapted from `design-motion-principles`. Canonical specs live in `governance/design/motion.md` (timing ranges, required/forbidden areas) and `governance/RULES.md` (Motion Rules + Performance Budget) — do not duplicate them here. Read `governance/design.md` core first for identity/preflight.
+Motion skill for Home Services (Expo RN / Reanimated), adapted from `design-motion-principles`. Canonical specs live in `governance/design/motion.md` (timing ranges, required/forbidden areas) and `AGENTS.md` (Motion Rules + Performance Budget) — do not duplicate them here. Read `governance/design.md` core first for identity/preflight; for design tasks, `governance/design/runtime.md` is the router.
 
 ## Mode: create
 Use when building animation for a screen or component.
 1. First ask: **should this animate at all?** Motion is required only at key product moments (`governance/design/motion.md` "Required motion areas"). If it is not a key moment, ship it static.
 2. Pick the smallest motion that gives feedback or communicates state. Use the timing ranges in `governance/design/motion.md` (screen enter 180-260ms, tab 160-240ms, press scale 0.97-0.99, sheet 220-320ms, modal 180-260ms, skeleton shimmer 1200-1600ms).
 3. Implement with Reanimated (not legacy RN `Animated` for new work); respect safe-area and keyboard.
-4. Wire Reduce Motion (remove parallax / sweep / depth / scale-heavy effects) and Reduce Transparency (glass → opaque/tinted) per governance/RULES.md.
+4. Wire Reduce Motion (remove parallax / sweep / depth / scale-heavy effects) and Reduce Transparency (glass → opaque/tinted) per `AGENTS.md`.
 
 ## Mode: audit
 Use when reviewing existing UI motion.
@@ -33,4 +33,4 @@ Anti-slop findings:
 Verdict / fixes:
 ```
 
-Single source: `governance/design/motion.md` + governance/RULES.md Motion Rules & Performance Budget. `governance/critical.md` remains highest execution authority; pair with `kael-ui-rn-execution` (governance/protocols/ui.md).
+Single source: `governance/design/motion.md` + `AGENTS.md` Motion Rules & Performance Budget. `governance/critical.md` remains highest execution authority; pair with the `kael-ui-rn-execution` protocol (`governance/protocols/ui.md` §16).

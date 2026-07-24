@@ -41,6 +41,7 @@ design.md core stays lean; load a reference file only when your task needs it:
 
 | Topic | File |
 |---|---|
+| **Design Runtime (router)** — classify a design task → skill + gates; both agents enter here | `design/runtime.md` |
 | Reference-app method (XanhSM / bTaskee / Grab) | `design/reference-method.md` |
 | Design lab (options, evidence, scoring, contract) | `design/design-lab.md` |
 | Palette Lab + Typography Lab | `design/palette-typography.md` |

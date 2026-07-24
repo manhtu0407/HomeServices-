@@ -1,6 +1,6 @@
 ---
 name: kael-frontend-test
-description: Frontend testing workflow for the Home Services Expo React Native app. Use when building or verifying UI — screens, components, responsiveness, accessibility, motion, state coverage — or before claiming any frontend/UI task done. Enforces real evidence (type-check + jest-expo/RNTL), RN reality (no browser/hover/web glass), and the glass-liquid + motion + data-honesty contracts.
+description: Frontend testing workflow for the Home Services Expo React Native app. Use when building or verifying UI — screens, components, layout, responsiveness, accessibility, motion, dark mode, state coverage — or before claiming any frontend/UI task done. Enforces real evidence (type-check + jest-expo/RNTL), RN reality (no browser/hover/web glass), and the material / glass + motion + data-honesty contracts.
 ---
 
 # kael-frontend-test
