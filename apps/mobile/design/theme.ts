@@ -498,10 +498,6 @@ export const glassSurfaceTheme = {
       dark: '0 14px 34px rgba(0,0,0,0.22)',
       light: '0 14px 34px rgba(13,70,65,0.09)',
     },
-    subtle: {
-      dark: '0 4px 10px rgba(0,0,0,0.12)',
-      light: '0 4px 10px rgba(13,70,65,0.05)',
-    },
   },
   liquidShadowByVariant: {
     nav: {
@@ -519,10 +515,6 @@ export const glassSurfaceTheme = {
     sheet: {
       dark: '0 18px 38px rgba(0,0,0,0.26), inset 0 1px 0 rgba(190,210,205,0.10)',
       light: '0 18px 38px rgba(20,73,66,0.10), inset 0 1px 0 rgba(255,255,255,0.30)',
-    },
-    subtle: {
-      dark: '0 6px 14px rgba(0,0,0,0.14), inset 0 1px 0 rgba(190,210,205,0.08)',
-      light: '0 6px 14px rgba(20,73,66,0.05), inset 0 1px 0 rgba(255,255,255,0.24)',
     },
   },
   liquidFallbackBackground: {

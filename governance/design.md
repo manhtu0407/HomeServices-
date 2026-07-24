@@ -47,7 +47,8 @@ design.md core stays lean; load a reference file only when your task needs it:
 | Decoration + Kael Mascot + Icon System | `design/decoration-mascot-icons.md` |
 | Motion Grammar (kael-motion canonical source) | `design/motion.md` |
 | Screen recipes (App Shell to Empty States) | `design/screen-recipes.md` |
-| **Glass-Liquid Signature** — final house-style gate (neutral + 1 mint, spring/bubble) | `design/signature.md` |
+| **Material Direction** — decide glass vs solid by surface role (money/scope = solid; kael-material-direction source) | `design/material-direction.md` |
+| **Glass-Liquid Signature** — the glass recipe once material-direction picks glass (neutral + 1 mint, spring/bubble) | `design/signature.md` |
 
 ## 1. Design Identity
 

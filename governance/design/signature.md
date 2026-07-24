@@ -1,18 +1,18 @@
-# Design Reference — Glass-Liquid Signature (the final frontend gate)
+# Design Reference — Glass-Liquid Signature (the glass recipe)
 
-> Part of the `design.md` system (2026-05-29). `critical.md` is highest authority; `RULES.md` glass/motion rules and `design/motion.md` timing are not overridden here — this file makes them **specific and brand-locked**. The `glass-liquid-signature` skill points here as its single source.
+> Part of the `design.md` system (2026-05-29). `critical.md` is highest authority; `AGENTS.md` glass/motion rules and `design/motion.md` timing are not overridden here. **`design/material-direction.md` decides whether a surface uses glass and which variant; this file only describes what that glass looks like once material-direction has chosen it.** The `kael-material-direction` skill points here for the recipe.
 
 ## 0. Role
 
-This is the **final house-style gate**: the recipe that makes a screen unmistakably NestScout in 0.5s, and the audit that decides "does this screen carry the signature (≥9/10)?". It is the **opposite of `frontend-design`/`taste-skill` variance** — one consistent, classic, minimal system, every time.
+This is the **recipe** for glass surfaces: the details that make a glass surface unmistakably NestScout — consistent, classic, minimal. It does **not** decide where glass goes. `design/material-direction.md` makes that call (role → material → variant, and "zero glass is valid"); this file applies only once a surface has been chosen as glass.
 
 Direction (locked by Tu 2026-05-29): **classic, minimal, OS-grade** (Apple Liquid Glass + Material expressive motion), **neutral base + ONE mint accent**, sections that pop without clutter or FOMO.
 
-> Token values below are **proposed within Tu's chosen direction** and need Tu's visual sign-off on Expo/device. Do not claim "9/10 achieved" without his eyes.
+> Token values below are **proposed within Tu's chosen direction** and need Tu's visual sign-off on Expo/device. Aesthetic quality is judged by human sign-off, not a self-assigned score.
 
-## 1. The 7→9 gaps (diagnosed in current code, 2026-05-29)
+## 1. Gaps diagnosed in current code (2026-05-29)
 
-1. **Motion is timing-based, not spring.** `motion-tokens.ts` entrance/press use `withTiming`; entrance is 440ms (sluggish). Only `sheet` has a spring. → move to spring with slight overshoot.
+1. **Motion.** Addressed — the sluggish 440ms entrance timing was removed; signature motion uses the springs in `motionTokens.liquid.*`. Timing vs spring and Reduce Motion live in `design/motion.md`.
 2. **No canonical dark tokens.** `constants/colors.ts` is light-only; dark colors are hard-coded per component. → define one dark token set.
 3. **Edge highlight is pure-white + top-only**, used in dark too (`glass-surface.tsx` `edgeHighlight` rgba(255,255,255,0.42)). → mode-aware highlight (neutral-gray in dark).
 4. **Too many colors** (priceCheck has ~18). → reduce to neutral + 1 mint accent.
@@ -60,9 +60,9 @@ Rules: max **one** mint accent per screen region; neutral elsewhere. Warning/pri
 - **Background wash**: give the area under glass a calm, subtle wash/gradient so glass reads clean (not muddy). Keep it neutral; mint only as a faint hint behind the ONE hero/CTA.
 - **Layering**: ≤ 2–3 glass layers per screen (RULES). No glass-on-glass stacking.
 
-## 4. Liquid motion = spring + "bubble pop" (the soul)
+## 4. Liquid motion = spring + "bubble pop"
 
-"Liquid đi qua rất nhẹ, nhô lên một xíu như bong bóng bể" = **spring with slight overshoot** + a **specular sheen sweep** that lifts then settles. Use Reanimated `withSpring` (not `withTiming`) for signature motion.
+"Liquid đi qua rất nhẹ, nhô lên một xíu như bong bóng bể" = **spring with slight overshoot**, optionally with a **specular sheen sweep** that lifts then settles. Use Reanimated `withSpring` (not `withTiming`) for signature motion. The sheen is an optional flourish, not a requirement — many surfaces settle with the spring alone.
 
 ```text
 Spring tokens (proposed; Reanimated withSpring config, mass=1):
@@ -91,27 +91,27 @@ Forbidden (signature is the gate AGAINST AI-slop, not a license): animate blur r
 
 Reduce Motion → remove overshoot/sheen/parallax (fall back to short fade). Reduce Transparency → glass becomes opaque neutral/tinted (existing behavior). 60fps minimum; no real-time blur in long lists.
 
-## 7. Signature checklist (the ≥9/10 audit)
+## 7. Recipe checklist (when a surface uses glass)
 
-A screen carries the signature when ALL hold:
+Once `material-direction.md` has chosen glass for a surface, the recipe holds when:
 
 ```text
 [ ] Neutral surfaces + at most ONE mint accent moment.
 [ ] Glass only on accent surfaces (≤ 2–3 layers); background under glass is a calm wash.
-[ ] 1px mode-aware inner border highlight present (gray in dark, not white).
+[ ] 1px mode-aware inner border highlight in the fallback path (gray in dark, not white); the native GlassView keeps its own.
 [ ] Corners rounded + continuous curve.
 [ ] Signature motion uses spring (slight overshoot), not linear timing; entrance ≤ ~300ms feel.
-[ ] One specular sheen on appear/activate; nothing loops.
+[ ] Specular sheen, if used, plays once on appear/activate; nothing loops.
 [ ] Dark mode uses dark tokens; highlights soft; contrast passes.
 [ ] Reduce Motion / Reduce Transparency fallbacks correct.
 [ ] Money-impacting UI stays calm + explicit (signature restrained).
 [ ] No forbidden AI default (gradient orbs, bento, card spam, fake data).
 ```
 
-If any fails, it is not yet signature-grade.
+These are recipe-conformance checks, not an aesthetic score. Visual quality is confirmed by human sign-off on device.
 
 ## 8. Where the signature lives
 
-Primary signature carriers: the floating glass dock + liquid pill (Kael center action), the primary CTA, the one hero/summary card per screen, modal/bottom-sheet shells. Everything else stays quiet neutral so these pop.
+Typical glass carriers (chosen by `design/material-direction.md`, never automatic): the floating glass dock + liquid pill (Kael center action), the primary CTA, at most one hero/summary card per screen, modal/bottom-sheet shells. Everything else stays quiet neutral so these pop.
 
-Canonical motion timing: `design/motion.md`. General motion discipline + anti-slop: `kael-motion`. Brand identity context: `design.md` §1. This file = the specific signature recipe.
+Canonical motion timing: `design/motion.md`. General motion discipline + anti-slop: `kael-motion`. Material decision: `design/material-direction.md`. Brand identity context: `design.md` §1. This file = the glass recipe.
