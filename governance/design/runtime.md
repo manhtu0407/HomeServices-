@@ -22,20 +22,20 @@ Name exactly one class. It selects the skill(s) and the depth of the gates.
 
 ## 2. Route to the skill
 
-Eight skills are live now; three arrive in P4b (visual-qa, design-review, design-evidence) — they are listed so the map is complete. "Pending" is not a dead link: use the interim column until the skill lands.
+All eleven skills are live.
 
-| Class | Skill | Status | Interim if pending |
-|---|---|---|---|
-| material | `kael-material-direction` | live | — |
-| motion | `kael-motion` | live | — |
-| flow | `kael-prototype` (explore) → `kael-frontend-test` (verify) | live | — |
-| screen / component | `kael-material-direction` + `kael-motion`, verify with `kael-frontend-test` | live | — |
-| research | `kael-research` (+ `kael-design-evidence`) | live (+ P4 pair) | `kael-research` alone |
-| design-system | `kael-design-tokens` | live | — |
-| accessibility | `kael-accessible-content` | live | — |
-| adaptive-layout | `kael-adaptive-layout` | live | — |
-| visual-bug | `kael-visual-qa` + `kael-diagnose` | P4 — pending (visual-qa) | `kael-diagnose` + `kael-frontend-test` |
-| polish | `kael-design-review` + `kael-motion` / `kael-material-direction` | P4 — pending (review) | `kael-motion` + `kael-material-direction` |
+| Class | Skill |
+|---|---|
+| material | `kael-material-direction` |
+| motion | `kael-motion` |
+| flow | `kael-prototype` (explore) → `kael-frontend-test` (verify) |
+| screen / component | `kael-material-direction` + `kael-motion`, verify with `kael-frontend-test` |
+| research | `kael-research` + `kael-design-evidence` |
+| design-system | `kael-design-tokens` |
+| accessibility | `kael-accessible-content` |
+| adaptive-layout | `kael-adaptive-layout` |
+| visual-bug | `kael-visual-qa` + `kael-diagnose` |
+| polish | `kael-design-review` + `kael-motion` / `kael-material-direction` |
 
 Every design task ends through `kael-frontend-test` before "done" (the frontend-testing wrapper; canonical `protocols/frontend-test.md`). Screen / component construction also uses the `kael-ui-rn-execution` **protocol** (`protocols/ui.md` §16) — a protocol, not a skill.
 
