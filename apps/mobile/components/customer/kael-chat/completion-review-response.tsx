@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 
+import { JobEvidenceGallery } from '@/components/ui/job-evidence-gallery'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalDeal } from '@nestscout/shared'
@@ -26,6 +27,9 @@ export function CompletionReviewResponse({
   tokens: CustomerThemeTokens
 }) {
   const model = buildCaseWorkResponseModel({ deal, language, phase: 'completed_by_worker' })
+  const customerEvidencePhotoUrls = deal.customerEvidencePhotoUrls ?? []
+  const fieldEvidencePhotoUrls = deal.fieldEvidencePhotoUrls ?? []
+  const completionPhotoUrls = deal.completionPhotoUrls ?? []
 
   return (
     <CaseWorkResponse
@@ -54,11 +58,37 @@ export function CompletionReviewResponse({
         </View>
       )}
       details={(
-        <Text style={[styles.paymentGate, { color: tokens.muted }]}>
-          {language === 'vi'
-            ? 'Thanh toán chỉ mở sau bước xác nhận này.'
-            : 'Payment unlocks only after this confirmation.'}
-        </Text>
+        <View style={styles.details}>
+          {customerEvidencePhotoUrls.length > 0 ? (
+            <JobEvidenceGallery
+              language={language}
+              refs={customerEvidencePhotoUrls}
+              stageLabel={language === 'vi' ? 'Ảnh hiện trạng từ khách' : 'Customer condition photos'}
+              testID="customer-completion-customer-gallery"
+            />
+          ) : null}
+          {fieldEvidencePhotoUrls.length > 0 ? (
+            <JobEvidenceGallery
+              language={language}
+              refs={fieldEvidencePhotoUrls}
+              stageLabel={language === 'vi' ? 'Ảnh hiện trường của thợ' : 'Worker on-site photos'}
+              testID="customer-completion-field-gallery"
+            />
+          ) : null}
+          {completionPhotoUrls.length > 0 ? (
+            <JobEvidenceGallery
+              language={language}
+              refs={completionPhotoUrls}
+              stageLabel={language === 'vi' ? 'Ảnh hoàn tất' : 'Completion photos'}
+              testID="customer-completion-after-gallery"
+            />
+          ) : null}
+          <Text style={[styles.paymentGate, { color: tokens.muted }]}>
+            {language === 'vi'
+              ? 'Thanh toán chỉ mở sau bước xác nhận này.'
+              : 'Payment unlocks only after this confirmation.'}
+          </Text>
+        </View>
       )}
       model={model}
       reduceMotion={reduceMotion}
@@ -71,5 +101,6 @@ export function CompletionReviewResponse({
 const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
+  details: { gap: 12 },
   paymentGate: { fontSize: 12, lineHeight: 18 },
 })

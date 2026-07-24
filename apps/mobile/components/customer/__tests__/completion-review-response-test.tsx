@@ -6,7 +6,7 @@ import type { LocalDeal } from '@nestscout/shared'
 
 const deal = {
   completionNotes: 'Đã vệ sinh và chạy thử ổn định.',
-  completionPhotoUrls: ['supabase://job-media/job-1/after/photo.jpg'],
+  completionPhotoUrls: ['file:///completion-photo.jpg'],
 } as LocalDeal
 
 it('requires an explicit customer action before completion can advance', () => {
@@ -24,6 +24,10 @@ it('requires an explicit customer action before completion can advance', () => {
   )
 
   expect(view.getByText('Thanh toán chỉ mở sau bước xác nhận này.')).toBeTruthy()
+  expect(view.getByTestId('customer-completion-after-gallery-image-0').props.contentFit).toBe('contain')
+  fireEvent.press(view.getByTestId('customer-completion-after-gallery-tile-0'))
+  expect(view.getByTestId('customer-completion-after-gallery-viewer')).toBeTruthy()
+  fireEvent.press(view.getByTestId('customer-completion-after-gallery-viewer-close'))
   fireEvent.press(view.getByTestId('customer-v21-completion-confirm'))
   fireEvent.press(view.getByTestId('customer-v21-completion-report-issue'))
   expect(onConfirm).toHaveBeenCalledTimes(1)

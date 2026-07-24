@@ -17,6 +17,7 @@ import {
   type ReviewInput,
   type WorkerRegisterInput,
   type WorkerServiceAreaUpdateInput,
+  type WorkerServicePreferencesUpdateInput,
   type WorkerScopeChangeInput,
 } from '@nestscout/shared'
 import { useAuth } from './auth-provider'
@@ -144,6 +145,7 @@ type FrontendWorkflowActions = {
   submitReview: (input: Omit<ReviewInput, 'job_id'>) => Promise<boolean>
   workerUpdateAvailability: (isAvailable: boolean) => Promise<boolean>
   workerUpdateServiceArea: (input: WorkerServiceAreaUpdateInput) => Promise<boolean>
+  workerUpdateServicePreferences: (input: WorkerServicePreferencesUpdateInput) => Promise<boolean>
   workerUploadAvatar: (input: WorkerAvatarDraft) => Promise<boolean>
   workerSavePayoutMethod: (input: WorkerPayoutMethodSaveInput) => Promise<boolean | WorkerPayoutMethodSaveResult>
   refreshNotifications: () => Promise<boolean>
@@ -664,6 +666,23 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [sessionUserId, setRemoteError, workerRefresh])
 
+  const workerUpdateServicePreferences = useCallback(async (
+    input: WorkerServicePreferencesUpdateInput,
+  ) => {
+    const updated = await workerService.updateServicePreferences(input)
+    if (!updated.success) return setRemoteError(updated.error)
+    setWorkerRemoteState((current) => ({
+      earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
+      jobs: current.sessionUserId === sessionUserId ? current.jobs : [],
+      jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
+      performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
+      profile: updated.data,
+      sessionUserId,
+    }))
+    await workerRefresh()
+    return true
+  }, [sessionUserId, setRemoteError, workerRefresh])
+
   const workerUploadAvatar = useCallback(async (input: WorkerAvatarDraft) => {
     const uploaded = await uploadWorkerAvatar(input)
     if (!uploaded.success) return setRemoteError(uploaded.error)
@@ -1062,6 +1081,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     submitReview,
     workerUpdateAvailability,
     workerUpdateServiceArea,
+    workerUpdateServicePreferences,
     workerUploadAvatar,
     workerSavePayoutMethod,
     refreshNotifications,
@@ -1104,6 +1124,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerSubmitRegistration,
     workerUpdateAvailability,
     workerUpdateServiceArea,
+    workerUpdateServicePreferences,
     workerUploadAvatar,
     workerUpdateStatus,
   ])

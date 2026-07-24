@@ -368,6 +368,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'updateWorkerAvailability',
       'updateWorkerAvatar',
       'updateWorkerServiceArea',
+      'updateWorkerServicePreferences',
       'updateMyKaelMemory',
       'unregisterDevicePushToken',
       'listMyPendingDecisions',
@@ -8053,7 +8054,7 @@ describe('mobile-api Edge runtime helpers', () => {
     })
 
     const workerQuery = client.calls.find((call) => call.table === 'worker_profiles')
-    expect(workerQuery?.operations).toContainEqual(['contains', 'service_types', ['plumbing']])
+    expect(workerQuery?.operations).toContainEqual(['contains', 'selected_service_types', ['plumbing']])
     const activation = client.calls.find((call) =>
       call.table === 'rpc:activate_job_broadcast_batch_atomic'
     )
@@ -8061,6 +8062,64 @@ describe('mobile-api Edge runtime helpers', () => {
       'rpc',
       'activate_job_broadcast_batch_atomic',
       expect.objectContaining({ p_job_id: 'job-1', p_worker_ids: ['worker-legacy'] }),
+    ])
+  })
+
+  it('excludes only the worker whose selected service is temporarily quality-locked', async () => {
+    const client = makeSequenceClient([
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7', kael_price_max: 250000, final_price: null }, error: null },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: { customer_id: 'customer-1', address_lat: null, address_lng: null, problem_chips: [], service_problem_id: null, kael_problem_identified: null }, error: null },
+      { data: [], error: null },
+      {
+        data: [
+          { id: 'worker-locked', rating: 4.9, total_jobs: 30, selected_service_types: ['plumbing'], districts: ['q7'] },
+          { id: 'worker-open', rating: 4.7, total_jobs: 12, selected_service_types: ['plumbing'], districts: ['q7'] },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [{ id: 'broadcast-1', worker_id: 'worker-open' }], error: null },
+      { data: [{ notification_id: 'notification-1' }], error: null },
+      { data: [], error: null },
+      { data: null, error: null },
+    ], {}, {
+      worker_service_quality_status: [{
+        data: [{
+          worker_id: 'worker-locked',
+          is_locked: true,
+          locked_until: '2099-07-23T00:00:00.000Z',
+        }],
+        error: null,
+      }],
+    })
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmSearch(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: true,
+    })
+
+    const qualityCall = client.calls.find((call) =>
+      call.table === 'worker_service_quality_status'
+    )
+    expect(qualityCall?.operations).toContainEqual(['eq', 'service_type', 'plumbing'])
+    const activation = client.calls.find((call) =>
+      call.table === 'rpc:activate_job_broadcast_batch_atomic'
+    )
+    expect(activation?.operations).toContainEqual([
+      'rpc',
+      'activate_job_broadcast_batch_atomic',
+      expect.objectContaining({ p_job_id: 'job-1', p_worker_ids: ['worker-open'] }),
     ])
   })
 
@@ -8365,7 +8424,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: null, error: null },
       { data: { customer_id: 'customer-1', address_lat: null, address_lng: null, problem_chips: ['pipe_leak'], service_problem_id: null, kael_problem_identified: null }, error: null },
       { data: [], error: null },
-      { data: [{ id: 'worker-1' }], error: null },
+      { data: [{ id: 'worker-1', selected_service_types: ['plumbing'] }], error: null },
       { data: [], error: null },
       { data: [], error: null },
       { data: [], error: null },
@@ -8772,13 +8831,14 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(result.broadcasts[0]).toMatchObject({
       broadcast_id: 'broadcast-active',
       job_id: 'job-active',
+      media_count: 0,
       scheduled_at: '2026-07-15T01:00:00.000Z',
       service_type: 'electrical',
     })
     const listCall = client.calls[1]
     expect(listCall.operations).toContainEqual([
       'select',
-      'id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)',
+      'id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)',
     ])
   })
 })
@@ -8791,6 +8851,7 @@ type QueryCall = { table: string; operations: unknown[][] }
 function makeSequenceClient(
   results: QueryResult[],
   rpcResults: Record<string, QueryResult[]> = {},
+  tableResults: Record<string, QueryResult[]> = {},
 ) {
   const calls: QueryCall[] = []
   return {
@@ -8798,6 +8859,13 @@ function makeSequenceClient(
     from(table: string) {
       const call: QueryCall = { table, operations: [] }
       calls.push(call)
+      const override = tableResults[table]?.shift()
+      if (override) {
+        return makeQuery(call, [override])
+      }
+      if (table === 'worker_service_quality_status') {
+        return makeQuery(call, [{ data: [], error: null }])
+      }
       return makeQuery(call, results)
     },
     rpc(name: string, args?: Record<string, unknown>) {

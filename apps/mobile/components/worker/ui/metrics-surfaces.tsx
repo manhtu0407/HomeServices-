@@ -1,11 +1,9 @@
-import { useEffect } from 'react'
 import {
   Text as RNText,
   View,
   type TextProps,
 } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient } from 'react-native-svg'
-import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated'
+import Svg, { Circle, Defs, LinearGradient, Path, Rect } from 'react-native-svg'
 import type { LocalDeal } from '@nestscout/shared'
 
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
@@ -18,8 +16,6 @@ import {
   WorkerV5CustomerZipMintAura,
   WorkerV5FormulaMintCardAura,
   WorkerV5SourceCardSkin,
-  WorkerV5SuccessCheckFill,
-  WorkerV5SuccessEmblemAura,
 } from './aura-surfaces'
 import { textByLanguage } from './format'
 import { workerStatusStage } from './labels'
@@ -29,68 +25,191 @@ function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
-function WorkerV5CompletionStatusDots({
-  reduceMotion,
-  waitingForCustomer,
+export type WorkerV5CompletionHeroState = 'confirmed' | 'empty' | 'waiting'
+
+export function WorkerV5PremiumStatusSeal({
+  accessibilityLabel,
+  artTestID,
+  reduceTransparency,
+  size = 'default',
+  testID,
 }: {
-  reduceMotion: boolean
-  waitingForCustomer: boolean
+  accessibilityLabel: string
+  artTestID?: string
+  reduceTransparency?: boolean
+  size?: 'default' | 'large'
+  testID: string
 }) {
-  const firstDotProgress = useSharedValue(1)
-  const secondDotProgress = useSharedValue(1)
-  const thirdDotProgress = useSharedValue(1)
-  const firstDotStyle = useAnimatedStyle(() => ({ opacity: firstDotProgress.value }))
-  const secondDotStyle = useAnimatedStyle(() => ({ opacity: secondDotProgress.value }))
-  const thirdDotStyle = useAnimatedStyle(() => ({ opacity: thirdDotProgress.value }))
-  const shouldAnimate = waitingForCustomer && !reduceMotion
-
-  useEffect(() => {
-    const dots = [firstDotProgress, secondDotProgress, thirdDotProgress]
-    dots.forEach((dot) => cancelAnimation(dot))
-
-    if (!shouldAnimate) {
-      dots.forEach((dot) => {
-        dot.value = 1
-      })
-      return
-    }
-
-    firstDotProgress.value = withRepeat(withSequence(withTiming(0.34, { duration: 360 }), withTiming(1, { duration: 360 })), -1, false)
-    secondDotProgress.value = withDelay(140, withRepeat(withSequence(withTiming(0.34, { duration: 360 }), withTiming(1, { duration: 360 })), -1, false))
-    thirdDotProgress.value = withDelay(280, withRepeat(withSequence(withTiming(0.34, { duration: 360 }), withTiming(1, { duration: 360 })), -1, false))
-
-    return () => {
-      dots.forEach((dot) => cancelAnimation(dot))
-    }
-  }, [firstDotProgress, secondDotProgress, shouldAnimate, thirdDotProgress])
+  const isLarge = size === 'large'
+  const artSize = isLarge ? 60 : 52
 
   return (
     <View
-      style={styles.successStatusDots}
-      testID={shouldAnimate ? 'worker-v5-completion-submitted-status-waiting-dots' : 'worker-v5-completion-submitted-status-static-dots'}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="image"
+      style={[
+        styles.completionStateIcon,
+        styles.completionStateIconSubmitted,
+        isLarge && styles.completionStateIconLarge,
+        reduceTransparency && styles.completionStateIconSubmittedOpaque,
+      ]}
+      testID={testID}
     >
-      <Animated.View style={[styles.statusDotSmall, styles.statusDotSoft, firstDotStyle]} />
-      <Animated.View style={[styles.statusDotSmall, styles.statusDotMid, secondDotStyle]} />
-      <Animated.View style={[styles.statusDotSmall, thirdDotStyle]} />
+      <View style={[
+        styles.completionStateIconRim,
+        isLarge && styles.completionStateIconRimLarge,
+        reduceTransparency && styles.completionStateIconRimOpaque,
+      ]}>
+        <Svg
+          height={artSize}
+          width={artSize}
+          viewBox="0 0 52 52"
+          testID={artTestID}
+        >
+          <Defs>
+            <LinearGradient id="worker-v5-premium-seal-fill" x1="0" x2="1" y1="0" y2="1">
+              <Stop offset={0} stopColor="#3BD0BA" />
+              <Stop offset={0.52} stopColor="#17A995" />
+              <Stop offset={1} stopColor="#007E72" />
+            </LinearGradient>
+            <LinearGradient id="worker-v5-premium-check-stroke" x1="0" x2="0" y1="0" y2="1">
+              <Stop offset={0} stopColor="#FFFFFF" />
+              <Stop offset={1} stopColor="#E7FFFA" />
+            </LinearGradient>
+          </Defs>
+          <Circle
+            cx={26}
+            cy={26}
+            fill="url(#worker-v5-premium-seal-fill)"
+            r={24.5}
+          />
+          <Circle
+            cx={26}
+            cy={26}
+            fill="none"
+            r={23.8}
+            stroke="rgba(255,255,255,0.30)"
+            strokeWidth={1}
+          />
+          <Path
+            d="M11.5 22.4C13.5 15.7 19.1 11.5 26.4 11"
+            fill="none"
+            stroke="rgba(255,255,255,0.42)"
+            strokeLinecap="round"
+            strokeWidth={1.5}
+          />
+          <Path
+            d="M14.1 26.5L21.7 33.2L38.2 17.5"
+            fill="none"
+            stroke="rgba(0,69,64,0.20)"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={5.2}
+            transform="translate(0 1.2)"
+          />
+          <Path
+            d="M14.1 26.5L21.7 33.2L38.2 17.5"
+            fill="none"
+            stroke="url(#worker-v5-premium-check-stroke)"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={4.2}
+          />
+        </Svg>
+      </View>
+    </View>
+  )
+}
+
+export function WorkerV5PremiumStatusPill({
+  label,
+  mark = 'dot',
+  markTestID,
+  reduceTransparency,
+  testID,
+  textTestID,
+}: {
+  label: string
+  mark?: 'check' | 'dot'
+  markTestID?: string
+  reduceTransparency?: boolean
+  testID: string
+  textTestID?: string
+}) {
+  return (
+    <View
+      style={[
+        styles.successStatusPill,
+        reduceTransparency && styles.successStatusPillOpaque,
+      ]}
+      testID={testID}
+    >
+      <View style={[
+        styles.successStatusPillInner,
+        reduceTransparency && styles.successStatusPillInnerOpaque,
+      ]}>
+        <View style={styles.successStatusMark} testID={markTestID}>
+          <Svg height={16} width={16} viewBox="0 0 16 16">
+            <Defs>
+              <LinearGradient id="worker-v5-premium-status-fill" x1="0" x2="1" y1="0" y2="1">
+                <Stop offset={0} stopColor="#3BD0BA" />
+                <Stop offset={1} stopColor="#007E72" />
+              </LinearGradient>
+            </Defs>
+            <Circle
+              cx={8}
+              cy={8}
+              fill="url(#worker-v5-premium-status-fill)"
+              r={7.4}
+            />
+            <Circle
+              cx={8}
+              cy={8}
+              fill="none"
+              r={6.7}
+              stroke="rgba(255,255,255,0.34)"
+              strokeWidth={0.8}
+            />
+            <Path
+              d="M4.2 6.3C4.9 4.4 6.3 3.5 8.2 3.3"
+              fill="none"
+              stroke="rgba(255,255,255,0.46)"
+              strokeLinecap="round"
+              strokeWidth={0.9}
+            />
+            {mark === 'check' ? (
+              <Path
+                d="M4.4 8.1L6.8 10.2L11.8 5.4"
+                fill="none"
+                stroke="#F4FFFC"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+              />
+            ) : null}
+          </Svg>
+        </View>
+        <Text style={styles.successStatusText} numberOfLines={2} testID={textTestID}>{label}</Text>
+      </View>
     </View>
   )
 }
 
 export function WorkerV5SuccessEmblem({
   body,
-  reduceMotion = false,
   reduceTransparency,
+  state,
   status,
-  waitingForCustomer = false,
   title,
 }: {
   body: string
-  reduceMotion?: boolean
   reduceTransparency?: boolean
+  state: WorkerV5CompletionHeroState
   status?: string
-  waitingForCustomer?: boolean
   title: string
 }) {
+  const isEmpty = state === 'empty'
+
   return (
     <View style={[styles.successCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-success-emblem">
       <WorkerV5FormulaMintCardAura
@@ -98,21 +217,51 @@ export function WorkerV5SuccessEmblem({
         scope="CompletionSubmitted"
         testID="worker-v5-completion-submitted-mint-aura"
       />
-      <View style={styles.successEmblem} testID="worker-v5-completion-submitted-seal">
-        {!reduceTransparency ? <WorkerV5SuccessEmblemAura scope="CompletionSubmitted" testID="worker-v5-success-emblem-aura" /> : null}
-        <View style={styles.successCheck}>
-          {!reduceTransparency ? <WorkerV5SuccessCheckFill scope="CompletionSubmitted" testID="worker-v5-success-check-fill" /> : null}
-          <Text style={styles.successCheckText}>✓</Text>
+      {isEmpty ? (
+        <View
+          accessibilityLabel={title}
+          accessibilityRole="image"
+          style={[styles.completionStateIcon, styles.completionStateIconEmpty]}
+          testID="worker-v5-completion-submitted-icon-empty"
+        >
+          <Svg height={28} width={28} viewBox="0 0 28 28">
+            <Rect
+              fill="none"
+              height={21}
+              rx={3.5}
+              stroke="#607976"
+              strokeWidth={1.6}
+              width={16}
+              x={6}
+              y={3.5}
+            />
+            <Path
+              d="M10 10h8M10 14h8M10 18h5"
+              fill="none"
+              stroke="#607976"
+              strokeLinecap="round"
+              strokeWidth={1.6}
+            />
+          </Svg>
         </View>
-      </View>
+      ) : (
+        <WorkerV5PremiumStatusSeal
+          accessibilityLabel={title}
+          artTestID="worker-v5-completion-submitted-seal-art"
+          reduceTransparency={reduceTransparency}
+          testID="worker-v5-completion-submitted-seal"
+        />
+      )}
       <Text style={styles.successTitle} numberOfLines={2} testID="worker-v5-completion-submitted-title">{title}</Text>
       <Text style={styles.successBody} numberOfLines={3}>{body}</Text>
       {status ? (
-        <View style={styles.successStatusPill} testID="worker-v5-completion-submitted-status">
-          <WorkerV5CompletionStatusDots reduceMotion={reduceMotion} waitingForCustomer={waitingForCustomer} />
-          <View style={styles.successStatusDivider} />
-          <Text style={styles.successStatusText} numberOfLines={2}>{status}</Text>
-        </View>
+        <WorkerV5PremiumStatusPill
+          label={status}
+          mark={state === 'confirmed' ? 'check' : 'dot'}
+          markTestID="worker-v5-completion-submitted-status-dot"
+          reduceTransparency={reduceTransparency}
+          testID="worker-v5-completion-submitted-status"
+        />
       ) : null}
     </View>
   )

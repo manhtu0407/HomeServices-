@@ -21,20 +21,26 @@ type WorkerV5ProfileForLabels = {
   is_available: boolean
   is_suspended: boolean
   legal_name: string | null
+  active_service_types?: readonly string[]
+  selected_service_types?: readonly string[]
   service_types: readonly string[]
   verification_status: string | null
 } | null | undefined
 
 export function workerV5ShiftProfileCoverageLabel(profile: WorkerV5ProfileForLabels, language: AppLanguage) {
   if (!profile) return textByLanguage(language, 'Chưa có hồ sơ thợ', 'No worker profile')
-  const serviceCount = profile.service_types.length
+  const serviceCount = (
+    profile.active_service_types
+    ?? profile.selected_service_types
+    ?? profile.service_types
+  ).length
   const districtCount = profile.districts.length
   if (serviceCount > 0 && districtCount > 0) {
     return textByLanguage(language, `${serviceCount} dịch vụ · ${districtCount} khu vực`, `${serviceCount} services · ${districtCount} areas`)
   }
-  if (serviceCount > 0) return textByLanguage(language, `${serviceCount} dịch vụ đã duyệt`, `${serviceCount} approved services`)
+  if (serviceCount > 0) return textByLanguage(language, `${serviceCount} dịch vụ đang nhận`, `${serviceCount} active services`)
   if (districtCount > 0) return textByLanguage(language, `${districtCount} khu vực phục vụ`, `${districtCount} service areas`)
-  return textByLanguage(language, 'Chưa có dịch vụ hoặc khu vực đã duyệt', 'No approved services or areas')
+  return textByLanguage(language, 'Chưa chọn dịch vụ hoặc khu vực', 'No selected services or areas')
 }
 
 export function localizedWorkerBriefLines(lines: readonly string[] | null | undefined, language: AppLanguage) {

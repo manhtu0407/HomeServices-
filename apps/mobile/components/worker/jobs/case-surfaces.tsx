@@ -14,6 +14,10 @@ import type { AppLanguage } from '@/lib/app-language'
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { formatVnd, textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
+import {
+  WorkerV5PremiumStatusPill,
+  WorkerV5PremiumStatusSeal,
+} from '../ui/metrics-surfaces'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './case-styles'
 
@@ -23,15 +27,7 @@ type WorkerV5CaseAuraComponent = ComponentType<{
   testID?: string
 }>
 
-type WorkerV5CaseEmblemAura = ComponentType<{
-  scope: string
-  testID?: string
-}>
-
-type WorkerV5CaseCheckFill = ComponentType<{
-  scope: string
-  testID?: string
-}>
+export type WorkerV5CaseClosedHeroState = 'settled' | 'waiting'
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -41,25 +37,21 @@ export function WorkerV5CaseClosedHero({
   deal,
   language,
   reduceTransparency,
-  successCheckFill: SuccessCheckFill,
-  successEmblemAura: SuccessEmblemAura,
+  state,
   workerNet,
 }: {
   deal: LocalDeal | null
   language: AppLanguage
   reduceTransparency: boolean
-  successCheckFill: WorkerV5CaseCheckFill
-  successEmblemAura: WorkerV5CaseEmblemAura
+  state: WorkerV5CaseClosedHeroState
   workerNet: number | null
 }) {
   const hasIncome = Boolean(workerNet && workerNet > 0)
-  const amount = hasIncome
-    ? formatVnd(workerNet ?? 0, language)
-    : textByLanguage(language, 'Chờ đối soát', 'Settlement pending')
-  const status = hasIncome
-    ? textByLanguage(language, 'Có thể rút tiền', 'Payout available')
+  const isSettled = state === 'settled'
+  const status = isSettled
+    ? textByLanguage(language, 'Đã đối soát', 'Settlement complete')
     : textByLanguage(language, 'Chờ đối soát', 'Waiting settlement')
-  const closed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
+  const closed = isSettled || deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
   return (
     <View style={[styles.caseClosedHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-case-closed-hero">
       <WorkerV5FormulaMintCardAura
@@ -67,22 +59,32 @@ export function WorkerV5CaseClosedHero({
         scope="CaseClosedHero"
         testID="worker-v5-case-closed-mint-aura"
       />
-      <View style={styles.caseClosedCheckShell} testID="worker-v5-case-closed-settlement-seal">
-        {!reduceTransparency ? <SuccessEmblemAura scope="CaseClosed" testID="worker-v5-case-closed-check-aura" /> : null}
-        <View style={styles.caseClosedCheck}>
-          {!reduceTransparency ? <SuccessCheckFill scope="CaseClosed" testID="worker-v5-case-closed-check-fill" /> : null}
-          <Text style={styles.caseClosedCheckText}>✓</Text>
-        </View>
-      </View>
-      <View style={styles.caseClosedStatusPill} testID="worker-v5-case-closed-settlement-status">
-        <View style={styles.statusDotSmall} />
-        <Text style={styles.caseClosedStatusText} numberOfLines={2} testID="worker-v5-case-closed-status">{status}</Text>
-      </View>
+      <WorkerV5PremiumStatusSeal
+        accessibilityLabel={closed ? textByLanguage(language, 'Hoàn tất công việc', 'Work completed') : textByLanguage(language, 'Chưa hoàn tất công việc', 'Work not completed')}
+        artTestID="worker-v5-case-closed-settlement-seal-art"
+        reduceTransparency={reduceTransparency}
+        size="large"
+        testID="worker-v5-case-closed-settlement-seal"
+      />
       <Text style={styles.caseClosedTitle} numberOfLines={2} testID="worker-v5-case-closed-title">{closed ? textByLanguage(language, 'Hoàn tất công việc', 'Work completed') : textByLanguage(language, 'Chưa hoàn tất công việc', 'Work not completed')}</Text>
-      <Text style={styles.caseClosedAmount} numberOfLines={1} testID="worker-v5-case-closed-amount">{amount}</Text>
-      <Text style={styles.caseClosedAmountLabel} numberOfLines={2}>
-        {hasIncome ? textByLanguage(language, 'Đã ghi vào sổ thu nhập', 'Recorded in income ledger') : textByLanguage(language, 'Chờ sổ thu nhập đồng bộ', 'Waiting for income ledger')}
-      </Text>
+      <WorkerV5PremiumStatusPill
+        label={status}
+        mark={isSettled ? 'check' : 'dot'}
+        markTestID="worker-v5-case-closed-settlement-status-dot"
+        reduceTransparency={reduceTransparency}
+        testID="worker-v5-case-closed-settlement-status"
+        textTestID="worker-v5-case-closed-status"
+      />
+      {hasIncome ? (
+        <>
+          <Text style={styles.caseClosedAmount} numberOfLines={1} testID="worker-v5-case-closed-amount">
+            {formatVnd(workerNet ?? 0, language)}
+          </Text>
+          <Text style={styles.caseClosedAmountLabel} numberOfLines={2}>
+            {textByLanguage(language, 'Đã ghi vào sổ thu nhập', 'Recorded in income ledger')}
+          </Text>
+        </>
+      ) : null}
     </View>
   )
 }
@@ -105,7 +107,8 @@ export function WorkerV5CaseTrailCard({
   zipAura: WorkerV5CaseAuraComponent
 }) {
   const artifactReady = Boolean(deal?.completionNotes?.trim() || deal?.completionPhotoUrls?.length)
-  const ledgerReady = Boolean(deal?.payment?.workerNet && deal.payment.workerNet > 0)
+  const ledgerAmount = deal?.payment?.workerNet ?? null
+  const ledgerReady = Boolean(ledgerAmount && ledgerAmount > 0)
   const rows = [
     {
       details: artifactReady
@@ -135,7 +138,7 @@ export function WorkerV5CaseTrailCard({
           { glyph: 'money' as const, label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
         ],
       icon: incomeLedgerIcon,
-      meta: ledgerReady ? formatVnd(deal?.payment?.workerNet ?? 0, language) : textByLanguage(language, 'Chờ hệ thống đối soát', 'Waiting for system settlement'),
+      meta: ledgerReady ? formatVnd(ledgerAmount ?? 0, language) : textByLanguage(language, 'Chờ hệ thống đối soát', 'Waiting for system settlement'),
       status: ledgerReady ? textByLanguage(language, 'Đã ghi', 'Recorded') : textByLanguage(language, 'Chờ', 'Waiting'),
       title: textByLanguage(language, 'Giải ngân sổ thu nhập', 'Ledger release'),
     },

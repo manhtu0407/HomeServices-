@@ -55,6 +55,9 @@ export function sameWorkerProfile(left: WorkerProfileResponse | null, right: Wor
     && left.has_cccd === right.has_cccd
     && left.has_selfie === right.has_selfie
     && sameStringArray(left.service_types, right.service_types)
+    && sameStringArray(left.active_service_types, right.active_service_types)
+    && sameStringArray(left.selected_service_types, right.selected_service_types)
+    && sameWorkerServiceQuality(left.service_quality, right.service_quality)
     && sameStringArray(left.districts, right.districts)
     && sameStringArray(left.problem_specializations, right.problem_specializations)
 }
@@ -117,6 +120,8 @@ function sameWorkerJob(
     && left.final_price === right.final_price
     && left.estimated_earning === right.estimated_earning
     && sameStringArray(left.photo_urls, right.photo_urls)
+    && sameStringArray(left.customer_evidence_photo_urls, right.customer_evidence_photo_urls)
+    && sameStringArray(left.field_evidence_photo_urls, right.field_evidence_photo_urls)
     && left.completion_notes === right.completion_notes
     && left.scheduled_at === right.scheduled_at
     && left.created_at === right.created_at
@@ -136,6 +141,22 @@ function sameAddressAccessView(
     && left.identity_check_required === right.identity_check_required
     && left.customer_handoff_required === right.customer_handoff_required
     && left.evidence_mode === right.evidence_mode
+}
+
+function sameWorkerServiceQuality(
+  left: WorkerProfileResponse['service_quality'],
+  right: WorkerProfileResponse['service_quality'],
+) {
+  const leftItems = left ?? []
+  const rightItems = right ?? []
+  return leftItems.length === rightItems.length && leftItems.every((item, index) => {
+    const next = rightItems[index]
+    return item.average_rating === next.average_rating
+      && item.locked_until === next.locked_until
+      && item.review_count === next.review_count
+      && item.service_type === next.service_type
+      && item.status === next.status
+  })
 }
 
 function sameWorkerPerformanceBadges(

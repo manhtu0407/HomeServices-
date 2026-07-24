@@ -94,6 +94,18 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 16,
   },
+  serviceSourceCardInactive: {
+    backgroundColor: 'rgba(245,250,249,0.9)',
+    borderColor: 'rgba(196,214,211,0.78)',
+    opacity: 0.68,
+  },
+  serviceSourceCardQualityLocked: {
+    backgroundColor: 'rgba(255,248,241,0.96)',
+    borderColor: 'rgba(220,166,112,0.58)',
+  },
+  serviceSourceCardPressed: {
+    opacity: 0.82,
+  },
   serviceSourceCardFull: {
     width: '100%',
   },
@@ -141,6 +153,35 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 14,
     textAlign: 'center',
+  },
+  serviceQualityNotice: {
+    color: '#8A552D',
+    fontSize: 9,
+    fontWeight: '600',
+    lineHeight: 13,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  servicePreferenceControls: {
+    gap: 8,
+    marginTop: 3,
+    width: '100%',
+  },
+  servicePreferenceHelper: {
+    color: color.text.secondary,
+    fontSize: 12,
+    lineHeight: 17,
+    paddingHorizontal: 4,
+  },
+  servicePreferenceMessage: {
+    color: color.text.secondary,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+    paddingHorizontal: 4,
+  },
+  servicePreferenceSave: {
+    minHeight: 52,
   },
   skillsServiceHeroAmount: {
     fontSize: 26,

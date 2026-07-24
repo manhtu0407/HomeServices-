@@ -28,12 +28,22 @@ import type {
   WorkerApplicationSubmitInput,
   WorkerRegisterInput,
   WorkerServiceAreaUpdateInput,
+  WorkerServicePreferencesUpdateInput,
   WorkerVerificationStatus,
 } from "../../../_shared/domain.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
 import { projectAddressAccess } from "./apartment-access.service.ts";
 import { buildWorkerBriefOutput } from "../kael/index.ts";
 import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
+import {
+  canReleaseJobEvidenceToWorker,
+  listJobEvidenceRefsByStage,
+} from "./evidence-refs.service.ts";
+import {
+  activeServiceTypesForWorker,
+  isWorkerServiceQualityLocked,
+  selectedServiceTypesForWorker,
+} from "./worker-service-preferences.ts";
 
 export async function registerWorker(
   ctx: MobileApiContext,
@@ -250,12 +260,12 @@ function serializeWorkerApplication(
 
 export async function getWorkerProfile(ctx: MobileApiContext) {
   const client = db(ctx);
-  const [result, account] = await Promise.all([
+  const [result, account, qualityResult] = await Promise.all([
     dbQuery<Record<string, unknown>>(
       client
         .from("worker_profiles")
         .select(
-          "id, verification_status, is_available, is_approved, is_suspended, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations, years_experience, rating, total_jobs, legal_name, date_of_birth, gender, bank_account, bank_name, cccd_front_url, cccd_back_url, selfie_url, app_active_minutes, app_last_active_minute",
+          "id, verification_status, is_available, is_approved, is_suspended, service_types, selected_service_types, active_service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations, years_experience, rating, total_jobs, legal_name, date_of_birth, gender, bank_account, bank_name, cccd_front_url, cccd_back_url, selfie_url, app_active_minutes, app_last_active_minute",
         )
         .eq("id", ctx.user.id)
         .maybeSingle(),
@@ -263,13 +273,46 @@ export async function getWorkerProfile(ctx: MobileApiContext) {
     dbQuery<Record<string, unknown>>(
       client.from("profiles").select("avatar_url").eq("id", ctx.user.id).maybeSingle(),
     ),
+    dbQuery<Array<Record<string, unknown>>>(
+      client
+        .from("worker_service_quality_status")
+        .select(
+          "worker_id, service_type, review_count, average_rating, locked_until, is_locked",
+        )
+        .eq("worker_id", ctx.user.id),
+    ),
   ]);
-  if (result.error || account.error) apiFailure("DB_ERROR", "Không thể tải hồ sơ", 500);
+  if (result.error || account.error || qualityResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải hồ sơ", 500);
+  }
   const avatarUrl = await resolveWorkerAvatarUrl(ctx.supabase, account.data?.avatar_url);
   if (!result.data) {
     return { ...blankWorkerProfile(ctx.user.id), avatar_url: avatarUrl };
   }
   const worker = result.data;
+  const serviceTypes = asServiceTypeArray(worker.service_types);
+  const selectedServiceTypes = selectedServiceTypesForWorker(worker);
+  const serviceQuality = (qualityResult.data ?? []).flatMap((row) => {
+    const serviceType = asServiceTypeArray([row.service_type])[0];
+    if (!serviceType) return [];
+    return [{
+      average_rating: nullableNumber(row.average_rating),
+      locked_until: nullableString(row.locked_until),
+      review_count: Math.max(0, Math.trunc(asNumber(row.review_count))),
+      service_type: serviceType,
+      status: isWorkerServiceQualityLocked(row)
+        ? "quality_locked" as const
+        : "available" as const,
+    }];
+  });
+  const qualityLockedServices = new Set(
+    serviceQuality
+      .filter((quality) => quality.status === "quality_locked")
+      .map((quality) => quality.service_type),
+  );
+  const activeServiceTypes = activeServiceTypesForWorker(worker).filter(
+    (serviceType) => !qualityLockedServices.has(serviceType),
+  );
   return {
     id: asString(worker.id),
     avatar_url: avatarUrl,
@@ -279,7 +322,10 @@ export async function getWorkerProfile(ctx: MobileApiContext) {
     is_available: Boolean(worker.is_available),
     is_approved: Boolean(worker.is_approved),
     is_suspended: Boolean(worker.is_suspended),
-    service_types: asServiceTypeArray(worker.service_types),
+    service_types: serviceTypes,
+    active_service_types: activeServiceTypes,
+    selected_service_types: selectedServiceTypes,
+    service_quality: serviceQuality,
     districts: asStringArray(worker.districts),
     home_lat: nullableNumber(worker.home_lat),
     home_lng: nullableNumber(worker.home_lng),
@@ -354,6 +400,31 @@ export async function updateWorkerServiceArea(
   return getWorkerProfile(ctx);
 }
 
+export async function updateWorkerServicePreferences(
+  ctx: MobileApiContext,
+  input: WorkerServicePreferencesUpdateInput,
+) {
+  const result = await dbQuery<{ id: string }>(
+    db(ctx)
+      .from("worker_profiles")
+      .update({
+        active_service_types: input.selected_service_types,
+        selected_service_types: input.selected_service_types,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", ctx.user.id)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể cập nhật dịch vụ muốn nhận", 500);
+  }
+  if (!result.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
+  }
+  return getWorkerProfile(ctx);
+}
+
 export async function updateWorkerAvailability(
   ctx: MobileApiContext,
   input: { is_available: boolean },
@@ -415,7 +486,7 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
     db(ctx)
       .from("job_broadcasts")
       .select(
-        "id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)",
+        "id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)",
       )
       .eq("worker_id", ctx.user.id)
       .eq("status", "sent")
@@ -445,6 +516,7 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
         estimated_earning_max: max === null
           ? null
           : Math.round(max * (1 - PLATFORM_FEE_WORKER)),
+        media_count: asStringArray(job.photo_urls).length,
         worker_brief_core: nullableRecord(job.kael_worker_brief_core),
         scheduled_at: nullableString(job.scheduled_at),
         sent_at: nullableString(row.sent_at),
@@ -614,9 +686,26 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
   const rows = [...uniqueRows.values()]
     .sort((left, right) => Date.parse(asString(right.created_at)) - Date.parse(asString(left.created_at)))
     .slice(0, 100);
-
+  const evidenceReleasedJobIds = rows
+    .filter((row) =>
+      canReleaseJobEvidenceToWorker(row.status, row.matched_at)
+    )
+    .map((row) => asString(row.id));
+  const fieldEvidenceByJob = await listJobEvidenceRefsByStage(client, {
+    jobIds: evidenceReleasedJobIds,
+    ownerId: ctx.user.id,
+    stage: "kael_reference",
+  });
   return {
     jobs: rows.map((row) => {
+      const jobId = asString(row.id);
+      const evidenceReleased = canReleaseJobEvidenceToWorker(
+        row.status,
+        row.matched_at,
+      );
+      const customerEvidencePhotoUrls = evidenceReleased
+        ? asStringArray(row.photo_urls)
+        : [];
       const finalPrice = nullableNumber(row.final_price);
       const max = finalPrice ?? nullableNumber(row.kael_price_max);
       const min = nullableNumber(row.kael_price_min);
@@ -636,7 +725,7 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
           : Math.round(max * (1 - PLATFORM_FEE_WORKER)),
       }).brief;
       return {
-        id: asString(row.id),
+        id: jobId,
         display_code: nullableString(row.display_code),
         status: row.status as JobStatus,
         service_type: row.service_type as ServiceType,
@@ -661,9 +750,15 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
         gross_amount: nullableNumber(row.gross_amount),
         platform_fee: nullableNumber(row.platform_fee),
         worker_net: nullableNumber(row.worker_net),
-        photo_urls: asStringArray(row.photo_urls),
+        photo_urls: customerEvidencePhotoUrls,
+        customer_evidence_photo_urls: customerEvidencePhotoUrls,
+        field_evidence_photo_urls: evidenceReleased
+          ? fieldEvidenceByJob.get(jobId) ?? []
+          : [],
         completion_notes: nullableString(row.completion_notes),
-        completion_photo_urls: asStringArray(row.completion_photo_urls),
+        completion_photo_urls: evidenceReleased
+          ? asStringArray(row.completion_photo_urls)
+          : [],
         worker_brief_guidance:
           nullableRecord(row.kael_worker_brief_guidance) ?? fallbackBrief,
         scheduled_at: nullableString(row.scheduled_at),

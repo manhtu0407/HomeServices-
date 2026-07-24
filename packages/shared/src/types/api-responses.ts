@@ -174,6 +174,8 @@ export type JobDetailResponse = {
     description: string
     problem_chips: string[]
     photo_urls: string[]
+    customer_evidence_photo_urls: string[]
+    field_evidence_photo_urls: string[]
     address_building: string | null
     address_unit: string | null
     address_floor: string | null
@@ -371,6 +373,14 @@ export type ReviewResponse = {
 // Worker flow responses (B0-B8)
 // =============================================================================
 
+export type WorkerServiceQualityStatus = {
+  average_rating: number | null
+  locked_until: string | null
+  review_count: number
+  service_type: ServiceType
+  status: 'available' | 'quality_locked'
+}
+
 export type WorkerProfileResponse = {
   id: string
   avatar_url: string | null
@@ -381,6 +391,9 @@ export type WorkerProfileResponse = {
   is_approved: boolean
   is_suspended: boolean
   service_types: ServiceType[]
+  active_service_types: ServiceType[]
+  selected_service_types: ServiceType[]
+  service_quality: WorkerServiceQualityStatus[]
   districts: string[]
   home_lat: number | null
   home_lng: number | null
@@ -439,6 +452,7 @@ export type BroadcastListResponse = {
     estimated_price_max: number | null
     estimated_earning_min: number | null
     estimated_earning_max: number | null
+    media_count: number
     worker_brief_core?: Record<string, unknown> | null
     scheduled_at: string | null
     sent_at: string | null
@@ -550,6 +564,8 @@ export type WorkerJobListResponse = {
     platform_fee?: number | null
     worker_net?: number | null
     photo_urls: string[]
+    customer_evidence_photo_urls: string[]
+    field_evidence_photo_urls: string[]
     completion_notes: string | null
     completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null

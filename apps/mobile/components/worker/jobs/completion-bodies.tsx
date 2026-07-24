@@ -7,15 +7,15 @@ import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
-import type { WorkerV5IconName } from '../dock/types'
 import {
   WorkerV5CustomerCaseWideMintAura,
   WorkerV5CustomerZipMintAura,
-  WorkerV5SuccessCheckFill,
-  WorkerV5SuccessEmblemAura,
 } from '../ui/aura-surfaces'
 import { WorkerV5SectionHeader } from '../ui/primitives-surfaces'
-import { WorkerV5SuccessEmblem } from '../ui/metrics-surfaces'
+import {
+  WorkerV5SuccessEmblem,
+  type WorkerV5CompletionHeroState,
+} from '../ui/metrics-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5ActualWorkDurationLabel } from '../ui/labels'
 import { WorkerV5InfoGrid } from './shared-surfaces'
@@ -31,6 +31,7 @@ import {
 import {
   WorkerV5CaseClosedHero,
   WorkerV5CaseTrailCard,
+  type WorkerV5CaseClosedHeroState,
 } from './case-surfaces'
 import {
   WorkerV5CompletionEvidenceHero,
@@ -43,7 +44,6 @@ import type { WorkerV5StatusTimelineBaseProps } from './timeline-surfaces'
 import { styles } from './completion-body-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
-type WorkerV5IconMap = Record<WorkerV5IconName, ImageSourcePropType>
 type WorkerV5PrimaryFillComponent = ComponentType<{
   disabled: boolean
   variant?: 'default' | 'source'
@@ -140,7 +140,6 @@ export function WorkerV5ApprovalWaitBody({
 export function WorkerV5CompletionEvidenceBody({
   completionNote,
   draftPhotoUris,
-  icons,
   language,
   notice,
   onAddPhoto,
@@ -154,7 +153,6 @@ export function WorkerV5CompletionEvidenceBody({
 }: {
   completionNote: string
   draftPhotoUris: string[]
-  icons: WorkerV5IconMap
   language: AppLanguage
   notice: string | null
   onAddPhoto: () => void
@@ -168,13 +166,23 @@ export function WorkerV5CompletionEvidenceBody({
 }) {
   const deal = runtime.state.deal
   const notes = completionNote.trim() || deal?.completionNotes?.trim()
-  const evidencePhotoUrls = Array.from(new Set([
-    ...(deal?.fieldEvidencePhotoUrls ?? []),
+  const customerEvidencePhotoUrls = deal?.customerEvidencePhotoUrls ?? []
+  const fieldEvidencePhotoUrls = deal?.fieldEvidencePhotoUrls ?? []
+  const completionPhotoUrls = Array.from(new Set([
     ...(deal?.completionPhotoUrls ?? []),
     ...draftPhotoUris,
   ]))
-  const photoCount = evidencePhotoUrls.length
-  const checks = buildCompletionChecks(deal, language, draftPhotoUris.length > 0, Boolean(completionNote.trim()))
+  const photoCount = new Set([
+    ...customerEvidencePhotoUrls,
+    ...fieldEvidencePhotoUrls,
+    ...completionPhotoUrls,
+  ]).size
+  const checks = buildCompletionChecks(
+    deal,
+    language,
+    draftPhotoUris.length > 0,
+    Boolean(completionNote.trim()),
+  )
   const passedCount = checks.filter((check) => check.done).length
 
   return (
@@ -188,16 +196,51 @@ export function WorkerV5CompletionEvidenceBody({
         reduceTransparency={reduceTransparency}
         zipAura={WorkerV5CustomerZipMintAura}
       />
+      {customerEvidencePhotoUrls.length > 0 ? (
+        <>
+          <WorkerV5SectionHeader
+            action={textByLanguage(language, `${customerEvidencePhotoUrls.length} ảnh`, `${customerEvidencePhotoUrls.length} photos`)}
+            title={textByLanguage(language, 'Ảnh hiện trạng từ khách', 'Customer condition photos')}
+          />
+          <WorkerV5EvidenceTray
+            emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
+            language={language}
+            reduceTransparency={reduceTransparency}
+            stageLabel={textByLanguage(language, 'Ảnh hiện trạng từ khách', 'Customer condition photos')}
+            testID="worker-v5-completion-customer-gallery"
+            urls={customerEvidencePhotoUrls}
+          />
+        </>
+      ) : null}
+      {fieldEvidencePhotoUrls.length > 0 ? (
+        <>
+          <WorkerV5SectionHeader
+            action={textByLanguage(language, `${fieldEvidencePhotoUrls.length} ảnh`, `${fieldEvidencePhotoUrls.length} photos`)}
+            title={textByLanguage(language, 'Ảnh hiện trường của thợ', 'Worker on-site photos')}
+          />
+          <WorkerV5EvidenceTray
+            emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
+            language={language}
+            reduceTransparency={reduceTransparency}
+            stageLabel={textByLanguage(language, 'Ảnh hiện trường của thợ', 'Worker on-site photos')}
+            testID="worker-v5-completion-field-gallery"
+            urls={fieldEvidencePhotoUrls}
+          />
+        </>
+      ) : null}
       <WorkerV5SectionHeader
-        action={photoCount ? textByLanguage(language, `${photoCount} ảnh`, `${photoCount} photos`) : textByLanguage(language, 'Trống', 'Empty')}
-        title={textByLanguage(language, 'Ảnh trước & sau', 'Before and after photos')}
+        action={completionPhotoUrls.length
+          ? textByLanguage(language, `${completionPhotoUrls.length} ảnh`, `${completionPhotoUrls.length} photos`)
+          : textByLanguage(language, 'Trống', 'Empty')}
+        title={textByLanguage(language, 'Ảnh hoàn tất', 'Completion photos')}
       />
       <WorkerV5EvidenceTray
-        emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
-        evidenceIcon={icons.evidence}
+        emptyLabel={textByLanguage(language, 'Chưa có ảnh hoàn tất', 'No completion photos')}
         language={language}
         reduceTransparency={reduceTransparency}
-        urls={evidencePhotoUrls}
+        stageLabel={textByLanguage(language, 'Ảnh hoàn tất', 'Completion photos')}
+        testID="worker-v5-completion-after-gallery"
+        urls={completionPhotoUrls}
       />
       <WorkerV5SectionHeader
         action={`${passedCount}/${checks.length}`}
@@ -262,7 +305,6 @@ export function WorkerV5CompletionSubmittedBody({
   navigateNext,
   navigateToEvidence,
   primaryFill,
-  reduceMotion,
   reduceTransparency,
   runtime,
   statusTimeline,
@@ -279,20 +321,32 @@ export function WorkerV5CompletionSubmittedBody({
   const deal = runtime.state.deal
   const sourceCount = (deal?.completionPhotoUrls?.length ?? 0) + (deal?.completionNotes?.trim() ? 1 : 0)
   const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
+  const heroState: WorkerV5CompletionHeroState = deal
+    ? customerConfirmed ? 'confirmed' : 'waiting'
+    : 'empty'
+  const isEmptyHero = heroState === 'empty'
+  const heroTitle = isEmptyHero
+    ? textByLanguage(language, 'Chưa có hồ sơ đã gửi', 'No submitted artifact')
+    : textByLanguage(language, 'Đã gửi hồ sơ', 'Completion artifact submitted')
+  const heroBody = isEmptyHero
+    ? textByLanguage(language, 'Chỉ hiển thị khi hệ thống ghi nhận hồ sơ hoàn tất.', 'Shown only when the system records a completion artifact.')
+    : deal && sourceCount
+      ? textByLanguage(language, `Khách đang xem ${sourceCount} nguồn bằng chứng và tổng thanh toán.`, `The customer is reviewing ${sourceCount} evidence sources and the payment total.`)
+      : textByLanguage(language, 'Hồ sơ hoàn tất đã được gửi để khách kiểm tra.', 'The completion record has been submitted for customer review.')
+  const heroStatus = isEmptyHero
+    ? undefined
+    : heroState === 'confirmed'
+      ? textByLanguage(language, 'Đã xác nhận', 'Confirmed')
+      : textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for customer confirmation')
 
   return (
     <View style={styles.sectionStack}>
       <WorkerV5SuccessEmblem
-        body={deal
-          ? sourceCount
-            ? textByLanguage(language, `Khách đang xem ${sourceCount} nguồn bằng chứng và tổng thanh toán.`, `The customer is reviewing ${sourceCount} evidence sources and the payment total.`)
-            : textByLanguage(language, 'Hệ thống chưa có nguồn bằng chứng hoàn tất để gửi.', 'The system has no completion evidence sources to submit yet.')
-          : textByLanguage(language, 'Chỉ hiển thị khi NestScout ghi nhận hồ sơ hoàn tất thật.', 'Shown only when NestScout records a real completion artifact.')}
-        reduceMotion={reduceMotion}
+        body={heroBody}
         reduceTransparency={reduceTransparency}
-        status={customerConfirmed ? textByLanguage(language, 'Đã xác nhận', 'Confirmed') : textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for customer confirmation')}
-        title={deal ? textByLanguage(language, 'Đã gửi hồ sơ', 'Completion artifact submitted') : textByLanguage(language, 'Chưa có hồ sơ đã gửi', 'No submitted artifact')}
-        waitingForCustomer={!customerConfirmed}
+        state={heroState}
+        status={heroStatus}
+        title={heroTitle}
       />
       <WorkerV5SectionHeader
         action={textByLanguage(language, 'Tự động cập nhật', 'Auto update')}
@@ -350,6 +404,7 @@ export function WorkerV5CaseClosedBody({
   const deal = runtime.state.deal
   const payment = deal?.payment
   const workerNet = payment?.workerNet ?? runtime.workerEarnings?.net_earnings ?? null
+  const heroState: WorkerV5CaseClosedHeroState = workerNet && workerNet > 0 ? 'settled' : 'waiting'
   const rating = runtime.workerPerformanceInsights?.average_rating ?? runtime.workerProfile?.rating ?? null
   const hasRating = typeof rating === 'number' && rating > 0
   const rankingDelta = runtime.workerPerformanceInsights?.performance_score ?? null
@@ -360,8 +415,7 @@ export function WorkerV5CaseClosedBody({
         deal={deal}
         language={language}
         reduceTransparency={reduceTransparency}
-        successCheckFill={WorkerV5SuccessCheckFill}
-        successEmblemAura={WorkerV5SuccessEmblemAura}
+        state={heroState}
         workerNet={workerNet}
       />
       <WorkerV5InfoGrid

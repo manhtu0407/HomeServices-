@@ -42,6 +42,7 @@ import {
   workerAvatarUploadSchema,
   workerAvatarUpdateSchema,
   workerServiceAreaUpdateSchema,
+  workerServicePreferencesUpdateSchema,
   workerScopeChangeSchema,
   LEARNING_CANDIDATE_STATUSES,
 } from "../../_shared/domain.ts";
@@ -578,6 +579,11 @@ async function dispatchRoute(
       const input = workerServiceAreaUpdateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.updateWorkerServiceArea(ctx, input.data);
+    }
+    case "workers.servicePreferences": {
+      const input = workerServicePreferencesUpdateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.updateWorkerServicePreferences(ctx, input.data);
     }
     case "workers.kaelMemory":
       return services.getWorkerKaelMemory(ctx);

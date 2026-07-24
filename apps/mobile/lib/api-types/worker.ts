@@ -1,9 +1,10 @@
-import type { BroadcastStatus, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerVerificationStatus } from '@nestscout/shared'
+import type { BroadcastStatus, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
 import type { CustomerPaymentMethodSaveInput } from './customer'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView } from './shared'
 
 export type { WorkerActivityMinuteResponse, WorkerAvatarUploadResponse } from '@nestscout/shared'
+export type { WorkerServiceQualityStatus }
 
 export type WorkerPayoutMethodSaveInput = CustomerPaymentMethodSaveInput
 
@@ -29,6 +30,9 @@ export type WorkerProfileResponse = {
   is_approved: boolean
   is_suspended: boolean
   service_types: ServiceType[]
+  active_service_types?: ServiceType[]
+  selected_service_types?: ServiceType[]
+  service_quality?: WorkerServiceQualityStatus[]
   districts: string[]
   home_lat: number | null
   home_lng: number | null
@@ -121,6 +125,7 @@ export type WorkerBroadcastsResponse = {
     estimated_price_max: number | null
     estimated_earning_min: number | null
     estimated_earning_max: number | null
+    media_count: number
     worker_brief_core?: Record<string, unknown> | null
     scheduled_at: string | null
     sent_at: string | null
@@ -220,7 +225,7 @@ export type WorkerKaelChatTurn = {
 
 export type WorkerKaelChatSession = {
   id: string
-  job_id: string
+  job_id: string | null
   mode: WorkerKaelChatMode
   worker_id: string
   status: WorkerKaelChatStatus
@@ -323,6 +328,8 @@ export type WorkerJobListResponse = {
     platform_fee?: number | null
     worker_net?: number | null
     photo_urls: string[]
+    customer_evidence_photo_urls: string[]
+    field_evidence_photo_urls: string[]
     completion_notes: string | null
     completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null

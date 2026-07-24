@@ -12,6 +12,10 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import type { JobStatus, ScopeChangeStatus } from "../../../_shared/domain.ts";
 import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
 import type { EdgeJobDetailResponse } from "../router/dtos.ts";
+import {
+  canReleaseJobEvidenceToWorker,
+  listJobEvidenceRefsByStage,
+} from "./evidence-refs.service.ts";
 
 const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
@@ -48,8 +52,20 @@ export async function getJob(
     job.status === "scope_change_pending" ? getCurrentScopeChange(client, jobId) : null,
     workerId ? loadJobWorkerSummary(client, workerId) : null,
   ]);
+  const evidenceReleased = ctx.role !== "worker" ||
+    canReleaseJobEvidenceToWorker(job.status, job.matched_at);
+  const fieldEvidenceByJob = workerId && evidenceReleased
+    ? await listJobEvidenceRefsByStage(client, {
+        jobIds: [jobId],
+        ownerId: workerId,
+        stage: "kael_reference",
+      })
+    : new Map<string, string[]>();
   const addressProjection = projectAddressAccess(job, ctx.role);
   const displayCode = nullableString(job.display_code);
+  const customerEvidencePhotoUrls = evidenceReleased
+    ? asStringArray(job.photo_urls)
+    : [];
 
   return {
     job: {
@@ -59,7 +75,9 @@ export async function getJob(
       service_type: asServiceType(job.service_type),
       description: asString(job.description),
       problem_chips: asStringArray(job.problem_chips),
-      photo_urls: asStringArray(job.photo_urls),
+      photo_urls: customerEvidencePhotoUrls,
+      customer_evidence_photo_urls: customerEvidencePhotoUrls,
+      field_evidence_photo_urls: fieldEvidenceByJob.get(jobId) ?? [],
       address_building: addressProjection.fullAddress.building,
       address_unit: addressProjection.fullAddress.unit,
       address_floor: addressProjection.fullAddress.floor,
@@ -88,7 +106,9 @@ export async function getJob(
       platform_fee: nullableNumber(job.platform_fee),
       worker_net: nullableNumber(job.worker_net),
       completion_notes: nullableString(job.completion_notes),
-      completion_photo_urls: asStringArray(job.completion_photo_urls),
+      completion_photo_urls: evidenceReleased
+        ? asStringArray(job.completion_photo_urls)
+        : [],
       created_at: asString(job.created_at),
       matched_at: nullableString(job.matched_at),
       arrived_at: nullableString(job.arrived_at),

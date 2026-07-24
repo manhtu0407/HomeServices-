@@ -24,7 +24,7 @@ export function buildWorkerV5OfferAddressRows(deal: LocalDeal | null, language: 
       },
       {
         icon: 'profile',
-        meta: textByLanguage(language, 'NestScout chưa gửi khách hàng nào tới thợ.', 'NestScout has not sent any customer to the worker.'),
+        meta: textByLanguage(language, 'Chưa có khách hàng nào được gửi tới thợ.', 'No customer has been assigned to the worker yet.'),
         status: textByLanguage(language, 'Chờ', 'Waiting'),
         title: textByLanguage(language, 'Khách hàng trong ứng dụng', 'In-app customer'),
       },
@@ -48,8 +48,8 @@ export function buildWorkerV5OfferAddressRows(deal: LocalDeal | null, language: 
       icon: 'profile',
       meta: textByLanguage(
         language,
-        'Liên hệ và thanh toán được giữ trong workflow NestScout.',
-        'Contact and payment stay inside the NestScout workflow.',
+        'Liên hệ và thanh toán được xử lý trong ứng dụng.',
+        'Contact and payment are handled in the app.',
       ),
       status: textByLanguage(language, 'Trong app', 'In app'),
       title: textByLanguage(language, 'Khách hàng trong ứng dụng', 'In-app customer'),
@@ -62,7 +62,7 @@ export function buildWorkerV5OfferRequestRows(deal: LocalDeal | null, language: 
     return [
       {
         icon: 'document',
-        meta: textByLanguage(language, 'Yêu cầu sẽ hiện khi backend đồng bộ cơ hội.', 'Request appears after the backend syncs an opportunity.'),
+        meta: textByLanguage(language, 'Yêu cầu sẽ hiện khi có cơ hội phù hợp.', 'Request details appear when a suitable opportunity is ready.'),
         status: textByLanguage(language, 'Chờ', 'Waiting'),
         title: textByLanguage(language, 'Chưa có yêu cầu', 'No request yet'),
       },
@@ -73,11 +73,12 @@ export function buildWorkerV5OfferRequestRows(deal: LocalDeal | null, language: 
   const problem = deal.broadcast?.problemSummary || deal.draft.inferredProblemLabel || deal.draft.problemChips[0] || service
   const description = deal.draft.description || localizedWorkerBriefLines(deal.broadcast?.prebrief, language)[0] || textByLanguage(language, 'Chưa có mô tả chi tiết.', 'No detailed description yet.')
   const sourceCode = deal.displayCode || deal.broadcast?.broadcastId || deal.broadcast?.jobId || deal.id
+  const mediaCount = deal.draft.mediaCount
   return [
     {
       icon: 'document',
       meta: description,
-      status: textByLanguage(language, 'Scope hiện tại', 'Current scope'),
+      status: textByLanguage(language, 'Phạm vi hiện tại', 'Current scope'),
       title: problem,
     },
     {
@@ -87,6 +88,20 @@ export function buildWorkerV5OfferRequestRows(deal: LocalDeal | null, language: 
         : textByLanguage(language, 'Nguồn việc chưa có mã hiển thị.', 'Work source has no display code yet.'),
       status: deal.broadcast ? textByLanguage(language, 'Đã gửi', 'Sent') : textByLanguage(language, 'Chờ', 'Waiting'),
       title: service,
+    },
+    {
+      icon: 'evidence',
+      meta: mediaCount > 0
+        ? textByLanguage(
+            language,
+            'Ảnh riêng tư chỉ mở sau khi khách xác nhận thợ.',
+            'Private photos open only after the customer confirms the worker.',
+          )
+        : textByLanguage(language, 'Khách chưa gửi ảnh hiện trạng.', 'The customer has not sent condition photos.'),
+      status: mediaCount > 0
+        ? textByLanguage(language, `${mediaCount} ảnh`, `${mediaCount} photo${mediaCount === 1 ? '' : 's'}`)
+        : textByLanguage(language, 'Không có', 'None'),
+      title: textByLanguage(language, 'Ảnh hiện trạng từ khách', 'Customer condition photos'),
     },
   ]
 }

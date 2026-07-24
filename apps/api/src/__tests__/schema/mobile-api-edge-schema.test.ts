@@ -802,7 +802,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const nextBroadcasts = read('apps/api/src/app/api/workers/me/broadcasts/route.ts')
 
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts')).toContain(
-      'jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)'
+      'jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)'
     )
     expect(nextBroadcasts).toContain(
       'jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)'

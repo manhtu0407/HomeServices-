@@ -15,6 +15,8 @@ export type JobDetailResponse = {
     description: string
     problem_chips: string[]
     photo_urls: string[]
+    customer_evidence_photo_urls: string[]
+    field_evidence_photo_urls: string[]
     address_building: string | null
     address_unit: string | null
     address_floor: string | null

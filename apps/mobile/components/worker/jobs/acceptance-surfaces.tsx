@@ -53,7 +53,7 @@ export function WorkerV5AcceptSummaryCard({
     : textByLanguage(language, 'Chưa có đề nghị thật', 'No real offer yet')
   const meta = deal
     ? `${deal.draft.description || textByLanguage(language, 'Yêu cầu từ khách', 'Customer request')} · ${routeDestinationLabel(deal, language)}`
-    : textByLanguage(language, 'Chi tiết chỉ hiện khi NestScout gửi cơ hội tới thợ.', 'Details appear only after NestScout sends an opportunity to the worker.')
+    : textByLanguage(language, 'Chi tiết sẽ hiện khi có cơ hội phù hợp.', 'Details appear when a suitable opportunity is ready.')
   const earning = deal?.broadcast?.estimatedEarningLabel?.trim()
     || textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning estimate')
 
@@ -164,10 +164,7 @@ export function WorkerV5AcceptCommitmentCard({
           <ZipAura scope="AcceptCommitmentFine" style={styles.acceptCommitmentZipAura} />
         </>
       ) : null}
-      <View style={styles.acceptCommitmentIconTile}>
-        <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-        <Image contentFit="contain" source={clockIcon} style={styles.acceptCommitmentIcon} />
-      </View>
+      <Image contentFit="contain" source={clockIcon} style={styles.acceptCommitmentIcon} />
       <View style={styles.acceptCommitmentCopy}>
         <Text style={styles.acceptCommitmentTitle} numberOfLines={2} testID="worker-v5-accept-commitment-title">
           {etaSignal.label}
@@ -178,39 +175,6 @@ export function WorkerV5AcceptCommitmentCard({
           </Text>
         ) : null}
       </View>
-    </View>
-  )
-}
-
-export function WorkerV5AcceptBoundaryNote({
-  caseWideAura: CaseWideAura,
-  language,
-  reduceTransparency,
-  zipAura: ZipAura,
-}: {
-  caseWideAura: WorkerV5AcceptanceAuraComponent
-  language: AppLanguage
-  reduceTransparency: boolean
-  zipAura: WorkerV5AcceptanceAuraComponent
-}) {
-  return (
-    <View style={[styles.acceptBoundaryNote, reduceTransparency && styles.opaqueCard]} testID="worker-v5-accept-boundary-note">
-      {!reduceTransparency ? (
-        <>
-          <CaseWideAura
-            scope="AcceptBoundaryWide"
-            style={styles.acceptBoundaryAura}
-            testID="worker-v5-accept-boundary-mint-aura"
-          />
-          <ZipAura scope="AcceptBoundaryFine" style={styles.acceptBoundaryZipAura} />
-        </>
-      ) : null}
-      <Text style={styles.acceptBoundaryText}>
-        <Text style={styles.acceptBoundaryStrong}>
-          {textByLanguage(language, 'Kael không thể bấm nhận thay bạn.', 'Kael cannot accept on your behalf.')}
-        </Text>
-        {textByLanguage(language, ' Nút dưới tạo sự kiện xác nhận rõ của thợ.', ' The button below creates an explicit worker confirmation event.')}
-      </Text>
     </View>
   )
 }

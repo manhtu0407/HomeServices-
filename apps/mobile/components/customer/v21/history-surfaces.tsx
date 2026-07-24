@@ -3,7 +3,9 @@ import { Image } from 'expo-image'
 import { Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
 
+import { JobEvidenceGallery } from '@/components/ui/job-evidence-gallery'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { isKaelCoreV9Visual, type CustomerV21Visual } from './assets'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
@@ -404,37 +406,22 @@ function SuccessEmblemAura({ done, reduceTransparency }: { done: boolean; reduce
 }
 
 export function CaseStageMediaStrip({
-  count,
   dataPending,
-  tokens,
+  language,
+  refs,
 }: {
-  count: number
   dataPending: string
-  tokens: CustomerThemeTokens
+  language: AppLanguage
+  refs: string[]
 }) {
-  const visibleCount = Math.min(Math.max(count, 0), 3)
-
-  if (visibleCount === 0) {
-    return (
-      <View style={[styles.stageMediaEmpty, { backgroundColor: tokens.service, borderColor: tokens.border }]} testID="customer-v21-job-progress-media-empty">
-        <Text style={[styles.arrivalCodePendingText, { color: tokens.muted }]}>{dataPending}</Text>
-      </View>
-    )
-  }
-
   return (
-    <View style={styles.stageMediaStrip} testID="customer-v21-job-progress-media-strip">
-      {Array.from({ length: visibleCount }).map((_, index) => {
-        const remaining = count - index
-        const label = index === 2 && remaining > 1 ? `+${remaining}` : String(index + 1)
-        return (
-          <View key={index} style={styles.stageMediaThumb}>
-            <View style={styles.stageMediaThumbGlow} />
-            <Text style={styles.stageMediaTag}>{label}</Text>
-          </View>
-        )
-      })}
-    </View>
+    <JobEvidenceGallery
+      emptyLabel={dataPending}
+      language={language}
+      refs={refs}
+      stageLabel={language === 'vi' ? 'Bằng chứng hiện trường' : 'On-site evidence'}
+      testID="customer-v21-job-progress-media"
+    />
   )
 }
 

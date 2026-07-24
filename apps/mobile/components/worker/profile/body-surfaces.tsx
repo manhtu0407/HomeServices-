@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react'
+import { useState, type ComponentType, type ReactNode } from 'react'
 import { View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
 import type { ServiceType } from '@nestscout/shared'
 
@@ -56,6 +56,7 @@ import {
 import {
   WorkerV5ServiceCardGrid,
   WorkerV5SkillsServiceHero,
+  type WorkerV5ServicePreferenceInteraction,
 } from './services-surfaces'
 import {
   WorkerV5VerificationChecklist,
@@ -265,9 +266,28 @@ export function WorkerV5SkillsServiceAreaBody({
   skillsHeroIcon: ImageSourcePropType
 }) {
   const profile = runtime.workerProfile
+  const profileOwnerId = profile?.id ?? null
+  const [servicePreferenceInteraction, setServicePreferenceInteraction] = useState<{
+    ownerId: string | null
+    value: WorkerV5ServicePreferenceInteraction
+  } | null>(null)
+  const currentServicePreferenceInteraction =
+    servicePreferenceInteraction?.ownerId === profileOwnerId
+      ? servicePreferenceInteraction.value
+      : null
   const serviceAreaOwnerKey = [
     profile?.id ?? 'no-profile',
     profile?.districts?.join('|') ?? '',
+    language,
+  ].join(':')
+  const servicePreferencesOwnerKey = [
+    profile?.id ?? 'no-profile',
+    profile?.service_types?.join('|') ?? '',
+    profile?.selected_service_types?.join('|') ?? '',
+    profile?.active_service_types?.join('|') ?? '',
+    profile?.service_quality?.map((quality) =>
+      `${quality.service_type}:${quality.status}:${quality.locked_until ?? ''}`
+    ).join('|') ?? '',
     language,
   ].join(':')
 
@@ -275,14 +295,20 @@ export function WorkerV5SkillsServiceAreaBody({
     <View style={styles.sectionStack}>
       <WorkerV5SkillsServiceHero
         heroAura={heroAura}
+        interaction={currentServicePreferenceInteraction}
         language={language}
         profile={profile}
         reduceTransparency={reduceTransparency}
         toolsIcon={skillsHeroIcon}
       />
       <WorkerV5ServiceCardGrid
+        key={servicePreferencesOwnerKey}
         language={language}
         listAura={listAura}
+        onInteractionChange={(value) => {
+          setServicePreferenceInteraction({ ownerId: profileOwnerId, value })
+        }}
+        onSave={runtime.actions.workerUpdateServicePreferences}
         profile={profile}
         reduceTransparency={reduceTransparency}
         serviceIcons={serviceIcons}

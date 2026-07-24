@@ -115,6 +115,7 @@ import type {
   WorkerApplicationSubmitInput,
   WorkerRegisterInput,
   WorkerServiceAreaUpdateInput,
+  WorkerServicePreferencesUpdateInput,
   WorkerAvatarUploadInput,
   WorkerAvatarUpdateInput,
   WorkerKaelChatCreateInput,
@@ -576,6 +577,10 @@ export const workerService = {
 
   updateServiceArea(input: WorkerServiceAreaUpdateInput) {
     return api.patch<WorkerProfileResponse>('/workers/me/service-area', input)
+  },
+
+  updateServicePreferences(input: WorkerServicePreferencesUpdateInput) {
+    return api.patch<WorkerProfileResponse>('/workers/me/service-preferences', input)
   },
 
   getBroadcasts() {

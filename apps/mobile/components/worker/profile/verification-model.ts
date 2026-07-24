@@ -16,8 +16,12 @@ export function workerV5VerificationChecks(
   profile: WorkerProfileResponse | null | undefined,
   language: AppLanguage,
 ): WorkerV5VerificationCheck[] {
-  const services = profile?.service_types?.length
-    ? profile.service_types.map((service) => localizedServiceLabel(service, language)).join(', ')
+  const selectedServices = profile?.selected_service_types
+    ?? profile?.active_service_types
+    ?? profile?.service_types
+    ?? []
+  const services = selectedServices.length
+    ? selectedServices.map((service) => localizedServiceLabel(service, language)).join(', ')
     : textByLanguage(language, 'Chưa có dịch vụ đã ghi', 'No saved services')
   return [
     {
@@ -37,10 +41,10 @@ export function workerV5VerificationChecks(
       title: textByLanguage(language, 'Ảnh trong hồ sơ', 'Profile portrait'),
     },
     {
-      done: Boolean(profile?.service_types?.length),
+      done: selectedServices.length > 0,
       icon: 'tools',
       meta: services,
-      title: textByLanguage(language, 'Dịch vụ đăng ký', 'Registered services'),
+      title: textByLanguage(language, 'Dịch vụ đã chọn', 'Selected services'),
     },
     {
       done: profile?.verification_status === 'approved',

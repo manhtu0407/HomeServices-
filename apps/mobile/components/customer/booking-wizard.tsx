@@ -1169,7 +1169,7 @@ function DescribeStep({
                     <Text style={[styles.videoPreviewLabel, { color: visual.primary }]}>Video</Text>
                   </View>
                 ) : (
-                  <Image accessibilityLabel={`photo-${index}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.photoImage} />
+                  <Image accessibilityLabel={`photo-${index}`} contentFit="contain" source={{ uri: photo.uri }} style={styles.photoImage} />
                 )}
                 {photoName ? (
                   <View style={styles.photoNamePill}>

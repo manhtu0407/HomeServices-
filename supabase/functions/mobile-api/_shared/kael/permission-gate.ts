@@ -220,6 +220,11 @@ function evaluateAllowedTopic(
       : deny(request, "DENY_SYSTEM_PURPOSE", "cannot_do_action");
   }
   if (request.actor === "worker") {
+    if (request.purpose === "worker_assist" && request.jobRelation === "none") {
+      return ACTIONS_BY_PURPOSE.worker_assist.includes(request.action)
+        ? allow(request, "ALLOW_WORKER_GENERAL_ASSIST")
+        : deny(request, "DENY_WORKER_ASSIST_ACTION", "cannot_do_action");
+    }
     if (request.purpose === "worker_brief" && request.jobRelation === "own_worker_job") {
       return allow(request, "ALLOW_WORKER_BRIEF");
     }

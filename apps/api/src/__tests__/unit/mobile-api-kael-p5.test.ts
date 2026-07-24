@@ -352,6 +352,36 @@ describe('Kael P5 permission scope and response policy', () => {
     ])
   })
 
+  it('allows jobless worker guidance without exposing another job', () => {
+    expect(evaluateKaelPermissionGate({
+      purpose: 'worker_assist',
+      actor: 'worker',
+      jobRelation: 'none',
+      topic: 'app_usage_help',
+      action: 'generate_advisory',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
+    })).toMatchObject({
+      allowed: true,
+      reasonCode: 'ALLOW_WORKER_GENERAL_ASSIST',
+    })
+
+    expect(evaluateKaelPermissionGate({
+      purpose: 'worker_assist',
+      actor: 'worker',
+      jobRelation: 'none',
+      topic: 'other_jobs_specific',
+      action: 'generate_advisory',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
+    })).toMatchObject({
+      allowed: false,
+      reasonCode: 'DENY_WORKER_PRE_ACCEPT_PII',
+    })
+  })
+
   it('surfaces a failed permission audit write', async () => {
     const decision = evaluateKaelPermissionGate({
       purpose: 'worker_brief',

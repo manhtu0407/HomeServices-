@@ -96,13 +96,20 @@ export async function createWorkerKaelChat(
   _secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
-  await requireWorkerKaelChatJob(client, ctx, input.job_id);
+  const jobId = input.job_id ?? null;
+  if (
+    (input.mode === "normal" && jobId !== null) ||
+    (input.mode === "intake" && jobId === null)
+  ) {
+    apiFailure("VALIDATION", "Dữ liệu phiên Kael không hợp lệ", 400);
+  }
+  if (jobId) await requireWorkerKaelChatJob(client, ctx, jobId);
 
   if (input.client_request_id) {
     const existing = await findExistingWorkerKaelSessionByClientRequest(
       client,
       ctx.user.id,
-      input.job_id,
+      jobId,
       input.mode,
       input.client_request_id,
     );
@@ -114,7 +121,7 @@ export async function createWorkerKaelChat(
       .from("kael_worker_chat_sessions")
       .insert({
         worker_id: ctx.user.id,
-        job_id: input.job_id,
+        job_id: jobId,
         chat_mode: input.mode,
         status: "active",
         client_request_id: input.client_request_id ?? null,
@@ -132,7 +139,7 @@ export async function createWorkerKaelChat(
     const recovered = await findExistingWorkerKaelSessionByClientRequest(
       client,
       ctx.user.id,
-      input.job_id,
+      jobId,
       input.mode,
       input.client_request_id,
     );
@@ -290,14 +297,31 @@ export async function sendWorkerKaelChatTurn(
   if (asWorkerKaelChatStatus(session.status) !== "active") {
     apiFailure("INVALID_STATUS", "Phi\u00ean Kael n\u00e0y kh\u00f4ng c\u00f2n nh\u1eadn tin nh\u1eafn", 409);
   }
-  const job = options.prefetchedJob ??
-    await requireWorkerKaelChatJob(client, ctx, asString(session.job_id));
+  const sessionMode = asWorkerKaelChatMode(session.chat_mode);
+  const sessionJobId = nullableString(session.job_id);
+  if (
+    (sessionMode === "normal" && sessionJobId !== null) ||
+    (sessionMode === "intake" && sessionJobId === null)
+  ) {
+    apiFailure("WORKFLOW_STALE", "Phi\u00ean Kael kh\u00f4ng c\u00f2n h\u1ee3p l\u1ec7", 409);
+  }
+  if (sessionMode === "normal" && input.media_refs.length > 0) {
+    apiFailure(
+      "VALIDATION_ERROR",
+      "\u1ea2nh ch\u1ec9 \u0111\u01b0\u1ee3c g\u1eedi trong cu\u1ed9c tr\u00f2 chuy\u1ec7n theo c\u00f4ng vi\u1ec7c",
+      400,
+    );
+  }
+  const job = sessionJobId
+    ? options.prefetchedJob ??
+      await requireWorkerKaelChatJob(client, ctx, sessionJobId)
+    : null;
   const safeMessage = scrubSensitiveForLLM(sanitizeForLLM(input.message));
   const visionPhotoUrls = input.media_refs.length > 0
     ? await prepareWorkerKaelVisionUrls(
       ctx,
       client,
-      asString(session.job_id),
+      asString(sessionJobId),
       input.media_refs,
     )
     : [];
@@ -306,7 +330,7 @@ export async function sendWorkerKaelChatTurn(
     claimId,
     clientRequestId: input.client_request_id,
     contentType: input.media_refs.length > 0 ? "photo_attached" : "text",
-    jobId: asString(session.job_id),
+    jobId: sessionJobId,
     mediaRefs: input.media_refs,
     message: safeMessage,
     sessionId,
@@ -346,7 +370,7 @@ export async function sendWorkerKaelChatTurn(
   // reference what is actually in the image. Only surface a summary on real
   // success; on skip/fallback we pass null (no fabricated findings).
   let workerVisionFinding: WorkerVisionFinding | null = null;
-  if (visionPhotoUrls.length > 0) {
+  if (visionPhotoUrls.length > 0 && job) {
     // analyzeDescription is designed to return a structured success/fail, but an
     // unexpected throw (e.g. image fetch) must NOT crash the worker chat turn —
     // the W-1 contract is "null on failure, no fabricated findings", so degrade.
@@ -380,17 +404,20 @@ export async function sendWorkerKaelChatTurn(
   let answer: WorkerAssistAnswer;
   try {
     answer = await runWorkerAssist({
-      job: {
-        id: asString(job.id),
-        status: nullableString(job.status),
-        service_type: nullableString(job.service_type),
-        description: nullableString(job.description),
-        address_district: nullableString(job.address_district),
-        kael_problem_identified: nullableString(job.kael_problem_identified),
-        kael_complexity: nullableString(job.kael_complexity),
-        kael_worker_brief_core: nullableRecord(job.kael_worker_brief_core),
-        kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
-      },
+      conversationMode: sessionMode,
+      job: job
+        ? {
+          id: asString(job.id),
+          status: nullableString(job.status),
+          service_type: nullableString(job.service_type),
+          description: nullableString(job.description),
+          address_district: nullableString(job.address_district),
+          kael_problem_identified: nullableString(job.kael_problem_identified),
+          kael_complexity: nullableString(job.kael_complexity),
+          kael_worker_brief_core: nullableRecord(job.kael_worker_brief_core),
+          kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
+        }
+        : null,
       question: safeMessage,
       language: input.language,
       mediaRefs: input.media_refs,
@@ -430,7 +457,7 @@ export async function sendWorkerKaelChatTurn(
 
   if (answer.guardrail_reason && isWorkerAssistGuardrailReason(answer.guardrail_reason)) {
     await auditGuardrailTripBestEffort(client, {
-      jobId: asString(session.job_id),
+      jobId: sessionJobId,
       actorId: ctx.user.id,
       actorRole: "worker",
       surface: "worker_kael_chat",
@@ -476,7 +503,7 @@ export async function sendWorkerKaelChatTurn(
     completed = await completeWorkerKaelChatTurn(client, {
       answer,
       claimId,
-      jobId: asString(session.job_id),
+      jobId: sessionJobId,
       requestId: asString(claim.request_id),
       sessionId,
       workerId: ctx.user.id,
@@ -539,7 +566,7 @@ export function serializeWorkerKaelSession(row: Record<string, unknown>) {
     : null;
   return {
     id: asString(row.id),
-    job_id: asString(row.job_id),
+    job_id: nullableString(row.job_id),
     mode: asWorkerKaelChatMode(row.chat_mode),
     worker_id: asString(row.worker_id),
     status: asWorkerKaelChatStatus(row.status),
@@ -599,21 +626,19 @@ async function requireWorkerKaelChatJob(
 async function findExistingWorkerKaelSessionByClientRequest(
   client: DbClient,
   workerId: string,
-  jobId: string,
+  jobId: string | null,
   mode: WorkerKaelChatCreateInput["mode"],
   clientRequestId: string,
 ): Promise<string | null> {
-  const result = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_worker_chat_sessions")
-      .select("id")
-      .eq("worker_id", workerId)
-      .eq("job_id", jobId)
-      .eq("chat_mode", mode)
-      .eq("client_request_id", clientRequestId)
-      .is("archived_at", null)
-      .maybeSingle(),
-  );
+  let query = client
+    .from("kael_worker_chat_sessions")
+    .select("id")
+    .eq("worker_id", workerId)
+    .eq("chat_mode", mode)
+    .eq("client_request_id", clientRequestId)
+    .is("archived_at", null);
+  query = jobId ? query.eq("job_id", jobId) : query.is("job_id", null);
+  const result = await dbQuery<Record<string, unknown>>(query.maybeSingle());
   if (result.error || !result.data) return null;
   return asString(result.data.id);
 }

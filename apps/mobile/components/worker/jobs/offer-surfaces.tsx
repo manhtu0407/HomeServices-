@@ -99,13 +99,13 @@ export function WorkerV5OfferDetailSummaryCard({
 
 export function WorkerV5OfferDetailEmptyCard({
   caseWideAura: CaseWideAura,
-  jobIcon,
+  emptyOfferIcon,
   language,
   reduceTransparency,
   zipAura: ZipAura,
 }: {
   caseWideAura: WorkerV5AuraComponent
-  jobIcon: ImageSourcePropType
+  emptyOfferIcon: ImageSourcePropType
   language: AppLanguage
   reduceTransparency: boolean
   zipAura: WorkerV5AuraComponent
@@ -126,18 +126,14 @@ export function WorkerV5OfferDetailEmptyCard({
           />
         </>
       ) : null}
-      <View style={styles.offerDetailSummaryLine}>
-        <View style={styles.offerDetailIconTile}>
-          <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-          <Image contentFit="contain" source={jobIcon} style={styles.offerDetailIcon} />
-        </View>
+      <View style={styles.offerDetailEmptySummaryLine}>
+        <Image contentFit="contain" source={emptyOfferIcon} style={styles.offerDetailEmptyIcon} />
         <View style={styles.offerDetailSummaryCopy}>
-          <Text style={styles.offerDetailStatusChip} numberOfLines={1}>{textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')}</Text>
           <Text style={styles.offerDetailTitle} numberOfLines={2} testID="worker-v5-offer-summary-title">
             {textByLanguage(language, 'Chưa có đề nghị thật', 'No real offer yet')}
           </Text>
           <Text style={styles.offerDetailMeta} numberOfLines={2} testID="worker-v5-offer-summary-meta">
-            {textByLanguage(language, 'Chi tiết chỉ hiện khi NestScout gửi cơ hội tới thợ.', 'Details appear only after NestScout sends an opportunity to the worker.')}
+            {textByLanguage(language, 'Chi tiết sẽ hiện khi có cơ hội phù hợp.', 'Details appear when a suitable opportunity is ready.')}
           </Text>
         </View>
         <Text style={styles.offerDetailPrice} numberOfLines={2} testID="worker-v5-offer-summary-price">
@@ -180,10 +176,7 @@ export function WorkerV5OfferDetailListCard({
       ) : null}
       {rows.map((row, index) => (
         <View key={`${row.title}-${row.status}`} style={[styles.offerDetailListRow, index > 0 && styles.offerDetailListDivider]}>
-          <View style={styles.offerDetailRowIconTile}>
-            <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-            <Image contentFit="contain" source={iconSources[row.icon]} style={styles.offerDetailRowIcon} />
-          </View>
+          <Image contentFit="contain" source={iconSources[row.icon]} style={styles.offerDetailRowIcon} />
           <View style={styles.offerDetailRowCopy}>
             <Text style={styles.offerDetailRowTitle} numberOfLines={2}>{row.title}</Text>
             <Text style={styles.offerDetailRowMeta} numberOfLines={2}>{row.meta}</Text>

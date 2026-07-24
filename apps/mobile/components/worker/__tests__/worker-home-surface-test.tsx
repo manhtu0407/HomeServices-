@@ -12,6 +12,7 @@ let mockSignOut: jest.Mock
 let mockWorkerUpdateAvailability: jest.Mock
 let mockWorkerUploadAvatar: jest.Mock
 let mockWorkerUpdateServiceArea: jest.Mock
+let mockWorkerUpdateServicePreferences: jest.Mock
 let mockPathname: string
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockAppLanguage = 'vi'
@@ -168,6 +169,7 @@ import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
   return {
+    active_service_types: ['electrical'],
     active_minutes: 0,
     avatar_url: null,
     bank_account_masked: null,
@@ -187,6 +189,8 @@ function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): Wor
     legal_name: 'Worker Test',
     problem_specializations: [],
     rating: 0,
+    selected_service_types: ['electrical'],
+    service_quality: [],
     service_radius_km: 8,
     service_types: ['electrical'],
     total_jobs: 0,
@@ -355,6 +359,21 @@ function buildConfirmedCompletionDeal(): LocalDeal {
   }
 }
 
+function buildSettledCaseDeal(): LocalDeal {
+  const deal = buildConfirmedCompletionDeal()
+  return {
+    ...deal,
+    payment: {
+      grossAmount: 400_000,
+      platformFee: 80_000,
+      provider: 'sepay_vietqr',
+      status: 'received',
+      workerNet: 320_000,
+    },
+    status: 'paid',
+  }
+}
+
 function buildCompletedByWorkerDeal(): LocalDeal {
   const deal = buildAcceptedDeal()
   return {
@@ -388,6 +407,7 @@ function buildWorkflow({
   mockWorkerUpdateAvailability = jest.fn(async () => true)
   mockWorkerUploadAvatar = jest.fn(async () => true)
   mockWorkerUpdateServiceArea = jest.fn(async () => true)
+  mockWorkerUpdateServicePreferences = jest.fn(async () => true)
   mockWorkflowValue = {
     actions: {
       openKaelJobIncident: jest.fn(async () => ({ incident: null })),
@@ -399,6 +419,7 @@ function buildWorkflow({
       workerUpdateAvailability: mockWorkerUpdateAvailability,
       workerUploadAvatar: mockWorkerUploadAvatar,
       workerUpdateServiceArea: mockWorkerUpdateServiceArea,
+      workerUpdateServicePreferences: mockWorkerUpdateServicePreferences,
       workerUpdateStatus: jest.fn(async () => true),
     },
     selectors: {
@@ -460,7 +481,10 @@ beforeEach(async () => {
   mockWorkerKaelChatService.list.mockImplementation(pendingWorkerKaelServiceCall)
   mockWorkerKaelChatService.get.mockImplementation(pendingWorkerKaelServiceCall)
   mockWorkerKaelChatService.getTrainingConsent.mockImplementation(pendingWorkerKaelServiceCall)
-  mockWorkerKaelChatService.create.mockImplementation(async (input: { mode?: 'normal' | 'intake' }) => {
+  mockWorkerKaelChatService.create.mockImplementation(async (input: {
+    job_id?: string
+    mode?: 'normal' | 'intake'
+  }) => {
     const mode = input.mode ?? 'intake'
     mockWorkerKaelChatModes.set('worker-kael-session-1', mode)
     return {
@@ -468,7 +492,7 @@ beforeEach(async () => {
         session: {
           closed_at: null,
           id: 'worker-kael-session-1',
-          job_id: 'job_test_1',
+          job_id: mode === 'intake' ? input.job_id ?? 'job_test_1' : null,
           mode,
           progress: null,
           safe_metadata: {},
@@ -498,7 +522,7 @@ beforeEach(async () => {
       session: {
         closed_at: null,
         id: sessionId,
-        job_id: 'job_test_1',
+        job_id: null,
         mode: 'normal',
         pinned_at: null,
         progress: null,
@@ -518,7 +542,7 @@ beforeEach(async () => {
       session: {
         closed_at: null,
         id: sessionId,
-        job_id: 'job_test_1',
+        job_id: null,
         mode: 'normal',
         pinned_at: input.pinned ? '2026-07-13T08:00:00.000Z' : null,
         progress: null,
@@ -549,7 +573,7 @@ beforeEach(async () => {
       session: {
         closed_at: null,
         id: sessionId,
-        job_id: 'job_test_1',
+        job_id: mockWorkerKaelChatModes.get(sessionId) === 'intake' ? 'job_test_1' : null,
         mode: mockWorkerKaelChatModes.get(sessionId) ?? 'normal',
         progress: {
           current_stage: 'worker_assist',
@@ -1067,7 +1091,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-before-refocus',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -1086,7 +1110,7 @@ describe('Worker runtime surface wiring', () => {
         session: {
           closed_at: null,
           id: 'worker-kael-session-before-refocus',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -1163,18 +1187,29 @@ describe('Worker runtime surface wiring', () => {
     expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(1)
   })
 
-  it('answers the normal Kael chat honestly when no active work session exists', async () => {
+  it('persists and answers normal Kael chat without an active work session', async () => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
 
     render(<WorkerChatSurface />)
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.list).toHaveBeenCalledWith('normal')
+    })
     fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Kael giúp tôi chuẩn bị gì?')
     fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
 
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.create).toHaveBeenCalledWith(expect.objectContaining({
+        language: 'vi',
+        mode: 'normal',
+      }))
+    })
+    expect(mockWorkerKaelChatService.create.mock.calls[0]?.[0]).not.toHaveProperty('job_id')
+    await waitFor(() => {
+      expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledTimes(1)
+    })
     expect(await screen.findByText('Kael giúp tôi chuẩn bị gì?')).toBeOnTheScreen()
-    expect(await screen.findByText(/chưa có phiên Kael theo công việc/)).toBeOnTheScreen()
-    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
-    expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
+    expect(await screen.findByText('Kael saved this advisory. Keep the next step inside the app.')).toBeOnTheScreen()
   })
   it.each([
     ['Chat thường', '3.1-kael-chat-normal'],
@@ -1266,7 +1301,7 @@ describe('Worker runtime surface wiring', () => {
           {
             closed_at: null,
             id: 'worker-kael-session-normal',
-            job_id: 'job_test_1',
+            job_id: null,
             mode: 'normal',
             pinned_at: null,
             progress: null,
@@ -1335,7 +1370,7 @@ describe('Worker runtime surface wiring', () => {
           sessions: [{
             closed_at: null,
             id: 'worker-kael-session-late-normal',
-            job_id: 'job_test_1',
+            job_id: null,
             mode: 'normal',
             pinned_at: null,
             progress: null,
@@ -1409,7 +1444,7 @@ describe('Worker runtime surface wiring', () => {
           sessions: [{
             closed_at: null,
             id: 'worker-kael-session-preloaded',
-            job_id: 'job_test_1',
+            job_id: null,
             mode: 'normal',
             pinned_at: null,
             progress: null,
@@ -1517,7 +1552,7 @@ describe('Worker runtime surface wiring', () => {
           session: {
             closed_at: null,
             id: 'worker-kael-session-new-empty',
-            job_id: 'job_test_1',
+            job_id: null,
             mode: 'normal',
             pinned_at: null,
             progress: null,
@@ -1547,7 +1582,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-prefetched-before-job',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -1584,7 +1619,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-device-cache',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -1625,7 +1660,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-hydrated',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -1654,7 +1689,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText('Chưa có cuộc trò chuyện cho công việc này.')).toBeNull()
   })
 
-  it('does not show a false empty session state before worker jobs finish hydrating', async () => {
+  it('shows the normal-chat empty state without waiting for worker jobs to hydrate', async () => {
     buildWorkflow({ workerJobsHydrated: false })
     mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
     mockWorkerKaelChatService.list.mockResolvedValue({
@@ -1662,20 +1697,15 @@ describe('Worker runtime surface wiring', () => {
       status: 200,
       success: true,
     })
-    const { rerender } = render(<WorkerChatSurface />)
+    render(<WorkerChatSurface />)
 
     await waitFor(() => {
       expect(mockWorkerKaelChatService.list).toHaveBeenCalledTimes(1)
     })
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
 
-    expect(screen.getByText('Đang tải cuộc trò chuyện...')).toBeOnTheScreen()
-    expect(screen.queryByText('Chưa có cuộc trò chuyện cho công việc này.')).toBeNull()
-
-    buildWorkflow({ workerJobsHydrated: true })
-    rerender(<WorkerChatSurface />)
-
     expect(await screen.findByText('Chưa có cuộc trò chuyện thường.')).toBeOnTheScreen()
+    expect(screen.queryByText('Đang tải cuộc trò chuyện...')).toBeNull()
   })
 
   it('keeps a newly-created Kael session visible when the initial list response arrives later', async () => {
@@ -1720,7 +1750,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-shared-load',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -1757,7 +1787,7 @@ describe('Worker runtime surface wiring', () => {
           session: {
             closed_at: null,
             id: 'worker-kael-session-shared-load',
-            job_id: 'job_test_1',
+            job_id: null,
             mode: 'normal',
             pinned_at: null,
             progress: null,
@@ -1797,7 +1827,7 @@ describe('Worker runtime surface wiring', () => {
           {
             closed_at: null,
             id: 'worker-kael-session-2',
-            job_id: 'job_test_1',
+            job_id: null,
             mode: 'normal',
             pinned_at: null,
             progress: null,
@@ -1810,7 +1840,7 @@ describe('Worker runtime surface wiring', () => {
           {
             closed_at: null,
             id: 'worker-kael-session-1',
-            job_id: 'job_test_1',
+            job_id: null,
             mode: 'normal',
             progress: null,
             started_at: '2026-07-13T07:00:00.000Z',
@@ -1829,7 +1859,7 @@ describe('Worker runtime surface wiring', () => {
         session: {
           closed_at: null,
           id: sessionId,
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           progress: null,
           started_at: sessionId === 'worker-kael-session-2'
@@ -1933,7 +1963,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-2',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           progress: null,
           started_at: '2026-07-13T07:30:00.000Z',
@@ -1971,7 +2001,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-2',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -2006,7 +2036,7 @@ describe('Worker runtime surface wiring', () => {
           session: {
             closed_at: null,
             id: 'worker-kael-session-2',
-            job_id: 'job_test_1',
+            job_id: null,
             mode: 'normal',
             pinned_at: null,
             progress: null,
@@ -2033,7 +2063,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-delete',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -2083,7 +2113,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-pin',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -2135,7 +2165,7 @@ describe('Worker runtime surface wiring', () => {
         sessions: [{
           closed_at: null,
           id: 'worker-kael-session-old',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -2154,7 +2184,7 @@ describe('Worker runtime surface wiring', () => {
         session: {
           closed_at: null,
           id: 'worker-kael-session-old',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -2184,7 +2214,7 @@ describe('Worker runtime surface wiring', () => {
         session: {
           closed_at: null,
           id: 'worker-kael-session-new',
-          job_id: 'job_test_1',
+          job_id: null,
           mode: 'normal',
           pinned_at: null,
           progress: null,
@@ -2214,11 +2244,11 @@ describe('Worker runtime surface wiring', () => {
 
     await waitFor(() => {
       expect(mockWorkerKaelChatService.create).toHaveBeenCalledWith(expect.objectContaining({
-        job_id: 'job_test_1',
         language: 'vi',
         mode: 'normal',
       }))
     })
+    expect(mockWorkerKaelChatService.create.mock.calls.at(-1)?.[0]).not.toHaveProperty('job_id')
     expect(screen.queryByTestId('worker-v5-kael-orb-empty-session')).toBeNull()
     expect(screen.queryByText('Cuộc trò chuyện mới. Hãy gửi tin nhắn đầu tiên cho Kael.')).toBeNull()
     expect(screen.queryByText('Nội dung chỉ thuộc phiên cũ.')).toBeNull()
@@ -2280,6 +2310,26 @@ describe('Worker runtime surface wiring', () => {
     expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
   })
 
+  it('recognizes the worker active services and areas before an opportunity is accepted', () => {
+    buildWorkflow({
+      deal: buildIncomingDeal(),
+      workerProfile: buildWorkerProfile({
+        active_service_types: ['plumbing', 'electrical'],
+        districts: ['quan_1', 'quan_3', 'binh_thanh'],
+        selected_service_types: ['plumbing', 'electrical'],
+        service_types: ['plumbing', 'electrical', 'cleaning'],
+      }),
+    })
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+
+    render(<WorkerChatSurface />)
+
+    expect(screen.getByText('Đang lọc theo hồ sơ của bạn')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-intake-readiness')).toHaveTextContent(/Sửa nước, Sửa điện/)
+    expect(screen.getByTestId('worker-v5-kael-intake-readiness')).toHaveTextContent(/3 khu vực/)
+    expect(screen.queryByText('Tăng cơ hội phù hợp')).toBeNull()
+  })
+
   it('opens Kael job intake from the work board without losing the current opportunity', async () => {
     buildWorkflow({ deal: buildIncomingDeal() })
     mockRouteParams = {}
@@ -2302,40 +2352,70 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-schedule-support-aura-group')).toBeNull()
   })
 
-  it('uses the approved circular seal for a completion submission awaiting customer confirmation', () => {
+  it('uses the compact completion seal and one static status marker while awaiting customer confirmation', () => {
     buildWorkflow({ deal: buildCompletedByWorkerDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-submitted-seal')).toHaveStyle({ borderRadius: 46, height: 92, width: 92 })
+    expect(screen.getByTestId('worker-v5-completion-submitted-seal')).toHaveStyle({ borderRadius: 34, height: 68, width: 68 })
     expect(screen.getByTestId('worker-v5-completion-submitted-title')).toHaveTextContent('Đã gửi hồ sơ')
     expect(screen.getByTestId('worker-v5-completion-submitted-status')).toHaveTextContent('Đang chờ khách xác nhận')
-    expect(screen.getByTestId('worker-v5-completion-submitted-status-waiting-dots').children).toHaveLength(3)
+    expect(screen.getByTestId('worker-v5-completion-submitted-status-dot')).toHaveStyle({ borderRadius: 9, height: 18, width: 18 })
   })
 
-  it('runs the pending confirmation dots only until the customer confirms, then routes to the rebuilt settlement seal', () => {
-    buildWorkflow({ deal: buildCompletedByWorkerDeal() })
+  it('uses generic system copy when no completion record exists', () => {
+    buildWorkflow()
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
 
-    const submitted = render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-completion-submitted-status-waiting-dots')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-completion-submitted-status-static-dots')).toBeNull()
-    submitted.unmount()
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-completion-submitted-icon-empty')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-completion-submitted-title')).toHaveTextContent('Chưa có hồ sơ đã gửi')
+    expect(screen.getByText('Chỉ hiển thị khi hệ thống ghi nhận hồ sơ hoàn tất.')).toBeOnTheScreen()
+    expect(screen.queryByText(/NestScout/i)).toBeNull()
+    expect(screen.queryByTestId('worker-v5-completion-submitted-seal')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-completion-submitted-status')).toBeNull()
+  })
+
+  it('keeps the status marker static and routes confirmed work to the settlement seal', () => {
+    buildWorkflow({ deal: buildCompletedByWorkerDeal() })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+    const pending = render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-completion-submitted-status-dot')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-completion-submitted-status-waiting-dots')).toBeNull()
+    pending.unmount()
 
     buildWorkflow({ deal: buildConfirmedCompletionDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const confirmed = render(<WorkerJobsSurface />)
-    expect(screen.queryByTestId('worker-v5-completion-submitted-status-waiting-dots')).toBeNull()
+
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
     confirmed.unmount()
 
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
     render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-case-closed-settlement-seal')).toHaveStyle({ borderRadius: 46, height: 92, width: 92 })
+    expect(screen.getByTestId('worker-v5-case-closed-settlement-seal')).toHaveStyle({ borderRadius: 38, height: 76, marginTop: 8, width: 76 })
+    expect(screen.getByTestId('worker-v5-case-closed-settlement-status-dot')).toHaveStyle({ borderRadius: 9, height: 18, width: 18 })
+    expect(screen.getByTestId('worker-v5-case-closed-title')).toHaveTextContent('Hoàn tất công việc')
     expect(screen.getByTestId('worker-v5-case-closed-settlement-status')).toHaveTextContent('Chờ đối soát')
-    expect(screen.getByTestId('worker-v5-case-closed-amount')).toHaveTextContent('Chờ đối soát')
-    expect(screen.getByTestId('worker-v5-case-closed-amount')).not.toHaveTextContent(/^0$/)
+    expect(screen.queryByTestId('worker-v5-case-closed-amount')).toBeNull()
+    expect(screen.queryByText('Chờ sổ thu nhập đồng bộ')).toBeNull()
+  })
+
+  it('renders the settled case from a real recorded payment', () => {
+    buildWorkflow({ deal: buildSettledCaseDeal() })
+    mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-case-closed-title')).toHaveTextContent('Hoàn tất công việc')
+    expect(screen.getByTestId('worker-v5-case-closed-settlement-status')).toHaveTextContent('Đã đối soát')
+    expect(screen.getByTestId('worker-v5-case-trail-status-0')).toHaveTextContent('Đã khóa')
+    expect(screen.getByTestId('worker-v5-case-trail-status-1')).toHaveTextContent('Đã ghi')
+    expect(screen.getByTestId('worker-v5-case-closed-amount')).toHaveTextContent(/320\.000/)
+    expect(screen.getByTestId('worker-v5-case-trail-meta-1')).toHaveTextContent(/320\.000/)
   })
 
   it('removes the requested home, jobs, earnings, and settings header utilities', () => {
@@ -2680,6 +2760,8 @@ describe('Worker runtime surface wiring', () => {
   it('keeps dossier visual panels aligned while giving every dossier card a contextual detail rail', () => {
     buildWorkflow({
       workerProfile: buildWorkerProfile({
+        active_service_types: ['plumbing', 'electrical', 'cleaning'],
+        selected_service_types: ['plumbing', 'electrical', 'cleaning'],
         service_types: ['plumbing', 'electrical', 'cleaning'],
       }),
     })
@@ -2842,7 +2924,9 @@ describe('Worker runtime surface wiring', () => {
 
     buildWorkflow({
       workerProfile: buildWorkerProfile({
+        active_service_types: ['plumbing', 'electrical', 'cleaning'],
         districts: ['quan_1', 'quan_binh_thanh'],
+        selected_service_types: ['plumbing', 'electrical', 'cleaning'],
         service_types: ['plumbing', 'electrical', 'cleaning'],
       }),
     })
@@ -2859,7 +2943,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText('Chỉ hiển thị dữ liệu sử dụng trực tiếp trong workflow.')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-hero-copy').props.style)).toMatchObject({ justifyContent: 'center' })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-skills-service-count').props.style)).toMatchObject({ fontSize: 26 })
-    expect(StyleSheet.flatten(screen.getByText('3 dịch vụ').props.style)).toMatchObject({ fontSize: 11 })
+    expect(StyleSheet.flatten(screen.getByText('3 dịch vụ đã chọn').props.style)).toMatchObject({ fontSize: 11 })
     expect(screen.getByTestId('worker-v5-skills-hero-detail')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-service-card-detail-0').props.style)).toMatchObject({
       alignItems: 'flex-start',
@@ -2955,6 +3039,84 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('Chờ hồ sơ')
     expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Chờ hồ sơ/)
     expect(screen.getByTestId('worker-v5-quick-action-empty-title')).toHaveTextContent('Chờ dữ liệu kỹ năng')
+  })
+
+  it('lets a worker select multiple supported services beyond the legacy hardcoded list', async () => {
+    let resolveSave: ((saved: boolean) => void) | undefined
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({
+        active_service_types: ['electrical'],
+        selected_service_types: ['electrical'],
+        service_types: ['electrical'],
+      }),
+    })
+    mockWorkerUpdateServicePreferences.mockImplementationOnce(() => new Promise<boolean>((resolve) => {
+      resolveSave = resolve
+    }))
+    mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
+
+    render(<WorkerProfileSurface />)
+
+    expect(screen.getByText('Chọn dịch vụ phù hợp. Chỉ ghép việc khi đạt chất lượng.')).toBeTruthy()
+    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('1 dịch vụ đang nhận')
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/1 dịch vụ đã chọn/)
+    expect(screen.getByTestId('worker-v5-quick-action-0').props.accessibilityState).toMatchObject({ checked: true })
+    expect(screen.getByTestId('worker-v5-quick-action-1').props.accessibilityState).toMatchObject({ checked: false })
+    fireEvent.press(screen.getByTestId('worker-v5-quick-action-0'))
+    expect(screen.getByText('Giữ ít nhất 1 dịch vụ.')).toBeTruthy()
+    fireEvent.press(screen.getByTestId('worker-v5-quick-action-1'))
+
+    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('2 dịch vụ đang chọn')
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/2 dịch vụ đã chọn/)
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Chưa lưu thay đổi/)
+
+    fireEvent.press(screen.getByTestId('worker-v5-service-preferences-save'))
+
+    await waitFor(() => {
+      expect(mockWorkerUpdateServicePreferences).toHaveBeenCalledWith({
+        selected_service_types: ['electrical', 'plumbing'],
+      })
+    })
+    expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('Đang lưu 2 dịch vụ')
+    expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đang lưu lựa chọn/)
+
+    resolveSave?.(true)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('2 dịch vụ đang nhận')
+      expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đã lưu lựa chọn/)
+      expect(screen.getByTestId('worker-v5-service-preferences-save').props.accessibilityState).toMatchObject({
+        disabled: true,
+      })
+    })
+  })
+
+  it('keeps a low-quality service selected but blocks matching and explains the temporary lock', () => {
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({
+        active_service_types: ['plumbing'],
+        selected_service_types: ['electrical', 'plumbing'],
+        service_quality: [{
+          average_rating: 3.67,
+          locked_until: '2026-08-06T12:00:00.000Z',
+          review_count: 3,
+          service_type: 'electrical',
+          status: 'quality_locked',
+        }],
+      }),
+    })
+    mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
+
+    render(<WorkerProfileSurface />)
+
+    expect(screen.getByTestId('worker-v5-quick-action-0').props.accessibilityState).toMatchObject({
+      checked: true,
+      disabled: true,
+    })
+    expect(screen.getByTestId('worker-v5-quick-action-0')).toHaveTextContent(/Tạm khóa chất lượng/)
+    expect(screen.getByTestId('worker-v5-service-quality-notice-electrical')).toHaveTextContent(
+      /3 đánh giá/,
+    )
   })
 
   it('localizes worker account mutation errors in the selected English mode', async () => {

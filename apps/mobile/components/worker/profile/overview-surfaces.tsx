@@ -85,15 +85,18 @@ export function WorkerV5ProfileDossierCard({
   const onTimeSummary = hasOnTimeRate
     ? textByLanguage(language, `${workerV5ReliabilityPercentValue(insights.on_time_rate_percent, language)} đúng hẹn`, `${workerV5ReliabilityPercentValue(insights.on_time_rate_percent, language)} on-time`)
     : textByLanguage(language, 'Chờ dữ liệu đúng hẹn', 'On-time data pending')
+  const selectedServices = profile?.selected_service_types
+    ?? profile?.active_service_types
+    ?? profile?.service_types
+    ?? []
   const services = !profile
     ? textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
-    : profile.service_types.length
-      ? profile.service_types.map((service) => localizedServiceLabel(service, language)).join(', ')
-      : textByLanguage(language, 'Chưa có dịch vụ đã duyệt', 'No approved services')
+    : selectedServices.length
+      ? selectedServices.map((service) => localizedServiceLabel(service, language)).join(', ')
+      : textByLanguage(language, 'Chưa chọn dịch vụ', 'No selected services')
   const reliabilityMeta = hasTrustScore
     ? `${trustScore}/100 · ${onTimeSummary}`
     : textByLanguage(language, 'Chưa có dữ liệu hiệu suất thật', 'No real performance data')
-  const approvedServices = profile?.service_types ?? []
   const reliabilityDetails: WorkerV5DetailRailItem[] = hasTrustScore
     ? [
       { glyph: 'signal', label: `${trustScore}/100` },
@@ -134,13 +137,13 @@ export function WorkerV5ProfileDossierCard({
             />
             <View style={styles.approvalDecisionCopy} testID={`worker-v5-profile-dossier-copy-${index}`}>
               <Text style={[styles.approvalDecisionTitle, isServiceDossier && styles.approvalDecisionTitlePrimary]} numberOfLines={2} testID={`worker-v5-profile-dossier-title-${index}`}>{row.title}</Text>
-              {isServiceDossier && approvedServices.length ? (
+              {isServiceDossier && selectedServices.length ? (
                 <View style={styles.approvalServiceList} testID={`worker-v5-profile-dossier-meta-${index}`}>
-                  {approvedServices.map((service, serviceIndex) => (
+                  {selectedServices.map((service, serviceIndex) => (
                     <View key={service} style={styles.approvalServiceDetail}>
                       <WorkerV5ServiceMicroGlyph service={service} />
                       <Text style={styles.approvalServiceMeta} numberOfLines={1}>{localizedServiceLabel(service, language)}</Text>
-                      {serviceIndex < approvedServices.length - 1 ? <View style={styles.approvalServiceDivider} /> : null}
+                      {serviceIndex < selectedServices.length - 1 ? <View style={styles.approvalServiceDivider} /> : null}
                     </View>
                   ))}
                 </View>

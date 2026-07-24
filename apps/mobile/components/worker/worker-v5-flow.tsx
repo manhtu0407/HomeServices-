@@ -101,7 +101,6 @@ import {
 } from './profile/settings-surfaces'
 import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './jobs/acceptance'
 import {
-  WorkerV5AcceptBoundaryNote,
   WorkerV5AcceptChecklistCard,
   WorkerV5AcceptCommitmentCard,
 } from './jobs/acceptance-surfaces'
@@ -249,6 +248,16 @@ const workerV5Icons: Record<WorkerV5IconName, ImageSourcePropType> = {
   tools: require('@/assets/worker-image-icons/utility-tools.png') as ImageSourcePropType,
   wallet: require('@/assets/worker-image-icons/utility-wallet.png') as ImageSourcePropType,
 }
+
+const workerV5OfferDetailIcons: Record<WorkerV5IconName, ImageSourcePropType> = {
+  ...workerV5Icons,
+  clock: require('@/assets/worker-image-icons/offer-acceptance-window.png') as ImageSourcePropType,
+  document: require('@/assets/worker-image-icons/offer-scope-modules.png') as ImageSourcePropType,
+  map: require('@/assets/worker-image-icons/offer-private-entry.png') as ImageSourcePropType,
+  profile: require('@/assets/worker-image-icons/offer-customer-handoff.png') as ImageSourcePropType,
+}
+
+const workerV5OfferDetailEmptyIcon = require('@/assets/worker-image-icons/offer-arrival-signal.png') as ImageSourcePropType
 
 const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
   cleaning: require('@/assets/worker-image-icons/service-cleaning.png') as ImageSourcePropType,
@@ -503,7 +512,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
         ? workflowDestinationScreenId
       : usesCompletionEvidenceHandoff && workflowStatus !== 'repairing'
         ? workflowDestinationScreenId
-      : usesCompletionSubmittedHandoff && workflowDestinationScreenId !== '2.11-completion-submitted'
+      : usesCompletionSubmittedHandoff && runtime.state.deal && workflowDestinationScreenId !== '2.11-completion-submitted'
         ? workflowStatus === 'repairing' ? '2.10-completion-evidence' : workflowDestinationScreenId
         : null
 
@@ -521,6 +530,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
         language={language}
         mode={screen.id === '3.2-kael-job-intake' ? 'intake' : 'normal'}
         navigateToScreen={openScreenById}
+        profile={runtime.workerProfile}
         reduceMotion={glass.reduceMotion}
         reduceTransparency={glass.reduceTransparency}
         screen={screen}
@@ -1100,7 +1110,6 @@ function WorkerV5Body({
     case '2.10-completion-evidence':
       return (
         <WorkerV5CompletionEvidenceScreenBody
-          icons={workerV5Icons}
           language={language}
           navigateNext={navigateNext}
           primaryFill={WorkerV5PrimaryButtonFill}
@@ -1515,7 +1524,7 @@ function WorkerV5OfferDetailBody({
       ) : (
         <WorkerV5OfferDetailEmptyCard
           caseWideAura={WorkerV5CustomerCaseWideMintAura}
-          jobIcon={workerV5Icons.jobs}
+          emptyOfferIcon={workerV5OfferDetailEmptyIcon}
           language={language}
           reduceTransparency={reduceTransparency}
           zipAura={WorkerV5CustomerZipMintAura}
@@ -1527,7 +1536,7 @@ function WorkerV5OfferDetailBody({
       />
       <WorkerV5OfferDetailListCard
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        iconSources={workerV5Icons}
+        iconSources={workerV5OfferDetailIcons}
         reduceTransparency={reduceTransparency}
         rows={addressRows}
         scope="OfferAddressList"
@@ -1535,12 +1544,12 @@ function WorkerV5OfferDetailBody({
         zipAura={WorkerV5CustomerZipMintAura}
       />
       <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Scope hiện tại', 'Current scope')}
+        action={textByLanguage(language, 'Phạm vi hiện tại', 'Current scope')}
         title={textByLanguage(language, 'Yêu cầu', 'Request')}
       />
       <WorkerV5OfferDetailListCard
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        iconSources={workerV5Icons}
+        iconSources={workerV5OfferDetailIcons}
         reduceTransparency={reduceTransparency}
         rows={requestRows}
         scope="OfferRequestList"
@@ -1559,14 +1568,8 @@ function WorkerV5OfferDetailBody({
       />
       <WorkerV5AcceptCommitmentCard
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        clockIcon={workerV5Icons.clock}
+        clockIcon={workerV5OfferDetailIcons.clock}
         deal={deal}
-        language={language}
-        reduceTransparency={reduceTransparency}
-        zipAura={WorkerV5CustomerZipMintAura}
-      />
-      <WorkerV5AcceptBoundaryNote
-        caseWideAura={WorkerV5CustomerCaseWideMintAura}
         language={language}
         reduceTransparency={reduceTransparency}
         zipAura={WorkerV5CustomerZipMintAura}
@@ -1667,6 +1670,7 @@ function WorkerV5InProgressBody({
     ),
   )
   const briefLines = deal?.broadcast?.prebrief?.filter(Boolean).slice(0, 5) ?? []
+  const customerEvidenceUrls = deal?.customerEvidencePhotoUrls ?? []
   const evidenceUrls = deal?.fieldEvidencePhotoUrls ?? []
   const currentJobId = deal?.broadcast?.jobId ?? deal?.id ?? null
   const [fieldEvidenceState, setFieldEvidenceState] = useState<WorkerV5FieldEvidenceUiState>({
@@ -1707,7 +1711,15 @@ function WorkerV5InProgressBody({
     fieldEvidenceOperationRef.current = null
   }
   activeFieldEvidenceJobIdRef.current = currentJobId
-  const visibleEvidenceUrls = [0, 1, 2].map((slot) => evidenceUrls[slot] ?? fieldEvidenceUrls[slot] ?? null)
+  const visibleEvidenceUrls: (string | null)[] = [...evidenceUrls]
+  fieldEvidenceUrls.forEach((url, slot) => {
+    if (!url || visibleEvidenceUrls.includes(url)) return
+    if (!visibleEvidenceUrls[slot]) {
+      visibleEvidenceUrls[slot] = url
+      return
+    }
+    visibleEvidenceUrls.push(url)
+  })
   const evidenceCount = visibleEvidenceUrls.filter((url): url is string => Boolean(url)).length
   const progressItems = briefLines.map((line, index) => ({
     meta: index === briefLines.length - 1 ? textByLanguage(language, 'Đang kiểm', 'Active') : textByLanguage(language, 'Đã đọc', 'Read'),
@@ -2063,6 +2075,22 @@ function WorkerV5InProgressBody({
           zipAura={WorkerV5CustomerZipMintAura}
         />
       ) : null}
+      {customerEvidenceUrls.length > 0 ? (
+        <>
+          <WorkerV5SectionHeader
+            action={textByLanguage(language, `${customerEvidenceUrls.length} ảnh`, `${customerEvidenceUrls.length} photos`)}
+            title={textByLanguage(language, 'Ảnh hiện trạng từ khách', 'Customer condition photos')}
+          />
+          <WorkerV5EvidenceTray
+            emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
+            language={language}
+            reduceTransparency={reduceTransparency}
+            stageLabel={textByLanguage(language, 'Ảnh hiện trạng từ khách', 'Customer condition photos')}
+            testID="worker-v5-customer-evidence-gallery"
+            urls={customerEvidenceUrls}
+          />
+        </>
+      ) : null}
       <WorkerV5SectionHeader
         action={evidenceCount ? textByLanguage(language, `${evidenceCount} tệp`, `${evidenceCount} files`) : textByLanguage(language, 'Chưa có', 'None yet')}
         title={textByLanguage(language, 'Bằng chứng hiện trường', 'On-site evidence')}
@@ -2070,10 +2098,10 @@ function WorkerV5InProgressBody({
       <WorkerV5EvidenceTray
         addPhotoDisabled={fieldEvidenceBusy}
         emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
-        evidenceIcon={workerV5Icons.evidence}
         language={language}
         onAddPhoto={chooseFieldEvidenceSource}
         reduceTransparency={reduceTransparency}
+        stageLabel={textByLanguage(language, 'Bằng chứng hiện trường của thợ', 'Worker on-site evidence')}
         uploadingSlot={fieldEvidenceBusySlot}
         urls={visibleEvidenceUrls}
       />
@@ -2365,9 +2393,9 @@ function WorkerV5ScopeChangeBody({
       />
       <WorkerV5EvidenceTray
         emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
-        evidenceIcon={workerV5Icons.evidence}
         language={language}
         reduceTransparency={reduceTransparency}
+        stageLabel={textByLanguage(language, 'Bằng chứng đổi phạm vi', 'Scope-change evidence')}
         urls={scopeEvidenceUrls}
       />
       <WorkerV5ScopeEvidenceGate
@@ -2423,6 +2451,7 @@ function WorkerV5KaelOrbScreenSurface({
   language,
   mode,
   navigateToScreen,
+  profile,
   reduceMotion,
   reduceTransparency,
   screen,
@@ -2433,6 +2462,7 @@ function WorkerV5KaelOrbScreenSurface({
   language: AppLanguage
   mode: WorkerV5KaelOrbMode
   navigateToScreen: (id: WorkerV5ScreenId) => void
+  profile: WorkerV5Runtime['workerProfile']
   reduceMotion: boolean
   reduceTransparency: boolean
   screen: WorkerV5ScreenDefinition
@@ -2552,6 +2582,7 @@ function WorkerV5KaelOrbScreenSurface({
         <WorkerV5KaelIntakeReadinessActions
           language={language}
           navigateToScreen={navigateToScreen}
+          profile={profile}
           reduceTransparency={reduceTransparency}
         />
       )
@@ -2769,29 +2800,51 @@ function WorkerV5KaelOrbScreenSurface({
 function WorkerV5KaelIntakeReadinessActions({
   language,
   navigateToScreen,
+  profile,
   reduceTransparency,
 }: {
   language: AppLanguage
   navigateToScreen: (id: WorkerV5ScreenId) => void
+  profile: WorkerV5Runtime['workerProfile']
   reduceTransparency: boolean
 }) {
+  const activeServices = profile?.active_service_types
+    ?? profile?.selected_service_types
+    ?? profile?.service_types
+    ?? []
+  const districtCount = profile?.districts?.length ?? 0
+  const hasMatchingProfile = activeServices.length > 0 && districtCount > 0
+  const activeServiceLabels = activeServices
+    .map((service) => localizedServiceLabel(service, language))
+    .join(', ')
+
   return (
     <View
       style={[styles.kaelIntakeReadinessCard, reduceTransparency && styles.opaqueCard]}
       testID="worker-v5-kael-intake-readiness"
     >
       <Text style={styles.kaelIntakeReadinessTitle}>
-        {textByLanguage(language, 'Tăng cơ hội phù hợp', 'Improve matching readiness')}
+        {hasMatchingProfile
+          ? textByLanguage(language, 'Đang lọc theo hồ sơ của bạn', 'Matching from your profile')
+          : textByLanguage(language, 'Tăng cơ hội phù hợp', 'Improve matching readiness')}
       </Text>
       <Text style={styles.kaelIntakeReadinessBody}>
-        {textByLanguage(
-          language,
-          'Kỹ năng và khu vực trong hồ sơ được dùng để lọc cơ hội. Kael chỉ tư vấn; bạn vẫn là người quyết định nhận việc.',
-          'Profile skills and service areas are used to filter opportunities. Kael advises; you still decide whether to accept.',
-        )}
+        {hasMatchingProfile
+          ? textByLanguage(
+              language,
+              `Kael đang lọc theo ${activeServiceLabels} và ${districtCount} khu vực đã lưu. Bạn vẫn là người quyết định nhận việc.`,
+              `Kael is matching ${activeServiceLabels} across ${districtCount} saved areas. You still decide whether to accept.`,
+            )
+          : textByLanguage(
+              language,
+              'Kỹ năng và khu vực trong hồ sơ được dùng để lọc cơ hội. Kael chỉ tư vấn; bạn vẫn là người quyết định nhận việc.',
+              'Profile skills and service areas are used to filter opportunities. Kael advises; you still decide whether to accept.',
+            )}
       </Text>
       <KaelButton
-        label={textByLanguage(language, 'Cập nhật kỹ năng & khu vực', 'Update skills & area')}
+        label={hasMatchingProfile
+          ? textByLanguage(language, 'Chỉnh dịch vụ & khu vực', 'Edit services & area')
+          : textByLanguage(language, 'Cập nhật kỹ năng & khu vực', 'Update skills & area')}
         onPress={() => navigateToScreen('5.3-skills-service-area')}
         showPrimaryGradient={false}
         style={styles.kaelIntakeReadinessButton}
@@ -3238,7 +3291,11 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
   }
   const hasDistricts = Boolean(profile?.districts?.length)
   const hasRadius = typeof profile?.service_radius_km === 'number' && Number.isFinite(profile.service_radius_km)
-  const hasServices = Boolean(profile?.service_types?.length)
+  const selectedServices = profile?.selected_service_types
+    ?? profile?.active_service_types
+    ?? profile?.service_types
+    ?? []
+  const hasServices = selectedServices.length > 0
   const districts = hasDistricts
     ? (profile?.districts ?? []).map((district) => formatWorkerDistrict(district, language)).join(', ')
     : textByLanguage(language, 'Chưa có khu vực đã ghi', 'No saved area')
@@ -3251,7 +3308,7 @@ function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { la
       ? districts
       : textByLanguage(language, 'Chưa có khu vực đã ghi', 'No saved area')
   const services = hasServices
-    ? (profile?.service_types ?? []).map((service) => localizedServiceLabel(service, language)).join(', ')
+    ? selectedServices.map((service) => localizedServiceLabel(service, language)).join(', ')
     : textByLanguage(language, 'Chưa có kỹ năng ưu tiên', 'No priority skills')
   const canFilterFromProfile = hasDistricts || hasServices || hasRadius
   const permissionItems: { enabled: boolean; icon: WorkerV5IconName; id: WorkerV5MemoryPreferenceUiId; label: string; value: string }[] = [
@@ -4785,9 +4842,11 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
         ? textByLanguage(language, 'Có dữ liệu hiệu suất thật', 'Real performance insight is available')
         : textByLanguage(language, 'Chưa đủ dữ liệu xếp hạng', 'Not enough ranking data')
     case '5.3-skills-service-area':
-      return runtime.workerProfile?.service_types?.length
-        ? textByLanguage(language, 'Kỹ năng và khu vực lấy từ hồ sơ thật', 'Skills and areas come from the real profile')
-        : textByLanguage(language, 'Chưa có kỹ năng đã duyệt', 'No approved skills yet')
+      return runtime.workerProfile?.selected_service_types?.length
+        || runtime.workerProfile?.active_service_types?.length
+        || runtime.workerProfile?.service_types?.length
+        ? textByLanguage(language, 'Dịch vụ tự chọn và khu vực lấy từ hồ sơ thật', 'Selected services and areas come from the real profile')
+        : textByLanguage(language, 'Chưa chọn dịch vụ muốn nhận', 'No selected services yet')
     case '5.4-reliability-insights':
       return runtime.workerPerformanceInsights?.performance_score != null
         ? textByLanguage(language, 'Độ tin cậy có dữ liệu hiệu suất', 'Reliability has performance data')

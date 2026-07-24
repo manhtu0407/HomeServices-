@@ -3,43 +3,6 @@ import { StyleSheet } from 'react-native'
 import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
-  acceptBoundaryAura: {
-    bottom: -72,
-    height: 190,
-    left: -50,
-    opacity: 0.62,
-    right: -50,
-    top: -60,
-  },
-  acceptBoundaryNote: {
-    backgroundColor: 'rgba(239,255,251,0.82)',
-    borderColor: 'rgba(154,226,214,0.86)',
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: 'hidden',
-    paddingHorizontal: 13,
-    paddingVertical: 12,
-    position: 'relative',
-  },
-  acceptBoundaryStrong: {
-    color: color.text.strong,
-    fontWeight: '700',
-  },
-  acceptBoundaryText: {
-    color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 16,
-    position: 'relative',
-    zIndex: 1,
-  },
-  acceptBoundaryZipAura: {
-    height: 148,
-    opacity: 0.44,
-    right: -52,
-    top: -46,
-    width: 228,
-  },
   acceptCheckLabel: {
     color: color.text.strong,
     flex: 1,
@@ -164,21 +127,10 @@ export const styles = StyleSheet.create({
     zIndex: 1,
   },
   acceptCommitmentIcon: {
-    height: 40,
-    width: 40,
-  },
-  acceptCommitmentIconTile: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    borderColor: 'rgba(216,235,232,0.9)',
-    borderRadius: 17,
-    borderWidth: 1,
     flexShrink: 0,
-    height: 50,
-    justifyContent: 'center',
-    overflow: 'hidden',
+    height: 40,
     position: 'relative',
-    width: 50,
+    width: 40,
     zIndex: 1,
   },
   acceptCommitmentMeta: {

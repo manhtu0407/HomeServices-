@@ -42,7 +42,8 @@ export type WorkerAssistJobContext = {
 };
 
 export type WorkerAssistInput = {
-  readonly job: WorkerAssistJobContext;
+  readonly conversationMode?: "normal" | "intake";
+  readonly job: WorkerAssistJobContext | null;
   readonly question: string;
   readonly language?: KaelPromptLanguage;
   readonly mediaRefs?: readonly string[];
@@ -101,6 +102,10 @@ const FALLBACK_TEXT =
   "Kael ch\u1ec9 c\u00f3 th\u1ec3 h\u01b0\u1edbng d\u1eabn theo vi\u1ec7c \u0111\u00e3 nh\u1eadn trong app. H\u00e3y ki\u1ec3m tra ph\u1ea1m vi, ghi b\u1eb1ng ch\u1ee9ng th\u1ef1c t\u1ebf, v\u00e0 g\u1eedi scope-change n\u1ebfu c\u00f3 ph\u1ea7n ph\u00e1t sinh.";
 const FALLBACK_TEXT_EN =
   "Kael can only guide you inside the accepted job in the app. Check the agreed scope, save real evidence, and send a scope-change request if new work appears.";
+const GENERAL_FALLBACK_TEXT =
+  "Kael chưa thể trả lời lúc này. Bạn có thể hỏi về cách dùng ứng dụng, kỹ năng phục vụ hoặc nguyên tắc an toàn; với một việc cụ thể, hãy mở Chat theo công việc.";
+const GENERAL_FALLBACK_TEXT_EN =
+  "Kael cannot answer right now. You can ask about app usage, service skills, or safety principles; open the job chat for a specific job.";
 const DEFAULT_SAFETY_NOTES = [
   "Kh\u00f4ng t\u1ef1 b\u00e1o gi\u00e1 m\u1edbi ngo\u00e0i lu\u1ed3ng Kael trong app.",
   "Kh\u00f4ng chuy\u1ec3n tr\u1ea1ng th\u00e1i thay cho b\u1eb1ng ch\u1ee9ng th\u1ef1c t\u1ebf.",
@@ -114,20 +119,29 @@ export async function runWorkerAssist(
   input: WorkerAssistInput,
 ): Promise<WorkerAssistAnswer> {
   const language = input.language ?? "vi";
+  const conversationMode = input.conversationMode ?? (input.job ? "intake" : "normal");
   const topic = topicForQuestion(input.question);
   const permission = evaluateKaelPermissionGate({
     purpose: "worker_assist",
     actor: "worker",
-    jobRelation: "own_worker_job",
+    jobRelation: input.job ? "own_worker_job" : "none",
     action: "generate_advisory",
     topic,
     intentConfidence: 1,
     topicSource: "deterministic_rule",
     boundarySignal: hasKaelForbiddenTopicBoundarySignal(topic, input.question),
-    jobId: input.job.id,
+    jobId: input.job?.id ?? null,
   });
   if (!permission.allowed) {
-    return fallbackAnswer(permission.reasonCode, shouldRedirectToScopeChange(input.question), language);
+    return fallbackAnswer(
+      permission.reasonCode,
+      conversationMode === "intake" && shouldRedirectToScopeChange(input.question),
+      language,
+      [],
+      [],
+      undefined,
+      conversationMode,
+    );
   }
 
   const routes = circuitAwareProviderCandidatesForPurpose("worker_assist");
@@ -141,7 +155,7 @@ export async function runWorkerAssist(
       workflowPhase: "in_progress",
       actorRole: "worker",
       action: "worker.ask_kael",
-      policyId: "kael.path.worker_assist_own_job.v1",
+      policyId: workerAssistPolicyId(conversationMode),
       purpose: "worker_assist",
       reasonCode: "NO_PROVIDER_AVAILABLE",
       safeMetadata: {
@@ -150,10 +164,12 @@ export async function runWorkerAssist(
     }));
     return fallbackAnswer(
       "NO_PROVIDER_AVAILABLE",
-      shouldRedirectToScopeChange(input.question),
+      conversationMode === "intake" && shouldRedirectToScopeChange(input.question),
       language,
       providerAttempts,
       trace,
+      undefined,
+      conversationMode,
     );
   }
 
@@ -182,7 +198,7 @@ export async function runWorkerAssist(
           costUsd: schemaResponse.usage.costUsd,
         });
         providerAttempts.push(attempt);
-        trace.push(traceForAttempt(attempt, "worker.ask_kael", true));
+        trace.push(traceForAttempt(attempt, "worker.ask_kael", true, conversationMode));
         continue;
       }
       lastProviderFailure = `AI_${result.code}`;
@@ -190,7 +206,7 @@ export async function runWorkerAssist(
         code: result.code,
       });
       providerAttempts.push(attempt);
-      trace.push(traceForAttempt(attempt, "worker.ask_kael", true));
+      trace.push(traceForAttempt(attempt, "worker.ask_kael", true, conversationMode));
       if (shouldSkipProviderSiblingModels(result.code)) {
         blockedProviders.add(route.provider);
       }
@@ -202,17 +218,18 @@ export async function runWorkerAssist(
       costUsd: result.usage.costUsd,
     });
     providerAttempts.push(attempt);
-    trace.push(traceForAttempt(attempt, "worker.ask_kael", false));
+    trace.push(traceForAttempt(attempt, "worker.ask_kael", false, conversationMode));
 
     const guarded = guardWorkerAssistText(result.data.text);
     if (!guarded.allowed) {
       return fallbackAnswer(
         guarded.reason ?? "WORKER_ASSIST_GUARD",
-        true,
+        conversationMode === "intake",
         language,
         providerAttempts,
         trace,
         "boundary_guard",
+        conversationMode,
       );
     }
 
@@ -221,16 +238,17 @@ export async function runWorkerAssist(
       actor: "worker",
       language,
       surface: "worker_assist",
-      fallbackText: fallbackTextForLanguage(language),
+      fallbackText: fallbackTextForLanguage(language, conversationMode),
     });
     if (checked.used_fallback || !checked.allowed) {
       return fallbackAnswer(
         checked.reason ?? "SELF_CHECK",
-        result.data.redirect_scope_change,
+        conversationMode === "intake" && result.data.redirect_scope_change,
         language,
         providerAttempts,
         trace,
         checked.trip?.source,
+        conversationMode,
       );
     }
 
@@ -250,7 +268,8 @@ export async function runWorkerAssist(
       ),
       safety_notes: visionHonesty.safetyNotes,
       redirect_scope_change:
-        result.data.redirect_scope_change || shouldRedirectToScopeChange(input.question),
+        conversationMode === "intake" &&
+        (result.data.redirect_scope_change || shouldRedirectToScopeChange(input.question)),
       fallback_used: false,
       provider: route.provider,
       model: route.model,
@@ -263,10 +282,12 @@ export async function runWorkerAssist(
 
   return fallbackAnswer(
     lastProviderFailure,
-    shouldRedirectToScopeChange(input.question),
+    conversationMode === "intake" && shouldRedirectToScopeChange(input.question),
     language,
     providerAttempts,
     trace,
+    undefined,
+    conversationMode,
   );
 }
 
@@ -275,6 +296,7 @@ function buildWorkerAssistRequest(
   route: ProviderChoice,
   language: KaelPromptLanguage,
 ): AIRequest {
+  const conversationMode = input.conversationMode ?? (input.job ? "intake" : "normal");
   return {
     purpose: "worker_assist",
     provider: route.provider,
@@ -290,8 +312,9 @@ function buildWorkerAssistRequest(
           purpose: "worker_assist",
           actor: "worker",
           language,
-          permissionSummary:
-            "Worker can read only the accepted job context and receive advisory guidance. Worker cannot set price, approve/reject scope change, change lifecycle status, or move support off app.",
+          permissionSummary: conversationMode === "normal"
+            ? "Worker can receive general NestScout app, supported-service, skill, and safety guidance without customer or job-specific context. Never infer or expose another job. Worker cannot set price, scope, or lifecycle status."
+            : "Worker can read only the accepted job context and receive advisory guidance. Worker cannot set price, approve/reject scope change, change lifecycle status, or move support off app.",
           contextSummary: buildWorkerAssistContext(input),
         }),
       },
@@ -331,10 +354,11 @@ function fallbackAnswer(
   providerAttempts: readonly WorkerAssistProviderAttempt[] = [],
   trace: readonly KaelSafeTraceEvent[] = [],
   guardrailSource?: WorkerAssistAnswer["guardrail_source"],
+  conversationMode: "normal" | "intake" = "intake",
 ): WorkerAssistAnswer {
   return {
     schema_version: "worker_assist_answer.v1",
-    text: fallbackTextForLanguage(language),
+    text: fallbackTextForLanguage(language, conversationMode),
     safety_notes: safetyNotesForLanguage(language),
     redirect_scope_change: redirectScopeChange,
     fallback_used: true,
@@ -368,12 +392,13 @@ function traceForAttempt(
   attempt: WorkerAssistProviderAttempt,
   action: "worker.ask_kael",
   fallbackUsed: boolean,
+  conversationMode: "normal" | "intake" = "intake",
 ): KaelSafeTraceEvent {
   return buildProviderAttemptTrace({
     workflowPhase: "in_progress",
     actorRole: "worker",
     action,
-    policyId: "kael.path.worker_assist_own_job.v1",
+    policyId: workerAssistPolicyId(conversationMode),
     purpose: "worker_assist",
     provider: attempt.provider as "anthropic" | "perplexity" | "deepseek",
     model: attempt.model,
@@ -549,7 +574,13 @@ function normalizeSafetyNotes(notes: readonly string[], language: KaelPromptLang
   return normalized.length > 0 ? normalized : safetyNotesForLanguage(language);
 }
 
-function fallbackTextForLanguage(language: KaelPromptLanguage) {
+function fallbackTextForLanguage(
+  language: KaelPromptLanguage,
+  conversationMode: "normal" | "intake",
+) {
+  if (conversationMode === "normal") {
+    return language === "en" ? GENERAL_FALLBACK_TEXT_EN : GENERAL_FALLBACK_TEXT;
+  }
   return language === "en" ? FALLBACK_TEXT_EN : FALLBACK_TEXT;
 }
 
@@ -578,14 +609,20 @@ function shouldRedirectToScopeChange(question: string) {
 
 function buildWorkerAssistContext(input: WorkerAssistInput) {
   const job = input.job;
-  const brief = JSON.stringify({
-    core: job.kael_worker_brief_core ?? null,
-    guidance: job.kael_worker_brief_guidance ?? null,
-  }).slice(0, 1600);
   const turns = (input.previousTurns ?? []).slice(-6).map((turn) => ({
     role: turn.role,
     text: turn.text ? scrubSensitiveForLLM(turn.text).slice(0, 240) : null,
   }));
+  if (!job) {
+    return JSON.stringify({
+      conversation_mode: "general",
+      recent_turns: turns,
+    });
+  }
+  const brief = JSON.stringify({
+    core: job.kael_worker_brief_core ?? null,
+    guidance: job.kael_worker_brief_guidance ?? null,
+  }).slice(0, 1600);
   return JSON.stringify({
     job_id: job.id,
     status: job.status ?? null,
@@ -605,6 +642,12 @@ function buildWorkerAssistContext(input: WorkerAssistInput) {
       : { present: false },
     recent_turns: turns,
   });
+}
+
+function workerAssistPolicyId(conversationMode: "normal" | "intake") {
+  return conversationMode === "normal"
+    ? "kael.path.worker_assist_general.v1"
+    : "kael.path.worker_assist_own_job.v1";
 }
 
 function enforceWorkerVisionHonesty(

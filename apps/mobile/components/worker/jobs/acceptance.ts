@@ -9,6 +9,8 @@ type WorkerV5ProfileForAcceptance = {
   is_approved: boolean
   is_suspended: boolean
   service_types: readonly string[]
+  active_service_types?: readonly string[]
+  selected_service_types?: readonly string[]
 } | null | undefined
 
 export type WorkerV5AcceptCheckState = 'blocked' | 'done' | 'pending'
@@ -26,7 +28,10 @@ export function buildWorkerV5AcceptReviewChecks(
 ): WorkerV5AcceptCheck[] {
   const offerOpen = workerV5CanAcceptOpenOffer(deal, 'remote_backend')
   const profileReady = Boolean(profile?.is_approved && !profile?.is_suspended)
-  const serviceMatched = Boolean(deal?.draft.serviceType && profile?.service_types?.includes(deal.draft.serviceType))
+  const activeServices = profile?.active_service_types
+    ?? profile?.selected_service_types
+    ?? profile?.service_types
+  const serviceMatched = Boolean(deal?.draft.serviceType && activeServices?.includes(deal.draft.serviceType))
   const area = deal ? routeDestinationLabel(deal, language) : textByLanguage(language, 'Chưa có khu vực', 'No area')
 
   return [

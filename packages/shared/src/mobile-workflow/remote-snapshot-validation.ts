@@ -233,6 +233,7 @@ export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJo
     isOptionalScopeChange(job.scopeChange) &&
     isOptionalPayment(job.payment) &&
     isOptionalWorkerProfile(job.workerProfile) &&
+    isOptionalStringArray(job.customerEvidencePhotoUrls) &&
     isOptionalStringArray(job.fieldEvidencePhotoUrls) &&
     isOptionalStringArray(job.completionPhotoUrls) &&
     isOptionalNullableString(job.completionNotes) &&
@@ -256,6 +257,12 @@ export function isValidRemoteBroadcastSnapshot(value: unknown): value is LocalRe
     isNonEmptyBoundedString(broadcast.problemSummary, 2_000) &&
     isNonEmptyBoundedString(broadcast.generalArea, 500) &&
     isOptionalStringArray(broadcast.prebrief) &&
+    (broadcast.mediaCount === undefined || (
+      typeof broadcast.mediaCount === 'number' &&
+      Number.isInteger(broadcast.mediaCount) &&
+      broadcast.mediaCount >= 0 &&
+      broadcast.mediaCount <= 5
+    )) &&
     (broadcast.secondsRemaining === null || (
       typeof broadcast.secondsRemaining === 'number' &&
       Number.isSafeInteger(broadcast.secondsRemaining) &&
