@@ -18,9 +18,13 @@ Split "where glass goes" from "what glass looks like". New decision nan `governa
 
 Assembled the axle. New `governance/design/runtime.md` routes every design task (11 classes: flow / screen / component / design-system / material / motion / accessibility / adaptive-layout / visual-bug / polish / research) → skill (5 live + 6 P4-pending, each with an interim fallback) → preflight + hard gates ("zero glass / zero motion is valid", anti-slop, money / scope = solid) + a verification matrix (widths / text-scale / VI-EN / light-dark / Reduce Motion+Transparency / states). The router is thin — it points to the nan (material-direction, signature, motion, AGENTS.md), never copies them. Wired the same entry into both agents: `AGENTS.md` routing row (Codex), `design.md` Reference Files table, and `critical.md` §1 index. Tightened auto-trigger descriptions for `kael-motion` (and fixed three `RULES.md` → `AGENTS.md` motion-rule refs in its body) and `kael-frontend-test` (glass-liquid → material / glass). `kael-ui-rn-execution` is named as a protocol (`protocols/ui.md` §16), not a skill. `kael-prototype` / `kael-research` left unchanged (shared skills). Mirror synced (`.claude` → `.agents`); skills:check green. See plan §44.3.
 
-## P4 — Six missing spokes/skills
+## P4a — Three spokes/skills: tokens · adaptive-layout · accessible-content
 
-_Placeholder. tokens, adaptive-layout, accessible-content, design-evidence (+ ledger), design-review, visual-qa._
+Added three nan + thin skills, grounded in the real repo (verify-first). `design/tokens.md` documents the actual token architecture — `theme.ts` is the runtime canonical ("implementation values come from this file"; every screen imports it), `tokens.json` is a v2.0.0 design export not wired at runtime, `constants/colors.ts` is a legacy alias with residual raw hex — plus the layer model, the one-canonical-source rule, and the raw-value ratchet (no refactor now). `design/adaptive-layout.md` sets window-size classes by available width (compact < 600 / medium 600–839 / expanded ≥ 840 dp), reflecting the real ad-hoc `useWindowDimensions` pattern (12 uses / 6 files, no shared helper yet). `design/accessible-content.md` covers VI/EN + diacritics, dynamic type, screen-reader name/role/state, contrast + non-color cues, target size, and a hard truncation rule (price / status / risk / address / recovery / primary action never hidden behind `numberOfLines` — ~420 uses). Skills `kael-design-tokens` / `kael-adaptive-layout` / `kael-accessible-content` are thin wrappers pointing to their nan with auto-trigger keywords. The router (`runtime.md`) flips these 3 classes from "P4 — pending" to "live" (8 live, 3 pending). Also removed the stray `license` / `metadata` frontmatter from `kael-prototype` (kept a body attribution). Mirror synced. See plan §44.4.
+
+## P4b — Three spokes/skills (pending): design-evidence · design-review · visual-qa
+
+_Placeholder. design-evidence (+ source ledger), design-review, visual-qa._
 
 ## P5 — Visual QA + framework
 

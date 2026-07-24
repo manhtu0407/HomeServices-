@@ -22,7 +22,7 @@ Name exactly one class. It selects the skill(s) and the depth of the gates.
 
 ## 2. Route to the skill
 
-Five skills are live now; six arrive in P4 — they are listed so the map is complete. "Pending" is not a dead link: use the interim column until the skill lands.
+Eight skills are live now; three arrive in P4b (visual-qa, design-review, design-evidence) — they are listed so the map is complete. "Pending" is not a dead link: use the interim column until the skill lands.
 
 | Class | Skill | Status | Interim if pending |
 |---|---|---|---|
@@ -31,9 +31,9 @@ Five skills are live now; six arrive in P4 — they are listed so the map is com
 | flow | `kael-prototype` (explore) → `kael-frontend-test` (verify) | live | — |
 | screen / component | `kael-material-direction` + `kael-motion`, verify with `kael-frontend-test` | live | — |
 | research | `kael-research` (+ `kael-design-evidence`) | live (+ P4 pair) | `kael-research` alone |
-| design-system | `kael-design-tokens` | P4 — pending | `kael-material-direction` + `kael-frontend-test` |
-| accessibility | `kael-accessible-content` | P4 — pending | `kael-frontend-test` (accessibility gate) |
-| adaptive-layout | `kael-adaptive-layout` | P4 — pending | `kael-frontend-test` (widths / orientation) |
+| design-system | `kael-design-tokens` | live | — |
+| accessibility | `kael-accessible-content` | live | — |
+| adaptive-layout | `kael-adaptive-layout` | live | — |
 | visual-bug | `kael-visual-qa` + `kael-diagnose` | P4 — pending (visual-qa) | `kael-diagnose` + `kael-frontend-test` |
 | polish | `kael-design-review` + `kael-motion` / `kael-material-direction` | P4 — pending (review) | `kael-motion` + `kael-material-direction` |
 
