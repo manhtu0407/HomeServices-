@@ -54,7 +54,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
   if (!reduceTransparency && shouldUseBlurFallback && Platform.OS !== 'web') {
     return (
       <BlurView
-        experimentalBlurMethod="none"
+        blurMethod="none"
         intensity={blurIntensity}
         onLayout={onLayout}
         style={composedStyle}

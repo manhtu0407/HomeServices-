@@ -126,7 +126,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/nestscout-aurora-nest-appstore-1024.png',
   userInterfaceStyle: 'automatic',
-  newArchEnabled: true,
   scheme: 'nestscout',
   splash: {
     image: './assets/nestscout-aurora-nest-foreground-1024.png',
@@ -158,10 +157,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     versionCode: 1,
     permissions: [],
-    edgeToEdgeEnabled: true,
     package: 'com.phanmanhtu.nestscout',
   },
   plugins: [
+    'expo-asset',
     'expo-router',
     [
       'expo-audio',

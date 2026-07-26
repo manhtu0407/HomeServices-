@@ -903,7 +903,7 @@ describe('mobile push notification wiring', () => {
     const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
     const appConfig = read('app.config.ts')
     const appJson = read('app.json')
-    expect(mobilePackage.dependencies['expo-notifications']).toBe('~0.32.17')
+    expect(mobilePackage.dependencies['expo-notifications']).toBe('~55.0.25')
     expect(appConfig).toContain('withoutIosPushEntitlement')
     expect(appConfig).toContain("delete config.modResults['aps-environment']")
     expect(appConfig).toContain("delete attributes.SystemCapabilities?.['com.apple.Push']")
@@ -1922,7 +1922,7 @@ describe('web preview dependencies', () => {
   const stagingPreviewScript = readSource(resolve(MOBILE_ROOT, '../../scripts/run-mobile-web-staging-preview.ps1'))
 
   it('declares react-dom for Expo web rendering', () => {
-    expect(mobilePackage.dependencies['react-dom']).toBe('19.1.0')
+    expect(mobilePackage.dependencies['react-dom']).toBe('19.2.0')
   })
 
   it('declares react-native-web for Expo web rendering', () => {
@@ -1930,11 +1930,11 @@ describe('web preview dependencies', () => {
   })
 
   it('declares react-native-svg for mobile icon rendering', () => {
-    expect(mobilePackage.dependencies['react-native-svg']).toBe('15.12.1')
+    expect(mobilePackage.dependencies['react-native-svg']).toBe('15.15.3')
   })
 
   it('keeps the existing Reanimated dependency available without forcing it into glass surfaces', () => {
-    expect(mobilePackage.dependencies['react-native-reanimated']).toBe('~4.1.7')
+    expect(mobilePackage.dependencies['react-native-reanimated']).toBe('~4.2.1')
   })
 
   it('declares expo-image-picker for local image/video draft media', () => {
@@ -2004,8 +2004,8 @@ describe('mobile glassmorphism design system', () => {
     expect(motion).toContain('reducedDurationMs')
     expect(motion).toContain('liquid: {')
     expect(motion).toContain('stiffness: 200')
-    expect(mobilePackage.dependencies['expo-glass-effect']).toBe('~0.1.10')
-    expect(mobilePackage.dependencies['expo-blur']).toBe('~15.0.8')
+    expect(mobilePackage.dependencies['expo-glass-effect']).toBe('~55.0.11')
+    expect(mobilePackage.dependencies['expo-blur']).toBe('~55.0.16')
     expect(surface).toContain("from 'expo-glass-effect'")
     expect(surface).toContain("from 'expo-blur'")
     expect(surface).toContain('isLiquidGlassAvailable()')
@@ -2016,7 +2016,7 @@ describe('mobile glassmorphism design system', () => {
     expect(surface).toContain("sheet: 26")
     expect(surface).toContain("rgba(190,210,205,0.14)")
     expect(surface).toContain("rgba(255,255,255,0.46)")
-    expect(surface).toContain('experimentalBlurMethod="none"')
+    expect(surface).toContain('blurMethod="none"')
     expect(surface).toContain("import { Platform, StyleSheet, View")
     expect(surface).toContain("const webNavBackingStyle = Platform.OS === 'web' && variant === 'nav'")
     expect(surface).toContain('styles.webNavBackingLight')
