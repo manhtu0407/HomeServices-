@@ -148,7 +148,7 @@ const customerBookingServiceIdForHistory: Record<ServiceType, CustomerServiceId>
 const customerV21DockNavItems: { image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }[] = [
   { image: customerV21Assets.home, key: 'home', route: '/(customer)/home' },
   { image: customerV21Assets.booking, key: 'services', route: '/(customer)/booking' },
-  { image: customerV21Assets.activity, key: 'activity', route: '/(customer)/history' },
+  { image: customerV21Assets.activityNav, key: 'activity', route: '/(customer)/history' },
   { image: customerV21Assets.profile, key: 'profile', route: '/(customer)/profile' },
 ]
 function ProfileProgressBar({ percent, testID }: { percent: number; testID?: string }) {
@@ -303,8 +303,9 @@ export function CustomerHomeSurface() {
         <EmptyState
           action={<KaelButton label={copy.startService} onPress={() => router.replace('/(customer)/booking' as never)} size="small" testID="customer-v21-home-start" />}
           assetTile={AssetTile}
+          bareAsset
           body={copy.emptyActivityBody}
-          image={customerV21Assets.activity}
+          image={customerV21Assets.serviceStart}
           mintAura
           testID="customer-v21-home-empty"
           title={copy.emptyActivity}

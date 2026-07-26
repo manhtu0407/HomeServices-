@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Alert, StyleSheet } from 'react-native'
 
@@ -190,7 +192,7 @@ describe('CustomerHistorySurface service history', () => {
     expect(screen.queryByText('Vui lòng thử lại khi kết nối ổn định hơn.')).toBeNull()
   })
 
-  it('uses the Formula Mint Aura with an unframed activity asset when history is empty', async () => {
+  it('uses the selected transparent tray icon at a larger History-only size', async () => {
     mockListMyServiceHistory.mockResolvedValue({
       success: true,
       data: { service_history: [] },
@@ -206,6 +208,18 @@ describe('CustomerHistorySurface service history', () => {
       borderWidth: 0,
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-empty-asset').props.style).backgroundColor).toBeUndefined()
+
+    const assetsSource = readFileSync(resolve(__dirname, '../v21/assets.ts'), 'utf8')
+    const historySurfaceSource = readFileSync(resolve(__dirname, '../v21/service-history-surface.tsx'), 'utf8')
+    const sharedSurfacesSource = readFileSync(resolve(__dirname, '../v21/shared-surfaces.tsx'), 'utf8')
+
+    expect(assetsSource).toContain("activity: require('@/assets/client-image-icons/client-activity-route.png')")
+    expect(assetsSource).toContain("activityEmpty: require('@/assets/client-image-icons/client-activity-empty.png')")
+    expect(historySurfaceSource).toContain('assetSize={76}')
+    expect(historySurfaceSource).toContain('image={customerV21Assets.activityEmpty}')
+    expect(sharedSurfacesSource).toContain('assetSize = 64')
+    expect(sharedSurfacesSource).toContain('size={assetSize}')
+    expect(existsSync(resolve(__dirname, '../../../assets/client-image-icons/client-activity-empty.png'))).toBe(true)
   })
 
   it('saves a worker and updates every completed deal from that worker', async () => {

@@ -435,6 +435,7 @@ export function V21TopBar({
 
 export function EmptyState({
   action,
+  assetSize = 64,
   assetTile: AssetTile,
   bareAsset = false,
   body,
@@ -445,6 +446,7 @@ export function EmptyState({
   title,
 }: {
   action?: ReactNode
+  assetSize?: number
   assetTile: CustomerV21AssetTile
   bareAsset?: boolean
   body: string
@@ -458,7 +460,7 @@ export function EmptyState({
   const formulaMintAuraScope = `EmptyState${(testID ?? title).replace(/[^A-Za-z0-9]/g, '') || 'Card'}`
   const standardContent = (
     <>
-      <AssetTile bare={bareAsset} image={image} label={title} size={64} testID={testID ? `${testID}-asset` : undefined} />
+      <AssetTile bare={bareAsset} image={image} label={title} size={assetSize} testID={testID ? `${testID}-asset` : undefined} />
       <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
       <Text style={[styles.bodyText, styles.centerText, { color: tokens.muted }]}>{body}</Text>
       {action}
@@ -482,7 +484,7 @@ export function EmptyState({
         <SourceCardSkin testID="customer-v21-home-empty-card-skin" />
         <HomeEmptySourceAura reduceTransparency={reduceTransparency} />
         <View style={styles.emptyStateContent}>
-          <AssetTile image={image} label={title} size={54} sourceAura />
+          <AssetTile bare={bareAsset} image={image} label={title} size={80} sourceAura={!bareAsset} />
           <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
           <Text style={[styles.bodyText, styles.centerText, { color: tokens.muted }]}>{body}</Text>
           {action}

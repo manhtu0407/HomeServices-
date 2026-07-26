@@ -307,13 +307,14 @@ export function CustomerServiceHistorySurface({
         <View style={styles.historyList} testID="customer-v21-history-list">
           {visibleItems.length === 0 ? (
             <EmptyState
+              assetSize={76}
               assetTile={AssetTile}
               bareAsset
               body={filter === 'all'
                 ? (language === 'vi' ? 'Chưa có dịch vụ đã hoàn tất hoặc đã hủy.' : 'There are no completed or cancelled services yet.')
                 : (language === 'vi' ? 'Không có dịch vụ phù hợp với bộ lọc này.' : 'No services match this filter.')}
               formulaMintAura
-              image={customerV21Assets.activity}
+              image={customerV21Assets.activityEmpty}
               testID="customer-v21-history-empty"
               title={language === 'vi' ? 'Chưa có hoạt động' : 'No activity yet'}
             />
