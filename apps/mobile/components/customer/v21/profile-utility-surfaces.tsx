@@ -209,7 +209,6 @@ export function ProfileRankingPanel({
   rank,
   rankNodes,
   rankProcess,
-  rankStatusLabel,
   rankTitle,
   rules,
   rulesAction,
@@ -222,7 +221,6 @@ export function ProfileRankingPanel({
   rank: number | null
   rankNodes: ProfileRankingNode[]
   rankProcess: ReactNode
-  rankStatusLabel: string
   rankTitle: string
   rules: ProfileInsightModel[]
   rulesAction: string
@@ -247,19 +245,11 @@ export function ProfileRankingPanel({
           percent={activeRank ? progress : 0}
           reduceTransparency={glass.reduceTransparency}
           scope="Ranking"
+          showProgressDot
           tokens={tokens}
           value={rankValue}
         />
         <View style={styles.flex}>
-          <View style={styles.profileRankingStatusChipFrame} testID="customer-v21-profile-ranking-status-chip">
-            <ZipMintAura scope="ProfileRankingStatusChip" />
-            <KaelChip
-              label={rankStatusLabel}
-              style={activeRank ? styles.profileMintChip : styles.profileRankingEmptyChip}
-              textStyle={activeRank ? styles.profileMintChipText : styles.profileRankingEmptyChipText}
-              variant={activeRank ? 'selected' : 'unselected'}
-            />
-          </View>
           <Text style={[styles.profileDetailTitle, { color: tokens.text }]}>{rankTitle}</Text>
           <Text style={[styles.bodyText, { color: tokens.muted }]}>{pointsText}</Text>
           {progressBar}

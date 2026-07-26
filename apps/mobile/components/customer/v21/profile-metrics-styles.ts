@@ -87,6 +87,15 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
     fontSize: 38,
     lineHeight: 42,
   },
+  profileScoreValueStatus: {
+    fontSize: 18,
+    lineHeight: 22,
+    maxWidth: 72,
+    textAlign: 'center',
+  },
+  profileScoreValueStatusLarge: {
+    maxWidth: 98,
+  },
   profileStatCard: {
     alignItems: 'center',
     borderRadius: 22,

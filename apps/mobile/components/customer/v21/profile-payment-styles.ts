@@ -80,6 +80,7 @@ export const customerV21ProfilePaymentStyles = StyleSheet.create({
   },
   heroTitleCopy: {
     flex: 1,
+    justifyContent: 'center',
     minWidth: 0,
   },
   heroVisualPanel: {
