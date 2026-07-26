@@ -277,7 +277,6 @@ export function CustomerHomeSurface() {
 
       <HomeStorytellingCard
         language={language}
-        reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
         tokens={tokens}
       />
