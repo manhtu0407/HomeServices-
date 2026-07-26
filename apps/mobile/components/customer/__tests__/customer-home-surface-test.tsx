@@ -77,7 +77,6 @@ jest.mock('@/lib/app-language', () => {
 })
 
 import { CustomerHomeSurface, CustomerV21DockOverlay } from '../customer-surfaces'
-import { homeStorytellingMotionContract } from '../v21/home-storytelling-card'
 
 function buildDeal(): LocalDeal {
   return {
@@ -177,52 +176,49 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/profile?utility=agentic')
   })
 
-  it('renders the rebuilt Section 2.1 Kael storytelling card without the legacy hero', () => {
+  it('replaces the legacy Kael hero with the onboarding strip', () => {
     const storytellingSource = readFileSync(resolve(__dirname, '../v21/home-storytelling-card.tsx'), 'utf8')
 
     render(<CustomerHomeSurface />)
 
-    fireEvent(screen.getByTestId('customer-v21-home-hero'), 'layout', {
-      nativeEvent: { layout: { height: 260, width: 600, x: 0, y: 0 } },
-    })
-
     expect(screen.getByTestId('customer-v21-home-canvas-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-home-storytelling')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-storytelling-backdrop')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-storytelling-copy')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-storytelling-orb')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-storytelling-tile-bars-motion')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-storytelling-tile-list-motion')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-storytelling-tile-spark-motion')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-storytelling-orb-reaction')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-storytelling-steps')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-story-step-1')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-story-step-2')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-home-story-step-3')).toBeOnTheScreen()
-    expect(screen.getByLabelText('Kael luôn sẵn sàng hỗ trợ. Kael quan sát và gợi ý. Bạn luôn là người quyết định. Nhìn vấn đề. Hiểu ngữ cảnh. Bạn quyết định.')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-home-storytelling-control')).toBeNull()
-    expect(storytellingSource).not.toContain('>KAEL ORB<')
-    expect(storytellingSource).not.toContain('Bạn luôn kiểm soát')
-    expect(storytellingSource).not.toContain('—')
-    expect(storytellingSource).toContain('translate(158 220) scale(1.26) translate(-158 -278)')
-    expect(storytellingSource).toContain('translate(145 730) scale(1.22) translate(-156 -696)')
-    expect(storytellingSource).toContain('translate(1410 389) scale(1.26) translate(-1371 -389)')
-    expect(storytellingSource).toContain('if (reduceMotion) return')
-    expect(storytellingSource).toContain('onLayout={handleCardLayout}')
-    expect(storytellingSource).toContain('homeStorytellingMotionContract.orb')
-    expect(storytellingSource).toContain('homeStorytellingMotionContract.bars')
-    expect(storytellingSource).toContain('homeStorytellingMotionContract.list')
-    expect(storytellingSource).toContain('homeStorytellingMotionContract.spark')
-    expect(storytellingSource).toContain('withSequence(')
-    expect(storytellingSource).not.toContain('withDelay(')
-    expect(storytellingSource).not.toContain('withRepeat(')
-    expect(homeStorytellingMotionContract).toEqual({
-      bars: { duration: 6800, originX: 1122, originY: 177, peakRotation: 5, peakTranslateY: -8, restRotation: 8 },
-      list: { duration: 7200, originX: 1648, originY: 403, peakRotation: 10, peakTranslateY: 7, restRotation: 7 },
-      orb: { duration: 5600, originX: 1367, originY: 389, peakRotation: 0.45, peakTranslateY: -9, restRotation: -0.3 },
-      spark: { duration: 6200, originX: 1138, originY: 599, peakRotation: -1, peakTranslateY: -7, restRotation: -4 },
+    expect(screen.getByTestId('customer-v21-home-onboarding-wash')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-copy')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-steps')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-step-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-step-2')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-step-3')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-label-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-label-2')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-onboarding-label-3')).toBeOnTheScreen()
+    expect(screen.getByText('Bắt đầu dễ dàng')).toBeOnTheScreen()
+    expect(screen.getByText('Chọn dịch vụ, mô tả và xác nhận.')).toBeOnTheScreen()
+    expect(screen.getByText('Chọn dịch vụ')).toBeOnTheScreen()
+    expect(screen.getByText('Mô tả vấn đề')).toBeOnTheScreen()
+    expect(screen.getByText('Bạn xác nhận')).toBeOnTheScreen()
+    expect(screen.getByLabelText('Bắt đầu dễ dàng. Chọn dịch vụ, mô tả và xác nhận. Bước 1: Chọn dịch vụ. Bước 2: Mô tả vấn đề. Bước 3: Bạn xác nhận.')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-hero').props.style)).toMatchObject({
+      backgroundColor: '#FFFFFF',
     })
-    expect(screen.queryByText('Kael sẵn sàng hỗ trợ, công việc vẫn do bạn kiểm soát.')).toBeNull()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-storytelling').props.style).borderWidth).toBeUndefined()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-onboarding-label-1').props.style).position).toBeUndefined()
+    expect(storytellingSource).not.toContain('Kael luôn')
+    expect(storytellingSource).not.toContain('withSequence(')
+    expect(storytellingSource).not.toContain('withRepeat(')
+    expect(storytellingSource).not.toContain('#0F322E')
+    expect(storytellingSource).not.toContain('customer-v21-home-onboarding-panel-wash')
+    expect(storytellingSource).not.toContain('styles.panel')
+    expect(storytellingSource).not.toContain('frameAccent')
+    expect(storytellingSource).toContain('CaseWideMintAura')
+    expect(storytellingSource).toContain('ZipMintAura')
+    expect(storytellingSource).toContain('HomeStorytellingFine')
+    expect(storytellingSource).toContain('const badgeSize = compact ? 32 : 40')
+    expect(storytellingSource).toContain('paddingHorizontal: 28')
+    expect(storytellingSource).toContain('aspectRatio: 3.2')
+    expect(storytellingSource).toContain('minHeight: 148')
+    expect(storytellingSource).toContain('aspectRatio: 4')
     expect(screen.queryByTestId('customer-v21-home-card-skin')).toBeNull()
     expect(screen.queryByTestId('customer-v21-home-mint-aura')).toBeNull()
     expect(screen.getByTestId('customer-v21-home-empty-card-skin')).toBeOnTheScreen()
