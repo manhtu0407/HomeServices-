@@ -343,13 +343,13 @@ export const customerV21HistoryStyles = StyleSheet.create({
     zIndex: 1,
   },
   caseMapCanvas: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#EDF7E8',
     overflow: 'hidden',
     zIndex: 0,
   },
   caseMapAuraLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1,
   },
   caseMapCard: {
@@ -540,7 +540,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     lineHeight: 28,
   },
   matchingKaelStatusIconAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   matchingKaelStatusIconWrap: {
     height: 86,
@@ -697,7 +697,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     zIndex: 1,
   },
   successEmblemAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   successEmblemPending: {

@@ -3,6 +3,9 @@
 // react-native-reanimated v4 relies on the react-native-worklets runtime, which
 // does not exist under jsdom/node. Use the package's official mock so components
 // that import reanimated (directly or via the glass motion helpers) render.
+// Reanimated's own mock re-enters its index, which instantiates the worklets
+// native module and throws off-device, so worklets must be mocked as well.
+jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'))
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'))
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 

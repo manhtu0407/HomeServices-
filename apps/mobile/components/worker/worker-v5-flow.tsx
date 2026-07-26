@@ -12,6 +12,7 @@ import {
   View,
   useWindowDimensions,
   type ImageSourcePropType,
+  type PressableStateCallbackType,
   type StyleProp,
   type TextProps,
   type ViewStyle,
@@ -230,6 +231,10 @@ type WorkerV5FieldEvidenceUiState = {
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
+
+// A Reanimated style only drives a component created through Animated; on a
+// plain Pressable the mode-trigger scale never ran.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 const workerV5Icons: Record<WorkerV5IconName, ImageSourcePropType> = {
   calendar: require('@/assets/worker-image-icons/utility-calendar.png') as ImageSourcePropType,
@@ -2684,7 +2689,7 @@ function WorkerV5KaelOrbScreenSurface({
               >
                 <WorkerV5KaelSessionPlusIcon />
               </Pressable>
-              <Pressable
+              <AnimatedPressable
                 accessibilityLabel={textByLanguage(
                   language,
                   `Chế độ Kael: ${activeMode.label}. Nhấn để đổi chế độ`,
@@ -2693,7 +2698,7 @@ function WorkerV5KaelOrbScreenSurface({
                 accessibilityRole="button"
                 accessibilityState={{ expanded: modeMenuOpen }}
                 onPress={toggleModeMenu}
-                style={({ pressed }) => [
+                style={({ pressed }: PressableStateCallbackType) => [
                   styles.kaelOrbCustomerModeTrigger,
                   modeMenuOpen ? styles.kaelOrbCustomerModeTriggerOpen : null,
                   animatedModeTriggerStyle,
@@ -2710,7 +2715,7 @@ function WorkerV5KaelOrbScreenSurface({
                 >
                   {activeMode.label}
                 </Text>
-              </Pressable>
+              </AnimatedPressable>
             </View>
           </View>
 
@@ -6365,7 +6370,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 10px 18px rgba(8,125,114,0.28)',
   },
   successCheckFill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   successCheckText: {
@@ -6390,7 +6395,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 18px 34px rgba(8,125,114,0.16)',
   },
   successEmblemAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.66,
     zIndex: 0,
   },
@@ -6561,7 +6566,7 @@ const styles = StyleSheet.create({
     width: 326,
   },
   workerV5CustomerCaseWideMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   workerV5CustomerCaseWorkCardAura: {
@@ -6573,7 +6578,7 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
   workerV5CustomerMapMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   workerV5CustomerZipMintAura: {
@@ -6757,7 +6762,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   kaelOrbComposerAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   kaelOrbComposerCard: {
@@ -6873,7 +6878,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   kaelOrbCustomerModeMenuAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.78,
     zIndex: 0,
   },

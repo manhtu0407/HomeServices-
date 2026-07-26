@@ -126,13 +126,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/nestscout-aurora-nest-appstore-1024.png',
   userInterfaceStyle: 'automatic',
-  newArchEnabled: true,
   scheme: 'nestscout',
-  splash: {
-    image: './assets/nestscout-aurora-nest-foreground-1024.png',
-    resizeMode: 'contain',
-    backgroundColor: '#ffffff',
-  },
   ios: {
     supportsTablet: false,
     buildNumber: '31',
@@ -158,10 +152,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     versionCode: 1,
     permissions: [],
-    edgeToEdgeEnabled: true,
     package: 'com.phanmanhtu.nestscout',
   },
   plugins: [
+    'expo-asset',
+    'expo-image',
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/nestscout-aurora-nest-foreground-1024.png',
+        resizeMode: 'contain',
+        backgroundColor: '#ffffff',
+      },
+    ],
     'expo-router',
     [
       'expo-audio',
@@ -181,6 +184,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-secure-store',
+    'expo-status-bar',
     [
       'expo-image-picker',
       {
