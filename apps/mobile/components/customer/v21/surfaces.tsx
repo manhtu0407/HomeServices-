@@ -1353,11 +1353,6 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
           value={levelProgressLabel}
         />
       )}
-      rankStatusLabel={rank === null
-        ? copy.dataPending
-        : numericRank === 0
-          ? (language === 'vi' ? 'Chưa xếp hạng' : 'Not ranked')
-          : profileRankStatus(numericRank, language, copy.dataPending)}
       rankTitle={rankTitle}
       rules={[
         {

@@ -83,6 +83,7 @@ export function ProfileLiquidScore({
   percent,
   reduceTransparency,
   scope,
+  showProgressDot = false,
   secondaryLabel,
   size = 'regular',
   tokens,
@@ -93,6 +94,7 @@ export function ProfileLiquidScore({
   percent: number
   reduceTransparency: boolean
   scope: string
+  showProgressDot?: boolean
   secondaryLabel?: string
   size?: 'regular' | 'large'
   tokens: CustomerThemeTokens
@@ -106,6 +108,11 @@ export function ProfileLiquidScore({
   const frameSize = size === 'large' ? 154 : 112
   const svgSize = size === 'large' ? 132 : 102
   const lensInset = size === 'large' ? 24 : 17
+  const progressAngle = (Math.PI * 2 * clampedPercent) / 100
+  const progressDotX = 50 + ringRadius * Math.cos(progressAngle)
+  const progressDotY = 50 + ringRadius * Math.sin(progressAngle)
+  const scoreContentWidth = frameSize - lensInset * 2 - 6
+  const compactValue = value.length > 3
   return (
     <View style={[styles.profileLiquidScore, size === 'large' ? styles.profileLiquidScoreLarge : null, { height: frameSize, width: frameSize }]} testID={`customer-v21-profile-score-${scope}`}>
       {!reduceTransparency ? <CaseOverviewScoreAura scope={`Profile${scope}`} /> : null}
@@ -128,6 +135,17 @@ export function ProfileLiquidScore({
           strokeLinecap="round"
           strokeWidth={8}
         />
+        {showProgressDot ? (
+          <Circle
+            cx={progressDotX}
+            cy={progressDotY}
+            fill="#08AF9C"
+            r={3.25}
+            stroke={tokens.mode === 'dark' ? tokens.raised : '#FFFFFF'}
+            strokeWidth={1.5}
+            testID={`customer-v21-profile-score-${scope}-progress-dot`}
+          />
+        ) : null}
       </Svg>
       <View
         pointerEvents="none"
@@ -145,15 +163,19 @@ export function ProfileLiquidScore({
       >
         {!reduceTransparency ? <View style={styles.caseOverviewScoreHighlight} /> : null}
       </View>
-      <View style={styles.caseOverviewScoreInside}>
+      <View style={[styles.caseOverviewScoreInside, { width: scoreContentWidth }]}>
         <Text
           adjustsFontSizeToFit
-          numberOfLines={1}
+          minimumFontScale={compactValue ? 0.6 : 0.72}
+          numberOfLines={compactValue ? 2 : 1}
           style={[
             styles.profileScoreValue,
             size === 'large' ? styles.profileScoreValueLarge : null,
+            compactValue ? styles.profileScoreValueStatus : null,
+            compactValue && size === 'large' ? styles.profileScoreValueStatusLarge : null,
             { color: tokens.primary },
           ]}
+          testID={`customer-v21-profile-score-${scope}-value`}
         >
           {value}
         </Text>

@@ -231,7 +231,7 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/Tin cậy/)
     expect(screen.getByTestId('customer-v21-profile-ranking')).toHaveTextContent(/620/)
     expect(screen.queryByRole('button', { name: 'i' })).toBeNull()
-    expect(screen.getByTestId('customer-v21-profile-ranking-status-chip')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-profile-ranking-status-chip')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-ranking-progress')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-rank-node-3')).toHaveTextContent(/3/)
     expect(screen.getByTestId('customer-v21-profile-rank-process')).toBeOnTheScreen()
@@ -270,6 +270,42 @@ describe('CustomerProfileSurface v2.1', () => {
 
     expect(screen.getByTestId('customer-v21-profile-money')).toHaveTextContent(/92\/100/)
     expect(screen.getByTestId('customer-v21-profile-money')).toHaveTextContent(/2.150.000đ/)
+  })
+
+  it('keeps the ranking status inside its score lens and tracks real rank progress with the mint dot', () => {
+    mockScreenParam = '6.2-usage-ranking'
+
+    const { rerender } = render(<CustomerProfileSurface />)
+
+    expect(screen.queryByTestId('customer-v21-profile-ranking-status-chip')).toBeNull()
+    expect(screen.queryByText('Hạng phản ánh cách bạn sử dụng dịch vụ')).toBeNull()
+    expect(screen.getByTestId('customer-v21-profile-score-Ranking-value')).toHaveProp('numberOfLines', 2)
+    expect(screen.getByTestId('customer-v21-profile-score-Ranking-value')).toHaveStyle({ maxWidth: 72 })
+    expect(screen.getByTestId('customer-v21-profile-score-Ranking-value')).toHaveStyle({ fontSize: 18, lineHeight: 22 })
+
+    const pendingDot = screen.getByTestId('customer-v21-profile-score-Ranking-progress-dot')
+    expect(Math.hypot(Number(pendingDot.props.cx) - 50, Number(pendingDot.props.cy) - 50)).toBeCloseTo(43, 5)
+
+    mockCustomerProfileInsights = {
+      usage_rank_level: 3,
+      usage_rank_points: 250,
+    }
+    rerender(<CustomerProfileSurface />)
+
+    const firstProgressDot = screen.getByTestId('customer-v21-profile-score-Ranking-progress-dot')
+    const firstPosition = { cx: firstProgressDot.props.cx, cy: firstProgressDot.props.cy }
+    expect(Math.hypot(Number(firstPosition.cx) - 50, Number(firstPosition.cy) - 50)).toBeCloseTo(43, 5)
+
+    mockCustomerProfileInsights = {
+      usage_rank_level: 3,
+      usage_rank_points: 620,
+    }
+    rerender(<CustomerProfileSurface />)
+
+    const nextProgressDot = screen.getByTestId('customer-v21-profile-score-Ranking-progress-dot')
+    const nextPosition = { cx: nextProgressDot.props.cx, cy: nextProgressDot.props.cy }
+    expect(nextPosition).not.toEqual(firstPosition)
+    expect(Math.hypot(Number(nextPosition.cx) - 50, Number(nextPosition.cy) - 50)).toBeCloseTo(43, 5)
   })
 
   it('removes the smart utility section and Agentic Center entry from Profile', () => {
@@ -366,11 +402,16 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-payment-screen')).toBeOnTheScreen()
+    expect(screen.queryByText('Ngân hàng mặc định và nơi nhận tiền')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-payment-hero-icon')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-payment-hero-connector-dot')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-profile-payment-hero-signals')).toHaveTextContent(/Chủ tài khoản/)
     expect(screen.getByTestId('customer-v21-profile-payment-hero-signals')).toHaveTextContent(/Cần xác minh/)
     expect(screen.getByTestId('customer-v21-profile-payment-hero-title')).toHaveTextContent('Tài khoản nhận tiền')
+    expect(screen.getByTestId('customer-v21-profile-payment-hero-title-copy')).toHaveStyle({
+      flex: 1,
+      justifyContent: 'center',
+    })
     await waitFor(() => expect(screen.getByTestId('customer-v21-profile-payment-hero-status')).toHaveTextContent('Chưa có'))
     expect(screen.getByTestId('customer-v21-profile-payment-bank-grid')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-payment-bank-logo-vietcombank')).toBeOnTheScreen()
@@ -449,6 +490,7 @@ describe('CustomerProfileSurface v2.1', () => {
 
     render(<CustomerProfileSurface />)
 
+    expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({ fontWeight: '400' })
     expect(screen.getByTestId('customer-v21-profile-utility-address-screen')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-profile-address-settings')).toBeNull()
     expect(screen.queryByText('Địa chỉ dùng cho đặt dịch vụ')).toBeNull()
@@ -486,6 +528,7 @@ describe('CustomerProfileSurface v2.1', () => {
     render(<CustomerProfileSurface />)
 
     expect(screen.getByTestId('customer-v21-profile-utility-settings-screen')).toBeOnTheScreen()
+    expect(screen.queryByText('Bảo mật, ngôn ngữ và dữ liệu tài khoản')).toBeNull()
     expect(screen.queryByTestId('customer-v21-profile-utility-notifications-screen')).toBeNull()
     expect(screen.getByTestId('customer-v21-profile-settings-hero-visual-panel')).toHaveStyle({ borderRightWidth: 1, width: 116 })
     expect(screen.getByTestId('customer-v21-profile-settings-hero-mint-aura')).toBeOnTheScreen()

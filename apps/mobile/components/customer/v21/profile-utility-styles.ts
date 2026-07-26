@@ -175,7 +175,7 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   profileAddressUtilityTitle: {
-    fontWeight: '800',
+    fontWeight: '400',
   },
   profileAuraButton: {
     backgroundColor: 'rgba(248,255,253,0.92)',

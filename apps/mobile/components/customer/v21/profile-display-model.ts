@@ -74,7 +74,7 @@ export function fairPriceStatusLabel(
 
 export function profileStageSubtitle(screenId: CustomerV21ScreenId, language: AppLanguage) {
   if (screenId === '6.2-usage-ranking') {
-    return language === 'vi' ? 'Hạng phản ánh cách bạn sử dụng dịch vụ' : 'Level reflects how you use service'
+    return ''
   }
   if (screenId === '6.3-protect-money') {
     return language === 'vi' ? 'Đúng giá, đúng quy trình và minh bạch' : 'Fair price, proper workflow, transparent'
@@ -211,11 +211,8 @@ export function profileUtilityTitle(kind: CustomerProfileUtility, language: AppL
 }
 
 export function profileUtilitySubtitle(kind: CustomerProfileUtility, language: AppLanguage) {
-  if (kind === 'payment') {
-    return language === 'vi' ? 'Ngân hàng mặc định và nơi nhận tiền' : 'Default bank and payout destination'
-  }
-  if (kind === 'settings') {
-    return language === 'vi' ? 'Bảo mật, ngôn ngữ và dữ liệu tài khoản' : 'Security, language, and account data'
+  if (kind === 'payment' || kind === 'settings') {
+    return ''
   }
   return language === 'vi' ? 'Địa chỉ dùng cho đặt dịch vụ' : 'Addresses used for booking'
 }
