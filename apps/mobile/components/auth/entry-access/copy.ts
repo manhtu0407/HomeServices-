@@ -36,13 +36,11 @@ export type EntryAuthErrorKey =
 export type RoleGateGreeting = Readonly<{
   headline: string
   lead: string
-  signature: string
 }>
 
 export type RoleGateGreetingPeriod = 'morning' | 'midday' | 'afternoon' | 'evening'
 
 type RoleCardCopy = Readonly<{
-  badge?: string
   description: string
   meta: string
   title: string
@@ -245,7 +243,6 @@ const viCopy: EntryAccessCopy = {
     continueCustomer: 'Tiếp tục với Khách hàng',
     continueWorker: 'Tiếp tục với Đối tác thợ',
     customer: {
-      badge: 'Phổ biến',
       description: 'Đặt dịch vụ, trò chuyện cùng Kael và theo dõi tiến độ.',
       meta: 'Google · Email/SĐT',
       title: 'Khách hàng',
@@ -377,7 +374,6 @@ const enCopy: EntryAccessCopy = {
     continueCustomer: 'Continue as Customer',
     continueWorker: 'Continue as Service partner',
     customer: {
-      badge: 'Popular',
       description: 'Book services, chat with Kael, and track progress.',
       meta: 'Google · Email/phone',
       title: 'Customer',
@@ -413,62 +409,62 @@ export const roleGateGreetingVariants: Readonly<
 > = {
   vi: {
     morning: [
-      { headline: 'Chào buổi sáng, mình bắt đầu thật nhẹ nhàng nhé.', lead: 'Bạn đến để tìm người hỗ trợ, hay để nhận một việc phù hợp?', signature: 'Mọi việc nhỏ đều có thể bắt đầu từ đây.' },
-      { headline: 'Buổi sáng yên, mình cùng sắp xếp một việc nhỏ nhé.', lead: 'Mình chọn vai trò phù hợp để bắt đầu thật rõ ràng.', signature: 'Một khởi đầu gọn gàng cho việc đang chờ.' },
-      { headline: 'Chào ngày mới, Kael ở đây để việc nhà bớt nặng.', lead: 'Bạn muốn tìm người hỗ trợ, hay mang tay nghề của mình đến nơi cần?', signature: 'Đúng người cho một ngày nhẹ hơn.' },
-      { headline: 'Sáng nay, căn nhà mình đang cần điều gì?', lead: 'Hôm nay, bạn muốn tìm hỗ trợ hay sẵn sàng nhận một việc phù hợp?', signature: 'Nhẹ nhàng chọn, rồi mình đi tiếp.' },
-      { headline: 'Một buổi sáng dịu, mình bắt đầu từ điều cần nhất nhé.', lead: 'Bạn muốn nhờ hỗ trợ, hay sẵn sàng mang kỹ năng đến một ngôi nhà?', signature: 'Việc nhà có thể bớt nặng từ một lựa chọn đúng.' },
+      { headline: 'Chào buổi sáng, mình bắt đầu thật nhẹ nhàng nhé.', lead: 'Bạn đến để tìm người hỗ trợ, hay để nhận một việc phù hợp?' },
+      { headline: 'Buổi sáng yên, mình cùng sắp xếp một việc nhỏ nhé.', lead: 'Mình chọn vai trò phù hợp để bắt đầu thật rõ ràng.' },
+      { headline: 'Chào ngày mới, Kael ở đây để việc nhà bớt nặng.', lead: 'Bạn muốn tìm người hỗ trợ, hay mang tay nghề của mình đến nơi cần?' },
+      { headline: 'Sáng nay, căn nhà mình đang cần điều gì?', lead: 'Hôm nay, bạn muốn tìm hỗ trợ hay sẵn sàng nhận một việc phù hợp?' },
+      { headline: 'Một buổi sáng dịu, mình bắt đầu từ điều cần nhất nhé.', lead: 'Bạn muốn nhờ hỗ trợ, hay sẵn sàng mang kỹ năng đến một ngôi nhà?' },
     ],
     midday: [
-      { headline: 'Giữa trưa, mình dành một chút thời gian cho việc đang chờ nhé.', lead: 'Mình chọn cách đồng hành phù hợp, rồi bắt đầu từ việc cần nhất.', signature: 'Chậm một chút, rồi mọi việc sẽ vào nếp.' },
-      { headline: 'Trưa nay, có việc nào ở nhà bạn muốn gỡ trước không?', lead: 'Bạn muốn tìm sự hỗ trợ, hay sẵn sàng nhận một việc phù hợp?', signature: 'Việc cần làm cũng xứng đáng được giải quyết nhẹ nhàng.' },
-      { headline: 'Khoảng nghỉ ngắn, một khởi đầu gọn gàng.', lead: 'Chỉ cần chọn cách mình muốn bắt đầu, phần còn lại sẽ rõ ràng hơn.', signature: 'Đúng vai trò, đúng nhịp cho hôm nay.' },
-      { headline: 'Trưa rồi, Kael sẵn sàng cùng bạn sắp xếp từng việc.', lead: 'Khách hàng hay Đối tác thợ — mỗi bên đều có một điểm bắt đầu.', signature: 'Kael ở đây để hành trình rõ ràng hơn.' },
-      { headline: 'Một chút thời gian cho ngôi nhà cũng đủ làm mọi thứ nhẹ hơn.', lead: 'Dành vài giây để chọn đúng vai trò cho mình.', signature: 'Một lựa chọn nhỏ, một điểm bắt đầu tốt.' },
+      { headline: 'Giữa trưa, mình dành một chút thời gian cho việc đang chờ nhé.', lead: 'Mình chọn cách đồng hành phù hợp, rồi bắt đầu từ việc cần nhất.' },
+      { headline: 'Trưa nay, có việc nào ở nhà bạn muốn gỡ trước không?', lead: 'Bạn muốn tìm sự hỗ trợ, hay sẵn sàng nhận một việc phù hợp?' },
+      { headline: 'Khoảng nghỉ ngắn, một khởi đầu gọn gàng.', lead: 'Chỉ cần chọn cách mình muốn bắt đầu, phần còn lại sẽ rõ ràng hơn.' },
+      { headline: 'Trưa rồi, Kael sẵn sàng cùng bạn sắp xếp từng việc.', lead: 'Khách hàng hay Đối tác thợ — mỗi bên đều có một điểm bắt đầu.' },
+      { headline: 'Một chút thời gian cho ngôi nhà cũng đủ làm mọi thứ nhẹ hơn.', lead: 'Dành vài giây để chọn đúng vai trò cho mình.' },
     ],
     afternoon: [
-      { headline: 'Chiều nay, mình cùng hoàn thành một việc cho ngôi nhà nhé.', lead: 'Mình chọn cách bạn muốn bắt đầu, Kael sẽ đồng hành đúng nhịp.', signature: 'Việc đang chờ có thể được bắt đầu ngay lúc này.' },
-      { headline: 'Buổi chiều dịu lại, việc cần làm cũng có thể nhẹ đi.', lead: 'Bạn đến để nhờ hỗ trợ, hay để mang kỹ năng của mình đến nơi cần?', signature: 'Đúng người, đúng việc, theo một cách nhẹ nhàng.' },
-      { headline: 'Chiều rồi, bạn muốn Kael bắt đầu từ đâu?', lead: 'Bạn cần một người hỗ trợ, hay đang sẵn sàng nhận một việc?', signature: 'Căn nhà và công việc đều xứng đáng được chăm chút.' },
-      { headline: 'Thêm một chút chủ động cho căn nhà của mình.', lead: 'Mỗi vai trò có một hành trình riêng, mình chọn trước nhé.', signature: 'Mình đi từng bước, thật rõ ràng.' },
-      { headline: 'Chiều nay, tìm đúng người cho đúng việc nhé.', lead: 'Chỉ cần một lựa chọn, phần còn lại sẽ rõ ràng hơn.', signature: 'Chọn vai trò, rồi Kael cùng bạn bắt đầu.' },
+      { headline: 'Chiều nay, mình cùng hoàn thành một việc cho ngôi nhà nhé.', lead: 'Mình chọn cách bạn muốn bắt đầu, Kael sẽ đồng hành đúng nhịp.' },
+      { headline: 'Buổi chiều dịu lại, việc cần làm cũng có thể nhẹ đi.', lead: 'Bạn đến để nhờ hỗ trợ, hay để mang kỹ năng của mình đến nơi cần?' },
+      { headline: 'Chiều rồi, bạn muốn Kael bắt đầu từ đâu?', lead: 'Bạn cần một người hỗ trợ, hay đang sẵn sàng nhận một việc?' },
+      { headline: 'Thêm một chút chủ động cho căn nhà của mình.', lead: 'Mỗi vai trò có một hành trình riêng, mình chọn trước nhé.' },
+      { headline: 'Chiều nay, tìm đúng người cho đúng việc nhé.', lead: 'Chỉ cần một lựa chọn, phần còn lại sẽ rõ ràng hơn.' },
     ],
     evening: [
-      { headline: 'Tối nay, mình khép lại việc còn dang dở thật nhẹ nhàng nhé.', lead: 'Mình chọn cách bắt đầu để phần việc còn lại rõ ràng hơn.', signature: 'Không vội, chỉ cần bắt đầu từ điều cần nhất.' },
-      { headline: 'Buổi tối yên, Kael vẫn ở đây khi bạn cần.', lead: 'Bạn muốn nhờ một người phù hợp, hay sẵn sàng nhận một việc gần nhà?', signature: 'Việc còn dang dở vẫn có thể được sắp xếp êm hơn.' },
-      { headline: 'Đêm xuống rồi, một việc nhỏ cũng đáng được giải quyết.', lead: 'Bạn đến để nhờ hỗ trợ, hay để nhận một việc phù hợp?', signature: 'Đúng người, đúng lúc để mọi thứ dần yên.' },
-      { headline: 'Tối nay, bạn muốn tìm người hỗ trợ hay bắt đầu nhận việc?', lead: 'Mình bắt đầu bằng việc chọn đúng chỗ đứng của mình nhé.', signature: 'Kael ở đây, từng bước một.' },
-      { headline: 'Nhà mình cần được chăm chút, từng việc một.', lead: 'Một lựa chọn nhỏ để buổi tối nhẹ hơn.', signature: 'Một điểm bắt đầu nhẹ nhàng cho ngày mai.' },
+      { headline: 'Tối nay, mình khép lại việc còn dang dở thật nhẹ nhàng nhé.', lead: 'Mình chọn cách bắt đầu để phần việc còn lại rõ ràng hơn.' },
+      { headline: 'Buổi tối yên, Kael vẫn ở đây khi bạn cần.', lead: 'Bạn muốn nhờ một người phù hợp, hay sẵn sàng nhận một việc gần nhà?' },
+      { headline: 'Đêm xuống rồi, một việc nhỏ cũng đáng được giải quyết.', lead: 'Bạn đến để nhờ hỗ trợ, hay để nhận một việc phù hợp?' },
+      { headline: 'Tối nay, bạn muốn tìm người hỗ trợ hay bắt đầu nhận việc?', lead: 'Mình bắt đầu bằng việc chọn đúng chỗ đứng của mình nhé.' },
+      { headline: 'Nhà mình cần được chăm chút, từng việc một.', lead: 'Một lựa chọn nhỏ để buổi tối nhẹ hơn.' },
     ],
   },
   en: {
     morning: [
-      { headline: 'Good morning. Let’s begin gently.', lead: 'Are you here to find help or receive suitable work?', signature: 'Every small task can begin here.' },
-      { headline: 'A quiet morning is a good time to sort one thing out.', lead: 'Choose the role that gives you a clear starting point.', signature: 'A tidy start for the task ahead.' },
-      { headline: 'Good morning. Kael is here to make home care feel lighter.', lead: 'Would you like to find help or bring your skills where they are needed?', signature: 'The right person for an easier day.' },
-      { headline: 'What does your home need this morning?', lead: 'Would you like support or are you ready for suitable work?', signature: 'Choose gently, then we’ll continue.' },
-      { headline: 'A calm morning starts with what matters most.', lead: 'Would you like help or are you ready to bring your skills to a home?', signature: 'The right choice can make home care feel lighter.' },
+      { headline: 'Good morning. Let’s begin gently.', lead: 'Are you here to find help or receive suitable work?' },
+      { headline: 'A quiet morning is a good time to sort one thing out.', lead: 'Choose the role that gives you a clear starting point.' },
+      { headline: 'Good morning. Kael is here to make home care feel lighter.', lead: 'Would you like to find help or bring your skills where they are needed?' },
+      { headline: 'What does your home need this morning?', lead: 'Would you like support or are you ready for suitable work?' },
+      { headline: 'A calm morning starts with what matters most.', lead: 'Would you like help or are you ready to bring your skills to a home?' },
     ],
     midday: [
-      { headline: 'Let’s make a little time for the task waiting at midday.', lead: 'Choose how you would like Kael to help, then start with what matters most.', signature: 'One calm step can put everything in order.' },
-      { headline: 'Is there something at home you would like to solve first?', lead: 'Would you like support or are you ready for suitable work?', signature: 'Every task deserves a thoughtful solution.' },
-      { headline: 'A short break can be a clear new start.', lead: 'Choose how you want to begin and the next step will become clearer.', signature: 'The right role for today’s rhythm.' },
-      { headline: 'Kael is ready to help you organize each task.', lead: 'Customers and service partners each have a clear place to begin.', signature: 'Kael keeps the journey clear.' },
-      { headline: 'A moment for your home can make the rest feel lighter.', lead: 'Take a few seconds to choose the role that fits you.', signature: 'One small choice, one good beginning.' },
+      { headline: 'Let’s make a little time for the task waiting at midday.', lead: 'Choose how you would like Kael to help, then start with what matters most.' },
+      { headline: 'Is there something at home you would like to solve first?', lead: 'Would you like support or are you ready for suitable work?' },
+      { headline: 'A short break can be a clear new start.', lead: 'Choose how you want to begin and the next step will become clearer.' },
+      { headline: 'Kael is ready to help you organize each task.', lead: 'Customers and service partners each have a clear place to begin.' },
+      { headline: 'A moment for your home can make the rest feel lighter.', lead: 'Take a few seconds to choose the role that fits you.' },
     ],
     afternoon: [
-      { headline: 'Let’s complete one thing for your home this afternoon.', lead: 'Choose how you want to begin and Kael will keep pace with you.', signature: 'The task ahead can start right now.' },
-      { headline: 'As the afternoon softens, the task can feel lighter too.', lead: 'Are you here for support or to bring your skills where they are needed?', signature: 'The right person for the right task.' },
-      { headline: 'Where would you like Kael to begin this afternoon?', lead: 'Do you need support, or are you ready to receive work?', signature: 'Homes and good work both deserve care.' },
-      { headline: 'Take one more active step for your home.', lead: 'Each role has its own journey, so choose yours first.', signature: 'We’ll take each step clearly.' },
-      { headline: 'Let’s find the right person for the right task.', lead: 'One choice is enough to make the next step clearer.', signature: 'Choose a role, then begin with Kael.' },
+      { headline: 'Let’s complete one thing for your home this afternoon.', lead: 'Choose how you want to begin and Kael will keep pace with you.' },
+      { headline: 'As the afternoon softens, the task can feel lighter too.', lead: 'Are you here for support or to bring your skills where they are needed?' },
+      { headline: 'Where would you like Kael to begin this afternoon?', lead: 'Do you need support, or are you ready to receive work?' },
+      { headline: 'Take one more active step for your home.', lead: 'Each role has its own journey, so choose yours first.' },
+      { headline: 'Let’s find the right person for the right task.', lead: 'One choice is enough to make the next step clearer.' },
     ],
     evening: [
-      { headline: 'Let’s gently close out what is still unfinished tonight.', lead: 'Choose how to begin so the remaining work feels clearer.', signature: 'No rush—just start with what matters most.' },
-      { headline: 'It is a quiet evening, and Kael is still here when you need help.', lead: 'Would you like the right person to help, or are you ready for nearby work?', signature: 'Unfinished work can still be arranged with care.' },
-      { headline: 'Night has fallen, but one small task is still worth solving.', lead: 'Are you here to find help or receive suitable work?', signature: 'The right person at the right time.' },
-      { headline: 'Would you like to find help or start receiving work tonight?', lead: 'Begin by choosing the place that fits you.', signature: 'Kael is here, one step at a time.' },
-      { headline: 'A home is cared for one task at a time.', lead: 'One small choice can make the evening lighter.', signature: 'A gentle starting point for tomorrow.' },
+      { headline: 'Let’s gently close out what is still unfinished tonight.', lead: 'Choose how to begin so the remaining work feels clearer.' },
+      { headline: 'It is a quiet evening, and Kael is still here when you need help.', lead: 'Would you like the right person to help, or are you ready for nearby work?' },
+      { headline: 'Night has fallen, but one small task is still worth solving.', lead: 'Are you here to find help or receive suitable work?' },
+      { headline: 'Would you like to find help or start receiving work tonight?', lead: 'Begin by choosing the place that fits you.' },
+      { headline: 'A home is cared for one task at a time.', lead: 'One small choice can make the evening lighter.' },
     ],
   },
 }

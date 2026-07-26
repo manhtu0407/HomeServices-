@@ -32,7 +32,6 @@ describe('role gate greeting', () => {
     for (const greeting of greetings) {
       expect(greeting.headline.trim()).not.toHaveLength(0)
       expect(greeting.lead.trim()).not.toHaveLength(0)
-      expect(greeting.signature.trim()).not.toHaveLength(0)
     }
   })
 
@@ -47,7 +46,6 @@ describe('role gate greeting', () => {
     for (const greeting of english) {
       expect(greeting.headline.trim()).not.toHaveLength(0)
       expect(greeting.lead.trim()).not.toHaveLength(0)
-      expect(greeting.signature.trim()).not.toHaveLength(0)
     }
   })
 })

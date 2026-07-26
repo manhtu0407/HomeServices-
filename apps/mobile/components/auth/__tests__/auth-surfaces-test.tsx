@@ -343,6 +343,7 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-entry-role-customer')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-entry-role-worker')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-entry-role-customer')).toHaveProp('accessibilityState', { checked: true })
+    expect(screen.queryByText('Phổ biến')).toBeNull()
     expect(screen.queryByTestId('auth-entry-role-guest')).toBeNull()
     expect(mockEnterGuestMode).not.toHaveBeenCalled()
   })
@@ -459,18 +460,22 @@ describe('LoginRoleSurface', () => {
 
     const headline = screen.getByTestId('auth-role-gate-greeting').props.children as string
     const lead = screen.getByTestId('auth-role-gate-greeting-lead').props.children as string
-    const signature = screen.getByTestId('auth-role-gate-greeting-signature').props.children as string
-
     expect(screen.getByTestId('auth-role-gate-greeting')).toHaveStyle({ fontSize: 29, lineHeight: 35 })
-    expect(screen.getByTestId('auth-role-gate-signature-shell')).toHaveStyle({ marginTop: 18 })
-    expect(screen.getByTestId('auth-role-gate-signature-aura')).toHaveStyle({ borderWidth: 1, bottom: -2, left: -2, right: -2, top: -2 })
+    expect(screen.queryByTestId('auth-role-gate-signature-shell')).toBeNull()
+    expect(screen.queryByTestId('auth-role-gate-greeting-signature')).toBeNull()
+    expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ flex: 3 })
+    expect(screen.getByTestId('auth-entry-role-worker-layout')).toHaveStyle({ flex: 1 })
 
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ flex: 1 })
+    expect(screen.getByTestId('auth-entry-role-worker-layout')).toHaveStyle({ flex: 3 })
+
     fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
+    expect(screen.getByTestId('auth-entry-role-customer-layout')).toHaveStyle({ flex: 3 })
+    expect(screen.getByTestId('auth-entry-role-worker-layout')).toHaveStyle({ flex: 1 })
 
     expect(screen.getByTestId('auth-role-gate-greeting')).toHaveTextContent(headline)
     expect(screen.getByTestId('auth-role-gate-greeting-lead')).toHaveTextContent(lead)
-    expect(screen.getByTestId('auth-role-gate-greeting-signature')).toHaveTextContent(signature)
   })
 
   it('keeps Google as the only customer provider', async () => {
