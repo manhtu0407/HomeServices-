@@ -5,7 +5,7 @@ description: Record and check the external sources behind Home Services design r
 
 # kael-design-evidence
 
-Thin wrapper. The tiers, record fields, freshness windows, lifecycle, quality bar, and prohibited claims are canonical in `governance/design/design-evidence.md`; the ledger is `docs/design-research/source-ledger.csv` (contract in its `README.md`). Do not duplicate them here.
+Thin wrapper. The tiers, record fields, freshness windows, lifecycle, quality bar, and prohibited claims are canonical in `governance/design/design-evidence.md`; the ledger is `docs/design-research/source-ledger.csv`. Do not duplicate them here.
 
 When this fires:
 
@@ -14,5 +14,6 @@ When this fires:
 3. Score it (authority / freshness / lifecycle); it backs a rule only at `q_total ≥ 24` with the minimums, lifecycle known.
 4. Dedup by canonical URL. The cited source count equals the deduped row count — never claim a number the ledger lacks.
 5. Do not call a source "current" without a date + known lifecycle; do not pad the ledger.
+6. Check the row against its freshness window before citing it. Past the window, re-verify or say the rule rests on an unverified source — never reuse it silently, and never bump `last_verified` without re-reading. Cadence, corpus manifests, the incident log, and rule retirement are in `governance/design/governance-cadence.md`.
 
-Single source: `governance/design/design-evidence.md` + `docs/design-research/`. Pair with `kael-research` and the design router `governance/design/runtime.md`.
+Single source: `governance/design/design-evidence.md` + `governance/design/governance-cadence.md` + `docs/design-research/`. Pair with `kael-research` and the design router `governance/design/runtime.md`.

@@ -69,3 +69,4 @@ A design change is not done until it is checked across these (evidence = command
 - Motion vocabulary + timing / spring: `design/motion.md`
 - Glass / motion / performance / language / scope rules: `AGENTS.md`
 - Design identity, preflight, scoring rubric, forbidden defaults: `design.md`
+- Source review cadence, corpus manifest, incident log, rule retirement: `design/governance-cadence.md`

@@ -28,10 +28,16 @@ Added the final three nan + thin skills, completing all 11 design skills (0 pend
 
 **P4 COMPLETE — 11 design skills live:** material-direction, motion, frontend-test, prototype, research, design-tokens, adaptive-layout, accessible-content, design-evidence, design-review, visual-qa.
 
-## P5 — Visual QA + framework
+## P5a — Visual QA tooling (recommend + runbook + wire)
 
-_Placeholder. `kael-frontend-test` → `kael-visual-qa`; Expo SDK upgrade steps._
+Researched visual-regression / E2E options against the real repo (managed Expo SDK 54, RN 0.81.5, EAS configured, no native dirs, jest-expo unit layer, zero e2e deps) and **recommended Maestro** — the only low-maintenance option that fits managed Expo without committing native projects, captures real native render (glass + motion don't render in jsdom), and doesn't couple to RN internals (survives the SDK 54 → 57 bump). Detox is the fallback; jest-image-snapshot was rejected (node-only, can't render native glass). Wrote `docs/design-research/visual-qa-runbook.md` (tool comparison + recommendation + deterministic-fixture / naming / baseline / diff / CI process — explicitly not-yet-run). Wired the handoff in `protocols/frontend-test.md` (unlocked): a visual change goes static gate → `kael-visual-qa` (matrix + naming) → human sign-off before done, with the runbook + Maestro recommendation referenced; updated the `kael-frontend-test` skill body to point to `kael-visual-qa`. **Nothing installed, no baseline captured, no tooling run** — the tool choice is Tu's, and install + baseline + CI need a device/CI. See plan §44.5.
+
+## P5b — Framework upgrade (pending): Expo 54 → 57
+
+_Placeholder. Step-by-step SDK hops (54 → 55 → 56 → 57), separate branch, no visual redesign; each hop gated on build + router + glass + motion + a11y + screenshot._
 
 ## P6 — Continuous governance
 
-_Placeholder. source-ledger review job, corpus manifest, design-incident log._
+Added the closing nan `design/governance-cadence.md` — the part that keeps the wheel honest after the build. It is deliberately **event-driven, not scheduled**: this repo has no scheduler, so a "reviewed quarterly" promise would be a lie. Four sections. **Ledger review cadence** — the `kael-design-evidence` skill compares `last_verified` + `freshness_window` before citing a row and writes back one of fresh / review-due / unverifiable; the hard rule is no silent reuse of an expired source, and never bump `last_verified` without actually re-reading (a refreshed date with no re-read is a fabricated verification). **Corpus manifest** — any "N sources" claim must trace to a frozen manifest (`row_count_deduped`, tier + basis breakdown, checksum, covers); with no manifest, no count may be stated at all. **Design-incident log** — `docs/design-research/design-incident-log.md`, schema plus a worked example held outside the table so it can never be miscounted; an entry closes only on a durable gate change, and "fixed the bug" is not a closure. **Rule retirement** — retire explicitly in one edit (delete, don't comment out; state the why; fix every pointer; settle the supporting ledger row). Wired into the router `runtime.md` §5 and the `kael-design-evidence` skill body (both mirrors). Also repaired the skill's pointer to the deleted `docs/design-research/README.md` — Tu removed that file and restated that `README.md` is a locked filename at any path.
+
+**§44 COMPLETE** for the agent-buildable scope: 11 design skills live, router axle wired, 12 nan, source ledger + incident log, visual-QA runbook, and the Expo 54 → 57 upgrade. Native build, device smoke, and visual-QA tooling install remain Tu's, and are not claimed here.
