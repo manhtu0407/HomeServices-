@@ -12,6 +12,7 @@ import {
   View,
   useWindowDimensions,
   type ImageSourcePropType,
+  type PressableStateCallbackType,
   type StyleProp,
   type TextProps,
   type ViewStyle,
@@ -2697,7 +2698,7 @@ function WorkerV5KaelOrbScreenSurface({
                 accessibilityRole="button"
                 accessibilityState={{ expanded: modeMenuOpen }}
                 onPress={toggleModeMenu}
-                style={({ pressed }) => [
+                style={({ pressed }: PressableStateCallbackType) => [
                   styles.kaelOrbCustomerModeTrigger,
                   modeMenuOpen ? styles.kaelOrbCustomerModeTriggerOpen : null,
                   animatedModeTriggerStyle,

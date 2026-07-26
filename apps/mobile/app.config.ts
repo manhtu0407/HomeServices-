@@ -184,6 +184,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-secure-store',
+    'expo-status-bar',
     [
       'expo-image-picker',
       {
