@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import type { LocalDeal, LocalWorkflowSelectors } from '@nestscout/shared'
+import { StyleSheet } from 'react-native'
 
 let mockWorkflowValue: any
 let mockSessionMetadata: Record<string, unknown>
@@ -251,6 +252,34 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.getByText('Sửa vặt & Lắp đặt nhỏ')).toBeOnTheScreen()
     expect(screen.queryByText(/rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
     expect(screen.getByText('Chưa có hoạt động dịch vụ')).toBeOnTheScreen()
+  })
+
+  it('uses a distinct transparent service-start icon without a square tile for the home empty state', () => {
+    render(<CustomerHomeSurface />)
+
+    const asset = screen.getByLabelText('Chưa có hoạt động dịch vụ')
+    const assetStyle = StyleSheet.flatten(asset.props.style)
+    const assetsSource = readFileSync(resolve(__dirname, '../v21/assets.ts'), 'utf8')
+    const homeSurfaceSource = readFileSync(resolve(__dirname, '../v21/surfaces.tsx'), 'utf8')
+    const sharedSurfacesSource = readFileSync(resolve(__dirname, '../v21/shared-surfaces.tsx'), 'utf8')
+
+    expect(assetStyle).toMatchObject({ borderWidth: 0 })
+    expect(assetStyle.backgroundColor).toBeUndefined()
+    expect(assetsSource).toContain("serviceStart: require('@/assets/client-image-icons/client-service-start.png')")
+    expect(homeSurfaceSource).toContain('bareAsset')
+    expect(homeSurfaceSource).toContain('image={customerV21Assets.serviceStart}')
+    expect(sharedSurfacesSource).toContain('<AssetTile bare={bareAsset} image={image} label={title} size={80} sourceAura={!bareAsset} />')
+    expect(existsSync(resolve(__dirname, '../../../assets/client-image-icons/client-service-start.png'))).toBe(true)
+  })
+
+  it('uses a transparent nav-only icon for Activity without replacing Activity and History visuals', () => {
+    const assetsSource = readFileSync(resolve(__dirname, '../v21/assets.ts'), 'utf8')
+    const homeSurfaceSource = readFileSync(resolve(__dirname, '../v21/surfaces.tsx'), 'utf8')
+
+    expect(assetsSource).toContain("activity: require('@/assets/client-image-icons/client-activity-route.png')")
+    expect(assetsSource).toContain("activityNav: require('@/assets/client-image-icons/client-activity-nav.png')")
+    expect(homeSurfaceSource).toContain("{ image: customerV21Assets.activityNav, key: 'activity', route: '/(customer)/history' },")
+    expect(existsSync(resolve(__dirname, '../../../assets/client-image-icons/client-activity-nav.png'))).toBe(true)
   })
 
   it('uses distinct generated icon assets for each expanded service path', () => {
