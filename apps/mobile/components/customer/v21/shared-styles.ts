@@ -44,7 +44,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyStateFormulaMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.94,
     zIndex: 0,
   },
@@ -417,7 +417,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     minWidth: 0,
   },
   homeServiceFormulaMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.94,
     zIndex: 0,
   },

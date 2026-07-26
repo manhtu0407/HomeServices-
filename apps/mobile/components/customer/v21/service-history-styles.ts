@@ -40,7 +40,7 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     position: 'relative',
   },
   filterChipAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.94,
     zIndex: 0,
   },

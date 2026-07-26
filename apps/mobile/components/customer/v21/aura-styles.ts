@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native'
 
 export const customerV21AuraStyles = StyleSheet.create({
   bookingDraftButtonAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   caseWideMintAura: {
     bottom: 0,
@@ -21,15 +21,15 @@ export const customerV21AuraStyles = StyleSheet.create({
     zIndex: 0,
   },
   caseWorkActionButtonAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1,
   },
   caseWorkSourceChipAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   caseOverviewHeroAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   bookingProblemChipAura: {

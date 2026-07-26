@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native'
 
 export const customerV21BookingStyles = StyleSheet.create({
   mediaAnalyzeButtonAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   mediaDescriptionChip: {
     position: 'relative',
@@ -367,12 +367,12 @@ export const customerV21BookingStyles = StyleSheet.create({
     shadowRadius: 26,
   },
   bookingInfoMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.8,
     zIndex: 0,
   },
   bookingFormulaMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.94,
     zIndex: 0,
   },
