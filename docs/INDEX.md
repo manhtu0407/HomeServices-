@@ -14,7 +14,7 @@ Durable project knowledge: feature specs, design contracts, audits, ops runbooks
 | `foundation/` | Research + spikes + the Kael knowledge corpus + source-trust research/samples | you did throwaway research or a spike whose conclusion must persist |
 | `audit/` | Point-in-time codebase / security / process audits | you ran a formal audit and captured findings |
 | `ops/` | Operational runbooks: deploy order, migration checklist, SMTP, onboarding | someone needs a step-by-step to run a real operation |
-| `product/` | Product explainers and pre-build UI prep | you are describing the product, not the code |
+| `product/` | Product explainers and pre-build UI prep | you are describing the product, not the code (the primary non-technical explainer lives at repo-root [`DOCUMENT.md`](../DOCUMENT.md) instead, for `CLAUDE.md`/`README.md`-level visibility; this folder holds narrower/supporting product docs) |
 | `copy/` | User-facing workflow copy (VI/EN) | you are curating shipped microcopy |
 | `memory/` | `kael-mem` period files (durable session learnings by month) | via the `kael-mem` skill only |
 | `test-logs/` | Test/verification evidence per phase (append-only; has its own `INDEX.md`) | you ran real tests and must record honest results |

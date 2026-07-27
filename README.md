@@ -1,82 +1,38 @@
-﻿<p align="center">
+<p align="center">
   <img src="docs/assets/nestscout-aurora-nest-logo.png" alt="NestScout AuroraNest logo" width="180" />
 </p>
 
 # NestScout
 
-NestScout is a mobile-first app that helps **Ho Chi Minh City apartment residents** book six trustworthy home-service categories: **electrical repair, plumbing repair, home cleaning, air conditioning/indoor air service, upholstery care, and minor repair/installation** — with fair, transparent pricing. **Kael**, the in-app AI assistant, handles multimodal intake, case analysis, evidence-backed estimates, worker briefing, and phase-gated workflow orchestration.
+NestScout is a mobile app that helps **Ho Chi Minh City apartment residents** book home services they can actually trust: **electrical repair, plumbing repair, home cleaning/housekeeping, air conditioning and indoor air service, sofa/mattress/curtain/carpet care, and minor repair/installation**, at a fair, transparent price.
 
-The product is **pre-revenue**, rebuilding toward its first real transaction. This README is a fast on-ramp for developers and future co-founders; it intentionally stays an introduction only — the operating rules live in `governance/` (see [Working in this repo](#working-in-this-repo)).
+When something breaks at home, most people don't know what's actually wrong, what a fair price looks like, or which worker to trust. That's the gap bad actors exploit: an inflated quote here, a vague repair there, no way to prove what really happened if a dispute comes up. NestScout turns "call someone to fix it" from a leap of faith into a process with a clear price range, a verified worker, and evidence at every step.
+
+## Who it's for
+
+- **Customers**: apartment residents who want to know the price before they commit, get a worker they can trust, and have proof if something goes wrong.
+- **Workers**: verified service providers who want clear jobs, fewer misunderstandings, and a transparent record that they did the work right.
+- **Operators**: the small internal team that approves workers, watches job status, and steps in when a case needs a human.
+
+## How it works
+
+1. The customer describes the problem to **Kael**, NestScout's AI assistant, with text and photos.
+2. Kael asks follow-up questions, then either estimates a fair price range backed by real market evidence, or says honestly that it doesn't have enough evidence yet.
+3. A verified worker is proposed; once the customer confirms, the job is assigned, and the customer can track progress the whole way.
+4. If the worker finds something different once on site, the scope change is explained and confirmed, not silently applied.
+5. The job closes with evidence: photos, status history, and the chat log, not just a handshake.
+
+Kael can propose and coordinate, but it doesn't have free rein. The decisions that actually matter (starting a search, changing scope, confirming completion, handling payment) are always checked by the backend before they take effect.
+
+## How we plan to make money
+
+The plan is a platform fee on successful jobs, earned by making the transaction safer and clearer for both sides, not by confusing anyone. Home repair and cleaning is recurring demand in a dense city. If NestScout earns real trust job after job, that trust compounds into something much bigger than any single booking. No fake workers, ratings, prices, or wait times, ever: what the app shows has to be real, or clearly marked as not available yet.
 
 ## Status
 
-**Phase 0 — production fix and foundation hardening.** The Expo app and the Supabase Edge workflow exist, but the product is not store-ready until backend smoke checks, release build/export checks, and TestFlight / Play internal validation pass with honest evidence. Durable build history: [`docs/progress-log.md`](docs/progress-log.md).
+**Pre-revenue, Phase 0**: building toward the first real, honestly-verified transaction. Build history: [`docs/progress-log.md`](docs/progress-log.md).
 
-## Runtime
+## Read more
 
-```text
-Expo React Native app
-  -> Supabase Auth
-  -> Supabase Edge Function `mobile-api`   (the production mobile API boundary)
-  -> Supabase DB / RPC / Storage / Realtime
-  -> server-side AI + external providers
-```
-
-The mobile app never calls AI providers directly, holds no server secrets, and never mutates workflow-sensitive state on its own — everything money- or workflow-impacting goes through the Edge function.
-
-## Repository
-
-```text
-apps/
-  mobile/    Expo SDK / React Native app (Expo Router) — the primary customer + worker client
-  api/       Next.js — reference / parity / admin / support surface (NOT the mobile runtime)
-packages/
-  shared/    shared constants, contracts, schemas, generated DB types, tests
-supabase/
-  functions/mobile-api/   production Edge runtime for mobile workflow APIs
-  migrations/             database schema, RLS, RPC, storage, hardening
-governance/  the rule stack agents follow (routers + critical / RULES / STRUCTURES / design / skills / Plan)
-docs/        durable feature, ops, design, and historical notes (incl. progress-log.md)
-```
-
-Monorepo: **Turborepo + pnpm workspaces** — `@nestscout/mobile`, `@nestscout/api`, `@nestscout/shared`.
-
-## Quickstart
-
-Requires Node and **pnpm 10.16.1** (via Corepack).
-
-```bash
-pnpm install
-
-pnpm type-check     # turbo type-check across all workspaces
-pnpm test           # turbo test
-pnpm lint           # turbo lint
-pnpm build          # turbo build
-
-pnpm --filter @nestscout/mobile start   # run the Expo app (expo start)
-pnpm --filter @nestscout/api dev         # run the Next.js reference/admin surface
-```
-
-Mobile is tested with **jest-expo + React Native Testing Library**; the api with **Vitest**. Store builds go through **EAS** (`testflight`, `play:internal` scripts in `apps/mobile`).
-
-## Kael & the agentic workflow
-
-Kael is the product's AI co-worker and the default workflow actor: intake, diagnosis, price analysis, market check, worker brief, support, and orchestration. Kael changes money-impacting state **only** through server-side validated `KaelAutonomyDecision` objects — never from raw model output or client code. Every price estimate carries the required Vietnamese disclaimer, and data is never faked (real empty states instead of mock numbers).
-
-## Working in this repo
-
-This repository is built largely by AI coding agents (Claude Code, Codex) acting as the technical co-founder, plus human review. The operating rules are a small **hub-and-spoke** stack — start at the router and read only the spoke your task needs:
-
-- **`CLAUDE.md`** / **`AGENTS.md`** — routers: task → which governance file to read.
-- **`governance/critical.md`** — execution contract (preflight, gates, review, protocol index).
-- **`governance/RULES.md`** — non-negotiable product / security / runtime rules.
-- **`governance/STRUCTURES.md`** (+ `governance/structures/*`) — workflow, taxonomy, state machines, backend contracts.
-- **`governance/design.md`** (+ `governance/design/*`) — UI / motion / glass / mascot design system.
-- **`governance/skills.md`**, **`governance/Plan.md`** — coding behavior + the rolling plan.
-
-## Conventions
-
-- User-facing copy is **Vietnamese-first** (English only via the in-app VI/EN switch); code, comments, and docs are English.
-- Supported services are **exactly six**: electrical, plumbing, cleaning, HVAC/indoor air, upholstery care, and handyman/minor installation — no scope creep, no fake workers/prices/ratings.
-- Every change is gated: tests pass, type-check passes, review passes, with honest evidence — no false "done".
-- React Native (`apps/mobile`) is the primary product surface; Next.js (`apps/api`) is reference/admin/support only unless explicitly assigned.
+- The full plain-language explainer, covering the problem, the business model, and why this can become a large business: [`DOCUMENT.md`](DOCUMENT.md)
+- How the engineering side is organized (architecture, governance rules): [`CLAUDE.md`](CLAUDE.md)
