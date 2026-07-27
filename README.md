@@ -17,8 +17,8 @@ When something breaks at home, most people don't know what's actually wrong, wha
 ## How it works
 
 1. The customer describes the problem to **Kael**, NestScout's AI assistant, with text and photos.
-2. Kael asks follow-up questions and estimates a fair price range against the local market.
-3. A verified worker is matched and takes the job. The customer can track progress the whole way.
+2. Kael asks follow-up questions, then either estimates a fair price range backed by real market evidence, or says honestly that it doesn't have enough evidence yet.
+3. A verified worker is proposed; once the customer confirms, the job is assigned, and the customer can track progress the whole way.
 4. If the worker finds something different once on site, the scope change is explained and confirmed, not silently applied.
 5. The job closes with evidence: photos, status history, and the chat log, not just a handshake.
 
@@ -35,4 +35,4 @@ The plan is a platform fee on successful jobs, earned by making the transaction 
 ## Read more
 
 - The full plain-language explainer, covering the problem, the business model, and why this can become a large business: [`DOCUMENT.md`](DOCUMENT.md)
-- How the engineering side operates (architecture, rules, how to run the code): [`CLAUDE.md`](CLAUDE.md)
+- How the engineering side is organized (architecture, governance rules): [`CLAUDE.md`](CLAUDE.md)

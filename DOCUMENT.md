@@ -220,7 +220,7 @@ Nó có thể trở thành business 100M+ USD vì:
 - Niềm tin có giá trị: khách hàng sẵn sàng trả phí cho sự an tâm, minh bạch, và bảo vệ.
 - Thợ tốt cần nguồn việc ổn định: nếu matching tốt, thợ có thể kiếm đều hơn.
 - Dữ liệu thật tạo lợi thế: bằng chứng từ công việc thật giúp cải thiện định giá, matching, chất lượng, và vận hành.
-- Có thể mở rộng có kiểm soát: sau khi một thành phố và ba dịch vụ đầu tiên chạy tốt, mô hình có thể mở sang nhiều quận, thành phố, dịch vụ, và đối tác.
+- Có thể mở rộng có kiểm soát: sau khi một thành phố và sáu nhóm dịch vụ hiện tại chạy tốt, mô hình có thể mở sang nhiều quận, thành phố, dịch vụ, và đối tác.
 
 Nhưng scale phải được kiếm bằng chất lượng thật.
 
@@ -312,12 +312,10 @@ Admin: người vận hành, kiểm tra, và xử lý tình huống rủi ro.
 
 ## 19. Niềm Tin Cốt Lõi
 
-NestScout không phải một app đặt thợ khác giữa hàng chục cái tên tương tự.
+NestScout không phải người đầu tiên đưa dịch vụ nhà ở lên app. bTaskee, JupViec, Rada, và các tên khác đã chứng minh thị trường này có thật, và đã định hình những gì một app dịch vụ nhà ở tốt cần có: ước tính giá trước khi đặt, thợ được xác minh, đánh giá, kênh hỗ trợ.
 
-Thị trường dịch vụ nhà ở hiện nay gần như không có ai giải quyết đúng bài toán niềm tin: giá mập mờ, thợ không được xác minh, không ai chịu trách nhiệm khi có tranh chấp. Đó là một khoảng trống thật sự lớn, chưa ai chiếm lĩnh: một Đại Dương Xanh cho bất kỳ ai dám xây nó một cách nghiêm túc.
+NestScout học đúng những gì đã được kiểm chứng đó. Nhưng NestScout đặt cược vào phần khó hơn và ít ai làm triệt để: biến mọi bước có thể gây tranh chấp (đổi phạm vi, xác nhận hoàn tất, thanh toán) thành một bước có bằng chứng và xác nhận rõ ràng, không có ngoại lệ, không có dữ liệu giả để lấp chỗ trống khi chưa đủ thông tin.
 
-NestScout xây chính xác thứ thị trường đang thiếu: một hệ thống giúp khách mô tả đúng vấn đề, hiểu giá hợp lý trước khi đặt, làm việc với thợ đã được xác minh, xử lý phát sinh minh bạch, và giữ đủ bằng chứng để cả hai bên đều được bảo vệ.
-
-Đây không phải một tính năng phụ để cạnh tranh. Đây là toàn bộ lý do NestScout tồn tại, và là lợi thế đối thủ khó sao chép được: niềm tin không thể giả, chỉ có thể xây thật, từng giao dịch một.
+Đây không phải một tính năng phụ để cạnh tranh. Đây là toàn bộ lý do NestScout tồn tại, và là lợi thế khó sao chép nhanh: kỷ luật này phải được xây từng dòng code, từng giao dịch một, không thể vá thêm sau.
 
 Nếu làm được điều đó lặp đi lặp lại, NestScout không dừng lại ở một app dịch vụ chung cư tại TP.HCM. NestScout trở thành hạ tầng niềm tin cho toàn bộ thị trường dịch vụ nhà ở đô thị.
