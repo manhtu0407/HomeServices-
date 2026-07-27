@@ -1083,7 +1083,7 @@ describe('prototype runtime cleanup', () => {
     expect(restoredWorker).toContain('export function WorkerHomeSurface')
     expect(restoredWorkerDock).toContain('export function WorkerRebuildDockOverlay')
     expect(restoredWorkerDock).toContain('export function WorkerDockLayoutProvider')
-    expect(restoredWorker).toContain('worker-v5-screen-1.1-worker-home')
+    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('worker-v5-screen-1.1-worker-home')
     expect(restoredWorkerDock).toContain('worker-v5-dock-overlay')
     expect(exists('components/rebuild/rebuild-surfaces.tsx')).toBe(false)
     expect(restoredSources).not.toContain("from '../customer-surfaces'")
@@ -1183,7 +1183,7 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('export function WorkerChatSurface')
     expect(src).toContain('export function WorkerEarningsSurface')
     expect(src).toContain('export function WorkerProfileSurface')
-    expect(workerV5).toContain('testID="worker-v5-screen-1.1-worker-home"')
+    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('testID="worker-v5-screen-1.1-worker-home"')
     expect(workerV5).toContain('testID={`worker-v5-screen-${screen.id}`}')
     expect(workerDock).toContain('export function WorkerRebuildDockOverlay')
   })
@@ -1238,7 +1238,14 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     const customerHistoryView = read('components/customer/v21/service-history-surface.tsx')
     const customerChatAura = read('components/customer/v21/chat-surfaces.tsx')
     const workerAura = read('components/worker/ui/aura-surfaces.tsx')
-    const workerFlow = read('components/worker/worker-v5-flow.tsx')
+    // Must stay the composition root PLUS the surfaces extracted out of it: the
+    // negative assertions below would silently stop covering extracted code otherwise.
+    const workerFlow = [
+      read('components/worker/worker-v5-flow.tsx'),
+      read('components/worker/home/screen-surfaces.tsx'),
+      read('components/worker/chat/orb-screen-surfaces.tsx'),
+      read('components/worker/chat/kael-body-surfaces.tsx'),
+    ].join('\n')
 
     expect(theme).toContain("bg: '#F1FAF8'")
     expect(theme).toContain("canvas: '#F1FAF8'")
@@ -1329,7 +1336,7 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(workerFlow).toContain('reduceTransparency={glass.reduceTransparency}')
     expect(workerFlow).toContain('scope={formulaPageAuraTarget.scope}')
     expect(workerFlow).toContain('testID={formulaPageAuraTarget.testID}')
-    expect(workerFlow).toContain('<WorkerV5HomeAuraBackground reduceTransparency={glass.reduceTransparency} />')
+    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('<WorkerV5HomeAuraBackground reduceTransparency={glass.reduceTransparency} />')
     expect(workerFlow).toContain('scope="KaelOrbCustomerPage"')
     expect(workerFlow).toContain('reduceTransparency={reduceTransparency}')
     expect(workerFlow).toContain('testID="worker-v5-kael-orb-background-mint-aura"')

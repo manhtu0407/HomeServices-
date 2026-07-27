@@ -241,6 +241,9 @@ export const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  sectionStack: {
+    gap: 14,
+  },
   srOnlyText: {
     height: 0,
     opacity: 0,
