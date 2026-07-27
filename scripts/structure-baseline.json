@@ -1,7 +1,6 @@
 {
   "maxLines": 800,
   "grandfatheredOversize": {
-    "apps/mobile/components/customer/booking-wizard.tsx": 1954,
     "apps/mobile/components/customer/kael-chat/agentic-parts.tsx": 1196,
     "apps/mobile/components/customer/kael-chat/styles.ts": 1510,
     "apps/mobile/components/customer/kael-chat/thread.tsx": 999,
@@ -9,15 +8,16 @@
     "apps/mobile/components/prototypes/client-icon-image-prototype.tsx": 993,
     "apps/mobile/components/ui/floating-glass-tab-bar.tsx": 1050,
     "apps/mobile/components/ui/kael-primitives.tsx": 1103,
-    "apps/mobile/components/worker/worker-v5-flow.tsx": 7525,
+    "apps/mobile/components/worker/worker-v5-flow-styles.ts": 2462,
+    "apps/mobile/components/worker/worker-v5-flow.tsx": 1453,
     "apps/mobile/lib/api-types.ts": 866,
     "apps/mobile/lib/frontend-workflow-provider.tsx": 1833,
     "packages/shared/src/mobile-workflow.ts": 1241,
+    "supabase/functions/_shared/domain.ts": 814,
     "supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts": 1059,
     "supabase/functions/mobile-api/_shared/router.ts": 2534,
     "supabase/functions/mobile-api/_shared/router/routes.ts": 802,
-    "supabase/functions/mobile-api/_shared/services/workers.service.ts": 808,
-    "supabase/functions/_shared/domain.ts": 814
+    "supabase/functions/mobile-api/_shared/services/workers.service.ts": 808
   },
   "grandfatheredDupTypes": {
     "TransitionResult": [
