@@ -212,7 +212,7 @@ export function HomeStorytellingCard({ language, reduceTransparency, tokens }: H
 
 const styles = StyleSheet.create({
   background: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   connectorTrack: {
     borderRadius: 999,
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     aspectRatio: 4,
   },
   formulaMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   stepBadge: {
