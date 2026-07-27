@@ -15,13 +15,13 @@ type ReduceMotionAwareEntranceViewProps = {
 
 export function reduceMotionAwarePressStyle(pressed: boolean, reduceMotion: boolean): ViewStyle | null {
   if (!pressed || reduceMotion) return null
-  return { transform: [{ scale: motionTokens.press.scale }] }
+  return { transform: [{ scale: motionTokens.feedback.scale }] }
 }
 
 export function ReduceMotionAwareEntranceView({
   children,
   delayMs = 0,
-  distanceY = motionTokens.entrance.translateY,
+  distanceY = motionTokens.route.translateY,
   pointerEvents,
   style,
   testID,
@@ -35,14 +35,11 @@ export function ReduceMotionAwareEntranceView({
     opacity.value = fadeIn ? 0 : 1
     translateY.value = reduceMotion ? 0 : distanceY
 
-    const duration = motionDuration(motionTokens.entrance.durationMs, reduceMotion)
+    const duration = motionDuration(motionTokens.route.durationMs, reduceMotion)
     if (fadeIn) opacity.value = withDelay(reduceMotion ? 0 : delayMs, withTiming(1, { duration }))
     translateY.value = reduceMotion
       ? withTiming(0, { duration })
-      : withDelay(delayMs, withSpring(0, {
-          damping: motionTokens.sheet.damping,
-          stiffness: motionTokens.sheet.stiffness,
-        }))
+      : withDelay(delayMs, withSpring(0, motionTokens.route.spring))
 
     return () => {
       cancelAnimation(opacity)

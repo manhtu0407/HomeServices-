@@ -123,6 +123,8 @@ For tiny tasks, keep this status short. Do not skip it.
 
 Use this index when deciding what to run.
 
+For UI, motion, glass, or other design tasks, route through `governance/design/runtime.md` first (the design router: design task-class → skill + preflight + gates), then apply the protocols below.
+
 | If the task is... | Required protocols |
 |---|---|
 | Every task or mission | `kael-subagent-orchestration`, then the smallest sufficient task-specific protocols |

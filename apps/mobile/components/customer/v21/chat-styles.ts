@@ -33,11 +33,11 @@ export const customerV21ChatStyles = StyleSheet.create({
     width: 20,
   },
   chatComposerAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   chatModeSwitchAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   chatComposer: {

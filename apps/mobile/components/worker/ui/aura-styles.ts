@@ -2,23 +2,23 @@ import { StyleSheet } from 'react-native'
 
 export const styles = StyleSheet.create({
   workerV5FormulaMintCardAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   workerV5FormulaMintCardAuraOpaque: {
     backgroundColor: '#EFFAF7',
   },
   successCheckFill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   successEmblemAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.66,
     zIndex: 0,
   },
   workerV5CustomerCaseWideMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   workerV5CustomerCaseWorkCardAura: {
@@ -30,7 +30,7 @@ export const styles = StyleSheet.create({
     zIndex: 0,
   },
   workerV5CustomerMapMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   workerV5CustomerZipMintAura: {

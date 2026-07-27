@@ -14,7 +14,7 @@ The docs are a supporting stack in authority order. Read only what the task need
 | Hard product / security / AI / data / runtime / language rules | `governance/RULES.md` |
 | Workflow, taxonomy, state machines, backend contracts, "do not build now" | `governance/STRUCTURES.md` |
 | Per-task execution protocol (diagnose, tdd, architecture, ai-boundary, supabase, security, ui, docs) | `governance/critical.md` §1 index -> `governance/protocols/*` (load only the selected protocol) |
-| UI, motion, glass, mascot, design tokens, screen recipes | `governance/design.md` (-> `governance/design/*`) |
+| UI, motion, glass, mascot, design tokens, screen recipes | `governance/design/runtime.md` (design router -> skill + gates), then `governance/design.md` (-> `governance/design/*`) |
 | Coding behavior (assumptions, simplicity, surgical diffs) | `governance/skills.md` or the `karpathy-guidelines` skill |
 | Writing code — comments, headers, notes (always on) | `governance/protocols/code-hygiene.md` (skill: `kael-core-hygiene`) |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |

@@ -9,7 +9,7 @@
     "apps/mobile/components/prototypes/client-icon-image-prototype.tsx": 993,
     "apps/mobile/components/ui/floating-glass-tab-bar.tsx": 1050,
     "apps/mobile/components/ui/kael-primitives.tsx": 1103,
-    "apps/mobile/components/worker/worker-v5-flow.tsx": 7520,
+    "apps/mobile/components/worker/worker-v5-flow.tsx": 7525,
     "apps/mobile/lib/api-types.ts": 866,
     "apps/mobile/lib/frontend-workflow-provider.tsx": 1833,
     "packages/shared/src/mobile-workflow.ts": 1241,

@@ -213,7 +213,7 @@ export function WorkerV5KaelChatScreenAura({
 
   const fillId = `workerV5KaelChatScreenAura${scope}`
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFillObject} testID={testID}>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill} testID={testID}>
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
           <RadialGradient cx={351} cy={84.4} gradientUnits="userSpaceOnUse" id={fillId} rx={300} ry={260}>
