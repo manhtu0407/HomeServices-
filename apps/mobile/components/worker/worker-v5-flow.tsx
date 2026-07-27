@@ -1,4 +1,4 @@
-import { memo, type ComponentType, type ReactNode, type SetStateAction, useCallback, useMemo, useState } from 'react'
+import { type ComponentType, type ReactNode, type SetStateAction, useCallback, useMemo, useState } from 'react'
 import { useEffect, useRef } from 'react'
 import { Image } from 'expo-image'
 import {
@@ -37,7 +37,7 @@ import {
   type PendingClientRequestRef,
 } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
+import { isWorkerActiveExecutionStatus, isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { mergeJobMediaRefsNewestFirst } from '@/lib/job-media-preview'
 import {
@@ -65,6 +65,7 @@ import {
   resolveWorkerV5Language,
   resolveWorkerV5ScreenId,
   routeForWorkerV5Screen,
+  validatedWorkerV5JobId,
   workerV5Routes,
 } from './dock/routing'
 import {
@@ -76,6 +77,7 @@ import {
   WorkerV5OpportunityCard,
   WorkerV5OpportunityEmptyCard,
 } from './home/opportunity-surfaces'
+import { styles as opportunityStyles } from './home/opportunity-styles'
 import {
   WorkerV5BankTaxBody,
   WorkerV5ProfileOverviewBody,
@@ -115,7 +117,7 @@ import {
   WorkerV5CompletionSubmittedBody,
 } from './jobs/completion-bodies'
 import { WorkerV5CompletionEvidenceScreenBody } from './jobs/completion-evidence-screen-body'
-import { WorkerV5RouteEtaBody } from './jobs/active-body-surfaces'
+import { WorkerV5InProgressTravelGate, WorkerV5RouteEtaBody } from './jobs/active-body-surfaces'
 import { WorkerV5EvidenceTray } from './jobs/evidence-surfaces'
 import {
   WorkerV5EarningsOverviewBody,
@@ -338,17 +340,21 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const language = resolveWorkerV5Language(params)
   const auditRole = firstRouteParam(params.ns_audit_role)
+  const routeJobIdParam = firstRouteParam(params.job_id)
   const routeLanguage = firstRouteParam(params.ns_worker_lang)
-  const workerRouteContext = useMemo(() => ({
-    ns_audit_role: auditRole,
-    ns_worker_lang: routeLanguage,
-  }), [auditRole, routeLanguage])
   const screenId = screen.id
   const screenPrimaryNext = screen.primaryNext
   const onDockScroll = useDockScrollHandler()
   const router = useRouter()
   const { session, signOut } = useAuth()
   const runtime = useFrontendWorkflow()
+  const routeJobId = validatedWorkerV5JobId(routeJobIdParam)
+  const currentJobId = runtime.state.deal?.broadcast?.jobId ?? runtime.state.deal?.id
+  const workerRouteContext = useMemo(() => ({
+    job_id: routeJobId ?? currentJobId,
+    ns_audit_role: auditRole,
+    ns_worker_lang: routeLanguage,
+  }), [auditRole, currentJobId, routeJobId, routeLanguage])
   const [actionBusy, setActionBusy] = useState(false)
   const actionBusyRef = useRef(false)
   const { height } = useWindowDimensions()
@@ -462,6 +468,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === id) ?? null)
   }
   const openJobChat = () => router.replace('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal' as never)
+  const openActiveJobKaelChat = () => router.replace('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake' as never)
   const runWorkerAction = async (action: () => Promise<boolean>) => {
     if (actionBusyRef.current) return
     actionBusyRef.current = true
@@ -515,6 +522,11 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       : usesCompletionSubmittedHandoff && runtime.state.deal && workflowDestinationScreenId !== '2.11-completion-submitted'
         ? workflowStatus === 'repairing' ? '2.10-completion-evidence' : workflowDestinationScreenId
         : null
+
+  useEffect(() => {
+    if (!routeJobId || currentJobId === routeJobId) return
+    void runtime.actions.hydrateRemoteJobById(routeJobId)
+  }, [currentJobId, routeJobId, runtime.actions])
 
   useEffect(() => {
     if (!screenRedirectId) return
@@ -693,17 +705,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             >
               <Text style={styles.headerMenuText}>?</Text>
             </Pressable>
-          ) : usesCaseExecutionHandoff ? null : screen.id === '4.2-ledger-detail' ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Mở yêu cầu rút tiền' : 'Open payout request'}
-              accessibilityRole="button"
-              onPress={() => openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === '4.3-payout-request') ?? nextScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-ledger-export"
-            >
-              <Text style={styles.headerMenuText}>↗</Text>
-            </Pressable>
-          ) : screen.id === '4.3-payout-request' ? (
+          ) : usesCaseExecutionHandoff || screen.id === '4.2-ledger-detail' ? null : screen.id === '4.3-payout-request' ? (
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Hỏi Kael về rút tiền' : 'Ask Kael about payout'}
               accessibilityRole="button"
@@ -751,6 +753,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           actionBusy={actionBusy}
           avatarUploadBusy={avatarUploadBusy}
           language={language}
+          navigateActiveJobChat={openActiveJobKaelChat}
           navigateJobChat={openJobChat}
           navigateNext={() => openScreen(nextScreen)}
           navigateToScreen={openScreenById}
@@ -836,6 +839,9 @@ function WorkerV5HomeScreenSurface({
   const scoreStroke = score == null ? 0 : (score / 100) * scoreCircumference
   const dataPending = textByLanguage(language, 'Chờ dữ liệu', 'Data pending')
   const jobsEmpty = textByLanguage(language, 'Chưa có', 'None')
+  const workflowStatus = deal?.backendStatus ?? deal?.status ?? null
+  const hasIncomingOffer = deal?.status === 'broadcasting' && deal.broadcast?.status === 'sent'
+  const hasActiveWork = Boolean(workflowStatus && isWorkerOperationalJobStatus(workflowStatus))
   const pendingSettlementCount = !earnings
     ? dataPending
     : earnings.pending_payment_count > 0
@@ -846,11 +852,11 @@ function WorkerV5HomeScreenSurface({
   const stats = [
     {
       label: textByLanguage(language, 'Cơ hội mới', 'New opportunities'),
-      value: deal?.broadcast ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
+      value: hasIncomingOffer ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
     },
     {
       label: textByLanguage(language, 'Việc đang chạy', 'Active work'),
-      value: deal ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
+      value: hasActiveWork ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
     },
     {
       label: textByLanguage(language, 'Chờ đối soát', 'Settlement'),
@@ -860,18 +866,32 @@ function WorkerV5HomeScreenSurface({
   const quickActions = [
     {
       details: [
-        { glyph: 'document' as const, label: textByLanguage(language, 'Cơ hội thật', 'Real opportunities') },
-        { glyph: 'check' as const, label: textByLanguage(language, 'Bạn quyết định', 'You decide') },
+        {
+          glyph: 'document' as const,
+          label: hasActiveWork
+            ? textByLanguage(language, 'Công việc đang chạy', 'Active work')
+            : textByLanguage(language, 'Cơ hội thật', 'Real opportunities'),
+        },
+        {
+          glyph: 'check' as const,
+          label: hasActiveWork
+            ? localizedStatusLabel(deal?.status ?? null, language)
+            : textByLanguage(language, 'Bạn quyết định', 'You decide'),
+        },
       ],
       icon: workerV5HomeQuickIconAssets.incoming,
-      meta: deal?.broadcast
+      meta: hasIncomingOffer
         ? textByLanguage(language, '1 cơ hội đã lọc', '1 filtered opportunity')
+        : hasActiveWork
+          ? localizedStatusLabel(deal?.status ?? null, language)
         : runtime.workerJobsHydrated
           ? textByLanguage(language, 'Chưa có cơ hội thật', 'No real opportunity')
           : dataPending,
       targetId: '2.1-opportunity-inbox' as const,
       tone: 'document' as const,
-      title: textByLanguage(language, 'Nhận việc ngay', 'Open work'),
+      title: hasActiveWork
+        ? textByLanguage(language, 'Tiếp tục công việc', 'Continue work')
+        : textByLanguage(language, 'Nhận việc ngay', 'Open work'),
     },
     {
       details: [
@@ -879,8 +899,10 @@ function WorkerV5HomeScreenSurface({
         { glyph: 'shield' as const, label: textByLanguage(language, 'Không tự nhận', 'No auto-accept') },
       ],
       icon: workerV5HomeQuickIconAssets.kael,
-      meta: deal?.broadcast
+      meta: hasIncomingOffer
         ? textByLanguage(language, 'Giải thích cơ hội hiện tại', 'Explain the current opportunity')
+        : hasActiveWork
+          ? textByLanguage(language, 'Hỗ trợ công việc đang chạy', 'Support active work')
         : runtime.workerJobsHydrated
           ? textByLanguage(language, 'Lọc theo kỹ năng & khu vực', 'Filter by skills and area')
           : dataPending,
@@ -906,17 +928,17 @@ function WorkerV5HomeScreenSurface({
     {
       details: [
         { glyph: 'document' as const, label: textByLanguage(language, 'Đối soát', 'Settlement') },
-        { glyph: 'money' as const, label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
+        { glyph: 'money' as const, label: textByLanguage(language, 'Tài khoản thợ', 'Worker account') },
       ],
       icon: workerV5HomeQuickIconAssets.earnings,
       meta: !earnings
         ? dataPending
-        : earnings.net_earnings > 0
-          ? formatVnd(earnings.net_earnings, language)
+        : earnings.available_balance > 0
+          ? formatVnd(earnings.available_balance, language)
           : textByLanguage(language, 'Chưa có đối soát', 'No settlement yet'),
       targetId: '4.1-earnings-overview' as const,
       tone: 'money' as const,
-      title: textByLanguage(language, 'Thu nhập', 'Earnings'),
+      title: textByLanguage(language, 'Tài khoản thợ', 'Worker account'),
     },
   ]
   return (
@@ -1026,6 +1048,7 @@ function WorkerV5Body({
   actionBusy,
   avatarUploadBusy,
   language,
+  navigateActiveJobChat,
   navigateJobChat,
   navigateNext,
   navigateToScreen,
@@ -1041,6 +1064,7 @@ function WorkerV5Body({
   actionBusy: boolean
   avatarUploadBusy: boolean
   language: AppLanguage
+  navigateActiveJobChat: () => void
   navigateJobChat: () => void
   navigateNext: () => void
   navigateToScreen: (id: WorkerV5ScreenId) => void
@@ -1087,7 +1111,7 @@ function WorkerV5Body({
         <WorkerV5InProgressBody
           actionBusy={actionBusy}
           language={language}
-          navigateJobChat={navigateJobChat}
+          navigateJobChat={navigateActiveJobChat}
           onTravelAction={() => void runRouteAction()}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
@@ -1345,7 +1369,7 @@ function WorkerV5HomeBody({
     },
     {
       icon: 'scope' as const,
-      meta: deal ? deal.displayCode ?? deal.id : textByLanguage(language, 'Chưa có việc đang chạy', 'No active work'),
+      meta: deal ? workerV5DisplayCode(deal, language) ?? textByLanguage(language, 'Mã việc đang được đồng bộ', 'Work code is syncing') : textByLanguage(language, 'Chưa có việc đang chạy', 'No active work'),
       title: textByLanguage(language, 'Việc đang chạy', 'Active work'),
     },
   ]
@@ -1419,10 +1443,7 @@ function WorkerV5OpportunityInboxBody({
   const isCurrentMissionSelected = selectedMissionId === currentDeal?.id
   const openCurrentWork = () => {
     if (!currentDeal) return
-    const target = requireWorkerV5Screen(workerV5JobsDestinationScreenId(currentDeal))
-    const route = routeForWorkerV5Screen(target)
-    const shouldShowArrivalGate = currentDeal.status === 'arrived' && target.id === '2.7-in-progress'
-    router.replace((shouldShowArrivalGate ? `${route}&ns_arrival_gate=1` : route) as never)
+    router.replace(routeForWorkerV5Screen(requireWorkerV5Screen(workerV5JobsDestinationScreenId(currentDeal))) as never)
   }
   const openKaelIntake = () => router.replace('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake' as never)
 
@@ -1443,15 +1464,22 @@ function WorkerV5OpportunityInboxBody({
           <WorkerV5OpportunityEmptyCard jobIcon={workerV5Icons.jobs} language={language} reduceTransparency={reduceTransparency} tab="matches" />
         )}
       </View>
+      {currentDeal && !isCurrentMissionSelected ? (
+        <Text style={opportunityStyles.opportunitySelectionHint} testID="worker-v5-opportunity-selection-hint">
+          {textByLanguage(language, 'Ch\u1ecdn c\u00f4ng vi\u1ec7c ph\u00eda tr\u00ean \u0111\u1ec3 xem chi ti\u1ebft tr\u01b0\u1edbc khi ti\u1ebfp t\u1ee5c.', 'Select the job above to review its details before continuing.')}
+        </Text>
+      ) : null}
       <WorkerV5ActionRail
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
         primaryButtonFill={WorkerV5PrimaryButtonFill}
         zipAura={WorkerV5CustomerZipMintAura}
         onPrimary={isCurrentMissionSelected ? openCurrentWork : undefined}
         onSecondary={openKaelIntake}
-        primary={isIncoming
-          ? textByLanguage(language, 'Xem & nhận việc', 'Review and accept')
-          : textByLanguage(language, 'Tiếp tục công việc', 'Continue work')}
+        primary={isCurrentMissionSelected
+          ? isIncoming
+            ? textByLanguage(language, 'Xem & nhận việc', 'Review and accept')
+            : textByLanguage(language, 'Tiếp tục công việc', 'Continue work')
+          : textByLanguage(language, 'Ch\u1ecdn c\u00f4ng vi\u1ec7c \u0111\u1ec3 ti\u1ebfp t\u1ee5c', 'Select a job to continue')}
         primaryDisabled={!currentDeal || !isCurrentMissionSelected}
         primaryTestID="worker-v5-primary-action"
         primaryVariant={isCurrentMissionSelected ? "source" : "default"}
@@ -1489,7 +1517,7 @@ function WorkerV5OfferDetailBody({
     decisionBusyRef.current = true
     setAcceptBusy(true)
     try {
-      const ok = await runtime.actions.workerAcceptBroadcast()
+      const ok = await runtime.actions.workerAcceptBroadcast(deal?.broadcast?.jobId)
       if (ok) router.replace('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait' as never)
     } finally {
       decisionBusyRef.current = false
@@ -1722,7 +1750,7 @@ function WorkerV5InProgressBody({
   })
   const evidenceCount = visibleEvidenceUrls.filter((url): url is string => Boolean(url)).length
   const progressItems = briefLines.map((line, index) => ({
-    meta: index === briefLines.length - 1 ? textByLanguage(language, 'Đang kiểm', 'Active') : textByLanguage(language, 'Đã đọc', 'Read'),
+    meta: index === briefLines.length - 1 ? textByLanguage(language, 'Đang áp dụng', 'Active') : textByLanguage(language, 'Đã đọc', 'Read'),
     state: index === briefLines.length - 1 ? 'active' as const : 'done' as const,
     title: line,
   }))
@@ -2036,7 +2064,7 @@ function WorkerV5InProgressBody({
         : deal?.status === 'inspecting'
           ? {
               disabled: phaseActionBusy,
-              label: textByLanguage(language, 'Bắt đầu sửa chữa', 'Start work'),
+              label: textByLanguage(language, 'Bắt đầu công việc', 'Start work'),
               onPress: () => void advanceWorkPhase(),
               testID: 'worker-v5-phase-advance-action',
             }
@@ -2059,6 +2087,7 @@ function WorkerV5InProgressBody({
         onArrivalAcknowledged={() => router.replace('/(worker)/jobs?ns_worker_screen=2.7-in-progress' as never)}
         onTravelAction={onTravelAction}
         reduceTransparency={reduceTransparency}
+        routeMapComponent={WorkerV5RouteMapStage}
       />
     )
   }
@@ -2145,52 +2174,6 @@ function WorkerV5InProgressBody({
     </View>
   )
 }
-
-const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate({
-  actionBusy,
-  deal,
-  language,
-  navigateJobChat,
-  onArrivalAcknowledged,
-  onTravelAction,
-  reduceTransparency,
-}: {
-  actionBusy: boolean
-  deal: LocalDeal | null
-  language: AppLanguage
-  navigateJobChat: () => void
-  onArrivalAcknowledged: () => void
-  onTravelAction: () => void
-  reduceTransparency: boolean
-}) {
-  const routePreview = useWorkerV5RoutePreview(deal, true)
-  const confirmArrivalGate = () => {
-    if (deal?.status === 'arrived') {
-      onArrivalAcknowledged()
-      return
-    }
-    onTravelAction()
-  }
-  return (
-    <WorkerV5RouteEtaBody
-      actionBusy={actionBusy}
-      caseWideAura={WorkerV5CustomerCaseWideMintAura}
-      deal={deal}
-      etaSummaryComponent={WorkerV5EtaSummaryCard}
-      language={language}
-      navigateJobChat={navigateJobChat}
-      onPrimary={confirmArrivalGate}
-      primaryLabel={deal?.status === 'worker_matched'
-        ? textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
-        : textByLanguage(language, 'Xác nhận đã tới', 'Confirm arrival')}
-      primaryFill={WorkerV5PrimaryButtonFill}
-      reduceTransparency={reduceTransparency}
-      routeMapComponent={WorkerV5RouteMapStage}
-      routePreview={routePreview}
-      zipAura={WorkerV5CustomerZipMintAura}
-    />
-  )
-})
 
 function WorkerV5ScopeChangeBody({
   language,
@@ -2469,6 +2452,9 @@ function WorkerV5KaelOrbScreenSurface({
   surfaceStyle: StyleProp<ViewStyle>
   workerJobsHydrated: boolean
 }) {
+  const hasActiveExecutionCase = isWorkerActiveExecutionStatus(
+    deal?.backendStatus ?? deal?.status ?? null,
+  )
   const modeOptions = [
     {
       description: textByLanguage(language, 'Hỏi đáp và hỗ trợ nhanh', 'Quick questions and support'),
@@ -2476,8 +2462,12 @@ function WorkerV5KaelOrbScreenSurface({
       value: 'normal' as const,
     },
     {
-      description: textByLanguage(language, 'Lọc và chuẩn bị cơ hội phù hợp', 'Filter and prepare matching work'),
-      label: textByLanguage(language, 'Nhận việc', 'Job intake'),
+      description: hasActiveExecutionCase
+        ? textByLanguage(language, 'Hỗ trợ theo công việc đang chạy', 'Support the active job')
+        : textByLanguage(language, 'Lọc và chuẩn bị cơ hội phù hợp', 'Filter and prepare matching work'),
+      label: hasActiveExecutionCase
+        ? textByLanguage(language, 'Công việc', 'Work case')
+        : textByLanguage(language, 'Nhận việc', 'Job intake'),
       value: 'intake' as const,
     },
   ]
@@ -4703,21 +4693,21 @@ function getWorkerV5PrimaryAction(
       }
     case '4.2-ledger-detail':
       return {
-        disabled: busy,
-        label: textByLanguage(language, 'Mở yêu cầu rút tiền', 'Open payout request'),
-        onPress: navigateNext,
+        disabled: true,
+        label: textByLanguage(language, 'Chuyển ra ngân hàng chưa khả dụng', 'Bank payout unavailable'),
+        onPress: () => undefined,
       }
     case '4.3-payout-request':
       return {
-        disabled: busy,
-        label: textByLanguage(language, 'Xem tài khoản nhận tiền', 'Review payout account'),
-        onPress: navigateNext,
+        disabled: true,
+        label: textByLanguage(language, 'Quản lý tài khoản chưa khả dụng', 'Account management unavailable'),
+        onPress: () => undefined,
       }
     case '4.4-payout-method':
       return {
-        disabled: busy,
-        label: textByLanguage(language, 'Quay lại yêu cầu rút tiền', 'Back to payout request'),
-        onPress: navigateNext,
+        disabled: true,
+        label: textByLanguage(language, 'Quản lý tài khoản chưa khả dụng', 'Account management unavailable'),
+        onPress: () => undefined,
       }
     case '5.1-profile-overview':
       return {
@@ -4826,9 +4816,9 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
         ? textByLanguage(language, 'Kael giải thích cơ hội dang có', 'Kael explains the current opportunity')
         : textByLanguage(language, 'Chưa có cơ hội thật để lọc', 'No real opportunity to filter')
     case '4.1-earnings-overview':
-      return runtime.workerEarnings?.net_earnings
-        ? textByLanguage(language, 'Thu nhập đã đối soát', 'Settled earnings')
-        : textByLanguage(language, 'Chưa có dữ liệu thu nhập thật', 'No real earnings data yet')
+      return runtime.workerEarnings?.available_balance
+        ? textByLanguage(language, 'Số dư đã SePay xác thực', 'SePay-verified balance')
+        : textByLanguage(language, 'Chưa có số dư thật', 'No real balance yet')
     case '4.2-ledger-detail':
       return textByLanguage(language, 'Chi tiết đối soát đã ghi nhận', 'Recorded ledger detail')
     case '4.3-payout-request':

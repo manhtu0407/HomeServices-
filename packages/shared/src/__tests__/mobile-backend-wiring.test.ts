@@ -360,7 +360,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(worker).toContain('worker-v5-scope-change-send-action')
   })
 
-  it('hydrates time-sensitive broadcasts before job state without overwriting explicit no-worker fallback', () => {
+  it('reconciles time-sensitive broadcasts with job state without overwriting active work', () => {
     const provider = readFrontendWorkflowLayer()
 
     expect(provider).toContain('if (isAppForeground()) void workerRefresh()')
@@ -374,11 +374,12 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain("dispatch({ type: 'mark_remote_broadcast_expired' })")
     expect(provider).toContain('isStaleBroadcastError')
     expect(provider).not.toContain("job.status !== 'cancelled' && job.status !== 'reviewed'")
-    const activeJobSyncIndex = provider.indexOf('const activeJob = jobs.data.jobs.find((job) => isWorkerCurrentJobStatus(job.status))')
-    const broadcastSyncIndex = provider.indexOf("if (nextBroadcast) {\n      dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })")
+    expect(provider).toContain('const [broadcasts, jobs] = await Promise.all([broadcastsRequest, jobsRequest])')
+    const activeJobSyncIndex = provider.indexOf('if (activeJob) {')
+    const broadcastSyncIndex = provider.indexOf('else if (nextBroadcast) {')
     expect(activeJobSyncIndex).toBeGreaterThan(-1)
     expect(broadcastSyncIndex).toBeGreaterThan(-1)
-    expect(activeJobSyncIndex).toBeGreaterThan(broadcastSyncIndex)
+    expect(activeJobSyncIndex).toBeLessThan(broadcastSyncIndex)
 
     const operationalStatusSet = provider.match(/WORKER_OPERATIONAL_JOB_STATUSES = new Set<JobStatus>\(\[([\s\S]*?)\]\)/)?.[1] ?? ''
     expect(operationalStatusSet).toContain("'completed_by_worker'")

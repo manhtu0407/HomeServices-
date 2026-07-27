@@ -328,6 +328,8 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-active-case-area-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-active-case-estimate-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-active-case')).not.toHaveTextContent(/4\.9|rating|--/)
+    expect(screen.getByLabelText(/^Bước \d+ trên \d+$/)).toBeOnTheScreen()
+    expect(screen.queryByLabelText(/^Step \d+ of \d+$/)).toBeNull()
 
     fireEvent.press(screen.getByTestId('customer-v21-active-case-open'))
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')

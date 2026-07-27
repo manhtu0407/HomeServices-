@@ -111,7 +111,7 @@ describe('database enum constants', () => {
 describe('business constants', () => {
   it('keeps platform fee constants within documented limits', () => {
     expect(PLATFORM_FEE_CUSTOMER).toBe(0.075)
-    expect(PLATFORM_FEE_WORKER).toBe(0.1)
+    expect(PLATFORM_FEE_WORKER).toBe(0.15)
     expect(PLATFORM_FEE_CUSTOMER).toBeLessThanOrEqual(0.1)
     expect(PLATFORM_FEE_WORKER).toBeLessThanOrEqual(0.15)
   })

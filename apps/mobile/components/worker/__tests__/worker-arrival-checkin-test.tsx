@@ -237,6 +237,7 @@ function buildWorkflow(deal: LocalDeal) {
           updated_at: '2026-07-12T00:00:00.000Z',
         },
       })),
+      hydrateRemoteJobById: jest.fn(async () => true),
       proposeScopeChangeFromKaelIncident: jest.fn(async () => true),
       requestScopeChange: jest.fn(async () => true),
       requestWorkerCancellation: jest.fn(async () => true),
@@ -384,7 +385,7 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.queryByTestId('worker-v5-route-map-image-loading')).toBeNull()
   })
 
-  it('shows the one-time arrival gate before execution when resuming an arrived job', async () => {
+  it('uses a legacy arrival-gate link only to open the check-in step for an arrived job', async () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress', ns_arrival_gate: '1' }
     buildWorkflow(buildInProgressDeal())
 
@@ -393,6 +394,8 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.getByTestId('worker-v5-route-map-panel')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-eta-summary-card')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-work-progress-board')).toBeNull()
+    expect(screen.getByText('Mở bước check-in')).toBeOnTheScreen()
+    expect(screen.queryByText('Xác nhận đã tới')).toBeNull()
     fireEvent.press(screen.getByTestId('worker-v5-route-arrival-action'))
 
     await waitFor(() => {
@@ -413,20 +416,30 @@ describe('Worker V5 arrival check-in', () => {
     })
   })
 
-  it('opens the one-time arrival gate when continuing an already-arrived job', async () => {
-    mockRouteParams = {}
-    buildWorkflow(buildInProgressDeal())
+it('opens an already-arrived job at its real check-in step', async () => {
+  mockRouteParams = {}
+  buildWorkflow(buildInProgressDeal())
 
     render(<WorkerJobsSurface />)
     fireEvent.press(screen.getByTestId('worker-v5-opportunity-card'))
     fireEvent.press(screen.getByTestId('worker-v5-primary-action'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_arrival_gate=1')
-    })
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
   })
+})
 
-  it('records arrival before continuing to the in-progress screen', async () => {
+it('labels an arrived job by its real workflow state instead of as a new offer', () => {
+  mockRouteParams = {}
+  buildWorkflow(buildInProgressDeal())
+
+  render(<WorkerJobsSurface />)
+
+  expect(screen.getByText('Thợ đã đến')).toBeTruthy()
+  expect(screen.queryByText('Đã gửi tới bạn')).toBeNull()
+})
+
+it('records arrival before continuing to the in-progress screen', async () => {
     render(<WorkerJobsSurface />)
 
     fireEvent.press(screen.getByTestId('worker-v5-route-arrival-action'))
@@ -467,11 +480,23 @@ describe('Worker V5 arrival check-in', () => {
     expect(screen.queryByText('Tiến độ công việc')).toBeNull()
     expect(screen.getByTestId('worker-v5-work-progress-board')).toBeOnTheScreen()
     expect(screen.getByText('Bảng công việc').parent?.children).toHaveLength(1)
+    expect(screen.getByText('Đang áp dụng')).toBeOnTheScreen()
+    expect(screen.queryByText('Đang kiểm')).toBeNull()
     expect(screen.queryByTestId('worker-v5-evidence-picker-actions')).toBeNull()
     expect(screen.queryByTestId('worker-v5-in-progress-camera-action')).toBeNull()
     expect(screen.queryByTestId('worker-v5-in-progress-library-action')).toBeNull()
     expect(screen.getByTestId('worker-v5-in-progress-scope-action')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-in-progress-kael-action')).toBeOnTheScreen()
+  })
+
+  it('opens case-bound Kael from an active job instead of generic chat', () => {
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+    buildWorkflow(buildInProgressDeal())
+
+    render(<WorkerJobsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-in-progress-kael-action'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake')
   })
 
   it('attaches lobby evidence before marking the worker as checked in', async () => {
@@ -534,6 +559,42 @@ describe('Worker V5 arrival check-in', () => {
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('inspecting')
+    })
+  })
+
+  it('uses a scope-neutral work label after inspection', () => {
+    buildWorkflow({
+      ...buildInProgressDeal(),
+      backendStatus: 'inspecting',
+      status: 'inspecting',
+    })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByText('Bắt đầu công việc')).toBeOnTheScreen()
+    expect(screen.queryByText('Bắt đầu sửa chữa')).toBeNull()
+  })
+
+  it('rehydrates the routed job after a worker preview reload', async () => {
+    const jobId = '11111111-1111-4111-8111-111111111111'
+    const deal = {
+      ...buildInProgressDeal(),
+      backendStatus: 'completed_by_worker' as const,
+      id: jobId,
+      status: 'completed_by_worker' as const,
+    }
+    deal.broadcast = deal.broadcast ? { ...deal.broadcast, jobId } : null
+    buildWorkflow(deal)
+    mockWorkflowValue.state.deal = null
+    mockRouteParams = {
+      job_id: jobId,
+      ns_worker_screen: '2.11-completion-submitted',
+    }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.hydrateRemoteJobById).toHaveBeenCalledWith(jobId)
     })
   })
 

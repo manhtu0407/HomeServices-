@@ -20,6 +20,7 @@ const CUSTOMER_CASE_ACTIVE_STATUSES: readonly JobStatus[] = [
   "completed_by_worker",
   "confirmed_by_customer",
   "payment_pending",
+  "paid",
 ];
 
 const CUSTOMER_ASSISTANT_JOB_SELECT =

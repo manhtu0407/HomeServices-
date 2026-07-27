@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  readJsonTextRequestBounded,
   readJsonRequestBounded,
   RequestJsonError,
 } from '../../../../../supabase/functions/_shared/request-json'
@@ -14,6 +15,12 @@ function jsonRequest(body: BodyInit, headers: HeadersInit = {}) {
 }
 
 describe('Edge bounded JSON request guard', () => {
+  it('preserves the exact JSON text for signed provider callbacks', async () => {
+    const rawBody = '{ "id": 92704, "code": "NS1234567890ABCDEF12345678" }\n'
+    await expect(readJsonTextRequestBounded(jsonRequest(rawBody), 1024))
+      .resolves.toBe(rawBody)
+  })
+
   it('parses standard and structured-suffix JSON media types', async () => {
     await expect(readJsonRequestBounded(jsonRequest('{"ok":true}'), 1024))
       .resolves.toEqual({ ok: true })

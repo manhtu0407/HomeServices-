@@ -365,6 +365,11 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.streamKaelChatTurn(ctx, route.sessionId, input.data);
     }
+    case "kael.chat.evidenceStream": {
+      const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.streamKaelChatEvidence(ctx, route.sessionId, input.data);
+    }
     case "kael.chat.turn": {
       const input = kaelChatTurnSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

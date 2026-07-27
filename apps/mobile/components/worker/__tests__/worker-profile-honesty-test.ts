@@ -34,6 +34,9 @@ const approvedProfile: WorkerProfileResponse = {
 }
 
 const earnings: EarningsResponse = {
+  available_balance: 450_000,
+  current_commission_level: 1,
+  current_commission_rate_bps: 1500,
   worker_id: 'worker-1',
   total_jobs_paid: 2,
   gross_earnings: 500_000,
@@ -41,6 +44,8 @@ const earnings: EarningsResponse = {
   net_earnings: 450_000,
   pending_payment_count: 0,
   pending_payment_amount: 0,
+  on_hold_amount: 0,
+  recent_transactions: [],
   daily_earnings: [],
   from_date: '2026-07-01',
   to_date: '2026-07-14',
@@ -59,7 +64,7 @@ describe('worker profile data honesty', () => {
     const rows = workerV5PayoutRuleRows(earnings, 'vi')
     const visible = rows.map((row) => `${row.title} ${row.status} ${row.meta}`).join(' ')
 
-    expect(visible).toMatch(/Thu nhập ròng đã ghi nhận/i)
+    expect(visible).toMatch(/Số dư đã SePay xác thực/i)
     expect(visible).toMatch(/Chuyển tiền chưa khả dụng/i)
     expect(visible).toMatch(/Chứng từ chưa khả dụng/i)
     expect(visible).not.toMatch(/Số dư có thể rút|Có thể rút/i)

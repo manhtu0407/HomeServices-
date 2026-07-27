@@ -102,6 +102,13 @@ export const styles = StyleSheet.create({
     maxWidth: 136,
     minWidth: 114,
   },
+  opportunitySelectionHint: {
+    color: color.text.secondary,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
+    paddingHorizontal: 4,
+  },
   opportunityTextColumn: {
     flex: 1,
     justifyContent: 'center',

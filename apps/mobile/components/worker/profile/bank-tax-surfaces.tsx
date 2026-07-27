@@ -48,13 +48,13 @@ export function WorkerV5BankTaxHero({
 }) {
   const hasBank = Boolean(profile?.bank_account_masked)
   const bankLogo = resolveWorkerV5BankLogo(profile?.bank_name)
-  const recordedNetEarnings = earnings
+  const verifiedInAppBalance = earnings
     ? textByLanguage(
       language,
-      `Thu nhập ròng đã ghi nhận: ${formatVnd(earnings.net_earnings, language)}`,
-      `Recorded net earnings: ${formatVnd(earnings.net_earnings, language)}`,
+      `Số dư SePay đã xác thực trong ứng dụng: ${formatVnd(earnings.available_balance, language)}`,
+      `SePay-verified in-app balance: ${formatVnd(earnings.available_balance, language)}`,
     )
-    : textByLanguage(language, 'Chưa có dữ liệu thu nhập đã ghi nhận', 'No recorded earnings data')
+    : textByLanguage(language, 'Chưa có dữ liệu số dư đã ghi có', 'No credited balance data')
   const identity = profile?.legal_name?.trim() || textByLanguage(language, 'Chưa có tên pháp lý', 'No legal name')
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-bank-tax-hero">
@@ -76,7 +76,7 @@ export function WorkerV5BankTaxHero({
         <Text style={styles.earningsHeroMeta} numberOfLines={2} testID="worker-v5-bank-tax-account">
           {hasBank ? `${profile?.bank_account_masked} · ${identity}` : textByLanguage(language, 'Chưa có tài khoản ngân hàng được ghi nhận trong hồ sơ.', 'No bank account is recorded in the profile.')}
         </Text>
-        <Text style={styles.earningsHeroMeta} numberOfLines={2} testID="worker-v5-bank-tax-available">{recordedNetEarnings}</Text>
+        <Text style={styles.earningsHeroMeta} numberOfLines={2} testID="worker-v5-bank-tax-available">{verifiedInAppBalance}</Text>
       </View>
     </View>
   )

@@ -22,8 +22,13 @@ type EarningsAggregateRow = {
   gross_earnings: number
   platform_fee_total: number
   net_earnings: number
+  available_balance: number
   pending_payment_count: number
   pending_payment_amount: number
+  on_hold_amount: number
+  current_commission_level: number
+  current_commission_rate_bps: number
+  recent_transactions: unknown
   daily_earnings: unknown
   from_date: string | null
   to_date: string | null
@@ -36,8 +41,13 @@ function aggregateRow(overrides: Partial<EarningsAggregateRow> = {}): EarningsAg
     gross_earnings: 0,
     platform_fee_total: 0,
     net_earnings: 0,
+    available_balance: 0,
     pending_payment_count: 0,
     pending_payment_amount: 0,
+    on_hold_amount: 0,
+    current_commission_level: 1,
+    current_commission_rate_bps: 1500,
+    recent_transactions: [],
     daily_earnings: [],
     from_date: null,
     to_date: null,
@@ -67,8 +77,13 @@ describe('computeEarnings', () => {
       grossEarnings: 0,
       platformFeeTotal: 0,
       netEarnings: 0,
+      availableBalance: 0,
       pendingPaymentCount: 0,
       pendingPaymentAmount: 0,
+      onHoldAmount: 0,
+      currentCommissionLevel: 1,
+      currentCommissionRateBps: 1500,
+      recentTransactions: [],
       dailyEarnings: [],
       fromDate: null,
       toDate: null,
@@ -82,8 +97,10 @@ describe('computeEarnings', () => {
       gross_earnings: 1_400_000,
       platform_fee_total: 95_000,
       net_earnings: 1_305_000,
+      available_balance: 1_305_000,
       pending_payment_count: 3,
       pending_payment_amount: 1_200_000,
+      on_hold_amount: 125_000,
     }))
 
     const result = await computeEarnings(supabase, 'worker-1')
@@ -93,8 +110,10 @@ describe('computeEarnings', () => {
       grossEarnings: 1_400_000,
       platformFeeTotal: 95_000,
       netEarnings: 1_305_000,
+      availableBalance: 1_305_000,
       pendingPaymentCount: 3,
       pendingPaymentAmount: 1_200_000,
+      onHoldAmount: 125_000,
     })
   })
 
@@ -204,7 +223,33 @@ describe('computeEarnings', () => {
     })
   })
 
-  it('forwards actor, range, and the governed fee rate to the aggregate RPC', async () => {
+  it('maps per-job ledger entries without exposing payment or bank data', async () => {
+    const supabase = makeSupabase(aggregateRow({
+      recent_transactions: [{
+        available_at: '2026-07-15T08:30:00+00:00',
+        commission_level: 2,
+        commission_rate_bps: 1200,
+        display_code: 'NS-WORK-001',
+        gross_amount: 500_000,
+        job_id: 'job-1',
+        payment_state: 'available',
+        platform_fee: 60_000,
+        recorded_at: '2026-07-15T08:30:00+00:00',
+        worker_net: 440_000,
+      }],
+    }))
+
+    await expect(computeEarnings(supabase, 'worker-1')).resolves.toMatchObject({
+      recentTransactions: [{
+        jobId: 'job-1',
+        paymentState: 'available',
+        commissionRateBps: 1200,
+        workerNet: 440_000,
+      }],
+    })
+  })
+
+  it('forwards actor and range while fee calculation stays server-side', async () => {
     const from = '2026-06-01T00:00:00.000Z'
     const to = '2026-06-30T23:59:59.999Z'
     const supabase = makeSupabase(aggregateRow({
@@ -220,7 +265,6 @@ describe('computeEarnings', () => {
       p_worker_id: 'worker-1',
       p_from: from,
       p_to: to,
-      p_platform_fee_rate: 0.1,
     })
   })
 
@@ -231,7 +275,6 @@ describe('computeEarnings', () => {
 
     expect(supabase.rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
       p_worker_id: 'worker-1',
-      p_platform_fee_rate: 0.1,
     })
   })
 

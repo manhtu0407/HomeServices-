@@ -47,7 +47,7 @@ export type WorkflowPhaseBlockedReason =
   | 'waiting_for_customer_worker_confirmation'
   | 'chat_requires_real_job'
   | 'chat_send_closed'
-  | 'kael_scope_decision_required'
+  | 'customer_scope_change_confirmation_required'
   | 'completion_evidence_required'
   | 'kael_completion_review_required'
   | 'customer_completion_confirmation_required'
@@ -225,12 +225,12 @@ const PHASE_CONTEXT_BY_PHASE = Object.freeze({
     nextExpectedEvent: 'worker_completed',
   },
   scope_change_pending: {
-    title: text('Kael đang xét thay đổi phạm vi', 'Kael is reviewing scope'),
-    intent: text('Thợ chỉ gửi lý do và ảnh; quyết định phạm vi/giá không nằm ở màn hình nhập liệu.', 'The worker only submits reason and photos; scope and price decisions are not made on the input screen.'),
+    title: text('Đề xuất đổi phạm vi chờ khách xác nhận', 'Scope proposal awaiting customer confirmation'),
+    intent: text('Kael tính lại đề xuất từ bằng chứng thợ gửi; khách xác nhận, giữ phạm vi cũ hoặc khiếu nại trong ứng dụng.', 'Kael recomputes the proposal from worker evidence; the customer confirms, keeps the original scope, or appeals in the app.'),
     sourceOfTruth: 'scope_change',
     primaryArtifact: 'scope_change',
-    blockedReason: 'kael_scope_decision_required',
-    nextExpectedEvent: 'kael_decided_scope_change',
+    blockedReason: 'customer_scope_change_confirmation_required',
+    nextExpectedEvent: 'scope_change_decided',
   },
   completed_by_worker: {
     title: text('Thợ đã gửi bằng chứng hoàn tất', 'Worker submitted completion evidence'),
@@ -531,9 +531,9 @@ export function workflowEventLabel(event: WorkflowEvent, locale: WorkflowLocale)
     customer_confirmed_worker: text('Khách xác nhận thợ', 'Customer confirms worker'),
     worker_status_advanced: text('Cập nhật trạng thái', 'Status advances'),
     scope_change_requested: text('Thợ yêu cầu đổi phạm vi', 'Worker requests scope change'),
-    scope_change_decided: text('Đã quyết định thay đổi phạm vi', 'Scope change decided'),
+    scope_change_decided: text('Khách đã quyết định đề xuất đổi phạm vi', 'Customer decided the scope proposal'),
     worker_completed: text('Thợ gửi hoàn tất', 'Worker completes'),
-    kael_decided_scope_change: text('Kael quyết định phạm vi', 'Kael decides scope'),
+    kael_decided_scope_change: text('Kael đã tính lại đề xuất đổi phạm vi', 'Kael recomputes the scope proposal'),
     kael_confirmed_completion: text('Kael xác nhận hoàn tất', 'Kael confirms completion'),
     customer_confirmed_completion: text('Khách xác nhận hoàn tất', 'Customer confirms completion'),
     kael_decided_payment: text('Kael quyết định thanh toán', 'Kael decides payment'),
@@ -555,7 +555,7 @@ export function workflowBlockedReasonLabel(reason: WorkflowPhaseBlockedReason, l
     waiting_for_customer_worker_confirmation: text('Chờ khách xác nhận thợ', 'Waiting for customer worker confirmation'),
     chat_requires_real_job: text('Chat cần công việc thật', 'Chat needs a real job'),
     chat_send_closed: text('Chat chỉ còn đọc lại', 'Chat is read-only now'),
-    kael_scope_decision_required: text('Kael giữ quyền phạm vi', 'Kael owns scope decision'),
+    customer_scope_change_confirmation_required: text('Chờ khách xác nhận đề xuất đổi phạm vi', 'Waiting for customer scope confirmation'),
     completion_evidence_required: text('Cần bằng chứng hoàn tất', 'Completion evidence required'),
     kael_completion_review_required: text('Kael rà soát hoàn tất', 'Kael reviews completion'),
     customer_completion_confirmation_required: text('Chờ khách xác nhận hoàn tất', 'Waiting for customer completion confirmation'),

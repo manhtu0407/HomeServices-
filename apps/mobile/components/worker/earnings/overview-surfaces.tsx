@@ -14,17 +14,23 @@ import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './overview-styles'
 
-type WorkerV5EarningsDailyRow = {
-  date: string
-  net_earnings: number
-  paid_job_count: number
+type WorkerV5EarningsTransaction = {
+  job_id: string
+  display_code: string | null
+  payment_state: 'pending' | 'available' | 'on_hold' | 'reversed'
+  worker_net: number
+  commission_level: number
+  commission_rate_bps: number
 }
 
 type WorkerV5EarningsOverview = {
-  daily_earnings?: WorkerV5EarningsDailyRow[] | null
-  gross_earnings?: number | null
+  available_balance?: number | null
+  current_commission_level?: number | null
+  current_commission_rate_bps?: number | null
   net_earnings?: number | null
+  on_hold_amount?: number | null
   pending_payment_amount?: number | null
+  recent_transactions?: WorkerV5EarningsTransaction[] | null
 } | null | undefined
 
 type WorkerV5EarningsAuraComponent = ComponentType<{
@@ -33,6 +39,29 @@ type WorkerV5EarningsAuraComponent = ComponentType<{
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
+}
+
+function formatCommissionRate(rateBps: number | null | undefined) {
+  if (typeof rateBps !== 'number' || !Number.isInteger(rateBps) || rateBps < 0) return null
+  const whole = Math.floor(rateBps / 100)
+  const decimal = rateBps % 100
+  return decimal === 0 ? `${whole}%` : `${whole}.${String(decimal).padStart(2, '0')}%`
+}
+
+function paymentStateLabel(
+  paymentState: WorkerV5EarningsTransaction['payment_state'],
+  language: AppLanguage,
+) {
+  switch (paymentState) {
+    case 'available':
+      return textByLanguage(language, 'Đã ghi có', 'Available')
+    case 'pending':
+      return textByLanguage(language, 'Chờ SePay xác thực', 'Awaiting SePay')
+    case 'on_hold':
+      return textByLanguage(language, 'Tạm giữ đối soát', 'On hold')
+    case 'reversed':
+      return textByLanguage(language, 'Đã đảo giao dịch', 'Reversed')
+  }
 }
 
 export function WorkerV5EarningsHero({
@@ -48,37 +77,39 @@ export function WorkerV5EarningsHero({
   reduceTransparency: boolean
   walletIcon: ImageSourcePropType
 }) {
-  const hasGross = Boolean(earnings?.gross_earnings && earnings.gross_earnings > 0)
+  const availableBalance = earnings?.available_balance ?? 0
+  const pendingAmount = earnings?.pending_payment_amount ?? 0
+  const onHoldAmount = earnings?.on_hold_amount ?? 0
+  const hasAvailableBalance = availableBalance > 0
+  const commissionRate = formatCommissionRate(earnings?.current_commission_rate_bps)
   const pending = textByLanguage(language, 'Chờ dữ liệu', 'Pending')
   const amount = !earnings
-    ? textByLanguage(language, 'Chờ dữ liệu thu nhập', 'Earnings data pending')
-    : hasGross
-      ? formatVndDong(earnings.gross_earnings ?? 0, language)
-      : textByLanguage(language, 'Chưa có thu nhập thật', 'No real income yet')
+    ? textByLanguage(language, 'Chờ dữ liệu số dư', 'Balance data pending')
+    : hasAvailableBalance
+      ? formatVndDong(availableBalance, language)
+      : textByLanguage(language, 'Chưa có số dư khả dụng', 'No available balance yet')
   const stats = [
     {
-      label: textByLanguage(language, 'Đã thanh toán', 'Settled'),
+      label: textByLanguage(language, 'Đã ghi có', 'Available'),
       value: !earnings
         ? pending
-        : earnings.net_earnings && earnings.net_earnings > 0
-          ? formatCompactVnd(earnings.net_earnings, language)
+        : hasAvailableBalance
+          ? formatCompactVnd(availableBalance, language)
           : textByLanguage(language, 'Chưa có', 'None'),
     },
     {
-      label: textByLanguage(language, 'Đang chờ', 'Pending'),
+      label: textByLanguage(language, 'Chờ SePay', 'Awaiting SePay'),
       value: !earnings
         ? pending
-        : earnings.pending_payment_amount && earnings.pending_payment_amount > 0
-          ? formatCompactVnd(earnings.pending_payment_amount, language)
+        : pendingAmount > 0
+          ? formatCompactVnd(pendingAmount, language)
           : textByLanguage(language, 'Không có', 'None'),
     },
     {
-      label: textByLanguage(language, 'Thu nhập ròng', 'Net earnings'),
-      value: !earnings
+      label: textByLanguage(language, 'Hoa hồng hiện tại', 'Current commission'),
+      value: !earnings || !commissionRate
         ? pending
-        : earnings.net_earnings && earnings.net_earnings > 0
-          ? formatCompactVnd(earnings.net_earnings, language)
-          : textByLanguage(language, 'Chưa có', 'None'),
+        : `${commissionRate}${earnings.current_commission_level ? ` · ${textByLanguage(language, `Bậc ${earnings.current_commission_level}`, `Level ${earnings.current_commission_level}`)}` : ''}`,
     },
   ]
   return (
@@ -94,10 +125,10 @@ export function WorkerV5EarningsHero({
             <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-earnings-amount">{amount}</Text>
             <Text style={styles.earningsHeroMeta} numberOfLines={2}>
               {!earnings
-                ? textByLanguage(language, 'Đang chờ nguồn thu nhập thật', 'Waiting for the real earnings source')
-                : hasGross
-                  ? textByLanguage(language, 'Đã ghi sổ thu nhập', 'Income ledger recorded')
-                  : textByLanguage(language, 'Chờ hệ thống ghi sổ thu nhập', 'Waiting for system income ledger')}
+                ? textByLanguage(language, 'Đang chờ nguồn số dư thật', 'Waiting for the real balance source')
+                : hasAvailableBalance
+                  ? textByLanguage(language, 'Số dư trong tài khoản thợ trên ứng dụng', 'Worker in-app account balance')
+                  : textByLanguage(language, 'Chỉ SePay xác thực mới ghi có số dư', 'Only verified SePay payments credit the balance')}
             </Text>
             <WorkerV5DetailRail
               items={!earnings
@@ -105,14 +136,14 @@ export function WorkerV5EarningsHero({
                   { glyph: 'sync', label: textByLanguage(language, 'Chờ nguồn thật', 'Waiting for real source') },
                   { glyph: 'shield', label: textByLanguage(language, 'Chỉ hiện số liệu đã ghi sổ', 'Recorded figures only') },
                 ]
-                : hasGross
+                : hasAvailableBalance
                 ? [
-                  { glyph: 'document', label: textByLanguage(language, 'Đã ghi sổ', 'Recorded') },
-                  { glyph: 'money', label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
+                  { glyph: 'check', label: textByLanguage(language, 'Đã ghi có trong ứng dụng', 'Credited in app') },
+                  { glyph: 'shield', label: textByLanguage(language, 'Chưa chuyển ra ngân hàng', 'Not paid out to bank') },
                 ]
                 : [
-                  { glyph: 'sync', label: textByLanguage(language, 'Chờ đối soát', 'Waiting settlement') },
-                  { glyph: 'shield', label: textByLanguage(language, 'Số liệu thật', 'Real figures only') },
+                  { glyph: 'sync', label: pendingAmount > 0 ? textByLanguage(language, 'Chờ SePay xác thực', 'Awaiting SePay') : textByLanguage(language, 'Chờ đối soát', 'Waiting settlement') },
+                  { glyph: 'shield', label: onHoldAmount > 0 ? textByLanguage(language, 'Có khoản tạm giữ', 'Funds on hold') : textByLanguage(language, 'Số liệu thật', 'Real figures only') },
                 ]}
               testID="worker-v5-earnings-hero-detail"
             />
@@ -154,7 +185,7 @@ export function WorkerV5EarningsTransactionList({
   emptyStateIcon: ImageSourcePropType
   language: AppLanguage
   listAura: WorkerV5EarningsAuraComponent
-  recent: readonly WorkerV5EarningsDailyRow[]
+  recent: readonly WorkerV5EarningsTransaction[]
   reduceTransparency: boolean
 }) {
   return (
@@ -165,19 +196,23 @@ export function WorkerV5EarningsTransactionList({
         testID="worker-v5-earnings-transactions-formula-mint-aura"
       />
       {recent.length ? recent.map((row, index) => (
-        <View key={row.date} style={styles.earningsTransactionRow} testID={`worker-v5-earnings-transaction-${index}`}>
+        <View key={row.job_id} style={styles.earningsTransactionRow} testID={`worker-v5-earnings-transaction-${index}`}>
           <WorkerV5IntegratedIcon bleed={13} image={documentIcon} reduceTransparency={reduceTransparency} tone="document" variant="panel" />
           <View style={styles.earningsTransactionCopy}>
-            <Text style={styles.earningsTransactionTitle} numberOfLines={1}>{row.date}</Text>
+            <Text style={styles.earningsTransactionTitle} numberOfLines={1}>
+              {row.display_code ?? textByLanguage(language, 'Giao dịch công việc', 'Job transaction')}
+            </Text>
             <WorkerV5DetailRail
               items={[
-                { glyph: 'document', label: textByLanguage(language, `${row.paid_job_count} việc`, `${row.paid_job_count} jobs`) },
-                { glyph: 'check', label: textByLanguage(language, 'Đã thanh toán', 'Settled') },
+                { glyph: row.payment_state === 'available' ? 'check' : 'sync', label: paymentStateLabel(row.payment_state, language) },
+                { glyph: 'money', label: textByLanguage(language, `Bậc ${row.commission_level} · phí ${formatCommissionRate(row.commission_rate_bps) ?? '—'}`, `Level ${row.commission_level} · fee ${formatCommissionRate(row.commission_rate_bps) ?? '—'}`) },
               ]}
               testID={`worker-v5-earnings-transaction-detail-${index}`}
             />
           </View>
-          <Text style={styles.earningsTransactionAmount} numberOfLines={2} testID={`worker-v5-earnings-transaction-amount-${index}`}>+{formatVndDong(row.net_earnings, language)}</Text>
+          <Text style={styles.earningsTransactionAmount} numberOfLines={2} testID={`worker-v5-earnings-transaction-amount-${index}`}>
+            {row.payment_state === 'available' ? '+' : ''}{formatVndDong(row.worker_net, language)}
+          </Text>
         </View>
       )) : (
         <View style={styles.earningsTransactionRow}>

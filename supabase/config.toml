@@ -386,6 +386,10 @@ deno_version = 2
 # stay consistent for React Native and future web clients.
 verify_jwt = false
 
+[functions.sepay-webhook]
+# HMAC is verified against the untouched raw request body before any database mutation.
+verify_jwt = false
+
 [functions.kael-media-retention]
 # Dedicated secret authentication is enforced inside the function so pg_cron
 # can call it without exposing a customer/admin JWT.

@@ -63,6 +63,7 @@ export type WorkerV5ScreenDefinition = {
 }
 
 export type WorkerV5RouteParams = {
+  job_id?: string | string[]
   ns_arrival_gate?: string | string[]
   ns_audit_role?: string | string[]
   ns_audit_surface?: string | string[]

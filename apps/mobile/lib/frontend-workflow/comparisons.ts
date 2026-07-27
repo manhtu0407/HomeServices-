@@ -69,8 +69,13 @@ export function sameWorkerEarnings(left: EarningsResponse | null, right: Earning
     && left.gross_earnings === right.gross_earnings
     && left.platform_fee_total === right.platform_fee_total
     && left.net_earnings === right.net_earnings
+    && left.available_balance === right.available_balance
     && left.pending_payment_count === right.pending_payment_count
     && left.pending_payment_amount === right.pending_payment_amount
+    && left.on_hold_amount === right.on_hold_amount
+    && left.current_commission_level === right.current_commission_level
+    && left.current_commission_rate_bps === right.current_commission_rate_bps
+    && sameWorkerRecentTransactions(left.recent_transactions, right.recent_transactions)
     && sameWorkerDailyEarnings(left.daily_earnings, right.daily_earnings)
     && left.from_date === right.from_date
     && left.to_date === right.to_date
@@ -189,6 +194,24 @@ function sameWorkerDailyEarnings(left: EarningsResponse['daily_earnings'] | null
       && item.platform_fee_total === next.platform_fee_total
       && item.net_earnings === next.net_earnings
       && item.paid_job_count === next.paid_job_count
+  })
+}
+
+function sameWorkerRecentTransactions(left: EarningsResponse['recent_transactions'] | null | undefined, right: EarningsResponse['recent_transactions'] | null | undefined) {
+  const leftItems = left ?? []
+  const rightItems = right ?? []
+  return leftItems.length === rightItems.length && leftItems.every((item, index) => {
+    const next = rightItems[index]
+    return item.job_id === next.job_id
+      && item.display_code === next.display_code
+      && item.payment_state === next.payment_state
+      && item.gross_amount === next.gross_amount
+      && item.platform_fee === next.platform_fee
+      && item.worker_net === next.worker_net
+      && item.commission_level === next.commission_level
+      && item.commission_rate_bps === next.commission_rate_bps
+      && item.recorded_at === next.recorded_at
+      && item.available_at === next.available_at
   })
 }
 

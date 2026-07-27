@@ -145,10 +145,9 @@ export function deriveCustomerKaelPresentation({
       ? localizedEvidencePrompt
       : artifactEvidencePrompt || localizedEvidencePrompt
     : undefined
-  const serverPriceReviewBlocked = artifactNextAction?.kind === 'escalate'
   const serverSafetyMessages = Array.isArray(diagnosisScope?.safety_flags)
     ? diagnosisScope.safety_flags.flatMap((flag: unknown) => {
-        if (!flag || typeof flag !== 'object') return []
+      if (!flag || typeof flag !== 'object') return []
         const code = (flag as { code?: unknown }).code
         return typeof code === 'string' && code.trim()
           ? [localizedCaseWorkSafetyMessage(code, language)]
@@ -160,6 +159,7 @@ export function deriveCustomerKaelPresentation({
     chat?.session.case_phase === 'offer_review' &&
     chat.session.status === 'estimate_ready' &&
     chat.session.next_action === 'estimate_ready'
+  const serverPriceReviewBlocked = artifactNextAction?.kind === 'escalate'
   const missingCaseWorkDeal = mode === 'case' && !deal && !workIntakeActive
   const routeDraftHasStructuredOutcome = Boolean(
     offerReviewActive ||

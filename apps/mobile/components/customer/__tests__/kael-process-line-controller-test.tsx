@@ -1,5 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native'
 
+import type { KaelChatProgress } from '@/lib/api-types'
+
 import {
   KAEL_COMPOSER_REPLY_REVEAL_MS,
   useKaelProcessLineController,
@@ -76,6 +78,71 @@ describe('customer Kael process-line controller', () => {
       await replyReveal
     })
     expect(settled).toBe(true)
+  })
+
+  it('uses actual evidence progress instead of advancing evidence lines on a timer', () => {
+    const { result } = renderHook(() => useKaelProcessLineController({
+      caseServiceLabel: null,
+      deal: null,
+      language: 'vi',
+      selectedService: 'plumbing',
+    }))
+
+    act(() => {
+      result.current.startEvidenceProcessLines({
+        hasVideo: true,
+        hasVoiceTranscript: true,
+        serviceType: 'plumbing',
+      })
+      jest.advanceTimersByTime(10_000)
+    })
+
+    expect(result.current.processLines?.scenarioId).toBe('evidence_check')
+    expect(result.current.processLines?.lines).toHaveLength(1)
+    expect(result.current.processLines?.lines[0]).toMatchObject({
+      status: 'running',
+      text: 'Đang chuẩn bị bằng chứng để gửi riêng tư.',
+    })
+
+    const progress: KaelChatProgress = {
+      current_stage: 'vision_analysis',
+      status: 'running',
+      progress: 0.4,
+      updated_at: '2026-07-27T04:00:00.000Z',
+    }
+    act(() => result.current.updateEvidenceProcessProgress(progress))
+
+    expect(result.current.processLines?.lines).toMatchObject([
+      { status: 'completed', text: 'Đang chuẩn bị bằng chứng để gửi riêng tư.' },
+      {
+        status: 'running',
+        text: 'Kael đang kiểm tra các khung hình đã tách từ video.',
+      },
+    ])
+  })
+
+  it('does not claim a voice transcript when this evidence submission has none', () => {
+    const { result } = renderHook(() => useKaelProcessLineController({
+      caseServiceLabel: null,
+      deal: null,
+      language: 'en',
+      selectedService: 'plumbing',
+    }))
+
+    act(() => {
+      result.current.startEvidenceProcessLines({ serviceType: 'plumbing' })
+      result.current.updateEvidenceProcessProgress({
+        current_stage: 'vision_analysis',
+        status: 'completed',
+        progress: 0.4,
+        updated_at: '2026-07-27T04:00:00.000Z',
+      })
+    })
+
+    expect(result.current.processLines?.lines.at(-1)).toMatchObject({
+      status: 'completed',
+      text: 'Kael recorded that no evidence was included this time.',
+    })
   })
 
   it('does not mistake a request for Vietnamese wording for a payment question', () => {

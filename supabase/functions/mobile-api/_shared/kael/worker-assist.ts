@@ -144,6 +144,26 @@ export async function runWorkerAssist(
     );
   }
 
+  if (conversationMode === "intake" && isWorkerPrematureScopeWorkRequest(input.question)) {
+    return workerScopeConfirmationAnswer(input.question, language);
+  }
+
+  if (
+    conversationMode === "intake" &&
+    input.job?.status === "arrived" &&
+    isWorkerPreCheckInBypassRequest(input.question)
+  ) {
+    return workerPreCheckInAnswer(input.question, language);
+  }
+
+  if (
+    conversationMode === "intake" &&
+    input.job?.status === "arrived" &&
+    isWorkerPrematureCompletionPaymentRequest(input.question)
+  ) {
+    return workerPrematureCompletionPaymentAnswer(input.question, language);
+  }
+
   const routes = circuitAwareProviderCandidatesForPurpose("worker_assist");
   let lastProviderFailure = "AI_UNAVAILABLE";
   const providerAttempts: WorkerAssistProviderAttempt[] = [];
@@ -584,6 +604,60 @@ function fallbackTextForLanguage(
   return language === "en" ? FALLBACK_TEXT_EN : FALLBACK_TEXT;
 }
 
+function workerScopeConfirmationAnswer(
+  question: string,
+  language: KaelPromptLanguage,
+): WorkerAssistAnswer {
+  return {
+    schema_version: "worker_assist_answer.v1",
+    text: language === "en"
+      ? "No. You may submit a scope-change proposal for Kael to review, but do not perform the extra work until the customer confirms that proposal in the app. Add photos when available."
+      : "Không. Bạn có thể gửi đề xuất đổi phạm vi để Kael kiểm tra, nhưng không được làm phần phát sinh cho đến khi khách xác nhận đề xuất đó trong ứng dụng. Thêm ảnh nếu có.",
+    session_title: buildWorkerKaelSessionTitle(question, null, language),
+    safety_notes: safetyNotesForLanguage(language),
+    redirect_scope_change: true,
+    fallback_used: false,
+    provider_attempts: [],
+    trace: [],
+  };
+}
+
+function workerPreCheckInAnswer(
+  question: string,
+  language: KaelPromptLanguage,
+): WorkerAssistAnswer {
+  return {
+    schema_version: "worker_assist_answer.v1",
+    text: language === "en"
+      ? "No. Before check-in, do not report an inspection, enter the apartment, or begin inspecting. Use the Check in with a lobby photo step in the app. After check-in, wait for the customer to authorize unit access in the app before inspecting; an off-platform message does not replace that authorization."
+      : "Không. Khi chưa có check-in, bạn không được báo đang kiểm tra, vào căn hộ hoặc bắt đầu kiểm tra. Hãy dùng bước Check-in bằng ảnh tại sảnh trong ứng dụng. Sau khi check-in, chờ khách xác nhận trong ứng dụng cho phép lên căn hộ trước khi kiểm tra; tin nhắn ngoài ứng dụng không thay thế bước xác nhận này.",
+    session_title: buildWorkerKaelSessionTitle(question, null, language),
+    safety_notes: safetyNotesForLanguage(language),
+    redirect_scope_change: false,
+    fallback_used: false,
+    provider_attempts: [],
+    trace: [],
+  };
+}
+
+function workerPrematureCompletionPaymentAnswer(
+  question: string,
+  language: KaelPromptLanguage,
+): WorkerAssistAnswer {
+  return {
+    schema_version: "worker_assist_answer.v1",
+    text: language === "en"
+      ? "No. You cannot report completion or open payment at this step. First complete the lobby-photo check-in, wait for the customer to authorize access to the unit, then inspect and perform only the confirmed scope. After the real work is complete, submit the result and evidence for the customer to review, then the customer confirms; only then can payment open."
+      : "Không. Bạn chưa thể báo hoàn thành hoặc mở thanh toán ở bước này. Trước hết hãy check-in bằng ảnh tại sảnh, chờ khách cho phép lên căn hộ, rồi kiểm tra và chỉ thực hiện công việc trong phạm vi đã xác nhận. Sau khi hoàn thành thực tế, bạn gửi kết quả và bằng chứng để khách xem, rồi khách xác nhận; chỉ khi đó thanh toán mới mở.",
+    session_title: buildWorkerKaelSessionTitle(question, null, language),
+    safety_notes: safetyNotesForLanguage(language),
+    redirect_scope_change: false,
+    fallback_used: false,
+    provider_attempts: [],
+    trace: [],
+  };
+}
+
 function safetyNotesForLanguage(language: KaelPromptLanguage) {
   return language === "en" ? DEFAULT_SAFETY_NOTES_EN : DEFAULT_SAFETY_NOTES;
 }
@@ -605,6 +679,36 @@ function topicForQuestion(question: string) {
 function shouldRedirectToScopeChange(question: string) {
   return /scope|ph[a\u1ea1]m vi|phat sinh|ph[a\u00e1]t sinh|b\u1ed5 sung|th[e\u00ea]m vi[e\u1ec7]c|them viec|gi[a\u00e1]|price/i
     .test(question);
+}
+
+function isWorkerPrematureScopeWorkRequest(question: string) {
+  const normalized = question.toLowerCase();
+  const scopeSignal = /scope|ph[aạ]m vi|phat sinh|ph[aá]t sinh|b[ổo] sung|th[eê]m vi[eệ]c|extra work/i.test(normalized);
+  const earlyWorkSignal = /tr[ướo]c khi|ch[uư]a.*(?:kh[aá]ch|customer)|l[aà]m lu[oô]n|l[aà]m ngay|do it now|start.*(?:before|without)|perform.*(?:before|without)/i.test(normalized);
+  return scopeSignal && earlyWorkSignal;
+}
+
+function isWorkerPreCheckInBypassRequest(question: string) {
+  const normalized = question
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[đĐ]/gu, "d")
+    .toLowerCase();
+  const mentionsCheckIn = /\b(?:check[- ]?in|anh check[- ]?in|anh tai sanh|lobby photo)\b/.test(normalized);
+  const asksToBypass = /\b(?:chua(?:\s+co)?|khong\s+co|bo\s+qua|skip|bypass|without)\b/.test(normalized);
+  const asksToContinue = /\b(?:bao.*kiem tra|vao.*can ho|bat dau.*kiem tra|kiem tra truoc|report.*inspect|enter.*(?:apartment|unit)|start.*inspect)\b/.test(normalized);
+  return mentionsCheckIn && asksToBypass && asksToContinue;
+}
+
+function isWorkerPrematureCompletionPaymentRequest(question: string) {
+  const normalized = question
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[đĐ]/gu, "d")
+    .toLowerCase();
+  const completionOrPayment = /\b(?:bao hoan thanh|hoan thanh|thanh toan|tra tien|complete(?:d|ion)?|payment|pay)\b/.test(normalized);
+  const earlySignal = /\b(?:chua(?: co)?|bo\s+qua|skip|bypass|truoc khi|before|without|ngay|now)\b/.test(normalized);
+  return completionOrPayment && earlySignal;
 }
 
 function buildWorkerAssistContext(input: WorkerAssistInput) {

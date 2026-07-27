@@ -29,9 +29,11 @@ Current business model:
 ```text
 Commission model
 -
-|- customer pays service price + 7.5% platform/service protection fee
-|- worker receives service price minus about 10% platform fee
-|- platform gross around 15% total before AI/payment/support costs
+|- customer pays the explicitly confirmed final service price through the configured payment rail
+|- Level 1 worker commission is 15% of that frozen service price
+|- higher worker levels may receive a lower commission only from a server-managed policy row with stronger qualification thresholds
+|- the job and worker ledger freeze the applied rate when payment intent is created; later tier changes never rewrite that transaction
+|- no additional customer platform fee or bank payout may be implied unless a separately approved payment policy and provider flow exist
 ```
 
 Example only:
@@ -39,9 +41,9 @@ Example only:
 ```text
 Example job: 300,000 VND
 -
-|- customer pays about 322,500 VND
-|- worker receives about 270,000 VND
-|- platform gross about 52,500 VND
+|- customer pays 300,000 VND
+|- Level 1 worker in-app credit is 255,000 VND
+|- platform commission is 45,000 VND
 |- AI cost tracked separately
 ```
 

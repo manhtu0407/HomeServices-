@@ -2,6 +2,7 @@ import { WORKFLOW_PHASES, type LocalDeal, type WorkflowPhase } from '@nestscout/
 
 import {
   buildCaseWorkResponseModel,
+  buildCompletedCaseWorkResponseModels,
   type CaseWorkResponseActionKind,
 } from '../v21/case-work-response-model'
 
@@ -97,6 +98,111 @@ describe('case-work response model', () => {
     expect(completion.noteCopy).not.toMatch(/\d+ ảnh/)
     expect(payment.noteCopy).not.toMatch(/VietQR|SePay|₫|\d{3}[.,]\d{3}/)
   })
+  it('names required lobby-photo check-in as the next arrived step', () => {
+    const deal = dealFixture('arrived', {
+      broadcast: {
+        addressAccess: {
+          access_profile: {},
+          check_in_required: true,
+          customer_handoff_required: true,
+          evidence_mode: 'none',
+          exact_unit_released: false,
+          identity_check_required: true,
+          release_stage: 'building_released',
+          worker_checked_in: false,
+        },
+        fullAddressLabel: 'Tòa A, Quận 1',
+        fullAddressVisible: false,
+        generalArea: 'Quận 1',
+        prebrief: [],
+        problemSummary: 'Đèn trần chập chờn',
+        secondsRemaining: null,
+        serviceType: 'electrical',
+        status: 'accepted',
+      },
+    })
+
+    const vi = buildCaseWorkResponseModel({ deal, language: 'vi', phase: 'arrived' })
+    const en = buildCaseWorkResponseModel({ deal, language: 'en', phase: 'arrived' })
+
+    expect(vi.noteTitle).toBe('Bước tiếp theo')
+    expect(vi.noteCopy).toContain('xác nhận có mặt bằng ảnh tại sảnh')
+    expect(vi.noteCopy).toContain('Thanh toán chưa mở')
+    expect(en.noteTitle).toBe('Next step')
+    expect(en.noteCopy).toContain('lobby-photo check-in')
+    expect(en.noteCopy).toContain('Payment is not available')
+  })
+
+  it('keeps a legacy test payment unavailable without exposing test terminology', () => {
+    const model = buildCaseWorkResponseModel({
+      deal: dealFixture('paid', {
+        payment: {
+          amountReceived: 450_000,
+          grossAmount: 450_000,
+          platformFee: 45_000,
+          provider: 'staging_simulator',
+          status: 'received',
+          workerNet: 405_000,
+        },
+      }),
+      language: 'vi',
+      phase: 'paid',
+    })
+
+    expect(`${model.title} ${model.status} ${model.noteTitle} ${model.noteCopy}`)
+      .not.toMatch(/\bStaging\b|mô phỏng|simulation|simulated/i)
+    expect(model.title).toBe('Thanh toán chưa sẵn sàng')
+    expect(model.actionKind).toBe('none')
+  })
+
+  it('keeps an amount mismatch out of the normal transfer path', () => {
+    const model = buildCaseWorkResponseModel({
+      deal: dealFixture('payment_pending', {
+        payment: {
+          amountReceived: 400_000,
+          grossAmount: 450_000,
+          platformFee: 67_500,
+          provider: 'sepay_vietqr',
+          status: 'amount_mismatch',
+          workerNet: 382_500,
+        },
+      }),
+      language: 'vi',
+      phase: 'payment_pending',
+    })
+
+    expect(model.title).toBe('Thanh toán cần được kiểm tra')
+    expect(model.status).toBe('Cần đối chiếu')
+    expect(model.noteCopy).toContain('Không chuyển thêm tiền')
+  })
+
+  it('retains only provable completed phases as non-interactive history', () => {
+    const models = buildCompletedCaseWorkResponseModels({
+      deal: dealFixture('paid'),
+      language: 'vi',
+      phase: 'paid',
+    })
+
+    expect(models.map((model) => model.phase)).toContain('ticket_review')
+    expect(models.map((model) => model.phase)).toContain('payment_pending')
+    expect(models.map((model) => model.phase)).not.toContain('paid')
+    expect(models.map((model) => model.phase)).not.toContain('scope_change_pending')
+    expect(models.every((model) => model.actionKind === 'none')).toBe(true)
+  })
+
+  it.each(WORKFLOW_PHASES.filter((phase) => phase !== 'cancelled').slice(1))(
+    'shows the accumulated completed history as %s begins',
+    (phase) => {
+      const expectedHistory = WORKFLOW_PHASES
+        .slice(0, WORKFLOW_PHASES.indexOf(phase))
+        .filter((previousPhase) => previousPhase !== 'scope_change_pending')
+
+      const models = buildCompletedCaseWorkResponseModels({ language: 'vi', phase })
+
+      expect(models.map((model) => model.phase)).toEqual(expectedHistory)
+      expect(models.every((model) => model.actionKind === 'none')).toBe(true)
+    },
+  )
 })
 
 function dealFixture(status: LocalDeal['status'], overrides: Partial<LocalDeal> = {}): LocalDeal {

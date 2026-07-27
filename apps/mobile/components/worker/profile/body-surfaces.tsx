@@ -489,8 +489,8 @@ export function WorkerV5BankTaxBody({
   const earnings = runtime.workerEarnings
   const profile = runtime.workerProfile
   const hasBank = Boolean(profile?.bank_account_masked)
-  const netEarnings = earnings?.net_earnings && earnings.net_earnings > 0
-    ? formatVnd(earnings.net_earnings, language)
+  const availableBalance = earnings?.available_balance && earnings.available_balance > 0
+    ? formatVnd(earnings.available_balance, language)
     : textByLanguage(language, 'Chưa có số dư thật', 'No real balance')
   const pending = earnings?.pending_payment_amount && earnings.pending_payment_amount > 0
     ? formatVnd(earnings.pending_payment_amount, language)
@@ -539,7 +539,7 @@ export function WorkerV5BankTaxBody({
         reduceTransparency={reduceTransparency}
       />
       <View style={styles.metricsGrid}>
-        <MetricTile label={textByLanguage(language, 'Thu nhập ròng đã ghi nhận', 'Recorded net earnings')} value={netEarnings} />
+        <MetricTile label={textByLanguage(language, 'Số dư trong ứng dụng', 'In-app balance')} value={availableBalance} />
         <MetricTile label={textByLanguage(language, 'Đang chờ', 'Pending')} value={pending} />
       </View>
       <WorkerV5AccountChangeGuard

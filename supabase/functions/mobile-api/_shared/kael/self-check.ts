@@ -132,17 +132,29 @@ const DIACRITIC_SENSITIVE_PHRASES: Readonly<Record<string, RegExp>> = {
 };
 const CUSTOMER_SENTENCE_WORD_CAP = 20;
 const ENGLISH_SIGNAL_WORDS = [
+  "after",
   "this",
   "answer",
+  "before",
+  "confirm",
+  "check",
   "english",
+  "job",
+  "next",
   "only",
   "cannot",
   "help",
+  "payment",
   "please",
   "provide",
-  "customer",
+  "review",
+  "service",
+  "status",
+  "step",
   "worker",
+  "customer",
 ];
+const ENGLISH_WORKFLOW_FRAGMENT = /\b(?:app|case|check(?:[-\s]?in)?|confirm|customer|job|next|open|payment|pending|review|scope(?:[-\s]?change)?|staging|status|step|worker)\b/i;
 const VIETNAMESE_SIGNAL_WORDS = [
   "ban",
   "vui",
@@ -186,7 +198,7 @@ export function checkKaelResponse(input: KaelSelfCheckInput): KaelSelfCheckResul
 
   const language = input.language ?? "vi";
   if (
-    (language === "vi" && looksEnglishOnly(canonical)) ||
+    (language === "vi" && (looksEnglishOnly(canonical) || ENGLISH_WORKFLOW_FRAGMENT.test(canonical))) ||
     (language === "en" && looksVietnameseOnly(text, canonical))
   ) {
     return { allowed: false, text, reason: "language_mismatch" };

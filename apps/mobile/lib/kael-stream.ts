@@ -1,5 +1,6 @@
 import {
   SERVICE_TYPES as CANONICAL_SERVICE_TYPES,
+  type KaelChatEvidenceInput,
   type KaelChatTurnInput,
   type WorkerKaelChatTurnInput,
 } from '@nestscout/shared'
@@ -116,6 +117,18 @@ export async function streamKaelChatTurn(
   }, isCustomerKaelStreamResult)
 }
 
+export async function streamKaelChatEvidence(
+  sessionId: string,
+  input: KaelChatEvidenceInput,
+  handlers: KaelChatStreamHandlers = {},
+): Promise<ApiResult<KaelChatResponse>> {
+  return streamKaelTurn(`/kael/chat/${encodeURIComponent(sessionId)}/evidence-stream`, input, handlers, {
+    httpErrorField: 'error',
+    httpFallbackCode: (status) => `HTTP_${status}`,
+    httpFallbackMessage: 'Kael evidence streaming failed.',
+  }, isCustomerKaelStreamResult)
+}
+
 export function createKaelStreamUtf8Decoder() {
   const decoder = new TextDecoder('utf-8', { fatal: true })
   return {
@@ -150,7 +163,7 @@ type StreamHandlers<T> = {
 
 async function streamKaelTurn<T>(
   path: string,
-  input: KaelChatTurnInput | WorkerKaelChatTurnInput,
+  input: KaelChatEvidenceInput | KaelChatTurnInput | WorkerKaelChatTurnInput,
   handlers: StreamHandlers<T>,
   httpError: {
     httpErrorField: 'error' | 'message'

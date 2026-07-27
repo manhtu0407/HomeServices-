@@ -5,7 +5,6 @@ import { canCustomerDecideScopeChange } from './case-work-display-model'
 import { customerV21TabCopy } from './copy'
 import { makeAssistantTurnId } from './customer-kael-chat-helpers'
 import { customerV21WebTextInputNoOutline } from './platform-styles'
-import { mobileRuntimeConfig } from '@/lib/runtime-config'
 import { customerV21KaelChatRootStyles as rootStyles } from './chat-styles'
 import type { useCustomerKaelSurfaceController } from './use-customer-kael-surface-controller'
 
@@ -34,6 +33,7 @@ export function CustomerKaelCaseThreadNode({
   } = controller
   if (mode !== 'case' || !deal) return null
   if (deal.status === 'worker_candidate_pending') return null
+  const paymentRailProvider = deal.paymentRailAvailable === true ? 'sepay_vietqr' : null
 
   return (
     <AgenticCaseThreadPanel
@@ -116,8 +116,8 @@ export function CustomerKaelCaseThreadNode({
       onAuthorizeApartmentAccess={async () => {
         await workflow.actions.authorizeApartmentAccess()
       }}
-      onConfirmStagingPayment={workflow.actions.confirmStagingPayment}
       onCreatePaymentIntent={workflow.actions.createPaymentIntent}
+      onRefreshPayment={workflow.actions.refreshCurrentJob}
       onApproveQuote={() => void decisionActions.confirmCaseQuote()}
       onQuoteRejectReasonChange={chatUi.setCaseQuoteRejectReason}
       onQuoteRejectReasonSubmit={() => void decisionActions.submitCaseQuoteRejectReason()}
@@ -130,7 +130,7 @@ export function CustomerKaelCaseThreadNode({
       reduceMotion={reduceMotion}
       retryingWorkerSearch={chatUi.retryingWorkerSearch}
       submittingCaseQuoteRejectReason={chatUi.submittingCaseQuoteRejectReason}
-      stagingPaymentRailEnabled={mobileRuntimeConfig.stagingPaymentRailEnabled}
+      paymentRailProvider={paymentRailProvider}
       textInputStyle={[rootStyles.composerInput, customerV21WebTextInputNoOutline]}
       tokens={tokens}
     />

@@ -125,7 +125,7 @@ type FrontendWorkflowActions = {
   cancelRemoteJob: () => Promise<boolean>
   refreshCurrentJob: () => Promise<boolean>
   workerRefresh: () => Promise<boolean>
-  workerAcceptBroadcast: () => Promise<boolean>
+  workerAcceptBroadcast: (jobId?: string) => Promise<boolean>
   workerDeclineBroadcast: () => Promise<boolean>
   workerUpdateStatus: (
     status: WorkerStatusUpdate,
@@ -543,20 +543,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     const broadcastsRequest = workerService.getBroadcasts()
     const jobsRequest = workerService.getJobs()
 
-    // Incoming work is time-sensitive. Hydrate it as soon as its dedicated
-    // request returns instead of waiting for profile and reporting data.
-    // react-doctor-disable-next-line react-doctor/async-defer-await
-    const broadcasts = await broadcastsRequest
+    // Reconcile assigned work and offers together. An active assigned job is
+    // authoritative and must never be replaced by an offer during refresh.
+    const [broadcasts, jobs] = await Promise.all([broadcastsRequest, jobsRequest])
     if (!isCurrentWorkerRefresh()) return true
     const nextBroadcast = broadcasts.success ? broadcasts.data.broadcasts[0] : undefined
-    if (nextBroadcast) {
-      dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
-    }
-
-    // Job state drives routing and must not wait for profile or reporting data.
-    // react-doctor-disable-next-line react-doctor/async-defer-await
-    const jobs = await jobsRequest
-    if (!isCurrentWorkerRefresh()) return true
     let workflowError = broadcasts.success ? null : broadcasts.error
     if (jobs.success) {
       setWorkerRemoteState((current) => {
@@ -576,18 +567,19 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       const currentJob = currentJobId ? jobs.data.jobs.find((job) => job.id === currentJobId) : undefined
       if (activeJob) {
         dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(activeJob), workerGate: 'remote_backend' })
-      } else if (!nextBroadcast && currentJob) {
+      } else if (nextBroadcast) {
+        dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
+      } else if (currentJob) {
         dispatch({ type: 'hydrate_remote_job', job: workerJobToSnapshot(currentJob), workerGate: 'remote_backend' })
       } else if (
-        !nextBroadcast
-        && stateRef.current.workerGate === 'remote_backend'
+        stateRef.current.workerGate === 'remote_backend'
         && stateRef.current.deal?.backendStatus === 'worker_candidate_pending'
       ) {
         dispatch({ type: 'reset_workflow' })
-      } else if (!nextBroadcast && hasStaleRemoteBroadcast(stateRef.current)) {
+      } else if (hasStaleRemoteBroadcast(stateRef.current)) {
         dispatch({ type: 'mark_remote_broadcast_expired' })
       }
-    } else if (!nextBroadcast) {
+    } else {
       workflowError = jobs.error
     }
 
@@ -710,8 +702,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [setRemoteError, workerRefresh])
 
-  const workerAcceptBroadcast = useCallback(async () => {
-    const jobId = getRemoteJobId(stateRef.current)
+  const workerAcceptBroadcast = useCallback(async (jobIdOverride?: string) => {
+    const jobId = jobIdOverride ?? getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có lời mời việc để nhận')
     const accepted = await workerService.acceptBroadcast(jobId)
     if (!accepted.success) {
@@ -768,9 +760,24 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (!jobId) return setRemoteError('Không có yêu cầu để cập nhật')
     const updated = await workerService.updateJobStatus(jobId, status, extras)
     if (!updated.success) return setRemoteError(updated.error)
-    await refreshCurrentJob()
+    const existing = stateRef.current.deal
+    if (existing?.id === jobId) {
+      dispatch({
+        type: 'hydrate_remote_job',
+        job: {
+          ...dealToSnapshot(existing),
+          backendStatus: updated.data.to_status,
+          completionNotes: extras?.completion_notes ?? existing.completionNotes,
+          completionPhotoUrls: extras?.completion_photo_urls ?? existing.completionPhotoUrls,
+          status: toLocalDealStatus(updated.data.to_status),
+        },
+        workerGate: 'remote_backend',
+      })
+    }
+    // The status mutation is authoritative; hydrate related worker details without delaying the next visible step.
+    void workerRefresh().catch(() => undefined)
     return true
-  }, [refreshCurrentJob, setRemoteError])
+  }, [setRemoteError, workerRefresh])
 
   const requestScopeChange = useCallback(async (input: WorkerScopeChangeDraftInput) => {
     const jobId = getRemoteJobId(stateRef.current)

@@ -8,7 +8,9 @@ const mockGetEarnings = jest.fn()
 const mockGetPerformanceInsights = jest.fn()
 const mockGetBroadcasts = jest.fn()
 const mockGetJobs = jest.fn()
+const mockGetJob = jest.fn()
 const mockUpdateAvailability = jest.fn()
+const mockUpdateJobStatus = jest.fn()
 const mockListNotifications = jest.fn()
 const mockRequestScopeChange = jest.fn()
 const mockOpenKaelJobIncident = jest.fn()
@@ -36,7 +38,9 @@ jest.mock('../realtime', () => ({
 
 jest.mock('../services', () => ({
   customerProfileService: {},
-  jobService: {},
+  jobService: {
+    getJob: (...args: unknown[]) => mockGetJob(...args),
+  },
   kaelMemoryService: {},
   notificationService: {
     list: (...args: unknown[]) => mockListNotifications(...args),
@@ -50,6 +54,7 @@ jest.mock('../services', () => ({
     openKaelJobIncident: (...args: unknown[]) => mockOpenKaelJobIncident(...args),
     requestScopeChange: (...args: unknown[]) => mockRequestScopeChange(...args),
     updateAvailability: (...args: unknown[]) => mockUpdateAvailability(...args),
+    updateJobStatus: (...args: unknown[]) => mockUpdateJobStatus(...args),
   },
 }))
 
@@ -66,6 +71,24 @@ function WorkflowIsolationProbe() {
   latestWorkflowDispatch = dispatch
   latestWorkflowActions = actions
   return <Text testID="workflow-deal-owner">{state.deal ? 'has-deal' : 'empty'}</Text>
+}
+
+function WorkflowStatusProbe() {
+  const { actions, dispatch, state } = useFrontendWorkflow()
+  latestWorkflowDispatch = dispatch
+  latestWorkflowActions = actions
+  return <Text testID="workflow-status">{state.deal?.status ?? 'none'}</Text>
+}
+
+function WorkflowCompletionProbe() {
+  const { actions, dispatch, state } = useFrontendWorkflow()
+  latestWorkflowDispatch = dispatch
+  latestWorkflowActions = actions
+  return (
+    <Text testID="workflow-completion">
+      {`${state.deal?.status ?? 'none'}|${state.deal?.completionNotes ?? 'none'}|${state.deal?.completionPhotoUrls?.join(',') ?? 'none'}`}
+    </Text>
+  )
 }
 
 describe('FrontendWorkflowProvider worker bootstrap', () => {
@@ -123,6 +146,19 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
       },
       success: true,
     })
+    mockUpdateJobStatus.mockResolvedValue({
+      data: {
+        from_status: 'worker_matched',
+        job_id: '11111111-1111-4111-8111-111111111111',
+        to_status: 'worker_on_way',
+        updated_at: '2026-07-26T10:21:44.819Z',
+      },
+      success: true,
+    })
+    mockGetJob.mockResolvedValue({
+      error: 'stale detail read',
+      success: false,
+    })
     mockRequestScopeChange.mockResolvedValue({
       code: 'NETWORK_ERROR',
       error: 'ambiguous failure',
@@ -150,6 +186,95 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
 
     expect(mockGetProfile).toHaveBeenCalled()
     expect(mockUpdateAvailability).not.toHaveBeenCalled()
+  })
+
+  it('reflects a successful worker status transition before a delayed detail refresh catches up', async () => {
+    const screen = render(
+      <FrontendWorkflowProvider>
+        <WorkflowStatusProbe />
+      </FrontendWorkflowProvider>,
+    )
+    await waitFor(() => expect(latestWorkflowActions).not.toBeNull())
+
+    act(() => {
+      latestWorkflowDispatch?.({
+        type: 'hydrate_remote_job',
+        job: {
+          addressLabel: 'Toa nha A',
+          backendStatus: 'worker_matched',
+          description: 'Den chap chon',
+          districtLabel: 'Quan 1',
+          id: '11111111-1111-4111-8111-111111111111',
+          problemChips: ['Den chap chon'],
+          serviceType: 'electrical',
+          status: 'worker_matched',
+        },
+        workerGate: 'remote_backend',
+      })
+    })
+
+    await act(async () => {
+      await latestWorkflowActions?.workerUpdateStatus('worker_on_way')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-status')).toHaveTextContent('worker_on_way')
+    })
+    expect(mockUpdateJobStatus).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
+      'worker_on_way',
+      undefined,
+    )
+  })
+
+  it('keeps submitted completion evidence visible before the background worker refresh catches up', async () => {
+    mockUpdateJobStatus.mockResolvedValueOnce({
+      data: {
+        from_status: 'repairing',
+        job_id: '11111111-1111-4111-8111-111111111111',
+        to_status: 'completed_by_worker',
+        updated_at: '2026-07-26T14:00:00.000Z',
+      },
+      success: true,
+    })
+    const screen = render(
+      <FrontendWorkflowProvider>
+        <WorkflowCompletionProbe />
+      </FrontendWorkflowProvider>,
+    )
+    await waitFor(() => expect(latestWorkflowActions).not.toBeNull())
+
+    act(() => {
+      latestWorkflowDispatch?.({
+        type: 'hydrate_remote_job',
+        job: {
+          addressLabel: 'Toa nha A',
+          backendStatus: 'repairing',
+          completionNotes: null,
+          completionPhotoUrls: [],
+          description: 'Den chap chon',
+          districtLabel: 'Quan 1',
+          id: '11111111-1111-4111-8111-111111111111',
+          problemChips: ['Den chap chon'],
+          serviceType: 'electrical',
+          status: 'repairing',
+        },
+        workerGate: 'remote_backend',
+      })
+    })
+
+    await act(async () => {
+      await latestWorkflowActions?.workerUpdateStatus('completed_by_worker', {
+        completion_notes: 'STAGING QA ONLY: no real repair performed.',
+        completion_photo_urls: ['supabase://job-media/11111111-1111-4111-8111-111111111111/after/completed.png'],
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-completion')).toHaveTextContent(
+        'completed_by_worker|STAGING QA ONLY: no real repair performed.|supabase://job-media/11111111-1111-4111-8111-111111111111/after/completed.png',
+      )
+    })
   })
 
   it('isolates stale workflow callbacks when the signed-in account changes', async () => {

@@ -37,18 +37,21 @@ export function mapConfirmKaelChatError(errorCode: string | null): never {
   if (errorCode === "NOT_FOUND") {
     apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
   }
-  if (errorCode === "INVALID_STATUS" || errorCode === "ALREADY_CONFIRMED") {
+  if (errorCode === "INVALID_STATUS") {
     apiFailure(
       "INVALID_STATUS",
-      "Phiên Kael chưa sẵn sàng hoặc đã được xác nhận",
+      "Phiên Kael chưa ở trạng thái có thể xác nhận",
       409,
     );
   }
+  if (errorCode === "ALREADY_CONFIRMED") {
+    apiFailure("ALREADY_CONFIRMED", "Phiên Kael đã được xác nhận", 409);
+  }
   if (errorCode === "MISSING_ESTIMATE") {
-    apiFailure("INVALID_STATUS", "Kael chưa có ước tính để đặt thợ", 409);
+    apiFailure("MISSING_ESTIMATE", "Kael chưa có ước tính để đặt thợ", 409);
   }
   if (errorCode === "MISSING_SCOPE") {
-    apiFailure("INVALID_STATUS", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
+    apiFailure("MISSING_SCOPE", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
   }
   if (errorCode === "NO_DISTRICT") {
     apiFailure("VALIDATION", "Địa chỉ cần có quận TP.HCM rõ ràng", 400);

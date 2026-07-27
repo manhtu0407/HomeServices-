@@ -58,6 +58,12 @@ export type Route =
     roles: UserRole[];
   }
   | {
+    kind: "kael.chat.evidenceStream";
+    method: "POST";
+    sessionId: string;
+    roles: UserRole[];
+  }
+  | {
     kind: "kael.chat.turn";
     method: "POST";
     sessionId: string;
@@ -453,6 +459,14 @@ export function matchRoute(request: Request): Route | null {
     if (action === "stream" && method === "POST") {
       return {
         kind: "kael.chat.stream",
+        method: "POST",
+        sessionId,
+        roles: ["customer", "admin"],
+      };
+    }
+    if (action === "evidence-stream" && method === "POST") {
+      return {
+        kind: "kael.chat.evidenceStream",
         method: "POST",
         sessionId,
         roles: ["customer", "admin"],

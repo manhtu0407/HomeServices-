@@ -18,7 +18,7 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
 import { buildEstimateCardOutput, buildKaelAutonomyDecision, buildWorkerBriefOutput, prependDeterministicSafetyGuidance, PRICE_DISCLAIMER, recordLearningRuleApplication, resolveElectricalIntakeRuntime, runKaelAutonomyOrchestrator, runKaelPipeline, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
 import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
-import { normalizeServiceAreaDistrict, PLATFORM_FEE_WORKER, sanitizeForLLM } from "../../../_shared/domain.ts";
+import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { JobCreateInput, JobStatus } from "../../../_shared/domain.ts";
 
 export async function createJob(
@@ -238,8 +238,9 @@ export async function createJob(
     serviceType: input.service_type,
     problemSummary: estimate.problem_summary,
     district: canonicalDistrict,
-    estimatedEarningMin: Math.round(estimate.price_min * (1 - PLATFORM_FEE_WORKER)),
-    estimatedEarningMax: Math.round(lockedFinalPrice * (1 - PLATFORM_FEE_WORKER)),
+    // A pre-match brief is shared across workers and cannot state one worker's net honestly.
+    estimatedEarningMin: null,
+    estimatedEarningMax: null,
     knowledgeSafetyGuidance: pipeline.knowledgeContext?.safetyGuidance,
   });
   const autonomyDecision = buildKaelAutonomyDecision({

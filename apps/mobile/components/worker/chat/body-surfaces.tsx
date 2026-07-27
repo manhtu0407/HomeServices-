@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { ScrollView, View, type ImageSourcePropType } from 'react-native'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
-import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
+import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 
 import { textByLanguage } from '../ui/format'
 import {
@@ -22,6 +22,57 @@ export type WorkerV5KaelOrbLiveTurn = {
 }
 
 const EMPTY_WORKER_V5_KAEL_ORB_LIVE_TURNS: WorkerV5KaelOrbLiveTurn[] = []
+
+type WorkerV5ActiveJobKaelContext = {
+  hero: string
+  reply: string
+  request: string
+}
+
+function isWorkerV5ExecutionCase(status: string | null) {
+  return status === 'arrived'
+    || status === 'inspecting'
+    || status === 'repairing'
+    || status === 'scope_change_pending'
+    || status === 'completed_by_worker'
+}
+
+function workerV5ActiveJobKaelContext(
+  deal: LocalDeal | null,
+  language: AppLanguage,
+): WorkerV5ActiveJobKaelContext | null {
+  const status = deal?.backendStatus ?? deal?.status ?? null
+  if (!status || !isWorkerV5ExecutionCase(status)) return null
+
+  const service = deal?.broadcast?.serviceType ?? deal?.draft.serviceType
+  const serviceLabel = service
+    ? localizedServiceLabel(service, language)
+    : textByLanguage(language, 'công việc này', 'this job')
+  const statusLabel = localizedStatusLabel(deal?.status ?? null, language)
+  const isArrived = status === 'arrived'
+
+  if (language === 'vi') {
+    return {
+      hero: isArrived
+        ? `Bạn đang xử lý ${serviceLabel}. Trạng thái hiện tại: ${statusLabel}. Hãy check-in bằng ảnh tại sảnh trước khi tiếp tục công việc.`
+        : `Bạn đang xử lý ${serviceLabel}. Trạng thái hiện tại: ${statusLabel}. Kael sẽ hỗ trợ đúng phạm vi đã chốt và bước tiếp theo của công việc.`,
+      reply: isArrived
+        ? 'Bạn đã đến nơi. Check-in bằng ảnh tại sảnh là bắt buộc trước khi tiếp tục; nếu phát sinh, hãy gửi đổi phạm vi kèm lý do và thêm ảnh nếu có trước khi làm phần phát sinh.'
+        : 'Kael đang bám theo trạng thái công việc này. Không tự thay đổi phạm vi hoặc chi phí; nếu phát sinh, hãy gửi đổi phạm vi kèm lý do và thêm ảnh nếu có trước khi làm phần phát sinh.',
+      request: `Kael, hỗ trợ tôi xử lý ${serviceLabel} theo phạm vi đã chốt.`,
+    }
+  }
+
+  return {
+    hero: isArrived
+      ? `You are working on ${serviceLabel}. Current status: ${statusLabel}. Complete the lobby photo check-in before continuing the job.`
+      : `You are working on ${serviceLabel}. Current status: ${statusLabel}. Kael will support the agreed scope and the next job step.`,
+    reply: isArrived
+      ? 'You have arrived. A lobby photo check-in is required before continuing; if scope changes, submit the reason and photos when available before doing the extra work.'
+      : 'Kael is following this job state. Do not change scope or price yourself; if scope changes, submit the reason and photos when available before doing the extra work.',
+    request: `Kael, help me complete ${serviceLabel} within the agreed scope.`,
+  }
+}
 
 export function WorkerV5KaelOrbBody({
   activeSessionId = null,
@@ -62,6 +113,7 @@ export function WorkerV5KaelOrbBody({
   const hasLiveTurns = liveTurns.length > 0
   const hasLiveThread = hasLiveTurns || Boolean(liveStatus) || Boolean(liveError)
   const showEmptyHero = !hasLiveTurns && !composerActive
+  const activeJobContext = mode === 'intake' ? workerV5ActiveJobKaelContext(deal, language) : null
   const transcriptRef = useRef<ScrollView>(null)
 
   useEffect(() => {
@@ -92,6 +144,7 @@ export function WorkerV5KaelOrbBody({
       >
         {showEmptyHero ? (
           <WorkerV5KaelEmptyHero
+            contextualCopy={activeJobContext?.hero}
             language={language}
             mode={mode}
             reduceMotion={reduceMotion}
@@ -99,6 +152,7 @@ export function WorkerV5KaelOrbBody({
         ) : null}
         {(!showEmptyHero || keepIntakeContextAccessible) && !hasActiveSession && !hasLiveThread && mode === 'intake' ? (
           <WorkerV5KaelOrbIntakeThread
+            activeJobContext={activeJobContext}
             deal={deal}
             fallbackJobIcon={fallbackJobIcon}
             language={language}
@@ -172,6 +226,7 @@ export function WorkerV5KaelOrbNormalThread({
 }
 
 export function WorkerV5KaelOrbIntakeThread({
+  activeJobContext = null,
   deal,
   fallbackJobIcon,
   language,
@@ -179,6 +234,7 @@ export function WorkerV5KaelOrbIntakeThread({
   reduceTransparency,
   serviceIcons,
 }: {
+  activeJobContext?: WorkerV5ActiveJobKaelContext | null
   deal: LocalDeal | null
   fallbackJobIcon: ImageSourcePropType
   language: AppLanguage
@@ -186,6 +242,15 @@ export function WorkerV5KaelOrbIntakeThread({
   reduceTransparency: boolean
   serviceIcons: WorkerV5ServiceIconMap
 }) {
+  if (activeJobContext) {
+    return (
+      <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-intake-thread">
+        <WorkerV5KaelOrbBubble align="right" body={activeJobContext.request} speakerLabel={textByLanguage(language, 'Bạn', 'You')} />
+        <WorkerV5KaelOrbBubble body={activeJobContext.reply} speakerLabel="Kael" />
+      </View>
+    )
+  }
+
   const service = deal?.broadcast?.serviceType ?? deal?.draft.serviceType
   const area = deal?.broadcast?.generalArea || deal?.draft.districtLabel || null
   const serviceLabel = service ? localizedServiceLabel(service, language) : null

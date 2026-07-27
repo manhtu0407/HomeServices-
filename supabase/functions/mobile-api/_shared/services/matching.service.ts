@@ -19,7 +19,7 @@ import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { validateKaelAutonomyTransition, validateWorkflowTransition } from "../workflow-orchestrator.ts";
 import { buildWorkerBriefOutput, type KaelAutonomyDecision } from "../kael/index.ts";
-import { normalizeServiceAreaDistrict, PLATFORM_FEE_WORKER } from "../../../_shared/domain.ts";
+import { normalizeServiceAreaDistrict } from "../../../_shared/domain.ts";
 import type { JobStatus, ServiceType } from "../../../_shared/domain.ts";
 
 type ConfirmSearchOptions = {
@@ -96,12 +96,9 @@ export async function confirmSearch(
       problemSummary:
         nullableString(job.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
       district: nullableString(job.address_district),
-      estimatedEarningMin: nullableNumber(job.kael_price_min) === null
-        ? null
-        : Math.round(nullableNumber(job.kael_price_min)! * (1 - PLATFORM_FEE_WORKER)),
-      estimatedEarningMax: lockedFinalPrice === null
-        ? null
-        : Math.round(lockedFinalPrice * (1 - PLATFORM_FEE_WORKER)),
+      // A pre-match brief is shared across workers and cannot state one worker's net honestly.
+      estimatedEarningMin: null,
+      estimatedEarningMax: null,
     });
 
     const updated = await dbQuery<{ id: string }>(

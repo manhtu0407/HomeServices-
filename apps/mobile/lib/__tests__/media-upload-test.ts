@@ -644,6 +644,11 @@ describe('Kael chat media upload', () => {
       'video_frame',
       'video_original_private',
     ])
+    expect(result.evidenceItems.slice(0, 3).map((item) => item.summary)).toEqual([
+      'Video frame position: 00:02 / 00:10.',
+      'Video frame position: 00:05 / 00:10.',
+      'Video frame position: 00:08 / 00:10.',
+    ])
     expect(result.evidenceItems[3]).toMatchObject({ model_eligible: false })
     expect(mockCreateMediaUpload.mock.calls.map((call) => call[0].purpose)).toEqual([
       'model_vision',

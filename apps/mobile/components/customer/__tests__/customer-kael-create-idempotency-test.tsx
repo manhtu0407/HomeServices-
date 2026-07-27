@@ -83,8 +83,10 @@ function useCustomerKaelCreateHarness(ownerKey = 'customer-a:normal') {
     mode: 'normal',
     processController: {
       processLines: null,
+      startEvidenceProcessLines: () => undefined,
       startProcessLines: async () => undefined,
       stopProcessLines: () => undefined,
+      updateEvidenceProcessProgress: () => undefined,
     },
     requestOwnerKey: ownerKey,
     selectedService: 'electrical',

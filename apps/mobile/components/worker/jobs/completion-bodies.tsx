@@ -402,8 +402,12 @@ export function WorkerV5CaseClosedBody({
   runtime: WorkerV5Runtime
 }) {
   const deal = runtime.state.deal
-  const payment = deal?.payment
-  const workerNet = payment?.workerNet ?? runtime.workerEarnings?.net_earnings ?? null
+  const ledgerCredit = deal
+    ? runtime.workerEarnings?.recent_transactions.find((entry) =>
+      entry.job_id === deal.id && entry.payment_state === 'available'
+    )
+    : null
+  const workerNet = ledgerCredit?.worker_net ?? null
   const heroState: WorkerV5CaseClosedHeroState = workerNet && workerNet > 0 ? 'settled' : 'waiting'
   const rating = runtime.workerPerformanceInsights?.average_rating ?? runtime.workerProfile?.rating ?? null
   const hasRating = typeof rating === 'number' && rating > 0
@@ -434,6 +438,7 @@ export function WorkerV5CaseClosedBody({
         incomeLedgerIcon={incomeLedgerIcon}
         language={language}
         reduceTransparency={reduceTransparency}
+        workerNet={workerNet}
         zipAura={WorkerV5CustomerZipMintAura}
       />
       <WorkerV5ActionRail

@@ -192,6 +192,7 @@ export type JobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null
     kael_progress: KaelChatProgress | null
     final_price: number | null
+    payment_rail_available?: boolean
     payment_status?: LocalPaymentStatus | null
     payment_provider?: string | null
     payment_code?: string | null
@@ -582,8 +583,24 @@ export type EarningsResponse = {
   gross_earnings: number       // sum of frozen gross_amount across paid jobs
   platform_fee_total: number   // sum of frozen platform_fee across paid jobs
   net_earnings: number         // sum of frozen worker_net across paid jobs
+  available_balance: number    // in-app payable balance; not a completed bank payout
   pending_payment_count: number
   pending_payment_amount: number
+  on_hold_amount: number
+  current_commission_level: number
+  current_commission_rate_bps: number
+  recent_transactions: {
+    job_id: string
+    display_code: string | null
+    payment_state: 'pending' | 'available' | 'on_hold' | 'reversed'
+    gross_amount: number
+    platform_fee: number
+    worker_net: number
+    commission_level: number
+    commission_rate_bps: number
+    recorded_at: string
+    available_at: string | null
+  }[]
   daily_earnings: {
     date: string
     gross_earnings: number

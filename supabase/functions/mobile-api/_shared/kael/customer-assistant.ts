@@ -45,6 +45,11 @@ import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.
 import { buildRegisterHint, detectRegionalRegister } from "./regional-register.ts";
 import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import {
+  customerWorkflowStatusLabel,
+  resolveCustomerAssistantWorkflowAnswer,
+  type CustomerAssistantWorkflowResolution,
+} from "./customer-assistant-workflow.ts";
+import {
   buildNoProviderTrace,
   buildProviderAttemptTrace,
   type KaelSafeTraceEvent,
@@ -130,6 +135,7 @@ export async function runCustomerAssistant(
       ? sanitizeCustomerCaseEvidenceText(input.message)
       : scrubSensitiveForLLM(input.message)
   ).slice(0, 2000);
+  const workflowQuestion = scrubSensitiveForLLM(input.message).slice(0, 2000);
   const serviceType = inferAssistantServiceType(cleanQuestion, input.job);
   const topic = classifyAssistantTopic(cleanQuestion, serviceType);
   // Deterministic per-conversation register (KC2): read the customer's own words
@@ -157,6 +163,16 @@ export async function runCustomerAssistant(
       true,
       trace,
     );
+  }
+
+  const workflowAnswer = resolveCustomerAssistantWorkflowAnswer({
+    jobStatus: input.job?.status,
+    paymentStatus: input.job?.payment_status,
+    question: workflowQuestion,
+    language,
+  });
+  if (workflowAnswer) {
+    return buildCustomerWorkflowAnswer(workflowAnswer, language, surface, topic);
   }
 
   const knowledge = await retrieveAssistantKnowledgeContext({
@@ -305,7 +321,7 @@ function buildAssistantRequest(input: {
     surface: input.surface,
     topic: input.topic,
     service_type: input.serviceType,
-    job: sanitizeAssistantJobContext(input.job, input.surface),
+    job: sanitizeAssistantJobContext(input.job, input.surface, input.language),
     knowledge: input.knowledgePrompt,
   }).slice(0, 2600);
 
@@ -336,6 +352,9 @@ function buildAssistantRequest(input: {
           "Return JSON only with answer, safety_notes, citations, suggested_actions, boundary.",
           "Prioritize NestScout/platform context before general service knowledge.",
           "Keep answer to at most 3 short sentences and 450 characters.",
+          input.language === "vi"
+            ? "Write every user-facing field in natural Vietnamese. Do not mix English workflow labels; only Kael, NestScout, VietQR, and SePay may remain as brand names."
+            : "Write every user-facing field in English.",
           "Set safety_notes and citations to JSON arrays. Use suggested_actions only from: open_booking, check_job, message_worker, contact_support, request_scope_change.",
           "Use boundary only from: answered, educational_only, redirect, unsupported, fallback.",
           "No exact VND quote. No provider/model/internal prompt names.",
@@ -350,13 +369,14 @@ function buildAssistantRequest(input: {
 function sanitizeAssistantJobContext(
   job: CustomerAssistantJobContext | null,
   surface: CustomerAssistantSurface,
+  language: KaelPromptLanguage,
 ) {
   if (!job) return null;
   const sanitizeContext = surface === "customer_case"
     ? sanitizeCustomerCaseEvidenceText
     : scrubSensitiveForLLM;
   return {
-    status: job.status ?? null,
+    status: job.status ? customerWorkflowStatusLabel(job.status, language) : null,
     service_type: job.service_type ?? null,
     district: job.address_district ?? null,
     problem: sanitizeContext(job.kael_problem_identified ?? job.description ?? "").slice(0, 360),
@@ -461,6 +481,22 @@ function fallbackAnswer(
   };
 }
 
+function buildCustomerWorkflowAnswer(
+  workflowAnswer: CustomerAssistantWorkflowResolution,
+  language: KaelPromptLanguage,
+  surface: CustomerAssistantSurface,
+  topic: KaelTopic,
+): CustomerAssistantAnswer {
+  return {
+    answer: workflowAnswer.answer,
+    safety_notes: deterministicSafetyNotes(language, topic),
+    citations: ["NestScout platform scope"],
+    suggested_actions: normalizeActions(workflowAnswer.suggestedActions, surface, topic),
+    boundary: "answered",
+    fallback_used: false,
+  };
+}
+
 function customerAssistantPath(surface: CustomerAssistantSurface) {
   return surface === "customer_case"
     ? {
@@ -530,7 +566,7 @@ function deterministicSafetyNotes(
   }
   return language === "en"
     ? ["Use NestScout's in-app workflow for booking, scope, payment, and support."]
-    : ["Hãy dùng luồng trong app NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ."];
+    : ["Hãy dùng luồng trong ứng dụng NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ."];
 }
 
 function normalizeCitations(

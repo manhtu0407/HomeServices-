@@ -159,7 +159,8 @@ export const LEARNING_RULE_STATUSES = Object.freeze(
 export type LearningRuleStatus = (typeof LEARNING_RULE_STATUSES)[number];
 
 export const PLATFORM_FEE_CUSTOMER = 0.075;
-export const PLATFORM_FEE_WORKER = 0.10;
+// The configured base commission. Payment intent creation freezes a lower tier rate when eligible.
+export const PLATFORM_FEE_WORKER = 0.15;
 
 export const REVIEW_TAGS = Object.freeze([
   "Đúng giờ",

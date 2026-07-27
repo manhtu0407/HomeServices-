@@ -103,8 +103,10 @@ export function KaelChatComposer({
           onBlur={onBlur}
           onChangeText={onDraftChange}
           onFocus={onFocus}
+          onSubmitEditing={onSendMessage}
           placeholder={composerPlaceholder}
           placeholderTextColor={tokens.subtleText}
+          returnKeyType="send"
           shellStyle={rootStyles.composerTextFieldStack}
           style={[rootStyles.composerInput, textInputNoOutlineStyle, { color: tokens.text }]}
           testID="customer-v21-kael-input"

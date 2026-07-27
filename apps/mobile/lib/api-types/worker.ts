@@ -351,8 +351,24 @@ export type EarningsResponse = {
   gross_earnings: number
   platform_fee_total: number
   net_earnings: number
+  available_balance: number
   pending_payment_count: number
   pending_payment_amount: number
+  on_hold_amount: number
+  current_commission_level: number
+  current_commission_rate_bps: number
+  recent_transactions: {
+    job_id: string
+    display_code: string | null
+    payment_state: 'pending' | 'available' | 'on_hold' | 'reversed'
+    gross_amount: number
+    platform_fee: number
+    worker_net: number
+    commission_level: number
+    commission_rate_bps: number
+    recorded_at: string
+    available_at: string | null
+  }[]
   daily_earnings: {
     date: string
     gross_earnings: number

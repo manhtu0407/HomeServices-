@@ -310,10 +310,18 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
       continue
     }
     for (const [frameIndex, frame] of (extractedFrames.get(index) ?? []).entries()) {
+      const frameTime = videoFrameTimes(
+        item.durationMillis,
+        frameCounts.get(index) ?? 1,
+      )[frameIndex]
       uploadPlan.push({
         index: index * 10 + frameIndex + 1,
         item: frame,
-        options: { kind: 'video_frame', modelEligible: true },
+        options: {
+          kind: 'video_frame',
+          modelEligible: true,
+          summary: videoFrameEvidenceSummary(frameTime, item.durationMillis),
+        },
       })
     }
   }
@@ -381,6 +389,7 @@ export async function cleanupKaelChatMediaRefs(mediaRefs: readonly string[]) {
 type KaelEvidenceObjectOptions = {
   kind: Extract<CaseWorkEvidence['kind'], 'photo' | 'video_frame' | 'video_original_private'>
   modelEligible: boolean
+  summary?: string
 }
 
 async function uploadKaelChatEvidenceObject(
@@ -463,6 +472,7 @@ async function uploadKaelChatEvidenceObject(
           kind: options.kind,
           ref: signedUpload.data.media_ref,
           model_eligible: options.modelEligible,
+          ...(options.summary ? { summary: options.summary } : {}),
         },
       }
     }
@@ -520,6 +530,20 @@ export function videoFrameTimes(durationMillis: number | undefined, limit = 3) {
   if (boundedLimit === 1 || durationMillis < 1_500) return [Math.max(0, Math.round(durationMillis / 2))]
   const ratios = boundedLimit === 2 ? [0.3, 0.7] : [0.2, 0.5, 0.8]
   return [...new Set(ratios.map((ratio) => Math.max(0, Math.round(durationMillis * ratio))))]
+}
+
+function videoFrameEvidenceSummary(timestampMillis: number | undefined, durationMillis: number | undefined) {
+  const timestamp = formatMediaTimestamp(timestampMillis ?? 0)
+  if (!durationMillis || !Number.isFinite(durationMillis) || durationMillis <= 0) {
+    return `Video frame position: ${timestamp}.`
+  }
+  return `Video frame position: ${timestamp} / ${formatMediaTimestamp(durationMillis)}.`
+}
+
+function formatMediaTimestamp(durationMillis: number) {
+  const seconds = Math.max(0, Math.round(durationMillis / 1_000))
+  const minutes = Math.floor(seconds / 60)
+  return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
 
 async function readLocalMediaBlob(

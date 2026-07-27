@@ -468,6 +468,7 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal | null 
     broadcast: job.broadcast ?? null,
     scopeChange: job.scopeChange ?? null,
     finalPrice: job.finalPrice ?? null,
+    paymentRailAvailable: job.paymentRailAvailable === true,
     payment: job.payment ?? null,
     customerEvidencePhotoUrls: [...(job.customerEvidencePhotoUrls ?? [])],
     fieldEvidencePhotoUrls: [...(job.fieldEvidencePhotoUrls ?? [])],

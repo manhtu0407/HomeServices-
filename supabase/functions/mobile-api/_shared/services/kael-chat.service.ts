@@ -635,6 +635,10 @@ export async function submitKaelChatEvidence(
     .map((evidence) => evidence.transcript)
     .filter((value): value is string => Boolean(value))
     .join(" ");
+  const videoFrameContext = sanitizedEvidenceItems
+    .filter((evidence) => evidence.kind === "video_frame")
+    .map((evidence) => evidence.summary)
+    .filter((value): value is string => Boolean(value));
   const message = sanitizeForLLM(
     input.message ?? (
       transcriptText ||
@@ -644,6 +648,11 @@ export async function submitKaelChatEvidence(
         : (language === "en" ? "Evidence skipped." : "Bỏ qua bằng chứng."))
     ),
   );
+  const modelMessage = sanitizeForLLM([
+    message,
+    transcriptText,
+    ...videoFrameContext,
+  ].filter((value, index, values) => value && values.indexOf(value) === index).join("\n\n"));
   const persistedSafetySignals = persistentKaelSafetySignals(
     message,
     asServiceType(session.service_type),
@@ -716,7 +725,7 @@ export async function submitKaelChatEvidence(
 
   await advanceKaelChatEstimate(ctx, sessionId, {
     service_type: asServiceType(session.service_type),
-    message,
+    message: modelMessage,
     problem_chips: safeProblemChips,
     photo_urls: signedVisionUrls,
     address_district: nullableString(previousMetadata.address_district) ?? undefined,

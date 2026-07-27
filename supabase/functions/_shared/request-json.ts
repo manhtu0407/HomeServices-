@@ -19,6 +19,18 @@ export async function readJsonRequestBounded(
   request: Request,
   maxBytes: number,
 ): Promise<unknown> {
+  const text = await readJsonTextRequestBounded(request, maxBytes);
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new RequestJsonError("INVALID_JSON", 400);
+  }
+}
+
+export async function readJsonTextRequestBounded(
+  request: Request,
+  maxBytes: number,
+): Promise<string> {
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
     throw new RangeError("maxBytes must be a positive safe integer");
   }
@@ -71,8 +83,7 @@ export async function readJsonRequestBounded(
   }
 
   try {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    return JSON.parse(text) as unknown;
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     throw new RequestJsonError("INVALID_JSON", 400);
   }

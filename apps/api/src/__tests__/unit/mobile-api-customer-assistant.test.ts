@@ -20,8 +20,8 @@ describe('mobile-api customer Kael assistant', () => {
       return {
         success: true as const,
         content: JSON.stringify({
-          answer: 'Kael dựa trên quy trình NestScout: thợ được kiểm tra hồ sơ và chỉ trao đổi trong app.',
-          safety_notes: ['Giữ trao đổi trong app NestScout.'],
+          answer: 'Kael dựa trên quy trình NestScout: thợ được kiểm tra hồ sơ và chỉ trao đổi trong ứng dụng.',
+          safety_notes: ['Giữ trao đổi trong ứng dụng NestScout.'],
           citations: ['platform:worker_verification'],
           suggested_actions: ['open_booking'],
           boundary: 'answered',
@@ -194,6 +194,197 @@ describe('mobile-api customer Kael assistant', () => {
     expect(callAI).not.toHaveBeenCalled()
   })
 
+  it('keeps scope-change approval deterministic when a customer asks Kael to change price or parts without confirmation', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a scope-change autonomy request')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        service_type: 'electrical',
+      },
+      language: 'vi',
+      message: 'Nếu thợ thấy cần thì Kael có thể tự tăng thêm 200.000đ và thay driver luôn, không cần hỏi lại tôi không?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: 'Không. Kael không thể tự thay đổi giá hoặc thêm hay thay hạng mục công việc. Nếu thợ phát hiện cần làm thêm, thợ phải gửi đề xuất thay đổi phạm vi kèm bằng chứng; Kael sẽ hiển thị để bạn xác nhận riêng trong ứng dụng.',
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['request_scope_change', 'check_job', 'message_worker'],
+    })
+    expect(result.answer).not.toContain('đồng ý của.')
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('keeps chat approval separate from the official scope-change proposal', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a chat-only scope approval request')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        status: 'arrived',
+        service_type: 'electrical',
+      },
+      language: 'vi',
+      message: 'Thợ nhắn cần thay driver thêm 400.000đ nhưng chưa có đề xuất đổi phạm vi. Tôi đồng ý trong chat này là được chưa?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: 'Chưa. Đồng ý trong chat không làm thay đổi phạm vi hoặc giá. Thợ phải gửi đề xuất đổi phạm vi chính thức kèm lý do và bằng chứng nếu có; Kael tính lại đề xuất để bạn xem, rồi bạn xác nhận hoặc giữ phạm vi cũ trong ứng dụng. Không làm phần phát sinh trước khi có xác nhận đó.',
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['request_scope_change', 'check_job', 'message_worker'],
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('uses the customer-facing arrived step and payment guidance without invoking a provider', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a workflow-status question')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        status: 'arrived',
+        service_type: 'electrical',
+      },
+      language: 'vi',
+      message: 'Hiện công việc đang ở bước nào? Tôi có phải thanh toán ngay không?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: 'Thợ đã đến nơi. Bước tiếp theo là thợ xác nhận có mặt bằng ảnh tại sảnh, rồi kiểm tra vị trí xử lý trước khi bắt đầu công việc; chưa cần thanh toán.',
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['check_job', 'message_worker'],
+    })
+    expect(result.answer).not.toContain('arrived')
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('does not send a confirmed customer to a payment action that the job screen says is unavailable', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a deterministic payment-availability question')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        payment_status: null,
+        status: 'confirmed_by_customer',
+        service_type: 'electrical',
+      },
+      language: 'vi',
+      message: 'Tôi đã xác nhận hoàn tất nhưng Payment lại ghi phương thức chưa khả dụng. Tôi đang ở bước nào và cần làm gì để thanh toán? Đừng bảo tôi quay lại bước cũ.',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: 'Bạn đã xác nhận hoàn thành và không cần quay lại bước cũ. Hiện màn công việc chưa có phương thức thanh toán khả dụng, nên chưa có thao tác thanh toán nào để bạn hoàn tất; hãy chờ phương thức thanh toán chính thức được cấu hình. Kael chỉ mở bước tiếp theo sau khi hệ thống xác thực giao dịch.',
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['check_job', 'message_worker'],
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('keeps required lobby check-in explicit when a customer asks to bypass it and pay early', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for an arrived check-in bypass request')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        status: 'arrived',
+        service_type: 'electrical',
+      },
+      language: 'vi',
+      message: 'Nếu ứng dụng yêu cầu check-in ảnh tại sảnh, tôi có thể cho thợ bỏ qua và thanh toán trước được không?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: 'Không. Ở bước này chưa thanh toán, và không được bỏ qua việc xác nhận có mặt bằng ảnh tại sảnh khi ứng dụng yêu cầu. Thợ cần hoàn tất xác nhận có mặt rồi kiểm tra vị trí xử lý; thanh toán chỉ mở sau khi công việc hoàn tất và bạn xác nhận.',
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['check_job', 'message_worker'],
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('keeps apartment access gated until the worker checks in at the lobby', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a pre-check-in apartment access request')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        status: 'arrived',
+        service_type: 'electrical',
+      },
+      language: 'vi',
+      message: 'Tôi có thể bỏ qua check-in ảnh tại sảnh để cho thợ lên căn hộ ngay kiểm tra được không?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: 'Không. Trước khi thợ xác nhận có mặt bằng ảnh tại sảnh, bạn chưa thể cho phép họ lên căn hộ hoặc bắt đầu kiểm tra. Sau khi xác nhận có mặt, ứng dụng sẽ hiện bước để bạn cho phép họ lên căn hộ; thanh toán chưa mở ở bước này.',
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['check_job', 'message_worker'],
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('keeps English pre-check-in apartment access requests deterministic', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for an English pre-check-in apartment access request')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        status: 'arrived',
+        service_type: 'electrical',
+      },
+      language: 'en',
+      message: 'Can I let the worker enter the apartment before the lobby-photo check-in?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: 'No. Before the worker completes the lobby-photo check-in, you cannot authorize entry to the apartment or begin inspection. After check-in, the app will show the step for you to authorize access to the unit; payment is not available at this step.',
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['check_job', 'message_worker'],
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
   it('does not expose model-authored safety notes or citations', async () => {
     const callAI = vi.fn(async () => ({
       success: true as const,
@@ -220,7 +411,7 @@ describe('mobile-api customer Kael assistant', () => {
 
     expect(result.fallback_used).toBe(false)
     expect(result.safety_notes).toEqual([
-      'Hãy dùng luồng trong app NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ.',
+      'Hãy dùng luồng trong ứng dụng NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ.',
     ])
     expect(result.citations).toEqual(['NestScout platform scope'])
     expect(JSON.stringify(result)).not.toContain('090-123-4567')
@@ -527,6 +718,35 @@ describe('mobile-api customer Kael assistant', () => {
       expect(result.answer).not.toBe(answer)
     },
   )
+
+  it('replaces a mixed-language provider reply before it reaches a Vietnamese customer', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        answer: 'Kael sẽ check payment status trước khi mở bước tiếp theo.',
+        safety_notes: [],
+        citations: [],
+        suggested_actions: [],
+        boundary: 'answered',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-chat',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Ổ cắm trong phòng khách bị chập chờn, tôi nên làm gì?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(true)
+    expect(result.answer).not.toContain('payment status')
+    expect(result.answer).toContain('NestScout')
+  })
 
   it('scrubs separated phone, bare street number, and job UUID before the provider call', async () => {
     const seenRequests: AIRequest[] = []

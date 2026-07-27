@@ -108,14 +108,14 @@ export function buildWorkerBriefFallback(input: WorkerBriefFallbackInput): Worke
       guidance: isGuidance
         ? [
           'Kiểm tra đúng phạm vi Kael đã chốt và khách có thể xem/khiếu nại.',
-          'Nếu phát sinh thêm, gửi yêu cầu đổi phạm vi kèm lý do và ảnh trước khi làm.',
+          'Nếu phát sinh thêm, gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Chỉ làm khi khách xác nhận trong ứng dụng.',
         ]
         : [
           'Đọc nhanh vấn đề trước khi nhận việc.',
           'Địa chỉ đầy đủ chỉ hiển thị sau khi nhận yêu cầu.',
         ],
       safety: [
-        'Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.',
+        'Không bắt đầu phần phát sinh khi khách chưa xác nhận đề xuất đổi phạm vi trong ứng dụng.',
       ],
     },
   }

@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import { memo, type ComponentType } from 'react'
 import { View, type StyleProp, type ViewStyle } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
@@ -12,7 +12,10 @@ import {
 import { routeDestinationLabel } from '../ui/labels'
 import { WorkerV5InfoGrid } from './shared-surfaces'
 import { WorkerV5ActionRail } from './advisory-surfaces'
-import type { WorkerV5RoutePreview, WorkerV5RoutePreviewState } from './use-worker-route-preview'
+import { WorkerV5EtaSummaryCard } from './map-surfaces'
+import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura } from '../ui/aura-surfaces'
+import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
+import { useWorkerV5RoutePreview, type WorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './use-worker-route-preview'
 import { styles } from './active-body-styles'
 
 type WorkerV5CaseAuraComponent = ComponentType<{
@@ -104,3 +107,54 @@ export function WorkerV5RouteEtaBody({
     </View>
   )
 }
+
+export const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate({
+  actionBusy,
+  deal,
+  language,
+  navigateJobChat,
+  onArrivalAcknowledged,
+  onTravelAction,
+  reduceTransparency,
+  routeMapComponent,
+}: {
+  actionBusy: boolean
+  deal: LocalDeal | null
+  language: AppLanguage
+  navigateJobChat: () => void
+  onArrivalAcknowledged: () => void
+  onTravelAction: () => void
+  reduceTransparency: boolean
+  routeMapComponent: WorkerV5RouteMapComponent
+}) {
+  const routePreview = useWorkerV5RoutePreview(deal, true)
+  const isResumingAtArrival = deal?.status === 'arrived'
+  const confirmArrivalGate = () => {
+    if (isResumingAtArrival) {
+      onArrivalAcknowledged()
+      return
+    }
+    onTravelAction()
+  }
+  return (
+    <WorkerV5RouteEtaBody
+      actionBusy={actionBusy}
+      caseWideAura={WorkerV5CustomerCaseWideMintAura}
+      deal={deal}
+      etaSummaryComponent={WorkerV5EtaSummaryCard}
+      language={language}
+      navigateJobChat={navigateJobChat}
+      onPrimary={confirmArrivalGate}
+      primaryLabel={isResumingAtArrival
+        ? textByLanguage(language, 'Mở bước check-in', 'Open check-in step')
+        : deal?.status === 'worker_matched'
+          ? textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
+          : textByLanguage(language, 'Xác nhận đã tới', 'Confirm arrival')}
+      primaryFill={WorkerV5PrimaryButtonFill}
+      reduceTransparency={reduceTransparency}
+      routeMapComponent={routeMapComponent}
+      routePreview={routePreview}
+      zipAura={WorkerV5CustomerZipMintAura}
+    />
+  )
+})

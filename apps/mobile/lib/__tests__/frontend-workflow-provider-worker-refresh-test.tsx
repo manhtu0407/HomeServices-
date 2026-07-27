@@ -67,6 +67,9 @@ function WorkerRefreshProbe() {
       />
       <Text testID="worker-refresh-deal">{state.deal?.id ?? 'none'}</Text>
       <Text testID="worker-refresh-error">{state.lastError ?? 'none'}</Text>
+      <Text testID="worker-refresh-status">
+        {state.deal ? `${state.deal.backendStatus ?? 'none'}/${state.deal.broadcast?.status ?? 'none'}` : 'none'}
+      </Text>
     </>
   )
 }
@@ -135,6 +138,50 @@ function arrangeSuccessfulWorkerRuntime() {
     status: 200,
     success: true,
   })
+}
+
+function buildWorkerJob(status: string) {
+  return {
+    address_access: {
+      access_profile: {},
+      check_in_required: true,
+      customer_handoff_required: true,
+      evidence_mode: 'none',
+      exact_unit_released: false,
+      identity_check_required: true,
+      release_stage: 'area_only',
+    },
+    address_building: 'Toa A',
+    address_floor: null,
+    address_unit: null,
+    completed_at: null,
+    completion_notes: null,
+    completion_photo_urls: [],
+    created_at: '2026-07-22T05:00:00.000Z',
+    display_code: 'NS-ACTIVE-1',
+    district: 'q1',
+    estimated_earning: 510_000,
+    final_price: 600_000,
+    gross_amount: null,
+    id: 'job-active',
+    matched_at: '2026-07-22T05:10:00.000Z',
+    payment_amount_received: null,
+    payment_code: null,
+    payment_expires_at: null,
+    payment_provider: null,
+    payment_qr_image_url: null,
+    payment_received_at: null,
+    payment_status: null,
+    payment_transfer_content: null,
+    photo_urls: [],
+    platform_fee: null,
+    problem_summary: 'Den chop chon',
+    scheduled_at: '2026-07-22T06:00:00.000Z',
+    service_type: 'electrical',
+    status,
+    worker_brief_guidance: null,
+    worker_net: null,
+  }
 }
 
 it('records one authoritative activity minute only after a foreground minute elapses', async () => {
@@ -293,7 +340,7 @@ it('starts all independent worker hydration requests without serial round trips'
   })
 })
 
-it('hydrates an incoming mission without waiting for unrelated worker requests', async () => {
+it('hydrates an incoming mission after reconciling the worker job list', async () => {
   const profile = deferred<any>()
   const earnings = deferred<any>()
   const performance = deferred<any>()
@@ -338,7 +385,7 @@ it('hydrates an incoming mission without waiting for unrelated worker requests',
     await Promise.resolve()
   })
 
-  expect(screen.getByTestId('worker-refresh-deal')).toHaveTextContent('job-fast')
+  expect(screen.getByTestId('worker-refresh-deal')).toHaveTextContent('none')
 
   await act(async () => {
     profile.resolve({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
@@ -347,6 +394,8 @@ it('hydrates an incoming mission without waiting for unrelated worker requests',
     jobs.resolve({ data: { jobs: [] }, status: 200, success: true })
     await refreshPromise
   })
+
+  expect(screen.getByTestId('worker-refresh-deal')).toHaveTextContent('job-fast')
 })
 
 it('restores a candidate-pending mission from the worker job list after reload', async () => {
@@ -413,6 +462,62 @@ it('restores a candidate-pending mission from the worker job list after reload',
   const { jobService } = jest.requireMock('../services')
   expect(jobService.getWorkerCandidate).not.toHaveBeenCalled()
   expect(screen.getByTestId('worker-refresh-error')).toHaveTextContent('none')
+})
+
+it('keeps an active job visible while a stale offer is being reconciled', async () => {
+  arrangeSuccessfulWorkerRuntime()
+  const activeJob = buildWorkerJob('arrived')
+  mockWorkerService.getJobs.mockResolvedValueOnce({ data: { jobs: [activeJob] }, status: 200, success: true })
+
+  render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+  fireEvent.press(screen.getByTestId('worker-refresh'))
+
+  await waitFor(() => {
+    expect(screen.getByTestId('worker-refresh-status')).toHaveTextContent('arrived/accepted')
+  })
+
+  const slowJobs = deferred<any>()
+  mockWorkerService.getBroadcasts.mockResolvedValueOnce({
+    data: {
+      broadcasts: [{
+        broadcast_id: 'broadcast-stale',
+        district: 'q1',
+        estimated_earning_max: 510_000,
+        estimated_earning_min: 510_000,
+        estimated_price_max: 600_000,
+        estimated_price_min: 600_000,
+        expires_at: '2026-07-22T05:19:29.849Z',
+        job_id: 'job-active',
+        problem_summary: 'Den chop chon',
+        scheduled_at: '2026-07-22T06:00:00.000Z',
+        seconds_remaining: 60,
+        sent_at: '2026-07-22T05:18:29.849Z',
+        service_type: 'electrical',
+        status: 'sent',
+      }],
+    },
+    status: 200,
+    success: true,
+  })
+  mockWorkerService.getJobs.mockReturnValueOnce(slowJobs.promise)
+
+  fireEvent.press(screen.getByTestId('worker-refresh'))
+
+  await waitFor(() => {
+    expect(mockWorkerService.getJobs).toHaveBeenCalledTimes(2)
+  })
+  expect(screen.getByTestId('worker-refresh-status')).toHaveTextContent('arrived/accepted')
+
+  await act(async () => {
+    slowJobs.resolve({ data: { jobs: [activeJob] }, status: 200, success: true })
+    await refreshPromise
+  })
+
+  expect(screen.getByTestId('worker-refresh-status')).toHaveTextContent('arrived/accepted')
 })
 
 it('clears a stale candidate-pending mission after the authoritative worker lists become empty', async () => {

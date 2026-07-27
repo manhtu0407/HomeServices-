@@ -207,7 +207,7 @@ export function buildWorkerBriefOutput(input: {
       guidance: isGuidance
         ? [
           "Kiểm tra đúng phạm vi Kael đã chốt và khách có thể xem/khiếu nại.",
-          "Nếu phát sinh thêm, gửi scope-change kèm lý do và ảnh trước khi làm.",
+          "Nếu phát sinh thêm, gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Chỉ làm khi khách xác nhận trong ứng dụng.",
         ]
         : [
           "Đọc nhanh vấn đề trước khi nhận việc.",
@@ -215,7 +215,7 @@ export function buildWorkerBriefOutput(input: {
         ],
       safety: [
         ...knowledgeSafety,
-        "Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.",
+        "Không bắt đầu phần phát sinh khi khách chưa xác nhận đề xuất đổi phạm vi trong ứng dụng.",
       ],
     },
   };
@@ -226,9 +226,12 @@ export function buildWorkerBriefOutput(input: {
 }
 
 function cleanWorkerBriefKnowledgeLine(value: string): string {
-  return sanitizeKaelText(value, 220)
+  const line = sanitizeKaelText(value, 220)
     .replace(/^Safety\s+(?:urgent|warning|advisory):\s*/i, "")
     .trim();
+  return line.includes("không làm trước khi Kael quyết định")
+    ? "Nếu cần đục tường, tháo gạch hoặc mở trần, dừng để gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Không làm trước khi khách xác nhận đề xuất trong ứng dụng."
+    : line;
 }
 
 export function buildScopeChangeOutputs(input: {

@@ -73,7 +73,7 @@ export function WorkerV5EarningsOverviewBody({
   zipAura: WorkerV5ScopedAuraComponent
 }) {
   const earnings = runtime.workerEarnings
-  const recent = earnings?.daily_earnings?.slice(0, 3) ?? []
+  const recent = earnings?.recent_transactions?.slice(0, 3) ?? []
 
   return (
     <View style={styles.sectionStack}>
@@ -104,12 +104,12 @@ export function WorkerV5EarningsOverviewBody({
         auraTestID="worker-v5-earnings-action-rail-mint-aura"
         formulaAura
         onSecondary={() => navigateToScreen('4.2-ledger-detail')}
-        primary={textByLanguage(language, 'Rút tiền chưa khả dụng', 'Payout unavailable')}
+        primary={textByLanguage(language, 'Chuyển ra ngân hàng chưa khả dụng', 'Bank payout unavailable')}
         primaryDisabled
         primaryTestID="worker-v5-earnings-withdraw-action"
         primaryVariant="source"
         reduceTransparency={reduceTransparency}
-        secondary={textByLanguage(language, 'Thu nhập ròng', 'Net earnings')}
+        secondary={textByLanguage(language, 'Xem sổ tài khoản', 'View account ledger')}
         secondaryTestID="worker-v5-earnings-ledger-action"
       />
     </View>
@@ -164,7 +164,7 @@ export function WorkerV5LedgerDetailBody({
       <WorkerV5SingleSourceActionButton
         disabled
         primaryButtonFill={primaryFill}
-        label={textByLanguage(language, 'Rút tiền chưa khả dụng', 'Payout unavailable')}
+        label={textByLanguage(language, 'Chuyển ra ngân hàng chưa khả dụng', 'Bank payout unavailable')}
         onPress={() => undefined}
         reduceTransparency={reduceTransparency}
         testID="worker-v5-ledger-payout-action"
@@ -207,8 +207,8 @@ export function WorkerV5PayoutRequestBody({
         walletIcon={icons.wallet}
       />
       <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Không phải số dư ví', 'Not a wallet balance')}
-        title={textByLanguage(language, 'Thu nhập ròng đã ghi nhận', 'Recorded net earnings')}
+        action={textByLanguage(language, 'Đã SePay xác thực', 'Verified by SePay')}
+        title={textByLanguage(language, 'Số dư trong tài khoản thợ', 'Worker in-app account balance')}
       />
       <WorkerV5PayoutAmountCard
         earnings={earnings}
@@ -230,7 +230,7 @@ export function WorkerV5PayoutRequestBody({
       <WorkerV5SingleSourceActionButton
         primaryButtonFill={primaryFill}
         disabled
-        label={textByLanguage(language, 'Yêu cầu rút tiền chưa khả dụng', 'Payout requests unavailable')}
+        label={textByLanguage(language, 'Chuyển ra ngân hàng chưa khả dụng', 'Bank payout unavailable')}
         onPress={() => undefined}
         reduceTransparency={reduceTransparency}
         testID="worker-v5-payout-request-confirm-action"

@@ -170,7 +170,7 @@ export const WORKER_V5_SCREENS: WorkerV5ScreenDefinition[] = [
     phase: 'settle',
     primaryNext: '4.3-payout-request',
     section: 'earnings',
-    title: { en: 'Net earnings', vi: 'Thu nhập ròng' },
+    title: { en: 'Worker account', vi: 'Tài khoản thợ' },
   },
   {
     authority: 'worker',

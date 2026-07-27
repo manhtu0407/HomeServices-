@@ -9,6 +9,9 @@ import { WorkerV5EarningsHomeHeroAura } from '../ui/aura-surfaces'
 import { styles } from './ledger-styles'
 
 type WorkerV5LedgerEarnings = {
+  available_balance?: number | null
+  current_commission_level?: number | null
+  current_commission_rate_bps?: number | null
   gross_earnings?: number | null
   net_earnings?: number | null
   platform_fee_total?: number | null
@@ -34,15 +37,15 @@ export function WorkerV5LedgerHero({
   language: AppLanguage
   reduceTransparency: boolean
 }) {
-  const netValue = typeof earnings?.net_earnings === 'number' ? earnings.net_earnings : 0
-  const net = formatVndDong(netValue, language)
+  const availableValue = typeof earnings?.available_balance === 'number' ? earnings.available_balance : 0
+  const available = formatVndDong(availableValue, language)
 
   return (
     <View style={[styles.paymentTotalCard, styles.ledgerHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-ledger-hero">
       {!reduceTransparency ? <WorkerV5EarningsHomeHeroAura testID="worker-v5-ledger-mint-aura" /> : null}
       <View style={styles.paymentTotalCopy}>
-        <Text style={styles.paymentTotalCaption} numberOfLines={1}>{textByLanguage(language, 'Thu nhập ròng', 'Net earnings')}</Text>
-        <Text style={styles.paymentTotalAmount} numberOfLines={2} testID="worker-v5-ledger-amount">{net}</Text>
+        <Text style={styles.paymentTotalCaption} numberOfLines={1}>{textByLanguage(language, 'Số dư khả dụng trên ứng dụng', 'Available in-app balance')}</Text>
+        <Text style={styles.paymentTotalAmount} numberOfLines={2} testID="worker-v5-ledger-amount">{available}</Text>
       </View>
     </View>
   )
@@ -61,8 +64,10 @@ export function WorkerV5LedgerBreakdownCard({
 }) {
   const grossValue = typeof earnings?.gross_earnings === 'number' ? earnings.gross_earnings : 0
   const platformFeeValue = typeof earnings?.platform_fee_total === 'number' ? earnings.platform_fee_total : 0
-  const netValue = typeof earnings?.net_earnings === 'number' ? earnings.net_earnings : 0
+  const availableValue = typeof earnings?.available_balance === 'number' ? earnings.available_balance : 0
   const paidJobsValue = typeof earnings?.total_jobs_paid === 'number' ? earnings.total_jobs_paid : 0
+  const rateBps = typeof earnings?.current_commission_rate_bps === 'number' ? earnings.current_commission_rate_bps : null
+  const commissionRate = rateBps === null ? '—' : `${rateBps / 100}%`
   const rows = [
     {
       label: textByLanguage(language, 'Thu nhập gộp', 'Gross income'),
@@ -76,6 +81,12 @@ export function WorkerV5LedgerBreakdownCard({
       label: textByLanguage(language, 'Việc đã trả', 'Paid jobs'),
       value: `${paidJobsValue}`,
     },
+    {
+      label: textByLanguage(language, 'Hoa hồng hiện tại', 'Current commission'),
+      value: earnings?.current_commission_level
+        ? textByLanguage(language, `Bậc ${earnings.current_commission_level} · ${commissionRate}`, `Level ${earnings.current_commission_level} · ${commissionRate}`)
+        : commissionRate,
+    },
   ]
 
   return (
@@ -88,9 +99,9 @@ export function WorkerV5LedgerBreakdownCard({
         </View>
       ))}
       <View style={styles.priceTotalLine}>
-        <Text style={styles.priceTotalLabel} numberOfLines={2}>{textByLanguage(language, 'Thu nhập ròng', 'Net income')}</Text>
+        <Text style={styles.priceTotalLabel} numberOfLines={2}>{textByLanguage(language, 'Số dư khả dụng', 'Available balance')}</Text>
         <Text style={styles.priceTotalValue} numberOfLines={2} testID="worker-v5-ledger-net-total">
-          {formatVndDong(netValue, language)}
+          {formatVndDong(availableValue, language)}
         </Text>
       </View>
     </View>
@@ -109,9 +120,9 @@ export function WorkerV5LedgerTraceTimeline({
   statusTimeline: WorkerV5LedgerStatusTimelineComponent
 }) {
   const paidJobsValue = typeof earnings?.total_jobs_paid === 'number' ? earnings.total_jobs_paid : 0
-  const netValue = typeof earnings?.net_earnings === 'number' ? earnings.net_earnings : 0
+  const availableValue = typeof earnings?.available_balance === 'number' ? earnings.available_balance : 0
   const jobsReady = paidJobsValue > 0
-  const netReady = netValue > 0
+  const balanceReady = availableValue > 0
   const rows = [
     {
       meta: textByLanguage(language, `${paidJobsValue} việc đã trả`, `${paidJobsValue} paid jobs`),
@@ -119,9 +130,9 @@ export function WorkerV5LedgerTraceTimeline({
       title: textByLanguage(language, 'Gom giao dịch', 'Transaction rollup'),
     },
     {
-      meta: formatVndDong(netValue, language),
-      state: netReady ? 'done' as const : jobsReady ? 'active' as const : 'todo' as const,
-      title: textByLanguage(language, 'Ghi sổ ví thu nhập', 'Income wallet ledger'),
+      meta: formatVndDong(availableValue, language),
+      state: balanceReady ? 'done' as const : jobsReady ? 'active' as const : 'todo' as const,
+      title: textByLanguage(language, 'Ghi có tài khoản thợ', 'Credit worker in-app account'),
     },
   ]
 

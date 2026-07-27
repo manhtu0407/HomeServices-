@@ -69,6 +69,14 @@ describe('Kael P9 charter, prompt, and self-check', () => {
     })
   })
 
+  it('rejects English workflow fragments when Vietnamese is selected', () => {
+    expect(checkKaelResponse({
+      text: 'Kael sẽ check payment status trước khi mở bước tiếp theo.',
+      actor: 'customer',
+      language: 'vi',
+    })).toMatchObject({ allowed: false, reason: 'language_mismatch' })
+  })
+
   it('regenerates once then falls back when self-check fails', () => {
     const result = runKaelSelfCheckPipeline({
       text: 'As an AI, I cannot help',
