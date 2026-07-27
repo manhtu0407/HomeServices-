@@ -25,7 +25,7 @@ Per surface, choose the layers that reduce real risk:
 - Interaction: press, disabled (no accidental client action), and visible Kael decision/audit/appeal state for money-impacting steps (A7 matching, A11 scope-change hard-stop, A12 completion/payment, B2 accept — see `protocols/ui.md`).
 - State coverage: loading, empty, error, success — with production-safe empty states (no fake `0`/`--`/mock data).
 - Motion: run the `kael-motion` preflight; reject AI-slop motion; honor the Performance Budget.
-- Visual: compare against device frames / the `design.md` design lab — not browser screenshots.
+- Visual: plan the capture with `kael-visual-qa` (matrix + naming in `design/visual-qa.md`); compare against device frames, not browser screenshots.
 
 ### G3 — Static validation (real, enforced)
 Run and report real output:
@@ -44,10 +44,12 @@ Verify on iOS and Android (simulator or device via `expo start`), not a browser:
 
 Glass (`expo-glass-effect`/`expo-blur`) only renders on native — never validate glass on Expo web.
 
+For a **visual change**, after the static gates (G3) hand off to `kael-visual-qa`: capture per the `design/visual-qa.md` matrix + naming, classify each diff, and defer taste to human sign-off before calling it done. Automated visual capture is not set up — see the runbook `docs/design-research/visual-qa-runbook.md` (recommended tool Maestro, pending Tu's approval + a device/CI). Until then capture manually per the matrix and state the coverage honestly.
+
 ### G5 — User-flow validation
 Cover key flows with component/integration tests plus a manual run on a simulator: Kael booking orchestration, scope-change hard-stop, completion/payment decision, worker accept. Confirm money-impacting steps never auto-advance from client-side UI without a validated Kael decision.
 
-E2E automation (Maestro/Detox) is not set up yet — do not fake browser/Expo-web flow evidence; state the manual coverage honestly.
+E2E + visual automation (Maestro/Detox) is not set up yet — see the recommendation + process in `docs/design-research/visual-qa-runbook.md`. Do not fake browser/Expo-web flow evidence; state the manual coverage honestly.
 
 ### G6 — Evidence before done
 End with the required final response (`critical.md` §3): `Changed / Verification / Risks/Limitations / Next Step`. Verification lists only commands actually run + real results, which UI states were tested, which were NOT, and device screenshots where the change is visual. No evidence → not done.
@@ -81,4 +83,4 @@ Evidence (screenshots/logs):
 ## Limitations (current, honest)
 - Available now: static (`type-check`), component/unit (jest-expo + RNTL), and manual lint (`lint:mobile`, eslint-config-expo).
 - ESLint is intentionally NOT a root `turbo lint` gate yet: pre-existing mobile lint debt must be cleaned first; only then expose a package `lint` script and add it to the Stop hook.
-- Not set up: Maestro/Detox E2E and visual regression. Validate those dimensions manually and say so.
+- Not set up: Maestro/Detox E2E and visual regression. The capture contract is `design/visual-qa.md` (skill `kael-visual-qa`); the tool recommendation + runbook is `docs/design-research/visual-qa-runbook.md` (recommends Maestro, pending Tu's approval + device/CI). Until then validate those dimensions manually and say so.

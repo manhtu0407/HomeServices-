@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { BlurView, type BlurTint } from 'expo-blur'
-import { GlassView, isLiquidGlassAvailable, type GlassColorScheme, type GlassStyle } from 'expo-glass-effect'
+import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable, type GlassColorScheme, type GlassStyle } from 'expo-glass-effect'
 import { Platform, StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native'
 import { useGlassAccessibility } from './accessibility-motion'
 import { createGlassSurfaceStyle, type GlassMaterial, type GlassMode, type GlassVariant } from './tokens'
@@ -14,10 +14,10 @@ type GlassSurfaceProps = {
   onLayout?: ViewProps['onLayout']
   style?: StyleProp<ViewStyle>
   testID?: string
-  variant?: GlassVariant
+  variant: GlassVariant
 }
 
-export function GlassSurface({ backgroundColor, borderColor, children, material = 'standard', mode = 'light', onLayout, style, testID, variant = 'subtle' }: GlassSurfaceProps) {
+export function GlassSurface({ backgroundColor, borderColor, children, material = 'standard', mode = 'light', onLayout, style, testID, variant }: GlassSurfaceProps) {
   const { reduceTransparency } = useGlassAccessibility()
   const surfaceStyle = createGlassSurfaceStyle({ backgroundColor, borderColor, material, mode, reduceTransparency, variant })
   const webNavBackingStyle = Platform.OS === 'web' && variant === 'nav' && !reduceTransparency
@@ -31,10 +31,15 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
     : null
   const composedStyle = [styles.surface, surfaceStyle, webNavBackingStyle, style]
   const shouldUseBlurFallback = variant !== 'nav' || Platform.OS !== 'web'
+  // Manual 1px highlight for the blur / solid fallbacks only. The native GlassView
+  // path draws its own edge, so stacking this there double-highlights the surface.
   const edgeHighlightStyle = [styles.edgeHighlight, material === 'liquid' ? liquidEdgeHighlightStyle(mode) : null]
   const blurIntensity = material === 'liquid' ? liquidBlurIntensityByVariant[variant] : blurIntensityByVariant[variant]
 
-  if (!reduceTransparency && isLiquidGlassAvailable()) {
+  // Require both APIs: isLiquidGlassAvailable() can be true while the native
+  // module is missing on some iOS 26 betas, where using GlassView crashes.
+  if (!reduceTransparency && isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
+    if (__DEV__) warnIfGlassOpacityFlattened(style)
     return (
       <GlassView
         colorScheme={glassColorSchemeByMode[mode]}
@@ -45,7 +50,6 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
         testID={testID}
         tintColor={backgroundColor}
       >
-        <View pointerEvents="none" style={edgeHighlightStyle} />
         {children}
       </GlassView>
     )
@@ -54,7 +58,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, material 
   if (!reduceTransparency && shouldUseBlurFallback && Platform.OS !== 'web') {
     return (
       <BlurView
-        experimentalBlurMethod="none"
+        blurMethod="none"
         intensity={blurIntensity}
         onLayout={onLayout}
         style={composedStyle}
@@ -84,7 +88,6 @@ const blurIntensityByVariant: Record<GlassVariant, number> = {
   control: 18,
   hero: 24,
   sheet: 30,
-  subtle: 14,
 }
 
 const liquidBlurIntensityByVariant: Record<GlassVariant, number> = {
@@ -92,7 +95,6 @@ const liquidBlurIntensityByVariant: Record<GlassVariant, number> = {
   control: 18,
   hero: 22,
   sheet: 26,
-  subtle: 14,
 }
 
 const blurTintByMode: Record<GlassMode, BlurTint> = {
@@ -110,13 +112,22 @@ const glassStyleByVariant: Record<GlassVariant, GlassStyle> = {
   control: 'regular',
   hero: 'regular',
   sheet: 'regular',
-  subtle: 'clear',
 }
 
 function liquidEdgeHighlightStyle(mode: GlassMode): ViewStyle {
   return {
     backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.46)',
     opacity: mode === 'dark' ? 1 : 0.98,
+  }
+}
+
+// Opacity < 1 on a GlassView (or an ancestor) flattens the native Liquid Glass
+// effect into a plain translucent box. Warn in development so the fade is moved
+// to a child view or the surface switched to a standard material.
+function warnIfGlassOpacityFlattened(style: StyleProp<ViewStyle>) {
+  const flat = StyleSheet.flatten(style)
+  if (flat && typeof flat.opacity === 'number' && flat.opacity < 1) {
+    console.warn('[GlassSurface] opacity < 1 flattens the native Liquid Glass effect; fade a child view or use a standard material instead.')
   }
 }
 

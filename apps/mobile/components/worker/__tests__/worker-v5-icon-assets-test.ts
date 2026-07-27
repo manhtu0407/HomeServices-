@@ -32,7 +32,7 @@ describe('worker V5 icon assets', () => {
   })
 
   it('uses dedicated offer images for the worker offer-detail route', () => {
-    const workerFlowSource = readFileSync(resolve(__dirname, '../worker-v5-flow.tsx'), 'utf8')
+    const offerBodySource = readFileSync(resolve(__dirname, '../jobs/inbox-offer-surfaces.tsx'), 'utf8')
     const assets = [
       ['offer-private-entry.png', 'map'],
       ['offer-customer-handoff.png', 'profile'],
@@ -44,11 +44,11 @@ describe('worker V5 icon assets', () => {
       const assetPath = resolve(__dirname, `../../../assets/worker-image-icons/${fileName}`)
 
       expect(existsSync(assetPath)).toBe(true)
-      expect(workerFlowSource).toContain(`${iconName}: require('@/assets/worker-image-icons/${fileName}')`)
+      expect(offerBodySource).toContain(`${iconName}: require('@/assets/worker-image-icons/${fileName}')`)
     }
 
-    expect(workerFlowSource).toContain('iconSources={workerV5OfferDetailIcons}')
-    expect(workerFlowSource).toContain('clockIcon={workerV5OfferDetailIcons.clock}')
+    expect(offerBodySource).toContain('iconSources={workerV5OfferDetailIcons}')
+    expect(offerBodySource).toContain('clockIcon={workerV5OfferDetailIcons.clock}')
   })
 
   it('renders the offer-detail images without white icon tiles', () => {
@@ -64,7 +64,7 @@ describe('worker V5 icon assets', () => {
   })
 
   it('uses an unboxed arrival signal icon for the empty offer summary', () => {
-    const workerFlowSource = readFileSync(resolve(__dirname, '../worker-v5-flow.tsx'), 'utf8')
+    const offerBodySource = readFileSync(resolve(__dirname, '../jobs/inbox-offer-surfaces.tsx'), 'utf8')
     const offerSurfaceSource = readFileSync(resolve(__dirname, '../jobs/offer-surfaces.tsx'), 'utf8')
     const offerStylesSource = readFileSync(resolve(__dirname, '../jobs/offer-styles.ts'), 'utf8')
     const assetPath = resolve(__dirname, '../../../assets/worker-image-icons/offer-arrival-signal.png')
@@ -74,8 +74,8 @@ describe('worker V5 icon assets', () => {
     )
 
     expect(existsSync(assetPath)).toBe(true)
-    expect(workerFlowSource).toContain("workerV5OfferDetailEmptyIcon = require('@/assets/worker-image-icons/offer-arrival-signal.png')")
-    expect(workerFlowSource).toContain('emptyOfferIcon={workerV5OfferDetailEmptyIcon}')
+    expect(offerBodySource).toContain("workerV5OfferDetailEmptyIcon = require('@/assets/worker-image-icons/offer-arrival-signal.png')")
+    expect(offerBodySource).toContain('emptyOfferIcon={workerV5OfferDetailEmptyIcon}')
     expect(emptyCardSource).toContain('style={styles.offerDetailEmptySummaryLine}')
     expect(emptyCardSource).toContain('source={emptyOfferIcon}')
     expect(emptyCardSource).toContain('style={styles.offerDetailEmptyIcon}')

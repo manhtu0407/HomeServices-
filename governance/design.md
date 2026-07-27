@@ -41,13 +41,15 @@ design.md core stays lean; load a reference file only when your task needs it:
 
 | Topic | File |
 |---|---|
+| **Design Runtime (router)** — classify a design task → skill + gates; both agents enter here | `design/runtime.md` |
 | Reference-app method (XanhSM / bTaskee / Grab) | `design/reference-method.md` |
 | Design lab (options, evidence, scoring, contract) | `design/design-lab.md` |
 | Palette Lab + Typography Lab | `design/palette-typography.md` |
 | Decoration + Kael Mascot + Icon System | `design/decoration-mascot-icons.md` |
 | Motion Grammar (kael-motion canonical source) | `design/motion.md` |
 | Screen recipes (App Shell to Empty States) | `design/screen-recipes.md` |
-| **Glass-Liquid Signature** — final house-style gate (neutral + 1 mint, spring/bubble) | `design/signature.md` |
+| **Material Direction** — decide glass vs solid by surface role (money/scope = solid; kael-material-direction source) | `design/material-direction.md` |
+| **Glass-Liquid Signature** — the glass recipe once material-direction picks glass (neutral + 1 mint, spring/bubble) | `design/signature.md` |
 
 ## 1. Design Identity
 

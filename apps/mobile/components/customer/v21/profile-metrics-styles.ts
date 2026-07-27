@@ -22,7 +22,7 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
     zIndex: 1,
   },
   profileCompactMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   profileLiquidScore: {

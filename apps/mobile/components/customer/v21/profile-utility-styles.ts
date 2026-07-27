@@ -370,7 +370,7 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     zIndex: 1,
   },
   profileOverviewUtilityFormulaMintAura: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.94,
     zIndex: 0,
   },

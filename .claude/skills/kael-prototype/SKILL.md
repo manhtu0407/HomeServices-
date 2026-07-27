@@ -1,16 +1,11 @@
 ---
 name: kael-prototype
 description: Build or evaluate a clearly throwaway prototype that answers one design, UI, state-model, or business-logic question before production implementation. Use when Tu asks for a prototype, a design question needs options, or a state/workflow model needs to be felt out interactively. Follows protocols/prototype-clarify.md section 10.
-license: MIT
-metadata:
-  source: mattpocock/skills prototype
-  source_url: https://github.com/mattpocock/skills/tree/main/skills/engineering/prototype
-  adapted_for: nestscout
 ---
 
 # kael-prototype
 
-Auto-trigger wrapper. The canonical Home Services procedure is `protocols/prototype-clarify.md` section 10 (`kael-prototype`) plus `design.md` for UI/visual work and `critical.md` section 8 (`kael-review`) before absorbing anything into production.
+Auto-trigger wrapper, adapted from `mattpocock/skills` (prototype, MIT). The canonical Home Services procedure is `protocols/prototype-clarify.md` section 10 (`kael-prototype`) plus `design.md` for UI/visual work and `critical.md` section 8 (`kael-review`) before absorbing anything into production.
 
 Use this when the work is meant to answer a question quickly, not ship directly.
 

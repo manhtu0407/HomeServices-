@@ -309,7 +309,7 @@ export function EntryBrandAccessFlow({
 
   return (
     <View style={styles.root} testID={`auth-${step}-screen`}>
-      <StatusBar style="dark" translucent />
+      <StatusBar style="dark" />
       <PageAura />
       <EntryAccessStepContent
         acceptedTerms={acceptedTerms}

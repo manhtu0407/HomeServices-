@@ -903,7 +903,7 @@ describe('mobile push notification wiring', () => {
     const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
     const appConfig = read('app.config.ts')
     const appJson = read('app.json')
-    expect(mobilePackage.dependencies['expo-notifications']).toBe('~0.32.17')
+    expect(mobilePackage.dependencies['expo-notifications']).toBe('~57.0.7')
     expect(appConfig).toContain('withoutIosPushEntitlement')
     expect(appConfig).toContain("delete config.modResults['aps-environment']")
     expect(appConfig).toContain("delete attributes.SystemCapabilities?.['com.apple.Push']")
@@ -1083,7 +1083,7 @@ describe('prototype runtime cleanup', () => {
     expect(restoredWorker).toContain('export function WorkerHomeSurface')
     expect(restoredWorkerDock).toContain('export function WorkerRebuildDockOverlay')
     expect(restoredWorkerDock).toContain('export function WorkerDockLayoutProvider')
-    expect(restoredWorker).toContain('worker-v5-screen-1.1-worker-home')
+    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('worker-v5-screen-1.1-worker-home')
     expect(restoredWorkerDock).toContain('worker-v5-dock-overlay')
     expect(exists('components/rebuild/rebuild-surfaces.tsx')).toBe(false)
     expect(restoredSources).not.toContain("from '../customer-surfaces'")
@@ -1183,7 +1183,7 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('export function WorkerChatSurface')
     expect(src).toContain('export function WorkerEarningsSurface')
     expect(src).toContain('export function WorkerProfileSurface')
-    expect(workerV5).toContain('testID="worker-v5-screen-1.1-worker-home"')
+    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('testID="worker-v5-screen-1.1-worker-home"')
     expect(workerV5).toContain('testID={`worker-v5-screen-${screen.id}`}')
     expect(workerDock).toContain('export function WorkerRebuildDockOverlay')
   })
@@ -1238,7 +1238,14 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     const customerHistoryView = read('components/customer/v21/service-history-surface.tsx')
     const customerChatAura = read('components/customer/v21/chat-surfaces.tsx')
     const workerAura = read('components/worker/ui/aura-surfaces.tsx')
-    const workerFlow = read('components/worker/worker-v5-flow.tsx')
+    // Must stay the composition root PLUS the surfaces extracted out of it: the
+    // negative assertions below would silently stop covering extracted code otherwise.
+    const workerFlow = [
+      read('components/worker/worker-v5-flow.tsx'),
+      read('components/worker/home/screen-surfaces.tsx'),
+      read('components/worker/chat/orb-screen-surfaces.tsx'),
+      read('components/worker/chat/kael-body-surfaces.tsx'),
+    ].join('\n')
 
     expect(theme).toContain("bg: '#F1FAF8'")
     expect(theme).toContain("canvas: '#F1FAF8'")
@@ -1329,7 +1336,7 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(workerFlow).toContain('reduceTransparency={glass.reduceTransparency}')
     expect(workerFlow).toContain('scope={formulaPageAuraTarget.scope}')
     expect(workerFlow).toContain('testID={formulaPageAuraTarget.testID}')
-    expect(workerFlow).toContain('<WorkerV5HomeAuraBackground reduceTransparency={glass.reduceTransparency} />')
+    expect(read('components/worker/home/screen-surfaces.tsx')).toContain('<WorkerV5HomeAuraBackground reduceTransparency={glass.reduceTransparency} />')
     expect(workerFlow).toContain('scope="KaelOrbCustomerPage"')
     expect(workerFlow).toContain('reduceTransparency={reduceTransparency}')
     expect(workerFlow).toContain('testID="worker-v5-kael-orb-background-mint-aura"')
@@ -1922,19 +1929,19 @@ describe('web preview dependencies', () => {
   const stagingPreviewScript = readSource(resolve(MOBILE_ROOT, '../../scripts/run-mobile-web-staging-preview.ps1'))
 
   it('declares react-dom for Expo web rendering', () => {
-    expect(mobilePackage.dependencies['react-dom']).toBe('19.1.0')
+    expect(mobilePackage.dependencies['react-dom']).toBe('19.2.3')
   })
 
   it('declares react-native-web for Expo web rendering', () => {
-    expect(mobilePackage.dependencies['react-native-web']).toBe('~0.21.2')
+    expect(mobilePackage.dependencies['react-native-web']).toBe('~0.21.0')
   })
 
   it('declares react-native-svg for mobile icon rendering', () => {
-    expect(mobilePackage.dependencies['react-native-svg']).toBe('15.12.1')
+    expect(mobilePackage.dependencies['react-native-svg']).toBe('15.15.4')
   })
 
   it('keeps the existing Reanimated dependency available without forcing it into glass surfaces', () => {
-    expect(mobilePackage.dependencies['react-native-reanimated']).toBe('~4.1.7')
+    expect(mobilePackage.dependencies['react-native-reanimated']).toBe('4.5.0')
   })
 
   it('declares expo-image-picker for local image/video draft media', () => {
@@ -1989,7 +1996,7 @@ describe('mobile glassmorphism design system', () => {
     const motion = read('components/ui/motion-tokens.ts')
     const surface = read('components/ui/glass-surface.tsx')
     const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
-    expect(tokens).toContain("export type GlassVariant = 'nav' | 'control' | 'hero' | 'sheet' | 'subtle'")
+    expect(tokens).toContain("export type GlassVariant = 'nav' | 'control' | 'hero' | 'sheet'")
     expect(tokens).toContain("export type GlassMaterial = 'liquid' | 'standard'")
     expect(tokens).toContain("material = 'standard'")
     expect(tokens).toContain("const isLiquid = material === 'liquid'")
@@ -2000,12 +2007,13 @@ describe('mobile glassmorphism design system', () => {
     expect(tokens).toContain("light: '#FFFDF8'")
     expect(tokens).toContain('liquidShadowByVariant')
     expect(tokens).toContain("boxShadow: reduceTransparency ? 'none'")
-    expect(motion).toContain('durationMs: 440')
-    expect(motion).toContain('reducedDurationMs')
+    expect(motion).not.toContain('440')
+    expect(motion).toContain('route: {')
+    expect(motion).toContain('reducedMotionCapMs')
     expect(motion).toContain('liquid: {')
     expect(motion).toContain('stiffness: 200')
-    expect(mobilePackage.dependencies['expo-glass-effect']).toBe('~0.1.10')
-    expect(mobilePackage.dependencies['expo-blur']).toBe('~15.0.8')
+    expect(mobilePackage.dependencies['expo-glass-effect']).toBe('~57.0.1')
+    expect(mobilePackage.dependencies['expo-blur']).toBe('~57.0.2')
     expect(surface).toContain("from 'expo-glass-effect'")
     expect(surface).toContain("from 'expo-blur'")
     expect(surface).toContain('isLiquidGlassAvailable()')
@@ -2016,7 +2024,7 @@ describe('mobile glassmorphism design system', () => {
     expect(surface).toContain("sheet: 26")
     expect(surface).toContain("rgba(190,210,205,0.14)")
     expect(surface).toContain("rgba(255,255,255,0.46)")
-    expect(surface).toContain('experimentalBlurMethod="none"')
+    expect(surface).toContain('blurMethod="none"')
     expect(surface).toContain("import { Platform, StyleSheet, View")
     expect(surface).toContain("const webNavBackingStyle = Platform.OS === 'web' && variant === 'nav'")
     expect(surface).toContain('styles.webNavBackingLight')

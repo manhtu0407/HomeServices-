@@ -290,8 +290,8 @@ export function KaelCoreV9({
 const styles = StyleSheet.create({
   bowShade: { backgroundColor: 'rgba(3,4,5,0.58)', position: 'absolute' },
   eye: { backgroundColor: '#FFFFFF', borderRadius: 999, position: 'absolute' },
-  lensGlint: { ...StyleSheet.absoluteFillObject },
+  lensGlint: { ...StyleSheet.absoluteFill },
   model: { alignItems: 'center', justifyContent: 'center', position: 'absolute' },
-  monocle: { ...StyleSheet.absoluteFillObject, transformOrigin: '75% 52%' },
+  monocle: { ...StyleSheet.absoluteFill, transformOrigin: '75% 52%' },
   root: { alignItems: 'center', justifyContent: 'center', overflow: 'visible', position: 'relative' },
 })

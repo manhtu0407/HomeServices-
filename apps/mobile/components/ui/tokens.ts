@@ -1,7 +1,7 @@
 import type { ViewStyle } from 'react-native'
 import { color, glassSurfaceTheme } from '@/design/theme'
 
-export type GlassVariant = 'nav' | 'control' | 'hero' | 'sheet' | 'subtle'
+export type GlassVariant = 'nav' | 'control' | 'hero' | 'sheet'
 export type GlassMode = 'dark' | 'light'
 export type GlassMaterial = 'liquid' | 'standard'
 
@@ -19,7 +19,6 @@ const radiusByVariant: Record<GlassVariant, number> = {
   control: 18,
   hero: 28,
   sheet: 30,
-  subtle: 20,
 }
 
 const shadowByVariant: Record<GlassVariant, { dark: string; light: string }> = glassSurfaceTheme.shadowByVariant
@@ -47,7 +46,7 @@ export function createGlassSurfaceStyle({
   material = 'standard',
   mode = 'light',
   reduceTransparency = false,
-  variant = 'subtle',
+  variant = 'control',
 }: GlassSurfaceOptions = {}): ViewStyle {
   const isDark = mode === 'dark'
   const isLiquid = material === 'liquid'

@@ -52,7 +52,7 @@ Auth changes must preserve:
 | Workflow | Route | UI Owner | State/Action Owner | Edge Routes | Shared Contracts / Tests |
 |---|---|---|---|---|---|
 | A1 customer home | `apps/mobile/app/(customer)/home.tsx` | `CustomerHomeSurface` in `customer-surfaces.tsx` | `useFrontendWorkflow`, `localWorkflowReducer`, selectors | read/bootstrap only, no workflow write | `mobile-wiring.test.ts`, `mobile-workflow.test.ts` |
-| A2-A6 service/problem/description/media/estimate/time | `apps/mobile/app/(customer)/booking.tsx` | `CustomerBookingEntrySurface` | `setPendingKaelChatDraft`, `onOpenKael`, later `uploadJobMediaDrafts` once a job exists | `POST /kael/chat`, `POST /jobs/:id/media` | `booking-wizard-test.tsx`, `mobile-wiring.test.ts`, `mobile-backend-wiring.test.ts` |
+| A2-A6 service/problem/description/media/estimate/time | `apps/mobile/app/(customer)/booking.tsx` | `CustomerBookingEntrySurface` | `setPendingKaelChatDraft`, `onOpenKael`, later `uploadJobMediaDrafts` once a job exists | `POST /kael/chat`, `POST /jobs/:id/media` | `mobile-wiring.test.ts`, `mobile-backend-wiring.test.ts` |
 | A4/A5 Kael chat and price check | `apps/mobile/app/(customer)/kael.tsx`, `kael-chat.tsx` | `KaelChatSurface`, `CustomerKaelSurface`, `agentic-parts.tsx` | `kaelChatService`, pending-intake reducer, `useFrontendWorkflow` hydration after Kael creates the job | `POST /kael/chat`, `GET /kael/chat/:id`, `POST /kael/chat/:id`, `POST /kael/chat/:id/confirm`, `POST /places/autocomplete` | `contracts-parity.test.ts`, `validation.test.ts`, API Kael tests |
 | A7 Kael starts worker search | Kael chat/history surfaces as orchestration viewer | `KaelChatSurface`, `CustomerHistorySurface` | `KaelAutonomyDecision(action=start_matching)`, `hydrateRemoteJobById`; `confirmRemoteSearch` remains legacy/manual recovery | `POST /kael/chat/:id/confirm`, `POST /jobs/:id/confirm-search` | `mobile-workflow.test.ts`, API lifecycle/broadcast tests |
 | A8-A10 searching, matched, active job, chat | `apps/mobile/app/(customer)/history.tsx`, `kael.tsx` | `CustomerHistorySurface`, `KaelChatSurface` | `hydrateRemoteJobById`, `refreshCurrentJob`, `useJobChatThread`; composer sends only after Kael has matched a worker | `GET /jobs/:id`, `GET/POST /jobs/:id/messages` | `mobile-workflow.test.ts`, `contracts-parity.test.ts`, `mobile-wiring.test.ts` |
@@ -183,7 +183,10 @@ If any item is false, stop and gather context before editing.
 
 ## C1 — Target Module Map (image-2 blueprint · #5 Track C)
 
-> **Status: TARGET blueprint, NOT current state.** This is the C1 deliverable of the stack-reorg (`docs/architecture/stack-unification-plan-20260616.md` §5). Every table ABOVE this section describes today's owners; this section describes where code MOVES during the reorg (P4–P6). No file has moved yet. Do not move files from this section alone — follow the build handoff sequencing.
+> **Status: MIXED — read the per-subsection status.** This is the C1 deliverable of the stack-reorg (`docs/architecture/stack-unification-plan-20260616.md` §5). Every table ABOVE this section describes today's owners.
+>
+> - **`components/worker/` subsection: CURRENT STATE.** The worker split executed in `Plan.md` §44 (2026-07-27); its table reflects the real tree with measured line counts.
+> - **All other subsections: TARGET blueprint.** They describe where code MOVES during the reorg (P4–P6) and their "current" line counts predate later work, so treat them as stale until re-verified. Do not move files from those alone — follow the build handoff sequencing.
 
 ### Arrangement law (from #5 §0.5 — binds every grouping here)
 
@@ -220,19 +223,27 @@ One module per workflow domain; `services/index.ts` assembles them into `MobileA
 - `router/request-validation.ts` ← the `parse*` body validators (parseWorkerStatusUpdate, parseWorkerAccessCheckIn, …) + storage-ref validators (isSupabaseJobMediaStageRef, isAccessCheckInPhotoRef, isCompletionPhotoRef).
 - Contract types inlined here today (KaelEstimate :73 / CreateJobResponse :105 / KaelChatResponse :162) **leave for shared** — see C2.
 
-### Mobile `worker-surfaces.tsx` (9,709) → `components/worker/<surface>/`
+### Mobile `components/worker/` — CURRENT STATE (worker module map updated §44 Phase 3, 2026-07-27)
 
-Reconciled with #3 worker Case Work (jobs board → Kael Case Work + "điều chỉnh" → on-site status; money view in profile; "Kael hỗ trợ nhận việc" via notifications).
+**This worker subsection is current state, not a target.** The split executed in `Plan.md` §44 (Phase 1 style extraction + Phase 2 component moves); see that section for the per-symbol move history. The other subsections of C1 remain target-shaped and were not re-verified by §44.
 
-| Target module | Owns |
-|---|---|
-| `worker/home/` | WorkerHomeSurface + map stage (WorkerMapStage, CompactWorkerPresenceMap, map line/route/coverage, controls/modal), readiness panel, availability toggle, home service grid/tiles |
-| `worker/jobs/` | WorkerJobsSurface + JobRoom* + phase-context cards + Needs* cards + ActiveWorkerJobCard + IncomingRequestSheet + scope-change/cancellation/completion-evidence boxes (#3 "điều chỉnh" lives here) |
-| `worker/chat/` | WorkerChatSurface + content + composer dock + Kael parity panel + chat bubbles/icons |
-| `worker/earnings/` | WorkerEarningsSurface + hero/ledger/trend/summary |
-| `worker/profile/` | WorkerProfileSurface + level card + content + verification form + service-area picker |
-| `worker/dock/` (shell) | WorkerFrame, WorkerScreenHeader, WorkerStandaloneHeader, WorkerDockOverlay/Icon |
-| `worker/ui/` (worker-local primitives) | glass/liquid layers, motion field, SegmentFilter, Metric, PressButton, icon set (promote truly-generic ones to `components/ui/`) |
+Entry point is unchanged: `worker-surfaces.tsx` (12 lines) re-exports the five public surfaces from `worker-v5-flow.tsx`. Routes and tests import those names and were not touched by the split.
+
+| Module | Lines | Owns |
+|---|---|---|
+| `worker-v5-flow.tsx` | 1,452 | Composition root only: the 5 public exports (`WorkerHomeSurface`, `WorkerJobsSurface`, `WorkerChatSurface`, `WorkerEarningsSurface`, `WorkerProfileSurface`), `useWorkerV5Screen`, the `WorkerV5ScreenSurface` shell/chrome/hero, the `WorkerV5Body` dispatcher (switch on `screen.id`), `getWorkerV5PrimaryAction`, `buildHeroLine`/`buildHeroBody`, `AuthorityCard`. Deep module by design — it IS the assembly point; do not split further. |
+| `worker-v5-flow-styles.ts` | 2,461 | The single `StyleSheet.create` block for every surface still rooted in the composition root and its moved bodies. Pure style data, no JSX/logic. Grandfathered oversize in `scripts/structure-baseline.json`; splitting it per bucket is a possible follow-up, not done in §44. |
+| `worker/home/` | 11 files · 1,768 | `WorkerV5HomeScreenSurface` + `WorkerV5HomeBody` + `buildDealSummary` (`screen-surfaces.tsx`), availability toggle + spring (`availability-surfaces.tsx`), map stage + VietMap static preview/image (`map-stage-surfaces.tsx`), plus the pre-existing quick-action/readiness/body chains |
+| `worker/jobs/` | 47 files · 8,409 | Offer icons + opportunity inbox / offer detail / customer-confirmation-wait bodies (`inbox-offer-surfaces.tsx`), in-progress body + travel gate + field-evidence types (`in-progress-surfaces.tsx`), scope-change body (`scope-change-body-surfaces.tsx`), route map stage + authenticated route preview/image + status timeline (`route-map-surfaces.tsx`), header subtitle builders (`header-copy.ts`), plus the pre-existing acceptance/offer/completion/timeline chains |
+| `worker/chat/` | 17 files · 4,242 | Kael orb screen surface + intake-readiness actions + composer (`orb-screen-surfaces.tsx`), Kael chat body + shared job-incident chat + job-intake body (`kael-body-surfaces.tsx`), plus the pre-existing orb/session-menu/body chains |
+| `worker/earnings/` | 14 files · 1,694 | Payout-method body (`payout-method-body-surfaces.tsx`) plus the pre-existing hero/ledger/overview/payout chains |
+| `worker/profile/` | 31 files · 5,610 | Ranking hero (`ranking-hero-surfaces.tsx`), agent-memory body (`agent-memory-surfaces.tsx`), settings body (`settings-body-surfaces.tsx`), service-area map card (`service-area-map-surfaces.tsx`), reliability hero + axis fill (`reliability-hero-surfaces.tsx`), plus the pre-existing level/verification/body chains |
+| `worker/dock/` (shell) | 4 files · 806 | Dock overlay, screen definitions, worker screen id/section/phase types |
+| `worker/ui/` (worker-local primitives) | 18 files · 3,228 | Cross-cutting atoms moved out of the god-file: `screen-atoms-surfaces.tsx` (`InfoListCard`, `WorkerV5ScreenInfoRow`, `MetricTile`), `screen-icons.ts` (`workerV5Icons`, service/opportunity icon maps, profile icon boost set), `screen-labels.ts` (`workerV5DisplayCode`), `screen-navigation.ts` (`workerV5JobsDestinationScreenId`); plus the pre-existing aura/format/primitives/metrics/icon-asset chains |
+
+Naming collision resolved during the split: the god-file's local `WorkerV5InfoRow` was renamed to **`WorkerV5ScreenInfoRow`** because `worker/jobs/shared-surfaces.tsx` already exports a different `WorkerV5InfoRow` (re-exported via `worker/ui/primitives-surfaces.tsx`). The two are distinct components; the screen-level one delegates to the primitive.
+
+Convention for the moved files: each bucket module declares its own local `Text` font wrapper and `type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>`, matching what the already-split worker modules did before §44. Style objects are imported from `../worker-v5-flow-styles` unless the module owns a bucket-local `*-styles.ts`.
 
 ### Mobile `customer-surfaces.tsx` (7,776) → `components/customer/<surface>/`
 

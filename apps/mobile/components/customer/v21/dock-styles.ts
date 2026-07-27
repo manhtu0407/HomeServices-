@@ -48,7 +48,7 @@ export const customerV21DockStyles = StyleSheet.create({
     transform: [{ translateY: -1 }],
   },
   dockCaustic: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: 'hidden',
     zIndex: 0,
   },

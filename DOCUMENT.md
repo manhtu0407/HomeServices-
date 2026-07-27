@@ -6,7 +6,7 @@ Nếu một học sinh 10 tuổi đọc xong và nói được: "À, app này gi
 
 ## 1. Phiên Bản Một Câu
 
-NestScout là app di động giúp cư dân chung cư ở TP.HCM tìm thợ sửa điện, sửa nước, và dọn dẹp nhà cửa đáng tin hơn, với Kael đứng giữa để hiểu vấn đề, ước tính giá, chuẩn bị thông tin cho thợ, và bảo vệ giao dịch.
+NestScout là app di động giúp cư dân chung cư ở TP.HCM tìm thợ đáng tin cho sáu nhóm dịch vụ nhà ở phổ biến nhất: điện, nước, dọn dẹp, điều hòa, chăm sóc sofa/nệm/rèm/thảm, và sửa chữa nhỏ. Kael đứng giữa để hiểu vấn đề, ước tính giá, chuẩn bị thông tin cho thợ, và bảo vệ giao dịch.
 
 ## 2. Vấn Đề Chúng Ta Đang Giải Quyết
 
@@ -33,14 +33,16 @@ Nó có ba phần dễ hiểu:
 - App cho thợ: người đã được xác minh và nhận việc.
 - Kael: trợ lý của NestScout, giúp hiểu vấn đề, kiểm tra giá, hướng dẫn quy trình, và bảo vệ hai bên.
 
-Giai đoạn đầu chỉ tập trung vào:
+Hiện tại NestScout phục vụ sáu nhóm dịch vụ nhà ở:
 
 - sửa điện,
 - sửa nước,
 - dọn dẹp nhà cửa,
-- căn hộ chung cư tại TP.HCM.
+- sửa và bảo trì điều hòa, chăm sóc không khí trong nhà,
+- chăm sóc sofa, nệm, rèm, thảm,
+- sửa chữa và lắp đặt nhỏ khác.
 
-Chúng ta bắt đầu hẹp không phải vì tham vọng nhỏ, mà vì muốn làm thật chắc. Một giao dịch thật và đáng tin quan trọng hơn một danh mục dịch vụ thật rộng nhưng không kiểm soát được chất lượng.
+Phạm vi vẫn giữ hẹp ở chỗ khác: chỉ căn hộ chung cư, chỉ tại TP.HCM. Chúng ta chọn làm chắc một thành phố, một loại nhà ở, trước khi nghĩ đến việc mở rộng. Một giao dịch thật và đáng tin quan trọng hơn một danh mục dịch vụ thật rộng nhưng không kiểm soát được chất lượng.
 
 ## 4. NestScout Không Phải Là Gì
 
@@ -59,7 +61,7 @@ Nguyên tắc đơn giản: cái gì app hiển thị ra thì phải có thật,
 
 ### Khách hàng
 
-Khách hàng là cư dân chung cư cần sửa điện, sửa nước, hoặc dọn dẹp.
+Khách hàng là cư dân chung cư cần sửa chữa, bảo trì, hoặc dọn dẹp nhà cửa. Nhiều khi họ còn chưa chắc vấn đề của mình là gì, hay nên bắt đầu từ đâu.
 
 Họ muốn:
 
@@ -108,7 +110,7 @@ Hãy tưởng tượng Kael giống một điều phối viên bình tĩnh:
 
 Kael không phải là AI muốn làm gì thì làm.
 
-Những việc quan trọng như bắt đầu tìm thợ, đổi phạm vi, xác nhận hoàn tất, hủy việc, thanh toán, hoặc xử lý tranh chấp phải đi qua hệ thống backend đã kiểm tra luật, lưu bằng chứng, và ghi lại quyết định.
+Những việc quan trọng như bắt đầu tìm thợ, đổi phạm vi, xác nhận hoàn tất, hủy việc, thanh toán, hoặc xử lý tranh chấp phải được một lớp kiểm tra phía sau xác nhận đúng quy trình, lưu bằng chứng, và ghi lại quyết định, trước khi có hiệu lực.
 
 Nói đơn giản: Kael có thể đề xuất và điều phối, nhưng quyết định quan trọng phải được hệ thống kiểm tra trước khi có hiệu lực.
 
@@ -150,19 +152,11 @@ Lời hứa quan trọng: thợ tốt được nhận việc rõ hơn, ít tranh
 
 ## 9. Hệ Thống Hoạt Động Như Thế Nào
 
-Hãy tưởng tượng NestScout như một tòa nhà dịch vụ.
+Nói ở mức đơn giản nhất: bạn nói vấn đề, Kael giúp hiểu và chuẩn bị mọi thứ, một thợ đáng tin nhận việc. Nhưng không có bước quan trọng nào được làm một cách tuỳ tiện.
 
-- App di động là cửa chính. Khách và thợ đi vào từ đây.
-- Supabase Auth là bảo vệ. Nó kiểm tra ai đang đăng nhập.
-- `mobile-api` là quầy lễ tân. Mọi việc quan trọng phải đi qua quầy này.
-- Database là sổ cái sự thật. Nó lưu người dùng, công việc, tin nhắn, trạng thái, bằng chứng, và quyết định.
-- Kael là điều phối viên thông minh. Kael giúp hiểu vấn đề và hướng dẫn quy trình.
-- Các nhà cung cấp AI là chuyên gia bên ngoài. Họ hỗ trợ Kael suy nghĩ, nhưng không trực tiếp điều khiển app.
-- Admin là phòng điều hành. Operator xem, kiểm tra, và xử lý các trường hợp rủi ro.
+Tìm thợ, đổi giá, xác nhận hoàn tất, thanh toán, hủy việc: mọi quyết định như vậy đều đi qua một lớp kiểm tra đứng sau, chứ không phải do một người hay một mình Kael tự quyết định trong khoảnh khắc.
 
-Luật cốt lõi:
-
-App di động không được tự ý quyết định những việc quan trọng. App phải hỏi backend, và backend kiểm tra luật trước.
+Luật cốt lõi chỉ gói trong một câu: không ai, kể cả Kael, được tự ý quyết định thay lớp kiểm tra đó.
 
 ## 10. Vì Sao Bằng Chứng Rất Quan Trọng
 
@@ -226,7 +220,7 @@ Nó có thể trở thành business 100M+ USD vì:
 - Niềm tin có giá trị: khách hàng sẵn sàng trả phí cho sự an tâm, minh bạch, và bảo vệ.
 - Thợ tốt cần nguồn việc ổn định: nếu matching tốt, thợ có thể kiếm đều hơn.
 - Dữ liệu thật tạo lợi thế: bằng chứng từ công việc thật giúp cải thiện định giá, matching, chất lượng, và vận hành.
-- Có thể mở rộng có kiểm soát: sau khi một thành phố và ba dịch vụ đầu tiên chạy tốt, mô hình có thể mở sang nhiều quận, thành phố, dịch vụ, và đối tác.
+- Có thể mở rộng có kiểm soát: sau khi một thành phố và sáu nhóm dịch vụ hiện tại chạy tốt, mô hình có thể mở sang nhiều quận, thành phố, dịch vụ, và đối tác.
 
 Nhưng scale phải được kiếm bằng chất lượng thật.
 
@@ -255,13 +249,13 @@ NestScout đang ở giai đoạn xây nền móng và làm cứng sản phẩm.
 Ưu tiên hiện tại:
 
 - app di động cho khách và thợ,
-- backend Supabase Edge,
+- hệ thống vận hành phía sau ổn định,
 - Kael hoạt động trong ranh giới an toàn,
-- chỉ ba nhóm dịch vụ đầu tiên,
+- sáu nhóm dịch vụ đã triển khai,
 - bằng chứng và niềm tin,
 - sẵn sàng cho giao dịch thật đầu tiên.
 
-Chưa nên gọi sản phẩm là hoàn toàn sẵn sàng để scale lớn nếu chưa có kiểm chứng native, backend smoke check, release build, và bằng chứng vận hành thật.
+Chưa nên gọi sản phẩm là sẵn sàng để mở rộng quy mô lớn nếu chưa chạy thử trực tiếp trên điện thoại thật, chưa kiểm tra kỹ hệ thống vận hành phía sau, chưa có bản phát hành chính thức, và chưa có bằng chứng vận hành thật từ người dùng thật.
 
 ## 16. Những Phần Phải Làm Rất Cẩn Thận
 
@@ -314,20 +308,14 @@ Phát sinh / thay đổi phạm vi: khi thực tế khác mô tả ban đầu.
 
 Bằng chứng: ảnh, tin nhắn, trạng thái, ghi chú, và dữ liệu cho thấy chuyện gì đã xảy ra.
 
-Backend: hệ thống phía sau app, nơi kiểm tra luật và lưu sự thật.
-
-Mobile API: cửa kiểm soát giữa app di động và backend.
-
-RLS: luật bảo vệ dữ liệu trong database, giúp người dùng không xem hoặc sửa thứ họ không được phép.
-
-Provider: dịch vụ bên ngoài như AI, bản đồ, hoặc hạ tầng hỗ trợ.
-
 Admin: người vận hành, kiểm tra, và xử lý tình huống rủi ro.
 
 ## 19. Niềm Tin Cốt Lõi
 
-NestScout không chỉ là "app đặt thợ".
+NestScout không phải người đầu tiên đưa dịch vụ nhà ở lên app. bTaskee, JupViec, Rada, và các tên khác đã chứng minh thị trường này có thật, và đã định hình những gì một app dịch vụ nhà ở tốt cần có: ước tính giá trước khi đặt, thợ được xác minh, đánh giá, kênh hỗ trợ.
 
-NestScout là hệ thống giúp khách mô tả vấn đề trong nhà, hiểu khoảng giá hợp lý, tìm thợ đáng tin, xử lý phát sinh minh bạch, và lưu đủ bằng chứng để cả hai bên được bảo vệ.
+NestScout học đúng những gì đã được kiểm chứng đó. Nhưng NestScout đặt cược vào phần khó hơn và ít ai làm triệt để: biến mọi bước có thể gây tranh chấp (đổi phạm vi, xác nhận hoàn tất, thanh toán) thành một bước có bằng chứng và xác nhận rõ ràng, không có ngoại lệ, không có dữ liệu giả để lấp chỗ trống khi chưa đủ thông tin.
 
-Nếu làm được điều đó lặp đi lặp lại, NestScout có thể đi từ một app dịch vụ chung cư tại TP.HCM thành một hạ tầng niềm tin lớn hơn cho thị trường dịch vụ nhà ở.
+Đây không phải một tính năng phụ để cạnh tranh. Đây là toàn bộ lý do NestScout tồn tại, và là lợi thế khó sao chép nhanh: kỷ luật này phải được xây từng dòng code, từng giao dịch một, không thể vá thêm sau.
+
+Nếu làm được điều đó lặp đi lặp lại, NestScout không dừng lại ở một app dịch vụ chung cư tại TP.HCM. NestScout trở thành hạ tầng niềm tin cho toàn bộ thị trường dịch vụ nhà ở đô thị.
