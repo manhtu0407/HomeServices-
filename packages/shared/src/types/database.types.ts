@@ -1183,6 +1183,8 @@ export type Database = {
           service_type: Database["public"]["Enums"]["service_type"]
           status: Database["public"]["Enums"]["job_status"]
           updated_at: string
+          worker_commission_level: number | null
+          worker_commission_rate_bps: number | null
           worker_id: string | null
           worker_net: number | null
         }
@@ -1257,6 +1259,8 @@ export type Database = {
           service_type: Database["public"]["Enums"]["service_type"]
           status?: Database["public"]["Enums"]["job_status"]
           updated_at?: string
+          worker_commission_level?: number | null
+          worker_commission_rate_bps?: number | null
           worker_id?: string | null
           worker_net?: number | null
         }
@@ -1331,6 +1335,8 @@ export type Database = {
           service_type?: Database["public"]["Enums"]["service_type"]
           status?: Database["public"]["Enums"]["job_status"]
           updated_at?: string
+          worker_commission_level?: number | null
+          worker_commission_rate_bps?: number | null
           worker_id?: string | null
           worker_net?: number | null
         }
@@ -4819,6 +4825,36 @@ export type Database = {
           },
         ]
       }
+      worker_commission_tiers: {
+        Row: {
+          commission_rate_bps: number
+          created_at: string
+          is_active: boolean
+          level: number
+          min_average_rating: number
+          min_completed_jobs: number
+          updated_at: string
+        }
+        Insert: {
+          commission_rate_bps: number
+          created_at?: string
+          is_active?: boolean
+          level: number
+          min_average_rating: number
+          min_completed_jobs: number
+          updated_at?: string
+        }
+        Update: {
+          commission_rate_bps?: number
+          created_at?: string
+          is_active?: boolean
+          level?: number
+          min_average_rating?: number
+          min_completed_jobs?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       worker_kael_feedback: {
         Row: {
           created_at: string
@@ -5054,6 +5090,69 @@ export type Database = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_payment_ledger: {
+        Row: {
+          available_at: string | null
+          commission_level: number
+          commission_rate_bps: number
+          created_at: string
+          gross_amount: number
+          id: string
+          job_id: string
+          payment_provider: string
+          payment_state: string
+          platform_fee: number
+          updated_at: string
+          worker_id: string
+          worker_net: number
+        }
+        Insert: {
+          available_at?: string | null
+          commission_level: number
+          commission_rate_bps: number
+          created_at?: string
+          gross_amount: number
+          id?: string
+          job_id: string
+          payment_provider: string
+          payment_state: string
+          platform_fee: number
+          updated_at?: string
+          worker_id: string
+          worker_net: number
+        }
+        Update: {
+          available_at?: string | null
+          commission_level?: number
+          commission_rate_bps?: number
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          job_id?: string
+          payment_provider?: string
+          payment_state?: string
+          platform_fee?: number
+          updated_at?: string
+          worker_id?: string
+          worker_net?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_payment_ledger_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_payment_ledger_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5519,6 +5618,45 @@ export type Database = {
           effect_id: string
           error_code: string
           ok: boolean
+        }[]
+      }
+      apply_sepay_vietqr_payment_webhook: {
+        Args: {
+          p_payment_code: string
+          p_reference_code?: string | null
+          p_transaction_id: string
+          p_transfer_amount: number
+        }
+        Returns: {
+          job_id: string | null
+          job_status: Database["public"]["Enums"]["job_status"] | null
+          ok: boolean
+          outcome: string
+          payment_status: string | null
+        }[]
+      }
+      create_worker_vietqr_payment_intent: {
+        Args: {
+          p_customer_id: string
+          p_expected_gross_amount: number
+          p_job_id: string
+          p_payment_code: string
+          p_payment_updated_at?: string
+          p_qr_image_url: string
+          p_transfer_content: string
+        }
+        Returns: {
+          commission_level: number
+          commission_rate_bps: number
+          gross_amount: number
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          payment_code: string
+          payment_updated_at: string
+          platform_fee: number
+          qr_image_url: string
+          transfer_content: string
+          worker_net: number
         }[]
       }
       archive_stale_kael_memory: {
@@ -6068,21 +6206,32 @@ export type Database = {
         }[]
       }
       get_kael_provider_spend_today: { Args: never; Returns: number }
+      get_worker_current_commission_tier: {
+        Args: { p_worker_id: string }
+        Returns: {
+          commission_level: number
+          commission_rate_bps: number
+        }[]
+      }
       get_worker_earnings_summary: {
         Args: {
           p_from?: string
-          p_platform_fee_rate?: number
           p_to?: string
           p_worker_id: string
         }
         Returns: {
+          available_balance: number
+          current_commission_level: number
+          current_commission_rate_bps: number
           daily_earnings: Json
           from_date: string
           gross_earnings: number
           net_earnings: number
+          on_hold_amount: number
           pending_payment_amount: number
           pending_payment_count: number
           platform_fee_total: number
+          recent_transactions: Json
           to_date: string
           total_jobs_paid: number
           worker_id: string

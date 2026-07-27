@@ -33,6 +33,7 @@ export type JobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null
     kael_progress: KaelChatProgress | null
     final_price: number | null
+    payment_rail_available?: boolean
     payment_status?: LocalPaymentStatus | null
     payment_provider?: string | null
     payment_code?: string | null

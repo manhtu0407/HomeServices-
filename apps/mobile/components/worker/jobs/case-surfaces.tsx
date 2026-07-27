@@ -81,7 +81,7 @@ export function WorkerV5CaseClosedHero({
             {formatVnd(workerNet ?? 0, language)}
           </Text>
           <Text style={styles.caseClosedAmountLabel} numberOfLines={2}>
-            {textByLanguage(language, 'Đã ghi vào sổ thu nhập', 'Recorded in income ledger')}
+            {textByLanguage(language, 'Đã ghi có vào tài khoản thợ trong ứng dụng', 'Credited to the worker in-app account')}
           </Text>
         </>
       ) : null}
@@ -96,6 +96,7 @@ export function WorkerV5CaseTrailCard({
   incomeLedgerIcon,
   language,
   reduceTransparency,
+  workerNet,
   zipAura: _zipAura,
 }: {
   caseWideAura: WorkerV5CaseAuraComponent
@@ -104,11 +105,11 @@ export function WorkerV5CaseTrailCard({
   incomeLedgerIcon: ImageSourcePropType
   language: AppLanguage
   reduceTransparency: boolean
+  workerNet: number | null
   zipAura: WorkerV5CaseAuraComponent
 }) {
   const artifactReady = Boolean(deal?.completionNotes?.trim() || deal?.completionPhotoUrls?.length)
-  const ledgerAmount = deal?.payment?.workerNet ?? null
-  const ledgerReady = Boolean(ledgerAmount && ledgerAmount > 0)
+  const ledgerReady = Boolean(workerNet && workerNet > 0)
   const rows = [
     {
       details: artifactReady
@@ -130,17 +131,17 @@ export function WorkerV5CaseTrailCard({
     {
       details: ledgerReady
         ? [
-          { glyph: 'money' as const, label: textByLanguage(language, 'Đã ghi sổ', 'Recorded') },
-          { glyph: 'check' as const, label: textByLanguage(language, 'Có thể xem', 'Available') },
+          { glyph: 'money' as const, label: textByLanguage(language, 'Đã ghi có', 'Credited') },
+          { glyph: 'check' as const, label: textByLanguage(language, 'Trong ứng dụng', 'In app') },
         ]
         : [
-          { glyph: 'sync' as const, label: textByLanguage(language, 'Chờ đối soát', 'Waiting settlement') },
-          { glyph: 'money' as const, label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
+          { glyph: 'sync' as const, label: textByLanguage(language, 'Chờ SePay xác thực', 'Awaiting SePay') },
+          { glyph: 'money' as const, label: textByLanguage(language, 'Số dư trong ứng dụng', 'In-app balance') },
         ],
       icon: incomeLedgerIcon,
-      meta: ledgerReady ? formatVnd(ledgerAmount ?? 0, language) : textByLanguage(language, 'Chờ hệ thống đối soát', 'Waiting for system settlement'),
-      status: ledgerReady ? textByLanguage(language, 'Đã ghi', 'Recorded') : textByLanguage(language, 'Chờ', 'Waiting'),
-      title: textByLanguage(language, 'Giải ngân sổ thu nhập', 'Ledger release'),
+      meta: ledgerReady ? formatVnd(workerNet ?? 0, language) : textByLanguage(language, 'Chưa có khoản ghi có đã xác thực', 'No verified credit yet'),
+      status: ledgerReady ? textByLanguage(language, 'Đã ghi có', 'Credited') : textByLanguage(language, 'Chờ', 'Waiting'),
+      title: textByLanguage(language, 'Ghi có tài khoản thợ', 'Credit worker account'),
     },
   ]
   return (

@@ -9,6 +9,10 @@ const voiceControl = readFileSync(
   join(process.cwd(), 'components/customer/kael-chat/on-device-voice-transcript-control.tsx'),
   'utf8',
 )
+const webVoiceFallback = readFileSync(
+  join(process.cwd(), 'components/customer/kael-chat/on-device-voice-transcript.tsx'),
+  'utf8',
+)
 
 describe('Kael on-device voice privacy boundary', () => {
   it('requires local recognition and never persists or uploads raw audio', () => {
@@ -33,5 +37,10 @@ describe('Kael on-device voice privacy boundary', () => {
     expect(nativeVoice).toContain("require('expo-speech-recognition')")
     expect(nativeVoice).toContain("Cannot find native module 'ExpoSpeechRecognition'")
     expect(nativeVoice).toContain('customer-v21-on-device-voice-unavailable')
+  })
+
+  it('labels the web fallback as an editable transcript instead of a voice upload', () => {
+    expect(webVoiceFallback).toContain("'Nhập bản chép lời'")
+    expect(webVoiceFallback).not.toContain("'Thêm giọng nói'")
   })
 })

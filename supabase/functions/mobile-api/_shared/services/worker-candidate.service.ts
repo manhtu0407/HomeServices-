@@ -1,7 +1,7 @@
 // Customer-confirmed worker proposal gate. Keeps jobs.worker_id and address
 // release locked until the owning customer confirms an exact candidate id.
 
-import { normalizeServiceAreaDistrict, PLATFORM_FEE_WORKER } from "../../../_shared/domain.ts";
+import { normalizeServiceAreaDistrict } from "../../../_shared/domain.ts";
 import type { JobStatus } from "../../../_shared/domain.ts";
 import { requireJobAccess } from "../access.ts";
 import { buildWorkerBriefOutput } from "../kael/index.ts";
@@ -22,6 +22,7 @@ import { asJobStatus, asServiceType, asString, nullableNumber, nullableString } 
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { insertUserNotification, notifyCustomerWorkerMatched } from "./notifications.service.ts";
 import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
+import { estimateWorkerNet, getWorkerCommissionTier } from "./worker-commission.service.ts";
 
 export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
@@ -122,7 +123,7 @@ export async function confirmWorkerCandidate(
       body: "Công việc đã được ghép. Bạn có thể xem hướng dẫn và chuẩn bị di chuyển.",
       metadata: { candidate_id: candidateId },
     });
-    await persistWorkerBriefGuidanceAfterAccept(client, jobId, {});
+    await persistWorkerBriefGuidanceAfterAccept(client, jobId);
   }
   const candidate = await loadSafeWorkerCandidateView(client, jobId, candidateId, ctx.user.id);
   return {
@@ -418,32 +419,29 @@ function candidateHasExpired(value: unknown) {
 async function persistWorkerBriefGuidanceAfterAccept(
   client: DbClient,
   jobId: string,
-  acceptedRow: Record<string, unknown>,
 ) {
   const result = await dbQuery<Record<string, unknown>>(
     client.from("jobs")
-      .select("id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, final_price")
+      .select("id, worker_id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, final_price")
       .eq("id", jobId).maybeSingle(),
   );
   if (result.error || !result.data) return;
   const job = result.data;
   const finalPrice = nullableNumber(job.final_price) ?? nullableNumber(job.kael_price_max);
   const priceMin = nullableNumber(job.kael_price_min);
-  const addressProjection = projectAddressAccess({
-    ...job,
-    address_building: nullableString(acceptedRow.address_building) ?? nullableString(job.address_building),
-    address_floor: nullableString(acceptedRow.address_floor) ?? nullableString(job.address_floor),
-    address_unit: nullableString(acceptedRow.address_unit) ?? nullableString(job.address_unit),
-    address_district: nullableString(acceptedRow.address_district) ?? nullableString(job.address_district),
-  }, "worker", { forcedStage: "building_released" });
+  const workerId = nullableString(job.worker_id);
+  const commissionTier = workerId
+    ? await getWorkerCommissionTier(client, workerId)
+    : null;
+  const addressProjection = projectAddressAccess(job, "worker", { forcedStage: "building_released" });
   const guidance = buildWorkerBriefOutput({
     stage: "guidance",
     serviceType: asServiceType(job.service_type),
     problemSummary: nullableString(job.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
     district: nullableString(job.address_district),
     fullAddress: addressProjection.fullAddress,
-    estimatedEarningMin: priceMin === null ? null : Math.round(priceMin * (1 - PLATFORM_FEE_WORKER)),
-    estimatedEarningMax: finalPrice === null ? null : Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER)),
+    estimatedEarningMin: estimateWorkerNet(priceMin, commissionTier),
+    estimatedEarningMax: estimateWorkerNet(finalPrice, commissionTier),
   });
   const guidanceUpdate = await dbQuery(
     client.from("jobs").update({ kael_worker_brief_guidance: guidance }).eq("id", jobId),

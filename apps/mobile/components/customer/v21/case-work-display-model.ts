@@ -94,6 +94,7 @@ export function normalizeKaelRoutingText(value: string) {
 export function agenticProblemTaxonomyLabel(value: string, language: AppLanguage) {
   const normalized = normalizeKaelRoutingText(value).replace(/[^a-z0-9]+/g, '_')
   const viLabels: Record<string, string> = {
+    electrical_flickering_light: 'Đèn chập chờn',
     electrical_outlet_switch: 'Ổ điện',
     outlet_switch: 'Ổ điện',
     electrical_outlet_or_switch_broken: 'Ổ cắm/công tắc hỏng',
@@ -106,8 +107,10 @@ export function agenticProblemTaxonomyLabel(value: string, language: AppLanguage
     plumbing_clogged_drain: 'Tắc cống',
     faucet_issue: 'Vòi hỏng',
     plumbing_faucet_issue: 'Vòi hỏng',
+    flickering_light: 'Đèn chập chờn',
   }
   const enLabels: Record<string, string> = {
+    electrical_flickering_light: 'Flickering light',
     electrical_outlet_switch: 'Outlet or switch',
     outlet_switch: 'Outlet or switch',
     electrical_outlet_or_switch_broken: 'Outlet or switch issue',
@@ -120,6 +123,7 @@ export function agenticProblemTaxonomyLabel(value: string, language: AppLanguage
     plumbing_clogged_drain: 'Clogged drain',
     faucet_issue: 'Faucet issue',
     plumbing_faucet_issue: 'Faucet issue',
+    flickering_light: 'Flickering light',
   }
   const labels = language === 'vi' ? viLabels : enLabels
   return labels[normalized] ?? null

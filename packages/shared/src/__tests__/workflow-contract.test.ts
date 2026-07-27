@@ -384,8 +384,10 @@ describe('workflow phase context contract', () => {
   it('localizes phase context source, event, blocked reason, and artifact mode labels outside UI components', () => {
     expect(workflowSourceOfTruthLabel('pending_intake', 'vi')).toBe('Phiếu chờ')
     expect(workflowEventLabel('kael_started_matching', 'vi')).toBe('Kael bắt đầu điều phối')
+    expect(workflowEventLabel('kael_decided_scope_change', 'vi')).toBe('Kael đã tính lại đề xuất đổi phạm vi')
     expect(workflowBlockedReasonLabel('chat_requires_real_job', 'vi')).toBe('Chat cần công việc thật')
     expect(workflowBlockedReasonLabel('chat_send_closed', 'vi')).toBe('Chat chỉ còn đọc lại')
+    expect(workflowBlockedReasonLabel('customer_scope_change_confirmation_required', 'vi')).toBe('Chờ khách xác nhận đề xuất đổi phạm vi')
     expect(workflowAllowedActionsLabel({ confirmTicketAndEstimate: false, confirmCompletion: false, submitReview: true }, 'vi')).toBe('Gửi đánh giá')
     expect(workflowAllowedActionsLabel({ confirmTicketAndEstimate: false, confirmCompletion: false, jobChatSend: true, submitReview: false }, 'vi')).toBe('Nhắn trong chat công việc')
     expect(workflowAllowedActionsLabel({ confirmTicketAndEstimate: false, confirmCompletion: false, jobChatRead: true, submitReview: false }, 'en')).toBe('Read job chat')
@@ -414,7 +416,7 @@ describe('workflow phase context contract', () => {
       arrived: ['arrived', 'hydrated_job', 'booking', 'worker_status_advanced'],
       inspecting: ['inspecting', 'hydrated_job', 'booking', 'worker_status_advanced'],
       repairing: ['repairing', 'hydrated_job', 'booking', 'worker_completed'],
-      scope_change_pending: ['scope_change_pending', 'scope_change', 'scope_change', 'kael_decided_scope_change'],
+      scope_change_pending: ['scope_change_pending', 'scope_change', 'scope_change', 'scope_change_decided'],
       completed_by_worker: ['completed_by_worker', 'completion_evidence', 'completion_evidence', 'customer_confirmed_completion'],
       confirmed_by_customer: ['customer_confirmed_completion', 'completion_evidence', 'payment_decision', 'kael_decided_payment'],
       payment_pending: ['payment_pending', 'hydrated_job', 'payment_decision', 'payment_confirmed'],
@@ -565,7 +567,8 @@ describe('workflow phase context contract', () => {
     expect(repairing.phaseContext.sections.find((section) => section.id === 'scope_change')?.visible).toBe(true)
     expect(repairing.artifacts.completion_evidence.mode).toBe('basic')
     expect(repairing.phaseContext.sections.find((section) => section.id === 'completion_evidence')?.visible).toBe(true)
-    expect(scope.phaseContext.blockedReason).toBe('kael_scope_decision_required')
+    expect(scope.phaseContext.blockedReason).toBe('customer_scope_change_confirmation_required')
+    expect(scope.phaseContext.nextExpectedEvent).toBe('scope_change_decided')
     expect(scope.phaseContext.primaryArtifact?.artifact).toBe('scope_change')
     expect(completion.phaseContext.blockedReason).toBe('customer_completion_confirmation_required')
     expect(completion.phaseContext.primaryArtifact?.artifact).toBe('completion_evidence')

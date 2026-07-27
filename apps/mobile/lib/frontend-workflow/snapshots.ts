@@ -88,6 +88,9 @@ export function confirmSearchToSnapshot(data: ConfirmSearchResponse, deal: NonNu
 
 export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief = false): LocalRemoteJobSnapshot {
   const job = data.job
+  const customerEvidencePhotoUrls = job.customer_evidence_photo_urls ?? job.photo_urls ?? []
+  const fieldEvidencePhotoUrls = job.field_evidence_photo_urls ?? []
+  const completionPhotoUrls = job.completion_photo_urls ?? []
   const serviceType = job.service_type
   const districtLabel = districtLabelFromValue(job.address_district)
   const addressLabel = formatStoredJobAddress({
@@ -131,15 +134,16 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
     problemChips: job.problem_chips,
     addressLabel,
     districtLabel,
-    mediaCount: job.customer_evidence_photo_urls.length,
+    mediaCount: customerEvidencePhotoUrls.length,
     estimate,
     broadcast,
     scopeChange: scopeChangeFromJobDetail(data),
     finalPrice: job.final_price,
+    paymentRailAvailable: job.payment_rail_available === true,
     payment: paymentFromJob(job),
-    customerEvidencePhotoUrls: job.customer_evidence_photo_urls,
-    fieldEvidencePhotoUrls: job.field_evidence_photo_urls,
-    completionPhotoUrls: job.completion_photo_urls,
+    customerEvidencePhotoUrls,
+    fieldEvidencePhotoUrls,
+    completionPhotoUrls,
     completionNotes: job.completion_notes,
     workerProfile: workerProfileSummaryFromApi(data.worker),
     scheduledAt: job.scheduled_at,
@@ -208,6 +212,7 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
       : null,
     scopeChange: null,
     finalPrice: job.final_price,
+    paymentRailAvailable: false,
     payment: paymentFromJob(job),
     customerEvidencePhotoUrls: job.customer_evidence_photo_urls,
     fieldEvidencePhotoUrls: job.field_evidence_photo_urls,
@@ -283,6 +288,7 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     broadcast: deal.broadcast,
     scopeChange: deal.scopeChange,
     finalPrice: deal.finalPrice ?? null,
+    paymentRailAvailable: deal.paymentRailAvailable === true,
     payment: deal.payment ?? null,
     customerEvidencePhotoUrls: deal.customerEvidencePhotoUrls ?? [],
     fieldEvidencePhotoUrls: deal.fieldEvidencePhotoUrls ?? [],
@@ -386,6 +392,12 @@ function broadcastFromJobStatus(
   }
 }
 
+const LEGACY_WORKER_BRIEF_LINE_REPLACEMENTS: Readonly<Record<string, string>> = {
+  'Nếu phát sinh thêm, gửi scope-change kèm lý do và ảnh trước khi làm.': 'Nếu phát sinh thêm, gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Chỉ làm khi khách xác nhận trong ứng dụng.',
+  'Nếu phát sinh thêm, gửi yêu cầu đổi phạm vi kèm lý do và ảnh trước khi làm.': 'Nếu phát sinh thêm, gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Chỉ làm khi khách xác nhận trong ứng dụng.',
+  'Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.': 'Không bắt đầu phần phát sinh khi khách chưa xác nhận đề xuất đổi phạm vi trong ứng dụng.',
+}
+
 function workerBriefLinesFromRecord(record: Record<string, unknown> | null | undefined) {
   const brief = unwrapWorkerBriefRecord(record)
   const sections = isRecord(brief?.sections) ? brief.sections : null
@@ -394,7 +406,11 @@ function workerBriefLinesFromRecord(record: Record<string, unknown> | null | und
     ...stringArrayFromRecord(sections, 'guidance'),
     ...stringArrayFromRecord(sections, 'safety'),
     ...stringArrayFromRecord(sections, 'context'),
-  ]).slice(0, 4)
+  ].map(normalizeWorkerBriefLine)).slice(0, 4)
+}
+
+function normalizeWorkerBriefLine(line: string) {
+  return LEGACY_WORKER_BRIEF_LINE_REPLACEMENTS[line] ?? line
 }
 
 function unwrapWorkerBriefRecord(record: Record<string, unknown> | null | undefined) {

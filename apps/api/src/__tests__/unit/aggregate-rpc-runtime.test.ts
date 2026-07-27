@@ -43,8 +43,13 @@ describe('exact aggregate RPC runtime wiring', () => {
       gross_earnings: 12_050_000,
       platform_fee_total: 1_205_000,
       net_earnings: 10_845_000,
+      available_balance: 10_845_000,
       pending_payment_count: 17,
       pending_payment_amount: 170_000,
+      on_hold_amount: 0,
+      current_commission_level: 1,
+      current_commission_rate_bps: 1500,
+      recent_transactions: [],
       daily_earnings: [{
         date: '2026-07-15',
         gross_earnings: 12_050_000,
@@ -73,7 +78,6 @@ describe('exact aggregate RPC runtime wiring', () => {
     })
     expect(rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
       p_from: '2026-01-01T00:00:00.000Z',
-      p_platform_fee_rate: 0.1,
       p_to: '2026-12-31T23:59:59.999Z',
       p_worker_id: 'worker-1',
     })
@@ -86,8 +90,13 @@ describe('exact aggregate RPC runtime wiring', () => {
       gross_earnings: 12_050_000,
       platform_fee_total: 1_205_000,
       net_earnings: 10_845_000,
+      available_balance: 10_845_000,
       pending_payment_count: 17,
       pending_payment_amount: 170_000,
+      on_hold_amount: 0,
+      current_commission_level: 1,
+      current_commission_rate_bps: 1500,
+      recent_transactions: [],
       daily_earnings: [{
         date: '2026-07-15',
         gross_earnings: 12_050_000,
@@ -119,7 +128,6 @@ describe('exact aggregate RPC runtime wiring', () => {
     })
     expect(rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
       p_from: null,
-      p_platform_fee_rate: 0.1,
       p_to: null,
       p_worker_id: 'worker-1',
     })

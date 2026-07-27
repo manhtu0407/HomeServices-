@@ -599,11 +599,11 @@ function buildWorkerKaelAnswer(
   return {
     schema_version: "worker_qa_answer.v1" as const,
     text: sanitizeKaelText(
-      `Kael ghi nhận câu hỏi: ${questionSummary}. Với việc này, hãy kiểm tra đúng phạm vi "${problem}" tại khu vực ${district}, giải thích ngắn gọn bằng chứng thực tế và gửi scope-change nếu có phần phát sinh.`,
+      `Kael ghi nhận câu hỏi: ${questionSummary}. Với việc này, hãy kiểm tra đúng phạm vi "${problem}" tại khu vực ${district}, giải thích ngắn gọn bằng chứng thực tế và gửi đề xuất đổi phạm vi nếu có phần phát sinh.`,
       500,
     ),
     safety_notes: [
-      "Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.",
+      "Không bắt đầu phần phát sinh khi khách chưa xác nhận đề xuất đổi phạm vi trong ứng dụng.",
       "Không tự báo giá mới ngoài flow Kael trong app.",
     ],
   };

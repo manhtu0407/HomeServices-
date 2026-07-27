@@ -519,6 +519,22 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
   })
 
+  it('sends a normal Kael message when the keyboard submits the composer', async () => {
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('normal')
+
+    const input = screen.getByTestId('customer-v21-kael-input')
+    fireEvent.changeText(input, 'Hey')
+    fireEvent(input, 'submitEditing')
+
+    await waitFor(() => expect(mockConversationSendTurn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ message: 'Hey' }),
+    ))
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+  })
+
   it('deduplicates rapid new-session taps before React can repaint the disabled state', async () => {
     const session = makeConversationSession('normal', 'rapid-session')
     let resolveCreate!: (value: { data: { session: ReturnType<typeof makeConversationSession>; turns: [] }; success: true }) => void

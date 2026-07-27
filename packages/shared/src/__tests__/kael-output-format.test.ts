@@ -233,6 +233,8 @@ describe('Kael P4 sanitizers, fallbacks, and renderers', () => {
     expect(postAccept.visibility).toBe('post_accept')
     expect(postRendered).toContain('Landmark 81')
     expect(postRendered).toContain('1205')
+    expect(postAccept.sections.guidance).toContain('Nếu phát sinh thêm, gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Chỉ làm khi khách xác nhận trong ứng dụng.')
+    expect(postAccept.sections.safety).toContain('Không bắt đầu phần phát sinh khi khách chưa xác nhận đề xuất đổi phạm vi trong ứng dụng.')
   })
 
   it('does not emit invalid prices or one-sided worker earnings from malformed fallback input', () => {

@@ -11,7 +11,7 @@ export function OnDeviceVoiceTranscript({
   tokens,
 }: OnDeviceVoiceTranscriptProps) {
   const [editorVisible, setEditorVisible] = useState(Boolean(transcript.trim()))
-  const buttonLabel = language === 'vi' ? 'Thêm giọng nói' : 'Add voice'
+  const buttonLabel = language === 'vi' ? 'Nhập bản chép lời' : 'Enter transcript'
 
   return (
     <OnDeviceVoiceTranscriptControl

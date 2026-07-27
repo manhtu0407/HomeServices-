@@ -11,7 +11,7 @@ import {
   uploadKaelChatMediaDrafts,
   type LocalMediaUploadDraft,
 } from '@/lib/media-upload'
-import { jobService, kaelChatService } from '@/lib/services'
+import { jobService, kaelChatService, kaelChatStreamService } from '@/lib/services'
 
 import { clearPendingKaelChatDraft } from '../kael-chat/pending-intake'
 import {
@@ -96,7 +96,12 @@ export function useCustomerKaelEvidenceActions({
     setSubmittingCaseEvidence,
     submittingCaseEvidence,
   } = caseUi
-  const { startProcessLines, stopProcessLines } = processController
+  const {
+    startEvidenceProcessLines,
+    startProcessLines,
+    stopProcessLines,
+    updateEvidenceProcessProgress,
+  } = processController
   const evidenceSubmissionRef = useRef<{ ownerKey: string } | null>(null)
 
   const pickComposerMedia = async () => {
@@ -180,12 +185,19 @@ export function useCustomerKaelEvidenceActions({
     let mediaAccepted = false
     let evidenceItems: CaseWorkEvidence[] = initialEvidence.evidenceItems
     try {
+      startEvidenceProcessLines({
+        hasImage: composerMediaDrafts.some((item) => item.type === 'image'),
+        hasVideo: composerMediaDrafts.some((item) => item.type === 'video'),
+        hasVoiceTranscript: Boolean(reviewedVoiceTranscript),
+        serviceType: selectedService ?? chatSession.service_type,
+      })
       if (decision === 'confirmed') {
         setUploadingMedia(true)
         const uploaded = await uploadKaelChatMediaDrafts(composerMediaDrafts)
         if (kaelRequestGuard.isCurrent(requestToken)) setUploadingMedia(false)
         if (!uploaded.success) {
           if (kaelRequestGuard.isCurrent(requestToken)) {
+            stopProcessLines()
             setError(localizeMediaUploadFailure(uploaded, language))
           }
           return
@@ -198,15 +210,7 @@ export function useCustomerKaelEvidenceActions({
       const processPrompt = decision === 'confirmed'
         ? (language === 'vi' ? 'Đã gửi bằng chứng hiện trạng.' : 'Sent current evidence.')
         : (language === 'vi' ? 'Tiếp tục không có bằng chứng.' : 'Continue without evidence.')
-      const processDone = startProcessLines(processPrompt, {
-        complexity: null,
-        mediaCount: decision === 'confirmed'
-          ? composerMediaDrafts.length + initialEvidence.transcriptCount
-          : 0,
-        mode: mode === 'case' ? 'case' : 'normal',
-        serviceType: selectedService ?? chatSession.service_type,
-      })
-      const result = await kaelChatService.submitEvidence(sessionId, {
+      const evidenceInput = {
         decision,
         evidence_items: evidenceItems,
         language,
@@ -215,10 +219,17 @@ export function useCustomerKaelEvidenceActions({
         media_refs: [],
         problem_chips: pendingDraft?.problemChips ?? [],
         skip_reason: decision === 'skipped' ? skipReason : undefined,
+      }
+      let result = await kaelChatStreamService.submitEvidence(sessionId, evidenceInput, {
+        onStage: ({ progress }) => {
+          if (kaelRequestGuard.isCurrent(requestToken)) updateEvidenceProcessProgress(progress)
+        },
       })
+      if (shouldFallbackToDirectEvidenceSubmission(result)) {
+        result = await kaelChatService.submitEvidence(sessionId, evidenceInput)
+      }
       if (result.success) {
         mediaAccepted = true
-        await processDone
         if (!kaelRequestGuard.isCurrent(requestToken)) return
         stopProcessLines()
         if (pendingDraftOwnerId) await clearPendingKaelChatDraft(pendingDraftOwnerId)
@@ -245,7 +256,6 @@ export function useCustomerKaelEvidenceActions({
         })
         if (legacy.success) {
           mediaAccepted = true
-          await processDone
           if (!kaelRequestGuard.isCurrent(requestToken)) return
           stopProcessLines()
           if (pendingDraftOwnerId) await clearPendingKaelChatDraft(pendingDraftOwnerId)
@@ -369,4 +379,12 @@ export function useCustomerKaelEvidenceActions({
     submitCaseEvidence,
     uploadingMedia,
   }
+}
+
+function shouldFallbackToDirectEvidenceSubmission(result: { code?: string; status?: number }) {
+  return result.code === 'STREAM_UNSUPPORTED' ||
+    result.code === 'HTTP_404' ||
+    result.code === 'HTTP_405' ||
+    result.status === 404 ||
+    result.status === 405
 }

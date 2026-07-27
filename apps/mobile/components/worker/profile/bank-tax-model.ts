@@ -19,17 +19,17 @@ export function workerV5PayoutRuleRows(
     {
       icon: 'wallet',
       meta: earnings
-        ? formatVnd(earnings.net_earnings, language)
-        : textByLanguage(language, 'Chưa có dữ liệu thu nhập đã ghi nhận', 'No recorded earnings data'),
-      status: textByLanguage(language, 'Sổ thu nhập', 'Earnings ledger'),
-      title: textByLanguage(language, 'Thu nhập ròng đã ghi nhận', 'Recorded net earnings'),
+        ? formatVnd(earnings.available_balance, language)
+        : textByLanguage(language, 'Chưa có dữ liệu số dư đã ghi có', 'No credited balance data'),
+      status: textByLanguage(language, 'Tài khoản trong ứng dụng', 'In-app account'),
+      title: textByLanguage(language, 'Số dư đã SePay xác thực', 'SePay-verified balance'),
     },
     {
       icon: 'clock',
       meta: textByLanguage(
         language,
-        'Ứng dụng chưa có luồng chuyển tiền cho thợ.',
-        'The worker payout rail is not available in the app.',
+        'Chuyển tiền từ tài khoản thợ ra ngân hàng chưa được bật.',
+        'Bank payout from the worker in-app account is not enabled.',
       ),
       status: textByLanguage(language, 'Chưa mở', 'Not enabled'),
       title: textByLanguage(language, 'Chuyển tiền chưa khả dụng', 'Payout unavailable'),

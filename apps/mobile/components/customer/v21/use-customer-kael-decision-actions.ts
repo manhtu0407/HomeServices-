@@ -114,6 +114,7 @@ export function useCustomerKaelDecisionActions({
       mode: mode === 'case' ? 'case' : 'normal',
       serviceType: chat.session.service_type,
     })
+    let confirmedJobId: string | null = null
     try {
       const confirmed = await kaelChatService.confirm(chat.session.id)
       if (!kaelRequestGuard.isCurrent(requestToken)) return
@@ -125,6 +126,7 @@ export function useCustomerKaelDecisionActions({
       await processDone
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       const jobId = confirmed.data.job_id
+      confirmedJobId = jobId
       setChat((current) => current ? {
         ...current,
         session: {
@@ -135,15 +137,15 @@ export function useCustomerKaelDecisionActions({
         },
       } : current)
       if (jobId && typeof workflow.actions.hydrateRemoteJobById === 'function') {
-        await workflow.actions.hydrateRemoteJobById(jobId)
-        if (!kaelRequestGuard.isCurrent(requestToken)) return
+        // The destination can rehydrate from jobId, so a stale cache must not turn a confirmed job into a failed action.
+        void workflow.actions.hydrateRemoteJobById(jobId).catch(() => undefined)
       }
       if (jobId) {
         setLocalMode('case')
         router.replace(`/(customer)/kael-chat?mode=case&jobId=${encodeURIComponent(jobId)}` as never)
       }
     } catch {
-      if (kaelRequestGuard.isCurrent(requestToken)) setError(decisionFailure)
+      if (kaelRequestGuard.isCurrent(requestToken) && !confirmedJobId) setError(decisionFailure)
     } finally {
       finishDecisionOperation(operation)
       if (kaelRequestGuard.isCurrent(requestToken)) {

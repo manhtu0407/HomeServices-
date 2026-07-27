@@ -232,6 +232,7 @@ export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJo
     isOptionalWorkerBroadcast(job.broadcast) &&
     isOptionalScopeChange(job.scopeChange) &&
     isOptionalPayment(job.payment) &&
+    (job.paymentRailAvailable === undefined || typeof job.paymentRailAvailable === 'boolean') &&
     isOptionalWorkerProfile(job.workerProfile) &&
     isOptionalStringArray(job.customerEvidencePhotoUrls) &&
     isOptionalStringArray(job.fieldEvidencePhotoUrls) &&

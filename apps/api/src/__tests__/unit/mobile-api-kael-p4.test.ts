@@ -176,6 +176,27 @@ describe('mobile-api Kael P4 output pipeline', () => {
     expect(core.brief.sections.safety[0]).toContain('Khoa nuoc')
     expect(JSON.stringify(guidance.brief)).toContain('Sunrise City')
     expect(JSON.stringify(guidance.brief)).toContain('18.02')
+    expect(guidance.brief.sections.safety).toContain('Không bắt đầu phần phát sinh khi khách chưa xác nhận đề xuất đổi phạm vi trong ứng dụng.')
+    expect(guidance.brief.sections.guidance).toContain(
+      'Nếu phát sinh thêm, gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Chỉ làm khi khách xác nhận trong ứng dụng.',
+    )
+  })
+
+  it('normalizes legacy knowledge guidance so Kael never owns a customer scope decision', () => {
+    const output = buildWorkerBriefOutput({
+      stage: 'guidance',
+      serviceType: 'plumbing',
+      problemSummary: 'Cần kiểm tra đường ống sau tường.',
+      district: 'Quận 1',
+      knowledgeSafetyGuidance: [
+        'Nếu cần đục tường, tháo gạch hoặc mở trần, dừng để gửi scope-change kèm lý do và ảnh; không làm trước khi Kael quyết định.',
+      ],
+    })
+
+    expect(output.brief.sections.safety).toContain(
+      'Nếu cần đục tường, tháo gạch hoặc mở trần, dừng để gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Không làm trước khi khách xác nhận đề xuất trong ứng dụng.',
+    )
+    expect(JSON.stringify(output.brief)).not.toContain('Kael quyết định')
   })
 
   it('builds scope-change worker challenge and customer card together', () => {

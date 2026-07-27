@@ -14,6 +14,7 @@ import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
 import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura } from '../ui/aura-surfaces'
 import { WorkerV5OfferDetailEmptyCard, WorkerV5OfferDetailListCard, WorkerV5OfferDetailSummaryCard } from './offer-surfaces'
 import { WorkerV5OpportunityCard, WorkerV5OpportunityEmptyCard } from '../home/opportunity-surfaces'
+import { styles as opportunityStyles } from '../home/opportunity-styles'
 import { WorkerV5PrimaryButtonFill, WorkerV5SectionHeader } from '../ui/primitives-surfaces'
 import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './acceptance'
 import { buildWorkerV5OfferAddressRows, buildWorkerV5OfferRequestRows } from './offer'
@@ -56,10 +57,7 @@ export function WorkerV5OpportunityInboxBody({
   const isCurrentMissionSelected = selectedMissionId === currentDeal?.id
   const openCurrentWork = () => {
     if (!currentDeal) return
-    const target = requireWorkerV5Screen(workerV5JobsDestinationScreenId(currentDeal))
-    const route = routeForWorkerV5Screen(target)
-    const shouldShowArrivalGate = currentDeal.status === 'arrived' && target.id === '2.7-in-progress'
-    router.replace((shouldShowArrivalGate ? `${route}&ns_arrival_gate=1` : route) as never)
+    router.replace(routeForWorkerV5Screen(requireWorkerV5Screen(workerV5JobsDestinationScreenId(currentDeal))) as never)
   }
   const openKaelIntake = () => router.replace('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake' as never)
 
@@ -80,15 +78,22 @@ export function WorkerV5OpportunityInboxBody({
           <WorkerV5OpportunityEmptyCard jobIcon={workerV5Icons.jobs} language={language} reduceTransparency={reduceTransparency} tab="matches" />
         )}
       </View>
+      {currentDeal && !isCurrentMissionSelected ? (
+        <Text style={opportunityStyles.opportunitySelectionHint} testID="worker-v5-opportunity-selection-hint">
+          {textByLanguage(language, 'Chọn công việc phía trên để xem chi tiết trước khi tiếp tục.', 'Select the job above to review its details before continuing.')}
+        </Text>
+      ) : null}
       <WorkerV5ActionRail
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
         primaryButtonFill={WorkerV5PrimaryButtonFill}
         zipAura={WorkerV5CustomerZipMintAura}
         onPrimary={isCurrentMissionSelected ? openCurrentWork : undefined}
         onSecondary={openKaelIntake}
-        primary={isIncoming
-          ? textByLanguage(language, 'Xem & nhận việc', 'Review and accept')
-          : textByLanguage(language, 'Tiếp tục công việc', 'Continue work')}
+        primary={isCurrentMissionSelected
+          ? isIncoming
+            ? textByLanguage(language, 'Xem & nhận việc', 'Review and accept')
+            : textByLanguage(language, 'Tiếp tục công việc', 'Continue work')
+          : textByLanguage(language, 'Chọn công việc để tiếp tục', 'Select a job to continue')}
         primaryDisabled={!currentDeal || !isCurrentMissionSelected}
         primaryTestID="worker-v5-primary-action"
         primaryVariant={isCurrentMissionSelected ? "source" : "default"}
@@ -126,7 +131,7 @@ export function WorkerV5OfferDetailBody({
     decisionBusyRef.current = true
     setAcceptBusy(true)
     try {
-      const ok = await runtime.actions.workerAcceptBroadcast()
+      const ok = await runtime.actions.workerAcceptBroadcast(deal?.broadcast?.jobId)
       if (ok) router.replace('/(worker)/jobs?ns_worker_screen=2.3-customer-confirmation-wait' as never)
     } finally {
       decisionBusyRef.current = false

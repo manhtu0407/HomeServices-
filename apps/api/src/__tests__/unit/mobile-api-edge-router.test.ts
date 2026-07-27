@@ -101,6 +101,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     streamKaelChatTurn: vi.fn(async () => new Response(new ReadableStream(), {
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
     })),
+    streamKaelChatEvidence: vi.fn(async () => new Response(new ReadableStream(), {
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+    })),
     sendKaelChatTurn: vi.fn(),
     confirmKaelChat: vi.fn(),
     submitKaelChatEvidence: vi.fn(),
@@ -1352,6 +1355,45 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({ role: 'customer' }),
       'kael-session-1',
       { message: 'Outlet still sparks.', photo_urls: [], apartment_access_profile: {} },
+    )
+  })
+
+  it('routes Kael evidence SSE stream through the validated evidence contract', async () => {
+    const streamKaelChatEvidence = vi.fn(async () => new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: result\ndata: {"ok":true}\n\n'))
+          controller.close()
+        },
+      }),
+      { headers: { 'Content-Type': 'text/event-stream; charset=utf-8' } },
+    ))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ streamKaelChatEvidence }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1/evidence-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        decision: 'skipped',
+        skip_reason: 'No photo or reviewed transcript is available.',
+      }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('text/event-stream; charset=utf-8')
+    expect(await response.text()).toContain('event: result')
+    expect(streamKaelChatEvidence).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'kael-session-1',
+      expect.objectContaining({
+        decision: 'skipped',
+        media_refs: [],
+        photo_urls: [],
+        skip_reason: 'No photo or reviewed transcript is available.',
+      }),
     )
   })
 

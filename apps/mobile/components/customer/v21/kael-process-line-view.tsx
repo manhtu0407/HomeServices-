@@ -4,23 +4,19 @@ import Animated, {
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated'
 
 import { motionDuration } from '@/components/ui/motion-tokens'
 import { useAppLanguage } from '@/lib/app-language'
 
-import type { KaelProcessLine } from './kael-process-lines'
+import type { KaelProcessLine, KaelProcessLineStatus } from './kael-process-lines'
 import type { KaelProcessLineRuntime } from './use-customer-kael-chat-ui-state'
 import { useV21Theme } from './use-v21-theme'
 
 export function KaelProcessLines({ state }: { state: KaelProcessLineRuntime }) {
   const language = useAppLanguage()
   const { tokens } = useV21Theme()
-  const activeLine = state.activeIndex === null ? null : state.lines[state.activeIndex] ?? null
   if (state.collapse && state.activeIndex === null) {
     return (
       <View
@@ -36,23 +32,36 @@ export function KaelProcessLines({ state }: { state: KaelProcessLineRuntime }) {
       </View>
     )
   }
+
+  const visibleLines = state.lines.slice(0, state.visibleCount)
   return (
     <View
       accessibilityLabel={language === 'vi' ? 'Kael đang xử lý' : 'Kael processing'}
       style={styles.lines}
       testID="customer-v21-kael-process-lines"
     >
-      {activeLine ? (
-        <KaelThinkingLine
-          line={activeLine}
-          testID={`customer-v21-kael-process-line-${state.activeIndex ?? 0}`}
+      {visibleLines.map((line, index) => (
+        <KaelProcessLineView
+          key={line.key}
+          line={line}
+          status={resolveLineStatus(line, index, state.activeIndex)}
+          testID={`customer-v21-kael-process-line-${index}`}
         />
-      ) : null}
+      ))}
     </View>
   )
 }
 
-function KaelThinkingLine({ line, testID }: { line: KaelProcessLine; testID: string }) {
+function KaelProcessLineView({
+  line,
+  status,
+  testID,
+}: {
+  line: KaelProcessLine
+  status: KaelProcessLineStatus
+  testID: string
+}) {
+  const language = useAppLanguage()
   const { reduceMotion, tokens } = useV21Theme()
   const opacity = useSharedValue(reduceMotion ? 1 : 0.42)
   const translateY = useSharedValue(reduceMotion ? 0 : 3)
@@ -60,6 +69,11 @@ function KaelThinkingLine({ line, testID }: { line: KaelProcessLine; testID: str
     opacity: opacity.value,
     transform: [{ translateY: translateY.value }],
   }))
+  const color = status === 'failed'
+    ? tokens.danger
+    : status === 'running'
+      ? tokens.primary
+      : tokens.muted
 
   useEffect(() => {
     cancelAnimation(opacity)
@@ -73,69 +87,54 @@ function KaelThinkingLine({ line, testID }: { line: KaelProcessLine; testID: str
     translateY.value = 3
     opacity.value = withTiming(1, { duration: motionDuration(260, reduceMotion) })
     translateY.value = withTiming(0, { duration: motionDuration(260, reduceMotion) })
-  }, [line.key, opacity, reduceMotion, translateY])
+  }, [line.key, opacity, reduceMotion, status, translateY])
 
   return (
-    <Animated.View key={line.key} style={[styles.thinkingLine, textStyle]} testID={testID}>
-      <Text numberOfLines={1} style={[styles.text, { color: tokens.muted }]}>
+    <Animated.View
+      accessibilityLabel={`${line.text}. ${processStatusLabel(status, language)}`}
+      style={[styles.processLine, textStyle]}
+      testID={testID}
+    >
+      <View
+        accessible={false}
+        style={[
+          styles.marker,
+          { backgroundColor: status === 'failed' ? tokens.danger : status === 'running' ? tokens.primary : tokens.border },
+          status === 'completed' ? styles.markerCompleted : null,
+        ]}
+      />
+      <Text numberOfLines={2} style={[styles.text, status === 'running' ? styles.textActive : null, { color }]}>
         {line.text}
       </Text>
-      <KaelThinkingDots />
     </Animated.View>
   )
 }
 
-function KaelThinkingDots() {
-  const { reduceMotion, tokens } = useV21Theme()
-  const first = useSharedValue(reduceMotion ? 0.65 : 0.25)
-  const second = useSharedValue(reduceMotion ? 0.65 : 0.25)
-  const third = useSharedValue(reduceMotion ? 0.65 : 0.25)
-  const firstStyle = useAnimatedStyle(() => ({ opacity: first.value }))
-  const secondStyle = useAnimatedStyle(() => ({ opacity: second.value }))
-  const thirdStyle = useAnimatedStyle(() => ({ opacity: third.value }))
+function resolveLineStatus(
+  line: KaelProcessLine,
+  index: number,
+  activeIndex: number | null,
+): KaelProcessLineStatus {
+  if (line.status) return line.status
+  if (activeIndex === null) return 'completed'
+  if (index < activeIndex) return 'completed'
+  return index === activeIndex ? 'running' : 'queued'
+}
 
-  useEffect(() => {
-    ;[first, second, third].forEach((dot) => cancelAnimation(dot))
-    if (reduceMotion) {
-      first.value = 0.65
-      second.value = 0.65
-      third.value = 0.65
-      return
-    }
-    const dotCycle = (delayMs: number) => withRepeat(
-      withSequence(
-        withDelay(delayMs, withTiming(1, { duration: 360 })),
-        withTiming(0.25, { duration: 520 }),
-      ),
-      -1,
-      false,
-    )
-    first.value = dotCycle(0)
-    second.value = dotCycle(170)
-    third.value = dotCycle(340)
-  }, [first, reduceMotion, second, third])
-
-  return (
-    <View accessible={false} style={styles.dots} testID="customer-v21-kael-thinking-dots">
-      <Animated.View style={[styles.dot, { backgroundColor: tokens.primary }, firstStyle]} />
-      <Animated.View style={[styles.dot, { backgroundColor: tokens.primary }, secondStyle]} />
-      <Animated.View style={[styles.dot, { backgroundColor: tokens.primary }, thirdStyle]} />
-    </View>
-  )
+function processStatusLabel(status: KaelProcessLineStatus, language: 'vi' | 'en') {
+  if (language === 'vi') {
+    if (status === 'completed') return 'Đã hoàn tất'
+    if (status === 'failed') return 'Chưa hoàn tất'
+    if (status === 'queued') return 'Đang chờ'
+    return 'Đang xử lý'
+  }
+  if (status === 'completed') return 'Completed'
+  if (status === 'failed') return 'Not completed'
+  if (status === 'queued') return 'Waiting'
+  return 'Processing'
 }
 
 const styles = StyleSheet.create({
-  dot: {
-    borderRadius: 2,
-    height: 4,
-    width: 4,
-  },
-  dots: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 3,
-    paddingTop: 4,
-  },
   line: {
     alignItems: 'flex-start',
     flexDirection: 'row',
@@ -144,11 +143,26 @@ const styles = StyleSheet.create({
   },
   lines: {
     alignSelf: 'flex-start',
-    gap: 5,
+    gap: 6,
     marginBottom: 6,
     marginLeft: 6,
     marginTop: -1,
     maxWidth: '88%',
+  },
+  marker: {
+    borderRadius: 4,
+    height: 7,
+    marginTop: 5,
+    width: 7,
+  },
+  markerCompleted: {
+    opacity: 0.7,
+  },
+  processLine: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 18,
   },
   text: {
     flexShrink: 1,
@@ -158,11 +172,5 @@ const styles = StyleSheet.create({
   },
   textActive: {
     fontWeight: '700',
-  },
-  thinkingLine: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 5,
-    minHeight: 18,
   },
 })

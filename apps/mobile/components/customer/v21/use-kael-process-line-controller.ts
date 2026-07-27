@@ -2,9 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
 import type { AppLanguage } from '@/lib/app-language'
+import type { KaelChatProgress } from '@/lib/api-types'
 
 import { caseDisplayCode } from './case-work-display-model'
 import { customerV21ServiceCopy } from './copy'
+import {
+  buildEvidencePreparationLine,
+  buildEvidenceProgressLine,
+  type KaelEvidenceMediaProfile,
+} from './kael-evidence-progress'
 import { buildKaelProcessSequence } from './kael-process-lines'
 import type { CustomerKaelMode } from './types'
 import type { KaelProcessLineRuntime } from './use-customer-kael-chat-ui-state'
@@ -14,6 +20,10 @@ type StartProcessLineOptions = {
   mediaCount?: number
   mode: CustomerKaelMode
   replyReveal?: 'composer_message'
+  serviceType?: ServiceType | null
+}
+
+type StartEvidenceProcessLineOptions = Partial<KaelEvidenceMediaProfile> & {
   serviceType?: ServiceType | null
 }
 
@@ -31,9 +41,12 @@ export function useKaelProcessLineController({
   selectedService: ServiceType | null
 }) {
   const [processLines, setProcessLines] = useState<KaelProcessLineRuntime | null>(null)
-  const revealWaitersRef = useRef(new Map<number, () => void>())
+  const revealWaitersRef = useRef<Map<number, () => void> | null>(null)
+  const revealWaiters = revealWaitersRef.current
+    ?? (revealWaitersRef.current = new Map<number, () => void>())
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const runRef = useRef(0)
+  const evidenceProfileRef = useRef<KaelEvidenceMediaProfile | null>(null)
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((timer) => clearTimeout(timer))
@@ -41,12 +54,13 @@ export function useKaelProcessLineController({
   }, [])
 
   const settleRevealWaiters = useCallback(() => {
-    revealWaitersRef.current.forEach((resolve) => resolve())
-    revealWaitersRef.current.clear()
-  }, [])
+    revealWaiters.forEach((resolve) => resolve())
+    revealWaiters.clear()
+  }, [revealWaiters])
 
   const stopProcessLines = useCallback(() => {
     runRef.current += 1
+    evidenceProfileRef.current = null
     clearTimers()
     settleRevealWaiters()
     setProcessLines(null)
@@ -68,6 +82,7 @@ export function useKaelProcessLineController({
     })
     const runId = runRef.current + 1
     runRef.current = runId
+    evidenceProfileRef.current = null
     clearTimers()
     settleRevealWaiters()
     setProcessLines({
@@ -107,21 +122,78 @@ export function useKaelProcessLineController({
     // perceptible without slowing the rest of Kael Chat.
     if (options.replyReveal !== 'composer_message') return Promise.resolve()
     return new Promise<void>((resolve) => {
-      revealWaitersRef.current.set(runId, resolve)
+      revealWaiters.set(runId, resolve)
       timersRef.current.push(setTimeout(() => {
-        revealWaitersRef.current.delete(runId)
+        revealWaiters.delete(runId)
         resolve()
       }, KAEL_COMPOSER_REPLY_REVEAL_MS))
     })
-  }, [caseServiceLabel, clearTimers, deal, language, selectedService, settleRevealWaiters])
+  }, [caseServiceLabel, clearTimers, deal, language, revealWaiters, selectedService, settleRevealWaiters])
+
+  const startEvidenceProcessLines = useCallback((options: StartEvidenceProcessLineOptions) => {
+    const runId = runRef.current + 1
+    runRef.current = runId
+    evidenceProfileRef.current = {
+      hasImage: Boolean(options.hasImage),
+      hasVideo: Boolean(options.hasVideo),
+      hasVoiceTranscript: Boolean(options.hasVoiceTranscript),
+    }
+    clearTimers()
+    settleRevealWaiters()
+    const preparation = buildEvidencePreparationLine(language)
+    setProcessLines({
+      activeIndex: 0,
+      collapse: null,
+      lines: [preparation],
+      prompt: preparation.text,
+      scenarioId: 'evidence_check',
+      visibleCount: 1,
+    })
+  }, [clearTimers, language, settleRevealWaiters])
+
+  const updateEvidenceProcessProgress = useCallback((progress: KaelChatProgress) => {
+    const profile = evidenceProfileRef.current
+    if (!profile) return
+    const line = buildEvidenceProgressLine({ language, profile, progress })
+    setProcessLines((current) => {
+      if (!current || current.scenarioId !== 'evidence_check') return current
+      const preparation = current.lines[0]
+      const nextLines = preparation?.key === 'evidence-preparation'
+        ? [{ ...preparation, status: 'completed' as const }, ...current.lines.slice(1)]
+        : [...current.lines]
+      const existingIndex = nextLines.findIndex((item) => item.key === line.key)
+      if (existingIndex >= 0) {
+        nextLines[existingIndex] = line
+      } else {
+        nextLines.push(line)
+      }
+      let activeIndex: number | null = null
+      nextLines.forEach((item, index) => {
+        if (item.status === 'queued' || item.status === 'running') activeIndex = index
+      })
+      return {
+        ...current,
+        activeIndex,
+        lines: nextLines,
+        visibleCount: nextLines.length,
+      }
+    })
+  }, [language])
 
   // Unmount invalidates the latest generation; capturing an older ref value would leave newer timers live.
   // react-doctor-disable-next-line react-doctor/exhaustive-deps
   useEffect(() => () => {
     runRef.current += 1
+    evidenceProfileRef.current = null
     clearTimers()
     settleRevealWaiters()
   }, [clearTimers, settleRevealWaiters])
 
-  return { processLines, startProcessLines, stopProcessLines }
+  return {
+    processLines,
+    startEvidenceProcessLines,
+    startProcessLines,
+    stopProcessLines,
+    updateEvidenceProcessProgress,
+  }
 }

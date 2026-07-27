@@ -66,6 +66,7 @@ import {
   resolveWorkerV5Language,
   resolveWorkerV5ScreenId,
   routeForWorkerV5Screen,
+  validatedWorkerV5JobId,
   workerV5Routes,
 } from './dock/routing'
 import {
@@ -281,17 +282,21 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const language = resolveWorkerV5Language(params)
   const auditRole = firstRouteParam(params.ns_audit_role)
+  const routeJobIdParam = firstRouteParam(params.job_id)
   const routeLanguage = firstRouteParam(params.ns_worker_lang)
-  const workerRouteContext = useMemo(() => ({
-    ns_audit_role: auditRole,
-    ns_worker_lang: routeLanguage,
-  }), [auditRole, routeLanguage])
   const screenId = screen.id
   const screenPrimaryNext = screen.primaryNext
   const onDockScroll = useDockScrollHandler()
   const router = useRouter()
   const { session, signOut } = useAuth()
   const runtime = useFrontendWorkflow()
+  const routeJobId = validatedWorkerV5JobId(routeJobIdParam)
+  const currentJobId = runtime.state.deal?.broadcast?.jobId ?? runtime.state.deal?.id
+  const workerRouteContext = useMemo(() => ({
+    job_id: routeJobId ?? currentJobId,
+    ns_audit_role: auditRole,
+    ns_worker_lang: routeLanguage,
+  }), [auditRole, currentJobId, routeJobId, routeLanguage])
   const [actionBusy, setActionBusy] = useState(false)
   const actionBusyRef = useRef(false)
   const { height } = useWindowDimensions()
@@ -405,6 +410,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === id) ?? null)
   }
   const openJobChat = () => router.replace('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal' as never)
+  const openActiveJobKaelChat = () => router.replace('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake' as never)
   const runWorkerAction = async (action: () => Promise<boolean>) => {
     if (actionBusyRef.current) return
     actionBusyRef.current = true
@@ -458,6 +464,11 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       : usesCompletionSubmittedHandoff && runtime.state.deal && workflowDestinationScreenId !== '2.11-completion-submitted'
         ? workflowStatus === 'repairing' ? '2.10-completion-evidence' : workflowDestinationScreenId
         : null
+
+  useEffect(() => {
+    if (!routeJobId || currentJobId === routeJobId) return
+    void runtime.actions.hydrateRemoteJobById(routeJobId)
+  }, [currentJobId, routeJobId, runtime.actions])
 
   useEffect(() => {
     if (!screenRedirectId) return
@@ -636,17 +647,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             >
               <Text style={styles.headerMenuText}>?</Text>
             </Pressable>
-          ) : usesCaseExecutionHandoff ? null : screen.id === '4.2-ledger-detail' ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Mở yêu cầu rút tiền' : 'Open payout request'}
-              accessibilityRole="button"
-              onPress={() => openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === '4.3-payout-request') ?? nextScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-ledger-export"
-            >
-              <Text style={styles.headerMenuText}>↗</Text>
-            </Pressable>
-          ) : screen.id === '4.3-payout-request' ? (
+          ) : usesCaseExecutionHandoff || screen.id === '4.2-ledger-detail' ? null : screen.id === '4.3-payout-request' ? (
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Hỏi Kael về rút tiền' : 'Ask Kael about payout'}
               accessibilityRole="button"
@@ -694,6 +695,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           actionBusy={actionBusy}
           avatarUploadBusy={avatarUploadBusy}
           language={language}
+          navigateActiveJobChat={openActiveJobKaelChat}
           navigateJobChat={openJobChat}
           navigateNext={() => openScreen(nextScreen)}
           navigateToScreen={openScreenById}
@@ -754,6 +756,7 @@ function WorkerV5Body({
   actionBusy,
   avatarUploadBusy,
   language,
+  navigateActiveJobChat,
   navigateJobChat,
   navigateNext,
   navigateToScreen,
@@ -769,6 +772,7 @@ function WorkerV5Body({
   actionBusy: boolean
   avatarUploadBusy: boolean
   language: AppLanguage
+  navigateActiveJobChat: () => void
   navigateJobChat: () => void
   navigateNext: () => void
   navigateToScreen: (id: WorkerV5ScreenId) => void
@@ -815,7 +819,7 @@ function WorkerV5Body({
         <WorkerV5InProgressBody
           actionBusy={actionBusy}
           language={language}
-          navigateJobChat={navigateJobChat}
+          navigateJobChat={navigateActiveJobChat}
           onTravelAction={() => void runRouteAction()}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
@@ -1116,21 +1120,21 @@ function getWorkerV5PrimaryAction(
       }
     case '4.2-ledger-detail':
       return {
-        disabled: busy,
-        label: textByLanguage(language, 'Mở yêu cầu rút tiền', 'Open payout request'),
-        onPress: navigateNext,
+        disabled: true,
+        label: textByLanguage(language, 'Chuyển ra ngân hàng chưa khả dụng', 'Bank payout unavailable'),
+        onPress: () => undefined,
       }
     case '4.3-payout-request':
       return {
-        disabled: busy,
-        label: textByLanguage(language, 'Xem tài khoản nhận tiền', 'Review payout account'),
-        onPress: navigateNext,
+        disabled: true,
+        label: textByLanguage(language, 'Quản lý tài khoản chưa khả dụng', 'Account management unavailable'),
+        onPress: () => undefined,
       }
     case '4.4-payout-method':
       return {
-        disabled: busy,
-        label: textByLanguage(language, 'Quay lại yêu cầu rút tiền', 'Back to payout request'),
-        onPress: navigateNext,
+        disabled: true,
+        label: textByLanguage(language, 'Quản lý tài khoản chưa khả dụng', 'Account management unavailable'),
+        onPress: () => undefined,
       }
     case '5.1-profile-overview':
       return {
@@ -1239,9 +1243,9 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
         ? textByLanguage(language, 'Kael giải thích cơ hội dang có', 'Kael explains the current opportunity')
         : textByLanguage(language, 'Chưa có cơ hội thật để lọc', 'No real opportunity to filter')
     case '4.1-earnings-overview':
-      return runtime.workerEarnings?.net_earnings
-        ? textByLanguage(language, 'Thu nhập đã đối soát', 'Settled earnings')
-        : textByLanguage(language, 'Chưa có dữ liệu thu nhập thật', 'No real earnings data yet')
+      return runtime.workerEarnings?.available_balance
+        ? textByLanguage(language, 'Số dư đã SePay xác thực', 'SePay-verified balance')
+        : textByLanguage(language, 'Chưa có số dư thật', 'No real balance yet')
     case '4.2-ledger-detail':
       return textByLanguage(language, 'Chi tiết đối soát đã ghi nhận', 'Recorded ledger detail')
     case '4.3-payout-request':

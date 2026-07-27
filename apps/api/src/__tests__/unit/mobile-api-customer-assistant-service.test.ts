@@ -85,6 +85,32 @@ describe('mobile-api customer assistant service', () => {
     )).rejects.toMatchObject({ code: 'INVALID_STATUS', status: 409 })
   })
 
+  it('keeps the customer Case Work chat available after payment', async () => {
+    const { client } = makeJobClient({
+      id: jobId,
+      status: 'paid',
+      customer_id: customerId,
+      worker_id: '33333333-3333-4333-8333-333333333333',
+      service_type: 'electrical',
+      payment_status: 'paid',
+    })
+
+    const result = await answerKaelAssistant(
+      customerContext(client),
+      {
+        job_id: jobId,
+        language: 'vi',
+        message: 'Thanh toán đã hoàn tất. Tôi đang ở bước nào?',
+        surface: 'customer_case',
+      },
+      {},
+    )
+
+    expect(result.answer).toBe(
+      'Thanh toán đã được ghi nhận. Bạn có thể xem lại công việc hoàn thành trong ứng dụng.',
+    )
+  })
+
   it('rate-limits repeated customer assistant provider attempts', async () => {
     openEducationalProviderCircuits()
     const { client } = makeJobClient({

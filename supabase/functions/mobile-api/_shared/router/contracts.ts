@@ -54,6 +54,7 @@ import type {
 } from "../../../_shared/job-media-contract.ts";
 import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
 import type { EdgeStagingPaymentResponse } from "../services/staging-payment.service.ts";
+import type { EdgePaymentIntentResponse } from "../services/sepay-vietqr-payment.service.ts";
 import type {
   PriceSynthesisAbCaseInput,
   PriceSynthesisAbEvaluation,
@@ -337,6 +338,11 @@ export type MobileApiServices = {
     sessionId: string,
     input: KaelChatTurnInput,
   ): Promise<Response> | Response;
+  streamKaelChatEvidence(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: KaelChatEvidenceInput,
+  ): Promise<Response> | Response;
   sendKaelChatTurn(
     ctx: MobileApiContext,
     sessionId: string,
@@ -539,7 +545,7 @@ export type MobileApiServices = {
   createPaymentIntent(
     ctx: MobileApiContext,
     jobId: string,
-  ): Promise<EdgeStagingPaymentResponse>;
+  ): Promise<EdgePaymentIntentResponse>;
   confirmStagingPayment(
     ctx: MobileApiContext,
     jobId: string,

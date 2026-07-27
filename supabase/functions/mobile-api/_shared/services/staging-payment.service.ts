@@ -174,7 +174,7 @@ function assertStagingPaymentEnabled(enabled: boolean) {
 
 function assertStagingProvider(job: Record<string, unknown>) {
   if (nullableString(job.payment_provider) !== "staging_simulator") {
-    apiFailure("PAYMENT_PROVIDER_MISMATCH", "Công việc không dùng thanh toán mô phỏng Staging.", 409);
+    apiFailure("PAYMENT_PROVIDER_MISMATCH", "Phương thức thanh toán của công việc không phù hợp.", 409);
   }
 }
 

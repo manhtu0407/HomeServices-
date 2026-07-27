@@ -7,7 +7,7 @@ import {
 } from 'react-native'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
-import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
+import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 
 import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { workerV5TimeChoiceLabel } from '../ui/labels'
@@ -49,9 +49,9 @@ export function WorkerV5OpportunityCard({
   const area = deal.broadcast?.generalArea || deal.draft.districtLabel || textByLanguage(language, 'Khu vực đang ẩn', 'Area hidden')
   const serviceLabel = localizedServiceLabel(deal.draft.serviceType, language)
   const serviceIcon = deal.draft.serviceType ? serviceIcons[deal.draft.serviceType] ?? fallbackJobIcon : fallbackJobIcon
-  const distanceLabel = deal.broadcast
+  const statusLabel = deal.status === 'broadcasting' && deal.broadcast?.status === 'sent'
     ? textByLanguage(language, 'Đã gửi tới bạn', 'Sent to you')
-    : textByLanguage(language, 'Chưa có broadcast', 'No broadcast yet')
+    : localizedStatusLabel(deal.status, language)
   const content = (
     <>
       <WorkerV5FormulaMintCardAura
@@ -72,7 +72,7 @@ export function WorkerV5OpportunityCard({
       </View>
       <View style={styles.opportunityPayoutColumn}>
         <Text style={styles.opportunityPayout} numberOfLines={1}>{earning}</Text>
-        <Text style={styles.opportunityCaption} numberOfLines={1}>{distanceLabel}</Text>
+        <Text style={styles.opportunityCaption} numberOfLines={1}>{statusLabel}</Text>
         {onOpenOpportunity ? (
           <Pressable
             accessibilityLabel={textByLanguage(language, 'Mở cơ hội thật', 'Open real opportunity')}

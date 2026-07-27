@@ -77,6 +77,7 @@ function buildCustomerJobDetail(): JobDetailResponse {
       kael_worker_brief_guidance: null,
       kael_progress: null,
       final_price: null,
+      payment_rail_available: true,
       completion_notes: null,
       completion_photo_urls: [],
       created_at: '2026-07-14T00:00:00.000Z',
@@ -104,6 +105,27 @@ describe('frontend workflow payment truth', () => {
     const snapshot = workerJobToSnapshot(buildWorkerJob())
 
     expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
+  })
+
+  it('updates legacy worker brief authority in the rendered snapshot without changing the stored job', () => {
+    const legacyGuidance = 'Nếu phát sinh thêm, gửi scope-change kèm lý do và ảnh trước khi làm.'
+    const legacySafety = 'Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.'
+    const snapshot = workerJobToSnapshot(buildWorkerJob({
+      status: 'arrived',
+      worker_brief_guidance: {
+        sections: {
+          guidance: [legacyGuidance],
+          safety: [legacySafety],
+        },
+      },
+    }))
+
+    expect(snapshot.broadcast?.prebrief).toEqual([
+      'Nếu phát sinh thêm, gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Chỉ làm khi khách xác nhận trong ứng dụng.',
+      'Không bắt đầu phần phát sinh khi khách chưa xác nhận đề xuất đổi phạm vi trong ứng dụng.',
+    ])
+    expect(legacyGuidance).toBe('Nếu phát sinh thêm, gửi scope-change kèm lý do và ảnh trước khi làm.')
+    expect(legacySafety).toBe('Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.')
   })
 
   it('preserves the real scheduled instant returned in a worker broadcast', () => {
@@ -134,6 +156,33 @@ describe('frontend workflow payment truth', () => {
     const snapshot = jobDetailToSnapshot(buildCustomerJobDetail())
 
     expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
+  })
+
+  it('preserves the server-owned payment rail capability for the Customer surface', () => {
+    const snapshot = jobDetailToSnapshot(buildCustomerJobDetail())
+
+    expect(snapshot.paymentRailAvailable).toBe(true)
+  })
+
+  it('hydrates a legacy job detail without split evidence arrays', () => {
+    const response = buildCustomerJobDetail()
+    const legacyJob = {
+      ...response.job,
+      photo_urls: ['supabase://job-media/job-customer-scheduled/before/customer.jpg'],
+    } as Record<string, unknown>
+    delete legacyJob.customer_evidence_photo_urls
+    delete legacyJob.field_evidence_photo_urls
+    delete legacyJob.completion_photo_urls
+
+    const snapshot = jobDetailToSnapshot({
+      ...response,
+      job: legacyJob as JobDetailResponse['job'],
+    })
+
+    expect(snapshot.mediaCount).toBe(1)
+    expect(snapshot.customerEvidencePhotoUrls).toEqual(legacyJob.photo_urls)
+    expect(snapshot.fieldEvidencePhotoUrls).toEqual([])
+    expect(snapshot.completionPhotoUrls).toEqual([])
   })
 
   it('renders and orders a worker schedule from scheduled_at instead of its list position', () => {

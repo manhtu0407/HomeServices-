@@ -8,6 +8,7 @@ const mockHydrateRemoteJobById = jest.fn()
 const mockRequestMediaLibraryPermissions = jest.fn()
 const mockLaunchImageLibrary = jest.fn()
 const mockSubmitEvidence = jest.fn()
+const mockStreamEvidence = jest.fn()
 
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: (...args: unknown[]) => mockLaunchImageLibrary(...args),
@@ -26,6 +27,9 @@ jest.mock('@/lib/services', () => ({
   kaelChatService: {
     sendTurn: jest.fn(),
     submitEvidence: (...args: unknown[]) => mockSubmitEvidence(...args),
+  },
+  kaelChatStreamService: {
+    submitEvidence: (...args: unknown[]) => mockStreamEvidence(...args),
   },
 }))
 
@@ -61,8 +65,10 @@ function evidenceHarness(agenticEvidenceReason = 'Không có ảnh hiện trạn
     turns: [],
   } as any
   const processController = {
+    startEvidenceProcessLines: jest.fn(),
     startProcessLines: jest.fn(async () => undefined),
     stopProcessLines: jest.fn(),
+    updateEvidenceProcessProgress: jest.fn(),
   } as any
   const input = {
     agenticEvidenceGateActive: true,
@@ -98,11 +104,12 @@ describe('customer Kael evidence concurrency', () => {
     mockRequestMediaLibraryPermissions.mockReset()
     mockRequestMediaLibraryPermissions.mockResolvedValue({ granted: true })
     mockSubmitEvidence.mockReset()
+    mockStreamEvidence.mockReset()
   })
 
   it('starts one agentic evidence request per session and releases the lane after rejection', async () => {
     let rejectSubmit!: (reason?: unknown) => void
-    mockSubmitEvidence.mockImplementationOnce(() => new Promise((_, reject) => {
+    mockStreamEvidence.mockImplementationOnce(() => new Promise((_, reject) => {
       rejectSubmit = reject
     }))
     const harness = evidenceHarness()
@@ -115,7 +122,7 @@ describe('customer Kael evidence concurrency', () => {
       duplicateSubmit = result.current.submitAgenticEvidence('skipped')
     })
 
-    expect(mockSubmitEvidence).toHaveBeenCalledTimes(1)
+    expect(mockStreamEvidence).toHaveBeenCalledTimes(1)
     await act(async () => {
       rejectSubmit(new Error('network unavailable'))
       await Promise.all([firstSubmit, duplicateSubmit])
@@ -123,11 +130,11 @@ describe('customer Kael evidence concurrency', () => {
     expect(harness.conversation.setError).toHaveBeenCalledWith('Chưa thể gửi bằng chứng lúc này. Vui lòng thử lại.')
     expect(harness.chatUi.setSubmittingAgenticEvidence).toHaveBeenLastCalledWith(false)
 
-    mockSubmitEvidence.mockResolvedValueOnce({ code: 'UNAVAILABLE', error: 'not saved', success: false })
+    mockStreamEvidence.mockResolvedValueOnce({ code: 'UNAVAILABLE', error: 'not saved', success: false })
     await act(async () => {
       await result.current.submitAgenticEvidence('skipped')
     })
-    expect(mockSubmitEvidence).toHaveBeenCalledTimes(2)
+    expect(mockStreamEvidence).toHaveBeenCalledTimes(2)
   })
 
   it('requires a short reason before skipping an optional evidence request', async () => {
@@ -138,10 +145,42 @@ describe('customer Kael evidence concurrency', () => {
       await result.current.submitAgenticEvidence('skipped')
     })
 
-    expect(mockSubmitEvidence).not.toHaveBeenCalled()
+    expect(mockStreamEvidence).not.toHaveBeenCalled()
     expect(harness.conversation.setError).toHaveBeenCalledWith(
       'Nhập lý do ngắn trước khi tiếp tục không có bằng chứng.',
     )
+  })
+
+  it('forwards verified evidence stream progress to the process lines', async () => {
+    const progress = {
+      current_stage: 'vision_analysis',
+      failure_reason: null,
+      progress: 0.4,
+      status: 'running',
+      updated_at: '2026-07-27T04:00:00.000Z',
+    } as const
+    mockStreamEvidence.mockImplementationOnce(async (
+      _sessionId: string,
+      _input: unknown,
+      handlers: { onStage?: (event: { progress: typeof progress }) => void },
+    ) => {
+      handlers.onStage?.({ progress })
+      return { data: { session: {}, turns: [] }, success: true }
+    })
+    const harness = evidenceHarness()
+    const { result } = renderHook(() => useCustomerKaelEvidenceActions(harness.input))
+
+    await act(async () => {
+      await result.current.submitAgenticEvidence('skipped')
+    })
+
+    expect(harness.processController.startEvidenceProcessLines).toHaveBeenCalledWith({
+      hasImage: false,
+      hasVideo: false,
+      hasVoiceTranscript: false,
+      serviceType: 'electrical',
+    })
+    expect(harness.processController.updateEvidenceProcessProgress).toHaveBeenCalledWith(progress)
   })
 
   it('starts one case evidence refresh per job and releases the lane after rejection', async () => {

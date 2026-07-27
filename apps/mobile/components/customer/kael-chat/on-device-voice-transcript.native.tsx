@@ -119,7 +119,7 @@ function UnavailableOnDeviceVoiceTranscript({
   return (
     <View testID="customer-v21-on-device-voice-unavailable">
       <OnDeviceVoiceTranscriptControl
-        buttonLabel={language === 'vi' ? 'Thêm giọng nói' : 'Add voice'}
+        buttonLabel={language === 'vi' ? 'Nhập bản chép lời' : 'Enter transcript'}
         disabled={disabled}
         editorVisible={editorVisible || Boolean(transcript.trim())}
         error={null}

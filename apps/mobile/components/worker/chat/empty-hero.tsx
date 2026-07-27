@@ -15,10 +15,12 @@ const SLOT_TIMER_GRACE_MS = 40
 const HERO_CENTER_TO_TOP_SHIFT_RATIO = 0.3 / 2
 
 export function WorkerV5KaelEmptyHero({
+  contextualCopy,
   language,
   mode,
   reduceMotion,
 }: {
+  contextualCopy?: string | null
   language: AppLanguage
   mode: WorkerKaelEmptyHeroMode
   reduceMotion: boolean
@@ -26,7 +28,7 @@ export function WorkerV5KaelEmptyHero({
   const [now, setNow] = useState(() => new Date())
   const [appActive, setAppActive] = useState(() => AppState.currentState === 'active')
   const [heroHeight, setHeroHeight] = useState(0)
-  const copy = getWorkerKaelEmptyHeroCopy(mode, language, now)
+  const copy = contextualCopy ? { text: contextualCopy } : getWorkerKaelEmptyHeroCopy(mode, language, now)
 
   useEffect(() => {
     const timer = setTimeout(() => {

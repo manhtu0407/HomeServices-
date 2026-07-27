@@ -10,6 +10,7 @@ import { WorkerV5HomeQuickActionsAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5HomeDisplayName } from '../ui/labels'
 import { WorkerV5SectionHeader } from '../ui/primitives-surfaces'
+import { workerV5DisplayCode } from '../ui/screen-labels'
 import { workerV5HomeQuickIconAssets } from '../ui/worker-v5-icon-assets'
 import { styles } from '../worker-v5-flow-styles'
 import { WorkerV5HomeQuickActionGrid } from './action-surfaces'
@@ -63,6 +64,9 @@ export function WorkerV5HomeScreenSurface({
   const scoreStroke = score == null ? 0 : (score / 100) * scoreCircumference
   const dataPending = textByLanguage(language, 'Chờ dữ liệu', 'Data pending')
   const jobsEmpty = textByLanguage(language, 'Chưa có', 'None')
+  const workflowStatus = deal?.backendStatus ?? deal?.status ?? null
+  const hasIncomingOffer = deal?.status === 'broadcasting' && deal.broadcast?.status === 'sent'
+  const hasActiveWork = Boolean(workflowStatus && isWorkerOperationalJobStatus(workflowStatus))
   const pendingSettlementCount = !earnings
     ? dataPending
     : earnings.pending_payment_count > 0
@@ -73,11 +77,11 @@ export function WorkerV5HomeScreenSurface({
   const stats = [
     {
       label: textByLanguage(language, 'Cơ hội mới', 'New opportunities'),
-      value: deal?.broadcast ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
+      value: hasIncomingOffer ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
     },
     {
       label: textByLanguage(language, 'Việc đang chạy', 'Active work'),
-      value: deal ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
+      value: hasActiveWork ? '1' : runtime.workerJobsHydrated ? jobsEmpty : dataPending,
     },
     {
       label: textByLanguage(language, 'Chờ đối soát', 'Settlement'),
@@ -87,18 +91,32 @@ export function WorkerV5HomeScreenSurface({
   const quickActions = [
     {
       details: [
-        { glyph: 'document' as const, label: textByLanguage(language, 'Cơ hội thật', 'Real opportunities') },
-        { glyph: 'check' as const, label: textByLanguage(language, 'Bạn quyết định', 'You decide') },
+        {
+          glyph: 'document' as const,
+          label: hasActiveWork
+            ? textByLanguage(language, 'Công việc đang chạy', 'Active work')
+            : textByLanguage(language, 'Cơ hội thật', 'Real opportunities'),
+        },
+        {
+          glyph: 'check' as const,
+          label: hasActiveWork
+            ? localizedStatusLabel(deal?.status ?? null, language)
+            : textByLanguage(language, 'Bạn quyết định', 'You decide'),
+        },
       ],
       icon: workerV5HomeQuickIconAssets.incoming,
-      meta: deal?.broadcast
+      meta: hasIncomingOffer
         ? textByLanguage(language, '1 cơ hội đã lọc', '1 filtered opportunity')
+        : hasActiveWork
+          ? localizedStatusLabel(deal?.status ?? null, language)
         : runtime.workerJobsHydrated
           ? textByLanguage(language, 'Chưa có cơ hội thật', 'No real opportunity')
           : dataPending,
       targetId: '2.1-opportunity-inbox' as const,
       tone: 'document' as const,
-      title: textByLanguage(language, 'Nhận việc ngay', 'Open work'),
+      title: hasActiveWork
+        ? textByLanguage(language, 'Tiếp tục công việc', 'Continue work')
+        : textByLanguage(language, 'Nhận việc ngay', 'Open work'),
     },
     {
       details: [
@@ -106,8 +124,10 @@ export function WorkerV5HomeScreenSurface({
         { glyph: 'shield' as const, label: textByLanguage(language, 'Không tự nhận', 'No auto-accept') },
       ],
       icon: workerV5HomeQuickIconAssets.kael,
-      meta: deal?.broadcast
+      meta: hasIncomingOffer
         ? textByLanguage(language, 'Giải thích cơ hội hiện tại', 'Explain the current opportunity')
+        : hasActiveWork
+          ? textByLanguage(language, 'Hỗ trợ công việc đang chạy', 'Support active work')
         : runtime.workerJobsHydrated
           ? textByLanguage(language, 'Lọc theo kỹ năng & khu vực', 'Filter by skills and area')
           : dataPending,
@@ -133,17 +153,17 @@ export function WorkerV5HomeScreenSurface({
     {
       details: [
         { glyph: 'document' as const, label: textByLanguage(language, 'Đối soát', 'Settlement') },
-        { glyph: 'money' as const, label: textByLanguage(language, 'Thu nhập ròng', 'Net income') },
+        { glyph: 'money' as const, label: textByLanguage(language, 'Tài khoản thợ', 'Worker account') },
       ],
       icon: workerV5HomeQuickIconAssets.earnings,
       meta: !earnings
         ? dataPending
-        : earnings.net_earnings > 0
-          ? formatVnd(earnings.net_earnings, language)
+        : earnings.available_balance > 0
+          ? formatVnd(earnings.available_balance, language)
           : textByLanguage(language, 'Chưa có đối soát', 'No settlement yet'),
       targetId: '4.1-earnings-overview' as const,
       tone: 'money' as const,
-      title: textByLanguage(language, 'Thu nhập', 'Earnings'),
+      title: textByLanguage(language, 'Tài khoản thợ', 'Worker account'),
     },
   ]
   return (
@@ -291,7 +311,9 @@ export function WorkerV5HomeBody({
     },
     {
       icon: 'scope' as const,
-      meta: deal ? deal.displayCode ?? deal.id : textByLanguage(language, 'Chưa có việc đang chạy', 'No active work'),
+      meta: deal
+        ? workerV5DisplayCode(deal, language) ?? textByLanguage(language, 'Mã việc đang được đồng bộ', 'Work code is syncing')
+        : textByLanguage(language, 'Chưa có việc đang chạy', 'No active work'),
       title: textByLanguage(language, 'Việc đang chạy', 'Active work'),
     },
   ]

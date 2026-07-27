@@ -41,6 +41,7 @@ const CUSTOMER_SERVICE_HISTORY_STATUSES: JobStatus[] = [
 export async function getJob(
   ctx: MobileApiContext,
   jobId: string,
+  options: { paymentRailAvailable?: boolean } = {},
 ): Promise<EdgeJobDetailResponse> {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
@@ -66,6 +67,7 @@ export async function getJob(
   const customerEvidencePhotoUrls = evidenceReleased
     ? asStringArray(job.photo_urls)
     : [];
+  const paymentInstructionsVisible = ctx.role !== "worker";
 
   return {
     job: {
@@ -94,12 +96,17 @@ export async function getJob(
       kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
       kael_progress: parseKaelProgressSnapshot(job.kael_progress, jobId),
       final_price: nullableNumber(job.final_price),
+      payment_rail_available: ctx.role === "customer" && options.paymentRailAvailable === true,
       payment_status: parsePaymentStatus(job.payment_status),
       payment_provider: nullableString(job.payment_provider),
-      payment_code: nullableString(job.payment_code),
-      payment_transfer_content: nullableString(job.payment_transfer_content),
-      payment_qr_image_url: nullableString(job.payment_qr_image_url),
-      payment_expires_at: nullableString(job.payment_expires_at),
+      payment_code: paymentInstructionsVisible ? nullableString(job.payment_code) : null,
+      payment_transfer_content: paymentInstructionsVisible
+        ? nullableString(job.payment_transfer_content)
+        : null,
+      payment_qr_image_url: paymentInstructionsVisible
+        ? nullableString(job.payment_qr_image_url)
+        : null,
+      payment_expires_at: paymentInstructionsVisible ? nullableString(job.payment_expires_at) : null,
       payment_received_at: nullableString(job.payment_received_at),
       payment_amount_received: nullableNumber(job.payment_amount_received),
       gross_amount: nullableNumber(job.gross_amount),
@@ -143,7 +150,10 @@ function parsePaymentStatus(
   apiFailure("DB_ERROR", "Trạng thái thanh toán không hợp lệ", 500);
 }
 
-export async function listCustomerActiveJobs(ctx: MobileApiContext) {
+export async function listCustomerActiveJobs(
+  ctx: MobileApiContext,
+  options: { paymentRailAvailable?: boolean } = {},
+) {
   const client = db(ctx);
   const result = await dbQuery<Array<{ id: string }>>(
     client
@@ -159,7 +169,7 @@ export async function listCustomerActiveJobs(ctx: MobileApiContext) {
   }
   const row = result.data?.[0];
   if (!row) return { active_job: null };
-  const detail = await getJob(ctx, row.id);
+  const detail = await getJob(ctx, row.id, options);
   return { active_job: detail };
 }
 

@@ -116,6 +116,29 @@ describe('customer Kael decision concurrency', () => {
     expect(mockConfirmEstimate).toHaveBeenCalledTimes(2)
   })
 
+  it('continues to the matching job when optional hydration fails after confirmation', async () => {
+    const harness = decisionHarness()
+    mockConfirmEstimate.mockResolvedValueOnce({
+      data: { job_id: 'job-confirmed' },
+      success: true,
+    })
+    harness.workflow.actions.hydrateRemoteJobById.mockRejectedValueOnce(new Error('stale cache'))
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+
+    await act(async () => {
+      await result.current.confirmAgenticEstimate()
+    })
+
+    expect(harness.workflow.actions.hydrateRemoteJobById).toHaveBeenCalledWith('job-confirmed')
+    expect(harness.conversation.setLocalMode).toHaveBeenCalledWith('case')
+    expect(harness.input.router.replace).toHaveBeenCalledWith(
+      '/(customer)/kael-chat?mode=case&jobId=job-confirmed',
+    )
+    expect(harness.conversation.setError).not.toHaveBeenCalledWith(
+      'Chưa thể hoàn tất lựa chọn này. Vui lòng thử lại.',
+    )
+  })
+
   it('serializes conflicting case decisions and releases the lane after rejection', async () => {
     let rejectCompletion!: (reason?: unknown) => void
     const harness = decisionHarness()

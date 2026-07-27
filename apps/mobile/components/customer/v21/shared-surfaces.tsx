@@ -554,8 +554,13 @@ export function ProgressRail({
   tokens: CustomerThemeTokens
   total?: number
 }) {
+  const language = useAppLanguage()
   return (
-    <View style={[styles.progressRail, style]} accessibilityLabel={`Step ${activeStep} of ${total}`} testID={testID}>
+    <View
+      style={[styles.progressRail, style]}
+      accessibilityLabel={language === 'vi' ? `Bước ${activeStep} trên ${total}` : `Step ${activeStep} of ${total}`}
+      testID={testID}
+    >
       {Array.from({ length: total }).map((_, index) => {
         const step = index + 1
         const done = step < activeStep

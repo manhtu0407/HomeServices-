@@ -1,14 +1,23 @@
-// Edge service kael-chat streaming (C4 6a, services/* split): SSE stream wrappers over the customer +
-// worker Kael chat turn pipelines (poll progress -> emit stage/result/heartbeat). Imports the chat APIs
-// one-way. Imported by services.ts for the createEdgeServices wiring.
+// Edge service kael-chat streaming (C4 6a, services/* split): SSE wrappers for customer turns,
+// customer evidence analysis, and worker turns (poll progress -> emit stage/result/heartbeat).
+// Imports chat APIs one-way and is wired through services.ts.
 
 import { db } from "./db.ts";
-import { getKaelChat, readKaelChatProgressSnapshot, sendKaelChatTurn } from "./kael-chat.service.ts";
+import {
+  getKaelChat,
+  readKaelChatProgressSnapshot,
+  sendKaelChatTurn,
+  submitKaelChatEvidence,
+} from "./kael-chat.service.ts";
 import { readWorkerKaelSession, sendWorkerKaelChatTurn, serializeWorkerKaelSession } from "./worker-kael-chat.service.ts";
 import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../sse.ts";
 import type { MobileApiContext } from "../router.ts";
 import type { EdgeAiSecrets } from "../kael/index.ts";
-import type { KaelChatTurnInput, WorkerKaelChatTurnInput } from "../../../_shared/domain.ts";
+import type {
+  KaelChatEvidenceInput,
+  KaelChatTurnInput,
+  WorkerKaelChatTurnInput,
+} from "../../../_shared/domain.ts";
 
 const KAEL_CHAT_STREAM_POLL_MS = 800;
 const KAEL_CHAT_STREAM_MAX_MS = 15_000;
@@ -20,13 +29,42 @@ export async function streamKaelChatTurn(
   input: KaelChatTurnInput,
   secrets: EdgeAiSecrets,
 ) {
+  return streamKaelChatRequest(
+    ctx,
+    sessionId,
+    () => sendKaelChatTurn(ctx, sessionId, input, secrets),
+  );
+}
+
+export async function streamKaelChatEvidence(
+  ctx: MobileApiContext,
+  sessionId: string,
+  input: KaelChatEvidenceInput,
+  secrets: EdgeAiSecrets,
+) {
+  return streamKaelChatRequest(
+    ctx,
+    sessionId,
+    () => submitKaelChatEvidence(ctx, sessionId, input, secrets),
+  );
+}
+
+async function streamKaelChatRequest(
+  ctx: MobileApiContext,
+  sessionId: string,
+  request: () => Promise<unknown>,
+) {
   // Preflight ownership before returning a 200 event stream so unauthorized
   // callers still receive the normal JSON auth/error path.
   await getKaelChat(ctx, sessionId);
 
+  // A session retains its last completed progress snapshot. Capture it before
+  // this request begins so the client only sees stages emitted for this turn.
+  const baselineProgress = await readKaelChatProgressSnapshot(ctx, sessionId);
+
   const encoder = new TextEncoder();
   let stopped = false;
-  let lastProgressSignature: string | null = null;
+  let lastProgressSignature = kaelProgressSignature(baselineProgress.progress);
   let lastHeartbeatAt = Date.now();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -47,7 +85,7 @@ export async function streamKaelChatTurn(
         const snapshot = await readKaelChatProgressSnapshot(ctx, sessionId);
         const progress = snapshot.progress;
         if (!progress) return;
-        const signature = `${progress.current_stage}:${progress.status}:${progress.progress}:${progress.updated_at}`;
+        const signature = kaelProgressSignature(progress);
         if (signature === lastProgressSignature) return;
         lastProgressSignature = signature;
         emit("stage", {
@@ -59,7 +97,7 @@ export async function streamKaelChatTurn(
         });
       };
 
-      const resultPromise = sendKaelChatTurn(ctx, sessionId, input, secrets)
+      const resultPromise = request()
         .then(async (result) => {
           await emitProgressIfChanged();
           // Token events remain disabled until provider-client/callAI exposes a
@@ -192,6 +230,16 @@ async function readWorkerKaelChatProgressSnapshot(
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function kaelProgressSignature(progress: {
+  current_stage: string;
+  progress: number;
+  status: string;
+  updated_at: string;
+} | null) {
+  if (!progress) return null;
+  return `${progress.current_stage}:${progress.status}:${progress.progress}:${progress.updated_at}`;
 }
 
 function kaelChatStreamErrorPayload(err: unknown) {

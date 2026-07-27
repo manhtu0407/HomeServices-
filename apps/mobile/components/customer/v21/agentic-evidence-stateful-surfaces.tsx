@@ -147,7 +147,7 @@ export function AgenticEvidenceGateView({
             >
               <ChatMediaCameraIcon color={tokens.primary} />
               <Text style={[styles.toolText, { color: tokens.primary }]}>
-                {language === 'vi' ? 'Thêm ảnh/video' : 'Add media'}
+                {language === 'vi' ? 'Thêm ảnh hoặc video' : 'Add media'}
               </Text>
             </Pressable>
             <Text style={[styles.fileCount, { color: tokens.muted }]} testID="customer-v21-agentic-evidence-file-count">
@@ -159,8 +159,8 @@ export function AgenticEvidenceGateView({
           {mediaPreviewNode}
           <Text style={[styles.disclosure, { color: tokens.muted }]} testID="customer-v21-agentic-evidence-privacy-disclosure">
             {language === 'vi'
-              ? 'Video gốc lưu riêng tư cho người có quyền xem lại, Kael chỉ phân tích 1–3 khung hình tách trên thiết bị. Giọng nói được nhận trên thiết bị, chỉ bản chép lời bạn đã kiểm tra được gửi cho Kael.'
-              : 'The original video is stored privately for authorized review, Kael analyzes only 1–3 frames extracted on your device. Voice is recognized on device, only your reviewed transcript is sent to Kael.'}
+              ? 'Kael xử lý từng loại bằng chứng theo giới hạn phù hợp. Ảnh: Kael kiểm tra vùng nhìn thấy và độ rõ của ảnh. Video: bản gốc được giữ riêng tư; Kael phân tích các khung hình đã tách trên thiết bị. Giọng nói: nhận dạng trên thiết bị khi được hỗ trợ, rồi bạn kiểm tra bản chép lời trước khi gửi. Nếu lỗi chỉ xuất hiện khi chuyển động hoặc có tiếng động, hãy mô tả thời điểm đó trong bản chép lời.'
+              : 'Kael handles each evidence type within its limits. Images: Kael checks visible areas and clarity. Video: the original stays private; Kael analyzes frames extracted on device. Voice: when supported, recognition happens on device and you review the transcript before sending. If a symptom appears only during motion or sound, describe when it happens in the transcript.'}
           </Text>
         </View>
       )}

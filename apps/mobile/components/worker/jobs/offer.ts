@@ -1,6 +1,7 @@
-import type { LocalDeal } from '@nestscout/shared'
+import { buildLocalJobDisplayCode, type LocalDeal } from '@nestscout/shared'
 
 import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
+import { localizedAgenticProblemLabel } from '@/lib/agentic-problem-label'
 
 import type { WorkerV5IconName } from '../dock/types'
 import { textByLanguage } from '../ui/format'
@@ -70,9 +71,9 @@ export function buildWorkerV5OfferRequestRows(deal: LocalDeal | null, language: 
   }
 
   const service = localizedServiceLabel(deal.draft.serviceType, language)
-  const problem = deal.broadcast?.problemSummary || deal.draft.inferredProblemLabel || deal.draft.problemChips[0] || service
+  const problem = workerV5OfferProblemLabel(deal, service, language)
   const description = deal.draft.description || localizedWorkerBriefLines(deal.broadcast?.prebrief, language)[0] || textByLanguage(language, 'Chưa có mô tả chi tiết.', 'No detailed description yet.')
-  const sourceCode = deal.displayCode || deal.broadcast?.broadcastId || deal.broadcast?.jobId || deal.id
+  const sourceCode = workerV5OfferDisplayCode(deal)
   const mediaCount = deal.draft.mediaCount
   return [
     {
@@ -104,6 +105,28 @@ export function buildWorkerV5OfferRequestRows(deal: LocalDeal | null, language: 
       title: textByLanguage(language, 'Ảnh hiện trạng từ khách', 'Customer condition photos'),
     },
   ]
+}
+
+function workerV5OfferProblemLabel(deal: LocalDeal, service: string, language: AppLanguage) {
+  const serviceType = deal.broadcast?.serviceType ?? deal.draft.serviceType
+  if (!serviceType) return service
+  const candidates = [
+    deal.broadcast?.problemSummary,
+    deal.draft.inferredProblemLabel,
+    ...deal.draft.problemChips,
+  ]
+  for (const candidate of candidates) {
+    if (!candidate?.trim()) continue
+    const label = localizedAgenticProblemLabel(candidate, serviceType, language)
+    if (label) return label
+  }
+  return service
+}
+
+function workerV5OfferDisplayCode(deal: LocalDeal) {
+  if (deal.displayCode) return deal.displayCode
+  if (deal.id.startsWith('local-')) return null
+  return buildLocalJobDisplayCode({ createdAt: deal.createdAt, jobId: deal.id })
 }
 
 export function buildWorkerV5OfferSummaryChips(deal: LocalDeal, language: AppLanguage) {

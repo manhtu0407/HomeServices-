@@ -222,6 +222,25 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(read('https://iwevizmsedyqozxlawwl.supabase.co', 'true').stagingPaymentRailEnabled).toBe(false)
   })
 
+  it('keeps SePay VietQR unavailable until the complete server-only configuration is present', () => {
+    const read = (values: Record<string, string | undefined>) => readEdgeEnv((name) => {
+      const base: Record<string, string | undefined> = {
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+        NESTSCOUT_SEPAY_VIETQR_ENABLED: 'true',
+        SEPAY_VIETQR_BANK_CODE: 'VCB',
+        SEPAY_VIETQR_ACCOUNT_NUMBER: '1234567890',
+        SEPAY_VIETQR_ACCOUNT_HOLDER: 'NESTSCOUT',
+        SEPAY_WEBHOOK_SECRET: 'webhook-secret-for-test',
+      }
+      return { ...base, ...values }[name]
+    })
+
+    expect(read({ SEPAY_WEBHOOK_SECRET: undefined }).sepayVietQr.enabled).toBe(false)
+    expect(read({ SEPAY_VIETQR_ACCOUNT_NUMBER: undefined }).sepayVietQr.enabled).toBe(false)
+    expect(read({}).sepayVietQr.enabled).toBe(true)
+  })
+
   it('lets an explicit Section 25 R2 false flag override the staging fallback', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
@@ -330,6 +349,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'sendWorkerKaelChatTurn',
       'setWorkerKaelChatPinned',
       'setWorkerKaelTrainingConsent',
+      'streamKaelChatEvidence',
       'streamKaelChatTurn',
       'streamWorkerKaelChatTurn',
       'listNotifications',
@@ -4073,8 +4093,8 @@ describe('mobile-api Edge runtime helpers', () => {
           provider: 'staging_simulator',
           status: 'pending',
           gross_amount: 250000,
-          platform_fee: 25000,
-          worker_net: 225000,
+          platform_fee: 37500,
+          worker_net: 212500,
         },
       })
 
@@ -4097,8 +4117,8 @@ describe('mobile-api Edge runtime helpers', () => {
           payment_transfer_content: 'STAGING ONLY STG-job-1',
           payment_expires_at: '2026-07-22T13:00:00.000Z',
           gross_amount: 250000,
-          platform_fee: 25000,
-          worker_net: 225000,
+          platform_fee: 37500,
+          worker_net: 212500,
         },
         error: null,
       },
@@ -4122,6 +4142,81 @@ describe('mobile-api Edge runtime helpers', () => {
           amount_received: 250000,
         },
       })
+  })
+
+  it('creates a SePay VietQR intent without letting the customer mark the job paid', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'confirmed_by_customer',
+          customer_id: 'customer-1',
+          final_price: 250000,
+          payment_provider: null,
+          payment_status: 'not_started',
+        },
+        error: null,
+      },
+    ], {
+      create_worker_vietqr_payment_intent: [{
+        data: [{
+          job_id: 'job-1',
+          job_status: 'payment_pending',
+          gross_amount: 250000,
+          platform_fee: 37500,
+          worker_net: 212500,
+          commission_level: 1,
+          commission_rate_bps: 1500,
+          payment_code: 'NS1234567890ABCDEF12345678',
+          transfer_content: 'NS1234567890ABCDEF12345678',
+          qr_image_url: 'https://vietqr.app/img?bank=VCB&account=1234567890&amount=250000',
+          payment_updated_at: '2026-07-27T04:00:00.000Z',
+        }],
+        error: null,
+      }],
+    })
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({
+      sepayVietQr: {
+        accountHolder: 'NESTSCOUT COMPANY',
+        accountNumber: '1234567890',
+        bankCode: 'VCB',
+        enabled: true,
+        webhookSecret: 'test-only-webhook-secret',
+      },
+    }).createPaymentIntent(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'payment_pending',
+      payment: {
+        provider: 'sepay_vietqr',
+        status: 'vietqr_ready',
+        gross_amount: 250000,
+        platform_fee: 37500,
+        worker_net: 212500,
+        payment_code: expect.stringMatching(/^NS[A-Z0-9]{24}$/),
+        qr_image_url: expect.stringContaining('https://vietqr.app/img?'),
+      },
+    })
+
+    const intentRpc = client.calls.find((call) => call.table === 'rpc:create_worker_vietqr_payment_intent')
+    expect(intentRpc?.operations).toContainEqual([
+      'rpc',
+      'create_worker_vietqr_payment_intent',
+      expect.objectContaining({
+        p_customer_id: 'customer-1',
+        p_expected_gross_amount: 250000,
+        p_job_id: 'job-1',
+      }),
+    ])
+    expect(client.calls.some((call) =>
+      call.table === 'jobs' && call.operations.some((operation) => operation[0] === 'update')
+    )).toBe(false)
   })
 
   it('keeps the staging payment simulator closed when the server capability is off', async () => {
@@ -4726,7 +4821,9 @@ describe('mobile-api Edge runtime helpers', () => {
       supabase: client,
     }
 
-    await expect(createEdgeServices({}).getJob(ctx, 'job-1')).resolves.toMatchObject({
+    await expect(createEdgeServices({
+      sepayVietQr: { enabled: true },
+    }).getJob(ctx, 'job-1')).resolves.toMatchObject({
       job: {
         id: 'job-1',
         display_code: 'NS-2026-000123',
@@ -4737,6 +4834,7 @@ describe('mobile-api Edge runtime helpers', () => {
         payment_qr_image_url: 'https://qr.example.test/PAY-123.png',
         payment_expires_at: '2026-07-15T01:10:00.000Z',
         payment_received_at: null,
+        payment_rail_available: true,
         payment_amount_received: null,
         gross_amount: 540000,
         platform_fee: 54000,
@@ -6246,10 +6344,10 @@ describe('mobile-api Edge runtime helpers', () => {
         photo_urls: ['supabase://job-media/job-1/before/onsite.jpg'],
         payment_status: 'vietqr_ready',
         payment_provider: 'sepay_vietqr',
-        payment_code: 'PAY-321',
-        payment_transfer_content: 'NESTSCOUT PAY-321',
-        payment_qr_image_url: 'https://qr.example.test/PAY-321.png',
-        payment_expires_at: '2026-07-15T02:00:00.000Z',
+        payment_code: null,
+        payment_transfer_content: null,
+        payment_qr_image_url: null,
+        payment_expires_at: null,
         payment_received_at: null,
         payment_amount_received: null,
         gross_amount: 250000,
@@ -6264,14 +6362,12 @@ describe('mobile-api Edge runtime helpers', () => {
         },
       }],
     })
-    expect(client.calls[0].operations[0]).toEqual([
+    const assignedJobsCall = client.calls.find((call) => call.table === 'jobs')
+    expect(assignedJobsCall?.operations[0]).toEqual([
       'select',
       expect.stringContaining('display_code'),
     ])
-    expect(client.calls[0].operations[0]).toEqual([
-      'select',
-      expect.stringContaining('payment_qr_image_url'),
-    ])
+    expect(assignedJobsCall?.operations[0]?.[1]).not.toContain('payment_qr_image_url')
   })
 
   it('restores the worker candidate-pending mission without assigning jobs.worker_id', async () => {
@@ -6323,11 +6419,13 @@ describe('mobile-api Edge runtime helpers', () => {
         district: 'Thủ Đức',
       }],
     })
-    expect(client.calls.map((call) => call.table)).toEqual(['jobs', 'job_worker_candidates'])
-    expect(client.calls[1].operations).toContainEqual(['eq', 'worker_id', 'worker-candidate'])
-    expect(client.calls[1].operations).toContainEqual(['eq', 'status', 'proposed'])
-    expect(client.calls[1].operations).toContainEqual(['eq', 'jobs.status', 'worker_candidate_pending'])
-    expect(client.calls[1].operations).toContainEqual(['gt', 'expires_at', expect.any(String)])
+    expect(client.calls.filter((call) => !call.table.startsWith('rpc:')).map((call) => call.table))
+      .toEqual(['jobs', 'job_worker_candidates'])
+    const candidateJobsCall = client.calls.find((call) => call.table === 'job_worker_candidates')
+    expect(candidateJobsCall?.operations).toContainEqual(['eq', 'worker_id', 'worker-candidate'])
+    expect(candidateJobsCall?.operations).toContainEqual(['eq', 'status', 'proposed'])
+    expect(candidateJobsCall?.operations).toContainEqual(['eq', 'jobs.status', 'worker_candidate_pending'])
+    expect(candidateJobsCall?.operations).toContainEqual(['gt', 'expires_at', expect.any(String)])
   })
 
   it('fails closed when a worker job contains an unsupported payment status', async () => {
@@ -8510,8 +8608,13 @@ describe('mobile-api Edge runtime helpers', () => {
             gross_earnings: 280000,
             platform_fee_total: 14000,
             net_earnings: 266000,
+            available_balance: 266000,
             pending_payment_count: 1,
             pending_payment_amount: 200000,
+            on_hold_amount: 0,
+            current_commission_level: 1,
+            current_commission_rate_bps: 1500,
+            recent_transactions: [],
             daily_earnings: [
               {
                 date: '2026-05-20',
@@ -8544,8 +8647,13 @@ describe('mobile-api Edge runtime helpers', () => {
       gross_earnings: 280000,
       platform_fee_total: 14000,
       net_earnings: 266000,
+      available_balance: 266000,
       pending_payment_count: 1,
       pending_payment_amount: 200000,
+      on_hold_amount: 0,
+      current_commission_level: 1,
+      current_commission_rate_bps: 1500,
+      recent_transactions: [],
       daily_earnings: [
         {
           date: '2026-05-20',
@@ -8565,7 +8673,6 @@ describe('mobile-api Edge runtime helpers', () => {
         p_worker_id: 'worker-1',
         p_from: '2026-05-01T00:00:00.000Z',
         p_to: '2026-05-31T23:59:59.999Z',
-        p_platform_fee_rate: 0.1,
       },
     ])
   })
@@ -8610,8 +8717,13 @@ describe('mobile-api Edge runtime helpers', () => {
         gross_earnings: 1,
         platform_fee_total: 0,
         net_earnings: 1,
+        available_balance: 1,
         pending_payment_count: 0,
         pending_payment_amount: 0,
+        on_hold_amount: 0,
+        current_commission_level: 1,
+        current_commission_rate_bps: 1500,
+        recent_transactions: [],
         daily_earnings: dailyEarnings,
       }],
       error: null,
@@ -8637,8 +8749,13 @@ describe('mobile-api Edge runtime helpers', () => {
         gross_earnings: 'not-a-number',
         platform_fee_total: 0,
         net_earnings: 1,
+        available_balance: 1,
         pending_payment_count: 0,
         pending_payment_amount: 0,
+        on_hold_amount: 0,
+        current_commission_level: 1,
+        current_commission_rate_bps: 1500,
+        recent_transactions: [],
         daily_earnings: [],
       }],
       error: null,
@@ -8671,8 +8788,13 @@ describe('mobile-api Edge runtime helpers', () => {
         gross_earnings: 367,
         platform_fee_total: 0,
         net_earnings: 367,
+        available_balance: 367,
         pending_payment_count: 0,
         pending_payment_amount: 0,
+        on_hold_amount: 0,
+        current_commission_level: 1,
+        current_commission_rate_bps: 1500,
+        recent_transactions: [],
         daily_earnings: dailyEarnings,
       }],
       error: null,
@@ -8698,8 +8820,13 @@ describe('mobile-api Edge runtime helpers', () => {
         gross_earnings: 0,
         platform_fee_total: 0,
         net_earnings: 0,
+        available_balance: 0,
         pending_payment_count: 0,
         pending_payment_amount: 0,
+        on_hold_amount: 0,
+        current_commission_level: 1,
+        current_commission_rate_bps: 1500,
+        recent_transactions: [],
         daily_earnings: [],
       }],
       error: null,
@@ -8768,12 +8895,13 @@ describe('mobile-api Edge runtime helpers', () => {
     const result = await createEdgeServices({}).listWorkerBroadcasts(ctx)
 
     expect(result.broadcasts).toEqual([])
-    const expireCall = client.calls[0]
-    expect(expireCall.table).toBe('job_broadcasts')
-    expect(expireCall.operations).toContainEqual(['update', expect.objectContaining({ status: 'expired' })])
-    expect(expireCall.operations).toContainEqual(['eq', 'worker_id', 'worker-1'])
-    expect(expireCall.operations).toContainEqual(['eq', 'status', 'sent'])
-    expect(expireCall.operations.some((op) => op[0] === 'lte' && op[1] === 'expires_at')).toBe(true)
+    const expireCall = client.calls.find((call) =>
+      call.table === 'job_broadcasts' && call.operations.some((operation) => operation[0] === 'update')
+    )
+    expect(expireCall?.operations).toContainEqual(['update', expect.objectContaining({ status: 'expired' })])
+    expect(expireCall?.operations).toContainEqual(['eq', 'worker_id', 'worker-1'])
+    expect(expireCall?.operations).toContainEqual(['eq', 'status', 'sent'])
+    expect(expireCall?.operations.some((op) => op[0] === 'lte' && op[1] === 'expires_at')).toBe(true)
   })
 
   it('does not show sent worker broadcasts when the parent job is no longer broadcasting', async () => {
@@ -8835,11 +8963,59 @@ describe('mobile-api Edge runtime helpers', () => {
       scheduled_at: '2026-07-15T01:00:00.000Z',
       service_type: 'electrical',
     })
-    const listCall = client.calls[1]
-    expect(listCall.operations).toContainEqual([
+    const listCall = client.calls.find((call) =>
+      call.table === 'job_broadcasts' && call.operations.some((operation) => operation[0] === 'select')
+    )
+    expect(listCall?.operations).toContainEqual([
       'select',
       'id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)',
     ])
+  })
+
+  it('quotes a worker offer from the current server commission tier instead of a static fee', async () => {
+    const expiresAt = new Date(Date.now() + 30_000).toISOString()
+    const client = makeSequenceClient([
+      { data: null, error: null },
+      {
+        data: [{
+          id: 'broadcast-tiered',
+          job_id: 'job-tiered',
+          status: 'sent',
+          sent_at: '2026-07-27T04:00:00.000Z',
+          expires_at: expiresAt,
+          jobs: {
+            status: 'broadcasting',
+            service_type: 'plumbing',
+            address_district: 'q7',
+            scheduled_at: '2026-07-27T05:00:00.000Z',
+            kael_problem_identified: 'Pipe leak',
+            kael_price_min: 150000,
+            kael_price_max: 250000,
+          },
+        }],
+        error: null,
+      },
+    ], {
+      get_worker_current_commission_tier: [{
+        data: [{ commission_level: 3, commission_rate_bps: 800 }],
+        error: null,
+      }],
+    })
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).listWorkerBroadcasts(ctx)
+
+    expect(result.broadcasts[0]).toMatchObject({
+      estimated_earning_min: 138000,
+      estimated_earning_max: 230000,
+    })
+    expect(client.calls.find((call) => call.table === 'rpc:get_worker_current_commission_tier')?.operations)
+      .toContainEqual(['rpc', 'get_worker_current_commission_tier', { p_worker_id: 'worker-1' }])
   })
 })
 
@@ -8891,6 +9067,14 @@ function makeSequenceClient(
         const objectPaths = Array.isArray(args?.p_object_paths) ? args.p_object_paths : []
         return Promise.resolve({
           data: [{ consumed_count: new Set(objectPaths).size, ok: true, reason: null }],
+          error: null,
+        })
+      }
+      if (name === 'get_worker_current_commission_tier') {
+        const call: QueryCall = { table: `rpc:${name}`, operations: [['rpc', name, args]] }
+        calls.push(call)
+        return Promise.resolve({
+          data: [{ commission_level: 1, commission_rate_bps: 1500 }],
           error: null,
         })
       }

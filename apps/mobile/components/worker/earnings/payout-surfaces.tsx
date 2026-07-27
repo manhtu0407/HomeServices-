@@ -7,7 +7,7 @@ import { textByLanguage } from '../ui/format'
 import { styles } from './payout-styles'
 
 type WorkerV5PayoutEarnings = {
-  net_earnings?: number | null
+  available_balance?: number | null
 } | null | undefined
 
 type WorkerV5PayoutListAuraComponent = ComponentType<{
@@ -34,8 +34,8 @@ export function WorkerV5PayoutAmountCard({
   listAura: WorkerV5PayoutListAuraComponent
   reduceTransparency: boolean
 }) {
-  const amount = typeof earnings?.net_earnings === 'number'
-    ? workerV5PayoutAmountFormatters[language].format(earnings.net_earnings)
+  const amount = typeof earnings?.available_balance === 'number'
+    ? workerV5PayoutAmountFormatters[language].format(earnings.available_balance)
     : textByLanguage(language, 'Chưa có dữ liệu', 'No data')
   return (
     <View style={[styles.payoutAmountInputCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-amount-card">
@@ -66,8 +66,8 @@ export function WorkerV5PayoutLimitPolicyCard({
       <Text style={[styles.boundaryBody, styles.payoutLimitPolicyCopy]} numberOfLines={6} testID="worker-v5-payout-limit-policy-copy">
         {textByLanguage(
           language,
-          'Luồng chuyển tiền và quản lý tài khoản ngân hàng chưa được bật trong ứng dụng. Số liệu đang hiển thị chỉ là thu nhập đã ghi nhận, không phải số dư có thể rút.',
-          'Payouts and bank-account management are not enabled in the app. The figures shown are recorded earnings, not a withdrawable balance.',
+          'Số dư này đã được SePay xác thực trong tài khoản thợ trên ứng dụng. Chuyển ra ngân hàng chưa được bật, nên đây không phải xác nhận tiền đã về tài khoản ngân hàng.',
+          'This balance is SePay-verified in the worker in-app account. Bank payout is not enabled, so it is not confirmation of money reaching a bank account.',
         )}
       </Text>
     </View>

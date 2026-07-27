@@ -6,7 +6,7 @@ import { getCustomerThemeTokens } from '../customer-theme'
 const tokens = getCustomerThemeTokens('light')
 
 describe('Customer Kael evidence gate', () => {
-  it('uses compact matching media and voice rows without the legacy transcript card', () => {
+  it('uses compact matching media and voice rows with truthful evidence guidance', () => {
     render(
       <AgenticEvidenceGateResponse
         busy={false}
@@ -30,11 +30,17 @@ describe('Customer Kael evidence gate', () => {
     expect(screen.getByTestId('customer-v21-agentic-evidence-add-media')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-agentic-evidence-add-voice')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-agentic-evidence-voice-count')).toHaveTextContent('0')
-    expect(screen.getByTestId('customer-v21-agentic-evidence-privacy-disclosure')).toHaveTextContent(
-      'Video gốc lưu riêng tư cho người có quyền xem lại, Kael chỉ phân tích 1–3 khung hình tách trên thiết bị. Giọng nói được nhận trên thiết bị, chỉ bản chép lời bạn đã kiểm tra được gửi cho Kael.',
+
+    const guidance = screen.getByTestId('customer-v21-agentic-evidence-privacy-disclosure')
+    expect(guidance).toHaveTextContent(/Kael xử lý từng loại bằng chứng theo giới hạn phù hợp\./)
+    expect(guidance).toHaveTextContent(/Ảnh: Kael kiểm tra vùng nhìn thấy và độ rõ của ảnh\./)
+    expect(guidance).toHaveTextContent(
+      /Video: bản gốc được giữ riêng tư; Kael phân tích các khung hình đã tách trên thiết bị\./,
     )
-    expect(screen.getByTestId('customer-v21-agentic-evidence-privacy-disclosure')).not.toHaveTextContent(';')
+    expect(guidance).toHaveTextContent(
+      /Giọng nói: nhận dạng trên thiết bị khi được hỗ trợ, rồi bạn kiểm tra bản chép lời trước khi gửi\./,
+    )
     expect(screen.queryByText('Bản chép lời riêng tư')).toBeNull()
-    expect(screen.queryByText(/Preview web không dùng nhận giọng nói/)).toBeNull()
+    expect(screen.queryByText(/Preview web không dùng nhận dạng giọng nói/)).toBeNull()
   })
 })

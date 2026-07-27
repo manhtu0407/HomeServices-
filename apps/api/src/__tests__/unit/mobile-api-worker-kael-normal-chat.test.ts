@@ -167,6 +167,141 @@ describe('worker Kael normal chat service', () => {
     expect(sentPrompt).not.toContain('job_id')
   })
 
+  it('keeps extra scope work blocked until the customer confirms in the app', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a premature scope-work request')
+    })
+
+    const answer = await runWorkerAssist({
+      conversationMode: 'intake',
+      job: {
+        id: 'job-1',
+        service_type: 'electrical',
+        status: 'arrived',
+      },
+      language: 'vi',
+      question: 'Tôi có thể làm luôn phần phát sinh trước khi khách phản hồi không?',
+      secrets: {},
+      spendGate: allowKaelSpendForTest(workerId),
+      callAI,
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      redirect_scope_change: true,
+      text: 'Không. Bạn có thể gửi đề xuất đổi phạm vi để Kael kiểm tra, nhưng không được làm phần phát sinh cho đến khi khách xác nhận đề xuất đó trong ứng dụng. Thêm ảnh nếu có.',
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('requires lobby-photo check-in before a worker enters or starts inspecting', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a pre-check-in bypass request')
+    })
+
+    const answer = await runWorkerAssist({
+      conversationMode: 'intake',
+      job: {
+        id: 'job-1',
+        service_type: 'electrical',
+        status: 'arrived',
+      },
+      language: 'vi',
+      question: 'Tôi đã đến nơi nhưng chưa có ảnh check-in. Tôi có thể báo đang kiểm tra, vào căn hộ và bắt đầu kiểm tra trước không?',
+      secrets: {},
+      spendGate: allowKaelSpendForTest(workerId),
+      callAI,
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      redirect_scope_change: false,
+      text: 'Không. Khi chưa có check-in, bạn không được báo đang kiểm tra, vào căn hộ hoặc bắt đầu kiểm tra. Hãy dùng bước Check-in bằng ảnh tại sảnh trong ứng dụng. Sau khi check-in, chờ khách xác nhận trong ứng dụng cho phép lên căn hộ trước khi kiểm tra; tin nhắn ngoài ứng dụng không thay thế bước xác nhận này.',
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('rejects off-platform apartment access before lobby-photo check-in', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for an off-platform pre-check-in bypass request')
+    })
+
+    const answer = await runWorkerAssist({
+      conversationMode: 'intake',
+      job: {
+        id: 'job-1',
+        service_type: 'electrical',
+        status: 'arrived',
+      },
+      language: 'vi',
+      question: 'Em chưa checkin vì camera hư, khách nhắn Zalo cho lên rồi. Em bỏ qua ảnh sảnh và bấm bắt đầu kiểm tra được chưa?',
+      secrets: {},
+      spendGate: allowKaelSpendForTest(workerId),
+      callAI,
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      redirect_scope_change: false,
+      text: 'Không. Khi chưa có check-in, bạn không được báo đang kiểm tra, vào căn hộ hoặc bắt đầu kiểm tra. Hãy dùng bước Check-in bằng ảnh tại sảnh trong ứng dụng. Sau khi check-in, chờ khách xác nhận trong ứng dụng cho phép lên căn hộ trước khi kiểm tra; tin nhắn ngoài ứng dụng không thay thế bước xác nhận này.',
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('keeps English pre-check-in requests deterministic for the worker', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for an English pre-check-in bypass request')
+    })
+
+    const answer = await runWorkerAssist({
+      conversationMode: 'intake',
+      job: {
+        id: 'job-1',
+        service_type: 'electrical',
+        status: 'arrived',
+      },
+      language: 'en',
+      question: 'Can I skip the lobby photo check-in and enter the apartment to start inspecting?',
+      secrets: {},
+      spendGate: allowKaelSpendForTest(workerId),
+      callAI,
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      redirect_scope_change: false,
+      text: 'No. Before check-in, do not report an inspection, enter the apartment, or begin inspecting. Use the Check in with a lobby photo step in the app. After check-in, wait for the customer to authorize unit access in the app before inspecting; an off-platform message does not replace that authorization.',
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('keeps completion and payment behind the real arrived workflow', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a premature completion and payment request')
+    })
+
+    const answer = await runWorkerAssist({
+      conversationMode: 'intake',
+      job: {
+        id: 'job-1',
+        service_type: 'electrical',
+        status: 'arrived',
+      },
+      language: 'vi',
+      question: 'Tôi chưa check-in và chưa kiểm tra xong. Tôi có thể báo hoàn thành để khách thanh toán ngay không?',
+      secrets: {},
+      spendGate: allowKaelSpendForTest(workerId),
+      callAI,
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      redirect_scope_change: false,
+      text: 'Không. Bạn chưa thể báo hoàn thành hoặc mở thanh toán ở bước này. Trước hết hãy check-in bằng ảnh tại sảnh, chờ khách cho phép lên căn hộ, rồi kiểm tra và chỉ thực hiện công việc trong phạm vi đã xác nhận. Sau khi hoàn thành thực tế, bạn gửi kết quả và bằng chứng để khách xem, rồi khách xác nhận; chỉ khi đó thanh toán mới mở.',
+    })
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
   it('uses jobless atomic claims for a normal conversation turn', async () => {
     const rpc = vi.fn()
       .mockResolvedValueOnce({

@@ -1,6 +1,5 @@
-import { memo, type SetStateAction, useRef, useState } from 'react'
+import { type SetStateAction, useRef, useState } from 'react'
 import { Alert, Text as RNText, View, type TextProps } from 'react-native'
-import { type LocalDeal } from '@nestscout/shared'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { type AppLanguage } from '@/lib/app-language'
@@ -15,12 +14,10 @@ import { textByLanguage } from '../ui/format'
 import { WorkerV5TimerCard } from '../ui/metrics-surfaces'
 import { WorkerV5PrimaryButtonFill, WorkerV5SectionHeader } from '../ui/primitives-surfaces'
 import { styles } from '../worker-v5-flow-styles'
-import { WorkerV5RouteEtaBody } from './active-body-surfaces'
+import { WorkerV5InProgressTravelGate } from './active-body-surfaces'
 import { WorkerV5ActionRail, WorkerV5SingleSourceActionButton } from './advisory-surfaces'
 import { WorkerV5EvidenceTray } from './evidence-surfaces'
-import { WorkerV5EtaSummaryCard } from './map-surfaces'
 import { WorkerV5WorkProgressBoard } from './progress-surfaces'
-import { useWorkerV5RoutePreview } from './use-worker-route-preview'
 import { type PendingClientRequestRef } from '@/lib/client-request-id'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { WorkerV5RouteMapStage } from './route-map-surfaces'
@@ -108,7 +105,7 @@ export function WorkerV5InProgressBody({
   })
   const evidenceCount = visibleEvidenceUrls.filter((url): url is string => Boolean(url)).length
   const progressItems = briefLines.map((line, index) => ({
-    meta: index === briefLines.length - 1 ? textByLanguage(language, 'Đang kiểm', 'Active') : textByLanguage(language, 'Đã đọc', 'Read'),
+    meta: index === briefLines.length - 1 ? textByLanguage(language, 'Đang áp dụng', 'Active') : textByLanguage(language, 'Đã đọc', 'Read'),
     state: index === briefLines.length - 1 ? 'active' as const : 'done' as const,
     title: line,
   }))
@@ -422,7 +419,7 @@ export function WorkerV5InProgressBody({
         : deal?.status === 'inspecting'
           ? {
               disabled: phaseActionBusy,
-              label: textByLanguage(language, 'Bắt đầu sửa chữa', 'Start work'),
+              label: textByLanguage(language, 'Bắt đầu công việc', 'Start work'),
               onPress: () => void advanceWorkPhase(),
               testID: 'worker-v5-phase-advance-action',
             }
@@ -445,6 +442,7 @@ export function WorkerV5InProgressBody({
         onArrivalAcknowledged={() => router.replace('/(worker)/jobs?ns_worker_screen=2.7-in-progress' as never)}
         onTravelAction={onTravelAction}
         reduceTransparency={reduceTransparency}
+        routeMapComponent={WorkerV5RouteMapStage}
       />
     )
   }
@@ -531,52 +529,6 @@ export function WorkerV5InProgressBody({
     </View>
   )
 }
-
-export const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate({
-  actionBusy,
-  deal,
-  language,
-  navigateJobChat,
-  onArrivalAcknowledged,
-  onTravelAction,
-  reduceTransparency,
-}: {
-  actionBusy: boolean
-  deal: LocalDeal | null
-  language: AppLanguage
-  navigateJobChat: () => void
-  onArrivalAcknowledged: () => void
-  onTravelAction: () => void
-  reduceTransparency: boolean
-}) {
-  const routePreview = useWorkerV5RoutePreview(deal, true)
-  const confirmArrivalGate = () => {
-    if (deal?.status === 'arrived') {
-      onArrivalAcknowledged()
-      return
-    }
-    onTravelAction()
-  }
-  return (
-    <WorkerV5RouteEtaBody
-      actionBusy={actionBusy}
-      caseWideAura={WorkerV5CustomerCaseWideMintAura}
-      deal={deal}
-      etaSummaryComponent={WorkerV5EtaSummaryCard}
-      language={language}
-      navigateJobChat={navigateJobChat}
-      onPrimary={confirmArrivalGate}
-      primaryLabel={deal?.status === 'worker_matched'
-        ? textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
-        : textByLanguage(language, 'Xác nhận đã tới', 'Confirm arrival')}
-      primaryFill={WorkerV5PrimaryButtonFill}
-      reduceTransparency={reduceTransparency}
-      routeMapComponent={WorkerV5RouteMapStage}
-      routePreview={routePreview}
-      zipAura={WorkerV5CustomerZipMintAura}
-    />
-  )
-})
 
 export type WorkerV5FieldEvidenceRequest = {
   createRef: PendingClientRequestRef

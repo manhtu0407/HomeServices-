@@ -42,7 +42,10 @@ type KaelProcessCatalogScenario = {
 
 export type KaelProcessLine = KaelProcessCatalogLine & {
   key: string
+  status?: KaelProcessLineStatus
 }
+
+export type KaelProcessLineStatus = 'queued' | 'running' | 'completed' | 'failed'
 
 export type KaelProcessSequence = {
   collapse: string

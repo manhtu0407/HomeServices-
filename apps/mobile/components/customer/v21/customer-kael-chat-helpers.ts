@@ -21,6 +21,12 @@ export function localizeKaelRequestFailure(
     case 'INVALID_STATUS':
     case 'ALREADY_DECIDED':
       return copy.invalidStatus
+    case 'ALREADY_CONFIRMED':
+      return copy.alreadyConfirmed
+    case 'MISSING_ESTIMATE':
+      return copy.missingEstimate
+    case 'MISSING_SCOPE':
+      return copy.missingScope
     case 'SESSION_PENDING':
       return copy.sessionPending
     case 'TIMEOUT':
@@ -41,7 +47,10 @@ export function localizeKaelRequestFailure(
 const kaelRequestFailureCopy = {
   vi: {
     fallback: 'Kael chưa thể hoàn tất bước này. Vui lòng thử lại.',
-    invalidStatus: 'Bước này không còn khả dụng vì công việc đã chuyển tiếp.',
+    alreadyConfirmed: 'Xác nhận này đã được xử lý. Hãy tải lại trạng thái công việc để tiếp tục.',
+    invalidStatus: 'Kael chưa thể xác nhận báo giá này. Hãy tải lại trạng thái công việc rồi kiểm tra lại.',
+    missingEstimate: 'Kael cần hoàn tất ước tính trước khi xác nhận báo giá.',
+    missingScope: 'Kael cần hoàn tất phân tích phạm vi trước khi xác nhận báo giá.',
     notFound: 'Không tìm thấy công việc này hoặc công việc không còn khả dụng.',
     rateLimited: 'Kael đã tạm đạt giới hạn yêu cầu. Vui lòng thử lại sau.',
     sessionPending: 'Kael đang chuẩn bị công việc này. Vui lòng thử lại sau ít phút.',
@@ -51,7 +60,10 @@ const kaelRequestFailureCopy = {
   },
   en: {
     fallback: 'Kael could not complete that step. Please try again.',
-    invalidStatus: 'This step is no longer available because the case has moved forward.',
+    alreadyConfirmed: 'This confirmation was already processed. Refresh the case status to continue.',
+    invalidStatus: 'Kael could not confirm this estimate. Refresh the case status and review it again.',
+    missingEstimate: 'Kael needs to complete the estimate before it can be confirmed.',
+    missingScope: 'Kael needs to complete the scope analysis before this estimate can be confirmed.',
     notFound: 'This case could not be found or is no longer available.',
     rateLimited: 'Kael has reached a temporary request limit. Please try again later.',
     sessionPending: 'Kael is still preparing this case. Please try again shortly.',

@@ -24,6 +24,11 @@ overrides:
   "ws@>=6.0.0 <6.2.4": 6.2.4
   "ws@>=7.0.0 <7.5.11": 7.5.11
   "ws@>=8.0.0 <8.21.0": 8.21.0
+packageExtensions:
+  "react-native-worklets@0.10.0":
+    dependencies:
+      "@babel/generator": 7.29.7
+      "@babel/traverse": 7.29.7
 peerDependencyRules:
   allowedVersions:
     "@types/react-dom@19.2.3>@types/react": ">=19.1.10 <20"

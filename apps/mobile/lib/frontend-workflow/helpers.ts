@@ -126,6 +126,10 @@ export function isWorkerOperationalJobStatus(status: JobStatus) {
   return WORKER_OPERATIONAL_JOB_STATUSES.has(status)
 }
 
+export function isWorkerActiveExecutionStatus(status: JobStatus | null) {
+  return Boolean(status && status !== 'worker_matched' && status !== 'worker_on_way' && isWorkerOperationalJobStatus(status))
+}
+
 export function isWorkerCurrentJobStatus(status: JobStatus) {
   return status === 'worker_candidate_pending' || isWorkerOperationalJobStatus(status)
 }

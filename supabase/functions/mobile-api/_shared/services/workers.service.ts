@@ -20,7 +20,6 @@ import type {
   EdgeWorkerJobListResponse,
 } from "../router/dtos.ts";
 import { normalizeIsoTimestamp } from "../iso-timestamp.ts";
-import { PLATFORM_FEE_WORKER } from "../../../_shared/domain.ts";
 import type {
   BroadcastStatus,
   JobStatus,
@@ -44,6 +43,7 @@ import {
   isWorkerServiceQualityLocked,
   selectedServiceTypesForWorker,
 } from "./worker-service-preferences.ts";
+import { estimateWorkerNet, getWorkerCommissionTier } from "./worker-commission.service.ts";
 
 export async function registerWorker(
   ctx: MobileApiContext,
@@ -469,9 +469,11 @@ function availabilityRpcRow(value: unknown): Record<string, unknown> | null {
 }
 
 export async function listWorkerBroadcasts(ctx: MobileApiContext) {
+  const client = db(ctx);
   const now = new Date();
+  const commissionTierRequest = getWorkerCommissionTier(client, ctx.user.id);
   const expired = await dbQuery(
-    db(ctx)
+    client
       .from("job_broadcasts")
       .update({ status: "expired", responded_at: now.toISOString() })
       .eq("worker_id", ctx.user.id)
@@ -483,7 +485,7 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
   }
 
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx)
+    client
       .from("job_broadcasts")
       .select(
         "id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, scheduled_at, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core, photo_urls)",
@@ -495,6 +497,7 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
       .limit(20),
   );
   if (result.error) apiFailure("DB_ERROR", "Không thể tải yêu cầu", 500);
+  const commissionTier = await commissionTierRequest;
   return {
     broadcasts: (result.data ?? []).map((row) => {
       const job = relatedJob(row.jobs);
@@ -510,12 +513,8 @@ export async function listWorkerBroadcasts(ctx: MobileApiContext) {
         district: nullableString(job.address_district),
         estimated_price_min: min,
         estimated_price_max: max,
-        estimated_earning_min: min === null
-          ? null
-          : Math.round(min * (1 - PLATFORM_FEE_WORKER)),
-        estimated_earning_max: max === null
-          ? null
-          : Math.round(max * (1 - PLATFORM_FEE_WORKER)),
+        estimated_earning_min: estimateWorkerNet(min, commissionTier),
+        estimated_earning_max: estimateWorkerNet(max, commissionTier),
         media_count: asStringArray(job.photo_urls).length,
         worker_brief_core: nullableRecord(job.kael_worker_brief_core),
         scheduled_at: nullableString(job.scheduled_at),
@@ -541,7 +540,6 @@ export async function getWorkerEarnings(
       p_worker_id: ctx.user.id,
       p_from: range.from ?? null,
       p_to: range.to ?? null,
-      p_platform_fee_rate: PLATFORM_FEE_WORKER,
     }),
   );
   const row = result.data?.[0];
@@ -583,10 +581,65 @@ function parseWorkerEarningsAggregate(
     gross_earnings: nonnegativeSafeInteger(row.gross_earnings),
     platform_fee_total: nonnegativeSafeInteger(row.platform_fee_total),
     net_earnings: nonnegativeSafeInteger(row.net_earnings),
+    available_balance: nonnegativeSafeInteger(row.available_balance),
     pending_payment_count: nonnegativeSafeInteger(row.pending_payment_count),
     pending_payment_amount: nonnegativeSafeInteger(row.pending_payment_amount),
+    on_hold_amount: nonnegativeSafeInteger(row.on_hold_amount),
+    current_commission_level: positiveSafeInteger(row.current_commission_level),
+    current_commission_rate_bps: commissionRateBps(row.current_commission_rate_bps),
+    recent_transactions: parseRecentWorkerTransactions(row.recent_transactions),
     daily_earnings: parseDailyEarnings(row.daily_earnings),
   };
+}
+
+const MAX_RECENT_WORKER_TRANSACTIONS = 20;
+
+function parseRecentWorkerTransactions(
+  value: unknown,
+): EdgeEarningsResponse["recent_transactions"] {
+  if (!Array.isArray(value) || value.length > MAX_RECENT_WORKER_TRANSACTIONS) {
+    throw new Error("INVALID_RECENT_TRANSACTIONS");
+  }
+
+  let previousRecordedAt: string | null = null;
+  return value.map((entry) => {
+    if (!isRecord(entry) || !isWorkerPaymentState(entry.payment_state)) {
+      throw new Error("INVALID_RECENT_TRANSACTIONS");
+    }
+    const jobId = nullableString(entry.job_id);
+    const recordedAt = nullableString(entry.recorded_at);
+    const availableAt = nullableString(entry.available_at);
+    const normalizedRecordedAt = recordedAt ? normalizeIsoTimestamp(recordedAt) : null;
+    const normalizedAvailableAt = availableAt ? normalizeIsoTimestamp(availableAt) : null;
+    if (
+      !jobId ||
+      !normalizedRecordedAt ||
+      (availableAt !== null && normalizedAvailableAt === null) ||
+      (previousRecordedAt !== null && normalizedRecordedAt > previousRecordedAt)
+    ) {
+      throw new Error("INVALID_RECENT_TRANSACTIONS");
+    }
+    previousRecordedAt = normalizedRecordedAt;
+
+    return {
+      job_id: jobId,
+      display_code: nullableString(entry.display_code),
+      payment_state: entry.payment_state,
+      gross_amount: nonnegativeSafeInteger(entry.gross_amount),
+      platform_fee: nonnegativeSafeInteger(entry.platform_fee),
+      worker_net: positiveSafeInteger(entry.worker_net),
+      commission_level: positiveSafeInteger(entry.commission_level),
+      commission_rate_bps: commissionRateBps(entry.commission_rate_bps),
+      recorded_at: normalizedRecordedAt,
+      available_at: normalizedAvailableAt,
+    };
+  });
+}
+
+function isWorkerPaymentState(
+  value: unknown,
+): value is EdgeEarningsResponse["recent_transactions"][number]["payment_state"] {
+  return value === "pending" || value === "available" || value === "on_hold" || value === "reversed";
 }
 
 function parseDailyEarnings(
@@ -623,6 +676,18 @@ function nonnegativeSafeInteger(value: unknown): number {
   return value;
 }
 
+function positiveSafeInteger(value: unknown): number {
+  const parsed = nonnegativeSafeInteger(value);
+  if (parsed <= 0) throw new Error("INVALID_EARNINGS_AGGREGATE");
+  return parsed;
+}
+
+function commissionRateBps(value: unknown): number {
+  const parsed = nonnegativeSafeInteger(value);
+  if (parsed > 1500) throw new Error("INVALID_EARNINGS_AGGREGATE");
+  return parsed;
+}
+
 function isIsoDate(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -637,10 +702,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 const WORKER_JOB_LIST_COLUMNS =
-  "id, display_code, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, payment_status, payment_provider, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
+  "id, display_code, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
 
 export async function listWorkerJobs(ctx: MobileApiContext) {
   const client = db(ctx);
+  const commissionTierRequest = getWorkerCommissionTier(client, ctx.user.id);
   const assignedJobsRequest = dbQuery<Array<Record<string, unknown>>>(
     client
       .from("jobs")
@@ -660,9 +726,10 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
       .order("proposed_at", { ascending: false })
       .limit(20),
   );
-  const [assignedJobs, candidateJobs] = await Promise.all([
+  const [assignedJobs, candidateJobs, commissionTier] = await Promise.all([
     assignedJobsRequest,
     candidateJobsRequest,
+    commissionTierRequest,
   ]);
   if (assignedJobs.error || candidateJobs.error) {
     apiFailure("DB_ERROR", "Không thể tải danh sách công việc", 500);
@@ -709,6 +776,7 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
       const finalPrice = nullableNumber(row.final_price);
       const max = finalPrice ?? nullableNumber(row.kael_price_max);
       const min = nullableNumber(row.kael_price_min);
+      const frozenWorkerNet = nullableNumber(row.worker_net);
       const addressProjection = projectAddressAccess(row, "worker");
       const fallbackBrief = buildWorkerBriefOutput({
         stage: "guidance",
@@ -717,12 +785,8 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
           nullableString(row.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
         district: nullableString(row.address_district),
         fullAddress: addressProjection.fullAddress,
-        estimatedEarningMin: min === null
-          ? null
-          : Math.round(min * (1 - PLATFORM_FEE_WORKER)),
-        estimatedEarningMax: max === null
-          ? null
-          : Math.round(max * (1 - PLATFORM_FEE_WORKER)),
+        estimatedEarningMin: estimateWorkerNet(min, commissionTier),
+        estimatedEarningMax: frozenWorkerNet ?? estimateWorkerNet(max, commissionTier),
       }).brief;
       return {
         id: jobId,
@@ -736,20 +800,18 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
         district: addressProjection.fullAddress.district,
         address_access: addressProjection.addressAccess,
         final_price: finalPrice,
-        estimated_earning: finalPrice
-          ? Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER))
-          : null,
+        estimated_earning: frozenWorkerNet ?? estimateWorkerNet(finalPrice, commissionTier),
         payment_status: parseWorkerJobPaymentStatus(row.payment_status),
         payment_provider: nullableString(row.payment_provider),
-        payment_code: nullableString(row.payment_code),
-        payment_transfer_content: nullableString(row.payment_transfer_content),
-        payment_qr_image_url: nullableString(row.payment_qr_image_url),
-        payment_expires_at: nullableString(row.payment_expires_at),
+        payment_code: null,
+        payment_transfer_content: null,
+        payment_qr_image_url: null,
+        payment_expires_at: null,
         payment_received_at: nullableString(row.payment_received_at),
         payment_amount_received: nullableNumber(row.payment_amount_received),
         gross_amount: nullableNumber(row.gross_amount),
         platform_fee: nullableNumber(row.platform_fee),
-        worker_net: nullableNumber(row.worker_net),
+        worker_net: frozenWorkerNet,
         photo_urls: customerEvidencePhotoUrls,
         customer_evidence_photo_urls: customerEvidencePhotoUrls,
         field_evidence_photo_urls: evidenceReleased

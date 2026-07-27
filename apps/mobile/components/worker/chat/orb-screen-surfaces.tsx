@@ -7,6 +7,7 @@ import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
+import { isWorkerActiveExecutionStatus } from '@/lib/frontend-workflow/helpers'
 import { WorkerV5ScreenDefinition, WorkerV5ScreenId } from '../dock/types'
 import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura, WorkerV5SourceCardSkin } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
@@ -61,6 +62,9 @@ export function WorkerV5KaelOrbScreenSurface({
   surfaceStyle: StyleProp<ViewStyle>
   workerJobsHydrated: boolean
 }) {
+  const hasActiveExecutionCase = isWorkerActiveExecutionStatus(
+    deal?.backendStatus ?? deal?.status ?? null,
+  )
   const modeOptions = [
     {
       description: textByLanguage(language, 'Hỏi đáp và hỗ trợ nhanh', 'Quick questions and support'),
@@ -68,8 +72,12 @@ export function WorkerV5KaelOrbScreenSurface({
       value: 'normal' as const,
     },
     {
-      description: textByLanguage(language, 'Lọc và chuẩn bị cơ hội phù hợp', 'Filter and prepare matching work'),
-      label: textByLanguage(language, 'Nhận việc', 'Job intake'),
+      description: hasActiveExecutionCase
+        ? textByLanguage(language, 'Hỗ trợ theo công việc đang chạy', 'Support the active job')
+        : textByLanguage(language, 'Lọc và chuẩn bị cơ hội phù hợp', 'Filter and prepare matching work'),
+      label: hasActiveExecutionCase
+        ? textByLanguage(language, 'Công việc', 'Work case')
+        : textByLanguage(language, 'Nhận việc', 'Job intake'),
       value: 'intake' as const,
     },
   ]

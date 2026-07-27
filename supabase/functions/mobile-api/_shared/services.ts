@@ -40,6 +40,7 @@ import { decideScopeChange, requestScopeChange } from "./services/scope-change.s
 import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./services/job-incident.service.ts";
 import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
 import { confirmStagingPayment, createStagingPaymentIntent } from "./services/staging-payment.service.ts";
+import { createSePayVietQrPaymentIntent } from "./services/sepay-vietqr-payment.service.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/chat.service.ts";
 import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat.service.ts";
 import { answerKaelAssistant } from "./services/customer-assistant.service.ts";
@@ -53,7 +54,11 @@ import {
   setCustomerKaelConversationPinned,
 } from "./services/customer-kael-conversation.service.ts";
 import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, renameWorkerKaelChat, sendWorkerKaelChatTurn, setWorkerKaelChatPinned } from "./services/worker-kael-chat.service.ts";
-import { streamKaelChatTurn, streamWorkerKaelChatTurn } from "./services/kael-chat-stream.ts";
+import {
+  streamKaelChatEvidence,
+  streamKaelChatTurn,
+  streamWorkerKaelChatTurn,
+} from "./services/kael-chat-stream.ts";
 import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin-learning.service.ts";
 import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./services/kael-feedback.service.ts";
 import {
@@ -83,15 +88,24 @@ import {
 import { type MobileApiContext, type MobileApiServices } from "./router.ts";
 
 import { type EdgeAiSecrets, type EdgeGuardClient, getPublicKaelCharter } from "./kael/index.ts";
+import type { SePayVietQrConfig } from "./env.ts";
 
-export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
+export type EdgeServiceSecrets = EdgeAiSecrets & {
+  sepayVietQr?: SePayVietQrConfig;
+};
+
+export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServices {
   return {
     listServices,
     placesAutocomplete: (ctx, input) => placesAutocomplete(ctx, input, secrets),
     placesResolve: (ctx, input) => placesResolve(ctx, input, secrets),
     createJob: (ctx, input) => createJob(ctx, input, aiRuntime(ctx, secrets)),
-    getJob,
-    listCustomerActiveJobs,
+    getJob: (ctx, jobId) => getJob(ctx, jobId, {
+      paymentRailAvailable: ctx.role === "customer" && secrets.sepayVietQr?.enabled === true,
+    }),
+    listCustomerActiveJobs: (ctx) => listCustomerActiveJobs(ctx, {
+      paymentRailAvailable: secrets.sepayVietQr?.enabled === true,
+    }),
     listCustomerServiceHistory,
     createKaelChat: (ctx, input) =>
       createKaelChat(ctx, input, aiRuntime(ctx, secrets)),
@@ -111,6 +125,8 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     getKaelChatProgress,
     streamKaelChatTurn: (ctx, sessionId, input) =>
       streamKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
+    streamKaelChatEvidence: (ctx, sessionId, input) =>
+      streamKaelChatEvidence(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     sendKaelChatTurn: (ctx, sessionId, input) =>
       sendKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     confirmKaelChat: (ctx, sessionId) =>
@@ -165,7 +181,9 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     decideScopeChange,
     confirmCompletion,
     createPaymentIntent: (ctx, jobId) =>
-      createStagingPaymentIntent(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
+      secrets.sepayVietQr?.enabled
+        ? createSePayVietQrPaymentIntent(ctx, jobId, secrets.sepayVietQr)
+        : createStagingPaymentIntent(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
     confirmStagingPayment: (ctx, jobId) =>
       confirmStagingPayment(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
     submitReview,

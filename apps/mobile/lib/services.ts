@@ -1,6 +1,12 @@
 import { api, mobileApiUrl, type ApiResult } from './api'
 import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
-import { streamKaelChatTurn, streamWorkerKaelChatTurn, type KaelChatStreamHandlers, type WorkerKaelChatStreamHandlers } from './kael-stream'
+import {
+  streamKaelChatEvidence,
+  streamKaelChatTurn,
+  streamWorkerKaelChatTurn,
+  type KaelChatStreamHandlers,
+  type WorkerKaelChatStreamHandlers,
+} from './kael-stream'
 import type {
   AcceptBroadcastResponse,
   AvailabilityToggleResponse,
@@ -439,6 +445,9 @@ export const kaelChatProgressService = {
 export const kaelChatStreamService = {
   sendTurn(sessionId: string, input: KaelChatTurnInput, handlers?: KaelChatStreamHandlers) {
     return streamKaelChatTurn(sessionId, input, handlers)
+  },
+  submitEvidence(sessionId: string, input: KaelChatEvidenceInput, handlers?: KaelChatStreamHandlers) {
+    return streamKaelChatEvidence(sessionId, input, handlers)
   },
 }
 

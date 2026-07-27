@@ -28,6 +28,7 @@ export type EdgeJobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null;
     kael_progress: EdgeKaelChatProgressResponse["progress"];
     final_price: number | null;
+    payment_rail_available: boolean;
     payment_status:
       | "not_started"
       | "code_requested"

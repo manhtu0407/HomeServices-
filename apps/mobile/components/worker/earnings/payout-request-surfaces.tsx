@@ -38,8 +38,8 @@ export function WorkerV5PayoutRequestHero({
   reduceTransparency: boolean
   walletIcon: ImageSourcePropType
 }) {
-  const recordedEarnings = typeof earnings?.net_earnings === 'number'
-    ? formatVndDong(earnings.net_earnings, language)
+  const availableBalance = typeof earnings?.available_balance === 'number'
+    ? formatVndDong(earnings.available_balance, language)
     : textByLanguage(language, 'Chưa có dữ liệu', 'No data')
   return (
     <View style={[styles.earningsHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-payout-request-hero">
@@ -50,9 +50,9 @@ export function WorkerV5PayoutRequestHero({
           <Image contentFit="contain" source={walletIcon} style={styles.earningsHeroIcon} />
         </View>
         <View style={styles.earningsHeroCopy}>
-          <Text style={styles.earningsHeroMeta} numberOfLines={1}>{textByLanguage(language, 'Thu nhập ròng đã ghi nhận', 'Recorded net earnings')}</Text>
+          <Text style={styles.earningsHeroMeta} numberOfLines={1}>{textByLanguage(language, 'Số dư tài khoản thợ trên ứng dụng', 'Worker in-app account balance')}</Text>
           <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-payout-request-amount">
-            {recordedEarnings}
+            {availableBalance}
           </Text>
         </View>
       </View>

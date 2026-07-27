@@ -9,6 +9,12 @@ import type {
   WorkerV5Section,
 } from './types'
 
+const WORKER_JOB_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export function validatedWorkerV5JobId(value?: string) {
+  return value && WORKER_JOB_ID_PATTERN.test(value) ? value : null
+}
+
 export const workerV5Routes: Record<WorkerV5Section, string> = {
   earnings: '/(worker)/earnings',
   home: '/(worker)/home',
@@ -35,9 +41,11 @@ export function routeForWorkerV5Screen(
 ) {
   const query = [`ns_worker_screen=${encodeURIComponent(screen.id)}`]
   const auditRole = firstRouteParam(params.ns_audit_role)
+  const jobId = validatedWorkerV5JobId(firstRouteParam(params.job_id))
   const language = firstRouteParam(params.ns_worker_lang)
 
   if (auditRole === 'worker') query.push('ns_audit_role=worker')
+  if (jobId) query.push(`job_id=${encodeURIComponent(jobId)}`)
   if (language === 'en' || language === 'vi') {
     query.push(`ns_worker_lang=${language}`)
   }

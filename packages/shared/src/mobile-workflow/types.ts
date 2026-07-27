@@ -112,6 +112,7 @@ export type LocalDeal = {
   broadcast: LocalWorkerBroadcast | null
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
+  paymentRailAvailable?: boolean
   payment?: LocalDealPayment | null
   customerEvidencePhotoUrls?: string[]
   fieldEvidencePhotoUrls?: string[]
@@ -172,6 +173,7 @@ export type LocalRemoteJobSnapshot = {
   broadcast?: LocalWorkerBroadcast | null
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
+  paymentRailAvailable?: boolean
   payment?: LocalDealPayment | null
   customerEvidencePhotoUrls?: string[]
   fieldEvidencePhotoUrls?: string[]
