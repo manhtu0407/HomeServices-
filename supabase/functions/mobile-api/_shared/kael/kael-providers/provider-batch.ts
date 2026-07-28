@@ -1,10 +1,10 @@
-import type { EdgeAiSecrets } from "./types.ts";
+import type { EdgeAiSecrets } from "../types.ts";
 import {
   createBufferedResponse,
   readResponseBytesBounded,
   readResponseTextBounded,
   ResponseBodyTooLargeError,
-} from "../../../_shared/network.ts";
+} from "../../../../_shared/network.ts";
 
 const ANTHROPIC_BATCH_URL = "https://api.anthropic.com/v1/messages/batches";
 const ANTHROPIC_VERSION = "2023-06-01";

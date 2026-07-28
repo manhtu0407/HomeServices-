@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import { __resetRateLimitStoreForTests } from '../../../../../supabase/functions/mobile-api/_shared/rate-limit'
 import { answerKaelAssistant } from '../../../../../supabase/functions/mobile-api/_shared/services/customer-assistant.service'
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'

@@ -1,5 +1,5 @@
-import type { KaelActorRole, DeclineTemplateKey, KaelPermissionGateDecision } from "./permission-gate.ts";
-import { renderDeclineTemplate } from "./permission-gate.ts";
+import type { KaelActorRole, DeclineTemplateKey, KaelPermissionGateDecision } from "./kael-guardrails/permission-gate.ts";
+import { renderDeclineTemplate } from "./kael-guardrails/permission-gate.ts";
 
 export type KaelRateLimitAction =
   | "customer_intent_classification"

@@ -1,7 +1,7 @@
 import {
   KAEL_ROUTING_CONFIG,
   type ProviderRoute,
-} from "./routing.config.ts";
+} from "./kael-providers/routing.config.ts";
 import type { AIProvider, KaelPurpose } from "./types.ts";
 
 export type KaelEscalationReason =

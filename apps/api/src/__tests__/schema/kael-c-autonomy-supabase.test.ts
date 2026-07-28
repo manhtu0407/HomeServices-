@@ -39,7 +39,7 @@ describe('Kael Track C autonomy Supabase contract', () => {
 
   it('routes narrow autonomy escalations through the existing admin queue vocabulary', () => {
     const migration = read('supabase/migrations/20260604220000_kael_c_autonomy_audit_apply.sql')
-    const gate = read('supabase/functions/mobile-api/_shared/kael/autonomy-gate.ts')
+    const gate = read('supabase/functions/mobile-api/_shared/kael/kael-guardrails/autonomy-gate.ts')
 
     expect(migration).toContain("'autonomy_escalation'")
     expect(gate).toContain('queue_type: "autonomy_escalation"')
@@ -47,7 +47,7 @@ describe('Kael Track C autonomy Supabase contract', () => {
   })
 
   it('keeps full LLM-proposed autonomy behind the production-off flag', () => {
-    const gate = read('supabase/functions/mobile-api/_shared/kael/autonomy-gate.ts')
+    const gate = read('supabase/functions/mobile-api/_shared/kael/kael-guardrails/autonomy-gate.ts')
 
     expect(gate).toContain('KAEL_AUTONOMY_FULL_ENABLED')
     expect(gate).toContain('AUTONOMY_FULL_FLAG_OFF')

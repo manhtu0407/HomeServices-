@@ -1,4 +1,4 @@
-import { KAEL_CIRCUIT_BREAKER } from "../circuit-breaker.ts";
+import { KAEL_CIRCUIT_BREAKER } from "../kael-providers/circuit-breaker.ts";
 import {
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
@@ -6,9 +6,9 @@ import {
 import {
   anthropicMessageBatchCostUsd,
   calculateModelCostUsd,
-} from "../model-pricing.ts";
-import type { AnthropicBatchResult } from "../provider-batch.ts";
-import { finalizeAiSpend, type SpendGateClient } from "../spend-gate.ts";
+} from "../kael-usage/model-pricing.ts";
+import type { AnthropicBatchResult } from "../kael-providers/provider-batch.ts";
+import { finalizeAiSpend, type SpendGateClient } from "../kael-guardrails/spend-gate.ts";
 import type { EdgeAiSecrets } from "../types.ts";
 import type { LearningQueueDbClient } from "./process-learning-queue.ts";
 

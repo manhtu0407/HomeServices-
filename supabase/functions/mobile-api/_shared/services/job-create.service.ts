@@ -17,7 +17,7 @@ import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
 import { buildEstimateCardOutput, buildKaelAutonomyDecision, buildWorkerBriefOutput, prependDeterministicSafetyGuidance, PRICE_DISCLAIMER, recordLearningRuleApplication, resolveElectricalIntakeRuntime, runKaelAutonomyOrchestrator, runKaelPipeline, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
-import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
+import { isKaelAiKillSwitchEnabled } from "../kael/kael-guardrails/spend-gate.ts";
 import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { JobCreateInput, JobStatus } from "../../../_shared/domain.ts";
 

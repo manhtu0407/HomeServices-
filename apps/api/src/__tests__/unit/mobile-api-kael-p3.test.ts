@@ -2,13 +2,13 @@ import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { KAEL_PURPOSES } from '../../../../../supabase/functions/mobile-api/_shared/kael'
-import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
-import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider, providerCandidatesForPurpose, shouldSkipProviderSiblingModels } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing'
-import { createKaelCircuitBreaker, KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config'
+import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider, providerCandidatesForPurpose, shouldSkipProviderSiblingModels } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/routing'
+import { createKaelCircuitBreaker, KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
 import { runKaelParallel, runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
 import { updateKaelProgress } from '../../../../../supabase/functions/mobile-api/_shared/kael/streaming'
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 describe('mobile-api Kael P3 routing foundation', () => {

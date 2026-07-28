@@ -3,8 +3,8 @@ import { SERVICE_TYPES } from "../../../_shared/domain.ts";
 import type { AIProvider, EdgeAiSecrets } from "./types.ts";
 import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "./types.ts";
 import { callStructuredAI } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
-import { KAEL_ROUTING_CONFIG, maxTokensForPurpose } from "./routing.config.ts";
+import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
+import { KAEL_ROUTING_CONFIG, maxTokensForPurpose } from "./kael-providers/routing.config.ts";
 
 export const priceSynthesisAbCaseSchema = z.object({
   case_key: z.string().min(4).max(160),

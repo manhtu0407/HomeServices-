@@ -6,7 +6,7 @@ import {
   type KaelAutonomyDecisionSource,
   type KaelAutonomyGateInput,
   type KaelAutonomyGateResult,
-} from "./autonomy-gate.ts";
+} from "./kael-guardrails/autonomy-gate.ts";
 import {
   runKaelPurposeStage,
   type KaelStageStatus,

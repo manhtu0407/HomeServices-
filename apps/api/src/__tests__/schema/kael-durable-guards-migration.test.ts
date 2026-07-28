@@ -59,7 +59,7 @@ describe('Kael durable guards migration', () => {
       'utf8',
     )
     const provider = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/provider-client.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts', import.meta.url),
       'utf8',
     )
     const services = readFileSync(

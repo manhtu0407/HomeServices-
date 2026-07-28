@@ -9,16 +9,16 @@
 // classifier may be layered on top; this deterministic gate remains the
 // zero-cost baseline.
 
-import type { ServiceType } from "../../../_shared/domain.ts";
+import type { ServiceType } from "../../../../_shared/domain.ts";
 import {
   applyHardRoutingPolicy,
   hasElectricalInfrastructureContext,
   prependDeterministicSafetyGuidance,
   scanIntakeSafetySignals,
   type HardRoutingPolicyDecision,
-} from "./electrical-intake-policy.ts";
-import { KAEL_CASE_WORK_SERVICE_TYPES } from "./performance-profiles.ts";
-import { isElectricalPlaybookEnabled } from "./playbooks/electrical.ts";
+} from "../electrical-intake-policy.ts";
+import { KAEL_CASE_WORK_SERVICE_TYPES } from "../performance-profiles.ts";
+import { isElectricalPlaybookEnabled } from "../playbooks/electrical.ts";
 
 export type BoundaryReason =
   | "prompt_injection"

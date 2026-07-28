@@ -9,9 +9,9 @@ import {
   isKaelAiKillSwitchEnabled,
   KAEL_AI_SPEND_CAPS,
   reserveAiSpend,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/spend-gate'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/spend-gate'
 import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
 
 // A stateful mock that plays the role of the durable DB ledger. reserve_kael_ai_spend
@@ -135,7 +135,7 @@ describe('S4 DURABILITY ACCEPTANCE (F1 — the gate must survive cold isolates)'
     // And a literally fresh module import (simulated cold start) behaves identically.
     vi.resetModules()
     const fresh = await import(
-      '../../../../../supabase/functions/mobile-api/_shared/kael/spend-gate'
+      '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/spend-gate'
     )
     const v2 = await fresh.reserveAiSpend(ledger, { actorId: null, estimatedCostUsd: 0.01 })
     expect(v2.allowed).toBe(false)

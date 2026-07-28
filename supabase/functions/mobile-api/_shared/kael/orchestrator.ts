@@ -1,6 +1,6 @@
 import type { KaelPurpose } from "./types.ts";
-import type { KaelSemanticGuardClassifier } from "./self-check.ts";
-import { guardOutput } from "./output-gateway.ts";
+import type { KaelSemanticGuardClassifier } from "./kael-guardrails/self-check.ts";
+import { guardOutput } from "./kael-guardrails/output-gateway.ts";
 import type { KaelPromptActor, KaelPromptLanguage } from "./system-prompt.ts";
 
 export type KaelOrchestratorStage<T> = {

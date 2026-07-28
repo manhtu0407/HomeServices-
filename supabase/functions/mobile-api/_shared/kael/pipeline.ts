@@ -27,7 +27,7 @@ import {
   applyLearnedPriceRule,
   clampLearnedPriceToBaseline,
 } from "./learning.ts";
-import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
+import { KAEL_ROUTING_CONFIG } from "./kael-providers/routing.config.ts";
 import { runKaelParallel, runKaelPurposeStage } from "./orchestrator.ts";
 import { updateKaelProgress } from "./streaming.ts";
 import {
@@ -41,8 +41,8 @@ import {
   KAEL_AI_UNAVAILABLE_VI,
   type KaelSpendGate,
   type SpendGateClient,
-} from "./spend-gate.ts";
-import { checkKaelProviderBudget, recordKaelProviderSpend } from "./provider-budget.ts";
+} from "./kael-guardrails/spend-gate.ts";
+import { checkKaelProviderBudget, recordKaelProviderSpend } from "./kael-providers/provider-budget.ts";
 import { pushPipelineStageLog } from "./trace.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "./prompts.ts";
 

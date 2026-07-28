@@ -1,13 +1,13 @@
-import type { JobStatus } from "../../../_shared/domain.ts";
+import type { JobStatus } from "../../../../_shared/domain.ts";
 import {
   type KaelAutonomyDecision,
   kaelAutonomyDecisionSchema,
-} from "./artifact-contract.ts";
+} from "../artifact-contract.ts";
 import {
   evaluateKaelPermissionGate,
   type KaelPermissionGateRequest,
 } from "./permission-gate.ts";
-import { validateKaelAutonomyTransition } from "../workflow-orchestrator.ts";
+import { validateKaelAutonomyTransition } from "../../workflow-orchestrator.ts";
 
 export type KaelAutonomyDecisionSource = "policy" | "llm_proposed";
 export type KaelAutonomyGateStatus = "allow" | "reject" | "escalate";

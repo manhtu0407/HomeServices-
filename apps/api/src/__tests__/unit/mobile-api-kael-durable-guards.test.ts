@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import {
   isDurableCircuitOpen,
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
   takeDurableKaelChatRateLimit,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/durable-guards'
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 
 afterEach(() => {
   vi.useRealTimers()

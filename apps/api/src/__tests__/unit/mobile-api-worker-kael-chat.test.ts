@@ -13,7 +13,7 @@ import {
   validateWorkerKaelMediaRefs,
 } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-media.service'
 import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/ai-boundary-contract'
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 

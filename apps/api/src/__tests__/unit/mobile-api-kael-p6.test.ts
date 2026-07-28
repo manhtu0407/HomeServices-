@@ -5,8 +5,8 @@ import {
   classifyMemoryStaleness,
   KaelMemory,
   resolveMemoryFacts,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/memory'
-import { sanitizeMemoryObject } from '../../../../../supabase/functions/mobile-api/_shared/kael/memory-sanitizer'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-memory/memory'
+import { sanitizeMemoryObject } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-memory/memory-sanitizer'
 
 describe('Kael P6 memory governance', () => {
   it('builds six memory layers with budget, privacy, PII filtering, and read audits', async () => {

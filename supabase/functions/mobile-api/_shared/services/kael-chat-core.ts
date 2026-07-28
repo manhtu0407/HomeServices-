@@ -12,8 +12,8 @@ import { guardDemandingResponseText } from "./chat.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, intakeEvalObservationSchema, isGroundedClarificationAnswer, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, resolveCaseWorkEvidenceRequest, resolveIntakeFactCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type IntakeEvalObservation, type PipelineResult } from "../kael/index.ts";
 import { isElectricalPlaybookEnabled } from "../kael/playbooks/electrical.ts";
-import { guardOutput } from "../kael/output-gateway.ts";
-import { isKaelAiKillSwitchEnabled } from "../kael/spend-gate.ts";
+import { guardOutput } from "../kael/kael-guardrails/output-gateway.ts";
+import { isKaelAiKillSwitchEnabled } from "../kael/kael-guardrails/spend-gate.ts";
 import {
   frameUntrustedCustomerCaseEvidenceForModel,
   sanitizeCustomerCaseEvidenceText,

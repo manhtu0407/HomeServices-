@@ -1,4 +1,4 @@
-import type { AIProvider, KaelPurpose } from "./types.ts";
+import type { AIProvider, KaelPurpose } from "../types.ts";
 
 export type CircuitFailure = {
   readonly purpose: KaelPurpose;

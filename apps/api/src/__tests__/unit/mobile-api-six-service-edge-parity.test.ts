@@ -21,7 +21,7 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
 import {
   evaluateMessageBoundary,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/boundary-guard'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard'
 import {
   buildIntakeDiagnosisMessages,
   buildIntentMessages,

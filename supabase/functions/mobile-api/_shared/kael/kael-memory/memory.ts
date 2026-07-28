@@ -3,7 +3,7 @@
 // and retained only as a tested reference until a product feature needs continuity.
 // The live self-memory CRUD service is separate and must remain backward compatible.
 import { sanitizeMemoryObject, sanitizeMemoryText } from "./memory-sanitizer.ts";
-import { isKaelKnowledgeRetrievalEnabled } from "./knowledge.ts";
+import { isKaelKnowledgeRetrievalEnabled } from "../knowledge.ts";
 
 type DbResult<T> = { data: T | null; error: { code?: string; message?: string } | null };
 type Chain = {
