@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
 import { getCustomerThemeTokens } from '../customer-theme'
-import { AgenticCaseThreadPanel } from '../v21/chat-case-thread-stateful-surfaces'
+import { AgenticCaseThreadPanel } from '../kael-chat/chat-case-thread-stateful-surfaces'
 
 describe('Case Work phase controls', () => {
   it('does not expose scope decisions before Kael finishes reviewing the change', () => {

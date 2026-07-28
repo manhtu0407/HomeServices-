@@ -54,11 +54,23 @@ const readWorkerSurfaceLayer = () =>
     .map(read)
     .join('\n')
 
-// The customer surface layer is customer-surfaces.tsx plus the active PR72/V21 modules.
+// The customer surface layer is customer-surfaces.tsx plus the active PR72/V21
+// modules, which live in per-domain buckets rather than one flat v21/ folder.
+const CUSTOMER_SURFACE_DIRS = [
+  'components/customer/v21',
+  'components/customer/dock',
+  'components/customer/ui',
+  'components/customer/home',
+  'components/customer/booking',
+  'components/customer/history',
+  'components/customer/profile',
+  'components/customer/kael-chat',
+]
 const readCustomerSurfaceLayer = () =>
   [
     read('components/customer/customer-surfaces.tsx'),
-    ...listMobileFiles('components/customer/v21')
+    ...CUSTOMER_SURFACE_DIRS
+      .flatMap((dir) => listMobileFiles(dir))
       .filter((p) => /\.tsx?$/.test(p))
       .sort()
       .map(read),
@@ -122,7 +134,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     const workerRefreshEnd = provider.indexOf('const workerUpdateAvailability = useCallback', workerRefreshStart)
     const workerRefresh = provider.slice(workerRefreshStart, workerRefreshEnd)
     const startupAvailabilityStart = provider.indexOf("if (!sessionUserId || role !== 'worker') return")
-    const startupAvailabilityEnd = provider.indexOf('// Realtime surfaces incoming broadcasts quickly', startupAvailabilityStart)
+    const startupAvailabilityEnd = provider.indexOf('workerService.recordActiveMinute()', startupAvailabilityStart)
     const startupAvailability = provider.slice(startupAvailabilityStart, startupAvailabilityEnd)
 
     expect(provider).toContain("workerService.updateAvailability({ is_available: isAvailable })")

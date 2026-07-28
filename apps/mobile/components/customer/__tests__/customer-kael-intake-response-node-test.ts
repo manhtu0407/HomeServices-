@@ -1,7 +1,7 @@
 import {
   resolveCaseWorkIntakePhase,
   shouldShowCaseWorkIntakeResponse,
-} from '../v21/customer-kael-intake-response-model'
+} from '../kael-chat/customer-kael-intake-response-model'
 
 describe('resolveCaseWorkIntakePhase', () => {
   it('moves only from pending intake through server-backed analysis states', () => {

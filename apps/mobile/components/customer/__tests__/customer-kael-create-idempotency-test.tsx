@@ -35,10 +35,10 @@ jest.mock('@/lib/realtime', () => ({
 }))
 
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
-import { useCustomerKaelChatUiState } from '../v21/use-customer-kael-chat-ui-state'
-import { useCustomerKaelConversationState } from '../v21/use-customer-kael-conversation-state'
-import { useCustomerKaelMessageActions } from '../v21/use-customer-kael-message-actions'
-import { useCustomerKaelRequestGuard } from '../v21/customer-kael-state-scope'
+import { useCustomerKaelChatUiState } from '../kael-chat/use-customer-kael-chat-ui-state'
+import { useCustomerKaelConversationState } from '../kael-chat/use-customer-kael-conversation-state'
+import { useCustomerKaelMessageActions } from '../kael-chat/use-customer-kael-message-actions'
+import { useCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
 
 function kaelChatResponse() {
   return {

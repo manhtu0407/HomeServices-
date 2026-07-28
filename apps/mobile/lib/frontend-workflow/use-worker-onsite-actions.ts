@@ -1,0 +1,115 @@
+import { useCallback, type Dispatch, type RefObject } from 'react'
+import {
+  toLocalDealStatus,
+  type JobStatus,
+  type LocalWorkflowAction,
+  type LocalWorkflowState,
+} from '@nestscout/shared'
+import type { WorkerCancellationRequestInput } from '../api-types'
+import { jobService, workerService } from '../services'
+import { getRemoteJobId } from './helpers'
+import { dealToSnapshot } from './snapshots'
+
+type WorkerStatusUpdate = Extract<JobStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'>
+
+type WorkerAccessCheckInInput = {
+  mode: 'geofence' | 'manual_photo'
+  lat?: number
+  lng?: number
+  accuracy_m?: number
+  photo_urls?: string[]
+  note?: string
+  checked_in_at?: string
+}
+
+type WorkerOnsiteActionsInput = {
+  dispatch: Dispatch<LocalWorkflowAction>
+  refreshCurrentJob: () => Promise<boolean>
+  setRemoteError: (error: string) => false
+  stateRef: RefObject<LocalWorkflowState>
+  workerRefresh: () => Promise<boolean>
+}
+
+export function useWorkerOnsiteActions({
+  dispatch,
+  refreshCurrentJob,
+  setRemoteError,
+  stateRef,
+  workerRefresh,
+}: WorkerOnsiteActionsInput) {
+  const workerUpdateStatus = useCallback(async (
+    status: WorkerStatusUpdate,
+    extras?: { completion_notes?: string; completion_photo_urls?: string[]; access_check_in?: WorkerAccessCheckInInput },
+  ) => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để cập nhật')
+    const updated = await workerService.updateJobStatus(jobId, status, extras)
+    if (!updated.success) return setRemoteError(updated.error)
+    const existing = stateRef.current.deal
+    if (existing?.id === jobId) {
+      dispatch({
+        type: 'hydrate_remote_job',
+        job: {
+          ...dealToSnapshot(existing),
+          backendStatus: updated.data.to_status,
+          completionNotes: extras?.completion_notes ?? existing.completionNotes,
+          completionPhotoUrls: extras?.completion_photo_urls ?? existing.completionPhotoUrls,
+          status: toLocalDealStatus(updated.data.to_status),
+        },
+        workerGate: 'remote_backend',
+      })
+    }
+    // The status mutation is authoritative; hydrate related worker details without delaying the next visible step.
+    void workerRefresh().catch(() => undefined)
+    return true
+  }, [dispatch, setRemoteError, stateRef, workerRefresh])
+
+  // Releases the exact unit after the worker's lobby check-in.
+  const authorizeApartmentAccess = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để mở quyền vào căn hộ')
+    const authorized = await jobService.authorizeApartmentAccess(jobId)
+    if (!authorized.success) return setRemoteError(authorized.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError, stateRef])
+
+  const requestWorkerCancellation = useCallback(async (input: WorkerCancellationRequestInput) => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để hủy')
+    const result = await workerService.requestWorkerCancellation(jobId, input)
+    if (!result.success) return setRemoteError(result.error)
+    if (result.data.status === 'approved') {
+      const existing = stateRef.current.deal
+      if (existing) {
+        dispatch({
+          type: 'hydrate_remote_job',
+          job: {
+            ...dealToSnapshot(existing),
+            backendStatus: result.data.job_status,
+            status: toLocalDealStatus(result.data.job_status),
+            broadcast: existing.broadcast
+              ? {
+                ...existing.broadcast,
+                status: 'cancelled',
+                fullAddressVisible: false,
+                fullAddressLabel: null,
+                secondsRemaining: 0,
+              }
+              : null,
+          },
+        })
+      }
+      await workerRefresh()
+      return true
+    }
+    await refreshCurrentJob()
+    return true
+  }, [dispatch, refreshCurrentJob, setRemoteError, stateRef, workerRefresh])
+
+  return {
+    authorizeApartmentAccess,
+    requestWorkerCancellation,
+    workerUpdateStatus,
+  }
+}

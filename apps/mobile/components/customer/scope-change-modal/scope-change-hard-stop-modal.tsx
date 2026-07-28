@@ -3,7 +3,7 @@ import type { LocalScopeChange } from '@nestscout/shared'
 import { JobEvidenceGallery } from '@/components/ui/job-evidence-gallery'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
-import { canCustomerDecideScopeChange } from '../v21/case-work-money-display-model'
+import { canCustomerDecideScopeChange } from '../kael-chat/case-work-money-display-model'
 
 type ScopeChangeModalTokens = {
   aqua: string

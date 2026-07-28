@@ -1,7 +1,12 @@
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 
-const customerV21Path = (fileName: string) => resolve(__dirname, '..', 'v21', fileName)
+// Customer surfaces live in per-domain buckets, so resolve a file by name.
+const CUSTOMER_BUCKETS = ['v21', 'dock', 'ui', 'home', 'booking', 'history', 'profile', 'kael-chat']
+const customerV21Path = (fileName: string) => {
+  const bucket = CUSTOMER_BUCKETS.find((dir) => existsSync(resolve(__dirname, '..', dir, fileName)))
+  return resolve(__dirname, '..', bucket ?? 'v21', fileName)
+}
 
 describe('customer Kael chat transcript performance', () => {
   it('renders chat rows through a virtualized React Native list', () => {

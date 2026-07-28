@@ -5,7 +5,7 @@ import { StyleSheet, Text } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
-import { customerV21ServiceCopy } from '../v21/copy'
+import { customerV21ServiceCopy } from '../ui/copy'
 
 let mockRouteParams: Record<string, string> = { mode: 'normal' }
 const mockReplace = jest.fn()
@@ -138,7 +138,7 @@ jest.mock('@/lib/app-language', () => {
 })
 
 import { CustomerKaelSurface } from '../customer-surfaces'
-import { useCustomerKaelConversations } from '../v21/use-customer-kael-conversations'
+import { useCustomerKaelConversations } from '../kael-chat/use-customer-kael-conversations'
 
 const readCustomerSource = (relativePath: string) =>
   readFileSync(resolve(__dirname, '..', relativePath), 'utf-8').replace(/\r\n/g, '\n')
@@ -365,15 +365,15 @@ describe('active customer Kael chat surface wiring', () => {
     const bridge = readCustomerSource('customer-surfaces.tsx')
     const surface = readCustomerSource('v21/surfaces.tsx')
     const chatSurface = readCustomerSource('v21/kael-chat-surface.tsx')
-    const chatController = readCustomerSource('v21/use-customer-kael-surface-controller.ts')
+    const chatController = readCustomerSource('kael-chat/use-customer-kael-surface-controller.ts')
     const guardedActions = [
-      readCustomerSource('v21/use-customer-kael-session-hydration.ts'),
-      readCustomerSource('v21/use-customer-kael-evidence-actions.ts'),
-      readCustomerSource('v21/use-customer-kael-message-actions.ts'),
-      readCustomerSource('v21/use-customer-kael-decision-actions.ts'),
+      readCustomerSource('kael-chat/use-customer-kael-session-hydration.ts'),
+      readCustomerSource('kael-chat/use-customer-kael-evidence-actions.ts'),
+      readCustomerSource('kael-chat/use-customer-kael-message-actions.ts'),
+      readCustomerSource('kael-chat/use-customer-kael-decision-actions.ts'),
     ].join('\n')
-    const chatView = readCustomerSource('v21/chat-stateful-surfaces.tsx')
-    const chatPrimitives = readCustomerSource('v21/chat-surfaces.tsx')
+    const chatView = readCustomerSource('kael-chat/chat-stateful-surfaces.tsx')
+    const chatPrimitives = readCustomerSource('kael-chat/chat-surfaces.tsx')
 
     expect(kaelRoute).toContain('CustomerKaelSurface')
     expect(kaelRoute).toContain('@/components/customer/customer-surfaces')
@@ -398,8 +398,8 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('keeps full-screen mint washes soft on the active V21 Kael route', () => {
-    const canvas = readCustomerSource('v21/chat-surfaces.tsx')
-    const shared = readCustomerSource('v21/shared-surfaces.tsx')
+    const canvas = readCustomerSource('kael-chat/chat-surfaces.tsx')
+    const shared = readCustomerSource('ui/shared-surfaces.tsx')
 
     expect(canvas).toContain('customer-v21-chat-canvas-aura')
     expect(canvas).toContain('FormulaMintCanvasAura')
@@ -412,7 +412,7 @@ describe('active customer Kael chat surface wiring', () => {
   it('keeps the Case Work activity action on Activity after retiring the Profile command center', () => {
     const surface = [
       readCustomerSource('v21/surfaces.tsx'),
-      readCustomerSource('v21/customer-kael-chat-content.tsx'),
+      readCustomerSource('kael-chat/customer-kael-chat-content.tsx'),
     ].join('\n')
 
     expect(surface).toContain('const onOpenActivity = useCallback(')
@@ -426,11 +426,11 @@ describe('active customer Kael chat surface wiring', () => {
   it('uses native-safe SVG stop opacity for TestFlight aura parity', () => {
     const alphaStop = readMobileSource('components/ui/svg-alpha-stop.tsx')
     const primitiveAura = readMobileSource('components/ui/kael-primitives.tsx')
-    const customerAura = readCustomerSource('v21/aura-surfaces.tsx')
-    const bookingAura = readCustomerSource('v21/booking-surfaces.tsx')
-    const chatAura = readCustomerSource('v21/chat-surfaces.tsx')
-    const historyAura = readCustomerSource('v21/history-surfaces.tsx')
-    const profileAura = readCustomerSource('v21/profile-metrics-surfaces.tsx')
+    const customerAura = readCustomerSource('ui/aura-surfaces.tsx')
+    const bookingAura = readCustomerSource('booking/booking-surfaces.tsx')
+    const chatAura = readCustomerSource('kael-chat/chat-surfaces.tsx')
+    const historyAura = readCustomerSource('history/history-surfaces.tsx')
+    const profileAura = readCustomerSource('profile/profile-metrics-surfaces.tsx')
     const workerAura = readMobileSource('components/worker/ui/aura-surfaces.tsx')
 
     expect(alphaStop).toContain('toHexChannel')
@@ -477,16 +477,16 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('keeps the Kael empty-state timeline looping while the app is active', () => {
-    const hero = readCustomerSource('v21/kael-empty-hero.tsx')
+    const hero = readCustomerSource('kael-chat/kael-empty-hero.tsx')
 
     expect(hero).toContain("motionClip={reduceMotion || !appActive ? undefined : 'autoplay-loop'}")
     expect(hero).not.toContain("'autoplay-once'")
   })
 
   it('uses reduced-motion-aware liquid spring feedback across the header and session controls', () => {
-    const header = readCustomerSource('v21/kael-chat-header.tsx')
-    const menu = readCustomerSource('v21/kael-session-menu.tsx')
-    const liquidPressable = readCustomerSource('v21/kael-liquid-pressable.tsx')
+    const header = readCustomerSource('kael-chat/kael-chat-header.tsx')
+    const menu = readCustomerSource('kael-chat/kael-session-menu.tsx')
+    const liquidPressable = readCustomerSource('kael-chat/kael-liquid-pressable.tsx')
 
     expect(header).toContain('KaelLiquidPressable')
     expect(menu).toContain('KaelLiquidPressable')
@@ -1393,9 +1393,9 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('keeps Customer Kael isolated from Worker session services', () => {
-    const controller = readCustomerSource('v21/use-customer-kael-surface-controller.ts')
-    const messageActions = readCustomerSource('v21/use-customer-kael-message-actions.ts')
-    const chatView = readCustomerSource('v21/chat-stateful-surfaces.tsx')
+    const controller = readCustomerSource('kael-chat/use-customer-kael-surface-controller.ts')
+    const messageActions = readCustomerSource('kael-chat/use-customer-kael-message-actions.ts')
+    const chatView = readCustomerSource('kael-chat/chat-stateful-surfaces.tsx')
 
     expect(controller).toContain('conversations,')
     expect(messageActions).toContain('conversations.sendConversationTurn(message, { revealAfter: processDone })')
@@ -1406,11 +1406,11 @@ describe('active customer Kael chat surface wiring', () => {
   })
 
   it('wires a compact Customer-owned session menu with per-mode CRUD actions', () => {
-    const controller = readCustomerSource('v21/use-customer-kael-surface-controller.ts')
-    const content = readCustomerSource('v21/customer-kael-chat-content.tsx')
-    const header = readCustomerSource('v21/kael-chat-header.tsx')
-    const menu = readCustomerSource('v21/kael-session-menu.tsx')
-    const chatStyles = readCustomerSource('v21/chat-styles.ts')
+    const controller = readCustomerSource('kael-chat/use-customer-kael-surface-controller.ts')
+    const content = readCustomerSource('kael-chat/customer-kael-chat-content.tsx')
+    const header = readCustomerSource('kael-chat/kael-chat-header.tsx')
+    const menu = readCustomerSource('kael-chat/kael-session-menu.tsx')
+    const chatStyles = readCustomerSource('kael-chat/chat-styles.ts')
     const mobileServices = readMobileSource('lib/services.ts')
 
     expect(controller).toContain('useCustomerKaelConversations')
@@ -1432,7 +1432,7 @@ describe('active customer Kael chat surface wiring', () => {
   it('keeps the Kael chat surface visual while bounded domain hooks own orchestration', () => {
     const surfaceIndex = readCustomerSource('v21/surfaces.tsx')
     const chatSurface = readCustomerSource('v21/kael-chat-surface.tsx')
-    const controller = readCustomerSource('v21/use-customer-kael-surface-controller.ts')
+    const controller = readCustomerSource('kael-chat/use-customer-kael-surface-controller.ts')
 
     expect(surfaceIndex).toContain("from './kael-chat-surface'")
     expect(surfaceIndex).not.toContain('function KaelChatSurface(')

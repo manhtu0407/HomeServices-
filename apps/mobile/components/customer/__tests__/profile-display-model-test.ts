@@ -1,4 +1,4 @@
-import { accountTotalDays, customerAccountJourneyDisplay } from '../v21/profile-display-model'
+import { accountTotalDays, customerAccountJourneyDisplay } from '../profile/profile-display-model'
 
 describe('customer profile account journey display', () => {
   it('counts inclusive account days on the Ho Chi Minh City calendar', () => {

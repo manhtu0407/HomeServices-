@@ -4,7 +4,7 @@ import {
   buildCaseWorkResponseModel,
   buildCompletedCaseWorkResponseModels,
   type CaseWorkResponseActionKind,
-} from '../v21/case-work-response-model'
+} from '../kael-chat/case-work-response-model'
 
 const actionByPhase: Readonly<Partial<Record<WorkflowPhase, CaseWorkResponseActionKind>>> = {
   completed_by_worker: 'completion',

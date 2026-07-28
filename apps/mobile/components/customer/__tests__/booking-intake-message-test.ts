@@ -1,6 +1,6 @@
 import type { PendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
 
-import { localizedPendingBookingDraftMessage } from '../v21/booking-intake-display-model'
+import { localizedPendingBookingDraftMessage } from '../booking/booking-intake-display-model'
 
 const structuredDraft: PendingKaelChatDraft = {
   addressLabel: 'Building A, District 1',

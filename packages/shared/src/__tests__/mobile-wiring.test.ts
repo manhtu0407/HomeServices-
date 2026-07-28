@@ -43,6 +43,37 @@ const readApiTypesLayer = () =>
       .map(readSource),
   ].join('\n')
 
+// The customer surface tree is the restored V5/PR72 implementation, split from
+// the flat v21/ folder into per-domain buckets. Prototype detection allows these
+// directories; anything else customer-side still has to stay out of route graphs.
+const RESTORED_CUSTOMER_SURFACE_DIRS = [
+  'components/customer/v21/',
+  'components/customer/dock/',
+  'components/customer/ui/',
+  'components/customer/home/',
+  'components/customer/booking/',
+  'components/customer/history/',
+  'components/customer/profile/',
+  'components/customer/kael-chat/',
+]
+
+// v21/ was split into per-domain buckets, so a customer surface is addressed by
+// file name and located across those buckets. A moved file keeps its assertions
+// instead of silently reading a stale path.
+const customerSurfacePath = (fileName: string) => {
+  const match = RESTORED_CUSTOMER_SURFACE_DIRS.find((dir) => exists(`${dir}${fileName}`))
+  if (!match) throw new Error(`customer surface not found in any bucket: ${fileName}`)
+  return `${match}${fileName}`
+}
+const readCustomerSurface = (fileName: string) => read(customerSurfacePath(fileName))
+
+// The specifier v21/surfaces.tsx (the composition root) uses to import a bucketed module.
+const customerSurfaceSpecifier = (fileName: string) => {
+  const bucket = customerSurfacePath(fileName).split('/')[2]
+  const moduleName = fileName.replace(/\.tsx?$/, '')
+  return bucket === 'v21' ? `from './${moduleName}'` : `from '../${bucket}/${moduleName}'`
+}
+
 const readFrontendWorkflowLayer = () =>
   [
     read('lib/frontend-workflow-provider.tsx'),
@@ -142,10 +173,15 @@ const sliceWorkerDecl = (name: string) => {
 
 // The customer surface layer is customer-surfaces.tsx plus the active PR72/V21 modules
 // (not unrelated customer siblings like booking-wizard).
+// The customer surface layer is the shim plus every per-domain bucket, so
+// source-string assertions still see code that moved out of the flat v21/ folder.
 const readCustomerSurfaceLayer = () =>
   [
     read('components/customer/customer-surfaces.tsx'),
-    ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/customer/v21'))
+    ...RESTORED_CUSTOMER_SURFACE_DIRS
+      .map((dir) => resolve(MOBILE_ROOT, dir))
+      .filter((absDir) => existsSync(absDir))
+      .flatMap((absDir) => listEdgeServiceFiles(absDir))
       .filter((p) => /\.tsx?$/.test(p))
       .sort()
       .map(readSource),
@@ -398,7 +434,7 @@ describe('customer frontend shell surfaces', () => {
     const rel = (path: string) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
     const graph = routeGraphFiles.map(rel)
     const v21 = read('components/customer/v21/surfaces.tsx')
-    const storytellingCard = read('components/customer/v21/home-storytelling-card.tsx')
+    const storytellingCard = readCustomerSurface('home-storytelling-card.tsx')
 
     expect(bridge).toContain("from './v21/surfaces'")
     expect(bridge).not.toContain("from './surfaces/home'")
@@ -407,12 +443,12 @@ describe('customer frontend shell surfaces', () => {
     expect(customerLayoutSrc).toContain("if (pathname.includes('booking')) return 'services'")
     expect(customerLayoutSrc).toContain("if (pathname.includes('kael')) return 'chat'")
     expect(graph).toContain('components/customer/v21/surfaces.tsx')
-    expect(graph).toContain('components/customer/v21/chat-stateful-surfaces.tsx')
-    expect(graph).toContain('components/customer/v21/home-storytelling-card.tsx')
+    expect(graph).toContain(customerSurfacePath('chat-stateful-surfaces.tsx'))
+    expect(graph).toContain(customerSurfacePath('home-storytelling-card.tsx'))
     expect(graph).not.toContain('components/customer/kael-chat/kael-chat-surface.tsx')
     expect(v21).toContain('testID="customer-v21-home"')
     expect(v21).toContain('testID="customer-v21-services"')
-    expect(v21).toContain("from './home-storytelling-card'")
+    expect(v21).toContain(customerSurfaceSpecifier('home-storytelling-card.tsx'))
     expect(v21).toContain('<HomeStorytellingCard')
     expect(storytellingCard).toContain('testID="customer-v21-home-hero"')
     expect(storytellingCard).toContain('testID="customer-v21-home-storytelling"')
@@ -440,7 +476,7 @@ describe('customer frontend shell surfaces', () => {
       .map(rel)
 
     expect(routeGraphFiles.map(rel)).toContain('components/customer/v21/surfaces.tsx')
-    expect(routeGraphFiles.map(rel)).toContain('components/customer/v21/chat-stateful-surfaces.tsx')
+    expect(routeGraphFiles.map(rel)).toContain(customerSurfacePath('chat-stateful-surfaces.tsx'))
     expect(routeGraphFiles.map(rel)).not.toContain('components/customer/kael-chat/kael-chat-surface.tsx')
     expect(offenders).toContain('components/customer/v21/surfaces.tsx')
   })
@@ -559,21 +595,21 @@ describe('customer frontend shell surfaces', () => {
 
 describe('customer Kael workflow view model wiring', () => {
   const v21Surface = () => read('components/customer/v21/surfaces.tsx')
-  const v21ChatView = () => read('components/customer/v21/chat-stateful-surfaces.tsx')
-  const v21ChatAura = () => read('components/customer/v21/chat-surfaces.tsx')
-  const v21KaelSurface = () => read('components/customer/v21/kael-chat-surface.tsx')
-  const v21KaelContent = () => read('components/customer/v21/customer-kael-chat-content.tsx')
-  const v21KaelPresentation = () => read('components/customer/v21/customer-kael-presentation.ts')
+  const v21ChatView = () => readCustomerSurface('chat-stateful-surfaces.tsx')
+  const v21ChatAura = () => readCustomerSurface('chat-surfaces.tsx')
+  const v21KaelSurface = () => readCustomerSurface('kael-chat-surface.tsx')
+  const v21KaelContent = () => readCustomerSurface('customer-kael-chat-content.tsx')
+  const v21KaelPresentation = () => readCustomerSurface('customer-kael-presentation.ts')
   const v21KaelOrchestration = () => [
-    read('components/customer/v21/use-customer-kael-surface-controller.ts'),
-    read('components/customer/v21/use-customer-kael-session-hydration.ts'),
-    read('components/customer/v21/use-customer-kael-evidence-actions.ts'),
-    read('components/customer/v21/use-customer-kael-message-actions.ts'),
-    read('components/customer/v21/use-customer-kael-decision-actions.ts'),
+    readCustomerSurface('use-customer-kael-surface-controller.ts'),
+    readCustomerSurface('use-customer-kael-session-hydration.ts'),
+    readCustomerSurface('use-customer-kael-evidence-actions.ts'),
+    readCustomerSurface('use-customer-kael-message-actions.ts'),
+    readCustomerSurface('use-customer-kael-decision-actions.ts'),
   ].join('\n')
   const v21KaelProcess = () => [
-    read('components/customer/v21/use-kael-process-line-controller.ts'),
-    read('components/customer/v21/kael-process-line-view.tsx'),
+    readCustomerSurface('use-kael-process-line-controller.ts'),
+    readCustomerSurface('kael-process-line-view.tsx'),
   ].join('\n')
   const pendingIntakeFacade = () => read('components/customer/kael-chat/pending-intake.ts')
   const pendingIntake = () => read('lib/pending-kael-chat-draft.ts')
@@ -635,7 +671,7 @@ describe('customer Kael workflow view model wiring', () => {
     const src = [
       v21KaelPresentation(),
       v21KaelContent(),
-      read('components/customer/v21/use-customer-kael-decision-actions.ts'),
+      readCustomerSurface('use-customer-kael-decision-actions.ts'),
     ].join('\n')
     expect(src).toContain("chat?.session.next_action === 'estimate_ready'")
     expect(src).toContain('confirmAgenticEstimate')
@@ -1056,7 +1092,7 @@ describe('prototype runtime cleanup', () => {
       .map(rel)
 
     const allowedRestoredOffenders = offenders.filter((offender) =>
-      !offender.startsWith('components/customer/v21/')
+      !RESTORED_CUSTOMER_SURFACE_DIRS.some((dir) => offender.startsWith(dir))
       && offender !== 'components/customer/customer-surfaces.tsx'
     )
 
@@ -1068,14 +1104,14 @@ describe('prototype runtime cleanup', () => {
 
   it('keeps restored design entrypoints as active full implementations, not compatibility shims', () => {
     const restoredCustomer = read('components/customer/v21/surfaces.tsx')
-    const restoredStorytellingCard = read('components/customer/v21/home-storytelling-card.tsx')
+    const restoredStorytellingCard = readCustomerSurface('home-storytelling-card.tsx')
     const restoredWorker = read('components/worker/worker-v5-flow.tsx')
     const restoredWorkerDock = read('components/worker/dock/worker-v5-dock-overlay.tsx')
     const restoredSources = [restoredCustomer, restoredStorytellingCard, restoredWorker, restoredWorkerDock].join('\n')
 
-    expect(restoredCustomer).toContain("from './shared-surfaces'")
+    expect(restoredCustomer).toContain(customerSurfaceSpecifier('shared-surfaces.tsx'))
     expect(restoredCustomer).toContain('export function CustomerHomeSurface')
-    expect(restoredCustomer).toContain("from './home-storytelling-card'")
+    expect(restoredCustomer).toContain(customerSurfaceSpecifier('home-storytelling-card.tsx'))
     expect(restoredCustomer).toContain('<HomeStorytellingCard')
     expect(restoredStorytellingCard).toContain('customer-v21-home-hero')
     expect(restoredStorytellingCard).toContain('customer-v21-home-storytelling')
@@ -1233,10 +1269,10 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     const theme = read('design/theme.ts')
     const designTokens = read('design/tokens.json')
     const formulaCanvas = read('components/ui/formula-mint-canvas.tsx')
-    const customerAura = read('components/customer/v21/aura-surfaces.tsx')
-    const customerShared = read('components/customer/v21/shared-surfaces.tsx')
-    const customerHistoryView = read('components/customer/v21/service-history-surface.tsx')
-    const customerChatAura = read('components/customer/v21/chat-surfaces.tsx')
+    const customerAura = readCustomerSurface('aura-surfaces.tsx')
+    const customerShared = readCustomerSurface('shared-surfaces.tsx')
+    const customerHistoryView = readCustomerSurface('service-history-surface.tsx')
+    const customerChatAura = readCustomerSurface('chat-surfaces.tsx')
     const workerAura = read('components/worker/ui/aura-surfaces.tsx')
     // Must stay the composition root PLUS the surfaces extracted out of it: the
     // negative assertions below would silently stop covering extracted code otherwise.
@@ -2037,11 +2073,11 @@ describe('mobile glassmorphism design system', () => {
     const core = read('components/ui/kael-core-v9.tsx')
     const coreContract = read('components/ui/kael-core-v9-contract.ts')
     const customerHome = read('components/customer/v21/surfaces.tsx')
-    const customerStorytellingCard = read('components/customer/v21/home-storytelling-card.tsx')
-    const customerProfile = read('components/customer/v21/profile-stateful-surfaces.tsx')
-    const customerDock = read('components/customer/v21/dock-stateful-surfaces.tsx')
+    const customerStorytellingCard = readCustomerSurface('home-storytelling-card.tsx')
+    const customerProfile = readCustomerSurface('profile-stateful-surfaces.tsx')
+    const customerDock = readCustomerSurface('dock-stateful-surfaces.tsx')
     const workerDock = read('components/worker/dock/worker-v5-dock-overlay.tsx')
-    const dockStyles = read('components/customer/v21/dock-styles.ts')
+    const dockStyles = readCustomerSurface('dock-styles.ts')
 
     expect(coreContract).toContain("renderer: 'inline-svg'")
     expect(coreContract).toContain("motionVocabulary: ['autoplay-clip', 'formal-bow']")
@@ -2071,9 +2107,9 @@ describe('mobile glassmorphism design system', () => {
 
   it('wires scroll direction into both dock overlays without changing their tab navigation contract', () => {
     const customerLayout = read('app/(customer)/_layout.tsx')
-    const customerDock = read('components/customer/v21/dock-stateful-surfaces.tsx')
+    const customerDock = readCustomerSurface('dock-stateful-surfaces.tsx')
     const customerOverlay = read('components/customer/v21/surfaces.tsx')
-    const customerScroll = read('components/customer/v21/shared-surfaces.tsx')
+    const customerScroll = readCustomerSurface('shared-surfaces.tsx')
     const workerDock = read('components/worker/dock/worker-v5-dock-overlay.tsx')
     const workerScroll = read('components/worker/worker-v5-flow.tsx')
 
