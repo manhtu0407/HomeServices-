@@ -13254,3 +13254,280 @@ v0.4 — 2026-07-08 — Tu thêm execution order + halt-and-report rule:
 
 ---
 
+## 44. Frontend Structure Reorg — Provider Split + Customer v21 Bucket Reorg — 2026-07-27
+
+> Tu yêu cầu kiểm tra cấu trúc project hiện tại (chuyên nghiệp/gọn gàng chưa, so với 1 cấu trúc mẫu `agents/tools/workflows/guardrails` Tu đưa, tên file/folder có match nhau thành hệ thống chưa). Audit tìm ra: naming convention (kebab-case) nhất quán toàn repo, nhưng **`customer/` và `worker/` — 2 khu vực đối xứng nhau nhất trong app — đang tổ chức khác kiểu nhau** cho cùng 1 vấn đề (god-file): `worker/` đã tách thành 7 folder con thật (`worker/{home,jobs,chat,earnings,profile,dock,ui}`), còn `customer/` mới chỉ dồn hết vào 1 folder phẳng `v21/` (~110 file, phân loại bằng tiền tố tên file). Cấu trúc mẫu Tu đưa (agent-framework starter kit shape: `services/kael-api/src/{agents,tools,workflows,guardrails}`) bị bác — xung đột trực tiếp 2 rule đã khoá (`RULES.md` #0 runtime boundary: không có Node server độc lập nào trong kiến trúc; `RULES.md` #6/#7 + `STRUCTURES.md`: Kael là MỘT actor phase-gated, cấm "uncontrolled multi-agent orchestration").
+>
+> Tu chọn hướng: tách `customer/v21/` thành 7 bucket giống `worker/` (Phase 2 dưới đây) — nhưng **trước đó** phải tách `apps/mobile/lib/frontend-workflow-provider.tsx` (Phase 1) vì nó rủi ro cao hơn (React Context Provider bọc TOÀN BỘ app qua `app/_layout.tsx`, không phải 1 component/màn hình). Backend (`supabase/functions/mobile-api/_shared/router.ts`/`services.ts`) **loại khỏi phạm vi đợt này** — Tu đang làm việc song song qua Codex, tránh conflict. **CHƯA execute — Phase 1 đã design chi tiết đủ để chạy, chờ Tu duyệt go. Phase 2/3 mới scope sơ bộ, chưa detail-design.** Claude plan + verify, thực thi (ai code) chưa chốt.
+>
+> **Ghi chú đối chiếu:** PR #135 (`codex/kael-agentic-session`, merged 2026-07-27, Sepay/VietQR payment rail + Kael agentic checkpoint) merge vào `main` giữa lúc audit này diễn ra và đụng đúng `frontend-workflow-provider.tsx` + 3 file đã tách (`comparisons.ts`/`helpers.ts`/`snapshots.ts`) + cả `customer/v21/` (thêm 2 file, viết lại vài file). Worktree đã fast-forward về `main` (`git merge origin/main --ff-only`, sạch, 0 commit riêng) trước khi viết Phase 1 — mọi line-number/state dưới đây đối chiếu bản **sau** PR #135. PR #135 không đụng gì tới `governance/Plan.md` hay `docs/architecture/code-ownership-map.md`.
+>
+> **Về số hiệu §44:** "§44" từng xuất hiện KHÔNG chính thức trong PR title/commit message cho 2 việc khác đã ship xong (PR #132 "Design-Skill Wheel + Expo SDK 54→57", PR #133 "worker-v5-flow god-file split") — nhưng chưa bao giờ được ghi thành section thật trong Plan.md trên `main` (khác §44 "backend reorg" — cái đó Tu đã lệnh xoá toàn bộ 2026-07-22, tombstoned). Section này **không** cố gộp lại 2 việc đã ship đó — chỉ dùng đúng số §44 đang trống để ghi việc MỚI (frontend-workflow-provider split + v21 reorg + doc sync). Nếu Tu muốn backfill tài liệu cho wheel/Expo57/worker-split riêng, đó là quyết định khác, ghi khi Tu yêu cầu.
+
+**Bản đồ tổng quan — đọc bảng này trước, trước khi vào chi tiết từng phase:**
+
+| Phase | Việc | Số bước | File chính đụng tới | Rủi ro | Trạng thái |
+|---|---|---|---|---|---|
+| **1** | Tách `frontend-workflow-provider.tsx` (1,369d) → 8 custom hook | 10 increment, thứ tự ở **44.1.2** | `apps/mobile/lib/frontend-workflow-provider.tsx` + 8 file mới trong `frontend-workflow/` | **Cao** — Provider bọc toàn app qua `app/_layout.tsx`, lỗi = crash toàn app | Design xong đủ để chạy, chờ Tu "go" |
+| **2** | `customer/v21/` (112 file phẳng) → 7 bucket khớp `worker/` | 7 nhóm bucket, thứ tự ở **44.2.2** | `apps/mobile/components/customer/v21/**` → `customer/{home,booking,history,profile,dock,ui}/` (mới) + merge phần kael-chat vào `customer/kael-chat/` có sẵn | **Trung bình–cao** — cụm kael-chat (62 file, hơn nửa tổng số) chồng lấn với folder `customer/kael-chat/` đã tồn tại sẵn, cần đối chiếu trước khi gộp | Design xong (đã map hết 112 file), chạy sau Phase 1 |
+| **3** | Refresh `code-ownership-map.md` C1 phần customer | 3 bước ở **44.3** | `docs/architecture/code-ownership-map.md` | **Thấp** — doc-only, không đụng code | Scoped, chạy sau Phase 2 |
+
+Thứ tự đọc trước khi implement: **44.0** (Metadata) → **44.0.1** (Pre-Plan Deep-Read — BẮT BUỘC) → **44.0.2** (Decision Log) → **44.0.3** (DoD Gates) → **44.0.4** (Execution Continuity Note) → rồi mới vào **44.1** / **44.2** / **44.3** theo đúng thứ tự Phase.
+
+### 44.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-frontend-structure-reorg-20260727
+Created:        2026-07-27
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Branch:         claude/project-structure-review-bb83bc (worktree frosty-aryabhata-61ee21)
+File location:  Plan.md §44 (durable, canonical) — không companion doc riêng, chi tiết increment đủ nằm trong 44.1.
+Status:         Phase 1 (frontend-workflow-provider.tsx split) DESIGN LOCKED v0.1 — chờ Tu duyệt go execute.
+                Phase 2 (customer/v21 bucket reorg) + Phase 3 (code-ownership-map.md C1 refresh) — SCOPED, chưa design.
+Trigger:        Tu yêu cầu audit cấu trúc project + so với mẫu agents/tools/workflows/guardrails → phát hiện
+                customer/v21 (110 file phẳng) vs worker/ (7 bucket thật) lệch kiểu tổ chức cho cùng vấn đề.
+Scope:          Phase 1 — tách apps/mobile/lib/frontend-workflow-provider.tsx (1,369 dòng sau PR#135) thành
+                    8 custom hook trong apps/mobile/lib/frontend-workflow/ (chi tiết 44.1).
+                Phase 2 — apps/mobile/components/customer/v21/ (~110+ file phẳng) → bucket folder giống worker/
+                    (customer/{home,booking,history,profile,dock,ui}, kael-chat/ giữ nguyên đã tách).
+                Phase 3 — cập nhật docs/architecture/code-ownership-map.md mục C1 phần customer cho khớp thực tế
+                    (hiện mô tả sai — nói customer tách thành nhiều folder con, thực tế là 1 folder phẳng v21/).
+Out of scope:   supabase/functions/mobile-api/_shared/router.ts + services.ts (backend Edge) — Tu đang làm qua
+                    Codex song song, tránh conflict. Không đổi runtime boundary. Không đổi public export surface
+                    của bất kỳ file nào (FrontendWorkflowProvider/useFrontendWorkflow phải giữ nguyên đường import).
+                    Locked docs (CLAUDE.md/RULES.md/STRUCTURES.md/README.md/critical.md/design.md) không sửa.
+Companion docs: Không cần — increment table + hook decomposition đủ chi tiết trong 44.1 để execute trực tiếp.
+Effort:         Phase 1 — 8 increment nhỏ (xem 44.1.2), mỗi increment tự build/test, không dồn 1 diff lớn.
+                Phase 2/3 — chưa ước lượng, detail-design sau khi Phase 1 xong.
+Skill mapping:  karpathy-guidelines (mọi phase); kael-code-enhancement + kael-architecture-deepening
+                (protocols/architecture.md — bắt buộc cho Phase 1, file 1,369 dòng cần tách theo module/seam);
+                kael-tdd (verify mỗi increment); kael-frontend-test (Phase 2, đụng UI đang chạy).
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+
+1. `frontend-workflow-provider.tsx` xuống dưới ngưỡng 800 dòng ratchet (`scripts/lint-structure.mjs`) mà KHÔNG đổi hành vi — 28 call site (kể cả `app/_layout.tsx`) không cần sửa dòng nào, 2 file test hiện có (`frontend-workflow-provider-test.tsx` 461 dòng, `frontend-workflow-provider-worker-refresh-test.tsx` 609 dòng) tiếp tục pass nguyên vẹn qua mọi increment.
+2. `customer/v21/` (Phase 2) đổi từ 1 folder phẳng phân loại-bằng-tên-file sang bucket folder thật, cùng kiểu tổ chức với `worker/` — 2 khu vực đối xứng nhau trong app dùng chung 1 ngôn ngữ cấu trúc.
+3. `code-ownership-map.md` C1 (Phase 3) phản ánh đúng cây thư mục thật, không còn mô tả sai lệch làm agent sau đọc nhầm.
+4. Không quay lại "god-file mới" — sau mỗi phase, `node scripts/lint-structure.mjs --init` chạy lại để khoá baseline mới (nhỏ hơn), ratchet bắt được hồi quy.
+
+**Nguyên tắc xuyên suốt (bất biến — KHÔNG được phá):**
+
+- **An toàn hơn tốc độ.** File Phase 1 là Provider bọc toàn app — lỗi ở đây crash toàn app, không phải 1 màn hình. Mỗi increment nhỏ, tự verify, không dồn.
+- **Custom-hook decomposition, không phải di chuyển hàm thuần.** Khác 3 lần tách trước (services.ts, worker-surfaces.tsx, các pure-helper) — gần như toàn bộ nội dung còn lại của provider là 1 hook function duy nhất với ~35 `useCallback` dùng chung closure state. Đơn vị tách an toàn là custom hook (nhận dependency rõ ràng qua tham số), không phải hàm rời.
+- **Shim pattern giữ nguyên.** File gốc luôn còn lại làm barrel re-export tại đúng đường dẫn cũ — không có call site nào cần sửa.
+- **Backend đứng yên đợt này.** Không đụng `router.ts`/`services.ts` dù đã sẵn sàng kỹ thuật để tách tiếp (`router.ts` còn 1,183 dòng) — quyết định của Tu, không phải giới hạn kỹ thuật.
+
+---
+
+### 44.0.1 Pre-Plan Deep-Read — Authority refs (BẮT BUỘC đọc trước khi implement BẤT KỲ phase nào)
+
+> Đây là bước Pre-plan: đọc đủ 8 mục dưới TRƯỚC KHI chạm vào Phase 1/2/3 — không chỉ đọc phần liên quan tới phase đang làm. Đọc trực tiếp file, không dựa trí nhớ hay tóm tắt cũ.
+
+```
+1. RULES.md              (#0 mobile runtime boundary — lý do bác cấu trúc mẫu services/kael-api/server.ts;
+                          #6/#7 Kael = 1 actor phase-gated — lý do bác agents/kael-agent.ts multi-agent)
+2. critical.md            (§0 lifecycle; §3 gates — No False Completion, Required Final Response)
+3. protocols/architecture.md (kael-architecture-deepening — module/seam/deep-module vocabulary + "split refactors
+                          into tiny steps where each step can build/test"; kael-code-enhancement — đọc
+                          code-ownership-map.md trước khi enhance, giữ boundary)
+4. docs/architecture/code-ownership-map.md (C1 target module map — worker/ subsection = CURRENT STATE verified;
+                          customer subsection = STALE, không khớp v21/ thật — Phase 3 sửa việc này)
+5. scripts/lint-structure.mjs + scripts/structure-baseline.json (ratchet 800 dòng/file; frontend-workflow-provider.tsx
+                          grandfathered ở baseline cũ — phải --init lại sau khi tách để khoá size mới)
+6. code source (verify tận nơi session 2026-07-27, SAU khi fast-forward qua PR #135):
+     apps/mobile/lib/frontend-workflow-provider.tsx  (1,369 dòng — 1 hook `useFrontendWorkflowValue` dòng 239-1340,
+                                                       ~35 useCallback, ~13 useEffect, export chỉ 2 thứ:
+                                                       FrontendWorkflowProvider :1352, useFrontendWorkflow :1363)
+     apps/mobile/lib/frontend-workflow/{comparisons,errors,helpers,notifications,snapshots}.ts (5 file pure-helper
+                                                       đã tách sẵn — pattern cần tiếp tục, không phải bắt đầu lại)
+     apps/mobile/lib/__tests__/frontend-workflow-provider{,-worker-refresh}-test.tsx (461+609 dòng, test qua public
+                                                       surface — lưới an toàn chính cho mọi increment)
+     apps/mobile/components/customer/v21/ (~110+ file phẳng, tăng trưởng liên tục — PR#135 vừa thêm 2 file mới)
+     apps/mobile/components/worker/{home,jobs,chat,earnings,profile,dock,ui}/ (7 bucket thật — mẫu tham chiếu cho Phase 2)
+7. CLAUDE.md              (lock notice; runtime boundary) — locked, không sửa
+8. MEMORY.md              (last)
+```
+**Comprehension gate:** trước dòng sửa đầu tiên của BẤT KỲ increment nào (Phase 1 hay Phase 2), agent thực thi phải xác nhận đã đọc đủ 8 mục trên trong phiên hiện tại (không phải nhớ lại từ phiên trước) — nếu chưa, dừng lại đọc trước, không suy đoán nội dung rule từ tên file.
+
+---
+
+### 44.0.2 Decision Log (Tu chốt session 2026-07-27 trừ khi ghi khác)
+
+- **✔ D1 — Bác cấu trúc mẫu `services/kael-api` nguyên bản (Tu chốt qua thảo luận 2026-07-27).** `server.ts` độc lập xung đột `RULES.md` #0 (không Node server thường trực trong kiến trúc duyệt); `agents/{kael,support,matching}-agent.ts` xung đột `RULES.md` #6/#7 + `STRUCTURES.md` (Kael = 1 actor, cấm multi-agent orchestration không kiểm soát). Giữ lại ý tưởng đặt tên rõ ràng (`guardrails/`, `tools/`) để áp dụng NỘI BỘ `_shared/kael/`, không đổi runtime hay tách multi-agent.
+- **✔ D2 — Thứ tự: Phase 1 (frontend-workflow-provider) TRƯỚC Phase 2 (customer/v21 reorg) (Tu chốt).** Lý do Tu: Provider rủi ro cao hơn (bọc toàn app) nên xong trước, tránh vừa sửa logic nền vừa sửa UI cùng lúc.
+- **✔ D3 — Backend loại khỏi phạm vi đợt này (Tu chốt).** Tu đang làm `router.ts`/`services.ts` qua Codex song song — Claude Code không đụng để tránh conflict. Không phải giới hạn kỹ thuật (services.ts đã có tiền lệ tách an toàn).
+- **✔ D4 — Custom-hook decomposition, không naive function-move (phát hiện kỹ thuật session này, không phải quyết định Tu chọn giữa nhiều phương án).** ~35 useCallback trong `frontend-workflow-provider.tsx` dùng chung closure state (dispatch/stateRef/sessionUserId/role/language) — không thể di chuyển như hàm thuần (khác services.ts) hay component thuần (khác worker-surfaces.tsx). Đơn vị tách = custom hook nhận dependency qua tham số.
+- **✔ D5 — Sync PR #135 trước khi design Phase 1 (Tu chủ động yêu cầu check PR).** Worktree đang chậm main 3 commit sạch (0 divergent) → fast-forward ngay, tránh design dựa trên bản cũ rồi conflict khi merge lại.
+- **✔ D6 — Dùng số §44 đang trống, không cố gộp việc cũ (quyết định của Claude, cần Tu xác nhận nếu muốn khác).** Xem ghi chú "Về số hiệu §44" ở đầu section.
+
+---
+
+### 44.0.3 Definition of Done — Gates (áp dụng mọi phase)
+
+```text
+G1 — Behavior-preserving:    Phase 1: 28 call site của useFrontendWorkflow() không cần sửa; 2 file test hiện
+                              có (frontend-workflow-provider-test.tsx 461d, -worker-refresh-test.tsx 609d)
+                              PASS nguyên vẹn qua từng increment, không sửa assertion.
+                              Phase 2: 6 export public của barrel hiện tại (CustomerHomeSurface,
+                              CustomerBookingEntrySurface, CustomerHistorySurface, CustomerProfileSurface,
+                              CustomerKaelSurface, CustomerV21DockOverlay/CustomerDockOverlay — xem 44.2.1)
+                              không đổi tên, đường import `customer-surfaces.tsx` giữ nguyên.
+G2 — Incremental + verified: mỗi increment tự type-check + test + lint:structure PASS trước khi sang increment
+                              kế — không dồn nhiều increment rồi mới verify 1 lần. Áp dụng cả trong lúc chạy
+                              liên tục theo 44.0.4 — "liên tục" không có nghĩa "bỏ qua verify".
+G3 — Ratchet honored:        `node scripts/lint-structure.mjs --init` chạy lại sau khi MỖI phase xong hẳn, để
+                              baseline co lại theo kích thước thật.
+G4 — Backend untouched:      `git diff --stat` chỉ chứa file trong Scope (44.0 metadata) — không đụng
+                              `supabase/functions/**` đợt này (Phase 1 lẫn Phase 2).
+G5 — Doc sync:                `code-ownership-map.md` C1 phải khớp thực tế SAU KHI Phase 2 xong (Phase 3).
+G6 — Honest report:          report thật cái đã chạy + nêu rõ cái CHƯA test (RULES #8, no-hide-gaps).
+```
+
+---
+
+### 44.0.4 Execution Continuity Note (chạy liên tục tới khi hết plan)
+
+Sau khi Tu duyệt "go" cho Phase 1, agent thực thi (Claude hoặc Codex) chạy **liên tục qua Phase 1 → Phase 2 → Phase 3 tới khi hết plan** — KHÔNG tự dừng lại hỏi Tu ở từng ranh giới Phase để xin duyệt tiếp (khác mô hình §43 PE9/AR11 — cái đó dừng ở từng chapter theo yêu cầu riêng của §43). Một lần Tu nói "go" = duyệt cho toàn bộ §44, không phải duyệt riêng từng Phase.
+
+**Vẫn PHẢI dừng lại** (đây không phải "chạy bất chấp"):
+- 1 increment fail gate (G2 ở 44.0.3) — sửa xong increment đó mới đi tiếp, không nhảy qua rồi quay lại sau.
+- Phát hiện xung đột với rule đã khoá (RULES.md/STRUCTURES.md/critical.md) hoặc dấu hiệu đụng việc Codex đang làm song song (D3) — STOP + báo Tu ngay, không tự quyết rồi báo sau.
+- Tới đúng điểm cần 1 quyết định thật mà plan chưa chốt sẵn (ví dụ Phase 2 có 4 file `payment-*`/`sepay-vietqr-*` chưa rõ thuộc `profile/` hay `kael-chat/` — xem checklist 44.2.3) — hỏi 1 câu ngắn, cụ thể, không tự đoán rồi chạy tiếp với giả định sai.
+- Hết Phase 1, TRƯỚC KHI vào Phase 2 — báo ngắn gọn Phase 1 đã xong + kết quả verify thật (theo G6), rồi tiếp tục luôn sang Phase 2 trong cùng lượt chạy (không phải dừng chờ "go" mới, chỉ là báo cáo tiến độ minh bạch).
+
+Nói ngắn gọn: liên tục về **tiến độ** trong 1 lượt thực thi (không tự ngắt quãng để xin duyệt lại từng Phase), nhưng vẫn dừng đúng lúc khi có rủi ro thật hoặc thiếu quyết định — an toàn vẫn ưu tiên hơn tốc độ (44.0's Nguyên tắc xuyên suốt).
+
+---
+
+### 44.1 Phase 1 — Split `apps/mobile/lib/frontend-workflow-provider.tsx`
+
+**Vì sao khó hơn 3 lần tách trước** (`api-types.ts`, `mobile-workflow.ts`, `worker-surfaces.tsx` → `worker/*`, `services.ts` → `_shared/services/*`): những lần đó tách hàm thuần hoặc component độc lập, không chung closure state. Ở đây, dòng 239–1340 là MỘT function `useFrontendWorkflowValue()` chứa ~15 state cục bộ (`useReducer`/`useState`/`useRef`) + ~35 `useCallback` đều đóng quanh state đó + ~13 `useEffect`. Không thể "di chuyển" 1 `useCallback` sang file khác như hàm thuần — phải tách thành custom hook nhận dependency qua tham số.
+
+**Bất biến bắt buộc mọi increment:** `state`/`dispatch`/`stateRef`/`sessionUserId`/`role`/`language`/`setRemoteError` dùng chung bởi gần hết các nhóm — ở lại `useFrontendWorkflowValue`, truyền vào từng sub-hook qua tham số. Chỉ state riêng của 1 nhóm mới chuyển theo nhóm đó.
+
+#### 44.1.1 Target decomposition — 8 hook mới trong `apps/mobile/lib/frontend-workflow/`
+
+| Hook file mới | Owns (callback hiện tại) | Owns (state hiện tại) | Phụ thuộc |
+|---|---|---|---|
+| `use-notification-actions.ts` | `refreshNotifications`, `markNotificationRead` | `notificationState`/`setNotificationState` (reducer đã có ở `notifications.ts`), `notificationsRef`, `locallyReadNotificationIdsRef` | chỉ `sessionUserId`/`role`/`setRemoteError` — **0 nhóm khác phụ thuộc vào đây.** |
+| `use-customer-kael-memory-actions.ts` | `refreshCustomerKaelMemory`, `updateCustomerKaelMemoryPreference` | `customerKaelMemoryState`/`setCustomerKaelMemoryState` | chỉ `sessionUserId`/`setRemoteError` — 0 phụ thuộc chéo. |
+| `use-customer-profile-insights-actions.ts` | `refreshCustomerProfileInsights` | `customerProfileInsightsState`/`setCustomerProfileInsightsState` | chỉ `sessionUserId` — nhóm nhỏ nhất, 0 phụ thuộc chéo. |
+| `use-customer-job-actions.ts` | `hydrateJobResult`, `hydrateRemoteJobById`, `refreshCurrentJob`, `hydrateCustomerActiveJob`, `createRemoteJobFromDraft`, `confirmRemoteSearch`, `cancelRemoteJob` | không có state riêng (dùng `dispatch`/`stateRef` chung + `pendingJobCreateClientRequestRef`) | chỉ dependency chung. **Trung tâm** — `refreshCurrentJob`/`hydrateRemoteJobById` được hầu hết nhóm khác gọi. |
+| `use-worker-board-actions.ts` | `workerRefresh`, `workerAcceptBroadcast`, `workerDeclineBroadcast`, `workerUpdateAvailability`, `workerUpdateServiceArea`, `workerUpdateServicePreferences`, `workerUploadAvatar`, `workerSavePayoutMethod`, + effect heartbeat | `workerRemoteState`/`setWorkerRemoteState`, `workerAvailabilityPreferenceRef`, `workerRefreshRequestIdRef`, `workerActivityHeartbeatBusyRef` | dependency chung. **Gộp chủ ý** worker-board + worker-profile vì cùng dùng 1 `workerRemoteState` — tách riêng sẽ chia đôi quyền sở hữu 1 state. **Trung tâm** — `workerRefresh` được nhiều nhóm khác gọi. |
+| `use-worker-candidate-actions.ts` | `refreshWorkerCandidate`, `decideWorkerCandidate`, `setWorkerCandidateFavorite`, + effect theo dõi `customerStatus` | `customerWorkerCandidateState`/`setCustomerWorkerCandidateState` | nhận `hydrateRemoteJobById` từ hook job-actions qua tham số. |
+| `use-scope-change-actions.ts` | `requestScopeChange`, `getKaelJobIncident`, `openKaelJobIncident`, `proposeScopeChangeFromKaelIncident`, `decideScopeChange` | `customerScopeDecisionBusyId`/setter, `customerScopeDecisionBusyRef`, 3 pending-ref | nhận `refreshCurrentJob` qua tham số. |
+| `use-worker-onsite-actions.ts` | `workerUpdateStatus`, `authorizeApartmentAccess`, `requestWorkerCancellation` | không riêng | nhận `refreshCurrentJob` + `workerRefresh` qua tham số. |
+| `use-completion-payment-actions.ts` | `customerConfirmCompletion`, `createPaymentIntent`, `confirmStagingPayment`, `submitReview` | không riêng | nhận `refreshCurrentJob` qua tham số. |
+
+Sau khi tách hết 8 hook: `frontend-workflow-provider.tsx` còn lại imports + type definitions (mô tả public surface, giữ nguyên vị trí) + context object + `useFrontendWorkflowValue` rút gọn còn shared state + gọi từng sub-hook + `actions` useMemo lắp ráp + effect thật sự cross-cutting (`liveRefreshRef` sync + AppState-foreground effect — 2 effect này cần output của NHIỀU hook cùng lúc nên ở lại; 5 effect reset-theo-session còn lại nên chuyển vào hook sở hữu state tương ứng) + 2 component wrapper nhỏ (`FrontendWorkflowProviderValue`, `FrontendWorkflowProvider`) + `useFrontendWorkflow`. Ước lượng còn dưới ngưỡng 800 dòng mà không cần tách vụn thêm.
+
+#### 44.1.2 Thứ tự increment (an toàn/độc lập nhất trước)
+
+Mỗi increment là 1 diff nhỏ, tự build/test được, đúng `kael-architecture-deepening` ("split refactors into tiny steps where each step can build/test").
+
+1. `use-notification-actions.ts` — 0 phụ thuộc chéo 2 chiều, nhỏ nhất, chứng minh pattern trước.
+2. `use-customer-kael-memory-actions.ts` — cùng mức độ cô lập.
+3. `use-customer-profile-insights-actions.ts` — cùng mức cô lập, nhỏ nhất trong 3.
+4. `use-customer-job-actions.ts` — hook trung tâm; phải xong trước bất kỳ hook nào cần `refreshCurrentJob`/`hydrateRemoteJobById`.
+5. `use-worker-board-actions.ts` — hook trung tâm; phải xong trước bất kỳ hook nào cần `workerRefresh`.
+6. `use-worker-candidate-actions.ts` — cần `hydrateRemoteJobById` từ #4.
+7. `use-scope-change-actions.ts` — cần `refreshCurrentJob` từ #4.
+8. `use-worker-onsite-actions.ts` — cần cả #4 và #5.
+9. `use-completion-payment-actions.ts` — cần `refreshCurrentJob` từ #4.
+10. **Dọn cuối** — rút `frontend-workflow-provider.tsx` về hình dạng composition-only mô tả ở 44.1.1; chạy lại `node scripts/lint-structure.mjs --init` để khoá baseline mới (nhỏ hơn), ratchet bắt được hồi quy sau này.
+
+**Checklist an toàn hook mỗi increment:**
+- Không tách `useCallback` khỏi state/ref nó đọc mà không truyền tường minh qua tham số — đây là thứ ngăn stale closure.
+- Giữ nguyên y hệt dependency array của mọi `useCallback`/`useMemo` khi dời chỗ.
+- Pattern `liveRefreshRef` (giữ closure mới nhất của `refreshCurrentJob`/`workerRefresh`/`refreshNotifications`/`hydrateCustomerActiveJob` để listener AppState/realtime không resubscribe mỗi render) ở lại parent — cần output của hook #1, #4, #5 cùng lúc.
+- Không sửa assertion của 2 file test — chúng test qua public surface `useFrontendWorkflow()`/`FrontendWorkflowProvider`, nên các bước behavior-preserving phải giữ nguyên pass.
+
+#### 44.1.3 Verification (chạy sau MỖI increment, không phải chỉ cuối cùng)
+
+```
+pnpm type-check:mobile
+pnpm test:mobile              # đặc biệt frontend-workflow-provider-test.tsx (461 dòng) +
+                               # frontend-workflow-provider-worker-refresh-test.tsx (609 dòng)
+pnpm lint:structure
+```
+
+Sau increment 10, thêm:
+```
+pnpm doctor:react
+node scripts/lint-structure.mjs --init
+```
+
+Increment nào fail gate thì sửa trước khi sang increment kế — không dồn increment chưa verify.
+
+---
+
+### 44.2 Phase 2 — Reorganize `customer/v21/` (112 file, verified trực tiếp session 2026-07-27) thành bucket khớp `worker/`
+
+Bắt đầu sau khi Phase 1 xong. `apps/mobile/components/customer/v21/` hiện đúng **112 file** (đếm trực tiếp, không phải ước lượng "~110+" như bản v0.1). Composition root là `surfaces.tsx` (1,774 dòng) — chứa 6 export public: `CustomerHomeSurface`, `CustomerBookingEntrySurface`, `CustomerHistorySurface`, `CustomerProfileSurface`, `CustomerKaelSurface`, `CustomerV21DockOverlay` (+ alias `CustomerDockOverlay`) — re-export qua shim `apps/mobile/components/customer/customer-surfaces.tsx` (10 dòng). Rủi ro thấp hơn Phase 1 vì content đã tách thành file riêng rồi (không phải 1 hàm khổng lồ đóng closure chung) — việc chính là DI CHUYỂN file vào đúng bucket + sửa import path, gần giống việc PR #133 đã làm cho `worker/`.
+
+`code-ownership-map.md` C1 mục "Mobile `customer-surfaces.tsx`" mô tả target `customer/{home,booking,kael-chat,history,profile,dock,ui}` nhưng liệt kê sai tên file (viết trước khi `v21/` tồn tại) — bảng 44.2.1 dưới đây là map THẬT, verify trực tiếp, thay thế bảng đó (Phase 3 sẽ ghi lại vào doc).
+
+#### 44.2.1 Target decomposition — 7 bucket trong `apps/mobile/components/customer/`
+
+| Bucket | Số file | Danh sách file (từ `v21/`) |
+|---|---|---|
+| `customer/dock/` | 3 | `dock-stateful-surfaces.tsx`, `dock-styles.ts`, `dock-surfaces.tsx` |
+| `customer/ui/` | 11 | `assets.ts` (+ folder `assets/`), `aura-styles.ts`, `aura-surfaces.tsx`, `copy.ts`, `platform-styles.ts`, `route-params.ts`, `shared-styles.ts`, `shared-surfaces.tsx`, `types.ts`, `use-v21-theme.ts`, `value-display-model.ts` |
+| `customer/home/` | 1 (+ nội dung inline trong `surfaces.tsx` dòng 248–317, `CustomerHomeSurface`) | `home-storytelling-card.tsx` |
+| `customer/booking/` | 9 | `booking-entry-stateful-surfaces.tsx`, `booking-intake-display-model.ts`, `booking-media-surfaces.tsx`, `booking-styles.ts`, `booking-surfaces.tsx`, `performance-intake-surfaces.tsx`, `use-booking-address-lookup.ts`, `use-booking-schedule-runtime-now.ts`, `use-performance-booking-intake.tsx` |
+| `customer/history/` | 11 | `history-active-styles.ts`, `history-active-surfaces.tsx`, `history-case-surfaces.tsx`, `history-fulfillment-stateful-surfaces.tsx`, `history-stage-stateful-surfaces.tsx`, `history-styles.ts`, `history-surfaces.tsx`, `service-history-filter-rail.tsx`, `service-history-rail.ts`, `service-history-styles.ts`, `service-history-surface.tsx` |
+| `customer/profile/` | 12 chắc chắn + 2 cần verify (44.2.3) | `profile-display-model.ts`, `profile-journey-styles.ts`, `profile-metrics-styles.ts`, `profile-metrics-surfaces.tsx`, `profile-payment-stateful-surfaces.tsx`, `profile-payment-styles.ts`, `profile-ranking-mark.tsx`, `profile-settings-styles.ts`, `profile-stateful-surfaces.tsx`, `profile-utility-stateful-surfaces.tsx`, `profile-utility-styles.ts`, `profile-utility-surfaces.tsx` — **tentative**: `payment-bank-display-model.ts`, `payment-styles.ts` |
+| `customer/kael-chat/` (merge vào folder có sẵn — xem 44.2.3) | 62 (3 tentative) | `agentic-*` (5): chat-estimate-response/decision-surfaces/estimate-display-model/evidence-stateful-surfaces/memory-display-model · `case-*` (6): source/stage/work-display-model, work-money-display-model, work-response-model, work-response.tsx · `chat-*` (5): case-thread-stateful-surfaces, evidence-strip, stateful-surfaces, styles, surfaces · `customer-audio*` (3, native/web/index) · `customer-kael-*` (12): case-thread-node, chat-content, chat-helpers, conversation-catalog, conversation-requests, evidence-payload, intake-response-model, intake-response-node, presentation, routing, session-catalog-cache, state-scope · `customer-media-draft-helpers.ts`, `customer-worker-candidate-node.tsx` · `kael-chat-composer/header/surface/turn-display-model.ts(x)` (4) · `kael-empty-hero(-copy)` (2), `kael-evidence-progress.ts`, `kael-liquid-pressable.tsx`\*, `kael-process-line-view.tsx`, `kael-process-lines.ts`, `kael-session-menu.tsx` · `use-customer-kael-*` (12): case-ui-state, chat-ui-state, conversation-state, conversations, decision-actions, evidence-actions, message-actions, mode-menu, session-catalog, session-hydration, surface-controller, `use-customer-case-hydration.ts`, `use-customer-message-memory-preference.ts` · `use-kael-process-line-controller.ts`, `use-kael-timeline-headline.ts`\* — **tentative** (payment, xem 44.2.3): `payment-stage-stateful-surfaces.tsx`, `payment-surfaces.tsx`, `sepay-vietqr-payment-display-model.ts` |
+
+`surfaces.tsx` (1,774 dòng) **không di chuyển** — ở lại làm composition root tại `customer/v21/` hoặc đổi tên thư mục, giữ vai trò tương tự `worker-v5-flow.tsx` (1,452 dòng, đánh dấu "Deep module by design — do not split further" trong `code-ownership-map.md`). Không giả định phải tách tiếp `surfaces.tsx` trong Phase 2 — nếu sau khi 6 bucket kia dọn xong mà `surfaces.tsx` vẫn quá lớn để đọc hiểu nhanh, đó là quyết định riêng cần hỏi Tu, không tự làm thêm ngoài scope.
+
+\* = xem 44.2.3, tên gợi ý vị trí nhưng chưa verify qua import thật.
+
+#### 44.2.2 Thứ tự increment (bucket độc lập/ít rủi ro nhất trước)
+
+1. `customer/dock/` — 3 file, nhỏ nhất, ít khả năng bị nơi khác import chéo.
+2. `customer/ui/` — 11 file thuần primitive/style/type, nhiều bucket khác SẼ import từ đây → làm sớm để các bucket sau có đích import ổn định, tránh sửa lại đường dẫn nhiều lần.
+3. `customer/home/` — 1 file + phần `CustomerHomeSurface` trong `surfaces.tsx`, nhỏ, ít phụ thuộc.
+4. `customer/booking/` — 9 file, phụ thuộc `ui/` (bước 2) nhưng độc lập với history/profile/kael-chat.
+5. `customer/history/` — 11 file, tương tự mức độc lập với booking.
+6. `customer/profile/` — 12–14 file, cần chốt 2 file `payment-*` tentative trước khi move (44.2.3).
+7. `customer/kael-chat/` — **làm cuối cùng, tách riêng thành nhiều increment con** (62 file là hơn nửa tổng số, không dồn 1 increment). Trước khi bắt đầu bucket này: đọc hết 13 file đang có sẵn trong `customer/kael-chat/` (không nằm trong `v21/`) để biết có trùng tên/trùng concern với file sắp gộp từ `v21/` không, rồi mới chia increment con theo cụm phụ (vd. `customer-kael-*` riêng, `use-customer-kael-*` riêng, `agentic-*`/`case-work-*` riêng) — chi tiết increment con của bucket này lên khi bắt đầu bucket 7, không cố định trước khi biết rõ nội dung 13 file kia.
+
+#### 44.2.3 Checklist an toàn + việc cần verify TRƯỚC khi move (chưa làm trong session này)
+
+- **5 file "payment" mơ hồ** — `profile-payment-*` (2 file, rõ ràng thuộc profile — quản lý phương thức thanh toán) KHÔNG mơ hồ; nhưng `payment-bank-display-model.ts`, `payment-styles.ts` (không tiền tố `profile-`), và `payment-stage-stateful-surfaces.tsx`, `payment-surfaces.tsx`, `sepay-vietqr-payment-display-model.ts` (payment CONFIRM trong luồng case-work hay cài đặt profile?) — đọc import thật của từng file trước khi xếp bucket, đừng suy đoán theo tên.
+- **`kael-liquid-pressable.tsx`** — tên gợi ý 1 primitive UI dùng chung (glass/liquid button), có thể thuộc `ui/` thay vì `kael-chat/` — kiểm tra có bị import ngoài phạm vi kael-chat không.
+- **`use-kael-timeline-headline.ts`** — "timeline" có thể liên quan `history/` (dòng thời gian job) thay vì `kael-chat/` — kiểm tra import trước khi xếp.
+- **Gộp với `customer/kael-chat/` có sẵn (13 file, KHÔNG nằm trong `v21/`)** — đọc hết 13 file đó trước bước 7 ở 44.2.2, kiểm tra trùng tên/trùng trách nhiệm với 62 file sắp gộp từ `v21/`, quyết định merge vào cùng 1 folder hay giữ 2 sub-folder riêng trong `customer/kael-chat/`.
+- **Cross-import giữa các file trong `v21/`** — dù rủi ro thấp hơn Phase 1 (không chung closure state), vẫn phải grep import path của từng file trước khi move, đổi path đúng, không chỉ dựa vào bảng 44.2.1 làm căn cứ cuối.
+- Không sửa 6 export public trong `surfaces.tsx` — chỉ đổi vị trí file nó import từ, không đổi tên hàm/đường dẫn `customer-surfaces.tsx` shim.
+- Áp dụng `kael-frontend-test` (type-check + jest-expo/RNTL) vì đụng UI đang chạy thật — khác Phase 1 (logic nền, không có màn hình để chụp/verify trực quan).
+
+#### 44.2.4 Verification (chạy sau MỖI bucket, không dồn cuối)
+
+```
+pnpm type-check:mobile
+pnpm test:mobile
+pnpm lint:structure
+pnpm doctor:react            # đụng UI thật — chạy mỗi bucket, không chỉ cuối Phase 1
+```
+Sau bucket cuối (`kael-chat/`): `node scripts/lint-structure.mjs --init` để khoá baseline mới.
+
+### 44.3 Phase 3 — Refresh `docs/architecture/code-ownership-map.md` C1 (customer subsection)
+
+Chạy sau khi Phase 2 xong hẳn (không làm trước — tránh lặp lỗi hiện tại: doc mô tả target chưa từng khớp thực tế đã build).
+
+1. Đọc danh sách bucket THẬT sau khi Phase 2 xong (kết quả 44.2.1 sau khi mọi file "cần verify" ở 44.2.3 đã được xếp bucket thật, không phải bảng tentative).
+2. Mở `docs/architecture/code-ownership-map.md` mục C1 "Mobile `customer-surfaces.tsx`" — đoạn này hiện mô tả sai (liệt kê target chưa từng khớp `v21/` thật).
+3. Viết lại theo đúng khuôn phần `worker/` đã được rewrite (PR #133 / commit `ac8583602`) — bảng `Module | Lines | Owns`, đổi nhãn từ "TARGET blueprint" sang "CURRENT STATE" như phần worker đang có.
+
+---
+
+### 44.4 Change Log
+
+- v0.1 — 2026-07-27 — Viết lần đầu. Phase 1 design đầy đủ (8 hook, thứ tự increment, verification), chờ Tu duyệt go execute. Phase 2/3 chỉ scope sơ bộ, chưa detail-design — sẽ mở rộng section này khi tới lượt.
+- v0.2 — 2026-07-27 — Tu phản hồi bản v0.1 "còn rối" + thiếu chi tiết per-phase/step cho Phase 2/3 + thiếu bước Pre-Plan bắt buộc đọc file .md + thiếu ghi chú chạy liên tục tới hết plan. Bổ sung: bảng tổng quan 3 phase ở đầu section (đọc trước khi vào chi tiết); 44.0.1 đổi tên "Pre-Plan Deep-Read" + thêm comprehension gate; 44.0.3 Definition of Done — Gates (mới, G1-G6, phủ cả Phase 1+2); 44.0.4 Execution Continuity Note (mới — chạy liên tục Phase 1→2→3 sau 1 lần "go", không tự dừng xin duyệt từng Phase, nhưng vẫn dừng khi fail gate/xung đột rule/cần quyết định thật); Phase 2 từ 2 đoạn sơ bộ → map đầy đủ 112 file (đếm trực tiếp) vào 7 bucket có bảng chi tiết (44.2.1) + thứ tự increment theo bucket kèm lý do (44.2.2) + checklist 5 file "payment" + 2 file khác cần verify import trước khi move + câu hỏi gộp với `customer/kael-chat/` 13 file có sẵn (44.2.3) + verify steps riêng (44.2.4); Phase 3 từ 1 đoạn mô tả chung → 3 bước cụ thể.
+
+---
+

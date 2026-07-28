@@ -2,7 +2,7 @@ import {
   CUSTOMER_KAEL_EMPTY_HERO_LINE_COUNT,
   getCustomerKaelEmptyHeroCopy,
   millisecondsUntilNextVietnamTwoHourSlot,
-} from '../v21/kael-empty-hero-copy'
+} from '../kael-chat/kael-empty-hero-copy'
 
 describe('Customer Kael empty hero copy', () => {
   it('provides twelve Customer-specific lines for each mode', () => {

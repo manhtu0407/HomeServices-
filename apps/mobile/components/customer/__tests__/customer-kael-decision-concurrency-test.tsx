@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native'
 
-import { createCustomerKaelRequestGuard } from '../v21/customer-kael-state-scope'
-import { useCustomerKaelDecisionActions } from '../v21/use-customer-kael-decision-actions'
+import { createCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
+import { useCustomerKaelDecisionActions } from '../kael-chat/use-customer-kael-decision-actions'
 
 const mockConfirmEstimate = jest.fn()
 

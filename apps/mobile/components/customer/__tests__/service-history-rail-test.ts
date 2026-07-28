@@ -2,7 +2,7 @@ import {
   advanceHistoryRailMomentum,
   historyRailMomentumVelocityFromGesture,
   historyRailOffsetFromDrag,
-} from '../v21/service-history-rail'
+} from '../history/service-history-rail'
 
 describe('service history filter rail', () => {
   const contentWidth = 987

@@ -186,6 +186,7 @@ If any item is false, stop and gather context before editing.
 > **Status: MIXED — read the per-subsection status.** This is the C1 deliverable of the stack-reorg (`docs/architecture/stack-unification-plan-20260616.md` §5). Every table ABOVE this section describes today's owners.
 >
 > - **`components/worker/` subsection: CURRENT STATE.** The worker split executed in `Plan.md` §44 (2026-07-27); its table reflects the real tree with measured line counts.
+> - **`components/customer/` subsection: CURRENT STATE.** The customer bucket reorg executed in `Plan.md` §44 Phase 2 (2026-07-27); its table reflects the real tree with measured line counts.
 > - **All other subsections: TARGET blueprint.** They describe where code MOVES during the reorg (P4–P6) and their "current" line counts predate later work, so treat them as stale until re-verified. Do not move files from those alone — follow the build handoff sequencing.
 
 ### Arrangement law (from #5 §0.5 — binds every grouping here)
@@ -245,19 +246,27 @@ Naming collision resolved during the split: the god-file's local `WorkerV5InfoRo
 
 Convention for the moved files: each bucket module declares its own local `Text` font wrapper and `type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>`, matching what the already-split worker modules did before §44. Style objects are imported from `../worker-v5-flow-styles` unless the module owns a bucket-local `*-styles.ts`.
 
-### Mobile `customer-surfaces.tsx` (7,776) → `components/customer/<surface>/`
+### Mobile `components/customer/` — CURRENT STATE (customer module map updated §44 Phase 2, 2026-07-27)
 
-Reconciled with #3 customer Case Work (home → booking intake → Kael Case Work → confirm → history/matching → done+pay → review + ⭐ save-worker).
+**This customer subsection is current state, not a target.** `Plan.md` §44 Phase 2 split the flat `customer/v21/` folder (112 files) into per-domain buckets that mirror `components/worker/`. Reconciled with #3 customer Case Work (home → booking intake → Kael Case Work → confirm → history/matching → done+pay → review + ⭐ save-worker).
 
-| Target module | Owns |
-|---|---|
-| `customer/home/` | CustomerHomeSurface + service cards |
-| `customer/booking/` | CustomerBookingEntrySurface (intake: info+photo+video+voice+address+date), CustomerKaelSurface entry |
-| `customer/kael-chat/` | **already split** (thread.tsx, state.ts, kael-chat-surface.tsx, helpers.ts, agentic-parts.tsx) — keep as the Case Work chat home; do NOT re-split |
-| `customer/history/` | CustomerHistorySurface + timeline/panels (phase-context, cancellation-context, empty timelines, completion evidence, done hero/timeline, review/price/chat panels, completion presence map) |
-| `customer/profile/` | CustomerProfileSurface + account-info fields + care card (future #3 D-A: ⭐ saved-workers / direct-rebook entry) |
-| `customer/dock/` (shell) | CustomerV4DockOverlay, V4Frame, V4Dock |
-| `customer/ui/` (customer-local primitives) | V4ServiceCard, V4TicketCell, V4Metric, QuickCard, ListRow, ActionRow, KaelMascot, buttons, chips, icons, glass/liquid (promote generic to `components/ui/`) |
+Entry point is unchanged: `customer-surfaces.tsx` (10 lines) re-exports the six public surfaces from `v21/surfaces.tsx`. Routes and tests import those names and were not touched by the reorg.
+
+| Module | Files · Lines | Owns |
+|---|---|---|
+| `v21/surfaces.tsx` | 1 · 1,774 | Composition root only: the 6 public exports (`CustomerHomeSurface`, `CustomerBookingEntrySurface`, `CustomerHistorySurface`, `CustomerProfileSurface`, `CustomerKaelSurface`, `CustomerV21DockOverlay` + `CustomerDockOverlay` alias) and the `CustomerHomeSurface` body. Deep module by design — it IS the assembly point; do not split further. |
+| `v21/kael-chat-surface.tsx` | 1 · 7 | `KaelChatSurface` — binds `useCustomerKaelSurfaceController` to `CustomerKaelChatContent`. Kept beside the composition root because `customer/kael-chat/kael-chat-surface.tsx` is a retired path that `mobile-wiring.test.ts` asserts stays absent. |
+| `customer/dock/` | 3 · 389 | Customer 4+1 dock overlay, its stateful wrapper, and dock styles (also consumed by the worker dock via `@/components/customer/dock/dock-styles`) |
+| `customer/ui/` (customer-local primitives) | 13 · 3,249 | Shared screen chrome and primitives: `shared-surfaces.tsx`/`shared-styles.ts`, aura surfaces + styles, `use-v21-theme.ts`, `types.ts`, `copy.ts` (VI/EN), `route-params.ts`, `platform-styles.ts`, `value-display-model.ts`, `assets.ts` + the `assets/service-icons` PNGs, plus `payment-surfaces.tsx`/`payment-styles.ts` (shared by `profile/` and the case-work payment stage) |
+| `customer/home/` | 1 · 311 | `home-storytelling-card.tsx` (home hero + storytelling). The `CustomerHomeSurface` body itself stays in the composition root |
+| `customer/booking/` | 9 · 2,411 | Basic Intake entry: booking entry stateful surfaces, booking surfaces/styles, intake display model, media surfaces, performance intake surfaces, and the address-lookup / schedule-now / performance-intake hooks |
+| `customer/history/` | 11 · 4,873 | `CustomerHistorySurface` chain: active/case/fulfillment/stage history surfaces + styles, and the service-history rail / filter rail / surface / styles |
+| `customer/profile/` | 13 · 3,695 | `CustomerProfileSurface` chain: profile display model, stateful + utility + metrics surfaces, journey/metrics/settings/utility styles, ranking mark, and payment-method settings (`profile-payment-*`, `payment-bank-display-model.ts`) |
+| `customer/kael-chat/` | 73 · 12,559 | Case Work chat home. Merges the 13 pre-existing modules (response cards, on-device voice transcript, saved workers, pending intake, case-work localization, media draft tray) with 60 moved from `v21/`: `agentic-*`, `case-*` display/response models, `chat-*` surfaces + styles, `customer-audio.*`, `customer-kael-*` (content/helpers/routing/presentation/state-scope/catalog), `kael-*` (composer, header, empty hero, process lines, session menu, liquid pressable), `use-customer-kael-*` hooks, plus the payment-confirm stage (`payment-stage-stateful-surfaces.tsx`, `sepay-vietqr-payment-display-model.ts`) |
+
+Ambiguous files were placed by reading real imports, not by name: `payment-surfaces.tsx`/`payment-styles.ts` → `ui/` (imported by both `profile/` and the payment stage), `payment-bank-display-model.ts` → `profile/` (single importer), `sepay-vietqr-payment-display-model.ts` + `payment-stage-stateful-surfaces.tsx` → `kael-chat/`, `kael-liquid-pressable.tsx` → `kael-chat/` (no importer outside it), `use-kael-timeline-headline.ts` → `kael-chat/` (imported by the surface controller, not `history/`).
+
+`payment-stage-stateful-surfaces.tsx` (`PaymentReviewStageView`, `PaymentProtectedStageView`) currently has **no importer anywhere in `apps/mobile`** — it arrived with PR #135 and is not wired yet. It was placed with the rest of the payment-confirm stage rather than deleted; wiring or removing it is a separate decision.
 
 ### One concept = one home (resolves the drift)
 

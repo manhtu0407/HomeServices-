@@ -8,9 +8,9 @@ import {
   type PendingKaelChatDraft,
 } from '@/lib/pending-kael-chat-draft'
 import type { ServiceType } from '@nestscout/shared'
-import { createCustomerKaelRequestGuard } from '../v21/customer-kael-state-scope'
-import { useCustomerKaelConversationState } from '../v21/use-customer-kael-conversation-state'
-import { useCustomerKaelSessionHydration } from '../v21/use-customer-kael-session-hydration'
+import { createCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
+import { useCustomerKaelConversationState } from '../kael-chat/use-customer-kael-conversation-state'
+import { useCustomerKaelSessionHydration } from '../kael-chat/use-customer-kael-session-hydration'
 
 const mockKaelChatCreate = jest.fn()
 const mockKaelChatGet = jest.fn()

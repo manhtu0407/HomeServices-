@@ -5,7 +5,7 @@ import {
   insightNumber,
   percentFromConfidenceLabel,
   protectedTransactionLabel,
-} from '../v21/profile-display-model'
+} from '../profile/profile-display-model'
 
 describe('customer profile display honesty', () => {
   it('keeps unavailable worker history distinct from a real zero count', () => {

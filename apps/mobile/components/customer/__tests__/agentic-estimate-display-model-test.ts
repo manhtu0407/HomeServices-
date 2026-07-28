@@ -1,4 +1,4 @@
-import { agenticEstimateProblemLabel } from '../v21/agentic-estimate-display-model'
+import { agenticEstimateProblemLabel } from '../kael-chat/agentic-estimate-display-model'
 
 const estimate = {
   advisory: null,

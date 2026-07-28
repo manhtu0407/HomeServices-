@@ -5,7 +5,7 @@ import type { KaelChatProgress } from '@/lib/api-types'
 import {
   KAEL_COMPOSER_REPLY_REVEAL_MS,
   useKaelProcessLineController,
-} from '../v21/use-kael-process-line-controller'
+} from '../kael-chat/use-kael-process-line-controller'
 
 describe('customer Kael process-line controller', () => {
   beforeEach(() => {

@@ -2,20 +2,20 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const mobileRoot = join(process.cwd())
-const presentation = readFileSync(join(mobileRoot, 'components/customer/v21/customer-kael-presentation.ts'), 'utf8')
-const content = readFileSync(join(mobileRoot, 'components/customer/v21/customer-kael-chat-content.tsx'), 'utf8')
-const controller = readFileSync(join(mobileRoot, 'components/customer/v21/use-customer-kael-surface-controller.ts'), 'utf8')
-const evidenceActions = readFileSync(join(mobileRoot, 'components/customer/v21/use-customer-kael-evidence-actions.ts'), 'utf8')
-const caseThreadNode = readFileSync(join(mobileRoot, 'components/customer/v21/customer-kael-case-thread-node.tsx'), 'utf8')
-const candidateNode = readFileSync(join(mobileRoot, 'components/customer/v21/customer-worker-candidate-node.tsx'), 'utf8')
+const presentation = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-kael-presentation.ts'), 'utf8')
+const content = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-kael-chat-content.tsx'), 'utf8')
+const controller = readFileSync(join(mobileRoot, 'components/customer/kael-chat/use-customer-kael-surface-controller.ts'), 'utf8')
+const evidenceActions = readFileSync(join(mobileRoot, 'components/customer/kael-chat/use-customer-kael-evidence-actions.ts'), 'utf8')
+const caseThreadNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-kael-case-thread-node.tsx'), 'utf8')
+const candidateNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-worker-candidate-node.tsx'), 'utf8')
 const kaelFeature = [presentation, content, controller, evidenceActions, caseThreadNode, candidateNode].join('\n')
-const chatView = readFileSync(join(mobileRoot, 'components/customer/v21/chat-stateful-surfaces.tsx'), 'utf8')
-const evidenceView = readFileSync(join(mobileRoot, 'components/customer/v21/agentic-evidence-stateful-surfaces.tsx'), 'utf8')
-const estimateResponse = readFileSync(join(mobileRoot, 'components/customer/v21/agentic-chat-estimate-response.tsx'), 'utf8')
+const chatView = readFileSync(join(mobileRoot, 'components/customer/kael-chat/chat-stateful-surfaces.tsx'), 'utf8')
+const evidenceView = readFileSync(join(mobileRoot, 'components/customer/kael-chat/agentic-evidence-stateful-surfaces.tsx'), 'utf8')
+const estimateResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/agentic-chat-estimate-response.tsx'), 'utf8')
 const candidateResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/worker-candidate-review-response.tsx'), 'utf8')
 const completionResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/completion-review-response.tsx'), 'utf8')
-const responseModel = readFileSync(join(mobileRoot, 'components/customer/v21/case-work-response-model.ts'), 'utf8')
-const caseThread = readFileSync(join(mobileRoot, 'components/customer/v21/chat-case-thread-stateful-surfaces.tsx'), 'utf8')
+const responseModel = readFileSync(join(mobileRoot, 'components/customer/kael-chat/case-work-response-model.ts'), 'utf8')
+const caseThread = readFileSync(join(mobileRoot, 'components/customer/kael-chat/chat-case-thread-stateful-surfaces.tsx'), 'utf8')
 
 describe('Kael Case Work phase-gated mobile wiring', () => {
   it('starts analysis after Basic Intake and derives evidence UI from the server artifact', () => {

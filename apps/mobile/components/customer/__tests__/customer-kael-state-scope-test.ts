@@ -5,11 +5,11 @@ import {
   customerKaelStateScopeKey,
   useCustomerKaelRequestGuard,
   type CustomerKaelRequestGuard,
-} from '../v21/customer-kael-state-scope'
+} from '../kael-chat/customer-kael-state-scope'
 import {
   createCustomerKaelConversationState,
   customerKaelConversationReducer,
-} from '../v21/use-customer-kael-conversation-state'
+} from '../kael-chat/use-customer-kael-conversation-state'
 import type { KaelChatResponse } from '@/lib/api-types'
 import type { PendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
 

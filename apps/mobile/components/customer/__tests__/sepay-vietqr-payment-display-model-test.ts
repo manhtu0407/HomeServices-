@@ -1,6 +1,6 @@
 import type { LocalDeal } from '@nestscout/shared'
 
-import { buildSePayVietQrPaymentPresentation } from '../v21/sepay-vietqr-payment-display-model'
+import { buildSePayVietQrPaymentPresentation } from '../kael-chat/sepay-vietqr-payment-display-model'
 
 describe('SePay VietQR payment presentation', () => {
   it('exposes payment instructions only when the server payment data and QR URL agree', () => {

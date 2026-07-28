@@ -2,8 +2,8 @@ import {
   availableBookingTimeSlots,
   bookingScheduleDraft,
   buildBookingScheduleDateOptions,
-} from '../v21/booking-intake-display-model'
-import { timeChoiceLabel } from '../v21/case-work-display-model'
+} from '../booking/booking-intake-display-model'
+import { timeChoiceLabel } from '../kael-chat/case-work-display-model'
 import { workerV5TimeChoiceLabel } from '../../worker/ui/labels'
 
 describe('HCMC booking schedule integrity', () => {
