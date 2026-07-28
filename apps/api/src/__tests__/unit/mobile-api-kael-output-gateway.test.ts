@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { sanitizeMemoryText } from '../../../../../supabase/functions/mobile-api/_shared/kael/memory-sanitizer'
-import { guardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-gateway'
+import { sanitizeMemoryText } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-memory/memory-sanitizer'
+import { guardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-gateway'
 
 const repoRoot = join(__dirname, '../../../../../')
 

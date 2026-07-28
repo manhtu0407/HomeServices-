@@ -9,7 +9,7 @@ import { notifyJobMessageRecipient } from "./notifications.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { requireJobAccess } from "../access.ts";
 import { buildDemandingCustomerResponse, detectDemandingCustomerPatterns, recordDemandingCustomerInteraction } from "../kael/index.ts";
-import { guardOutput } from "../kael/output-gateway.ts";
+import { guardOutput } from "../kael/kael-guardrails/output-gateway.ts";
 import { auditGuardrailTripBestEffort } from "./audit.ts";
 import { recordJobIncidentChatMessage } from "./job-incident.service.ts";
 import type { EdgeAiSecrets } from "../kael/index.ts";

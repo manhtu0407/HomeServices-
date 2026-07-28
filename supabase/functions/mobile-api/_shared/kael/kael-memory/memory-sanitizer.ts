@@ -1,4 +1,4 @@
-import { looksLikePrivateUnitIdentifier } from "./utils.ts";
+import { looksLikePrivateUnitIdentifier } from "../utils.ts";
 
 export function sanitizeMemoryText(input: string, maxLength = 1000): string {
   return input

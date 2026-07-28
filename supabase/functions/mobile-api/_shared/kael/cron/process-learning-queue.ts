@@ -1,19 +1,19 @@
-import { readKaelOptimizationFlags } from "../cost-tracking.ts";
-import { KAEL_CIRCUIT_BREAKER } from "../circuit-breaker.ts";
+import { readKaelOptimizationFlags } from "../kael-usage/cost-tracking.ts";
+import { KAEL_CIRCUIT_BREAKER } from "../kael-providers/circuit-breaker.ts";
 import { isDurableCircuitOpen } from "../durable-guards.ts";
 import {
   anthropicMessageBatchCostUsd,
   estimateModelRequestCostUsd,
-} from "../model-pricing.ts";
-import { createAnthropicMessageBatch, type AnthropicBatchRequest } from "../provider-batch.ts";
-import { KAEL_ROUTING_CONFIG } from "../routing.config.ts";
+} from "../kael-usage/model-pricing.ts";
+import { createAnthropicMessageBatch, type AnthropicBatchRequest } from "../kael-providers/provider-batch.ts";
+import { KAEL_ROUTING_CONFIG } from "../kael-providers/routing.config.ts";
 import { callStructuredAI } from "../structured-call.ts";
 import {
   finalizeAiSpend,
   isKaelAiKillSwitchEnabled,
   reserveAiSpend,
   type SpendGateClient,
-} from "../spend-gate.ts";
+} from "../kael-guardrails/spend-gate.ts";
 import type { EdgeAiSecrets } from "../types.ts";
 import { commitLearningEffectResult } from "./learning-effect-store.ts";
 import { processLearningCandidateResponse } from "./process-batch-results.ts";

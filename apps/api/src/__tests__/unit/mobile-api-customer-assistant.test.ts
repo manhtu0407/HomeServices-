@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   runCustomerAssistant,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/customer-assistant'
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import type {
   AIRequest,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'

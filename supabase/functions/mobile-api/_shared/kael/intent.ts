@@ -4,12 +4,12 @@ import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, intentProviderResultSchema } from "./
 import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from "./prompts.ts";
 import { callStructuredAI } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
-import { maxTokensForPurpose } from "./routing.config.ts";
+import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
+import { maxTokensForPurpose } from "./kael-providers/routing.config.ts";
 import {
   circuitAwareProviderCandidatesForPurpose,
   shouldSkipProviderSiblingModels,
-} from "./routing.ts";
+} from "./kael-providers/routing.ts";
 import {
   hasUnsupportedRepairIntent,
   scrubCustomerCaseContextForLLM,

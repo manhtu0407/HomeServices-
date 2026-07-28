@@ -7,9 +7,9 @@ import {
   hasStructuredValidationIssue,
   type StructuredAIResponse,
 } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
-import { maxTokensForPurpose } from "./routing.config.ts";
-import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
+import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
+import { maxTokensForPurpose } from "./kael-providers/routing.config.ts";
+import { chooseCircuitAwareProviderOrNull } from "./kael-providers/routing.ts";
 import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
 import { sanitizeVisionPhotoUrls } from "./utils.ts";
 import { readResponseBytesBounded } from "../../../_shared/network.ts";

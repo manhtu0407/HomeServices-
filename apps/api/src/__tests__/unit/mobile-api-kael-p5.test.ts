@@ -4,7 +4,7 @@ import {
   evaluateKaelPermissionGate,
   evaluateKaelPermissionGateWithBoundaries,
   hasKaelForbiddenTopicBoundarySignal,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/permission-gate'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/permission-gate'
 import { checkKaelActorRateLimit, recordKaelCostForTests, resetKaelRateLimitForTests } from '../../../../../supabase/functions/mobile-api/_shared/kael/rate-limit'
 import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
 

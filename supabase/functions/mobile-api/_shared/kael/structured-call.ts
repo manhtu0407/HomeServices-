@@ -1,4 +1,4 @@
-import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
+import { KAEL_CIRCUIT_BREAKER } from "./kael-providers/circuit-breaker.ts";
 import {
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
@@ -6,8 +6,8 @@ import {
 import {
   callAI,
   type CallAIOptions,
-} from "./provider-client.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+} from "./kael-providers/provider-client.ts";
+import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
 import type {
   AIError,
   AIRequest,

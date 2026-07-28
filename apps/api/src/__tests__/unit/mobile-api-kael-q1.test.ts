@@ -6,7 +6,7 @@ import {
   enabledKaelOptimizationOptions,
   estimateProviderCostUsd,
   readKaelOptimizationFlags,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/cost-tracking'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-usage/cost-tracking'
 
 describe('mobile-api Kael Q1 cost tracking', () => {
   it('keeps all optimization flags disabled by default and toggles independently', () => {

@@ -1,9 +1,9 @@
 import type { FailureKind as CircuitFailureKind } from "./circuit-breaker.ts";
-import { readKaelOptimizationFlags } from "./cost-tracking.ts";
+import { readKaelOptimizationFlags } from "../kael-usage/cost-tracking.ts";
 import {
   calculateModelCostUsd,
   type SearchContextSize,
-} from "./model-pricing.ts";
+} from "../kael-usage/model-pricing.ts";
 import type {
   AICacheStatus,
   AIMessageContent,
@@ -12,7 +12,7 @@ import type {
   AIResponse,
   AITextContent,
   ProviderRequestSpec,
-} from "./types.ts";
+} from "../types.ts";
 
 export type ProviderCapabilities = {
   readonly vision: boolean;

@@ -7,7 +7,7 @@ import type {
   MarketSourceEvidenceResult,
   ServiceType,
 } from "./types.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
 import {
   marketPriceResultSchema,
   marketSourceEvidenceResultSchema,
@@ -18,9 +18,9 @@ import {
   hasStructuredValidationIssue,
   type StructuredSchema,
 } from "./structured-call.ts";
-import { readKaelOptimizationFlags } from "./cost-tracking.ts";
-import { maxTokensForPurpose } from "./routing.config.ts";
-import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
+import { readKaelOptimizationFlags } from "./kael-usage/cost-tracking.ts";
+import { maxTokensForPurpose } from "./kael-providers/routing.config.ts";
+import { circuitAwareProviderCandidatesForPurpose } from "./kael-providers/routing.ts";
 import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
 import {
   retrieveKaelKnowledgeContextIfEnabled,

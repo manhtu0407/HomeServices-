@@ -10,9 +10,9 @@ import {
   auditKaelGuardrailTrip,
   checkKaelResponse,
   runKaelSelfCheckPipeline,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/self-check'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/self-check'
 import { canonicalizeVN } from '../../../../../supabase/functions/mobile-api/_shared/kael/canonicalize-vn'
-import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/boundary-guard'
+import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard'
 
 const repoRoot = join(__dirname, '../../../../../')
 
@@ -303,7 +303,7 @@ describe('Kael Track D guardrails', () => {
       'utf8',
     )
     const outputGateway = readFileSync(
-      join(repoRoot, 'supabase/functions/mobile-api/_shared/kael/output-gateway.ts'),
+      join(repoRoot, 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-gateway.ts'),
       'utf8',
     )
     const customerBoundary = readFileSync(
