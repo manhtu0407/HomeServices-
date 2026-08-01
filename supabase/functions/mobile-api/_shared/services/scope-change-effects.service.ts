@@ -14,7 +14,7 @@ import { sendPushToUser } from "../push.ts";
 import {
   buildKaelOptimizationMetricRows,
   readKaelOptimizationFlags,
-} from "../kael/cost-tracking.ts";
+} from "../kael/kael-usage/cost-tracking.ts";
 import {
   planLearningSkillTriggers,
   type LearningSkillInput,

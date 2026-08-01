@@ -1,6 +1,6 @@
 import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 
-import { deriveCustomerKaelPresentation } from '../v21/customer-kael-presentation'
+import { deriveCustomerKaelPresentation } from '../kael-chat/customer-kael-presentation'
 
 function derivePresentation({
   catalogTurns = [],

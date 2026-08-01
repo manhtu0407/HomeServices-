@@ -2,7 +2,7 @@ import {
   agenticEstimateSupportingPhase,
   agenticEstimatePriceExplanation,
   agenticEstimateProblemLabel,
-} from '../v21/agentic-estimate-display-model'
+} from '../kael-chat/agentic-estimate-display-model'
 
 const estimate = {
   advisory: null,

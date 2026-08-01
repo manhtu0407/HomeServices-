@@ -6,7 +6,7 @@
  * the classifier genuinely adds coverage the deny-list lacks.
  */
 import { describe, expect, it } from 'vitest'
-import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/boundary-guard'
+import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard'
 
 const CLASSIFIER_ON = { semanticInjectionClassifierEnabled: true }
 const SERVICE = 'electrical' as const

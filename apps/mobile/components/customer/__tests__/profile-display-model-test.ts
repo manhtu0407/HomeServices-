@@ -4,7 +4,7 @@ import {
   profileSettingsSectionParam,
   profileUtilityParam,
   profileUtilityTitle,
-} from '../v21/profile-display-model'
+} from '../profile/profile-display-model'
 
 describe('customer profile account journey display', () => {
   it('counts inclusive account days on the Ho Chi Minh City calendar', () => {

@@ -5,19 +5,19 @@ import {
   type StructuredAIInvoker,
   type StructuredValidationIssue,
 } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
+import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
 import {
   circuitAwareProviderCandidatesForPurpose,
   shouldSkipProviderSiblingModels,
   type ProviderChoice,
-} from "./routing.ts";
-import { maxTokensForPurpose } from "./routing.config.ts";
+} from "./kael-providers/routing.ts";
+import { maxTokensForPurpose } from "./kael-providers/routing.config.ts";
 import { buildKaelSystemPrompt } from "./system-prompt.ts";
 import {
   evaluateKaelPermissionGate,
   hasKaelForbiddenTopicBoundarySignal,
-} from "./permission-gate.ts";
-import { guardOutput } from "./output-gateway.ts";
+} from "./kael-guardrails/permission-gate.ts";
+import { guardOutput } from "./kael-guardrails/output-gateway.ts";
 import { scrubSensitiveForLLM } from "./utils.ts";
 import type { KaelPromptLanguage } from "./system-prompt.ts";
 import { detectForbiddenAiDecisionText } from "./ai-boundary-contract.ts";

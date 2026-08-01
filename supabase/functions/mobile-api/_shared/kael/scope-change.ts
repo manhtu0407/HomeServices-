@@ -2,9 +2,9 @@ import type { EdgeAiSecrets, ScopeChangeComputeInput, ScopeChangeEstimateBody, S
 import { PRICE_DISCLAIMER, scopeChangeEstimateSchema, scopeChangeReviewSchema } from "./types.ts";
 import { buildScopeChangeEstimateMessages, buildScopeChangeReviewMessages } from "./prompts.ts";
 import { callStructuredAI } from "./structured-call.ts";
-import type { KaelSpendGate } from "./spend-gate.ts";
-import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
-import { maxTokensForPurpose } from "./routing.config.ts";
+import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
+import { chooseCircuitAwareProviderOrNull } from "./kael-providers/routing.ts";
+import { maxTokensForPurpose } from "./kael-providers/routing.config.ts";
 import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
 import {
   buildNoProviderTrace,

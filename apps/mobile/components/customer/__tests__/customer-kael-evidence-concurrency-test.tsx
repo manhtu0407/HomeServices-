@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native'
 
-import { createCustomerKaelRequestGuard } from '../v21/customer-kael-state-scope'
-import { useCustomerKaelEvidenceActions } from '../v21/use-customer-kael-evidence-actions'
+import { createCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
+import { useCustomerKaelEvidenceActions } from '../kael-chat/use-customer-kael-evidence-actions'
 
 const mockCleanupKaelChatMediaRefs = jest.fn()
 const mockHydrateRemoteJobById = jest.fn()

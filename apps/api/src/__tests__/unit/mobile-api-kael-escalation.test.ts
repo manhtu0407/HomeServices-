@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { selectKaelEscalation } from '../../../../../supabase/functions/mobile-api/_shared/kael/escalation'
-import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
+import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config'
 import { reviewScopeChange } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 

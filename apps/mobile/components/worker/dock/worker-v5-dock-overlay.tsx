@@ -13,7 +13,7 @@ import {
   CUSTOMER_LIQUID_NAV_RAIL_PADDING,
   CUSTOMER_LIQUID_NAV_SIDE_INSET,
   customerV21DockStyles as dockStyles,
-} from '@/components/customer/v21/dock-styles'
+} from '@/components/customer/dock/dock-styles'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { DockScrollStateProvider, useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { GlassSurface } from '@/components/ui/glass-surface'

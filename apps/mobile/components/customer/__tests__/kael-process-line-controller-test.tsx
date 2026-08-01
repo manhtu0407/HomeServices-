@@ -6,8 +6,8 @@ import {
   KAEL_COMPOSER_REPLY_REVEAL_MS,
   KAEL_EVIDENCE_RESULT_SETTLE_MS,
   useKaelProcessLineController,
-} from '../v21/use-kael-process-line-controller'
-import { KaelProcessLines } from '../v21/kael-process-line-view'
+} from '../kael-chat/use-kael-process-line-controller'
+import { KaelProcessLines } from '../kael-chat/kael-process-line-view'
 
 describe('customer Kael process-line controller', () => {
   beforeEach(() => {

@@ -6,8 +6,8 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { LocalDeal } from '@nestscout/shared'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { CaseWorkResponse } from '../v21/case-work-response'
-import { buildCaseWorkResponseModel } from '../v21/case-work-response-model'
+import { CaseWorkResponse } from './case-work-response'
+import { buildCaseWorkResponseModel } from './case-work-response-model'
 
 export function CompletionReviewResponse({
   busy,

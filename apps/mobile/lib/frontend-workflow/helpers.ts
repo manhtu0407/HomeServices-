@@ -1,3 +1,4 @@
+import { AppState } from 'react-native'
 import {
   LOCAL_DEAL_ID,
   type CustomerCancellationRequestInput,
@@ -142,6 +143,10 @@ export function hasStaleRemoteBroadcast(state: LocalWorkflowState) {
 
 export function isStaleBroadcastError(code: string) {
   return ['EXPIRED', 'BROADCAST_NOT_ACTIVE', 'ALREADY_TAKEN', 'NOT_FOUND'].includes(code)
+}
+
+export function isAppForeground() {
+  return AppState.currentState === 'active'
 }
 
 export function currentWorkerMonthRange(referenceDate = new Date()) {

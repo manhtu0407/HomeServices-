@@ -22,7 +22,7 @@ import {
   evaluateKaelPermissionGateWithBoundaries,
   hasKaelForbiddenTopicBoundarySignal,
   type KaelTopic,
-} from "./permission-gate.ts";
+} from "./kael-guardrails/permission-gate.ts";
 import {
   isKaelKnowledgeRetrievalEnabled,
   type KaelKnowledgeContext,
@@ -34,13 +34,13 @@ import {
   circuitAwareProviderCandidatesForPurpose,
   shouldSkipProviderSiblingModels,
   type ProviderChoice,
-} from "./routing.ts";
-import { maxTokensForPurpose } from "./routing.config.ts";
-import { guardOutput } from "./output-gateway.ts";
+} from "./kael-providers/routing.ts";
+import { maxTokensForPurpose } from "./kael-providers/routing.config.ts";
+import { guardOutput } from "./kael-guardrails/output-gateway.ts";
 import {
   auditKaelGuardrailTrip,
   type KaelGuardrailTripClient,
-} from "./self-check.ts";
+} from "./kael-guardrails/self-check.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
 import { buildRegisterHint, detectRegionalRegister } from "./regional-register.ts";
 import { getKaelPerformanceProfile } from "./performance-profiles.ts";
@@ -56,7 +56,7 @@ import {
 } from "./trace.ts";
 import { scrubSensitiveForLLM } from "./utils.ts";
 import { sanitizeCustomerCaseEvidenceText } from "./untrusted-evidence.ts";
-import type { KaelSpendGate, SpendGateClient } from "./spend-gate.ts";
+import type { KaelSpendGate, SpendGateClient } from "./kael-guardrails/spend-gate.ts";
 import { normalizeKaelResponseBrand } from "./user-facing-copy.ts";
 
 type AssistantClient = Parameters<typeof retrieveKaelKnowledgeContextIfEnabled>[0];

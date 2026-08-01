@@ -38,10 +38,10 @@ import {
   CaseWideMintAura,
   SourceCardSkin,
   ZipMintAura,
-} from './aura-surfaces'
-import { customerV21Assets, customerV21BankAssets } from './assets'
-import { CustomerBookingEntryView, CustomerBookingGuestGateView } from './booking-entry-stateful-surfaces'
-import { HomeStorytellingCard } from './home-storytelling-card'
+} from '../ui/aura-surfaces'
+import { customerV21Assets, customerV21BankAssets } from '../ui/assets'
+import { CustomerBookingEntryView, CustomerBookingGuestGateView } from '../booking/booking-entry-stateful-surfaces'
+import { HomeStorytellingCard } from '../home/home-storytelling-card'
 import {
   bookingCustomDateValue,
   bookingCustomTimeValue,
@@ -55,55 +55,55 @@ import {
   buildBookingScheduleDateOptions,
   normalizeBookingCustomDateInput,
   normalizeBookingCustomTimeInput,
-} from './booking-intake-display-model'
-import { useBookingScheduleRuntimeNow } from './use-booking-schedule-runtime-now'
-import { useBookingFormState } from './use-booking-form-state'
-import { useBookingAddressLookup, type BookingAddressSuggestion } from './use-booking-address-lookup'
-import { useCustomerMessageMemoryPreference } from './use-customer-message-memory-preference'
-import { useCustomerAvatarPicker } from './use-customer-avatar-picker'
+} from '../booking/booking-intake-display-model'
+import { useBookingScheduleRuntimeNow } from '../booking/use-booking-schedule-runtime-now'
+import { useBookingFormState } from '../booking/use-booking-form-state'
+import { useBookingAddressLookup, type BookingAddressSuggestion } from '../booking/use-booking-address-lookup'
+import { useCustomerMessageMemoryPreference } from '../kael-chat/use-customer-message-memory-preference'
+import { useCustomerAvatarPicker } from '../profile/use-customer-avatar-picker'
 import { KaelChatSurface } from './kael-chat-surface'
-import { customerKaelStateScopeKey } from './customer-kael-state-scope'
+import { customerKaelStateScopeKey } from '../kael-chat/customer-kael-state-scope'
 import {
   agenticDealProblemLabel,
   caseDisplayCode,
   canCustomerDecideScopeChange,
   formatNumber,
   formatVnd,
-} from './case-work-display-model'
-import { stepForStatus } from './case-stage-display-model'
+} from '../kael-chat/case-work-display-model'
+import { stepForStatus } from '../kael-chat/case-stage-display-model'
 import {
   agenticBooleanFromMemory,
   agenticMemoryRowsFromUnknown,
-} from './agentic-memory-display-model'
-import { CustomerV21DockOverlayView } from './dock-stateful-surfaces'
+} from '../kael-chat/agentic-memory-display-model'
+import { CustomerV21DockOverlayView } from '../dock/dock-stateful-surfaces'
 import {
   customerV21CommonCopy,
   customerV21ScreenTitles,
   customerV21ServiceCopy,
   customerV21StatusCopy,
-} from './copy'
-import { ActiveCaseCardPanel } from './history-active-surfaces'
-import { CustomerServiceHistorySurface } from './service-history-surface'
-import { CaseFactGrid } from './history-surfaces'
-import { CustomerProfileOverviewView, CustomerProfileSubscreenView } from './profile-stateful-surfaces'
-import { buildCustomerProfileSettingsGroups } from './profile-settings-groups'
-import { ProfileCompactMintAura } from './profile-metrics-surfaces'
+} from '../ui/copy'
+import { ActiveCaseCardPanel } from '../history/history-active-surfaces'
+import { CustomerServiceHistorySurface } from '../history/service-history-surface'
+import { CaseFactGrid } from '../history/history-surfaces'
+import { CustomerProfileOverviewView, CustomerProfileSubscreenView } from '../profile/profile-stateful-surfaces'
+import { buildCustomerProfileSettingsGroups } from '../profile/profile-settings-groups'
+import { ProfileCompactMintAura } from '../profile/profile-metrics-surfaces'
 import {
   ProfileKaelMemoryView,
   ProfileLanguageView,
   ProfileLoginSecurityView,
   ProfilePersonalDetailsView,
-} from './profile-account-utility-surfaces'
+} from '../profile/profile-account-utility-surfaces'
 import {
   ProfileAppearanceView,
   ProfileDeleteAccountView,
   ProfileNotificationsView,
   ProfileSupportView,
-} from './profile-foundation-utility-surfaces'
-import { ProfileLegalView } from './profile-legal-surfaces'
-import { ProfilePaymentUtilitySection } from './profile-payment-stateful-surfaces'
-import { ProfileMoneyPanel, ProfileRankingPanel } from './profile-utility-surfaces'
-import { ProfileUtilityAddressView } from './profile-utility-stateful-surfaces'
+} from '../profile/profile-foundation-utility-surfaces'
+import { ProfileLegalView } from '../profile/profile-legal-surfaces'
+import { ProfilePaymentUtilitySection } from '../profile/profile-payment-stateful-surfaces'
+import { ProfileMoneyPanel, ProfileRankingPanel } from '../profile/profile-utility-surfaces'
+import { ProfileUtilityAddressView } from '../profile/profile-utility-stateful-surfaces'
 import {
   customerAccountJourneyDisplay,
   fairPriceStatusLabel,
@@ -123,8 +123,8 @@ import {
   rankLabel,
   type CustomerProfilePanel,
   type CustomerProfileUtility,
-} from './profile-display-model'
-import { AssetTile, EmptyState, SectionActionHeader, ServiceTile, V21Screen, V21TopBar } from './shared-surfaces'
+} from '../profile/profile-display-model'
+import { AssetTile, EmptyState, SectionActionHeader, ServiceTile, V21Screen, V21TopBar } from '../ui/shared-surfaces'
 import {
   CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
   CUSTOMER_LIQUID_NAV_GAP,
@@ -132,16 +132,16 @@ import {
   CUSTOMER_LIQUID_NAV_ORB_SIZE,
   CUSTOMER_LIQUID_NAV_RAIL_PADDING,
   CUSTOMER_LIQUID_NAV_SIDE_INSET,
-} from './dock-styles'
-import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
-import { customerV21SharedStyles as sharedStyles } from './shared-styles'
-import { type CustomerDockActive, type CustomerKaelMode, type CustomerPrimaryTab, type CustomerV21ScreenId } from './types'
+} from '../dock/dock-styles'
+import { customerV21ProfileUtilityStyles as profileUtilityStyles } from '../profile/profile-utility-styles'
+import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
+import { type CustomerDockActive, type CustomerKaelMode, type CustomerPrimaryTab, type CustomerV21ScreenId } from '../ui/types'
 import {
   chatScreenModeParam,
   firstParam,
   servicesScreenParam,
-} from './route-params'
-import { stringArrayFromUnknown, stringFromUnknown } from './value-display-model'
+} from '../ui/route-params'
+import { stringArrayFromUnknown, stringFromUnknown } from '../ui/value-display-model'
 import {
   cleanRouteJobId,
   customerCaseWorkRouteForDeal,
@@ -149,13 +149,13 @@ import {
   customerKaelWorkRoute,
   customerKaelWorkRouteForHandoff,
   isRealCaseDeal,
-} from './customer-kael-routing'
-import { useV21Theme } from './use-v21-theme'
+} from '../kael-chat/customer-kael-routing'
+import { useV21Theme } from '../ui/use-v21-theme'
 import {
   customerV21HiddenTextInputScrollbar,
   customerV21InvisibleTextInputScrollbar,
   customerV21WebTextInputNoOutline,
-} from './platform-styles'
+} from '../ui/platform-styles'
 
 
 const customerBookingServiceIdForHistory: Record<ServiceType, CustomerServiceId> = {

@@ -220,9 +220,9 @@ describe('CustomerHistorySurface service history', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-empty-asset').props.style).backgroundColor).toBeUndefined()
 
-    const assetsSource = readFileSync(resolve(__dirname, '../v21/assets.ts'), 'utf8')
-    const historySurfaceSource = readFileSync(resolve(__dirname, '../v21/service-history-surface.tsx'), 'utf8')
-    const sharedSurfacesSource = readFileSync(resolve(__dirname, '../v21/shared-surfaces.tsx'), 'utf8')
+    const assetsSource = readFileSync(resolve(__dirname, '../ui/assets.ts'), 'utf8')
+    const historySurfaceSource = readFileSync(resolve(__dirname, '../history/service-history-surface.tsx'), 'utf8')
+    const sharedSurfacesSource = readFileSync(resolve(__dirname, '../ui/shared-surfaces.tsx'), 'utf8')
 
     expect(assetsSource).toContain("activity: require('@/assets/client-image-icons/client-activity-route.png')")
     expect(assetsSource).toContain("activityEmpty: require('@/assets/client-image-icons/client-activity-empty.png')")

@@ -99,6 +99,15 @@ function makeSequenceClient(results: QueryResult[]) {
       }
       return query
     },
+    rpc(name: string) {
+      if (name === 'get_worker_current_commission_tier') {
+        return Promise.resolve({
+          data: [{ commission_level: 1, commission_rate_bps: 1500 }],
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: null, error: null })
+    },
   }
 }
 

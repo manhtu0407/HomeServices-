@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { evaluateMessageBoundary } from '../../../../../../supabase/functions/mobile-api/_shared/kael/boundary-guard'
-import { checkKaelResponse } from '../../../../../../supabase/functions/mobile-api/_shared/kael/self-check'
-import { gateAutonomyDecision } from '../../../../../../supabase/functions/mobile-api/_shared/kael/autonomy-gate'
+import { evaluateMessageBoundary } from '../../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard'
+import { checkKaelResponse } from '../../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/self-check'
+import { gateAutonomyDecision } from '../../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/autonomy-gate'
 
 type RedteamCase = {
   id: string

@@ -10,7 +10,7 @@ import {
   scanIntakeSafetySignals,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/electrical-intake-policy'
 import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
-import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/boundary-guard'
+import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard'
 import { buildFallbackIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
 import { resolveElectricalIntakeRuntime } from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-runtime'
 import { buildSafetyFirstKaelClarification, mergeBoundarySafetyGuidance, persistentKaelSafetySignals, requiresImmediateKaelSafetyPath, resolveKaelResponseSafetySignals } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-intake-safety'

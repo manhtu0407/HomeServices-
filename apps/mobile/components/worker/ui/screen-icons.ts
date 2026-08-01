@@ -26,10 +26,10 @@ export const WORKER_V5_PROFILE_ICON_VISUAL_BOOST = new Set<WorkerV5IconName>(['d
 export const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
   cleaning: require('@/assets/worker-image-icons/service-cleaning.png') as ImageSourcePropType,
   electrical: require('@/assets/worker-image-icons/service-electrical.png') as ImageSourcePropType,
-  handyman: require('../../customer/v21/assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,
-  hvac: require('../../customer/v21/assets/service-icons/client-service-hvac.png') as ImageSourcePropType,
+  handyman: require('../../customer/ui/assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,
+  hvac: require('../../customer/ui/assets/service-icons/client-service-hvac.png') as ImageSourcePropType,
   plumbing: require('@/assets/worker-image-icons/service-plumbing.png') as ImageSourcePropType,
-  upholstery: require('../../customer/v21/assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
+  upholstery: require('../../customer/ui/assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
 }
 export const workerV5OpportunityServiceIcons: Record<ServiceType, ImageSourcePropType> = {
   ...workerV5ServiceIcons,

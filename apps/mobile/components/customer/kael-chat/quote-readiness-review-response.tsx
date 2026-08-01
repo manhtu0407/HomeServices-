@@ -1,8 +1,8 @@
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { CaseWorkResponse } from '../v21/case-work-response'
-import type { CaseWorkResponseModel } from '../v21/case-work-response-model'
+import { CaseWorkResponse } from './case-work-response'
+import type { CaseWorkResponseModel } from './case-work-response-model'
 import { localizedQuoteReviewReason } from './case-work-localization'
 
 const EMPTY_SAFETY_MESSAGES: string[] = []

@@ -177,7 +177,7 @@ describe('CustomerHomeSurface v2.1', () => {
   })
 
   it('replaces the legacy Kael hero with the onboarding strip', () => {
-    const storytellingSource = readFileSync(resolve(__dirname, '../v21/home-storytelling-card.tsx'), 'utf8')
+    const storytellingSource = readFileSync(resolve(__dirname, '../home/home-storytelling-card.tsx'), 'utf8')
 
     render(<CustomerHomeSurface />)
 
@@ -255,9 +255,9 @@ describe('CustomerHomeSurface v2.1', () => {
 
     const asset = screen.getByLabelText('Chưa có hoạt động dịch vụ')
     const assetStyle = StyleSheet.flatten(asset.props.style)
-    const assetsSource = readFileSync(resolve(__dirname, '../v21/assets.ts'), 'utf8')
+    const assetsSource = readFileSync(resolve(__dirname, '../ui/assets.ts'), 'utf8')
     const homeSurfaceSource = readFileSync(resolve(__dirname, '../v21/surfaces.tsx'), 'utf8')
-    const sharedSurfacesSource = readFileSync(resolve(__dirname, '../v21/shared-surfaces.tsx'), 'utf8')
+    const sharedSurfacesSource = readFileSync(resolve(__dirname, '../ui/shared-surfaces.tsx'), 'utf8')
 
     expect(assetStyle).toMatchObject({ borderWidth: 0 })
     expect(assetStyle.backgroundColor).toBeUndefined()
@@ -269,7 +269,7 @@ describe('CustomerHomeSurface v2.1', () => {
   })
 
   it('uses a transparent nav-only icon for Activity without replacing Activity and History visuals', () => {
-    const assetsSource = readFileSync(resolve(__dirname, '../v21/assets.ts'), 'utf8')
+    const assetsSource = readFileSync(resolve(__dirname, '../ui/assets.ts'), 'utf8')
     const homeSurfaceSource = readFileSync(resolve(__dirname, '../v21/surfaces.tsx'), 'utf8')
 
     expect(assetsSource).toContain("activity: require('@/assets/client-image-icons/client-activity-route.png')")
@@ -279,7 +279,7 @@ describe('CustomerHomeSurface v2.1', () => {
   })
 
   it('uses distinct generated icon assets for each expanded service path', () => {
-    const assetsSource = readFileSync(resolve(__dirname, '../v21/assets.ts'), 'utf8')
+    const assetsSource = readFileSync(resolve(__dirname, '../ui/assets.ts'), 'utf8')
 
     expect(assetsSource).toContain("hvac_basic_maintenance: require('./assets/service-icons/client-service-hvac.png')")
     expect(assetsSource).toContain("upholstery_care: require('./assets/service-icons/client-service-upholstery-care.png')")
@@ -288,9 +288,9 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(assetsSource).not.toContain('upholstery_care: customerV21ServiceAssets.cleaning')
     expect(assetsSource).not.toContain('handyman_minor_installation: customerV21Assets.tools')
 
-    expect(existsSync(resolve(__dirname, '../v21/assets/service-icons/client-service-hvac.png'))).toBe(true)
-    expect(existsSync(resolve(__dirname, '../v21/assets/service-icons/client-service-upholstery-care.png'))).toBe(true)
-    expect(existsSync(resolve(__dirname, '../v21/assets/service-icons/client-service-handyman-installation.png'))).toBe(true)
+    expect(existsSync(resolve(__dirname, '../ui/assets/service-icons/client-service-hvac.png'))).toBe(true)
+    expect(existsSync(resolve(__dirname, '../ui/assets/service-icons/client-service-upholstery-care.png'))).toBe(true)
+    expect(existsSync(resolve(__dirname, '../ui/assets/service-icons/client-service-handyman-installation.png'))).toBe(true)
   })
 
   it('routes a service tile to Services without creating a job', () => {

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react-native'
 import { Text } from 'react-native'
 
 import { getCustomerThemeTokens } from '../customer-theme'
-import { CaseWorkResponse } from '../v21/case-work-response'
+import { CaseWorkResponse } from '../kael-chat/case-work-response'
 
 describe('CaseWorkResponse', () => {
   it('matches the accepted content-first anatomy without card, avatar, or badge chrome', () => {

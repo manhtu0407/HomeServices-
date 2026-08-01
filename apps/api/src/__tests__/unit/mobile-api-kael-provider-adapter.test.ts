@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   providerAdapterFor,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-adapter'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-adapter'
 import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 
 const pricingAt = new Date('2026-07-10T00:00:00.000Z')

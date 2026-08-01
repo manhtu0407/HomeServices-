@@ -1,7 +1,7 @@
 import {
   createCustomerKaelConversationState,
   customerKaelConversationReducer,
-} from '../v21/use-customer-kael-conversation-state'
+} from '../kael-chat/use-customer-kael-conversation-state'
 
 describe('Customer Kael streaming response state', () => {
   it('keeps verified deltas ephemeral and clears them when the chat mode changes', () => {

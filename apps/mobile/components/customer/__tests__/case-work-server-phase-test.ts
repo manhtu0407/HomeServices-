@@ -1,12 +1,12 @@
 import type { LocalDeal, LocalScopeChange } from '@nestscout/shared'
 
-import { screenIdsForStatus } from '../v21/case-stage-display-model'
+import { screenIdsForStatus } from '../kael-chat/case-stage-display-model'
 import {
   canCustomerDecideScopeChange,
   isDealPaymentProtected,
   paymentLedgerConfirmationStep,
   scopeChangeAmountLabel,
-} from '../v21/case-work-display-model'
+} from '../kael-chat/case-work-display-model'
 
 function makeScopeChange(overrides: Partial<LocalScopeChange> = {}): LocalScopeChange {
   return {

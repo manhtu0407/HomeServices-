@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 
 const repoRoot = path.resolve(__dirname, '../../../../..')
 const read = (relativePath: string) => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8')
@@ -36,9 +36,9 @@ describe('Edge fetch guard wiring', () => {
   })
 
   it('bounds Edge AI, batch, push, and vision response reads', () => {
-    expect(read('supabase/functions/mobile-api/_shared/kael/provider-client.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts'))
       .toContain('readResponseTextBounded')
-    expect(read('supabase/functions/mobile-api/_shared/kael/provider-batch.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/kael/kael-providers/provider-batch.ts'))
       .toContain('readResponseBytesBounded')
     expect(read('supabase/functions/mobile-api/_shared/push.ts'))
       .toContain('readResponseBytesBounded')
@@ -71,9 +71,9 @@ describe('Edge fetch guard wiring', () => {
       .toContain('redirect: "error"')
     expect(read('supabase/functions/mobile-api/_shared/push.ts'))
       .toContain('redirect: "error"')
-    expect(read('supabase/functions/mobile-api/_shared/kael/provider-client.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts'))
       .toContain('redirect: "error"')
-    expect(read('supabase/functions/mobile-api/_shared/kael/provider-batch.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/kael/kael-providers/provider-batch.ts'))
       .toContain('redirect: "error"')
     expect(read('supabase/functions/mobile-api/_shared/kael/vision.ts'))
       .toContain('redirect: "error"')

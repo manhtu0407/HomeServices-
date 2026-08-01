@@ -1,4 +1,4 @@
-import { initialAgenticEvidencePayload } from '../v21/customer-kael-evidence-payload'
+import { initialAgenticEvidencePayload } from '../kael-chat/customer-kael-evidence-payload'
 
 describe('Kael evidence privacy', () => {
   it('does not submit a reviewed voice transcript when evidence is skipped', () => {

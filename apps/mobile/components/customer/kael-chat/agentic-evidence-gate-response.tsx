@@ -5,8 +5,8 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { AgenticEvidenceGateView } from '../v21/agentic-evidence-stateful-surfaces'
-import { formatKnownCount } from '../v21/case-stage-display-model'
+import { AgenticEvidenceGateView } from './agentic-evidence-stateful-surfaces'
+import { formatKnownCount } from './case-stage-display-model'
 import { OnDeviceVoiceTranscript } from './on-device-voice-transcript'
 import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 

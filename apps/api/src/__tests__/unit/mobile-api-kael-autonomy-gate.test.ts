@@ -3,7 +3,7 @@ import {
   gateAutonomyDecision,
   replayAutonomyDecisionAudit,
   type KaelAutonomyGateInput,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/autonomy-gate'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/autonomy-gate'
 
 const jobId = 'job-autonomy-1'
 const policyRef = 'RULES.md#rule-7'

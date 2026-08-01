@@ -1,7 +1,7 @@
 import {
   customerVisibleIntakeSummaryText,
   customerVisibleKaelTurnText,
-} from '../v21/kael-chat-turn-display-model'
+} from '../kael-chat/kael-chat-turn-display-model'
 
 describe('customer-visible Kael turn text', () => {
   it('replaces privacy placeholders with localized customer copy', () => {

@@ -1,7 +1,7 @@
 import { render, waitFor } from '@testing-library/react-native'
 import { Text } from 'react-native'
 
-import { useCustomerCaseHydration } from '../v21/use-customer-case-hydration'
+import { useCustomerCaseHydration } from '../kael-chat/use-customer-case-hydration'
 
 function CaseHydrationProbe({
   accessToken,

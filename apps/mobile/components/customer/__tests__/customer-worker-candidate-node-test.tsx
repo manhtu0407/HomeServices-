@@ -2,7 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import type { ComponentProps } from 'react'
 
 import { getCustomerThemeTokens } from '../customer-theme'
-import { CustomerWorkerCandidateNode } from '../v21/customer-worker-candidate-node'
+import { CustomerWorkerCandidateNode } from '../kael-chat/customer-worker-candidate-node'
 
 const mockListMyServiceHistory = jest.fn()
 

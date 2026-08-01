@@ -2,7 +2,7 @@ import {
   failureKindForCode,
   type CircuitFailure,
   type FailureKind,
-} from "./circuit-breaker.ts";
+} from "./kael-providers/circuit-breaker.ts";
 import type {
   AIProvider,
   EdgeGuardClient,

@@ -27,8 +27,8 @@ jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(),
 }))
 
-import { useBookingAddressLookup } from '../customer/v21/use-booking-address-lookup'
-import { useCustomerCaseHydration } from '../customer/v21/use-customer-case-hydration'
+import { useBookingAddressLookup } from '../customer/booking/use-booking-address-lookup'
+import { useCustomerCaseHydration } from '../customer/kael-chat/use-customer-case-hydration'
 import { useWorkerV5KaelOrbChat } from '../worker/chat/use-worker-kael-orb-chat'
 import { useWorkerV5ScopeChangeDraft } from '../worker/jobs/use-worker-scope-change-draft'
 

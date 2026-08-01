@@ -30,7 +30,7 @@ const APPROVED_STAGING_PROJECT_REF = 'xyylanuyflrjzbjzhqfl'
 const SOURCE_FILES = [
   'apps/api/scripts/kael-playbook-eval.mjs',
   'apps/api/scripts/lib/kael-playbook-eval-core.mjs',
-  'supabase/functions/mobile-api/_shared/kael/boundary-guard.ts',
+  'supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts',
   'supabase/functions/mobile-api/_shared/kael/electrical-intake-policy.ts',
   'supabase/functions/mobile-api/_shared/kael/index.ts',
   'supabase/functions/mobile-api/_shared/kael/intake-runtime.ts',

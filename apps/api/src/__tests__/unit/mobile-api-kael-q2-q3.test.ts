@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
-import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
-import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
+import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config'
 import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
 import {
   isKaelKnowledgeRetrievalEnabled,

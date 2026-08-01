@@ -54,7 +54,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
 
   it('hooks Edge api_logs into optimization metrics without enabling optimizations', () => {
     const services = readEdgeServiceLayer()
-    const costTracking = read('supabase/functions/mobile-api/_shared/kael/cost-tracking.ts')
+    const costTracking = read('supabase/functions/mobile-api/_shared/kael/kael-usage/cost-tracking.ts')
 
     expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('buildKaelOptimizationMetricRows(rows)')
     expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('client.from("kael_optimization_metrics").insert(metricRows)')

@@ -1,4 +1,4 @@
-import type { KaelSpendGate } from '../../../../../supabase/functions/mobile-api/_shared/kael/spend-gate'
+import type { KaelSpendGate } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/spend-gate'
 
 export function allowKaelSpendForTest(actorId = 'test-actor'): KaelSpendGate {
   let reservationId = 0

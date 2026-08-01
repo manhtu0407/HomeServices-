@@ -152,7 +152,7 @@ jest.mock('../customer-theme', () => {
 
 import { CustomerDockOverlay, CustomerProfileSurface } from '../customer-surfaces'
 import { getCustomerThemeTokens } from '../customer-theme'
-import { customerV21Assets } from '../v21/assets'
+import { customerV21Assets } from '../ui/assets'
 
 function collectRenderedTestIds(root: unknown) {
   const testIds: string[] = []

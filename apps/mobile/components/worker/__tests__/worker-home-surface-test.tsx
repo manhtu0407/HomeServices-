@@ -523,7 +523,24 @@ function buildWorkflow({
 }
 
 beforeEach(async () => {
-  jest.useRealTimers()
+  // Fake only the clock, never the timer APIs: the earnings dashboard windows
+  // by calendar month, so a real "yesterday" drops out of range on the 1st.
+  jest.useFakeTimers({
+    now: new Date('2026-08-15T03:00:00.000Z'),
+    doNotFake: [
+      'cancelAnimationFrame',
+      'clearImmediate',
+      'clearInterval',
+      'clearTimeout',
+      'nextTick',
+      'performance',
+      'queueMicrotask',
+      'requestAnimationFrame',
+      'setImmediate',
+      'setInterval',
+      'setTimeout',
+    ],
+  })
   await AsyncStorage.clear()
   mockFocusCallback = null
   mockAuthRole = 'worker'

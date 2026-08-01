@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { EdgeKaelIntakeConfirmation } from "../../../_shared/contracts.ts";
-import { evaluateMessageBoundary } from "./boundary-guard.ts";
+import { evaluateMessageBoundary } from "./kael-guardrails/boundary-guard.ts";
 import {
   getKaelPerformanceProfile,
   KAEL_CASE_WORK_SERVICE_TYPES,

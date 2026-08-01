@@ -1,4 +1,4 @@
-import { localizeKaelRequestFailure } from '../v21/customer-kael-chat-helpers'
+import { localizeKaelRequestFailure } from '../kael-chat/customer-kael-chat-helpers'
 
 describe('localizeKaelRequestFailure', () => {
   it('does not claim that the case moved forward for an invalid confirmation state', () => {

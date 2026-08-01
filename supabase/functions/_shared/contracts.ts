@@ -5,7 +5,7 @@
 // the shared mobile-wiring parity test fails CI if the two drift. Edit both together.
 import type { ComplexityLevel, JobStatus, ServiceType } from "./domain.ts";
 
-export type EdgeKaelEstimateAnalysisReceipt = {
+export type KaelEstimateAnalysisReceipt = {
   schema_version: "analysis_receipt.v1";
   evidence: {
     photo_count: number;
@@ -35,7 +35,7 @@ export type KaelEstimate = {
   complexity_reasoning?: string | null;
   needs_inspection_reason?: string | null;
   market_signals?: string | null;
-  analysis_receipt?: EdgeKaelEstimateAnalysisReceipt | null;
+  analysis_receipt?: KaelEstimateAnalysisReceipt | null;
 };
 
 export type CreateJobResponse = {
