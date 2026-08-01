@@ -2,6 +2,20 @@
 
 > The single entry point (the "axle") for design work. Both Claude Code (`.claude/skills`) and Codex (`.agents/skills`) route through here: classify the design task → pick the skill → run the preflight + gates. This file is **thin** — it points to the nan (spokes) and the skills; it does not duplicate their content. `critical.md` is highest authority; `AGENTS.md` owns the glass / motion / performance / language / scope rules; `design.md` §5 owns the design preflight.
 
+## 0. Upstream-aware activation
+
+Every UI, frontend, visual, motion, layout, token, component, prototype, or design-system task enters through `kael-design-preflight` before editing. The preflight activates the two starting adapters only when their evidence is useful:
+
+```text
+kael-design-preflight
+  -> kael-design-direction (Taste-derived context and anti-slop)
+  -> kael-design-intelligence (pinned UI UX Pro Max search, when needed)
+  -> this Design Wheel class and existing spoke skills
+  -> kael-design-review / kael-frontend-test
+```
+
+The adapters are inputs to the wheel, not a second wheel. Their results are non-normative and cannot override `critical.md`, `RULES.md`, `STRUCTURES.md`, `AGENTS.md`, platform contracts, or the existing canonical design references. The machine-readable and human-readable preflight contract lives in `design/preflight.md`.
+
 ## 1. Classify the design task
 
 Name exactly one class. It selects the skill(s) and the depth of the gates.
@@ -37,7 +51,22 @@ All eleven skills are live.
 | visual-bug | `kael-visual-qa` + `kael-diagnose` |
 | polish | `kael-design-review` + `kael-motion` / `kael-material-direction` |
 
+### Upstream starting point by class
+
+| Class | Direction adapter | Intelligence adapter |
+|---|---|---|
+| flow / screen / component | infer the surface, audience, workflow, and redesign mode | `product` + `ux` + `react-native` candidates |
+| design-system | preserve the existing NestScout identity and token ownership | `product` + `style` + `color` + `typography` + `react-native` candidates |
+| material / motion | identify the product moment and reject decorative defaults | `ux` + `react-native` candidates when evidence helps |
+| accessibility / adaptive-layout | identify language, audience, posture, and state constraints | `ux` + `react-native` candidates |
+| visual-bug | keep the current direction; do not invent a redesign | `source-mode=none` by default |
+| polish / research | preserve the surface unless the brief says otherwise | the smallest relevant domains |
+
+The adapter output must name the existing wheel class and handoff skills. It must never stop at a style recommendation.
+
 Every design task ends through `kael-frontend-test` before "done" (the frontend-testing wrapper; canonical `protocols/frontend-test.md`). Screen / component construction also uses the `kael-ui-rn-execution` **protocol** (`protocols/ui.md` §16) — a protocol, not a skill.
+
+Before editing, run `kael-design-preflight` and record its Design Read, source mode, existing wheel class, handoff skills, and acceptance gate. It is the activation layer for this router; it does not replace any existing spoke.
 
 ## 3. Preflight + hard gates
 
@@ -69,4 +98,7 @@ A design change is not done until it is checked across these (evidence = command
 - Motion vocabulary + timing / spring: `design/motion.md`
 - Glass / motion / performance / language / scope rules: `AGENTS.md`
 - Design identity, preflight, scoring rubric, forbidden defaults: `design.md`
+- Upstream-aware activation and handoff contract: `design/preflight.md`
+- UI UX Pro Max adapter boundary: `design/intelligence.md`
+- Taste-derived direction adapter boundary: `design/direction.md`
 - Source review cadence, corpus manifest, incident log, rule retirement: `design/governance-cadence.md`

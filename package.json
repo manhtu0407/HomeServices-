@@ -33,6 +33,10 @@
     "type-check:shared": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-package-script.ps1 @nestscout/shared type-check",
     "skills:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/sync-skills.mjs",
     "skills:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/check-skills-sync.mjs",
+    "design:intelligence": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-intelligence.mjs",
+    "design:direction": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-direction.mjs",
+    "design:preflight": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-preflight.mjs",
+    "design:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/check-design-adapters.mjs",
     "lint:structure": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/lint-structure.mjs",
     "lint:comments": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/check-comment-discipline.mjs"
   },

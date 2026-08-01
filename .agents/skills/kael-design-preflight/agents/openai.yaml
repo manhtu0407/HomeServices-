@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Design Preflight"
+  short_description: "Activate the NestScout Design Wheel"
+  default_prompt: "Use $kael-design-preflight before editing any NestScout UI or design-system surface."

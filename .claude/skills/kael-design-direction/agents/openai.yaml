@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Design Direction"
+  short_description: "Infer direction before the Design Wheel"
+  default_prompt: "Use $kael-design-direction to produce a Design Read and adapt upstream taste principles for NestScout."

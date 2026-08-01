@@ -1,0 +1,45 @@
+{
+  "purpose": "Starting corpus for the NestScout Design Wheel adapters.",
+  "sources": {
+    "ui-ux-pro-max": {
+      "repository": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "14ddef5c05e52d7c253b8f0129de7bcd1045ae5b",
+      "license": "MIT",
+      "role": "Deterministic reference search for product, style, color, typography, UX, UI reasoning, and React Native guidance.",
+      "nonNormative": true,
+      "files": [
+        "ui-ux-pro-max/products.csv",
+        "ui-ux-pro-max/styles.csv",
+        "ui-ux-pro-max/colors.csv",
+        "ui-ux-pro-max/typography.csv",
+        "ui-ux-pro-max/ux-guidelines.csv",
+        "ui-ux-pro-max/ui-reasoning.csv",
+        "ui-ux-pro-max/react-native.csv"
+      ],
+      "sha256": {
+        "ui-ux-pro-max/colors.csv": "d628b178803aee95c2bb8f3cf64d38ea5418948a072ef4feeedf4a69226912e8",
+        "ui-ux-pro-max/LICENSE": "1b8bd455510cc1f6f9bd510ffe2ec372d1c51fe0e082ddfee8b41825fb7aa055",
+        "ui-ux-pro-max/products.csv": "83579b1fa5078e9607d6799195347506ffdd80ee0cb169693517b376459bc7f1",
+        "ui-ux-pro-max/react-native.csv": "a08ca77fcf6b6d9531982dce465366296013bfcf12d2938ac72ad57cf0c4f085",
+        "ui-ux-pro-max/styles.csv": "baedf4b9681eb7b5a404179e3cd5eb1e8e40b3e2807db5154b72e1431c644b11",
+        "ui-ux-pro-max/typography.csv": "9577e2243d032e226b36fe5037b33299872244f6905b296e16b597a3ed9853c8",
+        "ui-ux-pro-max/ui-reasoning.csv": "41976082ecae1100da937c949215dc6694393e03f3c2a7444dd92a9edb43cb11",
+        "ui-ux-pro-max/ux-guidelines.csv": "1870ee048f2a2bdd60709f8f7adf7f3b6dcad560bc005c8b2915a8ac8639820d"
+      }
+    },
+    "taste-skill": {
+      "repository": "https://github.com/Leonxlnx/taste-skill",
+      "commit": "e988add20dab0fa97d7a76781c48961c8184288e",
+      "license": "MIT",
+      "role": "Context inference, Design Read, redesign audit, anti-slop, and state-completeness starting principles.",
+      "nonNormative": true,
+      "sourcePath": "governance/design/direction.md",
+      "upstreamExtract": "taste-skill/SKILL.md",
+      "sha256": {
+        "taste-skill/SKILL.md": "2e064e92aca020b2e0bad69326fe7ea55d59005ed53d1a8cbce1bd135d44b8b3"
+      }
+    }
+  },
+  "authority": "NestScout governance, product rules, React Native/Expo platform contracts, and the existing Design Wheel outrank this corpus.",
+  "lastVerified": "2026-08-01"
+}
