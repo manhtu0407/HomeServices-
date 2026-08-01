@@ -12,7 +12,7 @@ export type EntryIconName =
   | 'spark'
   | 'user'
 
-export type ProviderBrand = 'google'
+type ProviderBrand = 'google'
 
 export function EntryIcon({ color = '#088779', name, size = 18 }: { color?: string; name: EntryIconName; size?: number }) {
   const common = { fill: 'none', stroke: color, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 1.9 }

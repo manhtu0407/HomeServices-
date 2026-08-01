@@ -1,34 +1,5 @@
 import { StyleSheet } from 'react-native'
 
-import type { CustomerThemeTokens } from '../customer-theme'
-
-type CustomerV21TimelineState = 'done' | 'active' | 'pending'
-
-export function customerV21TimelineDotSurface(state: CustomerV21TimelineState, tokens: CustomerThemeTokens) {
-  return {
-    backgroundColor: state === 'pending' ? tokens.raised : tokens.primary,
-    borderColor: state === 'pending' ? tokens.border : 'rgba(255,255,255,0.92)',
-    shadowColor: state === 'active' ? '#08AF9C' : 'transparent',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: state === 'active' ? 0.18 : 0,
-    shadowRadius: state === 'active' ? 12 : 0,
-  }
-}
-
-export function customerV21CaseScopeStepRowSurface(state: CustomerV21TimelineState) {
-  return {
-    backgroundColor: 'rgba(247,255,251,0.76)',
-    borderColor: state === 'active' ? 'rgba(13,174,154,0.45)' : 'rgba(216,235,232,0.80)',
-  }
-}
-
-export function customerV21CaseScopeStateDotSurface(state: CustomerV21TimelineState) {
-  return {
-    backgroundColor: state === 'done' ? '#E6FBF3' : state === 'active' ? '#08AF9C' : '#EDF3F2',
-    borderColor: state === 'active' ? '#08AF9C' : 'rgba(216,235,232,0.90)',
-  }
-}
-
 export const customerV21HistoryStyles = StyleSheet.create({
   caseOverviewInfoIcon: {
     minHeight: 64,

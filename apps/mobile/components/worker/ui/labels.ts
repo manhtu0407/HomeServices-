@@ -27,22 +27,6 @@ type WorkerV5ProfileForLabels = {
   verification_status: string | null
 } | null | undefined
 
-export function workerV5ShiftProfileCoverageLabel(profile: WorkerV5ProfileForLabels, language: AppLanguage) {
-  if (!profile) return textByLanguage(language, 'Chưa có hồ sơ thợ', 'No worker profile')
-  const serviceCount = (
-    profile.active_service_types
-    ?? profile.selected_service_types
-    ?? profile.service_types
-  ).length
-  const districtCount = profile.districts.length
-  if (serviceCount > 0 && districtCount > 0) {
-    return textByLanguage(language, `${serviceCount} dịch vụ · ${districtCount} khu vực`, `${serviceCount} services · ${districtCount} areas`)
-  }
-  if (serviceCount > 0) return textByLanguage(language, `${serviceCount} dịch vụ đang nhận`, `${serviceCount} active services`)
-  if (districtCount > 0) return textByLanguage(language, `${districtCount} khu vực phục vụ`, `${districtCount} service areas`)
-  return textByLanguage(language, 'Chưa chọn dịch vụ hoặc khu vực', 'No selected services or areas')
-}
-
 export function localizedWorkerBriefLines(lines: readonly string[] | null | undefined, language: AppLanguage) {
   const normalized = (lines ?? []).flatMap((line) => {
     const trimmed = line.trim()
@@ -60,18 +44,6 @@ export function workerV5HomeDisplayName(profile: WorkerV5ProfileForLabels, langu
   const name = profile?.legal_name?.trim().replace(/\s+/g, ' ')
   if (name) return name
   return textByLanguage(language, 'Anh thợ', 'Worker')
-}
-
-export function workerV5ChatGreetingName(profile: WorkerV5ProfileForLabels, language: AppLanguage) {
-  const name = profile?.legal_name?.trim().replace(/\s+/g, ' ')
-  if (name) return name
-  return textByLanguage(language, 'bạn', 'there')
-}
-
-export function workerV5Initials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (!words.length) return '?'
-  return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join('')
 }
 
 export function workerV5TimeChoiceLabel(value: string | null | undefined, language: AppLanguage, scheduledAt?: string | null) {
@@ -105,21 +77,6 @@ export function getWorkerV5ChatJobId(deal: LocalDeal | null) {
 export function routeDestinationLabel(deal: LocalDeal, language: AppLanguage) {
   if (canShowWorkerAddress(deal)) return deal.draft.addressLabel || deal.draft.districtLabel || textByLanguage(language, 'Chưa có địa chỉ', 'No address')
   return deal.broadcast?.generalArea || deal.draft.districtLabel || textByLanguage(language, 'Địa chỉ đang ẩn', 'Address hidden')
-}
-
-export function buildKnownCaseEvents(deal: LocalDeal | null, language: AppLanguage) {
-  if (!deal) return [textByLanguage(language, 'Chưa có dòng sự kiện việc', 'No work timeline yet')]
-  const events = [
-    textByLanguage(language, 'Việc được tạo trong ứng dụng', 'Work created in the app'),
-  ]
-  if (canShowWorkerAddress(deal)) events.push(textByLanguage(language, 'Thợ đã nhận việc', 'Worker accepted the work'))
-  if (['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status)) {
-    events.push(textByLanguage(language, 'Thợ đã đến nơi hoặc bắt đầu kiểm tra', 'Worker checked in or started inspection'))
-  }
-  if (deal.scopeChange) events.push(textByLanguage(language, 'Có yêu cầu đổi phạm vi', 'Scope-change request exists'))
-  if (deal.completionNotes || deal.completionPhotoUrls?.length) events.push(textByLanguage(language, 'Có bằng chứng hoàn tất', 'Completion evidence exists'))
-  if (['completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status)) events.push(textByLanguage(language, 'Hồ sơ hoàn tất đã gửi', 'Completion artifact submitted'))
-  return events
 }
 
 export function workerStatusStage(status: LocalDeal['status'] | null | undefined) {
@@ -216,24 +173,6 @@ export function workerV5ActualWorkDurationLabel(deal: LocalDeal | null, language
   return formatWorkDurationMinutes(Math.round((end - start) / 60000), language)
 }
 
-export function paymentStatusLabel(status: string, language: AppLanguage) {
-  const labels: Record<AppLanguage, Record<string, string>> = {
-    en: {
-      paid: 'Paid',
-      pending: 'Pending',
-      received: 'Received',
-      released: 'Released',
-    },
-    vi: {
-      paid: 'Đã thanh toán',
-      pending: 'Đang chờ',
-      received: 'Đã nhận',
-      released: 'Đã giải ngân',
-    },
-  }
-  return labels[language][status] ?? textByLanguage(language, 'Đã ghi nhận', status)
-}
-
 export function workerVerificationLabel(status: string | null | undefined, language: AppLanguage) {
   if (!status) return textByLanguage(language, 'Chưa có trạng thái', 'No status')
   const labels: Record<AppLanguage, Record<string, string>> = {
@@ -273,12 +212,6 @@ export function workerDocumentSummary(profile: WorkerV5ProfileForLabels, languag
   return textByLanguage(language, 'Chưa có giấy tờ', 'No documents yet')
 }
 
-export function documentBooleanLabel(value: boolean | null | undefined, language: AppLanguage) {
-  if (value === true) return textByLanguage(language, 'Đã có', 'Provided')
-  if (value === false) return textByLanguage(language, 'Còn thiếu', 'Missing')
-  return textByLanguage(language, 'Chưa có hồ sơ', 'No profile')
-}
-
 export function formatWorkerDistrict(value: string, language: AppLanguage) {
   const trimmed = value.trim()
   const normalized = formatLooseLabel(trimmed).toLowerCase()
@@ -316,7 +249,7 @@ export function normalizeWorkerV5DistrictSelectionList(values: string[]) {
   return districts
 }
 
-export function normalizeWorkerV5DistrictSelection(value: string) {
+function normalizeWorkerV5DistrictSelection(value: string) {
   const trimmed = value.trim()
   if (!trimmed) return null
   const canonical = normalizeDistrict(trimmed)

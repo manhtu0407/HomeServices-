@@ -369,7 +369,7 @@ export function WorkerV5HomeBody({
   )
 }
 
-export function buildDealSummary(deal: LocalDeal | null, language: AppLanguage) {
+function buildDealSummary(deal: LocalDeal | null, language: AppLanguage) {
   if (!deal) return textByLanguage(language, 'Chưa có việc', 'No work')
   const service = localizedServiceLabel(deal.draft.serviceType, language)
   const area = deal.draft.districtLabel || textByLanguage(language, 'chưa rõ khu vực', 'unknown area')

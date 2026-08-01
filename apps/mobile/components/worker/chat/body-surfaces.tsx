@@ -5,17 +5,13 @@ import type { LocalDeal, ServiceType } from '@nestscout/shared'
 import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 
 import { textByLanguage } from '../ui/format'
-import {
-  WorkerV5KaelOrbBubble,
-  WorkerV5KaelOrbMediaStrip,
-  WorkerV5KaelOrbOpportunityResults,
-} from './orb-surfaces'
+import { WorkerV5KaelOrbBubble, WorkerV5KaelOrbOpportunityResults } from './orb-surfaces'
 import { WorkerV5KaelEmptyHero } from './empty-hero'
 import { styles } from './body-styles'
 
 type WorkerV5ServiceIconMap = Partial<Record<ServiceType, ImageSourcePropType>>
 
-export type WorkerV5KaelOrbLiveTurn = {
+type WorkerV5KaelOrbLiveTurn = {
   id: string
   role: 'kael' | 'worker'
   text: string
@@ -181,51 +177,7 @@ export function WorkerV5KaelOrbBody({
   )
 }
 
-export function WorkerV5KaelOrbNormalThread({
-  deal,
-  language,
-  reduceTransparency,
-}: {
-  deal: LocalDeal | null
-  language: AppLanguage
-  reduceTransparency: boolean
-}) {
-  const service = deal?.draft.serviceType ? localizedServiceLabel(deal.draft.serviceType, language) : null
-  const area = deal?.draft.districtLabel || deal?.broadcast?.generalArea || null
-  const hasMedia = (deal?.draft.mediaCount ?? 0) > 0
-  const customerKaelBody = deal
-    ? textByLanguage(
-        language,
-        `Kael đang đọc dữ liệu thật${service ? ` của ${service}` : ''}${area ? ` tại ${area}` : ''}. Chat thường chỉ tư vấn và không ghi quyết định vào công việc.`,
-        `Kael is reading real data${service ? ` for ${service}` : ''}${area ? ` in ${area}` : ''}. Normal chat is advisory only and does not write case decisions.`,
-      )
-    : textByLanguage(
-        language,
-        'Chào bạn, mình là Kael. Bạn muốn hỏi gì hôm nay?',
-        'Hi, I am Kael. What would you like to ask today?',
-      )
-  const customerWorkerPrompt = textByLanguage(
-    language,
-    `Kael, hỗ trợ tôi chuẩn bị${service ? ` ${service}` : ''}${area ? ` tại ${area}` : ''}.`,
-    `Kael, help me prepare${service ? ` ${service}` : ''}${area ? ` in ${area}` : ''}.`,
-  )
-
-  return (
-    <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-normal-thread">
-      {deal ? (
-        <WorkerV5KaelOrbBubble
-          align="right"
-          body={customerWorkerPrompt}
-          speakerLabel={textByLanguage(language, 'Bạn', 'You')}
-        />
-      ) : null}
-      <WorkerV5KaelOrbBubble body={customerKaelBody} speakerLabel="Kael" strongFirstLine={Boolean(deal)} />
-      {hasMedia ? <WorkerV5KaelOrbMediaStrip count={Math.min(2, deal?.draft.mediaCount ?? 0)} reduceTransparency={reduceTransparency} /> : null}
-    </View>
-  )
-}
-
-export function WorkerV5KaelOrbIntakeThread({
+function WorkerV5KaelOrbIntakeThread({
   activeJobContext = null,
   deal,
   fallbackJobIcon,

@@ -7,7 +7,7 @@ import { customerV21ServiceCopy } from '../ui/copy'
 
 export const bookingTimeSlots = ['08:00', '10:00', '14:00', '16:00'] as const
 const bookingScheduleWindowMinutes = 120
-export type BookingScheduleWindow = {
+type BookingScheduleWindow = {
   date: string
   start: string
   end: string

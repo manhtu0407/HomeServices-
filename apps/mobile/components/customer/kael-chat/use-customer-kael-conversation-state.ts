@@ -13,12 +13,12 @@ export type CustomerAssistantLocalTurn = {
   text_content: string
 }
 
-export type CustomerKaelStreamingReply = {
+type CustomerKaelStreamingReply = {
   text: string
   turnId: string
 }
 
-export type CustomerKaelConversationState = {
+type CustomerKaelConversationState = {
   assistantTurns: CustomerAssistantLocalTurn[]
   chat: KaelChatResponse | null
   composerMediaDrafts: LocalMediaUploadDraft[]
@@ -32,7 +32,7 @@ export type CustomerKaelConversationState = {
   turns: KaelChatTurn[]
 }
 
-export type CustomerKaelConversationAction =
+type CustomerKaelConversationAction =
   | { type: 'set-assistant-turns'; value: SetStateAction<CustomerAssistantLocalTurn[]> }
   | { type: 'set-chat'; value: SetStateAction<KaelChatResponse | null> }
   | { type: 'set-composer-media-drafts'; value: SetStateAction<LocalMediaUploadDraft[]> }

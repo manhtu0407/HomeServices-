@@ -5,38 +5,11 @@ import Svg, { Path } from 'react-native-svg'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { customerV21Assets } from '../ui/assets'
 import { customerProfileLegalCopy, type CustomerProfileLegalSection } from './profile-legal-content'
 import { customerV21ProfileLegalStyles as styles } from './profile-legal-styles'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
-import { ProfileAuraCard, ProfileFormulaMintSurface, SettingsActionRow } from './profile-utility-surfaces'
+import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-surfaces'
 import { SectionActionHeader } from '../ui/shared-surfaces'
-
-export function ProfileSettingsLegalRow({
-  language,
-  onPress,
-  tokens,
-}: {
-  language: AppLanguage
-  onPress: () => void
-  tokens: CustomerThemeTokens
-}) {
-  return (
-    <SettingsActionRow
-      body={language === 'vi' ? 'Hiểu quyền, trách nhiệm và cách thông tin của bạn được bảo vệ.' : 'Understand your rights, responsibilities, and how your information is protected.'}
-      details={[
-        { glyph: 'document', label: language === 'vi' ? 'Điều khoản sử dụng' : 'Terms of use' },
-        { glyph: 'shield', label: language === 'vi' ? 'Quyền riêng tư' : 'Privacy' },
-      ]}
-      image={customerV21Assets.privacy}
-      onPress={onPress}
-      status={language === 'vi' ? 'Mở' : 'Open'}
-      testID="customer-v21-profile-settings-legal"
-      title={language === 'vi' ? 'Điều khoản & Chính sách' : 'Terms & Policies'}
-      tokens={tokens}
-    />
-  )
-}
 
 export function ProfileLegalView({
   language,

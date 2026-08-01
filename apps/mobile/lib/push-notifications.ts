@@ -29,12 +29,12 @@ type ExpoNotificationsModule = {
   setNotificationChannelAsync?: (channelId: string, channel: { importance?: number; name: string }) => Promise<unknown>
 }
 
-export type PushSetupResult =
+type PushSetupResult =
   | { status: 'registered'; token: string }
   | { status: 'denied' | 'unavailable' | 'unsupported' }
   | { status: 'error'; message: string }
 
-export type PushUnregisterResult =
+type PushUnregisterResult =
   | { status: 'unregistered' | 'not_registered' }
   | { status: 'error'; message: string }
 

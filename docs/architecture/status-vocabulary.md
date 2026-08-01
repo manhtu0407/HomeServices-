@@ -59,9 +59,15 @@ not mutate backend state.
 Backend status `reviewed` maps to workflow phase `done`; do not introduce a
 separate user-visible `reviewed` phase.
 
-Customer/worker mobile surfaces should read this view model through
-`apps/mobile/lib/use-service-workflow.ts` instead of re-deciding progressive
+Customer/worker mobile surfaces should read this view model from
+`packages/shared/src/workflow/**` instead of re-deciding progressive
 workflow visibility from ad hoc data existence checks.
+
+Open gap: no mobile surface currently consumes it. The `use-service-workflow.ts`
+adapter that used to be named here had zero call sites and was deleted as dead
+code; surfaces derive stage locally instead (for example `stepForStatus` in
+`components/customer/kael-chat/case-stage-display-model.ts`). Closing this gap is
+a separate decision, not a cleanup step.
 
 Edge transition ownership lives in `workflow-orchestrator.ts`; `ai_estimate_ready`
 and `ai_explanation_ready` are AI artifact events, while `kael_started_matching`

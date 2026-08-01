@@ -84,7 +84,7 @@ Worker UI must preserve address privacy before accept, avoid fake earnings, and 
 | Concern | Owner | Do Not Move To |
 |---|---|---|
 | Local deal status and selectors | `packages/shared/src/mobile-workflow.ts` | individual UI components |
-| Workflow phases, artifact lifecycle, action gates, and UI visibility contract | `packages/shared/src/workflow/**`, consumed by `apps/mobile/lib/use-service-workflow.ts` | per-screen data-existence checks or AI output payloads |
+| Workflow phases, artifact lifecycle, action gates, and UI visibility contract | `packages/shared/src/workflow/**` | per-screen data-existence checks or AI output payloads |
 | Service scope and problem chips | `packages/shared/src/constants.ts` | hardcoded route/surface arrays unless derived |
 | Input schemas | `packages/shared/src/validation.ts` | UI-only validation that bypasses shared schemas |
 | API response types | `apps/mobile/lib/api-types.ts` and shared exported contracts | ad hoc inline `any` shapes in surfaces |
@@ -131,8 +131,8 @@ The Edge `supabase/functions/mobile-api/_shared/kael/**` is the single **canonic
 
 | Concern | Owner | Notes |
 |---|---|---|
-| Shared dock/tab motion | `apps/mobile/components/ui/floating-glass-tab-bar.tsx` | must preserve tab-safe navigation; never use `push(item.path)` for tab switching |
-| Glass material fallback | `apps/mobile/components/ui/glass-surface.tsx`, `glass-card.tsx`, `glass-modal-sheet.tsx`, `glass-pressable.tsx` | must handle Reduce Transparency |
+| Shared dock/tab motion | `apps/mobile/components/customer/dock/**`, `apps/mobile/components/worker/dock/**` | must preserve tab-safe navigation; never use `push(item.path)` for tab switching |
+| Glass material fallback | `apps/mobile/components/ui/glass-surface.tsx` | must handle Reduce Transparency |
 | Motion accessibility | `apps/mobile/components/ui/reduce-motion-aware-animation.ts`, `accessibility-motion.ts`, `motion-tokens.ts` | must handle Reduce Motion |
 | Theme tokens | `apps/mobile/components/ui/tokens.ts`, customer/worker local token helpers | no one-note palette drift; keep VI/EN copy coherent |
 | Customer visual surfaces | `apps/mobile/components/customer/customer-surfaces.tsx` | avoid business writes outside provider actions |
@@ -145,7 +145,7 @@ The Edge `supabase/functions/mobile-api/_shared/kael/**` is the single **canonic
 | Job media upload | `apps/mobile/lib/media-upload.ts`, `uploadJobMediaDrafts` | `POST /jobs/:id/media`, private Supabase Storage | `validation.test.ts`, `mobile-wiring.test.ts` |
 | Worker verification media | `media-upload.ts`, `uploadWorkerVerificationDrafts` | worker register route and storage policy | `docs/ops/worker-onboarding.md` |
 | Push registration | `apps/mobile/lib/push-notifications.ts`, `notificationService.registerDeviceToken` | `POST /notifications/device-token`, Edge push helper | `docs/foundation/expo-push-spike.md` |
-| Address autocomplete and worker directions | `address-autocomplete.tsx`, `placesService.autocomplete`, worker map surfaces | `POST /places/autocomplete`, Edge-only Maps keys; worker UI may open public Maps directions only with the accepted/released address | `docs/foundation/geo-data-spike.md`, staging verification doc, `mobile-wiring.test.ts` |
+| Address autocomplete and worker directions | `customer/booking/use-booking-address-lookup.ts`, `placesService.autocomplete`, worker map surfaces | `POST /places/autocomplete`, Edge-only Maps keys; worker UI may open public Maps directions only with the accepted/released address | `docs/foundation/geo-data-spike.md`, staging verification doc, `mobile-wiring.test.ts` |
 
 ## Tests And Static Gates
 
@@ -262,11 +262,11 @@ Entry point is unchanged: `customer-surfaces.tsx` (10 lines) re-exports the six 
 | `customer/booking/` | 9 · 2,411 | Basic Intake entry: booking entry stateful surfaces, booking surfaces/styles, intake display model, media surfaces, performance intake surfaces, and the address-lookup / schedule-now / performance-intake hooks |
 | `customer/history/` | 11 · 4,873 | `CustomerHistorySurface` chain: active/case/fulfillment/stage history surfaces + styles, and the service-history rail / filter rail / surface / styles |
 | `customer/profile/` | 13 · 3,695 | `CustomerProfileSurface` chain: profile display model, stateful + utility + metrics surfaces, journey/metrics/settings/utility styles, ranking mark, and payment-method settings (`profile-payment-*`, `payment-bank-display-model.ts`) |
-| `customer/kael-chat/` | 73 · 12,559 | Case Work chat home. Merges the 13 pre-existing modules (response cards, on-device voice transcript, saved workers, pending intake, case-work localization, media draft tray) with 60 moved from `v21/`: `agentic-*`, `case-*` display/response models, `chat-*` surfaces + styles, `customer-audio.*`, `customer-kael-*` (content/helpers/routing/presentation/state-scope/catalog), `kael-*` (composer, header, empty hero, process lines, session menu, liquid pressable), `use-customer-kael-*` hooks, plus the payment-confirm stage (`payment-stage-stateful-surfaces.tsx`, `sepay-vietqr-payment-display-model.ts`) |
+| `customer/kael-chat/` | 73 · 12,559 | Case Work chat home. Merges the 13 pre-existing modules (response cards, on-device voice transcript, saved workers, pending intake, case-work localization, media draft tray) with 60 moved from `v21/`: `agentic-*`, `case-*` display/response models, `chat-*` surfaces + styles, `customer-kael-*` (content/helpers/routing/presentation/state-scope/catalog), `kael-*` (composer, header, empty hero, process lines, session menu, liquid pressable), `use-customer-kael-*` hooks, plus the payment-confirm stage (`customer-payment-rail-surface.tsx`, `sepay-vietqr-payment-display-model.ts`) |
 
-Ambiguous files were placed by reading real imports, not by name: `payment-surfaces.tsx`/`payment-styles.ts` → `ui/` (imported by both `profile/` and the payment stage), `payment-bank-display-model.ts` → `profile/` (single importer), `sepay-vietqr-payment-display-model.ts` + `payment-stage-stateful-surfaces.tsx` → `kael-chat/`, `kael-liquid-pressable.tsx` → `kael-chat/` (no importer outside it), `use-kael-timeline-headline.ts` → `kael-chat/` (imported by the surface controller, not `history/`).
+Ambiguous files were placed by reading real imports, not by name: `payment-surfaces.tsx`/`payment-styles.ts` → `ui/` (imported by both `profile/` and the payment stage), `payment-bank-display-model.ts` → `profile/` (single importer), `sepay-vietqr-payment-display-model.ts` → `kael-chat/`, `kael-liquid-pressable.tsx` → `kael-chat/` (no importer outside it), `use-kael-timeline-headline.ts` → `kael-chat/` (imported by the surface controller, not `history/`).
 
-`payment-stage-stateful-surfaces.tsx` (`PaymentReviewStageView`, `PaymentProtectedStageView`) currently has **no importer anywhere in `apps/mobile`** — it arrived with PR #135 and is not wired yet. It was placed with the rest of the payment-confirm stage rather than deleted; wiring or removing it is a separate decision.
+The customer payment-confirm stage is owned by `customer-payment-rail-surface.tsx`, rendered through `chat-case-thread-stateful-surfaces.tsx`. The earlier PR #135 draft (`payment-stage-stateful-surfaces.tsx`) was never wired and was deleted once PR #139 shipped the cash/SePay rail that replaced it.
 
 ### One concept = one home (resolves the drift)
 

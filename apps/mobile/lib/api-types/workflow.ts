@@ -108,7 +108,7 @@ export type CustomerServiceHistoryResponse = {
   service_history: CustomerServiceHistoryItem[]
 }
 
-export type PendingDecisionItem = {
+type PendingDecisionItem = {
   kind: 'scope_change'
   scope_change_id: string
   job_id: string
@@ -125,7 +125,7 @@ export type PendingDecisionsResponse = {
   pending_decisions: PendingDecisionItem[]
 }
 
-export type ThreadSummary = {
+type ThreadSummary = {
   job_id: string
   status: string
   service_type: string | null

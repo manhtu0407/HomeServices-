@@ -37,7 +37,7 @@ function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
-export type WorkerV5KaelOrbMode = 'intake' | 'normal'
+type WorkerV5KaelOrbMode = 'intake' | 'normal'
 
 export function WorkerV5KaelOrbScreenSurface({
   deal,
@@ -397,7 +397,7 @@ export function WorkerV5KaelOrbScreenSurface({
   )
 }
 
-export function WorkerV5KaelIntakeReadinessActions({
+function WorkerV5KaelIntakeReadinessActions({
   language,
   navigateToScreen,
   profile,

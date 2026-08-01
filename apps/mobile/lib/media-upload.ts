@@ -524,7 +524,7 @@ async function extractPrivateVideoFrames(
   }
 }
 
-export function videoFrameTimes(durationMillis: number | undefined, limit = 3) {
+function videoFrameTimes(durationMillis: number | undefined, limit = 3) {
   const boundedLimit = Math.max(1, Math.min(3, Math.floor(limit)))
   if (!durationMillis || !Number.isFinite(durationMillis) || durationMillis <= 0) return [0]
   if (boundedLimit === 1 || durationMillis < 1_500) return [Math.max(0, Math.round(durationMillis / 2))]

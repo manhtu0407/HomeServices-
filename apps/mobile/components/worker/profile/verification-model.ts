@@ -5,7 +5,7 @@ import type { WorkerV5IconName } from '../dock/types'
 import { textByLanguage } from '../ui/format'
 import { workerVerificationLabel } from '../ui/labels'
 
-export type WorkerV5VerificationCheck = {
+type WorkerV5VerificationCheck = {
   done: boolean
   icon: WorkerV5IconName
   meta: string

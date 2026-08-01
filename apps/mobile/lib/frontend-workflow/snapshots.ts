@@ -450,17 +450,7 @@ function districtLabelFromValue(value: string | null | undefined) {
   return HCMC_DISTRICTS[value as keyof typeof HCMC_DISTRICTS] ?? value
 }
 
-function formatFullAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
-  return formatStoredJobAddress(address)
-}
-
-export function formatReleasedFullAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
-  const label = formatFullAddress(address)
-  const district = address.district ? districtLabelFromValue(address.district) : ''
-  return hasSpecificWorkerRouteAddress(label, district) ? label : ''
-}
-
-export function formatStoredJobAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
+function formatStoredJobAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
   const district = address.district ? districtLabelFromValue(address.district) : ''
   const baseParts = [address.building, address.floor, address.unit]
     .flatMap((part) => {

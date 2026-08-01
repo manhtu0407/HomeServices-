@@ -1,11 +1,10 @@
 import { Fragment, type ComponentType, type ReactNode } from 'react'
 import { Image } from 'expo-image'
-import { Pressable, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
+import { Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { useAppLanguage } from '@/lib/app-language'
 
 import {
@@ -137,7 +136,7 @@ export function ProfileFormulaMintSurface({
   )
 }
 
-export function ProfileInsightRow({
+function ProfileInsightRow({
   assetTile: AssetTile,
   details,
   iconStyle,
@@ -471,7 +470,7 @@ export function ProfileMoneyPanel({
   )
 }
 
-export type CustomerV21SettingsDetailGlyph =
+type CustomerV21SettingsDetailGlyph =
   | 'check'
   | 'document'
   | 'identity'
@@ -481,7 +480,7 @@ export type CustomerV21SettingsDetailGlyph =
   | 'settings'
   | 'shield'
 
-export type CustomerV21SettingsDetail = {
+type CustomerV21SettingsDetail = {
   glyph: CustomerV21SettingsDetailGlyph
   label: string
 }
@@ -577,86 +576,5 @@ function CustomerSettingsDetailRail({
         </View>
       ))}
     </View>
-  )
-}
-
-export function SettingsActionRow({
-  body,
-  details,
-  image,
-  onPress,
-  status,
-  testID,
-  title,
-  tokens,
-}: {
-  body: string
-  details: readonly CustomerV21SettingsDetail[]
-  image: ImageSourcePropType
-  onPress: () => void
-  status: string
-  testID: string
-  title: string
-  tokens: CustomerThemeTokens
-}) {
-  const auraScope = `ProfileSettingsIcon${profileAuraScope(title)}`
-  const { reduceMotion } = useGlassAccessibility()
-
-  return (
-    <Pressable
-      accessibilityHint={body}
-      accessibilityLabel={title}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        settingsStyles.actionRow,
-        { backgroundColor: tokens.raised, borderColor: tokens.border },
-        reduceMotionAwarePressStyle(pressed, reduceMotion),
-      ]}
-      testID={testID}
-    >
-      <View
-        style={[
-          settingsStyles.visualPanel,
-          {
-            backgroundColor: tokens.mode === 'dark' ? tokens.ghost : '#EEFAF7',
-            borderRightColor: tokens.border,
-          },
-        ]}
-        testID={`${testID}-visual-panel`}
-      >
-        <View pointerEvents="none" style={settingsStyles.iconAura}>
-          <ZipMintAura intensity="strong" scope={auraScope} testID={`${testID}-mint-aura`} />
-        </View>
-        <Image contentFit="contain" source={image} style={settingsStyles.actionIcon} testID={`${testID}-icon-image`} />
-        <View
-          pointerEvents="none"
-          style={[settingsStyles.connector, { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' }]}
-          testID={`${testID}-connector`}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            settingsStyles.connectorDot,
-            { backgroundColor: tokens.primary, borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)' },
-          ]}
-          testID={`${testID}-connector-dot`}
-        />
-      </View>
-      <View style={settingsStyles.actionCopy} testID={`${testID}-copy`}>
-        <Text numberOfLines={2} style={[settingsStyles.actionTitle, { color: tokens.text }]} testID={`${testID}-title`}>{title}</Text>
-        <Text numberOfLines={2} style={[settingsStyles.actionBody, { color: tokens.muted }]} testID={`${testID}-body`}>{body}</Text>
-        <CustomerSettingsDetailRail details={details} testID={`${testID}-detail-rail`} tokens={tokens} />
-      </View>
-      <View style={settingsStyles.statusFrame} testID={`${testID}-status-frame`}>
-        <KaelChip
-          label={status}
-          style={settingsStyles.statusChip}
-          testID={`${testID}-status`}
-          textStyle={[styles.profileMintChipText, settingsStyles.statusText]}
-          variant="selected"
-        />
-      </View>
-    </Pressable>
   )
 }

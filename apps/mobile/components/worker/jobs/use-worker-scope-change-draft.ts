@@ -3,7 +3,7 @@ import type { LocalDeal } from '@nestscout/shared'
 import type { JobIncidentResponse } from '@/lib/api-types'
 import type { WorkerV5PrivateKaelMediaPreview } from '../chat/use-worker-kael-orb-chat'
 
-export type WorkerV5ScopeChangeDraftState = {
+type WorkerV5ScopeChangeDraftState = {
   description: string
   evidenceOpenLocal: boolean
   evidenceSent: boolean

@@ -8,7 +8,7 @@ import { customerV21CommonCopy } from '../ui/copy'
 import { formatVnd } from './case-work-display-model'
 import { stringFromUnknown } from '../ui/value-display-model'
 
-export type AgenticMemoryRowModel = {
+type AgenticMemoryRowModel = {
   enabled: boolean
   image: ImageSourcePropType
   label: string

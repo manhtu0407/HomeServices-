@@ -192,7 +192,7 @@ export function getAppLanguageSnapshot() {
   return appLanguage
 }
 
-export function subscribeAppLanguage(listener: () => void) {
+function subscribeAppLanguage(listener: () => void) {
   listeners.add(listener)
   return () => {
     listeners.delete(listener)
@@ -232,10 +232,6 @@ async function drainLanguagePersistence() {
   }
 }
 
-export function toggleAppLanguage() {
-  return setAppLanguage(appLanguage === 'vi' ? 'en' : 'vi')
-}
-
 export function useAppLanguage() {
   useEffect(() => {
     if (hydrated) return
@@ -272,14 +268,6 @@ export function localizedProblemOptions(serviceType: ServiceType, language: AppL
     label: localizedProblemLabel(value, serviceType, language),
     value,
   }))
-}
-
-export function languageDisplayName(language: AppLanguage) {
-  return language === 'vi' ? 'Tiếng Việt' : 'English'
-}
-
-export function nextLanguageLabel(language: AppLanguage) {
-  return language === 'vi' ? 'English' : 'Tiếng Việt'
 }
 
 export async function hydrateAppLanguage() {

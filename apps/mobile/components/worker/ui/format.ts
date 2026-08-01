@@ -8,16 +8,6 @@ const SCOPE_EVENT_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Intl.DateTimeFormat
   en: new Intl.DateTimeFormat('en-US', { day: '2-digit', hour: '2-digit', minute: '2-digit', month: '2-digit' }),
   vi: new Intl.DateTimeFormat('vi-VN', { day: '2-digit', hour: '2-digit', minute: '2-digit', month: '2-digit' }),
 }
-const COMPACT_NUMBER_FORMATTER_BY_LANGUAGE: Record<AppLanguage, Record<1 | 2, Intl.NumberFormat>> = {
-  en: {
-    1: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }),
-    2: new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }),
-  },
-  vi: {
-    1: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }),
-    2: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }),
-  },
-}
 
 export function formatApprovalVnd(value: number, language: AppLanguage) {
   const formatted = WHOLE_NUMBER_FORMATTER_BY_LANGUAGE[language].format(value)
@@ -84,11 +74,6 @@ export function formatNullableRating(value: number | null | undefined, language:
     : textByLanguage(language, 'Chưa có đánh giá', 'No rating')
 }
 
-export function formatResponseSpeed(value: number | null | undefined, language: AppLanguage) {
-  if (value == null) return textByLanguage(language, 'Chưa đủ dữ liệu', 'Not enough data')
-  return textByLanguage(language, `${value} phút`, `${value} min`)
-}
-
 export function formatCountOrEmpty(value: number | null | undefined, emptyLabel: string) {
   return value && value > 0 ? `${value}` : emptyLabel
 }
@@ -105,17 +90,6 @@ export function formatVnd(value: number, language: AppLanguage) {
 
 export function formatVndDong(value: number, language: AppLanguage) {
   return `${WHOLE_NUMBER_FORMATTER_BY_LANGUAGE[language].format(value)}đ`
-}
-
-export function formatCompactVnd(value: number, language: AppLanguage) {
-  if (value >= 1_000_000) {
-    const maximumFractionDigits = value >= 10_000_000 ? 1 : 2
-    const compact = COMPACT_NUMBER_FORMATTER_BY_LANGUAGE[language][maximumFractionDigits]
-      .format(value / 1_000_000)
-    return textByLanguage(language, `${compact}tr`, `${compact}m`)
-  }
-  if (value >= 1_000) return `${Math.round(value / 1_000)}k`
-  return formatVnd(value, language)
 }
 
 export function textByLanguage(language: AppLanguage, vi: string, en: string) {

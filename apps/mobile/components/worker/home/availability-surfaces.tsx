@@ -10,7 +10,7 @@ import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
-export const availabilitySwitchSpring = {
+const availabilitySwitchSpring = {
   damping: 19,
   mass: 0.68,
   stiffness: 300,

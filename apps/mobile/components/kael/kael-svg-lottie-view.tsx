@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Ellipse, G, Image as SvgImage, Path, Rect } from 'react-native-svg'
 
-export type KaelLottieSource = object | string | number
+type KaelLottieSource = object | string | number
 
 export const kaelLottieRendererKind: 'fallback' | 'native-lottie' | 'svg-lottie' = 'svg-lottie'
 

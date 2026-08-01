@@ -78,5 +78,3 @@ export const entryTheme = {
     } satisfies ViewStyle,
   },
 } as const
-
-export const targetCanvas = { width: 390, height: 844 } as const

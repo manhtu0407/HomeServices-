@@ -65,7 +65,7 @@ export function WorkerV5KaelChatBody({
   )
 }
 
-export function WorkerV5SharedJobIncidentChat({
+function WorkerV5SharedJobIncidentChat({
   deal,
   language,
   reduceTransparency,
