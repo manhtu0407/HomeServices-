@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Design Intelligence"
+  short_description: "Search pinned UI UX design references"
+  default_prompt: "Use $kael-design-intelligence when a UI task needs non-normative design evidence."
