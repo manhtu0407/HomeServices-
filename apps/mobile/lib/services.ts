@@ -1,12 +1,18 @@
 import { api, mobileApiUrl, type ApiResult } from './api'
 import { readResponseBlobBounded, withNetworkDeadline } from './response-guard'
 import {
+  streamCustomerKaelConversationTurn,
   streamKaelChatEvidence,
   streamKaelChatTurn,
   streamWorkerKaelChatTurn,
+  type CustomerKaelConversationStreamHandlers,
   type KaelChatStreamHandlers,
   type WorkerKaelChatStreamHandlers,
 } from './kael-stream'
+import {
+  decideKaelIntakeConfirmation,
+  type MobileKaelScheduleWindowInput,
+} from './kael-chat-client'
 import type {
   AcceptBroadcastResponse,
   AvailabilityToggleResponse,
@@ -19,6 +25,8 @@ import type {
   ServiceCatalogResponse,
   CreateJobResponse,
   CustomerActiveJobResponse,
+  CustomerAvatarResponse,
+  CustomerAvatarUploadResponse,
   CustomerServiceHistoryResponse,
   PendingDecisionsResponse,
   ThreadsResponse,
@@ -39,8 +47,8 @@ import type {
   CustomerKaelConversationListResponse,
   CustomerKaelConversationResponse,
   CustomerKaelFeedbackResponse,
-  CustomerPaymentMethodResponse,
-  CustomerPaymentMethodSaveInput,
+  CustomerRefundAccountResponse,
+  CustomerRefundAccountSaveInput,
   CustomerProfileInsightsResponse,
   CustomerFavoriteWorkerResponse,
   DisputeAdminDecisionResponse,
@@ -90,7 +98,6 @@ import type {
   WorkerCandidateDecisionResponse,
   WorkerCandidateResponse,
 } from './api-types'
-
 import type {
   AvailabilityToggleInput,
   CustomerCancellationRequestInput,
@@ -110,6 +117,8 @@ import type {
   JobStatus,
   CustomerKaelFeedbackInput,
   CustomerKaelMemoryPreferenceUpdateInput,
+  CustomerAvatarUploadInput,
+  CustomerAvatarUpdateInput,
   KaelAssistantInput,
   KaelWorkerClarifyInput,
   KaelChatCreateInput,
@@ -124,6 +133,7 @@ import type {
   WorkerServicePreferencesUpdateInput,
   WorkerAvatarUploadInput,
   WorkerAvatarUpdateInput,
+  WorkerCashPaymentConfirmationResponse,
   WorkerKaelChatCreateInput,
   WorkerKaelChatMode,
   WorkerKaelChatPinInput,
@@ -139,13 +149,6 @@ const ROUTE_MAP_FETCH_TIMEOUT_MS = 15_000
 const ROUTE_MAP_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 const ROUTE_MAP_MAX_URI_LENGTH = 2_048
 const ROUTE_MAP_COORDINATE_PATTERN = /^-?(?:\d+(?:\.\d+)?|\.\d+)$/
-
-type MobileKaelScheduleWindowInput = {
-  date: string
-  start: string
-  end: string
-  timeZone: 'Asia/Ho_Chi_Minh'
-}
 
 type MobileKaelChatCreateInput = KaelChatCreateInput & {
   profileId?: KaelPerformanceMode
@@ -177,8 +180,11 @@ export const jobService = {
     return api.post<CreateJobResponse>('/jobs', input)
   },
 
-  getJob(jobId: string) {
-    return api.get<JobDetailResponse>(`/jobs/${encodeURIComponent(jobId)}`)
+  getJob(jobId: string, accessToken?: string) {
+    const path = `/jobs/${encodeURIComponent(jobId)}`
+    return accessToken
+      ? api.getAuthenticated<JobDetailResponse>(path, accessToken)
+      : api.get<JobDetailResponse>(path)
   },
 
   // Resume the customer's active job
@@ -366,8 +372,11 @@ export const kaelChatService = {
     })
   },
 
-  get(sessionId: string) {
-    return api.get<KaelChatResponse>(`/kael/chat/${encodeURIComponent(sessionId)}`)
+  get(sessionId: string, accessToken?: string) {
+    const path = `/kael/chat/${encodeURIComponent(sessionId)}`
+    return accessToken
+      ? api.getAuthenticated<KaelChatResponse>(path, accessToken)
+      : api.get<KaelChatResponse>(path)
   },
 
   sendTurn(sessionId: string, input: KaelChatTurnInput) {
@@ -394,8 +403,13 @@ export const kaelChatService = {
     return api.post<KaelChatResponse>(`/kael/chat/${encodeURIComponent(sessionId)}/evidence`, input)
   },
 
-  confirm(sessionId: string) {
-    return api.post<ConfirmKaelChatResponse>(`/kael/chat/${encodeURIComponent(sessionId)}/confirm`)
+  decideIntakeConfirmation: decideKaelIntakeConfirmation,
+
+  confirm(sessionId: string, accessToken?: string) {
+    const path = `/kael/chat/${encodeURIComponent(sessionId)}/confirm`
+    return accessToken
+      ? api.postAuthenticated<ConfirmKaelChatResponse>(path, undefined, accessToken)
+      : api.post<ConfirmKaelChatResponse>(path)
   },
 }
 
@@ -434,6 +448,14 @@ export const customerKaelConversationService = {
   sendTurn(conversationId: string, input: CustomerKaelConversationTurnInput) {
     return api.post<CustomerKaelConversationResponse>(`/me/kael/conversations/${conversationId}/turn`, input)
   },
+
+  streamTurn(
+    conversationId: string,
+    input: CustomerKaelConversationTurnInput,
+    handlers?: CustomerKaelConversationStreamHandlers,
+  ) {
+    return streamCustomerKaelConversationTurn(conversationId, input, handlers)
+  },
 }
 
 export const kaelChatProgressService = {
@@ -443,11 +465,17 @@ export const kaelChatProgressService = {
 }
 
 export const kaelChatStreamService = {
-  sendTurn(sessionId: string, input: KaelChatTurnInput, handlers?: KaelChatStreamHandlers) {
-    return streamKaelChatTurn(sessionId, input, handlers)
+  async sendTurn(sessionId: string, input: KaelChatTurnInput, handlers?: KaelChatStreamHandlers) {
+    const streamed = await streamKaelChatTurn(sessionId, input, handlers)
+    return !streamed.success && streamed.code === 'STREAM_UNSUPPORTED'
+      ? kaelChatService.sendTurn(sessionId, input)
+      : streamed
   },
-  submitEvidence(sessionId: string, input: KaelChatEvidenceInput, handlers?: KaelChatStreamHandlers) {
-    return streamKaelChatEvidence(sessionId, input, handlers)
+  async submitEvidence(sessionId: string, input: KaelChatEvidenceInput, handlers?: KaelChatStreamHandlers) {
+    const streamed = await streamKaelChatEvidence(sessionId, input, handlers)
+    return !streamed.success && streamed.code === 'STREAM_UNSUPPORTED'
+      ? kaelChatService.submitEvidence(sessionId, input)
+      : streamed
   },
 }
 
@@ -508,13 +536,24 @@ export const customerProfileService = {
     return api.get<CustomerProfileInsightsResponse>('/me/profile-insights')
   },
 
-  getPaymentMethod() {
-    return parkedMobileApiResult<CustomerPaymentMethodResponse>('PAYMENT_NOT_ENABLED', 'Phương thức thanh toán chưa được bật')
+  getAvatar() {
+    return api.get<CustomerAvatarResponse>('/me/avatar')
   },
 
-  savePaymentMethod(input: CustomerPaymentMethodSaveInput) {
-    void input
-    return parkedMobileApiResult<CustomerPaymentMethodResponse>('PAYMENT_NOT_ENABLED', 'Phương thức thanh toán chưa được bật')
+  createAvatarUpload(input: CustomerAvatarUploadInput) {
+    return api.post<CustomerAvatarUploadResponse>('/me/avatar-upload', input)
+  },
+
+  updateAvatar(input: CustomerAvatarUpdateInput) {
+    return api.patch<CustomerAvatarResponse>('/me/avatar', input)
+  },
+
+  getRefundAccount() {
+    return api.get<CustomerRefundAccountResponse>('/me/refund-account')
+  },
+
+  saveRefundAccount(input: CustomerRefundAccountSaveInput) {
+    return api.patch<CustomerRefundAccountResponse>('/me/refund-account', input)
   },
 }
 
@@ -573,7 +612,10 @@ export const workerService = {
 
   savePayoutMethod(input: WorkerPayoutMethodSaveInput) {
     void input
-    return parkedMobileApiResult<WorkerPayoutMethodResponse>('PAYOUT_NOT_ENABLED', 'Tài khoản nhận tiền chưa được bật qua mobile-api')
+    return parkedMobileApiResult<WorkerPayoutMethodResponse>(
+      'PAYOUT_NOT_ENABLED',
+      'Hiện chưa thể lưu tài khoản nhận tiền.',
+    )
   },
 
   getPerformanceInsights() {
@@ -623,6 +665,10 @@ export const workerService = {
   }) {
     // worker không nhập final_price; Kael giữ authority.
     return jobService.updateStatus(jobId, status, extras)
+  },
+
+  confirmCashPayment(jobId: string) {
+    return api.post<WorkerCashPaymentConfirmationResponse>(`/jobs/${encodeURIComponent(jobId)}/cash-payment-confirmation`)
   },
 
   requestScopeChange(jobId: string, input: WorkerScopeChangeInput) {
@@ -760,6 +806,8 @@ export const notificationService = {
     )
   },
 }
+
+export { customerAccountService } from './customer-account-service'
 
 export const adminLearningService = {
   listCandidates(state: string = 'manual_review') {

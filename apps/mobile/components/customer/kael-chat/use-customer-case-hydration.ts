@@ -11,14 +11,21 @@ type CustomerCaseHydrationOwner = {
 
 export function useCustomerCaseHydration({
   active,
+  authLoading = false,
   hydrate,
   routeJobId,
+  sessionAccessToken,
 }: {
   active: boolean
-  hydrate: ((jobId: string) => Promise<boolean>) | null | undefined
+  authLoading?: boolean
+  hydrate: ((jobId: string, accessToken?: string) => Promise<boolean>) | null | undefined
   routeJobId: string | null
+  sessionAccessToken: string | undefined
 }) {
-  const targetJobId = active && hydrate && routeJobId
+  const hasSessionAccessToken = Boolean(sessionAccessToken?.trim())
+  const needsRouteHydration = Boolean(active && hydrate && routeJobId)
+  const authRequired = needsRouteHydration && !authLoading && !hasSessionAccessToken
+  const targetJobId = needsRouteHydration && hasSessionAccessToken
     ? routeJobId
     : null
   const [snapshot, setSnapshot] = useState<CustomerCaseHydrationSnapshot>(() => ({
@@ -39,7 +46,10 @@ export function useCustomerCaseHydration({
     if (!hydrate || !owner) return undefined
 
     let cancelled = false
-    void hydrate(owner.targetJobId).then((hydrated) => {
+    const request = sessionAccessToken
+      ? hydrate(owner.targetJobId, sessionAccessToken)
+      : hydrate(owner.targetJobId)
+    void request.then((hydrated) => {
       if (cancelled) return
       setSnapshot({
         owner,
@@ -52,9 +62,10 @@ export function useCustomerCaseHydration({
     return () => {
       cancelled = true
     }
-  }, [hydrate, owner])
+  }, [authLoading, hydrate, owner, sessionAccessToken])
 
   return {
+    authRequired,
     failed: visibleSnapshot.status === 'failed',
     hydrating: Boolean(owner && !visibleSnapshot.status),
   }

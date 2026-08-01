@@ -21,9 +21,7 @@ export function useLatestWorkerSessionRestore({
   sessions,
   sessionsLoading,
 }: LatestWorkerSessionRestoreInput) {
-  const openSessionRef = useRef(openSession)
   const restoredOwnerKeyRef = useRef<string | null>(null)
-  openSessionRef.current = openSession
 
   useEffect(() => {
     if (!jobId || sessionsLoading || activeSessionId || openingSessionId || restoredOwnerKeyRef.current === ownerKey) return
@@ -34,6 +32,6 @@ export function useLatestWorkerSessionRestore({
     const latestSession = resumableSessions.reduce<WorkerKaelChatSession | null>((latest, session) => (
       !latest || session.started_at > latest.started_at ? session : latest
     ), null)
-    if (latestSession) void openSessionRef.current(latestSession.id)
-  }, [activeSessionId, jobId, openingSessionId, ownerKey, sessions, sessionsLoading])
+    if (latestSession) void openSession(latestSession.id)
+  }, [activeSessionId, jobId, openSession, openingSessionId, ownerKey, sessions, sessionsLoading])
 }

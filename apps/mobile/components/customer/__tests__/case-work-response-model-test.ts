@@ -3,6 +3,7 @@ import { WORKFLOW_PHASES, type LocalDeal, type WorkflowPhase } from '@nestscout/
 import {
   buildCaseWorkResponseModel,
   buildCompletedCaseWorkResponseModels,
+  buildIntakeConfirmationResponseModel,
   type CaseWorkResponseActionKind,
 } from '../kael-chat/case-work-response-model'
 
@@ -17,12 +18,28 @@ const actionByPhase: Readonly<Partial<Record<WorkflowPhase, CaseWorkResponseActi
 }
 
 describe('case-work response model', () => {
+  it('keeps intake confirmation visibly before analysis', () => {
+    const focus = 'Kael đối chiếu nguồn điện và khả năng tiếp cận an toàn.'
+    expect(buildIntakeConfirmationResponseModel('vi', focus)).toMatchObject({
+      actionKind: 'none',
+      noteCopy: focus,
+      noteTitle: 'Kael đã đối chiếu thông tin',
+      phase: 'intake_started',
+      status: 'Chờ bạn xác nhận',
+      title: 'Xác nhận thông tin công việc',
+    })
+    expect(buildIntakeConfirmationResponseModel('en')).toMatchObject({
+      status: 'Awaiting confirmation',
+      title: 'Confirm work details',
+    })
+  })
+
   it.each(WORKFLOW_PHASES)('provides production copy for %s in both languages', (phase) => {
     for (const language of ['vi', 'en'] as const) {
       const model = buildCaseWorkResponseModel({ language, phase })
 
       expect(model).toEqual(expect.objectContaining({
-        actionKind: actionByPhase[phase] ?? 'none',
+        actionKind: phase === 'paid' ? 'none' : (actionByPhase[phase] ?? 'none'),
         phase,
       }))
       expect(model.title.trim()).not.toBe('')
@@ -153,6 +170,42 @@ describe('case-work response model', () => {
       .not.toMatch(/\bStaging\b|mô phỏng|simulation|simulated/i)
     expect(model.title).toBe('Thanh toán chưa sẵn sàng')
     expect(model.actionKind).toBe('none')
+  })
+
+  it('opens review only after the payment receipt is verified', () => {
+    const waiting = buildCaseWorkResponseModel({
+      deal: dealFixture('paid', {
+        payment: {
+          amountReceived: null,
+          grossAmount: 450_000,
+          platformFee: 45_000,
+          provider: 'sepay_vietqr',
+          status: 'pending',
+          workerNet: 405_000,
+        },
+      }),
+      language: 'vi',
+      phase: 'paid',
+    })
+    const verified = buildCaseWorkResponseModel({
+      deal: dealFixture('paid', {
+        payment: {
+          amountReceived: 450_000,
+          grossAmount: 450_000,
+          platformFee: 45_000,
+          provider: 'sepay_vietqr',
+          status: 'received',
+          workerNet: 405_000,
+        },
+      }),
+      language: 'vi',
+      phase: 'paid',
+    })
+
+    expect(waiting.actionKind).toBe('none')
+    expect(waiting.status).toBe('Đang chờ xác thực')
+    expect(verified.actionKind).toBe('review')
+    expect(verified.status).toBe('Đã thanh toán')
   })
 
   it('keeps an amount mismatch out of the normal transfer path', () => {

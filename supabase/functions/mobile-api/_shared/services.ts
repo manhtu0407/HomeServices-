@@ -25,8 +25,8 @@ import {
   updateWorkerAvailability,
   listWorkerBroadcasts,
   getWorkerEarnings,
-  listWorkerJobs,
 } from "./services/workers.service.ts";
+import { listWorkerJobs } from "./services/worker-jobs.service.ts";
 import { getWorkerRouteMap, getWorkerRoutePreview } from "./services/worker-route.service.ts";
 import { projectAddressAccess, authorizeApartmentAccess } from "./services/apartment-access.service.ts";
 
@@ -41,8 +41,10 @@ import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } fr
 import { confirmCompletion, submitReview } from "./services/completion-review.service.ts";
 import { confirmStagingPayment, createStagingPaymentIntent } from "./services/staging-payment.service.ts";
 import { createSePayVietQrPaymentIntent } from "./services/sepay-vietqr-payment.service.ts";
+import { confirmWorkerCashPayment } from "./services/cash-payment.service.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./services/chat.service.ts";
 import { createKaelChat, createKaelChatMediaUpload, getKaelChat, getKaelChatProgress, revokeKaelChatMedia, sendKaelChatTurn, submitKaelChatEvidence } from "./services/kael-chat.service.ts";
+import { decideKaelIntakeConfirmation } from "./services/kael-chat-intake-confirmation.service.ts";
 import { answerKaelAssistant } from "./services/customer-assistant.service.ts";
 import {
   archiveCustomerKaelConversation,
@@ -55,6 +57,7 @@ import {
 } from "./services/customer-kael-conversation.service.ts";
 import { archiveWorkerKaelChat, askKaelForWorker, createWorkerKaelChat, getWorkerKaelChat, listWorkerKaelChats, renameWorkerKaelChat, sendWorkerKaelChatTurn, setWorkerKaelChatPinned } from "./services/worker-kael-chat.service.ts";
 import {
+  streamCustomerKaelConversationTurn,
   streamKaelChatEvidence,
   streamKaelChatTurn,
   streamWorkerKaelChatTurn,
@@ -67,7 +70,13 @@ import {
   revokeJobMediaUploads,
 } from "./services/job-media.service.ts";
 import { getJob, listCustomerActiveJobs, listCustomerServiceHistory, listMyPendingDecisions } from "./services/job-read.service.ts";
-import { createWorkerAvatarUpload, updateWorkerAvatar } from "./services/worker-avatar.service.ts";
+import {
+  createCustomerAvatarUpload,
+  createWorkerAvatarUpload,
+  getCustomerAvatar,
+  updateCustomerAvatar,
+  updateWorkerAvatar,
+} from "./services/worker-avatar.service.ts";
 import { cancelJob, requestCustomerCancellation } from "./services/customer-cancellation.service.ts";
 import { decideWorkerCancellation, requestWorkerCancellation } from "./services/worker-cancellation.service.ts";
 import {
@@ -84,6 +93,11 @@ import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,
 } from "./services/profile-insights.service.ts";
+import {
+  getCustomerRefundAccount,
+  saveCustomerRefundAccount,
+} from "./services/customer-refund-account.service.ts";
+import { deleteCustomerAccount } from "./services/customer-account-deletion.service.ts";
 
 import { type MobileApiContext, type MobileApiServices } from "./router.ts";
 
@@ -110,7 +124,10 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
     createKaelChat: (ctx, input) =>
       createKaelChat(ctx, input, aiRuntime(ctx, secrets)),
     answerKaelAssistant: (ctx, input) =>
-      answerKaelAssistant(ctx, input, aiRuntime(ctx, secrets)),
+      answerKaelAssistant(ctx, input, {
+        ...aiRuntime(ctx, secrets),
+        paymentRailAvailable: ctx.role === "customer" && secrets.sepayVietQr?.enabled === true,
+      }),
     createCustomerKaelConversation,
     listCustomerKaelConversations,
     archiveCustomerKaelConversation,
@@ -119,6 +136,8 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
     getCustomerKaelConversation,
     sendCustomerKaelConversationTurn: (ctx, conversationId, input) =>
       sendCustomerKaelConversationTurn(ctx, conversationId, input, aiRuntime(ctx, secrets)),
+    streamCustomerKaelConversationTurn: (ctx, conversationId, input) =>
+      streamCustomerKaelConversationTurn(ctx, conversationId, input, aiRuntime(ctx, secrets)),
     createKaelChatMediaUpload,
     revokeKaelChatMedia,
     getKaelChat,
@@ -129,6 +148,13 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
       streamKaelChatEvidence(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     sendKaelChatTurn: (ctx, sessionId, input) =>
       sendKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
+    decideKaelIntakeConfirmation: (ctx, sessionId, input) =>
+      decideKaelIntakeConfirmation(
+        ctx,
+        sessionId,
+        input,
+        aiRuntime(ctx, secrets),
+      ),
     confirmKaelChat: (ctx, sessionId) =>
       confirmKaelChat(ctx, sessionId, aiRuntime(ctx, secrets)),
     submitKaelChatEvidence: (ctx, sessionId, input) =>
@@ -184,6 +210,7 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
       secrets.sepayVietQr?.enabled
         ? createSePayVietQrPaymentIntent(ctx, jobId, secrets.sepayVietQr)
         : createStagingPaymentIntent(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
+    confirmWorkerCashPayment,
     confirmStagingPayment: (ctx, jobId) =>
       confirmStagingPayment(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
     submitReview,
@@ -192,6 +219,12 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
     registerWorker,
     submitWorkerApplication,
     getCustomerProfileInsights,
+    getCustomerAvatar,
+    createCustomerAvatarUpload,
+    updateCustomerAvatar,
+    getCustomerRefundAccount,
+    saveCustomerRefundAccount,
+    deleteCustomerAccount,
     getMyKaelMemory,
     getWorkerKaelMemory,
     deleteMyKaelMemory,

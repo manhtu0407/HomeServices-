@@ -4,6 +4,7 @@ export type {
   KaelChatStatus,
   KaelCaseWorkPhase,
   KaelChatNextAction,
+  KaelIntakeConfirmation,
   KaelChatTurn,
   KaelChatSession,
   KaelChatResponse,

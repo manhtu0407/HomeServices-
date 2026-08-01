@@ -1,5 +1,6 @@
 import {
   availabilityToggleSchema,
+  customerAccountDeletionRequestSchema,
   customerCancellationRequestSchema,
   customerKaelFeedbackSchema,
   customerKaelConversationCreateSchema,
@@ -8,6 +9,7 @@ import {
   customerKaelConversationRenameSchema,
   customerKaelConversationTurnSchema,
   customerScopeDecisionSchema,
+  customerRefundAccountSaveSchema,
   updateKaelMemorySchema,
   disputeAdminDecisionSchema,
   disputeCounterStatementSchema,
@@ -22,6 +24,7 @@ import {
   kaelAssistantSchema,
   kaelChatCreateSchema,
   kaelChatEvidenceSchema,
+  kaelChatIntakeConfirmationDecisionSchema,
   kaelChatMediaRevokeSchema,
   kaelChatMediaUploadSchema,
   kaelChatTurnSchema,
@@ -39,6 +42,8 @@ import {
   workerCancellationDecisionSchema,
   workerCancellationRequestSchema,
   workerRegisterSchema,
+  customerAvatarUploadSchema,
+  customerAvatarUpdateSchema,
   workerAvatarUploadSchema,
   workerAvatarUpdateSchema,
   workerServiceAreaUpdateSchema,
@@ -346,6 +351,11 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.sendCustomerKaelConversationTurn(ctx, route.conversationId, input.data);
     }
+    case "customer.kaelConversations.stream": {
+      const input = customerKaelConversationTurnSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.streamCustomerKaelConversationTurn(ctx, route.conversationId, input.data);
+    }
     case "kael.chat.mediaUpload": {
       const input = kaelChatMediaUploadSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -374,6 +384,19 @@ async function dispatchRoute(
       const input = kaelChatTurnSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.sendKaelChatTurn(ctx, route.sessionId, input.data);
+    }
+    case "kael.chat.intakeConfirmation": {
+      const input = kaelChatIntakeConfirmationDecisionSchema.safeParse(
+        await readJson(request),
+      );
+      if (!input.success) {
+        apiFailure("VALIDATION", "Dữ liệu xác nhận không hợp lệ", 400);
+      }
+      return services.decideKaelIntakeConfirmation(
+        ctx,
+        route.sessionId,
+        input.data,
+      );
     }
     case "kael.chat.confirm":
       return services.confirmKaelChat(ctx, route.sessionId);
@@ -515,6 +538,8 @@ async function dispatchRoute(
       return services.confirmCompletion(ctx, route.jobId);
     case "jobs.paymentIntent":
       return services.createPaymentIntent(ctx, route.jobId);
+    case "jobs.cashPaymentConfirm":
+      return services.confirmWorkerCashPayment(ctx, route.jobId);
     case "jobs.stagingPaymentConfirm":
       return services.confirmStagingPayment(ctx, route.jobId);
     case "jobs.review": {
@@ -552,6 +577,35 @@ async function dispatchRoute(
       return services.listMyPendingDecisions(ctx);
     case "me.profileInsights":
       return services.getCustomerProfileInsights(ctx);
+    case "me.avatar":
+      return services.getCustomerAvatar(ctx);
+    case "me.avatarUpload": {
+      const input = customerAvatarUploadSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu ảnh đại diện không hợp lệ", 400);
+      return services.createCustomerAvatarUpload(ctx, input.data);
+    }
+    case "me.avatarUpdate": {
+      const input = customerAvatarUpdateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu ảnh đại diện không hợp lệ", 400);
+      return services.updateCustomerAvatar(ctx, input.data);
+    }
+    case "me.accountDeletion": {
+      if (!services.deleteCustomerAccount) {
+        apiFailure("NOT_IMPLEMENTED", "Chức năng xóa tài khoản chưa sẵn sàng", 501);
+      }
+      const input = customerAccountDeletionRequestSchema.safeParse(await readJson(request));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Xác nhận xóa tài khoản không hợp lệ", 400);
+      }
+      return services.deleteCustomerAccount(ctx, input.data);
+    }
+    case "me.refundAccount":
+      return services.getCustomerRefundAccount(ctx);
+    case "me.refundAccount.save": {
+      const input = customerRefundAccountSaveSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.saveCustomerRefundAccount(ctx, input.data);
+    }
     case "me.threads":
       return services.listMyThreads(ctx);
     case "workers.register": {

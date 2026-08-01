@@ -22,7 +22,7 @@ export function workerV5PayoutRuleRows(
         ? formatVnd(earnings.available_balance, language)
         : textByLanguage(language, 'Chưa có dữ liệu số dư đã ghi có', 'No credited balance data'),
       status: textByLanguage(language, 'Tài khoản trong ứng dụng', 'In-app account'),
-      title: textByLanguage(language, 'Số dư đã SePay xác thực', 'SePay-verified balance'),
+      title: textByLanguage(language, 'Số dư đã ghi sổ', 'Recorded in-app balance'),
     },
     {
       icon: 'clock',

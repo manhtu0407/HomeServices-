@@ -127,12 +127,11 @@ export function KaelLottieView({
   const firstFrame = animation?.ip ?? 0
   const lastFrame = animation?.op ?? firstFrame
   const [frame, setFrame] = useState(firstFrame)
+  const canAnimate = Boolean(animation && autoPlay && lastFrame > firstFrame)
+  const displayedFrame = canAnimate ? frame : firstFrame
 
   useEffect(() => {
-    if (!animation || !autoPlay || lastFrame <= firstFrame) {
-      setFrame(firstFrame)
-      return undefined
-    }
+    if (!canAnimate) return undefined
 
     let animationFrame = 0
     const startedAt = Date.now()
@@ -148,7 +147,7 @@ export function KaelLottieView({
 
     animationFrame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(animationFrame)
-  }, [animation, autoPlay, firstFrame, frameRate, lastFrame, loop, speed])
+  }, [canAnimate, firstFrame, frameRate, lastFrame, loop, speed])
 
   const assetById = useMemo(() => {
     const assets = new Map<string, LottieAsset>()
@@ -165,7 +164,7 @@ export function KaelLottieView({
   return (
     <View style={style} testID={testID}>
       <Svg height="100%" viewBox={`0 0 ${animation.w} ${animation.h}`} width="100%">
-        {animation.layers.map((layer) => renderLayer(layer, frame, assetById, lottieNodeKey(layer, 'layer')))}
+        {animation.layers.map((layer) => renderLayer(layer, displayedFrame, assetById, lottieNodeKey(layer, 'layer')))}
       </Svg>
     </View>
   )

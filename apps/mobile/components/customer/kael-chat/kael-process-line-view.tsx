@@ -21,6 +21,7 @@ export function KaelProcessLines({ state }: { state: KaelProcessLineRuntime }) {
     return (
       <View
         accessibilityLabel={state.collapse}
+        accessibilityLiveRegion="polite"
         style={styles.lines}
         testID="customer-v21-kael-process-lines"
       >
@@ -37,6 +38,8 @@ export function KaelProcessLines({ state }: { state: KaelProcessLineRuntime }) {
   return (
     <View
       accessibilityLabel={language === 'vi' ? 'Kael đang xử lý' : 'Kael processing'}
+      accessibilityLiveRegion="polite"
+      accessibilityState={{ busy: state.activeIndex !== null }}
       style={styles.lines}
       testID="customer-v21-kael-process-lines"
     >
@@ -143,10 +146,10 @@ const styles = StyleSheet.create({
   },
   lines: {
     alignSelf: 'flex-start',
-    gap: 6,
-    marginBottom: 6,
-    marginLeft: 6,
-    marginTop: -1,
+    gap: 7,
+    marginBottom: 10,
+    marginLeft: 8,
+    marginTop: 10,
     maxWidth: '88%',
   },
   marker: {

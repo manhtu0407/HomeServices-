@@ -356,6 +356,11 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       from: 'payment_pending',
       to: 'paid',
     })
+    const cashConfirmed = validateWorkflowTransition({
+      event: 'worker_confirmed_cash_payment',
+      from: 'confirmed_by_customer',
+      to: 'paid',
+    })
     const phaseZeroConfirmed = validateWorkflowTransition({
       event: 'review_submitted',
       from: 'confirmed_by_customer',
@@ -372,6 +377,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       to: 'reviewed',
     })
     expect(paymentConfirmed.valid).toBe(true)
+    expect(cashConfirmed.valid).toBe(true)
     expect(phaseZeroConfirmed.valid).toBe(false)
     expect(paid.valid).toBe(true)
     expect(paymentPending.valid).toBe(false)

@@ -277,6 +277,53 @@ it('starts worker hydration without a startup availability write', async () => {
   }
 })
 
+it('retries Worker hydration promptly after a transient initial job-list failure', async () => {
+  jest.useFakeTimers()
+  mockAuthRole = 'worker'
+  arrangeSuccessfulWorkerRuntime()
+  const originalAppState = AppState.currentState
+  Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' })
+  mockWorkerService.getJobs
+    .mockResolvedValueOnce({ code: 'NETWORK_ERROR', error: 'Temporary transport failure', status: 0, success: false })
+    .mockResolvedValue({ data: { jobs: [buildWorkerJob('arrived')] }, status: 200, success: true })
+
+  const view = render(
+    <FrontendWorkflowProvider>
+      <WorkerRefreshProbe />
+    </FrontendWorkflowProvider>,
+  )
+
+  try {
+    await act(async () => {
+      jest.advanceTimersByTime(0)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockWorkerService.getJobs).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      jest.advanceTimersByTime(1_000)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(mockWorkerService.getJobs).toHaveBeenCalledTimes(2)
+      expect(screen.getByTestId('worker-refresh-status')).toHaveTextContent('arrived/accepted')
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(3_001)
+      await Promise.resolve()
+    })
+    expect(mockWorkerService.getJobs).toHaveBeenCalledTimes(2)
+  } finally {
+    view.unmount()
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: originalAppState })
+    jest.useRealTimers()
+  }
+})
+
 it('starts all independent worker hydration requests without serial round trips', async () => {
   const profile = deferred<any>()
   const earnings = deferred<any>()

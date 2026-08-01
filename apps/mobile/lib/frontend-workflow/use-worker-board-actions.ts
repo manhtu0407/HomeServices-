@@ -24,13 +24,15 @@ import {
   sameWorkerProfile,
 } from './comparisons'
 import {
-  currentWorkerMonthRange,
+  currentWorkerYearRange,
   getRemoteJobId,
   hasStaleRemoteBroadcast,
   isAppForeground,
   isStaleBroadcastError,
   isWorkerCurrentJobStatus,
 } from './helpers'
+
+const WORKER_STARTUP_REFRESH_RETRY_DELAYS_MS = [1_000, 3_000] as const
 import { dealToSnapshot, workerBroadcastToSnapshot, workerJobToSnapshot } from './snapshots'
 
 type WorkerRemoteState = {
@@ -85,7 +87,7 @@ export function useWorkerBoardActions({
     const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
     const profileRequest = workerService.getProfile()
-    const earningsRequest = workerService.getEarnings(currentWorkerMonthRange())
+    const earningsRequest = workerService.getEarnings(currentWorkerYearRange())
     const performanceInsightsRequest = workerService.getPerformanceInsights()
     const broadcastsRequest = workerService.getBroadcasts()
     const jobsRequest = workerService.getJobs()
@@ -311,11 +313,32 @@ export function useWorkerBoardActions({
 
   useEffect(() => {
     if (!sessionUserId || role !== 'worker') return
-    if (isAppForeground()) void workerRefresh()
+    let cancelled = false
+    let startupRetry: ReturnType<typeof setTimeout> | null = null
+
+    const refreshWorkerStartupState = async (attempt: number) => {
+      if (cancelled || !isAppForeground()) return
+      const refreshed = await workerRefresh().catch(() => false)
+      const retryDelay = WORKER_STARTUP_REFRESH_RETRY_DELAYS_MS[attempt]
+      if (cancelled || refreshed || retryDelay === undefined) return
+
+      // A restored session can briefly be unavailable to the API client.
+      // Reconcile again before falling back to the regular 20-second poll.
+      startupRetry = setTimeout(() => {
+        void refreshWorkerStartupState(attempt + 1)
+      }, retryDelay)
+    }
+
+    const initialRefresh = setTimeout(() => {
+      void refreshWorkerStartupState(0)
+    }, 0)
     const interval = setInterval(() => {
       if (isAppForeground()) void workerRefresh()
     }, 20_000)
     return () => {
+      cancelled = true
+      clearTimeout(initialRefresh)
+      if (startupRetry) clearTimeout(startupRetry)
       clearInterval(interval)
     }
   }, [role, sessionUserId, workerRefresh])

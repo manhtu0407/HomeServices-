@@ -37,7 +37,7 @@ export function caseDisplayCode(deal: LocalDeal, language: AppLanguage) {
 }
 
 export function paymentProviderLabel(provider: string, language: AppLanguage) {
-  if (provider === 'sepay_vietqr') return language === 'vi' ? 'VietQR qua SePay' : 'SePay VietQR'
+  if (provider === 'sepay_vietqr') return 'VietQR'
   if (provider === 'cash') return language === 'vi' ? 'Tiền mặt' : 'Cash'
   if (provider === 'bank_transfer') return language === 'vi' ? 'Chuyển khoản ngân hàng' : 'Bank transfer'
   return language === 'vi' ? 'Phương thức hệ thống' : provider
@@ -52,6 +52,7 @@ export function paymentStatusLabel(status: LocalPaymentStatus, language: AppLang
     not_started: 'Chưa bắt đầu',
     pending: 'Đang chờ xác nhận',
     received: 'Đã nhận tiền',
+    cash_confirmed: 'Đã ghi nhận tiền mặt',
     reconciled: 'Đã đối soát',
     vietqr_ready: 'VietQR sẵn sàng',
   }
@@ -63,6 +64,7 @@ export function paymentStatusLabel(status: LocalPaymentStatus, language: AppLang
     not_started: 'Not started',
     pending: 'Pending',
     received: 'Received',
+    cash_confirmed: 'Cash recorded',
     reconciled: 'Reconciled',
     vietqr_ready: 'VietQR ready',
   }

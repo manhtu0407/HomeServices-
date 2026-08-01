@@ -32,14 +32,15 @@ describe('Customer Kael evidence gate', () => {
     expect(screen.getByTestId('customer-v21-agentic-evidence-voice-count')).toHaveTextContent('0')
 
     const guidance = screen.getByTestId('customer-v21-agentic-evidence-privacy-disclosure')
-    expect(guidance).toHaveTextContent(/Kael xử lý từng loại bằng chứng theo giới hạn phù hợp\./)
-    expect(guidance).toHaveTextContent(/Ảnh: Kael kiểm tra vùng nhìn thấy và độ rõ của ảnh\./)
+    expect(guidance).toHaveTextContent(/Kael xử lý trong phạm vi phù hợp\./)
+    expect(guidance).toHaveTextContent(/Kiểm tra vùng thấy được và độ rõ\./)
     expect(guidance).toHaveTextContent(
-      /Video: bản gốc được giữ riêng tư; Kael phân tích các khung hình đã tách trên thiết bị\./,
+      /Giữ bản gốc riêng tư; chỉ phân tích khung hình tách trên thiết bị\./,
     )
     expect(guidance).toHaveTextContent(
-      /Giọng nói: nhận dạng trên thiết bị khi được hỗ trợ, rồi bạn kiểm tra bản chép lời trước khi gửi\./,
+      /Chỉ gửi bản chép lời bạn đã duyệt\./,
     )
+    expect(guidance).toHaveTextContent(/Nêu thời điểm nếu lỗi xuất hiện khi chuyển động hoặc có tiếng động\./)
     expect(screen.queryByText('Bản chép lời riêng tư')).toBeNull()
     expect(screen.queryByText(/Preview web không dùng nhận dạng giọng nói/)).toBeNull()
   })

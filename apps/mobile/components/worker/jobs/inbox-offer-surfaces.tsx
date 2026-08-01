@@ -1,6 +1,6 @@
 import { Text as RNText, type ImageSourcePropType, type TextProps } from 'react-native'
 import { WorkerV5IconName } from '../dock/types'
-import { useState } from 'react'
+import { useState , useRef } from 'react'
 import { View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { type AppLanguage } from '@/lib/app-language'
@@ -21,7 +21,7 @@ import { buildWorkerV5OfferAddressRows, buildWorkerV5OfferRequestRows } from './
 import { localizedServiceLabel } from '@/lib/app-language'
 import { styles } from '../worker-v5-flow-styles'
 import { textByLanguage } from '../ui/format'
-import { useRef } from 'react'
+
 import { workerV5DisplayCode } from '../ui/screen-labels'
 import { workerV5Icons, workerV5OpportunityServiceIcons } from '../ui/screen-icons'
 
@@ -273,8 +273,8 @@ export function WorkerV5CustomerConfirmationWaitBody({
       <Text style={styles.customerConfirmationWaitBody}>
         {textByLanguage(
           language,
-          'NestScout sẽ tự mở bước di chuyển khi khách chọn bạn. Địa chỉ chi tiết và thao tác thi công vẫn được khóa trong lúc chờ.',
-          'NestScout will open travel after the customer chooses you. Exact address and execution actions remain locked while waiting.',
+          'Kael sẽ mở bước di chuyển khi khách chọn bạn. Địa chỉ chi tiết và thao tác thi công vẫn được khóa trong lúc chờ.',
+          'Kael will open travel after the customer chooses you. Exact address and execution actions remain locked while waiting.',
         )}
       </Text>
       {service || code ? (

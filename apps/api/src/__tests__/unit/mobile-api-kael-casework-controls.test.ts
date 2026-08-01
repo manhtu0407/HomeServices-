@@ -194,13 +194,75 @@ describe('Kael Case Work deterministic controls', () => {
         needs_inspection: true,
         price_source: 'inspection_required',
         kael_reasoning: {
+          complexity_reasoning: 'Phạm vi hiện tại được xếp mức vừa.',
+          market_signals: 'Tổng hợp 3 nguồn đã kiểm chứng.',
           needs_inspection_reason: 'Cần kiểm tra vị trí dàn nóng.',
+        },
+        analysis_receipt: {
+          schema_version: 'analysis_receipt.v1',
+          evidence: {
+            photo_count: 1,
+            video_frame_count: 2,
+            voice_transcript_count: 0,
+            skipped: false,
+          },
+          market: {
+            accepted_source_count: 3,
+            high_trust_source_count: 2,
+            quorum_met: true,
+          },
         },
       },
     })).toMatchObject({
+      analysis_receipt: {
+        schema_version: 'analysis_receipt.v1',
+        evidence: {
+          photo_count: 1,
+          video_frame_count: 2,
+          voice_transcript_count: 0,
+          skipped: false,
+        },
+        market: {
+          accepted_source_count: 3,
+          high_trust_source_count: 2,
+          quorum_met: true,
+        },
+      },
+      complexity_reasoning: 'Phạm vi hiện tại được xếp mức vừa.',
+      market_signals: 'Tổng hợp 3 nguồn đã kiểm chứng.',
       needs_inspection: true,
       price_source: 'inspection_required',
       needs_inspection_reason: 'Cần kiểm tra vị trí dàn nóng.',
     })
+  })
+
+  it('fails closed when a stored analysis receipt contains impossible evidence counts', () => {
+    expect(() => serializeKaelEstimate({
+      service_type: 'plumbing',
+      problem_category: 'pipe_leak',
+      problem_summary: 'Rò nước dưới bồn rửa.',
+      complexity: 'medium',
+      price_min: 250_000,
+      price_max: 450_000,
+      confidence: 0.72,
+      disclaimer: 'Ước tính theo dữ liệu hiện có.',
+    }, {
+      card: {
+        analysis_receipt: {
+          schema_version: 'analysis_receipt.v1',
+          evidence: {
+            photo_count: -1,
+            video_frame_count: 0,
+            voice_transcript_count: 0,
+            skipped: false,
+          },
+          market: {
+            accepted_source_count: null,
+            high_trust_source_count: null,
+            quorum_met: null,
+          },
+        },
+      },
+    })).toThrow()
   })
 })

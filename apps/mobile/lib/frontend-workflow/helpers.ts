@@ -161,3 +161,14 @@ export function currentWorkerMonthRange(referenceDate = new Date()) {
     to: to.toISOString(),
   }
 }
+
+export function currentWorkerYearRange(referenceDate = new Date()) {
+  const hcmcOffsetMs = 7 * 60 * 60 * 1000
+  const hcmcYear = new Date(referenceDate.getTime() + hcmcOffsetMs).getUTCFullYear()
+  const from = new Date(Date.UTC(hcmcYear, 0, 1) - hcmcOffsetMs)
+  const to = new Date(Date.UTC(hcmcYear + 1, 0, 1) - hcmcOffsetMs - 1)
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+  }
+}

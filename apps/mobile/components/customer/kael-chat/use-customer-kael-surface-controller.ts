@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ServiceType } from '@nestscout/shared'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 
@@ -51,13 +51,12 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
   const params = useLocalSearchParams<KaelRouteParams>()
   const router = useRouter()
   const workflow = useFrontendWorkflow()
-  const { session } = useAuth()
+  const { loading: authLoading, session } = useAuth()
   const pendingDraftOwnerId = session?.user.id ?? null
   const sessionAccessToken = session?.access_token
   const { reduceMotion, reduceTransparency, tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
   const timelineHeadline = useKaelTimelineHeadline(language)
-  const [initialPendingDraft] = useState(() => peekPendingKaelChatDraft(pendingDraftOwnerId))
   const routeModeParam = firstParam(params.mode)
   const explicitRouteMode: CustomerKaelMode | null = routeModeParam === 'case'
     ? 'case'
@@ -66,9 +65,14 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
       : null
   const routeMode = explicitRouteMode ?? chatScreenModeParam(firstParam(params.screen)) ?? 'normal'
   const routeJobId = cleanRouteJobId(firstParam(params.jobId))
+  const routeSessionId = firstParam(params.sessionId) ?? null
+  const [initialPendingDraft] = useState(() => (
+    routeJobId || routeSessionId
+      ? null
+      : peekPendingKaelChatDraft(pendingDraftOwnerId)
+  ))
   const workflowDeal = workflow.state.deal
   const workflowCaseDeal = isRealCaseDeal(workflowDeal) ? workflowDeal : null
-  const routeSessionId = firstParam(params.sessionId) ?? null
   const routeDerivedMode: CustomerKaelMode = routeMode === 'case' || routeJobId || initialPendingDraft
     ? 'case'
     : 'normal'
@@ -101,8 +105,10 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
       : activeCatalogCaseMatchesWorkflowDeal ? workflowCaseDeal : null
   const caseHydration = useCustomerCaseHydration({
     active: mode === 'case',
+    authLoading,
     hydrate: workflow.actions.hydrateRemoteJobById,
     routeJobId,
+    sessionAccessToken,
   })
   const deal = routeJobId && (caseHydration.hydrating || caseHydration.failed)
     ? null
@@ -116,15 +122,24 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     Boolean(deal && mode === 'case'),
     language,
   )
-  const visibleError = caseHydration.failed
-    ? (language === 'vi' ? 'Chưa có công việc thật.' : 'No job yet.')
+  const visibleError = caseHydration.authRequired
+    ? (language === 'vi'
+      ? 'Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.'
+      : 'Your sign-in session is no longer valid. Sign in again.')
+    : caseHydration.failed
+      ? workflow.state.lastError ?? (language === 'vi'
+        ? 'Chưa thể tải công việc. Vui lòng thử lại.'
+        : 'The job could not be loaded. Try again.')
     : workflow.state.lastError ?? conversation.error
-  const selectedServiceRef = useRef<ServiceType | null>(
+  const [initialSelectedService] = useState<ServiceType | null>(() => (
     initialPendingDraft?.serviceType ??
-    serviceParam(firstParam(params.service)),
-  )
-  if (deal?.draft.serviceType) selectedServiceRef.current = deal.draft.serviceType
-  const selectedService = selectedServiceRef.current
+    serviceParam(firstParam(params.service))
+  ))
+  const selectedService = deal?.draft.serviceType ?? initialSelectedService
+  const selectedServiceRef = useRef<ServiceType | null>(selectedService)
+  useLayoutEffect(() => {
+    selectedServiceRef.current = selectedService
+  }, [selectedService])
   const caseUi = useCustomerKaelCaseUiState({
     evidenceOwnerKey: deal ? `${deal.id}:${deal.draft.mediaCount ?? 0}` : null,
     optionsOwnerKey: deal?.status === 'awaiting_customer_confirm' ? deal.id : null,
@@ -134,6 +149,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     caseServiceLabel,
     deal,
     language,
+    reduceMotion,
     selectedService,
   })
   useCustomerKaelSessionHydration({
@@ -228,8 +244,10 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     kaelRequestGuard,
     language,
     mode,
+    pendingDraftOwnerId,
     processController,
     router,
+    sessionAccessToken,
     workflow,
   })
   const modeMenu = useCustomerKaelModeMenu({

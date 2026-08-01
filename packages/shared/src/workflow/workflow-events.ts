@@ -82,6 +82,7 @@ export const WORKFLOW_EVENTS = Object.freeze([
   'customer_confirmed_completion',
   'kael_decided_payment',
   'payment_confirmed',
+  'worker_confirmed_cash_payment',
   'kael_decided_dispute',
   'review_submitted',
   'kael_processed_cancellation',

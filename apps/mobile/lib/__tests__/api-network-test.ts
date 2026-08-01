@@ -88,6 +88,26 @@ describe('mobile API response guard', () => {
     )
   })
 
+  it('uses the supplied token for an authenticated mobile API read', async () => {
+    mockFetch.mockResolvedValue({
+      body: null,
+      headers: { get: () => null },
+      ok: true,
+      status: 200,
+      text: jest.fn(async () => '{}'),
+    })
+
+    await api.getAuthenticated('/kael/chat/session-a', 'session-token')
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.test/functions/v1/mobile-api/kael/chat/session-a',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer session-token' }),
+        redirect: 'error',
+      }),
+    )
+  })
+
   it('rejects malformed successful JSON instead of casting it to the requested contract', async () => {
     mockFetch.mockResolvedValue({
       body: null,

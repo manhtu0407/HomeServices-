@@ -25,6 +25,7 @@ export type WorkflowTransitionEvent =
   | "customer_confirmed_completion"
   | "kael_decided_payment"
   | "payment_confirmed"
+  | "worker_confirmed_cash_payment"
   | "kael_decided_dispute"
   | "review_submitted"
   | "kael_processed_cancellation"
@@ -147,6 +148,7 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
   customer_confirmed_completion: [["completed_by_worker", "confirmed_by_customer"]],
   kael_decided_payment: [["confirmed_by_customer", "payment_pending"]],
   payment_confirmed: [["payment_pending", "paid"]],
+  worker_confirmed_cash_payment: [["confirmed_by_customer", "paid"]],
   kael_decided_dispute: [
     ["completed_by_worker", "confirmed_by_customer"],
     ["confirmed_by_customer", "reviewed"],

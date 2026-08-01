@@ -1,5 +1,6 @@
 import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../_shared/contracts.ts";
 import { KAEL_CASE_WORK_PHASES, kaelDiagnosisScopeArtifactSchema } from "../kael/artifact-contract.ts";
+import { kaelIntakeConfirmationSchema } from "../kael/intake-confirmation.ts";
 import {
   PRICE_DISCLAIMER,
   intakeEvalObservationSchema,
@@ -103,6 +104,17 @@ export function serializeKaelSession(
     apiFailure("DB_ERROR", "Dữ liệu phiên Kael không hợp lệ", 500);
   }
   const diagnosisScope = diagnosisScopeResult?.success ? diagnosisScopeResult.data : null;
+  const metadata = asRecord(row.safe_metadata);
+  const intakeConfirmationResult = metadata.intake_confirmation === undefined ||
+      metadata.intake_confirmation === null
+    ? null
+    : kaelIntakeConfirmationSchema.safeParse(metadata.intake_confirmation);
+  if (intakeConfirmationResult && !intakeConfirmationResult.success) {
+    apiFailure("DB_ERROR", "Dữ liệu xác nhận đầu vào Kael không hợp lệ", 500);
+  }
+  const intakeConfirmation = intakeConfirmationResult?.success
+    ? intakeConfirmationResult.data
+    : null;
   const rowCasePhase = typeof row.case_phase === "string" &&
       (KAEL_CASE_WORK_PHASES as readonly string[]).includes(row.case_phase)
     ? row.case_phase as EdgeKaelCaseWorkPhase
@@ -130,7 +142,14 @@ export function serializeKaelSession(
     estimate_ready_at: nullableString(row.estimate_ready_at),
     total_turns: totalTurns,
     total_cost_usd: totalCostUsd,
-    next_action: kaelNextAction(status, lastTurn?.content_type, totalCostUsd, diagnosisScope),
+    next_action: kaelNextAction(
+      status,
+      lastTurn?.content_type,
+      totalCostUsd,
+      diagnosisScope,
+      intakeConfirmation,
+    ),
+    intake_confirmation: intakeConfirmation,
   };
 }
 
@@ -177,8 +196,61 @@ export function serializeKaelEstimate(value: unknown, cardV3?: unknown) {
     disclaimer: nonEmptyString(estimate.disclaimer) ?? PRICE_DISCLAIMER,
     needs_inspection: card.needs_inspection === true,
     price_source: nullableString(card.price_source),
+    complexity_reasoning: nullableString(reasoning.complexity_reasoning),
+    market_signals: nullableString(reasoning.market_signals),
     needs_inspection_reason: nullableString(reasoning.needs_inspection_reason),
+    analysis_receipt: serializeEstimateAnalysisReceipt(card.analysis_receipt),
   };
+}
+
+function serializeEstimateAnalysisReceipt(value: unknown) {
+  const receipt = asRecord(value);
+  if (Object.keys(receipt).length === 0) return null;
+  if (receipt.schema_version !== "analysis_receipt.v1") return null;
+  const evidence = asRecord(receipt.evidence);
+  const market = asRecord(receipt.market);
+  const photoCount = finiteDbNumber(evidence.photo_count);
+  const videoFrameCount = finiteDbNumber(evidence.video_frame_count);
+  const voiceTranscriptCount = finiteDbNumber(evidence.voice_transcript_count);
+  const acceptedSourceCount = finiteDbNumber(market.accepted_source_count);
+  const highTrustSourceCount = finiteDbNumber(market.high_trust_source_count);
+  const validEvidenceCounts = [photoCount, videoFrameCount, voiceTranscriptCount]
+    .every((count) => count !== null && Number.isSafeInteger(count) && count >= 0);
+  const validMarketCounts = [
+    [market.accepted_source_count, acceptedSourceCount],
+    [market.high_trust_source_count, highTrustSourceCount],
+  ].every(([raw, count]) => isNullableNonNegativeInteger(raw, count));
+  if (
+    !validEvidenceCounts ||
+    typeof evidence.skipped !== "boolean" ||
+    !validMarketCounts ||
+    (market.quorum_met !== null && typeof market.quorum_met !== "boolean")
+  ) {
+    apiFailure("DB_ERROR", "Dữ liệu biên nhận phân tích Kael không hợp lệ", 500);
+  }
+  return {
+    schema_version: "analysis_receipt.v1" as const,
+    evidence: {
+      photo_count: photoCount as number,
+      video_frame_count: videoFrameCount as number,
+      voice_transcript_count: voiceTranscriptCount as number,
+      skipped: evidence.skipped,
+    },
+    market: {
+      accepted_source_count: market.accepted_source_count === null
+        ? null
+        : acceptedSourceCount,
+      high_trust_source_count: market.high_trust_source_count === null
+        ? null
+        : highTrustSourceCount,
+      quorum_met: market.quorum_met,
+    },
+  };
+}
+
+function isNullableNonNegativeInteger(raw: unknown, parsed: unknown) {
+  return raw === null ||
+    (typeof parsed === "number" && Number.isSafeInteger(parsed) && parsed >= 0);
 }
 
 export function serializeJobMessage(row: Record<string, unknown>) {
@@ -267,10 +339,13 @@ export function kaelNextAction(
   lastContentType: string | undefined,
   totalCostUsd: number,
   diagnosisScope?: unknown,
+  intakeConfirmation?: unknown,
 ): KaelChatNextAction {
   if (status === "confirmed") return "confirmed";
   if (status === "unsupported") return "unsupported";
   if (totalCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) return "budget_exceeded";
+  const intake = kaelIntakeConfirmationSchema.safeParse(intakeConfirmation);
+  if (intake.success && intake.data.status === "pending") return "confirm_intake";
   if (status === "collecting_evidence") return "collect_evidence";
   if (status === "estimate_ready") return "estimate_ready";
   const artifact = kaelDiagnosisScopeArtifactSchema.safeParse(diagnosisScope);

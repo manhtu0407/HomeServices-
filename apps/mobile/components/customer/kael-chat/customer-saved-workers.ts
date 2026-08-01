@@ -12,9 +12,18 @@ export type SavedWorkerSummary = Readonly<{
 export type SavedWorkersStatus = 'error' | 'loading' | 'ready'
 
 type SavedWorkersSnapshot = Readonly<{
+  jobId: string | null
+  reloadVersion: number
   status: SavedWorkersStatus
   workers: readonly SavedWorkerSummary[]
 }>
+
+const emptySavedWorkersSnapshot: SavedWorkersSnapshot = {
+  jobId: null,
+  reloadVersion: 0,
+  status: 'ready',
+  workers: [],
+}
 
 export function savedWorkerSummariesFromHistory(
   history: readonly CustomerServiceHistoryItem[],
@@ -41,6 +50,8 @@ export function savedWorkerSummariesFromHistory(
 export function useCustomerSavedWorkers(candidateJobId: string | null) {
   const [reloadVersion, setReloadVersion] = useState(0)
   const [snapshot, setSnapshot] = useState<SavedWorkersSnapshot>({
+    jobId: candidateJobId,
+    reloadVersion: 0,
     status: candidateJobId ? 'loading' : 'ready',
     workers: [],
   })
@@ -48,24 +59,24 @@ export function useCustomerSavedWorkers(candidateJobId: string | null) {
 
   useEffect(() => {
     if (!candidateJobId) {
-      setSnapshot({ status: 'ready', workers: [] })
       return
     }
 
     let active = true
-    setSnapshot((current) => ({ status: 'loading', workers: current.workers }))
     void jobService.listMyServiceHistory().then((result) => {
       if (!active) return
       if (!result.success) {
-        setSnapshot({ status: 'error', workers: [] })
+        setSnapshot({ jobId: candidateJobId, reloadVersion, status: 'error', workers: [] })
         return
       }
       setSnapshot({
+        jobId: candidateJobId,
+        reloadVersion,
         status: 'ready',
         workers: savedWorkerSummariesFromHistory(result.data.service_history),
       })
     }).catch(() => {
-      if (active) setSnapshot({ status: 'error', workers: [] })
+      if (active) setSnapshot({ jobId: candidateJobId, reloadVersion, status: 'error', workers: [] })
     })
 
     return () => {
@@ -73,5 +84,16 @@ export function useCustomerSavedWorkers(candidateJobId: string | null) {
     }
   }, [candidateJobId, reloadVersion])
 
-  return { ...snapshot, reload }
+  const snapshotMatchesRequest = snapshot.jobId === candidateJobId && snapshot.reloadVersion === reloadVersion
+  const visibleSnapshot = candidateJobId
+    ? snapshotMatchesRequest
+      ? snapshot
+      : { ...snapshot, jobId: candidateJobId, reloadVersion, status: 'loading' as const }
+    : emptySavedWorkersSnapshot
+
+  return {
+    status: visibleSnapshot.status,
+    workers: visibleSnapshot.workers,
+    reload,
+  }
 }

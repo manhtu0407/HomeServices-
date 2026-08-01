@@ -83,11 +83,6 @@ export const customerV21ChatStyles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 14,
   },
-  chatEvidenceStrip: {
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 10,
-  },
   chatFrame: {
     flex: 1,
     gap: 10,

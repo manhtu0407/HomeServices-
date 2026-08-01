@@ -8,6 +8,12 @@ jest.mock('@/lib/supabase', () => ({
   },
 }))
 
+jest.mock('@/lib/runtime-config', () => ({
+  mobileRuntimeConfig: {
+    supabaseUrl: 'https://project.supabase.co',
+  },
+}))
+
 import {
   jobMediaObjectPathFromRef,
   mergeJobMediaRefsNewestFirst,
@@ -79,6 +85,15 @@ describe('job media previews', () => {
   it('rejects arbitrary remote URLs while preserving local draft previews', async () => {
     await expect(resolveJobMediaPreviewUrl('https://attacker.example/pixel.jpg')).resolves.toBeNull()
     await expect(resolveJobMediaPreviewUrl('file:///private/local-draft.jpg')).resolves.toBe('file:///private/local-draft.jpg')
+    await expect(resolveJobMediaPreviewUrl('blob:https://preview.local/qa-marker')).resolves.toBe('blob:https://preview.local/qa-marker')
+    expect(mockCreateSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it('preserves a signed Case Work evidence URL from the configured project only', async () => {
+    const signed = 'https://project.supabase.co/storage/v1/object/sign/kael-chat-media/customer/kael-chat/model_vision/evidence.png?token=signed'
+
+    await expect(resolveJobMediaPreviewUrl(signed)).resolves.toBe(signed)
+    await expect(resolveJobMediaPreviewUrl('https://attacker.example/storage/v1/object/sign/kael-chat-media/customer/kael-chat/model_vision/evidence.png?token=signed')).resolves.toBeNull()
     expect(mockCreateSignedUrl).not.toHaveBeenCalled()
   })
 })

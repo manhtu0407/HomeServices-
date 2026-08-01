@@ -1,17 +1,17 @@
-import { Text as RNText, View, type TextProps } from 'react-native'
-import { useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
+import { Text as RNText, View, type TextProps , type ViewStyle } from 'react-native'
+import Animated, { useAnimatedStyle, useSharedValue , withDelay, withSpring } from 'react-native-reanimated'
 import { type AppLanguage } from '@/lib/app-language'
 import { WorkerV5EarningsHomeHeroAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
 import { styles } from '../worker-v5-flow-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import Animated from 'react-native-reanimated'
-import { type ViewStyle } from 'react-native'
+
+
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { styles as reliabilityStyles } from './reliability-styles'
 import { useEffect } from 'react'
-import { withDelay, withSpring } from 'react-native-reanimated'
+
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {
@@ -41,7 +41,6 @@ export function WorkerV5ReliabilityHero({
         <Text style={styles.completionLensLabel} numberOfLines={2}>{textByLanguage(language, 'điểm tin cậy', 'trust score')}</Text>
       </View>
       <View style={styles.earningsHeroCopy}>
-        <Text style={styles.earningsHeroPill} numberOfLines={2} testID="worker-v5-reliability-status">{hasScore ? textByLanguage(language, 'Có thể giải thích', 'Explainable') : textByLanguage(language, 'Chưa đủ dữ liệu', 'Not enough data')}</Text>
         <Text style={styles.earningsHeroAmount} numberOfLines={2} testID="worker-v5-reliability-title">{hasScore ? textByLanguage(language, 'Đáng tin cậy và ổn định', 'Reliable and stable') : textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')}</Text>
         <Text style={styles.earningsHeroMeta} numberOfLines={2}>{hasScore ? textByLanguage(language, 'Tính từ dữ liệu hiệu suất đã đồng bộ.', 'Calculated from synced performance data.') : textByLanguage(language, 'Số sẽ cập nhật khi có hiệu suất thật.', 'The score updates when real performance exists.')}</Text>
       </View>

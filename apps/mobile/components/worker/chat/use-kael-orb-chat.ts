@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { Alert } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import type { LocalDeal, WorkerKaelChatMode } from '@nestscout/shared'
@@ -68,21 +68,20 @@ export function useWorkerV5KaelOrbChat(
     pendingSessionIds, progress, sessions, sessionsError,
     setActiveSessionId, setBusy, setCreatingSession, setError, setMediaItems,
     setOpeningSessionId, setPendingSessionIds, setProgress, setSessions,
-    setSessionsError, setTurns, sessionsLoading: storedSessionsLoading, turns,
+    setSessionsError, setTurns, sessionsLoading, turns,
   } = useWorkerV5KaelOrbScopedState({
-    catalogKey, catalogOwnerKey: sessionCatalogOwnerKeyRef.current,
-    catalogReady: sessionCatalogReadyRef.current, catalogSessions: sessionCatalogRef.current,
+    catalogKey,
     jobId: sessionJobId, localVisualAuditSession, mode, ownerKey,
-    removedSessionIds: removedSessionIdsRef.current, workerId,
+    workerId,
   })
-  const sessionsLoading = Boolean(workerId && storedSessionsLoading && (sessionCatalogOwnerKeyRef.current !== catalogKey
-    || !sessionCatalogReadyRef.current || (mode === 'intake' && !sessionJobId && !workerJobsHydrated)))
-  activeWorkerIdRef.current = workerId
-  activeModeRef.current = mode
-  localVisualAuditSessionRef.current = localVisualAuditSession
-  activeJobIdRef.current = sessionJobId
-  workerJobsHydratedRef.current = workerJobsHydrated
-  pendingSessionIdsRef.current = pendingSessionIds
+  useLayoutEffect(() => {
+    activeWorkerIdRef.current = workerId
+    activeModeRef.current = mode
+    localVisualAuditSessionRef.current = localVisualAuditSession
+    activeJobIdRef.current = sessionJobId
+    workerJobsHydratedRef.current = workerJobsHydrated
+    pendingSessionIdsRef.current = pendingSessionIds
+  }, [localVisualAuditSession, mode, pendingSessionIds, sessionJobId, workerId, workerJobsHydrated])
   const advisoryUnavailableReply = workerV5KaelAdvisoryUnavailableReply(readOnly, language)
   const progressPercent = progress ? Math.max(0, Math.min(100, Math.round(progress.progress * 100))) : null
   const busyLabel = openingSessionId || creatingSession ? textByLanguage(language, 'Đang mở cuộc trò chuyện...', 'Opening conversation...')

@@ -314,6 +314,53 @@ export type Database = {
           },
         ]
       }
+      customer_account_deletion_requests: {
+        Row: {
+          checkpoint: string
+          client_request_id: string
+          completed_at: string | null
+          created_at: string
+          customer_id: string
+          database_scrubbed_at: string | null
+          id: string
+          requested_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          checkpoint?: string
+          client_request_id: string
+          completed_at?: string | null
+          created_at?: string
+          customer_id: string
+          database_scrubbed_at?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          checkpoint?: string
+          client_request_id?: string
+          completed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          database_scrubbed_at?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_account_deletion_requests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_favorite_workers: {
         Row: {
           created_at: string
@@ -4163,8 +4210,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_state: string
           avatar_url: string | null
           created_at: string
+          deleted_at: string | null
+          deletion_requested_at: string | null
           full_name: string | null
           id: string
           phone: string | null
@@ -4172,8 +4222,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_state?: string
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deletion_requested_at?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
@@ -4181,8 +4234,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_state?: string
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deletion_requested_at?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null
@@ -5157,6 +5213,108 @@ export type Database = {
           },
         ]
       }
+      worker_cash_commission_ledger: {
+        Row: {
+          cash_commission_collected: number
+          cash_commission_due: number
+          commission_level: number
+          commission_rate_bps: number
+          confirmed_at: string
+          created_at: string
+          gross_amount: number
+          id: string
+          job_id: string
+          platform_fee: number
+          worker_id: string
+          worker_net: number
+        }
+        Insert: {
+          cash_commission_collected: number
+          cash_commission_due: number
+          commission_level: number
+          commission_rate_bps: number
+          confirmed_at?: string
+          created_at?: string
+          gross_amount: number
+          id?: string
+          job_id: string
+          platform_fee: number
+          worker_id: string
+          worker_net: number
+        }
+        Update: {
+          cash_commission_collected?: number
+          cash_commission_due?: number
+          commission_level?: number
+          commission_rate_bps?: number
+          confirmed_at?: string
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          job_id?: string
+          platform_fee?: number
+          worker_id?: string
+          worker_net?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_cash_commission_ledger_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_cash_commission_ledger_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_cash_commission_reconciliations: {
+        Row: {
+          amount: number
+          cash_commission_ledger_id: string
+          created_at: string
+          id: string
+          reconciled_at: string
+          worker_id: string
+        }
+        Insert: {
+          amount: number
+          cash_commission_ledger_id: string
+          created_at?: string
+          id?: string
+          reconciled_at?: string
+          worker_id: string
+        }
+        Update: {
+          amount?: number
+          cash_commission_ledger_id?: string
+          created_at?: string
+          id?: string
+          reconciled_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_cash_commission_reconciliations_cash_commission_ledger_id_fkey"
+            columns: ["cash_commission_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "worker_cash_commission_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_cash_commission_reconciliations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_safety_patterns: {
         Row: {
           created_at: string
@@ -5659,6 +5817,24 @@ export type Database = {
           worker_net: number
         }[]
       }
+      confirm_worker_cash_payment: {
+        Args: { p_job_id: string; p_worker_id: string }
+        Returns: {
+          cash_commission_collected: number
+          cash_commission_due: number
+          commission_level: number
+          commission_rate_bps: number
+          gross_amount: number
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          outcome: string
+          payment_received_at: string
+          payment_status: string
+          payment_updated_at: string
+          platform_fee: number
+          worker_net: number
+        }[]
+      }
       archive_stale_kael_memory: {
         Args: { p_archive_before?: string }
         Returns: {
@@ -5979,6 +6155,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      complete_customer_account_deletion: {
+        Args: { p_client_request_id: string; p_customer_id: string }
+        Returns: {
+          checkpoint: string
+          request_id: string
+          request_status: string
+        }[]
+      }
       complete_job_media_cleanup: {
         Args: { p_claim_token: string; p_intent_ids: string[]; p_now?: string }
         Returns: number
@@ -6221,6 +6405,8 @@ export type Database = {
         }
         Returns: {
           available_balance: number
+          cash_commission_collected_total: number
+          cash_commission_due_total: number
           current_commission_level: number
           current_commission_rate_bps: number
           daily_earnings: Json
@@ -6329,6 +6515,14 @@ export type Database = {
           evidence_snapshot_id: string
           ok: boolean
           priority: string
+        }[]
+      }
+      prepare_customer_account_deletion: {
+        Args: { p_client_request_id: string; p_customer_id: string }
+        Returns: {
+          checkpoint: string
+          request_id: string
+          request_status: string
         }[]
       }
       promote_learning_candidate: {
@@ -6858,6 +7052,24 @@ export type Database = {
           token_id: string
           unregistered_out: boolean
           updated_at_ts: string
+        }[]
+      }
+      upsert_customer_refund_payment_method: {
+        Args: {
+          p_account_holder_name: string
+          p_bank_account: string
+          p_bank_key: string
+          p_customer_id: string
+        }
+        Returns: {
+          bank_account_masked: string
+          bank_key: string
+          bank_name: string
+          id: string
+          is_default: boolean
+          status: string
+          updated_at: string
+          verified_at: string | null
         }[]
       }
       upsert_job_incident_signal_atomic: {

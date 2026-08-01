@@ -352,7 +352,7 @@ function assertVietQrPendingPayment(job: Record<string, unknown>) {
     nullableString(job.payment_provider) !== "sepay_vietqr" ||
     nullableString(job.payment_status) !== "vietqr_ready"
   ) {
-    apiFailure("PAYMENT_PROVIDER_MISMATCH", "Công việc không dùng thanh toán SePay VietQR.", 409);
+    apiFailure("PAYMENT_PROVIDER_MISMATCH", "Công việc không dùng phương thức thanh toán này.", 409);
   }
 }
 

@@ -1,5 +1,9 @@
+import { IntakeConfirmationResponse } from '../kael-chat/intake-confirmation-response'
 import { CaseWorkResponse } from './case-work-response'
-import { buildCaseWorkResponseModel } from './case-work-response-model'
+import {
+  buildCaseWorkResponseModel,
+  buildIntakeConfirmationResponseModel,
+} from './case-work-response-model'
 import {
   resolveCaseWorkIntakePhase,
   shouldShowCaseWorkIntakeResponse,
@@ -12,6 +16,7 @@ export function CustomerKaelIntakeResponseNode({ controller }: { controller: Con
   const {
     conversation,
     deal,
+    decisionActions,
     language,
     mode,
     presentation,
@@ -36,14 +41,29 @@ export function CustomerKaelIntakeResponseNode({ controller }: { controller: Con
     nextAction: chat?.session.next_action ?? null,
     status: chat?.session.status ?? null,
   })
-  const model = buildCaseWorkResponseModel({
-    language,
-    phase,
-    subject: conversation.pendingDraft?.description,
-  })
+  const intakeConfirmation = presentation.intakeConfirmationActive
+    ? presentation.intakeConfirmation
+    : null
+  const model = intakeConfirmation
+    ? buildIntakeConfirmationResponseModel(language, intakeConfirmation.focus)
+    : buildCaseWorkResponseModel({
+        language,
+        phase,
+        subject: conversation.pendingDraft?.description,
+      })
 
   return (
     <CaseWorkResponse
+      details={intakeConfirmation ? (
+        <IntakeConfirmationResponse
+          busy={conversation.loading}
+          confirmation={intakeConfirmation}
+          language={language}
+          onConfirm={() => void decisionActions.confirmIntakeInformation()}
+          onCorrection={() => void decisionActions.requestIntakeCorrection()}
+          tokens={tokens}
+        />
+      ) : undefined}
       model={model}
       reduceMotion={reduceMotion}
       testID="customer-v21-case-work-intake-response"

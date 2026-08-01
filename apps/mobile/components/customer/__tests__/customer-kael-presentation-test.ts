@@ -156,6 +156,22 @@ describe('customer Kael presentation', () => {
     expect(derivePresentation({ chat: analysisChat() }).serverEvidenceRequired).toBe(true)
   })
 
+  it('renders intake confirmation before evidence and keeps the composer closed', () => {
+    const chat = analysisChat(false)
+    chat.session.next_action = 'confirm_intake'
+    chat.session.intake_confirmation = {
+      status: 'pending',
+      blocking: false,
+      fields: [],
+    } as unknown as NonNullable<KaelChatResponse['session']['intake_confirmation']>
+
+    const presentation = derivePresentation({ chat })
+
+    expect(presentation.intakeConfirmationActive).toBe(true)
+    expect(presentation.agenticEvidenceGateActive).toBe(false)
+    expect(presentation.showComposer).toBe(false)
+  })
+
   it('uses the authoritative quote-ready phase instead of adding a second confidence threshold', () => {
     const chat = {
       session: {

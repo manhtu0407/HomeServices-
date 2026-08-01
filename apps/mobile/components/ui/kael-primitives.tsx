@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref } from 'react'
+import { useId, type ReactNode, type Ref } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -92,6 +92,7 @@ export function KaelButton({
   variant = 'primary',
 }: KaelButtonProps) {
   const { reduceMotion } = useGlassAccessibility()
+  const primaryGradientId = `kael-primary-button-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   const isPrimary = variant === 'primary'
   const isDisabled = disabled || loading
   const minHeight = size === 'small' ? component.button.small.height : component.button.primary.height
@@ -119,7 +120,9 @@ export function KaelButton({
       testID={testID}
     >
       {backgroundLayer}
-      {isPrimary && !isDisabled && showPrimaryGradient ? <PrimaryButtonGradient height={minHeight} /> : null}
+      {isPrimary && !isDisabled && showPrimaryGradient ? (
+        <PrimaryButtonGradient gradientId={primaryGradientId} height={minHeight} />
+      ) : null}
       {loading ? (
         <ActivityIndicator color={isPrimary ? component.button.primary.text : buttonTextColor(variant, isDisabled)} />
       ) : (
@@ -591,17 +594,17 @@ export function MintAura({ intensity = 'component', style, testID }: { intensity
   )
 }
 
-function PrimaryButtonGradient({ height }: { height: number }) {
+function PrimaryButtonGradient({ gradientId, height }: { gradientId: string; height: number }) {
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none">
       <Defs>
-        <LinearGradient id="kael-primary-button" x1="0" y1="0" x2="1" y2="0">
+        <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
           {component.button.primary.gradient.map((stopColor, index) => (
             <Stop key={stopColor} offset={component.button.primary.gradientStops[index]} stopColor={stopColor} />
           ))}
         </LinearGradient>
       </Defs>
-      <Rect x="0" y="0" width="100" height={height} fill="url(#kael-primary-button)" />
+      <Rect x="0" y="0" width="100" height={height} fill={`url(#${gradientId})`} />
     </Svg>
   )
 }

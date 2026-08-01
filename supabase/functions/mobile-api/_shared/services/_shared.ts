@@ -1,6 +1,7 @@
 import type { ComplexityLevel, JobMediaAttachInput, JobStatus, ServiceType } from "../../../_shared/domain.ts";
 import { HCMC_DISTRICTS, kaelChatProgressSchema, normalizeDistrict } from "../../../_shared/domain.ts";
 import type { EstimatePriceSource, PipelineStageLog } from "../kael/index.ts";
+import { customerVisibleKaelProblemSummary } from "../kael/user-facing-copy.ts";
 import { apiFailure } from "../router.ts";
 import type { MobileApiContext } from "../router.ts";
 import type { EdgeAiSecrets } from "../kael/index.ts";
@@ -351,12 +352,26 @@ export function formatKaelEstimateText(estimate: {
   advisory: string | null;
   disclaimer: string;
 }, language: "vi" | "en" = "vi") {
+  const problemSummary = customerVisibleKaelProblemSummary(
+    estimate.problem_summary,
+    language,
+  );
   if (language === "en") {
-    const advisory = estimate.advisory ? ` Note: ${estimate.advisory}` : "";
-    return `Kael has prepared an estimate: ${estimate.problem_summary}. Complexity: ${estimate.complexity}; range: ${estimate.price_min.toLocaleString("en-US")}-${estimate.price_max.toLocaleString("en-US")} VND. ${estimate.disclaimer}${advisory}`;
+    const complexity = estimate.complexity === "small"
+      ? "Small"
+      : estimate.complexity === "medium"
+      ? "Medium"
+      : "Large";
+    const advisory = estimate.advisory ? `\nNote: ${estimate.advisory}` : "";
+    return `Kael has prepared an estimate after completing the checks.\nIssue: ${problemSummary}.\nComplexity: ${complexity}.\nEstimated range: ${estimate.price_min.toLocaleString("en-US")}-${estimate.price_max.toLocaleString("en-US")} VND.\n${estimate.disclaimer}${advisory}`;
   }
-  const advisory = estimate.advisory ? ` Lưu ý: ${estimate.advisory}` : "";
-  return `Kael đã có ước tính: ${estimate.problem_summary}. Mức độ ${estimate.complexity}, khoảng ${estimate.price_min.toLocaleString("vi-VN")}-${estimate.price_max.toLocaleString("vi-VN")} đ. ${estimate.disclaimer}${advisory}`;
+  const complexity = estimate.complexity === "small"
+    ? "Nhỏ"
+    : estimate.complexity === "medium"
+    ? "Vừa"
+    : "Lớn";
+  const advisory = estimate.advisory ? `\nLưu ý: ${estimate.advisory}` : "";
+  return `Kael đã hoàn tất đối chiếu.\nHiện trạng: ${problemSummary}.\nMức độ: ${complexity}.\nKhoảng ước tính: ${estimate.price_min.toLocaleString("vi-VN")}-${estimate.price_max.toLocaleString("vi-VN")} đ.\n${estimate.disclaimer}${advisory}`;
 }
 
 export function secondsRemaining(expiresAt: string | null, now: Date): number | null {

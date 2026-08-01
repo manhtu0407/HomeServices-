@@ -61,9 +61,11 @@ export function useCustomerJobActions({
     return true
   }, [dispatch, role, setRemoteError])
 
-  const hydrateRemoteJobById = useCallback(async (jobId: string) => {
+  // The caller can pass its own access token so a just-confirmed job hydrates
+  // even when the shared client still holds a stale session.
+  const hydrateRemoteJobById = useCallback(async (jobId: string, accessToken?: string) => {
     if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
-    return hydrateJobResult(await jobService.getJob(jobId))
+    return hydrateJobResult(await jobService.getJob(jobId, accessToken))
   }, [hydrateJobResult, setRemoteError])
 
   const refreshCurrentJob = useCallback(async () => {
@@ -79,6 +81,9 @@ export function useCustomerJobActions({
     const result = await jobService.listMyActiveJob()
     if (!result.success) return false
     if (!result.data.active_job) return true
+    // A direct route can hydrate while this bootstrap request is in flight.
+    // Keep that newer, explicitly selected job instead of replacing it.
+    if (getRemoteJobId(stateRef.current)) return true
     dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data.active_job, false) })
     return true
   }, [dispatch, stateRef])

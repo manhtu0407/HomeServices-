@@ -129,14 +129,14 @@ export function WorkerV5ActionRail({
         ]}
         testID={primaryTestID}
       >
-        {primaryUsesSourceTone ? <PrimaryButtonFill disabled={false} variant="source" /> : null}
+        {primaryUsesSourceTone ? <PrimaryButtonFill disabled={primaryIsDisabled} variant="source" /> : null}
         <Text
           style={[
             styles.navButtonText,
             styles.actionRailButtonText,
             styles.navButtonPrimaryText,
             reduceTransparency && !primaryUsesSourceTone && styles.actionRailPrimaryText,
-            primaryIsDisabled && !primaryUsesSourceTone && styles.navButtonDisabledText,
+            primaryIsDisabled && (primaryUsesSourceTone ? styles.sourceActionDisabledText : styles.navButtonDisabledText),
           ]}
           adjustsFontSizeToFit
           minimumFontScale={0.72}
@@ -179,12 +179,12 @@ export function WorkerV5SingleSourceActionButton({
       ]}
       testID={testID}
     >
-      <PrimaryButtonFill disabled={false} variant="source" />
+      <PrimaryButtonFill disabled={disabled} variant="source" />
       <Text
         adjustsFontSizeToFit
         minimumFontScale={0.76}
         numberOfLines={1}
-        style={[styles.primaryActionText, styles.navButtonPrimaryText]}
+        style={[styles.primaryActionText, styles.navButtonPrimaryText, disabled && styles.sourceActionDisabledText]}
       >
         {label}
       </Text>

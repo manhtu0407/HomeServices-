@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
 import type { AppLanguage } from '@/lib/app-language'
@@ -9,6 +9,7 @@ import type {
 } from '@/lib/api-types/customer'
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
+import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
 import { customerKaelConversationService } from '@/lib/services'
 
 import {
@@ -29,6 +30,8 @@ import {
 
 const catalogMemory = new Map<string, CustomerKaelConversationSession[]>()
 const responseMemory = new Map<string, CustomerKaelConversationResponse>()
+const activeResponseByCatalogMemory = new Map<string, CustomerKaelConversationResponse | null>()
+const archivedSessionIdsByCatalogMemory = new Map<string, Set<string>>()
 const CUSTOMER_SESSION_PREFETCH_LIMIT = 6
 
 type CustomerKaelCatalogState = {
@@ -52,29 +55,28 @@ export function useCustomerKaelConversations(
   const catalogKey = customerId ? customerCatalogKey(customerId, mode) : null
   const activeKeyRef = useRef(catalogKey)
   const activeModeRef = useRef(mode)
-  const activeResponseByCatalogRef = useRef(new Map<string, CustomerKaelConversationResponse | null>())
+  const activeResponseByCatalogRef = useRef(activeResponseByCatalogMemory)
   const visualAuditOwnerByCatalogRef = useRef(new Map<string, string>())
   const listRequestRef = useRef(new Map<string, Promise<CustomerKaelConversationSession[]>>())
   const sessionCreateRequestRef = useRef<Promise<CustomerKaelConversationResponse | null> | null>(null)
   const operationRequestRef = useRef(0)
   const operationLockRef = useRef<number | null>(null)
   const pendingSessionIdSetRef = useRef(new Set<string>())
-  const archivedSessionIdsByCatalogRef = useRef(new Map<string, Set<string>>())
   const archiveTombstones = useMemo(() => {
     if (!catalogKey) return new Set<string>()
-    const existing = archivedSessionIdsByCatalogRef.current.get(catalogKey)
+    const existing = archivedSessionIdsByCatalogMemory.get(catalogKey)
     if (existing) return existing
     const created = new Set<string>()
-    archivedSessionIdsByCatalogRef.current.set(catalogKey, created)
+    archivedSessionIdsByCatalogMemory.set(catalogKey, created)
     return created
   }, [catalogKey])
   const [storedCatalogState, setCatalogState] = useState(() => createCatalogState(
     catalogKey,
-    activeResponseByCatalogRef.current,
+    activeResponseByCatalogMemory,
   ))
   const catalogState = storedCatalogState.catalogKey === catalogKey
     ? storedCatalogState
-    : createCatalogState(catalogKey, activeResponseByCatalogRef.current)
+    : createCatalogState(catalogKey, activeResponseByCatalogMemory)
   const {
     activeResponse,
     creatingSession,
@@ -85,8 +87,10 @@ export function useCustomerKaelConversations(
     sessionsError,
     sessionsLoading,
   } = catalogState
-  activeKeyRef.current = catalogKey
-  activeModeRef.current = mode
+  useLayoutEffect(() => {
+    activeKeyRef.current = catalogKey
+    activeModeRef.current = mode
+  }, [catalogKey, mode])
 
   const matchesCatalogCustomer = useCallback((candidateCustomerId: string) => {
     if (!customerId || !catalogKey) return false
@@ -96,7 +100,7 @@ export function useCustomerKaelConversations(
   }, [catalogKey, customerId, localVisualAuditSession])
 
   const visibleResponse = activeResponse?.session.mode === mode
-    && matchesCatalogCustomer(activeResponse.session.customer_id)
+    && (localVisualAuditSession || activeResponse.session.customer_id === customerId)
     ? activeResponse
     : null
 
@@ -413,7 +417,11 @@ export function useCustomerKaelConversations(
 
   const sendConversationTurn = useCallback(async (
     message: string,
-    options?: { revealAfter?: Promise<void> },
+    options?: {
+      onResponseCommitted?: () => void
+      onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
+      revealAfter?: Promise<void>
+    },
   ) => {
     const content = message.trim()
     if (!content) return null
@@ -440,11 +448,28 @@ export function useCustomerKaelConversations(
     })
     try {
       const clientRequestId = generateClientRequestId()
-      const sent = await customerKaelConversationService.sendTurn(targetId, {
+      const turnInput = {
         client_request_id: clientRequestId,
         language,
         message: content,
-      })
+      }
+      const streamed = await customerKaelConversationService.streamTurn(
+        targetId,
+        turnInput,
+        {
+          onResponseDelta: (event) => {
+            if (
+              operationRequestRef.current !== requestId ||
+              activeModeRef.current !== mode ||
+              activeKeyRef.current !== catalogKey
+            ) return
+            options?.onResponseDelta?.(event)
+          },
+        },
+      )
+      const sent = !streamed.success && streamed.code === 'STREAM_UNSUPPORTED'
+        ? await customerKaelConversationService.sendTurn(targetId, turnInput)
+        : streamed
       const committed = sent.success
         ? sent.data
         : isAmbiguousConversationTurnFailure(sent)
@@ -473,6 +498,7 @@ export function useCustomerKaelConversations(
         || activeModeRef.current !== mode
         || activeKeyRef.current !== catalogKey
       ) return null
+      options?.onResponseCommitted?.()
       activateResponse(committed)
       return committed
     } catch {

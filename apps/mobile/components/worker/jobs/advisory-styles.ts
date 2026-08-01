@@ -152,7 +152,12 @@ export const styles = StyleSheet.create({
     zIndex: 2,
   },
   sourceActionDisabled: {
-    opacity: 1,
+    backgroundColor: component.button.disabled.bg,
+    borderColor: component.button.disabled.border,
+    shadowOpacity: 0,
+  },
+  sourceActionDisabledText: {
+    color: component.button.disabled.text,
   },
   suggestionChip: {
     backgroundColor: 'rgba(255,255,255,0.78)',

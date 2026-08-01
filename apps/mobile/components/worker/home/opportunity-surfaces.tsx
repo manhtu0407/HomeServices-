@@ -133,10 +133,10 @@ export function WorkerV5OpportunityEmptyCard({
       ? textByLanguage(language, 'Chưa có cơ hội đã lưu', 'No saved opportunity yet')
       : textByLanguage(language, 'Chưa có cơ hội phù hợp', 'No matching opportunity yet')
   const body = tab === 'new'
-    ? textByLanguage(language, 'Cơ hội mới chỉ hiện khi NestScout gửi broadcast thật tới thợ.', 'New opportunities appear only after NestScout sends a real broadcast to the worker.')
+    ? textByLanguage(language, 'Cơ hội mới chỉ hiện khi Kael gửi yêu cầu thật tới thợ.', 'New opportunities appear only after Kael sends a real request to the worker.')
     : tab === 'saved'
       ? textByLanguage(language, 'Cơ hội đã lưu sẽ hiện ở đây khi backend đồng bộ danh sách lưu thật.', 'Saved opportunities appear here after the backend syncs a real saved list.')
-      : textByLanguage(language, 'Danh sách chỉ hiện cơ hội thật NestScout đã gửi tới thợ.', 'The list only shows real NestScout opportunities sent to the worker.')
+      : textByLanguage(language, 'Danh sách chỉ hiện cơ hội thật Kael đã gửi tới thợ.', 'The list only shows real opportunities Kael sent to the worker.')
   return (
     <View style={[styles.opportunityCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-opportunity-empty-card">
       <WorkerV5FormulaMintCardAura

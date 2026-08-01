@@ -33,7 +33,8 @@ import type {
   JobIncidentResponse,
 } from './api-types'
 import { useAppLanguage } from './app-language'
-import { localizeWorkflowError } from './frontend-workflow/errors'
+import { localizeWorkflowError, type WorkflowErrorContext } from './frontend-workflow/errors'
+import type { CustomerAvatarDraft } from './customer-avatar-upload'
 import type { WorkerAvatarDraft } from './worker-avatar-upload'
 import {
   ACTIVE_TIMELINE_STATUSES,
@@ -45,6 +46,7 @@ import {
   type CustomerKaelMemoryStatus,
 } from './frontend-workflow/use-customer-kael-memory-actions'
 import { useCompletionPaymentActions } from './frontend-workflow/use-completion-payment-actions'
+import { useCustomerAvatarActions } from './frontend-workflow/use-customer-avatar-actions'
 import { useCustomerJobActions } from './frontend-workflow/use-customer-job-actions'
 import { useCustomerProfileInsightsActions } from './frontend-workflow/use-customer-profile-insights-actions'
 import { useNotificationActions } from './frontend-workflow/use-notification-actions'
@@ -77,7 +79,7 @@ type FrontendWorkflowActions = {
     draft?: LocalDealDraft,
     mediaItems?: LocalMediaUploadDraft[],
   ) => Promise<{ jobId: string; mediaError?: string } | false | null>
-  hydrateRemoteJobById: (jobId: string) => Promise<boolean>
+  hydrateRemoteJobById: (jobId: string, accessToken?: string) => Promise<boolean>
   confirmRemoteSearch: (jobIdOverride?: string) => Promise<boolean>
   cancelRemoteJob: () => Promise<boolean>
   refreshCurrentJob: () => Promise<boolean>
@@ -85,6 +87,7 @@ type FrontendWorkflowActions = {
   workerAcceptBroadcast: (jobId?: string) => Promise<boolean>
   workerDeclineBroadcast: () => Promise<boolean>
   workerUpdateStatus: WorkerOnsiteActions['workerUpdateStatus']
+  workerConfirmCashPayment: () => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeDraftInput) => Promise<boolean>
   getKaelJobIncident: () => Promise<JobIncidentResponse | false>
   openKaelJobIncident: (input: WorkerScopeChangeDraftInput) => Promise<JobIncidentResponse | false>
@@ -107,6 +110,8 @@ type FrontendWorkflowActions = {
   refreshCustomerKaelMemory: () => Promise<boolean>
   updateCustomerKaelMemoryPreference: (input: CustomerKaelMemoryPreferenceUpdateInput) => Promise<boolean | CustomerKaelMemoryPreferenceUpdateResult>
   refreshCustomerProfileInsights: () => Promise<boolean>
+  refreshCustomerAvatar: () => Promise<boolean>
+  customerUploadAvatar: (input: CustomerAvatarDraft) => Promise<boolean>
   refreshWorkerCandidate: (jobId?: string) => Promise<boolean>
   decideWorkerCandidate: (decision: 'confirm' | 'reject') => Promise<boolean>
   setWorkerCandidateFavorite: (isFavorite: boolean) => Promise<boolean>
@@ -118,6 +123,7 @@ type FrontendWorkflowContextValue = {
   customerKaelMemory: KaelMemorySelfViewResponse['memory'] | null
   customerKaelMemoryStatus: CustomerKaelMemoryStatus
   customerProfileInsights: CustomerProfileInsightsResponse | null
+  customerAvatarUrl: string | null
   customerWorkerCandidate: WorkerCandidateView | null
   customerWorkerCandidateBusy: boolean
   customerWorkerCandidateError: string | null
@@ -163,6 +169,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRefresh: () => Promise<boolean>
     refreshNotifications: () => Promise<boolean>
     hydrateCustomerActiveJob: () => Promise<boolean>
+    refreshCustomerAvatar: () => Promise<boolean>
   } | null>(null)
 
   useEffect(() => {
@@ -173,8 +180,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const remoteJobId = getRemoteJobId(state)
   const customerStatus = state.deal?.status
 
-  const setRemoteError = useCallback((error: string) => {
-    dispatch({ type: 'set_workflow_error', error: localizeWorkflowError(error, language) })
+  const setRemoteError = useCallback((error: string, code?: string, context?: WorkflowErrorContext) => {
+    dispatch({ type: 'set_workflow_error', error: localizeWorkflowError(error, language, code, context) })
     return false
   }, [language])
 
@@ -196,6 +203,12 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerProfileInsights,
     refreshCustomerProfileInsights,
   } = useCustomerProfileInsightsActions({ role, sessionUserId })
+
+  const {
+    customerAvatarUrl,
+    customerUploadAvatar,
+    refreshCustomerAvatar,
+  } = useCustomerAvatarActions({ role, sessionUserId, setRemoteError })
 
   const {
     cancelRemoteJob,
@@ -274,6 +287,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const {
     authorizeApartmentAccess,
     requestWorkerCancellation,
+    workerConfirmCashPayment,
     workerUpdateStatus,
   } = useWorkerOnsiteActions({
     dispatch,
@@ -305,6 +319,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerAcceptBroadcast,
     workerDeclineBroadcast,
     workerUpdateStatus,
+    workerConfirmCashPayment,
     requestScopeChange,
     getKaelJobIncident,
     openKaelJobIncident,
@@ -327,6 +342,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshCustomerKaelMemory,
     updateCustomerKaelMemoryPreference,
     refreshCustomerProfileInsights,
+    refreshCustomerAvatar,
+    customerUploadAvatar,
     refreshWorkerCandidate,
     decideWorkerCandidate,
     setWorkerCandidateFavorite,
@@ -346,6 +363,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshNotifications,
     refreshCustomerKaelMemory,
     refreshCustomerProfileInsights,
+    refreshCustomerAvatar,
+    customerUploadAvatar,
     refreshWorkerCandidate,
     updateCustomerKaelMemoryPreference,
     markNotificationRead,
@@ -365,6 +384,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerUpdateServicePreferences,
     workerUploadAvatar,
     workerUpdateStatus,
+    workerConfirmCashPayment,
   ])
 
   useEffect(() => {
@@ -377,8 +397,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       workerRefresh,
       refreshNotifications,
       hydrateCustomerActiveJob,
+      refreshCustomerAvatar,
     }
-  }, [refreshCurrentJob, workerRefresh, refreshNotifications, hydrateCustomerActiveJob])
+  }, [refreshCurrentJob, workerRefresh, refreshNotifications, hydrateCustomerActiveJob, refreshCustomerAvatar])
 
   // Refresh immediately on foreground; polling and realtime can otherwise leave
   // a stale timeline/notification visible until their next interval/event.
@@ -393,6 +414,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
         if (getRemoteJobId(stateRef.current)) void live.refreshCurrentJob()
         else void live.hydrateCustomerActiveJob()
       }
+      // The avatar read URL is short-lived, so re-sign it after a long background.
+      if (role === 'customer') void live.refreshCustomerAvatar()
       if (role === 'worker' || role === 'admin') void live.workerRefresh()
     })
     return () => subscription.remove()
@@ -457,6 +480,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerKaelMemory,
     customerKaelMemoryStatus,
     customerProfileInsights,
+    customerAvatarUrl,
     customerWorkerCandidate,
     customerWorkerCandidateBusy,
     customerWorkerCandidateError,

@@ -46,6 +46,31 @@ describe('mobile-api Kael customer-visible language contract', () => {
     expect(text).toContain('300,000-500,000 VND')
     expect(text).not.toMatch(/[ăâđêôơưàáạảã]/iu)
 
+    const vietnameseText = formatKaelEstimateText({
+      problem_summary: 'Ổ cắm phát tia lửa',
+      complexity: 'medium',
+      price_min: 300_000,
+      price_max: 500_000,
+      advisory: null,
+      disclaimer: priceDisclaimer('vi'),
+    }, 'vi')
+    expect(vietnameseText).toContain('Kael đã hoàn tất đối chiếu')
+    expect(vietnameseText).toContain('Mức độ: Vừa')
+    expect(vietnameseText).not.toContain('medium')
+    expect(vietnameseText).not.toContain('baseline')
+
+    const canonicalVietnameseText = formatKaelEstimateText({
+      problem_summary: 'plumbing: pipe_leak',
+      complexity: 'medium',
+      price_min: 350_000,
+      price_max: 800_000,
+      advisory: null,
+      disclaimer: priceDisclaimer('vi'),
+    }, 'vi')
+    expect(canonicalVietnameseText).toContain('Hiện trạng: Ống rò rỉ')
+    expect(canonicalVietnameseText).not.toContain('plumbing')
+    expect(canonicalVietnameseText).not.toContain('pipe_leak')
+
     const output = buildEstimateCardOutput({
       estimate: {
         service_type: 'electrical',

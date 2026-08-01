@@ -132,6 +132,17 @@ beforeEach(() => {
 })
 
 describe('CustomerHistorySurface service history', () => {
+  it('returns to the support hub when history was opened from Profile support', async () => {
+    mockRouteParams = { source: 'profile-support' }
+
+    render(<CustomerHistorySurface />)
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-list')).toBeOnTheScreen())
+    fireEvent.press(screen.getByRole('button', { name: 'Back' }))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile?utility=support')
+  })
+
   it('renders a date-grouped deal feed with real worker and price data', async () => {
     render(<CustomerHistorySurface />)
 

@@ -132,8 +132,8 @@ function workerLifetimeValueText(activeMinutes: number, language: AppLanguage) {
       : `${minutes} min`
   return textByLanguage(
     language,
-    `Thời gian hoạt động trên NestScout: ${elapsed} / 10.000 giờ`,
-    `Active time on NestScout: ${elapsed} / 10,000 hrs`,
+    `Thời gian hoạt động: ${elapsed} / 10.000 giờ`,
+    `Active time: ${elapsed} / 10,000 hrs`,
   )
 }
 

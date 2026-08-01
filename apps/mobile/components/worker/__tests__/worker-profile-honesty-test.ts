@@ -42,6 +42,8 @@ const earnings: EarningsResponse = {
   gross_earnings: 500_000,
   platform_fee_total: 50_000,
   net_earnings: 450_000,
+  cash_commission_collected_total: 0,
+  cash_commission_due_total: 0,
   pending_payment_count: 0,
   pending_payment_amount: 0,
   on_hold_amount: 0,
@@ -64,7 +66,7 @@ describe('worker profile data honesty', () => {
     const rows = workerV5PayoutRuleRows(earnings, 'vi')
     const visible = rows.map((row) => `${row.title} ${row.status} ${row.meta}`).join(' ')
 
-    expect(visible).toMatch(/Số dư đã SePay xác thực/i)
+    expect(visible).toMatch(/Số dư đã ghi sổ/i)
     expect(visible).toMatch(/Chuyển tiền chưa khả dụng/i)
     expect(visible).toMatch(/Chứng từ chưa khả dụng/i)
     expect(visible).not.toMatch(/Số dư có thể rút|Có thể rút/i)

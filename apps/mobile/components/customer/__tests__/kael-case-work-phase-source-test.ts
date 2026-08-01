@@ -6,9 +6,10 @@ const presentation = readFileSync(join(mobileRoot, 'components/customer/kael-cha
 const content = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-kael-chat-content.tsx'), 'utf8')
 const controller = readFileSync(join(mobileRoot, 'components/customer/kael-chat/use-customer-kael-surface-controller.ts'), 'utf8')
 const evidenceActions = readFileSync(join(mobileRoot, 'components/customer/kael-chat/use-customer-kael-evidence-actions.ts'), 'utf8')
+const analysisEvidenceNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-kael-analysis-evidence-node.tsx'), 'utf8')
 const caseThreadNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-kael-case-thread-node.tsx'), 'utf8')
 const candidateNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-worker-candidate-node.tsx'), 'utf8')
-const kaelFeature = [presentation, content, controller, evidenceActions, caseThreadNode, candidateNode].join('\n')
+const kaelFeature = [presentation, content, controller, evidenceActions, analysisEvidenceNode, caseThreadNode, candidateNode].join('\n')
 const chatView = readFileSync(join(mobileRoot, 'components/customer/kael-chat/chat-stateful-surfaces.tsx'), 'utf8')
 const evidenceView = readFileSync(join(mobileRoot, 'components/customer/kael-chat/agentic-evidence-stateful-surfaces.tsx'), 'utf8')
 const estimateResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/agentic-chat-estimate-response.tsx'), 'utf8')
@@ -16,6 +17,7 @@ const candidateResponse = readFileSync(join(mobileRoot, 'components/customer/kae
 const completionResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/completion-review-response.tsx'), 'utf8')
 const responseModel = readFileSync(join(mobileRoot, 'components/customer/kael-chat/case-work-response-model.ts'), 'utf8')
 const caseThread = readFileSync(join(mobileRoot, 'components/customer/kael-chat/chat-case-thread-stateful-surfaces.tsx'), 'utf8')
+const paymentSurface = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-payment-rail-surface.tsx'), 'utf8')
 
 describe('Kael Case Work phase-gated mobile wiring', () => {
   it('starts analysis after Basic Intake and derives evidence UI from the server artifact', () => {
@@ -44,7 +46,7 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
     expect(presentation).toContain("typeof artifactNextAction?.prompt === 'string'")
     expect(presentation).toContain('localizedCaseWorkEvidencePrompt({')
     expect(presentation).toContain('diagnosisScope?.quote_blockers')
-    expect(content).toContain('allowSkip={!presentation.serverEvidenceRequired}')
+    expect(analysisEvidenceNode).toContain('allowSkip={!presentation.serverEvidenceRequired}')
     expect(evidenceView).toContain('allowSkip')
     expect(evidenceView).toContain('{allowSkip ? (')
     expect(evidenceView).toContain("'Bổ sung hiện trạng nếu thuận tiện'")
@@ -62,8 +64,8 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
 
   it('shows a structured no-fake-price review state when the server blocks quote readiness', () => {
     expect(presentation).toContain("artifactNextAction?.kind === 'escalate'")
-    expect(content).toContain('<QuoteReadinessReviewResponse')
-    expect(content).toContain('safetyMessages={presentation.serverSafetyMessages}')
+    expect(analysisEvidenceNode).toContain('<QuoteReadinessReviewResponse')
+    expect(analysisEvidenceNode).toContain('safetyMessages={presentation.serverSafetyMessages}')
   })
 
   it('reveals offers and completion/payment actions only at their server-confirmed phase', () => {
@@ -75,11 +77,16 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
     expect(responseModel).toContain("payment_pending: 'payment'")
     expect(responseModel).toContain("paid: 'review'")
     expect(caseThreadNode).toContain("deal.paymentRailAvailable === true")
-    expect(caseThread).toContain("phase === 'customer_confirmed_completion' && paymentRailProvider")
-    expect(caseThread).toContain('customer-v21-case-sepay-payment-start')
-    expect(caseThread).toContain('SePayVietQrPaymentDetails')
+    expect(caseThread).toContain("from './customer-payment-rail-surface'")
+    expect(caseThread).toContain('<CustomerPaymentRailSurface')
+    expect(paymentSurface).toContain("phase !== 'customer_confirmed_completion' && phase !== 'payment_pending' && phase !== 'paid'")
+    expect(paymentSurface).toContain('customer-v21-case-sepay-payment-start')
+    expect(paymentSurface).toContain('customer-v21-case-payment-confirmed')
+    expect(paymentSurface).toContain('isDealPaymentProtected(deal)')
+    expect(caseThread).not.toContain('SePayVietQrPaymentDetails')
     expect(caseThread).not.toContain('customer-v21-case-sepay-payment-confirm')
     expect(caseThread).not.toContain('staging_simulator')
+    expect(paymentSurface).not.toContain('staging_simulator')
     expect(caseThread).not.toContain('customer-v21-case-staging-payment')
     expect(caseThreadNode).not.toContain('stagingPaymentRailEnabled')
     expect(caseThread).not.toContain("focus === 'payment'")

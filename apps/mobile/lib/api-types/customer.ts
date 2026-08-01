@@ -84,6 +84,21 @@ export type CustomerProfileInsightsResponse = {
   fair_price_status: 'verified' | 'mixed' | 'pending' | null
 }
 
+export type CustomerAvatarResponse = {
+  customer_id: string
+  avatar_url: string | null
+  updated_at: string | null
+}
+
+export type CustomerAvatarUploadResponse = {
+  bucket_id: 'customer-avatars'
+  object_path: string
+  avatar_ref: string
+  token: string
+  signed_upload_url: string
+  expires_in_seconds: number
+}
+
 export type CustomerPaymentMethodSaveInput = {
   account_holder_name: string
   bank_account: string
@@ -103,6 +118,37 @@ export type CustomerPaymentMethodResponse = {
     verified_at: string | null
     updated_at: string
   } | null
+}
+
+export type CustomerRefundAccountSaveInput = {
+  account_holder_name: string
+  bank_account: string
+  bank_key: string
+}
+
+export type CustomerRefundAccountResponse = {
+  refund_account: {
+    id: string
+    bank_key: string
+    bank_name: string
+    bank_account_masked: string
+    status: 'pending_verification' | 'verified' | 'rejected'
+    is_default: boolean
+    verified_at: string | null
+    updated_at: string
+  } | null
+}
+
+export type CustomerAccountDeletionInput = {
+  acknowledge_data_loss: true
+  client_request_id: string
+  confirmation: 'XÓA TÀI KHOẢN'
+}
+
+export type CustomerAccountDeletionResponse = {
+  account_deleted: true
+  request_id: string
+  retained_transaction_records: true
 }
 
 export type WorkerCandidateView = {

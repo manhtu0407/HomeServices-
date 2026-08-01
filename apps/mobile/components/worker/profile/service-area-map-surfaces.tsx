@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { Text as RNText, View, type TextProps } from 'react-native'
-import { radius } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import {
@@ -8,7 +7,7 @@ import {
   normalizeWorkerV5DistrictSelectionList,
   parseWorkerV5ServiceAreaDraft,
   workerV5DistrictDraftFromSelection,
-} from '../ui/labels'
+ formatWorkerDistrict } from '../ui/labels'
 import { styles } from '../worker-v5-flow-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
@@ -17,7 +16,7 @@ import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { WorkerV5EarningsHomeListAura } from '../ui/aura-surfaces'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { WorkerV5MapStage } from '../home/map-stage-surfaces'
-import { formatWorkerDistrict } from '../ui/labels'
+
 import { workerV5CapturedIconAssets } from '../ui/worker-v5-icon-assets'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
@@ -96,7 +95,7 @@ export function WorkerV5ServiceAreaMapCard({
         ...current,
         savingAreas: false,
         selectedDistricts: previousDistricts,
-        serviceAreaMessage: textByLanguage(language, 'Chưa đồng bộ được với NestScout. Khu vực vừa nhập vẫn đang chờ lưu.', 'Could not sync with NestScout. Your entered areas are still pending.'),
+        serviceAreaMessage: textByLanguage(language, 'Chưa đồng bộ được. Khu vực vừa nhập vẫn đang chờ lưu.', 'Could not sync. Your entered areas are still pending.'),
       }))
       return
     }

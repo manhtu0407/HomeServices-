@@ -3,7 +3,7 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import type { CaseWorkResponseModel } from './case-work-response-model'
-import { KaelLiquidReveal } from './kael-liquid-pressable'
+import { KaelLiquidReveal } from './kael-liquid-reveal'
 
 export function CaseWorkResponse({
   controls,
@@ -55,7 +55,7 @@ export function CaseWorkResponse({
       </View>
 
       <View
-        accessible
+        accessible={!details && !controls}
         accessibilityLabel={`${model.noteTitle}. ${model.noteCopy}`}
         style={[
           styles.note,

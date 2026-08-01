@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native'
 import { Alert, Platform, StyleSheet } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { LocalDeal, LocalWorkerGate } from '@nestscout/shared'
@@ -10,6 +10,8 @@ let mockAuthSessionProvider: string | null
 let mockAuthSessionUserId: string
 let mockSignOut: jest.Mock
 let mockWorkerUpdateAvailability: jest.Mock
+let mockWorkerConfirmCashPayment: jest.Mock
+let mockWorkerSavePayoutMethod: jest.Mock
 let mockWorkerUploadAvatar: jest.Mock
 let mockWorkerUpdateServiceArea: jest.Mock
 let mockWorkerUpdateServicePreferences: jest.Mock
@@ -231,6 +233,8 @@ function buildWorkerPerformanceInsights(
 function buildNoEarnings(): EarningsResponse {
   return {
     available_balance: 0,
+    cash_commission_collected_total: 0,
+    cash_commission_due_total: 0,
     current_commission_level: 1,
     current_commission_rate_bps: 1500,
     daily_earnings: [],
@@ -257,6 +261,8 @@ function settledEarningsDateKey(daysAgo: number): string {
 function buildSettledEarnings(): EarningsResponse {
   return {
     available_balance: 1200000,
+    cash_commission_collected_total: 0,
+    cash_commission_due_total: 0,
     current_commission_level: 2,
     current_commission_rate_bps: 1200,
     daily_earnings: [
@@ -273,11 +279,14 @@ function buildSettledEarnings(): EarningsResponse {
     recent_transactions: [
       {
         available_at: '2026-07-15T09:00:00.000Z',
+        cash_commission_collected: 0,
+        cash_commission_due: 0,
         commission_level: 2,
         commission_rate_bps: 1200,
         display_code: 'NS-WORK-001',
         gross_amount: 400000,
         job_id: 'job-credit-1',
+        entry_type: 'worker_credit',
         payment_state: 'available',
         platform_fee: 48000,
         recorded_at: '2026-07-15T09:00:00.000Z',
@@ -383,11 +392,14 @@ function buildSettledCaseEarnings(): EarningsResponse {
     recent_transactions: [
       {
         available_at: '2026-07-15T09:00:00.000Z',
+        cash_commission_collected: 0,
+        cash_commission_due: 0,
         commission_level: 1,
         commission_rate_bps: 1500,
         display_code: 'NS-WORK-SETTLED',
         gross_amount: 400000,
         job_id: 'job_test_1',
+        entry_type: 'worker_credit',
         payment_state: 'available',
         platform_fee: 60000,
         recorded_at: '2026-07-15T09:00:00.000Z',
@@ -464,6 +476,12 @@ function buildWorkflow({
   workerProfile?: WorkerProfileResponse | null
 } = {}) {
   mockWorkerUpdateAvailability = jest.fn(async () => true)
+  mockWorkerConfirmCashPayment = jest.fn(async () => true)
+  mockWorkerSavePayoutMethod = jest.fn(async () => ({
+    code: 'PAYOUT_NOT_ENABLED',
+    error: 'Tài khoản nhận tiền chưa được bật',
+    success: false,
+  }))
   mockWorkerUploadAvatar = jest.fn(async () => true)
   mockWorkerUpdateServiceArea = jest.fn(async () => true)
   mockWorkerUpdateServicePreferences = jest.fn(async () => true)
@@ -480,6 +498,8 @@ function buildWorkflow({
       workerUpdateServiceArea: mockWorkerUpdateServiceArea,
       workerUpdateServicePreferences: mockWorkerUpdateServicePreferences,
       workerUpdateStatus: jest.fn(async () => true),
+      workerConfirmCashPayment: mockWorkerConfirmCashPayment,
+      workerSavePayoutMethod: mockWorkerSavePayoutMethod,
     },
     selectors: {
       canWorkerAccept: Boolean(deal?.broadcast && deal.broadcast.status === 'sent'),
@@ -503,7 +523,24 @@ function buildWorkflow({
 }
 
 beforeEach(async () => {
-  jest.useRealTimers()
+  // Fake only the clock, never the timer APIs: the earnings dashboard windows
+  // by calendar month, so a real "yesterday" drops out of range on the 1st.
+  jest.useFakeTimers({
+    now: new Date('2026-08-15T03:00:00.000Z'),
+    doNotFake: [
+      'cancelAnimationFrame',
+      'clearImmediate',
+      'clearInterval',
+      'clearTimeout',
+      'nextTick',
+      'performance',
+      'queueMicrotask',
+      'requestAnimationFrame',
+      'setImmediate',
+      'setInterval',
+      'setTimeout',
+    ],
+  })
   await AsyncStorage.clear()
   mockFocusCallback = null
   mockAuthRole = 'worker'
@@ -1027,7 +1064,8 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerJobsSurface />)
 
     expect(screen.getByTestId('worker-v5-route-map-panel')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-info-cell-value-2')).toHaveTextContent(deal.draft.addressLabel)
+    expect(screen.getByTestId('worker-v5-info-cell-value-2')).toHaveTextContent('Sửa điện')
+    expect(screen.getByTestId('worker-v5-info-cell-label-2')).toHaveTextContent(deal.broadcast!.problemSummary)
   })
 
   it('redirects the retired Route and ETA route into in-progress', async () => {
@@ -2447,6 +2485,21 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-completion-submitted-status-dot')).toHaveStyle({ borderRadius: 9, height: 18, width: 18 })
   })
 
+  it('shows the server-owned provisional settlement before payment starts', () => {
+    const deal = buildCompletedByWorkerDeal()
+    deal.finalPrice = 800_000
+    Object.assign(deal.broadcast!, { estimatedEarning: 680_000 })
+    buildWorkflow({ deal })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-settlement-value-0')).toHaveTextContent(/800\.000/)
+    expect(screen.getByTestId('worker-v5-settlement-value-1')).toHaveTextContent(/680\.000/)
+    expect(screen.getByTestId('worker-v5-settlement-value-2')).toHaveTextContent(/120\.000/)
+    expect(screen.getByTestId('worker-v5-settlement-formula-note')).toHaveTextContent(/800\.000.*120\.000.*680\.000/)
+  })
+
   it('uses generic system copy when no completion record exists', () => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
@@ -2461,7 +2514,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-completion-submitted-status')).toBeNull()
   })
 
-  it('keeps the status marker static and routes confirmed work to the settlement seal', () => {
+  it('keeps the status marker static and gives the assigned worker a cash confirmation action', async () => {
     buildWorkflow({ deal: buildCompletedByWorkerDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const pending = render(<WorkerJobsSurface />)
@@ -2474,6 +2527,10 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const confirmed = render(<WorkerJobsSurface />)
 
+    expect(screen.getByTestId('worker-v5-completion-cash-payment-action')).toHaveTextContent('Xác nhận đã nhận tiền mặt')
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
+    fireEvent.press(screen.getByTestId('worker-v5-completion-cash-payment-action'))
+    await waitFor(() => expect(mockWorkerConfirmCashPayment).toHaveBeenCalledTimes(1))
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
     confirmed.unmount()
 
@@ -2487,6 +2544,16 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText('Chờ sổ thu nhập đồng bộ')).toBeNull()
   })
 
+  it('shows the cash-confirmation failure instead of leaving the worker without feedback', () => {
+    buildWorkflow({ deal: buildConfirmedCompletionDeal() })
+    mockWorkflowValue.state.lastError = 'Không thể xác nhận thanh toán tiền mặt.'
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByText('Không thể xác nhận thanh toán tiền mặt.')).toBeOnTheScreen()
+  })
+
   it('renders the settled case from a real recorded payment', () => {
     buildWorkflow({ deal: buildSettledCaseDeal(), workerEarnings: buildSettledCaseEarnings() })
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
@@ -2495,6 +2562,7 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-case-closed-title')).toHaveTextContent('Hoàn tất công việc')
     expect(screen.getByTestId('worker-v5-case-closed-settlement-status')).toHaveTextContent('Đã đối soát')
+    expect(screen.getByTestId('worker-v5-info-cell-label-0')).toHaveTextContent(/^Đánh giá$/)
     expect(screen.getByTestId('worker-v5-case-trail-status-0')).toHaveTextContent('Đã khóa')
     expect(screen.getByTestId('worker-v5-case-trail-status-1')).toHaveTextContent('Đã ghi có')
     expect(screen.getByTestId('worker-v5-case-closed-amount')).toHaveTextContent(/340\.000/)
@@ -2591,7 +2659,7 @@ describe('Worker runtime surface wiring', () => {
 
     const earnings = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-screen-4.1-earnings-overview')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-dashboard')).toBeOnTheScreen()
     earnings.unmount()
 
     const profile = render(<WorkerProfileSurface />)
@@ -2615,7 +2683,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label').props.children).toBe('Thời gian hoạt động')
     expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityLabel).toBe('Thời gian hoạt động')
     expect(screen.getByTestId('worker-v5-profile-lifetime-progress')).toHaveAccessibilityValue({
-      text: 'Thời gian hoạt động trên NestScout: 1 giờ 30 phút / 10.000 giờ',
+      text: 'Thời gian hoạt động: 1 giờ 30 phút / 10.000 giờ',
     })
     expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityValue).toMatchObject({
       max: 600000,
@@ -2715,8 +2783,7 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_payment_step: 'wallet' }
     const ledger = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-screen-4.2-ledger-detail')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-ledger-hero')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-ledger-breakdown')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-transaction-history')).toBeOnTheScreen()
     ledger.unmount()
   })
 
@@ -2735,15 +2802,51 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-dock-jobs').props.accessibilityState).toMatchObject({ selected: false })
   })
 
-  it('uses the dedicated recent-transaction icon instead of the reused wallet in the earnings empty state', () => {
+  it('renders the approved earnings dashboard with real period controls and utilities', () => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-v5-earnings-dashboard')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-chart')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-period-month').props.accessibilityState).toMatchObject({ selected: true })
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('500.000đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('120.000đ')
+    expect(screen.getByTestId('worker-v5-earnings-utility-history')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-utility-account')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-utility-commission')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-earnings-hero')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-earnings-transactions')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-period-day'))
+    expect(screen.getByTestId('worker-v5-earnings-period-day').props.accessibilityState).toMatchObject({ selected: true })
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('320.000đ')
+
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-history'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.2-ledger-detail')
+  })
+
+  it('uses three dedicated icons for the rebuilt earnings utilities', () => {
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
     render(<WorkerEarningsSurface />)
 
-    const emptyTransactionIcon = screen.getByTestId('worker-v5-earnings-empty-transaction-icon-image')
-    expect(emptyTransactionIcon.props.source).toBe(require('@/assets/worker-image-icons/utility-recent-transactions-sync-core.png'))
-    expect(emptyTransactionIcon.props.source).not.toBe(require('@/assets/worker-image-icons/utility-wallet.png'))
+    expect(screen.getByTestId('worker-v5-earnings-utility-history-image').props.source).toBe(workerV5CapturedIconAssets.earningsTransactionHistory)
+    expect(screen.getByTestId('worker-v5-earnings-utility-account-image').props.source).toBe(workerV5CapturedIconAssets.earningsReceivingAccount)
+    expect(screen.getByTestId('worker-v5-earnings-utility-commission-image').props.source).toBe(workerV5CapturedIconAssets.earningsCommissionPolicy)
+  })
+
+  it('opens three focused earnings routes without the retired payout sequence', () => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    render(<WorkerEarningsSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-commission'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.3-payout-request')
   })
 
   it('distinguishes pending earnings from a hydrated zero ledger', () => {
@@ -2751,83 +2854,140 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
     const pending = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('Chờ dữ liệu số dư')
-    for (const index of [0, 1, 2]) {
-      expect(screen.getByTestId(`worker-v5-earnings-stat-value-${index}`)).toHaveTextContent('Chờ dữ liệu')
-    }
-    expect(screen.getByTestId('worker-v5-earnings-empty-transaction-title')).toHaveTextContent('Chờ dữ liệu giao dịch thật')
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityLabel).toBe('Đang tải biểu đồ thu nhập')
+    expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityState).toMatchObject({ busy: true })
+    expect(screen.queryByText('Chờ dữ liệu thật')).toBeNull()
+    expect(screen.queryByText('Biểu đồ chỉ dùng số liệu đã đối soát.')).toBeNull()
     pending.unmount()
 
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('Chưa có số dư khả dụng')
-    expect(screen.getByTestId('worker-v5-earnings-stat-value-0')).toHaveTextContent('Chưa có')
-    expect(screen.getByTestId('worker-v5-earnings-stat-value-1')).toHaveTextContent('Không có')
-    expect(screen.getByTestId('worker-v5-earnings-empty-transaction-title')).toHaveTextContent('Chưa có giao dịch gần đây')
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityLabel).toBe('Biểu đồ thu nhập chưa phát sinh trong kỳ đã chọn')
+    expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityState).toMatchObject({ busy: false })
   })
 
-  it('shows the verified in-app balance and one full-width bank-payout guard in ledger detail', () => {
+  it('replaces loading and zero values when real earnings arrive', () => {
+    buildWorkflow({ workerEarnings: null })
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    const view = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
+
+    buildWorkflow({ workerEarnings: buildNoEarnings() })
+    view.rerender(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
+
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+    view.rerender(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('500.000đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('120.000đ')
+  })
+
+  it('shows a simple transaction history without the retired ledger sections', () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.2-ledger-detail' }
 
     render(<WorkerEarningsSurface />)
 
-    expect(screen.getByText('Số dư khả dụng')).toBeOnTheScreen()
-    expect(screen.getByText('Hoa hồng hiện tại')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-ledger-net-total')).toHaveTextContent('1.200.000đ')
-    expect(screen.getByTestId('worker-v5-ledger-payout-action')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-ledger-back-earnings-action')).toBeNull()
+    expect(screen.getByTestId('worker-v5-transaction-history')).toBeOnTheScreen()
+    expect(screen.getByText('NS-WORK-001')).toBeOnTheScreen()
+    expect(screen.getByText('+352.000đ')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-ledger-hero')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-ledger-breakdown')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-ledger-trace')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-ledger-payout-action')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-bank-account-form')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-commission-policy')).toBeNull()
   })
 
-  it('keeps payout controls honestly unavailable until a real payout rail exists', () => {
+  it.each([
+    '4.2-ledger-detail',
+    '4.3-payout-request',
+    '4.4-payout-method',
+  ] as const)('returns %s directly to the earnings overview', (detailScreen) => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+    mockRouteParams = { ns_worker_screen: detailScreen }
+
+    render(<WorkerEarningsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-back'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.1-earnings-overview')
+  })
+
+  it('keeps the overview payout control honestly unavailable', () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
-    const overview = render(<WorkerEarningsSurface />)
+    render(<WorkerEarningsSurface />)
     const withdrawAction = screen.getByTestId('worker-v5-earnings-withdraw-action')
     expect(withdrawAction.props.accessibilityState).toMatchObject({ disabled: true })
-    expect(withdrawAction).toHaveTextContent('Chuyển ra ngân hàng chưa khả dụng')
+    expect(withdrawAction).toHaveTextContent('Rút tiền chưa khả dụng')
+    expect(within(withdrawAction).queryByTestId('worker-v5-primary-gradient')).toBeNull()
     fireEvent.press(withdrawAction)
     expect(mockReplace).not.toHaveBeenCalled()
-    overview.unmount()
+  })
 
-    mockRouteParams = { ns_worker_screen: '4.2-ledger-detail' }
-    const ledger = render(<WorkerEarningsSurface />)
-    const ledgerPayoutAction = screen.getByTestId('worker-v5-ledger-payout-action')
-    expect(ledgerPayoutAction.props.accessibilityState).toMatchObject({ disabled: true })
-    expect(ledgerPayoutAction).toHaveTextContent('Chuyển ra ngân hàng chưa khả dụng')
-    expect(screen.queryByTestId('worker-v5-ledger-export')).toBeNull()
-    fireEvent.press(ledgerPayoutAction)
-    expect(mockReplace).not.toHaveBeenCalled()
-    ledger.unmount()
-
+  it('explains the commission policy in simple Vietnamese instead of showing the old payout request', () => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
-    const payoutRequest = render(<WorkerEarningsSurface />)
-    expect(screen.getByText('Số dư trong tài khoản thợ')).toBeOnTheScreen()
-    expect(screen.getAllByText('Số dư tài khoản thợ trên ứng dụng').length).toBeGreaterThan(0)
-    const confirmAction = screen.getByTestId('worker-v5-payout-request-confirm-action')
-    expect(confirmAction.props.accessibilityState).toMatchObject({ disabled: true })
-    expect(confirmAction).toHaveTextContent('Chuyển ra ngân hàng chưa khả dụng')
-    expect(screen.queryByText(/^Xác nhận rút/)).toBeNull()
-    payoutRequest.unmount()
 
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-v5-commission-policy')).toBeOnTheScreen()
+    expect(screen.queryByText('Mức khởi điểm 15%')).toBeNull()
+    expect(screen.getByText(/85% còn lại thuộc về thợ/)).toBeOnTheScreen()
+    expect(screen.getByText(/hoàn thành nhiều công việc/)).toBeOnTheScreen()
+    expect(screen.getByText(/đánh giá tốt/)).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-payout-request-confirm-action')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-payout-account-card')).toBeNull()
+  })
+
+  it('keeps only bank selection and confirmation on the receiving account route', async () => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
     render(<WorkerEarningsSurface />)
-    expect(screen.queryByTestId('worker-v5-payout-method-grid')).toBeNull()
-    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).not.toHaveTextContent(/Đã xác minh|Cần xác minh/)
-    const payoutMethodAction = screen.getByTestId('worker-v5-payout-method-use-action')
-    expect(payoutMethodAction.props.accessibilityState).toMatchObject({ disabled: true })
-    expect(payoutMethodAction).toHaveTextContent('Quản lý tài khoản chưa khả dụng')
+
+    expect(screen.getByTestId('worker-v5-bank-account-form')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-bank-confirm-spacing').props.style)).toMatchObject({ marginTop: 14 })
+    expect(screen.getByTestId('worker-v5-bank-confirm-action').props.accessibilityState).toMatchObject({ disabled: true })
+    expect(screen.queryByTestId('worker-v5-payout-method-hero')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-payout-limit-policy')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-bank-option-techcombank'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-bank-holder-input'), 'PHAN MANH TU')
+    fireEvent.changeText(screen.getByTestId('worker-v5-bank-account-input'), '123456789')
+    fireEvent.changeText(screen.getByTestId('worker-v5-bank-account-confirm-input'), '123456789')
+    expect(screen.getByTestId('worker-v5-bank-confirm-action').props.accessibilityState).toMatchObject({ disabled: false })
+
+    fireEvent.press(screen.getByTestId('worker-v5-bank-confirm-action'))
+    await waitFor(() => {
+      expect(mockWorkerSavePayoutMethod).toHaveBeenCalledWith({
+        account_holder_name: 'PHAN MANH TU',
+        bank_account: '123456789',
+        bank_key: 'techcombank',
+        bank_name: 'Techcombank',
+      })
+    })
+    expect(await screen.findByText('Hiện chưa thể lưu tài khoản. Thông tin của bạn chưa bị thay đổi.')).toBeOnTheScreen()
   })
 
   it('keeps every captured Worker card icon distinct from the other captured card contexts', () => {
     const sources = Object.values(workerV5CapturedIconAssets)
 
-    expect(sources).toHaveLength(36)
+    expect(sources).toHaveLength(33)
     expect(new Set(sources).size).toBe(sources.length)
   })
 
-  it('wires contextual icon assets into the profile dossier and earnings empty state', () => {
+  it('wires contextual icon assets into the profile dossier and earnings utilities', () => {
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     mockRouteParams = {}
 
@@ -2839,8 +2999,9 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
     render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-hero-icon-image').props.source).toBe(workerV5CapturedIconAssets.earningsHero)
-    expect(screen.getByTestId('worker-v5-earnings-empty-transaction-icon-image').props.source).toBe(workerV5CapturedIconAssets.earningsRecentTransactions)
+    expect(screen.getByTestId('worker-v5-earnings-utility-history-image').props.source).toBe(workerV5CapturedIconAssets.earningsTransactionHistory)
+    expect(screen.getByTestId('worker-v5-earnings-utility-account-image').props.source).toBe(workerV5CapturedIconAssets.earningsReceivingAccount)
+    expect(screen.getByTestId('worker-v5-earnings-utility-commission-image').props.source).toBe(workerV5CapturedIconAssets.earningsCommissionPolicy)
   })
 
   it('keeps dossier visual panels aligned while giving every dossier card a contextual detail rail', () => {
@@ -2893,20 +3054,20 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
     const earnings = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-hero-formula-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-transactions-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-dashboard-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-period-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-utilities-formula-mint-aura')).toBeOnTheScreen()
     earnings.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
-    const payoutRequest = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-payout-account-formula-mint-aura')).toBeOnTheScreen()
-    payoutRequest.unmount()
+    const commissionPolicy = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-commission-policy-formula-mint-aura')).toBeOnTheScreen()
+    commissionPolicy.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
-    const payoutMethod = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-payout-method-hero-formula-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-payout-limit-policy-mint-aura')).toBeOnTheScreen()
-    payoutMethod.unmount()
+    const receivingAccount = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-receiving-account-formula-mint-aura')).toBeOnTheScreen()
+    receivingAccount.unmount()
 
     mockRouteParams = {}
     const opportunity = render(<WorkerJobsSurface />)
@@ -2957,7 +3118,7 @@ describe('Worker runtime surface wiring', () => {
     })
   })
 
-  it('renders contextual detail rails across all 17 captured Worker card clusters', () => {
+  it('renders contextual guidance across the captured Worker card clusters', () => {
     buildWorkflow({ deal: buildIncomingDeal() })
     mockRouteParams = {}
 
@@ -2972,40 +3133,28 @@ describe('Worker runtime surface wiring', () => {
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
     const earnings = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-earnings-hero-detail')).toHaveTextContent(/Chờ đối soát/)
-    expect(screen.getByTestId('worker-v5-earnings-empty-transaction-detail')).toHaveTextContent(/Sổ đối soát thật/)
+    expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityLabel).toBe('Biểu đồ thu nhập chưa phát sinh trong kỳ đã chọn')
+    expect(screen.getByText('Chưa có luồng rút tiền')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-utility-history')).toBeOnTheScreen()
     earnings.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
-    const payout = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-payout-account-icon-image').props.source).toBe(require('@/assets/worker-image-icons/utility-identity.png'))
-    expect(screen.getByTestId('worker-v5-payout-account-detail')).toHaveTextContent(/Rút tiền chưa khả dụng/)
-    expect(screen.getByTestId('worker-v5-payout-account-formula-mint-aura')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-payout-account-mint-aura')).toBeNull()
-    payout.unmount()
+    const commissionPolicy = render(<WorkerEarningsSurface />)
+    expect(screen.queryByText('Mức khởi điểm 15%')).toBeNull()
+    expect(screen.getByText(/Làm tốt để giữ lại nhiều hơn/)).toBeOnTheScreen()
+    commissionPolicy.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
-    const payoutMethod = render(<WorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-payout-method-hero-icon-image').props.source).toBe(require('@/assets/worker-image-icons/payout-receiving-account-core.png'))
-    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Chưa ghi nhận/)
-    expect(screen.getByTestId('worker-v5-payout-method-hero-detail')).toHaveTextContent(/Chuyển tiền chưa khả dụng/)
-    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-payout-method-status').props.style)).toMatchObject({
-      alignSelf: 'center',
-      minWidth: 64,
-      paddingVertical: 7,
-    })
-    expect(screen.getByTestId('worker-v5-payout-method-hero-formula-mint-aura')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-payout-method-mint-aura')).toBeNull()
-    expect(screen.getByTestId('worker-v5-payout-limit-policy')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-payout-limit-policy-copy')).toHaveTextContent(/chưa được bật/)
-    expect(screen.queryByTestId('worker-v5-account-management-list')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-bank-account-form')).toBeNull()
-    payoutMethod.unmount()
+    const receivingAccount = render(<WorkerEarningsSurface />)
+    expect(screen.getByText('Chọn ngân hàng')).toBeOnTheScreen()
+    expect(screen.getByText('Thông tin tài khoản')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-bank-account-form')).toBeOnTheScreen()
+    receivingAccount.unmount()
 
     buildWorkflow({ deal: buildConfirmedCompletionDeal() })
     mockRouteParams = { ns_worker_screen: '2.12-case-closed' }
     const closedCase = render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-case-trail-detail-0')).toHaveTextContent(/Bằng chứng thật/)
+    expect(screen.getByTestId('worker-v5-case-trail-detail-0')).toHaveTextContent(/Bằng chứng đã khóa/)
     closedCase.unmount()
 
     buildWorkflow({
@@ -3040,6 +3189,7 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '5.4-reliability-insights' }
     const reliability = render(<WorkerProfileSurface />)
+    expect(screen.queryByTestId('worker-v5-reliability-status')).toBeNull()
     expect(screen.getByTestId('worker-v5-reliability-axis-detail-0')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-reliability-score')).not.toHaveTextContent(/^0$/)
     expect(screen.getByTestId('worker-v5-reliability-stat-completion-value')).not.toHaveTextContent(/^0%$/)
@@ -3100,6 +3250,7 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '5.4-reliability-insights' }
     render(<WorkerProfileSurface />)
+    expect(screen.queryByTestId('worker-v5-reliability-status')).toBeNull()
     expect(screen.getByTestId('worker-v5-reliability-score')).toHaveTextContent(/^0$/)
     expect(screen.getByTestId('worker-v5-reliability-stat-completion-value')).toHaveTextContent(/^0%$/)
     expect(screen.getByTestId('worker-v5-reliability-stat-arrival-value')).toHaveTextContent(/^0%$/)
@@ -3435,7 +3586,7 @@ describe('Worker runtime surface wiring', () => {
       await Promise.resolve()
     })
     await waitFor(() => {
-      expect(screen.getByText('Chưa đồng bộ được với NestScout. Khu vực vừa nhập vẫn đang chờ lưu.')).toBeOnTheScreen()
+      expect(screen.getByText('Chưa đồng bộ được. Khu vực vừa nhập vẫn đang chờ lưu.')).toBeOnTheScreen()
       expect(saveButton).not.toBeDisabled()
     })
   })

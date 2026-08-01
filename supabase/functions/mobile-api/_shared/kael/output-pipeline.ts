@@ -30,8 +30,24 @@ export type EstimateCardV3 = {
     complexity_reasoning: string;
     needs_inspection_reason?: string;
   };
+  analysis_receipt?: EstimateAnalysisReceipt;
   advisory?: string;
   disclaimer: string;
+};
+
+export type EstimateAnalysisReceipt = {
+  schema_version: "analysis_receipt.v1";
+  evidence: {
+    photo_count: number;
+    video_frame_count: number;
+    voice_transcript_count: number;
+    skipped: boolean;
+  };
+  market: {
+    accepted_source_count: number | null;
+    high_trust_source_count: number | null;
+    quorum_met: boolean | null;
+  };
 };
 
 export type WorkerBrief = {
@@ -83,6 +99,17 @@ export function buildEstimateCardOutput(input: {
   language?: "vi" | "en";
   priceSource?: EstimatePriceSource;
   baselineUsed: string | null;
+  analysisEvidence?: {
+    photoCount: number;
+    videoFrameCount: number;
+    voiceTranscriptCount: number;
+    skipped: boolean;
+  };
+  marketEvidence?: {
+    acceptedSourceCount: number | null;
+    highTrustSourceCount: number | null;
+    quorumMet: boolean | null;
+  };
   visionFindings?: string | null;
   marketSignals?: string | null;
   needsInspectionReason?: string | null;
@@ -109,13 +136,11 @@ export function buildEstimateCardOutput(input: {
       vision_findings: optionalText(input.visionFindings, 300),
       market_signals: optionalText(input.marketSignals, 300),
       baseline_used: optionalText(input.baselineUsed, 100) ?? "inspection_required",
-      complexity_reasoning: needsInspection
-        ? language === "en"
-          ? "The current evidence is not yet strong enough, so a worker must inspect it on site."
-          : "Thông tin hiện tại chưa đủ chắc chắn nên cần thợ kiểm tra trực tiếp."
-        : language === "en"
-        ? "Kael checks the description, severity, and governed baseline before presenting a price range."
-        : "Kael đối chiếu mô tả, mức độ và baseline phù hợp trước khi đưa khoảng giá.",
+      complexity_reasoning: estimateComplexityReasoning(
+        input.estimate.complexity,
+        needsInspection,
+        language,
+      ),
       needs_inspection_reason: needsInspection
         ? optionalText(input.needsInspectionReason, 200) ??
           (language === "en"
@@ -123,6 +148,10 @@ export function buildEstimateCardOutput(input: {
             : "Cần xác nhận hiện trường trước khi chốt phạm vi.")
         : undefined,
     },
+    analysis_receipt: buildEstimateAnalysisReceipt(
+      input.analysisEvidence,
+      input.marketEvidence,
+    ),
     advisory: needsInspection
       ? sanitizeKaelText(
         input.estimate.advisory ??
@@ -232,6 +261,72 @@ function cleanWorkerBriefKnowledgeLine(value: string): string {
   return line.includes("không làm trước khi Kael quyết định")
     ? "Nếu cần đục tường, tháo gạch hoặc mở trần, dừng để gửi đề xuất đổi phạm vi kèm lý do; thêm ảnh nếu có. Không làm trước khi khách xác nhận đề xuất trong ứng dụng."
     : line;
+}
+
+function buildEstimateAnalysisReceipt(
+  evidence: {
+    photoCount: number;
+    videoFrameCount: number;
+    voiceTranscriptCount: number;
+    skipped: boolean;
+  } | undefined,
+  market: {
+    acceptedSourceCount: number | null;
+    highTrustSourceCount: number | null;
+    quorumMet: boolean | null;
+  } | undefined,
+): EstimateAnalysisReceipt | undefined {
+  if (!evidence && !market) return undefined;
+  return {
+    schema_version: "analysis_receipt.v1",
+    evidence: {
+      photo_count: boundedEvidenceCount(evidence?.photoCount),
+      video_frame_count: boundedEvidenceCount(evidence?.videoFrameCount),
+      voice_transcript_count: boundedEvidenceCount(evidence?.voiceTranscriptCount),
+      skipped: evidence?.skipped === true,
+    },
+    market: {
+      accepted_source_count: nullableBoundedEvidenceCount(market?.acceptedSourceCount),
+      high_trust_source_count: nullableBoundedEvidenceCount(market?.highTrustSourceCount),
+      quorum_met: typeof market?.quorumMet === "boolean" ? market.quorumMet : null,
+    },
+  };
+}
+
+function estimateComplexityReasoning(
+  complexity: ComplexityLevel,
+  needsInspection: boolean,
+  language: "vi" | "en",
+) {
+  if (needsInspection) {
+    return language === "en"
+      ? "The current evidence is not yet strong enough, so a worker must inspect it on site."
+      : "Thông tin hiện tại chưa đủ chắc chắn nên cần thợ kiểm tra trực tiếp.";
+  }
+  if (language === "en") {
+    const level = complexity === "small"
+      ? "small"
+      : complexity === "medium"
+      ? "medium"
+      : "large";
+    return `The confirmed scope and evidence place this request at ${level} complexity.`;
+  }
+  const level = complexity === "small"
+    ? "nhỏ"
+    : complexity === "medium"
+    ? "vừa"
+    : "lớn";
+  return `Phạm vi và bằng chứng đã xác nhận xếp yêu cầu ở mức độ ${level}.`;
+}
+
+function boundedEvidenceCount(value: number | null | undefined) {
+  if (!Number.isSafeInteger(value) || (value ?? -1) < 0) return 0;
+  return Math.min(value ?? 0, 100);
+}
+
+function nullableBoundedEvidenceCount(value: number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  return Number.isSafeInteger(value) && value >= 0 ? Math.min(value, 100) : null;
 }
 
 export function buildScopeChangeOutputs(input: {

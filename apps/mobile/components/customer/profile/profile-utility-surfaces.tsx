@@ -100,6 +100,43 @@ export function ProfileAuraCard({
   )
 }
 
+export function ProfileFormulaMintSurface({
+  children,
+  contentStyle,
+  scope,
+  style,
+  testID,
+}: {
+  children: ReactNode
+  contentStyle?: StyleProp<ViewStyle>
+  scope: string
+  style?: StyleProp<ViewStyle>
+  testID: string
+}) {
+  return (
+    <View style={[styles.profileFormulaMintSurface, style]} testID={testID}>
+      <View
+        pointerEvents="none"
+        style={styles.profileFormulaMintAura}
+        testID={`${testID}-formula-mint-aura`}
+      >
+        <CaseWideMintAura
+          intensity="strong"
+          scope={`Profile${profileAuraScope(scope)}Wide`}
+          testID={`${testID}-wide-mint-aura`}
+        />
+        <ZipMintAura
+          scope={`Profile${profileAuraScope(scope)}Fine`}
+          testID={`${testID}-mint-aura`}
+        />
+      </View>
+      <View style={[styles.profileFormulaMintContent, contentStyle]}>
+        {children}
+      </View>
+    </View>
+  )
+}
+
 export function ProfileInsightRow({
   assetTile: AssetTile,
   details,
@@ -454,7 +491,7 @@ function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21Sett
 
   if (glyph === 'check') {
     return (
-      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+      <Svg height={16} viewBox="0 0 16 16" width={16}>
         <Circle cx={8} cy={8} fill={softFill} r={6.1} />
         <Path d="m4.9 8.1 2 2.1 4.4-4.7" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.55} />
       </Svg>
@@ -462,7 +499,7 @@ function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21Sett
   }
   if (glyph === 'document') {
     return (
-      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+      <Svg height={16} viewBox="0 0 16 16" width={16}>
         <Path d="M4 2.2h5.1L12 5.1v8.1H4z" fill={softFill} stroke={tokens.primary} strokeLinejoin="round" strokeWidth={1.2} />
         <Path d="M9.1 2.2v3h3M6 8h4M6 10.4h3" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeWidth={1.1} />
       </Svg>
@@ -470,7 +507,7 @@ function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21Sett
   }
   if (glyph === 'identity') {
     return (
-      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+      <Svg height={16} viewBox="0 0 16 16" width={16}>
         <Circle cx={8} cy={5.3} fill={tokens.primary} r={2.45} />
         <Path d="M3.5 13.1c.7-2.2 2.2-3.3 4.5-3.3s3.8 1.1 4.5 3.3" fill={softFill} stroke={tokens.primary} strokeLinecap="round" strokeWidth={1.1} />
       </Svg>
@@ -478,7 +515,7 @@ function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21Sett
   }
   if (glyph === 'language') {
     return (
-      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+      <Svg height={16} viewBox="0 0 16 16" width={16}>
         <Circle cx={8} cy={8} fill={softFill} r={5.8} stroke={tokens.primary} strokeWidth={1.15} />
         <Path d="M2.6 8h10.8M8 2.2c1.6 1.6 2.3 3.5 2.3 5.8S9.6 12.2 8 13.8C6.4 12.2 5.7 10.3 5.7 8S6.4 3.8 8 2.2Z" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeWidth={1} />
       </Svg>
@@ -486,7 +523,7 @@ function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21Sett
   }
   if (glyph === 'location') {
     return (
-      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+      <Svg height={16} viewBox="0 0 16 16" width={16}>
         <Path d="M8 2.1a4.1 4.1 0 0 0-4.1 4.1c0 3.1 4.1 7.7 4.1 7.7s4.1-4.6 4.1-7.7A4.1 4.1 0 0 0 8 2.1Z" fill={softFill} stroke={tokens.primary} strokeWidth={1.2} />
         <Circle cx={8} cy={6.2} fill={tokens.primary} r={1.35} />
       </Svg>
@@ -494,7 +531,7 @@ function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21Sett
   }
   if (glyph === 'memory') {
     return (
-      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+      <Svg height={16} viewBox="0 0 16 16" width={16}>
         <Rect fill={softFill} height={9.5} rx={3.2} stroke={tokens.primary} strokeWidth={1.2} width={12} x={2} y={2.3} />
         <Circle cx={5.5} cy={7} fill={tokens.primary} r={1.05} />
         <Circle cx={8} cy={7} fill={tokens.primary} opacity={0.55} r={1.05} />
@@ -505,7 +542,7 @@ function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21Sett
   }
   if (glyph === 'settings') {
     return (
-      <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+      <Svg height={16} viewBox="0 0 16 16" width={16}>
         <Path d="M3 4h10M3 8h10M3 12h10" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeWidth={1.3} />
         <Circle cx={6} cy={4} fill={softFill} r={1.7} stroke={tokens.primary} strokeWidth={1.1} />
         <Circle cx={10.6} cy={8} fill={softFill} r={1.7} stroke={tokens.primary} strokeWidth={1.1} />
@@ -514,7 +551,7 @@ function CustomerSettingsDetailGlyph({ glyph, tokens }: { glyph: CustomerV21Sett
     )
   }
   return (
-    <Svg accessibilityElementsHidden height={16} viewBox="0 0 16 16" width={16}>
+    <Svg height={16} viewBox="0 0 16 16" width={16}>
       <Path d="M8 2.2 12.6 4v3.5c0 2.8-1.9 4.9-4.6 6.2-2.7-1.3-4.6-3.4-4.6-6.2V4L8 2.2Z" fill={softFill} stroke={tokens.primary} strokeLinejoin="round" strokeWidth={1.2} />
       <Path d="m5.6 7.8 1.6 1.6 3.2-3.2" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.25} />
     </Svg>

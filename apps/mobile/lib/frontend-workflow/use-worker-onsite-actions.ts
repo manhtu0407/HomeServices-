@@ -7,6 +7,7 @@ import {
 } from '@nestscout/shared'
 import type { WorkerCancellationRequestInput } from '../api-types'
 import { jobService, workerService } from '../services'
+import type { WorkflowErrorContext } from './errors'
 import { getRemoteJobId } from './helpers'
 import { dealToSnapshot } from './snapshots'
 
@@ -25,7 +26,7 @@ type WorkerAccessCheckInInput = {
 type WorkerOnsiteActionsInput = {
   dispatch: Dispatch<LocalWorkflowAction>
   refreshCurrentJob: () => Promise<boolean>
-  setRemoteError: (error: string) => false
+  setRemoteError: (error: string, code?: string, context?: WorkflowErrorContext) => false
   stateRef: RefObject<LocalWorkflowState>
   workerRefresh: () => Promise<boolean>
 }
@@ -107,9 +108,21 @@ export function useWorkerOnsiteActions({
     return true
   }, [dispatch, refreshCurrentJob, setRemoteError, stateRef, workerRefresh])
 
+  // Cash is collected off-app; the worker only confirms it so the server can
+  // settle the commission against their in-app balance.
+  const workerConfirmCashPayment = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có công việc để xác nhận thanh toán tiền mặt')
+    const settled = await workerService.confirmCashPayment(jobId)
+    if (!settled.success) return setRemoteError(settled.error, settled.code, 'cash_payment_confirmation')
+    await workerRefresh()
+    return true
+  }, [setRemoteError, stateRef, workerRefresh])
+
   return {
     authorizeApartmentAccess,
     requestWorkerCancellation,
+    workerConfirmCashPayment,
     workerUpdateStatus,
   }
 }

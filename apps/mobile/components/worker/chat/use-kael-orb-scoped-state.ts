@@ -30,14 +30,14 @@ type WorkerV5KaelOrbStoredState = {
 
 type WorkerV5KaelOrbScopedStateOptions = {
   catalogKey: string | null
-  catalogOwnerKey: string | null
-  catalogReady: boolean
-  catalogSessions: WorkerKaelChatSession[]
+  catalogOwnerKey?: string | null
+  catalogReady?: boolean
+  catalogSessions?: WorkerKaelChatSession[]
   jobId: string | null
   localVisualAuditSession: boolean
   mode: WorkerKaelChatMode
   ownerKey: string
-  removedSessionIds: Set<string>
+  removedSessionIds?: Set<string>
   workerId: string | null
 }
 
@@ -118,13 +118,13 @@ export function useWorkerV5KaelOrbScopedState(options: WorkerV5KaelOrbScopedStat
 
 function createState({
   catalogKey,
-  catalogOwnerKey,
-  catalogReady,
-  catalogSessions,
+  catalogOwnerKey = null,
+  catalogReady = false,
+  catalogSessions = [],
   jobId,
   localVisualAuditSession,
   mode,
-  removedSessionIds,
+  removedSessionIds = new Set<string>(),
   workerId,
 }: WorkerV5KaelOrbScopedStateOptions): WorkerV5KaelOrbChatState {
   return {

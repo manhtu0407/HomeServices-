@@ -8,10 +8,12 @@ export type CustomerAssistantWorkflowResolution = {
 
 export function resolveCustomerAssistantWorkflowAnswer(input: {
   readonly jobStatus?: string | null;
+  readonly paymentRailAvailable?: boolean;
   readonly paymentStatus?: string | null;
   readonly question: string;
   readonly language: KaelPromptLanguage;
 }): CustomerAssistantWorkflowResolution | null {
+  const paymentRailAvailable = input.paymentRailAvailable ?? Boolean(input.paymentStatus);
   if (isCustomerScopeAutonomyRequest(input.question)) {
     return {
       answer: customerScopeAutonomyMessage(input.language),
@@ -36,15 +38,19 @@ export function resolveCustomerAssistantWorkflowAnswer(input: {
 
   if (
     input.jobStatus === "confirmed_by_customer" &&
-    !input.paymentStatus &&
-    isCustomerPaymentUnavailableQuestion(input.question)
+    !paymentRailAvailable &&
+    isCustomerPaymentQuestion(input.question)
   ) {
     return { answer: customerPaymentUnavailableMessage(input.language), suggestedActions: [] };
   }
 
   if (input.jobStatus && isCustomerWorkflowStatusQuestion(input.question)) {
     return {
-      answer: customerWorkflowStatusMessage(input.jobStatus, input.language),
+      answer: customerWorkflowStatusMessage(
+        input.jobStatus,
+        input.language,
+        paymentRailAvailable,
+      ),
       suggestedActions: [],
     };
   }
@@ -107,11 +113,9 @@ function isCustomerWorkflowStatusQuestion(text: string) {
   return /\b(?:dang o buoc nao|den buoc nao|tinh trang (?:hien tai|bay gio)?|hien (?:tai|gio).{0,48}\b(?:buoc|tinh trang|thanh toan)|thanh toan (?:ngay|bay gio|luc nao)|khi nao (?:thanh toan|tra tien)|current (?:step|status)|what (?:step|status)|pay (?:now|yet|when)|payment (?:now|due|when))\b/.test(normalized);
 }
 
-function isCustomerPaymentUnavailableQuestion(text: string) {
+function isCustomerPaymentQuestion(text: string) {
   const normalized = normalizeWorkflowText(text);
-  const paymentSignal = /\b(?:payment|thanh toan|phuong thuc)\b/;
-  const unavailableSignal = /\b(?:(?:chua|khong) kha dung|unavailable|not available)\b/;
-  return paymentSignal.test(normalized) && unavailableSignal.test(normalized);
+  return /\b(?:payment|thanh toan|phuong thuc|ma qr|vietqr|chuyen khoan)\b/.test(normalized);
 }
 
 function isCustomerCheckInBypassRequest(text: string) {
@@ -147,7 +151,14 @@ function customerPaymentUnavailableMessage(language: KaelPromptLanguage) {
     : "Bạn đã xác nhận hoàn thành và không cần quay lại bước cũ. Hiện màn công việc chưa có phương thức thanh toán khả dụng, nên chưa có thao tác thanh toán nào để bạn hoàn tất; hãy chờ phương thức thanh toán chính thức được cấu hình. Kael chỉ mở bước tiếp theo sau khi hệ thống xác thực giao dịch.";
 }
 
-function customerWorkflowStatusMessage(status: string, language: KaelPromptLanguage) {
+function customerWorkflowStatusMessage(
+  status: string,
+  language: KaelPromptLanguage,
+  paymentRailAvailable = true,
+) {
+  if (status === "confirmed_by_customer" && !paymentRailAvailable) {
+    return customerPaymentUnavailableMessage(language);
+  }
   if (language === "en") {
     switch (status) {
       case "awaiting_customer_confirm":

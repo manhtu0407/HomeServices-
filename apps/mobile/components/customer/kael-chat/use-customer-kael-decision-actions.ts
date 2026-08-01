@@ -4,9 +4,14 @@ import { useRef } from 'react'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelChatResponse } from '@/lib/api-types'
+import { generateClientRequestId } from '@/lib/client-request-id'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelAssistantService, kaelChatService } from '@/lib/services'
 
+import {
+  clearPendingKaelChatDraft,
+  setPendingKaelChatDraft,
+} from '../kael-chat/pending-intake'
 import {
   formatAssistantAnswer,
   localizeKaelRequestFailure,
@@ -34,8 +39,10 @@ export function useCustomerKaelDecisionActions({
   kaelRequestGuard,
   language,
   mode,
+  pendingDraftOwnerId = null,
   processController,
   router,
+  sessionAccessToken,
   workflow,
 }: {
   chatEstimate: ChatEstimate | null
@@ -45,8 +52,10 @@ export function useCustomerKaelDecisionActions({
   kaelRequestGuard: CustomerKaelRequestGuard
   language: AppLanguage
   mode: CustomerKaelMode
+  pendingDraftOwnerId?: string | null
   processController: ProcessController
   router: Router
+  sessionAccessToken?: string
   workflow: Workflow
 }) {
   const {
@@ -96,6 +105,116 @@ export function useCustomerKaelDecisionActions({
     ? 'Chưa thể hoàn tất lựa chọn này. Vui lòng thử lại.'
     : 'This choice could not be completed. Try again.'
 
+  const confirmIntakeInformation = async () => {
+    const confirmation = chat?.session.intake_confirmation
+    if (
+      !chat?.session.id ||
+      confirmation?.status !== 'pending' ||
+      confirmation.blocking
+    ) return
+    const operation = beginDecisionOperation('confirm-intake')
+    if (!operation) return
+    const requestToken = kaelRequestGuard.begin('conversation')
+    setLoading(true)
+    setError(null)
+    const processDone = startProcessLines(
+      language === 'vi'
+        ? 'Đã xác nhận thông tin. Kael đang bắt đầu phân tích.'
+        : 'Information confirmed. Kael is beginning the analysis.',
+      {
+        complexity: null,
+        mediaCount: totalMediaRefs(turns),
+        mode: mode === 'case' ? 'case' : 'normal',
+        serviceType: chat.session.service_type,
+      },
+    )
+    try {
+      const result = await kaelChatService.decideIntakeConfirmation(
+        chat.session.id,
+        { decision: 'confirmed' },
+        sessionAccessToken,
+      )
+      if (!kaelRequestGuard.isCurrent(requestToken)) return
+      if (!result.success) {
+        stopProcessLines()
+        setError(localizeKaelRequestFailure(result, language))
+        return
+      }
+      await processDone
+      if (!kaelRequestGuard.isCurrent(requestToken)) return
+      setChat(result.data)
+      setTurns(result.data.turns)
+      if (
+        pendingDraftOwnerId &&
+        result.data.session.intake_confirmation?.status === 'confirmed'
+      ) {
+        await clearPendingKaelChatDraft(pendingDraftOwnerId)
+      }
+    } catch {
+      if (kaelRequestGuard.isCurrent(requestToken)) setError(decisionFailure)
+    } finally {
+      finishDecisionOperation(operation)
+      if (kaelRequestGuard.isCurrent(requestToken)) {
+        setLoading(false)
+        stopProcessLines()
+      }
+    }
+  }
+
+  const requestIntakeCorrection = async () => {
+    const confirmation = chat?.session.intake_confirmation
+    if (
+      !chat?.session.id ||
+      confirmation?.status !== 'pending' ||
+      !pendingDraftOwnerId
+    ) return
+    const operation = beginDecisionOperation('correct-intake')
+    if (!operation) return
+    const requestToken = kaelRequestGuard.begin('conversation')
+    setLoading(true)
+    setError(null)
+    const intake = confirmation.intake
+    try {
+      await setPendingKaelChatDraft(pendingDraftOwnerId, {
+        addressLabel: intake.address_label,
+        clientRequestId: generateClientRequestId(),
+        createdAt: new Date().toISOString(),
+        description: intake.description,
+        districtLabel: intake.address_district,
+        locale: language,
+        message: intake.description,
+        problemChips: [...intake.problem_chips],
+        profileId: intake.profile_id,
+        scheduleMode: 'scheduled',
+        scheduledAt: intake.scheduled_at,
+        scheduleWindow: {
+          date: intake.schedule_window.date,
+          end: intake.schedule_window.end,
+          start: intake.schedule_window.start,
+          timeZone: intake.schedule_window.time_zone,
+        },
+        serviceType: intake.service_type,
+        source: 'booking',
+      })
+      const result = await kaelChatService.decideIntakeConfirmation(
+        chat.session.id,
+        { decision: 'correction_requested' },
+        sessionAccessToken,
+      )
+      if (!kaelRequestGuard.isCurrent(requestToken)) return
+      if (!result.success) {
+        setError(localizeKaelRequestFailure(result, language))
+        return
+      }
+      router.replace('/(customer)/booking?editKaelIntake=1' as never)
+    } catch {
+      if (kaelRequestGuard.isCurrent(requestToken)) setError(decisionFailure)
+    } finally {
+      finishDecisionOperation(operation)
+      if (kaelRequestGuard.isCurrent(requestToken)) setLoading(false)
+    }
+  }
+
   const confirmAgenticEstimate = async () => {
     if (!chat?.session.id || !chatEstimate || confirmingAgenticEstimate) return
     const operation = beginDecisionOperation('confirm-agentic-estimate')
@@ -116,7 +235,9 @@ export function useCustomerKaelDecisionActions({
     })
     let confirmedJobId: string | null = null
     try {
-      const confirmed = await kaelChatService.confirm(chat.session.id)
+      const confirmed = sessionAccessToken
+        ? await kaelChatService.confirm(chat.session.id, sessionAccessToken)
+        : await kaelChatService.confirm(chat.session.id)
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       if (!confirmed.success) {
         stopProcessLines()
@@ -138,7 +259,10 @@ export function useCustomerKaelDecisionActions({
       } : current)
       if (jobId && typeof workflow.actions.hydrateRemoteJobById === 'function') {
         // The destination can rehydrate from jobId, so a stale cache must not turn a confirmed job into a failed action.
-        void workflow.actions.hydrateRemoteJobById(jobId).catch(() => undefined)
+        const hydration = sessionAccessToken
+          ? workflow.actions.hydrateRemoteJobById(jobId, sessionAccessToken)
+          : workflow.actions.hydrateRemoteJobById(jobId)
+        void hydration.catch(() => undefined)
       }
       if (jobId) {
         setLocalMode('case')
@@ -353,10 +477,12 @@ export function useCustomerKaelDecisionActions({
   }
 
   return {
+    confirmIntakeInformation,
     confirmAgenticEstimate,
     confirmCaseCompletion,
     confirmCaseQuote,
     retryWorkerSearch,
+    requestIntakeCorrection,
     submitAgenticRejectReason,
     submitCaseQuoteRejectReason,
   }

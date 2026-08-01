@@ -83,7 +83,6 @@ export function KaelChatSurfaceView({
   modeMenuOpen,
   normalAssistantTurns,
   normalChatLabel,
-  normalEvidenceNode,
   onBack,
   onDraftChange,
   onPickMedia,
@@ -92,6 +91,8 @@ export function KaelChatSurfaceView({
   onToggleModeMenu,
   onToggleSessionMenu,
   processLinesNode,
+  streamingReplyNode,
+  streamingReplyTurnId,
   reduceMotion,
   reduceTransparency,
   rootStyles,
@@ -133,7 +134,6 @@ export function KaelChatSurfaceView({
   modeMenuOpen: boolean
   normalAssistantTurns: ChatTurnView[]
   normalChatLabel: string
-  normalEvidenceNode: ReactNode
   onBack: () => void
   onDraftChange: (value: string) => void
   onPickMedia: () => void
@@ -143,6 +143,8 @@ export function KaelChatSurfaceView({
   onToggleSessionMenu?: () => void
   pendingDraftMessage: string
   processLinesNode: ReactNode
+  streamingReplyNode: ReactNode
+  streamingReplyTurnId: string | null
   reduceMotion: boolean
   reduceTransparency: boolean
   rootStyles: RootChatStyles
@@ -220,7 +222,7 @@ export function KaelChatSurfaceView({
       ))
     }
     for (const turn of agenticVisibleTurns) {
-      appendChatTranscriptRow(rows, `agentic-${turn.id}`, (
+      appendChatTranscriptRow(rows, `turn-${turn.id}`, (
         <ChatBubble speaker={turn.role === 'customer' ? 'customer' : 'kael'} text={turn.text_content ?? ''} tokens={tokens} />
       ))
     }
@@ -230,17 +232,22 @@ export function KaelChatSurfaceView({
     appendChatTranscriptRow(rows, 'agentic-estimate', agenticEstimateNode)
     if (mode === 'normal') {
       for (const turn of normalAssistantTurns) {
-        appendChatTranscriptRow(rows, `normal-${turn.id}`, (
+        appendChatTranscriptRow(rows, `turn-${turn.id}`, (
           <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
         ))
       }
     }
     for (const turn of caseAssistantTurns) {
-      appendChatTranscriptRow(rows, `case-${turn.id}`, (
+      appendChatTranscriptRow(rows, `turn-${turn.id}`, (
         <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
       ))
     }
     appendChatTranscriptRow(rows, 'process-lines', processLinesNode)
+    appendChatTranscriptRow(
+      rows,
+      streamingReplyTurnId ? `turn-${streamingReplyTurnId}` : 'streaming-reply',
+      streamingReplyNode,
+    )
     if (missingCaseWorkDeal && !hydratingCase) {
       appendChatTranscriptRow(rows, 'case-work-inactive', (
         <InactiveAgenticGate testID="customer-v21-case-work-inactive" />
@@ -262,6 +269,8 @@ export function KaelChatSurfaceView({
     normalAssistantTurns,
     pendingDraftMessage,
     processLinesNode,
+    streamingReplyNode,
+    streamingReplyTurnId,
     reduceMotion,
     showNormalGreeting,
     showPendingDraftBubble,
@@ -309,7 +318,6 @@ export function KaelChatSurfaceView({
             windowSize={7}
           />
 
-          {normalEvidenceNode}
           {composerMediaNode}
           {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-kael-error">{error}</Text> : null}
           {showComposer ? (

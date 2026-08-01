@@ -538,6 +538,7 @@ export function workflowEventLabel(event: WorkflowEvent, locale: WorkflowLocale)
     customer_confirmed_completion: text('Khách xác nhận hoàn tất', 'Customer confirms completion'),
     kael_decided_payment: text('Kael quyết định thanh toán', 'Kael decides payment'),
     payment_confirmed: text('Thanh toán xác nhận', 'Payment confirmed'),
+    worker_confirmed_cash_payment: text('Thợ xác nhận tiền mặt', 'Worker confirms cash payment'),
     kael_decided_dispute: text('Kael quyết định khiếu nại', 'Kael decides dispute'),
     review_submitted: text('Gửi đánh giá', 'Review submitted'),
     kael_processed_cancellation: text('Kael xử lý yêu cầu hủy', 'Kael processes cancellation'),

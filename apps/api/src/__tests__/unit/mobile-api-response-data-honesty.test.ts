@@ -8,6 +8,7 @@ import {
   serializeKaelSession,
   serializeKaelTurn,
 } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+import { buildKaelIntakeConfirmation } from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-confirmation'
 import {
   getCustomerProfileInsights,
   getWorkerPerformanceInsights,
@@ -137,6 +138,41 @@ describe('mobile-api response data honesty', () => {
       total_turns: 0,
       total_cost_usd: 0,
     }, null, [])).toThrow('Dữ liệu phiên Kael không hợp lệ')
+  })
+
+  it('exposes only a validated booking confirmation and keeps analysis gated', () => {
+    const intakeConfirmation = buildKaelIntakeConfirmation({
+      addressDistrict: 'Quận 3',
+      addressLabel: 'Chung cư Căn Hộ An Gia, Quận 3',
+      description: 'Ổ cắm chập chờn và phát tiếng lẹt xẹt khi sử dụng.',
+      language: 'vi',
+      problemChips: ['Ổ cắm/công tắc hỏng'],
+      profileId: 'electric_diagnose',
+      scheduleWindow: {
+        date: '2026-07-30',
+        end: '12:00',
+        start: '10:00',
+        time_zone: 'Asia/Ho_Chi_Minh',
+      },
+      scheduledAt: '2026-07-30T03:00:00.000Z',
+      serviceType: 'electrical',
+    }, new Date('2026-07-29T00:00:00.000Z'))
+
+    const session = serializeKaelSession({
+      id: 'session-1',
+      customer_id: 'customer-1',
+      service_type: 'electrical',
+      status: 'active',
+      case_phase: 'analysis',
+      diagnosis_scope: null,
+      safe_metadata: { intake_confirmation: intakeConfirmation },
+      started_at: '2026-07-29T00:00:00.000Z',
+      total_turns: 1,
+      total_cost_usd: 0,
+    }, null, [])
+
+    expect(session.next_action).toBe('confirm_intake')
+    expect(session.intake_confirmation).toEqual(intakeConfirmation)
   })
 
   it('rejects an unknown persisted customer Kael turn role instead of attributing it to system', () => {

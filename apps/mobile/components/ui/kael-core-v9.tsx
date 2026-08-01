@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useRef, type Ref } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react'
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient } from 'react-native-svg'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
@@ -146,7 +146,9 @@ export function KaelCoreV9({
     }, { motionScale, repeat })
     return true
   }, [leftEyeScaleX, leftEyeScaleY, leftEyeX, leftEyeY, lensGlintOpacity, monocleRotation, motionScale, reduceMotion, rightEyeScaleX, rightEyeScaleY, rightEyeX, rightEyeY, shellPitch, shellRoll, shellScaleX, shellScaleY, shellX, shellY, stopAutoplayClip])
-  runAutoplayClipRef.current = runAutoplayClip
+  useLayoutEffect(() => {
+    runAutoplayClipRef.current = runAutoplayClip
+  }, [runAutoplayClip])
 
   useEffect(() => {
     if (autoplayTimer.current) clearTimeout(autoplayTimer.current)

@@ -65,6 +65,7 @@ const SERVICE_INFERENCE_RULES: ReadonlyArray<{
   {
     serviceType: 'plumbing',
     keywords: [
+      'sua nuoc',
       'ong nuoc',
       'ong',
       'voi nuoc',

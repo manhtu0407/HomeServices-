@@ -14,7 +14,8 @@ import type {
 import type { CustomerThemeTokens } from '../customer-theme'
 import { SourceCardSkin } from '../ui/aura-surfaces'
 import { customerV21ServiceCopy } from '../ui/copy'
-import { KaelLiquidPressable, KaelLiquidReveal } from './kael-liquid-pressable'
+import { KaelLiquidPressable } from './kael-liquid-pressable'
+import { KaelLiquidReveal } from './kael-liquid-reveal'
 
 type Props = {
   activeSessionId: string | null

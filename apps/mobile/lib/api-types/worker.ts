@@ -352,6 +352,8 @@ export type EarningsResponse = {
   platform_fee_total: number
   net_earnings: number
   available_balance: number
+  cash_commission_collected_total: number
+  cash_commission_due_total: number
   pending_payment_count: number
   pending_payment_amount: number
   on_hold_amount: number
@@ -360,12 +362,15 @@ export type EarningsResponse = {
   recent_transactions: {
     job_id: string
     display_code: string | null
-    payment_state: 'pending' | 'available' | 'on_hold' | 'reversed'
+    entry_type: 'worker_credit' | 'cash_commission_debit'
+    payment_state: 'pending' | 'available' | 'on_hold' | 'reversed' | 'cash_collected' | 'cash_reconciliation_due'
     gross_amount: number
     platform_fee: number
     worker_net: number
     commission_level: number
     commission_rate_bps: number
+    cash_commission_collected: number
+    cash_commission_due: number
     recorded_at: string
     available_at: string | null
   }[]

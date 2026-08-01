@@ -109,12 +109,14 @@ export function resolveIntakeFactCoverage(input: {
       ...safetyClarificationMissing,
     ]
     : providerMissing)];
+  const providerRequestedClarification = input.providerNeedsClarification &&
+    providerMissing.length > 0;
   return {
     facts: coverage.facts,
     missing,
     needsClarification: requiredPolicy
       ? missing.length > 0
-      : input.providerNeedsClarification,
+      : providerRequestedClarification,
   };
 }
 

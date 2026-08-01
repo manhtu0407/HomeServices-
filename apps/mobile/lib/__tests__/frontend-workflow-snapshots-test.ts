@@ -213,6 +213,7 @@ describe('frontend workflow payment truth', () => {
     const snapshot = workerJobToSnapshot(buildWorkerJob())
 
     expect(snapshot.finalPrice).toBe(420_000)
+    expect(snapshot.broadcast?.estimatedEarning).toBe(336_000)
     expect(snapshot.payment).toBeNull()
   })
 

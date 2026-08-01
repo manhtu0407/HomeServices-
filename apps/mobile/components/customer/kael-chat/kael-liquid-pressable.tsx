@@ -3,7 +3,6 @@ import {
   Pressable,
   type PressableProps,
   type StyleProp,
-  type ViewProps,
   type ViewStyle,
 } from 'react-native'
 import Animated, {
@@ -24,11 +23,6 @@ type Props = Omit<PressableProps, 'children' | 'onPressIn' | 'onPressOut' | 'sty
   pressScale?: number
   reduceMotion: boolean
   selected?: boolean
-  style?: StyleProp<ViewStyle>
-}
-
-type RevealProps = Omit<ViewProps, 'style'> & {
-  reduceMotion: boolean
   style?: StyleProp<ViewStyle>
 }
 
@@ -92,35 +86,4 @@ export function KaelLiquidPressable({
       {children}
     </AnimatedPressable>
   )
-}
-
-export function KaelLiquidReveal({ reduceMotion, style, ...props }: RevealProps) {
-  const opacity = useSharedValue(reduceMotion ? 1 : 0)
-  const scale = useSharedValue(reduceMotion ? 1 : 0.985)
-  const translateY = useSharedValue(reduceMotion ? 0 : -4)
-
-  useEffect(() => {
-    if (reduceMotion) {
-      opacity.value = 1
-      scale.value = 1
-      translateY.value = 0
-      return
-    }
-    opacity.value = withTiming(1, { duration: motionDuration(125, reduceMotion) })
-    scale.value = withSpring(1, motionTokens.liquid.entrance)
-    translateY.value = withSpring(0, motionTokens.liquid.pill)
-  }, [opacity, reduceMotion, scale, translateY])
-
-  useEffect(() => () => {
-    cancelAnimation(opacity)
-    cancelAnimation(scale)
-    cancelAnimation(translateY)
-  }, [opacity, scale, translateY])
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
-  }))
-
-  return <Animated.View {...props} style={[style, animatedStyle]} />
 }

@@ -57,6 +57,7 @@ import {
 import { scrubSensitiveForLLM } from "./utils.ts";
 import { sanitizeCustomerCaseEvidenceText } from "./untrusted-evidence.ts";
 import type { KaelSpendGate, SpendGateClient } from "./kael-guardrails/spend-gate.ts";
+import { normalizeKaelResponseBrand } from "./user-facing-copy.ts";
 
 type AssistantClient = Parameters<typeof retrieveKaelKnowledgeContextIfEnabled>[0];
 
@@ -167,6 +168,7 @@ export async function runCustomerAssistant(
 
   const workflowAnswer = resolveCustomerAssistantWorkflowAnswer({
     jobStatus: input.job?.status,
+    paymentRailAvailable: input.secrets.paymentRailAvailable,
     paymentStatus: input.job?.payment_status,
     question: workflowQuestion,
     language,
@@ -234,7 +236,7 @@ export async function runCustomerAssistant(
           );
           if (checked.allowed && !checked.used_fallback) {
             return {
-              answer: checked.text,
+              answer: normalizeKaelResponseBrand(checked.text),
               safety_notes: deterministicSafetyNotes(language, topic),
               citations: normalizeCitations([
                 ...(knowledge?.semanticCitations ?? []),
@@ -285,7 +287,7 @@ export async function runCustomerAssistant(
       fallbackUsed: false,
     }));
     return {
-      answer: checked.text,
+      answer: normalizeKaelResponseBrand(checked.text),
       safety_notes: deterministicSafetyNotes(language, topic),
       citations: normalizeCitations([
         ...result.data.citations,
@@ -353,7 +355,7 @@ function buildAssistantRequest(input: {
           "Prioritize NestScout/platform context before general service knowledge.",
           "Keep answer to at most 3 short sentences and 450 characters.",
           input.language === "vi"
-            ? "Write every user-facing field in natural Vietnamese. Do not mix English workflow labels; only Kael, NestScout, VietQR, and SePay may remain as brand names."
+            ? "Write every user-facing field in natural Vietnamese. Do not mix English workflow labels; only Kael, NestScout, and VietQR may remain as brand names."
             : "Write every user-facing field in English.",
           "Set safety_notes and citations to JSON arrays. Use suggested_actions only from: open_booking, check_job, message_worker, contact_support, request_scope_change.",
           "Use boundary only from: answered, educational_only, redirect, unsupported, fallback.",
@@ -471,7 +473,7 @@ function fallbackAnswer(
   trace?: readonly KaelSafeTraceEvent[],
 ): CustomerAssistantAnswer {
   return {
-    answer,
+    answer: normalizeKaelResponseBrand(answer),
     safety_notes: deterministicSafetyNotes(language, topic),
     citations: ["NestScout platform scope"],
     suggested_actions: normalizeActions([], "customer_normal", topic),
@@ -488,7 +490,7 @@ function buildCustomerWorkflowAnswer(
   topic: KaelTopic,
 ): CustomerAssistantAnswer {
   return {
-    answer: workflowAnswer.answer,
+    answer: normalizeKaelResponseBrand(workflowAnswer.answer),
     safety_notes: deterministicSafetyNotes(language, topic),
     citations: ["NestScout platform scope"],
     suggested_actions: normalizeActions(workflowAnswer.suggestedActions, surface, topic),
@@ -561,12 +563,15 @@ function deterministicSafetyNotes(
   language: KaelPromptLanguage,
   topic: KaelTopic,
 ) {
+  let notes: string[];
   if (topic === "legal_safety_awareness" || topic === "legal_advice") {
-    return [language === "en" ? LEGAL_NOTE_EN : LEGAL_NOTE_VI];
+    notes = [language === "en" ? LEGAL_NOTE_EN : LEGAL_NOTE_VI];
+  } else {
+    notes = language === "en"
+      ? ["Use NestScout's in-app workflow for booking, scope, payment, and support."]
+      : ["Hãy dùng luồng trong ứng dụng NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ."];
   }
-  return language === "en"
-    ? ["Use NestScout's in-app workflow for booking, scope, payment, and support."]
-    : ["Hãy dùng luồng trong ứng dụng NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ."];
+  return notes.map(normalizeKaelResponseBrand);
 }
 
 function normalizeCitations(

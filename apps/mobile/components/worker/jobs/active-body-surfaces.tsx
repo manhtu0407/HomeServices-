@@ -2,14 +2,14 @@ import { memo, type ComponentType } from 'react'
 import { View, type StyleProp, type ViewStyle } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
-import type { AppLanguage } from '@/lib/app-language'
+import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import {
   buildWorkerV5AcceptEtaSignal,
   buildWorkerV5RouteDistanceSignal,
-  workerV5RouteMapLabelFromDeal,
+  workerV5LiveDistanceSignal,
+  workerV5LiveEtaSignal,
 } from '../ui/route'
-import { routeDestinationLabel } from '../ui/labels'
 import { WorkerV5InfoGrid } from './shared-surfaces'
 import { WorkerV5ActionRail } from './advisory-surfaces'
 import { WorkerV5EtaSummaryCard } from './map-surfaces'
@@ -72,9 +72,20 @@ export function WorkerV5RouteEtaBody({
   routePreview: WorkerV5RoutePreviewState
   zipAura: WorkerV5CaseAuraComponent
 }) {
-  const etaSignal = buildWorkerV5AcceptEtaSignal(deal, language)
-  const distanceSignal = buildWorkerV5RouteDistanceSignal(deal, language)
-  const destinationSignal = workerV5RouteMapLabelFromDeal(deal) ?? (deal ? routeDestinationLabel(deal, language) : textByLanguage(language, 'Chưa có việc', 'No work'))
+  const pendingRouteLabel = workerV5PendingRouteLabel(routePreview, language)
+  const etaSignal = routePreview.route
+    ? workerV5LiveEtaSignal(routePreview.route, language)
+    : buildWorkerV5AcceptEtaSignal(deal, language)
+  const distanceSignal = routePreview.route
+    ? workerV5LiveDistanceSignal(routePreview.route, language)
+    : buildWorkerV5RouteDistanceSignal(deal, language)
+  const serviceLabel = localizedServiceLabel(
+    deal?.broadcast?.serviceType ?? deal?.draft.serviceType ?? null,
+    language,
+  )
+  const problemSummary = deal?.broadcast?.problemSummary?.trim()
+    || deal?.draft.description?.trim()
+    || textByLanguage(language, 'Chưa có mô tả công việc', 'No work description')
   const canAdvanceRoute = Boolean(deal) && !actionBusy
 
   return (
@@ -84,9 +95,17 @@ export function WorkerV5RouteEtaBody({
       <WorkerV5InfoGrid
         auraScope="ActiveRoute"
         items={[
-          { label: textByLanguage(language, 'Quãng đường', 'Distance'), value: distanceSignal.label },
-          { label: textByLanguage(language, 'Tín hiệu đường đi', 'Route signal'), value: etaSignal.hasSignal ? etaSignal.label : textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data') },
-          { label: textByLanguage(language, 'Vùng đến nơi', 'Arrival zone'), value: destinationSignal },
+          {
+            label: textByLanguage(language, 'Quãng đường', 'Distance'),
+            value: distanceSignal.hasSignal ? distanceSignal.label : pendingRouteLabel,
+          },
+          {
+            label: textByLanguage(language, 'Thời gian dự kiến', 'Estimated time'),
+            value: etaSignal.hasSignal
+              ? ('value' in etaSignal ? etaSignal.value : etaSignal.label)
+              : pendingRouteLabel,
+          },
+          { label: problemSummary, value: serviceLabel },
         ]}
         reduceTransparency={reduceTransparency}
       />
@@ -106,6 +125,25 @@ export function WorkerV5RouteEtaBody({
       />
     </View>
   )
+}
+
+function workerV5PendingRouteLabel(
+  routePreview: WorkerV5RoutePreviewState,
+  language: AppLanguage,
+) {
+  if (!routePreview.hasRouteDestination) {
+    return textByLanguage(language, 'Chưa mở điểm đến', 'Destination not released')
+  }
+  if (routePreview.locationStatus === 'loading') {
+    return textByLanguage(language, 'Đang lấy vị trí', 'Getting location')
+  }
+  if (routePreview.locationStatus === 'denied') {
+    return textByLanguage(language, 'Cần bật vị trí', 'Location required')
+  }
+  if (routePreview.locationStatus === 'unavailable') {
+    return textByLanguage(language, 'Chưa lấy được vị trí', 'Location unavailable')
+  }
+  return textByLanguage(language, 'Đang tính lộ trình', 'Calculating route')
 }
 
 export const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate({

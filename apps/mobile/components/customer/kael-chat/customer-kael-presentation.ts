@@ -14,7 +14,6 @@ import {
   customerVisibleIntakeSummaryText,
   customerVisibleKaelTurnText,
   isScriptedKaelAcknowledgementTurn,
-  totalMediaRefs,
 } from './kael-chat-turn-display-model'
 import type { CustomerKaelMode } from '../ui/types'
 import type { KaelProcessLineRuntime } from './use-customer-kael-chat-ui-state'
@@ -188,7 +187,14 @@ export function deriveCustomerKaelPresentation({
     normalAssistantTurns.length === 0 &&
     (routeDraftOwnsIntake || (!chat && turns.length === 0))
   const caseEvidenceGateActive = false
+  const intakeConfirmation = chat?.session.intake_confirmation?.status === 'pending'
+    ? chat.session.intake_confirmation
+    : null
+  const intakeConfirmationActive = agenticIntakeModeActive &&
+    !processLines &&
+    Boolean(intakeConfirmation)
   const agenticEvidenceGateActive = agenticIntakeModeActive &&
+    !intakeConfirmationActive &&
     !submittingAgenticEvidence &&
     !processLines &&
     serverRequestsEvidence
@@ -202,11 +208,6 @@ export function deriveCustomerKaelPresentation({
   const agenticEstimateConfirmed = chat?.session.status === 'confirmed' ||
     chat?.session.next_action === 'confirmed' ||
     Boolean(chat?.session.job_id)
-  const normalEvidenceCount = Math.max(pendingDraft?.mediaCount ?? 0, totalMediaRefs(turns))
-  const showNormalEvidence = agenticIntakeModeActive &&
-    !agenticEvidenceGateActive &&
-    !processLines &&
-    normalEvidenceCount > 0
 
   return {
     agenticAnalysisActive,
@@ -220,9 +221,10 @@ export function deriveCustomerKaelPresentation({
     caseEvidenceGateActive,
     chatEstimate,
     hasSharedJobIncident,
+    intakeConfirmation,
+    intakeConfirmationActive,
     missingCaseWorkDeal,
     normalAssistantTurns,
-    normalEvidenceCount,
     offerReviewActive,
     pendingDraftMessage,
     serverEvidenceKind,
@@ -230,9 +232,10 @@ export function deriveCustomerKaelPresentation({
     serverEvidenceRequired,
     serverPriceReviewBlocked,
     serverSafetyMessages,
-    showCaseConversation: mode === 'case' && Boolean(deal) && (caseEditOpen || caseAssistantTurns.length > 0),
-    showComposer: (mode === 'normal' || mode === 'case') && !agenticEvidenceGateActive,
-    showNormalEvidence,
+    showCaseConversation: mode === 'case' && (caseAssistantTurns.length > 0 || (Boolean(deal) && caseEditOpen)),
+    showComposer: (mode === 'normal' || mode === 'case') &&
+      !intakeConfirmationActive &&
+      !agenticEvidenceGateActive,
     showNormalGreeting,
     showPendingDraftBubble,
     workIntakeActive,

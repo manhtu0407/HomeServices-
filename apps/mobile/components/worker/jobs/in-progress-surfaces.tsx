@@ -1,5 +1,5 @@
-import { type SetStateAction, useRef, useState } from 'react'
-import { Alert, Text as RNText, View, type TextProps } from 'react-native'
+import { type SetStateAction, useLayoutEffect, useRef, useState } from 'react'
+import { Alert, Platform, Text as RNText, View, type TextProps } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { type AppLanguage } from '@/lib/app-language'
@@ -18,11 +18,26 @@ import { WorkerV5InProgressTravelGate } from './active-body-surfaces'
 import { WorkerV5ActionRail, WorkerV5SingleSourceActionButton } from './advisory-surfaces'
 import { WorkerV5EvidenceTray } from './evidence-surfaces'
 import { WorkerV5WorkProgressBoard } from './progress-surfaces'
+import { buildWorkerV5WorkBoardItems } from './work-board'
 import { type PendingClientRequestRef } from '@/lib/client-request-id'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { WorkerV5RouteMapStage } from './route-map-surfaces'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+const IMAGE_PICKER_TIMEOUT_MS = 45_000
+
+async function withImagePickerDeadline<T>(pickerResult: Promise<T>) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error('IMAGE_PICKER_TIMEOUT')), IMAGE_PICKER_TIMEOUT_MS)
+  })
+  try {
+    return await Promise.race([pickerResult, timeout])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
@@ -52,7 +67,6 @@ export function WorkerV5InProgressBody({
       || (deal.status === 'arrived' && isArrivalGateRequested)
     ),
   )
-  const briefLines = deal?.broadcast?.prebrief?.filter(Boolean).slice(0, 5) ?? []
   const customerEvidenceUrls = deal?.customerEvidencePhotoUrls ?? []
   const evidenceUrls = deal?.fieldEvidencePhotoUrls ?? []
   const currentJobId = deal?.broadcast?.jobId ?? deal?.id ?? null
@@ -86,14 +100,16 @@ export function WorkerV5InProgressBody({
   const fieldEvidenceOperationRef = useRef<{ jobId: string; slot: number } | null>(null)
   const activeFieldEvidenceJobIdRef = useRef<string | null>(null)
   const previousFieldEvidenceJobIdRef = useRef(currentJobId)
-  if (previousFieldEvidenceJobIdRef.current !== currentJobId) {
-    previousFieldEvidenceJobIdRef.current = currentJobId
-    setFieldEvidenceState({ busy: false, busySlot: null, confirmation: null, urls: [null, null, null] })
-    fieldEvidenceSessionRef.current = null
-    fieldEvidenceRequestRef.current = null
-    fieldEvidenceOperationRef.current = null
-  }
-  activeFieldEvidenceJobIdRef.current = currentJobId
+  useLayoutEffect(() => {
+    if (previousFieldEvidenceJobIdRef.current !== currentJobId) {
+      previousFieldEvidenceJobIdRef.current = currentJobId
+      setFieldEvidenceState({ busy: false, busySlot: null, confirmation: null, urls: [null, null, null] })
+      fieldEvidenceSessionRef.current = null
+      fieldEvidenceRequestRef.current = null
+      fieldEvidenceOperationRef.current = null
+    }
+    activeFieldEvidenceJobIdRef.current = currentJobId
+  }, [currentJobId])
   const visibleEvidenceUrls: (string | null)[] = [...evidenceUrls]
   fieldEvidenceUrls.forEach((url, slot) => {
     if (!url || visibleEvidenceUrls.includes(url)) return
@@ -104,11 +120,7 @@ export function WorkerV5InProgressBody({
     visibleEvidenceUrls.push(url)
   })
   const evidenceCount = visibleEvidenceUrls.filter((url): url is string => Boolean(url)).length
-  const progressItems = briefLines.map((line, index) => ({
-    meta: index === briefLines.length - 1 ? textByLanguage(language, 'Đang áp dụng', 'Active') : textByLanguage(language, 'Đã đọc', 'Read'),
-    state: index === briefLines.length - 1 ? 'active' as const : 'done' as const,
-    title: line,
-  }))
+  const progressItems = buildWorkerV5WorkBoardItems(deal, language, evidenceCount)
 
   const addFieldEvidence = async (source: 'camera' | 'library', slot: number) => {
     if (fieldEvidenceBusy || fieldEvidenceOperationRef.current) return
@@ -145,16 +157,16 @@ export function WorkerV5InProgressBody({
       }
 
       // react-doctor-disable-next-line react-doctor/async-defer-await
-      const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({
+      const result = await withImagePickerDeadline(source === 'camera'
+        ? ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.82,
           })
-        : await ImagePicker.launchImageLibraryAsync({
+        : ImagePicker.launchImageLibraryAsync({
             allowsMultipleSelection: false,
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.82,
-          })
+          }))
       if (activeFieldEvidenceJobIdRef.current !== requestJobId) return
       if (result.canceled || result.assets.length === 0) return
 
@@ -300,6 +312,11 @@ export function WorkerV5InProgressBody({
   }
 
   const chooseFieldEvidenceSource = (slot: number) => {
+    // Action buttons in Alert are unavailable on react-native-web, so Preview uses the photo library directly.
+    if (Platform.OS === 'web') {
+      void addFieldEvidence('library', slot)
+      return
+    }
     Alert.alert(
       textByLanguage(language, 'Ảnh hiện trường', 'On-site photo'),
       textByLanguage(language, 'Kael sẽ đối chiếu ảnh này với phạm vi công việc hiện tại.', 'Kael will compare this photo with the active work scope.'),
@@ -329,11 +346,11 @@ export function WorkerV5InProgressBody({
         ))
         return
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const result = await withImagePickerDeadline(ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: false,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.84,
-      })
+      }))
       if (result.canceled || result.assets.length === 0) return
       const asset = result.assets[0]
       const uploaded = await uploadJobMediaDrafts(currentJobId, [{

@@ -1,5 +1,5 @@
 // Edge service workers domain (C4 6a, services/* split): worker profile, availability, broadcast
-// inbox, earnings, registration, and the worker job list. Imported directly by services.ts.
+// inbox, earnings, and registration. Imported directly by services.ts.
 
 import {
   asNumber,
@@ -17,12 +17,10 @@ import { blankWorkerProfile, clampServiceRadius, compactMetadata, mapAvailabilit
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import type {
   EdgeEarningsResponse,
-  EdgeWorkerJobListResponse,
 } from "../router/dtos.ts";
 import { normalizeIsoTimestamp } from "../iso-timestamp.ts";
 import type {
   BroadcastStatus,
-  JobStatus,
   ServiceType,
   WorkerApplicationSubmitInput,
   WorkerRegisterInput,
@@ -31,13 +29,7 @@ import type {
   WorkerVerificationStatus,
 } from "../../../_shared/domain.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
-import { projectAddressAccess } from "./apartment-access.service.ts";
-import { buildWorkerBriefOutput } from "../kael/index.ts";
 import { resolveWorkerAvatarUrl } from "./worker-avatar.service.ts";
-import {
-  canReleaseJobEvidenceToWorker,
-  listJobEvidenceRefsByStage,
-} from "./evidence-refs.service.ts";
 import {
   activeServiceTypesForWorker,
   isWorkerServiceQualityLocked,
@@ -582,6 +574,8 @@ function parseWorkerEarningsAggregate(
     platform_fee_total: nonnegativeSafeInteger(row.platform_fee_total),
     net_earnings: nonnegativeSafeInteger(row.net_earnings),
     available_balance: nonnegativeSafeInteger(row.available_balance),
+    cash_commission_collected_total: nonnegativeSafeInteger(row.cash_commission_collected_total),
+    cash_commission_due_total: nonnegativeSafeInteger(row.cash_commission_due_total),
     pending_payment_count: nonnegativeSafeInteger(row.pending_payment_count),
     pending_payment_amount: nonnegativeSafeInteger(row.pending_payment_amount),
     on_hold_amount: nonnegativeSafeInteger(row.on_hold_amount),
@@ -603,7 +597,7 @@ function parseRecentWorkerTransactions(
 
   let previousRecordedAt: string | null = null;
   return value.map((entry) => {
-    if (!isRecord(entry) || !isWorkerPaymentState(entry.payment_state)) {
+    if (!isRecord(entry) || !isWorkerLedgerEntryType(entry.entry_type) || !isWorkerPaymentState(entry.payment_state)) {
       throw new Error("INVALID_RECENT_TRANSACTIONS");
     }
     const jobId = nullableString(entry.job_id);
@@ -624,12 +618,15 @@ function parseRecentWorkerTransactions(
     return {
       job_id: jobId,
       display_code: nullableString(entry.display_code),
+      entry_type: entry.entry_type,
       payment_state: entry.payment_state,
       gross_amount: nonnegativeSafeInteger(entry.gross_amount),
       platform_fee: nonnegativeSafeInteger(entry.platform_fee),
       worker_net: positiveSafeInteger(entry.worker_net),
       commission_level: positiveSafeInteger(entry.commission_level),
       commission_rate_bps: commissionRateBps(entry.commission_rate_bps),
+      cash_commission_collected: nonnegativeSafeInteger(entry.cash_commission_collected),
+      cash_commission_due: nonnegativeSafeInteger(entry.cash_commission_due),
       recorded_at: normalizedRecordedAt,
       available_at: normalizedAvailableAt,
     };
@@ -639,7 +636,13 @@ function parseRecentWorkerTransactions(
 function isWorkerPaymentState(
   value: unknown,
 ): value is EdgeEarningsResponse["recent_transactions"][number]["payment_state"] {
-  return value === "pending" || value === "available" || value === "on_hold" || value === "reversed";
+  return value === "pending" || value === "available" || value === "on_hold" || value === "reversed" || value === "cash_collected" || value === "cash_reconciliation_due";
+}
+
+function isWorkerLedgerEntryType(
+  value: unknown,
+): value is EdgeEarningsResponse["recent_transactions"][number]["entry_type"] {
+  return value === "worker_credit" || value === "cash_commission_debit";
 }
 
 function parseDailyEarnings(
@@ -699,157 +702,6 @@ function isIsoDate(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-const WORKER_JOB_LIST_COLUMNS =
-  "id, display_code, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, payment_status, payment_provider, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at";
-
-export async function listWorkerJobs(ctx: MobileApiContext) {
-  const client = db(ctx);
-  const commissionTierRequest = getWorkerCommissionTier(client, ctx.user.id);
-  const assignedJobsRequest = dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("jobs")
-      .select(WORKER_JOB_LIST_COLUMNS)
-      .eq("worker_id", ctx.user.id)
-      .order("created_at", { ascending: false })
-      .limit(100),
-  );
-  const candidateJobsRequest = dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("job_worker_candidates")
-      .select(`job_id, jobs!inner(${WORKER_JOB_LIST_COLUMNS})`)
-      .eq("worker_id", ctx.user.id)
-      .eq("status", "proposed")
-      .eq("jobs.status", "worker_candidate_pending")
-      .gt("expires_at", new Date().toISOString())
-      .order("proposed_at", { ascending: false })
-      .limit(20),
-  );
-  const [assignedJobs, candidateJobs, commissionTier] = await Promise.all([
-    assignedJobsRequest,
-    candidateJobsRequest,
-    commissionTierRequest,
-  ]);
-  if (assignedJobs.error || candidateJobs.error) {
-    apiFailure("DB_ERROR", "Không thể tải danh sách công việc", 500);
-  }
-
-  const pendingRows = (candidateJobs.data ?? []).map((candidate) => {
-    const related = candidate.jobs;
-    const job = isRecord(related)
-      ? related
-      : Array.isArray(related) && isRecord(related[0])
-      ? related[0]
-      : null;
-    if (!job) apiFailure("DB_ERROR", "Không thể tải công việc đang chờ xác nhận", 500);
-    return job;
-  });
-  const uniqueRows = new Map<string, Record<string, unknown>>();
-  for (const row of [...(assignedJobs.data ?? []), ...pendingRows]) {
-    const id = asString(row.id);
-    if (!uniqueRows.has(id)) uniqueRows.set(id, row);
-  }
-  const rows = [...uniqueRows.values()]
-    .sort((left, right) => Date.parse(asString(right.created_at)) - Date.parse(asString(left.created_at)))
-    .slice(0, 100);
-  const evidenceReleasedJobIds = rows
-    .filter((row) =>
-      canReleaseJobEvidenceToWorker(row.status, row.matched_at)
-    )
-    .map((row) => asString(row.id));
-  const fieldEvidenceByJob = await listJobEvidenceRefsByStage(client, {
-    jobIds: evidenceReleasedJobIds,
-    ownerId: ctx.user.id,
-    stage: "kael_reference",
-  });
-  return {
-    jobs: rows.map((row) => {
-      const jobId = asString(row.id);
-      const evidenceReleased = canReleaseJobEvidenceToWorker(
-        row.status,
-        row.matched_at,
-      );
-      const customerEvidencePhotoUrls = evidenceReleased
-        ? asStringArray(row.photo_urls)
-        : [];
-      const finalPrice = nullableNumber(row.final_price);
-      const max = finalPrice ?? nullableNumber(row.kael_price_max);
-      const min = nullableNumber(row.kael_price_min);
-      const frozenWorkerNet = nullableNumber(row.worker_net);
-      const addressProjection = projectAddressAccess(row, "worker");
-      const fallbackBrief = buildWorkerBriefOutput({
-        stage: "guidance",
-        serviceType: row.service_type as ServiceType,
-        problemSummary:
-          nullableString(row.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
-        district: nullableString(row.address_district),
-        fullAddress: addressProjection.fullAddress,
-        estimatedEarningMin: estimateWorkerNet(min, commissionTier),
-        estimatedEarningMax: frozenWorkerNet ?? estimateWorkerNet(max, commissionTier),
-      }).brief;
-      return {
-        id: jobId,
-        display_code: nullableString(row.display_code),
-        status: row.status as JobStatus,
-        service_type: row.service_type as ServiceType,
-        problem_summary: nullableString(row.kael_problem_identified),
-        address_building: addressProjection.fullAddress.building,
-        address_unit: addressProjection.fullAddress.unit,
-        address_floor: addressProjection.fullAddress.floor,
-        district: addressProjection.fullAddress.district,
-        address_access: addressProjection.addressAccess,
-        final_price: finalPrice,
-        estimated_earning: frozenWorkerNet ?? estimateWorkerNet(finalPrice, commissionTier),
-        payment_status: parseWorkerJobPaymentStatus(row.payment_status),
-        payment_provider: nullableString(row.payment_provider),
-        payment_code: null,
-        payment_transfer_content: null,
-        payment_qr_image_url: null,
-        payment_expires_at: null,
-        payment_received_at: nullableString(row.payment_received_at),
-        payment_amount_received: nullableNumber(row.payment_amount_received),
-        gross_amount: nullableNumber(row.gross_amount),
-        platform_fee: nullableNumber(row.platform_fee),
-        worker_net: frozenWorkerNet,
-        photo_urls: customerEvidencePhotoUrls,
-        customer_evidence_photo_urls: customerEvidencePhotoUrls,
-        field_evidence_photo_urls: evidenceReleased
-          ? fieldEvidenceByJob.get(jobId) ?? []
-          : [],
-        completion_notes: nullableString(row.completion_notes),
-        completion_photo_urls: evidenceReleased
-          ? asStringArray(row.completion_photo_urls)
-          : [],
-        worker_brief_guidance:
-          nullableRecord(row.kael_worker_brief_guidance) ?? fallbackBrief,
-        scheduled_at: nullableString(row.scheduled_at),
-        created_at: asString(row.created_at),
-        matched_at: nullableString(row.matched_at),
-        completed_at: nullableString(row.completed_at),
-      };
-    }),
-  };
-}
-
-function parseWorkerJobPaymentStatus(
-  value: unknown,
-): EdgeWorkerJobListResponse["jobs"][number]["payment_status"] {
-  if (value === null || value === undefined) return null;
-  if (
-    value === "not_started" ||
-    value === "code_requested" ||
-    value === "vietqr_ready" ||
-    value === "pending" ||
-    value === "received" ||
-    value === "amount_mismatch" ||
-    value === "expired" ||
-    value === "failed" ||
-    value === "reconciled"
-  ) {
-    return value;
-  }
-  apiFailure("DB_ERROR", "Trạng thái thanh toán không hợp lệ", 500);
 }
 
 function workerApplicationContactMetadata(contact: string) {

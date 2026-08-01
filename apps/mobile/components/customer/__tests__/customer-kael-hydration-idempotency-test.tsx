@@ -5,6 +5,7 @@ import { Text } from 'react-native'
 import {
   clearPendingKaelChatDraft,
   readPendingKaelChatDraft,
+  setPendingKaelChatDraft,
   type PendingKaelChatDraft,
 } from '@/lib/pending-kael-chat-draft'
 import type { ServiceType } from '@nestscout/shared'
@@ -53,10 +54,16 @@ function HydrationProbe({
   accessToken,
   draft = pendingDraft,
   onCaseSessionReady = mockCaseSessionReady,
+  routeJobId = null,
+  routeMode = 'normal',
+  routeSessionId = null,
 }: {
-  accessToken: string
+  accessToken?: string
   draft?: PendingKaelChatDraft
   onCaseSessionReady?: (caseSessionId: string) => Promise<unknown>
+  routeJobId?: string | null
+  routeMode?: 'normal' | 'case'
+  routeSessionId?: string | null
 }) {
   const conversation = useCustomerKaelConversationState({
     initialLoading: false,
@@ -71,9 +78,9 @@ function HydrationProbe({
     onCaseSessionReady,
     pendingDraftLocalizedMessage: draft.message,
     pendingDraftOwnerId: 'customer-a',
-    routeJobId: null,
-    routeMode: 'normal',
-    routeSessionId: null,
+    routeJobId,
+    routeMode,
+    routeSessionId,
     selectedServiceRef,
     sessionAccessToken: accessToken,
   })
@@ -81,6 +88,7 @@ function HydrationProbe({
     <>
       <Text testID="hydration-state">{conversation.error ?? 'pending'}</Text>
       <Text testID="hydration-chat-state">{conversation.chat?.session.id ?? 'none'}</Text>
+      <Text testID="hydration-loading-state">{String(conversation.loading)}</Text>
     </>
   )
 }
@@ -174,6 +182,79 @@ describe('customer Kael pending-draft hydration idempotency', () => {
 
     await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(mockCaseSessionReady).toHaveBeenCalledWith('session-a'))
+  })
+
+  it('does not rehydrate a retained draft while intake confirmation is pending', async () => {
+    await setPendingKaelChatDraft('customer-a', pendingDraft)
+    mockKaelChatCreate.mockResolvedValue({
+      ...successfulKaelCreate(['supabase://kael-chat-media/customer-a/outlet.jpg']),
+      data: {
+        ...successfulKaelCreate(['supabase://kael-chat-media/customer-a/outlet.jpg']).data,
+        session: {
+          id: 'session-a',
+          intake_confirmation: { status: 'pending' },
+          service_type: 'electrical',
+        },
+      },
+    })
+
+    const screen = render(<HydrationProbe accessToken="token-a" />)
+
+    await waitFor(() => expect(screen.getByTestId('hydration-chat-state').props.children).toBe('session-a'))
+    await waitFor(() => expect(screen.getByTestId('hydration-loading-state').props.children).toBe('false'))
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    })
+
+    expect(mockKaelChatCreate).toHaveBeenCalledTimes(1)
+    expect(await readPendingKaelChatDraft('customer-a')).not.toBeNull()
+  })
+
+  it('waits for restored authentication before hydrating a routed Case Work session', async () => {
+    mockKaelChatGet.mockResolvedValue({
+      data: {
+        session: { id: 'route-session-a', service_type: 'plumbing' },
+        turns: [],
+      },
+      success: true,
+    })
+    const screen = render(
+      <HydrationProbe
+        accessToken={undefined}
+        routeMode="case"
+        routeSessionId="route-session-a"
+      />,
+    )
+
+    expect(mockKaelChatGet).not.toHaveBeenCalled()
+    screen.rerender(
+      <HydrationProbe
+        accessToken="token-a"
+        routeMode="case"
+        routeSessionId="route-session-a"
+      />,
+    )
+
+    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith('route-session-a', 'token-a'))
+    await waitFor(() => expect(screen.getByTestId('hydration-chat-state').props.children).toBe('route-session-a'))
+  })
+
+  it('does not create a pending intake session while an explicit job route owns Case Work', async () => {
+    render(
+      <HydrationProbe
+        accessToken="token-a"
+        routeJobId="job-route-a"
+        routeMode="case"
+      />,
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockUploadKaelChatMediaDrafts).not.toHaveBeenCalled()
+    expect(mockKaelChatCreate).not.toHaveBeenCalled()
   })
 
   it('reveals the created Agentic session without waiting for a catalog refresh round trip', async () => {

@@ -12,6 +12,8 @@ export type EarningsSummary = {
   platformFeeTotal: number
   netEarnings: number
   availableBalance: number
+  cashCommissionCollectedTotal: number
+  cashCommissionDueTotal: number
   pendingPaymentCount: number
   pendingPaymentAmount: number
   onHoldAmount: number
@@ -26,12 +28,15 @@ export type EarningsSummary = {
 export type WorkerPaymentTransaction = {
   jobId: string
   displayCode: string | null
-  paymentState: 'pending' | 'available' | 'on_hold' | 'reversed'
+  entryType: 'worker_credit' | 'cash_commission_debit'
+  paymentState: 'pending' | 'available' | 'on_hold' | 'reversed' | 'cash_collected' | 'cash_reconciliation_due'
   grossAmount: number
   platformFee: number
   workerNet: number
   commissionLevel: number
   commissionRateBps: number
+  cashCommissionCollected: number
+  cashCommissionDue: number
   recordedAt: string
   availableAt: string | null
 }
@@ -96,6 +101,8 @@ export async function computeEarnings(
     platformFeeTotal: number
     netEarnings: number
     availableBalance: number
+    cashCommissionCollectedTotal: number
+    cashCommissionDueTotal: number
     pendingPaymentCount: number
     pendingPaymentAmount: number
     onHoldAmount: number
@@ -112,6 +119,8 @@ export async function computeEarnings(
       platformFeeTotal: nonnegativeSafeInteger(row.platform_fee_total),
       netEarnings: nonnegativeSafeInteger(row.net_earnings),
       availableBalance: nonnegativeSafeInteger(row.available_balance),
+      cashCommissionCollectedTotal: nonnegativeSafeInteger(row.cash_commission_collected_total),
+      cashCommissionDueTotal: nonnegativeSafeInteger(row.cash_commission_due_total),
       pendingPaymentCount: nonnegativeSafeInteger(row.pending_payment_count),
       pendingPaymentAmount: nonnegativeSafeInteger(row.pending_payment_amount),
       onHoldAmount: nonnegativeSafeInteger(row.on_hold_amount),
@@ -144,7 +153,7 @@ function parseRecentTransactions(value: unknown): WorkerPaymentTransaction[] {
 
   let previousRecordedAt: string | null = null
   return value.map((entry) => {
-    if (!isRecord(entry) || !isPaymentState(entry.payment_state)) {
+    if (!isRecord(entry) || !isEntryType(entry.entry_type) || !isPaymentState(entry.payment_state)) {
       throw new Error('INVALID_RECENT_TRANSACTIONS')
     }
     const jobId = typeof entry.job_id === 'string' && entry.job_id.length > 0 ? entry.job_id : null
@@ -171,12 +180,15 @@ function parseRecentTransactions(value: unknown): WorkerPaymentTransaction[] {
     return {
       jobId,
       displayCode,
+      entryType: entry.entry_type,
       paymentState: entry.payment_state,
       grossAmount: nonnegativeSafeInteger(entry.gross_amount),
       platformFee: nonnegativeSafeInteger(entry.platform_fee),
       workerNet: positiveSafeInteger(entry.worker_net),
       commissionLevel: positiveSafeInteger(entry.commission_level),
       commissionRateBps: commissionRateBps(entry.commission_rate_bps),
+      cashCommissionCollected: nonnegativeSafeInteger(entry.cash_commission_collected),
+      cashCommissionDue: nonnegativeSafeInteger(entry.cash_commission_due),
       recordedAt,
       availableAt,
     }
@@ -184,7 +196,11 @@ function parseRecentTransactions(value: unknown): WorkerPaymentTransaction[] {
 }
 
 function isPaymentState(value: unknown): value is WorkerPaymentTransaction['paymentState'] {
-  return value === 'pending' || value === 'available' || value === 'on_hold' || value === 'reversed'
+  return value === 'pending' || value === 'available' || value === 'on_hold' || value === 'reversed' || value === 'cash_collected' || value === 'cash_reconciliation_due'
+}
+
+function isEntryType(value: unknown): value is WorkerPaymentTransaction['entryType'] {
+  return value === 'worker_credit' || value === 'cash_commission_debit'
 }
 
 function parseDailyEarnings(value: unknown): DailyEarningsSummary[] {

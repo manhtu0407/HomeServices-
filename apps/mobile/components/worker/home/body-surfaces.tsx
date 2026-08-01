@@ -124,7 +124,7 @@ function buildWorkerV5ShiftDemandRow(
 
   return {
     icon: 'map' as const,
-    meta: textByLanguage(language, 'Chỉ hiện mức nhu cầu khi NestScout có tín hiệu đã xác thực', 'Demand appears only with verified NestScout signals'),
+    meta: textByLanguage(language, 'Chỉ hiện mức nhu cầu khi hệ thống có tín hiệu đã xác thực', 'Demand appears only with verified system signals'),
     status: textByLanguage(language, 'Chờ', 'Waiting'),
     title: profile?.districts?.length
       ? textByLanguage(language, `${formatWorkerDistrict(profile.districts[0], language)} trong phạm vi`, `${formatWorkerDistrict(profile.districts[0], language)} in range`)

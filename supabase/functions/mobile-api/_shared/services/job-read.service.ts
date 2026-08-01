@@ -16,6 +16,7 @@ import {
   canReleaseJobEvidenceToWorker,
   listJobEvidenceRefsByStage,
 } from "./evidence-refs.service.ts";
+import { createSignedCaseWorkEvidenceUrls } from "./kael-chat-media.service.ts";
 
 const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
@@ -65,7 +66,11 @@ export async function getJob(
   const addressProjection = projectAddressAccess(job, ctx.role);
   const displayCode = nullableString(job.display_code);
   const customerEvidencePhotoUrls = evidenceReleased
-    ? asStringArray(job.photo_urls)
+    ? await createSignedCaseWorkEvidenceUrls(
+      ctx,
+      asStringArray(job.photo_urls),
+      nullableString(job.customer_id),
+    )
     : [];
   const paymentInstructionsVisible = ctx.role !== "worker";
 
@@ -140,6 +145,7 @@ function parsePaymentStatus(
     value === "vietqr_ready" ||
     value === "pending" ||
     value === "received" ||
+    value === "cash_confirmed" ||
     value === "amount_mismatch" ||
     value === "expired" ||
     value === "failed" ||

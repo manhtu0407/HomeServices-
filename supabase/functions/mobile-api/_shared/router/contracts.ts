@@ -1,6 +1,10 @@
 import type {
   AvailabilityToggleInput,
+  CustomerAccountDeletionRequest,
+  EdgeCustomerAvatarUpdateInput,
+  EdgeCustomerAvatarUploadInput,
   CustomerCancellationRequestInput,
+  CustomerRefundAccountSaveRequest,
   EdgeCustomerKaelConversationCreateInput,
   EdgeCustomerKaelConversationMode,
   EdgeCustomerKaelConversationTurnInput,
@@ -18,6 +22,7 @@ import type {
   JobStatus,
   KaelAssistantInput,
   KaelChatCreateInput,
+  EdgeKaelChatIntakeConfirmationDecisionInput,
   KaelChatEvidenceInput,
   EdgeKaelChatMediaRevokeInput,
   EdgeKaelChatMediaUploadInput,
@@ -55,6 +60,7 @@ import type {
 import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
 import type { EdgeStagingPaymentResponse } from "../services/staging-payment.service.ts";
 import type { EdgePaymentIntentResponse } from "../services/sepay-vietqr-payment.service.ts";
+import type { EdgeCashPaymentConfirmationResponse } from "../services/cash-payment.service.ts";
 import type {
   PriceSynthesisAbCaseInput,
   PriceSynthesisAbEvaluation,
@@ -69,8 +75,11 @@ import type {
   EdgeCreateJobResponse,
   EdgeCustomerActiveJobResponse,
   EdgeCustomerCancellationResponse,
+  EdgeCustomerAvatarResponse,
+  EdgeCustomerAvatarUploadResponse,
   EdgeCustomerKaelFeedbackResponse,
   EdgeCustomerProfileInsightsResponse,
+  EdgeCustomerRefundAccountResponse,
   EdgeCustomerFavoriteWorkerResponse,
   EdgeCustomerScopeDecisionResponse,
   EdgeDeclineBroadcastResponse,
@@ -160,7 +169,7 @@ export type {
 export type MobileApiAuthResult =
   | {
     success: true;
-    user: { id: string; email?: string };
+    user: { id: string; email?: string; lastSignInAt?: string };
     role: UserRole;
     supabase: unknown;
     requestUrl?: string;
@@ -255,6 +264,12 @@ export type ThreadsResponse = {
   threads: ThreadSummary[];
 };
 
+export type EdgeCustomerAccountDeletionResponse = {
+  account_deleted: true;
+  request_id: string;
+  retained_transaction_records: true;
+};
+
 export type MobileApiServices = {
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<EdgeServiceCatalogResponse>;
@@ -317,6 +332,11 @@ export type MobileApiServices = {
     conversationId: string,
     input: EdgeCustomerKaelConversationTurnInput,
   ): Promise<EdgeCustomerKaelConversationResponse>;
+  streamCustomerKaelConversationTurn(
+    ctx: MobileApiContext,
+    conversationId: string,
+    input: EdgeCustomerKaelConversationTurnInput,
+  ): Promise<Response> | Response;
   createKaelChatMediaUpload(
     ctx: MobileApiContext,
     input: EdgeKaelChatMediaUploadInput,
@@ -347,6 +367,11 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     sessionId: string,
     input: KaelChatTurnInput,
+  ): Promise<EdgeKaelChatResponse>;
+  decideKaelIntakeConfirmation(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: EdgeKaelChatIntakeConfirmationDecisionInput,
   ): Promise<EdgeKaelChatResponse>;
   confirmKaelChat(
     ctx: MobileApiContext,
@@ -546,6 +571,10 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     jobId: string,
   ): Promise<EdgePaymentIntentResponse>;
+  confirmWorkerCashPayment(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeCashPaymentConfirmationResponse>;
   confirmStagingPayment(
     ctx: MobileApiContext,
     jobId: string,
@@ -579,6 +608,26 @@ export type MobileApiServices = {
   getCustomerProfileInsights(
     ctx: MobileApiContext,
   ): Promise<EdgeCustomerProfileInsightsResponse>;
+  getCustomerAvatar(ctx: MobileApiContext): Promise<EdgeCustomerAvatarResponse>;
+  createCustomerAvatarUpload(
+    ctx: MobileApiContext,
+    input: EdgeCustomerAvatarUploadInput,
+  ): Promise<EdgeCustomerAvatarUploadResponse>;
+  updateCustomerAvatar(
+    ctx: MobileApiContext,
+    input: EdgeCustomerAvatarUpdateInput,
+  ): Promise<EdgeCustomerAvatarResponse>;
+  getCustomerRefundAccount(
+    ctx: MobileApiContext,
+  ): Promise<EdgeCustomerRefundAccountResponse>;
+  saveCustomerRefundAccount(
+    ctx: MobileApiContext,
+    input: CustomerRefundAccountSaveRequest,
+  ): Promise<EdgeCustomerRefundAccountResponse>;
+  deleteCustomerAccount?(
+    ctx: MobileApiContext,
+    input: CustomerAccountDeletionRequest,
+  ): Promise<EdgeCustomerAccountDeletionResponse>;
   getWorkerProfile(ctx: MobileApiContext): Promise<EdgeWorkerProfileResponse>;
   createWorkerAvatarUpload(
     ctx: MobileApiContext,

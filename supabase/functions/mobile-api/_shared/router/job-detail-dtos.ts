@@ -35,6 +35,7 @@ export type EdgeJobDetailResponse = {
       | "vietqr_ready"
       | "pending"
       | "received"
+      | "cash_confirmed"
       | "amount_mismatch"
       | "expired"
       | "failed"

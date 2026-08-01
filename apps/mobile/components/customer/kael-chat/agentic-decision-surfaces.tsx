@@ -5,6 +5,7 @@ import type { AppLanguage } from '@/lib/app-language'
 
 import { CaseWorkResponse } from './case-work-response'
 import type { CaseWorkResponseModel } from './case-work-response-model'
+import type { AgenticEstimateSupportingPhaseModel } from './agentic-estimate-display-model'
 import { useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
 
 export function AgenticChatEstimateResponsePanel({
@@ -32,6 +33,7 @@ export function AgenticChatEstimateResponsePanel({
   sourceExplanation,
   statusLabel,
   submittingRejectReason,
+  supportingPhase,
   textInputStyle,
 }: {
   advisory?: string
@@ -58,12 +60,13 @@ export function AgenticChatEstimateResponsePanel({
   sourceExplanation: string
   statusLabel: string
   submittingRejectReason: boolean
+  supportingPhase: AgenticEstimateSupportingPhaseModel | null
   textInputStyle: StyleProp<TextStyle>
 }) {
   const { reduceMotion, tokens } = useCustomerV21SurfaceTheme()
   const model: CaseWorkResponseModel = {
     actionKind: 'offer',
-    noteCopy: `${price}. ${priceExplanation}`,
+    noteCopy: `${price}\n${priceExplanation}`,
     noteTitle: language === 'vi' ? 'Phạm vi và ước tính' : 'Scope and estimate',
     phase: 'ticket_review',
     status: statusLabel,
@@ -122,6 +125,12 @@ export function AgenticChatEstimateResponsePanel({
       )}
       details={(
         <View style={styles.details}>
+          {supportingPhase ? (
+            <AgenticEstimateSupportingPhase
+              model={supportingPhase}
+              tokens={tokens}
+            />
+          ) : null}
           {needsMoreInfo ? (
             <Text style={[styles.detail, { color: tokens.text }]} testID="customer-v21-agentic-estimate-more-info">
               {moreInfoText}
@@ -131,9 +140,11 @@ export function AgenticChatEstimateResponsePanel({
               {advisory}
             </Text>
           ) : null}
-          <Text style={[styles.meta, { color: tokens.muted }]} testID="customer-v21-agentic-estimate-price-explanation">
-            {sourceExplanation}
-          </Text>
+          {!supportingPhase ? (
+            <Text style={[styles.meta, { color: tokens.muted }]} testID="customer-v21-agentic-estimate-price-explanation">
+              {sourceExplanation}
+            </Text>
+          ) : null}
           <Text style={[styles.meta, { color: tokens.muted }]} testID="customer-v21-agentic-estimate-source-explanation">
             {disclaimer}
           </Text>
@@ -147,6 +158,39 @@ export function AgenticChatEstimateResponsePanel({
   )
 }
 
+function AgenticEstimateSupportingPhase({
+  model,
+  tokens,
+}: {
+  model: AgenticEstimateSupportingPhaseModel
+  tokens: ReturnType<typeof useCustomerV21SurfaceTheme>['tokens']
+}) {
+  return (
+    <View
+      accessibilityLabel={`${model.title}. ${model.rows.map((row) => `${row.label}: ${row.detail}`).join('. ')}. ${model.valueStatement}`}
+      style={[styles.support, { borderColor: tokens.border }]}
+      testID="customer-v21-agentic-estimate-supporting-phase"
+    >
+      <Text accessibilityRole="header" style={[styles.supportTitle, { color: tokens.text }]}>
+        {model.title}
+      </Text>
+      {model.rows.map((row) => (
+        <View key={row.key} style={styles.supportRow} testID={`customer-v21-agentic-estimate-support-${row.key}`}>
+          <Text style={[styles.supportLabel, { color: tokens.primary }]}>
+            {row.label}
+          </Text>
+          <Text style={[styles.supportDetail, { color: tokens.text }]}>
+            {row.detail}
+          </Text>
+        </View>
+      ))}
+      <Text style={[styles.supportValue, { color: tokens.muted }]}>
+        {model.valueStatement}
+      </Text>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
@@ -155,4 +199,35 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, lineHeight: 18 },
   reason: { gap: 10 },
   reasonTitle: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  support: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+    paddingBottom: 17,
+  },
+  supportDetail: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  supportLabel: {
+    flexBasis: 88,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
+  supportRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  supportTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 21,
+  },
+  supportValue: {
+    fontSize: 12.5,
+    lineHeight: 19,
+    marginTop: 1,
+  },
 })

@@ -1,6 +1,6 @@
 import { Text as RNText, View, type TextProps } from 'react-native'
 import { type LocalDeal } from '@nestscout/shared'
-import { mobileApiUrl } from '@/lib/api'
+import { mobileApiUrl , getMobileApiAuthHeaders } from '@/lib/api'
 import { type AppLanguage } from '@/lib/app-language'
 import { WorkerV5CustomerMapMintAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
@@ -9,7 +9,7 @@ import { type WorkerV5MapLocation } from '../ui/route'
 import { styles } from '../worker-v5-flow-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { Image } from 'expo-image'
-import { getMobileApiAuthHeaders } from '@/lib/api'
+
 import { useEffect, useState } from 'react'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>

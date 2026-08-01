@@ -23,6 +23,8 @@ type EarningsAggregateRow = {
   platform_fee_total: number
   net_earnings: number
   available_balance: number
+  cash_commission_collected_total: number
+  cash_commission_due_total: number
   pending_payment_count: number
   pending_payment_amount: number
   on_hold_amount: number
@@ -42,6 +44,8 @@ function aggregateRow(overrides: Partial<EarningsAggregateRow> = {}): EarningsAg
     platform_fee_total: 0,
     net_earnings: 0,
     available_balance: 0,
+    cash_commission_collected_total: 0,
+    cash_commission_due_total: 0,
     pending_payment_count: 0,
     pending_payment_amount: 0,
     on_hold_amount: 0,
@@ -78,6 +82,8 @@ describe('computeEarnings', () => {
       platformFeeTotal: 0,
       netEarnings: 0,
       availableBalance: 0,
+      cashCommissionCollectedTotal: 0,
+      cashCommissionDueTotal: 0,
       pendingPaymentCount: 0,
       pendingPaymentAmount: 0,
       onHoldAmount: 0,
@@ -227,11 +233,14 @@ describe('computeEarnings', () => {
     const supabase = makeSupabase(aggregateRow({
       recent_transactions: [{
         available_at: '2026-07-15T08:30:00+00:00',
+        cash_commission_collected: 0,
+        cash_commission_due: 0,
         commission_level: 2,
         commission_rate_bps: 1200,
         display_code: 'NS-WORK-001',
         gross_amount: 500_000,
         job_id: 'job-1',
+        entry_type: 'worker_credit',
         payment_state: 'available',
         platform_fee: 60_000,
         recorded_at: '2026-07-15T08:30:00+00:00',
@@ -242,6 +251,7 @@ describe('computeEarnings', () => {
     await expect(computeEarnings(supabase, 'worker-1')).resolves.toMatchObject({
       recentTransactions: [{
         jobId: 'job-1',
+        entryType: 'worker_credit',
         paymentState: 'available',
         commissionRateBps: 1200,
         workerNet: 440_000,

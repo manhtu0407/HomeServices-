@@ -57,6 +57,19 @@ export function AgenticEvidenceGateView({
   voiceValue: string
 }) {
   const canSkip = rejectReason.trim().length > 0 && !busy
+  const evidenceGuidance = language === 'vi'
+    ? [
+        { label: 'Ảnh', text: 'Kiểm tra vùng thấy được và độ rõ.' },
+        { label: 'Video', text: 'Giữ bản gốc riêng tư; chỉ phân tích khung hình tách trên thiết bị.' },
+        { label: 'Giọng nói', text: 'Chỉ gửi bản chép lời bạn đã duyệt.' },
+        { label: 'Lưu ý', text: 'Nêu thời điểm nếu lỗi xuất hiện khi chuyển động hoặc có tiếng động.' },
+      ]
+    : [
+        { label: 'Images', text: 'Checks visible areas and clarity.' },
+        { label: 'Video', text: 'Keeps the original private; only on-device frames are analyzed.' },
+        { label: 'Voice', text: 'Sends only your approved transcript.' },
+        { label: 'Note', text: 'Include timing if a symptom depends on motion or sound.' },
+      ]
   const baseModel = buildCaseWorkResponseModel({ language, phase: 'kael_collecting' })
   const model = {
     ...baseModel,
@@ -157,11 +170,19 @@ export function AgenticEvidenceGateView({
           {voiceTranscriptNode}
           {voiceError ? <Text style={[styles.error, { color: tokens.primary }]}>{voiceError}</Text> : null}
           {mediaPreviewNode}
-          <Text style={[styles.disclosure, { color: tokens.muted }]} testID="customer-v21-agentic-evidence-privacy-disclosure">
-            {language === 'vi'
-              ? 'Kael xử lý từng loại bằng chứng theo giới hạn phù hợp. Ảnh: Kael kiểm tra vùng nhìn thấy và độ rõ của ảnh. Video: bản gốc được giữ riêng tư; Kael phân tích các khung hình đã tách trên thiết bị. Giọng nói: nhận dạng trên thiết bị khi được hỗ trợ, rồi bạn kiểm tra bản chép lời trước khi gửi. Nếu lỗi chỉ xuất hiện khi chuyển động hoặc có tiếng động, hãy mô tả thời điểm đó trong bản chép lời.'
-              : 'Kael handles each evidence type within its limits. Images: Kael checks visible areas and clarity. Video: the original stays private; Kael analyzes frames extracted on device. Voice: when supported, recognition happens on device and you review the transcript before sending. If a symptom appears only during motion or sound, describe when it happens in the transcript.'}
-          </Text>
+          <View style={styles.disclosure} testID="customer-v21-agentic-evidence-privacy-disclosure">
+            <Text style={[styles.disclosureIntro, { color: tokens.muted }]}>
+              {language === 'vi'
+                ? 'Kael xử lý trong phạm vi phù hợp.'
+                : 'Kael handles evidence within the appropriate limits.'}
+            </Text>
+            {evidenceGuidance.map((item) => (
+              <View key={item.label} style={styles.disclosureItem}>
+                <Text style={[styles.disclosureLabel, { color: tokens.text }]}>{item.label}</Text>
+                <Text style={[styles.disclosureCopy, { color: tokens.muted }]}>{item.text}</Text>
+              </View>
+            ))}
+          </View>
         </View>
       )}
       model={model}
@@ -177,7 +198,11 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10 },
   counts: { fontSize: 13, fontWeight: '600', lineHeight: 20 },
   details: { gap: 12 },
-  disclosure: { fontSize: 12, lineHeight: 18 },
+  disclosure: { gap: 6 },
+  disclosureCopy: { flex: 1, fontSize: 12, lineHeight: 18 },
+  disclosureIntro: { fontSize: 12, lineHeight: 18 },
+  disclosureItem: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
+  disclosureLabel: { fontSize: 12, fontWeight: '700', lineHeight: 18, minWidth: 68 },
   error: { fontSize: 12, lineHeight: 18 },
   fileCount: { fontSize: 13, fontWeight: '600', lineHeight: 20 },
   reason: { gap: 10 },

@@ -122,6 +122,15 @@ export const styles = StyleSheet.create({
   settlementCellZipMintAura: {
     opacity: 0.58,
   },
+  settlementFormula: {
+    color: color.text.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    paddingHorizontal: 4,
+  },
+  settlementGroup: {
+    gap: 8,
+  },
   settlementLabel: {
     color: color.text.muted,
     flexShrink: 1,

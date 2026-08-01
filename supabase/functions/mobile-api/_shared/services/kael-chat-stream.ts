@@ -9,11 +9,20 @@ import {
   sendKaelChatTurn,
   submitKaelChatEvidence,
 } from "./kael-chat.service.ts";
+import {
+  getCustomerKaelConversation,
+  sendCustomerKaelConversationTurn,
+} from "./customer-kael-conversation.service.ts";
+import {
+  splitVerifiedResponseDeltas,
+  verifiedResponseCadenceMs,
+} from "./kael-verified-response-stream.ts";
 import { readWorkerKaelSession, sendWorkerKaelChatTurn, serializeWorkerKaelSession } from "./worker-kael-chat.service.ts";
 import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../sse.ts";
 import type { MobileApiContext } from "../router.ts";
 import type { EdgeAiSecrets } from "../kael/index.ts";
 import type {
+  EdgeCustomerKaelConversationTurnInput,
   KaelChatEvidenceInput,
   KaelChatTurnInput,
   WorkerKaelChatTurnInput,
@@ -22,6 +31,19 @@ import type {
 const KAEL_CHAT_STREAM_POLL_MS = 800;
 const KAEL_CHAT_STREAM_MAX_MS = 15_000;
 const KAEL_CHAT_STREAM_HEARTBEAT_MS = 10_000;
+
+export async function streamCustomerKaelConversationTurn(
+  ctx: MobileApiContext,
+  conversationId: string,
+  input: EdgeCustomerKaelConversationTurnInput,
+  secrets: EdgeAiSecrets,
+) {
+  const baseline = await getCustomerKaelConversation(ctx, conversationId);
+  return streamCustomerKaelConversationRequest(
+    baseline,
+    () => sendCustomerKaelConversationTurn(ctx, conversationId, input, secrets),
+  );
+}
 
 export async function streamKaelChatTurn(
   ctx: MobileApiContext,
@@ -56,7 +78,7 @@ async function streamKaelChatRequest(
 ) {
   // Preflight ownership before returning a 200 event stream so unauthorized
   // callers still receive the normal JSON auth/error path.
-  await getKaelChat(ctx, sessionId);
+  const baseline = await getKaelChat(ctx, sessionId);
 
   // A session retains its last completed progress snapshot. Capture it before
   // this request begins so the client only sees stages emitted for this turn.
@@ -81,6 +103,9 @@ async function streamKaelChatRequest(
         stopped = true;
         controller.close();
       };
+      // Flush the SSE response before a media turn verifies Storage and starts
+      // Vision. Expo otherwise can time out while the server is still working.
+      write(encodeSseHeartbeat());
       const emitProgressIfChanged = async () => {
         const snapshot = await readKaelChatProgressSnapshot(ctx, sessionId);
         const progress = snapshot.progress;
@@ -100,8 +125,7 @@ async function streamKaelChatRequest(
       const resultPromise = request()
         .then(async (result) => {
           await emitProgressIfChanged();
-          // Token events remain disabled until provider-client/callAI exposes a
-          // real streaming mode; the authoritative object is always final.
+          await emitCommittedKaelReply(baseline, result, emit, () => stopped);
           emit("result", result);
           close();
         })
@@ -114,6 +138,65 @@ async function streamKaelChatRequest(
         const startedAt = Date.now();
         while (!stopped && Date.now() - startedAt < KAEL_CHAT_STREAM_MAX_MS) {
           await emitProgressIfChanged();
+          const now = Date.now();
+          if (now - lastHeartbeatAt >= KAEL_CHAT_STREAM_HEARTBEAT_MS) {
+            write(encodeSseHeartbeat());
+            lastHeartbeatAt = now;
+          }
+          await sleep(KAEL_CHAT_STREAM_POLL_MS);
+        }
+        await resultPromise;
+      })().catch((err) => {
+        emit("error", kaelChatStreamErrorPayload(err));
+        close();
+      });
+    },
+    cancel() {
+      stopped = true;
+    },
+  });
+
+  return createSseResponse(stream);
+}
+
+function streamCustomerKaelConversationRequest(
+  baseline: unknown,
+  request: () => Promise<unknown>,
+) {
+  const encoder = new TextEncoder();
+  let stopped = false;
+  let lastHeartbeatAt = Date.now();
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const write = (chunk: string) => {
+        if (stopped) return;
+        controller.enqueue(encoder.encode(chunk));
+      };
+      const emit = (event: string, data: unknown) => {
+        write(encodeSseEvent({ event, data }));
+      };
+      const close = () => {
+        if (stopped) return;
+        stopped = true;
+        controller.close();
+      };
+      write(encodeSseHeartbeat());
+
+      const resultPromise = request()
+        .then(async (result) => {
+          await emitCommittedKaelReply(baseline, result, emit, () => stopped);
+          emit("result", result);
+          close();
+        })
+        .catch((err) => {
+          emit("error", kaelChatStreamErrorPayload(err));
+          close();
+        });
+
+      void (async () => {
+        const startedAt = Date.now();
+        while (!stopped && Date.now() - startedAt < KAEL_CHAT_STREAM_MAX_MS) {
           const now = Date.now();
           if (now - lastHeartbeatAt >= KAEL_CHAT_STREAM_HEARTBEAT_MS) {
             write(encodeSseHeartbeat());
@@ -162,6 +245,9 @@ export async function streamWorkerKaelChatTurn(
         stopped = true;
         controller.close();
       };
+      // Keep worker streams equally resilient when the first assist stage
+      // needs more time than the client connection window.
+      write(encodeSseHeartbeat());
       const emitProgressIfChanged = async () => {
         const snapshot = await readWorkerKaelChatProgressSnapshot(ctx, sessionId);
         const progress = snapshot.progress;
@@ -230,6 +316,66 @@ async function readWorkerKaelChatProgressSnapshot(
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function emitCommittedKaelReply(
+  baseline: unknown,
+  result: unknown,
+  emit: (event: string, data: unknown) => void,
+  isStopped: () => boolean,
+) {
+  const reply = findCommittedKaelReply(baseline, result);
+  if (!reply) return;
+  const deltas = splitVerifiedResponseDeltas(reply.text);
+  for (let index = 0; index < deltas.length; index += 1) {
+    if (isStopped()) return;
+    emit("response_delta", {
+      turn_id: reply.turnId,
+      delta: deltas[index],
+    });
+    if (index < deltas.length - 1) {
+      await sleep(verifiedResponseCadenceMs(deltas[index]));
+    }
+  }
+}
+
+function findCommittedKaelReply(baseline: unknown, result: unknown) {
+  const existingIds = new Set(responseTurns(baseline).map((turn) => turn.id));
+  const turns = responseTurns(result);
+  for (let index = turns.length - 1; index >= 0; index -= 1) {
+    const turn = turns[index];
+    if (
+      turn.role === "kael" &&
+      !existingIds.has(turn.id) &&
+      turn.text_content.trim().length > 0
+    ) {
+      return { turnId: turn.id, text: turn.text_content };
+    }
+  }
+  return null;
+}
+
+function responseTurns(value: unknown) {
+  if (!value || typeof value !== "object") return [];
+  const turns = (value as { turns?: unknown }).turns;
+  if (!Array.isArray(turns)) return [];
+  return turns.flatMap((turn) => {
+    if (!turn || typeof turn !== "object") return [];
+    const candidate = turn as {
+      id?: unknown;
+      role?: unknown;
+      text_content?: unknown;
+    };
+    return typeof candidate.id === "string" &&
+        typeof candidate.role === "string" &&
+        typeof candidate.text_content === "string"
+      ? [{
+        id: candidate.id,
+        role: candidate.role,
+        text_content: candidate.text_content,
+      }]
+      : [];
+  });
 }
 
 function kaelProgressSignature(progress: {

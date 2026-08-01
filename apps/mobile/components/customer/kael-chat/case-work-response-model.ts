@@ -3,7 +3,7 @@ import { WORKFLOW_PHASES, type LocalDeal, type WorkflowPhase } from '@nestscout/
 
 import { customerV21ServiceCopy } from '../ui/copy'
 import { formatDurationShort } from './case-work-display-model'
-import { formatVnd } from './case-work-money-display-model'
+import { formatVnd, isDealPaymentProtected } from './case-work-money-display-model'
 
 export type CaseWorkResponseActionKind =
   | 'apartment_access'
@@ -41,6 +41,29 @@ type BuildCaseWorkResponseModelInput = Readonly<{
   subject?: string | null
   workerName?: string | null
 }>
+
+export function buildIntakeConfirmationResponseModel(
+  language: AppLanguage,
+  focus?: string,
+): CaseWorkResponseModel {
+  return language === 'vi'
+    ? {
+        actionKind: 'none',
+        noteCopy: focus ?? 'Kael đã kiểm tra mô tả, khu vực và thời gian trước khi phân tích.',
+        noteTitle: 'Kael đã đối chiếu thông tin',
+        phase: 'intake_started',
+        status: 'Chờ bạn xác nhận',
+        title: 'Xác nhận thông tin công việc',
+      }
+    : {
+        actionKind: 'none',
+        noteCopy: focus ?? 'Kael checked the description, location, and time before analysis.',
+        noteTitle: 'Kael checked the information',
+        phase: 'intake_started',
+        status: 'Awaiting confirmation',
+        title: 'Confirm work details',
+      }
+}
 
 const ACTION_BY_PHASE: Readonly<Partial<Record<WorkflowPhase, CaseWorkResponseActionKind>>> = Object.freeze({
   completed_by_worker: 'completion',
@@ -248,7 +271,8 @@ export function buildCaseWorkResponseModel({
   const copy = language === 'vi' ? VI_COPY[phase] : EN_COPY[phase]
   const dynamic = dynamicPhaseCopy({ copy, deal, language, paymentRailProvider, phase, subject, workerName })
   const legacyPaymentRecord = deal?.payment?.provider === 'staging_simulator'
-  const paymentActionUnavailable = legacyPaymentRecord && (phase === 'payment_pending' || phase === 'paid')
+  const paidWithoutVerifiedReceipt = phase === 'paid' && (!deal || !isDealPaymentProtected(deal))
+  const paymentActionUnavailable = (legacyPaymentRecord && (phase === 'payment_pending' || phase === 'paid')) || paidWithoutVerifiedReceipt
   return {
     actionKind: paymentActionUnavailable
       ? 'none'
@@ -438,12 +462,12 @@ function dynamicPhaseCopy({
       return language === 'vi'
         ? {
             ...copy,
-            noteCopy: 'Thanh toán VietQR đã sẵn sàng. Sau khi bạn chuyển khoản, hệ thống chỉ mở bước tiếp theo khi SePay xác thực giao dịch.',
+            noteCopy: 'Thanh toán VietQR đã sẵn sàng. Sau khi bạn chuyển khoản, hệ thống chỉ mở bước tiếp theo khi giao dịch được xác thực.',
             noteTitle: 'Thanh toán an toàn',
           }
         : {
             ...copy,
-            noteCopy: 'VietQR payment is ready. The next step opens only after SePay verifies the transfer.',
+            noteCopy: 'VietQR payment is ready. The next step opens only after the transfer is verified.',
             noteTitle: 'Secure payment',
           }
     }
@@ -469,6 +493,24 @@ function dynamicPhaseCopy({
         : [photoCount > 0 ? `${photoCount} completion photo${photoCount === 1 ? '' : 's'}` : null, note].filter(Boolean).join(', ')
       return { ...copy, noteCopy: evidence }
     }
+  }
+
+  if (phase === 'paid' && (!deal || !isDealPaymentProtected(deal))) {
+    return language === 'vi'
+      ? {
+          ...copy,
+          noteCopy: 'Hệ thống vẫn đang kiểm tra bản ghi giao dịch. Bước đánh giá chỉ mở sau khi thanh toán được xác thực.',
+          noteTitle: 'Đang xác minh thanh toán',
+          status: 'Đang chờ xác thực',
+          title: 'Thanh toán đang được xác minh',
+        }
+      : {
+          ...copy,
+          noteCopy: 'The system is still checking the transaction record. Review opens only after payment is verified.',
+          noteTitle: 'Verifying payment',
+          status: 'Awaiting verification',
+          title: 'Payment is being verified',
+        }
   }
 
   if ((phase === 'payment_pending' || phase === 'paid') && deal?.payment) {

@@ -8,7 +8,15 @@ type CustomerConversationFetchResult = Awaited<ReturnType<typeof customerKaelCon
 export function isAmbiguousConversationTurnFailure(
   result: { success: false; code: string },
 ) {
-  return result.code === 'TIMEOUT' || result.code === 'NETWORK_ERROR'
+  return result.code === 'TIMEOUT' ||
+    result.code === 'NETWORK_ERROR' ||
+    result.code === 'STREAM_BODY_UNREADABLE' ||
+    result.code === 'STREAM_ENDED' ||
+    result.code === 'STREAM_INVALID_ENCODING' ||
+    result.code === 'STREAM_NETWORK' ||
+    result.code === 'STREAM_RESPONSE_TOO_LARGE' ||
+    result.code === 'STREAM_RESULT_INVALID' ||
+    result.code === 'STREAM_TIMEOUT'
 }
 
 export async function recoverCommittedConversationTurn(

@@ -55,7 +55,7 @@ function runtimeBuildMarkerText() {
 
 function CustomerRuntimeBuildMarker() {
   const [visible, setVisible] = useState(false)
-  const marker = useMemo(runtimeBuildMarkerText, [])
+  const marker = useMemo(() => runtimeBuildMarkerText(), [])
 
   return (
     <>
