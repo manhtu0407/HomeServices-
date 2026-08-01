@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Linking, Platform, Text } from 'react-native'
 import { act, render, screen, waitFor } from '@testing-library/react-native'
 
@@ -83,7 +83,9 @@ let latestGoogleSignIn: ReturnType<typeof useAuth>['signInWithGoogle'] | null = 
 
 function GoogleOAuthHarness() {
   const auth = useAuth()
-  latestGoogleSignIn = auth.signInWithGoogle
+  useEffect(() => {
+    latestGoogleSignIn = auth.signInWithGoogle
+  }, [auth.signInWithGoogle])
   return (
     <>
       <Text testID="oauth-session">{auth.session?.user.id ?? 'none'}</Text>

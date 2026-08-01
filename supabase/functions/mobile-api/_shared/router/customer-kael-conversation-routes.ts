@@ -7,6 +7,7 @@ export type CustomerKaelConversationRoute =
   | { kind: "customer.kaelConversations.rename"; method: "PATCH"; conversationId: string; roles: UserRole[] }
   | { kind: "customer.kaelConversations.pin"; method: "PATCH"; conversationId: string; roles: UserRole[] }
   | { kind: "customer.kaelConversations.get"; method: "GET"; conversationId: string; roles: UserRole[] }
+  | { kind: "customer.kaelConversations.stream"; method: "POST"; conversationId: string; roles: UserRole[] }
   | { kind: "customer.kaelConversations.turn"; method: "POST"; conversationId: string; roles: UserRole[] };
 
 export function matchCustomerKaelConversationRoute(
@@ -49,6 +50,9 @@ export function matchCustomerKaelConversationRoute(
   }
   if (action === "turn" && method === "POST") {
     return { kind: "customer.kaelConversations.turn", method: "POST", conversationId, roles: ["customer"] };
+  }
+  if (action === "stream" && method === "POST") {
+    return { kind: "customer.kaelConversations.stream", method: "POST", conversationId, roles: ["customer"] };
   }
   return null;
 }

@@ -13,6 +13,12 @@ describe('Kael SSE network lifetime', () => {
     expect(source).toContain('${encodeURIComponent(sessionId)}/evidence-stream')
   })
 
+  it('encodes Customer conversation identifiers on the bounded SSE transport', () => {
+    expect(source).toContain(
+      '`/me/kael/conversations/${encodeURIComponent(conversationId)}/stream`',
+    )
+  })
+
   it('bounds both connection and total stream lifetime and cancels the reader', () => {
     expect(source).toContain('STREAM_CONNECT_TIMEOUT_MS')
     expect(source).toContain('STREAM_TOTAL_TIMEOUT_MS')

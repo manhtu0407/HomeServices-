@@ -110,7 +110,7 @@ export function routeDestinationLabel(deal: LocalDeal, language: AppLanguage) {
 export function buildKnownCaseEvents(deal: LocalDeal | null, language: AppLanguage) {
   if (!deal) return [textByLanguage(language, 'Chưa có dòng sự kiện việc', 'No work timeline yet')]
   const events = [
-    textByLanguage(language, 'Việc được tạo trong NestScout', 'Work created in NestScout'),
+    textByLanguage(language, 'Việc được tạo trong ứng dụng', 'Work created in the app'),
   ]
   if (canShowWorkerAddress(deal)) events.push(textByLanguage(language, 'Thợ đã nhận việc', 'Worker accepted the work'))
   if (['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status)) {

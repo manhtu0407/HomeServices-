@@ -61,10 +61,12 @@ function evidenceHarness(agenticEvidenceReason = 'Không có ảnh hiện trạn
     setError: jest.fn(),
     setLoading: jest.fn(),
     setRouteDraftEvidencePending: jest.fn(),
+    setStreamingReply: jest.fn(),
     setTurns: jest.fn(),
     turns: [],
   } as any
   const processController = {
+    settleEvidenceProcessLines: jest.fn(async () => undefined),
     startEvidenceProcessLines: jest.fn(),
     startProcessLines: jest.fn(async () => undefined),
     stopProcessLines: jest.fn(),
@@ -181,6 +183,40 @@ describe('customer Kael evidence concurrency', () => {
       serviceType: 'electrical',
     })
     expect(harness.processController.updateEvidenceProcessProgress).toHaveBeenCalledWith(progress)
+  })
+
+  it('streams the committed Kael estimate response while evidence analysis is still visible', async () => {
+    mockStreamEvidence.mockImplementationOnce(async (
+      _sessionId: string,
+      _input: unknown,
+      handlers: {
+        onResponseDelta?: (event: { delta: string; turnId: string }) => void
+      },
+    ) => {
+      handlers.onResponseDelta?.({ delta: 'Kael đã hoàn tất ', turnId: 'turn-estimate' })
+      handlers.onResponseDelta?.({ delta: 'phân tích.', turnId: 'turn-estimate' })
+      return { data: { session: {}, turns: [] }, success: true }
+    })
+    const harness = evidenceHarness()
+    const { result } = renderHook(() => useCustomerKaelEvidenceActions(harness.input))
+
+    await act(async () => {
+      await result.current.submitAgenticEvidence('skipped')
+    })
+
+    expect(mockStreamEvidence).toHaveBeenCalledWith(
+      'session-a',
+      expect.any(Object),
+      expect.objectContaining({ onResponseDelta: expect.any(Function) }),
+    )
+    let streamed: { text: string; turnId: string } | null = null
+    for (const [updater] of harness.conversation.setStreamingReply.mock.calls) {
+      if (typeof updater === 'function') streamed = updater(streamed)
+    }
+    expect(streamed).toEqual({
+      text: 'Kael đã hoàn tất phân tích.',
+      turnId: 'turn-estimate',
+    })
   })
 
   it('starts one case evidence refresh per job and releases the lane after rejection', async () => {

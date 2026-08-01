@@ -207,6 +207,7 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
       ? {
           ...broadcast,
           estimatedPriceLabel: formatNullableSinglePrice(job.final_price),
+          estimatedEarning: job.estimated_earning,
           estimatedEarningLabel: formatNullableSinglePrice(job.estimated_earning),
         }
       : null,

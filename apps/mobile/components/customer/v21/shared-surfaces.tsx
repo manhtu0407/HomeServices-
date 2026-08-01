@@ -250,7 +250,7 @@ export function ServiceTile({
             <View style={styles.homeServiceDetailRail} testID={`${serviceTestID}-detail-rail`}>
               {copy.details.map((detail, index) => (
                 <View key={detail} style={styles.homeServiceDetailRow} testID={`${serviceTestID}-detail-${index}`}>
-                  <Svg accessibilityElementsHidden height={14} viewBox="0 0 14 14" width={14}>
+                  <Svg height={14} viewBox="0 0 14 14" width={14}>
                     <Path
                       d={index === 0
                         ? 'M3.2 1.8h4.6l3 3v7.4H3.2V1.8Zm4.6 0v3h3M5 7h4M5 9.3h3.2'
@@ -373,11 +373,13 @@ export function V21TopBar({
   actionTestID,
   avatarImage,
   avatarText,
+  containerStyle,
   leading,
   onAction,
   onBack,
   showAvatar = true,
   subtitle,
+  testID,
   title,
   titleContainerStyle,
   titleStyle,
@@ -387,11 +389,13 @@ export function V21TopBar({
   actionTestID?: string
   avatarImage?: ImageSourcePropType
   avatarText?: string
+  containerStyle?: StyleProp<ViewStyle>
   leading?: ReactNode
   onAction?: () => void
   onBack?: () => void
   showAvatar?: boolean
   subtitle: string
+  testID?: string
   title: string
   titleContainerStyle?: StyleProp<ViewStyle>
   titleStyle?: StyleProp<TextStyle>
@@ -399,7 +403,7 @@ export function V21TopBar({
   const { tokens } = useCustomerV21SurfaceTheme()
   const shouldShowAvatar = showAvatar && !onBack
   return (
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, containerStyle]} testID={testID}>
       {leading ? (
         leading
       ) : onBack ? (

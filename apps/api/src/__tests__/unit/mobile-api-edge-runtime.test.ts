@@ -303,6 +303,8 @@ describe('mobile-api Edge runtime helpers', () => {
       'confirmSearch',
       'confirmStagingPayment',
       'confirmWorkerCandidate',
+      'confirmWorkerCashPayment',
+      'createCustomerAvatarUpload',
       'createCustomerKaelConversation',
       'createKaelChat',
       'createKaelChatMediaUpload',
@@ -311,13 +313,17 @@ describe('mobile-api Edge runtime helpers', () => {
       'createPaymentIntent',
       'createWorkerAvatarUpload',
       'createWorkerKaelChat',
+      'decideKaelIntakeConfirmation',
       'decideScopeChange',
       'decideWorkerCancellation',
       'declineBroadcast',
+      'deleteCustomerAccount',
       'deleteMyKaelMemory',
       'evaluatePriceSynthesisAbCase',
+      'getCustomerAvatar',
       'getCustomerKaelConversation',
       'getCustomerProfileInsights',
+      'getCustomerRefundAccount',
       'getJob',
       'getJobIncident',
       'getKaelCharter',
@@ -349,6 +355,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'sendWorkerKaelChatTurn',
       'setWorkerKaelChatPinned',
       'setWorkerKaelTrainingConsent',
+      'streamCustomerKaelConversationTurn',
       'streamKaelChatEvidence',
       'streamKaelChatTurn',
       'streamWorkerKaelChatTurn',
@@ -375,6 +382,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'rejectWorkerCandidate',
       'removeCustomerFavoriteWorker',
       'saveCustomerFavoriteWorker',
+      'saveCustomerRefundAccount',
       'sendCustomerKaelConversationTurn',
       'setCustomerKaelConversationPinned',
       'submitDisputeCounterStatement',
@@ -385,6 +393,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'submitWorkerKaelFeedback',
       'decideDispute',
       'updateJobStatus',
+      'updateCustomerAvatar',
       'updateWorkerAvailability',
       'updateWorkerAvatar',
       'updateWorkerServiceArea',
@@ -4875,6 +4884,58 @@ describe('mobile-api Edge runtime helpers', () => {
     })
   })
 
+  it('returns signed Case Work images to the owning Customer without exposing raw media refs', async () => {
+    const customerId = '11111111-1111-4111-8111-111111111111'
+    const imagePath = `${customerId}/kael-chat/model_vision/evidence.png`
+    const imageRef = `supabase://kael-chat-media/${imagePath}`
+    const privateVideoRef = `supabase://kael-chat-media/${customerId}/kael-chat/private_video_original/original.mp4`
+    const client = makeSequenceClient([{
+      data: {
+        id: 'job-case-work-image-1',
+        status: 'completed_by_worker',
+        service_type: 'plumbing',
+        description: 'Leak under sink',
+        problem_chips: ['Leak'],
+        photo_urls: [imageRef, privateVideoRef],
+        address_district: 'q7',
+        customer_id: customerId,
+        created_at: '2026-07-27T00:00:00.000Z',
+      },
+      error: null,
+    }])
+    const createSignedUrl = vi.fn(async (path: string) => ({
+      data: {
+        signedUrl: `https://storage.example.test/storage/v1/object/sign/kael-chat-media/${path}?token=signed`,
+      },
+      error: null,
+    }))
+    Object.assign(client, {
+      storage: { from: vi.fn(() => ({ createSignedUrl })) },
+    })
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: customerId },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).getJob(ctx, 'job-case-work-image-1')).resolves.toMatchObject({
+      job: {
+        photo_urls: [
+          `https://storage.example.test/storage/v1/object/sign/kael-chat-media/${imagePath}?token=signed`,
+        ],
+        customer_evidence_photo_urls: [
+          `https://storage.example.test/storage/v1/object/sign/kael-chat-media/${imagePath}?token=signed`,
+        ],
+      },
+    })
+    expect(createSignedUrl).toHaveBeenCalledWith(
+      imagePath,
+      15 * 60,
+      expect.objectContaining({ transform: expect.any(Object) }),
+    )
+  })
+
   it('fails closed when a persisted payment status violates the response contract', async () => {
     const client = makeSequenceClient([{
       data: {
@@ -8609,6 +8670,8 @@ describe('mobile-api Edge runtime helpers', () => {
             platform_fee_total: 14000,
             net_earnings: 266000,
             available_balance: 266000,
+            cash_commission_collected_total: 0,
+            cash_commission_due_total: 0,
             pending_payment_count: 1,
             pending_payment_amount: 200000,
             on_hold_amount: 0,
@@ -8648,6 +8711,8 @@ describe('mobile-api Edge runtime helpers', () => {
       platform_fee_total: 14000,
       net_earnings: 266000,
       available_balance: 266000,
+      cash_commission_collected_total: 0,
+      cash_commission_due_total: 0,
       pending_payment_count: 1,
       pending_payment_amount: 200000,
       on_hold_amount: 0,

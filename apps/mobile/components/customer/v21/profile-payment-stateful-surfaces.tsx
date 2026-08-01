@@ -1,15 +1,15 @@
 import { useEffect, useReducer, useRef } from 'react'
 import type { StyleProp, TextStyle } from 'react-native'
 
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import type { AppLanguage } from '@/lib/app-language'
-import type { CustomerPaymentMethodResponse } from '@/lib/api-types'
+import type { CustomerRefundAccountResponse } from '@/lib/api-types'
 import { customerProfileService } from '@/lib/services'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import type { CustomerV21BankKey } from './assets'
 import { formatNumber } from './case-work-display-model'
 import {
-  maskBankAccountNumber,
   normalizeBankAccountNumber,
   paymentBankKeyFromUnknown,
   paymentBankOptions,
@@ -18,7 +18,7 @@ import { profileUtilityTitle } from './profile-display-model'
 import { ProfileUtilityPaymentView } from './profile-utility-stateful-surfaces'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
 
-type PaymentMethod = CustomerPaymentMethodResponse['payment_method']
+type RefundAccount = CustomerRefundAccountResponse['refund_account']
 
 type PaymentUtilityState = {
   accountConfirmDraft: string
@@ -30,6 +30,7 @@ type PaymentUtilityState = {
   confirmedStatus: string | null
   hydrated: boolean
   message: string | null
+  messageTone: 'error' | 'success' | null
   saving: boolean
   selectedBankKey: CustomerV21BankKey | null
 }
@@ -37,9 +38,9 @@ type PaymentUtilityState = {
 type PaymentUtilityAction =
   | { field: 'accountConfirmDraft' | 'accountNameDraft' | 'accountNumberDraft'; type: 'change'; value: string }
   | { bankKey: CustomerV21BankKey; type: 'select-bank' }
-  | { method: PaymentMethod; type: 'hydrate' }
+  | { method: RefundAccount; type: 'hydrate' }
   | { type: 'save-started' }
-  | { type: 'save-failed' }
+  | { message: string; type: 'save-failed' }
   | {
       accountMasked: string
       bankKey: CustomerV21BankKey
@@ -59,6 +60,7 @@ const initialPaymentUtilityState: PaymentUtilityState = {
   confirmedStatus: null,
   hydrated: false,
   message: null,
+  messageTone: null,
   saving: false,
   selectedBankKey: null,
 }
@@ -66,14 +68,14 @@ const initialPaymentUtilityState: PaymentUtilityState = {
 function paymentUtilityReducer(state: PaymentUtilityState, action: PaymentUtilityAction): PaymentUtilityState {
   switch (action.type) {
     case 'change':
-      return { ...state, [action.field]: action.value, message: null }
+      return { ...state, [action.field]: action.value, message: null, messageTone: null }
     case 'select-bank':
-      return { ...state, message: null, selectedBankKey: action.bankKey }
+      return { ...state, message: null, messageTone: null, selectedBankKey: action.bankKey }
     case 'hydrate': {
       const bankKey = paymentBankKeyFromUnknown(action.method?.bank_key)
       return {
         ...initialPaymentUtilityState,
-        accountNameDraft: action.method?.account_holder_name ?? '',
+        accountNameDraft: '',
         confirmedAccountMasked: action.method?.bank_account_masked ?? '',
         confirmedBankKey: bankKey,
         confirmedBankName: action.method?.bank_name ?? '',
@@ -83,9 +85,9 @@ function paymentUtilityReducer(state: PaymentUtilityState, action: PaymentUtilit
       }
     }
     case 'save-started':
-      return { ...state, message: null, saving: true }
+      return { ...state, message: null, messageTone: null, saving: true }
     case 'save-failed':
-      return { ...state, message: null, saving: false }
+      return { ...state, message: action.message, messageTone: 'error', saving: false }
     case 'save-succeeded':
       return {
         ...state,
@@ -94,6 +96,7 @@ function paymentUtilityReducer(state: PaymentUtilityState, action: PaymentUtilit
         confirmedBankName: action.bankName,
         confirmedStatus: action.status,
         message: action.message,
+        messageTone: 'success',
         saving: false,
       }
   }
@@ -110,13 +113,14 @@ export function ProfilePaymentUtilitySection({
 }) {
   const [state, dispatch] = useReducer(paymentUtilityReducer, initialPaymentUtilityState)
   const savingRef = useRef(false)
+  const { reduceMotion } = useGlassAccessibility()
 
   useEffect(() => {
     let cancelled = false
-    void customerProfileService.getPaymentMethod()
+    void customerProfileService.getRefundAccount()
       .then((result) => {
         if (cancelled) return
-        dispatch({ method: result.success ? result.data.payment_method : null, type: 'hydrate' })
+        dispatch({ method: result.success ? result.data.refund_account : null, type: 'hydrate' })
       })
       .catch(() => {
         if (!cancelled) dispatch({ method: null, type: 'hydrate' })
@@ -144,37 +148,48 @@ export function ProfilePaymentUtilitySection({
     ? (language === 'vi' ? 'Đang tải' : 'Loading')
     : state.confirmedStatus === 'verified'
       ? (language === 'vi' ? 'Đã xác minh' : 'Verified')
+      : state.confirmedStatus === 'rejected'
+        ? (language === 'vi' ? 'Cần cập nhật' : 'Needs update')
       : confirmedReady
-        ? (language === 'vi' ? 'Chưa xác minh' : 'Unverified')
-        : (language === 'vi' ? 'Chưa có dữ liệu' : 'Data pending')
+        ? (language === 'vi' ? 'Đã lưu' : 'Saved')
+        : (language === 'vi' ? 'Chưa lưu' : 'Not saved')
 
-  const savePaymentMethod = async () => {
+  const saveRefundAccount = async () => {
     if (!selectedBank || !canSave || savingRef.current) return
     savingRef.current = true
     dispatch({ type: 'save-started' })
-    const masked = maskBankAccountNumber(accountNumber)
     try {
-      const result = await customerProfileService.savePaymentMethod({
+      const result = await customerProfileService.saveRefundAccount({
         account_holder_name: accountName,
         bank_account: accountNumber,
         bank_key: selectedBank.key,
-        bank_name: selectedBank.name,
       })
-      if (!result.success) {
-        dispatch({ type: 'save-failed' })
+      const persisted = result.success ? result.data.refund_account : null
+      const persistedBankKey = paymentBankKeyFromUnknown(persisted?.bank_key)
+      if (!persisted || !persistedBankKey) {
+        dispatch({
+          message: language === 'vi'
+            ? 'Chưa thể lưu tài khoản hoàn tiền. Thông tin chưa được thay đổi.'
+            : 'The refund account could not be saved. Your details were not changed.',
+          type: 'save-failed',
+        })
         return
       }
-      const method = result.data.payment_method
       dispatch({
-        accountMasked: method?.bank_account_masked ?? masked,
-        bankKey: selectedBank.key,
-        bankName: method?.bank_name ?? selectedBank.name,
-        message: language === 'vi' ? 'Đã lưu' : 'Saved',
-        status: method?.status ?? 'pending_verification',
+        accountMasked: persisted.bank_account_masked,
+        bankKey: persistedBankKey,
+        bankName: persisted.bank_name,
+        message: language === 'vi' ? 'Đã lưu tài khoản hoàn tiền' : 'Refund account saved',
+        status: persisted.status,
         type: 'save-succeeded',
       })
     } catch {
-      dispatch({ type: 'save-failed' })
+      dispatch({
+        message: language === 'vi'
+          ? 'Chưa thể lưu tài khoản hoàn tiền. Thông tin chưa được thay đổi.'
+          : 'The refund account could not be saved. Your details were not changed.',
+        type: 'save-failed',
+      })
     } finally {
       savingRef.current = false
     }
@@ -194,20 +209,22 @@ export function ProfilePaymentUtilitySection({
       confirmedPaymentBankName={state.confirmedBankName}
       confirmedPaymentReady={confirmedReady}
       confirmedPaymentStatus={confirmedStatus}
-      dataPendingLabel={language === 'vi' ? 'Chưa có' : 'Not available'}
+      dataPendingLabel={language === 'vi' ? 'Chưa lưu' : 'Not saved'}
       language={language}
       onAccountConfirmChange={(value) => dispatch({ field: 'accountConfirmDraft', type: 'change', value })}
       onAccountNameChange={(value) => dispatch({ field: 'accountNameDraft', type: 'change', value })}
       onAccountNumberChange={(value) => dispatch({ field: 'accountNumberDraft', type: 'change', value })}
       onBankSelect={(bank) => dispatch({ bankKey: bank.key, type: 'select-bank' })}
-      onSave={() => void savePaymentMethod()}
+      onSave={() => void saveRefundAccount()}
       paymentAccountConfirm={accountConfirm}
       paymentAccountMatches={accountMatches}
       paymentBankOptions={paymentBankOptions}
       paymentCanSave={canSave}
+      paymentConfirmationReady={accountMatches && !state.message && !state.saving}
       paymentMessage={state.message}
-      paymentMessageColor={tokens.primary}
+      paymentMessageTone={state.messageTone}
       paymentSaving={state.saving}
+      reduceMotion={reduceMotion}
       rootStyles={profileUtilityStyles}
       selectedBankKey={state.selectedBankKey}
       textInputNoOutlineStyle={textInputNoOutlineStyle}

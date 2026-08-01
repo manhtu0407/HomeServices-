@@ -69,6 +69,26 @@ describe('customer Kael async state scope', () => {
     expect(guard.isCurrent(newerRequest)).toBe(true)
   })
 
+  it('does not let catalog hydration cancel a user message in the same scope', () => {
+    const scope = customerKaelStateScopeKey({
+      accountId: 'customer-a',
+      caseId: null,
+      mode: 'case',
+      sessionId: null,
+    })
+    const guard = createCustomerKaelRequestGuard(scope)
+    const messageRequest = guard.begin('message')
+    const hydrationRequest = guard.begin('conversation')
+
+    expect(guard.isCurrent(messageRequest)).toBe(true)
+    expect(guard.isCurrent(hydrationRequest)).toBe(true)
+
+    guard.setScope(`${scope}:next`)
+
+    expect(guard.isCurrent(messageRequest)).toBe(false)
+    expect(guard.isCurrent(hydrationRequest)).toBe(false)
+  })
+
   it('does not revalidate an old response after returning to an earlier scope', () => {
     const firstScope = customerKaelStateScopeKey({
       accountId: 'customer-a',

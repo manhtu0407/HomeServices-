@@ -41,6 +41,22 @@ describe('Kael UI primitives', () => {
     })
   })
 
+  it('keeps each primary button gradient reference unique on shared screens', () => {
+    const { UNSAFE_getAllByType } = render(
+      <>
+        <KaelButton label="Chọn 3 sao" onPress={jest.fn()} size="small" />
+        <KaelButton label="Gửi đánh giá" onPress={jest.fn()} size="small" />
+      </>,
+    )
+
+    const gradients = UNSAFE_getAllByType(LinearGradient)
+    const gradientIds = gradients.map((gradient) => gradient.props.id)
+    const fills = UNSAFE_getAllByType(Rect).map((rect) => rect.props.fill)
+
+    expect(new Set(gradientIds).size).toBe(2)
+    expect(fills).toEqual(gradientIds.map((gradientId) => `url(#${gradientId})`))
+  })
+
   it('normalizes rgba gradient stops into native-safe hex color plus opacity', () => {
     const { UNSAFE_getAllByType } = render(
       <Svg>

@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import type { LocalDeal } from '@nestscout/shared'
 
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
-import { Alert } from 'react-native'
+import { Alert, Platform } from 'react-native'
 
 let mockWorkflowValue: any
 let mockPathname: string
@@ -351,7 +351,14 @@ describe('Worker V5 arrival check-in', () => {
       expect(screen.getByTestId('worker-v5-route-map-live-image')).toBeOnTheScreen()
       expect(screen.getByText('Di chuyển trong 12 phút')).toBeOnTheScreen()
       expect(screen.getByText('Quãng đường thật · 3,2 km')).toBeOnTheScreen()
+      expect(screen.getByTestId('worker-v5-info-cell-value-0')).toHaveTextContent('3,2 km')
+      expect(screen.getByTestId('worker-v5-info-cell-value-1')).toHaveTextContent('12 phút')
+      expect(screen.getByTestId('worker-v5-info-cell-value-2')).toHaveTextContent('Sửa điện')
+      expect(screen.getByTestId('worker-v5-info-cell-label-2')).toHaveTextContent(
+        dealWithoutRouteCoordinates.broadcast!.problemSummary,
+      )
     })
+    expect(screen.queryByText('Chờ dữ liệu thật')).toBeNull()
     expect(dealWithoutRouteCoordinates.broadcast!.fullAddressVisible).toBe(false)
   }, 10_000)
 
@@ -473,14 +480,21 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
   it('keeps in-progress focused on job actions without the removed progress chrome or evidence controls', () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
-    buildWorkflow(buildInProgressDeal())
+    const deal = buildInProgressDeal()
+    buildWorkflow(deal)
 
     render(<WorkerJobsSurface />)
 
     expect(screen.queryByText('Tiến độ công việc')).toBeNull()
     expect(screen.getByTestId('worker-v5-work-progress-board')).toBeOnTheScreen()
     expect(screen.getByText('Bảng công việc').parent?.children).toHaveLength(1)
-    expect(screen.getByText('Đang áp dụng')).toBeOnTheScreen()
+    expect(screen.queryByText('Đã đọc')).toBeNull()
+    expect(screen.queryByText('Đang áp dụng')).toBeNull()
+    expect(screen.getByTestId('worker-v5-step-title-0')).toHaveTextContent(deal.broadcast!.problemSummary)
+    expect(screen.getByTestId('worker-v5-step-meta-0')).toHaveTextContent('Phạm vi Kael đã đồng bộ')
+    expect(screen.getByTestId('worker-v5-step-meta-1')).toHaveTextContent('Chưa có ảnh từ khách')
+    expect(screen.getByTestId('worker-v5-step-meta-2')).toHaveTextContent('Chưa có ảnh hiện trường')
+    expect(screen.getByTestId('worker-v5-step-meta-3')).toHaveTextContent('Trạng thái đã đồng bộ')
     expect(screen.queryByText('Đang kiểm')).toBeNull()
     expect(screen.queryByTestId('worker-v5-evidence-picker-actions')).toBeNull()
     expect(screen.queryByTestId('worker-v5-in-progress-camera-action')).toBeNull()
@@ -538,6 +552,38 @@ it('records arrival before continuing to the in-progress screen', async () => {
         }),
       })
     })
+  })
+
+  it('releases a stalled lobby picker instead of leaving check-in disabled', async () => {
+    jest.useFakeTimers()
+    const deal = buildInProgressDeal()
+    deal.broadcast!.addressAccess = {
+      access_profile: {},
+      check_in_required: true,
+      customer_handoff_required: true,
+      evidence_mode: 'none',
+      exact_unit_released: false,
+      identity_check_required: true,
+      release_stage: 'building_released',
+      worker_checked_in: false,
+    }
+    buildWorkflow(deal)
+    imagePicker.launchImageLibraryAsync.mockImplementationOnce(() => new Promise(() => undefined))
+
+    try {
+      render(<WorkerJobsSurface />)
+      fireEvent.press(screen.getByTestId('worker-v5-arrival-check-in-action'))
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(45_000)
+      })
+
+      expect(screen.getByTestId('worker-v5-arrival-check-in-action')).not.toBeDisabled()
+      expect(screen.getByText(/Chưa thể hoàn tất check-in/i)).toBeOnTheScreen()
+      expect(mediaUpload.uploadJobMediaDrafts).not.toHaveBeenCalled()
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it('opens inspection only after the customer releases the exact unit', async () => {
@@ -664,6 +710,26 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
     expect(screen.getByText('Kael đã nhận ảnh hiện trường để đối chiếu.')).toBeOnTheScreen()
     alertSpy.mockRestore()
+  })
+
+  it('opens the photo library directly for an on-site evidence slot on web', async () => {
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+    buildWorkflow(buildInProgressDeal())
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({ assets: [], canceled: true })
+    const originalPlatform = Platform.OS
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+
+    try {
+      render(<WorkerJobsSurface />)
+      fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
+
+      await waitFor(() => {
+        expect(imagePicker.requestMediaLibraryPermissionsAsync).toHaveBeenCalledTimes(1)
+        expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ quality: 0.82 }))
+      })
+    } finally {
+      Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform })
+    }
   })
 
   it('serializes the field-evidence picker and releases it after a permission rejection', async () => {

@@ -1,11 +1,13 @@
-import { act, renderHook } from '@testing-library/react-native'
+import { act, render, renderHook, screen } from '@testing-library/react-native'
 
 import type { KaelChatProgress } from '@/lib/api-types'
 
 import {
   KAEL_COMPOSER_REPLY_REVEAL_MS,
+  KAEL_EVIDENCE_RESULT_SETTLE_MS,
   useKaelProcessLineController,
 } from '../v21/use-kael-process-line-controller'
+import { KaelProcessLines } from '../v21/kael-process-line-view'
 
 describe('customer Kael process-line controller', () => {
   beforeEach(() => {
@@ -14,6 +16,27 @@ describe('customer Kael process-line controller', () => {
 
   afterEach(() => {
     jest.useRealTimers()
+  })
+
+  it('keeps a clear gap around process lines so they do not crowd the chat text', () => {
+    render(
+      <KaelProcessLines
+        state={{
+          activeIndex: 0,
+          collapse: null,
+          lines: [{ durationMs: 0, key: 'evidence', stage: 'observe', status: 'running', text: 'Kael đang kiểm tra ảnh.' }],
+          prompt: 'Kiểm tra giúp tôi ảnh này.',
+          scenarioId: 'evidence_check',
+          visibleCount: 1,
+        }}
+      />,
+    )
+
+    expect(screen.getByTestId('customer-v21-kael-process-lines')).toHaveStyle({
+      marginBottom: 10,
+      marginLeft: 8,
+      marginTop: 10,
+    })
   })
 
   it('keeps non-composer actions free from an artificial response delay', async () => {
@@ -143,6 +166,49 @@ describe('customer Kael process-line controller', () => {
       status: 'completed',
       text: 'Kael recorded that no evidence was included this time.',
     })
+  })
+
+  it('shows a short authoritative completion transition before opening the estimate', async () => {
+    const { result } = renderHook(() => useKaelProcessLineController({
+      caseServiceLabel: null,
+      deal: null,
+      language: 'vi',
+      selectedService: 'plumbing',
+    }))
+    act(() => {
+      result.current.startEvidenceProcessLines({ hasImage: true, serviceType: 'plumbing' })
+      result.current.updateEvidenceProcessProgress({
+        current_stage: 'price_synthesis',
+        status: 'completed',
+        progress: 1,
+        updated_at: '2026-07-27T04:00:00.000Z',
+      })
+    })
+
+    let settled = false
+    let settlePromise!: Promise<void>
+    act(() => {
+      settlePromise = result.current.settleEvidenceProcessLines()
+      void settlePromise.then(() => {
+        settled = true
+      })
+    })
+    expect(result.current.processLines).toMatchObject({
+      activeIndex: null,
+      collapse: 'Kael đã hoàn tất đối chiếu. Đang mở cơ sở giá.',
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(KAEL_EVIDENCE_RESULT_SETTLE_MS - 1)
+      await Promise.resolve()
+    })
+    expect(settled).toBe(false)
+
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+      await settlePromise
+    })
+    expect(settled).toBe(true)
   })
 
   it('does not mistake a request for Vietnamese wording for a payment question', () => {

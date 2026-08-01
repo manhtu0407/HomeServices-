@@ -24,6 +24,10 @@ import type { KaelChatCreateInput, ServiceType } from "../../../_shared/domain.t
 import { buildSafetyFirstKaelClarification, persistentKaelSafetySignals, resolveKaelResponseSafetySignals } from "./kael-chat-intake-safety.ts";
 import { maybeApplyKaelBoundaryGuard } from "./kael-chat-boundary.ts";
 import { maybeHandleDeterministicClarificationReply } from "./kael-chat-clarification.service.ts";
+import {
+  buildKaelEstimateAnalysisEvidence,
+  buildKaelEstimateMarketEvidence,
+} from "./kael-chat-estimate-support.ts";
 export { maybeApplyKaelBoundaryGuard };
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 
@@ -661,6 +665,8 @@ export async function advanceKaelChatEstimate(
       : estimatePriceSourceFromStageLogs(pipeline.stageLogs),
     baselineUsed:
       `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
+    analysisEvidence: buildKaelEstimateAnalysisEvidence(artifact),
+    marketEvidence: buildKaelEstimateMarketEvidence(pipeline.stageLogs),
     marketSignals: estimate.market_signals ?? estimate.needs_inspection_reason,
     needsInspectionReason: estimate.needs_inspection_reason,
   });

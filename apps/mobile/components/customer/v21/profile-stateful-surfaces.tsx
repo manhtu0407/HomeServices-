@@ -1,37 +1,39 @@
 import type { ReactNode } from 'react'
-import { Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { Image } from 'expo-image'
+import { ActivityIndicator, Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import Svg, { Defs, LinearGradient, Path, Rect } from 'react-native-svg'
 
-import { KaelButton, KaelChip } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { CaseWideMintAura, SourceCardSkin, SourceIconAura, ZipMintAura } from './aura-surfaces'
 import { ProfileUsageRankingMark } from './profile-ranking-mark'
 import { customerV21ProfileJourneyStyles as profileJourneyStyles } from './profile-journey-styles'
-import { ProfileAuraCard } from './profile-utility-surfaces'
+import { customerV21ProfileSettingsGroupStyles as settingsGroupStyles } from './profile-settings-group-styles'
+import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-surfaces'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
-import { AssetTile, SectionActionHeader, V21TopBar } from './shared-surfaces'
+import { useCustomerV21SurfaceTheme, V21TopBar } from './shared-surfaces'
 
 type RootProfileOverviewStyles = {
-  accountUtilityGrid: StyleProp<ViewStyle>
-  accountUtilityTile: StyleProp<ViewStyle>
-  bodyText: StyleProp<TextStyle>
   flex: StyleProp<ViewStyle>
   pressed: StyleProp<ViewStyle>
-  profileLogoutCta: StyleProp<ViewStyle>
-  profileMintChipText: StyleProp<TextStyle>
 }
 
-type ProfileOverviewUtilityTileModel = {
+export type ProfileSettingsRowModel = {
+  destructive?: boolean
   image: ImageSourcePropType
-  label: string
   onPress: () => void
-  scope: string
+  status?: string
+  subtitle?: string
   testID: string
-  value: string
+  title: string
+}
+
+export type ProfileSettingsGroupModel = {
+  id: string
+  rows: ProfileSettingsRowModel[]
+  title: string
 }
 
 type ProfileAccountJourneyModel = {
@@ -57,64 +59,73 @@ export function CustomerProfileSubscreenView({
   title: string
   titleStyle?: StyleProp<TextStyle>
 }) {
+  const { tokens } = useCustomerV21SurfaceTheme()
+
   return (
     <>
       <V21TopBar
+        containerStyle={tokens.mode === 'dark'
+          ? [
+              profileUtilityStyles.profileSubscreenTopBarDark,
+              { backgroundColor: tokens.raised, borderColor: tokens.border },
+            ]
+          : undefined}
         onBack={onBack}
         subtitle={subtitle}
+        testID="customer-v21-profile-subscreen-topbar"
         title={title}
         titleStyle={titleStyle}
       />
-      {body}
+      <View style={profileUtilityStyles.profileSubscreenBody} testID="customer-v21-profile-subscreen-body">
+        {body}
+      </View>
     </>
   )
 }
 
 export function CustomerProfileOverviewView({
   accountJourney,
+  avatarAccessibilityHint,
+  avatarAccessibilityLabel,
+  avatarUploadBusy,
+  avatarUrl,
   initials,
   name,
+  onPickAvatar,
   onOpenRanking,
-  onSignOut,
   rankingAccessibilityLabel,
   rankingBody,
   rankingLabel,
   rankingMetaLabel,
   rankingProgressNode,
   rankingProgressSourceLabel,
-  rankingStatus,
-  rankingStatusActive,
-  rankingStatusTextStyle,
-  signOutLabel,
+  settingsGroups,
   tokens,
   topBarSubtitle,
   topBarTitle,
-  utilitySectionAction,
-  utilitySectionTitle,
-  utilityTiles,
+  versionLabel,
   rootStyles,
 }: {
   accountJourney: ProfileAccountJourneyModel
+  avatarAccessibilityHint: string
+  avatarAccessibilityLabel: string
+  avatarUploadBusy: boolean
+  avatarUrl: string | null
   initials: string
   name: string
+  onPickAvatar: () => void
   onOpenRanking: () => void
-  onSignOut: () => void
   rankingAccessibilityLabel: string
   rankingBody: string
   rankingLabel: string
   rankingMetaLabel: string
   rankingProgressNode: ReactNode
   rankingProgressSourceLabel: string
-  rankingStatus: string
-  rankingStatusActive: boolean
-  rankingStatusTextStyle: StyleProp<TextStyle>
-  signOutLabel: string
+  settingsGroups: ProfileSettingsGroupModel[]
   tokens: CustomerThemeTokens
   topBarSubtitle: string
   topBarTitle: string
-  utilitySectionAction: string
-  utilitySectionTitle: string
-  utilityTiles: ProfileOverviewUtilityTileModel[]
+  versionLabel: string | null
   rootStyles: RootProfileOverviewStyles
 }) {
   const { reduceMotion } = useGlassAccessibility()
@@ -128,22 +139,57 @@ export function CustomerProfileOverviewView({
       />
 
       <ProfileAuraCard cardStyle={profileUtilityStyles.profileOverviewHeroCard} contentStyle={profileUtilityStyles.profileHeroLarge} scope="OverviewHero" testID="customer-v21-profile-hero">
-        <View style={profileUtilityStyles.profileAvatarLarge}>
-          <View pointerEvents="none" style={profileUtilityStyles.profileAvatarGradientLayer}>
-            <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 74 74" width="100%">
-              <Defs>
-                <LinearGradient id="profileAvatarGradient" x1="0.08" x2="0.92" y1="0.08" y2="0.92">
-                  <Stop offset="0" stopColor="#7EDFD2" />
-                  <Stop offset="0.62" stopColor="#08AF9C" />
-                  <Stop offset="1" stopColor="#087D72" />
-                </LinearGradient>
-              </Defs>
-              <Rect fill="url(#profileAvatarGradient)" height="74" rx="28" width="74" />
-            </Svg>
-          </View>
-          <Text style={profileUtilityStyles.profileAvatarText}>{initials}</Text>
-          <View style={profileUtilityStyles.profileAvatarDot} />
-        </View>
+        <Pressable
+          accessibilityHint={avatarAccessibilityHint}
+          accessibilityLabel={avatarAccessibilityLabel}
+          accessibilityRole="button"
+          accessibilityState={{ busy: avatarUploadBusy, disabled: avatarUploadBusy }}
+          disabled={avatarUploadBusy}
+          onPress={onPickAvatar}
+          style={({ pressed }) => [
+            profileUtilityStyles.profileAvatarLarge,
+            pressed && !reduceMotion ? rootStyles.pressed : null,
+          ]}
+          testID="customer-v21-profile-avatar-picker"
+        >
+          {avatarUploadBusy ? (
+            <ActivityIndicator color="#FFFFFF" size="small" testID="customer-v21-profile-avatar-loading" />
+          ) : avatarUrl ? (
+            <Image
+              accessibilityIgnoresInvertColors
+              contentFit="cover"
+              source={{ uri: avatarUrl }}
+              style={profileUtilityStyles.profileAvatarImage}
+              testID="customer-v21-profile-avatar-image"
+            />
+          ) : (
+            <>
+              <View pointerEvents="none" style={profileUtilityStyles.profileAvatarGradientLayer}>
+                <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 80 80" width="100%">
+                  <Defs>
+                    <LinearGradient id="profileAvatarGradient" x1="0.08" x2="0.92" y1="0.08" y2="0.92">
+                      <Stop offset="0" stopColor="#7EDFD2" />
+                      <Stop offset="0.62" stopColor="#08AF9C" />
+                      <Stop offset="1" stopColor="#087D72" />
+                    </LinearGradient>
+                  </Defs>
+                  <Rect fill="url(#profileAvatarGradient)" height="80" rx="30" width="80" />
+                </Svg>
+              </View>
+              <Text style={profileUtilityStyles.profileAvatarText} testID="customer-v21-profile-avatar-fallback">{initials}</Text>
+            </>
+          )}
+          {!avatarUploadBusy ? (
+            <View pointerEvents="none" style={profileUtilityStyles.profileAvatarEditBadge}>
+              <Svg height={13} viewBox="0 0 16 16" width={13}>
+                <Path
+                  d="M5.2 4.2 6.1 2.8h3.8l.9 1.4h1.6c.9 0 1.6.7 1.6 1.6v5.1c0 .9-.7 1.6-1.6 1.6H3.6c-.9 0-1.6-.7-1.6-1.6V5.8c0-.9.7-1.6 1.6-1.6h1.6ZM8 10.8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
+                  fill="#FFFFFF"
+                />
+              </Svg>
+            </View>
+          ) : null}
+        </Pressable>
         <View style={rootStyles.flex}>
           <View style={profileUtilityStyles.profileNameRow}>
             <Text numberOfLines={1} style={[sharedStyles.heroTitle, { color: tokens.text }]} testID="customer-v21-profile-name">{name}</Text>
@@ -170,16 +216,6 @@ export function CustomerProfileOverviewView({
           </View>
         </View>
       </ProfileAuraCard>
-
-      <SectionActionHeader action={utilitySectionAction} title={utilitySectionTitle} />
-      <View
-        style={[rootStyles.accountUtilityGrid, profileUtilityStyles.profileOverviewUtilityGrid]}
-        testID="customer-v21-profile-utility-grid"
-      >
-        {utilityTiles.map((tile) => (
-          <ProfileOverviewUtilityTile key={tile.testID} rootStyles={rootStyles} tile={tile} tokens={tokens} />
-        ))}
-      </View>
 
       <View style={profileUtilityStyles.profileOverviewActionStack}>
         <Pressable
@@ -231,25 +267,16 @@ export function CustomerProfileOverviewView({
                       {rankingBody}
                     </Text>
                   </View>
-                  <View style={[profileUtilityStyles.profileRankingStatusChipFrame, profileUtilityStyles.profileRankingEntryStatusChipFrame]} testID="customer-v21-profile-ranking-entry-status">
-                    <ZipMintAura scope="ProfileOverviewRankingStatus" />
-                    <KaelChip
-                      label={rankingStatus}
-                      style={rankingStatusActive ? profileUtilityStyles.profileMintChip : profileUtilityStyles.profileRankingEmptyChip}
-                      textStyle={rankingStatusTextStyle}
-                      variant={rankingStatusActive ? 'selected' : 'unselected'}
-                    />
-                  </View>
                 </View>
                 <View style={profileUtilityStyles.profileRankingEntrySignalRail} testID="customer-v21-profile-ranking-entry-signals">
                   <View style={profileUtilityStyles.profileRankingEntrySignal} testID="customer-v21-profile-ranking-entry-points-signal">
-                    <Svg accessibilityElementsHidden height={14} viewBox="0 0 14 14" width={14}>
+                    <Svg height={14} viewBox="0 0 14 14" width={14}>
                       <Path d="M2.1 7a4.9 4.9 0 0 1 8.3-3.5M11.9 7a4.9 4.9 0 0 1-8.3 3.5M10.4 1.8v2.7H7.7m-4.1 7.7V9.5h2.7" fill="none" stroke={tokens.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.35} />
                     </Svg>
                     <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntrySignalText, { color: tokens.muted }]}>{rankingMetaLabel}</Text>
                   </View>
                   <View style={profileUtilityStyles.profileRankingEntrySignal} testID="customer-v21-profile-ranking-entry-source-signal">
-                    <Svg accessibilityElementsHidden height={14} viewBox="0 0 14 14" width={14}>
+                    <Svg height={14} viewBox="0 0 14 14" width={14}>
                       <Path d="M7 1.5c.45 2.55 1.95 4.05 4.5 4.5C8.95 6.45 7.45 7.95 7 10.5 6.55 7.95 5.05 6.45 2.5 6 5.05 5.55 6.55 4.05 7 1.5Zm4 8.1c.2 1.05.85 1.7 1.9 1.9-1.05.2-1.7.85-1.9 1.9-.2-1.05-.85-1.7-1.9-1.9 1.05-.2 1.7-.85 1.9-1.9Z" fill={tokens.primary} />
                     </Svg>
                     <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntrySignalText, { color: tokens.muted }]}>{rankingProgressSourceLabel}</Text>
@@ -260,129 +287,107 @@ export function CustomerProfileOverviewView({
             </ProfileAuraCard>
           )}
         </Pressable>
-        <KaelButton
-          backgroundLayer={<ZipMintAura scope="ProfileLogoutCta" />}
-          label={signOutLabel}
-          onPress={onSignOut}
-          showPrimaryGradient={false}
-          style={[rootStyles.profileLogoutCta, profileUtilityStyles.profileAuraButton]}
-          testID="customer-v21-profile-signout-cta"
-          variant="secondary"
-        />
       </View>
+
+      <ProfileSettingsGroups groups={settingsGroups} rootStyles={rootStyles} tokens={tokens} />
+      {versionLabel ? (
+        <Text style={[settingsGroupStyles.versionLabel, { color: tokens.subtleText }]} testID="customer-v21-profile-version">
+          {versionLabel}
+        </Text>
+      ) : null}
     </>
   )
 }
 
-function ProfileOverviewUtilityTile({
+function ProfileSettingsGroups({
+  groups,
   rootStyles,
-  tile,
+  tokens,
+}: {
+  groups: ProfileSettingsGroupModel[]
+  rootStyles: RootProfileOverviewStyles
+  tokens: CustomerThemeTokens
+}) {
+  return (
+    <View style={settingsGroupStyles.container} testID="customer-v21-profile-settings-groups">
+      {groups.map((group) => (
+        <View key={group.id} style={settingsGroupStyles.group} testID={`customer-v21-profile-settings-group-${group.id}`}>
+          <Text style={[settingsGroupStyles.groupLabel, { color: tokens.text }]}>{group.title}</Text>
+          <ProfileFormulaMintSurface
+            scope={`SettingsGroup${group.id}`}
+            style={[settingsGroupStyles.groupSurface, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+            testID={`customer-v21-profile-settings-group-${group.id}-surface`}
+          >
+            {group.rows.map((row, index) => (
+              <View key={row.testID}>
+                <ProfileSettingsCompactRow rootStyles={rootStyles} row={row} tokens={tokens} />
+                {index < group.rows.length - 1 ? (
+                  <View style={[settingsGroupStyles.rowDivider, { backgroundColor: tokens.border }]} />
+                ) : null}
+              </View>
+            ))}
+          </ProfileFormulaMintSurface>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+function ProfileSettingsCompactRow({
+  rootStyles,
+  row,
   tokens,
 }: {
   rootStyles: RootProfileOverviewStyles
-  tile: ProfileOverviewUtilityTileModel
+  row: ProfileSettingsRowModel
   tokens: CustomerThemeTokens
 }) {
   const { reduceMotion } = useGlassAccessibility()
+  const foreground = row.destructive ? tokens.danger : tokens.text
 
   return (
     <Pressable
-      accessibilityLabel={`${tile.label}. ${tile.value}`}
+      accessibilityHint={row.subtitle}
+      accessibilityLabel={row.title}
       accessibilityRole="button"
-      onPress={tile.onPress}
+      onPress={row.onPress}
       style={({ pressed }) => [
-        rootStyles.accountUtilityTile,
-        profileUtilityStyles.profileOverviewUtilityTile,
-        tile.scope === 'Payment' ? profileUtilityStyles.profileOverviewUtilityPaymentTile : null,
-        { backgroundColor: tokens.raised, borderColor: tokens.border },
+        settingsGroupStyles.row,
         pressed && !reduceMotion ? rootStyles.pressed : null,
       ]}
-      testID={tile.testID}
+      testID={row.testID}
     >
-      {tokens.mode === 'dark' ? null : <SourceCardSkin testID={`${tile.testID}-skin`} />}
-      <View
-        pointerEvents="none"
-        style={profileUtilityStyles.profileOverviewUtilityFormulaMintAura}
-        testID={`${tile.testID}-formula-mint-aura`}
-      >
-        <CaseWideMintAura
-          intensity="strong"
-          scope={`ProfileUtility${tile.scope}Wide`}
-          testID={`${tile.testID}-wide-mint-aura`}
-        />
-        <ZipMintAura
-          scope={`ProfileUtility${tile.scope}Fine`}
-          testID={`${tile.testID}-mint-aura`}
+      <View style={settingsGroupStyles.rowIconFrame}>
+        <Image
+          accessibilityIgnoresInvertColors
+          contentFit="contain"
+          source={row.image}
+          style={settingsGroupStyles.rowIcon}
+          testID={`${row.testID}-icon`}
         />
       </View>
-      <View style={profileUtilityStyles.profileOverviewUtilityCopy} testID={`${tile.testID}-copy`}>
-        <View style={profileUtilityStyles.profileOverviewUtilityVisualPanel} testID={`${tile.testID}-visual-panel`}>
-          <View style={profileUtilityStyles.profileOverviewUtilityIconFrame}>
-            <SourceIconAura />
-            <AssetTile
-              image={tile.image}
-              label={tile.label}
-              size={37}
-              style={profileUtilityStyles.profileOverviewUtilityIcon}
-              testID={`${tile.testID}-icon`}
-            />
-          </View>
-        </View>
-        <View pointerEvents="none" style={profileUtilityStyles.profileOverviewUtilityConnectorTrack}>
-          <View
-            style={[
-              profileUtilityStyles.profileOverviewUtilityConnector,
-              { backgroundColor: tokens.mode === 'dark' ? 'rgba(80,200,184,0.42)' : 'rgba(47,183,164,0.58)' },
-            ]}
-            testID={`${tile.testID}-connector`}
-          />
-          <View
-            style={[
-              profileUtilityStyles.profileOverviewUtilityConnectorDot,
-              {
-                backgroundColor: tokens.primary,
-                borderColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.98)',
-              },
-            ]}
-            testID={`${tile.testID}-connector-dot`}
-          />
-        </View>
-        <Text
-          adjustsFontSizeToFit
-          minimumFontScale={0.76}
-          numberOfLines={2}
-          style={[profileUtilityStyles.profileOverviewUtilityTitle, { color: tokens.text }]}
-          testID={`${tile.testID}-title`}
-        >
-          {tile.label}
-        </Text>
+      <View style={settingsGroupStyles.rowCopy}>
+        <Text numberOfLines={2} style={[settingsGroupStyles.rowTitle, { color: foreground }]}>{row.title}</Text>
+        {row.subtitle ? (
+          <Text numberOfLines={2} style={[settingsGroupStyles.rowSubtitle, { color: tokens.muted }]}>{row.subtitle}</Text>
+        ) : null}
       </View>
-      <View
-        style={[
-          profileUtilityStyles.profileOverviewUtilityDetailRail,
-          { borderTopColor: tokens.mode === 'dark' ? tokens.border : 'rgba(198,222,218,0.78)' },
-        ]}
-        testID={`${tile.testID}-detail-rail`}
-      >
-        <Svg accessibilityElementsHidden height={13} viewBox="0 0 13 13" width={13}>
+      <View style={settingsGroupStyles.rowMeta}>
+        {row.status ? (
+          <Text numberOfLines={2} style={[settingsGroupStyles.rowStatus, { color: row.destructive ? tokens.danger : tokens.muted }]}>
+            {row.status}
+          </Text>
+        ) : null}
+        <Svg height={18} viewBox="0 0 18 18" width={18}>
           <Path
-            d="M2.4 1.5h4.4l2.8 2.8v7.2H2.4v-10Zm4.4 0v2.8h2.8M4.2 7h3.7M4.2 9h3"
+            d="m7 4.5 4.5 4.5L7 13.5"
             fill="none"
-            stroke={tokens.primary}
+            stroke={row.destructive ? tokens.danger : tokens.primary}
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth={1.15}
+            strokeWidth={1.7}
           />
         </Svg>
-        <Text
-          adjustsFontSizeToFit
-          minimumFontScale={0.82}
-          numberOfLines={1}
-          style={[profileUtilityStyles.profileOverviewUtilityDetailLabel, { color: tokens.muted }]}
-          testID={`${tile.testID}-value`}
-        >
-          {tile.value}
-        </Text>
       </View>
     </Pressable>
   )

@@ -9,14 +9,14 @@ import { WorkerV5ScreenId } from '../dock/types'
 import { WorkerV5ChatBubble } from '../jobs/advisory-surfaces'
 import { textByLanguage } from '../ui/format'
 import { getWorkerV5ChatJobId } from '../ui/labels'
-import { workerV5Icons } from '../ui/screen-icons'
+import { workerV5Icons , workerV5OpportunityServiceIcons } from '../ui/screen-icons'
 import { styles } from '../worker-v5-flow-styles'
 import { WorkerV5KaelOrbBody } from './body-surfaces'
 import { WorkerV5KaelOrbComposer } from './orb-screen-surfaces'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
-import { workerV5OpportunityServiceIcons } from '../ui/screen-icons'
+
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {

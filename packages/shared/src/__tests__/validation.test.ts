@@ -4,6 +4,7 @@ import {
   jobCreateSchema,
   kaelChatCreateSchema,
   kaelChatEvidenceSchema,
+  kaelChatIntakeConfirmationDecisionSchema,
   kaelChatMediaRevokeSchema,
   kaelChatMediaUploadSchema,
   kaelChatProgressSchema,
@@ -18,6 +19,8 @@ import {
   workerCancellationDecisionSchema,
   workerAvatarUpdateSchema,
   workerAvatarUploadSchema,
+  customerAvatarUpdateSchema,
+  customerAvatarUploadSchema,
   jobMediaAttachSchema,
   devicePushTokenSchema,
   reviewSchema,
@@ -67,6 +70,45 @@ describe('worker avatar contracts', () => {
       avatar_ref: `supabase://worker-avatars/${UUID}/../other-worker/avatar.webp`,
     })).toThrow()
     expect(() => workerAvatarUpdateSchema.parse({
+      avatar_ref: 'https://example.test/fake-avatar.jpg',
+    })).toThrow()
+  })
+})
+
+describe('customer avatar contracts', () => {
+  it('accepts only bounded still images', () => {
+    expect(customerAvatarUploadSchema.parse({
+      file_name: 'avatar.png',
+      mime_type: 'image/png',
+      file_size_bytes: 5 * 1024 * 1024,
+    })).toMatchObject({ mime_type: 'image/png' })
+
+    expect(() => customerAvatarUploadSchema.parse({
+      file_name: 'avatar.mp4',
+      mime_type: 'video/mp4',
+      file_size_bytes: 1024,
+    })).toThrow()
+    expect(() => customerAvatarUploadSchema.parse({
+      file_name: 'avatar.jpg',
+      mime_type: 'image/jpeg',
+      file_size_bytes: 5 * 1024 * 1024 + 1,
+    })).toThrow()
+  })
+
+  it('accepts only private customer-avatar refs without traversal', () => {
+    expect(customerAvatarUpdateSchema.parse({
+      avatar_ref: `supabase://customer-avatars/${UUID}/avatar.webp`,
+    })).toEqual({
+      avatar_ref: `supabase://customer-avatars/${UUID}/avatar.webp`,
+    })
+
+    expect(() => customerAvatarUpdateSchema.parse({
+      avatar_ref: `supabase://customer-avatars/${UUID}/../other-user/avatar.webp`,
+    })).toThrow()
+    expect(() => customerAvatarUpdateSchema.parse({
+      avatar_ref: `supabase://worker-avatars/${UUID}/avatar.webp`,
+    })).toThrow()
+    expect(() => customerAvatarUpdateSchema.parse({
       avatar_ref: 'https://example.test/fake-avatar.jpg',
     })).toThrow()
   })
@@ -403,6 +445,51 @@ describe('kaelChat schemas', () => {
       ...result,
       profile_id: 'task_scope',
     })).toThrow()
+  })
+
+  it('requires a complete structured booking before opening the intake confirmation Pre-Step', () => {
+    const booking = {
+      address_district: 'Quận 3',
+      address_label: 'Chung cư Căn Hộ An Gia, Quận 3',
+      intake_description: 'Ổ cắm chập chờn và phát tiếng lẹt xẹt khi sử dụng.',
+      intake_source: 'booking',
+      message: 'Dịch vụ: Sửa điện. Vấn đề: Ổ cắm/công tắc hỏng.',
+      problem_chips: ['Ổ cắm/công tắc hỏng'],
+      profile_id: 'electric_diagnose',
+      schedule_window: {
+        date: '2026-07-30',
+        end: '12:00',
+        start: '10:00',
+        time_zone: 'Asia/Ho_Chi_Minh',
+      },
+      scheduled_at: '2026-07-30T03:00:00.000Z',
+      service_type: 'electrical',
+    }
+
+    expect(kaelChatCreateSchema.parse(booking)).toMatchObject({
+      intake_source: 'booking',
+      intake_description: booking.intake_description,
+    })
+    expect(kaelChatCreateSchema.safeParse({
+      ...booking,
+      intake_description: undefined,
+    }).success).toBe(false)
+    expect(kaelChatCreateSchema.safeParse({
+      ...booking,
+      schedule_window: undefined,
+    }).success).toBe(false)
+  })
+
+  it('accepts only an explicit intake confirmation or correction request', () => {
+    expect(kaelChatIntakeConfirmationDecisionSchema.parse({
+      decision: 'confirmed',
+    })).toEqual({ decision: 'confirmed' })
+    expect(kaelChatIntakeConfirmationDecisionSchema.parse({
+      decision: 'correction_requested',
+    })).toEqual({ decision: 'correction_requested' })
+    expect(kaelChatIntakeConfirmationDecisionSchema.safeParse({
+      decision: 'skip',
+    }).success).toBe(false)
   })
 
   it('keeps voice on device and accepts only a reviewed transcript', () => {

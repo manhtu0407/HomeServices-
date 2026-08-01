@@ -83,6 +83,7 @@ function useCustomerKaelCreateHarness(ownerKey = 'customer-a:normal') {
     mode: 'normal',
     processController: {
       processLines: null,
+      settleEvidenceProcessLines: async () => undefined,
       startEvidenceProcessLines: () => undefined,
       startProcessLines: async () => undefined,
       stopProcessLines: () => undefined,
@@ -291,6 +292,7 @@ describe('customer Kael create idempotency', () => {
     expect(mockKaelChatSendTurn).toHaveBeenCalledWith(
       'session-a',
       expect.objectContaining({ message: 'Ở căn hộ tầng 37. Nằm ở phòng khách' }),
+      expect.objectContaining({ onResponseDelta: expect.any(Function) }),
     )
     expect(mockKaelChatRestSendTurn).not.toHaveBeenCalled()
     expect(mockCatalogSendTurn).not.toHaveBeenCalled()

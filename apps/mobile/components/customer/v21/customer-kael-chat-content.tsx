@@ -1,8 +1,6 @@
 import { useCallback, useMemo } from 'react'
 
-import { AgenticEvidenceGateResponse } from '../kael-chat/agentic-evidence-gate-response'
 import { MediaDraftPreviewTray } from '../kael-chat/media-draft-preview-tray'
-import { QuoteReadinessReviewResponse } from '../kael-chat/quote-readiness-review-response'
 import {
   agenticEstimatePriceExplanation,
   agenticEstimateProblemLabel,
@@ -10,12 +8,12 @@ import {
   formatPriceRange,
 } from './agentic-estimate-display-model'
 import { AgenticChatEstimateResponse } from './agentic-chat-estimate-response'
-import { ChatEvidenceStrip } from './chat-evidence-strip'
 import { KaelChatSurfaceView } from './chat-stateful-surfaces'
 import { customerV21KaelChatRootStyles as rootStyles } from './chat-styles'
 import { ChatBubble } from './chat-surfaces'
-import { formatKnownCount } from './case-stage-display-model'
 import { CustomerKaelCaseThreadNode } from './customer-kael-case-thread-node'
+import { CustomerKaelAnalysisEvidenceNode } from './customer-kael-analysis-evidence-node'
+import { KaelLiquidReveal } from './kael-liquid-reveal'
 import { CustomerKaelIntakeResponseNode } from './customer-kael-intake-response-node'
 import { CustomerWorkerCandidateNode } from './customer-worker-candidate-node'
 import { CustomerKaelSessionMenu } from './kael-session-menu'
@@ -107,6 +105,24 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     () => <CustomerWorkerCandidateNode controller={controller} />,
     [controller],
   )
+  const analysisEvidenceNode = useMemo(
+    () => <CustomerKaelAnalysisEvidenceNode controller={controller} />,
+    [controller],
+  )
+  const streamingReplyNode = useMemo(() => (
+    conversation.streamingReply ? (
+      <KaelLiquidReveal reduceMotion={reduceMotion}>
+        <ChatBubble
+          reduceMotion={reduceMotion}
+          speaker="kael"
+          streaming
+          testID="customer-v21-kael-streaming-response"
+          text={conversation.streamingReply.text}
+          tokens={tokens}
+        />
+      </KaelLiquidReveal>
+    ) : null
+  ), [conversation.streamingReply, reduceMotion, tokens])
 
   return (
     <KaelChatSurfaceView
@@ -138,46 +154,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
             textInputStyle={[rootStyles.composerInput, customerV21WebTextInputNoOutline]}
           />
         ) : null}
-      analysisEvidenceNode={presentation.agenticEvidenceGateActive ? (
-        <AgenticEvidenceGateResponse
-          allowSkip={!presentation.serverEvidenceRequired}
-          busy={conversation.loading ||
-            chatUi.uploadingMedia ||
-            chatUi.submittingAgenticEvidence ||
-            !conversation.chat?.session.id}
-          language={language}
-          mediaDrafts={conversation.composerMediaDrafts}
-          onAddMedia={evidenceActions.pickComposerMedia}
-          onConfirm={() => void evidenceActions.submitAgenticEvidence('confirmed')}
-          onReasonChange={chatUi.setAgenticEvidenceReason}
-          onRemoveMedia={(index) => conversation.setComposerMediaDrafts((current) =>
-            current.filter((_, currentIndex) => currentIndex !== index))}
-          onReject={() => {
-            chatUi.setAgenticEvidenceRejectOpen(true)
-            conversation.setError(null)
-          }}
-          onSkip={() => void evidenceActions.submitAgenticEvidence('skipped')}
-          onVoiceTranscriptChange={chatUi.setVoiceTranscript}
-          prompt={presentation.serverEvidencePrompt}
-          reduceMotion={reduceMotion}
-          rejectOpen={chatUi.agenticEvidenceRejectOpen}
-          rejectReason={chatUi.agenticEvidenceReason}
-          requiredEvidenceKind={presentation.serverEvidenceKind}
-          textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
-          tokens={tokens}
-          voiceTranscript={chatUi.voiceTranscript}
-        />
-      ) : presentation.serverPriceReviewBlocked ? (
-        <QuoteReadinessReviewResponse
-          language={language}
-          reduceMotion={reduceMotion}
-          reason={typeof presentation.artifactNextAction?.reason === 'string'
-            ? presentation.artifactNextAction.reason
-            : undefined}
-          safetyMessages={presentation.serverSafetyMessages}
-          tokens={tokens}
-        />
-      ) : null}
+      analysisEvidenceNode={analysisEvidenceNode}
       agenticVisibleTurns={mode === 'case' || presentation.agenticIntakeModeActive
         ? presentation.agenticVisibleTurns
         : []}
@@ -211,15 +188,6 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       modeMenuOpen={chatUi.modeMenuOpen}
       normalAssistantTurns={presentation.normalAssistantTurns}
       normalChatLabel={copy.normalChat}
-      normalEvidenceNode={presentation.showNormalEvidence ? (
-        <ChatEvidenceStrip
-          formatCount={formatKnownCount}
-          language={language}
-          mediaCount={presentation.normalEvidenceCount}
-          mode={mode}
-          tokens={tokens}
-        />
-      ) : null}
       onBack={() => router.replace('/(customer)/home' as never)}
       onDraftChange={chatUi.setDraft}
       onPickMedia={evidenceActions.pickComposerMedia}
@@ -234,6 +202,8 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
           <KaelProcessLines state={processController.processLines} />
         </>
       ) : null}
+      streamingReplyNode={streamingReplyNode}
+      streamingReplyTurnId={conversation.streamingReply?.turnId ?? null}
       reduceMotion={reduceMotion}
       reduceTransparency={reduceTransparency}
       rootStyles={rootStyles}

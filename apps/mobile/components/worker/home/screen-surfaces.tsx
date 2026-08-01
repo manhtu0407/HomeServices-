@@ -2,33 +2,32 @@ import { ScrollView, Text as RNText, View, type StyleProp, type TextProps, type 
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
-import { glass } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { getWorkerV5Screen } from '../dock/screens'
 import { WorkerV5ScreenDefinition } from '../dock/types'
-import { WorkerV5HomeQuickActionsAura } from '../ui/aura-surfaces'
-import { textByLanguage } from '../ui/format'
-import { workerV5HomeDisplayName } from '../ui/labels'
+import { WorkerV5HomeQuickActionsAura , WorkerV5HomeAuraBackground, WorkerV5HomeHeroSourceAura } from '../ui/aura-surfaces'
+import { textByLanguage , formatVnd } from '../ui/format'
+import { workerV5HomeDisplayName , formatWorkerDistrict } from '../ui/labels'
 import { WorkerV5SectionHeader } from '../ui/primitives-surfaces'
 import { workerV5DisplayCode } from '../ui/screen-labels'
 import { workerV5HomeQuickIconAssets } from '../ui/worker-v5-icon-assets'
 import { styles } from '../worker-v5-flow-styles'
-import { WorkerV5HomeQuickActionGrid } from './action-surfaces'
-import { localizedStatusLabel } from '@/lib/app-language'
+import { WorkerV5HomeQuickActionGrid , WorkerV5KaelBriefCard, WorkerV5QuickActionGrid } from './action-surfaces'
+import { localizedStatusLabel , localizedServiceLabel } from '@/lib/app-language'
 import { isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
-import { formatVnd } from '../ui/format'
-import { formatWorkerDistrict } from '../ui/labels'
-import { WorkerV5KaelBriefCard, WorkerV5QuickActionGrid } from './action-surfaces'
+
+
+
 import { WorkerV5AvailabilityCard } from './availability-surfaces'
 import { type LocalDeal } from '@nestscout/shared'
-import { localizedServiceLabel } from '@/lib/app-language'
+
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { InfoListCard, MetricTile, WorkerV5ScreenInfoRow } from '../ui/screen-atoms-surfaces'
 import { workerV5Icons } from '../ui/screen-icons'
-import { Circle, Defs, LinearGradient } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient } from 'react-native-svg'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
-import Svg from 'react-native-svg'
-import { WorkerV5HomeAuraBackground, WorkerV5HomeHeroSourceAura } from '../ui/aura-surfaces'
+
+
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {

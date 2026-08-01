@@ -45,6 +45,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 tmp-*.log
+.preview-*.log
 
 # local agent/workbench artifacts
 /.codex/

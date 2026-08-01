@@ -54,6 +54,8 @@ function pendingDraftCreateFingerprint(input: {
   return JSON.stringify({
     address_district: draft.districtLabel ?? null,
     address_label: draft.addressLabel ?? null,
+    intake_description: draft.description ?? null,
+    intake_source: 'booking',
     language,
     local_media: (draft.photoDrafts ?? []).map((item) => ({
       duration_millis: item.durationMillis ?? null,
@@ -129,25 +131,35 @@ export function useCustomerKaelSessionHydration({
     resolveHydration,
   } = conversation
   const pendingDraftReadKey = `${pendingDraftOwnerId ?? ''}:${routeMode}:${routeJobId ?? ''}:${routeSessionId ?? ''}`
+  const hydratedPendingDraftKeyRef = useRef<string | null>(
+    pendingDraft ? pendingDraftReadKey : null,
+  )
 
   useEffect(() => {
-    if (!pendingDraftOwnerId || pendingDraft) return
+    if (
+      !pendingDraftOwnerId ||
+      pendingDraft ||
+      routeJobId ||
+      routeSessionId ||
+      hydratedPendingDraftKeyRef.current === pendingDraftReadKey
+    ) return
     let cancelled = false
     readPendingKaelChatDraft(pendingDraftOwnerId).then((draft) => {
       if (cancelled || !draft) return
+      hydratedPendingDraftKeyRef.current = pendingDraftReadKey
       selectedServiceRef.current = draft.serviceType
       hydratePendingDraft(draft, Boolean(draft.serviceType && sessionAccessToken))
     }).catch(() => undefined)
     return () => {
       cancelled = true
     }
-  }, [hydratePendingDraft, pendingDraft, pendingDraftOwnerId, pendingDraftReadKey, selectedServiceRef, sessionAccessToken])
+  }, [hydratePendingDraft, pendingDraft, pendingDraftOwnerId, pendingDraftReadKey, routeJobId, routeSessionId, selectedServiceRef, sessionAccessToken])
 
   useEffect(() => {
-    if (routeSessionId) {
+    if (routeSessionId && sessionAccessToken) {
       const requestToken = kaelRequestGuard.begin('conversation')
       beginHydration()
-      kaelChatService.get(routeSessionId)
+      kaelChatService.get(routeSessionId, sessionAccessToken)
         .then((result) => {
           if (!kaelRequestGuard.isCurrent(requestToken)) return
           if (result.success) {
@@ -167,7 +179,8 @@ export function useCustomerKaelSessionHydration({
     }
 
     const pendingServiceType = pendingDraft?.serviceType
-    if (pendingServiceType && sessionAccessToken) {
+    if (pendingServiceType && sessionAccessToken && !routeJobId && !routeSessionId) {
+      hydratedPendingDraftKeyRef.current = pendingDraftReadKey
       const requestToken = kaelRequestGuard.begin('conversation')
       const pendingDraftDescription = pendingDraftLocalizedMessage ?? pendingDraft.message
       const requestFingerprint = pendingDraftCreateFingerprint({
@@ -220,6 +233,8 @@ export function useCustomerKaelSessionHydration({
           address_label: pendingDraft.addressLabel,
           client_request_id: clientRequestId,
           evidence_items: uploaded.evidenceItems,
+          intake_description: pendingDraft.description,
+          intake_source: 'booking',
           language,
           message: pendingDraftDescription,
           problem_chips: pendingDraft.problemChips ?? [],
@@ -263,7 +278,12 @@ export function useCustomerKaelSessionHydration({
           if (result.success) {
             selectedServiceRef.current = result.data.session.service_type
             resolveHydration(result.data, true)
-            if (pendingDraftOwnerId) void clearPendingKaelChatDraft(pendingDraftOwnerId)
+            if (
+              pendingDraftOwnerId &&
+              result.data.session.intake_confirmation?.status !== 'pending'
+            ) {
+              void clearPendingKaelChatDraft(pendingDraftOwnerId)
+            }
             // The authoritative Agentic response is ready now. Catalog synchronization is
             // menu metadata and must not hold the first usable Case Work session hostage.
             void onCaseSessionReady(result.data.session.id).catch(() => undefined)
@@ -280,5 +300,5 @@ export function useCustomerKaelSessionHydration({
       }
     }
     return undefined
-  }, [beginHydration, kaelRequestGuard, language, onCaseSessionReady, pendingDraft, pendingDraftLocalizedMessage, pendingDraftOwnerId, rejectHydration, resolveHydration, routeSessionId, selectedServiceRef, sessionAccessToken])
+  }, [beginHydration, kaelRequestGuard, language, onCaseSessionReady, pendingDraft, pendingDraftLocalizedMessage, pendingDraftOwnerId, pendingDraftReadKey, rejectHydration, resolveHydration, routeJobId, routeSessionId, selectedServiceRef, sessionAccessToken])
 }

@@ -69,6 +69,51 @@ describe('mobile-api Kael P4 output pipeline', () => {
     expect(output.artifact_proposal.missing_fields).toEqual([])
   })
 
+  it('keeps a structured receipt of the evidence and market checks behind the estimate', () => {
+    const output = buildEstimateCardOutput({
+      analysisEvidence: {
+        photoCount: 2,
+        skipped: false,
+        videoFrameCount: 3,
+        voiceTranscriptCount: 1,
+      },
+      estimate: {
+        service_type: 'plumbing',
+        problem_category: 'pipe_leak',
+        problem_summary: 'Rò nước dưới bồn rửa bếp.',
+        complexity: 'medium',
+        price_min: 350_000,
+        price_max: 650_000,
+        confidence: 0.74,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+      },
+      marketEvidence: {
+        acceptedSourceCount: 4,
+        highTrustSourceCount: 3,
+        quorumMet: true,
+      },
+      marketSignals: 'Tổng hợp 4 nguồn đã kiểm chứng.',
+      priceSource: 'baseline_with_market',
+      baselineUsed: 'plumbing:pipe_leak:medium',
+    })
+
+    expect(output.card.analysis_receipt).toEqual({
+      schema_version: 'analysis_receipt.v1',
+      evidence: {
+        photo_count: 2,
+        video_frame_count: 3,
+        voice_transcript_count: 1,
+        skipped: false,
+      },
+      market: {
+        accepted_source_count: 4,
+        high_trust_source_count: 3,
+        quorum_met: true,
+      },
+    })
+  })
+
   it('marks missing inspection information without allowing AI to transition workflow', () => {
     const output = buildEstimateCardOutput({
       estimate: {

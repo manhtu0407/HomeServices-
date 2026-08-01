@@ -168,7 +168,10 @@ export function CustomerServiceHistorySurface({
   }, [])
 
   useEffect(() => {
-    void load()
+    const initialLoad = setTimeout(() => {
+      void load()
+    }, 0)
+    return () => clearTimeout(initialLoad)
   }, [load])
 
   const visibleItems = useMemo(() => {

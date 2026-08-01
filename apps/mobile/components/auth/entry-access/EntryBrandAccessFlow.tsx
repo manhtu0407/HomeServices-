@@ -84,11 +84,7 @@ export function EntryBrandAccessFlow({
   const localizedError = error
     ? localizeIdentifierAvailabilityError(error, language) ?? localizeEntryAuthError(error, language, 'connectionFailed')
     : null
-  const roleGateGreetingSelectionRef = useRef<{ now: Date; random: number } | null>(null)
-  if (!roleGateGreetingSelectionRef.current) {
-    roleGateGreetingSelectionRef.current = { now: new Date(), random: Math.random() }
-  }
-  const roleGateGreetingSelection = roleGateGreetingSelectionRef.current
+  const [roleGateGreetingSelection] = useState(() => ({ now: new Date(), random: Math.random() }))
   const roleGateGreeting = useMemo(
     () => selectRoleGateGreeting(roleGateGreetingSelection.now, () => roleGateGreetingSelection.random, language),
     [language, roleGateGreetingSelection],

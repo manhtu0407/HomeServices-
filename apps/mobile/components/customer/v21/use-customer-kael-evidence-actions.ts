@@ -4,6 +4,7 @@ import { Alert } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 
 import type { AppLanguage } from '@/lib/app-language'
+import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
 import {
   cleanupKaelChatMediaRefs,
   localizeMediaUploadFailure,
@@ -77,6 +78,7 @@ export function useCustomerKaelEvidenceActions({
     setError,
     setLoading,
     setRouteDraftEvidencePending,
+    setStreamingReply,
     setTurns,
     turns,
   } = conversation
@@ -97,6 +99,7 @@ export function useCustomerKaelEvidenceActions({
     submittingCaseEvidence,
   } = caseUi
   const {
+    settleEvidenceProcessLines,
     startEvidenceProcessLines,
     startProcessLines,
     stopProcessLines,
@@ -180,6 +183,7 @@ export function useCustomerKaelEvidenceActions({
     setSubmittingAgenticEvidence(true)
     setLoading(true)
     setError(null)
+    setStreamingReply(null)
     let photoUrls: string[] = []
     let uploadedMediaRefs: string[] = []
     let mediaAccepted = false
@@ -220,7 +224,20 @@ export function useCustomerKaelEvidenceActions({
         problem_chips: pendingDraft?.problemChips ?? [],
         skip_reason: decision === 'skipped' ? skipReason : undefined,
       }
+      const appendStreamingReply = (event: KaelStreamResponseDeltaEvent) => {
+        if (!kaelRequestGuard.isCurrent(requestToken)) return
+        setStreamingReply((current) => {
+          const text = current?.turnId === event.turnId
+            ? `${current.text}${event.delta}`
+            : event.delta
+          return {
+            text: text.slice(0, 12_000),
+            turnId: event.turnId,
+          }
+        })
+      }
       let result = await kaelChatStreamService.submitEvidence(sessionId, evidenceInput, {
+        onResponseDelta: appendStreamingReply,
         onStage: ({ progress }) => {
           if (kaelRequestGuard.isCurrent(requestToken)) updateEvidenceProcessProgress(progress)
         },
@@ -231,12 +248,15 @@ export function useCustomerKaelEvidenceActions({
       if (result.success) {
         mediaAccepted = true
         if (!kaelRequestGuard.isCurrent(requestToken)) return
-        stopProcessLines()
+        await settleEvidenceProcessLines()
+        if (!kaelRequestGuard.isCurrent(requestToken)) return
         if (pendingDraftOwnerId) await clearPendingKaelChatDraft(pendingDraftOwnerId)
         if (!kaelRequestGuard.isCurrent(requestToken)) return
         setRouteDraftEvidencePending(false)
         setChat(result.data)
         setTurns(result.data.turns)
+        setStreamingReply(null)
+        stopProcessLines()
         setComposerMediaDrafts([])
         setVoiceTranscript('')
         setAgenticEvidenceRejectOpen(false)
@@ -257,12 +277,15 @@ export function useCustomerKaelEvidenceActions({
         if (legacy.success) {
           mediaAccepted = true
           if (!kaelRequestGuard.isCurrent(requestToken)) return
-          stopProcessLines()
+          await settleEvidenceProcessLines()
+          if (!kaelRequestGuard.isCurrent(requestToken)) return
           if (pendingDraftOwnerId) await clearPendingKaelChatDraft(pendingDraftOwnerId)
           if (!kaelRequestGuard.isCurrent(requestToken)) return
           setRouteDraftEvidencePending(false)
           setChat(legacy.data)
           setTurns(legacy.data.turns)
+          setStreamingReply(null)
+          stopProcessLines()
           setComposerMediaDrafts([])
           setVoiceTranscript('')
           setAgenticEvidenceRejectOpen(false)
@@ -277,6 +300,7 @@ export function useCustomerKaelEvidenceActions({
       }
     } catch {
       if (kaelRequestGuard.isCurrent(requestToken)) {
+        setStreamingReply(null)
         stopProcessLines()
         setError(language === 'vi'
           ? 'Chưa thể gửi bằng chứng lúc này. Vui lòng thử lại.'

@@ -11,7 +11,10 @@ import { fetchBufferedWithTimeout } from "../../_shared/network.ts";
 const SUPABASE_TIMEOUT_MS = JOB_MEDIA_STORAGE_TIMEOUT_MS;
 const SUPABASE_MAX_RESPONSE_BYTES = MAX_JOB_MEDIA_BYTES;
 
-export function createEdgeAuthenticator(env: EdgeEnv) {
+export function createEdgeAuthenticator(
+  env: EdgeEnv,
+  createSupabaseClient: typeof createClient = createClient,
+) {
   return async function authenticateRequest(
     request: Request,
     allowedRoles?: UserRole[],
@@ -26,7 +29,7 @@ export function createEdgeAuthenticator(env: EdgeEnv) {
       return { success: false, error: "Vui lòng đăng nhập", status: 401 };
     }
 
-    const supabase = createClient(env.supabaseUrl, env.supabaseSecretKey, {
+    const supabase = createSupabaseClient(env.supabaseUrl, env.supabaseSecretKey, {
       global: { fetch: timeoutFetch },
       auth: {
         autoRefreshToken: false,
@@ -41,11 +44,25 @@ export function createEdgeAuthenticator(env: EdgeEnv) {
       return { success: false, error: "Phiên đăng nhập hết hạn", status: 401 };
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const currentProfile = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, account_state")
       .eq("id", userData.user.id)
       .single();
+    let profile = currentProfile.data as AuthProfile | null;
+    let profileError: unknown = currentProfile.error;
+    if (isMissingAccountStateColumn(profileError)) {
+      // Keep the pre-deletion schema usable while its additive migration rolls out.
+      const legacyProfile = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userData.user.id)
+        .single();
+      profile = legacyProfile.data
+        ? { role: legacyProfile.data.role, account_state: "active" }
+        : null;
+      profileError = legacyProfile.error;
+    }
 
     if (profileError || !profile) {
       return { success: false, error: "Phiên đăng nhập hết hạn", status: 401 };
@@ -55,6 +72,21 @@ export function createEdgeAuthenticator(env: EdgeEnv) {
       return {
         success: false,
         error: "Vai trò tài khoản không hợp lệ",
+        status: 403,
+      };
+    }
+
+    const accountDeletionRetry = request.method === "POST" &&
+      new URL(request.url).pathname.endsWith("/me/account-deletion");
+    if (
+      profile.account_state !== "active" &&
+      !(profile.account_state === "deletion_processing" && accountDeletionRetry)
+    ) {
+      return {
+        success: false,
+        error: profile.account_state === "deleted"
+          ? "Tài khoản này đã được xóa"
+          : "Tài khoản đang được xử lý xóa",
         status: 403,
       };
     }
@@ -72,11 +104,28 @@ export function createEdgeAuthenticator(env: EdgeEnv) {
 
     return {
       success: true,
-      user: { id: userData.user.id, email: userData.user.email },
+      user: {
+        id: userData.user.id,
+        email: userData.user.email,
+        lastSignInAt: userData.user.last_sign_in_at,
+      },
       role: profile.role,
       supabase,
     };
   };
+}
+
+type AuthProfile = {
+  role: unknown;
+  account_state: unknown;
+};
+
+function isMissingAccountStateColumn(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === "42703" &&
+    typeof candidate.message === "string" &&
+    candidate.message.includes("account_state");
 }
 
 function isUserRole(role: unknown): role is UserRole {

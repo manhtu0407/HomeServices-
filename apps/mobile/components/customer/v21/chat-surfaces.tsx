@@ -1,18 +1,32 @@
+import { useEffect } from 'react'
 import { Text, View } from 'react-native'
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 import Svg, { Circle, Defs, Path, RadialGradient, Rect } from 'react-native-svg'
 
 import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
+import { motionTokens } from '@/components/ui/motion-tokens'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
 
 export function ChatBubble({
   speaker,
+  reduceMotion = false,
+  streaming = false,
   testID,
   text,
   tokens,
 }: {
   speaker: 'customer' | 'worker' | 'kael'
+  reduceMotion?: boolean
+  streaming?: boolean
   testID?: string
   text: string
   tokens: CustomerThemeTokens
@@ -20,9 +34,49 @@ export function ChatBubble({
   const isCustomer = speaker === 'customer'
   const isWorker = speaker === 'worker'
   return (
-    <View style={[styles.chatBubble, isCustomer ? styles.chatBubbleCustomer : styles.chatBubbleKael, { backgroundColor: isCustomer ? tokens.primary : isWorker ? tokens.ghost : tokens.raised, borderColor: tokens.border }]} testID={testID}>
-      <Text style={[styles.chatBubbleText, { color: isCustomer ? tokens.primaryText : tokens.text }]}>{text}</Text>
+    <View
+      accessibilityLabel={streaming ? text : undefined}
+      accessibilityLiveRegion={streaming ? 'polite' : undefined}
+      accessibilityState={streaming ? { busy: true } : undefined}
+      accessible={streaming || undefined}
+      style={[styles.chatBubble, isCustomer ? styles.chatBubbleCustomer : styles.chatBubbleKael, { backgroundColor: isCustomer ? tokens.primary : isWorker ? tokens.ghost : tokens.raised, borderColor: tokens.border }]}
+      testID={testID}
+    >
+      <Text style={[styles.chatBubbleText, { color: isCustomer ? tokens.primaryText : tokens.text }]}>
+        {text}
+        {streaming ? <ChatStreamingCaret reduceMotion={reduceMotion} /> : null}
+      </Text>
     </View>
+  )
+}
+
+function ChatStreamingCaret({ reduceMotion }: { reduceMotion: boolean }) {
+  const opacity = useSharedValue(1)
+
+  useEffect(() => {
+    cancelAnimation(opacity)
+    if (reduceMotion) {
+      opacity.value = 1
+      return
+    }
+    const halfCycleMs = motionTokens.loading.durationMs / 2
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.28, { duration: halfCycleMs }),
+        withTiming(1, { duration: halfCycleMs }),
+      ),
+      -1,
+      false,
+    )
+    return () => cancelAnimation(opacity)
+  }, [opacity, reduceMotion])
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
+
+  return (
+    <Animated.Text accessible={false} style={animatedStyle}>
+      {' \u258d'}
+    </Animated.Text>
   )
 }
 

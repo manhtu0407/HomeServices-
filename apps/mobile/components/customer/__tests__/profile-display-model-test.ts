@@ -1,4 +1,10 @@
-import { accountTotalDays, customerAccountJourneyDisplay } from '../v21/profile-display-model'
+import {
+  accountTotalDays,
+  customerAccountJourneyDisplay,
+  profileSettingsSectionParam,
+  profileUtilityParam,
+  profileUtilityTitle,
+} from '../v21/profile-display-model'
 
 describe('customer profile account journey display', () => {
   it('counts inclusive account days on the Ho Chi Minh City calendar', () => {
@@ -28,5 +34,43 @@ describe('customer profile account journey display', () => {
       language: 'vi',
       now: new Date('2026-07-02T00:00:00.000Z'),
     }).activeDaysValue).toBe('Chờ dữ liệu')
+  })
+
+  it('labels the customer banking utility as refunds, not payment', () => {
+    expect(profileUtilityTitle('payment', 'vi')).toBe('Hoàn tiền')
+    expect(profileUtilityTitle('payment', 'en')).toBe('Refunds')
+  })
+
+  it('recognizes and localizes the terms and policies utility', () => {
+    expect(profileUtilityParam('legal')).toBe('legal')
+    expect(profileUtilityTitle('legal', 'vi')).toBe('Điều khoản & Chính sách')
+    expect(profileUtilityTitle('legal', 'en')).toBe('Terms & Policies')
+  })
+
+  it('recognizes the new foundational account utilities without aliasing them to Settings', () => {
+    expect(profileUtilityParam('appearance')).toBe('appearance')
+    expect(profileUtilityParam('language')).toBe('language')
+    expect(profileUtilityParam('memory')).toBe('memory')
+    expect(profileUtilityParam('notifications')).toBe('notifications')
+    expect(profileUtilityParam('password')).toBe('password')
+    expect(profileUtilityParam('personal-details')).toBe('personal-details')
+    expect(profileUtilityParam('support')).toBe('support')
+    expect(profileUtilityParam('delete-account')).toBe('delete-account')
+    expect(profileUtilityTitle('appearance', 'vi')).toBe('Giao diện')
+    expect(profileUtilityTitle('language', 'vi')).toBe('Ngôn ngữ')
+    expect(profileUtilityTitle('memory', 'vi')).toBe('Bộ nhớ Kael')
+    expect(profileUtilityTitle('notifications', 'vi')).toBe('Thông báo')
+    expect(profileUtilityTitle('password', 'vi')).toBe('Bảo mật đăng nhập')
+    expect(profileUtilityTitle('personal-details', 'vi')).toBe('Thông tin cá nhân')
+    expect(profileUtilityTitle('support', 'vi')).toBe('Trợ giúp & hỗ trợ')
+    expect(profileUtilityTitle('delete-account', 'vi')).toBe('Xóa tài khoản')
+  })
+
+  it('accepts only the three focused account-setting sections', () => {
+    expect(profileSettingsSectionParam('account')).toBe('account')
+    expect(profileSettingsSectionParam('password')).toBe('password')
+    expect(profileSettingsSectionParam('memory')).toBe('memory')
+    expect(profileSettingsSectionParam('notifications')).toBeNull()
+    expect(profileSettingsSectionParam(undefined)).toBeNull()
   })
 })

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Constants from 'expo-constants'
 import {
   StyleSheet,
   Text,
@@ -27,8 +28,12 @@ import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { bookingServiceIdFromRoute, performanceProfileForBooking, productionServiceForBooking } from '@/lib/kael-performance-intake'
 import type { CustomerProfileInsightsResponse, CustomerServiceHistoryItem } from '@/lib/api-types'
-import { setPendingKaelChatDraft } from '../kael-chat/pending-intake'
+import {
+  readPendingKaelChatDraft,
+  setPendingKaelChatDraft,
+} from '../kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
+import { setCustomerThemeMode } from '../customer-theme'
 import {
   CaseWideMintAura,
   SourceCardSkin,
@@ -52,8 +57,10 @@ import {
   normalizeBookingCustomTimeInput,
 } from './booking-intake-display-model'
 import { useBookingScheduleRuntimeNow } from './use-booking-schedule-runtime-now'
+import { useBookingFormState } from './use-booking-form-state'
 import { useBookingAddressLookup, type BookingAddressSuggestion } from './use-booking-address-lookup'
 import { useCustomerMessageMemoryPreference } from './use-customer-message-memory-preference'
+import { useCustomerAvatarPicker } from './use-customer-avatar-picker'
 import { KaelChatSurface } from './kael-chat-surface'
 import { customerKaelStateScopeKey } from './customer-kael-state-scope'
 import {
@@ -79,10 +86,24 @@ import { ActiveCaseCardPanel } from './history-active-surfaces'
 import { CustomerServiceHistorySurface } from './service-history-surface'
 import { CaseFactGrid } from './history-surfaces'
 import { CustomerProfileOverviewView, CustomerProfileSubscreenView } from './profile-stateful-surfaces'
+import { buildCustomerProfileSettingsGroups } from './profile-settings-groups'
 import { ProfileCompactMintAura } from './profile-metrics-surfaces'
+import {
+  ProfileKaelMemoryView,
+  ProfileLanguageView,
+  ProfileLoginSecurityView,
+  ProfilePersonalDetailsView,
+} from './profile-account-utility-surfaces'
+import {
+  ProfileAppearanceView,
+  ProfileDeleteAccountView,
+  ProfileNotificationsView,
+  ProfileSupportView,
+} from './profile-foundation-utility-surfaces'
+import { ProfileLegalView } from './profile-legal-surfaces'
 import { ProfilePaymentUtilitySection } from './profile-payment-stateful-surfaces'
 import { ProfileMoneyPanel, ProfileRankingPanel } from './profile-utility-surfaces'
-import { ProfileUtilityAddressView, ProfileUtilitySettingsView } from './profile-utility-stateful-surfaces'
+import { ProfileUtilityAddressView } from './profile-utility-stateful-surfaces'
 import {
   customerAccountJourneyDisplay,
   fairPriceStatusLabel,
@@ -92,8 +113,8 @@ import {
   profileName,
   profilePanelForScreen,
   profilePanelParam,
-  profileRankStatus,
   profileScreenParam,
+  profileSettingsSectionParam,
   profileStageSubtitle,
   profileUtilityParam,
   profileUtilitySubtitle,
@@ -250,7 +271,7 @@ export function CustomerHomeSurface() {
   const router = useRouter()
   const workflow = useFrontendWorkflow()
   const { session } = useAuth()
-  const { reduceMotion, reduceTransparency, tokens } = useV21Theme()
+  const { reduceTransparency, tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
   const deal = workflow.state.deal
   const isDraftDeal = deal?.status === 'draft'
@@ -326,7 +347,7 @@ export function CustomerBookingEntrySurface() {
 function CustomerBookingEntrySurfaceRoute() {
   const language = useAppLanguage()
   const router = useRouter()
-  const params = useLocalSearchParams<{ date?: string | string[]; screen?: string | string[]; service?: string | string[]; serviceType?: string | string[]; time?: string | string[] }>()
+  const params = useLocalSearchParams<{ date?: string | string[]; editKaelIntake?: string | string[]; screen?: string | string[]; service?: string | string[]; serviceType?: string | string[]; time?: string | string[] }>()
   const { guestMode, session } = useAuth()
   const { reduceTransparency, tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
@@ -335,27 +356,49 @@ function CustomerBookingEntrySurfaceRoute() {
   const directService = bookingServiceIdFromRoute(firstParam(params.service) ?? firstParam(params.serviceType))
   const directScheduleDate = bookingScheduleDateParam(firstParam(params.date))
   const directScheduleTime = bookingScheduleTimeParam(firstParam(params.time))
+  const editingKaelIntake = firstParam(params.editKaelIntake) === '1'
   const legacyMediaScreenRequested = rawServicesScreen === '2.3-media'
   const servicesScreenId = legacyMediaScreenRequested ? '2.2-search' : directServicesScreen ?? '2.2-search'
   const isMediaScreen = false
-  const [selectedService, setSelectedService] = useState<CustomerServiceId | null>(directService)
-  const [selectedProblems, setSelectedProblems] = useState<string[]>([])
-  const [address, setAddress] = useState('')
+  const bookingForm = useBookingFormState({
+    selectedService: directService,
+    selectedScheduleDate: directScheduleDate,
+    selectedScheduleTime: directScheduleTime,
+  })
+  const {
+    selectedService, selectedProblems, address, description, selectedScheduleDate,
+    customScheduleDateInput, selectedScheduleTime, customScheduleTimeInput, error,
+  } = bookingForm.state
+  const {
+    setSelectedService, setSelectedProblems, setAddress, setDescription,
+    setSelectedScheduleDate, setCustomScheduleDateInput, setSelectedScheduleTime,
+    setCustomScheduleTimeInput, setError, applyPendingDraft,
+    clear: clearBookingForm,
+  } = bookingForm
   const addressDistrictLabel = useRef<string | null>(null)
   const submitDraftInFlightRef = useRef(false)
   const [addressLookupOpen, setAddressLookupOpen] = useState(false)
   const addressLookup = useBookingAddressLookup(address, addressLookupOpen)
-  const [description, setDescription] = useState('')
-  const [selectedScheduleDate, setSelectedScheduleDate] = useState<string | null>(directScheduleDate)
-  const [customScheduleDateInput, setCustomScheduleDateInput] = useState('')
-  const [selectedScheduleTime, setSelectedScheduleTime] = useState<string | null>(directScheduleTime)
-  const [customScheduleTimeInput, setCustomScheduleTimeInput] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const scheduleRuntimeNow = useBookingScheduleRuntimeNow()
   useEffect(() => {
     if (!legacyMediaScreenRequested) return
     router.replace(customerKaelWorkRoute as never)
   }, [legacyMediaScreenRequested, router])
+  useEffect(() => {
+    if (!editingKaelIntake || !session?.user.id) return
+    let cancelled = false
+    readPendingKaelChatDraft(session.user.id).then((draft) => {
+      if (cancelled || !draft?.serviceType) return
+      applyPendingDraft(
+        draft,
+        customerBookingServiceIdForHistory[draft.serviceType],
+      )
+      addressDistrictLabel.current = draft.districtLabel ?? null
+    }).catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [applyPendingDraft, editingKaelIntake, session?.user.id])
   const scheduleDateOptions = useMemo(() => buildBookingScheduleDateOptions(language, new Date(scheduleRuntimeNow)), [language, scheduleRuntimeNow])
   const runtimeDate = new Date(scheduleRuntimeNow)
   const availableSelectedScheduleDate = selectedScheduleDate
@@ -375,11 +418,6 @@ function CustomerBookingEntrySurfaceRoute() {
     : null
   const addressUsesMultiline = address.trim().length > 34
 
-  useEffect(() => {
-    if (!selectedScheduleDate) return
-    if (bookingScheduleDateIsBookable(selectedScheduleDate, new Date(scheduleRuntimeNow))) return
-    setSelectedScheduleDate(null)
-  }, [scheduleRuntimeNow, selectedScheduleDate])
   if (guestMode || !session) {
     return (
       <V21Screen screenId={servicesScreenId} testID="customer-v21-services-guest">
@@ -415,17 +453,9 @@ function CustomerBookingEntrySurfaceRoute() {
     setAddressLookupOpen(false)
   }
   const resetBookingBoard = () => {
-    setSelectedService(null)
-    setSelectedProblems([])
-    setAddress('')
+    clearBookingForm()
     addressDistrictLabel.current = null
     setAddressLookupOpen(false)
-    setDescription('')
-    setSelectedScheduleDate(null)
-    setCustomScheduleDateInput('')
-    setSelectedScheduleTime(null)
-    setCustomScheduleTimeInput('')
-    setError(null)
   }
 
   const updateCustomScheduleDate = (value: string) => {
@@ -583,7 +613,13 @@ function CustomerBookingEntrySurfaceRoute() {
 export function CustomerHistorySurface() {
   const language = useAppLanguage()
   const router = useRouter()
-  const params = useLocalSearchParams<{ job_id?: string | string[]; scope_change?: string | string[]; screen?: string | string[]; tab?: string | string[] }>()
+  const params = useLocalSearchParams<{
+    job_id?: string | string[]
+    scope_change?: string | string[]
+    screen?: string | string[]
+    source?: string | string[]
+    tab?: string | string[]
+  }>()
   const workflow = useFrontendWorkflow()
   const { tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
@@ -592,6 +628,12 @@ export function CustomerHistorySurface() {
   const routeJobId = cleanRouteJobId(firstParam(params.job_id))
   const routeScopeChangeParam = firstParam(params.scope_change)
   const legacyActivityScreen = firstParam(params.screen)
+  const historySource = firstParam(params.source)
+  const historyBackPath = historySource === 'profile-support'
+    ? '/(customer)/profile?utility=support'
+    : historySource === 'profile-notifications'
+      ? '/(customer)/profile?utility=notifications'
+      : '/(customer)/home'
   const shouldOpenCaseWork = Boolean(!routeScopeChangeParam && (routeJobId || legacyActivityScreen))
   const scopeChange = deal?.scopeChange ?? null
   const scopeChangeVisible = Boolean(scopeChange && canCustomerDecideScopeChange(scopeChange))
@@ -638,7 +680,7 @@ export function CustomerHistorySurface() {
   return (
     <>
       <CustomerServiceHistorySurface
-        onBack={() => router.replace('/(customer)/home' as never)}
+        onBack={() => router.replace(historyBackPath as never)}
         onOpenDetail={openHistoryDetail}
         onRebook={rebookService}
       />
@@ -661,16 +703,34 @@ export function CustomerHistorySurface() {
 export function CustomerProfileSurface() {
   const language = useAppLanguage()
   const router = useRouter()
-  const params = useLocalSearchParams<{ panel?: string | string[]; screen?: string | string[]; utility?: string | string[] }>()
+  const params = useLocalSearchParams<{
+    panel?: string | string[]
+    screen?: string | string[]
+    section?: string | string[]
+    utility?: string | string[]
+  }>()
   const { session, signOut } = useAuth()
   const workflow = useFrontendWorkflow()
+  const { avatarUploadBusy, openCustomerAvatarPicker } = useCustomerAvatarPicker({
+    language,
+    uploadAvatar: workflow.actions.customerUploadAvatar,
+  })
   const { tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
   const insights = workflow.customerProfileInsights ?? null
   const directProfileScreen = profileScreenParam(firstParam(params.screen))
-  const directProfileUtility = profileUtilityParam(firstParam(params.utility))
+  const directSettingsSection = profileSettingsSectionParam(firstParam(params.section))
+  const requestedProfileUtility = profileUtilityParam(firstParam(params.utility))
+  const directProfileUtility = requestedProfileUtility === 'settings'
+    ? directSettingsSection === 'password'
+      ? 'password'
+      : directSettingsSection === 'memory'
+        ? 'memory'
+        : 'personal-details'
+    : requestedProfileUtility
   const requestedPanel = profilePanelForScreen(directProfileScreen) ?? profilePanelParam(firstParam(params.panel))
-  const [panel, setPanel] = useState<CustomerProfilePanel>(() => requestedPanel ?? 'overview')
+  const [selectedPanel, setSelectedPanel] = useState<CustomerProfilePanel>('overview')
+  const panel = requestedPanel ?? selectedPanel
   const name = profileName(session?.user.user_metadata, language)
   const accountJourney = customerAccountJourneyDisplay({
     activeServiceDays: insights?.active_service_days,
@@ -682,30 +742,60 @@ export function CustomerProfileSurface() {
   const bankOptionLabel = language === 'vi'
     ? `${formatNumber(bankOptionCount, language)} ngân hàng`
     : `${formatNumber(bankOptionCount, language)} banks`
+  const messageMemoryAllowed = agenticBooleanFromMemory(workflow.customerKaelMemory, 'message_interaction_memory')
   const usageRank = typeof insights?.usage_rank_level === 'number' ? Math.max(0, Math.min(5, insights.usage_rank_level)) : null
   const usageRankPoints = typeof insights?.usage_rank_points === 'number' ? Math.max(0, insights.usage_rank_points) : null
   const usageRankCyclePoints = usageRankPoints !== null && usageRankPoints > 0 ? (usageRankPoints % 1000 || 1000) : 0
   const hasUsageRank = usageRank !== null && usageRank > 0
   const usageRankProgress = hasUsageRank ? Math.max(0, Math.min(100, usageRankCyclePoints / 10)) : 0
-  const usageRankStatus = profileRankStatus(usageRank ?? 0, language, copy.dataPending)
   const usageRankPointsLabel = usageRankPoints === null
     ? copy.dataPending
     : language === 'vi'
       ? `${formatNumber(usageRankCyclePoints, language)} / 1.000 điểm`
       : `${formatNumber(usageRankCyclePoints, language)} / 1,000 points`
-
-  useEffect(() => {
-    if (requestedPanel) setPanel(requestedPanel)
-  }, [requestedPanel])
+  const settingsGroups = buildCustomerProfileSettingsGroups({
+    actions: {
+      deleteAccount: () => router.replace('/(customer)/profile?utility=delete-account' as never),
+      openAddress: () => router.replace('/(customer)/profile?utility=address' as never),
+      openAppearance: () => router.replace('/(customer)/profile?utility=appearance' as never),
+      openLanguage: () => router.replace('/(customer)/profile?utility=language' as never),
+      openLegal: () => router.replace('/(customer)/profile?utility=legal' as never),
+      openMemory: () => router.replace('/(customer)/profile?utility=memory' as never),
+      openNotifications: () => router.replace('/(customer)/profile?utility=notifications' as never),
+      openPassword: () => router.replace('/(customer)/profile?utility=password' as never),
+      openPersonalDetails: () => router.replace('/(customer)/profile?utility=personal-details' as never),
+      openRefunds: () => router.replace('/(customer)/profile?utility=payment' as never),
+      openSupport: () => router.replace('/(customer)/profile?utility=support' as never),
+      signOut: () => void signOut(),
+    },
+    addressStatus: insightNumber(
+      insights,
+      'saved_address_count',
+      copy.emptyProfileMetric,
+      language,
+      (value) => language === 'vi' ? `${value} địa chỉ` : `${value} addresses`,
+    ),
+    bankOptionLabel,
+    language,
+    memoryAllowed: messageMemoryAllowed,
+    notificationUnreadCount: workflow.notificationUnreadCount,
+    themeMode: tokens.mode,
+  })
 
   const openProfilePanel = (nextPanel: CustomerProfilePanel, screenId: CustomerV21ScreenId) => {
-    setPanel(nextPanel)
+    setSelectedPanel(nextPanel)
     router.replace(`/(customer)/profile?screen=${screenId}` as never)
   }
 
   if (directProfileUtility) {
+    const directProfileBackPath = '/(customer)/profile'
     return (
-      <V21Screen key={`profile-utility-${directProfileUtility}`} screenId="6.1-profile-overview" testID="customer-v21-profile">
+      <V21Screen
+        frameStyle={profileUtilityStyles.profileSubscreenFrame}
+        key={`profile-utility-${directProfileUtility}`}
+        screenId="6.1-profile-overview"
+        testID="customer-v21-profile"
+      >
         <CustomerProfileSubscreenView
           body={directProfileUtility === 'payment' ? (
             <ProfilePaymentUtilitySection
@@ -714,8 +804,49 @@ export function CustomerProfileSurface() {
               textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
               tokens={tokens}
             />
-          ) : <ProfileUtilitySection key={session?.user.id ?? 'guest'} insights={insights} kind={directProfileUtility} />}
-          onBack={() => router.replace('/(customer)/profile' as never)}
+          ) : directProfileUtility === 'legal' ? (
+            <ProfileLegalView language={language} tokens={tokens} />
+          ) : directProfileUtility === 'appearance' ? (
+            <ProfileAppearanceView
+              language={language}
+              mode={tokens.mode}
+              onSelectMode={(mode) => void setCustomerThemeMode(mode)}
+              tokens={tokens}
+            />
+          ) : directProfileUtility === 'notifications' ? (
+            <ProfileNotificationsView
+              language={language}
+              notifications={workflow.notifications}
+              onMarkRead={workflow.actions.markNotificationRead}
+              onOpenRelatedWork={(jobId) => router.replace(
+                `/(customer)/history?job_id=${encodeURIComponent(jobId)}&source=profile-notifications` as never,
+              )}
+              onRefresh={workflow.actions.refreshNotifications}
+              tokens={tokens}
+              unreadCount={workflow.notificationUnreadCount}
+            />
+          ) : directProfileUtility === 'support' ? (
+            <ProfileSupportView
+              language={language}
+              onOpenHistory={() => router.replace('/(customer)/history?source=profile-support' as never)}
+              onOpenKael={() => router.replace('/(customer)/kael-chat?mode=normal' as never)}
+              tokens={tokens}
+            />
+          ) : directProfileUtility === 'delete-account' ? (
+            <ProfileDeleteAccountView
+              accessToken={session?.access_token ?? null}
+              language={language}
+              onDeleted={() => signOut()}
+              textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
+              tokens={tokens}
+            />
+          ) : (
+            <ProfileUtilitySection
+              key={session?.user.id ?? 'guest'}
+              kind={directProfileUtility}
+            />
+          )}
+          onBack={() => router.replace(directProfileBackPath as never)}
           subtitle={directProfileUtility === 'address' ? '' : profileUtilitySubtitle(directProfileUtility, language)}
           title={profileUtilityTitle(directProfileUtility, language)}
           titleStyle={directProfileUtility === 'address' ? profileUtilityStyles.profileAddressUtilityTitle : undefined}
@@ -737,7 +868,7 @@ export function CustomerProfileSurface() {
             </>
           )}
           onBack={() => {
-            setPanel('overview')
+            setSelectedPanel('overview')
             router.replace('/(customer)/profile' as never)
           }}
           subtitle={profileStageSubtitle(profileScreenId, language)}
@@ -751,52 +882,34 @@ export function CustomerProfileSurface() {
     <V21Screen key={profileScreenId} screenId={profileScreenId} testID="customer-v21-profile">
       <CustomerProfileOverviewView
         accountJourney={accountJourney}
+        avatarAccessibilityHint={language === 'vi'
+          ? 'Mở lựa chọn chụp ảnh hoặc chọn từ thư viện.'
+          : 'Opens options to take a photo or choose one from your library.'}
+        avatarAccessibilityLabel={workflow.customerAvatarUrl
+          ? (language === 'vi' ? 'Đổi ảnh đại diện' : 'Change profile photo')
+          : (language === 'vi' ? 'Thêm ảnh đại diện' : 'Add profile photo')}
+        avatarUploadBusy={avatarUploadBusy}
+        avatarUrl={workflow.customerAvatarUrl}
         initials={initialsForName(name)}
         name={name}
+        onPickAvatar={openCustomerAvatarPicker}
         onOpenRanking={() => openProfilePanel('ranking', '6.2-usage-ranking')}
-        onSignOut={() => void signOut()}
         rankingAccessibilityLabel={language === 'vi' ? 'Xem xếp hạng sử dụng' : 'View usage ranking'}
         rankingBody={language === 'vi' ? 'Kael đánh giá từ dữ liệu sử dụng thật.' : 'Kael evaluates real usage data.'}
         rankingLabel={language === 'vi' ? 'Xếp hạng sử dụng' : 'Usage ranking'}
         rankingMetaLabel={usageRankPointsLabel}
         rankingProgressNode={<ProfileProgressBar percent={usageRankProgress} testID="customer-v21-profile-ranking-entry-progress" />}
         rankingProgressSourceLabel={language === 'vi' ? 'Tăng theo hoạt động thật' : 'Grows with real activity'}
-        rankingStatus={usageRankStatus}
-        rankingStatusActive={hasUsageRank}
-        rankingStatusTextStyle={hasUsageRank ? styles.profileMintChipText : profileUtilityStyles.profileRankingEmptyChipText}
         rootStyles={styles}
-        signOutLabel={language === 'vi' ? 'Đăng xuất' : 'Sign out'}
+        settingsGroups={settingsGroups}
         tokens={tokens}
-        topBarSubtitle={language === 'vi' ? 'Tài khoản, bảo vệ và các tiện ích phụ' : 'Account, protection, and utilities'}
+        topBarSubtitle={language === 'vi' ? 'Thông tin, bảo mật và các quyền của bạn' : 'Your details, security, and controls'}
         topBarTitle={language === 'vi' ? 'Hồ sơ khách hàng' : 'Customer profile'}
-        utilitySectionAction={language === 'vi' ? 'Quản lý' : 'Manage'}
-        utilitySectionTitle={language === 'vi' ? 'Tiện ích tài khoản' : 'Account utilities'}
-        utilityTiles={[
-          {
-            image: customerV21Assets.address,
-            label: language === 'vi' ? 'Địa chỉ' : 'Addresses',
-            onPress: () => router.replace('/(customer)/profile?utility=address' as never),
-            scope: 'Address',
-            testID: 'customer-v21-profile-utility-address',
-            value: insightNumber(insights, 'saved_address_count', copy.emptyProfileMetric, language, (value) => language === 'vi' ? `${value} địa điểm` : `${value} places`),
-          },
-          {
-            image: customerV21Assets.payment,
-            label: language === 'vi' ? 'Thanh toán' : 'Payment',
-            onPress: () => router.replace('/(customer)/profile?utility=payment' as never),
-            scope: 'Payment',
-            testID: 'customer-v21-profile-utility-payment',
-            value: bankOptionLabel,
-          },
-          {
-            image: customerV21Assets.theme,
-            label: language === 'vi' ? 'Cài đặt' : 'Settings',
-            onPress: () => router.replace('/(customer)/profile?utility=settings' as never),
-            scope: 'Settings',
-            testID: 'customer-v21-profile-utility-settings',
-            value: language === 'vi' ? 'Tài khoản' : 'Account',
-          },
-        ]}
+        versionLabel={Constants.expoConfig?.version
+          ? (language === 'vi'
+              ? `Phiên bản ${Constants.expoConfig.version}`
+              : `Version ${Constants.expoConfig.version}`)
+          : null}
       />
     </V21Screen>
   )
@@ -816,7 +929,6 @@ export function CustomerKaelSurface() {
 }
 
 function CustomerKaelRuntimeSurface({ params }: { params: CustomerKaelRouteParams }) {
-  const workflow = useFrontendWorkflow()
   const { session } = useAuth()
   const routeModeParam = firstParam(params.mode)
   const explicitRouteMode: CustomerKaelMode | null = routeModeParam === 'case'
@@ -826,11 +938,13 @@ function CustomerKaelRuntimeSurface({ params }: { params: CustomerKaelRouteParam
       : null
   const routeMode = explicitRouteMode ?? chatScreenModeParam(firstParam(params.screen)) ?? 'normal'
   const routeJobId = cleanRouteJobId(firstParam(params.jobId))
-  const deal = isRealCaseDeal(workflow.state.deal) ? workflow.state.deal : null
   const mode: CustomerKaelMode = routeMode === 'case' || routeJobId ? 'case' : 'normal'
   const stateScopeKey = customerKaelStateScopeKey({
     accountId: session?.user.id ?? null,
-    caseId: mode === 'case' ? routeJobId ?? deal?.id ?? null : null,
+    // A blank Case Work route must not remount when an unrelated workflow job
+    // arrives or clears in the background. Only a job explicitly in the URL
+    // owns this route's request scope.
+    caseId: mode === 'case' ? routeJobId : null,
     handoffId: firstParam(params.handoff) ?? null,
     mode,
     sessionId: firstParam(params.sessionId) ?? null,
@@ -1013,15 +1127,13 @@ function ActiveCaseCard({ deal, onOpen }: { deal: LocalDeal; onOpen: () => void 
 }
 
 type ProfileUtilitySectionProps = {
-  insights: CustomerProfileInsightsResponse | null
-  kind: Exclude<CustomerProfileUtility, 'payment'>
+  kind: Extract<CustomerProfileUtility, 'address' | 'language' | 'memory' | 'password' | 'personal-details'>
 }
 
 // Address, password, and account forms intentionally retain separate validation and pending states.
 // react-doctor-disable-next-line react-doctor/prefer-useReducer
-function ProfileUtilitySection({ insights, kind }: ProfileUtilitySectionProps) {
+function ProfileUtilitySection({ kind }: ProfileUtilitySectionProps) {
   const language = useAppLanguage()
-  const router = useRouter()
   const workflow = useFrontendWorkflow()
   const { session, updateCustomerProfile, updatePassword } = useAuth()
   const { tokens } = useV21Theme()
@@ -1048,13 +1160,11 @@ function ProfileUtilitySection({ insights, kind }: ProfileUtilitySectionProps) {
   const [savedAddresses, setSavedAddresses] = useState(metadataSavedAddresses)
   const [addressSaving, setAddressSaving] = useState(false)
   const [addressMessage, setAddressMessage] = useState<string | null>(null)
-  const [passwordPanelOpen, setPasswordPanelOpen] = useState(false)
   const [currentPasswordDraft, setCurrentPasswordDraft] = useState('')
   const [newPasswordDraft, setNewPasswordDraft] = useState('')
   const [confirmPasswordDraft, setConfirmPasswordDraft] = useState('')
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
-  const [accountPanelOpen, setAccountPanelOpen] = useState(false)
   const [accountFullNameDraft, setAccountFullNameDraft] = useState(metadataFullName ?? '')
   const [accountPhoneDraft, setAccountPhoneDraft] = useState(metadataPhone ?? '')
   const [accountEmailDraft, setAccountEmailDraft] = useState(metadataEmail)
@@ -1153,75 +1263,90 @@ function ProfileUtilitySection({ insights, kind }: ProfileUtilitySectionProps) {
     }
   }
 
-  if (kind === 'settings') {
+  const accountModel = {
+    canSave: accountCanSave,
+    emailDraft: accountEmailDraft,
+    fullNameDraft: accountFullNameDraft,
+    message: accountMessage,
+    messageColor: accountMessage?.includes('Đã') || accountMessage === 'Saved' ? tokens.primary : tokens.danger,
+    onEmailChange: (value: string) => {
+      setAccountEmailDraft(value)
+      setAccountMessage(null)
+    },
+    onFullNameChange: (value: string) => {
+      setAccountFullNameDraft(value)
+      setAccountMessage(null)
+    },
+    onPhoneChange: (value: string) => {
+      setAccountPhoneDraft(value)
+      setAccountMessage(null)
+    },
+    onSave: () => void saveAccountProfile(),
+    phoneDraft: accountPhoneDraft,
+    saving: accountSaving,
+  }
+  const passwordModel = {
+    canSave: passwordCanSave,
+    confirmDraft: confirmPasswordDraft,
+    currentDraft: currentPasswordDraft,
+    message: passwordMessage,
+    messageColor: passwordMessage?.includes('Đã') || passwordMessage === 'Password changed' ? tokens.primary : tokens.danger,
+    newDraft: newPasswordDraft,
+    onConfirmChange: (value: string) => {
+      setConfirmPasswordDraft(value)
+      setPasswordMessage(null)
+    },
+    onCurrentChange: (value: string) => {
+      setCurrentPasswordDraft(value)
+      setPasswordMessage(null)
+    },
+    onNewChange: (value: string) => {
+      setNewPasswordDraft(value)
+      setPasswordMessage(null)
+    },
+    onSave: () => void saveSettingsPassword(),
+    passwordMatches,
+    saving: passwordSaving,
+  }
+
+  if (kind === 'personal-details') {
     return (
-      <ProfileUtilitySettingsView
-        account={{
-          canSave: accountCanSave,
-          emailDraft: accountEmailDraft,
-          fullNameDraft: accountFullNameDraft,
-          message: accountMessage,
-          messageColor: accountMessage?.includes('Đã') || accountMessage === 'Saved' ? tokens.primary : tokens.danger,
-          onEmailChange: (value) => {
-            setAccountEmailDraft(value)
-            setAccountMessage(null)
-          },
-          onFullNameChange: (value) => {
-            setAccountFullNameDraft(value)
-            setAccountMessage(null)
-          },
-          onPhoneChange: (value) => {
-            setAccountPhoneDraft(value)
-            setAccountMessage(null)
-          },
-          onSave: () => void saveAccountProfile(),
-          onToggle: () => {
-            setAccountPanelOpen((current) => !current)
-            setAccountMessage(null)
-          },
-          open: accountPanelOpen,
-          phoneDraft: accountPhoneDraft,
-          saving: accountSaving,
-        }}
+      <ProfilePersonalDetailsView
+        account={accountModel}
+        language={language}
+        textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
+        tokens={tokens}
+      />
+    )
+  }
+  if (kind === 'password') {
+    return (
+      <ProfileLoginSecurityView
+        language={language}
+        password={passwordModel}
+        textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
+        tokens={tokens}
+      />
+    )
+  }
+  if (kind === 'language') {
+    return (
+      <ProfileLanguageView
+        language={language}
+        onSelectLanguage={(nextLanguage) => setAppLanguage(nextLanguage)}
+        tokens={tokens}
+      />
+    )
+  }
+  if (kind === 'memory') {
+    return (
+      <ProfileKaelMemoryView
         language={language}
         memory={{
           allowed: messageMemoryPreference.enabled,
           onToggle: () => void messageMemoryPreference.toggle(),
           pending: messageMemoryPreference.pending,
         }}
-        onOpenAddress={() => router.replace('/(customer)/profile?utility=address' as never)}
-        onToggleLanguage={() => setAppLanguage(language === 'vi' ? 'en' : 'vi')}
-        password={{
-          canSave: passwordCanSave,
-          confirmDraft: confirmPasswordDraft,
-          currentDraft: currentPasswordDraft,
-          message: passwordMessage,
-          messageColor: passwordMessage?.includes('Đã') || passwordMessage === 'Password changed' ? tokens.primary : tokens.danger,
-          newDraft: newPasswordDraft,
-          onConfirmChange: (value) => {
-            setConfirmPasswordDraft(value)
-            setPasswordMessage(null)
-          },
-          onCurrentChange: (value) => {
-            setCurrentPasswordDraft(value)
-            setPasswordMessage(null)
-          },
-          onNewChange: (value) => {
-            setNewPasswordDraft(value)
-            setPasswordMessage(null)
-          },
-          onSave: () => void saveSettingsPassword(),
-          onToggle: () => {
-            setPasswordPanelOpen((current) => !current)
-            setPasswordMessage(null)
-          },
-          open: passwordPanelOpen,
-          passwordMatches,
-          saving: passwordSaving,
-        }}
-        rootStyles={styles}
-        textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
-        title={profileUtilityTitle(kind, language)}
         tokens={tokens}
       />
     )

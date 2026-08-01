@@ -1,54 +1,22 @@
-import { memo, type ComponentType, type ReactNode, type SetStateAction, useCallback, useMemo, useState } from 'react'
-import { useEffect, useRef } from 'react'
+import { useMemo, useState , useEffect, useRef } from 'react'
 import { Image } from 'expo-image'
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text as RNText,
   View,
   useWindowDimensions,
-  type ImageSourcePropType,
-  type PressableStateCallbackType,
-  type StyleProp,
   type TextProps,
-  type ViewStyle,
 } from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Circle, Defs, LinearGradient } from 'react-native-svg'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
-import { buildLocalJobDisplayCode, type LocalDeal, type ServiceType } from '@nestscout/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
-import { KaelButton, KaelTextField, MintAura } from '@/components/ui/kael-primitives'
-import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
-import { color, glass, radius, shadow, signature, typography } from '@/design/theme'
-import { getMobileApiAuthHeaders, mobileApiUrl } from '@/lib/api'
-import { localizeAccountMutationError } from '@/lib/account-mutation-error'
-import { setAppLanguage, type AppLanguage, localizedServiceLabel, localizedStatusLabel } from '@/lib/app-language'
+import { KaelButton, MintAura } from '@/components/ui/kael-primitives'
+import type { AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
-import {
-  clearStableClientRequestId,
-  stableClientRequestId,
-  type PendingClientRequestRef,
-} from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
-import { useJobChatThread } from '@/lib/use-job-chat-thread'
-import { mergeJobMediaRefsNewestFirst } from '@/lib/job-media-preview'
-import {
-  localizeMediaUploadFailure,
-  uploadJobMediaDrafts,
-  type LocalMediaUploadDraft,
-} from '@/lib/media-upload'
-import { kaelMemoryService, workerKaelChatService, workerRouteService } from '@/lib/services'
 import type {
-  WorkerV5IconName,
   WorkerV5RouteParams,
   WorkerV5ScreenDefinition,
   WorkerV5ScreenId,
@@ -70,15 +38,6 @@ import {
   workerV5Routes,
 } from './dock/routing'
 import {
-  WorkerV5HomeQuickActionGrid,
-  WorkerV5KaelBriefCard,
-  WorkerV5QuickActionGrid,
-} from './home/action-surfaces'
-import {
-  WorkerV5OpportunityCard,
-  WorkerV5OpportunityEmptyCard,
-} from './home/opportunity-surfaces'
-import {
   WorkerV5BankTaxBody,
   WorkerV5ProfileOverviewBody,
   WorkerV5ReliabilityInsightsBody,
@@ -88,29 +47,10 @@ import {
   WorkerV5WorkerRankingBody,
 } from './profile/body-surfaces'
 import { useWorkerAvatarPicker } from './profile/use-worker-avatar-picker'
-import type { WorkerV5MemoryPreferenceUiId } from './profile/memory'
-import { WORKER_V5_MEMORY_PREFERENCE_API_KEYS, workerV5MemoryPreferenceOverridesFromMemory } from './profile/memory'
-import {
-  WorkerV5MemoryHero,
-  WorkerV5MemorySwitchList,
-} from './profile/memory-surfaces'
-import { styles as rankingStyles } from './profile/ranking-styles'
-import { styles as reliabilityStyles } from './profile/reliability-styles'
 import {
   WorkerV5ReadOnlyToggleList,
-  WorkerV5SettingsActionRow,
-  WorkerV5SettingsHero,
 } from './profile/settings-surfaces'
-import { buildWorkerV5AcceptReviewChecks, workerV5CanAcceptOpenOffer } from './jobs/acceptance'
-import {
-  WorkerV5AcceptChecklistCard,
-  WorkerV5AcceptCommitmentCard,
-} from './jobs/acceptance-surfaces'
-import {
-  WorkerV5ActionRail,
-  WorkerV5ChatBubble,
-  WorkerV5SingleSourceActionButton,
-} from './jobs/advisory-surfaces'
+import { workerV5CanAcceptOpenOffer } from './jobs/acceptance'
 import {
   WorkerV5ApprovalWaitBody,
   WorkerV5CaseClosedBody,
@@ -118,135 +58,66 @@ import {
 } from './jobs/completion-bodies'
 import { WorkerV5CompletionEvidenceScreenBody } from './jobs/completion-evidence-screen-body'
 import { WorkerV5RouteEtaBody } from './jobs/active-body-surfaces'
-import { WorkerV5EvidenceTray } from './jobs/evidence-surfaces'
 import {
+  WorkerV5CommissionPolicyBody,
   WorkerV5EarningsOverviewBody,
-  WorkerV5LedgerDetailBody,
-  WorkerV5PayoutRequestBody,
+  WorkerV5ReceivingAccountBody,
+  WorkerV5TransactionHistoryBody,
 } from './earnings/body-surfaces'
-import { WorkerV5LedgerHero } from './earnings/ledger-surfaces'
-import { WorkerV5PayoutLimitPolicyCard } from './earnings/payout-surfaces'
-import { WorkerV5PayoutMethodBody, WorkerV5PayoutMethodHero } from './earnings/payout-method-surfaces'
-import {
-  buildWorkerV5OfferAddressRows,
-  buildWorkerV5OfferRequestRows,
-} from './jobs/offer'
 import { WorkerV5EtaSummaryCard } from './jobs/map-surfaces'
 import { useWorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './jobs/use-worker-route-preview'
-import { WorkerV5OfferDetailEmptyCard, WorkerV5OfferDetailListCard, WorkerV5OfferDetailSummaryCard } from './jobs/offer-surfaces'
-import { WorkerV5ProgressRail, WorkerV5WorkProgressBoard } from './jobs/progress-surfaces'
+import { textByLanguage } from './ui/format'
 import {
-  WorkerV5StatusTimeline as WorkerV5StatusTimelineSurface,
-  type WorkerV5StatusTimelineBaseProps,
-} from './jobs/timeline-surfaces'
-import { WorkerV5PriceLines } from './jobs/shared-surfaces'
-import { WorkerV5ScopeEvidenceGate } from './jobs/scope-surfaces'
-import { useWorkerV5ScopeChangeDraft } from './jobs/use-worker-scope-change-draft'
-import { formatVnd, textByLanguage } from './ui/format'
-import {
-  formatScopePriceRange,
-  formatWorkerDistrict,
-  getWorkerV5ChatJobId,
-  normalizeServiceAreaDraftText,
-  normalizeWorkerV5DistrictSelectionList,
-  parseWorkerV5ServiceAreaDraft,
-  workerAvailabilityLabel,
   workerDocumentSummary,
-  workerV5DistrictDraftFromSelection,
-  workerV5HomeDisplayName,
 } from './ui/labels'
 import {
-  workerV5HasNumber,
-  workerV5NumericInsight,
-} from './ui/performance'
-import {
-  workerV5ArrivalDestinationLabel,
-  workerV5StringFromUnknown,
-  type WorkerV5MapLocation,
-} from './ui/route'
-import { WorkerV5IntegratedIcon } from './ui/integrated-icon-surfaces'
-import { WorkerV5DetailRail } from './ui/worker-v5-detail-rail'
-import {
   workerV5CapturedIconAssets,
-  workerV5HomeQuickIconAssets,
   workerV5ProfileDossierIconAssets,
   workerV5ProfileServiceIconAssets,
   workerV5RankingIconAssets,
   workerV5ReliabilityIconAssets,
-  workerV5SettingsIconAssets,
 } from './ui/worker-v5-icon-assets'
 import {
   WorkerV5CustomerCaseWideMintAura,
   WorkerV5CustomerFulfillmentCanvasAura,
-  WorkerV5CustomerMapMintAura,
   WorkerV5CustomerZipMintAura,
   WorkerV5EarningsHomeHeroAura,
   WorkerV5EarningsHomeListAura,
-  WorkerV5HomeAuraBackground,
-  WorkerV5HomeHeroSourceAura,
-  WorkerV5HomeQuickActionsAura,
-  WorkerV5KaelChatScreenAura,
-  WorkerV5SourceCardSkin,
 } from './ui/aura-surfaces'
 import {
   WorkerV5BackArrowIcon,
-  WorkerV5InfoRow as WorkerV5PrimitiveInfoRow,
   WorkerV5NavButton,
   WorkerV5PrimaryActionButton,
   WorkerV5PrimaryButtonFill,
-  WorkerV5SectionHeader,
 } from './ui/primitives-surfaces'
-import { WorkerV5KaelOrbCameraIcon } from './chat/orb-surfaces'
-import {
-  WorkerV5KaelOrbBody,
-} from './chat/body-surfaces'
-import { WorkerV5KaelSessionMenu, WorkerV5KaelSessionPlusIcon } from './chat/session-menu'
-import { useWorkerV5KaelOrbChat } from './chat/use-kael-orb-chat'
-import {
-  canUseWorkerV5PrivateKaelChat,
-  workerV5PrivateKaelMediaName,
-  type WorkerV5PrivateKaelSession,
-} from './chat/use-worker-kael-orb-chat'
-import {
-  WorkerV5BoundaryNote,
-  WorkerV5TimerCard,
-} from './ui/metrics-surfaces'
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { styles } from './worker-v5-flow-styles'
+import { WorkerV5HomeScreenSurface , WorkerV5HomeBody } from './home/screen-surfaces'
 
-export type { WorkerDockActive } from './dock/types'
-import { WorkerV5AvailabilityCard } from './home/availability-surfaces'
-import { WorkerV5MapStage } from './home/map-stage-surfaces'
-import { WorkerV5HomeScreenSurface } from './home/screen-surfaces'
-import { WorkerV5HomeBody } from './home/screen-surfaces'
 import { InfoListCard, MetricTile, WorkerV5ScreenInfoRow } from './ui/screen-atoms-surfaces'
-import { workerV5Icons } from './ui/screen-icons'
-import { WORKER_V5_PROFILE_ICON_VISUAL_BOOST } from './ui/screen-icons'
-import { WorkerV5KaelOrbComposer, WorkerV5KaelOrbScreenSurface } from './chat/orb-screen-surfaces'
+import { workerV5Icons , WORKER_V5_PROFILE_ICON_VISUAL_BOOST } from './ui/screen-icons'
+
+import { WorkerV5KaelOrbScreenSurface } from './chat/orb-screen-surfaces'
 import { WorkerV5KaelChatBody, WorkerV5KaelJobIntakeBody } from './chat/kael-body-surfaces'
-import { workerV5OpportunityServiceIcons } from './ui/screen-icons'
+
 import { workerV5JobsDestinationScreenId } from './ui/screen-navigation'
 import { WorkerV5RankingHero } from './profile/ranking-hero-surfaces'
 import { WorkerV5AgentMemoryBody } from './profile/agent-memory-surfaces'
 import { WorkerV5SettingsBody } from './profile/settings-body-surfaces'
 import { WorkerV5ServiceAreaMapCard } from './profile/service-area-map-surfaces'
 import { WorkerV5ReliabilityAxisFill, WorkerV5ReliabilityHero } from './profile/reliability-hero-surfaces'
-import { workerV5DisplayCode } from './ui/screen-labels'
-import { workerV5OfferDetailEmptyIcon, workerV5OfferDetailIcons } from './jobs/inbox-offer-surfaces'
 import { WorkerV5CustomerConfirmationWaitBody, WorkerV5OfferDetailBody, WorkerV5OpportunityInboxBody } from './jobs/inbox-offer-surfaces'
+
 import { WorkerV5InProgressBody } from './jobs/in-progress-surfaces'
 import { WorkerV5ScopeChangeBody } from './jobs/scope-change-body-surfaces'
 import { WorkerV5RouteMapStage, WorkerV5StatusTimeline } from './jobs/route-map-surfaces'
 import { workerV5CaseHeaderSubtitle, workerV5OfferHeaderSubtitle, workerV5TravelHeaderSubtitle } from './jobs/header-copy'
+
+export type { WorkerDockActive } from './dock/types'
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
-
-// A Reanimated style only drives a component created through Animated; on a
-// plain Pressable the mode-trigger scale never ran.
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 function useWorkerV5Screen(section: WorkerV5Section) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
@@ -326,9 +197,14 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const routePreview = useWorkerV5RoutePreview(runtime.state.deal, usesRouteEtaHandoff)
   const usesTravelHandoff = usesRouteEtaHandoff
   const usesInProgressHandoff = screen.id === '2.7-in-progress'
-  const headerBackScreen = usesCustomerConfirmationWaitHandoff || usesRouteEtaHandoff || usesInProgressHandoff
-    ? getWorkerV5Screen('2.1-opportunity-inbox') ?? previousScreen
-    : previousScreen
+  const usesEarningsDetailHandoff = screen.id === '4.2-ledger-detail'
+    || screen.id === '4.3-payout-request'
+    || screen.id === '4.4-payout-method'
+  const headerBackScreen = usesEarningsDetailHandoff
+    ? getWorkerV5Screen('4.1-earnings-overview') ?? previousScreen
+    : usesCustomerConfirmationWaitHandoff || usesRouteEtaHandoff || usesInProgressHandoff
+      ? getWorkerV5Screen('2.1-opportunity-inbox') ?? previousScreen
+      : previousScreen
   const usesScopeChangeHandoff = screen.id === '2.8-scope-change'
   const usesApprovalWaitHandoff = screen.id === '2.9-approval-wait'
   const usesCompletionEvidenceHandoff = screen.id === '2.10-completion-evidence'
@@ -346,14 +222,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesHandoffStage = usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
   const handoffHeaderSubtitle = usesOpportunityInboxHandoff
     ? textByLanguage(language, 'Kael đã lọc theo kỹ năng, bán kính và lịch trống', 'Kael has filtered by skills, radius, and open schedule')
-    : usesEarningsOverviewHandoff
+    : usesEarningsHandoff
       ? null
-    : screen.id === '4.2-ledger-detail'
-      ? null
-    : usesPayoutRequestHandoff
-      ? null
-    : usesPayoutMethodHandoff
-      ? textByLanguage(language, 'Chỉ hiển thị dữ liệu tài khoản đã ghi nhận', 'Recorded account data only')
     : screen.id === '5.4-reliability-insights'
       ? textByLanguage(language, 'Chỉ số có thể kiểm chứng, không phải cảm tính', 'Verifiable signals, not sentiment')
     : screen.id === '5.5-account-utilities' || screen.id === '5.10-support-settings'
@@ -445,7 +315,15 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       setActionBusy(false)
     }
   }
-  const primaryAction = getWorkerV5PrimaryAction(screen, runtime, language, actionBusy, runWorkerAction, () => openScreen(nextScreen))
+  const primaryAction = getWorkerV5PrimaryAction(screen, runtime, language, actionBusy, () => openScreen(nextScreen))
+  const handlePrimaryAction = () => {
+    if (!primaryAction) return
+    if (primaryAction.workerAction) {
+      void runWorkerAction(primaryAction.workerAction)
+      return
+    }
+    primaryAction.onPress()
+  }
   const workflowDestinationScreenId = workerV5JobsDestinationScreenId(runtime.state.deal)
   const workflowStatus = runtime.state.deal?.backendStatus ?? runtime.state.deal?.status ?? null
   const workflowHydrationPending = runtime.state.workerGate === 'backend_pending' && !runtime.workerJobsHydrated
@@ -647,17 +525,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             >
               <Text style={styles.headerMenuText}>?</Text>
             </Pressable>
-          ) : usesCaseExecutionHandoff || screen.id === '4.2-ledger-detail' ? null : screen.id === '4.3-payout-request' ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Hỏi Kael về rút tiền' : 'Ask Kael about payout'}
-              accessibilityRole="button"
-              onPress={openJobChat}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-payout-help"
-            >
-              <Text style={styles.headerMenuText}>?</Text>
-            </Pressable>
-          ) : usesKaelOrbHandoff ? (
+          ) : usesCaseExecutionHandoff || usesEarningsHandoff ? null : usesKaelOrbHandoff ? (
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Tùy chọn Kael' : 'Kael options'}
               accessibilityRole="button"
@@ -713,7 +581,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           <WorkerV5PrimaryActionButton
             disabled={primaryAction.disabled}
             label={primaryAction.label}
-            onPress={primaryAction.onPress}
+            onPress={handlePrimaryAction}
             variant={usesHandoffStage ? 'source' : 'default'}
           />
         ) : null}
@@ -852,9 +720,11 @@ function WorkerV5Body({
     case '2.11-completion-submitted':
       return (
         <WorkerV5CompletionSubmittedBody
+          cashPaymentBusy={actionBusy}
           language={language}
           navigateNext={navigateNext}
           navigateToEvidence={() => navigateToScreen('2.10-completion-evidence')}
+          onConfirmCashPayment={() => void runWorkerAction(runtime.actions.workerConfirmCashPayment)}
           primaryFill={WorkerV5PrimaryButtonFill}
           reduceMotion={reduceMotion}
           reduceTransparency={reduceTransparency}
@@ -882,50 +752,32 @@ function WorkerV5Body({
     case '4.1-earnings-overview':
       return (
         <WorkerV5EarningsOverviewBody
-          caseWideAura={WorkerV5CustomerCaseWideMintAura}
-          earningsHeroIcon={workerV5CapturedIconAssets.earningsHero}
-          heroAura={WorkerV5EarningsHomeHeroAura}
-          icons={workerV5Icons}
           language={language}
-          listAura={WorkerV5EarningsHomeListAura}
           navigateToScreen={navigateToScreen}
           primaryFill={WorkerV5PrimaryButtonFill}
-          recentTransactionIcon={workerV5CapturedIconAssets.earningsRecentTransactions}
+          reduceMotion={reduceMotion}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
-          zipAura={WorkerV5CustomerZipMintAura}
         />
       )
     case '4.2-ledger-detail':
       return (
-        <WorkerV5LedgerDetailBody
-          caseWideAura={WorkerV5CustomerCaseWideMintAura}
+        <WorkerV5TransactionHistoryBody
           language={language}
-          ledgerHero={WorkerV5LedgerHero}
-          listAura={WorkerV5EarningsHomeListAura}
-          primaryFill={WorkerV5PrimaryButtonFill}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
-          statusTimeline={WorkerV5StatusTimeline}
-          zipAura={WorkerV5CustomerZipMintAura}
         />
       )
     case '4.3-payout-request':
       return (
-        <WorkerV5PayoutRequestBody
-          caseWideAura={WorkerV5CustomerCaseWideMintAura}
-          heroAura={WorkerV5EarningsHomeHeroAura}
-          icons={workerV5Icons}
+        <WorkerV5CommissionPolicyBody
           language={language}
-          listAura={WorkerV5EarningsHomeListAura}
-          primaryFill={WorkerV5PrimaryButtonFill}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
-          zipAura={WorkerV5CustomerZipMintAura}
         />
       )
     case '4.4-payout-method':
-      return <WorkerV5PayoutMethodBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
+      return <WorkerV5ReceivingAccountBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '5.1-profile-overview':
       return (
         <WorkerV5ProfileOverviewBody
@@ -1051,6 +903,7 @@ type WorkerV5PrimaryAction = {
   disabled: boolean
   label: string
   onPress: () => void
+  workerAction?: () => Promise<boolean>
 }
 
 function getWorkerV5PrimaryAction(
@@ -1058,7 +911,6 @@ function getWorkerV5PrimaryAction(
   runtime: WorkerV5Runtime,
   language: AppLanguage,
   busy: boolean,
-  runWorkerAction: (action: () => Promise<boolean>) => void,
   navigateNext: () => void,
 ): WorkerV5PrimaryAction | null {
   const hasDeal = Boolean(runtime.state.deal)
@@ -1079,7 +931,8 @@ function getWorkerV5PrimaryAction(
       return {
         disabled: !hasDeal || busy,
         label: busy ? textByLanguage(language, 'Đang cập nhật', 'Updating') : textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel'),
-        onPress: () => runWorkerAction(() => runtime.actions.workerUpdateStatus('worker_on_way')),
+        onPress: () => undefined,
+        workerAction: () => runtime.actions.workerUpdateStatus('worker_on_way'),
       }
     case '2.7-in-progress':
       return {
@@ -1119,23 +972,9 @@ function getWorkerV5PrimaryAction(
         onPress: navigateNext,
       }
     case '4.2-ledger-detail':
-      return {
-        disabled: true,
-        label: textByLanguage(language, 'Chuyển ra ngân hàng chưa khả dụng', 'Bank payout unavailable'),
-        onPress: () => undefined,
-      }
     case '4.3-payout-request':
-      return {
-        disabled: true,
-        label: textByLanguage(language, 'Quản lý tài khoản chưa khả dụng', 'Account management unavailable'),
-        onPress: () => undefined,
-      }
     case '4.4-payout-method':
-      return {
-        disabled: true,
-        label: textByLanguage(language, 'Quản lý tài khoản chưa khả dụng', 'Account management unavailable'),
-        onPress: () => undefined,
-      }
+      return null
     case '5.1-profile-overview':
       return {
         disabled: busy,
@@ -1227,7 +1066,7 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
     case '2.8-scope-change':
       return textByLanguage(language, 'Đổi phạm vi cần bằng chứng và lý do rõ', 'Scope change needs evidence and a clear reason')
     case '2.9-approval-wait':
-      return textByLanguage(language, 'Chờ NestScout cập nhật quyết định', 'Waiting for NestScout to update the decision')
+      return textByLanguage(language, 'Chờ quyết định của khách được cập nhật', 'Waiting for the customer decision to sync')
     case '2.10-completion-evidence':
       return textByLanguage(language, 'Gửi hồ sơ khi bằng chứng đã đủ', 'Submit only when evidence is ready')
     case '2.11-completion-submitted':
@@ -1244,12 +1083,12 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
         : textByLanguage(language, 'Chưa có cơ hội thật để lọc', 'No real opportunity to filter')
     case '4.1-earnings-overview':
       return runtime.workerEarnings?.available_balance
-        ? textByLanguage(language, 'Số dư đã SePay xác thực', 'SePay-verified balance')
+        ? textByLanguage(language, 'Số dư đã ghi sổ', 'Recorded in-app balance')
         : textByLanguage(language, 'Chưa có số dư thật', 'No real balance yet')
     case '4.2-ledger-detail':
-      return textByLanguage(language, 'Chi tiết đối soát đã ghi nhận', 'Recorded ledger detail')
+      return textByLanguage(language, 'Các khoản thu đã được ghi nhận', 'Recorded transactions')
     case '4.3-payout-request':
-      return textByLanguage(language, 'Rút tiền cần tài khoản xác minh', 'Payout needs a verified account')
+      return textByLanguage(language, 'Hiểu rõ mức hoa hồng đang áp dụng', 'Understand the current commission rate')
     case '4.4-payout-method':
       return textByLanguage(language, 'Quản lý tài khoản nhận tiền', 'Manage payout account')
     case '5.1-profile-overview':
@@ -1300,8 +1139,8 @@ function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
     case '2.1-opportunity-inbox':
       return textByLanguage(
         language,
-        'Inbox chỉ hiển thị cơ hội đã được NestScout gửi tới thợ để mở chi tiết.',
-        'The inbox shows only opportunities NestScout has sent to the worker.',
+        'Inbox chỉ hiển thị cơ hội Kael đã gửi tới thợ để mở chi tiết.',
+        'The inbox shows only opportunities Kael has sent to the worker.',
       )
     case '2.2-offer-detail':
       return textByLanguage(
@@ -1312,8 +1151,8 @@ function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
     case '2.4-route-eta':
       return textByLanguage(
         language,
-        'Di chuyển cập nhật qua quy trình NestScout để khách nhận tín hiệu đúng, không tự hứa thời gian đến mới.',
-        'Travel updates through NestScout so customers get accurate signals without a new ETA promise.',
+        'Di chuyển được cập nhật qua quy trình để khách nhận đúng tín hiệu, không tự hứa thời gian đến mới.',
+        'Travel updates through the workflow so customers get accurate signals without a new ETA promise.',
       )
     case '2.7-in-progress':
       return textByLanguage(
@@ -1330,8 +1169,8 @@ function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
     case '2.9-approval-wait':
       return textByLanguage(
         language,
-        'Chỉ làm phần phát sinh sau khi NestScout duyệt.',
-        'This screen does not approve work; extra work continues only after NestScout has a real decision.',
+        'Chỉ làm phần phát sinh sau khi khách duyệt trong ứng dụng.',
+        'This screen does not approve work; extra work continues only after the customer approves it in the app.',
       )
     case '2.10-completion-evidence':
       return textByLanguage(
@@ -1372,14 +1211,14 @@ function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
     case '4.2-ledger-detail':
       return textByLanguage(
         language,
-        'Chi tiết đối soát không tự mở tiền rút; chỉ trình bày số đã có trong dữ liệu thu nhập.',
-        'Ledger detail does not unlock payout; it only presents recorded earnings data.',
+        'Chỉ hiển thị những giao dịch thu nhập đã được ghi nhận.',
+        'Only recorded earnings transactions are shown.',
       )
     case '4.3-payout-request':
       return textByLanguage(
         language,
-        'Màn này không tự gửi yêu cầu rút tiền; luồng ví thu nhập hiện hữu xử lý giao dịch thật.',
-        'This screen does not submit payout; the existing income wallet handles real transactions.',
+        'Mức khởi điểm là 15%; bậc cao hơn có thể được áp dụng mức thấp hơn khi đáp ứng điều kiện.',
+        'The starting rate is 15%; higher levels may receive a lower rate after meeting the requirements.',
       )
     case '4.4-payout-method':
       return textByLanguage(

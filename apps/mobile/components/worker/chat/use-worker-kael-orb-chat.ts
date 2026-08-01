@@ -144,16 +144,15 @@ export function useWorkerV5KaelOrbChat(deal: LocalDeal | null, language: AppLang
     owner,
     turn: null,
   })
-  if (pendingRequestsRef.current.owner !== owner) {
-    pendingRequestsRef.current = {
-      createRef: { current: null },
-      owner,
-      turn: null,
-    }
-  }
-
   useLayoutEffect(() => {
     activeOwnerRef.current = owner
+    if (pendingRequestsRef.current.owner !== owner) {
+      pendingRequestsRef.current = {
+        createRef: { current: null },
+        owner,
+        turn: null,
+      }
+    }
   }, [owner])
 
   const state = visibleStored.state

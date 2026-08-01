@@ -28,22 +28,23 @@ type StartEvidenceProcessLineOptions = Partial<KaelEvidenceMediaProfile> & {
 }
 
 export const KAEL_COMPOSER_REPLY_REVEAL_MS = 900
+export const KAEL_EVIDENCE_RESULT_SETTLE_MS = 240
 
 export function useKaelProcessLineController({
   caseServiceLabel,
   deal,
   language,
+  reduceMotion = false,
   selectedService,
 }: {
   caseServiceLabel: string | null
   deal: LocalDeal | null
   language: AppLanguage
+  reduceMotion?: boolean
   selectedService: ServiceType | null
 }) {
   const [processLines, setProcessLines] = useState<KaelProcessLineRuntime | null>(null)
-  const revealWaitersRef = useRef<Map<number, () => void> | null>(null)
-  const revealWaiters = revealWaitersRef.current
-    ?? (revealWaitersRef.current = new Map<number, () => void>())
+  const [revealWaiters] = useState(() => new Map<number, () => void>())
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const runRef = useRef(0)
   const evidenceProfileRef = useRef<KaelEvidenceMediaProfile | null>(null)
@@ -180,6 +181,33 @@ export function useKaelProcessLineController({
     })
   }, [language])
 
+  const settleEvidenceProcessLines = useCallback(() => {
+    if (!evidenceProfileRef.current) return Promise.resolve()
+    const runId = runRef.current
+    setProcessLines((current) => {
+      if (!current || current.scenarioId !== 'evidence_check') return current
+      return {
+        ...current,
+        activeIndex: null,
+        collapse: language === 'vi'
+          ? 'Kael đã hoàn tất đối chiếu. Đang mở cơ sở giá.'
+          : 'Kael completed the checks. Opening the price basis.',
+        lines: current.lines.map((line) => (
+          line.status === 'failed' ? line : { ...line, status: 'completed' as const }
+        )),
+        visibleCount: current.lines.length,
+      }
+    })
+    if (reduceMotion) return Promise.resolve()
+    return new Promise<void>((resolve) => {
+      revealWaiters.set(runId, resolve)
+      timersRef.current.push(setTimeout(() => {
+        revealWaiters.delete(runId)
+        resolve()
+      }, KAEL_EVIDENCE_RESULT_SETTLE_MS))
+    })
+  }, [language, reduceMotion, revealWaiters])
+
   // Unmount invalidates the latest generation; capturing an older ref value would leave newer timers live.
   // react-doctor-disable-next-line react-doctor/exhaustive-deps
   useEffect(() => () => {
@@ -191,6 +219,7 @@ export function useKaelProcessLineController({
 
   return {
     processLines,
+    settleEvidenceProcessLines,
     startEvidenceProcessLines,
     startProcessLines,
     stopProcessLines,

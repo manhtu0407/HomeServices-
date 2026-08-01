@@ -2,6 +2,7 @@ import { asNumber, asRecord, asString, nullableNumber, nullableString } from "./
 import { compactMetadata } from "./_shared.ts";
 import { dbQuery, type DbClient } from "./db.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
+import { normalizeKaelResponseBrand } from "../kael/user-facing-copy.ts";
 
 type ExistingKaelSessionByClientRequest =
   | { kind: "ready"; sessionId: string }
@@ -108,7 +109,7 @@ export async function appendKaelSystemTurn(
     turn_index: nextIndex,
     role: "kael",
     content_type: input.contentType,
-    text_content: input.text,
+    text_content: normalizeKaelResponseBrand(input.text),
     media_refs: [],
     safe_metadata: input.metadata ?? {},
     cost_usd: input.costUsd ?? null,

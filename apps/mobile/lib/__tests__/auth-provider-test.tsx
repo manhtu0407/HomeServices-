@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Pressable, Text } from 'react-native'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
@@ -246,7 +246,9 @@ let latestSubmitWorkerApplication: ReturnType<typeof useAuth>['submitWorkerAppli
 
 function WorkerApplicationHarness() {
   const { submitWorkerApplication } = useAuth()
-  latestSubmitWorkerApplication = submitWorkerApplication
+  useEffect(() => {
+    latestSubmitWorkerApplication = submitWorkerApplication
+  }, [submitWorkerApplication])
   return <Text testID="worker-application-ready">ready</Text>
 }
 

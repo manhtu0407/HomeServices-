@@ -13,10 +13,12 @@ describe('SePay VietQR production payment rail', () => {
   const paymentGateMigrationPath = 'supabase/migrations/20260614093000_sepay_vietqr_payment_gate.sql'
   const migrationPath = 'supabase/migrations/20260727153000_sepay_vietqr_webhook_atomic.sql'
   const ledgerMigrationPath = 'supabase/migrations/20260727160000_worker_payment_ledger_commission.sql'
+  const paymentServicePath = 'supabase/functions/mobile-api/_shared/services/sepay-vietqr-payment.service.ts'
   const edgeFunction = readIfPresent(edgeFunctionPath)
   const paymentGateMigration = readIfPresent(paymentGateMigrationPath)
   const migration = readIfPresent(migrationPath)
   const ledgerMigration = readIfPresent(ledgerMigrationPath)
+  const paymentService = readIfPresent(paymentServicePath)
 
   it('keeps the public callback behind HMAC verification over bounded raw JSON', () => {
     expect(existsSync(join(root, edgeFunctionPath))).toBe(true)
@@ -35,6 +37,10 @@ describe('SePay VietQR production payment rail', () => {
 
     expect(section).toContain('verify_jwt = false')
     expect(deno).toContain('"zod": "npm:zod@4.4.3"')
+  })
+
+  it('keeps the provider implementation name out of customer-visible API failures', () => {
+    expect(paymentService).not.toContain('Công việc không dùng thanh toán SePay VietQR.')
   })
 
   it('uses one locked service-role RPC to make provider payment transitions idempotent', () => {

@@ -1,10 +1,11 @@
-import type { CaseWorkEvidence, LocalDeal, ServiceType } from '@nestscout/shared'
+import type { CaseWorkEvidence, LocalDeal, LocalDealDraft, ServiceType } from '@nestscout/shared'
 import { inferLocalDealDraftFromKael } from '@nestscout/shared'
-import { useRef, type MutableRefObject } from 'react'
+import { useEffect, useRef, type MutableRefObject } from 'react'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { ApiResult } from '@/lib/api'
 import type { KaelChatResponse } from '@/lib/api-types'
+import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
 import {
   clearStableClientRequestId,
   shouldRetainClientRequestId,
@@ -23,6 +24,7 @@ import {
   kaelChatStreamService,
 } from '@/lib/services'
 import type { useJobChatThread } from '@/lib/use-job-chat-thread'
+import { revealVerifiedResponse } from '@/lib/verified-response-reveal'
 
 import {
   formatAssistantAnswer,
@@ -65,6 +67,12 @@ type PendingCustomerKaelCreate = {
   } | null
 }
 
+type PendingPreAgenticIntake = {
+  message: string
+  ownerKey: string
+  stage: 'clarification' | 'confirmation'
+}
+
 export function useCustomerKaelMessageActions({
   chatUi,
   conversation,
@@ -95,7 +103,11 @@ export function useCustomerKaelMessageActions({
   selectedServiceRef: MutableRefObject<ServiceType | null>
 }) {
   const pendingCreateRef = useRef<PendingCustomerKaelCreate | null>(null)
+  const pendingPreAgenticIntakeRef = useRef<PendingPreAgenticIntake | null>(null)
   const sendOperationRef = useRef<{ ownerKey: string } | null>(null)
+  useEffect(() => () => {
+    sendOperationRef.current = null
+  }, [])
   const {
     chat,
     composerMediaDrafts,
@@ -105,6 +117,7 @@ export function useCustomerKaelMessageActions({
     setComposerMediaDrafts,
     setError,
     setLoading,
+    setStreamingReply,
     setTurns,
   } = conversation
   const {
@@ -126,7 +139,77 @@ export function useCustomerKaelMessageActions({
     if (sendOperationRef.current?.ownerKey === requestOwnerKey) return
     const sendOperation = { ownerKey: requestOwnerKey }
     sendOperationRef.current = sendOperation
-    const requestToken = kaelRequestGuard.begin('conversation')
+    const requestToken = kaelRequestGuard.begin('message')
+    let ownedStreamingTurnId: string | null = null
+    const isSendOperationCurrent = () => sendOperationRef.current === sendOperation
+    const appendVerifiedReply = (
+      event: KaelStreamResponseDeltaEvent,
+      isCurrent: () => boolean,
+    ) => {
+      if (!isCurrent()) return
+      ownedStreamingTurnId = event.turnId
+      setStreamingReply((current) => {
+        const text = current?.turnId === event.turnId
+          ? `${current.text}${event.delta}`
+          : event.delta
+        return {
+          text: text.slice(0, 12_000),
+          turnId: event.turnId,
+        }
+      })
+    }
+    const appendStreamingReply = (event: KaelStreamResponseDeltaEvent) => {
+      appendVerifiedReply(event, () => kaelRequestGuard.isCurrent(requestToken))
+    }
+    const appendLocalVerifiedReply = (event: KaelStreamResponseDeltaEvent) => {
+      appendVerifiedReply(event, isSendOperationCurrent)
+    }
+    const clearOwnedStreamingReply = (turnId: string) => {
+      setStreamingReply((current) => {
+        return current?.turnId === turnId ? null : current
+      })
+    }
+    const clearCurrentOwnedStreamingReply = () => {
+      if (ownedStreamingTurnId) clearOwnedStreamingReply(ownedStreamingTurnId)
+    }
+    const revealLocalCaseExchange = async (customerText: string, kaelText: string) => {
+      const customerTurnId = makeAssistantTurnId('customer_case', 'customer')
+      const kaelTurnId = makeAssistantTurnId('customer_case', 'kael')
+      setLoading(true)
+      setAssistantTurns((current) => [
+        ...current,
+        {
+          id: customerTurnId,
+          role: 'customer',
+          surface: 'customer_case',
+          text_content: customerText,
+        },
+      ])
+      try {
+        const revealed = await revealVerifiedResponse({
+          isCurrent: isSendOperationCurrent,
+          onDelta: appendLocalVerifiedReply,
+          text: kaelText,
+          turnId: kaelTurnId,
+        })
+        if (!revealed || !isSendOperationCurrent()) return false
+        clearOwnedStreamingReply(kaelTurnId)
+        setAssistantTurns((current) => [
+          ...current,
+          {
+            id: kaelTurnId,
+            role: 'kael',
+            surface: 'customer_case',
+            text_content: kaelText,
+          },
+        ])
+        return true
+      } finally {
+        clearOwnedStreamingReply(kaelTurnId)
+        if (isSendOperationCurrent()) setLoading(false)
+      }
+    }
+    setStreamingReply(null)
     let composerCleared = false
     const clearSubmittedComposer = () => {
       setDraft('')
@@ -162,7 +245,11 @@ export function useCustomerKaelMessageActions({
         setLoading(true)
         setError(null)
         try {
-          const result = await conversations.sendConversationTurn(message, { revealAfter: processDone })
+          const result = await conversations.sendConversationTurn(message, {
+            onResponseCommitted: clearCurrentOwnedStreamingReply,
+            onResponseDelta: appendStreamingReply,
+            revealAfter: processDone,
+          })
           if (!kaelRequestGuard.isCurrent(requestToken)) return
           if (result) {
             commitSubmittedComposer()
@@ -202,16 +289,21 @@ export function useCustomerKaelMessageActions({
           setLoading(true)
           setError(null)
           try {
-            const streamed = await kaelChatStreamService.sendTurn(activeAgenticChat.session.id, {
-              language,
-              message,
-              photo_urls: [],
-            })
+            const streamed = await kaelChatStreamService.sendTurn(
+              activeAgenticChat.session.id,
+              {
+                language,
+                message,
+                photo_urls: [],
+              },
+              { onResponseDelta: appendStreamingReply },
+            )
             const result = await reconcileCommittedKaelTurn(activeAgenticChat, streamed)
             if (!kaelRequestGuard.isCurrent(requestToken)) return
             if (result.success) {
               await processDone
               if (!kaelRequestGuard.isCurrent(requestToken)) return
+              setStreamingReply(null)
               setChat(result.data)
               setTurns(result.data.turns)
               commitSubmittedComposer()
@@ -321,9 +413,19 @@ export function useCustomerKaelMessageActions({
         return
       }
 
-    const intakeIntent = isLikelyKaelIntakeRequest(message)
-    const inferredDraft = selectedService ? null : inferLocalDealDraftFromKael(message)
-    const shouldUseIntake = Boolean(
+    const pendingPreAgentic = mode === 'case' && !chat && !deal &&
+      pendingPreAgenticIntakeRef.current?.ownerKey === requestOwnerKey
+      ? pendingPreAgenticIntakeRef.current
+      : null
+    const shouldRunPreAgentic = mode === 'case' && !chat && !deal && !selectedService
+    const confirmationReply = pendingPreAgentic?.stage === 'confirmation' &&
+      isPreAgenticConfirmation(message)
+    const intakeMessage = pendingPreAgentic
+      ? (confirmationReply ? pendingPreAgentic.message : `${pendingPreAgentic.message}\n${message}`)
+      : message
+    const intakeIntent = isLikelyKaelIntakeRequest(intakeMessage)
+    const inferredDraft = selectedService ? null : inferLocalDealDraftFromKael(intakeMessage)
+    const shouldUseIntake = mode === 'case' || Boolean(
       hasComposerMedia || reviewedVoiceTranscript || pendingDraft || chat || intakeIntent,
     )
     if (!shouldUseIntake) {
@@ -339,7 +441,11 @@ export function useCustomerKaelMessageActions({
       clearSubmittedComposer()
       try {
         const catalogResult = conversations
-          ? await conversations.sendConversationTurn(message, { revealAfter: processDone })
+          ? await conversations.sendConversationTurn(message, {
+              onResponseCommitted: clearCurrentOwnedStreamingReply,
+              onResponseDelta: appendStreamingReply,
+              revealAfter: processDone,
+            })
           : null
         const result = conversations
           ? null
@@ -389,10 +495,59 @@ export function useCustomerKaelMessageActions({
     }
 
     const inferredService = selectedService ?? inferredDraft?.serviceType ?? null
+    const missingPreAgenticDetails = shouldRunPreAgentic
+      ? preAgenticMissingDetails(inferredDraft)
+      : []
+    if (shouldRunPreAgentic && !pendingPreAgentic) {
+      const stage = inferredService && missingPreAgenticDetails.length === 0
+        ? 'confirmation'
+        : 'clarification'
+      pendingPreAgenticIntakeRef.current = {
+        message,
+        ownerKey: requestOwnerKey,
+        stage,
+      }
+      clearSubmittedComposer()
+      setError(null)
+      const preAgenticReply = stage === 'confirmation'
+        ? preAgenticConfirmation(language, inferredDraft)
+        : preAgenticClarification(language, missingPreAgenticDetails)
+      if (await revealLocalCaseExchange(message, preAgenticReply)) {
+        commitSubmittedComposer()
+      }
+      return
+    }
+    if (shouldRunPreAgentic && pendingPreAgentic?.stage === 'confirmation' && !confirmationReply) {
+      pendingPreAgenticIntakeRef.current = null
+      setError(language === 'vi'
+        ? 'Để chỉnh thông tin, hãy gửi lại mô tả đã cập nhật trong một tin nhắn mới.'
+        : 'To revise the details, send the updated description as a new message.')
+      return
+    }
+    if (shouldRunPreAgentic && pendingPreAgentic?.stage === 'clarification') {
+      if (!inferredService || missingPreAgenticDetails.length > 0) {
+        setError(preAgenticClarification(language, missingPreAgenticDetails))
+        return
+      }
+      pendingPreAgenticIntakeRef.current = {
+        message: intakeMessage,
+        ownerKey: requestOwnerKey,
+        stage: 'confirmation',
+      }
+      clearSubmittedComposer()
+      setError(null)
+      if (await revealLocalCaseExchange(
+        message,
+        preAgenticConfirmation(language, inferredDraft),
+      )) {
+        commitSubmittedComposer()
+      }
+      return
+    }
     if (!inferredService) {
       setError(language === 'vi'
-        ? 'Kael cần biết dịch vụ trước khi tạo yêu cầu.'
-        : 'Kael needs a service before creating a request.')
+        ? 'Để Kael bắt đầu xử lý, bạn hãy nêu hạng mục cần hỗ trợ: sửa điện, sửa nước, vệ sinh nhà, điều hòa, chăm sóc nội thất hoặc sửa vặt/lắp đặt.'
+        : 'To begin, Kael needs the service category: electrical, plumbing, home cleaning, air conditioning, upholstery care, or handyman work.')
       return
     }
     if (!selectedService && inferredDraft?.serviceType) {
@@ -411,7 +566,7 @@ export function useCustomerKaelMessageActions({
     }
     setLoading(true)
     setError(null)
-    const outgoingMessage = message || (language === 'vi' ? 'Đã gửi ảnh/video.' : 'Sent media.')
+    const outgoingMessage = intakeMessage || (language === 'vi' ? 'Đã gửi ảnh/video.' : 'Sent media.')
     const createFingerprint = JSON.stringify({
       evidence: {
         media: composerMediaDrafts.map((item) => ({
@@ -492,12 +647,16 @@ export function useCustomerKaelMessageActions({
     })
     clearSubmittedComposer()
     const result = chat
-      ? await kaelChatStreamService.sendTurn(chat.session.id, {
-          evidence_items: evidenceItems,
-          language,
-          message: outgoingMessage,
-          photo_urls: photoUrls,
-        }).then((streamed) => reconcileCommittedKaelTurn(chat, streamed))
+      ? await kaelChatStreamService.sendTurn(
+          chat.session.id,
+          {
+            evidence_items: evidenceItems,
+            language,
+            message: outgoingMessage,
+            photo_urls: photoUrls,
+          },
+          { onResponseDelta: appendStreamingReply },
+        ).then((streamed) => reconcileCommittedKaelTurn(chat, streamed))
       : await kaelChatService.create({
           client_request_id: stableClientRequestId(
             pendingCreate?.requestRef ?? { current: null },
@@ -517,10 +676,24 @@ export function useCustomerKaelMessageActions({
       }
       await processDone
       if (!kaelRequestGuard.isCurrent(requestToken)) return
+      if (!chat) {
+        const initialReply = latestKaelReply(result.data)
+        if (initialReply) {
+          const revealed = await revealVerifiedResponse({
+            isCurrent: () => kaelRequestGuard.isCurrent(requestToken),
+            onDelta: appendStreamingReply,
+            text: initialReply.text,
+            turnId: initialReply.turnId,
+          })
+          if (!revealed || !kaelRequestGuard.isCurrent(requestToken)) return
+        }
+      }
       setLoading(false)
       stopProcessLines()
+      setStreamingReply(null)
       setChat(result.data)
       setTurns(result.data.turns)
+      pendingPreAgenticIntakeRef.current = null
       commitSubmittedComposer()
       setComposerMediaDrafts([])
       setAgenticRejectOpen(false)
@@ -554,11 +727,64 @@ export function useCustomerKaelMessageActions({
           : 'Kael is unavailable. Try again.')
       }
     } finally {
+      clearCurrentOwnedStreamingReply()
       if (sendOperationRef.current === sendOperation) sendOperationRef.current = null
     }
   }
 
   return { sendMessage }
+}
+
+function isPreAgenticConfirmation(message: string) {
+  const normalized = message
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+  return /^(xac nhan|confirm|dung|dung roi|dong y|ok|okay|yes)$/.test(normalized)
+}
+
+function preAgenticMissingDetails(draft: LocalDealDraft | null) {
+  const missing: string[] = []
+  if (!draft?.serviceType) missing.push('hạng mục cần hỗ trợ')
+  if (!draft?.inferredProblemLabel) missing.push('hiện tượng hoặc thiết bị gặp vấn đề')
+  if (!draft?.districtLabel) missing.push('quận tại TP.HCM')
+  return missing
+}
+
+function preAgenticClarification(language: AppLanguage, missingDetails: string[]) {
+  if (language === 'vi') {
+    const details = missingDetails.length > 0
+      ? missingDetails.join(', ')
+      : 'thông tin còn thiếu'
+    const supportedServices = missingDetails.includes('hạng mục cần hỗ trợ')
+      ? ' Hạng mục hỗ trợ gồm: sửa điện, sửa nước, vệ sinh nhà, điều hòa, chăm sóc nội thất hoặc sửa vặt/lắp đặt.'
+      : ''
+    return `Mình đã ghi nhận mô tả. Trước khi Kael bắt đầu, bạn cho biết ${details} trong một tin nhắn nhé.${supportedServices}`
+  }
+  return 'I have noted your description. Before Kael begins, please provide the service, the affected item or symptom, and the district in Ho Chi Minh City in one message. Supported services are electrical, plumbing, home cleaning, air conditioning, upholstery care, and handyman work.'
+}
+
+function preAgenticConfirmation(language: AppLanguage, draft: LocalDealDraft | null) {
+  const detail = [draft?.inferredProblemLabel, draft?.districtLabel].filter(Boolean).join(' tại ')
+  if (language === 'vi') {
+    return `Kael hiểu yêu cầu là ${detail || 'hạng mục bạn vừa mô tả'}. Đúng không? Nhắn “Xác nhận” để Kael bắt đầu phân tích.`
+  }
+  return `Kael understands the request as ${detail || 'the work you described'}. Is that correct? Reply “Confirm” for Kael to begin analysis.`
+}
+
+function latestKaelReply(response: KaelChatResponse) {
+  for (let index = response.turns.length - 1; index >= 0; index -= 1) {
+    const turn = response.turns[index]
+    if (turn.role !== 'kael' || typeof turn.text_content !== 'string') continue
+    const text = turn.text_content.trim()
+    if (!text) continue
+    return {
+      text,
+      turnId: turn.id,
+    }
+  }
+  return null
 }
 
 async function reconcileCommittedKaelTurn(

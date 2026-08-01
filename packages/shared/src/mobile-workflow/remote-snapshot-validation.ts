@@ -26,6 +26,7 @@ const PAYMENT_STATUS_SET = new Set<string>([
   'vietqr_ready',
   'pending',
   'received',
+  'cash_confirmed',
   'amount_mismatch',
   'expired',
   'failed',
@@ -140,6 +141,7 @@ function isOptionalWorkerBroadcast(value: unknown): boolean {
       value.secondsRemaining >= 0
     )) &&
     (value.estimatedPriceLabel === undefined || isBoundedString(value.estimatedPriceLabel, 500)) &&
+    isOptionalSafeMoney(value.estimatedEarning) &&
     (value.estimatedEarningLabel === undefined || isBoundedString(value.estimatedEarningLabel, 500)) &&
     (value.safe_metadata === undefined || value.safe_metadata === null || isRecord(value.safe_metadata))
 }

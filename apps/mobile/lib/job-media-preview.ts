@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { supabase } from './supabase'
 import { withNetworkDeadline } from './response-guard'
+import { mobileRuntimeConfig } from './runtime-config'
 
 const JOB_MEDIA_REF_PREFIX = 'supabase://job-media/'
 const JOB_MEDIA_SIGNED_URL_TIMEOUT_MS = 10_000
@@ -39,11 +40,28 @@ export function mergeJobMediaRefsNewestFirst(
 }
 
 function isLocalMediaPreviewUri(ref: string) {
-  return /^(?:file|content|ph|assets-library):/i.test(ref)
+  return /^(?:blob|file|content|ph|assets-library):/i.test(ref)
+}
+
+function isTrustedKaelEvidencePreviewUrl(ref: string) {
+  if (!mobileRuntimeConfig.supabaseUrl) return false
+  try {
+    const projectUrl = new URL(mobileRuntimeConfig.supabaseUrl)
+    const previewUrl = new URL(ref)
+    return previewUrl.origin === projectUrl.origin &&
+      previewUrl.pathname.startsWith('/storage/v1/object/sign/kael-chat-media/') &&
+      previewUrl.searchParams.has('token')
+  } catch {
+    return false
+  }
+}
+
+function isDirectMediaPreviewUri(ref: string) {
+  return isLocalMediaPreviewUri(ref) || isTrustedKaelEvidencePreviewUrl(ref)
 }
 
 export async function resolveJobMediaPreviewUrl(ref: string): Promise<string | null> {
-  if (isLocalMediaPreviewUri(ref)) return ref
+  if (isDirectMediaPreviewUri(ref)) return ref
   if (!ref.startsWith('supabase://')) return null
 
   const objectPath = jobMediaObjectPathFromRef(ref)
@@ -83,7 +101,7 @@ export function useJobMediaPreviewUrls(urls: readonly (string | null | undefined
     [key],
   )
   const directUrls = useMemo(
-    () => refs.map((ref) => ref && isLocalMediaPreviewUri(ref) ? ref : null),
+    () => refs.map((ref) => ref && isDirectMediaPreviewUri(ref) ? ref : null),
     [refs],
   )
   const [signedPreview, setSignedPreview] = useState(() => ({

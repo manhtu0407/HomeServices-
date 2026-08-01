@@ -137,42 +137,84 @@ export function WorkerV5SettlementStrip({
   zipAura: WorkerV5CaseAuraComponent
 }) {
   const payment = deal?.payment
+  const recordedGross = positiveMoney(payment?.grossAmount)
+  const recordedWorkerNet = positiveMoney(payment?.workerNet)
+  const recordedPlatformFee = positiveMoney(payment?.platformFee)
+  const hasRecordedSettlement = recordedGross !== null
+    && recordedWorkerNet !== null
+    && recordedPlatformFee !== null
+  const gross = hasRecordedSettlement ? recordedGross : positiveMoney(deal?.finalPrice)
+  const workerNet = hasRecordedSettlement
+    ? recordedWorkerNet
+    : positiveMoney(deal?.broadcast?.estimatedEarning)
+  const platformFee = hasRecordedSettlement
+    ? recordedPlatformFee
+    : gross !== null && workerNet !== null && gross >= workerNet
+      ? gross - workerNet
+      : null
+  const emptyAmount = textByLanguage(language, 'Chưa có dữ liệu', 'No data')
   const cells = [
     {
-      label: textByLanguage(language, 'Khách thanh toán', 'Customer paid'),
-      value: payment?.grossAmount ? formatVnd(payment.grossAmount, language) : textByLanguage(language, 'Chưa có', 'None'),
+      label: hasRecordedSettlement
+        ? textByLanguage(language, 'Khách thanh toán', 'Customer paid')
+        : textByLanguage(language, 'Giá đã chốt', 'Final price'),
+      value: gross !== null ? formatVnd(gross, language) : emptyAmount,
     },
     {
-      label: textByLanguage(language, 'Bạn nhận', 'Worker net'),
-      value: payment?.workerNet ? formatVnd(payment.workerNet, language) : textByLanguage(language, 'Chưa có', 'None'),
+      label: hasRecordedSettlement
+        ? textByLanguage(language, 'Bạn nhận', 'Worker net')
+        : textByLanguage(language, 'Bạn dự kiến nhận', 'Estimated worker net'),
+      value: workerNet !== null ? formatVnd(workerNet, language) : emptyAmount,
     },
     {
-      label: textByLanguage(language, 'Phí nền tảng', 'Platform fee'),
-      value: payment?.platformFee ? formatVnd(payment.platformFee, language) : textByLanguage(language, 'Chưa có', 'None'),
+      label: hasRecordedSettlement
+        ? textByLanguage(language, 'Phí nền tảng', 'Platform fee')
+        : textByLanguage(language, 'Phí dự kiến', 'Estimated fee'),
+      value: platformFee !== null ? formatVnd(platformFee, language) : emptyAmount,
     },
   ]
+  const formula = gross !== null && workerNet !== null && platformFee !== null
+    ? textByLanguage(
+        language,
+        `${hasRecordedSettlement ? 'Đã đối soát' : 'Dự kiến'}: ${formatVnd(gross, language)} - ${formatVnd(platformFee, language)} = ${formatVnd(workerNet, language)}.`,
+        `${hasRecordedSettlement ? 'Reconciled' : 'Estimated'}: ${formatVnd(gross, language)} - ${formatVnd(platformFee, language)} = ${formatVnd(workerNet, language)}.`,
+      )
+    : textByLanguage(
+        language,
+        'Số tiền sẽ hiện khi giá và mức phí được hệ thống đồng bộ.',
+        'Amounts appear after the price and fee are synced.',
+      )
   return (
-    <View style={styles.settlementStrip} testID="worker-v5-settlement-strip">
-      {cells.map((cell, index) => (
-        <View key={cell.label} style={[styles.settlementCell, reduceTransparency && styles.opaqueCard]}>
-          {!reduceTransparency ? (
-            <>
-              <CaseWideAura
-                scope={`CompletionSettlement${index}`}
-                style={styles.settlementCellMintAura}
-                testID={`worker-v5-settlement-cell-mint-aura-${index}`}
-              />
-              <ZipAura
-                scope={`CompletionSettlement${index}`}
-                style={styles.settlementCellZipMintAura}
-                testID={`worker-v5-settlement-cell-zip-mint-aura-${index}`}
-              />
-            </>
-          ) : null}
-          <Text style={styles.settlementValue} numberOfLines={1} testID={`worker-v5-settlement-value-${index}`}>{cell.value}</Text>
-          <Text style={styles.settlementLabel} numberOfLines={2}>{cell.label}</Text>
-        </View>
-      ))}
+    <View style={styles.settlementGroup}>
+      <View style={styles.settlementStrip} testID="worker-v5-settlement-strip">
+        {cells.map((cell, index) => (
+          <View key={cell.label} style={[styles.settlementCell, reduceTransparency && styles.opaqueCard]}>
+            {!reduceTransparency ? (
+              <>
+                <CaseWideAura
+                  scope={`CompletionSettlement${index}`}
+                  style={styles.settlementCellMintAura}
+                  testID={`worker-v5-settlement-cell-mint-aura-${index}`}
+                />
+                <ZipAura
+                  scope={`CompletionSettlement${index}`}
+                  style={styles.settlementCellZipMintAura}
+                  testID={`worker-v5-settlement-cell-zip-mint-aura-${index}`}
+                />
+              </>
+            ) : null}
+            <Text style={styles.settlementValue} numberOfLines={1} testID={`worker-v5-settlement-value-${index}`}>{cell.value}</Text>
+            <Text style={styles.settlementLabel} numberOfLines={2}>{cell.label}</Text>
+          </View>
+        ))}
+      </View>
+      <Text style={styles.settlementFormula} testID="worker-v5-settlement-formula-note">{formula}</Text>
     </View>
   )
+}
+
+function positiveMoney(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : null
 }

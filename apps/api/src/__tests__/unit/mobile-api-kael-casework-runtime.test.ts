@@ -8,8 +8,14 @@ const mediaService = readFileSync(join(root, 'services/kael-chat-media.service.t
 const core = readFileSync(join(root, 'services/kael-chat-core.ts'), 'utf8')
 const boundary = readFileSync(join(root, 'services/kael-chat-boundary.ts'), 'utf8')
 const caseWork = readFileSync(join(root, 'services/kael-chat-case-work.ts'), 'utf8')
+const sessionStore = readFileSync(join(root, 'services/kael-chat-session-store.ts'), 'utf8')
+const intakeService = readFileSync(join(root, 'services/kael-chat-intake.ts'), 'utf8')
 const services = readFileSync(join(root, 'services.ts'), 'utf8')
 const confirmService = readFileSync(join(root, 'services/kael-chat-confirm.service.ts'), 'utf8')
+const intakeConfirmationService = readFileSync(
+  join(root, 'services/kael-chat-intake-confirmation.service.ts'),
+  'utf8',
+)
 const completionReviewService = readFileSync(join(root, 'services/completion-review.service.ts'), 'utf8')
 const jobStatusService = readFileSync(join(root, 'services/job-status.service.ts'), 'utf8')
 const pipeline = readFileSync(join(root, 'kael/pipeline.ts'), 'utf8')
@@ -20,8 +26,13 @@ const sharedService = [
 const jobCreateService = readFileSync(join(root, 'services/job-create.service.ts'), 'utf8')
 
 describe('Kael Case Work runtime wiring', () => {
-  it('respects deferred Basic Intake handoff instead of analyzing during route submit', () => {
-    expect(service).toContain('if (!input.defer_analysis)')
+  it('normalizes Kael response branding before an Agentic turn is persisted', () => {
+    expect(sessionStore).toContain('normalizeKaelResponseBrand(input.text)')
+  })
+
+  it('holds booking intake at the confirmation Pre-Step before analysis', () => {
+    expect(service).toContain('if (!input.defer_analysis && !intakeConfirmation)')
+    expect(service).toContain('intake_confirmation: intakeConfirmation ?? undefined')
     expect(service).toContain('buildInitialDiagnosisScopeArtifact')
     expect(service).toContain('diagnosis_scope: initialDiagnosisScope')
     expect(service).toContain('case_phase: "analysis"')
@@ -33,9 +44,35 @@ describe('Kael Case Work runtime wiring', () => {
     expect(services).toContain('submitKaelChatEvidence: (ctx, sessionId, input) =>')
   })
 
+  it('keeps confirmation and correction decisions server-authoritative', () => {
+    expect(intakeConfirmationService).toContain('kaelIntakeConfirmationSchema.safeParse')
+    expect(intakeConfirmationService).toContain('buildKaelIntakeConfirmation')
+    expect(intakeConfirmationService).toContain('status: "abandoned"')
+    expect(intakeConfirmationService).toContain('intake_decision: "correction_requested"')
+    expect(intakeConfirmationService).toContain('await advanceKaelChatEstimate')
+    expect(services).toContain('decideKaelIntakeConfirmation: (ctx, sessionId, input) =>')
+    expect(service).toContain('assertIntakeConfirmationCompleted(previousMetadata)')
+    expect(service).toContain('assertIntakeConfirmationCompleted(asRecord(session.safe_metadata))')
+  })
+
+  it('accepts a concrete district from a clarification reply without guessing an address', () => {
+    expect(service).toContain('resolveKaelChatAddressDistrict,')
+    expect(intakeService).toContain('function resolveKaelChatAddressDistrict(')
+    expect(intakeService).toContain('normalizeServiceAreaDistrict(candidate)')
+    expect(intakeService).toContain('(?:quận|quan|q|district|dist)')
+    expect(intakeService).toContain('(?:1[0-2]|[1-9])')
+    expect(intakeService).toContain('bình\\s*thạnh|binh\\s*thanh|thủ\\s*đức|thu\\s*duc')
+    expect(intakeService).toContain('const extractedInlineDistrict = normalizeServiceAreaDistrict(inlineDistrict)')
+    expect(intakeService).toContain("candidate?.split(/[,;\\u2013\\u2014\\u00b7|/]")
+    expect(service).toMatch(
+      /const resolvedAddressDistrict = resolveKaelChatAddressDistrict\([\s\S]*input\.address_district,[\s\S]*message,[\s\S]*previousMetadata\.address_district/,
+    )
+    expect(service).toContain('address_district: resolvedAddressDistrict ?? undefined')
+  })
+
   it('rejects a skipped mandatory gate before writes and records accepted evidence decisions', () => {
     const submitEvidence = service.match(
-      /export async function submitKaelChatEvidence[\s\S]*?(?=function sanitizeCaseWorkEvidenceItems)/,
+      /export async function submitKaelChatEvidence[\s\S]*?(?=function withoutEphemeralKaelMediaUrls)/,
     )?.[0] ?? ''
 
     expect(submitEvidence).toContain('requestedEvidence.data.next_action.required')
@@ -60,7 +97,7 @@ describe('Kael Case Work runtime wiring', () => {
     expect(service).toMatch(/createKaelChat[\s\S]*sanitizeCaseWorkEvidenceItems\(input\.evidence_items \?\? \[\]\)/)
     expect(service).toMatch(/initialDiagnosisScope[\s\S]*mergeCaseWorkEvidence/)
     expect(service).toMatch(/createSignedVisionUrls[\s\S]*initialEvidenceItems/)
-    expect(service).toContain('evidence.kind === "photo" || evidence.kind === "video_frame"')
+    expect(caseWork).toContain('evidence.kind === "photo" || evidence.kind === "video_frame"')
   })
 
   it('persists one current diagnosis/scope artifact and snapshots it on turns', () => {
@@ -90,7 +127,8 @@ describe('Kael Case Work runtime wiring', () => {
   })
 
   it('scrubs customer PII and control-plane text before persisting diagnosis facts', () => {
-    expect(service).toContain('customerGoal: sanitizeCustomerCaseEvidenceText')
+    expect(service).toContain('const intakeDescription = sanitizeCustomerCaseEvidenceText')
+    expect(service).toContain('customerGoal: intakeDescription')
     expect(core).toContain('const safeCustomerEvidence = sanitizeCustomerCaseEvidenceText(message)')
     expect(core).toContain('const durableCustomerDetail = safeCustomerEvidence')
     expect(core).toContain('latest_customer_detail: durableCustomerDetail')
@@ -128,10 +166,10 @@ describe('Kael Case Work runtime wiring', () => {
 
   it('never accepts raw audio as Kael upload input', () => {
     expect(service).not.toMatch(/"audio\/(?:aac|mp4|mpeg|wav|webm)"/)
-    expect(service).toContain('voice_transcript')
-    expect(service).toContain('video_original_private')
+    expect(caseWork).toContain('voice_transcript')
+    expect(caseWork).toContain('video_original_private')
     expect(service).toContain('createSignedVisionUrls')
-    expect(service).toContain('evidence.kind === "photo" || evidence.kind === "video_frame"')
+    expect(caseWork).toContain('evidence.kind === "photo" || evidence.kind === "video_frame"')
   })
 
   it('keeps signed model URLs ephemeral and persists only owner-bound media refs', () => {
@@ -155,7 +193,7 @@ describe('Kael Case Work runtime wiring', () => {
       /export async function sendKaelChatTurn[\s\S]*?(?=export async function submitKaelChatEvidence)/,
     )?.[0] ?? ''
     const submitEvidence = service.match(
-      /export async function submitKaelChatEvidence[\s\S]*?(?=function sanitizeCaseWorkEvidenceItems)/,
+      /export async function submitKaelChatEvidence[\s\S]*?(?=function withoutEphemeralKaelMediaUrls)/,
     )?.[0] ?? ''
 
     for (const body of [sendTurn, submitEvidence]) {

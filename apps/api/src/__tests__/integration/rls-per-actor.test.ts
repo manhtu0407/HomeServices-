@@ -66,6 +66,7 @@ const authed: Record<keyof typeof emails, SupabaseClient<Database>> = {} as Reco
   SupabaseClient<Database>
 >
 let jobId: string | null = null
+let refundAccountId: string | null = null
 
 async function createUser(email: string, role: 'customer' | 'worker'): Promise<string> {
   const { data, error } = await admin.auth.admin.createUser({
@@ -87,7 +88,7 @@ async function signIn(email: string): Promise<SupabaseClient<Database>> {
 
 async function visibleCount(
   client: SupabaseClient<Database>,
-  table: 'jobs' | 'worker_profiles' | 'customer_profiles',
+  table: 'jobs' | 'worker_profiles' | 'customer_profiles' | 'customer_payment_methods',
   id: string,
 ): Promise<number> {
   const { data } = await client.from(table).select('id').eq('id', id)
@@ -115,6 +116,22 @@ describeReal('RLS per-actor — fixture setup', () => {
       })
       if (error) throw new Error(`customer_profile ${customer}: ${error.message}`)
     }
+    const refundAccount = await admin
+      .from('customer_payment_methods')
+      .insert({
+        account_holder_name: 'RLS CUSTOMER A',
+        bank_account: '123456789',
+        bank_account_masked: '**** 6789',
+        bank_key: 'techcombank',
+        bank_name: 'Techcombank',
+        customer_id: ids.customerA,
+        is_default: true,
+        status: 'pending_verification',
+      })
+      .select('id')
+      .single()
+    if (refundAccount.error) throw new Error(`customer_payment_method ${refundAccount.error.message}`)
+    refundAccountId = refundAccount.data!.id
     for (const w of ['workerA', 'workerB'] as const) {
       await admin.from('profiles').update({ role: 'worker' as const }).eq('id', ids[w])
       const { error } = await admin.from('worker_profiles').upsert({
@@ -226,6 +243,36 @@ describeReal('RLS — customer_profiles ownership', () => {
   })
 })
 
+describeReal('RLS — customer refund-account isolation', () => {
+  it('customer sees only the own masked record', async () => {
+    const own = await authed.customerA
+      .from('customer_payment_methods')
+      .select('id, bank_account_masked')
+      .eq('id', refundAccountId!)
+    const other = await authed.customerB
+      .from('customer_payment_methods')
+      .select('id')
+      .eq('id', refundAccountId!)
+
+    expect(own.data).toEqual([{ id: refundAccountId, bank_account_masked: '**** 6789' }])
+    expect(other.data?.length ?? 0).toBe(0)
+  })
+
+  it('customer cannot select the raw bank-account column or write the table directly', async () => {
+    const rawRead = await authed.customerA
+      .from('customer_payment_methods')
+      .select('bank_account')
+      .eq('id', refundAccountId!)
+    const directWrite = await authed.customerA
+      .from('customer_payment_methods')
+      .update({ bank_name: 'Forged bank' })
+      .eq('id', refundAccountId!)
+
+    expect(rawRead.error).not.toBeNull()
+    expect(directWrite.error).not.toBeNull()
+  })
+})
+
 describeReal('RLS — anon denied (defense in depth)', () => {
   it('anon cannot read jobs or worker_profiles', async () => {
     const anon = createClient<Database>(supabaseUrl!, anonKey!)
@@ -270,6 +317,7 @@ describeReal('RLS — worker_stats / customer_stats / overview views (P3a)', () 
 
 describeReal('RLS per-actor — cleanup', () => {
   afterAll(async () => {
+    if (refundAccountId) await admin.from('customer_payment_methods').delete().eq('id', refundAccountId)
     if (jobId) await admin.from('jobs').delete().eq('id', jobId)
     for (const w of ['workerA', 'workerB'] as const) {
       if (ids[w]) await admin.from('worker_profiles').delete().eq('id', ids[w])

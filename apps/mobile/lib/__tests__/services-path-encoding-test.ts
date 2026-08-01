@@ -1,5 +1,6 @@
 const mockDelete = jest.fn()
 const mockGet = jest.fn()
+const mockGetAuthenticated = jest.fn()
 const mockPatch = jest.fn()
 const mockPost = jest.fn()
 
@@ -8,6 +9,7 @@ jest.mock('../api', () => ({
     delete: (...args: unknown[]) => mockDelete(...args),
     deleteAuthenticated: jest.fn(),
     get: (...args: unknown[]) => mockGet(...args),
+    getAuthenticated: (...args: unknown[]) => mockGetAuthenticated(...args),
     patch: (...args: unknown[]) => mockPatch(...args),
     post: (...args: unknown[]) => mockPost(...args),
     postAuthenticated: jest.fn(),
@@ -28,6 +30,7 @@ describe('mobile service path segments', () => {
   beforeEach(() => {
     mockDelete.mockReset()
     mockGet.mockReset()
+    mockGetAuthenticated.mockReset()
     mockPatch.mockReset()
     mockPost.mockReset()
   })
@@ -74,5 +77,12 @@ describe('mobile service path segments', () => {
     expect(paths.length).toBeGreaterThan(25)
     expect(paths.every((path) => !path.includes(unsafeId))).toBe(true)
     expect(paths.every((path) => path.includes('unsafe%2Fsegment%3F%23value'))).toBe(true)
+  })
+
+  it('uses the supplied customer session when loading a routed job', () => {
+    jobService.getJob('job-a', 'customer-session-token')
+
+    expect(mockGetAuthenticated).toHaveBeenCalledWith('/jobs/job-a', 'customer-session-token')
+    expect(mockGet).not.toHaveBeenCalled()
   })
 })

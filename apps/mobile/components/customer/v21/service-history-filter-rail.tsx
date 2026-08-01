@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   PanResponder,
   Platform,
@@ -38,6 +38,14 @@ import { useCustomerV21SurfaceTheme } from './shared-surfaces'
 
 export type HistoryFilter = 'all' | 'saved' | ServiceType
 
+type FilterRailResponderHandlers = {
+  begin: () => void
+  cancel: () => void
+  end: (_event: unknown, gesture: { vx: number }) => void
+  move: (_event: unknown, gesture: { dx: number }) => void
+  shouldClaim: (_event: unknown, gesture: { dx: number; dy: number }) => boolean
+}
+
 const historyFilters: HistoryFilter[] = ['all', 'saved', ...SERVICE_TYPES]
 
 function historyFilterLabel(filter: HistoryFilter, language: AppLanguage) {
@@ -60,7 +68,25 @@ export function ServiceHistoryFilterRail({
   const filterDragStartOffsetRef = useRef(0)
   const filterRailMetricsRef = useRef({ contentWidth: 0, viewportWidth: 0 })
   const filterMomentumFrameRef = useRef<number | null>(null)
-  const [filterRailMetrics, setFilterRailMetrics] = useState(filterRailMetricsRef.current)
+  const [filterRailMetrics, setFilterRailMetrics] = useState({ contentWidth: 0, viewportWidth: 0 })
+  // PanResponder retains callbacks imperatively. The stable delegate receives
+  // post-commit handlers without constructing a responder during render.
+  const [filterRailResponderHandlers] = useState<FilterRailResponderHandlers>(() => ({
+    begin: () => undefined,
+    cancel: () => undefined,
+    end: (_event: unknown, _gesture: { vx: number }) => undefined,
+    move: (_event: unknown, _gesture: { dx: number }) => undefined,
+    shouldClaim: (_event: unknown, _gesture: { dx: number; dy: number }) => false,
+  }))
+  const [filterRailPanResponder] = useState(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (event, gesture) => filterRailResponderHandlers.shouldClaim(event, gesture),
+    onMoveShouldSetPanResponderCapture: (event, gesture) => filterRailResponderHandlers.shouldClaim(event, gesture),
+    onPanResponderGrant: () => filterRailResponderHandlers.begin(),
+    onPanResponderMove: (event, gesture) => filterRailResponderHandlers.move(event, gesture),
+    onPanResponderRelease: (event, gesture) => filterRailResponderHandlers.end(event, gesture),
+    onPanResponderTerminate: () => filterRailResponderHandlers.cancel(),
+    onPanResponderTerminationRequest: () => false,
+  }))
   const filterScrollX = useSharedValue(0)
   const filterIndicatorOpacity = useSharedValue(reduceTransparency ? 0.72 : 0.36)
   const filterIndicatorScaleY = useSharedValue(1)
@@ -169,40 +195,41 @@ export function ServiceHistoryFilterRail({
     filterMomentumFrameRef.current = requestAnimationFrame(tick)
   }, [reduceMotion, settleFilterIndicator, stopFilterRailMomentum, writeFilterRailOffset])
 
-  const filterRailPanResponder = useMemo(() => {
-    const shouldClaimHorizontalDrag = (_event: unknown, gesture: { dx: number; dy: number }) => {
-      const { contentWidth, viewportWidth } = filterRailMetricsRef.current
-      return Platform.OS === 'web'
-        && contentWidth > viewportWidth
-        && Math.abs(gesture.dx) > 5
-        && Math.abs(gesture.dx) > Math.abs(gesture.dy)
-    }
-
-    return PanResponder.create({
-      onMoveShouldSetPanResponder: shouldClaimHorizontalDrag,
-      onMoveShouldSetPanResponderCapture: shouldClaimHorizontalDrag,
-      onPanResponderGrant: () => {
-        stopFilterRailMomentum()
-        filterDragStartOffsetRef.current = filterScrollOffsetRef.current
-        activateFilterIndicator()
-      },
-      onPanResponderMove: (_event, gesture) => {
-        const { contentWidth, viewportWidth } = filterRailMetricsRef.current
-        writeFilterRailOffset(historyRailOffsetFromDrag(
-          filterDragStartOffsetRef.current,
-          gesture.dx,
-          contentWidth,
-          viewportWidth,
-        ))
-      },
-      onPanResponderRelease: (_event, gesture) => startFilterRailMomentum(gesture.vx),
-      onPanResponderTerminate: () => {
-        stopFilterRailMomentum()
-        settleFilterIndicator()
-      },
-      onPanResponderTerminationRequest: () => false,
-    })
-  }, [activateFilterIndicator, settleFilterIndicator, startFilterRailMomentum, stopFilterRailMomentum, writeFilterRailOffset])
+  const shouldClaimFilterRailDrag = useCallback((_event: unknown, gesture: { dx: number; dy: number }) => {
+    const { contentWidth, viewportWidth } = filterRailMetricsRef.current
+    return Platform.OS === 'web'
+      && contentWidth > viewportWidth
+      && Math.abs(gesture.dx) > 5
+      && Math.abs(gesture.dx) > Math.abs(gesture.dy)
+  }, [])
+  const beginFilterRailDrag = useCallback(() => {
+    stopFilterRailMomentum()
+    filterDragStartOffsetRef.current = filterScrollOffsetRef.current
+    activateFilterIndicator()
+  }, [activateFilterIndicator, stopFilterRailMomentum])
+  const moveFilterRailDrag = useCallback((_event: unknown, gesture: { dx: number }) => {
+    const { contentWidth, viewportWidth } = filterRailMetricsRef.current
+    writeFilterRailOffset(historyRailOffsetFromDrag(
+      filterDragStartOffsetRef.current,
+      gesture.dx,
+      contentWidth,
+      viewportWidth,
+    ))
+  }, [writeFilterRailOffset])
+  const endFilterRailDrag = useCallback((_event: unknown, gesture: { vx: number }) => {
+    startFilterRailMomentum(gesture.vx)
+  }, [startFilterRailMomentum])
+  const cancelFilterRailDrag = useCallback(() => {
+    stopFilterRailMomentum()
+    settleFilterIndicator()
+  }, [settleFilterIndicator, stopFilterRailMomentum])
+  useLayoutEffect(() => {
+    filterRailResponderHandlers.begin = beginFilterRailDrag
+    filterRailResponderHandlers.cancel = cancelFilterRailDrag
+    filterRailResponderHandlers.end = endFilterRailDrag
+    filterRailResponderHandlers.move = moveFilterRailDrag
+    filterRailResponderHandlers.shouldClaim = shouldClaimFilterRailDrag
+  }, [beginFilterRailDrag, cancelFilterRailDrag, endFilterRailDrag, filterRailResponderHandlers, moveFilterRailDrag, shouldClaimFilterRailDrag])
 
   const filterRailMaxOffset = Math.max(0, filterRailMetrics.contentWidth - filterRailMetrics.viewportWidth)
   const filterIndicatorTrackWidth = Math.max(0, filterRailMetrics.viewportWidth - 16)

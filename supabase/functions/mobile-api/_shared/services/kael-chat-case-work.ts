@@ -1,4 +1,4 @@
-import type { ServiceType } from "../../../_shared/domain.ts";
+import type { KaelChatEvidenceInput, ServiceType } from "../../../_shared/domain.ts";
 import {
   buildDemandingCustomerResponse,
   buildInitialDiagnosisScopeArtifact,
@@ -14,6 +14,7 @@ import { asKaelTurnRole, asNumber, asString, nullableString } from "./coercions.
 import { dbQuery, type DbClient } from "./db.ts";
 import {
   buildUntrustedCustomerCaseConversationContext,
+  sanitizeCustomerCaseEvidenceItem,
   sanitizeCustomerCaseEvidenceText,
 } from "../kael/untrusted-evidence.ts";
 
@@ -260,4 +261,56 @@ export function demandingCustomerSessionMetadata(
       response.stopAiLoop || previousMetadata.demanding_customer_hard_escalation === true,
     demanding_customer_last_at: new Date().toISOString(),
   });
+}
+
+export function sanitizeCaseWorkEvidenceItems(
+  evidenceItems: NonNullable<KaelChatEvidenceInput["evidence_items"]>,
+): KaelDiagnosisScopeArtifact["evidence"] {
+  return evidenceItems.map((evidence) => {
+    const ref = evidence.ref ?? "";
+    const expectedPurpose = evidence.kind === "video_original_private"
+      ? "/private_video_original/"
+      : evidence.kind === "photo" || evidence.kind === "video_frame"
+      ? "/model_vision/"
+      : null;
+    if (expectedPurpose && !ref.includes(expectedPurpose)) {
+      apiFailure("VALIDATION", "Loại media bằng chứng không khớp mục đích upload", 400);
+    }
+    const sanitizedEvidence = sanitizeCustomerCaseEvidenceItem(evidence);
+    if (
+      (evidence.kind === "voice_transcript" || evidence.kind === "text_note") &&
+      !sanitizedEvidence.transcript
+    ) {
+      apiFailure("VALIDATION", "Nội dung bằng chứng không có quan sát hợp lệ", 400);
+    }
+    return sanitizedEvidence;
+  });
+}
+
+export function caseWorkVoiceTranscript(
+  evidenceItems: KaelDiagnosisScopeArtifact["evidence"],
+) {
+  return evidenceItems
+    .filter((evidence) => evidence.kind === "voice_transcript")
+    .map((evidence) => evidence.transcript)
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+}
+
+export function mergeCaseWorkEvidence(
+  current: KaelDiagnosisScopeArtifact["evidence"],
+  incoming: KaelDiagnosisScopeArtifact["evidence"],
+): KaelDiagnosisScopeArtifact["evidence"] {
+  const result = [...current];
+  const keys = new Set(current.map((evidence) =>
+    `${evidence.kind}:${evidence.ref ?? evidence.transcript ?? evidence.summary ?? ""}`
+  ));
+  for (const evidence of incoming) {
+    const key = `${evidence.kind}:${evidence.ref ?? evidence.transcript ?? evidence.summary ?? ""}`;
+    if (keys.has(key)) continue;
+    keys.add(key);
+    result.push(evidence);
+    if (result.length >= 20) break;
+  }
+  return result;
 }

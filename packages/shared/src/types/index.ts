@@ -61,6 +61,7 @@ export type {
   WorkerCancellationResponse,
   WorkerCancellationDecisionResponse,
   WorkerJobListResponse,
+  WorkerCashPaymentConfirmationResponse,
   EarningsResponse,
   NotificationListResponse,
   NotificationReadResponse,

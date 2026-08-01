@@ -172,6 +172,7 @@ describe('hook owner isolation', () => {
         active: true,
         hydrate,
         routeJobId,
+        sessionAccessToken: 'customer-session-token',
       }),
       { initialProps: { routeJobId: 'job-a' as string | null } },
     )
@@ -182,13 +183,13 @@ describe('hook owner isolation', () => {
       firstA.resolve(false)
       await Promise.resolve()
     })
-    expect(result.current).toEqual({ failed: false, hydrating: true })
+    expect(result.current).toEqual({ authRequired: false, failed: false, hydrating: true })
 
     await act(async () => {
       secondA.resolve(true)
       await Promise.resolve()
     })
-    expect(result.current).toEqual({ failed: false, hydrating: false })
+    expect(result.current).toEqual({ authRequired: false, failed: false, hydrating: false })
   })
 
   it('does not restore or mutate the first scope draft after A -> B -> A', () => {

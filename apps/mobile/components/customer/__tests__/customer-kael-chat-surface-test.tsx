@@ -5,7 +5,9 @@ import { StyleSheet, Text } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
+import { setPendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
 import { customerV21ServiceCopy } from '../v21/copy'
+import { isLikelyKaelIntakeRequest } from '../v21/customer-kael-chat-helpers'
 
 let mockRouteParams: Record<string, string> = { mode: 'normal' }
 const mockReplace = jest.fn()
@@ -16,10 +18,12 @@ const mockConversationArchive = jest.fn()
 const mockConversationRename = jest.fn()
 const mockConversationPin = jest.fn()
 const mockConversationSendTurn = jest.fn()
+const mockKaelChatCreate = jest.fn()
 const mockKaelChatGet = jest.fn()
 const mockJobChatSend = jest.fn(async () => true)
 const mockHydrateRemoteJobById = jest.fn()
 let mockCustomerId = 'customer_kael_test_0'
+let mockAccessToken = 'customer-kael-access-token-0'
 let mockAuthSessionProvider: string | undefined
 let mockWorkflowDeal: LocalDeal | null = null
 let mockWorkflowError: string | null = null
@@ -59,7 +63,7 @@ jest.mock('@/components/ui/kael-core-v9', () => {
 jest.mock('@/lib/auth-provider', () => ({
   useAuth: () => ({
     session: {
-      access_token: undefined,
+      access_token: mockAccessToken,
       user: {
         app_metadata: mockAuthSessionProvider ? { provider: mockAuthSessionProvider } : {},
         id: mockCustomerId,
@@ -80,9 +84,11 @@ jest.mock('@/lib/services', () => {
       rename: (...args: any[]) => mockConversationRename(...args),
       sendTurn: (...args: any[]) => mockConversationSendTurn(...args),
       setPinned: (...args: any[]) => mockConversationPin(...args),
+      streamTurn: (...args: any[]) => mockConversationSendTurn(...args),
     },
     kaelChatService: {
       ...actual.kaelChatService,
+      create: (...args: any[]) => mockKaelChatCreate(...args),
       get: (...args: any[]) => mockKaelChatGet(...args),
     },
   }
@@ -278,6 +284,7 @@ describe('active customer Kael chat surface wiring', () => {
     mockHydrateRemoteJobById.mockResolvedValue(true)
     mockCustomerSequence += 1
     mockCustomerId = `customer_kael_test_${mockCustomerSequence}`
+    mockAccessToken = `customer-kael-access-token-${mockCustomerSequence}`
     mockConversationSequence = 0
     mockSessionsByMode = { case: [], normal: [] }
     ;[
@@ -288,6 +295,7 @@ describe('active customer Kael chat surface wiring', () => {
       mockConversationRename,
       mockConversationPin,
       mockConversationSendTurn,
+      mockKaelChatCreate,
       mockKaelChatGet,
     ].forEach((mock) => mock.mockReset())
     mockConversationList.mockImplementation(async (mode: 'normal' | 'case') => ({
@@ -332,6 +340,10 @@ describe('active customer Kael chat surface wiring', () => {
         },
         turns: [],
       },
+      success: true,
+    }))
+    mockKaelChatCreate.mockImplementation(async () => ({
+      data: makeCaseWorkResponse('new-case-session', 'Kael đã tiếp nhận yêu cầu kiểm thử.'),
       success: true,
     }))
     mockConversationRename.mockImplementation(async (sessionId: string, { title }: { title: string }) => {
@@ -487,15 +499,16 @@ describe('active customer Kael chat surface wiring', () => {
     const header = readCustomerSource('v21/kael-chat-header.tsx')
     const menu = readCustomerSource('v21/kael-session-menu.tsx')
     const liquidPressable = readCustomerSource('v21/kael-liquid-pressable.tsx')
+    const liquidReveal = readCustomerSource('v21/kael-liquid-reveal.tsx')
 
     expect(header).toContain('KaelLiquidPressable')
     expect(menu).toContain('KaelLiquidPressable')
     expect(menu).toContain('KaelLiquidReveal')
     expect(liquidPressable).toContain('motionTokens.liquid.press')
-    expect(liquidPressable).toContain('motionTokens.liquid.entrance')
-    expect(liquidPressable).toContain('withSpring')
-    expect(liquidPressable).toContain('reduceMotion')
-    expect(liquidPressable).not.toContain('withRepeat')
+    expect(liquidReveal).toContain('motionTokens.liquid.entrance')
+    expect(liquidReveal).toContain('withSpring')
+    expect(liquidReveal).toContain('reduceMotion')
+    expect(liquidReveal).not.toContain('withRepeat')
   })
 
   it('hides the empty hero while typing and creates a truly blank normal conversation', async () => {
@@ -531,9 +544,96 @@ describe('active customer Kael chat surface wiring', () => {
     await waitFor(() => expect(mockConversationSendTurn).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ message: 'Hey' }),
+      expect.objectContaining({ onResponseDelta: expect.any(Function) }),
     ))
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
   })
+
+  it('sends only once when web emits both Enter key and submit events', async () => {
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('normal')
+
+    const input = screen.getByTestId('customer-v21-kael-input')
+    fireEvent.changeText(input, 'Hey')
+    fireEvent(input, 'keyPress', { nativeEvent: { key: 'Enter' } })
+    fireEvent(input, 'submitEditing')
+
+    await waitFor(() => expect(mockConversationSendTurn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ message: 'Hey' }),
+      expect.objectContaining({ onResponseDelta: expect.any(Function) }),
+    ))
+    expect(mockConversationSendTurn).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+  })
+
+  it('renders verified deltas as one live Kael bubble before the committed transcript', async () => {
+    let resolveTurn!: (value: any) => void
+    mockConversationSendTurn.mockImplementationOnce((
+      _sessionId: string,
+      _input: { message: string },
+      handlers: { onResponseDelta?: (event: unknown) => void },
+    ) => {
+      handlers.onResponseDelta?.({
+        delta: 'Kael dang ',
+        turnId: 'stream-turn-1',
+        type: 'response_delta',
+      })
+      handlers.onResponseDelta?.({
+        delta: 'kiem tra.',
+        turnId: 'stream-turn-1',
+        type: 'response_delta',
+      })
+      return new Promise((resolve) => {
+        resolveTurn = resolve
+      })
+    })
+    render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('normal')
+
+    const input = screen.getByTestId('customer-v21-kael-input')
+    fireEvent.changeText(input, 'Kiem tra giup toi')
+    fireEvent(input, 'submitEditing')
+
+    const liveBubble = await screen.findByTestId('customer-v21-kael-streaming-response')
+    expect(liveBubble).toHaveProp('accessibilityState', { busy: true })
+    expect(liveBubble).toHaveTextContent('Kael dang kiem tra. \u258d')
+
+    const sessionId = mockConversationSendTurn.mock.calls[0][0] as string
+    const session = updateMockSession(sessionId, { total_turns: 2 })
+    await act(async () => {
+      resolveTurn({
+        data: {
+          session,
+          turns: [
+            {
+              conversation_id: sessionId,
+              created_at: '2026-07-29T00:00:00.000Z',
+              id: `${sessionId}-customer`,
+              role: 'customer',
+              text_content: 'Kiem tra giup toi',
+              turn_index: 1,
+            },
+            {
+              conversation_id: sessionId,
+              created_at: '2026-07-29T00:00:01.000Z',
+              id: 'stream-turn-1',
+              role: 'kael',
+              text_content: 'Kael dang kiem tra.',
+              turn_index: 2,
+            },
+          ],
+        },
+        success: true,
+      })
+    })
+
+    await waitFor(
+      () => expect(screen.queryByTestId('customer-v21-kael-streaming-response')).toBeNull(),
+      { timeout: 8_000 },
+    )
+  }, 15_000)
 
   it('deduplicates rapid new-session taps before React can repaint the disabled state', async () => {
     const session = makeConversationSession('normal', 'rapid-session')
@@ -594,6 +694,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(mockConversationSendTurn).toHaveBeenCalledWith(
       result.current.activeSessionId,
       expect.objectContaining({ message: 'Tôi muốn hỏi trước khi đặt dịch vụ' }),
+      expect.objectContaining({ onResponseDelta: expect.any(Function) }),
     )
     expect(result.current.turns.map((turn) => turn.text_content)).toEqual([
       'Tôi muốn hỏi trước khi đặt dịch vụ',
@@ -921,7 +1022,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-empty-hero-case')).toBeOnTheScreen()
   })
 
-  it('does not attach a plain Work handling route to the previous job thread', async () => {
+  it('keeps a blank Work handling route separate from the previous job thread', async () => {
     mockRouteParams = { mode: 'case' }
     mockWorkflowDeal = makeWorkflowDeal()
     mockJobMessages = [{
@@ -942,15 +1043,85 @@ describe('active customer Kael chat surface wiring', () => {
     await waitFor(() => expect(screen.getByTestId('customer-v21-kael-empty-hero-case')).toBeOnTheScreen())
     expect(screen.queryByText('Kael Công việc: Thông tin của phiên cũ')).toBeNull()
 
-    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Tôi muốn hỏi thêm')
+    const otherwiseGenericQaMessage = 'Kiểm thử QA mới: Điều hòa không mát tại Quận 3, TP.HCM. Máy vẫn chạy nhưng thổi gió ấm; cần kiểm tra nguyên nhân và báo giá trước khi thay vật tư.'
+    expect(isLikelyKaelIntakeRequest(otherwiseGenericQaMessage)).toBe(false)
+
+    const directInput = screen.getByTestId('customer-v21-kael-input')
+    fireEvent.changeText(directInput, otherwiseGenericQaMessage)
     fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
 
-    await waitFor(() => expect(mockConversationSendTurn).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ message: 'Tôi muốn hỏi thêm' }),
-    ))
+    await waitFor(
+      () => expect(screen.getByText(/Nhắn “Xác nhận”/)).toBeOnTheScreen(),
+      { timeout: 8_000 },
+    )
+    await waitFor(
+      () => expect(directInput).toHaveProp('editable', true),
+      { timeout: 8_000 },
+    )
+    expect(mockKaelChatCreate).not.toHaveBeenCalled()
+
+    fireEvent.changeText(directInput, 'Xác nhận')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledWith(expect.objectContaining({
+      message: otherwiseGenericQaMessage,
+      service_type: 'hvac',
+    })))
+    expect(mockConversationSendTurn).not.toHaveBeenCalled()
+    await waitFor(
+      () => expect(screen.getByText('Kael đã tiếp nhận yêu cầu kiểm thử.')).toBeOnTheScreen(),
+      { timeout: 12_000 },
+    )
     expect(mockJobChatSend).not.toHaveBeenCalled()
-  })
+  }, 30_000)
+
+  it('uses bounded pre-Agentic clarification and confirmation before creating a Case Work session', async () => {
+    mockRouteParams = { mode: 'case' }
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('case')
+
+    const vagueMessage = 'Chào Kael, tôi cần được hỗ trợ.'
+    const input = screen.getByTestId('customer-v21-kael-input')
+    fireEvent.changeText(input, vagueMessage)
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+    await waitFor(
+      () => expect(screen.getByText(/hạng mục cần hỗ trợ, hiện tượng hoặc thiết bị gặp vấn đề/)).toBeOnTheScreen(),
+      { timeout: 8_000 },
+    )
+    await waitFor(
+      () => expect(input).toHaveProp('editable', true),
+      { timeout: 8_000 },
+    )
+    expect(screen.getAllByText(/hạng mục cần hỗ trợ, hiện tượng hoặc thiết bị gặp vấn đề/)).toHaveLength(1)
+    expect(screen.getByText(/Hạng mục hỗ trợ gồm: sửa điện, sửa nước, vệ sinh nhà/)).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+    expect(mockKaelChatCreate).not.toHaveBeenCalled()
+    expect(mockConversationSendTurn).not.toHaveBeenCalled()
+
+    const clarification = 'Bồn rửa bếp bị rò nước ở Quận 3, cần kiểm tra sáng mai.'
+    fireEvent.changeText(input, clarification)
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+    await waitFor(
+      () => expect(screen.getByText(/Nhắn “Xác nhận”/)).toBeOnTheScreen(),
+      { timeout: 8_000 },
+    )
+    await waitFor(
+      () => expect(input).toHaveProp('editable', true),
+      { timeout: 8_000 },
+    )
+    expect(mockKaelChatCreate).not.toHaveBeenCalled()
+
+    fireEvent.changeText(input, 'Xác nhận')
+    fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
+
+    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledWith(expect.objectContaining({
+      message: `${vagueMessage}\n${clarification}`,
+      service_type: 'plumbing',
+    })))
+  }, 30_000)
 
   it('does not trust a routed local job snapshot after server hydration rejects it', async () => {
     mockRouteParams = { jobId: 'job-old-session', mode: 'case' }
@@ -964,9 +1135,31 @@ describe('active customer Kael chat surface wiring', () => {
     render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('case')
-    await waitFor(() => expect(mockHydrateRemoteJobById).toHaveBeenCalledWith('job-old-session'))
+    await waitFor(() => expect(mockHydrateRemoteJobById).toHaveBeenCalledWith('job-old-session', mockAccessToken))
     await waitFor(() => expect(screen.queryByText('Kael Công việc: Snapshot cũ không còn trên server')).toBeNull())
-    expect(screen.getByText('Chưa có công việc thật.')).toBeOnTheScreen()
+    expect(screen.getByText('Chưa thể tải công việc. Vui lòng thử lại.')).toBeOnTheScreen()
+  })
+
+  it('does not let a cached intake draft take ownership from an explicit Case Work job route', async () => {
+    await setPendingKaelChatDraft(mockCustomerId, {
+      message: 'Stale intake draft that does not belong to the routed job.',
+      profileId: 'water_diagnose',
+      scheduleMode: 'now',
+      scheduledAt: '2026-07-15T05:00:00.000Z',
+      serviceType: 'plumbing',
+    })
+    mockRouteParams = { jobId: 'job-route-authoritative', mode: 'case' }
+    mockWorkflowDeal = null
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('case')
+    await waitFor(() => expect(mockHydrateRemoteJobById).toHaveBeenCalledWith(
+      'job-route-authoritative',
+      mockAccessToken,
+    ))
+
+    expect(screen.queryByTestId('customer-v21-pending-draft-bubble')).toBeNull()
+    expect(mockKaelChatCreate).not.toHaveBeenCalled()
   })
 
   it('surfaces the workflow error that explains why a case transition was rejected', async () => {
@@ -976,7 +1169,7 @@ describe('active customer Kael chat surface wiring', () => {
     render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('case')
-    await waitFor(() => expect(mockHydrateRemoteJobById).toHaveBeenCalledWith('job-old-session'))
+    await waitFor(() => expect(mockHydrateRemoteJobById).toHaveBeenCalledWith('job-old-session', mockAccessToken))
     expect(screen.getByText('Chưa có yêu cầu để tìm thợ')).toBeOnTheScreen()
   })
 
@@ -1398,11 +1591,31 @@ describe('active customer Kael chat surface wiring', () => {
     const chatView = readCustomerSource('v21/chat-stateful-surfaces.tsx')
 
     expect(controller).toContain('conversations,')
-    expect(messageActions).toContain('conversations.sendConversationTurn(message, { revealAfter: processDone })')
+    expect(messageActions).toContain('conversations.sendConversationTurn(message, {')
+    expect(messageActions).toContain('onResponseDelta: appendStreamingReply')
     expect(controller).not.toContain('workerKaelChatService')
     expect(messageActions).not.toContain('workerKaelChatService')
     expect(chatView).not.toContain('/components/worker/')
     expect(chatView).not.toContain('worker-v5-')
+  })
+
+  it('keeps a blank Work handling route stable while unrelated workflow data changes', () => {
+    const surfaces = readCustomerSource('v21/surfaces.tsx')
+
+    expect(surfaces).toContain("caseId: mode === 'case' ? routeJobId : null")
+    expect(surfaces).not.toContain("caseId: mode === 'case' ? routeJobId ?? deal?.id ?? null : null")
+  })
+
+  it('removes the obsolete evidence count card after media appears in a Kael session', () => {
+    const content = readCustomerSource('v21/customer-kael-chat-content.tsx')
+    const presentation = readCustomerSource('v21/customer-kael-presentation.ts')
+    const chatView = readCustomerSource('v21/chat-stateful-surfaces.tsx')
+
+    expect(content).not.toContain('ChatEvidenceStrip')
+    expect(content).not.toContain('normalEvidenceNode=')
+    expect(presentation).not.toContain('showNormalEvidence')
+    expect(presentation).not.toContain('normalEvidenceCount')
+    expect(chatView).not.toContain('normalEvidenceNode')
   })
 
   it('wires a compact Customer-owned session menu with per-mode CRUD actions', () => {

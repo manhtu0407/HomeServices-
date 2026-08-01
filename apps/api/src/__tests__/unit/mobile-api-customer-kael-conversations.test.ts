@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { isVisibleCustomerConversationCatalogRow } from '../../../../../supabase/functions/mobile-api/_shared/services/customer-kael-conversation-projection'
+import { matchCustomerKaelConversationRoute } from '../../../../../supabase/functions/mobile-api/_shared/router/customer-kael-conversation-routes'
 
 function readUtf8(url: URL) {
   return readFileSync(url, 'utf8')
@@ -59,6 +60,26 @@ function readMigrations() {
 }
 
 describe('customer Kael conversation catalog', () => {
+  it('matches only the Customer POST stream route', () => {
+    const decode = (value: string) => decodeURIComponent(value)
+
+    expect(matchCustomerKaelConversationRoute(
+      '/me/kael/conversations/conversation-1/stream',
+      'POST',
+      decode,
+    )).toEqual({
+      kind: 'customer.kaelConversations.stream',
+      method: 'POST',
+      conversationId: 'conversation-1',
+      roles: ['customer'],
+    })
+    expect(matchCustomerKaelConversationRoute(
+      '/me/kael/conversations/conversation-1/stream',
+      'GET',
+      decode,
+    )).toBeNull()
+  })
+
   it('hides a linked catalog row when its authoritative Case Work session is unavailable', () => {
     const availableCaseSessions = new Set(['case-live'])
 

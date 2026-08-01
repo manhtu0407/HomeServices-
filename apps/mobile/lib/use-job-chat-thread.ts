@@ -215,7 +215,10 @@ export function useJobChatThread(
   }, [reload])
 
   useEffect(() => {
-    void reload()
+    const initialReload = setTimeout(() => {
+      void reload()
+    }, 0)
+    return () => clearTimeout(initialReload)
   }, [reload])
 
   // Re-fetch the server-ordered thread on realtime inserts instead of trusting

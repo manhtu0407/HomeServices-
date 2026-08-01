@@ -87,8 +87,8 @@ export function WorkerV5ScheduleEmptyState({
         <Text style={styles.scheduleEmptyMeta} numberOfLines={3}>
           {textByLanguage(
             language,
-            'Lịch trình sẽ tự hiện khi NestScout có cơ hội thật từ khách hoặc việc đang chạy.',
-            'The schedule appears when NestScout has a real customer opportunity or active work.',
+            'Lịch trình sẽ tự hiện khi có cơ hội thật từ khách hoặc việc đang chạy.',
+            'The schedule appears when there is a real customer opportunity or active work.',
           )}
         </Text>
       </View>

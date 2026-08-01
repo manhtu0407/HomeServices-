@@ -77,6 +77,8 @@ const kaelProfileByService = {
 export const kaelChatCreateSchema = z.object({
   service_type: serviceTypeSchema,
   profile_id: z.enum(KAEL_PERFORMANCE_PROFILE_IDS).optional(),
+  intake_source: z.enum(['booking', 'direct_chat']).optional(),
+  intake_description: z.string().trim().min(10).max(2000).optional(),
   session_id: z.string().uuid().optional(),
   message: z.string().trim().min(1).max(5000).optional(),
   problem_chips: z.array(z.string().trim().min(1).max(100)).max(10).default([]),
@@ -99,7 +101,37 @@ export const kaelChatCreateSchema = z.object({
       path: ['profile_id'],
     })
   }
+  if (value.intake_source === 'booking') {
+    const requiredBookingFields = [
+      ['profile_id', value.profile_id],
+      ['intake_description', value.intake_description],
+      ['message', value.message],
+      ['address_label', value.address_label],
+      ['address_district', value.address_district],
+      ['scheduled_at', value.scheduled_at],
+      ['schedule_window', value.schedule_window],
+    ] as const
+    for (const [field, fieldValue] of requiredBookingFields) {
+      if (fieldValue) continue
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${field} is required for booking intake`,
+        path: [field],
+      })
+    }
+    if (value.problem_chips.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'problem_chips are required for booking intake',
+        path: ['problem_chips'],
+      })
+    }
+  }
 })
+
+export const kaelChatIntakeConfirmationDecisionSchema = z.object({
+  decision: z.enum(['confirmed', 'correction_requested']),
+}).strict()
 
 const kaelChatMediaRefSchema = z.string().regex(
   /^supabase:\/\/kael-chat-media\/(?!\.{1,2}\/)[^/\s?#]+\/kael-chat\/(?:model_vision|private_video_original)\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,
@@ -480,6 +512,18 @@ export const workerAvatarUpdateSchema = z.object({
   avatar_ref: workerAvatarRefSchema,
 }).strict()
 
+export const CUSTOMER_AVATAR_MAX_BYTES = WORKER_AVATAR_MAX_BYTES
+const customerAvatarRefSchema = z.string().regex(
+  /^supabase:\/\/customer-avatars\/[^/\s?#]+\/(?!.*(?:\.\.|\/\/))[A-Za-z0-9._-]+$/i,
+  'avatar_ref must be a private customer-avatars storage ref',
+)
+
+export const customerAvatarUploadSchema = workerAvatarUploadSchema
+
+export const customerAvatarUpdateSchema = z.object({
+  avatar_ref: customerAvatarRefSchema,
+}).strict()
+
 export const availabilityToggleSchema = z.object({
   is_available: z.boolean(),
 })
@@ -707,6 +751,9 @@ export function scrubSensitiveForLLM(input: string): string {
 export type JobCreateInput = z.infer<typeof jobCreateSchema>
 export type ApartmentAccessProfileInput = z.infer<typeof apartmentAccessProfileSchema>
 export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>
+export type KaelChatIntakeConfirmationDecisionInput = z.infer<
+  typeof kaelChatIntakeConfirmationDecisionSchema
+>
 export type KaelChatMediaUploadInput = z.infer<typeof kaelChatMediaUploadSchema>
 export type KaelChatMediaRevokeInput = z.infer<typeof kaelChatMediaRevokeSchema>
 export type KaelChatEvidenceInput = z.infer<typeof kaelChatEvidenceSchema>
@@ -733,6 +780,8 @@ export type WorkerServiceAreaUpdateInput = z.infer<typeof workerServiceAreaUpdat
 export type WorkerServicePreferencesUpdateInput = z.infer<typeof workerServicePreferencesUpdateSchema>
 export type WorkerAvatarUploadInput = z.infer<typeof workerAvatarUploadSchema>
 export type WorkerAvatarUpdateInput = z.infer<typeof workerAvatarUpdateSchema>
+export type CustomerAvatarUploadInput = z.infer<typeof customerAvatarUploadSchema>
+export type CustomerAvatarUpdateInput = z.infer<typeof customerAvatarUpdateSchema>
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>
 export type JobIncidentScopeProposalInput = z.infer<typeof jobIncidentScopeProposalSchema>

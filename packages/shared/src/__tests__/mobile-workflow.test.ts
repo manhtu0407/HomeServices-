@@ -111,6 +111,13 @@ describe('mobile local workflow state machine', () => {
     expect(ambiguous.problemChips).toEqual([])
   })
 
+  it('recognizes an explicit Vietnamese plumbing service request', () => {
+    const directPlumbing = inferLocalDealDraftFromKael('Tôi chọn dịch vụ sửa nước, cần kiểm tra sớm.')
+
+    expect(directPlumbing.serviceType).toBe('plumbing')
+    expect(directPlumbing.needsServiceChoice).toBe(false)
+  })
+
   it('does not infer a single service when Kael text mentions both electrical and plumbing work', () => {
     const draft = inferLocalDealDraftFromKael('Ổ cắm phòng khách bị nóng và vòi nước lavabo cũng rò liên tục')
 
@@ -649,6 +656,7 @@ describe('mobile local workflow state machine', () => {
           fullAddressVisible: false,
           fullAddressLabel: null,
           secondsRemaining: null,
+          estimatedEarning: 225_000,
         },
         finalPrice: 250_000,
         payment: {
@@ -669,8 +677,37 @@ describe('mobile local workflow state machine', () => {
     })
 
     expect(state.deal?.finalPrice).toBe(250_000)
+    expect(state.deal?.broadcast?.estimatedEarning).toBe(225_000)
     expect(state.deal?.payment?.status).toBe('received')
     expect(state.deal?.workerProfile?.rating).toBe(4.8)
+  })
+
+  it('hydrates a paid cash settlement so Customer can reach review after Worker confirmation', () => {
+    const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-cash-paid',
+        status: 'paid',
+        backendStatus: 'paid',
+        serviceType: 'plumbing',
+        description: 'Ống nước rò rỉ đã được sửa.',
+        problemChips: ['Rò rỉ'],
+        addressLabel: 'Quận 3',
+        districtLabel: 'Quận 3',
+        finalPrice: 800_000,
+        payment: {
+          provider: 'cash',
+          status: 'cash_confirmed',
+          grossAmount: 800_000,
+          platformFee: 120_000,
+          workerNet: 680_000,
+        },
+      },
+    })
+
+    expect(state.deal?.status).toBe('paid')
+    expect(state.deal?.payment?.status).toBe('cash_confirmed')
+    expect(selectLocalWorkflow(state).reviewLocked).toBe(false)
   })
 
   it('rejects malformed remote snapshots without crashing or replacing valid local state', () => {
@@ -714,6 +751,20 @@ describe('mobile local workflow state machine', () => {
       { backendStatus: 'paid', finalPrice: 0 },
       { backendStatus: 'paid', finalPrice: -1 },
       { backendStatus: 'paid', finalPrice: Number.MAX_SAFE_INTEGER + 1 },
+      {
+        backendStatus: 'paid',
+        broadcast: {
+          status: 'accepted',
+          serviceType: 'electrical',
+          problemSummary: 'Breaker keeps tripping.',
+          generalArea: 'Quận 7',
+          prebrief: [],
+          fullAddressVisible: false,
+          fullAddressLabel: null,
+          secondsRemaining: null,
+          estimatedEarning: Number.NaN,
+        },
+      },
       {
         backendStatus: 'paid',
         payment: { provider: null, status: 'received', grossAmount: Number.NaN, platformFee: null, workerNet: null },

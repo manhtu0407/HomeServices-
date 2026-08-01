@@ -17,14 +17,11 @@ import {
   buildWorkerV5AcceptEtaSignal,
   buildWorkerV5RouteDistanceSignal,
   workerV5EtaLensValue,
+  workerV5LiveDistanceSignal,
+  workerV5LiveEtaSignal,
 } from '../ui/route'
 import type { WorkerV5RoutePreview } from './use-worker-route-preview'
 import { styles } from './map-styles'
-
-const LIVE_DISTANCE_FORMATTERS = {
-  en: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }),
-  vi: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }),
-} as const
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -42,10 +39,10 @@ export function WorkerV5EtaSummaryCard({
   route?: WorkerV5RoutePreview | null
 }) {
   const etaSignal = route
-    ? liveEtaSignal(route, language)
+    ? workerV5LiveEtaSignal(route, language)
     : buildWorkerV5AcceptEtaSignal(deal, language)
   const distanceSignal = route
-    ? liveDistanceSignal(route, language)
+    ? workerV5LiveDistanceSignal(route, language)
     : buildWorkerV5RouteDistanceSignal(deal, language)
   const etaMinuteValue = etaSignal.hasSignal ? workerV5EtaLensValue(etaSignal.label) : null
   const lensValue = etaMinuteValue ?? textByLanguage(language, 'Chờ', 'Wait')
@@ -78,23 +75,4 @@ export function WorkerV5EtaSummaryCard({
       </View>
     </View>
   )
-}
-
-function liveEtaSignal(route: WorkerV5RoutePreview, language: AppLanguage) {
-  const minutes = Math.max(1, Math.ceil(route.durationSeconds / 60))
-  return {
-    hasSignal: true,
-    label: textByLanguage(language, `Di chuyển trong ${minutes} phút`, `Travel in ${minutes} min`),
-  }
-}
-
-function liveDistanceSignal(route: WorkerV5RoutePreview, language: AppLanguage) {
-  const kilometers = route.distanceMeters / 1000
-  const label = kilometers >= 1
-    ? `${LIVE_DISTANCE_FORMATTERS[language].format(kilometers)} km`
-    : `${Math.max(1, Math.round(route.distanceMeters))} m`
-  return {
-    hasSignal: true,
-    meta: textByLanguage(language, `Quãng đường thật · ${label}`, `Real route distance · ${label}`),
-  }
 }

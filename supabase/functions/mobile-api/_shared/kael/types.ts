@@ -541,6 +541,7 @@ export type EdgeAiSecrets = {
   durableGuardsEnabled?: boolean;
   durableGuardClient?: EdgeGuardClient;
   stagingPaymentRailEnabled?: boolean;
+  paymentRailAvailable?: boolean;
 };
 
 export type PipelineInput = {

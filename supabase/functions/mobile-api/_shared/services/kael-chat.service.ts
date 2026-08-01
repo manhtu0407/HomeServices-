@@ -10,8 +10,8 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import { checkKaelChatRateLimit } from "../rate-limit.ts";
 import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
 import { buildInitialDiagnosisScopeArtifact, kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets, type KaelDiagnosisScopeArtifact } from "../kael/index.ts";
+import { kaelIntakeConfirmationSchema } from "../kael/intake-confirmation.ts";
 import {
-  sanitizeCustomerCaseEvidenceItem,
   sanitizeCustomerCaseEvidenceText,
   sanitizeUntrustedEvidenceList,
   sanitizeUntrustedEvidenceText,
@@ -23,9 +23,18 @@ import {
   type KaelChatTurnInput,
 } from "../../../_shared/domain.ts";
 import { advanceKaelChatEstimate, assertKaelSessionOwnership, findExistingKaelSessionByClientRequest, insertKaelTurn, maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn, updateKaelSession } from "./kael-chat-core.ts";
-import { diagnosisScopeForIncomingTurn } from "./kael-chat-case-work.ts";
+import {
+  caseWorkVoiceTranscript,
+  diagnosisScopeForIncomingTurn,
+  mergeCaseWorkEvidence,
+  sanitizeCaseWorkEvidenceItems,
+} from "./kael-chat-case-work.ts";
 import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./kael-chat-intake-safety.ts";
 import { getKaelChat } from "./kael-chat-read.service.ts";
+import {
+  buildBookingIntakeConfirmation,
+  resolveKaelChatAddressDistrict,
+} from "./kael-chat-intake.ts";
 import {
   ensureCustomerCaseConversation,
   linkCreatedCustomerCaseConversation,
@@ -59,6 +68,7 @@ export async function createKaelChat(
   );
   if (
     scheduleValidation !== null &&
+    input.intake_source !== "booking" &&
     (!input.client_request_id || input.session_id)
   ) {
     apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
@@ -111,7 +121,7 @@ export async function createKaelChat(
         409,
       );
     }
-    if (scheduleValidation !== null) {
+    if (scheduleValidation !== null && input.intake_source !== "booking") {
       apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
     }
   }
@@ -162,6 +172,20 @@ export async function createKaelChat(
     ctx.user.id,
   );
   const initialVoiceTranscript = caseWorkVoiceTranscript(initialEvidenceItems);
+  const initialAddressDistrict = resolveKaelChatAddressDistrict(
+    input.address_district,
+    input.message,
+  );
+  const intakeDescription = sanitizeCustomerCaseEvidenceText(
+    sanitizeForLLM(input.intake_description ?? input.message ?? ""),
+  );
+  const intakeConfirmation = buildBookingIntakeConfirmation({
+    intake: input,
+    description: intakeDescription,
+    problemChips: safeProblemChips,
+    addressDistrict: initialAddressDistrict,
+    language,
+  });
   const metadata = compactMetadata({
     problem_chips: safeProblemChips,
     language,
@@ -170,8 +194,11 @@ export async function createKaelChat(
     // not mistaken for an in-flight session forever.
     initial_turn_expected: Boolean(input.message),
     profile_id: input.profile_id ?? null,
+    intake_source: input.intake_source ?? "direct_chat",
+    intake_description: intakeDescription || undefined,
+    intake_confirmation: intakeConfirmation ?? undefined,
     address_label: input.address_label ?? null,
-    address_district: input.address_district ?? null,
+    address_district: initialAddressDistrict,
     apartment_access_profile: sanitizeApartmentAccessProfile(
       input.apartment_access_profile,
     ),
@@ -186,7 +213,7 @@ export async function createKaelChat(
   });
   const initialArtifact = buildInitialDiagnosisScopeArtifact({
     serviceType: input.service_type,
-    customerGoal: sanitizeCustomerCaseEvidenceText(input.message?.trim() ?? "") ||
+    customerGoal: intakeDescription ||
       safeProblemChips.join(" ") || input.service_type,
   });
   const initialDiagnosisScope = kaelDiagnosisScopeArtifactSchema.parse({
@@ -293,7 +320,7 @@ export async function createKaelChat(
       await retireFailedKaelSessionCreate(client, sessionId, ctx.user.id);
       throw error;
     }
-    if (!input.defer_analysis) {
+    if (!input.defer_analysis && !intakeConfirmation) {
     // Apply boundary guard FIRST so
     // out-of-scope / injection / mismatch messages are declined before the
     // demanding-customer empathy path can intercept and produce a
@@ -337,6 +364,7 @@ export async function createKaelChat(
           sessionId,
           {
             ...input,
+            address_district: initialAddressDistrict ?? undefined,
             message,
             photo_urls: initialSignedVisionUrls,
             persisted_safety_signals: initialSafetySignals,
@@ -391,6 +419,7 @@ export async function sendKaelChatTurn(
 
   const previousTurns = asNumber(session.total_turns);
   const previousMetadata = asRecord(session.safe_metadata);
+  assertIntakeConfirmationCompleted(previousMetadata);
   const language = input.language ?? (previousMetadata.language === "en" ? "en" : "vi");
   const durablePreviousMetadata = withoutEphemeralKaelMediaUrls(previousMetadata);
   const qaCount = asNumber(previousMetadata.demanding_customer_qa_count) + 1;
@@ -414,6 +443,11 @@ export async function sendKaelChatTurn(
   );
   const voiceTranscript = caseWorkVoiceTranscript(sanitizedEvidenceItems);
   const message = sanitizeForLLM(input.message || voiceTranscript);
+  const resolvedAddressDistrict = resolveKaelChatAddressDistrict(
+    input.address_district,
+    message,
+    nullableString(previousMetadata.address_district),
+  );
   const persistedSafetySignals = persistentKaelSafetySignals(
     message,
     asServiceType(session.service_type),
@@ -425,8 +459,7 @@ export async function sendKaelChatTurn(
     problem_chips: safeProblemChips,
     address_label: input.address_label ??
       nullableString(previousMetadata.address_label),
-    address_district: input.address_district ??
-      nullableString(previousMetadata.address_district),
+    address_district: resolvedAddressDistrict ?? undefined,
     apartment_access_profile: mergeApartmentAccessProfiles(
       previousMetadata.apartment_access_profile,
       input.apartment_access_profile,
@@ -564,6 +597,7 @@ export async function submitKaelChatEvidence(
   ) {
     apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận bằng chứng", 409);
   }
+  assertIntakeConfirmationCompleted(asRecord(session.safe_metadata));
 
   const requestedEvidence = kaelDiagnosisScopeArtifactSchema.safeParse(
     session.diagnosis_scope,
@@ -736,63 +770,24 @@ export async function submitKaelChatEvidence(
   return getKaelChat(ctx, sessionId);
 }
 
-function sanitizeCaseWorkEvidenceItems(
-  evidenceItems: NonNullable<KaelChatEvidenceInput["evidence_items"]>,
-): KaelDiagnosisScopeArtifact["evidence"] {
-  return evidenceItems.map((evidence) => {
-    const ref = evidence.ref ?? "";
-    const expectedPurpose = evidence.kind === "video_original_private"
-      ? "/private_video_original/"
-      : evidence.kind === "photo" || evidence.kind === "video_frame"
-      ? "/model_vision/"
-      : null;
-    if (expectedPurpose && !ref.includes(expectedPurpose)) {
-      apiFailure("VALIDATION", "Loại media bằng chứng không khớp mục đích upload", 400);
-    }
-    const sanitizedEvidence = sanitizeCustomerCaseEvidenceItem(evidence);
-    if (
-      (evidence.kind === "voice_transcript" || evidence.kind === "text_note") &&
-      !sanitizedEvidence.transcript
-    ) {
-      apiFailure("VALIDATION", "Nội dung bằng chứng không có quan sát hợp lệ", 400);
-    }
-    return sanitizedEvidence;
-  });
-}
-
-function caseWorkVoiceTranscript(
-  evidenceItems: KaelDiagnosisScopeArtifact["evidence"],
-) {
-  return evidenceItems
-    .filter((evidence) => evidence.kind === "voice_transcript")
-    .map((evidence) => evidence.transcript)
-    .filter((value): value is string => Boolean(value))
-    .join(" ");
-}
-
-function mergeCaseWorkEvidence(
-  current: KaelDiagnosisScopeArtifact["evidence"],
-  incoming: KaelDiagnosisScopeArtifact["evidence"],
-): KaelDiagnosisScopeArtifact["evidence"] {
-  const result = [...current];
-  const keys = new Set(current.map((evidence) =>
-    `${evidence.kind}:${evidence.ref ?? evidence.transcript ?? evidence.summary ?? ""}`
-  ));
-  for (const evidence of incoming) {
-    const key = `${evidence.kind}:${evidence.ref ?? evidence.transcript ?? evidence.summary ?? ""}`;
-    if (keys.has(key)) continue;
-    keys.add(key);
-    result.push(evidence);
-    if (result.length >= 20) break;
-  }
-  return result;
-}
-
 function withoutEphemeralKaelMediaUrls(
   metadata: Record<string, unknown>,
 ): Record<string, unknown> {
   const { photo_urls: _ephemeralSignedUrls, ...durableMetadata } = metadata;
   return durableMetadata;
+}
+
+function assertIntakeConfirmationCompleted(metadata: Record<string, unknown>) {
+  const confirmation = kaelIntakeConfirmationSchema.safeParse(
+    metadata.intake_confirmation,
+  );
+  if (confirmation.success && confirmation.data.status === "pending") {
+    apiFailure(
+      "INTAKE_CONFIRMATION_REQUIRED",
+      "Hãy xác nhận thông tin trước khi Kael tiếp tục.",
+      409,
+    );
+  }
 }
 
 export { createKaelChatMediaUpload, revokeKaelChatMedia };

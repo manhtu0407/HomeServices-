@@ -1,9 +1,7 @@
 import { z } from "zod";
-import {
-  getKaelPerformanceProfile,
-  KAEL_PERFORMANCE_PROFILE_IDS,
-} from "../mobile-api/_shared/kael/performance-profiles.ts";
+import { KAEL_PERFORMANCE_PROFILE_IDS } from "../mobile-api/_shared/kael/performance-profiles.ts";
 import { kaelCaseEvidenceSchema } from "../mobile-api/_shared/kael/artifact-contract.ts";
+import { refineKaelChatCreateInput } from "./kael-chat-create-refinement.ts";
 import { SERVICE_TYPES, type ServiceType } from "./service-taxonomy.ts";
 import { kaelChatMediaRefSchema } from "./kael-chat-media-contract.ts";
 import {
@@ -37,7 +35,6 @@ export type {
 } from "./kael-chat-media-contract.ts";
 export * from "./customer-account-contract.ts";
 export * from "./customer-kael-conversation-contract.ts";
-
 export const JOB_STATUSES = Object.freeze(
   [
     "draft",
@@ -312,6 +309,8 @@ export const jobCreateSchema = z.object({
 export const kaelChatCreateSchema = z.object({
   service_type: serviceTypeSchema,
   profile_id: z.enum(KAEL_PERFORMANCE_PROFILE_IDS).optional(),
+  intake_source: z.enum(["booking", "direct_chat"]).optional(),
+  intake_description: z.string().trim().min(10).max(2000).optional(),
   session_id: z.string().uuid().optional(),
   message: z.string().trim().min(1).max(5000).optional(),
   problem_chips: z.array(z.string().trim().min(1).max(100)).max(10).default([]),
@@ -327,18 +326,11 @@ export const kaelChatCreateSchema = z.object({
   // Optional UUID for idempotent session
   // creation. Same semantics as jobCreateSchema.client_request_id.
   client_request_id: clientRequestIdSchema.optional(),
-}).superRefine((value, ctx) => {
-  if (
-    value.profile_id &&
-    getKaelPerformanceProfile(value.service_type)?.id !== value.profile_id
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "profile_id must match service_type",
-      path: ["profile_id"],
-    });
-  }
-});
+}).superRefine(refineKaelChatCreateInput);
+
+export const kaelChatIntakeConfirmationDecisionSchema = z.object({
+  decision: z.enum(["confirmed", "correction_requested"]),
+}).strict();
 
 export const kaelChatEvidenceSchema = z.object({
   decision: z.enum(["confirmed", "skipped"]),
@@ -612,6 +604,18 @@ export const workerAvatarUpdateSchema = z.object({
   avatar_ref: workerAvatarRefSchema,
 }).strict();
 
+export const CUSTOMER_AVATAR_MAX_BYTES = WORKER_AVATAR_MAX_BYTES;
+const customerAvatarRefSchema = z.string().regex(
+  /^supabase:\/\/customer-avatars\/[^/\s?#]+\/(?!.*(?:\.\.|\/\/))[A-Za-z0-9._-]+$/i,
+  "avatar_ref must be a private customer-avatars storage ref",
+);
+
+export const customerAvatarUploadSchema = workerAvatarUploadSchema;
+
+export const customerAvatarUpdateSchema = z.object({
+  avatar_ref: customerAvatarRefSchema,
+}).strict();
+
 export const availabilityToggleSchema = z.object({
   is_available: z.boolean(),
 });
@@ -745,6 +749,9 @@ export type ApartmentAccessProfileInput = z.infer<
   typeof apartmentAccessProfileSchema
 >;
 export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>;
+export type EdgeKaelChatIntakeConfirmationDecisionInput = z.infer<
+  typeof kaelChatIntakeConfirmationDecisionSchema
+>;
 export type KaelChatEvidenceInput = z.infer<typeof kaelChatEvidenceSchema>;
 export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>;
 export type KaelAssistantInput = z.infer<typeof kaelAssistantSchema>;
@@ -767,6 +774,8 @@ export type WorkerServicePreferencesUpdateInput = z.infer<
 >;
 export type EdgeWorkerAvatarUploadInput = z.infer<typeof workerAvatarUploadSchema>;
 export type EdgeWorkerAvatarUpdateInput = z.infer<typeof workerAvatarUpdateSchema>;
+export type EdgeCustomerAvatarUploadInput = z.infer<typeof customerAvatarUploadSchema>;
+export type EdgeCustomerAvatarUpdateInput = z.infer<typeof customerAvatarUpdateSchema>;
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>;
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>;
 export type EdgeJobIncidentScopeProposalInput = z.infer<typeof edgeJobIncidentScopeProposalSchema>;

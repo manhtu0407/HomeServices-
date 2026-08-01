@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import {
-  listWorkerBroadcasts,
-  listWorkerJobs,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/workers.service'
+import { listWorkerBroadcasts } from '../../../../../supabase/functions/mobile-api/_shared/services/workers.service'
+import { listWorkerJobs } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-jobs.service'
 
 type QueryResult = {
   data: unknown
@@ -14,6 +12,11 @@ type QueryResult = {
 type QueryCall = {
   operations: unknown[][]
   table: string
+}
+
+type SignedUrlCall = {
+  bucket: string
+  path: string
 }
 
 type QueryChain = PromiseLike<QueryResult> & {
@@ -29,8 +32,31 @@ type QueryChain = PromiseLike<QueryResult> & {
 
 function makeSequenceClient(results: QueryResult[]) {
   const calls: QueryCall[] = []
+  const signedUrlCalls: SignedUrlCall[] = []
   return {
     calls,
+    signedUrlCalls,
+    rpc() {
+      return Promise.resolve({
+        data: [{ commission_level: 1, commission_rate_bps: 1500 }],
+        error: null,
+      })
+    },
+    storage: {
+      from(bucket: string) {
+        return {
+          createSignedUrl: async (path: string) => {
+            signedUrlCalls.push({ bucket, path })
+            return {
+              data: {
+                signedUrl: `https://storage.example.test/storage/v1/object/sign/${bucket}/${path}?token=signed`,
+              },
+              error: null,
+            }
+          },
+        }
+      },
+    },
     from(table: string) {
       const call: QueryCall = { operations: [], table }
       calls.push(call)
@@ -276,6 +302,50 @@ describe('worker evidence privacy and stage projection', () => {
       'eq',
       'owner_id',
       '33333333-3333-4333-8333-333333333333',
+    ])
+  })
+
+  it('delivers only signed Case Work image evidence after the worker match', async () => {
+    const customerId = '11111111-1111-4111-8111-111111111111'
+    const jobId = '22222222-2222-4222-8222-222222222222'
+    const imagePath = `${customerId}/kael-chat/model_vision/evidence.png`
+    const imageRef = `supabase://kael-chat-media/${imagePath}`
+    const privateVideoRef = `supabase://kael-chat-media/${customerId}/kael-chat/private_video_original/original.mp4`
+    const client = makeSequenceClient([
+      {
+        data: [{
+          apartment_access_profile: {},
+          apartment_access_state: {},
+          completion_photo_urls: [],
+          customer_id: customerId,
+          created_at: '2026-07-23T00:00:00.000Z',
+          display_code: 'NS-2026-000222',
+          id: jobId,
+          matched_at: '2026-07-23T00:05:00.000Z',
+          photo_urls: [imageRef, privateVideoRef],
+          service_type: 'plumbing',
+          status: 'repairing',
+        }],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [], error: null },
+    ])
+
+    const result = await listWorkerJobs(workerContext(client))
+
+    expect(result.jobs[0]).toMatchObject({
+      customer_evidence_photo_urls: [
+        `https://storage.example.test/storage/v1/object/sign/kael-chat-media/${imagePath}?token=signed`,
+      ],
+      photo_urls: [
+        `https://storage.example.test/storage/v1/object/sign/kael-chat-media/${imagePath}?token=signed`,
+      ],
+    })
+    expect(JSON.stringify(result)).not.toContain(imageRef)
+    expect(JSON.stringify(result)).not.toContain(privateVideoRef)
+    expect(client.signedUrlCalls).toEqual([
+      { bucket: 'kael-chat-media', path: imagePath },
     ])
   })
 })

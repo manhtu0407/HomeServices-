@@ -62,6 +62,7 @@ export type LocalWorkerBroadcast = {
   addressAccess?: LocalAddressAccess | null
   secondsRemaining: number | null
   estimatedPriceLabel?: string
+  estimatedEarning?: number | null
   estimatedEarningLabel?: string
   safe_metadata?: Record<string, unknown> | null
 }
@@ -82,6 +83,7 @@ export type LocalPaymentStatus =
   | 'vietqr_ready'
   | 'pending'
   | 'received'
+  | 'cash_confirmed'
   | 'amount_mismatch'
   | 'expired'
   | 'failed'

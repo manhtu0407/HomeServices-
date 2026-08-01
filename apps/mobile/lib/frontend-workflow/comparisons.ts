@@ -70,6 +70,8 @@ export function sameWorkerEarnings(left: EarningsResponse | null, right: Earning
     && left.platform_fee_total === right.platform_fee_total
     && left.net_earnings === right.net_earnings
     && left.available_balance === right.available_balance
+    && left.cash_commission_collected_total === right.cash_commission_collected_total
+    && left.cash_commission_due_total === right.cash_commission_due_total
     && left.pending_payment_count === right.pending_payment_count
     && left.pending_payment_amount === right.pending_payment_amount
     && left.on_hold_amount === right.on_hold_amount
@@ -204,12 +206,15 @@ function sameWorkerRecentTransactions(left: EarningsResponse['recent_transaction
     const next = rightItems[index]
     return item.job_id === next.job_id
       && item.display_code === next.display_code
+      && item.entry_type === next.entry_type
       && item.payment_state === next.payment_state
       && item.gross_amount === next.gross_amount
       && item.platform_fee === next.platform_fee
       && item.worker_net === next.worker_net
       && item.commission_level === next.commission_level
       && item.commission_rate_bps === next.commission_rate_bps
+      && item.cash_commission_collected === next.cash_commission_collected
+      && item.cash_commission_due === next.cash_commission_due
       && item.recorded_at === next.recorded_at
       && item.available_at === next.available_at
   })

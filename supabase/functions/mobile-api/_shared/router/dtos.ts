@@ -35,24 +35,23 @@ import type {
   WorkerScopeChangeInput,
   WorkerVerificationStatus,
 } from "../../../_shared/domain.ts";
-import type { EdgeKaelCaseWorkPhase } from "../../../_shared/contracts.ts";
 import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
 import type {
   PriceSynthesisAbCaseInput,
   PriceSynthesisAbEvaluation,
 } from "../kael/price-synthesis-ab.ts";
+import type { EdgeKaelEstimate } from "./kael-chat-dtos.ts";
 
-export type EdgeKaelEstimate = {
-  service_type: ServiceType;
-  problem_category: string;
-  problem_summary: string;
-  complexity: ComplexityLevel;
-  price_min: number;
-  price_max: number;
-  confidence: number;
-  advisory: string | null;
-  disclaimer: string;
-};
+export type {
+  EdgeKaelChatMediaUploadResponse,
+  EdgeKaelChatNextAction,
+  EdgeKaelChatProgressResponse,
+  EdgeKaelChatResponse,
+  EdgeKaelChatSessionResponse,
+  EdgeKaelChatStatus,
+  EdgeKaelChatTurnResponse,
+  EdgeKaelEstimate,
+} from "./kael-chat-dtos.ts";
 
 export type EdgeServiceCatalogResponse = {
   services: {
@@ -113,82 +112,6 @@ export type EdgeCreateJobResponse = {
   broadcast_sent?: boolean;
   message?: string;
 };
-export type EdgeKaelChatStatus =
-  | "active"
-  | "collecting_evidence"
-  | "estimate_ready"
-  | "confirmed"
-  | "abandoned"
-  | "unsupported";
-export type EdgeKaelChatNextAction =
-  | "await_input"
-  | "collect_evidence"
-  | "ask_photo"
-  | "ask_video"
-  | "estimate_ready"
-  | "unsupported"
-  | "budget_exceeded"
-  | "confirmed"
-  | "ask_question"
-  | "request_evidence";
-export type EdgeKaelChatTurnResponse = {
-  id: string;
-  session_id: string;
-  turn_index: number;
-  role: "customer" | "kael" | "system";
-  content_type:
-    | "text"
-    | "photo_request"
-    | "video_request"
-    | "photo_attached"
-    | "video_attached"
-    | "clarification"
-    | "analysis"
-    | "estimate"
-    | "error";
-  text_content: string | null;
-  media_refs: string[];
-  estimate: EdgeKaelEstimate | null;
-  created_at: string;
-};
-export type EdgeKaelChatSessionResponse = {
-  id: string;
-  job_id: string | null;
-  customer_id: string;
-  service_type: ServiceType;
-  status: EdgeKaelChatStatus;
-  case_phase: EdgeKaelCaseWorkPhase;
-  diagnosis_scope: Record<string, unknown> | null;
-  scheduled_at: string | null;
-  estimate: EdgeKaelEstimate | null;
-  started_at: string;
-  estimate_ready_at: string | null;
-  total_turns: number;
-  total_cost_usd: number;
-  next_action: EdgeKaelChatNextAction;
-};
-export type EdgeKaelChatResponse = {
-  session: EdgeKaelChatSessionResponse;
-  turns: EdgeKaelChatTurnResponse[];
-};
-export type EdgeKaelChatProgressResponse = {
-  session_id: string;
-  progress: {
-    current_stage: string;
-    status: "queued" | "running" | "completed" | "failed";
-    progress: number;
-    failure_reason: string | null;
-    updated_at: string;
-  } | null;
-};
-export type EdgeKaelChatMediaUploadResponse = {
-  bucket_id: "kael-chat-media";
-  object_path: string;
-  media_ref: string;
-  token: string;
-  signed_upload_url: string;
-  expires_in_seconds: number;
-};
 export type EdgeConfirmSearchResponse = {
   job_id: string;
   status: JobStatus;
@@ -235,6 +158,19 @@ export type EdgeCustomerProfileInsightsResponse = {
   total_transaction_count: number;
   dispute_free_rate_percent: number;
   fair_price_status: "verified" | "mixed" | "pending" | null;
+};
+
+export type EdgeCustomerRefundAccountResponse = {
+  refund_account: {
+    id: string;
+    bank_key: string;
+    bank_name: string;
+    bank_account_masked: string;
+    status: "pending_verification" | "verified" | "rejected";
+    is_default: boolean;
+    verified_at: string | null;
+    updated_at: string;
+  } | null;
 };
 export type EdgeWorkerRegisterResponse = {
   worker_id: string;
@@ -637,6 +573,7 @@ export type EdgeWorkerJobListResponse = {
       | "vietqr_ready"
       | "pending"
       | "received"
+      | "cash_confirmed"
       | "amount_mismatch"
       | "expired"
       | "failed"
@@ -675,6 +612,8 @@ export type EdgeEarningsResponse = {
   platform_fee_total: number;
   net_earnings: number;
   available_balance: number;
+  cash_commission_collected_total: number;
+  cash_commission_due_total: number;
   pending_payment_count: number;
   pending_payment_amount: number;
   on_hold_amount: number;
@@ -683,12 +622,15 @@ export type EdgeEarningsResponse = {
   recent_transactions: {
     job_id: string;
     display_code: string | null;
-    payment_state: "pending" | "available" | "on_hold" | "reversed";
+    entry_type: "worker_credit" | "cash_commission_debit";
+    payment_state: "pending" | "available" | "on_hold" | "reversed" | "cash_collected" | "cash_reconciliation_due";
     gross_amount: number;
     platform_fee: number;
     worker_net: number;
     commission_level: number;
     commission_rate_bps: number;
+    cash_commission_collected: number;
+    cash_commission_due: number;
     recorded_at: string;
     available_at: string | null;
   }[];
@@ -769,6 +711,19 @@ export type EdgeWorkerAvatarUpdateResponse = {
   worker_id: string;
   avatar_url: string;
   updated_at: string;
+};
+export type EdgeCustomerAvatarResponse = {
+  customer_id: string;
+  avatar_url: string | null;
+  updated_at: string | null;
+};
+export type EdgeCustomerAvatarUploadResponse = {
+  bucket_id: "customer-avatars";
+  object_path: string;
+  avatar_ref: string;
+  token: string;
+  signed_upload_url: string;
+  expires_in_seconds: number;
 };
 export type EdgeWorkerActivityMinuteResponse = {
   worker_id: string;

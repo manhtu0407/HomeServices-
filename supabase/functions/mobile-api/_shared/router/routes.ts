@@ -2,6 +2,7 @@ import type { UserRole } from "../../../_shared/domain.ts";
 import { matchCaseWorkResourceRoute, type CaseWorkResourceRoute } from "./case-work-resource-routes.ts";
 import { matchWorkerKaelChatRoute, type WorkerKaelChatRoute } from "./worker-kael-chat-routes.ts";
 import { matchCustomerKaelConversationRoute, type CustomerKaelConversationRoute } from "./customer-kael-conversation-routes.ts";
+import { matchCustomerKaelChatSessionRoute, type CustomerKaelChatSessionRoute } from "./kael-chat-session-routes.ts";
 import { matchStagingPaymentRoute } from "./staging-payment-routes.ts";
 
 export type PublicRoute = { kind: "kael.charter"; method: "GET"; public: true };
@@ -11,6 +12,7 @@ export type Route =
   | CaseWorkResourceRoute
   | WorkerKaelChatRoute
   | CustomerKaelConversationRoute
+  | CustomerKaelChatSessionRoute
   | { kind: "services"; method: "GET"; roles?: UserRole[] }
   | {
     kind: "places.autocomplete";
@@ -37,48 +39,6 @@ export type Route =
   | {
     kind: "kael.assistant";
     method: "POST";
-    roles: UserRole[];
-  }
-  | {
-    kind: "kael.chat.get";
-    method: "GET";
-    sessionId: string;
-    roles: UserRole[];
-  }
-  | {
-    kind: "kael.chat.progress";
-    method: "GET";
-    sessionId: string;
-    roles: UserRole[];
-  }
-  | {
-    kind: "kael.chat.stream";
-    method: "POST";
-    sessionId: string;
-    roles: UserRole[];
-  }
-  | {
-    kind: "kael.chat.evidenceStream";
-    method: "POST";
-    sessionId: string;
-    roles: UserRole[];
-  }
-  | {
-    kind: "kael.chat.turn";
-    method: "POST";
-    sessionId: string;
-    roles: UserRole[];
-  }
-  | {
-    kind: "kael.chat.confirm";
-    method: "POST";
-    sessionId: string;
-    roles: UserRole[];
-  }
-  | {
-    kind: "kael.chat.evidence";
-    method: "POST";
-    sessionId: string;
     roles: UserRole[];
   }
   | { kind: "jobs.get"; method: "GET"; jobId: string; roles?: UserRole[] }
@@ -185,6 +145,12 @@ export type Route =
     roles: UserRole[];
   }
   | {
+    kind: "jobs.cashPaymentConfirm";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+  }
+  | {
     kind: "jobs.stagingPaymentConfirm";
     method: "POST";
     jobId: string;
@@ -208,6 +174,12 @@ export type Route =
   | { kind: "me.kaelMemory.update"; method: "PATCH"; roles: UserRole[] }
   | { kind: "me.pendingDecisions"; method: "GET"; roles: UserRole[] }
   | { kind: "me.profileInsights"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.avatar"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.avatarUpload"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "me.avatarUpdate"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "me.accountDeletion"; method: "POST"; roles: UserRole[] }
+  | { kind: "me.refundAccount"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.refundAccount.save"; method: "PATCH"; roles: UserRole[] }
   | { kind: "me.threads"; method: "GET"; roles: UserRole[] }
   | {
     kind: "me.kaelFeedback";
@@ -376,6 +348,29 @@ export function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/me/profile-insights") {
     return { kind: "me.profileInsights", method: "GET", roles: ["customer", "admin"] };
   }
+  if (method === "GET" && path === "/me/avatar") {
+    return { kind: "me.avatar", method: "GET", roles: ["customer"] };
+  }
+  if (method === "POST" && path === "/me/avatar-upload") {
+    return {
+      kind: "me.avatarUpload",
+      method: "POST",
+      roles: ["customer"],
+      successStatus: 201,
+    };
+  }
+  if (method === "PATCH" && path === "/me/avatar") {
+    return { kind: "me.avatarUpdate", method: "PATCH", roles: ["customer"] };
+  }
+  if (method === "POST" && path === "/me/account-deletion") {
+    return { kind: "me.accountDeletion", method: "POST", roles: ["customer"] };
+  }
+  if (method === "GET" && path === "/me/refund-account") {
+    return { kind: "me.refundAccount", method: "GET", roles: ["customer"] };
+  }
+  if (method === "PATCH" && path === "/me/refund-account") {
+    return { kind: "me.refundAccount.save", method: "PATCH", roles: ["customer"] };
+  }
   if (method === "GET" && path === "/me/threads") {
     return { kind: "me.threads", method: "GET", roles: ["customer", "admin"] };
   }
@@ -427,68 +422,12 @@ export function matchRoute(request: Request): Route | null {
   }
   const caseWorkResourceRoute = matchCaseWorkResourceRoute(path, method, safeDecodePathSegment);
   if (caseWorkResourceRoute) return caseWorkResourceRoute;
-  const kaelChat = path.match(/^\/kael\/chat\/([^/]+)(?:\/([^/]+))?$/);
-  if (kaelChat) {
-    const sessionId = safeDecodePathSegment(kaelChat[1] ?? "");
-    if (!sessionId) return null;
-    const action = kaelChat[2];
-    if (!action && method === "GET") {
-      return {
-        kind: "kael.chat.get",
-        method: "GET",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
-    if (!action && method === "POST") {
-      return {
-        kind: "kael.chat.turn",
-        method: "POST",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
-    if (action === "progress" && method === "GET") {
-      return {
-        kind: "kael.chat.progress",
-        method: "GET",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
-    if (action === "stream" && method === "POST") {
-      return {
-        kind: "kael.chat.stream",
-        method: "POST",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
-    if (action === "evidence-stream" && method === "POST") {
-      return {
-        kind: "kael.chat.evidenceStream",
-        method: "POST",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
-    if (action === "confirm" && method === "POST") {
-      return {
-        kind: "kael.chat.confirm",
-        method: "POST",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
-    if (action === "evidence" && method === "POST") {
-      return {
-        kind: "kael.chat.evidence",
-        method: "POST",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
-  }
+  const customerKaelChatSessionRoute = matchCustomerKaelChatSessionRoute(
+    path,
+    method,
+    safeDecodePathSegment,
+  );
+  if (customerKaelChatSessionRoute) return customerKaelChatSessionRoute;
   if (method === "GET" && path === "/notifications") {
     return {
       kind: "notifications",
@@ -709,6 +648,14 @@ export function matchRoute(request: Request): Route | null {
         method: "POST",
         jobId,
         roles: ["customer", "admin"],
+      };
+    }
+    if (action === "cash-payment-confirmation" && method === "POST") {
+      return {
+        kind: "jobs.cashPaymentConfirm",
+        method: "POST",
+        jobId,
+        roles: ["worker"],
       };
     }
     const stagingPaymentRoute = matchStagingPaymentRoute(action, method, jobId);

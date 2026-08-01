@@ -1,12 +1,12 @@
 import { type ComponentType } from 'react'
-import { Text as RNText, View, type TextProps } from 'react-native'
+import { Text as RNText, View, type TextProps , type ViewStyle } from 'react-native'
 import { type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
 import { styles as rankingStyles } from './ranking-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { MintAura } from '@/components/ui/kael-primitives'
-import { type ViewStyle } from 'react-native'
+
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {

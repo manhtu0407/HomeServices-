@@ -54,6 +54,7 @@ const KAEL_CHAT_ALLOWED_MIME_TYPES = new Set([
 ]);
 const KAEL_CHAT_MEDIA_REF_PATTERN =
   /^supabase:\/\/kael-chat-media\/([^/\s?#]+)\/kael-chat\/(model_vision|private_video_original)\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i;
+const KAEL_CASE_WORK_EVIDENCE_URL_EXPIRES_IN_SECONDS = 15 * 60;
 
 export async function createKaelChatMediaUpload(
   ctx: MobileApiContext,
@@ -311,6 +312,53 @@ export async function createSignedVisionUrls(
     apiFailure("MEDIA_VALIDATION_UNAVAILABLE", "Chưa thể xác minh đầy đủ media", 503);
   }
   return signedUrls;
+}
+
+export async function createSignedCaseWorkEvidenceUrls(
+  ctx: MobileApiContext,
+  mediaRefs: readonly string[],
+  sessionOwnerId: string | null,
+): Promise<string[]> {
+  const refs = [...new Set(mediaRefs.map((ref) => ref.trim()).filter(Boolean))];
+  if (refs.length === 0) return [];
+
+  const storage = (ctx.supabase as KaelMediaStorage).storage;
+  const bucket = storage?.from(KAEL_CHAT_MEDIA_BUCKET);
+  const storagePrefix = `supabase://${KAEL_CHAT_MEDIA_BUCKET}/`;
+
+  const resolved = await Promise.all(refs.map(async (mediaRef) => {
+    if (!mediaRef.startsWith(storagePrefix)) return mediaRef;
+    const match = mediaRef.match(KAEL_CHAT_MEDIA_REF_PATTERN);
+    if (
+      !bucket ||
+      !sessionOwnerId ||
+      !match ||
+      match[1] !== sessionOwnerId ||
+      match[2] !== "model_vision"
+    ) {
+      return null;
+    }
+
+    try {
+      const signed = await bucket.createSignedUrl(
+        mediaRef.slice(storagePrefix.length),
+        KAEL_CASE_WORK_EVIDENCE_URL_EXPIRES_IN_SECONDS,
+        {
+          transform: {
+            width: 1200,
+            height: 1200,
+            resize: "contain",
+            quality: 82,
+          },
+        },
+      );
+      return signed.error || !signed.data?.signedUrl ? null : signed.data.signedUrl;
+    } catch {
+      return null;
+    }
+  }));
+
+  return resolved.filter((mediaRef): mediaRef is string => Boolean(mediaRef));
 }
 
 export function isTrustedKaelVisionTransformPayload(

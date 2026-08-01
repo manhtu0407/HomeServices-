@@ -56,11 +56,12 @@ import {
   sameWorkerPerformanceInsights,
   sameWorkerProfile,
 } from './frontend-workflow/comparisons'
-import { localizeWorkflowError } from './frontend-workflow/errors'
+import { localizeWorkflowError, type WorkflowErrorContext } from './frontend-workflow/errors'
+import { uploadCustomerAvatar, type CustomerAvatarDraft } from './customer-avatar-upload'
 import { uploadWorkerAvatar, type WorkerAvatarDraft } from './worker-avatar-upload'
 import {
   ACTIVE_TIMELINE_STATUSES,
-  currentWorkerMonthRange,
+  currentWorkerYearRange,
   defaultCustomerCancellationInput,
   getRemoteJobId,
   hasStaleRemoteBroadcast,
@@ -120,7 +121,7 @@ type FrontendWorkflowActions = {
     draft?: LocalDealDraft,
     mediaItems?: LocalMediaUploadDraft[],
   ) => Promise<{ jobId: string; mediaError?: string } | false | null>
-  hydrateRemoteJobById: (jobId: string) => Promise<boolean>
+  hydrateRemoteJobById: (jobId: string, accessToken?: string) => Promise<boolean>
   confirmRemoteSearch: (jobIdOverride?: string) => Promise<boolean>
   cancelRemoteJob: () => Promise<boolean>
   refreshCurrentJob: () => Promise<boolean>
@@ -131,6 +132,7 @@ type FrontendWorkflowActions = {
     status: WorkerStatusUpdate,
     extras?: { completion_notes?: string; completion_photo_urls?: string[]; access_check_in?: WorkerAccessCheckInInput },
   ) => Promise<boolean>
+  workerConfirmCashPayment: () => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeDraftInput) => Promise<boolean>
   getKaelJobIncident: () => Promise<JobIncidentResponse | false>
   openKaelJobIncident: (input: WorkerScopeChangeDraftInput) => Promise<JobIncidentResponse | false>
@@ -153,6 +155,8 @@ type FrontendWorkflowActions = {
   refreshCustomerKaelMemory: () => Promise<boolean>
   updateCustomerKaelMemoryPreference: (input: CustomerKaelMemoryPreferenceUpdateInput) => Promise<boolean | CustomerKaelMemoryPreferenceUpdateResult>
   refreshCustomerProfileInsights: () => Promise<boolean>
+  refreshCustomerAvatar: () => Promise<boolean>
+  customerUploadAvatar: (input: CustomerAvatarDraft) => Promise<boolean>
   refreshWorkerCandidate: (jobId?: string) => Promise<boolean>
   decideWorkerCandidate: (decision: 'confirm' | 'reject') => Promise<boolean>
   setWorkerCandidateFavorite: (isFavorite: boolean) => Promise<boolean>
@@ -166,6 +170,7 @@ type FrontendWorkflowContextValue = {
   customerKaelMemory: KaelMemorySelfViewResponse['memory'] | null
   customerKaelMemoryStatus: CustomerKaelMemoryStatus
   customerProfileInsights: CustomerProfileInsightsResponse | null
+  customerAvatarUrl: string | null
   customerWorkerCandidate: WorkerCandidateView | null
   customerWorkerCandidateBusy: boolean
   customerWorkerCandidateError: string | null
@@ -201,6 +206,11 @@ type CustomerProfileInsightsState = {
   sessionUserId: string | null
 }
 
+type CustomerAvatarState = {
+  avatarUrl: string | null
+  sessionUserId: string | null
+}
+
 type CustomerWorkerCandidateState = {
   candidate: WorkerCandidateView | null
   busy: boolean
@@ -227,6 +237,11 @@ const initialCustomerProfileInsightsState: CustomerProfileInsightsState = {
   sessionUserId: null,
 }
 
+const initialCustomerAvatarState: CustomerAvatarState = {
+  avatarUrl: null,
+  sessionUserId: null,
+}
+
 const initialCustomerWorkerCandidateState: CustomerWorkerCandidateState = {
   candidate: null,
   busy: false,
@@ -235,6 +250,7 @@ const initialCustomerWorkerCandidateState: CustomerWorkerCandidateState = {
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
 const isAppForeground = () => AppState.currentState === 'active'
+const WORKER_STARTUP_REFRESH_RETRY_DELAYS_MS = [1_000, 3_000] as const
 
 function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const { role, session } = useAuth()
@@ -257,10 +273,17 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const customerKaelMemoryStatus = customerKaelMemoryState.sessionUserId === sessionUserId ? customerKaelMemoryState.status : 'idle'
   const [customerProfileInsightsState, setCustomerProfileInsightsState] = useState<CustomerProfileInsightsState>(initialCustomerProfileInsightsState)
   const customerProfileInsights = customerProfileInsightsState.sessionUserId === sessionUserId ? customerProfileInsightsState.insights : null
+  const [customerAvatarState, setCustomerAvatarState] = useState<CustomerAvatarState>(initialCustomerAvatarState)
+  const customerAvatarUrl = customerAvatarState.sessionUserId === sessionUserId ? customerAvatarState.avatarUrl : null
   const [customerWorkerCandidateState, setCustomerWorkerCandidateState] = useState<CustomerWorkerCandidateState>(initialCustomerWorkerCandidateState)
-  const customerWorkerCandidate = customerWorkerCandidateState.candidate
-  const customerWorkerCandidateBusy = customerWorkerCandidateState.busy
-  const customerWorkerCandidateError = customerWorkerCandidateState.error
+  const remoteJobId = getRemoteJobId(state)
+  const customerStatus = state.deal?.status
+  const customerCandidateIsRelevant = (role === 'customer' || role === 'admin')
+    && Boolean(remoteJobId)
+    && customerStatus === 'worker_candidate_pending'
+  const customerWorkerCandidate = customerCandidateIsRelevant ? customerWorkerCandidateState.candidate : null
+  const customerWorkerCandidateBusy = customerCandidateIsRelevant && customerWorkerCandidateState.busy
+  const customerWorkerCandidateError = customerCandidateIsRelevant ? customerWorkerCandidateState.error : null
   const [customerScopeDecisionBusyId, setCustomerScopeDecisionBusyId] = useState<string | null>(null)
   const customerScopeDecisionBusyRef = useRef<string | null>(null)
   const [notificationState, setNotificationState] = useReducer(notificationStateReducer, initialNotificationState)
@@ -274,14 +297,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const pendingDirectScopeChangeClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingIncidentOpenClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingScopeProposalClientRequestRef = useRef<PendingClientRequestId | null>(null)
-  const pendingRequestOwnerRef = useRef(sessionUserId)
-  if (pendingRequestOwnerRef.current !== sessionUserId) {
-    pendingRequestOwnerRef.current = sessionUserId
-    pendingJobCreateClientRequestRef.current = null
-    pendingDirectScopeChangeClientRequestRef.current = null
-    pendingIncidentOpenClientRequestRef.current = null
-    pendingScopeProposalClientRequestRef.current = null
-  }
   // Holds the latest refresh callbacks so realtime/AppState effects can stay
   // subscribed across callback-identity changes (no channel churn) while always
   // invoking the freshest closure. Populated by the sync effect below once the
@@ -291,6 +306,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerRefresh: () => Promise<boolean>
     refreshNotifications: () => Promise<boolean>
     hydrateCustomerActiveJob: () => Promise<boolean>
+    refreshCustomerAvatar: () => Promise<boolean>
   } | null>(null)
 
   useEffect(() => {
@@ -301,20 +317,24 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     notificationsRef.current = notifications
   }, [notifications])
 
-  const setRemoteError = useCallback((error: string) => {
-    dispatch({ type: 'set_workflow_error', error: localizeWorkflowError(error, language) })
+  const setRemoteError = useCallback((error: string, code?: string, context?: WorkflowErrorContext) => {
+    dispatch({ type: 'set_workflow_error', error: localizeWorkflowError(error, language, code, context) })
     return false
   }, [language])
 
   const hydrateJobResult = useCallback((result: ApiResult<JobDetailResponse>) => {
-    if (!result.success) return setRemoteError(result.error)
-    dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data, role === 'worker' || role === 'admin') })
-    return true
+    if (!result.success) return setRemoteError(result.error, result.code)
+    try {
+      dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data, role === 'worker' || role === 'admin') })
+      return true
+    } catch {
+      return setRemoteError('Dữ liệu công việc chưa hợp lệ', 'INVALID_RESPONSE')
+    }
   }, [role, setRemoteError])
 
-  const hydrateRemoteJobById = useCallback(async (jobId: string) => {
+  const hydrateRemoteJobById = useCallback(async (jobId: string, accessToken?: string) => {
     if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
-    return hydrateJobResult(await jobService.getJob(jobId))
+    return hydrateJobResult(await jobService.getJob(jobId, accessToken))
   }, [hydrateJobResult, setRemoteError])
 
   const refreshCurrentJob = useCallback(async () => {
@@ -406,6 +426,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (getRemoteJobId(stateRef.current)) return true
     const result = await jobService.listMyActiveJob()
     if (!result.success) return false
+    // A direct route can hydrate while this bootstrap request is in flight.
+    // Keep that newer, explicitly selected job instead of replacing it.
+    if (getRemoteJobId(stateRef.current)) return true
     if (!result.data.active_job) return true
     dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data.active_job, false) })
     return true
@@ -538,7 +561,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     const isCurrentWorkerRefresh = () => workerRefreshRequestIdRef.current === workerRefreshRequestId
 
     const profileRequest = workerService.getProfile()
-    const earningsRequest = workerService.getEarnings(currentWorkerMonthRange())
+    const earningsRequest = workerService.getEarnings(currentWorkerYearRange())
     const performanceInsightsRequest = workerService.getPerformanceInsights()
     const broadcastsRequest = workerService.getBroadcasts()
     const jobsRequest = workerService.getJobs()
@@ -776,6 +799,15 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
     // The status mutation is authoritative; hydrate related worker details without delaying the next visible step.
     void workerRefresh().catch(() => undefined)
+    return true
+  }, [setRemoteError, workerRefresh])
+
+  const workerConfirmCashPayment = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có công việc để xác nhận thanh toán tiền mặt')
+    const settled = await workerService.confirmCashPayment(jobId)
+    if (!settled.success) return setRemoteError(settled.error, settled.code, 'cash_payment_confirmation')
+    await workerRefresh()
     return true
   }, [setRemoteError, workerRefresh])
 
@@ -1044,6 +1076,35 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [sessionUserId])
 
+  const refreshCustomerAvatar = useCallback(async () => {
+    if (!sessionUserId) {
+      setCustomerAvatarState(initialCustomerAvatarState)
+      return false
+    }
+    const result = await customerProfileService.getAvatar()
+    if (!result.success) {
+      setCustomerAvatarState({ avatarUrl: null, sessionUserId })
+      return false
+    }
+    setCustomerAvatarState({
+      avatarUrl: result.data.avatar_url,
+      sessionUserId,
+    })
+    return true
+  }, [sessionUserId])
+
+  const customerUploadAvatar = useCallback(async (input: CustomerAvatarDraft) => {
+    if (!sessionUserId) return setRemoteError('Bạn cần đăng nhập để đổi ảnh đại diện')
+    const result = await uploadCustomerAvatar(input)
+    if (!result.success) return setRemoteError(result.error)
+    if (!result.data.avatar_url) return setRemoteError('Không thể mở ảnh đại diện vừa cập nhật')
+    setCustomerAvatarState({
+      avatarUrl: result.data.avatar_url,
+      sessionUserId,
+    })
+    return true
+  }, [sessionUserId, setRemoteError])
+
   const markNotificationRead = useCallback(async (notificationId: string) => {
     const result = await notificationService.markRead(notificationId)
     if (!result.success) return setRemoteError(result.error)
@@ -1074,6 +1135,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerAcceptBroadcast,
     workerDeclineBroadcast,
     workerUpdateStatus,
+    workerConfirmCashPayment,
     requestScopeChange,
     getKaelJobIncident,
     openKaelJobIncident,
@@ -1096,6 +1158,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshCustomerKaelMemory,
     updateCustomerKaelMemoryPreference,
     refreshCustomerProfileInsights,
+    refreshCustomerAvatar,
+    customerUploadAvatar,
     refreshWorkerCandidate,
     decideWorkerCandidate,
     setWorkerCandidateFavorite,
@@ -1115,6 +1179,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshNotifications,
     refreshCustomerKaelMemory,
     refreshCustomerProfileInsights,
+    refreshCustomerAvatar,
+    customerUploadAvatar,
     refreshWorkerCandidate,
     updateCustomerKaelMemoryPreference,
     markNotificationRead,
@@ -1134,6 +1200,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerUpdateServicePreferences,
     workerUploadAvatar,
     workerUpdateStatus,
+    workerConfirmCashPayment,
   ])
 
   useEffect(() => {
@@ -1145,25 +1212,20 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   }, [sessionUserId])
 
   useEffect(() => {
-    setCustomerKaelMemoryState(initialCustomerKaelMemoryState)
-  }, [sessionUserId])
-
-  useEffect(() => {
-    setCustomerProfileInsightsState(initialCustomerProfileInsightsState)
-  }, [sessionUserId])
-
-  useEffect(() => {
-    setCustomerWorkerCandidateState(initialCustomerWorkerCandidateState)
-  }, [sessionUserId])
-
-  useEffect(() => {
     liveRefreshRef.current = {
       refreshCurrentJob,
       workerRefresh,
       refreshNotifications,
       hydrateCustomerActiveJob,
+      refreshCustomerAvatar,
     }
-  }, [refreshCurrentJob, workerRefresh, refreshNotifications, hydrateCustomerActiveJob])
+  }, [
+    hydrateCustomerActiveJob,
+    refreshCurrentJob,
+    refreshCustomerAvatar,
+    refreshNotifications,
+    workerRefresh,
+  ])
 
   // Refresh immediately on foreground; polling and realtime can otherwise leave
   // a stale timeline/notification visible until their next interval/event.
@@ -1178,6 +1240,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
         if (getRemoteJobId(stateRef.current)) void live.refreshCurrentJob()
         else void live.hydrateCustomerActiveJob()
       }
+      if (role === 'customer') void live.refreshCustomerAvatar()
       if (role === 'worker' || role === 'admin') void live.workerRefresh()
     })
     return () => subscription.remove()
@@ -1194,11 +1257,32 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   useEffect(() => {
     if (!sessionUserId || role !== 'worker') return
-    if (isAppForeground()) void workerRefresh()
+    let cancelled = false
+    let startupRetry: ReturnType<typeof setTimeout> | null = null
+
+    const refreshWorkerStartupState = async (attempt: number) => {
+      if (cancelled || !isAppForeground()) return
+      const refreshed = await workerRefresh().catch(() => false)
+      const retryDelay = WORKER_STARTUP_REFRESH_RETRY_DELAYS_MS[attempt]
+      if (cancelled || refreshed || retryDelay === undefined) return
+
+      // A restored session can briefly be unavailable to the API client.
+      // Reconcile again before falling back to the regular 20-second poll.
+      startupRetry = setTimeout(() => {
+        void refreshWorkerStartupState(attempt + 1)
+      }, retryDelay)
+    }
+
+    const initialRefresh = setTimeout(() => {
+      void refreshWorkerStartupState(0)
+    }, 0)
     const interval = setInterval(() => {
       if (isAppForeground()) void workerRefresh()
     }, 20_000)
     return () => {
+      cancelled = true
+      clearTimeout(initialRefresh)
+      if (startupRetry) clearTimeout(startupRetry)
       clearInterval(interval)
     }
   }, [role, sessionUserId, workerRefresh])
@@ -1252,27 +1336,36 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
-    if (isAppForeground()) void refreshCustomerKaelMemory()
+    const initialRefresh = setTimeout(() => {
+      if (isAppForeground()) void refreshCustomerKaelMemory()
+    }, 0)
+    return () => clearTimeout(initialRefresh)
   }, [role, sessionUserId, refreshCustomerKaelMemory])
 
   useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
-    if (isAppForeground()) void refreshCustomerProfileInsights()
+    const initialRefresh = setTimeout(() => {
+      if (isAppForeground()) void refreshCustomerProfileInsights()
+    }, 0)
+    return () => clearTimeout(initialRefresh)
   }, [role, sessionUserId, refreshCustomerProfileInsights])
 
+  useEffect(() => {
+    if (!sessionUserId || role !== 'customer') return
+    const initialRefresh = setTimeout(() => {
+      if (isAppForeground()) void refreshCustomerAvatar()
+    }, 0)
+    return () => clearTimeout(initialRefresh)
+  }, [role, sessionUserId, refreshCustomerAvatar])
+
   const broadcast = state.deal?.broadcast
-  const remoteJobId = getRemoteJobId(state)
-  const customerStatus = state.deal?.status
 
   useEffect(() => {
     if (
       (role !== 'customer' && role !== 'admin') ||
       !remoteJobId ||
       customerStatus !== 'worker_candidate_pending'
-    ) {
-      setCustomerWorkerCandidateState(initialCustomerWorkerCandidateState)
-      return
-    }
+    ) return
     void refreshWorkerCandidate(remoteJobId)
   }, [customerStatus, refreshWorkerCandidate, remoteJobId, role])
 
@@ -1323,6 +1416,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerKaelMemory,
     customerKaelMemoryStatus,
     customerProfileInsights,
+    customerAvatarUrl,
     customerWorkerCandidate,
     customerWorkerCandidateBusy,
     customerWorkerCandidateError,

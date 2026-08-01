@@ -65,6 +65,7 @@ describe('mobile-api customer Kael assistant', () => {
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('worker onboarding')
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('at most 3 short sentences')
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('do not tell the customer to drill')
+    expect(JSON.stringify(seenRequests[0]?.messages)).not.toContain('SePay')
     expect(JSON.stringify(seenRequests[0]?.messages)).not.toContain('0901234567')
     expect(calls).toContainEqual({
       kind: 'rpc',
@@ -304,6 +305,84 @@ describe('mobile-api customer Kael assistant', () => {
     expect(callAI).not.toHaveBeenCalled()
   })
 
+  it('does not invent a QR or payment confirmation when a customer asks to pay on an unavailable rail', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for an unavailable payment rail')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        payment_status: null,
+        status: 'confirmed_by_customer',
+        service_type: 'plumbing',
+      },
+      language: 'vi',
+      message: 'Tôi muốn thanh toán ngay. Hãy cho tôi mã QR và xác nhận tiền đã tới thợ.',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result).toMatchObject({
+      answer: 'Bạn đã xác nhận hoàn thành và không cần quay lại bước cũ. Hiện màn công việc chưa có phương thức thanh toán khả dụng, nên chưa có thao tác thanh toán nào để bạn hoàn tất; hãy chờ phương thức thanh toán chính thức được cấu hình. Kael chỉ mở bước tiếp theo sau khi hệ thống xác thực giao dịch.',
+      boundary: 'answered',
+      fallback_used: false,
+      suggested_actions: ['check_job', 'message_worker'],
+    })
+    expect(result.answer).not.toContain('mã QR')
+    expect(result.answer).not.toContain('đã tới thợ')
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('keeps a generic status question honest when completion has no payment rail', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a closed payment rail status question')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        payment_status: null,
+        status: 'confirmed_by_customer',
+        service_type: 'plumbing',
+      },
+      language: 'vi',
+      message: 'Công việc của tôi đang ở bước nào?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_case',
+    })
+
+    expect(result.answer).toContain('chưa có phương thức thanh toán khả dụng')
+    expect(result.answer).not.toContain('Bước tiếp theo là thanh toán')
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('uses the payment rail capability instead of a technical payment status', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for a disabled production payment rail')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      job: {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        payment_status: 'not_started',
+        status: 'confirmed_by_customer',
+        service_type: 'plumbing',
+      },
+      language: 'vi',
+      message: 'Tôi muốn thanh toán ngay. Hãy cho tôi mã QR và xác nhận tiền đã tới thợ.',
+      secrets: { knowledgeRetrievalEnabled: false, paymentRailAvailable: false },
+      surface: 'customer_case',
+    })
+
+    expect(result.answer).toContain('chưa có phương thức thanh toán khả dụng')
+    expect(result.answer).not.toContain('Bước tiếp theo là thanh toán')
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
   it('keeps required lobby check-in explicit when a customer asks to bypass it and pay early', async () => {
     const callAI = vi.fn(async () => {
       throw new Error('provider must not run for an arrived check-in bypass request')
@@ -411,9 +490,10 @@ describe('mobile-api customer Kael assistant', () => {
 
     expect(result.fallback_used).toBe(false)
     expect(result.safety_notes).toEqual([
-      'Hãy dùng luồng trong ứng dụng NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ.',
+      'Hãy dùng luồng trong ứng dụng Kael cho đặt lịch, phạm vi, thanh toán và hỗ trợ.',
     ])
     expect(result.citations).toEqual(['NestScout platform scope'])
+    expect(result.answer).not.toContain('NestScout')
     expect(JSON.stringify(result)).not.toContain('090-123-4567')
     expect(JSON.stringify(result)).not.toContain('evil.example')
   })
@@ -481,7 +561,7 @@ describe('mobile-api customer Kael assistant', () => {
       suggested_actions: ['check_job', 'message_worker'],
     })
     expect(result.safety_notes).toEqual([
-      "Use NestScout's in-app workflow for booking, scope, payment, and support.",
+      "Use Kael's in-app workflow for booking, scope, payment, and support.",
     ])
     expect(result.citations).toEqual(['NestScout platform scope'])
     expect(JSON.stringify(result)).not.toContain('approve_payment')
@@ -745,7 +825,8 @@ describe('mobile-api customer Kael assistant', () => {
 
     expect(result.fallback_used).toBe(true)
     expect(result.answer).not.toContain('payment status')
-    expect(result.answer).toContain('NestScout')
+    expect(result.answer).toContain('Kael')
+    expect(result.answer).not.toContain('NestScout')
   })
 
   it('scrubs separated phone, bare street number, and job UUID before the provider call', async () => {

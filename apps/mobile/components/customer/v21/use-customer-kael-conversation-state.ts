@@ -13,6 +13,11 @@ export type CustomerAssistantLocalTurn = {
   text_content: string
 }
 
+export type CustomerKaelStreamingReply = {
+  text: string
+  turnId: string
+}
+
 export type CustomerKaelConversationState = {
   assistantTurns: CustomerAssistantLocalTurn[]
   chat: KaelChatResponse | null
@@ -23,6 +28,7 @@ export type CustomerKaelConversationState = {
   localMode: CustomerKaelMode
   pendingDraft: PendingKaelChatDraft | null
   routeDraftEvidencePending: boolean
+  streamingReply: CustomerKaelStreamingReply | null
   turns: KaelChatTurn[]
 }
 
@@ -35,6 +41,7 @@ export type CustomerKaelConversationAction =
   | { type: 'set-local-mode'; value: SetStateAction<CustomerKaelMode> }
   | { type: 'set-pending-draft'; value: SetStateAction<PendingKaelChatDraft | null> }
   | { type: 'set-route-draft-evidence'; value: SetStateAction<boolean> }
+  | { type: 'set-streaming-reply'; value: SetStateAction<CustomerKaelStreamingReply | null> }
   | { type: 'set-turns'; value: SetStateAction<KaelChatTurn[]> }
   | { draft: PendingKaelChatDraft; loading: boolean; type: 'hydrate-pending-draft' }
   | { type: 'begin-hydration' }
@@ -69,7 +76,12 @@ export function customerKaelConversationReducer(
       const clearsMissingServiceError = localMode === 'normal' && (
         state.error === 'Chọn dịch vụ.' || state.error === 'Choose a service.'
       )
-      return { ...state, error: clearsMissingServiceError ? null : state.error, localMode }
+      return {
+        ...state,
+        error: clearsMissingServiceError ? null : state.error,
+        localMode,
+        streamingReply: localMode === state.localMode ? state.streamingReply : null,
+      }
     }
     case 'set-pending-draft': {
       const pendingDraft = resolveStateAction(state.pendingDraft, action.value)
@@ -81,6 +93,8 @@ export function customerKaelConversationReducer(
     }
     case 'set-route-draft-evidence':
       return { ...state, routeDraftEvidencePending: resolveStateAction(state.routeDraftEvidencePending, action.value) }
+    case 'set-streaming-reply':
+      return { ...state, streamingReply: resolveStateAction(state.streamingReply, action.value) }
     case 'set-turns':
       return { ...state, turns: resolveStateAction(state.turns, action.value) }
     case 'hydrate-pending-draft':
@@ -104,6 +118,7 @@ export function customerKaelConversationReducer(
         loading: false,
         pendingDraft: action.consumePendingDraft ? null : state.pendingDraft,
         routeDraftEvidencePending: action.consumePendingDraft ? false : state.routeDraftEvidencePending,
+        streamingReply: null,
         turns: action.response.turns,
       }
     case 'reject-hydration':
@@ -120,6 +135,7 @@ export function customerKaelConversationReducer(
         intakeDisplayMessage: null,
         loading: false,
         localMode: action.mode,
+        streamingReply: null,
         turns: [],
       }
   }
@@ -140,6 +156,7 @@ export function createCustomerKaelConversationState(input: {
     localMode: input.initialMode,
     pendingDraft: input.pendingDraft,
     routeDraftEvidencePending: Boolean(input.pendingDraft),
+    streamingReply: null,
     turns: [],
   }
 }
@@ -178,6 +195,9 @@ export function useCustomerKaelConversationState(input: {
   const setRouteDraftEvidencePending: Dispatch<SetStateAction<boolean>> = useCallback((value) => {
     dispatch({ type: 'set-route-draft-evidence', value })
   }, [])
+  const setStreamingReply: Dispatch<SetStateAction<CustomerKaelStreamingReply | null>> = useCallback((value) => {
+    dispatch({ type: 'set-streaming-reply', value })
+  }, [])
   const setTurns: Dispatch<SetStateAction<KaelChatTurn[]>> = useCallback((value) => {
     dispatch({ type: 'set-turns', value })
   }, [])
@@ -215,6 +235,7 @@ export function useCustomerKaelConversationState(input: {
     setLocalMode,
     setPendingDraftState,
     setRouteDraftEvidencePending,
+    setStreamingReply,
     setTurns,
     switchMode,
   }

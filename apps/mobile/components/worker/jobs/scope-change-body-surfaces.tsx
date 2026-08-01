@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Text as RNText, View, type TextProps } from 'react-native'
+import { View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { type AppLanguage } from '@/lib/app-language'
@@ -10,7 +10,7 @@ import { WorkerV5RouteParams } from '../dock/types'
 import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
 import { formatScopePriceRange } from '../ui/labels'
-import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
+import { WorkerV5PrimaryButtonFill , WorkerV5SectionHeader } from '../ui/primitives-surfaces'
 import { WorkerV5ScreenInfoRow } from '../ui/screen-atoms-surfaces'
 import { WorkerV5ActionRail } from './advisory-surfaces'
 import { WorkerV5EvidenceTray } from './evidence-surfaces'
@@ -19,13 +19,10 @@ import { useWorkerV5ScopeChangeDraft } from './use-worker-scope-change-draft'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { WorkerV5PriceLines } from './shared-surfaces'
 import { WorkerV5ProgressRail } from './progress-surfaces'
-import { WorkerV5SectionHeader } from '../ui/primitives-surfaces'
+
 import { styles } from '../worker-v5-flow-styles'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
-function Text({ style, ...props }: TextProps) {
-  return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
-}
 
 export function WorkerV5ScopeChangeBody({
   language,

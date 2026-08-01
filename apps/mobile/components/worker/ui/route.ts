@@ -5,6 +5,11 @@ import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from './format'
 import { canShowWorkerAddress, routeDestinationLabel } from './labels'
 
+const LIVE_DISTANCE_FORMATTERS = {
+  en: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }),
+  vi: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }),
+} as const
+
 export type WorkerV5MapLocation = {
   lat: number
   lng: number
@@ -28,6 +33,33 @@ export type WorkerV5CheckInState = 'active' | 'done' | 'pending'
 export type WorkerV5BroadcastRouteMetadata = {
   metadata?: Record<string, unknown> | null
   safe_metadata?: Record<string, unknown> | null
+}
+
+export function workerV5LiveEtaSignal(
+  route: { durationSeconds: number },
+  language: AppLanguage,
+) {
+  const minutes = Math.max(1, Math.ceil(route.durationSeconds / 60))
+  return {
+    hasSignal: true,
+    label: textByLanguage(language, `Di chuyển trong ${minutes} phút`, `Travel in ${minutes} min`),
+    value: textByLanguage(language, `${minutes} phút`, `${minutes} min`),
+  }
+}
+
+export function workerV5LiveDistanceSignal(
+  route: { distanceMeters: number },
+  language: AppLanguage,
+) {
+  const kilometers = route.distanceMeters / 1000
+  const label = kilometers >= 1
+    ? `${LIVE_DISTANCE_FORMATTERS[language].format(kilometers)} km`
+    : `${Math.max(1, Math.round(route.distanceMeters))} m`
+  return {
+    hasSignal: true,
+    label,
+    meta: textByLanguage(language, `Quãng đường thật · ${label}`, `Real route distance · ${label}`),
+  }
 }
 
 export function workerV5BroadcastRouteMetadata(deal: LocalDeal | null): Record<string, unknown> | null {

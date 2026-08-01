@@ -405,7 +405,7 @@ describe('Edge learning hook: runLearningHook', () => {
 
   it('accepts any truthy spelling of the autopromote flag', async () => {
     stubDenoEnv({ ...LEARNING_ON, KAEL_LEARNING_AUTOPROMOTE_ENABLED: '1' })
-    const { client, rpcCalls } = hookClient({
+    const { client } = hookClient({
       job: REVIEWED_JOB,
       review: { rating: 5, tags: [] },
       candidate: pricePriorCandidate(),

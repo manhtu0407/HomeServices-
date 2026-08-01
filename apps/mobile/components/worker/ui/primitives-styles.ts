@@ -166,6 +166,11 @@ export const styles = StyleSheet.create({
     top: 1,
   },
   sourceActionDisabled: {
-    opacity: 1,
+    backgroundColor: component.button.disabled.bg,
+    borderColor: component.button.disabled.border,
+    shadowOpacity: 0,
+  },
+  sourceActionDisabledText: {
+    color: component.button.disabled.text,
   },
 })

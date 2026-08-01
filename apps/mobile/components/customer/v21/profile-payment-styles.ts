@@ -67,10 +67,12 @@ export const customerV21ProfilePaymentStyles = StyleSheet.create({
     minWidth: 0,
   },
   heroStatus: {
+    maxWidth: 104,
+  },
+  heroStatusSlot: {
     alignSelf: 'center',
     flexShrink: 0,
     marginRight: 16,
-    maxWidth: 104,
   },
   heroSummary: {
     fontSize: 12,

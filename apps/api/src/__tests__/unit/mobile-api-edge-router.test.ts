@@ -73,6 +73,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     setCustomerKaelConversationPinned: vi.fn(),
     getCustomerKaelConversation: vi.fn(),
     sendCustomerKaelConversationTurn: vi.fn(),
+    streamCustomerKaelConversationTurn: vi.fn(async () => new Response(new ReadableStream(), {
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+    })),
     createKaelChat: vi.fn(),
     answerKaelAssistant: vi.fn(),
     createKaelChatMediaUpload: vi.fn(async () => ({
@@ -105,6 +108,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
     })),
     sendKaelChatTurn: vi.fn(),
+    decideKaelIntakeConfirmation: vi.fn(),
     confirmKaelChat: vi.fn(),
     submitKaelChatEvidence: vi.fn(),
     confirmSearch: vi.fn(),
@@ -159,6 +163,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     decideWorkerCancellation: vi.fn(),
     confirmCompletion: vi.fn(),
     createPaymentIntent: vi.fn(),
+    confirmWorkerCashPayment: vi.fn(),
     confirmStagingPayment: vi.fn(),
     submitReview: vi.fn(),
     submitCustomerKaelFeedback: vi.fn(),
@@ -197,6 +202,15 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       dispute_free_rate_percent: 0,
       fair_price_status: null,
     })),
+    getCustomerAvatar: vi.fn(async () => ({
+      avatar_url: null,
+      customer_id: '11111111-1111-4111-8111-111111111111',
+      updated_at: null,
+    })),
+    createCustomerAvatarUpload: vi.fn(),
+    updateCustomerAvatar: vi.fn(),
+    getCustomerRefundAccount: vi.fn(async () => ({ refund_account: null })),
+    saveCustomerRefundAccount: vi.fn(async () => ({ refund_account: null })),
     getWorkerProfile: vi.fn(),
     createWorkerAvatarUpload: vi.fn(),
     updateWorkerAvatar: vi.fn(),
@@ -687,6 +701,122 @@ describe('mobile-api Edge router contract', () => {
 
     expect(response.status).toBe(400)
     expect(updateMyKaelMemory).not.toHaveBeenCalled()
+  })
+
+  it('routes customer refund-account reads and persisted saves through the Edge boundary', async () => {
+    const getCustomerRefundAccount = vi.fn(async () => ({
+      refund_account: {
+        id: 'refund-account-1',
+        bank_key: 'techcombank',
+        bank_name: 'Techcombank',
+        bank_account_masked: '**** 6789',
+        status: 'pending_verification' as const,
+        is_default: true,
+        verified_at: null,
+        updated_at: '2026-07-28T00:00:00.000Z',
+      },
+    }))
+    const saveCustomerRefundAccount = vi.fn(async () => ({ refund_account: null }))
+    const authenticate = vi.fn(async () => customerAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ getCustomerRefundAccount, saveCustomerRefundAccount }),
+    })
+
+    const getResponse = await handler(new Request('https://example.test/mobile-api/me/refund-account'))
+    const saveResponse = await handler(new Request('https://example.test/mobile-api/me/refund-account', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        account_holder_name: 'PHAN MANH TU',
+        bank_account: '123456789',
+        bank_key: 'techcombank',
+      }),
+    }))
+
+    expect(getResponse.status).toBe(200)
+    expect(await getResponse.json()).toEqual({
+      refund_account: expect.objectContaining({ bank_account_masked: '**** 6789' }),
+    })
+    expect(saveResponse.status).toBe(200)
+    expect(getCustomerRefundAccount).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+    expect(saveCustomerRefundAccount).toHaveBeenCalledWith(expect.objectContaining(customerAuth), {
+      account_holder_name: 'PHAN MANH TU',
+      bank_account: '123456789',
+      bank_key: 'techcombank',
+    })
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer'])
+  })
+
+  it('rejects invalid refund-account input before it reaches persistence', async () => {
+    const saveCustomerRefundAccount = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ saveCustomerRefundAccount }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/refund-account', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        account_holder_name: 'P',
+        bank_account: '1234-5678',
+        bank_key: 'not-a-bank',
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(saveCustomerRefundAccount).not.toHaveBeenCalled()
+  })
+
+  it('routes an explicitly confirmed account-deletion request to the customer-only service', async () => {
+    const deleteCustomerAccount = vi.fn(async () => ({
+      account_deleted: true as const,
+      request_id: '77777777-7777-4777-8777-777777777777',
+      retained_transaction_records: true as const,
+    }))
+    const authenticate = vi.fn(async () => customerAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ deleteCustomerAccount }),
+    })
+    const input = {
+      acknowledge_data_loss: true,
+      client_request_id: '88888888-8888-4888-8888-888888888888',
+      confirmation: 'XÓA TÀI KHOẢN',
+    } as const
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/account-deletion', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(deleteCustomerAccount).toHaveBeenCalledWith(expect.objectContaining(customerAuth), input)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer'])
+  })
+
+  it('rejects account deletion when consent, phrase, idempotency id, or body shape is invalid', async () => {
+    const deleteCustomerAccount = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ deleteCustomerAccount }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/account-deletion', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        acknowledge_data_loss: false,
+        client_request_id: 'not-a-uuid',
+        confirmation: 'xóa',
+        user_id: customerAuth.success ? customerAuth.user.id : null,
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(deleteCustomerAccount).not.toHaveBeenCalled()
   })
 
   it('X4 F-17: routes customer GET /me/jobs/active to listCustomerActiveJobs', async () => {
@@ -1461,6 +1591,93 @@ describe('mobile-api Edge router contract', () => {
     expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker', 'admin'])
   })
 
+  it('routes private avatar read, upload, and confirmation only for the signed-in customer', async () => {
+    const getCustomerAvatar = vi.fn(async () => ({
+      avatar_url: null,
+      customer_id: '11111111-1111-4111-8111-111111111111',
+      updated_at: null,
+    }))
+    const createCustomerAvatarUpload = vi.fn(async () => ({
+      avatar_ref: 'supabase://customer-avatars/11111111-1111-4111-8111-111111111111/avatar.jpg',
+      bucket_id: 'customer-avatars' as const,
+      expires_in_seconds: 7200,
+      object_path: '11111111-1111-4111-8111-111111111111/avatar.jpg',
+      signed_upload_url: 'https://storage.example.test/upload',
+      token: 'signed-token',
+    }))
+    const updateCustomerAvatar = vi.fn(async () => ({
+      avatar_url: 'https://storage.example.test/read/customer-avatar.jpg',
+      customer_id: '11111111-1111-4111-8111-111111111111',
+      updated_at: '2026-07-29T12:00:00.000Z',
+    }))
+    const authenticate = vi.fn(async () => customerAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({
+        createCustomerAvatarUpload,
+        getCustomerAvatar,
+        updateCustomerAvatar,
+      }),
+    })
+
+    const readResponse = await handler(new Request('https://example.test/mobile-api/me/avatar'))
+    const uploadResponse = await handler(new Request('https://example.test/mobile-api/me/avatar-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_name: 'customer.jpg',
+        file_size_bytes: 2345,
+        mime_type: 'image/jpeg',
+      }),
+    }))
+    const avatarRef = 'supabase://customer-avatars/11111111-1111-4111-8111-111111111111/avatar.jpg'
+    const updateResponse = await handler(new Request('https://example.test/mobile-api/me/avatar', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatar_ref: avatarRef }),
+    }))
+
+    expect([readResponse.status, uploadResponse.status, updateResponse.status]).toEqual([200, 201, 200])
+    expect(getCustomerAvatar).toHaveBeenCalledWith(expect.objectContaining({ role: 'customer' }))
+    expect(createCustomerAvatarUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      { file_name: 'customer.jpg', file_size_bytes: 2345, mime_type: 'image/jpeg' },
+    )
+    expect(updateCustomerAvatar).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      { avatar_ref: avatarRef },
+    )
+    expect(authenticate).toHaveBeenCalledTimes(3)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer'])
+  })
+
+  it('does not dispatch Customer avatar operations when customer authorization fails', async () => {
+    const createCustomerAvatarUpload = vi.fn()
+    const getCustomerAvatar = vi.fn()
+    const updateCustomerAvatar = vi.fn()
+    const authenticate = vi.fn(async (): Promise<MobileApiAuthResult> => ({
+      success: false,
+      status: 403,
+      error: 'forbidden',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ createCustomerAvatarUpload, getCustomerAvatar, updateCustomerAvatar }),
+    })
+
+    const responses = await Promise.all([
+      handler(new Request('https://example.test/mobile-api/me/avatar')),
+      handler(new Request('https://example.test/mobile-api/me/avatar-upload', { method: 'POST' })),
+      handler(new Request('https://example.test/mobile-api/me/avatar', { method: 'PATCH' })),
+    ])
+
+    expect(responses.map((response) => response.status)).toEqual([403, 403, 403])
+    expect(getCustomerAvatar).not.toHaveBeenCalled()
+    expect(createCustomerAvatarUpload).not.toHaveBeenCalled()
+    expect(updateCustomerAvatar).not.toHaveBeenCalled()
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer'])
+  })
+
   it('does not dispatch Worker avatar or activity writes when role authorization fails', async () => {
     const createWorkerAvatarUpload = vi.fn()
     const recordWorkerAppActiveMinute = vi.fn()
@@ -1543,6 +1760,39 @@ describe('mobile-api Edge router contract', () => {
     expect(createCustomerKaelConversation).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       { client_request_id: clientRequestId, mode: 'normal' },
+    )
+  })
+
+  it('dispatches a Customer conversation turn through the SSE boundary', async () => {
+    const streamCustomerKaelConversationTurn = vi.fn(async () =>
+      new Response(new ReadableStream(), {
+        headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+      }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ streamCustomerKaelConversationTurn }),
+    })
+    const input = {
+      client_request_id: '88888888-8888-4888-8888-888888888888',
+      language: 'vi',
+      message: 'Kael kiem tra giup toi.',
+    }
+
+    const response = await handler(new Request(
+      'https://example.test/mobile-api/me/kael/conversations/22222222-2222-4222-8222-222222222222/stream',
+      {
+        body: JSON.stringify(input),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    ))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('text/event-stream; charset=utf-8')
+    expect(streamCustomerKaelConversationTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      '22222222-2222-4222-8222-222222222222',
+      input,
     )
   })
 

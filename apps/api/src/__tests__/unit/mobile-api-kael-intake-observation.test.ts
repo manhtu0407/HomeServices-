@@ -237,6 +237,22 @@ describe('Kael intake eval observation boundary', () => {
     expect(coverage.needsClarification).toBe(true)
   })
 
+  it('does not turn a slotless provider clarification into a generic repeat question', () => {
+    const coverage = resolveIntakeFactCoverage({
+      serviceType: 'hvac',
+      problemSlug: 'no_cooling',
+      profileFacts: {
+        service_scope: 'Kiểm tra nguyên nhân máy không mát và vệ sinh khi phù hợp.',
+      },
+      providerMissingSlots: [],
+      providerNeedsClarification: true,
+      electricalPlaybookEnabled: false,
+    })
+
+    expect(coverage.missing).toEqual([])
+    expect(coverage.needsClarification).toBe(false)
+  })
+
   it('tells the enabled intake model how to persist breaker state without changing the legacy schema', () => {
     vi.stubGlobal('Deno', {
       env: { get: (key: string) => key === 'KAEL_PLAYBOOK_ELECTRICAL_ENABLED' ? 'true' : undefined },

@@ -48,6 +48,7 @@ describe('Case Work phase controls', () => {
       paymentRailProvider: 'sepay_vietqr',
     })
 
+    expect(screen.getByTestId('customer-v21-case-payment-start')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('customer-v21-case-sepay-payment-start'))
     await waitFor(() => expect(onCreatePaymentIntent).toHaveBeenCalledTimes(1))
 
@@ -57,10 +58,12 @@ describe('Case Work phase controls', () => {
       paymentRailProvider: 'sepay_vietqr',
     })
 
+    expect(screen.getByTestId('customer-v21-case-payment-pending')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-case-sepay-qr')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-case-sepay-qr-frame').props.style)).toMatchObject({
-      height: 232,
-      width: 232,
+      aspectRatio: 1,
+      maxWidth: 256,
+      width: '100%',
     })
     expect(screen.getByTestId('customer-v21-case-sepay-transfer-content')).toHaveTextContent('NS1234567890ABCDEF12345678')
     expect(screen.queryByTestId('customer-v21-case-sepay-payment-confirm')).not.toBeOnTheScreen()
@@ -162,10 +165,25 @@ describe('Case Work phase controls', () => {
     await waitFor(() => expect(onRefreshPayment).toHaveBeenCalledTimes(1))
   })
 
+  it('keeps rating locked until the server payment receipt is verified', () => {
+    const paidBeforeVerification = dealFixture('paid')
+    paidBeforeVerification.payment = verifiedVietQrPayment({ status: 'pending' })
+
+    renderPanel(paidBeforeVerification, jest.fn(), jest.fn(), jest.fn(), {
+      paymentRailProvider: 'sepay_vietqr',
+    })
+
+    expect(screen.getByTestId('customer-v21-case-payment-verification-pending')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-payment-confirmed')).not.toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-review-controls')).not.toBeOnTheScreen()
+  })
+
   it('submits a real review inline after the server reports paid', async () => {
     const onSubmitReview = jest.fn(async () => true)
     renderPanel(dealFixture('paid'), jest.fn(), jest.fn(), jest.fn(), { onSubmitReview })
 
+    expect(screen.getByTestId('customer-v21-case-payment-confirmed')).toBeOnTheScreen()
+    expect(screen.getByText('Đánh giá công việc')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('customer-v21-case-review-rating-5'))
     fireEvent.changeText(screen.getByTestId('customer-v21-case-review-comment'), 'Làm việc cẩn thận và đúng phạm vi.')
     fireEvent.press(screen.getByTestId('customer-v21-case-review-submit'))

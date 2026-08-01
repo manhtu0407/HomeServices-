@@ -4,6 +4,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { KaelChatResponse } from '@/lib/api-types'
 
 import { AgenticChatEstimateResponsePanel } from './agentic-decision-surfaces'
+import { agenticEstimateSupportingPhase } from './agentic-estimate-display-model'
 import { customerV21ServiceCopy } from './copy'
 
 type AgenticEstimate = NonNullable<KaelChatResponse['session']['estimate']>
@@ -90,6 +91,7 @@ export function AgenticChatEstimateResponse({
   const sourceExplanation = [sourceExplanationForLanguage(language), priceSourceLabel]
     .filter(Boolean)
     .join(' ')
+  const supportingPhase = agenticEstimateSupportingPhase(estimate, language)
   const price = formatPriceRange(estimate.price_min, estimate.price_max, language)
   const moreInfoText = needsInspection && estimate.needs_inspection_reason
     ? estimate.needs_inspection_reason
@@ -123,6 +125,7 @@ export function AgenticChatEstimateResponse({
       sourceExplanation={sourceExplanation}
       statusLabel={statusLabel}
       submittingRejectReason={submittingRejectReason}
+      supportingPhase={supportingPhase}
       textInputStyle={textInputStyle}
     />
   )

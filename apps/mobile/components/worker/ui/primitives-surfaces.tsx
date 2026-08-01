@@ -179,9 +179,9 @@ export function WorkerV5PrimaryActionButton({
       ]}
       testID="worker-v5-primary-action"
     >
-      <WorkerV5PrimaryButtonFill disabled={disabled && !usesSourceTone} variant={variant} />
+      <WorkerV5PrimaryButtonFill disabled={disabled} variant={variant} />
       {!disabled && !usesSourceTone ? <View pointerEvents="none" style={styles.primaryActionTopHighlight} /> : null}
-      <Text style={[styles.primaryActionText, disabled && !usesSourceTone && styles.navButtonDisabledText]}>{label}</Text>
+      <Text style={[styles.primaryActionText, disabled && (usesSourceTone ? styles.sourceActionDisabledText : styles.navButtonDisabledText)]}>{label}</Text>
     </Pressable>
   )
 }

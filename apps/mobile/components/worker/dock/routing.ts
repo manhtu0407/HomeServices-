@@ -99,7 +99,7 @@ export function resolveWorkerV5JobsScreenId(params: WorkerV5RouteParams): Worker
 export function resolveWorkerV5EarningsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
   const paymentStep = firstRouteParam(params.ns_payment_step)
 
-  if (paymentStep === 'withdraw') return '4.3-payout-request'
+  if (paymentStep === 'withdraw') return workerV5SectionRootIds.earnings
   if (paymentStep === 'method') return '4.4-payout-method'
   if (paymentStep === 'wallet') return '4.2-ledger-detail'
   return workerV5SectionRootIds.earnings

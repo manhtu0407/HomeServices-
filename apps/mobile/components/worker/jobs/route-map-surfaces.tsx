@@ -11,9 +11,6 @@ import { workerV5ArrivalDestinationLabel } from '../ui/route'
 import { styles } from '../worker-v5-flow-styles'
 import { WorkerV5StatusTimeline as WorkerV5StatusTimelineSurface, type WorkerV5StatusTimelineBaseProps } from './timeline-surfaces'
 import { type WorkerV5RoutePreviewState } from './use-worker-route-preview'
-import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-
-type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }

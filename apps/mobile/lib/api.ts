@@ -182,6 +182,17 @@ async function request<T>(
 
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
+  getAuthenticated: <T>(path: string, accessToken: string): Promise<ApiResult<T>> => {
+    if (!accessToken.trim()) {
+      return Promise.resolve({
+        success: false,
+        error: 'Phiên đăng nhập không hợp lệ',
+        code: 'AUTH_REQUIRED',
+        status: 401,
+      })
+    }
+    return request<T>('GET', path, undefined, accessToken)
+  },
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   postAuthenticated: <T>(path: string, body: unknown, accessToken: string): Promise<ApiResult<T>> => {
     if (!accessToken.trim()) {
@@ -280,6 +291,11 @@ function isRetrySafeRequest(method: string, path: string, body: unknown) {
   ) return true
   if (method === 'POST' && path === '/notifications/device-token') return true
   if (method === 'POST' && /^\/notifications\/[^/]+\/read$/.test(path)) return true
+  if (
+    method === 'POST' &&
+    path === '/me/account-deletion' &&
+    hasClientRequestId(body)
+  ) return true
   return false
 }
 

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Text as RNText, View, type TextProps } from 'react-native'
-import { radius } from '@/design/theme'
+import { View } from 'react-native'
 import { type AppLanguage } from '@/lib/app-language'
 import { kaelMemoryService } from '@/lib/services'
 import { WorkerV5IconName } from '../dock/types'
@@ -16,10 +15,6 @@ import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { localizedServiceLabel } from '@/lib/app-language'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
-function Text({ style, ...props }: TextProps) {
-  return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
-}
-
 export function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { language: AppLanguage; reduceTransparency: boolean; runtime: WorkerV5Runtime }) {
   const profile = runtime.workerProfile
   const [memoryToggleOverrides, setMemoryToggleOverrides] = useState<Partial<Record<WorkerV5MemoryPreferenceUiId, boolean>>>({})

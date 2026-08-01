@@ -27,7 +27,7 @@ type WorkerV5CaseAuraComponent = ComponentType<{
   testID?: string
 }>
 
-export type WorkerV5CaseClosedHeroState = 'settled' | 'waiting'
+export type WorkerV5CaseClosedHeroState = 'settled' | 'cash_recorded' | 'waiting'
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -48,7 +48,10 @@ export function WorkerV5CaseClosedHero({
 }) {
   const hasIncome = Boolean(workerNet && workerNet > 0)
   const isSettled = state === 'settled'
-  const status = isSettled
+  const cashRecorded = state === 'cash_recorded'
+  const status = cashRecorded
+    ? textByLanguage(language, 'Đã ghi nhận tiền mặt', 'Cash payment recorded')
+    : isSettled
     ? textByLanguage(language, 'Đã đối soát', 'Settlement complete')
     : textByLanguage(language, 'Chờ đối soát', 'Waiting settlement')
   const closed = isSettled || deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
@@ -69,7 +72,7 @@ export function WorkerV5CaseClosedHero({
       <Text style={styles.caseClosedTitle} numberOfLines={2} testID="worker-v5-case-closed-title">{closed ? textByLanguage(language, 'Hoàn tất công việc', 'Work completed') : textByLanguage(language, 'Chưa hoàn tất công việc', 'Work not completed')}</Text>
       <WorkerV5PremiumStatusPill
         label={status}
-        mark={isSettled ? 'check' : 'dot'}
+        mark={isSettled || cashRecorded ? 'check' : 'dot'}
         markTestID="worker-v5-case-closed-settlement-status-dot"
         reduceTransparency={reduceTransparency}
         testID="worker-v5-case-closed-settlement-status"
@@ -110,12 +113,19 @@ export function WorkerV5CaseTrailCard({
 }) {
   const artifactReady = Boolean(deal?.completionNotes?.trim() || deal?.completionPhotoUrls?.length)
   const ledgerReady = Boolean(workerNet && workerNet > 0)
+  const paymentRailIsSePay = deal?.payment?.provider === 'sepay_vietqr'
+  const cashPaymentRecorded = deal?.payment?.provider === 'cash' && deal.payment.status === 'cash_confirmed'
+  const pendingCreditLabel = cashPaymentRecorded
+    ? textByLanguage(language, 'Đã ghi nhận hoa hồng tiền mặt', 'Cash commission recorded')
+    : paymentRailIsSePay
+    ? textByLanguage(language, 'Chờ SePay xác thực', 'Awaiting SePay')
+    : textByLanguage(language, 'Chưa có phương thức thanh toán', 'No payment method available')
   const rows = [
     {
       details: artifactReady
         ? [
           { glyph: 'document' as const, label: textByLanguage(language, 'Hồ sơ đã khóa', 'Artifact locked') },
-          { glyph: 'check' as const, label: textByLanguage(language, 'Bằng chứng thật', 'Real evidence') },
+          { glyph: 'check' as const, label: textByLanguage(language, 'Bằng chứng đã khóa', 'Evidence locked') },
         ]
         : [
           { glyph: 'sync' as const, label: textByLanguage(language, 'Chờ bằng chứng', 'Waiting for evidence') },
@@ -134,14 +144,29 @@ export function WorkerV5CaseTrailCard({
           { glyph: 'money' as const, label: textByLanguage(language, 'Đã ghi có', 'Credited') },
           { glyph: 'check' as const, label: textByLanguage(language, 'Trong ứng dụng', 'In app') },
         ]
-        : [
-          { glyph: 'sync' as const, label: textByLanguage(language, 'Chờ SePay xác thực', 'Awaiting SePay') },
+        : cashPaymentRecorded
+          ? [
+            { glyph: 'check' as const, label: textByLanguage(language, 'Thợ đã xác nhận đã nhận tiền', 'Worker confirmed receipt') },
+            { glyph: 'money' as const, label: textByLanguage(language, 'Hoa hồng được ghi sổ riêng', 'Commission recorded separately') },
+          ]
+          : [
+          { glyph: 'sync' as const, label: pendingCreditLabel },
           { glyph: 'money' as const, label: textByLanguage(language, 'Số dư trong ứng dụng', 'In-app balance') },
         ],
       icon: incomeLedgerIcon,
-      meta: ledgerReady ? formatVnd(workerNet ?? 0, language) : textByLanguage(language, 'Chưa có khoản ghi có đã xác thực', 'No verified credit yet'),
-      status: ledgerReady ? textByLanguage(language, 'Đã ghi có', 'Credited') : textByLanguage(language, 'Chờ', 'Waiting'),
-      title: textByLanguage(language, 'Ghi có tài khoản thợ', 'Credit worker account'),
+      meta: ledgerReady
+        ? formatVnd(workerNet ?? 0, language)
+        : cashPaymentRecorded
+          ? textByLanguage(language, 'Không tạo khoản ghi có từ tiền mặt', 'Cash does not create an in-app credit')
+          : textByLanguage(language, 'Chưa có khoản ghi có đã xác thực', 'No verified credit yet'),
+      status: ledgerReady
+        ? textByLanguage(language, 'Đã ghi có', 'Credited')
+        : cashPaymentRecorded
+          ? textByLanguage(language, 'Đã ghi nhận', 'Recorded')
+          : textByLanguage(language, 'Chờ', 'Waiting'),
+      title: cashPaymentRecorded
+        ? textByLanguage(language, 'Đối soát hoa hồng tiền mặt', 'Cash commission reconciliation')
+        : textByLanguage(language, 'Ghi có tài khoản thợ', 'Credit worker account'),
     },
   ]
   return (

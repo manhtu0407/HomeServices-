@@ -238,6 +238,34 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(answer.safety_notes.join(' ')).toMatch(/de-energ|verify|confirm/i)
   })
 
+  it('does not let Kael deny an uploaded image when vision has no validated finding', async () => {
+    const callAI = vi.fn(async (_request: AIRequest) => ({
+      success: true as const,
+      content: JSON.stringify({
+        text: 'Ảnh đã được nhận nhưng chưa đủ căn cứ để kết luận. Hãy kiểm tra trực tiếp trước khi thay đổi công việc.',
+        safety_notes: ['Chỉ ghi nhận quan sát có căn cứ trong ứng dụng.'],
+        redirect_scope_change: false,
+      }),
+      usage: { inputTokens: 80, outputTokens: 25, costUsd: 0.00005 },
+      latencyMs: 50,
+    }))
+
+    await runWorkerAssist({
+      job,
+      question: 'Tôi đã gửi ảnh hiện trường để đối chiếu.',
+      language: 'vi',
+      mediaRefs: ['supabase://job-media/job-1/kael_reference/onsite.png'],
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
+      callAI,
+    })
+
+    const prompt = JSON.stringify(callAI.mock.calls[0]?.[0].messages.at(-1)?.content)
+    expect(prompt).toContain('file was received')
+    expect(prompt).toContain('Never say that no photo was received')
+    expect(prompt).not.toContain('No validated image-derived evidence is available')
+  })
+
   it('returns bounded worker-assist JSON without price or lifecycle mutation', async () => {
     const answer = await runWorkerAssist({
       job,

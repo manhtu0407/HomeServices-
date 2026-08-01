@@ -2,13 +2,20 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 describe('worker V5 icon assets', () => {
-  it('uses the dedicated reconciliation-folio image for the earnings hero', () => {
+  it('uses three dedicated production images for the earnings utilities', () => {
     const iconAssetsSource = readFileSync(resolve(__dirname, '../ui/worker-v5-icon-assets.ts'), 'utf8')
-    const folioPath = resolve(__dirname, '../../../assets/worker-image-icons/earnings-reconciliation-folio.png')
+    const utilityAssets = [
+      'earnings-transaction-history-core.png',
+      'earnings-receiving-account-core.png',
+      'earnings-commission-policy-core.png',
+    ]
 
-    expect(existsSync(folioPath)).toBe(true)
-    expect(iconAssetsSource).toContain("earningsHero: require('@/assets/worker-image-icons/earnings-reconciliation-folio.png')")
-    expect(iconAssetsSource).not.toContain("earningsHero: require('@/assets/worker-image-icons/utility-earnings-wallet-core.png')")
+    utilityAssets.forEach((fileName) => {
+      expect(existsSync(resolve(__dirname, `../../../assets/worker-image-icons/${fileName}`))).toBe(true)
+      expect(iconAssetsSource).toContain(fileName)
+    })
+    expect(iconAssetsSource).not.toContain('earningsHero:')
+    expect(iconAssetsSource).not.toContain('earningsRecentTransactions:')
   })
 
   it('uses the dedicated service-kit image for the active-skills hero', () => {

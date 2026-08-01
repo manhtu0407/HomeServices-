@@ -19,7 +19,7 @@ export function formatVnd(value: number, language: AppLanguage) {
 }
 
 export function isPaymentProtectedStatus(status: NonNullable<LocalDeal['payment']>['status']) {
-  return status === 'received' || status === 'reconciled'
+  return status === 'received' || status === 'cash_confirmed' || status === 'reconciled'
 }
 
 export function isDealPaymentProtected(deal: LocalDeal) {

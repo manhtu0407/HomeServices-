@@ -6,7 +6,20 @@ import { customerV21ProfileStageIds, type CustomerV21ScreenId } from './types'
 import { metadataString } from './value-display-model'
 
 export type CustomerProfilePanel = 'overview' | 'ranking' | 'money'
-export type CustomerProfileUtility = 'address' | 'payment' | 'settings'
+export type CustomerProfileSettingsSection = 'account' | 'memory' | 'password'
+export type CustomerProfileUtility =
+  | 'address'
+  | 'appearance'
+  | 'delete-account'
+  | 'language'
+  | 'legal'
+  | 'memory'
+  | 'notifications'
+  | 'payment'
+  | 'password'
+  | 'personal-details'
+  | 'settings'
+  | 'support'
 
 const profileScreenIds: CustomerV21ScreenId[] = [...customerV21ProfileStageIds]
 const millisecondsPerDay = 86_400_000
@@ -53,12 +66,6 @@ export function rankLabel(rank: number, language: AppLanguage) {
   if (rank === 3) return 'Tin cậy'
   if (rank === 4) return 'Cao cấp'
   return 'Tối đa'
-}
-
-export function profileRankStatus(rank: number, language: AppLanguage, fallback: string) {
-  if (rank <= 0) return fallback
-  if (rank >= 3) return language === 'vi' ? 'Khách hàng Tin cậy' : 'Trusted customer'
-  return language === 'vi' ? 'Đang xây hạng' : 'Building level'
 }
 
 export function fairPriceStatusLabel(
@@ -200,21 +207,48 @@ export function profilePanelParam(value: string | undefined): CustomerProfilePan
 }
 
 export function profileUtilityParam(value: string | undefined): CustomerProfileUtility | null {
-  if (value === 'notifications' || value === 'support') return 'settings'
-  return value === 'address' || value === 'payment' || value === 'settings' ? value : null
+  return value === 'address'
+    || value === 'appearance'
+    || value === 'delete-account'
+    || value === 'language'
+    || value === 'legal'
+    || value === 'memory'
+    || value === 'notifications'
+    || value === 'payment'
+    || value === 'password'
+    || value === 'personal-details'
+    || value === 'settings'
+    || value === 'support'
+    ? value
+    : null
+}
+
+export function profileSettingsSectionParam(value: string | undefined): CustomerProfileSettingsSection | null {
+  return value === 'account' || value === 'memory' || value === 'password' ? value : null
 }
 
 export function profileUtilityTitle(kind: CustomerProfileUtility, language: AppLanguage) {
-  if (kind === 'payment') return language === 'vi' ? 'Thanh toán' : 'Payment'
+  if (kind === 'appearance') return language === 'vi' ? 'Giao diện' : 'Appearance'
+  if (kind === 'delete-account') return language === 'vi' ? 'Xóa tài khoản' : 'Delete account'
+  if (kind === 'language') return language === 'vi' ? 'Ngôn ngữ' : 'Language'
+  if (kind === 'legal') return language === 'vi' ? 'Điều khoản & Chính sách' : 'Terms & Policies'
+  if (kind === 'memory') return language === 'vi' ? 'Bộ nhớ Kael' : 'Kael memory'
+  if (kind === 'notifications') return language === 'vi' ? 'Thông báo' : 'Notifications'
+  if (kind === 'payment') return language === 'vi' ? 'Hoàn tiền' : 'Refunds'
+  if (kind === 'password') return language === 'vi' ? 'Bảo mật đăng nhập' : 'Login security'
+  if (kind === 'personal-details') return language === 'vi' ? 'Thông tin cá nhân' : 'Personal details'
   if (kind === 'settings') return language === 'vi' ? 'Cài đặt' : 'Settings'
+  if (kind === 'support') return language === 'vi' ? 'Trợ giúp & hỗ trợ' : 'Help & support'
   return language === 'vi' ? 'Địa chỉ' : 'Addresses'
 }
 
 export function profileUtilitySubtitle(kind: CustomerProfileUtility, language: AppLanguage) {
-  if (kind === 'payment' || kind === 'settings') {
-    return ''
-  }
-  return language === 'vi' ? 'Địa chỉ dùng cho đặt dịch vụ' : 'Addresses used for booking'
+  if (kind === 'address') return language === 'vi' ? 'Địa chỉ dùng cho đặt dịch vụ' : 'Addresses used for booking'
+  if (kind === 'language') return language === 'vi' ? 'Chọn ngôn ngữ hiển thị' : 'Choose your display language'
+  if (kind === 'memory') return language === 'vi' ? 'Bạn quyết định điều Kael được ghi nhớ' : 'You decide what Kael may remember'
+  if (kind === 'password') return language === 'vi' ? 'Cập nhật mật khẩu đăng nhập' : 'Update your login password'
+  if (kind === 'personal-details') return language === 'vi' ? 'Tên và thông tin liên hệ' : 'Name and contact details'
+  return ''
 }
 
 export function profileScreenParam(value: string | undefined): CustomerV21ScreenId | null {

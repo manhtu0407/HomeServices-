@@ -1,11 +1,18 @@
 import {
+  KAEL_PERFORMANCE_PROFILE_IDS,
   SERVICE_TYPES as CANONICAL_SERVICE_TYPES,
+  type CustomerKaelConversationTurnInput,
   type KaelChatEvidenceInput,
   type KaelChatTurnInput,
   type WorkerKaelChatTurnInput,
 } from '@nestscout/shared'
 
-import type { KaelChatProgress, KaelChatResponse, WorkerKaelChatResponse } from './api-types'
+import type {
+  CustomerKaelConversationResponse,
+  KaelChatProgress,
+  KaelChatResponse,
+  WorkerKaelChatResponse,
+} from './api-types'
 import {
   type ApiResult,
   getMobileApiAuthHeaders,
@@ -37,6 +44,12 @@ export type KaelStreamTokenEvent = {
   delta: string
 }
 
+export type KaelStreamResponseDeltaEvent = {
+  type: 'response_delta'
+  turnId: string
+  delta: string
+}
+
 export type KaelStreamResultEvent = {
   type: 'result'
   data: KaelChatResponse
@@ -55,13 +68,23 @@ export type KaelStreamHeartbeatEvent = {
 export type KaelStreamEvent =
   | KaelStreamStageEvent
   | KaelStreamTokenEvent
+  | KaelStreamResponseDeltaEvent
   | KaelStreamResultEvent
   | KaelStreamErrorEvent
   | KaelStreamHeartbeatEvent
 
 export type KaelChatStreamHandlers = {
   onError?: (event: KaelStreamErrorEvent) => void
+  onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResult?: (event: KaelStreamResultEvent) => void
+  onStage?: (event: KaelStreamStageEvent) => void
+  onToken?: (event: KaelStreamTokenEvent) => void
+}
+
+export type CustomerKaelConversationStreamHandlers = {
+  onError?: (event: KaelStreamErrorEvent) => void
+  onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
+  onResult?: (event: { type: 'result'; data: CustomerKaelConversationResponse }) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
 }
@@ -73,6 +96,7 @@ export type WorkerKaelStreamResultEvent = {
 
 export type WorkerKaelChatStreamHandlers = {
   onError?: (event: KaelStreamErrorEvent) => void
+  onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResult?: (event: WorkerKaelStreamResultEvent) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -117,6 +141,24 @@ export async function streamKaelChatTurn(
   }, isCustomerKaelStreamResult)
 }
 
+export async function streamCustomerKaelConversationTurn(
+  conversationId: string,
+  input: CustomerKaelConversationTurnInput,
+  handlers: CustomerKaelConversationStreamHandlers = {},
+): Promise<ApiResult<CustomerKaelConversationResponse>> {
+  return streamKaelTurn(
+    `/me/kael/conversations/${encodeURIComponent(conversationId)}/stream`,
+    input,
+    handlers,
+    {
+      httpErrorField: 'error',
+      httpFallbackCode: (status) => `HTTP_${status}`,
+      httpFallbackMessage: 'Kael conversation streaming failed.',
+    },
+    isCustomerKaelConversationStreamResult,
+  )
+}
+
 export async function streamKaelChatEvidence(
   sessionId: string,
   input: KaelChatEvidenceInput,
@@ -156,6 +198,7 @@ export async function streamWorkerKaelChatTurn(
 
 type StreamHandlers<T> = {
   onError?: (event: KaelStreamErrorEvent) => void
+  onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResult?: (event: { type: 'result'; data: T }) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -163,7 +206,11 @@ type StreamHandlers<T> = {
 
 async function streamKaelTurn<T>(
   path: string,
-  input: KaelChatEvidenceInput | KaelChatTurnInput | WorkerKaelChatTurnInput,
+  input:
+    | CustomerKaelConversationTurnInput
+    | KaelChatEvidenceInput
+    | KaelChatTurnInput
+    | WorkerKaelChatTurnInput,
   handlers: StreamHandlers<T>,
   httpError: {
     httpErrorField: 'error' | 'message'
@@ -240,6 +287,7 @@ async function streamKaelTurn<T>(
       for (const event of parser.push(chunk)) {
         if (event.type === 'stage') handlers.onStage?.(event)
         if (event.type === 'token') handlers.onToken?.(event)
+        if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
         if (event.type === 'error') {
           handlers.onError?.(event)
           return { success: false, error: event.message, code: event.code, status: response.status }
@@ -409,6 +457,19 @@ function parseKaelSseFrame(frame: string): KaelStreamEvent | null {
     }
     return null
   }
+  if (eventName === 'response_delta') {
+    const turnId = data.turn_id
+    const delta = data.delta
+    if (
+      isBoundedString(turnId, 160) &&
+      typeof delta === 'string' &&
+      delta.length > 0 &&
+      delta.length <= 32_768
+    ) {
+      return { type: 'response_delta', turnId, delta }
+    }
+    return null
+  }
   if (eventName === 'result') {
     return { type: 'result', data: data as unknown as KaelChatResponse }
   }
@@ -481,6 +542,9 @@ const KAEL_PROGRESS_STAGES = new Set<KaelChatProgress['current_stage']>([
 ])
 
 const SERVICE_TYPES = new Set<string>(CANONICAL_SERVICE_TYPES)
+const CUSTOMER_CONVERSATION_MODES = new Set(['normal', 'case'])
+const CUSTOMER_CONVERSATION_TURN_ROLES = new Set(['customer', 'kael', 'system'])
+const KAEL_PERFORMANCE_PROFILES = new Set<string>(KAEL_PERFORMANCE_PROFILE_IDS)
 const CUSTOMER_SESSION_STATUSES = new Set(['active', 'collecting_evidence', 'estimate_ready', 'confirmed', 'abandoned', 'unsupported'])
 const CUSTOMER_CASE_PHASES = new Set([
   'analysis', 'offer_review', 'matching', 'worker_candidate_review', 'worker_en_route',
@@ -499,6 +563,32 @@ const WORKER_SESSION_STATUSES = new Set(['active', 'closed', 'escalated', 'error
 const WORKER_TURN_ROLES = new Set(['worker', 'kael', 'system'])
 const WORKER_TURN_TYPES = new Set(['text', 'clarification', 'guidance', 'photo_request', 'photo_attached', 'error'])
 const COMPLEXITY_LEVELS = new Set(['small', 'medium', 'large'])
+
+export function isCustomerKaelConversationStreamResult(
+  value: unknown,
+): value is CustomerKaelConversationResponse {
+  const response = asRecord(value)
+  const session = asRecord(response?.session)
+  const turns = response?.turns
+  if (!response || !session || !Array.isArray(turns) || turns.length > 500) return false
+  if (
+    !isBoundedString(session.id, 160) ||
+    !isEnumString(session.mode, CUSTOMER_CONVERSATION_MODES) ||
+    !isBoundedString(session.customer_id, 160) ||
+    !isNullableBoundedString(session.case_job_id, 160) ||
+    !isNullableBoundedString(session.case_session_id, 160) ||
+    !isBoundedString(session.client_request_id, 160) ||
+    !isNullableBoundedString(session.title, 64) ||
+    !isNullableBoundedString(session.pinned_at, 64) ||
+    !isNullableEnumString(session.profile_id, KAEL_PERFORMANCE_PROFILES) ||
+    !isNullableEnumString(session.service_type, SERVICE_TYPES) ||
+    !isBoundedString(session.started_at, 64) ||
+    !isBoundedString(session.updated_at, 64) ||
+    !isNonNegativeInteger(session.total_turns) ||
+    session.total_turns !== turns.length
+  ) return false
+  return turns.every(isCustomerConversationTurn)
+}
 
 export function isCustomerKaelStreamResult(value: unknown): value is KaelChatResponse {
   const response = asRecord(value)
@@ -531,6 +621,18 @@ export function isWorkerKaelStreamResult(value: unknown): value is WorkerKaelCha
     !isNonNegativeInteger(session.total_turns) || !isNullableProgress(session.progress)
   ) return false
   return turns.every(isWorkerTurn)
+}
+
+function isCustomerConversationTurn(value: unknown): boolean {
+  const turn = asRecord(value)
+  return Boolean(turn) &&
+    isBoundedString(turn?.id, 160) &&
+    isBoundedString(turn?.conversation_id, 160) &&
+    isOptionalNullableBoundedString(turn?.client_request_id, 160) &&
+    isNonNegativeInteger(turn?.turn_index) &&
+    isEnumString(turn?.role, CUSTOMER_CONVERSATION_TURN_ROLES) &&
+    isBoundedString(turn?.text_content, 12_000) &&
+    isBoundedString(turn?.created_at, 64)
 }
 
 function isCustomerTurn(value: unknown): boolean {
@@ -573,8 +675,27 @@ function isNullableEstimate(value: unknown): boolean {
     isBoundedString(estimate.disclaimer, 2_000) &&
     (estimate.needs_inspection === undefined || typeof estimate.needs_inspection === 'boolean') &&
     (estimate.price_source === undefined || isNullableBoundedString(estimate.price_source, 160)) &&
+    (estimate.complexity_reasoning === undefined || isNullableBoundedString(estimate.complexity_reasoning, 2_000)) &&
     (estimate.needs_inspection_reason === undefined || isNullableBoundedString(estimate.needs_inspection_reason, 2_000)) &&
-    (estimate.market_signals === undefined || isNullableBoundedString(estimate.market_signals, 2_000))
+    (estimate.market_signals === undefined || isNullableBoundedString(estimate.market_signals, 2_000)) &&
+    isOptionalNullableAnalysisReceipt(estimate.analysis_receipt)
+}
+
+function isOptionalNullableAnalysisReceipt(value: unknown): boolean {
+  if (value === undefined || value === null) return true
+  const receipt = asRecord(value)
+  const evidence = asRecord(receipt?.evidence)
+  const market = asRecord(receipt?.market)
+  return receipt?.schema_version === 'analysis_receipt.v1' &&
+    Boolean(evidence) &&
+    isNonNegativeInteger(evidence?.photo_count) &&
+    isNonNegativeInteger(evidence?.video_frame_count) &&
+    isNonNegativeInteger(evidence?.voice_transcript_count) &&
+    typeof evidence?.skipped === 'boolean' &&
+    Boolean(market) &&
+    (market?.accepted_source_count === null || isNonNegativeInteger(market?.accepted_source_count)) &&
+    (market?.high_trust_source_count === null || isNonNegativeInteger(market?.high_trust_source_count)) &&
+    (market?.quorum_met === null || typeof market?.quorum_met === 'boolean')
 }
 
 function isNullableProgress(value: unknown): boolean {
@@ -615,6 +736,10 @@ function isNullableRecord(value: unknown): boolean {
 
 function isEnumString(value: unknown, values: ReadonlySet<string>): value is string {
   return typeof value === 'string' && values.has(value)
+}
+
+function isNullableEnumString(value: unknown, values: ReadonlySet<string>) {
+  return value === null || isEnumString(value, values)
 }
 
 function isNonNegativeInteger(value: unknown): boolean {

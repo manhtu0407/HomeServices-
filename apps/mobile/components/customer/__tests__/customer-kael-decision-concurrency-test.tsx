@@ -76,6 +76,7 @@ function decisionHarness() {
       stopProcessLines: jest.fn(),
     } as any,
     router: { replace: jest.fn() } as any,
+    sessionAccessToken: undefined as string | undefined,
     workflow,
   }
   return { chatUi, conversation, input, workflow }
@@ -136,6 +137,26 @@ describe('customer Kael decision concurrency', () => {
     )
     expect(harness.conversation.setError).not.toHaveBeenCalledWith(
       'Chưa thể hoàn tất lựa chọn này. Vui lòng thử lại.',
+    )
+  })
+
+  it('confirms an estimate with the rendered customer session token', async () => {
+    const harness = decisionHarness()
+    harness.input.sessionAccessToken = 'customer-session-token'
+    mockConfirmEstimate.mockResolvedValueOnce({
+      data: { job_id: 'job-confirmed' },
+      success: true,
+    })
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+
+    await act(async () => {
+      await result.current.confirmAgenticEstimate()
+    })
+
+    expect(mockConfirmEstimate).toHaveBeenCalledWith('session-a', 'customer-session-token')
+    expect(harness.workflow.actions.hydrateRemoteJobById).toHaveBeenCalledWith(
+      'job-confirmed',
+      'customer-session-token',
     )
   })
 

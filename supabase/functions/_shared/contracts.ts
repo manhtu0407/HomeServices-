@@ -5,6 +5,21 @@
 // the shared mobile-wiring parity test fails CI if the two drift. Edit both together.
 import type { ComplexityLevel, JobStatus, ServiceType } from "./domain.ts";
 
+export type EdgeKaelEstimateAnalysisReceipt = {
+  schema_version: "analysis_receipt.v1";
+  evidence: {
+    photo_count: number;
+    video_frame_count: number;
+    voice_transcript_count: number;
+    skipped: boolean;
+  };
+  market: {
+    accepted_source_count: number | null;
+    high_trust_source_count: number | null;
+    quorum_met: boolean | null;
+  };
+};
+
 export type KaelEstimate = {
   service_type: ServiceType;
   problem_category: string;
@@ -17,8 +32,10 @@ export type KaelEstimate = {
   disclaimer: string;
   needs_inspection?: boolean;
   price_source?: string | null;
+  complexity_reasoning?: string | null;
   needs_inspection_reason?: string | null;
   market_signals?: string | null;
+  analysis_receipt?: EdgeKaelEstimateAnalysisReceipt | null;
 };
 
 export type CreateJobResponse = {
@@ -57,6 +74,7 @@ export type EdgeKaelCaseWorkPhase =
 type KaelCaseWorkPhase = EdgeKaelCaseWorkPhase;
 
 export type KaelChatNextAction =
+  | "confirm_intake"
   | "await_input"
   | "collect_evidence"
   | "ask_photo"
@@ -67,6 +85,65 @@ export type KaelChatNextAction =
   | "confirmed"
   | "ask_question"
   | "request_evidence";
+
+export type EdgeKaelIntakeConfirmation = {
+  version: 1;
+  source: "booking";
+  status: "pending" | "confirmed" | "correction_requested";
+  blocking: boolean;
+  checked_at: string;
+  confirmed_at: string | null;
+  correction_requested_at: string | null;
+  focus: string;
+  question: string;
+  fields: Array<{
+    key: "service" | "problem" | "description" | "location" | "schedule";
+    label: string;
+    value: string;
+    state: "clear" | "attention" | "invalid";
+    note: string | null;
+  }>;
+  issues: Array<{
+    code:
+      | "profile_mismatch"
+      | "problem_missing"
+      | "description_too_short"
+      | "service_mismatch"
+      | "out_of_scope"
+      | "unsafe_input"
+      | "location_missing"
+      | "schedule_invalid"
+      | "schedule_past"
+      | "schedule_window_mismatch"
+      | "safety_attention";
+    field: "service" | "problem" | "description" | "location" | "schedule";
+    severity: "attention" | "blocking";
+    message: string;
+  }>;
+  intake: {
+    service_type: ServiceType;
+    profile_id:
+      | "electric_diagnose"
+      | "water_diagnose"
+      | "clean_scope"
+      | "air_scope"
+      | "fabric_scope"
+      | "task_scope";
+    description: string;
+    problem_chips: string[];
+    address_label: string;
+    address_district: string;
+    scheduled_at: string;
+    schedule_window: {
+      date: string;
+      start: string;
+      end: string;
+      time_zone: "Asia/Ho_Chi_Minh";
+    };
+  };
+};
+
+type KaelIntakeConfirmation = EdgeKaelIntakeConfirmation;
 
 export type KaelChatTurn = {
   id: string;
@@ -105,6 +182,7 @@ export type KaelChatSession = {
   total_turns: number;
   total_cost_usd: number;
   next_action: KaelChatNextAction;
+  intake_confirmation?: KaelIntakeConfirmation | null;
 };
 
 export type KaelChatResponse = {
