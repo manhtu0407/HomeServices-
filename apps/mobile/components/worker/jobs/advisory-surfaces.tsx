@@ -7,11 +7,6 @@ import {
   type TextProps,
   type ViewStyle,
 } from 'react-native'
-import type { LocalDeal } from '@nestscout/shared'
-
-import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
-
-import { textByLanguage } from '../ui/format'
 import { styles } from './advisory-styles'
 
 type WorkerV5CaseAuraComponent = ComponentType<{
@@ -42,18 +37,6 @@ export function WorkerV5ChatBubble({
     <View style={[styles.chatBubble, align === 'right' ? styles.chatBubbleRight : null]}>
       <Text style={styles.chatBubbleBody} numberOfLines={4}>{body}</Text>
       <Text style={styles.chatBubbleLabel} numberOfLines={1}>{label}</Text>
-    </View>
-  )
-}
-
-export function WorkerV5SuggestionChips({ items }: { items: readonly string[] }) {
-  return (
-    <View style={styles.suggestionChipRow} testID="worker-v5-suggestion-chips">
-      {items.map((item, index) => (
-        <View key={item} style={styles.suggestionChip}>
-          <Text style={styles.suggestionChipText} numberOfLines={2} testID={`worker-v5-suggestion-chip-text-${index}`}>{item}</Text>
-        </View>
-      ))}
     </View>
   )
 }
@@ -189,38 +172,5 @@ export function WorkerV5SingleSourceActionButton({
         {label}
       </Text>
     </Pressable>
-  )
-}
-
-export function WorkerV5OnsiteAdvisoryRail({
-  deal,
-  language,
-  reduceTransparency,
-}: {
-  deal: LocalDeal | null
-  language: AppLanguage
-  reduceTransparency: boolean
-}) {
-  const status = deal
-    ? localizedStatusLabel(deal.status, language)
-    : textByLanguage(language, 'Chưa có việc', 'No work')
-  const area = deal?.draft.districtLabel || deal?.broadcast?.generalArea ||
-    textByLanguage(language, 'khu vực chưa rõ', 'unknown area')
-
-  return (
-    <View style={[styles.onsiteAdvisoryRail, reduceTransparency && styles.opaqueCard]} testID="worker-onsite-advisory-rail">
-      <Text style={styles.onsiteAdvisoryText} testID="worker-onsite-advisory-status">
-        {textByLanguage(language, `Trạng thái sửa chữa: ${status}`, `Work status: ${status}`)}
-      </Text>
-      <Text style={styles.onsiteAdvisoryText} testID="worker-onsite-advisory-address">
-        {textByLanguage(language, `Khu vực làm việc: ${area}`, `Service area: ${area}`)}
-      </Text>
-      <Text style={styles.onsiteAdvisoryText} testID="worker-onsite-advisory-scope">
-        {textByLanguage(language, 'Không nhập giá trong chat; phát sinh phải đi qua luồng đổi phạm vi.', 'Do not enter prices in chat; scope changes must use the controlled flow.')}
-      </Text>
-      <Text style={styles.onsiteAdvisoryText} testID="worker-onsite-advisory-evidence">
-        {textByLanguage(language, 'Ghi chú và ảnh chỉ hỗ trợ Kael tư vấn, không tự cập nhật trạng thái.', 'Notes and photos only help Kael advise; they do not update status automatically.')}
-      </Text>
-    </View>
   )
 }

@@ -9,7 +9,7 @@ export type WorkerEarningsChartPoint = {
   value: number
 }
 
-export type WorkerEarningsDashboardModel = {
+type WorkerEarningsDashboardModel = {
   availableBalance: number
   grossEarnings: number
   netEarnings: number

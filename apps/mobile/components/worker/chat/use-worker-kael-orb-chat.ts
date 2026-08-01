@@ -18,7 +18,7 @@ import { workerKaelChatService } from '@/lib/services'
 import { getWorkerV5ChatJobId } from '../ui/labels'
 import { textByLanguage } from '../ui/format'
 
-export type WorkerV5PrivateKaelLocalTurn = {
+type WorkerV5PrivateKaelLocalTurn = {
   id: string
   role: 'kael' | 'worker'
   text: string

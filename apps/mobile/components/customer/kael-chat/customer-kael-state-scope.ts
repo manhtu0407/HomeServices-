@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CustomerKaelMode } from '../ui/types'
 
-export type CustomerKaelRequestChannel =
+type CustomerKaelRequestChannel =
   | 'conversation'
   | 'message'
   | 'memory-preference'

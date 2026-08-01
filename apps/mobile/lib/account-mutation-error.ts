@@ -1,6 +1,6 @@
 import type { AppLanguage } from './app-language'
 
-export type AccountMutationKind = 'password' | 'profile'
+type AccountMutationKind = 'password' | 'profile'
 
 type AccountMutationErrorKey =
   | 'connection'

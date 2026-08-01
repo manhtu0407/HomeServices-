@@ -58,7 +58,7 @@ import { useWorkerBoardActions } from './frontend-workflow/use-worker-board-acti
 import { useWorkerOnsiteActions } from './frontend-workflow/use-worker-onsite-actions'
 import { useWorkerCandidateActions } from './frontend-workflow/use-worker-candidate-actions'
 
-export type CustomerKaelMemoryPreferenceUpdateResult = {
+type CustomerKaelMemoryPreferenceUpdateResult = {
   success: boolean
   code?: string
   error?: string

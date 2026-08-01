@@ -23,7 +23,7 @@ export const workerV5Routes: Record<WorkerV5Section, string> = {
   profile: '/(worker)/profile',
 }
 
-export const workerV5SectionRootIds: Record<WorkerV5Section, WorkerV5ScreenId> = {
+const workerV5SectionRootIds: Record<WorkerV5Section, WorkerV5ScreenId> = {
   earnings: '4.1-earnings-overview',
   home: '1.1-worker-home',
   jobs: '2.1-opportunity-inbox',
@@ -73,7 +73,7 @@ export function resolveWorkerV5DockActive(pathname: string, params: WorkerV5Rout
   return 'home'
 }
 
-export function resolveWorkerV5JobsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
+function resolveWorkerV5JobsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
   const auditSurface = firstRouteParam(params.ns_audit_surface)
   const tab = firstRouteParam(params.tab)
 
@@ -96,7 +96,7 @@ export function resolveWorkerV5JobsScreenId(params: WorkerV5RouteParams): Worker
   return workerV5SectionRootIds.jobs
 }
 
-export function resolveWorkerV5EarningsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
+function resolveWorkerV5EarningsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
   const paymentStep = firstRouteParam(params.ns_payment_step)
 
   if (paymentStep === 'withdraw') return workerV5SectionRootIds.earnings

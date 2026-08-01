@@ -13,7 +13,7 @@ type WorkerV5ProfileForAcceptance = {
   selected_service_types?: readonly string[]
 } | null | undefined
 
-export type WorkerV5AcceptCheckState = 'blocked' | 'done' | 'pending'
+type WorkerV5AcceptCheckState = 'blocked' | 'done' | 'pending'
 
 export type WorkerV5AcceptCheck = {
   label: string

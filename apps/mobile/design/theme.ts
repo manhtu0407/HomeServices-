@@ -552,6 +552,6 @@ export const glassSurfaceTheme = {
   },
 } as const
 
-export const theme = { aura, color, component, customerTheme, glass, glassSurfaceTheme, radius, shadow, signature, spacing, typography } as const
+const theme = { aura, color, component, customerTheme, glass, glassSurfaceTheme, radius, shadow, signature, spacing, typography } as const
 
 export default theme

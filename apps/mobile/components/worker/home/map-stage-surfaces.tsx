@@ -65,7 +65,7 @@ export function WorkerV5MapStage({
   )
 }
 
-export function WorkerV5VietMapStaticPreview({
+function WorkerV5VietMapStaticPreview({
   label,
   language,
   location,
@@ -78,7 +78,7 @@ export function WorkerV5VietMapStaticPreview({
   return <WorkerV5VietMapStaticImage key={uri} label={label} language={language} uri={uri} />
 }
 
-export function WorkerV5VietMapStaticImage({
+function WorkerV5VietMapStaticImage({
   label,
   language,
   uri,

@@ -1,4 +1,4 @@
-export type AuthIdentifier =
+type AuthIdentifier =
   | { kind: 'email'; value: string }
   | { kind: 'phone'; value: string }
 

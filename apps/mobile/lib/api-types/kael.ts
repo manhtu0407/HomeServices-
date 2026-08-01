@@ -30,40 +30,9 @@ export type KaelMemorySelfViewResponse = {
   memory: KaelMemoryPayload | null
 }
 
-export type CustomerKaelMemoryPreferenceKey =
-  | 'preferred_address'
-  | 'preferred_time_window'
-  | 'budget_limit_vnd'
-  | 'message_interaction_memory'
-  | 'share_preferences_with_worker'
-
-export type CustomerKaelMemoryPreferenceUpdateInput = {
-  key: CustomerKaelMemoryPreferenceKey
-  enabled: boolean
-}
-
-export type WorkerKaelMemoryPreferenceKey =
-  | 'area_preference'
-  | 'income_preference'
-  | 'travel_limit'
-  | 'skill_preference'
-  | 'opportunity_filter'
-  | 'auto_accept_work'
-
-export type WorkerKaelMemoryPreferenceUpdateInput = {
-  key: WorkerKaelMemoryPreferenceKey
-  enabled: boolean
-}
-
 export type KaelMemoryResponse = {
   subject_type: 'customer' | 'worker'
   memory: Record<string, unknown> | null
-}
-
-export type CustomerKaelFeedbackResponse = {
-  feedback_id: string
-  status: 'new'
-  created_at: string
 }
 
 export type KaelChatProgress = {

@@ -7,7 +7,7 @@ import {
 
 import { textByLanguage } from '../ui/format'
 
-export type WorkerV5WorkBoardItem = {
+type WorkerV5WorkBoardItem = {
   meta: string
   state: 'active' | 'done' | 'todo'
   title: string

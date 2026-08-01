@@ -18,8 +18,3 @@ export function paymentBankKeyFromUnknown(value: unknown): CustomerV21BankKey | 
 export function normalizeBankAccountNumber(value: string) {
   return value.replace(/\s+/g, '').trim()
 }
-
-export function maskBankAccountNumber(value: string | null) {
-  const normalized = normalizeBankAccountNumber(value ?? '')
-  return normalized.length >= 4 ? `**** ${normalized.slice(-4)}` : ''
-}

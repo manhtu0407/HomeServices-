@@ -7,7 +7,7 @@ const MAX_SHORT_LABEL_LENGTH = 40
 const MAX_ADDRESS_LENGTH = 300
 const MAX_SAVED_ADDRESSES = 8
 
-export type CustomerProfileMetadataDraft = {
+type CustomerProfileMetadataDraft = {
   birthDate?: string
   defaultAddress?: string
   displayName?: string

@@ -242,7 +242,6 @@ describe('LoginRoleSurface', () => {
 
   it('keeps auth form inputs outside native glass containers on iOS', () => {
     const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
-    const registrationSource = readFileSync(resolve(__dirname, '../entry-access/registration-screens.tsx'), 'utf-8')
     const materialsSource = readFileSync(resolve(__dirname, '../entry-access/components/materials.tsx'), 'utf-8')
     const nativeSafeStart = materialsSource.indexOf('export function NativeSafeGlassPanel')
     const nativeSafeEnd = materialsSource.indexOf('function GlassHighlight', nativeSafeStart)
@@ -253,9 +252,9 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByTestId('auth-login-1-4')).toBeOnTheScreen()
     expect(flowSource).toContain('<NativeSafeGlassPanel style={styles.formPanel} testID="auth-login-1-4">')
-    expect(registrationSource).toContain('<NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">')
+    expect(flowSource).toContain('<NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">')
     expect(flowSource).not.toContain('<GlassPanel style={styles.formPanel} testID="auth-login-1-4">')
-    expect(registrationSource).not.toContain('<GlassPanel style={styles.formPanel} testID="auth-register-1-5">')
+    expect(flowSource).not.toContain('<GlassPanel style={styles.formPanel} testID="auth-register-1-5">')
     expect(nativeSafePanelSource).toContain('<View')
     expect(nativeSafePanelSource).not.toContain('<GlassView')
     expect(nativeSafePanelSource).not.toContain('<BlurView')

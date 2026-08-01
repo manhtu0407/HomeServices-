@@ -47,7 +47,7 @@ export function localizedAgenticProblemLabel(value: string, serviceType: Service
   return localized === appCopy[language].common.unknown ? null : localized.trim()
 }
 
-export function looksLikeRawProblemTaxonomy(value: string) {
+function looksLikeRawProblemTaxonomy(value: string) {
   const trimmed = value.trim()
   return /^[a-z]+:[\s_a-z0-9-]+$/i.test(trimmed) || /^[a-z]+(?:_[a-z0-9]+)+$/i.test(trimmed)
 }

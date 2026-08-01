@@ -84,34 +84,6 @@ export function SourceIconTileSkin() {
   )
 }
 
-export function CaseWorkCardAura({ scope, testID }: { scope: string; testID?: string }) {
-  const { reduceTransparency } = useGlassAccessibility()
-
-  if (reduceTransparency) return null
-
-  const topId = `caseWorkAuraTop${scope}`
-  const bottomId = `caseWorkAuraBottom${scope}`
-  return (
-    <View pointerEvents="none" style={styles.caseWorkCardAura} testID={testID}>
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 180" width="100%">
-        <Defs>
-          <RadialGradient id={topId} cx="90%" cy="0%" r="64%">
-            <Stop offset="0" stopColor="rgba(77,231,209,0.25)" />
-            <Stop offset="0.62" stopColor="rgba(151,246,232,0.10)" />
-            <Stop offset="0.84" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={bottomId} cx="5%" cy="100%" r="60%">
-            <Stop offset="0" stopColor="rgba(75,214,201,0.17)" />
-            <Stop offset="0.74" stopColor="rgba(75,214,201,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill={`url(#${topId})`} height="180" width="360" />
-        <Rect fill={`url(#${bottomId})`} height="180" width="360" />
-      </Svg>
-    </View>
-  )
-}
-
 export function ZipMintAura({ intensity = 'default', scope, testID }: { intensity?: 'default' | 'strong'; scope: string; testID?: string }) {
   const { reduceTransparency } = useGlassAccessibility()
   if (reduceTransparency) return null
@@ -178,51 +150,7 @@ export function CaseWideMintAura({
   )
 }
 
-export function CaseWorkSourceChipAura({ scope }: { scope: string }) {
-  const { reduceTransparency } = useGlassAccessibility()
-
-  if (reduceTransparency) return null
-
-  const fillId = `caseWorkSourceChipAura${scope}`
-  return (
-    <View pointerEvents="none" style={styles.caseWorkSourceChipAura} testID={`customer-v21-case-work-source-chip-aura-${scope}`}>
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 104 40" width="100%">
-        <Defs>
-          <RadialGradient id={fillId} cx="54%" cy="48%" r="72%">
-            <Stop offset="0" stopColor="rgba(82,235,213,0.24)" />
-            <Stop offset="0.62" stopColor="rgba(154,246,232,0.10)" />
-            <Stop offset="0.9" stopColor="rgba(154,246,232,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill={`url(#${fillId})`} height="40" width="104" />
-      </Svg>
-    </View>
-  )
-}
-
-export function CaseWorkActionButtonAura({ scope }: { scope: string }) {
-  const { reduceTransparency } = useGlassAccessibility()
-
-  if (reduceTransparency) return null
-
-  const fillId = `caseWorkActionAura${scope}`
-  return (
-    <View pointerEvents="none" style={styles.caseWorkActionButtonAura} testID={`customer-v21-case-work-action-aura-${scope}`}>
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 180 48" width="100%">
-        <Defs>
-          <RadialGradient id={fillId} cx="52%" cy="44%" r="76%">
-            <Stop offset="0" stopColor="rgba(82,235,213,0.20)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.08)" />
-            <Stop offset="0.88" stopColor="rgba(154,246,232,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill={`url(#${fillId})`} height="48" width="180" />
-      </Svg>
-    </View>
-  )
-}
-
-export function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
+function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
   return (
     <FormulaMintCanvasAura
       reduceTransparency={reduceTransparency}
@@ -232,7 +160,7 @@ export function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) 
   )
 }
 
-export function ProfileCanvasAura({
+function ProfileCanvasAura({
   reduceTransparency,
   screenId,
 }: ReduceTransparencyProps & {
@@ -247,7 +175,7 @@ export function ProfileCanvasAura({
   )
 }
 
-export function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
+function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
   return (
     <FormulaMintCanvasAura
       reduceTransparency={reduceTransparency}
@@ -257,7 +185,7 @@ export function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparency
   )
 }
 
-export function FulfillmentCanvasAura({
+function FulfillmentCanvasAura({
   reduceTransparency,
   screenId,
 }: ReduceTransparencyProps & {
@@ -293,50 +221,6 @@ export function CustomerScreenCanvasAura({
       scope={`CustomerV21${screenId}`}
       testID={`customer-v21-screen-canvas-aura-${screenId}`}
     />
-  )
-}
-
-export function CaseOverviewHeroAura({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
-    return null
-  }
-
-  return (
-    <View pointerEvents="none" style={styles.caseOverviewHeroAura} testID="customer-v21-case-overview-mint-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 190" width="100%">
-        <Defs>
-          <RadialGradient id="caseOverviewHeroRight" cx="88%" cy="36%" r="58%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.28)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.13)" />
-            <Stop offset="0.84" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id="caseOverviewHeroLeft" cx="10%" cy="8%" r="50%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.11)" />
-            <Stop offset="0.74" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-          <LinearGradient id="caseOverviewHeroTopEdge" x1="0" x2="1" y1="0" y2="0">
-            <Stop offset="0" stopColor="rgba(149,243,227,0)" />
-            <Stop offset="0.46" stopColor="rgba(92,237,214,0.22)" />
-            <Stop offset="1" stopColor="rgba(149,243,227,0)" />
-          </LinearGradient>
-          <LinearGradient id="caseOverviewHeroRightEdge" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0" stopColor="rgba(149,243,227,0)" />
-            <Stop offset="0.50" stopColor="rgba(92,237,214,0.18)" />
-            <Stop offset="1" stopColor="rgba(149,243,227,0)" />
-          </LinearGradient>
-          <RadialGradient id="caseOverviewHeroCornerAura" cx="88%" cy="16%" r="42%">
-            <Stop offset="0" stopColor="rgba(92,237,214,0.18)" />
-            <Stop offset="0.58" stopColor="rgba(149,243,227,0.08)" />
-            <Stop offset="1" stopColor="rgba(149,243,227,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#caseOverviewHeroRight)" height="190" width="360" />
-        <Rect fill="url(#caseOverviewHeroLeft)" height="190" width="360" />
-        <Rect fill="url(#caseOverviewHeroTopEdge)" height="18" rx="9" width="250" x="76" y="3" testID="customer-v21-case-overview-hero-top-edge-aura" />
-        <Rect fill="url(#caseOverviewHeroRightEdge)" height="138" rx="14" width="30" x="318" y="26" testID="customer-v21-case-overview-hero-right-edge-aura" />
-        <Rect fill="url(#caseOverviewHeroCornerAura)" height="190" width="360" />
-      </Svg>
-    </View>
   )
 }
 

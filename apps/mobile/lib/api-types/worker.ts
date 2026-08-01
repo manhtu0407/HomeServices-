@@ -62,14 +62,14 @@ export type WorkerRegisterResponse = {
   submitted_at: string
 }
 
-export type WorkerPerformanceBadgeId =
+type WorkerPerformanceBadgeId =
   | 'verified_profile'
   | 'fast_responder'
   | 'reliable_arrival'
   | 'trusted_by_customers'
   | 'steady_earner'
 
-export type WorkerPerformanceAxisId =
+type WorkerPerformanceAxisId =
   | 'rating'
   | 'response'
   | 'arrival'
@@ -177,7 +177,7 @@ export type WorkerScopeChangeResponse = {
   customer_card?: Record<string, unknown>
 }
 
-export type JobIncidentStatus = 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal' | 'scope_proposed' | 'resolved' | 'cancelled'
+type JobIncidentStatus = 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal' | 'scope_proposed' | 'resolved' | 'cancelled'
 
 export type JobIncidentResponse = {
   incident: {
@@ -209,7 +209,7 @@ export type WorkerKaelClarifyResponse = {
   }
 }
 
-export type WorkerKaelChatStatus = 'active' | 'closed' | 'escalated' | 'error'
+type WorkerKaelChatStatus = 'active' | 'closed' | 'escalated' | 'error'
 
 export type WorkerKaelChatTurn = {
   id: string

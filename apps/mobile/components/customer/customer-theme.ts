@@ -1,4 +1,4 @@
-import { createContext, useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { customerTheme } from '@/design/theme'
 
@@ -43,8 +43,6 @@ const CUSTOMER_THEME_TOKENS = {
   lightLayer,
   darkLayer,
 }
-
-export const CustomerThemeContext = createContext<CustomerThemeTokens>(lightLayer)
 
 let customerThemeMode: ThemeMode = 'light'
 let customerThemeSubscribers: (() => void)[] = []

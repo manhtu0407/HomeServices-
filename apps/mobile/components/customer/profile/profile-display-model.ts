@@ -6,7 +6,7 @@ import { customerV21ProfileStageIds, type CustomerV21ScreenId } from '../ui/type
 import { metadataString } from '../ui/value-display-model'
 
 export type CustomerProfilePanel = 'overview' | 'ranking' | 'money'
-export type CustomerProfileSettingsSection = 'account' | 'memory' | 'password'
+type CustomerProfileSettingsSection = 'account' | 'memory' | 'password'
 export type CustomerProfileUtility =
   | 'address'
   | 'appearance'
@@ -25,7 +25,7 @@ const profileScreenIds: CustomerV21ScreenId[] = [...customerV21ProfileStageIds]
 const millisecondsPerDay = 86_400_000
 const hoChiMinhUtcOffsetMs = 7 * 60 * 60 * 1000
 
-export type CustomerAccountJourneyDisplay = {
+type CustomerAccountJourneyDisplay = {
   accessibilityLabel: string
   activeDaysLabel: string
   activeDaysValue: string
@@ -177,7 +177,7 @@ export function customerAccountJourneyDisplay({
   }
 }
 
-export function memberSinceLabel(value: string | null | undefined, language: AppLanguage, fallback: string) {
+function memberSinceLabel(value: string | null | undefined, language: AppLanguage, fallback: string) {
   const date = parseAccountDate(value)
   if (!date) return fallback
   const shiftedDate = new Date(date.getTime() + hoChiMinhUtcOffsetMs)

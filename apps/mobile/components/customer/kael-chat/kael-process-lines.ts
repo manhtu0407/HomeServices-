@@ -47,13 +47,13 @@ export type KaelProcessLine = KaelProcessCatalogLine & {
 
 export type KaelProcessLineStatus = 'queued' | 'running' | 'completed' | 'failed'
 
-export type KaelProcessSequence = {
+type KaelProcessSequence = {
   collapse: string
   lines: KaelProcessLine[]
   scenarioId: KaelProcessScenarioId
 }
 
-export type BuildKaelProcessSequenceInput = {
+type BuildKaelProcessSequenceInput = {
   caseId?: string | null
   complexity?: string | null
   distance?: string | null

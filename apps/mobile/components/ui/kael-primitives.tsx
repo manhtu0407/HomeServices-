@@ -21,9 +21,9 @@ import { useGlassAccessibility } from './accessibility-motion'
 import { reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
 import { AlphaStop as Stop } from './svg-alpha-stop'
 
-export type KaelButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
-export type KaelChipVariant = 'selected' | 'unselected' | 'successStatus' | 'warning' | 'error'
-export type KaelTextVariant =
+type KaelButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
+type KaelChipVariant = 'selected' | 'unselected' | 'successStatus' | 'warning' | 'error'
+type KaelTextVariant =
   | 'largeTitle'
   | 'title1'
   | 'title2'
@@ -41,8 +41,8 @@ export type KaelTextVariant =
   | 'h3'
   | 'label'
   | 'caption'
-export type KaelTextTone = 'primary' | 'strong' | 'secondary' | 'muted' | 'inverse'
-export type KaelBadgeVariant = 'mint' | 'neutral' | 'warning' | 'error'
+type KaelTextTone = 'primary' | 'strong' | 'secondary' | 'muted' | 'inverse'
+type KaelBadgeVariant = 'mint' | 'neutral' | 'warning' | 'error'
 
 const webTextInputNoOutline = {
   outlineColor: 'transparent',
@@ -50,7 +50,7 @@ const webTextInputNoOutline = {
   outlineWidth: 0,
 } as unknown as TextStyle
 
-export type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }
+type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }
 
 export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps) {
   return <TextInput {...inputProps} ref={ref} style={[webTextInputNoOutline, style]} />
@@ -549,33 +549,6 @@ export function KaelInlineStepper({
   )
 }
 
-export function KaelVoiceInputCapsule({ label = 'Nhấn để nói...', testID }: { label?: string; testID?: string }) {
-  return (
-    <View style={styles.voiceCapsule} testID={testID}>
-      <Text style={styles.voiceText}>{label}</Text>
-      <View style={styles.voiceBars} pointerEvents="none">
-        {[10, 18, 26, 16].map((height, index) => (
-          <View key={index} style={[styles.voiceBar, { height }]} />
-        ))}
-      </View>
-      <View style={styles.micCircle}>
-        <MicIcon />
-      </View>
-    </View>
-  )
-}
-
-export function KaelMediaUploadTray({ label = 'Kéo & thả file vào đây hoặc nhấn để chọn file', testID }: { label?: string; testID?: string }) {
-  return (
-    <View style={styles.mediaTray} testID={testID}>
-      <View style={styles.uploadIcon}>
-        <PathIcon />
-      </View>
-      <Text style={styles.mediaTrayText}>{label}</Text>
-    </View>
-  )
-}
-
 export function MintAura({ intensity = 'component', style, testID }: { intensity?: 'page' | 'component' | 'iconTile'; style?: StyleProp<ViewStyle>; testID?: string }) {
   const token = aura[intensity]
   return (
@@ -613,22 +586,6 @@ function SearchIcon() {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
       <Path d="M10.8 18.2a7.4 7.4 0 1 1 0-14.8 7.4 7.4 0 0 1 0 14.8Zm5.4-1.2 4.4 4.4" stroke={color.text.muted} strokeLinecap="round" strokeWidth={2.2} />
-    </Svg>
-  )
-}
-
-function PathIcon() {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 16V5m0 0 4 4m-4-4-4 4M5 16v2.5A2.5 2.5 0 0 0 7.5 21h9A2.5 2.5 0 0 0 19 18.5V16" stroke={color.brand.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} />
-    </Svg>
-  )
-}
-
-function MicIcon() {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Zm6-4v1a6 6 0 0 1-12 0v-1m6 7v4m-3 0h6" stroke={color.brand.primaryDark} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.1} />
     </Svg>
   )
 }

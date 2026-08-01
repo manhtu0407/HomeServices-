@@ -106,20 +106,6 @@ export type CustomerPaymentMethodSaveInput = {
   bank_name: string
 }
 
-export type CustomerPaymentMethodResponse = {
-  payment_method: {
-    id: string
-    bank_key: string
-    bank_name: string
-    account_holder_name: string
-    bank_account_masked: string
-    status: 'pending_verification' | 'verified' | 'rejected'
-    is_default: boolean
-    verified_at: string | null
-    updated_at: string
-  } | null
-}
-
 export type CustomerRefundAccountSaveInput = {
   account_holder_name: string
   bank_account: string

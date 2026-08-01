@@ -2,7 +2,7 @@ import type { LocalDeal } from '@nestscout/shared'
 
 type SePayPayment = NonNullable<LocalDeal['payment']>
 
-export type SePayVietQrPaymentPresentation =
+type SePayVietQrPaymentPresentation =
   | {
       expectedAmount: number
       kind: 'ready'

@@ -4,7 +4,7 @@ import type { EarningsResponse } from '@/lib/api-types'
 import type { WorkerV5IconName } from '../dock/types'
 import { formatVnd, textByLanguage } from '../ui/format'
 
-export type WorkerV5PayoutRuleRow = {
+type WorkerV5PayoutRuleRow = {
   icon: WorkerV5IconName
   meta: string
   status: string

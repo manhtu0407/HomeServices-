@@ -23,7 +23,7 @@ export const workerV5Icons: Record<WorkerV5IconName, ImageSourcePropType> = {
 
 export const WORKER_V5_PROFILE_ICON_VISUAL_BOOST = new Set<WorkerV5IconName>(['document', 'scope'])
 
-export const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
+const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
   cleaning: require('@/assets/worker-image-icons/service-cleaning.png') as ImageSourcePropType,
   electrical: require('@/assets/worker-image-icons/service-electrical.png') as ImageSourcePropType,
   handyman: require('../../customer/ui/assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,

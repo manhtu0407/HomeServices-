@@ -4,7 +4,7 @@ import type { WorkerKaelChatMode } from '@nestscout/shared'
 import type { KaelChatProgress, WorkerKaelChatSession } from '@/lib/api-types'
 import type { WorkerV5KaelOrbLocalTurn, WorkerV5KaelOrbMediaPreview } from './kael-orb-chat-model'
 
-export type WorkerV5KaelOrbChatState = {
+type WorkerV5KaelOrbChatState = {
   activeSessionId: string | null
   busy: boolean
   creatingSession: boolean
@@ -19,7 +19,7 @@ export type WorkerV5KaelOrbChatState = {
   turns: WorkerV5KaelOrbLocalTurn[]
 }
 
-export type WorkerV5KaelOrbChatOwner = {
+type WorkerV5KaelOrbChatOwner = {
   key: string
 }
 

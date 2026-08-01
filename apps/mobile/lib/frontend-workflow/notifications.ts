@@ -35,7 +35,7 @@ export function notificationStateReducer(state: NotificationState, action: Notif
   }
 }
 
-export function sameNotifications(
+function sameNotifications(
   left: NotificationListResponse['notifications'],
   right: NotificationListResponse['notifications'],
 ) {
