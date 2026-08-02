@@ -3597,7 +3597,7 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(result.stageLogs.filter((stage) => stage.stage === 'intent')).toEqual([
       expect.objectContaining({
         provider: 'deepseek',
-        model: 'deepseek-v4-flash',
+        model: 'deepseek-v4-pro',
         success: false,
         failureReason: 'AI call failed: HTTP_402',
         fallbackUsed: false,

@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react-native'
 import { useEffect, useRef } from 'react'
+import { LinearGradient, RadialGradient } from 'react-native-svg'
 
 import { KaelCoreV9 } from '../kael-core-v9'
 import {
@@ -17,7 +18,10 @@ describe('Kael Core v9', () => {
 
     expect(getByTestId('kael-core-v9')).toBeOnTheScreen()
     expect(getAllByTestId('kael-core-v9-eye')).toHaveLength(2)
-    expect(getByTestId('kael-core-v9-monocle')).toBeOnTheScreen()
+    const monocle = getByTestId('kael-core-v9-monocle')
+    expect(monocle).toBeOnTheScreen()
+    expect(monocle.findAllByType(LinearGradient).some((gradient) => gradient.props.id === 'kael-v9-monocle')).toBe(true)
+    expect(monocle.findAllByType(RadialGradient).some((gradient) => gradient.props.id === 'kael-v9-lens')).toBe(true)
     expect(KAEL_CORE_V9_SIZE).toBe(72)
     expect(KAEL_CORE_V9_BOW_DURATION_MS).toBe(1220)
     expect(KAEL_CORE_V9_AUTOPLAY_CLIP_DURATION_MS).toBe(3800)

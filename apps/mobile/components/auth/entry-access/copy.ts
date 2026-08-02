@@ -5,6 +5,7 @@ type EntryAuthErrorKey =
   | 'accountNotReady'
   | 'appleSignInFailed'
   | 'connectionFailed'
+  | 'emailConfirmationRequired'
   | 'fullNameRequired'
   | 'googleSignInFailed'
   | 'invalidCredentials'
@@ -57,6 +58,12 @@ export type EntryAccessCopy = Readonly<{
     showPassword: string
   }>
   errors: Readonly<Record<EntryAuthErrorKey, string>>
+  emailConfirmation: Readonly<{
+    lead: string
+    login: string
+    title: string
+    topbar: string
+  }>
   fields: Readonly<{
     customerIdentifierLabel: string
     customerIdentifierPlaceholder: string
@@ -143,6 +150,7 @@ const viCopy: EntryAccessCopy = {
     accountNotReady: 'Tài khoản chưa sẵn sàng để vào ứng dụng. Vui lòng hoàn tất đăng nhập trước.',
     appleSignInFailed: 'Chưa thể đăng nhập bằng Apple. Vui lòng thử lại.',
     connectionFailed: 'Không thể kết nối. Vui lòng thử lại.',
+    emailConfirmationRequired: 'Thư điện tử chưa được xác nhận. Hãy kiểm tra email rồi đăng nhập lại.',
     fullNameRequired: 'Nhập họ tên để tạo tài khoản.',
     googleSignInFailed: 'Chưa thể đăng nhập bằng Google. Vui lòng thử lại.',
     invalidCredentials: 'Thư điện tử hoặc SĐT hoặc mật khẩu không đúng.',
@@ -171,6 +179,12 @@ const viCopy: EntryAccessCopy = {
     workerApplicationFailed: 'Không thể gửi hồ sơ xét duyệt lúc này. Vui lòng thử lại.',
     workerApplicationNotSubmitted: 'Tài khoản đã được xác nhận, nhưng hồ sơ thợ chưa được gửi. Vui lòng thử lại sau.',
     workerReviewPending: 'Hồ sơ thợ đã được gửi xét duyệt. NestScout sẽ liên hệ trước khi cấp quyền thợ.',
+  },
+  emailConfirmation: {
+    lead: 'Tài khoản đã được tạo. Mở thư điện tử để xác nhận, rồi quay lại đăng nhập.',
+    login: 'Đến đăng nhập',
+    title: 'Kiểm tra\nthư điện tử.',
+    topbar: 'Xác nhận thư điện tử',
   },
   fields: {
     customerIdentifierLabel: 'Thư điện tử hoặc SĐT',
@@ -266,6 +280,7 @@ const enCopy: EntryAccessCopy = {
     accountNotReady: 'Your account is not ready to enter the app. Complete sign-in first.',
     appleSignInFailed: 'Unable to sign in with Apple. Please try again.',
     connectionFailed: 'Unable to connect. Please try again.',
+    emailConfirmationRequired: 'Your email has not been confirmed. Check your email, then sign in again.',
     fullNameRequired: 'Enter your full name to create an account.',
     googleSignInFailed: 'Unable to sign in with Google. Please try again.',
     invalidCredentials: 'Email/phone or password is incorrect.',
@@ -294,6 +309,12 @@ const enCopy: EntryAccessCopy = {
     workerApplicationFailed: 'Unable to submit the worker application. Please try again.',
     workerApplicationNotSubmitted: 'Your account is confirmed, but the worker application was not submitted. Please try again later.',
     workerReviewPending: 'Your worker application was submitted for review. NestScout will contact you before enabling worker access.',
+  },
+  emailConfirmation: {
+    lead: 'Your account has been created. Confirm your email, then return here to sign in.',
+    login: 'Go to sign in',
+    title: 'Check your\nemail.',
+    topbar: 'Confirm your email',
   },
   fields: {
     customerIdentifierLabel: 'Email/phone',
@@ -449,6 +470,7 @@ const errorMatchers: readonly Readonly<{
   key: EntryAuthErrorKey
   patterns: readonly RegExp[]
 }>[] = [
+  { key: 'emailConfirmationRequired', patterns: [/email not confirmed/i, /thư điện tử chưa được xác nhận/i] },
   { key: 'invalidCredentials', patterns: [/invalid login credentials/i, /email\/sdt.*mật khẩu.*không đúng/i] },
   { key: 'invalidEmail', patterns: [/email.*chưa đúng định dạng/i, /invalid email/i, /valid email address/i] },
   { key: 'invalidPhone', patterns: [/sdt.*chưa đúng định dạng/i, /invalid phone/i, /valid vietnamese mobile/i] },

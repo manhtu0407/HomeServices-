@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
 
 import { AgenticChatEstimateResponsePanel } from '../kael-chat/agentic-decision-surfaces'
 
@@ -78,5 +79,17 @@ describe('Agentic estimate adjustment', () => {
 
     expect(onAdjustmentChange).toHaveBeenCalledWith('Vet am lan rong hon.')
     expect(onSubmitAdjustment).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the estimate headings visibly prioritized', () => {
+    renderPanel()
+
+    const serviceTitleStyle = StyleSheet.flatten(
+      screen.getByTestId('customer-v21-case-work-response-title').props.style,
+    )
+    const noteTitleStyle = StyleSheet.flatten(screen.getByText('Phạm vi và ước tính').props.style)
+
+    expect(serviceTitleStyle).toMatchObject({ fontSize: 25, fontWeight: '600' })
+    expect(noteTitleStyle.fontWeight).toBe('700')
   })
 })

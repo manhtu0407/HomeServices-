@@ -57,7 +57,7 @@ describe('mobile-api customer Kael assistant', () => {
     })
     expect(callAI).toHaveBeenCalledTimes(1)
     expect(seenRequests[0]).toMatchObject({
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-v4-pro',
       maxRetries: 0,
       timeoutMs: 6_000,
     })
@@ -74,6 +74,35 @@ describe('mobile-api customer Kael assistant', () => {
         p_service_type: null,
       }),
     })
+  })
+
+  it('uses Flash only for a short greeting in normal customer chat', async () => {
+    const seenRequests: AIRequest[] = []
+    const result = await runCustomerAssistant({
+      callAI: async (request) => {
+        seenRequests.push(request)
+        return {
+          success: true as const,
+          content: JSON.stringify({
+            answer: 'Hello, I can help with NestScout questions.',
+            safety_notes: [],
+            citations: [],
+            suggested_actions: [],
+            boundary: 'answered',
+          }),
+          latencyMs: 12,
+          usage: { costUsd: 0.00001, inputTokens: 5, outputTokens: 8 },
+        }
+      },
+      language: 'en',
+      message: 'Hello!',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(seenRequests).toHaveLength(1)
+    expect(seenRequests[0]).toMatchObject({ model: 'deepseek-v4-flash' })
   })
 
   it('uses legal-awareness rows for service-law questions without turning them into legal advice', async () => {
@@ -728,7 +757,7 @@ describe('mobile-api customer Kael assistant', () => {
     expect(result.fallback_used).toBe(true)
     expect(result.boundary).toBe('fallback')
     expect(JSON.stringify(result)).not.toContain('provider-invented-source')
-    expect(callAI).toHaveBeenCalledTimes(3)
+    expect(callAI).toHaveBeenCalledTimes(2)
   })
 
   it('unwraps one common provider envelope before structured validation', async () => {
@@ -892,7 +921,7 @@ describe('mobile-api customer Kael assistant', () => {
       latencyMs: 24,
       usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
       provider: 'deepseek' as const,
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-v4-pro',
     }))
 
     const result = await runCustomerAssistant({

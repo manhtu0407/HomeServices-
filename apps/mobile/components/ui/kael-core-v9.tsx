@@ -240,12 +240,6 @@ export function KaelCoreV9({
             <LinearGradient id="kael-v9-rim-inner" x1="25" x2="96" y1="20" y2="101">
               <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.72} /><Stop offset="0.28" stopColor="#D5D9DC" stopOpacity={0.12} /><Stop offset="0.7" stopColor="#020304" stopOpacity={0.72} /><Stop offset="1" stopColor="#C7CCD0" stopOpacity={0.42} />
             </LinearGradient>
-            <LinearGradient id="kael-v9-monocle" x1="64" x2="87" y1="40" y2="67">
-              <Stop offset="0" stopColor="#FFFFFF" /><Stop offset="0.16" stopColor="#CFD3D6" /><Stop offset="0.38" stopColor="#5B6166" /><Stop offset="0.62" stopColor="#171A1D" /><Stop offset="0.82" stopColor="#8E9499" /><Stop offset="1" stopColor="#ECEEEF" />
-            </LinearGradient>
-            <RadialGradient cx="34%" cy="22%" id="kael-v9-lens" r="84%">
-              <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.055} /><Stop offset="0.42" stopColor="#CDD2D6" stopOpacity={0.012} /><Stop offset="1" stopColor="#090B0D" stopOpacity={0.035} />
-            </RadialGradient>
           </Defs>
           <Circle cx="60" cy="58" fill="#050607" opacity={0.98} r="47.1" />
           <Circle cx="60" cy="58" fill="url(#kael-v9-rim)" r="45.7" />
@@ -263,6 +257,14 @@ export function KaelCoreV9({
         <Animated.View style={[styles.eye, { height: eyeHeight, left: resolvedSize * (68 / 120), top: resolvedSize * (43.3 / 120), width: eyeWidth }, rightEyeStyle]} testID="kael-core-v9-eye" />
         <Animated.View pointerEvents="none" style={[styles.monocle, monocleStyle]} testID="kael-core-v9-monocle">
           <Svg height={resolvedSize} viewBox="0 0 120 120" width={resolvedSize}>
+            <Defs>
+              <LinearGradient id="kael-v9-monocle" x1="64" x2="87" y1="40" y2="67">
+                <Stop offset="0" stopColor="#FFFFFF" /><Stop offset="0.16" stopColor="#CFD3D6" /><Stop offset="0.38" stopColor="#5B6166" /><Stop offset="0.62" stopColor="#171A1D" /><Stop offset="0.82" stopColor="#8E9499" /><Stop offset="1" stopColor="#ECEEEF" />
+              </LinearGradient>
+              <RadialGradient cx="34%" cy="22%" id="kael-v9-lens" r="84%">
+                <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.055} /><Stop offset="0.42" stopColor="#CDD2D6" stopOpacity={0.012} /><Stop offset="1" stopColor="#090B0D" stopOpacity={0.035} />
+              </RadialGradient>
+            </Defs>
             <Circle cx="71.2" cy="51.9" fill="none" r="12.25" stroke="#030405" strokeOpacity={0.42} strokeWidth="1.35" />
             <Circle cx="71.2" cy="51.9" fill="url(#kael-v9-lens)" r="11.55" />
             <Circle cx="71.2" cy="51.9" fill="none" r="12.35" stroke="#0A0B0D" strokeOpacity={0.86} strokeWidth="2.7" />

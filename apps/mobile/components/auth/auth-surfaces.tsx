@@ -178,6 +178,10 @@ export function LoginRoleSurface() {
             error: localizeEntryAuthError(signup.error, language, 'signupFailed'),
           }
         }
+        if (signup.requiresEmailConfirmation) {
+          workerRegistrationIntentRef.current = false
+          return { success: true, nextStep: 'email-confirmation' as const }
+        }
         const result = await auth.submitWorkerApplication({ contact: identifier, language })
         workerApplicationSubmittedRef.current = result.success
         return result.success
@@ -196,6 +200,7 @@ export function LoginRoleSurface() {
         password,
       })
       if (result.success) {
+        if (result.requiresEmailConfirmation) return { success: true, nextStep: 'email-confirmation' as const }
         router.replace('/(customer)/home' as never)
         return { success: true }
       }

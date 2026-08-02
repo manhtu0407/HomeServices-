@@ -215,7 +215,6 @@ describe('mobile-api Kael structured output health', () => {
       provider_attempts: [
         expect.objectContaining({ result: 'schema_invalid' }),
         expect.objectContaining({ result: 'schema_invalid' }),
-        expect.objectContaining({ result: 'schema_invalid' }),
       ],
     })
 

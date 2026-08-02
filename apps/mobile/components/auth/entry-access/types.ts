@@ -3,6 +3,7 @@ export type EntryAccessStep =
   | 'role-gate'
   | 'login'
   | 'register'
+  | 'email-confirmation'
   | 'password-recovery'
   | 'password-reset'
   | 'onboarding'
@@ -29,7 +30,7 @@ type PasswordRecoveryInput = {
 export type EntryActionResult = {
   success: boolean
   error?: string
-  nextStep?: Extract<EntryAccessStep, 'onboarding'>
+  nextStep?: Extract<EntryAccessStep, 'email-confirmation' | 'onboarding'>
 }
 
 export type EntryAccessFeatureFlags = {

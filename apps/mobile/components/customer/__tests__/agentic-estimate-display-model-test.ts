@@ -76,7 +76,7 @@ describe('Kael agentic estimate display model', () => {
 
     expect(model?.title).toBe('Kael đã kiểm tra')
     expect(model?.rows[0]).toEqual({
-      detail: '2 ảnh · 3 khung hình video · 1 bản chép lời đã duyệt.',
+      detail: 'Kael đã nhận hình ảnh; từng hình được trình bày bên dưới. Kael cũng đã nhận 1 bản chép lời đã duyệt.',
       key: 'evidence',
       label: 'Bằng chứng',
     })
@@ -247,6 +247,9 @@ describe('Kael agentic estimate display model', () => {
       'https://media.test/photo-2',
       'https://media.test/photo-3',
     ])
+    expect(model?.rows.find((row) => row.key === 'evidence')).toMatchObject({
+      detail: expect.stringContaining('từng hình'),
+    })
     expect(imageRows?.[0]?.sections).toEqual([
       { label: 'Mức tin cậy', value: 'Cao' },
       { label: 'Quan sát', value: 'Khớp ren có giọt nước đọng ngay sau khi xả bồn.' },
@@ -379,7 +382,7 @@ describe('Kael agentic estimate display model', () => {
         label: 'Vấn đề đã xác nhận',
       }),
       expect.objectContaining({
-        detail: expect.stringContaining('đã nhận 1 ảnh'),
+        detail: expect.stringContaining('Các hình này không được dùng'),
         key: 'evidence',
         label: 'Trạng thái bằng chứng',
       }),

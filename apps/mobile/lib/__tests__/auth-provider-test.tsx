@@ -107,7 +107,13 @@ function SignupHarness() {
             displayName: 'Tu Phan',
             identifier: 'TU@example.com',
             password: 'secret123',
-          }).then((nextResult) => setResult(nextResult.success ? 'success' : nextResult.error ?? 'error'))
+          }).then((nextResult) => setResult(
+            nextResult.requiresEmailConfirmation
+              ? 'email-confirmation-required'
+              : nextResult.success
+                ? 'success'
+                : nextResult.error ?? 'error',
+          ))
         }}
         testID="signup-email"
       >
@@ -151,6 +157,14 @@ function IdentifierAuthHarness() {
         testID="signin-invalid-phone"
       >
         <Text>invalid phone</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => {
+          void signInWithPassword('tu@example.com', 'secret123').then((nextResult) => setResult(nextResult.success ? 'email-success' : nextResult.error ?? 'error'))
+        }}
+        testID="signin-email-unconfirmed"
+      >
+        <Text>sign in unconfirmed email</Text>
       </Pressable>
       <Text testID="identifier-auth-result">{result}</Text>
     </>
@@ -850,13 +864,14 @@ describe('AuthProvider Email/SDT signup', () => {
           full_name: 'Tu Phan',
           name: 'Tu Phan',
         },
+        emailRedirectTo: expect.stringMatching(/^nestscout:/),
       },
     })
     expect(JSON.stringify(mockSignUp.mock.calls[0][0])).not.toContain('role')
     expect(mockMaybeSingle).toHaveBeenCalled()
   })
 
-  it('fails closed when Supabase creates the user without an immediately usable session', async () => {
+  it('reports that email confirmation is required when Supabase creates the user without a session', async () => {
     mockGetSession.mockResolvedValueOnce({ data: { session: null } })
     mockSignUp.mockResolvedValueOnce({ data: { session: null, user: mockSession.user }, error: null })
 
@@ -869,9 +884,60 @@ describe('AuthProvider Email/SDT signup', () => {
     fireEvent.press(screen.getByTestId('signup-email'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('signup-result')).toHaveTextContent('Không thể tạo tài khoản. Vui lòng thử lại sau.')
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('email-confirmation-required')
+    })
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: 'tu@example.com',
+      password: 'secret123',
+      options: {
+        data: {
+          full_name: 'Tu Phan',
+          name: 'Tu Phan',
+        },
+        emailRedirectTo: expect.stringMatching(/^nestscout:/),
+      },
     })
     expect(mockMaybeSingle).not.toHaveBeenCalled()
+  })
+
+  it('explains a safe retry when Supabase rate-limits confirmation email delivery', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignUp.mockResolvedValueOnce({
+      data: { session: null, user: null },
+      error: { message: 'Email rate limit exceeded', status: 429 },
+    })
+
+    render(
+      <AuthProvider>
+        <SignupHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signup-email'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('Yêu cầu đang bị giới hạn. Vui lòng thử lại sau.')
+    })
+  })
+
+  it('explains an invalid email without exposing the Supabase error', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignUp.mockResolvedValueOnce({
+      data: { session: null, user: null },
+      error: { message: 'Email address "invalid@example.com" is invalid', status: 400 },
+    })
+
+    render(
+      <AuthProvider>
+        <SignupHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signup-email'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('Địa chỉ thư điện tử chưa đúng định dạng.')
+    })
   })
 })
 
@@ -918,6 +984,26 @@ describe('AuthProvider Email/SDT credentials', () => {
       expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('SDT Việt Nam chưa đúng định dạng.')
     })
     expect(mockSignInWithPassword).not.toHaveBeenCalled()
+  })
+
+  it('keeps the account signed out and explains when Supabase requires email confirmation', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { session: null },
+      error: { message: 'Email not confirmed' },
+    })
+
+    render(
+      <AuthProvider>
+        <IdentifierAuthHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signin-email-unconfirmed'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('identifier-auth-result')).toHaveTextContent('Thư điện tử chưa được xác nhận. Hãy kiểm tra email rồi đăng nhập lại.')
+    })
   })
 })
 
