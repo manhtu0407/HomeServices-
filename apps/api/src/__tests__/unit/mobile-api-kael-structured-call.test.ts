@@ -220,7 +220,7 @@ describe('mobile-api Kael structured output health', () => {
     })
 
     const customer = await runCustomerAssistant({
-      message: 'Giải thích quy trình đặt lịch giúp tôi.',
+      message: 'Thợ NestScout được xác minh thế nào?',
       language: 'vi',
       surface: 'customer_normal',
       secrets: { knowledgeRetrievalEnabled: false },

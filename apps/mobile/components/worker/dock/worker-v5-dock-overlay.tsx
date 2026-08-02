@@ -4,7 +4,6 @@ import { Pressable, Text, View, useWindowDimensions, type ImageSourcePropType, t
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 
-import { getReducedTransparencyCustomerTokens, type CustomerThemeTokens } from '@/components/customer/customer-theme'
 import {
   CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
   CUSTOMER_LIQUID_NAV_GAP,
@@ -20,12 +19,15 @@ import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
 import type { KaelCoreV9Handle } from '@/components/ui/kael-core-v9-contract'
 import { motionTokens } from '@/components/ui/motion-tokens'
-import { customerTheme } from '@/design/theme'
 
 import { resolveWorkerV5DockActive, resolveWorkerV5Language, workerV5Routes } from './routing'
 import type { WorkerDockActive, WorkerV5IconName, WorkerV5RouteParams } from './types'
-
-const workerV5DockTokens = customerTheme.lightLayer as CustomerThemeTokens
+import {
+  getReducedTransparencyWorkerTokens,
+  getWorkerThemeTokens,
+  type WorkerThemeTokens,
+  useWorkerThemeMode,
+} from '../worker-theme'
 
 const workerV5DockIcons: Record<Exclude<WorkerV5IconName, 'calendar' | 'camera' | 'chat' | 'clock' | 'document' | 'evidence' | 'map' | 'shield' | 'scope' | 'tools' | 'wallet'>, ImageSourcePropType> = {
   earnings: require('@/assets/worker-image-icons/nav-earnings.png') as ImageSourcePropType,
@@ -70,7 +72,7 @@ function WorkerV5DockTabButton({
   onPress: () => void
   selected: boolean
   testID: string
-  tokens: CustomerThemeTokens
+  tokens: WorkerThemeTokens
 }) {
   return (
     <Pressable
@@ -93,9 +95,11 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   const language = resolveWorkerV5Language(params)
   const { width } = useWindowDimensions()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const workerThemeMode = useWorkerThemeMode()
   const { collapsed, resetDockScroll } = useDockScrollState()
   const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
-  const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(workerV5DockTokens) : workerV5DockTokens
+  const workerThemeTokens = getWorkerThemeTokens(workerThemeMode)
+  const tokens = reduceTransparency ? getReducedTransparencyWorkerTokens(workerThemeTokens) : workerThemeTokens
   const resolvedActive = resolveWorkerV5DockActive(workerV5Routes[active], params)
   const activeTab = resolvedActive === WORKER_V5_DOCK_KAEL_ITEM.id ? null : resolvedActive
   const liquidNavWidth = Math.min(Math.max(width - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)

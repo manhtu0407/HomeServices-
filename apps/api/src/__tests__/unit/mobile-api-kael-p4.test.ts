@@ -15,8 +15,33 @@ import {
   matchSuspiciousScopeKeywords,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
 import { kaelArtifactProposalSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
+import type { KaelDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
+import { buildKaelEstimateAnalysisEvidence } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-estimate-support'
+import { mergeKaelCustomerDetailForReanalysis } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-case-work'
+import { buildVisionMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
 
 describe('mobile-api Kael P4 output pipeline', () => {
+  it('requires a grounded analysis result for every supplied image', () => {
+    const messages = buildVisionMessages(
+      'Khớp ren dưới bồn rửa rò khi xả.',
+      'plumbing: pipe_leak',
+      [
+        { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data: 'one' } },
+        { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data: 'two' } },
+        { type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data: 'three' } },
+      ],
+      'vi',
+    )
+    const systemPrompt = String(messages[0]?.content ?? '')
+
+    expect(systemPrompt).toContain('exactly one evidence_findings entry for every supplied image')
+    expect(systemPrompt).toContain('unclear or does not contain relevant service evidence')
+    expect(systemPrompt).toContain('evidence_findings must never be empty when images are supplied')
+    expect(systemPrompt).toContain('Do not merge separate images')
+    expect(systemPrompt).not.toContain('no supported indicator or finding exists')
+    expect(Array.isArray(messages[1]?.content) ? messages[1].content : []).toHaveLength(4)
+  })
+
   it('renders a sanitized Estimate Card v3 from a pipeline estimate', () => {
     const output = buildEstimateCardOutput({
       estimate: {
@@ -112,6 +137,263 @@ describe('mobile-api Kael P4 output pipeline', () => {
         quorum_met: true,
       },
     })
+  })
+
+  it('maps validated vision findings to the correct customer evidence without leaking private text', () => {
+    const output = buildEstimateCardOutput({
+      analysisEvidence: {
+        photoCount: 2,
+        skipped: false,
+        videoFrameCount: 1,
+        voiceTranscriptCount: 0,
+        visualEvidenceRefs: [
+          { evidenceIndex: 2, evidenceKind: 'photo' },
+          { evidenceIndex: 1, evidenceKind: 'video_frame' },
+        ],
+      },
+      estimate: {
+        service_type: 'electrical',
+        problem_category: 'outlet_or_switch_broken',
+        problem_summary: 'Ổ cắm chập chờn và nóng lên khi sử dụng.',
+        complexity: 'medium',
+        price_min: 300_000,
+        price_max: 650_000,
+        confidence: 0.74,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+      },
+      marketEvidence: {
+        acceptedSourceCount: 4,
+        highTrustSourceCount: 3,
+        quorumMet: true,
+      },
+      priceSource: 'baseline_with_market',
+      baselineUsed: 'electrical:outlet_or_switch_broken:medium',
+      visionAnalysis: {
+        evidenceFindings: [
+          {
+            confidence: 'high',
+            evidenceIndex: 1,
+            observation: 'Mặt ổ cắm có vùng sẫm màu; SĐT 0901234567 xuất hiện trên nhãn gần đó.',
+            possibleMeaning: 'Có thể đã phát nhiệt tại điểm tiếp xúc.',
+          },
+          {
+            confidence: 'medium',
+            evidenceIndex: 2,
+            observation: 'Khung hình cho thấy đèn báo chập chờn khi phích cắm được giữ yên.',
+            possibleMeaning: 'Có thể liên quan tới tiếp xúc lỏng hoặc dây phía sau.',
+          },
+        ],
+        problemSummary: 'Ổ cắm có dấu hiệu tiếp xúc điện không ổn định và phát nhiệt cục bộ.',
+        recommendedScope: 'Thợ kiểm tra điểm tiếp xúc, dây dẫn phía sau và thay phần hỏng sau khi xác nhận hiện trạng.',
+        remainingUncertainty: 'Ảnh và khung hình chưa cho thấy phần dây phía sau mặt ổ cắm.',
+        severityIndicators: ['Có dấu hiệu phát nhiệt gần khe cắm.'],
+      },
+    })
+
+    expect(output.card.analysis_receipt).toMatchObject({
+      evidence: {
+        findings: [
+          {
+            confidence: 'high',
+            evidence_index: 2,
+            evidence_kind: 'photo',
+            observation: expect.stringContaining('[phone]'),
+            possible_meaning: 'Có thể đã phát nhiệt tại điểm tiếp xúc.',
+          },
+          {
+            confidence: 'medium',
+            evidence_index: 1,
+            evidence_kind: 'video_frame',
+          },
+        ],
+      },
+      problem: {
+        recommended_scope: expect.stringContaining('kiểm tra điểm tiếp xúc'),
+        remaining_uncertainty: expect.stringContaining('chưa cho thấy phần dây'),
+        severity_indicators: ['Có dấu hiệu phát nhiệt gần khe cắm.'],
+        summary: expect.stringContaining('tiếp xúc điện không ổn định'),
+      },
+    })
+    expect(JSON.stringify(output.card.analysis_receipt)).not.toContain('0901234567')
+  })
+
+  it('preserves the global evidence index when Vision analyzes only the newest media', () => {
+    const priorPhoto = {
+      kind: 'photo' as const,
+      model_eligible: true,
+      ref: 'supabase://kael-chat-media/customer-1/kael-chat/model_vision/prior.jpg',
+    }
+    const currentPhoto = {
+      kind: 'photo' as const,
+      model_eligible: true,
+      ref: 'supabase://kael-chat-media/customer-1/kael-chat/model_vision/current.jpg',
+    }
+    const currentFrame = {
+      kind: 'video_frame' as const,
+      model_eligible: true,
+      ref: 'supabase://kael-chat-media/customer-1/kael-chat/model_vision/frame.jpg',
+    }
+    const artifact = {
+      evidence: [priorPhoto, currentPhoto, currentFrame],
+      facts: { evidence_gate_decision: 'provided' },
+    } as unknown as KaelDiagnosisScopeArtifact
+
+    expect(buildKaelEstimateAnalysisEvidence(artifact, [currentPhoto, currentFrame])).toMatchObject({
+      photoCount: 2,
+      videoFrameCount: 1,
+      visualEvidenceRefs: [
+        { evidenceIndex: 2, evidenceKind: 'photo' },
+        { evidenceIndex: 1, evidenceKind: 'video_frame' },
+      ],
+    })
+  })
+
+  it('keeps the original case scope while adding successive customer adjustments', () => {
+    const artifact = {
+      facts: {
+        customer_goal: 'The sink drain joint leaks and the cabinet base is damp.',
+        latest_customer_detail: [
+          'The sink drain joint leaks and the cabinet base is damp.',
+          'The customer already shut the valve.',
+        ].join('\n\n'),
+      },
+    } as unknown as KaelDiagnosisScopeArtifact
+
+    const detail = mergeKaelCustomerDetailForReanalysis(
+      artifact,
+      'The leak appears only while the sink is draining.',
+    )
+
+    expect(detail).toContain('The sink drain joint leaks')
+    expect(detail).toContain('already shut the valve')
+    expect(detail).toContain('only while the sink is draining')
+    expect(detail.match(/The sink drain joint leaks/g)).toHaveLength(1)
+  })
+
+  it('retains a verified prior image receipt during a text-only adjustment', () => {
+    const output = buildEstimateCardOutput({
+      analysisEvidence: {
+        photoCount: 1,
+        skipped: false,
+        videoFrameCount: 0,
+        voiceTranscriptCount: 0,
+      },
+      estimate: {
+        service_type: 'plumbing',
+        problem_category: 'pipe_leak',
+        problem_summary: 'The drain joint leaks only while water is flowing.',
+        complexity: 'small',
+        price_min: 150_000,
+        price_max: 350_000,
+        confidence: 0.72,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+      },
+      language: 'en',
+      baselineUsed: 'plumbing:pipe_leak:small',
+      previousAnalysisReceipt: {
+        schema_version: 'analysis_receipt.v1',
+        evidence: {
+          analysis_status: 'analyzed',
+          findings: [{
+            confidence: 'medium',
+            evidence_index: 1,
+            evidence_kind: 'photo',
+            observation: 'A water droplet is visible at the threaded drain joint.',
+            possible_meaning: 'The seal or thread may be loose or worn.',
+          }],
+          photo_count: 1,
+          skipped: false,
+          video_frame_count: 0,
+          voice_transcript_count: 0,
+        },
+        market: {
+          accepted_source_count: 2,
+          high_trust_source_count: 1,
+          quorum_met: false,
+        },
+        problem: {
+          remaining_uncertainty: 'The inner seal is not visible.',
+          recommended_scope: 'Inspect and reseal the threaded joint.',
+          severity_indicators: ['Localized moisture below the joint.'],
+          summary: 'A localized leak is visible at the threaded drain joint.',
+        },
+      },
+      visionAnalysis: {
+        analysisStatus: 'not_provided',
+        evidenceFindings: [],
+        problemSummary: 'Text-only adjustment received.',
+        recommendedScope: 'Inspect the described location.',
+        remainingUncertainty: 'No new image was submitted.',
+        severityIndicators: [],
+      },
+    })
+
+    expect(output.card.analysis_receipt).toMatchObject({
+      evidence: {
+        analysis_status: 'analyzed',
+        findings: [{
+          evidence_index: 1,
+          evidence_kind: 'photo',
+          observation: 'A water droplet is visible at the threaded drain joint.',
+        }],
+      },
+      problem: {
+        recommended_scope: 'Inspect and reseal the threaded joint.',
+        summary: 'A localized leak is visible at the threaded drain joint.',
+      },
+    })
+  })
+
+  it('never exposes taxonomy keys and records unavailable visual analysis honestly', () => {
+    const output = buildEstimateCardOutput({
+      estimate: {
+        service_type: 'plumbing',
+        problem_category: 'pipe_leak',
+        problem_summary: 'plumbing: pipe_leak',
+        complexity: 'medium',
+        price_min: 350_000,
+        price_max: 800_000,
+        confidence: 0.42,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+      },
+      language: 'vi',
+      baselineUsed: 'plumbing:pipe_leak:medium',
+      analysisEvidence: {
+        photoCount: 1,
+        videoFrameCount: 0,
+        voiceTranscriptCount: 0,
+        skipped: false,
+      },
+      marketEvidence: {
+        acceptedSourceCount: 2,
+        highTrustSourceCount: 1,
+        quorumMet: false,
+      },
+      visionAnalysis: {
+        analysisStatus: 'unavailable',
+        evidenceFindings: [],
+        problemSummary: 'plumbing: pipe_leak',
+        recommendedScope: 'Thợ cần kiểm tra trực tiếp vị trí được mô tả.',
+        remainingUncertainty: 'Kael đã nhận ảnh nhưng chưa thể xác nhận chi tiết trong ảnh.',
+        severityIndicators: [],
+      },
+    })
+
+    expect(output.card.problem_summary).toBe('Ống rò rỉ')
+    expect(output.card.analysis_receipt).toMatchObject({
+      evidence: {
+        analysis_status: 'unavailable',
+        photo_count: 1,
+      },
+      problem: {
+        summary: 'Ống rò rỉ',
+      },
+    })
+    expect(output.card.analysis_receipt?.evidence.findings).toBeUndefined()
+    expect(JSON.stringify(output.card)).not.toContain('plumbing: pipe_leak')
   })
 
   it('marks missing inspection information without allowing AI to transition workflow', () => {

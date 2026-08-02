@@ -8,7 +8,7 @@ import {
   type LayoutChangeEvent,
   type TextProps,
 } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, Path } from 'react-native-svg'
+import Svg, { Circle, Defs, Path } from 'react-native-svg'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -19,7 +19,7 @@ import Animated, {
 } from 'react-native-reanimated'
 
 import { motionTokens } from '@/components/ui/motion-tokens'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 import type { AppLanguage } from '@/lib/app-language'
 import type { EarningsResponse } from '@/lib/api-types'
 

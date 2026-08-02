@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildKaelSystemPrompt,
   getPublicKaelCharter,
+  KAEL_CHARTER_VERSION,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
 import {
   checkKaelResponse,
@@ -136,7 +137,7 @@ describe('Kael P9 charter, prompt, and self-check', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.charter_version).toBe('2026-07-06.p9')
+    expect(body.charter_version).toBe(KAEL_CHARTER_VERSION)
     expect(body.locked_files).toEqual(['identity.md', 'persona.md', 'mission-values.md'])
     expect(JSON.stringify(body)).not.toContain('change_policy')
     expect(services.getKaelCharterCalls).toBe(1)
@@ -145,7 +146,7 @@ describe('Kael P9 charter, prompt, and self-check', () => {
   it('keeps public charter payload stable and sanitized', () => {
     const charter = getPublicKaelCharter()
 
-    expect(charter.charter_version).toBe('2026-07-06.p9')
+    expect(charter.charter_version).toBe(KAEL_CHARTER_VERSION)
     expect(charter.identity_summary).toContain('NestScout')
     expect(charter.forbidden_categories).toContain('ai_self_reference')
     expect(JSON.stringify(charter)).not.toContain('owner')

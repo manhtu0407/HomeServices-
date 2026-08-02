@@ -8,12 +8,12 @@ import {
 import { SERVICE_TYPES } from '@nestscout/shared'
 
 describe('Kael SSE parser', () => {
-  it('parses split stage, verified response delta, token, result, and heartbeat frames', () => {
+  it('parses split stage, universal response lifecycle, token, result, and heartbeat frames', () => {
     const parser = createKaelSseParser()
     const first = parser.push('event: stage\ndata: {"stage":"market_lookup","status":"running","progress":0.32')
     expect(first).toEqual([])
 
-    const events = parser.push(',"updated_at":"2026-06-04T00:00:00.000Z"}\n\n: heartbeat\n\nevent: response_delta\ndata: {"turn_id":"turn-1","delta":"Kael "}\n\nevent: token\ndata: {"field":"clarification","delta":"B\\u1ea1n"}\n\nevent: result\ndata: {"session":{"id":"s1"},"turns":[]}\n\n')
+    const events = parser.push(',"updated_at":"2026-06-04T00:00:00.000Z"}\n\n: heartbeat\n\nevent: response.started\ndata: {"response_id":"turn-1","mode":"standard"}\n\nevent: block.started\ndata: {"block_id":"turn-1:block:0","kind":"paragraph"}\n\nevent: block.text.delta\ndata: {"block_id":"turn-1:block:0","delta":"Kael "}\n\nevent: response_delta\ndata: {"turn_id":"turn-1","delta":"Kael "}\n\nevent: block.completed\ndata: {"block_id":"turn-1:block:0"}\n\nevent: response.completed\ndata: {"response_id":"turn-1","elapsed_ms":840}\n\nevent: token\ndata: {"field":"clarification","delta":"B\\u1ea1n"}\n\nevent: result\ndata: {"session":{"id":"s1"},"turns":[]}\n\n')
 
     expect(events[0]).toMatchObject({
       type: 'stage',
@@ -25,13 +25,50 @@ describe('Kael SSE parser', () => {
       },
     })
     expect(events[1]).toEqual({ type: 'heartbeat' })
-    expect(events[2]).toEqual({
-      type: 'response_delta',
-      turnId: 'turn-1',
-      delta: 'Kael ',
-    })
-    expect(events[3]).toEqual({ type: 'token', field: 'clarification', delta: 'B\u1ea1n' })
-    expect(events[4]).toMatchObject({ type: 'result', data: { session: { id: 's1' }, turns: [] } })
+    expect(events.slice(2, 7)).toEqual([
+      { mode: 'standard', responseId: 'turn-1', type: 'response.started' },
+      { blockId: 'turn-1:block:0', kind: 'paragraph', type: 'block.started' },
+      { blockId: 'turn-1:block:0', delta: 'Kael ', type: 'block.text.delta' },
+      { blockId: 'turn-1:block:0', type: 'block.completed' },
+      { elapsedMs: 840, responseId: 'turn-1', type: 'response.completed' },
+    ])
+    expect(events).not.toContainEqual({ type: 'response_delta', turnId: 'turn-1', delta: 'Kael ' })
+    expect(events[7]).toEqual({ type: 'token', field: 'clarification', delta: 'B\u1ea1n' })
+    expect(events[8]).toMatchObject({ type: 'result', data: { session: { id: 's1' }, turns: [] } })
+  })
+
+  it('keeps legacy verified response deltas when the server has not started a universal response', () => {
+    const parser = createKaelSseParser()
+
+    expect(parser.push('event: response_delta\ndata: {"turn_id":"turn-old","delta":"Kael "}\n\n')).toEqual([
+      { delta: 'Kael ', turnId: 'turn-old', type: 'response_delta' },
+    ])
+  })
+
+  it('accepts one universal response start and sanitizes a structured failure', () => {
+    const parser = createKaelSseParser()
+    const events = parser.push([
+      'event: response.started',
+      'data: {"response_id":"turn-1","mode":"fast"}',
+      '',
+      'event: response.started',
+      'data: {"response_id":"turn-2","mode":"fast"}',
+      '',
+      'event: response.failed',
+      'data: {"response_id":"turn-1","message":"private\\u202Edetail","recoverable":true}',
+      '',
+      '',
+    ].join('\n'))
+
+    expect(events).toEqual([
+      { mode: 'fast', responseId: 'turn-1', type: 'response.started' },
+      {
+        message: 'Kael stream failed.',
+        recoverable: true,
+        responseId: 'turn-1',
+        type: 'response.failed',
+      },
+    ])
   })
 
   it('drops malformed stage frames instead of surfacing fake progress', () => {
@@ -89,6 +126,102 @@ describe('Kael SSE parser', () => {
     expect(isCustomerKaelStreamResult({
       ...valid,
       session: { ...valid.session, total_cost_usd: Number.POSITIVE_INFINITY },
+    })).toBe(false)
+  })
+
+  it('accepts grounded analysis receipts and rejects findings that do not map to evidence', () => {
+    const analysisReceipt = {
+      schema_version: 'analysis_receipt.v1',
+      evidence: {
+        analysis_status: 'analyzed',
+        photo_count: 1,
+        video_frame_count: 0,
+        voice_transcript_count: 0,
+        skipped: false,
+        findings: [{
+          confidence: 'medium',
+          evidence_index: 1,
+          evidence_kind: 'photo',
+          observation: 'Hình 1 cho thấy vùng tường gần đầu ống có vệt ẩm.',
+          possible_meaning: 'Có thể liên quan đến điểm nối bị rò.',
+        }],
+      },
+      market: {
+        accepted_source_count: 3,
+        high_trust_source_count: 2,
+        quorum_met: true,
+      },
+      problem: {
+        summary: 'Dấu hiệu hiện có phù hợp với rò nước cục bộ quanh đầu nối.',
+        severity_indicators: ['Vệt ẩm tập trung quanh một điểm nối'],
+        recommended_scope: 'Thợ cần kiểm tra đầu nối và đo độ ẩm vùng lân cận.',
+        remaining_uncertainty: 'Ảnh chưa cho thấy phần ống phía sau tường.',
+      },
+    }
+    const estimate = {
+      service_type: 'plumbing',
+      problem_category: 'pipe_leak',
+      problem_summary: 'Vùng tường gần đầu ống có dấu hiệu bị ẩm.',
+      complexity: 'medium',
+      price_min: 250000,
+      price_max: 450000,
+      confidence: 0.72,
+      advisory: null,
+      disclaimer: 'Đây là ước tính theo dữ liệu hiện có.',
+      analysis_receipt: analysisReceipt,
+    }
+    const valid = {
+      session: {
+        id: 'session-1',
+        job_id: null,
+        customer_id: 'customer-1',
+        service_type: 'plumbing',
+        status: 'active',
+        case_phase: 'offer_review',
+        diagnosis_scope: null,
+        scheduled_at: null,
+        estimate,
+        started_at: '2026-08-01T00:00:00.000Z',
+        estimate_ready_at: '2026-08-01T00:00:01.000Z',
+        total_turns: 0,
+        total_cost_usd: 0,
+        next_action: 'estimate_ready',
+      },
+      turns: [],
+    }
+
+    expect(isCustomerKaelStreamResult(valid)).toBe(true)
+    expect(isCustomerKaelStreamResult({
+      ...valid,
+      session: {
+        ...valid.session,
+        estimate: {
+          ...estimate,
+          analysis_receipt: {
+            ...analysisReceipt,
+            evidence: {
+              ...analysisReceipt.evidence,
+              findings: [{ ...analysisReceipt.evidence.findings[0], evidence_index: 2 }],
+            },
+          },
+        },
+      },
+    })).toBe(false)
+    expect(isCustomerKaelStreamResult({
+      ...valid,
+      session: {
+        ...valid.session,
+        estimate: {
+          ...estimate,
+          analysis_receipt: {
+            ...analysisReceipt,
+            evidence: {
+              ...analysisReceipt.evidence,
+              analysis_status: 'invented',
+            },
+          },
+        },
+      },
     })).toBe(false)
   })
 

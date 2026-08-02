@@ -15,7 +15,7 @@ import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { localizedServiceLabel } from '@/lib/app-language'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
-export function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime }: { language: AppLanguage; reduceTransparency: boolean; runtime: WorkerV5Runtime }) {
+export function WorkerV5AgentMemoryBody({ language, reduceMotion, reduceTransparency, runtime }: { language: AppLanguage; reduceMotion: boolean; reduceTransparency: boolean; runtime: WorkerV5Runtime }) {
   const profile = runtime.workerProfile
   const [memoryToggleOverrides, setMemoryToggleOverrides] = useState<Partial<Record<WorkerV5MemoryPreferenceUiId, boolean>>>({})
   const [savingMemoryToggleIds, setSavingMemoryToggleIds] = useState<Partial<Record<WorkerV5MemoryPreferenceUiId, boolean>>>({})
@@ -173,6 +173,7 @@ export function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime 
         items={permissionItems}
         listAura={WorkerV5EarningsHomeListAura}
         onChange={setMemoryItemEnabled}
+        reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
         savingIds={savingMemoryToggleIds}
         testID="worker-v5-memory-permission-list"
@@ -188,6 +189,7 @@ export function WorkerV5AgentMemoryBody({ language, reduceTransparency, runtime 
         items={boundaryItems}
         listAura={WorkerV5EarningsHomeListAura}
         onChange={setMemoryItemEnabled}
+        reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
         savingIds={savingMemoryToggleIds}
         testID="worker-v5-memory-boundary-list"

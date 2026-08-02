@@ -25,13 +25,13 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     KAEL_CIRCUIT_BREAKER.reset()
   })
 
-  it('keeps output caps behind KAEL_OPT_CAP_OUTPUT_ENABLED', () => {
+  it('keeps output caps behind KAEL_OPT_CAP_OUTPUT_ENABLED without increasing a caller limit', () => {
     expect(maxTokensForPurpose('vision_analysis', 500, () => undefined)).toBe(500)
     expect(maxTokensForPurpose(
       'vision_analysis',
       500,
       (name) => name === 'KAEL_OPT_CAP_OUTPUT_ENABLED' ? 'true' : undefined,
-    )).toBe(320)
+    )).toBe(500)
     expect(maxTokensForPurpose(
       'market_lookup',
       900,

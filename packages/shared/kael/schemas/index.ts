@@ -8,6 +8,87 @@ export const kaelServiceTypeSchema = z.enum(SERVICE_TYPES)
 export const kaelComplexitySchema = z.enum(['small', 'medium', 'large'])
 export const estimateConfidenceSchema = z.enum(['low', 'medium', 'high'])
 
+const estimateAnalysisFindingSchema = z.object({
+  confidence: estimateConfidenceSchema,
+  evidence_index: z.number().int().min(1),
+  evidence_kind: z.enum(['photo', 'video_frame']),
+  observation: z.string().trim().min(1).max(240),
+  possible_meaning: z.string().trim().min(1).max(240).nullable(),
+}).strict()
+
+const estimateAnalysisEvidenceSchema = z.object({
+  analysis_status: z.enum(['analyzed', 'not_provided', 'unavailable']).optional(),
+  findings: z.array(estimateAnalysisFindingSchema).max(5).optional(),
+  photo_count: z.number().int().nonnegative(),
+  video_frame_count: z.number().int().nonnegative(),
+  voice_transcript_count: z.number().int().nonnegative(),
+  skipped: z.boolean(),
+}).strict().superRefine((evidence, ctx) => {
+  const seen = new Set<string>()
+  for (const [index, finding] of (evidence.findings ?? []).entries()) {
+    const availableCount = finding.evidence_kind === 'photo'
+      ? evidence.photo_count
+      : evidence.video_frame_count
+    const key = `${finding.evidence_kind}:${finding.evidence_index}`
+    if (finding.evidence_index > availableCount) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['findings', index, 'evidence_index'],
+        message: 'finding must reference supplied evidence',
+      })
+    }
+    if (seen.has(key)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['findings', index, 'evidence_index'],
+        message: 'finding evidence reference must be unique',
+      })
+    }
+    seen.add(key)
+  }
+  if (evidence.skipped && (evidence.findings?.length ?? 0) > 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['findings'],
+      message: 'skipped evidence cannot contain findings',
+    })
+  }
+  if (
+    evidence.analysis_status &&
+    evidence.analysis_status !== 'analyzed' &&
+    (evidence.findings?.length ?? 0) > 0
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['findings'],
+      message: 'unavailable or missing analysis cannot contain findings',
+    })
+  }
+  if (evidence.skipped && evidence.analysis_status && evidence.analysis_status !== 'not_provided') {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['analysis_status'],
+      message: 'skipped evidence must be marked not_provided',
+    })
+  }
+})
+
+export const estimateAnalysisReceiptSchema = z.object({
+  schema_version: z.literal('analysis_receipt.v1'),
+  evidence: estimateAnalysisEvidenceSchema,
+  market: z.object({
+    accepted_source_count: z.number().int().nonnegative().nullable(),
+    high_trust_source_count: z.number().int().nonnegative().nullable(),
+    quorum_met: z.boolean().nullable(),
+  }).strict(),
+  problem: z.object({
+    remaining_uncertainty: z.string().trim().min(1).max(300).nullable(),
+    recommended_scope: z.string().trim().min(1).max(400).nullable(),
+    severity_indicators: z.array(z.string().trim().min(1).max(200)).max(5),
+    summary: z.string().trim().min(1).max(500),
+  }).strict().optional(),
+}).strict()
+
 export const estimateCardV3Schema = z.object({
   service_type: kaelServiceTypeSchema,
   problem_summary: z.string().trim().min(10).max(200),
@@ -29,6 +110,7 @@ export const estimateCardV3Schema = z.object({
     complexity_reasoning: z.string().trim().min(1).max(200),
     needs_inspection_reason: z.string().trim().max(200).optional(),
   }).strict(),
+  analysis_receipt: estimateAnalysisReceiptSchema.optional(),
   advisory: z.string().trim().max(150).optional(),
   disclaimer: z.literal(KAEL_PRICE_DISCLAIMER_V3),
 }).strict().superRefine((data, ctx) => {

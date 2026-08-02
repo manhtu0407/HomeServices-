@@ -46,9 +46,12 @@ export type WorkerV5ScreenId =
   | '5.5-account-utilities'
   | '5.6-agent-memory-preferences'
   | '5.7-verification-documents'
-  | '5.8-bank-tax-center'
   | '5.9-reviews-feedback'
   | '5.10-support-settings'
+  | '5.11-worker-availability'
+  | '5.12-worker-notifications'
+  | '5.13-worker-support'
+  | '5.14-worker-policies'
 
 export type WorkerV5ScreenDefinition = {
   authority: string
@@ -70,6 +73,7 @@ export type WorkerV5RouteParams = {
   ns_payment_step?: string | string[]
   ns_scope_mode?: string | string[]
   ns_worker_lang?: string | string[]
+  ns_worker_return_to?: string | string[]
   ns_worker_screen?: string | string[]
   tab?: string | string[]
 }

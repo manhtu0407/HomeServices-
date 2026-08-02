@@ -214,6 +214,11 @@ function serializeEstimateAnalysisReceipt(value: unknown) {
   const voiceTranscriptCount = finiteDbNumber(evidence.voice_transcript_count);
   const acceptedSourceCount = finiteDbNumber(market.accepted_source_count);
   const highTrustSourceCount = finiteDbNumber(market.high_trust_source_count);
+  const analysisStatus = evidence.analysis_status;
+  const validAnalysisStatus = analysisStatus === undefined ||
+    analysisStatus === "analyzed" ||
+    analysisStatus === "not_provided" ||
+    analysisStatus === "unavailable";
   const validEvidenceCounts = [photoCount, videoFrameCount, voiceTranscriptCount]
     .every((count) => count !== null && Number.isSafeInteger(count) && count >= 0);
   const validMarketCounts = [
@@ -222,15 +227,32 @@ function serializeEstimateAnalysisReceipt(value: unknown) {
   ].every(([raw, count]) => isNullableNonNegativeInteger(raw, count));
   if (
     !validEvidenceCounts ||
+    !validAnalysisStatus ||
     typeof evidence.skipped !== "boolean" ||
     !validMarketCounts ||
     (market.quorum_met !== null && typeof market.quorum_met !== "boolean")
   ) {
     apiFailure("DB_ERROR", "Dữ liệu biên nhận phân tích Kael không hợp lệ", 500);
   }
+  const findings = serializeEstimateEvidenceFindings(evidence.findings, {
+    photo: photoCount as number,
+    video_frame: videoFrameCount as number,
+  });
+  if (
+    (analysisStatus === "not_provided" || analysisStatus === "unavailable") &&
+    findings && findings.length > 0
+  ) {
+    apiFailure("DB_ERROR", "Dữ liệu biên nhận phân tích Kael không hợp lệ", 500);
+  }
+  if (evidence.skipped && analysisStatus !== undefined && analysisStatus !== "not_provided") {
+    apiFailure("DB_ERROR", "Dữ liệu biên nhận phân tích Kael không hợp lệ", 500);
+  }
+  const problem = serializeEstimateProblemReceipt(receipt.problem);
   return {
     schema_version: "analysis_receipt.v1" as const,
     evidence: {
+      ...(analysisStatus ? { analysis_status: analysisStatus } : {}),
+      ...(findings ? { findings } : {}),
       photo_count: photoCount as number,
       video_frame_count: videoFrameCount as number,
       voice_transcript_count: voiceTranscriptCount as number,
@@ -245,6 +267,82 @@ function serializeEstimateAnalysisReceipt(value: unknown) {
         : highTrustSourceCount,
       quorum_met: market.quorum_met,
     },
+    ...(problem ? { problem } : {}),
+  };
+}
+
+function serializeEstimateEvidenceFindings(
+  value: unknown,
+  evidenceCount: { photo: number; video_frame: number },
+) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > 5) {
+    apiFailure("DB_ERROR", "Dữ liệu biên nhận phân tích Kael không hợp lệ", 500);
+  }
+  const seen = new Set<string>();
+  return value.map((item) => {
+    const finding = asRecord(item);
+    const kind = finding.evidence_kind;
+    const index = finiteDbNumber(finding.evidence_index);
+    const observation = boundedNonEmptyString(finding.observation, 240);
+    const possibleMeaning = finding.possible_meaning === null
+      ? null
+      : boundedNonEmptyString(finding.possible_meaning, 240);
+    const confidence = finding.confidence;
+    const validKind = kind === "photo" || kind === "video_frame";
+    const key = `${kind}:${index}`;
+    if (
+      !validKind ||
+      (confidence !== "low" && confidence !== "medium" && confidence !== "high") ||
+      index === null ||
+      !Number.isSafeInteger(index) ||
+      index < 1 ||
+      index > evidenceCount[kind] ||
+      !observation ||
+      (finding.possible_meaning !== null && !possibleMeaning) ||
+      seen.has(key)
+    ) {
+      apiFailure("DB_ERROR", "Dữ liệu biên nhận phân tích Kael không hợp lệ", 500);
+    }
+    seen.add(key);
+    return {
+      confidence,
+      evidence_index: index,
+      evidence_kind: kind,
+      observation,
+      possible_meaning: possibleMeaning,
+    };
+  });
+}
+
+function serializeEstimateProblemReceipt(value: unknown) {
+  if (value === undefined) return undefined;
+  const problem = asRecord(value);
+  const summary = boundedNonEmptyString(problem.summary, 500);
+  const remainingUncertainty = problem.remaining_uncertainty === null
+    ? null
+    : boundedNonEmptyString(problem.remaining_uncertainty, 300);
+  const recommendedScope = problem.recommended_scope === null
+    ? null
+    : boundedNonEmptyString(problem.recommended_scope, 400);
+  const indicators = Array.isArray(problem.severity_indicators)
+    ? problem.severity_indicators.map((item) => boundedNonEmptyString(item, 200))
+    : [];
+  if (
+    !summary ||
+    !Array.isArray(problem.severity_indicators) ||
+    indicators.length > 5 ||
+    indicators.some((item) => !item) ||
+    (problem.remaining_uncertainty !== null && !remainingUncertainty) ||
+    (problem.recommended_scope !== null && !recommendedScope)
+  ) {
+    apiFailure("DB_ERROR", "Dữ liệu biên nhận phân tích Kael không hợp lệ", 500);
+  }
+  return {
+    remaining_uncertainty: remainingUncertainty,
+    recommended_scope: recommendedScope,
+    severity_indicators: indicators as string[],
+    summary,
   };
 }
 
@@ -328,6 +426,11 @@ function requiredKaelContentType(
 
 function nonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function boundedNonEmptyString(value: unknown, maxLength: number): string | null {
+  const parsed = nonEmptyString(value);
+  return parsed && parsed.length <= maxLength ? parsed : null;
 }
 
 function finiteDbNumber(value: unknown): number | null {

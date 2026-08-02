@@ -32,6 +32,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
   it('uses the §40 M1 model roster while keeping escalation separate from failover', () => {
     expect(KAEL_ROUTING_CONFIG.vision_analysis).toMatchObject({
       primary: { provider: 'anthropic', model: 'claude-sonnet-5' },
+      modelFallback: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' },
       escalation: { provider: 'anthropic', model: 'claude-opus-4-8' },
       escalationTrigger: { minConfidence: 0.82 },
     })
@@ -57,13 +58,14 @@ describe('mobile-api Kael P3 routing foundation', () => {
     expect(KAEL_ROUTING_CONFIG.vision_analysis.fallback).toBeUndefined()
     expect(providerCandidatesForPurpose('vision_analysis').map(({ provider, model, role }) => ({ provider, model, role }))).toEqual([
       { provider: 'anthropic', model: 'claude-sonnet-5', role: 'primary' },
+      { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', role: 'fallback' },
     ])
     const pipelineSource = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
       'utf8',
     )
-    expect(pipelineSource).toMatch(
-      /model: visionResult\.success\s+\? visionResult\.model\s+: KAEL_ROUTING_CONFIG\.vision_analysis\.primary\.model/,
+    expect(pipelineSource).toContain(
+      'visionResult.model ?? KAEL_ROUTING_CONFIG.vision_analysis.primary.model',
     )
   })
 
@@ -156,6 +158,15 @@ describe('mobile-api Kael P3 routing foundation', () => {
     expect(KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs).toBe(4_000)
     expect(intentSource).toContain('timeoutMs: route.latencyBudgetMs')
     expect(intentSource).not.toContain('timeoutMs: 1_000')
+  })
+
+  it('lets the bounded Vision model ladder own its deadlines without a competing outer timeout', () => {
+    const pipelineSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      'utf8',
+    )
+
+    expect(pipelineSource).not.toMatch(/label: "vision"[\s\S]{0,180}timeoutMs:/)
   })
 
   it('gives interactive educational responses enough time to finish before model failover', () => {

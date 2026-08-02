@@ -140,6 +140,9 @@ export const styles = StyleSheet.create({
   serviceSourceIntegratedIcon: {
     marginBottom: 10,
   },
+  serviceSourceIntegratedIconPlain: {
+    backgroundColor: 'transparent',
+  },
   serviceSourceMeta: {
     color: color.text.muted,
     fontSize: 9,

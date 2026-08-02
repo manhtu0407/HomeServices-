@@ -80,12 +80,14 @@ jest.spyOn(Linking, 'openURL').mockImplementation((url) => mockOpenUrl(url))
 const { AuthProvider, useAuth } = require('../auth-provider') as typeof import('../auth-provider')
 
 let latestGoogleSignIn: ReturnType<typeof useAuth>['signInWithGoogle'] | null = null
+let latestAppleSignIn: ReturnType<typeof useAuth>['signInWithApple'] | null = null
 
 function GoogleOAuthHarness() {
   const auth = useAuth()
   useEffect(() => {
     latestGoogleSignIn = auth.signInWithGoogle
-  }, [auth.signInWithGoogle])
+    latestAppleSignIn = auth.signInWithApple
+  }, [auth.signInWithApple, auth.signInWithGoogle])
   return (
     <>
       <Text testID="oauth-session">{auth.session?.user.id ?? 'none'}</Text>
@@ -102,9 +104,9 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function authorizationUrl(redirectUrl = 'nestscout:///') {
+function authorizationUrl(redirectUrl = 'nestscout:///', provider: 'apple' | 'google' = 'google') {
   return [
-    'https://project.supabase.co/auth/v1/authorize?provider=google',
+    `https://project.supabase.co/auth/v1/authorize?provider=${provider}`,
     `redirect_to=${encodeURIComponent(redirectUrl)}`,
     `code_challenge=${'a'.repeat(43)}`,
     'code_challenge_method=s256',
@@ -113,6 +115,7 @@ function authorizationUrl(redirectUrl = 'nestscout:///') {
 
 beforeEach(() => {
   latestGoogleSignIn = null
+  latestAppleSignIn = null
   mockLinkingUrlListener = null
   mockGetInitialUrl.mockReset().mockResolvedValue(null)
   mockOpenUrl.mockReset().mockResolvedValue(true)
@@ -162,6 +165,34 @@ describe('AuthProvider native OAuth boundary', () => {
         skipBrowserRedirect: true,
       },
     })
+  })
+
+  it('opens the trusted Apple authorization URL through the existing OAuth boundary', async () => {
+    mockSignInWithOAuth.mockResolvedValueOnce({
+      data: { url: authorizationUrl('nestscout:///', 'apple') },
+      error: null,
+    })
+    render(
+      <AuthProvider>
+        <GoogleOAuthHarness />
+      </AuthProvider>,
+    )
+    await waitFor(() => expect(latestAppleSignIn).not.toBeNull())
+
+    let result: Awaited<ReturnType<NonNullable<typeof latestAppleSignIn>>> | undefined
+    await act(async () => {
+      result = await latestAppleSignIn?.()
+    })
+
+    expect(result).toEqual({ success: true })
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: 'apple',
+      options: {
+        redirectTo: 'nestscout:///',
+        skipBrowserRedirect: true,
+      },
+    })
+    expect(mockOpenUrl).toHaveBeenCalledWith(authorizationUrl('nestscout:///', 'apple'))
   })
 
   it('coalesces concurrent Google sign-in starts before opening the browser', async () => {
@@ -234,7 +265,7 @@ describe('AuthProvider native OAuth boundary', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('oauth-error')).toHaveTextContent(
-        'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại sau.',
+        'Không thể hoàn tất đăng nhập. Vui lòng thử lại sau.',
       )
     })
     expect(screen.getByTestId('oauth-error')).not.toHaveTextContent('access_denied')

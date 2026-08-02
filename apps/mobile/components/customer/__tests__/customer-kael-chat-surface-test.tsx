@@ -144,6 +144,7 @@ jest.mock('@/lib/app-language', () => {
 })
 
 import { CustomerKaelSurface } from '../customer-surfaces'
+import { writeCustomerKaelSessionCatalog } from '../kael-chat/customer-kael-session-catalog-cache'
 import { useCustomerKaelConversations } from '../kael-chat/use-customer-kael-conversations'
 
 const readCustomerSource = (relativePath: string) =>
@@ -265,6 +266,7 @@ async function flushLatestConversationList() {
   const latestRequest = mockConversationList.mock.results[mockConversationList.mock.results.length - 1]?.value
   await act(async () => {
     await latestRequest
+    await Promise.resolve()
     await Promise.resolve()
   })
 }
@@ -411,14 +413,17 @@ describe('active customer Kael chat surface wiring', () => {
 
   it('keeps full-screen mint washes soft on the active V21 Kael route', () => {
     const canvas = readCustomerSource('kael-chat/chat-surfaces.tsx')
+    const chatView = readCustomerSource('kael-chat/chat-stateful-surfaces.tsx')
     const shared = readCustomerSource('ui/shared-surfaces.tsx')
 
     expect(canvas).toContain('customer-v21-chat-canvas-aura')
     expect(canvas).toContain('FormulaMintCanvasAura')
+    expect(canvas).toContain('mode={mode}')
     expect(canvas).toContain('scope="CustomerChat"')
     expect(canvas).not.toContain('rgba(136,235,221,0.34)')
     expect(canvas).not.toContain('rgba(13,174,154,0.22)')
     expect(shared).toContain('{ backgroundColor: tokens.canvas }')
+    expect(chatView).toContain('<ChatCanvasAura mode={tokens.mode} reduceTransparency={reduceTransparency} />')
   })
 
   it('keeps the Case Work activity action on Activity after retiring the Profile command center', () => {
@@ -568,7 +573,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
   })
 
-  it('renders verified deltas as one live Kael bubble before the committed transcript', async () => {
+  it('renders verified deltas in the live Kael response surface before the committed transcript', async () => {
     let resolveTurn!: (value: any) => void
     mockConversationSendTurn.mockImplementationOnce((
       _sessionId: string,
@@ -598,7 +603,10 @@ describe('active customer Kael chat surface wiring', () => {
 
     const liveBubble = await screen.findByTestId('customer-v21-kael-streaming-response')
     expect(liveBubble).toHaveProp('accessibilityState', { busy: true })
-    expect(liveBubble).toHaveTextContent('Kael dang kiem tra. \u258d')
+    expect(screen.getByTestId('customer-v21-kael-response-block-0'))
+      .toHaveTextContent('Kael dang kiem tra.')
+    expect(screen.getByTestId('customer-v21-kael-response-block-0'))
+      .not.toHaveTextContent('\u258d')
 
     const sessionId = mockConversationSendTurn.mock.calls[0][0] as string
     const session = updateMockSession(sessionId, { total_turns: 2 })
@@ -656,6 +664,50 @@ describe('active customer Kael chat surface wiring', () => {
       await Promise.all(requests)
     })
     expect(result.current.activeSessionId).toBe('rapid-session')
+  })
+
+  it('restores the active committed conversation on a cold catalog mount', async () => {
+    const session = makeConversationSession('normal', 'restored-stream-session')
+    const response = {
+      session: { ...session, total_turns: 2 },
+      turns: [
+        {
+          client_request_id: 'restored-customer-request',
+          conversation_id: session.id,
+          created_at: '2026-08-01T09:00:00.000Z',
+          id: 'restored-customer-turn',
+          role: 'customer' as const,
+          text_content: 'Kiểm tra công tắc nóng bất thường.',
+          turn_index: 1,
+        },
+        {
+          client_request_id: null,
+          conversation_id: session.id,
+          created_at: '2026-08-01T09:00:01.000Z',
+          id: 'restored-kael-turn',
+          role: 'kael' as const,
+          text_content: 'Kael đã kiểm tra và lưu phản hồi.',
+          turn_index: 2,
+        },
+      ],
+    }
+    mockSessionsByMode.normal = [response.session]
+    mockConversationGet.mockResolvedValue({ data: response, success: true })
+    await writeCustomerKaelSessionCatalog(
+      mockCustomerId,
+      'normal',
+      [response.session],
+      response.session.id,
+    )
+
+    const { result } = renderHook(() => useCustomerKaelConversations('normal', 'vi'))
+
+    await waitForConversationCatalog('normal')
+    await waitFor(() => expect(result.current.activeSessionId).toBe(response.session.id))
+    expect(result.current.turns.map((turn) => turn.text_content)).toEqual([
+      'Kiểm tra công tắc nóng bất thường.',
+      'Kael đã kiểm tra và lưu phản hồi.',
+    ])
   })
 
   it('switches to a blank composer immediately while the new session is created in the background', async () => {
@@ -999,6 +1051,34 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityState', { disabled: false })
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu dịch vụ cho Kael...')
     expect(screen.queryByText(/phân phối cơ hội|nhận việc/i)).toBeNull()
+  })
+
+  it('aligns the Customer Kael mode control with the Worker control material and type scale', async () => {
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('normal')
+
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-mode-toggle').props.style)).toMatchObject({
+      alignItems: 'center',
+      height: 44,
+      justifyContent: 'center',
+      width: 120,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-active-mode').props.style)).toMatchObject({
+      alignSelf: 'stretch',
+      fontSize: 15,
+      includeFontPadding: false,
+      textAlign: 'center',
+      textAlignVertical: 'center',
+    })
+
+    fireEvent.press(screen.getByTestId('customer-v21-kael-mode-toggle'))
+
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-mode-toggle').props.style)).toMatchObject({
+      backgroundColor: 'rgba(255,255,255,0.94)',
+      borderColor: 'rgba(255,255,255,0.98)',
+      borderWidth: 1,
+    })
   })
 
   it('starts a blank Work handling session without manufacturing a Worker session', async () => {

@@ -19,11 +19,21 @@ const intakeConfirmationService = readFileSync(
 const completionReviewService = readFileSync(join(root, 'services/completion-review.service.ts'), 'utf8')
 const jobStatusService = readFileSync(join(root, 'services/job-status.service.ts'), 'utf8')
 const pipeline = readFileSync(join(root, 'kael/pipeline.ts'), 'utf8')
+const outputPipeline = readFileSync(join(root, 'kael/output-pipeline.ts'), 'utf8')
 const sharedService = [
   readFileSync(join(root, 'services/_shared.ts'), 'utf8'),
   readFileSync(join(root, 'services/serializers.ts'), 'utf8'),
 ].join('\n')
 const jobCreateService = readFileSync(join(root, 'services/job-create.service.ts'), 'utf8')
+
+function exportedAsyncFunctionBody(name: string, nextName?: string) {
+  const start = service.indexOf(`export async function ${name}(`)
+  if (start < 0) return ''
+  const body = service.slice(start)
+  if (!nextName) return body
+  const next = body.indexOf(`export async function ${nextName}(`)
+  return next < 0 ? body : body.slice(0, next)
+}
 
 describe('Kael Case Work runtime wiring', () => {
   it('normalizes Kael response branding before an Agentic turn is persisted', () => {
@@ -71,9 +81,7 @@ describe('Kael Case Work runtime wiring', () => {
   })
 
   it('rejects a skipped mandatory gate before writes and records accepted evidence decisions', () => {
-    const submitEvidence = service.match(
-      /export async function submitKaelChatEvidence[\s\S]*?(?=function withoutEphemeralKaelMediaUrls)/,
-    )?.[0] ?? ''
+    const submitEvidence = exportedAsyncFunctionBody('submitKaelChatEvidence')
 
     expect(submitEvidence).toContain('requestedEvidence.data.next_action.required')
     expect(submitEvidence).toContain('Không thể bỏ qua bằng chứng bắt buộc')
@@ -131,7 +139,7 @@ describe('Kael Case Work runtime wiring', () => {
     expect(service).toContain('customerGoal: intakeDescription')
     expect(core).toContain('const safeCustomerEvidence = sanitizeCustomerCaseEvidenceText(message)')
     expect(core).toContain('const durableCustomerDetail = safeCustomerEvidence')
-    expect(core).toContain('latest_customer_detail: durableCustomerDetail')
+    expect(core).toContain('latest_customer_detail: customerAnalysisDetail')
     expect(core).not.toContain('latest_customer_detail: message')
   })
 
@@ -189,12 +197,8 @@ describe('Kael Case Work runtime wiring', () => {
   })
 
   it('validates this turn media before any durable case-work write', () => {
-    const sendTurn = service.match(
-      /export async function sendKaelChatTurn[\s\S]*?(?=export async function submitKaelChatEvidence)/,
-    )?.[0] ?? ''
-    const submitEvidence = service.match(
-      /export async function submitKaelChatEvidence[\s\S]*?(?=function withoutEphemeralKaelMediaUrls)/,
-    )?.[0] ?? ''
+    const sendTurn = exportedAsyncFunctionBody('sendKaelChatTurn', 'submitKaelChatEvidence')
+    const submitEvidence = exportedAsyncFunctionBody('submitKaelChatEvidence')
 
     for (const body of [sendTurn, submitEvidence]) {
       expect(body.indexOf('createSignedVisionUrls(')).toBeGreaterThan(-1)
@@ -206,6 +210,16 @@ describe('Kael Case Work runtime wiring', () => {
     )
     expect(submitEvidence).toMatch(/createSignedVisionUrls\([\s\S]*?visionValidationEvidence/)
     expect(sendTurn).not.toMatch(/createSignedVisionUrls\([\s\S]*?diagnosisScope\?\.evidence/)
+  })
+
+  it('keeps prior scope and analyzed evidence available to text-only estimate adjustments', () => {
+    expect(caseWork).toContain('mergeKaelCustomerDetailForReanalysis')
+    expect(caseWork).toContain('previousAnalysisReceipt')
+    expect(caseWork).toContain('safe_metadata')
+    expect(caseWork).toContain('evidence.analysis_status === "analyzed"')
+    expect(core).toContain('customerAnalysisDetail')
+    expect(core).toContain('previousAnalysisReceipt')
+    expect(outputPipeline).toContain('reusePreviousAnalyzedEvidence')
   })
 
   it('does not force a best-effort estimate after a fixed clarification count', () => {

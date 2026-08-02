@@ -1,14 +1,19 @@
 import { StyleSheet, View } from 'react-native'
-import Svg, { Defs, LinearGradient, RadialGradient, Rect } from 'react-native-svg'
+import Svg, { Defs, Rect } from 'react-native-svg'
 
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
+import type { ThemeMode } from '../customer-theme'
 import type { CustomerV21ScreenId } from './types'
 import { customerV21AuraStyles as styles } from './aura-styles'
 
 type ReduceTransparencyProps = {
   reduceTransparency: boolean
+}
+
+type CanvasAuraProps = ReduceTransparencyProps & {
+  mode: ThemeMode
 }
 
 export function SourceCardSkin({ testID }: { testID?: string }) {
@@ -150,9 +155,10 @@ export function CaseWideMintAura({
   )
 }
 
-function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
+function HomeCanvasAura({ mode, reduceTransparency }: CanvasAuraProps) {
   return (
     <FormulaMintCanvasAura
+      mode={mode}
       reduceTransparency={reduceTransparency}
       scope="CustomerHome"
       testID="customer-v21-home-canvas-aura"
@@ -161,13 +167,15 @@ function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
 }
 
 function ProfileCanvasAura({
+  mode,
   reduceTransparency,
   screenId,
-}: ReduceTransparencyProps & {
+}: CanvasAuraProps & {
   screenId: CustomerV21ScreenId
 }) {
   return (
     <FormulaMintCanvasAura
+      mode={mode}
       reduceTransparency={reduceTransparency}
       scope={`CustomerProfile${screenId}`}
       testID={`customer-v21-profile-canvas-aura-${screenId}`}
@@ -175,9 +183,10 @@ function ProfileCanvasAura({
   )
 }
 
-function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
+function LocationEtaCanvasAura({ mode, reduceTransparency }: CanvasAuraProps) {
   return (
     <FormulaMintCanvasAura
+      mode={mode}
       reduceTransparency={reduceTransparency}
       scope="CustomerLocationEta"
       testID="customer-v21-location-canvas-aura"
@@ -186,13 +195,15 @@ function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparencyProps) 
 }
 
 function FulfillmentCanvasAura({
+  mode,
   reduceTransparency,
   screenId,
-}: ReduceTransparencyProps & {
+}: CanvasAuraProps & {
   screenId: CustomerV21ScreenId
 }) {
   return (
     <FormulaMintCanvasAura
+      mode={mode}
       reduceTransparency={reduceTransparency}
       scope={`CustomerFulfillment${screenId}`}
       testID={`customer-v21-fulfillment-canvas-aura-${screenId}`}
@@ -201,22 +212,24 @@ function FulfillmentCanvasAura({
 }
 
 export function CustomerScreenCanvasAura({
+  mode,
   reduceTransparency,
   screenId,
-}: ReduceTransparencyProps & {
+}: CanvasAuraProps & {
   screenId: CustomerV21ScreenId
 }) {
-  if (screenId === '2.1-home') return <HomeCanvasAura reduceTransparency={reduceTransparency} />
-  if (screenId === '2.10-location-eta') return <LocationEtaCanvasAura reduceTransparency={reduceTransparency} />
+  if (screenId === '2.1-home') return <HomeCanvasAura mode={mode} reduceTransparency={reduceTransparency} />
+  if (screenId === '2.10-location-eta') return <LocationEtaCanvasAura mode={mode} reduceTransparency={reduceTransparency} />
   if (screenId === '2.11-live-alert' || screenId === '2.12-job-accepted' || screenId === '2.13-job-progress') {
-    return <FulfillmentCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
+    return <FulfillmentCanvasAura mode={mode} reduceTransparency={reduceTransparency} screenId={screenId} />
   }
   if (screenId === '6.1-profile-overview' || screenId === '6.2-usage-ranking' || screenId === '6.3-protect-money') {
-    return <ProfileCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
+    return <ProfileCanvasAura mode={mode} reduceTransparency={reduceTransparency} screenId={screenId} />
   }
 
   return (
     <FormulaMintCanvasAura
+      mode={mode}
       reduceTransparency={reduceTransparency}
       scope={`CustomerV21${screenId}`}
       testID={`customer-v21-screen-canvas-aura-${screenId}`}

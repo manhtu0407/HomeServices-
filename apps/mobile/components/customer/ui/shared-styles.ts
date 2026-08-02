@@ -31,7 +31,9 @@ export const customerV21SharedStyles = StyleSheet.create({
   frame: {
     alignItems: 'stretch',
     alignSelf: 'center',
+    maxWidth: '100%',
     minWidth: 0,
+    width: '100%',
   },
   bodyText: {
     fontSize: 14,
@@ -331,7 +333,6 @@ export const customerV21SharedStyles = StyleSheet.create({
     alignItems: 'stretch',
     borderRadius: 22,
     borderWidth: 1,
-    elevation: 2,
     flexDirection: 'row',
     flexGrow: 1,
     gap: 0,
@@ -339,21 +340,10 @@ export const customerV21SharedStyles = StyleSheet.create({
     overflow: 'hidden',
     padding: 0,
     position: 'relative',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 14, width: 0 },
-    shadowRadius: 28,
   },
   homeAuraServiceTileNarrow: {
     flexBasis: '100%',
     maxWidth: '100%',
-  },
-  homeAuraServiceTileShadowDark: {
-    shadowColor: '#000000',
-    shadowOpacity: 0.16,
-  },
-  homeAuraServiceTileShadowLight: {
-    shadowColor: '#087D72',
-    shadowOpacity: 0.13,
   },
   homeAuraServiceTileWide: {
     flexBasis: '48%',

@@ -11,7 +11,11 @@ import {
   buildEvidenceProgressLine,
   type KaelEvidenceMediaProfile,
 } from './kael-evidence-progress'
-import { buildKaelProcessSequence } from './kael-process-lines'
+import {
+  buildKaelProcessSequence,
+  type KaelProcessScenarioId,
+  type KaelProcessSequence,
+} from './kael-process-lines'
 import type { CustomerKaelMode } from '../ui/types'
 import type { KaelProcessLineRuntime } from './use-customer-kael-chat-ui-state'
 
@@ -20,6 +24,7 @@ type StartProcessLineOptions = {
   mediaCount?: number
   mode: CustomerKaelMode
   replyReveal?: 'composer_message'
+  scenario?: KaelProcessScenarioId
   serviceType?: ServiceType | null
 }
 
@@ -70,17 +75,20 @@ export function useKaelProcessLineController({
   const startProcessLines = useCallback((prompt: string, options: StartProcessLineOptions) => {
     const safePrompt = prompt.trim() || (language === 'vi' ? 'Đã gửi ảnh/video.' : 'Sent media.')
     const serviceType = options.serviceType ?? deal?.draft.serviceType ?? selectedService
-    const sequence = buildKaelProcessSequence({
-      caseId: deal ? caseDisplayCode(deal, language) : null,
-      complexity: options.complexity ?? deal?.estimate?.complexity ?? null,
-      distance: deal?.broadcast?.generalArea ?? deal?.draft.districtLabel ?? null,
-      hasRealCase: Boolean(deal),
-      jobType: serviceType ? customerV21ServiceCopy[language][serviceType].label : caseServiceLabel,
-      language,
-      mediaCount: options.mediaCount ?? 0,
-      message: safePrompt,
-      mode: options.mode,
-    })
+    const sequence = options.replyReveal === 'composer_message'
+      ? composerResponseSequence(language)
+      : buildKaelProcessSequence({
+          caseId: deal ? caseDisplayCode(deal, language) : null,
+          complexity: options.complexity ?? deal?.estimate?.complexity ?? null,
+          distance: deal?.broadcast?.generalArea ?? deal?.draft.districtLabel ?? null,
+          hasRealCase: Boolean(deal),
+          jobType: serviceType ? customerV21ServiceCopy[language][serviceType].label : caseServiceLabel,
+          language,
+          mediaCount: options.mediaCount ?? 0,
+          message: safePrompt,
+          mode: options.mode,
+          scenario: options.scenario,
+        })
     const runId = runRef.current + 1
     runRef.current = runId
     evidenceProfileRef.current = null
@@ -224,5 +232,20 @@ export function useKaelProcessLineController({
     startProcessLines,
     stopProcessLines,
     updateEvidenceProcessProgress,
+  }
+}
+
+function composerResponseSequence(language: AppLanguage): KaelProcessSequence {
+  return {
+    collapse: language === 'vi' ? 'Kael \u0111ang ph\u1ea3n h\u1ed3i.' : 'Kael is responding.',
+    lines: [{
+      durationMs: KAEL_COMPOSER_REPLY_REVEAL_MS,
+      key: 'composer-response-preparing',
+      stage: 'compose',
+      text: language === 'vi'
+        ? 'Kael \u0111ang chu\u1ea9n b\u1ecb ph\u1ea3n h\u1ed3i\u2026'
+        : 'Kael is preparing a response\u2026',
+    }],
+    scenarioId: 'normal_chat',
   }
 }

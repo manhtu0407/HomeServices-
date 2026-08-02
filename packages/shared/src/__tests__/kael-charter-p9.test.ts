@@ -8,11 +8,11 @@ function readCharter(file: string) {
   return readFileSync(resolve(CHARTER_ROOT, file), 'utf-8')
 }
 
-describe('Kael P9 charter source files', () => {
+describe('Kael P10 charter source files', () => {
   it('tracks the charter version in the version.json manifest', () => {
     const manifest = readCharter('version.json')
-    expect(manifest).toContain('"charter_version": "2026-07-06.p9"')
-    expect(manifest).toContain('"last_modified": "2026-07-06"')
+    expect(manifest).toContain('"charter_version": "2026-08-01.p10"')
+    expect(manifest).toContain('"last_modified": "2026-08-01"')
   })
 
   it('records the locked charter files and lock policy in the manifest', () => {

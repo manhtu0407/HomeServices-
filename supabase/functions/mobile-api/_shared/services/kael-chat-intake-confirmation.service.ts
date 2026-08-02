@@ -177,6 +177,7 @@ export async function decideKaelIntakeConfirmation(
     message: confirmation.intake.description,
     problem_chips: confirmation.intake.problem_chips,
     photo_urls: photoUrls,
+    vision_evidence: diagnosisScope.success ? diagnosisScope.data.evidence : [],
     address_district: nullableString(confirmation.intake.address_district) ??
       undefined,
     language: metadata.language === "en" ? "en" : "vi",

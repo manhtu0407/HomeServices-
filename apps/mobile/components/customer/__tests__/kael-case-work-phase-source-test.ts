@@ -27,9 +27,9 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
     expect(kaelFeature).not.toMatch(/pendingDraft[\s\S]{0,1600}defer_analysis:\s*true/)
   })
 
-  it('formats only the pending Basic Intake bubble for readable customer display', () => {
-    expect(chatView).toContain('customerVisibleIntakeSummaryText')
-    expect(chatView).toContain('text={customerVisibleIntakeSummaryText(pendingDraftMessage, language)}')
+  it('formats the pending detailed Case Work request for readable customer display', () => {
+    expect(chatView).toContain('customerVisibleCaseRequestText')
+    expect(chatView).toContain('text={customerVisibleCaseRequestText(pendingDraftMessage, language)}')
     expect(chatView).toContain("text={turn.text_content ?? ''}")
   })
 

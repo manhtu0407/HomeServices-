@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, w
 import { type LocalDeal } from '@nestscout/shared'
 import { useFocusEffect } from 'expo-router'
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
+import { GlassSurface } from '@/components/ui/glass-surface'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
@@ -30,8 +31,6 @@ import { localizedServiceLabel } from '@/lib/app-language'
 import { workerV5Icons, workerV5OpportunityServiceIcons } from '../ui/screen-icons'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
-
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -43,6 +42,7 @@ export function WorkerV5KaelOrbScreenSurface({
   deal,
   language,
   mode,
+  onBack,
   navigateToScreen,
   profile,
   reduceMotion,
@@ -54,6 +54,7 @@ export function WorkerV5KaelOrbScreenSurface({
   deal: LocalDeal | null
   language: AppLanguage
   mode: WorkerV5KaelOrbMode
+  onBack?: () => void
   navigateToScreen: (id: WorkerV5ScreenId) => void
   profile: WorkerV5Runtime['workerProfile']
   reduceMotion: boolean
@@ -91,8 +92,6 @@ export function WorkerV5KaelOrbScreenSurface({
   const modeMenuScaleY = useSharedValue(reduceMotion ? 1 : 0.8)
   const modeMenuContentOpacity = useSharedValue(reduceMotion ? 1 : 0)
   const modeMenuContentTranslateY = useSharedValue(reduceMotion ? 0 : 8)
-  const modeMenuSheenOpacity = useSharedValue(0)
-  const modeMenuSheenX = useSharedValue(-92)
   const modeMenuTranslateY = useSharedValue(reduceMotion ? 0 : -4)
   const modeMenuTriggerScale = useSharedValue(1)
 
@@ -100,7 +99,7 @@ export function WorkerV5KaelOrbScreenSurface({
     setSessionMenuOpen(false)
     if (!reduceMotion) {
       modeMenuTriggerScale.value = withSequence(
-        withTiming(0.985, { duration: motionDuration(70, reduceMotion) }),
+        withTiming(0.98, { duration: motionDuration(80, reduceMotion) }),
         withSpring(1, motionTokens.liquid.press),
       )
     }
@@ -110,8 +109,6 @@ export function WorkerV5KaelOrbScreenSurface({
       modeMenuScaleY.value = reduceMotion ? 1 : 0.8
       modeMenuContentOpacity.value = reduceMotion ? 1 : 0
       modeMenuContentTranslateY.value = reduceMotion ? 0 : 8
-      modeMenuSheenOpacity.value = 0
-      modeMenuSheenX.value = -92
       modeMenuTranslateY.value = reduceMotion ? 0 : -4
     }
     setModeMenuOpen((current) => !current)
@@ -127,13 +124,6 @@ export function WorkerV5KaelOrbScreenSurface({
   const animatedModeMenuContentStyle = useAnimatedStyle(() => ({
     opacity: modeMenuContentOpacity.value,
     transform: [{ translateY: modeMenuContentTranslateY.value }],
-  }))
-  const animatedModeMenuSheenStyle = useAnimatedStyle(() => ({
-    opacity: modeMenuSheenOpacity.value,
-    transform: [
-      { translateX: modeMenuSheenX.value },
-      { rotate: '-10deg' },
-    ],
   }))
   const animatedModeTriggerStyle = useAnimatedStyle(() => ({
     transform: [{ scale: modeMenuTriggerScale.value }],
@@ -208,7 +198,6 @@ export function WorkerV5KaelOrbScreenSurface({
       modeMenuScaleY.value = 1
       modeMenuContentOpacity.value = 1
       modeMenuContentTranslateY.value = 0
-      modeMenuSheenOpacity.value = 0
       modeMenuTranslateY.value = 0
       return
     }
@@ -219,14 +208,7 @@ export function WorkerV5KaelOrbScreenSurface({
     modeMenuTranslateY.value = withSpring(0, motionTokens.liquid.pill)
     modeMenuContentOpacity.value = withDelay(55, withTiming(1, { duration: motionDuration(130, reduceMotion) }))
     modeMenuContentTranslateY.value = withDelay(45, withSpring(0, motionTokens.liquid.entrance))
-    if (!reduceTransparency) {
-      modeMenuSheenOpacity.value = withSequence(
-        withTiming(0.58, { duration: motionDuration(90, reduceMotion) }),
-        withDelay(170, withTiming(0, { duration: motionDuration(180, reduceMotion) })),
-      )
-      modeMenuSheenX.value = withTiming(96, { duration: motionDuration(340, reduceMotion) })
-    }
-  }, [modeMenuContentOpacity, modeMenuContentTranslateY, modeMenuOpen, modeMenuOpacity, modeMenuScaleX, modeMenuScaleY, modeMenuSheenOpacity, modeMenuSheenX, modeMenuTranslateY, reduceMotion, reduceTransparency])
+  }, [modeMenuContentOpacity, modeMenuContentTranslateY, modeMenuOpen, modeMenuOpacity, modeMenuScaleX, modeMenuScaleY, modeMenuTranslateY, reduceMotion])
 
   return (
     <SafeAreaView style={[styles.safeArea, surfaceStyle, styles.kaelOrbCustomerSafeArea]} testID={`worker-v5-screen-${screen.id}`}>
@@ -256,19 +238,24 @@ export function WorkerV5KaelOrbScreenSurface({
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Quay lại' : 'Back'}
               accessibilityRole="button"
-              onPress={() => navigateToScreen('2.1-opportunity-inbox')}
+              onPress={onBack ?? (() => navigateToScreen('2.1-opportunity-inbox'))}
               style={({ pressed }) => [styles.kaelOrbCustomerTopControl, pressed ? styles.pressed : null]}
               testID="worker-v5-back"
             >
               <WorkerV5BackArrowIcon />
             </Pressable>
             <View style={styles.kaelOrbCustomerTopSpacer} />
-            <View
+            <GlassSurface
+              backgroundColor="rgba(255,255,255,0.96)"
+              borderColor="rgba(255,255,255,0.98)"
+              material="liquid"
+              mode="light"
               style={[
                 styles.kaelOrbCustomerHeaderActions,
                 modeMenuOpen || sessionMenuOpen ? styles.kaelOrbCustomerHeaderActionsOpen : null,
               ]}
               testID="worker-v5-kael-header-actions"
+              variant="control"
             >
               <Pressable
                 accessibilityLabel={textByLanguage(language, 'Quản lý các phiên Kael', 'Manage Kael conversations')}
@@ -284,45 +271,56 @@ export function WorkerV5KaelOrbScreenSurface({
               >
                 <WorkerV5KaelSessionPlusIcon />
               </Pressable>
-              <AnimatedPressable
-                accessibilityLabel={textByLanguage(
-                  language,
-                  `Chế độ Kael: ${activeMode.label}. Nhấn để đổi chế độ`,
-                  `Kael mode: ${activeMode.label}. Press to switch mode`,
-                )}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: modeMenuOpen }}
-                onPress={toggleModeMenu}
-                style={({ pressed }: PressableStateCallbackType) => [
+              <Animated.View
+                style={[
                   styles.kaelOrbCustomerModeTrigger,
                   modeMenuOpen ? styles.kaelOrbCustomerModeTriggerOpen : null,
                   animatedModeTriggerStyle,
-                  pressed ? styles.pressed : null,
                 ]}
-                testID="worker-v5-kael-mode-toggle"
+                testID="worker-v5-kael-mode-trigger-frame"
               >
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.78}
-                  numberOfLines={1}
-                  style={styles.kaelOrbCustomerModeTriggerText}
-                  testID="worker-v5-kael-active-mode"
+                <Pressable
+                  accessibilityLabel={textByLanguage(
+                    language,
+                    `Chế độ Kael: ${activeMode.label}. Nhấn để đổi chế độ`,
+                    `Kael mode: ${activeMode.label}. Press to switch mode`,
+                  )}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: modeMenuOpen }}
+                  onPress={toggleModeMenu}
+                  style={({ pressed }: PressableStateCallbackType) => [
+                    styles.kaelOrbCustomerModeTriggerPressTarget,
+                    pressed ? (reduceMotion ? styles.kaelOrbCustomerModeTriggerPressedReduced : styles.pressed) : null,
+                  ]}
+                  testID="worker-v5-kael-mode-toggle"
                 >
-                  {activeMode.label}
-                </Text>
-              </AnimatedPressable>
-            </View>
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.78}
+                    numberOfLines={1}
+                    style={styles.kaelOrbCustomerModeTriggerText}
+                    testID="worker-v5-kael-active-mode"
+                  >
+                    {activeMode.label}
+                  </Text>
+                </Pressable>
+              </Animated.View>
+            </GlassSurface>
           </View>
 
           {modeMenuOpen ? (
-            <Animated.View style={[styles.kaelOrbCustomerModeMenu, reduceTransparency && styles.opaqueCard, animatedModeMenuStyle]} testID="worker-v5-kael-mode-menu">
+            <Animated.View
+              style={[
+                styles.kaelOrbCustomerModeMenu,
+                reduceTransparency ? styles.opaqueCard : null,
+                animatedModeMenuStyle,
+              ]}
+              testID="worker-v5-kael-mode-menu"
+            >
               {!reduceTransparency ? (
                 <>
-                  <WorkerV5SourceCardSkin testID="worker-v5-kael-mode-menu-skin" />
-                  <WorkerV5CustomerCaseWideMintAura scope="KaelOrbModeMenu" style={styles.kaelOrbCustomerModeMenuAura} testID="worker-v5-kael-mode-menu-mint-aura" />
-                  <View pointerEvents="none" style={styles.kaelOrbCustomerModeMenuTopLight} testID="worker-v5-kael-mode-menu-top-light" />
-                  <View pointerEvents="none" style={styles.kaelOrbCustomerModeMenuInnerShadow} testID="worker-v5-kael-mode-menu-inner-shadow" />
-                  {!reduceMotion ? <Animated.View pointerEvents="none" style={[styles.kaelOrbCustomerModeMenuSheen, animatedModeMenuSheenStyle]} testID="worker-v5-kael-mode-menu-sheen" /> : null}
+                  <View style={styles.kaelOrbCustomerModeMenuTopLight} testID="worker-v5-kael-mode-menu-top-light" />
+                  <View style={styles.kaelOrbCustomerModeMenuInnerShadow} testID="worker-v5-kael-mode-menu-inner-shadow" />
                 </>
               ) : null}
               <Animated.View style={[styles.kaelOrbCustomerModeMenuOptions, animatedModeMenuContentStyle]} testID="worker-v5-kael-mode-menu-options">
@@ -337,6 +335,7 @@ export function WorkerV5KaelOrbScreenSurface({
                       style={({ pressed }) => [
                         styles.kaelOrbCustomerModeMenuOption,
                         selected ? styles.kaelOrbCustomerModeMenuOptionActive : null,
+                        reduceTransparency ? styles.opaqueCard : null,
                         pressed ? styles.pressed : null,
                       ]}
                       testID={`worker-v5-kael-mode-menu-${item.value}`}

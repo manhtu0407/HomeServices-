@@ -776,8 +776,12 @@ describe('Kael intake eval observation boundary', () => {
       process.cwd(),
       '../../supabase/functions/mobile-api/_shared/services/kael-chat-core.ts',
     ), 'utf8')
+    const support = readFileSync(resolve(
+      process.cwd(),
+      '../../supabase/functions/mobile-api/_shared/services/kael-chat-core-support.ts',
+    ), 'utf8')
 
-    expect(source).toContain('intakeEvalObservationSchema.parse(observation)')
+    expect(support).toContain('intakeEvalObservationSchema.parse(observation)')
     expect(source).toContain('...intakeObservationMetadata(pipeline.intakeObservation)')
     expect(source).toContain('resolveIntakeFactCoverage({')
     expect(source).toContain('electricalPlaybookEnabled,')

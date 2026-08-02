@@ -1,53 +1,69 @@
+import { useMemo } from 'react'
 import type { StyleProp, TextStyle } from 'react-native'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelChatResponse } from '@/lib/api-types'
 
 import { AgenticChatEstimateResponsePanel } from './agentic-decision-surfaces'
-import { agenticEstimateSupportingPhase } from './agentic-estimate-display-model'
-import { customerV21ServiceCopy } from '../ui/copy'
+import {
+  agenticEstimateHeaderTitle,
+  agenticEstimateSupportingPhase,
+} from './agentic-estimate-display-model'
 
 type AgenticEstimate = NonNullable<KaelChatResponse['session']['estimate']>
 
 export function AgenticChatEstimateResponse({
+  adjustmentOpen,
+  adjustmentText,
   canConfirm,
   confirmed,
   confirming,
+  diagnosisScope,
+  evidencePreviews,
   estimate,
   formatPriceRange,
   language,
+  onAdjust,
+  onAdjustmentChange,
   onConfirm,
   onReject,
   onReasonChange,
+  onSubmitAdjustment,
   onSubmitRejectReason,
-  problemLabelForEstimate,
   rejected,
   rejectReason,
   sourceExplanationForLanguage,
   priceExplanationForEstimate,
+  submittingAdjustment,
   submittingRejectReason,
   textInputStyle,
 }: {
+  adjustmentOpen: boolean
+  adjustmentText: string
   canConfirm: boolean
   confirmed: boolean
   confirming: boolean
+  diagnosisScope?: Record<string, unknown> | null
+  evidencePreviews: NonNullable<KaelChatResponse['session']['evidence_previews']>
   estimate: AgenticEstimate
   formatPriceRange: (min: number, max: number, language: AppLanguage) => string
   language: AppLanguage
+  onAdjust: () => void
+  onAdjustmentChange: (value: string) => void
   onConfirm: () => void
   onReject: () => void
   onReasonChange: (value: string) => void
+  onSubmitAdjustment: () => void
   onSubmitRejectReason: () => void
   priceExplanationForEstimate: (estimate: AgenticEstimate, language: AppLanguage) => string
-  problemLabelForEstimate: (estimate: AgenticEstimate, language: AppLanguage) => string
   rejected: boolean
   rejectReason: string
   sourceExplanationForLanguage: (language: AppLanguage) => string
+  submittingAdjustment: boolean
   submittingRejectReason: boolean
   textInputStyle: StyleProp<TextStyle>
 }) {
-  const serviceLabel = customerV21ServiceCopy[language][estimate.service_type].label
-  const problem = problemLabelForEstimate(estimate, language)
+  const serviceLabel = agenticEstimateHeaderTitle(estimate, language)
   const needsInspection = estimate.needs_inspection === true
   const needsMoreInfo = needsInspection
   const confirmLabel = confirmed
@@ -59,7 +75,9 @@ export function AgenticChatEstimateResponse({
     ? (language === 'vi' ? 'Đang trao đổi' : 'Discussing')
     : (language === 'vi' ? 'Từ chối' : 'Decline')
   const canSubmitRejectReason = rejectReason.trim().length > 0 &&
-    !submittingRejectReason && !confirming
+    !submittingRejectReason && !submittingAdjustment && !confirming
+  const canSubmitAdjustment = adjustmentText.trim().length > 0 &&
+    !submittingAdjustment && !submittingRejectReason && !confirming
   const statusLabel = confirmed
     ? (language === 'vi' ? 'Công việc đã được mở' : 'Work request opened')
     : needsInspection
@@ -91,7 +109,11 @@ export function AgenticChatEstimateResponse({
   const sourceExplanation = [sourceExplanationForLanguage(language), priceSourceLabel]
     .filter(Boolean)
     .join(' ')
-  const supportingPhase = agenticEstimateSupportingPhase(estimate, language)
+  // Keep the receipt identity stable while the user opens decision controls.
+  const supportingPhase = useMemo(
+    () => agenticEstimateSupportingPhase(estimate, language, diagnosisScope, evidencePreviews),
+    [diagnosisScope, estimate, evidencePreviews, language],
+  )
   const price = formatPriceRange(estimate.price_min, estimate.price_max, language)
   const moreInfoText = needsInspection && estimate.needs_inspection_reason
     ? estimate.needs_inspection_reason
@@ -101,8 +123,11 @@ export function AgenticChatEstimateResponse({
 
   return (
     <AgenticChatEstimateResponsePanel
+      adjustmentOpen={adjustmentOpen}
+      adjustmentText={adjustmentText}
       advisory={estimate.advisory ?? undefined}
       canConfirm={canConfirm}
+      canSubmitAdjustment={canSubmitAdjustment}
       canSubmitRejectReason={canSubmitRejectReason}
       confirmed={confirmed}
       confirming={confirming}
@@ -111,19 +136,22 @@ export function AgenticChatEstimateResponse({
       language={language}
       moreInfoText={moreInfoText}
       needsMoreInfo={needsMoreInfo}
+      onAdjust={onAdjust}
+      onAdjustmentChange={onAdjustmentChange}
       onConfirm={onConfirm}
       onReasonChange={onReasonChange}
       onReject={onReject}
+      onSubmitAdjustment={onSubmitAdjustment}
       onSubmitRejectReason={onSubmitRejectReason}
       price={price}
       priceExplanation={priceExplanation}
-      problem={problem}
       rejected={rejected}
       rejectLabel={rejectLabel}
       rejectReason={rejectReason}
       serviceLabel={serviceLabel}
       sourceExplanation={sourceExplanation}
       statusLabel={statusLabel}
+      submittingAdjustment={submittingAdjustment}
       submittingRejectReason={submittingRejectReason}
       supportingPhase={supportingPhase}
       textInputStyle={textInputStyle}

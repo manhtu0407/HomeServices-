@@ -50,7 +50,8 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
   intent_classification: config("intent_classification", deepseek(), anthropic(), 0.001, 4_000, true, 50, {
     modelFallback: deepseek("deepseek-v4-pro"),
   }),
-  vision_analysis: config("vision_analysis", anthropic(), undefined, 0.015, 4_500, true, 320, {
+  vision_analysis: config("vision_analysis", anthropic(), undefined, 0.015, 10_000, true, 1_300, {
+    modelFallback: anthropic("claude-haiku-4-5-20251001"),
     escalation: {
       route: anthropic("claude-opus-4-8"),
       trigger: LOW_CONFIDENCE_ESCALATION,
@@ -100,7 +101,7 @@ export function maxTokensForPurpose(
 ): number {
   const flags = readKaelOptimizationFlags(getEnv);
   if (!flags.KAEL_OPT_CAP_OUTPUT_ENABLED) return legacyMaxTokens;
-  return KAEL_ROUTING_CONFIG[purpose].maxTokens;
+  return Math.min(legacyMaxTokens, KAEL_ROUTING_CONFIG[purpose].maxTokens);
 }
 
 function config(

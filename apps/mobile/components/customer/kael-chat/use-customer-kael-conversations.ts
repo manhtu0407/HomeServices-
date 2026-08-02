@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Dispatch, SetStateAction } from 'react'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type {
@@ -10,10 +9,11 @@ import type {
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
+import type { KaelResponseStreamEvent } from '@/lib/kael-response-stream'
 import { customerKaelConversationService } from '@/lib/services'
 
 import {
-  readCustomerKaelSessionCatalog,
+  readCustomerKaelSessionCatalogState,
   writeCustomerKaelSessionCatalog,
 } from './customer-kael-session-catalog-cache'
 import {
@@ -27,24 +27,16 @@ import {
   isAmbiguousConversationTurnFailure,
   recoverCommittedConversationTurn,
 } from './customer-kael-conversation-requests'
-
-const catalogMemory = new Map<string, CustomerKaelConversationSession[]>()
-const responseMemory = new Map<string, CustomerKaelConversationResponse>()
-const activeResponseByCatalogMemory = new Map<string, CustomerKaelConversationResponse | null>()
-const archivedSessionIdsByCatalogMemory = new Map<string, Set<string>>()
-const CUSTOMER_SESSION_PREFETCH_LIMIT = 6
-
-type CustomerKaelCatalogState = {
-  activeResponse: CustomerKaelConversationResponse | null
-  catalogKey: string | null
-  creatingSession: boolean
-  openingSessionId: string | null
-  pendingSessionIds: string[]
-  sending: boolean
-  sessions: CustomerKaelConversationSession[]
-  sessionsError: string | null
-  sessionsLoading: boolean
-}
+import {
+  activeResponseByCatalogMemory,
+  archivedSessionIdsByCatalogMemory,
+  catalogMemory,
+  createCatalogState,
+  CUSTOMER_SESSION_PREFETCH_LIMIT,
+  patchCatalogState,
+  responseMemory,
+  setCatalogStateField,
+} from './customer-kael-conversation-catalog-state'
 export function useCustomerKaelConversations(
   mode: CustomerKaelConversationMode,
   language: AppLanguage,
@@ -90,6 +82,10 @@ export function useCustomerKaelConversations(
   useLayoutEffect(() => {
     activeKeyRef.current = catalogKey
     activeModeRef.current = mode
+    return () => {
+      // Ignore async catalog work once this conversation owner is no longer mounted.
+      if (activeKeyRef.current === catalogKey) activeKeyRef.current = null
+    }
   }, [catalogKey, mode])
 
   const matchesCatalogCustomer = useCallback((candidateCustomerId: string) => {
@@ -122,7 +118,8 @@ export function useCustomerKaelConversations(
       setCatalogStateField(setCatalogState, catalogKey, activeResponseByCatalogRef.current, 'sessions', scoped)
     }
     if (!localVisualAuditSession) {
-      void writeCustomerKaelSessionCatalog(customerId, mode, scoped)
+      const activeSessionId = activeResponseByCatalogRef.current.get(catalogKey)?.session.id ?? null
+      void writeCustomerKaelSessionCatalog(customerId, mode, scoped, activeSessionId)
     }
     return scoped
   }, [archiveTombstones, catalogKey, customerId, localVisualAuditSession, mode])
@@ -171,7 +168,8 @@ export function useCustomerKaelConversations(
         )))
         catalogMemory.set(catalogKey, scoped)
         if (!localVisualAuditSession) {
-          void writeCustomerKaelSessionCatalog(customerId, mode, scoped)
+          const activeSessionId = activeResponseByCatalogRef.current.get(catalogKey)?.session.id ?? null
+          void writeCustomerKaelSessionCatalog(customerId, mode, scoped, activeSessionId)
         }
         if (activeKeyRef.current === catalogKey) {
           setCatalogStateField(setCatalogState, catalogKey, activeResponseByCatalogRef.current, 'sessions', scoped)
@@ -211,9 +209,9 @@ export function useCustomerKaelConversations(
       return
     }
     let cancelled = false
-    void readCustomerKaelSessionCatalog(customerId, mode).then((cached) => {
+    void readCustomerKaelSessionCatalogState(customerId, mode).then(async (cached) => {
       if (cancelled || !cached || activeKeyRef.current !== catalogKey) return
-      const scoped = sortSessions(cached.filter((item) => (
+      const scoped = sortSessions(cached.sessions.filter((item) => (
         !archiveTombstones.has(item.id)
         && item.customer_id === customerId
         && item.mode === mode
@@ -223,13 +221,38 @@ export function useCustomerKaelConversations(
         sessions: scoped,
         sessionsLoading: false,
       })
+      if (!cached.activeSessionId || activeResponseByCatalogRef.current.get(catalogKey)) return
+      const activeSummary = scoped.find((session) => session.id === cached.activeSessionId)
+      if (!activeSummary) return
+      if (activeSummary.case_session_id) {
+        activateResponse({ session: activeSummary, turns: [] })
+        return
+      }
+      const loaded = await fetchCustomerConversation(activeSummary.id)
+      if (
+        cancelled
+        || !loaded?.success
+        || activeKeyRef.current !== catalogKey
+        || !matchesCatalogCustomer(loaded.data.session.customer_id)
+        || loaded.data.session.mode !== mode
+      ) return
+      activateResponse(loaded.data)
     }).finally(() => {
       if (!cancelled) void refreshSessions()
     })
     return () => {
       cancelled = true
     }
-  }, [archiveTombstones, catalogKey, customerId, localVisualAuditSession, mode, refreshSessions])
+  }, [
+    activateResponse,
+    archiveTombstones,
+    catalogKey,
+    customerId,
+    localVisualAuditSession,
+    matchesCatalogCustomer,
+    mode,
+    refreshSessions,
+  ])
 
   useEffect(() => {
     if (!customerId || !catalogKey) return
@@ -256,6 +279,14 @@ export function useCustomerKaelConversations(
     operationLockRef.current = null
     sessionCreateRequestRef.current = null
     if (catalogKey) activeResponseByCatalogRef.current.set(catalogKey, null)
+    if (customerId && catalogKey && !localVisualAuditSession) {
+      void writeCustomerKaelSessionCatalog(
+        customerId,
+        mode,
+        catalogMemory.get(catalogKey) ?? [],
+        null,
+      )
+    }
     patchCatalogState(setCatalogState, catalogKey, activeResponseByCatalogRef.current, {
       activeResponse: null,
       creatingSession: false,
@@ -263,7 +294,7 @@ export function useCustomerKaelConversations(
       sending: false,
       sessionsError: null,
     })
-  }, [catalogKey])
+  }, [catalogKey, customerId, localVisualAuditSession, mode])
 
   const startNewSession = useCallback((clientRequestId = generateClientRequestId()) => {
     if (!customerId || !catalogKey) return Promise.resolve(null)
@@ -420,6 +451,7 @@ export function useCustomerKaelConversations(
     options?: {
       onResponseCommitted?: () => void
       onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
+      onResponseEvent?: (event: KaelResponseStreamEvent) => void
       revealAfter?: Promise<void>
     },
   ) => {
@@ -464,6 +496,14 @@ export function useCustomerKaelConversations(
               activeKeyRef.current !== catalogKey
             ) return
             options?.onResponseDelta?.(event)
+          },
+          onResponseEvent: (event) => {
+            if (
+              operationRequestRef.current !== requestId ||
+              activeModeRef.current !== mode ||
+              activeKeyRef.current !== catalogKey
+            ) return
+            options?.onResponseEvent?.(event)
           },
         },
       )
@@ -754,62 +794,4 @@ export function useCustomerKaelConversations(
     syncLinkedJobSession,
     visibleResponse,
   ])
-}
-
-function createCatalogState(
-  catalogKey: string | null,
-  activeResponseByCatalog: Map<string, CustomerKaelConversationResponse | null>,
-): CustomerKaelCatalogState {
-  return {
-    activeResponse: catalogKey ? activeResponseByCatalog.get(catalogKey) ?? null : null,
-    catalogKey,
-    creatingSession: false,
-    openingSessionId: null,
-    pendingSessionIds: [],
-    sending: false,
-    sessions: catalogKey ? catalogMemory.get(catalogKey) ?? [] : [],
-    sessionsError: null,
-    sessionsLoading: Boolean(catalogKey && !catalogMemory.has(catalogKey)),
-  }
-}
-
-function catalogStateForKey(
-  current: CustomerKaelCatalogState,
-  catalogKey: string | null,
-  activeResponseByCatalog: Map<string, CustomerKaelConversationResponse | null>,
-) {
-  return current.catalogKey === catalogKey
-    ? current
-    : createCatalogState(catalogKey, activeResponseByCatalog)
-}
-
-function patchCatalogState(
-  setState: Dispatch<SetStateAction<CustomerKaelCatalogState>>,
-  catalogKey: string | null,
-  activeResponseByCatalog: Map<string, CustomerKaelConversationResponse | null>,
-  patch: Partial<Omit<CustomerKaelCatalogState, 'catalogKey'>>,
-) {
-  setState((current) => ({
-    ...catalogStateForKey(current, catalogKey, activeResponseByCatalog),
-    ...patch,
-    catalogKey,
-  }))
-}
-
-function setCatalogStateField<
-  Field extends Exclude<keyof CustomerKaelCatalogState, 'catalogKey'>,
->(
-  setState: Dispatch<SetStateAction<CustomerKaelCatalogState>>,
-  catalogKey: string | null,
-  activeResponseByCatalog: Map<string, CustomerKaelConversationResponse | null>,
-  field: Field,
-  next: SetStateAction<CustomerKaelCatalogState[Field]>,
-) {
-  setState((current) => {
-    const scoped = catalogStateForKey(current, catalogKey, activeResponseByCatalog)
-    const value = typeof next === 'function'
-      ? (next as (previous: CustomerKaelCatalogState[Field]) => CustomerKaelCatalogState[Field])(scoped[field])
-      : next
-    return { ...scoped, [field]: value } as CustomerKaelCatalogState
-  })
 }

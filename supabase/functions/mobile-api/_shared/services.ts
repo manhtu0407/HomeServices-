@@ -14,6 +14,7 @@ import {
   getWorkerKaelMemory,
   deleteMyKaelMemory,
   updateMyKaelMemory,
+  updateWorkerKaelMemoryPreference,
 } from "./services/kael-memory.service.ts";
 import {
   registerWorker,
@@ -229,6 +230,7 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
     getWorkerKaelMemory,
     deleteMyKaelMemory,
     updateMyKaelMemory,
+    updateWorkerKaelMemoryPreference,
     listMyPendingDecisions,
     listMyThreads,
     getWorkerProfile,

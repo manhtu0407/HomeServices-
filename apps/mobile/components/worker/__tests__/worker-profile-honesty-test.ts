@@ -1,8 +1,7 @@
 import { render, screen } from '@testing-library/react-native'
 import { createElement } from 'react'
-import type { EarningsResponse, WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
+import type { WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
-import { workerV5PayoutRuleRows } from '../profile/bank-tax-model'
 import { WorkerV5RecentFeedbackList } from '../profile/reviews-surfaces'
 import { workerV5VerificationChecks } from '../profile/verification-model'
 
@@ -33,26 +32,6 @@ const approvedProfile: WorkerProfileResponse = {
   has_selfie: true,
 }
 
-const earnings: EarningsResponse = {
-  available_balance: 450_000,
-  current_commission_level: 1,
-  current_commission_rate_bps: 1500,
-  worker_id: 'worker-1',
-  total_jobs_paid: 2,
-  gross_earnings: 500_000,
-  platform_fee_total: 50_000,
-  net_earnings: 450_000,
-  cash_commission_collected_total: 0,
-  cash_commission_due_total: 0,
-  pending_payment_count: 0,
-  pending_payment_amount: 0,
-  on_hold_amount: 0,
-  recent_transactions: [],
-  daily_earnings: [],
-  from_date: '2026-07-01',
-  to_date: '2026-07-14',
-}
-
 describe('worker profile data honesty', () => {
   it('does not infer certificates, insurance, or identity matching from unrelated profile fields', () => {
     const checks = workerV5VerificationChecks(approvedProfile, 'vi')
@@ -60,16 +39,6 @@ describe('worker profile data honesty', () => {
 
     expect(visible).not.toMatch(/Chứng chỉ nghề|Bảo hiểm trách nhiệm|khớp tên pháp lý/i)
     expect(visible).toMatch(/Dịch vụ đăng ký|Trạng thái xét duyệt/i)
-  })
-
-  it('labels recorded earnings and unavailable payout/document rails honestly', () => {
-    const rows = workerV5PayoutRuleRows(earnings, 'vi')
-    const visible = rows.map((row) => `${row.title} ${row.status} ${row.meta}`).join(' ')
-
-    expect(visible).toMatch(/Số dư đã ghi sổ/i)
-    expect(visible).toMatch(/Chuyển tiền chưa khả dụng/i)
-    expect(visible).toMatch(/Chứng từ chưa khả dụng/i)
-    expect(visible).not.toMatch(/Số dư có thể rút|Có thể rút/i)
   })
 
   it('renders the synced-review fallback in correct accented Vietnamese', () => {

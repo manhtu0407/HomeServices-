@@ -219,6 +219,8 @@ export function useCustomerKaelSessionCatalog({
     chatUi.setDraft('')
     chatUi.setVoiceTranscript('')
     chatUi.setUploadingMedia(false)
+    chatUi.setAgenticAdjustmentOpen(false)
+    chatUi.setAgenticAdjustmentText('')
     chatUi.setAgenticRejectOpen(false)
     chatUi.setAgenticRejectReason('')
     chatUi.setAgenticEvidenceRejectOpen(false)

@@ -9,9 +9,6 @@ export const styles = StyleSheet.create({
   iconButtonIcon: {
     flexShrink: 0,
   },
-  iconTileMintAura: {
-    opacity: 0.92,
-  },
   opaqueCard: {
     backgroundColor: color.mint.white,
   },
@@ -33,57 +30,6 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 20,
-  },
-  utilityIcon: {
-    height: 42,
-    width: 42,
-  },
-  bankCard: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.73)',
-    borderColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 21,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 76,
-    overflow: 'hidden',
-    padding: 12,
-    position: 'relative',
-    ...shadow.soft,
-  },
-  bankIconTile: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.86)',
-    borderColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 52,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-    width: 52,
-  },
-  bankCardLogoImage: {
-    height: 28,
-    width: 44,
-  },
-  opportunityTextColumn: {
-    flex: 1,
-    minWidth: 0,
-  },
-  opportunityTitle: {
-    color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
-  },
-  opportunityMeta: {
-    color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
-    marginTop: 2,
   },
   navButton: {
     alignItems: 'center',

@@ -84,6 +84,9 @@ const ANTHROPIC_ADAPTER: ProviderAdapter = {
       body: {
         model: request.model,
         max_tokens: request.maxTokens ?? 1024,
+        ...(request.effort
+          ? { output_config: { effort: request.effort } }
+          : {}),
         ...(anthropicRejectsSamplingParameters(request.model)
           ? {}
           : { temperature: request.temperature ?? 0.7 }),

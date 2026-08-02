@@ -23,6 +23,14 @@ export type AddressAccessView = {
 export type KaelEstimateAnalysisReceipt = {
   schema_version: 'analysis_receipt.v1'
   evidence: {
+    analysis_status?: 'analyzed' | 'not_provided' | 'unavailable'
+    findings?: {
+      confidence: 'low' | 'medium' | 'high'
+      evidence_index: number
+      evidence_kind: 'photo' | 'video_frame'
+      observation: string
+      possible_meaning: string | null
+    }[]
     photo_count: number
     video_frame_count: number
     voice_transcript_count: number
@@ -32,6 +40,12 @@ export type KaelEstimateAnalysisReceipt = {
     accepted_source_count: number | null
     high_trust_source_count: number | null
     quorum_met: boolean | null
+  }
+  problem?: {
+    remaining_uncertainty: string | null
+    recommended_scope: string | null
+    severity_indicators: string[]
+    summary: string
   }
 }
 
@@ -202,6 +216,11 @@ export type KaelChatSession = {
   status: KaelChatStatus
   case_phase: KaelCaseWorkPhase
   diagnosis_scope: Record<string, unknown> | null
+  evidence_previews?: {
+    evidence_index: number
+    evidence_kind: 'photo' | 'video_frame'
+    url: string
+  }[]
   scheduled_at: string | null
   estimate: KaelEstimate | null
   started_at: string

@@ -3,9 +3,13 @@ import { inferLocalDealDraftFromKael } from '@nestscout/shared'
 import { useEffect, useRef, type MutableRefObject } from 'react'
 
 import type { AppLanguage } from '@/lib/app-language'
-import type { ApiResult } from '@/lib/api'
-import type { KaelChatResponse } from '@/lib/api-types'
 import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
+import {
+  appendLegacyKaelResponseDelta,
+  initialKaelResponseStreamState,
+  kaelResponseStreamReducer,
+  type KaelResponseStreamEvent,
+} from '@/lib/kael-response-stream'
 import {
   clearStableClientRequestId,
   shouldRetainClientRequestId,
@@ -29,6 +33,7 @@ import { revealVerifiedResponse } from '@/lib/verified-response-reveal'
 import {
   formatAssistantAnswer,
   isLikelyKaelIntakeRequest,
+  latestKaelReply,
   localizeKaelRequestFailure,
   makeAssistantTurnId,
   shouldFallbackCaseAssistantToJobChat,
@@ -39,22 +44,13 @@ import type { useCustomerKaelChatUiState } from './use-customer-kael-chat-ui-sta
 import type { useCustomerKaelConversationState } from './use-customer-kael-conversation-state'
 import type { useCustomerKaelConversations } from './use-customer-kael-conversations'
 import type { useKaelProcessLineController } from './use-kael-process-line-controller'
+import { reconcileCommittedKaelTurn } from './customer-kael-conversation-requests'
 
 type ChatUi = ReturnType<typeof useCustomerKaelChatUiState>
 type Conversation = ReturnType<typeof useCustomerKaelConversationState>
 type Conversations = ReturnType<typeof useCustomerKaelConversations>
 type JobIncidentThread = ReturnType<typeof useJobChatThread>
 type ProcessController = ReturnType<typeof useKaelProcessLineController>
-
-const RECONCILABLE_KAEL_STREAM_FAILURES = new Set([
-  'STREAM_BODY_UNREADABLE',
-  'STREAM_ENDED',
-  'STREAM_INVALID_ENCODING',
-  'STREAM_NETWORK',
-  'STREAM_RESPONSE_TOO_LARGE',
-  'STREAM_RESULT_INVALID',
-  'STREAM_TIMEOUT',
-])
 
 type PendingCustomerKaelCreate = {
   fingerprint: string
@@ -122,6 +118,8 @@ export function useCustomerKaelMessageActions({
   } = conversation
   const {
     draft,
+    setAgenticAdjustmentOpen,
+    setAgenticAdjustmentText,
     setAgenticRejectOpen,
     setAgenticRejectReason,
     setDraft,
@@ -149,24 +147,32 @@ export function useCustomerKaelMessageActions({
       if (!isCurrent()) return
       ownedStreamingTurnId = event.turnId
       setStreamingReply((current) => {
-        const text = current?.turnId === event.turnId
-          ? `${current.text}${event.delta}`
-          : event.delta
-        return {
-          text: text.slice(0, 12_000),
-          turnId: event.turnId,
-        }
+        return appendLegacyKaelResponseDelta(current, event)
       })
     }
     const appendStreamingReply = (event: KaelStreamResponseDeltaEvent) => {
       appendVerifiedReply(event, () => kaelRequestGuard.isCurrent(requestToken))
     }
-    const appendLocalVerifiedReply = (event: KaelStreamResponseDeltaEvent) => {
-      appendVerifiedReply(event, isSendOperationCurrent)
+    const applyResponseEvent = (
+      event: KaelResponseStreamEvent,
+      isCurrent: () => boolean,
+    ) => {
+      if (!isCurrent()) return
+      if (event.type === 'response.started') ownedStreamingTurnId = event.responseId
+      setStreamingReply((current) => kaelResponseStreamReducer(
+        current ?? initialKaelResponseStreamState,
+        event,
+      ))
+    }
+    const applyStreamingResponseEvent = (event: KaelResponseStreamEvent) => {
+      applyResponseEvent(event, () => kaelRequestGuard.isCurrent(requestToken))
+    }
+    const applyLocalResponseEvent = (event: KaelResponseStreamEvent) => {
+      applyResponseEvent(event, isSendOperationCurrent)
     }
     const clearOwnedStreamingReply = (turnId: string) => {
       setStreamingReply((current) => {
-        return current?.turnId === turnId ? null : current
+        return current?.responseId === turnId ? null : current
       })
     }
     const clearCurrentOwnedStreamingReply = () => {
@@ -188,7 +194,7 @@ export function useCustomerKaelMessageActions({
       try {
         const revealed = await revealVerifiedResponse({
           isCurrent: isSendOperationCurrent,
-          onDelta: appendLocalVerifiedReply,
+          onResponseEvent: applyLocalResponseEvent,
           text: kaelText,
           turnId: kaelTurnId,
         })
@@ -248,6 +254,7 @@ export function useCustomerKaelMessageActions({
           const result = await conversations.sendConversationTurn(message, {
             onResponseCommitted: clearCurrentOwnedStreamingReply,
             onResponseDelta: appendStreamingReply,
+            onResponseEvent: applyStreamingResponseEvent,
             revealAfter: processDone,
           })
           if (!kaelRequestGuard.isCurrent(requestToken)) return
@@ -296,7 +303,10 @@ export function useCustomerKaelMessageActions({
                 message,
                 photo_urls: [],
               },
-              { onResponseDelta: appendStreamingReply },
+              {
+                onResponseDelta: appendStreamingReply,
+                onResponseEvent: applyStreamingResponseEvent,
+              },
             )
             const result = await reconcileCommittedKaelTurn(activeAgenticChat, streamed)
             if (!kaelRequestGuard.isCurrent(requestToken)) return
@@ -444,6 +454,7 @@ export function useCustomerKaelMessageActions({
           ? await conversations.sendConversationTurn(message, {
               onResponseCommitted: clearCurrentOwnedStreamingReply,
               onResponseDelta: appendStreamingReply,
+              onResponseEvent: applyStreamingResponseEvent,
               revealAfter: processDone,
             })
           : null
@@ -655,7 +666,10 @@ export function useCustomerKaelMessageActions({
             message: outgoingMessage,
             photo_urls: photoUrls,
           },
-          { onResponseDelta: appendStreamingReply },
+          {
+            onResponseDelta: appendStreamingReply,
+            onResponseEvent: applyStreamingResponseEvent,
+          },
         ).then((streamed) => reconcileCommittedKaelTurn(chat, streamed))
       : await kaelChatService.create({
           client_request_id: stableClientRequestId(
@@ -681,7 +695,7 @@ export function useCustomerKaelMessageActions({
         if (initialReply) {
           const revealed = await revealVerifiedResponse({
             isCurrent: () => kaelRequestGuard.isCurrent(requestToken),
-            onDelta: appendStreamingReply,
+            onResponseEvent: applyStreamingResponseEvent,
             text: initialReply.text,
             turnId: initialReply.turnId,
           })
@@ -696,6 +710,8 @@ export function useCustomerKaelMessageActions({
       pendingPreAgenticIntakeRef.current = null
       commitSubmittedComposer()
       setComposerMediaDrafts([])
+      setAgenticAdjustmentOpen(false)
+      setAgenticAdjustmentText('')
       setAgenticRejectOpen(false)
       setAgenticRejectReason('')
       if (conversations) void conversations.syncLinkedCaseSession(result.data.session.id)
@@ -771,36 +787,4 @@ function preAgenticConfirmation(language: AppLanguage, draft: LocalDealDraft | n
     return `Kael hiểu yêu cầu là ${detail || 'hạng mục bạn vừa mô tả'}. Đúng không? Nhắn “Xác nhận” để Kael bắt đầu phân tích.`
   }
   return `Kael understands the request as ${detail || 'the work you described'}. Is that correct? Reply “Confirm” for Kael to begin analysis.`
-}
-
-function latestKaelReply(response: KaelChatResponse) {
-  for (let index = response.turns.length - 1; index >= 0; index -= 1) {
-    const turn = response.turns[index]
-    if (turn.role !== 'kael' || typeof turn.text_content !== 'string') continue
-    const text = turn.text_content.trim()
-    if (!text) continue
-    return {
-      text,
-      turnId: turn.id,
-    }
-  }
-  return null
-}
-
-async function reconcileCommittedKaelTurn(
-  previous: KaelChatResponse,
-  streamed: ApiResult<KaelChatResponse>,
-): Promise<ApiResult<KaelChatResponse>> {
-  if (streamed.success || !RECONCILABLE_KAEL_STREAM_FAILURES.has(streamed.code)) return streamed
-  try {
-    const recovered = await kaelChatService.get(previous.session.id)
-    if (!recovered.success) return streamed
-    const previousTurnIndex = previous.session.total_turns
-    const newTurns = recovered.data.turns.filter((turn) => turn.turn_index > previousTurnIndex)
-    const completed = newTurns.some((turn) => turn.role === 'customer') &&
-      newTurns.some((turn) => turn.role === 'kael')
-    return completed ? recovered : streamed
-  } catch {
-    return streamed
-  }
 }

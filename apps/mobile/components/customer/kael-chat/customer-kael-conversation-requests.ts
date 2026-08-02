@@ -1,7 +1,18 @@
-import { customerKaelConversationService } from '@/lib/services'
+import type { ApiResult } from '@/lib/api'
+import type { KaelChatResponse } from '@/lib/api-types'
+import { customerKaelConversationService, kaelChatService } from '@/lib/services'
 
 const responseLoadMemory = new Map<string, Promise<CustomerConversationFetchResult | null>>()
 const COMMITTED_TURN_RECOVERY_DELAYS_MS = [0, 400, 900] as const
+const RECONCILABLE_KAEL_STREAM_FAILURES = new Set([
+  'STREAM_BODY_UNREADABLE',
+  'STREAM_ENDED',
+  'STREAM_INVALID_ENCODING',
+  'STREAM_NETWORK',
+  'STREAM_RESPONSE_TOO_LARGE',
+  'STREAM_RESULT_INVALID',
+  'STREAM_TIMEOUT',
+])
 
 type CustomerConversationFetchResult = Awaited<ReturnType<typeof customerKaelConversationService.get>>
 
@@ -46,4 +57,22 @@ export function fetchCustomerConversation(sessionId: string) {
     })
   responseLoadMemory.set(sessionId, request)
   return request
+}
+
+export async function reconcileCommittedKaelTurn(
+  previous: KaelChatResponse,
+  streamed: ApiResult<KaelChatResponse>,
+): Promise<ApiResult<KaelChatResponse>> {
+  if (streamed.success || !RECONCILABLE_KAEL_STREAM_FAILURES.has(streamed.code)) return streamed
+  try {
+    const recovered = await kaelChatService.get(previous.session.id)
+    if (!recovered.success) return streamed
+    const previousTurnIndex = previous.session.total_turns
+    const newTurns = recovered.data.turns.filter((turn) => turn.turn_index > previousTurnIndex)
+    const completed = newTurns.some((turn) => turn.role === 'customer') &&
+      newTurns.some((turn) => turn.role === 'kael')
+    return completed ? recovered : streamed
+  } catch {
+    return streamed
+  }
 }

@@ -32,7 +32,7 @@ export function PasswordRecoveryScreen(props: {
           keyboardType="email-address"
           label={copy.emailLabel}
           onChangeText={props.onIdentifierChange}
-          placeholder="email@example.com"
+          placeholder={copy.emailPlaceholder}
           testID="auth-recovery-identifier-input"
           textContentType="emailAddress"
           value={props.identifier}
@@ -149,13 +149,14 @@ const RECOVERY_SCREEN_COPY = {
     confirmPasswordLabel: 'Xác nhận mật khẩu',
     confirmPasswordPlaceholder: 'Nhập lại mật khẩu mới',
     connectionFailed: 'Không thể kết nối. Vui lòng thử lại.',
-    emailLabel: 'Email đã đăng ký',
+    emailLabel: 'Thư điện tử đã đăng ký',
+    emailPlaceholder: 'ten@vidu.vn',
     login: 'Đăng nhập',
     newPasswordLabel: 'Mật khẩu mới',
     newPasswordPlaceholder: 'Ít nhất 8 ký tự',
     passwordMismatch: 'Mật khẩu xác nhận chưa trùng khớp.',
     passwordShort: 'Mật khẩu mới cần ít nhất 8 ký tự.',
-    recoveryLead: 'Nhập email đã đăng ký. NestScout sẽ gửi một liên kết đặt lại mật khẩu.',
+    recoveryLead: 'Nhập thư điện tử đã đăng ký. NestScout sẽ gửi một liên kết đặt lại mật khẩu.',
     recoveryTitle: 'Lấy lại\nmật khẩu.',
     recoveryTopbar: 'Khôi phục mật khẩu',
     resetLead: 'Chọn mật khẩu mới cho tài khoản NestScout của bạn.',
@@ -174,6 +175,7 @@ const RECOVERY_SCREEN_COPY = {
     confirmPasswordPlaceholder: 'Enter the new password again',
     connectionFailed: 'Unable to connect. Please try again.',
     emailLabel: 'Registered email',
+    emailPlaceholder: 'email@example.com',
     login: 'Sign in',
     newPasswordLabel: 'New password',
     newPasswordPlaceholder: 'At least 8 characters',

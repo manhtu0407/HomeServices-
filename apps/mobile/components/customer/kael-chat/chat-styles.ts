@@ -28,6 +28,60 @@ export const customerV21ChatStyles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  kaelResponse: {
+    alignSelf: 'stretch',
+    maxWidth: '94%',
+    paddingVertical: 5,
+  },
+  kaelResponseBlock: {
+    width: '100%',
+  },
+  kaelResponseCallout: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  kaelResponseHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.12,
+    lineHeight: 22,
+  },
+  kaelResponseLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    lineHeight: 17,
+    marginBottom: 6,
+    marginLeft: 15,
+  },
+  kaelResponseList: {
+    gap: 7,
+  },
+  kaelResponseListMarker: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 21,
+    minWidth: 20,
+  },
+  kaelResponseListRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+  },
+  kaelResponseListText: {
+    flex: 1,
+    fontSize: 14.5,
+    lineHeight: 21,
+  },
+  kaelResponseRail: {
+    borderLeftWidth: 1.5,
+    gap: 11,
+    paddingLeft: 14,
+  },
+  kaelResponseText: {
+    fontSize: 14.5,
+    lineHeight: 22,
+  },
   chatMediaCameraIcon: {
     height: 20,
     width: 20,
@@ -127,9 +181,13 @@ export const customerV21ChatStyles = StyleSheet.create({
     width: 48,
   },
   chatHeaderModeLabel: {
-    fontSize: 14,
+    alignSelf: 'stretch',
+    fontSize: 15,
     fontWeight: '700',
-    lineHeight: 18,
+    includeFontPadding: false,
+    lineHeight: 20,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
   chatHeaderModeTrigger: {
     ...customerV21WebFocusRing,
@@ -139,10 +197,12 @@ export const customerV21ChatStyles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     paddingHorizontal: 14,
-    width: 112,
+    width: 120,
   },
   chatHeaderModeTriggerOpen: {
-    backgroundColor: 'rgba(224,249,243,0.72)',
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderColor: 'rgba(255,255,255,0.98)',
+    borderWidth: 1,
   },
   chatHeaderNewConversation: {
     ...customerV21WebFocusRing,
@@ -159,6 +219,22 @@ export const customerV21ChatStyles = StyleSheet.create({
   chatHeaderSpacer: {
     flex: 1,
     minWidth: 0,
+  },
+  chatLatestButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    borderRadius: 16,
+    minHeight: 32,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    shadowOffset: { height: 5, width: 0 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+  },
+  chatLatestButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
   },
   chatMediaBadge: {
     alignItems: 'center',

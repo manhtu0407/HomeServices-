@@ -30,6 +30,7 @@ export function WorkerV5IntegratedIcon({
   imageTranslationX = 0,
   imageTranslationY = 0,
   reduceTransparency,
+  showAura = true,
   style,
   testID,
   tone = 'service',
@@ -42,6 +43,7 @@ export function WorkerV5IntegratedIcon({
   imageTranslationX?: number
   imageTranslationY?: number
   reduceTransparency: boolean
+  showAura?: boolean
   style?: StyleProp<ViewStyle>
   testID?: string
   tone?: WorkerV5IntegratedIconTone
@@ -112,7 +114,7 @@ export function WorkerV5IntegratedIcon({
       style={[styles.iconAnchor, anchorStyle, panelToneStyle, panelDividerStyle, reduceTransparency && styles.iconAnchorOpaque, bleedStyle, style]}
       testID={testID}
     >
-      {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.mintAura} /> : null}
+      {!reduceTransparency && showAura ? <MintAura intensity="iconTile" style={styles.mintAura} /> : null}
       <Image
         contentFit="contain"
         source={image}

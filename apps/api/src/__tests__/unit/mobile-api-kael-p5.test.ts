@@ -136,6 +136,24 @@ describe('Kael P5 permission scope and response policy', () => {
     })
   })
 
+  it('allows bounded service trust and anti-scam guidance for customers', () => {
+    const decision = evaluateKaelPermissionGate({
+      purpose: 'educational_response',
+      actor: 'customer',
+      jobRelation: 'none',
+      topic: 'service_trust_safety',
+      action: 'generate_advisory',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
+    })
+
+    expect(decision).toMatchObject({
+      allowed: true,
+      reasonCode: 'ALLOW_EDUCATIONAL_RESPONSE',
+    })
+  })
+
   it('B2 reads legal advice redirect copy from legal_awareness_patterns', async () => {
     const client = makeSequenceClient([{ data: [{
       pattern_key: 'professional_legal_advice_redirect',
@@ -283,7 +301,7 @@ describe('Kael P5 permission scope and response policy', () => {
       declineTemplateKey: 'out_of_scope_service',
     })
     expect(decision.responseText).toContain('ngoài')
-    expect(decision.responseText).toContain('sáu nhóm dịch vụ')
+    expect(decision.responseText).toContain('sáu dịch vụ')
   })
 
   it('uses an English-safe decline even when stored boundary guidance is Vietnamese', async () => {

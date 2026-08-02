@@ -47,6 +47,8 @@ export function useCustomerKaelModeMenu({
 }) {
   const {
     modeMenuOpen,
+    setAgenticAdjustmentOpen,
+    setAgenticAdjustmentText,
     setAgenticEvidenceReason,
     setAgenticEvidenceRejectOpen,
     setAgenticRejectOpen,
@@ -77,6 +79,8 @@ export function useCustomerKaelModeMenu({
     setDraft('')
     setVoiceTranscript('')
     setUploadingMedia(false)
+    setAgenticAdjustmentOpen(false)
+    setAgenticAdjustmentText('')
     setAgenticRejectOpen(false)
     setAgenticRejectReason('')
     setAgenticEvidenceRejectOpen(false)

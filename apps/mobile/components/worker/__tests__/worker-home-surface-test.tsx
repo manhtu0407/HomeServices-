@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { Alert, Platform, StyleSheet } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { LocalDeal, LocalWorkerGate } from '@nestscout/shared'
-import type { EarningsResponse, WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
+import type { EarningsResponse, NotificationListResponse, WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
 let mockWorkflowValue: any
 let mockAuthRole: 'admin' | 'customer' | 'worker'
@@ -15,6 +15,8 @@ let mockWorkerSavePayoutMethod: jest.Mock
 let mockWorkerUploadAvatar: jest.Mock
 let mockWorkerUpdateServiceArea: jest.Mock
 let mockWorkerUpdateServicePreferences: jest.Mock
+let mockRefreshNotifications: jest.Mock
+let mockMarkNotificationRead: jest.Mock
 let mockPathname: string
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockAppLanguage = 'vi'
@@ -464,6 +466,8 @@ function buildWorkflow({
   workerGate = 'remote_backend',
   workerPerformanceInsights = null,
   workerProfile = buildWorkerProfile(),
+  notifications = [],
+  notificationUnreadCount = 0,
 }: {
   canWorkerAdvance?: boolean
   deal?: LocalDeal | null
@@ -473,6 +477,8 @@ function buildWorkflow({
   workerGate?: LocalWorkerGate
   workerPerformanceInsights?: WorkerPerformanceInsightsResponse | null
   workerProfile?: WorkerProfileResponse | null
+  notifications?: NotificationListResponse['notifications']
+  notificationUnreadCount?: number
 } = {}) {
   mockWorkerUpdateAvailability = jest.fn(async () => true)
   mockWorkerConfirmCashPayment = jest.fn(async () => true)
@@ -484,6 +490,8 @@ function buildWorkflow({
   mockWorkerUploadAvatar = jest.fn(async () => true)
   mockWorkerUpdateServiceArea = jest.fn(async () => true)
   mockWorkerUpdateServicePreferences = jest.fn(async () => true)
+  mockRefreshNotifications = jest.fn(async () => true)
+  mockMarkNotificationRead = jest.fn(async () => true)
   mockWorkflowValue = {
     actions: {
       openKaelJobIncident: jest.fn(async () => ({ incident: null })),
@@ -499,6 +507,9 @@ function buildWorkflow({
       workerUpdateStatus: jest.fn(async () => true),
       workerConfirmCashPayment: mockWorkerConfirmCashPayment,
       workerSavePayoutMethod: mockWorkerSavePayoutMethod,
+      workerSubmitRegistration: jest.fn(async () => true),
+      refreshNotifications: mockRefreshNotifications,
+      markNotificationRead: mockMarkNotificationRead,
     },
     selectors: {
       canWorkerAccept: Boolean(deal?.broadcast && deal.broadcast.status === 'sent'),
@@ -518,6 +529,8 @@ function buildWorkflow({
     workerJobsHydrated,
     workerPerformanceInsights,
     workerProfile,
+    notifications,
+    notificationUnreadCount,
   }
 }
 
@@ -772,6 +785,32 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getAllByText('Chờ dữ liệu').length).toBeGreaterThanOrEqual(3)
     expect(screen.getByTestId('worker-v5-quick-action-2').props.accessibilityLabel).toContain('Chờ hồ sơ')
     expect(screen.getByTestId('worker-v5-quick-action-3').props.accessibilityLabel).toContain('Chờ dữ liệu')
+  })
+
+  it('routes an unverified worker from Home to profile verification before availability can unlock', () => {
+    buildWorkflow({ workerJobsHydrated: false, workerProfile: null })
+
+    render(<WorkerHomeSurface />)
+
+    expect(screen.getByTestId('worker-v5-availability-open-registration')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-availability-switch')).toBeNull()
+    fireEvent.press(screen.getByTestId('worker-v5-availability-open-registration'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/profile?ns_worker_screen=5.7-verification-documents')
+  })
+
+  it('keeps availability linked to verification while an existing profile is awaiting approval', () => {
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({ is_approved: false, verification_status: 'under_review' }),
+    })
+
+    render(<WorkerHomeSurface />)
+
+    expect(screen.getByTestId('worker-v5-availability-open-registration')).toHaveTextContent('Xem trạng thái hồ sơ')
+    expect(screen.queryByTestId('worker-v5-availability-switch')).toBeNull()
+    fireEvent.press(screen.getByTestId('worker-v5-availability-open-registration'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/profile?ns_worker_screen=5.7-verification-documents')
   })
 
   it('removes dividers only from the four Home quick-action detail rails', () => {
@@ -1330,6 +1369,11 @@ describe('Worker runtime surface wiring', () => {
     render(<WorkerChatSurface />)
 
     const headerActions = screen.getByTestId('worker-v5-kael-header-actions')
+    expect(StyleSheet.flatten(headerActions.props.style)).toMatchObject({
+      backgroundColor: 'rgba(255,255,255,0.96)',
+      borderColor: 'rgba(255,255,255,0.98)',
+      borderWidth: 1,
+    })
     expect(headerActions.findAllByProps({ testID: 'worker-v5-kael-session-toggle' }).length).toBeGreaterThan(0)
     expect(headerActions.findAllByProps({ testID: 'worker-v5-kael-mode-toggle' }).length).toBeGreaterThan(0)
     expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent(modeLabel)
@@ -1340,6 +1384,46 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
     expect(screen.queryByTestId('worker-v5-kael-session-menu')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-mode-menu')).toBeOnTheScreen()
+  })
+
+  it('restores the Kael mode control hit area and centers its label within the control', () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-trigger-frame').props.style)).toMatchObject({
+      alignItems: 'center',
+      height: 44,
+      justifyContent: 'center',
+      width: 120,
+    })
+    expect(
+      StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-toggle').props.style),
+    ).toMatchObject({
+      alignItems: 'center',
+      alignSelf: 'stretch',
+      flex: 1,
+      justifyContent: 'center',
+      outlineColor: 'transparent',
+      outlineStyle: 'solid',
+      outlineWidth: 0,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-active-mode').props.style)).toMatchObject({
+      alignSelf: 'stretch',
+      fontSize: 15,
+      includeFontPadding: false,
+      textAlign: 'center',
+      textAlignVertical: 'center',
+    })
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
+
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-trigger-frame').props.style)).toMatchObject({
+      backgroundColor: 'rgba(255,255,255,0.94)',
+      borderColor: 'rgba(255,255,255,0.98)',
+      borderWidth: 1,
+    })
   })
 
   it('opens the Kael mode menu from the combined header capsule and switches to job intake', async () => {
@@ -1354,12 +1438,22 @@ describe('Worker runtime surface wiring', () => {
 
     fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
 
-    expect(screen.getByTestId('worker-v5-kael-mode-menu')).toBeOnTheScreen()
+    const modeMenu = screen.getByTestId('worker-v5-kael-mode-menu')
+    expect(modeMenu).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-mode-menu-options')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu').props.style)).toMatchObject({
+    expect(StyleSheet.flatten(modeMenu.props.style)).toMatchObject({
+      backgroundColor: 'rgba(255,255,255,0.92)',
+      borderColor: 'rgba(255,255,255,0.88)',
+      borderRadius: 23,
+      borderWidth: 1,
       maxWidth: 208,
       width: '59%',
     })
+    expect(screen.queryByTestId('worker-v5-kael-mode-menu-skin')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-kael-mode-menu-mint-aura')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-mode-menu-top-light')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-mode-menu-inner-shadow')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-kael-mode-menu-sheen')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-intake').props.style)).toMatchObject({
       minHeight: 46,
     })
@@ -2584,6 +2678,27 @@ describe('Worker runtime surface wiring', () => {
     settings.unmount()
   })
 
+  it('removes the requested Worker profile header sub-headlines while keeping each surface available', () => {
+    buildWorkflow()
+
+    const profileScreens = [
+      ['5.4-reliability-insights', 'Chỉ số có thể kiểm chứng, không phải cảm tính'],
+      ['5.5-account-utilities', 'Tài khoản, ứng dụng, quyền riêng tư và hỗ trợ'],
+      ['5.6-agent-memory-preferences', 'Kael nhớ có kiểm soát, bạn có thể tắt bất kỳ lúc nào'],
+      ['5.10-support-settings', 'Tài khoản, ứng dụng, quyền riêng tư và hỗ trợ'],
+      ['5.11-worker-availability', 'Bật hoặc tắt nhận yêu cầu mới phù hợp với bạn'],
+    ] as const
+
+    profileScreens.forEach(([screenId, subtitle]) => {
+      mockRouteParams = { ns_worker_screen: screenId }
+      const view = render(<WorkerProfileSurface />)
+
+      expect(screen.getByTestId(`worker-v5-screen-${screenId}`)).toBeOnTheScreen()
+      expect(screen.queryByText(subtitle)).toBeNull()
+      view.unmount()
+    })
+  })
+
   it('gives the earnings overview title a small left inset', () => {
     buildWorkflow()
 
@@ -2975,14 +3090,14 @@ describe('Worker runtime surface wiring', () => {
     expect(new Set(sources).size).toBe(sources.length)
   })
 
-  it('wires contextual icon assets into the profile dossier and earnings utilities', () => {
+  it('wires contextual icon assets into the grouped profile and earnings utilities', () => {
     buildWorkflow({ workerEarnings: buildNoEarnings() })
     mockRouteParams = {}
 
     const profile = render(<WorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-profile-dossier-icon-0-image').props.source).toBe(workerV5CapturedIconAssets.profileDossierServices)
-    expect(screen.getByTestId('worker-v5-profile-dossier-icon-1-image').props.source).toBe(workerV5CapturedIconAssets.profileDossierReliability)
-    expect(screen.getByTestId('worker-v5-profile-dossier-icon-2-image').props.source).toBe(workerV5CapturedIconAssets.profileDossierSettings)
+    expect(screen.getByTestId('worker-v5-profile-row-services-icon').props.source).toBe(workerV5CapturedIconAssets.profileDossierServices)
+    expect(screen.getByTestId('worker-v5-profile-row-reliability-icon').props.source).toBe(workerV5CapturedIconAssets.profileDossierReliability)
+    expect(screen.getByTestId('worker-v5-profile-row-schedule-icon').props.source).toBe(workerV5CapturedIconAssets.rankingArrival)
     profile.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
@@ -2992,7 +3107,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-earnings-utility-commission-image').props.source).toBe(workerV5CapturedIconAssets.earningsCommissionPolicy)
   })
 
-  it('keeps dossier visual panels aligned while giving every dossier card a contextual detail rail', () => {
+  it('groups professional, schedule, app, and account controls without the retired dossier panels', () => {
     buildWorkflow({
       workerProfile: buildWorkerProfile({
         active_service_types: ['plumbing', 'electrical', 'cleaning'],
@@ -3004,27 +3119,136 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerProfileSurface />)
 
-    const dossierIcons = [0, 1, 2].map((index) => screen.getByTestId(`worker-v5-profile-dossier-icon-${index}`))
-    dossierIcons.forEach((icon) => {
-      expect(icon.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ width: 94 })]))
-    })
-    ;[1, 2].forEach((index) => {
-      expect(StyleSheet.flatten(screen.getByTestId(`worker-v5-profile-dossier-copy-${index}`).props.style)).toMatchObject({
-        justifyContent: 'center',
-      })
-    })
-    expect(screen.getByTestId('worker-v5-profile-dossier-meta-0')).toBeOnTheScreen()
-    expect(screen.getByText('Sửa nước')).toBeOnTheScreen()
-    expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
-    expect(screen.getByText('Vệ sinh')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-profile-dossier-detail-1')).toHaveTextContent(/Chờ dữ liệu thật/)
-    expect(screen.getByTestId('worker-v5-profile-dossier-detail-1')).toHaveTextContent(/Sau công việc/)
-    expect(screen.getByTestId('worker-v5-profile-dossier-detail-2')).toHaveTextContent(/Tài khoản/)
-    expect(screen.getByTestId('worker-v5-profile-dossier-detail-2')).toHaveTextContent(/Bảo mật/)
-    expect(screen.getByTestId('worker-v5-profile-dossier-detail-2')).toHaveTextContent(/Bộ nhớ Kael/)
+    expect(screen.getByTestId('worker-v5-profile-group-professional')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-group-schedule')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-group-settings')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-group-account')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-row-services-status')).toHaveTextContent('3 dịch vụ')
+    expect(screen.getByTestId('worker-v5-profile-row-reliability-status')).toHaveTextContent('Chưa có dữ liệu')
+    expect(screen.getByTestId('worker-v5-profile-row-schedule')).toHaveTextContent(/Trạng thái nhận việc/)
+    expect(screen.queryByText('Bật hoặc tắt nhận yêu cầu mới phù hợp với bạn.')).toBeNull()
+    expect(screen.queryByText('Tài khoản, ứng dụng, quyền riêng tư và hỗ trợ.')).toBeNull()
+    expect(screen.getByTestId('worker-v5-profile-sign-out')).toHaveTextContent(/Đăng xuất/)
   })
 
-  it('applies the 1.4 Formula Mint Aura to every rounded card in the 14 captured Worker groups', () => {
+  it('opens the grouped availability control and keeps the existing worker mutation', async () => {
+    buildWorkflow({ workerProfile: buildWorkerProfile({ is_available: false }) })
+    mockRouteParams = {}
+
+    const overview = render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-profile-row-schedule'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/profile?ns_worker_screen=5.11-worker-availability')
+    overview.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.11-worker-availability' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-schedule-screen')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-availability-switch'))
+    await waitFor(() => expect(mockWorkerUpdateAvailability).toHaveBeenCalledWith(true))
+  })
+
+  it('opens the real worker registration path instead of leaving an inactive mock switch', () => {
+    buildWorkflow({ workerJobsHydrated: false, workerProfile: null })
+    mockRouteParams = { ns_worker_screen: '5.11-worker-availability' }
+
+    const schedule = render(<WorkerProfileSurface />)
+
+    expect(screen.getByTestId('worker-v5-availability-open-registration')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-availability-switch')).toBeNull()
+    fireEvent.press(screen.getByTestId('worker-v5-availability-open-registration'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/profile?ns_worker_screen=5.7-verification-documents')
+    schedule.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.7-verification-documents' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-registration-form')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-registration-submit'))
+    expect(screen.getByTestId('worker-v5-registration-error')).toHaveTextContent(/Nhập họ tên hợp lệ/)
+    screen.unmount()
+
+    buildWorkflow({
+      workerJobsHydrated: false,
+      workerProfile: buildWorkerProfile({ is_approved: false, verification_status: 'draft' }),
+    })
+    mockRouteParams = { ns_worker_screen: '5.11-worker-availability' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-availability-open-registration')).toBeOnTheScreen()
+  })
+
+  it('removes the bank and tax route and its verification CTA without touching payout settings', () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '5.7-verification-documents' }
+
+    const verification = render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-screen-5.7-verification-documents')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-verification-hero')).toBeOnTheScreen()
+    expect(screen.queryByText('Xem ngân hàng và thuế')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-bank-tax-hero')).toBeNull()
+    verification.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.8-bank-tax-center' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-screen-5.1-profile-overview')).toBeOnTheScreen()
+    expect(screen.queryByText('Ngân hàng và thuế')).toBeNull()
+    screen.unmount()
+  })
+
+  it('keeps sign-out inside the grouped profile and routes settings utilities to real surfaces', async () => {
+    buildWorkflow()
+    mockRouteParams = {}
+    const overview = render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-profile-sign-out'))
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1))
+    overview.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.10-support-settings' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-settings-group-account-security')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-settings-group-app')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-settings-group-privacy')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-settings-group-help')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-settings-notifications'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/profile?ns_worker_screen=5.12-worker-notifications&ns_worker_lang=vi')
+  })
+
+  it('reads recorded notifications and keeps support and policy routes usable', async () => {
+    const notification = {
+      body: 'Công việc cần được xem lại.',
+      created_at: '2026-08-15T03:00:00.000Z',
+      event_type: 'job_update',
+      id: 'notification_test_1',
+      job_id: 'job_test_1',
+      read_at: null,
+      status: 'unread',
+      title: 'Cập nhật công việc',
+    }
+    buildWorkflow({ notificationUnreadCount: 1, notifications: [notification] })
+    mockRouteParams = { ns_worker_screen: '5.12-worker-notifications' }
+
+    const notifications = render(<WorkerProfileSurface />)
+    await waitFor(() => expect(mockRefreshNotifications).toHaveBeenCalled())
+    fireEvent.press(screen.getByTestId('worker-v5-notification-notification_test_1'))
+    await waitFor(() => expect(mockMarkNotificationRead).toHaveBeenCalledWith('notification_test_1'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/jobs?job_id=job_test_1')
+    notifications.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.13-worker-support' }
+    const support = render(<WorkerProfileSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-support-jobs'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/jobs')
+    fireEvent.press(screen.getByTestId('worker-v5-support-kael'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal&ns_worker_lang=vi&ns_worker_return_to=worker-support')
+    support.unmount()
+
+    mockRouteParams = { ns_worker_screen: '5.14-worker-policies' }
+    render(<WorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-policy-work-body')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-policies-formula-mint-aura')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-policy-money'))
+    expect(screen.getByTestId('worker-v5-policy-money-body')).toBeOnTheScreen()
+  })
+
+  it('keeps Formula Mint Aura on the approved hero and workflow surfaces without restoring the retired dossier card', () => {
     expect(WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY).toBe(1.4)
 
     buildWorkflow({ deal: buildIncomingDeal(), workerEarnings: buildNoEarnings() })
@@ -3037,7 +3261,8 @@ describe('Worker runtime surface wiring', () => {
     home.unmount()
 
     const profile = render(<WorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-profile-dossier-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-page-customer-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-group-professional')).toBeOnTheScreen()
     profile.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
@@ -3155,10 +3380,9 @@ describe('Worker runtime surface wiring', () => {
     })
     mockRouteParams = {}
     const profile = render(<WorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-profile-dossier-detail-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-row-reliability')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label')).not.toHaveTextContent(/0%/)
-    expect(screen.getByTestId('worker-v5-profile-dashboard-score-0')).not.toHaveTextContent(/^0$/)
-    expect(screen.getByTestId('worker-v5-profile-dashboard-score-1')).not.toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-profile-row-services-status')).toHaveTextContent('3 dịch vụ')
     profile.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
@@ -3188,8 +3412,8 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = { ns_worker_screen: '5.5-account-utilities' }
     const settings = render(<WorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-settings-hero-detail')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-settings-account-detail')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-settings-group-account-security')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-settings-group-app')).toBeOnTheScreen()
     settings.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.2-worker-ranking' }
@@ -3223,7 +3447,7 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = {}
     const profile = render(<WorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-profile-dashboard-score-0')).toHaveTextContent(/^0$/)
+    expect(screen.getByTestId('worker-v5-profile-row-reliability-status')).toHaveTextContent(/^0\/100$/)
     expect(screen.getByTestId('worker-v5-profile-lifetime-progress').props.accessibilityValue.now).toBe(0)
     profile.unmount()
 
@@ -3253,7 +3477,7 @@ describe('Worker runtime surface wiring', () => {
     const overview = render(<WorkerProfileSurface />)
     expect(screen.getByTestId('worker-v5-profile-header-name')).toHaveTextContent('Chờ hồ sơ')
     expect(screen.getByTestId('worker-v5-profile-lifetime-progress-label')).toHaveTextContent('Thời gian hoạt động')
-    expect(screen.getByTestId('worker-v5-profile-dossier-meta-0')).toHaveTextContent('Chờ hồ sơ')
+    expect(screen.getByTestId('worker-v5-profile-row-services-status')).toHaveTextContent('Chờ hồ sơ')
     overview.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.3-skills-service-area' }
@@ -3264,6 +3488,9 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('Chờ hồ sơ')
     expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Chờ hồ sơ/)
     expect(screen.getByTestId('worker-v5-quick-action-empty-title')).toHaveTextContent('Chờ dữ liệu kỹ năng')
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-quick-action-empty-icon').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+    })
   })
 
   it('lets a worker select multiple supported services beyond the legacy hardcoded list', async () => {
@@ -3464,6 +3691,41 @@ describe('Worker runtime surface wiring', () => {
         checked: true,
       })
     })
+  })
+
+  it('keeps each worker memory switch on after the backend confirms the write', async () => {
+    mockRouteParams = { ns_worker_screen: '5.6-agent-memory-preferences' }
+    mockUpdateMyWorkerPreference.mockImplementation((input: { key: string; enabled: boolean }) => Promise.resolve({
+      data: { memory: { safe_metadata: { memory_preferences: { [input.key]: input.enabled } } } },
+      status: 200,
+      success: true,
+    }))
+
+    render(<WorkerProfileSurface />)
+
+    const switchCases = [
+      ['worker-v5-memory-permission-list-row-0', 'area_preference'],
+      ['worker-v5-memory-permission-list-row-1', 'travel_limit'],
+      ['worker-v5-memory-permission-list-row-2', 'skill_preference'],
+      ['worker-v5-memory-boundary-list-row-0', 'opportunity_filter'],
+      ['worker-v5-memory-boundary-list-row-1', 'auto_accept_work'],
+    ] as const
+
+    for (const [testID, key] of switchCases) {
+      const memorySwitch = await screen.findByTestId(testID)
+      const nextEnabled = !Boolean(memorySwitch.props.accessibilityState?.checked)
+      fireEvent.press(memorySwitch)
+      await waitFor(() => {
+        expect(mockUpdateMyWorkerPreference).toHaveBeenLastCalledWith({
+          enabled: nextEnabled,
+          key,
+        })
+        expect(screen.getByTestId(testID).props.accessibilityState).toMatchObject({
+          busy: false,
+          checked: nextEnabled,
+        })
+      })
+    }
   })
 
   it('starts only one worker memory update when a switch is pressed twice in one render', async () => {

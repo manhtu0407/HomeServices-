@@ -15,6 +15,7 @@ const edge = readSource(resolve(ROOT, 'supabase/functions/_shared/contracts.ts')
 const mobile = readSource(resolve(ROOT, 'apps/mobile/lib/api-types.ts'))
 
 const CONTRACTS = [
+  'KaelEstimateAnalysisReceipt',
   'KaelEstimate',
   'CreateJobResponse',
   'KaelChatStatus',

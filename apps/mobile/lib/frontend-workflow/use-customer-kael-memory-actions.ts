@@ -91,12 +91,11 @@ export function useCustomerKaelMemoryActions({
   }, [customerKaelMemoryState, sessionUserId, setRemoteError])
 
   useEffect(() => {
-    setCustomerKaelMemoryState(initialCustomerKaelMemoryState)
-  }, [sessionUserId])
-
-  useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
-    if (isAppForeground()) void refreshCustomerKaelMemory()
+    const refreshTimer = setTimeout(() => {
+      if (isAppForeground()) void refreshCustomerKaelMemory()
+    }, 0)
+    return () => clearTimeout(refreshTimer)
   }, [role, sessionUserId, refreshCustomerKaelMemory])
 
   return {

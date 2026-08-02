@@ -1,7 +1,6 @@
 import { useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import {
   ActivityIndicator,
-  FlatList,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -9,13 +8,13 @@ import {
   View,
   type StyleProp,
   type TextStyle,
-  type ListRenderItemInfo,
   type ViewStyle,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated from 'react-native-reanimated'
 
 import type { AppLanguage } from '@/lib/app-language'
+import { createCompletedKaelResponseState } from '@/lib/kael-response-stream'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { ChatBubble, ChatCanvasAura } from './chat-surfaces'
@@ -27,9 +26,11 @@ import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
 import { CustomerKaelEmptyHero } from './kael-empty-hero'
 import { CustomerKaelChatHeader } from './kael-chat-header'
 import { KaelChatComposer, type RootChatStyles } from './kael-chat-composer'
-import { customerVisibleIntakeSummaryText } from './kael-chat-turn-display-model'
-import { InactiveAgenticGate } from '../ui/shared-surfaces'
+import { customerVisibleCaseRequestText } from './kael-chat-turn-display-model'
+import { CustomerThemeSystemBar, InactiveAgenticGate } from '../ui/shared-surfaces'
 import type { CustomerKaelMode } from '../ui/types'
+import { KaelResponseSurface } from './kael-response-surface'
+import { KaelChatTranscript, type ChatTranscriptRow } from './kael-chat-transcript'
 
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
 
@@ -45,18 +46,28 @@ type AgenticTurnView = {
   text_content?: string | null
 }
 
-type ChatTranscriptRow = {
-  key: string
-  node: ReactNode
-}
-
 function appendChatTranscriptRow(rows: ChatTranscriptRow[], key: string, node: ReactNode) {
   if (node === null || node === undefined || node === false) return
   rows.push({ key, node })
 }
 
-function renderChatTranscriptRow({ item }: ListRenderItemInfo<ChatTranscriptRow>) {
-  return <>{item.node}</>
+function renderConversationTurn(
+  turn: ChatTurnView,
+  language: AppLanguage,
+  reduceMotion: boolean,
+  tokens: CustomerThemeTokens,
+) {
+  if (turn.role !== 'kael') {
+    return <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
+  }
+  return (
+    <KaelResponseSurface
+      language={language}
+      reduceMotion={reduceMotion}
+      state={createCompletedKaelResponseState(turn.text_content, turn.id)}
+      tokens={tokens}
+    />
+  )
 }
 
 export function KaelChatSurfaceView({
@@ -161,6 +172,7 @@ export function KaelChatSurfaceView({
 }) {
   const [composerFocused, setComposerFocused] = useState(false)
   const emptyHeroVisible = showEmptyHero && !composerFocused && draft.trim().length === 0
+  const responseInFlight = Boolean(processLinesNode || streamingReplyNode)
 
   const toggleSessionMenu = () => {
     Keyboard.dismiss()
@@ -186,7 +198,7 @@ export function KaelChatSurfaceView({
         <ChatBubble
           speaker="customer"
           testID="customer-v21-pending-draft-bubble"
-          text={customerVisibleIntakeSummaryText(pendingDraftMessage, language)}
+          text={customerVisibleCaseRequestText(pendingDraftMessage, language)}
           tokens={tokens}
         />
       ))
@@ -221,9 +233,21 @@ export function KaelChatSurfaceView({
         />
       ))
     }
+    for (const turn of caseAssistantTurns) {
+      appendChatTranscriptRow(rows, `turn-${turn.id}`, (
+        renderConversationTurn(turn, language, reduceMotion, tokens)
+      ))
+    }
     for (const turn of agenticVisibleTurns) {
       appendChatTranscriptRow(rows, `turn-${turn.id}`, (
-        <ChatBubble speaker={turn.role === 'customer' ? 'customer' : 'kael'} text={turn.text_content ?? ''} tokens={tokens} />
+        turn.role === 'customer'
+          ? <ChatBubble speaker="customer" text={turn.text_content ?? ''} tokens={tokens} />
+          : <KaelResponseSurface
+              language={language}
+              reduceMotion={reduceMotion}
+              state={createCompletedKaelResponseState(turn.text_content ?? '', turn.id)}
+              tokens={tokens}
+            />
       ))
     }
     appendChatTranscriptRow(rows, 'case-thread', caseThreadNode)
@@ -233,14 +257,9 @@ export function KaelChatSurfaceView({
     if (mode === 'normal') {
       for (const turn of normalAssistantTurns) {
         appendChatTranscriptRow(rows, `turn-${turn.id}`, (
-          <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
+          renderConversationTurn(turn, language, reduceMotion, tokens)
         ))
       }
-    }
-    for (const turn of caseAssistantTurns) {
-      appendChatTranscriptRow(rows, `turn-${turn.id}`, (
-        <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
-      ))
     }
     appendChatTranscriptRow(rows, 'process-lines', processLinesNode)
     appendChatTranscriptRow(
@@ -280,7 +299,8 @@ export function KaelChatSurfaceView({
 
   return (
     <SafeAreaView style={[sharedStyles.safeArea, { backgroundColor: tokens.canvas }]} testID="customer-v21-kael-chat">
-      <ChatCanvasAura reduceTransparency={reduceTransparency} />
+      <CustomerThemeSystemBar mode={tokens.mode} />
+      <ChatCanvasAura mode={tokens.mode} reduceTransparency={reduceTransparency} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={rootStyles.flex}>
         <View style={[chatStyles.chatFrame, mode === 'case' ? historyActiveStyles.caseChatFrame : null]} testID={mode === 'normal' ? 'customer-v21-screen-2.4-chat-normal' : 'customer-v21-screen-2.5-chat-case'}>
           <CustomerKaelChatHeader
@@ -303,19 +323,15 @@ export function KaelChatSurfaceView({
             tokens={tokens}
           />
 
-          <FlatList
-            contentContainerStyle={[chatStyles.chatTranscript, emptyHeroVisible ? chatStyles.chatTranscriptEmpty : null, modeMenuOpen || sessionMenuOpen ? chatStyles.chatTranscriptMenuOpen : null]}
-            data={transcriptRows}
-            initialNumToRender={12}
-            keyExtractor={(item) => item.key}
-            keyboardShouldPersistTaps="handled"
-            maxToRenderPerBatch={8}
-            removeClippedSubviews={Platform.OS === 'android'}
-            renderItem={renderChatTranscriptRow}
-            showsVerticalScrollIndicator={false}
-            style={[chatStyles.chatTranscriptScroll, hiddenScrollbarStyle]}
-            testID="customer-v21-kael-thread"
-            windowSize={7}
+          <KaelChatTranscript
+            empty={emptyHeroVisible}
+            hiddenScrollbarStyle={hiddenScrollbarStyle}
+            language={language}
+            menuOpen={modeMenuOpen || sessionMenuOpen}
+            reduceMotion={reduceMotion}
+            responseInFlight={responseInFlight}
+            rows={transcriptRows}
+            tokens={tokens}
           />
 
           {composerMediaNode}

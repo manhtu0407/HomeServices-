@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
-import Svg, { Defs, LinearGradient, RadialGradient, Rect } from 'react-native-svg'
+import Svg, { Defs, Rect } from 'react-native-svg'
 
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWideMintAura, ZipMintAura } from '../ui/aura-surfaces'
@@ -245,11 +245,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   frame: {
-    alignSelf: 'center',
+    alignSelf: 'stretch',
     justifyContent: 'center',
+    maxWidth: '100%',
     overflow: 'hidden',
     position: 'relative',
-    width: '100%',
   },
   frameCompact: {
     aspectRatio: 3.2,

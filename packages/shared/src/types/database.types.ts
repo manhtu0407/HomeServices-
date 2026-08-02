@@ -5602,6 +5602,14 @@ export type Database = {
       }
     }
     Functions: {
+      update_worker_kael_memory_preference: {
+        Args: {
+          p_enabled: boolean
+          p_key: string
+          p_worker_id: string
+        }
+        Returns: boolean
+      }
       accept_broadcast_atomic: {
         Args: { p_job_id: string; p_worker_id: string }
         Returns: {

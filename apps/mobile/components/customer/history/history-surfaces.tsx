@@ -1,7 +1,8 @@
 import type { ComponentType } from 'react'
 import { Text, View } from 'react-native'
-import Svg, { Circle, Defs, RadialGradient } from 'react-native-svg'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import Svg, { Circle, Defs } from 'react-native-svg'
+
+import { AlphaStop as Stop, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21HistoryStyles as styles } from './history-styles'
 type CustomerV21SourceSkin = ComponentType<{ testID?: string }>

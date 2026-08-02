@@ -4,23 +4,27 @@ import { createCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state
 import { useCustomerKaelDecisionActions } from '../kael-chat/use-customer-kael-decision-actions'
 
 const mockConfirmEstimate = jest.fn()
+const mockSendKaelTurn = jest.fn()
 
 jest.mock('@/lib/services', () => ({
   kaelAssistantService: { ask: jest.fn() },
   kaelChatService: {
     confirm: (...args: unknown[]) => mockConfirmEstimate(...args),
-    sendTurn: jest.fn(),
+    sendTurn: (...args: unknown[]) => mockSendKaelTurn(...args),
   },
 }))
 
-function decisionHarness() {
+function decisionHarness(agenticAdjustmentText = '') {
   const chatUi = {
+    agenticAdjustmentText,
     agenticRejectReason: '',
     caseQuoteRejectReason: '',
     confirmingAgenticEstimate: false,
     confirmingCaseQuote: false,
     confirmingCompletion: false,
     retryingWorkerSearch: false,
+    setAgenticAdjustmentOpen: jest.fn(),
+    setAgenticAdjustmentText: jest.fn(),
     setAgenticRejectOpen: jest.fn(),
     setAgenticRejectReason: jest.fn(),
     setCaseEditOpen: jest.fn(),
@@ -30,8 +34,10 @@ function decisionHarness() {
     setConfirmingCaseQuote: jest.fn(),
     setConfirmingCompletion: jest.fn(),
     setRetryingWorkerSearch: jest.fn(),
+    setSubmittingAgenticAdjustment: jest.fn(),
     setSubmittingAgenticRejectReason: jest.fn(),
     setSubmittingCaseQuoteRejectReason: jest.fn(),
+    submittingAgenticAdjustment: false,
     submittingAgenticRejectReason: false,
     submittingCaseQuoteRejectReason: false,
   } as any
@@ -85,6 +91,58 @@ function decisionHarness() {
 describe('customer Kael decision concurrency', () => {
   beforeEach(() => {
     mockConfirmEstimate.mockReset()
+    mockSendKaelTurn.mockReset()
+  })
+
+  it('persists estimate adjustments through the Kael turn rail before clearing the draft', async () => {
+    const detail = 'Nuoc chi ro khi xa bon; khi khong su dung thi khop noi kho.'
+    const harness = decisionHarness(`  ${detail}  `)
+    const response = {
+      session: {
+        case_phase: 'offer_review',
+        id: 'session-a',
+        service_type: 'electrical',
+        status: 'estimate_ready',
+      },
+      turns: [{ id: 'turn-adjustment', role: 'customer', text_content: detail }],
+    }
+    mockSendKaelTurn.mockResolvedValueOnce({ data: response, success: true })
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+
+    await act(async () => {
+      await result.current.submitAgenticAdjustment()
+    })
+
+    expect(mockSendKaelTurn).toHaveBeenCalledWith('session-a', {
+      language: 'vi',
+      message: detail,
+      photo_urls: [],
+    })
+    expect(harness.input.processController.startProcessLines).toHaveBeenCalledWith(detail, expect.objectContaining({
+      mediaCount: 0,
+      scenario: 'analysis_refinement',
+    }))
+    expect(harness.conversation.setChat).toHaveBeenCalledWith(response)
+    expect(harness.conversation.setTurns).toHaveBeenCalledWith(response.turns)
+    expect(harness.chatUi.setAgenticAdjustmentOpen).toHaveBeenLastCalledWith(false)
+    expect(harness.chatUi.setAgenticAdjustmentText).toHaveBeenLastCalledWith('')
+  })
+
+  it('keeps an estimate adjustment available when the backend rejects it', async () => {
+    const harness = decisionHarness('Can kiem tra them dau noi phia sau.')
+    mockSendKaelTurn.mockResolvedValueOnce({
+      error: { code: 'CONFLICT', message: 'not accepted' },
+      success: false,
+    })
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+
+    await act(async () => {
+      await result.current.submitAgenticAdjustment()
+    })
+
+    expect(harness.chatUi.setAgenticAdjustmentOpen).not.toHaveBeenCalled()
+    expect(harness.chatUi.setAgenticAdjustmentText).not.toHaveBeenCalled()
+    expect(harness.conversation.setError).toHaveBeenCalled()
   })
 
   it('starts only one estimate confirmation and releases the action after rejection', async () => {

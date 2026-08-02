@@ -10,7 +10,6 @@ import { apiFailure, type MobileApiContext } from "../router.ts";
 import { checkKaelChatRateLimit } from "../rate-limit.ts";
 import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
 import { buildInitialDiagnosisScopeArtifact, kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets, type KaelDiagnosisScopeArtifact } from "../kael/index.ts";
-import { kaelIntakeConfirmationSchema } from "../kael/intake-confirmation.ts";
 import {
   sanitizeCustomerCaseEvidenceText,
   sanitizeUntrustedEvidenceList,
@@ -53,6 +52,10 @@ import {
   revokeKaelChatMedia,
   validateAndConsumeKaelChatEvidenceMediaRefs,
 } from "./kael-chat-media.service.ts";
+import {
+  assertIntakeConfirmationCompleted,
+  withoutEphemeralKaelMediaUrls,
+} from "./kael-chat-request-guards.ts";
 
 export async function createKaelChat(
   ctx: MobileApiContext,
@@ -367,6 +370,7 @@ export async function createKaelChat(
             address_district: initialAddressDistrict ?? undefined,
             message,
             photo_urls: initialSignedVisionUrls,
+            vision_evidence: initialEvidenceItems,
             persisted_safety_signals: initialSafetySignals,
           },
           secrets,
@@ -559,6 +563,7 @@ export async function sendKaelChatTurn(
     message,
     problem_chips: asStringArray(metadata.problem_chips),
     photo_urls: signedVisionUrls,
+    vision_evidence: sanitizedEvidenceItems,
     address_district: nullableString(metadata.address_district) ?? undefined,
     language,
     persisted_safety_signals: persistedSafetySignals,
@@ -762,32 +767,13 @@ export async function submitKaelChatEvidence(
     message: modelMessage,
     problem_chips: safeProblemChips,
     photo_urls: signedVisionUrls,
+    vision_evidence: sanitizedEvidenceItems,
     address_district: nullableString(previousMetadata.address_district) ?? undefined,
     language,
     persisted_safety_signals: persistedSafetySignals,
   }, secrets);
 
   return getKaelChat(ctx, sessionId);
-}
-
-function withoutEphemeralKaelMediaUrls(
-  metadata: Record<string, unknown>,
-): Record<string, unknown> {
-  const { photo_urls: _ephemeralSignedUrls, ...durableMetadata } = metadata;
-  return durableMetadata;
-}
-
-function assertIntakeConfirmationCompleted(metadata: Record<string, unknown>) {
-  const confirmation = kaelIntakeConfirmationSchema.safeParse(
-    metadata.intake_confirmation,
-  );
-  if (confirmation.success && confirmation.data.status === "pending") {
-    apiFailure(
-      "INTAKE_CONFIRMATION_REQUIRED",
-      "Hãy xác nhận thông tin trước khi Kael tiếp tục.",
-      409,
-    );
-  }
 }
 
 export { createKaelChatMediaUpload, revokeKaelChatMedia };

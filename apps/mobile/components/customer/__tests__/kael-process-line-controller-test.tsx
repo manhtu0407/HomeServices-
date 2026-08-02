@@ -68,6 +68,29 @@ describe('customer Kael process-line controller', () => {
     act(() => result.current.stopProcessLines())
   })
 
+  it('uses a truthful refinement sequence for a text-only estimate adjustment', () => {
+    const { result } = renderHook(() => useKaelProcessLineController({
+      caseServiceLabel: null,
+      deal: null,
+      language: 'vi',
+      selectedService: 'plumbing',
+    }))
+
+    act(() => {
+      void result.current.startProcessLines('Nước chỉ rò khi xả bồn.', {
+        mediaCount: 0,
+        mode: 'case',
+        scenario: 'analysis_refinement',
+        serviceType: 'plumbing',
+      })
+    })
+
+    expect(result.current.processLines?.scenarioId).toBe('analysis_refinement')
+    expect(result.current.processLines?.lines[0]?.text).toBe('Kael đang đọc thông tin bạn vừa bổ sung…')
+    expect(result.current.processLines?.lines.map((line) => line.text).join(' '))
+      .not.toContain('ảnh/video bạn vừa gửi')
+  })
+
   it('applies one short reveal window only to a composer message', async () => {
     const { result } = renderHook(() => useKaelProcessLineController({
       caseServiceLabel: null,

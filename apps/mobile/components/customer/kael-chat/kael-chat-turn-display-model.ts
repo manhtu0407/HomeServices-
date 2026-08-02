@@ -69,6 +69,17 @@ export function customerVisibleIntakeSummaryText(
     .join('\n\n')
 }
 
+export function customerVisibleCaseRequestText(
+  text: string | null | undefined,
+  language: AppLanguage,
+) {
+  const visibleText = customerVisibleIntakeSummaryText(text, language)
+  if (!visibleText || visibleText.includes('\n') || visibleText.length < 110) return visibleText
+
+  const sentenceRows = splitSentenceRows(visibleText)
+  return sentenceRows.length >= 3 ? sentenceRows.join('\n\n') : visibleText
+}
+
 function splitStructuredIntakeRows(text: string, labels: string[]) {
   const markers: { index: number; label: string }[] = []
   let searchFrom = 0
@@ -86,6 +97,26 @@ function splitStructuredIntakeRows(text: string, labels: string[]) {
     const nextIndex = markers[index + 1]?.index ?? text.length
     return text.slice(marker.index, nextIndex).trim()
   })
+}
+
+function splitSentenceRows(text: string) {
+  const rows: string[] = []
+  let rowStart = 0
+
+  for (let index = 0; index < text.length; index += 1) {
+    if (!'.!?'.includes(text[index] ?? '')) continue
+    const nextCharacter = text[index + 1]
+    if (nextCharacter && !/\s/u.test(nextCharacter)) continue
+
+    const row = text.slice(rowStart, index + 1).trim()
+    if (row) rows.push(row)
+    while (index + 1 < text.length && /\s/u.test(text[index + 1] ?? '')) index += 1
+    rowStart = index + 1
+  }
+
+  const trailingRow = text.slice(rowStart).trim()
+  if (trailingRow) rows.push(trailingRow)
+  return rows
 }
 
 function repairLegacyIntakeSchedule(text: string, language: AppLanguage) {

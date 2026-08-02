@@ -17,6 +17,7 @@ const MAX_CACHED_SESSIONS = 20
 const pendingWrites = new Map<string, Promise<void>>()
 
 type StoredCustomerKaelSessionCatalog = {
+  active_session_id?: string | null
   cached_at: number
   customer_id: string
   mode: CustomerKaelConversationMode
@@ -24,10 +25,23 @@ type StoredCustomerKaelSessionCatalog = {
   version: 1
 }
 
+export type CustomerKaelSessionCatalogState = {
+  activeSessionId: string | null
+  sessions: CustomerKaelConversationSession[]
+}
+
 export async function readCustomerKaelSessionCatalog(
   customerId: string,
   mode: CustomerKaelConversationMode,
 ): Promise<CustomerKaelConversationSession[] | null> {
+  const state = await readCustomerKaelSessionCatalogState(customerId, mode)
+  return state?.sessions ?? null
+}
+
+export async function readCustomerKaelSessionCatalogState(
+  customerId: string,
+  mode: CustomerKaelConversationMode,
+): Promise<CustomerKaelSessionCatalogState | null> {
   const key = storageKey(customerId, mode)
   await pendingWrites.get(key)?.catch(() => undefined)
   const raw = await AsyncStorage.getItem(key).catch(() => null)
@@ -47,10 +61,15 @@ export async function readCustomerKaelSessionCatalog(
       return null
     }
 
-    return parsed.sessions
+    const sessions = parsed.sessions
       .map((session) => parseCachedSession(session, customerId, mode))
       .filter((session): session is CustomerKaelConversationSession => Boolean(session))
       .slice(0, MAX_CACHED_SESSIONS)
+    const activeSessionId = typeof parsed.active_session_id === 'string'
+      && sessions.some((session) => session.id === parsed.active_session_id)
+      ? parsed.active_session_id
+      : null
+    return { activeSessionId, sessions }
   } catch {
     void AsyncStorage.removeItem(key).catch(() => undefined)
     return null
@@ -61,11 +80,15 @@ export async function writeCustomerKaelSessionCatalog(
   customerId: string,
   mode: CustomerKaelConversationMode,
   sessions: CustomerKaelConversationSession[],
+  activeSessionId: string | null = null,
 ): Promise<void> {
   const safeSessions = sessions
     .filter((session) => session.customer_id === customerId && session.mode === mode)
     .slice(0, MAX_CACHED_SESSIONS)
   const payload: StoredCustomerKaelSessionCatalog = {
+    active_session_id: safeSessions.some((session) => session.id === activeSessionId)
+      ? activeSessionId
+      : null,
     cached_at: Date.now(),
     customer_id: customerId,
     mode,

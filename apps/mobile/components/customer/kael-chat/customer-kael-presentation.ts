@@ -11,6 +11,7 @@ import {
   localizedCaseWorkSafetyMessage,
 } from './case-work-localization'
 import {
+  customerVisibleCaseRequestText,
   customerVisibleIntakeSummaryText,
   customerVisibleKaelTurnText,
   isScriptedKaelAcknowledgementTurn,
@@ -64,7 +65,9 @@ export function deriveCustomerKaelPresentation({
     .map((turn) => ({
       ...turn,
       text_content: turn.role === 'customer'
-        ? customerVisibleIntakeSummaryText(turn.text_content, language)
+        ? mode === 'case'
+          ? customerVisibleCaseRequestText(turn.text_content, language)
+          : customerVisibleIntakeSummaryText(turn.text_content, language)
         : customerVisibleKaelTurnText(turn.text_content, language),
     }))
   const catalogConversationTurns = catalogTurns.map((turn) => ({
@@ -88,8 +91,17 @@ export function deriveCustomerKaelPresentation({
         : message.content, language),
     }))
     : []
+  const localCaseAssistantTurns = assistantTurns
+    .filter((turn) => turn.surface === 'customer_case')
+    .map((turn) => turn.role === 'customer'
+      ? { ...turn, text_content: customerVisibleCaseRequestText(turn.text_content, language) }
+      : turn)
+  const localCaseCustomerTexts = new Set(localCaseAssistantTurns
+    .filter((turn) => turn.role === 'customer')
+    .map((turn) => turn.text_content.trim())
+    .filter(Boolean))
   const caseAssistantTurns = [
-    ...assistantTurns.filter((turn) => turn.surface === 'customer_case'),
+    ...localCaseAssistantTurns,
     ...sharedJobIncidentTurns,
   ]
   const backendDraftCustomerTurn = routeDraftEvidencePending || intakeDisplayMessage
@@ -117,6 +129,7 @@ export function deriveCustomerKaelPresentation({
   const normalIntakeActive = mode === 'normal' && !routeDraftOwnsIntake && routeIntakeHasWorkState
   const agenticIntakeModeActive = normalIntakeActive || workIntakeActive
   const diagnosisScope = chat?.session.diagnosis_scope
+  const evidencePreviews = chat?.session.evidence_previews ?? []
   const artifactNextAction = diagnosisScope && typeof diagnosisScope.next_action === 'object' && diagnosisScope.next_action
     ? diagnosisScope.next_action as Record<string, unknown>
     : null
@@ -179,9 +192,25 @@ export function deriveCustomerKaelPresentation({
   const routeDraftBackendCustomerTurnId = showPendingDraftBubble && routeDraftOwnsIntake
     ? normalVisibleTurns.find((turn) => turn.role === 'customer')?.id ?? null
     : null
-  const agenticVisibleTurns = routeDraftAwaitingAgenticStep
+  const visiblePendingDraftMessage = showPendingDraftBubble
+    ? customerVisibleCaseRequestText(pendingDraftMessage, language).trim()
+    : ''
+  const candidateAgenticVisibleTurns = routeDraftAwaitingAgenticStep
     ? []
-    : normalVisibleTurns.filter((turn) => turn.id !== routeDraftBackendCustomerTurnId)
+    : normalVisibleTurns.filter((turn) => (
+        turn.id !== routeDraftBackendCustomerTurnId &&
+        !(turn.role === 'customer' && visiblePendingDraftMessage && turn.text_content?.trim() === visiblePendingDraftMessage) &&
+        !(mode === 'case' && turn.role === 'customer' && localCaseCustomerTexts.has(turn.text_content?.trim() ?? ''))
+      ))
+  const seenDetailedCustomerTurns = new Set<string>()
+  const agenticVisibleTurns = candidateAgenticVisibleTurns.filter((turn) => {
+    if (turn.role !== 'customer') return true
+    const text = turn.text_content?.trim() ?? ''
+    if (text.length < 110) return true
+    if (seenDetailedCustomerTurns.has(text)) return false
+    seenDetailedCustomerTurns.add(text)
+    return true
+  })
   const showNormalGreeting = mode === 'normal' &&
     !processLines &&
     normalAssistantTurns.length === 0 &&
@@ -220,6 +249,8 @@ export function deriveCustomerKaelPresentation({
     caseAssistantTurns,
     caseEvidenceGateActive,
     chatEstimate,
+    diagnosisScope,
+    evidencePreviews,
     hasSharedJobIncident,
     intakeConfirmation,
     intakeConfirmationActive,

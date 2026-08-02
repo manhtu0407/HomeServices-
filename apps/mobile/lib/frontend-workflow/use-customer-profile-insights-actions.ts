@@ -50,12 +50,11 @@ export function useCustomerProfileInsightsActions({
   }, [sessionUserId])
 
   useEffect(() => {
-    setCustomerProfileInsightsState(initialCustomerProfileInsightsState)
-  }, [sessionUserId])
-
-  useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
-    if (isAppForeground()) void refreshCustomerProfileInsights()
+    const refreshTimer = setTimeout(() => {
+      if (isAppForeground()) void refreshCustomerProfileInsights()
+    }, 0)
+    return () => clearTimeout(refreshTimer)
   }, [role, sessionUserId, refreshCustomerProfileInsights])
 
   return {

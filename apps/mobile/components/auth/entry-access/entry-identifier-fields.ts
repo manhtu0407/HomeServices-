@@ -7,8 +7,8 @@ type IdentifierAvailabilityError = 'phoneRecovery' | 'phoneRegistration'
 
 const identifierAvailabilityErrors: Record<AppLanguage, Record<IdentifierAvailabilityError, string>> = {
   vi: {
-    phoneRecovery: 'Khôi phục bằng SĐT chưa sẵn sàng. Vui lòng dùng email.',
-    phoneRegistration: 'Đăng ký bằng SĐT chưa sẵn sàng. Vui lòng dùng email.',
+    phoneRecovery: 'Khôi phục bằng SĐT chưa sẵn sàng. Vui lòng dùng thư điện tử.',
+    phoneRegistration: 'Đăng ký bằng SĐT chưa sẵn sàng. Vui lòng dùng thư điện tử.',
   },
   en: {
     phoneRecovery: 'Phone recovery is not available yet. Please use email.',
@@ -63,12 +63,13 @@ export function identifierFieldProps(value: string, role: EntryRole, language: A
   }
 }
 
-export function registrationIdentifierFieldProps() {
+export function registrationIdentifierFieldProps(language: AppLanguage) {
+  const copy = entryAccessCopy[language].fields
   return {
     icon: 'mail' as const,
     keyboardType: 'email-address' as const,
-    label: 'Email',
-    placeholder: 'email@example.com',
+    label: copy.workerIdentifierLabel,
+    placeholder: copy.workerIdentifierPlaceholder,
     textContentType: 'emailAddress' as const,
   }
 }

@@ -1,28 +1,18 @@
-import { Image } from 'expo-image'
 import {
   Pressable,
   StyleSheet,
   Text as RNText,
   View,
-  type ImageSourcePropType,
   type TextProps,
 } from 'react-native'
-import Svg, { Defs, LinearGradient, Path, Rect } from 'react-native-svg'
+import Svg, { Defs, Path, Rect } from 'react-native-svg'
 
-import { MintAura } from '@/components/ui/kael-primitives'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 import { color, component } from '@/design/theme'
-import type { AppLanguage } from '@/lib/app-language'
 
-import { textByLanguage } from './format'
 import { styles } from './primitives-styles'
 
 export { WorkerV5InfoRow } from '../jobs/shared-surfaces'
-
-type WorkerV5BankProfile = {
-  bank_account_masked?: string | null
-  bank_name?: string | null
-} | null | undefined
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -49,43 +39,6 @@ export function WorkerV5BackArrowIcon() {
         strokeWidth={3}
       />
     </Svg>
-  )
-}
-
-export function WorkerV5BankCard({
-  bankLogo,
-  language,
-  profile,
-  reduceTransparency,
-  walletIcon,
-}: {
-  bankLogo?: ImageSourcePropType | null
-  language: AppLanguage
-  profile: WorkerV5BankProfile
-  reduceTransparency: boolean
-  walletIcon: ImageSourcePropType
-}) {
-  const hasBank = Boolean(profile?.bank_account_masked)
-  return (
-    <View style={[styles.bankCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-bank-card">
-      <View style={styles.bankIconTile}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image
-          contentFit="contain"
-          source={bankLogo ?? walletIcon}
-          style={bankLogo ? styles.bankCardLogoImage : styles.utilityIcon}
-          testID="worker-v5-bank-card-logo"
-        />
-      </View>
-      <View style={styles.opportunityTextColumn}>
-        <Text style={styles.opportunityTitle} numberOfLines={2} testID="worker-v5-bank-card-title">
-          {hasBank ? profile?.bank_name || textByLanguage(language, 'Ngân hàng', 'Bank') : textByLanguage(language, 'Chưa xác minh ngân hàng', 'No verified bank')}
-        </Text>
-        <Text style={styles.opportunityMeta} numberOfLines={2} testID="worker-v5-bank-card-meta">
-          {hasBank ? profile?.bank_account_masked : textByLanguage(language, 'Dùng luồng xác minh hiện hữu', 'Use the existing verification flow')}
-        </Text>
-      </View>
-    </View>
   )
 }
 

@@ -6,6 +6,7 @@ export type KaelProcessScenarioId =
   | 'job_match'
   | 'work_plan'
   | 'evidence_check'
+  | 'analysis_refinement'
   | 'scope_change'
   | 'route_eta'
   | 'checkin_ready'
@@ -47,7 +48,7 @@ export type KaelProcessLine = KaelProcessCatalogLine & {
 
 export type KaelProcessLineStatus = 'queued' | 'running' | 'completed' | 'failed'
 
-type KaelProcessSequence = {
+export type KaelProcessSequence = {
   collapse: string
   lines: KaelProcessLine[]
   scenarioId: KaelProcessScenarioId
@@ -63,6 +64,7 @@ type BuildKaelProcessSequenceInput = {
   mediaCount?: number
   message: string
   mode: 'normal' | 'case'
+  scenario?: KaelProcessScenarioId
 }
 
 const fallbackContext = {
@@ -121,6 +123,16 @@ const viScenarios: Record<KaelProcessScenarioId, KaelProcessCatalogScenario> = {
       line('risk', 'Kael đang tìm điểm còn thiếu trước khi kết luận…', 1600),
       line('context', 'Kael đang kiểm tra ghi chú và mô tả đi kèm…', 1420),
       line('compose', 'Kael đang soạn tóm tắt để bạn xác nhận…', 1520),
+    ],
+  },
+  analysis_refinement: {
+    collapse: 'Kael đã đối chiếu thông tin bổ sung với hồ sơ và cập nhật phân tích.',
+    lines: [
+      line('observe', 'Kael đang đọc thông tin bạn vừa bổ sung…', 1300),
+      line('context', 'Kael đang đối chiếu với mô tả và bằng chứng đã có…', 1500),
+      line('compare', 'Kael đang kiểm tra điểm thay đổi trong chẩn đoán…', 1580),
+      line('risk', 'Kael đang rà lại điều chưa thể kết luận…', 1480),
+      line('compose', 'Kael đang cập nhật phạm vi và cơ sở giá…', 1540),
     ],
   },
   scope_change: {
@@ -256,6 +268,16 @@ const enScenarios: Record<KaelProcessScenarioId, KaelProcessCatalogScenario> = {
       line('compose', 'Kael is drafting a short confirmation summary…', 1520),
     ],
   },
+  analysis_refinement: {
+    collapse: 'Kael compared the added details with the case and updated the analysis.',
+    lines: [
+      line('observe', 'Kael is reading the information you added…', 1300),
+      line('context', 'Kael is comparing it with the existing description and evidence…', 1500),
+      line('compare', 'Kael is checking what changes in the diagnosis…', 1580),
+      line('risk', 'Kael is reviewing what still cannot be concluded…', 1480),
+      line('compose', 'Kael is updating the scope and price basis…', 1540),
+    ],
+  },
   scope_change: {
     collapse: 'Kael compared scope, time, and risk.',
     lines: [
@@ -338,7 +360,7 @@ const enScenarios: Record<KaelProcessScenarioId, KaelProcessCatalogScenario> = {
 }
 
 export function buildKaelProcessSequence(input: BuildKaelProcessSequenceInput): KaelProcessSequence {
-  const scenarioId = selectScenario(input)
+  const scenarioId = input.scenario ?? selectScenario(input)
   const catalog = input.language === 'vi' ? viScenarios : enScenarios
   const scenario = catalog[scenarioId]
   const scale = durationScale(input, scenarioId)

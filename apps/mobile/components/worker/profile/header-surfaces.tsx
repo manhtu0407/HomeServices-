@@ -11,14 +11,13 @@ import Animated, { Easing, useAnimatedStyle, useDerivedValue, withTiming } from 
 
 import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
-import type { WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
+import type { WorkerProfileResponse } from '@/lib/api-types'
 
 import { textByLanguage } from '../ui/format'
-import { workerV5HasNumber } from '../ui/performance'
+import { useWorkerThemeMode } from '../worker-theme'
 import { styles } from './header-styles'
 
 type WorkerV5ProfileHeaderProfile = WorkerProfileResponse | null | undefined
-type WorkerV5ProfileHeaderInsights = WorkerPerformanceInsightsResponse | null | undefined
 type WorkerV5HeaderAura = ComponentType<{ testID: string }>
 
 function Text({ style, ...props }: TextProps) {
@@ -42,6 +41,7 @@ export function WorkerV5ProfileHeader({
   reduceMotion: boolean
   reduceTransparency: boolean
 }) {
+  const isDark = useWorkerThemeMode() === 'dark'
   const legalName = profile?.legal_name?.trim() || ''
   const name = profile
     ? legalName || textByLanguage(language, 'Chưa có tên pháp lý', 'No legal name')
@@ -61,8 +61,8 @@ export function WorkerV5ProfileHeader({
     width: `${Math.max(0, Math.min(1, progress.value)) * 100}%`,
   }))
   return (
-    <View style={[styles.profileHeader, reduceTransparency && styles.opaqueCard]} testID="worker-v5-worker-avatar">
-      {!reduceTransparency ? <HeroAura testID="worker-v5-profile-mint-aura" /> : null}
+    <View style={[styles.profileHeader, isDark ? styles.profileHeaderDark : null, reduceTransparency && !isDark ? styles.opaqueCard : null]} testID="worker-v5-worker-avatar">
+      {!reduceTransparency && !isDark ? <HeroAura testID="worker-v5-profile-mint-aura" /> : null}
       <Pressable
         accessibilityLabel={profile?.avatar_url
           ? textByLanguage(language, 'Đổi ảnh đại diện', 'Change profile photo')
@@ -73,11 +73,12 @@ export function WorkerV5ProfileHeader({
         onPress={onPickAvatar}
         style={({ pressed }) => [
           styles.profileAvatar,
+          isDark ? styles.profileAvatarDark : null,
           pressed && !reduceMotion ? styles.profileAvatarPressed : null,
         ]}
         testID="worker-v5-profile-avatar-picker"
       >
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
+        {!reduceTransparency && !isDark ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
         {avatarUploadBusy ? (
           <ActivityIndicator color="#078D7F" size="small" testID="worker-v5-profile-avatar-loading" />
         ) : profile?.avatar_url ? (
@@ -89,17 +90,17 @@ export function WorkerV5ProfileHeader({
           />
         ) : (
           <View style={styles.profileAvatarEmpty} testID="worker-v5-profile-avatar-empty">
-            <Text style={styles.profileAvatarAddGlyph}>＋</Text>
+            <Text style={[styles.profileAvatarAddGlyph, isDark ? styles.profileAvatarAddGlyphDark : null]}>＋</Text>
           </View>
         )}
       </Pressable>
       <View style={styles.profileHeaderText}>
-        <Text style={styles.profileHeaderName} numberOfLines={1} testID="worker-v5-profile-header-name">{name}</Text>
+        <Text style={[styles.profileHeaderName, isDark ? styles.profileHeaderNameDark : null]} numberOfLines={1} testID="worker-v5-profile-header-name">{name}</Text>
         <View
           accessibilityLabel={lifetimeLabel}
           accessibilityRole="progressbar"
           accessibilityValue={{ min: 0, max: WORKER_LIFETIME_MAX_MINUTES, now: activeMinutes, text: lifetimeValueText }}
-          style={styles.profileProgressTrack}
+          style={[styles.profileProgressTrack, isDark ? styles.profileProgressTrackDark : null]}
           testID="worker-v5-profile-lifetime-progress"
         >
           <Animated.View
@@ -107,7 +108,7 @@ export function WorkerV5ProfileHeader({
             testID="worker-v5-profile-lifetime-progress-fill"
           />
         </View>
-        <Text style={styles.profileHeaderMeta} numberOfLines={2} testID="worker-v5-profile-lifetime-progress-label">{lifetimeLabel}</Text>
+        <Text style={[styles.profileHeaderMeta, isDark ? styles.profileHeaderMetaDark : null]} numberOfLines={2} testID="worker-v5-profile-lifetime-progress-label">{lifetimeLabel}</Text>
       </View>
     </View>
   )
@@ -134,54 +135,5 @@ function workerLifetimeValueText(activeMinutes: number, language: AppLanguage) {
     language,
     `Thời gian hoạt động: ${elapsed} / 10.000 giờ`,
     `Active time: ${elapsed} / 10,000 hrs`,
-  )
-}
-
-export function WorkerV5ProfileDashboardCards({
-  insights,
-  language,
-  listAura: ListAura,
-  profile,
-  reduceTransparency,
-}: {
-  insights: WorkerV5ProfileHeaderInsights
-  language: AppLanguage
-  listAura: WorkerV5HeaderAura
-  profile: WorkerV5ProfileHeaderProfile
-  reduceTransparency: boolean
-}) {
-  const score = insights?.performance_score ?? null
-  const rating = insights?.average_rating ?? profile?.rating ?? null
-  const hasScore = workerV5HasNumber(score)
-  const hasRating = typeof rating === 'number' && Number.isFinite(rating) && rating > 0
-  const cards = [
-    {
-      icon: 'profile' as const,
-      score: hasScore ? `${score}` : textByLanguage(language, 'Chờ', 'Pending'),
-      scoreLabel: textByLanguage(language, 'xếp hạng', 'ranking'),
-      title: hasScore ? textByLanguage(language, 'Điểm xếp hạng', 'Ranking score') : textByLanguage(language, 'Chưa có xếp hạng thật', 'No real ranking yet'),
-    },
-    {
-      icon: 'shield' as const,
-      score: hasRating ? `${rating}` : textByLanguage(language, 'Chờ', 'Pending'),
-      scoreLabel: textByLanguage(language, 'đánh giá', 'rating'),
-      title: hasRating ? textByLanguage(language, 'Độ tin cậy có nguồn', 'Sourced reliability') : textByLanguage(language, 'Chưa có đánh giá thật', 'No real rating yet'),
-    },
-  ]
-  return (
-    <View style={styles.profileDashboard} testID="worker-v5-profile-dashboard">
-      {cards.map((card, index) => (
-        <View key={card.title} style={[styles.profileDashboardCard, reduceTransparency && styles.opaqueCard]} testID={`worker-v5-profile-dashboard-card-${index}`}>
-          {!reduceTransparency ? <ListAura testID={`worker-v5-profile-dashboard-mint-aura-${index}`} /> : null}
-          <View style={styles.profileDashboardScore}>
-            <Text style={styles.profileDashboardScoreValue} numberOfLines={1} testID={`worker-v5-profile-dashboard-score-${index}`}>{card.score}</Text>
-            <Text style={styles.profileDashboardScoreLabel} numberOfLines={1} testID={`worker-v5-profile-dashboard-score-label-${index}`}>{card.scoreLabel}</Text>
-          </View>
-          <View style={styles.profileDashboardCopy}>
-            <Text style={styles.profileDashboardTitle} numberOfLines={2} testID={`worker-v5-profile-dashboard-title-${index}`}>{card.title}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
   )
 }

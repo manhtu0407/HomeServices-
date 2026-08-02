@@ -41,6 +41,7 @@ export type KaelTopic =
   | "app_usage_help"
   | "safety_advisory"
   | "worker_safety_advisory"
+  | "service_trust_safety"
   | "legal_safety_awareness"
   | "support_redirect"
   | "medical_advice"
@@ -104,8 +105,8 @@ type BoundaryClient = Parameters<typeof retrieveLegalBoundaryPattern>[0];
 
 const DECLINE_TEMPLATES: Record<"vi" | "en", Record<DeclineTemplateKey, string>> = {
   vi: {
-    out_of_scope_service: "Vấn đề này nằm ngoài sáu nhóm dịch vụ nhà ở Kael đang hỗ trợ tại TP.HCM.",
-    out_of_domain_question: "Câu hỏi này nằm ngoài phạm vi của Kael. Bạn vui lòng liên hệ hỗ trợ tại tab hồ sơ để được giúp.",
+    out_of_scope_service: "Kael hiểu nhu cầu này, nhưng hiện chưa có đủ chuyên môn và quy trình đã kiểm chứng cho hạng mục ngoài sáu dịch vụ đang hỗ trợ. Vì hướng dẫn thiếu chắc chắn có thể gây hỏng hóc hoặc mất an toàn, Kael xin không chẩn đoán hay hướng dẫn thao tác.",
+    out_of_domain_question: "Kael hiểu điều bạn đang hỏi, nhưng chủ đề này nằm ngoài chuyên môn dịch vụ nhà ở. Trả lời thiếu chắc chắn có thể ảnh hưởng trực tiếp đến quyết định của bạn, nên Kael xin không suy đoán. Kael hỗ trợ toàn diện nhất với dịch vụ, an toàn, thợ, báo giá và giao dịch dịch vụ.",
     cannot_do_action: "Kael không có thẩm quyền thực hiện điều này. {alternative}",
     unsafe_or_sensitive: "Kael không thể trả lời câu hỏi này. Nếu bạn cần hỗ trợ khẩn cấp, vui lòng gọi số 113.",
     rate_limit_hit: "Bạn đã hỏi Kael quá nhiều lần trong thời gian ngắn. Vui lòng đợi {seconds} giây.",
@@ -115,8 +116,8 @@ const DECLINE_TEMPLATES: Record<"vi" | "en", Record<DeclineTemplateKey, string>>
     clarification_required: "Để Kael hỗ trợ đúng và an toàn, bạn vui lòng nêu rõ nhu cầu, bối cảnh và kết quả bạn muốn hỏi.",
   },
   en: {
-    out_of_scope_service: "This is outside the six HCMC home-service categories Kael currently supports.",
-    out_of_domain_question: "This question is outside Kael's scope. Please contact support from your profile tab.",
+    out_of_scope_service: "Kael understands the need, but does not yet have verified expertise and procedures for services outside the six supported categories. Uncertain instructions could cause damage or harm, so Kael will not diagnose or guide that work.",
+    out_of_domain_question: "Kael understands the question, but it is outside home-service expertise. An uncertain answer could affect your decision, so Kael will not speculate. Kael is most reliable on services, safety, workers, quotes, and service transactions.",
     cannot_do_action: "Kael is not authorized to perform that action. {alternative}",
     unsafe_or_sensitive: "Kael cannot answer that safely. If this is an emergency, call 113 or 115 now.",
     rate_limit_hit: "You have sent too many Kael requests in a short time. Please wait {seconds} seconds.",
@@ -143,6 +144,9 @@ const EDUCATIONAL_TOPICS: readonly KaelTopic[] = [
   "service_pricing_general_info",
   "worker_qualification_explain",
   "worker_safety_advisory",
+  "service_trust_safety",
+  "app_usage_help",
+  "safety_advisory",
   "legal_safety_awareness",
   "support_redirect",
 ];
@@ -324,7 +328,7 @@ export function hasKaelForbiddenTopicBoundarySignal(
     : topic === "medical_advice"
     ? ["y te", "tai nan", "benh", "medical", "hospital"]
     : topic === "financial_advice"
-    ? ["ty gia"]
+    ? ["ty gia", "co phieu", "chung khoan", "dau tu", "tien ao", "crypto", "forex", "lai suat", "stock", "investment", "cryptocurrency"]
     : topic === "exact_guaranteed_price"
     ? ["gia chot dung", "tra dung so tien nay"]
     : topic === "fear_based_upsell"

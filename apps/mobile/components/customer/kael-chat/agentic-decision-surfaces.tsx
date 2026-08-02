@@ -6,11 +6,15 @@ import type { AppLanguage } from '@/lib/app-language'
 import { CaseWorkResponse } from './case-work-response'
 import type { CaseWorkResponseModel } from './case-work-response-model'
 import type { AgenticEstimateSupportingPhaseModel } from './agentic-estimate-display-model'
+import { AgenticPriceReasoningStream } from './agentic-price-reasoning-stream'
 import { useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
 
 export function AgenticChatEstimateResponsePanel({
+  adjustmentOpen,
+  adjustmentText,
   advisory,
   canConfirm,
+  canSubmitAdjustment,
   canSubmitRejectReason,
   confirmed,
   confirming,
@@ -19,25 +23,31 @@ export function AgenticChatEstimateResponsePanel({
   language,
   moreInfoText,
   needsMoreInfo,
+  onAdjust,
+  onAdjustmentChange,
   onConfirm,
   onReasonChange,
   onReject,
+  onSubmitAdjustment,
   onSubmitRejectReason,
   price,
   priceExplanation,
-  problem,
   rejected,
   rejectLabel,
   rejectReason,
   serviceLabel,
   sourceExplanation,
   statusLabel,
+  submittingAdjustment,
   submittingRejectReason,
   supportingPhase,
   textInputStyle,
 }: {
+  adjustmentOpen: boolean
+  adjustmentText: string
   advisory?: string
   canConfirm: boolean
+  canSubmitAdjustment: boolean
   canSubmitRejectReason: boolean
   confirmed: boolean
   confirming: boolean
@@ -46,19 +56,22 @@ export function AgenticChatEstimateResponsePanel({
   language: AppLanguage
   moreInfoText: string
   needsMoreInfo: boolean
+  onAdjust: () => void
+  onAdjustmentChange: (value: string) => void
   onConfirm: () => void
   onReasonChange: (value: string) => void
   onReject: () => void
+  onSubmitAdjustment: () => void
   onSubmitRejectReason: () => void
   price: string
   priceExplanation: string
-  problem: string
   rejected: boolean
   rejectLabel: string
   rejectReason: string
   serviceLabel: string
   sourceExplanation: string
   statusLabel: string
+  submittingAdjustment: boolean
   submittingRejectReason: boolean
   supportingPhase: AgenticEstimateSupportingPhaseModel | null
   textInputStyle: StyleProp<TextStyle>
@@ -70,21 +83,52 @@ export function AgenticChatEstimateResponsePanel({
     noteTitle: language === 'vi' ? 'Phạm vi và ước tính' : 'Scope and estimate',
     phase: 'ticket_review',
     status: statusLabel,
-    title: `${serviceLabel}: ${problem}`,
+    title: serviceLabel,
   }
 
   return (
     <CaseWorkResponse
       controls={(
         <>
+          {adjustmentOpen ? (
+            <View style={styles.reason} testID="customer-v21-agentic-adjustment">
+              <Text style={[styles.reasonTitle, { color: tokens.text }]}>
+                {language === 'vi' ? 'Thông tin bạn muốn bổ sung' : 'Information to add'}
+              </Text>
+              <Text style={[styles.adjustmentHint, { color: tokens.muted }]}>
+                {language === 'vi'
+                  ? 'Nêu dấu hiệu mới, phạm vi hoặc điểm Kael chưa hiểu đúng để Kael phân tích lại.'
+                  : 'Add new symptoms, scope, or anything Kael misunderstood so it can analyze again.'}
+              </Text>
+              <KaelTextField
+                multiline
+                onChangeText={onAdjustmentChange}
+                placeholder={language === 'vi' ? 'Bổ sung thông tin cho Kael' : 'Add information for Kael'}
+                placeholderTextColor={tokens.subtleText}
+                style={[textInputStyle, styles.adjustmentInput, { color: tokens.text }]}
+                testID="customer-v21-agentic-adjustment-input"
+                value={adjustmentText}
+              />
+              <KaelButton
+                disabled={!canSubmitAdjustment}
+                label={submittingAdjustment
+                  ? (language === 'vi' ? 'Đang phân tích lại' : 'Analyzing again')
+                  : (language === 'vi' ? 'Gửi Kael phân tích lại' : 'Send for re-analysis')}
+                loading={submittingAdjustment}
+                onPress={onSubmitAdjustment}
+                size="small"
+                testID="customer-v21-agentic-adjustment-send"
+              />
+            </View>
+          ) : null}
           {rejected ? (
             <View style={styles.reason} testID="customer-v21-agentic-reject-reason">
               <Text style={[styles.reasonTitle, { color: tokens.text }]}>
-                {language === 'vi' ? 'Điều bạn muốn điều chỉnh' : 'What should be adjusted'}
+                {language === 'vi' ? 'Lý do bạn từ chối' : 'Reason for declining'}
               </Text>
               <KaelTextField
                 onChangeText={onReasonChange}
-                placeholder={language === 'vi' ? 'Mô tả ngắn điều cần đổi' : 'Briefly describe the change'}
+                placeholder={language === 'vi' ? 'Nêu ngắn lý do từ chối' : 'Briefly explain why'}
                 placeholderTextColor={tokens.subtleText}
                 style={[textInputStyle, { color: tokens.text }]}
                 testID="customer-v21-agentic-reject-reason-input"
@@ -94,7 +138,7 @@ export function AgenticChatEstimateResponsePanel({
                 disabled={!canSubmitRejectReason}
                 label={submittingRejectReason
                   ? (language === 'vi' ? 'Đang gửi' : 'Sending')
-                  : (language === 'vi' ? 'Gửi điều chỉnh' : 'Send changes')}
+                  : (language === 'vi' ? 'Gửi lý do' : 'Send reason')}
                 onPress={onSubmitRejectReason}
                 size="small"
                 testID="customer-v21-agentic-reject-reason-send"
@@ -103,7 +147,7 @@ export function AgenticChatEstimateResponsePanel({
           ) : null}
           <View style={styles.actions}>
             <KaelButton
-              disabled={confirming || submittingRejectReason}
+              disabled={confirming || submittingAdjustment || submittingRejectReason}
               label={rejectLabel}
               onPress={onReject}
               size="small"
@@ -112,8 +156,17 @@ export function AgenticChatEstimateResponsePanel({
               variant="secondary"
             />
             <KaelButton
-              accessibilityState={{ busy: confirming, disabled: !canConfirm || confirming || submittingRejectReason }}
-              disabled={!canConfirm || confirming || submittingRejectReason}
+              disabled={confirming || submittingAdjustment || submittingRejectReason}
+              label={language === 'vi' ? 'Điều chỉnh' : 'Adjust'}
+              onPress={onAdjust}
+              size="small"
+              style={styles.action}
+              testID="customer-v21-agentic-estimate-adjust"
+              variant="secondary"
+            />
+            <KaelButton
+              accessibilityState={{ busy: confirming, disabled: !canConfirm || confirming || submittingAdjustment || submittingRejectReason }}
+              disabled={!canConfirm || confirming || submittingAdjustment || submittingRejectReason}
               label={confirmLabel}
               onPress={onConfirm}
               size="small"
@@ -126,8 +179,9 @@ export function AgenticChatEstimateResponsePanel({
       details={(
         <View style={styles.details}>
           {supportingPhase ? (
-            <AgenticEstimateSupportingPhase
+            <AgenticPriceReasoningStream
               model={supportingPhase}
+              reduceMotion={reduceMotion}
               tokens={tokens}
             />
           ) : null}
@@ -158,76 +212,14 @@ export function AgenticChatEstimateResponsePanel({
   )
 }
 
-function AgenticEstimateSupportingPhase({
-  model,
-  tokens,
-}: {
-  model: AgenticEstimateSupportingPhaseModel
-  tokens: ReturnType<typeof useCustomerV21SurfaceTheme>['tokens']
-}) {
-  return (
-    <View
-      accessibilityLabel={`${model.title}. ${model.rows.map((row) => `${row.label}: ${row.detail}`).join('. ')}. ${model.valueStatement}`}
-      style={[styles.support, { borderColor: tokens.border }]}
-      testID="customer-v21-agentic-estimate-supporting-phase"
-    >
-      <Text accessibilityRole="header" style={[styles.supportTitle, { color: tokens.text }]}>
-        {model.title}
-      </Text>
-      {model.rows.map((row) => (
-        <View key={row.key} style={styles.supportRow} testID={`customer-v21-agentic-estimate-support-${row.key}`}>
-          <Text style={[styles.supportLabel, { color: tokens.primary }]}>
-            {row.label}
-          </Text>
-          <Text style={[styles.supportDetail, { color: tokens.text }]}>
-            {row.detail}
-          </Text>
-        </View>
-      ))}
-      <Text style={[styles.supportValue, { color: tokens.muted }]}>
-        {model.valueStatement}
-      </Text>
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
+  adjustmentHint: { fontSize: 12, lineHeight: 18 },
+  adjustmentInput: { minHeight: 88, paddingTop: 12, textAlignVertical: 'top' },
   detail: { fontSize: 14, lineHeight: 21 },
   details: { gap: 7 },
   meta: { fontSize: 12, lineHeight: 18 },
   reason: { gap: 10 },
   reasonTitle: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  support: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
-    paddingBottom: 17,
-  },
-  supportDetail: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  supportLabel: {
-    flexBasis: 88,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 19,
-  },
-  supportRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  supportTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 21,
-  },
-  supportValue: {
-    fontSize: 12.5,
-    lineHeight: 19,
-    marginTop: 1,
-  },
 })

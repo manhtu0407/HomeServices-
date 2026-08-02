@@ -69,12 +69,15 @@ export function useCustomerKaelDecisionActions({
     turns,
   } = conversation
   const {
+    agenticAdjustmentText,
     agenticRejectReason,
     caseQuoteRejectReason,
     confirmingAgenticEstimate,
     confirmingCaseQuote,
     confirmingCompletion,
     retryingWorkerSearch,
+    setAgenticAdjustmentOpen,
+    setAgenticAdjustmentText,
     setAgenticRejectOpen,
     setAgenticRejectReason,
     setCaseEditOpen,
@@ -84,8 +87,10 @@ export function useCustomerKaelDecisionActions({
     setConfirmingCaseQuote,
     setConfirmingCompletion,
     setRetryingWorkerSearch,
+    setSubmittingAgenticAdjustment,
     setSubmittingAgenticRejectReason,
     setSubmittingCaseQuoteRejectReason,
+    submittingAgenticAdjustment,
     submittingAgenticRejectReason,
     submittingCaseQuoteRejectReason,
   } = chatUi
@@ -221,6 +226,8 @@ export function useCustomerKaelDecisionActions({
     if (!operation) return
     const requestToken = kaelRequestGuard.begin('conversation')
     setConfirmingAgenticEstimate(true)
+    setAgenticAdjustmentOpen(false)
+    setAgenticAdjustmentText('')
     setAgenticRejectOpen(false)
     setAgenticRejectReason('')
     setError(null)
@@ -279,25 +286,36 @@ export function useCustomerKaelDecisionActions({
     }
   }
 
-  const submitAgenticRejectReason = async () => {
-    const reason = agenticRejectReason.trim()
-    if (!chat?.session.id || submittingAgenticRejectReason || !reason) return
-    const operation = beginDecisionOperation('reject-agentic-estimate')
+  const submitAgenticEstimateFollowUp = async ({
+    kind,
+    message,
+    onSuccess,
+    setSubmitting,
+  }: {
+    kind: 'adjust-agentic-estimate' | 'reject-agentic-estimate'
+    message: string
+    onSuccess: () => void
+    setSubmitting: (value: boolean) => void
+  }) => {
+    if (!chat?.session.id || !message) return
+    const operation = beginDecisionOperation(kind)
     if (!operation) return
     const requestToken = kaelRequestGuard.begin('conversation')
-    setSubmittingAgenticRejectReason(true)
+    setSubmitting(true)
     setLoading(true)
     setError(null)
-    const processDone = startProcessLines(reason, {
+    const isAdjustment = kind === 'adjust-agentic-estimate'
+    const processDone = startProcessLines(message, {
       complexity: chatEstimate?.complexity ?? null,
-      mediaCount: 0,
-      mode: 'normal',
+      mediaCount: isAdjustment ? 0 : totalMediaRefs(turns),
+      mode: 'case',
+      scenario: isAdjustment ? 'analysis_refinement' : undefined,
       serviceType: chat.session.service_type,
     })
     try {
       const result = await kaelChatService.sendTurn(chat.session.id, {
         language,
-        message: reason,
+        message,
         photo_urls: [],
       })
       if (!kaelRequestGuard.isCurrent(requestToken)) return
@@ -306,8 +324,7 @@ export function useCustomerKaelDecisionActions({
         if (!kaelRequestGuard.isCurrent(requestToken)) return
         setChat(result.data)
         setTurns(result.data.turns)
-        setAgenticRejectOpen(false)
-        setAgenticRejectReason('')
+        onSuccess()
       } else {
         stopProcessLines()
         setError(localizeKaelRequestFailure(result, language))
@@ -317,11 +334,39 @@ export function useCustomerKaelDecisionActions({
     } finally {
       finishDecisionOperation(operation)
       if (kaelRequestGuard.isCurrent(requestToken)) {
-        setSubmittingAgenticRejectReason(false)
+        setSubmitting(false)
         setLoading(false)
         stopProcessLines()
       }
     }
+  }
+
+  const submitAgenticAdjustment = async () => {
+    const detail = agenticAdjustmentText.trim()
+    if (submittingAgenticAdjustment || !detail) return
+    await submitAgenticEstimateFollowUp({
+      kind: 'adjust-agentic-estimate',
+      message: detail,
+      onSuccess: () => {
+        setAgenticAdjustmentOpen(false)
+        setAgenticAdjustmentText('')
+      },
+      setSubmitting: setSubmittingAgenticAdjustment,
+    })
+  }
+
+  const submitAgenticRejectReason = async () => {
+    const reason = agenticRejectReason.trim()
+    if (submittingAgenticRejectReason || !reason) return
+    await submitAgenticEstimateFollowUp({
+      kind: 'reject-agentic-estimate',
+      message: reason,
+      onSuccess: () => {
+        setAgenticRejectOpen(false)
+        setAgenticRejectReason('')
+      },
+      setSubmitting: setSubmittingAgenticRejectReason,
+    })
   }
 
   const confirmCaseQuote = async () => {
@@ -483,6 +528,7 @@ export function useCustomerKaelDecisionActions({
     confirmCaseQuote,
     retryWorkerSearch,
     requestIntakeCorrection,
+    submitAgenticAdjustment,
     submitAgenticRejectReason,
     submitCaseQuoteRejectReason,
   }

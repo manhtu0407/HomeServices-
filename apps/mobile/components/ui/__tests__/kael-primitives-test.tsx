@@ -1,6 +1,7 @@
+import { Children } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { Platform, StyleSheet, Text } from 'react-native'
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
 
 jest.mock('expo-image', () => {
   const React = require('react')
@@ -11,9 +12,9 @@ jest.mock('expo-image', () => {
 })
 
 import { component, shadow, typography } from '@/design/theme'
-import { FormulaMintCanvasAura } from '../formula-mint-canvas'
+import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } from '../formula-mint-canvas'
 import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
-import { AlphaStop } from '../svg-alpha-stop'
+import { AlphaStop, NativeSafeLinearGradient } from '../svg-alpha-stop'
 import {
   KaelAlertBadge,
   KaelBadge,
@@ -80,6 +81,26 @@ describe('Kael UI primitives', () => {
     expect(stops[4].props).toMatchObject({ stopColor: '#010203', stopOpacity: 0.2 })
   })
 
+  it('passes normalized stops directly to react-native-svg before native gradient extraction', () => {
+    const { UNSAFE_getByType } = render(
+      <Svg>
+        <Defs>
+          <NativeSafeLinearGradient id="native-safe-gradient">
+            <AlphaStop offset="0" stopColor="rgba(80,232,210,0.34)" />
+            <AlphaStop offset="1" stopColor="rgba(151,246,232,0)" />
+          </NativeSafeLinearGradient>
+        </Defs>
+      </Svg>,
+    )
+
+    const gradient = UNSAFE_getByType(LinearGradient)
+    const stops = Children.toArray(gradient.props.children)
+
+    expect(stops).toHaveLength(2)
+    expect(stops[0]).toMatchObject({ props: { stopColor: '#50E8D2', stopOpacity: 0.34 } })
+    expect(stops[1]).toMatchObject({ props: { stopColor: '#97F6E8', stopOpacity: 0 } })
+  })
+
   it('renders the formula mint canvas with native-safe gradient stops', () => {
     const { getByTestId, UNSAFE_getAllByType } = render(
       <FormulaMintCanvasAura reduceTransparency scope="Customer Chat Test" testID="formula-mint-canvas-test" />,
@@ -88,8 +109,41 @@ describe('Kael UI primitives', () => {
     expect(getByTestId('formula-mint-canvas-test')).toBeOnTheScreen()
     const stops = UNSAFE_getAllByType(Stop)
     expect(stops.some((stop) => typeof stop.props.stopColor === 'string' && stop.props.stopColor.includes('rgba('))).toBe(false)
-    expect(stops.map((stop) => stop.props.stopColor)).toEqual(expect.arrayContaining(['#50E8D2', '#97F6E8', '#88F1DF', '#53DCCE', '#91E8DE']))
+    expect(stops.map((stop) => stop.props.stopColor)).toEqual(expect.arrayContaining([
+      '#F9FFFD',
+      '#F3FBF9',
+      '#EDF9F6',
+      '#50E8D2',
+      '#88F1DF',
+      '#53DCCE',
+      '#91E8DE',
+    ]))
     expect(stops.map((stop) => stop.props.stopOpacity)).toEqual(expect.arrayContaining([0.34, 0.12, 0.22, 0.24, 0.23, 0]))
+  })
+
+  it('uses standard SVG radial geometry so the light mint canvas stays consistent on web and native', () => {
+    const { UNSAFE_getAllByType } = render(
+      <FormulaMintCanvasAura reduceTransparency scope="Customer Home Test" testID="formula-mint-canvas-parity-test" />,
+    )
+
+    const gradients = UNSAFE_getAllByType(RadialGradient)
+    expect(gradients).toHaveLength(7)
+    gradients.forEach((gradient) => {
+      expect(gradient.props.gradientUnits).toBe('userSpaceOnUse')
+      expect(gradient.props.r).toBe(FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS)
+      expect(gradient.props.rx).toBeUndefined()
+      expect(gradient.props.ry).toBeUndefined()
+    })
+  })
+
+  it('uses a dark canvas palette instead of the light mint wash', () => {
+    const { UNSAFE_getAllByType } = render(
+      <FormulaMintCanvasAura mode="dark" scope="Customer Dark Test" testID="formula-mint-canvas-dark-test" />,
+    )
+
+    const stopColors = UNSAFE_getAllByType(Stop).map((stop) => stop.props.stopColor)
+    expect(stopColors).toEqual(expect.arrayContaining(['#0B0F0E', '#0E1513', '#101A17', '#32C2A9']))
+    expect(stopColors).not.toContain('#F9FFFD')
   })
 
   it('renders the primary button and handles presses', () => {

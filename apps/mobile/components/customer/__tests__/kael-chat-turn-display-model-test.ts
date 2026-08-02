@@ -1,4 +1,5 @@
 import {
+  customerVisibleCaseRequestText,
   customerVisibleIntakeSummaryText,
   customerVisibleKaelTurnText,
 } from '../kael-chat/kael-chat-turn-display-model'
@@ -83,6 +84,23 @@ describe('customer-visible Kael turn text', () => {
     const message = 'Ổ cắm phát tia lửa.\nTôi đã ngắt cầu dao.'
 
     expect(customerVisibleIntakeSummaryText(message, 'vi')).toBe(message)
+  })
+
+  it('breaks a detailed freeform Case Work request into readable information rows', () => {
+    const message = 'Tôi cần sửa nước. Khớp ren của ống thoát ngay dưới bồn rửa bếp đang rò từng giọt, có nước đọng và đáy tủ bị ẩm nhưng chưa tràn ra sàn. Tôi đã khóa van. Tôi cần thợ kiểm tra từ 10:00 đến 12:00 ngày 05/08/2026 tại Chung cư An Gia, Phường Võ Thị Sáu, Quận 3.'
+
+    expect(customerVisibleCaseRequestText(message, 'vi')).toBe([
+      'Tôi cần sửa nước.',
+      'Khớp ren của ống thoát ngay dưới bồn rửa bếp đang rò từng giọt, có nước đọng và đáy tủ bị ẩm nhưng chưa tràn ra sàn.',
+      'Tôi đã khóa van.',
+      'Tôi cần thợ kiểm tra từ 10:00 đến 12:00 ngày 05/08/2026 tại Chung cư An Gia, Phường Võ Thị Sáu, Quận 3.',
+    ].join('\n\n'))
+  })
+
+  it('does not reformat short Case Work follow-up messages', () => {
+    const message = 'Tôi đã khóa van. Bạn cần thêm ảnh không?'
+
+    expect(customerVisibleCaseRequestText(message, 'vi')).toBe(message)
   })
 
   it('repairs a legacy redacted minute without exposing it as an address token', () => {

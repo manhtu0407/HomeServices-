@@ -29,7 +29,7 @@ const adminAuth: MobileApiAuthResult = {
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
     getKaelCharter: vi.fn(async () => ({
-      charter_version: '2026-07-06.p9',
+      charter_version: '2026-08-01.p10',
       identity_summary: 'Kael is the Home Services assistant.',
       locked_files: ['identity.md', 'persona.md', 'mission-values.md'],
       tunable_files: ['tone-matrix.yaml', 'language-rules.md', 'forbidden-language.json', 'style-guidelines.md'],
@@ -177,6 +177,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getWorkerKaelMemory: vi.fn(),
     deleteMyKaelMemory: vi.fn(),
     updateMyKaelMemory: vi.fn(),
+    updateWorkerKaelMemoryPreference: vi.fn(),
     listMyPendingDecisions: vi.fn(async () => ({ pending_decisions: [] })),
     listMyThreads: vi.fn(async () => ({ threads: [] })),
     getCustomerProfileInsights: vi.fn(async () => ({
@@ -896,6 +897,26 @@ describe('mobile-api Edge router contract', () => {
 
     expect(response.status).toBe(200)
     expect(getWorkerKaelMemory).toHaveBeenCalledWith(expect.objectContaining(workerAuth))
+  })
+
+  it('routes worker Kael memory preference writes through the worker endpoint', async () => {
+    const updateWorkerKaelMemoryPreference = vi.fn(async () => ({ subject_type: 'worker' as const, memory: null }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ updateWorkerKaelMemoryPreference }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael-memory', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'area_preference', enabled: true }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(updateWorkerKaelMemoryPreference).toHaveBeenCalledWith(
+      expect.objectContaining(workerAuth),
+      { key: 'area_preference', enabled: true },
+    )
   })
 
   it('routes device push token registration through authenticated mobile API services', async () => {

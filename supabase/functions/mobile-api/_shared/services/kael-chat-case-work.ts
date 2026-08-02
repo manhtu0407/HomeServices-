@@ -10,7 +10,7 @@ import {
 } from "../kael/index.ts";
 import { apiFailure } from "../router.ts";
 import { compactMetadata, type KaelChatTurnRole } from "./_shared.ts";
-import { asKaelTurnRole, asNumber, asString, nullableString } from "./coercions.ts";
+import { asKaelTurnRole, asNumber, asRecord, asString, nullableString } from "./coercions.ts";
 import { dbQuery, type DbClient } from "./db.ts";
 import {
   buildUntrustedCustomerCaseConversationContext,
@@ -208,9 +208,15 @@ export async function persistDiagnosisScopeArtifact(
 export async function buildKaelConversationContext(
   client: DbClient,
   sessionId: string,
-): Promise<{ context: string | undefined; clarificationCount: number }> {
+): Promise<{
+  context: string | undefined;
+  clarificationCount: number;
+  previousAnalysisReceipt: Record<string, unknown> | undefined;
+}> {
   const turnsResult = await dbQuery<Array<Record<string, unknown>>>(
-    client.from("kael_chat_turns").select("turn_index, role, content_type, text_content")
+    client.from("kael_chat_turns").select(
+      "turn_index, role, content_type, text_content, safe_metadata",
+    )
       .eq("session_id", sessionId).order("turn_index", { ascending: true }),
   );
   if (turnsResult.error) {
@@ -223,10 +229,55 @@ export async function buildKaelConversationContext(
   const recent = rows.map((row) => ({ role: asKaelTurnRole(row.role), text: nullableString(row.text_content) }))
     .filter((turn): turn is { role: KaelChatTurnRole; text: string } => Boolean(turn.text))
     .slice(-8);
+  const previousAnalysisReceipt = [...rows].reverse().flatMap((row) => {
+    if (asString(row.content_type) !== "estimate") return [];
+    const estimateMetadata = asRecord(row.safe_metadata);
+    const estimateEnvelope = asRecord(estimateMetadata.estimate_card_v3);
+    const estimateCard = asRecord(estimateEnvelope.card);
+    const receipt = asRecord(estimateCard.analysis_receipt);
+    const evidence = asRecord(receipt.evidence);
+    return evidence.analysis_status === "analyzed" ? [receipt] : [];
+  })[0];
   return {
     context: buildUntrustedCustomerCaseConversationContext(recent),
     clarificationCount,
+    previousAnalysisReceipt,
   };
+}
+
+export function mergeKaelCustomerDetailForReanalysis(
+  artifact: KaelDiagnosisScopeArtifact,
+  latestCustomerDetail: string,
+): string {
+  const priorDetails = [
+    artifact.facts.customer_goal,
+    artifact.facts.latest_customer_detail,
+  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  const latest = latestCustomerDetail.trim();
+  const details: string[] = [];
+  for (const detail of [...priorDetails, latest]) {
+    const normalized = normalizeCustomerDetail(detail);
+    if (!normalized) continue;
+    const coveringIndex = details.findIndex((current) =>
+      normalizeCustomerDetail(current).includes(normalized)
+    );
+    if (coveringIndex >= 0) continue;
+    const coveredIndex = details.findIndex((current) =>
+      normalized.includes(normalizeCustomerDetail(current))
+    );
+    if (coveredIndex >= 0) details.splice(coveredIndex, 1, detail.trim());
+    else details.push(detail.trim());
+  }
+  const merged = details.join("\n\n");
+  if (merged.length <= 2000) return merged;
+  const latestBounded = latest.slice(0, 1200).trim();
+  const priorBudget = Math.max(0, 2000 - latestBounded.length - 2);
+  const priorBounded = details.slice(0, -1).join("\n\n").slice(0, priorBudget).trim();
+  return [priorBounded, latestBounded].filter(Boolean).join("\n\n");
+}
+
+function normalizeCustomerDetail(value: string) {
+  return value.replace(/\s+/g, " ").trim().toLocaleLowerCase("vi");
 }
 
 export function demandingCustomerTurnMetadata(
