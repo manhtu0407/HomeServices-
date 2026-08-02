@@ -11,8 +11,8 @@ import {
   type PendingClientRequestId,
 } from './client-request-id'
 import { parseAuthIdentifier, validateAuthIdentifier } from './auth-identifier'
-import { isValidEmail, staleAccountMutation } from './auth-provider-guards'
-import { getRuntimeAuthCallbackUrl, isPasswordRecoveryCallbackUrl } from './auth-callback'
+import { EMAIL_CONFIRMATION_REQUIRED_MESSAGE, getSafeSignupErrorMessage, isEmailConfirmationRequired, isValidEmail, staleAccountMutation } from './auth-provider-guards'
+import { getEmailConfirmationRedirectUrl, getRuntimeAuthCallbackUrl, isPasswordRecoveryCallbackUrl } from './auth-callback'
 import { requestPasswordRecoveryEmail, updateRecoveredPassword } from './password-recovery'
 import { isBoundedLoginPassword, validateNewPassword, validateSignupPassword } from './auth-password'
 import { buildLocalVisualAuditSession, getLocalVisualAuditRole } from './auth-visual-audit'
@@ -44,7 +44,7 @@ type AuthState = {
   signInWithApple: () => Promise<{ success: boolean; error?: string }>
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>
-  signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string }>
+  signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string; requiresEmailConfirmation?: boolean }>
   requestPasswordRecovery: (email: string) => Promise<{ success: boolean; error?: string }>
   completePasswordRecovery: (password: string) => Promise<{ success: boolean; error?: string }>
   submitWorkerApplication: (draft: WorkerApplicationDraft) => Promise<{ success: boolean; error?: string; applicationId?: string }>
@@ -66,7 +66,6 @@ type CustomerProfileDraft = {
 type CustomerIdentifierSignupDraft = { displayName: string; identifier: string; password: string }
 type WorkerApplicationDraft = { contact: string; language: 'vi' | 'en' }
 type CustomerPasswordUpdateDraft = { currentPassword: string; newPassword: string }
-
 const INITIAL_AUTH_SNAPSHOT: AuthSnapshot = {
   session: null,
   role: null,
@@ -436,7 +435,9 @@ function useAuthController(): AuthState {
       const { data, error } = await supabase.auth.signInWithPassword(credentials)
 
       if (error || !data.session?.user) {
-        const message = 'Email/SDT hoặc mật khẩu không đúng'
+        const message = isEmailConfirmationRequired(error)
+          ? EMAIL_CONFIRMATION_REQUIRED_MESSAGE
+          : 'Email/SDT hoặc mật khẩu không đúng'
         setCurrentSession(null)
         patchAuth({
           session: null,
@@ -550,19 +551,20 @@ function useAuthController(): AuthState {
             full_name: normalizedName,
             name: normalizedName,
           },
+          emailRedirectTo: getEmailConfirmationRedirectUrl(),
         },
       })
 
       if (error || !data.user) {
-        const message = 'Không thể tạo tài khoản. Vui lòng thử lại sau.'
+        const message = getSafeSignupErrorMessage(error)
         patchAuth({ authError: message, loading: false, profileStatus: 'idle' })
         return { success: false, error: message }
       }
 
       if (!data.session?.user) {
-        const message = 'Không thể tạo tài khoản. Vui lòng thử lại sau.'
-        patchAuth({ authError: message, loading: false, profileStatus: 'idle', role: null, session: null })
-        return { success: false, error: message }
+        setCurrentSession(null)
+        patchAuth({ authError: null, loading: false, profileStatus: 'idle', role: null, session: null })
+        return { success: true, requiresEmailConfirmation: true }
       }
 
       setGuestMode(false)

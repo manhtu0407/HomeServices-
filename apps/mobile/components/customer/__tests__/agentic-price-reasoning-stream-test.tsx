@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native'
+import { act, render, screen } from '@testing-library/react-native'
 import { Dimensions, StyleSheet } from 'react-native'
 
 import { customerTheme } from '@/design/theme'
@@ -54,6 +54,10 @@ describe('Agentic Price Reasoning stream', () => {
       />,
     )
 
+    expect(screen.queryByTestId('customer-v21-agentic-estimate-support-problem')).toBeNull()
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0)
+    })
     expect(screen.getByTestId('customer-v21-agentic-estimate-support-problem')).toBeTruthy()
     expect(screen.getByTestId('customer-v21-agentic-estimate-support-problem'))
       .not.toHaveTextContent('▍')
@@ -82,6 +86,19 @@ describe('Agentic Price Reasoning stream', () => {
       .toEqual([{ uri: 'https://media.test/photo-1' }])
   })
 
+  it('does not render an empty received-information row before its stream begins', () => {
+    jest.useFakeTimers()
+    render(
+      <AgenticPriceReasoningStream
+        model={{ ...model, rows: [model.rows[2]] }}
+        reduceMotion={false}
+        tokens={customerTheme.lightLayer}
+      />,
+    )
+
+    expect(screen.queryByTestId('customer-v21-agentic-estimate-support-scope')).toBeNull()
+  })
+
   it('reveals the complete validated receipt immediately with Reduce Motion', () => {
     render(
       <AgenticPriceReasoningStream
@@ -98,7 +115,7 @@ describe('Agentic Price Reasoning stream', () => {
     expect(screen.getByText(model.valueStatement)).toBeTruthy()
   })
 
-  it('fits evidence to its real aspect ratio and stacks report sections on compact screens', () => {
+  it('uses a compact standard evidence frame and readable vertical report rows', () => {
     const dimensionsSpy = jest.spyOn(Dimensions, 'get').mockReturnValue({
       fontScale: 1,
       height: 844,
@@ -115,32 +132,40 @@ describe('Agentic Price Reasoning stream', () => {
     )
 
     const previewTestId = 'customer-v21-agentic-estimate-support-evidence-photo-1-preview'
-    fireEvent(screen.getByTestId(previewTestId), 'load', {
-      nativeEvent: {
-        cacheType: 'memory',
-        source: {
-          height: 900,
-          isAnimated: false,
-          mediaType: 'image/jpeg',
-          url: 'https://media.test/photo-1',
-          width: 1600,
-        },
-      },
-    })
-
     const previewStyle = StyleSheet.flatten(screen.getByTestId(previewTestId).props.style)
+    const evidenceHeaderStyle = StyleSheet.flatten(
+      screen.getByTestId('customer-v21-agentic-estimate-support-evidence-photo-1-header').props.style,
+    )
+    const rowStyle = StyleSheet.flatten(
+      screen.getByTestId('customer-v21-agentic-estimate-support-problem').props.style,
+    )
+    const evidenceRowStyle = StyleSheet.flatten(
+      screen.getByTestId('customer-v21-agentic-estimate-support-evidence-photo-1').props.style,
+    )
+    const titleStyle = StyleSheet.flatten(screen.getByText(model.title).props.style)
+    const labelStyle = StyleSheet.flatten(screen.getByText(model.rows[0].label).props.style)
+    const sectionLabelStyle = StyleSheet.flatten(screen.getByText('Mức tin cậy').props.style)
     const sectionStyle = StyleSheet.flatten(
       screen.getByTestId('customer-v21-agentic-estimate-support-scope-sections').props.style,
     )
 
     expect(previewStyle).toMatchObject({
-      alignSelf: 'center',
-      aspectRatio: 16 / 9,
-      height: 184,
-      maxWidth: '100%',
+      alignSelf: 'flex-start',
+      borderRadius: 12,
+      height: 84,
+      width: 112,
     })
-    expect(previewStyle.width).toBeUndefined()
+    expect(previewStyle.width).toBe(112)
+    expect(evidenceHeaderStyle.flexDirection).toBe('column')
+    expect(evidenceRowStyle).toMatchObject({ marginTop: -6, paddingTop: 2 })
+    expect(rowStyle.flexDirection).toBe('column')
+    expect(rowStyle.paddingVertical).toBe(10)
+    expect(titleStyle.color).toBe(customerTheme.lightLayer.primary)
+    expect(titleStyle.fontWeight).toBe('600')
+    expect(labelStyle.fontWeight).toBe('800')
+    expect(sectionLabelStyle.fontWeight).toBe('800')
     expect(sectionStyle.flexDirection).toBe('column')
+    expect(sectionStyle.gap).toBe(12)
 
     unmount()
     dimensionsSpy.mockReturnValue({
@@ -158,8 +183,30 @@ describe('Agentic Price Reasoning stream', () => {
     )
     expect(StyleSheet.flatten(
       screen.getByTestId('customer-v21-agentic-estimate-support-scope-sections').props.style,
-    ).flexDirection).toBe('row')
+    ).flexDirection).toBe('column')
 
     dimensionsSpy.mockRestore()
+  })
+
+  it('uses the same standard frame for every submitted photo', () => {
+    const photoRows: AgenticEstimateSupportingPhaseModel['rows'] = [
+      model.rows[1],
+      { ...model.rows[1], key: 'evidence-photo-2', label: 'Hình 2', mediaUrl: 'https://media.test/photo-2' },
+      { ...model.rows[1], key: 'evidence-photo-3', label: 'Hình 3', mediaUrl: 'https://media.test/photo-3' },
+    ]
+    render(
+      <AgenticPriceReasoningStream
+        model={{ ...model, rows: photoRows }}
+        reduceMotion
+        tokens={customerTheme.lightLayer}
+      />,
+    )
+
+    for (const index of [1, 2, 3]) {
+      const style = StyleSheet.flatten(
+        screen.getByTestId(`customer-v21-agentic-estimate-support-evidence-photo-${index}-preview`).props.style,
+      )
+      expect(style).toMatchObject({ height: 84, width: 112 })
+    }
   })
 })

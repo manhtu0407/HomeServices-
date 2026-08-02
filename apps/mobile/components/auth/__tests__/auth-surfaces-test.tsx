@@ -8,7 +8,7 @@ const mockEnterGuestMode = jest.fn()
 const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
 const mockSignInWithApple = jest.fn(async () => ({ success: true }))
 const mockSignInWithPassword = jest.fn(async (): Promise<{ success: boolean; error?: string; role?: 'admin' | 'customer' | 'worker' }> => ({ success: false, error: 'Không thể đăng nhập' }))
-const mockSignUpWithIdentifier = jest.fn(async (): Promise<{ success: boolean; error?: string }> => ({ success: true }))
+const mockSignUpWithIdentifier = jest.fn(async (): Promise<{ success: boolean; error?: string; requiresEmailConfirmation?: boolean }> => ({ success: true }))
 const mockRequestPasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockCompletePasswordRecovery = jest.fn(async () => ({ success: true }))
 const mockSignOut = jest.fn(async () => undefined)
@@ -607,8 +607,9 @@ describe('LoginRoleSurface', () => {
     expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
   })
 
-  it('completes customer registration without an email-confirmation step', async () => {
+  it('shows the email-confirmation step when the created account has no active session', async () => {
     mockRouteParams = { stage: '1.5' }
+    mockSignUpWithIdentifier.mockResolvedValueOnce({ success: true, requiresEmailConfirmation: true })
     render(<LoginRoleSurface />)
 
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
@@ -624,10 +625,49 @@ describe('LoginRoleSurface', () => {
         password: 'secret123',
       })
     })
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
-    expect(screen.queryByTestId('auth-signup-confirmation-screen')).toBeNull()
-    expect(screen.queryByText('Bước cuối: xác nhận email.')).toBeNull()
+    expect(mockReplace).not.toHaveBeenCalled()
+    expect(screen.getByTestId('auth-signup-confirmation-screen')).toBeOnTheScreen()
+    expect(screen.getByText('Tài khoản đã được tạo. Mở thư điện tử để xác nhận, rồi quay lại đăng nhập.')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('auth-signup-confirmation-login'))
+    expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+  })
+
+  it('explains email confirmation instead of an invalid-credentials error', async () => {
+    mockRouteParams = { stage: '1.4' }
+    mockSignInWithPassword.mockResolvedValueOnce({
+      success: false,
+      error: 'Thư điện tử chưa được xác nhận. Hãy kiểm tra email rồi đăng nhập lại.',
+    })
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Thư điện tử chưa được xác nhận. Hãy kiểm tra email rồi đăng nhập lại.')).toBeOnTheScreen()
+    })
+  })
+
+  it('keeps a safe signup validation message instead of falling back to a generic failure', async () => {
+    mockRouteParams = { stage: '1.5' }
+    mockSignUpWithIdentifier.mockResolvedValueOnce({
+      success: false,
+      error: 'Địa chỉ thư điện tử chưa đúng định dạng.',
+    })
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-terms'))
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Địa chỉ thư điện tử chưa đúng định dạng.')).toBeOnTheScreen()
+    })
+    expect(screen.queryByText('Chưa thể tạo tài khoản. Vui lòng thử lại.')).toBeNull()
   })
 
   it('keeps unsupported phone signup out of the customer form', () => {

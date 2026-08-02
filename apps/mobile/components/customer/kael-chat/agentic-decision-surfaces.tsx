@@ -207,6 +207,7 @@ export function AgenticChatEstimateResponsePanel({
       model={model}
       reduceMotion={reduceMotion}
       testID="customer-v21-agentic-estimate-response"
+      titleStyle={styles.estimateServiceTitle}
       tokens={tokens}
     />
   )
@@ -219,6 +220,7 @@ const styles = StyleSheet.create({
   adjustmentInput: { minHeight: 88, paddingTop: 12, textAlignVertical: 'top' },
   detail: { fontSize: 14, lineHeight: 21 },
   details: { gap: 7 },
+  estimateServiceTitle: { fontSize: 25, fontWeight: '600', lineHeight: 32 },
   meta: { fontSize: 12, lineHeight: 18 },
   reason: { gap: 10 },
   reasonTitle: { fontSize: 14, fontWeight: '600', lineHeight: 20 },

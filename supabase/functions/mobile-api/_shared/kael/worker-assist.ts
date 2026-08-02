@@ -8,6 +8,7 @@ import {
 import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
 import {
   circuitAwareProviderCandidatesForPurpose,
+  isSimpleNormalChatMessage,
   shouldSkipProviderSiblingModels,
   type ProviderChoice,
 } from "./kael-providers/routing.ts";
@@ -164,7 +165,11 @@ export async function runWorkerAssist(
     return workerPrematureCompletionPaymentAnswer(input.question, language);
   }
 
-  const routes = circuitAwareProviderCandidatesForPurpose("worker_assist");
+  const routes = circuitAwareProviderCandidatesForPurpose("worker_assist", {
+    routeProfile: conversationMode === "normal" && isSimpleNormalChatMessage(input.question)
+      ? "simple_normal_chat"
+      : "standard",
+  });
   let lastProviderFailure = "AI_UNAVAILABLE";
   const providerAttempts: WorkerAssistProviderAttempt[] = [];
   const trace: KaelSafeTraceEvent[] = [];

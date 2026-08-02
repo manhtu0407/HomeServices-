@@ -17,6 +17,10 @@ export function getPasswordRecoveryRedirectUrl() {
   return `${redirectUrl}${separator}auth_flow=password-recovery`
 }
 
+export function getEmailConfirmationRedirectUrl() {
+  return getAuthRedirectUrl()
+}
+
 export function getRuntimeAuthCallbackUrl() {
   if (Platform.OS !== 'web') return null
   const runtime = globalThis as typeof globalThis & { location?: { href?: string } }

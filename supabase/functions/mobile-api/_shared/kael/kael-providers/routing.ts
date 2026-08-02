@@ -12,6 +12,7 @@ export type ProviderChoice = ProviderRoute & {
 };
 
 export type ChooseProviderOptions = {
+  readonly routeProfile?: "standard" | "simple_normal_chat";
   readonly blockedProviders?: readonly AIProvider[];
   readonly attemptedProviders?: readonly AIProvider[];
   readonly estimatedCostUsd?: number;
@@ -64,9 +65,14 @@ export function providerCandidatesForPurpose(
 ): ProviderChoice[] {
   const purpose = parseKaelPurpose(purposeInput);
   const config = KAEL_ROUTING_CONFIG[purpose];
+  const useSimpleNormalChatPrimary = options.routeProfile === "simple_normal_chat" &&
+    config.simpleNormalChatPrimary !== undefined;
+  const primary = useSimpleNormalChatPrimary
+    ? config.simpleNormalChatPrimary
+    : config.primary;
   const routes: ProviderChoice[] = [
     {
-      ...config.primary,
+      ...primary,
       purpose,
       role: "primary",
       score: 100,
@@ -74,7 +80,17 @@ export function providerCandidatesForPurpose(
       latencyBudgetMs: config.latencyBudgetMs,
     },
   ];
-  if (config.modelFallback) {
+  if (useSimpleNormalChatPrimary) {
+    routes.push({
+      ...config.primary,
+      purpose,
+      role: "fallback",
+      fallbackKind: "model",
+      score: 90,
+      costCeilingUsd: config.costCeilingUsd,
+      latencyBudgetMs: config.latencyBudgetMs,
+    });
+  } else if (config.modelFallback) {
     routes.push({
       ...config.modelFallback,
       purpose,
@@ -102,6 +118,16 @@ export function providerCandidatesForPurpose(
     .filter((route) => !blocked.has(route.provider))
     .filter((route) => !attempted.has(route.provider))
     .filter((route) => !options.isCircuitOpen?.(purpose, route.provider, options.now));
+}
+
+export function isSimpleNormalChatMessage(value: string): boolean {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .trim();
+  return /^(?:xin chao|chao|hello|hi|hey|kael|cam on(?: ban)?|thanks|thank you)[.!? ]*$/.test(normalized);
 }
 
 export function chooseCircuitAwareProvider(
