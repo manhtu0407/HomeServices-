@@ -8,8 +8,10 @@ import {
   encodeSseHeartbeat,
 } from '../../../../../supabase/functions/mobile-api/_shared/sse'
 import {
+  splitVerifiedResponseBlocks,
   splitVerifiedResponseDeltas,
   verifiedResponseCadenceMs,
+  verifiedResponseTargetChars,
 } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-verified-response-stream'
 
 const kaelStreamSource = fs.readFileSync(
@@ -51,6 +53,44 @@ describe('mobile-api SSE helper', () => {
     expect(deltas.every((delta) => delta.length > 0)).toBe(true)
   })
 
+  it('classifies only supported reading blocks and preserves legacy reconstruction separators', () => {
+    const response = [
+      '## Huong xu ly',
+      '',
+      'Kael da doi chieu thong tin.',
+      '',
+      '- Kiem tra nguon dien',
+      '- Xac nhan pham vi',
+    ].join('\n')
+    const blocks = splitVerifiedResponseBlocks(response)
+
+    expect(blocks.map((block) => block.kind)).toEqual(['heading', 'paragraph', 'list'])
+    expect(blocks.map((block) => block.text + block.separatorAfter).join('')).toBe(response)
+  })
+
+  it('caps pathological block counts without changing the verified response', () => {
+    const response = Array.from({ length: 60 }, (_, index) => `Doan ${index + 1}.`).join('\n\n')
+    const blocks = splitVerifiedResponseBlocks(response)
+
+    expect(blocks).toHaveLength(32)
+    expect(blocks.map((block) => block.text + block.separatorAfter).join('')).toBe(response)
+  })
+
+  it('shares one cadence budget across all response blocks', () => {
+    const response = Array.from({ length: 4 }, (_, index) => (
+      `Doan ${index + 1}. ${'Noi dung kiem chung '.repeat(30)}`
+    )).join('\n\n')
+    const blocks = splitVerifiedResponseBlocks(response)
+    const targetChars = verifiedResponseTargetChars(response)
+    const deltaCount = blocks.reduce(
+      (total, block) => total + splitVerifiedResponseDeltas(block.text, targetChars).length,
+      0,
+    )
+
+    expect(deltaCount).toBeLessThanOrEqual(88)
+    expect(blocks.map((block) => block.text + block.separatorAfter).join('')).toBe(response)
+  })
+
   it('keeps medium replies granular enough for a visible conversational reveal', () => {
     const response = [
       'Kael đã kiểm tra nội dung bạn gửi.',
@@ -69,8 +109,8 @@ describe('mobile-api SSE helper', () => {
     const sentenceCadence = verifiedResponseCadenceMs('đã hoàn tất. ')
     const paragraphCadence = verifiedResponseCadenceMs('Cơ sở giá\n')
 
-    expect(wordCadence).toBeGreaterThanOrEqual(100)
-    expect(wordCadence).toBeLessThanOrEqual(130)
+    expect(wordCadence).toBeGreaterThanOrEqual(80)
+    expect(wordCadence).toBeLessThanOrEqual(95)
     expect(clauseCadence).toBeGreaterThan(wordCadence)
     expect(sentenceCadence).toBeGreaterThan(clauseCadence)
     expect(paragraphCadence).toBeGreaterThan(sentenceCadence)
@@ -84,5 +124,15 @@ describe('mobile-api SSE helper', () => {
     expect(kaelStreamSource).toMatch(
       /needs more time than the client connection window\.\s*write\(encodeSseHeartbeat\(\)\);/,
     )
+  })
+
+  it('emits the universal response lifecycle while retaining legacy deltas', () => {
+    expect(kaelStreamSource).toContain('emit("response.started"')
+    expect(kaelStreamSource).toContain('mode: "standard"')
+    expect(kaelStreamSource).toContain('emit("block.started"')
+    expect(kaelStreamSource).toContain('emit("block.text.delta"')
+    expect(kaelStreamSource).toContain('emit("block.completed"')
+    expect(kaelStreamSource).toContain('emit("response.completed"')
+    expect(kaelStreamSource).toContain('emit("response_delta"')
   })
 })

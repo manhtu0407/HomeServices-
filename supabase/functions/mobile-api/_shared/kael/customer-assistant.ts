@@ -43,37 +43,44 @@ import {
 } from "./kael-guardrails/self-check.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
 import { buildRegisterHint, detectRegionalRegister } from "./regional-register.ts";
-import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import {
   customerWorkflowStatusLabel,
   resolveCustomerAssistantWorkflowAnswer,
   type CustomerAssistantWorkflowResolution,
 } from "./customer-assistant-workflow.ts";
-import {
-  buildNoProviderTrace,
-  buildProviderAttemptTrace,
-  type KaelSafeTraceEvent,
-} from "./trace.ts";
+import { type KaelSafeTraceEvent } from "./trace.ts";
 import { scrubSensitiveForLLM } from "./utils.ts";
 import { sanitizeCustomerCaseEvidenceText } from "./untrusted-evidence.ts";
 import type { KaelSpendGate, SpendGateClient } from "./kael-guardrails/spend-gate.ts";
 import { normalizeKaelResponseBrand } from "./user-facing-copy.ts";
+import {
+  buildCustomerWorkflowAssistantAnswer,
+  buildFallbackCustomerAssistantAnswer,
+} from "./customer-assistant-answer.ts";
+import {
+  deterministicSafetyNotes,
+  fallbackText,
+} from "./customer-assistant-copy.ts";
+import {
+  assistantSafeText,
+  buildCustomerAssistantNoProviderTrace,
+  buildCustomerAssistantProviderTrace,
+  classifyAssistantTopic,
+  inferAssistantServiceType,
+  normalizeActions,
+  normalizeCitations,
+  normalizeText,
+  shouldRetrieveGeneralKnowledge,
+  type CustomerAssistantJobContext,
+  type CustomerAssistantSurface,
+} from "./customer-assistant-policy.ts";
+
+export type {
+  CustomerAssistantJobContext,
+  CustomerAssistantSurface,
+} from "./customer-assistant-policy.ts";
 
 type AssistantClient = Parameters<typeof retrieveKaelKnowledgeContextIfEnabled>[0];
-
-export type CustomerAssistantSurface = "customer_normal" | "customer_case";
-
-export type CustomerAssistantJobContext = {
-  readonly id: string;
-  readonly status?: string | null;
-  readonly service_type?: string | null;
-  readonly description?: string | null;
-  readonly address_district?: string | null;
-  readonly kael_problem_identified?: string | null;
-  readonly kael_complexity?: string | null;
-  readonly kael_advisory?: string | null;
-  readonly payment_status?: string | null;
-};
 
 export type CustomerAssistantInput = {
   readonly actorId?: string | null;
@@ -116,15 +123,6 @@ const customerAssistantResponseSchema = z.preprocess(normalizeAssistantPayload, 
   ]).default("answered"),
 }).strip());
 
-const FALLBACK_VI =
-  "Kael có thể giải thích trong phạm vi sáu dịch vụ nhà ở NestScout tại TP.HCM. Nếu câu hỏi liên quan đến công việc đang chạy, hãy mở hồ sơ công việc để Kael đọc đúng ngữ cảnh.";
-const FALLBACK_EN =
-  "Kael can help with NestScout's six HCMC home-service categories. If this is about an active job, open that job so Kael can use the right context.";
-const LEGAL_NOTE_VI =
-  "Kael chỉ cung cấp nhận biết an toàn/pháp lý chung, không thay thế tư vấn luật sư.";
-const LEGAL_NOTE_EN =
-  "Kael gives general safety/legal-awareness guidance only, not legal advice.";
-
 export async function runCustomerAssistant(
   input: CustomerAssistantInput,
 ): Promise<CustomerAssistantAnswer> {
@@ -156,13 +154,27 @@ export async function runCustomerAssistant(
   }, input.client ?? undefined);
 
   if (!permission.allowed) {
-    return fallbackAnswer(
-      permission.responseText ?? fallbackText(language),
-      language,
+    return buildFallbackCustomerAssistantAnswer(
+      permission.responseText ?? fallbackText(language, topic),
       topic,
       "unsupported",
       true,
+      deterministicSafetyNotes(language, topic),
       trace,
+    );
+  }
+
+  const boundedLifecycleAnswer = resolveBoundedServiceLifecycleAnswer(
+    topic,
+    cleanQuestion,
+    language,
+  );
+  if (boundedLifecycleAnswer) {
+    return buildCustomerWorkflowAssistantAnswer(
+      boundedLifecycleAnswer,
+      surface,
+      topic,
+      deterministicSafetyNotes(language, topic),
     );
   }
 
@@ -174,7 +186,12 @@ export async function runCustomerAssistant(
     language,
   });
   if (workflowAnswer) {
-    return buildCustomerWorkflowAnswer(workflowAnswer, language, surface, topic);
+    return buildCustomerWorkflowAssistantAnswer(
+      workflowAnswer,
+      surface,
+      topic,
+      deterministicSafetyNotes(language, topic),
+    );
   }
 
   const knowledge = await retrieveAssistantKnowledgeContext({
@@ -190,7 +207,14 @@ export async function runCustomerAssistant(
   const routes = circuitAwareProviderCandidatesForPurpose("educational_response");
   if (routes.length === 0) {
     trace.push(buildCustomerAssistantNoProviderTrace(surface));
-    return fallbackAnswer(fallbackText(language), language, topic, "fallback", true, trace);
+    return buildFallbackCustomerAssistantAnswer(
+      fallbackText(language, topic),
+      topic,
+      "fallback",
+      true,
+      deterministicSafetyNotes(language, topic),
+      trace,
+    );
   }
   const spendGate: KaelSpendGate = {
     client: input.client as SpendGateClient,
@@ -233,6 +257,7 @@ export async function runCustomerAssistant(
             recoveredAnswer,
             language,
             surface,
+            topic,
           );
           if (checked.allowed && !checked.used_fallback) {
             return {
@@ -269,6 +294,7 @@ export async function runCustomerAssistant(
       result.data.answer,
       language,
       surface,
+      topic,
     );
     if (checked.used_fallback || !checked.allowed) {
       await auditCustomerAssistantGuardTrip(input, surface, route, checked);
@@ -278,7 +304,14 @@ export async function runCustomerAssistant(
         costUsd: result.usage.costUsd,
         fallbackUsed: true,
       }));
-      return fallbackAnswer(checked.text, language, topic, "fallback", true, trace);
+      return buildFallbackCustomerAssistantAnswer(
+        checked.text,
+        topic,
+        "fallback",
+        true,
+        deterministicSafetyNotes(language, topic),
+        trace,
+      );
     }
 
     trace.push(buildCustomerAssistantProviderTrace(surface, route, "success", {
@@ -304,7 +337,14 @@ export async function runCustomerAssistant(
     };
   }
 
-  return fallbackAnswer(fallbackText(language), language, topic, "fallback", true, trace);
+  return buildFallbackCustomerAssistantAnswer(
+    fallbackText(language, topic),
+    topic,
+    "fallback",
+    true,
+    deterministicSafetyNotes(language, topic),
+    trace,
+  );
 }
 
 function buildAssistantRequest(input: {
@@ -343,7 +383,7 @@ function buildAssistantRequest(input: {
           actor: "customer",
           language: input.language,
           permissionSummary:
-            "Answer service, worker, platform, safety, and legal-awareness questions. Do not create jobs, set prices, decide payment/scope/cancellation, or provide legal advice.",
+            "Prioritize the six supported services. Answer bounded service-adjacent safety, worker-trust, anti-scam, evidence, scope, quote, payment-hygiene, after-care, and warranty-awareness questions. Do not add a service category, create jobs, set prices, decide payment/scope/cancellation, or provide legal advice.",
           contextSummary: `${KAEL_BUSINESS_GUARDRAILS}\n${contextSummary}`,
           ...(input.registerHint ? { registerHint: input.registerHint } : {}),
         }),
@@ -353,7 +393,14 @@ function buildAssistantRequest(input: {
         content: [
           "Return JSON only with answer, safety_notes, citations, suggested_actions, boundary.",
           "Prioritize NestScout/platform context before general service knowledge.",
-          "Keep answer to at most 3 short sentences and 450 characters.",
+          "Use 2 to 4 short sentences and at most 650 characters; simpler questions should stay shorter.",
+          "Answer the immediate question first with natural, friendly, context-specific wording.",
+          "Vary detail with the question's complexity instead of forcing one response template.",
+          "Do not append a generic platform reminder or canned closing. Mention at most one concrete next action, and only when it helps the customer.",
+          "Never answer a service-related question with scope boilerplate. Give concrete observations, warning signs, and the safest useful next step.",
+          "For service trust or anti-scam questions, separate observed warning signs from conclusions. Do not accuse a person of fraud without evidence.",
+          "Do not diagnose an unsupported service mentioned only as context; answer only the related trust, safety, or transaction question.",
+          "Do not invent identity checks, ratings, order codes, escrow, refunds, or payment protections. Mention a platform feature only when runtime context or retrieved knowledge confirms it.",
           input.language === "vi"
             ? "Write every user-facing field in natural Vietnamese. Do not mix English workflow labels; only Kael, NestScout, and VietQR may remain as brand names."
             : "Write every user-facing field in English.",
@@ -450,221 +497,81 @@ async function retrieveAssistantKnowledgeContext(input: {
   };
 }
 
-function shouldRetrieveGeneralKnowledge(topic: KaelTopic) {
-  return topic === "worker_qualification_explain" ||
-    topic === "legal_safety_awareness" ||
-    topic === "service_pricing_general_info" ||
-    topic === "support_redirect";
-}
-
-function assistantSafeText(value: unknown, maxLength: number) {
-  return scrubSensitiveForLLM(typeof value === "string" ? value : "")
-    .replace(/\s+/g, " ")
-    .slice(0, maxLength)
-    .trim();
-}
-
-function fallbackAnswer(
-  answer: string,
-  language: KaelPromptLanguage,
+function resolveBoundedServiceLifecycleAnswer(
   topic: KaelTopic,
-  boundary: CustomerAssistantBoundary,
-  fallbackUsed: boolean,
-  trace?: readonly KaelSafeTraceEvent[],
-): CustomerAssistantAnswer {
-  return {
-    answer: normalizeKaelResponseBrand(answer),
-    safety_notes: deterministicSafetyNotes(language, topic),
-    citations: ["NestScout platform scope"],
-    suggested_actions: normalizeActions([], "customer_normal", topic),
-    boundary,
-    fallback_used: fallbackUsed,
-    ...(trace && trace.length > 0 ? { trace } : {}),
-  };
-}
-
-function buildCustomerWorkflowAnswer(
-  workflowAnswer: CustomerAssistantWorkflowResolution,
-  language: KaelPromptLanguage,
-  surface: CustomerAssistantSurface,
-  topic: KaelTopic,
-): CustomerAssistantAnswer {
-  return {
-    answer: normalizeKaelResponseBrand(workflowAnswer.answer),
-    safety_notes: deterministicSafetyNotes(language, topic),
-    citations: ["NestScout platform scope"],
-    suggested_actions: normalizeActions(workflowAnswer.suggestedActions, surface, topic),
-    boundary: "answered",
-    fallback_used: false,
-  };
-}
-
-function customerAssistantPath(surface: CustomerAssistantSurface) {
-  return surface === "customer_case"
-    ? {
-      workflowPhase: "offer_ready",
-      action: "customer.open_case_chat",
-      policyId: "kael.path.customer_case_chat_revision.v1",
-    } as const
-    : {
-      workflowPhase: "intake",
-      action: "customer.submit_intake",
-      policyId: "kael.path.customer_intake_to_estimate.v1",
-    } as const;
-}
-
-function buildCustomerAssistantNoProviderTrace(surface: CustomerAssistantSurface) {
-  const path = customerAssistantPath(surface);
-  return buildNoProviderTrace({
-    workflowPhase: path.workflowPhase,
-    actorRole: "customer",
-    action: path.action,
-    policyId: path.policyId,
-    purpose: "educational_response",
-    reasonCode: "NO_PROVIDER_AVAILABLE",
-    safeMetadata: { surface },
-  });
-}
-
-function buildCustomerAssistantProviderTrace(
-  surface: CustomerAssistantSurface,
-  route: ProviderChoice,
-  result: "success" | "error" | "schema_invalid",
-  options: {
-    readonly code?: string;
-    readonly latencyMs?: number;
-    readonly costUsd?: number;
-    readonly fallbackUsed: boolean;
-  },
-) {
-  const path = customerAssistantPath(surface);
-  return buildProviderAttemptTrace({
-    workflowPhase: path.workflowPhase,
-    actorRole: "customer",
-    action: path.action,
-    policyId: path.policyId,
-    purpose: "educational_response",
-    provider: route.provider,
-    model: route.model,
-    latencyMs: options.latencyMs,
-    costUsd: options.costUsd,
-    result,
-    code: options.code,
-    fallbackUsed: options.fallbackUsed,
-    safeMetadata: { surface },
-  });
-}
-
-function fallbackText(language: KaelPromptLanguage) {
-  return language === "en" ? FALLBACK_EN : FALLBACK_VI;
-}
-
-function deterministicSafetyNotes(
-  language: KaelPromptLanguage,
-  topic: KaelTopic,
-) {
-  let notes: string[];
-  if (topic === "legal_safety_awareness" || topic === "legal_advice") {
-    notes = [language === "en" ? LEGAL_NOTE_EN : LEGAL_NOTE_VI];
-  } else {
-    notes = language === "en"
-      ? ["Use NestScout's in-app workflow for booking, scope, payment, and support."]
-      : ["Hãy dùng luồng trong ứng dụng NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ."];
-  }
-  return notes.map(normalizeKaelResponseBrand);
-}
-
-function normalizeCitations(
-  values: readonly string[],
-  allowlistedValues: readonly string[],
-) {
-  const allowlist = new Set(allowlistedValues
-    .map((value) => assistantSafeText(value, 180))
-    .filter(Boolean));
-  return Array.from(new Set(values
-    .map((value) => assistantSafeText(value, 180))
-    .filter((value) => Boolean(value) && allowlist.has(value))))
-    .slice(0, 5);
-}
-
-function normalizeActions(
-  actions: readonly CustomerAssistantSuggestedAction[],
-  surface: CustomerAssistantSurface,
-  topic: KaelTopic,
-) {
-  const defaults: CustomerAssistantSuggestedAction[] = surface === "customer_case"
-    ? ["check_job", "message_worker"]
-    : topic === "service_pricing_general_info"
-    ? ["open_booking"]
-    : [];
-  return Array.from(new Set([...actions, ...defaults])).slice(0, 3);
-}
-
-function inferAssistantServiceType(
   text: string,
-  job?: CustomerAssistantJobContext | null,
-): ServiceType | null {
-  const jobProfile = getKaelPerformanceProfile(job?.service_type ?? "");
-  if (jobProfile) return jobProfile.service_type;
+  language: KaelPromptLanguage,
+): CustomerAssistantWorkflowResolution | null {
   const normalized = normalizeText(text);
-  if (/\b(dieu hoa|may lanh|dan lanh|dan nong|khong mat|lam lanh yeu|ma loi|air conditioner|air conditioning|hvac|ac unit|not cooling)\b/.test(normalized)) {
-    return "hvac";
+  if (topic === "service_trust_safety") {
+    if (/\b(otp|ma xac nhan|duong dan la|link la|qr la|dat coc|chuyen khoan truoc|ngoai ung dung|ngoai luong|tai khoan ca nhan|tai khoan khac)\b/.test(normalized)) {
+      return {
+        answer: language === "en"
+          ? "These are reasons to pause and verify, not enough evidence to accuse anyone of fraud. Do not share an OTP, open an unknown payment link, or transfer a deposit. Continue only when the identity, scope, and amount match the service information you already have."
+          : "Đây là dấu hiệu cần dừng để xác minh, chưa đủ để kết luận ai đó lừa đảo. Không gửi OTP, mở đường dẫn lạ hoặc chuyển cọc. Chỉ tiếp tục khi danh tính, phạm vi và khoản tiền khớp với thông tin dịch vụ bạn đang có.",
+        suggestedActions: ["contact_support"],
+      };
+    }
+    if (/\b(giu giay to|xin can cuoc|chup can cuoc)\b/.test(normalized)) {
+      return {
+        answer: language === "en"
+          ? "Do not hand over an original identity document or send a full ID image for an ordinary service visit. Ask why the information is needed and share only the minimum verified field; stop if the request is unrelated to the job."
+          : "Không giao giấy tờ gốc hoặc gửi ảnh căn cước đầy đủ cho một lần làm dịch vụ thông thường. Hãy hỏi rõ mục đích và chỉ cung cấp thông tin tối thiểu đã xác minh; dừng lại nếu yêu cầu không liên quan công việc.",
+        suggestedActions: ["contact_support"],
+      };
+    }
+    if (/\b(doi gia|thu them phi|ep thanh toan)\b/.test(normalized)) {
+      return {
+        answer: language === "en"
+          ? "Pause before paying. Compare the requested amount with the agreed scope and ask for the reason and evidence for every change; do not confirm an unexplained extra charge."
+          : "Hãy tạm dừng trước khi thanh toán. Đối chiếu khoản tiền với phạm vi đã chốt và yêu cầu nêu rõ lý do, bằng chứng cho từng thay đổi; không xác nhận khoản phát sinh chưa được giải thích.",
+        suggestedActions: ["contact_support"],
+      };
+    }
+    return {
+      answer: language === "en"
+        ? "Confirm the worker identity, agreed scope, access areas, and amount before work begins. Keep valuables and sensitive documents private, then compare the completed work with the agreed scope before confirming."
+        : "Trước khi bắt đầu, hãy đối chiếu danh tính thợ, phạm vi, khu vực được phép tiếp cận và khoản tiền đã thống nhất. Giữ riêng tài sản cùng giấy tờ nhạy cảm, rồi kiểm tra kết quả theo đúng phạm vi trước khi xác nhận.",
+      suggestedActions: [],
+    };
   }
-  if (/\b(sofa|nem|rem|tham|vai boc|giat sofa|giat nem|vet ban|mui hoi|am moc|upholstery|mattress|curtain|carpet|fabric stain)\b/.test(normalized)) {
-    return "upholstery";
+  if (topic !== "app_usage_help") return null;
+  if (/\b(thanh toan|vietqr|hoan tien|payment|refund)\b/.test(normalized)) {
+    return {
+      answer: language === "en"
+        ? "Kael does not have a specific transaction status in this conversation. Open the related job and check the status currently shown; if payment or refund information is absent, contact support without sending another payment."
+        : "Kael chưa có trạng thái giao dịch cụ thể trong cuộc trò chuyện này. Hãy mở hồ sơ công việc liên quan và kiểm tra trạng thái đang hiển thị; nếu chưa có thông tin thanh toán hoặc hoàn tiền, liên hệ hỗ trợ và không chuyển thêm tiền.",
+      suggestedActions: ["check_job", "contact_support"],
+    };
   }
-  if (/\b(khoan tuong|lap ke|lap thanh rem|ban le|tay nam|treo tv|lap tv|sua vat|handyman|mount shelf|hang tv|door hinge|cabinet handle)\b/.test(normalized)) {
-    return "handyman";
+  if (/\b(dat lich|huy lich|booking|cancel booking|trang thai cong viec|job status)\b/.test(normalized)) {
+    return {
+      answer: language === "en"
+        ? "Open the related job to check its current status before booking again or cancelling. If the available action does not match what you need, contact support rather than creating a duplicate request."
+        : "Hãy mở hồ sơ công việc liên quan để kiểm tra trạng thái hiện tại trước khi đặt lại hoặc hủy. Nếu thao tác đang có không đúng nhu cầu, liên hệ hỗ trợ thay vì tạo yêu cầu trùng.",
+      suggestedActions: ["check_job", "contact_support"],
+    };
   }
-  if (/\b(dien|o cam|o dien|cong tac|cau dao|aptomat|mat dien|den|chap|electrical|outlet|socket|circuit breaker|power outage|light switch)\b/.test(normalized)) {
-    return "electrical";
-  }
-  if (/\b(nuoc|ong|voi|lavabo|bon|toilet|ro|ri|tac|ap nuoc|plumbing|pipe|faucet|leak|clog|water pressure)\b/.test(normalized)) {
-    return "plumbing";
-  }
-  if (/\b(don dep|ve sinh|lau don|bep|phong tam|cua kinh|sau sua chua|rac|bui|cleaning|housekeeping|kitchen|bathroom|dust|trash)\b/.test(normalized)) {
-    return "cleaning";
-  }
-  return null;
-}
-
-function classifyAssistantTopic(text: string, serviceType: ServiceType | null): KaelTopic {
-  const normalized = normalizeText(text);
-  if (/\b(son nha|khoa cua|chuyen nha|diet con trung|internet|camera|tu lanh|house painting|locksmith|moving service|pest control|refrigerator)\b/.test(normalized)) {
-    return "out_of_scope_services_anything";
-  }
-  if (/\b(khoi kien|luat su|toa an|don kien|hop dong phap ly|legal advice|lawyer|attorney|sue|lawsuit|court filing)\b/.test(normalized)) {
-    return "legal_advice";
-  }
-  if (/\b(luat|phap ly|trach nhiem|bao hanh|boi thuong|hoa don|bien ban|legal awareness|warranty|liability|compensation|invoice)\b/.test(normalized)) {
-    return "legal_safety_awareness";
-  }
-  if (/\b(gia|bao nhieu|uoc tinh|phi|tien cong|bao gia|price|pricing|estimate|cost|fee|quote)\b/.test(normalized)) {
-    return "service_pricing_general_info";
-  }
-  if (/\b(tho|worker|xac minh|danh gia|tay nghe|chap nhan|huy viec)\b/.test(normalized)) {
-    return "worker_qualification_explain";
-  }
-  if (serviceType === "electrical") return "electrical_repair";
-  if (serviceType === "plumbing") return "plumbing_repair";
-  if (serviceType === "cleaning") return "home_cleaning";
-  if (serviceType === "hvac") return "hvac_service";
-  if (serviceType === "upholstery") return "upholstery_care";
-  if (serviceType === "handyman") return "handyman_service";
-  return "support_redirect";
+  return {
+    answer: language === "en"
+      ? "Describe the app step you are on and the action you need. Kael will explain only the confirmed service workflow and will not claim an unavailable feature."
+      : "Bạn hãy nêu màn hình đang mở và thao tác cần thực hiện. Kael chỉ giải thích luồng dịch vụ đã được xác nhận, không khẳng định một chức năng chưa có.",
+    suggestedActions: ["contact_support"],
+  };
 }
 
 function guardCustomerAssistantOutput(
   text: string,
   language: KaelPromptLanguage,
   surface: CustomerAssistantSurface,
+  topic: KaelTopic,
 ) {
   const initial = guardOutput({
     text,
     actor: "customer",
     language,
     surface,
-    fallbackText: fallbackText(language),
+    fallbackText: fallbackText(language, topic),
   });
   if (initial.reason !== "sentence_too_long") return initial;
   return guardOutput({
@@ -672,7 +579,7 @@ function guardCustomerAssistantOutput(
     actor: "customer",
     language,
     surface,
-    fallbackText: fallbackText(language),
+    fallbackText: fallbackText(language, topic),
   });
 }
 
@@ -714,6 +621,8 @@ function splitAssistantSentence(sentence: string, maxWords: number): string[] {
   const terminal = sentence.match(/[.!?]$/)?.[0] ?? ".";
   const words = sentence.replace(/[.!?]$/, "").trim().split(/\s+/).filter(Boolean);
   if (words.length <= maxWords) return [sentence];
+  const conditional = splitLeadingAssistantCondition(sentence, maxWords, terminal);
+  if (conditional) return conditional;
   const chunks: string[] = [];
   while (words.length > maxWords) {
     let balancedClauseCut = -1;
@@ -728,13 +637,18 @@ function splitAssistantSentence(sentence: string, maxWords: number): string[] {
     }
     let cut = balancedClauseCut >= 0 ? balancedClauseCut + 1 : maxWords;
     if (balancedClauseCut < 0) {
-      for (let index = maxWords; index >= 8; index -= 1) {
-        if (
-          /[,;:]$/.test(words[index - 1] ?? "") &&
-          !isCoordinatingConnector(words[index - 1] ?? "")
-        ) {
-          cut = index;
-          break;
+      const actionCut = findNaturalActionCut(words, maxWords);
+      if (actionCut >= 0) {
+        cut = actionCut;
+      } else {
+        for (let index = maxWords; index >= 8; index -= 1) {
+          if (
+            /[,;:]$/.test(words[index - 1] ?? "") &&
+            !isCoordinatingConnector(words[index - 1] ?? "")
+          ) {
+            cut = index;
+            break;
+          }
         }
       }
     }
@@ -749,6 +663,56 @@ function splitAssistantSentence(sentence: string, maxWords: number): string[] {
     chunks.push(`${capitalizeSentenceStart(words.join(" "))}${terminal}`);
   }
   return chunks;
+}
+
+function splitLeadingAssistantCondition(
+  sentence: string,
+  maxWords: number,
+  terminal: string,
+) {
+  const match = sentence.match(/^(Nếu|Khi|If|When)\s+(.+),\s*([^,]+?)[.!?]?$/iu);
+  if (!match) return null;
+  const condition = match[2]
+    .replace(/,\s*(hoặc|or)\s+/giu, " $1 ")
+    .trim();
+  const action = match[3].trim();
+  if (!condition || !action) return null;
+  const conditionKind = normalizeText(match[1]);
+  const bridge = conditionKind === "neu"
+    ? "Bạn nên làm vậy nếu"
+    : conditionKind === "khi"
+      ? "Bạn nên làm vậy khi"
+      : conditionKind === "if"
+        ? "Do this if"
+        : "Do this when";
+  return [
+    ...splitAssistantSentence(capitalizeSentenceStart(action) + ".", maxWords),
+    bridge + " " + lowercaseSentenceStart(condition) + terminal,
+  ];
+}
+
+function findNaturalActionCut(words: readonly string[], maxWords: number) {
+  const actionStarts = new Set([
+    "ask",
+    "book",
+    "check",
+    "contact",
+    "dat",
+    "goi",
+    "kiem",
+    "lien",
+    "ngat",
+    "xem",
+  ]);
+  for (let index = Math.min(maxWords - 1, words.length - 1); index >= 8; index -= 1) {
+    if (
+      words.length - index <= maxWords &&
+      actionStarts.has(normalizeText(words[index] ?? ""))
+    ) {
+      return index;
+    }
+  }
+  return -1;
 }
 
 function isCoordinatingConnector(value: string) {
@@ -772,13 +736,8 @@ function capitalizeSentenceStart(value: string) {
   return value ? `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}` : value;
 }
 
-function normalizeText(text: string) {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\u0111/g, "d")
-    .replace(/\u0110/g, "D")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+function lowercaseSentenceStart(value: string) {
+  return value
+    ? (value[0]?.toLowerCase() ?? "") + value.slice(1)
+    : value;
 }

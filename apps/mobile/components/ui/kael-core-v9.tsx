@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react'
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
-import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient } from 'react-native-svg'
+import Svg, { Circle, Defs, Ellipse, Path } from 'react-native-svg'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
 
-import { AlphaStop as Stop } from './svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from './svg-alpha-stop'
 import { startKaelCoreV9Autoplay } from './kael-core-v9-autoplay'
 import {
   KAEL_CORE_V9_BOW_DURATION_MS,

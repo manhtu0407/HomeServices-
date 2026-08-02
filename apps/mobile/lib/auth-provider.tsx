@@ -11,6 +11,7 @@ import {
   type PendingClientRequestId,
 } from './client-request-id'
 import { parseAuthIdentifier, validateAuthIdentifier } from './auth-identifier'
+import { isValidEmail, staleAccountMutation } from './auth-provider-guards'
 import { getRuntimeAuthCallbackUrl, isPasswordRecoveryCallbackUrl } from './auth-callback'
 import { requestPasswordRecoveryEmail, updateRecoveredPassword } from './password-recovery'
 import { isBoundedLoginPassword, validateNewPassword, validateSignupPassword } from './auth-password'
@@ -21,6 +22,7 @@ import { inspectOAuthCallbackUrl } from './oauth-callback'
 import {
   exchangeOAuthCodeForSession,
   getOAuthRedirectUrl,
+  startAppleOAuthRequest,
   startGoogleOAuthRequest,
   subscribeToOAuthCallbackUrls,
 } from './auth-oauth-runtime'
@@ -28,6 +30,7 @@ import { workerService } from './services'
 import { useSessionPushRegistration } from './use-session-push-registration'
 
 type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'config_missing'
+type OAuthProvider = 'apple' | 'google'
 
 type AuthState = {
   session: Session | null
@@ -38,6 +41,7 @@ type AuthState = {
   authError: string | null
   passwordRecoveryPending: boolean
   enterGuestMode: () => void
+  signInWithApple: () => Promise<{ success: boolean; error?: string }>
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>
   signUpWithIdentifier: (profile: CustomerIdentifierSignupDraft) => Promise<{ success: boolean; error?: string }>
@@ -80,6 +84,7 @@ const AuthContext = createContext<AuthState>({
   authError: null,
   passwordRecoveryPending: false,
   enterGuestMode: () => undefined,
+  signInWithApple: async () => ({ success: false, error: 'Đăng nhập Apple chưa sẵn sàng' }),
   signInWithGoogle: async () => ({ success: false, error: 'Đăng nhập Google chưa sẵn sàng' }),
   signInWithPassword: async () => ({ success: false, error: 'Đăng nhập chưa sẵn sàng' }),
   signUpWithIdentifier: async () => ({ success: false, error: 'Đăng ký chưa sẵn sàng' }),
@@ -122,7 +127,7 @@ function useAuthController(): AuthState {
   const pendingWorkerApplicationRequestRef = useRef<PendingClientRequestId | null>(null)
   const accountMutationSequenceRef = useRef(0)
   const roleLookupSequenceRef = useRef(0)
-  const googleOAuthPromiseRef = useRef<Promise<{ success: boolean; error?: string }> | null>(null)
+  const oauthPromiseRef = useRef<Promise<{ success: boolean; error?: string }> | null>(null)
   const lastOAuthCallbackCodeRef = useRef<string | null>(null)
   const sessionRef = useRef<Session | null>(localVisualAuditSnapshot?.session ?? INITIAL_AUTH_SNAPSHOT.session)
   const unregisterPushTokenForSession = useSessionPushRegistration({
@@ -226,7 +231,7 @@ function useAuthController(): AuthState {
     const callback = inspectOAuthCallbackUrl(url, getOAuthRedirectUrl())
     if (callback.kind === 'error') {
       patchAuth({
-        authError: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại sau.',
+        authError: 'Không thể hoàn tất đăng nhập. Vui lòng thử lại sau.',
         loading: false,
         profileStatus: 'profile_error',
       })
@@ -466,17 +471,20 @@ function useAuthController(): AuthState {
     }
   }, [fetchRole, setCurrentSession])
 
-  const signInWithGoogle = useCallback(() => {
-    const pendingRequest = googleOAuthPromiseRef.current
+  const beginProviderSignIn = useCallback((provider: OAuthProvider) => {
+    const pendingRequest = oauthPromiseRef.current
     if (pendingRequest) return pendingRequest
 
     const request = (async () => {
+      const providerName = provider === 'apple' ? 'Apple' : 'Google'
       setGuestMode(false)
       patchAuth({ loading: true, authError: null })
-      const result = await startGoogleOAuthRequest()
+      const result = provider === 'apple'
+        ? await startAppleOAuthRequest()
+        : await startGoogleOAuthRequest()
       if (!result.success) {
         patchAuth({
-          authError: result.error ?? 'Không thể mở đăng nhập Google. Vui lòng thử lại sau.',
+          authError: result.error ?? `Không thể mở đăng nhập ${providerName}. Vui lòng thử lại sau.`,
           loading: false,
           profileStatus: result.configMissing ? 'config_missing' : profileStatus,
         })
@@ -486,13 +494,16 @@ function useAuthController(): AuthState {
       if (Platform.OS !== 'web') patchAuth({ loading: false })
       return { success: true }
     })()
-    googleOAuthPromiseRef.current = request
+    oauthPromiseRef.current = request
     const clearPendingRequest = () => {
-      if (googleOAuthPromiseRef.current === request) googleOAuthPromiseRef.current = null
+      if (oauthPromiseRef.current === request) oauthPromiseRef.current = null
     }
     void request.then(clearPendingRequest, clearPendingRequest)
     return request
   }, [profileStatus])
+
+  const signInWithApple = useCallback(() => beginProviderSignIn('apple'), [beginProviderSignIn])
+  const signInWithGoogle = useCallback(() => beginProviderSignIn('google'), [beginProviderSignIn])
 
   const signUpWithIdentifier = useCallback(async ({ displayName, identifier: identifierInput, password }: CustomerIdentifierSignupDraft) => {
     setGuestMode(false)
@@ -772,8 +783,8 @@ function useAuthController(): AuthState {
   }, [fetchRole, localVisualAuditRole, localVisualAuditSnapshot?.session, session?.user, setCurrentSession])
 
   const authValue = useMemo(
-    () => ({ session, role, guestMode, loading, profileStatus, authError, passwordRecoveryPending, enterGuestMode, signInWithGoogle, signInWithPassword, signUpWithIdentifier, requestPasswordRecovery: requestPasswordRecoveryEmail, completePasswordRecovery, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
-    [authError, completePasswordRecovery, enterGuestMode, guestMode, loading, passwordRecoveryPending, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword],
+    () => ({ session, role, guestMode, loading, profileStatus, authError, passwordRecoveryPending, enterGuestMode, signInWithApple, signInWithGoogle, signInWithPassword, signUpWithIdentifier, requestPasswordRecovery: requestPasswordRecoveryEmail, completePasswordRecovery, submitWorkerApplication, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
+    [authError, completePasswordRecovery, enterGuestMode, guestMode, loading, passwordRecoveryPending, profileStatus, refreshProfile, role, session, signInWithApple, signInWithGoogle, signInWithPassword, signOut, signUpWithIdentifier, submitWorkerApplication, updateCustomerProfile, updatePassword],
   )
 
   return authValue
@@ -781,15 +792,4 @@ function useAuthController(): AuthState {
 
 export function useAuth() {
   return use(AuthContext)
-}
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
-function staleAccountMutation() {
-  return {
-    success: false as const,
-    error: 'Phiên tài khoản đã thay đổi. Vui lòng thử lại.',
-  }
 }

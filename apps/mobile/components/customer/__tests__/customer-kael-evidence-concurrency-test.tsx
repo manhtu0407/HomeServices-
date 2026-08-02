@@ -1,5 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native'
 
+import type { KaelResponseStreamState } from '@/lib/kael-response-stream'
+
 import { createCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
 import { useCustomerKaelEvidenceActions } from '../kael-chat/use-customer-kael-evidence-actions'
 
@@ -209,13 +211,19 @@ describe('customer Kael evidence concurrency', () => {
       expect.any(Object),
       expect.objectContaining({ onResponseDelta: expect.any(Function) }),
     )
-    let streamed: { text: string; turnId: string } | null = null
+    let streamed: KaelResponseStreamState | null = null
     for (const [updater] of harness.conversation.setStreamingReply.mock.calls) {
       if (typeof updater === 'function') streamed = updater(streamed)
     }
-    expect(streamed).toEqual({
-      text: 'Kael đã hoàn tất phân tích.',
-      turnId: 'turn-estimate',
+    expect(streamed).toMatchObject({
+      blocks: {
+        'turn-estimate:block:0': {
+          text: 'Kael đã hoàn tất phân tích.',
+        },
+      },
+      responseId: 'turn-estimate',
+      status: 'streaming',
+      transport: 'legacy',
     })
   })
 

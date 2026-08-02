@@ -197,6 +197,7 @@ export function WorkerV5HomeScreenSurface({
           hasActiveJob={runtime.workerJobs.some((job) => isWorkerOperationalJobStatus(job.status))}
           key={profile?.id ?? 'worker-profile-loading'}
           language={language}
+          onOpenProfileSetup={() => openScreen(getWorkerV5Screen('5.7-verification-documents'))}
           onToggleAvailability={runtime.actions.workerUpdateAvailability}
           profile={profile}
           reduceMotion={glass.reduceMotion}
@@ -270,10 +271,12 @@ export function WorkerV5HomeScreenSurface({
 
 export function WorkerV5HomeBody({
   language,
+  onOpenProfileSetup,
   reduceTransparency,
   runtime,
 }: {
   language: AppLanguage
+  onOpenProfileSetup?: () => void
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
@@ -323,6 +326,7 @@ export function WorkerV5HomeBody({
         availabilityGuardReady={runtime.workerJobsHydrated}
         hasActiveJob={runtime.workerJobs.some((job) => isWorkerOperationalJobStatus(job.status))}
         key={profile?.id ?? 'worker-profile-loading'}
+        onOpenProfileSetup={onOpenProfileSetup}
         language={language}
         onToggleAvailability={runtime.actions.workerUpdateAvailability}
         profile={profile}

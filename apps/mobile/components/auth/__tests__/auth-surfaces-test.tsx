@@ -6,6 +6,7 @@ const mockReplace = jest.fn()
 const mockRefreshProfile = jest.fn(async () => null)
 const mockEnterGuestMode = jest.fn()
 const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
+const mockSignInWithApple = jest.fn(async () => ({ success: true }))
 const mockSignInWithPassword = jest.fn(async (): Promise<{ success: boolean; error?: string; role?: 'admin' | 'customer' | 'worker' }> => ({ success: false, error: 'Không thể đăng nhập' }))
 const mockSignUpWithIdentifier = jest.fn(async (): Promise<{ success: boolean; error?: string }> => ({ success: true }))
 const mockRequestPasswordRecovery = jest.fn(async () => ({ success: true }))
@@ -48,6 +49,7 @@ jest.mock('@/lib/auth-provider', () => ({
     completePasswordRecovery: mockCompletePasswordRecovery,
     role: null,
     session: null,
+    signInWithApple: mockSignInWithApple,
     signInWithGoogle: mockSignInWithGoogle,
     signInWithPassword: mockSignInWithPassword,
     signUpWithIdentifier: mockSignUpWithIdentifier,
@@ -79,20 +81,6 @@ jest.mock('@/lib/app-language', () => {
     useAppLanguage: () => mockLanguage,
   }
 })
-
-jest.mock('@/lib/runtime-config', () => ({
-  mobileRuntimeConfig: {
-    runtimeBuildInfo: {
-      builtAt: '2026-07-03T00:00:00.000Z',
-      easBuildId: 'build-123456',
-      easBuildPlatform: 'ios',
-      easBuildProfile: 'production',
-      gitBranch: 'codex/customer-runtime-surface-wiring',
-      gitSha: 'abc123def4567890',
-      gitShortSha: 'abc123def456',
-    },
-  },
-}))
 
 import { LoginRoleSurface } from '../auth-surfaces'
 import { EntryBrandAccessFlow } from '../entry-access/EntryBrandAccessFlow'
@@ -220,7 +208,7 @@ describe('LoginRoleSurface', () => {
     expect(fieldSource).toContain('`${testID}-shell`')
   })
 
-  it('keeps the Email/SĐT input stable while a customer starts entering a Vietnamese phone number', () => {
+  it('keeps the thư điện tử/SĐT input stable while a customer starts entering a Vietnamese phone number', () => {
     mockRouteParams = { stage: '1.4' }
     render(<LoginRoleSurface />)
 
@@ -261,19 +249,11 @@ describe('LoginRoleSurface', () => {
     expect(nativeSafePanelSource).not.toContain('<BlurView')
   })
 
-  it('keeps the runtime build marker hidden until an intentional long press', () => {
-    mockRouteParams = { stage: '1.4' }
+  it('does not render build metadata controls in the auth interface', () => {
+    const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
 
-    render(<LoginRoleSurface />)
-
-    expect(screen.queryByTestId('auth-runtime-marker')).toBeNull()
-
-    fireEvent(screen.getByTestId('auth-runtime-marker-hotspot'), 'longPress')
-
-    expect(screen.getByTestId('auth-runtime-marker')).toHaveTextContent(/abc123def456/)
-    expect(screen.getByTestId('auth-runtime-marker')).toHaveTextContent(/codex\/customer-runtime-surface-wiring/)
-    expect(screen.getByTestId('auth-runtime-marker')).toHaveTextContent(/production/)
-    expect(screen.getByTestId('auth-runtime-marker')).toHaveTextContent(/ios/)
+    expect(flowSource).not.toContain('RuntimeBuildMarker')
+    expect(flowSource).not.toContain('runtimeBuildMarkerText')
   })
 
   it('opens the 1.1 review link on the Lottie splash without redirecting authenticated users', () => {
@@ -384,7 +364,7 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByText('Email/SDT hoặc mật khẩu không đúng')).toBeNull()
   })
 
-  it('localizes splash, registration, recovery, onboarding, and runtime accessibility in English mode', () => {
+  it('localizes splash, registration, recovery, and onboarding in English mode', () => {
     mockLanguage = 'en'
     mockRouteParams = { stage: '1.1' }
     const splash = render(<LoginRoleSurface />)
@@ -417,10 +397,6 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByText('Clear understanding')).toBeOnTheScreen()
     expect(screen.getByText('Get started')).toBeOnTheScreen()
     expect(screen.getByLabelText('Kael, your home assistant')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-runtime-marker-hotspot')).toHaveProp(
-      'accessibilityLabel',
-      expect.stringMatching(/^NestScout build information: SHA abc123def456/),
-    )
   })
 
   it('uses a same-language generic fallback for an unrecognized provider error', async () => {
@@ -478,11 +454,15 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-role-gate-greeting-lead')).toHaveTextContent(lead)
   })
 
-  it('keeps Google as the only customer provider', async () => {
+  it('offers Google and Apple only to customer login', async () => {
     mockRouteParams = { stage: '1.4' }
     render(<LoginRoleSurface />)
 
+    expect(screen.getByTestId('auth-provider-options')).toHaveStyle({ flexDirection: 'row' })
     expect(screen.getByTestId('auth-client-google-primary')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-client-apple-secondary')).toBeOnTheScreen()
+    expect(screen.getByText('Google')).toHaveStyle({ fontSize: 13, lineHeight: 18 })
+    expect(screen.getByText('Apple')).toHaveStyle({ fontSize: 13, lineHeight: 18 })
     expect(screen.queryByTestId('auth-client-gmail-secondary')).toBeNull()
     expect(screen.queryByTestId('auth-client-facebook-secondary')).toBeNull()
 
@@ -490,6 +470,11 @@ describe('LoginRoleSurface', () => {
 
     await waitFor(() => {
       expect(mockSignInWithGoogle).toHaveBeenCalledTimes(1)
+    })
+    fireEvent.press(screen.getByTestId('auth-client-apple-secondary'))
+
+    await waitFor(() => {
+      expect(mockSignInWithApple).toHaveBeenCalledTimes(1)
     })
     expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
   })
@@ -499,7 +484,7 @@ describe('LoginRoleSurface', () => {
     mockSignInWithPassword.mockResolvedValueOnce({ success: true })
     render(<LoginRoleSurface />)
 
-    expect(screen.getByText('Email/SĐT')).toBeOnTheScreen()
+    expect(screen.getByText('Thư điện tử hoặc SĐT')).toBeOnTheScreen()
     fireEvent.changeText(screen.getByTestId('auth-login-email-input'), '090 123 4567')
     fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-login-submit'))
@@ -541,7 +526,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
 
     expect(screen.getByTestId('auth-password-recovery-panel')).toBeOnTheScreen()
-    expect(screen.getByText('Email đã đăng ký')).toBeOnTheScreen()
+    expect(screen.getByText('Thư điện tử đã đăng ký')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-recovery-secondary-input')).toBeNull()
     fireEvent.changeText(screen.getByTestId('auth-recovery-identifier-input'), 'tu@example.com')
     fireEvent.press(screen.getByTestId('auth-recovery-submit'))
@@ -560,7 +545,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-recovery-identifier-input'), '090 123 4567')
     fireEvent.press(screen.getByTestId('auth-recovery-submit'))
 
-    expect(screen.getByText('Khôi phục bằng SĐT chưa sẵn sàng. Vui lòng dùng email.')).toBeOnTheScreen()
+    expect(screen.getByText('Khôi phục bằng SĐT chưa sẵn sàng. Vui lòng dùng thư điện tử.')).toBeOnTheScreen()
     expect(mockRequestPasswordRecovery).not.toHaveBeenCalled()
   })
 
@@ -618,7 +603,7 @@ describe('LoginRoleSurface', () => {
 
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
-    expect(screen.getByText('Kiểm tra họ tên, email/SĐT và mật khẩu tối thiểu 8 ký tự.')).toBeOnTheScreen()
+    expect(screen.getByText('Kiểm tra họ tên, thư điện tử hoặc SĐT và mật khẩu tối thiểu 8 ký tự.')).toBeOnTheScreen()
     expect(screen.queryByText('Không thể kết nối. Vui lòng thử lại.')).toBeNull()
     expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
   })
@@ -650,13 +635,13 @@ describe('LoginRoleSurface', () => {
     mockRouteParams = { stage: '1.5' }
     render(<LoginRoleSurface />)
 
-    expect(screen.getByText('Email')).toBeOnTheScreen()
+    expect(screen.getByText('Thư điện tử')).toBeOnTheScreen()
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), '0912345678')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-register-submit'))
 
-    expect(screen.getByText('Đăng ký bằng SĐT chưa sẵn sàng. Vui lòng dùng email.')).toBeOnTheScreen()
+    expect(screen.getByText('Đăng ký bằng SĐT chưa sẵn sàng. Vui lòng dùng thư điện tử.')).toBeOnTheScreen()
     expect(mockSignUpWithIdentifier).not.toHaveBeenCalled()
   })
 
@@ -686,6 +671,7 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-client-google-primary')).toBeNull()
+    expect(screen.queryByTestId('auth-client-apple-secondary')).toBeNull()
     expect(screen.queryByTestId('auth-client-gmail-secondary')).toBeNull()
     expect(screen.queryByTestId('auth-client-facebook-secondary')).toBeNull()
 

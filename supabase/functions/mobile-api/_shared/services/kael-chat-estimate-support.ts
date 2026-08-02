@@ -3,19 +3,47 @@ import type { PipelineStageLog } from "../kael/types.ts";
 
 export function buildKaelEstimateAnalysisEvidence(
   artifact: KaelDiagnosisScopeArtifact,
+  analyzedEvidence: readonly KaelDiagnosisScopeArtifact["evidence"][number][] = artifact.evidence,
 ) {
+  const visualEvidence = artifact.evidence.filter(isModelEligibleVisualEvidence);
+  const evidenceIndexByRef = new Map<
+    string,
+    { evidenceIndex: number; evidenceKind: "photo" | "video_frame" }
+  >();
+  let photoIndex = 0;
+  let videoFrameIndex = 0;
+  for (const evidence of visualEvidence) {
+    const evidenceIndex = evidence.kind === "photo" ? ++photoIndex : ++videoFrameIndex;
+    if (evidence.ref) {
+      evidenceIndexByRef.set(evidence.ref, {
+        evidenceIndex,
+        evidenceKind: evidence.kind,
+      });
+    }
+  }
+  const visualEvidenceRefs = analyzedEvidence
+    .filter(isModelEligibleVisualEvidence)
+    .flatMap((evidence) => {
+      const reference = evidence.ref ? evidenceIndexByRef.get(evidence.ref) : undefined;
+      return reference ? [reference] : [];
+    });
   return {
-    photoCount: artifact.evidence.filter((item) =>
-      item.kind === "photo" && item.model_eligible
-    ).length,
-    videoFrameCount: artifact.evidence.filter((item) =>
-      item.kind === "video_frame" && item.model_eligible
-    ).length,
+    photoCount: visualEvidence.filter((item) => item.kind === "photo").length,
+    videoFrameCount: visualEvidence.filter((item) => item.kind === "video_frame").length,
     voiceTranscriptCount: artifact.evidence.filter((item) =>
       item.kind === "voice_transcript" && item.model_eligible
     ).length,
     skipped: artifact.facts.evidence_gate_decision === "skipped",
+    visualEvidenceRefs,
   };
+}
+
+function isModelEligibleVisualEvidence(
+  item: KaelDiagnosisScopeArtifact["evidence"][number],
+): item is KaelDiagnosisScopeArtifact["evidence"][number] & {
+  kind: "photo" | "video_frame";
+} {
+  return (item.kind === "photo" || item.kind === "video_frame") && item.model_eligible;
 }
 
 export function buildKaelEstimateMarketEvidence(

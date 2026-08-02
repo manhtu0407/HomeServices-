@@ -63,7 +63,7 @@ describe('mobile-api customer Kael assistant', () => {
     })
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('Runtime knowledge')
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('worker onboarding')
-    expect(JSON.stringify(seenRequests[0]?.messages)).toContain('at most 3 short sentences')
+    expect(JSON.stringify(seenRequests[0]?.messages)).toContain('2 to 4 short sentences')
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('do not tell the customer to drill')
     expect(JSON.stringify(seenRequests[0]?.messages)).not.toContain('SePay')
     expect(JSON.stringify(seenRequests[0]?.messages)).not.toContain('0901234567')
@@ -123,6 +123,118 @@ describe('mobile-api customer Kael assistant', () => {
       kind: 'select',
       table: 'legal_awareness_patterns',
     }))
+  })
+
+  it('answers a supported service question directly without retreating to scope boilerplate', async () => {
+    const seenRequests: AIRequest[] = []
+    const callAI = vi.fn(async (request: AIRequest) => {
+      seenRequests.push(request)
+      return {
+        success: true as const,
+        content: JSON.stringify({
+          answer: 'Hãy tắt máy trước. Nếu không biết đúng chốt mở lưới lọc, bạn nên dừng để tránh làm gãy ngàm hoặc lắp sai.',
+          safety_notes: [],
+          citations: [],
+          suggested_actions: [],
+          boundary: 'answered',
+        }),
+        latencyMs: 24,
+        usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+        provider: 'deepseek' as const,
+        model: 'deepseek-chat',
+      }
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Lưới lọc điều hòa bám bụi dày và tôi không chắc cách tháo. Khi nào nên dừng tự vệ sinh và gọi thợ?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(result.answer).toContain('đúng chốt mở lưới lọc')
+    expect(result.answer).not.toContain('sáu dịch vụ')
+    expect(result.answer).not.toContain('mở hồ sơ công việc')
+    expect(JSON.stringify(seenRequests[0]?.messages)).toContain('Never answer a service-related question with scope boilerplate')
+  })
+
+  it('classifies service anti-scam and transaction hygiene as allowed expertise', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for deterministic anti-scam guidance')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Một người tự nhận là thợ yêu cầu tôi gửi OTP và đặt cọc qua đường dẫn lạ. Tôi nên kiểm tra gì để tránh lừa đảo?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(result.answer).toContain('Không gửi OTP')
+    expect(result.answer).toContain('chưa đủ để kết luận ai đó lừa đảo')
+    expect(result.answer).not.toContain('lịch sử đánh giá')
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('keeps booking, payment, and refund help inside the bounded service lifecycle', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not invent payment or refund capabilities')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Tôi thanh toán dịch vụ qua VietQR và kiểm tra hoàn tiền ở đâu?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(false)
+    expect(result.answer).toContain('chưa có trạng thái giao dịch cụ thể')
+    expect(result.answer).toContain('không chuyển thêm tiền')
+    expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('answers anti-scam signals without diagnosing an unsupported service', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not diagnose the unsupported service context')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Thợ sửa tủ lạnh yêu cầu đặt cọc ngoài ứng dụng và chuyển sang tài khoản khác, có phải lừa đảo không?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(callAI).not.toHaveBeenCalled()
+    expect(result.answer).toContain('dừng để xác minh')
+    expect(result.answer).not.toContain('tủ lạnh')
+  })
+
+  it('declines a genuinely unrelated question gracefully before provider invocation', async () => {
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for unrelated financial advice')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Tôi nên mua cổ phiếu nào để sinh lời nhanh trong tháng này?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(callAI).not.toHaveBeenCalled()
+    expect(result.boundary).toBe('unsupported')
+    expect(result.answer).toContain('ngoài chuyên môn dịch vụ nhà ở')
+    expect(result.answer).toContain('không suy đoán')
+    expect(result.answer).toContain('an toàn')
   })
 
   it('keeps a deterministic unaccented legal-advice signal on the redirect path before provider invocation', async () => {
@@ -465,7 +577,7 @@ describe('mobile-api customer Kael assistant', () => {
   })
 
   it('does not expose model-authored safety notes or citations', async () => {
-    const callAI = vi.fn(async () => ({
+    const callAI = vi.fn(async (_request: AIRequest) => ({
       success: true as const,
       content: JSON.stringify({
         answer: 'Hãy tiếp tục trao đổi trong ứng dụng NestScout.',
@@ -489,13 +601,14 @@ describe('mobile-api customer Kael assistant', () => {
     })
 
     expect(result.fallback_used).toBe(false)
-    expect(result.safety_notes).toEqual([
-      'Hãy dùng luồng trong ứng dụng Kael cho đặt lịch, phạm vi, thanh toán và hỗ trợ.',
-    ])
+    expect(result.safety_notes).toEqual([])
     expect(result.citations).toEqual(['NestScout platform scope'])
     expect(result.answer).not.toContain('NestScout')
     expect(JSON.stringify(result)).not.toContain('090-123-4567')
     expect(JSON.stringify(result)).not.toContain('evil.example')
+    const request = callAI.mock.calls[0]?.[0]
+    expect(request?.messages[1]?.content).toContain('Answer the immediate question first')
+    expect(request?.messages[1]?.content).toContain('Do not append a generic platform reminder')
   })
 
   it('canonicalizes harmless provider shape drift without accepting invented actions', async () => {
@@ -560,9 +673,7 @@ describe('mobile-api customer Kael assistant', () => {
       fallback_used: false,
       suggested_actions: ['check_job', 'message_worker'],
     })
-    expect(result.safety_notes).toEqual([
-      "Use Kael's in-app workflow for booking, scope, payment, and support.",
-    ])
+    expect(result.safety_notes).toEqual([])
     expect(result.citations).toEqual(['NestScout platform scope'])
     expect(JSON.stringify(result)).not.toContain('approve_payment')
     expect(JSON.stringify(result)).not.toContain('provider-invented-source')
@@ -609,7 +720,7 @@ describe('mobile-api customer Kael assistant', () => {
     const result = await runCustomerAssistant({
       callAI,
       language: 'en',
-      message: 'What should I do before the worker visits?',
+      message: 'What should I do before drilling near hidden electrical wiring?',
       secrets: { knowledgeRetrievalEnabled: false },
       surface: 'customer_case',
     })
@@ -768,6 +879,39 @@ describe('mobile-api customer Kael assistant', () => {
     expect(result.answer).not.toContain('hoặc,')
   })
 
+  it('keeps actions and conditions complete when reflowing a contextual reply', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        answer: 'Trước tiên, bạn hãy kiểm tra phễu lọc và đoạn ống nối dưới bồn xem có bị tắc do thức ăn hay dầu mỡ không. Nếu nước vẫn thoát chậm sau khi vệ sinh, hoặc có mùi hôi, đặt lịch để thợ kiểm tra và thông tắc chuyên sâu. Khi lưới lọc quá bẩn hoặc bạn không tự vệ sinh được, đặt lịch dịch vụ vệ sinh điều hòa qua Kael.',
+        safety_notes: [],
+        citations: [],
+        suggested_actions: [],
+        boundary: 'answered',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Bồn rửa thoát nước chậm, tôi nên làm gì?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.answer).toContain('dưới bồn. Xem có bị tắc')
+    expect(result.answer).toContain('Đặt lịch để thợ kiểm tra và thông tắc chuyên sâu.')
+    expect(result.answer).toContain('Bạn nên làm vậy nếu nước vẫn thoát chậm')
+    expect(result.answer).toContain('Đặt lịch dịch vụ vệ sinh điều hòa qua Kael.')
+    expect(result.answer).toContain('Bạn nên làm vậy khi lưới lọc quá bẩn')
+    expect(result.answer).not.toContain('tắc. Do thức ăn')
+    expect(result.answer).not.toContain('được. Đặt lịch')
+  })
+
   it.each(['Giá khoảng 200k.', 'Giá khoảng 300.000.'])(
     'rejects an exact compact price without the estimate disclaimer: %s',
     async (answer) => {
@@ -825,8 +969,40 @@ describe('mobile-api customer Kael assistant', () => {
 
     expect(result.fallback_used).toBe(true)
     expect(result.answer).not.toContain('payment status')
-    expect(result.answer).toContain('Kael')
+    expect(result.answer).toContain('thiết bị điện')
+    expect(result.answer).not.toContain('sáu dịch vụ')
     expect(result.answer).not.toContain('NestScout')
+  })
+
+  it('uses a useful service-specific fallback when an HVAC provider reply is rejected', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        answer: 'Please check the filter then book service in the app.',
+        safety_notes: [],
+        citations: [],
+        suggested_actions: [],
+        boundary: 'answered',
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-chat',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Lưới lọc điều hòa bám bụi dày và tôi không chắc cách tháo.',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(true)
+    expect(result.answer).toContain('tắt máy')
+    expect(result.answer).toContain('không chắc cách mở')
+    expect(result.answer).not.toContain('sáu dịch vụ')
+    expect(result.answer).not.toContain('mở hồ sơ công việc')
   })
 
   it('scrubs separated phone, bare street number, and job UUID before the provider call', async () => {

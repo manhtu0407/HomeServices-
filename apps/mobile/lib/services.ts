@@ -571,7 +571,7 @@ export const kaelMemoryService = {
   },
 
   updateMyWorkerPreference(input: WorkerKaelMemoryPreferenceUpdateInput) {
-    return api.patch<KaelMemorySelfViewResponse>('/me/kael-memory', input)
+    return api.patch<KaelMemorySelfViewResponse>('/workers/me/kael-memory', input)
   },
 }
 

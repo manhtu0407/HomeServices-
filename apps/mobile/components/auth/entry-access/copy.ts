@@ -3,6 +3,7 @@ import type { AppLanguage } from '@/lib/app-language'
 export type EntryAuthErrorKey =
   | 'accountExists'
   | 'accountNotReady'
+  | 'appleSignInFailed'
   | 'connectionFailed'
   | 'fullNameRequired'
   | 'googleSignInFailed'
@@ -53,7 +54,6 @@ export type EntryAccessCopy = Readonly<{
     hidePassword: string
     kaelAssistant: string
     logo: string
-    runtimeMarker: string
     showPassword: string
   }>
   errors: Readonly<Record<EntryAuthErrorKey, string>>
@@ -123,14 +123,6 @@ export type EntryAccessCopy = Readonly<{
     footer: string
     worker: RoleCardCopy
   }>
-  runtime: Readonly<{
-    branch: string
-    build: string
-    builtAt: string
-    platform: string
-    profile: string
-    unknown: string
-  }>
   splash: Readonly<{
     preparing: string
     tagline: string
@@ -144,30 +136,30 @@ const viCopy: EntryAccessCopy = {
     hidePassword: 'Ẩn mật khẩu',
     kaelAssistant: 'Kael, trợ lý gia đình',
     logo: 'Biểu trưng NestScout Aurora Nest',
-    runtimeMarker: 'Thông tin bản dựng NestScout',
     showPassword: 'Hiện mật khẩu',
   },
   errors: {
     accountExists: 'Tài khoản này đã tồn tại. Hãy đăng nhập hoặc dùng thông tin khác.',
     accountNotReady: 'Tài khoản chưa sẵn sàng để vào ứng dụng. Vui lòng hoàn tất đăng nhập trước.',
+    appleSignInFailed: 'Chưa thể đăng nhập bằng Apple. Vui lòng thử lại.',
     connectionFailed: 'Không thể kết nối. Vui lòng thử lại.',
     fullNameRequired: 'Nhập họ tên để tạo tài khoản.',
     googleSignInFailed: 'Chưa thể đăng nhập bằng Google. Vui lòng thử lại.',
-    invalidCredentials: 'Email/SĐT hoặc mật khẩu không đúng.',
-    invalidEmail: 'Email chưa đúng định dạng.',
-    invalidIdentifier: 'Nhập email hoặc SĐT để tiếp tục.',
-    loginDetails: 'Vui lòng nhập email/SĐT và mật khẩu.',
+    invalidCredentials: 'Thư điện tử hoặc SĐT hoặc mật khẩu không đúng.',
+    invalidEmail: 'Địa chỉ thư điện tử chưa đúng định dạng.',
+    invalidIdentifier: 'Nhập thư điện tử hoặc SĐT để tiếp tục.',
+    loginDetails: 'Vui lòng nhập thư điện tử hoặc SĐT và mật khẩu.',
     invalidLoginPassword: 'Mật khẩu đăng nhập không hợp lệ.',
     invalidPhone: 'SĐT Việt Nam chưa đúng định dạng.',
     loginUnavailable: 'Dịch vụ đăng nhập chưa sẵn sàng. Vui lòng thử lại sau.',
     methodUnavailable: 'Phương thức này chưa được cấu hình.',
     nextScreenUnavailable: 'Chưa thể mở màn hình tiếp theo. Vui lòng thử lại.',
-    recoveryEmail: 'Nhập email khôi phục đúng định dạng.',
+    recoveryEmail: 'Nhập thư điện tử khôi phục đúng định dạng.',
     recoveryPhone: 'Nhập SĐT khôi phục đúng định dạng.',
-    recoveryPrimary: 'Nhập email/SĐT đã đăng ký để tiếp tục.',
+    recoveryPrimary: 'Nhập thư điện tử hoặc SĐT đã đăng ký để tiếp tục.',
     recoveryUnavailable: 'Khôi phục mật khẩu chưa sẵn sàng.',
     recoveryVerificationPending: 'Khôi phục mật khẩu sẽ hoàn tất sau khi kênh liên hệ thay thế được xác minh.',
-    registrationDetails: 'Kiểm tra họ tên, email/SĐT và mật khẩu tối thiểu 8 ký tự.',
+    registrationDetails: 'Kiểm tra họ tên, thư điện tử hoặc SĐT và mật khẩu tối thiểu 8 ký tự.',
     roleUnavailable: 'Không thể tải vai trò tài khoản.',
     signInFailed: 'Chưa thể đăng nhập. Vui lòng thử lại.',
     signupFailed: 'Chưa thể tạo tài khoản. Vui lòng thử lại.',
@@ -175,16 +167,16 @@ const viCopy: EntryAccessCopy = {
     signupPasswordShort: 'Mật khẩu cần ít nhất 8 ký tự.',
     termsRequired: 'Bạn cần đồng ý với điều khoản để tiếp tục.',
     tryAgainLater: 'Yêu cầu đang bị giới hạn. Vui lòng thử lại sau.',
-    workerApplicationContact: 'Nhập email hoặc số điện thoại để gửi xét duyệt.',
+    workerApplicationContact: 'Nhập thư điện tử hoặc số điện thoại để gửi xét duyệt.',
     workerApplicationFailed: 'Không thể gửi hồ sơ xét duyệt lúc này. Vui lòng thử lại.',
     workerApplicationNotSubmitted: 'Tài khoản đã được xác nhận, nhưng hồ sơ thợ chưa được gửi. Vui lòng thử lại sau.',
     workerReviewPending: 'Hồ sơ thợ đã được gửi xét duyệt. NestScout sẽ liên hệ trước khi cấp quyền thợ.',
   },
   fields: {
-    customerIdentifierLabel: 'Email/SĐT',
-    customerIdentifierPlaceholder: 'email@example.com hoặc 090 123 4567',
-    workerIdentifierLabel: 'Email',
-    workerIdentifierPlaceholder: 'email@example.com',
+    customerIdentifierLabel: 'Thư điện tử hoặc SĐT',
+    customerIdentifierPlaceholder: 'ten@vidu.vn hoặc 090 123 4567',
+    workerIdentifierLabel: 'Thư điện tử',
+    workerIdentifierPlaceholder: 'ten@vidu.vn',
   },
   login: {
     busy: 'Đang xử lý…',
@@ -213,10 +205,10 @@ const viCopy: EntryAccessCopy = {
   },
   recovery: {
     busy: 'Đang xử lý…',
-    emailLabel: 'Email khôi phục',
+    emailLabel: 'Thư điện tử khôi phục',
     lead: 'Dùng kênh liên hệ thay thế để tiếp tục.',
     phoneLabel: 'SĐT khôi phục',
-    primaryLabel: 'Email/SĐT đã đăng ký',
+    primaryLabel: 'Thư điện tử hoặc SĐT đã đăng ký',
     submit: 'Tiếp tục',
     title: 'Lấy lại\nmật khẩu.',
     topbar: 'Khôi phục mật khẩu',
@@ -244,7 +236,7 @@ const viCopy: EntryAccessCopy = {
     continueWorker: 'Tiếp tục với Đối tác thợ',
     customer: {
       description: 'Đặt dịch vụ, trò chuyện cùng Kael và theo dõi tiến độ.',
-      meta: 'Google · Email/SĐT',
+      meta: 'Google · Apple · Thư điện tử/SĐT',
       title: 'Khách hàng',
     },
     footer: 'Vai trò được cố định sau khi đăng nhập.\nBạn có thể đổi trước khi xác thực.',
@@ -253,14 +245,6 @@ const viCopy: EntryAccessCopy = {
       meta: 'Tài khoản thợ · Xác thực hồ sơ',
       title: 'Đối tác thợ',
     },
-  },
-  runtime: {
-    branch: 'Nhánh',
-    build: 'Bản dựng',
-    builtAt: 'Được tạo lúc',
-    platform: 'Nền tảng',
-    profile: 'Cấu hình',
-    unknown: 'không xác định',
   },
   splash: {
     preparing: 'Kael đang chuẩn bị mọi thứ',
@@ -275,12 +259,12 @@ const enCopy: EntryAccessCopy = {
     hidePassword: 'Hide password',
     kaelAssistant: 'Kael, your home assistant',
     logo: 'NestScout Aurora Nest logo',
-    runtimeMarker: 'NestScout build information',
     showPassword: 'Show password',
   },
   errors: {
     accountExists: 'This account already exists. Sign in or use different details.',
     accountNotReady: 'Your account is not ready to enter the app. Complete sign-in first.',
+    appleSignInFailed: 'Unable to sign in with Apple. Please try again.',
     connectionFailed: 'Unable to connect. Please try again.',
     fullNameRequired: 'Enter your full name to create an account.',
     googleSignInFailed: 'Unable to sign in with Google. Please try again.',
@@ -375,7 +359,7 @@ const enCopy: EntryAccessCopy = {
     continueWorker: 'Continue as Service partner',
     customer: {
       description: 'Book services, chat with Kael, and track progress.',
-      meta: 'Google · Email/phone',
+      meta: 'Google · Apple · Email/phone',
       title: 'Customer',
     },
     footer: 'Your role is fixed after sign-in.\nYou can change it before authentication.',
@@ -384,14 +368,6 @@ const enCopy: EntryAccessCopy = {
       meta: 'Worker account · Profile verification',
       title: 'Service partner',
     },
-  },
-  runtime: {
-    branch: 'Branch',
-    build: 'Build',
-    builtAt: 'Built',
-    platform: 'Platform',
-    profile: 'Profile',
-    unknown: 'unknown',
   },
   splash: {
     preparing: 'Kael is getting everything ready',
@@ -486,7 +462,8 @@ const errorMatchers: readonly Readonly<{
   { key: 'workerApplicationContact', patterns: [/nhập email.*số điện thoại.*xét duyệt/i, /email.*phone.*application/i] },
   { key: 'workerApplicationFailed', patterns: [/không thể gửi.*xét duyệt/i, /không thể gửi hồ sơ/i, /submit.*worker application/i] },
   { key: 'tryAgainLater', patterns: [/rate.?limit/i, /too many requests/i, /bị giới hạn/i] },
-  { key: 'googleSignInFailed', patterns: [/đăng nhập google/i, /google.*sign.?in/i, /oauth/i] },
+  { key: 'appleSignInFailed', patterns: [/đăng nhập apple/i, /apple.*sign.?in/i] },
+  { key: 'googleSignInFailed', patterns: [/đăng nhập google/i, /google.*sign.?in/i] },
   { key: 'loginUnavailable', patterns: [/dịch vụ đăng nhập chưa sẵn sàng/i, /sign.?in.*not available/i, /auth.*config/i] },
   { key: 'connectionFailed', patterns: [/không thể kết nối/i, /network/i, /timeout/i, /unable to connect/i] },
   { key: 'signupFailed', patterns: [/không thể tạo tài khoản/i, /unable to create.*account/i] },

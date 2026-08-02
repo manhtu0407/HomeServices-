@@ -14,8 +14,10 @@ import {
   sendCustomerKaelConversationTurn,
 } from "./customer-kael-conversation.service.ts";
 import {
+  splitVerifiedResponseBlocks,
   splitVerifiedResponseDeltas,
   verifiedResponseCadenceMs,
+  verifiedResponseTargetChars,
 } from "./kael-verified-response-stream.ts";
 import { readWorkerKaelSession, sendWorkerKaelChatTurn, serializeWorkerKaelSession } from "./worker-kael-chat.service.ts";
 import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../sse.ts";
@@ -326,17 +328,52 @@ async function emitCommittedKaelReply(
 ) {
   const reply = findCommittedKaelReply(baseline, result);
   if (!reply) return;
-  const deltas = splitVerifiedResponseDeltas(reply.text);
-  for (let index = 0; index < deltas.length; index += 1) {
-    if (isStopped()) return;
-    emit("response_delta", {
-      turn_id: reply.turnId,
-      delta: deltas[index],
+  const startedAt = Date.now();
+  const blocks = splitVerifiedResponseBlocks(reply.text);
+  const targetChars = verifiedResponseTargetChars(reply.text);
+  emit("response.started", {
+    response_id: reply.turnId,
+    mode: "standard",
+  });
+  for (let blockIndex = 0; blockIndex < blocks.length; blockIndex += 1) {
+    const block = blocks[blockIndex];
+    const blockId = `${reply.turnId}:block:${blockIndex}`;
+    emit("block.started", {
+      block_id: blockId,
+      kind: block.kind,
     });
-    if (index < deltas.length - 1) {
-      await sleep(verifiedResponseCadenceMs(deltas[index]));
+    const deltas = splitVerifiedResponseDeltas(block.text, targetChars);
+    for (let deltaIndex = 0; deltaIndex < deltas.length; deltaIndex += 1) {
+      if (isStopped()) return;
+      emit("block.text.delta", {
+        block_id: blockId,
+        delta: deltas[deltaIndex],
+      });
+      // Keep released clients compatible while new clients suppress this twin
+      // after observing response.started for the same turn.
+      emit("response_delta", {
+        turn_id: reply.turnId,
+        delta: deltas[deltaIndex],
+      });
+      if (deltaIndex < deltas.length - 1) {
+        await sleep(verifiedResponseCadenceMs(deltas[deltaIndex]));
+      }
+    }
+    emit("block.completed", { block_id: blockId });
+    if (block.separatorAfter) {
+      emit("response_delta", {
+        turn_id: reply.turnId,
+        delta: block.separatorAfter,
+      });
+    }
+    if (blockIndex < blocks.length - 1) {
+      await sleep(verifiedResponseCadenceMs("\n"));
     }
   }
+  emit("response.completed", {
+    response_id: reply.turnId,
+    elapsed_ms: Date.now() - startedAt,
+  });
 }
 
 function findCommittedKaelReply(baseline: unknown, result: unknown) {

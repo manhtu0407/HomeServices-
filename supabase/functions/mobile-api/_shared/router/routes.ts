@@ -203,6 +203,7 @@ export type Route =
   | { kind: "workers.serviceArea"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.servicePreferences"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.kaelMemory.update"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.kaelFeedback"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | { kind: "workers.kaelTrainingConsent.get"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelTrainingConsent.set"; method: "PATCH"; roles: UserRole[] }
@@ -493,6 +494,9 @@ export function matchRoute(request: Request): Route | null {
   }
   if (method === "GET" && path === "/workers/me/kael-memory") {
     return { kind: "workers.kaelMemory", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/kael-memory") {
+    return { kind: "workers.kaelMemory.update", method: "PATCH", roles: ["worker"] };
   }
   const workerKaelChatRoute = matchWorkerKaelChatRoute(path, method, safeDecodePathSegment);
   if (workerKaelChatRoute) return workerKaelChatRoute;

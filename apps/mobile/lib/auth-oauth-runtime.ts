@@ -58,7 +58,18 @@ export function subscribeToOAuthCallbackUrls(onUrl: (url: string) => Promise<unk
   }
 }
 
-export async function startGoogleOAuthRequest(): Promise<{ success: boolean; error?: string; configMissing?: boolean }> {
+type OAuthProvider = 'apple' | 'google'
+
+export function startGoogleOAuthRequest() {
+  return startOAuthRequest('google')
+}
+
+export function startAppleOAuthRequest() {
+  return startOAuthRequest('apple')
+}
+
+async function startOAuthRequest(provider: OAuthProvider): Promise<{ success: boolean; error?: string; configMissing?: boolean }> {
+  const providerName = provider === 'apple' ? 'Apple' : 'Google'
   if (!supabase) {
     return {
       success: false,
@@ -70,7 +81,7 @@ export async function startGoogleOAuthRequest(): Promise<{ success: boolean; err
   try {
     const redirectUrl = getOAuthRedirectUrl()
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider,
       options: {
         redirectTo: redirectUrl,
         skipBrowserRedirect: Platform.OS !== 'web',
@@ -78,19 +89,19 @@ export async function startGoogleOAuthRequest(): Promise<{ success: boolean; err
     })
 
     if (error || (Platform.OS !== 'web' && !data.url)) {
-      return { success: false, error: 'Không thể mở đăng nhập Google. Vui lòng thử lại sau.' }
+      return { success: false, error: `Không thể mở đăng nhập ${providerName}. Vui lòng thử lại sau.` }
     }
 
     if (
       Platform.OS !== 'web'
-      && !isTrustedOAuthAuthorizationUrl(data.url, mobileRuntimeConfig.supabaseUrl, redirectUrl)
+      && !isTrustedOAuthAuthorizationUrl(data.url, mobileRuntimeConfig.supabaseUrl, redirectUrl, provider)
     ) {
-      return { success: false, error: 'Không thể mở đăng nhập Google. Vui lòng thử lại sau.' }
+      return { success: false, error: `Không thể mở đăng nhập ${providerName}. Vui lòng thử lại sau.` }
     }
     if (Platform.OS !== 'web') await Linking.openURL(data.url)
     return { success: true }
   } catch {
-    return { success: false, error: 'Không thể kết nối đăng nhập Google. Vui lòng thử lại sau.' }
+    return { success: false, error: `Không thể kết nối đăng nhập ${providerName}. Vui lòng thử lại sau.` }
   }
 }
 
@@ -102,6 +113,6 @@ export async function exchangeOAuthCodeForSession(code: string): Promise<{ sessi
     if (error || !data.session) throw error
     return { session: data.session }
   } catch {
-    return { session: null, error: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại sau.' }
+    return { session: null, error: 'Không thể hoàn tất đăng nhập. Vui lòng thử lại sau.' }
   }
 }

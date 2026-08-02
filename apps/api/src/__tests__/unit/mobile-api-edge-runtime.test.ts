@@ -396,6 +396,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'updateCustomerAvatar',
       'updateWorkerAvailability',
       'updateWorkerAvatar',
+      'updateWorkerKaelMemoryPreference',
       'updateWorkerServiceArea',
       'updateWorkerServicePreferences',
       'updateMyKaelMemory',
@@ -3523,7 +3524,7 @@ describe('mobile-api Edge runtime helpers', () => {
         }))
       }
 
-      if (target.includes('anthropic.com') && body.max_tokens === 320) {
+      if (target.includes('anthropic.com') && body.max_tokens === 640) {
         return new Response(JSON.stringify({
           content: [{
             type: 'text',
@@ -3679,13 +3680,14 @@ describe('mobile-api Edge runtime helpers', () => {
     if (result.success) {
       expect(result.fallbackUsed).toBe(false)
       expect(result.stageLogs.some((stage) => stage.stage === 'vision')).toBe(false)
-      expect(result.estimate.problem_summary).toBe('plumbing: pipe_leak')
+      expect(result.estimate.problem_summary).toContain('Ống rò rỉ')
+      expect(result.estimate.problem_summary).not.toContain('plumbing:')
     }
-    expect(requestBodies.some((body) => body.max_tokens === 320)).toBe(false)
+    expect(requestBodies.some((body) => body.max_tokens === 900)).toBe(false)
     expect(fetchMock).not.toHaveBeenCalledWith(
       expect.stringContaining('anthropic.com'),
       expect.objectContaining({
-        body: expect.stringContaining('"max_tokens":320'),
+        body: expect.stringContaining('"max_tokens":900'),
       }),
     )
   })
@@ -3722,7 +3724,7 @@ describe('mobile-api Edge runtime helpers', () => {
         }))
       }
 
-      if (target.includes('anthropic.com') && body.max_tokens === 320) {
+      if (target.includes('anthropic.com') && body.max_tokens === 900) {
         return new Response(JSON.stringify({
           content: [{
             type: 'text',
@@ -3774,7 +3776,7 @@ describe('mobile-api Edge runtime helpers', () => {
     })
 
     expect(result.success).toBe(true)
-    const visionBody = requestBodies.find((body) => body.max_tokens === 320)
+    const visionBody = requestBodies.find((body) => body.max_tokens === 900)
     const visionMessages = visionBody?.messages as Array<{ content: unknown }> | undefined
     expect(visionMessages?.[0]?.content).toEqual([
       expect.objectContaining({

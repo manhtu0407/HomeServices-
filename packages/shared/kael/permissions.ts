@@ -53,6 +53,7 @@ export const KAEL_ALLOWED_TOPICS = [
   'app_usage_help',
   'safety_advisory',
   'worker_safety_advisory',
+  'service_trust_safety',
   'legal_safety_awareness',
   'support_redirect',
 ] as const
@@ -148,6 +149,9 @@ const EDUCATIONAL_TOPICS = [
   'cleaning_best_practices',
   'service_pricing_general_info',
   'worker_qualification_explain',
+  'service_trust_safety',
+  'app_usage_help',
+  'safety_advisory',
   'legal_safety_awareness',
 ] as const
 const FUNCTIONAL_TOPICS = [

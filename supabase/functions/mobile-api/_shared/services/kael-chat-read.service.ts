@@ -5,6 +5,11 @@ import {
   serializeKaelTurn,
 } from "./_shared.ts";
 import { assertKaelSessionOwnership } from "./kael-chat-session-store.ts";
+import {
+  kaelEvidencePreviewCandidates,
+  pairKaelEvidencePreviewUrls,
+} from "./kael-chat-evidence-preview.ts";
+import { createSignedCaseWorkEvidenceUrls } from "./kael-chat-media.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 
 export async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
@@ -40,9 +45,26 @@ export async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
   const latestEstimate = [...turns]
     .reverse()
     .find((turn) => turn.content_type === "estimate")?.estimate ?? null;
+  const session = serializeKaelSession(sessionResult.data, latestEstimate, turns);
+  const evidencePreviewCandidates = kaelEvidencePreviewCandidates(
+    session.diagnosis_scope?.evidence ?? [],
+  );
+  const evidencePreviewUrls = evidencePreviewCandidates.length > 0
+    ? await createSignedCaseWorkEvidenceUrls(
+      ctx,
+      evidencePreviewCandidates.map((candidate) => candidate.ref),
+      session.customer_id,
+    )
+    : [];
 
   return {
-    session: serializeKaelSession(sessionResult.data, latestEstimate, turns),
+    session: {
+      ...session,
+      evidence_previews: pairKaelEvidencePreviewUrls(
+        evidencePreviewCandidates,
+        evidencePreviewUrls,
+      ),
+    },
     turns,
   };
 }

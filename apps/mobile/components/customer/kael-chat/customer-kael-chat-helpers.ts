@@ -1,5 +1,5 @@
 import type { AppLanguage } from '@/lib/app-language'
-import type { KaelAssistantResponse } from '@/lib/api-types'
+import type { KaelAssistantResponse, KaelChatResponse } from '@/lib/api-types'
 
 import { normalizeKaelRoutingText } from './case-work-display-model'
 import type { CustomerAssistantLocalTurn } from './use-customer-kael-conversation-state'
@@ -121,4 +121,18 @@ export function formatAssistantAnswer(
   if (notes.length === 0) return result.answer
   const noteLabel = language === 'vi' ? 'Lưu ý' : 'Note'
   return `${result.answer}\n\n${noteLabel}: ${notes.join(' ')}`
+}
+
+export function latestKaelReply(response: KaelChatResponse) {
+  for (let index = response.turns.length - 1; index >= 0; index -= 1) {
+    const turn = response.turns[index]
+    if (turn.role !== 'kael' || typeof turn.text_content !== 'string') continue
+    const text = turn.text_content.trim()
+    if (!text) continue
+    return {
+      text,
+      turnId: turn.id,
+    }
+  }
+  return null
 }

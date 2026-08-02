@@ -25,6 +25,7 @@ const AUTH_ENTRY_SOURCE_OF_TRUTH_MARKERS = [
   'auth-login-role-customer',
   'auth-login-role-worker',
   'auth-role-gate-content',
+  'auth-client-apple-secondary',
   'auth-client-google-primary',
   'auth-worker-no-provider-login',
   'submitWorkerApplication',
@@ -139,6 +140,17 @@ export function LoginRoleSurface() {
       await auth.signOut()
       router.replace('/(auth)/login?stage=login' as never)
     },
+    onAppleLogin: async () => {
+      workerApplicationSubmittedRef.current = false
+      workerRegistrationIntentRef.current = false
+      const result = await auth.signInWithApple()
+      return result.success
+        ? result
+        : {
+            success: false,
+            error: localizeEntryAuthError(result.error, language, 'appleSignInFailed'),
+          }
+    },
     onGoogleLogin: async () => {
       workerApplicationSubmittedRef.current = false
       workerRegistrationIntentRef.current = false
@@ -198,6 +210,7 @@ export function LoginRoleSurface() {
     <EntryBrandAccessFlow
       actions={actions}
       featureFlags={{
+        customerApple: true,
         customerGoogle: true,
         customerRegistration: true,
         workerRegistration: true,

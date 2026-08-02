@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { Image } from 'expo-image'
 import { ActivityIndicator, Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
-import Svg, { Defs, LinearGradient, Path, Rect } from 'react-native-svg'
+import Svg, { Defs, Path, Rect } from 'react-native-svg'
 
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { ProfileUsageRankingMark } from './profile-ranking-mark'

@@ -6,7 +6,7 @@ export const KAEL_TRACE_SCHEMA_VERSION = "kael_trace.v1";
 
 export const KAEL_PROMPT_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
   intent_classification: "intent-classification.2026-06-04.v1",
-  vision_analysis: "vision-analysis.2026-07-10.v2",
+  vision_analysis: "vision-analysis.2026-08-01.v6",
   clarification: "clarification.2026-06-04.v1",
   problem_synthesis: "problem-synthesis.2026-05-25.v1",
   market_lookup: "market-lookup.2026-06-27.v1",

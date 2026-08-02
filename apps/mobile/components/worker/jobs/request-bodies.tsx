@@ -4,9 +4,9 @@ import {
   Text as RNText,
   type TextProps,
 } from 'react-native'
-import Svg, { Defs, LinearGradient, Rect } from 'react-native-svg'
+import Svg, { Defs, Rect } from 'react-native-svg'
 
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 import { styles } from './request-body-styles'
 
 function Text({ style, ...props }: TextProps) {

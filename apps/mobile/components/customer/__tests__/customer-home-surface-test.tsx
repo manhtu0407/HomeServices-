@@ -8,8 +8,17 @@ let mockWorkflowValue: any
 let mockSessionMetadata: Record<string, unknown>
 const mockReplace = jest.fn()
 const mockDispatch = jest.fn()
+const mockSetStatusBarStyle = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
+
+jest.mock('expo-status-bar', () => {
+  return {
+    StatusBar: {
+      setStyle: (...args: unknown[]) => mockSetStatusBarStyle(...args),
+    },
+  }
+})
 
 jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void | (() => void)) => callback(),
@@ -77,6 +86,8 @@ jest.mock('@/lib/app-language', () => {
 })
 
 import { CustomerHomeSurface, CustomerV21DockOverlay } from '../customer-surfaces'
+import { customerV21SharedStyles } from '../ui/shared-styles'
+import { CustomerThemeSystemBar } from '../ui/shared-surfaces'
 
 function buildDeal(): LocalDeal {
   return {
@@ -161,11 +172,29 @@ function buildWorkflow(deal: LocalDeal | null) {
 beforeEach(() => {
   mockDispatch.mockClear()
   mockReplace.mockClear()
+  mockSetStatusBarStyle.mockClear()
   mockSessionMetadata = { default_address: 'Tòa A, Quận 7', full_name: 'Anh Tú' }
   buildWorkflow(null)
 })
 
 describe('CustomerHomeSurface v2.1', () => {
+  it('keeps status-bar icon contrast aligned with the customer-selected appearance', () => {
+    const { rerender } = render(<CustomerThemeSystemBar mode="light" />)
+
+    expect(mockSetStatusBarStyle).toHaveBeenLastCalledWith('dark')
+
+    rerender(<CustomerThemeSystemBar mode="dark" />)
+
+    expect(mockSetStatusBarStyle).toHaveBeenLastCalledWith('light')
+  })
+
+  it('keeps the screen frame within the padded scroll content on native layouts', () => {
+    expect(StyleSheet.flatten(customerV21SharedStyles.frame)).toMatchObject({
+      maxWidth: '100%',
+      width: '100%',
+    })
+  })
+
   it('routes the Kael dock orb to customer chat, not the command center', () => {
     render(<CustomerV21DockOverlay active="home" />)
 
@@ -199,9 +228,13 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.getByText('Mô tả vấn đề')).toBeOnTheScreen()
     expect(screen.getByText('Bạn xác nhận')).toBeOnTheScreen()
     expect(screen.getByLabelText('Bắt đầu dễ dàng. Chọn dịch vụ, mô tả và xác nhận. Bước 1: Chọn dịch vụ. Bước 2: Mô tả vấn đề. Bước 3: Bạn xác nhận.')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-hero').props.style)).toMatchObject({
+    const storytellingHeroStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-home-hero').props.style)
+    expect(storytellingHeroStyle).toMatchObject({
+      alignSelf: 'stretch',
       backgroundColor: '#FFFFFF',
+      maxWidth: '100%',
     })
+    expect(storytellingHeroStyle.width).toBeUndefined()
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-storytelling').props.style).borderWidth).toBeUndefined()
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-onboarding-label-1').props.style).position).toBeUndefined()
     expect(storytellingSource).not.toContain('Kael luôn')

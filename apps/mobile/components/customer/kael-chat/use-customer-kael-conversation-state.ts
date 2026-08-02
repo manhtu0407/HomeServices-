@@ -3,6 +3,7 @@ import { useCallback, useReducer, type Dispatch, type SetStateAction } from 'rea
 import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { PendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
+import type { KaelResponseStreamState } from '@/lib/kael-response-stream'
 
 import type { CustomerKaelMode } from '../ui/types'
 
@@ -13,10 +14,7 @@ export type CustomerAssistantLocalTurn = {
   text_content: string
 }
 
-export type CustomerKaelStreamingReply = {
-  text: string
-  turnId: string
-}
+export type CustomerKaelStreamingReply = KaelResponseStreamState
 
 export type CustomerKaelConversationState = {
   assistantTurns: CustomerAssistantLocalTurn[]

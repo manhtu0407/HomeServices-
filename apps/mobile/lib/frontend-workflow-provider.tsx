@@ -153,13 +153,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const pendingIncidentOpenClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingScopeProposalClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingRequestOwnerRef = useRef(sessionUserId)
-  if (pendingRequestOwnerRef.current !== sessionUserId) {
-    pendingRequestOwnerRef.current = sessionUserId
-    pendingJobCreateClientRequestRef.current = null
-    pendingDirectScopeChangeClientRequestRef.current = null
-    pendingIncidentOpenClientRequestRef.current = null
-    pendingScopeProposalClientRequestRef.current = null
-  }
   // Holds the latest refresh callbacks so realtime/AppState effects can stay
   // subscribed across callback-identity changes (no channel churn) while always
   // invoking the freshest closure. Populated by the sync effect below once the
@@ -171,6 +164,15 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     hydrateCustomerActiveJob: () => Promise<boolean>
     refreshCustomerAvatar: () => Promise<boolean>
   } | null>(null)
+
+  useEffect(() => {
+    if (pendingRequestOwnerRef.current === sessionUserId) return
+    pendingRequestOwnerRef.current = sessionUserId
+    pendingJobCreateClientRequestRef.current = null
+    pendingDirectScopeChangeClientRequestRef.current = null
+    pendingIncidentOpenClientRequestRef.current = null
+    pendingScopeProposalClientRequestRef.current = null
+  }, [sessionUserId])
 
   useEffect(() => {
     stateRef.current = state

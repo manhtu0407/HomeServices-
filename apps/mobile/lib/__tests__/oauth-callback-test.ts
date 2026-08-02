@@ -79,6 +79,22 @@ describe('isTrustedOAuthAuthorizationUrl', () => {
     )).toBe(true)
   })
 
+  it('accepts Apple only when the requested provider is Apple', () => {
+    const appleAuthorizationUrl = trustedAuthorizationUrl.replace('provider=google', 'provider=apple')
+
+    expect(isTrustedOAuthAuthorizationUrl(
+      appleAuthorizationUrl,
+      supabaseUrl,
+      redirectUrl,
+      'apple',
+    )).toBe(true)
+    expect(isTrustedOAuthAuthorizationUrl(
+      appleAuthorizationUrl,
+      supabaseUrl,
+      redirectUrl,
+    )).toBe(false)
+  })
+
   it('accepts the bounded plain PKCE fallback used when native WebCrypto is unavailable', () => {
     expect(isTrustedOAuthAuthorizationUrl(
       trustedAuthorizationUrl

@@ -32,8 +32,9 @@ import {
   isWorkerCurrentJobStatus,
 } from './helpers'
 
-const WORKER_STARTUP_REFRESH_RETRY_DELAYS_MS = [1_000, 3_000] as const
 import { dealToSnapshot, workerBroadcastToSnapshot, workerJobToSnapshot } from './snapshots'
+
+const WORKER_STARTUP_REFRESH_RETRY_DELAYS_MS = [1_000, 3_000] as const
 
 type WorkerRemoteState = {
   earnings: EarningsResponse | null

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
+import { entryTheme } from '../theme'
 
 export type EntryIconName =
   | 'arrow-right'
@@ -12,7 +13,7 @@ export type EntryIconName =
   | 'spark'
   | 'user'
 
-export type ProviderBrand = 'google'
+export type ProviderBrand = 'apple' | 'google'
 
 export function EntryIcon({ color = '#088779', name, size = 18 }: { color?: string; name: EntryIconName; size?: number }) {
   const common = { fill: 'none', stroke: color, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 1.9 }
@@ -85,4 +86,9 @@ export function ProviderBrandIcon({ provider, size = 18 }: { provider: ProviderB
     )
   }
 
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityLabel="Apple">
+      <Path d="M16.71 12.58c-.02-2.08 1.7-3.09 1.78-3.15-.97-1.42-2.47-1.61-3.01-1.64-1.28-.13-2.5.76-3.16.76-.66 0-1.65-.74-2.71-.72-1.4.02-2.7.83-3.42 2.08-1.47 2.52-.37 6.22 1.04 8.27.7 1 1.53 2.13 2.62 2.09 1.06-.04 1.46-.68 2.74-.68 1.27 0 1.65.68 2.75.66 1.14-.02 1.86-1.01 2.54-2.02.81-1.15 1.14-2.3 1.15-2.36-.03-.01-2.2-.84-2.32-3.21ZM14.57 6.4c.57-.71.96-1.68.85-2.65-.82.04-1.84.57-2.43 1.26-.53.62-1 1.61-.88 2.56.93.07 1.88-.47 2.46-1.17Z" fill={entryTheme.color.text.strong} />
+    </Svg>
+  )
 }

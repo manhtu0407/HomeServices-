@@ -6,6 +6,12 @@ import * as ImagePicker from 'expo-image-picker'
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
 import {
+  appendLegacyKaelResponseDelta,
+  initialKaelResponseStreamState,
+  kaelResponseStreamReducer,
+  type KaelResponseStreamEvent,
+} from '@/lib/kael-response-stream'
+import {
   cleanupKaelChatMediaRefs,
   localizeMediaUploadFailure,
   uploadJobMediaDrafts,
@@ -227,17 +233,19 @@ export function useCustomerKaelEvidenceActions({
       const appendStreamingReply = (event: KaelStreamResponseDeltaEvent) => {
         if (!kaelRequestGuard.isCurrent(requestToken)) return
         setStreamingReply((current) => {
-          const text = current?.turnId === event.turnId
-            ? `${current.text}${event.delta}`
-            : event.delta
-          return {
-            text: text.slice(0, 12_000),
-            turnId: event.turnId,
-          }
+          return appendLegacyKaelResponseDelta(current, event)
         })
+      }
+      const applyStreamingResponseEvent = (event: KaelResponseStreamEvent) => {
+        if (!kaelRequestGuard.isCurrent(requestToken)) return
+        setStreamingReply((current) => kaelResponseStreamReducer(
+          current ?? initialKaelResponseStreamState,
+          event,
+        ))
       }
       let result = await kaelChatStreamService.submitEvidence(sessionId, evidenceInput, {
         onResponseDelta: appendStreamingReply,
+        onResponseEvent: applyStreamingResponseEvent,
         onStage: ({ progress }) => {
           if (kaelRequestGuard.isCurrent(requestToken)) updateEvidenceProcessProgress(progress)
         },

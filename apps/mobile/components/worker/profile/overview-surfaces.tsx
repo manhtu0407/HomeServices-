@@ -1,189 +1,131 @@
-import type { ComponentType } from 'react'
-import {
-  Pressable,
-  Text as RNText,
-  View,
-  type ImageSourcePropType,
-  type StyleProp,
-  type TextProps,
-  type ViewStyle,
-} from 'react-native'
-import Svg, { Circle, Path } from 'react-native-svg'
+import type { ImageSourcePropType } from 'react-native'
+import { View } from 'react-native'
 
-import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
+import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
-import type { ServiceType } from '@nestscout/shared'
 
-import { WorkerV5FormulaMintCardAura } from '../ui/aura-surfaces'
 import { textByLanguage } from '../ui/format'
-import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
-import { workerV5HasNumber, workerV5NumericInsight, workerV5ReliabilityPercentValue } from '../ui/performance'
-import { WorkerV5DetailRail, type WorkerV5DetailRailItem } from '../ui/worker-v5-detail-rail'
+import { workerV5HasNumber, workerV5NumericInsight } from '../ui/performance'
+import {
+  WorkerV5ProfileGroup,
+  WorkerV5ProfileGroupDivider,
+  WorkerV5ProfileGroupRow,
+} from './grouped-list-surfaces'
 import { styles } from './overview-styles'
 
 type WorkerV5ProfileOverviewProfile = WorkerProfileResponse | null | undefined
 type WorkerV5ProfileOverviewInsights = WorkerPerformanceInsightsResponse | null | undefined
-type WorkerV5OverviewAura = ComponentType<{ scope: string; style?: StyleProp<ViewStyle>; testID?: string }>
-type WorkerV5DossierIconName = 'reliability' | 'services' | 'settings'
-
-function Text({ style, ...props }: TextProps) {
-  return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
-}
-
-function WorkerV5ServiceMicroGlyph({ service }: { service: ServiceType }) {
-  if (service === 'electrical') {
-    return (
-      <Svg height={18} viewBox="0 0 18 18" width={18}>
-        <Path d="M10.6 1.5 3.8 10h4L7.4 16.5l6.8-8.5h-4l.4-6.5Z" fill="#31B9A4" />
-      </Svg>
-    )
-  }
-  if (service === 'cleaning') {
-    return (
-      <Svg height={18} viewBox="0 0 18 18" width={18}>
-        <Path d="m10.5 1.8 1.7 1.7-4.4 4.4-1.7-1.7 4.4-4.4Z" fill="#31B9A4" />
-        <Path d="m4.7 7.7 5.6 5.6-2.6 2.6-5.6-5.6 2.6-2.6Z" fill="#7DD9C8" />
-        <Path d="m1.7 12.2 3.2 3.2m-1.7-4.7 3.2 3.2m.7-5.3 3.2 3.2" stroke="#159E8C" strokeLinecap="round" strokeWidth={0.9} />
-      </Svg>
-    )
-  }
-  return (
-    <Svg height={18} viewBox="0 0 18 18" width={18}>
-      <Path d="M3 2.5h6v4H7.2v4.2H15V15H7.2v-4.2H3V2.5Z" fill="#31B9A4" />
-      <Circle cx={4.5} cy={4.5} fill="#E8FBF7" r={1.1} />
-      <Path d="M13.2 15.3c0-1.2.8-2.2 1.8-2.2s1.8 1 1.8 2.2-1.8 2.4-1.8 2.4-1.8-1.2-1.8-2.4Z" fill="#73D5C3" />
-    </Svg>
-  )
-}
+type WorkerV5DossierIconName = 'logout' | 'reliability' | 'schedule' | 'services' | 'settings'
 
 export function WorkerV5ProfileDossierCard({
-  caseWideAura: _caseWideAura,
   icons,
   insights,
   language,
   onOpenReliability,
+  onOpenSchedule,
   onOpenSettings,
   onOpenSkills,
+  onSignOut,
   profile,
-  reduceTransparency,
-  zipAura: _zipAura,
 }: {
-  caseWideAura: WorkerV5OverviewAura
   icons: Record<WorkerV5DossierIconName, ImageSourcePropType>
   insights: WorkerV5ProfileOverviewInsights
   language: AppLanguage
   onOpenReliability: () => void
+  onOpenSchedule: () => void
   onOpenSettings: () => void
   onOpenSkills: () => void
+  onSignOut: () => void
   profile: WorkerV5ProfileOverviewProfile
-  reduceTransparency: boolean
-  zipAura: WorkerV5OverviewAura
 }) {
-  const hasTrustScore = workerV5HasNumber(insights?.performance_score)
-  const trustScore = workerV5NumericInsight(insights?.performance_score)
-  const hasOnTimeRate = workerV5HasNumber(insights?.on_time_rate_percent)
-  const onTimeSummary = hasOnTimeRate
-    ? textByLanguage(language, `${workerV5ReliabilityPercentValue(insights.on_time_rate_percent, language)} đúng hẹn`, `${workerV5ReliabilityPercentValue(insights.on_time_rate_percent, language)} on-time`)
-    : textByLanguage(language, 'Chờ dữ liệu đúng hẹn', 'On-time data pending')
   const selectedServices = profile?.selected_service_types
     ?? profile?.active_service_types
     ?? profile?.service_types
     ?? []
-  const services = !profile
-    ? textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
-    : selectedServices.length
-      ? selectedServices.map((service) => localizedServiceLabel(service, language)).join(', ')
-      : textByLanguage(language, 'Chưa chọn dịch vụ', 'No selected services')
-  const reliabilityMeta = hasTrustScore
-    ? `${trustScore}/100 · ${onTimeSummary}`
-    : textByLanguage(language, 'Chưa có dữ liệu hiệu suất thật', 'No real performance data')
-  const reliabilityDetails: WorkerV5DetailRailItem[] = hasTrustScore
-    ? [
-      { glyph: 'signal', label: `${trustScore}/100` },
-      { glyph: 'arrival', label: onTimeSummary },
-    ]
-    : [
-      { glyph: 'signal', label: textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data') },
-      { glyph: 'arrival', label: textByLanguage(language, 'Sau công việc', 'After a job') },
-    ]
-  const settingsDetails: WorkerV5DetailRailItem[] = [
-    { glyph: 'identity', label: textByLanguage(language, 'Tài khoản', 'Account') },
-    { glyph: 'shield', label: textByLanguage(language, 'Bảo mật', 'Security') },
-    { glyph: 'memory', label: textByLanguage(language, 'Bộ nhớ Kael', 'Kael memory') },
-  ]
-  const rows = [
-    { icon: 'services' as const, meta: services, status: textByLanguage(language, 'Vào', 'Open'), title: textByLanguage(language, 'Dịch vụ chuyên môn', 'Service dossier') },
-    { icon: 'reliability' as const, meta: reliabilityMeta, status: textByLanguage(language, 'Vào', 'Open'), title: textByLanguage(language, 'Độ tin cậy', 'Reliability') },
-    { icon: 'settings' as const, meta: textByLanguage(language, 'Tài khoản, bảo mật và bộ nhớ Kael', 'Account, security, and Kael memory'), status: textByLanguage(language, 'Vào', 'Open'), title: textByLanguage(language, 'Cài đặt', 'Settings') },
-  ]
-  return (
-    <View style={[styles.approvalDecisionList, reduceTransparency && styles.opaqueCard]} testID="worker-v5-profile-dossier">
-      <WorkerV5FormulaMintCardAura
-        reduceTransparency={reduceTransparency}
-        scope="ProfileDossier"
-        testID="worker-v5-profile-dossier-formula-mint-aura"
-      />
-      {rows.map((row, index) => {
-        const isServiceDossier = row.icon === 'services'
-        const rowContent = (
-          <>
-            <WorkerV5IntegratedIcon
-              bleed={12}
-              image={icons[row.icon]}
-              reduceTransparency={reduceTransparency}
-              testID={`worker-v5-profile-dossier-icon-${index}`}
-              tone={isServiceDossier ? 'service' : row.icon === 'reliability' ? 'signal' : 'identity'}
-              variant="panel"
-            />
-            <View style={styles.approvalDecisionCopy} testID={`worker-v5-profile-dossier-copy-${index}`}>
-              <Text style={[styles.approvalDecisionTitle, isServiceDossier && styles.approvalDecisionTitlePrimary]} numberOfLines={2} testID={`worker-v5-profile-dossier-title-${index}`}>{row.title}</Text>
-              {isServiceDossier && selectedServices.length ? (
-                <View style={styles.approvalServiceList} testID={`worker-v5-profile-dossier-meta-${index}`}>
-                  {selectedServices.map((service, serviceIndex) => (
-                    <View key={service} style={styles.approvalServiceDetail}>
-                      <WorkerV5ServiceMicroGlyph service={service} />
-                      <Text style={styles.approvalServiceMeta} numberOfLines={1}>{localizedServiceLabel(service, language)}</Text>
-                      {serviceIndex < selectedServices.length - 1 ? <View style={styles.approvalServiceDivider} /> : null}
-                    </View>
-                  ))}
-                </View>
-              ) : row.icon === 'reliability' ? (
-                <WorkerV5DetailRail items={reliabilityDetails} testID={`worker-v5-profile-dossier-detail-${index}`} />
-              ) : row.icon === 'settings' ? (
-                <WorkerV5DetailRail items={settingsDetails} testID={`worker-v5-profile-dossier-detail-${index}`} />
-              ) : (
-                <Text style={styles.approvalDecisionMeta} numberOfLines={2} testID={`worker-v5-profile-dossier-meta-${index}`}>{row.meta}</Text>
-              )}
-            </View>
-            <Text style={styles.approvalDecisionStatus} numberOfLines={2} testID={`worker-v5-profile-dossier-status-${index}`}>{row.status}</Text>
-          </>
-        )
-        if (index === 0 || index === 1 || index === 2) {
-          const onPress = index === 0 ? onOpenSkills : index === 1 ? onOpenReliability : onOpenSettings
-          const accessibilityLabel = index === 0
-            ? textByLanguage(language, 'Mở kỹ năng và khu vực', 'Open skills and service area')
-            : index === 1
-              ? textByLanguage(language, 'Mở độ tin cậy', 'Open reliability insights')
-              : textByLanguage(language, 'Mở cài đặt', 'Open settings')
-          return (
-            <Pressable
-              accessibilityLabel={accessibilityLabel}
-              accessibilityRole="button"
-              key={row.title}
-              onPress={onPress}
-              style={({ pressed }) => [styles.approvalDecisionRow, isServiceDossier && styles.approvalDecisionRowPrimary, pressed ? styles.pressed : null]}
-              testID={`worker-v5-profile-dossier-row-${index}`}
-            >
-              {rowContent}
-            </Pressable>
-          )
+  const hasTrustScore = workerV5HasNumber(insights?.performance_score)
+  const schedule = profile?.is_suspended
+    ? {
+        status: textByLanguage(language, 'Đang khóa', 'Suspended'),
+        tone: 'danger' as const,
+      }
+    : profile?.is_available && profile.is_approved
+      ? {
+          status: textByLanguage(language, 'Đang nhận', 'Accepting'),
+          tone: 'active' as const,
         }
-        return (
-          <View key={row.title} style={[styles.approvalDecisionRow, isServiceDossier && styles.approvalDecisionRowPrimary]} testID={`worker-v5-profile-dossier-row-${index}`}>
-            {rowContent}
-          </View>
-        )
-      })}
+      : profile?.is_approved
+        ? {
+            status: textByLanguage(language, 'Đang tắt', 'Paused'),
+            tone: 'muted' as const,
+          }
+        : {
+            status: textByLanguage(language, 'Cần hồ sơ', 'Profile needed'),
+            tone: 'muted' as const,
+          }
+  const serviceStatus = !profile
+    ? textByLanguage(language, 'Chờ hồ sơ', 'Waiting')
+    : selectedServices.length
+      ? textByLanguage(language, `${selectedServices.length} dịch vụ`, `${selectedServices.length} services`)
+      : textByLanguage(language, 'Chưa chọn', 'Not selected')
+  const reliabilityStatus = hasTrustScore
+    ? `${workerV5NumericInsight(insights?.performance_score)}/100`
+    : textByLanguage(language, 'Chưa có dữ liệu', 'No data')
+
+  return (
+    <View style={styles.profileDossierStack} testID="worker-v5-profile-dossier">
+      <WorkerV5ProfileGroup testID="worker-v5-profile-group-professional" title={textByLanguage(language, 'Hồ sơ nghiệp vụ', 'Work profile')}>
+        <WorkerV5ProfileGroupRow
+          description={textByLanguage(language, 'Quản lý dịch vụ, khu vực làm việc và hồ sơ xác minh.', 'Manage services, work area, and verification.')}
+          icon={icons.services}
+          onPress={onOpenSkills}
+          status={serviceStatus}
+          testID="worker-v5-profile-row-services"
+          title={textByLanguage(language, 'Dịch vụ chuyên môn', 'Professional services')}
+        />
+        <WorkerV5ProfileGroupDivider />
+        <WorkerV5ProfileGroupRow
+          description={textByLanguage(language, 'Theo dõi hiệu suất và phản hồi từ công việc thật.', 'Review performance and feedback from real work.')}
+          icon={icons.reliability}
+          onPress={onOpenReliability}
+          status={reliabilityStatus}
+          statusTone={hasTrustScore ? 'active' : 'muted'}
+          testID="worker-v5-profile-row-reliability"
+          title={textByLanguage(language, 'Độ tin cậy', 'Reliability')}
+        />
+      </WorkerV5ProfileGroup>
+
+      <WorkerV5ProfileGroup testID="worker-v5-profile-group-schedule" title={textByLanguage(language, 'Lịch nhận việc', 'Work availability')}>
+        <WorkerV5ProfileGroupRow
+          icon={icons.schedule}
+          onPress={onOpenSchedule}
+          status={schedule.status}
+          statusTone={schedule.tone}
+          testID="worker-v5-profile-row-schedule"
+          title={textByLanguage(language, 'Trạng thái nhận việc', 'Availability status')}
+        />
+      </WorkerV5ProfileGroup>
+
+      <WorkerV5ProfileGroup testID="worker-v5-profile-group-settings" title={textByLanguage(language, 'Tài khoản & ứng dụng', 'Account & app')}>
+        <WorkerV5ProfileGroupRow
+          icon={icons.settings}
+          onPress={onOpenSettings}
+          status={textByLanguage(language, 'Mở', 'Open')}
+          statusTone="active"
+          testID="worker-v5-profile-row-settings"
+          title={textByLanguage(language, 'Cài đặt', 'Settings')}
+        />
+      </WorkerV5ProfileGroup>
+
+      <WorkerV5ProfileGroup testID="worker-v5-profile-group-account" title={textByLanguage(language, 'Quản lý tài khoản', 'Account management')}>
+        <WorkerV5ProfileGroupRow
+          description={textByLanguage(language, 'Kết thúc phiên trên thiết bị này.', 'End this session on this device.')}
+          icon={icons.logout}
+          onPress={onSignOut}
+          statusTone="danger"
+          testID="worker-v5-profile-sign-out"
+          title={textByLanguage(language, 'Đăng xuất', 'Sign out')}
+        />
+      </WorkerV5ProfileGroup>
     </View>
   )
 }

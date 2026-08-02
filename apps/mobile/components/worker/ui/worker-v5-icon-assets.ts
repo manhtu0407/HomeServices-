@@ -38,7 +38,9 @@ export const workerV5CapturedIconAssets = {
 } as const
 
 export const workerV5ProfileDossierIconAssets = {
+  logout: require('@/assets/worker-image-icons/utility-shield.png') as ImageSourcePropType,
   reliability: workerV5CapturedIconAssets.profileDossierReliability,
+  schedule: workerV5CapturedIconAssets.rankingArrival,
   services: workerV5CapturedIconAssets.profileDossierServices,
   settings: workerV5CapturedIconAssets.profileDossierSettings,
 } as const
@@ -67,12 +69,16 @@ export const workerV5ReliabilityIconAssets = {
 } as const
 
 export const workerV5SettingsIconAssets = {
+  appearance: require('@/assets/worker-image-icons/setting-theme.png') as ImageSourcePropType,
   hero: workerV5CapturedIconAssets.settingsHero,
   kaelMemory: workerV5CapturedIconAssets.settingsKaelMemory,
   language: workerV5CapturedIconAssets.settingsLanguage,
+  notifications: require('@/assets/worker-image-icons/utility-bell.png') as ImageSourcePropType,
   personal: workerV5CapturedIconAssets.settingsPersonal,
+  policy: require('@/assets/worker-image-icons/utility-shield.png') as ImageSourcePropType,
   security: workerV5CapturedIconAssets.settingsSecurity,
   serviceArea: workerV5CapturedIconAssets.settingsServiceArea,
+  support: require('@/assets/worker-image-icons/utility-chat.png') as ImageSourcePropType,
 } as const
 
 export const workerV5RankingIconAssets = {

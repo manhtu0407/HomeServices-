@@ -251,7 +251,17 @@ export function WorkerV5ServiceCardGrid({
     return (
       <View style={styles.serviceCardGrid} testID="worker-v5-quick-action-grid">
         <View style={[styles.serviceSourceCard, styles.serviceSourceCardFull, reduceTransparency && styles.opaqueCard]} testID="worker-v5-quick-action-empty">
-          <WorkerV5IntegratedIcon bleed={11} edge="none" image={toolsIcon} reduceTransparency={reduceTransparency} style={styles.serviceSourceIntegratedIcon} tone="service" variant="stagePanel" />
+          <WorkerV5IntegratedIcon
+            bleed={11}
+            edge="none"
+            image={toolsIcon}
+            reduceTransparency={reduceTransparency}
+            showAura={false}
+            style={[styles.serviceSourceIntegratedIcon, styles.serviceSourceIntegratedIconPlain]}
+            testID="worker-v5-quick-action-empty-icon"
+            tone="service"
+            variant="stagePanel"
+          />
           <View style={styles.serviceSourceCopy}>
             <Text style={styles.serviceSourceTitle} numberOfLines={2} testID="worker-v5-quick-action-empty-title">
               {profile

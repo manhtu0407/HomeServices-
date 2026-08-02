@@ -48,6 +48,7 @@ import {
   workerAvatarUpdateSchema,
   workerServiceAreaUpdateSchema,
   workerServicePreferencesUpdateSchema,
+  workerKaelMemoryPreferenceUpdateSchema,
   workerScopeChangeSchema,
   LEARNING_CANDIDATE_STATUSES,
 } from "../../_shared/domain.ts";
@@ -646,6 +647,11 @@ async function dispatchRoute(
     }
     case "workers.kaelMemory":
       return services.getWorkerKaelMemory(ctx);
+    case "workers.kaelMemory.update": {
+      const input = workerKaelMemoryPreferenceUpdateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Invalid worker memory preference payload", 400);
+      return services.updateWorkerKaelMemoryPreference(ctx, input.data);
+    }
     case "workers.kaelChat.create": {
       const input = workerKaelChatCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

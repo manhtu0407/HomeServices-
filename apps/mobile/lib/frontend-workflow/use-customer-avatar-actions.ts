@@ -53,12 +53,11 @@ export function useCustomerAvatarActions({
   }, [sessionUserId, setRemoteError])
 
   useEffect(() => {
-    setCustomerAvatarState(initialCustomerAvatarState)
-  }, [sessionUserId])
-
-  useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
-    if (isAppForeground()) void refreshCustomerAvatar()
+    const refreshTimer = setTimeout(() => {
+      if (isAppForeground()) void refreshCustomerAvatar()
+    }, 0)
+    return () => clearTimeout(refreshTimer)
   }, [role, sessionUserId, refreshCustomerAvatar])
 
   return {

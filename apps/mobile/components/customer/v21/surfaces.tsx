@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
   type ImageSourcePropType,
 } from 'react-native'
-import Svg, { Defs, LinearGradient, Rect } from 'react-native-svg'
+import Svg, { Defs, Rect } from 'react-native-svg'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
@@ -20,7 +20,7 @@ import {
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { localizeAccountMutationError } from '@/lib/account-mutation-error'
 import { localizedProblemOptions, setAppLanguage, useAppLanguage } from '@/lib/app-language'

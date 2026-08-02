@@ -7,16 +7,13 @@ import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 import type { WorkerV5IconName, WorkerV5ScreenId } from '../dock/types'
 import { WorkerV5KaelBriefCard } from '../home/action-surfaces'
-import { WorkerV5BankCard, WorkerV5SectionHeader } from '../ui/primitives-surfaces'
+import { WorkerV5SectionHeader } from '../ui/primitives-surfaces'
 import {
   formatCountOrEmpty,
-  formatDateRange,
   formatNullablePercent,
   formatNullableRating,
-  formatVnd,
   textByLanguage,
 } from '../ui/format'
-import { workerDocumentSummary } from '../ui/labels'
 import {
   workerV5ReliabilityAxes,
   workerV5ReliabilityAxisScore,
@@ -25,15 +22,7 @@ import {
   workerV5ReliabilityRatingValue,
 } from '../ui/performance'
 import { WorkerV5KaelDraftCard } from '../jobs/shared-surfaces'
-import { resolveWorkerV5BankLogo } from '../earnings/banks'
 import {
-  WorkerV5AccountChangeGuard,
-  WorkerV5BankChipGrid,
-  WorkerV5BankTaxHero,
-  WorkerV5PayoutRulesList,
-} from './bank-tax-surfaces'
-import {
-  WorkerV5ProfileDashboardCards,
   WorkerV5ProfileHeader,
 } from './header-surfaces'
 import { WorkerV5ProfileDossierCard } from './overview-surfaces'
@@ -64,10 +53,12 @@ import {
   WorkerV5VerificationRenewalCard,
 } from './verification-surfaces'
 import { workerV5VerificationChecks } from './verification-model'
+import { WorkerV5WorkerRegistrationBody } from './registration-surfaces'
+import { workerNeedsRegistration } from './registration-model'
 import { styles } from './body-styles'
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type WorkerV5IconMap = Record<WorkerV5IconName, ImageSourcePropType>
-type WorkerV5DossierIconMap = Record<'reliability' | 'services' | 'settings', ImageSourcePropType>
+type WorkerV5DossierIconMap = Record<'logout' | 'reliability' | 'schedule' | 'services' | 'settings', ImageSourcePropType>
 type WorkerV5ServiceIconMap = Record<ServiceType, ImageSourcePropType>
 type WorkerV5AuraComponent = ComponentType<{ testID: string }>
 type WorkerV5ScopedAuraComponent = ComponentType<{
@@ -117,30 +108,26 @@ type WorkerV5ReadOnlyToggleListComponent = ComponentType<{
 }>
 export function WorkerV5ProfileOverviewBody({
   avatarUploadBusy,
-  caseWideAura,
   dossierIcons,
   heroAura,
   language,
-  listAura,
   navigateToScreen,
   onPickAvatar,
+  onSignOut,
   reduceMotion,
   reduceTransparency,
   runtime,
-  zipAura,
 }: {
   avatarUploadBusy: boolean
-  caseWideAura: WorkerV5ScopedAuraComponent
   dossierIcons: WorkerV5DossierIconMap
   heroAura: WorkerV5AuraComponent
   language: AppLanguage
-  listAura: WorkerV5AuraComponent
   navigateToScreen: (id: WorkerV5ScreenId) => void
   onPickAvatar: () => void
+  onSignOut: () => void
   reduceMotion: boolean
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
-  zipAura: WorkerV5ScopedAuraComponent
 }) {
   const profile = runtime.workerProfile
   const insights = runtime.workerPerformanceInsights
@@ -155,28 +142,16 @@ export function WorkerV5ProfileOverviewBody({
         reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
       />
-      <WorkerV5ProfileDashboardCards
-        insights={insights}
-        language={language}
-        listAura={listAura}
-        profile={profile}
-        reduceTransparency={reduceTransparency}
-      />
-      <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Chi tiết hơn', 'More detail')}
-        title={textByLanguage(language, 'Hồ sơ nghiệp vụ', 'Work dossier')}
-      />
       <WorkerV5ProfileDossierCard
-        caseWideAura={caseWideAura}
         icons={dossierIcons}
         insights={insights}
         language={language}
         onOpenReliability={() => navigateToScreen('5.4-reliability-insights')}
+        onOpenSchedule={() => navigateToScreen('5.11-worker-availability')}
         onOpenSettings={() => navigateToScreen('5.10-support-settings')}
         onOpenSkills={() => navigateToScreen('5.3-skills-service-area')}
+        onSignOut={onSignOut}
         profile={profile}
-        reduceTransparency={reduceTransparency}
-        zipAura={zipAura}
       />
     </View>
   )
@@ -434,6 +409,18 @@ export function WorkerV5VerificationDocumentsBody({
   zipAura: WorkerV5ScopedAuraComponent
 }) {
   const profile = runtime.workerProfile
+  if (workerNeedsRegistration(profile)) {
+    return (
+      <View style={styles.sectionStack}>
+        <WorkerV5WorkerRegistrationBody
+          language={language}
+          profile={profile}
+          reduceTransparency={reduceTransparency}
+          runtime={runtime}
+        />
+      </View>
+    )
+  }
   const checks = workerV5VerificationChecks(profile, language)
   const missingCount = checks.filter((check) => !check.done).length
   return (
@@ -461,101 +448,6 @@ export function WorkerV5VerificationDocumentsBody({
         readOnlyToggleList={ReadOnlyToggleList}
         reduceTransparency={reduceTransparency}
       />
-    </View>
-  )
-}
-
-export function WorkerV5BankTaxBody({
-  caseWideAura,
-  icons,
-  infoListCard: InfoListCard,
-  infoRow: InfoRow,
-  language,
-  metricTile: MetricTile,
-  reduceTransparency,
-  runtime,
-  zipAura,
-}: {
-  caseWideAura: WorkerV5ScopedAuraComponent
-  icons: WorkerV5IconMap
-  infoListCard: WorkerV5InfoListCardComponent
-  infoRow: WorkerV5InfoRowComponent
-  language: AppLanguage
-  metricTile: WorkerV5MetricTileComponent
-  reduceTransparency: boolean
-  runtime: WorkerV5Runtime
-  zipAura: WorkerV5ScopedAuraComponent
-}) {
-  const earnings = runtime.workerEarnings
-  const profile = runtime.workerProfile
-  const hasBank = Boolean(profile?.bank_account_masked)
-  const availableBalance = earnings?.available_balance && earnings.available_balance > 0
-    ? formatVnd(earnings.available_balance, language)
-    : textByLanguage(language, 'Chưa có số dư thật', 'No real balance')
-  const pending = earnings?.pending_payment_amount && earnings.pending_payment_amount > 0
-    ? formatVnd(earnings.pending_payment_amount, language)
-    : textByLanguage(language, 'Chưa có khoản đang chờ', 'No pending amount')
-
-  return (
-    <View style={styles.sectionStack}>
-      <WorkerV5BankTaxHero
-        earnings={earnings}
-        language={language}
-        profile={profile}
-        reduceTransparency={reduceTransparency}
-        walletIcon={icons.wallet}
-      />
-      <WorkerV5PayoutRulesList
-        earnings={earnings}
-        icons={icons}
-        language={language}
-        reduceTransparency={reduceTransparency}
-      />
-      <WorkerV5BankCard
-        bankLogo={resolveWorkerV5BankLogo(profile?.bank_name)}
-        language={language}
-        profile={profile}
-        reduceTransparency={reduceTransparency}
-        walletIcon={icons.wallet}
-      />
-      <WorkerV5BankChipGrid
-        items={[
-          {
-            label: hasBank ? profile?.bank_name ?? textByLanguage(language, 'Ngân hàng', 'Bank') : textByLanguage(language, 'Ngân hàng', 'Bank'),
-            selected: hasBank,
-            value: hasBank ? profile?.bank_account_masked ?? textByLanguage(language, 'Đã ghi nhận', 'Recorded') : textByLanguage(language, 'Chưa ghi nhận', 'Not recorded'),
-          },
-          {
-            label: textByLanguage(language, 'Giấy tờ định danh', 'Identity documents'),
-            selected: Boolean(profile?.has_cccd || profile?.has_selfie),
-            value: workerDocumentSummary(profile, language),
-          },
-          {
-            label: textByLanguage(language, 'Đối soát', 'Settlement'),
-            selected: Boolean(earnings?.total_jobs_paid),
-            value: formatDateRange(earnings?.from_date, earnings?.to_date, language),
-          },
-        ]}
-        reduceTransparency={reduceTransparency}
-      />
-      <View style={styles.metricsGrid}>
-        <MetricTile label={textByLanguage(language, 'Số dư trong ứng dụng', 'In-app balance')} value={availableBalance} />
-        <MetricTile label={textByLanguage(language, 'Đang chờ', 'Pending')} value={pending} />
-      </View>
-      <WorkerV5AccountChangeGuard
-        caseWideAura={caseWideAura}
-        language={language}
-        profile={profile}
-        reduceTransparency={reduceTransparency}
-        zipAura={zipAura}
-      />
-      <InfoListCard reduceTransparency={reduceTransparency}>
-        <InfoRow icon="wallet" label={textByLanguage(language, 'Tài khoản ngân hàng đã ghi nhận', 'Recorded bank account')} reduceTransparency={reduceTransparency} value={hasBank ? `${profile?.bank_name ?? textByLanguage(language, 'Ngân hàng', 'Bank')} · ${profile?.bank_account_masked}` : textByLanguage(language, 'Chưa có tài khoản trong hồ sơ', 'No bank account on file')} />
-        <InfoRow icon="shield" label={textByLanguage(language, 'Tên pháp lý trong hồ sơ', 'Legal name on file')} reduceTransparency={reduceTransparency} value={profile?.legal_name ? profile.legal_name : textByLanguage(language, 'Chưa có tên pháp lý', 'No legal name')} />
-        <InfoRow icon="document" label={textByLanguage(language, 'Kỳ đối soát', 'Settlement period')} reduceTransparency={reduceTransparency} value={formatDateRange(earnings?.from_date, earnings?.to_date, language)} />
-        <InfoRow icon="document" label={textByLanguage(language, 'Chứng từ thu nhập', 'Income document')} reduceTransparency={reduceTransparency} value={textByLanguage(language, 'Chưa có chứng từ thu nhập được đồng bộ', 'No synced income document')} />
-        <InfoRow icon="clock" label={textByLanguage(language, 'Đổi tài khoản', 'Change account')} reduceTransparency={reduceTransparency} value={textByLanguage(language, 'Chuyển tiền chưa khả dụng; thay đổi tài khoản sẽ cần kiểm tra lại.', 'Payout is unavailable; account changes will require another review.')} />
-      </InfoListCard>
     </View>
   )
 }

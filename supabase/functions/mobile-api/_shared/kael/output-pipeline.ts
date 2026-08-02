@@ -7,6 +7,7 @@ import {
 } from "./scope-risk.ts";
 import { kaelArtifactProposalSchema } from "./artifact-contract.ts";
 import { looksLikePrivateUnitIdentifier } from "./utils.ts";
+import { customerVisibleKaelProblemSummary } from "./user-facing-copy.ts";
 
 export type EstimatePriceSource =
   | "perplexity_validated"
@@ -38,6 +39,14 @@ export type EstimateCardV3 = {
 export type EstimateAnalysisReceipt = {
   schema_version: "analysis_receipt.v1";
   evidence: {
+    analysis_status?: "analyzed" | "not_provided" | "unavailable";
+    findings?: Array<{
+      confidence: "low" | "medium" | "high";
+      evidence_index: number;
+      evidence_kind: "photo" | "video_frame";
+      observation: string;
+      possible_meaning: string | null;
+    }>;
     photo_count: number;
     video_frame_count: number;
     voice_transcript_count: number;
@@ -47,6 +56,12 @@ export type EstimateAnalysisReceipt = {
     accepted_source_count: number | null;
     high_trust_source_count: number | null;
     quorum_met: boolean | null;
+  };
+  problem?: {
+    remaining_uncertainty: string | null;
+    recommended_scope: string | null;
+    severity_indicators: string[];
+    summary: string;
   };
 };
 
@@ -104,6 +119,10 @@ export function buildEstimateCardOutput(input: {
     videoFrameCount: number;
     voiceTranscriptCount: number;
     skipped: boolean;
+    visualEvidenceRefs?: Array<{
+      evidenceIndex: number;
+      evidenceKind: "photo" | "video_frame";
+    }>;
   };
   marketEvidence?: {
     acceptedSourceCount: number | null;
@@ -111,8 +130,22 @@ export function buildEstimateCardOutput(input: {
     quorumMet: boolean | null;
   };
   visionFindings?: string | null;
+  visionAnalysis?: {
+    analysisStatus?: "analyzed" | "not_provided" | "unavailable";
+    evidenceFindings?: Array<{
+      confidence: "low" | "medium" | "high";
+      evidenceIndex: number;
+      observation: string;
+      possibleMeaning: string | null;
+    }>;
+    problemSummary: string;
+    recommendedScope?: string | null;
+    remainingUncertainty?: string | null;
+    severityIndicators: string[];
+  };
   marketSignals?: string | null;
   needsInspectionReason?: string | null;
+  previousAnalysisReceipt?: unknown;
 }) {
   const language = input.language ?? "vi";
   const confidence = numericConfidenceToLabel(input.estimate.confidence);
@@ -120,7 +153,10 @@ export function buildEstimateCardOutput(input: {
     input.priceSource === "inspection_required";
   const card: EstimateCardV3 = {
     service_type: input.estimate.service_type,
-    problem_summary: sanitizeKaelText(input.estimate.problem_summary, 200),
+    problem_summary: sanitizeKaelText(
+      customerVisibleKaelProblemSummary(input.estimate.problem_summary, language),
+      200,
+    ),
     complexity: input.estimate.complexity,
     price_min: Math.max(1, Math.round(input.estimate.price_min)),
     price_max: Math.max(
@@ -133,7 +169,12 @@ export function buildEstimateCardOutput(input: {
       ? "inspection_required"
       : input.priceSource ?? "baseline_with_market",
     kael_reasoning: {
-      vision_findings: optionalText(input.visionFindings, 300),
+      vision_findings: optionalText(
+        input.visionFindings
+          ? customerVisibleKaelProblemSummary(input.visionFindings, language)
+          : null,
+        300,
+      ),
       market_signals: optionalText(input.marketSignals, 300),
       baseline_used: optionalText(input.baselineUsed, 100) ?? "inspection_required",
       complexity_reasoning: estimateComplexityReasoning(
@@ -151,6 +192,9 @@ export function buildEstimateCardOutput(input: {
     analysis_receipt: buildEstimateAnalysisReceipt(
       input.analysisEvidence,
       input.marketEvidence,
+      input.visionAnalysis,
+      language,
+      input.previousAnalysisReceipt,
     ),
     advisory: needsInspection
       ? sanitizeKaelText(
@@ -269,17 +313,52 @@ function buildEstimateAnalysisReceipt(
     videoFrameCount: number;
     voiceTranscriptCount: number;
     skipped: boolean;
+    visualEvidenceRefs?: Array<{
+      evidenceIndex: number;
+      evidenceKind: "photo" | "video_frame";
+    }>;
   } | undefined,
   market: {
     acceptedSourceCount: number | null;
     highTrustSourceCount: number | null;
     quorumMet: boolean | null;
   } | undefined,
+  vision: {
+    analysisStatus?: "analyzed" | "not_provided" | "unavailable";
+    evidenceFindings?: Array<{
+      confidence: "low" | "medium" | "high";
+      evidenceIndex: number;
+      observation: string;
+      possibleMeaning: string | null;
+    }>;
+    problemSummary: string;
+    recommendedScope?: string | null;
+    remainingUncertainty?: string | null;
+    severityIndicators: string[];
+  } | undefined,
+  language: "vi" | "en",
+  previousAnalysisReceipt?: unknown,
 ): EstimateAnalysisReceipt | undefined {
-  if (!evidence && !market) return undefined;
-  return {
+  if (!evidence && !market && !vision) return undefined;
+  const findings = buildReceiptEvidenceFindings(
+    evidence?.visualEvidenceRefs,
+    vision?.evidenceFindings,
+  );
+  const problemSummary = optionalText(
+    vision?.problemSummary
+      ? customerVisibleKaelProblemSummary(vision.problemSummary, language)
+      : null,
+    500,
+  );
+  const severityIndicators = (vision?.severityIndicators ?? [])
+    .map((indicator) => optionalText(indicator, 200))
+    .filter((indicator): indicator is string => Boolean(indicator))
+    .slice(0, 5);
+  const receipt: EstimateAnalysisReceipt = {
     schema_version: "analysis_receipt.v1",
     evidence: {
+      ...(vision?.analysisStatus ? { analysis_status: vision.analysisStatus } : {}),
+      ...(findings.length > 0 ? { findings } : {}),
       photo_count: boundedEvidenceCount(evidence?.photoCount),
       video_frame_count: boundedEvidenceCount(evidence?.videoFrameCount),
       voice_transcript_count: boundedEvidenceCount(evidence?.voiceTranscriptCount),
@@ -290,7 +369,145 @@ function buildEstimateAnalysisReceipt(
       high_trust_source_count: nullableBoundedEvidenceCount(market?.highTrustSourceCount),
       quorum_met: typeof market?.quorumMet === "boolean" ? market.quorumMet : null,
     },
+    ...(problemSummary
+      ? {
+        problem: {
+          remaining_uncertainty: optionalText(vision?.remainingUncertainty, 300) ?? null,
+          recommended_scope: optionalText(vision?.recommendedScope, 400) ?? null,
+          severity_indicators: severityIndicators,
+          summary: problemSummary,
+        },
+      }
+      : {}),
   };
+  return reusePreviousAnalyzedEvidence(receipt, previousAnalysisReceipt);
+}
+
+function reusePreviousAnalyzedEvidence(
+  receipt: EstimateAnalysisReceipt,
+  previous: unknown,
+): EstimateAnalysisReceipt {
+  if (
+    receipt.evidence.analysis_status === "analyzed" ||
+    (receipt.evidence.findings?.length ?? 0) > 0
+  ) return receipt;
+  const previousRecord = recordFromUnknown(previous);
+  const previousEvidence = recordFromUnknown(previousRecord?.evidence);
+  if (previousEvidence?.analysis_status !== "analyzed") return receipt;
+  const findings: NonNullable<EstimateAnalysisReceipt["evidence"]["findings"]> = [];
+  const seenEvidence = new Set<string>();
+  for (const value of Array.isArray(previousEvidence.findings) ? previousEvidence.findings : []) {
+    const finding = recordFromUnknown(value);
+    if (!finding) continue;
+    const evidenceKind = finding.evidence_kind === "photo" || finding.evidence_kind === "video_frame"
+      ? finding.evidence_kind
+      : null;
+    const evidenceIndex = Number.isSafeInteger(finding.evidence_index)
+      ? finding.evidence_index as number
+      : null;
+    const confidence = finding.confidence === "low" ||
+        finding.confidence === "medium" || finding.confidence === "high"
+      ? finding.confidence
+      : null;
+    const availableCount = evidenceKind === "photo"
+      ? receipt.evidence.photo_count
+      : evidenceKind === "video_frame"
+      ? receipt.evidence.video_frame_count
+      : 0;
+    const observation = typeof finding.observation === "string"
+      ? optionalText(finding.observation, 240)
+      : undefined;
+    const evidenceKey = `${evidenceKind}:${evidenceIndex}`;
+    if (
+      !evidenceKind || !evidenceIndex || !confidence || !observation ||
+      evidenceIndex > availableCount || seenEvidence.has(evidenceKey)
+    ) continue;
+    seenEvidence.add(evidenceKey);
+    findings.push({
+      confidence,
+      evidence_index: evidenceIndex,
+      evidence_kind: evidenceKind,
+      observation,
+      possible_meaning: typeof finding.possible_meaning === "string"
+        ? optionalText(finding.possible_meaning, 240) ?? null
+        : null,
+    });
+    if (findings.length >= 5) break;
+  }
+  if (findings.length === 0) return receipt;
+  const previousProblem = recordFromUnknown(previousRecord?.problem);
+  const summary = typeof previousProblem?.summary === "string"
+    ? optionalText(previousProblem.summary, 500)
+    : undefined;
+  return {
+    ...receipt,
+    evidence: {
+      ...receipt.evidence,
+      analysis_status: "analyzed",
+      findings,
+    },
+    ...(summary
+      ? {
+        problem: {
+          remaining_uncertainty: typeof previousProblem?.remaining_uncertainty === "string"
+            ? optionalText(previousProblem.remaining_uncertainty, 300) ?? null
+            : null,
+          recommended_scope: typeof previousProblem?.recommended_scope === "string"
+            ? optionalText(previousProblem.recommended_scope, 400) ?? null
+            : null,
+          severity_indicators: Array.isArray(previousProblem?.severity_indicators)
+            ? previousProblem.severity_indicators
+              .flatMap((value) => typeof value === "string" ? [optionalText(value, 200)] : [])
+              .filter((value): value is string => Boolean(value))
+              .slice(0, 5)
+            : [],
+          summary,
+        },
+      }
+      : {}),
+  };
+}
+
+function recordFromUnknown(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function buildReceiptEvidenceFindings(
+  visualEvidenceRefs: Array<{
+    evidenceIndex: number;
+    evidenceKind: "photo" | "video_frame";
+  }> | undefined,
+  findings: Array<{
+    confidence: "low" | "medium" | "high";
+    evidenceIndex: number;
+    observation: string;
+    possibleMeaning: string | null;
+  }> | undefined,
+): NonNullable<EstimateAnalysisReceipt["evidence"]["findings"]> {
+  if (!visualEvidenceRefs || visualEvidenceRefs.length === 0 || !findings) return [];
+  const seen = new Set<number>();
+  return findings.flatMap((finding) => {
+    if (
+      !Number.isSafeInteger(finding.evidenceIndex) ||
+      finding.evidenceIndex < 1 ||
+      finding.evidenceIndex > visualEvidenceRefs.length ||
+      seen.has(finding.evidenceIndex)
+    ) return [];
+    const evidenceRef = visualEvidenceRefs[finding.evidenceIndex - 1];
+    if (!evidenceRef) return [];
+    const observation = optionalText(finding.observation, 240);
+    if (!observation) return [];
+    seen.add(finding.evidenceIndex);
+    return [{
+      confidence: finding.confidence,
+      evidence_index: evidenceRef.evidenceIndex,
+      evidence_kind: evidenceRef.evidenceKind,
+      observation,
+      possible_meaning: optionalText(finding.possibleMeaning, 240) ?? null,
+    }];
+  });
 }
 
 function estimateComplexityReasoning(

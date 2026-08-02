@@ -24,11 +24,19 @@ export const styles = StyleSheet.create({
     width: 54,
     ...shadow.soft,
   },
+  profileAvatarDark: {
+    backgroundColor: '#1D2522',
+    borderColor: 'rgba(190,210,205,0.16)',
+    boxShadow: '0 10px 22px rgba(0,0,0,0.22)',
+  },
   profileAvatarAddGlyph: {
     color: color.brand.primaryDark,
     fontSize: 25,
     fontWeight: '400',
     lineHeight: 28,
+  },
+  profileAvatarAddGlyphDark: {
+    color: '#63E6D0',
   },
   profileAvatarEmpty: {
     alignItems: 'center',
@@ -44,63 +52,6 @@ export const styles = StyleSheet.create({
     opacity: 0.88,
     transform: [{ scale: 0.975 }],
   },
-  profileDashboard: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  profileDashboardCard: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.80)',
-    borderColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 24,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 9,
-    minHeight: 98,
-    overflow: 'hidden',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    position: 'relative',
-    ...shadow.soft,
-  },
-  profileDashboardCopy: {
-    flex: 1,
-    gap: 3,
-    minWidth: 0,
-    position: 'relative',
-    zIndex: 1,
-  },
-  profileDashboardScore: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(232,255,249,0.84)',
-    borderColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 19,
-    borderWidth: 1,
-    flexShrink: 0,
-    height: 54,
-    justifyContent: 'center',
-    width: 54,
-    ...shadow.soft,
-  },
-  profileDashboardScoreLabel: {
-    color: color.text.muted,
-    fontSize: 8,
-    fontWeight: '700',
-    lineHeight: 10,
-  },
-  profileDashboardScoreValue: {
-    color: color.brand.primaryDark,
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 24,
-  },
-  profileDashboardTitle: {
-    color: color.text.strong,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
   profileHeader: {
     alignSelf: 'center',
     alignItems: 'center',
@@ -115,8 +66,13 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 9,
     position: 'relative',
-    width: '94%',
+    width: '100%',
     ...shadow.soft,
+  },
+  profileHeaderDark: {
+    backgroundColor: '#171D1B',
+    borderColor: 'rgba(190,210,205,0.16)',
+    boxShadow: '0 14px 30px rgba(0,0,0,0.24)',
   },
   profileHeaderMeta: {
     color: color.text.muted,
@@ -124,11 +80,17 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 13,
   },
+  profileHeaderMetaDark: {
+    color: '#A9B7B3',
+  },
   profileHeaderName: {
     color: color.text.strong,
     fontSize: 16,
     fontWeight: '700',
     lineHeight: 20,
+  },
+  profileHeaderNameDark: {
+    color: '#F1F6F4',
   },
   profileHeaderText: {
     flex: 1,
@@ -148,5 +110,9 @@ export const styles = StyleSheet.create({
     height: 6,
     overflow: 'hidden',
     width: '100%',
+  },
+  profileProgressTrackDark: {
+    backgroundColor: 'rgba(99,230,208,0.16)',
+    borderColor: 'rgba(99,230,208,0.34)',
   },
 })

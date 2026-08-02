@@ -49,6 +49,7 @@ import type {
   WorkerRegisterInput,
   WorkerServiceAreaUpdateInput,
   WorkerServicePreferencesUpdateInput,
+  WorkerKaelMemoryPreferenceUpdateInput,
   WorkerScopeChangeInput,
 } from "../../../_shared/domain.ts";
 import type {
@@ -602,6 +603,10 @@ export type MobileApiServices = {
   updateMyKaelMemory(
     ctx: MobileApiContext,
     input: UpdateKaelMemoryInput,
+  ): Promise<KaelMemorySelfViewResponse>;
+  updateWorkerKaelMemoryPreference(
+    ctx: MobileApiContext,
+    input: WorkerKaelMemoryPreferenceUpdateInput,
   ): Promise<KaelMemorySelfViewResponse>;
   listMyPendingDecisions(ctx: MobileApiContext): Promise<PendingDecisionsResponse>;
   listMyThreads(ctx: MobileApiContext): Promise<ThreadsResponse>;

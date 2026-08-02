@@ -36,12 +36,6 @@ function makeSequenceClient(results: QueryResult[]) {
   return {
     calls,
     signedUrlCalls,
-    rpc() {
-      return Promise.resolve({
-        data: [{ commission_level: 1, commission_rate_bps: 1500 }],
-        error: null,
-      })
-    },
     storage: {
       from(bucket: string) {
         return {

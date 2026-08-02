@@ -12,6 +12,8 @@ export type KaelProcessLineRuntime = {
 }
 
 type CustomerKaelChatUiState = {
+  agenticAdjustmentOpen: boolean
+  agenticAdjustmentText: string
   agenticEvidenceReason: string
   agenticEvidenceRejectOpen: boolean
   agenticRejectOpen: boolean
@@ -28,6 +30,7 @@ type CustomerKaelChatUiState = {
   retryingWorkerSearch: boolean
   sessionMenuOpen: boolean
   submittingAgenticEvidence: boolean
+  submittingAgenticAdjustment: boolean
   submittingAgenticRejectReason: boolean
   submittingCaseQuoteRejectReason: boolean
   uploadingMedia: boolean
@@ -46,6 +49,8 @@ type CustomerKaelChatUiSetter<Key extends keyof CustomerKaelChatUiState> = Dispa
 >
 
 const initialCustomerKaelChatUiState: CustomerKaelChatUiState = {
+  agenticAdjustmentOpen: false,
+  agenticAdjustmentText: '',
   agenticEvidenceReason: '',
   agenticEvidenceRejectOpen: false,
   agenticRejectOpen: false,
@@ -62,6 +67,7 @@ const initialCustomerKaelChatUiState: CustomerKaelChatUiState = {
   retryingWorkerSearch: false,
   sessionMenuOpen: false,
   submittingAgenticEvidence: false,
+  submittingAgenticAdjustment: false,
   submittingAgenticRejectReason: false,
   submittingCaseQuoteRejectReason: false,
   uploadingMedia: false,
@@ -93,6 +99,8 @@ export function useCustomerKaelChatUiState() {
     initialCustomerKaelChatUiState,
   )
   const setters = useMemo(() => ({
+    setAgenticAdjustmentOpen: createSetter(dispatch, 'agenticAdjustmentOpen'),
+    setAgenticAdjustmentText: createSetter(dispatch, 'agenticAdjustmentText'),
     setAgenticEvidenceReason: createSetter(dispatch, 'agenticEvidenceReason'),
     setAgenticEvidenceRejectOpen: createSetter(dispatch, 'agenticEvidenceRejectOpen'),
     setAgenticRejectOpen: createSetter(dispatch, 'agenticRejectOpen'),
@@ -109,6 +117,7 @@ export function useCustomerKaelChatUiState() {
     setRetryingWorkerSearch: createSetter(dispatch, 'retryingWorkerSearch'),
     setSessionMenuOpen: createSetter(dispatch, 'sessionMenuOpen'),
     setSubmittingAgenticEvidence: createSetter(dispatch, 'submittingAgenticEvidence'),
+    setSubmittingAgenticAdjustment: createSetter(dispatch, 'submittingAgenticAdjustment'),
     setSubmittingAgenticRejectReason: createSetter(dispatch, 'submittingAgenticRejectReason'),
     setSubmittingCaseQuoteRejectReason: createSetter(dispatch, 'submittingCaseQuoteRejectReason'),
     setUploadingMedia: createSetter(dispatch, 'uploadingMedia'),

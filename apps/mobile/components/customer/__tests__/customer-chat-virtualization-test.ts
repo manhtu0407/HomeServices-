@@ -11,11 +11,21 @@ const customerV21Path = (fileName: string) => {
 describe('customer Kael chat transcript performance', () => {
   it('renders chat rows through a virtualized React Native list', () => {
     const viewSource = readFileSync(customerV21Path('chat-stateful-surfaces.tsx'), 'utf8')
-    const transcriptPath = customerV21Path('chat-transcript.tsx')
+    const transcriptPath = customerV21Path('kael-chat-transcript.tsx')
     const transcriptSource = existsSync(transcriptPath) ? readFileSync(transcriptPath, 'utf8') : ''
 
     expect(`${viewSource}\n${transcriptSource}`).toContain('<FlatList')
     expect(viewSource).not.toContain('<ScrollView')
+  })
+
+  it('places completed local Case Work exchanges before the current phase surface', () => {
+    const viewSource = readFileSync(customerV21Path('chat-stateful-surfaces.tsx'), 'utf8')
+    const localTurnsIndex = viewSource.indexOf('for (const turn of caseAssistantTurns)')
+    const currentEstimateIndex = viewSource.indexOf("appendChatTranscriptRow(rows, 'agentic-estimate'")
+
+    expect(localTurnsIndex).toBeGreaterThanOrEqual(0)
+    expect(currentEstimateIndex).toBeGreaterThanOrEqual(0)
+    expect(localTurnsIndex).toBeLessThan(currentEstimateIndex)
   })
 
   it('keeps booking address lookup in one owner-scoped snapshot', () => {

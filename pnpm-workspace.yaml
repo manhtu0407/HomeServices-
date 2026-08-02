@@ -25,7 +25,7 @@ overrides:
   "ws@>=7.0.0 <7.5.11": 7.5.11
   "ws@>=8.0.0 <8.21.0": 8.21.0
 packageExtensions:
-  "react-native-worklets@0.10.0":
+  "react-native-worklets@>=0.10.0 <0.11.0":
     dependencies:
       "@babel/generator": 7.29.7
       "@babel/traverse": 7.29.7

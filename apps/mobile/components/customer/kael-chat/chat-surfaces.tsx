@@ -1,24 +1,13 @@
-import { useEffect } from 'react'
 import { Text, View } from 'react-native'
-import Animated, {
-  cancelAnimation,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated'
-import Svg, { Circle, Defs, Path, RadialGradient, Rect } from 'react-native-svg'
+import Svg, { Circle, Defs, Path, Rect } from 'react-native-svg'
 
 import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
-import { motionTokens } from '@/components/ui/motion-tokens'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
 
 export function ChatBubble({
   speaker,
-  reduceMotion = false,
   streaming = false,
   testID,
   text,
@@ -44,39 +33,8 @@ export function ChatBubble({
     >
       <Text style={[styles.chatBubbleText, { color: isCustomer ? tokens.primaryText : tokens.text }]}>
         {text}
-        {streaming ? <ChatStreamingCaret reduceMotion={reduceMotion} /> : null}
       </Text>
     </View>
-  )
-}
-
-function ChatStreamingCaret({ reduceMotion }: { reduceMotion: boolean }) {
-  const opacity = useSharedValue(1)
-
-  useEffect(() => {
-    cancelAnimation(opacity)
-    if (reduceMotion) {
-      opacity.value = 1
-      return
-    }
-    const halfCycleMs = motionTokens.loading.durationMs / 2
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.28, { duration: halfCycleMs }),
-        withTiming(1, { duration: halfCycleMs }),
-      ),
-      -1,
-      false,
-    )
-    return () => cancelAnimation(opacity)
-  }, [opacity, reduceMotion])
-
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
-
-  return (
-    <Animated.Text accessible={false} style={animatedStyle}>
-      {' \u258d'}
-    </Animated.Text>
   )
 }
 
@@ -135,9 +93,10 @@ export function ChatComposerAura({ reduceTransparency }: { reduceTransparency: b
   )
 }
 
-export function ChatCanvasAura({ reduceTransparency }: { reduceTransparency: boolean }) {
+export function ChatCanvasAura({ mode, reduceTransparency }: { mode: CustomerThemeTokens['mode']; reduceTransparency: boolean }) {
   return (
     <FormulaMintCanvasAura
+      mode={mode}
       reduceTransparency={reduceTransparency}
       scope="CustomerChat"
       testID="customer-v21-chat-canvas-aura"

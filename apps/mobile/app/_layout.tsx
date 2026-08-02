@@ -1,5 +1,4 @@
 import { Slot } from 'expo-router'
-import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import { AuthProvider } from '@/lib/auth-provider'
@@ -35,7 +34,6 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <FrontendWorkflowProvider>
-        <StatusBar style="auto" />
         <Slot />
       </FrontendWorkflowProvider>
     </AuthProvider>

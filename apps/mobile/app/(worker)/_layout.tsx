@@ -3,7 +3,8 @@ import { ActivityIndicator, View } from 'react-native'
 import { WorkerDockLayoutProvider, WorkerRebuildDockOverlay } from '@/components/worker/worker-surfaces'
 import { resolveWorkerV5DockActive } from '@/components/worker/dock/routing'
 import type { WorkerV5RouteParams } from '@/components/worker/dock/types'
-import { color, signature } from '@/design/theme'
+import { getWorkerThemeTokens, useWorkerThemeMode } from '@/components/worker/worker-theme'
+import { color } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
 
@@ -36,6 +37,8 @@ const dockTokens = {
 export default function WorkerLayout() {
   const { loading, role, session } = useAuth()
   const language = useAppLanguage()
+  const workerThemeMode = useWorkerThemeMode()
+  const workerThemeTokens = getWorkerThemeTokens(workerThemeMode)
   const pathname = usePathname()
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const tabCopy = WORKER_TAB_COPY[language]
@@ -68,7 +71,7 @@ export default function WorkerLayout() {
 
   return (
     <WorkerDockLayoutProvider>
-      <View style={{ backgroundColor: signature.bg, flex: 1 }}>
+      <View style={{ backgroundColor: workerThemeTokens.canvas, flex: 1 }}>
         <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
           <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
           <Tabs.Screen name="jobs" options={{ title: tabCopy.jobs }} />

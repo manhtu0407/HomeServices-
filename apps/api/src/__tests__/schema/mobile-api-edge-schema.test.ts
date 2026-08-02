@@ -251,9 +251,9 @@ describe('mobile-api Edge schema compatibility', () => {
 
     expect(edgeKael).toContain('KAEL_BUSINESS_GUARDRAILS')
     expect(edgeKael).toContain('Kael is the main AI assistant')
-    expect(edgeKael).toContain('six service boxes')
+    expect(edgeKael).toContain('six HCMC apartment service boxes')
+    expect(edgeKael).toContain('Service-adjacent guidance does not add a seventh service')
     expect(edgeKael).toContain('adult or explicit sexual content')
-    expect(edgeKael).toContain('legality questions')
     expect(edgeKael).toContain('Return the required JSON only')
   })
 
@@ -463,6 +463,9 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeRouter).toContain('/workers/me/kael-memory')
     expect(edgeServices).toContain('getMyKaelMemory')
     expect(edgeServices).toContain('deleteMyKaelMemory')
+    expect(edgeServices).toContain('updateWorkerKaelMemoryPreference')
+    expect(migrations).toContain('create or replace function public.update_worker_kael_memory_preference')
+    expect(migrations).toContain('grant execute on function public.update_worker_kael_memory_preference')
   })
 
   it('adds P7 learning skill registry, logs, scope limits, and trigger wiring', () => {
@@ -550,7 +553,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('buildKaelSystemPrompt')
     expect(edgeKael).toContain('checkKaelResponse')
     expect(edgeKael).toContain('runKaelSelfCheckPipeline')
-    expect(edgeKael).toContain('2026-07-06.p9')
+    expect(edgeKael).toContain('2026-08-01.p10')
     expect(edgeRouter).toContain('kael.charter')
     expect(edgeRouter).toContain('/kael/charter')
     expect(edgeRouter).toContain('public: true')

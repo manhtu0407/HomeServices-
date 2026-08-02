@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Alert, Pressable, View } from 'react-native'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
 import { motionTokens } from '@/components/ui/motion-tokens'
+import { KaelButton } from '@/components/ui/kael-primitives'
 import { type AppLanguage } from '@/lib/app-language'
 import { textByLanguage } from '../ui/format'
 import { workerAvailabilityLabel } from '../ui/labels'
+import { workerIsWaitingForReview, workerNeedsAvailabilityVerification, workerNeedsRegistration } from '../profile/registration-model'
 import { styles } from '../worker-v5-flow-styles'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
@@ -20,6 +22,7 @@ export function WorkerV5AvailabilityCard({
   availabilityGuardReady,
   hasActiveJob,
   language,
+  onOpenProfileSetup,
   onToggleAvailability,
   profile,
   reduceMotion = false,
@@ -28,6 +31,7 @@ export function WorkerV5AvailabilityCard({
   availabilityGuardReady: boolean
   hasActiveJob: boolean
   language: AppLanguage
+  onOpenProfileSetup?: () => void
   onToggleAvailability?: (isAvailable: boolean) => Promise<boolean>
   profile: WorkerV5Runtime['workerProfile']
   reduceMotion?: boolean
@@ -52,6 +56,17 @@ export function WorkerV5AvailabilityCard({
   const rawAvailable = optimisticAvailable ?? profileAvailable
   const effectiveProfile = profile ? { ...profile, is_available: rawAvailable } : profile
   const blockedByGuardLoading = Boolean(profile && !availabilityGuardReady && !rawAvailable)
+  const showProfileSetupAction = Boolean(
+    onOpenProfileSetup
+      && workerNeedsAvailabilityVerification(profile)
+      // Opening the real verification screen is safe before the work list hydrates;
+      // submitting it remains guarded by the real API response.
+  )
+  const profileSetupActionLabel = workerNeedsRegistration(profile)
+    ? textByLanguage(language, 'Hoàn tất hồ sơ', 'Complete profile')
+    : workerIsWaitingForReview(profile)
+      ? textByLanguage(language, 'Xem trạng thái hồ sơ', 'View profile status')
+      : textByLanguage(language, 'Xem hồ sơ xác minh', 'View verification profile')
   const availabilityTitle = inlineFailure
     ?? (blockedByGuardLoading
       ? textByLanguage(language, 'Đang đồng bộ công việc', 'Syncing current work')
@@ -208,39 +223,50 @@ export function WorkerV5AvailabilityCard({
           {availabilityTitle}
         </Animated.Text>
       </View>
-      <Animated.View
-        style={availabilitySwitchPressMotionStyle}
-        testID="worker-v5-availability-switch-motion-shell"
-      >
-        <Pressable
-          accessibilityLabel={textByLanguage(language, 'Bật tắt nhận việc', 'Toggle work availability')}
-          accessibilityRole="switch"
-          accessibilityState={{ busy: pending, checked, disabled }}
-          disabled={disabled}
-          onPress={handleToggle}
-          onPressIn={handleSwitchPressIn}
-          onPressOut={handleSwitchPressOut}
-          style={[
-            styles.availabilitySwitch,
-            disabled ? styles.availabilitySwitchDisabled : null,
-          ]}
-          testID="worker-v5-availability-switch"
+      {showProfileSetupAction ? (
+        <KaelButton
+          label={profileSetupActionLabel}
+          onPress={onOpenProfileSetup ?? (() => undefined)}
+          showPrimaryGradient={false}
+          size="small"
+          testID="worker-v5-availability-open-registration"
+          variant="secondary"
+        />
+      ) : (
+        <Animated.View
+          style={availabilitySwitchPressMotionStyle}
+          testID="worker-v5-availability-switch-motion-shell"
         >
-          <Animated.View
-            style={[styles.availabilitySwitchOn, availabilitySwitchOnMotionStyle]}
-            testID="worker-v5-availability-switch-fill"
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.availabilitySwitchSheen, availabilitySwitchSheenMotionStyle]}
-            testID="worker-v5-availability-switch-sheen"
-          />
-          <Animated.View
-            style={[styles.availabilityKnob, availabilityKnobMotionStyle]}
-            testID="worker-v5-availability-switch-knob"
-          />
-        </Pressable>
-      </Animated.View>
+          <Pressable
+            accessibilityLabel={textByLanguage(language, 'Bật tắt nhận việc', 'Toggle work availability')}
+            accessibilityRole="switch"
+            accessibilityState={{ busy: pending, checked, disabled }}
+            disabled={disabled}
+            onPress={handleToggle}
+            onPressIn={handleSwitchPressIn}
+            onPressOut={handleSwitchPressOut}
+            style={[
+              styles.availabilitySwitch,
+              disabled ? styles.availabilitySwitchDisabled : null,
+            ]}
+            testID="worker-v5-availability-switch"
+          >
+            <Animated.View
+              style={[styles.availabilitySwitchOn, availabilitySwitchOnMotionStyle]}
+              testID="worker-v5-availability-switch-fill"
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.availabilitySwitchSheen, availabilitySwitchSheenMotionStyle]}
+              testID="worker-v5-availability-switch-sheen"
+            />
+            <Animated.View
+              style={[styles.availabilityKnob, availabilityKnobMotionStyle]}
+              testID="worker-v5-availability-switch-knob"
+            />
+          </Pressable>
+        </Animated.View>
+      )}
     </View>
   )
 }

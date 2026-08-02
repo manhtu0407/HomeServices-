@@ -1,4 +1,5 @@
 const INTERNAL_PRODUCT_NAME = /\bNestScout\b/giu;
+const INTERNAL_MODEL_ENVELOPE = /\bUNTRUSTED_(?:CUSTOMER_EVIDENCE|CONVERSATION)_JSON\b/u;
 
 type KaelLanguage = "vi" | "en";
 
@@ -70,7 +71,7 @@ export function customerVisibleKaelProblemSummary(
   value: string,
   language: KaelLanguage,
 ) {
-  const summary = value.trim().replace(/[.\s]+$/u, "");
+  const summary = stripInternalModelEnvelope(value).trim().replace(/[.\s]+$/u, "");
   const scopedTaxonomy = summary.match(/^([a-z]+)\s*:\s*([a-z][a-z0-9_-]*)$/u);
   if (scopedTaxonomy) {
     const [, service, problem] = scopedTaxonomy;
@@ -83,4 +84,27 @@ export function customerVisibleKaelProblemSummary(
       (language === "vi" ? "Yêu cầu dịch vụ" : "Service request");
   }
   return summary;
+}
+
+function stripInternalModelEnvelope(value: string): string {
+  const markerIndex = value.search(INTERNAL_MODEL_ENVELOPE);
+  if (markerIndex < 0) return value;
+
+  const visiblePrefix = value
+    .slice(0, markerIndex)
+    .replace(/(?:Mô tả đã xác nhận|Confirmed description)\s*:\s*$/iu, "")
+    .replace(/[.\s]+$/u, "")
+    .trim();
+  if (visiblePrefix) return visiblePrefix;
+
+  const jsonStart = value.indexOf("{", markerIndex);
+  if (jsonStart >= 0) {
+    try {
+      const payload = JSON.parse(value.slice(jsonStart)) as { text?: unknown };
+      if (typeof payload.text === "string") return payload.text;
+    } catch {
+      return "";
+    }
+  }
+  return "";
 }

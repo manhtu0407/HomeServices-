@@ -1,24 +1,35 @@
 import { sanitizeForLLM } from "../../../_shared/domain.ts";
-import type { AIImageContent, EdgeAiSecrets, VisionResult } from "./types.ts";
+import type { AIImageContent, AIProvider, EdgeAiSecrets, VisionResult } from "./types.ts";
 import { visionResultSchema } from "./types.ts";
 import { buildVisionMessages } from "./prompts.ts";
 import {
   callStructuredAI,
   hasStructuredValidationIssue,
+  type StructuredAIError,
   type StructuredAIResponse,
 } from "./structured-call.ts";
 import type { KaelSpendGate } from "./kael-guardrails/spend-gate.ts";
 import { maxTokensForPurpose } from "./kael-providers/routing.config.ts";
-import { chooseCircuitAwareProviderOrNull } from "./kael-providers/routing.ts";
+import {
+  circuitAwareProviderCandidatesForPurpose,
+  shouldSkipProviderSiblingModels,
+} from "./kael-providers/routing.ts";
 import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
-import { sanitizeVisionPhotoUrls } from "./utils.ts";
+import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "./utils.ts";
 import { readResponseBytesBounded } from "../../../_shared/network.ts";
+import { customerVisibleKaelProblemSummary } from "./user-facing-copy.ts";
 
-const VISION_MAX_TOKENS = 320;
+const VISION_BASE_MAX_TOKENS = 900;
+const VISION_EXTRA_IMAGE_MAX_TOKENS = 200;
+const VISION_MAX_TOKENS_CAP = 1_300;
+const VISION_BASE_TIMEOUT_MS = 10_000;
+const VISION_EXTRA_IMAGE_TIMEOUT_MS = 5_000;
+const VISION_TIMEOUT_CAP_MS = 20_000;
 const VISION_IMAGE_FETCH_TIMEOUT_MS = 5_000;
 const VISION_IMAGE_MAX_BYTES = 4_000_000;
 const VIETNAMESE_DIACRITICS_REQUIRED = "VIETNAMESE_DIACRITICS_REQUIRED";
 const ENGLISH_OUTPUT_REQUIRED = "ENGLISH_OUTPUT_REQUIRED";
+const CUSTOMER_EVIDENCE_MARKER = "UNTRUSTED_CUSTOMER_EVIDENCE_JSON";
 
 type VisionAnalysisResult =
   | {
@@ -35,6 +46,8 @@ type VisionAnalysisResult =
     success: false;
     fallback: VisionResult;
     failureReason: string;
+    provider?: "anthropic" | "perplexity" | "deepseek";
+    model?: string;
     skipped?: boolean;
   };
 type VisionImageMediaType = Extract<
@@ -55,7 +68,7 @@ export async function analyzeDescription(
   if (safePhotoUrls.length === 0) {
     return {
       success: false,
-      fallback: buildFallbackVision(intentContext, language),
+      fallback: buildFallbackVision(intentContext, language, false, description),
       failureReason: "NO_PHOTOS_FOR_VISION",
       skipped: true,
     };
@@ -64,49 +77,82 @@ export async function analyzeDescription(
   if (imageBlocks.length === 0) {
     return {
       success: false,
-      fallback: buildFallbackVision(intentContext, language),
+      fallback: buildFallbackVision(intentContext, language, true, description),
       failureReason: "NO_FETCHABLE_PHOTOS_FOR_VISION",
-      skipped: true,
+    };
+  }
+  if (imageBlocks.length !== safePhotoUrls.length) {
+    return {
+      success: false,
+      fallback: buildFallbackVision(intentContext, language, true, description),
+      failureReason: "INCOMPLETE_FETCHABLE_PHOTOS_FOR_VISION",
     };
   }
 
-  const route = chooseCircuitAwareProviderOrNull("vision_analysis");
-  if (!route) {
+  const routes = circuitAwareProviderCandidatesForPurpose("vision_analysis");
+  if (routes.length === 0) {
     return {
       success: false,
-      fallback: buildFallbackVision(intentContext, language),
+      fallback: buildFallbackVision(intentContext, language, true, description),
       failureReason: "NO_PROVIDER_AVAILABLE",
     };
   }
-  const primaryResult = await callStructuredAI({
-    purpose: "vision_analysis",
-    provider: route.provider,
-    model: route.model,
-    messages: buildVisionMessages(
-      description,
-      sanitizeForLLM(intentContext),
-      imageBlocks,
-      language,
-    ),
-    maxTokens: maxTokensForPurpose("vision_analysis", VISION_MAX_TOKENS),
-    temperature: 0.2,
-    timeoutMs: route.latencyBudgetMs,
-    maxRetries: 0,
-  }, outputSchema, secrets, gate);
+  const messages = buildVisionMessages(
+    description,
+    sanitizeForLLM(intentContext),
+    imageBlocks,
+    language,
+  );
+  const runtimeBudget = visionRuntimeBudget(imageBlocks.length);
+  const blockedProviders = new Set<AIProvider>();
+  let successfulAttempt: {
+    result: StructuredAIResponse<VisionResult>;
+    route: (typeof routes)[number];
+  } | null = null;
+  let lastAttemptedRoute: (typeof routes)[number] | null = null;
+  let failureReason = "NO_PROVIDER_AVAILABLE";
 
-  if (!primaryResult.success) {
+  for (const route of routes) {
+    if (blockedProviders.has(route.provider)) continue;
+    lastAttemptedRoute = route;
+    const result = await callStructuredAI({
+      purpose: "vision_analysis",
+      provider: route.provider,
+      model: route.model,
+      messages,
+      effort: route.model === "claude-sonnet-5" ? "medium" : undefined,
+      maxTokens: maxTokensForPurpose("vision_analysis", runtimeBudget.maxTokens),
+      temperature: 0.2,
+      timeoutMs: route.role === "primary"
+        ? runtimeBudget.timeoutMs
+        : route.latencyBudgetMs,
+      maxRetries: 0,
+    }, outputSchema, secrets, gate);
+    if (result.success) {
+      successfulAttempt = { result, route };
+      break;
+    }
+    failureReason = visionFailureReason(result);
+    if (shouldSkipProviderSiblingModels(result.code)) {
+      blockedProviders.add(route.provider);
+    }
+  }
+
+  if (!successfulAttempt) {
     return {
       success: false,
-      fallback: buildFallbackVision(intentContext, language),
-      failureReason: primaryResult.code === "SCHEMA_INVALID"
-        ? hasStructuredValidationIssue(primaryResult, VIETNAMESE_DIACRITICS_REQUIRED)
-          ? "AI vision Vietnamese validation failed"
-          : hasStructuredValidationIssue(primaryResult, ENGLISH_OUTPUT_REQUIRED)
-          ? "AI vision English validation failed"
-          : "AI vision JSON validation failed"
-        : `AI call failed: ${primaryResult.code}`,
+      fallback: buildFallbackVision(intentContext, language, true, description),
+      failureReason,
+      ...(lastAttemptedRoute
+        ? {
+          provider: lastAttemptedRoute.provider,
+          model: lastAttemptedRoute.model,
+        }
+        : {}),
     };
   }
+
+  const { result: primaryResult, route } = successfulAttempt;
 
   const escalation = selectKaelEscalation("vision_analysis", {
     provider: route.provider,
@@ -126,13 +172,46 @@ export async function analyzeDescription(
       imageBlocks,
       language,
     ),
-    maxTokens: maxTokensForPurpose("vision_analysis", VISION_MAX_TOKENS),
+    maxTokens: maxTokensForPurpose("vision_analysis", runtimeBudget.maxTokens),
     temperature: 0.2,
-    timeoutMs: route.latencyBudgetMs,
+    timeoutMs: runtimeBudget.timeoutMs,
     maxRetries: 0,
   }, outputSchema, secrets, gate);
   if (!escalatedResult.success) return successfulVisionResult(primaryResult, route);
   return successfulVisionResult(escalatedResult, escalation.route);
+}
+
+export function visionRuntimeBudget(imageCount: number): {
+  maxTokens: number;
+  timeoutMs: number;
+} {
+  const normalizedCount = Math.max(1, Math.min(3, Math.floor(imageCount)));
+  const additionalImages = normalizedCount - 1;
+  return {
+    maxTokens: Math.min(
+      VISION_MAX_TOKENS_CAP,
+      VISION_BASE_MAX_TOKENS +
+        additionalImages * VISION_EXTRA_IMAGE_MAX_TOKENS,
+    ),
+    timeoutMs: Math.min(
+      VISION_TIMEOUT_CAP_MS,
+      VISION_BASE_TIMEOUT_MS +
+        additionalImages * VISION_EXTRA_IMAGE_TIMEOUT_MS,
+    ),
+  };
+}
+
+function visionFailureReason(
+  result: StructuredAIError,
+) {
+  if (result.code !== "SCHEMA_INVALID") return `AI call failed: ${result.code}`;
+  if (hasStructuredValidationIssue(result, VIETNAMESE_DIACRITICS_REQUIRED)) {
+    return "AI vision Vietnamese validation failed";
+  }
+  if (hasStructuredValidationIssue(result, ENGLISH_OUTPUT_REQUIRED)) {
+    return "AI vision English validation failed";
+  }
+  return "AI vision JSON validation failed";
 }
 
 function successfulVisionResult(
@@ -158,19 +237,29 @@ function hasVietnameseDiacritics(text: string): boolean {
 function visionSchemaForLanguage(language: "vi" | "en") {
   return language === "en"
     ? visionResultSchema.refine(
-      (value) => !hasVietnameseDiacritics([
-        value.problem_identified,
-        ...value.severity_indicators,
-      ].join(" ")),
+      (value) => !hasVietnameseDiacritics(visionCustomerText(value)),
       { path: ["problem_identified"], message: ENGLISH_OUTPUT_REQUIRED },
     )
     : visionResultSchema.refine(
-      (value) => hasVietnameseDiacritics(value.problem_identified),
+      (value) => hasVietnameseDiacritics(visionCustomerText(value)),
       {
         path: ["problem_identified"],
         message: VIETNAMESE_DIACRITICS_REQUIRED,
       },
     );
+}
+
+function visionCustomerText(value: VisionResult) {
+  return [
+    value.problem_identified,
+    ...value.severity_indicators,
+    value.recommended_scope,
+    value.remaining_uncertainty,
+    ...(value.evidence_findings ?? []).flatMap((finding) => [
+      finding.observation,
+      finding.possible_meaning,
+    ]),
+  ].filter((item): item is string => typeof item === "string").join(" ");
 }
 
 async function fetchVisionImageBlocks(
@@ -198,7 +287,7 @@ export function isTrustedVisionImageUrl(
       candidate.origin !== trusted.origin || candidate.username ||
       candidate.password || candidate.hash
     ) return false;
-    return /^\/storage\/v1\/(?:object\/(?:authenticated|public|sign)|render\/image\/(?:authenticated|public))\//
+    return /^\/storage\/v1\/(?:object\/(?:authenticated|public|sign)|render\/image\/(?:authenticated|public|sign))\//
       .test(candidate.pathname);
   } catch {
     return false;
@@ -301,15 +390,71 @@ function arrayBufferToBase64(buffer: ArrayBufferLike): string {
   return btoa(binary);
 }
 
-function buildFallbackVision(
+export function buildFallbackVision(
   intentContext: string,
   language: "vi" | "en" = "vi",
+  hasVisualEvidence = false,
+  confirmedDescription = "",
 ): VisionResult {
-  return {
-    problem_identified: intentContext || (language === "en"
+  const problemLabel = customerVisibleKaelProblemSummary(intentContext, language) ||
+    (language === "en"
       ? "The issue requires an on-site inspection"
-      : "Vấn đề cần kiểm tra trực tiếp"),
+      : "Vấn đề cần kiểm tra trực tiếp");
+  const confirmedContext = extractConfirmedIssueDescription(
+    confirmedDescription,
+    language,
+  ).slice(0, 320);
+  const problem = confirmedContext
+    ? (language === "en"
+      ? `${problemLabel}. Confirmed description: ${confirmedContext}`
+      : `${problemLabel}. Mô tả đã xác nhận: ${confirmedContext}`)
+    : problemLabel;
+  return {
+    problem_identified: problem,
     severity_indicators: [],
     complexity_hint: "medium",
+    recommended_scope: language === "en"
+      ? "The worker should inspect the described area on site before the repair scope is finalized."
+      : "Thợ cần kiểm tra trực tiếp vị trí được mô tả trước khi chốt hạng mục sửa chữa.",
+    remaining_uncertainty: hasVisualEvidence
+      ? (language === "en"
+        ? "Kael received the image but could not verify its details; the cause and any hidden damage still require an on-site inspection."
+        : "Kael đã nhận ảnh nhưng chưa thể xác nhận chi tiết trong ảnh; nguyên nhân và phần hư hỏng bị che khuất vẫn cần kiểm tra trực tiếp.")
+      : (language === "en"
+        ? "No image was provided to verify the cause or any hidden damage."
+        : "Chưa có hình ảnh để xác nhận nguyên nhân và phần hư hỏng bị che khuất."),
   };
+}
+
+function extractConfirmedIssueDescription(
+  input: string,
+  language: "vi" | "en",
+): string {
+  const unwrapped = unwrapCustomerEvidenceEnvelope(input);
+  const safe = scrubSensitiveForLLM(unwrapped).trim();
+  if (!safe) return "";
+
+  const descriptionMatch = safe.match(
+    /(?:Mô tả|Description)\s*:\s*([\s\S]*?)(?=\s+(?:Dịch vụ|Service|Vấn đề|Problem|Khu vực|Area|Thời gian|Time)\s*:|$)/iu,
+  );
+  const detail = (descriptionMatch?.[1] ?? safe).trim();
+  const genericEvidenceStatus = language === "en"
+    ? /^(?:evidence (?:submitted|skipped))\.?$/iu
+    : /^(?:đã gửi bằng chứng|bỏ qua bằng chứng)\.?$/iu;
+  return genericEvidenceStatus.test(detail) ? "" : detail;
+}
+
+function unwrapCustomerEvidenceEnvelope(input: string): string {
+  const markerIndex = input.indexOf(CUSTOMER_EVIDENCE_MARKER);
+  if (markerIndex < 0) return input;
+  const jsonStart = input.indexOf("{", markerIndex);
+  if (jsonStart >= 0) {
+    try {
+      const payload = JSON.parse(input.slice(jsonStart)) as { text?: unknown };
+      if (typeof payload.text === "string") return payload.text;
+    } catch {
+      // A malformed model envelope is never suitable for customer-visible copy.
+    }
+  }
+  return input.slice(0, markerIndex);
 }

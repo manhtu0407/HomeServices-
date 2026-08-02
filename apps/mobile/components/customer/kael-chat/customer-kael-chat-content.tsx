@@ -3,7 +3,6 @@ import { useCallback, useMemo } from 'react'
 import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 import {
   agenticEstimatePriceExplanation,
-  agenticEstimateProblemLabel,
   agenticEstimateSourceExplanation,
   formatPriceRange,
 } from './agentic-estimate-display-model'
@@ -13,7 +12,7 @@ import { customerV21KaelChatRootStyles as rootStyles } from './chat-styles'
 import { ChatBubble } from './chat-surfaces'
 import { CustomerKaelCaseThreadNode } from './customer-kael-case-thread-node'
 import { CustomerKaelAnalysisEvidenceNode } from './customer-kael-analysis-evidence-node'
-import { KaelLiquidReveal } from './kael-liquid-reveal'
+import { KaelResponseSurface } from './kael-response-surface'
 import { CustomerKaelIntakeResponseNode } from './customer-kael-intake-response-node'
 import { CustomerWorkerCandidateNode } from './customer-worker-candidate-node'
 import { CustomerKaelSessionMenu } from './kael-session-menu'
@@ -111,45 +110,55 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
   )
   const streamingReplyNode = useMemo(() => (
     conversation.streamingReply ? (
-      <KaelLiquidReveal reduceMotion={reduceMotion}>
-        <ChatBubble
-          reduceMotion={reduceMotion}
-          speaker="kael"
-          streaming
-          testID="customer-v21-kael-streaming-response"
-          text={conversation.streamingReply.text}
-          tokens={tokens}
-        />
-      </KaelLiquidReveal>
+      <KaelResponseSurface
+        language={language}
+        reduceMotion={reduceMotion}
+        state={conversation.streamingReply}
+        testID="customer-v21-kael-streaming-response"
+        tokens={tokens}
+      />
     ) : null
-  ), [conversation.streamingReply, reduceMotion, tokens])
+  ), [conversation.streamingReply, language, reduceMotion, tokens])
 
   return (
     <KaelChatSurfaceView
       agenticEstimateNode={presentation.offerReviewActive &&
         presentation.chatEstimate &&
         !processController.processLines &&
+        !chatUi.submittingAgenticAdjustment &&
         !chatUi.submittingAgenticRejectReason &&
         !chatUi.confirmingAgenticEstimate ? (
           <AgenticChatEstimateResponse
+            adjustmentOpen={chatUi.agenticAdjustmentOpen}
+            adjustmentText={chatUi.agenticAdjustmentText}
             canConfirm={presentation.canConfirmAgenticEstimate}
             confirming={chatUi.confirmingAgenticEstimate}
             confirmed={presentation.agenticEstimateConfirmed}
+            diagnosisScope={presentation.diagnosisScope}
+            evidencePreviews={presentation.evidencePreviews}
             estimate={presentation.chatEstimate}
             formatPriceRange={formatPriceRange}
             language={language}
+            onAdjust={() => {
+              chatUi.setAgenticAdjustmentOpen(true)
+              chatUi.setAgenticRejectOpen(false)
+              conversation.setError(null)
+            }}
+            onAdjustmentChange={chatUi.setAgenticAdjustmentText}
             onConfirm={decisionActions.confirmAgenticEstimate}
             onReject={() => {
+              chatUi.setAgenticAdjustmentOpen(false)
               chatUi.setAgenticRejectOpen(true)
               conversation.setError(null)
             }}
             onReasonChange={chatUi.setAgenticRejectReason}
+            onSubmitAdjustment={() => void decisionActions.submitAgenticAdjustment()}
             onSubmitRejectReason={() => void decisionActions.submitAgenticRejectReason()}
             priceExplanationForEstimate={agenticEstimatePriceExplanation}
-            problemLabelForEstimate={agenticEstimateProblemLabel}
             rejected={chatUi.agenticRejectOpen}
             rejectReason={chatUi.agenticRejectReason}
             sourceExplanationForLanguage={agenticEstimateSourceExplanation}
+            submittingAdjustment={chatUi.submittingAgenticAdjustment}
             submittingRejectReason={chatUi.submittingAgenticRejectReason}
             textInputStyle={[rootStyles.composerInput, customerV21WebTextInputNoOutline]}
           />
@@ -203,7 +212,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         </>
       ) : null}
       streamingReplyNode={streamingReplyNode}
-      streamingReplyTurnId={conversation.streamingReply?.turnId ?? null}
+      streamingReplyTurnId={conversation.streamingReply?.responseId ?? null}
       reduceMotion={reduceMotion}
       reduceTransparency={reduceTransparency}
       rootStyles={rootStyles}

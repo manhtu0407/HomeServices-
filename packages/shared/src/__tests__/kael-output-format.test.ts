@@ -83,6 +83,62 @@ describe('Kael P4 output schemas', () => {
     }).success).toBe(false)
   })
 
+  it('validates evidence-linked Price Reasoning receipts strictly', () => {
+    const analysisReceipt = {
+      schema_version: 'analysis_receipt.v1' as const,
+      evidence: {
+        analysis_status: 'analyzed' as const,
+        photo_count: 1,
+        video_frame_count: 0,
+        voice_transcript_count: 0,
+        skipped: false,
+        findings: [{
+          confidence: 'medium' as const,
+          evidence_index: 1,
+          evidence_kind: 'photo' as const,
+          observation: 'Hình 1 cho thấy vùng tường quanh đầu nối có vệt ẩm.',
+          possible_meaning: 'Có thể liên quan đến điểm nối bị rò.',
+        }],
+      },
+      market: {
+        accepted_source_count: 3,
+        high_trust_source_count: 2,
+        quorum_met: true,
+      },
+      problem: {
+        summary: 'Dấu hiệu hiện có phù hợp với rò nước cục bộ quanh đầu nối.',
+        severity_indicators: ['Vệt ẩm tập trung quanh một điểm nối'],
+        recommended_scope: 'Thợ cần kiểm tra đầu nối và đo độ ẩm vùng lân cận.',
+        remaining_uncertainty: 'Ảnh chưa cho thấy phần ống phía sau tường.',
+      },
+    }
+
+    expect(estimateCardV3Schema.safeParse({
+      ...validEstimateCard,
+      analysis_receipt: analysisReceipt,
+    }).success).toBe(true)
+    expect(estimateCardV3Schema.safeParse({
+      ...validEstimateCard,
+      analysis_receipt: {
+        ...analysisReceipt,
+        evidence: {
+          ...analysisReceipt.evidence,
+          findings: [{ ...analysisReceipt.evidence.findings[0], evidence_index: 2 }],
+        },
+      },
+    }).success).toBe(false)
+    expect(estimateCardV3Schema.safeParse({
+      ...validEstimateCard,
+      analysis_receipt: {
+        ...analysisReceipt,
+        evidence: {
+          ...analysisReceipt.evidence,
+          analysis_status: 'unavailable',
+        },
+      },
+    }).success).toBe(false)
+  })
+
   it('requires inspection cards to be low confidence with an advisory', () => {
     const parsed = estimateCardV3Schema.parse({
       ...validEstimateCard,

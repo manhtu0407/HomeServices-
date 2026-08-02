@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useEffectEvent, useState, type RefObject } from 'react'
 import type { LocalWorkflowState, UserRole } from '@nestscout/shared'
 import type { WorkerCandidateView } from '../api-types'
 import type { AppLanguage } from '../app-language'
@@ -10,12 +10,16 @@ type CustomerWorkerCandidateState = {
   candidate: WorkerCandidateView | null
   busy: boolean
   error: string | null
+  jobId: string | null
+  sessionUserId: string | null
 }
 
 const initialCustomerWorkerCandidateState: CustomerWorkerCandidateState = {
   candidate: null,
   busy: false,
   error: null,
+  jobId: null,
+  sessionUserId: null,
 }
 
 type WorkerCandidateActionsInput = {
@@ -38,9 +42,14 @@ export function useWorkerCandidateActions({
   stateRef,
 }: WorkerCandidateActionsInput) {
   const [customerWorkerCandidateState, setCustomerWorkerCandidateState] = useState<CustomerWorkerCandidateState>(initialCustomerWorkerCandidateState)
-  const customerWorkerCandidate = customerWorkerCandidateState.candidate
-  const customerWorkerCandidateBusy = customerWorkerCandidateState.busy
-  const customerWorkerCandidateError = customerWorkerCandidateState.error
+  const hasCurrentCandidateContext =
+    (role === 'customer' || role === 'admin') &&
+    customerStatus === 'worker_candidate_pending' &&
+    customerWorkerCandidateState.jobId === remoteJobId &&
+    customerWorkerCandidateState.sessionUserId === sessionUserId
+  const customerWorkerCandidate = hasCurrentCandidateContext ? customerWorkerCandidateState.candidate : null
+  const customerWorkerCandidateBusy = hasCurrentCandidateContext && customerWorkerCandidateState.busy
+  const customerWorkerCandidateError = hasCurrentCandidateContext ? customerWorkerCandidateState.error : null
 
   const refreshWorkerCandidate = useCallback(async (jobIdOverride?: string) => {
     const jobId = jobIdOverride ?? getRemoteJobId(stateRef.current)
@@ -49,22 +58,38 @@ export function useWorkerCandidateActions({
         busy: false,
         candidate: null,
         error: language === 'vi' ? 'Chưa có công việc để tải hồ sơ thợ.' : 'There is no job to load a worker profile for.',
+        jobId: null,
+        sessionUserId,
       })
       return false
     }
-    setCustomerWorkerCandidateState((current) => ({ ...current, busy: true, error: null }))
+    setCustomerWorkerCandidateState((current) => ({
+      ...current,
+      busy: true,
+      error: null,
+      jobId,
+      sessionUserId,
+    }))
     const result = await jobService.getWorkerCandidate(jobId)
     if (!result.success) {
       setCustomerWorkerCandidateState({
         busy: false,
         candidate: null,
         error: localizeWorkflowError(result.error, language),
+        jobId,
+        sessionUserId,
       })
       return false
     }
-    setCustomerWorkerCandidateState({ busy: false, candidate: result.data.candidate, error: null })
+    setCustomerWorkerCandidateState({
+      busy: false,
+      candidate: result.data.candidate,
+      error: null,
+      jobId,
+      sessionUserId,
+    })
     return true
-  }, [language, stateRef])
+  }, [language, sessionUserId, stateRef])
 
   const decideWorkerCandidate = useCallback(async (decision: 'confirm' | 'reject') => {
     const jobId = getRemoteJobId(stateRef.current)
@@ -87,6 +112,8 @@ export function useWorkerCandidateActions({
     setCustomerWorkerCandidateState({
       busy: false,
       candidate: decidedCandidate,
+      jobId,
+      sessionUserId,
       error: hydrated
         ? null
         : language === 'vi'
@@ -94,7 +121,7 @@ export function useWorkerCandidateActions({
           : 'Your decision was saved, but the new state has not synced yet.',
     })
     return true
-  }, [customerWorkerCandidate?.candidate_id, customerWorkerCandidateBusy, hydrateRemoteJobById, language, stateRef])
+  }, [customerWorkerCandidate?.candidate_id, customerWorkerCandidateBusy, hydrateRemoteJobById, language, sessionUserId, stateRef])
 
   const setWorkerCandidateFavorite = useCallback(async (isFavorite: boolean) => {
     const workerId = customerWorkerCandidate?.worker_id
@@ -115,25 +142,27 @@ export function useWorkerCandidateActions({
         ? { ...current.candidate, is_favorite: result.data.is_favorite }
         : null,
       error: null,
+      jobId: current.jobId,
+      sessionUserId: current.sessionUserId,
     }))
     return true
   }, [customerWorkerCandidate?.worker_id, customerWorkerCandidateBusy, language])
 
-  useEffect(() => {
-    setCustomerWorkerCandidateState(initialCustomerWorkerCandidateState)
-  }, [sessionUserId])
+  const refreshCandidateAfterWorkflowChange = useEffectEvent((jobId: string) => {
+    void refreshWorkerCandidate(jobId)
+  })
 
   useEffect(() => {
     if (
       (role !== 'customer' && role !== 'admin') ||
+      !sessionUserId ||
       !remoteJobId ||
       customerStatus !== 'worker_candidate_pending'
     ) {
-      setCustomerWorkerCandidateState(initialCustomerWorkerCandidateState)
       return
     }
-    void refreshWorkerCandidate(remoteJobId)
-  }, [customerStatus, refreshWorkerCandidate, remoteJobId, role])
+    refreshCandidateAfterWorkflowChange(remoteJobId)
+  }, [customerStatus, remoteJobId, role, sessionUserId])
 
   return {
     customerWorkerCandidate,

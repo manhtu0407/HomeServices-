@@ -1,5 +1,9 @@
-import type { ComponentProps } from 'react'
-import { Stop as SvgStop } from 'react-native-svg'
+import { Children, isValidElement, type ComponentProps, type ReactElement, type ReactNode } from 'react'
+import {
+  LinearGradient as SvgLinearGradient,
+  RadialGradient as SvgRadialGradient,
+  Stop as SvgStop,
+} from 'react-native-svg'
 
 type SvgStopProps = ComponentProps<typeof SvgStop>
 
@@ -37,4 +41,45 @@ function normalizeRgbaStop(
 export function AlphaStop({ stopColor, stopOpacity, ...props }: SvgStopProps) {
   const normalized = normalizeRgbaStop(stopColor, stopOpacity)
   return <SvgStop {...props} stopColor={normalized.stopColor} stopOpacity={normalized.stopOpacity} />
+}
+
+function normalizeGradientStops(children: ReactNode): ReactElement[] {
+  const normalizedStops: ReactElement[] = []
+
+  for (const child of Children.toArray(children)) {
+    if (!isValidElement<SvgStopProps>(child)) {
+      continue
+    }
+
+    if (child.type !== AlphaStop) {
+      normalizedStops.push(child)
+      continue
+    }
+
+    const { offset, stopColor, stopOpacity } = child.props
+    const normalized = normalizeRgbaStop(stopColor, stopOpacity)
+
+    // react-native-svg extracts direct child props before it renders AlphaStop.
+    normalizedStops.push(
+      <SvgStop
+        key={child.key ?? `alpha-stop-${normalizedStops.length}`}
+        offset={offset}
+        stopColor={normalized.stopColor}
+        stopOpacity={normalized.stopOpacity}
+      />,
+    )
+  }
+
+  return normalizedStops
+}
+
+type NativeSafeLinearGradientProps = ComponentProps<typeof SvgLinearGradient>
+type NativeSafeRadialGradientProps = ComponentProps<typeof SvgRadialGradient>
+
+export function NativeSafeLinearGradient({ children, ...props }: NativeSafeLinearGradientProps) {
+  return <SvgLinearGradient {...props}>{normalizeGradientStops(children)}</SvgLinearGradient>
+}
+
+export function NativeSafeRadialGradient({ children, ...props }: NativeSafeRadialGradientProps) {
+  return <SvgRadialGradient {...props}>{normalizeGradientStops(children)}</SvgRadialGradient>
 }

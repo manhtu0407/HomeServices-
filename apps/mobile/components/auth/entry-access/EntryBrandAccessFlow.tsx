@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Image } from 'expo-image'
 import { StatusBar } from 'expo-status-bar'
 import {
+  Appearance,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,7 +17,6 @@ import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'r
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { parseAuthIdentifier, validateAuthIdentifier } from '@/lib/auth-identifier'
 import { clearRememberedAuthIdentifier, getRememberedAuthIdentifier, rememberAuthIdentifier } from '@/lib/remembered-auth-identifier'
-import { mobileRuntimeConfig } from '@/lib/runtime-config'
 import { GlassPanel, IconButton, KaelCoreHero, NativeSafeGlassPanel, PageAura, PrimaryButton, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { ProviderButton } from './components/provider-button'
@@ -41,6 +41,7 @@ const assets = {
 }
 
 const defaultFeatures: EntryAccessFeatureFlags = {
+  customerApple: true,
   customerGoogle: true,
   customerRegistration: true,
   workerRegistration: true,
@@ -92,6 +93,13 @@ export function EntryBrandAccessFlow({
   const onStepChangeRef = useRef(onStepChange)
   const actionVersionRef = useRef(0)
   const actionBusyRef = useRef(false)
+
+  useEffect(() => {
+    StatusBar.setStyle('dark')
+    return () => {
+      StatusBar.setStyle(Appearance.getColorScheme() === 'dark' ? 'light' : 'dark')
+    }
+  }, [])
 
   useEffect(() => {
     onStepChangeRef.current = onStepChange
@@ -220,8 +228,9 @@ export function EntryBrandAccessFlow({
     }
   }
 
-  const providerLogin = async () => {
-    const action = actions.onGoogleLogin
+  const providerLogin = async (provider: 'apple' | 'google') => {
+    const action = provider === 'apple' ? actions.onAppleLogin : actions.onGoogleLogin
+    const fallback = provider === 'apple' ? 'appleSignInFailed' : 'googleSignInFailed'
     if (!action) {
       setError(copy.errors.methodUnavailable)
       return
@@ -234,7 +243,7 @@ export function EntryBrandAccessFlow({
       const result = await action()
       if (!isCurrentAction(actionVersion)) return
       if (!result.success) {
-        setError(localizeEntryAuthError(result.error, language, 'googleSignInFailed'))
+        setError(localizeEntryAuthError(result.error, language, fallback))
         return
       }
       if (role === 'worker') go('onboarding')
@@ -305,7 +314,6 @@ export function EntryBrandAccessFlow({
 
   return (
     <View style={styles.root} testID={`auth-${step}-screen`}>
-      <StatusBar style="dark" />
       <PageAura />
       <EntryAccessStepContent
         acceptedTerms={acceptedTerms}
@@ -338,14 +346,13 @@ export function EntryBrandAccessFlow({
         submitPasswordRecovery={submitPasswordRecovery}
         submitRegister={submitRegister}
       />
-      <RuntimeBuildMarker copy={copy} />
     </View>
   )
 }
 
 type EntryAccessStepContentProps = {
   acceptedTerms: boolean; busy: boolean; error: string | null; remember: boolean
-  chooseRole: (role: EntryRole) => void; completeOnboarding: () => void; providerLogin: () => void
+  chooseRole: (role: EntryRole) => void; completeOnboarding: () => void; providerLogin: (provider: 'apple' | 'google') => Promise<void>
   copy: EntryAccessCopy; features: EntryAccessFeatureFlags; roleGateGreeting: ReturnType<typeof selectRoleGateGreeting>
   fullName: string; identifier: string; notice: string | null; password: string
   go: (step: EntryAccessStep) => void; setAcceptedTerms: () => void; setRemember: () => void
@@ -375,7 +382,8 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
           onBack={() => props.go('role-gate')}
           onIdentifierChange={props.setIdentifier}
           onForgotPassword={() => props.go('password-recovery')}
-          onGoogle={props.providerLogin}
+          onApple={() => { void props.providerLogin('apple') }}
+          onGoogle={() => { void props.providerLogin('google') }}
           onPasswordChange={props.setPassword}
           onRegister={() => props.go('register')}
           onRemember={props.setRemember}
@@ -448,44 +456,6 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
 
 function Screen({ children }: { children: React.ReactNode }) {
   return <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>{children}</SafeAreaView>
-}
-
-function runtimeBuildMarkerText(copy: EntryAccessCopy['runtime']) {
-  const info = mobileRuntimeConfig.runtimeBuildInfo
-  const sha = info.gitShortSha || (info.gitSha ? info.gitSha.slice(0, 12) : '') || copy.unknown
-  const parts = [`SHA ${sha}`]
-
-  if (info.gitBranch) parts.push(`${copy.branch} ${info.gitBranch}`)
-  if (info.easBuildProfile) parts.push(`${copy.profile} ${info.easBuildProfile}`)
-  if (info.easBuildPlatform) parts.push(`${copy.platform} ${info.easBuildPlatform}`)
-  if (info.easBuildId) parts.push(`${copy.build} ${info.easBuildId}`)
-  if (info.builtAt) parts.push(`${copy.builtAt} ${info.builtAt}`)
-
-  return parts.join(' | ')
-}
-
-function RuntimeBuildMarker({ copy }: { copy: EntryAccessCopy }) {
-  const [visible, setVisible] = useState(false)
-  const marker = useMemo(() => runtimeBuildMarkerText(copy.runtime), [copy.runtime])
-
-  return (
-    <>
-      <Pressable
-        accessibilityLabel={`${copy.accessibility.runtimeMarker}: ${marker}`}
-        accessibilityRole="button"
-        hitSlop={6}
-        onLongPress={() => setVisible(true)}
-        onPress={() => visible && setVisible(false)}
-        style={styles.runtimeMarkerHotspot}
-        testID="auth-runtime-marker-hotspot"
-      />
-      {visible ? (
-        <View pointerEvents="none" style={styles.runtimeMarkerPill} testID="auth-runtime-marker">
-          <Text selectable style={styles.runtimeMarkerText}>{marker}</Text>
-        </View>
-      ) : null}
-    </>
-  )
 }
 
 function SplashScreen({ copy, durationMs }: { copy: EntryAccessCopy; durationMs: number }) {
@@ -635,12 +605,12 @@ function LoginScreen(props: {
   busy: boolean; canRegister: boolean; error: string | null; remember: boolean
   copy: EntryAccessCopy; features: EntryAccessFeatureFlags
   identifier: string; language: AppLanguage; password: string; role: EntryRole
-  onBack: () => void; onForgotPassword: () => void; onGoogle: () => void
+  onApple: () => void; onBack: () => void; onForgotPassword: () => void; onGoogle: () => void
   onIdentifierChange: (value: string) => void; onPasswordChange: (value: string) => void
   onRegister: () => void; onRemember: () => void; onSubmit: () => void
 }) {
   const identifierProps = identifierFieldProps(props.identifier, props.role, props.language)
-  const showProviders = props.role === 'customer' && props.features.customerGoogle
+  const showProviders = props.role === 'customer' && (props.features.customerApple || props.features.customerGoogle)
   return (
     <Screen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
@@ -659,8 +629,9 @@ function LoginScreen(props: {
             {showProviders ? (
               <>
                 <Divider label={props.copy.login.providerDivider} />
-                <View style={styles.providerRow}>
-                  {props.features.customerGoogle ? <ProviderButton accessibilityLabel={`${props.copy.accessibility.continueWithProvider} Google`} disabled={props.busy} label="Google" onPress={props.onGoogle} testID="auth-client-google-primary" /> : null}
+                <View style={styles.providerStack} testID="auth-provider-options">
+                  {props.features.customerGoogle ? <ProviderButton accessibilityLabel={`${props.copy.accessibility.continueWithProvider} Google`} disabled={props.busy} label="Google" onPress={props.onGoogle} provider="google" testID="auth-client-google-primary" /> : null}
+                  {props.features.customerApple ? <ProviderButton accessibilityLabel={`${props.copy.accessibility.continueWithProvider} Apple`} disabled={props.busy} label="Apple" onPress={props.onApple} provider="apple" testID="auth-client-apple-secondary" /> : null}
                 </View>
               </>
             ) : null}
@@ -679,7 +650,7 @@ function RegisterScreen(props: {
   onBack: () => void; onLogin: () => void; onSubmit: () => void; onToggleTerms: () => void
   onFullNameChange: (value: string) => void; onIdentifierChange: (value: string) => void; onPasswordChange: (value: string) => void
 }) {
-  const identifierProps = registrationIdentifierFieldProps()
+  const identifierProps = registrationIdentifierFieldProps(props.language)
   return (
     <Screen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>

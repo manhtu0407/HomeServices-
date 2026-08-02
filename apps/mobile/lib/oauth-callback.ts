@@ -15,6 +15,8 @@ type OAuthCallbackInspection =
   | { kind: 'error' }
   | { kind: 'ignored' }
 
+export type OAuthAuthorizationProvider = 'apple' | 'google'
+
 export function inspectOAuthCallbackUrl(
   callbackUrl: string,
   expectedRedirectUrl: string,
@@ -72,6 +74,7 @@ export function isTrustedOAuthAuthorizationUrl(
   authorizationUrl: string,
   configuredSupabaseUrl: string,
   expectedRedirectUrl: string,
+  expectedProvider: OAuthAuthorizationProvider = 'google',
 ) {
   if (
     authorizationUrl.length === 0
@@ -111,7 +114,8 @@ export function isTrustedOAuthAuthorizationUrl(
       && hasCanonicalRawPath(configuredSupabaseUrl, configured)
       && authorization.pathname === authorizationPath
       && provider.length === 1
-      && provider[0] === 'google'
+      && (expectedProvider === 'apple' || expectedProvider === 'google')
+      && provider[0] === expectedProvider
       && redirectTo.length === 1
       && isSafeRedirectTarget(expectedRedirectUrl, expectedRedirect)
       && redirectTo[0] === expectedRedirectUrl

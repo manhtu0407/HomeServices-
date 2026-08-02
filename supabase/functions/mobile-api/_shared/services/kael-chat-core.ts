@@ -4,23 +4,23 @@
 import { asNumber } from "./coercions.ts";
 import { db, type DbClient } from "./db.ts";
 import { KAEL_CHAT_HARD_COST_CAP_USD, asKaelStoredSentiment, estimatePriceSourceFromStageLogs, formatKaelEstimateText, kaelServiceLabelVi, sourceTrustSecretsForRequest } from "./_shared.ts";
-import { buildKaelConversationContext, demandingCustomerSessionMetadata, demandingCustomerTurnMetadata, diagnosisScopeWithEvidenceRequest, diagnosisScopeWithGroundedAnswer, diagnosisScopeWithQuestion, loadKaelChatAnalysisState, persistDiagnosisScopeArtifact } from "./kael-chat-case-work.ts";
+import { buildKaelConversationContext, demandingCustomerSessionMetadata, demandingCustomerTurnMetadata, diagnosisScopeWithEvidenceRequest, diagnosisScopeWithGroundedAnswer, diagnosisScopeWithQuestion, loadKaelChatAnalysisState, mergeKaelCustomerDetailForReanalysis, persistDiagnosisScopeArtifact } from "./kael-chat-case-work.ts";
 import { appendKaelSystemTurn, updateKaelSession } from "./kael-chat-session-store.ts";
 import type { KaelChatStatus } from "../../../_shared/contracts.ts";
 import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "./audit.ts";
 import { guardDemandingResponseText } from "./chat.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
-import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, intakeEvalObservationSchema, isGroundedClarificationAnswer, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, resolveCaseWorkEvidenceRequest, resolveIntakeFactCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type IntakeEvalObservation, type PipelineResult } from "../kael/index.ts";
+import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildFocusedClarificationQuestion, buildKaelMissingInfoArtifactProposal, buildPriceEvidenceUnavailableArtifact, buildProfileSafetyFlags, buildSafetyFirstElectricalEstimate, detectDemandingCustomerPatterns, deterministicSafetyGuidance, getKaelPerformanceProfile, isGroundedClarificationAnswer, kaelDiagnosisScopeArtifactSchema, prependDeterministicSafetyGuidance, recordDemandingCustomerInteraction, resolveCaseWorkEvidenceRequest, resolveIntakeFactCoverage, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
 import { isElectricalPlaybookEnabled } from "../kael/playbooks/electrical.ts";
 import { guardOutput } from "../kael/kael-guardrails/output-gateway.ts";
 import { isKaelAiKillSwitchEnabled } from "../kael/kael-guardrails/spend-gate.ts";
 import {
-  frameUntrustedCustomerCaseEvidenceForModel,
   sanitizeCustomerCaseEvidenceText,
   sanitizeUntrustedEvidenceList,
 } from "../kael/untrusted-evidence.ts";
 import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { KaelChatCreateInput, ServiceType } from "../../../_shared/domain.ts";
+import type { KaelDiagnosisScopeArtifact } from "../kael/artifact-contract.ts";
 import { buildSafetyFirstKaelClarification, persistentKaelSafetySignals, resolveKaelResponseSafetySignals } from "./kael-chat-intake-safety.ts";
 import { maybeApplyKaelBoundaryGuard } from "./kael-chat-boundary.ts";
 import { maybeHandleDeterministicClarificationReply } from "./kael-chat-clarification.service.ts";
@@ -28,39 +28,13 @@ import {
   buildKaelEstimateAnalysisEvidence,
   buildKaelEstimateMarketEvidence,
 } from "./kael-chat-estimate-support.ts";
+import {
+  intakeObservationMetadata,
+  kaelServiceLabelEn,
+  withIntakeSafetyGuidance,
+} from "./kael-chat-core-support.ts";
 export { maybeApplyKaelBoundaryGuard };
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
-
-function kaelServiceLabelEn(serviceType: string) {
-  const labels: Record<string, string> = {
-    electrical: "electrical repair",
-    plumbing: "plumbing repair",
-    cleaning: "home cleaning",
-    hvac: "air conditioning and air care",
-    upholstery: "upholstery care",
-    handyman: "minor repairs and installation",
-  };
-  return labels[serviceType] ?? "another supported service";
-}
-
-function intakeObservationMetadata(observation: IntakeEvalObservation | undefined) {
-  if (!observation) return {};
-  return { intake_observation: intakeEvalObservationSchema.parse(observation) };
-}
-
-function withIntakeSafetyGuidance(
-  text: string,
-  safetySignals: readonly string[],
-  language: "vi" | "en",
-  trustedText = true,
-) {
-  return prependDeterministicSafetyGuidance(
-    text,
-    safetySignals,
-    language,
-    { trustedText },
-  );
-}
 
 export async function advanceKaelChatEstimate(
   ctx: MobileApiContext,
@@ -69,6 +43,7 @@ export async function advanceKaelChatEstimate(
     message?: string;
     problem_chips?: string[];
     photo_urls?: string[];
+    vision_evidence?: KaelDiagnosisScopeArtifact["evidence"];
     address_district?: string;
     language?: "vi" | "en";
     persisted_safety_signals?: string[];
@@ -83,7 +58,6 @@ export async function advanceKaelChatEstimate(
     isElectricalPlaybookEnabled();
   const message = sanitizeForLLM(input.message ?? "");
   const safeCustomerEvidence = sanitizeCustomerCaseEvidenceText(message);
-  const modelCustomerEvidence = frameUntrustedCustomerCaseEvidenceForModel(safeCustomerEvidence);
   const durableCustomerDetail = safeCustomerEvidence;
   const problemChips = sanitizeUntrustedEvidenceList(input.problem_chips ?? []);
   const earlySafetySignals = persistentKaelSafetySignals(
@@ -256,11 +230,17 @@ export async function advanceKaelChatEstimate(
 
   let conversationContext: string | undefined;
   let priorClarificationCount = 0;
+  let previousAnalysisReceipt: Record<string, unknown> | undefined;
   if (llmClarificationEnabled) {
     const convo = await buildKaelConversationContext(client, sessionId);
     conversationContext = convo.context;
     priorClarificationCount = convo.clarificationCount;
+    previousAnalysisReceipt = convo.previousAnalysisReceipt;
   }
+  const customerAnalysisDetail = mergeKaelCustomerDetailForReanalysis(
+    artifact,
+    durableCustomerDetail,
+  );
 
   const requestId = crypto.randomUUID();
   let pipeline: PipelineResult;
@@ -274,7 +254,7 @@ export async function advanceKaelChatEstimate(
       {
         serviceType: input.service_type,
         problemChips: problemChips.length > 0 ? problemChips : [input.service_type],
-        description: modelCustomerEvidence,
+        description: customerAnalysisDetail,
         district,
         photoUrls: input.photo_urls ?? [],
         intakeDiagnosisEnabled: llmClarificationEnabled,
@@ -393,7 +373,7 @@ export async function advanceKaelChatEstimate(
         missingSlots.length > 0 ? missingSlots : ["description"],
         safeQuestion,
         0.4,
-        durableCustomerDetail,
+        customerAnalysisDetail,
       );
       await Promise.all([
         persistDiagnosisScopeArtifact(client, sessionId, artifact),
@@ -465,8 +445,8 @@ export async function advanceKaelChatEstimate(
     }
     if (pipeline.code === "NO_BASELINE") {
       artifact = buildPriceEvidenceUnavailableArtifact(artifact, {
-        customerDetail: durableCustomerDetail,
-        scopeSummary: durableCustomerDetail,
+        customerDetail: customerAnalysisDetail,
+        scopeSummary: customerAnalysisDetail,
       });
       await persistDiagnosisScopeArtifact(client, sessionId, artifact);
       await appendKaelSystemTurn(client, sessionId, {
@@ -504,7 +484,7 @@ export async function advanceKaelChatEstimate(
         ["description_or_photo"],
         clarificationText,
         0.35,
-        durableCustomerDetail,
+        customerAnalysisDetail,
       );
       await persistDiagnosisScopeArtifact(client, sessionId, artifact);
     }
@@ -570,7 +550,7 @@ export async function advanceKaelChatEstimate(
       artifact,
       evidenceRequest,
       {
-        customerDetail: durableCustomerDetail,
+        customerDetail: customerAnalysisDetail,
         problemSummary: estimate.problem_summary,
         complexity: estimate.complexity,
         problemChips,
@@ -626,7 +606,7 @@ export async function advanceKaelChatEstimate(
     facts: {
       ...artifact.facts,
       ...profileFactCoverage.facts,
-      latest_customer_detail: durableCustomerDetail,
+      latest_customer_detail: customerAnalysisDetail,
       address_district: district,
       problem_summary: estimate.problem_summary,
       complexity: estimate.complexity,
@@ -665,10 +645,16 @@ export async function advanceKaelChatEstimate(
       : estimatePriceSourceFromStageLogs(pipeline.stageLogs),
     baselineUsed:
       `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
-    analysisEvidence: buildKaelEstimateAnalysisEvidence(artifact),
+    analysisEvidence: buildKaelEstimateAnalysisEvidence(
+      artifact,
+      input.vision_evidence,
+    ),
     marketEvidence: buildKaelEstimateMarketEvidence(pipeline.stageLogs),
     marketSignals: estimate.market_signals ?? estimate.needs_inspection_reason,
     needsInspectionReason: estimate.needs_inspection_reason,
+    previousAnalysisReceipt,
+    visionAnalysis: pipeline.visionAnalysis,
+    visionFindings: pipeline.visionAnalysis?.problemSummary,
   });
   await appendKaelSystemTurn(client, sessionId, {
     contentType: "estimate",

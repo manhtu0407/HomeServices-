@@ -1,6 +1,4 @@
 import {
-  KAEL_PERFORMANCE_PROFILE_IDS,
-  SERVICE_TYPES as CANONICAL_SERVICE_TYPES,
   type CustomerKaelConversationTurnInput,
   type KaelChatEvidenceInput,
   type KaelChatTurnInput,
@@ -26,6 +24,26 @@ import {
   ResponseBodyInvalidEncodingError,
   ResponseBodyTooLargeError,
 } from './response-guard'
+import {
+  isKaelResponseStreamEvent,
+  type KaelResponseBlockKind,
+  type KaelResponseStreamEvent,
+} from './kael-response-stream'
+import {
+  isBoundedString,
+  isCustomerKaelConversationStreamResult,
+  isCustomerKaelStreamResult,
+  isKaelProgressStage,
+  isKaelProgressStatus,
+  isWorkerKaelStreamResult,
+  safeParseObject,
+} from './kael-stream-validation'
+
+export {
+  isCustomerKaelConversationStreamResult,
+  isCustomerKaelStreamResult,
+  isWorkerKaelStreamResult,
+} from './kael-stream-validation'
 
 const STREAM_CONNECT_TIMEOUT_MS = 20_000
 const STREAM_TOTAL_TIMEOUT_MS = 90_000
@@ -72,10 +90,12 @@ export type KaelStreamEvent =
   | KaelStreamResultEvent
   | KaelStreamErrorEvent
   | KaelStreamHeartbeatEvent
+  | KaelResponseStreamEvent
 
 export type KaelChatStreamHandlers = {
   onError?: (event: KaelStreamErrorEvent) => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
+  onResponseEvent?: (event: KaelResponseStreamEvent) => void
   onResult?: (event: KaelStreamResultEvent) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -84,6 +104,7 @@ export type KaelChatStreamHandlers = {
 export type CustomerKaelConversationStreamHandlers = {
   onError?: (event: KaelStreamErrorEvent) => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
+  onResponseEvent?: (event: KaelResponseStreamEvent) => void
   onResult?: (event: { type: 'result'; data: CustomerKaelConversationResponse }) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -97,6 +118,7 @@ export type WorkerKaelStreamResultEvent = {
 export type WorkerKaelChatStreamHandlers = {
   onError?: (event: KaelStreamErrorEvent) => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
+  onResponseEvent?: (event: KaelResponseStreamEvent) => void
   onResult?: (event: WorkerKaelStreamResultEvent) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -108,6 +130,7 @@ export function supportsKaelChatSseStream() {
 
 export function createKaelSseParser() {
   let buffer = ''
+  let universalResponseId: string | null = null
 
   return {
     push(chunk: string): KaelStreamEvent[] {
@@ -118,7 +141,17 @@ export function createKaelSseParser() {
         const frame = buffer.slice(0, boundary)
         buffer = buffer.slice(boundary + frameBoundaryLength(buffer, boundary))
         const event = parseKaelSseFrame(frame)
-        if (event) events.push(event)
+        if (event?.type === 'response.started') {
+          if (universalResponseId !== null) {
+            boundary = frameBoundaryIndex(buffer)
+            continue
+          }
+          universalResponseId = event.responseId
+        }
+        if (
+          event &&
+          !(event.type === 'response_delta' && universalResponseId === event.turnId)
+        ) events.push(event)
         boundary = frameBoundaryIndex(buffer)
       }
       if (buffer.length > STREAM_MAX_FRAME_BUFFER_CHARS) {
@@ -199,6 +232,7 @@ export async function streamWorkerKaelChatTurn(
 type StreamHandlers<T> = {
   onError?: (event: KaelStreamErrorEvent) => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
+  onResponseEvent?: (event: KaelResponseStreamEvent) => void
   onResult?: (event: { type: 'result'; data: T }) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -288,6 +322,7 @@ async function streamKaelTurn<T>(
         if (event.type === 'stage') handlers.onStage?.(event)
         if (event.type === 'token') handlers.onToken?.(event)
         if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
+        if (isKaelResponseStreamEvent(event)) handlers.onResponseEvent?.(event)
         if (event.type === 'error') {
           handlers.onError?.(event)
           return { success: false, error: event.message, code: event.code, status: response.status }
@@ -470,6 +505,67 @@ function parseKaelSseFrame(frame: string): KaelStreamEvent | null {
     }
     return null
   }
+  if (eventName === 'response.started') {
+    const responseId = data.response_id
+    if (
+      isBoundedString(responseId, 160) &&
+      (data.mode === 'fast' || data.mode === 'standard')
+    ) {
+      return { mode: data.mode, responseId, type: 'response.started' }
+    }
+    return null
+  }
+  if (eventName === 'block.started') {
+    const blockId = data.block_id
+    const kind = data.kind
+    if (isBoundedString(blockId, 220) && isKaelResponseBlockKind(kind)) {
+      return { blockId, kind, type: 'block.started' }
+    }
+    return null
+  }
+  if (eventName === 'block.text.delta') {
+    const blockId = data.block_id
+    const delta = data.delta
+    if (
+      isBoundedString(blockId, 220) &&
+      typeof delta === 'string' && delta.length > 0 && delta.length <= 32_768
+    ) {
+      return { blockId, delta, type: 'block.text.delta' }
+    }
+    return null
+  }
+  if (eventName === 'block.completed') {
+    const blockId = data.block_id
+    return isBoundedString(blockId, 220) ? { blockId, type: 'block.completed' } : null
+  }
+  if (eventName === 'response.completed') {
+    const responseId = data.response_id
+    const elapsedMs = data.elapsed_ms
+    if (
+      isBoundedString(responseId, 160) && typeof elapsedMs === 'number' &&
+      Number.isFinite(elapsedMs) && elapsedMs >= 0 && elapsedMs <= STREAM_TOTAL_TIMEOUT_MS
+    ) {
+      return { elapsedMs, responseId, type: 'response.completed' }
+    }
+    return null
+  }
+  if (eventName === 'response.failed') {
+    const responseId = data.response_id
+    const message = data.message
+    const recoverable = data.recoverable
+    if (
+      isBoundedString(responseId, 160) && isBoundedString(message, 2_000) &&
+      typeof recoverable === 'boolean'
+    ) {
+      return {
+        message: safeServerError(message, 'Kael stream failed.'),
+        recoverable,
+        responseId,
+        type: 'response.failed',
+      }
+    }
+    return null
+  }
   if (eventName === 'result') {
     return { type: 'result', data: data as unknown as KaelChatResponse }
   }
@@ -505,247 +601,6 @@ function stageEventToProgress(data: Record<string, unknown>): KaelChatProgress |
   }
 }
 
-function isKaelProgressStatus(status: string): status is KaelChatProgress['status'] {
-  return status === 'queued' || status === 'running' || status === 'completed' || status === 'failed'
-}
-
-function isKaelProgressStage(stage: string): stage is KaelChatProgress['current_stage'] {
-  return (KAEL_PROGRESS_STAGES as ReadonlySet<string>).has(stage)
-}
-
-function safeParseObject(text: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(text) as unknown
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-      ? parsed as Record<string, unknown>
-      : {}
-  } catch {
-    return {}
-  }
-}
-
-const KAEL_PROGRESS_STAGES = new Set<KaelChatProgress['current_stage']>([
-  'intent_classification',
-  'vision_analysis',
-  'clarification',
-  'problem_synthesis',
-  'market_lookup',
-  'price_synthesis',
-  'advisory_generation',
-  'worker_brief',
-  'worker_assist',
-  'scope_change',
-  'scope_reviewing',
-  'scope_estimating',
-  'post_job_learning',
-  'educational_response',
-])
-
-const SERVICE_TYPES = new Set<string>(CANONICAL_SERVICE_TYPES)
-const CUSTOMER_CONVERSATION_MODES = new Set(['normal', 'case'])
-const CUSTOMER_CONVERSATION_TURN_ROLES = new Set(['customer', 'kael', 'system'])
-const KAEL_PERFORMANCE_PROFILES = new Set<string>(KAEL_PERFORMANCE_PROFILE_IDS)
-const CUSTOMER_SESSION_STATUSES = new Set(['active', 'collecting_evidence', 'estimate_ready', 'confirmed', 'abandoned', 'unsupported'])
-const CUSTOMER_CASE_PHASES = new Set([
-  'analysis', 'offer_review', 'matching', 'worker_candidate_review', 'worker_en_route',
-  'service_execution', 'scope_change_review', 'completion_review', 'payment', 'review', 'closed',
-])
-const CUSTOMER_NEXT_ACTIONS = new Set([
-  'await_input', 'collect_evidence', 'ask_photo', 'ask_video', 'estimate_ready',
-  'unsupported', 'budget_exceeded', 'confirmed', 'ask_question', 'request_evidence',
-])
-const CUSTOMER_TURN_ROLES = new Set(['customer', 'kael', 'system'])
-const CUSTOMER_TURN_TYPES = new Set([
-  'text', 'photo_request', 'video_request', 'photo_attached', 'video_attached',
-  'clarification', 'analysis', 'estimate', 'error',
-])
-const WORKER_SESSION_STATUSES = new Set(['active', 'closed', 'escalated', 'error'])
-const WORKER_TURN_ROLES = new Set(['worker', 'kael', 'system'])
-const WORKER_TURN_TYPES = new Set(['text', 'clarification', 'guidance', 'photo_request', 'photo_attached', 'error'])
-const COMPLEXITY_LEVELS = new Set(['small', 'medium', 'large'])
-
-export function isCustomerKaelConversationStreamResult(
-  value: unknown,
-): value is CustomerKaelConversationResponse {
-  const response = asRecord(value)
-  const session = asRecord(response?.session)
-  const turns = response?.turns
-  if (!response || !session || !Array.isArray(turns) || turns.length > 500) return false
-  if (
-    !isBoundedString(session.id, 160) ||
-    !isEnumString(session.mode, CUSTOMER_CONVERSATION_MODES) ||
-    !isBoundedString(session.customer_id, 160) ||
-    !isNullableBoundedString(session.case_job_id, 160) ||
-    !isNullableBoundedString(session.case_session_id, 160) ||
-    !isBoundedString(session.client_request_id, 160) ||
-    !isNullableBoundedString(session.title, 64) ||
-    !isNullableBoundedString(session.pinned_at, 64) ||
-    !isNullableEnumString(session.profile_id, KAEL_PERFORMANCE_PROFILES) ||
-    !isNullableEnumString(session.service_type, SERVICE_TYPES) ||
-    !isBoundedString(session.started_at, 64) ||
-    !isBoundedString(session.updated_at, 64) ||
-    !isNonNegativeInteger(session.total_turns) ||
-    session.total_turns !== turns.length
-  ) return false
-  return turns.every(isCustomerConversationTurn)
-}
-
-export function isCustomerKaelStreamResult(value: unknown): value is KaelChatResponse {
-  const response = asRecord(value)
-  const session = asRecord(response?.session)
-  const turns = response?.turns
-  if (!response || !session || !Array.isArray(turns) || turns.length > 500) return false
-  if (
-    !isBoundedString(session.id, 160) || !isNullableBoundedString(session.job_id, 160) ||
-    !isBoundedString(session.customer_id, 160) || !isEnumString(session.service_type, SERVICE_TYPES) ||
-    !isEnumString(session.status, CUSTOMER_SESSION_STATUSES) ||
-    !isEnumString(session.case_phase, CUSTOMER_CASE_PHASES) ||
-    !isNullableRecord(session.diagnosis_scope) || !isNullableBoundedString(session.scheduled_at, 64) ||
-    !isNullableEstimate(session.estimate) || !isBoundedString(session.started_at, 64) ||
-    !isNullableBoundedString(session.estimate_ready_at, 64) || !isNonNegativeInteger(session.total_turns) ||
-    !isFiniteRange(session.total_cost_usd, 0, Number.MAX_SAFE_INTEGER) ||
-    !isEnumString(session.next_action, CUSTOMER_NEXT_ACTIONS)
-  ) return false
-  return turns.every(isCustomerTurn)
-}
-
-export function isWorkerKaelStreamResult(value: unknown): value is WorkerKaelChatResponse {
-  const response = asRecord(value)
-  const session = asRecord(response?.session)
-  const turns = response?.turns
-  if (!response || !session || !Array.isArray(turns) || turns.length > 500) return false
-  if (
-    !isBoundedString(session.id, 160) || !isBoundedString(session.job_id, 160) ||
-    !isBoundedString(session.worker_id, 160) || !isEnumString(session.status, WORKER_SESSION_STATUSES) ||
-    !isBoundedString(session.started_at, 64) || !isNullableBoundedString(session.closed_at, 64) ||
-    !isNonNegativeInteger(session.total_turns) || !isNullableProgress(session.progress)
-  ) return false
-  return turns.every(isWorkerTurn)
-}
-
-function isCustomerConversationTurn(value: unknown): boolean {
-  const turn = asRecord(value)
-  return Boolean(turn) &&
-    isBoundedString(turn?.id, 160) &&
-    isBoundedString(turn?.conversation_id, 160) &&
-    isOptionalNullableBoundedString(turn?.client_request_id, 160) &&
-    isNonNegativeInteger(turn?.turn_index) &&
-    isEnumString(turn?.role, CUSTOMER_CONVERSATION_TURN_ROLES) &&
-    isBoundedString(turn?.text_content, 12_000) &&
-    isBoundedString(turn?.created_at, 64)
-}
-
-function isCustomerTurn(value: unknown): boolean {
-  const turn = asRecord(value)
-  if (!turn) return false
-  const clarification = turn.clarification
-  return isBoundedString(turn.id, 160) && isBoundedString(turn.session_id, 160) &&
-    isNonNegativeInteger(turn.turn_index) && isEnumString(turn.role, CUSTOMER_TURN_ROLES) &&
-    isEnumString(turn.content_type, CUSTOMER_TURN_TYPES) && isNullableBoundedString(turn.text_content, 12_000) &&
-    isBoundedStringArray(turn.media_refs, 16, 1_000) && isNullableEstimate(turn.estimate) &&
-    (clarification === undefined || clarification === null || isClarification(clarification)) &&
-    isBoundedString(turn.created_at, 64)
-}
-
-function isWorkerTurn(value: unknown): boolean {
-  const turn = asRecord(value)
-  return Boolean(turn) && isBoundedString(turn?.id, 160) && isBoundedString(turn?.session_id, 160) &&
-    isNonNegativeInteger(turn?.turn_index) && isEnumString(turn?.role, WORKER_TURN_ROLES) &&
-    isEnumString(turn?.content_type, WORKER_TURN_TYPES) && isNullableBoundedString(turn?.text_content, 12_000) &&
-    isBoundedStringArray(turn?.media_refs, 16, 1_000) && isBoundedStringArray(turn?.safety_notes, 32, 1_000) &&
-    isBoundedString(turn?.created_at, 64)
-}
-
-function isClarification(value: unknown): boolean {
-  const clarification = asRecord(value)
-  return Boolean(clarification) && isNullableBoundedString(clarification?.question, 2_000) &&
-    isBoundedStringArray(clarification?.missing_slots, 64, 160)
-}
-
-function isNullableEstimate(value: unknown): boolean {
-  if (value === null) return true
-  const estimate = asRecord(value)
-  if (!estimate) return false
-  return isEnumString(estimate.service_type, SERVICE_TYPES) &&
-    isBoundedString(estimate.problem_category, 160) && isBoundedString(estimate.problem_summary, 2_000) &&
-    isEnumString(estimate.complexity, COMPLEXITY_LEVELS) &&
-    isFiniteRange(estimate.price_min, 0, Number.MAX_SAFE_INTEGER) &&
-    isFiniteRange(estimate.price_max, Number(estimate.price_min), Number.MAX_SAFE_INTEGER) &&
-    isFiniteRange(estimate.confidence, 0, 1) && isNullableBoundedString(estimate.advisory, 4_000) &&
-    isBoundedString(estimate.disclaimer, 2_000) &&
-    (estimate.needs_inspection === undefined || typeof estimate.needs_inspection === 'boolean') &&
-    (estimate.price_source === undefined || isNullableBoundedString(estimate.price_source, 160)) &&
-    (estimate.complexity_reasoning === undefined || isNullableBoundedString(estimate.complexity_reasoning, 2_000)) &&
-    (estimate.needs_inspection_reason === undefined || isNullableBoundedString(estimate.needs_inspection_reason, 2_000)) &&
-    (estimate.market_signals === undefined || isNullableBoundedString(estimate.market_signals, 2_000)) &&
-    isOptionalNullableAnalysisReceipt(estimate.analysis_receipt)
-}
-
-function isOptionalNullableAnalysisReceipt(value: unknown): boolean {
-  if (value === undefined || value === null) return true
-  const receipt = asRecord(value)
-  const evidence = asRecord(receipt?.evidence)
-  const market = asRecord(receipt?.market)
-  return receipt?.schema_version === 'analysis_receipt.v1' &&
-    Boolean(evidence) &&
-    isNonNegativeInteger(evidence?.photo_count) &&
-    isNonNegativeInteger(evidence?.video_frame_count) &&
-    isNonNegativeInteger(evidence?.voice_transcript_count) &&
-    typeof evidence?.skipped === 'boolean' &&
-    Boolean(market) &&
-    (market?.accepted_source_count === null || isNonNegativeInteger(market?.accepted_source_count)) &&
-    (market?.high_trust_source_count === null || isNonNegativeInteger(market?.high_trust_source_count)) &&
-    (market?.quorum_met === null || typeof market?.quorum_met === 'boolean')
-}
-
-function isNullableProgress(value: unknown): boolean {
-  if (value === null) return true
-  const progress = asRecord(value)
-  return Boolean(progress) && isEnumString(progress?.current_stage, KAEL_PROGRESS_STAGES) &&
-    typeof progress?.status === 'string' && isKaelProgressStatus(progress.status) &&
-    isFiniteRange(progress?.progress, 0, 1) && isOptionalNullableBoundedString(progress?.failure_reason, 2_000) &&
-    isBoundedString(progress?.updated_at, 64)
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
-}
-
-function isBoundedString(value: unknown, maxLength: number): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= maxLength
-}
-
-function isNullableBoundedString(value: unknown, maxLength: number): boolean {
-  return value === null || isBoundedString(value, maxLength)
-}
-
-function isOptionalNullableBoundedString(value: unknown, maxLength: number): boolean {
-  return value === undefined || isNullableBoundedString(value, maxLength)
-}
-
-function isBoundedStringArray(value: unknown, maxItems: number, maxItemLength: number): boolean {
-  return Array.isArray(value) && value.length <= maxItems &&
-    value.every((item) => isBoundedString(item, maxItemLength))
-}
-
-function isNullableRecord(value: unknown): boolean {
-  return value === null || asRecord(value) !== null
-}
-
-function isEnumString(value: unknown, values: ReadonlySet<string>): value is string {
-  return typeof value === 'string' && values.has(value)
-}
-
-function isNullableEnumString(value: unknown, values: ReadonlySet<string>) {
-  return value === null || isEnumString(value, values)
-}
-
-function isNonNegativeInteger(value: unknown): boolean {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
-}
-
-function isFiniteRange(value: unknown, min: number, max: number): boolean {
-  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
+function isKaelResponseBlockKind(value: unknown): value is KaelResponseBlockKind {
+  return value === 'paragraph' || value === 'heading' || value === 'list' || value === 'callout'
 }

@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { CheckRow, EntryTextField } from './components/fields'
 import { IconButton, NativeSafeGlassPanel, PrimaryButton } from './components/materials'
 import { registrationIdentifierFieldProps } from './entry-identifier-fields'
+import type { AppLanguage } from '@/lib/app-language'
 import { entryTheme } from './theme'
 import type { EntryRole } from './types'
 
@@ -33,6 +34,7 @@ export function RegisterScreen(props: {
   acceptedTerms: boolean
   busy: boolean
   identifier: string
+  language: AppLanguage
   error: string | null
   fullName: string
   onBack: () => void
@@ -45,7 +47,7 @@ export function RegisterScreen(props: {
   password: string
   role: EntryRole
 }) {
-  const identifierProps = registrationIdentifierFieldProps()
+  const identifierProps = registrationIdentifierFieldProps(props.language)
   return (
     <EntryScreen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>

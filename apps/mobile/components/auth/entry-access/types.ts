@@ -33,6 +33,7 @@ export type EntryActionResult = {
 }
 
 export type EntryAccessFeatureFlags = {
+  customerApple: boolean
   customerGoogle: boolean
   customerRegistration: boolean
   workerRegistration: boolean
@@ -41,6 +42,7 @@ export type EntryAccessFeatureFlags = {
 export type EntryAccessActions = {
   onPasswordLogin: (input: PasswordLoginInput) => Promise<EntryActionResult>
   onRegister: (input: RegistrationInput) => Promise<EntryActionResult>
+  onAppleLogin?: () => Promise<EntryActionResult>
   onGoogleLogin?: () => Promise<EntryActionResult>
   onForgotPassword?: (input: PasswordRecoveryInput) => Promise<EntryActionResult>
   onCompletePasswordRecovery?: (password: string) => Promise<EntryActionResult>

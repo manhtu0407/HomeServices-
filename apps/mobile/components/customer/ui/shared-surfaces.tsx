@@ -1,6 +1,7 @@
-import { Fragment, type ComponentType, type ReactNode } from 'react'
+import { Fragment, useEffect, type ComponentType, type ReactNode } from 'react'
 import { Image } from 'expo-image'
-import { Pressable, ScrollView, Text, useWindowDimensions, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { StatusBar } from 'expo-status-bar'
+import { Appearance, Pressable, ScrollView, Text, useWindowDimensions, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
@@ -31,6 +32,17 @@ export function useCustomerV21SurfaceTheme() {
   const baseTokens = getCustomerThemeTokens(mode)
   const tokens = glass.reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   return { mode, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, tokens }
+}
+
+export function CustomerThemeSystemBar({ mode }: { mode: CustomerThemeTokens['mode'] }) {
+  useEffect(() => {
+    StatusBar.setStyle(mode === 'dark' ? 'light' : 'dark')
+    return () => {
+      StatusBar.setStyle(Appearance.getColorScheme() === 'dark' ? 'light' : 'dark')
+    }
+  }, [mode])
+
+  return null
 }
 
 type CustomerV21AssetTile = ComponentType<{
@@ -171,7 +183,6 @@ export function ServiceTile({
         styles.serviceTile,
         homeAura ? styles.homeAuraServiceTile : null,
         homeAura ? (fullWidth || viewportWidth < 680 ? styles.homeAuraServiceTileNarrow : styles.homeAuraServiceTileWide) : null,
-        homeAura ? (tokens.mode === 'dark' ? styles.homeAuraServiceTileShadowDark : styles.homeAuraServiceTileShadowLight) : null,
         {
           backgroundColor: homeAura
             ? reduceTransparency || tokens.mode === 'dark' ? tokens.raised : 'transparent'
@@ -296,11 +307,12 @@ export function V21Screen({
   screenId: CustomerV21ScreenId
   testID: string
 }) {
-  const { reduceTransparency, tokens } = useCustomerV21SurfaceTheme()
+  const { mode, reduceTransparency, tokens } = useCustomerV21SurfaceTheme()
   const onDockScroll = useDockScrollHandler()
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: tokens.canvas }]} testID={testID}>
-      <CustomerScreenCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
+      <CustomerThemeSystemBar mode={mode} />
+      <CustomerScreenCanvasAura mode={mode} reduceTransparency={reduceTransparency} screenId={screenId} />
       <ScrollView
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.scrollContent}

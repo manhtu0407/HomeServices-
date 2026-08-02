@@ -1,10 +1,10 @@
 import { Image } from 'expo-image'
 import { Pressable, Text, View } from 'react-native'
-import Svg, { Defs, RadialGradient, Rect } from 'react-native-svg'
+import Svg, { Defs, Rect } from 'react-native-svg'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'

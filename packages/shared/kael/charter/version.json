@@ -1,8 +1,8 @@
 {
-  "charter_version": "2026-07-06.p9",
+  "charter_version": "2026-08-01.p10",
   "created_at": "2026-05-25",
-  "last_modified": "2026-07-06",
-  "source": "Plan.md 39 KC6 (p9); base Plan.md 23.13 P8",
+  "last_modified": "2026-08-01",
+  "source": "P10: bounded service-adjacent guidance; base Plan.md 39 KC6 (p9)",
   "locked_files": [
     "identity.md",
     "persona.md",

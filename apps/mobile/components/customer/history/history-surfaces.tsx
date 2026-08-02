@@ -1,10 +1,10 @@
 import type { ComponentType, ReactNode } from 'react'
 import { Image } from 'expo-image'
 import { Text, View, type StyleProp, type ViewStyle } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
+import Svg, { Circle, Defs, Path, Rect } from 'react-native-svg'
 
 import { JobEvidenceGallery } from '@/components/ui/job-evidence-gallery'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { isKaelCoreV9Visual, type CustomerV21Visual } from '../ui/assets'

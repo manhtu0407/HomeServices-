@@ -12,8 +12,8 @@ import {
   resolveElectricalIntakeRuntime,
   resolveIntakeFactCoverage,
 } from "./intake-runtime.ts";
-import { buildSafetyFirstElectricalEstimate, prependDeterministicSafetyGuidance } from "./electrical-intake-policy.ts";
-import { analyzeDescription } from "./vision.ts";
+import { buildSafetyFirstElectricalEstimate } from "./electrical-intake-policy.ts";
+import { analyzeDescription, buildFallbackVision } from "./vision.ts";
 import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
 import {
   evaluateMarketVerdict,
@@ -39,20 +39,14 @@ import { retrieveKaelKnowledgeContextIfEnabled } from "./knowledge.ts";
 import {
   isKaelAiKillSwitchEnabled,
   KAEL_AI_UNAVAILABLE_VI,
-  type KaelSpendGate,
-  type SpendGateClient,
 } from "./kael-guardrails/spend-gate.ts";
-import { checkKaelProviderBudget, recordKaelProviderSpend } from "./kael-providers/provider-budget.ts";
 import { pushPipelineStageLog } from "./trace.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "./prompts.ts";
-
-type EstimateParallelValue =
-  | { kind: "vision"; result: Awaited<ReturnType<typeof analyzeDescription>> }
-  | { kind: "market"; result: Awaited<ReturnType<typeof searchMarketPrice>> }
-  | {
-    kind: "baseline";
-    result: Awaited<ReturnType<typeof fetchBaselineCandidates>>;
-  };
+import { customerVisibleKaelProblemSummary } from "./user-facing-copy.ts";
+import { frameUntrustedCustomerCaseEvidenceForModel } from "./untrusted-evidence.ts";
+import { prepareKaelPipelineSpendGate } from "./pipeline-spend-gate.ts";
+import type { EstimateParallelValue } from "./pipeline-parallel-types.ts";
+import { createIntakeSafetyGuidance } from "./pipeline-safety-guidance.ts";
 
 export async function runKaelPipeline(
   input: PipelineInput,
@@ -63,16 +57,14 @@ export async function runKaelPipeline(
   const language = input.language ?? "vi";
   const problemChips = input.problemChips.map(scrubSensitiveForLLM);
   const description = scrubCustomerCaseContextForLLM(input.description);
+  const modelDescription = frameUntrustedCustomerCaseEvidenceForModel(description);
   const photoUrls = sanitizeVisionPhotoUrls(input.photoUrls ?? []);
   const stageLogs: PipelineStageLog[] = [];
   const learningApplications: Extract<PipelineResult, { success: true }>["learningApplications"] = [];
   let fallbackUsed = false;
   const progressTarget = input.progressTarget ?? input.progressJobId;
 
-  // S4/F1 (§38) — Codex PR#68 P1: the kill-switch must HARD-STOP customer-facing AI
-  // output, including deterministic playbook routing. Check it before any intake stage
-  // so an incident cannot surface a diagnosis, observation, estimate, or provider call.
-  // callAI keeps a per-call kill-switch as a backstop for non-pipeline AI paths.
+  // Hard-stop customer-facing AI before any intake or provider work begins.
   if (isKaelAiKillSwitchEnabled()) {
     console.warn("kael pipeline: KAEL_AI_KILL_SWITCH on — returning unavailable state");
     return {
@@ -92,10 +84,10 @@ export async function runKaelPipeline(
   });
   const electricalPlaybookEnabled = electricalIntake.enabled;
   const deterministicSafetySignals = electricalIntake.safetySignals;
-  const withDeterministicSafetyGuidance = (
-    message: string,
-    signals: readonly string[] = deterministicSafetySignals,
-  ) => prependDeterministicSafetyGuidance(message, signals, language);
+  const withDeterministicSafetyGuidance = createIntakeSafetyGuidance(
+    language,
+    deterministicSafetySignals,
+  );
   const hardRoute = electricalIntake.hardRoute;
   if (hardRoute) {
     const intakeObservation = buildIntakeObservation({
@@ -126,21 +118,17 @@ export async function runKaelPipeline(
     };
   }
 
-  // S4/F1 (§38): durable, DB-backed AI-spend gate (global + per-user caps) for this
-  // estimate. callAI RESERVES the estimated cost atomically before each provider call
-  // (Codex P1 race fix) and reconciles to actual after. The runtime service-role client
-  // exposes .rpc; SupabaseLike narrows to from() only, so cast to the gate's client
-  // shape. If .rpc is absent the gate fails open (safe).
-  const spendGate: KaelSpendGate = {
-    client: supabase as unknown as SpendGateClient,
-    actorId: input.actorId ?? null,
-  };
+  // Keep per-user reservations and the provider budget bound to this pipeline run.
+  const {
+    providerBudget,
+    recordProviderSpendIfEnforced,
+    spendGate,
+  } = await prepareKaelPipelineSpendGate(input, supabase, stageLogs);
 
   // independent hard daily provider-spend ceiling. No-op +
   // zero DB round-trip unless KAEL_PROVIDER_COST_CAP_ENABLED is on; fails open. Kept as
   // a complementary operator knob alongside the §38 gate; degrade honestly here, before
   // spending on the intent + parallel provider calls. (Consolidation tracked as follow-up.)
-  const providerBudget = await checkKaelProviderBudget(supabase);
   if (providerBudget.exhausted) {
     console.warn("kael pipeline: provider daily budget exhausted, degrading", {
       spendUsd: providerBudget.spendUsd,
@@ -160,15 +148,6 @@ export async function runKaelPipeline(
   // Record the AI spend incurred by this estimate (intent + parallel + synthesis)
   // once it is known. Only when enforcement is on; reads the final stageLogs at
   // call time. Awaited so the daily counter stays accurate before we return.
-  const recordProviderSpendIfEnforced = async () => {
-    if (!providerBudget.enforced) return;
-    const spentUsd = stageLogs.reduce(
-      (sum, log) => sum + (typeof log.costUsd === "number" ? log.costUsd : 0),
-      0,
-    );
-    await recordKaelProviderSpend(supabase, spentUsd);
-  };
-
   // the intermediate stage-progress writes are fire-and-forget.
   // updateKaelProgress swallows its own errors (returns void, never throws), the
   // UI consumes stage granularity over a separate 800ms SSE poll, and each write
@@ -188,7 +167,7 @@ export async function runKaelPipeline(
         ? diagnoseIntake(
           serviceType,
           problemChips,
-          description,
+          modelDescription,
           secrets,
           spendGate,
           input.conversationContext,
@@ -198,7 +177,7 @@ export async function runKaelPipeline(
         : classifyIntent(
           serviceType,
           problemChips,
-          description,
+          modelDescription,
           secrets,
           spendGate,
           electricalPlaybookEnabled,
@@ -449,11 +428,10 @@ export async function runKaelPipeline(
     {
       label: "vision",
       purpose: "vision_analysis",
-      timeoutMs: KAEL_ROUTING_CONFIG.vision_analysis.latencyBudgetMs,
       run: async () => ({
         kind: "vision" as const,
         result: await analyzeDescription(
-          description,
+          modelDescription,
           `${validServiceType}: ${problemSlug}`,
           photoUrls,
           secrets,
@@ -465,11 +443,12 @@ export async function runKaelPipeline(
         kind: "vision" as const,
         result: {
           success: false as const,
-          fallback: {
-            problem_identified: `${validServiceType}: ${problemSlug}`,
-            severity_indicators: [],
-            complexity_hint: "medium" as const,
-          },
+          fallback: buildFallbackVision(
+            `${validServiceType}: ${problemSlug}`,
+            language,
+            photoUrls.length > 0,
+            description,
+          ),
           failureReason: "TIMEOUT",
         },
       }),
@@ -528,6 +507,15 @@ export async function runKaelPipeline(
   const analysis = visionResult.success
     ? visionResult.analysis
     : visionResult.fallback;
+  const visionAnalysisStatus = visionResult.success
+    ? "analyzed" as const
+    : photoUrls.length > 0
+    ? "unavailable" as const
+    : "not_provided" as const;
+  const customerProblemSummary = customerVisibleKaelProblemSummary(
+    analysis.problem_identified,
+    language,
+  );
   const visionSkipped = !visionResult.success && visionResult.skipped === true;
   fallbackUsed ||= !visionResult.success && !visionSkipped;
   if (!visionSkipped) {
@@ -535,10 +523,10 @@ export async function runKaelPipeline(
       stage: "vision",
       provider: visionResult.success
         ? visionResult.provider
-        : KAEL_ROUTING_CONFIG.vision_analysis.primary.provider,
+        : visionResult.provider ?? KAEL_ROUTING_CONFIG.vision_analysis.primary.provider,
       model: visionResult.success
         ? visionResult.model
-        : KAEL_ROUTING_CONFIG.vision_analysis.primary.model,
+        : visionResult.model ?? KAEL_ROUTING_CONFIG.vision_analysis.primary.model,
       latencyMs: visionStage.elapsedMs,
       success: visionResult.success,
       failureReason: visionResult.success
@@ -766,13 +754,26 @@ export async function runKaelPipeline(
     customerSentiment: input.intakeDiagnosisEnabled ? intent.customer_sentiment : undefined,
     profileFacts,
     safetySignals,
+    visionAnalysis: {
+      analysisStatus: visionAnalysisStatus,
+      evidenceFindings: (analysis.evidence_findings ?? []).map((finding) => ({
+        confidence: finding.confidence,
+        evidenceIndex: finding.evidence_index,
+        observation: finding.observation,
+        possibleMeaning: finding.possible_meaning,
+      })),
+      problemSummary: customerProblemSummary,
+      recommendedScope: analysis.recommended_scope ?? null,
+      remainingUncertainty: analysis.remaining_uncertainty ?? null,
+      severityIndicators: analysis.severity_indicators,
+    },
     intakeObservation,
     knowledgeContext: knowledgeContext.safeMetadata ? knowledgeContext : undefined,
     learningApplications,
     estimate: buildSafetyFirstElectricalEstimate({
       service_type: validServiceType,
       problem_category: problemSlug,
-      problem_summary: analysis.problem_identified,
+      problem_summary: customerProblemSummary,
       complexity: effectiveComplexity,
       price_min: synthesized.price_min,
       price_max: synthesized.price_max,

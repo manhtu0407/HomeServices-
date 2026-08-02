@@ -1,8 +1,8 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect } from 'react-native-svg'
+import Svg, { Circle, Defs, Rect } from 'react-native-svg'
 
-import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
-import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
+import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
+import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import { styles } from './aura-styles'
 
 export const WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY = 1.4
@@ -216,7 +216,7 @@ export function WorkerV5KaelChatScreenAura({
     <View pointerEvents="none" style={StyleSheet.absoluteFill} testID={testID}>
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
-          <RadialGradient cx={351} cy={84.4} gradientUnits="userSpaceOnUse" id={fillId} rx={300} ry={260}>
+          <RadialGradient cx={351} cy={84.4} gradientUnits="userSpaceOnUse" id={fillId} r={FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS}>
             <Stop offset="0" stopColor="rgba(121,229,211,0.23)" />
             <Stop offset="0.70" stopColor="rgba(121,229,211,0)" />
           </RadialGradient>

@@ -121,6 +121,21 @@ describe('mobile-api Kael provider adapters', () => {
     expect(opus.body).not.toHaveProperty('temperature')
   })
 
+  it('sends an explicit Anthropic effort level only when the caller selects one', () => {
+    const adapter = providerAdapterFor('anthropic')
+    const balanced = adapter.buildRequest({
+      request: { ...requestFor('anthropic'), effort: 'medium' },
+      apiKey: 'anthropic-key',
+    })
+    const defaultEffort = adapter.buildRequest({
+      request: requestFor('anthropic'),
+      apiKey: 'anthropic-key',
+    })
+
+    expect(balanced.body).toMatchObject({ output_config: { effort: 'medium' } })
+    expect(defaultEffort.body).not.toHaveProperty('output_config')
+  })
+
   it('parses provider responses through the model-price registry', () => {
     const request = requestFor('perplexity')
     const response = providerAdapterFor('perplexity').parseResponse({

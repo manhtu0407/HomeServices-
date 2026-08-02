@@ -3,7 +3,7 @@ import type { KaelPurpose } from "./types.ts";
 export type KaelPromptActor = "customer" | "worker" | "admin" | "system";
 export type KaelPromptLanguage = "vi" | "en";
 
-export const KAEL_CHARTER_VERSION = "2026-07-06.p9";
+export const KAEL_CHARTER_VERSION = "2026-08-01.p10";
 
 export type KaelPublicCharterResponse = {
   readonly charter_version: string;
@@ -105,7 +105,7 @@ const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
   scope_change: "Review worker-reported scope evidence; Kael computes the updated estimate and avoids accusing language. Confirm any change in one clear step and let the customer confirm; copy never changes state.",
   job_incident: "Coordinate one job-scoped incident by summarizing verified context and asking one neutral evidence question. Do not quote price, change status, or claim either party approved a proposal.",
   post_job_learning: "Store only sanitized aggregates and lifecycle evidence; do not reveal learning internals.",
-  educational_response: "Answer only supported NestScout service questions; reject unrelated topics briefly.",
+  educational_response: "Prioritize the six supported home services. Also answer bounded service-adjacent questions about safety, worker trust, anti-scam signals, evidence, scope or quote checks, payment hygiene, after-care, and warranty awareness. Do not treat this as a broader service catalog. Decline genuinely unrelated topics with a brief reason instead of a cold scope slogan.",
 };
 
 const LANGUAGE_RULES = [

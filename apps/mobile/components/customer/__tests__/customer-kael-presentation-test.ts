@@ -3,6 +3,7 @@ import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 import { deriveCustomerKaelPresentation } from '../kael-chat/customer-kael-presentation'
 
 function derivePresentation({
+  assistantTurns = [],
   catalogTurns = [],
   chat = null,
   deal = null,
@@ -10,6 +11,7 @@ function derivePresentation({
   processLines = null,
   turns = [],
 }: {
+  assistantTurns?: Parameters<typeof deriveCustomerKaelPresentation>[0]['assistantTurns']
   catalogTurns?: Parameters<typeof deriveCustomerKaelPresentation>[0]['catalogTurns']
   chat?: KaelChatResponse | null
   deal?: Parameters<typeof deriveCustomerKaelPresentation>[0]['deal']
@@ -18,7 +20,7 @@ function derivePresentation({
   turns?: KaelChatTurn[]
 }) {
   return deriveCustomerKaelPresentation({
-    assistantTurns: [],
+    assistantTurns,
     caseEditOpen: false,
     catalogTurns,
     chat,
@@ -59,6 +61,16 @@ function analysisChat(required?: boolean) {
 }
 
 describe('customer Kael presentation', () => {
+  it('keeps signed evidence previews available for Price Reasoning', () => {
+    const chat = analysisChat(false)
+    chat.session.evidence_previews = [
+      { evidence_index: 1, evidence_kind: 'photo', url: 'https://media.test/photo-1' },
+      { evidence_index: 2, evidence_kind: 'photo', url: 'https://media.test/photo-2' },
+    ]
+
+    expect(derivePresentation({ chat }).evidencePreviews).toEqual(chat.session.evidence_previews)
+  })
+
   it('formats a persisted Basic Intake turn before rendering it in the case thread', () => {
     const presentation = derivePresentation({
       turns: [{
@@ -97,6 +109,40 @@ describe('customer Kael presentation', () => {
     expect(presentation.agenticVisibleTurns).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'kael-1', text_content: 'Vị trí ở đâu trong căn hộ?' }),
     ]))
+  })
+
+  it('shows one pending intake bubble when later evidence turns repeat the same request text', () => {
+    const message = 'Tôi cần sửa nước. Khớp ren dưới bồn rửa đang rò từng giọt. Tôi đã khóa van. Tôi cần thợ tại Quận 3.'
+    const presentation = derivePresentation({
+      chat: analysisChat(false),
+      intakeDisplayMessage: message,
+      turns: [
+        { id: 'initial-customer', role: 'customer', text_content: message },
+        { id: 'kael-evidence', role: 'kael', text_content: 'Bạn thêm ảnh hiện trạng nếu thuận tiện.' },
+        { id: 'evidence-customer', role: 'customer', text_content: message },
+      ] as unknown as KaelChatTurn[],
+    })
+
+    expect(presentation.showPendingDraftBubble).toBe(true)
+    expect(presentation.agenticVisibleTurns.map((turn) => turn.id)).toEqual([
+      'kael-evidence',
+    ])
+  })
+
+  it('renders one copy when persisted evidence submission repeats a detailed intake', () => {
+    const message = 'Tôi cần sửa nước. Khớp ren của ống thoát ngay dưới bồn rửa bếp đang rò từng giọt, có nước đọng và đáy tủ bị ẩm nhưng chưa tràn ra sàn. Tôi đã khóa van. Tôi cần thợ kiểm tra từ 10:00 đến 12:00 ngày 05/08/2026 tại Chung cư An Gia, Phường Võ Thị Sáu, Quận 3.'
+    const presentation = derivePresentation({
+      turns: [
+        { id: 'initial-customer', role: 'customer', text_content: message },
+        { id: 'kael-evidence', role: 'kael', text_content: 'Bạn thêm ảnh hiện trạng nếu thuận tiện.' },
+        { id: 'evidence-customer', role: 'customer', text_content: message },
+      ] as unknown as KaelChatTurn[],
+    })
+
+    expect(presentation.agenticVisibleTurns.map((turn) => turn.id)).toEqual([
+      'initial-customer',
+      'kael-evidence',
+    ])
   })
 
   it('keeps the Basic Intake summary visible while Kael processes a follow-up turn', () => {
@@ -142,6 +188,28 @@ describe('customer Kael presentation', () => {
       'customer-summary',
       'kael-question',
       'customer-answer',
+    ])
+  })
+
+  it('keeps the Pre-Step exchange but removes its duplicated persisted customer turn', () => {
+    const message = 'Tôi cần sửa nước. Khớp ren dưới bồn rửa đang rò từng giọt. Tôi đã khóa van. Tôi cần thợ tại Quận 3.'
+    const presentation = derivePresentation({
+      assistantTurns: [
+        { id: 'local-customer', role: 'customer', surface: 'customer_case', text_content: message },
+        { id: 'local-kael', role: 'kael', surface: 'customer_case', text_content: 'Bạn xác nhận thông tin nhé.' },
+      ],
+      turns: [
+        { id: 'persisted-customer', role: 'customer', text_content: message },
+        { id: 'persisted-kael', role: 'kael', text_content: 'Bạn thêm ảnh hiện trạng nếu thuận tiện.' },
+      ] as unknown as KaelChatTurn[],
+    })
+
+    expect(presentation.caseAssistantTurns.map((turn) => turn.id)).toEqual([
+      'local-customer',
+      'local-kael',
+    ])
+    expect(presentation.agenticVisibleTurns.map((turn) => turn.id)).toEqual([
+      'persisted-kael',
     ])
   })
 

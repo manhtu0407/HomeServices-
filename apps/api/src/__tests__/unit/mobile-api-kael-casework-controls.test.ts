@@ -201,6 +201,14 @@ describe('Kael Case Work deterministic controls', () => {
         analysis_receipt: {
           schema_version: 'analysis_receipt.v1',
           evidence: {
+            analysis_status: 'analyzed',
+            findings: [{
+              confidence: 'high',
+              evidence_index: 1,
+              evidence_kind: 'photo',
+              observation: 'Dàn lạnh có vệt nước kéo dài ở mép dưới.',
+              possible_meaning: 'Có thể đường thoát nước đang bị cản trở.',
+            }],
             photo_count: 1,
             video_frame_count: 2,
             voice_transcript_count: 0,
@@ -211,12 +219,26 @@ describe('Kael Case Work deterministic controls', () => {
             high_trust_source_count: 2,
             quorum_met: true,
           },
+          problem: {
+            remaining_uncertainty: 'Ảnh chưa cho thấy toàn bộ đường thoát nước.',
+            recommended_scope: 'Thợ kiểm tra máng nước, đường thoát và điểm kết nối.',
+            severity_indicators: ['Có vệt nước kéo dài ở mép dưới dàn lạnh.'],
+            summary: 'Dàn lạnh có dấu hiệu thoát nước không ổn định.',
+          },
         },
       },
     })).toMatchObject({
       analysis_receipt: {
         schema_version: 'analysis_receipt.v1',
         evidence: {
+          analysis_status: 'analyzed',
+          findings: [{
+            confidence: 'high',
+            evidence_index: 1,
+            evidence_kind: 'photo',
+            observation: 'Dàn lạnh có vệt nước kéo dài ở mép dưới.',
+            possible_meaning: 'Có thể đường thoát nước đang bị cản trở.',
+          }],
           photo_count: 1,
           video_frame_count: 2,
           voice_transcript_count: 0,
@@ -226,6 +248,12 @@ describe('Kael Case Work deterministic controls', () => {
           accepted_source_count: 3,
           high_trust_source_count: 2,
           quorum_met: true,
+        },
+        problem: {
+          remaining_uncertainty: 'Ảnh chưa cho thấy toàn bộ đường thoát nước.',
+          recommended_scope: 'Thợ kiểm tra máng nước, đường thoát và điểm kết nối.',
+          severity_indicators: ['Có vệt nước kéo dài ở mép dưới dàn lạnh.'],
+          summary: 'Dàn lạnh có dấu hiệu thoát nước không ổn định.',
         },
       },
       complexity_reasoning: 'Phạm vi hiện tại được xếp mức vừa.',
