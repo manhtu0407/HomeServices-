@@ -99,7 +99,7 @@ export function KaelChatTranscript({
           onPress={() => scrollToLatest(!reduceMotion)}
           style={[
             styles.chatLatestButton,
-            { backgroundColor: tokens.primary, shadowColor: tokens.primary },
+            { backgroundColor: tokens.primary, boxShadow: '0px 8px 18px rgba(8, 135, 121, 0.28)' },
           ]}
           testID="customer-v21-kael-jump-to-latest"
         >

@@ -25,10 +25,6 @@ export function resolveWorkerV5BankLogo(bankName: string | null | undefined) {
   return code ? workerV5BankLogos[code] : null
 }
 
-export function workerV5BankLabel(code: WorkerV5BankLogoName) {
-  return WORKER_V5_BANK_OPTIONS.find((item) => item.code === code)?.label ?? code
-}
-
 export function resolveWorkerV5BankLogoName(bankName: string | null | undefined): WorkerV5BankLogoName | null {
   const normalized = bankName?.toLowerCase().replace(/\s+/g, '') ?? ''
   if (!normalized) return null

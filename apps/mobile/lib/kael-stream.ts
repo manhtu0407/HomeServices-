@@ -51,12 +51,12 @@ const STREAM_MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 const STREAM_MAX_ERROR_BYTES = 128 * 1024
 const STREAM_MAX_FRAME_BUFFER_CHARS = 256 * 1024
 
-export type KaelStreamStageEvent = {
+type KaelStreamStageEvent = {
   type: 'stage'
   progress: KaelChatProgress
 }
 
-export type KaelStreamTokenEvent = {
+type KaelStreamTokenEvent = {
   type: 'token'
   field: 'clarification' | 'advisory' | 'worker_assist'
   delta: string
@@ -68,22 +68,22 @@ export type KaelStreamResponseDeltaEvent = {
   delta: string
 }
 
-export type KaelStreamResultEvent = {
+type KaelStreamResultEvent = {
   type: 'result'
   data: KaelChatResponse
 }
 
-export type KaelStreamErrorEvent = {
+type KaelStreamErrorEvent = {
   type: 'error'
   code: string
   message: string
 }
 
-export type KaelStreamHeartbeatEvent = {
+type KaelStreamHeartbeatEvent = {
   type: 'heartbeat'
 }
 
-export type KaelStreamEvent =
+type KaelStreamEvent =
   | KaelStreamStageEvent
   | KaelStreamTokenEvent
   | KaelStreamResponseDeltaEvent
@@ -110,7 +110,7 @@ export type CustomerKaelConversationStreamHandlers = {
   onToken?: (event: KaelStreamTokenEvent) => void
 }
 
-export type WorkerKaelStreamResultEvent = {
+type WorkerKaelStreamResultEvent = {
   type: 'result'
   data: WorkerKaelChatResponse
 }
@@ -124,7 +124,7 @@ export type WorkerKaelChatStreamHandlers = {
   onToken?: (event: KaelStreamTokenEvent) => void
 }
 
-export function supportsKaelChatSseStream() {
+function supportsKaelChatSseStream() {
   return typeof ReadableStream !== 'undefined' && typeof TextDecoder !== 'undefined'
 }
 

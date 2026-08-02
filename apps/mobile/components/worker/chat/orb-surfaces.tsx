@@ -11,8 +11,6 @@ import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
 import { MintAura } from '@/components/ui/kael-primitives'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
-
-import type { WorkerV5ScreenId } from '../dock/types'
 import {
   WorkerV5CustomerCaseWideMintAura,
   WorkerV5CustomerZipMintAura,
@@ -73,58 +71,6 @@ export function WorkerV5KaelOrbCameraIcon({ color: strokeColor }: { color: strin
       <Circle cx={12} cy={13} r={3.8} stroke={strokeColor} strokeWidth={2} />
       <Circle cx={17.35} cy={9.4} fill={strokeColor} r={1.35} />
     </Svg>
-  )
-}
-
-export function WorkerV5KaelOrbMediaStrip({
-  count,
-  reduceTransparency,
-}: {
-  count: number
-  reduceTransparency: boolean
-}) {
-  return (
-    <View style={styles.kaelOrbMediaStrip} testID="worker-v5-kael-media-strip">
-      {Array.from({ length: count }).map((_, index) => (
-        <View key={index} style={[styles.kaelOrbMediaThumb, index % 2 === 0 ? styles.kaelOrbMediaThumbSoft : styles.kaelOrbMediaThumbDark]} testID={`worker-v5-kael-media-thumb-${index}`}>
-          {!reduceTransparency && index % 2 === 0 ? <WorkerV5CustomerZipMintAura scope={`KaelMediaThumb${index}`} style={styles.kaelOrbMediaAura} /> : null}
-          <View style={styles.kaelOrbMediaLine} />
-        </View>
-      ))}
-    </View>
-  )
-}
-
-export function WorkerV5KaelOrbQuickChips({
-  chips,
-  onNavigate,
-}: {
-  chips: readonly { label: string; target: WorkerV5ScreenId | null }[]
-  onNavigate: (id: WorkerV5ScreenId) => void
-}) {
-  return (
-    <View style={styles.kaelOrbQuickChips} testID="worker-v5-kael-quick-chips">
-      {chips.map((chip, index) => (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !chip.target }}
-          disabled={!chip.target}
-          key={`${chip.label}-${index}`}
-          onPress={() => {
-            if (chip.target) onNavigate(chip.target)
-          }}
-          style={({ pressed }) => [
-            styles.kaelOrbQuickChip,
-            index === 0 ? styles.kaelOrbQuickChipSelected : null,
-            !chip.target ? styles.kaelOrbQuickChipDisabled : null,
-            pressed && chip.target ? styles.pressed : null,
-          ]}
-          testID={`worker-v5-kael-quick-chip-${index}`}
-        >
-          <Text style={[styles.kaelOrbQuickChipText, index === 0 ? styles.kaelOrbQuickChipTextSelected : null]} numberOfLines={1}>{chip.label}</Text>
-        </Pressable>
-      ))}
-    </View>
   )
 }
 

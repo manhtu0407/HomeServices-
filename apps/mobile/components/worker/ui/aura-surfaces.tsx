@@ -227,48 +227,6 @@ export function WorkerV5KaelChatScreenAura({
   )
 }
 
-export function WorkerV5SuccessEmblemAura({ scope, testID }: { scope: string; testID?: string }) {
-  const coreId = `workerV5SuccessEmblemAuraCore${scope}`
-  const edgeId = `workerV5SuccessEmblemAuraEdge${scope}`
-  return (
-    <View pointerEvents="none" style={styles.successEmblemAura} testID={testID}>
-      <Svg height="92" preserveAspectRatio="none" viewBox="0 0 92 92" width="92">
-        <Defs>
-          <RadialGradient id={coreId} cx="45%" cy="35%" r="70%">
-            <Stop offset="0" stopColor="#F4FFFC" />
-            <Stop offset="0.55" stopColor="#CBF8EE" />
-            <Stop offset="1" stopColor="#7EDCCA" />
-          </RadialGradient>
-          <RadialGradient id={edgeId} cx="50%" cy="52%" r="58%">
-            <Stop offset="0" stopColor="rgba(255,255,255,0.10)" />
-            <Stop offset="0.58" stopColor="rgba(63,223,202,0.12)" />
-            <Stop offset="1" stopColor="rgba(63,223,202,0)" />
-          </RadialGradient>
-        </Defs>
-        <Circle cx="46" cy="46" fill={`url(#${coreId})`} r="46" />
-        <Circle cx="46" cy="46" fill={`url(#${edgeId})`} r="46" />
-      </Svg>
-    </View>
-  )
-}
-
-export function WorkerV5SuccessCheckFill({ scope, testID }: { scope: string; testID?: string }) {
-  const fillId = `workerV5SuccessCheckFill${scope}`
-  return (
-    <View pointerEvents="none" style={styles.successCheckFill} testID={testID}>
-      <Svg height="58" preserveAspectRatio="none" viewBox="0 0 58 58" width="58">
-        <Defs>
-          <LinearGradient id={fillId} x1="0" x2="1" y1="0" y2="1">
-            <Stop offset="0" stopColor="#33D4BD" />
-            <Stop offset="1" stopColor="#087D72" />
-          </LinearGradient>
-        </Defs>
-        <Circle cx="29" cy="29" fill={`url(#${fillId})`} r="29" />
-      </Svg>
-    </View>
-  )
-}
-
 export function WorkerV5CustomerMapMintAura({
   scope,
   style,

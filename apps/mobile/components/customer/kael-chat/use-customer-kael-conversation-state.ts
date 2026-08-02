@@ -16,7 +16,7 @@ export type CustomerAssistantLocalTurn = {
 
 export type CustomerKaelStreamingReply = KaelResponseStreamState
 
-export type CustomerKaelConversationState = {
+type CustomerKaelConversationState = {
   assistantTurns: CustomerAssistantLocalTurn[]
   chat: KaelChatResponse | null
   composerMediaDrafts: LocalMediaUploadDraft[]
@@ -30,7 +30,7 @@ export type CustomerKaelConversationState = {
   turns: KaelChatTurn[]
 }
 
-export type CustomerKaelConversationAction =
+type CustomerKaelConversationAction =
   | { type: 'set-assistant-turns'; value: SetStateAction<CustomerAssistantLocalTurn[]> }
   | { type: 'set-chat'; value: SetStateAction<KaelChatResponse | null> }
   | { type: 'set-composer-media-drafts'; value: SetStateAction<LocalMediaUploadDraft[]> }

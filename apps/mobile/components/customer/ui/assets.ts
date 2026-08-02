@@ -1,10 +1,10 @@
 import { type ImageSourcePropType } from 'react-native'
 import { type CustomerServiceId, type ServiceType } from '@nestscout/shared'
 
-export type KaelCoreV9Visual = Readonly<{ kind: 'kael-core-v9' }>
+type KaelCoreV9Visual = Readonly<{ kind: 'kael-core-v9' }>
 export type CustomerV21Visual = ImageSourcePropType | KaelCoreV9Visual
 
-export const KAEL_CORE_V9_VISUAL: KaelCoreV9Visual = Object.freeze({ kind: 'kael-core-v9' })
+const KAEL_CORE_V9_VISUAL: KaelCoreV9Visual = Object.freeze({ kind: 'kael-core-v9' })
 
 export function isKaelCoreV9Visual(value: CustomerV21Visual): value is KaelCoreV9Visual {
   return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'kael-core-v9'

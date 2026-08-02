@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AccessibilityInfo } from 'react-native'
 
-export type GlassAccessibilityPreferences = {
+type GlassAccessibilityPreferences = {
   reduceMotion: boolean
   reduceTransparency: boolean
 }

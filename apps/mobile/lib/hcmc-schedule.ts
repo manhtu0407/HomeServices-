@@ -4,7 +4,7 @@ const hcmcOffsetMs = 7 * 60 * 60 * 1000
 const calendarDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/
 const wallClockPattern = /^([01]\d|2[0-3]):([0-5]\d)$/
 
-export type HcmcCalendarDate = {
+type HcmcCalendarDate = {
   date: string
   day: number
   month: number

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import { Image } from 'expo-image'
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 
@@ -19,6 +19,11 @@ type PriceReasoningRevealState = {
   complete: boolean
   visibleDetails: string[]
 }
+
+type PriceReasoningRevealAction =
+  | { type: 'activate-row'; rowIndex: number }
+  | { delta: string; rowIndex: number; type: 'append-delta' }
+  | { model: AgenticEstimateSupportingPhaseModel; type: 'complete' }
 
 export function AgenticPriceReasoningStream({
   model,
@@ -48,45 +53,43 @@ function AgenticPriceReasoningStreamSession({
   reduceMotion: boolean
   tokens: CustomerThemeTokens
 }) {
-  const [reveal, setReveal] = useState<PriceReasoningRevealState>(() => initialReveal(model))
+  const [reveal, dispatchReveal] = useReducer(priceReasoningRevealReducer, model, initialReveal)
   const { width: windowWidth } = useWindowDimensions()
 
   useEffect(() => {
     if (reduceMotion) return undefined
 
     let cancelled = false
-    const revealRows = async () => {
-      for (let rowIndex = 0; rowIndex < model.rows.length; rowIndex += 1) {
-        if (cancelled) return
-        if (rowIndex > 0) {
-          setReveal((current) => ({
-            activeRowIndex: rowIndex,
-            complete: false,
-            visibleDetails: [...current.visibleDetails.slice(0, rowIndex), ''],
-          }))
-        }
-        const deltas = splitVerifiedResponseDeltas(model.rows[rowIndex].detail, 14)
-        for (let deltaIndex = 0; deltaIndex < deltas.length; deltaIndex += 1) {
-          if (cancelled) return
-          const delta = deltas[deltaIndex]
-          setReveal((current) => {
-            const visibleDetails = [...current.visibleDetails]
-            visibleDetails[rowIndex] = `${visibleDetails[rowIndex] ?? ''}${delta}`
-            return { ...current, visibleDetails }
-          })
-          if (deltaIndex < deltas.length - 1) {
-            await waitForReasoningCadence(verifiedResponseCadenceMs(delta))
-          }
-        }
-        if (rowIndex < model.rows.length - 1) {
-          await waitForReasoningCadence(ROW_SETTLE_CADENCE_MS)
-        }
-      }
-      if (!cancelled) setReveal(completedReveal(model))
+    const timers: ReturnType<typeof setTimeout>[] = []
+    let elapsedMs = 0
+    const schedule = (callback: () => void) => {
+      timers.push(setTimeout(() => {
+        if (!cancelled) callback()
+      }, elapsedMs))
     }
-    void revealRows()
+
+    model.rows.forEach((row, rowIndex) => {
+      if (rowIndex > 0) {
+        schedule(() => {
+          dispatchReveal({ rowIndex, type: 'activate-row' })
+        })
+      }
+
+      const deltas = splitVerifiedResponseDeltas(row.detail, 14)
+      deltas.forEach((delta, deltaIndex) => {
+        schedule(() => {
+          dispatchReveal({ delta, rowIndex, type: 'append-delta' })
+        })
+        if (deltaIndex < deltas.length - 1) elapsedMs += verifiedResponseCadenceMs(delta)
+      })
+
+      if (rowIndex < model.rows.length - 1) elapsedMs += ROW_SETTLE_CADENCE_MS
+    })
+
+    schedule(() => dispatchReveal({ model, type: 'complete' }))
     return () => {
       cancelled = true
+      timers.forEach((timer) => clearTimeout(timer))
     }
   }, [model, reduceMotion])
 
@@ -251,18 +254,35 @@ function initialReveal(model: AgenticEstimateSupportingPhaseModel): PriceReasoni
   return { activeRowIndex: 0, complete: false, visibleDetails: [''] }
 }
 
+function priceReasoningRevealReducer(
+  current: PriceReasoningRevealState,
+  action: PriceReasoningRevealAction,
+): PriceReasoningRevealState {
+  switch (action.type) {
+    case 'activate-row':
+      return {
+        activeRowIndex: action.rowIndex,
+        complete: false,
+        visibleDetails: [...current.visibleDetails.slice(0, action.rowIndex), ''],
+      }
+    case 'append-delta': {
+      const visibleDetails = [...current.visibleDetails]
+      visibleDetails[action.rowIndex] = `${visibleDetails[action.rowIndex] ?? ''}${action.delta}`
+      return { ...current, visibleDetails }
+    }
+    case 'complete':
+      return completedReveal(action.model)
+    default:
+      return current
+  }
+}
+
 function completedReveal(model: AgenticEstimateSupportingPhaseModel): PriceReasoningRevealState {
   return {
     activeRowIndex: null,
     complete: true,
     visibleDetails: model.rows.map((row) => row.detail),
   }
-}
-
-function waitForReasoningCadence(milliseconds: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, milliseconds)
-  })
 }
 
 const styles = StyleSheet.create({

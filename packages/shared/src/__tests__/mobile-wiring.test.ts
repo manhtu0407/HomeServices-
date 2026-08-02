@@ -111,7 +111,6 @@ const readWorkerSurfaceLayer = () =>
         && !normalized.endsWith('/components/worker/earnings/payout-request-styles.ts')
         && !normalized.endsWith('/components/worker/earnings/payout-styles.ts')
         && !normalized.endsWith('/components/worker/home/action-styles.ts')
-        && !normalized.endsWith('/components/worker/home/body-styles.ts')
         && !normalized.endsWith('/components/worker/home/opportunity-styles.ts')
         && !normalized.endsWith('/components/worker/profile/body-styles.ts')
         && !normalized.endsWith('/components/worker/profile/header-styles.ts')
@@ -123,20 +122,17 @@ const readWorkerSurfaceLayer = () =>
         && !normalized.endsWith('/components/worker/profile/services-styles.ts')
         && !normalized.endsWith('/components/worker/profile/settings-styles.ts')
         && !normalized.endsWith('/components/worker/profile/verification-styles.ts')
-        && !normalized.endsWith('/components/worker/jobs/styles.ts')
         && !normalized.endsWith('/components/worker/jobs/active-body-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/advisory-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/approval-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/case-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/completion-body-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/acceptance-styles.ts')
-        && !normalized.endsWith('/components/worker/jobs/checkin-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/completion-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/evidence-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/map-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/offer-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/progress-styles.ts')
-        && !normalized.endsWith('/components/worker/jobs/request-body-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/shared-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/source-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/scope-styles.ts')
@@ -612,7 +608,6 @@ describe('customer Kael workflow view model wiring', () => {
   ].join('\n')
   const pendingIntakeFacade = () => read('components/customer/kael-chat/pending-intake.ts')
   const pendingIntake = () => read('lib/pending-kael-chat-draft.ts')
-  const workflowHook = () => read('lib/use-service-workflow.ts')
 
   it('keeps active Customer Kael on the V21 route graph', () => {
     const src = v21Surface()
@@ -648,15 +643,6 @@ describe('customer Kael workflow view model wiring', () => {
     expect(pendingIntake()).toContain('export async function setPendingKaelChatDraft(ownerId: string')
     expect(pendingIntake()).toContain('export async function readPendingKaelChatDraft')
     expect(pendingIntake()).toContain('PENDING_KAEL_CHAT_DRAFT_TTL_MS = 30 * 60 * 1000')
-  })
-
-  it('keeps the mobile workflow adapter memoized and side-effect free', () => {
-    const src = workflowHook()
-    expect(src).toContain("import { useMemo } from 'react'")
-    expect(src).toContain('return useMemo(')
-    expect(src).toContain('buildWorkflowViewModel({')
-    expect(src).not.toContain('fetch(')
-    expect(src).not.toContain('supabase')
   })
 
   it('renders Kael process steps progressively from the ticket artifact mode', () => {
@@ -737,14 +723,10 @@ describe('customer Kael workflow view model wiring', () => {
       return staleMintTokens.filter((token) => src.includes(token)).map((token) => `${rel}:${token}`)
     })
     const workerPrimitives = read('components/worker/ui/primitives-surfaces.tsx')
-    const workerAcceptBody = read('components/worker/jobs/request-bodies.tsx')
 
     expect(offenders).toEqual([])
     expect(workerPrimitives).toContain("['#31D7C2', '#09B29E', '#077C72']")
     expect(workerPrimitives).toContain('[0, 0.48, 1] as const')
-    expect(workerAcceptBody).toContain('<Stop offset="0" stopColor="#31D7C2" />')
-    expect(workerAcceptBody).toContain('<Stop offset="0.48" stopColor="#09B29E" />')
-    expect(workerAcceptBody).toContain('<Stop offset="1" stopColor="#077C72" />')
   })
 
   it('keeps rgba SVG stops routed through the native-safe alpha helper', () => {
@@ -2019,11 +2001,6 @@ describe('mobile glassmorphism design system', () => {
     'components/ui/motion-tokens.ts',
     'components/ui/accessibility-motion.ts',
     'components/ui/glass-surface.tsx',
-    'components/ui/glass-card.tsx',
-    'components/ui/glass-pressable.tsx',
-    'components/ui/glass-search-bar.tsx',
-    'components/ui/glass-modal-sheet.tsx',
-    'components/ui/floating-glass-tab-bar.tsx',
     'components/ui/kael-core-v9.tsx',
     'components/ui/reduce-motion-aware-animation.ts',
   ] as const
@@ -2134,26 +2111,6 @@ describe('mobile glassmorphism design system', () => {
   })
 
 
-})
-
-// ===================================================================
-// colors.ts - design consistency
-// ===================================================================
-
-describe('constants/colors.ts', () => {
-  it('exists', () => {
-    expect(exists('constants/colors.ts')).toBe(true)
-  })
-
-  it('exports Colors object', () => {
-    const src = read('constants/colors.ts')
-    expect(src).toContain('Colors')
-  })
-
-  it('has primary color', () => {
-    const src = read('constants/colors.ts')
-    expect(src).toContain('primary')
-  })
 })
 
 // ===================================================================

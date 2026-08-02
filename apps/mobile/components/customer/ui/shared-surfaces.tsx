@@ -10,8 +10,6 @@ import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { KaelCoreV9 } from '@/components/ui/kael-core-v9'
-import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
-import { KaelChip } from '@/components/ui/kael-primitives'
 import { useAppLanguage } from '@/lib/app-language'
 
 import {
@@ -111,16 +109,6 @@ function CustomerV21AssetVisual({
 }) {
   if (isKaelCoreV9Visual(image)) return <KaelCoreV9 reduceMotion={reduceMotion} size={size} />
   return <Image contentFit="contain" source={image} style={{ height: size, width: size }} />
-}
-
-export function SectionHeader({ eyebrow, title }: { eyebrow?: string; title: string }) {
-  const { tokens } = useCustomerV21SurfaceTheme()
-  return (
-    <View style={styles.sectionHeader}>
-      {eyebrow ? <Text style={[styles.eyebrow, { color: tokens.primary }]}>{eyebrow}</Text> : null}
-      <Text style={[styles.sectionTitle, { color: tokens.text }]}>{title}</Text>
-    </View>
-  )
 }
 
 export function SectionActionHeader({
@@ -330,7 +318,7 @@ export function V21Screen({
   )
 }
 
-export function TopBackChevron({ color }: { color: string }) {
+function TopBackChevron({ color }: { color: string }) {
   return (
     <Svg height={18} style={styles.topControlIcon} viewBox="0 0 24 24" width={18}>
       <Path d="M15 5L8 12L15 19" fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.8} />
@@ -526,37 +514,6 @@ export function EmptyState({
   )
 }
 
-export function EyebrowPill({
-  animated = false,
-  label,
-  preserveCase = false,
-  style,
-  testID,
-  tokens,
-}: {
-  animated?: boolean
-  label: string
-  preserveCase?: boolean
-  style?: StyleProp<ViewStyle>
-  testID?: string
-  tokens: CustomerThemeTokens
-}) {
-  const content = (
-    <View style={[styles.eyebrowPill, style, { backgroundColor: tokens.service, borderColor: tokens.border }]} testID={testID}>
-      <View style={[styles.eyebrowDot, { backgroundColor: tokens.primary }]} />
-      <Text style={[styles.eyebrowPillText, preserveCase ? styles.eyebrowPillTextPreserve : null, { color: tokens.primary }]}>{label}</Text>
-    </View>
-  )
-
-  if (!animated) return content
-
-  return (
-    <ReduceMotionAwareEntranceView distanceY={4} style={styles.eyebrowMotionWrap}>
-      {content}
-    </ReduceMotionAwareEntranceView>
-  )
-}
-
 export function ProgressRail({
   activeStep = 1,
   style,
@@ -606,63 +563,5 @@ export function ProgressRail({
         )
       })}
     </View>
-  )
-}
-
-export function InfoNotice({
-  assetTile: AssetTile,
-  body,
-  image,
-  title,
-  tokens,
-}: {
-  assetTile: CustomerV21AssetTile
-  body: string
-  image: CustomerV21Visual
-  title: string
-  tokens: CustomerThemeTokens
-}) {
-  return (
-    <View style={[styles.infoNotice, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
-      <AssetTile image={image} label={title} size={38} style={styles.infoNoticeIcon} />
-      <View style={styles.flex}>
-        <Text style={[styles.infoNoticeTitle, { color: tokens.text }]}>{title}</Text>
-        <Text style={[styles.infoNoticeBody, { color: tokens.muted }]}>{body}</Text>
-      </View>
-    </View>
-  )
-}
-
-export function MatchingHandoffChip({
-  label,
-  style,
-  testID,
-  tone = 'unselected',
-}: {
-  label: string
-  style?: StyleProp<ViewStyle>
-  testID?: string
-  tone?: 'selected' | 'success' | 'unselected'
-}) {
-  const variant = tone === 'success' ? 'successStatus' : tone
-  const auraScope = `Handoff${tone}${(testID ?? label).replace(/[^A-Za-z0-9]/g, '') || 'Chip'}`
-  return (
-    <KaelChip
-      backgroundLayer={tone === 'selected' || tone === 'success' ? <ZipMintAura scope={auraScope} /> : null}
-      label={label}
-      style={[
-        styles.matchingHandoffChip,
-        tone === 'selected' ? styles.matchingHandoffChipSelected : null,
-        tone === 'success' ? styles.matchingHandoffChipSuccess : null,
-        style,
-      ]}
-      testID={testID}
-      textStyle={[
-        styles.matchingHandoffChipText,
-        tone === 'selected' ? styles.matchingHandoffChipSelectedText : null,
-        tone === 'success' ? styles.matchingHandoffChipSuccessText : null,
-      ]}
-      variant={variant}
-    />
   )
 }

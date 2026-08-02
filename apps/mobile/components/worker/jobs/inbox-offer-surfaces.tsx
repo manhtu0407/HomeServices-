@@ -30,7 +30,7 @@ function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
-export const workerV5OfferDetailIcons: Record<WorkerV5IconName, ImageSourcePropType> = {
+const workerV5OfferDetailIcons: Record<WorkerV5IconName, ImageSourcePropType> = {
   ...workerV5Icons,
   clock: require('@/assets/worker-image-icons/offer-acceptance-window.png') as ImageSourcePropType,
   document: require('@/assets/worker-image-icons/offer-scope-modules.png') as ImageSourcePropType,
@@ -38,7 +38,7 @@ export const workerV5OfferDetailIcons: Record<WorkerV5IconName, ImageSourcePropT
   profile: require('@/assets/worker-image-icons/offer-customer-handoff.png') as ImageSourcePropType,
 }
 
-export const workerV5OfferDetailEmptyIcon = require('@/assets/worker-image-icons/offer-arrival-signal.png') as ImageSourcePropType
+const workerV5OfferDetailEmptyIcon = require('@/assets/worker-image-icons/offer-arrival-signal.png') as ImageSourcePropType
 
 export function WorkerV5OpportunityInboxBody({
   language,

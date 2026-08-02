@@ -1,13 +1,8 @@
 import { appCopy, localizedProblemLabel, type AppLanguage } from '@/lib/app-language'
 import { formatHcmcScheduledAt } from '@/lib/hcmc-schedule'
-import {
-  buildLocalJobDisplayCode,
-  type LocalDeal,
-  type LocalPaymentStatus,
-} from '@nestscout/shared'
+import { buildLocalJobDisplayCode, type LocalDeal } from '@nestscout/shared'
 
 import { customerV21CommonCopy } from '../ui/copy'
-import { formatNumber } from './case-work-money-display-model'
 
 export {
   approvalConfidenceLabel,
@@ -23,8 +18,6 @@ export {
   scopeChangeApproveLabel,
 } from './case-work-money-display-model'
 
-export type FulfillmentStepState = 'active' | 'done' | 'pending'
-
 export function caseDisplayCode(deal: LocalDeal, language: AppLanguage) {
   if (deal.displayCode) return deal.displayCode
   if (!deal.id.startsWith('local-')) {
@@ -36,50 +29,9 @@ export function caseDisplayCode(deal: LocalDeal, language: AppLanguage) {
   return language === 'vi' ? 'Nháp dịch vụ' : 'Service draft'
 }
 
-export function paymentProviderLabel(provider: string, language: AppLanguage) {
-  if (provider === 'sepay_vietqr') return 'VietQR'
-  if (provider === 'cash') return language === 'vi' ? 'Tiền mặt' : 'Cash'
-  if (provider === 'bank_transfer') return language === 'vi' ? 'Chuyển khoản ngân hàng' : 'Bank transfer'
-  return language === 'vi' ? 'Phương thức hệ thống' : provider
-}
-
-export function paymentStatusLabel(status: LocalPaymentStatus, language: AppLanguage) {
-  const vi: Record<LocalPaymentStatus, string> = {
-    amount_mismatch: 'Sai lệch số tiền',
-    code_requested: 'Đã yêu cầu mã thanh toán',
-    expired: 'Đã hết hạn',
-    failed: 'Thanh toán lỗi',
-    not_started: 'Chưa bắt đầu',
-    pending: 'Đang chờ xác nhận',
-    received: 'Đã nhận tiền',
-    cash_confirmed: 'Đã ghi nhận tiền mặt',
-    reconciled: 'Đã đối soát',
-    vietqr_ready: 'VietQR sẵn sàng',
-  }
-  const en: Record<LocalPaymentStatus, string> = {
-    amount_mismatch: 'Amount mismatch',
-    code_requested: 'Payment code requested',
-    expired: 'Expired',
-    failed: 'Failed',
-    not_started: 'Not started',
-    pending: 'Pending',
-    received: 'Received',
-    cash_confirmed: 'Cash recorded',
-    reconciled: 'Reconciled',
-    vietqr_ready: 'VietQR ready',
-  }
-  return language === 'vi' ? vi[status] : en[status]
-}
-
 export function formatDurationShort(seconds: number, language: AppLanguage) {
   const minutes = Math.max(1, Math.round(seconds / 60))
   return language === 'vi' ? `${minutes} phút` : `${minutes} min`
-}
-
-export function formatEvidenceFileCount(value: number | null | undefined, language: AppLanguage) {
-  const realCount = typeof value === 'number' ? value : 0
-  const count = formatNumber(realCount, language)
-  return language === 'vi' ? `${count} tệp` : `${count} file${realCount === 1 ? '' : 's'}`
 }
 
 export function normalizeKaelRoutingText(value: string) {

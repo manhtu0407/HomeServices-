@@ -1,6 +1,6 @@
 import type { AppLanguage } from '@/lib/app-language'
 
-export type EntryAuthErrorKey =
+type EntryAuthErrorKey =
   | 'accountExists'
   | 'accountNotReady'
   | 'appleSignInFailed'

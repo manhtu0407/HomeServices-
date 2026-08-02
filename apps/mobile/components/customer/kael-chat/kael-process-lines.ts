@@ -54,7 +54,7 @@ export type KaelProcessSequence = {
   scenarioId: KaelProcessScenarioId
 }
 
-export type BuildKaelProcessSequenceInput = {
+type BuildKaelProcessSequenceInput = {
   caseId?: string | null
   complexity?: string | null
   distance?: string | null

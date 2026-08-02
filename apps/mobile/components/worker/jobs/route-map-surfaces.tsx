@@ -76,7 +76,7 @@ export function WorkerV5RouteMapStage({
   )
 }
 
-export function WorkerV5AuthenticatedRouteMapPreview({
+function WorkerV5AuthenticatedRouteMapPreview({
   label,
   language,
   uri,
@@ -88,7 +88,7 @@ export function WorkerV5AuthenticatedRouteMapPreview({
   return <WorkerV5AuthenticatedRouteMapImage key={uri} label={label} language={language} uri={uri} />
 }
 
-export function WorkerV5AuthenticatedRouteMapImage({
+function WorkerV5AuthenticatedRouteMapImage({
   label,
   language,
   uri,

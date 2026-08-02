@@ -9,7 +9,7 @@ export const PENDING_KAEL_CHAT_DRAFT_TTL_MS = 30 * 60 * 1000
 const PENDING_KAEL_CHAT_DRAFT_STORAGE_KEY = 'nestscout.customer.pending_kael_chat_draft.v2'
 const LEGACY_PENDING_KAEL_CHAT_DRAFT_STORAGE_KEY = 'nestscout.customer.pending_kael_chat_draft.v1'
 
-export type PendingKaelScheduleWindow = {
+type PendingKaelScheduleWindow = {
   date: string
   start: string
   end: string
@@ -377,10 +377,4 @@ export async function clearPendingKaelChatDraft(ownerId: string) {
     }
     await AsyncStorage.removeItem(LEGACY_PENDING_KAEL_CHAT_DRAFT_STORAGE_KEY).catch(() => undefined)
   })
-}
-
-export function takePendingKaelChatDraft(ownerId: string) {
-  const draft = peekPendingKaelChatDraft(ownerId)
-  void clearPendingKaelChatDraft(ownerId)
-  return draft
 }

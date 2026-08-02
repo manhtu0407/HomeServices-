@@ -20,7 +20,7 @@ type RootProfileOverviewStyles = {
   pressed: StyleProp<ViewStyle>
 }
 
-export type ProfileSettingsRowModel = {
+type ProfileSettingsRowModel = {
   destructive?: boolean
   image: ImageSourcePropType
   onPress: () => void

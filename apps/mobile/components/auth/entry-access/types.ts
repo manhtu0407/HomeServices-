@@ -22,7 +22,7 @@ export type RegistrationInput = {
   password: string
 }
 
-export type PasswordRecoveryInput = {
+type PasswordRecoveryInput = {
   email: string
 }
 
@@ -39,7 +39,7 @@ export type EntryAccessFeatureFlags = {
   workerRegistration: boolean
 }
 
-export type EntryAccessActions = {
+type EntryAccessActions = {
   onPasswordLogin: (input: PasswordLoginInput) => Promise<EntryActionResult>
   onRegister: (input: RegistrationInput) => Promise<EntryActionResult>
   onAppleLogin?: () => Promise<EntryActionResult>

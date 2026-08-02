@@ -129,8 +129,8 @@ export function WorkerV5WorkerRegistrationBody({
   const submit = async () => {
     const years = Number.parseInt(state.yearsExperience, 10)
     const radius = Number.parseInt(state.serviceRadiusKm, 10)
-    const districts = state.districts.split(',').map((item) => item.trim()).filter(Boolean)
-    const specializations = state.problemSpecializations.split(',').map((item) => item.trim()).filter(Boolean)
+    const districts = commaSeparatedValues(state.districts)
+    const specializations = commaSeparatedValues(state.problemSpecializations)
     if (state.legalName.trim().length < 2 || !isPastDate(state.dateOfBirth)) {
       dispatch({ type: 'error', value: textByLanguage(language, 'Nhập họ tên hợp lệ và ngày sinh theo dạng YYYY-MM-DD.', 'Enter a valid name and date of birth as YYYY-MM-DD.') })
       return
@@ -291,6 +291,13 @@ function VerificationFileRow({ dark, file, label, onPress, testID }: { dark: boo
       <RNText numberOfLines={1} style={[styles.fileStatus, dark ? styles.fileStatusDark : null]}>{file?.fileName ?? 'Chọn ảnh'}</RNText>
     </Pressable>
   )
+}
+
+function commaSeparatedValues(value: string) {
+  return value.split(',').flatMap((item) => {
+    const trimmed = item.trim()
+    return trimmed ? [trimmed] : []
+  })
 }
 
 function isPastDate(value: string) {

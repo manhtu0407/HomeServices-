@@ -102,12 +102,15 @@ function KaelResponseList({ block, tokens }: {
   tokens: CustomerThemeTokens
 }) {
   const items = block.text.split('\n').filter((line) => line.trim().length > 0)
+  const occurrenceByLine = new Map<string, number>()
   return (
     <View style={styles.kaelResponseList}>
-      {items.map((line, index) => {
+      {items.map((line) => {
         const parsed = parseListLine(line)
+        const occurrence = occurrenceByLine.get(line) ?? 0
+        occurrenceByLine.set(line, occurrence + 1)
         return (
-          <View key={`${block.id}:item:${index}`} style={styles.kaelResponseListRow}>
+          <View key={`${block.id}:item:${line}:${occurrence}`} style={styles.kaelResponseListRow}>
             <Text style={[styles.kaelResponseListMarker, { color: tokens.primary }]}>{parsed.marker}</Text>
             <Text style={[styles.kaelResponseListText, { color: tokens.text }]}>
               {parsed.text}

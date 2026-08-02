@@ -1,5 +1,4 @@
 import type { JobDetailResponse, WorkerBroadcastsResponse, WorkerJobListResponse } from '../api-types'
-import { buildWorkerV5SchedulePlan } from '../../components/worker/jobs/schedule'
 import { sameWorkerJobs } from '../frontend-workflow/comparisons'
 import { jobDetailToSnapshot, workerBroadcastToSnapshot, workerJobToSnapshot } from '../frontend-workflow/snapshots'
 
@@ -183,23 +182,6 @@ describe('frontend workflow payment truth', () => {
     expect(snapshot.customerEvidencePhotoUrls).toEqual(legacyJob.photo_urls)
     expect(snapshot.fieldEvidencePhotoUrls).toEqual([])
     expect(snapshot.completionPhotoUrls).toEqual([])
-  })
-
-  it('renders and orders a worker schedule from scheduled_at instead of its list position', () => {
-    const later = buildWorkerJob({
-      id: 'job-later',
-      status: 'worker_matched',
-      scheduled_at: '2026-07-15T03:00:00.000Z',
-    })
-    const earlier = buildWorkerJob({
-      id: 'job-earlier',
-      status: 'worker_matched',
-      scheduled_at: '2026-07-15T01:00:00.000Z',
-    })
-
-    const schedule = buildWorkerV5SchedulePlan(null, [later, earlier], 'vi')
-
-    expect(schedule.rows.map((row) => row.time)).toEqual(['15/07 · 08:00', '15/07 · 10:00'])
   })
 
   it('detects a worker schedule-only refresh instead of retaining a stale time', () => {

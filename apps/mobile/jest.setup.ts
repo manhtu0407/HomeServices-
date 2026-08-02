@@ -62,16 +62,6 @@ jest.mock('expo-speech-recognition', () => ({
   useSpeechRecognitionEvent: jest.fn(),
 }))
 
-jest.mock('lottie-react-native', () => {
-  const React = require('react')
-  const { View } = require('react-native')
-  function LottieViewMock(props: any) {
-    return React.createElement(View, props)
-  }
-
-  return LottieViewMock
-})
-
 // Accessibility prefs are environmental. Default them to "off" in tests so the
 // async AccessibilityInfo probes inside useGlassAccessibility don't fire state
 // updates after assertions (which otherwise log act(...) warnings).

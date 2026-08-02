@@ -114,7 +114,7 @@ export function WorkerV5ProfileHeader({
   )
 }
 
-export const WORKER_LIFETIME_MAX_MINUTES = 10_000 * 60
+const WORKER_LIFETIME_MAX_MINUTES = 10_000 * 60
 
 function clampWorkerActiveMinutes(value: number | null | undefined) {
   if (!Number.isFinite(value)) return 0

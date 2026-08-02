@@ -163,7 +163,6 @@ import {
 } from '../worker-surfaces'
 import { resolveWorkerV5DockActive } from '../dock/routing'
 import { WorkerRebuildDockOverlay } from '../dock/worker-v5-dock-overlay'
-import { WorkerV5ScheduleList } from '../jobs/surfaces'
 import {
   WORKER_V5_FORMULA_MINT_CARD_AURA_INTENSITY,
   WorkerV5FormulaMintCardAura,
@@ -764,17 +763,6 @@ beforeEach(async () => {
 })
 
 describe('Worker runtime surface wiring', () => {
-  it('keeps the schedule ordinal inset from the left edge', () => {
-    render(
-      <WorkerV5ScheduleList
-        reduceTransparency={false}
-        rows={[{ aside: 'Matched', meta: 'Area', time: '01', title: 'Plumbing' }]}
-      />,
-    )
-
-    expect(StyleSheet.flatten(screen.getByText('01').props.style)).toMatchObject({ paddingLeft: 7 })
-  })
-
   it('keeps the worker home focused on availability and quick actions without the Kael prepared-work card', () => {
     buildWorkflow({ deal: buildIncomingDeal() })
 

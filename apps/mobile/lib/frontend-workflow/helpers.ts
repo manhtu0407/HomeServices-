@@ -149,19 +149,6 @@ export function isAppForeground() {
   return AppState.currentState === 'active'
 }
 
-export function currentWorkerMonthRange(referenceDate = new Date()) {
-  const from = new Date(referenceDate)
-  from.setDate(1)
-  from.setHours(0, 0, 0, 0)
-  const to = new Date(from)
-  to.setMonth(to.getMonth() + 1)
-  to.setMilliseconds(-1)
-  return {
-    from: from.toISOString(),
-    to: to.toISOString(),
-  }
-}
-
 export function currentWorkerYearRange(referenceDate = new Date()) {
   const hcmcOffsetMs = 7 * 60 * 60 * 1000
   const hcmcYear = new Date(referenceDate.getTime() + hcmcOffsetMs).getUTCFullYear()

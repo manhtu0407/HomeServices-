@@ -547,14 +547,14 @@ export function WorkerV5InProgressBody({
   )
 }
 
-export type WorkerV5FieldEvidenceRequest = {
+type WorkerV5FieldEvidenceRequest = {
   createRef: PendingClientRequestRef
   fingerprint: string
   jobId: string
   mediaRefs: string[] | null
   turnRef: PendingClientRequestRef
 }
-export type WorkerV5FieldEvidenceUiState = {
+type WorkerV5FieldEvidenceUiState = {
   busy: boolean
   busySlot: number | null
   confirmation: string | null
