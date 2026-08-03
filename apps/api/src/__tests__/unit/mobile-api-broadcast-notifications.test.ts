@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { notifyBroadcastWorkers } from '../../../../../supabase/functions/mobile-api/_shared/services/notifications.service'
+import { notifyBroadcastWorkers } from '../../../../../supabase/functions/mobile-api/_shared/domains/notification/notifications'
 
 describe('broadcast worker notifications', () => {
   it('starts independent push-token reads together after durable notification inserts', async () => {

@@ -7,7 +7,17 @@ const migration = () => readFileSync(
 )
 
 const processor = () => readFileSync(
-  new URL('../../../../../supabase/functions/mobile-api/_shared/kael/cron/process-learning-queue.ts', import.meta.url),
+  new URL('../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/process-learning-queue.ts', import.meta.url),
+  'utf8',
+)
+
+const queueRead = () => readFileSync(
+  new URL('../../../../../supabase/functions/mobile-api/_shared/kael/learning/queue-read.ts', import.meta.url),
+  'utf8',
+)
+
+const queueWrite = () => readFileSync(
+  new URL('../../../../../supabase/functions/mobile-api/_shared/kael/learning/queue-write.ts', import.meta.url),
   'utf8',
 )
 
@@ -25,24 +35,23 @@ describe('learning queue atomic claims', () => {
   })
 
   it('uses the atomic claim before any provider path', () => {
-    const source = processor()
-    const handler = source.match(
-      /export async function processLearningQueue\([\s\S]*?type DeepSeekLearningQueueResult/,
-    )?.[0] ?? ''
+    const handler = processor()
+    const claimSource = queueRead()
 
-    const claim = handler.indexOf('claim_kael_learning_queue_atomic')
+    const claim = handler.indexOf('claimLearningQueueRows')
     const deepSeek = handler.indexOf('processDeepSeekLearningQueue')
     const anthropic = handler.indexOf('submitAnthropicLearningBatch')
 
     expect(claim).toBeGreaterThan(-1)
     expect(deepSeek).toBeGreaterThan(claim)
     expect(anthropic).toBeGreaterThan(claim)
-    expect(handler).not.toContain('.eq("queue_state", "pending")')
+    expect(claimSource).toContain('claim_kael_learning_queue_atomic')
+    expect(claimSource).not.toContain('.eq("queue_state", "pending")')
   })
 
   it('atomically finalizes realtime effects with exact-claim replay protection', () => {
     const sql = migration()
-    const source = processor()
+    const source = queueWrite()
     const finalizeCall = source.indexOf('complete_kael_learning_queue_realtime_atomic')
     const legacyLifecycleInsert = source.indexOf('from("kael_rule_lifecycle_log").insert')
 
@@ -59,12 +68,12 @@ describe('learning queue atomic claims', () => {
   })
 
   it('checks owned queue and DeepSeek item writes instead of reporting false success', () => {
-    const source = processor()
+    const source = queueWrite()
     const queueUpdate = source.match(
-      /async function updateQueueRows[\s\S]*?function queueCustomId/,
+      /export async function updateQueueRows[\s\S]*?export async function releaseQueueRows/,
     )?.[0] ?? ''
     const itemUpdate = source.match(
-      /async function updateDeepSeekBatchItem[\s\S]*?async function mapWithConcurrency/,
+      /export async function updateDeepSeekBatchItem[\s\S]*?export async function updateAiBatch/,
     )?.[0] ?? ''
 
     expect(queueUpdate).toContain('.eq("claim_id", claimId)')

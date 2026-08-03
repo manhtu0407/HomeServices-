@@ -8,7 +8,7 @@ import {
   __resetRateLimitStoreForTests,
   checkKaelChatRateLimit,
   checkRateLimit,
-} from '../../../../../supabase/functions/mobile-api/_shared/rate-limit'
+} from '../../../../../supabase/functions/mobile-api/_shared/platform/rate-limit'
 import {
   jobCreateSchema,
   kaelChatCreateSchema,

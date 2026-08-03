@@ -1,4 +1,4 @@
-import type { AIProvider } from "../types.ts";
+import type { AIProvider } from "../contracts/types.ts";
 import { calculateModelCostUsd } from "./model-pricing.ts";
 
 export const KAEL_OPTIMIZATION_FLAG_NAMES = [

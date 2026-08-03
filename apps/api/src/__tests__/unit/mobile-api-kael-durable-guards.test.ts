@@ -6,7 +6,7 @@ import {
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
   takeDurableKaelChatRateLimit,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/durable-guards'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/durable-guards'
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 
 afterEach(() => {

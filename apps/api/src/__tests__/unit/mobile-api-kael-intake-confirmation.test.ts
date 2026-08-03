@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildKaelIntakeConfirmation,
   kaelIntakeConfirmationSchema,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-confirmation'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/intake-confirmation'
 
 const FUTURE_NOW = new Date('2026-07-29T00:00:00.000Z')
 

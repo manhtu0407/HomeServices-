@@ -1,4 +1,4 @@
-import type { EdgeAiSecrets } from "../types.ts";
+import type { EdgeAiSecrets } from "../contracts/types.ts";
 import {
   createBufferedResponse,
   readResponseBytesBounded,

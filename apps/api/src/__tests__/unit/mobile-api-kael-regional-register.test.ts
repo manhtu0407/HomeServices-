@@ -8,9 +8,9 @@ import {
   detectRegionalRegister,
   resolveRegionalRegister,
   scoreRegionalMarkers,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/regional-register'
-import { REGIONAL_LEXICON } from '../../../../../supabase/functions/mobile-api/_shared/kael/regional-lexicon'
-import { buildKaelSystemPrompt } from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/language/regional-register'
+import { REGIONAL_LEXICON } from '../../../../../supabase/functions/mobile-api/_shared/kael/language/regional-lexicon'
+import { buildKaelSystemPrompt } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/system-prompt'
 
 const ROOT = resolve(__dirname, '../../../../../')
 const readEdge = (rel: string) =>
@@ -176,15 +176,15 @@ describe('KC2 Edge regional register — prompt integration', () => {
 
 describe('KC2 Edge regional register — wiring + no PII logging', () => {
   it('is wired into the customer conversational path', () => {
-    const assistant = readEdge('customer-assistant.ts')
+    const assistant = readEdge('agents/customer-assistant.ts')
     expect(assistant).toContain('detectRegionalRegister')
     expect(assistant).toContain('buildRegisterHint')
     expect(assistant).toContain('registerHint')
   })
 
   it('detector and lexicon do not import workspace packages or log anything (RULES #9)', () => {
-    const detector = readEdge('regional-register.ts')
-    const lexicon = readEdge('regional-lexicon.ts')
+    const detector = readEdge('language/regional-register.ts')
+    const lexicon = readEdge('language/regional-lexicon.ts')
     for (const src of [detector, lexicon]) {
       expect(src).not.toContain('packages/shared')
       expect(src).not.toContain('console.')

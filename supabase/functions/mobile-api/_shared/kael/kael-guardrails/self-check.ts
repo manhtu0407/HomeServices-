@@ -1,5 +1,5 @@
-import type { KaelPromptActor, KaelPromptLanguage } from "../system-prompt.ts";
-import { canonicalizeVN } from "../canonicalize-vn.ts";
+import type { KaelPromptActor, KaelPromptLanguage } from "../prompts/system-prompt.ts";
+import { canonicalizeVN } from "../language/canonicalize-vn.ts";
 
 export type KaelSelfCheckReason =
   | "empty"

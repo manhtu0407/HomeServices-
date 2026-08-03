@@ -6,11 +6,11 @@ import {
   requiredCaseWorkEvidenceRequest,
   resolveCaseWorkEvidenceRequest,
   resolveProfileFactCoverage,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/case-work-controls'
-import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
-import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
-import { diagnosisScopeWithEvidenceRequest } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-case-work'
-import { serializeKaelEstimate } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/case-work-controls'
+import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/artifact-contract'
+import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/performance-profiles'
+import { diagnosisScopeWithEvidenceRequest } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-artifact'
+import { serializeKaelEstimate } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/serialize'
 
 describe('Kael Case Work deterministic controls', () => {
   it('requires every selected profile quote driver to have a structured fact', () => {

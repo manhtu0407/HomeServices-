@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { runKaelAutonomyOrchestrator } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator-facade'
+import { runKaelAutonomyOrchestrator } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator-facade'
 
 describe('Kael orchestrator facade', () => {
   it('runs autonomy decisions through the purpose stage and emits unified telemetry', async () => {
@@ -62,26 +62,36 @@ describe('Kael orchestrator facade', () => {
   })
 
   it('keeps autonomy-eligible decisions on the facade while explicit customer gates stay deterministic', () => {
-    const servicesSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
-      'utf8',
-    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/job-create.service.ts'), 'utf8')
+    const servicesSource = [
+      readFileSync(
+        join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains.ts'),
+        'utf8',
+      ),
+      readFileSync(
+        join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/job/create/create.ts'),
+        'utf8',
+      ),
+      readFileSync(
+        join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/job/create/autonomy.ts'),
+        'utf8',
+      ),
+    ].join('\n')
 
     const autonomyGateSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/autonomy-gate.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/kael/agents/autonomy-gate.ts'),
       'utf8',
     )
     const scopeChangeSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/job/scope-change/request.ts'),
       'utf8',
     )
     const completionReviewSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/payment/completion-review.ts'),
       'utf8',
     )
     const autonomyEligibleSources = servicesSource +
-      readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts'), 'utf8') +
-      readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/worker-cancellation.service.ts'), 'utf8')
+      readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/customer/cancellation.ts'), 'utf8') +
+      readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/worker/cancellation.ts'), 'utf8')
 
     expect(autonomyGateSource).toContain('runKaelAutonomyOrchestrator')
     expect(servicesSource).toContain('label: "estimate_to_matching"')

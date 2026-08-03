@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { matchCaseWorkResourceRoute } from '../../../../../supabase/functions/mobile-api/_shared/router/case-work-resource-routes'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { matchCaseWorkResourceRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes'
 import {
   attachJobMedia,
   createJobMediaUpload,
   revokeJobMediaUploads,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/job-media.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/job/media'
 
 const JOB_ID = '11111111-1111-4111-8111-111111111111'
 

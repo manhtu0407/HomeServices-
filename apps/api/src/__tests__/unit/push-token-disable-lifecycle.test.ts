@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   sendPushToUsers,
   type PushDbClient,
-} from '../../../../../supabase/functions/mobile-api/_shared/push'
+} from '../../../../../supabase/functions/mobile-api/_shared/platform/push'
 
 type DbResult = {
   data: unknown

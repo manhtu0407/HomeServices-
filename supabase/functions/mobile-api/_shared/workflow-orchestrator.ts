@@ -2,8 +2,8 @@ import type { JobStatus } from "../../_shared/domain.ts";
 import {
   type KaelAutonomyDecision,
   kaelAutonomyDecisionSchema,
-} from "./kael/artifact-contract.ts";
-import { validateTransition } from "./lifecycle.ts";
+} from "./kael/contracts/artifact-contract.ts";
+import { validateTransition } from "./platform/lifecycle.ts";
 
 export type WorkflowTransitionEvent =
   | "ai_estimate_ready"

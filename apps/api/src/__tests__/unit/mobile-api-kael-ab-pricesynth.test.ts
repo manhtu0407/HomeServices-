@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   evaluatePriceSynthesisAbCase,
   priceSynthesisAbCaseSchema,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/price-synthesis-ab'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/price-synthesis-ab'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 describe('Kael F26 price_synthesis A/B evaluator', () => {

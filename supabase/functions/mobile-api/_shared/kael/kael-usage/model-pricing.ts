@@ -1,4 +1,4 @@
-import type { AIMessageContent, AIProvider, AIRequest } from "../types.ts";
+import type { AIMessageContent, AIProvider, AIRequest } from "../contracts/types.ts";
 
 export type UnknownModelPolicy = "throw" | "safe-high";
 export type SearchContextSize = "low" | "medium" | "high";

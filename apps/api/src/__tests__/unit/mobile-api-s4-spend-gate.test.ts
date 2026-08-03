@@ -10,9 +10,9 @@ import {
   KAEL_AI_SPEND_CAPS,
   reserveAiSpend,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/spend-gate'
-import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
+import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent'
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
-import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
+import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/worker-assist'
 
 // A stateful mock that plays the role of the durable DB ledger. reserve_kael_ai_spend
 // does an ATOMIC check + insert of the estimate (returns the new row id); finalize

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCustomerProfileInsights } from '../../../../../supabase/functions/mobile-api/_shared/services'
+import { buildCustomerProfileInsights } from '../../../../../supabase/functions/mobile-api/_shared/domains'
 
 describe('customer profile insights aggregation', () => {
   it('counts distinct days with completed service activity', () => {

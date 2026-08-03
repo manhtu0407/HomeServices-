@@ -14,7 +14,9 @@ This file is the single consolidated must-apply-before-deploy list. The companio
 
 ## Apply these migrations BEFORE deploying the merged `mobile-api` Edge function
 
-In filename (timestamp) order. Each row: migration → objects it adds → the Edge code that depends on it → failure mode if skipped. Code references are from the 2026-06-07 verification read of `supabase/functions/mobile-api/_shared/services.ts` (line numbers approximate; verify against the file if it has moved).
+In filename (timestamp) order. Each row: migration → objects it adds → the Edge code that depends on it → failure mode if skipped.
+
+**About the `~services.ts:N` anchors below.** They come from a 2026-06-07 verification read of `supabase/functions/mobile-api/_shared/services.ts`, a 10,042-line file that `Plan.md` §46 has since split. **Those line numbers no longer resolve** — the workflow code now lives in `_shared/domains/**` (composed by `_shared/domains.ts`) and Kael progress writes live in `_shared/kael/**`. The anchors are kept because they still locate the code in pre-§46 history; to find a dependency today, search the named symbol (`updateKaelProgress`, `check_kael_worker_chat_rate`, …) rather than the line number. **The migration list, the objects, and the failure modes below are unaffected by the split and remain correct.**
 
 | # | Migration | Adds | Edge code dependency | Failure if skipped |
 |---|---|---|---|---|

@@ -5,9 +5,9 @@ import {
   getKaelPerformanceProfile,
   KAEL_PERFORMANCE_PROFILES,
   listKaelPerformanceProfiles,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
-import { buildIntakeDiagnosisMessages, kaelIntakeDiagnosisPromptVersion } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
-import { intentResultSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/performance-profiles'
+import { buildIntakeDiagnosisMessages, kaelIntakeDiagnosisPromptVersion } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/prompts'
+import { intentResultSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
 
 describe('Kael six-service performance profiles', () => {
   it('exposes exactly one complete case-work profile for each launched service', () => {
@@ -64,7 +64,7 @@ describe('Kael six-service performance profiles', () => {
       'utf8',
     )
 
-    expect(indexSource).toContain('export * from "./performance-profiles.ts";')
+    expect(indexSource).toContain('export * from "./learning/performance-profiles.ts";')
   })
 
   it('feeds each profile quote drivers, safety gates, evidence, and work modes into intake diagnosis', () => {

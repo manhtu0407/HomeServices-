@@ -5,7 +5,7 @@ import {
   buildNeutralDisputeSummary,
   determineDisputeSubCase,
   evaluateDisputeAbuse,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/case-5-dispute'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/case-5-dispute'
 
 describe('Kael P13 dispute case', () => {
   it('T13: determines the four active dispute sub-cases and defers unpaid service', () => {

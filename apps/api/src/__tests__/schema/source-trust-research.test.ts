@@ -23,11 +23,16 @@ describe('Section 25 R1 source trust research handoff', () => {
   })
 
   it('keeps R2 staging smoke routed through request-scoped source trust config', () => {
-    const router = read('supabase/functions/mobile-api/_shared/router.ts')
-    const services = read('supabase/functions/mobile-api/_shared/services.ts')
-    const sharedHelpers = read('supabase/functions/mobile-api/_shared/services/_shared.ts')
-    const edgeServiceLayer = services + sharedHelpers + read('supabase/functions/mobile-api/_shared/services/job-create.service.ts')
-    const env = read('supabase/functions/mobile-api/_shared/env.ts')
+    const router = read('supabase/functions/mobile-api/_shared/http.ts')
+    const services = read('supabase/functions/mobile-api/_shared/domains.ts')
+    const sourceTrustHelpers = read('supabase/functions/mobile-api/_shared/platform/domain-utils.ts')
+    const edgeServiceLayer = [
+      services,
+      sourceTrustHelpers,
+      read('supabase/functions/mobile-api/_shared/domains/job/create/create.ts'),
+      read('supabase/functions/mobile-api/_shared/domains/job/create/analyze.ts'),
+    ].join('\n')
+    const env = read('supabase/functions/_shared/platform/env.ts')
 
     expect(router).toContain('requestUrl: request.url')
     expect(router).toContain('requestProjectRef')

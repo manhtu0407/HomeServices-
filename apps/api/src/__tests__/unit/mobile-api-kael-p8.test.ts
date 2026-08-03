@@ -3,13 +3,13 @@ import {
   buildKaelSystemPrompt,
   getPublicKaelCharter,
   KAEL_CHARTER_VERSION,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/system-prompt'
 import {
   checkKaelResponse,
   runKaelSelfCheckPipeline,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/self-check'
-import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
-import { createMobileApiHandler, type MobileApiServices } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator'
+import { createMobileApiHandler, type MobileApiServices } from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 describe('Kael P9 charter, prompt, and self-check', () => {
   it('T8-test-2: builds deterministic system prompt under 3000 tokens', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 const ownerCtx: MobileApiContext = {
   success: true,

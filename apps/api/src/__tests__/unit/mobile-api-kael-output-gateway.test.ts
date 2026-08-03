@@ -101,11 +101,11 @@ describe('Kael output gateway', () => {
 
   it('routes all user-facing and orchestrator self-check paths through the shared gateway', () => {
     const files = [
-      'supabase/functions/mobile-api/_shared/kael/customer-assistant.ts',
-      'supabase/functions/mobile-api/_shared/kael/worker-assist.ts',
-      'supabase/functions/mobile-api/_shared/kael/orchestrator.ts',
-      'supabase/functions/mobile-api/_shared/services/chat.service.ts',
-      'supabase/functions/mobile-api/_shared/services/kael-chat-core.ts',
+      'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant.ts',
+      'supabase/functions/mobile-api/_shared/kael/agents/worker-assist.ts',
+      'supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator.ts',
+      'supabase/functions/mobile-api/_shared/domains/job/chat-support.ts',
+      'supabase/functions/mobile-api/_shared/domains/kael-chat/clarification.service.ts',
     ]
 
     for (const file of files) {

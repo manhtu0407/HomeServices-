@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
-import { buildVisionMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
-import { analyzeDescription, buildFallbackVision, visionRuntimeBudget } from '../../../../../supabase/functions/mobile-api/_shared/kael/vision'
+import { buildVisionMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/prompts'
+import { analyzeDescription, buildFallbackVision, visionRuntimeBudget } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/vision'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 describe('mobile-api Kael vision language boundary', () => {

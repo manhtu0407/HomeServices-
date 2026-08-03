@@ -4,7 +4,7 @@ import {
   loadActiveReservationRowsByWorker,
   loadWorkerAvailabilityRows,
   loadWorkerMemoryRowsByWorker,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/broadcast-query-batches'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/matching/query-batches'
 
 function makeClient() {
   const workerIdBatches: string[][] = []

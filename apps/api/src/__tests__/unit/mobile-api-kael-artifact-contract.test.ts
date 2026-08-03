@@ -8,11 +8,11 @@ import {
   kaelAutonomyDecisionSchema,
   kaelArtifactProposalSchema,
   kaelDiagnosisScopeArtifactSchema,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/artifact-contract'
 import {
   diagnosisScopeForIncomingTurn,
   diagnosisScopeWithUncertainAnswer,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-case-work'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-artifact'
 
 describe('Kael artifact proposal contract', () => {
   it('preserves the pending question until the core classifies a text reply', () => {
@@ -445,13 +445,13 @@ describe('Kael artifact proposal contract', () => {
   })
 
   it('wires failed Kael chat analysis back into a non-transitioning AI notes artifact proposal', () => {
-    const servicesSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
+    const servicesSource = [
+      'domains.ts',
+      'domains/kael-chat/branches-post-pipeline.ts',
+    ].map((path) => readFileSync(
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared', path),
       'utf8',
-    ) + readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat-core.ts'),
-      'utf8',
-    )
+    )).join('\n')
 
     expect(servicesSource).toContain('missingFields: ["description_or_photo"]')
     expect(servicesSource).toContain('artifactType: "ai_notes"')

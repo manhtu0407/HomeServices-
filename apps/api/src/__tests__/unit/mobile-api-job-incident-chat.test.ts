@@ -11,36 +11,36 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/kael/index.ts', ()
   scrubSensitiveForLLM: (value: string) => value,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/audit.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/kael/learning/audit.ts', () => ({
   logApiCalls: mocks.logApiCalls,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/coercions.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/coercions.ts', () => ({
   asNumber: (value: unknown) => Number(value ?? 0),
   asRecord: (value: unknown) => typeof value === 'object' && value !== null ? value : {},
   asString: (value: unknown) => typeof value === 'string' ? value : '',
   nullableString: (value: unknown) => typeof value === 'string' ? value : null,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/request.ts', () => ({
   requestScopeChange: mocks.requestScopeChange,
   validateScopeChangeEvidenceRefs: vi.fn(),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/router.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/api-failure.ts', () => ({
   apiFailure: (code: string, message: string) => {
     throw new Error(`${code}: ${message}`)
   },
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/access.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/access.ts', () => ({
   requireJobAccess: vi.fn(),
 }))
 
 import {
   proposeScopeChangeFromJobIncident,
   recordJobIncidentChatMessage,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/job-incident.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/job/incident'
 
 const incident = {
   id: 'incident-1',

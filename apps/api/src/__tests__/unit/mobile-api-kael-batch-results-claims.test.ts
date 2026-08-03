@@ -2,15 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   processBatchResults,
   processLearningCandidateResponse,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/process-batch-results'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/process-batch-results'
 import type {
   LearningQueueDbClient,
   QueuedLearningRow,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/process-learning-queue'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/process-learning-queue'
 import {
   createLearningSkillCandidate,
   type LearningSkillInput,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
 
 describe('Kael batch-result claim and persistence failures', () => {
   afterEach(() => {

@@ -2,7 +2,7 @@ import type { JobStatus } from "../../../../_shared/domain.ts";
 import {
   type KaelAutonomyDecision,
   kaelAutonomyDecisionSchema,
-} from "../artifact-contract.ts";
+} from "../contracts/artifact-contract.ts";
 import {
   evaluateKaelPermissionGate,
   type KaelPermissionGateRequest,

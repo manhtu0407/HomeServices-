@@ -10,7 +10,7 @@ import {
   touchesMoneyOrScope,
   type EdgeLearningCandidateRow,
   type LearningHookDbClient,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning-hook'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/learning-hook'
 import {
   CONFIDENCE_THRESHOLD,
   CONTRADICTION_MAX_RATIO as API_CONTRADICTION_MAX_RATIO,

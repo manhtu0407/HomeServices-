@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   detectDemandingCustomerPatterns,
   type DemandingCustomerExpectedNuance,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/demanding-customer-detect'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/demanding-customer-detect'
 import {
   buildDemandingCustomerResponse,
   recordDemandingCustomerInteraction,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/case-2-demanding'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/case-2-demanding'
 
 describe('Kael P10 demanding customer case', () => {
   it('T10-test-1/2: separates detail-oriented concern from pressure and expands transparency', () => {

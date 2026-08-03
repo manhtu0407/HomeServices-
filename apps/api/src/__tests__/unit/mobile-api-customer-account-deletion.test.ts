@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { deleteCustomerAccount } from '../../../../../supabase/functions/mobile-api/_shared/services/customer-account-deletion.service'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import { deleteCustomerAccount } from '../../../../../supabase/functions/mobile-api/_shared/domains/customer/account-deletion'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 const customerId = '11111111-1111-4111-8111-111111111111'
 const clientRequestId = '88888888-8888-4888-8888-888888888888'

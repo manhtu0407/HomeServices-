@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import {
   getCustomerRefundAccount,
   saveCustomerRefundAccount,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/customer-refund-account.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/customer/refund-account'
 
 const savedRow = {
   bank_account_masked: '**** 6789',

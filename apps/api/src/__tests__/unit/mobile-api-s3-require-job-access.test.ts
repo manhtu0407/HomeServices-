@@ -12,8 +12,8 @@ import { describe, expect, it } from 'vitest'
 import {
   requireJobAccess,
   type JobAccessDbClient,
-} from '../../../../../supabase/functions/mobile-api/_shared/access'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+} from '../../../../../supabase/functions/mobile-api/_shared/platform/access'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 function jobClient(job: Record<string, unknown> | null, error: unknown = null): JobAccessDbClient {
   const chain = {

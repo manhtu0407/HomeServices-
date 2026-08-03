@@ -7,17 +7,32 @@ const migration = () => readFileSync(
 )
 
 const service = () => readFileSync(
-  new URL('../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts', import.meta.url),
+  new URL('../../../../../supabase/functions/mobile-api/_shared/domains/worker/kael-chat-turn.ts', import.meta.url),
   'utf8',
 )
 
-const domain = () => readFileSync(
-  new URL('../../../../../supabase/functions/_shared/domain.ts', import.meta.url),
+const core = () => readFileSync(
+  new URL('../../../../../supabase/functions/mobile-api/_shared/domains/worker/kael-chat.ts', import.meta.url),
   'utf8',
 )
 
-const sharedValidation = () => readFileSync(
-  new URL('../../../../../packages/shared/src/validation.ts', import.meta.url),
+const edgeWorkerContract = () => readFileSync(
+  new URL('../../../../../supabase/functions/_shared/contracts/worker.ts', import.meta.url),
+  'utf8',
+)
+
+const edgeContractCommon = () => readFileSync(
+  new URL('../../../../../supabase/functions/_shared/contracts/common.ts', import.meta.url),
+  'utf8',
+)
+
+const sharedWorkerContract = () => readFileSync(
+  new URL('../../../../../packages/shared/src/contracts/worker.ts', import.meta.url),
+  'utf8',
+)
+
+const sharedContractCommon = () => readFileSync(
+  new URL('../../../../../packages/shared/src/contracts/common.ts', import.meta.url),
   'utf8',
 )
 
@@ -55,24 +70,27 @@ describe('worker Kael atomic turn boundary', () => {
     expect(complete).toBeGreaterThan(provider)
     expect(handler).not.toContain('findExistingWorkerKaelTurnByClientRequest')
     expect(handler).not.toContain('appendWorkerKaelAnswerTurn')
-    expect(source).toContain('record_worker_kael_qa_atomic')
+    expect(core()).toContain('record_worker_kael_qa_atomic')
   })
 
   it('requires a durable UUID for every worker chat turn', () => {
-    const sources = [domain(), sharedValidation()]
-    const schemas = sources.map((source) => source.match(
+    const contractPairs = [
+      { common: edgeContractCommon(), worker: edgeWorkerContract() },
+      { common: sharedContractCommon(), worker: sharedWorkerContract() },
+    ]
+    const schemas = contractPairs.map(({ worker }) => worker.match(
       /export const workerKaelChatTurnSchema = z\.object\(\{[\s\S]*?\}\)\.strict\(\)/,
     )?.[0] ?? '')
 
     for (const [index, schema] of schemas.entries()) {
-      expect(sources[index]).toContain('const clientRequestIdSchema = z.uuidv4()')
+      expect(contractPairs[index].common).toContain('const clientRequestIdSchema = z.uuidv4()')
       expect(schema).toContain('client_request_id: clientRequestIdSchema,')
       expect(schema).not.toContain('client_request_id: clientRequestIdSchema.optional()')
     }
   })
 
   it('accepts only private kael_reference media at every validation layer', () => {
-    for (const source of [domain(), sharedValidation()]) {
+    for (const source of [edgeWorkerContract(), sharedWorkerContract()]) {
       const mediaSchema = source.match(
         /const workerKaelMediaRefSchema = z[\s\S]*?const workerKaelMediaRefsSchema/,
       )?.[0] ?? ''

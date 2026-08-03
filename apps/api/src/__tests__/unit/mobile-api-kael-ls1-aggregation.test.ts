@@ -5,8 +5,8 @@ import {
   median,
   rejectOutliersMedianSigma,
   weightedMedian,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/LS1-aggregation'
-import { buildLS1MarketMemoryCandidate } from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/LS1-market-memory'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/LS1-aggregation'
+import { buildLS1MarketMemoryCandidate } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/LS1-market-memory'
 
 describe('Kael F26 LS1 aggregation', () => {
   it('computes a median and weighted median for price samples', () => {

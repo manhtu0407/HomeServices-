@@ -4,7 +4,7 @@ import {
   buildKaelVisionValidationEvidence,
   inspectTrustedKaelVisionTransform,
   isTrustedKaelVisionTransformPayload,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-media.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/media-vision'
 
 describe('Kael trusted model-vision transform gate', () => {
   it('adds every legacy model_vision ref to the validation set exactly once', () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   runKaelPurposeStage,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator'
 
 describe('mobile-api Kael orchestrator stage status', () => {
   it('distinguishes an allowed result, policy decline, degraded fallback, and hard failure', async () => {

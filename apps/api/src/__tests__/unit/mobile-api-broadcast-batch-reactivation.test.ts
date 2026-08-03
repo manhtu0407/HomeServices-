@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   activateBroadcastBatch,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/broadcasts.service.ts'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/matching/broadcasts.ts'
 
 function makeClient(result: {
   data: Array<Record<string, unknown>> | null

@@ -3,12 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config'
-import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
+import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/market'
 import {
   isKaelKnowledgeRetrievalEnabled,
   retrieveKaelKnowledgeContext,
   retrieveKnowledgeSemantic,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/knowledge'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/knowledge'
 import {
   effectiveTrustScore,
   isSourceTrustPerplexityFilterEnabled,
@@ -16,7 +16,7 @@ import {
   resetSourceTrustRegistryCacheForTest,
   SOURCE_TRUST_VERSION,
   validateCitations,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/evidence/source-trust'
 
 describe('mobile-api Kael Q2/Q3 cost optimization', () => {
   afterEach(() => {

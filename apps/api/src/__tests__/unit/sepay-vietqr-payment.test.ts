@@ -5,7 +5,7 @@ import {
   parseSePayVietQrWebhookPayload,
   receiveSePayVietQrWebhook,
   verifySePayWebhookSignature,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/sepay-vietqr-payment.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/payment/sepay-vietqr'
 
 const encoder = new TextEncoder()
 

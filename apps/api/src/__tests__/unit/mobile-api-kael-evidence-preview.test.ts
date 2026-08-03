@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   kaelEvidencePreviewCandidates,
   pairKaelEvidencePreviewUrls,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-evidence-preview'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/read.service'
 
 describe('mobile-api Kael evidence previews', () => {
   it('preserves photo and video-frame numbering while excluding private originals', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import {
   createCustomerAvatarUpload,
   createWorkerAvatarUpload,
@@ -8,8 +8,8 @@ import {
   updateCustomerAvatar,
   updateWorkerAvatar,
   workerAvatarObjectPath,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/worker-avatar.service'
-import { recordWorkerAppActiveMinute } from '../../../../../supabase/functions/mobile-api/_shared/services/workers.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/avatar'
+import { recordWorkerAppActiveMinute } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/workers'
 
 const workerId = '33333333-3333-4333-8333-333333333333'
 const customerId = '11111111-1111-4111-8111-111111111111'

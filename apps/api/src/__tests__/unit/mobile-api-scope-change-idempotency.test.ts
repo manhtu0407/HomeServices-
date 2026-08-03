@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
 
 afterEach(() => {
   vi.unstubAllGlobals()

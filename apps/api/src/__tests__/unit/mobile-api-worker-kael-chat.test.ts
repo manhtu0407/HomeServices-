@@ -5,16 +5,16 @@ import {
   buildWorkerKaelSessionTitle,
   guardWorkerAssistText,
   runWorkerAssist,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
-import { workerVisionFindingSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/worker-assist'
+import { workerVisionFindingSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
 import {
   buildSafeWorkerVisionFinding,
   prepareWorkerKaelVisionUrls,
   validateWorkerKaelMediaRefs,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-media.service'
-import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/ai-boundary-contract'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/kael-media'
+import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/ai-boundary-contract'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
-import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
+import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 const job = {
@@ -51,16 +51,16 @@ function listTsFiles(dir: URL): URL[] {
 function readMobileApiServiceLayer() {
   const root = new URL('../../../../../supabase/functions/mobile-api/_shared/', import.meta.url)
   return [
-    readUtf8(new URL('services.ts', root)),
-    ...listTsFiles(new URL('services/', root)).map(readUtf8),
+    readUtf8(new URL('domains.ts', root)),
+    ...listTsFiles(new URL('domains/', root)).map(readUtf8),
   ].join('\n')
 }
 
 function readMobileApiRouterLayer() {
   const root = new URL('../../../../../supabase/functions/mobile-api/_shared/', import.meta.url)
   return [
-    readUtf8(new URL('router.ts', root)),
-    ...listTsFiles(new URL('router/', root)).map(readUtf8),
+    readUtf8(new URL('http.ts', root)),
+    ...listTsFiles(new URL('http/', root)).map(readUtf8),
   ].join('\n')
 }
 
@@ -718,12 +718,12 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   })
 
   it('persists and lists worker Kael sessions within their explicit chat mode', () => {
-    const edgeDomain = readFileSync(
-      new URL('../../../../../supabase/functions/_shared/domain.ts', import.meta.url),
+    const edgeWorkerContract = readFileSync(
+      new URL('../../../../../supabase/functions/_shared/contracts/worker.ts', import.meta.url),
       'utf8',
     )
-    const sharedValidation = readFileSync(
-      new URL('../../../../../packages/shared/src/validation.ts', import.meta.url),
+    const sharedWorkerContract = readFileSync(
+      new URL('../../../../../packages/shared/src/contracts/worker.ts', import.meta.url),
       'utf8',
     )
     const router = readMobileApiRouterLayer()
@@ -736,7 +736,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
       .join('\n')
 
-    for (const source of [edgeDomain, sharedValidation]) {
+    for (const source of [edgeWorkerContract, sharedWorkerContract]) {
       const createSchemaBlock = source.match(/export const workerKaelChatCreateSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
       expect(source).toMatch(/workerKaelChatModeSchema = z\.enum\(\[["']normal["'],\s*["']intake["']\]\)/)
       expect(createSchemaBlock).toMatch(/mode:\s*workerKaelChatModeSchema\.default\(["']intake["']\)/)
@@ -751,8 +751,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   })
 
   it('keeps worker chat creation session-only and turn idempotency on the turn route', () => {
-    const domain = readFileSync(
-      new URL('../../../../../supabase/functions/_shared/domain.ts', import.meta.url),
+    const workerContract = readFileSync(
+      new URL('../../../../../supabase/functions/_shared/contracts/worker.ts', import.meta.url),
       'utf8',
     )
     const services = readMobileApiServiceLayer()
@@ -760,8 +760,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       new URL('../../../../../supabase/migrations/20260627090000_worker_kael_turn_idempotency.sql', import.meta.url),
       'utf8',
     )
-    const createSchemaBlock = domain.match(/export const workerKaelChatCreateSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
-    const turnSchemaBlock = domain.match(/export const workerKaelChatTurnSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
+    const createSchemaBlock = workerContract.match(/export const workerKaelChatCreateSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
+    const turnSchemaBlock = workerContract.match(/export const workerKaelChatTurnSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
     const createHandlerBlock = services.match(/async function createWorkerKaelChat\([\s\S]*?async function listWorkerKaelChats/)?.[0] ?? ''
 
     expect(createSchemaBlock).not.toContain('message:')
@@ -814,11 +814,15 @@ describe('mobile-api worker Kael chat sibling backend', () => {
 
   it('lets worker private Kael media attach without publishing it to job photo URLs', () => {
     const services = readMobileApiServiceLayer()
+    const jobMedia = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/platform/job-media.ts', import.meta.url),
+      'utf8',
+    )
     const workflow = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/workflow-orchestrator.ts', import.meta.url),
       'utf8',
     )
-    const canAttachBlock = services.match(/function canAttachJobMediaStage[\s\S]*?function storageRef/)?.[0] ?? ''
+    const canAttachBlock = jobMedia.match(/function canAttachJobMediaStage[\s\S]*?function storageRef/)?.[0] ?? ''
     const beforeRefsBlock = services.match(/const beforeRefs = rows[\s\S]*?const afterRefs/)?.[0] ?? ''
     const kaelReferenceStatuses = workflow.match(/kael_reference: \[[\s\S]*?\],\r?\n  after/)?.[0] ?? ''
 

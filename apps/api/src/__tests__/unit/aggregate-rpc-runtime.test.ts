@@ -14,12 +14,10 @@ vi.mock('@/lib/db/query', () => ({
   DbTimeoutError: class extends Error {},
 }))
 
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import {
-  getCustomerProfileInsights,
-  getWorkerPerformanceInsights,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
-import { getWorkerEarnings } from '../../../../../supabase/functions/mobile-api/_shared/services/workers.service'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { getCustomerProfileInsights } from '../../../../../supabase/functions/mobile-api/_shared/domains/customer/profile-insights'
+import { getWorkerPerformanceInsights } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/profile-insights'
+import { getWorkerEarnings } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/workers'
 import { computeEarnings } from '@/lib/workers/earnings'
 
 function rpcOnlyClient(row: Record<string, unknown>) {

@@ -7,13 +7,16 @@ const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(
 const listEdgeServiceFiles = (relDir: string): string[] =>
   readdirSync(resolve(ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
     entry.isDirectory() ? listEdgeServiceFiles(`${relDir}/${entry.name}`) : [`${relDir}/${entry.name}`])
+// platform/ holds the infrastructure the service layer runs on (db, audit, access, coercions).
+// It is part of the same behavior surface, so these assertions must keep seeing it.
 const readEdgeServiceLayer = () => [
-  read('supabase/functions/mobile-api/_shared/services.ts'),
-  ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/services').filter((p) => p.endsWith('.ts')).sort().map(read),
+  read('supabase/functions/mobile-api/_shared/domains.ts'),
+  ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/domains').filter((p) => p.endsWith('.ts')).sort().map(read),
+  ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/platform').filter((p) => p.endsWith('.ts')).sort().map(read),
 ].join('\n')
 const readEdgeRouterLayer = () => [
-  read('supabase/functions/mobile-api/_shared/router.ts'),
-  ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/router').filter((p) => p.endsWith('.ts')).sort().map(read),
+  read('supabase/functions/mobile-api/_shared/http.ts'),
+  ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/http').filter((p) => p.endsWith('.ts')).sort().map(read),
 ].join('\n')
 const readMigrationByName = (needle: string) => {
   const dir = resolve(ROOT, 'supabase/migrations')
@@ -56,8 +59,8 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const services = readEdgeServiceLayer()
     const costTracking = read('supabase/functions/mobile-api/_shared/kael/kael-usage/cost-tracking.ts')
 
-    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('buildKaelOptimizationMetricRows(rows)')
-    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
+    expect(services + read('supabase/functions/mobile-api/_shared/kael/learning/audit.ts')).toContain('buildKaelOptimizationMetricRows(rows)')
+    expect(services + read('supabase/functions/mobile-api/_shared/kael/learning/audit.ts')).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
     expect(services).toContain('...(stage.cacheStatus ? { cache_status: stage.cacheStatus } : {})')
     expect(services).toContain('...(stage.safeMetadata ?? {})')
     expect(services).not.toContain('safe_metadata: stage.cacheStatus\n          ? { cache_status: stage.cacheStatus }\n          : undefined')
@@ -99,7 +102,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(router).toContain('admin.marketCache.invalidate')
     expect(router).toContain('/admin/market-cache/invalidate')
     expect(services).toContain('invalidateMarketCache')
-    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
+    expect(services + read('supabase/functions/mobile-api/_shared/kael/learning/audit.ts')).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
     expect(sharedTypes).toContain('kael_market_cache')
     expect(sharedTypes).toContain('increment_kael_market_cache_hit')
   })
@@ -118,24 +121,29 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(router).toContain('/admin/kael-learning/process-queue')
     expect(router).toContain('/admin/kael-learning/process-batch-results')
     expect(router).toContain('/admin/kael-learning/monitor-rules')
-    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('KAEL_OPT_BATCH_LEARNING_ENABLED')
-    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('queueLearningForBatch')
+    expect(services + read('supabase/functions/mobile-api/_shared/kael/learning/audit.ts')).toContain('KAEL_OPT_BATCH_LEARNING_ENABLED')
+    expect(services + read('supabase/functions/mobile-api/_shared/kael/learning/audit.ts')).toContain('queueLearningForBatch')
     expect(services).toContain('monitorLearningRules')
     expect(services).toContain('recordLearningRuleApplication')
     expect(services).toContain('recordLearningReviewOutcome')
-    expect(read('supabase/functions/mobile-api/_shared/kael/cron/monitor-learning-rules.ts')).toContain('loop_health')
-    expect(read('supabase/functions/mobile-api/_shared/kael/cron/monitor-learning-rules.ts')).toContain('manual_review_overdue_count')
-    expect(read('supabase/functions/mobile-api/_shared/kael/pipeline.ts')).toContain('learningApplications')
-    expect(index).toContain('./cron/process-learning-queue.ts')
-    expect(index).toContain('./cron/process-batch-results.ts')
-    expect(index).toContain('./cron/monitor-learning-rules.ts')
+    expect(read('supabase/functions/mobile-api/_shared/kael/learning/cron/monitor-learning-rules.ts')).toContain('loop_health')
+    expect(read('supabase/functions/mobile-api/_shared/kael/learning/cron/monitor-learning-rules.ts')).toContain('manual_review_overdue_count')
+    const pipelineLearningSources = [
+      'stage-parallel.ts',
+      'stage-synthesis.ts',
+      'assemble.ts',
+    ].map((path) => read(`supabase/functions/mobile-api/_shared/kael/pipeline/${path}`)).join('\n')
+    expect(pipelineLearningSources).toContain('learningApplications')
+    expect(index).toContain('./learning/cron/process-learning-queue.ts')
+    expect(index).toContain('./learning/cron/process-batch-results.ts')
+    expect(index).toContain('./learning/cron/monitor-learning-rules.ts')
   })
 
   it('adds service-role-only RPC for atomic Kael learning promotion', () => {
     const migration = readMigrationByName('promote_learning_candidate_rpc')
     const lintFix = read('supabase/migrations/20260605004000_fix_plan31_rpc_lint_warnings.sql')
     const atomicEffect = readMigrationByName('atomic_learning_effect_commits')
-    const effectStore = read('supabase/functions/mobile-api/_shared/kael/cron/learning-effect-store.ts')
+    const effectStore = read('supabase/functions/mobile-api/_shared/kael/learning/cron/learning-effect-store.ts')
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
     expect(migration).toContain('create or replace function public.promote_learning_candidate')
@@ -160,7 +168,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
   it('adds service-role-only RPC for atomic Kael learning rollback', () => {
     const migration = readMigrationByName('rollback_learning_rule_rpc')
     const ambiguityFix = read('supabase/migrations/20260605001000_fix_kael_rollback_learning_rule_ambiguity.sql')
-    const monitor = read('supabase/functions/mobile-api/_shared/kael/cron/monitor-learning-rules.ts')
+    const monitor = read('supabase/functions/mobile-api/_shared/kael/learning/cron/monitor-learning-rules.ts')
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
     expect(migration).toContain('create or replace function public.rollback_learning_rule')
@@ -190,7 +198,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const nextHome = read('apps/api/src/app/page.tsx')
     const mobileServices = read('apps/mobile/lib/services.ts')
     const mobileAdmin = read('apps/mobile/app/(admin)/dashboard.tsx')
-    const batchLifecycle = read('supabase/functions/mobile-api/_shared/kael/cron/batch-learning-lifecycle.ts')
+    const batchLifecycle = read('supabase/functions/mobile-api/_shared/kael/learning/cron/batch-learning-lifecycle.ts')
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
     expect(statusMigration).toContain("add value if not exists 'manual_review'")

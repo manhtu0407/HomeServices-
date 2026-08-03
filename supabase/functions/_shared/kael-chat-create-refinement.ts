@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getKaelPerformanceProfile } from "../mobile-api/_shared/kael/performance-profiles.ts";
+import { getKaelPerformanceProfile } from "../mobile-api/_shared/kael/learning/performance-profiles.ts";
 
 type KaelChatCreateRefinementInput = {
   service_type: string;

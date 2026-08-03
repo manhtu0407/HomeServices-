@@ -14,13 +14,7 @@
     "apps/mobile/components/worker/worker-v5-flow.tsx": 1453,
     "apps/mobile/lib/api-types.ts": 866,
     "apps/mobile/lib/services.ts": 832,
-    "packages/shared/src/mobile-workflow.ts": 1241,
-    "packages/shared/src/validation.ts": 806,
-    "supabase/functions/_shared/domain.ts": 824,
-    "supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts": 1059,
-    "supabase/functions/mobile-api/_shared/router.ts": 2534,
-    "supabase/functions/mobile-api/_shared/router/routes.ts": 802,
-    "supabase/functions/mobile-api/_shared/services/workers.service.ts": 808
+    "packages/shared/src/mobile-workflow.ts": 1241
   },
   "grandfatheredDupTypes": {
     "AcceptBroadcastResponse": [
@@ -529,5 +523,31 @@
       "packages/shared/src/workflow/workflow-events.ts",
       "supabase/functions/mobile-api/_shared/workflow-orchestrator.ts"
     ]
+  },
+  "frozenPaths": {
+    "fileCounts": {
+      "apps/api/src/lib/kael/": 10,
+      "apps/api/src/lib/learning/": 8
+    },
+    "lines": {
+      "apps/api/src/lib/kael/baseline.ts": 149,
+      "apps/api/src/lib/kael/defaults.ts": 23,
+      "apps/api/src/lib/kael/intent.ts": 200,
+      "apps/api/src/lib/kael/log-api-call.ts": 68,
+      "apps/api/src/lib/kael/parsing.ts": 5,
+      "apps/api/src/lib/kael/pipeline.ts": 261,
+      "apps/api/src/lib/kael/pricing.ts": 133,
+      "apps/api/src/lib/kael/prompts.ts": 245,
+      "apps/api/src/lib/kael/schemas.ts": 124,
+      "apps/api/src/lib/kael/vision.ts": 86,
+      "apps/api/src/lib/learning/apply-complexity-rule.ts": 97,
+      "apps/api/src/lib/learning/apply-price-rule.ts": 95,
+      "apps/api/src/lib/learning/case-review.ts": 97,
+      "apps/api/src/lib/learning/evidence-gate.ts": 195,
+      "apps/api/src/lib/learning/hook.ts": 241,
+      "apps/api/src/lib/learning/market-memory.ts": 141,
+      "apps/api/src/lib/learning/observation-rpc.ts": 61,
+      "apps/api/src/lib/learning/types.ts": 230
+    }
   }
 }

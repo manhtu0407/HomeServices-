@@ -5,9 +5,9 @@ import { KAEL_PURPOSES } from '../../../../../supabase/functions/mobile-api/_sha
 import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config'
 import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider, providerCandidatesForPurpose, shouldSkipProviderSiblingModels } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/routing'
 import { createKaelCircuitBreaker, KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
-import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
-import { runKaelParallel, runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
-import { updateKaelProgress } from '../../../../../supabase/functions/mobile-api/_shared/kael/streaming'
+import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent'
+import { runKaelParallel, runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator'
+import { updateKaelProgress } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/streaming'
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
@@ -60,11 +60,11 @@ describe('mobile-api Kael P3 routing foundation', () => {
       { provider: 'anthropic', model: 'claude-sonnet-5', role: 'primary' },
       { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', role: 'fallback' },
     ])
-    const pipelineSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+    const parallelSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/stage-parallel.ts', import.meta.url),
       'utf8',
     )
-    expect(pipelineSource).toContain(
+    expect(parallelSource).toContain(
       'visionResult.model ?? KAEL_ROUTING_CONFIG.vision_analysis.primary.model',
     )
   })
@@ -141,7 +141,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
 
   it('lets the intent failover ladder own its provider deadlines without a competing outer timeout', () => {
     const pipelineSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/pipeline.ts', import.meta.url),
       'utf8',
     )
 
@@ -151,7 +151,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
 
   it('uses the measured DeepSeek intent budget through the provider route', () => {
     const intentSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/intent.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent.ts', import.meta.url),
       'utf8',
     )
 
@@ -162,7 +162,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
 
   it('lets the bounded Vision model ladder own its deadlines without a competing outer timeout', () => {
     const pipelineSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/pipeline.ts', import.meta.url),
       'utf8',
     )
 
@@ -311,16 +311,20 @@ describe('mobile-api Kael P3 orchestrator and streaming', () => {
   })
 
   it('wires post-intent estimate stages through the parallel orchestrator', () => {
-    const pipelineSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+    const parallelSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/stage-parallel.ts', import.meta.url),
+      'utf8',
+    )
+    const intentSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/stage-intent.ts', import.meta.url),
       'utf8',
     )
 
-    expect(pipelineSource).toMatch(/runKaelParallel(?:<[^>]+>)?\(\[/)
-    expect(pipelineSource).toMatch(/label: "vision"[\s\S]*label: "market"[\s\S]*label: "baseline"/)
-    expect(pipelineSource).not.toContain('provider: KAEL_ROUTING_CONFIG.intent_classification.primary.provider')
-    expect(pipelineSource).toContain('attempts: []')
-    expect(pipelineSource).not.toMatch(
+    expect(parallelSource).toMatch(/runKaelParallel(?:<[^>]+>)?\(\[/)
+    expect(parallelSource).toMatch(/label: "vision"[\s\S]*label: "market"[\s\S]*label: "baseline"/)
+    expect(parallelSource).not.toContain('provider: KAEL_ROUTING_CONFIG.intent_classification.primary.provider')
+    expect(intentSource).toContain('attempts: []')
+    expect(parallelSource).not.toMatch(
       /const visionStage = await runKaelPurposeStage[\s\S]*const baselineStage = await runKaelPurposeStage[\s\S]*const marketStage = await runKaelPurposeStage/,
     )
   })
@@ -486,11 +490,15 @@ describe('mobile-api Kael P3 orchestrator and streaming', () => {
 
   it('lets chat sessions carry pipeline stage progress without writing jobs', () => {
     const pipelineSource = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/pipeline.ts', import.meta.url),
+      'utf8',
+    )
+    const prepareSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/prepare.ts', import.meta.url),
       'utf8',
     )
 
-    expect(pipelineSource).toContain('const progressTarget = input.progressTarget ?? input.progressJobId')
+    expect(prepareSource).toContain('const progressTarget = input.progressTarget ?? input.progressJobId')
     expect(pipelineSource).not.toMatch(/updateKaelProgress\(supabase, input\.progressJobId/)
   })
 })

@@ -3,7 +3,7 @@ import {
   buildNormalTransactionPlan,
   evaluateNormalTransactionMetrics,
   summarizeNormalTransactionLearning,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/case-1-normal'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/case-1-normal'
 
 describe('Kael P9 normal transaction case', () => {
   it('T9-test-1/2/8/9: builds Compact 6 happy path with skip rules and 5 customer notifications', () => {

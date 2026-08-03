@@ -11,10 +11,12 @@ const verificationPath = resolve(
   root,
   'supabase/tests/job_incident_atomic_verification.sql',
 )
-const servicePath = resolve(
-  root,
-  'supabase/functions/mobile-api/_shared/services/job-incident.service.ts',
-)
+const servicePaths = [
+  'supabase/functions/mobile-api/_shared/domains/job/incident.ts',
+  'supabase/functions/mobile-api/_shared/domains/job/incident-mutations.ts',
+  'supabase/functions/mobile-api/_shared/domains/job/incident-assistant.ts',
+  'supabase/functions/mobile-api/_shared/domains/job/incident-data.ts',
+].map((path) => resolve(root, path))
 const databaseTypesPath = resolve(root, 'packages/shared/src/types/database.types.ts')
 
 describe('atomic Kael job incident transitions', () => {
@@ -90,7 +92,7 @@ describe('atomic Kael job incident transitions', () => {
   })
 
   it('wires the service to the atomic RPC boundary instead of separate incident writes', () => {
-    const service = readFileSync(servicePath, 'utf8')
+    const service = servicePaths.map((path) => readFileSync(path, 'utf8')).join('\n')
 
     expect(service).toContain('upsert_job_incident_signal_atomic')
     expect(service).toContain('claim_job_incident_chat_turn_atomic')
