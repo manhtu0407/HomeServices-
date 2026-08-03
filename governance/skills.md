@@ -5,7 +5,7 @@ Sources:
 - https://github.com/multica-ai/andrej-karpathy-skills
 - https://github.com/addyosmani/agent-skills
 
-Purpose: project-local operating rules for AI coding agents working in this repo. These rules are adapted from Karpathy-inspired guidelines and the production workflow discipline in `addyosmani/agent-skills`, then tightened for Home Services: ship toward the first real transaction, avoid needless complexity, keep diffs small, and verify with evidence.
+Purpose: project-local operating rules for AI coding agents working in this repo. These rules are adapted from Karpathy-inspired guidelines and the production workflow discipline in `addyosmani/agent-skills`, then tightened for NestScout: ship toward the first real transaction, avoid needless complexity, keep diffs small, and verify with evidence.
 
 Use these skills whenever writing, reviewing, refactoring, debugging, or planning code changes.
 
@@ -76,7 +76,7 @@ Project-specific filters:
 - Prefer existing Supabase, Expo, Next.js, and Turbo patterns.
 - Prefer explicit data flow over magic.
 - Prefer small functions over framework-like internal APIs.
-- Keep Kael scoped to the six approved Home Services: electrical, plumbing, cleaning/housekeeping, HVAC/indoor air, upholstery care, and handyman/minor installation only.
+- Keep Kael scoped to the six approved services: electrical, plumbing, cleaning/housekeeping, HVAC/indoor air, upholstery care, and handyman/minor installation only.
 
 ## Core Skill 3: Surgical Changes
 
@@ -202,7 +202,7 @@ Vague verification:
 - Bad: "review code, improve, test."
 - Better: "write failing test for X, implement Y, run Z, confirm no regression."
 
-## Home Services Operating Addendum
+## NestScout Operating Addendum
 
 These repo-specific constraints override generic coding advice.
 

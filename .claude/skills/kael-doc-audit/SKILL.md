@@ -1,11 +1,11 @@
 ---
 name: kael-doc-audit
-description: Audit and report on the Home Services governance stack (CLAUDE.md, governance/critical.md, governance/RULES.md, governance/STRUCTURES.md, governance/design.md, AGENTS.md, governance/skills.md, governance/protocols/, and the .claude/.agents skills) for drift, duplication, dead cross-references, scope creep, and context bloat. Use when the user asks to audit, check, or review the docs/rules/protocols/skills, or mentions "governance audit", "doc drift", or "project memory health". Reports a scored health report first; edits only after Tu approves (locked docs need explicit approval).
+description: Audit and report on the NestScout governance stack (CLAUDE.md, governance/critical.md, governance/RULES.md, governance/STRUCTURES.md, governance/design.md, AGENTS.md, governance/skills.md, governance/protocols/, and the .claude/.agents skills) for drift, duplication, dead cross-references, scope creep, and context bloat. Use when the user asks to audit, check, or review the docs/rules/protocols/skills, or mentions "governance audit", "doc drift", or "project memory health". Reports a scored health report first; edits only after Tu approves (locked docs need explicit approval).
 ---
 
 # kael-doc-audit
 
-Adapted from Anthropic's `claude-md-improver` for the full Home Services governance stack (not just CLAUDE.md). Full rubric + red-flags: `references/audit-rubric.md` in this skill folder.
+Adapted from Anthropic's `claude-md-improver` for the full NestScout governance stack (not just CLAUDE.md). Full rubric + red-flags: `references/audit-rubric.md` in this skill folder.
 
 ## Workflow
 

@@ -1,6 +1,6 @@
 ---
 name: kael-supabase
-description: Supabase workflow for Home Services. Use when changing the database, Auth, RLS, migrations, generated types, storage, realtime, seed data, edge functions, or Supabase clients. Add a new migration (never edit merged ones), regenerate types, and write positive and negative RLS tests per actor.
+description: Supabase workflow for NestScout. Use when changing the database, Auth, RLS, migrations, generated types, storage, realtime, seed data, edge functions, or Supabase clients. Add a new migration (never edit merged ones), regenerate types, and write positive and negative RLS tests per actor.
 ---
 
 # kael-supabase

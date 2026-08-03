@@ -5,7 +5,7 @@ description: Build or evaluate a clearly throwaway prototype that answers one de
 
 # kael-prototype
 
-Auto-trigger wrapper, adapted from `mattpocock/skills` (prototype, MIT). The canonical Home Services procedure is `protocols/prototype-clarify.md` section 10 (`kael-prototype`) plus `design.md` for UI/visual work and `critical.md` section 8 (`kael-review`) before absorbing anything into production.
+Auto-trigger wrapper, adapted from `mattpocock/skills` (prototype, MIT). The canonical NestScout procedure is `protocols/prototype-clarify.md` section 10 (`kael-prototype`) plus `design.md` for UI/visual work and `critical.md` section 8 (`kael-review`) before absorbing anything into production.
 
 Use this when the work is meant to answer a question quickly, not ship directly.
 

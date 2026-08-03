@@ -4,27 +4,41 @@
 
 NestScout is a real Expo / React Native service app, not a motion graphics demo. Every UI pass must move the product closer to a trustworthy first real transaction in Ho Chi Minh City apartments. **This file is the Codex / Claude Code workspace router plus the owned RN-rules card** — the glass / motion / performance / data-honesty / language / scope blocks below are the quick reference the frontend flow (`governance/protocols/frontend-test.md` G1, skill `kael-frontend-test`) points back to.
 
-## Routing - read the spoke for your task
+## Map Process - how to read this stack
 
-The docs are a supporting stack in authority order. Read only what the task needs, then read `MEMORY.md` last. `MEMORY.md` holds the freshest session memory but does not override hard rules, locked docs, or code. If two sources conflict, stop and surface it — do not silently choose the source that makes implementation easier.
+Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through one map. **Tier 1 is unconditional. Tier 2 depends on the task. Tier 3 depends on Tier 2.** Read `.claude/MEMORY.md` last; it is the freshest session memory but never overrides hard rules, locked docs, or code. If two sources conflict, stop and surface it — do not silently choose the source that makes implementation easier.
 
-| When your task involves... | Read (in order) |
+### Tier 1 - always, whatever the task
+
+- `governance/RULES.md` — hard product / security / AI / data / runtime / language rules.
+- `governance/critical.md` — §5 preflight, §1 task-class index to choose Tier 2, §3 gates before reporting done.
+- `governance/protocols/code-hygiene.md` — every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments`, Stop hook, CI).
+- `.claude/MEMORY.md` — read last, write back at session close (see the memory row below and §3 Session Memory Gate).
+
+### Tier 2 - by task and difficulty
+
+| When your task involves... | Read |
 |---|---|
-| **Every task (always)** | this file -> `governance/critical.md` (preflight §5, gates §3, task index §1) -> `MEMORY.md` (last) |
-| Hard product / security / AI / data / runtime / language rules | `governance/RULES.md` |
+| **Closing a session (always)** | full entry to `docs/memory/<YYYY-MM>.md` + one line to `.claude/MEMORY.md`. Claude Code: `/kael-mem`. Codex: no slash commands — follow `docs/memory/INDEX.md` directly, same steps, same show-before-write. Gate: `governance/critical.md` §3 |
+| Where the product actually is today vs. still a plan | `governance/STRUCTURES.md` §1.5 (status by PR) |
 | Workflow, taxonomy, state machines, backend contracts, "do not build now" | `governance/STRUCTURES.md` |
 | Per-task execution protocol (diagnose, tdd, architecture, ai-boundary, supabase, security, ui, docs) | `governance/critical.md` §1 index -> `governance/protocols/*` (load only the selected protocol) |
-| UI, motion, glass, mascot, design tokens, screen recipes | `kael-design-preflight` -> `governance/design/runtime.md` (upstream adapters -> existing wheel skill + gates), then `governance/design.md` (-> `governance/design/*`) |
-| Coding behavior (assumptions, simplicity, surgical diffs) | `governance/skills.md` or the `karpathy-guidelines` skill |
-| Writing code — comments, headers, notes (always on) | `governance/protocols/code-hygiene.md` (skill: `kael-core-hygiene`) |
+| UI, motion, glass, mascot, design tokens, screen recipes | `governance/design/runtime.md` (upstream adapters -> existing wheel skill + gates), then `governance/design.md` (-> `governance/design/*`) |
+| Coding behavior (assumptions, simplicity, surgical diffs) | `governance/skills.md` |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
-| Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`) |
+| Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` |
 | Continuing or deferred plan work | `governance/Plan.md` (referenced section only) |
 | Where a doc lives; adding, moving, or naming docs (`README.md` is a LOCKED filename — use `INDEX.md`) | `docs/INDEX.md` (navigation map + conventions) |
 | Teaching Kael a service — knowledge distillation, playbooks | `docs/playbooks/process-distillation.md` (the SOP) + `docs/playbooks/INDEX.md` (status board) |
 | Cross-session lessons and gotchas | `docs/agent-lessons.md` |
 | Progress history, durable decisions, feature contracts | `README.md`, `docs/**/*.md` (navigate from `docs/INDEX.md`) |
 | Project identity, strategy, response modes | `CLAUDE.md` |
+
+### Tier 3 - skills
+
+Two groups, 29 total: **Everyday (18)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
+
+Codex reads the mirrored copies in `.agents/skills/`; `.claude/skills/` is canonical and `scripts/check-skills-sync.mjs` enforces parity.
 
 ## Agent Lifecycle
 
@@ -53,6 +67,10 @@ Core quality gates (`governance/critical.md` §3) — do not bypass:
 
 After editing: run `kael-review` (`governance/critical.md` §8), then self-check against Forbidden Behaviors (`governance/critical.md` §24) and the Final Agent Checklist (`governance/critical.md` §25).
 
+Before reporting the session complete: write session memory, or state why no entry is needed (`governance/critical.md` §3 Session Memory Gate). Memory is an output of the session, not only an input to it — reading `.claude/MEMORY.md` at the start does not discharge this.
+
+`.agents/` mirrors `skills` only, so **Codex has no `/kael-mem` command**. Codex follows the procedure in `docs/memory/INDEX.md` by hand: draft the entry, show it to Tu, and only then write the period file plus the one-line Recall Index entry. The gate is identical for both agents; only the trigger differs.
+
 ## Runtime Boundary
 
 The store-bound runtime is `Expo React Native -> Supabase Auth -> Supabase Edge Function mobile-api -> Supabase DB/RPC/Storage/Realtime -> server-side providers`.
@@ -75,7 +93,7 @@ Before enhancing, refactoring, reorganizing, or "cleaning up" code:
 
 Before any major implementation batch:
 - rebuild the important `.md` manifest outside generated/vendor folders
-- read every important `.md` file in authority order, including `governance/critical.md`, `governance/RULES.md`, `governance/STRUCTURES.md`, `governance/design.md` when relevant, `CLAUDE.md`, `governance/skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/INDEX.md` (docs map) then relevant `docs/**/*.md`, `docs/agent-lessons.md` for prior gotchas, relevant `governance/Plan.md` sections, and `MEMORY.md` last
+- read every important `.md` file in authority order, including `governance/critical.md`, `governance/RULES.md`, `governance/STRUCTURES.md`, `governance/design.md` when relevant, `CLAUDE.md`, `governance/skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/INDEX.md` (docs map) then relevant `docs/**/*.md`, `docs/agent-lessons.md` for prior gotchas, relevant `governance/Plan.md` sections, and `.claude/MEMORY.md` last
 - re-check relevant PR findings and the current touched files
 - compare the intended UI work against the local recording and glass reference notes
 - run React Doctor regularly after UI or React performance changes and treat reported issues as objective audit input
@@ -209,3 +227,4 @@ A UI/motion task is not complete until:
 - static gates find no forbidden patterns introduced by the change
 - targeted type-check/tests pass or failures are documented
 - visual frames are compared against the recording when the task touches UI
+- session memory was written (Claude Code: `/kael-mem`; Codex: by hand per `docs/memory/INDEX.md`), or the Session Memory Gate was declared not applicable

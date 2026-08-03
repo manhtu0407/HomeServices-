@@ -16,7 +16,7 @@ Durable project knowledge: feature specs, design contracts, audits, ops runbooks
 | `ops/` | Operational runbooks: deploy order, migration checklist, SMTP, onboarding | someone needs a step-by-step to run a real operation |
 | `product/` | Product explainers and pre-build UI prep | you are describing the product, not the code (the primary non-technical explainer lives at repo-root [`DOCUMENT.md`](../DOCUMENT.md) instead, for `CLAUDE.md`/`README.md`-level visibility; this folder holds narrower/supporting product docs) |
 | `copy/` | User-facing workflow copy (VI/EN) | you are curating shipped microcopy |
-| `memory/` | `kael-mem` period files (durable session learnings by month) | via the `kael-mem` skill only |
+| `memory/` | **the write target for session memory**: `<YYYY-MM>.md` period files holding full entries, indexed one line each from `.claude/MEMORY.md`. Folder contract: [`memory/INDEX.md`](memory/INDEX.md) | at every session close the Session Memory Gate applies (`governance/critical.md` §3) — Claude Code via `/kael-mem`, Codex by hand per `memory/INDEX.md` |
 | `test-logs/` | Test/verification evidence per phase (append-only; has its own `INDEX.md`) | you ran real tests and must record honest results |
 | `assets/` | Static assets (logo) | a doc/README needs an embedded asset |
 | `archive/` | Ephemeral or superseded material, kept for history | a doc served its purpose (see `archive/INDEX.md`) |
@@ -41,6 +41,7 @@ Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated 
 These are referenced by locked docs or by code — moving them breaks references:
 
 - `architecture/code-ownership-map.md` — referenced by `CLAUDE.md` (locked). The owner-file map per layer.
+- `memory/INDEX.md` and `memory/<YYYY-MM>.md` — referenced by `CLAUDE.md`, `governance/critical.md` §3 (both locked), `AGENTS.md`, and the `/kael-mem` command. The write target for the Session Memory Gate; moving it breaks the gate.
 - `progress-log.md`, `assets/nestscout-aurora-nest-logo.png` — referenced by `README.md` (locked).
 - `test-logs/**` — referenced by test files and scripts under `apps/api`. Keep the directory; archive within it if needed, never relocate it wholesale.
 - `foundation/kael-knowledge-corpus.md` — referenced by code.

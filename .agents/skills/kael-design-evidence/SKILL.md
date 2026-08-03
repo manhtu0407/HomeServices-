@@ -1,6 +1,6 @@
 ---
 name: kael-design-evidence
-description: Record and check the external sources behind Home Services design rules. Use when a design decision rests on an external claim, a platform guideline, a standard, or a benchmark — or when adding to the source ledger, checking source freshness or lifecycle, or turning research into a design rule. Enforces first-party tiers (T0–T2), freshness windows, quality ≥ 24/30, honest counts, and no fabricated "current" claims.
+description: Record and check the external sources behind NestScout design rules. Use when a design decision rests on an external claim, a platform guideline, a standard, or a benchmark — or when adding to the source ledger, checking source freshness or lifecycle, or turning research into a design rule. Enforces first-party tiers (T0–T2), freshness windows, quality ≥ 24/30, honest counts, and no fabricated "current" claims.
 ---
 
 # kael-design-evidence

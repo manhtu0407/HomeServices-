@@ -1,6 +1,6 @@
 ---
 name: kael-material-direction
-description: Decide surface material (glass vs solid) and audit glass surfaces for the Home Services Expo React Native app. Use when building or reviewing any surface that could use glass — floating tab bar / dock, top controls, search, hero or summary card, primary CTA, modal / bottom sheet, media overlay — or when the user mentions glass, blur, material, elevation, nav bar, sheet, overlay, hero, or surface. Decides role → material → variant first ("zero glass is valid"); money / scope / payment / evidence stay solid; applies the neutral + one-mint glass recipe only once glass is chosen.
+description: Decide surface material (glass vs solid) and audit glass surfaces for the NestScout Expo React Native app. Use when building or reviewing any surface that could use glass — floating tab bar / dock, top controls, search, hero or summary card, primary CTA, modal / bottom sheet, media overlay — or when the user mentions glass, blur, material, elevation, nav bar, sheet, overlay, hero, or surface. Decides role → material → variant first ("zero glass is valid"); money / scope / payment / evidence stay solid; applies the neutral + one-mint glass recipe only once glass is chosen.
 ---
 
 # kael-material-direction

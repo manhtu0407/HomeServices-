@@ -115,7 +115,7 @@ Failure modes:
 
 Anti-patterns:
 
-- Installing a generic workflow that does not match Home Services.
+- Installing a generic workflow that does not match NestScout.
 - Mixing product roadmap rules into execution setup.
 
 ### `kael-precommit-setup`
@@ -134,5 +134,5 @@ Use only when TypeScript tests need partial object fixtures and Tu approves addi
 
 Source idea: `scaffold-exercises`.
 
-Use only for course/exercise repositories. It is not part of normal Home Services execution.
+Use only for course/exercise repositories. It is not part of normal NestScout execution.
 

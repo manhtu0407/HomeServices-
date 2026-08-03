@@ -1,6 +1,6 @@
 ---
 name: kael-visual-qa
-description: Visual QA contract for the Home Services Expo React Native app — screenshot capture matrix, baseline naming, and diff review. Use when taking screenshots, setting a baseline, checking a visual regression or diff, or planning a device matrix for a UI change. Native iOS + Android only (no Expo-web); classifies every diff; defers taste to human sign-off. Guidance — building the screenshot / E2E tooling is a separate task.
+description: Visual QA contract for the NestScout Expo React Native app — screenshot capture matrix, baseline naming, and diff review. Use when taking screenshots, setting a baseline, checking a visual regression or diff, or planning a device matrix for a UI change. Native iOS + Android only (no Expo-web); classifies every diff; defers taste to human sign-off. Guidance — building the screenshot / E2E tooling is a separate task.
 ---
 
 # kael-visual-qa
