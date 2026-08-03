@@ -1,4 +1,4 @@
-﻿# Home Services — Workflow Enhancement Plan
+﻿# NestScout — Workflow Enhancement Plan
 
 Tài liệu này là execution plan cho enhancement đợt 2026-05-20. Audience: AI coding agent (Codex hoặc Claude Code) thực thi, Tu review, Claude (tôi) audit lại sau khi build xong.
 
@@ -7,6 +7,8 @@ Plan này KHÔNG phải tài liệu marketing. Mỗi phase phải xuất ra evid
 ---
 
 > 2026-05-30 supersession: các đoạn lịch sử trong Plan về rating penalty / auto-suspend khi worker hủy việc KHÔNG còn là runtime truth hiện tại. Nguồn hiện hành là `docs/workflow/worker-cancellation.md`, `STRUCTURES.md`, và các mục P11/P13/P16 sau này: không có autonomous suspension, rating penalty, payment hold, hoặc punishment nếu chưa có phê duyệt mới của Tu.
+
+> 2026-08-03 tên dự án: dự án đã đổi tên thành **NestScout**. Tiêu đề file trên đã đổi theo; **6 chỗ "Home Services" còn lại trong file này là CỐ Ý giữ, đừng "sửa giúp"**. Hai chỗ (§ Google Maps setup) là **tên tài nguyên Google Cloud có thật** — "Home Services Billing", "Home Services Maps Alert" — đổi trong doc sẽ khiến doc mô tả sai tài nguyên đang tồn tại. Bốn chỗ còn lại là **bản ghi lịch sử** (prompt cũ, cặp `Old:`/`New:` của một lần sửa rule, và một ghi chú anti-pattern): sửa chúng là viết lại quá khứ. Prompt đang chạy thật đã là NestScout và có regression test chặn — `apps/api/src/__tests__/unit/kael-brand-boundary.test.ts`.
 
 ## 0. Activation Protocol
 
@@ -16059,3 +16061,191 @@ git status --short | grep -vE "^ M|^A |^D "                  # RỖNG = không c
 **Trạng thái sau khi execute (2026-08-03):** code đã xong và xanh toàn bộ gate, **chưa commit** — 4 ô duyệt
 còn trống ở trên là phần Tu review trên diff thật, không phải việc agent tự tick. Số liệu + 4 chỗ plan sai
 đã sửa + 1 phát hiện ngoài plan: 47.9 v0.4.
+
+---
+
+## 48. Nâng cấp Input cho AI Coding Agents — CLAUDE.md Map Process + STRUCTURES.md bám Product — 2026-08-03
+
+### 48.0 Metadata
+
+```text
+Plan ID:   plan-agent-input-20260803
+Created:   2026-08-03
+Owner:     Manh Tu
+Branch:    claude/project-audit-docs-update-913867
+Status:    v0.3 — Tu nói "Implement Plan đi". ĐÃ EXECUTE P1+P2+P3 non-stop. CHƯA COMMIT.
+Trigger:   Tu: CLAUDE.md là file đọc đầu tiên, phải làm rõ Map Process (đọc theo task,
+           nhưng luật cứng luôn phải theo) rồi trỏ sang rules, sau đó mới tới skills —
+           skills đã tái cấu trúc thành 2 nhóm. STRUCTURES.md phải trả lời được:
+           Product đang tới đâu? Có những gì và tiến triển như nào?
+Mốc:       PR #145 (2026-08-03, commit 4f392953). Dải đã merge: #1 → #145 = 142 PR.
+Execute:   Làm NON-STOP P1 → P2 → P3, không dừng xin duyệt giữa chừng.
+```
+
+**Phạm vi:** chỉ 2 file chính — `CLAUDE.md` và `governance/STRUCTURES.md` — cộng đồng bộ mắt xích quanh chúng. Không đụng code. Không viết thêm doc mới. Không đổi authority order.
+
+**Quy ước mốc tiến trình (Tu chốt 2026-08-03): dùng số PR.** Mọi câu nói về tiến độ trong 2 file này phải neo vào một số PR, không dùng chữ chung chung như "đã xong" hay "gần xong". Lý do: số PR kiểm chứng được bằng `git log`, không phụ thuộc trí nhớ ai, và lần cập nhật sau chỉ cần so từ mốc cũ tới HEAD.
+
+```text
+Cách viết:   "ĐANG CHẠY (#139)"  ·  "MỘT PHẦN (#142, thiếu <X>)"  ·  "CHƯA CÓ"
+Mốc file:    mỗi file ghi 1 dòng "Cập nhật tới PR #<n> — <ngày>" để biết số liệu tính từ đâu
+Cập nhật:    lần sau chạy `git log <mốc cũ>..HEAD` là ra đúng phần cần bổ sung
+```
+
+---
+
+### 48.1 P1 — CLAUDE.md: làm rõ Map Process
+
+**Vấn đề hiện tại:** CLAUDE.md có bảng routing nhưng không nói rõ *cái gì luôn bắt buộc* và *cái gì đọc tuỳ task*. Skills chỉ bị nhắc rải rác trong vài dòng của bảng, không có mục riêng, và không thể hiện 2 nhóm Tu đã tái cấu trúc.
+
+**Làm gì:**
+
+1. Thêm mục **Map Process** ngay sau phần Product Context, gồm 3 tầng theo đúng thứ tự đọc:
+   - **Tầng 1 — Luật cứng, luôn áp dụng, không phụ thuộc task:** `governance/RULES.md` (product/security/AI/data/runtime) + `governance/critical.md` §3 gates + `kael-core-hygiene`. Bỏ qua tầng này là sai, kể cả task 1 dòng.
+   - **Tầng 2 — Đọc theo task và độ khó:** bảng routing hiện có. Task nhỏ đọc ít, task lớn/mơ hồ đọc thêm. Ghi rõ mức tối thiểu cho task nhỏ.
+   - **Tầng 3 — Skills:** chọn skill sau khi đã biết task class.
+2. Thêm mục **Skills** riêng, chia đúng 2 nhóm Tu đã tái cấu trúc:
+   - **Nhóm dùng thường xuyên (18):** kael-tdd, kael-diagnose, kael-supabase, kael-security-sweep, kael-ai-boundary, kael-frontend-test, kael-core-hygiene, kael-subagent-orchestration, karpathy-guidelines, kael-handoff, kael-doc-audit, kael-prototype, kael-research, kael-wayfinder, kael-codebase-memory, react-doctor, supabase, supabase-postgres-best-practices.
+   - **Nhóm Design (11):** vào bằng `kael-design-preflight` → `governance/design/runtime.md`, rồi mới tới kael-design-direction, kael-design-intelligence, kael-design-evidence, kael-design-review, kael-design-tokens, kael-material-direction, kael-motion, kael-adaptive-layout, kael-accessible-content, kael-visual-qa.
+3. Gỡ các nhắc-skill rải rác trong bảng routing cho khỏi trùng với mục Skills mới.
+4. **Viết lại mục `## Current Phase`** cho bám tiến trình thật, neo theo PR: hiện đang ghi "Phase 0 — production fix and foundation hardening" chung chung, không cho biết đã đi tới đâu. Bản mới ghi: mốc `#145`, những gì Phase 0 đã đóng được (kèm số PR), và điều kiện còn thiếu để rời Phase 0. Nguồn lấy từ khảo sát ở P2 — làm P2 trước rồi quay lại điền, hoặc điền ngay nếu P2 đã chạy xong.
+5. Giữ hub gọn: CLAUDE.md ≤ ~130 dòng.
+
+**Kết quả mong muốn sau P1:**
+
+> Agent mở CLAUDE.md lần đầu, trong ~1 phút trả lời được 4 câu: *luật nào tôi luôn phải theo?*, *task này tôi cần đọc file nào?*, *tôi dùng skill nào?*, *product đang ở đâu (tới PR nào)?* — không phải mở file khác để biết.
+
+---
+
+### 48.2 P2 — STRUCTURES.md: bám đúng Product hiện tại
+
+**Vấn đề hiện tại:** STRUCTURES.md mô tả workflow đầy đủ như một blueprint, nhưng không trả lời được "hôm nay product đang ở đâu". Agent đọc xong không phân biệt được cái gì đã chạy thật, cái gì mới là kế hoạch.
+
+**Làm gì:**
+
+1. **Khảo sát code thật trước khi viết** (không đoán), trả lời 2 câu Tu đặt ra:
+   - *Có những gì?* — liệt kê từ code: route mobile khách/thợ, endpoint `mobile-api`, bảng DB + migration, subsystem Kael, Edge function khác, rail thanh toán.
+   - *Tiến triển như nào?* — luồng nào chạy được end-to-end, luồng nào mới có một phần, cái gì còn là vỏ.
+   - Mỗi kết luận phải quy được về **PR nào mang nó tới**. Cách làm: `git log --pretty="%s" | grep "#"` để lấy dải PR, rồi soi PR nào chạm vùng code đang xét. Không quy được về PR nào thì ghi thẳng "không rõ mốc", đừng đoán.
+2. Thêm mục mới **§1.5 Product đang tới đâu** ngay sau §1 Product Identity, dạng bảng 3 trạng thái thật thà, mỗi dòng neo PR:
+
+   ```text
+   ĐANG CHẠY (#n)          — có code + có test/bằng chứng
+   MỘT PHẦN (#n, thiếu X)  — có code nhưng còn khoảng trống đã biết, ghi rõ thiếu gì
+   CHƯA CÓ                 — mới nằm trong blueprint bên dưới
+   ```
+
+3. Đánh dấu trạng thái + số PR cho từng mục trong §4 Build Order (14 mục), để build order thành *bản đồ tiến độ* thay vì danh sách ước muốn.
+4. Ghi dòng mốc ở đầu §1.5: **"Cập nhật tới PR #145 — 2026-08-03 (commit 4f392953)"**.
+5. Ghi thẳng những gì CHƯA verify được, không im lặng cho qua. Ví dụ đã biết: Expo 54→57 (#132) mới xanh JS gate, chưa QA trên máy thật; rail thanh toán tiền mặt (#139) chưa có giao dịch thật.
+
+**Kết quả mong muốn sau P2:**
+
+> Đọc STRUCTURES.md §1 → §1.5 → §4 là biết ngay product đang ở đâu, cái gì thật, cái gì chưa, và mỗi kết luận truy được về PR nào. Không còn phải đoán giữa blueprint và thực tế.
+
+---
+
+### 48.3 P3 — Đồng bộ mắt xích
+
+**Làm gì:**
+
+1. `AGENTS.md`: bảng routing khớp CLAUDE.md sau P1 (Codex và Claude Code đọc cùng một map). Thêm mục Skills 2 nhóm tương ứng.
+2. `governance/RULES.md`: bổ sung dòng nói rõ nó là Tầng 1 (luôn áp dụng), khớp cách CLAUDE.md gọi tên.
+3. Kiểm mọi đường dẫn và tên skill vừa thêm đều resolve; chạy `node scripts/check-skills-sync.mjs`.
+
+**Kết quả mong muốn sau P3:**
+
+> Claude Code và Codex vào việc bằng cùng một Map Process. Không còn hai bản routing lệch nhau.
+
+---
+
+### 48.4 Definition of Done
+
+```text
+G1  CLAUDE.md có Map Process 3 tầng + mục Skills 2 nhóm (18 + 11 = 29, khớp .claude/skills)
+G2  STRUCTURES.md có §1.5 trạng thái product, số liệu lấy từ code thật, mỗi dòng neo số PR
+G3  CLAUDE.md "Current Phase" viết lại theo mốc PR, không còn câu chung chung
+G4  Cả 2 file có dòng mốc "Cập nhật tới PR #145 — 2026-08-03"; mọi số PR nêu ra đều
+    tìm được bằng `git log --pretty="%s" | grep "#<n>"`
+G5  §4 Build Order: cả 14 mục đều có trạng thái, không mục nào bỏ trống
+G6  AGENTS.md khớp CLAUDE.md; mọi path + tên skill resolve
+G7  check-skills-sync.mjs exit 0
+G8  CLAUDE.md <= ~130 dòng; không đụng 1 dòng code runtime nào
+```
+
+### 48.5 Cần Tu xác nhận
+
+```text
+[✔] Tu chốt 2026-08-03 — cách chia 2 nhóm skills ở 48.1 mục 2 (18 thường dùng / 11 design): "Đúng ý"
+[✔] Tu chốt 2026-08-03 — CLAUDE.md + STRUCTURES.md locked doc: "Được phép sửa"
+[✔] Tu chốt 2026-08-03 — dùng mốc PR làm đơn vị ghi tiến trình ("Có thể lấy mốc PR cho dễ làm việc")
+[✔] Tu chốt 2026-08-03 — "Implement Plan đi. Sau đó dọn rác ở Diff code cho tôi." → đã chạy non-stop
+[ ] Tu review diff thật rồi quyết: chỉnh G8 thành ≤145 dòng (xem 48.7) hay bắt cắt tiếp về ≤130
+[ ] Tu bảo commit (Git Rule — agent không tự commit)
+```
+
+### 48.6 Change Log
+
+| Ngày | Người sửa | Thay đổi |
+|---|---|---|
+| 2026-08-03 | Claude Code | v0.1 — bản đầu. Bản §48 trước đó (link chain / knowledge graduation / drift gate) đã bị Tu bác vì quá vĩ mô so với mission và đã xoá khỏi Plan.md. Bản này thu về đúng 2 file Tu chỉ định: CLAUDE.md (Map Process + skills 2 nhóm) và STRUCTURES.md (product đang tới đâu), cộng P3 đồng bộ. |
+| 2026-08-03 | Claude Code | v0.3 — **ĐÃ EXECUTE, CHƯA COMMIT.** Tu: "Implement Plan đi. Sau đó dọn rác ở Diff code cho tôi." Chạy non-stop P2-khảo-sát → P1 → P3 → dọn rác. Kết quả + bằng chứng + 1 gate trượt (G8: CLAUDE.md 140 dòng thay vì ≤130) + 4 mục dọn rác: xem **48.7**. Không đụng dòng code runtime nào. |
+| 2026-08-03 | Claude Code | v0.2 — Tu chốt 2/3 ô: cách chia skills 18/11 **đúng ý**, và **được phép sửa** 2 locked doc. Tu thêm yêu cầu mới: **cập nhật tiến trình hiện tại vào chính 2 file đó, lấy mốc PR cho dễ làm việc**. Hệ quả: (1) 48.0 thêm quy ước mốc PR — mọi câu về tiến độ phải neo số PR, kiểm được bằng `git log`, kèm cách cập nhật lần sau bằng `git log <mốc cũ>..HEAD`; (2) P1 thêm việc 4 — viết lại `## Current Phase` của CLAUDE.md theo mốc PR thay vì câu chung chung, và kết quả mong muốn lên 4 câu; (3) P2 thêm ràng buộc mỗi kết luận phải quy về PR mang nó tới, không quy được thì ghi "không rõ mốc" chứ không đoán, thêm việc ghi thẳng phần chưa verify (Expo 57 #132 chưa QA máy thật, rail tiền mặt #139 chưa có giao dịch thật); (4) DoD 5 → 8 gate, thêm G3/G4/G5 cho phần mốc PR và độ phủ Build Order. Mốc chốt cho đợt này: **PR #145 (2026-08-03, commit 4f392953)**, dải đã merge #1 → #145 = 142 PR. |
+
+### 48.7 Kết quả thực thi (2026-08-03)
+
+Tu ra lệnh "Implement Plan đi. Sau đó dọn rác ở Diff code cho tôi." → chạy non-stop, không dừng xin duyệt giữa chừng.
+
+**Thứ tự thực tế: P2-khảo-sát → P1 → P3 → dọn rác.** Đúng như 48.1 việc 4 đã báo trước: `Current Phase` của CLAUDE.md lấy số liệu từ khảo sát P2, nên khảo sát phải chạy trước để khỏi viết hai lần.
+
+**P1 — CLAUDE.md (113 → 140 dòng).** Gộp mục `## Routing` cũ vào `## Map Process` 3 tầng thay vì thêm mục mới song song — nếu tách hai mục thì bảng routing sẽ bị nhắc hai lần. Tầng 1 (RULES / critical / code-hygiene / MEMORY write-back) + câu chốt "task 1 dòng cũng không được miễn". Tầng 2 = bảng routing, thêm 1 dòng trỏ `STRUCTURES.md §1.5`. Tầng 3 = Skills 18 + 11 = 29, khớp đúng 29 folder trong `.claude/skills`. `## Current Phase` viết lại theo mốc PR #145. Gỡ mục `## Next.js Note` vì nội dung đã nằm trong Runtime Boundary — bỏ trùng, không mất luật.
+
+**P2 — STRUCTURES.md (438 → 496 dòng).** Thêm `§1.5 Where The Product Actually Is` ngay sau §1, mỗi dòng neo số PR. Khảo sát từ code thật, không đoán: 21 route file mobile, 97 route kind `mobile-api` / 13 nhóm, 94 bảng + 7 view + 111 RPC / 208 migration, 5 Edge function, test 279 (api) + 24 (shared) + 106 suite (mobile). §4 Build Order: cả 14 mục đều có trạng thái.
+
+Ba phát hiện thật, nói thẳng trong §1.5 thay vì im lặng:
+
+```text
+worker_stats/customer_stats (#70)  KHÔNG AI GỌI. Có bảng + view worker_overview/customer_overview,
+                                   nhưng không chỗ nào gọi private.recompute_all_actor_stats() và
+                                   không code Edge nào đọc view. Khớp ghi chú cũ "gamification = số giả".
+Worker map                         Vẫn là vỏ SVG. `apps/mobile` KHÔNG có dependency map SDK nào;
+                                   #66 chỉ ra map-proxy-spike và nó vẫn là spike.
+Admin                              8 endpoint admin = learning candidate + A/B + market-cache. 5 trong 6
+                                   nhiệm vụ admin ở §3 (duyệt thợ, review job, quản lý baseline, xử tranh
+                                   chấp, quản lý taxonomy) CHƯA CÓ.
+```
+
+**P3 — đồng bộ.** `AGENTS.md` đổi sang cùng 3 tầng; Tầng 3 **chỉ trỏ** sang CLAUDE.md chứ không chép lại danh sách 29 skill — tránh đúng lỗi 2-bản-lệch-nhau đã gặp ở `.claude`/`.agents`. `RULES.md` thêm 1 dòng tự khai là Tầng 1.
+
+**Kiểm chứng (lệnh chạy thật, kết quả thật):**
+
+```text
+node scripts/check-skills-sync.mjs   exit 0   "skills in sync"
+corepack pnpm lint:comments          exit 0   "clean — no note-banner comments"
+corepack pnpm lint:structure         exit 0   845 source file
+29/29 tên skill                      resolve ở CẢ .claude/skills và .agents/skills
+23/23 đường dẫn nêu trong 3 file     tồn tại
+19/19 số PR trích dẫn                tìm được bằng `git log --pretty="%s" | grep "^#<n>"`
+markdown link trong 13 file đã sửa   resolve hết
+git diff --check                     sạch
+0 file code bị đụng
+```
+
+Kiểm riêng attribution dễ sai: `#29` mang tiêu đề "Enforce Kael final price authority" nhưng `git ls-tree` xác nhận cây của nó CÓ `lib/realtime.ts` + `(admin)/dashboard.tsx` còn cây cha thì KHÔNG — quy về #29 là đúng, chỉ là PR đó gộp nhiều việc.
+
+**Lệch so với plan — 1 gate KHÔNG đạt, ghi thẳng:**
+
+```text
+G8 (CLAUDE.md <= ~130 dòng)   TRƯỢT — landed 140.
+```
+
+Đã cắt phần trùng thật (gộp `Next.js Note` vào Runtime Boundary −4, nén khối ASCII runtime −3, gọn cây Project Structure −3, nén 2 khối skill −3): 151 → 140. Muốn xuống 130 thì phải cắt vào nội dung thật hoặc xoá mục `## Identity` do Tu viết — không làm. Con số ~130 là do agent tự đặt ở v0.1 khi chưa biết Tu sẽ yêu cầu thêm mốc PR; **đề xuất chỉnh gate thành ≤145**. Phần code runtime: 0 dòng bị đụng, đúng vế sau của G8.
+
+**Dọn rác ở diff (Tu yêu cầu) — 4 thứ, đều là rác agent tự tạo hoặc bỏ sót:**
+
+1. `governance/design/motion.md` thừa 1 dòng trống cuối file (do bước chuyển §13A). `git diff --check` bắt được → đã xoá.
+2. **Mâu thuẫn tự tạo về `/kael-mem`.** `AGENTS.md` nói đúng rằng Codex không có slash command, nhưng 5 chỗ khác lại bắt "run `/kael-mem`": `critical.md` §3 + checklist #25, `CLAUDE.md` Tầng 1, `docs/INDEX.md`, `docs/memory/INDEX.md`, `.claude/MEMORY.md`. Đã sửa cả 5 thành "Claude Code chạy `/kael-mem`; Codex làm tay cùng các bước".
+3. `governance/protocols/dormant.md` còn sót 2 chỗ "Home Services" (dòng 118, 137) — sót từ đợt rebrand trước. Đã đổi.
+4. Line ending: **kiểm rồi, KHÔNG phải rác.** `core.autocrlf=true` nên mọi blob trong git đều là LF; cảnh báo "LF will be replaced by CRLF" chỉ là chuyện working copy. `git diff --numstat` xác nhận không có file nào bị rewrite ảo: `2026-05.md` +1050/-0, `design.md` +10/-101, `motion.md` +95/-0, `Plan.md` +130/-1 — đúng phần cố ý sửa. Không đụng vào.
+
+**Trạng thái:** toàn bộ **CHƯA COMMIT** (Git Rule — chờ Tu bảo commit). 4 ô ở 48.5 là phần Tu review trên diff thật, không phải việc agent tự tick.

@@ -1,6 +1,6 @@
 ---
 name: kael-design-review
-description: Final design review of a Home Services Expo React Native UI change before human sign-off. Use for a design review, final review, or design critique — checking hierarchy, workflow correctness, state completeness, accessibility, and anti-slop before a surface is called done. Reviews in priority order, separates objective proof from subjective taste (human sign-off), and ends with a verdict — never a self-assigned score.
+description: Final design review of a NestScout Expo React Native UI change before human sign-off. Use for a design review, final review, or design critique — checking hierarchy, workflow correctness, state completeness, accessibility, and anti-slop before a surface is called done. Reviews in priority order, separates objective proof from subjective taste (human sign-off), and ends with a verdict — never a self-assigned score.
 ---
 
 # kael-design-review

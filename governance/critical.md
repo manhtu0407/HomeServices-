@@ -50,7 +50,7 @@ The project docs are a supporting stack, not competing prompts:
 5. `AGENTS.md` controls local workspace expectations for Codex/Claude Code.
 6. `Plan.md` applies only when the task continues that plan or references its deferred items.
 7. `README.md` and `docs/**/*.md` provide progress history, durable decisions, feature contracts, and historical evidence.
-8. `.claude/MEMORY.md` is read last. It provides the freshest AI-agent session memory and may be updated continuously. It does not silently override hard rules, locked docs, or code.
+8. `.claude/MEMORY.md` is read last and written back at session close (§3 Session Memory Gate). It provides the freshest AI-agent session memory. It does not silently override hard rules, locked docs, or code.
 
 If `.claude/MEMORY.md` or a historical doc conflicts with the hard docs or current code, treat it as a freshness signal and ask Tu instead of guessing.
 
@@ -226,6 +226,24 @@ The agent MUST NOT say "production-ready" unless:
 ### Git Rule
 
 The agent MUST NOT commit, push, open a PR, amend history, or run destructive git commands unless Tu explicitly requests it in the current conversation.
+
+### Session Memory Gate
+
+`.claude/MEMORY.md` is an output, not only an input. Reading it last (§0, §25) does not discharge this gate.
+
+Where it is written: the full entry goes in `docs/memory/<YYYY-MM>.md` and exactly one line in the `.claude/MEMORY.md` Recall Index. Claude Code uses `/kael-mem`; Codex has no slash commands and follows the same steps by hand. The folder contract — naming, month rollover, what belongs, honesty rules — is `docs/memory/INDEX.md`.
+
+Before reporting a session complete, the agent MUST write that entry, or state explicitly why no entry is needed, when the session produced any of:
+
+- a decision Tu made, plus the rationale,
+- a `Plan.md` section, phase, or track executed,
+- a migration, deploy, or environment/tooling change,
+- an honest gap, deferred item, or known-red state that the next agent would otherwise rediscover,
+- a handoff between Claude Code and Codex.
+
+A trivial single-file fix with no durable lesson needs no entry. When unsure, write it: a missing memory costs the next session far more than one extra line.
+
+Memory entries obey the same honesty rule as verification above. Record only real commands, real results, and real gaps. Never write memory for work that was not done.
 
 ## 4. Survival and Scope Rules
 
@@ -602,4 +620,5 @@ Before saying a coding task is complete, the agent MUST verify:
 [ ] kael-review was run.
 [ ] Temporary debug code was removed.
 [ ] Final response reports only real verification.
+[ ] Session memory was written (`/kael-mem`, or by hand for Codex), or the §3 Session Memory Gate was declared not applicable.
 ```

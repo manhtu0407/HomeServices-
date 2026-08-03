@@ -1,6 +1,6 @@
 ---
 name: kael-security-sweep
-description: Security review for Home Services. Use when touching secrets, PII, auth, logging, payment, booking, AI APIs, rate limits, input validation, file uploads, or database access. Verifies no client secrets, no PII in logs, validated input, timeouts and bounded retries, and security negative tests.
+description: Security review for NestScout. Use when touching secrets, PII, auth, logging, payment, booking, AI APIs, rate limits, input validation, file uploads, or database access. Verifies no client secrets, no PII in logs, validated input, timeouts and bounded retries, and security negative tests.
 ---
 
 # kael-security-sweep

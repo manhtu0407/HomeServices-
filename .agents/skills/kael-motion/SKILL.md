@@ -1,11 +1,11 @@
 ---
 name: kael-motion
-description: Design, audit, or polish UI motion/animation for the Home Services Expo React Native app. Use when adding or reviewing animation, transitions, micro-interactions, gestures, screen or tab transitions, bottom sheets, skeleton / shimmer loaders, or Kael mascot motion. Two modes — create (choose motion that fits the moment) and audit (find missing motion + AI-slop). Enforces Reanimated, Reduce Motion / Reduce Transparency, and the Performance Budget.
+description: Design, audit, or polish UI motion/animation for the NestScout Expo React Native app. Use when adding or reviewing animation, transitions, micro-interactions, gestures, screen or tab transitions, bottom sheets, skeleton / shimmer loaders, or Kael mascot motion. Two modes — create (choose motion that fits the moment) and audit (find missing motion + AI-slop). Enforces Reanimated, Reduce Motion / Reduce Transparency, and the Performance Budget.
 ---
 
 # kael-motion
 
-Motion skill for Home Services (Expo RN / Reanimated), adapted from `design-motion-principles`. Canonical specs live in `governance/design/motion.md` (timing ranges, required/forbidden areas) and `AGENTS.md` (Motion Rules + Performance Budget) — do not duplicate them here. Read `governance/design.md` core first for identity/preflight; for design tasks, `governance/design/runtime.md` is the router.
+Motion skill for NestScout (Expo RN / Reanimated), adapted from `design-motion-principles`. Canonical specs live in `governance/design/motion.md` (timing ranges, required/forbidden areas) and `AGENTS.md` (Motion Rules + Performance Budget) — do not duplicate them here. Read `governance/design.md` core first for identity/preflight; for design tasks, `governance/design/runtime.md` is the router.
 
 ## Mode: create
 Use when building animation for a screen or component.

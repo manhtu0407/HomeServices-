@@ -4,6 +4,8 @@ These rules are hard constraints. If a user request, implementation shortcut, sk
 
 `critical.md` defines execution flow. This file defines product/security/runtime boundaries that must not be bypassed.
 
+**This file is Tier 1 of the Map Process (`CLAUDE.md`).** Tier 1 is unconditional: it applies to every task at every size, including a one-line fix. Nothing in Tier 2 or Tier 3 — no protocol, skill, plan section, or design doc — can relax a rule here.
+
 ---
 
 ## AI Coding Agent Skills Reference
@@ -67,16 +69,16 @@ For every new secret:
 
 ## Rule #2: All AI API Calls Go Through The Centralized Wrapper
 
-```typescript
-// Correct
-import { callAI } from '@/lib/ai/client'
+There are two wrappers, one per runtime. Use the one that matches where your code runs:
 
-const result = await callAI({
-  provider: 'anthropic',
-  model: 'claude-sonnet-4-6',
-  messages: [...],
-  maxTokens: 1000
-})
+- **Store-bound runtime (canonical):** `supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts`. Every AI call on the mobile path goes through this one.
+- **`apps/api` reference/parity surface:** `apps/api/src/lib/ai/client.ts` (`@/lib/ai/client`). Not the mobile runtime — see Rule #0.
+
+```typescript
+// Correct — inside supabase/functions/mobile-api
+import { callAI } from '../kael-providers/provider-client.ts'
+
+const result = await callAI(request, secrets, gate)
 
 // Forbidden
 import Anthropic from '@anthropic-ai/sdk'
@@ -84,7 +86,9 @@ import Anthropic from '@anthropic-ai/sdk'
 const client = new Anthropic({ apiKey: 'sk-...' })
 ```
 
-The wrapper must provide timeout, retry, error handling, cost logging, response validation hooks, and safe fallback behavior.
+The Edge wrapper takes the spend gate as an argument; do not call a provider around it. Provider/model pairs come from the per-task model ladder in `kael/agents/agentic-harness.ts`, which declares a primary and its fallbacks — do not hardcode a new model ID at a call site.
+
+Both wrappers must provide timeout, retry, error handling, cost logging, response validation hooks, and safe fallback behavior.
 
 ---
 
@@ -293,7 +297,14 @@ ANTHROPIC_API_KEY
 PERPLEXITY_API_KEY
 DEEPSEEK_API_KEY
 GOOGLE_MAPS_API_KEY
+VIETMAP_API_KEY
+SEPAY_WEBHOOK_SECRET
+SEPAY_VIETQR_BANK_CODE
+SEPAY_VIETQR_ACCOUNT_NUMBER
+SEPAY_VIETQR_ACCOUNT_HOLDER
 SUPABASE_SERVICE_ROLE_KEY
 ```
+
+This list is not exhaustive and drifts as providers are added. `config/env/workspace.env.example` is the authoritative key-name inventory; every entry there that carries server authority is server-side only.
 
 Mobile-public values must be limited to intentionally public runtime configuration, such as Supabase URL and publishable/anon key, and must never include server authority.

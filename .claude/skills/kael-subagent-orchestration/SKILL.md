@@ -1,6 +1,6 @@
 ---
 name: kael-subagent-orchestration
-description: Subagent delegation workflow for Home Services agent tasks. Always use before task decomposition to make a deliberate local/delegated decision; use subagents only for difficult, deep, independent, non-blocking work and keep the main agent responsible for integration. Do not use to force subagent spawning.
+description: Subagent delegation workflow for NestScout agent tasks. Always use before task decomposition to make a deliberate local/delegated decision; use subagents only for difficult, deep, independent, non-blocking work and keep the main agent responsible for integration. Do not use to force subagent spawning.
 ---
 
 # kael-subagent-orchestration
