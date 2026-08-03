@@ -68,7 +68,7 @@ Do not autonomously update `worker_profiles.is_suspended`, `is_available`, or
 - `apps/api/src/__tests__/unit/mobile-api-kael-p11.test.ts` covers P11
   classification, no-show detection, fallback options, anti-abuse, and review
   writes.
-- `apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts` covers the Edge
-  worker cancellation runtime response and admin-review writes.
+- `apps/api/src/__tests__/kael-edge-runtime/domains/kael-cancellation-worker.test.ts`
+  covers the Edge worker cancellation runtime response and admin-review writes.
 - `apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts` covers the P11
   migrations, RPC signatures, taxonomy, grants, and no-show SQL ambiguity guard.

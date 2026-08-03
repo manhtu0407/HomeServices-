@@ -121,8 +121,21 @@ apps/mobile/components/ui/
 | Push helper | `supabase/functions/mobile-api/_shared/platform/push.ts` | push is best-effort; notification rows remain source of truth |
 | Rate limit | `supabase/functions/mobile-api/_shared/platform/rate-limit.ts` | protect AI/provider routes |
 | Kael Harness shared contracts | `packages/shared/kael/**` | charter skeletons, permission-purpose types, and future shared Kael governance contracts |
+| Generated DB types | `packages/shared/src/types/database.types.ts`, re-exported by `apps/api/src/lib/database.types.ts` | generated artifact, never hand-edited — see the regenerate command below |
 
 `apps/api/src/**` mirrors/reference-tests many of these behaviors for Next.js/admin/support. It is not the store-bound mobile runtime unless Tu explicitly changes scope.
+
+### Regenerating `database.types.ts`
+
+```bash
+pnpm supabase gen types --local > packages/shared/src/types/database.types.ts
+```
+
+`--local` needs Docker and a running local stack; use `--linked` or `--project-id <ref>` to generate against a
+remote project instead. Hand edits to this file are lost on the next regenerate, so fix the migration and
+regenerate rather than patching the output. `.gitattributes` marks it `linguist-generated -diff`, and
+`apps/api/src/__tests__/schema/kael-database-types-drift.test.ts` fails if its public tables and the tables the
+migrations create ever diverge in either direction.
 
 ### C3 — One Kael brain (Edge canonical)
 
@@ -157,7 +170,7 @@ Use the narrowest relevant check first, then broaden when shared behavior change
 | Service scope / constants / schemas | `packages/shared/src/__tests__/constants.test.ts`, `validation.test.ts`, `contracts-parity.test.ts` |
 | Mobile workflow state | `packages/shared/src/__tests__/mobile-workflow.test.ts` |
 | Mobile wiring/static boundaries | `packages/shared/src/__tests__/mobile-wiring.test.ts`, `mobile-backend-wiring.test.ts`, `monorepo-wiring.test.ts` |
-| Edge/API routing and runtime | `apps/api/src/__tests__/unit/mobile-api-edge-router.test.ts`, `mobile-api-edge-runtime.test.ts`, `apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts` |
+| Edge/API routing and runtime | `apps/api/src/__tests__/unit/mobile-api-edge-router.test.ts`, `apps/api/src/__tests__/kael-edge-runtime/{platform,domains}/*.test.ts` (27 suites over the shared `kael-edge-runtime/harness/`, size-capped by `schema/kael-edge-runtime-test-size.test.ts`), `apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts` |
 | Kael/provider behavior | API Kael unit tests, `kael-schemas.test.ts`, `pricing.test.ts`, `ai-client.test.ts`, `apps/api/scripts/kael-eval.mjs` |
 | Kael charter and response style | `packages/shared/src/__tests__/kael-charter-p9.test.ts`, `apps/api/src/__tests__/unit/mobile-api-kael-p8.test.ts`, `mobile-api-edge-schema.test.ts`, staging `GET /kael/charter` smoke, staging advisors |
 | Kael learning skills | `apps/api/src/__tests__/unit/mobile-api-kael-p7.test.ts`, `mobile-api-edge-schema.test.ts`, `tier1-type-completeness.test.ts`, staging migration/advisor checks |
