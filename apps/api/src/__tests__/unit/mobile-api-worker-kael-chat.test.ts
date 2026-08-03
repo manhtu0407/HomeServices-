@@ -293,6 +293,62 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(answer.text).not.toMatch(/vnd|dong|status|trang thai/i)
   })
 
+  it('uses Flash only for a short greeting in normal worker chat', async () => {
+    const requestedModels: string[] = []
+    const answer = await runWorkerAssist({
+      conversationMode: 'normal',
+      job: null,
+      question: 'Hello!',
+      language: 'en',
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
+      callAI: async (request) => {
+        requestedModels.push(request.model)
+        return {
+          success: true,
+          content: JSON.stringify({
+            text: 'Hello. How can I help with NestScout?',
+            safety_notes: [],
+            redirect_scope_change: false,
+          }),
+          usage: { inputTokens: 6, outputTokens: 9, costUsd: 0.00001 },
+          latencyMs: 10,
+        }
+      },
+    })
+
+    expect(answer.fallback_used).toBe(false)
+    expect(requestedModels).toEqual(['deepseek-v4-flash'])
+  })
+
+  it('uses Pro for a substantive normal worker question', async () => {
+    const requestedModels: string[] = []
+    const answer = await runWorkerAssist({
+      conversationMode: 'normal',
+      job: null,
+      question: 'How do I update my service area in NestScout?',
+      language: 'en',
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
+      callAI: async (request) => {
+        requestedModels.push(request.model)
+        return {
+          success: true,
+          content: JSON.stringify({
+            text: 'Open your profile, then update the service area before saving.',
+            safety_notes: [],
+            redirect_scope_change: false,
+          }),
+          usage: { inputTokens: 14, outputTokens: 12, costUsd: 0.00002 },
+          latencyMs: 12,
+        }
+      },
+    })
+
+    expect(answer.fallback_used).toBe(false)
+    expect(requestedModels).toEqual(['deepseek-v4-pro'])
+  })
+
   it('derives a concise session title inside the existing first worker-assist call', async () => {
     const callAI = vi.fn(async (_request: AIRequest) => ({
       success: true as const,
@@ -502,8 +558,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       },
     })
 
-    expect(attemptedProviders).toEqual(['deepseek', 'deepseek', 'anthropic'])
-    expect(attemptedModels).toEqual(['deepseek-v4-flash', 'deepseek-v4-pro', 'claude-sonnet-5'])
+    expect(attemptedProviders).toEqual(['deepseek', 'anthropic'])
+    expect(attemptedModels).toEqual(['deepseek-v4-pro', 'claude-sonnet-5'])
     expect(Math.min(...attemptedTimeouts.map((value) => value ?? 0))).toBeGreaterThanOrEqual(4000)
     expect(answer).toMatchObject({
       fallback_used: false,
@@ -511,8 +567,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       model: expect.any(String),
       cost_usd: 0.00042,
       provider_attempts: [
-        expect.objectContaining({ provider: 'deepseek', role: 'primary', result: 'error', code: 'TIMEOUT' }),
-        expect.objectContaining({ provider: 'deepseek', model: 'deepseek-v4-pro', role: 'fallback', result: 'error', code: 'TIMEOUT' }),
+        expect.objectContaining({ provider: 'deepseek', model: 'deepseek-v4-pro', role: 'primary', result: 'error', code: 'TIMEOUT' }),
         expect.objectContaining({ provider: 'anthropic', role: 'fallback', result: 'success' }),
       ],
     })

@@ -102,15 +102,21 @@ export function agenticEstimateSupportingPhase(
   const hasSubmittedEvidence = receipt.evidence.photo_count > 0 ||
     receipt.evidence.video_frame_count > 0 ||
     receipt.evidence.voice_transcript_count > 0
-  if (hasSubmittedEvidence || !enriched) {
+  const evidenceRows = evidenceAnalysisRows(receipt.evidence, language, evidencePreviews)
+  const evidenceDetail = evidenceReceiptDetail(
+    receipt.evidence,
+    language,
+    evidenceRows.length === 0,
+  )
+  if (evidenceDetail && (hasSubmittedEvidence || !enriched)) {
     rows.push({
-      detail: evidenceReceiptDetail(receipt.evidence, language),
+      detail: evidenceDetail,
       key: 'evidence',
       label: evidenceReceiptLabel(receipt.evidence, language),
     })
   }
 
-  rows.push(...evidenceAnalysisRows(receipt.evidence, language, evidencePreviews))
+  rows.push(...evidenceRows)
 
   if (problemReceipt?.recommended_scope) {
     rows.push({
@@ -392,20 +398,23 @@ function estimateConclusion(estimate: AgenticEstimate, language: AppLanguage) {
 function evidenceReceiptDetail(
   evidence: NonNullable<AgenticEstimate['analysis_receipt']>['evidence'],
   language: AppLanguage,
+  includeVisualEvidence = true,
 ) {
   const parts = language === 'vi'
     ? [
-        evidence.photo_count > 0 ? `${evidence.photo_count} ảnh` : null,
-        evidence.video_frame_count > 0 ? `${evidence.video_frame_count} khung hình video` : null,
+        includeVisualEvidence && evidence.photo_count > 0 ? `${evidence.photo_count} ảnh` : null,
+        includeVisualEvidence && evidence.video_frame_count > 0
+          ? `${evidence.video_frame_count} khung hình video`
+          : null,
         evidence.voice_transcript_count > 0
           ? `${evidence.voice_transcript_count} bản chép lời đã duyệt`
           : null,
       ]
     : [
-        evidence.photo_count > 0
+        includeVisualEvidence && evidence.photo_count > 0
           ? `${evidence.photo_count} ${evidence.photo_count === 1 ? 'photo' : 'photos'}`
           : null,
-        evidence.video_frame_count > 0
+        includeVisualEvidence && evidence.video_frame_count > 0
           ? `${evidence.video_frame_count} video ${evidence.video_frame_count === 1 ? 'frame' : 'frames'}`
           : null,
         evidence.voice_transcript_count > 0
@@ -414,6 +423,39 @@ function evidenceReceiptDetail(
       ]
   const visible = parts.filter((part): part is string => Boolean(part))
   const submittedEvidence = visible.join(' · ')
+  const hasVisualEvidence = evidence.photo_count > 0 || evidence.video_frame_count > 0
+  if (!includeVisualEvidence && hasVisualEvidence) {
+    const voiceSuffix = submittedEvidence
+      ? (language === 'vi'
+          ? ` Kael cũng đã nhận ${submittedEvidence}.`
+          : ` Kael also received ${submittedEvidence}.`)
+      : ''
+    if (evidence.analysis_status === 'unavailable') {
+      return language === 'vi'
+        ? `Kael đã nhận hình ảnh nhưng chưa thể xác nhận chi tiết. Các hình này không được dùng cho kết luận hoặc khoảng giá.${voiceSuffix}`
+        : `Kael received visual evidence but could not verify its details. It is not used for the conclusion or price range.${voiceSuffix}`
+    }
+    if (evidence.analysis_status === 'analyzed') {
+      const findingCount = evidence.findings?.length ?? 0
+      return language === 'vi'
+        ? `${findingCount > 0
+            ? 'Kael đã đối chiếu từng hình; các chi tiết liên quan được trình bày bên dưới.'
+            : 'Kael đã đối chiếu từng hình; chưa có chi tiết đủ rõ để dùng làm kết luận.'}${voiceSuffix}`
+        : `${findingCount > 0
+            ? 'Kael checked each visual item; relevant details are shown below.'
+            : 'Kael checked each visual item; no detail was clear enough to support a conclusion.'}${voiceSuffix}`
+    }
+    return language === 'vi'
+      ? `Kael đã nhận hình ảnh; từng hình được trình bày bên dưới.${voiceSuffix}`
+      : `Kael received visual evidence; each item is shown below.${voiceSuffix}`
+  }
+  if (!includeVisualEvidence) {
+    return submittedEvidence
+      ? (language === 'vi'
+          ? `Kael đã nhận ${submittedEvidence}.`
+          : `Kael received ${submittedEvidence}.`)
+      : null
+  }
   if (evidence.analysis_status === 'unavailable' && submittedEvidence) {
     return language === 'vi'
       ? `Kael đã nhận ${submittedEvidence} nhưng chưa thể xác nhận chi tiết hình ảnh. Khoảng giá chưa dựa trên suy luận từ phần hình ảnh này.`

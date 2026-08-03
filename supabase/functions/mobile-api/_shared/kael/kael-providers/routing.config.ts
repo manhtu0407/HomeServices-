@@ -14,6 +14,7 @@ export type EscalationTrigger = {
 export type KaelPurposeRoutingConfig = {
   readonly purpose: KaelPurpose;
   readonly primary: ProviderRoute;
+  readonly simpleNormalChatPrimary?: ProviderRoute;
   readonly modelFallback?: ProviderRoute;
   readonly fallback?: ProviderRoute;
   readonly escalation?: ProviderRoute;
@@ -33,10 +34,14 @@ const HIGH_STAKES_ESCALATION = Object.freeze({
 });
 const NO_ESCALATION_TRIGGER = Object.freeze({});
 
-const deepseek = (model = "deepseek-v4-flash"): ProviderRoute => ({
+const DEEPSEEK_V4_FLASH_MODEL = "deepseek-v4-flash";
+const DEEPSEEK_V4_PRO_MODEL = "deepseek-v4-pro";
+
+const deepseek = (model = DEEPSEEK_V4_PRO_MODEL): ProviderRoute => ({
   provider: "deepseek",
   model,
 });
+const deepseekFlash = (): ProviderRoute => deepseek(DEEPSEEK_V4_FLASH_MODEL);
 const anthropic = (model = "claude-sonnet-5"): ProviderRoute => ({
   provider: "anthropic",
   model,
@@ -47,9 +52,7 @@ const perplexity = (model = "sonar"): ProviderRoute => ({
 });
 
 export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> = Object.freeze({
-  intent_classification: config("intent_classification", deepseek(), anthropic(), 0.001, 4_000, true, 50, {
-    modelFallback: deepseek("deepseek-v4-pro"),
-  }),
+  intent_classification: config("intent_classification", deepseek(), anthropic(), 0.001, 4_000, true, 50),
   vision_analysis: config("vision_analysis", anthropic(), undefined, 0.015, 10_000, true, 1_300, {
     modelFallback: anthropic("claude-haiku-4-5-20251001"),
     escalation: {
@@ -57,12 +60,8 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
       trigger: LOW_CONFIDENCE_ESCALATION,
     },
   }),
-  clarification: config("clarification", deepseek(), anthropic("claude-haiku-4-5-20251001"), 0.003, 2_000, true, 100, {
-    modelFallback: deepseek("deepseek-v4-pro"),
-  }),
-  problem_synthesis: config("problem_synthesis", deepseek(), anthropic(), 0.005, 3_000, true, 250, {
-    modelFallback: deepseek("deepseek-v4-pro"),
-  }),
+  clarification: config("clarification", deepseek(), anthropic("claude-haiku-4-5-20251001"), 0.003, 2_000, true, 100),
+  problem_synthesis: config("problem_synthesis", deepseek(), anthropic(), 0.005, 3_000, true, 250),
   market_lookup: config("market_lookup", perplexity(), undefined, 0.002, 4_000, true, 300, {
     escalation: {
       route: perplexity("sonar-pro"),
@@ -70,27 +69,21 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
     },
   }),
   price_synthesis: config("price_synthesis", anthropic(), undefined, 0.01, 3_000, true, 200),
-  advisory_generation: config("advisory_generation", deepseek(), anthropic("claude-haiku-4-5-20251001"), 0.004, 2_000, true, 150, {
-    modelFallback: deepseek("deepseek-v4-pro"),
-  }),
-  worker_brief: config("worker_brief", deepseek(), anthropic(), 0.006, 3_000, false, 600, {
-    modelFallback: deepseek("deepseek-v4-pro"),
-  }),
+  advisory_generation: config("advisory_generation", deepseek(), anthropic("claude-haiku-4-5-20251001"), 0.004, 2_000, true, 150),
+  worker_brief: config("worker_brief", deepseek(), anthropic(), 0.006, 3_000, false, 600),
   scope_change: config("scope_change", anthropic(), undefined, 0.01, 20_000, true, 500, {
     escalation: {
       route: anthropic("claude-opus-4-8"),
       trigger: HIGH_STAKES_ESCALATION,
     },
   }),
-  job_incident: config("job_incident", deepseek(), anthropic(), 0.004, 5_000, true, 250, {
-    modelFallback: deepseek("deepseek-v4-pro"),
-  }),
-  post_job_learning: config("post_job_learning", deepseek("deepseek-v4-pro"), anthropic(), 0.012, 15_000, false, 800),
+  job_incident: config("job_incident", deepseek(), anthropic(), 0.004, 5_000, true, 250),
+  post_job_learning: config("post_job_learning", deepseek(), anthropic(), 0.012, 15_000, false, 800),
   educational_response: config("educational_response", deepseek(), anthropic("claude-haiku-4-5-20251001"), 0.003, 6_000, true, 500, {
-    modelFallback: deepseek("deepseek-v4-pro"),
+    simpleNormalChatPrimary: deepseekFlash(),
   }),
   worker_assist: config("worker_assist", deepseek(), anthropic(), 0.004, 5_000, true, 180, {
-    modelFallback: deepseek("deepseek-v4-pro"),
+    simpleNormalChatPrimary: deepseekFlash(),
   }),
 });
 
@@ -113,6 +106,7 @@ function config(
   userVisible: boolean,
   maxTokens: number,
   options: {
+    readonly simpleNormalChatPrimary?: ProviderRoute;
     readonly modelFallback?: ProviderRoute;
     readonly escalation?: {
       readonly route: ProviderRoute;
@@ -123,6 +117,7 @@ function config(
   return {
     purpose,
     primary,
+    simpleNormalChatPrimary: options.simpleNormalChatPrimary,
     modelFallback: options.modelFallback,
     fallback,
     escalation: options.escalation?.route,

@@ -1,6 +1,6 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer } from 'react'
 import { Image } from 'expo-image'
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
 import type { CustomerThemeTokens } from '@/components/customer/customer-theme'
 import {
@@ -11,9 +11,6 @@ import {
 import type { AgenticEstimateSupportingPhaseModel } from './agentic-estimate-display-model'
 
 const ROW_SETTLE_CADENCE_MS = 320
-const COMPACT_LAYOUT_MAX_WIDTH = 599
-const DEFAULT_EVIDENCE_ASPECT_RATIO = 4 / 3
-
 type PriceReasoningRevealState = {
   activeRowIndex: number | null
   complete: boolean
@@ -54,7 +51,6 @@ function AgenticPriceReasoningStreamSession({
   tokens: CustomerThemeTokens
 }) {
   const [reveal, dispatchReveal] = useReducer(priceReasoningRevealReducer, model, initialReveal)
-  const { width: windowWidth } = useWindowDimensions()
 
   useEffect(() => {
     if (reduceMotion) return undefined
@@ -94,7 +90,12 @@ function AgenticPriceReasoningStreamSession({
   }, [model, reduceMotion])
 
   const visibleReveal = reduceMotion ? completedReveal(model) : reveal
-  const visibleRows = model.rows.slice(0, visibleReveal.visibleDetails.length)
+  const visibleRows = model.rows.flatMap((row, rowIndex) => {
+    const visibleDetail = visibleReveal.visibleDetails[rowIndex]
+    return visibleDetail && visibleDetail.length > 0
+      ? [{ row, rowIndex, visibleDetail }]
+      : []
+  })
   const accessibilityLabel = visibleReveal.complete
     ? `${model.title}. ${model.rows.map((row) => `${row.label}: ${accessibleRowDetail(row)}`).join('. ')}. ${model.valueStatement}`
     : undefined
@@ -107,50 +108,57 @@ function AgenticPriceReasoningStreamSession({
       style={[styles.surface, { borderColor: tokens.border }]}
       testID="customer-v21-agentic-estimate-supporting-phase"
     >
-      <Text accessibilityRole="header" style={[styles.title, { color: tokens.text }]}>
+      <Text accessibilityRole="header" style={[styles.title, { color: tokens.primary }]}>
         {model.title}
       </Text>
-      {visibleRows.map((row, rowIndex) => {
+      {visibleRows.map(({ row, rowIndex, visibleDetail }) => {
         const active = visibleReveal.activeRowIndex === rowIndex
-        const visibleDetail = visibleReveal.visibleDetails[rowIndex] ?? ''
         const structured = Boolean(row.sections?.length)
-        const useSectionColumns = row.layout === 'columns' && windowWidth > COMPACT_LAYOUT_MAX_WIDTH
+        const visibleSections = row.sections
+          ? visibleSectionValues(row.sections, visibleDetail).filter((section) => section.value.length > 0)
+          : []
         return (
           <View
             key={row.key}
             style={[
               styles.row,
+              row.mediaUrl ? styles.evidenceRow : null,
               structured ? styles.structuredRow : null,
               active ? { backgroundColor: tokens.service } : null,
             ]}
             testID={`customer-v21-agentic-estimate-support-${row.key}`}
           >
-            <Text style={[styles.label, { color: tokens.primary }]}>
-              {row.label}
-            </Text>
             {row.mediaUrl ? (
-              <EvidencePreview
-                label={row.label}
-                mediaUrl={row.mediaUrl}
-                testID={`customer-v21-agentic-estimate-support-${row.key}-preview`}
-                tokens={tokens}
-              />
-            ) : null}
-            {row.sections?.length ? (
+              <View
+                style={styles.evidenceHeader}
+                testID={`customer-v21-agentic-estimate-support-${row.key}-header`}
+              >
+                <Text style={[styles.label, { color: tokens.primary }]}>
+                  {row.label}
+                </Text>
+                <EvidencePreview
+                  label={row.label}
+                  mediaUrl={row.mediaUrl}
+                  testID={`customer-v21-agentic-estimate-support-${row.key}-preview`}
+                  tokens={tokens}
+                />
+              </View>
+            ) : (
+              <Text style={[styles.label, { color: tokens.primary }]}>
+                {row.label}
+              </Text>
+            )}
+            {row.sections?.length && visibleSections.length > 0 ? (
               <View
                 accessibilityLiveRegion={active ? 'polite' : 'none'}
-                style={[
-                  styles.sections,
-                  useSectionColumns ? styles.sectionColumns : styles.sectionStack,
-                ]}
+                style={[styles.sections, styles.sectionStack]}
                 testID={`customer-v21-agentic-estimate-support-${row.key}-sections`}
               >
-                {visibleSectionValues(row.sections, visibleDetail).map((section) => (
+                {visibleSections.map((section) => (
                   <View
                     key={section.label}
                     style={[
                       styles.section,
-                      useSectionColumns ? styles.sectionColumn : null,
                       { borderColor: tokens.border },
                     ]}
                   >
@@ -194,22 +202,15 @@ function EvidencePreview({
   testID: string
   tokens: CustomerThemeTokens
 }) {
-  const [aspectRatio, setAspectRatio] = useState(DEFAULT_EVIDENCE_ASPECT_RATIO)
-
   return (
     <Image
       accessibilityIgnoresInvertColors
       accessibilityLabel={label}
       contentFit="cover"
-      onLoad={({ source }) => {
-        if (source.width > 0 && source.height > 0) {
-          setAspectRatio(source.width / source.height)
-        }
-      }}
       source={{ uri: mediaUrl }}
       style={[
         styles.evidencePreview,
-        { aspectRatio, backgroundColor: tokens.service, borderColor: tokens.border },
+        { backgroundColor: tokens.service, borderColor: tokens.border },
       ]}
       testID={testID}
     />
@@ -287,57 +288,56 @@ function completedReveal(model: AgenticEstimateSupportingPhaseModel): PriceReaso
 
 const styles = StyleSheet.create({
   detail: {
-    flex: 1,
     fontSize: 14,
     lineHeight: 22,
   },
   evidencePreview: {
-    alignSelf: 'center',
-    borderRadius: 14,
+    alignSelf: 'flex-start',
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    height: 184,
-    maxWidth: '100%',
+    height: 84,
     overflow: 'hidden',
+    width: 112,
+  },
+  evidenceHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  evidenceRow: {
+    marginTop: -6,
+    paddingTop: 2,
   },
   label: {
-    flexBasis: 94,
+    alignSelf: 'flex-start',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     lineHeight: 19,
   },
   row: {
     alignItems: 'flex-start',
     borderRadius: 14,
-    flexDirection: 'row',
-    gap: 12,
+    flexDirection: 'column',
+    gap: 8,
     marginHorizontal: -10,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   section: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 3,
-    paddingTop: 8,
-  },
-  sectionColumn: {
-    flexBasis: '46%',
-    flexGrow: 1,
-    minWidth: 142,
-  },
-  sectionColumns: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    gap: 4,
+    paddingTop: 10,
   },
   sectionStack: {
     flexDirection: 'column',
   },
   sectionLabel: {
     fontSize: 11.5,
-    fontWeight: '700',
+    fontWeight: '800',
     lineHeight: 17,
   },
   sections: {
-    gap: 10,
+    gap: 12,
     width: '100%',
   },
   sectionValue: {
@@ -350,18 +350,18 @@ const styles = StyleSheet.create({
   },
   surface: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 5,
-    paddingBottom: 17,
+    gap: 10,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 21,
-    marginBottom: 5,
+    marginBottom: 4,
   },
   value: {
     fontSize: 12.5,
     lineHeight: 19,
-    marginTop: 7,
+    marginTop: 10,
   },
 })

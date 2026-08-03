@@ -72,7 +72,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
   it('chooses primary provider first and Anthropic insurance when DeepSeek is unavailable', () => {
     expect(chooseProvider('intent_classification')).toMatchObject({
       provider: 'deepseek',
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-v4-pro',
       role: 'primary',
     })
     expect(chooseProvider('intent_classification', {
@@ -84,12 +84,11 @@ describe('mobile-api Kael P3 routing foundation', () => {
     })
   })
 
-  it('routes interactive DeepSeek work through Flash then Pro before cross-provider fallback', async () => {
+  it('routes Kael work directly through Pro before cross-provider fallback', async () => {
     expect(providerCandidatesForPurpose('intent_classification').map(({ provider, model }) => ({
       provider,
       model,
     }))).toEqual([
-      { provider: 'deepseek', model: 'deepseek-v4-flash' },
       { provider: 'deepseek', model: 'deepseek-v4-pro' },
       { provider: 'anthropic', model: 'claude-sonnet-5' },
     ])
@@ -98,9 +97,6 @@ describe('mobile-api Kael P3 routing foundation', () => {
     vi.stubGlobal('fetch', vi.fn(async (_url: string | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
       requestedModels.push(body.model ?? 'unknown')
-      if (body.model === 'deepseek-v4-flash') {
-        return new Response('{"error":"flash unavailable"}', { status: 503 })
-      }
       if (body.model !== 'deepseek-v4-pro') {
         throw new Error(`unexpected model ${body.model ?? 'unknown'}`)
       }
@@ -126,7 +122,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
       { deepseekApiKey: 'deepseek-test', anthropicApiKey: 'anthropic-test' },
       allowKaelSpendForTest('customer-1'),
     )).resolves.toMatchObject({ success: true })
-    expect(requestedModels).toEqual(['deepseek-v4-flash', 'deepseek-v4-pro'])
+    expect(requestedModels).toEqual(['deepseek-v4-pro'])
   })
 
   it('skips sibling models for provider-wide failures but keeps model failover for model-scoped failures', () => {
@@ -169,13 +165,29 @@ describe('mobile-api Kael P3 routing foundation', () => {
     expect(pipelineSource).not.toMatch(/label: "vision"[\s\S]{0,180}timeoutMs:/)
   })
 
-  it('gives interactive educational responses enough time to finish before model failover', () => {
+  it('uses Pro for educational responses outside simple normal chat', () => {
     expect(KAEL_ROUTING_CONFIG.educational_response).toMatchObject({
-      primary: { provider: 'deepseek', model: 'deepseek-v4-flash' },
-      modelFallback: { provider: 'deepseek', model: 'deepseek-v4-pro' },
+      primary: { provider: 'deepseek', model: 'deepseek-v4-pro' },
       fallback: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' },
       latencyBudgetMs: 6_000,
     })
+  })
+
+  it('reserves Flash for the explicit simple-normal-chat route profile', () => {
+    expect(providerCandidatesForPurpose('educational_response', {
+      routeProfile: 'simple_normal_chat',
+    }).map(({ provider, model }) => ({ provider, model }))).toEqual([
+      { provider: 'deepseek', model: 'deepseek-v4-flash' },
+      { provider: 'deepseek', model: 'deepseek-v4-pro' },
+      { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' },
+    ])
+    expect(providerCandidatesForPurpose('worker_assist', {
+      routeProfile: 'simple_normal_chat',
+    }).map(({ provider, model }) => ({ provider, model }))).toEqual([
+      { provider: 'deepseek', model: 'deepseek-v4-flash' },
+      { provider: 'deepseek', model: 'deepseek-v4-pro' },
+      { provider: 'anthropic', model: 'claude-sonnet-5' },
+    ])
   })
 
   it('keeps scope-change on the locked Anthropic roster with a provider-safe deadline', () => {
@@ -236,7 +248,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
     await expect(callAI({
       purpose: 'worker_assist',
       provider: 'deepseek',
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-v4-pro',
       messages: [{ role: 'user', content: 'safe metadata only' }],
       maxRetries: 0,
     }, { deepseekApiKey: 'test-key' })).resolves.toMatchObject({

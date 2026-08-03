@@ -40,23 +40,23 @@ describe('Kael model escalation', () => {
 
   it('maps every Model Board job to the approved shared path and role tier', () => {
     expect(KAEL_ROUTING_CONFIG).toMatchObject({
-      intent_classification: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
+      intent_classification: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-sonnet-5'),
       vision_analysis: escalationRoute('anthropic', 'claude-sonnet-5', 'anthropic', 'claude-opus-4-8'),
-      clarification: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-haiku-4-5-20251001'),
-      problem_synthesis: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
+      clarification: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-haiku-4-5-20251001'),
+      problem_synthesis: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-sonnet-5'),
       market_lookup: {
         primary: { provider: 'perplexity', model: 'sonar' },
         fallback: undefined,
         escalation: { provider: 'perplexity', model: 'sonar-pro' },
       },
       price_synthesis: { primary: { provider: 'anthropic', model: 'claude-sonnet-5' } },
-      advisory_generation: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-haiku-4-5-20251001'),
-      worker_brief: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
+      advisory_generation: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-haiku-4-5-20251001'),
+      worker_brief: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-sonnet-5'),
       scope_change: escalationRoute('anthropic', 'claude-sonnet-5', 'anthropic', 'claude-opus-4-8'),
-      job_incident: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
+      job_incident: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-sonnet-5'),
       post_job_learning: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-sonnet-5'),
-      educational_response: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-haiku-4-5-20251001'),
-      worker_assist: routes('deepseek', 'deepseek-v4-flash', 'anthropic', 'claude-sonnet-5'),
+      educational_response: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-haiku-4-5-20251001'),
+      worker_assist: routes('deepseek', 'deepseek-v4-pro', 'anthropic', 'claude-sonnet-5'),
     })
     expect(JSON.stringify(KAEL_ROUTING_CONFIG)).not.toContain('claude-sonnet-4-6')
   })

@@ -14,6 +14,12 @@ describe('entry access copy', () => {
     expect(localizeEntryAuthError('Invalid login credentials', 'vi', 'signInFailed')).toBe(
       'Thư điện tử hoặc SĐT hoặc mật khẩu không đúng.',
     )
+    expect(localizeEntryAuthError('Địa chỉ thư điện tử chưa đúng định dạng.', 'en', 'signupFailed')).toBe(
+      'Enter a valid email address.',
+    )
+    expect(localizeEntryAuthError('Yêu cầu đang bị giới hạn. Vui lòng thử lại sau.', 'en', 'signupFailed')).toBe(
+      'Too many requests. Please try again later.',
+    )
   })
 
   it('never exposes an unrecognized provider string', () => {

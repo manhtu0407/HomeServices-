@@ -36,7 +36,6 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     policyId: "kael.path.customer_intake_to_estimate.v1",
     expectedFallback: false,
     expectedModelRouting: [
-      { provider: "deepseek", model: "deepseek-v4-flash" },
       { provider: "deepseek", model: "deepseek-v4-pro" },
       { provider: "anthropic", model: "claude-sonnet-5" },
     ],
@@ -52,7 +51,6 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     policyId: "kael.path.customer_case_chat_revision.v1",
     expectedFallback: true,
     expectedModelRouting: [
-      { provider: "deepseek", model: "deepseek-v4-flash" },
       { provider: "deepseek", model: "deepseek-v4-pro" },
       { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
     ],
@@ -68,7 +66,6 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     policyId: "kael.autonomy.v2.worker_cancel_to_rematch",
     expectedFallback: true,
     expectedModelRouting: [
-      { provider: "deepseek", model: "deepseek-v4-flash" },
       { provider: "deepseek", model: "deepseek-v4-pro" },
       { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
     ],
@@ -84,7 +81,6 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     policyId: "kael.autonomy.v2.customer_cancel_after_accept",
     expectedFallback: true,
     expectedModelRouting: [
-      { provider: "deepseek", model: "deepseek-v4-flash" },
       { provider: "deepseek", model: "deepseek-v4-pro" },
       { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
     ],
@@ -100,7 +96,6 @@ export const KAEL_AGENTIC_GOLDEN_SCENARIOS: readonly KaelAgenticGoldenScenario[]
     policyId: "kael.autonomy.v2.dispute_resolution",
     expectedFallback: true,
     expectedModelRouting: [
-      { provider: "deepseek", model: "deepseek-v4-flash" },
       { provider: "deepseek", model: "deepseek-v4-pro" },
       { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
     ],

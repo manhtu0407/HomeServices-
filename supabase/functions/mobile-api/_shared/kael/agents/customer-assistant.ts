@@ -31,6 +31,7 @@ import {
 } from "../tools/knowledge.ts";
 import {
   circuitAwareProviderCandidatesForPurpose,
+  isSimpleNormalChatMessage,
   shouldSkipProviderSiblingModels,
   type ProviderChoice,
 } from "../kael-providers/routing.ts";
@@ -208,7 +209,11 @@ export async function runCustomerAssistant(
     topic,
   });
 
-  const routes = circuitAwareProviderCandidatesForPurpose("educational_response");
+  const routes = circuitAwareProviderCandidatesForPurpose("educational_response", {
+    routeProfile: surface === "customer_normal" && isSimpleNormalChatMessage(cleanQuestion)
+      ? "simple_normal_chat"
+      : "standard",
+  });
   if (routes.length === 0) {
     trace.push(buildCustomerAssistantNoProviderTrace(surface));
     return buildFallbackCustomerAssistantAnswer(

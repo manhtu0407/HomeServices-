@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { StyleSheet, Text, useWindowDimensions, View, type StyleProp, type TextStyle } from 'react-native'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import type { CaseWorkResponseModel } from './case-work-response-model'
@@ -11,6 +11,7 @@ export function CaseWorkResponse({
   model,
   reduceMotion,
   testID = 'customer-v21-case-work-response',
+  titleStyle,
   tokens,
 }: {
   controls?: ReactNode
@@ -18,6 +19,7 @@ export function CaseWorkResponse({
   model: CaseWorkResponseModel
   reduceMotion: boolean
   testID?: string
+  titleStyle?: StyleProp<TextStyle>
   tokens: CustomerThemeTokens
 }) {
   const { width } = useWindowDimensions()
@@ -37,6 +39,7 @@ export function CaseWorkResponse({
           style={[
             styles.title,
             compact ? styles.titleCompact : styles.titleWide,
+            titleStyle,
             { color: tokens.text },
           ]}
           testID="customer-v21-case-work-response-title"
@@ -112,7 +115,7 @@ const styles = StyleSheet.create({
   },
   noteTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: -0.07,
     lineHeight: 19,
     marginBottom: 7,

@@ -414,6 +414,8 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
           role={props.role}
         />
       )
+    case 'email-confirmation':
+      return <EmailConfirmationScreen copy={props.copy} onLogin={() => props.go('login')} />
     case 'password-recovery':
       return (
         <PasswordRecoveryScreen
@@ -670,6 +672,20 @@ function RegisterScreen(props: {
           </NativeSafeGlassPanel>
         </ScrollView>
       </KeyboardAvoidingView>
+    </Screen>
+  )
+}
+
+function EmailConfirmationScreen({ copy, onLogin }: { copy: EntryAccessCopy; onLogin: () => void }) {
+  return (
+    <Screen>
+      <View style={styles.screen} testID="auth-signup-confirmation-screen">
+        <AuthTopBar backLabel={copy.accessibility.back} onBack={onLogin} title={copy.emailConfirmation.topbar} />
+        <FormHeader lead={copy.emailConfirmation.lead} title={copy.emailConfirmation.title} />
+        <NativeSafeGlassPanel style={styles.formPanel}>
+          <PrimaryButton label={copy.emailConfirmation.login} onPress={onLogin} testID="auth-signup-confirmation-login" />
+        </NativeSafeGlassPanel>
+      </View>
     </Screen>
   )
 }
