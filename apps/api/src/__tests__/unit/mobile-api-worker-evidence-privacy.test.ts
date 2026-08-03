@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { listWorkerBroadcasts } from '../../../../../supabase/functions/mobile-api/_shared/services/workers.service'
-import { listWorkerJobs } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-jobs.service'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { listWorkerBroadcasts } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/workers'
+import { listWorkerJobs } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/jobs'
 
 type QueryResult = {
   data: unknown

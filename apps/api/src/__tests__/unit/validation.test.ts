@@ -8,7 +8,7 @@ import {
   sanitizeForLLM,
   scrubSensitiveForLLM,
 } from '@nestscout/shared'
-import { scrubSensitiveForLLM as scrubEdgeSensitiveForLLM } from '../../../../../supabase/functions/mobile-api/_shared/kael/utils'
+import { scrubSensitiveForLLM as scrubEdgeSensitiveForLLM } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/utils'
 
 describe('serviceTypeSchema (Rule #6: six launched services)', () => {
   it.each(['electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman'])(

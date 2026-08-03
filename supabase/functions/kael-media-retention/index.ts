@@ -74,10 +74,7 @@ Deno.serve(async (request) => {
     return json({ error: "INVALID_REQUEST" }, 400);
   }
   const claimToken = crypto.randomUUID();
-  const client = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { fetch: retentionFetch },
-  });
+  const client = createRetentionClient(supabaseUrl, serviceKey);
 
   let claimedTotal = 0;
   let deletedTotal = 0;
@@ -116,7 +113,7 @@ Deno.serve(async (request) => {
 });
 
 async function processCleanupPlan(
-  client: ReturnType<typeof createClient>,
+  client: RetentionClient,
   plan: CleanupPlan,
   claimToken: string,
   limit: number,
@@ -219,6 +216,20 @@ async function withTimeout<T>(promise: PromiseLike<T>): Promise<T> {
     if (timer !== undefined) clearTimeout(timer);
   }
 }
+
+// The client type has to come from the real construction. A bare
+// ReturnType<typeof createClient> resolves the generic *defaults* — schema `never` — not what
+// createClient(url, key, options) actually returns, which makes every rpc() argument collapse
+// to `undefined`. Deriving it from this factory keeps the annotation correct even if
+// supabase-js changes its generic parameters.
+function createRetentionClient(supabaseUrl: string, serviceKey: string) {
+  return createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: retentionFetch },
+  });
+}
+
+type RetentionClient = ReturnType<typeof createRetentionClient>;
 
 function retentionFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   return fetchBufferedWithTimeout(input, { ...init, redirect: "error" }, {

@@ -240,15 +240,33 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     expect(scopeRejected.valid).toBe(true)
 
     const servicesSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains.ts'),
       'utf8',
-    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8')
+    ) + [
+      'flow.ts',
+      'accept.ts',
+    ].map((path) => readFileSync(
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/matching', path),
+      'utf8',
+    )).join('\n')
+    const scopeChangeSource = [
+      'job/scope-change/request.ts',
+      'job/scope-change/support.ts',
+      'job/scope-change/decision.ts',
+      'job/scope-change/effects.ts',
+      'job/scope-change/effects-incident.ts',
+      'job/scope-change/effects-payloads.ts',
+      'job/scope-change/effects-drain.ts',
+    ].map((path) => readFileSync(
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains', path),
+      'utf8',
+    )).join('\n')
     expect(servicesSource).toContain('event: "worker_accepted"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('event: "scope_change_requested"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('customer_confirmed_scope_change')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('customer_rejected_scope_change')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('runPolicyAutonomyGate')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('tryAutoApproveScopeChange')
+    expect(servicesSource + scopeChangeSource).toContain('event: "scope_change_requested"')
+    expect(servicesSource + scopeChangeSource).toContain('customer_confirmed_scope_change')
+    expect(servicesSource + scopeChangeSource).toContain('customer_rejected_scope_change')
+    expect(servicesSource + scopeChangeSource).not.toContain('runPolicyAutonomyGate')
+    expect(servicesSource + scopeChangeSource).not.toContain('tryAutoApproveScopeChange')
     // Scope-change auto-approval is disabled because
     // a scope-change changes the deal price, so it is ALWAYS confirmed by the
     // customer (even low-risk). The auto-approve branch and autonomy policy id
@@ -256,12 +274,12 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     // routes to the customer-decide path. This assertion guards against the
     // auto-approve wiring being silently re-introduced.
     expect(servicesSource).not.toContain('policyId: "kael.autonomy.v2.scope_change_auto_approve"')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('notifyCustomerScopeChangeRequested')
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).not.toContain('notifyCustomerScopeChangeDecided')
+    expect(servicesSource + scopeChangeSource).toContain('notifyCustomerScopeChangeRequested')
+    expect(servicesSource + scopeChangeSource).not.toContain('notifyCustomerScopeChangeDecided')
     expect(
       servicesSource +
         readFileSync(
-          join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/notifications.service.ts'),
+          join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/notification/notifications.ts'),
           'utf8',
         ),
     ).not.toContain('scope_change_auto_approved')
@@ -307,9 +325,9 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       to: 'broadcasting',
     })
     const servicesSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains.ts'),
       'utf8',
-    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat-confirm.service.ts'), 'utf8')
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/matching/flow.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/kael-chat/confirm.service.ts'), 'utf8')
 
     expect(transition.valid).toBe(true)
     expect(servicesSource).toContain('resultingEvent: "kael_started_matching"')
@@ -324,12 +342,12 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       to: 'confirmed_by_customer',
     })
     const servicesSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains.ts'),
       'utf8',
     )
 
     expect(transition.valid).toBe(true)
-    const completionSource = servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')
+    const completionSource = servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/payment/completion-review.ts'), 'utf8')
     expect(completionSource).toContain('event: "customer_confirmed_completion"')
     expect(completionSource).toContain('customer_input: "accepted_completion"')
     expect(completionSource).not.toContain('runPolicyAutonomyGate')
@@ -342,9 +360,13 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       to: 'cancelled',
     })
     const servicesSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains.ts'),
       'utf8',
-    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/job-create.service.ts'), 'utf8')
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/job/create/create.ts'), 'utf8') +
+      readFileSync(
+        join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/job/create/compensation.ts'),
+        'utf8',
+      )
 
     expect(transition.valid).toBe(true)
     expect(servicesSource).toContain('event: "kael_failed"')
@@ -401,10 +423,10 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     }).valid).toBe(false)
 
     const servicesSource = readFileSync(
-      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains.ts'),
       'utf8',
     )
-    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts'), 'utf8')).toContain('event: "cancel_requested"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/customer/cancellation.ts'), 'utf8')).toContain('event: "cancel_requested"')
   })
 
   it('models cancellation and media attachment commands without letting terminal jobs mutate', () => {

@@ -22,7 +22,7 @@ function exportsConstant(source: string, constantName: string): boolean {
 describe('shared and Edge domain contracts stay in parity', () => {
   it('exports shared workflow constants from the Edge domain boundary', () => {
     const shared = read('packages/shared/src/constants.ts')
-    const edge = read('supabase/functions/_shared/domain.ts')
+    const edge = read('supabase/functions/_shared/contracts/common.ts')
 
     for (const constantName of [
       'MESSAGE_SENDERS',
@@ -61,16 +61,16 @@ describe('shared and Edge domain contracts stay in parity', () => {
   })
 
   it('keeps job chat message validation available on shared and Edge domains', () => {
-    const shared = read('packages/shared/src/validation.ts')
-    const edge = read('supabase/functions/_shared/domain.ts')
+    const shared = read('packages/shared/src/contracts/job.ts')
+    const edge = read('supabase/functions/_shared/contracts/job.ts')
 
     expect(shared).toContain('export const jobMessageSendSchema')
     expect(edge).toContain('export const jobMessageSendSchema')
   })
 
   it('keeps public worker application validation shared with the Edge domain', () => {
-    const shared = read('packages/shared/src/validation.ts')
-    const edge = read('supabase/functions/_shared/domain.ts')
+    const shared = read('packages/shared/src/contracts/worker.ts')
+    const edge = read('supabase/functions/_shared/contracts/worker.ts')
     const sharedIndex = read('packages/shared/src/index.ts')
 
     expect(shared).toContain('export const workerApplicationSubmitSchema')

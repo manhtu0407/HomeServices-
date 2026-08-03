@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   runCustomerAssistant,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/customer-assistant'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import type {
   AIRequest,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
 
 describe('mobile-api customer Kael assistant', () => {
   afterEach(() => {

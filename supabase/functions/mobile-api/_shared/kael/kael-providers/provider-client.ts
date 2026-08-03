@@ -1,10 +1,10 @@
-import type { AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets } from "../types.ts";
+import type { AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets } from "../contracts/types.ts";
 import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
 import {
   isDurableCircuitOpen,
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
-} from "../durable-guards.ts";
+} from "../kael-guardrails/durable-guards.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
 import {
   estimateModelRequestCostUsd,
@@ -32,6 +32,26 @@ export async function callAI(
   gate?: KaelSpendGate,
   options: CallAIOptions = {},
 ): Promise<AIResponse | AIError> {
+  const prepared = await prepareAiProviderCall(request, secrets, gate);
+  if ("success" in prepared) return prepared;
+  return executePreparedAiProviderCall(request, secrets, gate, options, prepared);
+}
+
+type PreparedAiProviderCall = {
+  durableGuardsEnabled: boolean;
+  pricingAt: Date;
+  unknownModelPolicy: ReturnType<typeof runtimeUnknownModelPolicy>;
+  apiKey: string;
+  maxRetries: number;
+  reservationId: number | null;
+  estimatedCostPerAttemptUsd: number;
+};
+
+async function prepareAiProviderCall(
+  request: AIRequest,
+  secrets: EdgeAiSecrets,
+  gate?: KaelSpendGate,
+): Promise<PreparedAiProviderCall | AIError> {
   // The kill-switch stops provider I/O before any cost and returns an honest failure.
   if (isKaelAiKillSwitchEnabled()) {
     console.warn("AI call blocked by KAEL_AI_KILL_SWITCH", {
@@ -135,6 +155,33 @@ export async function callAI(
     reservationId = reservation.reservationId;
   }
 
+  return {
+    durableGuardsEnabled,
+    pricingAt,
+    unknownModelPolicy,
+    apiKey,
+    maxRetries,
+    reservationId,
+    estimatedCostPerAttemptUsd,
+  };
+}
+
+async function executePreparedAiProviderCall(
+  request: AIRequest,
+  secrets: EdgeAiSecrets,
+  gate: KaelSpendGate | undefined,
+  options: CallAIOptions,
+  prepared: PreparedAiProviderCall,
+): Promise<AIResponse | AIError> {
+  const {
+    durableGuardsEnabled,
+    pricingAt,
+    unknownModelPolicy,
+    apiKey,
+    maxRetries,
+    reservationId,
+    estimatedCostPerAttemptUsd,
+  } = prepared;
   const timeout = request.timeoutMs ?? (request.provider === "anthropic"
     ? 20_000
     : request.provider === "perplexity"

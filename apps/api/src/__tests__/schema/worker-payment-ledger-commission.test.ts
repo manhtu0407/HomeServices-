@@ -21,7 +21,7 @@ describe('worker payment ledger and commission policy', () => {
     expect(migration).toContain('public.get_worker_current_commission_tier')
     expect(migration).toContain('grant execute on function public.get_worker_current_commission_tier')
     expect(read('packages/shared/src/constants.ts')).toContain('export const PLATFORM_FEE_WORKER = 0.15')
-    expect(read('supabase/functions/_shared/domain.ts')).toContain('export const PLATFORM_FEE_WORKER = 0.15;')
+    expect(read('supabase/functions/_shared/contracts/common.ts')).toContain('export const PLATFORM_FEE_WORKER = 0.15;')
   })
 
   it('creates one private in-app credit per job and makes client-side money mutation impossible', () => {
@@ -43,7 +43,7 @@ describe('worker payment ledger and commission policy', () => {
 
   it('atomically freezes the configured tier at intent creation and credits the worker only after verified payment', () => {
     const migration = read(migrationPath)
-    const paymentService = read('supabase/functions/mobile-api/_shared/services/sepay-vietqr-payment.service.ts')
+    const paymentService = read('supabase/functions/mobile-api/_shared/domains/payment/sepay-vietqr.ts')
 
     expect(migration).toContain('create or replace function public.create_worker_vietqr_payment_intent')
     expect(migration).toContain('from public.jobs')

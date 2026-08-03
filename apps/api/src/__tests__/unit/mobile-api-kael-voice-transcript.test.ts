@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildVoiceTranscriptRow,
   scrubTranscriptForStorage,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/voice-transcript'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/voice-transcript'
 
 const migrationsDir = resolve(__dirname, '../../../../../supabase/migrations')
 const migration = readdirSync(migrationsDir)
@@ -12,12 +12,12 @@ const migration = readdirSync(migrationsDir)
   .sort()
   .map((name) => readFileSync(join(migrationsDir, name), 'utf8'))
   .join('\n')
-const kaelChatService = readFileSync(
-  resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat.service.ts'),
+const kaelChatService = ['create.ts', 'turn.ts', 'evidence.ts'].map((path) => readFileSync(
+  resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat', path),
   'utf8',
-)
+)).join('\n')
 const kaelChatPersistence = readFileSync(
-  resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-persistence.service.ts'),
+  resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/persistence.service.ts'),
   'utf8',
 )
 
@@ -73,10 +73,10 @@ describe('KC7 voice transcript store (Plan.md §39)', () => {
   })
 
   it('persists reviewed transcripts from create, turn, and evidence flows without an audio payload', () => {
-    expect(kaelChatService).toContain('from "./kael-chat-persistence.service.ts"')
-    expect(kaelChatService.match(/await persistInitialVoiceTranscripts\(/g)).toHaveLength(1)
+    expect(kaelChatService).toContain('from "./persistence.service.ts"')
+    expect(kaelChatPersistence.match(/await persistInitialVoiceTranscripts\(/g)).toHaveLength(1)
     expect(kaelChatService.match(/await persistReviewedVoiceTranscripts\(/g)).toHaveLength(2)
-    expect(kaelChatPersistence).toContain('import { buildVoiceTranscriptRow } from "../kael/voice-transcript.ts"')
+    expect(kaelChatPersistence).toContain('import { buildVoiceTranscriptRow } from "../../kael/tools/voice-transcript.ts"')
     expect(kaelChatPersistence).toContain('.from("kael_voice_transcript")')
     expect(kaelChatPersistence).toContain('buildVoiceTranscriptRow({')
     expect(kaelChatPersistence).toContain('.insert(rows)')

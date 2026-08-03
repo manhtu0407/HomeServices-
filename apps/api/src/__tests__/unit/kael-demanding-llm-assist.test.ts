@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectDemandingCustomerPatterns } from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/demanding-customer-detect'
+import { detectDemandingCustomerPatterns } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/demanding-customer-detect'
 
 // Intake-diagnosis sentiment
 // sentiment fills a keyword gap, but only softly and only in an established

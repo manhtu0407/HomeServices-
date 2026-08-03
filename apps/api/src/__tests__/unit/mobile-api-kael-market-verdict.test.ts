@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { evaluateMarketVerdict } from '../../../../../supabase/functions/mobile-api/_shared/kael/market-verdict'
-import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
+import { evaluateMarketVerdict } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/market-verdict'
+import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-pipeline'
 
 describe('Kael deterministic market verdict', () => {
   it('marks current, consistent per-visit evidence reasonable', () => {

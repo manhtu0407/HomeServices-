@@ -1,0 +1,103 @@
+import type { UserRole } from "../../../../_shared/domain.ts";
+
+export type WorkerRoute =
+  | { kind: "workerApplications.submit"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workers.register"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.avatarUpload"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workers.avatar"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.activityMinute"; method: "POST"; roles: UserRole[] }
+  | { kind: "workers.performanceInsights"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.serviceArea"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.servicePreferences"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.kaelMemory.update"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.kaelFeedback"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workers.kaelTrainingConsent.get"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.kaelTrainingConsent.set"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] };
+
+// In the chain this block used to be interrupted by the worker Kael-chat matcher, which sits
+// between "/workers/me/kael-memory" and "/workers/me/kael-feedback". Rejoining the two halves is
+// safe because every branch here is an exact literal whose third segment is never "kael" — the
+// Kael-chat matcher only owns "/workers/me/kael/chat...". The two sets cannot both match a path.
+export function matchWorkerRoute(path: string, method: string): WorkerRoute | null {
+  if (method === "POST" && path === "/worker-applications") {
+    return {
+      kind: "workerApplications.submit",
+      method: "POST",
+      roles: ["customer", "worker", "admin"],
+      successStatus: 201,
+    };
+  }
+  if (method === "POST" && path === "/workers/register") {
+    return {
+      kind: "workers.register",
+      method: "POST",
+      roles: ["worker"],
+      successStatus: 201,
+    };
+  }
+  if (method === "GET" && path === "/workers/me") {
+    return { kind: "workers.me", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "POST" && path === "/workers/me/avatar-upload") {
+    return {
+      kind: "workers.avatarUpload",
+      method: "POST",
+      roles: ["worker", "admin"],
+      successStatus: 201,
+    };
+  }
+  if (method === "PATCH" && path === "/workers/me/avatar") {
+    return { kind: "workers.avatar", method: "PATCH", roles: ["worker", "admin"] };
+  }
+  if (method === "POST" && path === "/workers/me/activity-minute") {
+    return { kind: "workers.activityMinute", method: "POST", roles: ["worker", "admin"] };
+  }
+  if (method === "GET" && path === "/workers/me/performance-insights") {
+    return { kind: "workers.performanceInsights", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/service-area") {
+    return { kind: "workers.serviceArea", method: "PATCH", roles: ["worker", "admin"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/service-preferences") {
+    return { kind: "workers.servicePreferences", method: "PATCH", roles: ["worker", "admin"] };
+  }
+  if (method === "GET" && path === "/workers/me/kael-memory") {
+    return { kind: "workers.kaelMemory", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/kael-memory") {
+    return { kind: "workers.kaelMemory.update", method: "PATCH", roles: ["worker"] };
+  }
+  if (method === "POST" && path === "/workers/me/kael-feedback") {
+    return {
+      kind: "workers.kaelFeedback",
+      method: "POST",
+      roles: ["worker", "admin"],
+      successStatus: 201,
+    };
+  }
+  if (method === "GET" && path === "/workers/me/kael-training-consent") {
+    return { kind: "workers.kaelTrainingConsent.get", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/kael-training-consent") {
+    return { kind: "workers.kaelTrainingConsent.set", method: "PATCH", roles: ["worker", "admin"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/availability") {
+    return { kind: "workers.availability", method: "PATCH", roles: ["worker", "admin"] };
+  }
+  if (method === "GET" && path === "/workers/me/broadcasts") {
+    return { kind: "workers.broadcasts", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "GET" && path === "/workers/me/jobs") {
+    return { kind: "workers.jobs", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "GET" && path === "/workers/me/earnings") {
+    return { kind: "workers.earnings", method: "GET", roles: ["worker", "admin"] };
+  }
+  return null;
+}

@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import {
   inspectJobMediaBlob,
   inspectJobMediaContent,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/job-media-content'
-import { attachJobMedia } from '../../../../../supabase/functions/mobile-api/_shared/services/job-media.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/job/media-content'
+import { attachJobMedia } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/media'
 
 type QueryResult = { data: unknown; error: { code?: string; message?: string } | null }
 type QueryCall = { operations: unknown[][]; table: string }

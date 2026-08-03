@@ -7,18 +7,18 @@ import {
   runKaelOutputPipeline,
   sanitizeKaelText,
   scrubKaelPiiText,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-pipeline'
 import {
   KAEL_PRICE_DISCLAIMER_V3,
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
   matchSuspiciousScopeKeywords,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
-import { kaelArtifactProposalSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
-import type { KaelDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
-import { buildKaelEstimateAnalysisEvidence } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-estimate-support'
-import { mergeKaelCustomerDetailForReanalysis } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-case-work'
-import { buildVisionMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/scope-change'
+import { kaelArtifactProposalSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/artifact-contract'
+import type { KaelDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/artifact-contract'
+import { buildKaelEstimateAnalysisEvidence } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-support'
+import { mergeKaelCustomerDetailForReanalysis } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-context'
+import { buildVisionMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/prompts'
 
 describe('mobile-api Kael P4 output pipeline', () => {
   it('requires a grounded analysis result for every supplied image', () => {

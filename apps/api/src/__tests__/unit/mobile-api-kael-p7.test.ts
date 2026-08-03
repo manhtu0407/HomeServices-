@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { monitorLearningRules } from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/monitor-learning-rules'
+import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { monitorLearningRules } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/monitor-learning-rules'
 import {
   recordLearningReviewOutcome,
   recordLearningRuleApplication,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/learning'
 import {
   ALLOWED_LEARNING_TARGETS,
   FORBIDDEN_LEARNING_EFFECTS,
@@ -22,8 +22,8 @@ import {
   shouldAutoRollbackLearningRule,
   shouldRunLearningForActor,
   transitionLearningLifecycle,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
-import type { LearningSkillInput } from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
+import type { LearningSkillInput } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
 
 describe('Kael P7 learning skill setup', () => {
   afterEach(() => {

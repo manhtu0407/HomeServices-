@@ -19,8 +19,8 @@ const readMobileApiTypesLayer = () =>
   ].join('\n')
 const readEdgeRouterLayer = () =>
   [
-    read('supabase/functions/mobile-api/_shared/router.ts'),
-    ...listFilesUnder('supabase/functions/mobile-api/_shared/router')
+    read('supabase/functions/mobile-api/_shared/http.ts'),
+    ...listFilesUnder('supabase/functions/mobile-api/_shared/http')
       .filter((relPath) => relPath.endsWith('.ts'))
       .sort()
       .map(read),
@@ -48,14 +48,15 @@ describe('Plan §31 B4 knowledge governance', () => {
   })
 
   it('keeps Edge admin approval as the only writer path for knowledge candidate apply', () => {
-    const services = read('supabase/functions/mobile-api/_shared/services.ts') + read('supabase/functions/mobile-api/_shared/services/admin-learning.service.ts')
+    const services = read('supabase/functions/mobile-api/_shared/domains.ts') + read('supabase/functions/mobile-api/_shared/domains/admin/learning.ts')
     const router = readEdgeRouterLayer()
+    const responseContract = read('supabase/functions/mobile-api/_shared/domains/contracts/admin-learning.ts')
     const mobileTypes = readMobileApiTypesLayer()
 
     expect(services).toContain('admin_approve_learning_candidate_atomic')
     expect(services).not.toContain('rpc("apply_approved_learning_candidate_to_knowledge"')
     expect(services).toContain('knowledge_apply')
-    expect(router).toContain('knowledge_apply')
+    expect(responseContract).toContain('knowledge_apply')
     expect(mobileTypes).toContain('knowledge_apply')
     expect(services).not.toContain('.from("worker_safety_patterns").insert')
     expect(services).not.toContain('.from("service_knowledge_boxes").insert')
@@ -77,7 +78,7 @@ describe('Plan §31 B4 knowledge governance', () => {
 
   it('preserves B1 retrieval tables while B4 governance migration is present', () => {
     const allSql = migrations()
-    const knowledge = read('supabase/functions/mobile-api/_shared/kael/knowledge.ts')
+    const knowledge = read('supabase/functions/mobile-api/_shared/kael/tools/knowledge.ts')
 
     expect(allSql).toContain('20260604210000')
     expect(allSql).toContain('grant execute on function public.apply_approved_learning_candidate_to_knowledge')

@@ -1,4 +1,4 @@
-﻿# Code Ownership Map
+# Code Ownership Map
 
 Status: active agent navigation contract.
 
@@ -25,10 +25,11 @@ If a task cannot be mapped, stop and ask Tu instead of creating a new structure.
 - `apps/mobile/lib/frontend-workflow-provider.tsx` owns mobile workflow orchestration between UI and Edge APIs.
 - `apps/mobile/lib/services.ts` owns typed mobile API method groups. Do not call `fetch` directly from UI surfaces.
 - `apps/mobile/lib/api.ts` owns the `mobile-api` HTTP boundary, auth headers, timeout, and response envelope.
-- `supabase/functions/mobile-api/_shared/router.ts` owns route matching, role guards, request validation, and dispatch.
-- `supabase/functions/mobile-api/_shared/services.ts` owns Edge workflow reads/writes, DB/RPC/Storage calls, notifications, matching, and service-role behavior.
-- `supabase/functions/mobile-api/_shared/kael.ts` is a backward-compatible re-export shim; `supabase/functions/mobile-api/_shared/kael/**` owns Edge Kael pipeline/provider behavior. Mobile must not call AI providers directly.
-- `packages/shared/src/constants.ts`, `validation.ts`, and `mobile-workflow.ts` own shared service scope, schemas, state transitions, selectors, and type-level contracts.
+- `supabase/functions/mobile-api/_shared/http.ts` owns the handler; `http/routes/**`, `http/dispatch/**`, and `http/dto/**` own route matching, dispatch, and request validation.
+- `supabase/functions/mobile-api/_shared/domains.ts` composes `MobileApiServices`; `domains/**` owns Edge workflow reads/writes, DB/RPC/Storage calls, notifications, matching, and service-role behavior.
+- `supabase/functions/mobile-api/_shared/kael.ts` is a backward-compatible re-export shim; `kael/index.ts` is the public barrel and `kael/**` owns Edge Kael pipeline/provider behavior. Mobile must not call AI providers directly.
+- `supabase/functions/_shared/domain.ts` and `packages/shared/src/validation.ts` are compatibility facades; their hand-maintained Edge/npm contract twins live in `supabase/functions/_shared/contracts/**` and `packages/shared/src/contracts/**`.
+- `packages/shared/src/constants.ts`, `contracts/**`, and `mobile-workflow.ts` own shared service scope, schemas, state transitions, selectors, and type-level contracts.
 - `apps/api` is reference/parity/admin/support code unless Tu explicitly assigns a Next.js task. Do not move the store-bound mobile runtime back into Next.js.
 
 ## Auth And Role Gate
@@ -106,26 +107,26 @@ apps/mobile/components/ui/
 
 | Concern | Owner | Notes |
 |---|---|---|
-| Route matching and role guards | `supabase/functions/mobile-api/_shared/router.ts` | validates body with shared Edge schemas and dispatches by route kind |
-| Workflow DB/RPC/Storage behavior | `supabase/functions/mobile-api/_shared/services.ts` | service-role behavior stays here |
-| Kael provider pipeline | `supabase/functions/mobile-api/_shared/kael/**` via `kael/index.ts`; `kael.ts` remains a shim | `pipeline.ts` orchestrates stages, `kael-providers/routing.config.ts` / `kael-providers/routing.ts` own pure purpose-to-provider routing, `kael-providers/circuit-breaker.ts` owns in-memory provider health, `orchestrator.ts` owns timeout/parallel stage execution, `streaming.ts` owns Kael progress target writes across jobs, chat sessions, worker chat sessions, and scope-change targets, `kael-providers/provider-client.ts` is the only provider HTTP client, `intent.ts` / `vision.ts` / `market.ts` own stage behavior, `synthesis.ts` owns baseline/price synthesis, `scope-change.ts` owns worker scope-change Kael review, `worker-assist.ts` owns advisory-only worker Kael responses. AI secrets stay server-side |
-| Kael knowledge/RAG | `supabase/functions/mobile-api/_shared/kael/knowledge.ts`, knowledge corpus migrations, `docs/foundation/kael-knowledge-corpus.md`, and `apps/api/scripts/kael-b3-*` / `kael-b5-*` | Runtime retrieval, pgvector/hybrid matching, source-audited corpus generation, and knowledge usage logging stay server-side. Mobile may display resulting Kael text/artifacts only; it must not fetch or embed knowledge directly. |
-| Kael autonomy gate | `supabase/functions/mobile-api/_shared/kael/kael-guardrails/autonomy-gate.ts`, `orchestrator-facade.ts`, apply-decision migrations, and autonomy tests | LLM/policy proposals must become validated `KaelAutonomyDecision` objects. DB mutations stay behind deterministic schema, state-machine, permission, invariant, evidence, confidence, and audit gates. |
+| Route matching and role guards | `supabase/functions/mobile-api/_shared/http.ts`, `http/routes/**`, `http/dispatch/**`, and `http/dto/**` | handler, route-kind matching, dispatch, and request validation stay separate |
+| Workflow DB/RPC/Storage behavior | `supabase/functions/mobile-api/_shared/domains.ts` plus `domains/**` | `domains.ts` composes the service surface; service-role behavior stays in the owning domain module |
+| Kael provider pipeline | `supabase/functions/mobile-api/_shared/kael/**` via `kael/index.ts`; `kael.ts` remains a shim | `pipeline/pipeline.ts` coordinates prepare, intent, knowledge, parallel, baseline, synthesis, and assembly stages; `tools/**` owns stage behavior, `kael-providers/**` owns provider routing/client health, `pipeline/orchestrator.ts` owns timeout/parallel execution, and `pipeline/streaming.ts` owns progress target writes. AI secrets stay server-side |
+| Kael knowledge/RAG | `supabase/functions/mobile-api/_shared/kael/tools/knowledge.ts`, knowledge corpus migrations, `docs/foundation/kael-knowledge-corpus.md`, and `apps/api/scripts/kael-b3-*` / `kael-b5-*` | Runtime retrieval, pgvector/hybrid matching, source-audited corpus generation, and knowledge usage logging stay server-side. Mobile may display resulting Kael text/artifacts only; it must not fetch or embed knowledge directly. |
+| Kael autonomy gate | `supabase/functions/mobile-api/_shared/kael/kael-guardrails/autonomy-gate.ts`, `pipeline/orchestrator-facade.ts`, apply-decision migrations, and autonomy tests | LLM/policy proposals must become validated `KaelAutonomyDecision` objects. DB mutations stay behind deterministic schema, state-machine, permission, invariant, evidence, confidence, and audit gates. |
 | Kael guardrail observability and red-team corpus | `supabase/functions/mobile-api/_shared/kael/kael-guardrails/self-check.ts`, `kael-guardrails/boundary-guard.ts`, guardrail audit migrations, and `apps/api/src/__tests__/security/kael-redteam/**` | Regex fast-path remains cost-free; semantic classifiers are opt-in/bounded and fail closed. Guardrail trips are audited for later LS7/red-team feedback. |
-| Kael charter and response style | `packages/shared/kael/charter/**`, `supabase/functions/mobile-api/_shared/kael/system-prompt.ts`, `kael-guardrails/self-check.ts`, `orchestrator.ts`, and `GET /kael/charter` | P8 charter source files define locked identity/persona/mission and tunable tone/language/forbidden/style rules. Edge mirrors the public-safe runtime prompt bundle without importing `packages/shared`, and `self-check.ts` owns deterministic response screening before fallback |
-| Kael learning skills | `supabase/functions/mobile-api/_shared/kael/skills/**`, queue call sites in `services.ts`, and `kael_rule_*_log` migrations | P7 learning is queued behind Edge/service-role flow. Skill registry owns immutable forbidden effects, allowed targets, evidence gates, lifecycle, runtime flags, A/B gating, and rollback signals. It must not execute learning inline during customer/worker workflow writes |
+| Kael charter and response style | `packages/shared/kael/charter/**`, `supabase/functions/mobile-api/_shared/kael/prompts/system-prompt.ts`, `kael-guardrails/self-check.ts`, `pipeline/orchestrator.ts`, and `GET /kael/charter` | P8 charter source files define locked identity/persona/mission and tunable tone/language/forbidden/style rules. Edge mirrors the public-safe runtime prompt bundle without importing `packages/shared`, and `self-check.ts` owns deterministic response screening before fallback |
+| Kael learning skills | `supabase/functions/mobile-api/_shared/kael/learning/skills/**`, queue call sites in `domains.ts`, and `kael_rule_*_log` migrations | P7 learning is queued behind Edge/service-role flow. Skill registry owns immutable forbidden effects, allowed targets, evidence gates, lifecycle, runtime flags, A/B gating, and rollback signals. It must not execute learning inline during customer/worker workflow writes |
 | Kael monitoring and A/B dashboards | `public.kael_ab_experiments`, `public.kael_ab_price_synthesis_cases`, `public.kael_monitoring_provider_daily`, `public.kael_monitoring_ab_price_synthesis` | P17 monitoring is DB-owned. Service role writes experiment/case rows, admins read through `security_invoker` views, and sample collection must not fabricate provider or price data. |
-| Transition validity | `supabase/functions/mobile-api/_shared/lifecycle.ts` plus event ownership in `workflow-orchestrator.ts` | keep backend state machine authoritative; AI and mobile may request actions but must not set phases directly |
-| Access checks | `supabase/functions/mobile-api/_shared/access.ts` | customer/worker/admin authorization |
-| Push helper | `supabase/functions/mobile-api/_shared/push.ts` | push is best-effort; notification rows remain source of truth |
-| Rate limit | `supabase/functions/mobile-api/_shared/rate-limit.ts` | protect AI/provider routes |
+| Transition validity | `supabase/functions/mobile-api/_shared/platform/lifecycle.ts` plus event ownership in `workflow-orchestrator.ts` | keep backend state machine authoritative; AI and mobile may request actions but must not set phases directly |
+| Access checks | `supabase/functions/mobile-api/_shared/platform/access.ts` | customer/worker/admin authorization |
+| Push helper | `supabase/functions/mobile-api/_shared/platform/push.ts` | push is best-effort; notification rows remain source of truth |
+| Rate limit | `supabase/functions/mobile-api/_shared/platform/rate-limit.ts` | protect AI/provider routes |
 | Kael Harness shared contracts | `packages/shared/kael/**` | charter skeletons, permission-purpose types, and future shared Kael governance contracts |
 
 `apps/api/src/**` mirrors/reference-tests many of these behaviors for Next.js/admin/support. It is not the store-bound mobile runtime unless Tu explicitly changes scope.
 
 ### C3 — One Kael brain (Edge canonical)
 
-The Edge `supabase/functions/mobile-api/_shared/kael/**` is the single **canonical** Kael brain on the store runtime. `apps/api/src/lib/kael/**` and `apps/api/src/lib/learning/**` are **non-canonical** Next.js reference/parity only: they are off the RN/Edge path, must not be treated as the source of truth, and must not be extended as a parallel brain. (Decision: stack-unification #5 D3; Edge already imports neither `apps/api` nor `packages/shared`.) The Deno↔npm boundary means the Edge cannot import `packages/shared`, so Edge Kael logic stays self-contained (it is **not** lifted into shared); `packages/shared/kael/**` carries only the cross-runtime-safe pure logic consumed by mobile + apps/api. Enforced: `pnpm lint:structure` fails if any `apps/mobile/**` or `supabase/functions/**` source imports from `apps/api` (RN/Edge independence).
+The Edge `supabase/functions/mobile-api/_shared/kael/**` is the single **canonical** Kael brain on the store runtime. `apps/api/src/lib/kael/**` and `apps/api/src/lib/learning/**` are **non-canonical** Next.js reference/parity only: they are off the RN/Edge path, must not be treated as the source of truth, and must not be extended as a parallel brain. (Decision: stack-unification #5 D3; Edge already imports neither `apps/api` nor `packages/shared`.) The Deno↔npm boundary means the Edge cannot import `packages/shared`: `supabase/functions/_shared/contracts/**` and `packages/shared/src/contracts/**` are hand-maintained schema twins guarded by `contract-parity.test.ts`, while `domain.ts` and `validation.ts` preserve their old public facades. Edge Kael logic stays self-contained (it is **not** lifted into shared); `packages/shared/kael/**` carries only the cross-runtime-safe pure logic consumed by mobile + apps/api. Enforced: `pnpm lint:structure` fails if any `apps/mobile/**` or `supabase/functions/**` source imports from `apps/api` (RN/Edge independence).
 
 ## UI System Ownership
 
@@ -193,35 +194,37 @@ If any item is false, stop and gather context before editing.
 
 Right-size + group-by-relation into cohesive "chains"; **one concept = one canonical home**. The success metric is "a human/AI understands it at a glance," NOT lines-per-file. Do **not** fragment a domain into many tiny uniform files (that recreates the god-file mess); do **not** keep god-files. The line numbers below are *loose* guidance for where code lives today, not size targets.
 
-### Edge `services.ts` (10,042 lines) → `supabase/functions/mobile-api/_shared/services/` chains
+### Edge `services.ts` (10,042 lines) → `supabase/functions/mobile-api/_shared/domains/` chains — **EXECUTED**
 
-One module per workflow domain; `services/index.ts` assembles them into `MobileApiServices` (today's `createEdgeServices`).
+One module per workflow domain; `domains.ts` assembles them into `MobileApiServices` (today's `createEdgeServices`).
+
+> Executed in `Plan.md` §46. The 10,042-line god-file `_shared/services.ts` no longer exists — `_shared/domains.ts` is now only the composition root, and the workflow modules live under `domains/**`. **The target module names and line numbers in the table below are the original blueprint plus its anchors into the deleted god-file; they are kept as the design record and do NOT resolve against today's tree** (which uses `domains/job/**`, `domains/matching/**`, `domains/worker/**`, `domains/customer/**`, …). For today's owners read the Edge Runtime Ownership table above, not this table.
 
 | Target module | Owns (current functions, by line) | Domain |
 |---|---|---|
-| `services/jobs.service.ts` | createJob (774), cancelAnalyzingJob (1159), getJob (2658), listCustomerActiveJobs (2728), attachJobMedia (5144), job geo (geocodeConfirmedKaelJob 9314, geocodeJobAddressForMatching 9351, updateJobGeo 9559), recordPipelineLearningApplications (1223) | customer job lifecycle |
-| `services/broadcasts.service.ts` | confirmSearch (2748), rollbackFailedBroadcastStart (2968), acceptBroadcast (3398), declineBroadcast (3506), persistWorkerBriefGuidanceAfterAccept (3445), createBroadcasts (7183), broadcast-state helpers (7768–7866), queryEligibleWorkers (7935), rankEligibleWorkers (8093), loadDisintermediationRiskCounts (8037), loadJobGeoForMatching (8066) | matching + broadcast |
-| `services/status.service.ts` | updateJobStatus (3577), buildKaelCompletionDecision (3846), apartment-access / X-2 check-in handshake (buildInitialApartmentAccessState 8905 … authorizeApartmentAccess 9161, buildCheckInAccessState 9264, buildAuthorizedReleaseAccessState 9298, address-access projection 9033–9140) | worker on-site status + unit access |
-| `services/scope-change.service.ts` | requestScopeChange (3885), tryAutoApproveScopeChange (4829), getWorkerScopeChangeRate (4870), decideScopeChange (5607), scopeDecisionToJobStatus (5721), logScopeChangeEstimateApiCall (4847), scopeChangeRiskConfig (9608) | scope change |
-| `services/cancellation.service.ts` | previewCustomerCancellation (408), gate{Customer,Worker}CancellationBeforeMutation (449/512), requestCustomerCancellation (3026), requestWorkerCancellation (4887), decideWorkerCancellation (5591), cancelJob (2991) | cancellation |
-| `services/dispute.service.ts` | openDispute (3249), submitDisputeCounterStatement (3336), decideDispute (3363) | dispute |
-| `services/completion-review.service.ts` | confirmCompletion (5725), buildKaelCustomerAcceptedCompletionDecision (5838), submitReview (5883), submitCustomerKaelFeedback (6000), recordNormalTransactionMemory (6050) | completion + review |
-| `services/chat.service.ts` | listJobMessages (5297), sendJobMessage (5320), job-chat contact guard (5394–5438), insertKaelJobMessage (5546), markJobMessagesRead (5569), maybeHandleDemandingCustomerJobChat (5516) | per-job chat |
-| `services/kael-chat.service.ts` | createKaelChat (1242), getKaelChat (1585), progress/stream (1625–1671), sendKaelChatTurn (1862), confirmKaelChat (1967), advanceKaelChatEstimate (2156), buildKaelConversationContext (2506), boundary-guard + demanding-customer hooks (1536/2094) | customer Kael Case Work |
-| `services/worker-kael.service.ts` | askKaelForWorker (4144), buildWorkerKaelAnswer (4208), summarizeWorkerVision (4131), createWorkerKaelChat (4233), listWorkerKaelChats (4296), getWorkerKaelChat (4314), sendWorkerKaelChatTurn (4336), worker Kael feedback/consent (4736–4828) | worker Kael assist |
-| `services/workers.service.ts` | registerWorker (6228), getWorkerProfile (6579), updateWorkerAvailability (6617), listWorkerBroadcasts (6641), listWorkerJobs (6703), getWorkerEarnings (6763) | worker profile + board |
-| `services/kael-memory.service.ts` | getMyKaelMemory (6323), getWorkerKaelMemory (6348), deleteMyKaelMemory (6372), updateMyKaelMemory (6399), listMyPendingDecisions (6461), listMyThreads (6514) | Kael memory + "me" views |
-| `services/notifications.service.ts` | listNotifications (7090), markNotificationRead (7129), registerDevicePushToken (7156), all `notify*` (7249–7739), insertUserNotification (7739) | notifications |
-| `services/places-geo.service.ts` | placesAutocomplete (640), vietmap/google autocomplete (658/697), geocodeWith{Vietmap,GoogleMaps} (9391/9449), buildGeocodingAddress (9491), vietmap helpers, map-key readers (9580/9589) | places + geocoding |
-| `services/catalog.service.ts` | listServices (577), getKaelCharter (573), catalog baseline helpers (9769–9810) | service catalog + Kael charter read |
-| `services/admin.service.ts` | invalidateMarketCache (6821), evaluatePriceSynthesisAbCaseAdmin (6850), Kael-learning admin (processQueue 6861 / batch 6875 / monitor 6889 / candidates list-approve-reject-deny 6901–7011) | admin / learning ops |
-| `services/_shared.ts` (import, never duplicate) | serializers (serializeKael* 8379–8433, serializeJobMessage 8459), error mappers (map*Error 8569–8803), coercions (asX/nullableX 9748–10042), db helpers (db 9649, dbQuery 9653, fetchJsonWithTimeout 9636), media-path validation (validateJobMediaPath 8826, canAttachJobMediaStage 8844, storageRef 8855), labels (serviceLabel 8863, districtLabel 8869), audit (logJobEvent 8173, auditGuardrailTripBestEffort 8197, queueKaelLearningEvent 8246, logApiCalls 8293, logMemoryAudit 8264) | shared edge utilities |
-| `services/index.ts` | createEdgeServices (306) assembler + runPolicyAutonomyGate (388) | wiring |
+| `domains/jobs.service.ts` | createJob (774), cancelAnalyzingJob (1159), getJob (2658), listCustomerActiveJobs (2728), attachJobMedia (5144), job geo (geocodeConfirmedKaelJob 9314, geocodeJobAddressForMatching 9351, updateJobGeo 9559), recordPipelineLearningApplications (1223) | customer job lifecycle |
+| `domains/matching/broadcasts.ts` | confirmSearch (2748), rollbackFailedBroadcastStart (2968), acceptBroadcast (3398), declineBroadcast (3506), persistWorkerBriefGuidanceAfterAccept (3445), createBroadcasts (7183), broadcast-state helpers (7768–7866), queryEligibleWorkers (7935), rankEligibleWorkers (8093), loadDisintermediationRiskCounts (8037), loadJobGeoForMatching (8066) | matching + broadcast |
+| `domains/status.service.ts` | updateJobStatus (3577), buildKaelCompletionDecision (3846), apartment-access / X-2 check-in handshake (buildInitialApartmentAccessState 8905 … authorizeApartmentAccess 9161, buildCheckInAccessState 9264, buildAuthorizedReleaseAccessState 9298, address-access projection 9033–9140) | worker on-site status + unit access |
+| `domains/scope-change.service.ts` | requestScopeChange (3885), tryAutoApproveScopeChange (4829), getWorkerScopeChangeRate (4870), decideScopeChange (5607), scopeDecisionToJobStatus (5721), logScopeChangeEstimateApiCall (4847), scopeChangeRiskConfig (9608) | scope change |
+| `domains/cancellation.service.ts` | previewCustomerCancellation (408), gate{Customer,Worker}CancellationBeforeMutation (449/512), requestCustomerCancellation (3026), requestWorkerCancellation (4887), decideWorkerCancellation (5591), cancelJob (2991) | cancellation |
+| `domains/dispute.service.ts` | openDispute (3249), submitDisputeCounterStatement (3336), decideDispute (3363) | dispute |
+| `domains/completion-review.service.ts` | confirmCompletion (5725), buildKaelCustomerAcceptedCompletionDecision (5838), submitReview (5883), submitCustomerKaelFeedback (6000), recordNormalTransactionMemory (6050) | completion + review |
+| `domains/chat.service.ts` | listJobMessages (5297), sendJobMessage (5320), job-chat contact guard (5394–5438), insertKaelJobMessage (5546), markJobMessagesRead (5569), maybeHandleDemandingCustomerJobChat (5516) | per-job chat |
+| `domains/kael-chat.service.ts` | createKaelChat (1242), getKaelChat (1585), progress/stream (1625–1671), sendKaelChatTurn (1862), confirmKaelChat (1967), advanceKaelChatEstimate (2156), buildKaelConversationContext (2506), boundary-guard + demanding-customer hooks (1536/2094) | customer Kael Case Work |
+| `domains/worker-kael.service.ts` | askKaelForWorker (4144), buildWorkerKaelAnswer (4208), summarizeWorkerVision (4131), createWorkerKaelChat (4233), listWorkerKaelChats (4296), getWorkerKaelChat (4314), sendWorkerKaelChatTurn (4336), worker Kael feedback/consent (4736–4828) | worker Kael assist |
+| `domains/workers.service.ts` | registerWorker (6228), getWorkerProfile (6579), updateWorkerAvailability (6617), listWorkerBroadcasts (6641), listWorkerJobs (6703), getWorkerEarnings (6763) | worker profile + board |
+| `domains/kael-memory.service.ts` | getMyKaelMemory (6323), getWorkerKaelMemory (6348), deleteMyKaelMemory (6372), updateMyKaelMemory (6399), listMyPendingDecisions (6461), listMyThreads (6514) | Kael memory + "me" views |
+| `domains/notifications.service.ts` | listNotifications (7090), markNotificationRead (7129), registerDevicePushToken (7156), all `notify*` (7249–7739), insertUserNotification (7739) | notifications |
+| `domains/places-geo.service.ts` | placesAutocomplete (640), vietmap/google autocomplete (658/697), geocodeWith{Vietmap,GoogleMaps} (9391/9449), buildGeocodingAddress (9491), vietmap helpers, map-key readers (9580/9589) | places + geocoding |
+| `domains/catalog.service.ts` | listServices (577), getKaelCharter (573), catalog baseline helpers (9769–9810) | service catalog + Kael charter read |
+| `domains/admin.service.ts` | invalidateMarketCache (6821), evaluatePriceSynthesisAbCaseAdmin (6850), Kael-learning admin (processQueue 6861 / batch 6875 / monitor 6889 / candidates list-approve-reject-deny 6901–7011) | admin / learning ops |
+| `domains/_shared.ts` (import, never duplicate) | serializers (serializeKael* 8379–8433, serializeJobMessage 8459), error mappers (map*Error 8569–8803), coercions (asX/nullableX 9748–10042), db helpers (db 9649, dbQuery 9653, fetchJsonWithTimeout 9636), media-path validation (validateJobMediaPath 8826, canAttachJobMediaStage 8844, storageRef 8855), labels (serviceLabel 8863, districtLabel 8869), audit (logJobEvent 8173, auditGuardrailTripBestEffort 8197, queueKaelLearningEvent 8246, logApiCalls 8293, logMemoryAudit 8264) | shared edge utilities |
+| `domains.ts` | createEdgeServices (306) assembler + runPolicyAutonomyGate (388) | wiring |
 
-### Edge `router.ts` (2,535 lines) → thin router
+### Edge `http.ts` (2,535 lines) → thin router
 
-- `router.ts` keeps ONLY `createMobileApiHandler`, `matchRoute` (route-kind table + role guards), dispatch, response envelope, payload-size guard.
-- `router/request-validation.ts` ← the `parse*` body validators (parseWorkerStatusUpdate, parseWorkerAccessCheckIn, …) + storage-ref validators (isSupabaseJobMediaStageRef, isAccessCheckInPhotoRef, isCompletionPhotoRef).
+- `http.ts` keeps ONLY `createMobileApiHandler`, `matchRoute` (route-kind table + role guards), dispatch, response envelope, payload-size guard.
+- `http/request-validation.ts` ← the `parse*` body validators (parseWorkerStatusUpdate, parseWorkerAccessCheckIn, …) + storage-ref validators (isSupabaseJobMediaStageRef, isAccessCheckInPhotoRef, isCompletionPhotoRef).
 - Contract types inlined here today (KaelEstimate :73 / CreateJobResponse :105 / KaelChatResponse :162) **leave for shared** — see C2.
 
 ### Mobile `components/worker/` — CURRENT STATE (worker module map updated §44 Phase 3, 2026-07-27)
@@ -274,13 +277,13 @@ The customer payment-confirm stage is owned by `customer-payment-rail-surface.ts
 
 | Concept | Current homes | Canonical home | Action |
 |---|---|---|---|
-| KaelEstimate | mobile `api-types.ts:34`, shared `api-responses.ts:22`, edge `router.ts:73`, edge `kael/types.ts:282` | `packages/shared/src/types/api-responses.ts` | mobile re-exports; edge imports; delete the 3 copies |
-| CreateJobResponse | mobile `api-types.ts:51`, shared `api-responses.ts:54`, edge `router.ts:105` | same | same |
-| KaelChatResponse | mobile `api-types.ts:115`, shared `api-responses.ts:116`, edge `router.ts:162` | same | same |
-| constants/validation dup | `supabase/functions/_shared/domain.ts` (628-line standalone copy) | `packages/shared` | Edge imports shared (resolve Deno↔npm, OQ5); delete `domain.ts` |
-| parity test | string-slice `mobile-wiring.test.ts:3756–3790` | — | replace with a real value-level test once there is one source |
+| KaelEstimate | shared `api-responses.ts:52`, edge `supabase/functions/_shared/contracts.ts:37` | `packages/shared/src/types/api-responses.ts` | **RESOLVED** — mobile no longer declares it (`apps/mobile/lib/api-types.ts` re-exports from `@nestscout/shared`); the 4th home in Edge `kael/**` is gone; the remaining Edge twin is required by Deno↔npm and guarded by `contract-parity.test.ts` |
+| CreateJobResponse | shared `api-responses.ts:91`, edge `supabase/functions/_shared/contracts.ts:55` | same | same |
+| KaelChatResponse | shared `api-responses.ts:234`, edge `supabase/functions/_shared/contracts.ts:207` | same | same |
+| constants/validation dup | `supabase/functions/_shared/domain.ts` and `packages/shared/src/validation.ts` — both are now `export *` facades | `supabase/functions/_shared/contracts/**` ↔ `packages/shared/src/contracts/**` | **RESOLVED** — the twins were split in parallel; the facades preserve the old public surface, and `contracts-parity.test.ts` fails CI on drift. `domain.ts` is NOT deleted: Deno cannot import `packages/shared` (see C3), so a hand-maintained twin is the design, not the debt |
+| parity test | `packages/shared/src/__tests__/contract-parity.test.ts` (value-level, normalizes both type bodies) plus `contracts-parity.test.ts` for the schema twins | — | **DONE** — replaced the old brittle string-slice assertion |
 
-**C2 — AI provider types (`AIProvider`/`AIMessage`/`AIRequest`/`AIResponse`/`AIError`/… ×3) — resolved 2026-06-30 (G3a):** canonical home = `packages/shared/src/types/ai.types.ts`; `apps/api/src/lib/ai/types.ts` now re-exports it (the `signal?: AbortSignal` extension was folded into the canonical), and `AIUsage`/`AIResult` collapsed to one home (dup grandfather entries removed). The Edge copy in `supabase/functions/mobile-api/_shared/kael/types.ts` is **intentionally NOT unified** — it adds Anthropic prompt-caching (`cache_control`/`cacheStatus`), Perplexity multi-provider search params, base64 image sources, and `citations`, and Deno cannot import `packages/shared`. So the AI* names stay grandfathered as `[shared, edge]` (2 homes by design, documented at both sites), not a byte-equivalent mirror.
+**C2 — AI provider types (`AIProvider`/`AIMessage`/`AIRequest`/`AIResponse`/`AIError`/… ×3) — resolved 2026-06-30 (G3a):** canonical home = `packages/shared/src/types/ai.types.ts`; `apps/api/src/lib/ai/types.ts` now re-exports it (the `signal?: AbortSignal` extension was folded into the canonical), and `AIUsage`/`AIResult` collapsed to one home (dup grandfather entries removed). The Edge copy in `supabase/functions/mobile-api/_shared/kael/contracts/types.ts` (`AIMessage:484`, `AIRequest:488`, `AIResponse:504`, `AIError:529`; `AIProvider` sits one layer lower in `platform/kael-contracts.ts:4` because all three layers consume it) is **intentionally NOT unified** — it adds Anthropic prompt-caching (`cache_control`/`cacheStatus`), Perplexity multi-provider search params, base64 image sources, and `citations`, and Deno cannot import `packages/shared`. So the AI* names stay grandfathered as `[shared, edge]` (2 homes by design, documented at both sites), not a byte-equivalent mirror.
 
 **C3 — Kael brain (2 runtimes):**
 
@@ -301,5 +304,5 @@ The mobile groupings above are simultaneously the C1/C4-mobile map AND #3's surf
 ### Open items for build phases
 
 - OQ5 (Deno↔shared import mechanism) — spike in C2/P4.
-- `services/_shared.ts` may itself split if it grows past one cohesive chain (revisit in P6a); start as one module to avoid premature fragmentation.
-- Payment chain (`services/payment.service.ts` + §S4 domains) is intentionally **absent** here — gated to P9.
+- `domains/_shared.ts` may itself split if it grows past one cohesive chain (revisit in P6a); start as one module to avoid premature fragmentation.
+- Payment chain (`domains/payment.service.ts` + §S4 domains) is intentionally **absent** here — gated to P9.

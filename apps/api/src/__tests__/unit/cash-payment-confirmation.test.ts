@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { confirmWorkerCashPayment } from '../../../../../supabase/functions/mobile-api/_shared/services/cash-payment.service'
+import { confirmWorkerCashPayment } from '../../../../../supabase/functions/mobile-api/_shared/domains/payment/cash'
 
 const confirmedCashRow = {
   cash_commission_collected: 45_000,

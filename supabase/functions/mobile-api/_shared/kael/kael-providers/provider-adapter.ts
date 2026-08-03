@@ -12,7 +12,7 @@ import type {
   AIResponse,
   AITextContent,
   ProviderRequestSpec,
-} from "../types.ts";
+} from "../contracts/types.ts";
 
 export type ProviderCapabilities = {
   readonly vision: boolean;

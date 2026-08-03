@@ -16,9 +16,9 @@ import {
   prependDeterministicSafetyGuidance,
   scanIntakeSafetySignals,
   type HardRoutingPolicyDecision,
-} from "../electrical-intake-policy.ts";
-import { KAEL_CASE_WORK_SERVICE_TYPES } from "../performance-profiles.ts";
-import { isElectricalPlaybookEnabled } from "../playbooks/electrical.ts";
+} from "./electrical-intake-policy.ts";
+import { KAEL_CASE_WORK_SERVICE_TYPES } from "../learning/performance-profiles.ts";
+import { isElectricalPlaybookEnabled } from "../learning/playbooks/electrical.ts";
 
 export type BoundaryReason =
   | "prompt_injection"

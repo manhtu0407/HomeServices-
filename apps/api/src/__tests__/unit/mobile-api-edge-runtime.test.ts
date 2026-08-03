@@ -3,18 +3,18 @@ import {
   createMobileApiHandler,
   type MobileApiContext,
   type MobileApiServices,
-} from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { readEdgeEnv } from '../../../../../supabase/functions/mobile-api/_shared/env'
-import { requireJobAccess } from '../../../../../supabase/functions/mobile-api/_shared/access'
+} from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { readEdgeEnv } from '../../../../../supabase/functions/_shared/platform/env'
+import { requireJobAccess } from '../../../../../supabase/functions/mobile-api/_shared/platform/access'
 import {
   buildInitialDiagnosisScopeArtifact,
   runKaelPipeline,
   type SupabaseLike,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
-import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_shared/push'
-import { __resetRateLimitStoreForTests } from '../../../../../supabase/functions/mobile-api/_shared/rate-limit'
-import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
+import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_shared/platform/push'
+import { __resetRateLimitStoreForTests } from '../../../../../supabase/functions/mobile-api/_shared/platform/rate-limit'
+import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
 
 function quoteReadyPlumbingDiagnosisScope() {
   return {

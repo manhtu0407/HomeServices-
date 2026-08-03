@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { processLearningCandidateResponse } from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/process-batch-results'
+import { processLearningCandidateResponse } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/process-batch-results'
 import {
   createLearningSkillCandidate,
   type LearningSkillInput,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
-import type { QueuedLearningRow } from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/process-learning-queue'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
+import type { QueuedLearningRow } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/process-learning-queue'
 
 function stubDenoEnv(env: Record<string, string>) {
   vi.stubGlobal('Deno', { env: { get: (key: string) => env[key] } })

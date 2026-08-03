@@ -22,7 +22,7 @@ describe('customer refund-account persistence schema', () => {
 
   it('uses one locked service-role RPC and never returns raw financial data', () => {
     const migration = read('supabase/migrations/20260728110000_customer_refund_account_atomic.sql')
-    const service = read('supabase/functions/mobile-api/_shared/services/customer-refund-account.service.ts')
+    const service = read('supabase/functions/mobile-api/_shared/domains/customer/refund-account.ts')
 
     expect(migration).toContain('create or replace function public.upsert_customer_refund_payment_method')
     expect(migration).toContain('security definer')

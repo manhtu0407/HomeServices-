@@ -15,38 +15,38 @@ import {
   asServiceType,
   asServiceTypeArray,
   nullableServiceType,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/coercions'
+} from '../../../../../supabase/functions/mobile-api/_shared/platform/coercions'
 import {
   buildFallbackIntent,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent'
 import {
   evaluateMessageBoundary,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard'
 import {
   buildIntakeDiagnosisMessages,
   buildIntentMessages,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/prompts'
 import {
   FALLBACK_PROBLEM_SLUG_BY_SERVICE,
   intentResultSchema,
   PROBLEM_SLUGS_BY_SERVICE,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
 import {
   getPublicKaelCharter,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/system-prompt'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/system-prompt'
 import {
   getKaelPerformanceProfile,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/performance-profiles'
 import {
   kaelServiceLabelVi,
   serviceLabel,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+} from '../../../../../supabase/functions/mobile-api/_shared/http/serialize/labels'
 import {
   buildCustomerProfileInsights,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/customer/profile-insights'
 import {
   validateTransition,
-} from '../../../../../supabase/functions/mobile-api/_shared/lifecycle'
+} from '../../../../../supabase/functions/mobile-api/_shared/platform/lifecycle'
 
 const SIX_SERVICES = [
   'electrical',

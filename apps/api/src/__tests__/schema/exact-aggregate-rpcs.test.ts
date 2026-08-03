@@ -34,12 +34,12 @@ describe('exact profile and earnings aggregate migration', () => {
   })
 
   it('does not retain capped list aggregation in the runtime services', () => {
-    const profileService = readFileSync(
-      resolve(root, 'supabase/functions/mobile-api/_shared/services/profile-insights.service.ts'),
-      'utf8',
-    )
+    const profileService = [
+      'supabase/functions/mobile-api/_shared/domains/customer/profile-insights.ts',
+      'supabase/functions/mobile-api/_shared/domains/worker/profile-insights.ts',
+    ].map((path) => readFileSync(resolve(root, path), 'utf8')).join('\n')
     const workerService = readFileSync(
-      resolve(root, 'supabase/functions/mobile-api/_shared/services/workers.service.ts'),
+      resolve(root, 'supabase/functions/mobile-api/_shared/domains/worker/earnings.ts'),
       'utf8',
     )
     const nextEarnings = readFileSync(

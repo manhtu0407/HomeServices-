@@ -29,19 +29,50 @@ import { dirname, resolve } from 'node:path'
 const here = dirname(fileURLToPath(import.meta.url))
 const routeLayerPath = resolve(
   here,
-  '../../../../../supabase/functions/mobile-api/_shared/router/routes.ts',
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/index.ts',
 )
 const caseWorkRouteLayerPath = resolve(
   here,
-  '../../../../../supabase/functions/mobile-api/_shared/router/case-work-resource-routes.ts',
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts',
 )
 const workerKaelChatRouteLayerPath = resolve(
   here,
-  '../../../../../supabase/functions/mobile-api/_shared/router/worker-kael-chat-routes.ts',
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/worker-kael-chat-routes.ts',
 )
 const customerKaelChatSessionRouteLayerPath = resolve(
   here,
-  '../../../../../supabase/functions/mobile-api/_shared/router/kael-chat-session-routes.ts',
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/kael-chat-session-routes.ts',
+)
+// Domain matchers extracted out of the Route union keep their descriptors in their own file.
+// Each extraction must be added here, or its routes silently drop out of the derived set and
+// this test starts reporting them as stale GUARDED entries instead of missing coverage.
+const adminRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/admin.ts',
+)
+const meRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/me.ts',
+)
+const kaelRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/kael.ts',
+)
+const notificationRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/notifications.ts',
+)
+const jobRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/job.ts',
+)
+const workerRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/worker.ts',
+)
+const miscRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/misc.ts',
 )
 
 /**
@@ -126,6 +157,13 @@ function deriveResourceScopedRoutes(): Set<string> {
     readFileSync(caseWorkRouteLayerPath, 'utf8'),
     readFileSync(workerKaelChatRouteLayerPath, 'utf8'),
     readFileSync(customerKaelChatSessionRouteLayerPath, 'utf8'),
+    readFileSync(adminRouteLayerPath, 'utf8'),
+    readFileSync(meRouteLayerPath, 'utf8'),
+    readFileSync(kaelRouteLayerPath, 'utf8'),
+    readFileSync(notificationRouteLayerPath, 'utf8'),
+    readFileSync(jobRouteLayerPath, 'utf8'),
+    readFileSync(workerRouteLayerPath, 'utf8'),
+    readFileSync(miscRouteLayerPath, 'utf8'),
   ].join('\n')
 
   const kindRe = /kind:\s*"([^"]+)"/g

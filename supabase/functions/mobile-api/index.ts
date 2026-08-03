@@ -1,7 +1,7 @@
-import { createEdgeAuthenticator } from "./_shared/auth.ts";
-import { readEdgeEnv } from "./_shared/env.ts";
-import { createMobileApiHandler } from "./_shared/router.ts";
-import { createEdgeServices } from "./_shared/services.ts";
+import { createEdgeAuthenticator } from "./_shared/platform/auth.ts";
+import { readEdgeEnv } from "../_shared/platform/env.ts";
+import { createMobileApiHandler } from "./_shared/http.ts";
+import { createEdgeServices } from "./_shared/domains.ts";
 
 const env = readEdgeEnv((name) => Deno.env.get(name) ?? undefined);
 

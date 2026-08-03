@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
-} from "../../../../../supabase/functions/mobile-api/_shared/kael/scope-risk";
+} from "../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/scope-risk";
 
 describe("Edge scope-risk arithmetic bounds", () => {
   it("fails closed when finite prices overflow the drift ratio", () => {

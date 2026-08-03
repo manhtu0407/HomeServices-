@@ -3,13 +3,13 @@ import {
   processLearningQueue,
   queueLearningForBatch,
   type QueuedLearningRow,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/process-learning-queue'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/process-learning-queue'
 import {
   parseBatchLearningCandidate,
   processBatchResults,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/process-batch-results'
-import { createLearningSkillCandidate } from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
-import type { LearningSkillInput } from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/process-batch-results'
+import { createLearningSkillCandidate } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
+import type { LearningSkillInput } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
 
 describe('Kael Q4 background optimization', () => {
   afterEach(() => {

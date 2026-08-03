@@ -3,7 +3,7 @@ import {
   createMobileApiHandler,
   type MobileApiAuthResult,
   type MobileApiServices,
-} from '../../../../../supabase/functions/mobile-api/_shared/router'
+} from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 const customerAuth: MobileApiAuthResult = {
   success: true,

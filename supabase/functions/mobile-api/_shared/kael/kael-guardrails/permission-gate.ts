@@ -1,9 +1,9 @@
-import type { KaelPurpose } from "../types.ts";
+import type { KaelPurpose } from "../contracts/types.ts";
 import {
   retrieveLegalBoundaryPattern,
   type LegalBoundaryType,
-} from "../knowledge.ts";
-import { canonicalizeVN } from "../canonicalize-vn.ts";
+} from "../tools/knowledge.ts";
+import { canonicalizeVN } from "../language/canonicalize-vn.ts";
 
 export type KaelActorRole = "customer" | "worker" | "admin" | "system";
 export type KaelJobRelation = "none" | "own_customer_job" | "own_worker_job" | "admin_review";

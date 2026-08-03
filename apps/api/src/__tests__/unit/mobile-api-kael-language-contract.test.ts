@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAdvisory } from '../../../../../supabase/functions/mobile-api/_shared/kael/advisory'
+import { buildAdvisory } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/advisory'
 import {
   evaluateMarketVerdict,
   marketVerdictReason,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/market-verdict'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/market-verdict'
 import {
   priceDisclaimer,
   unsupportedServiceMessage,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
-import { formatKaelEstimateText } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-pipeline'
+import { formatKaelEstimateText } from '../../../../../supabase/functions/mobile-api/_shared/http/serialize/labels'
 
 describe('mobile-api Kael customer-visible language contract', () => {
   it('localizes deterministic unsupported, advisory, and disclaimer copy', () => {

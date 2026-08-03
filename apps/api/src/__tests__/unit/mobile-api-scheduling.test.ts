@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/job-create.service'
-import { createKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat.service'
-import { confirmKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-confirm.service'
+import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/create/create'
+import { createKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/create'
+import { confirmKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/confirm.service'
 import { buildInitialDiagnosisScopeArtifact } from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import {
   validateFutureHcmcSchedule,
   type HcmcScheduleWindow,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/scheduling'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+} from '../../../../../supabase/functions/mobile-api/_shared/platform/scheduling'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 const now = new Date('2026-07-14T18:30:00.000Z')
 

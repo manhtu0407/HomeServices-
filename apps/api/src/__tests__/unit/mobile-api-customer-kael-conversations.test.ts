@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { isVisibleCustomerConversationCatalogRow } from '../../../../../supabase/functions/mobile-api/_shared/services/customer-kael-conversation-projection'
-import { matchCustomerKaelConversationRoute } from '../../../../../supabase/functions/mobile-api/_shared/router/customer-kael-conversation-routes'
+import { isVisibleCustomerConversationCatalogRow } from '../../../../../supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-projection'
+import { matchCustomerKaelConversationRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/customer-kael-conversation-routes'
 
 function readUtf8(url: URL) {
   return readFileSync(url, 'utf8')
@@ -17,36 +17,42 @@ function listTsFiles(dir: URL): URL[] {
 function readRouterLayer() {
   const root = new URL('../../../../../supabase/functions/mobile-api/_shared/', import.meta.url)
   return [
-    readUtf8(new URL('router.ts', root)),
-    ...listTsFiles(new URL('router/', root)).map(readUtf8),
+    readUtf8(new URL('http.ts', root)),
+    ...listTsFiles(new URL('http/', root)).map(readUtf8),
   ].join('\n')
 }
 
 function readServiceLayer() {
   const root = new URL('../../../../../supabase/functions/mobile-api/_shared/', import.meta.url)
   return [
-    readUtf8(new URL('services.ts', root)),
-    ...listTsFiles(new URL('services/', root)).map(readUtf8),
+    readUtf8(new URL('domains.ts', root)),
+    ...listTsFiles(new URL('domains/', root)).map(readUtf8),
   ].join('\n')
 }
 
 function readCustomerConversationService() {
-  return readUtf8(new URL(
-    '../../../../../supabase/functions/mobile-api/_shared/services/customer-kael-conversation.service.ts',
+  const root = new URL(
+    '../../../../../supabase/functions/mobile-api/_shared/domains/customer/',
     import.meta.url,
-  ))
+  )
+  return ['kael-conversation.ts', 'kael-conversation-turn.ts']
+    .map((path) => readUtf8(new URL(path, root)))
+    .join('\n')
 }
 
 function readCustomerCaseWorkService() {
-  return readUtf8(new URL(
-    '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat.service.ts',
+  const root = new URL(
+    '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/',
     import.meta.url,
-  ))
+  )
+  return ['create.ts', 'turn.ts', 'evidence.ts'].map((path) =>
+    readUtf8(new URL(path, root))
+  ).join('\n')
 }
 
 function readKaelPersistenceService() {
   return readUtf8(new URL(
-    '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-persistence.service.ts',
+    '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/persistence.service.ts',
     import.meta.url,
   ))
 }

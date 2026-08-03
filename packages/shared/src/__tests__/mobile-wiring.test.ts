@@ -8,8 +8,8 @@ const read = (rel: string) => readSource(resolve(MOBILE_ROOT, rel))
 const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 const countOccurrences = (source: string, value: string) => source.split(value).length - 1
 
-// The Edge service layer is the services.ts factory plus the per-domain modules under
-// services/, so source-string assertions read the whole concatenated layer — otherwise a grep
+// The Edge use-case layer is the domains.ts factory plus the per-domain modules under
+// domains/, so source-string assertions read the whole concatenated layer — otherwise a grep
 // silently misses code that moved into a module.
 const EDGE_MOBILE_API_SHARED = resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared')
 const listEdgeServiceFiles = (absDir: string): string[] =>
@@ -18,8 +18,8 @@ const listEdgeServiceFiles = (absDir: string): string[] =>
   )
 const readEdgeServiceLayer = () =>
   [
-    readSource(resolve(EDGE_MOBILE_API_SHARED, 'services.ts')),
-    ...listEdgeServiceFiles(resolve(EDGE_MOBILE_API_SHARED, 'services'))
+    readSource(resolve(EDGE_MOBILE_API_SHARED, 'domains.ts')),
+    ...listEdgeServiceFiles(resolve(EDGE_MOBILE_API_SHARED, 'domains'))
       .filter((p) => p.endsWith('.ts'))
       .sort()
       .map(readSource),
@@ -27,8 +27,8 @@ const readEdgeServiceLayer = () =>
 
 const readEdgeRouterLayer = () =>
   [
-    readSource(resolve(EDGE_MOBILE_API_SHARED, 'router.ts')),
-    ...listEdgeServiceFiles(resolve(EDGE_MOBILE_API_SHARED, 'router'))
+    readSource(resolve(EDGE_MOBILE_API_SHARED, 'http.ts')),
+    ...listEdgeServiceFiles(resolve(EDGE_MOBILE_API_SHARED, 'http'))
       .filter((p) => p.endsWith('.ts'))
       .sort()
       .map(readSource),
@@ -2199,8 +2199,11 @@ describe('frontend-only workflow safety audit', () => {
     expect(apiTypes).toContain('to_date: string | null')
     expect(apiTypes).toContain('service_radius_km: number | null')
     expect(sharedApiTypes).toContain('service_radius_km: number | null')
-    expect(edgeRouter).toContain('service_radius_km: number | null')
-    expect(edgeServices).toContain('service_radius_km: null')
+    // The worker response contract now lives in the domains contract module, not the http layer,
+    // and its empty-profile default sits in the platform helper.
+    expect(edgeServices).toContain('service_radius_km: number | null')
+    expect(readSource(resolve(EDGE_MOBILE_API_SHARED, 'platform/domain-utils.ts')))
+      .toContain('service_radius_km: null')
     expect(apiTypes).toContain('export type DeclineBroadcastResponse')
     expect(apiTypes).toContain('export type WorkerRoutePreviewResponse')
     const workerJobListResponse = apiTypes.slice(apiTypes.indexOf('export type WorkerJobListResponse'), apiTypes.indexOf('export type EarningsResponse'))

@@ -9,42 +9,48 @@ const mocks = vi.hoisted(() => ({
   runKaelPipeline: vi.fn(),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/_shared.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/kael-price-source.ts', () => ({
   estimatePriceSourceFromStageLogs: () => 'baseline',
+}))
+
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/domain-utils.ts', () => ({
   sourceTrustSecretsForRequest: (secrets: unknown) => secrets,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/rate-limit.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/rate-limit.ts', () => ({
   AI_SESSION_LIMIT: { maxTokens: 10, refillIntervalMs: 60_000, refillRate: 1 },
   checkRateLimit: mocks.checkRateLimit,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/apartment-access.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/domains/worker/apartment-access.ts', () => ({
   buildInitialApartmentAccessState: () => ({ release_stage: 'area_only' }),
   persistApartmentAccessProfileFromMetadata: vi.fn(async () => undefined),
   sanitizeApartmentAccessProfile: () => ({}),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/places-geo.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/domains/places/geo.ts', () => ({
   geocodeJobAddressForMatching: vi.fn(async () => undefined),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/broadcasts.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/domains/matching/broadcasts.ts', () => ({
   createBroadcasts: mocks.createBroadcasts,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/matching.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/domains/matching/flow.ts', () => ({
   rollbackFailedBroadcastStart: mocks.rollbackFailedBroadcastStart,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/notifications.service.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/domains/notification/notifications.ts', () => ({
   insertUserNotification: vi.fn(async () => undefined),
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/audit.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/audit.ts', () => ({
+  logJobEvent: mocks.logJobEvent,
+}))
+
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/kael/learning/audit.ts', () => ({
   apiLogPurposeForPipelineStage: () => 'job_analysis',
   logApiCalls: vi.fn(async () => undefined),
-  logJobEvent: mocks.logJobEvent,
 }))
 
 vi.mock('../../../../../supabase/functions/mobile-api/_shared/kael/index.ts', () => ({
@@ -62,14 +68,14 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/kael/index.ts', ()
   runKaelPipeline: mocks.runKaelPipeline,
 }))
 
-vi.mock('../../../../../supabase/functions/mobile-api/_shared/router.ts', () => ({
+vi.mock('../../../../../supabase/functions/mobile-api/_shared/http.ts', () => ({
   apiFailure: (code: string, message: string, status: number) => {
     throw Object.assign(new Error(message), { code, status })
   },
 }))
 
-import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/job-create.service'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/create/create'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 describe('mobile-api failed job-create retry recovery', () => {
   beforeEach(() => {

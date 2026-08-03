@@ -11,7 +11,7 @@ import {
   sanitizeUntrustedEvidenceItem,
   sanitizeUntrustedEvidenceList,
   sanitizeUntrustedEvidenceText,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/untrusted-evidence'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/evidence/untrusted-evidence'
 
 const edgeRoot = join(process.cwd(), '../../supabase/functions/mobile-api/_shared')
 
@@ -162,19 +162,46 @@ describe('Kael untrusted customer evidence boundary', () => {
   })
 
   it('wires the safe evidence into model input, durable facts, and demanding-customer audit', () => {
-    const core = readFileSync(join(edgeRoot, 'services/kael-chat-core.ts'), 'utf8')
-    const caseWork = readFileSync(join(edgeRoot, 'services/kael-chat-case-work.ts'), 'utf8')
-    const service = readFileSync(join(edgeRoot, 'services/kael-chat.service.ts'), 'utf8')
-    const pipeline = readFileSync(join(edgeRoot, 'kael/pipeline.ts'), 'utf8')
-    const intent = readFileSync(join(edgeRoot, 'kael/intent.ts'), 'utf8')
+    const core = [
+      'advance.ts',
+      'branches-pre-pipeline.ts',
+      'branches-post-pipeline.ts',
+      'estimate-support.ts',
+      'guard.ts',
+    ].map((path) => readFileSync(
+      join(edgeRoot, 'domains/kael-chat', path),
+      'utf8',
+    )).join('\n')
+    const caseWork = [
+      'case-work-artifact.ts',
+      'case-work-context.ts',
+    ].map((path) => readFileSync(
+      join(edgeRoot, 'domains/kael-chat', path),
+      'utf8',
+    )).join('\n')
+    const service = [
+      'create.ts',
+      'turn.ts',
+      'evidence.ts',
+      'intake.ts',
+    ].map((path) => readFileSync(
+      join(edgeRoot, 'domains/kael-chat', path),
+      'utf8',
+    )).join('\n')
+    const pipeline = [
+      'pipeline.ts',
+      'prepare.ts',
+      'stage-parallel.ts',
+    ].map((path) => readFileSync(join(edgeRoot, 'kael/pipeline', path), 'utf8')).join('\n')
+    const intent = readFileSync(join(edgeRoot, 'kael/tools/intent.ts'), 'utf8')
 
     expect(core).toContain('sanitizeCustomerCaseEvidenceText')
     expect(core).toContain('sanitizeUntrustedEvidenceList(input.problem_chips ?? [])')
-    expect(core).toContain('const durableCustomerDetail = safeCustomerEvidence')
+    expect(core).toContain('durableCustomerDetail: safeCustomerEvidence')
     expect(core).not.toContain('const modelCustomerEvidence')
     expect(core).toContain('mergeKaelCustomerDetailForReanalysis')
     expect(core).toContain('description: customerAnalysisDetail')
-    expect(core).toContain('customerMessage: safeCustomerEvidence')
+    expect(core).toContain('customerEvidence: safeCustomerEvidence')
     expect(core).toContain('message: safeInteractionEvidence')
     expect(caseWork).toContain('buildUntrustedCustomerCaseConversationContext')
     expect(caseWork).not.toMatch(/\$\{turn\.role[^\n]+\}: \$\{turn\.text\}/)

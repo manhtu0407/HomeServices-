@@ -4,7 +4,7 @@ import {
   boundedCanonicalProviderCode,
   boundedProviderIdentifier,
   boundedProviderText,
-} from '../../../../../supabase/functions/mobile-api/_shared/provider-boundary'
+} from '../../../../../supabase/functions/mobile-api/_shared/platform/provider-boundary'
 
 describe('external provider value boundary', () => {
   it('normalizes control and bidi characters without damaging ordinary Vietnamese text', () => {

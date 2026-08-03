@@ -136,7 +136,8 @@ describe('all source files exist', () => {
 // ===================================================================
 
 describe('validation.ts ↔ constants.ts alignment', () => {
-  const validationSrc = read('validation.ts')
+  // validation.ts is a re-export facade; the declaration lives in the bounded contract module.
+  const validationSrc = read('contracts/common.ts')
   const constantsSrc = read('constants.ts')
 
   it('serviceTypeSchema enum matches SERVICE_TYPES values', () => {

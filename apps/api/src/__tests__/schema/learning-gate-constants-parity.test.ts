@@ -8,7 +8,7 @@ import {
   EDGE_CONFIDENCE_THRESHOLD,
   EDGE_MIN_EVIDENCE,
   ROLLING_WINDOW_DAYS as EDGE_ROLLING_WINDOW_DAYS,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning-constants'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/learning-constants'
 import {
   CONFIDENCE_THRESHOLD,
   CONTRADICTION_MAX_RATIO,
@@ -63,7 +63,7 @@ describe('learning gate constants: one source across Edge, apps/api, and SQL', (
     const registry = readFileSync(
       join(
         __dirname,
-        '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry.ts',
+        '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry.ts',
       ),
       'utf8',
     )

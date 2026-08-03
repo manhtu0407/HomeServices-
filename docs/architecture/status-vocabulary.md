@@ -35,7 +35,7 @@ draft, submitted, under_review, approved, rejected, suspended
 
 ### 2. Edge `lifecycle.ts` valid transitions
 
-Defined in `supabase/functions/mobile-api/_shared/lifecycle.ts`. Mirrors the
+Defined in `supabase/functions/mobile-api/_shared/platform/lifecycle.ts`. Mirrors the
 DB enum but enforces which transitions are allowed at runtime. Phase 2.0
 (2026-05-23) keeps `completed_by_worker -> confirmed_by_customer` valid; the
 final_price source change is enforced in services.ts, not the lifecycle map.

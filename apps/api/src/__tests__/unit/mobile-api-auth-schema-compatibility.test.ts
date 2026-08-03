@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createEdgeAuthenticator } from '../../../../../supabase/functions/mobile-api/_shared/auth'
+import { createEdgeAuthenticator } from '../../../../../supabase/functions/mobile-api/_shared/platform/auth'
 
 describe('mobile-api auth schema compatibility', () => {
   const createClient = vi.fn()

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   recordWorkerCancellationReview,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/case-3-worker-cancel'
 import {
   recordCustomerCancellationReview,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/case-4-customer-cancel'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/case-4-customer-cancel'
 
 function rpcOnlyClient() {
   const rpc = vi.fn(async () => ({

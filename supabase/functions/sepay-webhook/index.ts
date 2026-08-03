@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import { readEdgeEnv } from "../mobile-api/_shared/env.ts";
+import { readEdgeEnv } from "../_shared/platform/env.ts";
+import type { DbClient } from "../mobile-api/_shared/platform/db.ts";
 import {
   receiveSePayVietQrWebhook,
   SePayWebhookFailure,
-} from "../mobile-api/_shared/services/sepay-vietqr-payment.service.ts";
+} from "../mobile-api/_shared/domains/payment/sepay-vietqr.ts";
 import {
   readJsonTextRequestBounded,
   RequestJsonError,
@@ -28,9 +29,13 @@ Deno.serve(async (request) => {
   } catch {
     return json({ success: false }, 503);
   }
+  // The service layer speaks the hand-rolled structural DbClient (services/db.ts), whose
+  // from() returns a chainable filter builder rather than supabase-js's PostgrestQueryBuilder.
+  // mobile-api crosses that gap once inside db(ctx); this function has no request context, so
+  // it crosses it here instead — one cast at one boundary, same as db().
   const client = createClient(env.supabaseUrl, env.supabaseSecretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
-  });
+  }) as unknown as DbClient;
 
   try {
     await receiveSePayVietQrWebhook(client, env.sepayVietQr, {

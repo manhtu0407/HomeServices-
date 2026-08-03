@@ -6,7 +6,7 @@ import {
   evaluateWorkerCancellationAbuse,
   recordWorkerCancellationReview,
   type WorkerCancellationExpectedCategory,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/case-3-worker-cancel'
 
 describe('Kael P11 worker cancellation case', () => {
   it('T11.1/3/4/5: classifies explicit worker cancellation reasons by taxonomy', () => {
