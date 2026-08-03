@@ -116,7 +116,10 @@ do not collapse them into a single identifier.
 - `packages/shared/src/__tests__/workflow-contract.test.ts` and
   `workflow-scenarios.test.ts` cover workflow phases, artifact lifecycle, UI
   visibility rules, and progressive behavior.
-- `apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts` covers lifecycle transitions.
+- `apps/api/src/__tests__/kael-edge-runtime/domains/` covers lifecycle transitions:
+  `kael-job-detail.test.ts`, `kael-job-completion-payment.test.ts`,
+  `kael-scope-change.test.ts`, `kael-cancellation-worker.test.ts`, and
+  `kael-cancellation-customer-dispute.test.ts`.
 - `apps/api/src/__tests__/unit/mobile-api-workflow-orchestrator.test.ts` covers
   Edge workflow event ownership before mobile-api mutates job status.
 - New gate in Phase 5.7 asserts dock uses `replace(item.path)` and never `push(item.path)`.

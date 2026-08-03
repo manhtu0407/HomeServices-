@@ -15114,3 +15114,948 @@ maxLines : 800 -> 800, KHÔNG ĐỔI
 [ ] Tu xác nhận phân công 70/30 ở 46.0.6 (Claude P1/P3/P4/P5/P6/P9 + 3 checkpoint; Codex P2/P7/P8)
 [ ] Tu nói "go" → agent chạy liên tục P1 → P9 theo 46.0.4, KHÔNG dừng giữa chừng ngoài 6 trường hợp
 ```
+
+---
+
+## 47. Test + Generated-Type Structure Reorg — Tách `mobile-api-edge-runtime.test.ts` (9.285 dòng) + xử lý `database.types.ts` (7.404 dòng) — 2026-08-03
+
+> **Trigger.** Tu yêu cầu audit các file > 5.000 dòng trên toàn repo (Frontend / System / Backend), phiên 2026-08-03, nhánh `claude/audit-large-files-459e61`. Audit chạy trong chat, không tạo file audit riêng — mọi số liệu đo được đưa thẳng vào section này. Sau audit Tu chỉ đúng **2 dòng trong bảng kết quả** (ảnh chụp màn hình) và yêu cầu brainstorm kỹ rồi viết plan tách: `mobile-api-edge-runtime.test.ts` (9.285) và `database.types.ts` (7.404).
+>
+> **Kết quả audit — chỉ 4 file toàn repo vượt 5.000 dòng.** `governance/Plan.md` 15.116 (docs) · `pnpm-lock.yaml` 13.894 (lockfile) · `mobile-api-edge-runtime.test.ts` 9.285 (test) · `database.types.ts` 7.404 (generated). **Không có file source Frontend hay Backend nào vượt** — Edge lớn nhất 755 dòng (`kael/contracts/types.ts`), mobile lớn nhất non-test 2.420 dòng (`worker-v5-flow-styles.ts`). §44/§45/§46 đã ăn.
+>
+> **Vì sao 4 file này lọt lưới.** `scripts/lint-structure.mjs` đặt `MAX_LINES = 800` nhưng `isSource()` loại `*.test.ts` + `*.d.ts` + `database.types.ts`, `SKIP_DIRS` loại `__tests__`, và `ROOTS` không có `governance/` hay `docs/`. Gate xanh (`structure ok: 845 source files` — chạy thật phiên này, exit 0) **không phải vì 4 file này đạt chuẩn, mà vì không ai đo chúng.** §47 đóng đúng lỗ đó cho phần test.
+>
+> **SỬA LỜI audit trong chat.** Lượt audit đầu nói file test "đặt sai tầng, nên nằm ở `integration/`". **Sai.** Đọc thật `apps/api/src/__tests__/integration/` cho thấy 4 file ở đó đều đánh Supabase THẬT (`createClient` + service-role key + skip khi thiếu env). File 9.285 dòng dùng fake client trong bộ nhớ, không mạng, không DB → theo phân loại của repo này nó **đúng tầng `unit/`**. Vấn đề thật không phải tầng, mà là: 1 file 9.285 dòng, 1 `describe` duy nhất bọc 178 `it()` phẳng, nằm trong thư mục `unit/` 170 file cũng phẳng.
+>
+> **Freshness check (2026-08-03, chạy ngay trước khi viết section).** `git status` sạch. `HEAD = bb10fc93`, `git merge-base --is-ancestor` **cả 2 chiều** giữa `HEAD` và `main` đều true → nhánh **trùng `main`**, không lệch. Commit gần nhất đụng file test: `efad8f21` (merge #143 auth vào §46 reorg).
+>
+> **BASELINE CHƯA ĐO ĐƯỢC — cảnh báo bắt buộc.** Worktree này **không có `node_modules`** (root và `apps/api/node_modules` đều vắng) → phiên viết plan **KHÔNG chạy được** `test:api` / `test:shared` / `type-check`. Chỉ `lint-structure.mjs` chạy được (pure `node:fs`, exit 0). Mọi con số test trong section này là **số đọc tĩnh từ source**, không phải số từ lần chạy. **P0 bước 1 bắt buộc dựng baseline thật trước khi sửa dòng đầu tiên** — xem 47.3.
+>
+> **DRAFT v0.1 — CHƯA EXECUTE.** Không có dòng code nào bị đổi để viết section này. Chờ Tu tinh chỉnh + duyệt "go".
+
+### 47.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-test-and-generated-type-reorg-20260803
+Created:        2026-08-03
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Branch:         claude/audit-large-files-459e61
+                (worktree: .claude/worktrees/audit-large-files-459e61)
+                >>> MỌI THAY ĐỔI CỦA §47 VÀO ĐÚNG NHÁNH NÀY. Không tạo nhánh mới, không tách
+                    worktree khác, không cherry-pick sang main. Luật đầy đủ: 47.0.6. <<<
+                BASE pin: bb10fc93 — mọi byte-diff trong plan này so với commit đó.
+File location:  Plan.md §47 (durable, canonical). Không companion doc riêng.
+Status:         v0.4 ĐÃ EXECUTE — P0 → W1-W5 → P6 → P7 chạy hết trong 1 lượt, mọi gate xanh,
+                CHƯA COMMIT (D6/G9: `git log bb10fc93..HEAD` rỗng, chờ lệnh Tu). Chi tiết ở 47.9.
+Scope:          HAI TRACK ĐỘC LẬP, có thể duyệt riêng:
+                Track A — tách apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts
+                          (9.285 dòng / 178 test) thành 1 harness dùng chung + 27 file test
+                          theo đúng cây tầng backend §46 (platform/ + domains/).
+                Track B — database.types.ts (7.404 dòng, generated): PHÂN TÍCH + khuyến nghị
+                          KHÔNG tách, thay bằng 3 việc rẻ hơn. Có Option B2 (tách thật) đặc tả
+                          đầy đủ nếu Tu vẫn chọn tách. Tu quyết ở D-B.
+Out of scope:   KHÔNG đổi 1 dòng thân test nào (chỉ di chuyển + đổi chỗ import) — xem G1.
+                KHÔNG đụng 16 file test khác đang có bản sao makeSequenceClient riêng (47.5.C).
+                KHÔNG đụng supabase/functions/** source. KHÔNG đụng apps/mobile.
+                KHÔNG migration. KHÔNG deploy. KHÔNG regenerate database.types.ts.
+                KHÔNG sửa locked docs (CLAUDE.md / RULES.md / STRUCTURES.md / README.md /
+                critical.md / design.md). KHÔNG chạy lint-structure.mjs --init (kế thừa §46 D7).
+                KHÔNG sửa docs lịch sử (docs/test-logs/**, docs/memory/**, docs/audit/**) —
+                chúng là ảnh chụp quá khứ, sửa là làm sai lịch sử.
+Effort:         Track A = P0 + 5 wave + P6 = 7 bước. 1 file xoá, 32 file mới (4 harness + 27 test
+                + 1 gate). Track B (B1 — Tu đã chốt) = P7, 3 việc / 2 file mới + 1 doc sửa.
+Skill mapping:  Xem 47.0.1 Bước 2.
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+
+| # | Chỉ số | Trước (đo 2026-08-03) | Sau (mục tiêu) |
+|---|---|---|---|
+| 1 | File test lớn nhất trong `apps/api` | 9.285 | **≤ 600** |
+| 2 | Số `it()` trong 1 file | 178 | ≤ 20 |
+| 3 | Số `describe()` bọc 178 test đó | 1 | 27 (mỗi file 1) |
+| 4 | Thư mục `unit/` phẳng | 170 file, 0 thư mục con | 169 file; cây test mới thành bucket top-level riêng |
+| 5 | Bản sao harness `makeSequenceClient` trong file 9k | 1 (196 dòng inline) | **0** (import từ harness dùng chung) |
+| 6 | Luật kích thước cho file test | **không có** | có gate vitest, mẫu `mobile-api-domain-module-size.test.ts` |
+| 7 | Tổng số test `test:api` | baseline P0 đo | **không đổi, không giảm 1 test** |
+| 8 | `database.types.ts` drift vs migrations | 0 (kiểm tay 1 lần) | 0 (**gate tự động**, hết kiểm tay) |
+
+**Chống kỳ vọng sai:** Track A **làm tăng số file** (1 → 30) và **không giảm 1 dòng LOC nào** — đây là di chuyển, không phải xoá. Giá trị nằm ở: mở 1 file test giờ thấy đúng 1 domain, và 196 dòng harness không còn bị chép tay.
+
+**Nguyên tắc xuyên suốt (bất biến — KHÔNG được phá):**
+
+- **Thân test là BẤT KHẢ XÂM PHẠM.** Mỗi `it()` chuyển sang file mới phải byte-identical với `git show bb10fc93:apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts` tại đúng khoảng dòng của nó. Không "tiện tay sửa assertion", không đổi tên test, không gộp test.
+- **Harness TRƯỚC, test SAU** (kế thừa §46: gom trùng lặp trước, tách file sau). P0 rút harness ra khi file vẫn còn nguyên 178 test — nếu bước này làm gãy gì, gãy trong 1 file dễ hoàn nguyên, không phải trong 27 file.
+- **Cắt theo domain, không cắt theo số dòng.** 27 bucket ở 47.2 bám đúng bucket `domains/` + `platform/` của §46, không phải cắt file 9k thành 27 khúc bằng nhau.
+- **KHÔNG cắt theo khoảng dòng liên tục.** Test trong file gốc **không xếp theo domain**: notification nằm ở 2707–2927 **và** 6190; matching nằm ở 5286–5720 **và** 7893–8581. Ai cắt bằng `sed -n 'a,bp'` sẽ trộn domain. Phải chuyển **từng `it()` theo neo dòng** ở 47.2.
+- **An toàn hơn tốc độ.** Wave đụng tiền / guardrail (payment, scope-change, cancellation, dispute) làm **CUỐI**, sau khi pattern đã chứng minh đúng ở wave ít rủi ro.
+
+---
+
+### 47.0.1 Pre-Plan Stage — ĐỌC TÀI LIỆU + NẠP SKILL trước khi implement (BẮT BUỘC, STAGE đầu tiên)
+
+> **Đây là STAGE, không phải danh sách tham khảo được lướt.** Phải hoàn thành đủ 5 bước dưới đây **trước dòng sửa đầu tiên** của P0. Áp dụng cho **cả Claude Code và Codex**; mỗi agent tự chạy trong phiên của mình, **không tin phiên trước đã đọc hộ**. Agent nào bắt đầu sửa code mà chưa in được khối preflight ở Bước 5 là **vi phạm plan**, dừng lại làm lại từ Bước 0.
+
+**Bước 0 — xác nhận nhánh + cây sạch (làm TRƯỚC khi đọc gì):**
+
+```bash
+git branch --show-current      # PHẢI in ra: claude/audit-large-files-459e61
+git rev-parse --short HEAD     # đối chiếu BASE pin bb10fc93 (xem 47.0.6 nếu lệch)
+git status --short             # ghi lại trạng thái mở lượt, kể cả khi bẩn
+```
+
+Sai nhánh → **dừng, không sửa gì**, báo Tu. Không tự `checkout -b`, không tự merge.
+
+**Bước 1 — đọc đủ 9 mục sau (theo thứ tự):**
+
+```text
+1. CLAUDE.md                  (router; Lock Notice — 6 file locked)
+2. governance/critical.md     (§3 Core Quality Gates — No False Completion; §5 preflight)
+3. governance/RULES.md        (#8 no fake success — nền của G6)
+4. governance/Plan.md §46      (§46.0.3 gates; §46.8 Change Log — 4 cái bẫy đã trả giá:
+                               danh-sách-path-hard-code trong test, path ghép động ở
+                               packages/shared, --init cấm chạy, flake route-security 5000ms)
+5. governance/protocols/code-hygiene.md   (comment discipline — enforce bởi pnpm lint:comments)
+6. scripts/lint-structure.mjs + scripts/structure-baseline.json
+                              (dòng 26-33 isSource() — LÝ DO 4 file này lọt lưới)
+7. apps/api/src/__tests__/schema/mobile-api-domain-module-size.test.ts
+                              (27 dòng — MẪU CHÍNH XÁC cho gate ở P6; đọc, đừng phát minh lại)
+8. apps/api/vitest.config.mts (include: ['src/**/*.test.ts'] — glob đệ quy, KHÔNG cần sửa config)
+9. .claude/MEMORY.md          (ĐỌC CUỐI CÙNG)
+```
+
+**Bước 2 — nạp skill theo bước, không nạp 1 lần rồi quên:**
+
+| Skill | Nạp ở bước nào | Vì sao bước đó cần |
+|---|---|---|
+| `kael-core-hygiene` | **ALWAYS-ON, toàn bộ §47** | 31 file mới = 31 cơ hội rác comment. Luật đầy đủ ở 47.0.8. |
+| `karpathy-guidelines` | toàn bộ | surgical diff + explicit assumptions — nền của G1 |
+| `kael-tdd` | P0 + cả 5 wave | "không giảm số test" là gate của chính skill này |
+| `kael-security-sweep` | **trước Wave 2** và **trước Wave 5** | W2 có AI-budget-cap + admin-review; W5 là payment / huỷ việc / tranh chấp |
+| `kael-diagnose` | **chỉ khi** 1 wave làm đỏ test | reproduce trước, không vá mò |
+| `kael-doc-audit` | trước P6 bước 4 | sửa 3 doc sống ở 47.5.B mà không đụng doc lịch sử |
+
+Nạp **đúng lúc**, không nạp 1 lần đầu phiên rồi quên. Skill nạp mà không dùng = không tính.
+
+**Bước 3 — verify trực tiếp, KHÔNG tin số trong section này:** section viết 2026-08-03 dựa trên `bb10fc93`. Nếu phiên thực thi cách ngày đó > 3 ngày **hoặc** có commit mới đụng `apps/api/src/__tests__/`, chạy lại toàn bộ lệnh đo ở 47.7 và **cập nhật bảng 47.2 bằng số thật** trước khi động vào code. Neo dòng ở 47.2 gắn chặt với `bb10fc93` — 1 commit chen vào là toàn bộ neo lệch.
+
+**Bước 4 — đọc lại chính §47 từ 47.0 đến 47.10, một lượt liền.** Không đọc nhảy cóc vào đúng phase định làm. Lý do: luật ở 47.0.3 (gates) và 47.0.7 (non-stop) áp cho **mọi** phase; ai chỉ đọc mục phase của mình sẽ bỏ mất chúng.
+
+**Bước 5 — in khối preflight (theo `critical.md` §5) rồi mới được sửa dòng đầu tiên:**
+
+```text
+PREFLIGHT §47
+Nhánh:        claude/audit-large-files-459e61  | HEAD: <sha>  | tree: <sạch/bẩn>
+Đã đọc:       9/9 mục Bước 1  (liệt kê mục nào đọc phần nào)
+Skill đã nạp: <danh sách>  (kael-core-hygiene BẮT BUỘC có mặt)
+Baseline:     test:api <pass/skip/fail> · test:shared <...> · type-check <...> ·
+              lint:structure <...> · lint:comments <...>
+Neo 47.2:     đã verify lại / dùng nguyên bản 2026-08-03 vì <lý do>
+Phase sẽ chạy: P0 -> W1 -> W2 -> W3 -> W4 -> W5 -> P6 -> P7, liên tục, không dừng xin duyệt (47.0.7)
+```
+
+---
+
+### 47.0.2 Decision Log
+
+- **✔ D1 — Đích là bucket top-level `apps/api/src/__tests__/kael-edge-runtime/`, ngang hàng `unit/` `integration/` `schema/` `security/` `wiring/` `foundation/` (Tu chốt).** Hai điều tách bạch: **(a) KHÔNG phải `integration/`** — đo thật, 4 file trong `integration/` đều đánh Supabase THẬT qua `createClient` + `SUPABASE_SERVICE_ROLE_KEY` và tự skip khi thiếu env; suite 9k dùng fake client thuần bộ nhớ, không mạng, không DB. **(b) KHÔNG nằm trong `unit/`** — tên `kael-edge-runtime` đã tự mô tả nên không cần núp dưới `unit/`; đứng top-level thì đường dẫn ngắn hơn 1 cấp và `unit/` không phải gánh thêm cây con. Lượt audit đầu nói suite này "sai tầng, nên ở `integration/`" — đã sửa ở phần Trigger. **Không đổi cách chạy test:** `vitest.config.mts` dùng `include: ['src/**/*.test.ts']` (đệ quy) nên bucket mới tự được thu; CI `security.yml` chạy full `vitest run` cũng tự thu; CI `integration.yml` chỉ chạy `src/__tests__/integration` nên không bị ảnh hưởng.
+- **✔ D2 — Cây con soi gương đúng cây tầng backend §46: `kael-edge-runtime/platform/` + `kael-edge-runtime/domains/`.** Backend sau §46 có `_shared/{http,domains,kael,platform}` với `domains/` chia 12 bucket. Test soi gương source là quy ước rẻ nhất để tìm: sửa `domains/job/scope-change/*` → mở `kael-edge-runtime/domains/scope-change.test.ts`. Không phát minh cây phân loại thứ hai.
+- **✔ D3 — Harness rút ra CHỈ cho file này, KHÔNG hợp nhất 16 file test khác.** Đo thật: `makeSequenceClient`/`makeQuery` bị chép trong **17 file test**, kích thước bản sao dao động **12 → 347 dòng** → chúng **đã trôi khác nhau**. Hợp nhất 17 bản là việc riêng, rủi ro riêng, phải có baseline riêng. §47 chép **nguyên văn** bản của file 9k vào `harness/`, 16 file kia **không bị đụng 1 byte**. Rủi ro với chúng = 0.
+- **✔ D4 — Gate kích thước test đặt bằng vitest, không nới `lint-structure.mjs`.** Repo đã có đúng 2 tiền lệ: `backend-function-size.test.ts` (150 dòng/function, quét `supabase/functions/`) và `mobile-api-domain-module-size.test.ts` (300 dòng/module, quét `domains/`). Đi tiếp tiền lệ đó rẻ hơn và không đụng file ratchet đang canh 845 file source.
+- **✔ D5 — Gate mới CHỈ phủ `kael-edge-runtime/**`, ngưỡng 600 dòng.** Phủ toàn bộ test là đỏ ngay (`mobile-api-edge-router.test.ts` 2.786, `worker-home-surface-test.tsx` 3.867) → gate đỏ ngày đầu là gate sẽ bị tắt. Ratchet đúng cách: đóng chặt vùng vừa dọn, ghi phần còn lại thành việc sau (47.8).
+- **✔ D6 — Kế thừa §46 D9: agent KHÔNG tự commit giữa chừng.** `git log bb10fc93..HEAD` phải RỖNG suốt P0→P7. Commit cuối chỉ khi Tu ra lệnh.
+- **✔ D7 — `beforeEach`/`afterEach` (dòng 43-56) đi vào harness thành hàm `installEdgeRuntimeTestHooks()`, KHÔNG chép 27 lần.** Cả 178 test dùng chung đúng 1 bộ hook: `KAEL_CIRCUIT_BREAKER.reset()` + `__resetRateLimitStoreForTests()` + `vi.stubGlobal('Deno', …)` + `vi.useRealTimers()` + `vi.unstubAllGlobals()`. Chép nguyên vào 27 file = **378 dòng trùng lặp** và 27 chỗ để trôi lệch — đúng thứ bệnh mà §47 sinh ra để chữa. Đưa vào harness dưới dạng **hàm được gọi tường minh trong `describe`**, KHÔNG phải side-effect lúc import: import mà tự đăng ký hook là bẫy im lặng (file nào lỡ import harness cũng bị cài hook). Thân hàm byte-identical với dòng 43-56 (G3).
+- **✔ D8 — Import Edge trong file mới dùng ĐÚNG 6 cấp `../`, không phải 5.** File gốc ở `__tests__/unit/` (5 đoạn đường dẫn tính từ gốc repo) nên dùng `'../../../../../supabase/…'`. File mới ở `__tests__/kael-edge-runtime/{platform,domains}/` và harness ở `__tests__/kael-edge-runtime/harness/` đều là **6 đoạn** → phải là `'../../../../../../supabase/…'`. Sâu hơn bản gốc đúng 1 cấp. Đây là lỗi cơ học chắc chắn xảy ra nếu copy-paste nguyên khối import cũ; ghi thành quyết định để không ai debug lại từ đầu.
+- **✔ D-B — Track B: chọn **B1 — KHÔNG tách `database.types.ts`** (Tu chốt: *"B1 thì không cần tách"*).** Q-A đóng. Nghĩa là: không tạo `packages/shared/src/types/database/`, không viết script hậu-xử-lý codegen, không sửa 10 file test đọc-chuỗi. Thay vào đó **thi hành đủ 3 việc B1.1 / B1.2 / B1.3** ở 47.6 như một phase riêng — xem **P7 (47.4.8)**. Option B2 giữ nguyên trong 47.6 làm hồ sơ vì sao bác, **không phải** việc để làm.
+- **✔ D9 — Quy tắc đặt tên: tiền tố `kael-` ở CẢ thư mục gốc VÀ 27 file test; `platform/` + `domains/` + `harness/` giữ nguyên tên (Tu chốt).** Q-B đóng. Cụ thể: (a) thư mục gốc `kael-edge-runtime/`; (b) mỗi file test là `kael-<chủ đề>.test.ts` — vd. `domains/kael-job-detail.test.ts`, `platform/kael-edge-env.test.ts`; (c) 3 file vốn đã bắt đầu bằng `kael-chat-` **giữ nguyên**, không thành `kael-kael-chat-…`; (d) 3 thư mục con `platform/` `domains/` `harness/` **KHÔNG** thêm tiền tố (Tu: *"Không có bỏ Folders đó"* — giữ folder, không đổi tên chúng); (e) 4 file trong `harness/` để tên sạch (`sequence-client.ts`, `hooks.ts`, `fixtures.ts`, `index.ts`) vì đã nằm dưới `kael-edge-runtime/`; (f) file gate ở `schema/` đặt là `kael-edge-runtime-test-size.test.ts` cho khớp thứ nó canh. **Lý do Tu chọn** (kế thừa §45 D5): đọc 1 dòng import hoặc 1 dòng kết quả search ngoài ngữ cảnh vẫn thấy ngay đây là Kael, quan trọng hơn việc tránh lặp chữ trong đường dẫn. **Ghi nhận thẳng:** cây này phủ cả vòng đời job / payment / matching / notification chứ không chỉ luồng AI của Kael; dùng `kael-` ở đây là dùng như **namespace của sản phẩm** (CLAUDE.md: Kael là brand chính), không phải khẳng định mọi test đều là test AI.
+
+---
+
+### 47.0.3 Definition of Done — Gates
+
+```text
+G1 — Thân test byte-identical:   mọi it() sau khi chuyển phải khớp từng byte với
+                                  `git show bb10fc93:apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts`
+                                  tại đúng khoảng dòng của nó. Verify bằng 47.7 lệnh 5.
+G2 — Bảo toàn số test:            tổng it() trong cây kael-edge-runtime/ = 178, không hơn không kém.
+                                  Mỗi tiêu đề test xuất hiện ĐÚNG 1 LẦN trong toàn cây.
+                                  test:api pass count sau P6 >= baseline P0. 0 fail. 0 test mới bị skip.
+G3 — Harness không sửa hành vi:   thân 3 khối harness byte-identical với dòng 19-38 (fixture),
+                                  43-56 (hook beforeEach/afterEach — xem D7) và 9089-9285
+                                  (sequence client) của bản gốc; chỉ được thêm từ khoá `export`
+                                  và lớp vỏ hàm `installEdgeRuntimeTestHooks()` bọc quanh 43-56.
+                                  Không thêm/bớt 1 nhánh default nào trong makeSequenceClient (nó chứa
+                                  default theo domain: worker_service_quality_status, 4 RPC spend-gate,
+                                  consume_job_media_uploads, commission tier, retry claim).
+G4 — Verify sau MỖI wave:         mỗi wave tự chạy đủ 4 lệnh 47.7 và PASS trước khi sang wave kế.
+                                  Không dồn 5 wave rồi verify 1 lần.
+G5 — Scope contained:             git diff --stat mỗi bước chỉ chứa file trong phạm vi bước đó.
+                                  Không đụng supabase/functions/**, apps/mobile/**, locked docs,
+                                  docs lịch sử (test-logs/memory/audit), 16 file test ở D3.
+G6 — Honest report:               report đúng cái đã chạy + nêu rõ cái CHƯA test
+                                  (RULES #8 + feedback_honest_reporting + feedback_no_hiding_gaps).
+G7 — Gate mới tự chứng minh:      gate ở P6 phải được thử phá — tạm nối 1 file test vượt 600 dòng,
+                                  xác nhận gate ĐỎ, rồi hoàn nguyên. Gate chưa từng đỏ = gate chưa chứng minh.
+G8 — Không --init:                scripts/structure-baseline.json KHÔNG được đụng (kế thừa §46 D7).
+G9 — Không commit giữa chừng:     `git log bb10fc93..HEAD` RỖNG suốt P0→P7 (D6).
+G10 — BẤT BIẾN LIÊN TỤC 178:      tại BẤT KỲ thời điểm nào giữa chừng (kể cả đang dở 1 wave),
+                                  it() trong file gốc + it() trong cây kael-edge-runtime/ = ĐÚNG 178.
+                                  Đây là gate mạnh nhất của plan: nó bắt được "quên xoá khỏi file gốc"
+                                  (ra 179+) và "cắt nhầm mất test" (ra 177-) NGAY trong wave,
+                                  không phải đợi tới P6. Lệnh ở 47.7 số 7.
+G11 — Hygiene + đúng nhánh:       lint:comments clean sau MỖI wave; 0 file rác trong repo (47.0.8);
+                                  `git branch --show-current` = claude/audit-large-files-459e61
+                                  kiểm lại ở đầu MỖI wave, không chỉ đầu phiên (47.0.6).
+```
+
+---
+
+### 47.0.4 Execution Continuity Note
+
+Chạy liên tục **P0 → Wave 1 → 2 → 3 → 4 → 5 → P6 → P7** trong 1 lượt, không tự dừng xin duyệt giữa từng wave.
+
+**Hợp đồng đầy đủ (6 luật + đúng 5 điều kiện được phép dừng) nằm ở 47.0.7** — đọc mục đó, không đọc riêng mục này. 47.0.4 chỉ là con trỏ để người đọc §47 tuần tự không bỏ sót.
+
+---
+
+### 47.0.5 Pre-Final Stage — điều kiện bắt buộc TRƯỚC KHI report done
+
+```text
+[ ] P0 xong: baseline THẬT đã chạy và ghi số vào report (không phải số đọc tĩnh trong plan này).
+[ ] Cả 5 wave đã chạy, không wave nào bị hoãn "làm sau".
+[ ] File gốc mobile-api-edge-runtime.test.ts đã bị XOÁ (0 test còn lại), không để lại file rỗng
+    hay file chỉ còn import.
+[ ] Đếm lại: tổng `it(` toàn cây kael-edge-runtime/ == 178. Dán số thật vào report.
+[ ] Đối chiếu tiêu đề: trích tất cả tiêu đề it() ở bản gốc bb10fc93 và ở cây mới, sort, diff
+    phải RỖNG. Đây là gate duy nhất chứng minh không mất/không nhân đôi test — không thay bằng
+    "test:api vẫn xanh" (test:api xanh vẫn có thể mất test).
+[ ] G1 byte-diff đã chạy thật cho ÍT NHẤT 1 file mỗi wave (5 file), dán kết quả vào report.
+[ ] Gate P6 đã bị thử phá và ĐỎ đúng như kỳ vọng (G7), sau đó hoàn nguyên.
+[ ] 3 doc sống ở 47.5.B đã sửa; docs lịch sử KHÔNG bị đụng — chứng minh bằng git diff --stat.
+[ ] `git log bb10fc93..HEAD` RỖNG (G9). `git diff --stat` dán vào report.
+[ ] lint:comments clean; không còn TODO/FIXME/comment tạm trong 32 file mới. Không file rác nào
+    lọt vào repo (47.0.8) — chứng minh bằng `git status --short`.
+[ ] P7 xong đủ 3 việc B1.1 + B1.2 + B1.3 — không bỏ việc nào vì "nhỏ".
+[ ] `git diff --stat` xác nhận `packages/shared/src/types/database.types.ts` KHÔNG nằm trong
+    diff (B1 = không tách, không sửa file generated).
+[ ] Gate drift ở B1.3 đã bị thử phá và ĐỎ đúng như kỳ vọng, sau đó hoàn nguyên.
+```
+
+Nếu bị chặn giữa chừng: report ĐÚNG thực trạng — wave nào xong/dở/chưa làm, gate nào fail, per RULES #8 + [[feedback_honest_reporting]] + [[feedback_no_hiding_gaps]]. **KHÔNG** viết report giọng "hoàn thành" khi còn wave/gate chưa qua.
+
+---
+
+### 47.0.6 Branch Contract — MỌI THAY ĐỔI VÀO `claude/audit-large-files-459e61`
+
+> Tu yêu cầu ghi thành luật, không để ngầm hiểu.
+
+```text
+Nhánh duy nhất:  claude/audit-large-files-459e61
+Worktree:        .claude/worktrees/audit-large-files-459e61
+BASE pin:        bb10fc93
+```
+
+**5 luật tuyệt đối:**
+
+1. **KHÔNG tạo nhánh mới.** Không `git checkout -b`, không `git switch -c`, kể cả "để an toàn" hay "để thử". Muốn thử phá gate (G7) thì sửa rồi hoàn nguyên tại chỗ, không cần nhánh.
+2. **KHÔNG tách worktree khác.** Cả Claude Code lẫn Codex làm trên đúng worktree này. Hai agent chia lượt theo thời gian, không chia theo nhánh.
+3. **KHÔNG commit giữa chừng (D6/G9).** `git log bb10fc93..HEAD` phải RỖNG suốt P0→P7. Commit cuối chỉ khi Tu ra lệnh.
+4. **KHÔNG đụng `main`.** Không merge, không rebase, không cherry-pick sang `main` trong phạm vi §47.
+5. **Kiểm nhánh ở ĐẦU MỖI WAVE, không chỉ đầu phiên (G11).** Phiên dài / bị ngắt / agent đổi lượt đều có thể làm lệch nhánh mà không ai để ý.
+
+**Nếu vào phiên thấy `HEAD` khác `bb10fc93`:** dừng. Chạy `git log bb10fc93..HEAD --oneline` để xem có gì chen vào. Neo dòng ở 47.2 gắn chặt với `bb10fc93` — 1 commit chen vào là **toàn bộ 178 neo lệch**. Báo Tu, đo lại bảng 47.2, **không tự đoán bù**.
+
+**Làm việc trên cây bẩn (kế thừa §46 46.0.7):** vì D6 cấm commit giữa chừng, cây sẽ bẩn dần qua 7 phase. Mở lượt phải `git diff > <scratchpad>/s47-<phase>-pre.patch` + `git status --short > ...status` **trước khi động code**, để phiên sau có mốc hoàn nguyên. Snapshot ghi vào **scratchpad ngoài repo**, không ghi vào repo (47.0.8).
+
+---
+
+### 47.0.7 Non-Stop Execution Contract — chạy liên tục từ đầu tới cuối
+
+> Tu yêu cầu: agent implement plan này phải **following theo plan từ đầu tới cuối và non-stop khi execute**. Mục này là bản hợp đồng của yêu cầu đó; nó **thay thế** cách đọc lỏng của 47.0.4.
+
+**Luật 1 — Một lượt, TÁM phase, không xin duyệt giữa chừng.** Sau khi Tu nói "go", agent chạy **P0 → W1 → W2 → W3 → W4 → W5 → P6 → P7** liền mạch. **KHÔNG** dừng để hỏi "em làm tiếp wave 2 nhé?", **KHÔNG** report từng phần rồi chờ, **KHÔNG** tự kết thúc lượt ở giữa vì "đã đủ nhiều".
+
+**Luật 2 — Đúng thứ tự, không đảo, không nhảy cóc.** Thứ tự P0 → W1 → … → P6 là thứ tự **rủi ro tăng dần**, không phải thứ tự tiện tay. Cấm làm W5 trước vì "nó ít file hơn". Cấm gộp 2 wave vào 1 lượt verify (phá G4).
+
+**Luật 3 — Không tự mở rộng phạm vi giữa lượt.** Thấy file test khác cũng nên tách, thấy 16 bản sao harness cũng nên gom, thấy assertion nào đó viết dở — **ghi vào 47.9 Change Log, không làm**. Mở rộng phạm vi giữa lượt là cách chắc chắn nhất để phá G5.
+
+**Luật 4 — Không tự dừng vì "hết việc dễ".** Wave 5 là wave khó nhất và đụng tiền; nó nằm gần cuối **đúng theo thiết kế**. Dừng trước W5 (hoặc bỏ P7 vì "Track B nhỏ") rồi report "đã xong phần lớn" là vi phạm 47.0.5 + RULES #8.
+
+**Luật 5 — Chỉ được dừng vì 5 lý do sau, và phải báo Tu ĐÚNG lý do nào:**
+
+| # | Điều kiện dừng | Phải làm gì |
+|---|---|---|
+| 1 | 1 wave fail G4 (test đỏ / type-check đỏ) mà sửa 2 lần không xanh | Dừng tại wave đó. Báo output lỗi thật. **Không** đi tiếp rồi "sửa sau". |
+| 2 | Baseline P0 **đỏ sẵn** trước khi sửa gì | Dừng. Báo số fail thật. Hỏi Tu: làm tiếp hay sửa baseline trước. **Không tự sửa test của người khác** (bài học §45 D7). |
+| 3 | Số test đo ở P0 **khác 178**, hoặc neo 47.2 không khớp source | Dừng. Bảng 47.2 sai. Đo lại, cập nhật bảng, báo Tu. **Không đoán bù.** |
+| 4 | Nhánh / HEAD lệch so với 47.0.6 | Dừng ngay, không sửa gì. |
+| 5 | Bước đang làm cần câu trả lời Q-A hoặc Q-B mà Tu chưa trả lời | Dừng đúng bước đó, **làm tiếp các bước không phụ thuộc**, ghi rõ bước nào bị treo. |
+
+**Ngoài 5 lý do trên: chạy tiếp.** Gặp khó ở 1 file thì giải quyết ở đó rồi đi tiếp; không lấy khó khăn kỹ thuật làm cớ kết thúc lượt.
+
+**Luật 6 — Report chỉ ở CUỐI.** Trong lượt chỉ log tiến độ ngắn (1-2 dòng/phase). Báo cáo đầy đủ viết **một lần** sau P6, sau khi chạy hết checklist 47.0.5. Không viết report giọng "hoàn thành" khi còn wave/gate chưa qua.
+
+---
+
+### 47.0.8 Note & Comment Hygiene — cấm ghi chú lung tung
+
+> Tu yêu cầu: **tránh take-notes lung tung**, và luôn dùng `kael-core-hygiene`. Canonical: `governance/protocols/code-hygiene.md`, enforce bằng `pnpm lint:comments` + Stop hook + CI job `comment-discipline`.
+
+**Ghi chú đi đâu — bảng phân loại duy nhất:**
+
+| Loại ghi chú | Chỗ ĐÚNG | Chỗ SAI (cấm) |
+|---|---|---|
+| Quyết định / phát hiện / bẫy trong lúc làm | **`Plan.md` §47.9 Change Log** | file `.md` mới trong repo; comment trong file test |
+| Tiến độ từng phase | 1-2 dòng log trong chat | file `PROGRESS.md`, `NOTES.md`, `TODO.md` |
+| Snapshot patch / status / danh sách tiêu đề test | **scratchpad ngoài repo** | bất kỳ đâu trong repo |
+| Kết quả test chính thức | `README.md` theo format `/log` (**chỉ khi Tu yêu cầu**) | rải trong docs |
+| WHY kỹ thuật của 1 dòng code khó | comment ngay trên dòng đó, ngắn, third-person | đoạn văn mở đầu file |
+
+**Cấm tuyệt đối trong 32 file mới (máy bắt được — `pnpm lint:comments` sẽ đỏ):**
+
+- **Tham chiếu plan/audit**: `§47`, `Plan.md`, `plan §…`, `audit §…`, `Wave 3`, `Phase P0`. ← đây là lỗi **dễ mắc nhất** khi tách file theo plan; đừng viết `// từ §47 Wave 3` lên đầu file.
+- **Ngày tháng** dưới mọi dạng: `2026-08-03`, `03/08/2026`, `Aug 2026`.
+- **Status banner**: `Status: DONE / WIRED / PENDING / TODO`.
+- **Tự nhận AI**: `added by Claude`, `generated by Codex`.
+- **Tường thuật yêu cầu**: `as requested`, `theo yêu cầu của Tu`.
+- **Ngôi thứ nhất**: `I added…`, `we moved…`, `mình đã chuyển…`.
+- **TODO/FIXME trần** không kèm lý do.
+
+**Cấm theo phán đoán (linter không bắt, người review bắt):**
+
+- **Header scaffold cho file mới**: file test mới **bắt đầu sạch** — `import` rồi `describe`, không có đoạn mở đầu mô tả "file này chứa test cho…". Tên file đã nói điều đó.
+- **Chú thích quá trình sửa**: `// đã chuyển từ file cũ`, `// was line 3357`.
+- **Code chết**: không để lại test bị comment-out "để dành".
+- **Comment lên dòng không đụng tới**: 27 file mới chỉ chứa thân test **byte-identical** — comment có sẵn trong thân test thì giữ nguyên, **không thêm comment mới nào**.
+
+**Sạch file rác (kiểm ở cuối mỗi wave):**
+
+```bash
+git status --short | grep -v "^ M\|^A \|^D " || echo "no stray files"
+```
+
+Bất kỳ file `.md` / `.txt` / `.patch` / `.log` lạ nào xuất hiện trong repo = rác, xoá ngay. Snapshot và ghi chú tạm sống ở **scratchpad**, không sống trong repo.
+
+**`kael-core-hygiene` là always-on**, không phải skill nạp 1 lần: chạy self-check của skill **sau mỗi wave**, cùng lúc với `pnpm lint:comments`.
+
+---
+
+### 47.1 Track A — Phân tích đo thật (vì sao tách, và tách theo đường nào)
+
+**Đo được trên `bb10fc93`:**
+
+| Chỉ số | Giá trị | Ý nghĩa |
+|---|---|---|
+| Tổng dòng | 9.285 | |
+| `describe()` | **1** | 178 test phẳng trong 1 khối, không nhóm con |
+| `it()` | **178** | tiêu đề **không trùng nhau** (đã kiểm `uniq -d` → rỗng) |
+| Thân test (dòng 42–9088) | 9.030 | phần sẽ được chuyển |
+| Harness cuối file (9089–9285) | 196 | `makeSequenceClient` / `makeQuery` / `attachDefaultJobMediaStorage` / `isKaelProgressUpdate` + 2 type |
+| Fixture đầu file (19–38) | 20 | `quoteReadyPlumbingDiagnosisScope()` |
+| `vi.mock(` | **0** | không mock module — chạy module thật |
+| `vi.fn(` | 41 | chỉ stub `Deno.env` + đo lời gọi |
+| Khối `it()` dài nhất | 243 dòng | "logs provider purposes for Kael chat estimate calls" (dòng 1737) |
+
+**Điểm mạnh phải giữ, không được phá khi tách:** `0 vi.mock` + fake Supabase client tự viết = suite này chạy **code Edge thật** qua `createMobileApiHandler` + `createEdgeServices`, chỉ giả tầng DB. Đây đúng thứ [[feedback_mock_vs_real_tests]] đòi. Tách file **không được** biến nó thành mock-per-file.
+
+**Vấn đề thật (3 cái, không phải "file dài"):**
+
+1. **Không có nhóm con.** 178 `it()` cùng cấp trong 1 `describe`. Reporter in ra 1 khối phẳng; đỏ 1 test không cho biết domain nào gãy.
+2. **Domain bị trộn theo dòng.** Test **không** xếp theo domain: `notification` ở 2707–2927 **và** 6190; `matching` ở 5286–5720 **và** 7893–8581; check-in/geofence ở 2301/2335/2858 **và** 5775–6352. ⇒ **Không thể cắt bằng khoảng dòng.** Phải chuyển từng `it()` theo neo.
+3. **Harness bị chép tay.** 196 dòng harness ở file này là 1 trong **17 bản sao** trong `unit/`; các bản đã trôi khác nhau (12→347 dòng). File 9k là bản đầy đủ nhất — rút nó ra thành module dùng chung là bước đầu để sau này thu 16 bản kia (ngoài phạm vi §47, xem 47.8).
+
+---
+
+### 47.2 Track A — Cấu trúc đích: 27 file, số đo thật
+
+Gốc: `apps/api/src/__tests__/kael-edge-runtime/`. Cột **body** = tổng dòng thân test đo thật; **est** = body + ~55 dòng import/`describe`/`beforeEach`. Cột **neo** = số dòng của từng `it(` trong bản `bb10fc93` — **đây là danh sách thi công, không phải minh hoạ**.
+
+#### `kael-edge-runtime/platform/` — 3 file
+
+| File | test | body | est | Neo dòng (bb10fc93) |
+|---|---|---|---|---|
+| `kael-edge-env.test.ts` | 13 | 230 | 285 | 58, 86, 98, 111, 124, 138, 159, 174, 188, 210, 225, 244, 258 |
+| `kael-edge-service-surface.test.ts` | 1 | 121 | 176 | 288 |
+| `kael-notification-push.test.ts` | 5 | 229 | 284 | 2707, 2744, 2796, 2927, **6190** |
+
+#### `kael-edge-runtime/domains/` — 24 file
+
+| File | test | body | est | Neo dòng (bb10fc93) |
+|---|---|---|---|---|
+| `kael-job-create-pipeline.test.ts` | 8 | 534 | 589 | 3357, 3380, 3449, 3467, 3498, 3614, 3695, 3797 |
+| `kael-job-access-chat.test.ts` | 8 | 496 | 551 | 2150, 2175, 2234, 2362, 2471, 2554, 2649, 2680 |
+| `kael-chat-confirm.test.ts` | 9 | 491 | 546 | 945, 1021, 1086, 1152, 1187, **1980, 2015, 2045, 2087** |
+| `kael-matching-broadcast.test.ts` | 14 | 463 | 518 | 7893, 7929, 7961, 7991, 8012, 8041, 8075, 8106, 8134, 8461, 8500, 8524, 8550, 8581 |
+| `kael-chat-guardrails.test.ts` | 3 | 460 | 515 | 1266, 1616, 1737 |
+| `kael-job-unit-release.test.ts` | 9 | 460 | 515 | 5720, 5957, 6016, 6039, 6070, 6101, 6228, 6288, 6352 |
+| `kael-customer-conversations.test.ts` | 7 | 451 | 506 | 4289, 4373, 4446, 4532, 4562, 4581, 4643 |
+| `kael-worker-earnings.test.ts` | 9 | 441 | 496 | 8647, 8664, 8811, 8843, 8882, 8914, 8950, 8974, 9042 |
+| `kael-matching-accept.test.ts` | 8 | 434 | 489 | 5286, 5326, 5382, 5410, 5454, 5486, 5558, 5613 |
+| `kael-cancellation-customer-dispute.test.ts` | 4 | 407 | 462 | 7457, 7604, 7666, 7722 |
+| `kael-places.test.ts` | 12 | 385 | 440 | 560, 576, 614, 648, 684, 715, 759, 796, 837, 853, 891, 919 |
+| `kael-cancellation-worker.test.ts` | 6 | 369 | 424 | 7002, 7032, 7087, 7138, 7299, **8629** |
+| `kael-scope-change.test.ts` | 5 | 363 | 418 | 6560, 6802, 7195, 7260, 7864 |
+| `kael-job-completion-payment.test.ts` | 9 | 358 | 413 | 3891, 3919, 3968, 4003, 4020, 4047, 4076, 4158, 4233 |
+| `kael-job-detail.test.ts` | 6 | 348 | 403 | 4249, 4740, 4795, 4889, 4941, 4971 |
+| `kael-job-checkin-geofence.test.ts` | 7 | 348 | 403 | **2301, 2335, 2858**, 5775, 5854, 5909, 6154 |
+| `kael-matching-eligibility.test.ts` | 6 | 273 | 328 | 8188, 8229, 8287, 8316, 8368, 8416 |
+| `kael-chat-artifacts.test.ts` | 2 | 254 | 309 | 1362, 1470 |
+| `kael-catalog.test.ts` | 7 | 239 | 294 | 3118, 3137, 3156, 3184, 3212, 3261, 3295 |
+| `kael-review.test.ts` | 5 | 238 | 293 | 5048, 5072, 5129, 5166, 5210 |
+| `kael-worker-jobs.test.ts` | 4 | 186 | 241 | 6436, 6494, 6524, **6740** |
+| `kael-customer-profile.test.ts` | 4 | 151 | 206 | 409, 455, 483, 526 |
+| `kael-worker-registration.test.ts` | 4 | 151 | 206 | 2967, 3023, 3049, 3078 |
+| `kael-job-media.test.ts` | 3 | 150 | 205 | 6852, 6905, 6964 |
+
+**Tổng: 178 test / 9.030 dòng thân / 27 file. File lớn nhất ước 589 dòng.** Đã verify bằng script: **0 test chưa phân bổ, 0 test bị gán 2 lần**. Số in **đậm** là neo nằm xa cụm chính — chính là bằng chứng cho luật "không cắt theo khoảng dòng".
+
+**Vài lựa chọn gộp cần biết lý do (đừng "sửa lại cho gọn" ở phiên sau):**
+- `cancellation-worker` nuốt neo **8629** (`rejects legacy admin worker-cancellation decisions after auto-approval is enabled`) vì nó thuộc chính sách auto-approve của huỷ-phía-thợ, không phải admin.
+- `cancellation-customer-dispute` gộp 1 test dispute (7722) với 3 test huỷ-phía-khách: cùng họ RPC nguyên tử P12/P13, cùng fixture. Tách riêng 1 file 1 test là chia vụn.
+- `worker-jobs` nuốt neo **6740** (`limits worker "Hỏi Kael thêm" to three questions per job`) — 1 test lẻ về Kael phía thợ, không đủ để đứng riêng.
+- `job-checkin-geofence` (cơ chế check-in + geofence) tách khỏi `job-unit-release` (uỷ quyền mở căn hộ) vì 2 nhóm có luật khác nhau và cộng lại là 868 dòng > ngưỡng 600 ở D5.
+
+#### `kael-edge-runtime/harness/` — 4 file (không phải test; vitest không thu vì không khớp `*.test.ts`)
+
+| File | Nguồn (bb10fc93) | Nội dung |
+|---|---|---|
+| `sequence-client.ts` | dòng 9089–9285 | `type QueryResult`, `type QueryCall`, `makeSequenceClient`, `attachDefaultJobMediaStorage`, `makeQuery`, `isKaelProgressUpdate` |
+| `hooks.ts` | dòng 43–56 | `installEdgeRuntimeTestHooks()` — bọc `beforeEach`/`afterEach` dùng chung (D7) |
+| `fixtures.ts` | dòng 19–38 | `quoteReadyPlumbingDiagnosisScope()` |
+| `index.ts` | mới | barrel re-export 3 file trên |
+
+---
+
+### 47.3 Track A — P0: baseline + rút harness (KHÔNG chuyển test nào)
+
+**Bước 1 — dựng baseline THẬT (không bỏ qua; plan này chưa có số này).**
+
+```text
+corepack pnpm install        (worktree đang KHÔNG có node_modules — xem cảnh báo đầu §47)
+pnpm test:api                -> ghi lại: pass / skip / fail
+pnpm test:shared             -> ghi lại (§46 v0.4 đã trả giá vì quên gate này)
+pnpm --filter @nestscout/api type-check
+node scripts/lint-structure.mjs
+pnpm lint:comments
+```
+
+Ghi 5 con số vào report. **Nếu `test:api` đỏ sẵn → dừng, báo Tu** (47.0.4).
+
+**Bước 2 — chụp danh sách tiêu đề gốc, dùng làm chuẩn đối chiếu cuối:**
+
+```bash
+git show bb10fc93:apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts | grep -o "it('[^']*'" | sort > <scratchpad>/s47-titles-base.txt
+```
+
+Kỳ vọng: 178 dòng. Đây là chuẩn của ô đối-chiếu-tiêu-đề ở 47.0.5.
+
+**Bước 3 — tạo `kael-edge-runtime/harness/`:** cắt dòng 9089–9285 sang `sequence-client.ts`, dòng 19–38 sang `fixtures.ts`, thêm `export` cho 4 hàm + 2 type + 1 fixture. **Không sửa gì khác.** Viết `index.ts` re-export.
+
+**Bước 4 — file gốc import ngược lại harness:** thay 2 khối vừa cắt bằng 1 dòng `import { ... } from './edge-runtime/harness'`. File gốc còn ~9.055 dòng, **vẫn đủ 178 test**.
+
+**Bước 5 — verify (điểm kiểm tra rẻ nhất của cả plan):** chạy đủ 4 lệnh 47.7. `test:api` phải bằng **đúng** baseline bước 1. Nếu lệch dù 1 test → harness đã đổi hành vi → hoàn nguyên P0, đọc lại G3, **không đi tiếp**.
+
+**Kết quả mong đợi sau P0:**
+
+| Chỉ số | Khoảng |
+|---|---|
+| File gốc | **9.050 – 9.090** dòng · **178** test (KHÔNG đổi — P0 không chuyển test nào) |
+| Cây `kael-edge-runtime/harness/` | **4** file · **0** test · **230 – 260** dòng |
+| Bất biến G10 | **178** (178 + 0) |
+| `test:api` | **= baseline bước 1, khớp từng con số**, 0 fail |
+| Danh sách tiêu đề gốc | đã chụp, **178 dòng** |
+
+**4 file harness sinh ra ở P0** (3 module + 1 barrel; không file nào khớp `*.test.ts` nên vitest không thu):
+
+| File | Nguồn (bb10fc93) | Export |
+|---|---|---|
+| `harness/sequence-client.ts` | 9089–9285 | `QueryResult`, `QueryCall`, `makeSequenceClient`, `attachDefaultJobMediaStorage`, `makeQuery` (`isKaelProgressUpdate` giữ private) |
+| `harness/hooks.ts` | 43–56, bọc trong `installEdgeRuntimeTestHooks()` (D7) | `installEdgeRuntimeTestHooks` |
+| `harness/fixtures.ts` | 19–38 | `quoteReadyPlumbingDiagnosisScope` |
+| `harness/index.ts` | mới | barrel re-export 3 file trên |
+
+> **Vì sao P0 tách riêng:** harness chứa default theo domain (bảng `worker_service_quality_status` trả rỗng; 4 RPC spend-gate trả benign để gate fail-open; `consume_job_media_uploads` đếm path unique; commission tier; broadcast retry claim). Đây là chỗ dễ gãy nhất và ảnh hưởng cả 178 test. Kiểm nó khi file còn nguyên thì hoàn nguyên rẻ; kiểm sau khi đã rải ra 27 file thì đắt gấp 27 lần.
+
+---
+
+### 47.4 Track A — 5 wave chuyển test
+
+#### Khuôn chung mỗi wave — 7 bước, áp cho cả 5 wave
+
+**Bước 1 — kiểm nhánh (G11).** `git branch --show-current` = `claude/audit-large-files-459e61`. Sai → dừng (47.0.6).
+
+**Bước 2 — tạo file đích với header CHUẨN.** Mẫu duy nhất, không biến tấu:
+
+```ts
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+// ... chỉ những import Edge mà ĐÚNG file này dùng — 6 cấp '../' (D8)
+import { createMobileApiHandler } from '../../../../../../supabase/functions/mobile-api/_shared/http'
+import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
+import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
+
+describe('<tên file bỏ tiền tố kael- và đuôi .test.ts — vd. \'job-detail\'>', () => {
+  installEdgeRuntimeTestHooks()
+
+  // ... các it() chuyển sang, giữ nguyên thứ tự neo ở 47.2
+})
+```
+
+**Bẫy import — đọc kỹ, đây là chỗ chắc chắn mất thời gian nếu bỏ qua:**
+- **6 cấp `../`**, không phải 5 (D8). Copy nguyên khối import của file gốc là sai đường dẫn 27 lần.
+- **`tsconfig` KHÔNG bật `noUnusedLocals`** và eslint để `no-unused-vars` ở mức **`warn`** → **cả `type-check` lẫn `lint` đều KHÔNG fail vì import thừa.** Muốn biết còn import thừa phải chủ động soi: `pnpm --filter @nestscout/api lint 2>&1 | grep kael-edge-runtime` phải **rỗng**.
+- Chỉ import cái file đó **thật sự dùng**. Nghi ngờ thì thử xoá dòng import rồi chạy `type-check`: đỏ = cần, xanh = thừa.
+
+**Bước 3 — chuyển từng `it()` theo neo ở 47.2.** **Cắt và dán, tuyệt đối không gõ lại.** Giữ nguyên thứ tự neo (số nhỏ trước) để đối chiếu byte-diff dễ. Thân test không được đổi 1 byte (G1).
+
+**Bước 4 — xoá đúng khối đó khỏi file gốc.** Làm ngay sau khi dán, **không dồn cuối wave** — dồn là cách sinh ra test trùng ở 2 nơi.
+
+**Bước 5 — kiểm bất biến 178 (G10), trước cả khi chạy test:**
+
+```bash
+# tổng phải LUÔN = 178 ở mọi thời điểm
+echo $(( $(grep -c "^  it(" apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts) + \
+         $(grep -rh "  it(" apps/api/src/__tests__/kael-edge-runtime/ | wc -l) ))
+```
+
+179+ = quên xoá khỏi file gốc. 177- = cắt mất test. Cả hai đều **dừng sửa ngay tại chỗ**, không chạy tiếp.
+
+**Bước 6 — verify đủ 4 lệnh 47.7** (`type-check` + `test:api` + `test:shared` + `lint:structure`) **+ `lint:comments`** (G11).
+
+**Bước 7 — self-check `kael-core-hygiene`** + `git status --short` xem có file rác không (47.0.8). PASS hết mới sang wave kế; **không dồn nhiều wave rồi verify 1 lần** (G4).
+
+| Wave | Rủi ro | File (theo 47.2) | Vì sao thứ tự này |
+|---|---|---|---|
+| **1** | thấp nhất — không đụng tiền, không đụng guardrail | `platform/kael-edge-env`, `platform/kael-edge-service-surface`, `platform/kael-notification-push`, `domains/kael-places`, `domains/kael-customer-profile`, `domains/kael-catalog`, `domains/kael-worker-registration` (**7 file**) | Chứng minh khuôn di chuyển đúng ở vùng rẻ nhất. `notification-push` vào wave 1 dù có neo lẻ 6190 — cố ý, để đụng ca "neo xa cụm" ngay từ đầu thay vì để dành. |
+| **2** | trung bình — Kael pipeline | `domains/kael-chat-confirm`, `domains/kael-chat-guardrails`, `domains/kael-chat-artifacts`, `domains/kael-job-create-pipeline` (**4 file**) | Khối nặng nhất về dòng (1.739). Làm sớm khi khuôn còn tươi. `kael-chat-guardrails` chứa AI-budget-cap + admin-review — nạp `kael-security-sweep` trước wave này. |
+| **3** | trung bình — vòng đời job | `domains/kael-job-access-chat`, `domains/kael-job-detail`, `domains/kael-job-media`, `domains/kael-job-checkin-geofence`, `domains/kael-job-unit-release` (**5 file**) | `job-checkin-geofence` có 3 neo xa (2301/2335/2858) — bước dễ trộn nhầm với `job-unit-release`, nên xếp 2 file này **liền nhau trong cùng wave** để đối chiếu ngay. |
+| **4** | trung bình — matching + worker | `domains/kael-matching-accept`, `domains/kael-matching-broadcast`, `domains/kael-matching-eligibility`, `domains/kael-worker-jobs`, `domains/kael-worker-earnings`, `domains/kael-customer-conversations`, `domains/kael-review` (**7 file**) | `matching-*` là 3 file cắt ra từ 1 vùng liên tục → dễ lẫn; làm cùng wave để `git diff` đối chiếu chéo được. |
+| **5** | **CAO — tiền + guardrail, làm CUỐI** | `domains/kael-job-completion-payment`, `domains/kael-scope-change`, `domains/kael-cancellation-worker`, `domains/kael-cancellation-customer-dispute` (**4 file**) | Payment / scope-change / huỷ việc / tranh chấp. Đến đây khuôn đã chứng minh đúng qua 23 file. Nạp `kael-security-sweep` trước wave này. |
+
+---
+
+#### 47.4.1 Wave 1 — nền móng (7 file, 46 test)
+
+**Mục tiêu:** chứng minh khuôn 7 bước đúng ở vùng rẻ nhất, trước khi đụng Kael / tiền.
+**Skill:** `kael-core-hygiene` (always-on) + `karpathy-guidelines` + `kael-tdd`.
+
+| File tạo | test | neo |
+|---|---|---|
+| `platform/kael-edge-env.test.ts` | 13 | 58, 86, 98, 111, 124, 138, 159, 174, 188, 210, 225, 244, 258 |
+| `platform/kael-edge-service-surface.test.ts` | 1 | 288 |
+| `platform/kael-notification-push.test.ts` | 5 | 2707, 2744, 2796, 2927, **6190** |
+| `domains/kael-places.test.ts` | 12 | 560, 576, 614, 648, 684, 715, 759, 796, 837, 853, 891, 919 |
+| `domains/kael-customer-profile.test.ts` | 4 | 409, 455, 483, 526 |
+| `domains/kael-catalog.test.ts` | 7 | 3118, 3137, 3156, 3184, 3212, 3261, 3295 |
+| `domains/kael-worker-registration.test.ts` | 4 | 2967, 3023, 3049, 3078 |
+
+**Làm theo thứ tự này** (dễ → khó trong wave): `edge-env` → `edge-service-surface` → `customer-profile` → `worker-registration` → `catalog` → `places` → `notification-push`.
+
+**Bẫy riêng Wave 1:**
+- `notification-push` có **neo lẻ 6190** nằm cách cụm chính 3.200 dòng. Cố ý đặt ở wave 1 để đụng ca "neo xa cụm" ngay từ đầu. Chuyển xong phải grep lại tiêu đề `unregisters only the actor device token` trong file gốc — **phải không còn**.
+- `edge-env` là 13 test ngắn đọc `readEdgeEnv` — file duy nhất trong wave gần như **không cần** `createMobileApiHandler`. Đừng copy nguyên khối import.
+- `edge-service-surface` chỉ 1 test nhưng dài 121 dòng: nó khoá bề mặt `createEdgeServices`. Nếu wave nào sau này làm nó đỏ → là dấu hiệu ai đó đụng source Edge (ngoài phạm vi §47), không phải lỗi tách test.
+
+**Kết quả mong đợi sau Wave 1:**
+
+| Chỉ số | Khoảng |
+|---|---|
+| File gốc còn | **7.540 – 7.600** dòng · **132** test |
+| Cây `kael-edge-runtime/` | **11** file · **46** test · **2.050 – 2.220** dòng |
+| Bất biến G10 | **178** (132 + 46) |
+| `test:api` | = baseline P0, **0 fail** |
+| `lint:structure` · `lint:comments` | exit 0 · clean |
+
+---
+
+#### 47.4.2 Wave 2 — Kael pipeline (4 file, 22 test)
+
+**Mục tiêu:** chuyển khối nặng nhất về dòng (1.739) khi khuôn còn tươi.
+**Skill:** thêm **`kael-security-sweep`** — nạp TRƯỚC bước 2 (wave này có AI-budget-cap + hàng đợi admin review).
+
+| File tạo | test | neo |
+|---|---|---|
+| `domains/kael-chat-confirm.test.ts` | 9 | 945, 1021, 1086, 1152, 1187, **1980, 2015, 2045, 2087** |
+| `domains/kael-chat-guardrails.test.ts` | 3 | 1266, 1616, 1737 |
+| `domains/kael-chat-artifacts.test.ts` | 2 | 1362, 1470 |
+| `domains/kael-job-create-pipeline.test.ts` | 8 | 3357, 3380, 3449, 3467, 3498, 3614, 3695, 3797 |
+
+**Thứ tự:** `kael-chat-artifacts` → `kael-chat-guardrails` → `kael-chat-confirm` → `kael-job-create-pipeline`.
+
+**Bẫy riêng Wave 2:**
+- **3 test dài nhất cả file nằm ở đây**: 1737 (243 dòng), 1616 (121), 1470 (146). Cắt dán 243 dòng dễ hụt dấu `})` cuối. Sau mỗi test dài, chạy `type-check` ngay thay vì đợi hết file.
+- `kael-chat-confirm` có 4 neo (1980–2087) **cách cụm chính**, thuộc nhánh idempotency `JOB_PENDING`/`SESSION_PENDING`. Chúng ở đây vì cùng một luật "không trả estimate giả khi đang có việc chạy dở", không phải vì gần nhau.
+- 4 file wave này đều cần `runKaelPipeline` / `buildInitialDiagnosisScopeArtifact` — kiểm đúng file nào cần cái nào, đừng import cả hai vào cả bốn.
+
+**Kết quả mong đợi sau Wave 2:**
+
+| Chỉ số | Khoảng |
+|---|---|
+| File gốc còn | **5.800 – 5.860** dòng · **110** test |
+| Cây `kael-edge-runtime/` | **15** file · **68** test · **4.000 – 4.190** dòng |
+| Bất biến G10 | **178** (110 + 68) |
+| `test:api` | = baseline, **0 fail** |
+
+---
+
+#### 47.4.3 Wave 3 — vòng đời job (5 file, 33 test)
+
+**Mục tiêu:** tách 2 nhóm dễ lẫn nhất (`checkin-geofence` vs `unit-release`) trong **cùng một wave** để đối chiếu chéo ngay.
+**Skill:** như wave 1.
+
+| File tạo | test | neo |
+|---|---|---|
+| `domains/kael-job-access-chat.test.ts` | 8 | 2150, 2175, 2234, 2362, 2471, 2554, 2649, 2680 |
+| `domains/kael-job-detail.test.ts` | 6 | 4249, 4740, 4795, 4889, 4941, 4971 |
+| `domains/kael-job-media.test.ts` | 3 | 6852, 6905, 6964 |
+| `domains/kael-job-checkin-geofence.test.ts` | 7 | **2301, 2335, 2858**, 5775, 5854, 5909, 6154 |
+| `domains/kael-job-unit-release.test.ts` | 9 | 5720, 5957, 6016, 6039, 6070, 6101, 6228, 6288, 6352 |
+
+**Thứ tự:** `kael-job-media` → `kael-job-access-chat` → `kael-job-detail` → `kael-job-checkin-geofence` → `kael-job-unit-release` (2 file cuối **liền nhau**, không tách sang wave khác).
+
+**Bẫy riêng Wave 3 — ranh giới checkin ↔ unit-release:**
+- **`job-checkin-geofence`** = cơ chế *thợ báo đã tới*: chặn ngoài bán kính (2301), thiếu toạ độ toà nhà (2335), sai số GPS vượt ngưỡng (2858), check-in không lộ số căn (5775), ảnh `manual_photo` trong stage `access_check_in` (5854, 5909), ref không do thợ hiện tại gắn (6154).
+- **`job-unit-release`** = *khách cho phép mở số căn*: thông báo thợ đến (5720), thả số căn sau uỷ quyền (5957), chặn uỷ quyền khi chưa check-in (6016), job không còn active (6039), check-in của thợ đã bị thay (6070), retry cùng trạng thái (6101), retry không thu hồi quyền đã cấp (6228), thợ thay thế không thừa kế quyền cũ (6288), danh sách job của thợ vẫn khoá số căn (6352).
+- **Ranh giới = "ai hành động"**: thợ → `checkin-geofence`; khách/hệ thống cấp quyền → `unit-release`. Nếu phân vân 1 neo, **đừng tự đổi bảng** — làm theo bảng 47.2, ghi thắc mắc vào 47.9.
+- 3 neo **2301/2335/2858** nằm giữa vùng `job-access-chat` và `worker-registration`. Chuyển chúng đi rồi phải grep lại 3 tiêu đề đó trong file gốc → phải hết.
+
+**Kết quả mong đợi sau Wave 3:**
+
+| Chỉ số | Khoảng |
+|---|---|
+| File gốc còn | **4.000 – 4.060** dòng · **77** test |
+| Cây `kael-edge-runtime/` | **20** file · **101** test · **6.050 – 6.290** dòng |
+| Bất biến G10 | **178** (77 + 101) |
+| `test:api` | = baseline, **0 fail** |
+
+---
+
+#### 47.4.4 Wave 4 — matching + worker (7 file, 53 test — wave lớn nhất)
+
+**Mục tiêu:** cắt 1 vùng liên tục (7893–8581) thành 2 file theo **luật**, không theo dòng.
+**Skill:** như wave 1.
+
+| File tạo | test | neo |
+|---|---|---|
+| `domains/kael-matching-accept.test.ts` | 8 | 5286, 5326, 5382, 5410, 5454, 5486, 5558, 5613 |
+| `domains/kael-matching-broadcast.test.ts` | 14 | 7893, 7929, 7961, 7991, 8012, 8041, 8075, 8106, 8134, 8461, 8500, 8524, 8550, 8581 |
+| `domains/kael-matching-eligibility.test.ts` | 6 | 8188, 8229, 8287, 8316, 8368, 8416 |
+| `domains/kael-worker-jobs.test.ts` | 4 | 6436, 6494, 6524, **6740** |
+| `domains/kael-worker-earnings.test.ts` | 9 | 8647, 8664, 8811, 8843, 8882, 8914, 8950, 8974, 9042 |
+| `domains/kael-customer-conversations.test.ts` | 7 | 4289, 4373, 4446, 4532, 4562, 4581, 4643 |
+| `domains/kael-review.test.ts` | 5 | 5048, 5072, 5129, 5166, 5210 |
+
+**Thứ tự:** `kael-review` → `kael-worker-jobs` → `kael-customer-conversations` → `kael-matching-accept` → `kael-matching-eligibility` → `kael-matching-broadcast` → `kael-worker-earnings`.
+
+**Bẫy riêng Wave 4:**
+- **`matching-broadcast` và `matching-eligibility` xen kẽ nhau trong file gốc.** Ranh giới: `eligibility` = *thợ nào đủ điều kiện / xếp hạng ra sao* (8188, 8229, 8287, 8316, 8368, 8416); `broadcast` = *vòng đời phát việc* (mọi neo còn lại, kể cả 8461/8500 về lease retry). Cắt theo dòng liên tục ở đây là **sai chắc chắn**.
+- **`worker-jobs` nuốt neo 6740** (`limits worker "Hỏi Kael thêm" to three questions per job`) — 1 test Kael phía thợ, cố ý không đứng riêng 1 file.
+- `worker-earnings` chứa 4 test về tính đúng tiền công (8664, 8811, 8843, 8882). Đây là **tiền** — dù nằm ở wave 4, vẫn chạy `kael-security-sweep` self-check cho riêng file này.
+- Wave này chuyển **53 test / 2.486 dòng**, nhiều gấp đôi wave khác. **Không được rút gọn bước 5 (kiểm 178)** vì "đang nhiều việc".
+
+**Kết quả mong đợi sau Wave 4:**
+
+| Chỉ số | Khoảng |
+|---|---|
+| File gốc còn | **1.510 – 1.570** dòng · **24** test |
+| Cây `kael-edge-runtime/` | **27** file · **154** test · **8.900 – 9.190** dòng |
+| Bất biến G10 | **178** (24 + 154) |
+| `test:api` | = baseline, **0 fail** |
+
+---
+
+#### 47.4.5 Wave 5 — tiền + guardrail (4 file, 24 test) — RỦI RO CAO NHẤT, LÀM CUỐI
+
+**Mục tiêu:** chuyển nốt vùng payment / scope-change / huỷ việc / tranh chấp, sau khi khuôn đã chứng minh đúng qua 23 file.
+**Skill:** **`kael-security-sweep` BẮT BUỘC nạp lại** trước bước 2 (không tái dùng lần nạp ở wave 2).
+
+| File tạo | test | neo |
+|---|---|---|
+| `domains/kael-job-completion-payment.test.ts` | 9 | 3891, 3919, 3968, 4003, 4020, 4047, 4076, 4158, 4233 |
+| `domains/kael-scope-change.test.ts` | 5 | 6560, 6802, 7195, 7260, 7864 |
+| `domains/kael-cancellation-worker.test.ts` | 6 | 7002, 7032, 7087, 7138, 7299, **8629** |
+| `domains/kael-cancellation-customer-dispute.test.ts` | 4 | 7457, 7604, 7666, 7722 |
+
+**Thứ tự:** `kael-scope-change` → `kael-cancellation-worker` → `kael-cancellation-customer-dispute` → `kael-job-completion-payment` (file tiền làm sau cùng).
+
+**Bẫy riêng Wave 5:**
+- Đây là 4 file duy nhất mà **1 test đỏ = 1 luật tiền có thể đã sai**. Test đỏ ở đây **KHÔNG được** xử lý bằng "chỉnh assertion cho khớp" — nạp `kael-diagnose`, reproduce, tìm nguyên nhân. Nếu nguyên nhân nằm ngoài §47 (source Edge) → **dừng theo 47.0.7 luật 5 điều kiện 1**, báo Tu.
+- `cancellation-worker` nuốt neo **8629** (`rejects legacy admin worker-cancellation decisions after auto-approval is enabled`) — thuộc chính sách auto-approve huỷ-phía-thợ, **không phải** admin. Đừng "sửa lại cho đúng chỗ".
+- `cancellation-customer-dispute` gộp 1 test dispute (7722, 142 dòng) với 3 test huỷ-phía-khách: cùng họ RPC nguyên tử P12/P13, cùng fixture.
+- `job-completion-payment` có 3 test simulator/SePay (4076, 4158, 4233) phụ thuộc cờ env đọc qua `readEdgeEnv`. Chúng dựa vào `installEdgeRuntimeTestHooks()` stub `Deno.env` — nếu quên gọi hook trong `describe`, **3 test này đỏ trước tiên**. Đó là tín hiệu quên hook, không phải lỗi logic.
+
+**Kết quả mong đợi sau Wave 5:**
+
+| Chỉ số | Khoảng |
+|---|---|
+| File gốc còn | **30 – 60** dòng · **0** test (chỉ còn import + vỏ `describe` rỗng) |
+| Cây `kael-edge-runtime/` | **31** file · **178** test · **10.600 – 10.950** dòng |
+| Bất biến G10 | **178** (0 + 178) |
+| `test:api` | = baseline, **0 fail** |
+
+---
+
+#### 47.4.6 P6 — dọn, cắm gate, đồng bộ doc (bước cuối)
+
+**Skill:** `kael-doc-audit` nạp trước bước 4. `kael-core-hygiene` chạy self-check ở bước 6.
+
+1. **Xoá** `apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts`. Xoá hẳn — **không** để lại file rỗng, không để lại file chỉ còn import. Verify: `test -f <path> && echo "CHƯA XOÁ" || echo "đã xoá"`.
+2. **Thêm gate** `apps/api/src/__tests__/schema/kael-edge-runtime-test-size.test.ts`: chép khuôn từ `mobile-api-domain-module-size.test.ts` (27 dòng — **đọc rồi chép, đừng phát minh lại**), đổi gốc quét sang `apps/api/src/__tests__/kael-edge-runtime/`, ngưỡng **600** (D5). Chỉ phủ cây này, **không** phủ toàn bộ test (sẽ đỏ ngay vì `mobile-api-edge-router.test.ts` 2.786).
+3. **Thử phá gate (G7)** — bắt buộc, không bỏ: tạm nối 1 file test cho vượt 600 dòng → chạy `test:api` → xác nhận gate **ĐỎ** đúng file đó → **hoàn nguyên**. Dán cả 2 kết quả (đỏ rồi xanh lại) vào report. Gate chưa từng đỏ = gate chưa chứng minh.
+4. **Sửa 3 doc sống** (47.5.B): `code-ownership-map.md:160`, `status-vocabulary.md:119`, `worker-cancellation.md:71`. Trỏ tới file cụ thể trong cây mới, không trỏ tới thư mục chung. **KHÔNG đụng docs lịch sử** (`docs/test-logs/**`, `docs/memory/**`, `docs/audit/**`) — chứng minh bằng `git diff --stat`.
+5. **Chạy đủ 6 lệnh 47.7**, gồm lệnh 6 (đối chiếu tiêu đề) và lệnh 7 (bất biến 178).
+6. **Chạy hết checklist 47.0.5** rồi mới viết report — một lần, ở cuối (47.0.7 luật 6).
+
+**Kết quả mong đợi sau P6:**
+
+| Chỉ số | Giá trị |
+|---|---|
+| File gốc | **đã xoá** |
+| Cây `kael-edge-runtime/` + gate | **32** file (4 harness + 27 test + 1 gate ở `schema/`) · **178** test |
+| File test lớn nhất trong cây | **≤ 600** dòng (ước lớn nhất 589) |
+| `test:api` | = baseline P0 **+1** (test của gate mới), **0 fail**, **0 test mới bị skip** |
+| Lệnh 6 (diff tiêu đề) | **RỖNG** |
+| `git log bb10fc93..HEAD` | **RỖNG** |
+| Gate G7 | đã đỏ 1 lần rồi xanh lại — có bằng chứng dán vào report |
+
+---
+
+#### 47.4.7 Bảng ranges tổng hợp — dùng để tự chấm giữa chừng
+
+Mỗi hàng là ảnh chụp **sau khi** phase đó PASS. Lệch ngoài khoảng = có gì đó sai, dừng đọc lại bước.
+
+| Sau bước | File gốc (dòng) | File gốc (test) | Cây mới (file) | Cây mới (test) | Cây mới (dòng) | G10 |
+|---|---|---|---|---|---|---|
+| BASE `bb10fc93` | 9.285 | 178 | 0 | 0 | 0 | 178 |
+| **P0** (harness) | 9.050 – 9.090 | **178** | 4 | 0 | 230 – 260 | 178 |
+| **Wave 1** | 7.540 – 7.600 | 132 | 11 | 46 | 2.050 – 2.220 | 178 |
+| **Wave 2** | 5.800 – 5.860 | 110 | 15 | 68 | 4.000 – 4.190 | 178 |
+| **Wave 3** | 4.000 – 4.060 | 77 | 20 | 101 | 6.050 – 6.290 | 178 |
+| **Wave 4** | 1.510 – 1.570 | 24 | 27 | 154 | 8.900 – 9.190 | 178 |
+| **Wave 5** | 30 – 60 | **0** | 31 | **178** | 10.600 – 10.950 | 178 |
+| **P6** | *đã xoá* | — | **32** | **178** | 10.650 – 11.000 | 178 |
+| **P7** (Track B) | — | — | **34** (2 file mới nằm NGOÀI cây: `schema/` + gốc repo) | **178** | +~60 | 178 |
+
+**Bất biến ở MỌI hàng, không có ngoại lệ:** `test:api` ≥ baseline P0 (P6 +1 test gate kích thước, P7 +1 test gate drift; 178 test chuyển sang **không đổi số**) · **0 fail** · `test:shared` = baseline · `lint:structure` exit 0 · `lint:comments` clean · `git log bb10fc93..HEAD` RỖNG · cột G10 = **178**.
+
+**Đọc bảng cho đúng — tổng dòng TĂNG, không giảm.** 9.285 → ~10.800 vì 27 file mới mỗi file gánh ~55 dòng header (import + `describe` + gọi hook). Đây là **cái giá đã biết trước** của việc tách, giống cảnh báo ở §46.0. Ai kỳ vọng "tách xong ít dòng hơn" là kỳ vọng sai; giá trị nằm ở chỗ file lớn nhất còn ≤ 600 dòng và mở 1 file thấy đúng 1 domain.
+
+**Nếu số thật lệch ngoài khoảng:** lệch **nhỏ** (±5%) do cách đếm dòng trống / vị trí `})` — chấp nhận, ghi số thật vào report. Lệch **lớn** (> 10%) hoặc cột test / G10 sai dù chỉ 1 → **dừng ngay**, đây là dấu hiệu mất test hoặc nhân đôi test, không phải sai số đo.
+
+---
+
+#### 47.4.8 P7 — Track B (B1): khoá `database.types.ts` bằng gate, KHÔNG tách
+
+**Nền quyết định:** D-B — Tu chốt **B1**. Không tạo `types/database/`, không viết script hậu-xử-lý codegen, không sửa 10 file test đọc-chuỗi. Ba việc dưới đây **thay cho** việc tách.
+**Skill:** `kael-supabase` (generated types + migration) + `kael-tdd` (viết gate) + `kael-core-hygiene`.
+
+**B1.1 — thêm `.gitattributes` ở gốc repo** (repo hiện **chưa có** file này):
+
+```text
+packages/shared/src/types/database.types.ts linguist-generated=true -diff
+```
+
+*Verify:* `git check-attr -a packages/shared/src/types/database.types.ts` in ra `linguist-generated: true` và `diff: unset`.
+*Được gì:* GitHub gập file trong PR; `git diff` không phun 7.404 dòng; người và agent nhìn phát biết ngay đây là artifact sinh ra.
+
+**B1.2 — ghi lệnh regenerate vào `docs/architecture/code-ownership-map.md`** (mục Edge / shared types), ~3 dòng: lệnh `supabase gen types typescript`, điều kiện chạy được (cần Docker + local Supabase, hoặc project ref), và cảnh báo rằng file là artifact — **sửa tay là mất khi regen**.
+*Vì sao cần:* đo thật, **không chỗ nào trong repo ghi lệnh regen**; chỉ có ghi chú lịch sử rằng nó từng fail vì Docker. Người sau không có đường tra.
+
+**B1.3 — gate drift `apps/api/src/__tests__/schema/kael-database-types-drift.test.ts`:**
+
+1. Trích danh sách bảng `public` từ `database.types.ts` (vùng `Database.public.Tables`, dòng 36–5455 ở `bb10fc93`).
+2. Trích danh sách bảng từ `supabase/migrations/**` bằng `create table [if not exists] [public.]<tên>`.
+3. So khớp 2 tập, báo rõ **tên nào thiếu ở chiều nào** — không chỉ báo "lệch".
+4. **Loại trừ có lý do, ghi thẳng trong test** (WHY, không kể chuyện): bảng tạo ở schema khác `public` (vd. `create table private.…`) và bảng backup `worker_profiles_districts_backup_x` — chúng không xuất hiện trong `Database['public']['Tables']`.
+5. **Thử phá gate (G7 áp cho cả P7):** tạm thêm 1 tên bảng giả vào tập trích từ migrations → gate **ĐỎ** → hoàn nguyên. Dán cả 2 kết quả vào report.
+
+*Số nền:* phiên viết plan kiểm tay ra **94/94 khớp**. Gate này biến quan sát-một-lần đó thành **gate thường trực** — phần đáng giá nhất của Track B.
+
+**Kết quả mong đợi sau P7:**
+
+| Chỉ số | Giá trị |
+|---|---|
+| `.gitattributes` | tạo mới, 1 dòng · `git check-attr` xác nhận |
+| `code-ownership-map.md` | +~3 dòng lệnh regenerate |
+| Gate drift | 1 file mới (~40 dòng), PASS, **đã đỏ 1 lần** khi thử phá |
+| `packages/shared/src/types/database.types.ts` | **0 byte thay đổi** — chứng minh bằng `git diff --stat` |
+| `test:api` | = baseline P0 **+2** (gate kích thước ở P6 + gate drift ở P7), **0 fail** |
+| Bất biến G10 | vẫn **178** (P7 không đụng test đã chuyển) |
+
+
+---
+
+### 47.5 Track A — Blast radius (đo thật 2026-08-03)
+
+**A. Không cần sửa (đã kiểm, đừng đi kiểm lại):**
+- `apps/api/vitest.config.mts` — `include: ['src/**/*.test.ts']` đệ quy → thư mục con tự được thu. **0 dòng config phải sửa.**
+- `apps/api/src/__tests__/foundation/pii-log-lint.test.ts` — `isExcluded()` loại `__tests__` + `*.test.ts` + `database.types.ts`. Không phản ứng.
+- `apps/api/src/__tests__/schema/backend-function-size.test.ts` — chỉ quét `supabase/functions/`. Không phản ứng.
+- `apps/api/src/__tests__/schema/mobile-api-domain-module-size.test.ts` — chỉ quét `domains/` của Edge. Không phản ứng.
+- `scripts/lint-structure.mjs` — `SKIP_DIRS` có `__tests__`, `isSource()` loại `*.test.ts`. Cây mới **vô hình** với ratchet (chính là lỗ D4/D5 vá).
+- **0 test nào đọc file 9k theo đường dẫn** — đã grep toàn repo. Khác hẳn bẫy §46 (ở đó 134 file test hard-code path Edge), nên rủi ro loại đó ở §47 là **0**.
+
+**B. Phải sửa — 3 doc SỐNG (không phải doc lịch sử):**
+
+| File | Dòng | Nội dung hiện tại |
+|---|---|---|
+| `docs/architecture/code-ownership-map.md` | 160 | liệt kê `unit/mobile-api-edge-runtime.test.ts` là owner test của "Edge/API routing and runtime" |
+| `docs/architecture/status-vocabulary.md` | 119 | "`…/unit/mobile-api-edge-runtime.test.ts` covers lifecycle transitions" |
+| `docs/workflow/worker-cancellation.md` | 71 | "`…/unit/mobile-api-edge-runtime.test.ts` covers the Edge…" |
+
+Sửa thành đường dẫn thư mục mới + file cụ thể (vd. `worker-cancellation.md` → `kael-edge-runtime/domains/cancellation-worker.test.ts`).
+
+**C. CỐ Ý KHÔNG đụng (ghi ra để phiên sau không tưởng là bỏ sót):**
+- **16 file test khác** có bản sao harness riêng: `mobile-api-kael-{p5,p6,p7,p10,p11,p12,q2-q3,q4}`, `mobile-api-kael-batch-results-claims`, `mobile-api-{job-media-sniffing,learning-queue-atomic,scope-change-idempotency,worker-evidence-privacy}`, `create-job-{idempotency,pipeline-failure}`, `push-token-disable-lifecycle`. Bản sao đã trôi (12→347 dòng) — hợp nhất là việc riêng (D3, 47.8).
+- **Docs lịch sử** nhắc tên file cũ: `docs/test-logs/**` (5 file), `docs/memory/2026-05.md`, `docs/audit/full-codebase-audit-20260611.md`. Đây là ảnh chụp quá khứ — **sửa là làm sai lịch sử** (G5).
+
+---
+
+### 47.6 Track B — `database.types.ts` (7.404 dòng): phân tích + khuyến nghị
+
+**Đo thật trên `bb10fc93`:**
+
+| Vùng | Dòng | Kích thước |
+|---|---|---|
+| `Json` | 1–8 | 8 |
+| `Database.graphql_public` | 10–34 | 25 |
+| `Database.public.Tables` | 36–5455 | **5.420** (94 bảng) |
+| `Database.public.Views` | 5456–5603 | 148 |
+| `Database.public.Functions` | 5604–7112 | 1.509 |
+| `Database.public.Enums` | 7113–7189 | 77 |
+| `Database.public.CompositeTypes` | 7190–7192 | 3 |
+| Generic helper `Tables<>/TablesInsert<>/TablesUpdate<>/Enums<>/CompositeTypes<>` | 7200–7312 | 113 |
+| `Constants` | 7313–7404 | 92 |
+
+**4 dữ kiện quyết định (đo, không suy đoán):**
+
+1. **Bề mặt import đã hẹp sẵn.** Toàn repo chỉ **2 file không-phải-test** import nó: `packages/shared/src/types/index.ts` (barrel) và `apps/api/src/lib/database.types.ts` (shim 9 dòng re-export qua `@nestscout/shared/types`). Mọi consumer khác đi qua barrel. **Không có vấn đề ergonomics import nào để mà sửa.**
+2. **10 file test đọc nó như CHUỖI**, không như type — `readFileSync(...'database.types.ts')` + `toContain(...)`: `mobile-api-edge-schema`, `kael-q1-cost-optimization`, `atomic-kael-memory-updates`, `job-incident-atomic`, `kael-source-trust-tiering-migration`, `learning-autopromote-atomic`, `learning-observation-atomic`, `tier1-type-completeness`, `tier2-business-rules`, `pii-log-lint`. **Tách file = 10 file test này mù**, phải sửa tay từng assertion.
+3. **Nó do `supabase gen types typescript` sinh ra.** Tách xong, **lần regenerate kế tiếp ghi đè lại thành 1 file** — trừ khi viết thêm 1 script hậu-xử-lý parse output CLI rồi phát lại N file, và nuôi script đó theo mỗi lần Supabase CLI đổi format. Đây là **máy móc mới phải bảo trì cho một file không ai đọc bằng mắt**.
+4. **Tách không giúp `tsc`.** `Database` vẫn là **một** type dù nằm ở 1 hay 6 file; chia module thường làm resolve **chậm hơn**, không nhanh hơn.
+
+**⇒ Khuyến nghị: OPTION B1 — KHÔNG TÁCH.** Chi phí thật (script codegen mới + 10 file test phải sửa + rủi ro drift mỗi lần regen) đổi lấy lợi ích bằng 0 về mặt cấu trúc. Điều Tu thật sự thấy phiền là **chi phí đọc** — đó là vấn đề khác, và rẻ hơn nhiều:
+
+| # | Việc | Chi phí | Được gì |
+|---|---|---|---|
+| **B1.1** | Thêm `.gitattributes` (repo **đang không có file này**): `packages/shared/src/types/database.types.ts linguist-generated=true -diff` | 1 file, 1 dòng | GitHub gập file trong PR; `git diff` không phun 7.404 dòng; người/agent thấy ngay đây là artifact sinh ra |
+| **B1.2** | Ghi lệnh regenerate vào `docs/architecture/code-ownership-map.md` (mục Edge/shared types) | ~3 dòng | Hiện **không chỗ nào trong repo ghi lệnh regen**; chỉ có ghi chú lịch sử là nó từng fail vì Docker |
+| **B1.3** | Thêm test `schema/database-types-drift.test.ts`: trích danh sách bảng trong `database.types.ts` **và** trong `supabase/migrations/**`, so khớp | 1 file ~40 dòng | Biến "OK, không drift" từ **quan sát tay 1 lần** thành **gate thường trực**. Chính phiên này kiểm tay ra 94/94 khớp — nhưng không có gì giữ cho nó khớp mãi |
+
+B1.3 là phần đáng giá nhất của Track B: nó không làm file ngắn đi, nhưng làm file đó **không bao giờ nói dối** nữa.
+
+**OPTION B2 — TÁCH THẬT (đặc tả đủ để thi hành nếu Tu vẫn chọn).** Ghi ra để Tu chọn có căn cứ, **không phải** để khuyến nghị:
+
+```text
+B2.1  Tách thành 5 file trong packages/shared/src/types/database/:
+        tables.ts      (5.420 dòng -> type PublicTables)
+        views.ts       (148)
+        functions.ts   (1.509)
+        enums.ts       (77 + CompositeTypes 3)
+        constants.ts   (92, runtime value)
+      database.types.ts còn ~150 dòng: Json + ghép Database = { graphql_public, public: {...} }
+      + 5 generic helper. Barrel types/index.ts KHÔNG đổi -> consumer không biết gì.
+B2.2  Viết scripts/split-database-types.mjs: nhận output `supabase gen types typescript`,
+      cắt theo 5 mốc trên, phát ra 5 file. PHẢI chạy mỗi lần regen, nếu không cây tách tự hỏng.
+B2.3  Sửa 10 file test ở dữ kiện (2): đổi sang đọc đúng file con, HOẶC nối 5 file rồi assert
+      trên chuỗi ghép (rẻ hơn nhưng làm assertion mất nghĩa vị trí).
+B2.4  LÝ DO KỸ THUẬT MẠNH NHẤT ĐỂ BÁC B2: đích cuối của nó VẪN còn 1 file 5.420 dòng
+      (tables.ts). B2 không giải quyết được file lớn nhất, trừ khi tách tiếp theo từng bảng
+      -> 94 file. Nghĩa là B2 tốn 1 script phải nuôi + 10 file test phải sửa để đưa
+      7.404 -> 5.420, vẫn vượt xa mọi ngưỡng đang có.
+```
+
+**✔ D-B — Tu đã chốt: B1.** *"B1 thì không cần tách"*. B2 ở trên giữ lại làm hồ sơ vì sao bác, **không phải việc để làm**. Ba việc B1.1 / B1.2 / B1.3 thi hành ở **P7 (47.4.8)**.
+
+---
+
+### 47.7 Verify commands
+
+```text
+# 1. Type + test của package chứa thay đổi
+pnpm --filter @nestscout/api type-check
+pnpm test:api
+
+# 2. Gate §46 v0.4 đã trả giá vì quên — KHÔNG bỏ
+pnpm test:shared
+
+# 3. Ratchet + comment discipline
+node scripts/lint-structure.mjs
+pnpm lint:comments
+
+# 4. G2 — đếm test toàn cây mới (kỳ vọng 178)
+grep -rc "  it(" apps/api/src/__tests__/kael-edge-runtime/ | awk -F: '{s+=$2} END {print s}'
+
+# 5. G1 — byte-diff 1 test bất kỳ so bản gốc (thay <neo>/<n>/<file> bằng số thật)
+git show bb10fc93:apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts | sed -n '<neo>,<neo+n>p' > /tmp/a
+sed -n '<dòng mới>,<dòng mới+n>p' apps/api/src/__tests__/kael-edge-runtime/<file> > /tmp/b
+diff /tmp/a /tmp/b     # phải RỖNG
+
+# 6. Ô đối-chiếu-tiêu-đề ở 47.0.5 (gate duy nhất chứng minh không mất test)
+grep -rho "it('[^']*'" apps/api/src/__tests__/kael-edge-runtime/ | sort > /tmp/after.txt
+diff <scratchpad>/s47-titles-base.txt /tmp/after.txt    # phải RỖNG
+
+# 7. G10 — BẤT BIẾN 178, chạy sau MỖI file chuyển xong (không phải sau mỗi wave)
+GOC=$(grep -c "^  it(" apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts)
+MOI=$(grep -rh "  it(" apps/api/src/__tests__/kael-edge-runtime/ | wc -l)
+echo $(( GOC + MOI ))     # phải LUÔN = 178
+# 179+ = quên xoá khỏi file gốc · 177- = cắt mất test · cả hai đều DỪNG NGAY tại chỗ
+
+# 8. G11 — nhánh + import thừa + file rác (chạy cuối mỗi wave)
+git branch --show-current                                   # = claude/audit-large-files-459e61
+pnpm --filter @nestscout/api lint 2>&1 | grep kael-edge-runtime   # RỖNG (no-unused-vars chỉ "warn")
+git status --short | grep -vE "^ M|^A |^D "                  # RỖNG = không có file rác
+```
+
+---
+
+### 47.8 Files Touched / Out of Scope
+
+**Track A tạo mới (32):** `kael-edge-runtime/harness/{sequence-client,hooks,fixtures,index}.ts` + 3 file `kael-edge-runtime/platform/*.test.ts` + 24 file `kael-edge-runtime/domains/*.test.ts` + `schema/kael-edge-runtime-test-size.test.ts`.
+
+**Track A xoá (1):** `apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts`.
+
+**Track A sửa (3 doc sống):** `docs/architecture/code-ownership-map.md`, `docs/architecture/status-vocabulary.md`, `docs/workflow/worker-cancellation.md`.
+
+**Track B — B1, Tu đã chốt (2 file mới + 1 doc sửa):** `.gitattributes` (mới, repo hiện chưa có), `apps/api/src/__tests__/schema/kael-database-types-drift.test.ts` (mới), `docs/architecture/code-ownership-map.md` (thêm lệnh regenerate). **KHÔNG đụng `packages/shared/src/types/database.types.ts`** — 0 byte thay đổi.
+
+**Out of scope — ghi rõ để không ai làm lén:**
+- 16 file test còn bản sao harness (D3) → **việc riêng, cần plan riêng + baseline riêng**.
+- `mobile-api-edge-router.test.ts` (2.786) và `worker-home-surface-test.tsx` (3.867) → ngoài §47; gate D5 cố ý không phủ.
+- `governance/Plan.md` (15.116) và `pnpm-lock.yaml` (13.894) → 2 file >5k còn lại, không thuộc §47.
+- Mọi thay đổi source `supabase/functions/**`, `apps/mobile/**`, migration, deploy.
+
+---
+
+### 47.9 Change Log
+
+| Ngày | Người sửa | Thay đổi |
+|---|---|---|
+| 2026-08-03 | Claude Code | v0.1 — bản đầu. Audit >5k dòng toàn repo (chỉ 4 file, 2 generated). Đo thật file 9.285: 1 describe / 178 it / 0 vi.mock / harness 196 dòng bị chép ở 17 file. Lập bản đồ 27 bucket bằng script, verify 0 test lọt / 0 test trùng. Track B: đo bề mặt import (2 file non-test) + 10 file test đọc chuỗi + 5 mốc dòng → khuyến nghị KHÔNG tách, kèm B2 đặc tả đủ + lý do bác (B2 vẫn để lại 1 file 5.420 dòng). **SỬA LỜI audit trong chat**: file test KHÔNG "sai tầng" — `integration/` của repo này = Supabase thật. **Baseline CHƯA đo được** (worktree không có node_modules) → P0 bắt buộc. 2 câu hỏi OPEN Q-A (Track B) / Q-B (tiền tố tên file) chờ Tu. |
+| 2026-08-03 | Claude Code | v0.2 — Tu yêu cầu bổ sung 5 nhóm. (1) **47.0.1 nâng thành STAGE cứng**: thêm Bước 0 kiểm nhánh, Bước 4 đọc lại cả §47 một lượt, Bước 5 in khối preflight theo `critical.md` §5; danh sách skill đổi thành ma trận nạp-theo-bước. (2) **47.0.6 MỚI — Branch Contract**: 5 luật tuyệt đối, mọi thay đổi vào `claude/audit-large-files-459e61`, kiểm nhánh ở đầu MỖI wave, quy tắc snapshot khi cây bẩn. (3) **47.0.7 MỚI — Non-Stop Execution Contract**: 6 luật + đúng 5 điều kiện được phép dừng (dạng bảng); 47.0.4 rút thành con trỏ để không mâu thuẫn. (4) **47.0.8 MỚI — Note & Comment Hygiene**: bảng ghi-chú-đi-đâu, danh sách cấm máy-bắt-được (đặc biệt cấm ghi `§47` / `Wave 3` vào comment — lỗi dễ mắc nhất khi tách file theo plan), cấm theo phán đoán, lệnh soi file rác, `kael-core-hygiene` always-on chạy self-check sau mỗi wave. (5) **47.4 viết lại**: khuôn chung 7 bước + 5 khối chi tiết 47.4.1–47.4.5 (mục tiêu / skill / bảng file+neo / thứ tự làm trong wave / bẫy riêng / kết quả mong đợi) + 47.4.6 P6 chi tiết + **47.4.7 bảng ranges tổng hợp** cho cả 7 bước. Thêm **G10** (bất biến 178 liên tục — gate mạnh nhất, bắt lỗi ngay trong wave) + **G11** (hygiene + đúng nhánh), **D7** (hook dùng chung `installEdgeRuntimeTestHooks()`, tránh chép 378 dòng ra 27 file), **D8** (import Edge 6 cấp `../` chứ không phải 5), verify lệnh **7** và **8**. Sửa số file harness 3 → **4** (thêm `hooks.ts`), tổng file mới 31 → **32**. Bẫy mới đo được và ghi lại: `apps/api/tsconfig.json` KHÔNG bật `noUnusedLocals` và `eslint.config.mjs` để `@typescript-eslint/no-unused-vars` ở mức `warn` → **không gate nào fail vì import thừa**, phải soi tay bằng lệnh 8. |
+| 2026-08-03 | Claude Code | v0.3 — **Tu đóng cả 2 câu hỏi OPEN.** **D-B = B1** (*"B1 thì không cần tách"*): `database.types.ts` KHÔNG tách; 3 việc B1.1/B1.2/B1.3 nâng thành phase thật **P7 (47.4.8)** với các bước + kết quả mong đợi; B2 giữ lại làm hồ sơ vì sao bác, không phải việc để làm. **D9 = quy tắc đặt tên**: tiền tố `kael-` ở **cả thư mục gốc lẫn 27 file test** (`kael-edge-runtime/domains/kael-job-detail.test.ts`); 3 file vốn đã có `kael-chat-` giữ nguyên, không thành `kael-kael-`; `platform/` `domains/` `harness/` **giữ nguyên tên** theo đúng ý Tu (*"Không có bỏ Folders đó"*); 4 file harness để tên sạch; gate ở `schema/` thành `kael-edge-runtime-test-size.test.ts`. **Đổi vị trí cây test**: từ `unit/edge-runtime/` lên **bucket top-level `__tests__/kael-edge-runtime/`**, ngang hàng `unit/` `integration/` `schema/` `security/` `wiring/` `foundation/` — D1 viết lại, tách bạch 2 ý (không phải `integration/` vì `integration/` = Supabase thật; không nằm trong `unit/` vì tên đã tự mô tả và đường dẫn ngắn hơn 1 cấp). Hệ quả: **D8 sửa 7 cấp `../` → đúng 6 cấp**. Kiểm blast radius bổ sung: **0 chỗ trong repo hard-code thư mục `unit/`**; `vitest.config.mts` glob đệ quy nên bucket mới tự được thu; CI `security.yml` chạy full `vitest run` tự thu, CI `integration.yml` chỉ chạy `src/__tests__/integration` nên không đụng. Non-stop contract nâng từ **7 → 8 phase** (P0 → W1-W5 → P6 → **P7**); thang ranges 47.4.7 thêm hàng P7; làm rõ `test:api` cuối = **baseline +2** (gate kích thước ở P6 + gate drift ở P7) trong khi **178 test chuyển sang không đổi số**. Pre-Final thêm 3 ô cho P7. |
+| 2026-08-03 | Claude Code | v0.4 — **ĐÃ EXECUTE toàn bộ 8 phase trong 1 lượt, không dừng giữa chừng.** Baseline THẬT đo được (worktree đã `pnpm install`): `test:api` **3155 pass / 0 fail / 78 skip**, `test:shared` **729 pass / 0 fail**, `type-check` exit 0, `lint:structure` exit 0 (845 file), `lint:comments` clean. Kết quả cuối: **3159 pass / 0 fail** = baseline **+4** (không phải +2 như 47.4.7 dự đoán — xem mục "gate drift 3 test" bên dưới). 178/178 test chuyển sang cây mới, **byte-identical 178/178 block** (verify bằng script đối chiếu từng block với `git show bb10fc93:…`, không chỉ 1 file/wave như G1 yêu cầu tối thiểu), diff tiêu đề **RỖNG**, 0 tiêu đề trùng. Cây cuối: **31 file / 9.497 dòng**, file lớn nhất **543** (`kael-job-create-pipeline.test.ts`) — thấp hơn ước 589 và dưới ngưỡng 600. **Tổng dòng 9.497 chứ không phải 10.600–10.950 như 47.4.7 ước**: mỗi file chỉ import đúng symbol nó dùng (tính bằng regex trên thân test) thay vì chép nguyên khối 17 dòng import, nên header thật ~8–12 dòng chứ không phải ~55. |
+| 2026-08-03 | Claude Code | v0.4 (tiếp) — **4 chỗ plan sai/thiếu, đã sửa khi thi hành.** (1) **Fixture là dòng 19–40, không phải 19–38** (47.2 + 47.3 bước 3 ghi thiếu 2 dòng `}` đóng hàm) — đo bằng landmark tự tìm chứ không hard-code, đúng tinh thần 47.0.1 Bước 3. Hook 43–56 và harness 9089–9285 khớp chính xác. (2) **47.3 bước 4 ghi đường dẫn import `'./edge-runtime/harness'`** — sót từ bản v0.2 khi cây còn nằm trong `unit/`; sau D9 (bucket top-level) đường đúng từ `unit/` là `'../kael-edge-runtime/harness'`. (3) **Wave 5 như đặc tả KHÔNG THỂ XANH.** 47.4.5 kỳ vọng để lại "vỏ `describe` rỗng" rồi mới xoá ở P6 bước 1, nhưng vitest fail file 0 test (`Error: No test found in suite`) → mâu thuẫn trực tiếp với G4 (mỗi wave phải PASS). Đã kéo bước xoá của P6 lên cuối W5; **không mở rộng phạm vi** (việc xoá vốn đã do plan ra lệnh, chỉ đổi thứ tự 1 nhịp), P6 bước 1 thành bước xác nhận. (4) **`test:api` cuối = baseline +4, không phải +2**: gate kích thước 1 test + gate drift **3 test** (2 chiều lệch + 1 test chứng minh scan chạm đủ thư mục migration), vì 47.4.8 bước 3 đòi "báo rõ tên nào thiếu ở chiều nào" — một `it()` không diễn đạt được 2 chiều. |
+| 2026-08-03 | Claude Code | v0.4 (tiếp) — **bẫy mới đo được, ghi cho phiên sau.** (a) **`vi` của vitest đụng chuỗi locale `'vi'`**: dò import bằng `\bvi\b` trên thân test cho ra dương tính giả ở `kael-customer-profile.test.ts` (sản phẩm Vietnamese-first nên `'vi'` xuất hiện như dữ liệu). `type-check` KHÔNG bắt (`noUnusedLocals` tắt) và `lint` chỉ `warn` — đúng cảnh báo ở 47.4 khuôn chung bước 2. Chỉ lệnh 8 (`lint … | grep kael-edge-runtime`) bắt được. Cách sửa: dò `vi`/`expect`/`beforeEach`/`afterEach` theo **hình dạng gọi/thuộc tính** (`\bvi\s*\.`), không theo từ trần. (b) **Working tree là CRLF + `core.autocrlf=true`**, blob git là LF → mọi byte-diff phải chuẩn hoá xuống LF trước khi so, nếu không 9.285 dòng sẽ lệch 9.285 byte và trông như "khác nhau". (c) Cách chống trôi dòng qua 5 wave: **tái sinh file gốc từ snapshot BASE bất biến mỗi lần**, không cắt tăng dần trên file đang teo — neo 47.2 gắn với `bb10fc93` nên chỉ cần đọc đúng 1 nguồn. |
+| 2026-08-03 | Claude Code | v0.4 (tiếp) — **PHÁT HIỆN NGOÀI PLAN: gate drift đã có sẵn nhưng thủng 1/3.** `apps/api/src/__tests__/schema/tier1-type-completeness.test.ts:156` đã có assertion "keeps generated public table keys aligned with migration-created tables" từ trước §47 — 47.6 dữ kiện (3) không biết nó tồn tại. Đo thật: regex của nó chỉ khớp `create table if not exists public.<tên>` nên bắt được **62/94 bảng**, **bỏ sót 33 bảng** trong đó có `jobs`, `profiles`, `chat_messages`, `reviews`, `notifications`, `worker_profiles`, `job_broadcasts`, `price_baselines` (các bảng này khai bằng `create table <tên>` trần hoặc `create table if not exists <tên>` không kèm schema); và nó chỉ kiểm **1 chiều** (migration → types). Nên B1.3 **không trùng lặp** — nó vá đúng 2 lỗ đó: khớp mọi dạng cú pháp + kiểm 2 chiều. Loại trừ làm theo **cấu trúc** thay vì hard-code tên: lọc theo schema (3 bảng `private.*` không nằm trong `Database['public']`) và trừ đi `drop table` (bảng backup `worker_profiles_districts_backup_x` đã bị `20260605006000` drop). Kết quả **94/94 khớp cả 2 chiều**. **Cố ý KHÔNG sửa `tier1-type-completeness.test.ts`** — ngoài phạm vi §47 (G5); ai muốn thu gọn 2 gate về 1 thì cần plan riêng. **Giới hạn còn lại của gate mới, nói thẳng:** nó quét văn bản SQL nên một câu `create table` bị comment-out vẫn bị tính là bảng sống (hôm nay không có ca nào; nếu có, gate sẽ ĐỎ sai chứ không xanh sai — lệch về phía an toàn). |
+| 2026-08-03 | Claude Code | v0.4 (tiếp) — **bằng chứng phá gate (G7), cả 3 gate đều đã ĐỎ ít nhất 1 lần rồi xanh lại.** Gate kích thước: bơm `kael-job-create-pipeline.test.ts` 543 → 613 dòng → ĐỎ `expected 613 to be less than or equal to 600` kèm đúng tên file → hoàn nguyên → 543, xanh. Gate drift **chiều A**: thêm `create table public.s47_probe_table` vào migration cuối → ĐỎ `expected [ 's47_probe_table' ] to deeply equal []` + `expected 94 to be 95` → hoàn nguyên, `git status` 0 thay đổi. Gate drift **chiều B**: xoá câu `create table … source_trust_registry` khỏi `20260526195300_source_trust_registry_f26.sql` → ĐỎ `expected [ 'source_trust_registry' ] to deeply equal []` + `expected 94 to be 93` → hoàn nguyên, 0 thay đổi. **Không đụng `packages/shared/src/types/database.types.ts` 1 byte nào** (B1 = không tách) — chứng minh bằng `git diff --stat`. |
+
+---
+
+### 47.10 Sign-off
+
+```text
+[✔] Tu chốt D-B — Track B: **B1**, KHÔNG tách `database.types.ts` ("B1 thì không cần tách")
+[✔] Tu chốt D9 — tiền tố `kael-` ở thư mục gốc + 27 file test; `platform/` `domains/` `harness/`
+     giữ nguyên tên
+[✔] Tu chốt vị trí — bucket top-level `__tests__/kael-edge-runtime/`, KHÔNG nằm trong `unit/`
+[ ] Tu duyệt cây đích 47.2 (27 file) + cách gộp 4 ca đặc biệt ở cuối 47.2
+[ ] Tu duyệt phạm vi (47.0 Scope + 47.8 Out of scope), đặc biệt: KHÔNG đụng 16 file test ở D3
+[ ] Tu duyệt 47.0.6 (branch contract) + 47.0.7 (non-stop) + 47.0.8 (note hygiene)
+[ ] Tu duyệt bảng ranges 47.4.7 — đây là thước Tu dùng để chấm giữa chừng
+[✔] Tu nói "go" — 2026-08-03: "Implement Plan ... Completed 100% Code lẫn Process rồi mới báo cáo,
+     không commit khi chưa có lệnh". Agent đã chạy liên tục P0 → W1-W5 → P6 → P7, không dừng xin duyệt.
+```
+
+**Trạng thái sau khi execute (2026-08-03):** code đã xong và xanh toàn bộ gate, **chưa commit** — 4 ô duyệt
+còn trống ở trên là phần Tu review trên diff thật, không phải việc agent tự tick. Số liệu + 4 chỗ plan sai
+đã sửa + 1 phát hiện ngoài plan: 47.9 v0.4.
