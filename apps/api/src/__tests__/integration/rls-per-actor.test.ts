@@ -14,41 +14,15 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@nestscout/shared'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
+import { resolveOrAnnounceSkip } from './integration-target'
 
-function loadEnvFile(): Record<string, string> {
-  const envPath = resolve(__dirname, '../../../../../.env.local')
-  try {
-    const content = readFileSync(envPath, 'utf-8')
-    const vars: Record<string, string> = {}
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim()
-      if (!trimmed || trimmed.startsWith('#')) continue
-      const [key, ...valueParts] = trimmed.split('=')
-      if (!key || valueParts.length === 0) continue
-      vars[key.trim()] = valueParts.join('=').trim()
-    }
-    return vars
-  } catch {
-    return {}
-  }
-}
-
-const envVars = loadEnvFile()
-const supabaseUrl = envVars['NEXT_PUBLIC_SUPABASE_URL'] || process.env.NEXT_PUBLIC_SUPABASE_URL
-const serviceRoleKey = envVars['SUPABASE_SERVICE_ROLE_KEY'] || process.env.SUPABASE_SERVICE_ROLE_KEY
-const anonKey =
-  envVars['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
-const isProduction = supabaseUrl?.includes(PRODUCTION_REF) ?? false
-const skip = !supabaseUrl || !serviceRoleKey || !anonKey || isProduction
-const describeReal = skip ? describe.skip : describe
-
-if (isProduction) {
-  console.warn('[rls-per-actor] Refusing to run against production. Point NEXT_PUBLIC_SUPABASE_URL at staging.')
-}
+// Defaults to the local stack; throws rather than skipping on a dangerous
+// target, so a production URL can never report green by being skipped.
+const resolution = await resolveOrAnnounceSkip('rls-per-actor')
+const supabaseUrl = resolution.ok ? resolution.target.url : undefined
+const serviceRoleKey = resolution.ok ? resolution.target.serviceRoleKey : undefined
+const anonKey = resolution.ok ? resolution.target.anonKey : undefined
+const describeReal = resolution.ok ? describe : describe.skip
 
 const PASSWORD = 'test-password-rls-integration-12345'
 const stamp = Date.now()

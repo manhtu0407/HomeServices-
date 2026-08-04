@@ -1291,15 +1291,28 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('keeps real Supabase integration suites blocked from production project ref', () => {
+    // The guard moved into one shared resolver so a suite cannot forget it. The
+    // assertion follows: prove the guard exists once, then prove every suite
+    // routes through it. A suite that resolves its own URL bypasses the guard.
+    const guard = read('apps/api/src/__tests__/integration/integration-target.ts')
+    expect(guard).toContain("const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'")
+    expect(guard).toContain('Refusing to run against PRODUCTION')
+    // Dangerous configurations throw. Skipping them would report green for a
+    // suite that never ran — the silent degradation RULES.md #8 bans.
+    expect(guard).toContain('function assertNotProduction')
+    expect(guard).toContain('function assertNotLocalKeyAgainstRemote')
+    expect(guard).toMatch(/throw new Error\(/)
+
     for (const file of [
       'apps/api/src/__tests__/integration/real-supabase.test.ts',
       'apps/api/src/__tests__/integration/learning-real-supabase.test.ts',
       'apps/api/src/__tests__/integration/worker-flow.test.ts',
+      'apps/api/src/__tests__/integration/rls-per-actor.test.ts',
     ]) {
       const source = read(file)
-      expect(source).toContain("const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'")
-      expect(source).toContain('isProduction')
-      expect(source).toContain('Refusing to run against production')
+      expect(source).toContain("from './integration-target'")
+      expect(source).toContain('resolveOrAnnounceSkip(')
+      expect(source).not.toContain('process.env.NEXT_PUBLIC_SUPABASE_URL')
     }
   })
 })

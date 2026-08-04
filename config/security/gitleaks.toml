@@ -12,4 +12,11 @@ description = "Allow obviously-fake fixture values"
 regexes = [
   '''(test-key|test-service-key|test-anon-key|deepseek-ok|anthropic-ok|perplexity-ok)''',
   '''(?i)\b(fake|dummy|placeholder|example|sample|test|mock)[-_]?(key|token|secret)\b''',
+  # Supabase local-stack demo tokens. The base64 fragment below is
+  # `{"iss":"supabase-demo` — the CLI signs these with a fixed, published secret,
+  # so every machine gets byte-identical tokens and they carry no authority over
+  # any hosted project. Matched on the ISSUER, not on a file path: a real key
+  # pasted into the same file is still caught, and a demo token is allowed
+  # wherever it appears. Anything issued by a real project fails this regex.
+  '''eyJpc3MiOiJzdXBhYmFzZS1kZW1v''',
 ]

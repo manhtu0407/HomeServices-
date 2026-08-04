@@ -16249,3 +16249,636 @@ G8 (CLAUDE.md <= ~130 dòng)   TRƯỢT — landed 140.
 4. Line ending: **kiểm rồi, KHÔNG phải rác.** `core.autocrlf=true` nên mọi blob trong git đều là LF; cảnh báo "LF will be replaced by CRLF" chỉ là chuyện working copy. `git diff --numstat` xác nhận không có file nào bị rewrite ảo: `2026-05.md` +1050/-0, `design.md` +10/-101, `motion.md` +95/-0, `Plan.md` +130/-1 — đúng phần cố ý sửa. Không đụng vào.
 
 **Trạng thái:** toàn bộ **CHƯA COMMIT** (Git Rule — chờ Tu bảo commit). 4 ô ở 48.5 là phần Tu review trên diff thật, không phải việc agent tự tick.
+
+---
+
+## 49. Docker Local Dev Environment — thư mục `docker/` cho agent tự dùng — 2026-08-04
+
+### 49.0 Metadata
+
+```text
+Plan ID:   plan-docker-local-dev-20260804
+Created:   2026-08-04
+Owner:     Manh Tu
+Branch:    CHƯA CHỐT — xem 49.0.4
+Status:    v0.5 — mọi quyết định ĐÃ CHỐT. Chỉ còn chờ Tu chỉ tên nhánh + nói "go".
+           CHƯA tạo 1 file nào.
+Trigger:   Tu 2026-08-04: muốn một thư mục ở root repo để Codex và Claude Code "tiện đường
+           dùng mỗi khi cần chứ không cần phải hỏi qua tôi"; "mọi tính năng từ cơ bản đến
+           nâng cao cũng cần được chuẩn bị sẵn sàng để khi dùng là có thể required".
+Mốc:       PR #149 (2026-08-04, commit bb06d7dd). Dải đã merge: #1 → #149.
+Execute:   NON-STOP là RULE CỨNG — 49.0.5, 10 luật, thắng mọi cách đọc lỏng ở chỗ khác.
+           Lượt 1 = D0 (gate Tu đặt, không phải agent tự dừng). Lượt 2 = D1 → D6 một mạch.
+```
+
+**Một câu tóm tắt vấn đề:** repo không có 1 artifact Docker nào, nên mọi thứ về database chỉ được kiểm bằng cách **đọc chuỗi trong file SQL** (72/75 file schema test dùng `readFileSync`, **0 file tạo DB client**), còn 4 test chạy thật thì **bắn thẳng vào Supabase staging đang sống**. Không chỗ nào trên máy chạy được Postgres của chính dự án.
+
+**Cái giá đã trả** (tra được trong repo): `database.types.ts` từng phải sửa tay vì `supabase gen types --local` không chạy được; `supabase db dump` bị bỏ qua trước 2 lần rollout production (2026-05-26 P18, 2026-06-05 §31); `db lint --local` và `migration list` không dùng được nên checklist deploy §32 phải viết bằng cách đọc file.
+
+---
+
+### 49.0.1 Ranh giới cứng — Docker ở đây là DEV DEPENDENCY, KHÔNG phải deployment
+
+Đây là mục quan trọng nhất của §49. Đọc trước khi làm bất cứ gì.
+
+| | Docker-as-deployment | Docker-as-dev-dependency |
+|---|---|---|
+| Là gì | Đóng gói `apps/api` / một `server.ts` thành image để chạy production | Chạy Postgres + Auth + Storage + Deno **trên máy dev**, để test |
+| Đụng RULES #0 | **CÓ** — đẻ ra runtime thứ hai bên cạnh Edge Function | **KHÔNG** — không deploy gì, không phục vụ user nào |
+| Trạng thái | **CẤM.** Đã bị bác ở **§46.0.2 D1** (Tu chốt 2026-08-02) và ở memory `feedback_thuan_app_no_deploy` | **Đây là §49** |
+
+Hai bản ghi cũ nói "repo có zero deployment config, đừng giả định Docker" **vẫn còn hiệu lực nguyên vẹn**. §49 không lật chúng — §49 nằm ở cột phải. Nếu trong lúc execute thấy mình đang viết `Dockerfile` cho `apps/api`, hoặc một `docker-compose` phục vụ HTTP cho client thật: **dừng, đó là dấu hiệu đã trôi sang cột trái**.
+
+**Authority refs:**
+
+```text
+RULES #0   Mobile Runtime Boundary — mobile → Supabase Auth → Edge `mobile-api` → DB.
+           Không được đẻ runtime thứ hai. §49 không đụng vào đường này.
+RULES #1   No secrets in client code. Local stack có JWT/anon key demo cố định do CLI phát —
+           chúng KHÔNG phải secret, nhưng cũng KHÔNG được lẫn vào file env trỏ staging/prod.
+RULES #8   Data honesty — no silent degradation. Là căn cứ của D4 (xem 49.5 lỗ describe.skip).
+critical.md §3   Git Rule — agent không tự commit/push/mở PR. Áp cho toàn bộ §49.
+critical.md §4   Survival Test — xem đoạn dưới.
+protocols/code-hygiene.md   Áp cho mọi dòng script/compose/doc viết ra ở §49.
+```
+
+**Survival Test — vì sao làm bây giờ, không phải "chờ 10x scale":** không phải để chạy nhanh hơn hay đẹp hơn. Là vì **đường tới giao dịch thật đầu tiên đi xuyên qua tiền** — rail VietQR (#135) và tiền mặt (#139) hiện là code-and-tests, và "tests" ở đây phần lớn là so chuỗi văn bản SQL. RLS, trigger, check constraint, atomicity của các bảng tiền **chưa từng được chạy một lần nào**. Đó là rủi ro trực tiếp lên giao dịch đầu tiên, không phải rủi ro ở scale.
+
+---
+
+### 49.0.2 Ngân sách máy — RAM là ràng buộc, KHÔNG phải đĩa
+
+Đo lại 2026-08-04 (v0.1 đo sai mục này, xem 49.12):
+
+```text
+Ổ đĩa      C: free 100.4 GB / used 375.3 GB / total 475.7 GB — CHỈ CÓ 1 Ổ
+RAM        total 15.7 GB — Available lúc đo 1.1 GB (có tiến trình game chiếm 2.28 GB)
+CPU        20 logical
+Docker     CLI 29.6.1 đã cài; daemon ĐANG TẮT; WSL2 distro `docker-desktop` = Stopped
+Supabase   docs khuyến nghị >= 7 GB RAM để start toàn bộ service
+```
+
+**Hệ quả thiết kế:**
+
+1. **Đĩa KHÔNG phải ràng buộc.** 100.4 GB free so với một stack Supabase đầy đủ (vài GB) là dư nhiều lần. Vẫn giữ 1 stop-condition đĩa như lưới an toàn, nhưng **không** để nó định hình thiết kế.
+2. **RAM MỚI là ràng buộc thật.** Supabase khuyến nghị >= 7 GB cho toàn bộ service; máy 15.7 GB tổng và Available thực tế dao động rất thấp khi Tu đang dùng máy. Vì vậy:
+   - `doctor` **gate trên Available RAM**, không phải trên đĩa.
+   - Profile `lean` là **mặc định**, và lý do là RAM chứ không phải đĩa.
+3. **2 profile, quản bằng `-x`, KHÔNG sửa `config.toml`:**
+
+   ```text
+   lean (mặc định)  db + auth + storage + edge_runtime
+   full (khi cần)   thêm studio + inbucket + realtime + analytics
+   ```
+
+   `supabase start -x <service>` là cờ chính thức của CLI (nhận danh sách phẩy hoặc lặp cờ). `config.toml` đang commit **không được sửa tay rồi quên revert**.
+4. **Không tự chế `docker-compose` cho Supabase.** CLI đã quản container của nó; viết compose tay là tự tạo bản thứ hai lệch version. `compose.yaml` ở root **chỉ** chứa thứ CLI không cung cấp: hộp Deno. Hệ quả cần nói thẳng: **không có một file nào phủ hết Docker của repo** — xem 49.0.8.
+5. Mọi lệnh `up` phải có lệnh `down` tương ứng, ghi trong doc. Agent để container chạy qua đêm trên máy 15.7 GB RAM là hành vi sai.
+6. **§49 khi Tu duyệt plan này thì tốn 0 byte đĩa.** Đĩa chỉ bị tiêu ở D0.
+
+---
+
+### 49.0.3 Phạm vi — Tu chốt 2026-08-04
+
+```text
+LÀM
+  A1  Supabase local stack chạy được bằng chính CLI trong workspace (D0, D2)
+  A2  23 file supabase/tests/*_verification.sql CHẠY THẬT bằng psql (D3)
+  A3  4 file integration test chuyển sang local làm mặc định + bịt lỗ describe.skip (D4)
+  B1  Hộp Deno 2 ghim digest, khai trong `compose.yaml` ở ROOT (D5)
+  B2  Skill `kael-docker` — đường discovery chính, phủ cả Claude Code lẫn Codex (D6)
+
+KHÔNG LÀM — đã cân nhắc, lý do ở 49.9
+  C1  Dockerfile cho apps/api          → vi phạm 49.0.1
+  C2  Docker cho Expo/mobile           → build native cần macOS/Xcode
+  C3  `act` chạy GitHub Actions local  → CI hiện quá mỏng, không đáng
+  C4  devcontainer / Codespaces        → đổi cả môi trường làm việc của Tu
+  C5  Hộp Node/pnpm "khớp CI"          → Tu bác 2026-08-04, xem 49.9
+  C6  Convert 23 file sang pgTAP       → D3 chạy thẳng bằng psql, pgTAP là plan sau
+  C7  Xoá 72 file schema text-assertion → chúng bắt drift văn bản, giữ
+```
+
+---
+
+### 49.0.4 Branch contract
+
+```text
+Base:     main tại PR #149 (bb06d7dd)
+Nhánh:    claude/review-docker-folder-plan-59354d   ← Tu chốt 2026-08-04
+Worktree: .claude/worktrees/review-docker-folder-plan-59354d
+Commit:   KHÔNG. Git Rule (critical.md §3) — chờ Tu bảo commit.
+```
+
+**CẢNH BÁO cho phiên execute: §49 hiện là một sửa đổi CHƯA COMMIT của `governance/Plan.md` trong đúng worktree trên.** Nhánh `claude/review-docker-folder-plan-59354d` ở remote/HEAD vẫn đang trỏ `bb06d7dd` — tức là **checkout nhánh này ở chỗ khác sẽ KHÔNG thấy §49**. Phiên sau phải làm việc trong worktree đó, và **tuyệt đối không `git checkout governance/Plan.md`** — làm thế là xoá sạch plan. Lịch sử repo đã trả giá đúng kiểu này ở §44/§45/§46.
+
+Trước khi làm D0, agent in ra `git rev-parse --abbrev-ref HEAD` + `git status --short` và **so với dòng trên**. Lệch → dừng (stop-condition #5).
+
+**Dọn v0.1 trước khi execute:** bản v0.1 của §49 nằm **uncommitted** trong worktree `.claude/worktrees/infallible-gates-a8e813`. v0.2 (mục này) thay thế nó hoàn toàn. Phải `git checkout governance/Plan.md` ở worktree đó **trước khi** execute, nếu không repo có 2 bản §49 lệch nhau — đúng cái bẫy đã trả giá ở §44/§45/§46.
+
+---
+
+### 49.0.5 NON-STOP EXECUTION — RULE CỨNG
+
+> **Tu yêu cầu 2026-08-04: "Plan phải có một rule cứng là khi bắt đầu execute plan thì làm non-stop."**
+> Mục này là rule đó. Nó **thắng mọi cách đọc lỏng ở bất kỳ chỗ nào khác trong §49**. Nếu một câu ở mục khác có thể hiểu là "được phép dừng lại hỏi", thì câu đó sai và mục này đúng.
+
+**Định nghĩa non-stop, để không ai lách:** một lệnh execute của Tu = **một lượt**. Trong một lượt, agent chạy hết mọi phase thuộc lượt đó **rồi mới nói chuyện lại với Tu**. Kết thúc lượt sớm — vì bất kỳ lý do nào ngoài bảng stop-condition ở Luật 5 — là **vi phạm**, và cách xử lý là **chạy lại cho xong**, không phải giải thích.
+
+**Hai lượt của §49:**
+
+```text
+Lượt 1   D0                      spike đo thật, có gate Tu duyệt (lý do ở dưới)
+Lượt 2   D1 → D2 → D3 → D4 → D5 → D6    non-stop, một mạch
+```
+
+**Vì sao D0 tách riêng mà KHÔNG mâu thuẫn với rule này:** D0 dừng **không phải vì agent tự quyết dừng** — nó dừng vì **plan định sẵn một gate và Tu đã chốt gate đó 2026-08-04**. Rule non-stop cấm *agent* tự ý dừng; nó không cấm *Tu* đặt gate. D0 là một phép đo mà kết quả có thể buộc D2–D4 phải thiết kế lại (xem 49.1) — cho agent tự quyết ở đó là giao ẩn số nặng nhất cho máy. **Trong lượt 1, D0 vẫn chạy non-stop từ bước 1 tới bước 8, không dừng giữa chừng.**
+Nếu Tu muốn bỏ luôn gate này và chạy thẳng D0 → D6 một mạch: nói một câu, xoá đúng đoạn này, phần còn lại của rule giữ nguyên.
+
+**Luật 1 — Một lượt, hết phase của lượt đó, không xin duyệt giữa chừng.** Lượt 2 chạy `D1 → D2 → D3 → D4 → D5 → D6` liền mạch. KHÔNG dừng để hỏi "em làm tiếp D3 nhé?". KHÔNG report từng phần rồi chờ. KHÔNG tự kết thúc lượt vì "đã đủ nhiều".
+
+**Luật 1b — 7 câu sau đây là VI PHẠM, không phải lịch sự.** Liệt kê thẳng vì đây là những cách agent hay lách nhất:
+
+```text
+"Em đã xong D2, anh xem rồi em làm tiếp nhé?"        → vi phạm Luật 1
+"Phần còn lại em để anh quyết vì nó đụng nhiều file"  → vi phạm Luật 1
+"D3 hơi phức tạp, em đề xuất tách sang phiên sau"     → vi phạm Luật 4
+"Em dừng ở đây để tránh làm hỏng thêm"                → vi phạm Luật 5 (không thuộc 6 lý do)
+"Context sắp đầy nên em tạm dừng"                     → KHÔNG phải lý do dừng. Xem Luật 8.
+"Em thấy còn vấn đề X, có nên sửa luôn không?"        → ghi 49.12, KHÔNG hỏi, KHÔNG làm (Luật 3)
+"Đã hoàn thành phần lớn plan"                         → vi phạm Luật 6 + RULES #8
+```
+
+**Luật 2 — Đúng thứ tự, không đảo, không nhảy cóc.** D1 → D6 là thứ tự **phụ thuộc**: D3/D4 cần stack của D2; D6 chỉ mở quyền cho những lệnh D1–D5 đã chứng minh là chạy được.
+
+**Luật 3 — Không tự mở rộng phạm vi giữa lượt.** Thấy 72 file schema test nên viết lại, thấy `config.toml` nên dọn, thấy migration nào nên gộp — **ghi vào 49.12 Change Log, KHÔNG làm**.
+
+**Luật 4 — Không tự dừng vì "hết việc dễ".** D3 và D4 là hai phase khó nhất và chúng nằm **giữa** đúng theo thiết kế. Dừng sau D2 rồi báo "đã dựng xong stack" là vi phạm luật này + RULES #8.
+
+**Luật 5 — Chỉ được dừng vì 6 lý do sau, và phải báo Tu ĐÚNG lý do nào:**
+
+| # | Điều kiện dừng | Phải làm gì |
+|---|---|---|
+| 1 | **RAM**: Available < **4 GB** trước khi start, hoặc máy bắt đầu swap nặng khi stack chạy | Dừng. `supabase stop`. Báo số thật. **Không** ép chạy tiếp. |
+| 2 | **`supabase db reset` replay 208 migration FAIL** | Dừng tại D0. Báo migration nào vỡ + lỗi thật. Đây là **phát hiện thật**, không phải lỗi setup — xem 49.10 R1. **Không tự sửa migration.** |
+| 3 | Daemon Docker không lên sau **2 lần** thử | Dừng. Báo thẳng. **CẤM** âm thầm chuyển sang staging để "vẫn có kết quả". |
+| 4 | Gate của 1 phase đỏ mà sửa **2 lần** không xanh | Dừng tại phase đó. Báo output lỗi thật. **Không** đi tiếp rồi "sửa sau". |
+| 5 | Nhánh / HEAD lệch so với 49.0.4 | Dừng ngay, không sửa gì. |
+| 6 | **Đĩa**: C: còn < 20 GB (lưới an toàn, không phải ràng buộc thiết kế) | Dừng. `docker system prune`. Báo số GB trước/sau. |
+
+**Ngoài 6 lý do trên: chạy tiếp.** Khó ở 1 file thì giải quyết tại đó rồi đi tiếp; không lấy khó khăn kỹ thuật làm cớ kết thúc lượt. **Danh sách 6 lý do này là ĐÓNG** — agent không được tự thêm lý do thứ 7 rồi coi là hợp lệ.
+
+**Luật 6 — Report chỉ ở CUỐI.** Trong lượt chỉ log 1–2 dòng/phase. Báo cáo đầy đủ viết **một lần** sau phase cuối của lượt. Không viết giọng "hoàn thành" khi còn phase/gate chưa qua.
+
+**Luật 7 — Đo, đừng đoán.** Mọi con số về dung lượng, thời gian, số test, số migration trong báo cáo cuối phải là số **chạy ra**, không phải số chép từ plan này. Plan này ước lượng; D0 mới là sự thật. **v0.1 đã sai đúng ở chỗ này** — xem 49.12.
+
+**Luật 8 — Context đầy KHÔNG phải lý do dừng.** Phiên dài bị nén context là chuyện bình thường và có cơ chế xử lý sẵn; nó **không** nằm trong 6 lý do ở Luật 5. Khi thấy context sắp đầy: **đi tiếp**, giữ log gọn (Luật 6 đã yêu cầu 1–2 dòng/phase), ghi trạng thái phase hiện tại vào 49.12 để phiên sau nối được — **không** dùng nó làm cớ kết thúc lượt.
+
+**Luật 9 — Vi phạm rule này thì chạy lại, không giải trình.** Nếu một lượt kết thúc sớm mà không rơi vào 6 lý do ở Luật 5: cách xử lý đúng là **quay lại chạy tiếp từ phase còn dở cho tới hết lượt**. Không viết đoạn giải thích dài về vì sao đã dừng. Tu cần plan xong, không cần lý do.
+
+**Luật 10 — Rule này áp cho MỌI agent, không riêng ai.** Claude Code, Codex, hay bất kỳ agent nào nhận lệnh execute §49 đều chịu đúng 10 luật này. Bàn giao giữa agent giữa lượt **không** reset đồng hồ: agent nhận bàn giao phải chạy tiếp cho hết lượt, không được coi việc mình vừa vào là lý do để dừng lại hỏi.
+
+---
+
+### 49.0.6 Note & comment hygiene
+
+Áp nguyên bảng ở 47.0.8. Riêng §49 nhấn 3 điều:
+
+```text
+Quyết định / bẫy gặp lúc làm   →  49.12 Change Log     (KHÔNG tạo file .md mới trong repo)
+Snapshot / log pull / status   →  scratchpad ngoài repo (KHÔNG để lại trong repo)
+Tham chiếu plan trong script   →  CẤM. Đừng viết `# theo §49 D2` lên đầu file .sh/.ps1/.yml
+```
+
+**Tên file doc của thư mục là `INDEX.md`, KHÔNG phải `README.md`.** Quy ước chuẩn của repo, ghi ở [`AGENTS.md`](../AGENTS.md) Tier 2: *"`README.md` is a LOCKED filename — use `INDEX.md`"*. Thực tế repo khớp đúng: mọi doc cấp thư mục đều là `INDEX.md` (`docs/INDEX.md`, `docs/archive/INDEX.md`, `docs/memory/INDEX.md`, `docs/playbooks/INDEX.md`, `docs/test-logs/INDEX.md`); chỉ còn 3 `README.md` và đều là file gốc/legacy (`README.md`, `sandbox/README.md`, `sandbox/agent/workbench/README.md`). Vì `INDEX.md` không bị khoá nên **tạo `docker/INDEX.md` không cần duyệt riêng** — v0.3 nhầm chỗ này và đẻ ra một quyết định giả (D-49-A cũ), đã xoá.
+
+`docker/INDEX.md` là **ngoại lệ có chủ đích và là file duy nhất được phép nhắc §49** — nó là doc chính thức của thư mục, không phải note.
+
+---
+
+### 49.0.7 Skills mapping
+
+```text
+D0, D2, D3      kael-supabase  +  supabase-postgres-best-practices
+D3, D4          kael-tdd  (test phải đỏ trước khi xanh)
+D4              kael-security-sweep  (lỗ describe.skip + guard credential)
+D5              kael-diagnose  (deno check cần --config, xem 49.6)
+D6              kael-security-sweep  (allowlist quyền)  +  kael-doc-audit  (skill kael-docker
+                + 4 mặt discovery ở 49.0.8)
+D1              kael-doc-audit  (docker/INDEX.md khớp docs/INDEX.md)
+Toàn bộ         kael-core-hygiene  +  karpathy-guidelines  (always-on)
+```
+
+---
+
+### 49.0.8 Discovery contract — làm sao agent TỰ tìm thấy, không cần hỏi Tu
+
+Đây là yêu cầu gốc của Tu ("tiện đường dùng mỗi khi cần chứ không cần phải hỏi qua tôi"). v0.2 để nó phụ thuộc vào một ô checkbox tuỳ chọn — **đó là lỗi thiết kế**, vì nếu Tu không duyệt D-49-B thì Claude Code không có đường nào tìm ra `docker/`. Mục này đóng lỗ đó.
+
+**Tên file: `compose.yaml` ở ROOT, KHÔNG phải `docker.yaml`.**
+
+Tu muốn "hữu dụng và sử dụng được như `pnpm-lock.yaml`". Điều làm `pnpm-lock.yaml` hữu dụng không phải chỗ nó nằm ở root — mà là **pnpm TỰ tìm nó theo quy ước, không ai phải trỏ đường**. Docker Compose cũng có quy ước đúng như vậy, và thứ tự tìm là:
+
+```text
+compose.yaml  →  compose.yml  →  docker-compose.yaml  →  docker-compose.yml
+```
+
+**`docker.yaml` KHÔNG nằm trong danh sách này.** Đặt tên đó thì mọi lệnh đều phải viết `docker compose -f docker.yaml …` — tức là **mất đúng cái tính chất Tu muốn**. Đặt `compose.yaml` thì `docker compose run …` chạy được từ root mà không cần cờ nào. Đây là lý do kỹ thuật, không phải sở thích đặt tên. Tu vẫn có quyền override — xem D-49-F.
+
+**Nói thẳng một giới hạn: KHÔNG thể có một file duy nhất phủ hết Docker của repo này.** Hai hệ thống khác nhau sở hữu container:
+
+```text
+supabase/config.toml   →  Supabase CLI sở hữu (postgres, auth, storage, edge_runtime)
+compose.yaml           →  chỉ sở hữu hộp Deno (D5)
+```
+
+Gộp Supabase vào `compose.yaml` nghĩa là tự chế lại stack bằng tay → lệch version với CLI (đã cấm ở 49.0.2 mục 4). Vì vậy **`compose.yaml` là file agent CHẠY, còn `docker/INDEX.md` là bản đồ nói cho agent biết phần nào do CLI lo.** Thứ hợp nhất hai đường lại là **skill**, không phải file yaml.
+
+**5 mặt discovery — bắt buộc phủ đủ, không được để trống mặt nào:**
+
+| # | Mặt | Ai thấy | Bắt buộc? | Phase |
+|---|---|---|---|---|
+| 1 | **Skill `kael-docker`** (`.claude/skills/` + mirror `.agents/skills/`) | **Claude Code VÀ Codex** — skill được liệt kê tự động kèm description mỗi phiên, **không cần đọc doc nào** | **BẮT BUỘC. Đây là đường chính.** | D6 |
+| 2 | `compose.yaml` ở root | Bất kỳ ai chạy `docker compose` từ root | **BẮT BUỘC** | D5 |
+| 3 | Script `db:local:*` + `edge:check` trong root `package.json` | Agent nào grep `package.json` (đường quen thuộc nhất) | **BẮT BUỘC** | D2, D5 |
+| 4 | `AGENTS.md` Tier 2 + `docs/INDEX.md` | Codex, và agent đọc theo Map Process | **BẮT BUỘC** (2 file này không locked) | D1, D6 |
+| 5 | `CLAUDE.md` Tier 2 | Claude Code qua router Tier 1 | **TUỲ CHỌN** — locked doc, cần Tu duyệt (D-49-B) | D6 |
+
+**Luật then chốt:** mặt #1 và #3 **không phụ thuộc doc nào bị khoá**. Nghĩa là kể cả khi Tu không bao giờ duyệt D-49-B, agent vẫn tự tìm ra và tự dùng được. v0.2 sai ở chỗ đặt toàn bộ discovery của Claude Code lên mặt #5.
+
+**Vì sao skill là đường mạnh nhất:** skill được nạp vào danh sách sẵn có của agent kèm `description`, nên agent **thấy nó trước khi đọc bất kỳ file nào**. Và `scripts/check-skills-sync.mjs` đã ép `.claude/skills/` ↔ `.agents/skills/` phải khớp — nên **một skill phủ cả Codex lẫn Claude Code**, đúng yêu cầu Tu.
+
+---
+
+### 49.1 D0 — Spike đo thật (LƯỢT RIÊNG, dừng cứng khi xong)
+
+**Mục đích: biến ước lượng thành số đo, và trả lời câu hỏi chưa ai biết.** Toàn bộ giá trị của phần còn lại phụ thuộc câu hỏi *"`supabase db reset` có replay nổi 208 migration không?"*. Nếu không thì D2–D4 phải thiết kế lại.
+
+**Làm gì, đúng thứ tự:**
+
+1. Ghi `git rev-parse --abbrev-ref HEAD` + `git status --short` + Available RAM + free GB của C: **trước khi bắt đầu**.
+2. Bật Docker Desktop, chờ daemon ready (bật tay ở lượt này; helper là việc của D6).
+3. `pnpm supabase start -x studio,inbucket,realtime,vector,imgproxy` (profile lean). **KHÔNG sửa `config.toml`.** Nếu tên service nào CLI 2.98 không nhận → ghi lại tên đúng, đó là dữ kiện cho D2.
+4. Đo: **thời gian pull**, **GB đĩa tiêu tốn** (free trước − free sau), **RAM khi idle** (`docker stats`), **Available RAM của máy khi stack chạy**.
+5. `pnpm supabase db reset` → replay toàn bộ **208 migration** từ số 0, cộng `supabase/seed.sql` (146 dòng, `db.seed.enabled = true`). **Đây là gate thật của D0.**
+6. So `major_version = 17` trong config với Postgres của staging/prod. Lệch → `db diff` sẽ nói dối; ghi vào Change Log.
+7. Thử **một** file verification bất kỳ để chứng minh đường chạy của D3 tồn tại:
+   `docker exec -i supabase_db_nestscout psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/tests/<file>.sql`
+   (`project_id = "nestscout"` trong config.toml → container `supabase_db_nestscout`.)
+8. `pnpm supabase stop` + đo lại đĩa và RAM. Ghi cả số **sau khi dọn**.
+
+**Gate D0:**
+
+```text
+G0.1  Ghi ra 5 số thật: GB tiêu tốn · phút pull · RAM idle của stack ·
+      Available RAM của máy khi stack chạy · GB thu hồi sau stop
+G0.2  `supabase db reset` PASS trên 208 migration + seed.sql
+      → FAIL: dừng theo stop-condition #2, báo migration nào vỡ. KHÔNG tự sửa migration.
+G0.3  Bước 7 chạy được — chứng minh D3 khả thi trước khi cam kết D3
+G0.4  Available RAM khi stack chạy >= 4 GB  → không thì stop-condition #1
+G0.5  Danh sách tên service mà `-x` thực sự nhận, ghi nguyên văn vào 49.12
+```
+
+**DỪNG CỨNG SAU D0.** Report 5 số + kết quả G0.2 + G0.3. Chờ Tu ra lệnh mới chạy D1.
+
+**Vì sao G0.2 có thể ĐỎ, nói trước cho khỏi bất ngờ:** `20260711030833_six_service_casework_foundation.sql` có `alter type public.service_type add value if not exists 'hvac'`, và `20260711060000_six_service_taxonomy_verified_prices.sql` dùng `'hvac'::public.service_type`. Postgres **không cho dùng enum value mới trong cùng transaction**. Đó là lý do memory `project_loop_learning_production_fix` ghi "phải `db push` TỪNG FILE, CẤM batch". `db reset` chạy từng file nên **có thể** qua — nhưng **không được giả định**. Nếu đỏ: đó là lỗ hổng thật của lịch sử migration mà **chưa công cụ nào trong repo phát hiện được** — đúng loại giá trị mà §49 sinh ra để tìm.
+
+---
+
+### 49.2 D1 — Khung thư mục `docker/` + doc
+
+**Cây đích (chỉ tạo file, chưa pull gì):**
+
+```text
+compose.yaml           ← ROOT. Tên theo quy ước Compose tự tìm (49.0.8). Chứa hộp Deno (D5).
+docker/
+  README.md            mục đích · 49.0.1 ranh giới cứng · bảng lệnh · Tier C đã bác + lý do · cách dọn
+                       + bản đồ "phần nào do Supabase CLI lo, phần nào do compose.yaml lo"
+  profiles/
+    lean.md            danh sách -x + số đo RAM/đĩa thật từ D0
+    full.md            khi nào mới cần full
+  scripts/
+    up.ps1  down.ps1   wrapper gọi xuống `pnpm supabase`, KHÔNG tự chế compose cho Supabase
+    doctor.ps1         gate Available RAM + daemon + port + đĩa TRƯỚC khi chạy bất cứ gì
+    run-sql-tests.ps1  chạy 23 file supabase/tests/*.sql qua psql trong container  (D3)
+```
+
+**`compose.yaml` nằm ở ROOT, không nằm trong `docker/`** — vì Compose chỉ tự tìm file ở thư mục làm việc. Để nó trong `docker/compose/deno.yml` (như v0.2) thì mọi lệnh phải mang theo `-f docker/compose/deno.yml`, mất đúng tính chất "dùng được như `pnpm-lock.yaml`" mà Tu yêu cầu. Lý do đầy đủ ở 49.0.8.
+
+**Ràng buộc:**
+
+1. `docker/` **KHÔNG** là workspace package. Không đụng `pnpm-workspace.yaml`, không thêm `package.json` trong đó.
+2. Thêm `docker/` vào **`.easignore`** — không thì EAS build sẽ upload nó.
+3. `.gitignore`: chặn mọi thư mục volume/state do compose sinh ra. Chỉ commit file text.
+4. `scripts/lint-structure.mjs` có `ROOTS = ['apps/api/src','apps/mobile','packages/shared/src','supabase/functions']` → `docker/` **không bị ratchet 800 dòng chạm tới**. Đã kiểm, không cần sửa linter.
+5. `docs/INDEX.md`: thêm 1 dòng trỏ `docker/INDEX.md`.
+6. `doctor.ps1` gate theo **thứ tự**: daemon → Available RAM (>= 4 GB) → đĩa (>= 20 GB) → port. RAM đứng trước đĩa vì RAM mới là ràng buộc thật (49.0.2).
+
+**Gate D1:** `pnpm lint:structure` + `pnpm lint:comments` exit 0; `docker/` có mặt trong `.easignore`; mọi link trong `docker/INDEX.md` resolve; `doctor.ps1` chứng minh **cả hai đường** — máy đủ tài nguyên thì pass, giả lập thiếu RAM thì từ chối kèm số thật.
+
+---
+
+### 49.3 D2 — Supabase local stack thành lệnh dùng được
+
+**Nói thẳng trước: phần lớn đường này ĐÃ CHẠY ĐƯỢC HÔM NAY.** `scripts/run-supabase.ps1` là passthrough thuần, và `.claude/settings.json` đã cho `Bash(pnpm *)` → agent **hiện đã gọi được** `pnpm supabase start` / `db reset` / `gen types --local` mà không cần quyền mới. `supabase/seed.sql` đã có, `db.seed.enabled = true`. D2 **không phải xây mới** — D2 là **đặt tên, gate, và ghi lại** để agent tìm thấy và không tự chế cách khác.
+
+**Thêm script ở root `package.json`** (đi qua `scripts/run-supabase.ps1` như mọi script khác). Đây là **alias có gate**, và `docker/INDEX.md` phải nói rõ chúng là alias:
+
+```text
+db:local:up      doctor.ps1 → supabase start -x <danh sách lean từ D0>
+db:local:down    supabase stop
+db:local:reset   supabase db reset            ← replay 208 migration + seed.sql
+db:local:test    docker/scripts/run-sql-tests.ps1   ← D3
+db:local:types   supabase gen types --local > packages/shared/src/types/database.types.ts
+db:local:diff    supabase db diff
+db:local:lint    supabase db lint --local
+db:local:doctor  docker/scripts/doctor.ps1
+```
+
+**Profile:** quản bằng `-x` với danh sách tên service **D0 đã xác nhận CLI nhận**. Cấm sửa `config.toml` đang commit. Nếu CLI 2.98 không loại được service nào đó thì ghi thẳng giới hạn vào `docker/INDEX.md` chứ **không lách bằng cách sửa file rồi quên revert**.
+
+**Gate D2:** 8 script chạy được thật; `db:local:types` sinh ra file **khớp byte** với `database.types.ts` đang commit (lệch → đó là drift thật, ghi vào 49.12, **không** commit đè); `db:local:up` từ chối khởi động khi `doctor.ps1` đỏ; `pnpm test:shared` + `pnpm test:api` vẫn xanh.
+
+**Gate "đóng §47 B1.2" của v0.1 đã bị XOÁ (đừng nhầm với G14 của bản này).** §47 B1.2 **đã đóng rồi** — `docs/architecture/code-ownership-map.md:131` đã có sẵn lệnh `pnpm supabase gen types --local > packages/shared/src/types/database.types.ts` và `.gitattributes` đã tồn tại. v0.1 tưởng nó còn mở. Xem 49.12.
+
+---
+
+### 49.4 D3 — 23 file verification SQL chạy thật
+
+**Đây là phase có tỉ lệ giá trị / công sức cao nhất của §49.**
+
+**Hiện trạng đo thật:** 23 file `supabase/tests/*_verification.sql` tồn tại nhưng **không chỗ nào chạy chúng** — chúng chỉ bị `readFileSync` rồi `expect(sql).toContain(...)`. Repo đang kiểm *"câu SQL có được viết ra không"*, chứ chưa từng kiểm *"nó có làm đúng không"*.
+
+**Phát hiện quyết định hướng làm:** 23 file này **không phải pgTAP** (0 hit `plan()/is()/ok()`), và **không cần thành pgTAP**. Đo thật: **22/23 dùng `raise exception`** để tự-assert, **20/23 bọc `begin; … rollback;`** nên không để lại side-effect. Chúng là **script SQL tự-assert, chạy được ngay bằng psql**.
+
+**Vì vậy: chạy thẳng, KHÔNG convert.** Convert sang pgTAP là plan riêng (C6) — nó đổi nhiều công sức lấy **ít** coverage hơn ở lượt đầu.
+
+**Làm gì:**
+
+1. `docker/scripts/run-sql-tests.ps1`: lặp 23 file, mỗi file chạy
+   `docker exec -i supabase_db_nestscout psql -v ON_ERROR_STOP=1 -U postgres -d postgres < <file>`
+   Exit code khác 0 ở bất kỳ file nào → script đỏ. In tên file + lỗi thật, không nuốt.
+   **Tốn 0 byte đĩa thêm** — psql nằm sẵn trong container postgres, không cần image mới.
+2. **KHÔNG xoá 72 file text-assertion.** Chúng bắt drift văn bản — một giá trị riêng, và là thứ duy nhất chạy được trong CI không-Docker. psql là **lớp chồng lên**, không thay thế. Ai đề xuất xoá là hiểu sai D3.
+3. **Kỳ vọng thật: một số file SẼ ĐỎ, và đỏ là kết quả đúng.** Đây là lần đầu chúng được chạy. Mỗi file đỏ phải phân loại vào đúng 1 trong 3 nhóm, ghi vào 49.12:
+
+   ```text
+   (a) Script sai      — file viết sai, không phải schema sai
+   (b) Schema sai      — PHÁT HIỆN THẬT. Ghi lại, KHÔNG tự sửa migration. Báo Tu.
+   (c) Thiếu ngữ cảnh  — xem R7 bên dưới: chạy thiếu JWT claims
+   ```
+
+4. **KHÔNG tự sửa migration để ép test xanh.** Vi phạm luật này là biến §49 từ công cụ phát hiện thành công cụ che giấu.
+
+**Gate D3:** `pnpm db:local:test` chạy đủ 23 file và **báo cáo trung thực** số pass/fail — **không** yêu cầu 23/23 xanh; 72 file text-assertion **không bị đụng 1 byte** (chứng minh bằng `git diff --stat`); mỗi file đỏ được phân loại (a)/(b)/(c) trong 49.12; ít nhất 1 file được chứng minh **đã-đỏ-rồi-xanh** (sửa policy cho sai → đỏ → hoàn nguyên → xanh) để chứng minh runner thật sự bắt lỗi chứ không luôn báo xanh.
+
+---
+
+### 49.5 D4 — 4 integration test về local + bịt lỗ `describe.skip`
+
+**Tu chốt 2026-08-04: local là mặc định cho dev/agent; staging giữ lại cho CI nightly.**
+
+**Hiện trạng:** `apps/api/src/__tests__/integration/` có đúng 4 file — `learning-real-supabase.test.ts`, `real-supabase.test.ts`, `rls-per-actor.test.ts`, `worker-flow.test.ts` — **cả 4 tạo `createClient` bắn vào staging đang sống**. `integration.yml` phải đặt `concurrency: group: integration-staging, cancel-in-progress: false` vì test tạo và dọn **row dùng chung trên staging**.
+
+**Sửa lại một hiểu nhầm của v0.1:** guard prod **đã nằm trong chính test rồi** — cả 4 file có `const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'`. Cái nằm ở workflow là một phép assert URL bằng staging. v0.1 nói ngược.
+
+**Lỗ thật mà v0.1 bỏ sót — đây mới là việc của D4:** guard hiện dùng `const describeReal = skip ? describe.skip : describe`. Nghĩa là **trỏ vào production thì suite XANH IM LẶNG**, không đỏ. Thiếu env cũng vậy. Đó là **silent degradation — vi phạm RULES #8** đang nằm sẵn trong repo, và là lý do gate G6 của v0.1 ("trỏ prod → phải fail") **không thể pass** trên code hôm nay.
+
+**Làm gì:**
+
+1. 4 file đọc `SUPABASE_URL` từ env, **mặc định trỏ local**. Không hardcode.
+2. **Đổi `skip` thành `throw` cho trường hợp NGUY HIỂM, giữ `skip` cho trường hợp VẮNG MẶT.** Phân biệt rõ:
+
+   ```text
+   URL trỏ production ref            → THROW. Không bao giờ được xanh im lặng.
+   URL remote + key của local stack  → THROW. Không thử kết nối.
+   Không có env gì cả                → skip là hợp lệ (CI không-Docker), nhưng phải LOG rõ đã skip.
+   ```
+
+3. `integration.yml` **giữ nguyên** đích staging cho cron nightly — đó là thứ duy nhất bắt được drift giữa local và staging. Không đổi.
+4. Sau khi local thành mặc định, `concurrency` group vẫn cần cho nightly (vẫn 1 staging chung).
+
+**Gate D4:** 4/4 file chạy xanh trên local; guard chứng minh bằng **lần chạy fail thật** — trỏ `NEXT_PUBLIC_SUPABASE_URL` vào prod ref phải **đỏ**, không phải skip; `integration.yml` diff = 0 dòng đổi đích staging; chạy không env vẫn skip sạch và **log rõ**.
+
+---
+
+### 49.6 D5 — Hộp Deno 2 ghim digest
+
+**Vì sao cần:** `supabase/functions/**` chạy Deno 2 nhưng máy dev không có Deno bản ghim. Hộp này cho `deno check` / `lint` / `test` chạy đúng version.
+
+```text
+File    compose.yaml Ở ROOT — tên theo quy ước Compose tự tìm (49.0.8)
+Image   denoland/deno:2 GHIM THEO DIGEST (sha256), không dùng tag trôi
+Script  pnpm edge:check   →  deno check --config supabase/functions/deno.json ...
+Chạy    `docker compose run --rm deno …` từ root, KHÔNG cần cờ -f
+```
+
+**Bẫy đã trả giá rồi (memory `env_deno_check_needs_config`):** gọi `deno check` trần trên `mobile-api` cho ra **141 lỗi ma**. **Bắt buộc** truyền `--config`. Script phải nhúng sẵn `--config`, không để người dùng nhớ.
+
+**3 chi tiết triển khai dễ sai, phải chốt trong `compose.yaml`:**
+
+```text
+1. bind-mount repo vào container + `working_dir` đúng — không mount thì container không thấy code
+2. KHÔNG mount node_modules của Windows vào Linux container (binary khác nền tảng)
+3. `--rm` mặc định — hộp Deno là one-shot, không phải service chạy dài. Quên `--rm` là để rác.
+```
+
+**Gate D5:** `pnpm edge:check` exit 0; `docker compose run --rm deno …` chạy được **từ root mà không cần `-f`** (chứng minh quy ước tên hoạt động); digest ghi rõ trong `compose.yaml`; dung lượng image thật ghi vào 49.12.
+
+---
+
+### 49.7 D6 — Agent enablement (quyền + discovery)
+
+**Tu chốt 2026-08-04: agent tự bật Docker Desktop khi cần.** Đây là lựa chọn rủi ro hơn 2 lựa chọn kia; Tu chốt vậy thì làm vậy, nhưng phải ràng lại:
+
+```text
+Chờ có giới hạn      poll daemon tối đa 90s. Hết giờ = thất bại, KHÔNG chờ vô hạn.
+Tối đa 2 lần thử     lần 2 vẫn không lên → stop-condition #3.
+CẤM âm thầm fallback Không lên thì BÁO THẬT. Cấm lặng lẽ chuyển sang staging để "vẫn có kết quả".
+CẤM force            Không `kill` process Docker, không sửa setting Docker Desktop của Tu.
+Kiểm RAM TRƯỚC       doctor.ps1 chạy trước: Available RAM < 4 GB thì TỪ CHỐI start, báo Tu.
+```
+
+**Quyền trong `.claude/settings.json`: chỉ thêm phần CÒN THIẾU.** `Bash(pnpm *)` đã có sẵn → mọi lệnh `pnpm db:local:*` và `pnpm edge:check` **đã được phép**. Chỉ cần thêm đúng những lệnh `docker` trần:
+
+```text
+CHO   Bash(docker exec -i supabase_db_nestscout psql *)     ← D3
+CHO   Bash(docker compose run --rm *)  ·  Bash(docker compose up*)  ·  Bash(docker compose down*)
+      (không cần `-f`: compose.yaml ở root, Compose tự tìm — 49.0.8)
+CHO   Bash(docker ps*)  ·  Bash(docker stats*)  ·  Bash(docker system df*)
+KHÔNG Bash(docker *)  ← quá rộng: cho phép mount ổ C: vào container
+KHÔNG Bash(docker compose -f *)  ← cho phép trỏ ra compose file bất kỳ ngoài repo
+KHÔNG docker system prune -a --volumes  (huỷ dữ liệu ngoài phạm vi) — để Tu chạy tay
+```
+
+**Skill `kael-docker` — đây là phần quan trọng nhất của D6, không phải phần quyền.**
+
+Yêu cầu gốc của Tu là agent **tự dùng được, không phải hỏi**. Quyền chỉ giải quyết "được phép chạy"; skill giải quyết "**biết là có thứ đó để chạy**". Không có skill thì agent phải đọc trúng `docker/INDEX.md` mới biết — mà không gì bảo đảm nó đọc.
+
+```text
+Vị trí   .claude/skills/kael-docker/SKILL.md   (canonical)
+         .agents/skills/kael-docker/SKILL.md   (mirror — sinh bằng `pnpm skills:sync`)
+Gate     `pnpm skills:check` phải xanh (scripts/check-skills-sync.mjs ép 2 bản khớp)
+Số skill 29 → 30
+```
+
+`description` trong frontmatter phải nêu **trigger từ ngữ agent thật sự dùng**, vì đó là thứ quyết định skill có được kích hoạt hay không. Tối thiểu phải bắt được: chạy database local, chạy migration/RLS test thật, `db reset`, regen `database.types.ts`, `deno check` cho Edge, và cả từ khoá trần "docker".
+
+Nội dung skill phải **chỉ đường, không chép lại doc**: bảng lệnh `db:local:*` + `edge:check`, luật `doctor` trước khi start, luật bắt buộc `down` sau khi xong, ranh giới 49.0.1 (dev-dependency, KHÔNG deployment), và trỏ tới `docker/INDEX.md` cho chi tiết. Không nhắc số hiệu `§49` trong skill — skill là hướng dẫn thường trực, không phải note của một plan.
+
+**Đồng bộ router — phủ đủ 5 mặt ở 49.0.8:**
+
+```text
+BẮT BUỘC   skill kael-docker (mặt #1)  ·  compose.yaml ở root (mặt #2)
+BẮT BUỘC   script db:local:* + edge:check trong root package.json (mặt #3)
+BẮT BUỘC   AGENTS.md Tier 2 + docs/INDEX.md, 1 dòng mỗi file (mặt #4) — cả 2 KHÔNG locked
+TUỲ CHỌN   CLAUDE.md Tier 2 (mặt #5) — locked doc, chờ Tu duyệt D-49-B
+```
+
+**Không được coi mặt #5 là điều kiện cần.** Nếu Tu không duyệt D-49-B, 4 mặt còn lại vẫn đủ để Claude Code lẫn Codex tự tìm ra và tự dùng. v0.2 đã sai đúng ở chỗ này.
+
+**Gate D6:** helper bật daemon chứng minh cả 2 đường — thành công, và **thất bại đúng cách** (tắt Docker Desktop, chạy, phải fail trong 90s kèm thông báo rõ); `.claude/settings.json` không chứa `Bash(docker *)` và không chứa `Bash(docker compose -f *)`; `pnpm skills:check` xanh với 30 skill; **4 mặt discovery bắt buộc đều có mặt, chứng minh bằng cách liệt kê đường dẫn thật**; agent chạy được trọn `db:local:up → db:local:test → db:local:down` mà không cần Tu can thiệp.
+
+---
+
+### 49.8 Definition of Done
+
+```text
+G1   D0 xuất ra 5 số đo thật và ĐÃ ĐƯỢC TU DUYỆT trước khi D1 bắt đầu
+G2   `supabase db reset` PASS trên 208 migration + seed — hoặc FAIL kèm tên migration vỡ + lỗi thật
+G3   8 script `db:local:*` chạy được; `db:local:types` khớp byte database.types.ts (hoặc drift được ghi)
+G4   23 file verification SQL CHẠY THẬT; số pass/fail báo cáo trung thực; mỗi file đỏ phân loại (a)/(b)/(c)
+G5   Runner D3 chứng minh đã-đỏ-rồi-xanh trên >= 1 file
+G6   Lớp schema text-assertion vẫn XANH THẬT (`pnpm test:api` exit 0), KHÔNG chỉ là
+     "không bị đụng byte nào". Sửa một assertion CHỈ hợp lệ khi nó bám theo một refactor
+     cố ý và giữ nguyên mục đích kiểm tra; nới lỏng / xoá assertion là vi phạm.
+     — v0.6 trượt đúng chỗ này: file không bị sửa nên gate báo xanh, nhưng test ĐỎ thật.
+G7   4 integration test xanh trên local
+G8   Trỏ vào prod ref → suite ĐỎ (không phải skip). Chứng minh bằng lần chạy fail thật
+G9   integration.yml giữ nguyên đích staging cho nightly — 0 dòng đổi đích
+G10  `pnpm edge:check` exit 0 qua hộp Deno ghim digest
+G11  `docker compose run --rm deno …` chạy được từ ROOT mà KHÔNG cần cờ `-f`
+     — bằng chứng quy ước tên `compose.yaml` hoạt động (49.0.8)
+G12  doctor.ps1 gate RAM chứng minh CẢ đường pass LẪN đường từ-chối-đúng-cách
+G13  Helper bật Docker chứng minh CẢ đường thành công LẪN đường thất-bại-đúng-cách trong 90s
+G14  `.claude/settings.json` chỉ thêm lệnh docker trần; KHÔNG có `Bash(docker *)`,
+     KHÔNG có `Bash(docker compose -f *)`
+G15  Skill `kael-docker` có ở CẢ `.claude/skills/` lẫn `.agents/skills/`;
+     `pnpm skills:check` xanh với 30 skill
+G16  4 mặt discovery BẮT BUỘC (49.0.8 #1–#4) đều có mặt, liệt kê đường dẫn thật.
+     Mặt #5 (CLAUDE.md) KHÔNG phải điều kiện cần
+G17  `docker/` + `compose.yaml` có trong `.easignore`; `pnpm lint:structure` + `pnpm lint:comments` exit 0
+G18  0 dòng code runtime bị đụng (apps/mobile, supabase/functions/**/*.ts, packages/shared/src)
+     — trừ đúng 4 file integration test ở D4
+G19  Bản v0.1 của §49 trong worktree infallible-gates-a8e813 đã được hoàn nguyên
+```
+
+---
+
+### 49.9 Out of scope — đã cân nhắc, KHÔNG làm
+
+Ghi ở đây **và** trong `docker/INDEX.md`, để phiên sau khỏi "phát hiện lại" rồi làm.
+
+| | Vì sao KHÔNG |
+|---|---|
+| **C1** `Dockerfile` cho `apps/api` | Vi phạm 49.0.1 + RULES #0: đẻ runtime thứ hai. Đã bị bác ở **§46.0.2 D1** (2026-08-02). |
+| **C2** Docker cho Expo/mobile | Build native cần macOS/Xcode và thiết bị thật; Docker không giải quyết. EAS đã lo. |
+| **C3** `act` (chạy GitHub Actions local) | CI hiện chỉ có 3 workflow: comment-discipline, security (subset guardrail + skills-sync + lint-structure), integration nightly. **Không có job type-check, không có job unit test đầy đủ.** Tái hiện một CI mỏng như vậy không đáng vài GB. |
+| **C4** devcontainer / Codespaces | Đổi cả môi trường làm việc của Tu, không phải "thêm 1 công cụ". Ngoài phạm vi Tu yêu cầu. |
+| **C5** Hộp Node/pnpm "khớp CI" | **Tu bác 2026-08-04.** Lý do trong v0.1 sai: v0.1 nói "mọi script root bọc PowerShell nên không tái hiện được CI", nhưng **không workflow nào gọi script root** — cả 3 gọi thẳng `node scripts/*.mjs` và `pnpm --filter @nestscout/api exec vitest run`, chạy được trên Windows hôm nay. Delta thật là **OS** (case sensitivity / path separator), cộng với C3 ở trên thì giá trị còn lại quá nhỏ. |
+| **C6** Convert 23 file sang pgTAP | D3 chạy thẳng bằng psql, được 23 file thật mà viết lại 0 dòng. pgTAP chỉ thêm format TAP — plan riêng nếu sau này cần. |
+| **C7** Xoá 72 file schema text-assertion | Chúng bắt drift văn bản và chạy được trong CI không-Docker. Giữ. |
+
+---
+
+### 49.10 Rủi ro đã biết
+
+```text
+R1  `db reset` vỡ trên 208 migration
+    Enum add-value ở 20260711030833 ('hvac'/'upholstery'/'handyman') bị 20260711060000 dùng
+    ngay sau ('hvac'::public.service_type). Lần trước phải push TỪNG FILE, "CẤM batch".
+    D0 đo, không đoán. Vỡ = phát hiện thật, không phải lỗi setup.
+
+R2  major_version 17 lệch remote
+    `db diff` sẽ nói dối mà vẫn exit 0. D0 bước 6 so trước, trước khi ai tin vào output diff.
+
+R3  Key demo của local lẫn sang staging/prod
+    Local stack phát JWT/anon key CỐ ĐỊNH ai cũng biết. Guard D4 phải THROW, không skip.
+    Đây là rủi ro an ninh thật, không phải phiền toái.
+
+R4  RAM 15.7 GB tổng, Available lúc đo 1.1 GB; Supabase khuyến nghị >= 7 GB
+    ĐÂY LÀ RÀNG BUỘC SỐ 1, không phải đĩa. Profile lean mặc định + doctor gate RAM +
+    stop-condition #1. Nếu lean vẫn quá nặng thì ghi thẳng và bàn lại, đừng bảo Tu "đóng bớt app".
+
+R5  Đĩa — KHÔNG còn là ràng buộc thiết kế
+    C: free 100.4 GB (v0.1 ghi 43.9 GB là SAI). Giữ stop-condition #6 làm lưới an toàn thôi.
+
+R6  Agent để container chạy quên tắt
+    doctor.ps1 cảnh báo; docker/INDEX.md ghi rõ luật. Không có cơ chế cưỡng chế — chấp nhận,
+    ghi ra chứ không giả vờ là đã giải quyết.
+
+R7  23 file verification chạy THIẾU NGỮ CẢNH JWT
+    Đo thật: 14 file dùng `set local role authenticated;`, 2 file `set local role service_role;`,
+    nhưng 0 file set `request.jwt.claims` → `auth.uid()` trả NULL khi chạy.
+    Hệ quả: assertion kiểu "phải bị từ chối" có thể XANH VÌ LÝ DO SAI (uid null nên deny),
+    còn assertion "phải cho phép" sẽ đỏ. D3 phải phân loại nhóm (c) cho đúng ca này và
+    KHÔNG được tính chúng là bằng chứng RLS đúng. Bổ sung set_config là plan sau, không phải D3.
+```
+
+---
+
+### 49.11 Cần Tu xác nhận
+
+```text
+[✔] Tu chốt 2026-08-04 — phạm vi: Tier A gọn + D5 hộp Deno. Bỏ hộp Node/pnpm (C5)
+[✔] Tu chốt 2026-08-04 — D3 chạy 23 file bằng psql trước; pgTAP để plan sau
+[✔] Tu chốt 2026-08-04 — D0 là lượt riêng có điểm dừng cứng; sau đó non-stop D1 → D6
+[✔] Tu chốt 2026-08-04 — integration test: local mặc định, staging giữ cho CI nightly
+[✔] Tu chốt 2026-08-04 — agent tự bật Docker Desktop khi cần (đã ràng ở D6)
+[✔] D-49-A  XOÁ — đây là quyết định GIẢ do v0.3 nhầm quy ước. Tu sửa 2026-08-04:
+            *"README.md không phải là file để path mọi chỉ dẫn. Cậu nhầm rồi."*
+            Quy ước chuẩn của repo (`AGENTS.md` Tier 2): **`README.md` is a LOCKED
+            filename — use `INDEX.md`**. Doc của thư mục là **`docker/INDEX.md`**,
+            và `INDEX.md` KHÔNG bị khoá → không cần duyệt gì. Xem 49.0.6.
+[✔] D-49-B  Tu duyệt 2026-08-04 — thêm 1 dòng Tier 2 vào `CLAUDE.md` trỏ `docker/`.
+            Vì `CLAUDE.md` là locked doc, sửa nó vẫn cần Tu xác nhận LẠI ngay tại
+            thời điểm execute (Lock Notice) — đây là duyệt về NỘI DUNG, không phải
+            giấy phép sửa file khoá không cần hỏi.
+[✔] D-49-C  Tu duyệt 2026-08-04 — tên thư mục là `docker/`.
+[✔] D-49-D  Tu duyệt 2026-08-04 — ngưỡng RAM dừng: Available >= 4 GB (stop-condition #1).
+[✔] D-49-F  Tu duyệt 2026-08-04 — tên file compose ở root là **`compose.yaml`**, KHÔNG phải
+            `docker.yaml`. Lý do: Docker TỰ TÌM `compose.yaml` (thứ tự: compose.yaml →
+            compose.yml → docker-compose.yaml → docker-compose.yml); `docker.yaml` không
+            nằm trong danh sách nên mọi lệnh sẽ phải kèm `-f`, mất đúng tính chất
+            "dùng được như pnpm-lock.yaml" mà Tu yêu cầu. Gate G11 chứng minh điều này.
+[✔] Tu chốt 2026-08-04 — NON-STOP là rule cứng. Đã viết vào 49.0.5 (10 luật).
+            Gate D0 giữ nguyên vì đó là gate Tu đặt, không phải agent tự dừng.
+[✔] D-49-E  Tu chốt 2026-08-04 — nhánh execute là **`claude/review-docker-folder-plan-59354d`**,
+            làm trong worktree `.claude/worktrees/review-docker-folder-plan-59354d`.
+            Agent KHÔNG tạo nhánh mới. Xem cảnh báo uncommitted ở 49.0.4.
+[✔] v0.1 ở worktree infallible-gates-a8e813 ĐÃ hoàn nguyên (G19) — kiểm 2026-08-04:
+    `git status` trống, `grep "^## 49\."` = 0. Sweep 16 worktree: chỉ còn 1 bản §49.
+[✔] Tu đưa prompt execute 2026-08-04 → D0 CHẶN ở bước 1 (RAM + worktree + thiếu
+    node_modules). Tu chốt tiếp 2026-08-05: ghi notes phần lệch + execute theo
+    thực tế → D1–D6 đã build, gate không cần Docker đã chạy. Xem v0.6 ở 49.12.
+[ ] Tu gỡ 2 blocker để D0 + các gate cần Docker chạy được:
+    (1) RAM >= 4 GB khả dụng   (2) `pnpm install` ở worktree execute
+[ ] Tu dán khối quyền docker vào `.claude/settings.json` (agent bị classifier
+    chặn tự sửa file quyền của chính nó — G14)
+[ ] Tu duyệt sửa `CLAUDE.md` (locked): Tier 3 29 → 30 skill, và dòng Tier 2
+    trỏ `docker/` theo D-49-B
+[ ] Tu bảo commit (Git Rule — agent không tự commit)
+```
+
+---
+
+### 49.12 Change Log
+
+| Ngày | Người sửa | Thay đổi |
+|---|---|---|
+| 2026-08-04 | Claude Code | v0.1 — bản đầu, viết trong worktree `infallible-gates-a8e813`, CHƯA COMMIT. Số đo và cấu trúc phần lớn đúng, nhưng 5 chỗ sai đã được v0.2 sửa. Giữ dòng này làm hồ sơ. |
+| 2026-08-04 | Claude Code | v0.2 — audit lại v0.1 trên main `bb06d7dd`. **Phần v0.1 ĐÚNG (verify thật):** 208 migration · 23 file `*_verification.sql` · 75 schema test / 72 `readFileSync` / 0 DB client · 4 integration test đều `createClient` · `supabase@^2.98.2` devDep của `@nestscout/api` · `major_version=17` `deno_version=2` · studio+inbucket+realtime+analytics đều enabled · Docker CLI 29.6.1 daemon tắt, WSL2 `docker-desktop` Stopped · `lint-structure.mjs` ROOTS không chạm `docker/` · `.easignore` tồn tại · §46.0.2 D1 bác `server.ts` là thật · rủi ro enum R1 chính xác tới từng file · `supabase start -x` đúng là cờ chính thức. **5 chỗ SAI đã sửa:** (1) **Đĩa** — v0.1 ghi C: free 43.9 GB và gọi đó là "ràng buộc thiết kế số 1"; đo lại **100.4 GB free** (used 375.3 / total 475.7, cùng ổ). Sai 2.3×. v0.2 đảo gate sang **RAM** (Supabase khuyến nghị >= 7 GB; máy 15.7 GB tổng, Available 1.1 GB lúc đo) và hạ đĩa xuống lưới an toàn. (2) **§47 B1.2 đã đóng rồi** — `docs/architecture/code-ownership-map.md:131` đã có lệnh regen và `.gitattributes` đã tồn tại; gate G14 của v0.1 là gate rỗng, đã xoá. (3) **D4 nói ngược** — guard prod đã nằm trong cả 4 test file (`PRODUCTION_REF`), workflow chỉ assert URL; nhưng v0.1 **bỏ sót lỗ thật**: guard dùng `describe.skip` nên trỏ vào prod thì suite **xanh im lặng** — vi phạm RULES #8, và làm gate G6 của v0.1 không thể pass. v0.2 đổi thành throw cho ca nguy hiểm. (4) **Hộp Node lý do sai** — **không workflow nào gọi script root PowerShell**; cả 3 gọi thẳng `node scripts/*.mjs` và `pnpm --filter … exec vitest`. Cộng với việc CI **không có job type-check và không có job unit test đầy đủ**, Tu bác → C5. (5) **D3 chọn đường đắt** — 23 file **không phải pgTAP** (0 hit `plan()/is()/ok()`) nhưng **22/23 dùng `raise exception`** và **20/23 bọc `begin…rollback`**, tức chạy được ngay bằng psql. v0.1 định convert 2–3 file sang pgTAP; v0.2 chạy thẳng cả 23 qua `docker exec … psql`, viết lại 0 dòng, tốn 0 byte đĩa thêm (psql nằm sẵn trong container `supabase_db_nestscout`, `project_id = "nestscout"`). **Phát hiện mới → R7:** 14 file `set local role authenticated;` + 2 file `service_role`, nhưng **0 file set `request.jwt.claims`** → `auth.uid()` NULL khi chạy, nên assertion "phải bị từ chối" có thể xanh vì lý do sai. **Đơn giản hoá:** `run-supabase.ps1` là passthrough thuần và `.claude/settings.json` đã cho `Bash(pnpm *)` → agent **hôm nay đã chạy được** `pnpm supabase start/db reset/gen types --local`; `supabase/seed.sql` (146 dòng) đã có và `db.seed.enabled = true`. D2 vì vậy là **đặt tên + gate + ghi lại**, không phải xây mới; D7 cũ chỉ còn cần thêm lệnh `docker` trần. **Cấu trúc:** 8 phase → 7 (D0 tách lượt riêng + D1→D6 non-stop), theo Tu chốt 2026-08-04. |
+| 2026-08-04 | Claude Code | v0.3 — Tu hỏi 2 câu: *"khi tạo docker.yaml thì Plan này covers đủ chưa?"* và *"đã có Path chỉ dẫn agent dùng vào file đó chưa?"*, kèm yêu cầu *"hữu dụng và sử dụng được như `pnpm-lock.yaml`"*. Kiểm lại thì **cả hai đều là lỗ thật của v0.2**. **(1) Tên file — `docker.yaml` phản tác dụng.** Docker Compose chỉ tự tìm theo thứ tự `compose.yaml → compose.yml → docker-compose.yaml → docker-compose.yml`; **`docker.yaml` không nằm trong danh sách**, nên mọi lệnh sẽ phải kèm `-f docker.yaml` — mất đúng tính chất làm `pnpm-lock.yaml` hữu dụng (công cụ tự tìm, không ai phải trỏ đường). v0.3 chốt **`compose.yaml` ở ROOT**, đưa quyết định ngược lại cho Tu ở **D-49-F**. Kèm theo: v0.2 để compose ở `docker/compose/deno.yml` — sai cùng một lý do, đã chuyển ra root. **(2) Discovery — v0.2 đặt toàn bộ đường tìm của Claude Code lên một ô checkbox tuỳ chọn.** v0.2 viết "CLAUDE.md là locked doc → cần Tu duyệt riêng; không duyệt thì Claude Code khó tự tìm thấy hơn". Đó là **mâu thuẫn với chính mục tiêu §49** ("không cần phải hỏi qua tôi"). v0.3 thêm **49.0.8 Discovery contract**: 5 mặt, trong đó 4 mặt BẮT BUỘC và **không mặt nào phụ thuộc doc bị khoá** — skill `kael-docker`, `compose.yaml` ở root, script trong root `package.json`, `AGENTS.md` + `docs/INDEX.md`. Mặt #5 (`CLAUDE.md`) hạ xuống tuỳ chọn. **(3) Thêm B2 — skill `kael-docker`** (29 → 30 skill), đưa vào D6 và đổi tên D6 thành "Agent enablement (quyền + discovery)". Skill là đường mạnh nhất vì nó được liệt kê kèm `description` mỗi phiên **trước khi agent đọc bất kỳ file nào**, và `scripts/check-skills-sync.mjs` đã ép `.claude/skills/` ↔ `.agents/skills/` khớp nên **một skill phủ cả Codex lẫn Claude Code** — đúng yêu cầu Tu. **(4) Giới hạn phải nói thẳng:** KHÔNG thể có một file duy nhất phủ hết Docker của repo, vì `supabase/config.toml` (CLI sở hữu postgres/auth/storage/edge_runtime) và `compose.yaml` (chỉ hộp Deno) là hai hệ thống khác nhau; gộp lại = tự chế stack = lệch version, đã cấm ở 49.0.2 mục 4. Thứ hợp nhất hai đường là **skill**, không phải file yaml. **(5) Thêm 3 chi tiết triển khai `compose.yaml`** dễ sai: bind-mount + `working_dir`, KHÔNG mount `node_modules` của Windows vào container Linux, mặc định `--rm`. **Allowlist siết thêm:** chặn `Bash(docker compose -f *)` (cho phép trỏ ra compose file ngoài repo). **Gate:** G10–G19 (cũ G10–G16), thêm G11 (chạy được từ root không cần `-f`), G15 (skills:check xanh 30 skill), G16 (4 mặt discovery bắt buộc có mặt). |
+| 2026-08-04 | Claude Code | v0.4 — Tu duyệt **D-49-F = `compose.yaml`** (đóng quyết định mở duy nhất của v0.3), và yêu cầu: *"Plan phải có một rule cứng là khi bắt đầu execute plan thì làm non-stop."* **49.0.5 viết lại thành RULE CỨNG**, đổi tiêu đề từ "Execution Contract" thành "NON-STOP EXECUTION — RULE CỨNG", và tuyên bố rõ nó **thắng mọi cách đọc lỏng ở bất kỳ chỗ nào khác trong §49**. Bổ sung: **định nghĩa non-stop** (một lệnh execute của Tu = một lượt; kết thúc lượt sớm ngoài 6 stop-condition = vi phạm, xử lý bằng cách chạy lại chứ không giải trình); **Luật 1b** liệt kê thẳng **7 câu vi phạm** mà agent hay dùng để lách ("anh xem rồi em làm tiếp nhé?", "context sắp đầy nên em tạm dừng", "đã hoàn thành phần lớn plan"…); **Luật 8** — context đầy KHÔNG phải lý do dừng, đi tiếp và giữ log gọn; **Luật 9** — vi phạm thì chạy lại, không viết đoạn giải trình; **Luật 10** — rule áp cho mọi agent, bàn giao giữa lượt KHÔNG reset đồng hồ. Bảng 6 stop-condition được tuyên bố là **danh sách ĐÓNG**, agent không được tự thêm lý do thứ 7. **Quan hệ với gate D0:** giữ nguyên, và nói rõ vì sao không mâu thuẫn — rule cấm *agent* tự dừng, không cấm *Tu* đặt gate; trong lượt 1, D0 vẫn chạy non-stop từ bước 1 tới bước 8. Nếu Tu muốn bỏ luôn gate đó để chạy thẳng D0 → D6 một mạch thì xoá đúng một đoạn, phần còn lại của rule giữ nguyên. |
+| 2026-08-04 | Claude Code | v0.5 — **Tu bắt một lỗi quy ước thật:** *"README.md không phải là file để path mọi chỉ dẫn. Cậu nhầm rồi. Tìm và match đúng chỗ nha."* Tra lại: quy ước chuẩn nằm ở **`AGENTS.md` Tier 2** — *"`README.md` is a LOCKED filename — **use `INDEX.md`**"* — và `CLAUDE.md` Tier 2 nói cùng ý (*"`README.md` is a LOCKED filename at any path"*). Thực tế repo khớp: **5/5 doc cấp thư mục đều là `INDEX.md`** (`docs/`, `docs/archive/`, `docs/memory/`, `docs/playbooks/`, `docs/test-logs/`), và chỉ còn **3 `README.md`** đều là file gốc/legacy (`README.md`, `sandbox/README.md`, `sandbox/agent/workbench/README.md`). Hệ quả: v0.1→v0.4 đặt tên `docker/README.md` là **sai quy ước**, và tệ hơn — nó **đẻ ra một quyết định giả D-49-A** ("Tu duyệt tạo README.md?") cho một thứ đáng lẽ không cần duyệt. **Đã sửa:** đổi toàn bộ **12 chỗ** `docker/README.md` → `docker/INDEX.md`; viết lại 49.0.6 để nêu quy ước + bằng chứng thay vì nhắc luật khoá; **xoá D-49-A**. **Tu duyệt phần còn lại 2026-08-04:** D-49-B (thêm dòng Tier 2 vào `CLAUDE.md` — vẫn cần Tu xác nhận LẠI lúc execute vì Lock Notice), D-49-C (`docker/`), D-49-D (RAM >= 4 GB), D-49-E (Tu chỉ tên nhánh lúc "go"). **Trạng thái: mọi quyết định đã chốt; chỉ còn tên nhánh + lệnh "go".** |
+| 2026-08-05 | Claude Code | v0.6 — **lượt execute thứ nhất. D0 KHÔNG chạy được; D1–D6 đã build artifact, gate nào không cần Docker đều đã chạy thật.** **3 blocker.** (1) **Stop-condition #5 bắn ngay bước 1:** phiên được mở ở worktree `docker-local-dev-d0-2cae19` (nhánh `claude/docker-local-dev-d0-2cae19`), không phải worktree pin ở 49.0.4. Cả hai cùng ở `bb06d7dd`; §49 chỉ tồn tại ở worktree pin. Đã chuyển sang làm trong worktree pin, **không checkout / không stash / không sửa Plan.md ngoài mục này**. (2) **Stop-condition #1:** Available RAM đo 6 sample cách 5s = 2.96/2.83/2.78/2.77/2.76 GB (avg 2.81), đo lại sau đó 3.22 → 3.71 GB — **dưới ngưỡng 4 GB ở mọi lần đo**, trước cả khi bật Docker. Committed 22.53/46.71 GB. Daemon TẮT, WSL2 `docker-desktop` Stopped. (3) **Blocker KHÔNG có trong plan: cả hai worktree đều thiếu `node_modules`.** `run-supabase.ps1` dò 6 đường dẫn CLI, **6/6 absent** ở cả hai; chỉ repo chính có `node_modules` và nó đang ở nhánh khác (`1002d89a`). Nên khẳng định ở 49.3 *"phần lớn đường này ĐÃ CHẠY ĐƯỢC HÔM NAY"* đúng với repo chính, **sai với worktree execute** — muốn chạy D0 phải `pnpm install` trước, plan chưa cấp phép việc đó. **5 chỗ plan lệch thực tế, Tu cho phép sửa theo thực tế 2026-08-05:** (a) **"23 file `supabase/tests/*_verification.sql`" SAI** — thật ra **22** file khớp glob đó; tổng **23** file `.sql`, file thứ 23 là `staging_accept_privacy_guard.sql` không có hậu tố. `run-sql-tests.ps1` vì vậy glob `*.sql` (23 file), không glob `*_verification.sql`. (b) **`denoland/deno:2` KHÔNG TỒN TẠI** — Docker Hub trả 404 cho tag `2`. Tag thật: `2.9.4`/`latest`/`alpine`/`debian`/`ubuntu`/`distroless`. Đã ghim `denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498` (OCI image index, đa kiến trúc; image 75,076,859 byte ≈ 71.6 MB). (c) **`supabase/functions/deno.json` KHÔNG TỒN TẠI** — có **4 file deno.json theo từng function** (`kael-learning-monitor`, `kael-media-retention`, `mobile-api`, `sepay-webhook`); `map-proxy-spike` có `index.ts` nhưng không có config. `edge:check` vì vậy lặp 4 function, mỗi cái `--config` riêng, thay vì một config chung. (d) **Docker Desktop cài user-local**: `%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe`, KHÔNG ở `C:\Program Files\Docker\`. Helper auto-start ở D6 mà hardcode Program Files sẽ trượt. (e) **Thêm 1 file ngoài "đúng 4 file integration test"**: `apps/api/src/__tests__/integration/integration-target.ts` — guard dùng chung thay vì chép 25 dòng × 4. G18 vẫn giữ (0 dòng runtime bị đụng: `apps/mobile`, `supabase/functions/**`, `packages/shared/src` đều 0). **2 việc CHẶN, cần Tu:** (i) **`.claude/settings.json` KHÔNG sửa được** — classifier chặn agent tự nới quyền của chính nó. Đúng nguyên tắc, không lách. G14 chưa áp; khối quyền cần thêm đã ghi ra để Tu tự dán. (ii) **`CLAUDE.md` là locked doc** — Tier 3 vẫn ghi 29 skill trong khi thực tế đã 30, và dòng Tier 2 trỏ `docker/` (D-49-B) chưa thêm. `AGENTS.md` (không locked) đã cập nhật 30 = Everyday 19 + Design 11. **Gate chạy thật, xanh:** `check-skills-sync.mjs` (30 ↔ 30 byte-identical), `lint-structure.mjs` (842 file, `docker/` không bị ratchet chạm như 49.2 dự đoán), `check-comment-discipline.mjs` (clean), G6 (schema text-assertion 0 dòng), G9 (`integration.yml` 0 dòng), G18 (runtime 0 dòng). **G12 chứng minh CẢ HAI đường bằng số thật**: floor 4 GB → REFUSED kèm "3.42 GB below the 4 GB floor", exit 1; floor 2 GB → hàng RAM lật OK ("3.71 GB (min 2)"). Đường exit-0 trọn vẹn chưa chứng minh được vì daemon tắt. **Guard D4 chứng minh bằng harness chạy thẳng vào source thật** (`node --experimental-strip-types`): 6/6 — prod ref → THROW (2 ca), key demo local nhắm host remote → THROW, không env → mặc định LOCAL, host remote thiếu key → skip, staging đủ key → ok. Tức lỗ `describe.skip` xanh-im-lặng đã bịt. **Gate CHƯA chạy được, đều vì Docker/node_modules:** G0.1–G0.5 toàn bộ, G2 (`db reset` 208 migration — **câu hỏi trung tâm của §49 vẫn chưa có lời đáp**, bẫy enum R1 còn nguyên), G3, G4, G5, G7, nửa sau G8 (vitest đỏ thật), G10, G11, G13. |
+| 2026-08-05 | Claude Code | v0.7 — **chạy `pnpm install` ở worktree execute rồi mở đúng 2 gate mà v0.6 không mở được, và chúng bắt được 2 regression THẬT do D4 gây ra.** Baseline đầu tiên đo được: `test:api` **5 file ĐỎ / 50 test ĐỎ** (273 pass / 278 file). **Regression A — 4 suite integration không còn skip, chúng cố kết nối vào cổng chết.** `resolveIntegrationTarget` fallback về `http://127.0.0.1:54321` rồi trả `ok: true` kể cả khi local stack chưa chạy → `describeReal = describe` → 50 test bắn vào loopback không ai nghe. Nghĩa là v0.6 đổi "xanh im lặng" thành "**đỏ mỗi lần chạy bình thường**", phá luôn gate D2 (`pnpm test:api` vẫn xanh). **Sửa:** thêm `isReachable()` (fetch `/auth/v1/health`, timeout 1500ms) và **chỉ dò khi rơi vào fallback local ngầm** — cờ `usedImplicitLocalDefault`; target do người dùng chỉ định rõ mà chết thì **vẫn ĐỎ** (staging sập trong CI phải đỏ, không được lặng lẽ skip). `resolveOrAnnounceSkip` thành `async`; 4 file test thêm `await` (top-level await hợp lệ: `target ES2022` + `module esnext`). **Regression B — `mobile-api-edge-schema.test.ts:1293` ĐỎ.** Nó assert 3 file integration phải chứa `const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'` + `isProduction` + `Refusing to run against production`; D4 đã dời cả 3 chuỗi sang `integration-target.ts` nên assertion gãy. Đúng bẫy memory `apps_api_reads_mobile_source`. **Sửa:** viết lại assertion theo **mục đích** chứ không nới lỏng — chứng minh guard tồn tại MỘT lần trong `integration-target.ts` (`PRODUCTION_REF`, `assertNotProduction`, `assertNotLocalKeyAgainstRemote`, có `throw`), rồi chứng minh **cả 4** suite đi qua nó (`from './integration-target'` + `resolveOrAnnounceSkip(`) và **không** suite nào tự đọc `process.env.NEXT_PUBLIC_SUPABASE_URL` để lách. Nhân tiện thêm `rls-per-actor.test.ts` vào danh sách — v0.6 và cả bản gốc đều bỏ sót file thứ 4. **G6 sửa lại vì nó đo sai thứ:** "không bị đụng 1 byte" cho gate báo XANH trong khi test ĐỎ thật. Gate mới đo `pnpm test:api` exit 0. **Kết quả sau khi sửa — đo thật, không chép:** `type-check:api` exit 0 · `type-check:shared` exit 0 · **`test:api` 274 pass / 4 skipped / 278 file, 3147 test pass / 78 skip, 0 ĐỎ** · `test:shared` 24 file / 729 test pass · `lint:structure` 842 file exit 0 · `lint:comments` clean · `skills:check` 30 ↔ 30 in sync · G18 runtime **0 dòng** (`git status` trên `apps/mobile` + `supabase/functions` + `packages/shared/src` trống). **G8 đóng hoàn toàn — chứng minh bằng 2 lần chạy vitest ĐỎ thật, không phải harness:** trỏ `NEXT_PUBLIC_SUPABASE_URL` vào prod ref → `Error: Refusing to run against PRODUCTION (iwevizmsedyqozxlawwl)`, `Test Files 1 failed`; đưa key demo local kèm host staging → `Error: Refusing to run: a local-stack demo key was supplied for the remote host`, `Test Files 1 failed`. **Xác minh 4 lỗi plan mà v0.6 báo — cả 4 ĐÚNG:** `denoland/deno:2` trả HTTP **404** thật; digest `sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498` **khớp chính xác** `docker-content-digest` của OCI index `denoland/deno:2.9.4`; `supabase/functions/deno.json` không tồn tại, có đúng **4** config theo từng function; `supabase/tests/` có **23 `.sql` nhưng chỉ 22 `*_verification.sql`**, file thứ 23 là `staging_accept_privacy_guard.sql` (runner glob `*.sql` nên vẫn phủ đủ 23). **Vẫn CHƯA chạy được, không giấu:** G0.1–G0.5, **G2 (`db reset` 208 migration — câu hỏi trung tâm của §49 vẫn chưa có lời đáp, bẫy enum R1 còn nguyên)**, G3, G4, G5, G7, G10, G11 nửa sau, G13 — tất cả cần Docker daemon và RAM >= 4 GB. `pnpm install` đã chạy nên `node_modules` không còn là chặn cho lượt sau. |

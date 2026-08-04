@@ -6,6 +6,8 @@
 .tmp/
 tmp/
 output/
+docker/
+compose.yaml
 
 # Dependency and build caches
 node_modules/

@@ -27,6 +27,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 | Coding behavior (assumptions, simplicity, surgical diffs) | `governance/skills.md` |
 | Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
 | Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` |
+| Running the database or Edge toolchain locally (real Postgres, migrations, RLS/SQL checks, `deno check`) | `docker/INDEX.md` + skill `kael-docker`. Docker here is a **dev dependency, never a deployment target** |
 | Continuing or deferred plan work | `governance/Plan.md` (referenced section only) |
 | Where a doc lives; adding, moving, or naming docs (`README.md` is a LOCKED filename — use `INDEX.md`) | `docs/INDEX.md` (navigation map + conventions) |
 | Teaching Kael a service — knowledge distillation, playbooks | `docs/playbooks/process-distillation.md` (the SOP) + `docs/playbooks/INDEX.md` (status board) |
@@ -36,7 +37,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 
 ### Tier 3 - skills
 
-Two groups, 29 total: **Everyday (18)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
+Two groups, 30 total: **Everyday (19)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
 
 Codex reads the mirrored copies in `.agents/skills/`; `.claude/skills/` is canonical and `scripts/check-skills-sync.mjs` enforces parity.
 
