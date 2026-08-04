@@ -40,6 +40,24 @@ Two groups, 29 total: **Everyday (18)** and **Design (11)**. The canonical list 
 
 Codex reads the mirrored copies in `.agents/skills/`; `.claude/skills/` is canonical and `scripts/check-skills-sync.mjs` enforces parity.
 
+## Workspace Layout
+
+Five agent-facing locations. Know which are tracked before writing anything into them.
+
+| Path | Tracked | Holds | Rule |
+|---|---|---|---|
+| `.claude/` | yes, except `worktrees/`, `settings.local.json`, `.mcp.json` | canonical skills, slash commands, `Stop` hooks, `settings.json`, `MEMORY.md` | Claude Code config. Edit skills here, then `pnpm skills:sync`. |
+| `.agents/skills/` | yes | the Codex mirror of `.claude/skills/` | Generated — never edit directly. `pnpm skills:check` fails on drift. |
+| `sandbox/agent/` | yes | `@nestscout/sandbox`: throwaway agent experiments | Code, but never product code. Nothing here may be imported by `apps/` or `supabase/`. |
+| `.scratch/` | no — gitignored and in both `.easignore` files | disposable workbench: downloaded design packages, prototype renders, tool logs, audit output | Nothing here is a source of truth. |
+| `~/.codex/` | outside the repo | Codex CLI's own config home: `config.toml`, global `AGENTS.md`, skills, rules, sessions | User-level and machine-specific. No project state belongs here, and the repo must never contain a matching `.codex/`. |
+
+### `.scratch/` rules
+
+- **Nothing durable stays here.** A spec, decision, or test result that matters gets promoted into `docs/` (per `docs/INDEX.md`) in the same session that produced it. Content that exists only in `.scratch/` is content git cannot protect.
+- **Never create git worktrees under it.** Worktrees belong in `.claude/worktrees/`, which is ignored and known. Six stale worktrees hidden in this folder reached 5.47 GB before anyone looked.
+- **Check the size before closing a session.** `du -sh .scratch` — past a few hundred MB, something was left behind. On Windows, deleting a worktree that has `node_modules` needs `git worktree remove` first, then a robocopy mirror purge; `rm -rf` and `Remove-Item` both stall on MAX_PATH inside `node_modules/.pnpm/`, and `Remove-Item` reports success after a partial delete.
+
 ## Agent Lifecycle
 
 Use the lightweight lifecycle **Define → Plan → Build → Verify → Review → Ship**. Canonical step definitions: `governance/critical.md` §0 (Agent-Skills Lifecycle) — single-sourced there.
