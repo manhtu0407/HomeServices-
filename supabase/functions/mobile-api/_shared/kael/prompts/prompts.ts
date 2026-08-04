@@ -109,7 +109,7 @@ Description: ${description}`,
 }
 
 export const KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION = "2026-07-16.v2";
-export const KAEL_INTAKE_DIAGNOSIS_BASE_PROMPT_VERSION = "2026-07-16.v2-base-safety";
+const KAEL_INTAKE_DIAGNOSIS_BASE_PROMPT_VERSION = "2026-07-16.v2-base-safety";
 
 export function kaelIntakeDiagnosisPromptVersion(serviceType: string) {
   return serviceType === "electrical" && isElectricalPlaybookEnabled()
@@ -391,7 +391,7 @@ Worker requested price range: ${requestedPrice}`,
   ];
 }
 
-export function formatReviewPriceRange(
+function formatReviewPriceRange(
   priceMin: number | null | undefined,
   priceMax: number | null | undefined,
 ): string {

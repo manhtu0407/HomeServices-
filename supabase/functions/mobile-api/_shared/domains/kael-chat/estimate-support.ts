@@ -87,7 +87,7 @@ function isModelEligibleVisualEvidence(
 } {
   return (item.kind === "photo" || item.kind === "video_frame") && item.model_eligible;
 }
-export function buildKaelEstimateMarketEvidence(
+function buildKaelEstimateMarketEvidence(
   stageLogs: readonly PipelineStageLog[],
 ) {
   const metadata = stageLogs.find((stage) => stage.stage === "market")

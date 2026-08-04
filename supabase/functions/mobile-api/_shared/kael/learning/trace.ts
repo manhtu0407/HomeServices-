@@ -2,9 +2,9 @@ import { z } from "zod";
 import { KAEL_PURPOSES, type AIProvider, type KaelPurpose, type PipelineInput, type PipelineStageLog } from "../contracts/types.ts";
 import type { KaelActorRole } from "../kael-guardrails/permission-gate.ts";
 
-export const KAEL_TRACE_SCHEMA_VERSION = "kael_trace.v1";
+const KAEL_TRACE_SCHEMA_VERSION = "kael_trace.v1";
 
-export const KAEL_PROMPT_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
+const KAEL_PROMPT_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
   intent_classification: "intent-classification.2026-06-04.v1",
   vision_analysis: "vision-analysis.2026-08-01.v6",
   clarification: "clarification.2026-06-04.v1",
@@ -20,7 +20,7 @@ export const KAEL_PROMPT_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
   worker_assist: "worker-assist.2026-06-04.v1",
 });
 
-export const KAEL_OUTPUT_SCHEMA_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
+const KAEL_OUTPUT_SCHEMA_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
   intent_classification: "intent_result.v1",
   vision_analysis: "vision_result.v1",
   clarification: "intent_result.v1",
@@ -39,12 +39,12 @@ export const KAEL_OUTPUT_SCHEMA_VERSIONS: Record<KaelPurpose, string> = Object.f
 const aiProviderSchema = z.enum(["anthropic", "perplexity", "deepseek"]);
 const kaelPurposeSchema = z.enum(KAEL_PURPOSES);
 
-export const kaelTraceValidationSchema = z.object({
+const kaelTraceValidationSchema = z.object({
   status: z.enum(["pass", "fail", "skipped"]),
   reason_code: z.string().min(1).max(120).nullable().optional(),
 }).strict();
 
-export const kaelTraceFallbackSchema = z.object({
+const kaelTraceFallbackSchema = z.object({
   used: z.boolean(),
   reason_code: z.string().min(1).max(120).nullable().optional(),
 }).strict();

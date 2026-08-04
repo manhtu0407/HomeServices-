@@ -170,7 +170,7 @@ export function buildInitialDiagnosisScopeArtifact(input: {
   });
 }
 
-export const kaelArtifactTypeSchema = z.enum([
+const kaelArtifactTypeSchema = z.enum([
   "service_request",
   "process_ticket",
   "ai_diagnosis",
@@ -188,7 +188,7 @@ export const kaelArtifactTypeSchema = z.enum([
   "review",
 ]);
 
-export const kaelArtifactVisibilitySchema = z.enum([
+const kaelArtifactVisibilitySchema = z.enum([
   "internal",
   "partial",
   "customer_review",
@@ -196,7 +196,7 @@ export const kaelArtifactVisibilitySchema = z.enum([
   "final",
 ]);
 
-export const kaelArtifactEstimateSchema = z.object({
+const kaelArtifactEstimateSchema = z.object({
   price_min: z.number().int().positive(),
   price_max: z.number().int().positive(),
   confidence: z.number().min(0).max(1),
@@ -206,7 +206,7 @@ export const kaelArtifactEstimateSchema = z.object({
   path: ["price_max"],
 });
 
-export const kaelAutonomyActionSchema = z.enum([
+const kaelAutonomyActionSchema = z.enum([
   "confirm_ticket",
   "start_matching",
   "process_cancellation",
@@ -216,7 +216,7 @@ export const kaelAutonomyActionSchema = z.enum([
   "decide_dispute",
 ]);
 
-export const kaelAutonomyEventSchema = z.enum([
+const kaelAutonomyEventSchema = z.enum([
   "kael_confirmed_ticket",
   "kael_started_matching",
   "kael_processed_cancellation",
@@ -226,7 +226,7 @@ export const kaelAutonomyEventSchema = z.enum([
   "kael_decided_dispute",
 ]);
 
-export const kaelAutonomyEvidenceSchema = z.object({
+const kaelAutonomyEvidenceSchema = z.object({
   kind: z.enum(["artifact", "job_event", "policy", "worker_evidence", "customer_input", "system_check"]),
   reference_id: z.string().min(1).max(160),
   summary: z.string().min(1).max(280).optional(),
@@ -278,7 +278,7 @@ function hasForbiddenWorkflowKey(value: unknown): boolean {
   );
 }
 
-export const kaelTicketPatchSchema = z.record(z.string(), z.unknown()).refine(
+const kaelTicketPatchSchema = z.record(z.string(), z.unknown()).refine(
   (value) => !hasForbiddenWorkflowKey(value),
   { message: "ticket_patch must not include workflow status or phase fields" },
 );

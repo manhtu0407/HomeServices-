@@ -158,7 +158,7 @@ export function circuitAwareProviderCandidatesForPurpose(
   return providerCandidatesForPurpose(purposeInput, withCircuitBreaker(options));
 }
 
-export function parseKaelPurpose(value: string): KaelPurpose {
+function parseKaelPurpose(value: string): KaelPurpose {
   if ((KAEL_PURPOSES as readonly string[]).includes(value)) {
     return value as KaelPurpose;
   }

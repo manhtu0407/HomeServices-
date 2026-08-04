@@ -30,7 +30,7 @@ export type VietmapStyleRewriteResult = {
   untouchedExternalUrls: string[];
 };
 
-export function isAllowedVietmapHost(host: string): boolean {
+function isAllowedVietmapHost(host: string): boolean {
   return VIETMAP_HOST_ALLOWLIST.has(host.toLowerCase());
 }
 

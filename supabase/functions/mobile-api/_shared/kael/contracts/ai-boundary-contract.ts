@@ -65,9 +65,3 @@ export function detectForbiddenAiDecisionText(
   };
 }
 
-export function firstKaelAiBoundaryReason(
-  decision: KaelAiBoundaryDecision,
-) {
-  const first = decision.violations[0];
-  return first ? first.reason : null;
-}

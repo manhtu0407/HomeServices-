@@ -185,10 +185,6 @@ export type AgenticPerformanceDecision =
   | Readonly<{ kind: 'create_job_handoff'; scopeCard: ServiceScopeCard; jobPayload: ExistingJobCreatePayload }>
   | Readonly<{ kind: 'beta_service_blocked'; scopeCard: ServiceScopeCard }>
 
-export function isLaunchServiceLineId(value: unknown): value is LaunchServiceLineId {
-  return typeof value === 'string' && LAUNCH_SERVICE_LINE_IDS.includes(value as LaunchServiceLineId)
-}
-
 export function isCustomerServiceId(value: unknown): value is CustomerServiceId {
   return typeof value === 'string' && CUSTOMER_SERVICE_IDS.includes(value as CustomerServiceId)
 }

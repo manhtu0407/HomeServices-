@@ -2,10 +2,10 @@ import type { AIMessage, ComplexityLevel, ServiceType } from "../contracts/types
 import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "../contracts/types.ts";
 
 export const SOURCE_TRUST_VERSION = "source-trust-r3-2026-07-10";
-export const SOURCE_TRUST_CACHE_TTL_MS = 5 * 60 * 1000;
-export const SOURCE_TRUST_MIN_EFFECTIVE_SCORE = 0.5;
+const SOURCE_TRUST_CACHE_TTL_MS = 5 * 60 * 1000;
+const SOURCE_TRUST_MIN_EFFECTIVE_SCORE = 0.5;
 
-export const TIER_1_SOURCE_TRUST_DOMAINS = Object.freeze([
+const TIER_1_SOURCE_TRUST_DOMAINS = Object.freeze([
   "btaskee.com",
   "jupviec.vn",
   "tuoitre.vn",

@@ -8,7 +8,7 @@ export type EmpathyTemplateV2Key =
   | "pressure_acknowledge"
   | "repeated_demand";
 
-export const EMPATHY_TEMPLATES_V2: Record<EmpathyTemplateV2Key, string> = {
+const EMPATHY_TEMPLATES_V2: Record<EmpathyTemplateV2Key, string> = {
   price_concern:
     "Kael hiểu bạn cần đảm bảo giá hợp lý. Đây là cơ sở Kael tính: {reasoning}. Mọi dữ liệu Kael dùng đều minh bạch.",
   worker_concern:

@@ -85,7 +85,7 @@ export function sourceTrustSecretsForRequest<T extends SourceTrustSecrets>(
   return { ...secrets, sourceTrustPerplexityFilterEnabled: true };
 }
 
-export function isStagingSourceTrustRequest<T extends SourceTrustSecrets>(
+function isStagingSourceTrustRequest<T extends SourceTrustSecrets>(
   secrets: T,
   ctx: MobileApiContext,
 ): boolean {

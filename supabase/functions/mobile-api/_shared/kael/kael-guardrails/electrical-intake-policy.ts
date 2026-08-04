@@ -5,8 +5,6 @@ import type {
 } from "../learning/performance-profiles.ts";
 import type { KaelEstimate } from "../contracts/types.ts";
 
-export const ELECTRICAL_INTAKE_POLICY_VERSION = "electrical-intake-2026-07-16.v1";
-
 export type RequiredSlotPolicy = {
   readonly serviceType: "electrical";
   readonly problemSlug: string;

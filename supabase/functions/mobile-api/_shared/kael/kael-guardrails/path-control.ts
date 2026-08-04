@@ -82,7 +82,7 @@ export type KaelPathControlDecision = {
   };
 };
 
-export const KAEL_PATH_CONTROL_RULES: readonly KaelPathControlRule[] = Object.freeze([
+const KAEL_PATH_CONTROL_RULES: readonly KaelPathControlRule[] = Object.freeze([
   {
     mobile_action: "customer.submit_intake",
     workflow_phase: "intake",

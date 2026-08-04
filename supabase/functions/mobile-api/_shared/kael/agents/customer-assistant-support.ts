@@ -101,7 +101,7 @@ export function buildAssistantRequest(input: {
   };
 }
 
-export function sanitizeAssistantJobContext(
+function sanitizeAssistantJobContext(
   job: CustomerAssistantJobContext | null,
   surface: CustomerAssistantSurface,
   language: KaelPromptLanguage,

@@ -1,7 +1,5 @@
 import type {
   EstimateCardV3,
-  ScopeChangeCustomerCard,
-  ScopeChangeWorkerChallenge,
   WorkerBrief,
 } from '../schemas'
 import { sanitizeKaelOutputObject } from '../sanitizers'
@@ -19,14 +17,4 @@ export function renderWorkerBrief(brief: WorkerBrief): WorkerBrief {
     }
   }
   return rendered
-}
-
-export function renderScopeChangeCustomerCard(card: ScopeChangeCustomerCard): ScopeChangeCustomerCard {
-  return sanitizeKaelOutputObject(card)
-}
-
-export function renderScopeChangeWorkerChallenge(
-  challenge: ScopeChangeWorkerChallenge,
-): ScopeChangeWorkerChallenge {
-  return sanitizeKaelOutputObject(challenge)
 }

@@ -110,10 +110,14 @@ describe('root product contract alignment', () => {
   })
 
   it('does not describe the repo as pre-feature after mobile and Edge workflow slices exist', () => {
-    // Match current CLAUDE wording without dropping the regression guard.
+    // Guard the claim, not one sentence: the Current Phase section is rewritten
+    // whenever the milestone moves, so accept any wording that still states the
+    // workflow slices exist.
     const claude = readText('CLAUDE.md')
+    const describesExistingSlices = /Mobile and Supabase Edge workflow slices exist/i.test(claude)
+      || /workflow spine runs end to end/i.test(claude)
     expect(claude).toMatch(/Production fix and foundation hardening/i)
-    expect(claude).toMatch(/Mobile and Supabase Edge workflow slices exist/i)
+    expect(describesExistingSlices).toBe(true)
     expect(claude).not.toContain('Chưa có feature code')
   })
   it('keeps production source files free from mojibake Vietnamese strings', () => {

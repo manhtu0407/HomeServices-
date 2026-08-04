@@ -329,11 +329,6 @@ export function asServiceTypeArray(value: unknown): ServiceType[] {
   );
 }
 
-export function asMessageSender(value: unknown): MessageSender {
-  if (value === "worker" || value === "kael") return value;
-  return "customer";
-}
-
 export function asKaelChatStatus(value: unknown): KaelChatStatus {
   if (
     value === "active" ||
@@ -353,23 +348,6 @@ export function asKaelTurnRole(value: unknown): KaelChatTurnRole {
     return value;
   }
   return "system";
-}
-
-export function asKaelContentType(value: unknown): KaelChatContentType {
-  if (
-    value === "text" ||
-    value === "photo_request" ||
-    value === "video_request" ||
-    value === "photo_attached" ||
-    value === "video_attached" ||
-    value === "clarification" ||
-    value === "analysis" ||
-    value === "estimate" ||
-    value === "error"
-  ) {
-    return value;
-  }
-  return "text";
 }
 
 export function asKaelStoredSentiment(

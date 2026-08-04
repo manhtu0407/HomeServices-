@@ -69,10 +69,6 @@ export function evaluateMarketVerdict(input: {
   };
 }
 
-export function marketVerdictReasonVi(verdict: MarketVerdict): string | null {
-  return marketVerdictReason(verdict, "vi");
-}
-
 export function marketVerdictReason(
   verdict: MarketVerdict,
   language: "vi" | "en" = "vi",

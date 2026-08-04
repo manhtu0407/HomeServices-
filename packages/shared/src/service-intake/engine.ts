@@ -40,13 +40,13 @@ export function setPerformanceMediaCount(state: ServiceIntakeState, mediaCount: 
   return Object.freeze({ ...state, mediaCount: normalizeMediaCount(mediaCount) })
 }
 
-export function getMissingRequiredPerformanceQuestions(state: ServiceIntakeState): readonly IntakeQuestion[] {
+function getMissingRequiredPerformanceQuestions(state: ServiceIntakeState): readonly IntakeQuestion[] {
   return getServicePerformancePlaybook(state.serviceLineId).questions.filter(
     (question) => question.required && !isValidRequiredAnswer(question, state.answers[question.id]),
   )
 }
 
-export function getNextPerformanceQuestion(state: ServiceIntakeState): IntakeQuestion | null {
+function getNextPerformanceQuestion(state: ServiceIntakeState): IntakeQuestion | null {
   return getMissingRequiredPerformanceQuestions(state)[0] ?? null
 }
 
@@ -167,7 +167,7 @@ export function runKaelAgenticPerformanceStep(input: AgenticPerformanceInput): A
   }
 }
 
-export function buildKaelBookingMessageFromScopeCard(scopeCard: ServiceScopeCard): string {
+function buildKaelBookingMessageFromScopeCard(scopeCard: ServiceScopeCard): string {
   return [
     `[${scopeCard.kaelScopeName}]`,
     `Dịch vụ: ${scopeCard.labelVi}`,
