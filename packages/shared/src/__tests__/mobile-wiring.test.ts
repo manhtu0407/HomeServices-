@@ -129,7 +129,6 @@ const readWorkerSurfaceLayer = () =>
         && !normalized.endsWith('/components/worker/jobs/completion-body-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/acceptance-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/completion-styles.ts')
-        && !normalized.endsWith('/components/worker/jobs/evidence-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/map-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/offer-styles.ts')
         && !normalized.endsWith('/components/worker/jobs/progress-styles.ts')
