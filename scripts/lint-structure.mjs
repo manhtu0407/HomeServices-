@@ -1,6 +1,7 @@
 // Structure ratchet (Core Skill 6 / governance/skills.md). Checks on source .ts/.tsx:
 //   1. file-size cap — no NEW file over MAX_LINES, and no grandfathered god-file may grow.
-//   2. duplicate exported type/interface — one concept = one home; no NEW cross-file re-declaration.
+//   2. duplicate exported type/interface — one concept = one home; no NEW cross-file
+//      re-declaration, and no silent move of an existing one to a different file.
 //   3. runtime boundary — RN/Edge must not import apps/api.
 //   4. layer model — one-way dependencies inside the mobile-api Edge function.
 //   5. frozen paths — the non-canonical apps/api Kael/learning reference must not grow.
@@ -100,8 +101,21 @@ for (const [name, locs] of Object.entries(dupTypes)) {
   const known = baseline.grandfatheredDupTypes[name]
   if (!known) {
     problems.push(`duplicate exported type "${name}" in ${locs.join(', ')} — one concept = one home (import, do not re-declare)`)
-  } else if (locs.length > known.length) {
+    continue
+  }
+  if (locs.length > known.length) {
     problems.push(`exported type "${name}" spread further (${locs.length} > ${known.length} files) — collapse to one home`)
+    continue
+  }
+  // An equal count is not an unchanged home: a type that moves from one file to another keeps
+  // the count, so a size-only check passes while the recorded paths silently rot. Compare the
+  // sets. Sorted on both sides so a re-ordered baseline is not reported as a move.
+  const now = [...locs].sort().join(' | ')
+  const before = [...known].sort().join(' | ')
+  if (now !== before) {
+    problems.push(
+      `exported type "${name}" changed home — baseline records [${before}] but it now lives in [${now}] — update scripts/structure-baseline.json by hand (never \`--init\`, which re-grandfathers today's oversize set)`,
+    )
   }
 }
 
