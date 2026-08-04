@@ -194,7 +194,7 @@ export async function applyLearnedPriceRule(
 // [baseline / FACTOR, baseline * FACTOR] the rule is ignored for this estimate
 // and an alert is logged — no user-facing block; synthesis falls back to the
 // baseline range.
-export const LEARNED_PRICE_MAX_DEVIATION_FACTOR = 4;
+const LEARNED_PRICE_MAX_DEVIATION_FACTOR = 4;
 
 export function clampLearnedPriceToBaseline(
   learned: AppliedPriceRule | null,

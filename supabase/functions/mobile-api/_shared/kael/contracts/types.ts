@@ -182,7 +182,7 @@ export const intentProviderResultSchema = z.preprocess(
   intentResultCoreSchema,
 );
 
-export const visionEvidenceFindingSchema = z.object({
+const visionEvidenceFindingSchema = z.object({
   confidence: z.enum(["low", "medium", "high"]),
   evidence_index: z.number().int().min(1).max(5),
   observation: z.string().min(1).max(240),

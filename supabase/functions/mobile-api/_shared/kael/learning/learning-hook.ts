@@ -110,7 +110,7 @@ export type EdgeLearningHookSummary = {
   skippedReason?: string;
 };
 
-export function isLearningAutopromoteEnabled(): boolean {
+function isLearningAutopromoteEnabled(): boolean {
   return readBooleanEnvFlag(
     readRuntimeEnv("KAEL_LEARNING_AUTOPROMOTE_ENABLED"),
     false,
@@ -280,7 +280,7 @@ export function shouldPromoteLearningCandidate(
   return { promote: true, reason: "gate_passed" };
 }
 
-export async function loadLearningHookInput(
+async function loadLearningHookInput(
   client: LearningHookDbClient,
   jobId: string,
 ): Promise<EdgeLearningHookInput | null> {
@@ -495,7 +495,7 @@ async function maybePromote(
 // Dry run: the gate has passed and the rule would go active, but the decision is only
 // written to the lifecycle log so the change can be read before it is trusted. Lets a
 // scope be watched for a few weeks of real reviews before autopromote is turned on.
-export function isLearningShadowModeEnabled(): boolean {
+function isLearningShadowModeEnabled(): boolean {
   return readBooleanEnvFlag(readRuntimeEnv("KAEL_LEARNING_SHADOW_MODE"), false);
 }
 

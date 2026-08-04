@@ -1,6 +1,6 @@
 import type { LaunchServiceLineId, ServicePerformancePlaybook } from './types'
 
-export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId, ServicePerformancePlaybook>> = Object.freeze({
+const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId, ServicePerformancePlaybook>> = Object.freeze({
   home_cleaning: {
     serviceLineId: 'home_cleaning',
     productionServiceType: 'cleaning',
@@ -321,13 +321,3 @@ export function getServicePerformancePlaybook(serviceLineId: LaunchServiceLineId
   return playbook
 }
 
-export function listServicePerformancePlaybooks(): readonly ServicePerformancePlaybook[] {
-  return LAUNCH_SERVICE_LINE_ORDER.map((serviceLineId) => SERVICE_PERFORMANCE_PLAYBOOKS[serviceLineId])
-}
-
-const LAUNCH_SERVICE_LINE_ORDER: readonly LaunchServiceLineId[] = [
-  'home_cleaning',
-  'hvac_basic_maintenance',
-  'upholstery_care',
-  'handyman_minor_installation',
-]

@@ -53,7 +53,7 @@ export function resolveKaelChatAddressDistrict(
   return null;
 }
 
-export function buildBookingIntakeConfirmation(input: {
+function buildBookingIntakeConfirmation(input: {
   intake: KaelChatCreateInput;
   description: string;
   problemChips: readonly string[];

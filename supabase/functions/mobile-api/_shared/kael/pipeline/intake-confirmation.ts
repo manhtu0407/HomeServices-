@@ -123,7 +123,7 @@ const FIELD_LABELS = {
   },
 } as const;
 
-export const kaelIntakeConfirmationFieldSchema = z.object({
+const kaelIntakeConfirmationFieldSchema = z.object({
   key: z.enum(INTAKE_FIELD_KEYS),
   label: z.string().min(1).max(80),
   value: z.string().min(1).max(2000),
@@ -131,14 +131,14 @@ export const kaelIntakeConfirmationFieldSchema = z.object({
   note: z.string().min(1).max(500).nullable(),
 }).strict();
 
-export const kaelIntakeConfirmationIssueSchema = z.object({
+const kaelIntakeConfirmationIssueSchema = z.object({
   code: z.enum(INTAKE_ISSUE_CODES),
   field: z.enum(INTAKE_FIELD_KEYS),
   severity: z.enum(["attention", "blocking"]),
   message: z.string().min(1).max(500),
 }).strict();
 
-export const kaelIntakePayloadSchema = z.object({
+const kaelIntakePayloadSchema = z.object({
   service_type: z.enum(KAEL_CASE_WORK_SERVICE_TYPES),
   profile_id: z.enum(KAEL_PERFORMANCE_PROFILE_IDS),
   description: z.string().trim().max(2000),

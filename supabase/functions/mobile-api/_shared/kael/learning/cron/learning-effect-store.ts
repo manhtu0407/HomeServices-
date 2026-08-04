@@ -40,7 +40,7 @@ export type LearningEffectPlan = {
   } | null;
 };
 
-export const NO_LEARNING_EFFECT: LearningEffectPlan = {
+const NO_LEARNING_EFFECT: LearningEffectPlan = {
   schema: "kael_learning_effect.v1",
   mode: "none",
   candidate: null,

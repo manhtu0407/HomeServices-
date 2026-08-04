@@ -225,15 +225,6 @@ export function KaelCoreHero({ compact = false }: { compact?: boolean }) {
   )
 }
 
-export function Eyebrow({ children }: PropsWithChildren) {
-  return (
-    <View style={styles.eyebrow}>
-      <View style={styles.eyebrowDot} />
-      <Text style={styles.eyebrowText}>{children}</Text>
-    </View>
-  )
-}
-
 export function AssetTile({ source }: { source: ImageSourcePropType }) {
   return (
     <View style={styles.assetTile}>

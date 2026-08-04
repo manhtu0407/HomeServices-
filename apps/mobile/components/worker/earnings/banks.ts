@@ -20,11 +20,6 @@ export const WORKER_V5_BANK_OPTIONS: readonly { code: WorkerV5BankLogoName; labe
   { code: 'vietinbank', label: 'VietinBank' },
 ]
 
-export function resolveWorkerV5BankLogo(bankName: string | null | undefined) {
-  const code = resolveWorkerV5BankLogoName(bankName)
-  return code ? workerV5BankLogos[code] : null
-}
-
 export function resolveWorkerV5BankLogoName(bankName: string | null | undefined): WorkerV5BankLogoName | null {
   const normalized = bankName?.toLowerCase().replace(/\s+/g, '') ?? ''
   if (!normalized) return null

@@ -14,7 +14,7 @@ import { buildLS5ServiceKnowledgeCandidate } from "./LS5-service-knowledge.ts";
 import { buildLS6SafetyPatternCandidate } from "./LS6-safety-pattern.ts";
 import { buildLS7DeclineReasonCandidate } from "./LS7-decline-reason.ts";
 
-export const LEARNING_SKILL_IDS = ["LS1", "LS2", "LS3", "LS4", "LS5", "LS6", "LS7"] as const;
+const LEARNING_SKILL_IDS = ["LS1", "LS2", "LS3", "LS4", "LS5", "LS6", "LS7"] as const;
 export type LearningSkillId = (typeof LEARNING_SKILL_IDS)[number];
 
 export const ALLOWED_LEARNING_TARGETS = [
@@ -39,7 +39,7 @@ export const FORBIDDEN_LEARNING_EFFECTS = [
 ] as const;
 export type LearningForbiddenEffect = (typeof FORBIDDEN_LEARNING_EFFECTS)[number];
 
-export const LEARNING_LIFECYCLE_STATES = [
+const LEARNING_LIFECYCLE_STATES = [
   "candidate",
   "pending_evidence",
   "evidence_gate_check",
@@ -98,7 +98,7 @@ export type LearningSkillCandidate = {
   lifecycle_state: LearningLifecycleState;
 };
 
-export const learningSkillInputSchema = z.record(z.string(), z.unknown());
+const learningSkillInputSchema = z.record(z.string(), z.unknown());
 const skillIdSchema = z.enum(LEARNING_SKILL_IDS);
 const targetSchema = z.enum(ALLOWED_LEARNING_TARGETS);
 const effectSchema = z.enum(FORBIDDEN_LEARNING_EFFECTS);

@@ -104,7 +104,7 @@ const DIRECT_MUTATION_PATTERNS = [
   /\bcharge (?:customer|now)\b/i,
 ];
 
-export function readKaelAutonomyFlags(
+function readKaelAutonomyFlags(
   getEnv = readRuntimeEnv,
 ): { KAEL_AUTONOMY_FULL_ENABLED: boolean } {
   return {

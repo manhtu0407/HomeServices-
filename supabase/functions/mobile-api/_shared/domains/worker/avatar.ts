@@ -235,7 +235,7 @@ export async function resolveWorkerAvatarUrl(
   return resolveProfileAvatarUrl(storageClient, rawAvatarRef, WORKER_AVATAR_BUCKET);
 }
 
-export async function resolveCustomerAvatarUrl(
+async function resolveCustomerAvatarUrl(
   storageClient: unknown,
   rawAvatarRef: unknown,
 ): Promise<string | null> {

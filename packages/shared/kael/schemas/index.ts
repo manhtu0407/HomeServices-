@@ -4,9 +4,9 @@ import { SERVICE_TYPES } from '../../src/constants'
 export const KAEL_PRICE_DISCLAIMER_V3 =
   'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
 
-export const kaelServiceTypeSchema = z.enum(SERVICE_TYPES)
-export const kaelComplexitySchema = z.enum(['small', 'medium', 'large'])
-export const estimateConfidenceSchema = z.enum(['low', 'medium', 'high'])
+const kaelServiceTypeSchema = z.enum(SERVICE_TYPES)
+const kaelComplexitySchema = z.enum(['small', 'medium', 'large'])
+const estimateConfidenceSchema = z.enum(['low', 'medium', 'high'])
 
 const estimateAnalysisFindingSchema = z.object({
   confidence: estimateConfidenceSchema,
@@ -73,7 +73,7 @@ const estimateAnalysisEvidenceSchema = z.object({
   }
 })
 
-export const estimateAnalysisReceiptSchema = z.object({
+const estimateAnalysisReceiptSchema = z.object({
   schema_version: z.literal('analysis_receipt.v1'),
   evidence: estimateAnalysisEvidenceSchema,
   market: z.object({

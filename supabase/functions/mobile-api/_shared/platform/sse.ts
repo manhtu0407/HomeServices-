@@ -4,7 +4,7 @@ export type SseEvent = {
   readonly id?: string;
 };
 
-export const SSE_HEADERS = {
+const SSE_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",

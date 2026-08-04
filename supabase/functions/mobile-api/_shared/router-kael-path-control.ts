@@ -119,7 +119,7 @@ const KAEL_RUNTIME_PATH_CONTROL: Partial<Record<string, KaelRuntimePathControlRo
   },
 };
 
-export function evaluateKaelRuntimePathControl(
+function evaluateKaelRuntimePathControl(
   route: RouteLike,
   actorRole: UserRole,
 ): KaelRuntimePathControlFailure | null {

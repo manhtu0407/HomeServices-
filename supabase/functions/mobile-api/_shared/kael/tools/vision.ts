@@ -276,7 +276,7 @@ async function fetchVisionImageBlocks(
   return blocks;
 }
 
-export function isTrustedVisionImageUrl(
+function isTrustedVisionImageUrl(
   rawUrl: string,
   supabaseUrl: string,
 ): boolean {

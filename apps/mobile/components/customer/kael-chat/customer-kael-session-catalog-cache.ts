@@ -30,14 +30,6 @@ export type CustomerKaelSessionCatalogState = {
   sessions: CustomerKaelConversationSession[]
 }
 
-export async function readCustomerKaelSessionCatalog(
-  customerId: string,
-  mode: CustomerKaelConversationMode,
-): Promise<CustomerKaelConversationSession[] | null> {
-  const state = await readCustomerKaelSessionCatalogState(customerId, mode)
-  return state?.sessions ?? null
-}
-
 export async function readCustomerKaelSessionCatalogState(
   customerId: string,
   mode: CustomerKaelConversationMode,

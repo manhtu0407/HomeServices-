@@ -54,7 +54,7 @@ export function serializeKaelTurn(row: Record<string, unknown>) {
   };
 }
 
-export function serializeIntakeEvalObservation(value: unknown) {
+function serializeIntakeEvalObservation(value: unknown) {
   const parsed = intakeEvalObservationSchema.safeParse(value);
   if (!parsed.success) return null;
   return {
@@ -69,7 +69,7 @@ export function serializeIntakeEvalObservation(value: unknown) {
   };
 }
 
-export function serializeKaelClarification(
+function serializeKaelClarification(
   contentType: string,
   artifactProposal: unknown,
 ): { question: string | null; missing_slots: string[] } | null {
@@ -404,7 +404,7 @@ function finiteDbNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-export function kaelNextAction(
+function kaelNextAction(
   status: KaelChatStatus,
   lastContentType: string | undefined,
   totalCostUsd: number,

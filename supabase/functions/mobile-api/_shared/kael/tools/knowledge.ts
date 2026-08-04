@@ -1,7 +1,7 @@
 import type { EdgeAiSecrets, ServiceType } from "../contracts/types.ts";
 import { scrubSensitiveForLLM, withDbTimeout } from "../pipeline/utils.ts";
 
-export const KAEL_KNOWLEDGE_CONTEXT_VERSION = "knowledge-b1-2026-06-04";
+const KAEL_KNOWLEDGE_CONTEXT_VERSION = "knowledge-b1-2026-06-04";
 const DEFAULT_KNOWLEDGE_TOKEN_BUDGET = 240;
 
 type KnowledgeClient = {
@@ -192,7 +192,7 @@ export async function retrieveKaelKnowledgeContext(
   };
 }
 
-export async function retrieveServiceKnowledge(
+async function retrieveServiceKnowledge(
   client: KnowledgeClient,
   serviceType: ServiceType,
   _problemSlug: string,
@@ -208,7 +208,7 @@ export async function retrieveServiceKnowledge(
   );
 }
 
-export async function retrieveSafetyPatterns(
+async function retrieveSafetyPatterns(
   client: KnowledgeClient,
   serviceType: ServiceType,
   topic: string,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CUSTOMER_ACCOUNT_DELETION_CONFIRMATION = "XÓA TÀI KHOẢN";
+const CUSTOMER_ACCOUNT_DELETION_CONFIRMATION = "XÓA TÀI KHOẢN";
 
 export const customerAccountDeletionRequestSchema = z.object({
   acknowledge_data_loss: z.literal(true),

@@ -5,7 +5,7 @@ import { positiveNumberFrom, withDbTimeout } from "../pipeline/utils.ts";
 const COMPLEXITIES: ComplexityLevel[] = ["small", "medium", "large"];
 const MARKET_BLEND_WEIGHT = 0.5;
 const INSPECTION_BAND_EXPANSION_FACTOR = 0.15;
-export const MARKET_PRICE_MAX_DEVIATION_FACTOR = 4;
+const MARKET_PRICE_MAX_DEVIATION_FACTOR = 4;
 
 type BaselinePrice = {
   priceMin: number;
