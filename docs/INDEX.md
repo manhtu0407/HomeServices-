@@ -23,6 +23,8 @@ Durable project knowledge: feature specs, design contracts, audits, ops runbooks
 
 Top-level files: `progress-log.md` (the running progress log, referenced by `README.md`), `agent-lessons.md` (cross-session lessons), `cost-baseline-2026-05.md` (a cost snapshot).
 
+Outside `docs/`: [`docker/INDEX.md`](../docker/INDEX.md) is the map for running the database and Edge toolchain locally (`pnpm db:local:*`, `pnpm edge:check`). Docker in this repo is a **dev dependency only, never a deployment target** — that boundary is stated there.
+
 ## Where a new document goes (quick decision)
 
 - Teaching Kael a service? → `playbooks/services/<service>.md` + follow `playbooks/process-distillation.md`.
