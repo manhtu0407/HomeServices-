@@ -122,3 +122,105 @@ Kael output rules
 |- one advisory max
 |- no fear-based upsell language
 ```
+
+---
+
+## 9.5 Runtime — how a Kael request actually executes
+
+Descriptive, not contractual: this is what the code does today. Paths are relative to `supabase/functions/mobile-api/_shared/kael/`. If this disagrees with the code, the code is right.
+
+### 9.5.1 The pipeline has seven stages
+
+`pipeline/pipeline.ts` → `runKaelPipeline(input, supabase, secrets)`:
+
+```mermaid
+sequenceDiagram
+    participant D as domains/kael-chat
+    participant P as runKaelPipeline
+    participant T as tools/
+    participant AI as callAI
+
+    D->>P: PipelineInput
+    P->>P: prepareKaelPipeline (secrets, spend gate, session context)
+    P->>T: runKaelIntentStage -> tools/intent.ts
+    T->>AI: intent_classification
+    P->>T: runKaelKnowledgeStage -> tools/knowledge.ts (pgvector / hybrid RAG)
+    P->>T: runKaelParallelStage -> tools/vision.ts + analysis
+    P->>T: runKaelBaselineStage (price baseline + safety signals)
+    P->>T: runKaelSynthesisStage -> tools/market.ts + tools/synthesis.ts
+    P->>D: assembleKaelPipeline -> PipelineResult
+```
+
+| Stage | Function | Owns |
+|---|---|---|
+| 1 | `prepareKaelPipeline` | secrets, spend gate, session context; can short-circuit with a failure result before any provider call |
+| 2 | `runKaelIntentStage` | intent, service validation, problem slug, safety signals, profile facts, intake observation |
+| 3 | `runKaelKnowledgeStage` | RAG retrieval for the resolved service + problem (`tools/knowledge.ts`) |
+| 4 | `runKaelParallelStage` | vision analysis + problem analysis concurrently; returns `visionAnalysisStatus` and effective complexity |
+| 5 | `runKaelBaselineStage` | price baseline + reference baseline; **can fail the whole pipeline** (`baselineStage.ok === false`) |
+| 6 | `runKaelSynthesisStage` | market lookup, market verdict, synthesized estimate |
+| 7 | `assembleKaelPipeline` | the final `PipelineResult` the domain layer persists |
+
+`fallbackUsed` is threaded through stages 2, 4 and 6 and surfaces on the result — that is how a degraded answer stays labelled instead of silently passing as a normal one (RULES.md #8).
+
+**§1.5 names four stages (intent → knowledge → baseline → synthesis).** That is the shorthand for the pricing spine; the real chain is the seven above.
+
+### 9.5.2 Guardrails, and where each one sits
+
+`kael-guardrails/` holds 16 modules. They are not one filter — they run at different points, and knowing which is which decides where a fix belongs.
+
+| When | Module | Entry point |
+|---|---|---|
+| before any provider call | `pipeline-spend-gate.ts` | `prepareKaelPipelineSpendGate` |
+| before any provider call | `spend-gate.ts` | `reserveAiSpend`, `isKaelAiKillSwitchEnabled`, `KAEL_AI_SPEND_CAPS` |
+| before any provider call | `rate-limit.ts` / `durable-guards.ts` | `checkKaelActorRateLimit`, `takeDurableKaelChatRateLimit` |
+| on inbound message | `boundary-guard.ts` | `detectPromptInjection`, `detectOutOfScope`, `detectServiceMismatch`, `evaluateMessageBoundary` |
+| on inbound message | `permission-gate.ts` | `evaluateKaelPermissionGate`, `renderDeclineTemplate` |
+| per route | `path-control.ts` | `evaluateKaelPathControl` (wired at the handler as `enforceKaelRuntimePathControl`) |
+| during case work | `case-work-controls.ts` | `resolveCaseWorkEvidenceRequest`, `buildProfileSafetyFlags` |
+| during case work | `electrical-intake-policy.ts` | `getRequiredSlotPolicy`, `applyHardRoutingPolicy` |
+| on scope change | `scope-risk.ts` | `calculateScopeChangeAnomaly`, `matchSuspiciousScopeKeywords` |
+| on outbound text | `self-check.ts` | `runKaelSelfCheckPipeline`, `checkKaelResponse`, `auditKaelGuardrailTrip` |
+| on outbound text | `output-gateway.ts` | `guardOutput` |
+| on outbound artifact | `output-pipeline.ts` | `runKaelOutputPipeline`, `buildEstimateCardOutput`, `buildWorkerBriefOutput`, `buildScopeChangeOutputs` |
+| on a workflow decision | `autonomy-gate.ts` | `gateAutonomyDecision`, `auditKaelAutonomyGateResult`, `replayAutonomyDecisionAudit` |
+| on failure | `escalation.ts` | `selectKaelEscalation`, `logKaelEscalation` |
+| cost ceiling | `cost-cap.ts` | `KAEL_CHAT_HARD_COST_CAP_USD` |
+
+Guardrails fail **closed**: a trip produces a safe Vietnamese template (`KAEL_AI_UNAVAILABLE_VI`, `renderDeclineTemplate`) and an audit row, never a blank success.
+
+### 9.5.3 Provider call path
+
+Every AI call goes through `kael-providers/provider-client.ts` → `callAI(request, secrets, gate)`; the structured variant is `callStructuredAI`. There is no other legal path (RULES.md #2).
+
+```text
+purpose -> chooseProvider / providerCandidatesForPurpose        (KAEL_ROUTING_CONFIG)
+        -> chooseCircuitAwareProvider                            (skips an open breaker)
+        -> providerAdapterFor(provider) -> HTTP with timeout
+        -> failureKindForCode -> recordDurableCircuitFailure/Success
+        -> recordKaelProviderSpend + checkKaelProviderBudget
+```
+
+- The model ladder per purpose lives in `agents/agentic-harness.ts`; **do not hardcode a model id at a call site**.
+- `createKaelCircuitBreaker` / `KAEL_CIRCUIT_BREAKER` own breaker state; `isDurableCircuitOpen` makes it survive a cold start.
+- Batching: `createAnthropicMessageBatch`, `retrieveAnthropicMessageBatch`, `retrieveAnthropicBatchResults`.
+- `maxTokensForPurpose` and `isSimpleNormalChatMessage` are the cost controls that keep a trivial chat turn off the expensive ladder.
+
+### 9.5.4 Streaming
+
+`pipeline/streaming.ts` writes progress targets; `domains/kael-chat/emit-step.ts` and `stream.ts` publish them. Mobile consumes through `apps/mobile/lib/kael-stream.ts`, `kael-response-stream.ts`, and `kael-stream-validation.ts`. Streaming carries **progress**, never authority: no workflow state is written from a stream frame.
+
+### 9.5.5 The autonomy cycle
+
+```text
+build     buildKaelAutonomyDecision(...)              -> KaelAutonomyDecision object
+gate      gateAutonomyDecision                        -> guardrail-level check + audit
+validate  validateKaelAutonomyTransition(decision,    -> schema + action/event match
+          from, to)                                      + lifecycle pair check
+apply     the domain writes the status inside a
+          compare-and-set on the previous status
+audit     auditKaelAutonomyGateResult /
+          replayAutonomyDecisionAudit
+```
+
+All four steps are required. A decision that passes the schema but names an event its action does not permit is rejected — see `state-machines.md` §12.5.

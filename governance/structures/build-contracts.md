@@ -54,36 +54,28 @@ Layers
 
 If a change does not fit the current ownership map, stop and ask Tu before adding a new structure.
 
-Customer navigation:
+### Navigation
+
+Both apps are **stage-driven, not route-driven**: a handful of Expo Router routes host a much larger set of numbered screen stages, and the stage is what the workflow phase selects. Treating the route list as the navigation model is the mistake this section previously made.
+
+The stage lists live in source and are counted there — this doc records the shape, never a copy of the id strings:
+
+| Surface | Shape | Owning source |
+|---|---|---|
+| Customer | 4-tab dock — `home`, `services`, `activity`, `profile` — plus the Kael accessory (the "4+1" dock), over 19 numbered stages `2.1-home` … `6.3-protect-money` | `CustomerPrimaryTab` and `CustomerV21ScreenId` in `apps/mobile/components/customer/ui/types.ts` |
+| Worker | 5 sections — `home`, `jobs`, `kael`, `earnings`, `profile` — over 30 numbered stages `1.1-worker-home` … `5.14-worker-policies` | `apps/mobile/components/worker/dock/screens.ts` (`id` + `section` pairs) |
+| Admin | 1 shipped route: `apps/mobile/app/(admin)/dashboard.tsx` | — |
+
+Recount with `grep -cE "^  \| '" apps/mobile/components/customer/ui/types.ts` and `grep -cE "^    id: '" apps/mobile/components/worker/dock/screens.ts`.
+
+Naming caveat, do not "fix" it: the customer dock's active key is `activity` (user-facing label "Hoạt động") while the route file and `TabName` type use `history`. The split is intentional — see [`state-machines.md`](state-machines.md) §12.8. Tests assert both strings; do not collapse them.
+
+Admin remains a blueprint, not a contract. The intended sections are:
 
 ```text
-Customer tabs
+Admin sections (blueprint - 1 of 8 shipped)
 -
-|- Home
-|- Book
-|- Kael
-|- History
-|- Profile
-```
-
-Worker navigation:
-
-```text
-Worker tabs
--
-|- Home
-|- Jobs
-|- Chat
-|- Earnings
-|- Profile
-```
-
-Admin navigation:
-
-```text
-Admin sections
--
-|- Dashboard
+|- Dashboard          <- shipped
 |- Jobs
 |- Workers
 |- Price Baselines
@@ -92,6 +84,8 @@ Admin sections
 |- AI Logs
 |- Support
 ```
+
+Current admin reality and why it is PARTIAL: `STRUCTURES.md` §1.5.
 
 Screen implementation rule:
 
@@ -215,6 +209,16 @@ Testing layers
 |- UI visual/manual verification
 |- Security negative tests
 ```
+
+Static structure gates run alongside those layers and fail the same way a test does. "Tests pass" is not a complete answer while one of these is red:
+
+| Gate | Enforces |
+|---|---|
+| `pnpm lint:structure` | Edge layer model, RN/Edge runtime boundary, frozen `apps/api` Kael paths, 800-line cap, one-concept-one-home (`STRUCTURES.md` §4.5) |
+| `pnpm lint:comments` | comment discipline (`governance/protocols/code-hygiene.md`); also a Stop hook and the `comment-discipline` CI job |
+| `pnpm skills:check` | `.claude/skills` <-> `.agents/skills` parity |
+| `pnpm type-check:mobile` / `:api` / `:shared` | per-package types |
+| `pnpm test:mobile` / `:api` / `:shared` | per-package suites; current counts in `STRUCTURES.md` §1.5.1 |
 
 Workflow test areas:
 

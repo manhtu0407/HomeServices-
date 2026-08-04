@@ -9,7 +9,7 @@ Durable project knowledge: feature specs, design contracts, audits, ops runbooks
 | Folder | Holds | Add here when… |
 |---|---|---|
 | `playbooks/` | Kael knowledge distillation: per-service textbooks + eval corpora, and the distillation SOP | you are teaching Kael to reason about a service |
-| `architecture/` | Durable system specs: the code-ownership map, status vocabulary, workflow-step contracts, migration chain, agentic/worker specs | a decision is a lasting structural contract, not a point-in-time plan |
+| `architecture/` | Durable system specs: the code-ownership map, migration chain, agentic/worker specs. **Workflow runtime truth is not here** — it lives in `governance/STRUCTURES.md` §6/§7/§9/§12/§22; `status-vocabulary.md` and `workflow-step-contracts.md` are redirect stubs kept so historical links resolve | a decision is a lasting structural contract, not a point-in-time plan |
 | `design/` | Design + UX contracts (glass/motion/mascot, price viz, voice, worker map, perceived-perf) | you accept a design direction to carry into production |
 | `foundation/` | Research + spikes + the Kael knowledge corpus + source-trust research/samples | you did throwaway research or a spike whose conclusion must persist |
 | `audit/` | Point-in-time codebase / security / process audits | you ran a formal audit and captured findings |
@@ -41,6 +41,8 @@ Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated 
 These are referenced by locked docs or by code — moving them breaks references:
 
 - `architecture/code-ownership-map.md` — referenced by `CLAUDE.md` (locked). The owner-file map per layer.
+- `workflow/worker-cancellation.md` — **load-bearing at runtime.** Its path is a string literal in `supabase/functions/mobile-api/_shared/domains/worker/cancellation.ts`, used as the policy-evidence `reference_id` on a `KaelAutonomyDecision`. Moving, renaming, or deleting it dangles a live evidence pointer and **no test catches it**. Before removing any doc, grep its full path across `*.ts`/`*.tsx`/`*.mjs`, not just `*.md`.
+- `architecture/status-vocabulary.md`, `architecture/workflow-step-contracts.md` — redirect stubs. Content moved into `governance/structures/{state-machines,customer-workflow,worker-workflow}.md`; the files stay because `docs/memory/`, `docs/audit/`, `docs/design/`, and `governance/Plan.md` link to these paths.
 - `memory/INDEX.md` and `memory/<YYYY-MM>.md` — referenced by `CLAUDE.md`, `governance/critical.md` §3 (both locked), `AGENTS.md`, and the `/kael-mem` command. The write target for the Session Memory Gate; moving it breaks the gate.
 - `progress-log.md`, `assets/nestscout-aurora-nest-logo.png` — referenced by `README.md` (locked).
 - `test-logs/**` — referenced by test files and scripts under `apps/api`. Keep the directory; archive within it if needed, never relocate it wholesale.

@@ -1,6 +1,8 @@
 # Agentic Workflow Spec (Issue #3) — the FE↔BE process STRUCTURES.md must reflect
 
 > **STATUS: DRAFT — PARKED. Do NOT build / do NOT edit `STRUCTURES.md` yet.**
+>
+> **Orientation note:** this file remains the *parked proposal*. What the app actually does today is now documented in `STRUCTURES.md` §9A (`governance/structures/agentic-coordination-workflow.md`), §12 (`state-machines.md`), and §22 (`runtime-crosscutting.md`). Read those for current truth; read this one only for the unexecuted design intent behind Tu's 5-item gate.
 > Tu's gate: discuss all 5 items (#1 done; #5 planned; #3 = this; #4, #2 pending) → then build everything in one pass. `STRUCTURES.md` is LOCKED — editing it (to encode this workflow) needs Tu's explicit "OK sửa" at build time.
 > Source: Tu's verbal walkthrough 2026-06-16 + design boards in `nestscout-codex-handoff-final-payment-gate.zip` (`01_main_flows`, `04_kael_chat_dual_mode`, `05_worker_agentic_case_work_upgrade`, `06_payment_gate_final`, profile screens). Codex paused (token-week limit) so this is described from the design, not a running app.
 
