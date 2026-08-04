@@ -48,6 +48,7 @@ tmp-*.log
 .preview-*.log
 
 # local agent/workbench artifacts
+/.scratch/
 /.codex/
 /.pnpm-store/
 .claude/.mcp.json
