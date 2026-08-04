@@ -146,3 +146,120 @@ Open — do NOT treat as decided
 ```
 
 ---
+
+## 9A.5 Runtime — the Case Work phase machine
+
+`kael_chat_sessions.case_phase` is the server-owned signal deciding how much of the case the chat surface may reveal. It is **not** the job state machine; the full cross-walk is in [`state-machines.md`](state-machines.md) §12.6.
+
+```mermaid
+stateDiagram-v2
+    [*] --> analysis
+    analysis --> analysis: another clarification turn
+    analysis --> offer_review: quote_ready and no blockers
+    offer_review --> analysis: new evidence reopens the scope
+    offer_review --> matching: confirm_kael_chat_atomic
+    matching --> [*]: job status takes over
+```
+
+| Phase | Written by | Meaning |
+|---|---|---|
+| `analysis` | default on insert (`domains/kael-chat/persistence.service.ts`) and every `case-work-artifact.ts` / `evidence.ts` / `turn.ts` write path | Kael is still clarifying; no offer may be shown |
+| `offer_review` | `domains/kael-chat/estimate-support.ts`, as `quoteReady ? "offer_review" : "analysis"` | the offer card may render, and `confirmKaelChat` will accept a confirm |
+| `matching` | the `confirm_kael_chat_atomic` RPC | the job row now exists; the job status machine owns the rest |
+
+**Honest gap:** the CHECK constraint allows 11 values, but only these 3 are ever written. `worker_candidate_review`, `worker_en_route`, `service_execution`, `scope_change_review`, `completion_review`, `payment`, `review`, and `closed` are reserved and unreachable today. Do not write UI that waits for them — after `matching`, derive the stage from `jobs.status` through `WorkflowPhase`.
+
+The reveal contract the frontend renders from is `packages/shared/src/workflow/workflow-phase-context.ts` + `workflow-ui-rules.ts` + `JOB_STATUS_TO_WORKFLOW_PHASE`. **Known gap:** no mobile surface consumes it yet — surfaces derive stage locally (for example `stepForStatus` in `components/customer/kael-chat/case-stage-display-model.ts`). Closing that is a product decision, not a cleanup.
+
+## 9A.6 Customer chat gate flow
+
+> Absorbed from `docs/architecture/customer-agentic-chat-gate-flow.md`, which no longer exists as a separate file.
+
+Kael Chat is the orchestration surface. A legacy stage may be blocked **only after** that stage has a compact chat-card equivalent with the same real-data contract. Do not redirect a legacy route into Kael Chat merely because it belongs to the same workflow — redirect only once the old screen has been compressed into a sequenced Case Work card.
+
+### Gate behavior
+
+```text
+Card sequencing
+-
+|- cards appear one at a time unless the previous card is informational only
+|- confirmation cards keep their actions inside the card footer
+|- confirmation cards must include an explicit confirm and reject pair
+|- pressing reject asks for the reason inside that same card before normal conversation resumes
+|- non-confirmation cards may enter only after the previous card finishes its process-line animation
+|- process lines run slowly enough to read as preparation, not as a UI dump
+|- old stage titles never render inside chat cards; the title describes what Kael is doing now
+```
+
+### Compression matrix
+
+| Stage | Legacy route | Chat-card replacement | Route policy |
+|---|---|---|---|
+| 2.5 Case Work chat | `/kael-chat?screen=2.5-chat-case` | Case Work tab | allowed as entry/fallback |
+| 2.6 Case overview | `/history?screen=2.6-case-overview` | case overview summary | redirect when a real job exists |
+| 2.7 Matching | `/history?screen=2.7-matching` | matching status card | redirect when a real job exists |
+| 2.8 Options | `/history?screen=2.8-options` | options gate card | redirect when a real job exists |
+| 2.9 Quotes | `/history?screen=2.9-quotes` | quote decision card | redirect when a real job exists |
+| 2.10 Location/ETA | `/history?screen=2.10-location-eta` | ETA tracking card | redirect when a real job exists |
+| 2.11 Live alert | `/history?screen=2.11-live-alert` | live arrival alert card | redirect when a real job exists |
+| 2.12 Job accepted | `/history?screen=2.12-job-accepted` | accepted-worker workboard card | redirect when a real job exists |
+| 2.13 Job progress | `/history?screen=2.13-job-progress` | job progress/evidence card | redirect when a real job exists |
+| 3.1-3.3 Payment | `/history?screen=3.1` … `3.3` | payment protection card | redirect with `focus=payment` only when real payment data exists; keep an inactive direct state otherwise |
+| 5.2 Command center | `/profile?screen=5.2-command-center` | command center, **not** the Kael Orb chat | keep the direct profile utility route |
+| 5.3 Approval queue | `/profile?screen=5.3-approval-queue` | pending approval card | redirect with `focus=approval` only when a real pending decision exists |
+
+### Required sequence for 2.6-2.9
+
+```text
+1. case summary appears
+2. if the job has no attached current media, Kael shows the evidence gate
+3. the evidence gate accepts image, video, or voice
+4. the user confirms evidence, or gives a short reason to continue without it
+5. Kael runs process lines and re-hydrates the real job
+6. matching / options / quote cards may appear only after the evidence gate finishes
+7. quote approval stays a confirmation card; rejection asks for the reason in-card first
+```
+
+### Backend boundary
+
+Mobile must not write workflow-sensitive state directly to Supabase.
+
+```text
+Allowed from a card
+-
+|- uploadJobMediaDrafts(jobId, drafts, 'before') for evidence upload
+|- workflow.actions.hydrateRemoteJobById(jobId) after a gate completes
+|- existing workflow provider actions, as compatibility wrappers around mobile-api
+
+Not allowed
+-
+|- direct Supabase workflow writes from UI cards
+|- fake estimates, workers, queues, prices, or payment state
+|- blocking a legacy route for a stage that has no card replacement yet
+```
+
+Payment card data is read from `deal.payment`, hydrated through the workflow provider from mobile-api job detail/list data; it must not fabricate provider, QR, status, amount, fee, or payout values. Normal Kael chat intake and evidence go through `kaelChatService` / `kaelAssistantService` and stay separate from Case Work cards until a real `job_id` exists.
+
+### Decision-complete evidence
+
+Locked by tests — these are not opinions:
+
+```text
+|- Kael Orb / dock entry opens /kael-chat, not /profile?screen=5.2-command-center
+|  (customer-home-surface-test asserts customer-v21-kael-accessory)
+|- legacy activity routes 2.6-2.13 redirect to Case Work when a real job exists,
+|  and stay honest when none does (customer-history-surface-test)
+|- the evidence gate blocks matching/options/quote until media is confirmed or
+|  explicitly skipped with a reason (customer-kael-chat-surface-test)
+|- quote approval is a confirmation card; reject keeps the reason flow in-card
+|  (customer-kael-chat-surface-test)
+|- payment 3.1-3.3 compress into one focused card only when real payment data
+|  exists, and that focus excludes every other card
+|  (customer-history-surface-test, customer-kael-chat-surface-test)
+|- approval 5.3 redirects with focus=approval only when a real pending scope
+|  decision exists (agentic-center-surface-test)
+```
+
+**Not decision-complete:** any customer stage absent from the matrix; any new profile utility, payment-setting, address-setting, or post-completion surface until its card equivalent and route policy are added here; any backend or Supabase write that bypasses `mobile-api`.
+
+Each future compression must add tests for: the old route still allowed until the card exists, the old route blocked after it exists, no bulk card dump, confirmation staying inside the active card, and the hydrate/real-API boundary being used after the gate.

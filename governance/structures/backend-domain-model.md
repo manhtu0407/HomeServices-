@@ -6,24 +6,25 @@
 
 Backend modules should be built as deep modules with clear interfaces and testable seams.
 
-```text
-Backend modules
--
-|- AuthProfileModule
-|- ServiceCatalogModule
-|- PriceBaselineModule
-|- KaelPriceCheckModule
-|- MarketMemoryService
-|- CaseReviewService
-|- JobLifecycleModule
-|- BroadcastMatchingModule
-|- ChatEvidenceModule
-|- NotificationModule
-|- ScopeChangeModule
-|- ReviewModule
-|- LearningRuleModule
-|- AdminModule
-```
+The module names below are **contract names, not file names**. Each one is keyed to the folder that actually implements it so a contract can be checked against the tree. Paths are relative to `supabase/functions/mobile-api/_shared/`; file counts are regenerated with `git ls-files <path> | wc -l`.
+
+| Contract module | Implemented in | Notes |
+|---|---|---|
+| AuthProfileModule | Supabase Auth + `domains/customer/**` (9), `domains/worker/registration.ts` | identity is Auth's; the profile/account surface is split customer/worker |
+| ServiceCatalogModule | `domains/catalog/catalog.ts` (1) | one file; the taxonomy itself lives in `packages/shared` |
+| PriceBaselineModule | migrations + `kael/tools/**` read path | **no dedicated module** — read path only, no in-app write/management surface |
+| KaelPriceCheckModule | `kael/pipeline/**` (16), `kael/tools/**` (9), `kael/agents/**` (20) | the Case Work spine |
+| MarketMemoryService / CaseReviewService | `kael/learning/**` (32) | **not two separate modules** — both are roles inside the learning folder; do not go looking for files by these names |
+| JobLifecycleModule | `domains/job/**` (34), `platform/lifecycle.ts`, `workflow-orchestrator.ts` | transition validity is `platform/`, not `domains/` |
+| BroadcastMatchingModule | `domains/matching/**` (12) | |
+| ChatEvidenceModule | `domains/job/{chat,media,evidence-refs,incident}*.ts` | lives inside the job domain, not a folder of its own |
+| NotificationModule | `domains/notification/**` (4) | |
+| ScopeChangeModule | `domains/job/scope-change/**` (9) | |
+| ReviewModule | `domains/payment/completion-review.ts` | completion and review are one module |
+| PaymentModule | `domains/payment/**` (5) + the `sepay-webhook` Edge function | **absent from the original blueprint list**; added because the code exists (#135, #139) |
+| DisputeModule | `domains/dispute/dispute.ts` (1) | |
+| LearningRuleModule | `kael/learning/**` + `domains/admin/learning.ts` | |
+| AdminModule | `domains/admin/learning.ts` (1) | one file covering Kael-learning ops only — see `STRUCTURES.md` §1.5 |
 
 Module contract:
 
@@ -37,6 +38,8 @@ Each module must define
 |- actions forbidden
 |- test requirements
 ```
+
+The responsibility/forbidden blocks below are the contract. They bind regardless of which folder currently hosts the code; if a module moves, update the table above, not the contract.
 
 ### AuthProfileModule
 
@@ -183,6 +186,25 @@ Forbidden
 |- hidden price change
 |- worker-proposed price (Phase 2.0 2026-05-23)
 ```
+
+### PaymentModule
+
+```text
+Responsibility
+-
+|- SePay VietQR payment intent and verified webhook callback
+|- cash confirmation recorded as an explicit customer action
+|- commission ledger entries derived from the locked final price
+|- payment state stays a projection of a real rail; never a UI-local guess
+
+Forbidden
+-
+|- starting payment before the A12 completion confirmation
+|- marking paid from client input, raw LLM output, or an unverified callback
+|- showing a payment state for which no implemented rail exists
+```
+
+Open gap at the current milestone: `platform/lifecycle.ts` still allows `confirmed_by_customer -> reviewed`, the Phase-0 skip added when no rails existed. Rails now exist (#135, #139) but no real transaction has been processed, so the skip has not been closed. Closing it means requiring `payment_pending -> paid -> reviewed`; that is a deliberate decision tied to the first real transaction, not a cleanup.
 
 ### LearningRuleModule
 

@@ -86,9 +86,13 @@ describe('monorepo directory structure', () => {
 })
 
 describe('root product contract alignment', () => {
+  // Every spoke that can carry workflow copy must be listed. The assertions below include
+  // not.toContain guards, so a spoke left out of this array is not "untested" — it is
+  // silently exempt, and the suite still passes. Add new workflow spokes here.
   const structures = [
     readText('governance/STRUCTURES.md'),
     readText('governance/structures/customer-workflow.md'),
+    readText('governance/structures/customer-workflow-fulfillment.md'),
     readText('governance/structures/worker-workflow.md'),
   ].join('\n')
   const supabaseConfig = readText('supabase/config.toml')

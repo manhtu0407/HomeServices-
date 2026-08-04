@@ -105,13 +105,13 @@ DOCUMENT.md    - plain-language product explainer for non-engineers
 
 ## Current Phase
 
-Phase 0 - production fix and foundation hardening. **Milestone: PR #145, 2026-08-03 (commit `4f392953`); merged range #1 -> #145.**
+Phase 0 - production fix and foundation hardening. **Milestone: PR #148 (commit `d0e4af88`); merged range #1 -> #148.**
 
-Closed so far: the customer and worker workflow spine runs end to end — auth (#143), six-service Case Work (#110), Kael agentic production flow (#142), job lifecycle, matching, chat/evidence, scope change, completion/review, dispute, evidence-gated learning (#124). The Edge backend is layered (#144) and gated by a test suite (#145).
+Closed so far: the customer and worker workflow spine runs end to end — auth (#143), six-service Case Work (#110), Kael agentic production flow (#142), job lifecycle, matching, chat/evidence, scope change, completion/review, dispute, evidence-gated learning (#124). The Edge backend is layered (#144) and gated by a test suite (#145). #146-#148 were governance, workspace, and cleanup work — they moved no capability row.
 
 Still open before Phase 0 can close: **no real transaction has been processed** — payment rails (#135 VietQR, #139 cash) are code-and-tests only; admin controls cover Kael learning candidates only (#29); Expo SDK 57 (#132) has never run on a real device; no TestFlight or Play internal validation is recorded.
 
-Per-capability status with PR anchors: `governance/STRUCTURES.md` §1.5. Refresh it with `git log 4f392953..HEAD --pretty="%s" | grep -E "^#"`.
+Per-capability status with PR anchors: `governance/STRUCTURES.md` §1.5. Refresh it with `git log d0e4af88..HEAD --pretty="%s" | grep -E "^#"`.
 
 ## Core Principles
 
