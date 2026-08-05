@@ -288,20 +288,6 @@ export type WorkerCancellationResponse = {
   }[]
 }
 
-export type WorkerCancellationDecisionInput = {
-  decision: 'approve' | 'reject'
-  review_note?: string
-}
-
-export type WorkerCancellationDecisionResponse = {
-  cancellation_id: string
-  job_id: string
-  status: string
-  job_status: JobStatus
-  broadcast_sent: boolean
-  message: string
-}
-
 export type WorkerJobListResponse = {
   jobs: {
     id: string

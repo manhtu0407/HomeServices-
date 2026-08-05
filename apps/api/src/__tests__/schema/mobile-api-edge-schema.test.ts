@@ -899,9 +899,10 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain("status = 'broadcasting'::public.job_status")
     expect(edgeServices + read('supabase/functions/mobile-api/_shared/domains/worker/cancellation.ts')).toContain('request_worker_cancellation_atomic')
     expect(edgeServices).not.toContain('client.rpc("decide_worker_cancellation_atomic"')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/domains/worker/cancellation.ts')).toContain('"Yêu cầu hủy việc của thợ đã được xử lý tự động ở endpoint hủy việc"')
     expect(edgeRouter).toContain('jobs.workerCancellation')
-    expect(edgeRouter).toContain('workerCancellation.decide')
+    // The admin decide endpoint was removed once cancellation became auto-approved:
+    // the RPC survives in migration history, the Edge surface must not re-expose it.
+    expect(edgeRouter).not.toContain('workerCancellation.decide')
   })
 
   it('adds service-role Kael chat persistence and confirm RPC for the Kael-first workflow', () => {
@@ -951,7 +952,10 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('private.is_job_customer')
     expect(migration).toContain("(storage.foldername(name))[2] in ('after', 'cancellation_evidence')")
     expect(migration).toContain('private.is_job_worker')
-    expect(edgeServices + read('supabase/functions/mobile-api/_shared/platform/domain-error-mappers.ts')).toContain(
+    // JOB_NOT_CANCELLABLE is raised only by decide_worker_cancellation_atomic. That RPC lost its
+    // Edge caller when the admin decide endpoint was removed, so no Edge mapper may claim to
+    // handle it — a mapper here again would mean the endpoint came back.
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/platform/domain-error-mappers.ts')).not.toContain(
       'JOB_NOT_CANCELLABLE',
     )
   })
@@ -1163,8 +1167,11 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeRouter).toContain('parseWorkerAccessCheckIn')
     expect(edgeRouter).toContain('mode === "manual_photo" && (!photoUrls || photoUrls.length === 0)')
     expect(mobileProvider).toContain('job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress')
-    // V21 worker rebuild reworded the exact-unit copy; assert the current worker-facing unlock label.
-    expect(workerSurface).toContain('Đã mở căn hộ')
+    // The worker surface consumes the release flag; it does not yet render an unlock label.
+    // The previous assertion looked for 'Đã mở căn hộ', which only ever existed inside
+    // workerV5ArrivalDestinationMeta — a helper no surface called. Asserting the consumer
+    // keeps §32 covered without a dead-code string standing in for shipped UI.
+    expect(workerSurface).toContain('exact_unit_released === true')
   })
 
   it('keeps Plan31 production advisor fixes for helper search paths and RLS initplan', () => {

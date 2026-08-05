@@ -113,9 +113,7 @@ const GUARDED: Record<string, string> = {
   'jobs.stagingPaymentConfirm': 'requireJobAccess customer-owner + server staging capability',
   'jobs.review': 'service customer-owner',
   // scope/cancellation/dispute by id — atomic RPC owner/admin SQL check
-  'scope.decide': 'decide_scope_change_atomic p_customer_id',
-  'workerCancellation.decide': 'decide_worker_cancellation_atomic admin',
-  'disputes.counterStatement': 'dispute participant check',
+  'scope.decide': 'decide_scope_change_atomic p_customer_id',  'disputes.counterStatement': 'dispute participant check',
   'disputes.adminDecision': 'admin role + dispute',
   // Kael customer chat sessions — session-ownership preflight
   'kael.chat.get': 'assertKaelSessionOwnership',

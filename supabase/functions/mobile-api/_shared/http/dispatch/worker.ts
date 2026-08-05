@@ -3,7 +3,6 @@ import {
   workerApplicationSubmitSchema,
   workerAvatarUpdateSchema,
   workerAvatarUploadSchema,
-  workerCancellationDecisionSchema,
   workerKaelChatCreateSchema,
   workerKaelChatPinSchema,
   workerKaelChatRenameSchema,
@@ -33,17 +32,6 @@ export async function dispatchWorkerRoute(
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
-    case "workerCancellation.decide": {
-      const input = workerCancellationDecisionSchema.safeParse(
-        await readJson(request),
-      );
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.decideWorkerCancellation(
-        ctx,
-        route.cancellationId,
-        input.data,
-      );
-    }
     case "workers.register": {
       const input = workerRegisterSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

@@ -5,7 +5,6 @@ import {
   disputeCounterStatementSchema,
   disputeOpenRequestSchema,
   jobMediaAttachSchema,
-  workerCancellationDecisionSchema,
   workerCancellationRequestSchema,
 } from "../domain-evidence.ts";
 export const reviewSchema = z.object({
@@ -28,8 +27,5 @@ export type DisputeCounterStatementInput = z.infer<
 >;
 export type DisputeAdminDecisionInput = z.infer<
   typeof disputeAdminDecisionSchema
->;
-export type WorkerCancellationDecisionInput = z.infer<
-  typeof workerCancellationDecisionSchema
 >;
 export type JobMediaAttachInput = z.infer<typeof jobMediaAttachSchema>;

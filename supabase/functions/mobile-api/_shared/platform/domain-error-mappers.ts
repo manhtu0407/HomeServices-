@@ -226,38 +226,6 @@ export function mapDisputeDecisionError(errorCode: string | null): never {
   apiFailure("DB_ERROR", "Không thể ghi quyết định tranh chấp", 500);
 }
 
-export function mapWorkerCancellationDecisionError(
-  errorCode: string | null,
-): never {
-  if (errorCode === "NOT_FOUND") {
-    apiFailure("NOT_FOUND", "Không tìm thấy yêu cầu hủy", 404);
-  }
-  if (errorCode === "AUTH_FORBIDDEN") {
-    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được duyệt yêu cầu hủy", 403);
-  }
-  if (errorCode === "ALREADY_DECIDED") {
-    apiFailure("ALREADY_DECIDED", "Yêu cầu hủy đã được xử lý", 409);
-  }
-  if (errorCode === "JOB_CHANGED") {
-    apiFailure(
-      "STATUS_CHANGED",
-      "Công việc đã thay đổi, vui lòng tải lại",
-      409,
-    );
-  }
-  if (errorCode === "JOB_NOT_CANCELLABLE") {
-    apiFailure(
-      "STATUS_CHANGED",
-      "Công việc đã qua giai đoạn có thể duyệt hủy",
-      409,
-    );
-  }
-  if (errorCode === "INVALID_DECISION") {
-    apiFailure("VALIDATION", "Quyết định không hợp lệ", 400);
-  }
-  apiFailure("DB_ERROR", "Không thể xử lý yêu cầu hủy việc", 500);
-}
-
 export function mapScopeRequestError(errorCode: string | null): never {
   if (KAEL_SCOPE_PRICE_ERRORS.has(errorCode ?? "")) {
     apiFailure(

@@ -1,6 +1,6 @@
-// Edge service worker-cancellation domain (C4 6a, services/* split): worker cancel-request flow with
-// autonomy gating, classification, and (on approve) apartment-access reset + replacement re-broadcast via
-// createBroadcasts; decideWorkerCancellation is the deprecated 410 stub. Imported by services.ts for wiring.
+// Edge service worker-cancellation domain: worker cancel-request flow with autonomy gating,
+// classification, and (on approve) apartment-access reset + replacement re-broadcast via
+// createBroadcasts. Imported by services.ts for wiring.
 
 import { asBoolean, asJobStatus, asString, asWorkerCancellationAbuseSignals, asWorkerCancellationCategory, asWorkerCancellationReasonCode, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
@@ -16,7 +16,7 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { validateWorkflowCommand } from "../../workflow-orchestrator.ts";
 import { buildKaelAutonomyDecision, buildWorkerCancellationFallbackOptions, classifyWorkerCancellationReason, recordWorkerCancellationReview } from "../../kael/index.ts";
 import { normalizeServiceAreaDistrict } from "../../../../_shared/domain.ts";
-import type { JobStatus, ServiceType, WorkerCancellationRequestInput, WorkerCancellationDecisionInput } from "../../../../_shared/domain.ts";
+import type { JobStatus, ServiceType, WorkerCancellationRequestInput } from "../../../../_shared/domain.ts";
 
 export async function requestWorkerCancellation(
   ctx: MobileApiContext,
@@ -277,22 +277,6 @@ async function logWorkerCancellationEvents(input: {
         autonomy_decision: input.autonomyDecision,
       });
   }
-}
-
-export async function decideWorkerCancellation(
-  ctx: MobileApiContext,
-  cancellationId: string,
-  input: WorkerCancellationDecisionInput,
-): Promise<never> {
-  void ctx;
-  void cancellationId;
-  void input;
-  apiFailure(
-    "DEPRECATED",
-    "Yêu cầu hủy việc của thợ đã được xử lý tự động ở endpoint hủy việc",
-    410,
-  );
-  throw new Error("Unreachable after worker cancellation deprecation failure");
 }
 
 async function gateWorkerCancellationBeforeMutation(input: {

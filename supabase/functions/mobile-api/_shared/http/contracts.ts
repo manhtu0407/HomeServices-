@@ -36,7 +36,6 @@ import type {
   WorkerApplicationSubmitInput,
   EdgeWorkerAvatarUpdateInput,
   EdgeWorkerAvatarUploadInput,
-  WorkerCancellationDecisionInput,
   WorkerCancellationRequestInput,
   WorkerKaelChatCreateInput,
   EdgeWorkerKaelChatPinInput,
@@ -118,7 +117,6 @@ import type {
   EdgeReviewResponse,
   EdgeServiceCatalogResponse,
   EdgeStatusUpdateResponse,
-  EdgeWorkerCancellationDecisionResponse,
   EdgeWorkerCancellationResponse,
   EdgeWorkerApplicationResponse,
   EdgeWorkerCandidateResponse,
@@ -499,11 +497,6 @@ export type MobileApiServices = {
     jobId: string,
     input: JobMessageSendInput,
   ): Promise<EdgeJobMessageSendResponse>;
-  decideWorkerCancellation(
-    ctx: MobileApiContext,
-    cancellationId: string,
-    input: WorkerCancellationDecisionInput,
-  ): Promise<EdgeWorkerCancellationDecisionResponse>;
   decideScopeChange(
     ctx: MobileApiContext,
     scopeChangeId: string,

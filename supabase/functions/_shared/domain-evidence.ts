@@ -73,11 +73,6 @@ export const disputeAdminDecisionSchema = z.object({
   reasoning: z.string().trim().min(50).max(2000),
 });
 
-export const workerCancellationDecisionSchema = z.object({
-  decision: z.enum(["approve", "reject"]),
-  review_note: z.string().trim().max(1000).optional(),
-});
-
 const jobMediaAssetSchema = z.object({
   object_path: z.string().min(10).max(500).regex(
     new RegExp(

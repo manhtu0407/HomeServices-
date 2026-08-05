@@ -89,7 +89,7 @@ import {
   updateWorkerAvatar,
 } from "./domains/worker/avatar.ts";
 import { cancelJob, requestCustomerCancellation } from "./domains/customer/cancellation.ts";
-import { decideWorkerCancellation, requestWorkerCancellation } from "./domains/worker/cancellation.ts";
+import { requestWorkerCancellation } from "./domains/worker/cancellation.ts";
 import {
   acceptBroadcast,
   confirmSearch,
@@ -275,7 +275,6 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   | "revokeJobMediaUploads"
   | "listJobMessages"
   | "sendJobMessage"
-  | "decideWorkerCancellation"
   | "decideScopeChange"
   | "confirmCompletion"
   | "createPaymentIntent"
@@ -309,7 +308,6 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
     revokeJobMediaUploads,
     listJobMessages,
     sendJobMessage: (ctx, jobId, input) => sendJobMessage(ctx, jobId, input, aiRuntime(ctx, secrets)),
-    decideWorkerCancellation,
     decideScopeChange,
     confirmCompletion,
     createPaymentIntent: (ctx, jobId) => secrets.sepayVietQr?.enabled

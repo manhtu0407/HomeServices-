@@ -11,7 +11,10 @@ const ROOT = resolve(__dirname, '../../../../../')
 const MIGRATIONS_DIR = resolve(ROOT, 'supabase/migrations')
 const SHARED_DATABASE_TYPES = resolve(ROOT, 'packages/shared/src/types/database.types.ts')
 const DROPPED_PUBLIC_TABLES = new Set(['worker_profiles_districts_backup_x3'])
-const DROPPED_PUBLIC_FUNCTIONS = new Set(['normalize_district_value'])
+const DROPPED_PUBLIC_FUNCTIONS = new Set([
+  'normalize_district_value',
+  'decide_worker_cancellation_atomic',
+])
 // PostgREST excludes trigger-returning helpers from the generated callable RPC surface.
 const TRIGGER_ONLY_PUBLIC_FUNCTIONS = new Set([
   'notify_worker_account_approved',

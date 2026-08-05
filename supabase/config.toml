@@ -282,8 +282,13 @@ max_frequency = "5s"
 # uri = "pg-functions://<database>/<schema>/<hook_name>"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
+# Disabled because no Twilio credentials exist for this project: `enabled = true` with an empty
+# account_sid makes `supabase start` fail config validation, which blocks the whole local stack.
+# Nothing shipped depends on it — login uses email/phone + password, never an SMS OTP — and local
+# phone-OTP work is covered by [auth.sms.test_otp] above, which needs no provider. Flip this back on
+# in the same change that supplies account_sid and message_service_sid.
 [auth.sms.twilio]
-enabled = true
+enabled = false
 account_sid = ""
 message_service_sid = ""
 # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:

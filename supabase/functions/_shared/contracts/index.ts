@@ -45,7 +45,6 @@ export {
   disputeCounterStatementSchema,
   disputeOpenRequestSchema,
   jobMediaAttachSchema,
-  workerCancellationDecisionSchema,
   workerCancellationRequestSchema,
 } from "../domain-evidence.ts";
 export { buildJobDisplayCode, buildWorkerDisplayCode } from "../display-codes.ts";

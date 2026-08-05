@@ -15,9 +15,7 @@ import {
   workerRegisterSchema,
   workerServiceAreaUpdateSchema,
   workerServicePreferencesUpdateSchema,
-  workerCancellationRequestSchema,
-  workerCancellationDecisionSchema,
-  workerAvatarUpdateSchema,
+  workerCancellationRequestSchema,  workerAvatarUpdateSchema,
   workerAvatarUploadSchema,
   customerAvatarUpdateSchema,
   customerAvatarUploadSchema,
@@ -764,10 +762,6 @@ describe('workflow support schemas', () => {
     }).success).toBe(false)
   })
 
-  it('validates worker cancellation decisions', () => {
-    expect(workerCancellationDecisionSchema.parse({ decision: 'approve' }).decision).toBe('approve')
-    expect(() => workerCancellationDecisionSchema.parse({ decision: 'maybe' })).toThrow()
-  })
 
   it('validates job media attachment payloads', () => {
     expect(() =>

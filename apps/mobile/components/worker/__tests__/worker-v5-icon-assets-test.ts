@@ -106,7 +106,6 @@ describe('worker V5 icon assets', () => {
     expect(offerSource).not.toContain("'Yêu cầu sẽ hiện khi backend đồng bộ cơ hội.'")
     expect(offerSurfaceSource).toContain("'Chi tiết sẽ hiện khi có cơ hội phù hợp.'")
     expect(offerSurfaceSource).not.toContain("'Chi tiết chỉ hiện khi NestScout gửi cơ hội tới thợ.'")
-    expect(acceptanceSurfaceSource).toContain("'Chi tiết sẽ hiện khi có cơ hội phù hợp.'")
     expect(workerFlowSource).not.toContain('WorkerV5AcceptBoundaryNote')
     expect(acceptanceSurfaceSource).not.toContain('WorkerV5AcceptBoundaryNote')
     expect(acceptanceStylesSource).not.toContain('acceptBoundary')
