@@ -1,9 +1,9 @@
 import type { LocalDeal } from '@nestscout/shared'
 
-import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
+import { type AppLanguage } from '@/lib/app-language'
 
 import { textByLanguage } from './format'
-import { canShowWorkerAddress, routeDestinationLabel } from './labels'
+import { routeDestinationLabel } from './labels'
 
 const LIVE_DISTANCE_FORMATTERS = {
   en: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }),
@@ -78,19 +78,6 @@ export function workerV5KaelOpportunityMatchScore(deal: LocalDeal | null): numbe
     return Math.max(0, Math.min(100, Math.round(normalized)))
   }
   return null
-}
-
-export function workerV5ArrivalDestinationMeta(deal: LocalDeal | null, language: AppLanguage) {
-  if (!deal) return textByLanguage(language, 'Chưa có việc', 'No work')
-  const access = deal.broadcast?.addressAccess
-  const release = access?.exact_unit_released
-    ? textByLanguage(language, 'Đã mở căn hộ', 'Unit released')
-    : access?.release_stage === 'building_released'
-      ? textByLanguage(language, 'Đã mở tòa nhà', 'Building released')
-      : canShowWorkerAddress(deal)
-        ? textByLanguage(language, 'Địa chỉ đã mở', 'Address open')
-        : textByLanguage(language, 'Địa chỉ đang bảo vệ', 'Address protected')
-  return `${release} · ${localizedStatusLabel(deal.status, language)}`
 }
 
 export function workerV5ArrivalDestinationLabel(deal: LocalDeal | null, language: AppLanguage) {

@@ -201,20 +201,6 @@ export function IconButton({ icon = 'back', label, onPress }: { icon?: EntryIcon
   )
 }
 
-export function NestScoutBrandMark({ size = 102, source }: { size?: number; source: ImageSourcePropType }) {
-  const language = useAppLanguage()
-  return (
-    <View
-      accessibilityLabel={entryAccessCopy[language].accessibility.logo}
-      accessible
-      style={[styles.brandMarkShell, { borderRadius: Math.round(size * 0.30), height: size, width: size }]}
-    >
-      <Image contentFit="cover" source={source} style={styles.brandMarkImage} />
-      <View pointerEvents="none" style={[styles.brandMarkHighlight, { borderRadius: Math.round(size * 0.25) }]} />
-    </View>
-  )
-}
-
 export function KaelCoreHero({ compact = false }: { compact?: boolean }) {
   const language = useAppLanguage()
   const { reduceMotion } = useEntryAccessibility()
@@ -235,25 +221,6 @@ export function AssetTile({ source }: { source: ImageSourcePropType }) {
 
 const styles = StyleSheet.create({
   assetImage: { height: 68, width: 68 },
-  brandMarkHighlight: {
-    borderColor: 'rgba(255,255,255,0.68)',
-    borderWidth: 1,
-    bottom: 5,
-    left: 5,
-    position: 'absolute',
-    right: 5,
-    top: 5,
-  },
-  brandMarkImage: { height: '100%', transform: [{ scale: 1.025 }], width: '100%' },
-  brandMarkShell: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderColor: entryTheme.color.surface.stroke,
-    borderWidth: 1,
-    boxShadow: '0 12px 17px rgba(62,104,169,0.14)',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
   assetTile: {
     alignItems: 'center',
     backgroundColor: '#FAFDFC',
@@ -265,21 +232,6 @@ const styles = StyleSheet.create({
     width: 76,
   },
   disabled: { opacity: 0.54 },
-  eyebrow: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(230,251,243,0.82)',
-    borderColor: 'rgba(184,231,223,0.78)',
-    borderRadius: entryTheme.radius.pill,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 7,
-    minHeight: 28,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  eyebrowDot: { backgroundColor: entryTheme.color.mint.mint600, borderRadius: 3, height: 6, width: 6 },
-  eyebrowText: { color: entryTheme.color.mint.mint700, fontSize: 11, fontWeight: '700', letterSpacing: 0, textTransform: 'uppercase' },
   glassBase: {
     backgroundColor: 'rgba(255,255,255,0.72)',
     borderColor: 'rgba(255,255,255,0.90)',

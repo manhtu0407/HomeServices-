@@ -112,15 +112,6 @@ export type EdgeWorkerCancellationResponse = {
   }[];
 };
 
-export type EdgeWorkerCancellationDecisionResponse = {
-  cancellation_id: string;
-  job_id: string;
-  status: string;
-  job_status: JobStatus;
-  broadcast_sent: boolean;
-  message: string;
-};
-
 export type EdgeWorkerJobListResponse = {
   jobs: {
     id: string;

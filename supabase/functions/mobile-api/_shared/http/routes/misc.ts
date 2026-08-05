@@ -7,12 +7,6 @@ export type CatalogRoute =
 
 export type CaseResolutionRoute =
   | { kind: "scope.decide"; method: "POST"; scopeChangeId: string; roles: UserRole[] }
-  | {
-    kind: "workerCancellation.decide";
-    method: "POST";
-    cancellationId: string;
-    roles: UserRole[];
-  }
   | { kind: "disputes.counterStatement"; method: "POST"; disputeId: string; roles: UserRole[] }
   | { kind: "disputes.adminDecision"; method: "POST"; disputeId: string; roles: UserRole[] };
 
@@ -54,20 +48,6 @@ export function matchCaseResolutionRoute(
       method: "POST",
       scopeChangeId,
       roles: ["customer", "admin"],
-    };
-  }
-
-  const workerCancellation = path.match(
-    /^\/worker-cancellations\/([^/]+)\/decide$/,
-  );
-  if (workerCancellation && method === "POST") {
-    const cancellationId = decodePathSegment(workerCancellation[1] ?? "");
-    if (!cancellationId) return null;
-    return {
-      kind: "workerCancellation.decide",
-      method: "POST",
-      cancellationId,
-      roles: ["admin"],
     };
   }
 

@@ -47,9 +47,7 @@ describe('shared and Edge domain contracts stay in parity', () => {
       'ConfirmKaelChatResponse',
       'JobMessageListResponse',
       'JobMessageSendResponse',
-      'WorkerCancellationResponse',
-      'WorkerCancellationDecisionResponse',
-      'NotificationListResponse',
+      'WorkerCancellationResponse',      'NotificationListResponse',
       'NotificationReadResponse',
       'DevicePushTokenResponse',
     ]) {

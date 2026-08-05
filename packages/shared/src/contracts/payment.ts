@@ -40,13 +40,7 @@ export const disputeAdminDecisionSchema = z.object({
   reasoning: z.string().trim().min(50).max(2000),
 })
 
-export const workerCancellationDecisionSchema = z.object({
-  decision: z.enum(['approve', 'reject']),
-  review_note: z.string().trim().max(1000).optional(),
-})
-
 export type ReviewInput = z.infer<typeof reviewSchema>
 export type DisputeOpenRequestInput = z.infer<typeof disputeOpenRequestSchema>
 export type DisputeCounterStatementInput = z.infer<typeof disputeCounterStatementSchema>
 export type DisputeAdminDecisionInput = z.infer<typeof disputeAdminDecisionSchema>
-export type WorkerCancellationDecisionInput = z.infer<typeof workerCancellationDecisionSchema>

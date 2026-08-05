@@ -78,7 +78,6 @@ export type {
   EdgeWorkerApplicationResponse,
   EdgeWorkerAvatarUpdateResponse,
   EdgeWorkerAvatarUploadResponse,
-  EdgeWorkerCancellationDecisionResponse,
   EdgeWorkerCancellationResponse,
   EdgeWorkerJobListResponse,
   EdgeWorkerKaelClarifyResponse,

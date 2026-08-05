@@ -357,21 +357,7 @@ describe('cancellation-worker', () => {
     ])
   })
 
-  it('rejects legacy admin worker-cancellation decisions after auto-approval is enabled', async () => {
-    const client = makeSequenceClient([])
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: 'admin-1' },
-      role: 'admin',
-      supabase: client,
-    }
-
-    await expect(createEdgeServices({}).decideWorkerCancellation(ctx, 'cancel-1', {
-      decision: 'approve',
-    })).rejects.toMatchObject({
-      code: 'DEPRECATED',
-      status: 410,
-    })
-    expect(client.calls).toEqual([])
+  it('exposes no admin worker-cancellation decision service after auto-approval is enabled', () => {
+    expect('decideWorkerCancellation' in createEdgeServices({})).toBe(false)
   })
 })
