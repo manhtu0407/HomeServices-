@@ -1,0 +1,92 @@
+name: staging-migration-apply
+
+on:
+  push:
+    branches:
+      - tmp/harness-materialize-base
+    paths:
+      - .github/staging-migration-apply-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - name: Reconcile and apply staging migrations
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          git init repository
+          cd repository
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune origin "+refs/heads/feat/harness-production-assurance-pr02-pr12:refs/remotes/origin/integration" "+refs/heads/tmp/harness-materialize-base:refs/remotes/origin/report"
+          git checkout -B integration refs/remotes/origin/integration
+          corepack enable
+          {
+            echo "STAGING MIGRATION APPLY"
+            echo "head=$(git rev-parse HEAD)"
+            test -n "$SUPABASE_ACCESS_TOKEN" || { echo "missing SUPABASE_ACCESS_TOKEN"; exit 20; }
+            test -n "$SUPABASE_DB_PASSWORD" || { echo "missing SUPABASE_DB_PASSWORD"; exit 21; }
+            corepack pnpm install --frozen-lockfile
+            corepack pnpm exec supabase --version
+            corepack pnpm exec supabase link --project-ref xyylanuyflrjzbjzhqfl --password "$SUPABASE_DB_PASSWORD"
+            echo "--- migration list before ---"
+            corepack pnpm exec supabase migration list --linked
+            echo "--- reconcile staging alias ---"
+            corepack pnpm exec supabase migration repair 20260726101047 --status reverted --linked
+            corepack pnpm exec supabase migration repair 20260726120000 --status applied --linked
+            echo "--- apply all reviewed missing migrations ---"
+            corepack pnpm exec supabase db push --linked --include-all --password "$SUPABASE_DB_PASSWORD"
+            echo "--- migration list after ---"
+            corepack pnpm exec supabase migration list --linked
+            echo "--- database lint ---"
+            corepack pnpm exec supabase db lint --linked
+            echo "--- generate staging types ---"
+            corepack pnpm exec supabase gen types typescript --linked > packages/shared/src/types/database.types.ts
+            echo "--- workspace verification after generated types ---"
+            corepack pnpm -r --if-present type-check
+            corepack pnpm -r --if-present test
+            corepack pnpm -r --if-present build
+            node scripts/harness/verify.mjs
+            node scripts/check-comment-discipline.mjs
+            node scripts/check-skills-sync.mjs
+            node scripts/lint-structure.mjs
+            git diff --check
+            if ! git diff --quiet -- packages/shared/src/types/database.types.ts; then
+              git add packages/shared/src/types/database.types.ts
+              git config user.name "manhtu0407"
+              git config user.email "manhtu0407@gmail.com"
+              git commit -m "chore(harness): refresh staging database types"
+              git push origin HEAD:refs/heads/feat/harness-production-assurance-pr02-pr12
+              echo "generated_types_commit=$(git rev-parse HEAD)"
+            else
+              echo "generated_types_unchanged=true"
+            fi
+          } > /tmp/staging-apply.raw 2>&1
+          rc=$?
+          python - <<'PY'
+          import os
+          text=open('/tmp/staging-apply.raw', errors='replace').read()
+          for key in ('SUPABASE_ACCESS_TOKEN','SUPABASE_DB_PASSWORD'):
+              value=os.environ.get(key,'')
+              if value:
+                  text=text.replace(value, f'<redacted:{key}>')
+          open('/tmp/staging-apply.txt','w').write(text)
+          PY
+          git fetch --no-tags --prune origin "+refs/heads/tmp/harness-materialize-base:refs/remotes/origin/report-latest"
+          git reset --hard refs/remotes/origin/report-latest
+          mkdir -p .github
+          cp /tmp/staging-apply.txt .github/staging-migration-apply-report.txt
+          git add .github/staging-migration-apply-report.txt
+          git config user.name "manhtu0407"
+          git config user.email "manhtu0407@gmail.com"
+          git commit -m "chore(harness): record staging migration apply" || true
+          git push origin HEAD:refs/heads/tmp/harness-materialize-base
+          exit "$rc"
