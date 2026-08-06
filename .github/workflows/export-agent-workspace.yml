@@ -3,7 +3,7 @@ name: export-agent-workspace
 on:
   pull_request:
     branches:
-      - feat/harness-manifest-truth-pr01
+      - tmp/agent-export-base
 
 permissions:
   contents: read
