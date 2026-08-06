@@ -1,0 +1,78 @@
+name: staging-functions-deploy
+
+on:
+  push:
+    branches:
+      - tmp/harness-materialize-base
+    paths:
+      - .github/staging-functions-deploy-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Deploy exact PR functions to staging
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          git init repository
+          cd repository
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune origin "+refs/heads/feat/harness-production-assurance-pr02-pr12:refs/remotes/origin/integration" "+refs/heads/tmp/harness-materialize-base:refs/remotes/origin/report"
+          git checkout -B integration refs/remotes/origin/integration
+          corepack enable
+          {
+            echo "STAGING EDGE FUNCTION DEPLOY"
+            echo "head=$(git rev-parse HEAD)"
+            test -n "$SUPABASE_ACCESS_TOKEN" || { echo "missing SUPABASE_ACCESS_TOKEN"; exit 20; }
+            corepack pnpm install --frozen-lockfile
+            corepack pnpm exec supabase --version
+            for function_name in mobile-api kael-learning-monitor kael-media-retention sepay-webhook map-proxy-spike; do
+              echo "--- deploy ${function_name} ---"
+              corepack pnpm exec supabase functions deploy "$function_name" --project-ref xyylanuyflrjzbjzhqfl
+            done
+            echo "--- function list ---"
+            corepack pnpm exec supabase functions list --project-ref xyylanuyflrjzbjzhqfl
+            echo "--- public Kael charter smoke ---"
+            response_file=/tmp/kael-charter-response.json
+            status=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+              --request POST \
+              --header 'content-type: application/json' \
+              --data '{"kind":"kael.charter"}' \
+              'https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api')
+            echo "http_status=${status}"
+            test "$status" = "200"
+            python - <<'PY'
+            import json
+            data=json.load(open('/tmp/kael-charter-response.json'))
+            if not isinstance(data, dict):
+                raise SystemExit('charter response is not an object')
+            print('charter_response_keys=' + ','.join(sorted(data.keys())))
+            PY
+          } > /tmp/staging-functions.raw 2>&1
+          rc=$?
+          python - <<'PY'
+          import os
+          text=open('/tmp/staging-functions.raw', errors='replace').read()
+          value=os.environ.get('SUPABASE_ACCESS_TOKEN','')
+          if value:
+              text=text.replace(value, '<redacted:SUPABASE_ACCESS_TOKEN>')
+          open('/tmp/staging-functions.txt','w').write(text)
+          PY
+          git fetch --no-tags --prune origin "+refs/heads/tmp/harness-materialize-base:refs/remotes/origin/report-latest"
+          git reset --hard refs/remotes/origin/report-latest
+          mkdir -p .github
+          cp /tmp/staging-functions.txt .github/staging-functions-deploy-report.txt
+          git add .github/staging-functions-deploy-report.txt
+          git config user.name "manhtu0407"
+          git config user.email "manhtu0407@gmail.com"
+          git commit -m "chore(harness): record staging function deploy" || true
+          git push origin HEAD:refs/heads/tmp/harness-materialize-base
+          exit "$rc"
