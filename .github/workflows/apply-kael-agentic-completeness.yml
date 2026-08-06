@@ -146,10 +146,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pnpm type-check:api
-          pnpm type-check:mobile
-          pnpm test:api
-          pnpm test:mobile
+          pnpm --filter @nestscout/api type-check
+          pnpm --filter @nestscout/mobile type-check
+          pnpm --filter @nestscout/api test
+          pnpm --filter @nestscout/mobile test
           node apps/api/scripts/kael-eval.mjs --mode deterministic --report docs/test-logs/2026-08-06_kael-eval.md
           test -f apps/api/scripts/kael-multi-turn-eval.mjs
           test -f apps/api/scripts/kael-model-health.mjs
