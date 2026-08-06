@@ -23,18 +23,23 @@ jobs:
           set -euo pipefail
           if [[ ! -f scripts/harness/verify.mjs ]]; then
             cat .github/agent-patch/patch-[0-9][0-9][0-9] > /tmp/harness.patch.b64
-            echo "3d6c58708d86a214c19d660fcc539bcdf086e1b8be9a689d8e88f128ed96bb51  /tmp/harness.patch.b64" | sha256sum -c -
+            echo "3d6ca6fc690b0362fc116074a2cf903de9420ae0f1ce5d28f63bb52770e78096  /tmp/harness.patch.b64" | sha256sum -c -
             base64 --decode /tmp/harness.patch.b64 > /tmp/harness.patch.xz
-            echo "8f9e218faec3f3bcbbd5b1079ec0b31a231ba20025ba97a6b24cfaa0488a9401  /tmp/harness.patch.xz" | sha256sum -c -
+            echo "8f9e240c452a3d85c2f9713705d239572463857fb12859117ffd7b33b59fca08  /tmp/harness.patch.xz" | sha256sum -c -
             xz --decompress --stdout /tmp/harness.patch.xz > /tmp/harness.patch
-            echo "601d441aff25afdb1ba6babc3ad650dba901f688e139835feb6ce426e6b3be2f  /tmp/harness.patch" | sha256sum -c -
+            echo "601d0666b7396d8711caeecc75eec179647382238191c392107999e75745affa  /tmp/harness.patch" | sha256sum -c -
+            git diff --check
             git apply --check /tmp/harness.patch
-            git apply /tmp/harness.patch
+            git reset --hard d0f465c29d86a9aeb94992a58f990ea567657c4c
+            git apply --index /tmp/harness.patch
           fi
           test -f scripts/harness/verify.mjs
           test -f .github/workflows/harness-assurance.yml
           rm -rf .github/agent-patch
+          rm -f .github/workflows/export-agent-workspace.yml
           rm -f .github/workflows/apply-agent-patch.yml
+          rm -f .github/agent-export-anchor.txt
+          rm -f .github/agent-export-trigger.txt
           git add -A
           git config user.name "manhtu0407"
           git config user.email "manhtu0407@gmail.com"
