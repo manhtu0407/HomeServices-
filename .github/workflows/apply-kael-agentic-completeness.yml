@@ -70,6 +70,7 @@ jobs:
           echo "$PATCH_XZ_SHA256  /tmp/patch.xz" | sha256sum -c -
           xz -dc /tmp/patch.xz > /tmp/patch.diff
           echo "$PATCH_SHA256  /tmp/patch.diff" | sha256sum -c -
+          echo "Patch paths: $(grep -c '^diff --git ' /tmp/patch.diff)"
 
       - name: Apply patch without destructive changes
         shell: bash
@@ -104,26 +105,6 @@ jobs:
           NODE
             git add package.json
           fi
-
-          # A three-way apply that encounters one tracked-file conflict stages the
-          # tracked modifications but does not materialize later new-file entries.
-          # Recover only the patch's declared additions, one exact path at a time.
-          mapfile -t declared_new_files < <(awk '
-            /^diff --git a\// {
-              path = $4
-              sub(/^b\//, "", path)
-            }
-            /^new file mode / { print path }
-          ' /tmp/patch.diff)
-          recovered_new_files=0
-          for path in "${declared_new_files[@]}"; do
-            if [ ! -e "$path" ]; then
-              git apply --index --whitespace=nowarn --include="$path" /tmp/patch.diff
-              recovered_new_files=$((recovered_new_files + 1))
-            fi
-          done
-          echo "Recovered new files: $recovered_new_files / ${#declared_new_files[@]}"
-
           python3 - <<'PY'
           from pathlib import Path
           path = Path('config/env/workspace.env.example')
@@ -139,21 +120,39 @@ jobs:
             echo 'Refusing to commit file deletions.' >&2
             exit 1
           fi
+          patch_path_count="$(grep -c '^diff --git ' /tmp/patch.diff)"
           changed_count="$(git diff --cached --name-only | wc -l | tr -d ' ')"
-          echo "Staged changed file count: $changed_count"
-          git diff --cached --name-status
-          test "$changed_count" = "76"
+          echo "Staged changed file count: $changed_count / patch paths: $patch_path_count"
+          test "$changed_count" = "$patch_path_count"
           locked='^(CLAUDE\.md|README\.md|governance/(STRUCTURES|RULES|critical|design)\.md)$'
           if git diff --cached --name-only | grep -Eq "$locked"; then
             echo 'Refusing to modify locked governance files.' >&2
             exit 1
           fi
 
-      - name: Run dependency-free gates
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run compile and test gates
         shell: bash
         run: |
           set -euo pipefail
+          pnpm type-check:api
+          pnpm type-check:mobile
+          pnpm test:api
+          pnpm test:mobile
           node apps/api/scripts/kael-eval.mjs --mode deterministic --report docs/test-logs/2026-08-06_kael-eval.md
+          test -f apps/api/scripts/kael-multi-turn-eval.mjs
+          test -f apps/api/scripts/kael-model-health.mjs
           node apps/api/scripts/kael-multi-turn-eval.mjs
           node apps/api/scripts/kael-model-health.mjs
           node scripts/lint-structure.mjs
