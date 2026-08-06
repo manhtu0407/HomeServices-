@@ -1,0 +1,1 @@
+Idempotent retry: publish only if the target branch is still at the Plan commit, then ensure the implementation PR exists.
