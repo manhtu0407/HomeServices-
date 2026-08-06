@@ -104,6 +104,26 @@ jobs:
           NODE
             git add package.json
           fi
+
+          # A three-way apply that encounters one tracked-file conflict stages the
+          # tracked modifications but does not materialize later new-file entries.
+          # Recover only the patch's declared additions, one exact path at a time.
+          mapfile -t declared_new_files < <(awk '
+            /^diff --git a\// {
+              path = $4
+              sub(/^b\//, "", path)
+            }
+            /^new file mode / { print path }
+          ' /tmp/patch.diff)
+          recovered_new_files=0
+          for path in "${declared_new_files[@]}"; do
+            if [ ! -e "$path" ]; then
+              git apply --index --whitespace=nowarn --include="$path" /tmp/patch.diff
+              recovered_new_files=$((recovered_new_files + 1))
+            fi
+          done
+          echo "Recovered new files: $recovered_new_files / ${#declared_new_files[@]}"
+
           python3 - <<'PY'
           from pathlib import Path
           path = Path('config/env/workspace.env.example')
