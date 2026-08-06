@@ -58,7 +58,7 @@ jobs:
           kael-redteam
 
   ratchets:
-    name: skills-sync + structure ratchet
+    name: harness manifest + skills-sync + structure ratchet
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -70,6 +70,10 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Harness manifest fixture tests
+        run: node --test scripts/harness/check-manifest.test.mjs
+      - name: Harness manifest semantic check
+        run: node scripts/harness/check-manifest.mjs
       - name: Skills single-source check
         run: node scripts/check-skills-sync.mjs
       - name: Structure ratchet (Core Skill 6)
