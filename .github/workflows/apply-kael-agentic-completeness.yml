@@ -2,9 +2,10 @@
 name: Apply Kael Agentic Completeness implementation
 
 on:
-  push:
-    branches:
-      - claude/kael-agentic-completeness-apply-20260806
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,6 +16,7 @@ concurrency:
 
 jobs:
   apply:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'claude/kael-agentic-completeness-apply-20260806'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
