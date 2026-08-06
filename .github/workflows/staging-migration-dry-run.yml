@@ -1,0 +1,63 @@
+name: staging-migration-dry-run
+
+on:
+  push:
+    branches:
+      - tmp/harness-materialize-base
+    paths:
+      - .github/staging-migration-dry-run-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - name: Inspect staging migration plan
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          git init repository
+          cd repository
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune origin "+refs/heads/feat/harness-production-assurance-pr02-pr12:refs/remotes/origin/integration" "+refs/heads/tmp/harness-materialize-base:refs/remotes/origin/report"
+          git checkout -B integration refs/remotes/origin/integration
+          corepack enable
+          {
+            echo "STAGING MIGRATION DRY RUN"
+            echo "head=$(git rev-parse HEAD)"
+            test -n "$SUPABASE_ACCESS_TOKEN" || { echo "missing SUPABASE_ACCESS_TOKEN"; exit 20; }
+            test -n "$SUPABASE_DB_PASSWORD" || { echo "missing SUPABASE_DB_PASSWORD"; exit 21; }
+            corepack pnpm install --frozen-lockfile
+            corepack pnpm exec supabase --version
+            corepack pnpm exec supabase link --project-ref xyylanuyflrjzbjzhqfl --password "$SUPABASE_DB_PASSWORD"
+            echo "--- migration list ---"
+            corepack pnpm exec supabase migration list --linked
+            echo "--- db push dry run ---"
+            corepack pnpm exec supabase db push --linked --include-all --dry-run --password "$SUPABASE_DB_PASSWORD"
+          } > /tmp/staging-dry-run.raw 2>&1
+          rc=$?
+          python - <<'PY'
+          import os
+          text=open('/tmp/staging-dry-run.raw', errors='replace').read()
+          for key in ('SUPABASE_ACCESS_TOKEN','SUPABASE_DB_PASSWORD'):
+              value=os.environ.get(key,'')
+              if value:
+                  text=text.replace(value, f'<redacted:{key}>')
+          open('/tmp/staging-dry-run.txt','w').write(text)
+          PY
+          git reset --hard refs/remotes/origin/report
+          mkdir -p .github
+          cp /tmp/staging-dry-run.txt .github/staging-migration-dry-run-report.txt
+          git add .github/staging-migration-dry-run-report.txt
+          git config user.name "manhtu0407"
+          git config user.email "manhtu0407@gmail.com"
+          git commit -m "chore(harness): record staging migration dry run" || true
+          git push origin HEAD:refs/heads/tmp/harness-materialize-base
+          exit "$rc"
