@@ -75,7 +75,35 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +e
           git apply --3way --index --whitespace=nowarn /tmp/patch.diff
+          apply_status=$?
+          set -e
+          if [ "$apply_status" -ne 0 ]; then
+            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+            if [ "${#conflicts[@]}" -ne 1 ] || [ "${conflicts[0]}" != "package.json" ]; then
+              printf 'Unexpected patch conflicts:\n%s\n' "${conflicts[*]:-none}" >&2
+              exit 1
+            fi
+            git show :2:package.json > /tmp/package.ours.json
+            git show :3:package.json > /tmp/package.theirs.json
+            node <<'NODE'
+          const fs = require('node:fs')
+          const ours = JSON.parse(fs.readFileSync('/tmp/package.ours.json', 'utf8'))
+          const theirs = JSON.parse(fs.readFileSync('/tmp/package.theirs.json', 'utf8'))
+          const merged = {
+            ...ours,
+            ...theirs,
+            scripts: { ...(ours.scripts ?? {}), ...(theirs.scripts ?? {}) },
+            reactDoctor: { ...(ours.reactDoctor ?? {}), ...(theirs.reactDoctor ?? {}) },
+            devDependencies: { ...(ours.devDependencies ?? {}), ...(theirs.devDependencies ?? {}) },
+            workspaces: [...new Set([...(ours.workspaces ?? []), ...(theirs.workspaces ?? [])])],
+          }
+          fs.writeFileSync('package.json', `${JSON.stringify(merged, null, 2)}\n`)
+          NODE
+            git add package.json
+          fi
+          test -z "$(git diff --name-only --diff-filter=U)"
           git diff --cached --check
           if git diff --cached --name-status | grep -q '^D'; then
             echo 'Refusing to commit file deletions.' >&2
