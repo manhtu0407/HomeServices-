@@ -182,6 +182,44 @@ test('rejects human router count drift', () => {
   })
 })
 
+test('accepts declared provider adapters in the runtime inventory', () => {
+  withFixture(({ root, manifest }) => {
+    const provider = 'export function callProvider() { return true }\n'
+    const path = 'supabase/functions/mobile-api/_shared/kael/tools/provider.ts'
+    write(resolve(root, path), provider)
+    manifest.entries.push({
+      id: 'provider.fixture',
+      version: '1.0.0',
+      group: 'runtime',
+      owner: 'ai-runtime',
+      purpose: 'Exercise provider-adapter inventory validation.',
+      trigger: 'A test needs a provider adapter fixture.',
+      kind: 'provider-adapter',
+      canonicalPath: path,
+      allowedEnvironments: ['local'],
+      inputSchema: 'urn:test:provider-input:v1',
+      outputSchema: 'urn:test:provider-output:v1',
+      sideEffectClass: 'non-repeatable',
+      requiredCapability: 'provider.call',
+      timeoutMs: 1000,
+      retryClass: 'none',
+      budgetClass: 'provider-low',
+      dataClasses: ['provider-request-metadata'],
+      redactionProfile: 'repository-safe',
+      deprecated: false,
+      checksum: `git-blob-sha1:${gitBlobSha1(provider)}`,
+    })
+    manifest.entries.sort((left, right) => left.group === right.group
+      ? left.id.localeCompare(right.id)
+      : ({ everyday: 0, design: 1, runtime: 2 }[left.group] - { everyday: 0, design: 1, runtime: 2 }[right.group]))
+    writeJson(resolve(root, 'config/harness/manifest.json'), manifest)
+    const report = checkHarnessManifest({ root })
+    assert.equal(report.ok, true, report.problems.join('\n'))
+    assert.equal(report.providerAdapterCount, 1)
+    assert.equal(report.runtimeEntryCount, 2)
+  })
+})
+
 test('rejects undeclared runtime tools', () => {
   withFixture(({ root }) => {
     write(

@@ -110,7 +110,7 @@ function frontmatterName(text) {
 
 function checkEntries(root, manifest, problems) {
   const skills = manifest.entries.filter((entry) => entry.kind === 'repository-skill')
-  const runtime = manifest.entries.filter((entry) => entry.kind === 'runtime-tool')
+  const runtime = manifest.entries.filter((entry) => ['runtime-tool', 'provider-adapter'].includes(entry.kind))
   const ids = new Set()
   const paths = new Set()
   for (const entry of manifest.entries) {
@@ -254,6 +254,8 @@ export function checkHarnessManifest(options = {}) {
     hash: manifestSha256(manifest),
     skillCount: manifest.entries.filter((entry) => entry.kind === 'repository-skill').length,
     runtimeToolCount: manifest.entries.filter((entry) => entry.kind === 'runtime-tool').length,
+    providerAdapterCount: manifest.entries.filter((entry) => entry.kind === 'provider-adapter').length,
+    runtimeEntryCount: manifest.entries.filter((entry) => ['runtime-tool', 'provider-adapter'].includes(entry.kind)).length,
     routerCount: manifest.routers.length,
     problems,
   }
@@ -275,8 +277,8 @@ if (isMain) {
   try {
     const options = parseArgs(process.argv.slice(2))
     const report = checkHarnessManifest(options)
-    if (options.json) console.log(JSON.stringify({ ok: report.ok, manifest: repoPath(relative(report.root, report.manifestPath)), hash: report.hash ? `sha256:${report.hash}` : null, skillCount: report.skillCount ?? 0, runtimeToolCount: report.runtimeToolCount ?? 0, routerCount: report.routerCount ?? 0, problems: report.problems }, null, 2))
-    else if (report.ok) console.log(`harness manifest ok: ${report.skillCount} repository skills, ${report.runtimeToolCount} runtime tools, ${report.routerCount} routers; sha256:${report.hash}`)
+    if (options.json) console.log(JSON.stringify({ ok: report.ok, manifest: repoPath(relative(report.root, report.manifestPath)), hash: report.hash ? `sha256:${report.hash}` : null, skillCount: report.skillCount ?? 0, runtimeToolCount: report.runtimeToolCount ?? 0, providerAdapterCount: report.providerAdapterCount ?? 0, runtimeEntryCount: report.runtimeEntryCount ?? 0, routerCount: report.routerCount ?? 0, problems: report.problems }, null, 2))
+    else if (report.ok) console.log(`harness manifest ok: ${report.skillCount} repository skills, ${report.runtimeToolCount} runtime tools, ${report.providerAdapterCount} provider adapters, ${report.routerCount} routers; sha256:${report.hash}`)
     else {
       console.error('harness manifest semantic drift detected:')
       for (const problem of report.problems) console.error(`  - ${problem}`)
