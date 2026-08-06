@@ -1,0 +1,27 @@
+name: export-agent-workspace
+
+on:
+  push:
+    branches:
+      - feat/harness-production-assurance-pr02-pr12
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Package repository workspace
+        run: tar --exclude=.git --exclude=node_modules --exclude=.turbo -czf /tmp/nestscout-workspace.tar.gz .
+      - name: Upload repository workspace
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nestscout-workspace
+          path: /tmp/nestscout-workspace.tar.gz
+          if-no-files-found: error
+          retention-days: 1
