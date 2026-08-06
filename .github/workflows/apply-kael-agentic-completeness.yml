@@ -1,3 +1,4 @@
+# Triggered by the approved §50 execution request on 2026-08-06.
 name: Apply Kael Agentic Completeness implementation
 
 on:
@@ -23,7 +24,7 @@ jobs:
       PATCH_SHA256: cf880275817b42c4fcbcf001d1985f03e7cc4642fa61af60ed4a8e175b3471ca
     steps:
       - name: Check out implementation branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
