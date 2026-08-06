@@ -81,6 +81,7 @@ jobs:
           set -e
           if [ "$apply_status" -ne 0 ]; then
             mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+            printf 'Patch conflicts: %s\n' "${conflicts[*]:-none}"
             if [ "${#conflicts[@]}" -ne 1 ] || [ "${conflicts[0]}" != "package.json" ]; then
               printf 'Unexpected patch conflicts:\n%s\n' "${conflicts[*]:-none}" >&2
               exit 1
@@ -110,13 +111,17 @@ jobs:
           path.write_text(text.rstrip('\n') + '\n', encoding='utf-8')
           PY
           git add config/env/workspace.env.example
-          test -z "$(git diff --name-only --diff-filter=U)"
+          unresolved="$(git diff --name-only --diff-filter=U)"
+          printf 'Unresolved paths: %s\n' "${unresolved:-none}"
+          test -z "$unresolved"
           git diff --cached --check
           if git diff --cached --name-status | grep -q '^D'; then
             echo 'Refusing to commit file deletions.' >&2
             exit 1
           fi
           changed_count="$(git diff --cached --name-only | wc -l | tr -d ' ')"
+          echo "Staged changed file count: $changed_count"
+          git diff --cached --name-status
           test "$changed_count" = "76"
           locked='^(CLAUDE\.md|README\.md|governance/(STRUCTURES|RULES|critical|design)\.md)$'
           if git diff --cached --name-only | grep -Eq "$locked"; then
