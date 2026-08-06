@@ -12,6 +12,11 @@ const GROUP_ORDER = { everyday: 0, design: 1, runtime: 2 }
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const repoPath = (path) => path.split(sep).join('/')
 const unique = (values) => new Set(values).size === values.length
+const duplicates = (values) => {
+  const counts = new Map()
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1)
+  return [...counts.entries()].filter(([, count]) => count > 1).map(([value]) => value).sort()
+}
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'))
 
 function resolveRepo(root, path) {
@@ -98,8 +103,12 @@ function discover(root, relativeRoot, predicate) {
 function compareSets(actual, expected, label, problems) {
   const actualSet = new Set(actual)
   const expectedSet = new Set(expected)
+  const duplicateActual = duplicates(actual)
+  const duplicateExpected = duplicates(expected)
   const missing = [...expectedSet].filter((value) => !actualSet.has(value)).sort()
   const extra = [...actualSet].filter((value) => !expectedSet.has(value)).sort()
+  if (duplicateActual.length) problems.push(`${label} contains duplicates: ${duplicateActual.join(', ')}`)
+  if (duplicateExpected.length) problems.push(`${label} expected inventory contains duplicates: ${duplicateExpected.join(', ')}`)
   if (missing.length) problems.push(`${label} is missing: ${missing.join(', ')}`)
   if (extra.length) problems.push(`${label} has undeclared entries: ${extra.join(', ')}`)
 }
@@ -114,6 +123,9 @@ function checkEntries(root, manifest, problems) {
   const ids = new Set()
   const paths = new Set()
   for (const entry of manifest.entries) {
+    if (entry.kind === 'repository-skill' && entry.group === 'runtime') problems.push(`repository-skill ${entry.id} cannot use runtime group`)
+    if (['runtime-tool', 'provider-adapter'].includes(entry.kind) && entry.group !== 'runtime') problems.push(`${entry.kind} ${entry.id} must use runtime group`)
+    if (!['none', 'read-only'].includes(entry.sideEffectClass) && !entry.requiredCapability) problems.push(`side-effecting entry ${entry.id} requires a capability`)
     if (ids.has(entry.id)) problems.push(`duplicate entry id: ${entry.id}`)
     ids.add(entry.id)
     if (paths.has(entry.canonicalPath)) problems.push(`duplicate canonicalPath: ${entry.canonicalPath}`)
