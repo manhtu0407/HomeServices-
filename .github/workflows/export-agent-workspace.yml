@@ -32,12 +32,8 @@ jobs:
           echo "601d0666b7396d8711caeecc75eec179647382238191c392107999e75745affa  /tmp/harness.patch" | sha256sum -c -
           git diff --check
           git apply --check /tmp/harness.patch
-          cp .github/workflows/export-agent-workspace.yml /tmp/materialize-harness-assurance.yml
           git reset --hard d0f465c29d86a9aeb94992a58f990ea567657c4c
           git apply --index /tmp/harness.patch
-          mkdir -p .github/workflows
-          cp /tmp/materialize-harness-assurance.yml .github/workflows/export-agent-workspace.yml
-          git add .github/workflows/export-agent-workspace.yml
           test -f scripts/harness/verify.mjs
           test -f .github/workflows/harness-assurance.yml
           git diff --cached --check
