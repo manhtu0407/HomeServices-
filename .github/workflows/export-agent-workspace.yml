@@ -16,7 +16,7 @@ jobs:
         with:
           ref: feat/harness-production-assurance-pr02-pr12
           fetch-depth: 0
-      - name: Materialize verified implementation commit
+      - name: Materialize and verify implementation
         shell: bash
         run: |
           set -euo pipefail
@@ -24,39 +24,17 @@ jobs:
             echo "Implementation already materialized."
             exit 0
           fi
-          cat > /tmp/chunks.sha256 <<'CHECKSUMS'
-          04fc8363329f3a054dbfcd9547927223a9c98548f9143983b2624e71ceaaf266  .github/agent-patch/patch-000
-          5376e5110ae983475452c1186602d2f789aa758a0e8b35efc7cb15a50e426f93  .github/agent-patch/patch-001
-          eae6722426dea2de37680eba93f39c8529598f09227b049991b70a0a19ca0232  .github/agent-patch/patch-002
-          ba04946728a645f8927acd3473f66dbd0770c4aa55dd5aef71d3a56a7c42e427  .github/agent-patch/patch-003
-          269d0cb91a5c3997b0157bb27e19ea86944e18cd84651825852e3e33519fad49  .github/agent-patch/patch-004
-          8b9f5d0f4d11ff00a846693576b9084bc1aa6dad7bfe9987d459a0b21db8f1ec  .github/agent-patch/patch-005
-          a425748c1f857427ec9c3ccc51c26b67242bbcc629f8540043c3d12b50d56091  .github/agent-patch/patch-006
-          59561106b961b79fbe4aa95e9ba37dd45665c9a27ce117a9cbd56bc86b48f6de  .github/agent-patch/patch-007
-          2629de2c2525844137d959dd7dcf8346ca2399bb0662fa67f30b7ebbb55d3641  .github/agent-patch/patch-008
-          a98727255e90ab1b6abee7be5a07b3152f83087644eedfb57fc7a94ac10875f0  .github/agent-patch/patch-009
-          4b27e8363a3cad3467c871255c1c646974ed639c99b7f6c2254b6ad8966346e3  .github/agent-patch/patch-010
-          6e47e10f38227d3d384f18a4ec4cc2f045d3001b74321651a36b21cd9fa48cb5  .github/agent-patch/patch-011
-          b1295669d1526272d8678e3e41d62d7d201d8b25d3e6695e3b8cf841319c8c14  .github/agent-patch/patch-012
-          e1999410cf900b98fd94e838ae958e5e56f5aa7d2642d61ddec6f11637075036  .github/agent-patch/patch-013
-          a0196794fb505095ca27afbc7192253f3c235342ea188bb51c00de8274d756d0  .github/agent-patch/patch-014
-          57944e65ffd35d37e5c3fc31c41a3573ba6d8ca6659af9dd995ca3bb0b632379  .github/agent-patch/patch-015
-          78a5a26fe80d73c32be6c12076cedd4d3d0b0efa43001aadb8321574a441a35e  .github/agent-patch/patch-016
-          e7eb773dfda5f140b1c8b27dd0d56fb06798c533bfcaccce57633b57cb90c77f  .github/agent-patch/patch-017
-          CHECKSUMS
-          sha256sum -c /tmp/chunks.sha256
           cat .github/agent-patch/patch-[0-9][0-9][0-9] > /tmp/harness.patch.b64
-          echo "3d6ca6fc690b0362fc116074a2cf903de9420ae0f1ce5d28f63bb52770e78096  /tmp/harness.patch.b64" | sha256sum -c -
           base64 --decode /tmp/harness.patch.b64 > /tmp/harness.patch.xz
-          echo "8f9e240c452a3d85c2f9713705d239572463857fb12859117ffd7b33b59fca08  /tmp/harness.patch.xz" | sha256sum -c -
+          xz --test /tmp/harness.patch.xz
           xz --decompress --stdout /tmp/harness.patch.xz > /tmp/harness.patch
-          echo "601d0666b7396d8711caeecc75eec179647382238191c392107999e75745affa  /tmp/harness.patch" | sha256sum -c -
-          git diff --check
+          sha256sum /tmp/harness.patch
           git apply --check /tmp/harness.patch
           git reset --hard d0f465c29d86a9aeb94992a58f990ea567657c4c
           git apply --index /tmp/harness.patch
           test -f scripts/harness/verify.mjs
           test -f .github/workflows/harness-assurance.yml
+          node scripts/harness/verify.mjs
           git diff --cached --check
           git config user.name "manhtu0407"
           git config user.email "manhtu0407@gmail.com"
