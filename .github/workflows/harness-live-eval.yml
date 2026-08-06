@@ -1,0 +1,76 @@
+name: harness-live-eval
+
+on:
+  push:
+    branches:
+      - tmp/harness-materialize-base
+    paths:
+      - .github/harness-live-eval-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  live-eval:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      SUPABASE_URL: https://xyylanuyflrjzbjzhqfl.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      KAEL_LIVE_EVAL_ENABLED: "true"
+      HARNESS_ENVIRONMENT: staging
+    steps:
+      - name: Run versioned live-provider evaluation
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          git init repository
+          cd repository
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune origin "+refs/heads/feat/harness-production-assurance-pr02-pr12:refs/remotes/origin/integration" "+refs/heads/tmp/harness-materialize-base:refs/remotes/origin/report"
+          git checkout -B integration refs/remotes/origin/integration
+          corepack enable
+          {
+            echo "HARNESS LIVE PROVIDER EVALUATION"
+            echo "head=$(git rev-parse HEAD)"
+            corepack pnpm install --frozen-lockfile
+            node - <<'NODE'
+            const { spawnSync } = require('node:child_process')
+            const script = require('./package.json').scripts?.['harness:eval:live']
+            if (!script) throw new Error('missing harness:eval:live script')
+            console.log(`script=${script}`)
+            const match = script.match(/run-node\.ps1\s+(.+)$/)
+            let result
+            if (match) {
+              const args = match[1].trim().split(/\s+/)
+              result = spawnSync(process.execPath, args, { stdio: 'inherit', env: process.env })
+            } else {
+              result = spawnSync('corepack', ['pnpm', 'run', 'harness:eval:live'], { stdio: 'inherit', env: process.env })
+            }
+            process.exit(result.status ?? 1)
+            NODE
+          } > /tmp/harness-live-eval.raw 2>&1
+          rc=$?
+          python - <<'PY'
+          import os
+          text=open('/tmp/harness-live-eval.raw', errors='replace').read()
+          for key in ('ANTHROPIC_API_KEY','PERPLEXITY_API_KEY','DEEPSEEK_API_KEY','SUPABASE_SERVICE_ROLE_KEY'):
+              value=os.environ.get(key,'')
+              if value:
+                  text=text.replace(value, f'<redacted:{key}>')
+          open('/tmp/harness-live-eval.txt','w').write(text)
+          PY
+          git fetch --no-tags --prune origin "+refs/heads/tmp/harness-materialize-base:refs/remotes/origin/report-latest"
+          git reset --hard refs/remotes/origin/report-latest
+          mkdir -p .github
+          cp /tmp/harness-live-eval.txt .github/harness-live-eval-report.txt
+          git add .github/harness-live-eval-report.txt
+          git config user.name "manhtu0407"
+          git config user.email "manhtu0407@gmail.com"
+          git commit -m "chore(harness): record live-provider evaluation" || true
+          git push origin HEAD:refs/heads/tmp/harness-materialize-base
+          exit "$rc"
