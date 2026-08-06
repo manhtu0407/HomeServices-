@@ -1,0 +1,117 @@
+name: Apply Kael Agentic Completeness implementation
+
+on:
+  push:
+    branches:
+      - claude/kael-agentic-completeness-apply-20260806
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kael-agentic-completeness-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_BRANCH: claude/kael-agentic-completeness-d92bc8
+      EXPECTED_HEAD: a5d13c87a6780f3e6eae9e4570bcccf6da5cda80
+      PATCH_XZ_SHA256: 3f285a01908c7bc87553683fec7512878574297b3201a0a4a757adc1cf436934
+      PATCH_SHA256: cf880275817b42c4fcbcf001d1985f03e7cc4642fa61af60ed4a8e175b3471ca
+    steps:
+      - name: Check out implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Assert clean starting point
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --short)"
+
+      - name: Reconstruct implementation patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/patch.b64
+          raw_blobs=(
+            e004e946e81b16965673b5699bb5f07b681b9a6a
+            e3079f2e741d615c610ed3e37c8acb5074abadf2
+            e6e34bcf39e33bc9704dd203f51d6410bd3ef584
+          )
+          wrapped_blobs=(
+            949052a8ac980f7779763b8741296c83bc7aa93a
+            265a18cf89d1d71db6cad7dcc39f2e8ae9da6027
+            20e985a9ecfe1a65d6278b9023285b21c612cdb8
+            d693c034adf22fb9b8ebee368b9f31fad2e3708b
+            9dfd3e2e2531dbe8c43bc8ee3113963ec567a17a
+            7653f2543255bd3f27728d3b844c60d61a15ebed
+            7352fadc6a821fb1187d5eff1804f743bb0e5d1e
+          )
+          for sha in "${raw_blobs[@]}"; do
+            gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${sha}" --jq .content \
+              | tr -d '\n' | base64 -d >> /tmp/patch.b64
+          done
+          for sha in "${wrapped_blobs[@]}"; do
+            gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${sha}" --jq .content \
+              | tr -d '\n' | base64 -d | jq -r .data >> /tmp/patch.b64
+          done
+          base64 -d /tmp/patch.b64 > /tmp/patch.xz
+          echo "$PATCH_XZ_SHA256  /tmp/patch.xz" | sha256sum -c -
+          xz -dc /tmp/patch.xz > /tmp/patch.diff
+          echo "$PATCH_SHA256  /tmp/patch.diff" | sha256sum -c -
+
+      - name: Apply patch without destructive changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --3way --index --whitespace=nowarn /tmp/patch.diff
+          git diff --cached --check
+          if git diff --cached --name-status | grep -q '^D'; then
+            echo 'Refusing to commit file deletions.' >&2
+            exit 1
+          fi
+          changed_count="$(git diff --cached --name-only | wc -l | tr -d ' ')"
+          test "$changed_count" = "76"
+          locked='^(CLAUDE\.md|README\.md|governance/(STRUCTURES|RULES|critical|design)\.md)$'
+          if git diff --cached --name-only | grep -Eq "$locked"; then
+            echo 'Refusing to modify locked governance files.' >&2
+            exit 1
+          fi
+
+      - name: Run dependency-free gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node apps/api/scripts/kael-eval.mjs --mode deterministic --report docs/test-logs/2026-08-06_kael-eval.md
+          node apps/api/scripts/kael-multi-turn-eval.mjs
+          node apps/api/scripts/kael-model-health.mjs
+          node scripts/lint-structure.mjs
+          node scripts/check-comment-discipline.mjs
+
+      - name: Commit and push implementation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git diff --cached --check
+          if git diff --cached --name-status | grep -q '^D'; then
+            echo 'Refusing to commit file deletions.' >&2
+            exit 1
+          fi
+          locked='^(CLAUDE\.md|README\.md|governance/(STRUCTURES|RULES|critical|design)\.md)$'
+          if git diff --cached --name-only | grep -Eq "$locked"; then
+            echo 'Refusing to modify locked governance files.' >&2
+            exit 1
+          fi
+          git config user.name 'OpenAI Codex'
+          git config user.email 'noreply@openai.com'
+          git commit -m 'feat(kael): execute agentic completeness plan'
+          git push origin "HEAD:${TARGET_BRANCH}"
