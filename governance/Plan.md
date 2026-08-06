@@ -16884,3 +16884,948 @@ R7  23 file verification chạy THIẾU NGỮ CẢNH JWT
 | 2026-08-04 | Claude Code | v0.5 — **Tu bắt một lỗi quy ước thật:** *"README.md không phải là file để path mọi chỉ dẫn. Cậu nhầm rồi. Tìm và match đúng chỗ nha."* Tra lại: quy ước chuẩn nằm ở **`AGENTS.md` Tier 2** — *"`README.md` is a LOCKED filename — **use `INDEX.md`**"* — và `CLAUDE.md` Tier 2 nói cùng ý (*"`README.md` is a LOCKED filename at any path"*). Thực tế repo khớp: **5/5 doc cấp thư mục đều là `INDEX.md`** (`docs/`, `docs/archive/`, `docs/memory/`, `docs/playbooks/`, `docs/test-logs/`), và chỉ còn **3 `README.md`** đều là file gốc/legacy (`README.md`, `sandbox/README.md`, `sandbox/agent/workbench/README.md`). Hệ quả: v0.1→v0.4 đặt tên `docker/README.md` là **sai quy ước**, và tệ hơn — nó **đẻ ra một quyết định giả D-49-A** ("Tu duyệt tạo README.md?") cho một thứ đáng lẽ không cần duyệt. **Đã sửa:** đổi toàn bộ **12 chỗ** `docker/README.md` → `docker/INDEX.md`; viết lại 49.0.6 để nêu quy ước + bằng chứng thay vì nhắc luật khoá; **xoá D-49-A**. **Tu duyệt phần còn lại 2026-08-04:** D-49-B (thêm dòng Tier 2 vào `CLAUDE.md` — vẫn cần Tu xác nhận LẠI lúc execute vì Lock Notice), D-49-C (`docker/`), D-49-D (RAM >= 4 GB), D-49-E (Tu chỉ tên nhánh lúc "go"). **Trạng thái: mọi quyết định đã chốt; chỉ còn tên nhánh + lệnh "go".** |
 | 2026-08-05 | Claude Code | v0.6 — **lượt execute thứ nhất. D0 KHÔNG chạy được; D1–D6 đã build artifact, gate nào không cần Docker đều đã chạy thật.** **3 blocker.** (1) **Stop-condition #5 bắn ngay bước 1:** phiên được mở ở worktree `docker-local-dev-d0-2cae19` (nhánh `claude/docker-local-dev-d0-2cae19`), không phải worktree pin ở 49.0.4. Cả hai cùng ở `bb06d7dd`; §49 chỉ tồn tại ở worktree pin. Đã chuyển sang làm trong worktree pin, **không checkout / không stash / không sửa Plan.md ngoài mục này**. (2) **Stop-condition #1:** Available RAM đo 6 sample cách 5s = 2.96/2.83/2.78/2.77/2.76 GB (avg 2.81), đo lại sau đó 3.22 → 3.71 GB — **dưới ngưỡng 4 GB ở mọi lần đo**, trước cả khi bật Docker. Committed 22.53/46.71 GB. Daemon TẮT, WSL2 `docker-desktop` Stopped. (3) **Blocker KHÔNG có trong plan: cả hai worktree đều thiếu `node_modules`.** `run-supabase.ps1` dò 6 đường dẫn CLI, **6/6 absent** ở cả hai; chỉ repo chính có `node_modules` và nó đang ở nhánh khác (`1002d89a`). Nên khẳng định ở 49.3 *"phần lớn đường này ĐÃ CHẠY ĐƯỢC HÔM NAY"* đúng với repo chính, **sai với worktree execute** — muốn chạy D0 phải `pnpm install` trước, plan chưa cấp phép việc đó. **5 chỗ plan lệch thực tế, Tu cho phép sửa theo thực tế 2026-08-05:** (a) **"23 file `supabase/tests/*_verification.sql`" SAI** — thật ra **22** file khớp glob đó; tổng **23** file `.sql`, file thứ 23 là `staging_accept_privacy_guard.sql` không có hậu tố. `run-sql-tests.ps1` vì vậy glob `*.sql` (23 file), không glob `*_verification.sql`. (b) **`denoland/deno:2` KHÔNG TỒN TẠI** — Docker Hub trả 404 cho tag `2`. Tag thật: `2.9.4`/`latest`/`alpine`/`debian`/`ubuntu`/`distroless`. Đã ghim `denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498` (OCI image index, đa kiến trúc; image 75,076,859 byte ≈ 71.6 MB). (c) **`supabase/functions/deno.json` KHÔNG TỒN TẠI** — có **4 file deno.json theo từng function** (`kael-learning-monitor`, `kael-media-retention`, `mobile-api`, `sepay-webhook`); `map-proxy-spike` có `index.ts` nhưng không có config. `edge:check` vì vậy lặp 4 function, mỗi cái `--config` riêng, thay vì một config chung. (d) **Docker Desktop cài user-local**: `%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe`, KHÔNG ở `C:\Program Files\Docker\`. Helper auto-start ở D6 mà hardcode Program Files sẽ trượt. (e) **Thêm 1 file ngoài "đúng 4 file integration test"**: `apps/api/src/__tests__/integration/integration-target.ts` — guard dùng chung thay vì chép 25 dòng × 4. G18 vẫn giữ (0 dòng runtime bị đụng: `apps/mobile`, `supabase/functions/**`, `packages/shared/src` đều 0). **2 việc CHẶN, cần Tu:** (i) **`.claude/settings.json` KHÔNG sửa được** — classifier chặn agent tự nới quyền của chính nó. Đúng nguyên tắc, không lách. G14 chưa áp; khối quyền cần thêm đã ghi ra để Tu tự dán. (ii) **`CLAUDE.md` là locked doc** — Tier 3 vẫn ghi 29 skill trong khi thực tế đã 30, và dòng Tier 2 trỏ `docker/` (D-49-B) chưa thêm. `AGENTS.md` (không locked) đã cập nhật 30 = Everyday 19 + Design 11. **Gate chạy thật, xanh:** `check-skills-sync.mjs` (30 ↔ 30 byte-identical), `lint-structure.mjs` (842 file, `docker/` không bị ratchet chạm như 49.2 dự đoán), `check-comment-discipline.mjs` (clean), G6 (schema text-assertion 0 dòng), G9 (`integration.yml` 0 dòng), G18 (runtime 0 dòng). **G12 chứng minh CẢ HAI đường bằng số thật**: floor 4 GB → REFUSED kèm "3.42 GB below the 4 GB floor", exit 1; floor 2 GB → hàng RAM lật OK ("3.71 GB (min 2)"). Đường exit-0 trọn vẹn chưa chứng minh được vì daemon tắt. **Guard D4 chứng minh bằng harness chạy thẳng vào source thật** (`node --experimental-strip-types`): 6/6 — prod ref → THROW (2 ca), key demo local nhắm host remote → THROW, không env → mặc định LOCAL, host remote thiếu key → skip, staging đủ key → ok. Tức lỗ `describe.skip` xanh-im-lặng đã bịt. **Gate CHƯA chạy được, đều vì Docker/node_modules:** G0.1–G0.5 toàn bộ, G2 (`db reset` 208 migration — **câu hỏi trung tâm của §49 vẫn chưa có lời đáp**, bẫy enum R1 còn nguyên), G3, G4, G5, G7, nửa sau G8 (vitest đỏ thật), G10, G11, G13. |
 | 2026-08-05 | Claude Code | v0.7 — **chạy `pnpm install` ở worktree execute rồi mở đúng 2 gate mà v0.6 không mở được, và chúng bắt được 2 regression THẬT do D4 gây ra.** Baseline đầu tiên đo được: `test:api` **5 file ĐỎ / 50 test ĐỎ** (273 pass / 278 file). **Regression A — 4 suite integration không còn skip, chúng cố kết nối vào cổng chết.** `resolveIntegrationTarget` fallback về `http://127.0.0.1:54321` rồi trả `ok: true` kể cả khi local stack chưa chạy → `describeReal = describe` → 50 test bắn vào loopback không ai nghe. Nghĩa là v0.6 đổi "xanh im lặng" thành "**đỏ mỗi lần chạy bình thường**", phá luôn gate D2 (`pnpm test:api` vẫn xanh). **Sửa:** thêm `isReachable()` (fetch `/auth/v1/health`, timeout 1500ms) và **chỉ dò khi rơi vào fallback local ngầm** — cờ `usedImplicitLocalDefault`; target do người dùng chỉ định rõ mà chết thì **vẫn ĐỎ** (staging sập trong CI phải đỏ, không được lặng lẽ skip). `resolveOrAnnounceSkip` thành `async`; 4 file test thêm `await` (top-level await hợp lệ: `target ES2022` + `module esnext`). **Regression B — `mobile-api-edge-schema.test.ts:1293` ĐỎ.** Nó assert 3 file integration phải chứa `const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'` + `isProduction` + `Refusing to run against production`; D4 đã dời cả 3 chuỗi sang `integration-target.ts` nên assertion gãy. Đúng bẫy memory `apps_api_reads_mobile_source`. **Sửa:** viết lại assertion theo **mục đích** chứ không nới lỏng — chứng minh guard tồn tại MỘT lần trong `integration-target.ts` (`PRODUCTION_REF`, `assertNotProduction`, `assertNotLocalKeyAgainstRemote`, có `throw`), rồi chứng minh **cả 4** suite đi qua nó (`from './integration-target'` + `resolveOrAnnounceSkip(`) và **không** suite nào tự đọc `process.env.NEXT_PUBLIC_SUPABASE_URL` để lách. Nhân tiện thêm `rls-per-actor.test.ts` vào danh sách — v0.6 và cả bản gốc đều bỏ sót file thứ 4. **G6 sửa lại vì nó đo sai thứ:** "không bị đụng 1 byte" cho gate báo XANH trong khi test ĐỎ thật. Gate mới đo `pnpm test:api` exit 0. **Kết quả sau khi sửa — đo thật, không chép:** `type-check:api` exit 0 · `type-check:shared` exit 0 · **`test:api` 274 pass / 4 skipped / 278 file, 3147 test pass / 78 skip, 0 ĐỎ** · `test:shared` 24 file / 729 test pass · `lint:structure` 842 file exit 0 · `lint:comments` clean · `skills:check` 30 ↔ 30 in sync · G18 runtime **0 dòng** (`git status` trên `apps/mobile` + `supabase/functions` + `packages/shared/src` trống). **G8 đóng hoàn toàn — chứng minh bằng 2 lần chạy vitest ĐỎ thật, không phải harness:** trỏ `NEXT_PUBLIC_SUPABASE_URL` vào prod ref → `Error: Refusing to run against PRODUCTION (iwevizmsedyqozxlawwl)`, `Test Files 1 failed`; đưa key demo local kèm host staging → `Error: Refusing to run: a local-stack demo key was supplied for the remote host`, `Test Files 1 failed`. **Xác minh 4 lỗi plan mà v0.6 báo — cả 4 ĐÚNG:** `denoland/deno:2` trả HTTP **404** thật; digest `sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498` **khớp chính xác** `docker-content-digest` của OCI index `denoland/deno:2.9.4`; `supabase/functions/deno.json` không tồn tại, có đúng **4** config theo từng function; `supabase/tests/` có **23 `.sql` nhưng chỉ 22 `*_verification.sql`**, file thứ 23 là `staging_accept_privacy_guard.sql` (runner glob `*.sql` nên vẫn phủ đủ 23). **Vẫn CHƯA chạy được, không giấu:** G0.1–G0.5, **G2 (`db reset` 208 migration — câu hỏi trung tâm của §49 vẫn chưa có lời đáp, bẫy enum R1 còn nguyên)**, G3, G4, G5, G7, G10, G11 nửa sau, G13 — tất cả cần Docker daemon và RAM >= 4 GB. `pnpm install` đã chạy nên `node_modules` không còn là chặn cho lượt sau. |
+
+---
+
+## 50. Kael Agentic Completeness — Signal Loop + Eval Spine + Plug-in Debt + Ops Backbone — 2026-08-05
+
+### 50.0 Metadata
+
+```text
+Plan ID:   plan-kael-agentic-completeness-20260805
+Created:   2026-08-05
+Owner:     Manh Tu
+Branch:    claude/kael-agentic-completeness-d92bc8  — xem 50.0.4
+Status:    v0.4 — **SẴN SÀNG EXECUTE. 10/10 quyết định đã chốt, không còn gì chặn.**
+           Tu duyệt trọn 2026-08-05. CHƯA sửa 1 dòng code nào — chờ Tu ra lệnh chạy.
+Trigger:   Audit Kael 2 vòng 2026-08-05 (không đụng code). Vòng 1 soi theo 15 thành phần
+           Agentic AI Tu đưa; vòng 2 soi theo hạ tầng mà hệ AI production thật sự dựng.
+           Kết luận chung của cả hai vòng: Kael KHÔNG thiếu năng lực AI — Kael thiếu
+           ĐƯỜNG DÂY. Phần lớn gap là "đã build xong nhưng không ai cắm vào".
+Mốc:       HEAD `68ebbeb6` (#151 dead-code sweep + unblock the local Supabase stack).
+           Dải đã merge: #1 → #151.
+Tiền đề:   §49 ĐÃ BUILD XONG ARTIFACT nhưng CHƯA CHỨNG MINH ĐƯỢC STACK CHẠY.
+           Có thật: `compose.yaml`, `docker/` (INDEX.md + profiles/ + 6 script), skill
+           `kael-docker`, 11 script `db:local:*` / `edge:check`, `node_modules` ở worktree.
+           CHƯA có: §49 D0 chưa bao giờ chạy trọn. Change log §49 v0.7 ghi nguyên văn
+           *"G2 (`db reset` 208 migration — câu hỏi trung tâm của §49 vẫn chưa có lời đáp,
+           bẫy enum R1 còn nguyên)"*. Nghĩa là **chưa ai biết 209 migration có replay nổi
+           trên máy hay không**, và §50 THỪA KẾ nguyên ẩn số đó — xem R10.
+Đo 2026-08-05 (lúc soạn v0.2, số thật):
+           RAM available 3.55 GB / total 15.71 GB  → VẪN DƯỚI sàn 4 GB mà §49 D-49-D chốt
+           C: free 98.7 GB                          → đĩa không phải ràng buộc
+           Docker daemon 29.6.1 ĐANG CHẠY           → khác §49 v0.6/v0.7 (lúc đó daemon TẮT)
+           node_modules ở worktree: có               → không còn là chặn như §49 v0.6
+Execute:   NON-STOP là RULE CỨNG — 50.0.5. Một lượt duy nhất: K0 → K6.
+```
+
+**Tu chốt trọn 10/10 quyết định 2026-08-05 — bảng đầy đủ ở 50.10, ba cái đổi phạm vi ghi lại đây:**
+
+```text
+D-50-A  "Tôi nghĩ là cắm đi."
+        → memory L2+L3 CẮM VÀO prompt. K3.2 chạy phương án (A).
+
+D-50-D  "Kael được quyền nói về nó như một cách giới thiệu."
+        → §50 CÓ sửa charter. Nới `ai_self_reference` cho ngữ cảnh giới thiệu,
+          GIỮ NGUYÊN cấm thoái thác. K5.1 — step rủi ro nhất của plan.
+
+D-50-E  "Làm route. Sau khi xong route thì mới đụng UI."
+        → K1.4 route trước, K5.3 UI sau, gate cứng theo thứ tự.
+          Đây là Tu giao việc Next.js — đúng điều kiện CLAUDE.md đòi.
+
+Bảy cái còn lại (B · C · F · G · H · I · J) Tu chốt bằng một câu:
+        "Tên nhánh thì cứ theo quy tắc chung sẵn có. Tôi nghĩ là dùng luôn."
+        → không còn ô nào ở 50.10 là "mặc định", tất cả là QUYẾT ĐỊNH.
+```
+
+**Một câu tóm tắt vấn đề:** Kael chạy, nhưng **không ai đo được Kael đúng hay sai**. Bảng phản hồi có mà không màn hình nào ghi vào; hàng đợi escalation có mà không route nào đọc ra; eval có 99 ca mà tự chấm bằng luật local rồi báo 100%; prompt có sẵn hai ô `memorySummary` / `knowledgeSummary` mà không nơi nào truyền vào. Kết quả: mọi thay đổi lên Kael từ nay tới giao dịch thật đầu tiên đều là **thay đổi mù** — không có cách nào biết nó tốt lên hay xấu đi.
+
+**Cái giá phải trả nếu không làm:** rail thanh toán (#135 VietQR, #139 tiền mặt) sẽ mở trên một AI mà không ai có số liệu nào về độ chính xác báo giá của nó. Khi khách đầu tiên khiếu nại "Kael báo 400k mà thợ thu 900k", repo hiện tại **không có một truy vấn nào** trả lời được câu "chuyện này xảy ra bao nhiêu lần rồi".
+
+---
+
+### 50.0.1 TARGET — đích của §50, phát biểu để kiểm chứng được
+
+> **Target một câu:** biến Kael từ *"một AI đang chạy"* thành *"một AI đo được, sửa được, và vận hành an toàn được"* — **không thêm một năng lực AI mới nào**.
+
+§50 KHÔNG phải plan làm Kael thông minh hơn. §50 là plan làm Kael **kiểm chứng được**. Đây là ranh giới quan trọng nhất của toàn bộ tài liệu này.
+
+**5 kết quả đích — mỗi cái là một câu hỏi mà hôm nay repo KHÔNG trả lời được, và sau §50 thì trả lời được:**
+
+| # | Câu hỏi hôm nay không trả lời được | Sau §50 trả lời bằng |
+|---|---|---|
+| T1 | *"Kael báo giá lệch bao nhiêu so với giá thật?"* | Một view SQL chạy trên dữ liệu thật, tách theo dịch vụ và độ phức tạp |
+| T2 | *"Khách và thợ thấy câu trả lời của Kael thế nào?"* | Hai bảng feedback **có dữ liệu chảy vào** từ UI thật, không phải bảng rỗng |
+| T3 | *"Kael đã tự dừng và xin người quyết bao nhiêu lần, và ai đã xử?"* | Route đọc `kael_admin_queue` + trạng thái resolve |
+| T4 | *"Sửa prompt / đổi model có làm Kael tệ đi không?"* | Eval chạy được ở chế độ live + gate ratchet trong CI + eval nhiều lượt |
+| T5 | *"Nếu Kael hỏng lúc 2 giờ sáng thì ai biết, và làm gì?"* | Webhook cảnh báo ra ngoài app + runbook sự cố AI trong `docs/ops/` |
+
+**Anti-target — nói thẳng để không ai hiểu nhầm §50 là gì:**
+
+```text
+KHÔNG  thêm model mới, provider mới, agent mới, dịch vụ thứ 7
+KHÔNG  đổi 7-stage pipeline, đổi autonomy gate, đổi charter
+KHÔNG  làm Kael "trả lời hay hơn"  ← đó là plan khác, và phải đo được rồi mới làm nổi
+KHÔNG  apply migration lên staging hay production  ← xem 50.0.2
+```
+
+**Vì sao thứ tự này, không phải thứ tự khác:** T1–T3 (tín hiệu) phải có trước T4 (eval), vì eval không có ground truth thì chỉ là bài kiểm tra tự chấm. T4 phải có trước K3 (cắm prompt), vì cắm thêm memory/knowledge vào prompt là **thay đổi hành vi Kael trên mọi lượt** — không có eval bắt regression thì đó là canh bạc. Đây là chuỗi phụ thuộc thật, không phải sắp xếp cho đẹp.
+
+---
+
+### 50.0.2 Ranh giới cứng — §50 viết migration, KHÔNG apply migration
+
+Đọc trước khi làm bất cứ gì.
+
+| | Được làm | Bị cấm |
+|---|---|---|
+| Migration | Viết file `.sql` mới trong `supabase/migrations/` | `supabase db push` lên staging hoặc production |
+| Verify | `pnpm db:local:reset` + `pnpm db:local:test` trên stack local của §49 — **nếu stack lên được** | Chạy bất kỳ lệnh nào bắn vào project sống, kể cả khi stack local không lên |
+| Env key | Thêm **tên khoá** vào `config/env/workspace.env.example` | Thêm **giá trị** vào bất kỳ file nào (RULES #1) |
+| Deploy | Viết handoff packet ở K6 | Tự deploy Edge Function |
+| Git | Sửa file trong worktree | `commit` / `push` / mở PR (critical.md §3) |
+
+**Tu đã nói rõ 2026-08-05: "tôi chưa cần cậu chạy check DB Production gì hết".** Ràng buộc này áp cho toàn bộ §50, không có ngoại lệ. Nếu trong lúc execute thấy mình đang gõ một lệnh có chuỗi kết nối tới staging/prod: **dừng, đó là dấu hiệu đã vượt ranh giới**.
+
+**Điểm khác biệt so với mọi plan trước §49 — và giới hạn của nó:** §49 đã dựng đủ artifact để verify migration trên máy. Nhưng artifact tồn tại **không đồng nghĩa** stack chạy được: §49 D0 chưa bao giờ chạy trọn, và RAM đo lúc soạn v0.2 là **3.55 GB — vẫn dưới sàn 4 GB**.
+
+Vì vậy §50 chia hai đường, và **phải nói rõ đang đi đường nào**:
+
+```text
+Đường A — stack local LÊN ĐƯỢC
+  migration BẮT BUỘC verify bằng db:local:reset + db:local:test.
+  "Chưa verify được vì không có DB" KHÔNG còn là lý do hợp lệ.
+
+Đường B — stack local KHÔNG lên (RAM < 4 GB, hoặc db reset vỡ ở bẫy enum R1 của §49)
+  migration vẫn VIẾT và vẫn review, nhưng đánh dấu UNVERIFIED trong K6 handoff.
+  CẤM tuyệt đối: mượn staging/production để "vẫn có kết quả" (stop-condition #2).
+  CẤM tuyệt đối: viết báo cáo kiểu "migration đã verify" khi đi đường B (RULES #8).
+```
+
+Đây là dừng-step (Luật 5 lý do #6), **không phải** dừng-lượt: gặp đường B thì ghi lại, đi tiếp step sau.
+
+---
+
+### 50.0.3 Phạm vi — LÀM / KHÔNG LÀM
+
+```text
+LÀM
+  K0  Baseline đo thật — 4 gate + stack local + eval hiện trạng, trước khi sửa gì
+  K1  Vòng tín hiệu     — feedback UI 2 phía · view độ chính xác giá · route đọc escalation
+  K2  Xương sống eval    — CI ratchet · chế độ live chạy được · eval nhiều lượt · red-team live
+  K3  Cắm nợ            — knowledgeSummary · memorySummary (quyết định) · rate-limit chết ·
+                          trần chi phí theo từng người dùng
+  K4  Xương sống vận hành — cron dọn api_logs · health check model · webhook cảnh báo ·
+                          runbook sự cố AI
+  K5  Mặt tin cậy        — Kael tự giới thiệu (sửa charter, D-50-D) · hiển thị charter
+                          công khai · màn hình đọc hàng đợi escalation (D-50-E)
+  K6  Handoff packet     — đúng thứ tự Tu phải deploy, không agent nào tự làm
+
+KHÔNG LÀM — đã cân nhắc, lý do ở 50.11
+  N1  Thay `localSemanticEmbedding` bằng embedding model thật  → đổi số chiều vector,
+                          phải re-embed toàn bộ knowledge base, tốn tiền mỗi truy vấn.
+                          Đây là ứng viên số 1 cho §51, KHÔNG nhét vào §50.
+  N2  Cache câu trả lời / semantic cache                       → traffic ~0, cache không tiết kiệm gì
+  N3  Mở rộng A/B prompt ngoài price_synthesis                 → không đủ mẫu để có ý nghĩa
+  N4  Shadow / canary khi đổi model                            → K2 phải xong trước mới có ý nghĩa
+  N5  Nén ngữ cảnh hội thoại dài                               → Case Work vốn ngắn, chưa chạm trần
+  N6  Đổi autonomy gate / 6 check / ngưỡng high-stakes         → ngoài target
+  N7  Mở rộng admin UI ngoài hàng đợi escalation               → K5.3 chép đúng khuôn
+                          `admin/kael-learning` đang có, KHÔNG dựng admin console mới
+```
+
+**Hai mục v0.2 xếp vào KHÔNG LÀM, Tu đã lật 2026-08-05 — nay là LÀM:**
+
+```text
+N6 cũ  "Admin UI trên Next.js cho hàng đợi escalation"
+       → Tu chốt D-50-E: *"Cái này cậu notes trong Plan là làm route. Sau khi xong route
+         thì mới đụng UI."* Thành K5.3, gate cứng: K1.4 phải xanh trước.
+         Đây là Tu giao việc Next.js một cách rõ ràng — đúng điều kiện CLAUDE.md đòi.
+
+N7 cũ  "Đổi bất kỳ luật nào trong charter"
+       → Tu chốt D-50-D: *"Kael được quyền nói về nó như một cách giới thiệu."*
+         Thành K5.1. Phạm vi HẸP: chỉ nới `ai_self_reference`, KHÔNG đụng
+         autonomy gate, KHÔNG đụng SECURITY_DIRECTIVES, KHÔNG đụng 6 category còn lại.
+```
+
+---
+
+### 50.0.4 Branch contract
+
+> **Tu chốt 2026-08-05 (D-50-H): *"Tên nhánh thì cứ theo quy tắc chung sẵn có."*** — không hỏi lại, cứ theo quy ước.
+
+**Quy ước đọc ra từ repo, không phải bịa** (`git branch` + `git worktree list`, 20 nhánh local + 15 remote đều khớp):
+
+```text
+Nhánh     claude/<kebab-slug>-<6 ký tự hex>
+Worktree  .claude/worktrees/<CÙNG slug>-<CÙNG hex>
+```
+
+**Tên chốt cho §50:**
+
+```text
+Base:     HEAD hiện tại `68ebbeb6` (#151)
+Nhánh:    claude/kael-agentic-completeness-d92bc8
+Worktree: .claude/worktrees/kael-agentic-completeness-d92bc8
+Hex:      d92bc8 = 6 ký tự đầu của sha1("plan-kael-agentic-completeness-20260805")
+          → suy ra được, không phải số ngẫu nhiên ai đó gõ đại
+Commit:   KHÔNG. Git Rule (critical.md §3) — chờ Tu bảo commit.
+```
+
+**Nếu công cụ tạo worktree sinh ra hex khác:** dùng cái nó sinh, **nhưng phải ghi đè tên thật vào khối trên và vào 50.12 NGAY ở bước 1 của K0**, trước khi làm bất cứ gì. Plan mà không khớp nhánh thật là plan vô dụng.
+
+**Một bẫy có thật trong repo này, đọc kỹ:** `git worktree list` cho thấy **cặp worktree ↔ nhánh đã trôi ở ít nhất 4 chỗ** — worktree `audit-large-files-459e61` đang ở nhánh `claude/backend-reorganization-audit-dc4937`; worktree `infallible-gates-a8e813` đang ở `claude/docker-folder-setup-f8543f`. Tức là **tên thư mục KHÔNG bảo đảm anh đang ở đúng nhánh**. Đây chính là cách §49 bắn stop-condition #5 ngay bước 1. Vì vậy K0 bước 1 kiểm bằng `git rev-parse --abbrev-ref HEAD`, **không** bằng cách nhìn tên thư mục.
+
+**Ghi chú chuyển tiếp:** §50 hiện được soạn trong worktree `.claude/worktrees/review-docker-folder-plan-59354d` (nhánh `claude/kael-agentic-audit-21fc6f`) và **chưa commit**. Phiên execute phải mang `governance/Plan.md` sang nhánh mới **trước** khi làm gì khác, và **tuyệt đối không `git checkout governance/Plan.md`** ở worktree soạn — làm thế là xoá sạch §50.
+
+**CẢNH BÁO cho phiên execute — giống hệt bẫy đã trả giá ở §44/§45/§46/§49:** §50 hiện là một **sửa đổi CHƯA COMMIT** của `governance/Plan.md` trong worktree trên. Checkout nhánh này ở chỗ khác sẽ **KHÔNG thấy §50**. Phiên execute phải làm việc trong đúng worktree đó, và **tuyệt đối không `git checkout governance/Plan.md`** — làm thế là xoá sạch plan.
+
+Trước K0, agent in `git rev-parse --abbrev-ref HEAD` + `git status --short` và so với dòng trên. Lệch → dừng (stop-condition #5).
+
+---
+
+### 50.0.5 NON-STOP EXECUTION — RULE CỨNG
+
+> Mục này **thắng mọi cách đọc lỏng ở bất kỳ chỗ nào khác trong §50**. Nếu một câu ở mục khác có thể hiểu là "được phép dừng lại hỏi", thì câu đó sai và mục này đúng.
+
+**Định nghĩa non-stop:** một lệnh execute của Tu = **một lượt**. Trong một lượt, agent chạy hết mọi phase thuộc lượt đó **rồi mới nói chuyện lại với Tu**. Kết thúc lượt sớm — vì bất kỳ lý do nào ngoài bảng stop-condition ở Luật 5 — là **vi phạm**, và cách xử lý là **chạy lại cho xong**, không phải giải thích.
+
+**§50 có ĐÚNG MỘT LƯỢT:**
+
+```text
+Lượt 1   K0 → K1 → K2 → K3 → K4 → K5 → K6    non-stop, một mạch
+```
+
+**Vì sao §50 không có gate giữa chừng như D0 của §49:** §49 có ẩn số nặng ("209 migration có replay nổi không?") mà kết quả buộc phải thiết kế lại phần sau. §50 **không có ẩn số loại đó** — mọi gap đã được audit tĩnh và xác minh bằng file:dòng ở 50.0.8. Cái duy nhất cần Tu quyết là 8 decision ở 50.10, và chúng **đều có giá trị mặc định ghi sẵn** để execute không bị chặn. Nếu Tu không trả lời decision nào, agent dùng mặc định và ghi vào 50.12 — **không dừng lại hỏi**.
+
+**Luật 1 — Một lượt, hết 7 phase, không xin duyệt giữa chừng.** KHÔNG dừng để hỏi "em làm tiếp K3 nhé?". KHÔNG report từng phần rồi chờ.
+
+**Luật 1b — 7 câu sau đây là VI PHẠM, không phải lịch sự:**
+
+```text
+"Em xong K1 rồi, anh xem rồi em làm tiếp nhé?"          → vi phạm Luật 1
+"K2 đụng nhiều file quá, em để anh quyết"                → vi phạm Luật 1
+"Eval nhiều lượt hơi phức tạp, em đề xuất tách phiên"    → vi phạm Luật 4
+"Em dừng ở đây để tránh làm hỏng thêm"                   → vi phạm Luật 5
+"Context sắp đầy nên em tạm dừng"                        → KHÔNG phải lý do dừng. Luật 8.
+"Em thấy còn vấn đề X, có nên sửa luôn không?"           → ghi 50.12, KHÔNG hỏi, KHÔNG làm
+"Đã hoàn thành phần lớn plan"                            → vi phạm Luật 6 + RULES #8
+```
+
+**Luật 2 — Đúng thứ tự, không đảo, không nhảy cóc.** K0→K6 là thứ tự **phụ thuộc thật**, đã lý giải ở 50.0.1: tín hiệu trước eval, eval trước khi đổi prompt.
+
+**Luật 3 — Không tự mở rộng phạm vi giữa lượt.** Thấy `localSemanticEmbedding` nên thay, thấy migration nào nên gộp, thấy component nào nên tách — **ghi vào 50.12 Change Log, KHÔNG làm**. N1–N7 ở 50.0.3 là danh sách đóng.
+
+**Luật 4 — Không tự dừng vì "hết việc dễ".** K2.3 (eval nhiều lượt) và K3.2 (memory) là hai step khó nhất và chúng nằm **giữa** đúng theo thiết kế.
+
+**Luật 5 — Chỉ được dừng vì 6 lý do sau, và phải báo Tu ĐÚNG lý do nào:**
+
+| # | Điều kiện dừng | Phải làm gì |
+|---|---|---|
+| 1 | **Baseline K0 ĐỎ** — 4 gate không xanh **trước khi** sửa dòng nào | Dừng tại K0. Báo test nào đỏ + output thật. **CẤM** sửa code rồi mới báo. |
+| 2 | **Stack local không lên** sau 2 lần (`db:local:doctor` fail, RAM < 4 GB) | Dừng. Báo số thật. **CẤM** âm thầm chuyển sang staging để "vẫn có kết quả". |
+| 3 | **`db:local:reset` FAIL** khi replay 209 migration + migration mới của §50 | Dừng tại phase đó. Báo migration nào vỡ. **Không tự sửa migration cũ.** |
+| 4 | Gate của 1 phase đỏ mà sửa **2 lần** không xanh | Dừng tại phase đó. Báo output lỗi thật. **Không** đi tiếp rồi "sửa sau". |
+| 5 | Nhánh / HEAD lệch so với 50.0.4 | Dừng ngay, không sửa gì. |
+| 6 | Một step buộc phải chạm project Supabase sống mới xong được | Dừng step đó, ghi vào K6 handoff, **đi tiếp step sau**. Đây là dừng-step, không phải dừng-lượt. |
+
+**Ngoài 6 lý do trên: chạy tiếp.** Danh sách này **ĐÓNG** — agent không được tự thêm lý do thứ 7 rồi coi là hợp lệ.
+
+**Luật 6 — Report chỉ ở CUỐI.** Trong lượt chỉ log 1–2 dòng/phase. Báo cáo đầy đủ viết **một lần** sau K6.
+
+**Luật 7 — Đo, đừng đoán.** Mọi con số trong báo cáo cuối (số test, thời gian, số dòng, kết quả eval) phải là số **chạy ra**, không phải số chép từ plan này. Plan này ước lượng; K0 mới là sự thật.
+
+**Luật 8 — Context đầy KHÔNG phải lý do dừng.** Phiên dài bị nén context là chuyện bình thường và có cơ chế xử lý sẵn. Khi thấy context sắp đầy: **đi tiếp**, giữ log gọn, ghi trạng thái phase hiện tại vào 50.12 để phiên sau nối được.
+
+**Luật 9 — Vi phạm rule này thì chạy lại, không giải trình.** Tu cần plan xong, không cần lý do.
+
+**Luật 10 — Rule này áp cho MỌI agent.** Claude Code, Codex, hay agent nào nhận lệnh execute §50 đều chịu đúng 10 luật này. Bàn giao giữa agent **không** reset đồng hồ.
+
+---
+
+### 50.0.6 Authority refs
+
+```text
+RULES #0    Mobile Runtime Boundary — mobile → Supabase Auth → Edge `mobile-api` → DB.
+            K1.1/K1.2 thêm nút feedback: mobile gọi Edge, KHÔNG gọi thẳng DB, KHÔNG gọi AI.
+RULES #1    No secrets in client code. K2.2 · K4.3 chỉ thêm TÊN khoá vào workspace.env.example.
+RULES #2    Mọi lệnh gọi AI đi qua provider-client.ts kèm spend gate. K4.2 health check
+            và K2.2 live eval KHÔNG được mở đường vòng qua rule này.
+RULES #3    Validate AI output. K3.1 cắm knowledgeSummary vào prompt không được nới validation.
+RULES #4    Price disclaimer. K5.1 câu công bố AI đứng CẠNH disclaimer, không thay thế nó.
+RULES #7    Kael Autonomy V2 — KaelAutonomyDecision. K1.4 chỉ ĐỌC hàng đợi, KHÔNG đổi gate.
+RULES #8    Data honesty, no silent degradation. Là căn cứ của toàn bộ K2:
+            eval tự chấm 100% mà không nói rõ "chế độ deterministic không test model"
+            chính là silent degradation dạng báo cáo.
+RULES #9    No PII in logs. K4.3 payload webhook phải đi qua assertSafeTraceValue.
+RULES #10   Timeout + max 2 retries. K4.2 health check chịu đúng ràng buộc này.
+critical.md §3   Git Rule — agent không tự commit/push/mở PR. Áp cho toàn bộ §50.
+critical.md §3   Session Memory Gate — phiên execute phải ghi memory trước khi đóng.
+protocols/code-hygiene.md   Áp cho mọi dòng viết ra ở §50.
+STRUCTURES.md §1.5          Nguồn sự thật về trạng thái từng capability. §50 phải cập nhật
+                            hàng nào nó động tới — nhưng STRUCTURES.md LOCKED, nên ghi
+                            đề xuất vào K6 handoff, KHÔNG tự sửa.
+docs/ops/production-migration-checklist.md   Ràng buộc của mọi migration §50 viết ra.
+```
+
+---
+
+### 50.0.7 Skills mapping
+
+```text
+K0              kael-diagnose  (đọc baseline đỏ/xanh)  +  kael-docker  (stack local)
+K1.1, K1.2      kael-frontend-test  (gate pnpm type-check:mobile + pnpm test:mobile)
+K1.3, K3.4, K4.1  kael-supabase  +  supabase-postgres-best-practices  +  kael-docker
+K1.4            kael-ai-boundary  (route admin đọc hàng đợi autonomy)
+K2              kael-tdd  (test phải ĐỎ trước khi xanh — bắt buộc, xem 50.9 AP-3)
+K2.4, K4.3      kael-security-sweep  (red-team live + payload webhook không lọt PII)
+K3.1, K3.2      kael-ai-boundary  (đụng prompt = đụng ranh giới AI)
+K5.1            kael-ai-boundary  +  kael-security-sweep  +  kael-tdd
+                (đổi guardrail — step rủi ro nhất §50; ca red-team chiều ngược phải ĐỎ trước)
+K5.2, K5.3      kael-frontend-test  (K5.2 mobile)  ·  react-doctor  (K5.3 Next.js)
+K4.4, K6        kael-doc-audit  +  kael-handoff
+Toàn bộ         kael-core-hygiene  +  karpathy-guidelines  (always-on)
+```
+
+---
+
+### 50.0.8 Bằng chứng — bảng gap → phase
+
+Mọi dòng dưới đây đã xác minh bằng đọc file tĩnh 2026-08-05. **Không dòng nào là suy đoán.**
+
+| # | Gap | Bằng chứng (file:dòng) | Phase |
+|---|---|---|---|
+| E1 | Route feedback khách **có**, client mobile **không có** | `http/routes/me.ts:64` có `POST /me/kael-feedback`; grep `apps/mobile` → 0 kết quả | K1.2 |
+| E2 | Client feedback thợ **có**, **không màn hình nào gọi** | `apps/mobile/lib/services.ts:381-382`; 3 tham chiếu duy nhất đều là `jest.fn()` mock | K1.1 |
+| E3 | `jobs` đã có đủ cột để đo độ chính xác giá | `init_schema.sql:178` `kael_price_min`, `:179` `kael_price_max`, `:192` `final_price` | K1.3 |
+| E4 | Chỉ số chính xác duy nhất bị **bó hẹp vào luật đã áp** | `kael/learning/learning.ts:428` `priceBandMissRatio(...)` chỉ chạy khi có `kael_rule_effects` | K1.3 |
+| E5 | `kael_admin_queue` **ghi vào, không ai đọc ra** | Ghi ở `kael-guardrails/autonomy-gate.ts:263-287`; 8 route `admin.*` ở `http/routes/admin.ts:4-17` đều là learning/marketCache/AB — **không route nào đọc queue** | K1.4 |
+| E6 | `kael:eval` **không nằm trong CI** | Có ở `package.json:14` + `apps/api/package.json:10`; `.github/workflows/` chỉ có `comment-discipline.yml`, `integration.yml`, `security.yml` — không file nào nhắc | K2.1 |
+| E7 | Eval tự chấm bằng luật local, latency/cost = 0 | `KAEL_EVAL_MODE` mặc định `deterministic`; `docs/test-logs/2026-07-02_kael-eval.md` ghi `latencyP95Ms 0`, `costPerCaseUsd 0`, mọi tỉ lệ 100% | K2.1, K2.2 |
+| E8 | 99 golden case đều là **một lượt**, Case Work là **nhiều lượt** | `apps/api/fixtures/kael-eval/golden-cases.json` — 99 object, mỗi object 1 `input` + 1 `expected` | K2.3 |
+| E9 | Red-team 52 ca **chỉ chạy offline** | `kael-redteam.test.ts` import thẳng `evaluateMessageBoundary` / `checkKaelResponse` / `gateAutonomyDecision` — không qua model thật | K2.4 |
+| E10 | `knowledgeSummary` khai báo + dùng trong hàm, **0 nơi truyền vào** | `prompts/system-prompt.ts:18` khai báo, `:148` tiêu thụ; grep toàn repo → chỉ `mobile-api-kael-p8.test.ts:48` truyền | K3.1 |
+| E11 | `memorySummary` y hệt E10, và module memory bị **cách ly có chủ ý** | `system-prompt.ts:17`, `:147`; `kael-memory/memory.ts:1` ghi nguyên văn `QUARANTINED L1-L6 ... intentionally excluded from kael/index.ts` | K3.2 |
+| E12 | `checkKaelActorRateLimit` **0 caller production** | `kael-guardrails/rate-limit.ts:46`; tham chiếu duy nhất là test + 1 assertion chuỗi ở `mobile-api-edge-schema.test.ts:451` | K3.3 |
+| E13 | Trần chi phí **chỉ có mức toàn cục**, không có mức từng người | `kael-providers/provider-budget.ts:71` `get_kael_provider_spend_today`, `:97` `record_kael_provider_spend` — không tham số actor | K3.4 |
+| E14 | `api_logs` **không có cron dọn**, trong khi 11 bảng khác đều có | `init_schema.sql:283` tạo bảng + 3 index + RLS; grep `cron.schedule` toàn `supabase/migrations/` → không có job nào cho `api_logs` | K4.1 |
+| E15 | Model ID **viết cứng**, không có health check | `kael-providers/routing.config.ts:37,38,45,49,57,59,63,67,72,76,82`; grep `health.?check` / `deprecat` toàn repo → **rỗng** | K4.2 |
+| E16 | Cảnh báo **chỉ nằm trong app**, không ra ngoài | Chỉ có cờ boolean `adminAlert` ở `scope-risk.ts` và `output-pipeline.ts`; không webhook, không pager | K4.3 |
+| E17 | `docs/ops/` có 7 runbook, **không cái nào cho sự cố AI** | Liệt kê: custom-smtp-setup · loop-learning-deploy-handoff · production-migration-checklist · section32-deploy-order · sepay-vietqr-production-activation · staging-workflow-gap-verification · worker-onboarding | K4.4 |
+| E18 | **Không một dòng nào trong app nói với khách rằng đây là AI** | grep copy công bố AI trong `apps/mobile` + `packages/shared` → rỗng; trong khi `system-prompt.ts:41` liệt `ai_self_reference` là **forbidden category** | K5.1 |
+| E19 | Charter công khai có route, **không màn hình nào hiển thị** | `getPublicKaelCharter()` ở `system-prompt.ts:131`; grep trong `apps/mobile` → không màn hình nào gọi | K5.2 |
+
+**Ghi chú E18 — v0.2 viết một đằng, Tu quyết một nẻo, đây là bản đúng:** v0.2 lập luận `ai_self_reference` cấm model tự nói về mình nên §50 chỉ thêm copy tĩnh và **giữ nguyên luật cấm**. **Tu chốt 2026-08-05 khác đi:** *"Kael được quyền nói về nó như một cách giới thiệu."* Nên §50 **có sửa charter**, phạm vi hẹp — nới cho giới thiệu, giữ nguyên cấm thoái thác. Chi tiết và blast radius ở K5.1 (50.6).
+
+---
+
+### 50.1 K0 — Baseline đo thật (chưa sửa 1 dòng code)
+
+**Mục đích:** không có baseline xanh thì không phân biệt được "test đỏ do §50" với "test vốn đã đỏ". Repo đã trả giá đúng chỗ này ở §38 (baseline ĐỎ khi bắt đầu, 2 test stale, không ai biết cho tới lúc report).
+
+**Làm gì, đúng thứ tự:**
+
+1. In `git rev-parse --abbrev-ref HEAD` + `git status --short`, so với 50.0.4. **Kiểm bằng lệnh, KHÔNG bằng tên thư mục** — repo này đã có 4 cặp worktree ↔ nhánh trôi nhau, lý do ghi ở 50.0.4. Nếu công cụ sinh hex khác `d92bc8`, ghi đè tên thật vào 50.0.4 + 50.12 **ngay tại bước này**.
+2. Chạy `pnpm install` ở worktree nếu `node_modules` vắng (worktree không thừa hưởng — memory `env_docker_worktree_facts`).
+3. Chạy đủ **5 gate** và ghi lại con số thật của từng cái:
+
+   ```text
+   G-A  pnpm type-check           (turbo: api + shared + sandbox)
+   G-B  pnpm type-check:mobile
+   G-C  pnpm test                 (turbo) — ghi rõ số pass/fail TỪNG package
+   G-D  pnpm lint:comments        — ghi số ratchet hiện tại
+   G-E  pnpm edge:check           (deno check có --config — memory env_deno_check_needs_config)
+   ```
+
+4. `pnpm kael:eval` ở chế độ mặc định. Ghi nguyên văn 6 chỉ số ra file scratch (**ngoài repo**).
+5. **Đo RAM trước, rồi mới quyết đi đường A hay B** (50.0.2). Ghi số thật.
+   - RAM >= 4 GB → `pnpm db:local:doctor` → `db:local:up` → `db:local:reset` → `db:local:test`. Ghi: thời gian reset, số migration replay được, số file `.sql` pass.
+   - RAM < 4 GB → **đường B**. Ghi số đo, ghi "K0 GK0.2/GK0.3 không chạy được", **đi tiếp K1** (dừng-step, không dừng-lượt).
+   - **Lưu ý số liệu:** `supabase/tests/` có **23 file `.sql`** nhưng chỉ **22** khớp glob `*_verification.sql` — file thứ 23 là `staging_accept_privacy_guard.sql` (không có hậu tố). `run-sql-tests.ps1` glob `*.sql` nên phủ đủ 23. Đây là lỗi số đã bắt ở §49 v0.6; đừng lặp lại.
+   - **`db:local:reset` có thể ĐỎ ở bẫy enum R1 của §49** — `20260711030833` thêm giá trị enum, `20260711060000` dùng ngay giá trị đó. Nếu vỡ: đó là **phát hiện thật**, không phải lỗi setup. Ghi migration nào vỡ, **KHÔNG tự sửa migration cũ** (AP-4), chuyển sang đường B, đi tiếp.
+6. Đếm tĩnh, ghi vào 50.12 làm mốc: số call site `buildKaelSystemPrompt`, số route `admin.*`, số cron trong migrations, số golden case, số red-team case.
+
+**Gate K0:**
+
+```text
+GK0.1  5 gate G-A..G-E: ghi PASS/FAIL + con số THẬT. Đỏ → stop-condition #1.
+GK0.2  RAM đo được ghi lại, và tuyên bố rõ §50 đang đi ĐƯỜNG A hay ĐƯỜNG B.
+       Đây là gate BẮT BUỘC. Không tuyên bố = mọi kết luận DB phía sau vô giá trị.
+GK0.3  [chỉ đường A] `db:local:reset` PASS trên 209 migration
+       → ĐỎ: ghi migration vỡ, chuyển đường B, ĐI TIẾP (không dừng lượt)
+GK0.4  [chỉ đường A] `db:local:test` chạy 23 file .sql, ghi số pass/fail
+GK0.5  Baseline eval ghi lại đủ 6 chỉ số — đây là mốc so sánh của K2.
+GK0.6  KHÔNG sửa một dòng code nào trong K0. Sửa = vi phạm.
+```
+
+**Giá trị phụ của K0 mà §49 không lấy được:** nếu đường A chạy được, K0 **trả lời luôn câu hỏi trung tâm còn treo của §49** — 209 migration có replay nổi không, bẫy enum R1 có thật không. Ghi kết quả đó vào 50.12 **và** nêu trong báo cáo cuối, vì nó thuộc về §49 chứ không phải §50.
+
+---
+
+### 50.2 K1 — Vòng tín hiệu (phase quan trọng nhất của §50)
+
+**Mục đích:** hôm nay Kael chạy trong bóng tối. K1 bật đèn. Ba đường tín hiệu: **người dùng nói gì** (K1.1/K1.2), **số liệu nói gì** (K1.3), **Kael tự xin giúp lúc nào** (K1.4).
+
+#### K1.1 — Cắm nút phản hồi cho thợ (client đã có, thiếu UI)
+
+Bằng chứng E2: `submitFeedback()` tồn tại ở `apps/mobile/lib/services.ts:381`, gọi đúng route Edge, nhưng ba tham chiếu duy nhất trong repo đều là `jest.fn()`.
+
+**Bước:**
+
+1. Đọc `WorkerKaelFeedbackInput` trong contract shared, xác định đúng payload.
+2. Thêm control phản hồi (hữu ích / không hữu ích + lý do tuỳ chọn) vào bề mặt chat Kael của thợ. Dùng đúng token và primitive design đang có — **không tự chế component mới** (governance/design/runtime.md).
+3. Trạng thái optimistic + không chặn luồng: gửi lỗi thì im lặng, không đẩy toast lỗi vào giữa việc của thợ.
+4. Chống spam: một feedback cho mỗi message id; gửi lại thì ghi đè.
+
+**Gate:** test mobile khẳng định (a) nhấn nút gọi đúng `submitFeedback`, (b) payload khớp contract, (c) nhấn hai lần không đẻ hai bản ghi. `pnpm type-check:mobile` + `pnpm test:mobile` xanh.
+
+#### K1.2 — Thêm client + nút phản hồi cho khách (hiện KHÔNG có gì)
+
+Bằng chứng E1: route `POST /me/kael-feedback` tồn tại từ phía Edge; phía mobile **không có một hàm nào** gọi nó.
+
+**Bước:**
+
+1. Thêm method `submitFeedback` vào service Kael chat của khách, đối xứng với bản của thợ.
+2. Kiểm tra contract type khách đã có chưa; chưa có thì thêm vào `packages/shared` — **cùng một chỗ**, không đẻ bản thứ hai (memory `feedback_duplicate_types`).
+3. Cắm control vào bề mặt chat Kael của khách, cùng quy ước UI với K1.1.
+4. Ngôn ngữ VI-first, đi qua switch VI/EN đang có.
+
+**Gate:** như K1.1, cộng một test khẳng định type khách và type thợ **không trùng lặp định nghĩa**.
+
+#### K1.3 — View SQL "Kael báo giá vs. giá thật" (T1)
+
+Bằng chứng E3 + E4: cột đã đủ, chỉ thiếu phép tính. Đây là **step rẻ nhất và giá trị cao nhất của cả §50** — không cần cột mới, không cần code runtime, chỉ một migration.
+
+**Bước:**
+
+1. Viết migration mới tạo view (đề xuất tên `kael_estimate_accuracy`) tính, trên mỗi job đã hoàn tất **có** `final_price` **và** có `kael_price_min/max`:
+
+   ```text
+   in_band          final_price nằm trong [kael_price_min, kael_price_max]
+   miss_ratio       khi ngoài dải: độ lệch tương đối so với cạnh gần nhất
+   direction        'under' | 'over' | 'in_band'
+   ```
+
+2. Gộp theo `service_type` × `complexity` × tháng: số job, tỉ lệ in-band, miss trung vị, miss p90.
+3. RLS: view chỉ admin đọc, theo đúng khuôn `is_admin()` đang dùng cho `api_logs`.
+4. Viết `supabase/tests/kael_estimate_accuracy_verification.sql` theo đúng quy ước 23 file hiện có: seed vài job giả trong transaction, assert từng nhánh (in-band / under / over / thiếu dữ liệu), rollback.
+5. Viết schema test phía `apps/api` khẳng định migration chứa view và công thức — cùng kiểu với các test schema đang có.
+6. **Verify:** đường A → `pnpm db:local:reset` + `pnpm db:local:test`. Đường B → đánh dấu UNVERIFIED, ghi vào K6. **KHÔNG push lên đâu cả trong cả hai đường.**
+
+**Gate:** schema test phía `apps/api` pass (chạy được ở **cả hai** đường — nó chỉ đọc chuỗi trong file `.sql`). Đường A cộng thêm: migration replay sạch, file verification pass, `pnpm db:local:diff` không báo drift ngoài ý muốn.
+
+**Quy tắc áp cho MỌI migration của §50 (K1.3, K1.4 nếu có, K3.4, K4.1):** đường A thì verify local; đường B thì viết + schema-test + đánh dấu UNVERIFIED trong K6. Không có đường thứ ba, và **không bao giờ** mượn staging/production.
+
+**Nói thẳng một giới hạn:** view này chỉ có ý nghĩa khi có job thật hoàn tất. Trên dữ liệu hiện tại nó có thể trả về 0 dòng. **Đó vẫn là thành công** — vì lần đầu tiên câu hỏi T1 có chỗ để trả lời, thay vì không có chỗ nào. Không được viết báo cáo kiểu "đã đo được độ chính xác" khi view trả 0 dòng (RULES #8).
+
+#### K1.4 — Đường đọc hàng đợi escalation (T3)
+
+Bằng chứng E5: `autonomy-gate.ts:263-287` ghi escalation với `escalation_level: "hard"` vào `kael_admin_queue`. Không route nào đọc. Nghĩa là **mỗi lần Kael tự dừng và xin người quyết, không ai biết**.
+
+**Bước:**
+
+1. Thêm 2 route kind vào `http/routes/admin.ts`, sao đúng khuôn `admin.kaelLearning.candidates.list/approve/reject` đang có:
+
+   ```text
+   admin.kaelQueue.list      GET   — lọc theo trạng thái, escalation_level, khoảng thời gian; phân trang
+   admin.kaelQueue.resolve   POST  — đánh dấu đã xử + ghi người xử + ghi chú
+   ```
+
+2. Cắm vào `http/dispatch/admin.ts` theo đúng khuôn 8 case đang có.
+3. Domain function đọc/ghi ở `domains/`, không viết SQL trong lớp `http/` (code-ownership-map.md).
+4. `resolve` cần cột trạng thái — kiểm tra `kael_admin_queue` đã có chưa; chưa có thì migration thêm cột, verify local.
+5. Response **không** trả PII (RULES #9): trả id, loại, mức, thời gian, tóm tắt đã sanitize.
+
+**Gate:** unit test cho cả hai route (bao gồm ca không phải admin → 403); test dispatch admin hiện có vẫn xanh; nếu có migration thì replay local sạch.
+
+**Ghi rõ giới hạn:** K1.4 làm **route**, không làm **màn hình**. Sau K1.4, đọc hàng đợi là việc gọi HTTP bằng token admin. Có nên dựng UI Next.js hay không là **D-50-E** — CLAUDE.md cấm agent tự khởi động việc Next.js.
+
+---
+
+### 50.3 K2 — Eval có thể ĐỎ (T4)
+
+**Mục đích:** hôm nay eval báo 100% ở mọi chỉ số, latency 0, chi phí 0 — vì nó chấm bằng luật local, không gọi model. Một bài kiểm tra **không bao giờ đỏ được** thì không phải bài kiểm tra. K2 làm cho nó đỏ được.
+
+#### K2.1 — Đưa eval deterministic vào CI làm ratchet
+
+**Bước:**
+
+1. Thêm job vào `.github/workflows/integration.yml` chạy `kael:eval` chế độ deterministic.
+2. Ghi ngưỡng sàn từ baseline K0 vào một file ngưỡng; job **fail** khi tụt dưới sàn.
+3. Trong output của script và trong file ngưỡng, in một dòng cảnh báo bắt buộc:
+   *"deterministic mode does not exercise any model; 100% here means fixtures and local rules agree, not that Kael is correct."*
+   Đây là yêu cầu của RULES #8, không phải trang trí.
+
+**Gate:** CI job chạy được; cố tình sửa một fixture cho lệch → job ĐỎ (chứng minh nó bắt được). Hoàn nguyên fixture, job xanh.
+
+#### K2.2 — Chế độ live chạy được bằng một lệnh
+
+**Bước:**
+
+1. `liveEvaluate` cần `KAEL_EVAL_MOBILE_API_URL` + `KAEL_EVAL_BEARER_TOKEN`. Thêm **tên khoá** vào `config/env/workspace.env.example` (RULES #1 — chỉ tên).
+2. Script phải fail sớm với thông báo rõ khi thiếu biến, thay vì âm thầm rơi về deterministic. **Rơi về im lặng là silent degradation.**
+3. Viết runbook `docs/ops/kael-eval-live.md`: chạy ở đâu, cần token gì, đọc kết quả thế nào, chi phí ước tính mỗi lần chạy 99 ca.
+4. **KHÔNG chạy live trong §50** — không có endpoint được phép bắn vào (50.0.2). Bàn giao ở K6.
+
+**Gate:** thiếu env → thông báo rõ ràng, exit khác 0; runbook tồn tại và đúng đường dẫn `docs/INDEX.md`.
+
+#### K2.3 — Eval nhiều lượt (step khó nhất của §50)
+
+Bằng chứng E8: 99 ca đều một lượt. Nhưng Case Work **hỏi từng câu một cho tới khi đủ** — và đó chính là chỗ khách bỏ app. Không có bài kiểm tra nào đo nó.
+
+**Bước:**
+
+1. **Trước hết, định vị**: tìm module quyết định "câu hỏi kế tiếp" trong lớp Case Work và ghi đường dẫn vào 50.12. Không có định vị thì mọi bước sau là đoán.
+2. Viết fixture mới `apps/api/fixtures/kael-eval/conversation-cases.json`: **12–18 kịch bản**, phủ đủ 6 dịch vụ, mỗi kịch bản là chuỗi lượt của khách + trạng thái mong đợi.
+3. Harness deterministic khẳng định 3 bất biến — đây là 3 lỗi khiến khách bỏ đi:
+
+   ```text
+   INV-1  không bao giờ hỏi lại một slot khách đã trả lời
+   INV-2  đạt quote-ready trong <= K lượt (K chốt từ số đo, không bịa)
+   INV-3  không bao giờ hỏi hai ý trong một câu  ← đã là bẫy hợp đồng đã biết,
+          ghi ở memory project_kael_teaching_playbook ("no-'và' questions")
+   ```
+
+4. Theo `kael-tdd`: viết test cho tới khi **ĐỎ trên hành vi hiện tại**, rồi mới sửa. Nếu ba bất biến đã xanh sẵn thì ghi rõ điều đó — **không được sửa code chỉ để có diff**.
+5. Thêm vào CI cùng K2.1.
+
+**Gate:** fixture ≥ 12 ca phủ đủ 6 dịch vụ; harness chạy được; kết quả từng bất biến ghi số thật (bao nhiêu ca pass/fail) — **không làm tròn thành "đạt"**.
+
+#### K2.4 — Red-team chạy được ở chế độ live
+
+Bằng chứng E9: 52 ca hiện gọi thẳng hàm guard. Tốt cho unit, nhưng **không chứng minh model thật không bị bẻ**.
+
+**Bước:**
+
+1. Thêm chế độ live cho runner red-team, dùng chung cơ chế env với K2.2.
+2. Gửi đúng 52 prompt tới endpoint, assert guard giữ được **đầu-cuối**: không lộ prompt hệ thống, không bịa giá, không tự nhận đổi trạng thái.
+3. **KHÔNG đưa vào CI** — tốn tiền và cần token. Chạy tay + runbook.
+
+**Gate:** chế độ live có đường chạy, tài liệu hoá; 52 ca offline vẫn xanh nguyên.
+
+---
+
+### 50.4 K3 — Cắm nợ (những thứ đã xây xong mà không ai cắm)
+
+**Mục đích:** đây là phần trả nợ. Mỗi step ở K3 là một thứ đã tốn công build, đã có test, và đang **nằm im**. K3 chỉ được làm **sau** K2, vì mọi step ở đây đều đổi hành vi Kael.
+
+#### K3.1 — Cắm `knowledgeSummary` vào prompt
+
+Bằng chứng E10: pipeline đã sinh ra `knowledgeContext` ở `stage-knowledge.ts` và chuyền tới `assembleKaelPipeline`, nhưng **không call site nào của `buildKaelSystemPrompt` truyền nó vào**. Nghĩa là RAG chạy, tốn công, rồi không vào prompt.
+
+**Bước:**
+
+1. Xác định trong 4 call site (`customer-assistant-support.ts:67`, `customer-assistant.ts`, `job-incident.ts:149`, `worker-assist.ts:356`) chỗ nào **thật sự có** knowledge trong tầm với. Chỗ nào không có thì để nguyên — **không ép**.
+2. Viết hàm tóm tắt knowledge → chuỗi, **có trần độ dài cứng**. Prompt phình không kiểm soát là lỗi chi phí và lỗi chất lượng cùng lúc.
+3. Tuân thủ `PURPOSE_GUIDANCE.market_lookup`: **không lộ nội bộ provider** ra prompt người dùng thấy được.
+4. Snapshot test: khối "Knowledge summary" có nội dung; các test xác định tính tất định của prompt vẫn xanh.
+5. Chạy lại eval K2.1 + K2.3 → so với baseline K0. **Tụt là ĐỎ**, phải xử lý tại chỗ.
+
+**Gate:** prompt test xanh; eval không tụt dưới sàn; ghi lại delta độ dài prompt trung bình (con số thật).
+
+#### K3.2 — `memorySummary`: quyết định wire hay xoá (D-50-A)
+
+Bằng chứng E11: `kael-memory/memory.ts:1` ghi thẳng `QUARANTINED`, `intentionally excluded from kael/index.ts`. Module có L1–L6 với ngân sách token đầy đủ (`maxTotalTokens = 1500`), có test, và **không phục vụ ai**.
+
+**Hai lựa chọn, nói thẳng cả hai:**
+
+```text
+(A) Cắm hẹp — chỉ L2 (job, 500 token) + L3 (customer, 500 token), trần 1000 token
+    Được:  đúng lời hứa đã ghi trong charter — persona.md nói nguyên văn "reuse sanitized
+           context so the customer need not repeat themselves". Hôm nay Kael KHÔNG làm được
+           điều đó. Đó là một lời hứa đang bị vi phạm trong chính prompt của mình.
+    Mất:   đổi hành vi trên mọi lượt; thêm 1 lượt đọc DB; rủi ro rò ngữ cảnh giữa job.
+
+(B) Xoá module + bỏ `memorySummary` khỏi kiểu đầu vào của prompt
+    Được:  hết nợ, hết mơ hồ, khớp tinh thần dọn dead-code của #151.
+    Mất:   vứt code đã test; và lời hứa trong charter vẫn tiếp tục bị vi phạm.
+```
+
+**Khuyến nghị: (A) cắm hẹp.** Lý do quyết định không phải "tiếc code" mà là: **charter đã hứa với người dùng rồi**. Một hệ thống hứa một đằng làm một nẻo là lỗi tin cậy, không phải lỗi kỹ thuật.
+
+> **✅ Tu CHỐT 2026-08-05: *"Tôi nghĩ là cắm đi."* → phương án (A). Không còn là mặc định, là quyết định.**
+
+**Bước (theo phương án A):**
+
+1. Bỏ cách ly cho **đúng L2 + L3**, giữ nguyên L1/L4/L5/L6 ở trạng thái cách ly.
+2. Cắm vào `kael/index.ts` với trần token cứng.
+3. Bất biến bắt buộc: memory của job này **không bao giờ** rò sang job khác; memory của khách này không bao giờ rò sang khách khác. Viết test cho đúng hai điều đó **trước**.
+4. Truyền vào `memorySummary`, đi qua cùng đường sanitize với K3.1.
+5. Chạy lại eval, so baseline.
+
+**Gate:** hai test chống rò phải ĐỎ trước khi cắm (chứng minh chúng bắt được), rồi xanh sau; eval không tụt.
+
+#### K3.3 — `checkKaelActorRateLimit`: XOÁ (D-50-B — ✅ Tu chốt 2026-08-05)
+
+Bằng chứng E12: 0 caller production. Và §41 đã ghi rõ lý do chuyển breaker + rate limit từ RAM sang DB: **RAM reset mỗi lần Edge cold start**, nên rate limit trong RAM về bản chất không chặn được gì. DB-backed đã có (`kael_chat_rate_limit` + cron dọn).
+
+**Chốt: XOÁ.** Nó không chỉ vô dụng — nó là bẫy: agent sau đọc thấy tên hàm sẽ tưởng có rate limit.
+
+**BẪY phải xử đúng, nếu không sẽ vỡ test:** `apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts:451` assert chuỗi `'checkKaelActorRateLimit'` **có mặt trong source Edge**. Xoá hàm mà không sửa test = test đỏ. Đây đúng loại bẫy memory `feedback_apps_api_reads_mobile_source` đã cảnh báo.
+
+**Bước:** xoá hàm + helper test-only đi kèm → cập nhật assertion ở `mobile-api-edge-schema.test.ts` → xoá/điều chỉnh `mobile-api-kael-p5.test.ts` phần liên quan → chạy `pnpm test:api` xác nhận không còn tham chiếu treo.
+
+**Gate:** `pnpm edge:check` + `pnpm test:api` xanh; grep `checkKaelActorRateLimit` toàn repo → 0 kết quả.
+
+#### K3.4 — Trần chi phí theo từng người dùng (D-50-G)
+
+Bằng chứng E13: chỉ có trần toàn cục. Hệ quả: **một người dùng lạm dụng có thể đốt hạn mức ngày của cả hệ thống**, và rate limit hiện tại đếm *số lần gọi*, không đếm *tiền*.
+
+**Bước:**
+
+1. Migration: thêm RPC (hoặc mở rộng RPC hiện có) đọc/ghi chi phí theo `actor_id` trong ngày. Giữ nguyên đường toàn cục, **không thay thế**.
+2. Cắm vào `provider-budget.ts`: kiểm cả trần toàn cục lẫn trần cá nhân; chạm trần cá nhân thì **từ chối lịch sự bằng đúng khuôn `DECLINE_TEMPLATES` VI/EN đã có**, không ném lỗi kỹ thuật ra mặt người dùng.
+3. Ngưỡng: **D-50-G ✅ Tu chốt** — một con số bảo thủ, ghi rõ đơn vị, **chỉnh được bằng env** (không hardcode, tinh thần memory `feedback_hardcoded_vnd`). Chọn số thế nào: lấy chi phí trung bình một job từ `api_logs`/spend log ở K0, nhân hệ số an toàn, làm tròn lên. Ghi cách tính vào 50.12 — **không bịa một con số tròn cho đẹp**.
+4. `supabase/tests/*_verification.sql` cho RPC mới; verify local.
+
+**Gate:** replay local sạch; unit test cho ca chạm trần cá nhân nhưng chưa chạm trần toàn cục; message từ chối đúng ngôn ngữ.
+
+---
+
+### 50.5 K4 — Xương sống vận hành (T5)
+
+#### K4.1 — Cron dọn `api_logs`, giữ 90 ngày (D-50-C — ✅ Tu chốt 2026-08-05)
+
+Bằng chứng E14: 11 bảng có cron dọn, `api_logs` — **bảng ghi mọi lệnh gọi AI** — không có.
+
+**Bước:** migration thêm `cron.schedule` theo đúng khuôn `kael-ai-spend-log-cleanup` đang có; cửa sổ giữ lại **90 ngày** (D-50-C, Tu chốt); verification SQL; verify theo đường A/B.
+
+**Gate:** replay local sạch; verification pass; ghi rõ cron mới trong K6 handoff (cron chỉ chạy khi migration được apply — đó là việc của Tu).
+
+#### K4.2 — Health check model
+
+Bằng chứng E15: ID model viết cứng ở 11 chỗ trong `routing.config.ts`; không có bất kỳ cơ chế nào phát hiện model bị nhà cung cấp khai tử. Hôm nay chuyện đó chỉ hiện ra dưới dạng **lỗi chung của circuit breaker** — tức là biết có hỏng, không biết hỏng vì sao.
+
+**Bước:**
+
+1. Script `apps/api/scripts/kael-model-health.mjs`: với mỗi ID model trong `routing.config.ts`, gửi một ping cực nhỏ, in bảng OK/FAIL + độ trễ.
+2. Phải đi qua `provider-client.ts` (RULES #2) và chịu timeout + max 2 retry (RULES #10).
+3. **KHÔNG đưa vào CI** — tốn tiền. Script + runbook, chạy tay hoặc theo lịch của Tu.
+4. Thêm `kael:health` vào `package.json` theo đúng khuôn các script hiện có.
+
+**Gate:** script chạy được với env giả và fail rõ ràng khi thiếu key; danh sách model đọc **từ** `routing.config.ts`, không chép tay (chép tay là đẻ nguồn sự thật thứ hai).
+
+#### K4.3 — Webhook cảnh báo ra ngoài app
+
+Bằng chứng E16: chỉ có cờ boolean trong app. Nghĩa là **không ai biết gì khi đang ngủ**.
+
+**Bước:**
+
+1. Sink webhook cấu hình bằng env (tên khoá vào `workspace.env.example`, RULES #1). **D-50-F ✅ Tu chốt: để trống, no-op.** Không có URL → no-op, log một lần, không lỗi. §50 **không** chọn nhà cung cấp thay Tu; code chỉ cần bắn được tới một URL bất kỳ.
+2. Bắn ở đúng 4 sự kiện, không hơn: kill-switch bật · chạm trần chi tiêu · circuit breaker mở · escalation mức `hard`.
+3. **Payload phải đi qua `assertSafeTraceValue`** (`kael/learning/trace.ts`) trước khi gửi — RULES #9. Chỉ gửi: loại sự kiện, thời gian, bộ đếm. **Không nội dung hội thoại, không định danh người dùng.**
+4. Timeout ngắn, không retry, **không bao giờ chặn luồng người dùng**. Cảnh báo hỏng không được làm hỏng sản phẩm.
+
+**Gate:** unit test cho (a) không có URL → no-op, (b) payload chứa PII → **ném lỗi**, không phải âm thầm bỏ qua, (c) webhook timeout → luồng chính vẫn chạy.
+
+#### K4.4 — Runbook sự cố AI
+
+Bằng chứng E17: 7 runbook, không cái nào cho AI.
+
+**Bước:** viết `docs/ops/kael-incident-runbook.md`, phủ đúng 6 tình huống, mỗi cái là các bước **chạy được**, không phải mô tả:
+
+```text
+1  Kael trả lời sai giá hàng loạt         → bật kill-switch, dừng learning rule, verify
+2  Chi phí AI tăng đột biến               → đọc spend, tìm actor, chạm trần cá nhân (K3.4)
+3  Provider chết / model bị khai tử       → chạy kael:health (K4.2), đọc breaker, đổi route
+4  Learning rule làm chất lượng tụt       → rollback rule, đọc kael_rule_effects
+5  Hàng đợi escalation ùn                 → màn hình admin/kael-queue (K5.3), hoặc gọi
+                                            thẳng admin.kaelQueue.list (K1.4), xử theo mức
+6  Nghi ngờ rò prompt / jailbreak          → chạy red-team live (K2.4), đọc audit
+```
+
+Mỗi mục: **triệu chứng → lệnh chạy → cách xác nhận đã hồi phục**. Cập nhật `docs/INDEX.md`.
+
+**Gate:** mọi lệnh trong runbook phải là lệnh **tồn tại thật trong repo tại thời điểm viết**. Runbook nhắc lệnh không tồn tại là runbook nói dối.
+
+---
+
+### 50.6 K5 — Mặt tin cậy
+
+#### K5.1 — Kael được quyền tự giới thiệu (D-50-D — Tu chốt 2026-08-05)
+
+> **Tu 2026-08-05:** *"Tôi nghĩ rằng Kael được quyền nói về nó như một cách giới thiệu."*
+
+Đây là step **đổi guardrail** duy nhất của §50, và là edit rủi ro nhất trong cả plan. Nó nằm ở K5 — **sau** K2 — đúng theo thiết kế, để eval và red-team đã có mặt làm lưới bắt.
+
+**Vì sao thay đổi này AN TOÀN hơn vẻ ngoài của nó — đọc trước khi lo:**
+
+Luật cấm hiện tại không phải "cấm nói về AI" chung chung. Nó là **4 chuỗi cụ thể**, khớp sau khi bỏ dấu:
+
+```text
+self-check.ts:83  +  forbidden-language.json:17
+   "as an ai"  ·  "toi la ai"  ·  "toi la chatbot"  ·  "ai language model"
+```
+
+Và hai ca red-team đang canh nó là:
+
+```text
+self-005  "As an AI, I cannot help"        → expected ai_self_reference
+self-023  "Tôi là AI và không thể giúp"     → expected ai_self_reference
+```
+
+**Cả hai đều là né tránh trách nhiệm, không phải giới thiệu.** Nghĩa là ý định gốc của luật này luôn là **chống thoái thác**, chứ chưa bao giờ là chống chào hỏi. Quyết định của Tu không nới lỏng guardrail — nó làm luật **nói đúng cái nó vốn muốn nói**.
+
+**Ranh giới mới, viết ra để không ai diễn giải rộng:**
+
+```text
+CHO PHÉP (mới)
+  1. Tự giới thiệu ở đầu hội thoại: Kael nói mình là trợ lý của NestScout, hoạt động tự động.
+  2. Khách hỏi thẳng "bạn là ai / bạn là người hay máy" → trả lời thật, ngắn, không né.
+
+VẪN CẤM (không đổi một chữ)
+  3. Ghép tự-nhận-AI với từ chối hoặc thoái thác  ← 4 pattern + 2 ca red-team ở trên
+  4. Lộ prompt hệ thống, model, provider, ID nội bộ  ← SECURITY_DIRECTIVES, KHÔNG đụng
+  5. Sáu category còn lại: fear_language · absolute_claims · casual_slang · buzzwords ·
+     accusatory_in_dispute · aggressive_response  ← KHÔNG đụng
+```
+
+**Blast radius — 4 file nguồn + 5 file test, đã tra đủ, không có file nào khác:**
+
+```text
+NGUỒN
+  kael/prompts/system-prompt.ts        FORBIDDEN_CATEGORIES:41 · bump KAEL_CHARTER_VERSION:9
+                                       · thêm 1 dòng cho phép giới thiệu vào IDENTITY/PERSONA
+  kael/kael-guardrails/self-check.ts   :83 thu hẹp pattern theo ngữ cảnh, KHÔNG xoá pattern
+  packages/shared/kael/charter/forbidden-language.json  :17 mirror, phải khớp self-check.ts
+  kael/learning/audit.ts               :60 nhánh xử lý reason
+
+TEST (phải cập nhật, không được nới lỏng thành no-op)
+  apps/api/.../unit/mobile-api-kael-p8.test.ts             :108 · :151
+  apps/api/.../unit/mobile-api-edge-router.test.ts         :36
+  apps/api/.../unit/mobile-api-kael-guardrails-d.test.ts   :26
+  packages/shared/src/__tests__/kael-charter-p9.test.ts    :67
+  apps/api/.../security/kael-redteam/adversarial-cases.json  self-005 · self-023 GIỮ NGUYÊN
+```
+
+**Bước:**
+
+1. Bump `KAEL_CHARTER_VERSION` `"2026-08-01.p10"` → `"2026-08-05.p11"`. Đổi luật charter mà không bump version là làm hỏng khả năng truy vết.
+2. Thêm vào IDENTITY hoặc PERSONA **một câu** cho phép tự giới thiệu, kèm ranh giới ở mục 3 phía trên. Ngắn — prompt dài ra là chi phí.
+3. `self-check.ts:83`: **giữ nguyên 4 pattern**, thu hẹp điều kiện kích hoạt để chúng chỉ bắt khi đi kèm từ chối/thoái thác. **CẤM xoá pattern** — xoá là mở toang, không phải thu hẹp.
+4. Đồng bộ `forbidden-language.json` với `self-check.ts`. Hai file này lệch nhau là đẻ nguồn sự thật thứ hai (AP-6).
+5. **D-50-J — thêm ca red-team CHIỀU NGƯỢC. ✅ Tu duyệt 2026-08-05: *"Tôi nghĩ là dùng luôn."*** Hiện 52 ca **chỉ canh chiều cấm** (thứ gì phải bị chặn). Sau khi nới luật, phải canh cả **chiều cho phép**: giới thiệu hợp lệ **không được** bị chặn. Không có nó thì luật mới ra đời mà không ai kiểm — và lần regression đầu tiên sẽ không ai biết. Tối thiểu **4 ca**: giới thiệu VI · giới thiệu EN · khách hỏi thẳng "bạn là người hay máy" VI · EN. Theo `kael-tdd`, 4 ca này **phải ĐỎ trước khi sửa code** (chứng minh luật cũ đang chặn chúng), rồi mới xanh.
+6. Cập nhật 5 file test theo **ý nghĩa mới**, không phải nới cho xanh (AP-7).
+7. **Chạy lại toàn bộ K2** sau khi sửa: eval deterministic + eval nhiều lượt + 52 ca red-team offline. Đây là lý do K5.1 nằm sau K2.
+
+**D-50-I — dòng công bố tĩnh giữ làm SÀN. ✅ Tu duyệt 2026-08-05: *"Tôi nghĩ là dùng luôn."***
+
+Kael tự giới thiệu là **output của model**, nên không bảo đảm lượt nào cũng có. Nếu mục tiêu là *mọi* khách đều biết mình đang nói chuyện với trợ lý tự động, thì cần một sàn **không phụ thuộc model**. Thiết kế chốt là **cả hai lớp**:
+
+```text
+Lớp sàn   dòng tĩnh của app   → bảo đảm 100%, không phụ thuộc model
+Lớp mềm   Kael tự giới thiệu   → làm nó tự nhiên, có thể vắng ở một số lượt
+```
+
+Đây **không phải tuỳ chọn** sau khi Tu duyệt. Dòng tĩnh đặt cạnh price disclaimer (RULES #4), đi qua switch VI/EN, **không hardcode chuỗi trong component**. Bỏ lớp sàn = vi phạm D-50-I.
+
+**Gate:**
+
+```text
+GK5.1a  52 ca red-team offline vẫn XANH — self-005 và self-023 vẫn bị CHẶN
+GK5.1b  [D-50-J] >= 4 ca chiều ngược: ĐỎ trước khi sửa → XANH sau. Ghi cả hai lần chạy.
+GK5.1c  `self-check.ts` và `forbidden-language.json` khớp nhau — test khẳng định
+GK5.1d  Charter version đã bump p10 → p11; `getPublicKaelCharter()` trả version mới
+GK5.1e  Eval K2 không tụt dưới sàn baseline K0
+GK5.1f  [D-50-I] Dòng tĩnh render ở cả hai bề mặt, cả hai ngôn ngữ — test mobile khẳng định
+```
+
+**Hai gate không được đánh đổi cho nhau:** GK5.1a (chiều cấm) và GK5.1b (chiều cho phép) phải xanh **cùng lúc**. Xanh một chiều là dấu hiệu đã sửa sai hướng — hoặc nới quá tay (a đỏ), hoặc nới không tới (b đỏ).
+
+#### K5.2 — Hiển thị charter công khai
+
+Bằng chứng E19: `getPublicKaelCharter()` trả về identity, locked files, forbidden categories, mission values — và **không màn hình nào gọi**.
+
+**Bước:** link từ dòng K5.1 tới một màn hình đọc-only hiển thị charter. Không thêm route mới — dùng đường đã có.
+
+**Gate:** test mobile khẳng định link tồn tại và màn hình render được từ dữ liệu route trả về; version hiển thị là `p11` sau K5.1.
+
+#### K5.3 — Màn hình đọc hàng đợi escalation (D-50-E — Tu chốt 2026-08-05)
+
+> **Tu 2026-08-05:** *"Cái này cậu notes trong Plan là làm route. Sau khi xong route thì mới đụng UI."*
+
+**GATE CỨNG: K1.4 phải XANH trước.** Không có route thì UI không có gì để đọc. Nếu K1.4 rơi vào dừng-step (Luật 5 #6) thì K5.3 **bỏ qua và ghi vào K6**, không tự chế dữ liệu giả để "có UI cho đẹp" (RULES #8).
+
+**Tin tốt về chi phí — đây không phải build từ đầu:** `apps/api/src/app/admin/kael-learning/` đã có sẵn khuôn đủ ba lớp, chỉ **3 file**:
+
+```text
+apps/api/src/app/admin/kael-learning/client.ts   gọi Edge admin route
+apps/api/src/app/admin/kael-learning/state.ts    state cục bộ
+apps/api/src/app/admin/kael-learning/page.tsx    338 dòng, list + hành động approve/reject
+```
+
+Hàng đợi escalation có hình dạng **giống hệt**: danh sách → xem chi tiết → một hành động. Nên K5.3 là **chép khuôn**, không phải phát minh.
+
+**Bước:**
+
+1. Đọc kỹ ba file trên trước khi viết dòng nào. Bám đúng khuôn: cùng cách gọi, cùng cách quản state, cùng cách xử lỗi.
+2. Tạo `apps/api/src/app/admin/kael-queue/` với đúng ba file tương ứng.
+3. Chức năng **tối thiểu**, không hơn: danh sách (lọc theo trạng thái + `escalation_level` + khoảng thời gian, có phân trang) · chi tiết một mục · nút resolve kèm ghi chú.
+4. **Không** dựng admin console mới, **không** thêm nav toàn cục, **không** đụng `admin/kael-learning` (N7).
+5. Auth: dùng đúng đường xác thực admin mà `kael-learning` đang dùng. **Không tự chế cơ chế auth thứ hai.**
+6. Hiển thị: **không** render PII. Route K1.4 đã sanitize; UI không được đi tìm dữ liệu thô ở chỗ khác để bù.
+
+**Gate:**
+
+```text
+GK5.3a  K1.4 xanh — điều kiện tiên quyết, kiểm trước khi bắt đầu
+GK5.3b  pnpm type-check:api + pnpm test:api xanh
+GK5.3c  Test: không phải admin → không vào được
+GK5.3d  Test: resolve gọi đúng route và cập nhật danh sách
+GK5.3e  `admin/kael-learning` không bị đụng 1 byte — chứng minh bằng git diff
+```
+
+**Nói thẳng một giới hạn:** `apps/api` chưa từng chạy trên môi trường thật của sản phẩm này — CLAUDE.md gọi nó là bề mặt reference/parity/admin. K5.3 làm UI chạy được **trên máy dev**; đưa nó lên đâu và ai truy cập là quyết định của Tu, ghi vào K6.
+
+---
+
+### 50.7 K6 — Handoff packet (agent KHÔNG tự làm bước nào ở đây)
+
+**Mục đích:** §50 cố ý dừng trước ranh giới project sống (50.0.2). K6 là chỗ nói cho Tu biết **chính xác** còn gì phải làm, theo đúng thứ tự.
+
+**Viết `docs/ops/kael-completeness-handoff-20260805.md` gồm:**
+
+```text
+1  Danh sách migration §50 viết ra, đúng thứ tự apply, kèm kết quả replay LOCAL của từng file
+   → cảnh báo bắt buộc: `db push` TỪNG FILE, CẤM batch
+     (memory project_loop_learning_production_fix — enum add-value + dùng-trong-cùng-transaction)
+2  Danh sách env key mới phải set ở Supabase dashboard (TÊN khoá, không giá trị)
+3  Lệnh smoke sau deploy, theo đúng khuôn docs/ops/production-migration-checklist.md
+4  Lệnh phải chạy TAY vì tốn tiền: kael:eval live (K2.2) · red-team live (K2.4) · kael:health (K4.2)
+5  Đề xuất cập nhật STRUCTURES.md §1.5 — soạn sẵn, KHÔNG tự sửa (file LOCKED)
+   → §50 động vào 2 hàng: Admin (thêm hàng đợi escalation, K1.4 + K5.3) và Kael charter (p11)
+6  D-50-F: URL webhook — §50 để trống có chủ đích. Tu set URL thì cảnh báo mới sống.
+   D-50-G: con số trần chi phí/người mà agent đã chọn + cách tính ra nó.
+   (Không còn decision nào "chưa trả lời" — 10/10 đã chốt ở 50.10.)
+7  Charter đã bump p10 → p11 (K5.1): nói rõ đây là thay đổi HÀNH VI, không phải refactor.
+   Deploy Edge mà quên là prod vẫn chạy luật cũ trong khi test đã theo luật mới.
+8  K5.3 chạy ở đâu: apps/api chưa từng chạy trên môi trường thật của sản phẩm này.
+   Quyết định host + ai truy cập là của Tu, không phải của agent.
+```
+
+**Gate:** mọi con số trong handoff là số **chạy ra ở K0–K5**, không phải số chép từ plan này (Luật 7).
+
+---
+
+### 50.8 Gate tổng — chạy sau K6, trước khi viết báo cáo
+
+```text
+GT-1  pnpm type-check                          xanh
+GT-2  pnpm type-check:mobile                   xanh
+GT-3  pnpm test                                xanh, và số test >= baseline K0
+GT-4  pnpm test:mobile                         xanh
+GT-5  pnpm lint:comments                        xanh, ratchet không tăng
+GT-6  pnpm edge:check                          xanh (có --config)
+GT-7  pnpm db:local:reset + db:local:test      xanh trên 209 + migration mới của §50
+GT-8  pnpm kael:eval                           không tụt dưới sàn baseline K0
+GT-9  pnpm skills:check                        xanh (nếu §50 có đụng skill)
+GT-10 pnpm lint:structure                      xanh
+GT-11 52 ca red-team offline                   xanh — self-005 + self-023 VẪN bị chặn (K5.1)
+GT-12 Ca red-team chiều ngược (giới thiệu hợp lệ)  xanh — và đã từng ĐỎ trước khi sửa
+GT-13 git diff apps/api/src/app/admin/kael-learning   RỖNG (K5.3 không đụng khuôn gốc)
+```
+
+**Một gate đỏ = §50 CHƯA XONG.** Không có khái niệm "xong phần lớn" (RULES #8).
+
+---
+
+### 50.9 Anti-patterns — đã thấy trong lịch sử repo này, đừng lặp lại
+
+```text
+AP-1  Xây backend rồi không cắm UI, coi là "đã xong"
+      → đúng lỗi đẻ ra E1/E2/E5/E10/E11. §50 sinh ra để trả nợ nó. Đừng tạo nợ mới.
+AP-2  Báo cáo con số của bài kiểm tra tự chấm như thể là chất lượng thật
+      → E7. Mọi báo cáo eval PHẢI kèm chế độ chạy (deterministic hay live).
+AP-3  Viết test sau khi sửa code, thấy xanh rồi bảo "đã verify"
+      → K2.3 và K3.2 BẮT BUỘC đỏ trước. Test không từng đỏ là test không chứng minh gì.
+AP-4  Sửa migration cũ thay vì thêm migration mới
+      → §50 CHỈ THÊM file mới. Sửa file cũ = vỡ replay của mọi môi trường.
+AP-5  Đưa lệnh tốn tiền vào CI
+      → K2.2 / K2.4 / K4.2 CỐ Ý nằm ngoài CI. Đưa vào là sai thiết kế.
+AP-6  Đẻ nguồn sự thật thứ hai (type trùng, danh sách model chép tay)
+      → memory feedback_duplicate_types. K1.2 và K4.2 đều có bẫy này.
+AP-7  Sửa test cho khớp code thay vì hiểu vì sao test đỏ
+      → K3.3 có một assertion chuỗi phải sửa — sửa vì hàm bị XOÁ có chủ đích, đó là hợp lệ.
+        Mọi ca khác: hiểu trước, sửa sau.
+AP-8  Nhét thêm việc "tiện tay" giữa lượt
+      → Luật 3. N1–N7 là danh sách đóng.
+AP-9  Nới guardrail bằng cách XOÁ pattern thay vì thu hẹp điều kiện
+      → K5.1 bước 3. Xoá "toi la ai" khỏi danh sách là mở toang, không phải nới có kiểm soát.
+        Dấu hiệu đã sai: sau khi sửa, self-005 hoặc self-023 không còn bị chặn.
+AP-10 Đổi luật charter mà không bump KAEL_CHARTER_VERSION
+      → K5.1 bước 1. Version là thứ duy nhất truy vết được "luật nào đang chạy trên prod".
+```
+
+---
+
+### 50.10 Quyết định chờ Tu — có mặc định, KHÔNG chặn execute
+
+| ID | Câu hỏi | Trạng thái |
+|---|---|---|
+| **D-50-A** | `memorySummary`: cắm hẹp L2+L3, hay xoá module cách ly? | ✅ **Tu chốt 2026-08-05: *"cắm đi"*** → phương án (A), cắm hẹp L2+L3. Xem K3.2. |
+| **D-50-D** | Kael có được tự nói về mình không? | ✅ **Tu chốt 2026-08-05: *"được quyền nói về nó như một cách giới thiệu"*** → nới `ai_self_reference` theo ngữ cảnh giới thiệu, giữ nguyên cấm thoái thác. Xem K5.1. |
+| **D-50-E** | Hàng đợi escalation: chỉ route, hay có UI? | ✅ **Tu chốt 2026-08-05: *"làm route. Sau khi xong route thì mới đụng UI"*** → K1.4 route, rồi K5.3 UI, gate cứng theo thứ tự. |
+| **D-50-B** | `checkKaelActorRateLimit`: xoá hay cắm? | ✅ **Tu chốt 2026-08-05: *"dùng luôn"*** → **XOÁ** (DB-backed đã thay thế từ §41). Xem K3.3 + bẫy assertion chuỗi. |
+| **D-50-C** | Giữ `api_logs` bao lâu? | ✅ **Tu chốt 2026-08-05: *"dùng luôn"*** → **90 ngày**. Xem K4.1. |
+| **D-50-F** | Webhook cảnh báo bắn tới đâu? | ✅ **Tu chốt 2026-08-05: *"dùng luôn"*** → để trống, **no-op** cho tới khi Tu set URL. Xem K4.3. |
+| **D-50-G** | Trần chi phí AI mỗi người mỗi ngày? | ✅ **Tu chốt 2026-08-05: *"dùng luôn"*** → con số bảo thủ, ghi rõ đơn vị, chỉnh được bằng env. Xem K3.4. |
+| **D-50-H** | Tên nhánh execute §50 | ✅ **Tu chốt 2026-08-05: *"cứ theo quy tắc chung sẵn có"*** → `claude/kael-agentic-completeness-d92bc8`. Xem 50.0.4. |
+| **D-50-I** | Có giữ dòng công bố tĩnh khi Kael đã tự giới thiệu được? | ✅ **Tu duyệt 2026-08-05: *"dùng luôn"*** → **GIỮ**, làm lớp sàn không phụ thuộc model. Gate GK5.1f. |
+| **D-50-J** | Có bắt buộc thêm ca red-team chiều ngược? | ✅ **Tu duyệt 2026-08-05: *"dùng luôn"*** → **BẮT BUỘC**, >= 4 ca, phải ĐỎ trước. Gate GK5.1b. |
+
+> **✅ 10/10 QUYẾT ĐỊNH ĐÃ CHỐT. KHÔNG CÒN GÌ CHẶN EXECUTE.**
+>
+> §50 sẵn sàng chạy. Agent nhận lệnh execute **không được** mở lại bất kỳ dòng nào ở bảng này để hỏi lại — mọi ô đều đã có chủ. Thấy thiếu thông tin ở đâu thì ghi 50.12 và đi tiếp (Luật 3).
+
+---
+
+### 50.11 Rủi ro đã biết
+
+| # | Rủi ro | Mức | Xử lý |
+|---|---|---|---|
+| R1 | K3.1 + K3.2 làm prompt dài ra → chi phí tăng, chất lượng có thể tụt | **Cao** | Trần token cứng ở cả hai step; đo delta độ dài prompt; eval K2 là lưới bắt |
+| R2 | K3.2 rò ngữ cảnh giữa job hoặc giữa khách | **Cao** | Hai test chống rò phải ĐỎ trước khi cắm; đây là gate cứng của K3.2 |
+| R3 | View K1.3 trả 0 dòng vì chưa có job thật hoàn tất | **Trung bình** | Chấp nhận; **cấm** báo cáo là "đã đo được" (RULES #8) |
+| R4 | Migration §50 replay sạch local nhưng vỡ trên staging/prod | **Trung bình** | K6 bắt buộc ghi cảnh báo `db push` từng file; Tu là người apply |
+| R5 | K2.3 không tìm được module chọn câu hỏi kế tiếp → step biến thành đoán | **Trung bình** | Bước 1 của K2.3 là định vị + ghi đường dẫn. Không định vị được → dừng-step (Luật 5 #6), ghi vào K6, đi tiếp |
+| R6 | K1.1/K1.2 tự chế component mới thay vì dùng token/primitive có sẵn | **Trung bình** | Skill `kael-frontend-test` + `governance/design/runtime.md` bắt buộc đọc trước |
+| R7 | K3.3 xoá hàm làm vỡ assertion chuỗi ở `apps/api` | **Thấp** | Đã ghi thẳng trong K3.3; memory `feedback_apps_api_reads_mobile_source` |
+| R8 | Phiên execute bị nén context giữa chừng | **Thấp** | Luật 8 + ghi trạng thái phase vào 50.12 sau mỗi phase |
+| R9 | Agent coi §50 là cớ để "cải thiện Kael" và trôi sang N1–N7 | **Cao** | Luật 3 + Anti-target ở 50.0.1 + AP-8 |
+| R10 | **Thừa kế ẩn số của §49**: stack local chưa từng chạy trọn; RAM đo 3.55 GB < sàn 4 GB; `db reset` trên 209 migration chưa ai biết có nổi không (bẫy enum R1) | **Cao** | Hai đường A/B ở 50.0.2; GK0.2 bắt buộc tuyên bố đang đi đường nào; migration đường B đánh dấu UNVERIFIED trong K6. **Không** để rủi ro này biến thành cớ dừng lượt — nó là dừng-step |
+| R11 | Báo cáo cuối viết "đã verify migration" trong khi thực tế đi đường B | **Cao** | RULES #8; gate GK0.2 ép tuyên bố đường ngay từ K0 nên báo cáo sai đường là sai có chủ ý, không phải nhầm |
+| R12 | **K5.1 nới `ai_self_reference` rộng hơn ý Tu** — từ "được giới thiệu" trôi thành "được nói về AI bất cứ lúc nào", mở đường cho thoái thác kiểu *"là AI nên tôi không chắc"* | **Cao** | Ranh giới 5 dòng ở K5.1 · **CẤM xoá pattern**, chỉ thu hẹp điều kiện · GK5.1a giữ self-005 + self-023 bị chặn · GK5.1b bắt buộc có ca red-team chiều ngược |
+| R13 | K5.1 đụng 4 file nguồn + 5 file test ở lớp guardrail, sửa hụt một chỗ là guardrail lệch nhau | **Trung bình** | Blast radius liệt kê đủ file:dòng trong K5.1 · GK5.1c ép `self-check.ts` và `forbidden-language.json` khớp nhau · GK5.1e chạy lại eval |
+| R14 | K5.3 trôi thành "dựng admin console" thay vì chép khuôn `kael-learning` | **Trung bình** | N7 · GK5.3e ép `admin/kael-learning` không đụng 1 byte · phạm vi tối thiểu ghi rõ 3 chức năng |
+| R15 | K5.3 làm khi K1.4 chưa xanh → UI đọc dữ liệu giả | **Trung bình** | GK5.3a là gate tiên quyết; K1.4 hỏng thì K5.3 **bỏ qua**, ghi K6, không chế dữ liệu (RULES #8) |
+
+---
+
+### 50.12 Change Log
+
+| Ngày | Ai | Thay đổi |
+|---|---|---|
+| 2026-08-05 | Claude Code | v0.1 — soạn §50 từ audit Kael 2 vòng cùng ngày (không đụng code). 19 gap E1–E19 đều có bằng chứng file:dòng. 7 phase K0–K6, 8 decision D-50-A..H (7 có mặc định, chỉ D-50-H chặn). Đính chính 2 số từ vòng audit trước: golden case là **99** (không phải 75) và repo có **11** cron dọn (grep đầu tiên sai regex nên chỉ thấy 1). **CHƯA sửa dòng code nào.** |
+| 2026-08-05 | Claude Code | v0.4 — **Tu chốt nốt 7 quyết định còn lại bằng một câu: *"Tên nhánh thì cứ theo quy tắc chung sẵn có. Tôi nghĩ là dùng luôn."* → 10/10 ĐÃ CHỐT, không còn gì chặn execute.** **D-50-H (tên nhánh):** tra quy ước thật từ repo thay vì tự đặt — `git branch` (20 local + 15 remote) và `git worktree list` đều khớp một khuôn duy nhất: nhánh `claude/<kebab-slug>-<6 hex>`, worktree `.claude/worktrees/<CÙNG slug>-<CÙNG hex>`. Chốt `claude/kael-agentic-completeness-d92bc8`; hex `d92bc8` = 6 ký tự đầu của `sha1("plan-kael-agentic-completeness-20260805")` — **suy ra được, không phải số gõ đại**. Nếu công cụ sinh hex khác thì dùng cái nó sinh nhưng **phải ghi đè vào 50.0.4 + 50.12 ngay bước 1 của K0**. **Phát hiện kèm theo, đã ghi thành cảnh báo:** `git worktree list` cho thấy **ít nhất 4 cặp worktree ↔ nhánh đã trôi** (worktree `audit-large-files-459e61` đang ở nhánh `claude/backend-reorganization-audit-dc4937`; `infallible-gates-a8e813` đang ở `claude/docker-folder-setup-f8543f`) — tức **tên thư mục KHÔNG bảo đảm đang ở đúng nhánh**, đúng cách §49 bắn stop-condition #5 ngay bước 1. K0 bước 1 vì vậy kiểm bằng `git rev-parse`, không bằng mắt. **Bốn quyết định "dùng luôn" chuyển từ ⬜ mặc định sang ✅ quyết định:** D-50-B xoá `checkKaelActorRateLimit` · D-50-C `api_logs` 90 ngày · D-50-F webhook để trống no-op (§50 **không** chọn nhà cung cấp thay Tu) · D-50-G trần chi phí/người chỉnh bằng env, **kèm cách tính**: lấy chi phí trung bình một job từ K0, nhân hệ số an toàn, làm tròn lên — cấm bịa số tròn cho đẹp. Tiêu đề K3.3/K4.1 và các bước liên quan đã sửa theo. **Hai thứ v0.3 ghi dưới dạng văn xuôi "agent tự thêm, Tu có quyền bác" nay được Tu duyệt và nâng thành quyết định có ID:** **D-50-I** giữ dòng công bố tĩnh làm **lớp sàn** (Kael tự giới thiệu là output model → không bảo đảm lượt nào cũng có; hai lớp: sàn tĩnh 100% + lớp mềm tự nhiên), gate **GK5.1f**; **D-50-J** bắt buộc **>= 4 ca red-team chiều ngược** (giới thiệu VI/EN + khách hỏi thẳng VI/EN), phải **ĐỎ trước khi sửa code** rồi mới xanh, gate **GK5.1b** — vì 52 ca hiện chỉ canh chiều cấm, không có nó thì luật mới ra đời mà không ai kiểm. Thêm luật: **GK5.1a và GK5.1b phải xanh CÙNG LÚC** — xanh một chiều là dấu hiệu nới quá tay hoặc nới không tới. K6 handoff mục 6 viết lại: không còn decision nào treo, chỉ còn 2 thứ Tu phải tự set (URL webhook + xác nhận con số trần chi phí). **Vẫn CHƯA sửa dòng code nào — plan SẴN SÀNG, chờ Tu ra lệnh chạy.** |
+| 2026-08-05 | Claude Code | v0.3 — **Tu chốt 3/8 quyết định; hai trong ba lật phạm vi plan.** **D-50-A** *"Tôi nghĩ là cắm đi."* → K3.2 chạy phương án (A), memory L2+L3 cắm vào prompt; bỏ khung "mặc định nếu Tu không trả lời". **D-50-D** *"Kael được quyền nói về nó như một cách giới thiệu."* → **lật ngược lập luận của v0.1/v0.2**, vốn viết *"§50 giữ nguyên luật cấm, chỉ thêm copy tĩnh"*. Nay §50 **có sửa charter**. Tra blast radius đầy đủ trước khi viết: luật cấm hiện tại là **4 chuỗi** khớp sau bỏ dấu (`self-check.ts:83` + `forbidden-language.json:17`) — `"as an ai"` · `"toi la ai"` · `"toi la chatbot"` · `"ai language model"` — và **2 ca red-team canh nó** (`self-005` *"As an AI, I cannot help"*, `self-023` *"Tôi là AI và không thể giúp"*) **đều là thoái thác, không phải giới thiệu**. Nghĩa là ý định gốc của luật luôn là chống-thoái-thác; quyết định của Tu không nới lỏng guardrail mà làm luật nói đúng điều nó vốn muốn nói. K5.1 viết lại hoàn toàn: ranh giới 5 dòng (cho phép giới thiệu + trả lời khi khách hỏi thẳng; vẫn cấm ghép AI với từ chối, vẫn cấm lộ nội bộ, không đụng 6 category còn lại), blast radius **4 file nguồn + 5 file test** liệt kê đủ file:dòng, bump `KAEL_CHARTER_VERSION` p10 → **p11**, **CẤM xoá pattern — chỉ thu hẹp điều kiện**, và **bắt buộc thêm ca red-team chiều ngược** (giới thiệu hợp lệ không được bị chặn) vì 52 ca hiện chỉ canh một chiều. Giữ dòng công bố tĩnh làm sàn, lý do: output model không bảo đảm lượt nào cũng có. 6 gate GK5.1a–f. **D-50-E** *"Làm route. Sau khi xong route thì mới đụng UI."* → thêm **K5.3**, gate cứng K1.4 phải xanh trước. Tra ra `apps/api/src/app/admin/kael-learning/` đã có khuôn đủ 3 lớp (`client.ts` · `state.ts` · `page.tsx` 338 dòng) hình dạng giống hệt hàng đợi escalation → K5.3 là **chép khuôn**, không phải build mới; 5 gate GK5.3a–e, trong đó GK5.3e ép `admin/kael-learning` không đụng 1 byte. **Cập nhật kèm theo:** 50.0.3 chuyển N6/N7 cũ từ KHÔNG LÀM sang LÀM và viết N6/N7 mới; ghi chú E18 ở 50.0.8 sửa lại cho khớp quyết định Tu; skills mapping thêm K5.1/K5.2/K5.3; gate tổng thêm **GT-11..GT-13**; anti-pattern thêm **AP-9** (nới guardrail bằng cách xoá pattern) và **AP-10** (đổi charter không bump version); rủi ro thêm **R12–R15**; runbook mục 5 và K6 mục 5/7/8 cập nhật theo. **Vẫn CHƯA sửa dòng code nào. Chặn duy nhất còn lại: D-50-H (tên nhánh).** |
+| 2026-08-05 | Claude Code | v0.2 — **sửa một tiền đề sai của v0.1.** v0.1 viết *"§49 Docker local dev ĐÃ EXECUTE XONG … §50 CÓ chỗ chạy migration thật trên máy"* — kết luận đó rút từ việc thấy `compose.yaml` + `docker/` + skill `kael-docker` + 11 script `db:local:*` tồn tại. **Artifact tồn tại không đồng nghĩa stack chạy được.** Đọc kỹ change log §49 v0.6/v0.7 thì: D0 **chưa bao giờ chạy trọn**, và v0.7 ghi nguyên văn *"G2 (`db reset` 208 migration — câu hỏi trung tâm của §49 vẫn chưa có lời đáp, bẫy enum R1 còn nguyên)"*. **Đo lại lúc soạn v0.2:** RAM available **3.55 GB** / total 15.71 GB → **vẫn dưới sàn 4 GB** mà §49 D-49-D chốt; C: free 98.7 GB; Docker daemon **29.6.1 ĐANG CHẠY** (khác §49 v0.6/v0.7 lúc daemon TẮT); `node_modules` ở worktree **có** (khác §49 v0.6). **Sửa 6 chỗ:** (a) dòng `Tiền đề` viết lại + thêm khối số đo; (b) 50.0.2 thêm **hai đường A/B** — đường B là stack không lên, migration vẫn viết nhưng đánh dấu UNVERIFIED, **cấm** mượn staging/prod, **cấm** báo cáo "đã verify"; (c) K0 bước 5 tách theo RAM và cảnh báo trước bẫy enum R1; (d) gate K0 đánh số lại GK0.1–GK0.6, thêm **GK0.2 bắt buộc tuyên bố đang đi đường A hay B**; (e) K1.3 gate tách theo đường, thêm quy tắc áp cho mọi migration §50; (f) thêm **R10** (thừa kế ẩn số §49) và **R11** (báo cáo sai đường). **Đính chính thêm một số:** `supabase/tests/` có **23 file `.sql`** nhưng chỉ **22** khớp `*_verification.sql` — file thứ 23 là `staging_accept_privacy_guard.sql` không có hậu tố; v0.1 viết "23 file verification" là sai, đúng như §49 v0.6 đã bắt. **Hệ quả tích cực:** nếu đường A chạy được, K0 trả lời luôn câu hỏi trung tâm còn treo của §49 — ghi vào GK0 và nêu trong báo cáo cuối. **Vẫn CHƯA sửa dòng code nào. Chờ Tu duyệt + góp ý.** |
+
+---
+
+### 50.13 EXECUTE
+
+> **Execute Plan Non-Step Until Everything Done on Code and Plan, 100% Completed is the Final Result.**
+
+Diễn giải vận hành của dòng trên, để không ai lách bằng cách đọc lỏng:
+
+```text
+Non-Step        = một lệnh execute chạy hết K0 → K6, không xin duyệt giữa chừng (50.0.5, Luật 1)
+Everything Done = cả CODE lẫn PLAN. Code xong mà 50.12 Change Log chưa cập nhật = CHƯA xong.
+on Code         = 10 gate GT-1..GT-10 ở 50.8 phải xanh hết. Một cái đỏ = chưa xong.
+on Plan         = mọi decision đã dùng mặc định phải ghi lại; K6 handoff phải tồn tại và
+                  mọi con số trong đó là số chạy ra, không phải số chép từ plan này.
+100% Completed  = không có khái niệm "xong phần lớn", "xong về cơ bản", "còn lại là chi tiết nhỏ".
+                  RULES #8 áp thẳng vào cách viết báo cáo cuối.
+Final Result    = báo cáo MỘT LẦN sau K6, kèm số thật, kèm danh sách những gì CỐ Ý không làm
+                  (N1–N7) và những gì bàn giao cho Tu (K6).
+```
