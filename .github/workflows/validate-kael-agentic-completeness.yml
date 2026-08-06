@@ -1,0 +1,159 @@
+name: Validate Kael Agentic Completeness implementation
+
+on:
+  push:
+    branches:
+      - claude/kael-agentic-completeness-apply-20260806
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: kael-agentic-completeness-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_BRANCH: claude/kael-agentic-completeness-d92bc8
+      EXPECTED_PLAN_HEAD: a5d13c87a6780f3e6eae9e4570bcccf6da5cda80
+    steps:
+      - name: Check out implementation branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require a real implementation commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" != "$EXPECTED_PLAN_HEAD"
+          git log -1 --pretty=%s | grep -F 'feat(kael): execute agentic completeness plan'
+          test -z "$(git status --short)"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run core gates and build report
+        id: gates
+        shell: bash
+        run: |
+          set +e
+          : > /tmp/kael-gates.md
+          failed=0
+          run_gate() {
+            name="$1"
+            shift
+            log="/tmp/$(echo "$name" | tr ' /:' '___').log"
+            "$@" >"$log" 2>&1
+            code=$?
+            if test "$code" = 0; then
+              printf -- '- ✅ `%s`\n' "$name" >> /tmp/kael-gates.md
+            else
+              failed=1
+              printf -- '- ❌ `%s` (exit %s)\n' "$name" "$code" >> /tmp/kael-gates.md
+              printf '\n<details><summary>%s — log tail</summary>\n\n```text\n' "$name" >> /tmp/kael-gates.md
+              tail -n 60 "$log" >> /tmp/kael-gates.md
+              printf '\n```\n</details>\n' >> /tmp/kael-gates.md
+            fi
+          }
+
+          run_gate 'type-check:api' pnpm --filter @nestscout/api type-check
+          run_gate 'type-check:shared' pnpm --filter @nestscout/shared type-check
+          run_gate 'type-check:mobile' pnpm --filter @nestscout/mobile type-check
+          run_gate 'type-check:sandbox' pnpm --filter @nestscout/sandbox type-check
+          run_gate 'test:api' pnpm --filter @nestscout/api test
+          run_gate 'test:shared' pnpm --filter @nestscout/shared test
+          run_gate 'test:mobile' pnpm --filter @nestscout/mobile test
+          run_gate 'test:sandbox' pnpm --filter @nestscout/sandbox test
+          run_gate 'kael:eval deterministic' node apps/api/scripts/kael-eval.mjs --mode deterministic --report /tmp/kael-eval.md
+          run_gate 'kael:eval multi-turn' node apps/api/scripts/kael-multi-turn-eval.mjs
+          run_gate 'lint:comments' node scripts/check-comment-discipline.mjs
+          run_gate 'lint:structure' node scripts/lint-structure.mjs
+          run_gate 'skills:check' node scripts/check-skills-sync.mjs
+
+          printf 'failed=%s\n' "$failed" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Run pinned Deno edge checks
+        id: edge
+        shell: bash
+        run: |
+          set +e
+          image='denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498'
+          failed=0
+          : > /tmp/edge-gates.md
+          for fn in kael-learning-monitor kael-media-retention mobile-api sepay-webhook; do
+            log="/tmp/edge-$fn.log"
+            docker run --rm -v "$PWD:/repo" -w /repo "$image" \
+              deno check --config "supabase/functions/$fn/deno.json" "supabase/functions/$fn/index.ts" >"$log" 2>&1
+            code=$?
+            if test "$code" = 0; then
+              printf -- '- ✅ `edge:check %s`\n' "$fn" >> /tmp/edge-gates.md
+            else
+              failed=1
+              printf -- '- ❌ `edge:check %s` (exit %s)\n\n```text\n' "$fn" "$code" >> /tmp/edge-gates.md
+              tail -n 60 "$log" >> /tmp/edge-gates.md
+              printf '\n```\n' >> /tmp/edge-gates.md
+            fi
+          done
+          printf 'failed=%s\n' "$failed" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Verify model-health missing-key behavior
+        id: health
+        shell: bash
+        run: |
+          set +e
+          node apps/api/scripts/kael-model-health.mjs >/tmp/model-health.log 2>&1
+          code=$?
+          if test "$code" = 0; then
+            echo 'failed=1' >> "$GITHUB_OUTPUT"
+            printf -- '- ❌ `kael:health missing-key guard` unexpectedly exited 0\n' >/tmp/health-gate.md
+          else
+            echo 'failed=0' >> "$GITHUB_OUTPUT"
+            printf -- '- ✅ `kael:health missing-key guard` refused clearly (exit %s)\n' "$code" >/tmp/health-gate.md
+          fi
+          exit 0
+
+      - name: Comment validation result on implementation PR
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$TARGET_BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
+          test -n "$pr"
+          {
+            echo '## Automated §50 implementation validation'
+            echo
+            echo "Target commit: \`$(git rev-parse HEAD)\`"
+            echo
+            cat /tmp/kael-gates.md 2>/dev/null || true
+            cat /tmp/edge-gates.md 2>/dev/null || true
+            cat /tmp/health-gate.md 2>/dev/null || true
+            echo
+            echo '> Live eval, live red-team, and staging/production migration apply were intentionally not run. No live Supabase project was touched.'
+          } >/tmp/pr-comment.md
+          gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" --body-file /tmp/pr-comment.md
+
+      - name: Fail when a core gate failed
+        shell: bash
+        run: |
+          test "${{ steps.gates.outputs.failed }}" = 0
+          test "${{ steps.edge.outputs.failed }}" = 0
+          test "${{ steps.health.outputs.failed }}" = 0
