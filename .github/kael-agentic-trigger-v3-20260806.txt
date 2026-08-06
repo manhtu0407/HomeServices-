@@ -1,0 +1,1 @@
+Trigger v3 after the publisher workflow exists on the branch.
