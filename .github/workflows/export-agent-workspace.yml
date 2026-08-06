@@ -1,9 +1,9 @@
 name: export-agent-workspace
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/harness-production-assurance-pr02-pr12
+      - feat/harness-manifest-truth-pr01
 
 permissions:
   contents: read
