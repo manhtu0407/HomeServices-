@@ -1,0 +1,26 @@
+diff --git a/package.json b/package.json
+--- a/package.json
++++ b/package.json
+@@ -61,7 +61,8 @@
+   "devDependencies": {
+     "metro-runtime": "0.83.3",
+     "react-doctor": "0.5.8",
+-    "turbo": "^2"
++    "turbo": "^2",
++    "zod": "^4.4.3"
+   },
+   "workspaces": [
+     "apps/*",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -32,6 +32,9 @@
+       turbo:
+         specifier: ^2
+         version: 2.9.12
++      zod:
++        specifier: ^4.4.3
++        version: 4.4.3
+ 
+   apps/api:
+     dependencies:
