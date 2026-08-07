@@ -1,0 +1,57 @@
+name: Export Kael Section 50 Source Snapshot
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.head_ref == 'tmp/kael-section50-materialize-20260807-v2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Reconstruct and apply verified patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/transport/kael-section50-part-* > /tmp/kael-section50.patch.xz.b64
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/kael-section50.patch.xz.b64')
+          data = path.read_bytes()
+          if len(data) == 66447:
+              data = data[:8497] + b'l' + data[8497:]
+          if len(data) != 66448:
+              raise SystemExit(f'unexpected transport length: {len(data)}')
+          path.write_bytes(data)
+          PY
+          base64 --decode /tmp/kael-section50.patch.xz.b64 > /tmp/kael-section50.patch.xz
+          echo '7aec8b767e6e05fa8472e070c91417dc1f649bb61f3a8b28e5e9b55d134ccd2d  /tmp/kael-section50.patch.xz' | sha256sum -c -
+          xz -dc /tmp/kael-section50.patch.xz > /tmp/kael-section50.patch
+          echo 'e70939231b85308a4c744199d7ae3ed081b93f2fa7fa634695a0e9be5acd5114  /tmp/kael-section50.patch' | sha256sum -c -
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = '81e5cda85a3928b8540e103774a6049dfdc6bf65'
+          git reset --hard 81e5cda85a3928b8540e103774a6049dfdc6bf65
+          git apply --index --whitespace=nowarn /tmp/kael-section50.patch
+          git diff --cached --check
+      - name: Package staged source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --exclude=.git --exclude=node_modules --exclude=.turbo -czf /tmp/kael-section50-source.tgz .
+          git diff --cached --binary > /tmp/kael-section50.patch
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kael-section50-source-${{ github.run_id }}
+          path: |
+            /tmp/kael-section50-source.tgz
+            /tmp/kael-section50.patch
+          if-no-files-found: error
+          retention-days: 1
