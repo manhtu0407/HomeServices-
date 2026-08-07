@@ -46,7 +46,12 @@ $failed = @()
 try {
   foreach ($file in $files) {
     $sql = Get-Content -Raw -LiteralPath $file.FullName
-    $output = $sql | & docker exec -i $Container psql -v ON_ERROR_STOP=1 -U postgres -d postgres 2>&1
+    $dockerArgs = @("exec", "-i")
+    if (-not [string]::IsNullOrWhiteSpace($env:NESTSCOUT_TEST_DB_URL)) {
+      $dockerArgs += @("-e", "NESTSCOUT_TEST_DB_URL=$($env:NESTSCOUT_TEST_DB_URL)")
+    }
+    $dockerArgs += @($Container, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "postgres")
+    $output = $sql | & docker @dockerArgs 2>&1
     $code = $LASTEXITCODE
 
     if ($code -eq 0) {
