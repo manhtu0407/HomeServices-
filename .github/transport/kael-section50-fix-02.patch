@@ -1,0 +1,46 @@
+diff --git a/apps/mobile/app/kael-charter.tsx b/apps/mobile/app/kael-charter.tsx
+index a582320..caeb749 100644
+--- a/apps/mobile/app/kael-charter.tsx
++++ b/apps/mobile/app/kael-charter.tsx
+@@ -9,7 +9,7 @@ import { kaelCharterService } from '@/lib/services'
+ 
+ export default function KaelCharterScreen() {
+   const router = useRouter()
+-  const { language } = useAppLanguage()
++  const language = useAppLanguage()
+   const [charter, setCharter] = useState<KaelPublicCharterPayload | null>(null)
+   const [error, setError] = useState<string | null>(null)
+ 
+diff --git a/apps/mobile/components/kael/kael-feedback-controls.tsx b/apps/mobile/components/kael/kael-feedback-controls.tsx
+index a3ced5b..2632262 100644
+--- a/apps/mobile/components/kael/kael-feedback-controls.tsx
++++ b/apps/mobile/components/kael/kael-feedback-controls.tsx
+@@ -55,16 +55,20 @@ export function KaelFeedbackControls({
+   const submit = useCallback(async (rating: FeedbackRating) => {
+     if (!responseId.trim() || pendingRating || submittedRating === rating) return
+     setPendingRating(rating)
+-    const input = {
+-      response_id: responseId,
+-      rating,
+-      source: actor === 'customer' ? 'customer_chat' as const : 'worker_chat' as const,
+-      language,
+-    }
+     try {
+       const result = actor === 'customer'
+-        ? await customerKaelConversationService.submitFeedback(input)
+-        : await workerKaelChatService.submitFeedback(input)
++        ? await customerKaelConversationService.submitFeedback({
++            response_id: responseId,
++            rating,
++            source: 'customer_chat',
++            language,
++          })
++        : await workerKaelChatService.submitFeedback({
++            response_id: responseId,
++            rating,
++            source: 'worker_chat',
++            language,
++          })
+       if (result.success) setSubmittedRating(rating)
+     } catch {
+       // Feedback is best-effort and must never interrupt the active service flow.
