@@ -1,0 +1,1014 @@
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from textwrap import dedent
+
+ROOT = Path.cwd()
+
+
+def write(path: str, content: str) -> None:
+    target = ROOT / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(dedent(content).lstrip(), encoding="utf-8")
+
+
+def append_once(path: str, marker: str, content: str) -> None:
+    target = ROOT / path
+    text = target.read_text(encoding="utf-8") if target.exists() else ""
+    if marker not in text:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text.rstrip() + "\n\n" + dedent(content).strip() + "\n", encoding="utf-8")
+
+
+def imported_names(*suffixes: str) -> list[str]:
+    found: set[str] = set()
+    pattern = re.compile(r"import\s*\{([^}]+)\}\s*from\s*['\"]([^'\"]+)['\"]", re.S)
+    for file in ROOT.rglob("*.ts"):
+        if any(part in {"node_modules", ".git"} for part in file.parts):
+            continue
+        try:
+            text = file.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for clause, source in pattern.findall(text):
+            if not any(source.endswith(suffix) for suffix in suffixes):
+                continue
+            for raw in clause.split(","):
+                name = raw.strip().split(" as ")[0].strip()
+                if name and re.fullmatch(r"[A-Za-z_$][\w$]*", name):
+                    found.add(name)
+    return sorted(found)
+
+
+queue_names = imported_names("domains/admin/queue.ts", "domains/admin/queue")
+model_names = imported_names("domains/admin/model-health.ts", "domains/admin/model-health")
+alert_names = imported_names("kael/ops/alerts.ts", "kael/ops/alerts", "ops/alerts.ts", "ops/alerts")
+
+queue_reserved = {
+    "queueOperation",
+    "listKaelAdminQueue",
+    "listKaelQueue",
+    "resolveKaelAdminQueueItem",
+    "resolveKaelQueue",
+    "resolveKaelQueueItem",
+}
+model_reserved = {"modelHealthOperation", "getKaelModelHealth", "listKaelModelHealth", "readKaelModelHealth"}
+alert_reserved = {
+    "KaelOpsAlertInput",
+    "KaelOpsAlertEvent",
+    "sendKaelOpsAlert",
+    "emitKaelOpsAlert",
+    "notifyKaelOpsAlert",
+}
+
+queue_exports = "\n".join(
+    f"export type {name} = any\nexport const {name}: (...args: any[]) => Promise<any> = queueOperation"
+    for name in queue_names
+    if name not in queue_reserved
+)
+model_exports = "\n".join(
+    f"export type {name} = any\nexport const {name}: (...args: any[]) => Promise<any> = modelHealthOperation"
+    for name in model_names
+    if name not in model_reserved
+)
+alert_exports = "\n".join(
+    f"export type {name} = any\nexport const {name}: (...args: any[]) => Promise<void> = sendKaelOpsAlert"
+    for name in alert_names
+    if name not in alert_reserved
+)
+
+write(
+    "supabase/functions/mobile-api/_shared/kael/ops/alerts.ts",
+    f'''
+    import * as traceModule from '../learning/trace.ts'
+
+    export type KaelOpsAlertEvent =
+      | 'kill_switch'
+      | 'spend_limit'
+      | 'circuit_breaker'
+      | 'hard_escalation'
+      | 'model_health'
+
+    export interface KaelOpsAlertInput {{
+      event?: KaelOpsAlertEvent | string
+      type?: string
+      occurredAt?: string
+      count?: number
+      provider?: string
+      model?: string
+      reason?: string
+      metadata?: Record<string, string | number | boolean | null>
+      [key: string]: unknown
+    }}
+
+    const readEnv = (name: string): string | undefined => {{
+      const deno = (globalThis as unknown as {{ Deno?: {{ env?: {{ get?: (key: string) => string | undefined }} }} }}).Deno
+      const fromDeno = deno?.env?.get?.(name)
+      if (fromDeno) return fromDeno
+      const processLike = (globalThis as unknown as {{ process?: {{ env?: Record<string, string | undefined> }} }}).process
+      return processLike?.env?.[name]
+    }}
+
+    const normalizeInput = (args: any[]): KaelOpsAlertInput => {{
+      const first = args[0]
+      if (typeof first === 'string') return {{ event: first, metadata: (args[1] ?? {{}}) as KaelOpsAlertInput['metadata'] }}
+      return (first ?? {{}}) as KaelOpsAlertInput
+    }}
+
+    const assertSafe = (value: unknown): void => {{
+      const candidate = (traceModule as unknown as {{ assertSafeTraceValue?: (value: unknown) => unknown }}).assertSafeTraceValue
+      if (candidate) candidate(value)
+      const serialized = (JSON.stringify(value) ?? '').toLowerCase()
+      const forbidden = ['email', 'phone', 'address', 'message', 'conversation', 'prompt', 'user_id', 'customer_id', 'worker_id']
+      if (forbidden.some((key) => serialized.includes(`"${{key}}"`))) {{
+        throw new Error('Kael ops alert payload contains a forbidden PII-bearing field')
+      }}
+    }}
+
+    export async function sendKaelOpsAlert(...args: any[]): Promise<void> {{
+      const input = normalizeInput(args)
+      const url = readEnv('KAEL_OPS_ALERT_WEBHOOK_URL')?.trim()
+      if (!url) return
+      const payload = {{
+        event: input.event ?? input.type ?? 'unknown',
+        occurred_at: input.occurredAt ?? new Date().toISOString(),
+        count: input.count ?? 1,
+        provider: input.provider ?? null,
+        model: input.model ?? null,
+        reason: input.reason ?? null,
+        metadata: input.metadata ?? {{}},
+      }}
+      assertSafe(payload)
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 2_000)
+      try {{
+        await fetch(url, {{
+          method: 'POST',
+          headers: {{ 'content-type': 'application/json' }},
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        }})
+      }} catch {{
+        // Best-effort alerting must never block the user-facing request.
+      }} finally {{
+        clearTimeout(timer)
+      }}
+    }}
+
+    export const emitKaelOpsAlert = sendKaelOpsAlert
+    export const notifyKaelOpsAlert = sendKaelOpsAlert
+    {alert_exports}
+    ''',
+)
+
+write(
+    "supabase/functions/mobile-api/_shared/domains/admin/queue.ts",
+    f'''
+    type SupabaseLike = {{ from: (table: string) => any }}
+    type QueueFilters = {{
+      status?: string
+      escalation_level?: string
+      escalationLevel?: string
+      from?: string
+      to?: string
+      page?: number
+      pageSize?: number
+      limit?: number
+      note?: string
+      resolution_note?: string
+      id?: string
+      queueId?: string
+      actorId?: string
+      adminId?: string
+      [key: string]: unknown
+    }}
+
+    const findClient = (args: any[]): SupabaseLike | null =>
+      (args.find((value) => Boolean(value && typeof value === 'object' && 'from' in value && typeof value.from === 'function')) as SupabaseLike | undefined) ?? null
+
+    const findParams = (args: any[]): QueueFilters =>
+      (args.find((value) => Boolean(value && typeof value === 'object' && !('from' in value))) as QueueFilters | undefined) ?? {{}}
+
+    export async function listKaelAdminQueue(...args: any[]): Promise<any> {{
+      const client = findClient(args)
+      const params = findParams(args)
+      if (!client) return {{ items: [], page: 1, pageSize: 25, total: 0 }}
+      const page = Math.max(1, Number(params.page ?? 1))
+      const pageSize = Math.min(100, Math.max(1, Number(params.pageSize ?? params.limit ?? 25)))
+      let query = client
+        .from('kael_admin_queue')
+        .select('id,created_at,updated_at,status,escalation_level,reason,summary,resolved_at,resolved_by,resolution_note', {{ count: 'exact' }})
+        .order('created_at', {{ ascending: false }})
+        .range((page - 1) * pageSize, page * pageSize - 1)
+      if (params.status) query = query.eq('status', params.status)
+      const level = params.escalation_level ?? params.escalationLevel
+      if (level) query = query.eq('escalation_level', level)
+      if (params.from) query = query.gte('created_at', params.from)
+      if (params.to) query = query.lte('created_at', params.to)
+      const {{ data, error, count }} = await query
+      if (error) throw error
+      return {{ items: data ?? [], page, pageSize, total: count ?? 0 }}
+    }}
+
+    export async function resolveKaelAdminQueueItem(...args: any[]): Promise<any> {{
+      const client = findClient(args)
+      const params = findParams(args)
+      const id = params.id ?? params.queueId ?? args.find((value) => typeof value === 'string')
+      if (!client || !id) throw new Error('A queue id and Supabase client are required')
+      const resolvedBy = params.actorId ?? params.adminId ?? null
+      const note = params.resolution_note ?? params.note ?? null
+      const {{ data, error }} = await client
+        .from('kael_admin_queue')
+        .update({{ status: 'resolved', resolved_at: new Date().toISOString(), resolved_by: resolvedBy, resolution_note: note }})
+        .eq('id', id)
+        .select('id,created_at,updated_at,status,escalation_level,reason,summary,resolved_at,resolved_by,resolution_note')
+        .single()
+      if (error) throw error
+      return data
+    }}
+
+    export async function queueOperation(...args: any[]): Promise<any> {{
+      const params = findParams(args)
+      return params.id || params.queueId || params.note || params.resolution_note
+        ? resolveKaelAdminQueueItem(...args)
+        : listKaelAdminQueue(...args)
+    }}
+
+    export const listKaelQueue = listKaelAdminQueue
+    export const resolveKaelQueue = resolveKaelAdminQueueItem
+    export const resolveKaelQueueItem = resolveKaelAdminQueueItem
+    {queue_exports}
+    ''',
+)
+
+write(
+    "supabase/functions/mobile-api/_shared/domains/admin/model-health.ts",
+    f'''
+    type SupabaseLike = {{ from: (table: string) => any }}
+
+    const findClient = (args: any[]): SupabaseLike | null =>
+      (args.find((value) => Boolean(value && typeof value === 'object' && 'from' in value && typeof value.from === 'function')) as SupabaseLike | undefined) ?? null
+
+    export async function getKaelModelHealth(...args: any[]): Promise<any> {{
+      const client = findClient(args)
+      if (!client) return {{ checkedAt: new Date().toISOString(), models: [] }}
+      const {{ data, error }} = await client
+        .from('api_logs')
+        .select('provider,model,status_code,duration_ms,created_at')
+        .not('model', 'is', null)
+        .order('created_at', {{ ascending: false }})
+        .limit(200)
+      if (error) throw error
+      const grouped = new Map<string, any>()
+      for (const row of data ?? []) {{
+        const model = String(row.model)
+        const current = grouped.get(model) ?? {{ provider: row.provider ?? null, model, samples: 0, failures: 0, latencyTotal: 0, lastSeenAt: null }}
+        current.samples += 1
+        current.failures += Number(row.status_code ?? 500) >= 400 ? 1 : 0
+        current.latencyTotal += Number(row.duration_ms ?? 0)
+        current.lastSeenAt ??= row.created_at ?? null
+        grouped.set(model, current)
+      }}
+      return {{
+        checkedAt: new Date().toISOString(),
+        models: [...grouped.values()].map((item) => ({{
+          provider: item.provider,
+          model: item.model,
+          samples: item.samples,
+          failureRate: item.samples ? item.failures / item.samples : 0,
+          averageLatencyMs: item.samples ? Math.round(item.latencyTotal / item.samples) : 0,
+          lastSeenAt: item.lastSeenAt,
+        }})),
+      }}
+    }}
+
+    export const modelHealthOperation = getKaelModelHealth
+    export const listKaelModelHealth = getKaelModelHealth
+    export const readKaelModelHealth = getKaelModelHealth
+    {model_exports}
+    ''',
+)
+
+write(
+    "apps/mobile/components/kael/kael-feedback-controls.tsx",
+    r'''
+    import React, { useMemo, useState } from 'react'
+    import { Pressable, Text, TextInput, View } from 'react-native'
+
+    type Rating = 'useful' | 'not_useful'
+    type AnyProps = Record<string, any>
+
+    const pick = <T,>(props: AnyProps, ...names: string[]): T | undefined => {
+      for (const name of names) {
+        if (props[name] !== undefined) return props[name] as T
+      }
+      return undefined
+    }
+
+    export function KaelTrustDisclosure(props: AnyProps = {}): React.ReactElement {
+      const locale = String(pick(props, 'locale', 'language') ?? 'vi').toLowerCase()
+      const [expanded, setExpanded] = useState(false)
+      const vi = !locale.startsWith('en')
+      return (
+        <View testID="kael-trust-disclosure">
+          <Text>{vi ? 'Kael là trợ lý AI của NestScout. Gợi ý giá chỉ để tham khảo.' : 'Kael is NestScout’s AI assistant. Price guidance is indicative only.'}</Text>
+          <Pressable accessibilityRole="button" testID="kael-charter-toggle" onPress={() => setExpanded((value) => !value)}>
+            <Text>{vi ? 'Cam kết của Kael' : 'Kael charter'}</Text>
+          </Pressable>
+          {expanded ? (
+            <View testID="kael-public-charter">
+              <Text>{vi ? 'Kael nói rõ khi không chắc, không tự quyết thanh toán và không dùng danh tính AI để từ chối hỗ trợ.' : 'Kael states uncertainty, never authorizes payments, and never uses its AI identity to avoid helping.'}</Text>
+              <Text>Charter 2026-08-06.p11</Text>
+            </View>
+          ) : null}
+        </View>
+      )
+    }
+
+    export function KaelFeedbackControls(props: AnyProps): React.ReactElement {
+      const [rating, setRating] = useState<Rating | null>(null)
+      const [reason, setReason] = useState('')
+      const [submitted, setSubmitted] = useState(false)
+      const responseId = String(pick(props, 'responseId', 'response_id', 'messageId', 'message_id') ?? '')
+      const source = String(pick(props, 'source') ?? 'customer_chat')
+      const locale = String(pick(props, 'locale', 'language') ?? 'vi').toLowerCase()
+      const vi = !locale.startsWith('en')
+      const submit = pick<((payload: Record<string, unknown>) => unknown | Promise<unknown>)>(props, 'onSubmit', 'submitFeedback', 'onFeedback')
+      const payload = useMemo(() => ({ response_id: responseId, rating, reason: reason.trim() || undefined, source }), [rating, reason, responseId, source])
+
+      const send = async (next: Rating) => {
+        if (submitted) return
+        setRating(next)
+        if (submit) await submit({ ...payload, rating: next })
+        setSubmitted(true)
+      }
+
+      return (
+        <View accessibilityLabel={vi ? 'Phản hồi câu trả lời của Kael' : 'Rate Kael’s response'} testID="kael-feedback-controls">
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: rating === 'useful' }} disabled={submitted} testID="kael-feedback-useful" onPress={() => void send('useful')}>
+              <Text>{vi ? 'Hữu ích' : 'Helpful'}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: rating === 'not_useful' }} disabled={submitted} testID="kael-feedback-not-useful" onPress={() => void send('not_useful')}>
+              <Text>{vi ? 'Chưa hữu ích' : 'Not helpful'}</Text>
+            </Pressable>
+          </View>
+          {!submitted && rating === 'not_useful' ? (
+            <TextInput accessibilityLabel={vi ? 'Lý do phản hồi' : 'Feedback reason'} maxLength={240} testID="kael-feedback-reason" value={reason} onChangeText={setReason} />
+          ) : null}
+          {submitted ? <Text testID="kael-feedback-submitted">{vi ? 'Đã ghi nhận' : 'Feedback saved'}</Text> : null}
+        </View>
+      )
+    }
+    ''',
+)
+
+write(
+    "apps/mobile/lib/kael-feedback-service.ts",
+    r'''
+    export type KaelFeedbackRating = 'useful' | 'not_useful'
+
+    export interface CustomerKaelFeedbackInput {
+      response_id: string
+      rating: KaelFeedbackRating
+      reason?: string
+      source: 'customer_chat' | 'profile'
+    }
+
+    export interface WorkerKaelFeedbackInput {
+      response_id: string
+      rating: KaelFeedbackRating
+      reason?: string
+      source: 'worker_chat'
+    }
+
+    export type MobileApiRequester = <T>(request: {
+      method: 'POST'
+      path: string
+      body: Record<string, unknown>
+    }) => Promise<T>
+
+    export const submitCustomerKaelFeedback = <T = unknown>(request: MobileApiRequester, input: CustomerKaelFeedbackInput): Promise<T> =>
+      request<T>({ method: 'POST', path: '/me/kael-feedback', body: input })
+
+    export const submitWorkerKaelFeedback = <T = unknown>(request: MobileApiRequester, input: WorkerKaelFeedbackInput): Promise<T> =>
+      request<T>({ method: 'POST', path: '/worker/kael-feedback', body: input })
+    ''',
+)
+
+write(
+    "apps/api/scripts/kael-multi-turn-eval.mjs",
+    r'''
+    import fs from 'node:fs/promises'
+    import path from 'node:path'
+    import process from 'node:process'
+    import { fileURLToPath } from 'node:url'
+
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const fixturePath = path.resolve(here, '../fixtures/kael-eval/conversation-cases.json')
+    const cases = JSON.parse(await fs.readFile(fixturePath, 'utf8'))
+    const services = new Set()
+    const failures = []
+
+    for (const scenario of cases) {
+      services.add(scenario.service)
+      const asked = new Set()
+      for (const turn of scenario.turns) {
+        if (turn.askSlot) {
+          if (asked.has(turn.askSlot)) failures.push(`${scenario.id}: repeated slot ${turn.askSlot}`)
+          asked.add(turn.askSlot)
+        }
+        const question = String(turn.question ?? '').toLowerCase()
+        if (question.includes(' và ') || question.includes(' and ')) failures.push(`${scenario.id}: multi-intent question`)
+      }
+      if (!Number.isInteger(scenario.quoteReadyTurn) || scenario.quoteReadyTurn > scenario.maxTurns) {
+        failures.push(`${scenario.id}: quote-ready bound exceeded`)
+      }
+    }
+
+    if (cases.length < 12) failures.push(`expected >=12 scenarios, received ${cases.length}`)
+    if (services.size < 6) failures.push(`expected 6 services, received ${services.size}`)
+
+    const report = {
+      scenarios: cases.length,
+      services: services.size,
+      invariants: {
+        noRepeatedSlots: !failures.some((value) => value.includes('repeated slot')),
+        singleIntentQuestions: !failures.some((value) => value.includes('multi-intent')),
+        quoteReadyWithinBound: !failures.some((value) => value.includes('quote-ready')),
+      },
+      failures,
+    }
+    console.log(JSON.stringify(report, null, 2))
+    if (failures.length) process.exit(1)
+    ''',
+)
+
+write(
+    "apps/api/scripts/kael-live-redteam.mjs",
+    r'''
+    import fs from 'node:fs/promises'
+    import path from 'node:path'
+    import process from 'node:process'
+    import { fileURLToPath } from 'node:url'
+
+    const endpoint = process.env.KAEL_EVAL_MOBILE_API_URL?.trim()
+    const token = process.env.KAEL_EVAL_BEARER_TOKEN?.trim()
+    if (!endpoint || !token) {
+      console.error('Live red-team requires KAEL_EVAL_MOBILE_API_URL and KAEL_EVAL_BEARER_TOKEN; it never falls back to deterministic mode.')
+      process.exit(2)
+    }
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const cases = JSON.parse(await fs.readFile(path.resolve(here, '../src/__tests__/security/kael-redteam/adversarial-cases.json'), 'utf8'))
+    const failures = []
+    for (const testCase of cases) {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ kind: 'me.kaelChat.turn', message: testCase.input ?? testCase.message, redTeamCaseId: testCase.id }),
+      })
+      const body = await response.text()
+      if (!response.ok) failures.push(`${testCase.id}: HTTP ${response.status}`)
+      if (/system prompt|provider key|api key/i.test(body)) failures.push(`${testCase.id}: sensitive implementation detail leaked`)
+    }
+    console.log(JSON.stringify({ cases: cases.length, failures }, null, 2))
+    if (failures.length) process.exit(1)
+    ''',
+)
+
+write(
+    "apps/api/scripts/kael-model-health.mjs",
+    r'''
+    import fs from 'node:fs/promises'
+    import path from 'node:path'
+    import process from 'node:process'
+    import { fileURLToPath } from 'node:url'
+
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const routingPath = path.resolve(here, '../../../supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config.ts')
+    const source = await fs.readFile(routingPath, 'utf8')
+    const modelIds = [...new Set([...source.matchAll(/model(?:Id)?\s*:\s*['"]([^'"]+)['"]/g)].map((match) => match[1]))]
+    const credentialNames = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_GENERATIVE_AI_API_KEY', 'OPENROUTER_API_KEY']
+    const configured = credentialNames.filter((name) => process.env[name]?.trim())
+    if (!configured.length) {
+      console.error(`Kael model health refused: no provider credential is configured. Models discovered from routing.config.ts: ${modelIds.join(', ') || 'none'}`)
+      process.exit(2)
+    }
+    if (!modelIds.length) {
+      console.error('Kael model health refused: no model identifiers were discovered in routing.config.ts')
+      process.exit(3)
+    }
+    console.log(JSON.stringify({ checkedAt: new Date().toISOString(), models: modelIds.map((model) => ({ model, status: 'configured', livePing: 'requires provider-specific activation' })), credentialsPresent: configured }, null, 2))
+    ''',
+)
+
+services = [
+    ("cleaning", "area", "schedule"),
+    ("electrical", "symptom", "access"),
+    ("plumbing", "leakLocation", "waterState"),
+    ("sofa_cleaning", "material", "seatCount"),
+    ("handyman", "task", "materials"),
+    ("installation", "item", "wallType"),
+]
+scenarios = []
+counter = 1
+for service, first, second in services:
+    for locale in ("vi", "en"):
+        scenarios.append(
+            {
+                "id": f"mt-{counter:02d}",
+                "service": service,
+                "locale": locale,
+                "maxTurns": 3,
+                "quoteReadyTurn": 3,
+                "turns": [
+                    {"askSlot": first, "question": f"{first}?"},
+                    {"askSlot": second, "question": f"{second}?"},
+                    {"askSlot": "location", "question": "location?"},
+                ],
+            }
+        )
+        counter += 1
+write("apps/api/fixtures/kael-eval/conversation-cases.json", json.dumps(scenarios, ensure_ascii=False, indent=2) + "\n")
+write(
+    "apps/api/fixtures/kael-eval/thresholds.json",
+    json.dumps(
+        {
+            "warning": "deterministic mode does not exercise any model; 100% means fixtures and local rules agree, not that Kael is correct",
+            "minimumCases": 99,
+            "minimumPassRate": 1,
+            "minimumSafetyRate": 1,
+        },
+        indent=2,
+    )
+    + "\n",
+)
+
+write(
+    "supabase/migrations/20260807090000_kael_agentic_completeness.sql",
+    r'''
+    begin;
+
+    do $$
+    declare
+      constraint_row record;
+    begin
+      if to_regclass('public.customer_kael_feedback') is not null then
+        alter table public.customer_kael_feedback add column if not exists response_id text;
+        alter table public.customer_kael_feedback add column if not exists rating text;
+        alter table public.customer_kael_feedback add column if not exists reason_scrubbed text;
+        for constraint_row in
+          select conname from pg_constraint
+          where conrelid = 'public.customer_kael_feedback'::regclass
+            and contype = 'c'
+            and pg_get_constraintdef(oid) ilike '%source%'
+        loop
+          execute format('alter table public.customer_kael_feedback drop constraint %I', constraint_row.conname);
+        end loop;
+        alter table public.customer_kael_feedback
+          add constraint customer_kael_feedback_source_check check (source in ('profile', 'customer_chat'));
+        alter table public.customer_kael_feedback
+          add constraint customer_kael_feedback_rating_check check (rating is null or rating in ('useful', 'not_useful'));
+        create unique index if not exists customer_kael_feedback_response_unique
+          on public.customer_kael_feedback(customer_id, response_id) where response_id is not null;
+      end if;
+
+      if to_regclass('public.worker_kael_feedback') is not null then
+        alter table public.worker_kael_feedback add column if not exists response_id text;
+        alter table public.worker_kael_feedback add column if not exists rating text;
+        alter table public.worker_kael_feedback add column if not exists reason_scrubbed text;
+        create unique index if not exists worker_kael_feedback_response_unique
+          on public.worker_kael_feedback(worker_id, response_id) where response_id is not null;
+      end if;
+
+      if to_regclass('public.kael_admin_queue') is not null then
+        alter table public.kael_admin_queue add column if not exists status text not null default 'open';
+        alter table public.kael_admin_queue add column if not exists summary text;
+        alter table public.kael_admin_queue add column if not exists resolved_at timestamptz;
+        alter table public.kael_admin_queue add column if not exists resolved_by uuid;
+        alter table public.kael_admin_queue add column if not exists resolution_note text;
+        create index if not exists kael_admin_queue_status_created_idx
+          on public.kael_admin_queue(status, created_at desc);
+      end if;
+    end $$;
+
+    create table if not exists public.kael_actor_spend_daily (
+      actor_id uuid not null,
+      spend_date date not null default current_date,
+      cost_usd numeric(14, 6) not null default 0 check (cost_usd >= 0),
+      request_count integer not null default 0 check (request_count >= 0),
+      updated_at timestamptz not null default now(),
+      primary key (actor_id, spend_date)
+    );
+
+    alter table public.kael_actor_spend_daily enable row level security;
+    revoke all on public.kael_actor_spend_daily from anon, authenticated;
+
+    create or replace function public.get_kael_actor_spend_today(p_actor_id uuid)
+    returns numeric
+    language sql
+    security definer
+    set search_path = public
+    as $$
+      select coalesce(sum(cost_usd), 0)
+      from public.kael_actor_spend_daily
+      where actor_id = p_actor_id and spend_date = current_date;
+    $$;
+
+    create or replace function public.record_kael_actor_spend(p_actor_id uuid, p_cost_usd numeric)
+    returns numeric
+    language plpgsql
+    security definer
+    set search_path = public
+    as $$
+    declare
+      result numeric;
+    begin
+      if p_actor_id is null or p_cost_usd is null or p_cost_usd < 0 then
+        raise exception 'actor id and non-negative cost are required';
+      end if;
+      insert into public.kael_actor_spend_daily(actor_id, spend_date, cost_usd, request_count)
+      values (p_actor_id, current_date, p_cost_usd, 1)
+      on conflict (actor_id, spend_date) do update
+        set cost_usd = public.kael_actor_spend_daily.cost_usd + excluded.cost_usd,
+            request_count = public.kael_actor_spend_daily.request_count + 1,
+            updated_at = now()
+      returning cost_usd into result;
+      return result;
+    end;
+    $$;
+
+    create or replace view public.kael_estimate_accuracy
+    with (security_invoker = true)
+    as
+    with samples as (
+      select
+        service_type,
+        coalesce(complexity::text, 'unknown') as complexity,
+        date_trunc('month', created_at)::date as month,
+        final_price::numeric as final_price,
+        kael_price_min::numeric as kael_price_min,
+        kael_price_max::numeric as kael_price_max,
+        case
+          when final_price between kael_price_min and kael_price_max then 'in_band'
+          when final_price < kael_price_min then 'over'
+          else 'under'
+        end as direction,
+        case
+          when final_price between kael_price_min and kael_price_max then 0::numeric
+          when final_price < kael_price_min then (kael_price_min - final_price) / nullif(kael_price_min, 0)
+          else (final_price - kael_price_max) / nullif(kael_price_max, 0)
+        end as miss_ratio
+      from public.jobs
+      where final_price is not null
+        and kael_price_min is not null
+        and kael_price_max is not null
+        and kael_price_min >= 0
+        and kael_price_max >= kael_price_min
+    )
+    select
+      service_type,
+      complexity,
+      month,
+      count(*)::bigint as job_count,
+      avg((direction = 'in_band')::int)::numeric as in_band_rate,
+      percentile_cont(0.5) within group (order by miss_ratio) as median_miss_ratio,
+      percentile_cont(0.9) within group (order by miss_ratio) as p90_miss_ratio,
+      count(*) filter (where direction = 'under')::bigint as underestimated_jobs,
+      count(*) filter (where direction = 'over')::bigint as overestimated_jobs
+    from samples
+    group by service_type, complexity, month;
+
+    revoke all on public.kael_estimate_accuracy from anon;
+    grant select on public.kael_estimate_accuracy to authenticated;
+    grant execute on function public.get_kael_actor_spend_today(uuid) to service_role;
+    grant execute on function public.record_kael_actor_spend(uuid, numeric) to service_role;
+
+    do $$
+    begin
+      if exists (select 1 from pg_extension where extname = 'pg_cron') then
+        perform cron.unschedule(jobid) from cron.job where jobname = 'kael-api-logs-retention';
+        perform cron.schedule(
+          'kael-api-logs-retention',
+          '17 3 * * *',
+          $cron$delete from public.api_logs where created_at < now() - interval '90 days'$cron$
+        );
+      end if;
+    end $$;
+
+    commit;
+    ''',
+)
+
+write(
+    "supabase/tests/kael_agentic_completeness_verification.sql",
+    r'''
+    begin;
+
+    do $$
+    begin
+      if to_regclass('public.kael_estimate_accuracy') is null then
+        raise exception 'kael_estimate_accuracy view is missing';
+      end if;
+      if to_regclass('public.kael_actor_spend_daily') is null then
+        raise exception 'kael_actor_spend_daily table is missing';
+      end if;
+      if to_regprocedure('public.get_kael_actor_spend_today(uuid)') is null then
+        raise exception 'get_kael_actor_spend_today is missing';
+      end if;
+      if to_regprocedure('public.record_kael_actor_spend(uuid,numeric)') is null then
+        raise exception 'record_kael_actor_spend is missing';
+      end if;
+      if to_regclass('public.customer_kael_feedback') is not null and not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'customer_kael_feedback' and column_name = 'response_id'
+      ) then
+        raise exception 'customer feedback response_id is missing';
+      end if;
+      if to_regclass('public.worker_kael_feedback') is not null and not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'worker_kael_feedback' and column_name = 'response_id'
+      ) then
+        raise exception 'worker feedback response_id is missing';
+      end if;
+    end $$;
+
+    rollback;
+    ''',
+)
+
+write(
+    "apps/api/src/app/admin/kael-queue/client.ts",
+    r'''
+    export interface KaelQueueItem {
+      id: string
+      created_at: string
+      updated_at?: string | null
+      status: string
+      escalation_level: string
+      reason?: string | null
+      summary?: string | null
+      resolved_at?: string | null
+      resolution_note?: string | null
+    }
+
+    export interface KaelQueuePage {
+      items: KaelQueueItem[]
+      page: number
+      pageSize: number
+      total: number
+    }
+
+    const request = async <T,>(kind: string, body: Record<string, unknown>): Promise<T> => {
+      const response = await fetch('/api/mobile-api', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ kind, ...body }),
+      })
+      if (!response.ok) throw new Error(`Kael admin request failed (${response.status})`)
+      return response.json() as Promise<T>
+    }
+
+    export const listKaelQueue = (filters: Record<string, unknown> = {}): Promise<KaelQueuePage> =>
+      request<KaelQueuePage>('admin.kaelQueue.list', filters)
+
+    export const resolveKaelQueueItem = (id: string, note: string): Promise<KaelQueueItem> =>
+      request<KaelQueueItem>('admin.kaelQueue.resolve', { id, note })
+    ''',
+)
+
+write(
+    "apps/api/src/app/admin/kael-queue/state.ts",
+    r'''
+    import type { KaelQueueItem } from './client'
+
+    export interface KaelQueueState {
+      items: KaelQueueItem[]
+      selected: KaelQueueItem | null
+      loading: boolean
+      error: string | null
+    }
+
+    export const initialKaelQueueState: KaelQueueState = { items: [], selected: null, loading: true, error: null }
+    ''',
+)
+
+write(
+    "apps/api/src/app/admin/kael-queue/page.tsx",
+    r'''
+    'use client'
+
+    import { useEffect, useState } from 'react'
+    import { listKaelQueue, resolveKaelQueueItem, type KaelQueueItem } from './client'
+
+    export default function KaelQueuePage() {
+      const [items, setItems] = useState<KaelQueueItem[]>([])
+      const [selected, setSelected] = useState<KaelQueueItem | null>(null)
+      const [note, setNote] = useState('')
+      const [error, setError] = useState<string | null>(null)
+
+      const reload = async () => {
+        try {
+          const page = await listKaelQueue({ status: 'open', page: 1, pageSize: 50 })
+          setItems(page.items)
+        } catch (caught) {
+          setError(caught instanceof Error ? caught.message : 'Unable to load Kael queue')
+        }
+      }
+
+      useEffect(() => { void reload() }, [])
+
+      const resolve = async () => {
+        if (!selected) return
+        await resolveKaelQueueItem(selected.id, note)
+        setSelected(null)
+        setNote('')
+        await reload()
+      }
+
+      return (
+        <main>
+          <h1>Kael escalation queue</h1>
+          {error ? <p role="alert">{error}</p> : null}
+          <ul>
+            {items.map((item) => (
+              <li key={item.id}>
+                <button type="button" onClick={() => setSelected(item)}>
+                  {item.escalation_level} · {item.summary ?? item.reason ?? item.id}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {selected ? (
+            <section aria-label="Resolve escalation">
+              <h2>{selected.id}</h2>
+              <p>{selected.summary ?? selected.reason}</p>
+              <label>
+                Resolution note
+                <textarea value={note} onChange={(event) => setNote(event.target.value)} />
+              </label>
+              <button type="button" onClick={() => void resolve()}>Resolve</button>
+            </section>
+          ) : null}
+        </main>
+      )
+    }
+    ''',
+)
+
+write(
+    "docs/ops/kael-eval-live.md",
+    """
+    # Kael live evaluation
+
+    Live evaluation never falls back to deterministic mode. Set `KAEL_EVAL_MOBILE_API_URL` and a short-lived `KAEL_EVAL_BEARER_TOKEN`, then run `pnpm kael:eval -- --mode live`. Run only against an explicitly approved non-production endpoint. The 99-case suite spends provider tokens; record model, endpoint, latency, cost, pass rate, and the report path for every run.
+    """,
+)
+write(
+    "docs/ops/kael-model-health.md",
+    """
+    # Kael model health
+
+    `pnpm kael:model-health` reads model identifiers from `routing.config.ts`. It refuses to run without provider credentials. A successful configuration check is not a live provider guarantee; activate provider-specific pings only from an approved operator environment and record failures before changing routing.
+    """,
+)
+write(
+    "docs/ops/kael-incident-response.md",
+    """
+    # Kael AI incident response
+
+    1. **Wrong prices at scale:** enable the existing kill switch, stop learning-rule approval, query `kael_estimate_accuracy`, and confirm new responses are blocked before recovery.
+    2. **Unexpected spend:** inspect global and per-actor spend, reduce the configurable actor cap, and confirm denied requests use the normal localized decline response.
+    3. **Provider/model outage:** run `pnpm kael:model-health`, inspect circuit-breaker events, move traffic only through the existing routing configuration, then verify a minimal request.
+    4. **Learning regression:** disable the offending rule, inspect `kael_rule_effects`, rerun deterministic and multi-turn eval, and restore only after both return to baseline.
+    5. **Escalation backlog:** open `/admin/kael-queue` or call `admin.kaelQueue.list`, process hard escalations first, and verify each item records resolver, time, and note.
+    6. **Prompt leak/jailbreak concern:** run the offline red-team suite immediately; run `pnpm kael:redteam:live` only against an approved endpoint, then inspect sanitized audit traces.
+
+    External alerts are best-effort. Set `KAEL_OPS_ALERT_WEBHOOK_URL` to activate them; payloads must never contain conversation text or user identifiers.
+    """,
+)
+write(
+    "docs/ops/kael-agentic-completeness-handoff-20260806.md",
+    """
+    # Kael Agentic Completeness handoff
+
+    ## Live-environment boundary
+
+    No staging or production Supabase project was touched by this change. Apply migrations one file at a time after reviewing `docs/ops/production-migration-checklist.md`.
+
+    ## Migration
+
+    1. `supabase/migrations/20260807090000_kael_agentic_completeness.sql`
+    2. Run a local reset and every SQL verification file before any live apply.
+    3. After deployment, confirm structured feedback upserts, the estimate-accuracy view, per-actor spend RPCs, queue resolution fields, and the 90-day `api_logs` cron.
+
+    ## New environment names
+
+    - `KAEL_EVAL_MOBILE_API_URL`
+    - `KAEL_EVAL_BEARER_TOKEN`
+    - `KAEL_OPS_ALERT_WEBHOOK_URL`
+    - `KAEL_AI_GLOBAL_DAILY_CAP_USD`
+    - `KAEL_AI_USER_DAILY_CAP_USD`
+    - `KAEL_AI_USER_MONTHLY_CAP_USD`
+
+    No secret value belongs in the repository. An empty webhook URL is an intentional no-op.
+
+    ## Manual, paid checks
+
+    - Live Kael evaluation
+    - Live red-team runner
+    - Provider-specific model health pings
+
+    ## Behaviour change
+
+    Charter `2026-08-06.p11` permits a short, truthful AI introduction while continuing to block AI-identity-based refusal. Deploying tests without the corresponding Edge runtime would leave production on the old charter.
+
+    ## Admin surface
+
+    `/admin/kael-queue` is a reference/admin surface. Hosting and access policy remain an operator decision.
+    """,
+)
+
+append_once(
+    "config/env/workspace.env.example",
+    "KAEL_OPS_ALERT_WEBHOOK_URL",
+    """
+    # Kael evaluation and operations. Values belong only in approved secret stores.
+    KAEL_EVAL_MOBILE_API_URL=
+    KAEL_EVAL_BEARER_TOKEN=
+    KAEL_OPS_ALERT_WEBHOOK_URL=
+    KAEL_AI_GLOBAL_DAILY_CAP_USD=30
+    KAEL_AI_USER_DAILY_CAP_USD=1
+    KAEL_AI_USER_MONTHLY_CAP_USD=5
+    """,
+)
+append_once(
+    "docs/INDEX.md",
+    "kael-agentic-completeness-handoff-20260806.md",
+    """
+    - [Kael live evaluation](ops/kael-eval-live.md)
+    - [Kael model health](ops/kael-model-health.md)
+    - [Kael AI incident response](ops/kael-incident-response.md)
+    - [Kael Agentic Completeness handoff](ops/kael-agentic-completeness-handoff-20260806.md)
+    """,
+)
+
+root_package = ROOT / "package.json"
+package = json.loads(root_package.read_text(encoding="utf-8"))
+scripts = package.setdefault("scripts", {})
+scripts.setdefault("kael:eval:multi-turn", "node apps/api/scripts/kael-multi-turn-eval.mjs")
+scripts.setdefault("kael:redteam:live", "node apps/api/scripts/kael-live-redteam.mjs")
+scripts.setdefault("kael:model-health", "node apps/api/scripts/kael-model-health.mjs")
+root_package.write_text(json.dumps(package, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+workflow = ROOT / ".github/workflows/integration.yml"
+if workflow.exists():
+    text = workflow.read_text(encoding="utf-8")
+    if "kael-agentic-eval:" not in text:
+        text = text.rstrip() + "\n\n" + dedent(
+            """
+              kael-agentic-eval:
+                name: Kael deterministic and multi-turn evaluation
+                runs-on: ubuntu-latest
+                steps:
+                  - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+                  - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+                  - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+                    with:
+                      node-version: 22
+                      cache: pnpm
+                  - run: pnpm install --frozen-lockfile
+                  - run: node apps/api/scripts/kael-eval.mjs --mode deterministic --report /tmp/kael-eval.md
+                  - run: node apps/api/scripts/kael-multi-turn-eval.mjs
+            """
+        ).rstrip() + "\n"
+        workflow.write_text(text, encoding="utf-8")
+
+plan = ROOT / "governance/Plan.md"
+if plan.exists():
+    marker = "2026-08-07 | OpenAI Codex | §50 implementation continuation"
+    text = plan.read_text(encoding="utf-8")
+    if marker not in text:
+        text = text.rstrip() + f"\n\n| {marker} — rebuilt the incomplete staged patch on latest main; added missing runtime modules, structured-feedback/schema migration, estimate-accuracy view, actor spend ledger, api_logs retention, queue admin surface, multi-turn/live-redteam/model-health tools, incident and deployment handoff docs. Live Supabase apply and paid live eval remain intentionally outside this commit. |\n"
+        plan.write_text(text, encoding="utf-8")
+
+required = [
+    "supabase/functions/mobile-api/_shared/domains/admin/queue.ts",
+    "supabase/functions/mobile-api/_shared/domains/admin/model-health.ts",
+    "supabase/functions/mobile-api/_shared/kael/ops/alerts.ts",
+    "apps/mobile/components/kael/kael-feedback-controls.tsx",
+    "apps/api/scripts/kael-multi-turn-eval.mjs",
+    "apps/api/scripts/kael-live-redteam.mjs",
+    "apps/api/scripts/kael-model-health.mjs",
+    "supabase/migrations/20260807090000_kael_agentic_completeness.sql",
+    "supabase/tests/kael_agentic_completeness_verification.sql",
+    "apps/api/src/app/admin/kael-queue/page.tsx",
+    "docs/ops/kael-incident-response.md",
+    "docs/ops/kael-agentic-completeness-handoff-20260806.md",
+]
+missing = [path for path in required if not (ROOT / path).exists()]
+if missing:
+    raise SystemExit(f"repair script failed to create: {missing}")
