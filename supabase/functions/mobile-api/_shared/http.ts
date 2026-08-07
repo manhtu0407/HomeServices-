@@ -33,8 +33,8 @@ import {
 } from "./http/routes/index.ts";
 import type {
   MobileApiContext,
-  MobileApiHandlerDeps,
-  MobileApiServices,
+  MobileApiHandlerDeps as RuntimeMobileApiHandlerDeps,
+  MobileApiServices as RuntimeMobileApiServices,
 } from "./http/contracts.ts";
 export type {
   KaelBatchResultsProcessInput,
@@ -55,8 +55,6 @@ export type {
   MarketCacheInvalidateResponse,
   MobileApiAuthResult,
   MobileApiContext,
-  MobileApiHandlerDeps,
-  MobileApiServices,
   PendingDecisionItem,
   PendingDecisionsResponse,
   PlacesAutocompleteResponse,
@@ -64,6 +62,20 @@ export type {
   ThreadsResponse,
   WorkerStatusUpdateInput,
 } from "./http/contracts.ts";
+
+export type MobileApiServices = Omit<
+  RuntimeMobileApiServices,
+  "getHarnessHealth"
+> & {
+  getHarnessHealth?: RuntimeMobileApiServices["getHarnessHealth"];
+};
+
+export type MobileApiHandlerDeps = Omit<
+  RuntimeMobileApiHandlerDeps,
+  "services"
+> & {
+  services: MobileApiServices;
+};
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -138,7 +150,7 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
         role: auth.role,
         accountState: auth.accountState,
         authenticatedAt: auth.authenticatedAt,
-        environment: auth.environment ?? deps.environment ?? "unknown",
+        environment: auth.environment ?? deps.environment ?? "local",
         releaseId: auth.releaseId ?? deps.releaseId ?? "unreleased",
       });
       let capabilityEnvelope;
@@ -315,7 +327,12 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
           safeMetadata: { reservation_id: idempotencyReservationId },
         });
       }
-      const data = await dispatchRoute(route, request, ctx, deps.services);
+      const data = await dispatchRoute(
+        route,
+        request,
+        ctx,
+        deps.services as RuntimeMobileApiServices,
+      );
       await recordHarnessEvent(trace, {
         eventClass: "request.completed",
         stage: route.kind,
@@ -509,7 +526,18 @@ async function dispatchPublicRoute(
     case "kael.charter":
       return services.getKaelCharter();
     case "harness.health":
-      return services.getHarnessHealth();
+      return services.getHarnessHealth?.() ?? {
+        service: "mobile-api",
+        status: "degraded",
+        environment: { name: "unknown", project_ref: null, host: null },
+        release: {
+          release_id: "unreleased",
+          git_sha: "unknown",
+          manifest_sha256: "unknown",
+          bundle_sha256: "unknown",
+          registered: false,
+        },
+      };
   }
 }
 
