@@ -32,7 +32,7 @@ export function createActorContext(input: {
     subjectType: input.role,
     authenticated: true as const,
     authenticatedAt,
-    environment: input.environment?.trim() || "unknown",
+    environment: input.environment?.trim() || "local",
     releaseId: input.releaseId?.trim() || "unreleased",
   });
 }
