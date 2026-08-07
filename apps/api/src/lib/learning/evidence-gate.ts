@@ -150,6 +150,23 @@ export function shouldPromote(
 export type PromoteResult =
   | { promoted: false; reason: string; queuedForReview?: boolean }
 
+type QueueManualReviewRpcRow = {
+  ok: boolean
+  error_code: string | null
+  candidate_id: string
+  status: string | null
+}
+
+type QueueManualReviewRpcResponse = {
+  data: QueueManualReviewRpcRow[] | null
+  error: { code?: string | null } | null
+}
+
+type QueueManualReviewRpc = (
+  name: 'queue_learning_candidate_manual_review',
+  args: Record<string, unknown>,
+) => PromiseLike<QueueManualReviewRpcResponse>
+
 /**
  * Queue a gate-passed candidate for explicit administrator review. The legacy
  * function name remains for reference-surface compatibility, but automatic
@@ -160,8 +177,9 @@ export async function promoteCandidate(
   candidate: CandidateRow,
 ): Promise<PromoteResult> {
   const payload = JSON.stringify(candidate.suggested_payload)
+  const queueManualReview = supabase.rpc as unknown as QueueManualReviewRpc
   const { data, error } = await withDbTimeout(
-    supabase.rpc('queue_learning_candidate_manual_review', {
+    queueManualReview('queue_learning_candidate_manual_review', {
       p_candidate_id: candidate.id,
       p_source_hash: harnessSha256(`candidate:${candidate.id}`),
       p_consent_hash: harnessSha256('admin_review_required'),
@@ -180,7 +198,7 @@ export async function promoteCandidate(
     }),
   )
   if (error) {
-    return { promoted: false, reason: `manual_review_rpc_failed:${error.code}` }
+    return { promoted: false, reason: `manual_review_rpc_failed:${error.code ?? 'UNKNOWN'}` }
   }
   const result = data?.[0]
   if (!result?.ok) {
