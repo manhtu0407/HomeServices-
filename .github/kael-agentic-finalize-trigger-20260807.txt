@@ -1,0 +1,1 @@
+Run the final §50 completion workflow from a clean current-main branch.
