@@ -69,11 +69,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Whole workspace type-check
-        run: pnpm exec turbo type-check
+        run: pnpm exec turbo --root-turbo-json config/turbo/turbo.json type-check
       - name: Whole workspace tests
-        run: pnpm exec turbo test
+        run: pnpm exec turbo --root-turbo-json config/turbo/turbo.json test
       - name: Whole workspace build
-        run: pnpm exec turbo build
+        run: pnpm exec turbo --root-turbo-json config/turbo/turbo.json build
 
   database-controls:
     name: empty reset, SQL actor matrix, and generated types
@@ -95,6 +95,8 @@ jobs:
         run: pnpm --filter @nestscout/api exec supabase db reset --local
       - name: Run SQL verification matrix
         shell: pwsh
+        env:
+          NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: ./docker/scripts/run-sql-tests.ps1 -StopOnFirstFailure
       - name: Generate database types from replayed schema
         run: pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
