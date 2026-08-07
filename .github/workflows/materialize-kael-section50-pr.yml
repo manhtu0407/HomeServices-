@@ -37,6 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           cat .github/transport/kael-section50-part-* > /tmp/kael-section50.patch.xz.b64
+          cp .github/transport/kael-section50-fix-01.patch /tmp/kael-section50-fix-01.patch
           python3 - <<'PY'
           from pathlib import Path
           path = Path('/tmp/kael-section50.patch.xz.b64')
@@ -63,6 +64,8 @@ jobs:
           git reset --hard "$BASE_SHA"
           git apply --check /tmp/kael-section50.patch
           git apply --index --whitespace=nowarn /tmp/kael-section50.patch
+          git apply --check /tmp/kael-section50-fix-01.patch
+          git apply --index --whitespace=nowarn /tmp/kael-section50-fix-01.patch
           git diff --cached --check
 
       - name: Enforce implementation boundaries
