@@ -1,0 +1,51 @@
+name: inspect-pr158-gate
+
+on:
+  pull_request:
+    branches:
+      - tmp/agent-export-base
+
+permissions:
+  contents: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: feat/harness-production-assurance-pr02-pr12
+          fetch-depth: 0
+      - name: Evaluate clean implementation state
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/pr158-gate
+          stage=SUCCESS
+          [[ "$(git rev-list --count d0f465c29d86a9aeb94992a58f990ea567657c4c..HEAD)" -eq 1 ]] || stage=commit-count
+          [[ -f scripts/harness/verify.mjs ]] || stage=missing-verify
+          [[ -f .github/workflows/harness-assurance.yml ]] || stage=missing-harness-workflow
+          [[ "$(git diff --name-only d0f465c29d86a9aeb94992a58f990ea567657c4c..HEAD | wc -l)" -eq 110 ]] || stage=changed-count
+          if git ls-tree -r --name-only HEAD | grep -q '^\.github/agent-patch'; then stage=transport-leak; fi
+          if git ls-tree -r --name-only HEAD | grep -Eq '^\.github/workflows/materialize-harness|^\.github/workflows/inspect-pr158'; then stage=workflow-leak; fi
+          git diff --check d0f465c29d86a9aeb94992a58f990ea567657c4c..HEAD >/tmp/pr158-gate/diff-check.txt 2>&1 || stage=diff-check
+          if [[ "$stage" == SUCCESS ]]; then
+            node scripts/harness/verify.mjs >/tmp/pr158-gate/harness-verify.txt 2>&1 || stage=harness-verify
+          fi
+          printf '%s\n' "$stage" > /tmp/pr158-gate/result.txt
+          printf '%s\n' "$(git rev-parse HEAD)" > /tmp/pr158-gate/head.txt
+          printf '%s\n' "$(git diff --name-only d0f465c29d86a9aeb94992a58f990ea567657c4c..HEAD | wc -l)" > /tmp/pr158-gate/changed-count.txt
+          touch "/tmp/pr158-gate/$stage"
+      - name: Publish gate result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "manhtu0407"
+          git config user.email "manhtu0407@gmail.com"
+          git switch --orphan pr158-gate-output
+          git rm -rf .
+          mkdir -p gate
+          cp /tmp/pr158-gate/* gate/
+          git add gate
+          git commit -m "chore: publish PR158 clean gate"
+          git push --force origin HEAD:refs/heads/tmp/pr158-inspection
