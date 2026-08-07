@@ -9,6 +9,10 @@ import {
   readJsonTextRequestBounded,
   RequestJsonError,
 } from "../_shared/request-json.ts";
+import {
+  assertHarnessCapabilityEnabled,
+  type HarnessPromotionClient,
+} from "../_shared/harness/promotion.ts";
 
 const MAX_JSON_BODY_BYTES = 16 * 1024;
 
@@ -36,6 +40,11 @@ Deno.serve(async (request) => {
   const client = createClient(env.supabaseUrl, env.supabaseSecretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   }) as unknown as DbClient;
+  const killSwitch = await assertHarnessCapabilityEnabled(
+    client as unknown as HarnessPromotionClient,
+    { environment: env.harnessEnvironment.name, switches: ["payment_sepay"] },
+  );
+  if (!killSwitch.allowed) return json({ success: false }, 503);
 
   try {
     await receiveSePayVietQrWebhook(client, env.sepayVietQr, {

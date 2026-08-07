@@ -19,6 +19,17 @@ import {
   reserveAiSpend,
 } from "../kael-guardrails/spend-gate.ts";
 import { readResponseTextBounded } from "../../../../_shared/network.ts";
+import { recordHarnessEvent } from "../../../../_shared/harness/trace.ts";
+import {
+  acquireDependencyPermit,
+  recordDependencyResult,
+  type ReliabilityClient,
+} from "../../../../_shared/harness/reliability.ts";
+import {
+  assertHarnessCapabilityEnabled,
+  type HarnessKillSwitch,
+  type HarnessPromotionClient,
+} from "../../../../_shared/harness/promotion.ts";
 
 const AI_PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
@@ -45,6 +56,10 @@ type PreparedAiProviderCall = {
   maxRetries: number;
   reservationId: number | null;
   estimatedCostPerAttemptUsd: number;
+  providerAttemptId: string;
+  environment: string;
+  releaseId: string;
+  reliabilityClient: ReliabilityClient | null;
 };
 
 async function prepareAiProviderCall(
@@ -52,17 +67,37 @@ async function prepareAiProviderCall(
   secrets: EdgeAiSecrets,
   gate?: KaelSpendGate,
 ): Promise<PreparedAiProviderCall | AIError> {
-  // The kill-switch stops provider I/O before any cost and returns an honest failure.
-  if (isKaelAiKillSwitchEnabled()) {
+  const providerAttemptId = crypto.randomUUID();
+  const environment = secrets.harnessTrace?.environment ?? "local";
+  const switches: HarnessKillSwitch[] = [
+    "global_ai",
+    `provider_${request.provider}` as HarnessKillSwitch,
+    ...(request.purpose === "market_lookup" ? ["tool_market_lookup" as const] : []),
+    ...(request.purpose === "vision_analysis" ? ["tool_vision" as const] : []),
+  ];
+  const killSwitch = await assertHarnessCapabilityEnabled(
+    secrets.durableGuardClient as unknown as HarnessPromotionClient,
+    { environment, switches },
+  );
+  if (!killSwitch.allowed || isKaelAiKillSwitchEnabled()) {
     console.warn("AI call blocked by KAEL_AI_KILL_SWITCH", {
       provider: request.provider,
       purpose: request.purpose,
+    });
+    await recordHarnessEvent(secrets.harnessTrace, {
+      eventId: providerAttemptId,
+      eventClass: "provider.call",
+      stage: request.purpose ?? "unknown",
+      status: "blocked",
+      provider: request.provider,
+      model: request.model,
+      errorCode: "AI_DISABLED",
     });
     return {
       success: false,
       provider: request.provider,
       code: "AI_DISABLED",
-      error: "kill_switch",
+      error: killSwitch.allowed ? "kill_switch" : killSwitch.reasonCode,
     };
   }
 
@@ -81,6 +116,15 @@ async function prepareAiProviderCall(
       provider: request.provider,
       purpose: request.purpose,
     });
+    await recordHarnessEvent(secrets.harnessTrace, {
+      eventId: providerAttemptId,
+      eventClass: "provider.call",
+      stage: request.purpose ?? "unknown",
+      status: "blocked",
+      provider: request.provider,
+      model: request.model,
+      errorCode: "OPEN_CIRCUIT",
+    });
     return {
       success: false,
       provider: request.provider,
@@ -88,6 +132,8 @@ async function prepareAiProviderCall(
       error: "open_circuit",
     };
   }
+
+  const reliabilityClient = secrets.durableGuardClient as unknown as ReliabilityClient | null;
 
   const pricingAt = new Date();
   const unknownModelPolicy = runtimeUnknownModelPolicy();
@@ -106,6 +152,15 @@ async function prepareAiProviderCall(
 
   const apiKey = providerKey(request.provider, secrets);
   if (!apiKey) {
+    await recordHarnessEvent(secrets.harnessTrace, {
+      eventId: providerAttemptId,
+      eventClass: "provider.call",
+      stage: request.purpose ?? "unknown",
+      status: "blocked",
+      provider: request.provider,
+      model: request.model,
+      errorCode: "KEY_MISSING",
+    });
     return {
       success: false,
       provider: request.provider,
@@ -138,12 +193,27 @@ async function prepareAiProviderCall(
       actorId: gate.actorId,
       estimatedCostUsd,
       purpose: request.purpose,
+      failureMode: gate.failureMode,
+      runId: secrets.harnessTrace?.runId,
+      traceId: secrets.harnessTrace?.traceId,
+      releaseId: secrets.harnessTrace?.releaseId,
+      providerAttemptId,
     });
     if (!reservation.allowed) {
       console.warn("AI call blocked by spend cap", {
         provider: request.provider,
         purpose: request.purpose,
         scope: reservation.scope,
+      });
+      await recordHarnessEvent(secrets.harnessTrace, {
+        eventId: providerAttemptId,
+        eventClass: "provider.call",
+        stage: request.purpose ?? "unknown",
+        status: "blocked",
+        provider: request.provider,
+        model: request.model,
+        errorCode: "SPEND_CAP",
+        safeMetadata: { scope: reservation.scope ?? "spend_cap" },
       });
       return {
         success: false,
@@ -163,6 +233,10 @@ async function prepareAiProviderCall(
     maxRetries,
     reservationId,
     estimatedCostPerAttemptUsd,
+    providerAttemptId,
+    environment,
+    releaseId: secrets.harnessTrace?.releaseId ?? "unreleased",
+    reliabilityClient,
   };
 }
 
@@ -181,15 +255,58 @@ async function executePreparedAiProviderCall(
     maxRetries,
     reservationId,
     estimatedCostPerAttemptUsd,
+    providerAttemptId,
+    environment,
+    releaseId,
+    reliabilityClient,
   } = prepared;
   const timeout = request.timeoutMs ?? (request.provider === "anthropic"
     ? 20_000
     : request.provider === "perplexity"
     ? 15_000
     : 10_000);
+  const dependencyPermit = await acquireDependencyPermit(reliabilityClient, {
+    dependency: request.provider,
+    environment,
+  });
+  if (!dependencyPermit.allowed) {
+    await recordHarnessEvent(secrets.harnessTrace, {
+      eventId: providerAttemptId,
+      eventClass: "provider.call",
+      stage: request.purpose ?? "unknown",
+      status: "blocked",
+      provider: request.provider,
+      model: request.model,
+      errorCode: "OPEN_CIRCUIT",
+      safeMetadata: {
+        circuit_state: dependencyPermit.state,
+        retry_after_ms: dependencyPermit.retryAfterMs,
+      },
+    });
+    if (gate) {
+      await finalizeAiSpend(gate.client, {
+        reservationId,
+        actorId: gate.actorId,
+        purpose: request.purpose ?? "unknown",
+        actualUsd: 0,
+        runId: secrets.harnessTrace?.runId,
+        traceId: secrets.harnessTrace?.traceId,
+        releaseId: secrets.harnessTrace?.releaseId,
+        providerAttemptId,
+      });
+    }
+    return {
+      success: false,
+      provider: request.provider,
+      code: "OPEN_CIRCUIT",
+      error: "open_circuit",
+    };
+  }
+  const effectiveMaxRetries = dependencyPermit.state === "half_open" ? 0 : maxRetries;
+  const circuitProbeToken = dependencyPermit.probeToken;
   let lastError: unknown;
   let attemptsStarted = 0;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+  for (let attempt = 0; attempt <= effectiveMaxRetries; attempt++) {
     if (attempt > 0) {
       const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10_000);
       console.warn("AI retry", {
@@ -203,6 +320,17 @@ async function executePreparedAiProviderCall(
 
     const controller = new AbortController();
     attemptsStarted += 1;
+    const attemptEventId = crypto.randomUUID();
+    await recordHarnessEvent(secrets.harnessTrace, {
+      eventId: attemptEventId,
+      parentEventId: providerAttemptId,
+      eventClass: "provider.attempt",
+      stage: request.purpose ?? "unknown",
+      status: "started",
+      attemptNumber: attemptsStarted,
+      provider: request.provider,
+      model: request.model,
+    });
     try {
       const response = await withTimeout(
         callProvider(
@@ -228,6 +356,26 @@ async function executePreparedAiProviderCall(
         latencyMs: response.latencyMs,
         },
       );
+      await recordHarnessEvent(secrets.harnessTrace, {
+        eventId: attemptEventId,
+        parentEventId: providerAttemptId,
+        eventClass: "provider.attempt",
+        stage: request.purpose ?? "unknown",
+        status: "succeeded",
+        attemptNumber: attemptsStarted,
+        provider: request.provider,
+        model: request.model,
+        costUsd: response.usage.costUsd,
+        latencyMs: response.latencyMs,
+        safeMetadata: { cache_status: response.usage.cacheStatus ?? "none" },
+      });
+      await recordDependencyResult(reliabilityClient, {
+        dependency: request.provider,
+        environment,
+        releaseId,
+        success: true,
+        probeToken: circuitProbeToken,
+      });
       if (request.purpose && !options.deferCircuitSuccess) {
         if (durableGuardsEnabled) {
           await recordDurableCircuitSuccess(
@@ -251,12 +399,27 @@ async function executePreparedAiProviderCall(
           purpose: request.purpose ?? "unknown",
           actualUsd: successfulAttemptCostUsd +
             estimatedCostPerAttemptUsd * (attemptsStarted - 1),
+          runId: secrets.harnessTrace?.runId,
+          traceId: secrets.harnessTrace?.traceId,
+          releaseId: secrets.harnessTrace?.releaseId,
+          providerAttemptId,
         });
       }
       return response;
     } catch (err) {
       lastError = err;
-      if (!isRetryableProviderError(err) || attempt === maxRetries) break;
+      await recordHarnessEvent(secrets.harnessTrace, {
+        eventId: attemptEventId,
+        parentEventId: providerAttemptId,
+        eventClass: "provider.attempt",
+        stage: request.purpose ?? "unknown",
+        status: "failed",
+        attemptNumber: attemptsStarted,
+        provider: request.provider,
+        model: request.model,
+        errorCode: providerErrorCode(err),
+      });
+      if (!isRetryableProviderError(err) || attempt === effectiveMaxRetries) break;
     }
   }
 
@@ -274,6 +437,14 @@ async function executePreparedAiProviderCall(
     model: request.model,
     code,
     retriesExhausted: true,
+  });
+  await recordDependencyResult(reliabilityClient, {
+    dependency: request.provider,
+    environment,
+    releaseId,
+    success: false,
+    errorCode: code,
+    probeToken: circuitProbeToken,
   });
   if (request.purpose) {
     const failure = {
@@ -299,6 +470,10 @@ async function executePreparedAiProviderCall(
       actorId: gate.actorId,
       purpose: request.purpose ?? "unknown",
       actualUsd: estimatedCostPerAttemptUsd * attemptsStarted,
+      runId: secrets.harnessTrace?.runId,
+      traceId: secrets.harnessTrace?.traceId,
+      releaseId: secrets.harnessTrace?.releaseId,
+      providerAttemptId,
     });
   }
   return {
@@ -355,6 +530,14 @@ async function callProvider(
     pricingAt,
     unknownModelPolicy,
   });
+}
+
+function providerErrorCode(error: unknown): string {
+  if (error instanceof ProviderHttpError) return `HTTP_${error.status}`;
+  if (isProviderTimeout(error)) return "TIMEOUT";
+  return error instanceof Error && /^[A-Za-z0-9_.:-]{1,120}$/.test(error.name)
+    ? error.name
+    : "AI_CALL_FAILED";
 }
 
 function providerKey(

@@ -9,5 +9,8 @@ Deno.serve(
   createMobileApiHandler({
     authenticate: createEdgeAuthenticator(env),
     services: createEdgeServices(env),
+    releaseId: env.releaseId,
+    environment: env.harnessEnvironment.name,
+    environment: env.harnessEnvironment.name,
   }),
 );

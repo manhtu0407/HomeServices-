@@ -113,13 +113,19 @@ import type { MobileApiServices } from "./http/contracts.ts";
 
 import { type EdgeAiSecrets, type EdgeGuardClient, getPublicKaelCharter } from "./kael/index.ts";
 import type { SePayVietQrConfig } from "../../_shared/platform/env.ts";
+import { harnessHealthPayload } from "../../_shared/harness/release.ts";
+import type { HarnessEnvironmentDescriptor } from "../../_shared/harness/environment.ts";
+import type { HarnessRuntimeRelease } from "../../_shared/harness/release.ts";
 
 export type EdgeServiceSecrets = EdgeAiSecrets & {
   sepayVietQr?: SePayVietQrConfig;
+  harnessEnvironment?: HarnessEnvironmentDescriptor;
+  harnessRelease?: HarnessRuntimeRelease;
 };
 
 export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServices {
   return {
+    getHarnessHealth: () => getHarnessHealth(secrets),
     ...createDiscoveryServices(secrets),
     ...createKaelChatServices(secrets),
     ...createJobWorkflowServices(secrets),
@@ -424,18 +430,47 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   };
 }
 
+
+function getHarnessHealth(secrets: EdgeServiceSecrets) {
+  const environment = secrets.harnessEnvironment;
+  const release = secrets.harnessRelease;
+  if (!environment || !release) {
+    return {
+      service: "mobile-api",
+      status: "degraded",
+      environment: { name: "unknown", project_ref: null, host: null },
+      release: {
+        release_id: "unreleased",
+        git_sha: "unknown",
+        manifest_sha256: "unknown",
+        bundle_sha256: "unknown",
+        registered: false,
+      },
+    };
+  }
+  return harnessHealthPayload({ environment, release });
+}
+
 function getKaelCharter() {
   return getPublicKaelCharter();
 }
 
 function aiRuntime(
   ctx: MobileApiContext,
-  secrets: EdgeAiSecrets,
+  secrets: EdgeServiceSecrets,
 ): EdgeAiSecrets {
-  if (!secrets.durableGuardsEnabled) return secrets;
+  const trace = ctx.traceContext
+    ? Object.freeze({
+      ...ctx.traceContext,
+      client: (ctx.privilegedSupabase ?? ctx.supabase) as EdgeGuardClient,
+    })
+    : undefined;
   return {
     ...secrets,
-    durableGuardClient: ctx.supabase as EdgeGuardClient,
+    ...(secrets.durableGuardsEnabled
+      ? { durableGuardClient: (ctx.privilegedSupabase ?? ctx.supabase) as EdgeGuardClient }
+      : {}),
+    ...(trace ? { harnessTrace: trace } : {}),
   };
 }
 

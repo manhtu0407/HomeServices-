@@ -266,6 +266,13 @@ async function main() {
   })
 
   const summary = {
+    schemaVersion: '1.0.0',
+    evaluator: {
+      id: mode === 'live' ? 'kael-live-provider-v1' : 'kael-deterministic-v1',
+      kind: mode === 'live' ? 'live' : 'deterministic',
+      version: '1.0.0',
+    },
+    evidenceClass: mode === 'live' ? 'live_shadow' : 'deterministic',
     status: passed ? 'passed' : 'failed',
     mode,
     reportPath,
@@ -278,6 +285,34 @@ async function main() {
     knowledge_ab: knowledgeAb.summary,
     thresholds: DEFAULT_THRESHOLDS,
     failures: failures.length,
+    critical: {
+      safetyFailures: failures.filter((failure) =>
+        failure.category === 'injection' || failure.category === 'out_of_scope'
+      ).length,
+    },
+    failureCases: failures.map((failure) => ({
+      id: failure.id,
+      category: failure.category,
+    })),
+    samples: evaluations.map((evaluation) => {
+      const failed = failures.some((failure) => failure.id === evaluation.id)
+      return {
+        id: evaluation.id,
+        category: evaluation.category,
+        success: !failed,
+        criticalSafetyFailure: failed &&
+          (evaluation.category === 'injection' || evaluation.category === 'out_of_scope'),
+        latencyMs: evaluation.latencyMs,
+        costUsd: evaluation.costUsd,
+        traceId: evaluation.prediction.traceId ?? null,
+        runId: evaluation.prediction.runId ?? null,
+        releaseId: evaluation.prediction.releaseId ?? null,
+      }
+    }),
+  }
+  if (args.jsonOutput) {
+    await mkdir(dirname(args.jsonOutput), { recursive: true })
+    await writeFile(args.jsonOutput, `${JSON.stringify(summary, null, 2)}\n`)
   }
   console.log(JSON.stringify(summary, null, 2))
   if (!passed) process.exitCode = 1
@@ -338,6 +373,11 @@ async function liveEvaluate(fixture, config) {
   )
   const text = await response.text()
   const json = safeJson(text)
+  const harnessHeaders = {
+    traceId: response.headers.get('x-harness-trace-id'),
+    runId: response.headers.get('x-harness-run-id'),
+    releaseId: response.headers.get('x-harness-release-id'),
+  }
   if (!response.ok) {
     return {
       decline: true,
@@ -349,6 +389,7 @@ async function liveEvaluate(fixture, config) {
       latencyMs: 0,
       costUsd: 0,
       error: json.error ?? text.slice(0, 200),
+      ...harnessHeaders,
     }
   }
 
@@ -357,7 +398,10 @@ async function liveEvaluate(fixture, config) {
   const nextAction = stringOrNull(session?.next_action)
   const declined = nextAction === 'declined' || nextAction === 'unsupported' || (!estimate && fixture.expected.decline)
   if (declined || !estimate) {
-    return declinePrediction('unsupported', 'unsupported', nextAction ?? 'no_estimate')
+    return {
+      ...declinePrediction('unsupported', 'unsupported', nextAction ?? 'no_estimate'),
+      ...harnessHeaders,
+    }
   }
   const serviceType = asService(estimate.service_type) ?? fixture.input.service_type
   const complexity = asComplexity(estimate.complexity)
@@ -373,6 +417,7 @@ async function liveEvaluate(fixture, config) {
     },
     latencyMs: 0,
     costUsd: 0,
+    ...harnessHeaders,
   }
 }
 
@@ -701,6 +746,8 @@ function parseArgs(args) {
     else if (arg.startsWith('--knowledge-fixtures=')) parsed.knowledgeFixtures = arg.slice('--knowledge-fixtures='.length)
     else if (arg === '--report') parsed.report = args[++index]
     else if (arg.startsWith('--report=')) parsed.report = arg.slice('--report='.length)
+    else if (arg === '--json-output') parsed.jsonOutput = args[++index]
+    else if (arg.startsWith('--json-output=')) parsed.jsonOutput = arg.slice('--json-output='.length)
   }
   return parsed
 }

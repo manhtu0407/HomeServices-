@@ -1,0 +1,119 @@
+name: harness-assurance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  repository-controls:
+    name: manifest, environment, capability, release, evaluation, reliability, promotion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+      - name: Harness assurance verification
+        run: node scripts/harness/verify.mjs
+
+  runtime-controls:
+    name: API and Edge runtime controls
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: API type-check
+        run: pnpm --filter @nestscout/api type-check
+      - name: Harness runtime tests
+        run: >
+          pnpm --filter @nestscout/api exec vitest run
+          src/__tests__/harness
+          src/__tests__/schema/learning-autopromote-atomic.test.ts
+          src/__tests__/unit/learning-evidence-gate.test.ts
+          src/__tests__/unit/mobile-api-edge-learning-hook.test.ts
+          src/__tests__/unit/mobile-api-edge-router.test.ts
+      - name: Edge function type-check
+        shell: pwsh
+        run: ./docker/scripts/edge-check.ps1
+      - name: Comment discipline
+        run: node scripts/check-comment-discipline.mjs
+      - name: Structure ratchet
+        run: node scripts/lint-structure.mjs
+
+  workspace-gates:
+    name: whole workspace type-check, test, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Whole workspace type-check
+        run: pnpm exec turbo type-check
+      - name: Whole workspace tests
+        run: pnpm exec turbo test
+      - name: Whole workspace build
+        run: pnpm exec turbo build
+
+  database-controls:
+    name: empty reset, SQL actor matrix, and generated types
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start local Supabase
+        run: pnpm --filter @nestscout/api exec supabase start
+      - name: Replay all migrations from empty state
+        run: pnpm --filter @nestscout/api exec supabase db reset --local
+      - name: Run SQL verification matrix
+        shell: pwsh
+        run: ./docker/scripts/run-sql-tests.ps1 -StopOnFirstFailure
+      - name: Generate database types from replayed schema
+        run: pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
+      - name: Upload generated database types
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: harness-database-types
+          path: /tmp/database.types.ts
+          if-no-files-found: error
+          retention-days: 1
+      - name: Generated type drift check
+        run: |
+          if ! cmp -s packages/shared/src/types/database.types.ts /tmp/database.types.ts; then
+            echo "Generated database types differ from the committed artifact."
+            diff --unified=3 packages/shared/src/types/database.types.ts /tmp/database.types.ts | head -400 || true
+            exit 1
+          fi
+      - name: Supabase schema lint
+        run: pnpm --filter @nestscout/api exec supabase db lint --local
+      - name: Stop local Supabase
+        if: always()
+        run: pnpm --filter @nestscout/api exec supabase stop --no-backup

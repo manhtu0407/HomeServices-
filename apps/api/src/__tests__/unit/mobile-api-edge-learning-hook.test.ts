@@ -369,7 +369,7 @@ describe('Edge learning hook: runLearningHook', () => {
     )
   })
 
-  it('promotes through the atomic RPC when the gate passes and autopromote is on', async () => {
+  it('queues manual review when the gate passes even if the legacy auto flag is on', async () => {
     stubDenoEnv({ ...LEARNING_ON, KAEL_LEARNING_AUTOPROMOTE_ENABLED: 'true' })
     const { client, rpcCalls } = hookClient({
       job: REVIEWED_JOB,
@@ -389,21 +389,20 @@ describe('Edge learning hook: runLearningHook', () => {
           }],
           error: null,
         },
-        auto_promote_learning_candidate_atomic: {
-          data: [{ ok: true, error_code: null, candidate_id: 'c1', rule_id: 'r1', rule_version: 1, status: 'auto_promoted' }],
+        queue_learning_candidate_manual_review: {
+          data: [{ ok: true, error_code: null, candidate_id: 'c1', status: 'manual_review' }],
           error: null,
         },
       },
     })
     const summary = await runLearningHook(client, 'j1')
     expect(summary.ok).toBe(true)
-    expect(summary.marketPromoted).toEqual({ ruleId: 'r1', ruleVersion: 1 })
-    expect(
-      rpcCalls.filter((call) => call.name === 'auto_promote_learning_candidate_atomic'),
-    ).not.toHaveLength(0)
+    expect(summary.marketPromoted).toBeUndefined()
+    expect(rpcCalls.some((call) => call.name === 'auto_promote_learning_candidate_atomic')).toBe(false)
+    expect(rpcCalls.some((call) => call.name === 'queue_learning_candidate_manual_review')).toBe(true)
   })
 
-  it('accepts any truthy spelling of the autopromote flag', async () => {
+  it('does not let a truthy legacy auto flag activate a rule', async () => {
     stubDenoEnv({ ...LEARNING_ON, KAEL_LEARNING_AUTOPROMOTE_ENABLED: '1' })
     const { client } = hookClient({
       job: REVIEWED_JOB,
@@ -423,14 +422,14 @@ describe('Edge learning hook: runLearningHook', () => {
           }],
           error: null,
         },
-        auto_promote_learning_candidate_atomic: {
-          data: [{ ok: true, error_code: null, candidate_id: 'c1', rule_id: 'r1', rule_version: 1, status: 'auto_promoted' }],
+        queue_learning_candidate_manual_review: {
+          data: [{ ok: true, error_code: null, candidate_id: 'c1', status: 'manual_review' }],
           error: null,
         },
       },
     })
     const summary = await runLearningHook(client, 'j1')
-    expect(summary.marketPromoted).toEqual({ ruleId: 'r1', ruleVersion: 1 })
+    expect(summary.marketPromoted).toBeUndefined()
   })
 
   it('passes the admin reference band to the observation RPC', async () => {
@@ -515,8 +514,8 @@ describe('Edge learning hook: runLearningHook', () => {
           }],
           error: null,
         },
-        auto_promote_learning_candidate_atomic: {
-          data: [{ ok: true, error_code: null, candidate_id: 'c1', rule_id: 'r1', rule_version: 1, status: 'auto_promoted' }],
+        queue_learning_candidate_manual_review: {
+          data: [{ ok: true, error_code: null, candidate_id: 'c1', status: 'manual_review' }],
           error: null,
         },
       },
@@ -532,7 +531,7 @@ describe('Edge learning hook: runLearningHook', () => {
     expect(cutoff.getTime()).toBe(expected)
   })
 
-  it('shadow mode logs the decision instead of promoting', async () => {
+  it('always queues manual review and never activates a rule', async () => {
     stubDenoEnv({
       ...LEARNING_ON,
       KAEL_LEARNING_AUTOPROMOTE_ENABLED: 'true',
@@ -563,14 +562,21 @@ describe('Edge learning hook: runLearningHook', () => {
     expect(summary.marketPromoted).toBeUndefined()
     expect(rpcCalls.some((call) => call.name === 'auto_promote_learning_candidate_atomic'))
       .toBe(false)
-    const logged = queryCalls.find(
-      (call) => call.table === 'kael_rule_lifecycle_log' && call.method === 'insert',
+    const queued = rpcCalls.find(
+      (call) => call.name === 'queue_learning_candidate_manual_review',
     )
-    const row = logged?.args[0] as Record<string, unknown>
-    expect(row.next_state).toBe('evidence_gate_check')
-    expect(String(row.transition_reason).length).toBeLessThanOrEqual(200)
-    expect((row.safe_metadata as Record<string, unknown>).would_promote).toBe(true)
-    expect((row.safe_metadata as Record<string, unknown>).proposed_min).toBe(250_000)
+    expect(queued).toBeDefined()
+    expect(queued?.args.p_candidate_id).toBe('c1')
+    expect(queued?.args.p_safe_metadata).toEqual({
+        gate_reason: 'gate_passed',
+        automatic_promotion: false,
+        source_kind: 'reviewed_job_aggregate',
+        consent_basis: 'aggregate_only',
+        pii_redacted: true,
+        raw_text_persisted: false,
+        summary_origin: 'model_generated',
+      })
+    expect(queryCalls.some((call) => call.table === 'learning_rules')).toBe(false)
   })
 
   it('routes a structurally invalid candidate to manual review, not pending evidence', async () => {

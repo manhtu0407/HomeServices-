@@ -85,6 +85,7 @@ async function request<T>(
 
   const retryBudget = isRetrySafeRequest(method, path, body) ? MAX_RETRIES : 0
   const timeoutMs = requestTimeoutMs(method, path)
+  const idempotencyKey = idempotencyKeyForRequest(method, path, body)
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController()
@@ -95,6 +96,7 @@ async function request<T>(
       const headers = accessToken === undefined
         ? await waitForAbort(getMobileApiAuthHeaders(), controller.signal)
         : createMobileApiHeaders(accessToken)
+      if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
       const url = `${API_BASE_URL}${path}`
 
       const response = await fetch(url, {
@@ -219,6 +221,22 @@ export const api = {
     }
     return request<T>('DELETE', path, body, accessToken)
   },
+}
+
+
+function idempotencyKeyForRequest(
+  method: string,
+  path: string,
+  body: unknown,
+): string | null {
+  if (method === 'GET' || method === 'HEAD') return null
+  if (typeof body === 'object' && body !== null && !Array.isArray(body)) {
+    const clientRequestId = (body as Record<string, unknown>).client_request_id
+    if (typeof clientRequestId === 'string' && clientRequestId.trim()) {
+      return `mobile:${clientRequestId.trim()}`.slice(0, 160)
+    }
+  }
+  return `mobile:${method.toLowerCase()}:${path}:${crypto.randomUUID()}`.slice(0, 160)
 }
 
 function createMobileApiHeaders(accessToken?: string): Record<string, string> {

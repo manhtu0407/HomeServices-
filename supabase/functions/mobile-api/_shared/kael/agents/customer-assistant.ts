@@ -254,6 +254,9 @@ async function resolveCustomerAssistantProviders(
   const spendGate: KaelSpendGate = {
     client: input.client as SpendGateClient,
     actorId: input.actorId ?? null,
+    failureMode: input.secrets.harnessTrace?.environment === "local"
+      ? "fail-open"
+      : "fail-closed",
   };
   const blockedProviders = new Set<string>();
   for (const route of routes) {

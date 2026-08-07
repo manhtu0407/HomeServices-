@@ -121,20 +121,15 @@ export const env = {
     return requireServerKey('DEEPSEEK_API_KEY', 'DeepSeek API key')
   },
 
-  // ─── Kael learning feature flags ──────────────────────────────────
-  // Both default to false. Two flags so candidates can be recorded for
-  // admin review (read path off, write path off) before auto-promotion is
-  // trusted (read path on, write path still off if desired).
-  //
-  // LEARNING_ENABLED gates the READ side: fetchBaseline + pipeline check
-  // learning_rules.
-  // LEARNING_AUTOPROMOTE_ENABLED gates the WRITE side: hook.ts promotes
-  // candidates that pass the evidence gate.
   get learningEnabled(): boolean {
     return process.env.LEARNING_ENABLED === 'true'
   },
+  get learningReviewQueueEnabled(): boolean {
+    return process.env.LEARNING_WRITE_ENABLED === 'true' ||
+      process.env.LEARNING_AUTOPROMOTE_ENABLED === 'true'
+  },
   get learningAutopromoteEnabled(): boolean {
-    return process.env.LEARNING_AUTOPROMOTE_ENABLED === 'true'
+    return false
   },
 } as const
 

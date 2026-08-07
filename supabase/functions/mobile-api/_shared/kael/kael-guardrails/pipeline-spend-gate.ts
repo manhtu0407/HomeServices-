@@ -1,4 +1,4 @@
-import type { PipelineInput, PipelineStageLog, SupabaseLike } from "../contracts/types.ts";
+import type { EdgeAiSecrets, PipelineInput, PipelineStageLog, SupabaseLike } from "../contracts/types.ts";
 import type { KaelSpendGate, SpendGateClient } from "./spend-gate.ts";
 import { checkKaelProviderBudget, recordKaelProviderSpend } from "../kael-providers/provider-budget.ts";
 
@@ -6,10 +6,14 @@ export async function prepareKaelPipelineSpendGate(
   input: Pick<PipelineInput, "actorId">,
   supabase: SupabaseLike,
   stageLogs: readonly PipelineStageLog[],
+  secrets: EdgeAiSecrets,
 ) {
   const spendGate: KaelSpendGate = {
-    client: supabase as unknown as SpendGateClient,
+    client: (secrets.harnessTrace?.client ?? supabase) as unknown as SpendGateClient,
     actorId: input.actorId ?? null,
+    failureMode: secrets.harnessTrace?.environment === "local"
+      ? "fail-open"
+      : "fail-closed",
   };
   const providerBudget = await checkKaelProviderBudget(supabase);
   const recordProviderSpendIfEnforced = async () => {

@@ -14,6 +14,7 @@ describe('edge-env', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         SUPABASE_SECRET_KEYS: JSON.stringify({ default: 'sb_secret_test' }),
       }
       return values[name]
@@ -21,6 +22,18 @@ describe('edge-env', () => {
 
     expect(env.supabaseUrl).toBe('https://project.supabase.co')
     expect(env.supabaseSecretKey).toBe('sb_secret_test')
+    expect(env.harnessEnvironment).toMatchObject({ name: 'preview', isRemote: true })
+    expect(env.releaseId).toBe('unreleased')
+  })
+
+  it('rejects a remote project without explicit environment identity', () => {
+    expect(() => readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://preview-project.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+      }
+      return values[name]
+    })).toThrow('Remote targets require NESTSCOUT_ENVIRONMENT')
   })
 
   it.each([
@@ -32,6 +45,7 @@ describe('edge-env', () => {
     expect(() => readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         SUPABASE_SECRET_KEYS: encoded,
       }
       return values[name]
@@ -42,6 +56,7 @@ describe('edge-env', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         APP_SECRET_KEY: 'sb_secret_project',
       }
       return values[name]
@@ -54,6 +69,7 @@ describe('edge-env', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         APP_SECRET_KEY: 'sb_secret_project',
         VIETMAP_API_KEY: 'vietmap-test-key',
       }
@@ -67,6 +83,7 @@ describe('edge-env', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         APP_SECRET_KEY: 'sb_secret_project',
         GOOGLE_MAP_KEY: 'maps-project-key',
       }
@@ -80,6 +97,7 @@ describe('edge-env', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: '1',
       }
@@ -94,6 +112,7 @@ describe('edge-env', () => {
     const defaultEnv = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         APP_SECRET_KEY: 'sb_secret_project',
       }
       return values[name]
@@ -101,6 +120,7 @@ describe('edge-env', () => {
     const enabledEnv = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED: '1',
       }
@@ -115,6 +135,7 @@ describe('edge-env', () => {
     const read = (enabled?: string) => readEdgeEnv((name) => {
       const values: Record<string, string | undefined> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_DURABLE_GUARDS_ENABLED: enabled,
       }
@@ -130,6 +151,7 @@ describe('edge-env', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://project.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'preview',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_OPT_SOURCE_TRUST_ENABLED: 'yes',
       }
@@ -144,6 +166,7 @@ describe('edge-env', () => {
     const stagingEnv = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'staging',
         APP_SECRET_KEY: 'sb_secret_project',
       }
       return values[name]
@@ -151,6 +174,7 @@ describe('edge-env', () => {
     const productionEnv = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
       }
       return values[name]
@@ -166,6 +190,9 @@ describe('edge-env', () => {
     const read = (supabaseUrl: string, enabled?: string) => readEdgeEnv((name) => {
       const values: Record<string, string | undefined> = {
         SUPABASE_URL: supabaseUrl,
+        NESTSCOUT_ENVIRONMENT: supabaseUrl.includes('xyylanuyflrjzbjzhqfl')
+          ? 'staging'
+          : 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         NESTSCOUT_STAGING_PAYMENT_RAIL_ENABLED: enabled,
       }
@@ -181,6 +208,7 @@ describe('edge-env', () => {
     const read = (values: Record<string, string | undefined>) => readEdgeEnv((name) => {
       const base: Record<string, string | undefined> = {
         SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
         APP_SECRET_KEY: 'sb_secret_project',
         NESTSCOUT_SEPAY_VIETQR_ENABLED: 'true',
         SEPAY_VIETQR_BANK_CODE: 'VCB',
@@ -200,6 +228,7 @@ describe('edge-env', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
         SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'staging',
         APP_SECRET_KEY: 'sb_secret_project',
         KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false',
       }
