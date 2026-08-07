@@ -27,13 +27,7 @@ const contexts = new WeakMap<object, PrivilegedClientContext>();
 
 export type SupabaseClientFactory = typeof createClient;
 
-export function createPrivilegedSupabaseClient(
-  url: string,
-  key: string,
-  options?: Parameters<typeof createClient>[2],
-) {
-  return createClient(url, key, options);
-}
+export const createPrivilegedSupabaseClient: SupabaseClientFactory = createClient;
 
 export function createUserScopedSupabaseClient(input: {
   readonly url: string;
