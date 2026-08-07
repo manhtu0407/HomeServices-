@@ -1,5 +1,5 @@
 export type HarnessTraceClient = {
-  rpc(
+  rpc?(
     name: string,
     args?: Record<string, unknown>,
   ): PromiseLike<{ data: unknown; error: unknown }>;
@@ -104,7 +104,7 @@ export async function beginHarnessRun(
     readonly safeMetadata?: Record<string, unknown>;
   },
 ): Promise<boolean> {
-  if (!trace?.client) return false;
+  if (!trace?.client?.rpc) return false;
   const actorIdHash = trace.actorIdHash ?? (input.actorId
     ? await hashHarnessIdentifier(input.actorId)
     : null);
@@ -170,7 +170,7 @@ export async function recordHarnessEvent(
     p_safe_metadata: sanitizeHarnessMetadata(input.safeMetadata ?? {}),
   };
   console.info("harness_event", payload);
-  if (!trace.client) return eventId;
+  if (!trace.client?.rpc) return eventId;
   try {
     const { error } = await trace.client.rpc("append_harness_event", payload);
     return error ? null : eventId;
@@ -187,7 +187,7 @@ export async function finishHarnessRun(
     readonly safeMetadata?: Record<string, unknown>;
   },
 ): Promise<boolean> {
-  if (!trace?.client) return false;
+  if (!trace?.client?.rpc) return false;
   try {
     const { error } = await trace.client.rpc("finish_harness_run", {
       p_run_id: trace.runId,
@@ -216,7 +216,7 @@ export async function recordHarnessPrivilegedOperation(
     readonly safeMetadata?: Record<string, unknown>;
   },
 ): Promise<boolean> {
-  if (!trace?.client) return false;
+  if (!trace?.client?.rpc) return false;
   try {
     const { error } = await trace.client.rpc("record_harness_privileged_operation", {
       p_operation_event_id: crypto.randomUUID(),
