@@ -1,0 +1,1 @@
+Trigger resilient §50 finalization on a clean current-main branch.
