@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - tmp/harness-clean-materialize-20260807
+  pull_request:
+    branches:
+      - tmp/harness-clean-materialize-20260807
 
 permissions:
   contents: write
