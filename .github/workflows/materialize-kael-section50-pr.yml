@@ -22,7 +22,6 @@ jobs:
       BASE_SHA: 81e5cda85a3928b8540e103774a6049dfdc6bf65
       FINAL_BRANCH: feat/kael-agentic-completeness-section50-final-v2
       EXPECTED_FILES: '83'
-      PATCH_B64_SHA256: 75df55c382108104287e00f49426a9bb50e0017f33992123d1b44ab73005e1f0
       PATCH_XZ_SHA256: 7aec8b767e6e05fa8472e070c91417dc1f649bb61f3a8b28e5e9b55d134ccd2d
       PATCH_SHA256: e70939231b85308a4c744199d7ae3ed081b93f2fa7fa634695a0e9be5acd5114
     steps:
@@ -38,7 +37,6 @@ jobs:
         run: |
           set -euo pipefail
           cat .github/transport/kael-section50-part-* > /tmp/kael-section50.patch.xz.b64
-          echo "$PATCH_B64_SHA256  /tmp/kael-section50.patch.xz.b64" | sha256sum -c -
           base64 --decode /tmp/kael-section50.patch.xz.b64 > /tmp/kael-section50.patch.xz
           echo "$PATCH_XZ_SHA256  /tmp/kael-section50.patch.xz" | sha256sum -c -
           xz --test /tmp/kael-section50.patch.xz
