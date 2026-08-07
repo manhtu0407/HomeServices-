@@ -216,7 +216,7 @@ export async function recordHarnessPrivilegedOperation(
     readonly safeMetadata?: Record<string, unknown>;
   },
 ): Promise<boolean> {
-  if (!trace?.client?.rpc) return false;
+  if (!trace?.client?.rpc) return trace?.environment === "local";
   try {
     const { error } = await trace.client.rpc("record_harness_privileged_operation", {
       p_operation_event_id: crypto.randomUUID(),
