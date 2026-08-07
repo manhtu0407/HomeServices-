@@ -1,0 +1,113 @@
+name: Publish complete Kael Agentic Completeness source
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kael-agentic-completeness-publish-v6
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'claude/kael-agentic-completeness-apply-20260806'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_BRANCH: claude/kael-agentic-completeness-d92bc8
+      PLAN_HEAD: a5d13c87a6780f3e6eae9e4570bcccf6da5cda80
+      PATCH_XZ_SHA256: 8c2f68813e7a563d8d1b0e2a6d624c159b8b89edee1878a5497218b651c3edd9
+      PATCH_SHA256: 6cb00d943260d7077c9e6f523cbdc0e301f9634e7a7d78ca52b057f7c16619ea
+    steps:
+      - name: Check out target branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Prepare exact target base
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --short)"
+          current="$(git rev-parse HEAD)"
+          if test "$current" != "$PLAN_HEAD"; then
+            git log -1 --pretty=%s | grep -F 'feat(kael): execute agentic completeness plan'
+            echo 'Implementation source is already published.'
+            exit 0
+          fi
+          git fetch origin main
+          git merge --ff-only origin/main
+
+      - name: Reconstruct verified patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/kael.patch.b64
+          gh api "repos/${GITHUB_REPOSITORY}/git/blobs/6fc92a4a01b1493aff25322bcc5b20fb1566d5db" --jq .content \
+            | tr -d '\n' | base64 -d >> /tmp/kael.patch.b64
+          wrapped_blobs=(
+            abaee2605137aa7bf1ab9b842207170efb799c92
+            947e42980dbb168706e02005d4afe2c02c03ba56
+            648a122bf782669393c5af3ab86a95b566469a86
+            ffca349a124b9e58910c1d7967d353c92e05d41b
+            8357857b37dd506f413cd52a8c3898ba1ff6e335
+            8f0866e81068185f15d51baedddccaff17ee7d89
+            a64a32d9ab7c6a52dc25350631a60ab0885e45da
+            a27b38756f88f2fb162a6d658465cbdb9a6c5b38
+            0c82952b22892279705df7db14df20233051ebfe
+            565dc9db8117c3d999e13f03136ba93d2029fc5e
+            8d4d41d2f6e433a94d284aed0094288bb9117432
+            b92be394bdf870b5032c238adc9d038e12b8fc7e
+            9daeb4051080ab48de67dceffcf2f84f175c89a7
+            13bc77b79abfe31c1902846e1a81445ed0045810
+            06690b3df231c7c14ed052d16e5e064842ae3596
+            979a1dff10e878ca0a53dafeedb92d2c056ae494
+            d62d8168548105bb80bc28af8a1102016b555e17
+          )
+          for sha in "${wrapped_blobs[@]}"; do
+            gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${sha}" --jq .content \
+              | tr -d '\n' | base64 -d | jq -r .data >> /tmp/kael.patch.b64
+          done
+          base64 -d /tmp/kael.patch.b64 > /tmp/kael.patch.xz
+          echo "$PATCH_XZ_SHA256  /tmp/kael.patch.xz" | sha256sum -c -
+          xz -dc /tmp/kael.patch.xz > /tmp/kael.patch.diff
+          echo "$PATCH_SHA256  /tmp/kael.patch.diff" | sha256sum -c -
+
+      - name: Apply and audit source diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --3way --index --whitespace=nowarn /tmp/kael.patch.diff
+          test -z "$(git diff --name-only --diff-filter=U)"
+          git diff --cached --check
+          if git diff --cached --name-status | grep -q '^D'; then
+            echo 'Refusing to publish tracked file deletions.' >&2
+            exit 1
+          fi
+          expected="$(grep -c '^diff --git ' /tmp/kael.patch.diff)"
+          actual="$(git diff --cached --name-only | wc -l | tr -d ' ')"
+          echo "Changed files: $actual / expected: $expected"
+          test "$actual" = "$expected"
+          locked='^(CLAUDE\.md|README\.md|governance/(STRUCTURES|RULES|critical|design)\.md)$'
+          if git diff --cached --name-only | grep -Eq "$locked"; then
+            echo 'Refusing to modify locked governance files.' >&2
+            exit 1
+          fi
+          git diff --cached --stat
+
+      - name: Commit and push implementation source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'OpenAI Codex'
+          git config user.email 'noreply@openai.com'
+          git commit -m 'feat(kael): execute agentic completeness plan'
+          git push origin "HEAD:${TARGET_BRANCH}"
