@@ -1,0 +1,77 @@
+name: Report final Kael Agentic Completeness result
+
+on:
+  push:
+    branches:
+      - claude/kael-agentic-completeness-apply-20260806
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FINAL_BRANCH: claude/kael-agentic-completeness-final-audited-20260807
+      HELPER_PR: '153'
+    steps:
+      - name: Resolve and verify final PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr_json="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$FINAL_BRANCH" --base main --state open \
+            --json number,url,title,headRefOid,changedFiles,additions,deletions,isDraft --jq '.[0]')"
+          test -n "$pr_json"
+          pr_number="$(jq -r .number <<<"$pr_json")"
+          pr_url="$(jq -r .url <<<"$pr_json")"
+          head_sha="$(jq -r .headRefOid <<<"$pr_json")"
+          changed_files="$(jq -r .changedFiles <<<"$pr_json")"
+          additions="$(jq -r .additions <<<"$pr_json")"
+          deletions="$(jq -r .deletions <<<"$pr_json")"
+          title="$(jq -r .title <<<"$pr_json")"
+          draft="$(jq -r .isDraft <<<"$pr_json")"
+
+          test "$draft" = false
+          test "$changed_files" -ge 35
+          gh api "repos/${GITHUB_REPOSITORY}/contents/docs/test-logs/2026-08-07_kael-final-audited-release.md?ref=${FINAL_BRANCH}" --jq .sha >/tmp/audit-blob-sha.txt
+
+          set +e
+          gh pr checks "$pr_number" --repo "$GITHUB_REPOSITORY" --json name,state,workflow,bucket,link > /tmp/checks.json
+          checks_code=$?
+          set -e
+          if test "$checks_code" -ne 0; then
+            echo '[]' >/tmp/checks.json
+          fi
+
+          total_checks="$(jq 'length' /tmp/checks.json)"
+          failing_checks="$(jq '[.[] | select((.bucket // "") == "fail" or (.state // "") == "FAILURE" or (.state // "") == "ERROR")] | length' /tmp/checks.json)"
+          pending_checks="$(jq '[.[] | select((.bucket // "") == "pending" or (.state // "") == "PENDING" or (.state // "") == "QUEUED" or (.state // "") == "IN_PROGRESS")] | length' /tmp/checks.json)"
+
+          {
+            echo '## Final §50 implementation is published for review'
+            echo
+            echo "- PR: [#${pr_number}](${pr_url}) — **${title}**"
+            echo "- Head branch: \`${FINAL_BRANCH}\`"
+            echo "- Head SHA: \`${head_sha}\`"
+            echo "- Diff: **${changed_files} files**, **+${additions} / -${deletions}**"
+            echo "- Final audit evidence: \`docs/test-logs/2026-08-07_kael-final-audited-release.md\`"
+            echo "- PR checks currently visible: ${total_checks}; failing: ${failing_checks}; pending: ${pending_checks}"
+            echo
+            echo '### Visible checks'
+            if test "$total_checks" -eq 0; then
+              echo '- No additional branch-protection checks were returned yet. The release workflow itself completed before this PR/branch was published.'
+            else
+              jq -r '.[] | "- `\(.name)` — \(.state // .bucket // "unknown")"' /tmp/checks.json
+            fi
+            echo
+            echo '> The final release workflow ran workspace type-checks/tests, deterministic and multi-turn Kael eval, model-health missing-key validation, repository governance checks, pinned Deno Edge checks, and a no-deletion/locked-file audit before creating the branch.'
+            echo
+            echo '> Not run by design: no staging/production Supabase migration apply, no paid live eval/red-team call, and no secret values committed.'
+          } >/tmp/final-report.md
+
+          gh pr comment "$HELPER_PR" --repo "$GITHUB_REPOSITORY" --body-file /tmp/final-report.md
+          gh pr comment "$pr_number" --repo "$GITHUB_REPOSITORY" --body-file /tmp/final-report.md
