@@ -1,0 +1,202 @@
+diff --git a/packages/shared/src/__tests__/kael-foundation.test.ts b/packages/shared/src/__tests__/kael-foundation.test.ts
+--- a/packages/shared/src/__tests__/kael-foundation.test.ts
++++ b/packages/shared/src/__tests__/kael-foundation.test.ts
+@@ -33,7 +33,7 @@
+   })
+ 
+   it('tracks the charter version in the version.json manifest', () => {
+-    expect(readCharter('version.json')).toContain('2026-08-01.p10')
++    expect(readCharter('version.json')).toContain('2026-08-06.p11')
+   })
+ 
+   it('records the locked charter files in the manifest', () => {
+diff --git a/apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts b/apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts
+--- a/apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts
++++ b/apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts
+@@ -563,7 +563,7 @@
+     expect(edgeKael).toContain('buildKaelSystemPrompt')
+     expect(edgeKael).toContain('checkKaelResponse')
+     expect(edgeKael).toContain('runKaelSelfCheckPipeline')
+-    expect(edgeKael).toContain('2026-08-01.p10')
++    expect(edgeKael).toContain('2026-08-06.p11')
+     expect(edgeRouter).toContain('kael.charter')
+     expect(edgeRouter).toContain('/kael/charter')
+     expect(edgeRouter).toContain('public: true')
+diff --git a/supabase/functions/mobile-api/_shared/domains/admin/queue.ts b/supabase/functions/mobile-api/_shared/domains/admin/queue.ts
+--- a/supabase/functions/mobile-api/_shared/domains/admin/queue.ts
++++ b/supabase/functions/mobile-api/_shared/domains/admin/queue.ts
+@@ -187,6 +187,7 @@
+   const parsed = nullableString(value);
+   if (!parsed) return null;
+   return scrubSensitiveForLLM(parsed)
++    .replace(/(\[(?:phone|email|id-number|bank-account|building|floor|unit|house-no)\])(?=\p{L})/giu, "$1 ")
+     .replace(/[\u0000-\u001f\u007f-\u009f]/gu, " ")
+     .replace(/\s+/gu, " ")
+     .trim()
+diff --git a/scripts/sync-skills.mjs b/scripts/sync-skills.mjs
+--- a/scripts/sync-skills.mjs
++++ b/scripts/sync-skills.mjs
+@@ -24,7 +24,12 @@
+   let installed = false
+ 
+   try {
+-    copy(source, staging, { recursive: true, errorOnExist: true, force: false })
++    copy(source, staging, {
++      recursive: true,
++      dereference: true,
++      errorOnExist: true,
++      force: false,
++    })
+     if (exists(destination)) {
+       rename(destination, backup)
+       previousMoved = true
+diff --git a/apps/mobile/components/kael/__tests__/kael-feedback-controls-test.tsx b/apps/mobile/components/kael/__tests__/kael-feedback-controls-test.tsx
+--- a/apps/mobile/components/kael/__tests__/kael-feedback-controls-test.tsx
++++ b/apps/mobile/components/kael/__tests__/kael-feedback-controls-test.tsx
+@@ -1,26 +1,26 @@
+ import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+ 
+-const push = jest.fn()
+-const customerSubmit = jest.fn()
+-const workerSubmit = jest.fn()
++const mockPush = jest.fn()
++const mockCustomerSubmit = jest.fn()
++const mockWorkerSubmit = jest.fn()
+ 
+ jest.mock('expo-router', () => ({
+-  useRouter: () => ({ push, back: jest.fn() }),
++  useRouter: () => ({ push: mockPush, back: jest.fn() }),
+ }))
+ 
+ jest.mock('@/lib/services', () => ({
+-  customerKaelConversationService: { submitFeedback: (...args: unknown[]) => customerSubmit(...args) },
+-  workerKaelChatService: { submitFeedback: (...args: unknown[]) => workerSubmit(...args) },
++  customerKaelConversationService: { submitFeedback: (...args: unknown[]) => mockCustomerSubmit(...args) },
++  workerKaelChatService: { submitFeedback: (...args: unknown[]) => mockWorkerSubmit(...args) },
+ }))
+ 
+ import { KaelFeedbackControls, KaelTrustDisclosure } from '../kael-feedback-controls'
+ 
+ beforeEach(() => {
+-  push.mockReset()
+-  customerSubmit.mockReset()
+-  workerSubmit.mockReset()
+-  customerSubmit.mockResolvedValue({ success: true, data: { feedback_id: 'feedback-1' } })
+-  workerSubmit.mockResolvedValue({ success: true, data: { feedback_id: 'feedback-2' } })
++  mockPush.mockReset()
++  mockCustomerSubmit.mockReset()
++  mockWorkerSubmit.mockReset()
++  mockCustomerSubmit.mockResolvedValue({ success: true, data: { feedback_id: 'feedback-1' } })
++  mockWorkerSubmit.mockResolvedValue({ success: true, data: { feedback_id: 'feedback-2' } })
+ })
+ 
+ describe('Kael feedback controls', () => {
+@@ -35,14 +35,14 @@
+     )
+ 
+     fireEvent.press(screen.getByTestId('customer-feedback-useful'))
+-    await waitFor(() => expect(customerSubmit).toHaveBeenCalledWith({
++    await waitFor(() => expect(mockCustomerSubmit).toHaveBeenCalledWith({
+       response_id: 'response-1',
+       rating: 'useful',
+       source: 'customer_chat',
+       language: 'vi',
+     }))
+     fireEvent.press(screen.getByTestId('customer-feedback-useful'))
+-    expect(customerSubmit).toHaveBeenCalledTimes(1)
++    expect(mockCustomerSubmit).toHaveBeenCalledTimes(1)
+   })
+ 
+   it('uses the worker service for worker responses', async () => {
+@@ -56,7 +56,7 @@
+     )
+ 
+     fireEvent.press(screen.getByTestId('worker-feedback-not-useful'))
+-    await waitFor(() => expect(workerSubmit).toHaveBeenCalledWith({
++    await waitFor(() => expect(mockWorkerSubmit).toHaveBeenCalledWith({
+       response_id: 'response-2',
+       rating: 'not_useful',
+       source: 'worker_chat',
+@@ -69,13 +69,13 @@
+       <KaelFeedbackControls actor="customer" language="vi" responseId=" " testID="empty-feedback" />,
+     )
+     fireEvent.press(screen.getByTestId('empty-feedback-useful'))
+-    expect(customerSubmit).not.toHaveBeenCalled()
++    expect(mockCustomerSubmit).not.toHaveBeenCalled()
+   })
+ 
+   it('renders the static disclosure floor and opens the public charter', () => {
+     render(<KaelTrustDisclosure language="vi" testID="trust" />)
+     expect(screen.getByText(/Kael là trợ lý AI của NestScout/)).toBeTruthy()
+     fireEvent.press(screen.getByTestId('trust-charter'))
+-    expect(push).toHaveBeenCalledWith('/kael-charter')
++    expect(mockPush).toHaveBeenCalledWith('/kael-charter')
+   })
+ })
+diff --git a/apps/mobile/app/__tests__/kael-charter-test.tsx b/apps/mobile/app/__tests__/kael-charter-test.tsx
+--- a/apps/mobile/app/__tests__/kael-charter-test.tsx
++++ b/apps/mobile/app/__tests__/kael-charter-test.tsx
+@@ -1,26 +1,26 @@
+ import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+ 
+-const back = jest.fn()
+-const getPublicCharter = jest.fn()
++const mockBack = jest.fn()
++const mockGetPublicCharter = jest.fn()
+ 
+ jest.mock('expo-router', () => ({
+-  useRouter: () => ({ back, push: jest.fn() }),
++  useRouter: () => ({ back: mockBack, push: jest.fn() }),
+ }))
+ 
+ jest.mock('@/lib/app-language', () => ({
+-  useAppLanguage: () => ({ language: 'vi' }),
++  useAppLanguage: () => 'vi',
+ }))
+ 
+ jest.mock('@/lib/services', () => ({
+-  kaelCharterService: { getPublicCharter: (...args: unknown[]) => getPublicCharter(...args) },
++  kaelCharterService: { getPublicCharter: (...args: unknown[]) => mockGetPublicCharter(...args) },
+ }))
+ 
+ import KaelCharterScreen from '../kael-charter'
+ 
+ beforeEach(() => {
+-  back.mockReset()
+-  getPublicCharter.mockReset()
+-  getPublicCharter.mockResolvedValue({
++  mockBack.mockReset()
++  mockGetPublicCharter.mockReset()
++  mockGetPublicCharter.mockResolvedValue({
+     success: true,
+     data: {
+       charter_version: '2026-08-06.p11',
+@@ -47,6 +47,6 @@
+   it('returns through the router', () => {
+     render(<KaelCharterScreen />)
+     fireEvent.press(screen.getByTestId('kael-charter-back'))
+-    expect(back).toHaveBeenCalledTimes(1)
++    expect(mockBack).toHaveBeenCalledTimes(1)
+   })
+ })
+diff --git a/apps/mobile/components/customer/__tests__/customer-booking-entry-surface-test.tsx b/apps/mobile/components/customer/__tests__/customer-booking-entry-surface-test.tsx
+--- a/apps/mobile/components/customer/__tests__/customer-booking-entry-surface-test.tsx
++++ b/apps/mobile/components/customer/__tests__/customer-booking-entry-surface-test.tsx
+@@ -592,7 +592,7 @@
+ 
+   it('refreshes booking dates from runtime while the screen stays open', () => {
+     jest.useFakeTimers()
+-    jest.setSystemTime(new Date(2026, 5, 19, 23, 59, 50))
++    jest.setSystemTime(new Date('2026-06-19T16:59:50.000Z'))
+ 
+     try {
+       render(<CustomerBookingEntrySurface />)
+@@ -600,7 +600,7 @@
+       expect(screen.getByTestId('customer-v21-booking-date-0')).toHaveTextContent(/Hôm nay/)
+       expect(screen.getByTestId('customer-v21-booking-date-0')).toHaveTextContent(/19\/06/)
+ 
+-      jest.setSystemTime(new Date(2026, 5, 20, 0, 0, 25))
++      jest.setSystemTime(new Date('2026-06-19T17:00:25.000Z'))
+       act(() => {
+         jest.advanceTimersByTime(30_000)
+       })
