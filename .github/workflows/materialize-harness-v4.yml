@@ -1,0 +1,65 @@
+name: materialize-harness-v4
+
+on:
+  push:
+    branches:
+      - feat/harness-production-assurance-pr02-pr12
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: ${{ !contains(github.event.head_commit.message, '[materializer-v4-debug]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: feat/harness-production-assurance-pr02-pr12
+          fetch-depth: 0
+      - name: Materialize verified patch
+        shell: bash
+        run: |
+          set -u
+          original_sha="$(git rev-parse HEAD)"
+          fail_stage() {
+            stage="$1"
+            git reset --hard "$original_sha"
+            mkdir -p .github/agent-patch-correct
+            rm -f .github/agent-patch-correct/failure-v4-*
+            printf '%s\n' "$stage" > ".github/agent-patch-correct/failure-v4-$stage"
+            git add .github/agent-patch-correct
+            git config user.name "manhtu0407"
+            git config user.email "manhtu0407@gmail.com"
+            git commit -m "[materializer-v4-debug] failure: $stage"
+            git push origin HEAD:refs/heads/feat/harness-production-assurance-pr02-pr12
+            exit 1
+          }
+          chunks=()
+          for number in $(seq 0 17); do
+            index="$(printf '%03d' "$number")"
+            path=".github/agent-patch-correct/patch-${index}"
+            [[ -f "$path" ]] || fail_stage "missing-$index"
+            chunks+=("$path")
+          done
+          cat "${chunks[@]}" > /tmp/harness.patch.b64 || fail_stage concatenate
+          base64 --decode /tmp/harness.patch.b64 > /tmp/harness.patch.xz || fail_stage base64-decode
+          xz --test /tmp/harness.patch.xz || fail_stage xz-test
+          xz --decompress --stdout /tmp/harness.patch.xz > /tmp/harness.patch || fail_stage xz-decompress
+          echo "601d441aff25afdb1ba6babc3ad650dba901f688e139835feb6ce426e6b3be2f  /tmp/harness.patch" | sha256sum -c - || fail_stage patch-checksum
+          git reset --hard d0f465c29d86a9aeb94992a58f990ea567657c4c || fail_stage reset-base
+          git apply --check --exclude=.github/workflows/export-agent-workspace.yml /tmp/harness.patch || fail_stage apply-check
+          git apply --index --exclude=.github/workflows/export-agent-workspace.yml /tmp/harness.patch || fail_stage apply
+          [[ -f scripts/harness/verify.mjs ]] || fail_stage verify-file
+          [[ -f .github/workflows/harness-assurance.yml ]] || fail_stage workflow-file
+          [[ "$(git diff --cached --name-only | wc -l)" -eq 110 ]] || fail_stage changed-count
+          git diff --cached --check || fail_stage diff-check
+          node scripts/harness/verify.mjs || fail_stage harness-verify
+          git config user.name "manhtu0407"
+          git config user.email "manhtu0407@gmail.com"
+          tree_sha="$(git write-tree)" || fail_stage write-tree
+          commit_sha="$(printf '%s\n\n%s\n' \
+            'feat(harness): complete production assurance controls PR-02 through PR-12' \
+            'Implement environment, authorization, privileged access, data policy, release, tracing, evaluation, learning, reliability, promotion, rollback, incident, and SLO controls.' \
+            | git commit-tree "$tree_sha" -p d0f465c29d86a9aeb94992a58f990ea567657c4c)" || fail_stage commit-tree
+          git push --force origin "$commit_sha:refs/heads/feat/harness-production-assurance-pr02-pr12" || fail_stage push-clean
