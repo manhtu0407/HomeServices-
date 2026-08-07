@@ -1,0 +1,67 @@
+name: materialize-harness-debug
+
+on:
+  push:
+    branches:
+      - feat/harness-production-assurance-pr02-pr12
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  materialize:
+    if: ${{ !contains(github.event.head_commit.message, '[materializer-debug]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: feat/harness-production-assurance-pr02-pr12
+          fetch-depth: 0
+      - name: Materialize and report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set +e
+          {
+            set -euxo pipefail
+            test "$(find .github/agent-patch-correct -maxdepth 1 -type f -name 'patch-[0-9][0-9][0-9]' | wc -l)" -eq 18
+            cat .github/agent-patch-correct/patch-[0-9][0-9][0-9] > /tmp/harness.patch.b64
+            echo "871eb95ec8f3f7fb1b927a65fe33541fbc7d38b3f50fb25f853a1f0e1fe872f4  /tmp/harness.patch.b64" | sha256sum -c -
+            base64 --decode /tmp/harness.patch.b64 > /tmp/harness.patch.xz
+            echo "30a0e14d9d73eae51bae897fd4af4d23b28c98f519e962ff2c4e8bb404d568f2  /tmp/harness.patch.xz" | sha256sum -c -
+            xz --test /tmp/harness.patch.xz
+            xz --decompress --stdout /tmp/harness.patch.xz > /tmp/harness.patch
+            echo "601d441aff25afdb1ba6babc3ad650dba901f688e139835feb6ce426e6b3be2f  /tmp/harness.patch" | sha256sum -c -
+            git reset --hard d0f465c29d86a9aeb94992a58f990ea567657c4c
+            git apply --check --exclude=.github/workflows/export-agent-workspace.yml /tmp/harness.patch
+            git apply --index --exclude=.github/workflows/export-agent-workspace.yml /tmp/harness.patch
+            test -f scripts/harness/verify.mjs
+            test -f .github/workflows/harness-assurance.yml
+            echo "changed=$(git diff --cached --name-only | wc -l)"
+            git diff --cached --check
+            node scripts/harness/verify.mjs
+            git config user.name "manhtu0407"
+            git config user.email "manhtu0407@gmail.com"
+            tree_sha="$(git write-tree)"
+            commit_sha="$(printf '%s\n\n%s\n' \
+              'feat(harness): complete production assurance controls PR-02 through PR-12' \
+              'Implement environment, authorization, privileged access, data policy, release, tracing, evaluation, learning, reliability, promotion, rollback, incident, and SLO controls.' \
+              | git commit-tree "$tree_sha" -p d0f465c29d86a9aeb94992a58f990ea567657c4c)"
+            git push --force origin "$commit_sha:refs/heads/feat/harness-production-assurance-pr02-pr12"
+          } > /tmp/materializer.log 2>&1
+          status=$?
+          if [[ $status -ne 0 ]]; then
+            {
+              echo '### Materializer debug failure'
+              echo '```text'
+              tail -c 12000 /tmp/materializer.log
+              echo
+              echo '```'
+            } > /tmp/comment.md
+            gh pr comment 158 --repo manhtu0407/HomeServices- --body-file /tmp/comment.md || true
+            cat /tmp/materializer.log
+            exit "$status"
+          fi
+          cat /tmp/materializer.log
