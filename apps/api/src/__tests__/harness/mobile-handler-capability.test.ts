@@ -7,7 +7,7 @@ import {
 
 describe('mobile-api capability ingress', () => {
   it('builds actor and capability context before protected dispatch', async () => {
-    let context: MobileApiContext | null = null
+    let context!: MobileApiContext
     const services = {
       listServices: async (ctx: MobileApiContext) => {
         context = ctx
@@ -29,17 +29,17 @@ describe('mobile-api capability ingress', () => {
     const response = await handler(new Request('https://api.example.test/services'))
 
     expect(response.status).toBe(200)
-    expect(context?.actorContext).toMatchObject({
+    expect(context.actorContext).toMatchObject({
       actorId: 'customer-1',
       role: 'customer',
       accountState: 'active',
     })
-    expect(context?.capabilityEnvelope).toMatchObject({
+    expect(context.capabilityEnvelope).toMatchObject({
       routeKind: 'services',
       capability: 'mobile.route.services',
       resource: { type: 'catalog', id: null },
     })
-    expect(context?.releaseId).toBe('release-1')
+    expect(context.releaseId).toBe('release-1')
   })
 
   it('denies a role outside the route capability before service execution', async () => {
