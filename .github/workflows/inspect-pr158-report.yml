@@ -1,0 +1,47 @@
+name: inspect-pr158-report
+
+on:
+  pull_request:
+    branches:
+      - tmp/agent-export-base
+
+permissions:
+  contents: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: feat/harness-production-assurance-pr02-pr12
+          fetch-depth: 0
+      - name: Build inspection report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pr158-report
+          git rev-parse HEAD > /tmp/pr158-report/head-sha.txt
+          git log -1 --pretty=fuller > /tmp/pr158-report/head-log.txt
+          git diff --stat d0f465c29d86a9aeb94992a58f990ea567657c4c..HEAD > /tmp/pr158-report/diff-stat.txt
+          git diff --name-only d0f465c29d86a9aeb94992a58f990ea567657c4c..HEAD > /tmp/pr158-report/changed-files.txt
+          git rev-list --count d0f465c29d86a9aeb94992a58f990ea567657c4c..HEAD > /tmp/pr158-report/commit-count.txt
+          if [[ -f scripts/harness/verify.mjs ]]; then echo yes; else echo no; fi > /tmp/pr158-report/has-verify.txt
+          if [[ -d .github/agent-patch-correct ]]; then find .github/agent-patch-correct -maxdepth 1 -type f -printf '%f\n' | sort; fi > /tmp/pr158-report/transport-files.txt
+          if [[ -f scripts/harness/verify.mjs ]]; then
+            node scripts/harness/verify.mjs > /tmp/pr158-report/harness-verify.txt 2>&1 || true
+          fi
+          git status --short > /tmp/pr158-report/status.txt
+      - name: Publish report to temporary branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "manhtu0407"
+          git config user.email "manhtu0407@gmail.com"
+          git switch --orphan pr158-inspection-output
+          git rm -rf .
+          mkdir -p report
+          cp /tmp/pr158-report/* report/
+          git add report
+          git commit -m "chore: publish PR158 inspection report"
+          git push --force origin HEAD:refs/heads/tmp/pr158-inspection
