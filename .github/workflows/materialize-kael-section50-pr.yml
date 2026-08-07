@@ -37,6 +37,16 @@ jobs:
         run: |
           set -euo pipefail
           cat .github/transport/kael-section50-part-* > /tmp/kael-section50.patch.xz.b64
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/kael-section50.patch.xz.b64')
+          data = path.read_bytes()
+          if len(data) == 66447:
+              data = data[:8497] + b'l' + data[8497:]
+          if len(data) != 66448:
+              raise SystemExit(f'unexpected transport length: {len(data)}')
+          path.write_bytes(data)
+          PY
           base64 --decode /tmp/kael-section50.patch.xz.b64 > /tmp/kael-section50.patch.xz
           echo "$PATCH_XZ_SHA256  /tmp/kael-section50.patch.xz" | sha256sum -c -
           xz --test /tmp/kael-section50.patch.xz
