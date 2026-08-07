@@ -1,0 +1,210 @@
+name: Final release Kael Agentic Completeness
+
+on:
+  push:
+    branches:
+      - claude/kael-agentic-completeness-apply-20260806
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: kael-agentic-completeness-final-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_BRANCH: claude/kael-agentic-completeness-final-v3-20260807
+      RELEASE_BRANCH: claude/kael-agentic-completeness-final-audited-20260807
+      HELPER_PR: '153'
+    steps:
+      - name: Check out verified implementation source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Validate source diff shape
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          base="$(git merge-base origin/main HEAD)"
+          git diff --name-only "$base"..HEAD >/tmp/source-files.txt
+          git diff --name-status "$base"..HEAD >/tmp/source-status.txt
+          git diff --stat "$base"..HEAD >/tmp/source-stat.txt
+          changed="$(sed '/^$/d' /tmp/source-files.txt | wc -l | tr -d ' ')"
+          product="$(grep -Ec '^(apps/|packages/|supabase/|config/|docs/)' /tmp/source-files.txt || true)"
+          test "$changed" -ge 35
+          test "$product" -ge 25
+          grep -q '^apps/api/' /tmp/source-files.txt
+          grep -q '^apps/mobile/' /tmp/source-files.txt
+          grep -q '^supabase/functions/' /tmp/source-files.txt
+          grep -q '^supabase/migrations/' /tmp/source-files.txt
+          ! grep -q '^D' /tmp/source-status.txt
+          ! grep -Eq '^(CLAUDE\.md|README\.md|governance/(STRUCTURES|RULES|critical|design)\.md)$' /tmp/source-files.txt
+          test -z "$(git diff --name-only "$base"..HEAD -- apps/api/src/app/admin/kael-learning)"
+          echo "$base" >/tmp/source-base.txt
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check every workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @nestscout/api type-check | tee /tmp/type-api.log
+          pnpm --filter @nestscout/shared type-check | tee /tmp/type-shared.log
+          pnpm --filter @nestscout/mobile type-check | tee /tmp/type-mobile.log
+          pnpm --filter @nestscout/sandbox type-check | tee /tmp/type-sandbox.log
+
+      - name: Test every workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @nestscout/api test | tee /tmp/test-api.log
+          pnpm --filter @nestscout/shared test | tee /tmp/test-shared.log
+          pnpm --filter @nestscout/mobile test | tee /tmp/test-mobile.log
+          pnpm --filter @nestscout/sandbox test | tee /tmp/test-sandbox.log
+
+      - name: Run Kael evaluation and repository gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node apps/api/scripts/kael-eval.mjs --mode deterministic --report /tmp/kael-eval.md | tee /tmp/kael-eval.log
+          node apps/api/scripts/kael-multi-turn-eval.mjs | tee /tmp/kael-multi-turn.log
+          if node apps/api/scripts/kael-model-health.mjs >/tmp/model-health.log 2>&1; then
+            echo 'Model-health missing-key guard unexpectedly exited 0.' >&2
+            exit 1
+          fi
+          grep -Eqi 'credential|provider' /tmp/model-health.log
+          node scripts/check-comment-discipline.mjs | tee /tmp/comments.log
+          node scripts/lint-structure.mjs | tee /tmp/structure.log
+          node scripts/check-skills-sync.mjs | tee /tmp/skills.log
+
+      - name: Run all pinned Deno Edge checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          image='denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498'
+          for fn in kael-learning-monitor kael-media-retention mobile-api sepay-webhook; do
+            docker run --rm -v "$PWD:/repo" -w /repo "$image" \
+              deno check --config "supabase/functions/$fn/deno.json" "supabase/functions/$fn/index.ts" \
+              | tee "/tmp/edge-${fn}.log"
+          done
+
+      - name: Create immutable final audit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/test-logs
+          source_commit="$(git rev-parse HEAD)"
+          changed="$(sed '/^$/d' /tmp/source-files.txt | wc -l | tr -d ' ')"
+          additions="$(git diff --numstat "$(cat /tmp/source-base.txt)"..HEAD | awk '{a+=$1} END {print a+0}')"
+          deletions="$(git diff --numstat "$(cat /tmp/source-base.txt)"..HEAD | awk '{d+=$2} END {print d+0}')"
+          {
+            echo '# Kael §50 final audited release'
+            echo
+            echo "- Source branch: \`$SOURCE_BRANCH\`"
+            echo "- Source commit: \`$source_commit\`"
+            echo "- Main merge base: \`$(cat /tmp/source-base.txt)\`"
+            echo "- Product diff before this report: $changed files, +$additions / -$deletions"
+            echo "- Audit completed UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo
+            echo '## Passed'
+            echo '- API, shared, mobile, and sandbox TypeScript checks'
+            echo '- API, shared, mobile, and sandbox test suites'
+            echo '- Deterministic Kael evaluation'
+            echo '- Multi-turn Kael evaluation'
+            echo '- Model-health missing-key guard'
+            echo '- Comment discipline, structure, and skills synchronization'
+            echo '- Pinned Deno checks for kael-learning-monitor, kael-media-retention, mobile-api, and sepay-webhook'
+            echo '- No tracked deletion, no locked governance change, no edit to the source admin/kael-learning reference surface'
+            echo
+            echo '## Product diff stat'
+            echo '```text'
+            cat /tmp/source-stat.txt
+            echo '```'
+            echo
+            echo '## Product diff files'
+            echo '```text'
+            cat /tmp/source-status.txt
+            echo '```'
+            echo
+            echo '## Deliberately not executed'
+            echo '- No staging or production Supabase migration apply.'
+            echo '- No paid live evaluation or live red-team request.'
+            echo '- No secret value was committed.'
+          } >docs/test-logs/2026-08-07_kael-final-audited-release.md
+          git add docs/test-logs/2026-08-07_kael-final-audited-release.md
+          git diff --cached --check
+          git config user.name 'OpenAI Codex'
+          git config user.email 'noreply@openai.com'
+          git commit -m 'test(kael): publish final audited §50 evidence'
+          git push --force-with-lease origin "HEAD:$RELEASE_BRANCH"
+
+      - name: Open the final review PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$RELEASE_BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
+          cat >/tmp/pr-body.md <<'BODY'
+          Final audited implementation of §50 Kael Agentic Completeness.
+
+          This branch was published from the implementation source only after every configured workspace type-check/test, deterministic and multi-turn Kael evaluation, model-health missing-key behavior, governance gate, pinned Deno Edge check, and diff-safety check passed.
+
+          Exact source commit, diff statistics, file list, and gate scope are committed in `docs/test-logs/2026-08-07_kael-final-audited-release.md`.
+
+          Deliberately excluded: staging/production Supabase migration apply, paid live eval/red-team calls, and secret values. This PR is not auto-merged.
+          BODY
+          if test -n "$existing"; then
+            gh pr edit "$existing" --repo "$GITHUB_REPOSITORY" --title 'feat(kael): final audited Agentic Completeness §50' --body-file /tmp/pr-body.md
+            pr="$existing"
+          else
+            pr="$(gh pr create --repo "$GITHUB_REPOSITORY" --head "$RELEASE_BRANCH" --base main --title 'feat(kael): final audited Agentic Completeness §50' --body-file /tmp/pr-body.md --json number --jq .number)"
+          fi
+          gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" --body-file docs/test-logs/2026-08-07_kael-final-audited-release.md
+          printf 'Final implementation PR: #%s\n' "$pr"
+
+      - name: Report release failure without claiming completion
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '## Final §50 release did not pass'
+            echo
+            echo "Source branch: \`$SOURCE_BRANCH\`"
+            echo "Source commit: \`$(git rev-parse HEAD 2>/dev/null || echo unavailable)\`"
+            echo
+            echo 'The final release branch and PR were not published. No live Supabase project was touched.'
+          } >/tmp/failure.md
+          gh pr comment "$HELPER_PR" --repo "$GITHUB_REPOSITORY" --body-file /tmp/failure.md
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: kael-final-release-diagnostics-${{ github.run_id }}
+          path: |
+            /tmp/*.log
+            /tmp/*.txt
+            /tmp/*.md
+          if-no-files-found: warn
+          retention-days: 3
