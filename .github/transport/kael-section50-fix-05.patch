@@ -1,0 +1,15 @@
+diff --git a/supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts b/supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts
+--- a/supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts
++++ b/supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts
+@@ -411,8 +411,11 @@
+ }
+ 
+ class ProviderHttpError extends Error {
+-  constructor(public readonly status: number) {
++  readonly status: number;
++
++  constructor(status: number) {
+     super(`HTTP ${status}`);
++    this.status = status;
+   }
+ }
