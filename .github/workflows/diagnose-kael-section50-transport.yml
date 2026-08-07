@@ -1,0 +1,48 @@
+name: Diagnose Kael Section 50 Transport
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'tmp/kael-section50-materialize-20260807-v2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Inspect payload bytes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64
+          import glob
+          import hashlib
+          from pathlib import Path
+
+          paths = sorted(glob.glob('.github/transport/kael-section50-part-*'))
+          pieces = []
+          for raw in paths:
+              data = Path(raw).read_bytes()
+              pieces.append(data)
+              print(raw, 'bytes=', len(data), 'sha256=', hashlib.sha256(data).hexdigest())
+
+          combined = b''.join(pieces)
+          print('combined bytes=', len(combined), 'sha256=', hashlib.sha256(combined).hexdigest())
+          allowed = set(b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\r\n\t ')
+          invalid = [(index, value) for index, value in enumerate(combined) if value not in allowed]
+          print('invalid_count=', len(invalid), 'first_invalid=', invalid[:20])
+          normalized = b''.join(combined.split())
+          print('normalized bytes=', len(normalized), 'mod4=', len(normalized) % 4, 'sha256=', hashlib.sha256(normalized).hexdigest())
+          try:
+              decoded = base64.b64decode(normalized, validate=True)
+              print('decoded bytes=', len(decoded), 'sha256=', hashlib.sha256(decoded).hexdigest())
+              Path('/tmp/kael-section50.patch.xz').write_bytes(decoded)
+          except Exception as error:
+              print('decode_error=', repr(error))
+          PY
