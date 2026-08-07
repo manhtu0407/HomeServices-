@@ -1,0 +1,12 @@
+diff --git a/apps/api/scripts/kael-model-health.mjs b/apps/api/scripts/kael-model-health.mjs
+--- a/apps/api/scripts/kael-model-health.mjs
++++ b/apps/api/scripts/kael-model-health.mjs
+@@ -27,7 +27,7 @@
+   }
+ 
+   const runtimePath = resolve(scriptDir, 'kael-model-health-runtime.ts')
+-  const child = spawn(process.execPath, ['--experimental-strip-types', runtimePath], {
++  const child = spawn(process.execPath, ['--experimental-transform-types', runtimePath], {
+     cwd: repoRoot,
+     env: {
+       ...process.env,
