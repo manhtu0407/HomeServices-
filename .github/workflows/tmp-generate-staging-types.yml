@@ -1,0 +1,45 @@
+name: tmp-generate-staging-types
+
+on:
+  pull_request:
+    branches:
+      - feat/harness-manifest-truth-pr01
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Generate staging database types
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          supabase gen types typescript --project-id xyylanuyflrjzbjzhqfl > /tmp/database.types.ts
+          test -s /tmp/database.types.ts
+          cp /tmp/database.types.ts /tmp/database.types.generated.ts
+          if cmp -s packages/shared/src/types/database.types.ts /tmp/database.types.ts; then
+            echo identical > /tmp/database-types-status.txt
+          else
+            echo changed > /tmp/database-types-status.txt
+            diff -u packages/shared/src/types/database.types.ts /tmp/database.types.ts > /tmp/database-types.diff || true
+          fi
+      - name: Upload generated staging types
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-database-types
+          path: |
+            /tmp/database.types.generated.ts
+            /tmp/database-types-status.txt
+            /tmp/database-types.diff
+          if-no-files-found: error
+          retention-days: 1
