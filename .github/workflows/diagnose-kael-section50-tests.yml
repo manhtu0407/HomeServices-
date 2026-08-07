@@ -1,0 +1,133 @@
+name: Diagnose Kael Section 50 Workspace Tests
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kael-section50-test-diagnostics
+  cancel-in-progress: true
+
+jobs:
+  diagnose-tests:
+    if: github.head_ref == 'tmp/kael-section50-materialize-20260807-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      BASE_SHA: 81e5cda85a3928b8540e103774a6049dfdc6bf65
+      EXPECTED_FILES: '83'
+      PATCH_XZ_SHA256: 7aec8b767e6e05fa8472e070c91417dc1f649bb61f3a8b28e5e9b55d134ccd2d
+      PATCH_SHA256: e70939231b85308a4c744199d7ae3ed081b93f2fa7fa634695a0e9be5acd5114
+    steps:
+      - name: Check out transport branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Reconstruct and apply implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/transport/kael-section50-part-* > /tmp/kael-section50.patch.xz.b64
+          cp .github/transport/kael-section50-fix-*.patch /tmp/
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/kael-section50.patch.xz.b64')
+          data = path.read_bytes()
+          if len(data) == 66447:
+              data = data[:8497] + b'l' + data[8497:]
+          if len(data) != 66448:
+              raise SystemExit(f'unexpected transport length: {len(data)}')
+          path.write_bytes(data)
+          PY
+          base64 --decode /tmp/kael-section50.patch.xz.b64 > /tmp/kael-section50.patch.xz
+          echo "$PATCH_XZ_SHA256  /tmp/kael-section50.patch.xz" | sha256sum -c -
+          xz --test /tmp/kael-section50.patch.xz
+          xz --decompress --stdout /tmp/kael-section50.patch.xz > /tmp/kael-section50.patch
+          echo "$PATCH_SHA256  /tmp/kael-section50.patch" | sha256sum -c -
+          test "$(grep -c '^diff --git ' /tmp/kael-section50.patch)" = "$EXPECTED_FILES"
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$BASE_SHA"
+          git reset --hard "$BASE_SHA"
+          git apply --check /tmp/kael-section50.patch
+          git apply --index --whitespace=nowarn /tmp/kael-section50.patch
+          for fix in /tmp/kael-section50-fix-*.patch; do
+            git apply --check "$fix"
+            git apply --index --whitespace=nowarn "$fix"
+          done
+          git diff --cached --check
+          test "$(git diff --cached --name-only | wc -l | tr -d ' ')" = "$EXPECTED_FILES"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run every workspace test and preserve full logs
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          : > /tmp/test-status.tsv
+          for workspace in api shared mobile sandbox; do
+            echo "===== @nestscout/${workspace} ====="
+            pnpm --filter "@nestscout/${workspace}" test > "/tmp/test-${workspace}.log" 2>&1
+            status=$?
+            printf '%s\t%s\n' "$workspace" "$status" >> /tmp/test-status.tsv
+            echo "@nestscout/${workspace}: exit ${status}"
+            tail -n 160 "/tmp/test-${workspace}.log" || true
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          rows = []
+          failed = False
+          for raw in Path('/tmp/test-status.tsv').read_text().splitlines():
+              name, status = raw.split('\t')
+              rows.append((name, int(status)))
+              failed = failed or status != '0'
+
+          out = ['# Kael Section 50 workspace test diagnostics', '', '| Workspace | Exit |', '|---|---:|']
+          out += [f'| `@nestscout/{name}` | {status} |' for name, status in rows]
+          out += ['', '## Failure-focused excerpts']
+          pattern = re.compile(r'(FAIL|failed|AssertionError|Error:|not ok|ERR_|Expected|Received|✕|×)', re.I)
+          for name, status in rows:
+              if status == 0:
+                  continue
+              lines = Path(f'/tmp/test-{name}.log').read_text(errors='replace').splitlines()
+              hits = [line for line in lines if pattern.search(line)]
+              out += ['', f'### @nestscout/{name}', '```text']
+              out += (hits[-220:] if hits else lines[-220:])
+              out += ['```']
+          Path('/tmp/test-diagnostics.md').write_text('\n'.join(out) + '\n')
+          print('\n'.join(out))
+          raise SystemExit(1 if failed else 0)
+          PY
+
+      - name: Upload workspace test diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kael-section50-test-diagnostics-${{ github.run_id }}
+          path: |
+            /tmp/test-status.tsv
+            /tmp/test-diagnostics.md
+            /tmp/test-api.log
+            /tmp/test-shared.log
+            /tmp/test-mobile.log
+            /tmp/test-sandbox.log
+          if-no-files-found: error
+          retention-days: 2
