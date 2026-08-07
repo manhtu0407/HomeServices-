@@ -1,6 +1,10 @@
 import { requireJobAccess } from "../../platform/access.ts";
 import { takeDurableKaelChatRateLimit } from "../../kael/kael-guardrails/durable-guards.ts";
-import { runCustomerAssistant, type EdgeAiSecrets } from "../../kael/index.ts";
+import {
+  buildKaelL2L3MemorySummary,
+  runCustomerAssistant,
+  type EdgeAiSecrets,
+} from "../../kael/index.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../../platform/rate-limit.ts";
@@ -68,6 +72,12 @@ export async function answerKaelAssistant(
     );
   }
 
+  const memorySummary = await buildKaelL2L3MemorySummary(client, {
+    customerId: ctx.user.id,
+    jobId: input.job_id ?? null,
+    includeCustomer: true,
+    maxTotalTokens: 1000,
+  });
   const answer = await runCustomerAssistant({
     actorId: ctx.user.id,
     client,
@@ -85,6 +95,7 @@ export async function answerKaelAssistant(
       }
       : null,
     language: input.language,
+    memorySummary,
     message: input.message,
     secrets,
     surface: input.surface,

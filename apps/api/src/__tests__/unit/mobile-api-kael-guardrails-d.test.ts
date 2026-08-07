@@ -18,6 +18,7 @@ const repoRoot = join(__dirname, '../../../../../')
 
 type ForbiddenLanguageFile = {
   forbidden_phrases: Record<string, string[]>
+  conditional_rules?: Record<string, string>
 }
 
 const reasonByCharterCategory = {
@@ -55,11 +56,32 @@ describe('Kael Track D guardrails', () => {
         expect.arrayContaining(phrases.map((phrase) => phrase.toLowerCase())),
       )
       for (const phrase of phrases) {
-        expect(checkKaelResponse({ text: phrase, actor: 'customer' })).toMatchObject({
+        const text = category === 'ai_self_reference'
+          ? `${phrase} and I cannot help`
+          : phrase
+        expect(checkKaelResponse({ text, actor: 'customer' })).toMatchObject({
           allowed: false,
+          reason,
         })
       }
     }
+  })
+
+  it('allows truthful Kael introductions while keeping AI refusal hedges blocked', () => {
+    for (const [text, language] of [
+      ['Tôi là AI trợ lý của NestScout cho dịch vụ căn hộ.', 'vi'],
+      ['Tôi là Kael, trợ lý AI của NestScout.', 'vi'],
+      ['As an AI assistant for NestScout, I help with apartment services.', 'en'],
+      ["I'm Kael, NestScout's AI assistant for apartment services.", 'en'],
+    ] as const) {
+      expect(checkKaelResponse({ text, actor: 'customer', language })).toMatchObject({ allowed: true })
+    }
+    expect(checkKaelResponse({
+      text: 'As an AI, I cannot help', actor: 'customer', language: 'en',
+    })).toMatchObject({ allowed: false, reason: 'ai_self_reference' })
+    expect(checkKaelResponse({
+      text: 'Tôi là AI và không thể giúp', actor: 'customer', language: 'vi',
+    })).toMatchObject({ allowed: false, reason: 'ai_self_reference' })
   })
 
   it('D3 catches paraphrased risky output only when semantic guard is enabled', () => {

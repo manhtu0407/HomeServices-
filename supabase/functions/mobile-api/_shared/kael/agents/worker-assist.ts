@@ -71,6 +71,7 @@ export type WorkerAssistInput = {
   // in the user message and never becomes part of the system instruction.
   readonly visionFinding?: WorkerVisionFinding | null;
   readonly previousTurns?: readonly WorkerAssistPreviousTurn[];
+  readonly memorySummary?: string | null;
   readonly secrets: EdgeAiSecrets;
   readonly spendGate: KaelSpendGate;
   readonly callAI?: StructuredAIInvoker;
@@ -361,6 +362,7 @@ function buildWorkerAssistRequest(
             ? "Worker can receive general NestScout app, supported-service, skill, and safety guidance without customer or job-specific context. Never infer or expose another job. Worker cannot set price, scope, or lifecycle status."
             : "Worker can read only the accepted job context and receive advisory guidance. Worker cannot set price, approve/reject scope change, change lifecycle status, or move support off app.",
           contextSummary: buildWorkerAssistContext(input),
+          ...(input.memorySummary ? { memorySummary: input.memorySummary } : {}),
         }),
       },
       {

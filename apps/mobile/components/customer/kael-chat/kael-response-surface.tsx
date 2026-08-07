@@ -10,6 +10,7 @@ import {
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
+import { KaelFeedbackControls, KaelTrustDisclosure } from '@/components/kael/kael-feedback-controls'
 import { KaelLiquidReveal } from './kael-liquid-reveal'
 
 export function KaelResponseSurface({
@@ -54,6 +55,20 @@ export function KaelResponseSurface({
             />
           )
         })}
+        {state.status === 'completed' && state.responseId ? (
+          <>
+            <KaelTrustDisclosure
+              language={language}
+              testID={`${testID ?? 'customer-kael-response'}-disclosure`}
+            />
+            <KaelFeedbackControls
+              actor="customer"
+              language={language}
+              responseId={state.responseId}
+              testID={`${testID ?? 'customer-kael-response'}-feedback`}
+            />
+          </>
+        ) : null}
       </View>
     </View>
   )

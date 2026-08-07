@@ -94,6 +94,7 @@ export type CustomerAssistantInput = {
   readonly surface?: CustomerAssistantSurface;
   readonly job?: CustomerAssistantJobContext | null;
   readonly client?: AssistantClient | null;
+  readonly memorySummary?: string | null;
   readonly secrets: EdgeAiSecrets;
   readonly callAI?: StructuredAIInvoker;
 };
@@ -268,6 +269,7 @@ async function resolveCustomerAssistantProviders(
         topic,
         job: input.job ?? null,
         knowledgePrompt: knowledge?.promptContext ?? null,
+        memorySummary: input.memorySummary ?? null,
         registerHint,
       }),
       customerAssistantResponseSchema,
