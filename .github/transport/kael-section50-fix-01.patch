@@ -1,0 +1,58 @@
+diff --git a/apps/api/scripts/kael-model-health-runtime.ts b/apps/api/scripts/kael-model-health-runtime.ts
+index 2e28d6d..91c277e 100644
+--- a/apps/api/scripts/kael-model-health-runtime.ts
++++ b/apps/api/scripts/kael-model-health-runtime.ts
+@@ -26,7 +26,7 @@ for (const entry of inventory) {
+   const response = await callAI({
+     provider: entry.provider,
+     model: entry.model,
+-    purpose: entry.purposes[0],
++    purpose: entry.purposes[0] as Parameters<typeof callAI>[0]["purpose"],
+     messages: [{ role: 'user', content: 'Return a minimal health-check response.' }],
+     maxTokens: 4,
+     temperature: 0,
+diff --git a/supabase/functions/mobile-api/_shared/domains/admin/model-health.ts b/supabase/functions/mobile-api/_shared/domains/admin/model-health.ts
+index 62d7ab1..23f7263 100644
+--- a/supabase/functions/mobile-api/_shared/domains/admin/model-health.ts
++++ b/supabase/functions/mobile-api/_shared/domains/admin/model-health.ts
+@@ -51,7 +51,10 @@ export function getKaelModelHealth(ctx: MobileApiContext) {
+ 
+ function providerConfigured(provider: AIProvider): boolean {
+   try {
+-    return Boolean(Deno.env.get(PROVIDER_KEY_ENV[provider])?.trim());
++    const denoGet = (globalThis as {
++      Deno?: { env?: { get?: (key: string) => string | undefined } };
++    }).Deno?.env?.get;
++    return Boolean(denoGet?.(PROVIDER_KEY_ENV[provider])?.trim());
+   } catch {
+     return false;
+   }
+diff --git a/supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts b/supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts
+index dabd07e..70cc11a 100644
+--- a/supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts
++++ b/supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts
+@@ -156,7 +156,7 @@ async function prepareAiProviderCall(
+       });
+       void emitKaelOpsAlert({
+         code: "spend_cap_block", severity: "critical",
+-        provider: request.provider, purpose: request.purpose, scope: reservation.scope,
++        provider: request.provider, purpose: request.purpose, scope: reservation.scope ?? undefined,
+       });
+       return {
+         success: false,
+diff --git a/supabase/functions/mobile-api/_shared/kael/ops/alerts.ts b/supabase/functions/mobile-api/_shared/kael/ops/alerts.ts
+index 6aeb4ab..f83145c 100644
+--- a/supabase/functions/mobile-api/_shared/kael/ops/alerts.ts
++++ b/supabase/functions/mobile-api/_shared/kael/ops/alerts.ts
+@@ -93,7 +93,10 @@ export async function emitKaelOpsAlert(input: KaelOpsAlertInput): Promise<void>
+ 
+ function readWebhookUrl(): string | null {
+   try {
+-    const raw = Deno.env.get("KAEL_OPS_ALERT_WEBHOOK_URL")?.trim();
++    const denoGet = (globalThis as {
++      Deno?: { env?: { get?: (key: string) => string | undefined } };
++    }).Deno?.env?.get;
++    const raw = denoGet?.("KAEL_OPS_ALERT_WEBHOOK_URL")?.trim();
+     if (!raw) return null;
+     const url = new URL(raw);
+     if (url.protocol !== "https:") {
