@@ -107,6 +107,7 @@ export const kaelChatTurnSchema = z.object({
 export const kaelAssistantSchema = z.object({
   message: z.string().trim().min(1).max(2000),
   language: z.enum(["vi", "en"]).default("vi"),
+  service_type: serviceTypeSchema.optional(),
   job_id: z.string().uuid().optional(),
   surface: z.enum(["customer_normal", "customer_case"]).default("customer_normal"),
 }).strict().superRefine((input, ctx) => {
