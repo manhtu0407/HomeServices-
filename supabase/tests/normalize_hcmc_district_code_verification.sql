@@ -16,12 +16,12 @@ begin
     raise exception 'normalize_hcmc_district_code must be STABLE, got %', v_volatility;
   end if;
 
-  if public.normalize_hcmc_district_code('Quận 7') is distinct from 'q7' then
-    raise exception 'district normalization no longer recognizes Quận 7';
+  if public.normalize_hcmc_district_code(U&'Qu\1EADn 7') is distinct from 'q7' then
+    raise exception 'district normalization no longer recognizes Quan 7';
   end if;
 
-  if public.normalize_hcmc_district_code('Thành phố Thủ Đức') is distinct from 'thu_duc' then
-    raise exception 'district normalization no longer recognizes Thành phố Thủ Đức';
+  if public.normalize_hcmc_district_code(U&'Th\00E0nh ph\1ED1 Th\1EE7 \0110\1EE9c') is distinct from 'thu_duc' then
+    raise exception 'district normalization no longer recognizes Thanh pho Thu Duc';
   end if;
 
   if public.normalize_hcmc_district_code('unknown district') is not null then
