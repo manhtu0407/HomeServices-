@@ -113,7 +113,7 @@ export function attachDefaultJobMediaStorage<T extends object>(client: T) {
   })
 }
 
-export function makeQuery(call: QueryCall, results: QueryResult[]) {
+function makeQuery(call: QueryCall, results: QueryResult[]) {
   const query = {
     select(columns?: string, options?: unknown) {
       call.operations.push(options === undefined ? ['select', columns] : ['select', columns, options])
