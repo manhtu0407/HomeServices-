@@ -6,7 +6,7 @@
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
   "migrationCount": 217,
-  "migrationsSha256": "304e825fdb6a13fb92d44c7f54706541fdc3df8f71de59bfe8f6b527f2623ab4",
+  "migrationsSha256": "0280ca0ad0de2853596927979b6ece46fc2db05228fde866e2376acb8c5f4009",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
     "sha256": "b92d356bd8862c8c619c1484e34d278e682a41a1617b077bef0084188d969050"
@@ -1528,8 +1528,8 @@
       "version": "20260808140000",
       "name": "correct_normalize_hcmc_district_code_volatility",
       "file": "supabase/migrations/20260808140000_correct_normalize_hcmc_district_code_volatility.sql",
-      "sha256": "bd2f5a6de2cfe40803c8637d63bb81fb0b172711b581a530f9468126b3105e33",
-      "bytes": 221
+      "sha256": "f6fefd6d05acfefdb255f64281eeb110d28604d9c16414565b03136b19710961",
+      "bytes": 2528
     }
   ]
 }
