@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 217,
-    "migrationDigest": "79a10f006ccdb8e972e6dd797b259e48f1931be89ae0867606da7f164b8bc977"
+    "migrationCount": 222,
+    "migrationDigest": "774263d0723038a4797a091c41e7c14e719b8615280fb0fcf2f6f7ccc6342683"
   },
   "actors": [
     "anonymous",
@@ -2214,6 +2214,10 @@
     },
     {
       "name": "kael_cost_projection_daily",
+      "securityInvoker": true
+    },
+    {
+      "name": "kael_estimate_accuracy",
       "securityInvoker": true
     },
     {
