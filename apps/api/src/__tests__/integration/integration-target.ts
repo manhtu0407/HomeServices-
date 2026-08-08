@@ -27,7 +27,6 @@ const LOCAL_API_URL = HARNESS_LOCAL_URL
  * setup — and `assertNotLocalKeyAgainstRemote` makes it impossible to aim one at
  * a remote host.
  */
-const LOCAL_DEMO_ISSUER = 'supabase-demo'
 const LOCAL_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
 const LOCAL_SERVICE_ROLE_KEY =
@@ -69,7 +68,7 @@ function loadEnvFile(): Record<string, string> {
  * Throws when the configuration is dangerous, returns `ok: false` when it is
  * merely absent. Never returns a target the caller should not connect to.
  */
-export function resolveIntegrationTarget(label: string): TargetResolution {
+export function resolveIntegrationTarget(_label: string): TargetResolution {
   const envVars = loadEnvFile()
   const read = (key: string) => envVars[key] || process.env[key]
 
