@@ -271,11 +271,13 @@ async function flushLatestConversationList() {
   })
 }
 
+const VIRTUALIZED_LIST_UPDATE_DELAY_MS = 60
+
 async function settleKaelChatSurfaceUpdates() {
   await act(async () => {
     await Promise.resolve()
     await Promise.resolve()
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    await new Promise<void>((resolve) => setTimeout(resolve, VIRTUALIZED_LIST_UPDATE_DELAY_MS))
   })
 }
 
@@ -379,6 +381,10 @@ describe('active customer Kael chat surface wiring', () => {
         success: true,
       }
     })
+  })
+
+  afterEach(async () => {
+    await settleKaelChatSurfaceUpdates()
   })
 
   it('routes Customer Kael through the V21 surface instead of the deleted split stack', () => {
