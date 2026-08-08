@@ -36,6 +36,20 @@
     "harness:manifest:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/check-manifest.mjs",
     "harness:manifest:hash": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/hash-manifest.mjs",
     "harness:manifest:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 --test scripts/harness/check-manifest.test.mjs",
+    "harness:capabilities:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/capability-registry.mjs",
+    "harness:capabilities:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/capability-registry.mjs --write",
+    "harness:privileged:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/check-privileged-clients.mjs",
+    "harness:access:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/access-matrix.mjs",
+    "harness:access:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/access-matrix.mjs --write",
+    "harness:migrations:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/migration-inventory.mjs",
+    "harness:migrations:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/migration-inventory.mjs --write",
+    "harness:drift:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/deployment-drift.mjs",
+    "harness:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/release-bundle.mjs",
+    "harness:evaluate": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/evaluate-release.mjs",
+    "harness:reliability:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/reliability-registry.mjs",
+    "harness:reliability:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/reliability-registry.mjs --write",
+    "harness:promotion:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/promotion.mjs --check",
+    "harness:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/verify.mjs",
     "design:intelligence": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-intelligence.mjs",
     "design:direction": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-direction.mjs",
     "design:preflight": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-preflight.mjs",
@@ -63,5 +77,9 @@
     "react-doctor": "0.5.8",
     "turbo": "^2"
   },
-  "workspaces": ["apps/*", "packages/*", "sandbox/*"]
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "sandbox/*"
+  ]
 }

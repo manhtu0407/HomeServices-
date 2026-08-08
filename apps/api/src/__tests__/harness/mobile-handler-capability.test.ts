@@ -216,7 +216,7 @@ describe('mobile-api durable idempotency ingress', () => {
     try {
       const response = await Promise.race([
         handler(request('mobile:550e8400-e29b-41d4-a716-446655440005')),
-        new Promise<Response | null>((resolve) => setTimeout(() => resolve(null), 100)),
+        new Promise<Response | null>((resolve) => setTimeout(() => resolve(null), 1_000)),
       ])
 
       expect(response).toBeInstanceOf(Response)

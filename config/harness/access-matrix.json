@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 215,
-    "migrationDigest": "002a9e83347d82d3fee2451bc232ebb5822baf545c45d82863d39a8c850ebda9"
+    "migrationCount": 217,
+    "migrationDigest": "79a10f006ccdb8e972e6dd797b259e48f1931be89ae0867606da7f164b8bc977"
   },
   "actors": [
     "anonymous",
@@ -421,7 +421,79 @@
       "realtime": false
     },
     {
+      "name": "harness_kill_switch_events",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_kill_switches",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "harness_privileged_operations",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_promotion_events",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_promotions",
       "classification": "actor-scoped",
       "rlsEnabled": true,
       "actorCommands": {
@@ -494,6 +566,24 @@
     },
     {
       "name": "harness_runs",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_slo_observations",
       "classification": "actor-scoped",
       "rlsEnabled": true,
       "actorCommands": {
@@ -2703,7 +2793,7 @@
       ]
     },
     {
-      "signature": "get_worker_earnings_summary(uuid, timestamp with time zone, timestamp with time zone)",
+      "signature": "get_worker_earnings_summary(uuid, timestamp with time zone, timestamp with time zone, numeric)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2839,6 +2929,14 @@
       ]
     },
     {
+      "signature": "read_harness_kill_switch(text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "record_circuit_failure(text, text, text, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2872,6 +2970,14 @@
     },
     {
       "signature": "record_harness_privileged_operation(uuid, uuid, uuid, text, text, text, text, text, text, text, text, text, text, text, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_harness_slo_observation(text, text, text, timestamp with time zone, timestamp with time zone, numeric, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3167,6 +3273,14 @@
       ]
     },
     {
+      "signature": "set_harness_kill_switch(text, text, boolean, text, text, uuid, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "set_worker_availability_atomic(uuid, boolean)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -3201,6 +3315,14 @@
     {
       "signature": "submit_worker_registration_atomic(uuid, uuid, text, date, text, service_type[], integer, text[], numeric, numeric, integer, text[], text, text, text, text, text)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "transition_harness_promotion(text, text, text, text, text, uuid, text, text, uuid, text, jsonb)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"

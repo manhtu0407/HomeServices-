@@ -58,6 +58,30 @@ insert into public.worker_profiles (
   false,
   'Aggregate QA Worker',
   '1990-01-01'
+), (
+  'a3100000-0000-4000-8000-000000000004',
+  array['plumbing']::public.service_type[],
+  array['q7'],
+  true,
+  true,
+  4.8,
+  3,
+  'approved',
+  false,
+  'Timezone Aggregate Worker',
+  '1990-01-01'
+), (
+  'a3100000-0000-4000-8000-000000000003',
+  array['plumbing']::public.service_type[],
+  array['q7'],
+  false,
+  false,
+  0,
+  0,
+  'draft',
+  false,
+  'Aggregate Outsider',
+  '1990-01-01'
 )
 on conflict (id) do update
 set service_types = excluded.service_types,
@@ -120,6 +144,28 @@ select
   'AGG-N-' || lpad(series::text, 4, '0')
 from generate_series(1, 17) as series;
 
+insert into public.worker_payment_ledger (
+  job_id, worker_id, payment_provider, payment_state,
+  gross_amount, platform_fee, worker_net, commission_level,
+  commission_rate_bps, available_at, created_at, updated_at
+)
+select
+  job.id,
+  job.worker_id,
+  'sepay_vietqr',
+  case when job.status = 'paid'::public.job_status then 'available' else 'pending' end,
+  case when job.status = 'paid'::public.job_status then job.gross_amount else job.final_price end,
+  case when job.status = 'paid'::public.job_status then job.platform_fee else 0 end,
+  case when job.status = 'paid'::public.job_status then job.worker_net else job.final_price end,
+  1,
+  1500,
+  case when job.status = 'paid'::public.job_status then job.paid_at else null end,
+  job.created_at,
+  job.created_at
+from public.jobs as job
+where job.description like 'Exact aggregate paid fixture %'
+   or job.description like 'Exact aggregate pending fixture %';
+
 insert into public.jobs (
   id, customer_id, worker_id, service_type, description, status,
   final_price, gross_amount, platform_fee, worker_net, created_at, paid_at,
@@ -149,6 +195,27 @@ insert into public.jobs (
     300000, 300000, 30000, 270000,
     '2026-07-10T16:59:59Z', '2026-07-10T16:59:59Z', 'AGG-TZ-0003'
   );
+
+insert into public.worker_payment_ledger (
+  job_id, worker_id, payment_provider, payment_state,
+  gross_amount, platform_fee, worker_net, commission_level,
+  commission_rate_bps, available_at, created_at, updated_at
+)
+select
+  job.id,
+  job.worker_id,
+  'sepay_vietqr',
+  'available',
+  job.gross_amount,
+  job.platform_fee,
+  job.worker_net,
+  1,
+  1500,
+  job.paid_at,
+  job.created_at,
+  job.created_at
+from public.jobs as job
+where job.description like 'Timezone aggregate %';
 
 insert into public.reviews (id, job_id, customer_id, worker_id, rating, tags, created_at)
 select
