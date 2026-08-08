@@ -104,3 +104,12 @@ export type KaelLearningCandidateRejectResponse = {
   candidate_id: string
   status: string
 }
+
+export type KaelPublicCharterPayload = {
+  charter_version: string
+  identity_summary: string
+  locked_files: readonly string[]
+  tunable_files: readonly string[]
+  forbidden_categories: readonly string[]
+  mission_values: readonly string[]
+}

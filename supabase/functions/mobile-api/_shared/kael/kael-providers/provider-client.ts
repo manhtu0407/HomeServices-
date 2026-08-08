@@ -19,6 +19,7 @@ import {
   reserveAiSpend,
 } from "../kael-guardrails/spend-gate.ts";
 import { readResponseTextBounded } from "../../../../_shared/network.ts";
+import { emitKaelOpsAlert } from "../ops/alerts.ts";
 
 const AI_PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
@@ -58,6 +59,10 @@ async function prepareAiProviderCall(
       provider: request.provider,
       purpose: request.purpose,
     });
+    void emitKaelOpsAlert({
+      code: "kill_switch_block", severity: "critical",
+      provider: request.provider, purpose: request.purpose,
+    });
     return {
       success: false,
       provider: request.provider,
@@ -80,6 +85,10 @@ async function prepareAiProviderCall(
     console.warn("AI call blocked by open provider circuit", {
       provider: request.provider,
       purpose: request.purpose,
+    });
+    void emitKaelOpsAlert({
+      code: "circuit_breaker_open", severity: "warning",
+      provider: request.provider, purpose: request.purpose,
     });
     return {
       success: false,
@@ -144,6 +153,10 @@ async function prepareAiProviderCall(
         provider: request.provider,
         purpose: request.purpose,
         scope: reservation.scope,
+      });
+      void emitKaelOpsAlert({
+        code: "spend_cap_reached", severity: "critical",
+        provider: request.provider, purpose: request.purpose, scope: reservation.scope ?? undefined,
       });
       return {
         success: false,
@@ -398,7 +411,10 @@ function isProviderTimeout(error: unknown): boolean {
 }
 
 class ProviderHttpError extends Error {
-  constructor(public readonly status: number) {
+  readonly status: number;
+
+  constructor(status: number) {
     super(`HTTP ${status}`);
+    this.status = status;
   }
 }

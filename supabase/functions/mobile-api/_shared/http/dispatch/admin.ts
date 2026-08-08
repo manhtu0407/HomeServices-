@@ -10,6 +10,14 @@ import {
   marketCacheInvalidateInput,
 } from "../dto/admin.ts";
 import type { MobileApiContext, MobileApiServices } from "../contracts.ts";
+import {
+  listKaelAdminQueue,
+  parseKaelAdminQueueListInput,
+  parseKaelAdminQueueResolveInput,
+  resolveKaelAdminQueue,
+} from "../../domains/admin/queue.ts";
+import { getKaelModelHealth } from "../../domains/admin/model-health.ts";
+import { listKaelEstimateAccuracy, parseKaelEstimateAccuracyInput } from "../../domains/admin/estimate-accuracy.ts";
 import { assertNever, type AdminDispatchRoute } from "./kinds.ts";
 
 export async function dispatchAdminRoute(
@@ -60,6 +68,21 @@ export async function dispatchAdminRoute(
         ctx,
         route.candidateId,
         kaelLearningCandidateReviewInput(await readJson(request), "reject"),
+      );
+    case "admin.kaelModelHealth.get":
+      return getKaelModelHealth(ctx);
+    case "admin.kaelEstimateAccuracy.list":
+      return listKaelEstimateAccuracy(ctx, parseKaelEstimateAccuracyInput(new URL(request.url)));
+    case "admin.kaelQueue.list":
+      return listKaelAdminQueue(
+        ctx,
+        parseKaelAdminQueueListInput(new URL(request.url)),
+      );
+    case "admin.kaelQueue.resolve":
+      return resolveKaelAdminQueue(
+        ctx,
+        route.queueId,
+        parseKaelAdminQueueResolveInput(await readJson(request)),
       );
   }
   return assertNever(route);

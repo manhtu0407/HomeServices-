@@ -31,9 +31,9 @@ export function KaelLiquidStatusTransition({
 
   return (
     <Animated.View
+      key={transitionKey}
       {...props}
       entering={entering}
-      key={transitionKey}
       style={style}
     />
   )

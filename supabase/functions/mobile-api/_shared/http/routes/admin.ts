@@ -7,6 +7,15 @@ export type AdminRoute =
   | { kind: "admin.kaelLearning.processBatchResults"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelLearning.monitorRules"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelLearning.candidates.list"; method: "GET"; roles: UserRole[] }
+  | { kind: "admin.kaelQueue.list"; method: "GET"; roles: UserRole[] }
+  | { kind: "admin.kaelModelHealth.get"; method: "GET"; roles: UserRole[] }
+  | { kind: "admin.kaelEstimateAccuracy.list"; method: "GET"; roles: UserRole[] }
+  | {
+    kind: "admin.kaelQueue.resolve";
+    method: "POST";
+    queueId: string;
+    roles: UserRole[];
+  }
   | {
     kind: "admin.kaelLearning.candidates.approve";
     method: "POST";
@@ -68,6 +77,38 @@ export function matchAdminRoute(
     return {
       kind: "admin.kaelLearning.candidates.list",
       method: "GET",
+      roles: ["admin"],
+    };
+  }
+  if (method === "GET" && path === "/admin/kael-model-health") {
+    return {
+      kind: "admin.kaelModelHealth.get",
+      method: "GET",
+      roles: ["admin"],
+    };
+  }
+  if (method === "GET" && path === "/admin/kael-estimate-accuracy") {
+    return {
+      kind: "admin.kaelEstimateAccuracy.list",
+      method: "GET",
+      roles: ["admin"],
+    };
+  }
+  if (method === "GET" && path === "/admin/kael-queue") {
+    return {
+      kind: "admin.kaelQueue.list",
+      method: "GET",
+      roles: ["admin"],
+    };
+  }
+  const queueResolve = path.match(/^\/admin\/kael-queue\/([^/]+)\/resolve$/);
+  if (queueResolve && method === "POST") {
+    const queueId = decodeSegment(queueResolve[1] ?? "");
+    if (!queueId) return null;
+    return {
+      kind: "admin.kaelQueue.resolve",
+      method: "POST",
+      queueId,
       roles: ["admin"],
     };
   }
