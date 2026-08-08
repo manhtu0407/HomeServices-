@@ -16,6 +16,7 @@ describe('Kael agentic completeness migrations', () => {
 
   it('creates a service-by-complexity monthly accuracy view from final prices', () => {
     const sql = read('supabase/migrations/20260807091000_kael_estimate_accuracy.sql')
+    const hardening = read('supabase/migrations/20260808131000_harden_kael_estimate_accuracy_view.sql')
     expect(sql).toContain('create or replace view public.kael_estimate_accuracy')
     expect(sql).toContain("percentile_cont(0.5)")
     expect(sql).toContain("percentile_cont(0.9)")
@@ -26,6 +27,10 @@ describe('Kael agentic completeness migrations', () => {
     expect(sql).toContain('j.kael_price_min')
     expect(sql).toContain('j.kael_price_max')
     expect(sql).toContain('grant select on public.kael_estimate_accuracy to service_role')
+    expect(hardening).toContain('alter view public.kael_estimate_accuracy')
+    expect(hardening).toContain('security_invoker = true')
+    expect(hardening).toContain('revoke all on public.kael_estimate_accuracy from authenticated')
+    expect(hardening).toContain('grant select on public.kael_estimate_accuracy to service_role')
   })
 
   it('adds durable queue resolution metadata and a 90-day api_logs cleanup cron', () => {
