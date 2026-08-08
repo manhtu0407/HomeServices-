@@ -312,12 +312,12 @@ declare
   earnings record;
   timezone_earnings record;
   customer_insights record;
-  invalid_fee_rejected boolean := false;
+  invalid_worker_rejected boolean := false;
   worker_insights record;
 begin
   if has_function_privilege(
     'authenticated',
-    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz,numeric)'),
+    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz)'),
     'execute'
   ) then
     raise exception 'authenticated must not execute the earnings aggregate RPC';
@@ -338,28 +338,26 @@ begin
   end if;
   if not has_function_privilege(
     'service_role',
-    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz,numeric)'),
+    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz)'),
     'execute'
   ) then
     raise exception 'service_role must execute the aggregate RPCs';
   end if;
 
   begin
-    perform public.get_worker_earnings_summary(
-      'a3100000-0000-4000-8000-000000000002', null, null, null
-    );
+    perform public.get_worker_earnings_summary(null, null, null);
   exception
     when sqlstate '22023' then
-      invalid_fee_rejected := true;
+      invalid_worker_rejected := true;
   end;
 
-  if invalid_fee_rejected is not true then
-    raise exception 'null platform fee rate was accepted';
+  if invalid_worker_rejected is not true then
+    raise exception 'null worker id was accepted';
   end if;
 
   select * into strict earnings
   from public.get_worker_earnings_summary(
-    'a3100000-0000-4000-8000-000000000002', null, null, 0.10
+    'a3100000-0000-4000-8000-000000000002', null, null
   );
   if earnings.total_jobs_paid <> 1205
     or earnings.gross_earnings <> 108450000
@@ -372,7 +370,7 @@ begin
 
   select * into strict timezone_earnings
   from public.get_worker_earnings_summary(
-    'a3100000-0000-4000-8000-000000000004', null, null, 0.10
+    'a3100000-0000-4000-8000-000000000004', null, null
   );
   if timezone_earnings.daily_earnings <> '[
     {
@@ -397,8 +395,7 @@ begin
   from public.get_worker_earnings_summary(
     'a3100000-0000-4000-8000-000000000002',
     '2026-07-11T00:00:00Z',
-    '2026-07-11T23:59:59Z',
-    0.10
+    '2026-07-11T23:59:59Z'
   );
   if earnings.total_jobs_paid <> 0
     or earnings.pending_payment_count <> 17
@@ -459,7 +456,7 @@ begin
 
   select * into strict earnings
   from public.get_worker_earnings_summary(
-    'a3100000-0000-4000-8000-000000000003', null, null, 0.10
+    'a3100000-0000-4000-8000-000000000003', null, null
   );
   if earnings.total_jobs_paid <> 0 or earnings.pending_payment_count <> 0 then
     raise exception 'aggregate RPC leaked another actor history: %', row_to_json(earnings);
