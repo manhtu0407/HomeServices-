@@ -31,7 +31,13 @@ export type SpendReservation = {
 // users are never blocked; globalDaily is the wallet-DoS ceiling (consumes the
 // previously-declared-but-never-used dailyProviderCapUsd). The kill-switch is the
 // manual emergency brake, independent of these caps.
-export const KAEL_AI_SPEND_CAPS = Object.freeze({
+export type KaelAiSpendCaps = Readonly<{
+  globalDailyUsd: number;
+  userDailyUsd: number;
+  userMonthlyUsd: number;
+}>;
+
+export const KAEL_AI_SPEND_CAP_DEFAULTS: KaelAiSpendCaps = Object.freeze({
   globalDailyUsd: 30,
   userDailyUsd: 1,
   userMonthlyUsd: 5,
@@ -50,6 +56,33 @@ function readRuntimeEnv(name: string): string | undefined {
     Deno?: { env?: { get?: (key: string) => string | undefined } };
   }).Deno?.env?.get;
   return denoGet?.(name);
+}
+
+export function readKaelAiSpendCaps(
+  getEnv: (name: string) => string | undefined = readRuntimeEnv,
+): KaelAiSpendCaps {
+  return Object.freeze({
+    globalDailyUsd: positiveUsd(
+      getEnv("KAEL_AI_GLOBAL_DAILY_CAP_USD"),
+      KAEL_AI_SPEND_CAP_DEFAULTS.globalDailyUsd,
+    ),
+    userDailyUsd: positiveUsd(
+      getEnv("KAEL_AI_USER_DAILY_CAP_USD"),
+      KAEL_AI_SPEND_CAP_DEFAULTS.userDailyUsd,
+    ),
+    userMonthlyUsd: positiveUsd(
+      getEnv("KAEL_AI_USER_MONTHLY_CAP_USD"),
+      KAEL_AI_SPEND_CAP_DEFAULTS.userMonthlyUsd,
+    ),
+  });
+}
+
+function positiveUsd(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  console.warn("invalid Kael spend cap; using safe default");
+  return fallback;
 }
 
 function readBoolean(value: string | undefined): boolean {
@@ -89,13 +122,14 @@ export async function reserveAiSpend(
     console.warn("kael_ai_spend reserve skipped: no rpc client (fail-open)");
     return { allowed: true, scope: "no_rpc_fail_open", reservationId: null };
   }
+  const caps = readKaelAiSpendCaps();
   const rpcCall = client.rpc("reserve_kael_ai_spend", {
     p_actor_id: args.actorId,
     p_estimated_usd: Math.max(args.estimatedCostUsd ?? 0, 0),
     p_purpose: args.purpose ?? "reserved",
-    p_global_daily_cap: KAEL_AI_SPEND_CAPS.globalDailyUsd,
-    p_user_daily_cap: KAEL_AI_SPEND_CAPS.userDailyUsd,
-    p_user_monthly_cap: KAEL_AI_SPEND_CAPS.userMonthlyUsd,
+    p_global_daily_cap: caps.globalDailyUsd,
+    p_user_daily_cap: caps.userDailyUsd,
+    p_user_monthly_cap: caps.userMonthlyUsd,
   });
   try {
     const { data, error } = await withTimeout(
