@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 211,
-  "migrationsSha256": "cc07f3aee13cf995f7f4142476957aef6871f420d4fa58e2dc801ea20fcbdae7",
+  "migrationCount": 210,
+  "migrationsSha256": "95a34c8f46792fae54308f217969bd26f70022b20bdf4717a99d873ad5a7641c",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
     "sha256": "9480845aeb5fb81820e95ec0e0a4284c1e5fd1c6162da14e901ca74aa2de1a81"
@@ -1481,13 +1481,6 @@
       "file": "supabase/migrations/20260806120000_harness_access_boundary_hardening.sql",
       "sha256": "9ccfed58fcd4c66a051eed47fa3479cb5c79319624c96e047d54fb8f9b9e49fb",
       "bytes": 712
-    },
-    {
-      "version": "20260808130000",
-      "name": "harness_sql_lint_and_aggregate_fixes",
-      "file": "supabase/migrations/20260808130000_harness_sql_lint_and_aggregate_fixes.sql",
-      "sha256": "24ec0870919e36ad42a8dafcdf15921e20d7b3f4c66a716fa262e7e64f3e5048",
-      "bytes": 43136
     }
   ]
 }
