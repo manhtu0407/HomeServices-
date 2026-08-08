@@ -2,7 +2,14 @@ const mockSecureGet = jest.fn()
 const mockSecureSet = jest.fn()
 const mockSecureDelete = jest.fn()
 const mockFetch = jest.fn()
-const originalFetch = global.fetch
+
+// Expo's native fetch getter is unavailable in jest-expo. Install the test
+// double before the module under test can resolve that native boundary.
+Object.defineProperty(globalThis, 'fetch', {
+  configurable: true,
+  value: mockFetch as typeof fetch,
+  writable: true,
+})
 
 jest.mock('expo-secure-store', () => ({
   deleteItemAsync: (...args: unknown[]) => mockSecureDelete(...args),
@@ -30,11 +37,6 @@ describe('native Supabase auth storage', () => {
     mockSecureSet.mockReset()
     mockSecureDelete.mockReset()
     mockFetch.mockReset()
-    global.fetch = mockFetch as typeof fetch
-  })
-
-  afterAll(() => {
-    global.fetch = originalFetch
   })
 
   it('uses PKCE so a native callback code is bound to the initiating device', () => {

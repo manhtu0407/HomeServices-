@@ -3,6 +3,7 @@ import {
   type ProviderRoute,
 } from "../kael-providers/routing.config.ts";
 import type { AIProvider, KaelPurpose } from "../contracts/types.ts";
+import { emitKaelOpsAlert } from "../ops/alerts.ts";
 
 export type KaelEscalationReason =
   | "low_confidence"
@@ -52,6 +53,13 @@ export function logKaelEscalation(
     purpose,
     provider: escalation.route.provider,
     model: escalation.route.model,
+    reason: escalation.reason,
+  });
+  void emitKaelOpsAlert({
+    code: "model_escalation",
+    severity: escalation.reason === "high_stakes" ? "warning" : "info",
+    provider: escalation.route.provider,
+    purpose,
     reason: escalation.reason,
   });
 }

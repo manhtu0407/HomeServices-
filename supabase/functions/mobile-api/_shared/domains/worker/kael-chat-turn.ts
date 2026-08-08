@@ -6,6 +6,7 @@ import { requireJobAccess } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import {
+  buildKaelL2L3MemorySummary,
   buildWorkerKaelSessionTitle,
   runWorkerAssist,
   scrubSensitiveForLLM,
@@ -161,6 +162,11 @@ async function runWorkerKaelAssistant(input: {
   const needsInitialTitle = asNumber(input.session.total_turns) === 0 && !nullableString(input.session.title);
   const recentTurns = await readWorkerKaelRecentTurns(input.client, input.sessionId);
   const workerVisionFinding = await findWorkerKaelVision(input);
+  const memorySummary = await buildKaelL2L3MemorySummary(input.client, {
+    jobId: input.sessionJobId,
+    includeCustomer: false,
+    maxTotalTokens: 500,
+  });
   try {
     const answer = await runWorkerAssist({
       conversationMode: input.sessionMode,
@@ -177,7 +183,7 @@ async function runWorkerKaelAssistant(input: {
         : null,
       question: input.safeMessage, language: input.input.language, mediaRefs: input.input.media_refs,
       visionFinding: workerVisionFinding, previousTurns: recentTurns,
-      secrets: input.secrets, spendGate: input.spendGate,
+      memorySummary, secrets: input.secrets, spendGate: input.spendGate,
     });
     return { answer, needsInitialTitle };
   } catch (error) {

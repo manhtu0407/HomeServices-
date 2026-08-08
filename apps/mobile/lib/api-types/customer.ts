@@ -51,6 +51,12 @@ export type CustomerKaelConversationListResponse = {
   sessions: CustomerKaelConversationSession[]
 }
 
+export type CustomerKaelFeedbackResponse = {
+  feedback_id: string
+  status: 'new'
+  created_at: string
+}
+
 export type CustomerKaelConversationArchiveResponse = {
   session_id: string
   archived_at: string

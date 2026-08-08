@@ -282,6 +282,49 @@ describe('Kael agentic estimate display model', () => {
     expect(scopeRow?.detail).not.toContain('Phạm vi và bằng chứng đã xác nhận')
   })
 
+  it('keeps the first evidence finding when duplicate receipt indices are returned', () => {
+    const supportedEstimate = {
+      ...estimate,
+      analysis_receipt: {
+        schema_version: 'analysis_receipt.v1' as const,
+        evidence: {
+          findings: [
+            {
+              confidence: 'high' as const,
+              evidence_index: 1,
+              evidence_kind: 'photo' as const,
+              observation: 'First observation is retained.',
+              possible_meaning: null,
+            },
+            {
+              confidence: 'low' as const,
+              evidence_index: 1,
+              evidence_kind: 'photo' as const,
+              observation: 'Duplicate observation is ignored.',
+              possible_meaning: null,
+            },
+          ],
+          photo_count: 1,
+          skipped: false,
+          video_frame_count: 0,
+          voice_transcript_count: 0,
+        },
+        market: {
+          accepted_source_count: 0,
+          high_trust_source_count: 0,
+          quorum_met: false,
+        },
+      },
+      price_source: 'baseline_only' as const,
+    }
+
+    const detail = agenticEstimateSupportingPhase(supportedEstimate, 'vi')
+      ?.rows.find((row) => row.key === 'evidence-photo-1')?.detail
+
+    expect(detail).toContain('First observation is retained.')
+    expect(detail).not.toContain('Duplicate observation is ignored.')
+  })
+
   it('separates inline additional information returned by the runtime', () => {
     const supportedEstimate = {
       ...estimate,
