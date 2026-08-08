@@ -8,11 +8,11 @@ function readCharter(file: string) {
   return readFileSync(resolve(CHARTER_ROOT, file), 'utf-8')
 }
 
-describe('Kael P10 charter source files', () => {
+describe('Kael P11 charter source files', () => {
   it('tracks the charter version in the version.json manifest', () => {
     const manifest = readCharter('version.json')
-    expect(manifest).toContain('"charter_version": "2026-08-01.p10"')
-    expect(manifest).toContain('"last_modified": "2026-08-01"')
+    expect(manifest).toContain('"charter_version": "2026-08-06.p11"')
+    expect(manifest).toContain('"last_modified": "2026-08-06"')
   })
 
   it('records the locked charter files and lock policy in the manifest', () => {
@@ -61,11 +61,13 @@ describe('Kael P10 charter source files', () => {
     const parsed = JSON.parse(readCharter('forbidden-language.json')) as {
       forbidden_phrases: Record<string, string[]>
       forbidden_patterns: string[]
+      conditional_rules: Record<string, string>
     }
 
     expect(parsed.forbidden_phrases.fear_language).toContain('nguy hiem chet nguoi')
     expect(parsed.forbidden_phrases.ai_self_reference).toContain('As an AI')
     expect(parsed.forbidden_phrases.accusatory_in_dispute).toContain('Ban dang lua Kael')
     expect(parsed.forbidden_patterns).toContain('\\b\\d{1,3}(?:[.,]\\d{3})*\\s*(?:VND|d|dong)\\b')
+    expect(parsed.conditional_rules.ai_self_reference).toContain('truthful')
   })
 })

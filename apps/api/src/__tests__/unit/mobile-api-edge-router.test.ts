@@ -32,7 +32,7 @@ const adminAuth: MobileApiAuthResult = {
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
     getKaelCharter: vi.fn(async () => ({
-      charter_version: '2026-08-01.p10',
+      charter_version: '2026-08-06.p11',
       identity_summary: 'Kael is the Home Services assistant.',
       locked_files: ['identity.md', 'persona.md', 'mission-values.md'],
       tunable_files: ['tone-matrix.yaml', 'language-rules.md', 'forbidden-language.json', 'style-guidelines.md'],

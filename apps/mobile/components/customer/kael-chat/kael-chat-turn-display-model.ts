@@ -62,11 +62,12 @@ export function customerVisibleIntakeSummaryText(
   const structuredRows = splitStructuredIntakeRows(visibleText, labels)
   if (!structuredRows) return visibleText
 
-  return repairLegacyIntakeSchedule(structuredRows.join('\n'), language)
-    .split(/\r?\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join('\n\n')
+  const displayRows: string[] = []
+  for (const row of repairLegacyIntakeSchedule(structuredRows.join('\n'), language).split(/\r?\n+/)) {
+    const trimmed = row.trim()
+    if (trimmed) displayRows.push(trimmed)
+  }
+  return displayRows.join('\n\n')
 }
 
 export function customerVisibleCaseRequestText(

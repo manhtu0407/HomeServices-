@@ -1,7 +1,7 @@
 // Single-source the project skills. Canonical = .claude/skills; mirror = .agents/skills.
 // Claude Code reads .claude/skills, Codex reads .agents/skills. Edit ONLY .claude/skills,
 // then run `pnpm skills:sync`. `pnpm skills:check` fails CI if the two drift.
-import { cpSync, existsSync, renameSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, lstatSync, readdirSync, realpathSync, renameSync, rmSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,7 +24,13 @@ export function syncSkills(source, destination, operations = {}) {
   let installed = false
 
   try {
-    copy(source, staging, { recursive: true, dereference: true, errorOnExist: true, force: false })
+    copy(source, staging, {
+      recursive: true,
+      dereference: false,
+      errorOnExist: true,
+      force: false,
+    })
+    materializeCopiedLinks(staging, copy, remove)
     if (exists(destination)) {
       rename(destination, backup)
       previousMoved = true
@@ -48,6 +54,25 @@ export function syncSkills(source, destination, operations = {}) {
     if (!installed && previousMoved && exists(backup) && !exists(destination)) {
       rename(backup, destination)
     }
+  }
+}
+
+function materializeCopiedLinks(root, copy, remove) {
+  for (const entry of readdirSync(root)) {
+    const path = resolve(root, entry)
+    const stat = lstatSync(path)
+    if (stat.isSymbolicLink()) {
+      const target = realpathSync(path)
+      remove(path, { recursive: true, force: true })
+      copy(target, path, {
+        recursive: true,
+        dereference: true,
+        errorOnExist: true,
+        force: false,
+      })
+      continue
+    }
+    if (stat.isDirectory()) materializeCopiedLinks(path, copy, remove)
   }
 }
 

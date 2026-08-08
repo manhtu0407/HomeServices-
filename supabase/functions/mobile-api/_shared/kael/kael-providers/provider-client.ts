@@ -30,6 +30,7 @@ import {
   type HarnessKillSwitch,
   type HarnessPromotionClient,
 } from "../../../../_shared/harness/promotion.ts";
+import { emitKaelOpsAlert } from "../ops/alerts.ts";
 
 const AI_PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
@@ -160,6 +161,12 @@ async function providerCallBlocker(
       provider: request.provider,
       purpose: request.purpose,
     });
+    void emitKaelOpsAlert({
+      code: "kill_switch_block",
+      severity: "critical",
+      provider: request.provider,
+      purpose: request.purpose,
+    });
     await recordHarnessEvent(secrets.harnessTrace, {
       eventId: providerAttemptId,
       eventClass: "provider.call",
@@ -188,6 +195,12 @@ async function providerCallBlocker(
     : false;
   if (!circuitOpen) return null;
   console.warn("AI call blocked by open provider circuit", {
+    provider: request.provider,
+    purpose: request.purpose,
+  });
+  void emitKaelOpsAlert({
+    code: "circuit_breaker_open",
+    severity: "warning",
     provider: request.provider,
     purpose: request.purpose,
   });
@@ -256,6 +269,13 @@ async function reserveProviderSpend(
     purpose: request.purpose,
     scope: reservation.scope,
   });
+  void emitKaelOpsAlert({
+    code: "spend_cap_reached",
+    severity: "critical",
+    provider: request.provider,
+    purpose: request.purpose,
+    scope: reservation.scope ?? undefined,
+  });
   await recordHarnessEvent(secrets.harnessTrace, {
     eventId: providerAttemptId,
     eventClass: "provider.call",
@@ -308,6 +328,12 @@ async function executePreparedAiProviderCall(
     environment: prepared.environment,
   });
   if (!permit.allowed) {
+    void emitKaelOpsAlert({
+      code: "circuit_breaker_open",
+      severity: "warning",
+      provider: request.provider,
+      purpose: request.purpose,
+    });
     await recordHarnessEvent(secrets.harnessTrace, {
       eventId: prepared.providerAttemptId,
       eventClass: "provider.call",
@@ -651,7 +677,10 @@ function isProviderTimeout(error: unknown): boolean {
 }
 
 class ProviderHttpError extends Error {
-  constructor(public readonly status: number) {
+  readonly status: number;
+
+  constructor(status: number) {
     super(`HTTP ${status}`);
+    this.status = status;
   }
 }

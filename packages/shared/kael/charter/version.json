@@ -1,8 +1,8 @@
 {
-  "charter_version": "2026-08-01.p10",
+  "charter_version": "2026-08-06.p11",
   "created_at": "2026-05-25",
-  "last_modified": "2026-08-01",
-  "source": "P10: bounded service-adjacent guidance; base Plan.md 39 KC6 (p9)",
+  "last_modified": "2026-08-06",
+  "source": "P11: truthful AI introduction without refusal hedging; base P10 bounded service-adjacent guidance",
   "locked_files": [
     "identity.md",
     "persona.md",
