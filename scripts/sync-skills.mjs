@@ -24,7 +24,7 @@ export function syncSkills(source, destination, operations = {}) {
   let installed = false
 
   try {
-    copy(source, staging, { recursive: true, errorOnExist: true, force: false })
+    copy(source, staging, { recursive: true, dereference: true, errorOnExist: true, force: false })
     if (exists(destination)) {
       rename(destination, backup)
       previousMoved = true

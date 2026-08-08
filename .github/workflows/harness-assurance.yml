@@ -99,7 +99,9 @@ jobs:
           NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: ./docker/scripts/run-sql-tests.ps1 -StopOnFirstFailure
       - name: Generate database types from replayed schema
-        run: pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
+        run: |
+          pnpm --filter @nestscout/api exec supabase gen types typescript --local > /tmp/database.types.ts
+          node -e "const fs = require('node:fs'); const path = '/tmp/database.types.ts'; const text = fs.readFileSync(path, 'utf8'); fs.writeFileSync(path, text.replace(/\\n+$/u, '\\n'))"
       - name: Upload generated database types
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
