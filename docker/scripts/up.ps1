@@ -20,7 +20,7 @@ $repoRoot = (Resolve-Path (Join-Path $here "..\..")).Path
 # silently ignoring them, which is the behavior we want if a name is stale.
 $leanExclude = @(
   "studio",
-  "inbucket",
+  "mailpit",
   "realtime",
   "imgproxy",
   "vector",
