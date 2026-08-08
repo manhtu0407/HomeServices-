@@ -10,10 +10,8 @@ import {
 } from 'react-native'
 import { type LocalDeal } from '@nestscout/shared'
 
-import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
+import type { AppLanguage } from '@/lib/app-language'
 
-import { textByLanguage } from '../ui/format'
-import { routeDestinationLabel } from '../ui/labels'
 import { buildWorkerV5AcceptEtaSignal } from '../ui/route'
 import type { WorkerV5AcceptCheck } from './acceptance'
 import { styles } from './acceptance-styles'

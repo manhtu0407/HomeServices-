@@ -126,6 +126,7 @@ const FORBIDDEN_PHRASES: Record<Exclude<KaelSelfCheckReason, "empty" | "exact_vn
 export const KAEL_SELF_CHECK_FORBIDDEN_PHRASES = FORBIDDEN_PHRASES;
 
 const EXACT_VND_PATTERN = /\b\d+(?:[.,]\d+)*\s*(?:vnd|dong)\b|\b\d{1,3}(?:[.,]\d{3})+\b|\b\d+(?:[.,]\d+)?\s*k\b/i;
+const AI_SELF_REFERENCE_LIMITATION_PATTERN = /\b(?:cannot|can not|can't|unable|not able|do not have|don't have|no access|not permitted|not authorized|not allowed|cannot help|refuse|decline|only a model|only an ai|programmed to|khong the|khong co kha nang|khong co quyen|khong duoc phep|khong truy cap|khong biet|khong lam duoc|khong giup|tu choi|chi la|duoc lap trinh)\b/i;
 const DIACRITIC_SENSITIVE_PHRASES: Readonly<Record<string, RegExp>> = {
   vai: /(?:^|[^\p{L}\p{N}_])(?:vai|vãi)(?=$|[^\p{L}\p{N}_])/iu,
   om: /(?:^|[^\p{L}\p{N}_])(?:om|ờm)(?=$|[^\p{L}\p{N}_])/iu,
@@ -187,9 +188,12 @@ export function checkKaelResponse(input: KaelSelfCheckInput): KaelSelfCheckResul
     Exclude<KaelSelfCheckReason, "empty" | "exact_vnd" | "language_mismatch" | "sentence_too_long" | "semantic_guardrail">,
     readonly string[],
   ]>) {
-    if (phrases.some((phrase) => containsCanonicalPhrase(text, canonical, phrase))) {
-      return { allowed: false, text, reason };
+    const phraseMatched = phrases.some((phrase) => containsCanonicalPhrase(text, canonical, phrase));
+    if (!phraseMatched) continue;
+    if (reason === "ai_self_reference" && !AI_SELF_REFERENCE_LIMITATION_PATTERN.test(canonical)) {
+      continue;
     }
+    return { allowed: false, text, reason };
   }
 
   if (EXACT_VND_PATTERN.test(canonical)) {

@@ -50,7 +50,10 @@
     "db:local:types": "powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/gen-types.ps1",
     "db:local:diff": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-supabase.ps1 db diff --local",
     "db:local:lint": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-supabase.ps1 db lint --local",
-    "edge:check": "powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/edge-check.ps1"
+    "edge:check": "powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/edge-check.ps1",
+    "kael:eval:multi-turn": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 apps/api/scripts/kael-multi-turn-eval.mjs",
+    "kael:redteam:live": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 apps/api/scripts/kael-live-redteam.mjs",
+    "kael:model-health": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 apps/api/scripts/kael-model-health.mjs"
   },
   "reactDoctor": {
     "blocking": "none",
@@ -61,7 +64,12 @@
   "devDependencies": {
     "metro-runtime": "0.83.3",
     "react-doctor": "0.5.8",
-    "turbo": "^2"
+    "turbo": "^2",
+    "zod": "^4.4.3"
   },
-  "workspaces": ["apps/*", "packages/*", "sandbox/*"]
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "sandbox/*"
+  ]
 }
