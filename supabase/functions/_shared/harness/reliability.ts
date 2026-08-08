@@ -175,10 +175,11 @@ export async function acquireDependencyPermit(
   client: ReliabilityClient | null | undefined,
   input: { dependency: HarnessDependency; environment: string },
 ): Promise<DependencyPermit> {
+  if (input.environment === "local") {
+    return { allowed: true, state: "closed", retryAfterMs: 0, probeToken: null };
+  }
   if (!client?.rpc) {
-    return input.environment === "local"
-      ? { allowed: true, state: "closed", retryAfterMs: 0, probeToken: null }
-      : { allowed: false, state: "open", retryAfterMs: 30_000, probeToken: null };
+    return { allowed: false, state: "open", retryAfterMs: 30_000, probeToken: null };
   }
   const policy = HARNESS_RELIABILITY_CONFIG.dependencies[input.dependency];
   try {
@@ -188,13 +189,9 @@ export async function acquireDependencyPermit(
       p_half_open_probes: policy.half_open_probes,
       p_probe_ttl_seconds: Math.max(5, Math.ceil(policy.open_ms / 1000)),
     });
-    if (error) {
-      return { allowed: false, state: "open", retryAfterMs: 30_000, probeToken: null };
-    }
+    if (error) return unavailableDependencyPermit(input.environment);
     const row = Array.isArray(data) ? data[0] : data;
-    if (!row || typeof row !== "object") {
-      return { allowed: false, state: "open", retryAfterMs: 30_000, probeToken: null };
-    }
+    if (!row || typeof row !== "object") return unavailableDependencyPermit(input.environment);
     const candidate = row as Record<string, unknown>;
     const state = ["closed", "open", "half_open"].includes(String(candidate.state))
       ? candidate.state as DependencyPermit["state"]
@@ -207,8 +204,14 @@ export async function acquireDependencyPermit(
       probeToken: typeof candidate.probe_token === "string" ? candidate.probe_token : null,
     };
   } catch {
-    return { allowed: false, state: "open", retryAfterMs: 30_000, probeToken: null };
+    return unavailableDependencyPermit(input.environment);
   }
+}
+
+function unavailableDependencyPermit(environment: string): DependencyPermit {
+  return environment === "local"
+    ? { allowed: true, state: "closed", retryAfterMs: 0, probeToken: null }
+    : { allowed: false, state: "open", retryAfterMs: 30_000, probeToken: null };
 }
 
 export async function dependencyCircuitState(

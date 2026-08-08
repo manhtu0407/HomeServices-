@@ -91,6 +91,18 @@ export async function sendPushToUser(
   return sendPushToUsers(client, [userId], payload, options);
 }
 
+type PushDependencyPermit = Awaited<ReturnType<typeof acquireDependencyPermit>>;
+type PreparedPushDelivery = {
+  client: PushDbClient;
+  payload: PushPayload;
+  environment: string;
+  releaseId: string;
+  reservationId: string | null;
+  permit: PushDependencyPermit;
+  allowedUserIds: string[];
+  result: PushResult;
+};
+
 export async function sendPushToUsers(
   client: PushDbClient,
   userIds: string[],
@@ -100,21 +112,54 @@ export async function sendPushToUsers(
   const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean))).sort();
   if (uniqueUserIds.length === 0) return emptyResult();
 
-  const environment = options.environment ?? readRuntimeEnv("NESTSCOUT_ENVIRONMENT") ?? "local";
-  const releaseId = options.releaseId ?? readRuntimeEnv("HARNESS_RELEASE_ID") ?? "unreleased";
+  const prepared = await preparePushDelivery(client, uniqueUserIds, payload, options);
+  if ("delivered" in prepared) return prepared;
+  const tokenResult = await loadPushTokens(client, prepared.allowedUserIds);
+  if (tokenResult.error) return await pushTokenLookupFailure(prepared, tokenResult.error);
+  const rows = (tokenResult.data ?? [])
+    .map(asPushTokenRow)
+    .filter((row): row is PushTokenRow => row !== null);
+  if (prepared.reservationId && !(await startPushIdempotency(prepared))) {
+    await failHarnessIdempotency(
+      client,
+      prepared.reservationId,
+      "IDEMPOTENCY_EXECUTION_UNAVAILABLE",
+    );
+    return {
+      delivered: prepared.result.delivered,
+      failed: prepared.result.failed + prepared.allowedUserIds.length,
+      errors: [...prepared.result.errors, "IDEMPOTENCY_EXECUTION_UNAVAILABLE"],
+      degraded: true,
+    };
+  }
+  const result = await deliverPushBatches(client, rows, payload, prepared.result);
+  return settlePushDelivery(prepared, result);
+}
+
+async function preparePushDelivery(
+  client: PushDbClient,
+  uniqueUserIds: string[],
+  payload: PushPayload,
+  options: PushDeliveryOptions,
+): Promise<PushResult | PreparedPushDelivery> {
+  const environment = options.environment ??
+    readRuntimeEnv("NESTSCOUT_ENVIRONMENT") ?? "local";
+  const releaseId = options.releaseId ??
+    readRuntimeEnv("HARNESS_RELEASE_ID") ?? "unreleased";
   const operationId = options.operationId ?? "push.send";
-  const idempotencyKey = options.idempotencyKey ?? await derivedPushIdempotencyKey(
-    uniqueUserIds,
-    payload,
-  );
-  const reservation = await reserveHarnessIdempotency(client, {
-    environment,
-    releaseId,
-    operationId,
-    actorId: null,
-    idempotencyKey,
-    requestFingerprint: canonicalJson({ recipients: uniqueUserIds, payload }),
-  });
+  const idempotencyKey = environment === "local"
+    ? ""
+    : options.idempotencyKey ?? await derivedPushIdempotencyKey(uniqueUserIds, payload);
+  const reservation = environment === "local"
+    ? { state: "unavailable" as const, reservationId: null }
+    : await reserveHarnessIdempotency(client, {
+      environment,
+      releaseId,
+      operationId,
+      actorId: null,
+      idempotencyKey,
+      requestFingerprint: canonicalJson({ recipients: uniqueUserIds, payload }),
+    });
   if (reservation.state === "completed") {
     return { ...emptyResult(), replayed: true };
   }
@@ -163,10 +208,30 @@ export async function sendPushToUsers(
       degraded: true,
     };
   }
+  const rate = allowPushRecipients(uniqueUserIds);
+  if (rate.allowedUserIds.length === 0) {
+    await failHarnessIdempotency(client, reservationId, "RATE_LIMITED");
+    return rate.result;
+  }
+  return {
+    client,
+    payload,
+    environment,
+    releaseId,
+    reservationId,
+    permit,
+    allowedUserIds: rate.allowedUserIds,
+    result: rate.result,
+  };
+}
 
+function allowPushRecipients(userIds: string[]): {
+  allowedUserIds: string[];
+  result: PushResult;
+} {
   const allowedUserIds: string[] = [];
   const result = emptyResult();
-  for (const userId of uniqueUserIds) {
+  for (const userId of userIds) {
     const rate = checkRateLimit(`push:${userId}`, PUSH_RATE_LIMIT);
     if (rate.allowed) {
       allowedUserIds.push(userId);
@@ -175,82 +240,101 @@ export async function sendPushToUsers(
       result.errors.push("RATE_LIMITED");
     }
   }
-  if (allowedUserIds.length === 0) {
-    await failHarnessIdempotency(client, reservationId, "RATE_LIMITED");
-    return result;
-  }
+  return { allowedUserIds, result };
+}
 
-  const tokenResult = await dbQuery<Array<Record<string, unknown>>>(
+async function loadPushTokens(
+  client: PushDbClient,
+  userIds: string[],
+): Promise<DbResult<Array<Record<string, unknown>>>> {
+  return dbQuery<Array<Record<string, unknown>>>(
     client
       .from("device_push_tokens")
       .select("id, user_id, push_token")
-      .in("user_id", allowedUserIds)
+      .in("user_id", userIds)
       .eq("enabled", true)
       .eq("permission_status", "granted"),
   );
-  if (tokenResult.error) {
-    console.warn("mobile-api push token lookup failed", {
-      errorCode: tokenResult.error.code,
-    });
-    await failHarnessIdempotency(client, reservationId, "TOKEN_LOOKUP_FAILED");
-    return {
-      delivered: result.delivered,
-      failed: result.failed + allowedUserIds.length,
-      errors: [...result.errors, "TOKEN_LOOKUP_FAILED"],
-      degraded: true,
-    };
-  }
+}
 
-  const rows = (tokenResult.data ?? [])
-    .map(asPushTokenRow)
-    .filter((row): row is PushTokenRow => row !== null);
-  if (reservationId) {
-    const started = await startHarnessIdempotencyExecution(client, reservationId);
-    if (!started) {
-      await failHarnessIdempotency(client, reservationId, "IDEMPOTENCY_EXECUTION_UNAVAILABLE");
-      return {
-        delivered: result.delivered,
-        failed: result.failed + allowedUserIds.length,
-        errors: [...result.errors, "IDEMPOTENCY_EXECUTION_UNAVAILABLE"],
-        degraded: true,
-      };
-    }
-  }
+async function pushTokenLookupFailure(
+  prepared: PreparedPushDelivery,
+  error: DbError,
+): Promise<PushResult> {
+  console.warn("mobile-api push token lookup failed", {
+    errorCode: error.code,
+  });
+  await failHarnessIdempotency(
+    prepared.client,
+    prepared.reservationId,
+    "TOKEN_LOOKUP_FAILED",
+  );
+  return {
+    delivered: prepared.result.delivered,
+    failed: prepared.result.failed + prepared.allowedUserIds.length,
+    errors: [...prepared.result.errors, "TOKEN_LOOKUP_FAILED"],
+    degraded: true,
+  };
+}
+
+async function startPushIdempotency(
+  prepared: PreparedPushDelivery,
+): Promise<boolean> {
+  if (!prepared.reservationId) return true;
+  return startHarnessIdempotencyExecution(
+    prepared.client,
+    prepared.reservationId,
+  );
+}
+
+async function deliverPushBatches(
+  client: PushDbClient,
+  rows: PushTokenRow[],
+  payload: PushPayload,
+  result: PushResult,
+): Promise<PushResult> {
   for (const batch of chunk(rows, EXPO_BATCH_SIZE)) {
     const batchResult = await sendExpoBatch(client, batch, payload);
     result.delivered += batchResult.delivered;
     result.failed += batchResult.failed;
     result.errors.push(...batchResult.errors);
   }
+  return result;
+}
+
+async function settlePushDelivery(
+  prepared: PreparedPushDelivery,
+  result: PushResult,
+): Promise<PushResult> {
   const dependencyFailure = result.errors.some((code) =>
     code === "EXPO_REQUEST_FAILED" || /^HTTP_5\d\d$/.test(code)
   );
-  await recordDependencyResult(client, {
+  await recordDependencyResult(prepared.client, {
     dependency: "push",
-    environment,
-    releaseId,
+    environment: prepared.environment,
+    releaseId: prepared.releaseId,
     success: !dependencyFailure,
     errorCode: dependencyFailure ? result.errors[0] ?? "PUSH_FAILED" : null,
-    probeToken: permit.probeToken,
+    probeToken: prepared.permit.probeToken,
   });
   if (dependencyFailure) {
     await markHarnessIdempotencyReconcileRequired(
-      client,
-      reservationId,
+      prepared.client,
+      prepared.reservationId,
       result.errors[0] ?? "PUSH_FAILED",
     );
     return { ...result, degraded: true };
   }
-  if (reservationId) {
+  if (prepared.reservationId) {
     const completed = await completeHarnessIdempotency(
-      client,
-      reservationId,
+      prepared.client,
+      prepared.reservationId,
       canonicalJson(result),
     );
     if (!completed) {
       await markHarnessIdempotencyReconcileRequired(
-        client,
-        reservationId,
+        prepared.client,
+        prepared.reservationId,
         "IDEMPOTENCY_COMMIT_FAILED",
       );
       result.errors.push("IDEMPOTENCY_COMMIT_FAILED");
@@ -259,6 +343,7 @@ export async function sendPushToUsers(
   }
   return result;
 }
+
 
 // Bounded retry for Expo push delivery.
 // 2 retries, with 500ms then 2s backoff. Retry only on

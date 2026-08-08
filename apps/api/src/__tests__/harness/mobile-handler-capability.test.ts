@@ -131,7 +131,10 @@ describe('mobile-api durable idempotency ingress', () => {
     const { handler, service, rpc } = remoteHandler({})
     const response = await handler(request())
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toMatchObject({ error: { code: 'IDEMPOTENCY_KEY_REQUIRED' } })
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'IDEMPOTENCY_KEY_REQUIRED',
+      error: expect.any(String),
+    })
     expect(service).not.toHaveBeenCalled()
     expect(rpc).not.toHaveBeenCalledWith('reserve_harness_idempotency', expect.anything())
   })
@@ -177,7 +180,10 @@ describe('mobile-api durable idempotency ingress', () => {
     const { handler, service } = remoteHandler({ reserveState: 'reconcile_required' })
     const response = await handler(request('mobile:550e8400-e29b-41d4-a716-446655440003'))
     expect(response.status).toBe(409)
-    await expect(response.json()).resolves.toMatchObject({ error: { code: 'IDEMPOTENCY_RECONCILE_REQUIRED' } })
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'IDEMPOTENCY_RECONCILE_REQUIRED',
+      error: expect.any(String),
+    })
     expect(service).not.toHaveBeenCalled()
   })
 })

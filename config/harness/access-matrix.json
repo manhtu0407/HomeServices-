@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 216,
-    "migrationDigest": "4a5fc76835be774a1f125653a29a0d8984ef5209b81a9ae2767c6e20931228a0"
+    "migrationCount": 217,
+    "migrationDigest": "79a10f006ccdb8e972e6dd797b259e48f1931be89ae0867606da7f164b8bc977"
   },
   "actors": [
     "anonymous",
@@ -2793,7 +2793,7 @@
       ]
     },
     {
-      "signature": "get_worker_earnings_summary(uuid, timestamp with time zone, timestamp with time zone)",
+      "signature": "get_worker_earnings_summary(uuid, timestamp with time zone, timestamp with time zone, numeric)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [

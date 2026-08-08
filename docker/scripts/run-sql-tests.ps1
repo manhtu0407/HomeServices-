@@ -12,7 +12,10 @@
 param(
   [string]$Container = "supabase_db_nestscout",
   [string]$Filter = "*.sql",
-  [switch]$StopOnFirstFailure
+  [switch]$StopOnFirstFailure,
+  [string]$DbUser = "postgres",
+  [string]$DblinkDbUser = "supabase_admin",
+  [string]$DbPassword = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,15 +46,40 @@ $files = Get-ChildItem -LiteralPath $testDir -Filter $Filter -File | Sort-Object
 $passed = @()
 $failed = @()
 
+if ([string]::IsNullOrWhiteSpace($DbPassword)) {
+  if ($env:NESTSCOUT_TEST_DB_URL -match '^[^:]+://[^:]+:([^@]*)@') {
+    $DbPassword = [System.Uri]::UnescapeDataString($Matches[1])
+  } else {
+    $DbPassword = "postgres"
+  }
+}
+
 try {
   foreach ($file in $files) {
-    $sql = Get-Content -Raw -LiteralPath $file.FullName
+    $sql = Get-Content -Raw -Encoding utf8 -LiteralPath $file.FullName
     $dockerArgs = @("exec", "-i")
     if (-not [string]::IsNullOrWhiteSpace($env:NESTSCOUT_TEST_DB_URL)) {
       $dockerArgs += @("-e", "NESTSCOUT_TEST_DB_URL=$($env:NESTSCOUT_TEST_DB_URL)")
     }
-    $dockerArgs += @($Container, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "postgres")
-    $output = $sql | & docker @dockerArgs 2>&1
+    $usesDblink = $sql -match '\bdblink_(connect|send_query|disconnect)\b'
+    $effectiveDbUser = if ($usesDblink) { $DblinkDbUser } else { $DbUser }
+    if ($usesDblink) {
+      $dockerArgs += @("-e", "PGPASSWORD=$DbPassword")
+      $dockerArgs += @($Container, "psql", "-v", "ON_ERROR_STOP=1", "-h", "127.0.0.1", "-U", $effectiveDbUser, "-d", "postgres")
+    } else {
+      $dockerArgs += @($Container, "psql", "-v", "ON_ERROR_STOP=1", "-U", $effectiveDbUser, "-d", "postgres")
+    }
+    # Supabase's local postgres role is intentionally non-superuser. The
+    # dblink concurrency assertion needs the ephemeral database superuser;
+    # keep stderr in the captured result without letting NOTICE records abort
+    # the PowerShell runner before it can inspect psql's exit code.
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+      $output = $sql | & docker @dockerArgs 2>&1
+    } finally {
+      $ErrorActionPreference = $previousErrorAction
+    }
     $code = $LASTEXITCODE
 
     if ($code -eq 0) {

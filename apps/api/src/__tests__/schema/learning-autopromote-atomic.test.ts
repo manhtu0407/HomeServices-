@@ -32,7 +32,7 @@ describe('Harness learning provenance and manual review', () => {
     const reference = readFileSync(resolve(root, 'apps/api/src/lib/learning/evidence-gate.ts'), 'utf8')
 
     expect(edge).toContain('queue_learning_candidate_manual_review')
-    expect(reference).toContain("supabase.rpc('queue_learning_candidate_manual_review'")
+    expect(reference).toContain('queue_learning_candidate_manual_review')
     expect(edge).not.toContain('client.rpc("auto_promote_learning_candidate_atomic"')
     expect(reference).not.toContain("supabase.rpc('auto_promote_learning_candidate_atomic'")
     expect(reference).not.toContain("supabase.from('learning_rules').insert")

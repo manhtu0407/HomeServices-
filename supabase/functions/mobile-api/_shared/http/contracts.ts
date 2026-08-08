@@ -215,7 +215,7 @@ export type ThreadsResponse = {
 };
 
 export type MobileApiServices = {
-  getHarnessHealth(): Promise<Record<string, unknown>> | Record<string, unknown>;
+  getHarnessHealth?(): Promise<Record<string, unknown>> | Record<string, unknown>;
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<EdgeServiceCatalogResponse>;
   placesAutocomplete(

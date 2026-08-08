@@ -22,15 +22,15 @@ $$;
 
 insert into public.harness_releases (
   release_id, environment, git_sha, manifest_sha256, migration_inventory_sha256,
-  database_types_sha256, prompt_bundle_sha256, policy_bundle_sha256,
+  database_types_sha256, prompt_bundle_sha256, policy_bundle_sha256, runtime_configuration_sha256,
   evaluation_suite_version, evaluation_suite_sha256, capability_registry_sha256,
   access_matrix_sha256, reliability_policy_sha256, promotion_policy_sha256, bundle_sha256,
-  edge_function_digests, created_by
+  edge_function_digests, release_artifact, created_by
 ) values (
   'harness-0123456789ab-fedcba987654', 'local', repeat('a', 40), repeat('b', 64), repeat('c', 64),
-  repeat('d', 64), repeat('e', 64), repeat('f', 64), 'harness-eval.1.0.0',
+  repeat('d', 64), repeat('e', 64), repeat('f', 64), repeat('0', 64), 'harness-eval.1.0.0',
   repeat('1', 64), repeat('2', 64), repeat('3', 64), repeat('4', 64), repeat('5', 64),
-  repeat('6', 64), jsonb_build_object('mobile-api', repeat('7', 64)), 'sql-test'
+  repeat('6', 64), jsonb_build_object('mobile-api', repeat('7', 64)), '{}'::jsonb, 'sql-test'
 ) on conflict do nothing;
 
 select public.begin_harness_evaluation(

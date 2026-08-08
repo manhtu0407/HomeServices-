@@ -1,7 +1,4 @@
-/**
- * Evidence gate for manual review. `promoteCandidate` is a compatibility name:
- * it queues administrator review and never activates a canonical rule.
- */
+/** Gate-passed candidates are queued for review; automatic activation is forbidden. */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SERVICE_TYPES, type Database } from '@nestscout/shared'
@@ -143,20 +140,13 @@ export function shouldPromote(
   return { promote: true, reason: 'gate_passed' }
 }
 
-// =============================================================================
-// Side-effect: promote a candidate to an active rule
-// =============================================================================
-
-export type PromoteResult =
-  | { promoted: false; reason: string; queuedForReview?: boolean }
-
+export type PromoteResult = { promoted: false; reason: string; queuedForReview?: boolean }
 type QueueManualReviewRpcRow = {
   ok: boolean
   error_code: string | null
   candidate_id: string
   status: string | null
 }
-
 type QueueManualReviewRpcResponse = {
   data: QueueManualReviewRpcRow[] | null
   error: { code?: string | null } | null
@@ -167,11 +157,7 @@ type QueueManualReviewRpc = (
   args: Record<string, unknown>,
 ) => PromiseLike<QueueManualReviewRpcResponse>
 
-/**
- * Queue a gate-passed candidate for explicit administrator review. The legacy
- * function name remains for reference-surface compatibility, but automatic
- * activation is forbidden.
- */
+// Compatibility name: queue a gate-passed candidate for administrator review; never activate it automatically.
 export async function promoteCandidate(
   supabase: SupabaseClient<Database>,
   candidate: CandidateRow,

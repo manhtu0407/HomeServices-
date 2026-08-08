@@ -11,6 +11,5 @@ Deno.serve(
     services: createEdgeServices(env),
     releaseId: env.releaseId,
     environment: env.harnessEnvironment.name,
-    environment: env.harnessEnvironment.name,
   }),
 );

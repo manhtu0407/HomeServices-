@@ -208,7 +208,7 @@ begin
     p_candidate_id, v_source_type, p_source_hash, p_consent_hash, p_input_hash, p_evidence_hash,
     left(p_release_id, 160), v_consent_status, v_privacy_status, v_dispute_status, v_quality_status,
     v_summary_origin, v_generated_summary_hash, coalesce(p_safe_metadata, '{}'::jsonb)
-  ) on conflict (candidate_id) do update
+  ) on conflict on constraint learning_candidate_provenance_pkey do update
     set dispute_status = case
           when excluded.dispute_status = 'unresolved' then 'unresolved'
           when public.learning_candidate_provenance.dispute_status = 'pending_review' then excluded.dispute_status
@@ -240,11 +240,11 @@ begin
     return;
   end if;
 
-  update public.learning_candidates
+  update public.learning_candidates as candidate
   set status = 'manual_review'::public.learning_candidate_status,
       audit_reason = 'gate_passed; explicit administrator review required'
-  where id = p_candidate_id
-    and status in (
+  where candidate.id = p_candidate_id
+    and candidate.status in (
       'created'::public.learning_candidate_status,
       'pending_evidence'::public.learning_candidate_status,
       'evidence_gate_passed'::public.learning_candidate_status,
@@ -257,7 +257,11 @@ begin
   ) values (
     p_candidate_id,
     case when v_candidate.candidate_type = 'price_prior_update' then 'LS1' else 'LS2' end,
-    v_candidate.status::text,
+    case v_candidate.status::text
+      when 'created' then 'candidate'
+      when 'evidence_gate_passed' then 'evidence_gate_check'
+      else v_candidate.status::text
+    end,
     'manual_review',
     'harness_manual_review_required',
     'system',
@@ -290,11 +294,11 @@ security definer
 set search_path = ''
 as $$
 begin
-  update public.learning_candidates
+  update public.learning_candidates as candidate
   set status = 'manual_review'::public.learning_candidate_status,
       audit_reason = 'automatic promotion disabled by Harness assurance policy'
-  where id = p_candidate_id
-    and status in (
+  where candidate.id = p_candidate_id
+    and candidate.status in (
       'created'::public.learning_candidate_status,
       'pending_evidence'::public.learning_candidate_status,
       'evidence_gate_passed'::public.learning_candidate_status
