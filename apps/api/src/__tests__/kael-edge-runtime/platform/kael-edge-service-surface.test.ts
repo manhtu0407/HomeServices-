@@ -42,6 +42,7 @@ describe('edge-service-surface', () => {
       'getCustomerKaelConversation',
       'getCustomerProfileInsights',
       'getCustomerRefundAccount',
+      'getHarnessHealth',
       'getJob',
       'getJobIncident',
       'getKaelCharter',

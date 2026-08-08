@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 214,
-    "migrationDigest": "366e0bc2ef9bc187c428a9ad38bb17be8764bdb80a79c04623661b2e0b84d675"
+    "migrationCount": 215,
+    "migrationDigest": "002a9e83347d82d3fee2451bc232ebb5822baf545c45d82863d39a8c850ebda9"
   },
   "actors": [
     "anonymous",
@@ -313,6 +313,42 @@
       "realtime": true
     },
     {
+      "name": "harness_dependency_circuits",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_dependency_probes",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "harness_evaluation_runs",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -367,6 +403,24 @@
       "realtime": false
     },
     {
+      "name": "harness_idempotency_keys",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "harness_privileged_operations",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -404,6 +458,24 @@
     },
     {
       "name": "harness_releases",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_reliability_events",
       "classification": "actor-scoped",
       "rlsEnabled": true,
       "actorCommands": {
@@ -2081,6 +2153,14 @@
       ]
     },
     {
+      "signature": "acquire_harness_dependency_permit(text, text, integer, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "activate_job_broadcast_batch_atomic(uuid, uuid[], uuid, timestamp with time zone, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2407,6 +2487,14 @@
       ]
     },
     {
+      "signature": "complete_harness_idempotency(uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "complete_job_media_cleanup(uuid, uuid[], timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2535,6 +2623,22 @@
       ]
     },
     {
+      "signature": "expire_harness_reliability_reservations()",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "fail_harness_idempotency(uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "fail_job_media_uploads(uuid, uuid, text[], timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2632,6 +2736,14 @@
     },
     {
       "signature": "is_circuit_open(text, text, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "mark_harness_idempotency_reconcile_required(uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2745,6 +2857,14 @@
     {
       "signature": "record_customer_cancellation_memory_atomic(uuid, uuid, uuid)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_harness_dependency_result(text, text, text, boolean, text, integer, integer, integer, integer, uuid)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -2975,6 +3095,14 @@
       ]
     },
     {
+      "signature": "reserve_harness_idempotency(text, text, text, text, text, text, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "reserve_job_media_upload(uuid, uuid, text, text, text, bigint, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3041,6 +3169,14 @@
     {
       "signature": "set_worker_availability_atomic(uuid, boolean)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "start_harness_idempotency_execution(uuid)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"

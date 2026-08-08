@@ -51,6 +51,7 @@ describe('mobile-api auth schema compatibility', () => {
     expect(result).toMatchObject({
       success: true,
       role: 'customer',
+      accountState: 'active',
     })
     expect(select).toHaveBeenNthCalledWith(1, 'role, account_state')
     expect(select).toHaveBeenNthCalledWith(2, 'role')

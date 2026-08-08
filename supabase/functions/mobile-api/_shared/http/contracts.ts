@@ -215,6 +215,7 @@ export type ThreadsResponse = {
 };
 
 export type MobileApiServices = {
+  getHarnessHealth?(): Promise<Record<string, unknown>> | Record<string, unknown>;
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<EdgeServiceCatalogResponse>;
   placesAutocomplete(
@@ -669,4 +670,6 @@ export type MobileApiHandlerDeps = {
     allowedRoles?: UserRole[],
   ): Promise<MobileApiAuthResult>;
   services: MobileApiServices;
+  releaseId?: string;
+  environment?: "local" | "preview" | "staging" | "production";
 };

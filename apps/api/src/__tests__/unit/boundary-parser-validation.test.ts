@@ -33,6 +33,7 @@ const workerAuth = {
   user: { id: 'worker-1' },
   role: 'worker' as const,
   supabase: {},
+  userSupabase: {},
 }
 
 const adminAuth = {
