@@ -101,14 +101,26 @@ export function resolveIntegrationTarget(_label: string): TargetResolution {
     }
   }
 
+  const target = {
+    url,
+    serviceRoleKey,
+    anonKey,
+    isLocal: descriptor.isLocal,
+  }
+
+  // The integration suites dynamically import application services after this
+  // resolver. Hydrate only loopback defaults so those imports use the same
+  // safe local target without requiring a developer-owned .env.local file.
+  if (target.isLocal) {
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??= target.url
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= target.anonKey
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??= target.serviceRoleKey
+    process.env.NESTSCOUT_ENVIRONMENT ??= 'local'
+  }
+
   return {
     ok: true,
-    target: {
-      url,
-      serviceRoleKey,
-      anonKey,
-      isLocal: descriptor.isLocal,
-    },
+    target,
   }
 }
 

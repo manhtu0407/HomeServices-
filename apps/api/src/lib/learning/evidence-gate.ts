@@ -163,7 +163,7 @@ export async function promoteCandidate(
   candidate: CandidateRow,
 ): Promise<PromoteResult> {
   const payload = JSON.stringify(candidate.suggested_payload)
-  const queueManualReview = supabase.rpc as unknown as QueueManualReviewRpc
+  const queueManualReview = supabase.rpc.bind(supabase) as unknown as QueueManualReviewRpc
   const { data, error } = await withDbTimeout(
     queueManualReview('queue_learning_candidate_manual_review', {
       p_candidate_id: candidate.id,
