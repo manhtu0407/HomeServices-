@@ -1,4 +1,12 @@
 import type { EdgeAiSecrets } from "../../mobile-api/_shared/kael/index.ts";
+import {
+  resolveHarnessEnvironment,
+  type HarnessEnvironmentDescriptor,
+} from "../harness/environment.ts";
+import {
+  readHarnessRuntimeRelease,
+  type HarnessRuntimeRelease,
+} from "../harness/release.ts";
 
 export type SePayVietQrConfig = {
   enabled: boolean;
@@ -11,6 +19,10 @@ export type SePayVietQrConfig = {
 export type EdgeEnv = EdgeAiSecrets & {
   supabaseUrl: string;
   supabaseSecretKey: string;
+  supabasePublicKey?: string;
+  harnessEnvironment: HarnessEnvironmentDescriptor;
+  harnessRelease: HarnessRuntimeRelease;
+  releaseId: string;
   sepayVietQr: SePayVietQrConfig;
   // S4/F1 (§38): global hard-stop for customer-facing AI during an incident.
   // Default false. Enforced at the callAI chokepoint (kael/spend-gate.ts).
@@ -27,10 +39,26 @@ export function readEdgeEnv(
   const supabaseSecretKey = readSupabaseSecretKey(getEnv);
   if (!supabaseUrl) throw new Error("SUPABASE_URL is required");
   if (!supabaseSecretKey) throw new Error("SUPABASE secret key is required");
+  const supabasePublicKey = getEnv("SUPABASE_PUBLISHABLE_KEY") ??
+    getEnv("SUPABASE_ANON_KEY");
+  const harnessEnvironment = resolveHarnessEnvironment({
+    url: supabaseUrl,
+    environment: getEnv("NESTSCOUT_ENVIRONMENT"),
+    projectRef: getEnv("SUPABASE_PROJECT_REF"),
+    publishableKey: supabasePublicKey,
+    secretKey: supabaseSecretKey,
+    mutationIntent: "read-only",
+  });
+  const harnessRelease = readHarnessRuntimeRelease(getEnv);
+  const releaseId = harnessRelease.releaseId;
 
   return {
     supabaseUrl,
     supabaseSecretKey,
+    supabasePublicKey,
+    harnessEnvironment,
+    harnessRelease,
+    releaseId,
     anthropicApiKey: getEnv("ANTHROPIC_API_KEY"),
     perplexityApiKey: getEnv("PERPLEXITY_API_KEY"),
     deepseekApiKey: getEnv("DEEPSEEK_API_KEY"),
@@ -43,23 +71,23 @@ export function readEdgeEnv(
       getEnv("KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED"),
     ),
     sourceTrustPerplexityFilterEnabled: !sourceTrustExplicit
-      ? isStagingProjectUrl(supabaseUrl)
+      ? harnessEnvironment.name === "staging"
       : envFlag(sourceTrustFlag),
     sourceTrustPerplexityFilterExplicit: sourceTrustExplicit,
     durableGuardsEnabled: readBooleanFlag(
       getEnv("KAEL_DURABLE_GUARDS_ENABLED"),
     ),
     stagingPaymentRailEnabled:
-      isStagingProjectUrl(supabaseUrl) &&
+      harnessEnvironment.name === "staging" &&
       readBooleanFlag(getEnv("NESTSCOUT_STAGING_PAYMENT_RAIL_ENABLED")),
-    sepayVietQr: readSePayVietQrConfig(getEnv, supabaseUrl),
+    sepayVietQr: readSePayVietQrConfig(getEnv, harnessEnvironment.name),
     aiKillSwitch: readBooleanFlag(getEnv("KAEL_AI_KILL_SWITCH")),
   };
 }
 
 function readSePayVietQrConfig(
   getEnv: (name: string) => string | undefined,
-  supabaseUrl: string,
+  environment: HarnessEnvironmentDescriptor["name"],
 ): SePayVietQrConfig {
   const bankCode = readVietQrBankCode(getEnv("SEPAY_VIETQR_BANK_CODE"));
   const accountNumber = readVietQrAccountNumber(
@@ -70,7 +98,7 @@ function readSePayVietQrConfig(
     120,
   );
   const webhookSecret = readBoundedText(getEnv("SEPAY_WEBHOOK_SECRET"), 256);
-  const enabled = !isStagingProjectUrl(supabaseUrl) &&
+  const enabled = environment !== "staging" &&
     readBooleanFlag(getEnv("NESTSCOUT_SEPAY_VIETQR_ENABLED")) &&
     Boolean(bankCode && accountNumber && accountHolder && webhookSecret);
 
@@ -146,7 +174,3 @@ function readBooleanFlag(value: string | undefined): boolean {
 }
 
 const envFlag = readBooleanFlag;
-
-function isStagingProjectUrl(value: string): boolean {
-  return value.includes("xyylanuyflrjzbjzhqfl");
-}

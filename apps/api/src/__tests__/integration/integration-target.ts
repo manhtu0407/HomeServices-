@@ -11,11 +11,13 @@
  */
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
+import {
+  HARNESS_LOCAL_URL,
+  assertHarnessMutationAllowed,
+  resolveHarnessEnvironment,
+} from '../../../../../supabase/functions/_shared/harness/environment'
 
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
-
-const LOCAL_API_URL = 'http://127.0.0.1:54321'
-const LOCAL_HOSTS = ['127.0.0.1', 'localhost', '[::1]', '0.0.0.0', 'host.docker.internal']
+const LOCAL_API_URL = HARNESS_LOCAL_URL
 
 /**
  * The local stack signs its tokens with a fixed, published secret, so every
@@ -63,48 +65,6 @@ function loadEnvFile(): Record<string, string> {
   }
 }
 
-function isLocalUrl(url: string): boolean {
-  try {
-    return LOCAL_HOSTS.includes(new URL(url).hostname)
-  } catch {
-    return false
-  }
-}
-
-/** Reads the `iss` claim without verifying the signature — enough to tell a local demo token apart. */
-function issuerOf(jwt: string | undefined): string | null {
-  if (!jwt) return null
-  const payload = jwt.split('.')[1]
-  if (!payload) return null
-  try {
-    const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
-    const claims = JSON.parse(json) as { iss?: string }
-    return claims.iss ?? null
-  } catch {
-    return null
-  }
-}
-
-function assertNotProduction(label: string, url: string): void {
-  if (url.includes(PRODUCTION_REF)) {
-    throw new Error(
-      `[${label}] Refusing to run against PRODUCTION (${PRODUCTION_REF}). ` +
-        'These suites create and delete real rows. Point NEXT_PUBLIC_SUPABASE_URL at the local stack or staging.',
-    )
-  }
-}
-
-function assertNotLocalKeyAgainstRemote(label: string, url: string, keys: (string | undefined)[]): void {
-  if (isLocalUrl(url)) return
-  const leaked = keys.some((k) => issuerOf(k) === LOCAL_DEMO_ISSUER)
-  if (leaked) {
-    throw new Error(
-      `[${label}] Refusing to run: a local-stack demo key was supplied for the remote host ${url}. ` +
-        'The demo keys are public and must never be sent off-machine. Fix the env before retrying.',
-    )
-  }
-}
-
 /**
  * Throws when the configuration is dangerous, returns `ok: false` when it is
  * merely absent. Never returns a target the caller should not connect to.
@@ -116,16 +76,21 @@ export function resolveIntegrationTarget(label: string): TargetResolution {
   const explicitUrl = read('NEXT_PUBLIC_SUPABASE_URL')
   const explicitServiceRole = read('SUPABASE_SERVICE_ROLE_KEY')
   const explicitAnon = read('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
-
   const url = explicitUrl || LOCAL_API_URL
   usedImplicitLocalDefault = !explicitUrl
 
-  assertNotProduction(label, url)
-  assertNotLocalKeyAgainstRemote(label, url, [explicitServiceRole, explicitAnon])
+  const descriptor = resolveHarnessEnvironment({
+    url,
+    environment: read('NESTSCOUT_ENVIRONMENT'),
+    publishableKey: explicitAnon,
+    secretKey: explicitServiceRole,
+    mutationIntent: 'mutate',
+    approval: readRemoteApproval(read),
+  })
+  assertHarnessMutationAllowed(descriptor)
 
-  const local = isLocalUrl(url)
-  const serviceRoleKey = explicitServiceRole || (local ? LOCAL_SERVICE_ROLE_KEY : undefined)
-  const anonKey = explicitAnon || (local ? LOCAL_ANON_KEY : undefined)
+  const serviceRoleKey = explicitServiceRole || (descriptor.isLocal ? LOCAL_SERVICE_ROLE_KEY : undefined)
+  const anonKey = explicitAnon || (descriptor.isLocal ? LOCAL_ANON_KEY : undefined)
 
   if (!serviceRoleKey || !anonKey) {
     return {
@@ -137,7 +102,48 @@ export function resolveIntegrationTarget(label: string): TargetResolution {
     }
   }
 
-  return { ok: true, target: { url, serviceRoleKey, anonKey, isLocal: local } }
+  return {
+    ok: true,
+    target: {
+      url,
+      serviceRoleKey,
+      anonKey,
+      isLocal: descriptor.isLocal,
+    },
+  }
+}
+
+function readRemoteApproval(
+  read: (key: string) => string | undefined,
+) {
+  const environment = read('NESTSCOUT_ENVIRONMENT')
+  const projectRef = read('SUPABASE_PROJECT_REF') ?? projectRefFromUrl(
+    read('NEXT_PUBLIC_SUPABASE_URL'),
+  )
+  const approvalId = read('HARNESS_REMOTE_MUTATION_APPROVAL')
+  const releaseId = read('HARNESS_RELEASE_ID')
+  if (!environment || environment === 'local' || !projectRef || !approvalId || !releaseId) {
+    return null
+  }
+  if (!['preview', 'staging', 'production'].includes(environment)) return null
+  return {
+    approvalId,
+    environment: environment as 'preview' | 'staging' | 'production',
+    projectRef,
+    releaseId,
+    source: read('HARNESS_APPROVAL_SOURCE') === 'operator' ? 'operator' as const : 'ci' as const,
+    allowProduction: read('HARNESS_ALLOW_PRODUCTION_MUTATION') === 'true',
+  }
+}
+
+function projectRefFromUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  try {
+    const [projectRef, ...rest] = new URL(value).hostname.split('.')
+    return rest.join('.') === 'supabase.co' ? projectRef : undefined
+  } catch {
+    return undefined
+  }
 }
 
 /**
