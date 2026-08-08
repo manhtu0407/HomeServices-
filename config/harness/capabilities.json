@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 13,
-    "sha256": "7c96245867b2008760ac85db23393a864ea86ef2aa7acbb9b25c989ac482efad"
+    "sha256": "5ca3162e24a617b5f14fa61aab1ef0787cd269f9530a9887105c465862647e5d"
   },
   "entries": [
     {
@@ -19,6 +19,28 @@
       "risk": "administrative",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin.ts"
+      ]
+    },
+    {
+      "kind": "admin.kaelEstimateAccuracy.list",
+      "capability": "mobile.route.admin.kaelEstimateAccuracy.list",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
       "privileged": true,
       "resourceType": "system",
       "requiresResourceCheck": false,
@@ -141,6 +163,72 @@
     {
       "kind": "admin.kaelLearning.processQueue",
       "capability": "mobile.route.admin.kaelLearning.processQueue",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin.ts"
+      ]
+    },
+    {
+      "kind": "admin.kaelModelHealth.get",
+      "capability": "mobile.route.admin.kaelModelHealth.get",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin.ts"
+      ]
+    },
+    {
+      "kind": "admin.kaelQueue.list",
+      "capability": "mobile.route.admin.kaelQueue.list",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin.ts"
+      ]
+    },
+    {
+      "kind": "admin.kaelQueue.resolve",
+      "capability": "mobile.route.admin.kaelQueue.resolve",
       "public": false,
       "methods": [
         "POST"
