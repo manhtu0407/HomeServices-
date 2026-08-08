@@ -61,7 +61,8 @@
   "devDependencies": {
     "metro-runtime": "0.83.3",
     "react-doctor": "0.5.8",
-    "turbo": "^2"
+    "turbo": "^2",
+    "zod": "^4.4.3"
   },
   "workspaces": [
     "apps/*",
