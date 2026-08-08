@@ -1,4 +1,4 @@
-export const HARNESS_LOCAL_URL = "http://127.0.0.1:54321";
+export const HARNESS_LOCAL_URL = "http://127.0.0.1:55321";
 export const HARNESS_STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 export const HARNESS_PRODUCTION_PROJECT_REF = "iwevizmsedyqozxlawwl";
 

@@ -20,15 +20,12 @@ Applied with the CLI's `-x` flag. The list lives in
 drift.
 
 ```text
-studio  inbucket  realtime  imgproxy  vector  logflare  supavisor
+studio  mailpit  realtime  imgproxy  vector  logflare  supavisor
 ```
 
-> **Unverified against this CLI version.** These are the documented exclusion
-> names, but no run has yet confirmed which ones the workspace CLI accepts —
-> the measurement spike never started (see the status note in
-> [`../INDEX.md`](../INDEX.md)). `up.ps1` passes them straight through, so an
-> unknown name surfaces as a CLI error rather than being silently ignored.
-> When you get a real run, correct this list from the CLI's own output.
+> Verified with the workspace CLI (`supabase start --help`) and a successful
+> Lean start. `mailpit` is the CLI container name; `[inbucket]` remains the
+> corresponding configuration section in `supabase/config.toml`.
 
 ## Start it
 

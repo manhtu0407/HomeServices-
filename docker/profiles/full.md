@@ -8,7 +8,7 @@ machine — do not make it the habit.
 
 ```text
 studio      the web UI for browsing the local database
-inbucket    catches outbound mail so you can read auth emails
+mailpit     catches outbound mail so you can read auth emails
 realtime    websocket change feed
 analytics   log aggregation (logflare + vector)
 ```

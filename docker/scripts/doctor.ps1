@@ -21,6 +21,23 @@ function Add-Line {
   $script:report += [pscustomobject]@{ Check = $Label; Measured = $Value; Verdict = $Verdict }
 }
 
+function Test-PortBindable {
+  param([int]$Port)
+
+  $listener = $null
+  try {
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, $Port)
+    $listener.Start()
+    return $true
+  } catch {
+    return $false
+  } finally {
+    if ($listener) {
+      $listener.Stop()
+    }
+  }
+}
+
 # 1. Docker daemon. Everything else is pointless without it, but a down daemon
 #    is reported alongside the resource numbers rather than short-circuiting —
 #    the caller usually wants to know whether the machine could host the stack
@@ -61,24 +78,25 @@ if ($freeGb -ge $MinDiskGb) {
   $failures += "C: has $freeGb GB free, below the $MinDiskGb GB floor. Run 'docker system prune' and re-measure."
 }
 
-# 4. Ports the CLI binds. A port already held by something else surfaces as an
-#    opaque container crash later, so name the conflict up front.
+# 4. Ports the CLI binds. Windows can reserve a port without an active listener,
+# which otherwise only appears as an opaque container-start failure.
 $ports = @(
-  @{ Port = 54321; Name = "supabase api gateway" },
-  @{ Port = 54322; Name = "supabase db" },
-  @{ Port = 54323; Name = "supabase studio" },
-  @{ Port = 54324; Name = "supabase inbucket" }
+  @{ Port = 55321; Name = "supabase api gateway" },
+  @{ Port = 55322; Name = "supabase db" },
+  @{ Port = 55323; Name = "supabase studio" },
+  @{ Port = 55324; Name = "supabase mailpit" }
 )
 foreach ($p in $ports) {
   $inUse = $null -ne (Get-NetTCPConnection -LocalPort $p.Port -State Listen -ErrorAction SilentlyContinue)
-  if ($inUse) {
-    # Only the two lean-profile ports are hard failures; studio and inbucket are
-    # excluded from the lean profile, so a listener there does not block a start.
-    if ($p.Port -in 54321, 54322) {
-      Add-Line "port $($p.Port)" "in use ($($p.Name))" "FAIL"
-      $failures += "Port $($p.Port) is already bound. Stop the process holding it, or run 'pnpm db:local:down'."
+  $bindable = -not $inUse -and (Test-PortBindable -Port $p.Port)
+  if (-not $bindable) {
+    # Only the two lean-profile ports are hard failures; studio and mailpit are
+    # excluded from the lean profile, so an unavailable port there does not block a start.
+    if ($p.Port -in 55321, 55322) {
+      Add-Line "port $($p.Port)" "unavailable ($($p.Name))" "FAIL"
+      $failures += "Port $($p.Port) is unavailable. Stop the process holding it, choose an unreserved port, or run 'pnpm db:local:down'."
     } else {
-      Add-Line "port $($p.Port)" "in use ($($p.Name))" "WARN"
+      Add-Line "port $($p.Port)" "unavailable ($($p.Name))" "WARN"
     }
   } else {
     Add-Line "port $($p.Port)" "free" "OK"

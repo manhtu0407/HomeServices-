@@ -30,7 +30,7 @@ describe('integration target environment guard', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      target: { isLocal: true, url: 'http://127.0.0.1:54321' },
+      target: { isLocal: true, url: 'http://127.0.0.1:55321' },
     })
   })
 
