@@ -314,6 +314,9 @@ async function main() {
     await mkdir(dirname(args.jsonOutput), { recursive: true })
     await writeFile(args.jsonOutput, `${JSON.stringify(summary, null, 2)}\n`)
   }
+  if (mode === 'deterministic') {
+    console.warn('WARNING: deterministic mode does not exercise an AI model; 100% means fixtures and local rules agree, not that live Kael is correct.')
+  }
   console.log(JSON.stringify(summary, null, 2))
   if (!passed) process.exitCode = 1
 }
@@ -695,6 +698,7 @@ async function writeReport(input) {
     '',
     '## Verification',
     '',
+    '- WARNING: deterministic mode does not exercise an AI model; 100% means fixtures and local rules agree, not that live Kael is correct.',
     '- Deterministic mode uses local fixture scoring and does not call AI providers.',
     '- Live mode requires KAEL_EVAL_RUN_LIVE=yes, a staging/local KAEL_EVAL_MOBILE_API_URL, and KAEL_EVAL_BEARER_TOKEN; KAEL_EVAL_ANON_KEY is optional for Edge deployments that require apikey.',
     '- Runner exits non-zero when any threshold is below target.',
