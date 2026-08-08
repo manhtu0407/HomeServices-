@@ -1,0 +1,81 @@
+name: kael-agentic-completeness
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-runtime:
+    name: type-check, tests, eval, and Edge checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Type-check all workspaces
+        run: |
+          pnpm --filter @nestscout/api type-check
+          pnpm --filter @nestscout/shared type-check
+          pnpm --filter @nestscout/mobile type-check
+          pnpm --filter @nestscout/sandbox type-check
+      - name: Run all workspace tests
+        run: |
+          pnpm --filter @nestscout/api test
+          pnpm --filter @nestscout/shared test
+          pnpm --filter @nestscout/mobile test
+          pnpm --filter @nestscout/sandbox test
+      - name: Run deterministic Kael evaluations
+        run: |
+          node apps/api/scripts/kael-eval.mjs --mode deterministic --report /tmp/kael-eval.md
+          node apps/api/scripts/kael-multi-turn-eval.mjs
+      - name: Verify live tooling refuses unsafe or incomplete configuration
+        run: |
+          node apps/api/scripts/kael-model-health.mjs --list
+          node apps/api/scripts/kael-model-health.mjs --self-test
+          if node apps/api/scripts/kael-model-health.mjs >/tmp/model-health.log 2>&1; then
+            cat /tmp/model-health.log
+            echo 'model-health must refuse live I/O without credentials' >&2
+            exit 1
+          fi
+          grep -E 'Missing .*API_KEY' /tmp/model-health.log
+          if node apps/api/scripts/kael-live-redteam.mjs >/tmp/live-redteam.log 2>&1; then
+            cat /tmp/live-redteam.log
+            echo 'live red-team must require explicit opt-in' >&2
+            exit 1
+          fi
+          grep -F 'KAEL_REDTEAM_RUN_LIVE=yes' /tmp/live-redteam.log
+      - name: Run repository ratchets
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/check-comment-discipline.mjs --diff "origin/${{ github.base_ref }}"
+          else
+            node scripts/check-comment-discipline.mjs
+          fi
+          node scripts/check-skills-sync.mjs
+          node scripts/lint-structure.mjs
+      - name: Run pinned Deno checks
+        run: |
+          image='denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498'
+          for fn in kael-learning-monitor kael-media-retention mobile-api sepay-webhook; do
+            docker run --rm -v "$PWD:/repo" -w /repo "$image" \
+              deno check --config "supabase/functions/$fn/deno.json" "supabase/functions/$fn/index.ts"
+          done
+      - name: Confirm protected boundaries
+        if: github.event_name == 'pull_request'
+        run: |
+          test -z "$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD -- apps/api/src/app/admin/kael-learning)"
+          if git diff --name-status "origin/${{ github.base_ref }}"...HEAD | grep -q '^D'; then
+            echo 'tracked file deletion detected' >&2
+            exit 1
+          fi

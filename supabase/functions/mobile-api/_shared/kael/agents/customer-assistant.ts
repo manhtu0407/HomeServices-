@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {
   AIRequest,
   EdgeAiSecrets,
+  ServiceType,
 } from "../contracts/types.ts";
 import {
   FALLBACK_PROBLEM_SLUG_BY_SERVICE,
@@ -22,6 +23,7 @@ import {
   hasKaelForbiddenTopicBoundarySignal,
   type KaelTopic,
 } from "../kael-guardrails/permission-gate.ts";
+import { evaluateMessageBoundary } from "../kael-guardrails/boundary-guard.ts";
 import {
   isKaelKnowledgeRetrievalEnabled,
   type KaelKnowledgeContext,
@@ -91,9 +93,11 @@ export type CustomerAssistantInput = {
   readonly actorId?: string | null;
   readonly message: string;
   readonly language?: KaelPromptLanguage;
+  readonly serviceType?: ServiceType | null;
   readonly surface?: CustomerAssistantSurface;
   readonly job?: CustomerAssistantJobContext | null;
   readonly client?: AssistantClient | null;
+  readonly memorySummary?: string | null;
   readonly secrets: EdgeAiSecrets;
   readonly callAI?: StructuredAIInvoker;
 };
@@ -140,8 +144,22 @@ export async function runCustomerAssistant(
       : scrubSensitiveForLLM(input.message)
   ).slice(0, 2000);
   const workflowQuestion = scrubSensitiveForLLM(input.message).slice(0, 2000);
-  const serviceType = inferAssistantServiceType(cleanQuestion, input.job);
+  const serviceType = input.serviceType ?? inferAssistantServiceType(cleanQuestion, input.job);
   const topic = classifyAssistantTopic(cleanQuestion, serviceType);
+  const boundary = evaluateMessageBoundary(cleanQuestion, serviceType, {
+    semanticInjectionClassifierEnabled: true,
+    language,
+  });
+  if (!boundary.ok && boundary.reason === "prompt_injection") {
+    return buildFallbackCustomerAssistantAnswer(
+      boundary.declineText,
+      topic,
+      "unsupported",
+      true,
+      deterministicSafetyNotes(language, topic),
+      trace,
+    );
+  }
   // Deterministic per-conversation register (KC2): read the customer's own words
   // to produce a mirror-lite hint. No region label, no PII, nothing logged.
   const registerHint = buildRegisterHint(detectRegionalRegister(cleanQuestion));
@@ -161,6 +179,17 @@ export async function runCustomerAssistant(
   if (!permission.allowed) {
     return buildFallbackCustomerAssistantAnswer(
       permission.responseText ?? fallbackText(language, topic),
+      topic,
+      "unsupported",
+      true,
+      deterministicSafetyNotes(language, topic),
+      trace,
+    );
+  }
+
+  if (!boundary.ok && (boundary.reason !== "out_of_scope" || topic !== "service_trust_safety")) {
+    return buildFallbackCustomerAssistantAnswer(
+      boundary.declineText,
       topic,
       "unsupported",
       true,
@@ -269,6 +298,7 @@ async function resolveCustomerAssistantProviders(
         topic,
         job: input.job ?? null,
         knowledgePrompt: knowledge?.promptContext ?? null,
+        memorySummary: input.memorySummary ?? null,
         registerHint,
       }),
       customerAssistantResponseSchema,
