@@ -333,6 +333,26 @@ describe('promoteCandidate compatibility boundary', () => {
     })
   })
 
+  it('keeps the Supabase client receiver when invoking the manual-review RPC', async () => {
+    let receiver: unknown
+    function rpc(this: unknown) {
+      receiver = this
+      return Promise.resolve({
+        data: [{ ok: true, error_code: null, candidate_id: 'cand-1', status: 'manual_review' }],
+        error: null,
+      })
+    }
+    const client = { rpc }
+
+    const result = await promoteCandidate(client as never, priceCandidate())
+
+    expect(receiver).toBe(client)
+    expect(result).toMatchObject({
+      reason: 'MANUAL_REVIEW_REQUIRED',
+      queuedForReview: true,
+    })
+  })
+
   it('fails closed when the manual-review RPC rejects provenance', async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: [{ ok: false, error_code: 'PROVENANCE_CONFLICT' }],
