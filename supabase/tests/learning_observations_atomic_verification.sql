@@ -328,7 +328,9 @@ begin
     4,
     array['Đúng giờ'],
     false,
-    '2026-07-14T02:00:00Z'
+    '2026-07-14T02:00:00Z',
+    null,
+    null
   );
 
   if v_first.ok is not true
@@ -361,7 +363,9 @@ begin
     4,
     array['Đúng giờ'],
     false,
-    '2026-07-14T02:00:00Z'
+    '2026-07-14T02:00:00Z',
+    null,
+    null
   );
 
   if v_retry.ok is not true
@@ -385,7 +389,9 @@ begin
     5,
     array['Chuyên nghiệp'],
     false,
-    '2026-07-14T02:01:00Z'
+    '2026-07-14T02:01:00Z',
+    null,
+    null
   );
 
   if v_second.ok is not true
@@ -420,7 +426,9 @@ begin
     3,
     array['Giải thích rõ'],
     true,
-    '2026-07-14T02:02:00Z'
+    '2026-07-14T02:02:00Z',
+    null,
+    null
   );
 
   select * into v_case_retry
@@ -437,7 +445,9 @@ begin
     3,
     array['Giải thích rõ'],
     true,
-    '2026-07-14T02:02:00Z'
+    '2026-07-14T02:02:00Z',
+    null,
+    null
   );
 
   if v_case.ok is not true
@@ -461,7 +471,9 @@ begin
     4,
     array['Sạch sẽ'],
     false,
-    '2026-07-14T02:03:00Z'
+    '2026-07-14T02:03:00Z',
+    null,
+    null
   );
 
   if v_wrong_district.ok is not false
@@ -489,7 +501,9 @@ begin
     4,
     array['Sạch sẽ'],
     false,
-    '2026-07-14T02:03:00Z'
+    '2026-07-14T02:03:00Z',
+    null,
+    null
   );
 
   if v_existing_no_signal.ok is not true
@@ -516,7 +530,9 @@ begin
     4,
     array['Sạch sẽ'],
     false,
-    '2026-07-14T02:04:00Z'
+    '2026-07-14T02:04:00Z',
+    null,
+    null
   );
 
   if v_legacy_tags.ok is not true
@@ -547,7 +563,9 @@ begin
     4,
     array['Sạch sẽ'],
     false,
-    '2026-07-14T02:05:00Z'
+    '2026-07-14T02:05:00Z',
+    null,
+    null
   );
 
   if v_malformed_legacy.ok is not false
@@ -591,11 +609,11 @@ do $$
 begin
   if pg_catalog.has_function_privilege(
     'anon',
-    'public.record_learning_observation_atomic(uuid, text, public.service_type, text, text, public.complexity_level, numeric, numeric, numeric, integer, text[], boolean, timestamptz)',
+    'public.record_learning_observation_atomic(uuid, text, public.service_type, text, text, public.complexity_level, numeric, numeric, numeric, integer, text[], boolean, timestamptz, numeric, numeric)',
     'execute'
   ) or pg_catalog.has_function_privilege(
     'authenticated',
-    'public.record_learning_observation_atomic(uuid, text, public.service_type, text, text, public.complexity_level, numeric, numeric, numeric, integer, text[], boolean, timestamptz)',
+    'public.record_learning_observation_atomic(uuid, text, public.service_type, text, text, public.complexity_level, numeric, numeric, numeric, integer, text[], boolean, timestamptz, numeric, numeric)',
     'execute'
   ) then
     raise exception 'non-service role can execute learning observation RPC';
@@ -604,7 +622,7 @@ begin
   if not exists (
     select 1
     from pg_catalog.pg_proc as proc
-    where proc.oid = 'public.record_learning_observation_atomic(uuid,text,public.service_type,text,text,public.complexity_level,numeric,numeric,numeric,integer,text[],boolean,timestamptz)'::pg_catalog.regprocedure
+    where proc.oid = 'public.record_learning_observation_atomic(uuid,text,public.service_type,text,text,public.complexity_level,numeric,numeric,numeric,integer,text[],boolean,timestamptz,numeric,numeric)'::pg_catalog.regprocedure
       and proc.prosecdef is true
       and proc.proconfig = array['search_path=""']::text[]
   ) then

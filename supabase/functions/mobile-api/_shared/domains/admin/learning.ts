@@ -127,7 +127,7 @@ export async function approveKaelLearningCandidateAdmin(
     await denyKaelLearningCandidateAdminAccess(ctx, "approve", candidateId);
   }
   const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("admin_approve_learning_candidate_atomic", {
+    db(ctx).rpc("admin_review_and_approve_learning_candidate_atomic", {
       p_candidate_id: candidateId,
       p_admin_id: ctx.user.id,
       p_review_note: input.review_note ?? null,
@@ -263,7 +263,14 @@ function mapLearningCandidateReviewError(
     normalized === "TARGET_NOT_ALLOWED" ||
     normalized === "FORBIDDEN_EFFECT" ||
     normalized === "UNSUPPORTED_CANDIDATE_TYPE" ||
-    normalized === "CANDIDATE_TYPE_MISMATCH"
+    normalized === "CANDIDATE_TYPE_MISMATCH" ||
+    normalized === "PROVENANCE_REQUIRED" ||
+    normalized === "CONSENT_REQUIRED" ||
+    normalized === "PRIVACY_REVIEW_REQUIRED" ||
+    normalized === "UNRESOLVED_DISPUTE" ||
+    normalized === "EVIDENCE_QUALITY_INSUFFICIENT" ||
+    normalized === "MODEL_SUMMARY_IDENTITY_REQUIRED" ||
+    normalized === "PROVENANCE_NOT_ACTIVE"
   ) {
     apiFailure("VALIDATION", message, 400, { reason_code: normalized });
   }

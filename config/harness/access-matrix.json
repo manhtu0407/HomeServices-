@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 213,
-    "migrationDigest": "59416cd32301e1176e8b2dc1188c098b2475bec1ee281f8a4b52d9aace2591d9"
+    "migrationCount": 214,
+    "migrationDigest": "366e0bc2ef9bc187c428a9ad38bb17be8764bdb80a79c04623661b2e0b84d675"
   },
   "actors": [
     "anonymous",
@@ -1367,6 +1367,42 @@
       "realtime": false
     },
     {
+      "name": "learning_candidate_provenance",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "learning_candidate_reviews",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "learning_candidates",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -1395,6 +1431,42 @@
       "actorCommands": {
         "anonymous": [],
         "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "learning_rule_dependencies",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "learning_rule_revocations",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
       },
       "serviceRole": [
         "select",
@@ -2020,9 +2092,7 @@
       "signature": "admin_approve_learning_candidate_atomic(uuid, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
-      "executeRoles": [
-        "service_role"
-      ]
+      "executeRoles": []
     },
     {
       "signature": "admin_approve_learning_candidate(uuid, uuid, text)",
@@ -2042,6 +2112,14 @@
     },
     {
       "signature": "admin_reject_learning_candidate(uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "admin_review_and_approve_learning_candidate_atomic(uuid, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2163,6 +2241,22 @@
     {
       "signature": "cancel_job_before_accept_atomic(uuid, uuid)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "capture_learning_review_provenance()",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "capture_learning_rule_dependency()",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -2601,7 +2695,23 @@
       ]
     },
     {
+      "signature": "prevent_revoked_learning_rule_activation()",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "promote_learning_candidate(text, text, text, text[], jsonb, jsonb, service_type, text, text, numeric, integer, uuid, text, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "queue_learning_candidate_manual_review(uuid, text, text, text, text, text, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2906,6 +3016,14 @@
     },
     {
       "signature": "revoke_kael_chat_media_uploads(uuid, text[], timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "revoke_learning_rule_with_provenance(uuid, integer, uuid, text, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

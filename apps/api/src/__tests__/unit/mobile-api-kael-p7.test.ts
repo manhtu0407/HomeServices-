@@ -762,10 +762,10 @@ describe('Kael P7 learning skill setup', () => {
     expect(client.calls[0]).toMatchObject({ table: 'learning_candidates' })
     expect(client.calls[0].operations).toContainEqual(['eq', 'status', 'manual_review'])
     expect(client.calls.find((call) => call.table === 'learning_rules')).toBeUndefined()
-    expect(client.calls.find((call) => call.table === 'rpc:admin_approve_learning_candidate_atomic')?.operations)
+    expect(client.calls.find((call) => call.table === 'rpc:admin_review_and_approve_learning_candidate_atomic')?.operations)
       .toContainEqual([
         'rpc',
-        'admin_approve_learning_candidate_atomic',
+        'admin_review_and_approve_learning_candidate_atomic',
         expect.objectContaining({
           p_candidate_id: 'candidate-1',
           p_admin_id: 'admin-1',
