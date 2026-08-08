@@ -45,6 +45,7 @@ describe('Kael public charter screen', () => {
   })
 
   it('returns through the router', () => {
+    mockGetPublicCharter.mockReturnValueOnce(new Promise<never>(() => undefined))
     render(<KaelCharterScreen />)
     fireEvent.press(screen.getByTestId('kael-charter-back'))
     expect(mockBack).toHaveBeenCalledTimes(1)

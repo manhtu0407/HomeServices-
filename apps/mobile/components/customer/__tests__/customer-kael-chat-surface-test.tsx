@@ -271,6 +271,14 @@ async function flushLatestConversationList() {
   })
 }
 
+async function settleKaelChatSurfaceUpdates() {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  })
+}
+
 describe('active customer Kael chat surface wiring', () => {
   beforeEach(async () => {
     const AsyncStorage = require('@react-native-async-storage/async-storage')
@@ -486,7 +494,12 @@ describe('active customer Kael chat surface wiring', () => {
       expect(screen.queryByTestId('customer-v21-normal-greeting-bubble')).toBeNull()
       expect(screen.queryByText(/nhận việc|cơ hội việc/i)).toBeNull()
     } finally {
-      view.unmount()
+      await act(async () => {
+        view.unmount()
+        jest.runOnlyPendingTimers()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
       jest.useRealTimers()
     }
   })
@@ -1049,6 +1062,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('accessibilityState', { disabled: false })
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('placeholder', 'Mô tả nhu cầu dịch vụ cho Kael...')
     expect(screen.queryByText(/phân phối cơ hội|nhận việc/i)).toBeNull()
+    await settleKaelChatSurfaceUpdates()
   })
 
   it('aligns the Customer Kael mode control with the Worker control material and type scale', async () => {
@@ -1077,6 +1091,7 @@ describe('active customer Kael chat surface wiring', () => {
       borderColor: 'rgba(255,255,255,0.98)',
       borderWidth: 1,
     })
+    await settleKaelChatSurfaceUpdates()
   })
 
   it('starts a blank Work handling session without manufacturing a Worker session', async () => {
@@ -1503,13 +1518,19 @@ describe('active customer Kael chat surface wiring', () => {
 
     await waitForConversationCatalog('case')
     await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith(linkedSession.case_session_id))
+    await act(async () => {
+      await Promise.all(mockKaelChatGet.mock.results.map((result) => result.value))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
     mockReplace.mockClear()
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
     fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${linkedSession.id}`))
 
-    expect(screen.getByText('SAME ROUTE READY')).toBeOnTheScreen()
+    await waitFor(() => expect(screen.getByText('SAME ROUTE READY')).toBeOnTheScreen())
     expect(mockReplace).not.toHaveBeenCalled()
+    await settleKaelChatSurfaceUpdates()
   })
 
   it('lets a cached Case Work session replace an uncached session that is still loading', async () => {
@@ -1617,12 +1638,15 @@ describe('active customer Kael chat surface wiring', () => {
     await waitFor(() => expect(mockConversationGet).toHaveBeenCalledWith(session.id))
     await act(async () => {
       await Promise.all(mockConversationGet.mock.results.map((result) => result.value))
+      await Promise.resolve()
+      await Promise.resolve()
     })
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
     fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${session.id}`))
 
-    expect(screen.getByText('PREFETCHED NORMAL READY')).toBeOnTheScreen()
+    await waitFor(() => expect(screen.getByText('PREFETCHED NORMAL READY')).toBeOnTheScreen())
+    await settleKaelChatSurfaceUpdates()
   })
 
   it('opens the selected normal session with only that session history', async () => {
