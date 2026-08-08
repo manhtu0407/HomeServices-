@@ -199,7 +199,7 @@ const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId, Servic
           { value: 'dining_chair', labelVi: 'Ghế ăn', labelEn: 'Dining chair' }, { value: 'office_chair', labelVi: 'Ghế văn phòng', labelEn: 'Office chair' },
         ],
       },
-      { id: 'fabric_quantity_size', type: 'text', required: true, labelVi: 'Số lượng và kích thước khoảng bao nhiêu?', labelEn: 'Approximate quantity and size?', maxLength: 200, placeholderVi: 'Ví dụ: sofa chữ L 3 chỗ', placeholderEn: 'Example: three-seat L-shaped sofa' },
+      { id: 'fabric_quantity_size', type: 'text', required: true, labelVi: 'Số lượng, kích thước khoảng bao nhiêu?', labelEn: 'What is the approximate quantity or size?', maxLength: 200, placeholderVi: 'Ví dụ: sofa chữ L 3 chỗ', placeholderEn: 'Example: three-seat L-shaped sofa' },
       {
         id: 'fabric_material', type: 'single_select', required: false, labelVi: 'Chất liệu chính là gì?', labelEn: 'What is the main material?',
         options: [

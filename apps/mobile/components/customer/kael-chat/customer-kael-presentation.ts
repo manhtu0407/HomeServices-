@@ -58,18 +58,17 @@ export function deriveCustomerKaelPresentation({
   turns: KaelChatTurn[]
 }) {
   const chatEstimate = chat?.session.estimate ?? turns.find((turn) => turn.estimate)?.estimate ?? null
-  const normalVisibleTurns = turns
-    .filter((turn) =>
-      turn.content_type !== 'estimate' &&
-      !isScriptedKaelAcknowledgementTurn(turn))
-    .map((turn) => ({
+  const normalVisibleTurns = turns.flatMap((turn) => {
+    if (turn.content_type === 'estimate' || isScriptedKaelAcknowledgementTurn(turn)) return []
+    return [{
       ...turn,
       text_content: turn.role === 'customer'
         ? mode === 'case'
           ? customerVisibleCaseRequestText(turn.text_content, language)
           : customerVisibleIntakeSummaryText(turn.text_content, language)
         : customerVisibleKaelTurnText(turn.text_content, language),
-    }))
+    }]
+  })
   const catalogConversationTurns = catalogTurns.map((turn) => ({
     id: turn.id,
     role: turn.role === 'customer' ? 'customer' as const : 'kael' as const,
@@ -91,15 +90,16 @@ export function deriveCustomerKaelPresentation({
         : message.content, language),
     }))
     : []
-  const localCaseAssistantTurns = assistantTurns
-    .filter((turn) => turn.surface === 'customer_case')
-    .map((turn) => turn.role === 'customer'
+  const localCaseAssistantTurns = assistantTurns.flatMap((turn) => {
+    if (turn.surface !== 'customer_case') return []
+    return [turn.role === 'customer'
       ? { ...turn, text_content: customerVisibleCaseRequestText(turn.text_content, language) }
-      : turn)
-  const localCaseCustomerTexts = new Set(localCaseAssistantTurns
-    .filter((turn) => turn.role === 'customer')
-    .map((turn) => turn.text_content.trim())
-    .filter(Boolean))
+      : turn]
+  })
+  const localCaseCustomerTexts = new Set(localCaseAssistantTurns.flatMap((turn) => {
+    const text = turn.role === 'customer' ? turn.text_content.trim() : ''
+    return text ? [text] : []
+  }))
   const caseAssistantTurns = [
     ...localCaseAssistantTurns,
     ...sharedJobIncidentTurns,

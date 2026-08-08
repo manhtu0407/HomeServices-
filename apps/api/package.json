@@ -11,7 +11,10 @@
     "kael:eval:playbook": "node scripts/kael-playbook-eval.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "kael:eval:multi-turn": "node scripts/kael-multi-turn-eval.mjs",
+    "kael:redteam:live": "node scripts/kael-live-redteam.mjs",
+    "kael:model-health": "node scripts/kael-model-health.mjs"
   },
   "dependencies": {
     "@nestscout/shared": "workspace:*",
