@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { ScrollView, View, type ImageSourcePropType } from 'react-native'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
+import { KaelFeedbackControls, KaelTrustDisclosure } from '@/components/kael/kael-feedback-controls'
 import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 
 import { textByLanguage } from '../ui/format'
@@ -159,13 +160,26 @@ export function WorkerV5KaelOrbBody({
         ) : null}
         {hasLiveThread ? (
           <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-orb-live-thread">
+            <KaelTrustDisclosure
+              language={language}
+              testID="worker-kael-thread-disclosure"
+            />
             {liveTurns.slice(-8).map((turn) => (
-              <WorkerV5KaelOrbBubble
-                align={turn.role === 'worker' ? 'right' : undefined}
-                body={turn.text}
-                key={turn.id}
-                speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
-              />
+              <View key={turn.id}>
+                <WorkerV5KaelOrbBubble
+                  align={turn.role === 'worker' ? 'right' : undefined}
+                  body={turn.text}
+                  speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
+                />
+                {turn.role === 'kael' ? (
+                  <KaelFeedbackControls
+                    actor="worker"
+                    language={language}
+                    responseId={turn.id}
+                    testID={`worker-kael-response-${turn.id}-feedback`}
+                  />
+                ) : null}
+              </View>
             ))}
             {liveStatus ? <WorkerV5KaelOrbBubble body={liveStatus} speakerLabel="Kael" /> : null}
             {liveError ? <WorkerV5KaelOrbBubble body={liveError} speakerLabel="Kael" /> : null}

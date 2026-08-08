@@ -33,7 +33,7 @@ describe('Kael foundation charter and permissions', () => {
   })
 
   it('tracks the charter version in the version.json manifest', () => {
-    expect(readCharter('version.json')).toContain('2026-08-01.p10')
+    expect(readCharter('version.json')).toContain('2026-08-06.p11')
   })
 
   it('records the locked charter files in the manifest', () => {

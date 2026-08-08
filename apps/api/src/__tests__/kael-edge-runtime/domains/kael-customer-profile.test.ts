@@ -48,8 +48,8 @@ describe('customer-profile', () => {
         status: 'new',
       }),
     ])
-    expect(client.calls[0].operations).toContainEqual(['select', 'id, status, created_at'])
-    expect(client.calls[0].operations).toContainEqual(['maybeSingle'])
+    expect(client.calls[0].operations).toContainEqual(['select', 'id,created_at'])
+    expect(client.calls[0].operations).toContainEqual(['single'])
   })
 
   it('U-5: updateMyKaelMemory PII-scrubs the customer preference note before storing', async () => {

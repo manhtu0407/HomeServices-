@@ -419,6 +419,9 @@ export type Database = {
           language: string
           message: string
           message_scrubbed: string
+          rating: string | null
+          reason_scrubbed: string | null
+          response_id: string | null
           safe_metadata: Json
           source: string
           status: string
@@ -431,6 +434,9 @@ export type Database = {
           language?: string
           message: string
           message_scrubbed: string
+          rating?: string | null
+          reason_scrubbed?: string | null
+          response_id?: string | null
           safe_metadata?: Json
           source?: string
           status?: string
@@ -443,6 +449,9 @@ export type Database = {
           language?: string
           message?: string
           message_scrubbed?: string
+          rating?: string | null
+          reason_scrubbed?: string | null
+          response_id?: string | null
           safe_metadata?: Json
           source?: string
           status?: string
@@ -2530,6 +2539,9 @@ export type Database = {
           job_id: string | null
           priority: string
           queue_type: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolution_note: string | null
           reason_code: string
           response_summary: string
           safe_metadata: Json
@@ -2545,6 +2557,9 @@ export type Database = {
           job_id?: string | null
           priority: string
           queue_type: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution_note?: string | null
           reason_code: string
           response_summary: string
           safe_metadata?: Json
@@ -2560,6 +2575,9 @@ export type Database = {
           job_id?: string | null
           priority?: string
           queue_type?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution_note?: string | null
           reason_code?: string
           response_summary?: string
           safe_metadata?: Json
@@ -2579,6 +2597,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_admin_queue_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -6253,7 +6278,10 @@ export type Database = {
           created_at: string
           id: string
           language: string
+          rating: string | null
           raw_message: string
+          reason_scrubbed: string | null
+          response_id: string | null
           safe_metadata: Json
           scrubbed_message: string
           source: string
@@ -6265,7 +6293,10 @@ export type Database = {
           created_at?: string
           id?: string
           language?: string
+          rating?: string | null
           raw_message: string
+          reason_scrubbed?: string | null
+          response_id?: string | null
           safe_metadata?: Json
           scrubbed_message: string
           source?: string
@@ -6277,7 +6308,10 @@ export type Database = {
           created_at?: string
           id?: string
           language?: string
+          rating?: string | null
           raw_message?: string
+          reason_scrubbed?: string | null
+          response_id?: string | null
           safe_metadata?: Json
           scrubbed_message?: string
           source?: string
@@ -6807,6 +6841,21 @@ export type Database = {
           observed_jobs: number | null
           projected_1000_jobs_usd: number | null
           projected_10000_jobs_usd: number | null
+        }
+        Relationships: []
+      }
+      kael_estimate_accuracy: {
+        Row: {
+          complexity: Database["public"]["Enums"]["complexity_level"] | null
+          in_band_count: number | null
+          in_band_rate: number | null
+          job_count: number | null
+          median_miss_ratio: number | null
+          month: string | null
+          over_count: number | null
+          p90_miss_ratio: number | null
+          service_type: Database["public"]["Enums"]["service_type"] | null
+          under_count: number | null
         }
         Relationships: []
       }
