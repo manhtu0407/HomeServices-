@@ -13,8 +13,8 @@ export type CaseWorkResourceRoute =
   | { kind: "jobs.kaelIncidentProposeScope"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "me.favoriteWorkerSave"; method: "POST"; workerId: string; roles: UserRole[] }
   | { kind: "me.favoriteWorkerRemove"; method: "DELETE"; workerId: string; roles: UserRole[] }
-  | { kind: "workers.routePreview"; method: "GET"; jobId: string; roles: UserRole[] }
-  | { kind: "workers.routeMap"; method: "GET"; jobId: string; roles: UserRole[] };
+  | { kind: "workers.routePreview"; method: "GET"; jobId: string; roles: ["worker"] }
+  | { kind: "workers.routeMap"; method: "GET"; jobId: string; roles: ["worker"] };
 
 export function matchCaseWorkResourceRoute(
   path: string,

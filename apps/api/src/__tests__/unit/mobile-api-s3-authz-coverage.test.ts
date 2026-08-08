@@ -27,6 +27,10 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
+const capabilityRegistryPath = resolve(
+  here,
+  '../../../../../config/harness/capabilities.json',
+)
 const routeLayerPath = resolve(
   here,
   '../../../../../supabase/functions/mobile-api/_shared/http/routes/index.ts',
@@ -42,6 +46,10 @@ const workerKaelChatRouteLayerPath = resolve(
 const customerKaelChatSessionRouteLayerPath = resolve(
   here,
   '../../../../../supabase/functions/mobile-api/_shared/http/routes/kael-chat-session-routes.ts',
+)
+const customerKaelConversationRouteLayerPath = resolve(
+  here,
+  '../../../../../supabase/functions/mobile-api/_shared/http/routes/customer-kael-conversation-routes.ts',
 )
 // Domain matchers extracted out of the Route union keep their descriptors in their own file.
 // Each extraction must be added here, or its routes silently drop out of the derived set and
@@ -115,6 +123,12 @@ const GUARDED: Record<string, string> = {
   // scope/cancellation/dispute by id — atomic RPC owner/admin SQL check
   'scope.decide': 'decide_scope_change_atomic p_customer_id',  'disputes.counterStatement': 'dispute participant check',
   'disputes.adminDecision': 'admin role + dispute',
+  'customer.kaelConversations.archive': 'readCustomerConversation customer-owner (404)',
+  'customer.kaelConversations.get': 'readCustomerConversation customer-owner (404)',
+  'customer.kaelConversations.pin': 'readCustomerConversation customer-owner (404)',
+  'customer.kaelConversations.rename': 'readCustomerConversation customer-owner (404)',
+  'customer.kaelConversations.stream': 'getCustomerKaelConversation customer-owner preflight',
+  'customer.kaelConversations.turn': 'readCustomerConversation customer-owner (404)',
   // Kael customer chat sessions — session-ownership preflight
   'kael.chat.get': 'assertKaelSessionOwnership',
   'kael.chat.progress': 'assertKaelSessionOwnership',
@@ -142,7 +156,7 @@ const GUARDED: Record<string, string> = {
 }
 
 const RESOURCE_ID_FIELD =
-  /\b(jobId|sessionId|scopeChangeId|cancellationId|disputeId|candidateId|notificationId)\s*:/
+  /\b(jobId|sessionId|conversationId|scopeChangeId|cancellationId|disputeId|candidateId|notificationId)\s*:/
 
 function deriveResourceScopedRoutes(): Set<string> {
   const src = readFileSync(routeLayerPath, 'utf8')
@@ -155,6 +169,7 @@ function deriveResourceScopedRoutes(): Set<string> {
     readFileSync(caseWorkRouteLayerPath, 'utf8'),
     readFileSync(workerKaelChatRouteLayerPath, 'utf8'),
     readFileSync(customerKaelChatSessionRouteLayerPath, 'utf8'),
+    readFileSync(customerKaelConversationRouteLayerPath, 'utf8'),
     readFileSync(adminRouteLayerPath, 'utf8'),
     readFileSync(meRouteLayerPath, 'utf8'),
     readFileSync(kaelRouteLayerPath, 'utf8'),
@@ -177,6 +192,17 @@ function deriveResourceScopedRoutes(): Set<string> {
     if (RESOURCE_ID_FIELD.test(memberText)) derived.add(matches[i][1])
   }
   return derived
+}
+
+function deriveCapabilityResourceChecks(): Set<string> {
+  const registry = JSON.parse(readFileSync(capabilityRegistryPath, 'utf8')) as {
+    entries?: Array<{ kind?: unknown; requiresResourceCheck?: unknown }>
+  }
+  return new Set(
+    (registry.entries ?? [])
+      .filter((entry) => entry.requiresResourceCheck === true && typeof entry.kind === 'string')
+      .map((entry) => entry.kind as string),
+  )
 }
 
 describe('S3: every resource-scoped Edge route has a registered ownership guard', () => {
@@ -207,5 +233,9 @@ describe('S3: every resource-scoped Edge route has a registered ownership guard'
 
   it('coverage is exact: derived resource-scoped set === GUARDED registry', () => {
     expect(new Set(Object.keys(GUARDED))).toEqual(derived)
+  })
+
+  it('keeps capability resource checks aligned with the ownership-guard registry', () => {
+    expect(deriveCapabilityResourceChecks()).toEqual(derived)
   })
 })

@@ -39,17 +39,17 @@ insert into public.customer_profiles (id, district) values
   ('b1100000-0000-4000-8000-000000000002', 'q2');
 
 insert into public.worker_profiles (
-  id, service_types, years_experience, districts, is_approved, is_available,
+  id, service_types, selected_service_types, years_experience, districts, is_approved, is_available,
   legal_name, date_of_birth, verification_status
 ) values
   (
     'b1100000-0000-4000-8000-000000000003',
-    array['electrical']::public.service_type[], 5, array['q7'], true, true,
+    array['electrical']::public.service_type[], array['electrical']::public.service_type[], 5, array['q7'], true, true,
     'Candidate Worker One', '1990-01-01', 'approved'
   ),
   (
     'b1100000-0000-4000-8000-000000000004',
-    array['electrical']::public.service_type[], 4, array['q7'], true, true,
+    array['electrical']::public.service_type[], array['electrical']::public.service_type[], 4, array['q7'], true, true,
     'Candidate Worker Two', '1991-01-01', 'approved'
   );
 
