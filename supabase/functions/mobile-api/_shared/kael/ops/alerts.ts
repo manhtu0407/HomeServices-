@@ -6,7 +6,7 @@ const MAX_ALERT_RESPONSE_BYTES = 64 * 1024;
 let missingWebhookLogged = false;
 
 export type KaelOpsAlertInput = {
-  readonly code: "kill_switch_block" | "open_circuit_block" | "spend_cap_block" | "model_escalation";
+  readonly code: "kill_switch_block" | "circuit_breaker_open" | "spend_cap_reached" | "model_escalation";
   readonly severity: "info" | "warning" | "critical";
   readonly provider?: AIProvider;
   readonly purpose?: KaelPurpose;

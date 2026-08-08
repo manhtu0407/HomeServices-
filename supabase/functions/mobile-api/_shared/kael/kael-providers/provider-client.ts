@@ -87,7 +87,7 @@ async function prepareAiProviderCall(
       purpose: request.purpose,
     });
     void emitKaelOpsAlert({
-      code: "open_circuit_block", severity: "warning",
+      code: "circuit_breaker_open", severity: "warning",
       provider: request.provider, purpose: request.purpose,
     });
     return {
@@ -155,7 +155,7 @@ async function prepareAiProviderCall(
         scope: reservation.scope,
       });
       void emitKaelOpsAlert({
-        code: "spend_cap_block", severity: "critical",
+        code: "spend_cap_reached", severity: "critical",
         provider: request.provider, purpose: request.purpose, scope: reservation.scope ?? undefined,
       });
       return {

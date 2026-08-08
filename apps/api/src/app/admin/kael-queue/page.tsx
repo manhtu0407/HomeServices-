@@ -92,12 +92,12 @@ export default function KaelQueueAdminPage() {
         </header>
 
         <div className="grid gap-3 rounded-2xl border border-[#d8e8e1] bg-white p-4 lg:grid-cols-3">
-          <input aria-label="Admin bearer token" className="rounded-xl border border-[#c7dcd4] p-3 lg:col-span-3" onChange={(event) => dispatch({ type: "tokenChanged", value: event.target.value })} placeholder="Admin bearer token" type="password" value={state.bearerToken} />
-          <select aria-label="Queue status" className="rounded-xl border border-[#c7dcd4] p-3" onChange={(event) => setStatus(event.target.value)} value={status}>
-            <option value="">Tất cả trạng thái</option><option value="open">Open</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option><option value="cancelled">Cancelled</option>
+          <input aria-label="Token phiên admin" className="rounded-xl border border-[#c7dcd4] p-3 lg:col-span-3" onChange={(event) => dispatch({ type: "tokenChanged", value: event.target.value })} placeholder="Token phiên admin" type="password" value={state.bearerToken} />
+          <select aria-label="Trạng thái hàng đợi" className="rounded-xl border border-[#c7dcd4] p-3" onChange={(event) => setStatus(event.target.value)} value={status}>
+            <option value="">Tất cả trạng thái</option><option value="open">Mở</option><option value="acknowledged">Đã tiếp nhận</option><option value="resolved">Đã xử lý</option><option value="cancelled">Đã hủy</option>
           </select>
-          <select aria-label="Escalation level" className="rounded-xl border border-[#c7dcd4] p-3" onChange={(event) => setLevel(event.target.value)} value={level}>
-            <option value="">Tất cả mức</option><option value="soft">Soft</option><option value="hard">Hard</option>
+          <select aria-label="Mức độ cần xử lý" className="rounded-xl border border-[#c7dcd4] p-3" onChange={(event) => setLevel(event.target.value)} value={level}>
+            <option value="">Tất cả mức</option><option value="soft">Mức nhẹ</option><option value="hard">Mức cao</option>
           </select>
           <button className="rounded-xl bg-[#0e7c66] px-5 font-black text-white disabled:opacity-50" disabled={state.loading} onClick={() => void load(1)} type="button">{state.loading ? "Đang tải…" : "Tải hàng đợi"}</button>
           <label className="grid gap-1 text-sm font-bold text-[#52615c]">Từ ngày<input className="rounded-xl border border-[#c7dcd4] p-3 font-normal" onChange={(event) => setFromDate(event.target.value)} type="date" value={fromDate} /></label>
@@ -118,14 +118,14 @@ export default function KaelQueueAdminPage() {
               {state.items.map((item) => (
                 <article className="grid gap-4 p-4 lg:grid-cols-[1fr_300px]" key={item.id} data-testid={`kael-queue-item-${item.id}`}>
                   <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2"><strong>{item.queue_type}</strong><span className="rounded-full bg-[#ffe9b0] px-2 py-1 text-xs font-black">{item.escalation_level ?? "none"}</span><span className="rounded-full bg-[#eef7f3] px-2 py-1 text-xs font-black">{item.status}</span></div>
-                    <p className="text-sm text-[#52615c]">{item.reason_code}</p>
+                    <div className="flex flex-wrap gap-2"><strong>{queueTypeLabel(item.queue_type)}</strong><span className="rounded-full bg-[#ffe9b0] px-2 py-1 text-xs font-black">{escalationLevelLabel(item.escalation_level)}</span><span className="rounded-full bg-[#eef7f3] px-2 py-1 text-xs font-black">{statusLabel(item.status)}</span></div>
+                    <p className="text-sm text-[#52615c]">{reasonCodeLabel(item.reason_code)}</p>
                     <p className="text-sm">{item.response_summary ?? "Không có tóm tắt an toàn."}</p>
                     <p className="text-xs text-[#60736d]">{new Date(item.created_at).toLocaleString("vi-VN")}</p>
                   </div>
                   <div className="space-y-2">
-                    <textarea aria-label={`Resolution note ${item.id}`} className="min-h-24 w-full rounded-xl border border-[#c7dcd4] p-3 text-sm" disabled={item.status === "resolved"} maxLength={500} onChange={(event) => dispatch({ type: "noteChanged", id: item.id, value: event.target.value })} placeholder="Ghi chú xử lý không chứa PII" value={state.notes[item.id] ?? item.resolution_note ?? ""} />
-                    <button className="min-h-11 w-full rounded-xl bg-[#0e7c66] font-black text-white disabled:opacity-50" disabled={item.status === "resolved" || state.resolvingId !== null} onClick={() => void resolveItem(item.id)} type="button">{state.resolvingId === item.id ? "Đang xử lý…" : item.status === "resolved" ? "Đã xử lý" : "Resolve"}</button>
+                    <textarea aria-label={`Ghi chú xử lý ${item.id}`} className="min-h-24 w-full rounded-xl border border-[#c7dcd4] p-3 text-sm" disabled={item.status === "resolved"} maxLength={500} onChange={(event) => dispatch({ type: "noteChanged", id: item.id, value: event.target.value })} placeholder="Ghi chú xử lý không chứa PII" value={state.notes[item.id] ?? item.resolution_note ?? ""} />
+                    <button className="min-h-11 w-full rounded-xl bg-[#0e7c66] font-black text-white disabled:opacity-50" disabled={item.status === "resolved" || state.resolvingId !== null} onClick={() => void resolveItem(item.id)} type="button">{state.resolvingId === item.id ? "Đang xử lý…" : item.status === "resolved" ? "Đã xử lý" : "Xử lý"}</button>
                   </div>
                 </article>
               ))}
@@ -138,3 +138,33 @@ export default function KaelQueueAdminPage() {
 }
 
 function message(error: unknown) { return error instanceof Error ? error.message : "Không thể xử lý yêu cầu."; }
+
+function statusLabel(status: string) {
+  return ({ open: "Mở", acknowledged: "Đã tiếp nhận", resolved: "Đã xử lý", cancelled: "Đã hủy" } as Record<string, string>)[status] ?? "Trạng thái khác";
+}
+
+function escalationLevelLabel(level: string | null) {
+  return ({ soft: "Mức nhẹ", hard: "Mức cao" } as Record<string, string>)[level ?? ""] ?? "Không phân mức";
+}
+
+function queueTypeLabel(queueType: string) {
+  return ({
+    demanding_customer: "Khách hàng cần hỗ trợ",
+    worker_cancellation_review: "Xem xét hủy từ thợ",
+    worker_no_show: "Thợ không đến",
+    customer_cancellation_review: "Xem xét hủy từ khách",
+    autonomy_escalation: "Ca cần quyết định",
+    worker_application_review: "Xem xét hồ sơ thợ",
+  } as Record<string, string>)[queueType] ?? "Mục hàng đợi Kael";
+}
+
+function reasonCodeLabel(reasonCode: string) {
+  return ({
+    high_stakes: "Rủi ro cao",
+    admin_required: "Cần admin xem xét",
+    threat_complaint: "Khiếu nại có dấu hiệu đe dọa",
+    PII_OR_SECRET_DETECTED: "Phát hiện dữ liệu nhạy cảm",
+    EVIDENCE_INSUFFICIENT_DECIDE_PAYMENT: "Chưa đủ bằng chứng để quyết định thanh toán",
+    HIGH_STAKES_LOW_CONFIDENCE: "Rủi ro cao và độ tin cậy thấp",
+  } as Record<string, string>)[reasonCode] ?? "Lý do cần xem xét";
+}

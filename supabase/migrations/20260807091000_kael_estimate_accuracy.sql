@@ -6,7 +6,7 @@ with per_job as (
     j.id as job_id,
     j.service_type,
     j.kael_complexity as complexity,
-    date_trunc('month', coalesce(j.completed_at, j.confirmed_at, j.paid_at, j.updated_at))::date as month,
+    date_trunc('month', j.completed_at)::date as month,
     j.kael_price_min,
     j.kael_price_max,
     j.final_price,
@@ -23,7 +23,9 @@ with per_job as (
       else 0::numeric
     end as miss_ratio
   from public.jobs j
-  where j.final_price is not null
+  where j.status in ('completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed')
+    and j.completed_at is not null
+    and j.final_price is not null
     and j.final_price > 0
     and j.kael_price_min is not null
     and j.kael_price_max is not null

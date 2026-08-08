@@ -103,10 +103,12 @@ function validResponse(path: string, value: Record<string, unknown>) {
 
 function validItem(value: unknown): value is AdminKaelQueueItem {
   if (!isRecord(value) || typeof value.id !== 'string' || !UUID_PATTERN.test(value.id)) return false
-  return safeText(value.queue_type, 120) && safeText(value.priority, 40) && safeText(value.status, 40) &&
+  return nullableUuid(value.job_id) && safeText(value.queue_type, 120) && safeText(value.priority, 40) && safeText(value.status, 40) &&
+    nullableSafeText(value.escalation_level, 40) &&
     safeText(value.reason_code, 120) && nullableSafeText(value.response_summary, 500) &&
     nullableSafeText(value.resolution_note, 500) && safeText(value.created_at, 128) &&
     safeText(value.updated_at, 128) && isRecord(value.safe_metadata)
+    && nullableSafeText(value.resolved_at, 128) && nullableUuid(value.resolved_by)
 }
 
 function safeJson(text: string): Record<string, unknown> | null {
@@ -124,6 +126,9 @@ function safeText(value: unknown, max: number): value is string {
 }
 function nullableSafeText(value: unknown, max: number): value is string | null {
   return value === null || safeText(value, max)
+}
+function nullableUuid(value: unknown): value is string | null {
+  return value === null || (typeof value === 'string' && UUID_PATTERN.test(value))
 }
 function safeError(value: unknown, status: number) {
   return safeText(value, 512) ? value : `HTTP ${status}`

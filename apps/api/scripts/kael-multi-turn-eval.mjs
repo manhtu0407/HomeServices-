@@ -16,7 +16,13 @@ const args = [
   '--reporter=verbose',
 ]
 
-const child = spawn(pnpm, args, { cwd: repoRoot, env: process.env, stdio: 'inherit' })
+const command = process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : pnpm
+const commandArgs = process.platform === 'win32' ? ['/d', '/s', '/c', pnpm, ...args] : args
+const child = spawn(command, commandArgs, {
+  cwd: repoRoot,
+  env: process.env,
+  stdio: 'inherit',
+})
 child.on('error', (error) => {
   console.error(`Unable to start multi-turn evaluation: ${error.message}`)
   process.exitCode = 1

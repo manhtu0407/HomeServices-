@@ -37,9 +37,9 @@ describe('Kael public charter screen', () => {
   it('renders the live public charter and exposes its p11 version', async () => {
     render(<KaelCharterScreen />)
     await waitFor(() => expect(screen.getByTestId('kael-public-charter')).toBeTruthy())
-    expect(screen.getByText('Version 2026-08-06.p11')).toBeTruthy()
+    expect(screen.getByText('Phiên bản 2026-08-06.p11')).toBeTruthy()
     expect(screen.getByText('Kael là trợ lý AI của NestScout.')).toBeTruthy()
-    expect(screen.getByText('• Trust')).toBeTruthy()
+    expect(screen.getByText('• Tin cậy')).toBeTruthy()
     expect(screen.getByText('• identity.md')).toBeTruthy()
     expect(screen.getByText('• tone-matrix.yaml')).toBeTruthy()
   })

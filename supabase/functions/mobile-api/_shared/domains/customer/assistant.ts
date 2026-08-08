@@ -94,6 +94,7 @@ export async function answerKaelAssistant(
         payment_status: nullableString(job.payment_status),
       }
       : null,
+    serviceType: input.service_type ?? null,
     language: input.language,
     memorySummary,
     message: input.message,

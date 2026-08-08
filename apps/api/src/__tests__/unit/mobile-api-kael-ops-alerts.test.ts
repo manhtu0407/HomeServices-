@@ -13,7 +13,7 @@ afterEach(() => {
 describe('Kael operations alerts', () => {
   it('builds a bounded PII-free payload', () => {
     const payload = buildKaelOpsAlertPayload({
-      code: 'spend_cap_block',
+      code: 'spend_cap_reached',
       severity: 'critical',
       provider: 'anthropic',
       purpose: 'price_synthesis',
@@ -22,7 +22,7 @@ describe('Kael operations alerts', () => {
     }, new Date('2026-08-07T00:00:00.000Z'))
 
     expect(payload).toEqual({
-      code: 'spend_cap_block',
+      code: 'spend_cap_reached',
       severity: 'critical',
       provider: 'anthropic',
       purpose: 'price_synthesis',
@@ -37,6 +37,12 @@ describe('Kael operations alerts', () => {
     const fetchImpl = vi.fn()
     vi.stubGlobal('fetch', fetchImpl)
     vi.stubGlobal('Deno', { env: { get: () => 'https://alerts.example.test/hook' } })
+
+    expect(() => buildKaelOpsAlertPayload({
+      code: 'model_escalation',
+      severity: 'warning',
+      reason: 'email private@example.test',
+    })).toThrow()
 
     await emitKaelOpsAlert({
       code: 'model_escalation',

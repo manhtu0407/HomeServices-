@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { color, radius, spacing, typography } from '@/design/theme'
 import { useAppLanguage } from '@/lib/app-language'
@@ -26,6 +27,10 @@ export default function KaelCharterScreen() {
   }, [language])
 
   const title = language === 'vi' ? 'Nguyên tắc công khai của Kael' : 'Kael public charter'
+  const identitySummary = charter ? localizedIdentitySummary(charter.identity_summary, language) : null
+  const missionValues = charter
+    ? charter.mission_values.map((value) => localizedMissionValue(value, language))
+    : []
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -37,9 +42,9 @@ export default function KaelCharterScreen() {
         {!charter && !error ? <Text style={styles.muted}>{language === 'vi' ? 'Đang tải…' : 'Loading…'}</Text> : null}
         {charter ? (
           <View style={styles.card} testID="kael-public-charter">
-            <Text style={styles.version}>Version {charter.charter_version}</Text>
-            <Text style={styles.identity}>{charter.identity_summary}</Text>
-            <CharterSection title={language === 'vi' ? 'Giá trị' : 'Mission values'} values={charter.mission_values} />
+            <Text style={styles.version}>{language === 'vi' ? 'Phiên bản' : 'Version'} {charter.charter_version}</Text>
+            <Text style={styles.identity}>{identitySummary}</Text>
+            <CharterSection title={language === 'vi' ? 'Giá trị' : 'Mission values'} values={missionValues} />
             <CharterSection title={language === 'vi' ? 'Cam kết bị khóa' : 'Locked commitments'} values={charter.locked_files} />
             <CharterSection title={language === 'vi' ? 'Hướng dẫn có thể điều chỉnh' : 'Tunable guidance'} values={charter.tunable_files} />
             <CharterSection title={language === 'vi' ? 'Những điều Kael không được nói' : 'Forbidden categories'} values={charter.forbidden_categories} />
@@ -48,6 +53,22 @@ export default function KaelCharterScreen() {
       </ScrollView>
     </SafeAreaView>
   )
+}
+
+function localizedIdentitySummary(value: string, language: 'vi' | 'en') {
+  if (language === 'en' || !/^Kael is NestScout(?:’|')s AI assistant/i.test(value.trim())) return value
+  return 'Kael là trợ lý AI của NestScout.'
+}
+
+function localizedMissionValue(value: string, language: 'vi' | 'en') {
+  if (language === 'en') return value
+  return ({
+    Trust: 'Tin cậy',
+    Safety: 'An toàn',
+    Transparency: 'Minh bạch',
+    Fairness: 'Công bằng',
+    Humility: 'Khiêm nhường',
+  } as Record<string, string>)[value] ?? value
 }
 
 function CharterSection({ title, values }: { title: string; values: readonly string[] }) {
