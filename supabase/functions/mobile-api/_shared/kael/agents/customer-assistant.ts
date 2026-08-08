@@ -51,7 +51,7 @@ import {
 import { type KaelSafeTraceEvent } from "../learning/trace.ts";
 import { scrubSensitiveForLLM } from "../pipeline/utils.ts";
 import { sanitizeCustomerCaseEvidenceText } from "../evidence/untrusted-evidence.ts";
-import type { KaelSpendGate, SpendGateClient } from "../kael-guardrails/spend-gate.ts";
+import { createRuntimeKaelSpendGate, type SpendGateClient } from "../kael-guardrails/spend-gate.ts";
 import { normalizeKaelResponseBrand } from "../language/user-facing-copy.ts";
 import {
   buildCustomerWorkflowAssistantAnswer,
@@ -251,10 +251,11 @@ async function resolveCustomerAssistantProviders(
   serviceType: ReturnType<typeof inferAssistantServiceType>,
   registerHint: ReturnType<typeof buildRegisterHint>,
 ): Promise<CustomerAssistantAnswer> {
-  const spendGate: KaelSpendGate = {
-    client: input.client as SpendGateClient,
-    actorId: input.actorId ?? null,
-  };
+  const spendGate = createRuntimeKaelSpendGate(
+    input.client as SpendGateClient,
+    input.actorId ?? null,
+    input.secrets.harnessTrace,
+  );
   const blockedProviders = new Set<string>();
   for (const route of routes) {
     if (blockedProviders.has(route.provider)) continue;

@@ -6,6 +6,7 @@ import {
 } from "./privileged/service-client.ts";
 import type { ActorContext } from "./authz/actor-context.ts";
 import type { CapabilityEnvelope } from "./authz/capability-policy.ts";
+import type { HarnessTraceContext } from "../../../_shared/harness/trace.ts";
 import type { EdgeEnv } from "../../../_shared/platform/env.ts";
 import { USER_ROLES, type UserRole } from "../../../_shared/domain.ts";
 import {
@@ -40,6 +41,9 @@ export type MobileApiAuthResult =
 export type MobileApiContext = Extract<MobileApiAuthResult, { success: true }> & {
   actorContext?: ActorContext;
   capabilityEnvelope?: CapabilityEnvelope;
+  traceId?: string;
+  runId?: string;
+  traceContext?: HarnessTraceContext;
   releaseId?: string;
 };
 

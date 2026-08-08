@@ -121,7 +121,7 @@ export async function prepareKaelPipeline(
     providerBudget,
     recordProviderSpendIfEnforced,
     spendGate,
-  } = await prepareKaelPipelineSpendGate(input, supabase, stageLogs);
+  } = await prepareKaelPipelineSpendGate(input, supabase, stageLogs, secrets);
 
   // independent hard daily provider-spend ceiling. No-op +
   // zero DB round-trip unless KAEL_PROVIDER_COST_CAP_ENABLED is on; fails open. Kept as

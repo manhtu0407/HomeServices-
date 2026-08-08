@@ -15,6 +15,11 @@ import {
   readResponseJsonBounded,
   ResponseBodyTooLargeError,
 } from "../../../../_shared/network.ts";
+import {
+  acquireDependencyPermit,
+  recordDependencyResult,
+  type ReliabilityClient,
+} from "../../../../_shared/harness/reliability.ts";
 
 const VIETMAP_ROUTE_URL = "https://maps.vietmap.vn/api/route";
 const VIETMAP_STATIC_MAP_URL = "https://maps.vietmap.vn/api/maps/statics/tm";
@@ -49,7 +54,7 @@ export async function getWorkerRoutePreview(
   url.searchParams.set("vehicle", "motorcycle");
   url.searchParams.set("points_encoded", "true");
 
-  const response = await vietmapFetch(url.toString(), { method: "GET" });
+  const response = await controlledVietmapFetch(ctx, secrets, url.toString(), { method: "GET" });
   if (!response.ok) {
     apiFailure("ROUTE_UNAVAILABLE", "Chưa thể tính lộ trình lúc này", 502);
   }
@@ -114,7 +119,7 @@ export async function getWorkerRouteMap(
   form.set("size", "600x400");
   form.set("zoom", String(routeMapZoom(origin, destination)));
 
-  const response = await vietmapFetch(VIETMAP_STATIC_MAP_URL, {
+  const response = await controlledVietmapFetch(ctx, secrets, VIETMAP_STATIC_MAP_URL, {
     body: form,
     method: "POST",
   });
@@ -176,6 +181,47 @@ function routeMapZoom(origin: WorkerRouteOrigin | null, destination: WorkerRoute
   if (delta < 0.02) return 14;
   if (delta < 0.05) return 13;
   return 12;
+}
+
+async function controlledVietmapFetch(
+  ctx: MobileApiContext,
+  secrets: EdgeAiSecrets,
+  url: string,
+  init: RequestInit,
+) {
+  const environment = ctx.environment ?? secrets.harnessTrace?.environment ?? "local";
+  const releaseId = ctx.releaseId ?? secrets.harnessTrace?.releaseId ?? "unreleased";
+  const client = (ctx.privilegedSupabase ?? ctx.supabase) as ReliabilityClient;
+  const permit = await acquireDependencyPermit(client, {
+    dependency: "maps",
+    environment,
+  });
+  if (!permit.allowed) {
+    apiFailure("MAP_UNAVAILABLE", "Dịch vụ bản đồ đang tạm ngưng", 503);
+  }
+  try {
+    const response = await vietmapFetch(url, init);
+    const dependencyFailed = response.status >= 500;
+    await recordDependencyResult(client, {
+      dependency: "maps",
+      environment,
+      releaseId,
+      success: !dependencyFailed,
+      errorCode: dependencyFailed ? `HTTP_${response.status}` : null,
+      probeToken: permit.probeToken,
+    });
+    return response;
+  } catch (error) {
+    await recordDependencyResult(client, {
+      dependency: "maps",
+      environment,
+      releaseId,
+      success: false,
+      errorCode: "MAPS_REQUEST_FAILED",
+      probeToken: permit.probeToken,
+    });
+    throw error;
+  }
 }
 
 async function vietmapFetch(url: string, init: RequestInit) {
