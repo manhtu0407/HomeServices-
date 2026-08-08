@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 220,
-  "migrationsSha256": "e148a6798581454185a8ef2a703d0bc077ca545ffd0bba463d974efdeddf008f",
+  "migrationCount": 221,
+  "migrationsSha256": "0c67bb5421ce0451b043e999bb526b3d77fcf1b53e9f2a0272f186ce6c4cc3ed",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
     "sha256": "b92d356bd8862c8c619c1484e34d278e682a41a1617b077bef0084188d969050"
@@ -1551,6 +1551,13 @@
       "file": "supabase/migrations/20260808131000_harden_kael_estimate_accuracy_view.sql",
       "sha256": "e0676d0ba0cbde5b971b2ec013632862792a074ff6e96a67cc6f6d912e00a9e7",
       "bytes": 391
+    },
+    {
+      "version": "20260808140000",
+      "name": "correct_normalize_hcmc_district_code_volatility",
+      "file": "supabase/migrations/20260808140000_correct_normalize_hcmc_district_code_volatility.sql",
+      "sha256": "bd2f5a6de2cfe40803c8637d63bb81fb0b172711b581a530f9468126b3105e33",
+      "bytes": 221
     }
   ]
 }
