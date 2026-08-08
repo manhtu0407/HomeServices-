@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   finalizeAiSpend,
   isKaelAiKillSwitchEnabled,
-  KAEL_AI_SPEND_CAPS,
+  KAEL_AI_SPEND_CAP_DEFAULTS,
   reserveAiSpend,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/spend-gate'
 import { classifyIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent'
@@ -109,7 +109,7 @@ describe('S4 kill-switch reader', () => {
 
 describe('S4 DURABILITY ACCEPTANCE (F1 — the gate must survive cold isolates)', () => {
   it('(1) blocks once cumulative recorded spend reaches the cap', async () => {
-    const cap = KAEL_AI_SPEND_CAPS.globalDailyUsd
+    const cap = KAEL_AI_SPEND_CAP_DEFAULTS.globalDailyUsd
     const ledger = makeLedgerClient(cap)
     const r = await reserveAiSpend(ledger, { actorId: null, estimatedCostUsd: 1 })
     expect(r.allowed).toBe(true)

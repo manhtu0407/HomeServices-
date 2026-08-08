@@ -592,7 +592,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
   it('refreshes booking dates from runtime while the screen stays open', () => {
     jest.useFakeTimers()
-    jest.setSystemTime(new Date(2026, 5, 19, 23, 59, 50))
+    jest.setSystemTime(new Date('2026-06-19T16:59:50.000Z'))
 
     try {
       render(<CustomerBookingEntrySurface />)
@@ -600,7 +600,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
       expect(screen.getByTestId('customer-v21-booking-date-0')).toHaveTextContent(/Hôm nay/)
       expect(screen.getByTestId('customer-v21-booking-date-0')).toHaveTextContent(/19\/06/)
 
-      jest.setSystemTime(new Date(2026, 5, 20, 0, 0, 25))
+      jest.setSystemTime(new Date('2026-06-19T17:00:25.000Z'))
       act(() => {
         jest.advanceTimersByTime(30_000)
       })

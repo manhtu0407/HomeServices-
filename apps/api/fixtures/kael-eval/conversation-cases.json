@@ -1,0 +1,434 @@
+[
+  {
+    "id": "clean-standard",
+    "service": "home_cleaning",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "cleaning_type",
+        "answer": "standard"
+      },
+      {
+        "slot": "property_layout",
+        "answer": "one_bedroom"
+      },
+      {
+        "slot": "bathroom_count",
+        "answer": 1
+      },
+      {
+        "slot": "condition_level",
+        "answer": "level_2"
+      }
+    ]
+  },
+  {
+    "id": "clean-deep",
+    "service": "home_cleaning",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "cleaning_type",
+        "answer": "deep"
+      },
+      {
+        "slot": "property_layout",
+        "answer": "two_bedroom"
+      },
+      {
+        "slot": "bathroom_count",
+        "answer": 2
+      },
+      {
+        "slot": "condition_level",
+        "answer": "level_3"
+      }
+    ]
+  },
+  {
+    "id": "clean-quick",
+    "service": "home_cleaning",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "cleaning_type",
+        "answer": "quick"
+      },
+      {
+        "slot": "property_layout",
+        "answer": "studio"
+      },
+      {
+        "slot": "bathroom_count",
+        "answer": 1
+      },
+      {
+        "slot": "condition_level",
+        "answer": "level_1"
+      }
+    ]
+  },
+  {
+    "id": "hvac-routine",
+    "service": "hvac_basic_maintenance",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "hvac_goal",
+        "answer": "routine_cleaning"
+      },
+      {
+        "slot": "unit_count",
+        "answer": 1
+      },
+      {
+        "slot": "access_level",
+        "answer": "easy"
+      }
+    ]
+  },
+  {
+    "id": "hvac-weak",
+    "service": "hvac_basic_maintenance",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "hvac_goal",
+        "answer": "weak_cooling"
+      },
+      {
+        "slot": "unit_count",
+        "answer": 2
+      },
+      {
+        "slot": "access_level",
+        "answer": "easy"
+      }
+    ]
+  },
+  {
+    "id": "hvac-leak",
+    "service": "hvac_basic_maintenance",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "hvac_goal",
+        "answer": "water_leak"
+      },
+      {
+        "slot": "unit_count",
+        "answer": 1
+      },
+      {
+        "slot": "access_level",
+        "answer": "high_or_tight"
+      }
+    ]
+  },
+  {
+    "id": "fabric-sofa",
+    "service": "upholstery_care",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "fabric_items",
+        "answer": [
+          "sofa"
+        ]
+      },
+      {
+        "slot": "fabric_quantity_size",
+        "answer": "Sofa 3 chỗ"
+      },
+      {
+        "slot": "fabric_issue",
+        "answer": [
+          "routine"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fabric-mattress",
+    "service": "upholstery_care",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "fabric_items",
+        "answer": [
+          "mattress"
+        ]
+      },
+      {
+        "slot": "fabric_quantity_size",
+        "answer": "Nệm 1,8 x 2 m"
+      },
+      {
+        "slot": "fabric_issue",
+        "answer": [
+          "stain"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fabric-curtain",
+    "service": "upholstery_care",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "fabric_items",
+        "answer": [
+          "curtain"
+        ]
+      },
+      {
+        "slot": "fabric_quantity_size",
+        "answer": "Hai bộ rèm cửa"
+      },
+      {
+        "slot": "fabric_issue",
+        "answer": [
+          "dust"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "handyman-shelf",
+    "service": "handyman_minor_installation",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "task_bundle_type",
+        "answer": "single"
+      },
+      {
+        "slot": "task_types",
+        "answer": [
+          "drill_shelf"
+        ]
+      },
+      {
+        "slot": "task_count",
+        "answer": 1
+      },
+      {
+        "slot": "materials_ready",
+        "answer": "yes"
+      },
+      {
+        "slot": "requires_drilling",
+        "answer": "yes"
+      }
+    ]
+  },
+  {
+    "id": "handyman-handles",
+    "service": "handyman_minor_installation",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "task_bundle_type",
+        "answer": "multiple"
+      },
+      {
+        "slot": "task_types",
+        "answer": [
+          "cabinet_hinge_handle"
+        ]
+      },
+      {
+        "slot": "task_count",
+        "answer": 3
+      },
+      {
+        "slot": "materials_ready",
+        "answer": "partial"
+      },
+      {
+        "slot": "requires_drilling",
+        "answer": "no"
+      }
+    ]
+  },
+  {
+    "id": "handyman-curtain",
+    "service": "handyman_minor_installation",
+    "kind": "performance_playbook",
+    "max_turns": 6,
+    "turns": [
+      {
+        "slot": "task_bundle_type",
+        "answer": "single"
+      },
+      {
+        "slot": "task_types",
+        "answer": [
+          "curtain_rod"
+        ]
+      },
+      {
+        "slot": "task_count",
+        "answer": 1
+      },
+      {
+        "slot": "materials_ready",
+        "answer": "yes"
+      },
+      {
+        "slot": "requires_drilling",
+        "answer": "yes"
+      }
+    ]
+  },
+  {
+    "id": "electrical-small",
+    "service": "electrical",
+    "kind": "diagnostic_intake",
+    "max_turns": 5,
+    "turns": [
+      {
+        "slot": "problem",
+        "question_vi": "Vấn đề chính là gì?",
+        "answer": "small"
+      },
+      {
+        "slot": "location",
+        "question_vi": "Vấn đề xảy ra ở đâu?",
+        "answer": "small"
+      },
+      {
+        "slot": "severity",
+        "question_vi": "Mức độ hiện tại thế nào?",
+        "answer": "small"
+      }
+    ]
+  },
+  {
+    "id": "electrical-medium",
+    "service": "electrical",
+    "kind": "diagnostic_intake",
+    "max_turns": 5,
+    "turns": [
+      {
+        "slot": "problem",
+        "question_vi": "Vấn đề chính là gì?",
+        "answer": "medium"
+      },
+      {
+        "slot": "location",
+        "question_vi": "Vấn đề xảy ra ở đâu?",
+        "answer": "medium"
+      },
+      {
+        "slot": "severity",
+        "question_vi": "Mức độ hiện tại thế nào?",
+        "answer": "medium"
+      }
+    ]
+  },
+  {
+    "id": "electrical-urgent",
+    "service": "electrical",
+    "kind": "diagnostic_intake",
+    "max_turns": 5,
+    "turns": [
+      {
+        "slot": "problem",
+        "question_vi": "Vấn đề chính là gì?",
+        "answer": "urgent"
+      },
+      {
+        "slot": "location",
+        "question_vi": "Vấn đề xảy ra ở đâu?",
+        "answer": "urgent"
+      },
+      {
+        "slot": "severity",
+        "question_vi": "Mức độ hiện tại thế nào?",
+        "answer": "urgent"
+      }
+    ]
+  },
+  {
+    "id": "plumbing-small",
+    "service": "plumbing",
+    "kind": "diagnostic_intake",
+    "max_turns": 5,
+    "turns": [
+      {
+        "slot": "problem",
+        "question_vi": "Vấn đề chính là gì?",
+        "answer": "small"
+      },
+      {
+        "slot": "location",
+        "question_vi": "Vấn đề xảy ra ở đâu?",
+        "answer": "small"
+      },
+      {
+        "slot": "severity",
+        "question_vi": "Mức độ hiện tại thế nào?",
+        "answer": "small"
+      }
+    ]
+  },
+  {
+    "id": "plumbing-medium",
+    "service": "plumbing",
+    "kind": "diagnostic_intake",
+    "max_turns": 5,
+    "turns": [
+      {
+        "slot": "problem",
+        "question_vi": "Vấn đề chính là gì?",
+        "answer": "medium"
+      },
+      {
+        "slot": "location",
+        "question_vi": "Vấn đề xảy ra ở đâu?",
+        "answer": "medium"
+      },
+      {
+        "slot": "severity",
+        "question_vi": "Mức độ hiện tại thế nào?",
+        "answer": "medium"
+      }
+    ]
+  },
+  {
+    "id": "plumbing-urgent",
+    "service": "plumbing",
+    "kind": "diagnostic_intake",
+    "max_turns": 5,
+    "turns": [
+      {
+        "slot": "problem",
+        "question_vi": "Vấn đề chính là gì?",
+        "answer": "urgent"
+      },
+      {
+        "slot": "location",
+        "question_vi": "Vấn đề xảy ra ở đâu?",
+        "answer": "urgent"
+      },
+      {
+        "slot": "severity",
+        "question_vi": "Mức độ hiện tại thế nào?",
+        "answer": "urgent"
+      }
+    ]
+  }
+]

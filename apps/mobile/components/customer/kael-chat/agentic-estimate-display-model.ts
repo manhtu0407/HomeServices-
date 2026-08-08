@@ -248,6 +248,16 @@ function evidenceAnalysisRows(
 ): AgenticEstimateSupportingPhaseModel['rows'] {
   const findings = evidence.findings ?? []
   const rows: AgenticEstimateSupportingPhaseModel['rows'] = []
+  const findingsByEvidence = new Map<string, typeof findings[number]>()
+  for (const finding of findings) {
+    const lookupKey = evidenceLookupKey(finding.evidence_kind, finding.evidence_index)
+    if (!findingsByEvidence.has(lookupKey)) findingsByEvidence.set(lookupKey, finding)
+  }
+  const previewsByEvidence = new Map<string, typeof evidencePreviews[number]>()
+  for (const preview of evidencePreviews) {
+    const lookupKey = evidenceLookupKey(preview.evidence_kind, preview.evidence_index)
+    if (!previewsByEvidence.has(lookupKey)) previewsByEvidence.set(lookupKey, preview)
+  }
   const kinds = [
     { count: evidence.photo_count, kind: 'photo' as const },
     { count: evidence.video_frame_count, kind: 'video_frame' as const },
@@ -255,13 +265,10 @@ function evidenceAnalysisRows(
 
   for (const { count, kind } of kinds) {
     for (let evidenceIndex = 1; evidenceIndex <= count; evidenceIndex += 1) {
-      const finding = findings.find((item) => (
-        item.evidence_kind === kind && item.evidence_index === evidenceIndex
-      ))
+      const lookupKey = evidenceLookupKey(kind, evidenceIndex)
+      const finding = findingsByEvidence.get(lookupKey)
       const key = `evidence-${kind}-${evidenceIndex}` as const
-      const mediaUrl = evidencePreviews.find((preview) => (
-        preview.evidence_kind === kind && preview.evidence_index === evidenceIndex
-      ))?.url
+      const mediaUrl = previewsByEvidence.get(lookupKey)?.url
       if (finding) {
         const sections = evidenceFindingSections(finding, language)
         rows.push({
@@ -296,6 +303,10 @@ function evidenceAnalysisRows(
   return rows
 }
 
+function evidenceLookupKey(kind: 'photo' | 'video_frame', evidenceIndex: number) {
+  return `${kind}:${evidenceIndex}`
+}
+
 function estimateScopeSections(
   estimate: AgenticEstimate,
   diagnosisScope: Record<string, unknown> | null | undefined,
@@ -316,12 +327,14 @@ function estimateScopeSections(
     agenticEstimateProblemLabel(estimate, language)
   const primaryKey = normalizeScopeText(primary)
   const additions: string[] = []
+  const additionKeys = new Set<string>()
 
   for (const part of [...customerGoalParts.slice(1), ...latestCustomerDetailParts]) {
     const normalized = normalizeScopeText(part)
     if (!normalized || normalized === primaryKey || normalized.includes(primaryKey)) continue
-    if (additions.some((current) => normalizeScopeText(current) === normalized)) continue
+    if (additionKeys.has(normalized)) continue
     additions.push(part)
+    additionKeys.add(normalized)
   }
 
   return [
@@ -346,8 +359,10 @@ function scopeDescriptionParts(value: string | null, language: AppLanguage) {
   return value
     .replace(updateMarker, '\n\n$1: ')
     .split(/\n{2,}/u)
-    .map((part) => scopeDescription(part, language))
-    .filter(Boolean)
+    .flatMap((part) => {
+      const description = scopeDescription(part, language)
+      return description ? [description] : []
+    })
 }
 
 function scopeDescription(value: string | null, language: AppLanguage) {
