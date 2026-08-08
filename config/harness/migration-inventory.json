@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 212,
-  "migrationsSha256": "ccab6499b6034b3656565e5a6ec2c9ffe41f8b63a6b94cf8c3512718799b921d",
+  "migrationCount": 217,
+  "migrationsSha256": "7f06e16d457ad6cf509f376462a2a8bee4cbcf3c3bc53193f1fd742d6d4c2fa4",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
-    "sha256": "9480845aeb5fb81820e95ec0e0a4284c1e5fd1c6162da14e901ca74aa2de1a81"
+    "sha256": "f04d21bbc306f76e67a37eb0b8e40ab73ba104e843ad60aef74d3d4bbba7291d"
   },
   "entries": [
     {
@@ -1495,6 +1495,41 @@
       "file": "supabase/migrations/20260806122000_harness_trace_lineage.sql",
       "sha256": "9fdf8365af8bcd38d342988e91303a4e7ddfc662136645245e858c1e7dee9d17",
       "bytes": 18179
+    },
+    {
+      "version": "20260807090000",
+      "name": "kael_structured_feedback",
+      "file": "supabase/migrations/20260807090000_kael_structured_feedback.sql",
+      "sha256": "812b03d650ad798bd982ab19c8817e53e41d7b2b0b1f16377ecf677aec6a30bf",
+      "bytes": 3876
+    },
+    {
+      "version": "20260807091000",
+      "name": "kael_estimate_accuracy",
+      "file": "supabase/migrations/20260807091000_kael_estimate_accuracy.sql",
+      "sha256": "136ae28d2ffd649c6aae401af91977439431023dded0c09568dd265b8e579147",
+      "bytes": 2325
+    },
+    {
+      "version": "20260807092000",
+      "name": "kael_admin_queue_resolution",
+      "file": "supabase/migrations/20260807092000_kael_admin_queue_resolution.sql",
+      "sha256": "aae4c23a321c5c21b30aaeb4d2329a46fabace3b0fffc2412c3a8ad43e9f911b",
+      "bytes": 981
+    },
+    {
+      "version": "20260807093000",
+      "name": "api_logs_retention",
+      "file": "supabase/migrations/20260807093000_api_logs_retention.sql",
+      "sha256": "194eb45cdc19b741b9400e08404c1724f422f34800981bc7329ccf8e93acb638",
+      "bytes": 395
+    },
+    {
+      "version": "20260808131000",
+      "name": "harden_kael_estimate_accuracy_view",
+      "file": "supabase/migrations/20260808131000_harden_kael_estimate_accuracy_view.sql",
+      "sha256": "e0676d0ba0cbde5b971b2ec013632862792a074ff6e96a67cc6f6d912e00a9e7",
+      "bytes": 391
     }
   ]
 }

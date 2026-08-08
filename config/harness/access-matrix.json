@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 210,
-    "migrationDigest": "6752f7b4e9a27f89e0fab1157fbf5d63158c248f36d0cc85cc46cdcee9d608db"
+    "migrationCount": 216,
+    "migrationDigest": "69ab6d89d3569740ccf93b9d64729581ac9679c41c7ffab6fb4f10a0c5404333"
   },
   "actors": [
     "anonymous",
@@ -311,6 +311,42 @@
         "delete"
       ],
       "realtime": true
+    },
+    {
+      "name": "harness_release_events",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_releases",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
     },
     {
       "name": "job_broadcast_retry_claims",
@@ -1853,6 +1889,10 @@
       "securityInvoker": true
     },
     {
+      "name": "kael_estimate_accuracy",
+      "securityInvoker": true
+    },
+    {
       "name": "kael_monitoring_ab_price_synthesis",
       "securityInvoker": true
     },
@@ -2529,6 +2569,22 @@
     {
       "signature": "register_device_push_token_atomic(uuid, text, text, text, jsonb)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "register_harness_release(text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, jsonb, jsonb, text, text, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "reject_harness_release_mutation()",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
