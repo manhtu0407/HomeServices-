@@ -32,6 +32,12 @@ describe('integration target environment guard', () => {
       ok: true,
       target: { isLocal: true, url: 'http://127.0.0.1:55321' },
     })
+    if (!result.ok) throw new Error('local target should resolve')
+
+    expect(process.env.NEXT_PUBLIC_SUPABASE_URL).toBe(result.target.url)
+    expect(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY).toBe(result.target.anonKey)
+    expect(process.env.SUPABASE_SERVICE_ROLE_KEY).toBe(result.target.serviceRoleKey)
+    expect(process.env.NESTSCOUT_ENVIRONMENT).toBe('local')
   })
 
   it('requires explicit approval for staging mutation', () => {
