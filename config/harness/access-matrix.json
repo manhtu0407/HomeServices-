@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 210,
-    "migrationDigest": "6752f7b4e9a27f89e0fab1157fbf5d63158c248f36d0cc85cc46cdcee9d608db"
+    "migrationCount": 213,
+    "migrationDigest": "59416cd32301e1176e8b2dc1188c098b2475bec1ee281f8a4b52d9aace2591d9"
   },
   "actors": [
     "anonymous",
@@ -311,6 +311,132 @@
         "delete"
       ],
       "realtime": true
+    },
+    {
+      "name": "harness_evaluation_runs",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_evaluation_samples",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_events",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_privileged_operations",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_release_events",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_releases",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "harness_runs",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
     },
     {
       "name": "job_broadcast_retry_claims",
@@ -1845,6 +1971,10 @@
       "securityInvoker": true
     },
     {
+      "name": "harness_run_timeline",
+      "securityInvoker": true
+    },
+    {
       "name": "kael_cost_daily_summary",
       "securityInvoker": true
     },
@@ -1927,6 +2057,22 @@
       ]
     },
     {
+      "signature": "append_harness_evaluation_sample(uuid, uuid, text, text, integer, boolean, text, text, uuid, boolean, boolean, boolean, boolean, integer, numeric, text, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "append_harness_event(uuid, uuid, uuid, uuid, uuid, uuid, text, text, text, integer, text, text, text, numeric, integer, text, text, text, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "apply_approved_learning_candidate_to_knowledge(uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -1984,6 +2130,22 @@
     },
     {
       "signature": "auto_promote_learning_candidate_atomic(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "begin_harness_evaluation(uuid, text, text, text, text, text, text, text, text, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "begin_harness_run(uuid, uuid, uuid, text, text, text, text, text, text, uuid, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2287,7 +2449,31 @@
       ]
     },
     {
+      "signature": "finalize_kael_ai_spend(bigint, numeric, text, uuid, uuid, text, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "finalize_kael_ai_spend(bigint, numeric, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "finish_harness_evaluation(uuid, text, integer, jsonb, jsonb, text, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "finish_harness_run(uuid, text, integer, text, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2455,7 +2641,23 @@
       ]
     },
     {
+      "signature": "record_harness_privileged_operation(uuid, uuid, uuid, text, text, text, text, text, text, text, text, text, text, text, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "record_kael_ai_batch_poll(uuid, uuid, text, integer, integer, integer, integer, integer, text, timestamp with time zone, timestamp with time zone, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_kael_ai_spend(uuid, text, numeric, uuid, uuid, text, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2529,6 +2731,30 @@
     {
       "signature": "register_device_push_token_atomic(uuid, text, text, text, jsonb)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "register_harness_release(text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text, jsonb, jsonb, text, text, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "reject_harness_append_only_mutation()",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "reject_harness_release_mutation()",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -2640,6 +2866,14 @@
     },
     {
       "signature": "reserve_job_media_upload(uuid, uuid, text, text, text, bigint, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "reserve_kael_ai_spend(uuid, numeric, text, numeric, numeric, numeric, uuid, uuid, text, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

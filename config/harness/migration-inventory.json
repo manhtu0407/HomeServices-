@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 211,
-  "migrationsSha256": "cc07f3aee13cf995f7f4142476957aef6871f420d4fa58e2dc801ea20fcbdae7",
+  "migrationCount": 213,
+  "migrationsSha256": "61a2768d528e129f242bcbd405fcd58c0e3809324494c4fc9c68d433e8cdc107",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
     "sha256": "9480845aeb5fb81820e95ec0e0a4284c1e5fd1c6162da14e901ca74aa2de1a81"
@@ -1483,11 +1483,25 @@
       "bytes": 712
     },
     {
-      "version": "20260808130000",
-      "name": "harness_sql_lint_and_aggregate_fixes",
-      "file": "supabase/migrations/20260808130000_harness_sql_lint_and_aggregate_fixes.sql",
-      "sha256": "24ec0870919e36ad42a8dafcdf15921e20d7b3f4c66a716fa262e7e64f3e5048",
-      "bytes": 43136
+      "version": "20260806121000",
+      "name": "harness_release_ledger",
+      "file": "supabase/migrations/20260806121000_harness_release_ledger.sql",
+      "sha256": "d3c9a0f37a51aadb5b0694afac8300aba54e2c47a09b408f6b595c560682befd",
+      "bytes": 8936
+    },
+    {
+      "version": "20260806122000",
+      "name": "harness_trace_lineage",
+      "file": "supabase/migrations/20260806122000_harness_trace_lineage.sql",
+      "sha256": "9fdf8365af8bcd38d342988e91303a4e7ddfc662136645245e858c1e7dee9d17",
+      "bytes": 18179
+    },
+    {
+      "version": "20260806123000",
+      "name": "harness_evaluation_evidence",
+      "file": "supabase/migrations/20260806123000_harness_evaluation_evidence.sql",
+      "sha256": "9c073417457c95e84a1d5d311ebf099e7c9dcc8468a4368f91843883ca9778c7",
+      "bytes": 8617
     }
   ]
 }
