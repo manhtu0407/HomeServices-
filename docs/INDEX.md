@@ -38,6 +38,14 @@ Outside `docs/`: [`docker/INDEX.md`](../docker/INDEX.md) is the map for running 
 
 Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated filename = a living document (playbooks, ownership map, status vocabulary) that is versioned in git and in-content, not by filename.
 
+
+## Current Kael operations references
+
+- [`ops/kael-agentic-completeness-handoff-20260807.md`](ops/kael-agentic-completeness-handoff-20260807.md) — §50 implementation scope, verification, migration/live-service limits, configuration, and rollback.
+- [`ops/kael-eval-live.md`](ops/kael-eval-live.md) — deterministic versus live evaluation and staging-only execution rules.
+- [`ops/kael-model-health.md`](ops/kael-model-health.md) — routing audit and optional admin health probe.
+- [`ops/kael-incident-response.md`](ops/kael-incident-response.md) — kill-switch, provider, spend, unsafe-output, and escalation response.
+
 ## Load-bearing documents (do not move without care)
 
 These are referenced by locked docs or by code — moving them breaks references:

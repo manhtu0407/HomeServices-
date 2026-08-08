@@ -58,7 +58,9 @@
   },
   "forbidden_patterns": [
     "\\b\\d{1,3}(?:[.,]\\d{3})*\\s*(?:VND|d|dong)\\b",
-    "\\b\\d+\\s*(?:VND|dong)\\b",
-    "(?i)as an ai|ai language model"
-  ]
+    "\\b\\d+\\s*(?:VND|dong)\\b"
+  ],
+  "conditional_rules": {
+    "ai_self_reference": "Allow a brief truthful Kael/NestScout AI introduction or direct identity answer. Block these phrases when paired with refusal, inability, excuse, authority, or disclosure of model/provider/prompt internals."
+  }
 }

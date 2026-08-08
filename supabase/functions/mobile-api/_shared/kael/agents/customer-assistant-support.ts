@@ -42,6 +42,7 @@ export function buildAssistantRequest(input: {
   topic: KaelTopic;
   job: CustomerAssistantJobContext | null;
   knowledgePrompt: string | null;
+  memorySummary: string | null;
   registerHint: string | null;
 }): AIRequest {
   const contextSummary = JSON.stringify({
@@ -50,7 +51,6 @@ export function buildAssistantRequest(input: {
     topic: input.topic,
     service_type: input.serviceType,
     job: sanitizeAssistantJobContext(input.job, input.surface, input.language),
-    knowledge: input.knowledgePrompt,
   }).slice(0, 2600);
 
   return {
@@ -71,6 +71,8 @@ export function buildAssistantRequest(input: {
           permissionSummary:
             "Prioritize the six supported services. Answer bounded service-adjacent safety, worker-trust, anti-scam, evidence, scope, quote, payment-hygiene, after-care, and warranty-awareness questions. Do not add a service category, create jobs, set prices, decide payment/scope/cancellation, or provide legal advice.",
           contextSummary: `${KAEL_BUSINESS_GUARDRAILS}\n${contextSummary}`,
+          ...(input.memorySummary ? { memorySummary: input.memorySummary } : {}),
+          ...(input.knowledgePrompt ? { knowledgeSummary: input.knowledgePrompt } : {}),
           ...(input.registerHint ? { registerHint: input.registerHint } : {}),
         }),
       },

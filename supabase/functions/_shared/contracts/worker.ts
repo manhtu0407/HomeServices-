@@ -237,9 +237,34 @@ export const workerKaelChatPinSchema = z.object({
 }).strict();
 
 export const workerKaelFeedbackSchema = z.object({
-  message: z.string().trim().min(8).max(1200),
+  message: z.string().trim().min(8).max(1200).optional(),
+  response_id: z.string().trim().min(1).max(128).optional(),
+  rating: z.enum(["useful", "not_useful"]).optional(),
+  reason: z.string().trim().min(1).max(500).optional(),
   source: z.enum(["worker_chat", "profile"]).default("worker_chat"),
   language: z.enum(["vi", "en"]).default("vi"),
+}).strict().superRefine((value, ctx) => {
+  if (!value.message && (!value.response_id || !value.rating)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Feedback requires a legacy message or a response_id with rating.",
+      path: ["response_id"],
+    });
+  }
+  if (Boolean(value.response_id) !== Boolean(value.rating)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Feedback response_id and rating must be provided together.",
+      path: value.response_id ? ["rating"] : ["response_id"],
+    });
+  }
+  if (value.reason && !value.rating) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Feedback reason requires a rating.",
+      path: ["reason"],
+    });
+  }
 });
 
 export const workerKaelTrainingConsentSchema = z.object({
