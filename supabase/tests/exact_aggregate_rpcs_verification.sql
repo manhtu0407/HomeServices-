@@ -58,6 +58,30 @@ insert into public.worker_profiles (
   false,
   'Aggregate QA Worker',
   '1990-01-01'
+), (
+  'a3100000-0000-4000-8000-000000000004',
+  array['plumbing']::public.service_type[],
+  array['q7'],
+  true,
+  true,
+  4.8,
+  3,
+  'approved',
+  false,
+  'Timezone Aggregate Worker',
+  '1990-01-01'
+), (
+  'a3100000-0000-4000-8000-000000000003',
+  array['plumbing']::public.service_type[],
+  array['q7'],
+  false,
+  false,
+  0,
+  0,
+  'draft',
+  false,
+  'Aggregate Outsider',
+  '1990-01-01'
 )
 on conflict (id) do update
 set service_types = excluded.service_types,
@@ -120,6 +144,28 @@ select
   'AGG-N-' || lpad(series::text, 4, '0')
 from generate_series(1, 17) as series;
 
+insert into public.worker_payment_ledger (
+  job_id, worker_id, payment_provider, payment_state,
+  gross_amount, platform_fee, worker_net, commission_level,
+  commission_rate_bps, available_at, created_at, updated_at
+)
+select
+  job.id,
+  job.worker_id,
+  'sepay_vietqr',
+  case when job.status = 'paid'::public.job_status then 'available' else 'pending' end,
+  case when job.status = 'paid'::public.job_status then job.gross_amount else job.final_price end,
+  case when job.status = 'paid'::public.job_status then job.platform_fee else 0 end,
+  case when job.status = 'paid'::public.job_status then job.worker_net else job.final_price end,
+  1,
+  1500,
+  case when job.status = 'paid'::public.job_status then job.paid_at else null end,
+  job.created_at,
+  job.created_at
+from public.jobs as job
+where job.description like 'Exact aggregate paid fixture %'
+   or job.description like 'Exact aggregate pending fixture %';
+
 insert into public.jobs (
   id, customer_id, worker_id, service_type, description, status,
   final_price, gross_amount, platform_fee, worker_net, created_at, paid_at,
@@ -149,6 +195,27 @@ insert into public.jobs (
     300000, 300000, 30000, 270000,
     '2026-07-10T16:59:59Z', '2026-07-10T16:59:59Z', 'AGG-TZ-0003'
   );
+
+insert into public.worker_payment_ledger (
+  job_id, worker_id, payment_provider, payment_state,
+  gross_amount, platform_fee, worker_net, commission_level,
+  commission_rate_bps, available_at, created_at, updated_at
+)
+select
+  job.id,
+  job.worker_id,
+  'sepay_vietqr',
+  'available',
+  job.gross_amount,
+  job.platform_fee,
+  job.worker_net,
+  1,
+  1500,
+  job.paid_at,
+  job.created_at,
+  job.created_at
+from public.jobs as job
+where job.description like 'Timezone aggregate %';
 
 insert into public.reviews (id, job_id, customer_id, worker_id, rating, tags, created_at)
 select
@@ -245,12 +312,12 @@ declare
   earnings record;
   timezone_earnings record;
   customer_insights record;
-  invalid_fee_rejected boolean := false;
+  invalid_worker_rejected boolean := false;
   worker_insights record;
 begin
   if has_function_privilege(
     'authenticated',
-    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz,numeric)'),
+    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz)'),
     'execute'
   ) then
     raise exception 'authenticated must not execute the earnings aggregate RPC';
@@ -271,28 +338,26 @@ begin
   end if;
   if not has_function_privilege(
     'service_role',
-    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz,numeric)'),
+    to_regprocedure('public.get_worker_earnings_summary(uuid,timestamptz,timestamptz)'),
     'execute'
   ) then
     raise exception 'service_role must execute the aggregate RPCs';
   end if;
 
   begin
-    perform public.get_worker_earnings_summary(
-      'a3100000-0000-4000-8000-000000000002', null, null, null
-    );
+    perform public.get_worker_earnings_summary(null, null, null);
   exception
     when sqlstate '22023' then
-      invalid_fee_rejected := true;
+      invalid_worker_rejected := true;
   end;
 
-  if invalid_fee_rejected is not true then
-    raise exception 'null platform fee rate was accepted';
+  if invalid_worker_rejected is not true then
+    raise exception 'null worker id was accepted';
   end if;
 
   select * into strict earnings
   from public.get_worker_earnings_summary(
-    'a3100000-0000-4000-8000-000000000002', null, null, 0.10
+    'a3100000-0000-4000-8000-000000000002', null, null
   );
   if earnings.total_jobs_paid <> 1205
     or earnings.gross_earnings <> 108450000
@@ -305,7 +370,7 @@ begin
 
   select * into strict timezone_earnings
   from public.get_worker_earnings_summary(
-    'a3100000-0000-4000-8000-000000000004', null, null, 0.10
+    'a3100000-0000-4000-8000-000000000004', null, null
   );
   if timezone_earnings.daily_earnings <> '[
     {
@@ -330,8 +395,7 @@ begin
   from public.get_worker_earnings_summary(
     'a3100000-0000-4000-8000-000000000002',
     '2026-07-11T00:00:00Z',
-    '2026-07-11T23:59:59Z',
-    0.10
+    '2026-07-11T23:59:59Z'
   );
   if earnings.total_jobs_paid <> 0
     or earnings.pending_payment_count <> 17
@@ -392,7 +456,7 @@ begin
 
   select * into strict earnings
   from public.get_worker_earnings_summary(
-    'a3100000-0000-4000-8000-000000000003', null, null, 0.10
+    'a3100000-0000-4000-8000-000000000003', null, null
   );
   if earnings.total_jobs_paid <> 0 or earnings.pending_payment_count <> 0 then
     raise exception 'aggregate RPC leaked another actor history: %', row_to_json(earnings);
