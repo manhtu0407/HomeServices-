@@ -2539,10 +2539,10 @@ export type Database = {
           job_id: string | null
           priority: string
           queue_type: string
+          reason_code: string
+          resolution_note: string | null
           resolved_at: string | null
           resolved_by: string | null
-          resolution_note: string | null
-          reason_code: string
           response_summary: string
           safe_metadata: Json
           status: string
@@ -2557,10 +2557,10 @@ export type Database = {
           job_id?: string | null
           priority: string
           queue_type: string
+          reason_code: string
+          resolution_note?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
-          resolution_note?: string | null
-          reason_code: string
           response_summary: string
           safe_metadata?: Json
           status?: string
@@ -2575,10 +2575,10 @@ export type Database = {
           job_id?: string | null
           priority?: string
           queue_type?: string
+          reason_code?: string
+          resolution_note?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
-          resolution_note?: string | null
-          reason_code?: string
           response_summary?: string
           safe_metadata?: Json
           status?: string
