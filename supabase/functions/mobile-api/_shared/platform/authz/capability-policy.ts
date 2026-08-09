@@ -20,6 +20,7 @@ export type CapabilityPolicy = Readonly<{
   risk: CapabilityRisk;
   operationClass: HarnessOperationClass;
   privileged: boolean;
+  allowedMethods: readonly string[];
   requiresResourceCheck: boolean;
   resourceType: CapabilityResource["type"];
   confirmationGate: "none" | "offer" | "proposed_worker" | "scope_change" |
@@ -38,6 +39,7 @@ export type CapabilityEnvelope = Readonly<{
   envelopeId: string;
   actor: ActorContext;
   routeKind: RegisteredRouteKind;
+  method: string;
   capability: MobileCapability;
   risk: CapabilityRisk;
   operationClass: HarnessOperationClass;
@@ -60,6 +62,7 @@ export type AuthorizedRoute = {
 
 export class CapabilityAuthorizationError extends Error {
   readonly code: "CAPABILITY_UNDECLARED" | "CAPABILITY_FORBIDDEN" |
+    "CAPABILITY_METHOD_FORBIDDEN" |
     "CAPABILITY_STALE" | "CAPABILITY_SCOPE_MISMATCH" | "ACCOUNT_NOT_ACTIVE";
   readonly status = 403;
 
@@ -97,6 +100,13 @@ export function authorizeRouteCapability(
       `Role ${actor.role} cannot use ${policy.capability}.`,
     );
   }
+  const method = route.method?.trim().toUpperCase();
+  if (!method || !policy.allowedMethods.includes(method)) {
+    throw new CapabilityAuthorizationError(
+      "CAPABILITY_METHOD_FORBIDDEN",
+      `Method ${method || "(missing)"} is not registered for ${policy.capability}.`,
+    );
+  }
   const issuedAt = new Date(now).toISOString();
   const expiresAt = new Date(now + policy.envelopeTtlMs).toISOString();
   const resource = Object.freeze(resourceForRoute(route, policy.resourceType));
@@ -105,6 +115,7 @@ export function authorizeRouteCapability(
     envelopeId: crypto.randomUUID(),
     actor,
     routeKind: route.kind as RegisteredRouteKind,
+    method,
     capability: policy.capability,
     risk: policy.risk,
     operationClass: policy.operationClass,
@@ -129,6 +140,7 @@ export function capabilityPolicyForRoute(
     risk: raw.risk as CapabilityRisk,
     operationClass: raw.operationClass as HarnessOperationClass,
     privileged: raw.privileged,
+    allowedMethods: Object.freeze([...raw.methods]),
     requiresResourceCheck: raw.requiresResourceCheck,
     resourceType: raw.resourceType as CapabilityResource["type"],
     confirmationGate: raw.confirmationGate as CapabilityPolicy["confirmationGate"],
@@ -173,9 +185,10 @@ export function assertCapabilityEnvelope(
   if (input.route) {
     const expected = capabilityPolicyForRoute(input.route);
     const resource = expected ? resourceForRoute(input.route, expected.resourceType) : null;
+    const method = input.route.method?.trim().toUpperCase();
     if (
       !expected || envelope.routeKind !== input.route.kind ||
-      envelope.capability !== expected.capability ||
+      envelope.method !== method || envelope.capability !== expected.capability ||
       resource?.type !== envelope.resource.type || resource?.id !== envelope.resource.id
     ) {
       throw new CapabilityAuthorizationError(

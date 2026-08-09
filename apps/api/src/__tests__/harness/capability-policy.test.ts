@@ -25,6 +25,7 @@ describe('mobile capability policies', () => {
 
     expect(envelope).toMatchObject({
       capability: 'mobile.route.jobs.status',
+      method: 'PATCH',
       risk: 'write',
       privileged: true,
       requiresResourceCheck: true,
@@ -53,6 +54,17 @@ describe('mobile capability policies', () => {
       method: 'PATCH',
       roles: ['worker'],
     })).toThrow('cannot use mobile.route.workers.availability')
+  })
+
+  it('denies an HTTP method that is absent from the route policy', () => {
+    const actor = createActorContext({ userId: 'worker-1', role: 'worker' })
+
+    expect(() => authorizeRouteCapability(actor, {
+      kind: 'jobs.status',
+      method: 'DELETE',
+      jobId: 'job-1',
+      roles: ['worker'],
+    })).toThrow('Method DELETE is not registered for mobile.route.jobs.status')
   })
 
   it('keeps account-deletion retry as the only capability for a processing account', () => {
@@ -115,6 +127,16 @@ describe('mobile capability policies', () => {
         kind: 'jobs.status',
         method: 'PATCH',
         jobId: 'job-2',
+        roles: ['worker'],
+      },
+    })).toThrow('does not match the requested route or resource')
+
+    expect(() => assertCapabilityEnvelope(envelope, {
+      actor,
+      route: {
+        kind: 'jobs.status',
+        method: 'DELETE',
+        jobId: 'job-1',
         roles: ['worker'],
       },
     })).toThrow('does not match the requested route or resource')
