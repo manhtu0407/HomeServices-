@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 221,
-  "migrationsSha256": "0680f0cc0297b38c3b6212306ca9ea8c2f6de0bf72219fefbf2b846996fc1b68",
+  "migrationCount": 222,
+  "migrationsSha256": "88f11d26cb98bc46cb5d3f900dd4c4f0abd1936e958b01c77833c7aed740ea4f",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
     "sha256": "d788a538878c3ad16ab284f9826ce191aed89a9224c60ebdca7e805ec973cabe"
@@ -1558,6 +1558,13 @@
       "file": "supabase/migrations/20260808140000_correct_normalize_hcmc_district_code_volatility.sql",
       "sha256": "f6fefd6d05acfefdb255f64281eeb110d28604d9c16414565b03136b19710961",
       "bytes": 2528
+    },
+    {
+      "version": "20260809100000",
+      "name": "harden_harness_idempotency_input_validation",
+      "file": "supabase/migrations/20260809100000_harden_harness_idempotency_input_validation.sql",
+      "sha256": "b70f38b23c0080900ccc635a3b6538a4bb55c7b67c4adaaf54f10120adc66f6c",
+      "bytes": 5078
     }
   ]
 }
