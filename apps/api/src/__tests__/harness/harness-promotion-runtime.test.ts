@@ -6,6 +6,7 @@ import {
   setHarnessKillSwitch,
   transitionHarnessPromotion,
 } from '../../../../../supabase/functions/_shared/harness/promotion'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 
 function client(data: unknown, error: { message?: string } | null = null) {
   return { rpc: vi.fn().mockResolvedValue({ data, error }) }
@@ -84,5 +85,52 @@ describe('Harness promotion runtime', () => {
       actorId: '00000000-0000-4000-8000-000000000399',
       safeMetadata: { incident_id: 'incident-1' },
     })).resolves.toBe(true)
+  })
+
+  it('blocks a staging provider call before provider I/O when its switch is enabled', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const rpc = vi.fn(async (name: string) => ({
+      data: name === 'read_harness_kill_switch'
+        ? [{ enabled: true, reason_code: 'PROVIDER_INCIDENT' }]
+        : true,
+      error: null,
+    }))
+
+    try {
+      await expect(callAI({
+        purpose: 'intent_classification',
+        provider: 'deepseek',
+        model: 'deepseek-v4-flash',
+        messages: [{ role: 'user', content: 'safe metadata only' }],
+        maxRetries: 0,
+      }, {
+        deepseekApiKey: 'test-key',
+        durableGuardsEnabled: true,
+        durableGuardClient: { rpc },
+        harnessTrace: {
+          traceId: '00000000-0000-4000-8000-000000000011',
+          runId: '00000000-0000-4000-8000-000000000012',
+          parentRunId: null,
+          turnId: null,
+          toolCallId: null,
+          parentEventId: null,
+          actorIdHash: 'a'.repeat(64),
+          actorRole: 'customer',
+          jobId: null,
+          releaseId: 'release-test',
+          environment: 'staging',
+          startedAtMs: 0,
+          client: { rpc },
+        },
+      })).resolves.toMatchObject({ success: false, code: 'AI_DISABLED', error: 'PROVIDER_INCIDENT' })
+      expect(fetchSpy).not.toHaveBeenCalled()
+      expect(rpc).toHaveBeenCalledWith('read_harness_kill_switch', {
+        p_environment: 'staging',
+        p_switch_id: 'global_ai',
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

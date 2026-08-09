@@ -333,6 +333,25 @@ describe('Edge learning hook: runLearningHook', () => {
     expect(rpcCalls).toHaveLength(0)
   })
 
+  it('fails closed when the remote learning-promotion switch is enabled', async () => {
+    stubDenoEnv({ ...LEARNING_ON, NESTSCOUT_ENVIRONMENT: 'staging' })
+    const { client, rpcCalls } = hookClient({
+      job: REVIEWED_JOB,
+      rpcResults: {
+        read_harness_kill_switch: {
+          data: [{ enabled: true, reason_code: 'PROMOTION_INCIDENT' }],
+          error: null,
+        },
+      },
+    })
+    const summary = await runLearningHook(client, 'j1')
+    expect(summary).toEqual({ ok: false, skippedReason: 'learning_disabled' })
+    expect(rpcCalls).toEqual([{
+      name: 'read_harness_kill_switch',
+      args: { p_environment: 'staging', p_switch_id: 'learning_promotion' },
+    }])
+  })
+
   it('records observations but never promotes while autopromote flag is off', async () => {
     stubDenoEnv(LEARNING_ON)
     const { client, rpcCalls } = hookClient({

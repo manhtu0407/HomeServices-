@@ -1208,6 +1208,94 @@ export type Database = {
         }
         Relationships: []
       }
+      harness_kill_switch_events: {
+        Row: {
+          actor_id: string
+          enabled: boolean
+          environment: string
+          event_id: string
+          occurred_at: string
+          previous_enabled: boolean
+          reason_code: string | null
+          release_id: string | null
+          safe_metadata: Json
+          switch_id: string
+        }
+        Insert: {
+          actor_id: string
+          enabled: boolean
+          environment: string
+          event_id?: string
+          occurred_at?: string
+          previous_enabled: boolean
+          reason_code?: string | null
+          release_id?: string | null
+          safe_metadata?: Json
+          switch_id: string
+        }
+        Update: {
+          actor_id?: string
+          enabled?: boolean
+          environment?: string
+          event_id?: string
+          occurred_at?: string
+          previous_enabled?: boolean
+          reason_code?: string | null
+          release_id?: string | null
+          safe_metadata?: Json
+          switch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_kill_switch_events_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_kill_switches: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          enabled: boolean
+          environment: string
+          reason_code: string | null
+          release_id: string | null
+          safe_metadata: Json
+          switch_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          enabled?: boolean
+          environment: string
+          reason_code?: string | null
+          release_id?: string | null
+          safe_metadata?: Json
+          switch_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          enabled?: boolean
+          environment?: string
+          reason_code?: string | null
+          release_id?: string | null
+          safe_metadata?: Json
+          switch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_kill_switches_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
       harness_privileged_operations: {
         Row: {
           actor_id_hash: string | null
@@ -1277,6 +1365,135 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "harness_runs"
             referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      harness_promotion_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string
+          approval_id: string | null
+          environment: string
+          event_id: string
+          evidence_sha256: string | null
+          next_state: string
+          occurred_at: string
+          previous_state: string | null
+          promotion_id: string
+          reason_code: string | null
+          release_id: string
+          result: string
+          safe_metadata: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role: string
+          approval_id?: string | null
+          environment: string
+          event_id?: string
+          evidence_sha256?: string | null
+          next_state: string
+          occurred_at?: string
+          previous_state?: string | null
+          promotion_id: string
+          reason_code?: string | null
+          release_id: string
+          result: string
+          safe_metadata?: Json
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string
+          approval_id?: string | null
+          environment?: string
+          event_id?: string
+          evidence_sha256?: string | null
+          next_state?: string
+          occurred_at?: string
+          previous_state?: string | null
+          promotion_id?: string
+          reason_code?: string | null
+          release_id?: string
+          result?: string
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_promotion_events_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "harness_promotions"
+            referencedColumns: ["promotion_id"]
+          },
+          {
+            foreignKeyName: "harness_promotion_events_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_promotions: {
+        Row: {
+          cohort: string | null
+          created_at: string
+          environment: string
+          evaluation_report_id: string | null
+          human_approval_id: string | null
+          observation_window_minutes: number | null
+          packet_sha256: string
+          promotion_id: string
+          release_id: string
+          rollback_release_id: string | null
+          safe_metadata: Json
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          cohort?: string | null
+          created_at?: string
+          environment: string
+          evaluation_report_id?: string | null
+          human_approval_id?: string | null
+          observation_window_minutes?: number | null
+          packet_sha256: string
+          promotion_id?: string
+          release_id: string
+          rollback_release_id?: string | null
+          safe_metadata?: Json
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          cohort?: string | null
+          created_at?: string
+          environment?: string
+          evaluation_report_id?: string | null
+          human_approval_id?: string | null
+          observation_window_minutes?: number | null
+          packet_sha256?: string
+          promotion_id?: string
+          release_id?: string
+          rollback_release_id?: string | null
+          safe_metadata?: Json
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_promotions_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+          {
+            foreignKeyName: "harness_promotions_rollback_release_id_fkey"
+            columns: ["rollback_release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
           },
         ]
       }
@@ -1445,6 +1662,62 @@ export type Database = {
           safe_metadata?: Json
         }
         Relationships: []
+      }
+      harness_slo_observations: {
+        Row: {
+          actual: number
+          created_at: string
+          environment: string
+          observation_id: string
+          owner: string
+          passed: boolean | null
+          release_id: string
+          runbook: string
+          safe_metadata: Json
+          slo_id: string
+          target: number
+          window_ended_at: string
+          window_started_at: string
+        }
+        Insert: {
+          actual: number
+          created_at?: string
+          environment: string
+          observation_id?: string
+          owner: string
+          passed?: boolean | null
+          release_id: string
+          runbook: string
+          safe_metadata?: Json
+          slo_id: string
+          target: number
+          window_ended_at: string
+          window_started_at: string
+        }
+        Update: {
+          actual?: number
+          created_at?: string
+          environment?: string
+          observation_id?: string
+          owner?: string
+          passed?: boolean | null
+          release_id?: string
+          runbook?: string
+          safe_metadata?: Json
+          slo_id?: string
+          target?: number
+          window_ended_at?: string
+          window_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_slo_observations_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
       }
       harness_runs: {
         Row: {
@@ -8422,6 +8695,58 @@ export type Database = {
           ok: boolean
           reason: string
           validated_refs: string[]
+        }[]
+      }
+      read_harness_kill_switch: {
+        Args: { p_environment: string; p_switch_id: string }
+        Returns: {
+          enabled: boolean
+          reason_code: string
+        }[]
+      }
+      record_harness_slo_observation: {
+        Args: {
+          p_actual: number
+          p_environment: string
+          p_release_id: string
+          p_safe_metadata?: Json
+          p_slo_id: string
+          p_window_ended_at: string
+          p_window_started_at: string
+        }
+        Returns: string
+      }
+      set_harness_kill_switch: {
+        Args: {
+          p_actor_id: string
+          p_enabled: boolean
+          p_environment: string
+          p_reason_code: string
+          p_release_id: string
+          p_safe_metadata?: Json
+          p_switch_id: string
+        }
+        Returns: boolean
+      }
+      transition_harness_promotion: {
+        Args: {
+          p_actor_id: string
+          p_approval_id: string
+          p_environment: string
+          p_evaluation_report_id: string
+          p_expected_state: string
+          p_next_state: string
+          p_packet_sha256: string
+          p_reason_code?: string
+          p_release_id: string
+          p_rollback_release_id: string
+          p_safe_metadata?: Json
+        }
+        Returns: {
+          error_code: string
+          ok: boolean
+          promotion_id: string
+          state: string
         }[]
       }
       acquire_harness_dependency_permit: {

@@ -18,6 +18,7 @@ import {
 } from "../../../../_shared/domain.ts";
 import { withDbTimeout } from "../pipeline/utils.ts";
 import { resolveLearningRuntimeConfig } from "./skills/registry.ts";
+import { assertHarnessCapabilityEnabled } from "../../../../_shared/harness/promotion.ts";
 
 export {
   CONTRADICTION_MAX_RATIO,
@@ -560,7 +561,11 @@ export async function runLearningHook(
   const summary: EdgeLearningHookSummary = { ok: false };
 
   const runtimeConfig = resolveLearningRuntimeConfig(readRuntimeEnv);
-  if (!runtimeConfig.write_enabled || runtimeConfig.kill_switch) {
+  const killSwitch = await assertHarnessCapabilityEnabled(client, {
+    environment: readRuntimeEnv("NESTSCOUT_ENVIRONMENT") ?? "local",
+    switches: ["learning_promotion"],
+  });
+  if (!runtimeConfig.write_enabled || runtimeConfig.kill_switch || !killSwitch.allowed) {
     summary.skippedReason = "learning_disabled";
     return summary;
   }

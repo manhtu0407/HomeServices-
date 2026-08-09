@@ -189,6 +189,8 @@ describe('mobile-api Kael callAI durable circuit wiring', () => {
     const rpc = vi.fn(async (fn: string) => ({
       data: fn === 'is_circuit_open'
         ? false
+        : fn === 'read_harness_kill_switch'
+        ? [{ enabled: false, reason_code: null }]
         : fn === 'acquire_harness_dependency_permit'
         ? [{ allowed: false, state: 'open', retry_after_ms: 30_000, probe_token: null }]
         : true,
@@ -278,6 +280,8 @@ describe('mobile-api Kael callAI durable circuit wiring', () => {
       return {
         data: fn === 'is_circuit_open'
           ? false
+          : fn === 'read_harness_kill_switch'
+          ? [{ enabled: false, reason_code: null }]
           : fn === 'acquire_harness_dependency_permit'
           ? [{ allowed: true, state: 'closed', retry_after_ms: 0, probe_token: null }]
           : true,

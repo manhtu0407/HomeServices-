@@ -28,6 +28,11 @@ import {
   recordDependencyResult,
   type ReliabilityClient,
 } from "../../../../_shared/harness/reliability.ts";
+import {
+  assertHarnessCapabilityEnabled,
+  type HarnessKillSwitch,
+  type HarnessPromotionClient,
+} from "../../../../_shared/harness/promotion.ts";
 import { emitKaelOpsAlert } from "../ops/alerts.ts";
 
 const AI_PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -79,6 +84,7 @@ async function prepareAiProviderCall(
   const blocked = await providerCallBlocker(
     request,
     secrets,
+    environment,
     providerAttemptId,
   );
   if (blocked) return blocked;
@@ -148,9 +154,20 @@ async function prepareAiProviderCall(
 async function providerCallBlocker(
   request: AIRequest,
   secrets: EdgeAiSecrets,
+  environment: string,
   providerAttemptId: string,
 ): Promise<AIError | null> {
-  if (isKaelAiKillSwitchEnabled()) {
+  const switches: HarnessKillSwitch[] = [
+    "global_ai",
+    `provider_${request.provider}` as HarnessKillSwitch,
+    ...(request.purpose === "market_lookup" ? ["tool_market_lookup" as const] : []),
+    ...(request.purpose === "vision_analysis" ? ["tool_vision" as const] : []),
+  ];
+  const killSwitch = await assertHarnessCapabilityEnabled(
+    secrets.durableGuardClient as unknown as HarnessPromotionClient,
+    { environment, switches },
+  );
+  if (!killSwitch.allowed || isKaelAiKillSwitchEnabled()) {
     console.warn("AI call blocked by KAEL_AI_KILL_SWITCH", {
       provider: request.provider,
       purpose: request.purpose,
@@ -174,7 +191,7 @@ async function providerCallBlocker(
       success: false,
       provider: request.provider,
       code: "AI_DISABLED",
-      error: "kill_switch",
+      error: killSwitch.allowed ? "kill_switch" : killSwitch.reasonCode,
     };
   }
 
