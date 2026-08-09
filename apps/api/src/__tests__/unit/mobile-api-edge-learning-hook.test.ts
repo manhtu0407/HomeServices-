@@ -397,9 +397,44 @@ describe('Edge learning hook: runLearningHook', () => {
     })
     const summary = await runLearningHook(client, 'j1')
     expect(summary.ok).toBe(true)
-    expect(summary.marketPromoted).toBeUndefined()
+    expect(summary.marketQueuedForReview).toBe(true)
     expect(rpcCalls.some((call) => call.name === 'auto_promote_learning_candidate_atomic')).toBe(false)
     expect(rpcCalls.some((call) => call.name === 'queue_learning_candidate_manual_review')).toBe(true)
+  })
+
+  it('does not claim manual review when the queue RPC fails', async () => {
+    stubDenoEnv(LEARNING_ON)
+    const { client, rpcCalls } = hookClient({
+      job: REVIEWED_JOB,
+      review: { rating: 5, tags: [] },
+      candidate: pricePriorCandidate(),
+      rpcResults: {
+        record_learning_observation_atomic: {
+          data: [{
+            ok: true,
+            error_code: null,
+            candidate_id: 'c1',
+            is_new: false,
+            confidence: 0.8,
+            evidence_count: 6,
+            status: 'created',
+            idempotent: false,
+          }],
+          error: null,
+        },
+        queue_learning_candidate_manual_review: {
+          data: null,
+          error: { code: 'PGRST202' },
+        },
+      },
+    })
+
+    const summary = await runLearningHook(client, 'j1')
+
+    expect(summary.ok).toBe(true)
+    expect(summary.marketQueuedForReview).toBe(false)
+    expect(summary.caseQueuedForReview).toBe(false)
+    expect(rpcCalls.filter((call) => call.name === 'queue_learning_candidate_manual_review')).not.toHaveLength(0)
   })
 
   it('does not let a truthy legacy auto flag activate a rule', async () => {
@@ -429,7 +464,7 @@ describe('Edge learning hook: runLearningHook', () => {
       },
     })
     const summary = await runLearningHook(client, 'j1')
-    expect(summary.marketPromoted).toBeUndefined()
+    expect(summary.marketQueuedForReview).toBe(true)
   })
 
   it('passes the admin reference band to the observation RPC', async () => {
@@ -559,7 +594,7 @@ describe('Edge learning hook: runLearningHook', () => {
     })
     const summary = await runLearningHook(client, 'j1')
 
-    expect(summary.marketPromoted).toBeUndefined()
+    expect(summary.marketQueuedForReview).toBe(false)
     expect(rpcCalls.some((call) => call.name === 'auto_promote_learning_candidate_atomic'))
       .toBe(false)
     const queued = rpcCalls.find(
