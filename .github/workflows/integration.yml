@@ -48,6 +48,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NESTSCOUT_ENVIRONMENT: staging
+          SUPABASE_PROJECT_REF: xyylanuyflrjzbjzhqfl
+          HARNESS_REMOTE_MUTATION_APPROVAL: ${{ github.run_id }}
+          HARNESS_RELEASE_ID: ${{ github.sha }}
         run: |
           test -n "$NEXT_PUBLIC_SUPABASE_URL"
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
@@ -58,4 +62,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NESTSCOUT_ENVIRONMENT: staging
+          SUPABASE_PROJECT_REF: xyylanuyflrjzbjzhqfl
+          HARNESS_REMOTE_MUTATION_APPROVAL: ${{ github.run_id }}
+          HARNESS_RELEASE_ID: ${{ github.sha }}
         run: pnpm --filter @nestscout/api exec vitest run src/__tests__/integration

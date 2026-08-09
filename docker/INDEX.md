@@ -71,7 +71,7 @@ All of these are aliases with a gate in front — they are not raw CLI passthrou
   16 GB machine; Supabase recommends >= 7 GB for the full service set.
 - **Every `up` needs its `down`.** Nothing enforces this. Leaving the stack
   running overnight is a real cost.
-- **Never hand-edit `supabase/config.toml`** to shape a profile. Use `-x`.
+- **Never hand-edit `supabase/config.toml` solely to shape a profile.** Use `-x`; if a host port changes, update the runtime consumers and doctor in the same change.
 - **Never point the local stack's credentials at staging or production.** The
   local stack issues fixed, publicly-known demo JWTs.
 
@@ -82,7 +82,7 @@ All of these are aliases with a gate in front — they are not raw CLI passthrou
 Managed with the CLI's `-x` exclusion flag, never by editing `config.toml`.
 
 - [`profiles/lean.md`](profiles/lean.md) — the default. db + auth + storage + edge_runtime.
-- [`profiles/full.md`](profiles/full.md) — adds studio, inbucket, realtime, analytics. Only when you need them.
+- [`profiles/full.md`](profiles/full.md) — adds studio, Mailpit, realtime, analytics. Only when you need them.
 
 ---
 
