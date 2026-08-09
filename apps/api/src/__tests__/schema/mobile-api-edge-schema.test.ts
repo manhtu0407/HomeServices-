@@ -1303,12 +1303,15 @@ describe('mobile-api Edge schema compatibility', () => {
     // assertion follows: prove the guard exists once, then prove every suite
     // routes through it. A suite that resolves its own URL bypasses the guard.
     const guard = read('apps/api/src/__tests__/integration/integration-target.ts')
-    const environment = read('supabase/functions/_shared/harness/environment.ts')
-    expect(guard).toContain('resolveHarnessEnvironment')
-    expect(guard).toContain('assertHarnessMutationAllowed')
-    expect(environment).toContain('HARNESS_PRODUCTION_PROJECT_REF = "iwevizmsedyqozxlawwl"')
-    expect(environment).toContain('PRODUCTION_PROJECT_MISMATCH')
-    expect(environment).toContain('PRODUCTION_MUTATION_REQUIRES_OPERATOR')
+    const environmentGuard = read('supabase/functions/_shared/harness/environment.ts')
+    expect(guard).toContain("from '../../../../../supabase/functions/_shared/harness/environment'")
+    expect(guard).toContain('resolveHarnessEnvironment(')
+    expect(guard).toContain('assertHarnessMutationAllowed(descriptor)')
+    expect(guard).toContain("mutationIntent: 'mutate'")
+    expect(environmentGuard).toContain('HARNESS_PRODUCTION_PROJECT_REF = "iwevizmsedyqozxlawwl"')
+    expect(environmentGuard).toContain('PRODUCTION_PROJECT_MISMATCH')
+    expect(environmentGuard).toContain('PRODUCTION_MUTATION_REQUIRES_OPERATOR')
+    expect(environmentGuard).toContain('throw new HarnessEnvironmentError(')
     // Dangerous configurations throw. Skipping them would report green for a
     // suite that never ran — the silent degradation RULES.md #8 bans.
     expect(guard).toMatch(/assertHarnessMutationAllowed\(descriptor\)/)
