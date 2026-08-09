@@ -6,10 +6,10 @@
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
   "migrationCount": 221,
-  "migrationsSha256": "1488234eb3e3ca19f83129ca7df857c6a0fb2b67993b144848a28d63d31257ea",
+  "migrationsSha256": "489712f791fa815728992baf847597ebc914b25098020b77c3408b5234e97c2f",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
-    "sha256": "b92d356bd8862c8c619c1484e34d278e682a41a1617b077bef0084188d969050"
+    "sha256": "d788a538878c3ad16ab284f9826ce191aed89a9224c60ebdca7e805ec973cabe"
   },
   "entries": [
     {
@@ -1500,15 +1500,15 @@
       "version": "20260806123000",
       "name": "harness_evaluation_evidence",
       "file": "supabase/migrations/20260806123000_harness_evaluation_evidence.sql",
-      "sha256": "9c073417457c95e84a1d5d311ebf099e7c9dcc8468a4368f91843883ca9778c7",
-      "bytes": 8617
+      "sha256": "21ab3ba23020878b969ff67fba4dcf7c7c8c1ba8194759b27d1ea19a2b2544d6",
+      "bytes": 9599
     },
     {
       "version": "20260806124000",
       "name": "harness_learning_provenance",
       "file": "supabase/migrations/20260806124000_harness_learning_provenance.sql",
-      "sha256": "44c7c0fbeac50a404bde178203f2e381f858a31c51a9f032e8a3d425678eb306",
-      "bytes": 30778
+      "sha256": "5dcda8f2776dd79fb944f615c8f53b5a6bcaa7b5f35c33ecf69746cb7abdba15",
+      "bytes": 31121
     },
     {
       "version": "20260806125000",

@@ -18,7 +18,6 @@ import {
 } from "../../../../_shared/domain.ts";
 import { withDbTimeout } from "../pipeline/utils.ts";
 import { resolveLearningRuntimeConfig } from "./skills/registry.ts";
-import { assertHarnessCapabilityEnabled } from "../../../../_shared/harness/promotion.ts";
 
 export {
   CONTRADICTION_MAX_RATIO,
@@ -104,10 +103,10 @@ export type EdgeLearningHookSummary = {
   ok: boolean;
   marketCandidateId?: string;
   marketEvidence?: number;
-  marketPromoted?: { ruleId: string; ruleVersion: number };
+  marketQueuedForReview?: boolean;
   caseCandidateId?: string;
   caseEvidence?: number;
-  casePromoted?: { ruleId: string; ruleVersion: number };
+  caseQueuedForReview?: boolean;
   skippedReason?: string;
 };
 
@@ -414,7 +413,7 @@ async function maybeQueueManualReview(
   client: LearningHookDbClient,
   candidateId: string,
   now: Date,
-): Promise<null> {
+): Promise<boolean> {
   const candidateResult = await withDbTimeout<DbResult<Record<string, unknown>>>(
     client
       .from("learning_candidates")
@@ -430,11 +429,11 @@ async function maybeQueueManualReview(
     : Array.isArray(rawCandidate) && isRecord(rawCandidate[0])
     ? rawCandidate[0]
     : null;
-  if (candidateResult.error || !candidate || !isEdgeCandidateRow(candidate)) return null;
-  if (["manual_review", "rejected", "archived", "rolled_back"].includes(candidate.status)) {
-    return null;
+  if (candidateResult.error || !candidate || !isEdgeCandidateRow(candidate)) return false;
+  if (["manual_review", "auto_promoted", "rejected", "archived", "rolled_back"].includes(candidate.status)) {
+    return false;
   }
-  if (!candidate.affected_service) return null;
+  if (!candidate.affected_service) return false;
 
   const similarResult = await withDbTimeout<DbResult<Array<Record<string, unknown>>>>(
     client
@@ -465,11 +464,11 @@ async function maybeQueueManualReview(
     await withDbTimeout<DbResult<unknown>>(
       client.from("learning_candidates").update(patch).eq("id", candidateId) as QueryLike<unknown>,
     );
-    return null;
+    return false;
   }
 
   const provenance = await candidateProvenance(candidate);
-  await withDbTimeout<DbResult<unknown>>(
+  const queueResult = await withDbTimeout<DbResult<unknown>>(
     client.rpc("queue_learning_candidate_manual_review", {
       p_candidate_id: candidate.id,
       p_source_hash: provenance.sourceHash,
@@ -488,7 +487,12 @@ async function maybeQueueManualReview(
       },
     }) as QueryLike<unknown>,
   );
-  return null;
+  const queueRow = Array.isArray(queueResult.data) ? queueResult.data[0] : queueResult.data;
+  return !queueResult.error
+    && isRecord(queueRow)
+    && queueRow.ok === true
+    && queueRow.candidate_id === candidate.id
+    && queueRow.status === "manual_review";
 }
 
 async function candidateProvenance(candidate: EdgeLearningCandidateRow): Promise<{
@@ -556,11 +560,7 @@ export async function runLearningHook(
   const summary: EdgeLearningHookSummary = { ok: false };
 
   const runtimeConfig = resolveLearningRuntimeConfig(readRuntimeEnv);
-  const killSwitch = await assertHarnessCapabilityEnabled(client, {
-    environment: readRuntimeEnv("NESTSCOUT_ENVIRONMENT") ?? "local",
-    switches: ["learning_promotion"],
-  });
-  if (!runtimeConfig.write_enabled || runtimeConfig.kill_switch || !killSwitch.allowed) {
+  if (!runtimeConfig.write_enabled || runtimeConfig.kill_switch) {
     summary.skippedReason = "learning_disabled";
     return summary;
   }
@@ -578,8 +578,7 @@ export async function runLearningHook(
     if (marketResult.ok) {
       summary.marketCandidateId = marketResult.candidateId;
       summary.marketEvidence = marketResult.evidenceCount;
-      const promoted = await maybeQueueManualReview(client, marketResult.candidateId, now);
-      if (promoted) summary.marketPromoted = promoted;
+      summary.marketQueuedForReview = await maybeQueueManualReview(client, marketResult.candidateId, now);
       summary.ok = true;
     }
   }
@@ -589,8 +588,7 @@ export async function runLearningHook(
   if (caseResult.ok) {
     summary.caseCandidateId = caseResult.candidateId;
     summary.caseEvidence = caseResult.evidenceCount;
-    const promoted = await maybeQueueManualReview(client, caseResult.candidateId, now);
-    if (promoted) summary.casePromoted = promoted;
+    summary.caseQueuedForReview = await maybeQueueManualReview(client, caseResult.candidateId, now);
     summary.ok = true;
   }
 

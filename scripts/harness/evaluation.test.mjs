@@ -1,10 +1,18 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import test from 'node:test'
 import { randomUUID } from 'node:crypto'
-import { buildEvaluationReport, evaluateHarnessEvidence, requiresLiveEvaluation } from './evaluation.mjs'
+import {
+  buildEvaluationReport,
+  evaluateHarnessEvidence,
+  parseHarnessEvaluationArgs,
+  requiresLiveEvaluation,
+  resolveHarnessEvaluationPath,
+} from './evaluation.mjs'
 
 const policy = JSON.parse(readFileSync(new URL('../../config/harness/evaluation.json', import.meta.url), 'utf8'))
+const root = resolve(import.meta.dirname, '../..')
 const release = {
   releaseId: 'harness-0123456789ab-fedcba987654',
   gitSha: 'a'.repeat(40),
@@ -118,4 +126,12 @@ test('requires live evaluation for prompt, provider, and runtime-tool changes', 
   assert.equal(requiresLiveEvaluation(['docs/INDEX.md']), false)
   assert.equal(requiresLiveEvaluation(['supabase/functions/mobile-api/_shared/kael/prompts/system-prompt.ts']), true)
   assert.equal(requiresLiveEvaluation(['supabase/functions/mobile-api/_shared/kael/tools/market.ts']), true)
+})
+
+test('rejects missing CLI values and repository-escaping evaluation paths', () => {
+  assert.throws(() => parseHarnessEvaluationArgs(['--report']), /--report requires a value/)
+  assert.throws(
+    () => resolveHarnessEvaluationPath(root, '../outside.json', 'evaluation report'),
+    /must stay inside the repository root/,
+  )
 })

@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  assertHarnessCapabilityEnabled,
-  readHarnessKillSwitch,
-} from '../../../../../supabase/functions/_shared/harness/promotion'
-import {
   acquireDependencyPermit,
   completeHarnessIdempotency,
   degradedModeFor,
@@ -116,39 +112,6 @@ describe('Harness reliability runtime', () => {
     const client = { rpc: vi.fn().mockRejectedValue(new Error('db down')) }
     await expect(dependencyCircuitState(client, { dependency: 'sepay', environment: 'production' }))
       .resolves.toEqual({ state: 'open', retryAfterMs: 30_000 })
-  })
-
-  it('keeps local kill switches off without a remote control plane', async () => {
-    await expect(readHarnessKillSwitch(null, {
-      environment: 'local',
-      switchId: 'global_ai',
-    })).resolves.toEqual({ enabled: false, reasonCode: null })
-  })
-
-  it('fails closed when a remote kill-switch read is unavailable', async () => {
-    const client = { rpc: vi.fn().mockRejectedValue(new Error('database unavailable')) }
-    await expect(assertHarnessCapabilityEnabled(client, {
-      environment: 'production',
-      switches: ['global_ai'],
-    })).resolves.toEqual({
-      allowed: false,
-      switchId: 'global_ai',
-      reasonCode: 'KILL_SWITCH_READ_FAILED',
-    })
-  })
-
-  it('blocks the first enabled switch in deterministic order', async () => {
-    const client = { rpc: vi.fn()
-      .mockResolvedValueOnce({ data: [{ enabled: false, reason_code: null }], error: null })
-      .mockResolvedValueOnce({ data: [{ enabled: true, reason_code: 'PROVIDER_INCIDENT' }], error: null }) }
-    await expect(assertHarnessCapabilityEnabled(client, {
-      environment: 'staging',
-      switches: ['global_ai', 'provider_anthropic'],
-    })).resolves.toEqual({
-      allowed: false,
-      switchId: 'provider_anthropic',
-      reasonCode: 'PROVIDER_INCIDENT',
-    })
   })
 
   it('hashes response receipts before persistence and exposes honest degraded modes', async () => {

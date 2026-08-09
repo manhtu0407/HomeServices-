@@ -151,7 +151,12 @@ begin
     return query select false, 'CANDIDATE_NOT_FOUND'::text, p_candidate_id, null::text;
     return;
   end if;
-  if v_candidate.status in ('rejected', 'rolled_back', 'archived') then
+  if v_candidate.status not in (
+    'created'::public.learning_candidate_status,
+    'pending_evidence'::public.learning_candidate_status,
+    'evidence_gate_passed'::public.learning_candidate_status,
+    'manual_review'::public.learning_candidate_status
+  ) then
     return query select false, 'CANDIDATE_NOT_REVIEWABLE'::text, p_candidate_id, v_candidate.status::text;
     return;
   end if;
@@ -250,6 +255,11 @@ begin
       'evidence_gate_passed'::public.learning_candidate_status,
       'manual_review'::public.learning_candidate_status
     );
+
+  if not found then
+    return query select false, 'CANDIDATE_NOT_REVIEWABLE'::text, p_candidate_id, v_candidate.status::text;
+    return;
+  end if;
 
   insert into public.kael_rule_lifecycle_log (
     candidate_id, skill_id, previous_state, next_state,

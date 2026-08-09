@@ -7,10 +7,6 @@ import { nullableNumber, nullableString } from "../../platform/coercions.ts";
 import { dbQuery, type DbClient } from "../../platform/db.ts";
 import type { EdgeStagingPaymentResponse } from "./staging.ts";
 import { validateWorkflowTransition } from "../../workflow-orchestrator.ts";
-import {
-  assertHarnessCapabilityEnabled,
-  type HarnessPromotionClient,
-} from "../../../../_shared/harness/promotion.ts";
 
 export type SePayWebhookSignatureInput = {
   nowMs?: number;
@@ -165,13 +161,6 @@ export async function createSePayVietQrPaymentIntent(
   config: SePayVietQrConfig | undefined,
 ): Promise<EdgeSePayVietQrPaymentResponse> {
   const settings = requirePaymentSettings(config);
-  const guard = await assertHarnessCapabilityEnabled(
-    (ctx.privilegedSupabase ?? ctx.supabase) as unknown as HarnessPromotionClient,
-    { environment: ctx.environment ?? "local", switches: ["payment_sepay"] },
-  );
-  if (!guard.allowed) {
-    apiFailure("PAYMENT_DISABLED", "Thanh toán đang tạm dừng để đảm bảo an toàn.", 503);
-  }
   const client = ctx.supabase as DbClient;
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",

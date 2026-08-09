@@ -114,10 +114,17 @@ export function compareRemoteMigrations(inventory, remote) {
   const remoteEntries = Array.isArray(remote) ? remote : remote.migrations
   if (!Array.isArray(remoteEntries)) return ['remote migration snapshot is not an array']
   const expectedVersions = inventory.entries.map((entry) => entry.version)
-  const actualVersions = remoteEntries.map((entry) => String(entry.version ?? entry.id ?? ''))
+  const suppliedVersions = remoteEntries.map((entry) => String(entry?.version ?? entry?.id ?? ''))
+  if (suppliedVersions.some((version) => !version)) {
+    problems.push('remote migration snapshot contains an entry without a version')
+  }
+  const actualVersions = suppliedVersions
     .filter(Boolean)
   const expectedSet = new Set(expectedVersions)
   const actualSet = new Set(actualVersions)
+  if (actualSet.size !== actualVersions.length) {
+    problems.push('remote migration history contains duplicate versions')
+  }
   const missing = expectedVersions.filter((version) => !actualSet.has(version))
   const unknown = actualVersions.filter((version) => !expectedSet.has(version))
   if (missing.length) problems.push(`remote is missing migrations: ${missing.join(', ')}`)
