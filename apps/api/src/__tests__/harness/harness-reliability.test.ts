@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { placesAutocomplete } from '../../../../../supabase/functions/mobile-api/_shared/domains/places/geo-public'
+import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_shared/platform/push'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/platform/auth'
 import {
   acquireDependencyPermit,
   completeHarnessIdempotency,
@@ -112,6 +115,72 @@ describe('Harness reliability runtime', () => {
     const client = { rpc: vi.fn().mockRejectedValue(new Error('db down')) }
     await expect(dependencyCircuitState(client, { dependency: 'sepay', environment: 'production' }))
       .resolves.toEqual({ state: 'open', retryAfterMs: 30_000 })
+  })
+
+  it('fails closed before Maps provider I/O when the remote permit is denied', async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ allowed: false, state: 'open', retry_after_ms: 30_000, probe_token: null }],
+      error: null,
+    }))
+    const client = { rpc }
+    const context = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+      privilegedSupabase: client,
+      environment: 'staging',
+      releaseId: 'release-test',
+    } as unknown as MobileApiContext
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+
+    try {
+      await expect(placesAutocomplete(
+        context,
+        { input: 'Bình Thạnh' },
+        { googleMapsApiKey: 'maps-key' } as Parameters<typeof placesAutocomplete>[2],
+      )).resolves.toEqual({ suggestions: [], fallback_used: true })
+      expect(fetchSpy).not.toHaveBeenCalled()
+      expect(rpc).toHaveBeenCalledWith('acquire_harness_dependency_permit', expect.objectContaining({
+        p_dependency: 'maps',
+        p_environment: 'staging',
+      }))
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('replays a completed remote push delivery without querying tokens or calling Expo', async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ state: 'completed', reservation_id: 'reservation-1', response_hash: 'a'.repeat(64) }],
+      error: null,
+    }))
+    const from = vi.fn()
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+
+    try {
+      await expect(sendPushToUsers(
+        { rpc, from },
+        ['worker-1'],
+        { title: 'Yêu cầu mới', body: 'Mở NestScout để xem chi tiết.' },
+        {
+          environment: 'staging',
+          releaseId: 'release-test',
+          idempotencyKey: 'push:550e8400-e29b-41d4-a716-446655440000',
+        },
+      )).resolves.toMatchObject({ delivered: 0, failed: 0, replayed: true })
+      expect(from).not.toHaveBeenCalled()
+      expect(fetchSpy).not.toHaveBeenCalled()
+      expect(rpc).toHaveBeenCalledWith('reserve_harness_idempotency', expect.objectContaining({
+        p_environment: 'staging',
+        p_operation_id: 'push.send',
+        p_release_id: 'release-test',
+      }))
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('hashes response receipts before persistence and exposes honest degraded modes', async () => {
