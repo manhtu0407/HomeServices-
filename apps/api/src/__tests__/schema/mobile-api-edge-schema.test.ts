@@ -1308,13 +1308,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(guard).toContain('resolveHarnessEnvironment(')
     expect(guard).toContain('assertHarnessMutationAllowed(descriptor)')
     expect(guard).toContain("mutationIntent: 'mutate'")
-    expect(environmentGuard).toContain('HARNESS_PRODUCTION_PROJECT_REF = "iwevizmsedyqozxlawwl"')
-    expect(environmentGuard).toContain('PRODUCTION_PROJECT_MISMATCH')
     expect(environmentGuard).toContain('PRODUCTION_MUTATION_REQUIRES_OPERATOR')
     expect(environmentGuard).toContain('throw new HarnessEnvironmentError(')
-    // Dangerous configurations throw. Skipping them would report green for a
-    // suite that never ran — the silent degradation RULES.md #8 bans.
-    expect(guard).toMatch(/assertHarnessMutationAllowed\(descriptor\)/)
 
     for (const file of [
       'apps/api/src/__tests__/integration/real-supabase.test.ts',
@@ -1327,5 +1322,12 @@ describe('mobile-api Edge schema compatibility', () => {
       expect(source).toContain('resolveOrAnnounceSkip(')
       expect(source).not.toContain('process.env.NEXT_PUBLIC_SUPABASE_URL')
     }
+  })
+
+  it('pins the production project identity and mismatch failure path', () => {
+    const environmentGuard = read('supabase/functions/_shared/harness/environment.ts')
+
+    expect(environmentGuard).toContain('HARNESS_PRODUCTION_PROJECT_REF = "iwevizmsedyqozxlawwl"')
+    expect(environmentGuard).toContain('PRODUCTION_PROJECT_MISMATCH')
   })
 })
