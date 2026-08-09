@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 235,
-  "migrationsSha256": "72d73d86bae1a31fc88afb8331dd5fdffd3c638c1b6277e0f611aaf590fc169c",
+  "migrationCount": 236,
+  "migrationsSha256": "6fbdaff9442f45af64ee7b5bfd7c1895890ef961275ee1e1342e04bc58a72782",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
-    "sha256": "ace6986288169c04f24994ad4ebcf9b1fbdf1aa364d3c07ab7703c5bdc2c1c3d"
+    "sha256": "5044f363996b179054848fdbf3b503dfd6de001fddbc6c9fb5ed14829a5ca552"
   },
   "entries": [
     {
@@ -1656,6 +1656,13 @@
       "file": "supabase/migrations/20260809123000_resolve_worker_earnings_rpc_overload.sql",
       "sha256": "bd4e2b1ef4c59422c6019b74b1e38976a1b9e94dd1440f2c4bc41020ce285695",
       "bytes": 366
+    },
+    {
+      "version": "20260809124500",
+      "name": "harden_public_signup_trigger_execution",
+      "file": "supabase/migrations/20260809124500_harden_public_signup_trigger_execution.sql",
+      "sha256": "30df73d5e3cf41f5dfe8e0a484591f8438dd7da69886dd1cb654ae846f242851",
+      "bytes": 396
     }
   ]
 }

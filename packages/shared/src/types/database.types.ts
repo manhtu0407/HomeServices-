@@ -68,7 +68,22 @@ export type Database = {
           target_user_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_manager_nominations_nominated_by_fkey"
+            columns: ["nominated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_manager_nominations_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_operator_accounts: {
         Row: {
@@ -104,7 +119,29 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_operator_accounts_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_operator_accounts_last_changed_by_fkey"
+            columns: ["last_changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_operator_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_worker_application_reviews: {
         Row: {
@@ -131,7 +168,29 @@ export type Database = {
           reason?: string | null
           worker_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_worker_application_reviews_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_worker_application_reviews_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: true
+            referencedRelation: "kael_admin_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_worker_application_reviews_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_provider_routing: {
         Row: {
@@ -6293,129 +6352,6 @@ export type Database = {
           },
         ]
       }
-      worker_payout_methods: {
-        Row: {
-          account_holder_name: string
-          bank_account: string
-          bank_account_masked: string
-          bank_key: string
-          bank_name: string
-          created_at: string
-          id: string
-          is_default: boolean
-          review_reason: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: string
-          updated_at: string
-          worker_id: string
-        }
-        Insert: {
-          account_holder_name: string
-          bank_account: string
-          bank_account_masked: string
-          bank_key: string
-          bank_name: string
-          created_at?: string
-          id?: string
-          is_default?: boolean
-          review_reason?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
-          updated_at?: string
-          worker_id: string
-        }
-        Update: {
-          account_holder_name?: string
-          bank_account?: string
-          bank_account_masked?: string
-          bank_key?: string
-          bank_name?: string
-          created_at?: string
-          id?: string
-          is_default?: boolean
-          review_reason?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: string
-          updated_at?: string
-          worker_id?: string
-        }
-        Relationships: []
-      }
-      worker_withdrawal_requests: {
-        Row: {
-          account_holder_name: string
-          amount_vnd: number
-          available_balance_before_vnd: number
-          bank_account: string
-          bank_account_masked: string
-          bank_key: string
-          bank_name: string
-          client_request_id: string
-          created_at: string
-          id: string
-          payout_method_id: string
-          processed_at: string | null
-          processed_by: string | null
-          processing_at: string | null
-          processing_by: string | null
-          requested_at: string
-          resolution_reason: string | null
-          status: string
-          transfer_reference: string | null
-          updated_at: string
-          worker_id: string
-        }
-        Insert: {
-          account_holder_name: string
-          amount_vnd: number
-          available_balance_before_vnd: number
-          bank_account: string
-          bank_account_masked: string
-          bank_key: string
-          bank_name: string
-          client_request_id: string
-          created_at?: string
-          id?: string
-          payout_method_id: string
-          processed_at?: string | null
-          processed_by?: string | null
-          processing_at?: string | null
-          processing_by?: string | null
-          requested_at?: string
-          resolution_reason?: string | null
-          status?: string
-          transfer_reference?: string | null
-          updated_at?: string
-          worker_id: string
-        }
-        Update: {
-          account_holder_name?: string
-          amount_vnd?: number
-          available_balance_before_vnd?: number
-          bank_account?: string
-          bank_account_masked?: string
-          bank_key?: string
-          bank_name?: string
-          client_request_id?: string
-          created_at?: string
-          id?: string
-          payout_method_id?: string
-          processed_at?: string | null
-          processed_by?: string | null
-          processing_at?: string | null
-          processing_by?: string | null
-          requested_at?: string
-          resolution_reason?: string | null
-          status?: string
-          transfer_reference?: string | null
-          updated_at?: string
-          worker_id?: string
-        }
-        Relationships: []
-      }
       worker_cash_commission_reconciliations: {
         Row: {
           amount: number
@@ -6712,6 +6648,79 @@ export type Database = {
           },
         ]
       }
+      worker_payout_methods: {
+        Row: {
+          account_holder_name: string
+          bank_account: string
+          bank_account_masked: string
+          bank_key: string
+          bank_name: string
+          created_at: string
+          id: string
+          is_default: boolean
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          account_holder_name: string
+          bank_account: string
+          bank_account_masked: string
+          bank_key: string
+          bank_name: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          account_holder_name?: string
+          bank_account?: string
+          bank_account_masked?: string
+          bank_key?: string
+          bank_name?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_payout_methods_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_payout_methods_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_payout_methods_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_profiles: {
         Row: {
           active_service_types:
@@ -6951,6 +6960,114 @@ export type Database = {
             foreignKeyName: "worker_stats_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: true
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_withdrawal_requests: {
+        Row: {
+          account_holder_name: string
+          amount_vnd: number
+          available_balance_before_vnd: number
+          bank_account: string
+          bank_account_masked: string
+          bank_key: string
+          bank_name: string
+          client_request_id: string
+          created_at: string
+          id: string
+          payout_method_id: string
+          processed_at: string | null
+          processed_by: string | null
+          processing_at: string | null
+          processing_by: string | null
+          requested_at: string
+          resolution_reason: string | null
+          status: string
+          transfer_reference: string | null
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          account_holder_name: string
+          amount_vnd: number
+          available_balance_before_vnd: number
+          bank_account: string
+          bank_account_masked: string
+          bank_key: string
+          bank_name: string
+          client_request_id: string
+          created_at?: string
+          id?: string
+          payout_method_id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          processing_at?: string | null
+          processing_by?: string | null
+          requested_at?: string
+          resolution_reason?: string | null
+          status?: string
+          transfer_reference?: string | null
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          account_holder_name?: string
+          amount_vnd?: number
+          available_balance_before_vnd?: number
+          bank_account?: string
+          bank_account_masked?: string
+          bank_key?: string
+          bank_name?: string
+          client_request_id?: string
+          created_at?: string
+          id?: string
+          payout_method_id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          processing_at?: string | null
+          processing_by?: string | null
+          requested_at?: string
+          resolution_reason?: string | null
+          status?: string
+          transfer_reference?: string | null
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_withdrawal_requests_payout_method_id_fkey"
+            columns: ["payout_method_id"]
+            isOneToOne: false
+            referencedRelation: "worker_payout_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_withdrawal_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_withdrawal_requests_processing_by_fkey"
+            columns: ["processing_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_withdrawal_requests_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_withdrawal_requests_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
@@ -7247,25 +7364,6 @@ export type Database = {
           status: string
         }[]
       }
-      admin_decide_dispute_atomic: {
-        Args: {
-          p_admin_id: string
-          p_customer_trust_impact?: string
-          p_dispute_id: string
-          p_outcome: string
-          p_reasoning?: string
-          p_refund_amount?: number
-          p_worker_action?: string
-          p_worker_credit_amount?: number
-        }
-        Returns: {
-          decided_at_ts: string
-          dispute_id: string
-          dispute_status: string
-          error_code: string
-          ok: boolean
-        }[]
-      }
       admin_cancel_manager_nomination_atomic: {
         Args: { p_nomination_id: string; p_owner_id: string }
         Returns: {
@@ -7285,18 +7383,46 @@ export type Database = {
           status_out: string
         }[]
       }
+      admin_decide_dispute_atomic: {
+        Args: {
+          p_admin_id: string
+          p_customer_trust_impact?: string
+          p_dispute_id: string
+          p_outcome: string
+          p_reasoning?: string
+          p_refund_amount?: number
+          p_worker_action?: string
+          p_worker_credit_amount?: number
+        }
+        Returns: {
+          decided_at_ts: string
+          dispute_id: string
+          dispute_status: string
+          error_code: string
+          ok: boolean
+        }[]
+      }
       admin_nominate_manager_atomic: {
         Args: { p_owner_id: string; p_target_id: string }
         Returns: {
           baseline_role_out: Database["public"]["Enums"]["user_role"]
           error_code: string
-          nomination_id: string
           nominated_at_out: string
+          nomination_id: string
           ok: boolean
           user_id: string
         }[]
       }
       admin_operations_snapshot: { Args: { p_actor_id: string }; Returns: Json }
+      admin_reject_learning_candidate: {
+        Args: { p_admin_id: string; p_candidate_id: string; p_reason: string }
+        Returns: {
+          candidate_id: string
+          error_code: string
+          ok: boolean
+          status: string
+        }[]
+      }
       admin_resolve_worker_withdrawal_atomic: {
         Args: {
           p_actor_id: string
@@ -7311,6 +7437,26 @@ export type Database = {
           processed_at_out: string
           request_id: string
           status_out: string
+        }[]
+      }
+      admin_review_and_approve_learning_candidate_atomic: {
+        Args: {
+          p_admin_id: string
+          p_candidate_id: string
+          p_review_note?: string
+        }
+        Returns: {
+          candidate_id: string
+          error_code: string
+          knowledge_error_code: string
+          knowledge_ok: boolean
+          knowledge_table: string
+          knowledge_version: number
+          ok: boolean
+          record_key: string
+          rule_id: string
+          rule_version: number
+          status: string
         }[]
       }
       admin_review_worker_application_atomic: {
@@ -7379,35 +7525,6 @@ export type Database = {
           ok: boolean
           verification_status_out: Database["public"]["Enums"]["worker_verification_status"]
           worker_id: string
-        }[]
-      }
-      admin_reject_learning_candidate: {
-        Args: { p_admin_id: string; p_candidate_id: string; p_reason: string }
-        Returns: {
-          candidate_id: string
-          error_code: string
-          ok: boolean
-          status: string
-        }[]
-      }
-      admin_review_and_approve_learning_candidate_atomic: {
-        Args: {
-          p_admin_id: string
-          p_candidate_id: string
-          p_review_note?: string
-        }
-        Returns: {
-          candidate_id: string
-          error_code: string
-          knowledge_error_code: string
-          knowledge_ok: boolean
-          knowledge_table: string
-          knowledge_version: number
-          ok: boolean
-          record_key: string
-          rule_id: string
-          rule_version: number
-          status: string
         }[]
       }
       append_customer_kael_conversation_exchange: {
@@ -8080,26 +8197,6 @@ export type Database = {
           reason: string
         }[]
       }
-      create_worker_withdrawal_request: {
-        Args: {
-          p_amount_vnd: number
-          p_client_request_id: string
-          p_worker_id: string
-        }
-        Returns: {
-          amount_vnd_out: number
-          available_balance_before_vnd_out: number
-          bank_account_masked_out: string
-          bank_key_out: string
-          bank_name_out: string
-          error_code: string
-          ok: boolean
-          request_id: string
-          requested_at_out: string
-          status_out: string
-          updated_at_out: string
-        }[]
-      }
       create_worker_vietqr_payment_intent: {
         Args: {
           p_customer_id: string
@@ -8122,6 +8219,26 @@ export type Database = {
           qr_image_url: string
           transfer_content: string
           worker_net: number
+        }[]
+      }
+      create_worker_withdrawal_request: {
+        Args: {
+          p_amount_vnd: number
+          p_client_request_id: string
+          p_worker_id: string
+        }
+        Returns: {
+          amount_vnd_out: number
+          available_balance_before_vnd_out: number
+          bank_account_masked_out: string
+          bank_key_out: string
+          bank_name_out: string
+          error_code: string
+          ok: boolean
+          request_id: string
+          requested_at_out: string
+          status_out: string
+          updated_at_out: string
         }[]
       }
       decide_scope_change_atomic: {
@@ -9163,23 +9280,6 @@ export type Database = {
           verified_at: string
         }[]
       }
-      upsert_worker_payout_method: {
-        Args: {
-          p_account_holder_name: string
-          p_bank_account: string
-          p_bank_key: string
-          p_worker_id: string
-        }
-        Returns: {
-          bank_account_masked: string
-          bank_key: string
-          bank_name: string
-          id: string
-          reviewed_at: string
-          status: string
-          updated_at: string
-        }[]
-      }
       upsert_job_incident_signal_atomic: {
         Args: {
           p_assistant_claim_id: string
@@ -9199,6 +9299,23 @@ export type Database = {
           ok: boolean
           revision: number
           source_event_id: string
+        }[]
+      }
+      upsert_worker_payout_method: {
+        Args: {
+          p_account_holder_name: string
+          p_bank_account: string
+          p_bank_key: string
+          p_worker_id: string
+        }
+        Returns: {
+          bank_account_masked: string
+          bank_key: string
+          bank_name: string
+          id: string
+          reviewed_at: string
+          status: string
+          updated_at: string
         }[]
       }
       validate_scope_change_evidence_refs: {
