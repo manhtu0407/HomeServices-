@@ -1303,13 +1303,13 @@ describe('mobile-api Edge schema compatibility', () => {
     // assertion follows: prove the guard exists once, then prove every suite
     // routes through it. A suite that resolves its own URL bypasses the guard.
     const guard = read('apps/api/src/__tests__/integration/integration-target.ts')
-    expect(guard).toContain("const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'")
-    expect(guard).toContain('Refusing to run against PRODUCTION')
-    // Dangerous configurations throw. Skipping them would report green for a
-    // suite that never ran — the silent degradation RULES.md #8 bans.
-    expect(guard).toContain('function assertNotProduction')
-    expect(guard).toContain('function assertNotLocalKeyAgainstRemote')
-    expect(guard).toMatch(/throw new Error\(/)
+    const environmentGuard = read('supabase/functions/_shared/harness/environment.ts')
+    expect(guard).toContain("from '../../../../../supabase/functions/_shared/harness/environment'")
+    expect(guard).toContain('resolveHarnessEnvironment(')
+    expect(guard).toContain('assertHarnessMutationAllowed(descriptor)')
+    expect(guard).toContain("mutationIntent: 'mutate'")
+    expect(environmentGuard).toContain('PRODUCTION_MUTATION_REQUIRES_OPERATOR')
+    expect(environmentGuard).toContain('throw new HarnessEnvironmentError(')
 
     for (const file of [
       'apps/api/src/__tests__/integration/real-supabase.test.ts',
