@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 224,
-  "migrationsSha256": "bce1e7b8c3f501e20a121cf4f3b586397d796b88d62983250cf967311c4b640f",
+  "migrationCount": 235,
+  "migrationsSha256": "72d73d86bae1a31fc88afb8331dd5fdffd3c638c1b6277e0f611aaf590fc169c",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
-    "sha256": "b92d356bd8862c8c619c1484e34d278e682a41a1617b077bef0084188d969050"
+    "sha256": "ace6986288169c04f24994ad4ebcf9b1fbdf1aa364d3c07ab7703c5bdc2c1c3d"
   },
   "entries": [
     {
@@ -1553,6 +1553,34 @@
       "bytes": 395
     },
     {
+      "version": "20260808045522",
+      "name": "admin_sections_control_plane",
+      "file": "supabase/migrations/20260808045522_admin_sections_control_plane.sql",
+      "sha256": "92f8b6f9d8b96bf45ad5c8179546579b4512df5010fe6adef0b14fe313554447",
+      "bytes": 7891
+    },
+    {
+      "version": "20260808112000",
+      "name": "admin_operator_role",
+      "file": "supabase/migrations/20260808112000_admin_operator_role.sql",
+      "sha256": "5849e9a11bd5f18e77c4da60a1468c1919733474960a07474e0f744f31591d20",
+      "bytes": 70
+    },
+    {
+      "version": "20260808113000",
+      "name": "admin_operations_sub_admin",
+      "file": "supabase/migrations/20260808113000_admin_operations_sub_admin.sql",
+      "sha256": "267028ec7eae9482f414eb93eeeea252dbca6df12e90a9d087cb5712c0bb0a32",
+      "bytes": 24764
+    },
+    {
+      "version": "20260808115000",
+      "name": "admin_operations_foreign_key_indexes",
+      "file": "supabase/migrations/20260808115000_admin_operations_foreign_key_indexes.sql",
+      "sha256": "b630e312ee0e56540261ce896e6147d8576a5ab5c75dc355c55c53c4be0f5ef4",
+      "bytes": 378
+    },
+    {
       "version": "20260808130000",
       "name": "harness_sql_lint_and_aggregate_fixes",
       "file": "supabase/migrations/20260808130000_harness_sql_lint_and_aggregate_fixes.sql",
@@ -1574,11 +1602,60 @@
       "bytes": 2528
     },
     {
+      "version": "20260808205000",
+      "name": "worker_manual_payouts",
+      "file": "supabase/migrations/20260808205000_worker_manual_payouts.sql",
+      "sha256": "de44512bf8426ea9519cd87b768548facaff08f71948bec1aa8a23824b1f3a06",
+      "bytes": 45627
+    },
+    {
+      "version": "20260808213000",
+      "name": "worker_manual_payouts_foreign_key_indexes",
+      "file": "supabase/migrations/20260808213000_worker_manual_payouts_foreign_key_indexes.sql",
+      "sha256": "67bead0c017d5b711ea54abe94ec5906ffb240b1adfc189585da770ae1e4603d",
+      "bytes": 544
+    },
+    {
+      "version": "20260809090000",
+      "name": "worker_manual_payout_method_alias_fix",
+      "file": "supabase/migrations/20260809090000_worker_manual_payout_method_alias_fix.sql",
+      "sha256": "fcc6a1c56736fd3d886617c90ecebfacbaa7988ecc7eb18eabe8bfb35d2df40b",
+      "bytes": 4622
+    },
+    {
+      "version": "20260809091500",
+      "name": "worker_manual_payout_audit_decision_fix",
+      "file": "supabase/migrations/20260809091500_worker_manual_payout_audit_decision_fix.sql",
+      "sha256": "104613cb1fd53d097b097b4d068b9c68dba5e8ddb06abda429d17a3fa3a9c520",
+      "bytes": 11167
+    },
+    {
       "version": "20260809100000",
       "name": "harden_harness_idempotency_input_validation",
       "file": "supabase/migrations/20260809100000_harden_harness_idempotency_input_validation.sql",
       "sha256": "b70f38b23c0080900ccc635a3b6538a4bb55c7b67c4adaaf54f10120adc66f6c",
       "bytes": 5078
+    },
+    {
+      "version": "20260809121000",
+      "name": "admin_manager_nominations",
+      "file": "supabase/migrations/20260809121000_admin_manager_nominations.sql",
+      "sha256": "fb6cef8dcdb7cd58998e8d8f6453eeceb074c0352c14593bc733251b5a6492bd",
+      "bytes": 14076
+    },
+    {
+      "version": "20260809122000",
+      "name": "admin_operator_payout_capabilities",
+      "file": "supabase/migrations/20260809122000_admin_operator_payout_capabilities.sql",
+      "sha256": "2eeadaed8fc914f8cddf24f0f036ba15f985325f277a8f5b5bce9dc220bd663b",
+      "bytes": 7327
+    },
+    {
+      "version": "20260809123000",
+      "name": "resolve_worker_earnings_rpc_overload",
+      "file": "supabase/migrations/20260809123000_resolve_worker_earnings_rpc_overload.sql",
+      "sha256": "bd4e2b1ef4c59422c6019b74b1e38976a1b9e94dd1440f2c4bc41020ce285695",
+      "bytes": 366
     }
   ]
 }

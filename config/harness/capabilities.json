@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
-    "fileCount": 20,
-    "sha256": "ecb0684768938014ed3c775e26f20d23a2835132b04f9c67054e1b6f88aa0905"
+    "fileCount": 17,
+    "sha256": "acf61c4fcbe4335cf705caa194b37b698681f8ef7a4f020193a06c0de04b0094"
   },
   "entries": [
     {
