@@ -150,6 +150,13 @@ begin
   if v_invalid.state <> 'conflict' then
     raise exception 'invalid idempotency environment did not fail closed';
   end if;
+  select * into v_invalid from public.reserve_harness_idempotency(
+    '   ', 'harness-test', 'jobs.paymentIntent', repeat('a', 64),
+    repeat('b', 64), repeat('c', 64), 300
+  );
+  if v_invalid.state <> 'conflict' then
+    raise exception 'blank idempotency environment did not fail closed';
+  end if;
   select * into v_permit from public.acquire_harness_dependency_permit(
     v_long_dependency, 'local', 1, 30
   );

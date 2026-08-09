@@ -322,7 +322,9 @@ declare
   v_operation_id text := nullif(trim(coalesce(p_operation_id, '')), '');
   v_actor_id_hash text := nullif(trim(coalesce(p_actor_id_hash, '')), '');
 begin
-  if v_environment not in ('local', 'preview', 'staging', 'production')
+  if p_environment is null
+     or v_environment = ''
+     or v_environment not in ('local', 'preview', 'staging', 'production')
      or v_release_id is null or char_length(v_release_id) > 160
      or v_operation_id is null or char_length(v_operation_id) > 160
      or p_key_hash is null or p_key_hash !~ '^[0-9a-f]{64}$'

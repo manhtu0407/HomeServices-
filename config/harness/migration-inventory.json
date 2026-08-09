@@ -6,7 +6,7 @@
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
   "migrationCount": 221,
-  "migrationsSha256": "489712f791fa815728992baf847597ebc914b25098020b77c3408b5234e97c2f",
+  "migrationsSha256": "0680f0cc0297b38c3b6212306ca9ea8c2f6de0bf72219fefbf2b846996fc1b68",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
     "sha256": "d788a538878c3ad16ab284f9826ce191aed89a9224c60ebdca7e805ec973cabe"
@@ -1514,8 +1514,8 @@
       "version": "20260806125000",
       "name": "harness_reliability_control",
       "file": "supabase/migrations/20260806125000_harness_reliability_control.sql",
-      "sha256": "36e46c9f44c4bbf08cea4ef2744ae651fbeb5ea5b0b1f3dd4281b3c422cf714a",
-      "bytes": 30782
+      "sha256": "1d8fea3dc7af9f10e552812a42d53e93ce86ed253129447beedb7596e907d7dd",
+      "bytes": 30839
     },
     {
       "version": "20260807090000",
