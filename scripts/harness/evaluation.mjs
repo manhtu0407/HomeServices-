@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, relative, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -8,6 +8,22 @@ const POLICY_PATH = 'config/harness/evaluation.json'
 const LIVE_CLASSES = new Set(['live_shadow', 'production_observation'])
 const ALL_CLASSES = new Set(['static', 'deterministic', 'simulation', ...LIVE_CLASSES])
 const repoPath = (value) => value.split(sep).join('/')
+
+export function resolveHarnessEvaluationPath(rootInput, pathInput, label) {
+  if (typeof pathInput !== 'string' || !pathInput.trim()) throw new Error(`${label} requires a path`)
+  const root = resolve(rootInput)
+  const target = resolve(root, pathInput)
+  const relativePath = relative(root, target)
+  if (
+    relativePath === '' ||
+    relativePath === '..' ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath)
+  ) {
+    throw new Error(`${label} must stay inside the repository root`)
+  }
+  return target
+}
 
 export function evaluateHarnessEvidence(input) {
   const policy = input.policy
@@ -206,13 +222,21 @@ function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value ?? '')
 }
 
-function parseArgs(values) {
+export function parseHarnessEvaluationArgs(values) {
   const options = { requireLive: false }
   for (let index = 0; index < values.length; index += 1) {
     const value = values[index]
-    if (value === '--report') options.reportPath = values[++index]
-    else if (value === '--baseline') options.baselinePath = values[++index]
-    else if (value === '--output') options.outputPath = values[++index]
+    const readValue = () => {
+      const next = values[index + 1]
+      if (typeof next !== 'string' || !next.trim() || next.startsWith('--')) {
+        throw new Error(`${value} requires a value`)
+      }
+      index += 1
+      return next
+    }
+    if (value === '--report') options.reportPath = readValue()
+    else if (value === '--baseline') options.baselinePath = readValue()
+    else if (value === '--output') options.outputPath = readValue()
     else if (value === '--require-live') options.requireLive = true
     else throw new Error(`unknown argument: ${value}`)
   }
@@ -220,19 +244,27 @@ function parseArgs(values) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const options = parseArgs(process.argv.slice(2))
-  if (!options.reportPath) throw new Error('--report is required')
-  const policy = JSON.parse(readFileSync(resolve(ROOT, POLICY_PATH), 'utf8'))
-  const report = JSON.parse(readFileSync(resolve(ROOT, options.reportPath), 'utf8'))
-  const baseline = options.baselinePath && existsSync(resolve(ROOT, options.baselinePath))
-    ? JSON.parse(readFileSync(resolve(ROOT, options.baselinePath), 'utf8'))
-    : null
-  const verdict = evaluateHarnessEvidence({ policy, report, baseline, requireLive: options.requireLive })
-  if (options.outputPath) {
-    const output = resolve(ROOT, options.outputPath)
-    mkdirSync(dirname(output), { recursive: true })
-    writeFileSync(output, `${JSON.stringify(verdict, null, 2)}\n`)
-    console.log(repoPath(relative(ROOT, output)))
-  } else console.log(JSON.stringify(verdict, null, 2))
-  if (!verdict.passed) process.exitCode = 1
+  try {
+    const options = parseHarnessEvaluationArgs(process.argv.slice(2))
+    if (!options.reportPath) throw new Error('--report is required')
+    const policy = JSON.parse(readFileSync(resolve(ROOT, POLICY_PATH), 'utf8'))
+    const report = JSON.parse(readFileSync(resolveHarnessEvaluationPath(ROOT, options.reportPath, 'evaluation report'), 'utf8'))
+    const baselinePath = options.baselinePath
+      ? resolveHarnessEvaluationPath(ROOT, options.baselinePath, 'evaluation baseline')
+      : null
+    const baseline = baselinePath && existsSync(baselinePath)
+      ? JSON.parse(readFileSync(baselinePath, 'utf8'))
+      : null
+    const verdict = evaluateHarnessEvidence({ policy, report, baseline, requireLive: options.requireLive })
+    if (options.outputPath) {
+      const output = resolveHarnessEvaluationPath(ROOT, options.outputPath, 'evaluation output')
+      mkdirSync(dirname(output), { recursive: true })
+      writeFileSync(output, `${JSON.stringify(verdict, null, 2)}\n`)
+      console.log(repoPath(relative(ROOT, output)))
+    } else console.log(JSON.stringify(verdict, null, 2))
+    if (!verdict.passed) process.exitCode = 1
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exitCode = 1
+  }
 }

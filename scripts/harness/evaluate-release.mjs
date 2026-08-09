@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, relative, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 import {
@@ -25,6 +25,22 @@ const EVIDENCE_CLASSES = new Set([
   'production_observation',
 ])
 const repoPath = (value) => value.split(sep).join('/')
+
+export function resolveEvaluationRepositoryPath(rootInput, pathInput, label) {
+  if (typeof pathInput !== 'string' || !pathInput.trim()) throw new Error(`${label} requires a path`)
+  const root = resolve(rootInput)
+  const target = resolve(root, pathInput)
+  const relativePath = relative(root, target)
+  if (
+    relativePath === '' ||
+    relativePath === '..' ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath)
+  ) {
+    throw new Error(`${label} must stay inside the repository root`)
+  }
+  return target
+}
 
 export function validateEvaluationConfig(config) {
   const problems = []
@@ -242,7 +258,7 @@ export function verifyEvaluationReport(report, policy = null) {
 
 export function runReleaseEvaluation(options = {}) {
   const root = resolve(options.root ?? ROOT)
-  const config = readJson(resolve(root, options.configPath ?? CONFIG_PATH))
+  const config = readJson(resolveEvaluationRepositoryPath(root, options.configPath ?? CONFIG_PATH, 'evaluation config'))
   const evidenceClass = options.evidenceClass ?? 'deterministic'
   const layer = config.layers.find((candidate) => candidate.id === evidenceClass)
   if (!layer) throw new Error(`unknown evidence class: ${evidenceClass}`)
@@ -305,7 +321,9 @@ export function runReleaseEvaluation(options = {}) {
     samples,
     liveSamples,
     assurance,
-    baseline: options.baselinePath ? readJson(resolve(root, options.baselinePath)) : null,
+    baseline: options.baselinePath
+      ? readJson(resolveEvaluationRepositoryPath(root, options.baselinePath, 'evaluation baseline'))
+      : null,
     release,
     versions: {
       modelVersion: layer.live ? (options.modelVersion ?? process.env.KAEL_EVAL_MODEL_VERSION ?? 'unreported') : 'deterministic-rules-v1',
@@ -320,7 +338,7 @@ export function runReleaseEvaluation(options = {}) {
 }
 
 function loadRelease(root, releasePath) {
-  const path = resolve(root, releasePath ?? RELEASE_PATH)
+  const path = resolveEvaluationRepositoryPath(root, releasePath ?? RELEASE_PATH, 'release artifact')
   if (existsSync(path)) return readJson(path)
   return buildHarnessRelease({ root, environment: 'preview', gitSha: gitSha(root) })
 }
@@ -329,7 +347,7 @@ function loadLiveSamples(root, path) {
   if (!path) {
     throw new Error('live evaluation requires --live-samples with provider, resolved-model, attempt, latency, and cost evidence')
   }
-  const value = readJson(resolve(root, path))
+  const value = readJson(resolveEvaluationRepositoryPath(root, path, 'live sample evidence'))
   if (!Array.isArray(value)) throw new Error('live sample evidence must be an array')
   return value
 }
@@ -453,29 +471,38 @@ function gitSha(root) {
   return result.status === 0 ? result.stdout.trim() : '0'.repeat(40)
 }
 
-function parseArgs(values) {
+export function parseReleaseEvaluationArgs(values) {
   const options = {}
   for (let index = 0; index < values.length; index += 1) {
     const value = values[index]
-    if (value === '--evidence') options.evidenceClass = values[++index]
-    else if (value === '--evaluator') options.evaluatorId = values[++index]
-    else if (value === '--samples') options.samples = Number(values[++index])
-    else if (value === '--output') options.outputPath = values[++index]
-    else if (value === '--baseline') options.baselinePath = values[++index]
-    else if (value === '--release') options.releasePath = values[++index]
-    else if (value === '--model-version') options.modelVersion = values[++index]
-    else if (value === '--live-samples') options.liveSamplesPath = values[++index]
-    else if (value === '--verify') options.verifyPath = values[++index]
+    const readValue = () => {
+      const next = values[index + 1]
+      if (typeof next !== 'string' || !next.trim() || next.startsWith('--')) {
+        throw new Error(`${value} requires a value`)
+      }
+      index += 1
+      return next
+    }
+    if (value === '--evidence') options.evidenceClass = readValue()
+    else if (value === '--evaluator') options.evaluatorId = readValue()
+    else if (value === '--samples') options.samples = Number(readValue())
+    else if (value === '--output') options.outputPath = readValue()
+    else if (value === '--baseline') options.baselinePath = readValue()
+    else if (value === '--release') options.releasePath = readValue()
+    else if (value === '--model-version') options.modelVersion = readValue()
+    else if (value === '--live-samples') options.liveSamplesPath = readValue()
+    else if (value === '--verify') options.verifyPath = readValue()
     else throw new Error(`unknown argument: ${value}`)
   }
+  if (options.verifyPath && options.outputPath) throw new Error('--verify cannot be combined with --output')
   return options
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const options = parseArgs(process.argv.slice(2))
+    const options = parseReleaseEvaluationArgs(process.argv.slice(2))
     if (options.verifyPath) {
-      const report = readJson(resolve(ROOT, options.verifyPath))
+      const report = readJson(resolveEvaluationRepositoryPath(ROOT, options.verifyPath, 'evaluation report'))
       const problems = verifyEvaluationReport(report)
       if (problems.length) {
         for (const problem of problems) console.error(`  - ${problem}`)
@@ -483,7 +510,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       } else console.log(`evaluation report ok: ${report.reportId}`)
     } else {
       const report = runReleaseEvaluation(options)
-      const outputPath = resolve(ROOT, options.outputPath ?? OUTPUT_PATH)
+      const outputPath = resolveEvaluationRepositoryPath(ROOT, options.outputPath ?? OUTPUT_PATH, 'evaluation output')
       mkdirSync(dirname(outputPath), { recursive: true })
       writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`)
       console.log(`${report.status} ${repoPath(relative(ROOT, outputPath))}`)

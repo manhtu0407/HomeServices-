@@ -6,10 +6,10 @@
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
   "migrationCount": 219,
-  "migrationsSha256": "38c03c288c7f6c630a57c885c496b03e6a1fd4bff744217aa48e8fedce6f93e2",
+  "migrationsSha256": "23c6fddb600eed7d307e2165af6efd27590fc7d5548c72e0738a39e4e273e0a7",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
-    "sha256": "b92d356bd8862c8c619c1484e34d278e682a41a1617b077bef0084188d969050"
+    "sha256": "d126c7e232d4065d63c5a43b9cb48944481fc7d43c8215f47d32b276e10de165"
   },
   "entries": [
     {
@@ -1500,8 +1500,8 @@
       "version": "20260806123000",
       "name": "harness_evaluation_evidence",
       "file": "supabase/migrations/20260806123000_harness_evaluation_evidence.sql",
-      "sha256": "9c073417457c95e84a1d5d311ebf099e7c9dcc8468a4368f91843883ca9778c7",
-      "bytes": 8617
+      "sha256": "21ab3ba23020878b969ff67fba4dcf7c7c8c1ba8194759b27d1ea19a2b2544d6",
+      "bytes": 9599
     },
     {
       "version": "20260807090000",

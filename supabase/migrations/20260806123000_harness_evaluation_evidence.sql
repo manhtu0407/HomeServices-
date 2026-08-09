@@ -87,6 +87,14 @@ security definer
 set search_path = ''
 as $$
 begin
+  if not exists (
+    select 1
+    from public.harness_releases
+    where release_id = p_release_id
+      and git_sha = p_git_sha
+  ) then
+    raise exception using errcode = '22023', message = 'HARNESS_RELEASE_GIT_SHA_MISMATCH';
+  end if;
   if p_evidence_class in ('live_shadow', 'production_observation') and p_evaluator_kind <> 'live' then
     raise exception using errcode = '22023', message = 'HARNESS_LIVE_EVALUATOR_REQUIRED';
   end if;
@@ -132,7 +140,16 @@ set search_path = ''
 as $$
 declare
   v_id uuid := coalesce(p_sample_id, gen_random_uuid());
+  v_inserted_id uuid;
 begin
+  if not exists (
+    select 1
+    from public.harness_evaluation_runs
+    where evaluation_id = p_evaluation_id
+      and status = 'running'
+  ) then
+    raise exception using errcode = '22023', message = 'HARNESS_EVALUATION_NOT_RUNNING';
+  end if;
   insert into public.harness_evaluation_samples (
     sample_id, evaluation_id, case_id, case_class, repetition, success,
     provider, resolved_model, provider_attempt_id, tool_call_correct,
@@ -151,8 +168,9 @@ begin
     greatest(coalesce(p_cost_usd, 0), 0),
     nullif(left(coalesce(p_error_code, ''), 120), ''),
     coalesce(p_safe_metadata, '{}'::jsonb)
-  ) on conflict (evaluation_id, case_id, repetition) do nothing;
-  return v_id;
+  ) on conflict (evaluation_id, case_id, repetition) do nothing
+  returning sample_id into v_inserted_id;
+  return v_inserted_id;
 end;
 $$;
 
@@ -171,6 +189,16 @@ security definer
 set search_path = ''
 as $$
 begin
+  if p_status not in ('passed', 'failed', 'cancelled') then
+    raise exception using errcode = '22023', message = 'HARNESS_EVALUATION_TERMINAL_STATUS_REQUIRED';
+  end if;
+  if p_sample_count <> (
+    select count(*)
+    from public.harness_evaluation_samples
+    where evaluation_id = p_evaluation_id
+  ) then
+    raise exception using errcode = '22023', message = 'HARNESS_EVALUATION_SAMPLE_COUNT_MISMATCH';
+  end if;
   update public.harness_evaluation_runs
   set status = p_status,
       sample_count = greatest(coalesce(p_sample_count, 0), 0),
