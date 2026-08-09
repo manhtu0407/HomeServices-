@@ -9,7 +9,7 @@
   "migrationsSha256": "e1afbcf295aea76f97e26fab464d4b8e5294465c83a59713e61e38a029c2c916",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
-    "sha256": "b92d356bd8862c8c619c1484e34d278e682a41a1617b077bef0084188d969050"
+    "sha256": "a2a5cdd80144299065cb3c91cf086adf2aacd784c1905971b72c8173a082867a"
   },
   "entries": [
     {
