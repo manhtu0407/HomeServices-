@@ -420,8 +420,8 @@
         "customer"
       ],
       "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "operationClass": "provider_call",
+      "sideEffectClass": "conditional-write",
       "privileged": false,
       "resourceType": "conversation",
       "requiresResourceCheck": true,
@@ -1326,8 +1326,8 @@
         "worker"
       ],
       "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "operationClass": "provider_call",
+      "sideEffectClass": "conditional-write",
       "privileged": false,
       "resourceType": "session",
       "requiresResourceCheck": true,
@@ -1468,8 +1468,8 @@
         "worker"
       ],
       "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "operationClass": "provider_call",
+      "sideEffectClass": "conditional-write",
       "privileged": false,
       "resourceType": "session",
       "requiresResourceCheck": true,
@@ -2423,8 +2423,8 @@
         "worker"
       ],
       "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "operationClass": "provider_call",
+      "sideEffectClass": "conditional-write",
       "privileged": false,
       "resourceType": "session",
       "requiresResourceCheck": true,

@@ -104,6 +104,7 @@ function remoteHandler(input: {
   reserveState?: 'reserved' | 'in_progress' | 'completed' | 'conflict' | 'reconcile_required'
   complete?: boolean
   service?: () => Promise<unknown>
+  streamService?: () => Promise<Response>
 }) {
   const rpc = vi.fn(async (name: string) => {
     if (name === 'reserve_harness_idempotency') {
@@ -124,12 +125,15 @@ function remoteHandler(input: {
     return { data: true, error: null }
   })
   const service = vi.fn(input.service ?? (async () => ({ notification_id: 'notification-1', read: true })))
+  const streamService = vi.fn(input.streamService ?? (async () => new Response(null)))
   const services = {
     markNotificationRead: service,
+    streamKaelChatTurn: streamService,
   } as unknown as MobileApiServices
   return {
     rpc,
     service,
+    streamService,
     handler: createMobileApiHandler({
       environment: 'staging',
       releaseId: 'harness-test',
@@ -199,13 +203,13 @@ describe('mobile-api durable idempotency ingress', () => {
     expect(names).not.toContain('fail_harness_idempotency')
   })
 
-  it('returns a streaming response before its body completes', async () => {
+  it('keeps event streams outside generic idempotency receipts', async () => {
     let resolveBodyClosed!: () => void
     const bodyClosed = new Promise<void>((resolve) => {
       resolveBodyClosed = resolve
     })
-    const { handler } = remoteHandler({
-      service: async () => new Response(new ReadableStream<Uint8Array>({
+    const { handler, rpc, streamService } = remoteHandler({
+      streamService: async () => new Response(new ReadableStream<Uint8Array>({
         start(controller) {
           controller.enqueue(new TextEncoder().encode('data: connected\n\n'))
           void bodyClosed.then(() => controller.close())
@@ -215,11 +219,23 @@ describe('mobile-api durable idempotency ingress', () => {
 
     try {
       const response = await Promise.race([
-        handler(request('mobile:550e8400-e29b-41d4-a716-446655440005')),
+        handler(new Request('https://api.example.test/kael/chat/550e8400-e29b-41d4-a716-446655440000/stream', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ message: 'Kiểm tra tiến độ', evidence_items: [] }),
+        })),
         new Promise<Response | null>((resolve) => setTimeout(() => resolve(null), 100)),
       ])
 
       expect(response).toBeInstanceOf(Response)
+      expect(response?.status).toBe(200)
+      expect(response?.headers.get('access-control-allow-headers')).toContain('idempotency-key')
+      expect(streamService).toHaveBeenCalledTimes(1)
+      const names = rpc.mock.calls.map(([name]) => name)
+      expect(names).not.toContain('reserve_harness_idempotency')
+      expect(names).not.toContain('start_harness_idempotency_execution')
+      expect(names).not.toContain('complete_harness_idempotency')
+      expect(names).not.toContain('mark_harness_idempotency_reconcile_required')
     } finally {
       resolveBodyClosed()
     }

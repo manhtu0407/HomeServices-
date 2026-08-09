@@ -34,6 +34,8 @@ declare
   v_spend record;
   v_spend_blocked record;
   v_spend_after_release record;
+  v_invalid record;
+  v_long_dependency text := repeat('x', 121);
 begin
   select * into v_first from public.reserve_harness_idempotency(
     'local', 'harness-test', 'jobs.paymentIntent', repeat('a', 64),
@@ -140,6 +142,33 @@ begin
     1, 300000, 600000, 1, v_permit.probe_token
   );
   if v_state <> 'closed' then raise exception 'successful probe did not close circuit'; end if;
+
+  select * into v_invalid from public.reserve_harness_idempotency(
+    null, 'harness-test', 'jobs.paymentIntent', repeat('a', 64),
+    repeat('b', 64), repeat('c', 64), 300
+  );
+  if v_invalid.state <> 'conflict' then
+    raise exception 'invalid idempotency environment did not fail closed';
+  end if;
+  select * into v_permit from public.acquire_harness_dependency_permit(
+    v_long_dependency, 'local', 1, 30
+  );
+  if v_permit.allowed or v_permit.state <> 'open' then
+    raise exception 'oversized dependency did not fail closed';
+  end if;
+  if exists (
+    select 1 from public.harness_dependency_circuits
+    where dependency = left(v_long_dependency, 120) and environment = 'local'
+  ) then
+    raise exception 'oversized dependency was truncated into circuit state';
+  end if;
+  v_state := public.record_harness_dependency_result(
+    v_long_dependency, 'local', 'harness-test', true, null,
+    1, 300000, 600000, 1, null
+  );
+  if v_state <> 'open' then
+    raise exception 'oversized dependency result did not fail closed';
+  end if;
 end;
 $$;
 

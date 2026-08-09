@@ -82,3 +82,36 @@ test('derives resource checks from route descriptor identifiers instead of route
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('classifies Kael event streams as provider calls instead of durable response receipts', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'harness-capability-stream-'))
+  try {
+    write(
+      resolve(root, 'supabase/functions/mobile-api/_shared/http/routes/kael.ts'),
+      [
+        'export type Route =',
+        '  | { kind: "kael.chat.stream"; method: "POST"; sessionId: string; roles: ["customer"] }',
+        '  | { kind: "kael.chat.evidenceStream"; method: "POST"; sessionId: string; roles: ["customer"] }',
+        '  | { kind: "customer.kaelConversations.stream"; method: "POST"; conversationId: string; roles: ["customer"] }',
+        '  | { kind: "workers.kaelChat.stream"; method: "POST"; sessionId: string; roles: ["worker"] };',
+        '',
+      ].join('\n'),
+    )
+
+    const entries = Object.fromEntries(
+      buildCapabilityRegistry({ root }).entries.map((entry) => [entry.kind, entry]),
+    )
+
+    for (const kind of [
+      'kael.chat.stream',
+      'kael.chat.evidenceStream',
+      'customer.kaelConversations.stream',
+      'workers.kaelChat.stream',
+    ]) {
+      assert.equal(entries[kind].operationClass, 'provider_call')
+      assert.equal(entries[kind].sideEffectClass, 'conditional-write')
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
