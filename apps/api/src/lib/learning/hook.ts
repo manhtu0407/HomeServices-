@@ -1,17 +1,7 @@
 /**
- * `runLearningHook` — orchestrator called from the review route when a job
- * transitions to `reviewed`. Fetches the job context, invokes both observers
- * (MarketMemory + CaseReview), and if `LEARNING_AUTOPROMOTE_ENABLED`, runs the
- * evidence gate on each fresh candidate.
- *
- * Phase 1 contract:
- *   - Failures here NEVER block the customer review response.
- *   - Caller wraps in try/catch and swallows.
- *   - Returns a summary for optional event logging.
- *
- * Why synchronous (vs. queue/cron): keeps the loop simple. At pre-revenue
- * scale a single Supabase round-trip per A14 review is fine. The
- * `withDbTimeout` wrappers ensure the path can't hang.
+ * Reference learning hook for the non-canonical Next.js surface. Reviewed job
+ * evidence may create candidates and queue explicit administrator review, but
+ * this path never activates canonical learning automatically.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -31,10 +21,10 @@ export type LearningHookSummary = {
   ok: boolean
   marketCandidateId?: string
   marketEvidence?: number
-  marketPromoted?: { ruleId: string; ruleVersion: number }
+  marketQueuedForReview?: boolean
   caseCandidateId?: string
   caseEvidence?: number
-  casePromoted?: { ruleId: string; ruleVersion: number }
+  caseQueuedForReview?: boolean
   skippedReason?: string
 }
 
@@ -118,14 +108,14 @@ async function loadHookInput(
 }
 
 // =============================================================================
-// Internal: after observe, evaluate gate + promote if eligible
+// Internal: after observe, evaluate gate and queue review if eligible
 // =============================================================================
 
-async function maybePromote(
+async function maybeQueueManualReview(
   supabase: SupabaseClient<Database>,
   candidateId: string,
-): Promise<{ ruleId: string; ruleVersion: number } | null> {
-  if (!env.learningAutopromoteEnabled) return null
+): Promise<boolean> {
+  if (!env.learningReviewQueueEnabled) return false
 
   // Fetch the freshly-updated candidate row.
   const { data: candidate, error } = await withDbTimeout(
@@ -138,12 +128,12 @@ async function maybePromote(
       .maybeSingle(),
   )
 
-  if (error || !candidate) return null
-  if (candidate.status === 'auto_promoted') return null  // already promoted
+  if (error || !candidate) return false
+  if (['manual_review', 'rejected', 'archived', 'rolled_back'].includes(candidate.status)) return false
 
   // Need a service scope to be promotable.
   const affectedService = candidate.affected_service as ServiceType | null
-  if (!affectedService) return null
+  if (!affectedService) return false
 
   // Fetch similar recent candidates for contradiction check.
   const { data: similar } = await withDbTimeout(
@@ -180,14 +170,11 @@ async function maybePromote(
         .update(update)
         .eq('id', candidateId),
     )
-    return null
+    return false
   }
 
-  // The RPC owns the evidence_gate_passed checkpoint and promotion write set;
-  // keeping both in one transaction avoids a stranded intermediate status.
-  const result = await promoteCandidate(supabase, candidate as CandidateRow)
-  if (!result.promoted) return null
-  return { ruleId: result.ruleId, ruleVersion: result.ruleVersion }
+  const queued = await promoteCandidate(supabase, candidate as CandidateRow)
+  return queued.queuedForReview === true
 }
 
 // =============================================================================
@@ -222,8 +209,10 @@ export async function runLearningHook(
   if (marketResult.ok) {
     summary.marketCandidateId = marketResult.candidateId
     summary.marketEvidence = marketResult.evidenceCount
-    const promoted = await maybePromote(supabase, marketResult.candidateId)
-    if (promoted) summary.marketPromoted = promoted
+    summary.marketQueuedForReview = await maybeQueueManualReview(
+      supabase,
+      marketResult.candidateId,
+    )
   }
 
   // CaseReviewService
@@ -231,8 +220,10 @@ export async function runLearningHook(
   if (caseResult.ok) {
     summary.caseCandidateId = caseResult.candidateId
     summary.caseEvidence = caseResult.evidenceCount
-    const promoted = await maybePromote(supabase, caseResult.candidateId)
-    if (promoted) summary.casePromoted = promoted
+    summary.caseQueuedForReview = await maybeQueueManualReview(
+      supabase,
+      caseResult.candidateId,
+    )
   }
 
   summary.ok = marketResult.ok || caseResult.ok

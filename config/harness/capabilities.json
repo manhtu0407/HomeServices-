@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 13,
-    "sha256": "ab7f1bcb7b25c07a5374893fa0580d2a77fd5d13be757bd90b38e458d50b548f"
+    "sha256": "c56673751a9967643f1cfd9f5b4502741d70bca4f1e2275e9113cbb33c343a79"
   },
   "entries": [
     {
@@ -420,8 +420,8 @@
         "customer"
       ],
       "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "operationClass": "provider_call",
+      "sideEffectClass": "conditional-write",
       "privileged": false,
       "resourceType": "conversation",
       "requiresResourceCheck": true,
@@ -498,6 +498,26 @@
       "envelopeTtlMs": 60000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/misc.ts"
+      ]
+    },
+    {
+      "kind": "harness.health",
+      "capability": null,
+      "public": true,
+      "methods": [
+        "GET"
+      ],
+      "roles": [],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": false,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/index.ts"
       ]
     },
     {
@@ -1306,8 +1326,8 @@
         "worker"
       ],
       "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "operationClass": "provider_call",
+      "sideEffectClass": "conditional-write",
       "privileged": false,
       "resourceType": "session",
       "requiresResourceCheck": true,
@@ -1448,8 +1468,8 @@
         "worker"
       ],
       "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "operationClass": "provider_call",
+      "sideEffectClass": "conditional-write",
       "privileged": false,
       "resourceType": "session",
       "requiresResourceCheck": true,
@@ -2403,8 +2423,8 @@
         "worker"
       ],
       "risk": "write",
-      "operationClass": "idempotent_write",
-      "sideEffectClass": "idempotent-write",
+      "operationClass": "provider_call",
+      "sideEffectClass": "conditional-write",
       "privileged": false,
       "resourceType": "session",
       "requiresResourceCheck": true,

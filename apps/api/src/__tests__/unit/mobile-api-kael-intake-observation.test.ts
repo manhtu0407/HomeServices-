@@ -39,7 +39,16 @@ function emptySupabase(): SupabaseLike {
       return Promise.resolve({ data: [], error: null }).then(onfulfilled, onrejected)
     },
   }
-  return { from: () => query }
+  let reservationId = 0
+  return {
+    from: () => query,
+    rpc: async (fn: string) => ({
+      data: fn === 'reserve_kael_ai_spend'
+        ? [{ allowed: true, blocked_scope: null, reservation_id: ++reservationId }]
+        : null,
+      error: null,
+    }),
+  } as SupabaseLike
 }
 
 function stubElectricalIntake(intent: Record<string, unknown>) {

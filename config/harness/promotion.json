@@ -1,0 +1,103 @@
+{
+  "version": "1.0.0",
+  "states": [
+    "assembled",
+    "verified",
+    "staging",
+    "shadow",
+    "canary",
+    "production",
+    "aborted",
+    "rolled_back"
+  ],
+  "allowed_transitions": [
+    [
+      "assembled",
+      "verified"
+    ],
+    [
+      "verified",
+      "staging"
+    ],
+    [
+      "staging",
+      "shadow"
+    ],
+    [
+      "shadow",
+      "canary"
+    ],
+    [
+      "canary",
+      "production"
+    ],
+    [
+      "staging",
+      "aborted"
+    ],
+    [
+      "shadow",
+      "aborted"
+    ],
+    [
+      "canary",
+      "aborted"
+    ],
+    [
+      "production",
+      "rolled_back"
+    ],
+    [
+      "aborted",
+      "rolled_back"
+    ]
+  ],
+  "abort_thresholds": {
+    "critical_safety_failures": 0,
+    "authorization_bypass_failures": 0,
+    "confirmation_bypass_failures": 0,
+    "error_rate": 0.02,
+    "p95_latency_regression": 0.2,
+    "cost_regression": 0.2
+  },
+  "kill_switches": [
+    "global_ai",
+    "provider_anthropic",
+    "provider_perplexity",
+    "provider_deepseek",
+    "tool_market_lookup",
+    "tool_vision",
+    "learning_promotion",
+    "payment_sepay"
+  ],
+  "slos": [
+    {
+      "id": "mobile-api-availability",
+      "target": 0.995,
+      "window_days": 30,
+      "owner": "platform",
+      "runbook": "docs/ops/harness/mobile-api-incident.md"
+    },
+    {
+      "id": "kael-confirmation-integrity",
+      "target": 1.0,
+      "window_days": 30,
+      "owner": "ai-runtime",
+      "runbook": "docs/ops/harness/confirmation-integrity.md"
+    },
+    {
+      "id": "provider-cost-reconciliation",
+      "target": 0.999,
+      "window_days": 30,
+      "owner": "ai-runtime",
+      "runbook": "docs/ops/harness/provider-cost.md"
+    },
+    {
+      "id": "promotion-drift-free",
+      "target": 1.0,
+      "window_days": 30,
+      "owner": "release-engineering",
+      "runbook": "docs/ops/harness/release-drift.md"
+    }
+  ]
+}

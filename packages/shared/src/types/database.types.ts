@@ -192,6 +192,56 @@ export type Database = {
           },
         ]
       }
+      customer_account_deletion_requests: {
+        Row: {
+          avatar_storage_ref: string | null
+          checkpoint: string
+          client_request_id: string
+          completed_at: string | null
+          created_at: string
+          customer_id: string
+          database_scrubbed_at: string | null
+          id: string
+          requested_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_storage_ref?: string | null
+          checkpoint?: string
+          client_request_id: string
+          completed_at?: string | null
+          created_at?: string
+          customer_id: string
+          database_scrubbed_at?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_storage_ref?: string | null
+          checkpoint?: string
+          client_request_id?: string
+          completed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          database_scrubbed_at?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_account_deletion_requests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_cancellation_reason_taxonomy: {
         Row: {
           admin_tunable: boolean
@@ -308,53 +358,6 @@ export type Database = {
           {
             foreignKeyName: "customer_cancellation_records_worker_id_fkey"
             columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      customer_account_deletion_requests: {
-        Row: {
-          checkpoint: string
-          client_request_id: string
-          completed_at: string | null
-          created_at: string
-          customer_id: string
-          database_scrubbed_at: string | null
-          id: string
-          requested_at: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          checkpoint?: string
-          client_request_id: string
-          completed_at?: string | null
-          created_at?: string
-          customer_id: string
-          database_scrubbed_at?: string | null
-          id?: string
-          requested_at?: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          checkpoint?: string
-          client_request_id?: string
-          completed_at?: string | null
-          created_at?: string
-          customer_id?: string
-          database_scrubbed_at?: string | null
-          id?: string
-          requested_at?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customer_account_deletion_requests_customer_id_fkey"
-            columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -840,6 +843,964 @@ export type Database = {
           },
         ]
       }
+      harness_dependency_circuits: {
+        Row: {
+          dependency: string
+          environment: string
+          failure_count: number
+          half_open_probes: number
+          last_error_code: string | null
+          open_until: string | null
+          opened_at: string | null
+          state: string
+          success_count: number
+          updated_at: string
+          window_started_at: string
+        }
+        Insert: {
+          dependency: string
+          environment: string
+          failure_count?: number
+          half_open_probes?: number
+          last_error_code?: string | null
+          open_until?: string | null
+          opened_at?: string | null
+          state?: string
+          success_count?: number
+          updated_at?: string
+          window_started_at?: string
+        }
+        Update: {
+          dependency?: string
+          environment?: string
+          failure_count?: number
+          half_open_probes?: number
+          last_error_code?: string | null
+          open_until?: string | null
+          opened_at?: string | null
+          state?: string
+          success_count?: number
+          updated_at?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
+      harness_dependency_probes: {
+        Row: {
+          completed_at: string | null
+          dependency: string
+          environment: string
+          error_code: string | null
+          expires_at: string
+          leased_at: string
+          probe_token: string
+          success: boolean | null
+        }
+        Insert: {
+          completed_at?: string | null
+          dependency: string
+          environment: string
+          error_code?: string | null
+          expires_at: string
+          leased_at?: string
+          probe_token?: string
+          success?: boolean | null
+        }
+        Update: {
+          completed_at?: string | null
+          dependency?: string
+          environment?: string
+          error_code?: string | null
+          expires_at?: string
+          leased_at?: string
+          probe_token?: string
+          success?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_dependency_probes_dependency_environment_fkey"
+            columns: ["dependency", "environment"]
+            isOneToOne: false
+            referencedRelation: "harness_dependency_circuits"
+            referencedColumns: ["dependency", "environment"]
+          },
+        ]
+      }
+      harness_evaluation_runs: {
+        Row: {
+          artifact_sha256: string | null
+          evaluation_id: string
+          evaluator_id: string
+          evaluator_kind: string
+          evaluator_version: string
+          evidence_class: string
+          finished_at: string | null
+          git_sha: string
+          metrics: Json
+          policy_bundle_sha256: string
+          prompt_bundle_sha256: string
+          release_id: string
+          safe_metadata: Json
+          sample_count: number
+          started_at: string
+          status: string
+          variance: Json
+        }
+        Insert: {
+          artifact_sha256?: string | null
+          evaluation_id: string
+          evaluator_id: string
+          evaluator_kind: string
+          evaluator_version: string
+          evidence_class: string
+          finished_at?: string | null
+          git_sha: string
+          metrics?: Json
+          policy_bundle_sha256: string
+          prompt_bundle_sha256: string
+          release_id: string
+          safe_metadata?: Json
+          sample_count?: number
+          started_at?: string
+          status?: string
+          variance?: Json
+        }
+        Update: {
+          artifact_sha256?: string | null
+          evaluation_id?: string
+          evaluator_id?: string
+          evaluator_kind?: string
+          evaluator_version?: string
+          evidence_class?: string
+          finished_at?: string | null
+          git_sha?: string
+          metrics?: Json
+          policy_bundle_sha256?: string
+          prompt_bundle_sha256?: string
+          release_id?: string
+          safe_metadata?: Json
+          sample_count?: number
+          started_at?: string
+          status?: string
+          variance?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_evaluation_runs_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_evaluation_samples: {
+        Row: {
+          authorization_bypass: boolean
+          case_class: string
+          case_id: string
+          confirmation_bypass: boolean
+          cost_usd: number | null
+          critical_safety_failure: boolean
+          error_code: string | null
+          evaluation_id: string
+          latency_ms: number | null
+          occurred_at: string
+          provider: string | null
+          provider_attempt_id: string | null
+          repetition: number
+          resolved_model: string | null
+          safe_metadata: Json
+          sample_id: string
+          success: boolean
+          tool_call_correct: boolean | null
+        }
+        Insert: {
+          authorization_bypass?: boolean
+          case_class: string
+          case_id: string
+          confirmation_bypass?: boolean
+          cost_usd?: number | null
+          critical_safety_failure?: boolean
+          error_code?: string | null
+          evaluation_id: string
+          latency_ms?: number | null
+          occurred_at?: string
+          provider?: string | null
+          provider_attempt_id?: string | null
+          repetition: number
+          resolved_model?: string | null
+          safe_metadata?: Json
+          sample_id?: string
+          success: boolean
+          tool_call_correct?: boolean | null
+        }
+        Update: {
+          authorization_bypass?: boolean
+          case_class?: string
+          case_id?: string
+          confirmation_bypass?: boolean
+          cost_usd?: number | null
+          critical_safety_failure?: boolean
+          error_code?: string | null
+          evaluation_id?: string
+          latency_ms?: number | null
+          occurred_at?: string
+          provider?: string | null
+          provider_attempt_id?: string | null
+          repetition?: number
+          resolved_model?: string | null
+          safe_metadata?: Json
+          sample_id?: string
+          success?: boolean
+          tool_call_correct?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_evaluation_samples_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "harness_evaluation_runs"
+            referencedColumns: ["evaluation_id"]
+          },
+        ]
+      }
+      harness_events: {
+        Row: {
+          attempt_number: number
+          cost_usd: number | null
+          environment: string
+          error_code: string | null
+          event_class: string
+          event_id: string
+          latency_ms: number | null
+          model: string | null
+          occurred_at: string
+          parent_event_id: string | null
+          provider: string | null
+          release_id: string
+          run_id: string
+          safe_metadata: Json
+          stage: string | null
+          status: string
+          tool_call_id: string | null
+          tool_id: string | null
+          trace_id: string
+          turn_id: string | null
+        }
+        Insert: {
+          attempt_number?: number
+          cost_usd?: number | null
+          environment: string
+          error_code?: string | null
+          event_class: string
+          event_id?: string
+          latency_ms?: number | null
+          model?: string | null
+          occurred_at?: string
+          parent_event_id?: string | null
+          provider?: string | null
+          release_id: string
+          run_id: string
+          safe_metadata?: Json
+          stage?: string | null
+          status: string
+          tool_call_id?: string | null
+          tool_id?: string | null
+          trace_id: string
+          turn_id?: string | null
+        }
+        Update: {
+          attempt_number?: number
+          cost_usd?: number | null
+          environment?: string
+          error_code?: string | null
+          event_class?: string
+          event_id?: string
+          latency_ms?: number | null
+          model?: string | null
+          occurred_at?: string
+          parent_event_id?: string | null
+          provider?: string | null
+          release_id?: string
+          run_id?: string
+          safe_metadata?: Json
+          stage?: string | null
+          status?: string
+          tool_call_id?: string | null
+          tool_id?: string | null
+          trace_id?: string
+          turn_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "harness_events"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "harness_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "harness_run_timeline"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "harness_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "harness_run_timeline"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "harness_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "harness_runs"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      harness_idempotency_keys: {
+        Row: {
+          actor_id_hash: string | null
+          completed_at: string | null
+          environment: string
+          error_code: string | null
+          expires_at: string
+          key_hash: string
+          operation_id: string
+          release_id: string
+          request_hash: string
+          reservation_id: string
+          reserved_at: string
+          response_hash: string | null
+          status: string
+        }
+        Insert: {
+          actor_id_hash?: string | null
+          completed_at?: string | null
+          environment: string
+          error_code?: string | null
+          expires_at: string
+          key_hash: string
+          operation_id: string
+          release_id: string
+          request_hash: string
+          reservation_id?: string
+          reserved_at?: string
+          response_hash?: string | null
+          status?: string
+        }
+        Update: {
+          actor_id_hash?: string | null
+          completed_at?: string | null
+          environment?: string
+          error_code?: string | null
+          expires_at?: string
+          key_hash?: string
+          operation_id?: string
+          release_id?: string
+          request_hash?: string
+          reservation_id?: string
+          reserved_at?: string
+          response_hash?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      harness_kill_switch_events: {
+        Row: {
+          actor_id: string
+          enabled: boolean
+          environment: string
+          event_id: string
+          occurred_at: string
+          previous_enabled: boolean
+          reason_code: string | null
+          release_id: string | null
+          safe_metadata: Json
+          switch_id: string
+        }
+        Insert: {
+          actor_id: string
+          enabled: boolean
+          environment: string
+          event_id?: string
+          occurred_at?: string
+          previous_enabled: boolean
+          reason_code?: string | null
+          release_id?: string | null
+          safe_metadata?: Json
+          switch_id: string
+        }
+        Update: {
+          actor_id?: string
+          enabled?: boolean
+          environment?: string
+          event_id?: string
+          occurred_at?: string
+          previous_enabled?: boolean
+          reason_code?: string | null
+          release_id?: string | null
+          safe_metadata?: Json
+          switch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_kill_switch_events_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_kill_switches: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          enabled: boolean
+          environment: string
+          reason_code: string | null
+          release_id: string | null
+          safe_metadata: Json
+          switch_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          enabled?: boolean
+          environment: string
+          reason_code?: string | null
+          release_id?: string | null
+          safe_metadata?: Json
+          switch_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          enabled?: boolean
+          environment?: string
+          reason_code?: string | null
+          release_id?: string | null
+          safe_metadata?: Json
+          switch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_kill_switches_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_privileged_operations: {
+        Row: {
+          actor_id_hash: string | null
+          actor_role: string | null
+          capability: string
+          environment: string
+          error_code: string | null
+          occurred_at: string
+          operation_event_id: string
+          operation_id: string
+          reason: string
+          release_id: string
+          resource_id_hash: string | null
+          resource_type: string
+          result: string
+          run_id: string
+          safe_metadata: Json
+          trace_id: string
+        }
+        Insert: {
+          actor_id_hash?: string | null
+          actor_role?: string | null
+          capability: string
+          environment: string
+          error_code?: string | null
+          occurred_at?: string
+          operation_event_id?: string
+          operation_id: string
+          reason: string
+          release_id: string
+          resource_id_hash?: string | null
+          resource_type: string
+          result: string
+          run_id: string
+          safe_metadata?: Json
+          trace_id: string
+        }
+        Update: {
+          actor_id_hash?: string | null
+          actor_role?: string | null
+          capability?: string
+          environment?: string
+          error_code?: string | null
+          occurred_at?: string
+          operation_event_id?: string
+          operation_id?: string
+          reason?: string
+          release_id?: string
+          resource_id_hash?: string | null
+          resource_type?: string
+          result?: string
+          run_id?: string
+          safe_metadata?: Json
+          trace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_privileged_operations_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "harness_run_timeline"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "harness_privileged_operations_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "harness_runs"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      harness_promotion_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string
+          approval_id: string | null
+          environment: string
+          event_id: string
+          evidence_sha256: string | null
+          next_state: string
+          occurred_at: string
+          previous_state: string | null
+          promotion_id: string
+          reason_code: string | null
+          release_id: string
+          result: string
+          safe_metadata: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role: string
+          approval_id?: string | null
+          environment: string
+          event_id?: string
+          evidence_sha256?: string | null
+          next_state: string
+          occurred_at?: string
+          previous_state?: string | null
+          promotion_id: string
+          reason_code?: string | null
+          release_id: string
+          result: string
+          safe_metadata?: Json
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string
+          approval_id?: string | null
+          environment?: string
+          event_id?: string
+          evidence_sha256?: string | null
+          next_state?: string
+          occurred_at?: string
+          previous_state?: string | null
+          promotion_id?: string
+          reason_code?: string | null
+          release_id?: string
+          result?: string
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_promotion_events_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "harness_promotions"
+            referencedColumns: ["promotion_id"]
+          },
+          {
+            foreignKeyName: "harness_promotion_events_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_promotions: {
+        Row: {
+          cohort: string | null
+          created_at: string
+          environment: string
+          evaluation_report_id: string | null
+          human_approval_id: string | null
+          observation_window_minutes: number | null
+          packet_sha256: string
+          promotion_id: string
+          release_id: string
+          rollback_release_id: string | null
+          safe_metadata: Json
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          cohort?: string | null
+          created_at?: string
+          environment: string
+          evaluation_report_id?: string | null
+          human_approval_id?: string | null
+          observation_window_minutes?: number | null
+          packet_sha256: string
+          promotion_id?: string
+          release_id: string
+          rollback_release_id?: string | null
+          safe_metadata?: Json
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          cohort?: string | null
+          created_at?: string
+          environment?: string
+          evaluation_report_id?: string | null
+          human_approval_id?: string | null
+          observation_window_minutes?: number | null
+          packet_sha256?: string
+          promotion_id?: string
+          release_id?: string
+          rollback_release_id?: string | null
+          safe_metadata?: Json
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_promotions_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+          {
+            foreignKeyName: "harness_promotions_rollback_release_id_fkey"
+            columns: ["rollback_release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_release_events: {
+        Row: {
+          actor_role: string
+          approval_id: string | null
+          created_at: string
+          environment: string
+          event_type: string
+          evidence_sha256: string | null
+          id: number
+          release_id: string
+          safe_metadata: Json
+        }
+        Insert: {
+          actor_role: string
+          approval_id?: string | null
+          created_at?: string
+          environment: string
+          event_type: string
+          evidence_sha256?: string | null
+          id?: never
+          release_id: string
+          safe_metadata?: Json
+        }
+        Update: {
+          actor_role?: string
+          approval_id?: string | null
+          created_at?: string
+          environment?: string
+          event_type?: string
+          evidence_sha256?: string | null
+          id?: never
+          release_id?: string
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_release_events_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_releases: {
+        Row: {
+          access_matrix_sha256: string
+          bundle_sha256: string
+          capability_registry_sha256: string
+          created_at: string
+          created_by: string
+          database_types_sha256: string
+          edge_function_digests: Json
+          environment: string
+          evaluation_suite_sha256: string
+          evaluation_suite_version: string
+          git_sha: string
+          manifest_sha256: string
+          migration_inventory_sha256: string
+          policy_bundle_sha256: string
+          previous_release_id: string | null
+          promotion_policy_sha256: string
+          prompt_bundle_sha256: string
+          release_artifact: Json
+          release_id: string
+          reliability_policy_sha256: string
+          runtime_configuration_sha256: string
+          safe_metadata: Json
+        }
+        Insert: {
+          access_matrix_sha256: string
+          bundle_sha256: string
+          capability_registry_sha256: string
+          created_at?: string
+          created_by: string
+          database_types_sha256: string
+          edge_function_digests: Json
+          environment: string
+          evaluation_suite_sha256: string
+          evaluation_suite_version: string
+          git_sha: string
+          manifest_sha256: string
+          migration_inventory_sha256: string
+          policy_bundle_sha256: string
+          previous_release_id?: string | null
+          promotion_policy_sha256: string
+          prompt_bundle_sha256: string
+          release_artifact: Json
+          release_id: string
+          reliability_policy_sha256: string
+          runtime_configuration_sha256: string
+          safe_metadata?: Json
+        }
+        Update: {
+          access_matrix_sha256?: string
+          bundle_sha256?: string
+          capability_registry_sha256?: string
+          created_at?: string
+          created_by?: string
+          database_types_sha256?: string
+          edge_function_digests?: Json
+          environment?: string
+          evaluation_suite_sha256?: string
+          evaluation_suite_version?: string
+          git_sha?: string
+          manifest_sha256?: string
+          migration_inventory_sha256?: string
+          policy_bundle_sha256?: string
+          previous_release_id?: string | null
+          promotion_policy_sha256?: string
+          prompt_bundle_sha256?: string
+          release_artifact?: Json
+          release_id?: string
+          reliability_policy_sha256?: string
+          runtime_configuration_sha256?: string
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_releases_previous_release_id_fkey"
+            columns: ["previous_release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
+      harness_reliability_events: {
+        Row: {
+          dependency: string | null
+          environment: string
+          error_code: string | null
+          event_class: string
+          event_id: string
+          occurred_at: string
+          operation_id: string | null
+          release_id: string
+          result: string
+          safe_metadata: Json
+        }
+        Insert: {
+          dependency?: string | null
+          environment: string
+          error_code?: string | null
+          event_class: string
+          event_id?: string
+          occurred_at?: string
+          operation_id?: string | null
+          release_id: string
+          result: string
+          safe_metadata?: Json
+        }
+        Update: {
+          dependency?: string | null
+          environment?: string
+          error_code?: string | null
+          event_class?: string
+          event_id?: string
+          occurred_at?: string
+          operation_id?: string | null
+          release_id?: string
+          result?: string
+          safe_metadata?: Json
+        }
+        Relationships: []
+      }
+      harness_runs: {
+        Row: {
+          actor_id_hash: string | null
+          actor_role: string | null
+          capability: string | null
+          duration_ms: number | null
+          environment: string
+          error_code: string | null
+          finished_at: string | null
+          job_id: string | null
+          parent_run_id: string | null
+          release_id: string
+          route_kind: string
+          run_id: string
+          safe_metadata: Json
+          started_at: string
+          status: string
+          trace_id: string
+        }
+        Insert: {
+          actor_id_hash?: string | null
+          actor_role?: string | null
+          capability?: string | null
+          duration_ms?: number | null
+          environment: string
+          error_code?: string | null
+          finished_at?: string | null
+          job_id?: string | null
+          parent_run_id?: string | null
+          release_id: string
+          route_kind: string
+          run_id: string
+          safe_metadata?: Json
+          started_at?: string
+          status?: string
+          trace_id: string
+        }
+        Update: {
+          actor_id_hash?: string | null
+          actor_role?: string | null
+          capability?: string | null
+          duration_ms?: number | null
+          environment?: string
+          error_code?: string | null
+          finished_at?: string | null
+          job_id?: string | null
+          parent_run_id?: string | null
+          release_id?: string
+          route_kind?: string
+          run_id?: string
+          safe_metadata?: Json
+          started_at?: string
+          status?: string
+          trace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "harness_runs_parent_run_id_fkey"
+            columns: ["parent_run_id"]
+            isOneToOne: false
+            referencedRelation: "harness_run_timeline"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "harness_runs_parent_run_id_fkey"
+            columns: ["parent_run_id"]
+            isOneToOne: false
+            referencedRelation: "harness_runs"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      harness_slo_observations: {
+        Row: {
+          actual: number
+          created_at: string
+          environment: string
+          observation_id: string
+          owner: string
+          passed: boolean | null
+          release_id: string
+          runbook: string
+          safe_metadata: Json
+          slo_id: string
+          target: number
+          window_ended_at: string
+          window_started_at: string
+        }
+        Insert: {
+          actual: number
+          created_at?: string
+          environment: string
+          observation_id?: string
+          owner: string
+          passed?: boolean | null
+          release_id: string
+          runbook: string
+          safe_metadata?: Json
+          slo_id: string
+          target: number
+          window_ended_at: string
+          window_started_at: string
+        }
+        Update: {
+          actual?: number
+          created_at?: string
+          environment?: string
+          observation_id?: string
+          owner?: string
+          passed?: boolean | null
+          release_id?: string
+          runbook?: string
+          safe_metadata?: Json
+          slo_id?: string
+          target?: number
+          window_ended_at?: string
+          window_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_slo_observations_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
       job_broadcast_retry_claims: {
         Row: {
           claim_token: string
@@ -1204,9 +2165,9 @@ export type Database = {
           kael_price_max: number | null
           kael_price_min: number | null
           kael_problem_identified: string | null
+          kael_progress: Json | null
           kael_reference_price_max: number | null
           kael_reference_price_min: number | null
-          kael_progress: Json | null
           kael_worker_brief_core: Json | null
           kael_worker_brief_guidance: Json | null
           matched_at: string | null
@@ -1280,9 +2241,9 @@ export type Database = {
           kael_price_max?: number | null
           kael_price_min?: number | null
           kael_problem_identified?: string | null
+          kael_progress?: Json | null
           kael_reference_price_max?: number | null
           kael_reference_price_min?: number | null
-          kael_progress?: Json | null
           kael_worker_brief_core?: Json | null
           kael_worker_brief_guidance?: Json | null
           matched_at?: string | null
@@ -1356,9 +2317,9 @@ export type Database = {
           kael_price_max?: number | null
           kael_price_min?: number | null
           kael_problem_identified?: string | null
+          kael_progress?: Json | null
           kael_reference_price_max?: number | null
           kael_reference_price_min?: number | null
-          kael_progress?: Json | null
           kael_worker_brief_core?: Json | null
           kael_worker_brief_guidance?: Json | null
           matched_at?: string | null
@@ -1578,10 +2539,10 @@ export type Database = {
           job_id: string | null
           priority: string
           queue_type: string
+          reason_code: string
+          resolution_note: string | null
           resolved_at: string | null
           resolved_by: string | null
-          resolution_note: string | null
-          reason_code: string
           response_summary: string
           safe_metadata: Json
           status: string
@@ -1596,10 +2557,10 @@ export type Database = {
           job_id?: string | null
           priority: string
           queue_type: string
+          reason_code: string
+          resolution_note?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
-          resolution_note?: string | null
-          reason_code: string
           response_summary: string
           safe_metadata?: Json
           status?: string
@@ -1614,10 +2575,10 @@ export type Database = {
           job_id?: string | null
           priority?: string
           queue_type?: string
+          reason_code?: string
+          resolution_note?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
-          resolution_note?: string | null
-          reason_code?: string
           response_summary?: string
           safe_metadata?: Json
           status?: string
@@ -1829,22 +2790,40 @@ export type Database = {
           actor_id: string | null
           cost_usd: number
           created_at: string
+          harness_release_id: string | null
+          harness_run_id: string | null
+          harness_trace_id: string | null
           id: number
+          provider_attempt_id: string | null
           purpose: string
+          reservation_expires_at: string | null
+          reservation_status: string
         }
         Insert: {
           actor_id?: string | null
           cost_usd: number
           created_at?: string
+          harness_release_id?: string | null
+          harness_run_id?: string | null
+          harness_trace_id?: string | null
           id?: never
+          provider_attempt_id?: string | null
           purpose: string
+          reservation_expires_at?: string | null
+          reservation_status?: string
         }
         Update: {
           actor_id?: string | null
           cost_usd?: number
           created_at?: string
+          harness_release_id?: string | null
+          harness_run_id?: string | null
+          harness_trace_id?: string | null
           id?: never
+          provider_attempt_id?: string | null
           purpose?: string
+          reservation_expires_at?: string | null
+          reservation_status?: string
         }
         Relationships: [
           {
@@ -3866,6 +4845,137 @@ export type Database = {
           },
         ]
       }
+      learning_candidate_provenance: {
+        Row: {
+          candidate_id: string
+          consent_hash: string
+          consent_status: string
+          created_at: string
+          dispute_status: string
+          evidence_hash: string
+          generated_summary_hash: string | null
+          input_hash: string
+          privacy_status: string
+          provenance_status: string
+          quality_status: string
+          release_id: string
+          safe_metadata: Json
+          source_hash: string
+          source_type: string
+          summary_origin: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          consent_hash: string
+          consent_status: string
+          created_at?: string
+          dispute_status: string
+          evidence_hash: string
+          generated_summary_hash?: string | null
+          input_hash: string
+          privacy_status: string
+          provenance_status?: string
+          quality_status: string
+          release_id: string
+          safe_metadata?: Json
+          source_hash: string
+          source_type: string
+          summary_origin: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          consent_hash?: string
+          consent_status?: string
+          created_at?: string
+          dispute_status?: string
+          evidence_hash?: string
+          generated_summary_hash?: string | null
+          input_hash?: string
+          privacy_status?: string
+          provenance_status?: string
+          quality_status?: string
+          release_id?: string
+          safe_metadata?: Json
+          source_hash?: string
+          source_type?: string
+          summary_origin?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_candidate_provenance_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: true
+            referencedRelation: "learning_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_candidate_reviews: {
+        Row: {
+          candidate_id: string
+          decision: string
+          evidence_hash: string | null
+          gate_snapshot: Json
+          generated_summary_hash: string | null
+          reason: string
+          release_id: string
+          review_id: string
+          reviewed_at: string
+          reviewer_id: string
+          safe_metadata: Json
+          source_hash: string | null
+          summary_origin: string | null
+        }
+        Insert: {
+          candidate_id: string
+          decision: string
+          evidence_hash?: string | null
+          gate_snapshot?: Json
+          generated_summary_hash?: string | null
+          reason: string
+          release_id: string
+          review_id?: string
+          reviewed_at?: string
+          reviewer_id: string
+          safe_metadata?: Json
+          source_hash?: string | null
+          summary_origin?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          decision?: string
+          evidence_hash?: string | null
+          gate_snapshot?: Json
+          generated_summary_hash?: string | null
+          reason?: string
+          release_id?: string
+          review_id?: string
+          reviewed_at?: string
+          reviewer_id?: string
+          safe_metadata?: Json
+          source_hash?: string | null
+          summary_origin?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_candidate_reviews_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "learning_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_candidate_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learning_candidates: {
         Row: {
           affected_district: string | null
@@ -3932,6 +5042,8 @@ export type Database = {
           id: string
           job_id: string
           rating: number | null
+          reference_max: number | null
+          reference_min: number | null
           review_tags: string[]
           reviewed_at: string
           scope_change_requested: boolean
@@ -3950,6 +5062,8 @@ export type Database = {
           id?: string
           job_id: string
           rating?: number | null
+          reference_max?: number | null
+          reference_min?: number | null
           review_tags?: string[]
           reviewed_at: string
           scope_change_requested: boolean
@@ -3968,6 +5082,8 @@ export type Database = {
           id?: string
           job_id?: string
           rating?: number | null
+          reference_max?: number | null
+          reference_min?: number | null
           review_tags?: string[]
           reviewed_at?: string
           scope_change_requested?: boolean
@@ -3985,6 +5101,111 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_rule_dependencies: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          dependency_id: string
+          evidence_hash: string
+          release_id: string
+          revoked_at: string | null
+          rule_id: string
+          rule_version: number
+          source_hash: string
+          status: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          dependency_id?: string
+          evidence_hash: string
+          release_id: string
+          revoked_at?: string | null
+          rule_id: string
+          rule_version: number
+          source_hash: string
+          status?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          dependency_id?: string
+          evidence_hash?: string
+          release_id?: string
+          revoked_at?: string | null
+          rule_id?: string
+          rule_version?: number
+          source_hash?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_rule_dependencies_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "learning_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_rule_dependencies_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "learning_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_rule_revocations: {
+        Row: {
+          cascaded_dependency_count: number
+          reason: string
+          release_id: string
+          revocation_id: string
+          revoked_at: string
+          revoked_by: string
+          rule_id: string
+          rule_version: number
+          safe_metadata: Json
+        }
+        Insert: {
+          cascaded_dependency_count?: number
+          reason: string
+          release_id: string
+          revocation_id?: string
+          revoked_at?: string
+          revoked_by: string
+          rule_id: string
+          rule_version: number
+          safe_metadata?: Json
+        }
+        Update: {
+          cascaded_dependency_count?: number
+          reason?: string
+          release_id?: string
+          revocation_id?: string
+          revoked_at?: string
+          revoked_by?: string
+          rule_id?: string
+          rule_version?: number
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_rule_revocations_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_rule_revocations_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "learning_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -4906,6 +6127,122 @@ export type Database = {
           },
         ]
       }
+      worker_cash_commission_ledger: {
+        Row: {
+          cash_commission_collected: number
+          cash_commission_due: number
+          commission_level: number
+          commission_rate_bps: number
+          confirmed_at: string
+          created_at: string
+          gross_amount: number
+          id: string
+          job_id: string
+          platform_fee: number
+          worker_id: string
+          worker_net: number
+        }
+        Insert: {
+          cash_commission_collected: number
+          cash_commission_due: number
+          commission_level: number
+          commission_rate_bps: number
+          confirmed_at?: string
+          created_at?: string
+          gross_amount: number
+          id?: string
+          job_id: string
+          platform_fee: number
+          worker_id: string
+          worker_net: number
+        }
+        Update: {
+          cash_commission_collected?: number
+          cash_commission_due?: number
+          commission_level?: number
+          commission_rate_bps?: number
+          confirmed_at?: string
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          job_id?: string
+          platform_fee?: number
+          worker_id?: string
+          worker_net?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_cash_commission_ledger_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_cash_commission_ledger_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_cash_commission_ledger_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_cash_commission_reconciliations: {
+        Row: {
+          amount: number
+          cash_commission_ledger_id: string
+          created_at: string
+          id: string
+          reconciled_at: string
+          worker_id: string
+        }
+        Insert: {
+          amount: number
+          cash_commission_ledger_id: string
+          created_at?: string
+          id?: string
+          reconciled_at?: string
+          worker_id: string
+        }
+        Update: {
+          amount?: number
+          cash_commission_ledger_id?: string
+          created_at?: string
+          id?: string
+          reconciled_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_cash_commission_reconcili_cash_commission_ledger_id_fkey"
+            columns: ["cash_commission_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "worker_cash_commission_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_cash_commission_reconciliations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_cash_commission_reconciliations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_commission_tiers: {
         Row: {
           commission_rate_bps: number
@@ -5083,107 +6420,6 @@ export type Database = {
           },
         ]
       }
-      worker_profiles: {
-        Row: {
-          active_service_types: Database["public"]["Enums"]["service_type"][] | null
-          app_active_minutes: number
-          app_last_active_minute: string | null
-          bank_account: string | null
-          bank_name: string | null
-          cccd_back_url: string | null
-          cccd_front_url: string | null
-          created_at: string
-          date_of_birth: string | null
-          districts: string[]
-          gender: string | null
-          home_lat: number | null
-          home_lng: number | null
-          id: string
-          is_approved: boolean
-          is_available: boolean
-          is_suspended: boolean
-          legal_name: string | null
-          problem_specializations: string[]
-          rating: number
-          selected_service_types: Database["public"]["Enums"]["service_type"][]
-          selfie_url: string | null
-          service_radius_km: number
-          service_types: Database["public"]["Enums"]["service_type"][]
-          total_jobs: number
-          updated_at: string
-          verification_status: Database["public"]["Enums"]["worker_verification_status"]
-          years_experience: number
-        }
-        Insert: {
-          active_service_types?: Database["public"]["Enums"]["service_type"][] | null
-          app_active_minutes?: number
-          app_last_active_minute?: string | null
-          bank_account?: string | null
-          bank_name?: string | null
-          cccd_back_url?: string | null
-          cccd_front_url?: string | null
-          created_at?: string
-          date_of_birth?: string | null
-          districts?: string[]
-          gender?: string | null
-          home_lat?: number | null
-          home_lng?: number | null
-          id: string
-          is_approved?: boolean
-          is_available?: boolean
-          is_suspended?: boolean
-          legal_name?: string | null
-          problem_specializations?: string[]
-          rating?: number
-          selected_service_types?: Database["public"]["Enums"]["service_type"][]
-          selfie_url?: string | null
-          service_radius_km?: number
-          service_types?: Database["public"]["Enums"]["service_type"][]
-          total_jobs?: number
-          updated_at?: string
-          verification_status?: Database["public"]["Enums"]["worker_verification_status"]
-          years_experience?: number
-        }
-        Update: {
-          active_service_types?: Database["public"]["Enums"]["service_type"][] | null
-          app_active_minutes?: number
-          app_last_active_minute?: string | null
-          bank_account?: string | null
-          bank_name?: string | null
-          cccd_back_url?: string | null
-          cccd_front_url?: string | null
-          created_at?: string
-          date_of_birth?: string | null
-          districts?: string[]
-          gender?: string | null
-          home_lat?: number | null
-          home_lng?: number | null
-          id?: string
-          is_approved?: boolean
-          is_available?: boolean
-          is_suspended?: boolean
-          legal_name?: string | null
-          problem_specializations?: string[]
-          rating?: number
-          selected_service_types?: Database["public"]["Enums"]["service_type"][]
-          selfie_url?: string | null
-          service_radius_km?: number
-          service_types?: Database["public"]["Enums"]["service_type"][]
-          total_jobs?: number
-          updated_at?: string
-          verification_status?: Database["public"]["Enums"]["worker_verification_status"]
-          years_experience?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "worker_profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       worker_payment_ledger: {
         Row: {
           available_at: string | null
@@ -5242,109 +6478,121 @@ export type Database = {
             foreignKeyName: "worker_payment_ledger_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_payment_ledger_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
             referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      worker_cash_commission_ledger: {
+      worker_profiles: {
         Row: {
-          cash_commission_collected: number
-          cash_commission_due: number
-          commission_level: number
-          commission_rate_bps: number
-          confirmed_at: string
+          active_service_types:
+            | Database["public"]["Enums"]["service_type"][]
+            | null
+          app_active_minutes: number
+          app_last_active_minute: string | null
+          bank_account: string | null
+          bank_name: string | null
+          cccd_back_url: string | null
+          cccd_front_url: string | null
           created_at: string
-          gross_amount: number
+          date_of_birth: string | null
+          districts: string[]
+          gender: string | null
+          home_lat: number | null
+          home_lng: number | null
           id: string
-          job_id: string
-          platform_fee: number
-          worker_id: string
-          worker_net: number
+          is_approved: boolean
+          is_available: boolean
+          is_suspended: boolean
+          legal_name: string | null
+          problem_specializations: string[]
+          rating: number
+          selected_service_types: Database["public"]["Enums"]["service_type"][]
+          selfie_url: string | null
+          service_radius_km: number
+          service_types: Database["public"]["Enums"]["service_type"][]
+          total_jobs: number
+          updated_at: string
+          verification_status: Database["public"]["Enums"]["worker_verification_status"]
+          years_experience: number
         }
         Insert: {
-          cash_commission_collected: number
-          cash_commission_due: number
-          commission_level: number
-          commission_rate_bps: number
-          confirmed_at?: string
+          active_service_types?:
+            | Database["public"]["Enums"]["service_type"][]
+            | null
+          app_active_minutes?: number
+          app_last_active_minute?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          cccd_back_url?: string | null
+          cccd_front_url?: string | null
           created_at?: string
-          gross_amount: number
-          id?: string
-          job_id: string
-          platform_fee: number
-          worker_id: string
-          worker_net: number
+          date_of_birth?: string | null
+          districts?: string[]
+          gender?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
+          id: string
+          is_approved?: boolean
+          is_available?: boolean
+          is_suspended?: boolean
+          legal_name?: string | null
+          problem_specializations?: string[]
+          rating?: number
+          selected_service_types?: Database["public"]["Enums"]["service_type"][]
+          selfie_url?: string | null
+          service_radius_km?: number
+          service_types?: Database["public"]["Enums"]["service_type"][]
+          total_jobs?: number
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["worker_verification_status"]
+          years_experience?: number
         }
         Update: {
-          cash_commission_collected?: number
-          cash_commission_due?: number
-          commission_level?: number
-          commission_rate_bps?: number
-          confirmed_at?: string
+          active_service_types?:
+            | Database["public"]["Enums"]["service_type"][]
+            | null
+          app_active_minutes?: number
+          app_last_active_minute?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          cccd_back_url?: string | null
+          cccd_front_url?: string | null
           created_at?: string
-          gross_amount?: number
+          date_of_birth?: string | null
+          districts?: string[]
+          gender?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
           id?: string
-          job_id?: string
-          platform_fee?: number
-          worker_id?: string
-          worker_net?: number
+          is_approved?: boolean
+          is_available?: boolean
+          is_suspended?: boolean
+          legal_name?: string | null
+          problem_specializations?: string[]
+          rating?: number
+          selected_service_types?: Database["public"]["Enums"]["service_type"][]
+          selfie_url?: string | null
+          service_radius_km?: number
+          service_types?: Database["public"]["Enums"]["service_type"][]
+          total_jobs?: number
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["worker_verification_status"]
+          years_experience?: number
         }
         Relationships: [
           {
-            foreignKeyName: "worker_cash_commission_ledger_job_id_fkey"
-            columns: ["job_id"]
+            foreignKeyName: "worker_profiles_id_fkey"
+            columns: ["id"]
             isOneToOne: true
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "worker_cash_commission_ledger_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "worker_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      worker_cash_commission_reconciliations: {
-        Row: {
-          amount: number
-          cash_commission_ledger_id: string
-          created_at: string
-          id: string
-          reconciled_at: string
-          worker_id: string
-        }
-        Insert: {
-          amount: number
-          cash_commission_ledger_id: string
-          created_at?: string
-          id?: string
-          reconciled_at?: string
-          worker_id: string
-        }
-        Update: {
-          amount?: number
-          cash_commission_ledger_id?: string
-          created_at?: string
-          id?: string
-          reconciled_at?: string
-          worker_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "worker_cash_commission_reconciliations_cash_commission_ledger_id_fkey"
-            columns: ["cash_commission_ledger_id"]
-            isOneToOne: false
-            referencedRelation: "worker_cash_commission_ledger"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "worker_cash_commission_reconciliations_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "worker_profiles"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5488,26 +6736,6 @@ export type Database = {
       }
     }
     Views: {
-      worker_service_quality_status: {
-        Row: {
-          average_rating: number | null
-          is_locked: boolean | null
-          last_reviewed_at: string | null
-          locked_until: string | null
-          review_count: number | null
-          service_type: Database["public"]["Enums"]["service_type"] | null
-          worker_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reviews_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customer_overview: {
         Row: {
           bookings_30d: number | null
@@ -5527,6 +6755,60 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      harness_run_timeline: {
+        Row: {
+          actor_role: string | null
+          attempt_number: number | null
+          capability: string | null
+          cost_usd: number | null
+          environment: string | null
+          error_code: string | null
+          event_class: string | null
+          event_id: string | null
+          event_status: string | null
+          finished_at: string | null
+          job_id: string | null
+          latency_ms: number | null
+          model: string | null
+          occurred_at: string | null
+          parent_event_id: string | null
+          provider: string | null
+          release_id: string | null
+          route_kind: string | null
+          run_id: string | null
+          run_status: string | null
+          safe_metadata: Json | null
+          stage: string | null
+          started_at: string | null
+          tool_call_id: string | null
+          tool_id: string | null
+          trace_id: string | null
+          turn_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harness_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "harness_events"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "harness_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "harness_run_timeline"
+            referencedColumns: ["event_id"]
+          },
+          {
+            foreignKeyName: "harness_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -5649,16 +6931,28 @@ export type Database = {
           },
         ]
       }
+      worker_service_quality_status: {
+        Row: {
+          average_rating: number | null
+          is_locked: boolean | null
+          last_reviewed_at: string | null
+          locked_until: string | null
+          review_count: number | null
+          service_type: Database["public"]["Enums"]["service_type"] | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      update_worker_kael_memory_preference: {
-        Args: {
-          p_enabled: boolean
-          p_key: string
-          p_worker_id: string
-        }
-        Returns: boolean
-      }
       accept_broadcast_atomic: {
         Args: { p_job_id: string; p_worker_id: string }
         Returns: {
@@ -5667,6 +6961,20 @@ export type Database = {
           error_code: string
           job_status: Database["public"]["Enums"]["job_status"]
           ok: boolean
+        }[]
+      }
+      acquire_harness_dependency_permit: {
+        Args: {
+          p_dependency: string
+          p_environment: string
+          p_half_open_probes: number
+          p_probe_ttl_seconds: number
+        }
+        Returns: {
+          allowed: boolean
+          probe_token: string
+          retry_after_ms: number
+          state: string
         }[]
       }
       activate_job_broadcast_batch_atomic: {
@@ -5745,6 +7053,26 @@ export type Database = {
           status: string
         }[]
       }
+      admin_review_and_approve_learning_candidate_atomic: {
+        Args: {
+          p_admin_id: string
+          p_candidate_id: string
+          p_review_note?: string
+        }
+        Returns: {
+          candidate_id: string
+          error_code: string
+          knowledge_error_code: string
+          knowledge_ok: boolean
+          knowledge_table: string
+          knowledge_version: number
+          ok: boolean
+          record_key: string
+          rule_id: string
+          rule_version: number
+          status: string
+        }[]
+      }
       append_customer_kael_conversation_exchange: {
         Args: {
           p_client_request_id: string
@@ -5754,6 +7082,52 @@ export type Database = {
           p_kael_text: string
         }
         Returns: number
+      }
+      append_harness_evaluation_sample: {
+        Args: {
+          p_authorization_bypass: boolean
+          p_case_class: string
+          p_case_id: string
+          p_confirmation_bypass: boolean
+          p_cost_usd: number
+          p_critical_safety_failure: boolean
+          p_error_code: string
+          p_evaluation_id: string
+          p_latency_ms: number
+          p_provider: string
+          p_provider_attempt_id: string
+          p_repetition: number
+          p_resolved_model: string
+          p_safe_metadata?: Json
+          p_sample_id: string
+          p_success: boolean
+          p_tool_call_correct: boolean
+        }
+        Returns: string
+      }
+      append_harness_event: {
+        Args: {
+          p_attempt_number: number
+          p_cost_usd: number
+          p_environment: string
+          p_error_code: string
+          p_event_class: string
+          p_event_id: string
+          p_latency_ms: number
+          p_model: string
+          p_parent_event_id: string
+          p_provider: string
+          p_release_id: string
+          p_run_id: string
+          p_safe_metadata?: Json
+          p_stage: string
+          p_status: string
+          p_tool_call_id: string
+          p_tool_id: string
+          p_trace_id: string
+          p_turn_id: string
+        }
+        Returns: string
       }
       apply_approved_learning_candidate_to_knowledge: {
         Args: { p_admin_id: string; p_candidate_id: string }
@@ -5838,58 +7212,16 @@ export type Database = {
       apply_sepay_vietqr_payment_webhook: {
         Args: {
           p_payment_code: string
-          p_reference_code?: string | null
+          p_reference_code?: string
           p_transaction_id: string
           p_transfer_amount: number
         }
         Returns: {
-          job_id: string | null
-          job_status: Database["public"]["Enums"]["job_status"] | null
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
           ok: boolean
           outcome: string
-          payment_status: string | null
-        }[]
-      }
-      create_worker_vietqr_payment_intent: {
-        Args: {
-          p_customer_id: string
-          p_expected_gross_amount: number
-          p_job_id: string
-          p_payment_code: string
-          p_payment_updated_at?: string
-          p_qr_image_url: string
-          p_transfer_content: string
-        }
-        Returns: {
-          commission_level: number
-          commission_rate_bps: number
-          gross_amount: number
-          job_id: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          payment_code: string
-          payment_updated_at: string
-          platform_fee: number
-          qr_image_url: string
-          transfer_content: string
-          worker_net: number
-        }[]
-      }
-      confirm_worker_cash_payment: {
-        Args: { p_job_id: string; p_worker_id: string }
-        Returns: {
-          cash_commission_collected: number
-          cash_commission_due: number
-          commission_level: number
-          commission_rate_bps: number
-          gross_amount: number
-          job_id: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          outcome: string
-          payment_received_at: string
           payment_status: string
-          payment_updated_at: string
-          platform_fee: number
-          worker_net: number
         }[]
       }
       archive_stale_kael_memory: {
@@ -5910,6 +7242,37 @@ export type Database = {
           rule_version: number
           status: string
         }[]
+      }
+      begin_harness_evaluation: {
+        Args: {
+          p_evaluation_id: string
+          p_evaluator_id: string
+          p_evaluator_kind: string
+          p_evaluator_version: string
+          p_evidence_class: string
+          p_git_sha: string
+          p_policy_bundle_sha256: string
+          p_prompt_bundle_sha256: string
+          p_release_id: string
+          p_safe_metadata?: Json
+        }
+        Returns: boolean
+      }
+      begin_harness_run: {
+        Args: {
+          p_actor_id_hash: string
+          p_actor_role: string
+          p_capability: string
+          p_environment: string
+          p_job_id: string
+          p_parent_run_id: string
+          p_release_id: string
+          p_route_kind: string
+          p_run_id: string
+          p_safe_metadata?: Json
+          p_trace_id: string
+        }
+        Returns: boolean
       }
       cancel_job_after_accept_atomic: {
         Args: {
@@ -6220,6 +7583,10 @@ export type Database = {
           request_status: string
         }[]
       }
+      complete_harness_idempotency: {
+        Args: { p_reservation_id: string; p_response_hash: string }
+        Returns: boolean
+      }
       complete_job_media_cleanup: {
         Args: { p_claim_token: string; p_intent_ids: string[]; p_now?: string }
         Returns: number
@@ -6333,6 +7700,24 @@ export type Database = {
           worker_id: string
         }[]
       }
+      confirm_worker_cash_payment: {
+        Args: { p_job_id: string; p_worker_id: string }
+        Returns: {
+          cash_commission_collected: number
+          cash_commission_due: number
+          commission_level: number
+          commission_rate_bps: number
+          gross_amount: number
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          outcome: string
+          payment_received_at: string
+          payment_status: string
+          payment_updated_at: string
+          platform_fee: number
+          worker_net: number
+        }[]
+      }
       consume_job_media_uploads: {
         Args: {
           p_job_id: string
@@ -6358,6 +7743,30 @@ export type Database = {
           reason: string
         }[]
       }
+      create_worker_vietqr_payment_intent: {
+        Args: {
+          p_customer_id: string
+          p_expected_gross_amount: number
+          p_job_id: string
+          p_payment_code: string
+          p_payment_updated_at?: string
+          p_qr_image_url: string
+          p_transfer_content: string
+        }
+        Returns: {
+          commission_level: number
+          commission_rate_bps: number
+          gross_amount: number
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          payment_code: string
+          payment_updated_at: string
+          platform_fee: number
+          qr_image_url: string
+          transfer_content: string
+          worker_net: number
+        }[]
+      }
       decide_scope_change_atomic: {
         Args: {
           p_customer_id: string
@@ -6370,25 +7779,6 @@ export type Database = {
           job_id_out: string
           ok: boolean
           scope_status: Database["public"]["Enums"]["scope_change_status"]
-        }[]
-      }
-      decide_worker_cancellation_atomic: {
-        Args: {
-          p_admin_id: string
-          p_cancellation_id: string
-          p_decision: string
-          p_review_note?: string
-        }
-        Returns: {
-          cancellation_status: string
-          decided_at_ts: string
-          district_code: string
-          error_code: string
-          job_id_out: string
-          job_status: Database["public"]["Enums"]["job_status"]
-          ok: boolean
-          service_type_out: Database["public"]["Enums"]["service_type"]
-          worker_id_out: string
         }[]
       }
       distance_km: {
@@ -6404,6 +7794,18 @@ export type Database = {
           worker_id_out: string
         }[]
       }
+      expire_harness_reliability_reservations: {
+        Args: never
+        Returns: {
+          idempotency_expired: number
+          probes_expired: number
+          spend_expired: number
+        }[]
+      }
+      fail_harness_idempotency: {
+        Args: { p_error_code: string; p_reservation_id: string }
+        Returns: boolean
+      }
       fail_job_media_uploads: {
         Args: {
           p_job_id: string
@@ -6417,13 +7819,48 @@ export type Database = {
           revoked_paths: string[]
         }[]
       }
-      finalize_kael_ai_spend: {
+      finalize_kael_ai_spend:
+        | {
+            Args: {
+              p_actual_usd: number
+              p_purpose: string
+              p_reservation_id: number
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_actual_usd: number
+              p_harness_release_id: string
+              p_harness_run_id: string
+              p_harness_trace_id: string
+              p_provider_attempt_id: string
+              p_purpose: string
+              p_reservation_id: number
+            }
+            Returns: undefined
+          }
+      finish_harness_evaluation: {
         Args: {
-          p_actual_usd: number
-          p_purpose: string
-          p_reservation_id: number
+          p_artifact_sha256: string
+          p_evaluation_id: string
+          p_metrics: Json
+          p_safe_metadata?: Json
+          p_sample_count: number
+          p_status: string
+          p_variance: Json
         }
-        Returns: undefined
+        Returns: boolean
+      }
+      finish_harness_run: {
+        Args: {
+          p_duration_ms: number
+          p_error_code: string
+          p_run_id: string
+          p_safe_metadata?: Json
+          p_status: string
+        }
+        Returns: boolean
       }
       get_customer_profile_insights_aggregate: {
         Args: { p_customer_id: string }
@@ -6457,6 +7894,7 @@ export type Database = {
       get_worker_earnings_summary: {
         Args: {
           p_from?: string
+          p_platform_fee_rate?: number
           p_to?: string
           p_worker_id: string
         }
@@ -6528,6 +7966,10 @@ export type Database = {
         Args: { p_key: string; p_now?: string; p_scope: string }
         Returns: boolean
       }
+      mark_harness_idempotency_reconcile_required: {
+        Args: { p_error_code: string; p_reservation_id: string }
+        Returns: boolean
+      }
       match_kael_knowledge: {
         Args: {
           p_limit?: number
@@ -6547,11 +7989,11 @@ export type Database = {
           title: string
         }[]
       }
+      next_job_display_code: { Args: never; Returns: string }
       normalize_hcmc_district_code: {
         Args: { p_input: string }
         Returns: string
       }
-      next_job_display_code: { Args: never; Returns: string }
       open_dispute_atomic: {
         Args: {
           p_dispute_type: string
@@ -6577,6 +8019,7 @@ export type Database = {
       prepare_customer_account_deletion: {
         Args: { p_client_request_id: string; p_customer_id: string }
         Returns: {
+          avatar_storage_ref: string
           checkpoint: string
           request_id: string
           request_status: string
@@ -6608,6 +8051,23 @@ export type Database = {
           rule_version: number
         }[]
       }
+      queue_learning_candidate_manual_review: {
+        Args: {
+          p_candidate_id: string
+          p_consent_hash: string
+          p_evidence_hash: string
+          p_input_hash: string
+          p_release_id: string
+          p_safe_metadata?: Json
+          p_source_hash: string
+        }
+        Returns: {
+          candidate_id: string
+          error_code: string
+          ok: boolean
+          status: string
+        }[]
+      }
       rate_take: {
         Args: {
           p_config: Json
@@ -6620,6 +8080,13 @@ export type Database = {
           allowed: boolean
           reason: string
           retry_after_ms: number
+        }[]
+      }
+      read_harness_kill_switch: {
+        Args: { p_environment: string; p_switch_id: string }
+        Returns: {
+          enabled: boolean
+          reason_code: string
         }[]
       }
       record_circuit_failure: {
@@ -6642,6 +8109,53 @@ export type Database = {
           applied: boolean
         }[]
       }
+      record_harness_dependency_result: {
+        Args: {
+          p_dependency: string
+          p_environment: string
+          p_error_code: string
+          p_half_open_probes: number
+          p_open_ms: number
+          p_probe_token?: string
+          p_release_id: string
+          p_success: boolean
+          p_threshold: number
+          p_window_ms: number
+        }
+        Returns: string
+      }
+      record_harness_privileged_operation: {
+        Args: {
+          p_actor_id_hash: string
+          p_actor_role: string
+          p_capability: string
+          p_environment: string
+          p_error_code: string
+          p_operation_event_id: string
+          p_operation_id: string
+          p_reason: string
+          p_release_id: string
+          p_resource_id_hash: string
+          p_resource_type: string
+          p_result: string
+          p_run_id: string
+          p_safe_metadata?: Json
+          p_trace_id: string
+        }
+        Returns: string
+      }
+      record_harness_slo_observation: {
+        Args: {
+          p_actual: number
+          p_environment: string
+          p_release_id: string
+          p_safe_metadata?: Json
+          p_slo_id: string
+          p_window_ended_at: string
+          p_window_started_at: string
+        }
+        Returns: string
+      }
       record_kael_ai_batch_poll: {
         Args: {
           p_batch_id: string
@@ -6659,10 +8173,23 @@ export type Database = {
         }
         Returns: undefined
       }
-      record_kael_ai_spend: {
-        Args: { p_actor_id: string; p_cost_usd: number; p_purpose: string }
-        Returns: undefined
-      }
+      record_kael_ai_spend:
+        | {
+            Args: { p_actor_id: string; p_cost_usd: number; p_purpose: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_actor_id: string
+              p_cost_usd: number
+              p_harness_release_id: string
+              p_harness_run_id: string
+              p_harness_trace_id: string
+              p_provider_attempt_id: string
+              p_purpose: string
+            }
+            Returns: undefined
+          }
       record_kael_provider_spend: {
         Args: { p_cost_usd: number }
         Returns: number
@@ -6679,6 +8206,8 @@ export type Database = {
           p_final_price: number
           p_job_id: string
           p_rating: number
+          p_reference_max: number
+          p_reference_min: number
           p_review_tags: string[]
           p_reviewed_at: string
           p_scope_change_requested: boolean
@@ -6760,6 +8289,61 @@ export type Database = {
           token_id: string
           updated_at_ts: string
         }[]
+      }
+      register_harness_release: {
+        Args: {
+          p_access_matrix_sha256: string
+          p_bundle_sha256: string
+          p_capability_registry_sha256: string
+          p_created_by: string
+          p_database_types_sha256: string
+          p_edge_function_digests: Json
+          p_environment: string
+          p_evaluation_suite_sha256: string
+          p_evaluation_suite_version: string
+          p_git_sha: string
+          p_manifest_sha256: string
+          p_migration_inventory_sha256: string
+          p_policy_bundle_sha256: string
+          p_previous_release_id: string
+          p_promotion_policy_sha256: string
+          p_prompt_bundle_sha256: string
+          p_release_artifact: Json
+          p_release_id: string
+          p_reliability_policy_sha256: string
+          p_runtime_configuration_sha256: string
+          p_safe_metadata?: Json
+        }
+        Returns: {
+          access_matrix_sha256: string
+          bundle_sha256: string
+          capability_registry_sha256: string
+          created_at: string
+          created_by: string
+          database_types_sha256: string
+          edge_function_digests: Json
+          environment: string
+          evaluation_suite_sha256: string
+          evaluation_suite_version: string
+          git_sha: string
+          manifest_sha256: string
+          migration_inventory_sha256: string
+          policy_bundle_sha256: string
+          previous_release_id: string | null
+          promotion_policy_sha256: string
+          prompt_bundle_sha256: string
+          release_artifact: Json
+          release_id: string
+          reliability_policy_sha256: string
+          runtime_configuration_sha256: string
+          safe_metadata: Json
+        }
+        SetofOptions: {
+          from: "*"
+          to: "harness_releases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       reject_worker_candidate_atomic: {
         Args: {
@@ -6953,6 +8537,22 @@ export type Database = {
           worker_id_out: string
         }[]
       }
+      reserve_harness_idempotency: {
+        Args: {
+          p_actor_id_hash: string
+          p_environment: string
+          p_key_hash: string
+          p_operation_id: string
+          p_release_id: string
+          p_request_hash: string
+          p_ttl_seconds: number
+        }
+        Returns: {
+          reservation_id: string
+          response_hash: string
+          state: string
+        }[]
+      }
       reserve_job_media_upload: {
         Args: {
           p_file_size_bytes: number
@@ -6970,21 +8570,41 @@ export type Database = {
           reason: string
         }[]
       }
-      reserve_kael_ai_spend: {
-        Args: {
-          p_actor_id: string
-          p_estimated_usd: number
-          p_global_daily_cap: number
-          p_purpose: string
-          p_user_daily_cap: number
-          p_user_monthly_cap: number
-        }
-        Returns: {
-          allowed: boolean
-          blocked_scope: string
-          reservation_id: number
-        }[]
-      }
+      reserve_kael_ai_spend:
+        | {
+            Args: {
+              p_actor_id: string
+              p_estimated_usd: number
+              p_global_daily_cap: number
+              p_purpose: string
+              p_user_daily_cap: number
+              p_user_monthly_cap: number
+            }
+            Returns: {
+              allowed: boolean
+              blocked_scope: string
+              reservation_id: number
+            }[]
+          }
+        | {
+            Args: {
+              p_actor_id: string
+              p_estimated_usd: number
+              p_global_daily_cap: number
+              p_harness_release_id: string
+              p_harness_run_id: string
+              p_harness_trace_id: string
+              p_provider_attempt_id: string
+              p_purpose: string
+              p_user_daily_cap: number
+              p_user_monthly_cap: number
+            }
+            Returns: {
+              allowed: boolean
+              blocked_scope: string
+              reservation_id: number
+            }[]
+          }
       reserve_kael_chat_media_upload: {
         Args: {
           p_customer_id: string
@@ -7026,6 +8646,22 @@ export type Database = {
           revoked_paths: string[]
         }[]
       }
+      revoke_learning_rule_with_provenance: {
+        Args: {
+          p_admin_id: string
+          p_reason: string
+          p_release_id: string
+          p_rule_id: string
+          p_rule_version: number
+        }
+        Returns: {
+          cascaded_count: number
+          error_code: string
+          ok: boolean
+          rule_id: string
+          rule_version: number
+        }[]
+      }
       rollback_learning_rule: {
         Args: {
           p_reason?: string
@@ -7039,6 +8675,18 @@ export type Database = {
           rule_id: string
         }[]
       }
+      set_harness_kill_switch: {
+        Args: {
+          p_actor_id: string
+          p_enabled: boolean
+          p_environment: string
+          p_reason_code: string
+          p_release_id: string
+          p_safe_metadata?: Json
+          p_switch_id: string
+        }
+        Returns: boolean
+      }
       set_worker_availability_atomic: {
         Args: { p_is_available: boolean; p_worker_id: string }
         Returns: {
@@ -7047,6 +8695,10 @@ export type Database = {
           ok: boolean
           updated_at_ts: string
         }[]
+      }
+      start_harness_idempotency_execution: {
+        Args: { p_reservation_id: string }
+        Returns: boolean
       }
       submit_counter_statement_atomic: {
         Args: { p_actor_id: string; p_dispute_id: string; p_statement: string }
@@ -7103,6 +8755,27 @@ export type Database = {
           worker_id_out: string
         }[]
       }
+      transition_harness_promotion: {
+        Args: {
+          p_actor_id: string
+          p_approval_id: string
+          p_environment: string
+          p_evaluation_report_id: string
+          p_expected_state: string
+          p_next_state: string
+          p_packet_sha256: string
+          p_reason_code?: string
+          p_release_id: string
+          p_rollback_release_id: string
+          p_safe_metadata?: Json
+        }
+        Returns: {
+          error_code: string
+          ok: boolean
+          promotion_id: string
+          state: string
+        }[]
+      }
       unregister_device_push_token_atomic: {
         Args: { p_push_token: string; p_user_id: string }
         Returns: {
@@ -7110,6 +8783,10 @@ export type Database = {
           unregistered_out: boolean
           updated_at_ts: string
         }[]
+      }
+      update_worker_kael_memory_preference: {
+        Args: { p_enabled: boolean; p_key: string; p_worker_id: string }
+        Returns: boolean
       }
       upsert_customer_refund_payment_method: {
         Args: {
@@ -7126,7 +8803,7 @@ export type Database = {
           is_default: boolean
           status: string
           updated_at: string
-          verified_at: string | null
+          verified_at: string
         }[]
       }
       upsert_job_incident_signal_atomic: {

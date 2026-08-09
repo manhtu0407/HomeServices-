@@ -30,6 +30,11 @@ describe('SePay VietQR production payment rail', () => {
     expect(edgeFunction).not.toMatch(/console\.(?:log|warn|error)\([^\n]*(?:rawBody|raw_body|payment_transfer_content)/)
   })
 
+  it('does not apply the new-intent kill switch to verified provider reconciliation', () => {
+    expect(edgeFunction).not.toContain('assertHarnessCapabilityEnabled')
+    expect(edgeFunction).not.toContain('payment_sepay')
+  })
+
   it('has an explicitly configured JWT-free provider boundary only', () => {
     const config = readIfPresent('supabase/config.toml')
     const section = config.split('[functions.sepay-webhook]')[1]?.split('[')[0] ?? ''

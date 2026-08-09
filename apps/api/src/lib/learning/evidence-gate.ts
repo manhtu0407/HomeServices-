@@ -1,19 +1,9 @@
-/**
- * Evidence Gate — gating logic for auto-promotion of learning candidates.
- *
- * Per STRUCTURES.md §10C, a candidate auto-promotes ONLY if:
- *   - evidence_count >= MIN_EVIDENCE
- *   - confidence >= CONFIDENCE_THRESHOLD
- *   - no major contradiction in recent similar cases
- *   - payload does NOT touch money/scope autonomy (defense in depth)
- *
- * `shouldPromote` is pure. `promoteCandidate` delegates the write set to one
- * serialized database transaction.
- */
+/** Gate-passed candidates are queued for review; automatic activation is forbidden. */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SERVICE_TYPES, type Database } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
+import { harnessSha256 } from '../harness-hash'
 import {
   isPricePriorPayload,
   isAnalysisRulePayload,
@@ -150,45 +140,55 @@ export function shouldPromote(
   return { promote: true, reason: 'gate_passed' }
 }
 
-// =============================================================================
-// Side-effect: promote a candidate to an active rule
-// =============================================================================
+export type PromoteResult = { promoted: false; reason: string; queuedForReview?: boolean }
+type QueueManualReviewRpcRow = {
+  ok: boolean
+  error_code: string | null
+  candidate_id: string
+  status: string | null
+}
+type QueueManualReviewRpcResponse = {
+  data: QueueManualReviewRpcRow[] | null
+  error: { code?: string | null } | null
+}
 
-export type PromoteResult =
-  | { promoted: true; ruleId: string; ruleVersion: number }
-  | { promoted: false; reason: string }
+type QueueManualReviewRpc = (
+  name: 'queue_learning_candidate_manual_review',
+  args: Record<string, unknown>,
+) => PromiseLike<QueueManualReviewRpcResponse>
 
-/**
- * Promote a candidate row to an active rule through the service-role-only RPC.
- * Candidate locking and scope locking keep the rule/version/audit write set
- * atomic and make timeout retries idempotent.
- *
- * Returns the new ruleId + version for caller to log via logJobEvent.
- */
+// Compatibility name: queue a gate-passed candidate for administrator review; never activate it automatically.
 export async function promoteCandidate(
   supabase: SupabaseClient<Database>,
   candidate: CandidateRow,
 ): Promise<PromoteResult> {
+  const payload = JSON.stringify(candidate.suggested_payload)
+  const queueManualReview = supabase.rpc.bind(supabase) as unknown as QueueManualReviewRpc
   const { data, error } = await withDbTimeout(
-    supabase.rpc('auto_promote_learning_candidate_atomic', {
+    queueManualReview('queue_learning_candidate_manual_review', {
       p_candidate_id: candidate.id,
+      p_source_hash: harnessSha256(`candidate:${candidate.id}`),
+      p_consent_hash: harnessSha256('admin_review_required'),
+      p_input_hash: harnessSha256(payload),
+      p_evidence_hash: harnessSha256(`${candidate.evidence_count}:${candidate.confidence}:${payload}`),
+      p_release_id: process.env.HARNESS_RELEASE_ID ?? 'unreleased',
+      p_safe_metadata: {
+        gate_reason: 'gate_passed',
+        automatic_promotion: false,
+        source_kind: 'reviewed_job_aggregate',
+        consent_basis: 'aggregate_only',
+        pii_redacted: true,
+        raw_text_persisted: false,
+        summary_origin: 'model_generated',
+      },
     }),
   )
   if (error) {
-    return { promoted: false, reason: `promotion_rpc_failed:${error.code}` }
+    return { promoted: false, reason: `manual_review_rpc_failed:${error.code ?? 'UNKNOWN'}` }
   }
-
   const result = data?.[0]
-  if (!result?.ok || !result.rule_id || result.rule_version === null) {
-    return {
-      promoted: false,
-      reason: result?.error_code ?? 'promotion_rpc_no_result',
-    }
+  if (!result?.ok) {
+    return { promoted: false, reason: result?.error_code ?? 'manual_review_rpc_no_result' }
   }
-
-  return {
-    promoted: true,
-    ruleId: result.rule_id,
-    ruleVersion: result.rule_version,
-  }
+  return { promoted: false, reason: 'MANUAL_REVIEW_REQUIRED', queuedForReview: true }
 }

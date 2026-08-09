@@ -360,6 +360,54 @@ describe('mobile API response guard', () => {
     }))
   })
 
+  it('reuses one generated idempotency key across transport retries', async () => {
+    jest.useFakeTimers()
+    mockFetch
+      .mockRejectedValueOnce(new TypeError('response lost after confirmation commit'))
+      .mockResolvedValueOnce({
+        body: null,
+        headers: { get: () => null },
+        ok: true,
+        status: 200,
+        text: jest.fn(async () => '{"job_id":"job-1","status":"broadcasting"}'),
+      })
+
+    const pending = api.post('/kael/chat/session-1/confirm')
+    await jest.runAllTimersAsync()
+    await expect(pending).resolves.toMatchObject({ success: true })
+
+    const headers = mockFetch.mock.calls.map(([, init]) =>
+      (init?.headers as Record<string, string>)['Idempotency-Key'],
+    )
+    expect(headers).toHaveLength(2)
+    expect(headers[0]).toMatch(/^mobile:post:\/kael\/chat\/session-1\/confirm:/)
+    expect(headers[1]).toBe(headers[0])
+  })
+
+  it('derives the idempotency key from a durable client request id', async () => {
+    mockFetch.mockResolvedValue({
+      body: null,
+      headers: { get: () => null },
+      ok: true,
+      status: 200,
+      text: jest.fn(async () => '{"job_id":"job-1"}'),
+    })
+
+    await api.post('/jobs', {
+      client_request_id: 'd6c9fe68-ae24-4f17-8d15-6eecaa9b7c67',
+      description: 'The kitchen pipe keeps leaking.',
+    })
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Idempotency-Key': 'mobile:d6c9fe68-ae24-4f17-8d15-6eecaa9b7c67',
+        }),
+      }),
+    )
+  })
+
   it('does not retry worker application creation without an idempotency key', async () => {
     jest.useFakeTimers()
     mockFetch.mockRejectedValue(new TypeError('connection reset after upload'))

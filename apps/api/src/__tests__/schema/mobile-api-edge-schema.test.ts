@@ -1323,4 +1323,11 @@ describe('mobile-api Edge schema compatibility', () => {
       expect(source).not.toContain('process.env.NEXT_PUBLIC_SUPABASE_URL')
     }
   })
+
+  it('pins the production project identity and mismatch failure path', () => {
+    const environmentGuard = read('supabase/functions/_shared/harness/environment.ts')
+
+    expect(environmentGuard).toContain('HARNESS_PRODUCTION_PROJECT_REF = "iwevizmsedyqozxlawwl"')
+    expect(environmentGuard).toContain('PRODUCTION_PROJECT_MISMATCH')
+  })
 })

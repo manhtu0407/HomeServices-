@@ -12,7 +12,13 @@
 param(
   [string]$Container = "supabase_db_nestscout",
   [string]$Filter = "*.sql",
-  [switch]$StopOnFirstFailure
+  [switch]$StopOnFirstFailure,
+  # These values are interpolated only for the local dblink shell invocation.
+  # Restrict them to PostgreSQL identifier syntax so they cannot alter that command.
+  [ValidatePattern('^[A-Za-z_][A-Za-z0-9_]*$')]
+  [string]$DbUser = "postgres",
+  [ValidatePattern('^[A-Za-z_][A-Za-z0-9_]*$')]
+  [string]$DblinkDbUser = "supabase_admin"
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,7 +44,6 @@ if ($LASTEXITCODE -ne 0 -or -not ($running -match [regex]::Escape($Container))) 
 $prevEncoding = [Console]::OutputEncoding
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-$dblinkPsqlCommand = 'export NESTSCOUT_TEST_DB_URL="host=127.0.0.1 port=5432 dbname=postgres user=postgres"; export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -h 127.0.0.1 -U supabase_admin -d postgres -v ON_ERROR_STOP=1'
 
 $files = Get-ChildItem -LiteralPath $testDir -Filter $Filter -File | Sort-Object Name
 $passed = @()
@@ -49,18 +54,26 @@ try {
     # Windows PowerShell otherwise decodes UTF-8 Vietnamese fixtures with the
     # active ANSI code page before the UTF-8 pipe can preserve them.
     $sql = Get-Content -Raw -Encoding UTF8 -LiteralPath $file.FullName
-    $requiresDblink = $sql -match '(?m)^\\getenv\s+dblink_connstr\s+NESTSCOUT_TEST_DB_URL\s*$'
+    $dockerArgs = @("exec", "-i")
+    $usesDblink = $sql -match '\bdblink_(connect|send_query|disconnect)\b'
+    $effectiveDbUser = if ($usesDblink) { $DblinkDbUser } else { $DbUser }
+    if ($usesDblink) {
+      # Local loopback uses trust auth, so dblink must be created by the local
+      # superuser. The target remains the same container, never an env-supplied
+      # staging or production database.
+      $dblinkPsqlCommand = "export NESTSCOUT_TEST_DB_URL='host=127.0.0.1 port=5432 dbname=postgres user=$DbUser'; export PGPASSWORD=`"`$POSTGRES_PASSWORD`"; exec psql -h 127.0.0.1 -U $DblinkDbUser -d postgres -v ON_ERROR_STOP=1"
+    } else {
+      $dockerArgs += @($Container, "psql", "-v", "ON_ERROR_STOP=1", "-U", $effectiveDbUser, "-d", "postgres")
+    }
+    # psql sends assertion failures through Docker's native stderr. Capture
+    # them as a per-file result so later SQL checks still run and report.
     $previousErrorActionPreference = $ErrorActionPreference
     try {
-      # psql sends assertion failures through Docker's native stderr. Capture
-      # them as a per-file result so later SQL checks still run and report.
       $ErrorActionPreference = "Continue"
-      if ($requiresDblink) {
-        # Local loopback uses trust auth; dblink therefore requires the local
-        # superuser. Only self-declared concurrency fixtures take this path.
+      if ($usesDblink) {
         $output = $sql | & docker exec -i $Container sh -lc $dblinkPsqlCommand 2>&1
       } else {
-        $output = $sql | & docker exec -i $Container psql -v ON_ERROR_STOP=1 -U postgres -d postgres 2>&1
+        $output = $sql | & docker @dockerArgs 2>&1
       }
       $code = $LASTEXITCODE
     } finally {

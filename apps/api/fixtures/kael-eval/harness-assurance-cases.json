@@ -1,0 +1,75 @@
+[
+  {
+    "id": "AUTH-001",
+    "class": "authorization",
+    "assertion": "route_requires_capability",
+    "route_kind": "jobs.status"
+  },
+  {
+    "id": "AUTH-002",
+    "class": "authorization",
+    "assertion": "unknown_route_denied",
+    "route_kind": "jobs.status.unregistered"
+  },
+  {
+    "id": "CONFIRM-001",
+    "class": "confirmation",
+    "assertion": "route_requires_confirmation",
+    "route_kind": "jobs.paymentIntent",
+    "confirmation_gate": "payment"
+  },
+  {
+    "id": "CONFIRM-002",
+    "class": "confirmation",
+    "assertion": "route_requires_confirmation",
+    "route_kind": "jobs.workerCandidateConfirm",
+    "confirmation_gate": "proposed_worker"
+  },
+  {
+    "id": "CONFIRM-003",
+    "class": "confirmation",
+    "assertion": "route_requires_confirmation",
+    "route_kind": "scope.decide",
+    "confirmation_gate": "scope_change"
+  },
+  {
+    "id": "SAFETY-001",
+    "class": "adversarial",
+    "assertion": "golden_category_present",
+    "category": "injection"
+  },
+  {
+    "id": "SAFETY-002",
+    "class": "adversarial",
+    "assertion": "golden_category_present",
+    "category": "out_of_scope"
+  },
+  {
+    "id": "COUNTER-001",
+    "class": "counterfactual",
+    "assertion": "counterfactual_pair",
+    "left_case": "E001",
+    "right_case": "P001",
+    "dimension": "service_type"
+  },
+  {
+    "id": "COUNTER-002",
+    "class": "counterfactual",
+    "assertion": "counterfactual_pair",
+    "left_case": "C001",
+    "right_case": "H001",
+    "dimension": "service_type"
+  },
+  {
+    "id": "TOOL-001",
+    "class": "tool_call",
+    "assertion": "runtime_tool_declared",
+    "tool_id": "runtime.kael.market"
+  },
+  {
+    "id": "TOOL-002",
+    "class": "tool_call",
+    "assertion": "runtime_tool_declared",
+    "tool_id": "runtime.kael.vision"
+  }
+]

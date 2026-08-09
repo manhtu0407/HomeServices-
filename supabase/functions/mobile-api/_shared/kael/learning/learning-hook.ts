@@ -4,9 +4,9 @@
 // boundary so post-A14 reviews feed `record_learning_observation_atomic`
 // directly. The RPC reads jobs/reviews server-side, so evidence counts and
 // confidence can never come from model output (STRUCTURES.md §10C).
-// Promotion goes through `auto_promote_learning_candidate_atomic` only after
-// the local gate re-checks thresholds, payload/scope pinning, contradiction
-// ratio, and the money/scope allowlist (STRUCTURES.md §10F, RULES.md #7).
+// Gate-passed candidates are queued for explicit administrator review. Runtime
+// learning never activates canonical rules directly; provenance and revocation
+// stay behind the service-role database boundary (RULES.md #7).
 
 import {
   COMPLEXITY_LEVELS,
@@ -16,8 +16,9 @@ import {
   type ComplexityLevel,
   type ServiceType,
 } from "../../../../_shared/domain.ts";
-import { readBooleanEnvFlag, withDbTimeout } from "../pipeline/utils.ts";
+import { withDbTimeout } from "../pipeline/utils.ts";
 import { resolveLearningRuntimeConfig } from "./skills/registry.ts";
+import { assertHarnessCapabilityEnabled } from "../../../../_shared/harness/promotion.ts";
 
 export {
   CONTRADICTION_MAX_RATIO,
@@ -103,19 +104,12 @@ export type EdgeLearningHookSummary = {
   ok: boolean;
   marketCandidateId?: string;
   marketEvidence?: number;
-  marketPromoted?: { ruleId: string; ruleVersion: number };
+  marketQueuedForReview?: boolean;
   caseCandidateId?: string;
   caseEvidence?: number;
-  casePromoted?: { ruleId: string; ruleVersion: number };
+  caseQueuedForReview?: boolean;
   skippedReason?: string;
 };
-
-function isLearningAutopromoteEnabled(): boolean {
-  return readBooleanEnvFlag(
-    readRuntimeEnv("KAEL_LEARNING_AUTOPROMOTE_ENABLED"),
-    false,
-  );
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -416,13 +410,11 @@ function contradictionWindowStart(now: Date): string {
     .toISOString();
 }
 
-async function maybePromote(
+async function maybeQueueManualReview(
   client: LearningHookDbClient,
   candidateId: string,
   now: Date,
-): Promise<{ ruleId: string; ruleVersion: number } | null> {
-  if (!isLearningAutopromoteEnabled()) return null;
-
+): Promise<boolean> {
   const candidateResult = await withDbTimeout<DbResult<Record<string, unknown>>>(
     client
       .from("learning_candidates")
@@ -438,10 +430,11 @@ async function maybePromote(
     : Array.isArray(rawCandidate) && isRecord(rawCandidate[0])
     ? rawCandidate[0]
     : null;
-  if (candidateResult.error || !candidate) return null;
-  if (candidate.status === "auto_promoted") return null;
-  if (!isEdgeCandidateRow(candidate)) return null;
-  if (!candidate.affected_service) return null;
+  if (candidateResult.error || !candidate || !isEdgeCandidateRow(candidate)) return false;
+  if (["manual_review", "auto_promoted", "rejected", "archived", "rolled_back"].includes(candidate.status)) {
+    return false;
+  }
+  if (!candidate.affected_service) return false;
 
   const similarResult = await withDbTimeout<DbResult<Array<Record<string, unknown>>>>(
     client
@@ -472,61 +465,62 @@ async function maybePromote(
     await withDbTimeout<DbResult<unknown>>(
       client.from("learning_candidates").update(patch).eq("id", candidateId) as QueryLike<unknown>,
     );
-    return null;
+    return false;
   }
 
-  if (isLearningShadowModeEnabled()) {
-    await recordShadowPromotion(client, candidate);
-    return null;
-  }
-
-  const promoteResult = await withDbTimeout<DbResult<Array<Record<string, unknown>>>>(
-    client.rpc("auto_promote_learning_candidate_atomic", {
+  const provenance = await candidateProvenance(candidate);
+  const queueResult = await withDbTimeout<DbResult<unknown>>(
+    client.rpc("queue_learning_candidate_manual_review", {
       p_candidate_id: candidate.id,
-    }) as QueryLike<Array<Record<string, unknown>>>,
-  );
-  if (promoteResult.error) return null;
-  const row = Array.isArray(promoteResult.data) ? promoteResult.data[0] : null;
-  if (!isRecord(row) || row.ok !== true) return null;
-  if (!isNonEmptyString(row.rule_id) || !isFiniteNumber(row.rule_version)) return null;
-  return { ruleId: row.rule_id, ruleVersion: row.rule_version };
-}
-
-// Dry run: the gate has passed and the rule would go active, but the decision is only
-// written to the lifecycle log so the change can be read before it is trusted. Lets a
-// scope be watched for a few weeks of real reviews before autopromote is turned on.
-function isLearningShadowModeEnabled(): boolean {
-  return readBooleanEnvFlag(readRuntimeEnv("KAEL_LEARNING_SHADOW_MODE"), false);
-}
-
-async function recordShadowPromotion(
-  client: LearningHookDbClient,
-  candidate: EdgeLearningCandidateRow,
-): Promise<void> {
-  const payload = candidate.suggested_payload;
-  const proposed = isPricePriorPayload(payload) ? payload.suggested : null;
-  await withDbTimeout<DbResult<unknown>>(
-    client.from("kael_rule_lifecycle_log").insert({
-      rule_id: null,
-      candidate_id: candidate.id,
-      skill_id: candidate.candidate_type === "price_prior_update" ? "LS1" : "LS2",
-      previous_state: candidate.status === "created" ? "candidate" : "pending_evidence",
-      next_state: "evidence_gate_check",
-      // kael_rule_lifecycle_log.transition_reason is capped at 200 characters.
-      transition_reason: "shadow mode: gate passed, promotion withheld".slice(0, 200),
-      actor_role: "system",
-      safe_metadata: {
-        would_promote: true,
-        candidate_type: candidate.candidate_type,
-        evidence_count: candidate.evidence_count,
-        confidence: candidate.confidence,
-        proposed_min: proposed?.new_min ?? null,
-        proposed_max: proposed?.new_max ?? null,
-        direction: proposed?.direction ?? null,
+      p_source_hash: provenance.sourceHash,
+      p_consent_hash: provenance.consentHash,
+      p_input_hash: provenance.inputHash,
+      p_evidence_hash: provenance.evidenceHash,
+      p_release_id: readRuntimeEnv("HARNESS_RELEASE_ID") ?? "unreleased",
+      p_safe_metadata: {
+        gate_reason: "gate_passed",
+        automatic_promotion: false,
+        source_kind: "reviewed_job_aggregate",
+        consent_basis: "aggregate_only",
+        pii_redacted: true,
+        raw_text_persisted: false,
+        summary_origin: "model_generated",
       },
-    }) as unknown as QueryLike<unknown>,
+    }) as QueryLike<unknown>,
   );
+  const queueRow = Array.isArray(queueResult.data) ? queueResult.data[0] : queueResult.data;
+  return !queueResult.error
+    && isRecord(queueRow)
+    && queueRow.ok === true
+    && queueRow.candidate_id === candidate.id
+    && queueRow.status === "manual_review";
 }
+
+async function candidateProvenance(candidate: EdgeLearningCandidateRow): Promise<{
+  sourceHash: string;
+  consentHash: string;
+  inputHash: string;
+  evidenceHash: string;
+}> {
+  const payload = JSON.stringify(candidate.suggested_payload);
+  return {
+    sourceHash: await stableHex(`candidate:${candidate.id}`),
+    consentHash: await stableHex("aggregate_only_reviewed_job_evidence"),
+    inputHash: await stableHex(payload),
+    evidenceHash: await stableHex(`${candidate.evidence_count}:${candidate.confidence}:${payload}`),
+  };
+}
+
+async function stableHex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
 
 // A rejected candidate keeps `created` only while it is still gathering evidence.
 // `invalid_payload` / `forbidden_autonomy` mean the payload itself is broken, so an
@@ -567,7 +561,11 @@ export async function runLearningHook(
   const summary: EdgeLearningHookSummary = { ok: false };
 
   const runtimeConfig = resolveLearningRuntimeConfig(readRuntimeEnv);
-  if (!runtimeConfig.write_enabled || runtimeConfig.kill_switch) {
+  const killSwitch = await assertHarnessCapabilityEnabled(client, {
+    environment: readRuntimeEnv("NESTSCOUT_ENVIRONMENT") ?? "local",
+    switches: ["learning_promotion"],
+  });
+  if (!runtimeConfig.write_enabled || runtimeConfig.kill_switch || !killSwitch.allowed) {
     summary.skippedReason = "learning_disabled";
     return summary;
   }
@@ -585,8 +583,7 @@ export async function runLearningHook(
     if (marketResult.ok) {
       summary.marketCandidateId = marketResult.candidateId;
       summary.marketEvidence = marketResult.evidenceCount;
-      const promoted = await maybePromote(client, marketResult.candidateId, now);
-      if (promoted) summary.marketPromoted = promoted;
+      summary.marketQueuedForReview = await maybeQueueManualReview(client, marketResult.candidateId, now);
       summary.ok = true;
     }
   }
@@ -596,8 +593,7 @@ export async function runLearningHook(
   if (caseResult.ok) {
     summary.caseCandidateId = caseResult.candidateId;
     summary.caseEvidence = caseResult.evidenceCount;
-    const promoted = await maybePromote(client, caseResult.candidateId, now);
-    if (promoted) summary.casePromoted = promoted;
+    summary.caseQueuedForReview = await maybeQueueManualReview(client, caseResult.candidateId, now);
     summary.ok = true;
   }
 

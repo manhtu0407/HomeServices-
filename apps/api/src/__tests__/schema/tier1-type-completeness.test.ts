@@ -20,6 +20,11 @@ const TRIGGER_ONLY_PUBLIC_FUNCTIONS = new Set([
   'notify_worker_account_approved',
   'prevent_evidence_snapshot_mutation',
   'validate_customer_payment_method_customer',
+  'capture_learning_review_provenance',
+  'capture_learning_rule_dependency',
+  'prevent_revoked_learning_rule_activation',
+  'reject_harness_append_only_mutation',
+  'reject_harness_release_mutation',
 ])
 
 const readText = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')
@@ -58,7 +63,7 @@ function generatedPublicKeys(sectionName: 'Tables' | 'Functions') {
       continue
     }
     if (section === sectionName) {
-      const key = line.match(/^\s{6}([a-zA-Z0-9_]+): \{/)
+      const key = line.match(/^\s{6}([a-zA-Z0-9_]+):(?: \{|$)/)
       if (key) keys.push(key[1])
     }
   }

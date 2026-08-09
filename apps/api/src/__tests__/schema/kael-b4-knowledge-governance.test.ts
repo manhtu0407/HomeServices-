@@ -44,7 +44,7 @@ describe('Plan §31 B4 knowledge governance', () => {
     const responseContract = read('supabase/functions/mobile-api/_shared/domains/contracts/admin-learning.ts')
     const mobileTypes = readMobileApiTypesLayer()
 
-    expect(services).toContain('admin_approve_learning_candidate_atomic')
+    expect(services).toContain('admin_review_and_approve_learning_candidate_atomic')
     expect(services).not.toContain('rpc("apply_approved_learning_candidate_to_knowledge"')
     expect(services).toContain('knowledge_apply')
     expect(responseContract).toContain('knowledge_apply')

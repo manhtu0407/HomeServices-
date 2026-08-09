@@ -315,7 +315,6 @@ function parseTimestamp(value: string | null | undefined): number | null {
 
 function requireWebhookSettings(config: SePayVietQrConfig) {
   if (
-    !config.enabled ||
     !config.accountNumber ||
     !config.webhookSecret
   ) {

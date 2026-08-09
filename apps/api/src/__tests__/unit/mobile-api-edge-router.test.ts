@@ -10,6 +10,7 @@ const customerAuth: MobileApiAuthResult = {
   user: { id: '11111111-1111-4111-8111-111111111111' },
   role: 'customer',
   supabase: {},
+  userSupabase: {},
 }
 
 const workerAuth: MobileApiAuthResult = {
@@ -17,6 +18,7 @@ const workerAuth: MobileApiAuthResult = {
   user: { id: '33333333-3333-4333-8333-333333333333' },
   role: 'worker',
   supabase: {},
+  userSupabase: {},
 }
 
 const adminAuth: MobileApiAuthResult = {
@@ -24,6 +26,7 @@ const adminAuth: MobileApiAuthResult = {
   user: { id: '99999999-9999-4999-8999-999999999999' },
   role: 'admin',
   supabase: {},
+  userSupabase: {},
 }
 
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {

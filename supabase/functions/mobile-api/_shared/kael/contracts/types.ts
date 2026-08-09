@@ -8,6 +8,7 @@ import {
   listKaelPerformanceProfiles,
 } from "../learning/performance-profiles.ts";
 
+import type { HarnessTraceContext } from "../../../../_shared/harness/trace.ts";
 export type { ComplexityLevel, ServiceType };
 export type { KaelEstimate };
 export type { AIProvider } from "../../platform/kael-contracts.ts";
@@ -555,6 +556,7 @@ export type EdgeAiSecrets = {
   durableGuardClient?: EdgeGuardClient;
   stagingPaymentRailEnabled?: boolean;
   paymentRailAvailable?: boolean;
+  harnessTrace?: HarnessTraceContext;
 };
 
 export type PipelineInput = {
