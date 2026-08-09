@@ -26,9 +26,12 @@ import type {
   NotificationListResponse,
   WorkerCancellationRequestInput,
   WorkerJobListResponse,
+  WorkerPayoutMethod,
   WorkerPayoutMethodSaveInput,
   WorkerPerformanceInsightsResponse,
   WorkerProfileResponse,
+  WorkerWithdrawalRequest,
+  WorkerWithdrawalRequestCreateInput,
   WorkerCandidateView,
   JobIncidentResponse,
 } from './api-types'
@@ -105,6 +108,7 @@ type FrontendWorkflowActions = {
   workerUpdateServicePreferences: (input: WorkerServicePreferencesUpdateInput) => Promise<boolean>
   workerUploadAvatar: (input: WorkerAvatarDraft) => Promise<boolean>
   workerSavePayoutMethod: (input: WorkerPayoutMethodSaveInput) => Promise<boolean | WorkerPayoutMethodSaveResult>
+  workerRequestWithdrawal: (input: WorkerWithdrawalRequestCreateInput) => Promise<boolean | WorkerPayoutMethodSaveResult>
   refreshNotifications: () => Promise<boolean>
   markNotificationRead: (notificationId: string) => Promise<boolean>
   refreshCustomerKaelMemory: () => Promise<boolean>
@@ -132,7 +136,9 @@ type FrontendWorkflowContextValue = {
   workerJobs: WorkerJobListResponse['jobs']
   workerJobsHydrated: boolean
   workerPerformanceInsights: WorkerPerformanceInsightsResponse | null
+  workerPayoutMethod: WorkerPayoutMethod | null
   workerProfile: WorkerProfileResponse | null
+  workerWithdrawalRequests: WorkerWithdrawalRequest[]
   notifications: NotificationListResponse['notifications']
   notificationUnreadCount: number
   dispatch: Dispatch<LocalWorkflowAction>
@@ -236,14 +242,17 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerJobs,
     workerJobsHydrated,
     workerPerformanceInsights,
+    workerPayoutMethod,
     workerProfile,
     workerRefresh,
+    workerRequestWithdrawal,
     workerSavePayoutMethod,
     workerSubmitRegistration,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,
     workerUploadAvatar,
+    workerWithdrawalRequests,
   } = useWorkerBoardActions({
     dispatch,
     refreshCurrentJob,
@@ -338,6 +347,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerUpdateServiceArea,
     workerUpdateServicePreferences,
     workerUploadAvatar,
+    workerRequestWithdrawal,
     workerSavePayoutMethod,
     refreshNotifications,
     markNotificationRead,
@@ -380,6 +390,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerDeclineBroadcast,
     workerRefresh,
     workerSavePayoutMethod,
+    workerRequestWithdrawal,
     workerSubmitRegistration,
     workerUpdateAvailability,
     workerUpdateServiceArea,
@@ -491,7 +502,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerJobs,
     workerJobsHydrated,
     workerPerformanceInsights,
+    workerPayoutMethod,
     workerProfile,
+    workerWithdrawalRequests,
     notifications,
     notificationUnreadCount,
     dispatch,

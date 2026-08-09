@@ -84,4 +84,3 @@ function streamCustomerKaelConversationRequest(
 
   return createSseResponse(stream);
 }
-

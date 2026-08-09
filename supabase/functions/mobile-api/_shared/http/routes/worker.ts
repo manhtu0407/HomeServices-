@@ -18,7 +18,16 @@ export type WorkerRoute =
   | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
-  | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] };
+  | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.payoutMethod.get"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.payoutMethod.save"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "workers.withdrawalRequests.list"; method: "GET"; roles: UserRole[] }
+  | {
+    kind: "workers.withdrawalRequests.create";
+    method: "POST";
+    roles: UserRole[];
+    successStatus: 201;
+  };
 
 // In the chain this block used to be interrupted by the worker Kael-chat matcher, which sits
 // between "/workers/me/kael-memory" and "/workers/me/kael-feedback". Rejoining the two halves is
@@ -98,6 +107,23 @@ export function matchWorkerRoute(path: string, method: string): WorkerRoute | nu
   }
   if (method === "GET" && path === "/workers/me/earnings") {
     return { kind: "workers.earnings", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "GET" && path === "/workers/me/payout-method") {
+    return { kind: "workers.payoutMethod.get", method: "GET", roles: ["worker"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/payout-method") {
+    return { kind: "workers.payoutMethod.save", method: "PATCH", roles: ["worker"] };
+  }
+  if (method === "GET" && path === "/workers/me/withdrawal-requests") {
+    return { kind: "workers.withdrawalRequests.list", method: "GET", roles: ["worker"] };
+  }
+  if (method === "POST" && path === "/workers/me/withdrawal-requests") {
+    return {
+      kind: "workers.withdrawalRequests.create",
+      method: "POST",
+      roles: ["worker"],
+      successStatus: 201,
+    };
   }
   return null;
 }

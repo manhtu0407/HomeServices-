@@ -13,6 +13,7 @@ import { createBroadcasts, listBroadcastRecipientWorkerIds } from "../matching/b
 import { requireJobAccess, type JobAccessRecord } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
+import { requireNonOperatorWorkflowRole } from "../../platform/authz/workflow-role.ts";
 import { validateWorkflowCommand } from "../../workflow-orchestrator.ts";
 import { buildKaelAutonomyDecision, buildWorkerCancellationFallbackOptions, classifyWorkerCancellationReason, recordWorkerCancellationReview } from "../../kael/index.ts";
 import { normalizeServiceAreaDistrict } from "../../../../_shared/domain.ts";
@@ -325,7 +326,7 @@ async function gateWorkerCancellationBeforeMutation(input: {
     to: "broadcasting",
     authority: {
       purpose: "scope_change",
-      actor: input.ctx.role,
+      actor: requireNonOperatorWorkflowRole(input.ctx),
       jobRelation: "own_worker_job",
       action: "review_scope_change",
       topic: "job_status",

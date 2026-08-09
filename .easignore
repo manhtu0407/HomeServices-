@@ -46,3 +46,7 @@ coverage/
 # Platform/editor noise
 .DS_Store
 *.tsbuildinfo
+
+# Generated Expo native projects
+/apps/mobile/android
+/apps/mobile/ios

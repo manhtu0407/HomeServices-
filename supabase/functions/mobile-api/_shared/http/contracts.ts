@@ -52,6 +52,10 @@ import type {
   WorkerScopeChangeInput,
 } from "../../../_shared/domain.ts";
 import type {
+  EdgeWorkerWithdrawalRequestCreateInput,
+  WorkerPayoutMethodSaveRequest,
+} from "../../../_shared/worker-payout-contract.ts";
+import type {
   JobMediaRevokeInput,
   JobMediaRevokeResponse,
   JobMediaUploadInput,
@@ -148,6 +152,12 @@ import type {
 import type {
   EdgeDevicePushTokenUnregisterResponse,
 } from "./notification-device.dtos.ts";
+import type {
+  EdgeWorkerPayoutMethodResponse,
+  EdgeWorkerWithdrawalRequestCreateResponse,
+  EdgeWorkerWithdrawalRequestListResponse,
+} from "../domains/contracts/worker-payout.ts";
+import type { AdminControlServices } from "./routes/admin-control-services-contract.ts";
 export type {
   KaelBatchResultsProcessInput,
   KaelBatchResultsProcessResponse,
@@ -164,6 +174,29 @@ export type {
   MarketCacheInvalidateInput,
   MarketCacheInvalidateResponse,
 } from "./dtos.ts";
+export type {
+  AdminActor,
+  AdminControlCapability,
+  AdminOperationsResponse,
+  AdminSubAdminAccessInput,
+  AdminSubAdminAccessResponse,
+  AdminSubAdminAccountCandidate,
+  AdminSubAdminAccountSearchInput,
+  AdminSubAdminAccountSearchResponse,
+  AdminSubAdminListResponse,
+  AdminSubAdminSummary,
+  AdminTransactionDetailResponse,
+  AdminTransactionListInput,
+  AdminTransactionListResponse,
+  AdminTransactionSummary,
+  AdminWorkerApplicationDecisionInput,
+  AdminWorkerApplicationDecisionResponse,
+  AdminWorkerApplicationListInput,
+  AdminWorkerApplicationListResponse,
+  AdminWorkerApplicationSummary,
+  AdminWorkerAccessInput,
+  AdminWorkerAccessResponse,
+} from "../domains/contracts/admin-control.ts";
 export type { MobileApiAuthResult, MobileApiContext } from "../platform/auth.ts";
 export type { PlacesAutocompleteResponse } from "../domains/contracts/catalog.ts";
 export type {
@@ -214,7 +247,7 @@ export type ThreadsResponse = {
   threads: ThreadSummary[];
 };
 
-export type MobileApiServices = {
+export type MobileApiServices = AdminControlServices & {
   getHarnessHealth?(): Promise<Record<string, unknown>> | Record<string, unknown>;
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<EdgeServiceCatalogResponse>;
@@ -615,6 +648,20 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     range: { from?: string; to?: string },
   ): Promise<EdgeEarningsResponse>;
+  getWorkerPayoutMethod(
+    ctx: MobileApiContext,
+  ): Promise<EdgeWorkerPayoutMethodResponse>;
+  saveWorkerPayoutMethod(
+    ctx: MobileApiContext,
+    input: WorkerPayoutMethodSaveRequest,
+  ): Promise<EdgeWorkerPayoutMethodResponse>;
+  listWorkerWithdrawalRequests(
+    ctx: MobileApiContext,
+  ): Promise<EdgeWorkerWithdrawalRequestListResponse>;
+  createWorkerWithdrawalRequest(
+    ctx: MobileApiContext,
+    input: EdgeWorkerWithdrawalRequestCreateInput,
+  ): Promise<EdgeWorkerWithdrawalRequestCreateResponse>;
   invalidateMarketCache(
     ctx: MobileApiContext,
     input: MarketCacheInvalidateInput,

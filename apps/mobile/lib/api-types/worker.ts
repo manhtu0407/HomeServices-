@@ -1,23 +1,48 @@
 import type { BroadcastStatus, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerKaelChatMode, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
-import type { CustomerPaymentMethodSaveInput } from './customer'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView } from './shared'
 
 export type { WorkerActivityMinuteResponse, WorkerAvatarUploadResponse } from '@nestscout/shared'
 export type { WorkerServiceQualityStatus }
 
-export type WorkerPayoutMethodSaveInput = CustomerPaymentMethodSaveInput
+export type { WorkerPayoutMethodSaveInput, WorkerWithdrawalRequestCreateInput } from '@nestscout/shared'
+
+export type WorkerPayoutMethod = {
+  id: string
+  bank_key: string
+  bank_name: string
+  bank_account_masked: string
+  status: 'pending_verification' | 'verified' | 'rejected'
+  reviewed_at: string | null
+  updated_at: string
+}
 
 export type WorkerPayoutMethodResponse = {
-  payout_method: {
-    bank_key: string
-    bank_name: string
-    account_holder_name: string
-    bank_account_masked: string
-    status: 'pending_verification' | 'verified' | 'rejected'
-    updated_at: string
-  }
-  worker_profile: WorkerProfileResponse
+  payout_method: WorkerPayoutMethod | null
+}
+
+export type WorkerWithdrawalRequest = {
+  id: string
+  amount_vnd: number
+  available_balance_before_vnd: number
+  bank_key: string
+  bank_name: string
+  bank_account_masked: string
+  status: 'pending' | 'processing' | 'paid' | 'rejected' | 'failed'
+  requested_at: string
+  processing_at: string | null
+  processed_at: string | null
+  transfer_reference: string | null
+  resolution_reason: string | null
+  updated_at: string
+}
+
+export type WorkerWithdrawalRequestListResponse = {
+  requests: WorkerWithdrawalRequest[]
+}
+
+export type WorkerWithdrawalRequestCreateResponse = {
+  request: WorkerWithdrawalRequest
 }
 
 export type WorkerProfileResponse = {
@@ -338,6 +363,8 @@ export type EarningsResponse = {
   platform_fee_total: number
   net_earnings: number
   available_balance: number
+  withdrawal_reserved_amount: number
+  withdrawn_total: number
   cash_commission_collected_total: number
   cash_commission_due_total: number
   pending_payment_count: number

@@ -14,6 +14,10 @@ import {
   workerServiceAreaUpdateSchema,
   workerServicePreferencesUpdateSchema,
 } from "../../../../_shared/domain.ts";
+import {
+  workerPayoutMethodSaveSchema,
+  workerWithdrawalRequestCreateSchema,
+} from "../../../../_shared/worker-payout-contract.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
 import {
@@ -130,6 +134,20 @@ export async function dispatchWorkerRoute(
       return services.listWorkerBroadcasts(ctx);
     case "workers.jobs":
       return services.listWorkerJobs(ctx);
+    case "workers.payoutMethod.get":
+      return services.getWorkerPayoutMethod(ctx);
+    case "workers.payoutMethod.save": {
+      const input = workerPayoutMethodSaveSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Tài khoản nhận tiền không hợp lệ", 400);
+      return services.saveWorkerPayoutMethod(ctx, input.data);
+    }
+    case "workers.withdrawalRequests.list":
+      return services.listWorkerWithdrawalRequests(ctx);
+    case "workers.withdrawalRequests.create": {
+      const input = workerWithdrawalRequestCreateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Yêu cầu rút tiền không hợp lệ", 400);
+      return services.createWorkerWithdrawalRequest(ctx, input.data);
+    }
     case "workers.routePreview":
       return services.getWorkerRoutePreview(
         ctx,

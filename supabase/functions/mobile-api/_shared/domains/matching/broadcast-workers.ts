@@ -243,4 +243,3 @@ function hasEveryRequiredCapability(
     available.has(normalizeSpecializationKey(requirement))
   );
 }
-

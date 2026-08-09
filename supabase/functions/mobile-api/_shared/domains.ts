@@ -74,6 +74,43 @@ import {
 import { streamCustomerKaelConversationTurn } from "./domains/kael-chat/customer-conversation-stream.ts";
 import { streamWorkerKaelChatTurn } from "./domains/kael-chat/worker-stream.ts";
 import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./domains/admin/learning.ts";
+import {
+  decideAdminWorkerApplication,
+  cancelAdminManagerNomination,
+  getAdminOperations,
+  getAdminWorkerApplication,
+  listAdminSubAdmins,
+  listAdminWorkerApplications,
+  nominateAdminManager,
+  searchAdminSubAdminAccounts,
+  setAdminSubAdminAccess,
+  setAdminWorkerAccess,
+} from "./domains/admin/control.ts";
+import {
+  listAdminAiCosts,
+  listAdminDisputes,
+  listAdminLearningRules,
+  listAdminPriceBaselines,
+} from "./domains/admin/governance.ts";
+import {
+  getAdminTransaction,
+  listAdminTransactions,
+} from "./domains/admin/transactions.ts";
+import {
+  claimAdminWithdrawalRequest,
+  decideAdminPayoutMethod,
+  getAdminPayoutMethod,
+  getAdminWithdrawalRequest,
+  listAdminPayoutMethods,
+  listAdminWithdrawalRequests,
+  resolveAdminWithdrawalRequest,
+} from "./domains/admin/payout.ts";
+import {
+  createWorkerWithdrawalRequest,
+  getWorkerPayoutMethod,
+  listWorkerWithdrawalRequests,
+  saveWorkerPayoutMethod,
+} from "./domains/worker/payout.ts";
 import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./domains/kael-chat/feedback.ts";
 import {
   attachJobMedia,
@@ -359,6 +396,10 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
   | "getWorkerRoutePreview"
   | "getWorkerRouteMap"
   | "getWorkerEarnings"
+  | "getWorkerPayoutMethod"
+  | "saveWorkerPayoutMethod"
+  | "listWorkerWithdrawalRequests"
+  | "createWorkerWithdrawalRequest"
 > {
   return {
     getKaelCharter,
@@ -388,8 +429,14 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
     updateWorkerAvailability,
     listWorkerBroadcasts,
     listWorkerJobs,
-    getWorkerRoutePreview: (ctx, jobId, origin) => getWorkerRoutePreview(ctx, jobId, origin, secrets),
-    getWorkerRouteMap: (ctx, jobId, origin) => getWorkerRouteMap(ctx, jobId, origin, secrets),
+    getWorkerPayoutMethod,
+    saveWorkerPayoutMethod,
+    listWorkerWithdrawalRequests,
+    createWorkerWithdrawalRequest,
+    getWorkerRoutePreview: (ctx, jobId, origin) =>
+      getWorkerRoutePreview(ctx, jobId, origin, secrets),
+    getWorkerRouteMap: (ctx, jobId, origin) =>
+      getWorkerRouteMap(ctx, jobId, origin, secrets),
     getWorkerEarnings,
   };
 }
@@ -404,6 +451,29 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "listKaelLearningCandidates"
   | "approveKaelLearningCandidate"
   | "rejectKaelLearningCandidate"
+  | "getAdminOperations"
+  | "listAdminDisputes"
+  | "listAdminPriceBaselines"
+  | "listAdminAiCosts"
+  | "listAdminLearningRules"
+  | "listAdminWorkerApplications"
+  | "getAdminWorkerApplication"
+  | "decideAdminWorkerApplication"
+  | "setAdminWorkerAccess"
+  | "listAdminTransactions"
+  | "getAdminTransaction"
+  | "listAdminPayoutMethods"
+  | "getAdminPayoutMethod"
+  | "decideAdminPayoutMethod"
+  | "listAdminWithdrawalRequests"
+  | "getAdminWithdrawalRequest"
+  | "claimAdminWithdrawalRequest"
+  | "resolveAdminWithdrawalRequest"
+  | "listAdminSubAdmins"
+  | "searchAdminSubAdminAccounts"
+  | "nominateAdminManager"
+  | "cancelAdminManagerNomination"
+  | "setAdminSubAdminAccess"
   | "listNotifications"
   | "markNotificationRead"
   | "registerDevicePushToken"
@@ -423,6 +493,29 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
       approveKaelLearningCandidateAdmin(ctx, candidateId, input),
     rejectKaelLearningCandidate: (ctx, candidateId, input) =>
       rejectKaelLearningCandidateAdmin(ctx, candidateId, input),
+    getAdminOperations,
+    listAdminDisputes,
+    listAdminPriceBaselines,
+    listAdminAiCosts,
+    listAdminLearningRules,
+    listAdminWorkerApplications,
+    getAdminWorkerApplication,
+    decideAdminWorkerApplication,
+    setAdminWorkerAccess,
+    listAdminTransactions,
+    getAdminTransaction,
+    listAdminPayoutMethods,
+    getAdminPayoutMethod,
+    decideAdminPayoutMethod,
+    listAdminWithdrawalRequests,
+    getAdminWithdrawalRequest,
+    claimAdminWithdrawalRequest,
+    resolveAdminWithdrawalRequest,
+    listAdminSubAdmins,
+    searchAdminSubAdminAccounts,
+    nominateAdminManager,
+    cancelAdminManagerNomination,
+    setAdminSubAdminAccess,
     listNotifications,
     markNotificationRead,
     registerDevicePushToken,

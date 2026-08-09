@@ -8,6 +8,7 @@ import { mapDisputeCounterError, mapDisputeDecisionError, mapDisputeOpenError } 
 import { logJobEvent } from "../../platform/audit.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
+import { requireNonOperatorWorkflowRole } from "../../platform/authz/workflow-role.ts";
 import { assertNeutralDisputeLanguage, buildNeutralDisputeSummary, determineDisputeSubCase, type DisputeType } from "../../kael/index.ts";
 import type { DisputeAdminDecisionInput, DisputeCounterStatementInput, DisputeOpenRequestInput } from "../../../../_shared/domain.ts";
 
@@ -29,7 +30,7 @@ export async function openDispute(
   });
   const neutralSummary = buildNeutralDisputeSummary({
     disputeType: input.dispute_type as DisputeType,
-    initiatedBy: ctx.role,
+    initiatedBy: requireNonOperatorWorkflowRole(ctx),
     initiatorStatement: input.initiator_statement,
     evidenceCounts: {
       chatMessages: 0,
@@ -48,7 +49,7 @@ export async function openDispute(
     client.rpc("open_dispute_atomic", {
       p_job_id: jobId,
       p_initiated_by_id: ctx.user.id,
-      p_initiated_by: ctx.role,
+      p_initiated_by: requireNonOperatorWorkflowRole(ctx),
       p_dispute_type: input.dispute_type,
       p_initiator_statement: input.initiator_statement,
       p_evidence_photo_urls: evidencePhotoRefs,

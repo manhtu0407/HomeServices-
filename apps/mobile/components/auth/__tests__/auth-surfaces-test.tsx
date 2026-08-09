@@ -888,4 +888,18 @@ describe('LoginRoleSurface', () => {
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
   })
+
+  it('routes a signed-in owner admin directly to Admin Sections', async () => {
+    mockRouteParams = { stage: '1.4' }
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'admin' })
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'admin@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(admin)/sections')
+    })
+  })
 })

@@ -23,7 +23,11 @@ export default function Index() {
 
   // Admin actions stay visually and structurally separate from customer and worker flows.
   if (role === 'admin') {
-    return <Redirect href="/(admin)/dashboard" />
+    return <Redirect href="/(admin)/sections" />
+  }
+
+  if (role === 'admin_operator') {
+    return <Redirect href="/(admin)/sections" />
   }
 
   if (role === 'worker') {

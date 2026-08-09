@@ -96,4 +96,3 @@ async function failScopeChangeRequest(
   });
   return apiFailure("DB_ERROR", "Không thể tạo yêu cầu thay đổi", 500) as never;
 }
-

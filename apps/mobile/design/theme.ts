@@ -214,17 +214,17 @@ export const aura = {
   component: {
     center: { x: 0.72, y: 0.18 },
     stops: [
-      { offset: 0, color: 'rgba(143,226,212,0.14)' },
-      { offset: 0.34, color: 'rgba(230,251,243,0.08)' },
-      { offset: 0.68, color: 'rgba(255,255,255,0)' },
+      { offset: 0, color: 'rgba(80,232,210,0.28)' },
+      { offset: 0.46, color: 'rgba(151,246,232,0.168)' },
+      { offset: 0.8, color: 'rgba(247,255,251,0)' },
     ],
   },
   iconTile: {
     center: { x: 0.5, y: 0.42 },
     stops: [
-      { offset: 0, color: 'rgba(143,226,212,0.16)' },
-      { offset: 0.46, color: 'rgba(230,251,243,0.10)' },
-      { offset: 0.76, color: 'rgba(255,255,255,0)' },
+      { offset: 0, color: 'rgba(83,220,206,0.168)' },
+      { offset: 0.58, color: 'rgba(230,251,243,0.112)' },
+      { offset: 0.86, color: 'rgba(247,255,251,0)' },
     ],
   },
 } as const

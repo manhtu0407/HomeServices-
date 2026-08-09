@@ -74,7 +74,8 @@ export function LoginRoleSurface() {
     if (!auth.session || !auth.role) return
     if (auth.role === 'customer') router.replace('/(customer)/home' as never)
     if (auth.role === 'worker') router.replace('/(worker)/home' as never)
-    if (auth.role === 'admin') router.replace('/(admin)/dashboard' as never)
+    if (auth.role === 'admin') router.replace('/(admin)/sections' as never)
+    if (auth.role === 'admin_operator') router.replace('/(admin)/sections' as never)
   }, [auth.loading, auth.passwordRecoveryPending, auth.profileStatus, auth.role, auth.session, reviewStep, router])
 
   const actions = useMemo(() => ({
@@ -131,7 +132,9 @@ export function LoginRoleSurface() {
             }
       }
       workerRegistrationIntentRef.current = false
-      if (role === 'customer') router.replace('/(customer)/home' as never)
+      if (result.role === 'admin') router.replace('/(admin)/sections' as never)
+      else if (result.role === 'admin_operator') router.replace('/(admin)/sections' as never)
+      else if (role === 'customer') router.replace('/(customer)/home' as never)
       return result
     },
     onForgotPassword: async ({ email }: { email: string }) => auth.requestPasswordRecovery(email),

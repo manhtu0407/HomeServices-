@@ -524,4 +524,3 @@ Both paths end at `broadcasting` and both require a validated `KaelAutonomyDecis
 **A8–A14 continue in [`customer-workflow-fulfillment.md`](customer-workflow-fulfillment.md)** — searching, candidate confirmation, active job, scope change, completion, payment, review.
 
 Per-step owner files (routes, surfaces, providers, tests) live in [`docs/architecture/code-ownership-map.md`](../../docs/architecture/code-ownership-map.md). This spoke owns the workflow contract and the runtime call order; that map owns which file to open.
-

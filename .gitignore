@@ -49,6 +49,7 @@ tmp-*.log
 
 # local agent/workbench artifacts
 /.scratch/
+/.playwright-cli/
 /.codex/
 /.pnpm-store/
 .claude/.mcp.json

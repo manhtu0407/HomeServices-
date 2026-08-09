@@ -39,6 +39,7 @@ export type WorkerV5ScreenId =
   | '4.2-ledger-detail'
   | '4.3-payout-request'
   | '4.4-payout-method'
+  | '4.5-commission-policy'
   | '5.1-profile-overview'
   | '5.2-worker-ranking'
   | '5.3-skills-service-area'

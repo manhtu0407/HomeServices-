@@ -11,6 +11,7 @@ import { notifyWorkerCustomerCancellation } from "../notification/notifications.
 import { requireJobAccess, type JobAccessRecord } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
+import { requireNonOperatorWorkflowRole } from "../../platform/authz/workflow-role.ts";
 import { validateWorkflowCommand, validateWorkflowTransition } from "../../workflow-orchestrator.ts";
 import { buildCustomerCancellationPhase0Outcome, buildKaelAutonomyDecision, classifyCustomerCancellationReason, customerCancellationAbuseFromSignals, recordCustomerCancellationReview, type CustomerCancellationSubCase } from "../../kael/index.ts";
 import type { JobStatus, CustomerCancellationRequestInput } from "../../../../_shared/domain.ts";
@@ -374,7 +375,7 @@ async function gateCustomerCancellationBeforeMutation(input: {
     to: input.preview.to,
     authority: {
       purpose: "scope_change",
-      actor: input.ctx.role,
+      actor: requireNonOperatorWorkflowRole(input.ctx),
       jobRelation: "own_customer_job",
       action: "review_scope_change",
       topic: "job_status",

@@ -59,4 +59,3 @@ function truncateWorkerKaelSessionTitle(value: string, maxLength: number) {
   const wordBoundary = slice.lastIndexOf(" ");
   return (wordBoundary >= 24 ? slice.slice(0, wordBoundary) : value.slice(0, maxLength)).trim();
 }
-

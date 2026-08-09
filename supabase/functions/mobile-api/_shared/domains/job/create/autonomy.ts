@@ -1,6 +1,7 @@
 import { estimatePriceSourceFromStageLogs } from "../../../platform/kael-price-source.ts";
 import { apiFailure } from "../../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../../platform/auth.ts";
+import { requireNonOperatorWorkflowRole } from "../../../platform/authz/workflow-role.ts";
 import type { DbClient } from "../../../platform/db.ts";
 import {
   buildEstimateCardOutput,
@@ -90,7 +91,7 @@ export async function prepareJobAutonomyOrFail(input: {
         client,
         jobId,
         actorId: ctx.user.id,
-        actorRole: ctx.role,
+        actorRole: requireNonOperatorWorkflowRole(ctx),
         source: "policy",
       },
     });

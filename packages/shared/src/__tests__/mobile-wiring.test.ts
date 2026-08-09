@@ -3,8 +3,10 @@ import { readFileSync, existsSync, readdirSync } from 'fs'
 import { dirname, resolve } from 'path'
 
 const MOBILE_ROOT = resolve(__dirname, '../../../../apps/mobile')
+const REPOSITORY_ROOT = resolve(MOBILE_ROOT, '../..')
 const readSource = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')
 const read = (rel: string) => readSource(resolve(MOBILE_ROOT, rel))
+const readRepository = (rel: string) => readSource(resolve(REPOSITORY_ROOT, rel))
 const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 const countOccurrences = (source: string, value: string) => source.split(value).length - 1
 
@@ -274,13 +276,14 @@ describe('screen files existence (STRUCTURES.md mapping)', () => {
     expect(exists('app/(admin)/_layout.tsx')).toBe(true)
   })
 
-  it('admin dashboard exists for Kael learning review', () => {
-    expect(exists('app/(admin)/dashboard.tsx')).toBe(true)
-    const src = read('app/(admin)/dashboard.tsx')
-    expect(src).toContain('adminLearningService.listCandidates')
-    expect(src).toContain('adminLearningService.approveCandidate')
-    expect(src).toContain('adminLearningService.rejectCandidate')
+  it('admin sections is the role-protected destination for admin operations', () => {
+    expect(exists('app/(admin)/dashboard.tsx')).toBe(false)
+    expect(exists('app/(admin)/sections.tsx')).toBe(true)
+    const src = read('app/(admin)/sections.tsx')
+    expect(src).toContain('AdminSections')
     expect(src).not.toContain('fetch(')
+    expect(read('app/(customer)/_layout.tsx')).toContain('Redirect href="/(admin)/sections"')
+    expect(read('app/(worker)/_layout.tsx')).toContain('Redirect href="/(admin)/sections"')
   })
 })
 
@@ -309,7 +312,7 @@ describe('all screens export default function', () => {
     'app/(worker)/earnings.tsx',
     'app/(worker)/profile.tsx',
     'app/(admin)/_layout.tsx',
-    'app/(admin)/dashboard.tsx',
+    'app/(admin)/sections.tsx',
   ]
 
   it.each(allScreens)('%s has default export', (file) => {
@@ -1870,6 +1873,14 @@ describe('app.json configuration', () => {
 
   it('has Android package', () => {
     expect(expo.android?.package).toBeDefined()
+  })
+
+  it('has an Android version code that can replace the prior preview build', () => {
+    expect(expo.android?.versionCode).toBeGreaterThan(1)
+  })
+
+  it('excludes the generated Android project from the EAS upload', () => {
+    expect(readRepository('.easignore')).toMatch(/^\/apps\/mobile\/android\/?$/m)
   })
 
   it('enables microphone only through the on-device speech recognition plugin', () => {

@@ -460,4 +460,3 @@ async function auditCustomerAssistantGuardTrip(
     },
   );
 }
-

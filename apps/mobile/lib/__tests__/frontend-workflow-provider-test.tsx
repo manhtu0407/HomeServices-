@@ -8,8 +8,10 @@ import { FrontendWorkflowProvider, useFrontendWorkflow } from '../frontend-workf
 const mockGetProfile = jest.fn()
 const mockGetEarnings = jest.fn()
 const mockGetPerformanceInsights = jest.fn()
+const mockGetPayoutMethod = jest.fn()
 const mockGetBroadcasts = jest.fn()
 const mockGetJobs = jest.fn()
+const mockListWithdrawalRequests = jest.fn()
 const mockGetJob = jest.fn()
 const mockListMyActiveJob = jest.fn()
 const mockUpdateAvailability = jest.fn()
@@ -68,7 +70,9 @@ jest.mock('../services', () => ({
     getEarnings: (...args: unknown[]) => mockGetEarnings(...args),
     getJobs: (...args: unknown[]) => mockGetJobs(...args),
     getPerformanceInsights: (...args: unknown[]) => mockGetPerformanceInsights(...args),
+    getPayoutMethod: (...args: unknown[]) => mockGetPayoutMethod(...args),
     getProfile: (...args: unknown[]) => mockGetProfile(...args),
+    listWithdrawalRequests: (...args: unknown[]) => mockListWithdrawalRequests(...args),
     openKaelJobIncident: (...args: unknown[]) => mockOpenKaelJobIncident(...args),
     requestScopeChange: (...args: unknown[]) => mockRequestScopeChange(...args),
     updateAvailability: (...args: unknown[]) => mockUpdateAvailability(...args),
@@ -248,8 +252,10 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
     })
     mockGetEarnings.mockResolvedValue({ error: 'not needed for this regression', success: false })
     mockGetPerformanceInsights.mockResolvedValue({ error: 'not needed for this regression', success: false })
+    mockGetPayoutMethod.mockResolvedValue({ data: { payout_method: null }, success: true })
     mockGetBroadcasts.mockResolvedValue({ data: { broadcasts: [] }, success: true })
     mockGetJobs.mockResolvedValue({ data: { jobs: [] }, success: true })
+    mockListWithdrawalRequests.mockResolvedValue({ data: { requests: [] }, success: true })
     mockListNotifications.mockResolvedValue({
       data: { notifications: [], unread_count: 0 },
       success: true,

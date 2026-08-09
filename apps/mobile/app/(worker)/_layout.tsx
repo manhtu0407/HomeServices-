@@ -62,7 +62,11 @@ export default function WorkerLayout() {
   }
 
   if (role === 'admin') {
-    return <Redirect href="/(admin)/dashboard" />
+    return <Redirect href="/(admin)/sections" />
+  }
+
+  if (role === 'admin_operator') {
+    return <Redirect href="/(admin)/sections" />
   }
 
   if (role !== 'worker') {

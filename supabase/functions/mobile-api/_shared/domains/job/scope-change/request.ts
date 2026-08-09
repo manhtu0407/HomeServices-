@@ -255,4 +255,3 @@ async function claimDirectScopeChange(
   }
   return { kind: "claimed" as const, claimId };
 }
-
