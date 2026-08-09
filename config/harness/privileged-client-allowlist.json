@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "approvedFactories": [
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/privileged/service-client.ts",
+      "reason": "Canonical mobile-api service-role client factory"
+    },
+    {
+      "path": "supabase/functions/kael-learning-monitor/index.ts",
+      "reason": "Scheduled service-role monitor with no end-user request context"
+    },
+    {
+      "path": "supabase/functions/kael-media-retention/index.ts",
+      "reason": "Scheduled retention worker with service-role storage cleanup"
+    },
+    {
+      "path": "supabase/functions/sepay-webhook/index.ts",
+      "reason": "Provider-authenticated webhook requiring atomic payment RPC access"
+    }
+  ]
+}
