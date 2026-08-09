@@ -46,3 +46,26 @@ test('blocks missing, unknown, modified, mixed, and out-of-order state', () => {
   assert.ok(report.problems.some((problem) => problem.includes('digest mismatch')))
   assert.ok(report.problems.some((problem) => problem.includes('unknown Edge function')))
 })
+
+test('rejects incomplete and ambiguous remote identity evidence', () => {
+  const report = compareDeploymentState({
+    release,
+    inventory,
+    remote: {
+      environment: release.environment,
+      migrations: [
+        { version: '20260101000000' },
+        { version: '20260102000000' },
+        { version: '20260102000000' },
+        null,
+      ],
+      edgeFunctions: release.edgeFunctions,
+    },
+  })
+  assert.equal(report.ok, false)
+  assert.ok(report.problems.some((problem) => problem.includes('remote release ID is missing')))
+  assert.ok(report.problems.some((problem) => problem.includes('remote Git SHA is missing')))
+  assert.ok(report.problems.some((problem) => problem.includes('remote migration inventory digest is missing')))
+  assert.ok(report.problems.some((problem) => problem.includes('duplicate versions')))
+  assert.ok(report.problems.some((problem) => problem.includes('without a version')))
+})

@@ -21,6 +21,7 @@ describe("Harness trace lineage", () => {
       request,
       releaseId: "harness-test",
       environment: "preview",
+      acceptRequestLineage: true,
       now: 10,
     });
     expect(trace.traceId).toBe("00000000-0000-4000-8000-000000000001");
@@ -57,6 +58,34 @@ describe("Harness trace lineage", () => {
       unit: "A-12.04",
       safe: true,
     })).toEqual({ route_kind: "jobs.get", safe: true });
+  });
+
+  it("does not accept untrusted request lineage by default", () => {
+    const trace = createHarnessTraceContext({
+      request: new Request("https://example.test/jobs", {
+        headers: {
+          "x-trace-id": "00000000-0000-4000-8000-000000000001",
+          "x-run-id": "00000000-0000-4000-8000-000000000002",
+        },
+      }),
+      releaseId: "harness-test",
+      environment: "staging",
+    });
+    expect(trace.traceId).not.toBe("00000000-0000-4000-8000-000000000001");
+    expect(trace.runId).not.toBe("00000000-0000-4000-8000-000000000002");
+  });
+
+  it("drops free-text values even when their metadata key looks safe", () => {
+    expect(sanitizeHarnessMetadata({
+      route_kind: "jobs.get",
+      diagnostic: "email user@example.test said need help",
+      opaque_code: "OPEN_CIRCUIT",
+      labels: ["customer request", "billing:retry", 3],
+    })).toEqual({
+      route_kind: "jobs.get",
+      opaque_code: "OPEN_CIRCUIT",
+      labels: ["billing:retry", 3],
+    });
   });
 
   it("writes release-bound run and event arguments through the service client", async () => {

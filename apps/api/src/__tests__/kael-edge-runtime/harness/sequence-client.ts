@@ -31,14 +31,19 @@ export function makeSequenceClient(
         return makeQuery(call, [override])
       }
       // S4 (§38): the AI-spend gate reads/writes its own ledger via these RPCs,
-      // orthogonal to the .from() result sequence. Return a benign default so the
-      // gate fails open (allow) in unit tests without consuming sequenced query
-      // results. Other RPC names still draw from the sequence (learning/autonomy).
+      // orthogonal to the .from() result sequence. Return a valid reservation so
+      // test callers exercise the durable fail-closed contract without consuming
+      // sequenced query results. Other RPC names still draw from the sequence.
       if (
         name === 'reserve_kael_ai_spend' || name === 'finalize_kael_ai_spend' ||
         name === 'check_kael_ai_spend' || name === 'record_kael_ai_spend'
       ) {
-        return Promise.resolve({ data: null, error: null })
+        return Promise.resolve({
+          data: name === 'reserve_kael_ai_spend'
+            ? [{ allowed: true, blocked_scope: null, reservation_id: 1 }]
+            : null,
+          error: null,
+        })
       }
       if (name === 'consume_job_media_uploads') {
         const call: QueryCall = { table: `rpc:${name}`, operations: [['rpc', name, args]] }
