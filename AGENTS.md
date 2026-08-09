@@ -37,7 +37,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 
 ### Tier 3 - skills
 
-Two groups, 30 total: **Everyday (19)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
+Two groups, 31 total: **Everyday (20)** and **Design (11)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
 
 Codex reads the mirrored copies in `.agents/skills/`; `.claude/skills/` is canonical and `scripts/check-skills-sync.mjs` enforces parity.
 

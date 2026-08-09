@@ -50,16 +50,16 @@ Each hub routes onward to its own spokes on demand. If two docs conflict, stop a
 
 ### Tier 3 - skills
 
-Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 30 total. Choose a skill only after Tier 2 has told you the task class.
+Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 31 total. Choose a skill only after Tier 2 has told you the task class.
 
-**Everyday (19).** `kael-core-hygiene` and `karpathy-guidelines` are always-on coding behavior; the rest are task-triggered.
+**Everyday (20).** `kael-core-hygiene` and `karpathy-guidelines` are always-on coding behavior; the rest are task-triggered.
 
 ```text
 kael-tdd  kael-diagnose  kael-supabase  kael-security-sweep  kael-ai-boundary
 kael-frontend-test  kael-core-hygiene  kael-subagent-orchestration  karpathy-guidelines
 kael-handoff  kael-doc-audit  kael-prototype  kael-research  kael-wayfinder
 kael-codebase-memory  react-doctor  supabase  supabase-postgres-best-practices
-kael-docker
+kael-docker  source-command-kael-mem
 ```
 
 **Design (11).** One entry point: `kael-design-preflight` loads `governance/design/runtime.md` and binds the token/runtime contract. Never open a design skill without it.
