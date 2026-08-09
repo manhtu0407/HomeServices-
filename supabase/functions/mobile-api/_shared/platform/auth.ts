@@ -1,4 +1,17 @@
-import { createClient } from "@supabase/supabase-js";
+import {
+  bindPrivilegedClientContext,
+  createPrivilegedSupabaseClient,
+  createUserScopedSupabaseClient,
+  type SupabaseClientFactory,
+} from "./privileged/service-client.ts";
+import type { ActorContext } from "./authz/actor-context.ts";
+import type { CapabilityEnvelope } from "./authz/capability-policy.ts";
+import {
+  bindHarnessTraceActor,
+  createHarnessTraceContext,
+  type HarnessTraceClient,
+  type HarnessTraceContext,
+} from "../../../_shared/harness/trace.ts";
 import type { EdgeEnv } from "../../../_shared/platform/env.ts";
 import { USER_ROLES, type UserRole } from "../../../_shared/domain.ts";
 import {
@@ -12,10 +25,20 @@ export type MobileApiAuthResult =
     success: true;
     user: { id: string; email?: string; lastSignInAt?: string };
     role: UserRole;
+    accountState?: "active" | "deletion_processing" | "deleted";
     supabase: unknown;
+    privilegedSupabase?: unknown;
+    userSupabase?: unknown;
+    environment?: string;
+    projectRef?: string | null;
+    authenticatedAt?: string;
     requestUrl?: string;
     requestHost?: string;
     requestProjectRef?: string;
+    releaseId?: string;
+    traceId?: string;
+    runId?: string;
+    traceContext?: HarnessTraceContext;
   }
   | {
     success: false;
@@ -23,14 +46,21 @@ export type MobileApiAuthResult =
     status: 401 | 403;
   };
 
-export type MobileApiContext = Extract<MobileApiAuthResult, { success: true }>;
+export type MobileApiContext = Extract<MobileApiAuthResult, { success: true }> & {
+  actorContext?: ActorContext;
+  capabilityEnvelope?: CapabilityEnvelope;
+  traceId?: string;
+  runId?: string;
+  traceContext?: HarnessTraceContext;
+  releaseId?: string;
+};
 
 const SUPABASE_TIMEOUT_MS = JOB_MEDIA_STORAGE_TIMEOUT_MS;
 const SUPABASE_MAX_RESPONSE_BYTES = MAX_JOB_MEDIA_BYTES;
 
 export function createEdgeAuthenticator(
   env: EdgeEnv,
-  createSupabaseClient: typeof createClient = createClient,
+  createSupabaseClient: SupabaseClientFactory = createPrivilegedSupabaseClient,
 ) {
   return async function authenticateRequest(
     request: Request,
@@ -119,6 +149,36 @@ export function createEdgeAuthenticator(
       };
     }
 
+    const accountState = normalizeAccountState(profile.account_state);
+    const userSupabase = env.supabasePublicKey
+      ? createUserScopedSupabaseClient({
+        url: env.supabaseUrl,
+        publicKey: env.supabasePublicKey,
+        accessToken: token,
+        createClient: createSupabaseClient,
+      })
+      : null;
+    bindPrivilegedClientContext(supabase, {
+      reason: "actor_authentication",
+      environment: env.harnessEnvironment?.name ?? "unknown",
+      projectRef: env.harnessEnvironment?.projectRef ?? null,
+      releaseId: env.releaseId ?? "unreleased",
+      actorId: userData.user.id,
+      actorRole: profile.role,
+    });
+    const traceContext = await bindHarnessTraceActor(
+      createHarnessTraceContext({
+        releaseId: env.releaseId ?? "unreleased",
+        environment: env.harnessEnvironment?.name ?? "local",
+        client: supabase as HarnessTraceClient,
+      }),
+      {
+        actorId: userData.user.id,
+        actorRole: profile.role,
+        client: supabase as HarnessTraceClient,
+      },
+    );
+
     return {
       success: true,
       user: {
@@ -127,6 +187,16 @@ export function createEdgeAuthenticator(
         lastSignInAt: userData.user.last_sign_in_at,
       },
       role: profile.role,
+      accountState,
+      releaseId: env.releaseId ?? "unreleased",
+      environment: env.harnessEnvironment?.name ?? "unknown",
+      traceId: traceContext.traceId,
+      runId: traceContext.runId,
+      traceContext,
+      projectRef: env.harnessEnvironment?.projectRef ?? null,
+      authenticatedAt: new Date().toISOString(),
+      privilegedSupabase: supabase,
+      userSupabase: userSupabase ?? undefined,
       supabase,
     };
   };
@@ -156,4 +226,12 @@ function timeoutFetch(input: RequestInfo | URL, init: RequestInit = {}) {
     timeoutMs: SUPABASE_TIMEOUT_MS,
     validateJsonResponses: true,
   });
+}
+
+function normalizeAccountState(
+  value: unknown,
+): "active" | "deletion_processing" | "deleted" {
+  return value === "deletion_processing" || value === "deleted"
+    ? value
+    : "active";
 }

@@ -6,6 +6,7 @@ import { requireJobAccess } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import {
+  buildKaelL2L3MemorySummary,
   buildWorkerKaelSessionTitle,
   runWorkerAssist,
   scrubSensitiveForLLM,
@@ -14,6 +15,10 @@ import {
   type WorkerAssistAnswer,
 } from "../../kael/index.ts";
 import { takeDurableKaelChatRateLimit } from "../../kael/kael-guardrails/durable-guards.ts";
+import {
+  createRuntimeKaelSpendGate,
+  type KaelSpendGate,
+} from "../../kael/kael-guardrails/spend-gate.ts";
 import { analyzeDescription } from "../../kael/tools/vision.ts";
 import { kaelChatProgressSchema, sanitizeForLLM } from "../../../../_shared/domain.ts";
 import type { WorkerVisionFinding } from "../../kael/contracts/types.ts";
@@ -64,7 +69,7 @@ export async function sendWorkerKaelChatTurn(
   options: { prefetchedJob?: Record<string, unknown>; skipRateLimit?: boolean } = {},
 ) {
   const client = db(ctx);
-  const spendGate = { client, actorId: ctx.user.id };
+  const spendGate = createRuntimeKaelSpendGate(client, ctx.user.id, secrets.harnessTrace);
   const session = await readWorkerKaelSession(client, ctx, sessionId);
   if (asWorkerKaelChatStatus(session.status) !== "active") {
     apiFailure("INVALID_STATUS", "Phi\u00ean Kael n\u00e0y kh\u00f4ng c\u00f2n nh\u1eadn tin nh\u1eafn", 409);
@@ -149,7 +154,7 @@ async function runWorkerKaelAssistant(input: {
   sessionId: string;
   input: WorkerKaelChatTurnInput;
   secrets: EdgeAiSecrets;
-  spendGate: { client: DbClient; actorId: string };
+  spendGate: KaelSpendGate;
   sessionMode: WorkerKaelChatCreateInput["mode"];
   sessionJobId: string | null;
   job: Record<string, unknown> | null;
@@ -161,6 +166,11 @@ async function runWorkerKaelAssistant(input: {
   const needsInitialTitle = asNumber(input.session.total_turns) === 0 && !nullableString(input.session.title);
   const recentTurns = await readWorkerKaelRecentTurns(input.client, input.sessionId);
   const workerVisionFinding = await findWorkerKaelVision(input);
+  const memorySummary = await buildKaelL2L3MemorySummary(input.client, {
+    jobId: input.sessionJobId,
+    includeCustomer: false,
+    maxTotalTokens: 500,
+  });
   try {
     const answer = await runWorkerAssist({
       conversationMode: input.sessionMode,
@@ -177,7 +187,7 @@ async function runWorkerKaelAssistant(input: {
         : null,
       question: input.safeMessage, language: input.input.language, mediaRefs: input.input.media_refs,
       visionFinding: workerVisionFinding, previousTurns: recentTurns,
-      secrets: input.secrets, spendGate: input.spendGate,
+      memorySummary, secrets: input.secrets, spendGate: input.spendGate,
     });
     return { answer, needsInitialTitle };
   } catch (error) {

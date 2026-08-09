@@ -17,14 +17,6 @@ const readMobileApiTypesLayer = () =>
       .sort()
       .map(read),
   ].join('\n')
-const readEdgeRouterLayer = () =>
-  [
-    read('supabase/functions/mobile-api/_shared/http.ts'),
-    ...listFilesUnder('supabase/functions/mobile-api/_shared/http')
-      .filter((relPath) => relPath.endsWith('.ts'))
-      .sort()
-      .map(read),
-  ].join('\n')
 const migrations = () => readdirSync(resolve(ROOT, 'supabase/migrations'))
   .filter((name) => name.endsWith('.sql'))
   .map((name) => read(`supabase/migrations/${name}`))
@@ -49,11 +41,10 @@ describe('Plan §31 B4 knowledge governance', () => {
 
   it('keeps Edge admin approval as the only writer path for knowledge candidate apply', () => {
     const services = read('supabase/functions/mobile-api/_shared/domains.ts') + read('supabase/functions/mobile-api/_shared/domains/admin/learning.ts')
-    const router = readEdgeRouterLayer()
     const responseContract = read('supabase/functions/mobile-api/_shared/domains/contracts/admin-learning.ts')
     const mobileTypes = readMobileApiTypesLayer()
 
-    expect(services).toContain('admin_approve_learning_candidate_atomic')
+    expect(services).toContain('admin_review_and_approve_learning_candidate_atomic')
     expect(services).not.toContain('rpc("apply_approved_learning_candidate_to_knowledge"')
     expect(services).toContain('knowledge_apply')
     expect(responseContract).toContain('knowledge_apply')

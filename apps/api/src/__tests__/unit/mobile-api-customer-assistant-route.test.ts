@@ -11,6 +11,7 @@ const customerAuth: MobileApiAuthResult = {
   user: { id: '11111111-1111-4111-8111-111111111111' },
   role: 'customer',
   supabase: {},
+  userSupabase: {},
 }
 
 describe('mobile-api customer Kael assistant route', () => {

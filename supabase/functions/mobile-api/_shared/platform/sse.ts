@@ -7,7 +7,7 @@ export type SseEvent = {
 const SSE_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, idempotency-key",
   "Content-Type": "text/event-stream; charset=utf-8",
   "Cache-Control": "no-cache",
   "Connection": "keep-alive",

@@ -2,6 +2,7 @@ import { asString, nullableString } from "../../platform/coercions.ts";
 import { type DbClient, dbQuery } from "../../platform/db.ts";
 import { logApiCalls } from "../../kael/learning/audit.ts";
 import { type EdgeAiSecrets, runJobIncidentAssistant } from "../../kael/index.ts";
+import { createRuntimeKaelSpendGate } from "../../kael/kael-guardrails/spend-gate.ts";
 import {
   INCIDENT_MESSAGES,
   type AtomicIncidentRow,
@@ -48,7 +49,7 @@ export async function advanceJobIncident(
       event,
       history,
       secrets,
-      spendGate: { client, actorId },
+      spendGate: createRuntimeKaelSpendGate(client, actorId, secrets.harnessTrace),
     });
   } catch (error) {
     await releaseAssistantClaim(client, jobId, source);

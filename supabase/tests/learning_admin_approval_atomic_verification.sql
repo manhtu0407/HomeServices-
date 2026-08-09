@@ -69,6 +69,36 @@ begin
     'manual_review'
   );
 
+  insert into public.learning_candidate_provenance (
+    candidate_id,
+    source_type,
+    source_hash,
+    consent_hash,
+    input_hash,
+    evidence_hash,
+    release_id,
+    consent_status,
+    privacy_status,
+    dispute_status,
+    quality_status,
+    summary_origin,
+    provenance_status
+  ) values (
+    v_candidate_id,
+    'batch_evidence',
+    repeat('a', 64),
+    repeat('b', 64),
+    repeat('c', 64),
+    repeat('d', 64),
+    'atomic-admin-approval-fixture',
+    'aggregate_only',
+    'redacted',
+    'clear',
+    'verified',
+    'human_authored',
+    'approved'
+  );
+
   select * into v_first
   from public.admin_approve_learning_candidate_atomic(
     v_candidate_id,
@@ -150,6 +180,36 @@ begin
     0.9,
     5,
     'manual_review'
+  );
+
+  insert into public.learning_candidate_provenance (
+    candidate_id,
+    source_type,
+    source_hash,
+    consent_hash,
+    input_hash,
+    evidence_hash,
+    release_id,
+    consent_status,
+    privacy_status,
+    dispute_status,
+    quality_status,
+    summary_origin,
+    provenance_status
+  ) values (
+    v_legacy_candidate_id,
+    'batch_evidence',
+    repeat('e', 64),
+    repeat('f', 64),
+    repeat('1', 64),
+    repeat('2', 64),
+    'atomic-admin-approval-legacy-fixture',
+    'aggregate_only',
+    'redacted',
+    'clear',
+    'verified',
+    'human_authored',
+    'approved'
   );
 
   select * into v_legacy_approval

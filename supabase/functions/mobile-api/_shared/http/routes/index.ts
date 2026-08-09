@@ -25,7 +25,9 @@ import {
 } from "./notifications.ts";
 import { matchWorkerRoute, type WorkerRoute } from "./worker.ts";
 
-export type PublicRoute = { kind: "kael.charter"; method: "GET"; public: true };
+export type PublicRoute =
+  | { kind: "kael.charter"; method: "GET"; public: true }
+  | { kind: "harness.health"; method: "GET"; public: true };
 
 export type Route =
   | PublicRoute
@@ -56,6 +58,9 @@ export function matchRoute(request: Request): Route | null {
   if (catalogRoute) return catalogRoute;
   if (method === "GET" && path === "/kael/charter") {
     return { kind: "kael.charter", method: "GET", public: true };
+  }
+  if (method === "GET" && path === "/harness/health") {
+    return { kind: "harness.health", method: "GET", public: true };
   }
   const adminRoute = matchAdminRoute(path, method, safeDecodePathSegment);
   if (adminRoute) return adminRoute;

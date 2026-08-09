@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nestscout.internal/schemas/harness-manifest-v1.json",
+  "title": "NestScout Harness Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "manifestVersion",
+    "checksumAlgorithm",
+    "inventory",
+    "routers",
+    "entries"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./manifest.schema.json"
+    },
+    "manifestVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "checksumAlgorithm": {
+      "const": "git-blob-sha1"
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    },
+    "routers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/router"
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "$defs": {
+    "environment": {
+      "enum": [
+        "local",
+        "preview",
+        "staging",
+        "production"
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repositorySkillRoot",
+        "repositorySkillEntryFile",
+        "repositorySkillMirrorRoot",
+        "runtimeToolRoots"
+      ],
+      "properties": {
+        "repositorySkillRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repositorySkillEntryFile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repositorySkillMirrorRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtimeToolRoots": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "router": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "mode"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "canonical-skill-list",
+            "skill-count-pointer"
+          ]
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "group",
+        "owner",
+        "purpose",
+        "trigger",
+        "kind",
+        "canonicalPath",
+        "allowedEnvironments",
+        "inputSchema",
+        "outputSchema",
+        "sideEffectClass",
+        "requiredCapability",
+        "timeoutMs",
+        "retryClass",
+        "budgetClass",
+        "dataClasses",
+        "redactionProfile",
+        "deprecated",
+        "checksum"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "group": {
+          "enum": [
+            "everyday",
+            "design",
+            "runtime"
+          ]
+        },
+        "owner": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 8
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 8
+        },
+        "kind": {
+          "enum": [
+            "repository-skill",
+            "runtime-tool",
+            "provider-adapter",
+            "operator-command"
+          ]
+        },
+        "canonicalPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mirroredPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowedEnvironments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/environment"
+          },
+          "uniqueItems": true
+        },
+        "inputSchema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outputSchema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sideEffectClass": {
+          "enum": [
+            "none",
+            "read-only",
+            "idempotent-write",
+            "conditional-write",
+            "non-repeatable"
+          ]
+        },
+        "requiredCapability": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600000
+        },
+        "retryClass": {
+          "enum": [
+            "none",
+            "safe-bounded",
+            "state-aware",
+            "reconcile-only"
+          ]
+        },
+        "budgetClass": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "dataClasses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "uniqueItems": true
+        },
+        "redactionProfile": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "deprecated": {
+          "type": "boolean"
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^git-blob-sha1:[0-9a-f]{40}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "repository-skill"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "mirroredPath"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

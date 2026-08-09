@@ -100,6 +100,7 @@ begin
   insert into public.worker_profiles (
     id,
     service_types,
+    selected_service_types,
     years_experience,
     districts,
     is_approved,
@@ -112,6 +113,7 @@ begin
     (
       '91000000-0000-4000-8000-000000000002',
       array['plumbing']::public.service_type[],
+      array['plumbing']::public.service_type[],
       5,
       array['q7'],
       true,
@@ -123,6 +125,7 @@ begin
     ),
     (
       '91000000-0000-4000-8000-000000000003',
+      array['plumbing']::public.service_type[],
       array['plumbing']::public.service_type[],
       5,
       array['q7'],

@@ -33,6 +33,23 @@
     "type-check:shared": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-package-script.ps1 @nestscout/shared type-check",
     "skills:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/sync-skills.mjs",
     "skills:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/check-skills-sync.mjs",
+    "harness:manifest:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/check-manifest.mjs",
+    "harness:manifest:hash": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/hash-manifest.mjs",
+    "harness:manifest:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 --test scripts/harness/check-manifest.test.mjs",
+    "harness:capabilities:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/capability-registry.mjs",
+    "harness:capabilities:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/capability-registry.mjs --write",
+    "harness:privileged:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/check-privileged-clients.mjs",
+    "harness:access:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/access-matrix.mjs",
+    "harness:access:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/access-matrix.mjs --write",
+    "harness:migrations:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/migration-inventory.mjs",
+    "harness:migrations:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/migration-inventory.mjs --write",
+    "harness:drift:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/deployment-drift.mjs",
+    "harness:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/release-bundle.mjs",
+    "harness:evaluate": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/evaluate-release.mjs",
+    "harness:reliability:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/reliability-registry.mjs",
+    "harness:reliability:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/reliability-registry.mjs --write",
+    "harness:promotion:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/promotion.mjs --check",
+    "harness:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/verify.mjs",
     "design:intelligence": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-intelligence.mjs",
     "design:direction": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-direction.mjs",
     "design:preflight": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/design/kael-design-preflight.mjs",
@@ -47,7 +64,10 @@
     "db:local:types": "powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/gen-types.ps1",
     "db:local:diff": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-supabase.ps1 db diff --local",
     "db:local:lint": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-supabase.ps1 db lint --local",
-    "edge:check": "powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/edge-check.ps1"
+    "edge:check": "powershell -NoProfile -ExecutionPolicy Bypass -File docker/scripts/edge-check.ps1",
+    "kael:eval:multi-turn": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 apps/api/scripts/kael-multi-turn-eval.mjs",
+    "kael:redteam:live": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 apps/api/scripts/kael-live-redteam.mjs",
+    "kael:model-health": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 apps/api/scripts/kael-model-health.mjs"
   },
   "reactDoctor": {
     "blocking": "none",
@@ -58,7 +78,12 @@
   "devDependencies": {
     "metro-runtime": "0.83.3",
     "react-doctor": "0.5.8",
-    "turbo": "^2"
+    "turbo": "^2",
+    "zod": "^4.4.3"
   },
-  "workspaces": ["apps/*", "packages/*", "sandbox/*"]
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "sandbox/*"
+  ]
 }

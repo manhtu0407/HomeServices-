@@ -302,44 +302,66 @@ describe('shouldPromote — invalid payload', () => {
   })
 })
 
-describe('promoteCandidate', () => {
-  it('delegates the write set to the atomic service-role RPC', async () => {
+describe('promoteCandidate compatibility boundary', () => {
+  it('queues explicit manual review instead of activating a rule', async () => {
     const rpc = vi.fn().mockResolvedValue({
-      data: [{
-        ok: true,
-        error_code: null,
-        candidate_id: 'cand-1',
-        rule_id: 'rule-1',
-        rule_version: 2,
-        status: 'auto_promoted',
-      }],
+      data: [{ ok: true, error_code: null, candidate_id: 'cand-1', status: 'manual_review' }],
       error: null,
     })
 
     const result = await promoteCandidate({ rpc } as never, priceCandidate())
 
-    expect(rpc).toHaveBeenCalledWith('auto_promote_learning_candidate_atomic', {
-      p_candidate_id: 'cand-1',
+    expect(rpc).toHaveBeenCalledWith('queue_learning_candidate_manual_review',
+      expect.objectContaining({
+        p_candidate_id: 'cand-1',
+        p_release_id: expect.any(String),
+        p_safe_metadata: {
+        gate_reason: 'gate_passed',
+        automatic_promotion: false,
+        source_kind: 'reviewed_job_aggregate',
+        consent_basis: 'aggregate_only',
+        pii_redacted: true,
+        raw_text_persisted: false,
+        summary_origin: 'model_generated',
+      },
+      }),
+    )
+    expect(result).toEqual({
+      promoted: false,
+      reason: 'MANUAL_REVIEW_REQUIRED',
+      queuedForReview: true,
     })
-    expect(result).toEqual({ promoted: true, ruleId: 'rule-1', ruleVersion: 2 })
   })
 
-  it('fails closed when the RPC rejects the candidate', async () => {
+  it('keeps the Supabase client receiver when invoking the manual-review RPC', async () => {
+    let receiver: unknown
+    function rpc(this: unknown) {
+      receiver = this
+      return Promise.resolve({
+        data: [{ ok: true, error_code: null, candidate_id: 'cand-1', status: 'manual_review' }],
+        error: null,
+      })
+    }
+    const client = { rpc }
+
+    const result = await promoteCandidate(client as never, priceCandidate())
+
+    expect(receiver).toBe(client)
+    expect(result).toMatchObject({
+      reason: 'MANUAL_REVIEW_REQUIRED',
+      queuedForReview: true,
+    })
+  })
+
+  it('fails closed when the manual-review RPC rejects provenance', async () => {
     const rpc = vi.fn().mockResolvedValue({
-      data: [{
-        ok: false,
-        error_code: 'CANDIDATE_NOT_PROMOTABLE',
-        candidate_id: 'cand-1',
-        rule_id: null,
-        rule_version: null,
-        status: 'created',
-      }],
+      data: [{ ok: false, error_code: 'PROVENANCE_CONFLICT' }],
       error: null,
     })
 
     const result = await promoteCandidate({ rpc } as never, priceCandidate())
 
-    expect(result).toEqual({ promoted: false, reason: 'CANDIDATE_NOT_PROMOTABLE' })
+    expect(result).toEqual({ promoted: false, reason: 'PROVENANCE_CONFLICT' })
   })
 })
 

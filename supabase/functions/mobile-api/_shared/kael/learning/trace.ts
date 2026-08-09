@@ -260,7 +260,7 @@ function purposeForPipelineStage(stage: PipelineStageLog["stage"]) {
   }
 }
 
-function assertSafeTraceValue(value: unknown, path: readonly string[]): void {
+export function assertSafeTraceValue(value: unknown, path: readonly string[] = ["value"]): void {
   if (Array.isArray(value)) {
     value.forEach((item, index) => assertSafeTraceValue(item, [...path, String(index)]));
     return;

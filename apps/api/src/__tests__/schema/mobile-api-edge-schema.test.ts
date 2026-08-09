@@ -448,11 +448,12 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migrations).toContain('electrical_lockout_before_repair')
     expect(migrations).toContain('deposit_and_payment_dispute_awareness')
     expect(edgeKael).toContain('evaluateKaelPermissionGate')
-    expect(edgeKael).toContain('checkKaelActorRateLimit')
+    expect(edgeKael).not.toContain('checkKaelActorRateLimit')
+    expect(edgeKael).toContain('reserve_kael_ai_spend')
     expect(edgeKael).toContain('educational_response')
   })
 
-  it('keeps self-memory CRUD live while quarantining the unused L1-L6 context engine', () => {
+  it('keeps self-memory CRUD live while wiring only sanitized L2+L3 prompt memory', () => {
     const migrations = readMigrations()
     const edgeKaelIndex = read('supabase/functions/mobile-api/_shared/kael/index.ts')
     const quarantinedMemory = read('supabase/functions/mobile-api/_shared/kael/kael-memory/memory.ts')
@@ -465,9 +466,9 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migrations).toContain('worker_id uuid primary key references public.profiles(id) on delete cascade')
     expect(migrations).toContain('grant all on public.kael_memory_archive to service_role')
     expect(edgeKaelIndex).toContain('export * from "./kael-memory/memory-sanitizer.ts"')
-    expect(edgeKaelIndex).not.toContain('export * from "./kael-memory/memory.ts"')
-    expect(quarantinedMemory).toContain('QUARANTINED')
-    expect(quarantinedMemory).toContain('not part of the production mobile-api runtime')
+    expect(edgeKaelIndex).toContain('export * from "./kael-memory/memory.ts"')
+    expect(quarantinedMemory).toContain('buildKaelL2L3MemorySummary')
+    expect(quarantinedMemory).toContain('L4-L6 are not fetched')
     expect(edgeRouter).toContain('/me/kael-memory')
     expect(edgeRouter).toContain('/workers/me/kael-memory')
     expect(edgeServices).toContain('getMyKaelMemory')
@@ -562,7 +563,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('buildKaelSystemPrompt')
     expect(edgeKael).toContain('checkKaelResponse')
     expect(edgeKael).toContain('runKaelSelfCheckPipeline')
-    expect(edgeKael).toContain('2026-08-01.p10')
+    expect(edgeKael).toContain('2026-08-06.p11')
     expect(edgeRouter).toContain('kael.charter')
     expect(edgeRouter).toContain('/kael/charter')
     expect(edgeRouter).toContain('public: true')
@@ -1302,13 +1303,13 @@ describe('mobile-api Edge schema compatibility', () => {
     // assertion follows: prove the guard exists once, then prove every suite
     // routes through it. A suite that resolves its own URL bypasses the guard.
     const guard = read('apps/api/src/__tests__/integration/integration-target.ts')
-    expect(guard).toContain("const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'")
-    expect(guard).toContain('Refusing to run against PRODUCTION')
-    // Dangerous configurations throw. Skipping them would report green for a
-    // suite that never ran — the silent degradation RULES.md #8 bans.
-    expect(guard).toContain('function assertNotProduction')
-    expect(guard).toContain('function assertNotLocalKeyAgainstRemote')
-    expect(guard).toMatch(/throw new Error\(/)
+    const environmentGuard = read('supabase/functions/_shared/harness/environment.ts')
+    expect(guard).toContain("from '../../../../../supabase/functions/_shared/harness/environment'")
+    expect(guard).toContain('resolveHarnessEnvironment(')
+    expect(guard).toContain('assertHarnessMutationAllowed(descriptor)')
+    expect(guard).toContain("mutationIntent: 'mutate'")
+    expect(environmentGuard).toContain('PRODUCTION_MUTATION_REQUIRES_OPERATOR')
+    expect(environmentGuard).toContain('throw new HarnessEnvironmentError(')
 
     for (const file of [
       'apps/api/src/__tests__/integration/real-supabase.test.ts',
@@ -1321,5 +1322,12 @@ describe('mobile-api Edge schema compatibility', () => {
       expect(source).toContain('resolveOrAnnounceSkip(')
       expect(source).not.toContain('process.env.NEXT_PUBLIC_SUPABASE_URL')
     }
+  })
+
+  it('pins the production project identity and mismatch failure path', () => {
+    const environmentGuard = read('supabase/functions/_shared/harness/environment.ts')
+
+    expect(environmentGuard).toContain('HARNESS_PRODUCTION_PROJECT_REF = "iwevizmsedyqozxlawwl"')
+    expect(environmentGuard).toContain('PRODUCTION_PROJECT_MISMATCH')
   })
 })
