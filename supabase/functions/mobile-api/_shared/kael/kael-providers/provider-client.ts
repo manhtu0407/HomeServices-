@@ -23,6 +23,11 @@ import {
   beginHarnessRun,
   recordHarnessEvent,
 } from "../../../../_shared/harness/trace.ts";
+import {
+  acquireDependencyPermit,
+  recordDependencyResult,
+  type ReliabilityClient,
+} from "../../../../_shared/harness/reliability.ts";
 import { emitKaelOpsAlert } from "../ops/alerts.ts";
 
 const AI_PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -51,6 +56,9 @@ type PreparedAiProviderCall = {
   reservationId: number | null;
   estimatedCostPerAttemptUsd: number;
   providerAttemptId: string;
+  environment: string;
+  releaseId: string;
+  reliabilityClient: ReliabilityClient | null;
 };
 
 async function prepareAiProviderCall(
@@ -59,6 +67,7 @@ async function prepareAiProviderCall(
   gate?: KaelSpendGate,
 ): Promise<PreparedAiProviderCall | AIError> {
   const providerAttemptId = crypto.randomUUID();
+  const environment = secrets.harnessTrace?.environment ?? "local";
   await beginHarnessRun(secrets.harnessTrace, {
     routeKind: "kael.provider",
     capability: `kael.provider.${request.purpose ?? "unknown"}`,
@@ -75,6 +84,7 @@ async function prepareAiProviderCall(
   if (blocked) return blocked;
 
   const durableGuardsEnabled = secrets.durableGuardsEnabled === true;
+  const reliabilityClient = (secrets.durableGuardClient ?? null) as unknown as ReliabilityClient | null;
   const pricingAt = new Date();
   const unknownModelPolicy = runtimeUnknownModelPolicy();
   const resolvedPrice = resolveModelPrice({
@@ -129,6 +139,9 @@ async function prepareAiProviderCall(
     reservationId: spend.reservationId,
     estimatedCostPerAttemptUsd: spend.estimatedCostPerAttemptUsd,
     providerAttemptId,
+    environment,
+    releaseId: secrets.harnessTrace?.releaseId ?? "unreleased",
+    reliabilityClient,
   };
 }
 
@@ -282,6 +295,7 @@ type ProviderAttemptContext = {
   options: CallAIOptions;
   prepared: PreparedAiProviderCall;
   timeout: number;
+  permit: Awaited<ReturnType<typeof acquireDependencyPermit>>;
 };
 type ProviderAttemptOutcome =
   | { attemptNumber: number; response: AIResponse }
@@ -302,6 +316,49 @@ async function executePreparedAiProviderCall(
     : request.provider === "perplexity"
     ? 15_000
     : 10_000);
+  const permit = await acquireDependencyPermit(prepared.reliabilityClient, {
+    dependency: request.provider,
+    environment: prepared.environment,
+  });
+  if (!permit.allowed) {
+    void emitKaelOpsAlert({
+      code: "circuit_breaker_open",
+      severity: "warning",
+      provider: request.provider,
+      purpose: request.purpose,
+    });
+    await recordHarnessEvent(secrets.harnessTrace, {
+      eventId: prepared.providerAttemptId,
+      eventClass: "provider.call",
+      stage: request.purpose ?? "unknown",
+      status: "blocked",
+      provider: request.provider,
+      model: request.model,
+      errorCode: "OPEN_CIRCUIT",
+      safeMetadata: {
+        circuit_state: permit.state,
+        retry_after_ms: permit.retryAfterMs,
+      },
+    });
+    if (gate) {
+      await finalizeAiSpend(gate.client, {
+        reservationId: prepared.reservationId,
+        actorId: gate.actorId,
+        purpose: request.purpose ?? "unknown",
+        actualUsd: 0,
+        runId: secrets.harnessTrace?.runId,
+        traceId: secrets.harnessTrace?.traceId,
+        releaseId: secrets.harnessTrace?.releaseId,
+        providerAttemptId: prepared.providerAttemptId,
+      });
+    }
+    return {
+      success: false,
+      provider: request.provider,
+      code: "OPEN_CIRCUIT",
+      error: "open_circuit",
+    };
+  }
   const context: ProviderAttemptContext = {
     request,
     secrets,
@@ -309,6 +366,7 @@ async function executePreparedAiProviderCall(
     options,
     prepared,
     timeout,
+    permit,
   };
   const attempts = await runProviderAttempts(context);
   if ("response" in attempts) return attempts.response;
@@ -318,7 +376,9 @@ async function executePreparedAiProviderCall(
 async function runProviderAttempts(
   context: ProviderAttemptContext,
 ): Promise<ProviderAttemptSummary> {
-  const maxRetries = context.prepared.maxRetries;
+  const maxRetries = context.permit.state === "half_open"
+    ? 0
+    : context.prepared.maxRetries;
   let lastError: unknown;
   let attemptsStarted = 0;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -396,6 +456,13 @@ async function executeProviderAttempt(
       latencyMs: response.latencyMs,
       safeMetadata: { cache_status: response.usage.cacheStatus ?? "none" },
     });
+    await recordDependencyResult(prepared.reliabilityClient, {
+      dependency: request.provider,
+      environment: prepared.environment,
+      releaseId: prepared.releaseId,
+      success: true,
+      probeToken: context.permit.probeToken,
+    });
     if (request.purpose && !options.deferCircuitSuccess) {
       if (prepared.durableGuardsEnabled) {
         await recordDurableCircuitSuccess(
@@ -461,6 +528,14 @@ async function finalizeProviderFailure(
     model: request.model,
     code,
     retriesExhausted: true,
+  });
+  await recordDependencyResult(prepared.reliabilityClient, {
+    dependency: request.provider,
+    environment: prepared.environment,
+    releaseId: prepared.releaseId,
+    success: false,
+    errorCode: code,
+    probeToken: context.permit.probeToken,
   });
   if (request.purpose) {
     const failure = {
