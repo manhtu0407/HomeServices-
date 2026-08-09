@@ -1,6 +1,6 @@
 ---
 name: kael-adaptive-layout
-description: Make Home Services Expo React Native screens adapt to available size and posture. Use when handling window size, orientation, keyboard, fold, or reflow — responsive layout, large phones, tablet, landscape, or split-screen. Classifies by available width (compact < 600 / medium 600-839 / expanded >= 840 dp), not device names; caps readable width; reflows instead of rescaling.
+description: Make NestScout Expo React Native screens adapt to available size and posture. Use when handling window size, orientation, keyboard, fold, or reflow — responsive layout, large phones, tablet, landscape, or split-screen. Classifies by available width (compact < 600 / medium 600-839 / expanded >= 840 dp), not device names; caps readable width; reflows instead of rescaling.
 ---
 
 # kael-adaptive-layout

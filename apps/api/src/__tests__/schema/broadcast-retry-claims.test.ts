@@ -24,9 +24,15 @@ describe('broadcast retry claims', () => {
   })
 
   it('rechecks active rows under the claim and always releases the exact token', () => {
-    const broadcasts = read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts')
-    const matching = read('supabase/functions/mobile-api/_shared/services/matching.service.ts')
-    const candidate = read('supabase/functions/mobile-api/_shared/services/worker-candidate.service.ts')
+    const broadcasts = [
+      'supabase/functions/mobile-api/_shared/domains/matching/broadcasts.ts',
+      'supabase/functions/mobile-api/_shared/domains/matching/broadcast-support.ts',
+    ].map(read).join('\n')
+    const matching = read('supabase/functions/mobile-api/_shared/domains/matching/flow.ts')
+    const candidate = [
+      'supabase/functions/mobile-api/_shared/domains/matching/candidate.ts',
+      'supabase/functions/mobile-api/_shared/domains/matching/candidate-support.ts',
+    ].map(read).join('\n')
 
     expect(broadcasts).toContain('claim_job_broadcast_retry_atomic')
     expect(broadcasts).toContain('release_job_broadcast_retry_claim_atomic')
@@ -36,12 +42,12 @@ describe('broadcast retry claims', () => {
     expect(broadcasts).toContain('await releaseBroadcastRetryLease')
     expect(matching).toContain('runWithBroadcastRetryLease')
     expect(candidate).toContain('runWithBroadcastRetryLease')
-    expect(matching).toContain('await hasActiveBroadcast(client, jobId, now)')
+    expect(matching).toContain('await hasActiveBroadcast(input.client, input.jobId, input.now)')
     expect(candidate).toContain('await hasActiveBroadcast(client, jobId, now)')
   })
 
   it('does not promise background matching when no such worker exists', () => {
-    const matching = read('supabase/functions/mobile-api/_shared/services/matching.service.ts')
+    const matching = read('supabase/functions/mobile-api/_shared/domains/matching/flow.ts')
 
     expect(matching).not.toContain('Kael sẽ tiếp tục theo dõi và báo lại khi có thợ.')
     expect(matching).toContain('Bạn có thể thử tìm lại sau')

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import {
+  buildKaelL2L3MemorySummary,
   classifyMemoryStaleness,
   KaelMemory,
   resolveMemoryFacts,
@@ -103,6 +104,50 @@ describe('Kael P6 memory governance', () => {
     expect(context.layers.L3.included).toBe(false)
     expect(context.layers.L4.included).toBe(true)
     expect(JSON.stringify(context)).not.toContain('079123456789')
+    expect(client.calls.some((call) => call.table === 'customer_kael_memory')).toBe(false)
+  })
+
+  it('wires only owner-scoped L2+L3 into the customer prompt without identifiers', async () => {
+    const client = makeTableClient({
+      jobs: [{ data: {
+        id: 'job-1', customer_id: 'customer-1', worker_id: 'worker-1',
+        kael_problem_identified: 'Ổ cắm chập 0901234567',
+        kael_estimate_card_v3: { complexity: 'small' },
+      }, error: null }],
+      customer_kael_memory: [{ data: {
+        customer_id: 'customer-1', preference_summary: 'Ưu tiên giải thích ngắn',
+        service_preferences: { electrical: 'safety-first' },
+        last_observed_at: '2026-05-01T00:00:00.000Z',
+      }, error: null }],
+      kael_memory_audit: [{ data: { id: 'audit-l3' }, error: null }],
+    })
+
+    const summary = await buildKaelL2L3MemorySummary(client, {
+      customerId: 'customer-1', jobId: 'job-1', includeCustomer: true, maxTotalTokens: 1000,
+    })
+
+    expect(summary).toContain('L2 job context')
+    expect(summary).toContain('L3 customer preferences')
+    expect(summary).not.toMatch(/customer-1|worker-1|job-1|0901234567/)
+    expect(client.calls.some((call) => call.table === 'worker_kael_memory')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'chat_messages')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'learning_rules')).toBe(false)
+  })
+
+  it('keeps worker prompt memory at L2 and never reads customer L3', async () => {
+    const client = makeTableClient({
+      jobs: [{ data: {
+        id: 'job-1', customer_id: 'customer-1', worker_id: 'worker-1',
+        kael_problem_identified: 'Kiểm tra đường ống',
+      }, error: null }],
+    })
+
+    const summary = await buildKaelL2L3MemorySummary(client, {
+      jobId: 'job-1', includeCustomer: false, maxTotalTokens: 500,
+    })
+
+    expect(summary).toContain('L2 job context')
+    expect(summary).not.toContain('L3 customer preferences')
     expect(client.calls.some((call) => call.table === 'customer_kael_memory')).toBe(false)
   })
 

@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
-import { intakeEvalObservationSchema, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import { runKaelPipeline } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline'
+import { serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/serialize'
+import { intakeEvalObservationSchema, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import { runKaelPipeline } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/pipeline'
 import {
   buildClarificationExplanationQuestion,
   buildFocusedClarificationQuestion,
@@ -11,10 +11,10 @@ import {
   isGroundedClarificationAnswer,
   isUnknownClarificationAnswer,
   resolveIntakeFactCoverage,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-runtime'
-import { isSingleFocusedClarificationQuestion } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import { ELECTRICAL_PLAYBOOK_SEGMENT, ELECTRICAL_PLAYBOOK_VERSION } from '../../../../../supabase/functions/mobile-api/_shared/kael/playbooks/electrical'
-import { buildIntakeDiagnosisMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/intake-runtime'
+import { isSingleFocusedClarificationQuestion } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import { ELECTRICAL_PLAYBOOK_SEGMENT, ELECTRICAL_PLAYBOOK_VERSION } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical'
+import { buildIntakeDiagnosisMessages } from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/prompts'
 
 const validObservation = {
   scopeSignal: 'in_scope',
@@ -39,7 +39,16 @@ function emptySupabase(): SupabaseLike {
       return Promise.resolve({ data: [], error: null }).then(onfulfilled, onrejected)
     },
   }
-  return { from: () => query }
+  let reservationId = 0
+  return {
+    from: () => query,
+    rpc: async (fn: string) => ({
+      data: fn === 'reserve_kael_ai_spend'
+        ? [{ allowed: true, blocked_scope: null, reservation_id: ++reservationId }]
+        : null,
+      error: null,
+    }),
+  } as SupabaseLike
 }
 
 function stubElectricalIntake(intent: Record<string, unknown>) {
@@ -772,13 +781,17 @@ describe('Kael intake eval observation boundary', () => {
   })
 
   it('wires validated observation persistence and minimum-slot quote readiness', () => {
-    const source = readFileSync(resolve(
+    const source = [
+      'branches-post-pipeline.ts',
+      'estimate-support.ts',
+    ].map((path) => readFileSync(resolve(
       process.cwd(),
-      '../../supabase/functions/mobile-api/_shared/services/kael-chat-core.ts',
-    ), 'utf8')
+      '../../supabase/functions/mobile-api/_shared/domains/kael-chat',
+      path,
+    ), 'utf8')).join('\n')
     const support = readFileSync(resolve(
       process.cwd(),
-      '../../supabase/functions/mobile-api/_shared/services/kael-chat-core-support.ts',
+      '../../supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts',
     ), 'utf8')
 
     expect(support).toContain('intakeEvalObservationSchema.parse(observation)')
@@ -789,9 +802,10 @@ describe('Kael intake eval observation boundary', () => {
       process.cwd(),
       'scripts/kael-playbook-eval.mjs',
     ), 'utf8')
-    expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/_shared.ts'")
-    expect(runner).toContain("'supabase/functions/mobile-api/_shared/services/kael-chat-intake-safety.ts'")
-    expect(runner).toContain("'supabase/functions/mobile-api/_shared/kael/performance-profiles.ts'")
+    expect(runner).toContain("'supabase/functions/mobile-api/_shared/platform/domain-utils.ts'")
+    expect(runner).toContain("'supabase/functions/mobile-api/_shared/http/serialize/labels.ts'")
+    expect(runner).toContain("'supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts'")
+    expect(runner).toContain("'supabase/functions/mobile-api/_shared/kael/learning/performance-profiles.ts'")
   })
 
   it('keeps the injected playbook byte-aligned with Appendix A and free of old unsafe advice', () => {

@@ -9,8 +9,8 @@ const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8').r
 const readRoot = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
 const readEdgeShared = (rel: string) => readFileSync(resolve(EDGE_SHARED_ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
 
-// The Edge service layer is the services.ts factory plus the per-domain modules under
-// services/, so source-string assertions read the whole concatenated layer — otherwise a grep
+// The Edge use-case layer is the domains.ts factory plus the per-domain modules under
+// domains/, so source-string assertions read the whole concatenated layer — otherwise a grep
 // silently misses code that moved into a module.
 const listEdgeServiceFiles = (relDir: string): string[] =>
   readdirSync(resolve(EDGE_SHARED_ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
@@ -18,8 +18,8 @@ const listEdgeServiceFiles = (relDir: string): string[] =>
   )
 const readEdgeServiceLayer = () =>
   [
-    readEdgeShared('services.ts'),
-    ...listEdgeServiceFiles('services')
+    readEdgeShared('domains.ts'),
+    ...listEdgeServiceFiles('domains')
       .filter((p) => p.endsWith('.ts'))
       .sort()
       .map(readEdgeShared),
@@ -124,8 +124,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('connects explicit worker availability updates to mission eligibility without mutating availability on startup', () => {
     const provider = readFrontendWorkflowLayer()
-    const workerService = readEdgeShared('services/workers.service.ts')
-    const broadcastService = readEdgeShared('services/broadcasts.service.ts')
+    const workerService = readEdgeShared('domains/worker/service-settings.ts')
+    const broadcastService = readEdgeShared('domains/matching/broadcast-workers.ts')
     const migration = readRoot('supabase/migrations/20260518010500_availability_offline_expires_sent_broadcasts.sql')
     const availabilityActionStart = provider.indexOf('const workerUpdateAvailability = useCallback')
     const availabilityActionEnd = provider.indexOf('const workerUpdateServiceArea = useCallback', availabilityActionStart)
@@ -159,7 +159,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('keeps worker broadcast acceptance aligned with the candidate-pending Edge contract and address privacy', () => {
     const provider = readFrontendWorkflowLayer()
-    const edgeMatching = readEdgeShared('services/matching.service.ts')
+    const edgeMatching = readEdgeShared('domains/matching/accept.ts')
     const sharedResponses = readRoot('packages/shared/src/types/api-responses.ts')
     const mobileWorkerTypes = read('lib/api-types/worker.ts')
     const readAcceptContract = (source: string) => {
@@ -224,10 +224,16 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('applies learned Kael price and complexity rules inside the deployed Edge runtime', () => {
     const edgeKael = readRoot('supabase/functions/mobile-api/_shared/kael.ts')
-    const edgeKaelTypes = readRoot('supabase/functions/mobile-api/_shared/kael/types.ts')
-    const edgeKaelLearning = readRoot('supabase/functions/mobile-api/_shared/kael/learning.ts')
-    const edgeKaelPipeline = readRoot('supabase/functions/mobile-api/_shared/kael/pipeline.ts')
-    const edgeEnv = readRoot('supabase/functions/mobile-api/_shared/env.ts')
+    const edgeKaelTypes = readRoot('supabase/functions/mobile-api/_shared/kael/contracts/types.ts')
+    const edgeKaelLearning = readRoot('supabase/functions/mobile-api/_shared/kael/learning/learning.ts')
+    // The pipeline is a stage directory, so the learned-rule assertions read the whole layer —
+    // otherwise a stage split silently drops the rule out of the assertion's reach.
+    const edgeKaelPipeline = listEdgeServiceFiles('kael/pipeline')
+      .filter((p) => p.endsWith('.ts'))
+      .sort()
+      .map(readEdgeShared)
+      .join('\n')
+    const edgeEnv = readRoot('supabase/functions/_shared/platform/env.ts')
 
     expect(edgeEnv).toContain('learningEnabled')
     expect(edgeEnv).toContain('LEARNING_ENABLED')
@@ -248,7 +254,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(edgeKaelLearning).toContain('export function clampLearnedPriceToBaseline')
     expect(edgeKaelPipeline).toContain('clampLearnedPriceToBaseline(')
     expect(edgeKaelPipeline).toContain('await applyLearnedPriceRule(')
-    expect(edgeKaelPipeline).toContain('baselineMin: learnedPrice?.priceMin ?? baselineResult.priceMin')
+    expect(edgeKaelPipeline).toContain('baselineMin: learnedPrice?.priceMin ?? input.baselineResult.priceMin')
   })
 
   it('keeps mobile config publishable-only and away from hosted Next fallbacks', () => {

@@ -501,7 +501,7 @@ describe('Kael playbook eval core', () => {
     expect(runner).toContain('**NEEDS_HOLDOUT**')
     for (const sourceFile of [
       'supabase/functions/mobile-api/_shared/kael/index.ts',
-      'supabase/functions/mobile-api/_shared/services/serializers.ts',
+      'supabase/functions/mobile-api/_shared/domains/kael-chat/serialize.ts',
     ]) {
       expect(runner).toContain(`'${sourceFile}'`)
     }
@@ -598,7 +598,7 @@ describe('Kael playbook eval core', () => {
       observed_playbook_state: 'on',
       playbook_hash: SHA256_A,
       playbook_hash_scope: 'full_local_source_file',
-      playbook_source_path: 'supabase/functions/mobile-api/_shared/kael/playbooks/electrical.ts',
+      playbook_source_path: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts',
       source_tree_hash: SHA256_B,
       source_scope: 'local_curated_source_set',
       source_files: ['apps/api/scripts/kael-playbook-eval.mjs'],
@@ -654,7 +654,7 @@ describe('Kael playbook eval core', () => {
         observed_playbook_state: 'on',
         playbook_hash: SHA256_A,
         playbook_hash_scope: 'full_local_source_file',
-        playbook_source_path: 'supabase/functions/mobile-api/_shared/kael/playbooks/electrical.ts',
+        playbook_source_path: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts',
         source_tree_hash: SHA256_B,
         source_scope: 'local_curated_source_set',
         source_files: ['apps/api/scripts/kael-playbook-eval.mjs'],
@@ -745,7 +745,7 @@ describe('Kael playbook eval core', () => {
       observed_playbook_state: 'unobserved',
       playbook_hash: SHA256_A,
       playbook_hash_scope: 'full_local_source_file',
-      playbook_source_path: 'supabase/functions/mobile-api/_shared/kael/playbooks/electrical.ts',
+      playbook_source_path: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts',
       source_tree_hash: SHA256_B,
       source_scope: 'local_curated_source_set',
       source_files: ['apps/api/scripts/kael-playbook-eval.mjs'],
@@ -1014,7 +1014,7 @@ function validManifest(overrides: Record<string, unknown> = {}) {
     observed_playbook_state: 'on',
     playbook_hash: SHA256_A,
     playbook_hash_scope: 'full_local_source_file',
-    playbook_source_path: 'supabase/functions/mobile-api/_shared/kael/playbooks/electrical.ts',
+    playbook_source_path: 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts',
     source_tree_hash: SHA256_B,
     source_scope: 'local_curated_source_set',
     source_files: ['apps/api/scripts/kael-playbook-eval.mjs'],

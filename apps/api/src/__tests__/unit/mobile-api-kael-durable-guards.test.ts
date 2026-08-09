@@ -6,7 +6,7 @@ import {
   recordDurableCircuitFailure,
   recordDurableCircuitSuccess,
   takeDurableKaelChatRateLimit,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/durable-guards'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/durable-guards'
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
 
 afterEach(() => {
@@ -183,6 +183,47 @@ describe('mobile-api Kael callAI durable circuit wiring', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it('fails closed before fetch when a remote dependency permit is denied', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const rpc = vi.fn(async (fn: string) => ({
+      data: fn === 'is_circuit_open'
+        ? false
+        : fn === 'read_harness_kill_switch'
+        ? [{ enabled: false, reason_code: null }]
+        : fn === 'acquire_harness_dependency_permit'
+        ? [{ allowed: false, state: 'open', retry_after_ms: 30_000, probe_token: null }]
+        : true,
+      error: null,
+    }))
+
+    await expect(callAI(request, {
+      deepseekApiKey: 'test-key',
+      durableGuardsEnabled: true,
+      durableGuardClient: { rpc },
+      harnessTrace: {
+        traceId: '00000000-0000-4000-8000-000000000011',
+        runId: '00000000-0000-4000-8000-000000000012',
+        parentRunId: null,
+        turnId: null,
+        toolCallId: null,
+        parentEventId: null,
+        actorIdHash: 'a'.repeat(64),
+        actorRole: 'customer',
+        jobId: null,
+        releaseId: 'release-test',
+        environment: 'staging',
+        startedAtMs: 0,
+        client: { rpc },
+      },
+    })).resolves.toMatchObject({ success: false, code: 'OPEN_CIRCUIT' })
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(rpc).toHaveBeenCalledWith('acquire_harness_dependency_permit', expect.objectContaining({
+      p_dependency: 'deepseek',
+      p_environment: 'staging',
+    }))
+  })
+
   it('records transport failure in the durable provider-global scope', async () => {
     const sensitiveBody = 'provider-private-credit-detail'
     const fetchSpy = vi.fn(async () => new Response(sensitiveBody, { status: 402 }))
@@ -228,6 +269,70 @@ describe('mobile-api Kael callAI durable circuit wiring', () => {
       durableGuardsEnabled: true,
       durableGuardClient: { rpc },
     })).resolves.toMatchObject({ success: true })
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(rpc).not.toHaveBeenCalledWith('read_harness_kill_switch', expect.anything())
+  })
+
+  it('starts the trace run before provider I/O', async () => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> }> = []
+    const rpc = vi.fn(async (fn: string, args: Record<string, unknown> = {}) => {
+      calls.push({ fn, args })
+      return {
+        data: fn === 'is_circuit_open'
+          ? false
+          : fn === 'read_harness_kill_switch'
+          ? [{ enabled: false, reason_code: null }]
+          : fn === 'acquire_harness_dependency_permit'
+          ? [{ allowed: true, state: 'closed', retry_after_ms: 0, probe_token: null }]
+          : true,
+        error: null,
+      }
+    })
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: '{"ok":true}' } }],
+      usage: { prompt_tokens: 10, completion_tokens: 5 },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await expect(callAI(request, {
+      deepseekApiKey: 'test-key',
+      durableGuardsEnabled: true,
+      durableGuardClient: { rpc },
+      harnessTrace: {
+        traceId: '00000000-0000-4000-8000-000000000001',
+        runId: '00000000-0000-4000-8000-000000000002',
+        parentRunId: null,
+        turnId: null,
+        toolCallId: null,
+        parentEventId: null,
+        actorIdHash: 'a'.repeat(64),
+        actorRole: 'customer',
+        jobId: null,
+        releaseId: 'release-test',
+        environment: 'staging',
+        startedAtMs: 0,
+        client: { rpc },
+      },
+    })).resolves.toMatchObject({ success: true })
+
+    expect(calls[0]).toEqual(expect.objectContaining({
+      fn: 'begin_harness_run',
+      args: expect.objectContaining({
+        p_actor_role: 'customer',
+        p_route_kind: 'kael.provider',
+        p_release_id: 'release-test',
+      }),
+    }))
+    expect(calls.some((call) => call.fn === 'append_harness_event')).toBe(true)
+    expect(calls).toContainEqual(expect.objectContaining({
+      fn: 'record_harness_dependency_result',
+      args: expect.objectContaining({
+        p_dependency: 'deepseek',
+        p_environment: 'staging',
+        p_release_id: 'release-test',
+        p_success: true,
+      }),
+    }))
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 })

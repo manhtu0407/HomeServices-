@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "scenarios": [
+    {"id":"anonymous-job-denied","actor":"anonymous","surface":"table","resource":"jobs","operation":"select","expected":"deny"},
+    {"id":"customer-a-own-job-read","actor":"customer_a","surface":"table","resource":"jobs","operation":"select-own","expected":"allow"},
+    {"id":"customer-b-other-job-denied","actor":"customer_b","surface":"table","resource":"jobs","operation":"select-other","expected":"deny"},
+    {"id":"worker-a-assigned-job-read","actor":"worker_a","surface":"table","resource":"jobs","operation":"select-assigned","expected":"allow"},
+    {"id":"worker-b-other-job-denied","actor":"worker_b","surface":"table","resource":"jobs","operation":"select-other","expected":"deny"},
+    {"id":"admin-learning-review","actor":"admin","surface":"rpc","resource":"admin_approve_learning_candidate_atomic","operation":"execute","expected":"allow"},
+    {"id":"service-role-release-ledger","actor":"service_role","surface":"table","resource":"harness_releases","operation":"insert","expected":"allow"},
+    {"id":"customer-private-media","actor":"customer_a","surface":"storage","resource":"job-media","operation":"read-own","expected":"allow"},
+    {"id":"worker-other-media-denied","actor":"worker_b","surface":"storage","resource":"job-media","operation":"read-other","expected":"deny"},
+    {"id":"customer-own-notification-realtime","actor":"customer_a","surface":"realtime","resource":"notifications","operation":"subscribe-own","expected":"allow"},
+    {"id":"customer-other-notification-realtime-denied","actor":"customer_b","surface":"realtime","resource":"notifications","operation":"subscribe-other","expected":"deny"}
+  ]
+}

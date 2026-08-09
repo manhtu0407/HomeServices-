@@ -3,19 +3,20 @@ import {
   ADMIN_CAPABILITIES,
   workerWithdrawalRequestCreateSchema,
 } from '@nestscout/shared'
-import { ADMIN_CONTROL_CAPABILITIES } from '../../../../../supabase/functions/mobile-api/_shared/router/admin-control-dtos'
+import { ADMIN_CONTROL_CAPABILITIES } from '../../../../../supabase/functions/mobile-api/_shared/domains/contracts/admin-control'
 import {
   createMobileApiHandler,
   type MobileApiAuthResult,
   type MobileApiServices,
-} from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/router/routes'
+} from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes'
 
 const workerAuth: MobileApiAuthResult = {
   success: true,
   user: { id: '11111111-1111-4111-8111-111111111111' },
   role: 'worker',
   supabase: {},
+  userSupabase: {},
 }
 
 describe('mobile-api worker manual payouts', () => {

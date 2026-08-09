@@ -1,9 +1,9 @@
-// QUARANTINED L1-L6 context-memory experiment; not part of the production mobile-api runtime.
-// It is intentionally excluded from kael/index.ts
-// and retained only as a tested reference until a product feature needs continuity.
-// The live self-memory CRUD service is separate and must remain backward compatible.
+// The broad L1-L6 context engine remains available for governance tests and future work.
+// Production prompt wiring is deliberately narrower: only sanitized L2 job context and
+// owner-scoped L3 customer preferences are summarized by buildKaelL2L3MemorySummary.
+// L4-L6 are not fetched by that path. The live self-memory CRUD service remains separate.
 import { sanitizeMemoryObject, sanitizeMemoryText } from "./memory-sanitizer.ts";
-import { isKaelKnowledgeRetrievalEnabled } from "../knowledge.ts";
+import { isKaelKnowledgeRetrievalEnabled } from "../tools/knowledge.ts";
 
 type DbResult<T> = { data: T | null; error: { code?: string; message?: string } | null };
 type Chain = {
@@ -18,7 +18,8 @@ type Chain = {
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2>;
 };
-type DbClient = { from(table: string): Chain };
+export type KaelMemoryClient = { from(table: string): Chain };
+type DbClient = KaelMemoryClient;
 
 export type MemoryLayerName = "L1" | "L2" | "L3" | "L4" | "L5" | "L6";
 export type MemoryActor = "customer" | "worker" | "system";
@@ -71,6 +72,32 @@ export class KaelMemory {
 
   setShortTerm(key: string, value: unknown) {
     this.scratchpad[key] = sanitizeMemoryObject(value);
+  }
+
+  async getPromptSummary(input: {
+    customerId?: string | null;
+    jobId?: string | null;
+    includeCustomer?: boolean;
+    maxTotalTokens?: number;
+  }): Promise<string | null> {
+    const [job, customer] = await Promise.all([
+      this.fetchJobMemory(input.jobId ?? undefined),
+      input.includeCustomer && input.customerId
+        ? this.fetchCustomerMemory(input.customerId)
+        : Promise.resolve(disabledLayer("L3")),
+    ]);
+    const sections: string[] = [];
+    const jobData = promptJobMemory(job.data);
+    if (job.included && Object.keys(jobData).length > 0) {
+      sections.push(`L2 job context: ${JSON.stringify(jobData)}`);
+    }
+    const customerData = promptCustomerMemory(customer.data);
+    if (customer.included && customer.stale !== "archive" && Object.keys(customerData).length > 0) {
+      sections.push(`L3 customer preferences (${customer.stale}): ${JSON.stringify(customerData)}`);
+    }
+    if (sections.length === 0) return null;
+    const maxChars = Math.max(200, (input.maxTotalTokens ?? 1000) * 4);
+    return sanitizeMemoryText(sections.join("\n"), maxChars);
   }
 
   async getContext(input: ContextInput): Promise<MemoryContext> {
@@ -287,6 +314,60 @@ export class KaelMemory {
       safe_metadata: {},
     });
   }
+}
+
+export async function buildKaelL2L3MemorySummary(
+  client: KaelMemoryClient | null | undefined,
+  input: {
+    customerId?: string | null;
+    jobId?: string | null;
+    includeCustomer?: boolean;
+    maxTotalTokens?: number;
+  },
+): Promise<string | null> {
+  if (!client || (!input.jobId && !(input.includeCustomer && input.customerId))) return null;
+  try {
+    return await new KaelMemory(client, { maxTotalTokens: input.maxTotalTokens ?? 1000 })
+      .getPromptSummary(input);
+  } catch (error) {
+    console.warn("kael memory summary unavailable; continuing without memory", {
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+    return null;
+  }
+}
+
+function promptJobMemory(value: unknown): Record<string, unknown> {
+  const record = asRecord(value);
+  return compactRecord({
+    problem: record.kael_problem_identified,
+    estimate: record.kael_estimate_card_v3,
+    worker_brief_core: record.kael_worker_brief_core,
+    worker_brief_guidance: record.kael_worker_brief_guidance,
+  });
+}
+
+function promptCustomerMemory(value: unknown): Record<string, unknown> {
+  const record = asRecord(value);
+  return compactRecord({
+    preference_summary: record.preference_summary,
+    service_preferences: record.service_preferences,
+    trust_signals: record.trust_signals,
+    last_observed_at: record.last_observed_at,
+  });
+}
+
+function compactRecord(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(sanitizeMemoryObject(value) as Record<string, unknown>)
+      .filter(([, item]) => item !== null && item !== undefined && item !== ""),
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
 export function resolveMemoryFacts(layers: Array<{ layer: MemoryLayerName; facts: Record<string, unknown> }>) {

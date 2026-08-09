@@ -1,0 +1,11 @@
+import type { fetchBaselineCandidates } from "../tools/synthesis.ts";
+import type { analyzeDescription } from "../tools/vision.ts";
+import type { searchMarketPrice } from "../tools/market.ts";
+
+export type EstimateParallelValue =
+  | { kind: "vision"; result: Awaited<ReturnType<typeof analyzeDescription>> }
+  | { kind: "market"; result: Awaited<ReturnType<typeof searchMarketPrice>> }
+  | {
+    kind: "baseline";
+    result: Awaited<ReturnType<typeof fetchBaselineCandidates>>;
+  };

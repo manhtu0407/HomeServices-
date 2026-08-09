@@ -7,18 +7,29 @@ const sql = readFileSync(
   resolve(root, 'supabase/migrations/20260711062000_unified_scope_change_timing.sql'),
   'utf8',
 )
-const service = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/scope-change.service.ts'),
+const service = [
+  'job/scope-change/request.ts',
+  'job/scope-change/support.ts',
+  'job/scope-change/decision.ts',
+  'job/scope-change/effects.ts',
+  'job/scope-change/effects-incident.ts',
+  'job/scope-change/effects-payloads.ts',
+  'job/scope-change/effects-drain.ts',
+].map((path) => readFileSync(
+  resolve(root, 'supabase/functions/mobile-api/_shared/domains', path),
   'utf8',
-)
+)).join('\n')
 const orchestrator = readFileSync(
   resolve(root, 'supabase/functions/mobile-api/_shared/workflow-orchestrator.ts'),
   'utf8',
 )
-const notifications = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/notifications.service.ts'),
+const notifications = [
+  'notifications.ts',
+  'notifications-events.ts',
+].map((path) => readFileSync(
+  resolve(root, 'supabase/functions/mobile-api/_shared/domains/notification', path),
   'utf8',
-)
+)).join('\n')
 const scopeMediaSql = readFileSync(
   resolve(root, 'supabase/migrations/20260711064000_scope_change_private_media_refs.sql'),
   'utf8',

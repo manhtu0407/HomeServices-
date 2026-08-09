@@ -6,7 +6,7 @@ import {
   evaluateCustomerCancellationAbuse,
   recordCustomerCancellationReview,
   type CustomerCancellationExpectedCategory,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/agentic/case-4-customer-cancel'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/agentic/case-4-customer-cancel'
 
 describe('Kael P12 customer cancellation case', () => {
   it('T12.2/3/4/5/6: determines all five customer cancellation sub-cases', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mapConfirmKaelChatError } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+import { mapConfirmKaelChatError } from '../../../../../supabase/functions/mobile-api/_shared/platform/domain-error-mappers'
 
 function captureConfirmFailure(errorCode: string | null) {
   try {

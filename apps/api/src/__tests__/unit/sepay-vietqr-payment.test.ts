@@ -5,7 +5,7 @@ import {
   parseSePayVietQrWebhookPayload,
   receiveSePayVietQrWebhook,
   verifySePayWebhookSignature,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/sepay-vietqr-payment.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/payment/sepay-vietqr'
 
 const encoder = new TextEncoder()
 
@@ -147,6 +147,37 @@ describe('SePay VietQR webhook verification', () => {
     expect(rpc).toHaveBeenCalledWith('apply_sepay_vietqr_payment_webhook', {
       p_payment_code: 'NS1234567890ABCDEF12345678',
       p_reference_code: 'FT260727',
+      p_transaction_id: '92704',
+      p_transfer_amount: 750_000,
+    })
+  })
+
+  it('continues reconciling a verified callback when new VietQR intents are disabled', async () => {
+    const rawBody = '{"id":92704,"accountNumber":"1234567890","code":"NS1234567890ABCDEF12345678","transferType":"in","transferAmount":750000}'
+    const secret = 'test-only-sepay-webhook-secret'
+    const timestamp = 1_784_850_000
+    const signature = await signSePayPayload(rawBody, secret, timestamp)
+    const rpc = vi.fn(async () => ({
+      data: [{ ok: true, outcome: 'paid' }],
+      error: null,
+    }))
+
+    await expect(receiveSePayVietQrWebhook({ rpc } as never, {
+      accountHolder: 'NESTSCOUT COMPANY',
+      accountNumber: '1234567890',
+      bankCode: 'VCB',
+      enabled: false,
+      webhookSecret: secret,
+    }, {
+      rawBody,
+      signature,
+      timestamp: String(timestamp),
+      nowMs: timestamp * 1000 + 1_000,
+    })).resolves.toEqual({ outcome: 'paid' })
+
+    expect(rpc).toHaveBeenCalledWith('apply_sepay_vietqr_payment_webhook', {
+      p_payment_code: 'NS1234567890ABCDEF12345678',
+      p_reference_code: null,
       p_transaction_id: '92704',
       p_transfer_amount: 750_000,
     })

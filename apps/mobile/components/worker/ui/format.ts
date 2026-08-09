@@ -78,12 +78,6 @@ export function formatCountOrEmpty(value: number | null | undefined, emptyLabel:
   return value && value > 0 ? `${value}` : emptyLabel
 }
 
-export function formatDateRange(from: string | null | undefined, to: string | null | undefined, language: AppLanguage) {
-  if (!from && !to) return textByLanguage(language, 'Chưa có kỳ đối soát', 'No settlement period')
-  if (from && to) return `${from} - ${to}`
-  return from ?? to ?? textByLanguage(language, 'Chưa có kỳ đối soát', 'No settlement period')
-}
-
 export function formatVnd(value: number, language: AppLanguage) {
   return `${WHOLE_NUMBER_FORMATTER_BY_LANGUAGE[language].format(value)} VND`
 }

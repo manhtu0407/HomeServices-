@@ -45,12 +45,6 @@ function truncateWithoutSplittingSurrogate(value: string, maxLength: number): st
   return lastCodeUnit >= 0xD800 && lastCodeUnit <= 0xDBFF ? truncated.slice(0, -1) : truncated
 }
 
-export function sanitizeKaelTextArray(input: readonly string[], maxLength = 180): string[] {
-  return input
-    .map((item) => sanitizeKaelText(item, maxLength))
-    .filter((item) => item.length > 0)
-}
-
 export function sanitizeKaelOutputObject<T>(value: T): T {
   if (typeof value === 'string') return sanitizeKaelText(value) as T
   if (Array.isArray(value)) return value.map((item) => sanitizeKaelOutputObject(item)) as T

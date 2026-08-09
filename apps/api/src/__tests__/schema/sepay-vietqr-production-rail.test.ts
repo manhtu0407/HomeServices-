@@ -13,7 +13,7 @@ describe('SePay VietQR production payment rail', () => {
   const paymentGateMigrationPath = 'supabase/migrations/20260614093000_sepay_vietqr_payment_gate.sql'
   const migrationPath = 'supabase/migrations/20260727153000_sepay_vietqr_webhook_atomic.sql'
   const ledgerMigrationPath = 'supabase/migrations/20260727160000_worker_payment_ledger_commission.sql'
-  const paymentServicePath = 'supabase/functions/mobile-api/_shared/services/sepay-vietqr-payment.service.ts'
+  const paymentServicePath = 'supabase/functions/mobile-api/_shared/domains/payment/sepay-vietqr.ts'
   const edgeFunction = readIfPresent(edgeFunctionPath)
   const paymentGateMigration = readIfPresent(paymentGateMigrationPath)
   const migration = readIfPresent(migrationPath)
@@ -28,6 +28,11 @@ describe('SePay VietQR production payment rail', () => {
     expect(edgeFunction).toContain('x-sepay-timestamp')
     expect(edgeFunction).not.toContain('request.json()')
     expect(edgeFunction).not.toMatch(/console\.(?:log|warn|error)\([^\n]*(?:rawBody|raw_body|payment_transfer_content)/)
+  })
+
+  it('does not apply the new-intent kill switch to verified provider reconciliation', () => {
+    expect(edgeFunction).not.toContain('assertHarnessCapabilityEnabled')
+    expect(edgeFunction).not.toContain('payment_sepay')
   })
 
   it('has an explicitly configured JWT-free provider boundary only', () => {

@@ -18,7 +18,7 @@ import {
   createMobileApiHandler,
   type MobileApiAuthResult,
   type MobileApiServices,
-} from '../../../../../supabase/functions/mobile-api/_shared/router'
+} from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 const customerAuth: MobileApiAuthResult = {
   success: true,
@@ -32,11 +32,14 @@ const workerAuth: MobileApiAuthResult = {
   role: 'worker',
   supabase: {},
 }
+const adminRpc = vi.fn(async () => ({ data: true, error: null }))
+const adminSupabase = { rpc: adminRpc }
 const adminAuth: MobileApiAuthResult = {
   success: true,
   user: { id: '99999999-9999-4999-8999-999999999999' },
   role: 'admin',
-  supabase: {},
+  supabase: adminSupabase,
+  privilegedSupabase: adminSupabase,
 }
 
 // The Edge handler delegates role enforcement to `authenticate(request, route.roles)`

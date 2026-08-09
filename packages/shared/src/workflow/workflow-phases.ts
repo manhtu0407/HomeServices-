@@ -24,7 +24,7 @@ export const WORKFLOW_PHASES = Object.freeze([
 
 export type WorkflowPhase = (typeof WORKFLOW_PHASES)[number]
 
-export const JOB_STATUS_TO_WORKFLOW_PHASE = Object.freeze({
+const JOB_STATUS_TO_WORKFLOW_PHASE = Object.freeze({
   draft: 'intake_started',
   analyzing: 'kael_estimating',
   estimate_ready: 'kael_explaining',

@@ -4,13 +4,13 @@ import ts from 'typescript'
 import { z } from 'zod'
 
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
-import { runCustomerAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/customer-assistant'
-import { classifyIntent, diagnoseIntake } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
-import { searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
-import { reviewScopeChange, computeScopeChangeEstimate } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
-import { callStructuredAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/structured-call'
-import type { AIRequest, EdgeGuardClient } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
+import { runCustomerAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant'
+import { classifyIntent, diagnoseIntake } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent'
+import { searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/market'
+import { reviewScopeChange, computeScopeChangeEstimate } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/scope-change'
+import { callStructuredAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/structured-call'
+import type { AIRequest, EdgeGuardClient } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/worker-assist'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 const request: AIRequest = {
@@ -279,34 +279,54 @@ describe('mobile-api Kael structured output health', () => {
   })
 
   it('persists scope-change attempts exactly once across failure, direct, and incident paths', () => {
-    const source = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts', import.meta.url),
+    const requestSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/request.ts', import.meta.url),
       'utf8',
     )
-    const failClosedGuard = source.indexOf('if (estimate.fallback_used')
-    const failureAudit = source.indexOf('await logScopeChangeEstimateApiCall(client, jobId, estimate)', failClosedGuard)
-    const durableDirectAudit = source.indexOf('buildDirectScopeEffectPayloads(jobId, enrichedEstimate, learningInput)')
-    const directReturn = source.indexOf('return response')
-    const incidentAudit = source.indexOf('await logScopeChangeEstimateApiCall(client, jobId, enrichedEstimate)', directReturn)
+    const supportSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/support.ts', import.meta.url),
+      'utf8',
+    )
+    const effectsSource = [
+      'effects.ts',
+      'effects-incident.ts',
+      'effects-payloads.ts',
+      'effects-drain.ts',
+    ].map((path) => readFileSync(
+      new URL(`../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/${path}`, import.meta.url),
+      'utf8',
+    )).join('\n')
+    const failClosedGuard = supportSource.indexOf('if (\n    estimate.fallback_used')
+    const failureAudit = supportSource.indexOf(
+      'await logScopeChangeEstimateApiCall(client, jobId, estimate)',
+      failClosedGuard,
+    )
+    const durableDirectAudit = requestSource.indexOf('buildDirectScopeEffectPayloads(')
+    const directReturn = requestSource.indexOf('if (!incidentProposal)')
+    const incidentFinalizer = requestSource.indexOf('await finalizeIncidentScopeChange', directReturn)
+    const incidentAudit = effectsSource.indexOf('await logScopeChangeEstimateApiCall(client, jobId, enrichedEstimate)')
 
     expect(failureAudit).toBeGreaterThan(failClosedGuard)
-    expect(durableDirectAudit).toBeGreaterThan(failureAudit)
-    expect(durableDirectAudit).toBeLessThan(directReturn)
-    expect(incidentAudit).toBeGreaterThan(directReturn)
-    expect(source.match(/logScopeChangeEstimateApiCall\(client, jobId,/g)).toHaveLength(2)
+    expect(durableDirectAudit).toBeGreaterThan(-1)
+    expect(directReturn).toBeGreaterThan(durableDirectAudit)
+    expect(incidentFinalizer).toBeGreaterThan(directReturn)
+    expect(incidentAudit).toBeGreaterThan(-1)
+    expect(
+      (supportSource + '\n' + effectsSource).match(/logScopeChangeEstimateApiCall\(client, jobId,/g),
+    ).toHaveLength(2)
   })
 
   it('routes every live structured Edge caller through the shared wrapper', () => {
     const callers: Record<string, number> = {
-      'intent.ts': 2,
-      'vision.ts': 2,
-      'market.ts': 2,
-      'scope-change.ts': 4,
-      'worker-assist.ts': 1,
-      'customer-assistant.ts': 1,
-      'job-incident.ts': 1,
-      'price-synthesis-ab.ts': 1,
-      'cron/process-learning-queue.ts': 1,
+      'tools/intent.ts': 2,
+      'tools/vision.ts': 2,
+      'tools/market-provider.ts': 1,
+      'agents/scope-change.ts': 4,
+      'agents/worker-assist.ts': 1,
+      'agents/customer-assistant.ts': 1,
+      'agents/job-incident.ts': 1,
+      'learning/price-synthesis-ab.ts': 1,
+      'learning/provider-deepseek.ts': 1,
     }
     for (const [file, expectedCalls] of Object.entries(callers)) {
       const source = readFileSync(

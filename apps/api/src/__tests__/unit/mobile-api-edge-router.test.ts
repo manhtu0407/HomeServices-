@@ -3,13 +3,14 @@ import {
   createMobileApiHandler,
   type MobileApiAuthResult,
   type MobileApiServices,
-} from '../../../../../supabase/functions/mobile-api/_shared/router'
+} from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 const customerAuth: MobileApiAuthResult = {
   success: true,
   user: { id: '11111111-1111-4111-8111-111111111111' },
   role: 'customer',
   supabase: {},
+  userSupabase: {},
 }
 
 const workerAuth: MobileApiAuthResult = {
@@ -17,6 +18,7 @@ const workerAuth: MobileApiAuthResult = {
   user: { id: '33333333-3333-4333-8333-333333333333' },
   role: 'worker',
   supabase: {},
+  userSupabase: {},
 }
 
 const adminAuth: MobileApiAuthResult = {
@@ -24,12 +26,13 @@ const adminAuth: MobileApiAuthResult = {
   user: { id: '99999999-9999-4999-8999-999999999999' },
   role: 'admin',
   supabase: {},
+  userSupabase: {},
 }
 
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
     getKaelCharter: vi.fn(async () => ({
-      charter_version: '2026-08-01.p10',
+      charter_version: '2026-08-06.p11',
       identity_summary: 'Kael is the Home Services assistant.',
       locked_files: ['identity.md', 'persona.md', 'mission-values.md'],
       tunable_files: ['tone-matrix.yaml', 'language-rules.md', 'forbidden-language.json', 'style-guidelines.md'],
@@ -159,9 +162,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       deletion_pending: false,
     })),
     listJobMessages: vi.fn(),
-    sendJobMessage: vi.fn(),
-    decideWorkerCancellation: vi.fn(),
-    confirmCompletion: vi.fn(),
+    sendJobMessage: vi.fn(),    confirmCompletion: vi.fn(),
     createPaymentIntent: vi.fn(),
     confirmWorkerCashPayment: vi.fn(),
     confirmStagingPayment: vi.fn(),

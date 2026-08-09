@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { EdgeAiSecrets } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
-import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { createWorkerKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat.service'
+import type { EdgeAiSecrets } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import { runWorkerAssist } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/worker-assist'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { createWorkerKaelChat } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/kael-chat'
 import {
   claimWorkerKaelChatTurn,
   completeWorkerKaelChatTurn,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat-claims.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/kael-chat-claims'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 const workerId = '11111111-1111-4111-8111-111111111111'

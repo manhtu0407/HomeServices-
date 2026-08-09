@@ -1,6 +1,6 @@
 ---
 name: kael-diagnose
-description: Diagnose and fix bugs, failing tests, build failures, runtime errors, performance regressions, or flaky behavior in the Home Services codebase. Use when something is broken, a test fails, a build breaks, or behavior is wrong, before patching. Forces a reproduce-first, hypothesis-driven fix with a regression test.
+description: Diagnose and fix bugs, failing tests, build failures, runtime errors, performance regressions, or flaky behavior in the NestScout codebase. Use when something is broken, a test fails, a build breaks, or behavior is wrong, before patching. Forces a reproduce-first, hypothesis-driven fix with a regression test.
 ---
 
 # kael-diagnose

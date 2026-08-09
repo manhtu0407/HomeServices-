@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
-import { __resetRateLimitStoreForTests } from '../../../../../supabase/functions/mobile-api/_shared/rate-limit'
-import { answerKaelAssistant } from '../../../../../supabase/functions/mobile-api/_shared/services/customer-assistant.service'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import { __resetRateLimitStoreForTests } from '../../../../../supabase/functions/mobile-api/_shared/platform/rate-limit'
+import { answerKaelAssistant } from '../../../../../supabase/functions/mobile-api/_shared/domains/customer/assistant'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 
 const customerId = '11111111-1111-4111-8111-111111111111'
 const jobId = '22222222-2222-4222-8222-222222222222'

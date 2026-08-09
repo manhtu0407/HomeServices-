@@ -1,5 +1,5 @@
 import { KAEL_ROUTING_CONFIG, type ProviderRoute } from "./routing.config.ts";
-import { KAEL_PURPOSES, type AIProvider, type KaelPurpose } from "../types.ts";
+import { KAEL_PURPOSES, type AIProvider, type KaelPurpose } from "../contracts/types.ts";
 import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
 
 export type ProviderChoice = ProviderRoute & {
@@ -158,7 +158,7 @@ export function circuitAwareProviderCandidatesForPurpose(
   return providerCandidatesForPurpose(purposeInput, withCircuitBreaker(options));
 }
 
-export function parseKaelPurpose(value: string): KaelPurpose {
+function parseKaelPurpose(value: string): KaelPurpose {
   if ((KAEL_PURPOSES as readonly string[]).includes(value)) {
     return value as KaelPurpose;
   }

@@ -51,7 +51,7 @@ describe('Kael durable guards migration', () => {
 
   it('wires the default-off rollout flag without putting it in mobile config', () => {
     const env = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/env.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/_shared/platform/env.ts', import.meta.url),
       'utf8',
     )
     const example = readFileSync(
@@ -63,15 +63,15 @@ describe('Kael durable guards migration', () => {
       'utf8',
     )
     const services = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/domains.ts', import.meta.url),
       'utf8',
     )
     const customerChat = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services/kael-chat.service.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', import.meta.url),
       'utf8',
     )
     const workerChat = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts', import.meta.url),
+      new URL('../../../../../supabase/functions/mobile-api/_shared/domains/worker/kael-chat-turn.ts', import.meta.url),
       'utf8',
     )
 
@@ -80,7 +80,9 @@ describe('Kael durable guards migration', () => {
     expect(provider).toContain('isDurableCircuitOpen')
     expect(provider).toContain('recordDurableCircuitFailure')
     expect(provider).toContain('recordDurableCircuitSuccess')
-    expect(services).toContain('durableGuardClient: ctx.supabase')
+    expect(services).toContain('durableGuardClient:')
+    expect(services).toContain('ctx.privilegedSupabase')
+    expect(services).toContain('ctx.supabase')
     expect(customerChat).toContain('takeDurableKaelChatRateLimit')
     expect(workerChat).toContain('takeDurableKaelChatRateLimit')
   })

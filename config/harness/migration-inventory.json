@@ -1,0 +1,1584 @@
+{
+  "version": "1.0.0",
+  "historicalBaseline": {
+    "file": "config/harness/migration-baseline.json",
+    "immutableThroughVersion": "20260805090000",
+    "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
+  },
+  "migrationCount": 224,
+  "migrationsSha256": "bce1e7b8c3f501e20a121cf4f3b586397d796b88d62983250cf967311c4b640f",
+  "databaseTypes": {
+    "file": "packages/shared/src/types/database.types.ts",
+    "sha256": "b92d356bd8862c8c619c1484e34d278e682a41a1617b077bef0084188d969050"
+  },
+  "entries": [
+    {
+      "version": "20260511000000",
+      "name": "init_schema",
+      "file": "supabase/migrations/20260511000000_init_schema.sql",
+      "sha256": "edca38e693604b14a405fa211a1343aac7779fe64c1ad0e80cf57a03f2a523e6",
+      "bytes": 17530
+    },
+    {
+      "version": "20260512000000",
+      "name": "security_hardening",
+      "file": "supabase/migrations/20260512000000_security_hardening.sql",
+      "sha256": "1920176bc350c00f75d6331a3690eeb3d54abaecdb5aaca8b04937fb7fe10ec7",
+      "bytes": 2897
+    },
+    {
+      "version": "20260513114845",
+      "name": "align_structures_workflow",
+      "file": "supabase/migrations/20260513114845_align_structures_workflow.sql",
+      "sha256": "1e2f1489aef8c92c684ca1a5030dba73a5153c8cb6a0679023b725a2d919446a",
+      "bytes": 28314
+    },
+    {
+      "version": "20260513125704",
+      "name": "harden_function_execution",
+      "file": "supabase/migrations/20260513125704_harden_function_execution.sql",
+      "sha256": "2a3c10b5c06e3e2b12fce466e00c3957054899f16d04b5fa7435e1af781702e0",
+      "bytes": 930
+    },
+    {
+      "version": "20260513131949",
+      "name": "revoke_rls_auto_enable_rpc",
+      "file": "supabase/migrations/20260513131949_revoke_rls_auto_enable_rpc.sql",
+      "sha256": "be7a8fe88eac661eefd5a4a4f45f3a2a6fdd22c68e02c78bd3a3b166a09ed5ea",
+      "bytes": 1146
+    },
+    {
+      "version": "20260516075310",
+      "name": "expand_service_taxonomy",
+      "file": "supabase/migrations/20260516075310_expand_service_taxonomy.sql",
+      "sha256": "9c60c4e15cf64eb6d2cf343a7ffa22291248e8c601f8ad2fc8a0c6ad2c668623",
+      "bytes": 5465
+    },
+    {
+      "version": "20260516075331",
+      "name": "worker_registration_fields",
+      "file": "supabase/migrations/20260516075331_worker_registration_fields.sql",
+      "sha256": "882dfb5e55977703850b53785236d260c340c2c79ef8215343fa205b3df00744",
+      "bytes": 1708
+    },
+    {
+      "version": "20260516085408",
+      "name": "add_fk_indexes",
+      "file": "supabase/migrations/20260516085408_add_fk_indexes.sql",
+      "sha256": "4a74b58f6c85b03da640f6b954a3aaa364c0141f0e40f1da4c544e6b95817bf9",
+      "bytes": 1077
+    },
+    {
+      "version": "20260516141918",
+      "name": "expand_service_taxonomy",
+      "file": "supabase/migrations/20260516141918_expand_service_taxonomy.sql",
+      "sha256": "e890932d1acdf66c3bb586d8d9223a61af3250a880ec1afdcd4efb901149b8fd",
+      "bytes": 5628
+    },
+    {
+      "version": "20260516141919",
+      "name": "worker_registration_fields",
+      "file": "supabase/migrations/20260516141919_worker_registration_fields.sql",
+      "sha256": "0b2733f669495f6619f4d3843d0ce614f4f0404da09042fd6805b75150c278d3",
+      "bytes": 1732
+    },
+    {
+      "version": "20260516141920",
+      "name": "add_fk_indexes",
+      "file": "supabase/migrations/20260516141920_add_fk_indexes.sql",
+      "sha256": "f6f6766abb2fb46a90a6695cc5505e36e2af571a185061d696eac0322645c15d",
+      "bytes": 1079
+    },
+    {
+      "version": "20260516143403",
+      "name": "atomic_rpc_functions",
+      "file": "supabase/migrations/20260516143403_atomic_rpc_functions.sql",
+      "sha256": "bcdc9d00d75e66d1c92485dedd0bcc6187127005c29987508185606cdb9ba61d",
+      "bytes": 13779
+    },
+    {
+      "version": "20260516143540",
+      "name": "atomic_rpc_functions_v2",
+      "file": "supabase/migrations/20260516143540_atomic_rpc_functions_v2.sql",
+      "sha256": "c639d7929bb026be3bf8feb5390d2d0ad6bdc220e92de48661b3deb7b00fce12",
+      "bytes": 12682
+    },
+    {
+      "version": "20260516143856",
+      "name": "atomic_rpc_functions_v3",
+      "file": "supabase/migrations/20260516143856_atomic_rpc_functions_v3.sql",
+      "sha256": "b49c8102793321e23ae9f6817ab7ab580cdff16e4390351cbb6310d364f3fa28",
+      "bytes": 12552
+    },
+    {
+      "version": "20260516144400",
+      "name": "atomic_rpc_functions",
+      "file": "supabase/migrations/20260516144400_atomic_rpc_functions.sql",
+      "sha256": "e5bc63d2570e7e1f44dc1af701e14af61fc5782b4cac5fc988823483775cd3f7",
+      "bytes": 12530
+    },
+    {
+      "version": "20260517154846",
+      "name": "submit_review_atomic_rpc",
+      "file": "supabase/migrations/20260517154846_submit_review_atomic_rpc.sql",
+      "sha256": "8a12330978b6e411113821b0dbecb22ce26ca50d17a051251f0e8ad718f0f5b8",
+      "bytes": 4093
+    },
+    {
+      "version": "20260517155954",
+      "name": "mobile_rpc_security_invoker",
+      "file": "supabase/migrations/20260517155954_mobile_rpc_security_invoker.sql",
+      "sha256": "8136360baf5245fdf02f4daaf4057c1ebf58a312fb65f59e370b6f79486ed766",
+      "bytes": 863
+    },
+    {
+      "version": "20260517163541",
+      "name": "harden_scope_change_rpc_races",
+      "file": "supabase/migrations/20260517163541_harden_scope_change_rpc_races.sql",
+      "sha256": "b5aa93f529af435b66d9f12d9ef8bb9185da01c3079da8e6cee3df0e949a0789",
+      "bytes": 7835
+    },
+    {
+      "version": "20260517192455",
+      "name": "harden_auth_signup_trigger",
+      "file": "supabase/migrations/20260517192455_harden_auth_signup_trigger.sql",
+      "sha256": "5353e74c3e0206ce4d77aa9226fdac29c5d89ebc86ccb453a2cef9292e5d5d24",
+      "bytes": 1399
+    },
+    {
+      "version": "20260517225000",
+      "name": "scope_change_decision_check",
+      "file": "supabase/migrations/20260517225000_scope_change_decision_check.sql",
+      "sha256": "d08a7a58e3dfd49c54ba3618fa7f5d6b9016df09e25634f5ccfbab92d02008e6",
+      "bytes": 465
+    },
+    {
+      "version": "20260517233000",
+      "name": "cancel_job_before_accept_atomic",
+      "file": "supabase/migrations/20260517233000_cancel_job_before_accept_atomic.sql",
+      "sha256": "1684c326d7e9de7fa1129164e50bfeefab465a8a4ff46e44342d9b91a24d88bd",
+      "bytes": 2575
+    },
+    {
+      "version": "20260517234500",
+      "name": "accept_broadcast_worker_eligibility",
+      "file": "supabase/migrations/20260517234500_accept_broadcast_worker_eligibility.sql",
+      "sha256": "08ba30e2c84b2453c700263f737ccc927ce52adf6d1cb634405faea80536df82",
+      "bytes": 4383
+    },
+    {
+      "version": "20260518001200",
+      "name": "lock_direct_client_writes_for_edge_runtime",
+      "file": "supabase/migrations/20260518001200_lock_direct_client_writes_for_edge_runtime.sql",
+      "sha256": "869bd04616f640666c697de421a5769e4d350e3b21cc9ca071686bbe565ccfb1",
+      "bytes": 817
+    },
+    {
+      "version": "20260518002000",
+      "name": "accept_broadcast_lock_worker_profile",
+      "file": "supabase/migrations/20260518002000_accept_broadcast_lock_worker_profile.sql",
+      "sha256": "de0fe96d1362f38d816aa14262a951417ab14e38f2510a235042461e54db4125",
+      "bytes": 4692
+    },
+    {
+      "version": "20260518003500",
+      "name": "set_worker_availability_atomic",
+      "file": "supabase/migrations/20260518003500_set_worker_availability_atomic.sql",
+      "sha256": "cf4f6d5d1e3415a7b846cc934eea4fa9b090091e5029c8adde4047b6796fcb2e",
+      "bytes": 2761
+    },
+    {
+      "version": "20260518005000",
+      "name": "accept_broadcast_lock_job_first",
+      "file": "supabase/migrations/20260518005000_accept_broadcast_lock_job_first.sql",
+      "sha256": "ecbbadbd85d619da94510d5e72c3c643664b5eda90cc6f729744cb4b9d44c5fa",
+      "bytes": 5313
+    },
+    {
+      "version": "20260518010500",
+      "name": "availability_offline_expires_sent_broadcasts",
+      "file": "supabase/migrations/20260518010500_availability_offline_expires_sent_broadcasts.sql",
+      "sha256": "f9ae408e85c205b375334280d2e9d7377ed9918cb966e84361996b6e66d1bc4b",
+      "bytes": 3124
+    },
+    {
+      "version": "20260518011500",
+      "name": "reassign_all_sent_broadcasts_on_accept",
+      "file": "supabase/migrations/20260518011500_reassign_all_sent_broadcasts_on_accept.sql",
+      "sha256": "710a52010cca7493a27e9ce45c947332773ecdb744feb45c5fe0bab285d8db3c",
+      "bytes": 5449
+    },
+    {
+      "version": "20260518013000",
+      "name": "accept_broadcast_service_district_guard",
+      "file": "supabase/migrations/20260518013000_accept_broadcast_service_district_guard.sql",
+      "sha256": "54086db1fcd194cb19b612cad96e02436a035f3f191c4d07302c684265b9d789",
+      "bytes": 6119
+    },
+    {
+      "version": "20260518032000",
+      "name": "revoke_authenticated_workflow_dml",
+      "file": "supabase/migrations/20260518032000_revoke_authenticated_workflow_dml.sql",
+      "sha256": "00e8b75435e13e7a4c1121150c005182494271bb2f54039d09191a07915ea926",
+      "bytes": 1571
+    },
+    {
+      "version": "20260518040500",
+      "name": "qualify_accept_broadcast_columns",
+      "file": "supabase/migrations/20260518040500_qualify_accept_broadcast_columns.sql",
+      "sha256": "cfe599ec87b57476eed1c5acf7940b8d51902c4d2dc7ed589b41c3068c7de600",
+      "bytes": 6343
+    },
+    {
+      "version": "20260518041500",
+      "name": "remove_accept_broadcast_created_at_order",
+      "file": "supabase/migrations/20260518041500_remove_accept_broadcast_created_at_order.sql",
+      "sha256": "bd6e684b6efc36f5f3829039d4d58fbef20f1b36b4b443d812c4d47f1c61b523",
+      "bytes": 6294
+    },
+    {
+      "version": "20260518043000",
+      "name": "harden_private_rls_helper_execution",
+      "file": "supabase/migrations/20260518043000_harden_private_rls_helper_execution.sql",
+      "sha256": "d02597f0f6dadd6c8408ec6eae2c921d8092a82a1762b75d2a70c580b5254144",
+      "bytes": 2643
+    },
+    {
+      "version": "20260518044500",
+      "name": "consolidate_admin_rls_select_policies",
+      "file": "supabase/migrations/20260518044500_consolidate_admin_rls_select_policies.sql",
+      "sha256": "9c8ecfa5d7c5071385846cdb2f428a7fea58e86805fb709bfe23f17eed8d7d7b",
+      "bytes": 13399
+    },
+    {
+      "version": "20260518070000",
+      "name": "accept_broadcast_privacy_guard",
+      "file": "supabase/migrations/20260518070000_accept_broadcast_privacy_guard.sql",
+      "sha256": "f46d5b89933bbf8ff804bf48ffc2cffeb5a3cdb22933cb1f821bf2feaf54c7cf",
+      "bytes": 6333
+    },
+    {
+      "version": "20260518071000",
+      "name": "accept_broadcast_privacy_guard_v2",
+      "file": "supabase/migrations/20260518071000_accept_broadcast_privacy_guard_v2.sql",
+      "sha256": "5301a67f17775ed6bb6cd2bf5c4bd7708b9f397cf4d6890d97ef887980802139",
+      "bytes": 6406
+    },
+    {
+      "version": "20260518181500",
+      "name": "scope_change_reject_cancels_job",
+      "file": "supabase/migrations/20260518181500_scope_change_reject_cancels_job.sql",
+      "sha256": "1d1a3c2d9a14f10e10346ce5a72219211bc5bca729e59603c7acc74d500ddd45",
+      "bytes": 4529
+    },
+    {
+      "version": "20260519090000",
+      "name": "add_cleaning_service_type",
+      "file": "supabase/migrations/20260519090000_add_cleaning_service_type.sql",
+      "sha256": "86c58ce58a0a90a0063bd2d5e3d39759d61c71899e214b83069b6649035dea5d",
+      "bytes": 439
+    },
+    {
+      "version": "20260519090100",
+      "name": "add_cleaning_service_box",
+      "file": "supabase/migrations/20260519090100_add_cleaning_service_box.sql",
+      "sha256": "40571534341d3e748c3cf9b9030018bbcae6524dd41ea00d3db15f74f8344ad5",
+      "bytes": 6620
+    },
+    {
+      "version": "20260519090200",
+      "name": "supabase_boxes_notifications_media_cancellation",
+      "file": "supabase/migrations/20260519090200_supabase_boxes_notifications_media_cancellation.sql",
+      "sha256": "5c74fb61cff6ec7e31f0d70dfeaf66c7ccd6c03ad947fd3a5a37931374add9db",
+      "bytes": 19713
+    },
+    {
+      "version": "20260519120720",
+      "name": "fix_worker_cancellation_race_and_media_stage_rls",
+      "file": "supabase/migrations/20260519120720_fix_worker_cancellation_race_and_media_stage_rls.sql",
+      "sha256": "2bb5132dacf030224a9e2b25e7f34d428b11d3b6b953c4443ad998845e2a274d",
+      "bytes": 5542
+    },
+    {
+      "version": "20260519122000",
+      "name": "consolidate_box_admin_rls_policies",
+      "file": "supabase/migrations/20260519122000_consolidate_box_admin_rls_policies.sql",
+      "sha256": "a4f8ae4bea4f38e66ec5aeb1c9447828361ac938848089726077bd54767b650d",
+      "bytes": 3603
+    },
+    {
+      "version": "20260519145538",
+      "name": "fix_vietnamese_catalog_labels",
+      "file": "supabase/migrations/20260519145538_fix_vietnamese_catalog_labels.sql",
+      "sha256": "3d30dc892bab87f63b07f5a35e9fdcfacac22bad49d53289908357da9d43874a",
+      "bytes": 3196
+    },
+    {
+      "version": "20260520130514",
+      "name": "kael_chat_sessions",
+      "file": "supabase/migrations/20260520130514_kael_chat_sessions.sql",
+      "sha256": "1c1e4000332f962c63d983159e28b7b9a93069b0adf5781967d6d33426989020",
+      "bytes": 8683
+    },
+    {
+      "version": "20260520141200",
+      "name": "worker_cancellation_auto_reassign",
+      "file": "supabase/migrations/20260520141200_worker_cancellation_auto_reassign.sql",
+      "sha256": "434edba971b7d2a9c4876ff6501508af67e86d6bf0010dd5383f1fa496109571",
+      "bytes": 5750
+    },
+    {
+      "version": "20260521120000",
+      "name": "geo_matching_and_worker_auto_suspend",
+      "file": "supabase/migrations/20260521120000_geo_matching_and_worker_auto_suspend.sql",
+      "sha256": "1ad16d8d228317d38c19ba42826e5165e951870158a5dc2177dcd2f58fe3aa11",
+      "bytes": 8830
+    },
+    {
+      "version": "20260524000000",
+      "name": "kael_final_price_authority",
+      "file": "supabase/migrations/20260524000000_kael_final_price_authority.sql",
+      "sha256": "9fbe0a23b40ebce85c37034e2c144cf1861759cc71254bc048b76edd56429688",
+      "bytes": 6417
+    },
+    {
+      "version": "20260524010000",
+      "name": "worker_approved_notification_trigger",
+      "file": "supabase/migrations/20260524010000_worker_approved_notification_trigger.sql",
+      "sha256": "0c5eea96d49d710be5b4f81e109fa5c7130e514fc1c409a38bfaa5d086fb4a5a",
+      "bytes": 2692
+    },
+    {
+      "version": "20260524105341",
+      "name": "pr29_workflow_risk_fixes",
+      "file": "supabase/migrations/20260524105341_pr29_workflow_risk_fixes.sql",
+      "sha256": "c27c5e4be80c899f0448d757c976fc39071df2675b6e57e424415728df344e14",
+      "bytes": 11641
+    },
+    {
+      "version": "20260525091142",
+      "name": "customer_kael_memory",
+      "file": "supabase/migrations/20260525091142_customer_kael_memory.sql",
+      "sha256": "365b62467a2ad023217007ba0be0a239ab4beccc196b9118924db70c43d4f89f",
+      "bytes": 2109
+    },
+    {
+      "version": "20260525091145",
+      "name": "worker_kael_memory",
+      "file": "supabase/migrations/20260525091145_worker_kael_memory.sql",
+      "sha256": "1f771106b7761e6a3febdac3ca346f8bf4e225e565c76fc3a942cbbf3c05539d",
+      "bytes": 2235
+    },
+    {
+      "version": "20260525091146",
+      "name": "kael_audit_tables",
+      "file": "supabase/migrations/20260525091146_kael_audit_tables.sql",
+      "sha256": "b29e5058d89557316c05254600b6f4eaa387efe1bc25bb12f2d72f09ec83ceb4",
+      "bytes": 4909
+    },
+    {
+      "version": "20260525101441",
+      "name": "ai_provider_routing",
+      "file": "supabase/migrations/20260525101441_ai_provider_routing.sql",
+      "sha256": "6d0ddf412781d67cdfc7d13387e764ec2f6fc12c88ff6f0da73b1503de60cafe",
+      "bytes": 4343
+    },
+    {
+      "version": "20260525101442",
+      "name": "jobs_kael_progress",
+      "file": "supabase/migrations/20260525101442_jobs_kael_progress.sql",
+      "sha256": "1180eeea7cb97b440b0887d4b825e35d0be2507a5f5ef4c8bf210cea5b3abe99",
+      "bytes": 626
+    },
+    {
+      "version": "20260525104648",
+      "name": "kael_vision_latency_buffer",
+      "file": "supabase/migrations/20260525104648_kael_vision_latency_buffer.sql",
+      "sha256": "5d460a1ec7b4afdef600fdc58c86d5c37efc0b85eb8a0196fe82fd71abf25949",
+      "bytes": 153
+    },
+    {
+      "version": "20260525111707",
+      "name": "kael_output_format_p4",
+      "file": "supabase/migrations/20260525111707_kael_output_format_p4.sql",
+      "sha256": "9912f8f31129e87d97d8fb7f6eb42039f41d413b844c1275fdc4c9189e8adbf6",
+      "bytes": 3705
+    },
+    {
+      "version": "20260525113639",
+      "name": "kael_permission_policy_p5",
+      "file": "supabase/migrations/20260525113639_kael_permission_policy_p5.sql",
+      "sha256": "cd11288795297bbb0365726a8634b1ac235e6fb885699c49005ca6ce4f618f92",
+      "bytes": 6455
+    },
+    {
+      "version": "20260525114839",
+      "name": "kael_memory_governance_p6",
+      "file": "supabase/migrations/20260525114839_kael_memory_governance_p6.sql",
+      "sha256": "cad9d149cc240fcb2c4cdb6b07f9c1e8b3b813eb71b03c7618a651f332335581",
+      "bytes": 3714
+    },
+    {
+      "version": "20260525121445",
+      "name": "kael_learning_skills_p7",
+      "file": "supabase/migrations/20260525121445_kael_learning_skills_p7.sql",
+      "sha256": "54e04d46dbd86a656acd53cbc16b28e0db1abe8d6e295e006a003d6d5134451e",
+      "bytes": 5294
+    },
+    {
+      "version": "20260525122335",
+      "name": "consolidate_kael_memory_read_policies",
+      "file": "supabase/migrations/20260525122335_consolidate_kael_memory_read_policies.sql",
+      "sha256": "895dba45f87ffc98c43e8149c36c618744be7636a182a5626500d1d871e05370",
+      "bytes": 1494
+    },
+    {
+      "version": "20260525124010",
+      "name": "kael_charter_audit_p8",
+      "file": "supabase/migrations/20260525124010_kael_charter_audit_p8.sql",
+      "sha256": "f37a95130916dc49f1c8854ed17c3b290c86fedd19788d4653b090a1ad3da81e",
+      "bytes": 1572
+    },
+    {
+      "version": "20260525132115",
+      "name": "kael_demanding_customer_case_p10",
+      "file": "supabase/migrations/20260525132115_kael_demanding_customer_case_p10.sql",
+      "sha256": "11cc5ae85ec2b54deda37c4884550518a9e040d939c4ffc2e270acd58d92d510",
+      "bytes": 4487
+    },
+    {
+      "version": "20260525140826",
+      "name": "kael_worker_cancel_case_p11",
+      "file": "supabase/migrations/20260525140826_kael_worker_cancel_case_p11.sql",
+      "sha256": "f22e4f3ee92ff438f3a45c46f43b4b97a76f7c45a07245eac0299a9df3b95e98",
+      "bytes": 21560
+    },
+    {
+      "version": "20260525230054",
+      "name": "fix_worker_no_show_reason_code_ambiguity",
+      "file": "supabase/migrations/20260525230054_fix_worker_no_show_reason_code_ambiguity.sql",
+      "sha256": "d8e03236fa9500b2592f6158900a8d410e694c39d8f6bdcdadab81fa9ed0a032",
+      "bytes": 3245
+    },
+    {
+      "version": "20260525231655",
+      "name": "kael_customer_cancel_case_p12",
+      "file": "supabase/migrations/20260525231655_kael_customer_cancel_case_p12.sql",
+      "sha256": "355a30aa14a9f300b5f792a048af3d216cef6e2a958a0230202628b849ae83d0",
+      "bytes": 24208
+    },
+    {
+      "version": "20260525233112",
+      "name": "fix_customer_cancel_scope_change_table_p12",
+      "file": "supabase/migrations/20260525233112_fix_customer_cancel_scope_change_table_p12.sql",
+      "sha256": "98af515a3ae9030ba251f2ae6ce7c6ca9623d8740fa76a9a92c423f9d86cc23b",
+      "bytes": 6068
+    },
+    {
+      "version": "20260525233322",
+      "name": "fix_customer_cancel_records_rls_p12",
+      "file": "supabase/migrations/20260525233322_fix_customer_cancel_records_rls_p12.sql",
+      "sha256": "68875c56d9f71ad09a80106ea3ccf178876eba2dad88e01b00c3a47ed5645261",
+      "bytes": 1831
+    },
+    {
+      "version": "20260525234746",
+      "name": "kael_dispute_case_p13",
+      "file": "supabase/migrations/20260525234746_kael_dispute_case_p13.sql",
+      "sha256": "8fcadef43cbfec75ca21b5ce0a65a675497eeff9753ddab54030e4a04da57935",
+      "bytes": 23850
+    },
+    {
+      "version": "20260526002253",
+      "name": "backend_gaps_cleanup_p14",
+      "file": "supabase/migrations/20260526002253_backend_gaps_cleanup_p14.sql",
+      "sha256": "532fb103378fc1df6aca10d57eec8be3adbfc88af8f4587f262a5190223f6593",
+      "bytes": 3422
+    },
+    {
+      "version": "20260526003315",
+      "name": "fix_worker_cancellation_reason_category_ambiguity_p14",
+      "file": "supabase/migrations/20260526003315_fix_worker_cancellation_reason_category_ambiguity_p14.sql",
+      "sha256": "64b6e5e589fe899f93b48b28b604d5a730abde73c6fbd7a3f4f4d8062240e2cd",
+      "bytes": 12852
+    },
+    {
+      "version": "20260526012712",
+      "name": "kael_p17_monitoring_ab_setup",
+      "file": "supabase/migrations/20260526012712_kael_p17_monitoring_ab_setup.sql",
+      "sha256": "1351355e8c6a758e1f85b72d411675bd61ae5eba9de1ae5a6b67e12a125e6470",
+      "bytes": 11567
+    },
+    {
+      "version": "20260526090000",
+      "name": "kael_cost_optimization_q1",
+      "file": "supabase/migrations/20260526090000_kael_cost_optimization_q1.sql",
+      "sha256": "05ecbeb1689416773ed4e1b3bf4d2fa229fd73e531a2d5453e2d11f1705f694f",
+      "bytes": 8352
+    },
+    {
+      "version": "20260526131000",
+      "name": "kael_market_cache_q3",
+      "file": "supabase/migrations/20260526131000_kael_market_cache_q3.sql",
+      "sha256": "ef89ef2d0e91765dba64b2ea8ea376e4a3d6e401440baea3b9ce268f5d5f47de",
+      "bytes": 4136
+    },
+    {
+      "version": "20260526142000",
+      "name": "kael_q4_background_optimization",
+      "file": "supabase/migrations/20260526142000_kael_q4_background_optimization.sql",
+      "sha256": "0593b4c6af998a818faa54b0d4a6da297a46d9d3a27ec3fed9f50985eb73606e",
+      "bytes": 8187
+    },
+    {
+      "version": "20260526195300",
+      "name": "source_trust_registry_f26",
+      "file": "supabase/migrations/20260526195300_source_trust_registry_f26.sql",
+      "sha256": "13b205358c0e9f8e62ba6c82988786d69cd56b4215717d566221f2ebea10e4ce",
+      "bytes": 6067
+    },
+    {
+      "version": "20260526203000",
+      "name": "f26_fk_performance_indexes",
+      "file": "supabase/migrations/20260526203000_f26_fk_performance_indexes.sql",
+      "sha256": "f34b4361b84f1c0419df149dbd210cafb7a593c63163aa0a2b0d59e49a6b9162",
+      "bytes": 1984
+    },
+    {
+      "version": "20260526203100",
+      "name": "f26_drop_unused_indexes",
+      "file": "supabase/migrations/20260526203100_f26_drop_unused_indexes.sql",
+      "sha256": "2006b697043043c1916d930d35772f8beced92094736ab3e01acd86ccec6a794",
+      "bytes": 2838
+    },
+    {
+      "version": "20260527090118",
+      "name": "allow_vietmap_geo_source",
+      "file": "supabase/migrations/20260527090118_allow_vietmap_geo_source.sql",
+      "sha256": "8d872facbcfa5fffe11cf4b3d224b4718796aa4b30f1d7cd6d89fbd34da6480f",
+      "bytes": 213
+    },
+    {
+      "version": "20260529090000",
+      "name": "kael_chat_unsupported_status",
+      "file": "supabase/migrations/20260529090000_kael_chat_unsupported_status.sql",
+      "sha256": "18dde73b9b8d01442e115f1117c7f6ffbcff2f0dfa760f326cd6d3260b9a67cf",
+      "bytes": 877
+    },
+    {
+      "version": "20260529100000",
+      "name": "add_idempotency_keys",
+      "file": "supabase/migrations/20260529100000_add_idempotency_keys.sql",
+      "sha256": "918caafd239f185c1d77ae201fddab7898de873501ee36b3a23c4c9d727d88d8",
+      "bytes": 1210
+    },
+    {
+      "version": "20260529110000",
+      "name": "kael_chat_rate_limit_log",
+      "file": "supabase/migrations/20260529110000_kael_chat_rate_limit_log.sql",
+      "sha256": "280a86d0f8c3c7752ff4e13f4c71a6b063862c4c90a1e67f6004e13214c2a79b",
+      "bytes": 2506
+    },
+    {
+      "version": "20260529120000",
+      "name": "normalize_worker_districts",
+      "file": "supabase/migrations/20260529120000_normalize_worker_districts.sql",
+      "sha256": "d12a1224af82b007b23031d3230a7c33ea19f7920edfc027b62419be60ab9f7b",
+      "bytes": 5388
+    },
+    {
+      "version": "20260529130000",
+      "name": "scrub_chat_turns_pii",
+      "file": "supabase/migrations/20260529130000_scrub_chat_turns_pii.sql",
+      "sha256": "4d1edadbdab372149ae93170b9763798438aecd90c360f0fe9d2f0bb9ba3fb87",
+      "bytes": 1486
+    },
+    {
+      "version": "20260530100110",
+      "name": "fix_recent_pr_audit_gaps",
+      "file": "supabase/migrations/20260530100110_fix_recent_pr_audit_gaps.sql",
+      "sha256": "b5192b7b6d025846bbfda58459d597374421bf71c873b60db440fdfd493470eb",
+      "bytes": 2304
+    },
+    {
+      "version": "20260602090000",
+      "name": "customer_kael_feedback",
+      "file": "supabase/migrations/20260602090000_customer_kael_feedback.sql",
+      "sha256": "dbb42694f8736b4530088b4cb8685b00a24da147736ea77d39b4c3a0499359ab",
+      "bytes": 3031
+    },
+    {
+      "version": "20260604090000",
+      "name": "revoke_anon_public_grants",
+      "file": "supabase/migrations/20260604090000_revoke_anon_public_grants.sql",
+      "sha256": "df960495d0234ace011a2e84b7252cf485f7e93649bd9ac62e2aceb84f3d6736",
+      "bytes": 1289
+    },
+    {
+      "version": "20260604090100",
+      "name": "revoke_residual_authenticated_dml",
+      "file": "supabase/migrations/20260604090100_revoke_residual_authenticated_dml.sql",
+      "sha256": "924daca19ba000f8fa4fc2b108a9fe81307464c40cfdfa7c405c82f307669d99",
+      "bytes": 1403
+    },
+    {
+      "version": "20260604090200",
+      "name": "harden_default_privileges_public",
+      "file": "supabase/migrations/20260604090200_harden_default_privileges_public.sql",
+      "sha256": "e7172a6c66c1d5d3d450b2d5f323dc95c7c2ba1149f1b4624af65caa4335e211",
+      "bytes": 1048
+    },
+    {
+      "version": "20260604091224",
+      "name": "harden_public_grants_followup",
+      "file": "supabase/migrations/20260604091224_harden_public_grants_followup.sql",
+      "sha256": "4a637cede3278c65d4ddf6067a041fd2fad03b207c5040f852a4df25be418506",
+      "bytes": 2418
+    },
+    {
+      "version": "20260604093025",
+      "name": "harden_global_function_default_privileges",
+      "file": "supabase/migrations/20260604093025_harden_global_function_default_privileges.sql",
+      "sha256": "e79d2d43de819c35ffc6d1e9b8d435e92af0484aa3b086a5830be5532ef4c980",
+      "bytes": 529
+    },
+    {
+      "version": "20260604095731",
+      "name": "combine_customer_kael_feedback_select_policy",
+      "file": "supabase/migrations/20260604095731_combine_customer_kael_feedback_select_policy.sql",
+      "sha256": "d232600820441043442914c56a63b8707e5cfb150d8776a133ff19b1bbc0a679",
+      "bytes": 889
+    },
+    {
+      "version": "20260604100550",
+      "name": "revoke_authenticated_table_ddl_privileges",
+      "file": "supabase/migrations/20260604100550_revoke_authenticated_table_ddl_privileges.sql",
+      "sha256": "edddb3eb834ab41c05bf5dfc07fa254e194f34f714b5266611e1d94c1aea5999",
+      "bytes": 754
+    },
+    {
+      "version": "20260604160000",
+      "name": "promote_learning_candidate_rpc",
+      "file": "supabase/migrations/20260604160000_promote_learning_candidate_rpc.sql",
+      "sha256": "89fcf6fec33a5d1438620640bf64b49ff8599c790b77c20d39c4409158f4204e",
+      "bytes": 7662
+    },
+    {
+      "version": "20260604170000",
+      "name": "rollback_learning_rule_rpc",
+      "file": "supabase/migrations/20260604170000_rollback_learning_rule_rpc.sql",
+      "sha256": "c149745e53cdfe09254be9eb93c0a881f7d47f985fdf2ce7797591199d9f3485",
+      "bytes": 3541
+    },
+    {
+      "version": "20260604180000",
+      "name": "learning_candidate_manual_review_status",
+      "file": "supabase/migrations/20260604180000_learning_candidate_manual_review_status.sql",
+      "sha256": "addc59aa5344702eb9dc6c0a56145ec603020cbebc45649cd6c73c2eebf2e7a7",
+      "bytes": 572
+    },
+    {
+      "version": "20260604181000",
+      "name": "learning_candidate_admin_review_rpc",
+      "file": "supabase/migrations/20260604181000_learning_candidate_admin_review_rpc.sql",
+      "sha256": "f83264d4729c746e3a6753cd0c9c47353301cd72df3c3f18d0335c70e1c653ea",
+      "bytes": 14602
+    },
+    {
+      "version": "20260604203000",
+      "name": "kael_b3_knowledge_corpus",
+      "file": "supabase/migrations/20260604203000_kael_b3_knowledge_corpus.sql",
+      "sha256": "4f11ce6b55c0ef8e89444dcd532abf5dd210eeb00507dee37c8f551b12f72666",
+      "bytes": 21024
+    },
+    {
+      "version": "20260604210000",
+      "name": "kael_b4_knowledge_governance",
+      "file": "supabase/migrations/20260604210000_kael_b4_knowledge_governance.sql",
+      "sha256": "bd42c3d0da2feb11877735a46d3313f72c1e29588ecf3fa1a80bf1a940490aea",
+      "bytes": 12267
+    },
+    {
+      "version": "20260604213000",
+      "name": "kael_b5_pgvector_rag",
+      "file": "supabase/migrations/20260604213000_kael_b5_pgvector_rag.sql",
+      "sha256": "0759b85ae52dffb087ea2291e69fee06d6d721486c1aadb6d6ade4ad96c62563",
+      "bytes": 7099
+    },
+    {
+      "version": "20260604214000",
+      "name": "kael_b5_embedding_backfill",
+      "file": "supabase/migrations/20260604214000_kael_b5_embedding_backfill.sql",
+      "sha256": "13b6fa6e6bcb0ebab0838c9e48c47ed19585359e5d7427d25d9b33194082af0f",
+      "bytes": 42983
+    },
+    {
+      "version": "20260604220000",
+      "name": "kael_c_autonomy_audit_apply",
+      "file": "supabase/migrations/20260604220000_kael_c_autonomy_audit_apply.sql",
+      "sha256": "23bf628d33da365f92d4734ea5f16b2fd65986678a09152011394282a7e4e1dd",
+      "bytes": 7209
+    },
+    {
+      "version": "20260604221500",
+      "name": "kael_d_guardrail_trip_audit",
+      "file": "supabase/migrations/20260604221500_kael_d_guardrail_trip_audit.sql",
+      "sha256": "c2668960402629a076233f8c7382eaeec239b39971d12aca080d4bb19605185e",
+      "bytes": 2181
+    },
+    {
+      "version": "20260604223000",
+      "name": "kael_chat_session_progress",
+      "file": "supabase/migrations/20260604223000_kael_chat_session_progress.sql",
+      "sha256": "07682d750aa18fb1f9fc8cd68de966ae6cec798da20b77831d96bfa9816760e9",
+      "bytes": 958
+    },
+    {
+      "version": "20260604224500",
+      "name": "kael_worker_chat_sessions",
+      "file": "supabase/migrations/20260604224500_kael_worker_chat_sessions.sql",
+      "sha256": "aed044ae2175f7b6889fae0ce53812db45c12daa995e18277fcb567923962d9a",
+      "bytes": 6781
+    },
+    {
+      "version": "20260604225500",
+      "name": "worker_kael_feedback_consent",
+      "file": "supabase/migrations/20260604225500_worker_kael_feedback_consent.sql",
+      "sha256": "9972032b314201d6b1a69a5ab7476230a1a1bf8039df8e6aaa613bef13c6a5fb",
+      "bytes": 4172
+    },
+    {
+      "version": "20260604230500",
+      "name": "scope_change_kael_progress",
+      "file": "supabase/migrations/20260604230500_scope_change_kael_progress.sql",
+      "sha256": "55d4da969ba9eb4db3b07f39a5b0db19d9dcc539b88ea0d60239fd07b659273b",
+      "bytes": 661
+    },
+    {
+      "version": "20260604231500",
+      "name": "disintermediation_admin_queue",
+      "file": "supabase/migrations/20260604231500_disintermediation_admin_queue.sql",
+      "sha256": "8f419a9f015bebe0732c9206e917e2e45cfe4ab33a3565d0f9de6c40ec93f1eb",
+      "bytes": 414
+    },
+    {
+      "version": "20260604232500",
+      "name": "apartment_access_release",
+      "file": "supabase/migrations/20260604232500_apartment_access_release.sql",
+      "sha256": "9ccc225473d2d05bf1013fb66ffd90c598e9ef16c0b629b7ce31cb3a77418ee2",
+      "bytes": 2514
+    },
+    {
+      "version": "20260605001000",
+      "name": "fix_kael_rollback_learning_rule_ambiguity",
+      "file": "supabase/migrations/20260605001000_fix_kael_rollback_learning_rule_ambiguity.sql",
+      "sha256": "1905f645308ff43845c091c19a25914e704c24f05eb9cb8ca7a905ab3ac106b3",
+      "bytes": 3666
+    },
+    {
+      "version": "20260605003000",
+      "name": "fix_plan31_post_advisor_warnings",
+      "file": "supabase/migrations/20260605003000_fix_plan31_post_advisor_warnings.sql",
+      "sha256": "0177ca3c70c7e66182624a2061f6f4e596356c7b70685249c36eff0024436105",
+      "bytes": 1079
+    },
+    {
+      "version": "20260605004000",
+      "name": "fix_plan31_rpc_lint_warnings",
+      "file": "supabase/migrations/20260605004000_fix_plan31_rpc_lint_warnings.sql",
+      "sha256": "bce90bd10372323cb1323a47249ed01f3e2d6141320317dbc4720a1a0bd91fc9",
+      "bytes": 10560
+    },
+    {
+      "version": "20260605005000",
+      "name": "scope_worker_kael_chat_idempotency_by_job",
+      "file": "supabase/migrations/20260605005000_scope_worker_kael_chat_idempotency_by_job.sql",
+      "sha256": "66208f33c4a77f1fe9764c305d034492294a467654638e8597368595199d9bdd",
+      "bytes": 1080
+    },
+    {
+      "version": "20260605006000",
+      "name": "drop_worker_profiles_districts_backup_x3",
+      "file": "supabase/migrations/20260605006000_drop_worker_profiles_districts_backup_x3.sql",
+      "sha256": "52df2793101d5100db02a00eab667f5569fa23364806e84077fff2d3de6cb1bf",
+      "bytes": 290
+    },
+    {
+      "version": "20260610075217",
+      "name": "apartment_access_checkin_media_stage",
+      "file": "supabase/migrations/20260610075217_apartment_access_checkin_media_stage.sql",
+      "sha256": "a94fc66e272e85165d09efc854aad21fa5204c47a0fff3c25c6d43cb9ca49e28",
+      "bytes": 2265
+    },
+    {
+      "version": "20260612120000",
+      "name": "worker_application_admin_queue",
+      "file": "supabase/migrations/20260612120000_worker_application_admin_queue.sql",
+      "sha256": "db30d592e9e7fc3d9f47de8e62383c13cfb6660b1095b6b5b0149e5c63c579ec",
+      "bytes": 664
+    },
+    {
+      "version": "20260613120000",
+      "name": "kael_provider_spend_cap",
+      "file": "supabase/migrations/20260613120000_kael_provider_spend_cap.sql",
+      "sha256": "2f686fd42a6c513f5529f9de0bdacb8a596ec7daf92153c932e2111d202a2498",
+      "bytes": 3993
+    },
+    {
+      "version": "20260614093000",
+      "name": "sepay_vietqr_payment_gate",
+      "file": "supabase/migrations/20260614093000_sepay_vietqr_payment_gate.sql",
+      "sha256": "d1f48c7ffcc8f91a0408c7436aef0b61351b557433c69c878fd28fa45401a1f7",
+      "bytes": 2442
+    },
+    {
+      "version": "20260614120000",
+      "name": "kael_rate_limit_log_deny_all_policy",
+      "file": "supabase/migrations/20260614120000_kael_rate_limit_log_deny_all_policy.sql",
+      "sha256": "18a71d841533e471de7b1c43f6e14a1e4cfba4301798ccbdbbff01fc73a3aa8c",
+      "bytes": 2023
+    },
+    {
+      "version": "20260614120500",
+      "name": "kael_ai_spend_gate",
+      "file": "supabase/migrations/20260614120500_kael_ai_spend_gate.sql",
+      "sha256": "6d9e2f64dac3164cea51de5e498503c3e7f91799bfefc45eedbd3431983ad4d8",
+      "bytes": 5157
+    },
+    {
+      "version": "20260615120000",
+      "name": "kael_ai_spend_reserve",
+      "file": "supabase/migrations/20260615120000_kael_ai_spend_reserve.sql",
+      "sha256": "2857887811e747aed6edd069b7062933bc79f15a4adc2c6212efc96bbb1243c8",
+      "bytes": 4880
+    },
+    {
+      "version": "20260619151536",
+      "name": "worker_customer_stats",
+      "file": "supabase/migrations/20260619151536_worker_customer_stats.sql",
+      "sha256": "7448cec00bc50f75dc0caa3f085c1a0f2e0de170bd08f1cc5589c70c28fcc66b",
+      "bytes": 8775
+    },
+    {
+      "version": "20260619160017",
+      "name": "worker_matching_indexes",
+      "file": "supabase/migrations/20260619160017_worker_matching_indexes.sql",
+      "sha256": "833e29fdf37cf012b565262812faddd7179d779dd8f60918f063516feb741eac",
+      "bytes": 1058
+    },
+    {
+      "version": "20260620123000",
+      "name": "kael_chat_media_bucket",
+      "file": "supabase/migrations/20260620123000_kael_chat_media_bucket.sql",
+      "sha256": "a786a61c092b7dd7fe639375fc72c4a87c5aae927d1695ddc370c57de0fd40be",
+      "bytes": 972
+    },
+    {
+      "version": "20260627090000",
+      "name": "worker_kael_turn_idempotency",
+      "file": "supabase/migrations/20260627090000_worker_kael_turn_idempotency.sql",
+      "sha256": "93303cc95271f4717b9ab446e7125298d1f7f5d3d27401da698254218023e113",
+      "bytes": 2061
+    },
+    {
+      "version": "20260627143000",
+      "name": "customer_payment_methods",
+      "file": "supabase/migrations/20260627143000_customer_payment_methods.sql",
+      "sha256": "91a5f88f2fb349befe9aabf3ef75f009c9beb92e3085827bc6bba032e885006f",
+      "bytes": 4973
+    },
+    {
+      "version": "20260628120000",
+      "name": "kael_chat_collecting_evidence_status",
+      "file": "supabase/migrations/20260628120000_kael_chat_collecting_evidence_status.sql",
+      "sha256": "e8739d4337412de3d9cd2772ba76e42c9c3a0e0e9d40176a7814fbf6b205c50c",
+      "bytes": 501
+    },
+    {
+      "version": "20260629114000",
+      "name": "extend_kael_chat_media_bucket",
+      "file": "supabase/migrations/20260629114000_extend_kael_chat_media_bucket.sql",
+      "sha256": "8674e01408047def9f8a56447b65de1e4f29b9c9606eacec2ab57336ae14529d",
+      "bytes": 1181
+    },
+    {
+      "version": "20260630120000",
+      "name": "jobs_display_code_sequence",
+      "file": "supabase/migrations/20260630120000_jobs_display_code_sequence.sql",
+      "sha256": "cf165b7d5b00d53def24ce3c545763e39cf1324508f916cb7270dc5f44624240",
+      "bytes": 1582
+    },
+    {
+      "version": "20260701120000",
+      "name": "worker_application_idempotency",
+      "file": "supabase/migrations/20260701120000_worker_application_idempotency.sql",
+      "sha256": "a9c280b2002d91c9b617fd41cc03386147d985df827c2c5a560ab7df75d6f63e",
+      "bytes": 782
+    },
+    {
+      "version": "20260703000000",
+      "name": "harden_source_trust_registry_grant",
+      "file": "supabase/migrations/20260703000000_harden_source_trust_registry_grant.sql",
+      "sha256": "e869d54babb081acbf6bdc82b664b8410273ac6ee3c57cce937941a23235d5f2",
+      "bytes": 224
+    },
+    {
+      "version": "20260706120000",
+      "name": "kael_voice_transcript",
+      "file": "supabase/migrations/20260706120000_kael_voice_transcript.sql",
+      "sha256": "6080ebd061c91cc0dc57f7d8137861fc5d3339cdbcfc6fe95a35862ef49d397f",
+      "bytes": 4440
+    },
+    {
+      "version": "20260710082120",
+      "name": "kael_durable_guards",
+      "file": "supabase/migrations/20260710082120_kael_durable_guards.sql",
+      "sha256": "fc014a314aedba9e9ac65978ba4bce056408a74d965d16263802b5ef2605f3dc",
+      "bytes": 12532
+    },
+    {
+      "version": "20260710082345",
+      "name": "kael_source_trust_tiering",
+      "file": "supabase/migrations/20260710082345_kael_source_trust_tiering.sql",
+      "sha256": "bc346bcd5d8dba65840d908166c5489a28bc94cd8ef0ebc57e7b157426da4fa2",
+      "bytes": 2002
+    },
+    {
+      "version": "20260710123000",
+      "name": "preserve_provider_global_circuit",
+      "file": "supabase/migrations/20260710123000_preserve_provider_global_circuit.sql",
+      "sha256": "bf7c9f8a1044b05550bbc0eca4133bdb59cb330074a7e8d024ec3f3f4a8bf950",
+      "bytes": 892
+    },
+    {
+      "version": "20260711030833",
+      "name": "six_service_casework_foundation",
+      "file": "supabase/migrations/20260711030833_six_service_casework_foundation.sql",
+      "sha256": "b18745508389e60d236acf35edc0bd9e8aa7e78ba41d65006bece1b594d29ffc",
+      "bytes": 5384
+    },
+    {
+      "version": "20260711033644",
+      "name": "kael_case_work_artifact",
+      "file": "supabase/migrations/20260711033644_kael_case_work_artifact.sql",
+      "sha256": "71a96397a48970b3bac911b8dc935f18a1f759130159a3ea6d74acaa528e8207",
+      "bytes": 8178
+    },
+    {
+      "version": "20260711050000",
+      "name": "customer_worker_candidate_gate",
+      "file": "supabase/migrations/20260711050000_customer_worker_candidate_gate.sql",
+      "sha256": "32f4a4663e4bc1eb205622d9885ce18620b1beb3a9b403ed733c34ba5a7809f1",
+      "bytes": 17079
+    },
+    {
+      "version": "20260711053000",
+      "name": "candidate_cancel_release",
+      "file": "supabase/migrations/20260711053000_candidate_cancel_release.sql",
+      "sha256": "2ae6e53c95f89b7b8ab67e8f18e7c9c082589bb5705cd03586696d4a896ccb27",
+      "bytes": 2941
+    },
+    {
+      "version": "20260711060000",
+      "name": "six_service_taxonomy_verified_prices",
+      "file": "supabase/migrations/20260711060000_six_service_taxonomy_verified_prices.sql",
+      "sha256": "bac637b8a8b470459bd7f4980fbcf4d7ea17852b79e72a9885a45a955f296054",
+      "bytes": 9275
+    },
+    {
+      "version": "20260711061000",
+      "name": "kael_chat_media_privacy",
+      "file": "supabase/migrations/20260711061000_kael_chat_media_privacy.sql",
+      "sha256": "dcdde320623eb4e18234e796c1e8232c1de1109b1938363ee0ce21b93ebb3a25",
+      "bytes": 812
+    },
+    {
+      "version": "20260711062000",
+      "name": "unified_scope_change_timing",
+      "file": "supabase/migrations/20260711062000_unified_scope_change_timing.sql",
+      "sha256": "80761dd665ebcafbb23b3085650e7deec3c5169cfae0b4e1c2b604f49b098cc1",
+      "bytes": 9916
+    },
+    {
+      "version": "20260711063000",
+      "name": "kael_chat_media_upload_intents",
+      "file": "supabase/migrations/20260711063000_kael_chat_media_upload_intents.sql",
+      "sha256": "98e1ddd8de9a2c3bfa0fd3e2ad3c362c90bfd0574ea7460e7de1d91c8cec68b4",
+      "bytes": 9709
+    },
+    {
+      "version": "20260711064000",
+      "name": "scope_change_private_media_refs",
+      "file": "supabase/migrations/20260711064000_scope_change_private_media_refs.sql",
+      "sha256": "db60b50658315ea9033da38cdda236840d28633c905b92a959039e393f9c1f29",
+      "bytes": 2645
+    },
+    {
+      "version": "20260711065000",
+      "name": "job_media_analysis_audio_guard",
+      "file": "supabase/migrations/20260711065000_job_media_analysis_audio_guard.sql",
+      "sha256": "6a1f22f9a675d5dd1626628b89e90110652b5e9be3b68a86dfe13de3a5b8019a",
+      "bytes": 2121
+    },
+    {
+      "version": "20260711066000",
+      "name": "kael_chat_media_retention_worker",
+      "file": "supabase/migrations/20260711066000_kael_chat_media_retention_worker.sql",
+      "sha256": "eb61600933e135cf85d157d79bcf02bf3c86640e062e06035deabdbc8cf97d4a",
+      "bytes": 8633
+    },
+    {
+      "version": "20260711067000",
+      "name": "review_requires_paid",
+      "file": "supabase/migrations/20260711067000_review_requires_paid.sql",
+      "sha256": "67f01c5ed9e2ea1a1cc1c4d4010b21cf5f7b34d2e442d22cbead7a4a48402bbc",
+      "bytes": 3328
+    },
+    {
+      "version": "20260712031420",
+      "name": "harden_display_code_and_candidate_broadcast_index",
+      "file": "supabase/migrations/20260712031420_harden_display_code_and_candidate_broadcast_index.sql",
+      "sha256": "36a53c99b0d1043960ad7e5d51f368bd031347bcba397037a19deb28dd7d4452",
+      "bytes": 591
+    },
+    {
+      "version": "20260712042000",
+      "name": "worker_availability_preference",
+      "file": "supabase/migrations/20260712042000_worker_availability_preference.sql",
+      "sha256": "32beb4a4e0ffc16a0d767fde89178c64e77b033509dbff727d7523ade023efe7",
+      "bytes": 2327
+    },
+    {
+      "version": "20260712124241",
+      "name": "kael_job_incident_case",
+      "file": "supabase/migrations/20260712124241_kael_job_incident_case.sql",
+      "sha256": "e46ca66872ed67519643c6cbef4b65ca5be0869368bf58439aae09a97bf4b82f",
+      "bytes": 3498
+    },
+    {
+      "version": "20260713042558",
+      "name": "archive_worker_kael_chat_sessions",
+      "file": "supabase/migrations/20260713042558_archive_worker_kael_chat_sessions.sql",
+      "sha256": "e48a3439e46907c71b4699ca162ce773c96d5ff12be09adda483b97329dcd22f",
+      "bytes": 507
+    },
+    {
+      "version": "20260713051818",
+      "name": "title_worker_kael_chat_sessions",
+      "file": "supabase/migrations/20260713051818_title_worker_kael_chat_sessions.sql",
+      "sha256": "5e8683e871f09058123e7b1db366ef34195a842991f78833935ceeb9f41195af",
+      "bytes": 602
+    },
+    {
+      "version": "20260713124007",
+      "name": "partition_worker_kael_sessions_by_chat_mode",
+      "file": "supabase/migrations/20260713124007_partition_worker_kael_sessions_by_chat_mode.sql",
+      "sha256": "01883303f28caf1963ff14310ac74f30aa613f98e8f9e7b76540b527e5d7567b",
+      "bytes": 1017
+    },
+    {
+      "version": "20260713132500",
+      "name": "pin_worker_kael_chat_sessions",
+      "file": "supabase/migrations/20260713132500_pin_worker_kael_chat_sessions.sql",
+      "sha256": "0d0925878421ce81808d38ae1ad95c98667b19e0565aafcdb6c8038ec6487d53",
+      "bytes": 295
+    },
+    {
+      "version": "20260713143000",
+      "name": "worker_avatar_and_app_activity",
+      "file": "supabase/migrations/20260713143000_worker_avatar_and_app_activity.sql",
+      "sha256": "70e926945063945ab3818b35ae452090571bf580a77c6434ac80ef31bf1ce4b5",
+      "bytes": 2902
+    },
+    {
+      "version": "20260713163851",
+      "name": "customer_kael_conversations",
+      "file": "supabase/migrations/20260713163851_customer_kael_conversations.sql",
+      "sha256": "2a970f7b7f2c197518b47eb34ad0f305043f07b1827dabdc4ca7e55a9829fcf5",
+      "bytes": 7340
+    },
+    {
+      "version": "20260714024500",
+      "name": "index_customer_kael_conversation_turn_owners",
+      "file": "supabase/migrations/20260714024500_index_customer_kael_conversation_turn_owners.sql",
+      "sha256": "16fc7bc2cdcb6498df9c87aa949ecb089cfbc4d6f338c6a41d45cd5183f5341e",
+      "bytes": 226
+    },
+    {
+      "version": "20260714074000",
+      "name": "accept_broadcast_candidate_privacy_guard",
+      "file": "supabase/migrations/20260714074000_accept_broadcast_candidate_privacy_guard.sql",
+      "sha256": "5e01079acc53de3ac1726bdfdda0279597ef579691543f20b14c48be0e3849fa",
+      "bytes": 6670
+    },
+    {
+      "version": "20260714080000",
+      "name": "worker_kael_reference_media",
+      "file": "supabase/migrations/20260714080000_worker_kael_reference_media.sql",
+      "sha256": "5b13b00ec47c7825d18746680f104a4b8993130a96396e19fff38f8cb5e1e667",
+      "bytes": 2230
+    },
+    {
+      "version": "20260714084815",
+      "name": "device_push_token_single_owner",
+      "file": "supabase/migrations/20260714084815_device_push_token_single_owner.sql",
+      "sha256": "66499c3c7c041bcc7c0d1fd0000f1633ac74088d323ab37e8f469be39edb9a96",
+      "bytes": 6951
+    },
+    {
+      "version": "20260714092842",
+      "name": "job_media_upload_intents",
+      "file": "supabase/migrations/20260714092842_job_media_upload_intents.sql",
+      "sha256": "2383bdea3682a48ac17cf7dea21b6e1f7e5689515f7a27014406b89215d2c46f",
+      "bytes": 18636
+    },
+    {
+      "version": "20260714101000",
+      "name": "atomic_learning_autopromotion",
+      "file": "supabase/migrations/20260714101000_atomic_learning_autopromotion.sql",
+      "sha256": "94c627b931a841bfd7dd7a1f6b26477844e20f7d11f42d63d44a2217ed2add0b",
+      "bytes": 9793
+    },
+    {
+      "version": "20260714102000",
+      "name": "atomic_learning_observations",
+      "file": "supabase/migrations/20260714102000_atomic_learning_observations.sql",
+      "sha256": "000c339d346b161e8a5aee152916cf526321a03d8986c30d55a94c959df0b524",
+      "bytes": 28509
+    },
+    {
+      "version": "20260714103000",
+      "name": "exact_profile_and_earnings_aggregates",
+      "file": "supabase/migrations/20260714103000_exact_profile_and_earnings_aggregates.sql",
+      "sha256": "2e98c3015135448177633823185d33ba37dd75a15bf90ded46b79ee1852dbe27",
+      "bytes": 14753
+    },
+    {
+      "version": "20260714104000",
+      "name": "qualify_kael_media_intent_columns",
+      "file": "supabase/migrations/20260714104000_qualify_kael_media_intent_columns.sql",
+      "sha256": "26346d9ebb358e94018b92a951e5c5d74f8bdab85d7cf9253fc05a77535f4a80",
+      "bytes": 3505
+    },
+    {
+      "version": "20260714105000",
+      "name": "atomic_worker_registration",
+      "file": "supabase/migrations/20260714105000_atomic_worker_registration.sql",
+      "sha256": "3cb7f65ac3f0de2d73ed410672131ea52129610a57464b1c07a8f56490d9aca2",
+      "bytes": 13147
+    },
+    {
+      "version": "20260714106000",
+      "name": "atomic_kael_memory_updates",
+      "file": "supabase/migrations/20260714106000_atomic_kael_memory_updates.sql",
+      "sha256": "76e8b78ad1ca472762cbcc78d37e6cb78f7a887cbfa3b20b3c7e550c60fa1d08",
+      "bytes": 31600
+    },
+    {
+      "version": "20260714107000",
+      "name": "atomic_job_incident_transitions",
+      "file": "supabase/migrations/20260714107000_atomic_job_incident_transitions.sql",
+      "sha256": "21b635e14ddd1509766960d3052e4cff3dde4f1025f7102e315b594bf6fd899a",
+      "bytes": 32820
+    },
+    {
+      "version": "20260714108000",
+      "name": "atomic_worker_kael_turns",
+      "file": "supabase/migrations/20260714108000_atomic_worker_kael_turns.sql",
+      "sha256": "0351bfe1c35532446f7fecac1295445353c641827768395ba5ee9c1e1238c78e",
+      "bytes": 30627
+    },
+    {
+      "version": "20260714109000",
+      "name": "atomic_learning_queue_claims",
+      "file": "supabase/migrations/20260714109000_atomic_learning_queue_claims.sql",
+      "sha256": "ec9c4cf10945b6517f3f0ff13416b1d5050edfc15dda8e17a991b9fcfa6798ed",
+      "bytes": 9689
+    },
+    {
+      "version": "20260714110000",
+      "name": "atomic_learning_batch_results",
+      "file": "supabase/migrations/20260714110000_atomic_learning_batch_results.sql",
+      "sha256": "5a38e0368df6d56984da0b9bf28f5d6d1461e40cb29586ef73e7f41e7778d3e6",
+      "bytes": 16782
+    },
+    {
+      "version": "20260714111000",
+      "name": "atomic_scope_change_idempotency",
+      "file": "supabase/migrations/20260714111000_atomic_scope_change_idempotency.sql",
+      "sha256": "fe7e55656655c26b445cc4df99ff1a7c1e89693006b9890de50752cd4ee9a483",
+      "bytes": 59330
+    },
+    {
+      "version": "20260715011209",
+      "name": "atomic_learning_effect_commits",
+      "file": "supabase/migrations/20260715011209_atomic_learning_effect_commits.sql",
+      "sha256": "452c3c08022a6d82d41009b9f40ebdb9eecd72d729d97a665c3848dfe1f47ab2",
+      "bytes": 29944
+    },
+    {
+      "version": "20260715105143",
+      "name": "worker_earnings_daily_aggregate",
+      "file": "supabase/migrations/20260715105143_worker_earnings_daily_aggregate.sql",
+      "sha256": "a4583904a7063fbcb61871ed96a522fbfda5eba54e9f503809bead4e0bb66378",
+      "bytes": 4286
+    },
+    {
+      "version": "20260715113000",
+      "name": "broadcast_retry_claims",
+      "file": "supabase/migrations/20260715113000_broadcast_retry_claims.sql",
+      "sha256": "cbc65ffd29b112d71249b43545b3b821f7ffd82365b01330c40e28dd2a0a56e5",
+      "bytes": 5400
+    },
+    {
+      "version": "20260715114000",
+      "name": "atomic_learning_admin_approval",
+      "file": "supabase/migrations/20260715114000_atomic_learning_admin_approval.sql",
+      "sha256": "19fa80d4bb650531bcf491ed2817a7fd4799605324b78441a56501913ef67800",
+      "bytes": 6968
+    },
+    {
+      "version": "20260715115000",
+      "name": "align_ai_provider_routing_catalog",
+      "file": "supabase/migrations/20260715115000_align_ai_provider_routing_catalog.sql",
+      "sha256": "f31ba18b96cdb24e5f88f1da4d9176dab08cd09dbfdb0d0711b3a2a230d3350b",
+      "bytes": 2762
+    },
+    {
+      "version": "20260716121927",
+      "name": "worker_verification_draft_cleanup",
+      "file": "supabase/migrations/20260716121927_worker_verification_draft_cleanup.sql",
+      "sha256": "d18a6fef4c189fd5e910b3828f3b24d8f531818433e0c96e694eb19bb95745dd",
+      "bytes": 2375
+    },
+    {
+      "version": "20260721100000",
+      "name": "learning_observation_rolling_window",
+      "file": "supabase/migrations/20260721100000_learning_observation_rolling_window.sql",
+      "sha256": "7a4549750d7a5e0ece24219b1d5591e048e92becacfc307ef088179731ec578e",
+      "bytes": 24306
+    },
+    {
+      "version": "20260721101000",
+      "name": "learning_effect_candidate_conflict_guard",
+      "file": "supabase/migrations/20260721101000_learning_effect_candidate_conflict_guard.sql",
+      "sha256": "170257fcd71645b0150a39e42145b1bc8add859114fd4e62a76efa8cb0861bc4",
+      "bytes": 29992
+    },
+    {
+      "version": "20260721102000",
+      "name": "jobs_kael_reference_price",
+      "file": "supabase/migrations/20260721102000_jobs_kael_reference_price.sql",
+      "sha256": "e91d219e13bcd33f0595480458b51e0f77a9d227c781a73983c38c2cbf303298",
+      "bytes": 1917
+    },
+    {
+      "version": "20260721103000",
+      "name": "kael_chat_confirm_reference_price",
+      "file": "supabase/migrations/20260721103000_kael_chat_confirm_reference_price.sql",
+      "sha256": "7fdf729bafc95d7d92294e5a628e5a3d1cf45bedd31f60e8aad3e9048e22fb12",
+      "bytes": 6327
+    },
+    {
+      "version": "20260721104000",
+      "name": "learning_observation_reference_baseline",
+      "file": "supabase/migrations/20260721104000_learning_observation_reference_baseline.sql",
+      "sha256": "c7a759f0fa8fb9e001cf9b24a22fb03aa88add93b155dd9ea0428b0fcd55e125",
+      "bytes": 26646
+    },
+    {
+      "version": "20260721105000",
+      "name": "kael_learning_monitor_cron",
+      "file": "supabase/migrations/20260721105000_kael_learning_monitor_cron.sql",
+      "sha256": "e4cf217bf24cbe208d5978e084a3c86b9ad225d649437349063d7ea14dddb10d",
+      "bytes": 3541
+    },
+    {
+      "version": "20260722032655",
+      "name": "align_kael_confirm_quote_ready_gate",
+      "file": "supabase/migrations/20260722032655_align_kael_confirm_quote_ready_gate.sql",
+      "sha256": "c5220179fd582fba4b15aa96b6ed9d0a9a0b0f870b678ab20f77b2100bead804",
+      "bytes": 5488
+    },
+    {
+      "version": "20260722033000",
+      "name": "align_kael_confirm_quote_ready_gate",
+      "file": "supabase/migrations/20260722033000_align_kael_confirm_quote_ready_gate.sql",
+      "sha256": "c5220179fd582fba4b15aa96b6ed9d0a9a0b0f870b678ab20f77b2100bead804",
+      "bytes": 5488
+    },
+    {
+      "version": "20260722044500",
+      "name": "activate_job_broadcast_batch_atomic",
+      "file": "supabase/migrations/20260722044500_activate_job_broadcast_batch_atomic.sql",
+      "sha256": "47c6bb75b5272c40fe0710c6ad3e1acf8c79ebb237ba72e3db4046e243d0624e",
+      "bytes": 2809
+    },
+    {
+      "version": "20260722044558",
+      "name": "activate_job_broadcast_batch_atomic",
+      "file": "supabase/migrations/20260722044558_activate_job_broadcast_batch_atomic.sql",
+      "sha256": "2f9b74c3757ab704aef7ff8a5f5d43e690a5c6967199670cd3105e75838bd6ce",
+      "bytes": 2768
+    },
+    {
+      "version": "20260722050000",
+      "name": "fix_activate_job_broadcast_batch_qualification",
+      "file": "supabase/migrations/20260722050000_fix_activate_job_broadcast_batch_qualification.sql",
+      "sha256": "c852780f49e7705bb5ab9c55a71d501ad17a907004f6735cf8bc92b52e5a89b9",
+      "bytes": 2430
+    },
+    {
+      "version": "20260722050419",
+      "name": "fix_activate_job_broadcast_batch_qualification",
+      "file": "supabase/migrations/20260722050419_fix_activate_job_broadcast_batch_qualification.sql",
+      "sha256": "070b6ab024e4df703f43376efda9833345eb67007113bbc6318830dce1fc59ce",
+      "bytes": 2400
+    },
+    {
+      "version": "20260722050837",
+      "name": "fix_activate_job_broadcast_batch_conflict_target",
+      "file": "supabase/migrations/20260722050837_fix_activate_job_broadcast_batch_conflict_target.sql",
+      "sha256": "822149777dbaa3d29cdd796ca2447d7e6bf58f96b23c310392c8cf73cea58935",
+      "bytes": 2429
+    },
+    {
+      "version": "20260722051500",
+      "name": "fix_activate_job_broadcast_batch_conflict_target",
+      "file": "supabase/migrations/20260722051500_fix_activate_job_broadcast_batch_conflict_target.sql",
+      "sha256": "822149777dbaa3d29cdd796ca2447d7e6bf58f96b23c310392c8cf73cea58935",
+      "bytes": 2429
+    },
+    {
+      "version": "20260722053000",
+      "name": "fix_accept_broadcast_district_normalization",
+      "file": "supabase/migrations/20260722053000_fix_accept_broadcast_district_normalization.sql",
+      "sha256": "f205b23c998aacbe7ab914a3663d43393e4496861ccddbd0f3bfe97b47b551e4",
+      "bytes": 9374
+    },
+    {
+      "version": "20260722054500",
+      "name": "reactivate_accepted_broadcast_after_candidate_expiry",
+      "file": "supabase/migrations/20260722054500_reactivate_accepted_broadcast_after_candidate_expiry.sql",
+      "sha256": "e0b346c99b6467db0b859539f90c52e7c900420488f0901c5e187ce1f195c079",
+      "bytes": 2956
+    },
+    {
+      "version": "20260722060000",
+      "name": "fix_confirm_worker_candidate_district_normalization",
+      "file": "supabase/migrations/20260722060000_fix_confirm_worker_candidate_district_normalization.sql",
+      "sha256": "f72173c90dc3f7b4c488ed820fa90152c2d631bbed87ed811fdeb644c5a5a38e",
+      "bytes": 6538
+    },
+    {
+      "version": "20260722060958",
+      "name": "fix_accept_broadcast_district_normalization",
+      "file": "supabase/migrations/20260722060958_fix_accept_broadcast_district_normalization.sql",
+      "sha256": "cadbc05dca2a53b6f293da302a8d4e1995f9a434a5f1355c13df433f9d94c4d2",
+      "bytes": 9732
+    },
+    {
+      "version": "20260723092515",
+      "name": "enable_worker_kael_normal_chat",
+      "file": "supabase/migrations/20260723092515_enable_worker_kael_normal_chat.sql",
+      "sha256": "9470566291c5fefdfc62bc158ecd3816cf4912f0be25db8f5a5633760dfdd660",
+      "bytes": 20788
+    },
+    {
+      "version": "20260723113000",
+      "name": "worker_active_service_preferences",
+      "file": "supabase/migrations/20260723113000_worker_active_service_preferences.sql",
+      "sha256": "8be52bd87037cf04f93fac602957506edc1cb2cf3cd91d157b54152bd0776de4",
+      "bytes": 7481
+    },
+    {
+      "version": "20260723143000",
+      "name": "worker_service_selection_quality_gate",
+      "file": "supabase/migrations/20260723143000_worker_service_selection_quality_gate.sql",
+      "sha256": "f015cf0b57c5f8e571e80bd4eef0995e3ebb05250551be2c8fbf242a0f3242c3",
+      "bytes": 9579
+    },
+    {
+      "version": "20260726120000",
+      "name": "restore_accept_broadcast_district_normalization",
+      "file": "supabase/migrations/20260726120000_restore_accept_broadcast_district_normalization.sql",
+      "sha256": "94893b4259b83ba5d9be55081fc370e663399e3de43ca1f7c9b35291802ece49",
+      "bytes": 6536
+    },
+    {
+      "version": "20260726123000",
+      "name": "fix_scope_change_customer_authority",
+      "file": "supabase/migrations/20260726123000_fix_scope_change_customer_authority.sql",
+      "sha256": "2acba9e64d4929bf2e9e1c9cf955e3e973cd0b5aee054d62e54f0ad0772a6042",
+      "bytes": 1571
+    },
+    {
+      "version": "20260727153000",
+      "name": "sepay_vietqr_webhook_atomic",
+      "file": "supabase/migrations/20260727153000_sepay_vietqr_webhook_atomic.sql",
+      "sha256": "a1470019533d93603e580beb326b9197466998426d269e8ee0e1e98a3ff9ac9e",
+      "bytes": 4054
+    },
+    {
+      "version": "20260727160000",
+      "name": "worker_payment_ledger_commission",
+      "file": "supabase/migrations/20260727160000_worker_payment_ledger_commission.sql",
+      "sha256": "dabbc835450d84a5b3039b25e08dd67304787768cea8bd9a2289d13115de9da6",
+      "bytes": 28429
+    },
+    {
+      "version": "20260728110000",
+      "name": "customer_refund_account_atomic",
+      "file": "supabase/migrations/20260728110000_customer_refund_account_atomic.sql",
+      "sha256": "973b2908e39efb6a9e460b598608e0afc73eed19cfcfbb75c8fb698219c44f6c",
+      "bytes": 4085
+    },
+    {
+      "version": "20260729153000",
+      "name": "worker_cash_commission_settlement",
+      "file": "supabase/migrations/20260729153000_worker_cash_commission_settlement.sql",
+      "sha256": "d333395a62835707e8bfba156866dcae854bc5c91a6c9170b9dd0bd348c5465d",
+      "bytes": 23775
+    },
+    {
+      "version": "20260729184500",
+      "name": "fix_cash_payment_rpc_column_ambiguity",
+      "file": "supabase/migrations/20260729184500_fix_cash_payment_rpc_column_ambiguity.sql",
+      "sha256": "046790f32d84f91eb77cc62ced295200da0d6cce7fd36814a085ea2494e064fd",
+      "bytes": 7004
+    },
+    {
+      "version": "20260729210000",
+      "name": "customer_account_deletion",
+      "file": "supabase/migrations/20260729210000_customer_account_deletion.sql",
+      "sha256": "630f81abac34752643729aa0f04bbfb8d72d3a502b019fedb05099c10df88e9c",
+      "bytes": 11127
+    },
+    {
+      "version": "20260729223000",
+      "name": "customer_profile_avatar",
+      "file": "supabase/migrations/20260729223000_customer_profile_avatar.sql",
+      "sha256": "753555b200e806882b0c086951978fbee5728b9a08bc260adc1180faffdbfb6e",
+      "bytes": 477
+    },
+    {
+      "version": "20260801090000",
+      "name": "worker_kael_memory_preferences",
+      "file": "supabase/migrations/20260801090000_worker_kael_memory_preferences.sql",
+      "sha256": "371e2291cb50eaef8056254ba0f8b72ce86f12f55499a40e8d65ff5c98b04df3",
+      "bytes": 1756
+    },
+    {
+      "version": "20260805090000",
+      "name": "drop_orphan_worker_cancellation_decision_rpc",
+      "file": "supabase/migrations/20260805090000_drop_orphan_worker_cancellation_decision_rpc.sql",
+      "sha256": "78c15b7836a533a74cb169fc03a518a0e868bc66ef9aacbd57c52990427ef23c",
+      "bytes": 1060
+    },
+    {
+      "version": "20260806120000",
+      "name": "harness_access_boundary_hardening",
+      "file": "supabase/migrations/20260806120000_harness_access_boundary_hardening.sql",
+      "sha256": "9ccfed58fcd4c66a051eed47fa3479cb5c79319624c96e047d54fb8f9b9e49fb",
+      "bytes": 712
+    },
+    {
+      "version": "20260806121000",
+      "name": "harness_release_ledger",
+      "file": "supabase/migrations/20260806121000_harness_release_ledger.sql",
+      "sha256": "d3c9a0f37a51aadb5b0694afac8300aba54e2c47a09b408f6b595c560682befd",
+      "bytes": 8936
+    },
+    {
+      "version": "20260806122000",
+      "name": "harness_trace_lineage",
+      "file": "supabase/migrations/20260806122000_harness_trace_lineage.sql",
+      "sha256": "9fdf8365af8bcd38d342988e91303a4e7ddfc662136645245e858c1e7dee9d17",
+      "bytes": 18179
+    },
+    {
+      "version": "20260806123000",
+      "name": "harness_evaluation_evidence",
+      "file": "supabase/migrations/20260806123000_harness_evaluation_evidence.sql",
+      "sha256": "21ab3ba23020878b969ff67fba4dcf7c7c8c1ba8194759b27d1ea19a2b2544d6",
+      "bytes": 9599
+    },
+    {
+      "version": "20260806124000",
+      "name": "harness_learning_provenance",
+      "file": "supabase/migrations/20260806124000_harness_learning_provenance.sql",
+      "sha256": "5dcda8f2776dd79fb944f615c8f53b5a6bcaa7b5f35c33ecf69746cb7abdba15",
+      "bytes": 31121
+    },
+    {
+      "version": "20260806125000",
+      "name": "harness_reliability_control",
+      "file": "supabase/migrations/20260806125000_harness_reliability_control.sql",
+      "sha256": "1d8fea3dc7af9f10e552812a42d53e93ce86ed253129447beedb7596e907d7dd",
+      "bytes": 30839
+    },
+    {
+      "version": "20260806130000",
+      "name": "harness_promotion_control",
+      "file": "supabase/migrations/20260806130000_harness_promotion_control.sql",
+      "sha256": "6a62d577bf032637f4acf1527c4c71703a0b34ebd2d165d370cf30315a3ac2bc",
+      "bytes": 21784
+    },
+    {
+      "version": "20260807090000",
+      "name": "kael_structured_feedback",
+      "file": "supabase/migrations/20260807090000_kael_structured_feedback.sql",
+      "sha256": "812b03d650ad798bd982ab19c8817e53e41d7b2b0b1f16377ecf677aec6a30bf",
+      "bytes": 3876
+    },
+    {
+      "version": "20260807091000",
+      "name": "kael_estimate_accuracy",
+      "file": "supabase/migrations/20260807091000_kael_estimate_accuracy.sql",
+      "sha256": "136ae28d2ffd649c6aae401af91977439431023dded0c09568dd265b8e579147",
+      "bytes": 2325
+    },
+    {
+      "version": "20260807092000",
+      "name": "kael_admin_queue_resolution",
+      "file": "supabase/migrations/20260807092000_kael_admin_queue_resolution.sql",
+      "sha256": "aae4c23a321c5c21b30aaeb4d2329a46fabace3b0fffc2412c3a8ad43e9f911b",
+      "bytes": 981
+    },
+    {
+      "version": "20260807093000",
+      "name": "api_logs_retention",
+      "file": "supabase/migrations/20260807093000_api_logs_retention.sql",
+      "sha256": "194eb45cdc19b741b9400e08404c1724f422f34800981bc7329ccf8e93acb638",
+      "bytes": 395
+    },
+    {
+      "version": "20260808130000",
+      "name": "harness_sql_lint_and_aggregate_fixes",
+      "file": "supabase/migrations/20260808130000_harness_sql_lint_and_aggregate_fixes.sql",
+      "sha256": "24ec0870919e36ad42a8dafcdf15921e20d7b3f4c66a716fa262e7e64f3e5048",
+      "bytes": 43136
+    },
+    {
+      "version": "20260808131000",
+      "name": "harden_kael_estimate_accuracy_view",
+      "file": "supabase/migrations/20260808131000_harden_kael_estimate_accuracy_view.sql",
+      "sha256": "e0676d0ba0cbde5b971b2ec013632862792a074ff6e96a67cc6f6d912e00a9e7",
+      "bytes": 391
+    },
+    {
+      "version": "20260808140000",
+      "name": "correct_normalize_hcmc_district_code_volatility",
+      "file": "supabase/migrations/20260808140000_correct_normalize_hcmc_district_code_volatility.sql",
+      "sha256": "f6fefd6d05acfefdb255f64281eeb110d28604d9c16414565b03136b19710961",
+      "bytes": 2528
+    },
+    {
+      "version": "20260809100000",
+      "name": "harden_harness_idempotency_input_validation",
+      "file": "supabase/migrations/20260809100000_harden_harness_idempotency_input_validation.sql",
+      "sha256": "b70f38b23c0080900ccc635a3b6538a4bb55c7b67c4adaaf54f10120adc66f6c",
+      "bytes": 5078
+    }
+  ]
+}

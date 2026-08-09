@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { monitorLearningRules } from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/monitor-learning-rules'
+import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { monitorLearningRules } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/monitor-learning-rules'
 import {
   recordLearningReviewOutcome,
   recordLearningRuleApplication,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/learning'
 import {
   ALLOWED_LEARNING_TARGETS,
   FORBIDDEN_LEARNING_EFFECTS,
@@ -22,8 +22,8 @@ import {
   shouldAutoRollbackLearningRule,
   shouldRunLearningForActor,
   transitionLearningLifecycle,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
-import type { LearningSkillInput } from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
+import type { LearningSkillInput } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
 
 describe('Kael P7 learning skill setup', () => {
   afterEach(() => {
@@ -762,10 +762,10 @@ describe('Kael P7 learning skill setup', () => {
     expect(client.calls[0]).toMatchObject({ table: 'learning_candidates' })
     expect(client.calls[0].operations).toContainEqual(['eq', 'status', 'manual_review'])
     expect(client.calls.find((call) => call.table === 'learning_rules')).toBeUndefined()
-    expect(client.calls.find((call) => call.table === 'rpc:admin_approve_learning_candidate_atomic')?.operations)
+    expect(client.calls.find((call) => call.table === 'rpc:admin_review_and_approve_learning_candidate_atomic')?.operations)
       .toContainEqual([
         'rpc',
-        'admin_approve_learning_candidate_atomic',
+        'admin_review_and_approve_learning_candidate_atomic',
         expect.objectContaining({
           p_candidate_id: 'candidate-1',
           p_admin_id: 'admin-1',

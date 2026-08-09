@@ -1,6 +1,6 @@
 ---
 name: kael-tdd
-description: Test-driven workflow for the Home Services codebase. Use when implementing a feature, fixing a bug, or changing behavior, security, AI-boundary, or Supabase logic. Write the failing test first, implement the smallest change, verify a real pass, and cover at least two relevant test layers.
+description: Test-driven workflow for the NestScout codebase. Use when implementing a feature, fixing a bug, or changing behavior, security, AI-boundary, or Supabase logic. Write the failing test first, implement the smallest change, verify a real pass, and cover at least two relevant test layers.
 ---
 
 # kael-tdd

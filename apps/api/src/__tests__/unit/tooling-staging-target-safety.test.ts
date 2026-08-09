@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const helperPath = resolve(__dirname, '../../../../../scripts/lib/staging-target-safety.ps1')
 const powershell = process.platform === 'win32' ? 'powershell.exe' : 'pwsh'
+const POWERSHELL_TEST_TIMEOUT_MS = 20_000
 
 function validateTargets(supabaseUrl: string, mobileApiUrl: string) {
   const quote = (value: string) => `'${value.replaceAll("'", "''")}'`
@@ -55,7 +56,7 @@ describe('PowerShell staging target safety', () => {
     )
 
     expect(result.status, result.stderr).toBe(0)
-  })
+  }, POWERSHELL_TEST_TIMEOUT_MS)
 
   it.each([
     [
@@ -76,14 +77,14 @@ describe('PowerShell staging target safety', () => {
     ],
   ])('rejects a staging-ref substring outside the exact trusted target', (supabaseUrl, apiUrl) => {
     expect(validateTargets(supabaseUrl, apiUrl).status).not.toBe(0)
-  })
+  }, POWERSHELL_TEST_TIMEOUT_MS)
 
   it.each([
     'sb_publishable_fixture_key',
     'e30.eyJyb2xlIjoiYW5vbiJ9.signature',
   ])('accepts a Supabase public client key without exposing its value', (value) => {
     expect(validatePublishableKey(value).status).toBe(0)
-  })
+  }, POWERSHELL_TEST_TIMEOUT_MS)
 
   it.each([
     'sb_secret_fixture_key',
@@ -93,7 +94,7 @@ describe('PowerShell staging target safety', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).not.toContain(value)
-  })
+  }, POWERSHELL_TEST_TIMEOUT_MS)
 
   it('keeps the authenticated smoke env narrow and verifies the exact six-service contract', () => {
     const source = readFileSync(

@@ -6,9 +6,9 @@ import {
   createMobileApiHandler,
   type MobileApiAuthResult,
   type MobileApiServices,
-} from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { ADMIN_CONTROL_CAPABILITIES } from '../../../../../supabase/functions/mobile-api/_shared/router/admin-control-dtos'
-import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/router/routes'
+} from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { ADMIN_CONTROL_CAPABILITIES } from '../../../../../supabase/functions/mobile-api/_shared/domains/contracts/admin-control'
+import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes'
 
 const root = resolve(__dirname, '../../../../../')
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8').replace(/\r\n/g, '\n')
@@ -184,8 +184,8 @@ describe('mobile-api admin control plane', () => {
   })
 
   it('uses the worker payment ledger for a transaction reconciliation and exposes totals for numbered pagination', () => {
-    const transactionService = read('supabase/functions/mobile-api/_shared/services/admin-transactions.service.ts')
-    const payoutService = read('supabase/functions/mobile-api/_shared/services/admin-payout.service.ts')
+    const transactionService = read('supabase/functions/mobile-api/_shared/domains/admin/transactions.ts')
+    const payoutService = read('supabase/functions/mobile-api/_shared/domains/admin/payout.ts')
 
     expect(transactionService).toContain('from("worker_payment_ledger")')
     expect(transactionService).toContain('serializeWorkerPaymentLedger(ledgerResult.data, result.data)')
@@ -195,8 +195,8 @@ describe('mobile-api admin control plane', () => {
   })
 
   it('keeps system monitoring owner-only and sourced from real database records', () => {
-    const governanceService = read('supabase/functions/mobile-api/_shared/services/admin-governance.service.ts')
-    const routes = read('supabase/functions/mobile-api/_shared/router/admin-control-routes.ts')
+    const governanceService = read('supabase/functions/mobile-api/_shared/domains/admin/governance.ts')
+    const routes = read('supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts')
 
     expect(routes).toContain('admin.governance.aiCosts')
     expect(routes).toContain('roles: ["admin"]')

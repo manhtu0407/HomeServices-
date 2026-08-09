@@ -3,8 +3,8 @@ import {
   readJsonRequestBounded,
   RequestJsonError,
 } from "../_shared/request-json.ts";
-import { monitorLearningRules } from "../mobile-api/_shared/kael/cron/monitor-learning-rules.ts";
-import type { LearningQueueDbClient } from "../mobile-api/_shared/kael/cron/process-learning-queue.ts";
+import { monitorLearningRules } from "../mobile-api/_shared/kael/learning/cron/monitor-learning-rules.ts";
+import type { LearningQueueDbClient } from "../mobile-api/_shared/kael/learning/cron/process-learning-queue.ts";
 
 // Scheduled entry point for the learning monitor. It exists because mobile-api
 // authenticates a user JWT and looks the caller's role up in profiles, which pg_cron

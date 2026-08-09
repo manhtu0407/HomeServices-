@@ -91,7 +91,8 @@ Recommendation when the time comes: option 2.
 
 - Trigger: `supabase/migrations/20260517192455_harden_auth_signup_trigger.sql`
   (search `private.handle_new_user`)
-- Runtime route: `supabase/functions/mobile-api/_shared/services.ts`
+- Runtime route: `supabase/functions/mobile-api/_shared/domains/worker/registration.ts`
+  (`registerWorker`), composed into `MobileApiServices` by `_shared/domains.ts`
 - Reference route: `apps/api/src/app/api/workers/register/route.ts`
 - Register module: `apps/api/src/lib/workers/register.ts` (line 38-43 is the
   `WRONG_ROLE` guard)

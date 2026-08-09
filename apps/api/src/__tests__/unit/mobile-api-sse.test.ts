@@ -6,18 +6,28 @@ import {
   createSseResponse,
   encodeSseEvent,
   encodeSseHeartbeat,
-} from '../../../../../supabase/functions/mobile-api/_shared/sse'
+} from '../../../../../supabase/functions/mobile-api/_shared/platform/sse'
 import {
   splitVerifiedResponseBlocks,
   splitVerifiedResponseDeltas,
   verifiedResponseCadenceMs,
   verifiedResponseTargetChars,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/kael-verified-response-stream'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/verified-response-stream'
 
-const kaelStreamSource = fs.readFileSync(
-  path.resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-stream.ts'),
-  'utf8',
-)
+const kaelStreamSource = [
+  fs.readFileSync(
+    path.resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/verified-response-stream.ts'),
+    'utf8',
+  ),
+  ...[
+    'stream.ts',
+    'customer-conversation-stream.ts',
+    'worker-stream.ts',
+  ].map((file) => fs.readFileSync(
+    path.resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat', file),
+    'utf8',
+  )),
+].join('\n')
 
 describe('mobile-api SSE helper', () => {
   it('frames typed events as text/event-stream chunks', () => {

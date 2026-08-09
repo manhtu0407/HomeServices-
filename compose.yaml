@@ -1,0 +1,37 @@
+# Dev-dependency containers only. Nothing here is deployed or serves a user;
+# the store-bound runtime stays Expo -> Supabase Auth -> Edge `mobile-api`.
+#
+# This file covers ONLY the Deno toolbox. The database, auth, storage and
+# edge_runtime containers are owned by the Supabase CLI via supabase/config.toml
+# — re-declaring them here would fork the versions the CLI pins.
+# Map of who owns what: docker/INDEX.md
+#
+# Named `compose.yaml` at the repo root on purpose: Compose auto-discovers that
+# filename, so `docker compose run --rm deno …` works with no `-f` flag.
+
+services:
+  # Pinned Deno toolchain for supabase/functions. The dev machine has no Deno
+  # install, and an unpinned tag would silently change the type-checker under us.
+  deno:
+    image: denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498
+    working_dir: /workspace
+    entrypoint: ["deno"]
+    command: ["--version"]
+    volumes:
+      - .:/workspace
+      # Windows-installed node_modules are the wrong platform's binaries; shadow
+      # them with empty anonymous volumes so nothing in the container can resolve
+      # into them.
+      - /workspace/node_modules
+      - /workspace/apps/api/node_modules
+      - /workspace/apps/mobile/node_modules
+      - /workspace/packages/shared/node_modules
+      # Keep the module cache outside the bind mount so repeated runs are fast
+      # and the repo working tree stays clean.
+      - deno-cache:/deno-dir
+    environment:
+      DENO_DIR: /deno-dir
+      DENO_NO_UPDATE_CHECK: "1"
+
+volumes:
+  deno-cache:

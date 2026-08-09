@@ -5,10 +5,10 @@
  * for one (service, problem, district) triple, runs `runLearningHook`, and
  * verifies:
  *   - candidate accumulates correct evidence_count
- *   - evidence gate auto-promotes at threshold when flag enabled
- *   - learning_rule + learning_rule_versions inserted
- *   - fetchBaseline returns the learned range (not raw baseline)
- *   - flag-off path: candidate exists, no rule promoted, fetchBaseline returns raw
+ *   - evidence gate queues qualifying candidates for human review
+ *   - no learning_rule activates before administrator approval
+ *   - fetchBaseline stays on the raw baseline before approval
+ *   - review-disabled path keeps a candidate accumulating without a rule
  *
  * Skips automatically when env credentials are missing. Production guard
  * refuses to run against production ref.
@@ -23,43 +23,14 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@nestscout/shared'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
+import { resolveOrAnnounceSkip } from './integration-target'
 
-function loadEnvFile(): Record<string, string> {
-  const envPath = resolve(__dirname, '../../../../../.env.local')
-  try {
-    const content = readFileSync(envPath, 'utf-8')
-    const vars: Record<string, string> = {}
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim()
-      if (!trimmed || trimmed.startsWith('#')) continue
-      const [key, ...valueParts] = trimmed.split('=')
-      if (!key || valueParts.length === 0) continue
-      vars[key.trim()] = valueParts.join('=').trim()
-    }
-    return vars
-  } catch {
-    return {}
-  }
-}
-
-const envVars = loadEnvFile()
-const supabaseUrl = envVars['NEXT_PUBLIC_SUPABASE_URL'] || process.env.NEXT_PUBLIC_SUPABASE_URL
-const serviceRoleKey =
-  envVars['SUPABASE_SERVICE_ROLE_KEY'] || process.env.SUPABASE_SERVICE_ROLE_KEY
-
-const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
-const isProduction = supabaseUrl?.includes(PRODUCTION_REF) ?? false
-
-const skip = !supabaseUrl || !serviceRoleKey || isProduction
-const describeReal = skip ? describe.skip : describe
-
-if (isProduction) {
-  console.warn(
-    '[learning-real-supabase] Refusing to run against production. Set NEXT_PUBLIC_SUPABASE_URL to staging.',
-  )
-}
+// Defaults to the local stack; throws rather than skipping on a dangerous
+// target, so a production URL can never report green by being skipped.
+const resolution = await resolveOrAnnounceSkip('learning-real-supabase')
+const supabaseUrl = resolution.ok ? resolution.target.url : undefined
+const serviceRoleKey = resolution.ok ? resolution.target.serviceRoleKey : undefined
+const describeReal = resolution.ok ? describe : describe.skip
 
 let supabase: SupabaseClient<Database>
 
@@ -80,8 +51,6 @@ const FIVE_JOB_PRICES = [350_000, 380_000, 360_000, 400_000, 370_000]
 let customerUserId: string | null = null
 let workerUserId: string | null = null
 const createdJobIds: string[] = []
-const createdCandidateIds: string[] = []
-const createdRuleIds: string[] = []
 
 // Helper to seed one completed-reviewed job with chosen final price.
 type SeedOverrides = {
@@ -289,9 +258,9 @@ describeReal('Kael learning services — real Supabase integration', () => {
 
   // ─── Positive: 5 jobs + flag on, gate passes, rule promoted ────────
 
-  it('with 5 reviewed jobs + LEARNING_AUTOPROMOTE_ENABLED=true, rule promoted to active', async () => {
+  it('with 5 reviewed jobs + LEARNING_WRITE_ENABLED=true, candidate queues for manual review', async () => {
     vi.stubEnv('LEARNING_ENABLED', 'true')
-    vi.stubEnv('LEARNING_AUTOPROMOTE_ENABLED', 'true')
+    vi.stubEnv('LEARNING_WRITE_ENABLED', 'true')
     const { runLearningHook } = await import('@/lib/learning/hook')
 
     await purgeLearningRowsForScope()
@@ -299,9 +268,8 @@ describeReal('Kael learning services — real Supabase integration', () => {
     for (let i = 0; i < 5; i++) {
       localJobIds.push(await seedReviewedJob(FIVE_JOB_PRICES[i], 200 + i))
     }
-    for (const jobId of localJobIds) {
-      await runLearningHook(supabase, jobId)
-    }
+    let lastSummary: { marketQueuedForReview?: boolean } | undefined
+    for (const jobId of localJobIds) lastSummary = await runLearningHook(supabase, jobId)
 
     const { data: candidate } = await supabase
       .from('learning_candidates')
@@ -314,33 +282,19 @@ describeReal('Kael learning services — real Supabase integration', () => {
 
     expect(candidate).not.toBeNull()
     expect(candidate?.evidence_count).toBeGreaterThanOrEqual(5)
-    if (candidate) createdCandidateIds.push(candidate.id)
 
-    // After the 5th observation runLearningHook should have promoted.
-    expect(candidate?.status === 'auto_promoted' || candidate?.status === 'evidence_gate_passed').toBe(true)
+    // The fifth observation queues human review; it never activates a rule.
+    expect(lastSummary?.marketQueuedForReview).toBe(true)
+    expect(candidate?.status).toBe('manual_review')
 
-    const { data: rule } = await supabase
+    const { data: rules } = await supabase
       .from('learning_rules')
-      .select('id, active_version, rule_payload, status')
+      .select('id')
       .eq('rule_type', 'price_prior_update')
       .eq('affected_service', TEST_SERVICE)
       .eq('affected_problem', TEST_PROBLEM)
       .eq('affected_district', TEST_DISTRICT)
-      .maybeSingle()
-
-    expect(rule).not.toBeNull()
-    expect(rule?.status).toBe('active')
-    expect(rule?.active_version).toBeGreaterThanOrEqual(1)
-    if (rule) createdRuleIds.push(rule.id)
-
-    // Version row must exist.
-    const { data: version } = await supabase
-      .from('learning_rule_versions')
-      .select('rule_id, version, status')
-      .eq('rule_id', rule!.id)
-      .maybeSingle()
-    expect(version).not.toBeNull()
-    expect(version?.version).toBeGreaterThanOrEqual(1)
+    expect(rules?.length ?? 0).toBe(0)
   }, 60_000)
 
   it('measures drift against the admin reference, not the quote it produced', async () => {
@@ -379,7 +333,6 @@ describeReal('Kael learning services — real Supabase integration', () => {
       .maybeSingle()
 
     expect(candidate).not.toBeNull()
-    if (candidate) createdCandidateIds.push(candidate.id)
 
     const payload = candidate?.suggested_payload as {
       observed: Record<string, number>
@@ -399,28 +352,23 @@ describeReal('Kael learning services — real Supabase integration', () => {
 
   // ─── Read-path: fetchBaseline returns learned range ────────────────
 
-  it('fetchBaseline returns learned range after promotion (LEARNING_ENABLED=true)', async () => {
+  it('fetchBaseline stays on the raw range before human approval', async () => {
     vi.stubEnv('LEARNING_ENABLED', 'true')
-    vi.stubEnv('LEARNING_AUTOPROMOTE_ENABLED', 'true')
+    vi.stubEnv('LEARNING_WRITE_ENABLED', 'true')
     const { fetchBaseline } = await import('@/lib/kael/baseline')
 
     const result = await fetchBaseline(supabase, TEST_SERVICE, TEST_PROBLEM, TEST_COMPLEXITY, TEST_DISTRICT)
     expect(result.success).toBe(true)
     if (result.success) {
-      // Underestimate direction: learned new_max should exceed the raw baseline_max (400k).
-      // We tolerate either rule-applied or fall-through depending on the prior test sequence.
       expect(result.priceMin).toBeGreaterThan(0)
       expect(result.priceMax).toBeGreaterThanOrEqual(result.priceMin)
-      // If a learnedRuleId is present, the learned range should differ from raw.
-      if (result.learnedRuleId) {
-        expect(result.learnedRuleVersion).toBeGreaterThanOrEqual(1)
-      }
+      expect(result.learnedRuleId).toBeUndefined()
     }
   }, 30_000)
 
   // ─── Negative: 5 jobs but autopromote flag off ─────────────────────
 
-  it('with autopromote flag off, candidate accumulates but no rule promoted', async () => {
+  it('with review queue disabled, candidate accumulates but no rule activates', async () => {
     vi.stubEnv('LEARNING_ENABLED', 'true')
     vi.stubEnv('LEARNING_AUTOPROMOTE_ENABLED', 'false')
     const { runLearningHook } = await import('@/lib/learning/hook')
@@ -462,7 +410,7 @@ describeReal('Kael learning services — real Supabase integration', () => {
 
   it('runLearningHook returns ok=false for a job without final_price (graceful skip)', async () => {
     vi.stubEnv('LEARNING_ENABLED', 'true')
-    vi.stubEnv('LEARNING_AUTOPROMOTE_ENABLED', 'true')
+    vi.stubEnv('LEARNING_WRITE_ENABLED', 'true')
     const { runLearningHook } = await import('@/lib/learning/hook')
 
     const now = new Date().toISOString()

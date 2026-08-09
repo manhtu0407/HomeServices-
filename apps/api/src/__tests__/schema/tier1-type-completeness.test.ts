@@ -11,13 +11,21 @@ const ROOT = resolve(__dirname, '../../../../../')
 const MIGRATIONS_DIR = resolve(ROOT, 'supabase/migrations')
 const SHARED_DATABASE_TYPES = resolve(ROOT, 'packages/shared/src/types/database.types.ts')
 const DROPPED_PUBLIC_TABLES = new Set(['worker_profiles_districts_backup_x3'])
-const DROPPED_PUBLIC_FUNCTIONS = new Set(['normalize_district_value'])
+const DROPPED_PUBLIC_FUNCTIONS = new Set([
+  'normalize_district_value',
+  'decide_worker_cancellation_atomic',
+])
 // PostgREST excludes trigger-returning helpers from the generated callable RPC surface.
 const TRIGGER_ONLY_PUBLIC_FUNCTIONS = new Set([
   'handle_new_user',
   'notify_worker_account_approved',
   'prevent_evidence_snapshot_mutation',
   'validate_customer_payment_method_customer',
+  'capture_learning_review_provenance',
+  'capture_learning_rule_dependency',
+  'prevent_revoked_learning_rule_activation',
+  'reject_harness_append_only_mutation',
+  'reject_harness_release_mutation',
 ])
 
 const readText = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')
@@ -56,7 +64,7 @@ function generatedPublicKeys(sectionName: 'Tables' | 'Functions') {
       continue
     }
     if (section === sectionName) {
-      const key = line.match(/^\s{6}([a-zA-Z0-9_]+): \{/)
+      const key = line.match(/^\s{6}([a-zA-Z0-9_]+):(?: \{|$)/)
       if (key) keys.push(key[1])
     }
   }
@@ -399,6 +407,54 @@ describe('Insert type requirements', () => {
 
     expect(feedback.worker_id).toBe(workerId)
     expect(consent.training_consent).toBe(true)
+  })
+
+  it('keeps the Section 50 feedback, escalation, and estimate contracts in generated types', () => {
+    const actorId = '00000000-0000-0000-0000-000000000001'
+    const customerFeedback = {
+      customer_id: actorId,
+      message: 'Kael made the estimate clear.',
+      message_scrubbed: 'Kael made the estimate clear.',
+      response_id: 'customer-response-1',
+      rating: 'useful',
+      reason_scrubbed: 'Clear estimate.',
+    } satisfies Database['public']['Tables']['customer_kael_feedback']['Insert']
+    const workerFeedback = {
+      worker_id: actorId,
+      raw_message: 'Kael made the worker brief clear.',
+      scrubbed_message: 'Kael made the worker brief clear.',
+      response_id: 'worker-response-1',
+      rating: 'not_useful',
+      reason_scrubbed: 'Missing scope detail.',
+    } satisfies Database['public']['Tables']['worker_kael_feedback']['Insert']
+    const resolvedQueue = {
+      actor_role: 'admin',
+      queue_type: 'demanding_customer',
+      priority: 'high',
+      escalation_level: 'hard',
+      reason_code: 'verification',
+      response_summary: 'Safe resolution summary.',
+      resolved_by: actorId,
+      resolved_at: '2026-08-08T00:00:00.000Z',
+      resolution_note: 'Resolved after a safe review.',
+    } satisfies Database['public']['Tables']['kael_admin_queue']['Insert']
+    const accuracy = {
+      service_type: 'electrical',
+      complexity: 'small',
+      month: '2026-08-01',
+      job_count: 3,
+      in_band_count: 1,
+      in_band_rate: 0.3333,
+      under_count: 1,
+      over_count: 1,
+      median_miss_ratio: 0.25,
+      p90_miss_ratio: 0.5,
+    } satisfies Database['public']['Views']['kael_estimate_accuracy']['Row']
+
+    expect(customerFeedback.response_id).toBeTruthy()
+    expect(workerFeedback.rating).toBe('not_useful')
+    expect(resolvedQueue.resolved_by).toBe(actorId)
+    expect(accuracy.in_band_rate).toBe(0.3333)
   })
 
   it('Kael optimization and knowledge artifacts stay represented in generated types', () => {

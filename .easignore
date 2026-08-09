@@ -6,6 +6,16 @@
 .tmp/
 tmp/
 output/
+docker/
+compose.yaml
+
+# Repo material the Expo build never reads. apps/api and sandbox stay in the
+# upload on purpose: they are pnpm workspace packages, so dropping them makes
+# the lockfile importer set disagree and `pnpm install --frozen-lockfile` fail.
+docs/
+governance/
+supabase/
+.github/
 
 # Dependency and build caches
 node_modules/

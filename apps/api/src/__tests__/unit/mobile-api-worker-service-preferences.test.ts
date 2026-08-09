@@ -5,7 +5,7 @@ import {
   isWorkerServiceQualityLocked,
   selectedServiceTypesForWorker,
   workerAcceptsService,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/worker-service-preferences'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/service-preferences'
 
 describe('worker-selected service preferences', () => {
   it('keeps legacy workers active for every existing service when no selection exists', () => {

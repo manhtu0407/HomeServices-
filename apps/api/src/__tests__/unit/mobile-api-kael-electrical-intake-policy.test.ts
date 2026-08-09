@@ -8,17 +8,18 @@ import {
   prependDeterministicSafetyGuidance,
   resolveRequiredSlotCoverage,
   scanIntakeSafetySignals,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/electrical-intake-policy'
-import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/performance-profiles'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/electrical-intake-policy'
+import { getKaelPerformanceProfile } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/performance-profiles'
 import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard'
-import { buildFallbackIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/intent'
-import { resolveElectricalIntakeRuntime } from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-runtime'
-import { buildSafetyFirstKaelClarification, mergeBoundarySafetyGuidance, persistentKaelSafetySignals, requiresImmediateKaelSafetyPath, resolveKaelResponseSafetySignals } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-intake-safety'
-import { maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-core'
-import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/output-pipeline'
-import { buildInitialDiagnosisScopeArtifact, buildKaelMissingInfoArtifactProposal } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
-import { diagnosisScopeWithQuestion } from '../../../../../supabase/functions/mobile-api/_shared/services/kael-chat-case-work'
-import { formatKaelEstimateText, serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
+import { buildFallbackIntent } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent'
+import { resolveElectricalIntakeRuntime } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/intake-runtime'
+import { buildSafetyFirstKaelClarification, mergeBoundarySafetyGuidance, persistentKaelSafetySignals, requiresImmediateKaelSafetyPath, resolveKaelResponseSafetySignals } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety'
+import { maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/guard'
+import { buildEstimateCardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-pipeline'
+import { buildInitialDiagnosisScopeArtifact, buildKaelMissingInfoArtifactProposal } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/artifact-contract'
+import { diagnosisScopeWithQuestion } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-artifact'
+import { formatKaelEstimateText } from '../../../../../supabase/functions/mobile-api/_shared/http/serialize/labels'
+import { serializeKaelTurn } from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/serialize'
 
 describe('Kael electrical minimum-slot policy', () => {
   it('gates an installation estimate on device, wiring path, and parts only', () => {

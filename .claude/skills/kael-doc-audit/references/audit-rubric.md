@@ -1,4 +1,4 @@
-# kael-doc-audit — Rubric & Red Flags (Home Services)
+# kael-doc-audit — Rubric & Red Flags (NestScout)
 
 Adapted from Anthropic `claude-md-improver`, retargeted from "one CLAUDE.md" to the full governance stack.
 

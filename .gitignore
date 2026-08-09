@@ -54,6 +54,12 @@ tmp-*.log
 /.pnpm-store/
 .claude/.mcp.json
 
+# local docker stack state - only text files under docker/ are tracked
+/docker/**/volumes/
+/docker/**/data/
+/docker/.env
+/supabase/.temp/
+
 # env files
 .env*
 !config/env/workspace.env.example

@@ -34,7 +34,7 @@ export const KAEL_ACTIONS = [
 
 export type KaelAction = (typeof KAEL_ACTIONS)[number]
 
-export const KAEL_ALLOWED_TOPICS = [
+const KAEL_ALLOWED_TOPICS = [
   'electrical_repair',
   'plumbing_repair',
   'home_cleaning',

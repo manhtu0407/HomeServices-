@@ -1,6 +1,6 @@
 ---
 name: kael-accessible-content
-description: Make Home Services Expo React Native content accessible. Use for VI / EN copy and diacritics, dynamic type / large text, screen reader name / role / state, contrast and non-color cues, touch target size, truncation, or accessibility. Enforces no mixed-language, no truncated price / status / risk / address, Reduce Motion / Transparency, and WCAG contrast in light + dark.
+description: Make NestScout Expo React Native content accessible. Use for VI / EN copy and diacritics, dynamic type / large text, screen reader name / role / state, contrast and non-color cues, touch target size, truncation, or accessibility. Enforces no mixed-language, no truncated price / status / risk / address, Reduce Motion / Transparency, and WCAG contrast in light + dark.
 ---
 
 # kael-accessible-content

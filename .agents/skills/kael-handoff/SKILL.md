@@ -10,7 +10,7 @@ metadata:
 
 # kael-handoff
 
-Auto-trigger wrapper. The canonical Home Services procedure is `protocols/docs-workflow.md` section 21 (`kael-handoff`) plus `critical.md` section 8 (`kael-review`). Do not duplicate large artifacts here.
+Auto-trigger wrapper. The canonical NestScout procedure is `protocols/docs-workflow.md` section 21 (`kael-handoff`) plus `critical.md` section 8 (`kael-review`). Do not duplicate large artifacts here.
 
 Use this when:
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { runJobIncidentAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/job-incident'
-import type { StructuredAIInvoker } from '../../../../../supabase/functions/mobile-api/_shared/kael/structured-call'
+import { runJobIncidentAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/job-incident'
+import type { StructuredAIInvoker } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/structured-call'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 const incidentInput = {

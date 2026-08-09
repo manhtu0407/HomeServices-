@@ -8,13 +8,10 @@ import {
   type TextProps,
   type ViewStyle,
 } from 'react-native'
-import { type LocalDeal, type ServiceType } from '@nestscout/shared'
+import { type LocalDeal } from '@nestscout/shared'
 
-import { MintAura } from '@/components/ui/kael-primitives'
-import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
+import type { AppLanguage } from '@/lib/app-language'
 
-import { textByLanguage } from '../ui/format'
-import { routeDestinationLabel } from '../ui/labels'
 import { buildWorkerV5AcceptEtaSignal } from '../ui/route'
 import type { WorkerV5AcceptCheck } from './acceptance'
 import { styles } from './acceptance-styles'
@@ -27,67 +24,6 @@ type WorkerV5AcceptanceAuraComponent = ComponentType<{
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
-}
-
-export function WorkerV5AcceptSummaryCard({
-  caseWideAura: CaseWideAura,
-  deal,
-  jobIcon,
-  language,
-  reduceTransparency,
-  serviceIcons,
-  zipAura: ZipAura,
-}: {
-  caseWideAura: WorkerV5AcceptanceAuraComponent
-  deal: LocalDeal | null
-  jobIcon: ImageSourcePropType
-  language: AppLanguage
-  reduceTransparency: boolean
-  serviceIcons: Record<ServiceType, ImageSourcePropType>
-  zipAura: WorkerV5AcceptanceAuraComponent
-}) {
-  const serviceType = deal?.draft.serviceType ?? null
-  const serviceIcon = serviceType ? serviceIcons[serviceType] : jobIcon
-  const serviceLabel = deal
-    ? localizedServiceLabel(deal.draft.serviceType, language)
-    : textByLanguage(language, 'Chưa có đề nghị thật', 'No real offer yet')
-  const meta = deal
-    ? `${deal.draft.description || textByLanguage(language, 'Yêu cầu từ khách', 'Customer request')} · ${routeDestinationLabel(deal, language)}`
-    : textByLanguage(language, 'Chi tiết sẽ hiện khi có cơ hội phù hợp.', 'Details appear when a suitable opportunity is ready.')
-  const earning = deal?.broadcast?.estimatedEarningLabel?.trim()
-    || textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning estimate')
-
-  return (
-    <View style={[styles.acceptSummaryCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-accept-summary-card">
-      {!reduceTransparency ? (
-        <>
-          <CaseWideAura
-            scope="AcceptSummaryWide"
-            style={styles.acceptSummaryAura}
-            testID="worker-v5-accept-summary-mint-aura"
-          />
-          <ZipAura
-            scope="AcceptSummaryFine"
-            style={styles.acceptSummaryZipAura}
-            testID="worker-v5-accept-summary-zip-mint-aura"
-          />
-        </>
-      ) : null}
-      <View style={styles.acceptSummaryLine}>
-        <View style={styles.acceptSummaryIconTile} testID="worker-v5-accept-summary-icon-tile">
-          <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-          <Image contentFit="contain" source={serviceIcon} style={styles.acceptSummaryIcon} />
-        </View>
-        <View style={styles.acceptSummaryCopy} testID="worker-v5-accept-summary-copy">
-          <Text style={styles.acceptSummaryTitle} numberOfLines={2} testID="worker-v5-accept-summary-title">{serviceLabel}</Text>
-          <Text style={styles.acceptSummaryMeta} numberOfLines={2} testID="worker-v5-accept-summary-meta">{meta}</Text>
-        </View>
-        <View style={styles.acceptSummaryPriceSlot} testID="worker-v5-accept-summary-price-slot">
-          <Text style={styles.acceptSummaryPrice} numberOfLines={2} testID="worker-v5-accept-summary-price">{earning}</Text>
-        </View>
-      </View>
-    </View>
-  )
 }
 
 export function WorkerV5AcceptChecklistCard({

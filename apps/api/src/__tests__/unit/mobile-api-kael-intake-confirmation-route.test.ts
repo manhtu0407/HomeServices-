@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { matchCustomerKaelChatSessionRoute } from '../../../../../supabase/functions/mobile-api/_shared/router/kael-chat-session-routes'
+import { matchCustomerKaelChatSessionRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/kael-chat-session-routes'
 
 const decode = (segment: string) => segment
 

@@ -2,7 +2,7 @@ import type { JobStatus } from "../../../../_shared/domain.ts";
 import {
   type KaelAutonomyDecision,
   kaelAutonomyDecisionSchema,
-} from "../artifact-contract.ts";
+} from "../contracts/artifact-contract.ts";
 import {
   evaluateKaelPermissionGate,
   type KaelPermissionGateRequest,
@@ -104,7 +104,7 @@ const DIRECT_MUTATION_PATTERNS = [
   /\bcharge (?:customer|now)\b/i,
 ];
 
-export function readKaelAutonomyFlags(
+function readKaelAutonomyFlags(
   getEnv = readRuntimeEnv,
 ): { KAEL_AUTONOMY_FULL_ENABLED: boolean } {
   return {

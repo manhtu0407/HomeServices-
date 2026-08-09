@@ -3,14 +3,15 @@ import {
   createMobileApiHandler,
   type MobileApiAuthResult,
   type MobileApiServices,
-} from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/router/routes'
+} from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/index'
 
 const customerAuth: MobileApiAuthResult = {
   success: true,
   user: { id: '11111111-1111-4111-8111-111111111111' },
   role: 'customer',
   supabase: {},
+  userSupabase: {},
 }
 
 describe('mobile-api customer Kael assistant route', () => {

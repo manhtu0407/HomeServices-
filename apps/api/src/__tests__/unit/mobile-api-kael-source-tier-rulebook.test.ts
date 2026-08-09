@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifySourceTrustTier } from '../../../../../supabase/functions/mobile-api/_shared/kael/source-tier-rulebook'
+import { classifySourceTrustTier } from '../../../../../supabase/functions/mobile-api/_shared/kael/evidence/source-tier-rulebook'
 
 const trustedDirectEvidence = {
   knownSource: true,

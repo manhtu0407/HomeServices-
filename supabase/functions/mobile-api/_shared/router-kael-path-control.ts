@@ -4,8 +4,8 @@ import {
   type KaelEdgeRoute,
   type KaelMobileAction,
   type KaelWorkflowPhase,
-} from "./kael/path-control.ts";
-import type { KaelPurpose } from "./kael/types.ts";
+} from "./kael/kael-guardrails/path-control.ts";
+import type { KaelPurpose } from "./kael/contracts/types.ts";
 
 type RouteLike = {
   readonly kind: string;
@@ -119,7 +119,7 @@ const KAEL_RUNTIME_PATH_CONTROL: Partial<Record<string, KaelRuntimePathControlRo
   },
 };
 
-export function evaluateKaelRuntimePathControl(
+function evaluateKaelRuntimePathControl(
   route: RouteLike,
   actorRole: UserRole,
 ): KaelRuntimePathControlFailure | null {

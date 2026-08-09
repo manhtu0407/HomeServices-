@@ -6,15 +6,29 @@ const migration = () => readFileSync(
   'utf8',
 )
 
-const service = () => readFileSync(
-  new URL('../../../../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts', import.meta.url),
+// The request flow is request.ts plus the atomic persistence module split out of it, so the
+// claim/replay assertions read both — otherwise the RPC-arg checks fall out of reach.
+const service = () => [
+  'request.ts',
+  'persist.ts',
+].map((path) => readFileSync(
+  new URL(`../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/${path}`, import.meta.url),
+  'utf8',
+)).join('\n')
+const supportService = () => readFileSync(
+  new URL('../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/support.ts', import.meta.url),
   'utf8',
 )
 
-const effectService = () => readFileSync(
-  new URL('../../../../../supabase/functions/mobile-api/_shared/services/scope-change-effects.service.ts', import.meta.url),
+const effectService = () => [
+  'effects.ts',
+  'effects-incident.ts',
+  'effects-payloads.ts',
+  'effects-drain.ts',
+].map((path) => readFileSync(
+  new URL(`../../../../../supabase/functions/mobile-api/_shared/domains/job/scope-change/${path}`, import.meta.url),
   'utf8',
-)
+)).join('\n')
 
 describe('scope-change request idempotency', () => {
   it('uses COALESCE as SQL syntax instead of a schema-qualified function call', () => {
@@ -57,17 +71,17 @@ describe('scope-change request idempotency', () => {
 
   it('claims or replays before computing a new Kael estimate', () => {
     const source = service()
-    const handler = source.match(
-      /export async function requestScopeChange[\s\S]*?export async function decideScopeChange/,
-    )?.[0] ?? ''
-    const claim = handler.indexOf('claim_scope_change_request_atomic')
-    const provider = handler.indexOf('computeScopeChangeEstimate')
+    const support = supportService()
+    const claim = source.indexOf('claimDirectScopeChange(')
+    const provider = source.indexOf('prepareScopeChangeEstimate(')
 
     expect(claim).toBeGreaterThan(-1)
     expect(provider).toBeGreaterThan(claim)
-    expect(handler).toContain('release_scope_change_request_claim_atomic')
-    expect(handler).toContain('p_client_request_id: input.client_request_id')
-    expect(handler).toContain('p_claim_id: directClaimId')
+    expect(source).toContain('claim_scope_change_request_atomic')
+    expect(support).toContain('computeScopeChangeEstimate')
+    expect(support).toContain('release_scope_change_request_claim_atomic')
+    expect(source).toContain('p_client_request_id = input.request.client_request_id')
+    expect(source).toContain('p_claim_id = input.claimId')
   })
 
   it('persists and replays post-commit effects without repeating provider work', () => {

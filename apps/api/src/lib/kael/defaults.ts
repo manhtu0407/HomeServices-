@@ -14,7 +14,7 @@ export function hasHighSeverity(indicators: string[]): boolean {
 
 export const SEVERITY_ADVISORY =
   'Lưu ý: Vấn đề có dấu hiệu nghiêm trọng. Thợ sẽ kiểm tra kỹ trước khi bắt đầu sửa chữa.'
-export const SEVERITY_ADVISORY_EN =
+const SEVERITY_ADVISORY_EN =
   'Note: The evidence indicates a serious issue. A worker must inspect it carefully before work starts.'
 
 export function severityAdvisory(language: 'vi' | 'en' = 'vi') {

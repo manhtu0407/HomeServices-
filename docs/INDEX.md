@@ -9,19 +9,21 @@ Durable project knowledge: feature specs, design contracts, audits, ops runbooks
 | Folder | Holds | Add here when… |
 |---|---|---|
 | `playbooks/` | Kael knowledge distillation: per-service textbooks + eval corpora, and the distillation SOP | you are teaching Kael to reason about a service |
-| `architecture/` | Durable system specs: the code-ownership map, status vocabulary, workflow-step contracts, migration chain, agentic/worker specs | a decision is a lasting structural contract, not a point-in-time plan |
+| `architecture/` | Durable system specs: the code-ownership map, migration chain, agentic/worker specs. **Workflow runtime truth is not here** — it lives in `governance/STRUCTURES.md` §6/§7/§9/§12/§22; `status-vocabulary.md` and `workflow-step-contracts.md` are redirect stubs kept so historical links resolve | a decision is a lasting structural contract, not a point-in-time plan |
 | `design/` | Design + UX contracts (glass/motion/mascot, price viz, voice, worker map, perceived-perf) | you accept a design direction to carry into production |
 | `foundation/` | Research + spikes + the Kael knowledge corpus + source-trust research/samples | you did throwaway research or a spike whose conclusion must persist |
 | `audit/` | Point-in-time codebase / security / process audits | you ran a formal audit and captured findings |
 | `ops/` | Operational runbooks: deploy order, migration checklist, SMTP, onboarding | someone needs a step-by-step to run a real operation |
 | `product/` | Product explainers and pre-build UI prep | you are describing the product, not the code (the primary non-technical explainer lives at repo-root [`DOCUMENT.md`](../DOCUMENT.md) instead, for `CLAUDE.md`/`README.md`-level visibility; this folder holds narrower/supporting product docs) |
 | `copy/` | User-facing workflow copy (VI/EN) | you are curating shipped microcopy |
-| `memory/` | `kael-mem` period files (durable session learnings by month) | via the `kael-mem` skill only |
+| `memory/` | **the write target for session memory**: `<YYYY-MM>.md` period files holding full entries, indexed one line each from `.claude/MEMORY.md`. Folder contract: [`memory/INDEX.md`](memory/INDEX.md) | at every session close the Session Memory Gate applies (`governance/critical.md` §3) — Claude Code via `/kael-mem`, Codex by hand per `memory/INDEX.md` |
 | `test-logs/` | Test/verification evidence per phase (append-only; has its own `INDEX.md`) | you ran real tests and must record honest results |
 | `assets/` | Static assets (logo) | a doc/README needs an embedded asset |
 | `archive/` | Ephemeral or superseded material, kept for history | a doc served its purpose (see `archive/INDEX.md`) |
 
 Top-level files: `progress-log.md` (the running progress log, referenced by `README.md`), `agent-lessons.md` (cross-session lessons), `cost-baseline-2026-05.md` (a cost snapshot).
+
+Outside `docs/`: [`docker/INDEX.md`](../docker/INDEX.md) is the map for running the database and Edge toolchain locally (`pnpm db:local:*`, `pnpm edge:check`). Docker in this repo is a **dev dependency only, never a deployment target** — that boundary is stated there.
 
 ## Where a new document goes (quick decision)
 
@@ -36,11 +38,22 @@ Top-level files: `progress-log.md` (the running progress log, referenced by `REA
 
 Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated filename = a living document (playbooks, ownership map, status vocabulary) that is versioned in git and in-content, not by filename.
 
+
+## Current Kael operations references
+
+- [`ops/kael-agentic-completeness-handoff-20260807.md`](ops/kael-agentic-completeness-handoff-20260807.md) — §50 implementation scope, verification, migration/live-service limits, configuration, and rollback.
+- [`ops/kael-eval-live.md`](ops/kael-eval-live.md) — deterministic versus live evaluation and staging-only execution rules.
+- [`ops/kael-model-health.md`](ops/kael-model-health.md) — routing audit and optional admin health probe.
+- [`ops/kael-incident-response.md`](ops/kael-incident-response.md) — kill-switch, provider, spend, unsafe-output, and escalation response.
+
 ## Load-bearing documents (do not move without care)
 
 These are referenced by locked docs or by code — moving them breaks references:
 
 - `architecture/code-ownership-map.md` — referenced by `CLAUDE.md` (locked). The owner-file map per layer.
+- `workflow/worker-cancellation.md` — **load-bearing at runtime.** Its path is a string literal in `supabase/functions/mobile-api/_shared/domains/worker/cancellation.ts`, used as the policy-evidence `reference_id` on a `KaelAutonomyDecision`. Moving, renaming, or deleting it dangles a live evidence pointer and **no test catches it**. Before removing any doc, grep its full path across `*.ts`/`*.tsx`/`*.mjs`, not just `*.md`.
+- `architecture/status-vocabulary.md`, `architecture/workflow-step-contracts.md` — redirect stubs. Content moved into `governance/structures/{state-machines,customer-workflow,worker-workflow}.md`; the files stay because `docs/memory/`, `docs/audit/`, `docs/design/`, and `governance/Plan.md` link to these paths.
+- `memory/INDEX.md` and `memory/<YYYY-MM>.md` — referenced by `CLAUDE.md`, `governance/critical.md` §3 (both locked), `AGENTS.md`, and the `/kael-mem` command. The write target for the Session Memory Gate; moving it breaks the gate.
 - `progress-log.md`, `assets/nestscout-aurora-nest-logo.png` — referenced by `README.md` (locked).
 - `test-logs/**` — referenced by test files and scripts under `apps/api`. Keep the directory; archive within it if needed, never relocate it wholesale.
 - `foundation/kael-knowledge-corpus.md` — referenced by code.

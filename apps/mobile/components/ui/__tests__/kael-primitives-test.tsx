@@ -16,20 +16,7 @@ import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } fro
 import { FormulaMintCardAura } from '../formula-mint-card'
 import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
 import { AlphaStop, NativeSafeLinearGradient } from '../svg-alpha-stop'
-import {
-  KaelAlertBadge,
-  KaelBadge,
-  KaelButton,
-  KaelCard,
-  KaelChip,
-  KaelInlineStepper,
-  KaelProgressPill,
-  KaelRatingCapsule,
-  KaelSegmentedControl,
-  KaelSwitch,
-  KaelText,
-  KaelTextField,
-} from '../kael-primitives'
+import { KaelButton, KaelChip, KaelTextField } from '../kael-primitives'
 
 describe('Kael UI primitives', () => {
   it('keeps the primary CTA gradient aligned with the final mint aura colors without extra white overlays', () => {
@@ -233,74 +220,12 @@ describe('Kael UI primitives', () => {
     expect(onPress).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps segmented control option ids and disabled state stable', () => {
-    const onChange = jest.fn()
-
-    const options = [
-      { label: 'Male', testID: 'kael-segment-male', value: 'male' },
-      { label: 'Female', testID: 'kael-segment-female', value: 'female' },
-    ] as const
-
-    const { rerender } = render(
-      <KaelSegmentedControl
-        onChange={onChange}
-        options={options}
-        testID="kael-segmented-control"
-        value="male"
-      />,
-    )
-
-    fireEvent.press(screen.getByTestId('kael-segment-female'))
-    expect(onChange).toHaveBeenCalledWith('female')
-
-    rerender(
-      <KaelSegmentedControl
-        disabled
-        onChange={onChange}
-        options={options}
-        testID="kael-segmented-control"
-        value="male"
-      />,
-    )
-    fireEvent.press(screen.getByTestId('kael-segment-female'))
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('kael-segment-female')).toBeDisabled()
-  })
-
-  it('keeps inline stepper controls addressable and disabled when bounded', () => {
-    const onDecrement = jest.fn()
-    const onIncrement = jest.fn()
-
+  it('keeps chip and input content visible', () => {
     render(
-      <KaelInlineStepper
-        decrementButtonTestID="kael-stepper-minus"
-        decrementDisabled
-        incrementButtonTestID="kael-stepper-plus"
-        incrementLabel="Increase"
-        onDecrement={onDecrement}
-        onIncrement={onIncrement}
-        testID="kael-inline-stepper"
-        value="8 km"
-        valueTestID="kael-stepper-value"
-      />,
-    )
-
-    fireEvent.press(screen.getByTestId('kael-stepper-minus'))
-    fireEvent.press(screen.getByTestId('kael-stepper-plus'))
-
-    expect(screen.getByTestId('kael-stepper-value')).toHaveTextContent('8 km')
-    expect(screen.getByTestId('kael-stepper-minus')).toBeDisabled()
-    expect(onDecrement).not.toHaveBeenCalled()
-    expect(onIncrement).toHaveBeenCalledTimes(1)
-  })
-
-  it('keeps chip, input, and card content visible', () => {
-    render(
-      <KaelCard>
+      <>
         <KaelChip accessibilityState={{ selected: true }} label="Đã chọn" testID="kael-selected-chip" textStyle={{ fontWeight: '600' }} variant="selected" />
-        <KaelTextField inputShellAdornment={<KaelText testID="kael-field-adornment">A</KaelText>} inputShellTestID="kael-field-shell" placeholder="Nhập nội dung..." value="" />
-        <Text>Card content</Text>
-      </KaelCard>,
+        <KaelTextField inputShellAdornment={<Text testID="kael-field-adornment">A</Text>} inputShellTestID="kael-field-shell" placeholder="Nhập nội dung..." value="" />
+      </>,
     )
 
     expect(screen.getByText('Đã chọn')).toBeOnTheScreen()
@@ -308,13 +233,9 @@ describe('Kael UI primitives', () => {
     expect(screen.getByTestId('kael-field-shell')).toBeOnTheScreen()
     expect(screen.getByTestId('kael-field-adornment')).toBeOnTheScreen()
     expect(screen.getByPlaceholderText('Nhập nội dung...')).toBeOnTheScreen()
-    expect(screen.getByText('Card content')).toBeOnTheScreen()
   })
 
-  it('renders copy through the Apple system typography scale from the handoff theme', () => {
-    render(<KaelText testID="kael-typography-h1" variant="h1">NestScout</KaelText>)
-
-    const style = StyleSheet.flatten(screen.getByTestId('kael-typography-h1').props.style)
+  it('keeps the Apple system typography scale from the handoff theme', () => {
     expect(typography.fontFamily).toBe(Platform.OS === 'ios' ? undefined : 'System')
     expect(typography.fontPolicy).toMatchObject({
       dynamicType: true,
@@ -324,37 +245,6 @@ describe('Kael UI primitives', () => {
     })
     expect(typography.tabularBody.fontVariant).toEqual(['tabular-nums'])
     expect(typography.h1).toBe(typography.largeTitle)
-    expect(style).toMatchObject({
-      fontFamily: typography.fontFamily,
-      fontSize: typography.largeTitle.fontSize,
-      fontWeight: typography.largeTitle.fontWeight,
-      letterSpacing: 0,
-      lineHeight: typography.largeTitle.lineHeight,
-    })
-  })
-
-  it('renders the Component System status and utility primitives', () => {
-    const onSwitch = jest.fn()
-
-    render(
-      <>
-        <KaelSwitch accessibilityLabel="Availability" onValueChange={onSwitch} testID="kael-switch" value={false} />
-        <KaelBadge label="Moi" testID="kael-badge" />
-        <KaelProgressPill testID="kael-progress" value={0.66} />
-        <KaelRatingCapsule rating={4.8} testID="kael-rating" />
-        <KaelAlertBadge count={3} testID="kael-alert-badge" />
-        <KaelAlertBadge count={0} testID="kael-hidden-alert-badge" />
-      </>,
-    )
-
-    fireEvent.press(screen.getByRole('switch', { name: 'Availability' }))
-
-    expect(onSwitch).toHaveBeenCalledWith(true)
-    expect(screen.getByTestId('kael-badge')).toHaveTextContent('Moi')
-    expect(screen.getByTestId('kael-progress').props.accessibilityValue).toMatchObject({ now: 66 })
-    expect(screen.getByTestId('kael-rating')).toHaveTextContent(/4\.8\/5/)
-    expect(screen.getByTestId('kael-alert-badge')).toHaveTextContent('3')
-    expect(screen.queryByTestId('kael-hidden-alert-badge')).toBeNull()
   })
 
 })

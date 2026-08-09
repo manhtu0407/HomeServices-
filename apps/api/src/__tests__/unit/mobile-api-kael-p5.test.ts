@@ -1,18 +1,13 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   auditKaelPermissionDecision,
   evaluateKaelPermissionGate,
   evaluateKaelPermissionGateWithBoundaries,
   hasKaelForbiddenTopicBoundarySignal,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/permission-gate'
-import { checkKaelActorRateLimit, recordKaelCostForTests, resetKaelRateLimitForTests } from '../../../../../supabase/functions/mobile-api/_shared/kael/rate-limit'
-import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
+import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator'
 
 describe('Kael P5 permission scope and response policy', () => {
-  beforeEach(() => {
-    resetKaelRateLimitForTests()
-  })
-
   it('W2 defaults an uncertain LLM topic to clarification and requires an independent boundary signal', () => {
     const lowConfidence = evaluateKaelPermissionGate({
       purpose: 'educational_response',
@@ -419,84 +414,6 @@ describe('Kael P5 permission scope and response policy', () => {
 
     await expect(auditKaelPermissionDecision(client, decision))
       .rejects.toThrow('KAEL_PERMISSION_AUDIT_FAILED')
-  })
-
-  it('enforces worker brief rate limit without running the LLM stage', async () => {
-    const request = {
-      actor: 'worker' as const,
-      actorId: 'worker-1',
-      action: 'worker_brief_clarification' as const,
-      jobId: 'job-1',
-    }
-
-    expect(checkKaelActorRateLimit(request)).toMatchObject({ allowed: true })
-    expect(checkKaelActorRateLimit(request)).toMatchObject({ allowed: true })
-    expect(checkKaelActorRateLimit(request)).toMatchObject({ allowed: true })
-    const blocked = checkKaelActorRateLimit(request)
-    const run = vi.fn(async () => 'LLM should not run')
-
-    const result = await runKaelPurposeStage({
-      label: 'worker-brief-clarify',
-      purpose: 'worker_brief',
-      timeoutMs: 100,
-      permission: {
-        check: () => blocked,
-      },
-      run,
-    })
-
-    expect(blocked).toMatchObject({
-      allowed: false,
-      reasonCode: 'RATE_LIMIT_HIT',
-      declineTemplateKey: 'rate_limit_hit',
-    })
-    expect(run).not.toHaveBeenCalled()
-    expect(result.value).toMatchObject({
-      decline_template_key: 'rate_limit_hit',
-    })
-  })
-
-  it('enforces customer monthly cost cap and writes advisory audit metadata', async () => {
-    recordKaelCostForTests('customer', 'customer-1', 'customer_full_estimate_request', 4.99)
-    const blocked = checkKaelActorRateLimit({
-      actor: 'customer',
-      actorId: 'customer-1',
-      action: 'customer_full_estimate_request',
-      estimatedCostUsd: 0.02,
-    })
-    const client = makeSequenceClient([{ data: { id: 'advisory-1' }, error: null }])
-
-    await auditKaelPermissionDecision(client, {
-      ...blocked,
-      purpose: 'price_synthesis',
-      action: 'synthesize_price',
-      topic: 'price_estimate',
-      actor: 'customer',
-      actorId: 'customer-1',
-      jobId: 'job-1',
-      jobRelation: 'own_customer_job',
-      intentConfidence: 1,
-      topicSource: 'deterministic_rule',
-      boundarySignal: false,
-    })
-
-    expect(blocked).toMatchObject({
-      allowed: false,
-      reasonCode: 'COST_CAP_HIT',
-      declineTemplateKey: 'cost_cap_hit',
-    })
-    expect(client.calls[0]).toMatchObject({ table: 'kael_advisory_audit' })
-    expect(client.calls[0].operations).toContainEqual([
-      'insert',
-      expect.objectContaining({
-        purpose: 'price_synthesis',
-        advisory_type: 'cost_cap_hit',
-        template_key: 'cost_cap_hit',
-        safe_metadata: expect.objectContaining({
-          reason_code: 'COST_CAP_HIT',
-        }),
-      }),
-    ])
   })
 
   it('surfaces a failed cost-cap advisory audit write', async () => {

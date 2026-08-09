@@ -1,6 +1,10 @@
-// Structure ratchet (Core Skill 6 / governance/skills.md). Two checks on source .ts/.tsx:
+// Structure ratchet (Core Skill 6 / governance/skills.md). Checks on source .ts/.tsx:
 //   1. file-size cap — no NEW file over MAX_LINES, and no grandfathered god-file may grow.
-//   2. duplicate exported type/interface — one concept = one home; no NEW cross-file re-declaration.
+//   2. duplicate exported type/interface — one concept = one home; no NEW cross-file
+//      re-declaration, and no silent move of an existing one to a different file.
+//   3. runtime boundary — RN/Edge must not import apps/api.
+//   4. layer model — one-way dependencies inside the mobile-api Edge function.
+//   5. frozen paths — the non-canonical apps/api Kael/learning reference must not grow.
 // Today's god-files and contract dups are grandfathered in scripts/structure-baseline.json
 // (regenerate with `node scripts/lint-structure.mjs --init`); the reorg removes entries as it
 // splits files / collapses contracts. Run via `pnpm lint:structure`.
@@ -59,12 +63,16 @@ const dupTypes = {}
 for (const [name, set] of typeDecls) if (set.size > 1) dupTypes[name] = [...set].sort()
 
 if (process.argv.includes('--init')) {
+  // frozenPaths is a deliberate freeze marker, not a snapshot of today, so it survives a
+  // regeneration untouched — otherwise --init would silently lift the freeze.
+  const previous = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf-8')) : {}
   const baseline = {
     maxLines: MAX_LINES,
     grandfatheredOversize: Object.fromEntries(
       Object.entries(sizes).filter(([, n]) => n > MAX_LINES).sort(([a], [b]) => a.localeCompare(b)),
     ),
     grandfatheredDupTypes: dupTypes,
+    ...(previous.frozenPaths ? { frozenPaths: previous.frozenPaths } : {}),
   }
   writeFileSync(BASELINE, JSON.stringify(baseline, null, 2) + '\n')
   console.log(
@@ -93,8 +101,21 @@ for (const [name, locs] of Object.entries(dupTypes)) {
   const known = baseline.grandfatheredDupTypes[name]
   if (!known) {
     problems.push(`duplicate exported type "${name}" in ${locs.join(', ')} — one concept = one home (import, do not re-declare)`)
-  } else if (locs.length > known.length) {
+    continue
+  }
+  if (locs.length > known.length) {
     problems.push(`exported type "${name}" spread further (${locs.length} > ${known.length} files) — collapse to one home`)
+    continue
+  }
+  // An equal count is not an unchanged home: a type that moves from one file to another keeps
+  // the count, so a size-only check passes while the recorded paths silently rot. Compare the
+  // sets. Sorted on both sides so a re-ordered baseline is not reported as a move.
+  const now = [...locs].sort().join(' | ')
+  const before = [...known].sort().join(' | ')
+  if (now !== before) {
+    problems.push(
+      `exported type "${name}" changed home — baseline records [${before}] but it now lives in [${now}] — update scripts/structure-baseline.json by hand (never \`--init\`, which re-grandfathers today's oversize set)`,
+    )
   }
 }
 
@@ -112,6 +133,67 @@ for (const f of files) {
     ) {
       problems.push(`runtime boundary: ${r} imports apps/api ("${spec}") — RN/Edge must not depend on apps/api (Edge is the canonical Kael brain, C3)`)
       break
+    }
+  }
+}
+
+// Layer model inside the mobile-api Edge function. Dependencies run one way only:
+// http/ -> domains/ -> kael/ -> platform/. A layer may reach the ones below it, never
+// above; http/ additionally may not reach kael/ directly, because an endpoint that talks
+// to the brain without a use-case in between is how workflow rules get bypassed.
+// Specifiers are resolved before classifying, so "../kael/x.ts" is judged by where it
+// lands, not by how it is spelled.
+const LAYER_ROOT = 'supabase/functions/mobile-api/_shared/'
+const LAYERS = ['http', 'domains', 'kael', 'platform']
+const layerOf = (path) =>
+  path.startsWith(LAYER_ROOT) ? LAYERS.indexOf(path.slice(LAYER_ROOT.length).split('/')[0]) : -1
+
+for (const f of files) {
+  const from = layerOf(rel(f))
+  if (from < 0) continue
+  const text = readFileSync(f, 'utf-8')
+  for (const m of text.matchAll(/(?:from|import\(|require\()\s*['"]([^'"]+)['"]/g)) {
+    const spec = m[1]
+    if (!spec.startsWith('.')) continue
+    const to = layerOf(rel(resolve(dirname(f), spec)))
+    if (to < 0 || to === from) continue
+    if (to < from) {
+      problems.push(
+        `layer rule: ${rel(f)} imports ${LAYERS[to]}/ ("${spec}") — dependencies run one way (${LAYERS.join(' -> ')}); move the shared part down, do not import upward`,
+      )
+    } else if (from === 0 && to === 2) {
+      problems.push(
+        `layer rule: ${rel(f)} imports kael/ ("${spec}") — http/ must reach the AI layer through domains/, not directly`,
+      )
+    }
+  }
+}
+
+// apps/api/src/lib/{kael,learning} is the non-canonical parallel brain kept for
+// Next.js reference/parity (code-ownership-map.md C3). It is allowed to shrink or stay,
+// never to grow — a new file or a longer file there means the second brain is being
+// extended instead of the Edge one.
+const FROZEN_ROOTS = ['apps/api/src/lib/kael/', 'apps/api/src/lib/learning/']
+const frozenLines = baseline.frozenPaths?.lines ?? {}
+const frozenCounts = baseline.frozenPaths?.fileCounts ?? {}
+for (const root of FROZEN_ROOTS) {
+  const current = Object.keys(sizes).filter((f) => f.startsWith(root))
+  const knownCount = frozenCounts[root]
+  if (knownCount !== undefined && current.length > knownCount) {
+    problems.push(
+      `frozen path grew (${current.length} > ${knownCount} files): ${root} — this is reference/parity only; build it in supabase/functions/mobile-api/_shared/kael instead`,
+    )
+  }
+  for (const f of current) {
+    const known = frozenLines[f]
+    if (known === undefined) {
+      problems.push(
+        `frozen path gained a file: ${f} — this is reference/parity only; build it in supabase/functions/mobile-api/_shared/kael instead`,
+      )
+    } else if (sizes[f] > known) {
+      problems.push(
+        `frozen file grew (${sizes[f]} > frozen ${known} lines): ${f} — do not extend the non-canonical brain`,
+      )
     }
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { aggregateTrustedMarketSources } from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust-aggregation'
-import { marketSourceEvidenceResultSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
+import { aggregateTrustedMarketSources } from '../../../../../supabase/functions/mobile-api/_shared/kael/evidence/source-trust-aggregation'
+import { marketSourceEvidenceResultSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
 
 const HIGH_VALUE_THRESHOLD_VND = 1_000_000
 

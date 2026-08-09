@@ -59,7 +59,6 @@ export type {
   WorkerScopeChangeResponse,
   CustomerScopeDecisionResponse,
   WorkerCancellationResponse,
-  WorkerCancellationDecisionResponse,
   WorkerJobListResponse,
   WorkerCashPaymentConfirmationResponse,
   EarningsResponse,

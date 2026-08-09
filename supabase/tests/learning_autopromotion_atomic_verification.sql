@@ -4,14 +4,8 @@ do $$
 declare
   v_candidate_id constant uuid := 'a4100000-0000-4000-8000-000000000001';
   v_invalid_candidate_id constant uuid := 'a4100000-0000-4000-8000-000000000002';
-  v_decoy_rule_id constant uuid := 'a4200000-0000-4000-8000-000000000001';
-  v_ok boolean;
-  v_error_code text;
-  v_rule_id uuid;
-  v_rule_version integer;
-  v_first_rule_id uuid;
-  v_first_rule_version integer;
-  v_count integer;
+  v_result record;
+  v_status text;
 begin
   insert into public.learning_candidates (
     id,
@@ -50,95 +44,30 @@ begin
     'pending_evidence'
   );
 
-  select result.ok, result.error_code, result.rule_id, result.rule_version
-    into v_ok, v_error_code, v_rule_id, v_rule_version
-  from public.auto_promote_learning_candidate_atomic(v_candidate_id) as result;
+  select * into v_result
+  from public.auto_promote_learning_candidate_atomic(v_candidate_id);
 
-  if v_ok is not true or v_error_code is not null
-     or v_rule_id is null or v_rule_version <> 1 then
-    raise exception 'valid six-service candidate was not promoted atomically';
-  end if;
-  v_first_rule_id := v_rule_id;
-  v_first_rule_version := v_rule_version;
-
-  select count(*) into v_count
-  from public.learning_rule_versions as version
-  where version.rule_id = v_first_rule_id;
-  if v_count <> 1 then
-    raise exception 'promotion did not create exactly one immutable version';
+  if v_result.ok is not false
+     or v_result.error_code <> 'MANUAL_REVIEW_REQUIRED'
+     or v_result.rule_id is not null
+     or v_result.rule_version is not null
+     or v_result.status <> 'manual_review' then
+    raise exception 'automatic promotion was not held for manual review';
   end if;
 
-  select result.ok, result.error_code, result.rule_id, result.rule_version
-    into v_ok, v_error_code, v_rule_id, v_rule_version
-  from public.auto_promote_learning_candidate_atomic(v_candidate_id) as result;
-
-  if v_ok is not true or v_error_code is not null
-     or v_rule_id <> v_first_rule_id
-     or v_rule_version <> v_first_rule_version then
-    raise exception 'promotion retry was not idempotent';
+  select status::text into v_status
+  from public.learning_candidates
+  where id = v_candidate_id;
+  if v_status <> 'manual_review' then
+    raise exception 'automatic promotion did not persist manual_review status';
   end if;
 
-  select count(*) into v_count
-  from public.learning_rule_versions as version
-  where version.rule_id = v_first_rule_id;
-  if v_count <> 1 then
-    raise exception 'promotion retry created a duplicate version';
-  end if;
-
-  update public.learning_rules
-  set status = 'rolled_back'
-  where id = v_first_rule_id;
-
-  update public.learning_rule_versions
-  set status = 'rolled_back'
-  where rule_id = v_first_rule_id;
-
-  insert into public.learning_rules (
-    id,
-    rule_type,
-    affected_service,
-    affected_problem,
-    affected_district,
-    rule_payload,
-    confidence,
-    evidence_count,
-    status,
-    active_version
-  ) values (
-    v_decoy_rule_id,
-    'price_prior_update',
-    'hvac',
-    'air-conditioner-not-cooling',
-    'q7',
-    '{"candidate_type":"price_prior_update"}'::jsonb,
-    0.8,
-    5,
-    'active',
-    1
-  );
-
-  insert into public.learning_rule_versions (
-    rule_id,
-    version,
-    rule_payload,
-    change_reason,
-    status
-  ) values (
-    v_decoy_rule_id,
-    1,
-    '{"candidate_type":"price_prior_update"}'::jsonb,
-    'decoy rule for retry verification',
-    'active'
-  );
-
-  select result.ok, result.error_code, result.rule_id, result.rule_version
-    into v_ok, v_error_code, v_rule_id, v_rule_version
-  from public.auto_promote_learning_candidate_atomic(v_candidate_id) as result;
-
-  if v_ok is not true or v_error_code is not null
-     or v_rule_id <> v_first_rule_id
-     or v_rule_version <> v_first_rule_version then
-    raise exception 'promotion retry lost its durable rule receipt after lifecycle changes';
+  select * into v_result
+  from public.auto_promote_learning_candidate_atomic(v_candidate_id);
+  if v_result.ok is not false
+     or v_result.error_code <> 'MANUAL_REVIEW_REQUIRED'
+     or v_result.status <> 'manual_review' then
+    raise exception 'manual-review retry was not deterministic';
   end if;
 
   insert into public.learning_candidates (
@@ -172,12 +101,20 @@ begin
     'pending_evidence'
   );
 
-  select result.ok, result.error_code
-    into v_ok, v_error_code
-  from public.auto_promote_learning_candidate_atomic(v_invalid_candidate_id) as result;
+  select * into v_result
+  from public.auto_promote_learning_candidate_atomic(v_invalid_candidate_id);
+  if v_result.ok is not false
+     or v_result.error_code <> 'MANUAL_REVIEW_REQUIRED'
+     or v_result.status <> 'manual_review' then
+    raise exception 'unsafe analysis autonomy was not held for manual review';
+  end if;
 
-  if v_ok is not false or v_error_code <> 'UNSAFE_ANALYSIS_RULE_PAYLOAD' then
-    raise exception 'unsafe analysis autonomy was not rejected';
+  if exists (
+    select 1
+    from public.learning_rule_versions
+    where change_reason like 'auto_promote_learning_candidate_atomic:%'
+  ) then
+    raise exception 'automatic promotion wrote a learning rule version';
   end if;
 
   if pg_catalog.has_function_privilege(
@@ -188,16 +125,23 @@ begin
     raise exception 'authenticated retained execute on auto-promotion RPC';
   end if;
 
-  select count(*)::integer
-  into v_count
-  from pg_catalog.pg_proc as proc
-  where proc.oid = 'public.auto_promote_learning_candidate_atomic(uuid)'::pg_catalog.regprocedure
-    and proc.prosecdef is true
-    and proc.proconfig = array['search_path=""']::text[];
-
-  if v_count <> 1 then
+  if not exists (
+    select 1
+    from pg_catalog.pg_proc as proc
+    where proc.oid = 'public.auto_promote_learning_candidate_atomic(uuid)'::pg_catalog.regprocedure
+      and proc.prosecdef is true
+      and proc.proconfig = array['search_path=""']::text[]
+  ) then
     raise exception 'auto-promotion definer RPC search path is not empty';
   end if;
 end $$;
+
+select jsonb_build_object(
+  'automatic_promotion_disabled', true,
+  'manual_review_required', true,
+  'retry_deterministic', true,
+  'no_rule_version_written', true,
+  'service_role_only', true
+) as learning_autopromotion_atomic_verification;
 
 rollback;

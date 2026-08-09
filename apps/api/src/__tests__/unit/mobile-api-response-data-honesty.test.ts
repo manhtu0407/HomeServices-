@@ -1,30 +1,28 @@
 import { describe, expect, it } from 'vitest'
 
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
-import { listServices } from '../../../../../supabase/functions/mobile-api/_shared/services/catalog.service'
+import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
+import { listServices } from '../../../../../supabase/functions/mobile-api/_shared/domains/catalog/catalog'
+import { serializeJobMessage } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/serialize'
 import {
-  serializeJobMessage,
   serializeKaelEstimate,
   serializeKaelSession,
   serializeKaelTurn,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/_shared'
-import { buildKaelIntakeConfirmation } from '../../../../../supabase/functions/mobile-api/_shared/kael/intake-confirmation'
-import {
-  getCustomerProfileInsights,
-  getWorkerPerformanceInsights,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/profile-insights.service'
-import { getWorkerCandidate } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-candidate.service'
-import { serializeWorkerKaelSession } from '../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat.service'
-import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/services/job-create.service'
-import { getJobIncident } from '../../../../../supabase/functions/mobile-api/_shared/services/job-incident.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/serialize'
+import { buildKaelIntakeConfirmation } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/intake-confirmation'
+import { getCustomerProfileInsights } from '../../../../../supabase/functions/mobile-api/_shared/domains/customer/profile-insights'
+import { getWorkerPerformanceInsights } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/profile-insights'
+import { getWorkerCandidate } from '../../../../../supabase/functions/mobile-api/_shared/domains/matching/candidate'
+import { serializeWorkerKaelSession } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/kael-chat'
+import { createJob } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/create/create'
+import { getJobIncident } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/incident'
 import {
   listNotifications,
   registerDevicePushToken,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/notifications.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/notification/notifications'
 import {
   setWorkerKaelTrainingConsent,
   submitCustomerKaelFeedback,
-} from '../../../../../supabase/functions/mobile-api/_shared/services/kael-feedback.service'
+} from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/feedback'
 
 type QueryResult = {
   data: unknown

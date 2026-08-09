@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest'
 const root = resolve(__dirname, '../../../../..')
 const migrationPath = resolve(root, 'supabase/migrations/20260808205000_worker_manual_payouts.sql')
 const verificationPath = resolve(root, 'supabase/tests/worker_manual_payouts_verification.sql')
-const workerServicePath = resolve(root, 'supabase/functions/mobile-api/_shared/services/worker-payout.service.ts')
-const adminServicePath = resolve(root, 'supabase/functions/mobile-api/_shared/services/admin-payout.service.ts')
+const workerServicePath = resolve(root, 'supabase/functions/mobile-api/_shared/domains/worker/payout.ts')
+const adminServicePath = resolve(root, 'supabase/functions/mobile-api/_shared/domains/admin/payout.ts')
 
 const read = (path: string) => readFileSync(path, 'utf8')
 

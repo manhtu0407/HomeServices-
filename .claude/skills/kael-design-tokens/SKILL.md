@@ -1,6 +1,6 @@
 ---
 name: kael-design-tokens
-description: Manage design tokens for the Home Services Expo React Native app — color, typography, spacing, radius, and component constants. Use when adding or changing a token, choosing a color, touching a raw hex / rgba, or working with theme, palette, spacing, or radius. Enforces one canonical source (design/theme.ts), purpose-based names, and no raw values outside the token boundary.
+description: Manage design tokens for the NestScout Expo React Native app — color, typography, spacing, radius, and component constants. Use when adding or changing a token, choosing a color, touching a raw hex / rgba, or working with theme, palette, spacing, or radius. Enforces one canonical source (design/theme.ts), purpose-based names, and no raw values outside the token boundary.
 ---
 
 # kael-design-tokens

@@ -3,7 +3,7 @@ description: Capture this session's durable learnings into docs/memory/<period>.
 allowed-tools: Read, Edit, Write, Glob, Bash
 ---
 
-Capture durable session memory for Home Services. Detail goes into `docs/memory/<period>.md`; a single one-line entry goes into the top Recall Index in `.claude/MEMORY.md`. This keeps the active memory index lean (progressive disclosure, adapted from claude-mem without its worker service / vector DB).
+Capture durable session memory for NestScout. Detail goes into `docs/memory/<period>.md`; a single one-line entry goes into the top Recall Index in `.claude/MEMORY.md`. This keeps the active memory index lean (progressive disclosure, adapted from claude-mem without its worker service / vector DB).
 
 ## Step 1: Reflect
 
@@ -18,7 +18,9 @@ Skip: one-off fixes unlikely to recur, and anything already durable in `governan
 
 ## Step 2: Pick the period file
 
-Use `docs/memory/<YYYY-MM>.md` for the current month (e.g. `docs/memory/2026-05.md`). Create it if missing with a `# Memory Archive — <YYYY-MM>` header.
+Use `docs/memory/<YYYY-MM>.md` for the current month (e.g. `docs/memory/2026-05.md`). Create it if missing, copying the standard header from `docs/memory/INDEX.md`.
+
+`docs/memory/INDEX.md` is the folder contract: naming, month rollover, what belongs vs what does not, and the rule for marking a reconstructed (after-the-fact) entry. Read it if anything about placement is unclear.
 
 ## Step 3: Draft the entry (honest, ruthless)
 

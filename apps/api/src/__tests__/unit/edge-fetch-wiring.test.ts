@@ -28,8 +28,8 @@ describe('Edge fetch guard wiring', () => {
   })
 
   it.each([
-    'supabase/functions/mobile-api/_shared/auth.ts',
-    'supabase/functions/mobile-api/_shared/services/db.ts',
+    'supabase/functions/mobile-api/_shared/platform/auth.ts',
+    'supabase/functions/mobile-api/_shared/platform/db.ts',
   ])('buffers bounded SDK/provider responses through the shared deadline guard: %s', (file) => {
     const source = read(file)
     expect(source).toContain('fetchBufferedWithTimeout')
@@ -40,23 +40,23 @@ describe('Edge fetch guard wiring', () => {
       .toContain('readResponseTextBounded')
     expect(read('supabase/functions/mobile-api/_shared/kael/kael-providers/provider-batch.ts'))
       .toContain('readResponseBytesBounded')
-    expect(read('supabase/functions/mobile-api/_shared/push.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/platform/push.ts'))
       .toContain('readResponseBytesBounded')
-    expect(read('supabase/functions/mobile-api/_shared/kael/vision.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/kael/tools/vision.ts'))
       .toContain('readResponseBytesBounded')
   })
 
   it.each([
     'supabase/functions/map-proxy-spike/index.ts',
-    'supabase/functions/mobile-api/_shared/push.ts',
-    'supabase/functions/mobile-api/_shared/services/places-geo.service.ts',
-    'supabase/functions/mobile-api/_shared/services/worker-route.service.ts',
+    'supabase/functions/mobile-api/_shared/platform/push.ts',
+    'supabase/functions/mobile-api/_shared/domains/places/geo-providers.ts',
+    'supabase/functions/mobile-api/_shared/domains/worker/route.ts',
   ])('strictly decodes bounded JSON responses before provider parsing: %s', (file) => {
     expect(read(file)).toContain('readResponseJsonBounded')
   })
 
   it('keeps authenticated Supabase responses bounded without rejecting valid job media', () => {
-    const authSource = read('supabase/functions/mobile-api/_shared/auth.ts')
+    const authSource = read('supabase/functions/mobile-api/_shared/platform/auth.ts')
     const contractSource = read('supabase/functions/_shared/job-media-contract.ts')
 
     expect(contractSource).toContain('export const MAX_JOB_MEDIA_BYTES = 26_214_400')
@@ -67,17 +67,17 @@ describe('Edge fetch guard wiring', () => {
   })
 
   it('rejects redirects on every Edge fetch that carries provider credentials or signed URLs', () => {
-    expect(read('supabase/functions/mobile-api/_shared/services/db.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/platform/db.ts'))
       .toContain('redirect: "error"')
-    expect(read('supabase/functions/mobile-api/_shared/push.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/platform/push.ts'))
       .toContain('redirect: "error"')
     expect(read('supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts'))
       .toContain('redirect: "error"')
     expect(read('supabase/functions/mobile-api/_shared/kael/kael-providers/provider-batch.ts'))
       .toContain('redirect: "error"')
-    expect(read('supabase/functions/mobile-api/_shared/kael/vision.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/kael/tools/vision.ts'))
       .toContain('redirect: "error"')
-    expect(read('supabase/functions/mobile-api/_shared/services/kael-chat-media.service.ts'))
+    expect(read('supabase/functions/mobile-api/_shared/domains/kael-chat/media-vision.ts'))
       .toContain('redirect: "error"')
     expect(read('supabase/functions/map-proxy-spike/index.ts').match(/redirect: "error"/g))
       .toHaveLength(2)

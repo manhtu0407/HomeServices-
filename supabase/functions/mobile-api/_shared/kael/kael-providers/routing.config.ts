@@ -1,4 +1,4 @@
-import type { AIProvider, KaelPurpose } from "../types.ts";
+import type { AIProvider, KaelPurpose } from "../contracts/types.ts";
 import { readKaelOptimizationFlags } from "../kael-usage/cost-tracking.ts";
 
 export type ProviderRoute = {

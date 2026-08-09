@@ -13,14 +13,14 @@ import {
 import {
   listJobEvidenceRefsByStage,
   validateJobEvidenceRefs,
-} from "../../../../../supabase/functions/mobile-api/_shared/services/evidence-refs.service";
+} from "../../../../../supabase/functions/mobile-api/_shared/domains/job/evidence-refs";
 import {
   mergeLimitedRefs,
-} from "../../../../../supabase/functions/mobile-api/_shared/services/_shared";
+} from "../../../../../supabase/functions/mobile-api/_shared/platform/job-media";
 import type {
   DbClient,
   DbResult,
-} from "../../../../../supabase/functions/mobile-api/_shared/services/db";
+} from "../../../../../supabase/functions/mobile-api/_shared/platform/db";
 
 const JOB_ID = "11111111-1111-4111-8111-111111111111";
 const OTHER_JOB_ID = "22222222-2222-4222-8222-222222222222";

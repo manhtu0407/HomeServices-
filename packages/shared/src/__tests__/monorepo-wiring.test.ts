@@ -86,9 +86,13 @@ describe('monorepo directory structure', () => {
 })
 
 describe('root product contract alignment', () => {
+  // Every spoke that can carry workflow copy must be listed. The assertions below include
+  // not.toContain guards, so a spoke left out of this array is not "untested" — it is
+  // silently exempt, and the suite still passes. Add new workflow spokes here.
   const structures = [
     readText('governance/STRUCTURES.md'),
     readText('governance/structures/customer-workflow.md'),
+    readText('governance/structures/customer-workflow-fulfillment.md'),
     readText('governance/structures/worker-workflow.md'),
   ].join('\n')
   const supabaseConfig = readText('supabase/config.toml')
@@ -110,10 +114,14 @@ describe('root product contract alignment', () => {
   })
 
   it('does not describe the repo as pre-feature after mobile and Edge workflow slices exist', () => {
-    // Match current CLAUDE wording without dropping the regression guard.
+    // Guard the claim, not one sentence: the Current Phase section is rewritten
+    // whenever the milestone moves, so accept any wording that still states the
+    // workflow slices exist.
     const claude = readText('CLAUDE.md')
+    const describesExistingSlices = /Mobile and Supabase Edge workflow slices exist/i.test(claude)
+      || /workflow spine runs end to end/i.test(claude)
     expect(claude).toMatch(/Production fix and foundation hardening/i)
-    expect(claude).toMatch(/Mobile and Supabase Edge workflow slices exist/i)
+    expect(describesExistingSlices).toBe(true)
     expect(claude).not.toContain('Chưa có feature code')
   })
   it('keeps production source files free from mojibake Vietnamese strings', () => {

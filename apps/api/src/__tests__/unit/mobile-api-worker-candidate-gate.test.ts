@@ -1,27 +1,36 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/router/routes'
+import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/index'
 
 const root = resolve(__dirname, '../../../../../')
-const serviceSource = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/matching.service.ts'),
+const candidateServiceSource = readFileSync(
+  resolve(root, 'supabase/functions/mobile-api/_shared/domains/matching/candidate.ts'),
   'utf8',
 )
-const candidateServiceSource = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/worker-candidate.service.ts'),
+const candidateSupportSource = readFileSync(
+  resolve(root, 'supabase/functions/mobile-api/_shared/domains/matching/candidate-support.ts'),
+  'utf8',
+)
+const candidateSources = `${candidateServiceSource}\n${candidateSupportSource}`
+const acceptServiceSource = readFileSync(
+  resolve(root, 'supabase/functions/mobile-api/_shared/domains/matching/accept.ts'),
   'utf8',
 )
 const dtoSource = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/router/dtos.ts'),
+  resolve(root, 'supabase/functions/mobile-api/_shared/domains/contracts/job.ts'),
   'utf8',
 )
 const broadcastSource = [
-  'supabase/functions/mobile-api/_shared/services/broadcasts.service.ts',
-  'supabase/functions/mobile-api/_shared/services/broadcast-query-batches.ts',
+  'supabase/functions/mobile-api/_shared/domains/matching/broadcasts.ts',
+  'supabase/functions/mobile-api/_shared/domains/matching/broadcast-support.ts',
+  'supabase/functions/mobile-api/_shared/domains/matching/broadcast-workers.ts',
+  'supabase/functions/mobile-api/_shared/domains/matching/broadcast-ranking.ts',
+  'supabase/functions/mobile-api/_shared/domains/matching/geo.ts',
+  'supabase/functions/mobile-api/_shared/domains/matching/query-batches.ts',
 ].map((path) => readFileSync(resolve(root, path), 'utf8')).join('\n')
 const favoriteServiceSource = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/services/customer-favorite-worker.service.ts'),
+  resolve(root, 'supabase/functions/mobile-api/_shared/domains/customer/favorite-worker.ts'),
   'utf8',
 )
 
@@ -80,17 +89,17 @@ describe('mobile-api worker-candidate gate', () => {
     expect(candidateType).not.toMatch(
       /\b(phone|bank_account|bank_name|cccd|legal_name|address_|home_lat|home_lng)\b/,
     )
-    expect(candidateServiceSource).toContain('.select("full_name, avatar_url")')
-    expect(candidateServiceSource).toContain('resolveWorkerAvatarUrl(client, profile.data.avatar_url)')
-    expect(candidateServiceSource).toContain('avatar_url: avatarUrl')
-    expect(candidateServiceSource).not.toContain('phone,')
-    expect(candidateServiceSource).not.toContain('bank_account')
-    expect(candidateServiceSource).not.toContain('cccd_front_url')
+    expect(candidateSources).toContain('.select("full_name, avatar_url")')
+    expect(candidateSources).toContain('resolveWorkerAvatarUrl(client, profile.data.avatar_url)')
+    expect(candidateSources).toContain('avatar_url: avatarUrl')
+    expect(candidateSources).not.toContain('phone,')
+    expect(candidateSources).not.toContain('bank_account')
+    expect(candidateSources).not.toContain('cccd_front_url')
   })
 
   it('prioritizes and labels a real customer-owned favorite without exposing preference data publicly', () => {
-    expect(candidateServiceSource).toContain('customer_favorite_workers')
-    expect(candidateServiceSource).toContain('is_favorite: favorite.data !== null')
+    expect(candidateSources).toContain('customer_favorite_workers')
+    expect(candidateSources).toContain('is_favorite: favorite.data !== null')
     expect(broadcastSource).toContain('loadAllFavoriteWorkerIds')
     expect(broadcastSource).toContain('favoriteWorkerIds.has')
     expect(broadcastSource).toContain('FAVORITE_WORKER_SCORE_BONUS')
@@ -109,7 +118,7 @@ describe('mobile-api worker-candidate gate', () => {
   })
 
   it('keeps address locked on worker accept and releases match only after customer confirm', () => {
-    const acceptBody = serviceSource.match(
+    const acceptBody = acceptServiceSource.match(
       /export async function acceptBroadcast[\s\S]*?\n\}/,
     )?.[0] ?? ''
     expect(acceptBody).toContain('worker_candidate_pending')
@@ -129,18 +138,18 @@ describe('mobile-api worker-candidate gate', () => {
     )?.[0] ?? ''
     expect(rejectBody).toContain('reject_worker_candidate_atomic')
     expect(rejectBody).toContain('resumeMatchingAfterCandidateRejection')
-    expect(candidateServiceSource).toContain('listBroadcastRecipientWorkerIds')
-    expect(candidateServiceSource).toContain('excludeWorkerIds')
-    expect(candidateServiceSource).toContain('createBroadcasts')
+    expect(candidateSources).toContain('listBroadcastRecipientWorkerIds')
+    expect(candidateSources).toContain('excludeWorkerIds')
+    expect(candidateSources).toContain('createBroadcasts')
   })
 
   it('expires stale proposals and keeps worker availability as an independent preference', () => {
-    expect(candidateServiceSource).toContain('candidateHasExpired')
-    expect(candidateServiceSource).toContain('worker_candidate_expired')
-    expect(candidateServiceSource).toMatch(
+    expect(candidateSources).toContain('candidateHasExpired')
+    expect(candidateSources).toContain('worker_candidate_expired')
+    expect(candidateSources).toMatch(
       /errorCode === "WORKER_NOT_ELIGIBLE" \|\| errorCode === "EXPIRED"/,
     )
-    expect(candidateServiceSource).toMatch(
+    expect(candidateSources).toMatch(
       /errorCode === "EXPIRED"[\s\S]*?"worker_candidate_expired"[\s\S]*?resumeMatchingAfterCandidateRejection/,
     )
     expect(broadcastSource).toContain('job_worker_candidates')

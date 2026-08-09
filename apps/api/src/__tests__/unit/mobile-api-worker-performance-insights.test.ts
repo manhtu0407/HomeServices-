@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildWorkerPerformanceInsights } from '../../../../../supabase/functions/mobile-api/_shared/services'
+import { buildWorkerPerformanceInsights } from '../../../../../supabase/functions/mobile-api/_shared/domains'
 
 describe('worker performance insights aggregation', () => {
   it('derives reputation metrics from real broadcasts, jobs, reviews, and earnings rows', () => {

@@ -13,11 +13,11 @@ import {
   buildVisionMessages as buildEdgeVisionMessages,
   buildScopeChangeEstimateMessages,
   buildScopeChangeReviewMessages,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts'
-import { trustedPerplexityMarketConfig } from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/prompts/prompts'
+import { trustedPerplexityMarketConfig } from '../../../../../supabase/functions/mobile-api/_shared/kael/evidence/source-trust'
 import {
   KAEL_BUSINESS_GUARDRAILS as EDGE_KAEL_BUSINESS_GUARDRAILS,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
 
 describe('Kael brand boundary', () => {
   it('uses NestScout instead of legacy Home Services naming in AI guardrails', () => {

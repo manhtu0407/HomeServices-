@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   processLearningQueue,
   type QueuedLearningRow,
-} from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/process-learning-queue'
-import { createLearningSkillCandidate } from '../../../../../supabase/functions/mobile-api/_shared/kael/skills/registry'
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/cron/process-learning-queue'
+import { createLearningSkillCandidate } from '../../../../../supabase/functions/mobile-api/_shared/kael/learning/skills/registry'
 
 afterEach(() => {
   vi.unstubAllGlobals()

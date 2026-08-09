@@ -1,6 +1,6 @@
 import type { LaunchServiceLineId, ServicePerformancePlaybook } from './types'
 
-export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId, ServicePerformancePlaybook>> = Object.freeze({
+const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId, ServicePerformancePlaybook>> = Object.freeze({
   home_cleaning: {
     serviceLineId: 'home_cleaning',
     productionServiceType: 'cleaning',
@@ -199,7 +199,7 @@ export const SERVICE_PERFORMANCE_PLAYBOOKS: Readonly<Record<LaunchServiceLineId,
           { value: 'dining_chair', labelVi: 'Ghế ăn', labelEn: 'Dining chair' }, { value: 'office_chair', labelVi: 'Ghế văn phòng', labelEn: 'Office chair' },
         ],
       },
-      { id: 'fabric_quantity_size', type: 'text', required: true, labelVi: 'Số lượng và kích thước khoảng bao nhiêu?', labelEn: 'Approximate quantity and size?', maxLength: 200, placeholderVi: 'Ví dụ: sofa chữ L 3 chỗ', placeholderEn: 'Example: three-seat L-shaped sofa' },
+      { id: 'fabric_quantity_size', type: 'text', required: true, labelVi: 'Số lượng, kích thước khoảng bao nhiêu?', labelEn: 'What is the approximate quantity or size?', maxLength: 200, placeholderVi: 'Ví dụ: sofa chữ L 3 chỗ', placeholderEn: 'Example: three-seat L-shaped sofa' },
       {
         id: 'fabric_material', type: 'single_select', required: false, labelVi: 'Chất liệu chính là gì?', labelEn: 'What is the main material?',
         options: [
@@ -320,14 +320,3 @@ export function getServicePerformancePlaybook(serviceLineId: LaunchServiceLineId
   if (!playbook) throw new RangeError(`Unknown service performance playbook: ${serviceLineId}`)
   return playbook
 }
-
-export function listServicePerformancePlaybooks(): readonly ServicePerformancePlaybook[] {
-  return LAUNCH_SERVICE_LINE_ORDER.map((serviceLineId) => SERVICE_PERFORMANCE_PLAYBOOKS[serviceLineId])
-}
-
-const LAUNCH_SERVICE_LINE_ORDER: readonly LaunchServiceLineId[] = [
-  'home_cleaning',
-  'hvac_basic_maintenance',
-  'upholstery_care',
-  'handyman_minor_installation',
-]

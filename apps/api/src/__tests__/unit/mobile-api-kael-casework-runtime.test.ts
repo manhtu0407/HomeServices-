@@ -3,28 +3,55 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const root = join(process.cwd(), '../../supabase/functions/mobile-api/_shared')
-const service = readFileSync(join(root, 'services/kael-chat.service.ts'), 'utf8')
-const mediaService = readFileSync(join(root, 'services/kael-chat-media.service.ts'), 'utf8')
-const core = readFileSync(join(root, 'services/kael-chat-core.ts'), 'utf8')
-const boundary = readFileSync(join(root, 'services/kael-chat-boundary.ts'), 'utf8')
-const caseWork = readFileSync(join(root, 'services/kael-chat-case-work.ts'), 'utf8')
-const sessionStore = readFileSync(join(root, 'services/kael-chat-session-store.ts'), 'utf8')
-const intakeService = readFileSync(join(root, 'services/kael-chat-intake.ts'), 'utf8')
-const services = readFileSync(join(root, 'services.ts'), 'utf8')
-const confirmService = readFileSync(join(root, 'services/kael-chat-confirm.service.ts'), 'utf8')
-const intakeConfirmationService = readFileSync(
-  join(root, 'services/kael-chat-intake-confirmation.service.ts'),
+const service = [
+  'create.ts',
+  'turn.ts',
+  'evidence.ts',
+  'intake.ts',
+  'persistence.service.ts',
+].map((path) => readFileSync(join(root, 'domains/kael-chat', path), 'utf8')).join('\n')
+const mediaService = [
+  'media-upload.ts',
+  'media-vision.ts',
+].map((path) => readFileSync(join(root, 'domains/kael-chat', path), 'utf8')).join('\n')
+const core = [
+  'advance.ts',
+  'branches-pre-pipeline.ts',
+  'branches-post-pipeline.ts',
+  'estimate-support.ts',
+  'clarification.service.ts',
+].map((path) => readFileSync(join(root, 'domains/kael-chat', path), 'utf8')).join('\n')
+const emitStep = readFileSync(join(root, 'domains/kael-chat/emit-step.ts'), 'utf8')
+const boundary = readFileSync(join(root, 'domains/kael-chat/guard.ts'), 'utf8')
+const clarificationService = readFileSync(
+  join(root, 'domains/kael-chat/clarification.service.ts'),
   'utf8',
 )
-const completionReviewService = readFileSync(join(root, 'services/completion-review.service.ts'), 'utf8')
-const jobStatusService = readFileSync(join(root, 'services/job-status.service.ts'), 'utf8')
-const pipeline = readFileSync(join(root, 'kael/pipeline.ts'), 'utf8')
-const outputPipeline = readFileSync(join(root, 'kael/output-pipeline.ts'), 'utf8')
-const sharedService = [
-  readFileSync(join(root, 'services/_shared.ts'), 'utf8'),
-  readFileSync(join(root, 'services/serializers.ts'), 'utf8'),
-].join('\n')
-const jobCreateService = readFileSync(join(root, 'services/job-create.service.ts'), 'utf8')
+const caseWork = [
+  'case-work-artifact.ts',
+  'case-work-context.ts',
+].map((path) => readFileSync(join(root, 'domains/kael-chat', path), 'utf8')).join('\n')
+const sessionStore = readFileSync(join(root, 'domains/kael-chat/session-store.ts'), 'utf8')
+const intakeService = readFileSync(join(root, 'domains/kael-chat/intake.ts'), 'utf8')
+const services = readFileSync(join(root, 'domains.ts'), 'utf8')
+const confirmService = readFileSync(join(root, 'domains/kael-chat/confirm.service.ts'), 'utf8')
+const intakeConfirmationService = readFileSync(
+  join(root, 'domains/kael-chat/intake-confirmation.service.ts'),
+  'utf8',
+)
+const completionReviewService = readFileSync(join(root, 'domains/payment/completion-review.ts'), 'utf8')
+const jobStatusService = readFileSync(join(root, 'domains/job/status.ts'), 'utf8')
+const pipeline = [
+  'pipeline.ts',
+  'stage-intent.ts',
+].map((path) => readFileSync(join(root, 'kael/pipeline', path), 'utf8')).join('\n')
+const outputPipeline = readFileSync(join(root, 'kael/kael-guardrails/output-pipeline.ts'), 'utf8')
+const sharedService = readFileSync(join(root, 'domains/kael-chat/serialize.ts'), 'utf8')
+const jobCreateService = [
+  'create/create.ts',
+  'create/analyze.ts',
+  'create/compensation.ts',
+].map((path) => readFileSync(join(root, 'domains/job', path), 'utf8')).join('\n')
 
 function exportedAsyncFunctionBody(name: string, nextName?: string) {
   const start = service.indexOf(`export async function ${name}(`)
@@ -41,7 +68,7 @@ describe('Kael Case Work runtime wiring', () => {
   })
 
   it('holds booking intake at the confirmation Pre-Step before analysis', () => {
-    expect(service).toContain('if (!input.defer_analysis && !intakeConfirmation)')
+    expect(service).toContain('if (input.input.defer_analysis || input.prepared.intakeConfirmation) return;')
     expect(service).toContain('intake_confirmation: intakeConfirmation ?? undefined')
     expect(service).toContain('buildInitialDiagnosisScopeArtifact')
     expect(service).toContain('diagnosis_scope: initialDiagnosisScope')
@@ -66,7 +93,7 @@ describe('Kael Case Work runtime wiring', () => {
   })
 
   it('accepts a concrete district from a clarification reply without guessing an address', () => {
-    expect(service).toContain('resolveKaelChatAddressDistrict,')
+    expect(service).toContain('resolveKaelChatAddressDistrict')
     expect(intakeService).toContain('function resolveKaelChatAddressDistrict(')
     expect(intakeService).toContain('normalizeServiceAreaDistrict(candidate)')
     expect(intakeService).toContain('(?:quận|quan|q|district|dist)')
@@ -75,9 +102,9 @@ describe('Kael Case Work runtime wiring', () => {
     expect(intakeService).toContain('const extractedInlineDistrict = normalizeServiceAreaDistrict(inlineDistrict)')
     expect(intakeService).toContain("candidate?.split(/[,;\\u2013\\u2014\\u00b7|/]")
     expect(service).toMatch(
-      /const resolvedAddressDistrict = resolveKaelChatAddressDistrict\([\s\S]*input\.address_district,[\s\S]*message,[\s\S]*previousMetadata\.address_district/,
+      /const resolvedAddressDistrict = resolveKaelChatAddressDistrict\([\s\S]*input\.input\.address_district,[\s\S]*message,[\s\S]*previousMetadata\.address_district/,
     )
-    expect(service).toContain('address_district: resolvedAddressDistrict ?? undefined')
+    expect(service).toContain('address_district: addressDistrict ?? undefined')
   })
 
   it('rejects a skipped mandatory gate before writes and records accepted evidence decisions', () => {
@@ -91,13 +118,17 @@ describe('Kael Case Work runtime wiring', () => {
     expect(submitEvidence).toContain('const safeSkipReason = input.skip_reason')
     expect(submitEvidence).toContain('sanitizeUntrustedEvidenceText(input.skip_reason)')
     expect(submitEvidence).toContain('skip_reason: safeSkipReason')
-    expect(submitEvidence).toContain('evidence_gate_decision: input.decision')
+    expect(submitEvidence).toContain('evidence_gate_decision: input.input.decision')
   })
 
   it('settles progress when either real chat boundary call declines early', () => {
-    const boundaryCalls = service.match(/maybeApplyKaelBoundaryGuard\([\s\S]*?progressTarget: \{ table: "kael_chat_sessions", id: sessionId \}[\s\S]*?\);/g) ?? []
+    const boundaryCalls = service.match(/maybeApplyKaelBoundaryGuard\(/g) ?? []
+    const progressTargets = service.match(
+      /progressTarget: \{ table: "kael_chat_sessions", id: input\.sessionId \}/g,
+    ) ?? []
 
     expect(boundaryCalls).toHaveLength(2)
+    expect(progressTargets).toHaveLength(2)
     expect(boundary).toMatch(/if \(auditContext\.progressTarget\)[\s\S]*updateKaelProgress\([\s\S]*status: "failed"[\s\S]*failureReason: boundary\.reason/)
   })
 
@@ -119,12 +150,15 @@ describe('Kael Case Work runtime wiring', () => {
   })
 
   it('settles a clarification artifact, turn, and progress concurrently after model analysis', () => {
-    const clarificationBranch = core.match(
-      /if \(pipeline\.code === "NEEDS_CLARIFICATION"\)[\s\S]*?(?=if \(pipeline\.code === "SERVICE_MISMATCH"\))/,
+    const clarificationBranch = clarificationService.match(
+      /export async function handleKaelPipelineClarification\([\s\S]*/,
     )?.[0] ?? ''
 
     expect(clarificationBranch).toMatch(
-      /await Promise\.all\(\[[\s\S]*persistDiagnosisScopeArtifact[\s\S]*appendKaelSystemTurn[\s\S]*updateKaelProgress/,
+      /await emitKaelChatStep\([\s\S]*artifact,[\s\S]*parallel: true,[\s\S]*turn:[\s\S]*progress:/,
+    )
+    expect(emitStep).toMatch(
+      /const steps = \[[\s\S]*persistDiagnosisScopeArtifact[\s\S]*appendKaelSystemTurn[\s\S]*updateKaelProgress[\s\S]*if \(input\.parallel\)[\s\S]*await Promise\.all\(steps\.map/,
     )
   })
 
@@ -138,7 +172,7 @@ describe('Kael Case Work runtime wiring', () => {
     expect(service).toContain('const intakeDescription = sanitizeCustomerCaseEvidenceText')
     expect(service).toContain('customerGoal: intakeDescription')
     expect(core).toContain('const safeCustomerEvidence = sanitizeCustomerCaseEvidenceText(message)')
-    expect(core).toContain('const durableCustomerDetail = safeCustomerEvidence')
+    expect(core).toContain('durableCustomerDetail: safeCustomerEvidence')
     expect(core).toContain('latest_customer_detail: customerAnalysisDetail')
     expect(core).not.toContain('latest_customer_detail: message')
   })
@@ -225,8 +259,9 @@ describe('Kael Case Work runtime wiring', () => {
   it('does not force a best-effort estimate after a fixed clarification count', () => {
     expect(pipeline).not.toContain('CLARIFICATION_CAP')
     expect(pipeline).not.toMatch(/clarificationCount[^\n]+</)
-    expect(pipeline).toContain('const needsClarification = coverage.needsClarification')
-    expect(pipeline).toContain('if (needsClarification)')
+    // The branch condition is the coverage policy signal itself — no intermediate binding can
+    // sit between the policy decision and the clarification branch.
+    expect(pipeline).toContain('if (coverage.needsClarification)')
     expect(core).not.toContain('KAEL_CASE_WORK_TURN_SAFETY_LIMIT')
     expect(core).toContain('artifact.next_action.kind === "escalate"')
     expect(core).toContain('KAEL_CHAT_HARD_COST_CAP_USD')

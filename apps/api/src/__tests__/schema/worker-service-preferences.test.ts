@@ -20,14 +20,18 @@ describe('worker service preference schema and matching contract', () => {
   })
 
   it('uses worker selections plus quality status in Edge matching and exposes a self-scoped route', () => {
-    const broadcasts = read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts')
-    const routes = read('supabase/functions/mobile-api/_shared/router/routes.ts')
-    const workers = read('supabase/functions/mobile-api/_shared/services/workers.service.ts')
+    const broadcasts = [
+      'supabase/functions/mobile-api/_shared/domains/matching/broadcasts.ts',
+      'supabase/functions/mobile-api/_shared/domains/matching/broadcast-support.ts',
+      'supabase/functions/mobile-api/_shared/domains/matching/broadcast-workers.ts',
+    ].map(read).join('\n')
+    const workerRoutes = read('supabase/functions/mobile-api/_shared/http/routes/worker.ts')
+    const workers = read('supabase/functions/mobile-api/_shared/domains/worker/service-settings.ts')
 
     expect(broadcasts).toContain('selected_service_types')
     expect(broadcasts).toContain('worker_service_quality_status')
     expect(broadcasts).toContain('workerAcceptsService(worker, serviceType)')
-    expect(routes).toContain('/workers/me/service-preferences')
+    expect(workerRoutes).toContain('/workers/me/service-preferences')
     expect(workers).toContain('.eq("id", ctx.user.id)')
     expect(workers).toContain('selected_service_types: input.selected_service_types')
   })

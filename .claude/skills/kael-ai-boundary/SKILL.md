@@ -1,6 +1,6 @@
 ---
 name: kael-ai-boundary
-description: Guardrails for AI/LLM work in Home Services (Kael). Use when touching AI providers, prompts, prompt routing, price synthesis, vision analysis, advisory or worker-brief generation, AI output validation, AI logging, or AI cost tracking. Keeps calls server-side through callAI(), structured-output-first, schema-validated, with the price disclaimer and no fake data.
+description: Guardrails for AI/LLM work in NestScout (Kael). Use when touching AI providers, prompts, prompt routing, price synthesis, vision analysis, advisory or worker-brief generation, AI output validation, AI logging, or AI cost tracking. Keeps calls server-side through callAI(), structured-output-first, schema-validated, with the price disclaimer and no fake data.
 ---
 
 # kael-ai-boundary

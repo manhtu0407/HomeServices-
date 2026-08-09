@@ -72,12 +72,12 @@ Add complexity only when it:
 - Matches an established local pattern
 - Makes verification easier
 
-Home Services filters:
+NestScout filters:
 
 - Prefer plain TypeScript over clever architecture.
 - Prefer existing Expo, Next.js, Supabase, Turbo, and workspace patterns.
 - Prefer explicit data flow over magic.
-- Keep Kael scoped to the six approved Home Services: electrical, plumbing, cleaning/housekeeping, HVAC/indoor air, upholstery care, and handyman/minor installation only.
+- Keep Kael scoped to the six approved services: electrical, plumbing, cleaning/housekeeping, HVAC/indoor air, upholstery care, and handyman/minor installation only.
 - Ship toward the first real transaction, not theoretical scale.
 
 ## Principle 3: Surgical Changes
@@ -157,7 +157,7 @@ Avoid vague verification:
 
 - Do not say "tested" unless you can name the command and result.
 
-## Home Services Addendum
+## NestScout Addendum
 
 Project constraints override generic advice:
 

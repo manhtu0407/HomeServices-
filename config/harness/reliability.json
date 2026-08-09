@@ -1,0 +1,92 @@
+{
+  "version": "1.0.0",
+  "operation_classes": {
+    "pure_read": {
+      "max_attempts": 1,
+      "timeout_ms": 3000,
+      "idempotency": false,
+      "budget": false,
+      "confirmation": false
+    },
+    "database_read": {
+      "max_attempts": 2,
+      "timeout_ms": 10000,
+      "idempotency": false,
+      "budget": false,
+      "confirmation": false
+    },
+    "idempotent_write": {
+      "max_attempts": 2,
+      "timeout_ms": 10000,
+      "idempotency": true,
+      "budget": false,
+      "confirmation": false
+    },
+    "external_side_effect": {
+      "max_attempts": 2,
+      "timeout_ms": 15000,
+      "idempotency": true,
+      "budget": false,
+      "confirmation": false
+    },
+    "money_impacting": {
+      "max_attempts": 1,
+      "timeout_ms": 15000,
+      "idempotency": true,
+      "budget": false,
+      "confirmation": true
+    },
+    "provider_call": {
+      "max_attempts": 3,
+      "timeout_ms": 20000,
+      "idempotency": false,
+      "budget": true,
+      "confirmation": false
+    }
+  },
+  "dependencies": {
+    "anthropic": {
+      "threshold": 5,
+      "window_ms": 300000,
+      "open_ms": 300000,
+      "half_open_probes": 1
+    },
+    "perplexity": {
+      "threshold": 5,
+      "window_ms": 300000,
+      "open_ms": 300000,
+      "half_open_probes": 1
+    },
+    "deepseek": {
+      "threshold": 5,
+      "window_ms": 300000,
+      "open_ms": 300000,
+      "half_open_probes": 1
+    },
+    "push": {
+      "threshold": 5,
+      "window_ms": 300000,
+      "open_ms": 300000,
+      "half_open_probes": 1
+    },
+    "sepay": {
+      "threshold": 3,
+      "window_ms": 300000,
+      "open_ms": 600000,
+      "half_open_probes": 1
+    },
+    "maps": {
+      "threshold": 5,
+      "window_ms": 300000,
+      "open_ms": 300000,
+      "half_open_probes": 1
+    }
+  },
+  "reservation_ttl_seconds": 300,
+  "degraded_modes": {
+    "provider_unavailable": "honest_unavailable_no_fabricated_answer",
+    "market_unavailable": "baseline_only_with_disclaimer",
+    "push_unavailable": "notification_row_remains_source_of_truth",
+    "payment_unavailable": "payment_confirmation_locked"
+  }
+}

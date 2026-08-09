@@ -1,9 +1,9 @@
 import type { LocalDeal } from '@nestscout/shared'
 
-import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
+import { type AppLanguage } from '@/lib/app-language'
 
 import { textByLanguage } from './format'
-import { canShowWorkerAddress, routeDestinationLabel } from './labels'
+import { routeDestinationLabel } from './labels'
 
 const LIVE_DISTANCE_FORMATTERS = {
   en: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }),
@@ -62,7 +62,7 @@ export function workerV5LiveDistanceSignal(
   }
 }
 
-export function workerV5BroadcastRouteMetadata(deal: LocalDeal | null): Record<string, unknown> | null {
+function workerV5BroadcastRouteMetadata(deal: LocalDeal | null): Record<string, unknown> | null {
   const broadcast = deal?.broadcast as (LocalDeal['broadcast'] & WorkerV5BroadcastRouteMetadata) | null | undefined
   return broadcast?.safe_metadata ?? broadcast?.metadata ?? null
 }
@@ -80,119 +80,10 @@ export function workerV5KaelOpportunityMatchScore(deal: LocalDeal | null): numbe
   return null
 }
 
-export function workerV5RouteMapLabelFromDeal(deal: LocalDeal | null): string | null {
-  const metadata = workerV5BroadcastRouteMetadata(deal)
-  if (!metadata) return null
-  const labelKeys = ['route_destination_label', 'destination_label', 'customer_address_label', 'map_label', 'route_label']
-  for (const key of labelKeys) {
-    const label = workerV5StringFromUnknown(metadata[key])
-    if (label) return label
-  }
-  return null
-}
-
-export function workerV5ArrivalDestinationMeta(deal: LocalDeal | null, language: AppLanguage) {
-  if (!deal) return textByLanguage(language, 'Chưa có việc', 'No work')
-  const access = deal.broadcast?.addressAccess
-  const release = access?.exact_unit_released
-    ? textByLanguage(language, 'Đã mở căn hộ', 'Unit released')
-    : access?.release_stage === 'building_released'
-      ? textByLanguage(language, 'Đã mở tòa nhà', 'Building released')
-      : canShowWorkerAddress(deal)
-        ? textByLanguage(language, 'Địa chỉ đã mở', 'Address open')
-        : textByLanguage(language, 'Địa chỉ đang bảo vệ', 'Address protected')
-  return `${release} · ${localizedStatusLabel(deal.status, language)}`
-}
-
 export function workerV5ArrivalDestinationLabel(deal: LocalDeal | null, language: AppLanguage) {
   if (!deal) return textByLanguage(language, 'Chưa có điểm đến', 'No destination')
   if (deal.broadcast?.fullAddressVisible && deal.broadcast.fullAddressLabel) return deal.broadcast.fullAddressLabel
   return routeDestinationLabel(deal, language)
-}
-
-export function workerV5CustomerContactInfo(deal: LocalDeal | null, language: AppLanguage) {
-  if (!deal) {
-    return {
-      meta: textByLanguage(language, 'Chỉ hiện khi workflow có việc thật.', 'Shown only when the workflow has real work.'),
-      title: textByLanguage(language, 'Chưa có khách hàng', 'No customer yet'),
-    }
-  }
-
-  const metadata = workerV5BroadcastRouteMetadata(deal)
-  const name = workerV5StringFromUnknown(metadata?.customer_display_name)
-    ?? workerV5StringFromUnknown(metadata?.customer_name)
-    ?? workerV5StringFromUnknown(metadata?.customer_label)
-  const channel = workerV5StringFromUnknown(metadata?.customer_contact_channel)
-    ?? workerV5StringFromUnknown(metadata?.contact_channel)
-  const title = name ?? textByLanguage(language, 'Khách hàng trong ứng dụng', 'In-app customer')
-  const meta = channel
-    ? textByLanguage(language, `Kênh liên hệ: ${channel}`, `Contact channel: ${channel}`)
-    : textByLanguage(language, 'Giữ liên hệ trong JobRoom của việc này.', 'Keep contact inside this work JobRoom.')
-  return { meta, title }
-}
-
-export function buildWorkerV5CheckInChecklistItems(deal: LocalDeal | null, language: AppLanguage): { label: string; meta: string; state: WorkerV5CheckInState }[] {
-  const arrived = workerV5HasReachedArrival(deal)
-  const addressOpen = deal ? canShowWorkerAddress(deal) : false
-  const contacted = workerV5CustomerContacted(deal)
-  const evidenceMode = deal?.broadcast?.addressAccess?.evidence_mode ?? null
-  const initialEvidenceReady = workerV5InitialEvidenceReady(deal)
-
-  return [
-    {
-      label: textByLanguage(language, 'Có mặt đúng địa điểm', 'At the correct location'),
-      meta: deal
-        ? addressOpen
-          ? workerV5ArrivalDestinationLabel(deal, language)
-          : textByLanguage(language, 'Địa chỉ đang bảo vệ', 'Address protected')
-        : textByLanguage(language, 'Chờ điểm đến', 'Waiting destination'),
-      state: arrived ? 'done' : addressOpen ? 'active' : 'pending',
-    },
-    {
-      label: textByLanguage(language, 'Đã liên hệ khách', 'Contacted customer'),
-      meta: contacted
-        ? textByLanguage(language, 'Đã ghi trong workflow', 'Recorded in workflow')
-        : deal
-          ? textByLanguage(language, 'Mở JobRoom để liên hệ', 'Open JobRoom to contact')
-          : textByLanguage(language, 'Chờ khách hàng', 'Waiting customer'),
-      state: contacted ? 'done' : deal ? 'active' : 'pending',
-    },
-    {
-      label: textByLanguage(language, 'Xác nhận hiện trạng ban đầu', 'Confirm starting condition'),
-      meta: initialEvidenceReady
-        ? textByLanguage(language, 'Đã có bằng chứng', 'Evidence exists')
-        : workerV5EvidenceModeLabel(evidenceMode, language),
-      state: initialEvidenceReady ? 'done' : arrived || deal?.status === 'worker_on_way' ? 'active' : 'pending',
-    },
-  ]
-}
-
-export function workerV5HasReachedArrival(deal: LocalDeal | null) {
-  return Boolean(deal && ['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status))
-}
-
-export function workerV5CustomerContacted(deal: LocalDeal | null) {
-  const metadata = workerV5BroadcastRouteMetadata(deal)
-  return workerV5BooleanFromUnknown(metadata?.customer_contacted)
-    || Boolean(workerV5StringFromUnknown(metadata?.customer_contacted_at))
-    || Boolean(workerV5StringFromUnknown(metadata?.last_customer_message_at))
-}
-
-export function workerV5InitialEvidenceReady(deal: LocalDeal | null) {
-  const metadata = workerV5BroadcastRouteMetadata(deal)
-  return workerV5BooleanFromUnknown(metadata?.initial_condition_confirmed)
-    || Boolean(workerV5StringFromUnknown(metadata?.initial_condition_confirmed_at))
-    || Boolean(workerV5StringFromUnknown(metadata?.arrival_evidence_id))
-}
-
-export function workerV5EvidenceModeLabel(
-  mode: NonNullable<NonNullable<LocalDeal['broadcast']>['addressAccess']>['evidence_mode'] | null,
-  language: AppLanguage,
-) {
-  if (mode === 'geofence') return textByLanguage(language, 'Cần tín hiệu vị trí', 'Needs location signal')
-  if (mode === 'manual_photo') return textByLanguage(language, 'Cần ảnh thủ công', 'Needs manual photo')
-  if (mode === 'none') return textByLanguage(language, 'Theo workflow', 'By workflow')
-  return textByLanguage(language, 'Chờ workflow', 'Waiting workflow')
 }
 
 export function buildWorkerV5AcceptEtaSignal(deal: LocalDeal | null, language: AppLanguage): WorkerV5AcceptEtaSignal {
@@ -241,7 +132,7 @@ export function buildWorkerV5RouteDistanceSignal(deal: LocalDeal | null, languag
   }
 }
 
-export function workerV5RouteDistanceFromBroadcastMetadata(deal: LocalDeal | null, language: AppLanguage): string | null {
+function workerV5RouteDistanceFromBroadcastMetadata(deal: LocalDeal | null, language: AppLanguage): string | null {
   const broadcast = deal?.broadcast as (LocalDeal['broadcast'] & WorkerV5BroadcastRouteMetadata) | null | undefined
   const metadata = broadcast?.safe_metadata ?? broadcast?.metadata ?? null
   if (!metadata) return null
@@ -267,7 +158,7 @@ export function workerV5RouteDistanceFromBroadcastMetadata(deal: LocalDeal | nul
   return null
 }
 
-export function workerV5RouteDistanceFromPrebrief(prebrief: readonly string[] | null | undefined, language: AppLanguage): string | null {
+function workerV5RouteDistanceFromPrebrief(prebrief: readonly string[] | null | undefined, language: AppLanguage): string | null {
   for (const line of prebrief ?? []) {
     const text = line.trim()
     if (!/(quãng đường|khoảng cách|distance|route|travel)/i.test(text)) continue
@@ -282,7 +173,7 @@ export function workerV5RouteDistanceFromPrebrief(prebrief: readonly string[] | 
   return null
 }
 
-export function workerV5AcceptEtaFromBroadcastMetadata(deal: LocalDeal | null, language: AppLanguage): string | null {
+function workerV5AcceptEtaFromBroadcastMetadata(deal: LocalDeal | null, language: AppLanguage): string | null {
   const broadcast = deal?.broadcast as (LocalDeal['broadcast'] & WorkerV5BroadcastRouteMetadata) | null | undefined
   const metadata = broadcast?.safe_metadata ?? broadcast?.metadata ?? null
   if (!metadata) return null
@@ -308,7 +199,7 @@ export function workerV5AcceptEtaFromBroadcastMetadata(deal: LocalDeal | null, l
   return null
 }
 
-export function workerV5AcceptEtaFromPrebrief(prebrief: readonly string[] | null | undefined, language: AppLanguage): string | null {
+function workerV5AcceptEtaFromPrebrief(prebrief: readonly string[] | null | undefined, language: AppLanguage): string | null {
   for (const line of prebrief ?? []) {
     const text = line.trim()
     if (!/(eta|di chuyển|thời gian|quãng đường|travel|route|distance)/i.test(text)) continue
@@ -412,14 +303,7 @@ export function workerV5StringFromUnknown(value: unknown) {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
-export function workerV5BooleanFromUnknown(value: unknown) {
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'string') return ['1', 'true', 'yes', 'done', 'completed'].includes(value.trim().toLowerCase())
-  if (typeof value === 'number') return value === 1
-  return false
-}
-
-export function workerV5FiniteNumberFromUnknown(value: unknown) {
+function workerV5FiniteNumberFromUnknown(value: unknown) {
   const numeric = typeof value === 'number'
     ? value
     : typeof value === 'string'
@@ -428,7 +312,7 @@ export function workerV5FiniteNumberFromUnknown(value: unknown) {
   return Number.isFinite(numeric) ? numeric : null
 }
 
-export function workerV5PositiveNumberFromUnknown(value: unknown) {
+function workerV5PositiveNumberFromUnknown(value: unknown) {
   const numeric = workerV5FiniteNumberFromUnknown(value)
   return numeric != null && numeric > 0 ? numeric : null
 }

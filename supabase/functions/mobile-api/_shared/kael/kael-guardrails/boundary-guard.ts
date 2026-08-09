@@ -16,9 +16,9 @@ import {
   prependDeterministicSafetyGuidance,
   scanIntakeSafetySignals,
   type HardRoutingPolicyDecision,
-} from "../electrical-intake-policy.ts";
-import { KAEL_CASE_WORK_SERVICE_TYPES } from "../performance-profiles.ts";
-import { isElectricalPlaybookEnabled } from "../playbooks/electrical.ts";
+} from "./electrical-intake-policy.ts";
+import { KAEL_CASE_WORK_SERVICE_TYPES } from "../learning/performance-profiles.ts";
+import { isElectricalPlaybookEnabled } from "../learning/playbooks/electrical.ts";
 
 export type BoundaryReason =
   | "prompt_injection"
@@ -40,7 +40,7 @@ export type BoundaryDecision =
 export type BoundaryInjectionClassifier = (input: {
   readonly text: string;
   readonly normalizedText: string;
-  readonly selectedService: ServiceType;
+  readonly selectedService: ServiceType | null;
 }) => { detected: boolean; signals: readonly string[] };
 
 export type BoundaryGuardOptions = {
@@ -375,7 +375,7 @@ export function detectServiceMismatch(
 
 export function evaluateMessageBoundary(
   text: string,
-  selectedService: ServiceType,
+  selectedService: ServiceType | null,
   options: BoundaryGuardOptions = {},
 ): BoundaryDecision {
   const trimmed = text.trim();
@@ -471,8 +471,10 @@ export function evaluateMessageBoundary(
     };
   }
 
-  const mismatch = detectServiceMismatch(trimmed, selectedService);
-  if (mismatch.detected) {
+  const mismatch = selectedService
+    ? detectServiceMismatch(trimmed, selectedService)
+    : null;
+  if (mismatch?.detected) {
     const suggestion = mismatch.suggestedService;
     const declineText = suggestion
       ? language === "en"
