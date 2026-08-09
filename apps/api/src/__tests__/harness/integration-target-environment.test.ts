@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveIntegrationTarget } from '../integration/integration-target'
+import { HARNESS_PRODUCTION_PROJECT_REF } from '../../../../../supabase/functions/_shared/harness/environment'
 
 const KEYS = [
   'NEXT_PUBLIC_SUPABASE_URL',
@@ -65,5 +66,21 @@ describe('integration target environment guard', () => {
       ok: true,
       target: { isLocal: false },
     })
+  })
+
+  it('rejects CI-originated production mutation even with an approval token', () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = `https://${HARNESS_PRODUCTION_PROJECT_REF}.supabase.co`
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_production'
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_production'
+    process.env.NESTSCOUT_ENVIRONMENT = 'production'
+    process.env.SUPABASE_PROJECT_REF = HARNESS_PRODUCTION_PROJECT_REF
+    process.env.HARNESS_REMOTE_MUTATION_APPROVAL = 'run-123'
+    process.env.HARNESS_RELEASE_ID = 'sha-123'
+    process.env.HARNESS_APPROVAL_SOURCE = 'ci'
+    process.env.HARNESS_ALLOW_PRODUCTION_MUTATION = 'true'
+
+    expect(() => resolveIntegrationTarget('production-ci')).toThrow(
+      'Production mutation requires an operator approval',
+    )
   })
 })
