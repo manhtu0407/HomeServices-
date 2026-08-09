@@ -88,6 +88,7 @@ export function buildHarnessRelease(options = {}) {
 }
 
 export function checkHarnessRelease(release) {
+  if (!release || typeof release !== 'object' || Array.isArray(release)) return ['release artifact is invalid']
   const problems = []
   const shaFields = [
     'manifestSha256',
@@ -107,6 +108,11 @@ export function checkHarnessRelease(release) {
   if (!/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(release.releaseId ?? '')) problems.push('release ID is invalid')
   if (!ENVIRONMENTS.has(release.environment)) problems.push('release environment is invalid')
   if (!/^[0-9a-f]{40}$/u.test(release.gitSha ?? '')) problems.push('release git SHA is invalid')
+  if (typeof release.gitSha === 'string' && /^[0-9a-f]{40}$/u.test(release.gitSha)) {
+    const behaviorHash = sha256(canonicalJson({ ...release, releaseId: undefined, bundleSha256: undefined }))
+    const expectedReleaseId = `harness-${release.gitSha.slice(0, 12)}-${behaviorHash.slice(0, 12)}`
+    if (release.releaseId !== expectedReleaseId) problems.push('release ID does not bind release contents')
+  }
   for (const field of shaFields) if (!/^[0-9a-f]{64}$/u.test(release[field] ?? '')) problems.push(`${field} is invalid`)
   problems.push(...checkEnvironmentBinding(release.environment, release.environmentBinding))
   problems.push(...checkMigrationInventory(release.migrationInventory, release.databaseTypesSha256))
@@ -296,6 +302,13 @@ function assertInsideRoot(root, file) {
   if (relativePath.startsWith('..') || relativePath === '') throw new Error(`release input escapes repository root: ${file}`)
 }
 
+export function resolveReleaseArtifactPath(rootInput = ROOT, artifactPath = OUTPUT) {
+  const root = resolve(rootInput)
+  const path = resolve(root, artifactPath)
+  assertInsideRoot(root, path)
+  return path
+}
+
 function canonicalJson(value) {
   return JSON.stringify(canonicalize(value))
 }
@@ -319,7 +332,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const outputIndex = process.argv.indexOf('--output')
   const verifyIndex = process.argv.indexOf('--verify')
   if (verifyIndex >= 0) {
-    const path = resolve(ROOT, process.argv[verifyIndex + 1] ?? OUTPUT)
+    const artifact = process.argv[verifyIndex + 1]
+    if (!artifact) throw new Error('--verify requires a release artifact path')
+    const path = resolveReleaseArtifactPath(ROOT, artifact)
     const release = JSON.parse(readFileSync(path, 'utf8'))
     const problems = checkHarnessRelease(release)
     if (problems.length) {
@@ -327,11 +342,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       process.exitCode = 1
     } else console.log(`release bundle ok: ${release.releaseId}`)
   } else {
+    const environment = process.argv[environmentIndex + 1]
+    const output = process.argv[outputIndex + 1]
+    if (environmentIndex >= 0 && !environment) throw new Error('--environment requires a value')
+    if (outputIndex >= 0 && !output) throw new Error('--output requires a release artifact path')
     const release = buildHarnessRelease({
-      environment: environmentIndex >= 0 ? process.argv[environmentIndex + 1] : 'preview',
+      environment: environmentIndex >= 0 ? environment : 'preview',
     })
-    const output = outputIndex >= 0 ? process.argv[outputIndex + 1] : OUTPUT
-    const path = resolve(ROOT, output)
+    const path = resolveReleaseArtifactPath(ROOT, outputIndex >= 0 ? output : OUTPUT)
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, `${JSON.stringify(release, null, 2)}\n`)
     console.log(`${release.releaseId} ${repoPath(relative(ROOT, path))}`)
