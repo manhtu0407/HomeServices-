@@ -13,6 +13,7 @@ export type HarnessTraceContext = Readonly<{
   toolCallId: string | null;
   parentEventId: string | null;
   actorIdHash: string | null;
+  actorRole: string | null;
   jobId: string | null;
   releaseId: string;
   environment: string;
@@ -37,13 +38,17 @@ export function createHarnessTraceContext(input: {
   readonly toolCallId?: string | null;
   readonly parentEventId?: string | null;
   readonly actorIdHash?: string | null;
+  readonly actorRole?: string | null;
   readonly jobId?: string | null;
   readonly releaseId: string;
   readonly environment: string;
   readonly client?: HarnessTraceClient;
+  readonly acceptRequestLineage?: boolean;
   readonly now?: number;
 }): HarnessTraceContext {
-  const header = (name: string) => input.request?.headers.get(name) ?? null;
+  const header = (name: string) => input.acceptRequestLineage
+    ? input.request?.headers.get(name) ?? null
+    : null;
   return Object.freeze({
     traceId: validUuid(input.traceId ?? header("x-trace-id") ?? header("x-harness-trace-id") ?? header("x-request-id")) ?? crypto.randomUUID(),
     runId: validUuid(input.runId ?? header("x-run-id") ?? header("x-harness-run-id")) ?? crypto.randomUUID(),
@@ -52,6 +57,7 @@ export function createHarnessTraceContext(input: {
     toolCallId: validUuid(input.toolCallId ?? header("x-tool-call-id") ?? header("x-harness-tool-call-id")),
     parentEventId: validUuid(input.parentEventId ?? header("x-parent-event-id") ?? header("x-harness-parent-event-id")),
     actorIdHash: validHash(input.actorIdHash),
+    actorRole: boundedText(input.actorRole ?? "", 80) || null,
     jobId: validUuid(input.jobId),
     releaseId: boundedText(input.releaseId, 160) || "unreleased",
     environment: normalizeEnvironment(input.environment),
@@ -64,6 +70,7 @@ export async function bindHarnessTraceActor(
   trace: HarnessTraceContext,
   input: {
     readonly actorId: string;
+    readonly actorRole?: string | null;
     readonly jobId?: string | null;
     readonly client?: HarnessTraceClient;
   },
@@ -71,6 +78,7 @@ export async function bindHarnessTraceActor(
   return Object.freeze({
     ...trace,
     actorIdHash: await hashHarnessIdentifier(input.actorId),
+    actorRole: boundedText(input.actorRole ?? "", 80) || trace.actorRole,
     jobId: validUuid(input.jobId) ?? trace.jobId,
     ...(input.client ? { client: input.client } : {}),
   });
@@ -98,7 +106,7 @@ export async function beginHarnessRun(
   trace: HarnessTraceContext | undefined,
   input: {
     readonly actorId?: string | null;
-    readonly actorRole: string | null;
+    readonly actorRole?: string | null;
     readonly routeKind: string;
     readonly capability: string | null;
     readonly safeMetadata?: Record<string, unknown>;
@@ -114,7 +122,7 @@ export async function beginHarnessRun(
       p_trace_id: trace.traceId,
       p_parent_run_id: trace.parentRunId,
       p_actor_id_hash: actorIdHash,
-      p_actor_role: input.actorRole,
+      p_actor_role: input.actorRole ?? trace.actorRole,
       p_route_kind: boundedText(input.routeKind, 160),
       p_capability: input.capability ? boundedText(input.capability, 220) : null,
       p_environment: trace.environment,
@@ -260,16 +268,34 @@ export function sanitizeHarnessMetadata(
   for (const [key, value] of Object.entries(metadata)) {
     const normalized = key.toLowerCase();
     if (/token|secret|password|authorization|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp/iu.test(normalized)) continue;
-    if (value === null || typeof value === "boolean") safe[key.slice(0, 80)] = value;
-    else if (typeof value === "number" && Number.isFinite(value)) safe[key.slice(0, 80)] = value;
-    else if (typeof value === "string") safe[key.slice(0, 80)] = value.slice(0, 240);
+    const safeKey = safeMetadataString(key, 80);
+    if (!safeKey) continue;
+    if (value === null || typeof value === "boolean") safe[safeKey] = value;
+    else if (typeof value === "number" && Number.isFinite(value)) safe[safeKey] = value;
+    else if (typeof value === "string") {
+      const safeValue = safeMetadataString(value, 120);
+      if (safeValue) safe[safeKey] = safeValue;
+    }
     else if (Array.isArray(value)) {
-      safe[key.slice(0, 80)] = value.slice(0, 20).filter((item) =>
-        item === null || ["string", "number", "boolean"].includes(typeof item)
-      ).map((item) => typeof item === "string" ? item.slice(0, 120) : item);
+      safe[safeKey] = value.slice(0, 20).flatMap((item) => {
+        if (item === null || typeof item === "boolean") return [item];
+        if (typeof item === "number" && Number.isFinite(item)) return [item];
+        if (typeof item === "string") {
+          const safeValue = safeMetadataString(item, 120);
+          return safeValue ? [safeValue] : [];
+        }
+        return [];
+      });
     }
   }
   return safe;
+}
+
+function safeMetadataString(value: string, maxLength: number): string | null {
+  const normalized = value.trim();
+  return normalized.length > 0 && normalized.length <= maxLength && /^[A-Za-z0-9._:-]+$/u.test(normalized)
+    ? normalized
+    : null;
 }
 
 export async function hashHarnessIdentifier(value: string): Promise<string> {

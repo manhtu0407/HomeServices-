@@ -18,6 +18,12 @@ const RESOURCE_IDENTIFIER_FIELDS = [
   'candidateId',
   'notificationId',
 ]
+const STREAMING_PROVIDER_ROUTE_KINDS = new Set([
+  'customer.kaelConversations.stream',
+  'kael.chat.evidenceStream',
+  'kael.chat.stream',
+  'workers.kaelChat.stream',
+])
 const repoPath = (value) => value.split(sep).join('/')
 const normalizeSource = (value) => value.replace(/\r\n/gu, '\n')
 
@@ -104,7 +110,7 @@ export function writeCapabilityRegistry(options = {}) {
 function policyFor(input) {
   const publicRoute = input.kind === 'kael.charter' || input.kind === 'harness.health'
   const risk = riskFor(input.kind, input.methods, input.roles)
-  const operationClass = operationClassFor(risk, input.methods)
+  const operationClass = operationClassFor(input.kind, risk, input.methods)
   const confirmationGate = confirmationFor(input.kind)
   const sideEffectClass = sideEffectFor(operationClass)
   return {
@@ -140,7 +146,8 @@ function riskFor(kind, methods, roles) {
   return 'write'
 }
 
-function operationClassFor(risk, methods) {
+function operationClassFor(kind, risk, methods) {
+  if (STREAMING_PROVIDER_ROUTE_KINDS.has(kind)) return 'provider_call'
   if (risk === 'money') return 'money_impacting'
   if (methods.length && methods.every((method) => method === 'GET')) return 'database_read'
   if (risk === 'read') return 'database_read'

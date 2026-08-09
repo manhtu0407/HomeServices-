@@ -76,6 +76,22 @@ begin
   ) on conflict do nothing;
 
   select * into v_result from public.transition_harness_promotion(
+    v_release, 'staging', 'assembled', 'verified', null::text,
+    '00000000-0000-4000-8000-000000000301'::uuid, null, null, null, null, '{}'::jsonb
+  );
+  if v_result.ok or v_result.error_code <> 'INVALID_INPUT' then
+    raise exception 'null promotion packet checksum was not denied';
+  end if;
+
+  select * into v_result from public.transition_harness_promotion(
+    v_release, 'staging', 'assembled', 'verified', repeat('2',64),
+    '00000000-0000-4000-8000-000000000301'::uuid, null, null, null, null, '[]'::jsonb
+  );
+  if v_result.ok or v_result.error_code <> 'INVALID_INPUT' then
+    raise exception 'non-object promotion metadata was not denied';
+  end if;
+
+  select * into v_result from public.transition_harness_promotion(
     v_release, 'staging', 'assembled', 'verified', repeat('2',64),
     '00000000-0000-4000-8000-000000000301'::uuid, null, null, null, null, '{}'::jsonb
   );
@@ -140,6 +156,12 @@ begin
   if not public.set_harness_kill_switch(
     'staging', 'global_ai', true, 'CANARY_ABORT', v_release, v_admin, '{"incident_id":"incident-1"}'::jsonb
   ) then raise exception 'kill switch update failed'; end if;
+  if public.set_harness_kill_switch(
+    'staging', 'global_ai', null::boolean, 'INVALID', v_release, v_admin, '{}'::jsonb
+  ) then raise exception 'null kill switch state was accepted'; end if;
+  if public.set_harness_kill_switch(
+    'staging', 'global_ai', false, 'INVALID', v_release, v_admin, '{"message":"private"}'::jsonb
+  ) then raise exception 'sensitive kill switch metadata was accepted'; end if;
   select * into v_result from public.read_harness_kill_switch('staging', 'global_ai');
   if not v_result.enabled then raise exception 'kill switch did not become enabled'; end if;
   if not exists (

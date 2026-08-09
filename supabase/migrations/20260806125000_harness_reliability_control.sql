@@ -317,23 +317,29 @@ as $$
 declare
   v_row public.harness_idempotency_keys%rowtype;
   v_reservation_id uuid;
+  v_environment text := lower(trim(coalesce(p_environment, '')));
+  v_release_id text := nullif(trim(coalesce(p_release_id, '')), '');
+  v_operation_id text := nullif(trim(coalesce(p_operation_id, '')), '');
+  v_actor_id_hash text := nullif(trim(coalesce(p_actor_id_hash, '')), '');
 begin
-  if p_environment not in ('local', 'preview', 'staging', 'production')
-     or p_key_hash !~ '^[0-9a-f]{64}$'
-     or p_request_hash !~ '^[0-9a-f]{64}$'
-     or (p_actor_id_hash is not null and p_actor_id_hash !~ '^[0-9a-f]{64}$') then
+  if v_environment not in ('local', 'preview', 'staging', 'production')
+     or v_release_id is null or char_length(v_release_id) > 160
+     or v_operation_id is null or char_length(v_operation_id) > 160
+     or p_key_hash is null or p_key_hash !~ '^[0-9a-f]{64}$'
+     or p_request_hash is null or p_request_hash !~ '^[0-9a-f]{64}$'
+     or (v_actor_id_hash is not null and v_actor_id_hash !~ '^[0-9a-f]{64}$') then
     return query select 'conflict'::text, null::uuid, null::text;
     return;
   end if;
   perform pg_advisory_xact_lock(hashtext(
-    p_environment || '|' || p_operation_id || '|' || coalesce(p_actor_id_hash, 'system') || '|' || p_key_hash
+    v_environment || '|' || v_operation_id || '|' || coalesce(v_actor_id_hash, 'system') || '|' || p_key_hash
   ));
 
   select * into v_row
   from public.harness_idempotency_keys key
-  where key.environment = p_environment
-    and key.operation_id = p_operation_id
-    and key.actor_id_hash is not distinct from p_actor_id_hash
+  where key.environment = v_environment
+    and key.operation_id = v_operation_id
+    and key.actor_id_hash is not distinct from v_actor_id_hash
     and key.key_hash = p_key_hash
   for update;
 
@@ -341,14 +347,14 @@ begin
     if v_row.request_hash <> p_request_hash then
       insert into public.harness_reliability_events (
         environment, release_id, operation_id, event_class, result, error_code
-      ) values (p_environment, left(p_release_id, 160), left(p_operation_id, 160), 'idempotency', 'conflict', 'REQUEST_HASH_CONFLICT');
+      ) values (v_environment, v_release_id, v_operation_id, 'idempotency', 'conflict', 'REQUEST_HASH_CONFLICT');
       return query select 'conflict'::text, null::uuid, null::text;
       return;
     end if;
     if v_row.status = 'completed' then
       insert into public.harness_reliability_events (
         environment, release_id, operation_id, event_class, result
-      ) values (p_environment, left(p_release_id, 160), left(p_operation_id, 160), 'idempotency', 'replayed');
+      ) values (v_environment, v_release_id, v_operation_id, 'idempotency', 'replayed');
       return query select 'completed'::text, v_row.reservation_id, v_row.response_hash;
       return;
     end if;
@@ -359,7 +365,7 @@ begin
     if v_row.status in ('reserved', 'executing') and v_row.expires_at > now() then
       insert into public.harness_reliability_events (
         environment, release_id, operation_id, event_class, result
-      ) values (p_environment, left(p_release_id, 160), left(p_operation_id, 160), 'idempotency', 'in_progress');
+      ) values (v_environment, v_release_id, v_operation_id, 'idempotency', 'in_progress');
       return query select 'in_progress'::text, v_row.reservation_id, null::text;
       return;
     end if;
@@ -370,13 +376,13 @@ begin
       where reservation_id = v_row.reservation_id;
       insert into public.harness_reliability_events (
         environment, release_id, operation_id, event_class, result, error_code
-      ) values (p_environment, left(p_release_id, 160), left(p_operation_id, 160),
+      ) values (v_environment, v_release_id, v_operation_id,
         'idempotency', 'reconcile_required', 'EXECUTION_OUTCOME_UNKNOWN');
       return query select 'reconcile_required'::text, v_row.reservation_id, null::text;
       return;
     end if;
     update public.harness_idempotency_keys
-    set status = 'reserved', release_id = left(p_release_id, 160),
+    set status = 'reserved', release_id = v_release_id,
         request_hash = p_request_hash, response_hash = null, error_code = null,
         reserved_at = now(), completed_at = null,
         expires_at = now() + make_interval(secs => greatest(coalesce(p_ttl_seconds, 300), 30))
@@ -389,14 +395,14 @@ begin
     environment, release_id, operation_id, actor_id_hash, key_hash,
     request_hash, expires_at
   ) values (
-    p_environment, left(p_release_id, 160), left(p_operation_id, 160),
-    p_actor_id_hash, p_key_hash, p_request_hash,
+    v_environment, v_release_id, v_operation_id,
+    v_actor_id_hash, p_key_hash, p_request_hash,
     now() + make_interval(secs => greatest(coalesce(p_ttl_seconds, 300), 30))
   ) returning harness_idempotency_keys.reservation_id into v_reservation_id;
 
   insert into public.harness_reliability_events (
     environment, release_id, operation_id, event_class, result
-  ) values (p_environment, left(p_release_id, 160), left(p_operation_id, 160), 'idempotency', 'reserved');
+  ) values (v_environment, v_release_id, v_operation_id, 'idempotency', 'reserved');
   return query select 'reserved'::text, v_reservation_id, null::text;
 end;
 $$;
@@ -524,18 +530,22 @@ declare
   v_row public.harness_dependency_circuits%rowtype;
   v_active integer := 0;
   v_token uuid;
+  v_dependency text := nullif(trim(coalesce(p_dependency, '')), '');
+  v_environment text := lower(trim(coalesce(p_environment, '')));
+  v_half_open_probes integer := greatest(coalesce(p_half_open_probes, 1), 1);
+  v_probe_ttl_seconds integer := greatest(coalesce(p_probe_ttl_seconds, 30), 5);
 begin
-  if p_environment not in ('local', 'preview', 'staging', 'production')
-     or nullif(trim(coalesce(p_dependency, '')), '') is null then
+  if v_environment not in ('local', 'preview', 'staging', 'production')
+     or v_dependency is null or char_length(v_dependency) > 120 then
     return query select false, 'open'::text, 30000, null::uuid;
     return;
   end if;
-  perform pg_advisory_xact_lock(hashtext(p_dependency || '|' || p_environment));
+  perform pg_advisory_xact_lock(hashtext(v_dependency || '|' || v_environment));
   insert into public.harness_dependency_circuits (dependency, environment)
-  values (left(p_dependency, 120), p_environment)
+  values (v_dependency, v_environment)
   on conflict (dependency, environment) do nothing;
   select * into v_row from public.harness_dependency_circuits
-  where dependency = p_dependency and environment = p_environment for update;
+  where dependency = v_dependency and environment = v_environment for update;
 
   if v_row.state = 'open' and coalesce(v_row.open_until, now()) > now() then
     return query select false, 'open'::text,
@@ -545,7 +555,7 @@ begin
   if v_row.state = 'open' then
     update public.harness_dependency_circuits
     set state = 'half_open', half_open_probes = 0, updated_at = now()
-    where dependency = p_dependency and environment = p_environment;
+    where dependency = v_dependency and environment = v_environment;
     v_row.state := 'half_open';
   end if;
   if v_row.state = 'closed' then
@@ -555,13 +565,13 @@ begin
 
   update public.harness_dependency_probes
   set completed_at = now(), success = false, error_code = 'PROBE_EXPIRED'
-  where dependency = p_dependency and environment = p_environment
+  where dependency = v_dependency and environment = v_environment
     and completed_at is null and expires_at <= now();
   select count(*)::integer into v_active
   from public.harness_dependency_probes probe
-  where probe.dependency = p_dependency and probe.environment = p_environment
+  where probe.dependency = v_dependency and probe.environment = v_environment
     and probe.completed_at is null and probe.expires_at > now();
-  if v_active >= greatest(coalesce(p_half_open_probes, 1), 1) then
+  if v_active >= v_half_open_probes then
     return query select false, 'half_open'::text, 1000, null::uuid;
     return;
   end if;
@@ -569,12 +579,12 @@ begin
   insert into public.harness_dependency_probes (
     dependency, environment, expires_at
   ) values (
-    left(p_dependency, 120), p_environment,
-    now() + make_interval(secs => greatest(coalesce(p_probe_ttl_seconds, 30), 5))
+    v_dependency, v_environment,
+    now() + make_interval(secs => v_probe_ttl_seconds)
   ) returning harness_dependency_probes.probe_token into v_token;
   update public.harness_dependency_circuits
   set half_open_probes = half_open_probes + 1, updated_at = now()
-  where dependency = p_dependency and environment = p_environment;
+  where dependency = v_dependency and environment = v_environment;
   return query select true, 'half_open'::text, 0, v_token;
 end;
 $$;
@@ -601,40 +611,54 @@ declare
   v_now timestamptz := now();
   v_state text;
   v_successful_probes integer := 0;
+  v_dependency text := nullif(trim(coalesce(p_dependency, '')), '');
+  v_environment text := lower(trim(coalesce(p_environment, '')));
+  v_release_id text := nullif(trim(coalesce(p_release_id, '')), '');
+  v_success boolean := coalesce(p_success, false);
+  v_threshold integer := greatest(coalesce(p_threshold, 1), 1);
+  v_window_ms integer := greatest(coalesce(p_window_ms, 1000), 1000);
+  v_open_ms integer := greatest(coalesce(p_open_ms, 1000), 1000);
+  v_half_open_probes integer := greatest(coalesce(p_half_open_probes, 1), 1);
 begin
-  perform pg_advisory_xact_lock(hashtext(p_dependency || '|' || p_environment));
+  if v_release_id is null then v_release_id := 'unreleased'; end if;
+  if v_environment not in ('local', 'preview', 'staging', 'production')
+     or v_dependency is null or char_length(v_dependency) > 120
+     or char_length(v_release_id) > 160 then
+    return 'open';
+  end if;
+  perform pg_advisory_xact_lock(hashtext(v_dependency || '|' || v_environment));
   insert into public.harness_dependency_circuits (dependency, environment)
-  values (left(p_dependency, 120), p_environment)
+  values (v_dependency, v_environment)
   on conflict (dependency, environment) do nothing;
   select * into v_row from public.harness_dependency_circuits
-  where dependency = p_dependency and environment = p_environment for update;
+  where dependency = v_dependency and environment = v_environment for update;
 
   if p_probe_token is not null then
     update public.harness_dependency_probes
-    set completed_at = v_now, success = p_success,
+    set completed_at = v_now, success = v_success,
         error_code = nullif(left(coalesce(p_error_code, ''), 120), '')
     where probe_token = p_probe_token
-      and dependency = p_dependency and environment = p_environment
+      and dependency = v_dependency and environment = v_environment
       and completed_at is null;
-    if not found then p_success := false; p_error_code := 'PROBE_TOKEN_INVALID'; end if;
+    if not found then v_success := false; p_error_code := 'PROBE_TOKEN_INVALID'; end if;
   end if;
 
-  if v_now - v_row.window_started_at > make_interval(secs => greatest(p_window_ms, 1000) / 1000.0) then
+  if v_now - v_row.window_started_at > make_interval(secs => v_window_ms / 1000.0) then
     v_row.failure_count := 0;
     v_row.success_count := 0;
     v_row.window_started_at := v_now;
   end if;
 
-  if p_success then
+  if v_success then
     if v_row.state = 'half_open' then
       select count(*)::integer into v_successful_probes
       from public.harness_dependency_probes probe
-      where probe.dependency = p_dependency and probe.environment = p_environment
+      where probe.dependency = v_dependency and probe.environment = v_environment
         and probe.completed_at is not null and probe.success is true
         and probe.leased_at >= coalesce(v_row.opened_at, v_row.window_started_at);
     end if;
     v_state := case
-      when v_row.state = 'half_open' and v_successful_probes < greatest(p_half_open_probes, 1) then 'half_open'
+      when v_row.state = 'half_open' and v_successful_probes < v_half_open_probes then 'half_open'
       else 'closed'
     end;
     update public.harness_dependency_circuits
@@ -644,27 +668,27 @@ begin
         open_until = case when v_state = 'closed' then null else open_until end,
         last_error_code = null, updated_at = v_now,
         window_started_at = v_row.window_started_at
-    where dependency = p_dependency and environment = p_environment;
+    where dependency = v_dependency and environment = v_environment;
   else
     v_state := case
-      when v_row.state = 'half_open' or v_row.failure_count + 1 >= greatest(p_threshold, 1) then 'open'
+      when v_row.state = 'half_open' or v_row.failure_count + 1 >= v_threshold then 'open'
       else v_row.state
     end;
     update public.harness_dependency_circuits
     set state = v_state, failure_count = v_row.failure_count + 1,
         half_open_probes = 0,
         opened_at = case when v_state = 'open' then v_now else opened_at end,
-        open_until = case when v_state = 'open' then v_now + make_interval(secs => greatest(p_open_ms, 1000) / 1000.0) else open_until end,
+        open_until = case when v_state = 'open' then v_now + make_interval(secs => v_open_ms / 1000.0) else open_until end,
         last_error_code = nullif(left(coalesce(p_error_code, ''), 120), ''),
         updated_at = v_now, window_started_at = v_row.window_started_at
-    where dependency = p_dependency and environment = p_environment;
+    where dependency = v_dependency and environment = v_environment;
   end if;
 
   insert into public.harness_reliability_events (
     environment, release_id, dependency, event_class, result, error_code,
     safe_metadata
   ) values (
-    p_environment, left(coalesce(p_release_id, 'unreleased'), 160), left(p_dependency, 120),
+    v_environment, v_release_id, v_dependency,
     'circuit',
     case when v_state = 'open' then 'circuit_opened'
       when v_state = 'half_open' then 'circuit_half_open'

@@ -241,6 +241,7 @@ async function reserveRequestIdempotency(state: MobileApiRequestState): Promise<
   const { ctx, route, request, trace } = state;
   const envelope = ctx.capabilityEnvelope;
   if (!envelope || ctx.environment === "local") return;
+  if (isEventStreamRoute(route.kind)) return;
   if (!reliabilityPolicyForOperation(envelope.operationClass).idempotency) return;
   const idempotencyKey = validateIdempotencyKey(
     request.headers.get("idempotency-key"),
@@ -269,6 +270,10 @@ async function reserveRequestIdempotency(state: MobileApiRequestState): Promise<
     status: "succeeded",
     safeMetadata: { reservation_id: state.idempotencyReservationId },
   });
+}
+
+function isEventStreamRoute(routeKind: string): boolean {
+  return routeKind.endsWith(".stream") || routeKind.endsWith("Stream");
 }
 
 async function requestFingerprintForIdempotency(

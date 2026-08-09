@@ -133,17 +133,26 @@ declare
   v_admin boolean := false;
   v_allowed boolean := false;
 begin
-  if p_environment not in ('preview', 'staging', 'production')
+  if p_release_id is null
+     or nullif(trim(p_release_id), '') is null
+     or char_length(p_release_id) > 160
+     or p_environment not in ('preview', 'staging', 'production')
+     or p_packet_sha256 is null
      or p_packet_sha256 !~ '^[0-9a-f]{64}$'
      or p_expected_state is null or p_next_state is null
-     or coalesce(p_safe_metadata, '{}'::jsonb)::text ~* '(token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|prompt|transcript)' then
+     or jsonb_typeof(coalesce(p_safe_metadata, '{}'::jsonb)) <> 'object'
+     or coalesce(p_safe_metadata, '{}'::jsonb)::text ~* '(token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp)' then
     return query select false, 'INVALID_INPUT'::text, null::uuid, null::text;
     return;
   end if;
   if p_actor_id is not null then
     select exists(select 1 from public.profiles profile where profile.id = p_actor_id and profile.role = 'admin'::public.user_role) into v_admin;
   end if;
-  if p_next_state not in ('verified') and (not v_admin or nullif(trim(coalesce(p_approval_id, '')), '') is null) then
+  if p_next_state not in ('verified') and (
+    not v_admin
+    or nullif(trim(coalesce(p_approval_id, '')), '') is null
+    or char_length(trim(coalesce(p_approval_id, ''))) > 120
+  ) then
     return query select false, 'HUMAN_APPROVAL_REQUIRED'::text, null::uuid, null::text;
     return;
   end if;
@@ -320,7 +329,8 @@ begin
        select 1 from public.harness_releases release
        where release.release_id = p_release_id and release.environment = p_environment
      )
-     or coalesce(p_safe_metadata, '{}'::jsonb)::text ~* '(token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|prompt|transcript)' then
+     or jsonb_typeof(coalesce(p_safe_metadata, '{}'::jsonb)) <> 'object'
+     or coalesce(p_safe_metadata, '{}'::jsonb)::text ~* '(token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp)' then
     raise exception using errcode = '22023', message = 'HARNESS_SLO_OBSERVATION_INVALID';
   end if;
 
@@ -354,8 +364,10 @@ declare
 begin
   if p_environment not in ('preview', 'staging', 'production')
      or p_switch_id not in ('global_ai', 'provider_anthropic', 'provider_perplexity', 'provider_deepseek', 'tool_market_lookup', 'tool_vision', 'learning_promotion', 'payment_sepay')
+     or p_enabled is null
      or p_actor_id is null
-     or coalesce(p_safe_metadata, '{}'::jsonb)::text ~* '(token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|prompt|transcript)'
+     or jsonb_typeof(coalesce(p_safe_metadata, '{}'::jsonb)) <> 'object'
+     or coalesce(p_safe_metadata, '{}'::jsonb)::text ~* '(token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp)'
      or (p_release_id is not null and not exists (
        select 1 from public.harness_releases release
        where release.release_id = p_release_id and release.environment = p_environment

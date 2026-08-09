@@ -6,10 +6,10 @@
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
   "migrationCount": 223,
-  "migrationsSha256": "965982d4b5661b4141be51f949a5f36f632cb7803ef8e953ebe8429132b7d570",
+  "migrationsSha256": "9adf24b066790379c07569a29bd49347c807fc2ec4bd545aef08cecfc087163e",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
-    "sha256": "b92d356bd8862c8c619c1484e34d278e682a41a1617b077bef0084188d969050"
+    "sha256": "d788a538878c3ad16ab284f9826ce191aed89a9224c60ebdca7e805ec973cabe"
   },
   "entries": [
     {
@@ -1500,29 +1500,29 @@
       "version": "20260806123000",
       "name": "harness_evaluation_evidence",
       "file": "supabase/migrations/20260806123000_harness_evaluation_evidence.sql",
-      "sha256": "9c073417457c95e84a1d5d311ebf099e7c9dcc8468a4368f91843883ca9778c7",
-      "bytes": 8617
+      "sha256": "21ab3ba23020878b969ff67fba4dcf7c7c8c1ba8194759b27d1ea19a2b2544d6",
+      "bytes": 9599
     },
     {
       "version": "20260806124000",
       "name": "harness_learning_provenance",
       "file": "supabase/migrations/20260806124000_harness_learning_provenance.sql",
-      "sha256": "44c7c0fbeac50a404bde178203f2e381f858a31c51a9f032e8a3d425678eb306",
-      "bytes": 30778
+      "sha256": "5dcda8f2776dd79fb944f615c8f53b5a6bcaa7b5f35c33ecf69746cb7abdba15",
+      "bytes": 31121
     },
     {
       "version": "20260806125000",
       "name": "harness_reliability_control",
       "file": "supabase/migrations/20260806125000_harness_reliability_control.sql",
-      "sha256": "12563622c988bb6acac970039af74e95568edaaa1e12b9477bee0248b49cc9e3",
-      "bytes": 29543
+      "sha256": "36e46c9f44c4bbf08cea4ef2744ae651fbeb5ea5b0b1f3dd4281b3c422cf714a",
+      "bytes": 30782
     },
     {
       "version": "20260806130000",
       "name": "harness_promotion_control",
       "file": "supabase/migrations/20260806130000_harness_promotion_control.sql",
-      "sha256": "899b82a9dfa06377724626c780059f61f709278ebb38d81b3b1c31a2b04c15cd",
-      "bytes": 20860
+      "sha256": "6a62d577bf032637f4acf1527c4c71703a0b34ebd2d165d370cf30315a3ac2bc",
+      "bytes": 21784
     },
     {
       "version": "20260807090000",

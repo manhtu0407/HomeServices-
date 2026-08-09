@@ -33,6 +33,28 @@ insert into public.harness_releases (
   repeat('6', 64), jsonb_build_object('mobile-api', repeat('7', 64)), '{}'::jsonb, 'sql-test'
 ) on conflict do nothing;
 
+DO $$
+begin
+  begin
+    perform public.begin_harness_evaluation(
+      '00000000-0000-4000-8000-000000000200'::uuid,
+      'harness-0123456789ab-fedcba987654',
+      repeat('b', 40),
+      'deterministic',
+      'kael-deterministic-v1',
+      'deterministic',
+      '1.0.0',
+      repeat('e', 64),
+      repeat('f', 64),
+      '{}'::jsonb
+    );
+    raise exception 'expected release/git SHA mismatch to be rejected';
+  exception when sqlstate '22023' then
+    if SQLERRM <> 'HARNESS_RELEASE_GIT_SHA_MISMATCH' then raise; end if;
+  end;
+end;
+$$;
+
 select public.begin_harness_evaluation(
   '00000000-0000-4000-8000-000000000201'::uuid,
   'harness-0123456789ab-fedcba987654',
@@ -66,6 +88,65 @@ select public.append_harness_evaluation_sample(
   '{}'::jsonb
 );
 
+DO $$
+declare
+  v_duplicate_id uuid;
+begin
+  select public.append_harness_evaluation_sample(
+    '00000000-0000-4000-8000-000000000202'::uuid,
+    '00000000-0000-4000-8000-000000000201'::uuid,
+    'fixture-1',
+    'safety',
+    1,
+    true,
+    null,
+    null,
+    null,
+    true,
+    false,
+    false,
+    false,
+    5,
+    0,
+    null,
+    '{}'::jsonb
+  ) into v_duplicate_id;
+  if v_duplicate_id is not null then
+    raise exception 'duplicate evaluation sample was reported as inserted';
+  end if;
+
+  begin
+    perform public.finish_harness_evaluation(
+      '00000000-0000-4000-8000-000000000201'::uuid,
+      'running',
+      1,
+      '{}'::jsonb,
+      '{}'::jsonb,
+      repeat('a', 64),
+      '{}'::jsonb
+    );
+    raise exception 'expected non-terminal evaluation status to be rejected';
+  exception when sqlstate '22023' then
+    if SQLERRM <> 'HARNESS_EVALUATION_TERMINAL_STATUS_REQUIRED' then raise; end if;
+  end;
+
+  begin
+    perform public.finish_harness_evaluation(
+      '00000000-0000-4000-8000-000000000201'::uuid,
+      'passed',
+      2,
+      '{}'::jsonb,
+      '{}'::jsonb,
+      repeat('a', 64),
+      '{}'::jsonb
+    );
+    raise exception 'expected mismatched evaluation sample count to be rejected';
+  exception when sqlstate '22023' then
+    if SQLERRM <> 'HARNESS_EVALUATION_SAMPLE_COUNT_MISMATCH' then raise; end if;
+  end;
+end;
+$$;
+
 select public.finish_harness_evaluation(
   '00000000-0000-4000-8000-000000000201'::uuid,
   'passed',
@@ -75,6 +156,35 @@ select public.finish_harness_evaluation(
   repeat('a', 64),
   '{}'::jsonb
 );
+
+DO $$
+begin
+  begin
+    perform public.append_harness_evaluation_sample(
+      '00000000-0000-4000-8000-000000000203'::uuid,
+      '00000000-0000-4000-8000-000000000201'::uuid,
+      'fixture-after-finish',
+      'safety',
+      1,
+      true,
+      null,
+      null,
+      null,
+      true,
+      false,
+      false,
+      false,
+      5,
+      0,
+      null,
+      '{}'::jsonb
+    );
+    raise exception 'expected evaluation append after finish to be rejected';
+  exception when sqlstate '22023' then
+    if SQLERRM <> 'HARNESS_EVALUATION_NOT_RUNNING' then raise; end if;
+  end;
+end;
+$$;
 
 DO $$
 begin

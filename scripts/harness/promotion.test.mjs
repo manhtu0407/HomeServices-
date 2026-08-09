@@ -149,8 +149,36 @@ test('rejects remote promotion without explicit approval', () => {
   }), /human approval/)
 })
 
+test('verifier rejects a remote packet without approval or an exact policy binding', () => {
+  const packet = buildPromotionPacket({
+    root: resolve('.'),
+    config,
+    release,
+    evaluation,
+    environment: 'staging',
+    currentState: 'shadow',
+    targetState: 'canary',
+    humanApprovalId: 'approval-1',
+    rollbackRelease,
+  })
+  const withoutApproval = resealPacket({ ...packet, humanApprovalId: null })
+  assert.match(
+    verifyPromotionPacket(withoutApproval, config).join('; '),
+    /requires explicit human approval/,
+  )
+  const policyDrift = resealPacket({
+    ...packet,
+    killSwitches: { ...packet.killSwitches, global_ai: 'false' },
+    abortThresholds: packet.abortThresholds.slice(1),
+  })
+  const problems = verifyPromotionPacket(policyDrift, config).join('; ')
+  assert.match(problems, /kill switch is invalid: global_ai/)
+  assert.match(problems, /abort thresholds do not match policy/)
+})
+
 test('rejects secret-shaped incident evidence', () => {
   assert.throws(() => sanitizePromotionEvidence({ authorization: 'Bearer abc' }), /not allowed/)
+  assert.throws(() => sanitizePromotionEvidence({ message: 'customer supplied text' }), /not allowed/)
   assert.throws(() => sanitizePromotionEvidence({ note: 'eyJaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaa' }), /secret-shaped/)
 })
 
@@ -179,7 +207,7 @@ function fakeRelease(gitSeed, behaviorSeed, overrides = {}) {
   }
   const value = {
     schemaVersion: '1.0.0',
-    releaseId: `harness-${gitSeed.repeat(12)}-${behaviorSeed.repeat(12)}`,
+    releaseId: '',
     environment: 'staging',
     gitSha: gitSeed.repeat(40),
     manifestSha256: '3'.repeat(64),
@@ -222,6 +250,8 @@ function fakeRelease(gitSeed, behaviorSeed, overrides = {}) {
       databaseTypes: { sha256: overrides.databaseTypesSha256 },
     }
   }
+  const behaviorHash = sha256(canonicalJson({ ...value, releaseId: undefined, bundleSha256: undefined }))
+  value.releaseId = `harness-${value.gitSha.slice(0, 12)}-${behaviorHash.slice(0, 12)}`
   value.bundleSha256 = sha256(canonicalJson({ ...value, bundleSha256: undefined }))
   return Object.freeze(value)
 }
@@ -240,4 +270,10 @@ function canonicalJson(value) {
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function resealPacket(packet) {
+  const resealed = { ...packet, packetSha256: '' }
+  resealed.packetSha256 = sha256(JSON.stringify({ ...resealed, packetSha256: undefined }))
+  return resealed
 }

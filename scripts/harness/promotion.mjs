@@ -11,7 +11,8 @@ const EVALUATION_PATH = resolve(ROOT, 'artifacts/harness/evaluation-report.json'
 const OUTPUT_PATH = resolve(ROOT, 'artifacts/harness/promotion-packet.json')
 const REMOTE_STATES = new Set(['staging', 'shadow', 'canary', 'production', 'aborted', 'rolled_back'])
 const ROLLBACK_REQUIRED_STATES = new Set(['canary', 'production', 'rolled_back'])
-const SENSITIVE_KEY = /token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank/iu
+const PROMOTION_ENVIRONMENTS = new Set(['preview', 'staging', 'production'])
+const SENSITIVE_KEY = /token|secret|password|authorization|cookie|credential|api[_-]?key|service[_-]?role|email|phone|address|description|content|prompt|image|audio|transcript|latitude|longitude|cccd|bank|message|text|question|answer|query|title|name|url|uri|unit|floor|street|ward|postal|zip|otp/iu
 const SENSITIVE_VALUE = /(?:bearer\s+[a-z0-9._~-]+|-----BEGIN [A-Z ]+PRIVATE KEY-----|eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,})/u
 
 export function validatePromotionConfig(config, options = {}) {
@@ -133,7 +134,8 @@ export function buildPromotionPacket(input) {
   if (releaseProblems.length) throw new Error(`release bundle is invalid: ${releaseProblems.join('; ')}`)
   assertEvaluationAlignment(input.release, input.evaluation)
   if (input.environment !== input.release.environment) throw new Error('release environment does not match promotion environment')
-  if (REMOTE_STATES.has(input.targetState) && !input.humanApprovalId) throw new Error('remote promotion requires explicit human approval')
+  const humanApprovalId = normalizeApprovalId(input.humanApprovalId)
+  if (REMOTE_STATES.has(input.targetState) && !humanApprovalId) throw new Error('remote promotion requires explicit human approval')
   if (!canTransition(input.config, input.currentState, input.targetState)) throw new Error(`promotion transition is not allowed: ${input.currentState}->${input.targetState}`)
   const abort = evaluateAbortThresholds(input.config, input.metrics ?? input.evaluation.metrics ?? {})
   if (!abort.passed) throw new Error(`promotion abort threshold failed: ${abort.failures.map((failure) => failure.metric).join(', ')}`)
@@ -170,7 +172,7 @@ export function buildPromotionPacket(input) {
     migrationInventorySha256: input.release.migrationInventorySha256,
     databaseTypesSha256: input.release.databaseTypesSha256,
     edgeFunctions: input.release.edgeFunctions,
-    humanApprovalId: input.humanApprovalId ?? null,
+    humanApprovalId,
     rollbackReleaseId: rollbackRelease?.releaseId ?? null,
     rollbackCompatibility: rollbackRelease ? {
       releaseBundleSha256: rollbackRelease.bundleSha256,
@@ -191,9 +193,15 @@ export function buildPromotionPacket(input) {
 
 export function verifyPromotionPacket(packet, config) {
   const problems = []
+  if (!packet || typeof packet !== 'object') return ['promotion packet is invalid']
+  problems.push(...validatePromotionConfig(config).map((problem) => `promotion config: ${problem}`))
   if (packet.schemaVersion !== '1.0.0') problems.push('promotion packet schema is invalid')
+  if (!PROMOTION_ENVIRONMENTS.has(packet.environment)) problems.push('promotion packet environment is invalid')
   if (!canTransition(config, packet.fromState, packet.toState)) problems.push('promotion packet transition is invalid')
   if (!/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/.test(packet.releaseId ?? '')) problems.push('promotion release ID is invalid')
+  if (REMOTE_STATES.has(packet.toState) && !normalizeApprovalId(packet.humanApprovalId)) {
+    problems.push('promotion packet requires explicit human approval')
+  }
   for (const field of [
     'releaseBundleSha256', 'evaluationSuiteSha256', 'promptBundleSha256',
     'policyBundleSha256', 'manifestSha256', 'capabilityRegistrySha256',
@@ -206,11 +214,14 @@ export function verifyPromotionPacket(packet, config) {
   if (packet.packetSha256 !== expected) problems.push('promotion packet checksum mismatch')
   if (ROLLBACK_REQUIRED_STATES.has(packet.toState)) {
     if (!packet.rollbackReleaseId || !packet.rollbackCompatibility) problems.push('promotion packet has no compatible rollback release')
+    if (!/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/.test(packet.rollbackReleaseId ?? '')) {
+      problems.push('promotion rollback release ID is invalid')
+    }
     for (const field of ['releaseBundleSha256', 'migrationInventorySha256', 'databaseTypesSha256']) {
       if (!/^[0-9a-f]{64}$/.test(packet.rollbackCompatibility?.[field] ?? '')) problems.push(`rollbackCompatibility.${field} is invalid`)
     }
   }
-  if ((packet.abortThresholds ?? []).some((result) => result.passed !== true)) problems.push('promotion packet contains a failed abort threshold')
+  verifyPromotionPolicyBinding(packet, config, problems)
   try { sanitizePromotionEvidence(packet.evidence ?? {}) } catch (error) { problems.push(error.message) }
   return problems
 }
@@ -220,7 +231,8 @@ export function buildRollbackPacket(input) {
   if (failedProblems.length) throw new Error(`failed release bundle is invalid: ${failedProblems.join('; ')}`)
   const compatibility = releaseCompatibilityProblems(input.failedRelease, input.rollbackRelease)
   if (compatibility.length) throw new Error(compatibility.join('; '))
-  if (!input.humanApprovalId) throw new Error('rollback requires human approval')
+  const humanApprovalId = normalizeApprovalId(input.humanApprovalId)
+  if (!humanApprovalId) throw new Error('rollback requires human approval')
   if (!input.reasonCode?.trim()) throw new Error('rollback requires a reason code')
   const packet = {
     schemaVersion: '1.0.0',
@@ -234,7 +246,7 @@ export function buildRollbackPacket(input) {
     migrationInventorySha256: input.rollbackRelease.migrationInventorySha256,
     databaseTypesSha256: input.rollbackRelease.databaseTypesSha256,
     reasonCode: input.reasonCode.trim().slice(0, 120),
-    humanApprovalId: input.humanApprovalId,
+    humanApprovalId,
     containmentSwitches: [...new Set(input.containmentSwitches ?? [])].sort(),
     evidence: sanitizePromotionEvidence(input.evidence ?? {}),
     packetSha256: '',
@@ -256,6 +268,45 @@ function assertEvaluationAlignment(release, evaluation) {
     ['capabilityRegistrySha256', evaluation.versions?.capabilityRegistrySha256, release.capabilityRegistrySha256],
   ]
   for (const [field, actual, expected] of checks) if (actual !== expected) throw new Error(`evaluation ${field} does not match selected release`)
+}
+
+function verifyPromotionPolicyBinding(packet, config, problems) {
+  const policy = config && typeof config === 'object' ? config : {}
+  const expectedSwitches = policy.kill_switches ?? []
+  const packetSwitches = packet.killSwitches
+  if (!packetSwitches || typeof packetSwitches !== 'object' || Array.isArray(packetSwitches)) {
+    problems.push('promotion packet kill switches are invalid')
+  } else {
+    const actualSwitches = Object.keys(packetSwitches).sort()
+    if (JSON.stringify(actualSwitches) !== JSON.stringify([...expectedSwitches].sort())) {
+      problems.push('promotion packet kill switches do not match policy')
+    }
+    for (const id of expectedSwitches) {
+      if (typeof packetSwitches[id] !== 'boolean') problems.push(`promotion packet kill switch is invalid: ${id}`)
+    }
+  }
+
+  if (JSON.stringify(packet.slos ?? []) !== JSON.stringify(policy.slos ?? [])) {
+    problems.push('promotion packet SLOs do not match policy')
+  }
+
+  const expectedThresholds = policy.abort_thresholds ?? {}
+  const results = Array.isArray(packet.abortThresholds) ? packet.abortThresholds : []
+  const byMetric = new Map(results.map((result) => [result?.metric, result]))
+  if (results.length !== Object.keys(expectedThresholds).length) problems.push('promotion packet abort thresholds do not match policy')
+  for (const [metric, threshold] of Object.entries(expectedThresholds)) {
+    const result = byMetric.get(metric)
+    if (!result || result.threshold !== threshold || result.status !== 'measured' ||
+      !Number.isFinite(result.actual) || result.passed !== true || result.actual > threshold) {
+      problems.push(`promotion packet abort threshold is invalid: ${metric}`)
+    }
+  }
+}
+
+function normalizeApprovalId(value) {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim()
+  return normalized && normalized.length <= 120 ? normalized : null
 }
 
 function sha256(value) {

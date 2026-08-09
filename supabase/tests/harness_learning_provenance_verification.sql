@@ -78,4 +78,51 @@ begin
 end;
 $$;
 
+insert into public.learning_candidates (
+  id, candidate_type, suggested_payload, confidence, evidence_count, status
+) values (
+  '00000000-0000-4000-8000-000000000302'::uuid,
+  'analysis_rule',
+  '{"candidate_type":"analysis_rule","scope":{"service_type":"electrical","problem_slug":"fixture","district_code":"q1"},"observed":{"sample_size":5,"scope_change_rate":0},"suggested":{"kind":"add_advisory","advisory_template_id":"fixture","rationale":"fixture"}}'::jsonb,
+  0.9,
+  5,
+  'auto_promoted'::public.learning_candidate_status
+) on conflict do nothing;
+
+DO $$
+declare
+  v_queue record;
+  v_status text;
+begin
+  select * into v_queue from public.queue_learning_candidate_manual_review(
+    '00000000-0000-4000-8000-000000000302'::uuid,
+    repeat('a', 64), repeat('b', 64), repeat('c', 64), repeat('d', 64),
+    'harness-test', '{}'::jsonb
+  );
+  if v_queue.ok
+     or v_queue.error_code <> 'CANDIDATE_NOT_REVIEWABLE'
+     or v_queue.status <> 'auto_promoted' then
+    raise exception 'an approved candidate was accepted for manual review';
+  end if;
+
+  select status::text into v_status from public.learning_candidates
+  where id = '00000000-0000-4000-8000-000000000302'::uuid;
+  if v_status <> 'auto_promoted' then
+    raise exception 'manual review rewound an approved candidate: %', v_status;
+  end if;
+  if exists (
+    select 1 from public.learning_candidate_provenance
+    where candidate_id = '00000000-0000-4000-8000-000000000302'::uuid
+  ) then
+    raise exception 'manual review wrote provenance for an approved candidate';
+  end if;
+  if exists (
+    select 1 from public.kael_rule_lifecycle_log
+    where candidate_id = '00000000-0000-4000-8000-000000000302'::uuid
+  ) then
+    raise exception 'manual review wrote lifecycle evidence for an approved candidate';
+  end if;
+end;
+$$;
+
 rollback;

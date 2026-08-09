@@ -31,18 +31,19 @@ export function makeSequenceClient(
         return makeQuery(call, [override])
       }
       // S4 (§38): the AI-spend gate reads/writes its own ledger via these RPCs,
-      // orthogonal to the .from() result sequence. Return benign defaults so these
-      // control-plane calls do not consume sequenced query results. Other RPC names
-      // still draw from the sequence (learning/autonomy).
-      if (name === 'reserve_kael_ai_spend') {
-        return Promise.resolve({ data: [{ allowed: true, reservation_id: null }], error: null })
-      }
+      // orthogonal to the .from() result sequence. Return a valid reservation so
+      // test callers exercise the durable fail-closed contract without consuming
+      // sequenced query results. Other RPC names still draw from the sequence.
       if (
-        name === 'finalize_kael_ai_spend' ||
-        name === 'check_kael_ai_spend' ||
-        name === 'record_kael_ai_spend'
+        name === 'reserve_kael_ai_spend' || name === 'finalize_kael_ai_spend' ||
+        name === 'check_kael_ai_spend' || name === 'record_kael_ai_spend'
       ) {
-        return Promise.resolve({ data: null, error: null })
+        return Promise.resolve({
+          data: name === 'reserve_kael_ai_spend'
+            ? [{ allowed: true, blocked_scope: null, reservation_id: 1 }]
+            : null,
+          error: null,
+        })
       }
       if (
         name === 'reserve_harness_idempotency' ||
@@ -53,7 +54,16 @@ export function makeSequenceClient(
         name === 'acquire_harness_dependency_permit' ||
         name === 'record_harness_dependency_result'
       ) {
-        return Promise.resolve({ data: null, error: null })
+        return Promise.resolve({
+          data: name === 'reserve_harness_idempotency'
+            ? [{ state: 'reserved', reservation_id: '550e8400-e29b-41d4-a716-446655440000', response_hash: null }]
+            : name === 'acquire_harness_dependency_permit'
+            ? [{ allowed: true, state: 'closed', retry_after_ms: 0, probe_token: null }]
+            : name === 'record_harness_dependency_result'
+            ? 'closed'
+            : true,
+          error: null,
+        })
       }
       if (name === 'consume_job_media_uploads') {
         const call: QueryCall = { table: `rpc:${name}`, operations: [['rpc', name, args]] }

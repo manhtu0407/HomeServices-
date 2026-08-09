@@ -229,6 +229,52 @@ describe('mobile-api Kael callAI durable circuit wiring', () => {
       durableGuardClient: { rpc },
     })).resolves.toMatchObject({ success: true })
     expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(rpc).not.toHaveBeenCalledWith('read_harness_kill_switch', expect.anything())
+  })
+
+  it('starts the trace run before provider I/O', async () => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> }> = []
+    const rpc = vi.fn(async (fn: string, args: Record<string, unknown> = {}) => {
+      calls.push({ fn, args })
+      return { data: fn === 'is_circuit_open' ? false : true, error: null }
+    })
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: '{"ok":true}' } }],
+      usage: { prompt_tokens: 10, completion_tokens: 5 },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await expect(callAI(request, {
+      deepseekApiKey: 'test-key',
+      durableGuardsEnabled: true,
+      durableGuardClient: { rpc },
+      harnessTrace: {
+        traceId: '00000000-0000-4000-8000-000000000001',
+        runId: '00000000-0000-4000-8000-000000000002',
+        parentRunId: null,
+        turnId: null,
+        toolCallId: null,
+        parentEventId: null,
+        actorIdHash: 'a'.repeat(64),
+        actorRole: 'customer',
+        jobId: null,
+        releaseId: 'release-test',
+        environment: 'staging',
+        startedAtMs: 0,
+        client: { rpc },
+      },
+    })).resolves.toMatchObject({ success: true })
+
+    expect(calls[0]).toEqual(expect.objectContaining({
+      fn: 'begin_harness_run',
+      args: expect.objectContaining({
+        p_actor_role: 'customer',
+        p_route_kind: 'kael.provider',
+        p_release_id: 'release-test',
+      }),
+    }))
+    expect(calls.some((call) => call.fn === 'append_harness_event')).toBe(true)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 })
 

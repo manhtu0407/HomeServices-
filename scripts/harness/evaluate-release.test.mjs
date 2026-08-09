@@ -6,6 +6,8 @@ import {
   aggregateEvaluationSamples,
   buildEvaluationReport,
   evaluateAssuranceCases,
+  parseReleaseEvaluationArgs,
+  resolveEvaluationRepositoryPath,
   runReleaseEvaluation,
   validateEvaluationConfig,
   verifyEvaluationReport,
@@ -156,4 +158,12 @@ test('deterministic evaluation produces honest non-live release evidence', () =>
   assert.equal(report.liveProviderEvidence, false)
   assert.equal(report.evaluator.kind, 'deterministic')
   assert.deepEqual(verifyEvaluationReport(report), [])
+})
+
+test('rejects missing CLI values and repository-escaping release paths', () => {
+  assert.throws(() => parseReleaseEvaluationArgs(['--output']), /--output requires a value/)
+  assert.throws(
+    () => resolveEvaluationRepositoryPath(root, '../outside.json', 'evaluation output'),
+    /must stay inside the repository root/,
+  )
 })
