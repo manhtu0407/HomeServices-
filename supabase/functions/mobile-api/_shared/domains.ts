@@ -432,10 +432,12 @@ function aiRuntime(
   ctx: MobileApiContext,
   secrets: EdgeAiSecrets,
 ): EdgeAiSecrets {
-  if (!secrets.durableGuardsEnabled) return secrets;
   return {
     ...secrets,
-    durableGuardClient: ctx.supabase as EdgeGuardClient,
+    ...(ctx.traceContext ? { harnessTrace: ctx.traceContext } : {}),
+    ...(secrets.durableGuardsEnabled
+      ? { durableGuardClient: ctx.supabase as EdgeGuardClient }
+      : {}),
   };
 }
 

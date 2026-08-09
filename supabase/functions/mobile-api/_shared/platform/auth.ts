@@ -6,7 +6,12 @@ import {
 } from "./privileged/service-client.ts";
 import type { ActorContext } from "./authz/actor-context.ts";
 import type { CapabilityEnvelope } from "./authz/capability-policy.ts";
-import type { HarnessTraceContext } from "../../../_shared/harness/trace.ts";
+import {
+  bindHarnessTraceActor,
+  createHarnessTraceContext,
+  type HarnessTraceClient,
+  type HarnessTraceContext,
+} from "../../../_shared/harness/trace.ts";
 import type { EdgeEnv } from "../../../_shared/platform/env.ts";
 import { USER_ROLES, type UserRole } from "../../../_shared/domain.ts";
 import {
@@ -31,6 +36,9 @@ export type MobileApiAuthResult =
     requestHost?: string;
     requestProjectRef?: string;
     releaseId?: string;
+    traceId?: string;
+    runId?: string;
+    traceContext?: HarnessTraceContext;
   }
   | {
     success: false;
@@ -158,6 +166,18 @@ export function createEdgeAuthenticator(
       actorId: userData.user.id,
       actorRole: profile.role,
     });
+    const traceContext = await bindHarnessTraceActor(
+      createHarnessTraceContext({
+        releaseId: env.releaseId ?? "unreleased",
+        environment: env.harnessEnvironment?.name ?? "local",
+        client: supabase as HarnessTraceClient,
+      }),
+      {
+        actorId: userData.user.id,
+        actorRole: profile.role,
+        client: supabase as HarnessTraceClient,
+      },
+    );
 
     return {
       success: true,
@@ -170,6 +190,9 @@ export function createEdgeAuthenticator(
       accountState,
       releaseId: env.releaseId ?? "unreleased",
       environment: env.harnessEnvironment?.name ?? "unknown",
+      traceId: traceContext.traceId,
+      runId: traceContext.runId,
+      traceContext,
       projectRef: env.harnessEnvironment?.projectRef ?? null,
       authenticatedAt: new Date().toISOString(),
       privilegedSupabase: supabase,

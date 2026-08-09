@@ -34,6 +34,24 @@ test('detects missing and unknown remote migrations', () => {
   assert.ok(problems.some((problem) => problem.includes('unknown migrations')))
 })
 
+test('rejects duplicate and malformed remote migration entries', () => {
+  const inventory = {
+    entries: [
+      { version: '20260101000000' },
+      { version: '20260102000000' },
+    ],
+  }
+  const problems = compareRemoteMigrations(inventory, [
+    { version: '20260101000000' },
+    { version: '20260102000000' },
+    { version: '20260102000000' },
+    {},
+    null,
+  ])
+  assert.ok(problems.some((problem) => problem.includes('duplicate versions')))
+  assert.ok(problems.some((problem) => problem.includes('without a version')))
+})
+
 
 function write(path, value) {
   mkdirSync(dirname(path), { recursive: true })

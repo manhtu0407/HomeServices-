@@ -9,7 +9,7 @@ export async function prepareKaelPipelineSpendGate(
   secrets: EdgeAiSecrets,
 ) {
   const spendGate = createRuntimeKaelSpendGate(
-    (secrets.harnessTrace?.client ?? supabase) as unknown as SpendGateClient,
+    supabase as unknown as SpendGateClient,
     input.actorId ?? null,
     secrets.harnessTrace,
   );

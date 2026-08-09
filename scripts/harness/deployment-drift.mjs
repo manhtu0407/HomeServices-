@@ -10,15 +10,26 @@ export function compareDeploymentState(input) {
   const release = input.release
   const inventory = input.inventory
   const remote = input.remote
+  if (!release || typeof release !== 'object') return { ok: false, problems: ['release artifact is missing'] }
+  if (!inventory || !Array.isArray(inventory.entries)) return { ok: false, problems: ['migration inventory is missing'] }
   if (!remote || typeof remote !== 'object') return { ok: false, problems: ['remote deployment snapshot is missing'] }
   if (remote.environment !== release.environment) problems.push(`environment mismatch: release ${release.environment}, remote ${remote.environment}`)
-  if (remote.releaseId && remote.releaseId !== release.releaseId) problems.push(`release ID mismatch: expected ${release.releaseId}, remote ${remote.releaseId}`)
-  if (remote.gitSha && remote.gitSha !== release.gitSha) problems.push(`Git SHA mismatch: expected ${release.gitSha}, remote ${remote.gitSha}`)
-  if (remote.migrationInventorySha256 && remote.migrationInventorySha256 !== release.migrationInventorySha256) problems.push('migration inventory digest mismatch')
+  if (!remote.releaseId) problems.push('remote release ID is missing')
+  else if (remote.releaseId !== release.releaseId) problems.push(`release ID mismatch: expected ${release.releaseId}, remote ${remote.releaseId}`)
+  if (!remote.gitSha) problems.push('remote Git SHA is missing')
+  else if (remote.gitSha !== release.gitSha) problems.push(`Git SHA mismatch: expected ${release.gitSha}, remote ${remote.gitSha}`)
+  if (!remote.migrationInventorySha256) problems.push('remote migration inventory digest is missing')
+  else if (remote.migrationInventorySha256 !== release.migrationInventorySha256) problems.push('migration inventory digest mismatch')
   const expectedVersions = inventory.entries.map((entry) => entry.version)
-  const actualVersions = (remote.migrations ?? []).map((entry) => String(entry.version ?? entry.id ?? '')).filter(Boolean)
+  const remoteMigrations = remote.migrations ?? []
+  if (!Array.isArray(remoteMigrations)) problems.push('remote migrations snapshot is not an array')
+  const suppliedVersions = (Array.isArray(remoteMigrations) ? remoteMigrations : [])
+    .map((entry) => String(entry?.version ?? entry?.id ?? ''))
+  if (suppliedVersions.some((version) => !version)) problems.push('remote migrations snapshot contains an entry without a version')
+  const actualVersions = suppliedVersions.filter(Boolean)
   const expectedSet = new Set(expectedVersions)
   const actualSet = new Set(actualVersions)
+  if (actualSet.size !== actualVersions.length) problems.push('remote migration history contains duplicate versions')
   const missing = expectedVersions.filter((version) => !actualSet.has(version))
   const unknown = actualVersions.filter((version) => !expectedSet.has(version))
   if (missing.length) problems.push(`remote is missing migrations: ${missing.join(', ')}`)
