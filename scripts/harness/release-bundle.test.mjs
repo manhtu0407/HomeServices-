@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
-import { buildHarnessRelease, checkHarnessRelease, edgeFunctionBundles } from './release-bundle.mjs'
+import { buildHarnessRelease, checkHarnessRelease, edgeFunctionBundles, resolveReleaseArtifactPath } from './release-bundle.mjs'
 
 test('builds a deterministic immutable release bundle', () => {
   const input = { environment: 'preview', gitSha: 'a'.repeat(40) }
@@ -20,6 +20,25 @@ test('detects release bundle tampering', () => {
   const release = buildHarnessRelease({ environment: 'staging', gitSha: 'b'.repeat(40) })
   release.policyBundleSha256 = '0'.repeat(64)
   assert.ok(checkHarnessRelease(release).includes('release bundle checksum mismatch'))
+})
+
+test('binds the deterministic release ID to its immutable contents', () => {
+  const release = buildHarnessRelease({ environment: 'staging', gitSha: 'c'.repeat(40) })
+  release.releaseId = 'harness-cccccccccccc-000000000000'
+  assert.ok(checkHarnessRelease(release).includes('release ID does not bind release contents'))
+})
+
+test('keeps release artifacts inside the repository root', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'harness-release-path-'))
+  try {
+    assert.equal(
+      resolveReleaseArtifactPath(root, 'artifacts/harness/release-manifest.json'),
+      resolve(root, 'artifacts/harness/release-manifest.json'),
+    )
+    assert.throws(() => resolveReleaseArtifactPath(root, '../outside.json'), /escapes repository root/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test('Edge digests include transitive imports and runtime configuration but ignore unrelated files', () => {

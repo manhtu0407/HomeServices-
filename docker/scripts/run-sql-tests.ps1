@@ -13,7 +13,11 @@ param(
   [string]$Container = "supabase_db_nestscout",
   [string]$Filter = "*.sql",
   [switch]$StopOnFirstFailure,
+  # These values are interpolated only for the local dblink shell invocation.
+  # Restrict them to PostgreSQL identifier syntax so they cannot alter that command.
+  [ValidatePattern('^[A-Za-z_][A-Za-z0-9_]*$')]
   [string]$DbUser = "postgres",
+  [ValidatePattern('^[A-Za-z_][A-Za-z0-9_]*$')]
   [string]$DblinkDbUser = "supabase_admin"
 )
 
