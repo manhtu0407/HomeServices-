@@ -2,6 +2,7 @@
 .agents/
 .claude/
 .codex/
+.scratch/
 .tmp/
 tmp/
 output/

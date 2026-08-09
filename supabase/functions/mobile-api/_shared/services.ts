@@ -64,6 +64,43 @@ import {
   streamWorkerKaelChatTurn,
 } from "./services/kael-chat-stream.ts";
 import { approveKaelLearningCandidateAdmin, evaluatePriceSynthesisAbCaseAdmin, invalidateMarketCache, listKaelLearningCandidatesAdmin, monitorKaelLearningRulesAdmin, processKaelBatchResultsAdmin, processKaelLearningQueueAdmin, rejectKaelLearningCandidateAdmin } from "./services/admin-learning.service.ts";
+import {
+  decideAdminWorkerApplication,
+  cancelAdminManagerNomination,
+  getAdminOperations,
+  getAdminWorkerApplication,
+  listAdminSubAdmins,
+  listAdminWorkerApplications,
+  nominateAdminManager,
+  searchAdminSubAdminAccounts,
+  setAdminSubAdminAccess,
+  setAdminWorkerAccess,
+} from "./services/admin-control.service.ts";
+import {
+  listAdminAiCosts,
+  listAdminDisputes,
+  listAdminLearningRules,
+  listAdminPriceBaselines,
+} from "./services/admin-governance.service.ts";
+import {
+  getAdminTransaction,
+  listAdminTransactions,
+} from "./services/admin-transactions.service.ts";
+import {
+  claimAdminWithdrawalRequest,
+  decideAdminPayoutMethod,
+  getAdminPayoutMethod,
+  getAdminWithdrawalRequest,
+  listAdminPayoutMethods,
+  listAdminWithdrawalRequests,
+  resolveAdminWithdrawalRequest,
+} from "./services/admin-payout.service.ts";
+import {
+  createWorkerWithdrawalRequest,
+  getWorkerPayoutMethod,
+  listWorkerWithdrawalRequests,
+  saveWorkerPayoutMethod,
+} from "./services/worker-payout.service.ts";
 import { getWorkerKaelTrainingConsent, setWorkerKaelTrainingConsent, submitCustomerKaelFeedback, submitWorkerKaelFeedback } from "./services/kael-feedback.service.ts";
 import {
   attachJobMedia,
@@ -219,6 +256,29 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
     getKaelCharter,
     registerWorker,
     submitWorkerApplication,
+    getAdminOperations,
+    listAdminDisputes,
+    listAdminPriceBaselines,
+    listAdminAiCosts,
+    listAdminLearningRules,
+    listAdminWorkerApplications,
+    getAdminWorkerApplication,
+    decideAdminWorkerApplication,
+    setAdminWorkerAccess,
+    listAdminTransactions,
+    getAdminTransaction,
+    listAdminPayoutMethods,
+    getAdminPayoutMethod,
+    decideAdminPayoutMethod,
+    listAdminWithdrawalRequests,
+    getAdminWithdrawalRequest,
+    claimAdminWithdrawalRequest,
+    resolveAdminWithdrawalRequest,
+    listAdminSubAdmins,
+    searchAdminSubAdminAccounts,
+    nominateAdminManager,
+    cancelAdminManagerNomination,
+    setAdminSubAdminAccess,
     getCustomerProfileInsights,
     getCustomerAvatar,
     createCustomerAvatarUpload,
@@ -243,6 +303,10 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
     updateWorkerAvailability,
     listWorkerBroadcasts,
     listWorkerJobs,
+    getWorkerPayoutMethod,
+    saveWorkerPayoutMethod,
+    listWorkerWithdrawalRequests,
+    createWorkerWithdrawalRequest,
     getWorkerRoutePreview: (ctx, jobId, origin) =>
       getWorkerRoutePreview(ctx, jobId, origin, secrets),
     getWorkerRouteMap: (ctx, jobId, origin) =>

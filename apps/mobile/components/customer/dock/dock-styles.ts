@@ -6,6 +6,7 @@ export const CUSTOMER_LIQUID_NAV_DOCK_HEIGHT = 56
 export const CUSTOMER_LIQUID_NAV_ORB_SIZE = 72
 export const CUSTOMER_LIQUID_NAV_GAP = 8
 export const CUSTOMER_LIQUID_NAV_RAIL_PADDING = 4
+export const CUSTOMER_LIQUID_NAV_LENS_RADIUS = 24
 
 export const customerV21DockStyles = StyleSheet.create({
   dockIcon: {

@@ -4,11 +4,13 @@ import { matchWorkerKaelChatRoute, type WorkerKaelChatRoute } from "./worker-kae
 import { matchCustomerKaelConversationRoute, type CustomerKaelConversationRoute } from "./customer-kael-conversation-routes.ts";
 import { matchCustomerKaelChatSessionRoute, type CustomerKaelChatSessionRoute } from "./kael-chat-session-routes.ts";
 import { matchStagingPaymentRoute } from "./staging-payment-routes.ts";
+import { matchAdminControlRoute, type AdminControlRoute } from "./admin-control-routes.ts";
 
 export type PublicRoute = { kind: "kael.charter"; method: "GET"; public: true };
 
 export type Route =
   | PublicRoute
+  | AdminControlRoute
   | CaseWorkResourceRoute
   | WorkerKaelChatRoute
   | CustomerKaelConversationRoute
@@ -211,6 +213,15 @@ export type Route =
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.payoutMethod.get"; method: "GET"; roles: ["worker"] }
+  | { kind: "workers.payoutMethod.save"; method: "PATCH"; roles: ["worker"] }
+  | { kind: "workers.withdrawalRequests.list"; method: "GET"; roles: ["worker"] }
+  | {
+    kind: "workers.withdrawalRequests.create";
+    method: "POST";
+    roles: ["worker"];
+    successStatus: 201;
+  }
   | { kind: "admin.marketCache.invalidate"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelAb.priceSynthesis"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelLearning.processQueue"; method: "POST"; roles: UserRole[] }
@@ -302,6 +313,8 @@ export function matchRoute(request: Request): Route | null {
       roles: ["admin"],
     };
   }
+  const adminControlRoute = matchAdminControlRoute(path, method);
+  if (adminControlRoute) return adminControlRoute;
   if (
     method === "GET" &&
     (path === "/admin/kael/learning/candidates" ||
@@ -522,6 +535,23 @@ export function matchRoute(request: Request): Route | null {
   }
   if (method === "GET" && path === "/workers/me/jobs") {
     return { kind: "workers.jobs", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "GET" && path === "/workers/me/payout-method") {
+    return { kind: "workers.payoutMethod.get", method: "GET", roles: ["worker"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/payout-method") {
+    return { kind: "workers.payoutMethod.save", method: "PATCH", roles: ["worker"] };
+  }
+  if (method === "GET" && path === "/workers/me/withdrawal-requests") {
+    return { kind: "workers.withdrawalRequests.list", method: "GET", roles: ["worker"] };
+  }
+  if (method === "POST" && path === "/workers/me/withdrawal-requests") {
+    return {
+      kind: "workers.withdrawalRequests.create",
+      method: "POST",
+      roles: ["worker"],
+      successStatus: 201,
+    };
   }
   if (method === "GET" && path === "/workers/me/earnings") {
     return { kind: "workers.earnings", method: "GET", roles: ["worker", "admin"] };

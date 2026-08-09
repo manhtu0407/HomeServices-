@@ -53,6 +53,10 @@ import {
   LEARNING_CANDIDATE_STATUSES,
 } from "../../_shared/domain.ts";
 import {
+  workerPayoutMethodSaveSchema,
+  workerWithdrawalRequestCreateSchema,
+} from "../../_shared/worker-payout-contract.ts";
+import {
   jobMediaRevokeSchema,
   jobMediaUploadSchema,
 } from "../../_shared/job-media-contract.ts";
@@ -70,6 +74,21 @@ import {
 import { normalizeIsoTimestamp } from "./iso-timestamp.ts";
 import { enforceKaelRuntimePathControl } from "./router-kael-path-control.ts";
 import { priceSynthesisAbCaseSchema } from "./kael/price-synthesis-ab.ts";
+import {
+  adminSubAdminAccessSchema,
+  adminWorkerAccessSchema,
+  adminWorkerApplicationDecisionSchema,
+  parseAdminGovernanceListQuery,
+  parseAdminSubAdminAccountSearchQuery,
+  parseAdminTransactionListQuery,
+  parseAdminWorkerApplicationListQuery,
+} from "./router/admin-control-contract.ts";
+import {
+  adminPayoutMethodDecisionSchema,
+  adminWithdrawalRequestResolveSchema,
+  parseAdminPayoutMethodListQuery,
+  parseAdminWithdrawalRequestListQuery,
+} from "./router/admin-payout-contract.ts";
 import {
   isPublicRoute,
   matchRoute,
@@ -299,6 +318,114 @@ async function dispatchRoute(
         route.candidateId,
         kaelLearningCandidateReviewInput(await readJson(request), "reject"),
       );
+    case "admin.operations.get":
+      return services.getAdminOperations(ctx);
+    case "admin.governance.disputes": {
+      const input = parseAdminGovernanceListQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Phân trang tranh chấp không hợp lệ", 400);
+      return services.listAdminDisputes(ctx, input.data);
+    }
+    case "admin.governance.priceBaselines": {
+      const input = parseAdminGovernanceListQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Phân trang nền tảng giá không hợp lệ", 400);
+      return services.listAdminPriceBaselines(ctx, input.data);
+    }
+    case "admin.governance.aiCosts": {
+      const input = parseAdminGovernanceListQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Phân trang chi phí Kael không hợp lệ", 400);
+      return services.listAdminAiCosts(ctx, input.data);
+    }
+    case "admin.governance.learningRules": {
+      const input = parseAdminGovernanceListQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Phân trang quy tắc học Kael không hợp lệ", 400);
+      return services.listAdminLearningRules(ctx, input.data);
+    }
+    case "admin.workerApplications.list": {
+      const input = parseAdminWorkerApplicationListQuery(new URL(request.url));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Bộ lọc hồ sơ thợ không hợp lệ", 400);
+      }
+      return services.listAdminWorkerApplications(ctx, input.data);
+    }
+    case "admin.workerApplications.detail":
+      return services.getAdminWorkerApplication(ctx, route.applicationId);
+    case "admin.workerApplications.decision": {
+      const input = adminWorkerApplicationDecisionSchema.safeParse(await readJson(request));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Quyết định hồ sơ thợ không hợp lệ", 400);
+      }
+      return services.decideAdminWorkerApplication(ctx, route.applicationId, input.data);
+    }
+    case "admin.workers.access": {
+      const input = adminWorkerAccessSchema.safeParse(await readJson(request));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Thay đổi quyền truy cập của thợ không hợp lệ", 400);
+      }
+      return services.setAdminWorkerAccess(ctx, route.workerId, input.data);
+    }
+    case "admin.transactions.list": {
+      const input = parseAdminTransactionListQuery(new URL(request.url));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Bộ lọc giao dịch không hợp lệ", 400);
+      }
+      return services.listAdminTransactions(ctx, input.data);
+    }
+    case "admin.transactions.detail":
+      return services.getAdminTransaction(ctx, route.jobId);
+    case "admin.payoutMethods.list": {
+      const input = parseAdminPayoutMethodListQuery(new URL(request.url));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Bộ lọc tài khoản nhận tiền không hợp lệ", 400);
+      }
+      return services.listAdminPayoutMethods(ctx, input.data);
+    }
+    case "admin.payoutMethods.detail":
+      return services.getAdminPayoutMethod(ctx, route.payoutMethodId);
+    case "admin.payoutMethods.decision": {
+      const input = adminPayoutMethodDecisionSchema.safeParse(await readJson(request));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Quyết định xác nhận tài khoản không hợp lệ", 400);
+      }
+      return services.decideAdminPayoutMethod(ctx, route.payoutMethodId, input.data);
+    }
+    case "admin.withdrawalRequests.list": {
+      const input = parseAdminWithdrawalRequestListQuery(new URL(request.url));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Bộ lọc yêu cầu rút tiền không hợp lệ", 400);
+      }
+      return services.listAdminWithdrawalRequests(ctx, input.data);
+    }
+    case "admin.withdrawalRequests.detail":
+      return services.getAdminWithdrawalRequest(ctx, route.withdrawalRequestId);
+    case "admin.withdrawalRequests.claim":
+      return services.claimAdminWithdrawalRequest(ctx, route.withdrawalRequestId);
+    case "admin.withdrawalRequests.resolve": {
+      const input = adminWithdrawalRequestResolveSchema.safeParse(await readJson(request));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Kết quả chi trả không hợp lệ", 400);
+      }
+      return services.resolveAdminWithdrawalRequest(ctx, route.withdrawalRequestId, input.data);
+    }
+    case "admin.subAdmins.list":
+      return services.listAdminSubAdmins(ctx);
+    case "admin.subAdmins.accounts": {
+      const input = parseAdminSubAdminAccountSearchQuery(new URL(request.url));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Từ khóa tìm tài khoản không hợp lệ", 400);
+      }
+      return services.searchAdminSubAdminAccounts(ctx, input.data);
+    }
+    case "admin.managerNominations.nominate":
+      return services.nominateAdminManager(ctx, route.userId);
+    case "admin.managerNominations.cancel":
+      return services.cancelAdminManagerNomination(ctx, route.nominationId);
+    case "admin.subAdmins.access": {
+      const input = adminSubAdminAccessSchema.safeParse(await readJson(request));
+      if (!input.success) {
+        apiFailure("VALIDATION", "Quyền Sub Admin không hợp lệ", 400);
+      }
+      return services.setAdminSubAdminAccess(ctx, route.userId, input.data);
+    }
     case "jobs.create": {
       const input = jobCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -707,6 +834,20 @@ async function dispatchRoute(
       return services.listWorkerBroadcasts(ctx);
     case "workers.jobs":
       return services.listWorkerJobs(ctx);
+    case "workers.payoutMethod.get":
+      return services.getWorkerPayoutMethod(ctx);
+    case "workers.payoutMethod.save": {
+      const input = workerPayoutMethodSaveSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Tài khoản nhận tiền không hợp lệ", 400);
+      return services.saveWorkerPayoutMethod(ctx, input.data);
+    }
+    case "workers.withdrawalRequests.list":
+      return services.listWorkerWithdrawalRequests(ctx);
+    case "workers.withdrawalRequests.create": {
+      const input = workerWithdrawalRequestCreateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Yêu cầu rút tiền không hợp lệ", 400);
+      return services.createWorkerWithdrawalRequest(ctx, input.data);
+    }
     case "workers.routePreview":
       return services.getWorkerRoutePreview(
         ctx,

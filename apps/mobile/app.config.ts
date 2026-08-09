@@ -129,7 +129,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'nestscout',
   ios: {
     supportsTablet: false,
-    buildNumber: '31',
+    buildNumber: '33',
     bundleIdentifier: 'com.phanmanhtu.homeservices',
     config: {
       usesNonExemptEncryption: false,
@@ -150,7 +150,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/nestscout-aurora-nest-foreground-1024.png',
       backgroundColor: '#ffffff',
     },
-    versionCode: 1,
+    versionCode: 2,
     permissions: [],
     package: 'com.phanmanhtu.nestscout',
   },

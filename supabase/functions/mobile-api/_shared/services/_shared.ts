@@ -1,4 +1,4 @@
-import type { ComplexityLevel, JobMediaAttachInput, JobStatus, ServiceType } from "../../../_shared/domain.ts";
+import type { ComplexityLevel, JobMediaAttachInput, JobStatus, ServiceType, UserRole } from "../../../_shared/domain.ts";
 import { HCMC_DISTRICTS, kaelChatProgressSchema, normalizeDistrict } from "../../../_shared/domain.ts";
 import type { EstimatePriceSource, PipelineStageLog } from "../kael/index.ts";
 import { customerVisibleKaelProblemSummary } from "../kael/user-facing-copy.ts";
@@ -16,6 +16,19 @@ export * from "./serializers.ts";
 
 const STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 const KAEL_SCOPE_PRICE_ERRORS = new Set(["KAEL_PRICE_MISSING", "KAEL_REVIEW_MISSING"]);
+
+
+// Sub Admin accounts are intentionally limited to the Admin Control Plane.
+// Keeping this check at service boundaries prevents an accidental future route
+// from giving an operator access to customer, worker, or Kael workflows.
+export function requireNonOperatorWorkflowRole(
+  ctx: MobileApiContext,
+): Exclude<UserRole, "admin_operator"> {
+  if (ctx.role === "admin_operator") {
+    apiFailure("AUTH_FORBIDDEN", "Sub Admin không có quyền vào luồng này", 403);
+  }
+  return ctx.role;
+}
 
 // Cross-cutting Edge service helpers (C4 6a, services/* split): error mappers, serializers,
 // formatters, and utils. Value coercions live in ./coercions.ts (re-exported above).

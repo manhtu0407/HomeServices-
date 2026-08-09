@@ -612,6 +612,8 @@ export type EdgeEarningsResponse = {
   platform_fee_total: number;
   net_earnings: number;
   available_balance: number;
+  withdrawal_reserved_amount: number;
+  withdrawn_total: number;
   cash_commission_collected_total: number;
   cash_commission_due_total: number;
   pending_payment_count: number;

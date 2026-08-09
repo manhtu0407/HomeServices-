@@ -42,6 +42,8 @@ function buildEarnings(): EarningsResponse {
     recent_transactions: [],
     to_date: '2026-12-31',
     total_jobs_paid: 4,
+    withdrawal_reserved_amount: 0,
+    withdrawn_total: 0,
     worker_id: 'worker_test_1',
   }
 }

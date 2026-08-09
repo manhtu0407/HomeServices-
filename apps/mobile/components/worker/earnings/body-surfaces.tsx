@@ -14,6 +14,7 @@ import {
   WorkerV5EarningsUtilities,
 } from './overview-surfaces'
 import { WorkerV5ReceivingAccount } from './receiving-account-surfaces'
+import { WorkerV5PayoutRequest } from './payout-request-surfaces'
 import { WorkerV5TransactionHistory } from './transaction-history-surfaces'
 import { styles } from './body-styles'
 
@@ -52,14 +53,14 @@ export function WorkerV5EarningsOverviewBody({
         historyIcon={workerV5CapturedIconAssets.earningsTransactionHistory}
         language={language}
         onOpenAccount={() => navigateToScreen('4.4-payout-method')}
-        onOpenCommission={() => navigateToScreen('4.3-payout-request')}
+        onOpenCommission={() => navigateToScreen('4.5-commission-policy')}
         onOpenHistory={() => navigateToScreen('4.2-ledger-detail')}
         reduceTransparency={reduceTransparency}
       />
       <WorkerV5SingleSourceActionButton
-        disabled
-        label={textByLanguage(language, 'Rút tiền chưa khả dụng', 'Withdrawals unavailable')}
-        onPress={() => undefined}
+        disabled={false}
+        label={textByLanguage(language, 'Tạo yêu cầu rút tiền', 'Create withdrawal request')}
+        onPress={() => navigateToScreen('4.3-payout-request')}
         primaryButtonFill={primaryFill}
         reduceTransparency={reduceTransparency}
         testID="worker-v5-earnings-withdraw-action"
@@ -100,6 +101,24 @@ export function WorkerV5CommissionPolicyBody({
       earnings={runtime.workerEarnings}
       language={language}
       reduceTransparency={reduceTransparency}
+    />
+  )
+}
+
+export function WorkerV5PayoutRequestBody({
+  language,
+  reduceTransparency,
+  runtime,
+}: {
+  language: AppLanguage
+  reduceTransparency: boolean
+  runtime: WorkerV5Runtime
+}) {
+  return (
+    <WorkerV5PayoutRequest
+      language={language}
+      reduceTransparency={reduceTransparency}
+      runtime={runtime}
     />
   )
 }

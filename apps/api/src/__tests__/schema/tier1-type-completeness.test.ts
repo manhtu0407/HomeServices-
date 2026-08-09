@@ -14,6 +14,7 @@ const DROPPED_PUBLIC_TABLES = new Set(['worker_profiles_districts_backup_x3'])
 const DROPPED_PUBLIC_FUNCTIONS = new Set(['normalize_district_value'])
 // PostgREST excludes trigger-returning helpers from the generated callable RPC surface.
 const TRIGGER_ONLY_PUBLIC_FUNCTIONS = new Set([
+  'handle_new_user',
   'notify_worker_account_approved',
   'prevent_evidence_snapshot_mutation',
   'validate_customer_payment_method_customer',
@@ -126,6 +127,9 @@ const EXPECTED_TABLES = [
   'kael_market_cache',
   'kael_optimization_metrics',
   'source_trust_registry',
+  'admin_operator_accounts',
+  'admin_manager_nominations',
+  'admin_worker_application_reviews',
 ] as const satisfies readonly TableNames[]
 
 const EXPECTED_ENUMS = [
@@ -145,7 +149,7 @@ const EXPECTED_ENUMS = [
 
 describe('Database.public.Tables completeness', () => {
   it('has all aligned workflow tables', () => {
-    expect(EXPECTED_TABLES).toHaveLength(63)
+    expect(EXPECTED_TABLES).toHaveLength(66)
   })
 
   it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {

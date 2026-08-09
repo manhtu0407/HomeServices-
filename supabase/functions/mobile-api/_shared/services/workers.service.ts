@@ -574,6 +574,8 @@ function parseWorkerEarningsAggregate(
     platform_fee_total: nonnegativeSafeInteger(row.platform_fee_total),
     net_earnings: nonnegativeSafeInteger(row.net_earnings),
     available_balance: nonnegativeSafeInteger(row.available_balance),
+    withdrawal_reserved_amount: nonnegativeSafeInteger(row.withdrawal_reserved_amount ?? 0),
+    withdrawn_total: nonnegativeSafeInteger(row.withdrawn_total ?? 0),
     cash_commission_collected_total: nonnegativeSafeInteger(row.cash_commission_collected_total),
     cash_commission_due_total: nonnegativeSafeInteger(row.cash_commission_due_total),
     pending_payment_count: nonnegativeSafeInteger(row.pending_payment_count),

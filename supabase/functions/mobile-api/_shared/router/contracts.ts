@@ -53,6 +53,10 @@ import type {
   WorkerScopeChangeInput,
 } from "../../../_shared/domain.ts";
 import type {
+  EdgeWorkerWithdrawalRequestCreateInput,
+  WorkerPayoutMethodSaveRequest,
+} from "../../../_shared/worker-payout-contract.ts";
+import type {
   JobMediaRevokeInput,
   JobMediaRevokeResponse,
   JobMediaUploadInput,
@@ -150,6 +154,12 @@ import type {
 import type {
   EdgeDevicePushTokenUnregisterResponse,
 } from "./notification-device.dtos.ts";
+import type {
+  EdgeWorkerPayoutMethodResponse,
+  EdgeWorkerWithdrawalRequestCreateResponse,
+  EdgeWorkerWithdrawalRequestListResponse,
+} from "./worker-payout-dtos.ts";
+import type { AdminControlServices } from "./admin-control-services-contract.ts";
 export type {
   KaelBatchResultsProcessInput,
   KaelBatchResultsProcessResponse,
@@ -166,6 +176,29 @@ export type {
   MarketCacheInvalidateInput,
   MarketCacheInvalidateResponse,
 } from "./dtos.ts";
+export type {
+  AdminActor,
+  AdminControlCapability,
+  AdminOperationsResponse,
+  AdminSubAdminAccessInput,
+  AdminSubAdminAccessResponse,
+  AdminSubAdminAccountCandidate,
+  AdminSubAdminAccountSearchInput,
+  AdminSubAdminAccountSearchResponse,
+  AdminSubAdminListResponse,
+  AdminSubAdminSummary,
+  AdminTransactionDetailResponse,
+  AdminTransactionListInput,
+  AdminTransactionListResponse,
+  AdminTransactionSummary,
+  AdminWorkerApplicationDecisionInput,
+  AdminWorkerApplicationDecisionResponse,
+  AdminWorkerApplicationListInput,
+  AdminWorkerApplicationListResponse,
+  AdminWorkerApplicationSummary,
+  AdminWorkerAccessInput,
+  AdminWorkerAccessResponse,
+} from "./admin-control-dtos.ts";
 
 export type MobileApiAuthResult =
   | {
@@ -271,7 +304,7 @@ export type EdgeCustomerAccountDeletionResponse = {
   retained_transaction_records: true;
 };
 
-export type MobileApiServices = {
+export type MobileApiServices = AdminControlServices & {
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<EdgeServiceCatalogResponse>;
   placesAutocomplete(
@@ -676,6 +709,20 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     range: { from?: string; to?: string },
   ): Promise<EdgeEarningsResponse>;
+  getWorkerPayoutMethod(
+    ctx: MobileApiContext,
+  ): Promise<EdgeWorkerPayoutMethodResponse>;
+  saveWorkerPayoutMethod(
+    ctx: MobileApiContext,
+    input: WorkerPayoutMethodSaveRequest,
+  ): Promise<EdgeWorkerPayoutMethodResponse>;
+  listWorkerWithdrawalRequests(
+    ctx: MobileApiContext,
+  ): Promise<EdgeWorkerWithdrawalRequestListResponse>;
+  createWorkerWithdrawalRequest(
+    ctx: MobileApiContext,
+    input: EdgeWorkerWithdrawalRequestCreateInput,
+  ): Promise<EdgeWorkerWithdrawalRequestCreateResponse>;
   invalidateMarketCache(
     ctx: MobileApiContext,
     input: MarketCacheInvalidateInput,

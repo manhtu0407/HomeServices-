@@ -5,7 +5,7 @@
 
 import { asComplexityOrNull, asJobStatus, asRecord, asServiceType, asString, nullableNumber, nullableString, positiveNumberFrom } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
-import { estimatePriceSourceFromStageLogs, sourceTrustSecretsForRequest } from "./_shared.ts";
+import { estimatePriceSourceFromStageLogs, requireNonOperatorWorkflowRole, sourceTrustSecretsForRequest } from "./_shared.ts";
 import { apiLogPurposeForPipelineStage, logApiCalls, logJobEvent } from "./audit.ts";
 import { buildInitialApartmentAccessState, persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
 import { geocodeJobAddressForMatching } from "./places-geo.service.ts";
@@ -288,7 +288,7 @@ export async function createJob(
         client,
         jobId,
         actorId: ctx.user.id,
-        actorRole: ctx.role,
+        actorRole: requireNonOperatorWorkflowRole(ctx),
         source: "policy",
       },
     });

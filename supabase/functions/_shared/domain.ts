@@ -69,7 +69,7 @@ export const COMPLEXITY_LEVELS = Object.freeze(
 export type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
 export const USER_ROLES = Object.freeze(
-  ["customer", "worker", "admin"] as const,
+  ["customer", "worker", "admin", "admin_operator"] as const,
 );
 export type UserRole = (typeof USER_ROLES)[number];
 
@@ -701,7 +701,7 @@ export const devicePushTokenSchema = z.object({
   permission_status: z.enum(["granted", "denied", "undetermined"]),
   safe_metadata: z.object({
     project_id_available: z.boolean().optional(),
-    role: z.enum(["customer", "worker", "admin"]).nullable().optional(),
+    role: z.enum(["customer", "worker", "admin", "admin_operator"]).nullable().optional(),
     source: z.literal("expo-notifications").optional(),
   }).strict().default({}),
 });

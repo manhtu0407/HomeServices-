@@ -4,7 +4,7 @@
 
 import { asBoolean, asCustomerCancellationAbuseSignals, asCustomerCancellationSubCase, asJobStatus, asString, nullableRecord, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
-import { mapCancelError, mapCustomerCancellationError } from "./_shared.ts";
+import { mapCancelError, mapCustomerCancellationError, requireNonOperatorWorkflowRole } from "./_shared.ts";
 import { logJobEvent } from "./audit.ts";
 import { runPolicyAutonomyGate } from "./autonomy-gate.ts";
 import { notifyWorkerCustomerCancellation } from "./notifications.service.ts";
@@ -373,7 +373,7 @@ async function gateCustomerCancellationBeforeMutation(input: {
     to: input.preview.to,
     authority: {
       purpose: "scope_change",
-      actor: input.ctx.role,
+      actor: requireNonOperatorWorkflowRole(input.ctx),
       jobRelation: "own_customer_job",
       action: "review_scope_change",
       topic: "job_status",

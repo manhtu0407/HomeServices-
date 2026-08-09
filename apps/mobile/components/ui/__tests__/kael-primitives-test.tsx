@@ -13,6 +13,7 @@ jest.mock('expo-image', () => {
 
 import { component, shadow, typography } from '@/design/theme'
 import { FORMULA_MINT_CANVAS_STANDARD_RADIAL_RADIUS, FormulaMintCanvasAura } from '../formula-mint-canvas'
+import { FormulaMintCardAura } from '../formula-mint-card'
 import { KAEL_CORE_V9_CONTRACT } from '../kael-core-v9-contract'
 import { AlphaStop, NativeSafeLinearGradient } from '../svg-alpha-stop'
 import {
@@ -119,6 +120,20 @@ describe('Kael UI primitives', () => {
       '#91E8DE',
     ]))
     expect(stops.map((stop) => stop.props.stopOpacity)).toEqual(expect.arrayContaining([0.34, 0.12, 0.22, 0.24, 0.23, 0]))
+  })
+
+  it('keeps the card aura visible and preserves a mint fallback when transparency is reduced', () => {
+    const { getByTestId, UNSAFE_getAllByType, rerender } = render(
+      <FormulaMintCardAura scope="Admin Transaction" testID="formula-mint-card-test" />,
+    )
+
+    expect(getByTestId('formula-mint-card-test')).toBeOnTheScreen()
+    const stops = UNSAFE_getAllByType(Stop)
+    expect(stops.map((stop) => stop.props.stopColor)).toEqual(expect.arrayContaining(['#50E8D2', '#97F6E8', '#53DCCE', '#E6FBF3']))
+    expect(stops.map((stop) => stop.props.stopOpacity)).toEqual(expect.arrayContaining([0.28, 0.168, 0.168, 0.112, 0]))
+
+    rerender(<FormulaMintCardAura reduceTransparency scope="Admin Transaction" testID="formula-mint-card-test" />)
+    expect(StyleSheet.flatten(getByTestId('formula-mint-card-test').props.style)).toMatchObject({ backgroundColor: '#E6FBF3' })
   })
 
   it('uses standard SVG radial geometry so the light mint canvas stays consistent on web and native', () => {

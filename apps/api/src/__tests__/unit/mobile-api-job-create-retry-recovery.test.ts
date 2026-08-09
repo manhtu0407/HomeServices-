@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../../../supabase/functions/mobile-api/_shared/services/_shared.ts', () => ({
   estimatePriceSourceFromStageLogs: () => 'baseline',
+  requireNonOperatorWorkflowRole: (ctx: { role: 'customer' | 'worker' | 'admin' | 'admin_operator' }) => ctx.role,
   sourceTrustSecretsForRequest: (secrets: unknown) => secrets,
 }))
 

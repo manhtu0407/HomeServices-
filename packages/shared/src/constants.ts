@@ -33,8 +33,20 @@ export type JobStatus = (typeof JOB_STATUSES)[number]
 export const COMPLEXITY_LEVELS = Object.freeze(['small', 'medium', 'large'] as const)
 export type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number]
 
-export const USER_ROLES = Object.freeze(['customer', 'worker', 'admin'] as const)
+export const USER_ROLES = Object.freeze(['customer', 'worker', 'admin', 'admin_operator'] as const)
 export type UserRole = (typeof USER_ROLES)[number]
+
+export const ADMIN_CAPABILITIES = Object.freeze([
+  'operations.read',
+  'workers.read',
+  'workers.review',
+  'workers.manage',
+  'transactions.read',
+  'payouts.read',
+  'payouts.process',
+  'team.read',
+] as const)
+export type AdminCapability = (typeof ADMIN_CAPABILITIES)[number]
 
 export const MESSAGE_SENDERS = Object.freeze(['customer', 'worker', 'kael'] as const)
 export type MessageSender = (typeof MESSAGE_SENDERS)[number]

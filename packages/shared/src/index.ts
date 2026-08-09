@@ -76,8 +76,6 @@ export {
   customerKaelMemoryPreferenceUpdateSchema,
   WORKER_KAEL_MEMORY_PREFERENCE_KEYS,
   workerKaelMemoryPreferenceUpdateSchema,
-  CUSTOMER_PAYMENT_BANK_KEYS,
-  customerPaymentMethodSaveSchema,
   workerApplicationSubmitSchema,
   reviewSchema,
   chatMessageSchema,
@@ -138,8 +136,6 @@ export type {
   CustomerKaelMemoryPreferenceUpdateInput,
   WorkerKaelMemoryPreferenceKey,
   WorkerKaelMemoryPreferenceUpdateInput,
-  CustomerPaymentBankKey,
-  CustomerPaymentMethodSaveInput,
   WorkerApplicationSubmitInput,
   ReviewInput,
   ChatMessageInput,
@@ -173,3 +169,16 @@ export type {
   DisputeCounterStatementInput,
   DisputeAdminDecisionInput,
 } from './validation'
+
+export {
+  CUSTOMER_PAYMENT_BANK_KEYS,
+  customerPaymentMethodSaveSchema,
+  workerPayoutMethodSaveSchema,
+  workerWithdrawalRequestCreateSchema,
+} from './payout-methods'
+export type {
+  CustomerPaymentBankKey,
+  CustomerPaymentMethodSaveInput,
+  WorkerPayoutMethodSaveInput,
+  WorkerWithdrawalRequestCreateInput,
+} from './payout-methods'

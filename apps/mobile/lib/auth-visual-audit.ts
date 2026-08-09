@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import type { UserRole } from '@nestscout/shared'
 import { Platform } from 'react-native'
 
-type VisualAuditRole = Extract<UserRole, 'customer' | 'worker'>
+type VisualAuditRole = Extract<UserRole, 'customer' | 'worker' | 'admin'>
 
 export function getLocalVisualAuditRole(): VisualAuditRole | null {
   if (!__DEV__ || Platform.OS !== 'web') return null
@@ -17,14 +17,22 @@ export function getLocalVisualAuditRole(): VisualAuditRole | null {
   if (!['localhost', '127.0.0.1', '::1'].includes(hostname)) return null
 
   const role = new URLSearchParams(runtime.location?.search ?? '').get('ns_audit_role')
-  return role === 'customer' || role === 'worker' ? role : null
+  return role === 'customer' || role === 'worker' || role === 'admin' ? role : null
 }
 
 export function buildLocalVisualAuditSession(role: VisualAuditRole): Session {
   const now = Math.floor(Date.now() / 1000)
   const isoNow = new Date(now * 1000).toISOString()
-  const displayName = role === 'customer' ? 'NestScout Customer' : 'NestScout Worker'
-  const email = role === 'customer' ? 'customer.audit@nestscout.local' : 'worker.audit@nestscout.local'
+  const displayName = role === 'customer'
+    ? 'NestScout Customer'
+    : role === 'worker'
+      ? 'NestScout Worker'
+      : 'NestScout Admin'
+  const email = role === 'customer'
+    ? 'customer.audit@nestscout.local'
+    : role === 'worker'
+      ? 'worker.audit@nestscout.local'
+      : 'admin.audit@nestscout.local'
 
   return {
     access_token: 'local-visual-audit',

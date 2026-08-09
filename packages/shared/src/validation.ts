@@ -344,23 +344,6 @@ export const workerKaelMemoryPreferenceUpdateSchema = z.object({
   enabled: z.boolean(),
 }).strict()
 
-export const CUSTOMER_PAYMENT_BANK_KEYS = Object.freeze([
-  'vietcombank',
-  'techcombank',
-  'bidv',
-  'mbbank',
-  'acb',
-  'vietinbank',
-] as const)
-export type CustomerPaymentBankKey = (typeof CUSTOMER_PAYMENT_BANK_KEYS)[number]
-
-export const customerPaymentMethodSaveSchema = z.object({
-  bank_key: z.enum(CUSTOMER_PAYMENT_BANK_KEYS),
-  bank_name: z.string().trim().min(2).max(100),
-  account_holder_name: z.string().trim().min(2).max(200),
-  bank_account: z.string().trim().min(6).max(50).regex(/^[0-9A-Za-z]+$/, 'bank_account must contain only letters or digits'),
-}).strict()
-
 function isWorkerApplicationContact(value: string): boolean {
   const trimmed = value.trim()
   const emailLike = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
@@ -770,7 +753,6 @@ export type PlacesResolveInput = z.infer<typeof placesResolveSchema>
 export type CustomerKaelFeedbackInput = z.infer<typeof customerKaelFeedbackSchema>
 export type CustomerKaelMemoryPreferenceUpdateInput = z.infer<typeof customerKaelMemoryPreferenceUpdateSchema>
 export type WorkerKaelMemoryPreferenceUpdateInput = z.infer<typeof workerKaelMemoryPreferenceUpdateSchema>
-export type CustomerPaymentMethodSaveInput = z.infer<typeof customerPaymentMethodSaveSchema>
 export type WorkerApplicationSubmitInput = z.infer<typeof workerApplicationSubmitSchema>
 export type ReviewInput = z.infer<typeof reviewSchema>
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>

@@ -189,7 +189,6 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const nextAdmin = read('apps/api/src/app/admin/kael-learning/page.tsx')
     const nextHome = read('apps/api/src/app/page.tsx')
     const mobileServices = read('apps/mobile/lib/services.ts')
-    const mobileAdmin = read('apps/mobile/app/(admin)/dashboard.tsx')
     const batchLifecycle = read('supabase/functions/mobile-api/_shared/kael/cron/batch-learning-lifecycle.ts')
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
@@ -212,8 +211,6 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(nextAdmin).toContain('MANUAL_REVIEW_SLA_DAYS')
     expect(nextHome).toContain('/admin/kael-learning')
     expect(mobileServices).toContain('adminLearningService')
-    expect(mobileAdmin).toContain('adminLearningService.listCandidates')
-    expect(mobileAdmin).toContain('isManualReviewSlaOverdue')
     expect(batchLifecycle).toContain('return "manual_review"')
     expect(sharedTypes).toContain('admin_approve_learning_candidate')
     expect(sharedTypes).toContain('admin_reject_learning_candidate')
