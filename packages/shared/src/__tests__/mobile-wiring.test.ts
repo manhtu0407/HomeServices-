@@ -1971,6 +1971,8 @@ describe('web preview dependencies', () => {
   const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
   const rootPackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, '../../package.json'), 'utf-8'))
   const stagingPreviewScript = readSource(resolve(MOBILE_ROOT, '../../scripts/run-mobile-web-staging-preview.ps1'))
+  const productionPreviewScript = readSource(resolve(MOBILE_ROOT, '../../scripts/run-mobile-web-production-preview.ps1'))
+  const sharedPreviewScript = readSource(resolve(MOBILE_ROOT, '../../scripts/run-mobile-web-preview.ps1'))
 
   it('declares react-dom for Expo web rendering', () => {
     expect(mobilePackage.dependencies['react-dom']).toBe('19.2.3')
@@ -1992,24 +1994,34 @@ describe('web preview dependencies', () => {
     expect(mobilePackage.dependencies['expo-image-picker']).toBeDefined()
   })
 
-  it('provides a staging web preview runner that loads ignored public env without printing values', () => {
+  it('provides isolated staging and Production web preview runners that load public env without printing values', () => {
     expect(rootPackage.scripts['preview:mobile:web:staging']).toBe(
       'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-mobile-web-staging-preview.ps1',
     )
+    expect(rootPackage.scripts['preview:mobile:web:production']).toBe(
+      'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-mobile-web-production-preview.ps1',
+    )
     expect(stagingPreviewScript).toContain('apps/mobile/.env.staging')
-    expect(stagingPreviewScript).toContain('NESTSCOUT_MOBILE_ENV_FILE')
-    expect(stagingPreviewScript).toContain('EXPO_NO_DOTENV')
-    expect(stagingPreviewScript).toContain('lib\\staging-target-safety.ps1')
-    expect(stagingPreviewScript).toContain(
+    expect(stagingPreviewScript).toContain('-Environment staging')
+    expect(productionPreviewScript).toContain('apps/mobile/.env.local')
+    expect(productionPreviewScript).toContain('-Environment production')
+    expect(sharedPreviewScript).toContain('NESTSCOUT_MOBILE_ENV_FILE')
+    expect(sharedPreviewScript).toContain('EXPO_NO_DOTENV')
+    expect(sharedPreviewScript).toContain('lib\\staging-target-safety.ps1')
+    expect(sharedPreviewScript).toContain(
       'Assert-StagingSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase',
     )
-    expect(stagingPreviewScript).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_URL'")
-    expect(stagingPreviewScript).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'")
-    expect(stagingPreviewScript).toContain('$allowedEnvNames')
-    expect(stagingPreviewScript).toContain('if ($AllowedNames -notcontains $name)')
-    expect(stagingPreviewScript).toContain('Import-EnvFile -Path $EnvFile -AllowedNames $allowedEnvNames')
-    expect(stagingPreviewScript).not.toMatch(/Write-(Host|Output).*publishableKey/)
-    expect(stagingPreviewScript).not.toMatch(/Write-(Host|Output).*\$value/)
+    expect(sharedPreviewScript).toContain(
+      'Assert-ProductionSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase',
+    )
+    expect(sharedPreviewScript).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_URL'")
+    expect(sharedPreviewScript).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'")
+    expect(sharedPreviewScript).toContain('$allowedEnvNames')
+    expect(sharedPreviewScript).toContain('if ($AllowedNames -notcontains $name)')
+    expect(sharedPreviewScript).toContain('Import-EnvFile -Path $EnvFile -AllowedNames $allowedEnvNames')
+    expect(sharedPreviewScript).toContain('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED')
+    expect(sharedPreviewScript).not.toMatch(/Write-(Host|Output).*publishableKey/)
+    expect(sharedPreviewScript).not.toMatch(/Write-(Host|Output).*\$value/)
   })
 })
 

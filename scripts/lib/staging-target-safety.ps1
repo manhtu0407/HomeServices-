@@ -1,4 +1,4 @@
-function ConvertTo-TrustedStagingUri {
+function ConvertTo-TrustedSupabaseUri {
   [CmdletBinding()]
   param(
     [Parameter(Mandatory = $true)]
@@ -6,12 +6,17 @@ function ConvertTo-TrustedStagingUri {
     [Parameter(Mandatory = $true)]
     [string]$Label,
     [Parameter(Mandatory = $true)]
-    [string]$ExpectedPath
+    [string]$ExpectedPath,
+    [Parameter(Mandatory = $true)]
+    [string]$ProjectRef,
+    [Parameter(Mandatory = $true)]
+    [string]$EnvironmentName
   )
 
-  $expectedOrigin = 'https://xyylanuyflrjzbjzhqfl.supabase.co'
+  $expectedHost = "$ProjectRef.supabase.co"
+  $expectedOrigin = "https://$expectedHost"
   if ([string]::IsNullOrWhiteSpace($Value) -or $Value -ne $Value.Trim()) {
-    throw "$Label must use the exact staging Supabase origin $expectedOrigin."
+    throw "$Label must use the exact $EnvironmentName Supabase origin $expectedOrigin."
   }
 
   $uri = $null
@@ -21,13 +26,13 @@ function ConvertTo-TrustedStagingUri {
 
   if (
     $uri.Scheme -cne 'https' -or
-    $uri.Host -ine 'xyylanuyflrjzbjzhqfl.supabase.co' -or
+    $uri.Host -ine $expectedHost -or
     -not $uri.IsDefaultPort -or
     -not [string]::IsNullOrEmpty($uri.UserInfo) -or
     -not [string]::IsNullOrEmpty($uri.Query) -or
     -not [string]::IsNullOrEmpty($uri.Fragment)
   ) {
-    throw "$Label must use the exact staging Supabase origin $expectedOrigin without credentials, query, or fragment."
+    throw "$Label must use the exact $EnvironmentName Supabase origin $expectedOrigin without credentials, query, or fragment."
   }
 
   $path = $uri.AbsolutePath.TrimEnd('/')
@@ -41,6 +46,26 @@ function ConvertTo-TrustedStagingUri {
   return $uri
 }
 
+function Assert-SupabaseTargets {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$SupabaseUrl,
+    [Parameter(Mandatory = $true)]
+    [string]$MobileApiUrl,
+    [Parameter(Mandatory = $true)]
+    [string]$ProjectRef,
+    [Parameter(Mandatory = $true)]
+    [string]$EnvironmentName
+  )
+
+  $supabase = ConvertTo-TrustedSupabaseUri -Value $SupabaseUrl -Label 'Supabase URL' -ExpectedPath '/' -ProjectRef $ProjectRef -EnvironmentName $EnvironmentName
+  $mobileApi = ConvertTo-TrustedSupabaseUri -Value $MobileApiUrl -Label 'mobile-api URL' -ExpectedPath '/functions/v1/mobile-api' -ProjectRef $ProjectRef -EnvironmentName $EnvironmentName
+  if ($supabase.GetLeftPart([UriPartial]::Authority) -ine $mobileApi.GetLeftPart([UriPartial]::Authority)) {
+    throw "Supabase and mobile-api targets must use the same $EnvironmentName origin."
+  }
+}
+
 function Assert-StagingSupabaseTargets {
   [CmdletBinding()]
   param(
@@ -50,11 +75,19 @@ function Assert-StagingSupabaseTargets {
     [string]$MobileApiUrl
   )
 
-  $supabase = ConvertTo-TrustedStagingUri -Value $SupabaseUrl -Label 'Supabase URL' -ExpectedPath '/'
-  $mobileApi = ConvertTo-TrustedStagingUri -Value $MobileApiUrl -Label 'mobile-api URL' -ExpectedPath '/functions/v1/mobile-api'
-  if ($supabase.GetLeftPart([UriPartial]::Authority) -ine $mobileApi.GetLeftPart([UriPartial]::Authority)) {
-    throw 'Supabase and mobile-api targets must use the same staging origin.'
-  }
+  Assert-SupabaseTargets -SupabaseUrl $SupabaseUrl -MobileApiUrl $MobileApiUrl -ProjectRef 'xyylanuyflrjzbjzhqfl' -EnvironmentName 'staging'
+}
+
+function Assert-ProductionSupabaseTargets {
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$SupabaseUrl,
+    [Parameter(Mandatory = $true)]
+    [string]$MobileApiUrl
+  )
+
+  Assert-SupabaseTargets -SupabaseUrl $SupabaseUrl -MobileApiUrl $MobileApiUrl -ProjectRef 'iwevizmsedyqozxlawwl' -EnvironmentName 'production'
 }
 
 function Get-LegacySupabaseJwtRole {
