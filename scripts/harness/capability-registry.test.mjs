@@ -83,6 +83,34 @@ test('derives resource checks from route descriptor identifiers instead of route
   }
 })
 
+test('marks Worker Edge routes as privileged service-owned operations', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'harness-capability-worker-service-'))
+  try {
+    write(
+      resolve(root, 'supabase/functions/mobile-api/_shared/http/routes/worker.ts'),
+      [
+        'export type Route =',
+        '  | { kind: "workers.me"; method: "GET"; roles: ["worker"] }',
+        '  | { kind: "workers.earnings"; method: "GET"; roles: ["worker"] }',
+        '  | { kind: "workerApplications.submit"; method: "POST"; roles: ["customer"] }',
+        '  | { kind: "customers.me"; method: "GET"; roles: ["customer"] };',
+        '',
+      ].join('\n'),
+    )
+
+    const entries = Object.fromEntries(
+      buildCapabilityRegistry({ root }).entries.map((entry) => [entry.kind, entry]),
+    )
+
+    assert.equal(entries['workers.me'].privileged, true)
+    assert.equal(entries['workers.earnings'].privileged, true)
+    assert.equal(entries['workerApplications.submit'].privileged, true)
+    assert.equal(entries['customers.me'].privileged, false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('classifies Kael event streams as provider calls instead of durable response receipts', () => {
   const root = mkdtempSync(resolve(tmpdir(), 'harness-capability-stream-'))
   try {
