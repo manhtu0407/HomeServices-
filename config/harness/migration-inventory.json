@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 236,
-  "migrationsSha256": "6fbdaff9442f45af64ee7b5bfd7c1895890ef961275ee1e1342e04bc58a72782",
+  "migrationCount": 237,
+  "migrationsSha256": "e4f45b598a2f31dd00d936233fbd05d1ada99af22b152b202363dc232ac2224a",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
     "sha256": "5044f363996b179054848fdbf3b503dfd6de001fddbc6c9fb5ed14829a5ca552"
@@ -1663,6 +1663,13 @@
       "file": "supabase/migrations/20260809124500_harden_public_signup_trigger_execution.sql",
       "sha256": "30df73d5e3cf41f5dfe8e0a484591f8438dd7da69886dd1cb654ae846f242851",
       "bytes": 396
+    },
+    {
+      "version": "20260810120000",
+      "name": "fix_plpgsql_reference_ambiguities",
+      "file": "supabase/migrations/20260810120000_fix_plpgsql_reference_ambiguities.sql",
+      "sha256": "5d794988f2c24a731cc5156c656fb3644d0a67b05baac6dcadfc670455a79fc0",
+      "bytes": 19115
     }
   ]
 }

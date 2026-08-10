@@ -46,6 +46,8 @@
     "harness:migrations:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/migration-inventory.mjs --write",
     "harness:drift:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/deployment-drift.mjs",
     "harness:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/release-bundle.mjs",
+    "harness:release:ledger-sql": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/register-release.mjs",
+    "harness:release:ledger-sql:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 --test scripts/harness/register-release.test.mjs",
     "harness:evaluate": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/evaluate-release.mjs",
     "harness:reliability:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/reliability-registry.mjs",
     "harness:reliability:write": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 scripts/harness/reliability-registry.mjs --write",
