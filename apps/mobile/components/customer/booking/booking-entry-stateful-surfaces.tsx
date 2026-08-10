@@ -249,7 +249,7 @@ export function CustomerBookingEntryView({
             title={selectedService ? (language === 'vi' ? 'Dịch vụ đã chọn' : 'Selected service') : (language === 'vi' ? 'Chọn dịch vụ' : 'Choose service')}
           />
           {selectedService ? (
-            <View style={bookingStyles.bookingSelectedServiceFrame}>
+            <View style={bookingStyles.bookingSelectedServiceFrame} testID="customer-v21-selected-service-frame">
               <ServiceTile
                 fullWidth
                 homeAura

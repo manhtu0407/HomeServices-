@@ -274,13 +274,21 @@ describe('screen files existence (STRUCTURES.md mapping)', () => {
     expect(exists('app/(admin)/_layout.tsx')).toBe(true)
   })
 
-  it('admin dashboard exists for Kael learning review', () => {
-    expect(exists('app/(admin)/dashboard.tsx')).toBe(true)
-    const src = read('app/(admin)/dashboard.tsx')
-    expect(src).toContain('adminLearningService.listCandidates')
-    expect(src).toContain('adminLearningService.approveCandidate')
-    expect(src).toContain('adminLearningService.rejectCandidate')
-    expect(src).not.toContain('fetch(')
+  it('routes every admin entry through the current Admin sections surface', () => {
+    expect(exists('app/(admin)/dashboard.tsx')).toBe(false)
+    expect(exists('app/(admin)/sections.tsx')).toBe(true)
+    expect(read('app/(admin)/sections.tsx')).toContain('AdminSections')
+
+    for (const route of [
+      'app/index.tsx',
+      'app/(customer)/_layout.tsx',
+      'app/(worker)/_layout.tsx',
+      'components/auth/auth-surfaces.tsx',
+    ]) {
+      const source = read(route)
+      expect(source).toContain('/(admin)/sections')
+      expect(source).not.toContain('/(admin)/dashboard')
+    }
   })
 })
 
@@ -309,7 +317,7 @@ describe('all screens export default function', () => {
     'app/(worker)/earnings.tsx',
     'app/(worker)/profile.tsx',
     'app/(admin)/_layout.tsx',
-    'app/(admin)/dashboard.tsx',
+    'app/(admin)/sections.tsx',
   ]
 
   it.each(allScreens)('%s has default export', (file) => {
@@ -813,7 +821,7 @@ describe('frontend workflow provider wiring', () => {
     // Provider wires the active customer timeline and worker broadcast surfacing,
     // then tears the channel down on cleanup.
     expect(provider).toContain('subscribeToJobStatus(remoteJobId')
-    expect(provider).toContain('subscribeToWorkerBroadcasts(sessionUserId')
+    expect(provider).toContain('subscribeToWorkerBroadcasts(remoteSessionUserId')
     expect(provider).toContain('handle?.unsubscribe()')
 
     // Poll retained as a dropped-socket fallback (reduced 15s -> 30s), not removed.
@@ -1668,13 +1676,14 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
     expect(src).not.toContain('AsyncStorage')
   })
 
-  it('only detects auth sessions in URL on web OAuth redirects', () => {
+  it('only detects auth sessions in URL for real web OAuth redirects', () => {
     expect(src).toContain("import { Platform } from 'react-native'")
-    expect(src).toContain("detectSessionInUrl: Platform.OS === 'web'")
+    expect(src).toContain("detectSessionInUrl: !localVisualAudit && Platform.OS === 'web'")
   })
 
-  it('enables autoRefreshToken', () => {
-    expect(src).toContain('autoRefreshToken: true')
+  it('keeps tokens only for real sessions', () => {
+    expect(src).toContain('autoRefreshToken: !localVisualAudit')
+    expect(src).toContain('persistSession: !localVisualAudit')
   })
 
   it('uses Database generic for type safety', () => {

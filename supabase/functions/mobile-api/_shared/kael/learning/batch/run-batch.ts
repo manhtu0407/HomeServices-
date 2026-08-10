@@ -358,4 +358,3 @@ async function failBatchSummary(
     error_code: errorCode,
   };
 }
-

@@ -43,6 +43,13 @@ export const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 3,
   },
+  recordedStatus: {
+    color: color.brand.primaryDark,
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 15,
+    marginTop: 4,
+  },
   sectionTitle: {
     color: color.text.strong,
     fontSize: 15,

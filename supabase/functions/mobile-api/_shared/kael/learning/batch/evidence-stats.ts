@@ -361,4 +361,3 @@ function isSupportedService(value: unknown): value is KaelCaseWorkServiceType {
   return typeof value === "string" &&
     (KAEL_CASE_WORK_SERVICE_TYPES as readonly string[]).includes(value);
 }
-

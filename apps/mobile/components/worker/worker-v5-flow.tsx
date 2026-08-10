@@ -60,6 +60,7 @@ import { WorkerV5RouteEtaBody } from './jobs/active-body-surfaces'
 import {
   WorkerV5CommissionPolicyBody,
   WorkerV5EarningsOverviewBody,
+  WorkerV5PayoutRequestBody,
   WorkerV5ReceivingAccountBody,
   WorkerV5TransactionHistoryBody,
 } from './earnings/body-surfaces'
@@ -211,6 +212,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesEarningsDetailHandoff = screen.id === '4.2-ledger-detail'
     || screen.id === '4.3-payout-request'
     || screen.id === '4.4-payout-method'
+    || screen.id === '4.5-commission-policy'
   const headerBackScreen = usesEarningsDetailHandoff
     ? getWorkerV5Screen('4.1-earnings-overview') ?? previousScreen
     : usesCustomerConfirmationWaitHandoff || usesRouteEtaHandoff || usesInProgressHandoff
@@ -222,11 +224,12 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesCompletionSubmittedHandoff = screen.id === '2.11-completion-submitted'
   const usesCaseClosedHandoff = screen.id === '2.12-case-closed'
   const usesKaelOrbHandoff = screen.id === '3.1-kael-chat-normal' || screen.id === '3.2-kael-job-intake'
-  const usesEarningsHandoff = screen.id === '4.1-earnings-overview' || screen.id === '4.2-ledger-detail' || screen.id === '4.3-payout-request' || screen.id === '4.4-payout-method'
+  const usesEarningsHandoff = screen.id === '4.1-earnings-overview' || screen.id === '4.2-ledger-detail' || screen.id === '4.3-payout-request' || screen.id === '4.4-payout-method' || screen.id === '4.5-commission-policy'
   const usesEarningsOverviewHandoff = screen.id === '4.1-earnings-overview'
   const usesLedgerDetailHandoff = screen.id === '4.2-ledger-detail'
   const usesPayoutRequestHandoff = screen.id === '4.3-payout-request'
   const usesPayoutMethodHandoff = screen.id === '4.4-payout-method'
+  const usesCommissionPolicyHandoff = screen.id === '4.5-commission-policy'
   const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings' || screen.id === '5.11-worker-availability' || screen.id === '5.12-worker-notifications' || screen.id === '5.13-worker-support' || screen.id === '5.14-worker-policies'
   const hidesHeaderUtility = usesProfileHandoff
   const usesCaseExecutionHandoff = usesCustomerConfirmationWaitHandoff || usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
@@ -446,11 +449,11 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       {(usesEarningsHandoff || usesProfileHandoff) && shouldShowWorkerAura ? (
         <WorkerV5CustomerZipMintAura
           scope={usesProfileHandoff ? 'WorkerProfilePageFine' : 'WorkerEarningsPageFine'}
-          style={usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesProfileHandoff ? styles.earningsPageZipAura : styles.arrivalCheckinPageZipAura}
+          style={usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesCommissionPolicyHandoff || usesProfileHandoff ? styles.earningsPageZipAura : styles.arrivalCheckinPageZipAura}
           testID="worker-v5-earnings-page-customer-zip-mint-aura"
         />
       ) : null}
-      {(usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesProfileHandoff) && shouldShowWorkerAura ? (
+      {(usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesCommissionPolicyHandoff || usesProfileHandoff) && shouldShowWorkerAura ? (
         <WorkerV5CustomerCaseWideMintAura
           scope={usesProfileHandoff ? 'WorkerProfilePageLower' : 'WorkerEarningsPageLower'}
           style={styles.earningsPageLowerAura}
@@ -794,7 +797,7 @@ function WorkerV5Body({
       )
     case '4.3-payout-request':
       return (
-        <WorkerV5CommissionPolicyBody
+        <WorkerV5PayoutRequestBody
           language={language}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
@@ -802,6 +805,14 @@ function WorkerV5Body({
       )
     case '4.4-payout-method':
       return <WorkerV5ReceivingAccountBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
+    case '4.5-commission-policy':
+      return (
+        <WorkerV5CommissionPolicyBody
+          language={language}
+          reduceTransparency={reduceTransparency}
+          runtime={runtime}
+        />
+      )
     case '5.1-profile-overview':
       return (
         <WorkerV5ProfileOverviewBody
@@ -990,6 +1001,7 @@ function getWorkerV5PrimaryAction(
     case '4.2-ledger-detail':
     case '4.3-payout-request':
     case '4.4-payout-method':
+    case '4.5-commission-policy':
       return null
     case '5.1-profile-overview':
       return null
@@ -1088,9 +1100,13 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
     case '4.2-ledger-detail':
       return textByLanguage(language, 'Các khoản thu đã được ghi nhận', 'Recorded transactions')
     case '4.3-payout-request':
-      return textByLanguage(language, 'Hiểu rõ mức hoa hồng đang áp dụng', 'Understand the current commission rate')
+      return runtime.workerEarnings?.available_balance
+        ? textByLanguage(language, 'Tạo yêu cầu rút từ số dư đã ghi nhận', 'Request a withdrawal from recorded balance')
+        : textByLanguage(language, 'Chưa có số dư thật để rút', 'No recorded balance to withdraw yet')
     case '4.4-payout-method':
       return textByLanguage(language, 'Quản lý tài khoản nhận tiền', 'Manage payout account')
+    case '4.5-commission-policy':
+      return textByLanguage(language, 'Hiểu rõ mức hoa hồng đang áp dụng', 'Understand the current commission rate')
     case '5.1-profile-overview':
       return runtime.workerProfile?.legal_name || textByLanguage(language, 'Hồ sơ thợ', 'Worker profile')
     case '5.2-worker-ranking':
@@ -1213,14 +1229,20 @@ function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
     case '4.3-payout-request':
       return textByLanguage(
         language,
-        'Mức khởi điểm là 15%; bậc cao hơn có thể được áp dụng mức thấp hơn khi đáp ứng điều kiện.',
-        'The starting rate is 15%; higher levels may receive a lower rate after meeting the requirements.',
+        'Bạn chỉ có thể gửi yêu cầu rút từ số dư đã ghi nhận sau khi tài khoản nhận tiền được xác nhận.',
+        'You can request only recorded available balance after the receiving account is verified.',
       )
     case '4.4-payout-method':
       return textByLanguage(
         language,
         'Thông tin ngân hàng chỉ hiện từ hồ sơ thật; thay đổi tài khoản cần xác minh.',
         'Bank data appears only from the real profile; account changes require verification.',
+      )
+    case '4.5-commission-policy':
+      return textByLanguage(
+        language,
+        'Mức khởi điểm là 15%; bậc cao hơn có thể được áp dụng mức thấp hơn khi đáp ứng điều kiện.',
+        'The starting rate is 15%; higher levels may receive a lower rate after meeting the requirements.',
       )
     case '5.1-profile-overview':
       return textByLanguage(

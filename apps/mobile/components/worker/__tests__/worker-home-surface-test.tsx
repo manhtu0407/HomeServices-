@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { Alert, Platform, StyleSheet } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { LocalDeal, LocalWorkerGate } from '@nestscout/shared'
-import type { EarningsResponse, NotificationListResponse, WorkerPerformanceInsightsResponse, WorkerProfileResponse } from '@/lib/api-types'
+import type { EarningsResponse, NotificationListResponse, WorkerPayoutMethod, WorkerPerformanceInsightsResponse, WorkerProfileResponse, WorkerWithdrawalRequest } from '@/lib/api-types'
 
 let mockWorkflowValue: any
 let mockAuthRole: 'admin' | 'customer' | 'worker'
@@ -12,6 +12,7 @@ let mockSignOut: jest.Mock
 let mockWorkerUpdateAvailability: jest.Mock
 let mockWorkerConfirmCashPayment: jest.Mock
 let mockWorkerSavePayoutMethod: jest.Mock
+let mockWorkerRequestWithdrawal: jest.Mock
 let mockWorkerUploadAvatar: jest.Mock
 let mockWorkerUpdateServiceArea: jest.Mock
 let mockWorkerUpdateServicePreferences: jest.Mock
@@ -249,6 +250,8 @@ function buildNoEarnings(): EarningsResponse {
     recent_transactions: [],
     to_date: null,
     total_jobs_paid: 0,
+    withdrawal_reserved_amount: 0,
+    withdrawn_total: 0,
     worker_id: 'worker_test_1',
   }
 }
@@ -296,6 +299,8 @@ function buildSettledEarnings(): EarningsResponse {
     ],
     to_date: settledEarningsDateKey(0),
     total_jobs_paid: 5,
+    withdrawal_reserved_amount: 0,
+    withdrawn_total: 0,
     worker_id: 'worker_test_1',
   }
 }
@@ -466,6 +471,8 @@ function buildWorkflow({
   workerGate = 'remote_backend',
   workerPerformanceInsights = null,
   workerProfile = buildWorkerProfile(),
+  workerPayoutMethod = null,
+  workerWithdrawalRequests = [],
   notifications = [],
   notificationUnreadCount = 0,
 }: {
@@ -477,6 +484,8 @@ function buildWorkflow({
   workerGate?: LocalWorkerGate
   workerPerformanceInsights?: WorkerPerformanceInsightsResponse | null
   workerProfile?: WorkerProfileResponse | null
+  workerPayoutMethod?: WorkerPayoutMethod | null
+  workerWithdrawalRequests?: WorkerWithdrawalRequest[]
   notifications?: NotificationListResponse['notifications']
   notificationUnreadCount?: number
 } = {}) {
@@ -487,6 +496,7 @@ function buildWorkflow({
     error: 'Tài khoản nhận tiền chưa được bật',
     success: false,
   }))
+  mockWorkerRequestWithdrawal = jest.fn(async () => true)
   mockWorkerUploadAvatar = jest.fn(async () => true)
   mockWorkerUpdateServiceArea = jest.fn(async () => true)
   mockWorkerUpdateServicePreferences = jest.fn(async () => true)
@@ -507,6 +517,7 @@ function buildWorkflow({
       workerUpdateStatus: jest.fn(async () => true),
       workerConfirmCashPayment: mockWorkerConfirmCashPayment,
       workerSavePayoutMethod: mockWorkerSavePayoutMethod,
+      workerRequestWithdrawal: mockWorkerRequestWithdrawal,
       workerSubmitRegistration: jest.fn(async () => true),
       refreshNotifications: mockRefreshNotifications,
       markNotificationRead: mockMarkNotificationRead,
@@ -529,6 +540,8 @@ function buildWorkflow({
     workerJobsHydrated,
     workerPerformanceInsights,
     workerProfile,
+    workerPayoutMethod,
+    workerWithdrawalRequests,
     notifications,
     notificationUnreadCount,
   }
@@ -2942,13 +2955,16 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-earnings-utility-commission-image').props.source).toBe(workerV5CapturedIconAssets.earningsCommissionPolicy)
   })
 
-  it('opens three focused earnings routes without the retired payout sequence', () => {
+  it('opens focused earnings routes for history, account, commission policy, and payout request', () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
     render(<WorkerEarningsSurface />)
 
     fireEvent.press(screen.getByTestId('worker-v5-earnings-utility-commission'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.5-commission-policy')
+
+    fireEvent.press(screen.getByTestId('worker-v5-earnings-withdraw-action'))
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.3-payout-request')
   })
 
@@ -2959,7 +2975,7 @@ describe('Worker runtime surface wiring', () => {
     const pending = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('0đ')
-    expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('0đ')
+    expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('Đang tải')
     expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityLabel).toBe('Đang tải biểu đồ thu nhập')
@@ -3016,6 +3032,7 @@ describe('Worker runtime surface wiring', () => {
     '4.2-ledger-detail',
     '4.3-payout-request',
     '4.4-payout-method',
+    '4.5-commission-policy',
   ] as const)('returns %s directly to the earnings overview', (detailScreen) => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: detailScreen }
@@ -3026,32 +3043,49 @@ describe('Worker runtime surface wiring', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.1-earnings-overview')
   })
 
-  it('keeps the overview payout control honestly unavailable', () => {
+  it('opens the withdrawal request screen from the earnings overview', () => {
     buildWorkflow({ workerEarnings: buildSettledEarnings() })
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
 
     render(<WorkerEarningsSurface />)
     const withdrawAction = screen.getByTestId('worker-v5-earnings-withdraw-action')
-    expect(withdrawAction.props.accessibilityState).toMatchObject({ disabled: true })
-    expect(withdrawAction).toHaveTextContent('Rút tiền chưa khả dụng')
-    expect(within(withdrawAction).queryByTestId('worker-v5-primary-gradient')).toBeNull()
+    expect(withdrawAction.props.accessibilityState).toMatchObject({ disabled: false })
+    expect(withdrawAction).toHaveTextContent('Tạo yêu cầu rút tiền')
+    expect(within(withdrawAction).getByTestId('worker-v5-primary-gradient')).toBeOnTheScreen()
     fireEvent.press(withdrawAction)
-    expect(mockReplace).not.toHaveBeenCalled()
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/earnings?ns_worker_screen=4.3-payout-request')
   })
 
-  it('explains the commission policy in simple Vietnamese instead of showing the old payout request', () => {
-    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+  it('submits a manual withdrawal request only after a verified receiving account and valid amount are present', async () => {
+    buildWorkflow({
+      workerEarnings: buildSettledEarnings(),
+      workerPayoutMethod: {
+        id: 'payout-method-1',
+        bank_key: 'techcombank',
+        bank_name: 'Techcombank',
+        bank_account_masked: '**** 6789',
+        status: 'verified',
+        reviewed_at: '2026-08-08T03:00:00.000Z',
+        updated_at: '2026-08-08T03:00:00.000Z',
+      },
+    })
     mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
 
     render(<WorkerEarningsSurface />)
 
-    expect(screen.getByTestId('worker-v5-commission-policy')).toBeOnTheScreen()
-    expect(screen.queryByText('Mức khởi điểm 15%')).toBeNull()
-    expect(screen.getByText(/85% còn lại thuộc về thợ/)).toBeOnTheScreen()
-    expect(screen.getByText(/hoàn thành nhiều công việc/)).toBeOnTheScreen()
-    expect(screen.getByText(/đánh giá tốt/)).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-v5-payout-request-confirm-action')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-payout-account-card')).toBeNull()
+    expect(screen.getByTestId('worker-v5-payout-request')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-payout-request-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByText('Techcombank · **** 6789')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-payout-submit').props.accessibilityState).toMatchObject({ disabled: true })
+
+    fireEvent.changeText(screen.getByTestId('worker-v5-payout-amount-input'), '250000')
+    expect(screen.getByTestId('worker-v5-payout-submit').props.accessibilityState).toMatchObject({ disabled: false })
+    fireEvent.press(screen.getByTestId('worker-v5-payout-submit'))
+
+    await waitFor(() => {
+      expect(mockWorkerRequestWithdrawal).toHaveBeenCalledWith(expect.objectContaining({ amount_vnd: 250000 }))
+    })
+    expect(await screen.findByText(/Yêu cầu rút tiền đã được ghi nhận/)).toBeOnTheScreen()
   })
 
   it('keeps only bank selection and confirmation on the receiving account route', async () => {
@@ -3077,10 +3111,32 @@ describe('Worker runtime surface wiring', () => {
         account_holder_name: 'PHAN MANH TU',
         bank_account: '123456789',
         bank_key: 'techcombank',
-        bank_name: 'Techcombank',
       })
     })
     expect(await screen.findByText('Hiện chưa thể lưu tài khoản. Thông tin của bạn chưa bị thay đổi.')).toBeOnTheScreen()
+  })
+
+  it('uses the recorded payout bank by default without overriding a new worker choice', () => {
+    buildWorkflow({
+      workerEarnings: buildSettledEarnings(),
+      workerPayoutMethod: {
+        id: 'payout-method-1',
+        bank_key: 'vietcombank',
+        bank_name: 'Vietcombank',
+        bank_account_masked: '**** 6789',
+        status: 'verified',
+        reviewed_at: '2026-08-08T03:00:00.000Z',
+        updated_at: '2026-08-08T03:00:00.000Z',
+      },
+    })
+    mockRouteParams = { ns_worker_screen: '4.4-payout-method' }
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-v5-bank-option-vietcombank').props.accessibilityState).toMatchObject({ selected: true })
+    fireEvent.press(screen.getByTestId('worker-v5-bank-option-bidv'))
+    expect(screen.getByTestId('worker-v5-bank-option-bidv').props.accessibilityState).toMatchObject({ selected: true })
+    expect(screen.getByTestId('worker-v5-bank-option-vietcombank').props.accessibilityState).toMatchObject({ selected: false })
   })
 
   it('keeps every captured Worker card icon distinct from the other captured card contexts', () => {
@@ -3273,6 +3329,11 @@ describe('Worker runtime surface wiring', () => {
     earnings.unmount()
 
     mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
+    const payoutRequest = render(<WorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-payout-request-formula-mint-aura')).toBeOnTheScreen()
+    payoutRequest.unmount()
+
+    mockRouteParams = { ns_worker_screen: '4.5-commission-policy' }
     const commissionPolicy = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-commission-policy-formula-mint-aura')).toBeOnTheScreen()
     commissionPolicy.unmount()
@@ -3347,11 +3408,11 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
     const earnings = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityLabel).toBe('Biểu đồ thu nhập chưa phát sinh trong kỳ đã chọn')
-    expect(screen.getByText('Chưa có luồng rút tiền')).toBeOnTheScreen()
+    expect(screen.getByText('Tạo yêu cầu rút tiền')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-earnings-utility-history')).toBeOnTheScreen()
     earnings.unmount()
 
-    mockRouteParams = { ns_worker_screen: '4.3-payout-request' }
+    mockRouteParams = { ns_worker_screen: '4.5-commission-policy' }
     const commissionPolicy = render(<WorkerEarningsSurface />)
     expect(screen.queryByText('Mức khởi điểm 15%')).toBeNull()
     expect(screen.getByText(/Làm tốt để giữ lại nhiều hơn/)).toBeOnTheScreen()

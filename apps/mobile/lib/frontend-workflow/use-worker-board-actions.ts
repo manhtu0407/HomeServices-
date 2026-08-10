@@ -11,17 +11,22 @@ import {
 import type {
   EarningsResponse,
   WorkerJobListResponse,
+  WorkerPayoutMethod,
   WorkerPayoutMethodSaveInput,
   WorkerPerformanceInsightsResponse,
   WorkerProfileResponse,
+  WorkerWithdrawalRequest,
+  WorkerWithdrawalRequestCreateInput,
 } from '../api-types'
 import { workerService } from '../services'
 import { uploadWorkerAvatar, type WorkerAvatarDraft } from '../worker-avatar-upload'
 import {
   sameWorkerEarnings,
   sameWorkerJobs,
+  sameWorkerPayoutMethod,
   sameWorkerPerformanceInsights,
   sameWorkerProfile,
+  sameWorkerWithdrawalRequests,
 } from './comparisons'
 import {
   currentWorkerYearRange,
@@ -41,8 +46,10 @@ type WorkerRemoteState = {
   jobs: WorkerJobListResponse['jobs']
   jobsHydrated: boolean
   performanceInsights: WorkerPerformanceInsightsResponse | null
+  payoutMethod: WorkerPayoutMethod | null
   profile: WorkerProfileResponse | null
   sessionUserId: string | null
+  withdrawalRequests: WorkerWithdrawalRequest[]
 }
 
 const initialWorkerRemoteState: WorkerRemoteState = {
@@ -50,8 +57,10 @@ const initialWorkerRemoteState: WorkerRemoteState = {
   jobs: [],
   jobsHydrated: false,
   performanceInsights: null,
+  payoutMethod: null,
   profile: null,
   sessionUserId: null,
+  withdrawalRequests: [],
 }
 
 type WorkerBoardActionsInput = {
@@ -80,7 +89,9 @@ export function useWorkerBoardActions({
   const workerJobs = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.jobs : []
   const workerJobsHydrated = workerRemoteState.sessionUserId === sessionUserId && workerRemoteState.jobsHydrated
   const workerPerformanceInsights = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.performanceInsights : null
+  const workerPayoutMethod = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.payoutMethod : null
 
+  const workerWithdrawalRequests = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.withdrawalRequests : []
   const workerRefresh = useCallback(async () => {
     if (role !== 'worker' && role !== 'admin') return true
     const workerRefreshRequestId = workerRefreshRequestIdRef.current + 1
@@ -90,6 +101,12 @@ export function useWorkerBoardActions({
     const profileRequest = workerService.getProfile()
     const earningsRequest = workerService.getEarnings(currentWorkerYearRange())
     const performanceInsightsRequest = workerService.getPerformanceInsights()
+    const payoutMethodRequest = role === 'worker'
+      ? workerService.getPayoutMethod()
+      : Promise.resolve({ success: true as const, data: { payout_method: null } })
+    const withdrawalRequestsRequest = role === 'worker'
+      ? workerService.listWithdrawalRequests()
+      : Promise.resolve({ success: true as const, data: { requests: [] } })
     const broadcastsRequest = workerService.getBroadcasts()
     const jobsRequest = workerService.getJobs()
 
@@ -108,8 +125,10 @@ export function useWorkerBoardActions({
           jobs: jobs.data.jobs,
           jobsHydrated: true,
           performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
+          payoutMethod: current.sessionUserId === sessionUserId ? current.payoutMethod : null,
           profile: current.sessionUserId === sessionUserId ? current.profile : null,
           sessionUserId,
+          withdrawalRequests: current.sessionUserId === sessionUserId ? current.withdrawalRequests : [],
         }
       })
       const activeJob = jobs.data.jobs.find((job) => isWorkerCurrentJobStatus(job.status))
@@ -135,10 +154,12 @@ export function useWorkerBoardActions({
 
     // The post-I/O generation check prevents an older refresh from committing after a newer refresh starts.
     // react-doctor-disable-next-line react-doctor/async-defer-await
-    const [profile, earnings, performanceInsights] = await Promise.all([
+    const [profile, earnings, performanceInsights, payoutMethod, withdrawalRequests] = await Promise.all([
       profileRequest,
       earningsRequest,
       performanceInsightsRequest,
+      payoutMethodRequest,
+      withdrawalRequestsRequest,
     ])
     if (!isCurrentWorkerRefresh()) return true
     if (!profile.success) return setRemoteError(profile.error)
@@ -159,22 +180,34 @@ export function useWorkerBoardActions({
       const currentEarnings = current.sessionUserId === sessionUserId ? current.earnings : null
       const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
       const currentPerformanceInsights = current.sessionUserId === sessionUserId ? current.performanceInsights : null
+      const currentPayoutMethod = current.sessionUserId === sessionUserId ? current.payoutMethod : null
+      const currentWithdrawalRequests = current.sessionUserId === sessionUserId ? current.withdrawalRequests : []
+      const nextPayoutMethod = payoutMethod.success ? payoutMethod.data.payout_method : currentPayoutMethod
+      const nextWithdrawalRequests = withdrawalRequests.success
+        ? withdrawalRequests.data.requests
+        : currentWithdrawalRequests
       const sameProfile = sameWorkerProfile(currentProfile, refreshedProfile)
       const sameEarnings = nextEarnings ? sameWorkerEarnings(currentEarnings, nextEarnings) : currentEarnings === null
       const samePerformanceInsights = nextPerformanceInsights
         ? sameWorkerPerformanceInsights(currentPerformanceInsights, nextPerformanceInsights)
         : currentPerformanceInsights === null
-      return current.sessionUserId === sessionUserId && sameProfile && sameEarnings && samePerformanceInsights
+      const samePayoutMethod = sameWorkerPayoutMethod(currentPayoutMethod, nextPayoutMethod)
+      const sameWithdrawalRequests = sameWorkerWithdrawalRequests(currentWithdrawalRequests, nextWithdrawalRequests)
+      return current.sessionUserId === sessionUserId && sameProfile && sameEarnings && samePerformanceInsights && samePayoutMethod && sameWithdrawalRequests
         ? current
         : {
             earnings: nextEarnings,
             jobs: currentJobs,
             jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
             performanceInsights: nextPerformanceInsights,
+            payoutMethod: nextPayoutMethod,
             profile: refreshedProfile,
             sessionUserId,
+            withdrawalRequests: nextWithdrawalRequests,
           }
     })
+    if (!payoutMethod.success && !workflowError) workflowError = payoutMethod.error
+    if (!withdrawalRequests.success && !workflowError) workflowError = withdrawalRequests.error
     if (workflowError) return setRemoteError(workflowError)
     return true
   }, [dispatch, role, sessionUserId, setRemoteError, stateRef])
@@ -201,8 +234,10 @@ export function useWorkerBoardActions({
       jobs: current.sessionUserId === sessionUserId ? current.jobs : [],
       jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
       performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
+      payoutMethod: current.sessionUserId === sessionUserId ? current.payoutMethod : null,
       profile: updated.data,
       sessionUserId,
+      withdrawalRequests: current.sessionUserId === sessionUserId ? current.withdrawalRequests : [],
     }))
     await workerRefresh()
     return true
@@ -218,8 +253,10 @@ export function useWorkerBoardActions({
       jobs: current.sessionUserId === sessionUserId ? current.jobs : [],
       jobsHydrated: current.sessionUserId === sessionUserId ? current.jobsHydrated : false,
       performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
+      payoutMethod: current.sessionUserId === sessionUserId ? current.payoutMethod : null,
       profile: updated.data,
       sessionUserId,
+      withdrawalRequests: current.sessionUserId === sessionUserId ? current.withdrawalRequests : [],
     }))
     await workerRefresh()
     return true
@@ -239,6 +276,21 @@ export function useWorkerBoardActions({
 
   const workerSavePayoutMethod = useCallback(async (input: WorkerPayoutMethodSaveInput) => {
     const result = await workerService.savePayoutMethod(input)
+    if (!result.success) {
+      setRemoteError(result.error)
+      return {
+        success: false as const,
+        code: result.code,
+        error: result.error,
+        status: result.status,
+      }
+    }
+    await workerRefresh()
+    return true
+  }, [setRemoteError, workerRefresh])
+
+  const workerRequestWithdrawal = useCallback(async (input: WorkerWithdrawalRequestCreateInput) => {
+    const result = await workerService.createWithdrawalRequest(input)
     if (!result.success) {
       setRemoteError(result.error)
       return {
@@ -379,13 +431,16 @@ export function useWorkerBoardActions({
     workerJobs,
     workerJobsHydrated,
     workerPerformanceInsights,
+    workerPayoutMethod,
     workerProfile,
     workerRefresh,
+    workerRequestWithdrawal,
     workerSavePayoutMethod,
     workerSubmitRegistration,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,
     workerUploadAvatar,
+    workerWithdrawalRequests,
   }
 }

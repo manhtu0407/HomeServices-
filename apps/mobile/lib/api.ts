@@ -286,6 +286,11 @@ function isRetrySafeRequest(method: string, path: string, body: unknown) {
     (path === '/jobs' || path === '/kael/chat') &&
     hasClientRequestId(body)
   ) return true
+  if (
+    method === 'POST' &&
+    path === '/me/kael/conversations' &&
+    hasClientRequestId(body)
+  ) return true
   if (method === 'POST' && KAEL_CHAT_CONFIRM_PATH.test(path)) return true
   if (
     method === 'POST' &&

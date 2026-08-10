@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -141,6 +141,19 @@ test('accepts a complete semantic inventory', () => {
     assert.equal(report.ok, true, report.problems.join('\n'))
     assert.equal(report.skillCount, 1)
     assert.equal(report.runtimeToolCount, 1)
+  })
+})
+
+test('discovers a linked canonical skill directory', () => {
+  withFixture(({ root }) => {
+    const canonical = resolve(root, '.claude/skills/alpha')
+    const target = resolve(root, '.scratch/linked-alpha')
+    mkdirSync(dirname(target), { recursive: true })
+    renameSync(canonical, target)
+    symlinkSync(target, canonical, process.platform === 'win32' ? 'junction' : 'dir')
+
+    const report = checkHarnessManifest({ root })
+    assert.equal(report.ok, true, report.problems.join('\n'))
   })
 })
 

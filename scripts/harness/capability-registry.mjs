@@ -34,12 +34,16 @@ export function buildCapabilityRegistry(options = {}) {
   const records = new Map()
   for (const file of files) {
     const source = normalizeSource(readFileSync(file, 'utf8'))
+    const roleAliases = roleAliasesFor(source)
     for (const match of source.matchAll(/\bkind:\s*["']([^"']+)["']/gu)) {
       const kind = match[1]
       const window = routeDescriptorWindow(source, match.index)
       const method = /\bmethod:\s*["'](GET|POST|PATCH|DELETE)["']/u.exec(window)?.[1] ?? null
       const roleBlock = /\broles:\s*\[([^\]]*)\]/u.exec(window)?.[1] ?? ''
-      const roles = [...roleBlock.matchAll(/["'](customer|worker|admin)["']/gu)].map((item) => item[1])
+      const literalRoles = [...roleBlock.matchAll(/["'](customer|worker|admin|admin_operator)["']/gu)]
+        .map((item) => item[1])
+      const roleAlias = /\broles:\s*([A-Za-z_$][\w$]*)/u.exec(window)?.[1]
+      const roles = literalRoles.length ? literalRoles : (roleAlias ? roleAliases.get(roleAlias) ?? [] : [])
       const current = records.get(kind) ?? {
         kind,
         methods: new Set(),
@@ -124,7 +128,10 @@ function policyFor(input) {
     sideEffectClass,
     privileged: !publicRoute && (risk === 'administrative' || risk === 'money' || input.kind.startsWith('jobs.') || input.kind.startsWith('disputes.')),
     resourceType: resourceTypeFor(input.kind),
-    requiresResourceCheck: input.resourceIdFields.length > 0,
+    // Admin control endpoints are privileged monitoring/operations paths. Their identifiers
+    // select records for review, not user-owned resources, so ownership guards do not apply.
+    requiresResourceCheck: input.resourceIdFields.length > 0
+      && (!input.kind.startsWith('admin.') || resourceTypeFor(input.kind) !== 'system'),
     confirmationGate,
     envelopeTtlMs: risk === 'money' || risk === 'administrative' ? 30_000 : risk === 'sensitive' ? 60_000 : 120_000,
     sources: input.sources,
@@ -204,6 +211,16 @@ function resourceIdentifierFields(descriptor) {
   return RESOURCE_IDENTIFIER_FIELDS.filter((field) =>
     new RegExp(`\\b${field}\\s*(?::|,|\\})`, 'u').test(descriptor)
   )
+}
+
+function roleAliasesFor(source) {
+  const aliases = new Map()
+  for (const match of source.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)[^=]*=\s*\[([^\]]*)\]/gu)) {
+    const roles = [...match[2].matchAll(/["'](customer|worker|admin|admin_operator)["']/gu)]
+      .map((item) => item[1])
+    if (roles.length) aliases.set(match[1], roles)
+  }
+  return aliases
 }
 
 function renderTypeScript(registry) {

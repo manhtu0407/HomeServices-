@@ -4,6 +4,7 @@
 
 import type { DbClient } from "../../platform/db.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
+import { requireNonOperatorWorkflowRole } from "../../platform/authz/workflow-role.ts";
 import type { JobStatus } from "../../../../_shared/domain.ts";
 import {
   runKaelAutonomyOrchestrator,
@@ -38,7 +39,7 @@ export async function runPolicyAutonomyGate(input: PolicyAutonomyGateInput) {
       client: input.client,
       jobId: input.jobId,
       actorId: input.ctx.user.id,
-      actorRole: input.ctx.role,
+      actorRole: requireNonOperatorWorkflowRole(input.ctx),
       source: "policy",
     },
   });

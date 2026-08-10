@@ -663,7 +663,9 @@ export type EarningsResponse = {
   gross_earnings: number       // sum of frozen gross_amount across paid jobs
   platform_fee_total: number   // sum of frozen platform_fee across paid jobs
   net_earnings: number         // sum of frozen worker_net across paid jobs
-  available_balance: number    // in-app payable balance; not a completed bank payout
+  available_balance: number    // in-app payable balance after held and completed withdrawals
+  withdrawal_reserved_amount: number
+  withdrawn_total: number
   cash_commission_collected_total: number
   cash_commission_due_total: number
   pending_payment_count: number

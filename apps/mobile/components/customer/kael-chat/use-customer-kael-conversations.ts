@@ -22,6 +22,7 @@ import {
   sortSessions,
   upsertSession,
 } from './customer-kael-conversation-catalog'
+import { createLocalVisualAuditConversation } from './customer-kael-local-visual-audit'
 import {
   fetchCustomerConversation,
   isAmbiguousConversationTurnFailure,
@@ -37,6 +38,7 @@ import {
   responseMemory,
   setCatalogStateField,
 } from './customer-kael-conversation-catalog-state'
+
 export function useCustomerKaelConversations(
   mode: CustomerKaelConversationMode,
   language: AppLanguage,
@@ -145,6 +147,17 @@ export function useCustomerKaelConversations(
 
   const refreshSessions = useCallback((_force = false): Promise<CustomerKaelConversationSession[]> => {
     if (!customerId || !catalogKey) return Promise.resolve([])
+    if (localVisualAuditSession) {
+      const localSessions = catalogMemory.get(catalogKey) ?? []
+      if (activeKeyRef.current === catalogKey) {
+        patchCatalogState(setCatalogState, catalogKey, activeResponseByCatalogRef.current, {
+          sessions: localSessions,
+          sessionsError: null,
+          sessionsLoading: false,
+        })
+      }
+      return Promise.resolve(localSessions)
+    }
     const existing = listRequestRef.current.get(catalogKey)
     if (existing) return existing
     if (!catalogMemory.has(catalogKey)) {
@@ -311,10 +324,12 @@ export function useCustomerKaelConversations(
     let request!: Promise<CustomerKaelConversationResponse | null>
     request = (async () => {
       try {
-        const created = await customerKaelConversationService.create({
-          client_request_id: clientRequestId,
-          mode,
-        })
+        const created = localVisualAuditSession
+          ? { data: createLocalVisualAuditConversation(customerId, mode, clientRequestId), success: true as const }
+          : await customerKaelConversationService.create({
+            client_request_id: clientRequestId,
+            mode,
+          })
         if (
           !created.success
           || operationRequestRef.current !== requestId
@@ -358,7 +373,7 @@ export function useCustomerKaelConversations(
     })()
     sessionCreateRequestRef.current = request
     return request
-  }, [activateResponse, catalogKey, customerId, language, matchesCatalogCustomer, mode])
+  }, [activateResponse, catalogKey, customerId, language, localVisualAuditSession, matchesCatalogCustomer, mode])
 
   const ensureActiveSession = useCallback(async (clientRequestId?: string) => {
     if (visibleResponse) return visibleResponse

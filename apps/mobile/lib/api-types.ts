@@ -11,6 +11,7 @@ export type {
 } from '@nestscout/shared'
 
 export type * from './api-types/customer'
+export type * from './api-types/admin'
 export type * from './api-types/kael'
 export type * from './api-types/media'
 export type * from './api-types/shared'

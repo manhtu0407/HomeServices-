@@ -19,7 +19,7 @@ export default function AdminLayout() {
     return <Redirect href="/(auth)/login" />
   }
 
-  if (role !== 'admin') {
+  if (role !== 'admin' && role !== 'admin_operator') {
     return <Redirect href="/(auth)/login" />
   }
 

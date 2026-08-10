@@ -334,19 +334,15 @@ describe('promoteCandidate compatibility boundary', () => {
   })
 
   it('keeps the Supabase client receiver when invoking the manual-review RPC', async () => {
-    let receiver: unknown
-    function rpc(this: unknown) {
-      receiver = this
-      return Promise.resolve({
+    const rpc = vi.fn().mockResolvedValue({
         data: [{ ok: true, error_code: null, candidate_id: 'cand-1', status: 'manual_review' }],
         error: null,
       })
-    }
     const client = { rpc }
 
     const result = await promoteCandidate(client as never, priceCandidate())
 
-    expect(receiver).toBe(client)
+    expect(rpc.mock.contexts[0]).toBe(client)
     expect(result).toMatchObject({
       reason: 'MANUAL_REVIEW_REQUIRED',
       queuedForReview: true,

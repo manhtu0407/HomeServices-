@@ -110,4 +110,3 @@ async function readWorkerKaelChatProgressSnapshot(
     progress: serializeWorkerKaelSession(session).progress,
   };
 }
-

@@ -2,8 +2,10 @@ import type {
   CustomerProfileInsightsResponse,
   EarningsResponse,
   WorkerJobListResponse,
+  WorkerPayoutMethod,
   WorkerPerformanceInsightsResponse,
   WorkerProfileResponse,
+  WorkerWithdrawalRequest,
 } from '../api-types'
 
 export function sameCustomerProfileInsights(left: CustomerProfileInsightsResponse | null, right: CustomerProfileInsightsResponse) {
@@ -70,6 +72,8 @@ export function sameWorkerEarnings(left: EarningsResponse | null, right: Earning
     && left.platform_fee_total === right.platform_fee_total
     && left.net_earnings === right.net_earnings
     && left.available_balance === right.available_balance
+    && left.withdrawal_reserved_amount === right.withdrawal_reserved_amount
+    && left.withdrawn_total === right.withdrawn_total
     && left.cash_commission_collected_total === right.cash_commission_collected_total
     && left.cash_commission_due_total === right.cash_commission_due_total
     && left.pending_payment_count === right.pending_payment_count
@@ -196,6 +200,42 @@ function sameWorkerDailyEarnings(left: EarningsResponse['daily_earnings'] | null
       && item.platform_fee_total === next.platform_fee_total
       && item.net_earnings === next.net_earnings
       && item.paid_job_count === next.paid_job_count
+  })
+}
+
+export function sameWorkerPayoutMethod(
+  left: WorkerPayoutMethod | null,
+  right: WorkerPayoutMethod | null,
+) {
+  return left?.id === right?.id
+    && left?.bank_key === right?.bank_key
+    && left?.bank_name === right?.bank_name
+    && left?.bank_account_masked === right?.bank_account_masked
+    && left?.status === right?.status
+    && left?.reviewed_at === right?.reviewed_at
+    && left?.updated_at === right?.updated_at
+}
+
+export function sameWorkerWithdrawalRequests(
+  left: WorkerWithdrawalRequest[],
+  right: WorkerWithdrawalRequest[],
+) {
+  return left.length === right.length && left.every((request, index) => {
+    const next = right[index]
+    return Boolean(next)
+      && request.id === next.id
+      && request.amount_vnd === next.amount_vnd
+      && request.available_balance_before_vnd === next.available_balance_before_vnd
+      && request.bank_key === next.bank_key
+      && request.bank_name === next.bank_name
+      && request.bank_account_masked === next.bank_account_masked
+      && request.status === next.status
+      && request.requested_at === next.requested_at
+      && request.processing_at === next.processing_at
+      && request.processed_at === next.processed_at
+      && request.transfer_reference === next.transfer_reference
+      && request.resolution_reason === next.resolution_reason
+      && request.updated_at === next.updated_at
   })
 }
 

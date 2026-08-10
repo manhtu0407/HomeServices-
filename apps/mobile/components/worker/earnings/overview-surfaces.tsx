@@ -416,8 +416,14 @@ export function WorkerV5EarningsDashboard({
     {
       id: 'withdrawn',
       label: textByLanguage(language, 'Tổng đã rút', 'Total withdrawn'),
-      note: textByLanguage(language, 'Chưa có luồng rút tiền', 'Payout rail not available'),
-      value: displayAmount(0, language),
+      note: earnings
+        ? earnings.withdrawal_reserved_amount > 0
+          ? textByLanguage(language, `Đang giữ ${displayAmount(earnings.withdrawal_reserved_amount, language)} để chi trả`, `Reserving ${displayAmount(earnings.withdrawal_reserved_amount, language)} for settlement`)
+          : textByLanguage(language, 'Các khoản đã hoàn tất', 'Completed withdrawals')
+        : textByLanguage(language, 'Đang tải dữ liệu chi trả', 'Loading payout data'),
+      value: earnings
+        ? displayAmount(earnings.withdrawn_total, language)
+        : textByLanguage(language, 'Đang tải', 'Loading'),
     },
     {
       id: 'fee',

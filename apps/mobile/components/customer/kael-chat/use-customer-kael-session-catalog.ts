@@ -250,7 +250,6 @@ export function useCustomerKaelSessionCatalog({
     chatUi.setBlankCaseTransition(mode === 'case')
     resetConversationVisualState()
     conversations.resetToBlank()
-    router.replace(mode === 'case' ? blankCaseWorkRoute as never : normalChatRoute as never)
     const created = await conversations.startNewSession()
     if (!created) {
       chatUi.setBlankCaseTransition(false)
@@ -259,6 +258,7 @@ export function useCustomerKaelSessionCatalog({
         : 'A new conversation could not be created.')
       return
     }
+    router.replace(mode === 'case' ? blankCaseWorkRoute as never : normalChatRoute as never)
     chatUi.setBlankCaseTransition(false)
   }, [
     blankCaseWorkRoute,

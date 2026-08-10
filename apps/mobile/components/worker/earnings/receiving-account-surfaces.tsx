@@ -33,6 +33,13 @@ function normalizedAccount(value: string) {
   return value.replace(/\D/g, '').slice(0, 24)
 }
 
+function statusCopy(status: 'pending_verification' | 'verified' | 'rejected' | undefined, language: AppLanguage) {
+  if (status === 'verified') return textByLanguage(language, 'Đã xác nhận', 'Verified')
+  if (status === 'pending_verification') return textByLanguage(language, 'Đang chờ xác nhận', 'Awaiting verification')
+  if (status === 'rejected') return textByLanguage(language, 'Cần cập nhật lại', 'Needs an update')
+  return null
+}
+
 export function WorkerV5ReceivingAccount({
   language,
   reduceTransparency,
@@ -42,9 +49,11 @@ export function WorkerV5ReceivingAccount({
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const payoutMethod = runtime.workerPayoutMethod
   const profile = runtime.workerProfile
-  const recordedBank = resolveWorkerV5BankLogoName(profile?.bank_name)
-  const [selectedBank, setSelectedBank] = useState<WorkerV5BankLogoName | null>(recordedBank)
+  const recordedBank = resolveWorkerV5BankLogoName(payoutMethod?.bank_name)
+  const [selectedBankOverride, setSelectedBankOverride] = useState<WorkerV5BankLogoName | null>(null)
+  const selectedBank = selectedBankOverride ?? recordedBank
   const [holderName, setHolderName] = useState(profile?.legal_name?.trim() ?? '')
   const [accountNumber, setAccountNumber] = useState('')
   const [accountConfirmation, setAccountConfirmation] = useState('')
@@ -72,7 +81,6 @@ export function WorkerV5ReceivingAccount({
       account_holder_name: holderName.trim(),
       bank_account: accountNumber,
       bank_key: selectedBankOption.code,
-      bank_name: selectedBankOption.label,
     })
     if (result === true) {
       setMessage(textByLanguage(language, 'Đã gửi tài khoản để kiểm tra.', 'The account was sent for review.'))
@@ -98,12 +106,15 @@ export function WorkerV5ReceivingAccount({
         scope="ReceivingAccount"
         testID="worker-v5-receiving-account-formula-mint-aura"
       />
-      {profile?.bank_account_masked ? (
+      {payoutMethod ? (
         <View style={styles.recordedAccount}>
           <Text style={styles.recordedLabel}>{textByLanguage(language, 'TÀI KHOẢN ĐANG DÙNG', 'CURRENT ACCOUNT')}</Text>
           <Text style={styles.recordedValue}>
-            {profile.bank_name || textByLanguage(language, 'Ngân hàng', 'Bank')} · {profile.bank_account_masked}
+            {payoutMethod.bank_name || textByLanguage(language, 'Ngân hàng', 'Bank')} · {payoutMethod.bank_account_masked}
           </Text>
+          {statusCopy(payoutMethod.status, language) ? (
+            <Text style={styles.recordedStatus}>{statusCopy(payoutMethod.status, language)}</Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -118,7 +129,7 @@ export function WorkerV5ReceivingAccount({
               accessibilityState={{ selected }}
               key={bank.code}
               onPress={() => {
-                setSelectedBank(bank.code)
+                setSelectedBankOverride(bank.code)
                 setMessage(null)
                 setMessageTone(null)
               }}

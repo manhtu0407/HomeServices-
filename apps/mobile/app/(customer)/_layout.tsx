@@ -110,7 +110,11 @@ export default function CustomerLayout() {
   }
 
   if (session && role === 'admin') {
-    return <Redirect href="/(admin)/dashboard" />
+    return <Redirect href="/(admin)/sections" />
+  }
+
+  if (session && role === 'admin_operator') {
+    return <Redirect href="/(admin)/sections" />
   }
 
   if (session && role !== 'customer') {

@@ -1,4 +1,5 @@
 import { matchAdminRoute, type AdminRoute } from "./admin.ts";
+import { matchAdminControlRoute, type AdminControlRoute } from "./admin-control-routes.ts";
 import { matchCaseWorkResourceRoute, type CaseWorkResourceRoute } from "./case-work-resource-routes.ts";
 import { matchWorkerKaelChatRoute, type WorkerKaelChatRoute } from "./worker-kael-chat-routes.ts";
 import { matchCustomerKaelConversationRoute, type CustomerKaelConversationRoute } from "./customer-kael-conversation-routes.ts";
@@ -43,6 +44,7 @@ export type Route =
   | MeRoute
   | WorkerRoute
   | AdminRoute
+  | AdminControlRoute
   | NotificationRoute
   | NotificationReadRoute;
 
@@ -64,6 +66,8 @@ export function matchRoute(request: Request): Route | null {
   }
   const adminRoute = matchAdminRoute(path, method, safeDecodePathSegment);
   if (adminRoute) return adminRoute;
+  const adminControlRoute = matchAdminControlRoute(path, method);
+  if (adminControlRoute) return adminControlRoute;
   const jobCreateRoute = matchJobCreateRoute(path, method);
   if (jobCreateRoute) return jobCreateRoute;
   const meRoute = matchMeRoute(path, method);

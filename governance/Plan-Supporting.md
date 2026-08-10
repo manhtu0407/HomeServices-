@@ -1,12 +1,12 @@
 # Kael Agent Harness — Production Assurance & Control Plan
 
-> **Repository path:** `governance/Plan-Supporting.md`  
-> **Plan ID:** `plan-kael-agent-harness-production-assurance-20260806`  
-> **Created:** 2026-08-06  
-> **Owner:** Manh Tu  
-> **Prepared as:** Principal AI Infrastructure, Security, and Reliability Engineer  
-> **Target branch:** `docs/harness-production-assurance-plan`  
-> **Status:** Ready for staged execution; documentation only; this plan performs no Production mutation  
+> **Repository path:** `governance/Plan-Supporting.md`
+> **Plan ID:** `plan-kael-agent-harness-production-assurance-20260806`
+> **Created:** 2026-08-06
+> **Owner:** Manh Tu
+> **Prepared as:** Principal AI Infrastructure, Security, and Reliability Engineer
+> **Target branch:** `docs/harness-production-assurance-plan`
+> **Status:** Ready for staged execution; documentation only; this plan performs no Production mutation
 > **Relationship to `governance/Plan.md`:** Standalone supporting plan. It does not replace, renumber, truncate, or rewrite any existing section in `governance/Plan.md`.
 
 ---

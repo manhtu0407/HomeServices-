@@ -36,7 +36,7 @@ export const COMPLEXITY_LEVELS = Object.freeze(
 export type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
 export const USER_ROLES = Object.freeze(
-  ["customer", "worker", "admin"] as const,
+  ["customer", "worker", "admin", "admin_operator"] as const,
 );
 export type UserRole = (typeof USER_ROLES)[number];
 

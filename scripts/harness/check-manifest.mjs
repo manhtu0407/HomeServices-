@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -89,10 +89,17 @@ function discover(root, relativeRoot, predicate) {
   const start = resolveRepo(root, relativeRoot)
   if (!existsSync(start) || !statSync(start).isDirectory()) return []
   const files = []
+  const visited = new Set()
   const walk = (directory) => {
+    const physicalDirectory = realpathSync(directory)
+    if (visited.has(physicalDirectory)) return
+    visited.add(physicalDirectory)
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const absolute = resolve(directory, entry.name)
-      if (entry.isDirectory()) walk(absolute)
+      const linkedDirectory = entry.isSymbolicLink()
+        && existsSync(absolute)
+        && statSync(absolute).isDirectory()
+      if (entry.isDirectory() || linkedDirectory) walk(absolute)
       else if (entry.isFile() && predicate(entry.name)) files.push(repoPath(relative(root, absolute)))
     }
   }

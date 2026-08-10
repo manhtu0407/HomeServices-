@@ -41,7 +41,9 @@ jest.mock('../services', () => ({
     getEarnings: jest.fn(),
     getJobs: jest.fn(),
     getPerformanceInsights: jest.fn(),
+    getPayoutMethod: jest.fn(),
     getProfile: jest.fn(),
+    listWithdrawalRequests: jest.fn(),
     recordActiveMinute: jest.fn(),
     updateAvailability: jest.fn(),
   },
@@ -121,8 +123,10 @@ function arrangeSuccessfulWorkerRuntime() {
   })
   mockWorkerService.getEarnings.mockResolvedValue({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
   mockWorkerService.getPerformanceInsights.mockResolvedValue({ code: 'UNAVAILABLE', error: 'Unavailable', status: 503, success: false })
+  mockWorkerService.getPayoutMethod.mockResolvedValue({ data: { payout_method: null }, status: 200, success: true })
   mockWorkerService.getBroadcasts.mockResolvedValue({ data: { broadcasts: [] }, status: 200, success: true })
   mockWorkerService.getJobs.mockResolvedValue({ data: { jobs: [] }, status: 200, success: true })
+  mockWorkerService.listWithdrawalRequests.mockResolvedValue({ data: { requests: [] }, status: 200, success: true })
   mockWorkerService.updateAvailability.mockResolvedValue({
     data: { is_available: false, updated_at: '2026-07-13T14:00:00.000Z', worker_id: 'worker_test_1' },
     status: 200,

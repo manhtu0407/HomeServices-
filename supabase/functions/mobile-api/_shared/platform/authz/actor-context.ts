@@ -6,7 +6,7 @@ export type ActorContext = Readonly<{
   actorId: string;
   role: UserRole;
   accountState: AccountState;
-  subjectType: "customer" | "worker" | "admin";
+  subjectType: "customer" | "worker" | "admin" | "admin_operator";
   authenticated: true;
   authenticatedAt: string;
   environment: string;

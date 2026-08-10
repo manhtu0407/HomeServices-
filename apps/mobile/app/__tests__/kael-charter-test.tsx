@@ -24,10 +24,10 @@ beforeEach(() => {
     success: true,
     data: {
       charter_version: '2026-08-06.p11',
-      identity_summary: 'Kael là trợ lý AI của NestScout.',
+      identity_summary: 'Kael is the NestScout assistant for electrical, plumbing, and home cleaning.',
       locked_files: ['identity.md'],
       tunable_files: ['tone-matrix.yaml'],
-      forbidden_categories: ['ai_refusal_hedge'],
+      forbidden_categories: ['fear_language'],
       mission_values: ['Trust'],
     },
   })
@@ -40,8 +40,12 @@ describe('Kael public charter screen', () => {
     expect(screen.getByText('Phiên bản 2026-08-06.p11')).toBeTruthy()
     expect(screen.getByText('Kael là trợ lý AI của NestScout.')).toBeTruthy()
     expect(screen.getByText('• Tin cậy')).toBeTruthy()
-    expect(screen.getByText('• identity.md')).toBeTruthy()
-    expect(screen.getByText('• tone-matrix.yaml')).toBeTruthy()
+    expect(screen.getByText('• Bản sắc của Kael')).toBeTruthy()
+    expect(screen.getByText('• Cách Kael điều chỉnh giọng điệu')).toBeTruthy()
+    expect(screen.getByText('• Ngôn ngữ gây hoang mang')).toBeTruthy()
+    expect(screen.queryByText('• identity.md')).toBeNull()
+    expect(screen.queryByText('• tone-matrix.yaml')).toBeNull()
+    expect(screen.queryByText('• fear_language')).toBeNull()
   })
 
   it('returns through the router', () => {
