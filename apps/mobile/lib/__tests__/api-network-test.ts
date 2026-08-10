@@ -380,7 +380,8 @@ describe('mobile API response guard', () => {
       (init?.headers as Record<string, string>)['Idempotency-Key'],
     )
     expect(headers).toHaveLength(2)
-    expect(headers[0]).toMatch(/^mobile:post:\/kael\/chat\/session-1\/confirm:/)
+    expect(headers[0]).toMatch(/^mobile:post:[0-9a-f-]{36}$/)
+    expect(headers[0]).toMatch(/^[A-Za-z0-9._:-]{16,160}$/)
     expect(headers[1]).toBe(headers[0])
   })
 

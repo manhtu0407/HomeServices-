@@ -236,7 +236,7 @@ function idempotencyKeyForRequest(
       return `mobile:${clientRequestId.trim()}`.slice(0, 160)
     }
   }
-  return `mobile:${method.toLowerCase()}:${path}:${crypto.randomUUID()}`.slice(0, 160)
+  return `mobile:${method.toLowerCase()}:${crypto.randomUUID()}`.slice(0, 160)
 }
 
 function createMobileApiHeaders(accessToken?: string): Record<string, string> {

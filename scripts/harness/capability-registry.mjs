@@ -126,7 +126,14 @@ function policyFor(input) {
     risk,
     operationClass,
     sideEffectClass,
-    privileged: !publicRoute && (risk === 'administrative' || risk === 'money' || input.kind.startsWith('jobs.') || input.kind.startsWith('disputes.')),
+    privileged: !publicRoute && (
+      risk === 'administrative' ||
+      risk === 'money' ||
+      input.kind.startsWith('jobs.') ||
+      input.kind.startsWith('disputes.') ||
+      input.kind.startsWith('workers.') ||
+      input.kind === 'workerApplications.submit'
+    ),
     resourceType: resourceTypeFor(input.kind),
     // Admin control endpoints are privileged monitoring/operations paths. Their identifiers
     // select records for review, not user-owned resources, so ownership guards do not apply.
