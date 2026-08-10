@@ -477,6 +477,7 @@ export const customerV21BookingStyles = StyleSheet.create({
   bookingSelectedServiceFrame: {
     alignSelf: 'stretch',
     flexDirection: 'row',
+    marginTop: 6,
     width: '100%',
   },
   bookingServiceGrid: {

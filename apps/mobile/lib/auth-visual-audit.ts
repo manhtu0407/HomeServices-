@@ -1,8 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
-import type { UserRole } from '@nestscout/shared'
 import { Platform } from 'react-native'
-
-type VisualAuditRole = Extract<UserRole, 'customer' | 'worker' | 'admin'>
+import { resolveLocalVisualAuditRole, type VisualAuditRole } from './auth-visual-audit-role'
 
 export function getLocalVisualAuditRole(): VisualAuditRole | null {
   if (!__DEV__ || Platform.OS !== 'web') return null
@@ -12,12 +10,13 @@ export function getLocalVisualAuditRole(): VisualAuditRole | null {
       hostname?: string
       search?: string
     }
+    sessionStorage?: Parameters<typeof resolveLocalVisualAuditRole>[0]['sessionStorage']
   }
-  const hostname = runtime.location?.hostname ?? ''
-  if (!['localhost', '127.0.0.1', '::1'].includes(hostname)) return null
-
-  const role = new URLSearchParams(runtime.location?.search ?? '').get('ns_audit_role')
-  return role === 'customer' || role === 'worker' || role === 'admin' ? role : null
+  return resolveLocalVisualAuditRole({
+    hostname: runtime.location?.hostname ?? '',
+    search: runtime.location?.search ?? '',
+    sessionStorage: runtime.sessionStorage,
+  })
 }
 
 export function buildLocalVisualAuditSession(role: VisualAuditRole): Session {

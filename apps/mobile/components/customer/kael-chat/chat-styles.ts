@@ -182,12 +182,13 @@ export const customerV21ChatStyles = StyleSheet.create({
   },
   chatHeaderModeLabel: {
     alignSelf: 'stretch',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     includeFontPadding: false,
     lineHeight: 20,
     textAlign: 'center',
     textAlignVertical: 'center',
+    transform: [{ translateX: -12 }],
   },
   chatHeaderModeTrigger: {
     ...customerV21WebFocusRing,

@@ -476,6 +476,37 @@ describe('mobile API response guard', () => {
     assertRetryWarning()
   })
 
+  it('retries normal Customer Kael session creation with its durable request id', async () => {
+    jest.useFakeTimers()
+    const assertRetryWarning = captureExpectedRetryWarning('/me/kael/conversations')
+    mockFetch
+      .mockRejectedValueOnce(new TypeError('response lost after conversation creation'))
+      .mockResolvedValueOnce({
+        body: null,
+        headers: { get: () => null },
+        ok: true,
+        status: 201,
+        text: jest.fn(async () => '{"session":{"id":"conversation-1"},"turns":[]}'),
+      })
+
+    const pending = api.post('/me/kael/conversations', {
+      client_request_id: 'b7500000-0000-4000-8000-000000000002',
+      mode: 'normal',
+    })
+    await jest.runAllTimersAsync()
+
+    await expect(pending).resolves.toMatchObject({ success: true })
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    const headers = mockFetch.mock.calls.map(([, init]) => (
+      (init?.headers as Record<string, string>)['Idempotency-Key']
+    ))
+    expect(headers).toEqual([
+      'mobile:b7500000-0000-4000-8000-000000000002',
+      'mobile:b7500000-0000-4000-8000-000000000002',
+    ])
+    assertRetryWarning()
+  })
+
   it('retries a worker scope change protected by its required request id', async () => {
     jest.useFakeTimers()
     const assertRetryWarning = captureExpectedRetryWarning('/jobs/job-1/scope-change')

@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
 import type { Database } from '@nestscout/shared'
+import { getLocalVisualAuditRole } from './auth-visual-audit'
 import { mobileRuntimeConfig } from './runtime-config'
 import { withSecureStoreDeadline } from './secure-store-deadline'
 
@@ -111,13 +112,17 @@ async function queueAuthStorageMutation(key: string, operation: () => Promise<vo
   await withSecureStoreDeadline(mutation).catch(() => undefined)
 }
 
-export const supabaseAuthOptions = {
-  storage: supabaseAuthStorage,
-  autoRefreshToken: true,
-  persistSession: true,
-  detectSessionInUrl: Platform.OS === 'web',
-  flowType: 'pkce' as const,
+export function createSupabaseAuthOptions(localVisualAudit = false) {
+  return {
+    storage: supabaseAuthStorage,
+    autoRefreshToken: !localVisualAudit,
+    persistSession: !localVisualAudit,
+    detectSessionInUrl: !localVisualAudit && Platform.OS === 'web',
+    flowType: 'pkce' as const,
+  }
 }
+
+export const supabaseAuthOptions = createSupabaseAuthOptions(Boolean(getLocalVisualAuditRole()))
 
 export async function supabaseFetch(
   input: Parameters<typeof fetch>[0],

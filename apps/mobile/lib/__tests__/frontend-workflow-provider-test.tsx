@@ -23,7 +23,7 @@ const mockGetCustomerAvatar = jest.fn()
 const mockUploadCustomerAvatar = jest.fn()
 let mockAuth: {
   role: 'customer' | 'worker'
-  session: { user: { id: string } }
+  session: { user: { app_metadata?: { provider?: string }; id: string } }
 } = {
   role: 'worker',
   session: { user: { id: 'worker-available' } },
@@ -312,6 +312,37 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
 
     expect(mockGetProfile).toHaveBeenCalled()
     expect(mockUpdateAvailability).not.toHaveBeenCalled()
+  })
+
+  it('does not hydrate remote workflow data for a local visual-audit session', async () => {
+    jest.useFakeTimers()
+    mockAuth = {
+      role: 'customer',
+      session: {
+        user: {
+          app_metadata: { provider: 'local-visual-audit' },
+          id: 'local-visual-audit-customer',
+        },
+      },
+    }
+
+    try {
+      const screen = render(
+        <FrontendWorkflowProvider>
+          <CustomerAvatarProbe />
+        </FrontendWorkflowProvider>,
+      )
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1)
+      })
+
+      expect(screen.getByTestId('customer-avatar-url')).toHaveTextContent('initials')
+      expect(mockGetCustomerAvatar).not.toHaveBeenCalled()
+      expect(mockListMyActiveJob).not.toHaveBeenCalled()
+      expect(mockListNotifications).not.toHaveBeenCalled()
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it('hydrates and updates the signed customer avatar through the workflow owner', async () => {

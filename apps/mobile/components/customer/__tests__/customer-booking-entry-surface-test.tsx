@@ -295,6 +295,9 @@ describe('CustomerBookingEntrySurface v2.1', () => {
 
     fireEvent.press(screen.getByTestId('customer-v21-service-electrical'))
 
+    expect(screen.getByTestId('customer-v21-selected-service-frame')).toHaveStyle({
+      marginTop: 6,
+    })
     expect(screen.getByTestId('customer-v21-selected-service')).toHaveStyle({
       alignItems: 'stretch',
       flexBasis: '100%',

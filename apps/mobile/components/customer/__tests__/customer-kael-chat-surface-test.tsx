@@ -554,6 +554,26 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
   })
 
+  it('keeps breathing room between the new-session action and the session list', async () => {
+    mockSessionsByMode.normal = [makeConversationSession('normal', 'session-spacing')]
+    render(<CustomerKaelSurface />)
+
+    await waitForConversationCatalog('normal')
+
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    const sessionList = screen.getByTestId('customer-v21-kael-session-list')
+
+    expect(StyleSheet.flatten(sessionList.props.style)).toMatchObject({
+      marginTop: 6,
+      maxHeight: 138,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-label').props.style)).toMatchObject({
+      fontSize: 12,
+    })
+    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('height', 20)
+    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('width', 20)
+  })
+
   it('sends a normal Kael message when the keyboard submits the composer', async () => {
     render(<CustomerKaelSurface />)
 
@@ -742,11 +762,13 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.queryByTestId('customer-v21-kael-session-menu')).toBeNull()
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('editable', true)
     expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
-    expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining('/kael-chat'))
+    expect(mockReplace).not.toHaveBeenCalled()
 
     await act(async () => {
       resolveCreate({ data: { session, turns: [] }, success: true })
     })
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(expect.stringContaining('/kael-chat')))
   })
 
   it('persists pre-link Work handling turns in its own Customer catalog', async () => {
@@ -1084,10 +1106,11 @@ describe('active customer Kael chat surface wiring', () => {
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
-      fontSize: 15,
+      fontSize: 14,
       includeFontPadding: false,
       textAlign: 'center',
       textAlignVertical: 'center',
+      transform: [{ translateX: -12 }],
     })
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-mode-toggle'))
@@ -1272,37 +1295,31 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByText('Chưa có yêu cầu để tìm thợ')).toBeOnTheScreen()
   })
 
-  it('keeps Customer Preview on the server-scoped customer identity when listing and creating sessions', async () => {
+  it('keeps Customer Preview session creation local without calling the deployed API', async () => {
     mockAuthSessionProvider = 'local-visual-audit'
     mockCustomerId = 'local-visual-audit-customer'
     mockRouteParams = { mode: 'normal', ns_audit_role: 'customer' }
-    const serverCustomerId = 'customer_preview_server_identity'
-    const listedSession = {
-      ...makeConversationSession('normal', 'preview-listed-session'),
-      customer_id: serverCustomerId,
-    }
-    const createdSession = {
-      ...makeConversationSession('normal', 'preview-created-session'),
-      customer_id: serverCustomerId,
-    }
     mockConversationList.mockResolvedValue({
-      data: { sessions: [listedSession] },
-      success: true,
+      code: 'AUTH_MISSING',
+      error: 'Phiên đăng nhập hết hạn',
+      status: 401,
+      success: false,
     })
     mockConversationCreate.mockResolvedValue({
-      data: { session: createdSession, turns: [] },
-      success: true,
+      code: 'AUTH_MISSING',
+      error: 'Phiên đăng nhập hết hạn',
+      status: 401,
+      success: false,
     })
     render(<CustomerKaelSurface />)
 
-    await waitForConversationCatalog('normal')
+    await waitFor(() => expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen())
+    expect(mockConversationList).not.toHaveBeenCalled()
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
-    expect(screen.getByTestId('customer-v21-kael-session-preview-listed-session')).toBeOnTheScreen()
-
     fireEvent.press(screen.getByTestId('customer-v21-kael-session-new'))
 
-    await waitFor(() => expect(mockConversationCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'normal' })))
     await waitFor(() => expect(mockReplace).toHaveBeenLastCalledWith('/(customer)/kael-chat?mode=normal&ns_audit_role=customer'))
+    expect(mockConversationCreate).not.toHaveBeenCalled()
     expect(screen.queryByText('Chưa tải được các cuộc trò chuyện. Vui lòng thử lại.')).toBeNull()
     expect(screen.queryByText('Chưa thể tạo cuộc trò chuyện mới.')).toBeNull()
   })

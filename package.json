@@ -11,6 +11,7 @@
     "doctor:react": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-react-doctor.ps1",
     "doctor:react:changed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-react-doctor.ps1 changed",
     "preview:mobile:web:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-mobile-web-staging-preview.ps1",
+    "preview:mobile:web:production": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-mobile-web-production-preview.ps1",
     "kael:eval": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 apps/api/scripts/kael-eval.mjs",
     "kael:eval:playbook": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-node.ps1 apps/api/scripts/kael-playbook-eval.mjs",
     "lint": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-turbo.ps1 lint",

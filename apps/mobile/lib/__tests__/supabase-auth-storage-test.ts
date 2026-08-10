@@ -29,7 +29,12 @@ jest.mock('../runtime-config', () => ({
   },
 }))
 
-import { supabaseAuthOptions, supabaseAuthStorage, supabaseFetch } from '../supabase'
+import {
+  createSupabaseAuthOptions,
+  supabaseAuthOptions,
+  supabaseAuthStorage,
+  supabaseFetch,
+} from '../supabase'
 
 describe('native Supabase auth storage', () => {
   beforeEach(() => {
@@ -42,6 +47,14 @@ describe('native Supabase auth storage', () => {
   it('uses PKCE so a native callback code is bound to the initiating device', () => {
     expect(supabaseAuthOptions.flowType).toBe('pkce')
     expect(supabaseAuthOptions.detectSessionInUrl).toBe(false)
+  })
+
+  it('keeps local visual audits from loading or refreshing a persisted session', () => {
+    const options = createSupabaseAuthOptions(true)
+
+    expect(options.autoRefreshToken).toBe(false)
+    expect(options.persistSession).toBe(false)
+    expect(options.detectSessionInUrl).toBe(false)
   })
 
   it('does not resurrect a session from memory when SecureStore fails', async () => {

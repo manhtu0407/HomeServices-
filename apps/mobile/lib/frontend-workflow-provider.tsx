@@ -153,6 +153,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const [state, dispatch] = useReducer(localWorkflowReducer, undefined, createInitialLocalWorkflowState)
   const selectors = useMemo(() => selectLocalWorkflow(state), [state])
   const sessionUserId = session?.user.id ?? null
+  const localVisualAuditSession = session?.user.app_metadata?.provider === 'local-visual-audit'
+  const remoteRole = localVisualAuditSession ? null : role
+  const remoteSessionUserId = localVisualAuditSession ? null : sessionUserId
   const stateRef = useRef(state)
   const pendingJobCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingDirectScopeChangeClientRequestRef = useRef<PendingClientRequestId | null>(null)
@@ -198,25 +201,25 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     notificationUnreadCount,
     refreshNotifications,
     markNotificationRead,
-  } = useNotificationActions({ role, sessionUserId, setRemoteError })
+  } = useNotificationActions({ role: remoteRole, sessionUserId: remoteSessionUserId, setRemoteError })
 
   const {
     customerKaelMemory,
     customerKaelMemoryStatus,
     refreshCustomerKaelMemory,
     updateCustomerKaelMemoryPreference,
-  } = useCustomerKaelMemoryActions({ role, sessionUserId, setRemoteError })
+  } = useCustomerKaelMemoryActions({ role: remoteRole, sessionUserId: remoteSessionUserId, setRemoteError })
 
   const {
     customerProfileInsights,
     refreshCustomerProfileInsights,
-  } = useCustomerProfileInsightsActions({ role, sessionUserId })
+  } = useCustomerProfileInsightsActions({ role: remoteRole, sessionUserId: remoteSessionUserId })
 
   const {
     customerAvatarUrl,
     customerUploadAvatar,
     refreshCustomerAvatar,
-  } = useCustomerAvatarActions({ role, sessionUserId, setRemoteError })
+  } = useCustomerAvatarActions({ role: remoteRole, sessionUserId: remoteSessionUserId, setRemoteError })
 
   const {
     cancelRemoteJob,
@@ -229,8 +232,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     dispatch,
     language,
     pendingJobCreateClientRequestRef,
-    role,
-    sessionUserId,
+    role: remoteRole,
+    sessionUserId: remoteSessionUserId,
     setRemoteError,
     stateRef,
   })
@@ -256,8 +259,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   } = useWorkerBoardActions({
     dispatch,
     refreshCurrentJob,
-    role,
-    sessionUserId,
+    role: remoteRole,
+    sessionUserId: remoteSessionUserId,
     setRemoteError,
     stateRef,
   })
@@ -274,8 +277,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     hydrateRemoteJobById,
     language,
     remoteJobId,
-    role,
-    sessionUserId,
+    role: remoteRole,
+    sessionUserId: remoteSessionUserId,
     stateRef,
   })
 
@@ -417,37 +420,37 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   // Refresh immediately on foreground; polling and realtime can otherwise leave
   // a stale timeline/notification visible until their next interval/event.
   useEffect(() => {
-    if (!sessionUserId || !role) return
+    if (!remoteSessionUserId || !remoteRole) return
     const subscription = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return
       const live = liveRefreshRef.current
       if (!live) return
       void live.refreshNotifications()
-      if (role === 'customer' || role === 'admin') {
+      if (remoteRole === 'customer' || remoteRole === 'admin') {
         if (getRemoteJobId(stateRef.current)) void live.refreshCurrentJob()
         else void live.hydrateCustomerActiveJob()
       }
       // The avatar read URL is short-lived, so re-sign it after a long background.
-      if (role === 'customer') void live.refreshCustomerAvatar()
-      if (role === 'worker' || role === 'admin') void live.workerRefresh()
+      if (remoteRole === 'customer') void live.refreshCustomerAvatar()
+      if (remoteRole === 'worker' || remoteRole === 'admin') void live.workerRefresh()
     })
     return () => subscription.remove()
-  }, [role, sessionUserId])
+  }, [remoteRole, remoteSessionUserId])
 
   // Realtime surfaces incoming broadcasts quickly; polling remains the fallback
   // and RLS scopes the channel to this worker's own rows.
   useEffect(() => {
-    if (!sessionUserId || (role !== 'worker' && role !== 'admin')) return
-    const handle = subscribeToWorkerBroadcasts(sessionUserId, () => {
+    if (!remoteSessionUserId || (remoteRole !== 'worker' && remoteRole !== 'admin')) return
+    const handle = subscribeToWorkerBroadcasts(remoteSessionUserId, () => {
       void liveRefreshRef.current?.workerRefresh()
     })
     return () => {
       void handle?.unsubscribe()?.catch(() => {})
     }
-  }, [role, sessionUserId])
+  }, [remoteRole, remoteSessionUserId])
 
   const customerTimelineActive =
-    (role === 'customer' || role === 'admin') &&
+    (remoteRole === 'customer' || remoteRole === 'admin') &&
     !!remoteJobId &&
     ACTIVE_TIMELINE_STATUSES.includes(customerStatus ?? '')
 

@@ -128,7 +128,7 @@ export function CustomerKaelSessionMenu({
           testID="customer-v21-kael-session-new"
         >
           <SessionPlusIcon color={tokens.primary} />
-          <Text style={[styles.newSessionText, { color: tokens.primary }]}>{copy.newSession}</Text>
+          <Text testID="customer-v21-kael-session-new-label" style={[styles.newSessionText, { color: tokens.primary }]}>{copy.newSession}</Text>
         </KaelLiquidPressable>
 
         {loading ? <Text style={[styles.feedback, { color: tokens.muted }]}>{copy.loading}</Text> : null}
@@ -144,6 +144,7 @@ export function CustomerKaelSessionMenu({
             nestedScrollEnabled
             showsVerticalScrollIndicator={false}
             style={styles.sessionListViewport}
+            testID="customer-v21-kael-session-list"
           >
             {sessions.map((session) => {
               const selected = session.id === activeSessionId
@@ -350,7 +351,7 @@ function ActionButton({
 }
 
 function SessionPlusIcon({ color }: { color: string }) {
-  return <Svg height={18} viewBox="0 0 24 24" width={18}><Path d="M12 5.5v13M5.5 12h13" fill="none" stroke={color} strokeLinecap="round" strokeWidth={2} /></Svg>
+  return <Svg height={20} testID="customer-v21-kael-session-new-plus" viewBox="0 0 24 24" width={20}><Path d="M12 5.5v13M5.5 12h13" fill="none" stroke={color} strokeLinecap="round" strokeWidth={2} /></Svg>
 }
 
 function SessionMoreIcon({ color }: { color: string }) {
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
   moreButton: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 13, justifyContent: 'center', minWidth: 36 },
   moreButtonOpen: { backgroundColor: 'rgba(217,246,240,0.78)' },
   newSession: { alignItems: 'center', backgroundColor: 'rgba(229,250,245,0.92)', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', minHeight: 44, paddingHorizontal: 8 },
-  newSessionText: { fontSize: 11, fontWeight: '700' },
+  newSessionText: { fontSize: 12, fontWeight: '700' },
   renameActions: { alignItems: 'center', flexDirection: 'row', justifyContent: 'flex-end' },
   renameEditor: { backgroundColor: 'rgba(246,253,251,0.98)', borderRadius: 15, borderWidth: 1, gap: 5, padding: 8 },
   renameInput: { fontSize: 12, minHeight: 38, paddingHorizontal: 10, paddingVertical: 7 },
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
   sessionCopy: { flex: 1, minWidth: 0 },
   sessionGroup: { gap: 3 },
   sessionList: { gap: 3 },
-  sessionListViewport: { maxHeight: 138 },
+  sessionListViewport: { marginTop: 6, maxHeight: 138 },
   sessionMain: { alignItems: 'center', flex: 1, flexDirection: 'row', minHeight: 44, paddingLeft: 8, paddingRight: 2 },
   sessionMeta: { fontSize: 9.5, fontWeight: '500', lineHeight: 12 },
   sessionSelected: { backgroundColor: 'rgba(231,252,247,0.98)' },
