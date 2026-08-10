@@ -3,8 +3,10 @@ import { readFileSync, existsSync, readdirSync } from 'fs'
 import { dirname, resolve } from 'path'
 
 const MOBILE_ROOT = resolve(__dirname, '../../../../apps/mobile')
+const REPOSITORY_ROOT = resolve(MOBILE_ROOT, '../..')
 const readSource = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')
 const read = (rel: string) => readSource(resolve(MOBILE_ROOT, rel))
+const readRepository = (rel: string) => readSource(resolve(REPOSITORY_ROOT, rel))
 const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 const countOccurrences = (source: string, value: string) => source.split(value).length - 1
 
@@ -277,7 +279,9 @@ describe('screen files existence (STRUCTURES.md mapping)', () => {
   it('routes every admin entry through the current Admin sections surface', () => {
     expect(exists('app/(admin)/dashboard.tsx')).toBe(false)
     expect(exists('app/(admin)/sections.tsx')).toBe(true)
-    expect(read('app/(admin)/sections.tsx')).toContain('AdminSections')
+    const src = read('app/(admin)/sections.tsx')
+    expect(src).toContain('AdminSections')
+    expect(src).not.toContain('fetch(')
 
     for (const route of [
       'app/index.tsx',
@@ -1879,6 +1883,14 @@ describe('app.json configuration', () => {
 
   it('has Android package', () => {
     expect(expo.android?.package).toBeDefined()
+  })
+
+  it('has an Android version code that can replace the prior preview build', () => {
+    expect(expo.android?.versionCode).toBeGreaterThan(1)
+  })
+
+  it('excludes the generated Android project from the EAS upload', () => {
+    expect(readRepository('.easignore')).toMatch(/^\/apps\/mobile\/android\/?$/m)
   })
 
   it('enables microphone only through the on-device speech recognition plugin', () => {
