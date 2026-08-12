@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, component, glass, shadow, typography } from '@/design/theme'
 
@@ -65,10 +66,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#13CBB8',
     borderColor: 'rgba(2,126,115,0.22)',
     borderWidth: 1,
-    shadowColor: '#059F8E',
-    shadowOffset: { height: 14, width: 0 },
-    shadowOpacity: 0.27,
-    shadowRadius: 28,
+    boxShadow: createSurfaceShadow({ color: '#059F8E', offsetY: 14, opacity: 0.27, radius: 28 }),
   },
   privateKaelMediaImage: {
     backgroundColor: color.mint.mint100,
@@ -133,7 +131,7 @@ export const styles = StyleSheet.create({
   scopeSubmitDisabled: {
     backgroundColor: 'rgba(229,247,243,0.92)',
     borderColor: color.mint.mint100,
-    shadowOpacity: 0,
+    boxShadow: 'none',
   },
   scopeSubmitDisabledText: {
     color: color.brand.primaryDark,

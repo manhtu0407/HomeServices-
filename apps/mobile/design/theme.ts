@@ -163,34 +163,72 @@ export const radius = {
   pill: 999,
 } as const
 
+export type SurfaceShadowSpec = {
+  color: string
+  offsetX?: number
+  offsetY: number
+  opacity: number
+  radius: number
+  spread?: number
+}
+
+const SHORT_HEX = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i
+const FULL_HEX = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i
+const RGB_FUNCTION = /^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*(?:,\s*([0-9.]+)\s*)?\)$/i
+
+function toShadowColor(color: string, opacity: number): string {
+  const value = color.trim()
+  const short = SHORT_HEX.exec(value)
+  if (short) {
+    const channels = [short[1], short[2], short[3]].map((part) => parseInt(part + part, 16))
+    return `rgba(${channels.join(',')},${roundAlpha(opacity)})`
+  }
+  const full = FULL_HEX.exec(value)
+  if (full) {
+    const channels = [full[1], full[2], full[3]].map((part) => parseInt(part, 16))
+    return `rgba(${channels.join(',')},${roundAlpha(opacity)})`
+  }
+  const rgb = RGB_FUNCTION.exec(value)
+  if (rgb) {
+    const baseAlpha = rgb[4] === undefined ? 1 : Number(rgb[4])
+    return `rgba(${rgb[1]},${rgb[2]},${rgb[3]},${roundAlpha(baseAlpha * opacity)})`
+  }
+  throw new Error(`Unsupported shadow color: ${color}`)
+}
+
+function roundAlpha(alpha: number): number {
+  return Math.round(alpha * 10000) / 10000
+}
+
+/**
+ * Single emitter for every drop shadow in the app, glass and opaque alike.
+ *
+ * Emits `boxShadow` because the legacy `shadow*` props are iOS-only in React Native
+ * (`Libraries/StyleSheet/StyleSheetTypes.js` marks all four `@platform ios`): on Android a
+ * style carrying them without `elevation` draws no shadow at all. `boxShadow` renders on both
+ * platforms and, unlike `elevation`, keeps colour and offset.
+ *
+ * `radius` stays in legacy `shadowRadius` units. It is doubled because React Native maps a
+ * boxShadow blur to `CALayer.shadowRadius = blur / 2` (`React/Fabric/Utils/RCTBoxShadow.mm`)
+ * while the legacy prop maps 1:1 — doubling keeps iOS pixel-identical across the migration.
+ */
+export function createSurfaceShadow({ color, offsetX = 0, offsetY, opacity, radius, spread }: SurfaceShadowSpec): string {
+  const spreadSegment = spread === undefined ? '' : ` ${spread}px`
+  return `${offsetX}px ${offsetY}px ${radius * 2}px${spreadSegment} ${toShadowColor(color, opacity)}`
+}
+
 export const shadow = {
   soft: {
-    shadowColor: '#085F57',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 3,
+    boxShadow: createSurfaceShadow({ color: '#085F57', offsetY: 12, opacity: 0.08, radius: 14 }),
   },
   raised: {
-    shadowColor: '#085F57',
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 18 },
-    elevation: 5,
+    boxShadow: createSurfaceShadow({ color: '#085F57', offsetY: 18, opacity: 0.12, radius: 18 }),
   },
   primary: {
-    shadowColor: '#087D72',
-    shadowOpacity: 0.24,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 7,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 14, opacity: 0.24, radius: 16 }),
   },
   orb: {
-    shadowColor: '#087D72',
-    shadowOpacity: 0.34,
-    shadowRadius: 17,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 8,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 16, opacity: 0.34, radius: 17 }),
   },
 } as const
 

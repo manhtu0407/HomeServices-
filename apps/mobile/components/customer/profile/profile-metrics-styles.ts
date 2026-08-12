@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 export const customerV21ProfileMetricStyles = StyleSheet.create({
   caseOverviewScoreHighlight: {
@@ -49,12 +50,9 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
   profileScoreLens: {
     borderRadius: 999,
     borderWidth: 1,
+    boxShadow: createSurfaceShadow({ color: '#04665B', offsetY: 9, opacity: 0.09, radius: 24 }),
     overflow: 'hidden',
     position: 'absolute',
-    shadowColor: '#04665B',
-    shadowOffset: { height: 9, width: 0 },
-    shadowOpacity: 0.09,
-    shadowRadius: 24,
     zIndex: 1,
   },
   profileScoreMeta: {
@@ -100,6 +98,7 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 22,
     borderWidth: 1,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 10, opacity: 0.10, radius: 24 }),
     flexBasis: '30%',
     flexGrow: 1,
     justifyContent: 'center',
@@ -108,10 +107,6 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 12,
     position: 'relative',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 24,
   },
   profileStatContent: {
     alignItems: 'center',

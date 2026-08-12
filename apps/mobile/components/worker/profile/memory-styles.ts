@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, radius, shadow, typography } from '@/design/theme'
 
@@ -100,11 +101,8 @@ export const styles = StyleSheet.create({
   toggleKnob: {
     backgroundColor: color.mint.white,
     borderRadius: 10,
+    boxShadow: createSurfaceShadow({ color: color.text.strong, offsetY: 3, opacity: 0.12, radius: 8 }),
     height: 20,
-    shadowColor: color.text.strong,
-    shadowOffset: { height: 3, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
     width: 20,
   },
   toggleKnobOn: {

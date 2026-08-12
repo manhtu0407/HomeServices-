@@ -22,11 +22,8 @@ describe('Kael UI primitives', () => {
   it('keeps the primary CTA gradient aligned with the final mint aura colors without extra white overlays', () => {
     expect(component.button.primary.gradient).toEqual(['#31D7C2', '#09B29E', '#077C72'])
     expect(component.button.primary.gradientStops).toEqual([0, 0.5, 1])
-    expect(shadow.primary).toMatchObject({
-      shadowColor: '#087D72',
-      shadowOffset: { height: 14, width: 0 },
-      shadowOpacity: 0.24,
-      shadowRadius: 16,
+    expect(shadow.primary).toEqual({
+      boxShadow: '0px 14px 32px rgba(8,125,114,0.24)',
     })
   })
 

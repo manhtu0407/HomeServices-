@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, shadow, typography } from '@/design/theme'
 
@@ -89,10 +90,7 @@ export const styles = StyleSheet.create({
   serviceSourceCardSelected: {
     backgroundColor: 'rgba(255,255,255,0.96)',
     borderColor: 'rgba(70,194,174,0.58)',
-    shadowColor: '#79D8C8',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
+    boxShadow: createSurfaceShadow({ color: '#79D8C8', offsetY: 8, opacity: 0.1, radius: 16 }),
   },
   serviceSourceCardInactive: {
     backgroundColor: 'rgba(245,250,249,0.9)',

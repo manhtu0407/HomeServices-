@@ -1,5 +1,13 @@
 import type { ViewStyle } from 'react-native'
-import { glassSurfaceTheme } from '@/design/theme'
+import { createSurfaceShadow, glassSurfaceTheme, type SurfaceShadowSpec } from '@/design/theme'
+
+/**
+ * Component-facing shadow contract. Every opaque surface reaches for `createSurfaceShadow`
+ * here; glass surfaces get it through `createGlassSurfaceStyle` below. The implementation
+ * lives in the design layer so the token source stays a leaf module — components depend on
+ * design, never the reverse.
+ */
+export { createSurfaceShadow, type SurfaceShadowSpec }
 
 export type GlassVariant = 'nav' | 'control' | 'hero' | 'sheet'
 export type GlassMode = 'dark' | 'light'

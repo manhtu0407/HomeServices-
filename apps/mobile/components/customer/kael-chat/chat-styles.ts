@@ -1,4 +1,5 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 const customerV21WebFocusRing = Platform.OS === 'web'
   ? ({ outlineColor: 'rgba(13,167,151,0.62)' } as unknown as ViewStyle)
@@ -84,13 +85,10 @@ export const customerV21ChatStyles = StyleSheet.create({
     zIndex: 0,
   },
   chatComposer: {
+    boxShadow: createSurfaceShadow({ color: '#059B8A', offsetY: 10, opacity: 0.10, radius: 24 }),
     minHeight: 56,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#059B8A',
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 24,
   },
   chatComposerDisclaimer: {
     fontSize: 10.5,
@@ -145,13 +143,10 @@ export const customerV21ChatStyles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 22,
     borderWidth: 1,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 8, opacity: 0.08, radius: 18 }),
     flexDirection: 'row',
     height: 44,
     overflow: 'hidden',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
   },
   chatHeaderActionsOpen: {
     borderColor: 'rgba(15,174,155,0.30)',
@@ -161,12 +156,9 @@ export const customerV21ChatStyles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 24,
     borderWidth: 1,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 8, opacity: 0.08, radius: 18 }),
     height: 48,
     justifyContent: 'center',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
     width: 48,
   },
   chatHeaderModeLabel: {
@@ -217,9 +209,6 @@ export const customerV21ChatStyles = StyleSheet.create({
     minHeight: 32,
     paddingHorizontal: 14,
     paddingVertical: 7,
-    shadowOffset: { height: 5, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
   },
   chatLatestButtonText: {
     fontSize: 12,
@@ -260,10 +249,7 @@ export const customerV21ChatStyles = StyleSheet.create({
     zIndex: 1,
   },
   chatModeButtonActive: {
-    shadowColor: '#046358',
-    shadowOffset: { height: 7, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
+    boxShadow: createSurfaceShadow({ color: '#046358', offsetY: 7, opacity: 0.08, radius: 16 }),
   },
   chatModeMenu: {
     alignSelf: 'flex-end',
@@ -331,15 +317,12 @@ export const customerV21ChatStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.88)',
     borderRadius: 18,
     borderWidth: 1,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 8, opacity: 0.05, radius: 16 }),
     gap: 4,
     minHeight: 46,
     overflow: 'hidden',
     padding: 4,
     position: 'relative',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
   },
   chatTranscript: {
     flexGrow: 1,

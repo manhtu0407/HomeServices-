@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, shadow, typography } from '@/design/theme'
 
@@ -34,10 +35,7 @@ export const styles = StyleSheet.create({
   },
   timelineDotActive: {
     backgroundColor: color.brand.primary,
-    shadowColor: color.brand.primary,
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 9,
+    boxShadow: createSurfaceShadow({ color: color.brand.primary, offsetY: 0, opacity: 0.16, radius: 9 }),
   },
   timelineDotDone: {
     backgroundColor: color.accent.success,

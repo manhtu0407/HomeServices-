@@ -1,4 +1,5 @@
 import { Platform, StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 export const CUSTOMER_LIQUID_NAV_MAX_WIDTH = 390
 export const CUSTOMER_LIQUID_NAV_SIDE_INSET = 12
@@ -102,13 +103,10 @@ export const customerV21DockStyles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     bottom: 4,
+    boxShadow: createSurfaceShadow({ color: '#078071', offsetY: 9, opacity: 0.12, radius: 20 }),
     left: 4,
     overflow: 'hidden',
     position: 'absolute',
-    shadowColor: '#078071',
-    shadowOffset: { height: 9, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
     top: 4,
     zIndex: 1,
   },
@@ -205,9 +203,6 @@ export const customerV21DockStyles = StyleSheet.create({
   kaelAccessoryActive: {
     borderColor: 'rgba(46,50,54,0.30)',
     borderWidth: 1,
-    shadowColor: '#04302C',
-    shadowOffset: { height: 13, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 27,
+    boxShadow: createSurfaceShadow({ color: '#04302C', offsetY: 13, opacity: 0.14, radius: 27 }),
   },
 })

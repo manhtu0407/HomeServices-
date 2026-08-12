@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, component, glass, radius, shadow, typography } from '@/design/theme'
 
@@ -89,10 +90,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#13CBB8',
     borderColor: 'rgba(2,126,115,0.22)',
     borderWidth: 1,
-    shadowColor: '#059F8E',
-    shadowOffset: { height: 14, width: 0 },
-    shadowOpacity: 0.27,
-    shadowRadius: 28,
+    boxShadow: createSurfaceShadow({ color: '#059F8E', offsetY: 14, opacity: 0.27, radius: 28 }),
   },
   primaryActionText: {
     color: color.text.inverse,
@@ -114,7 +112,7 @@ export const styles = StyleSheet.create({
   sourceActionDisabled: {
     backgroundColor: component.button.disabled.bg,
     borderColor: component.button.disabled.border,
-    shadowOpacity: 0,
+    boxShadow: 'none',
   },
   sourceActionDisabledText: {
     color: component.button.disabled.text,

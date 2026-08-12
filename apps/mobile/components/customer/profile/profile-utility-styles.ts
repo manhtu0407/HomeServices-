@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 export const customerV21ProfileUtilityStyles = StyleSheet.create({
   bodyText: {
@@ -40,12 +41,9 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileInsightChipFrame: {
     alignSelf: 'center',
     borderRadius: 999,
+    boxShadow: createSurfaceShadow({ color: '#08AF9C', offsetY: 7, opacity: 0.07, radius: 14 }),
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#08AF9C',
-    shadowOffset: { height: 7, width: 0 },
-    shadowOpacity: 0.07,
-    shadowRadius: 14,
   },
   profileInsightTitle: {
     fontSize: 16,
@@ -68,15 +66,12 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     gap: 0,
     overflow: 'hidden',
     position: 'relative',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 28,
   },
   profileAuraCardShadowDark: {
-    shadowColor: '#000000',
+    boxShadow: createSurfaceShadow({ color: '#000000', offsetY: 12, opacity: 0.10, radius: 28 }),
   },
   profileAuraCardShadowLight: {
-    shadowColor: '#087D72',
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 12, opacity: 0.10, radius: 28 }),
   },
   profileAuraContent: {
     position: 'relative',
@@ -163,10 +158,7 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   },
   profileAddressSaveDefaultButtonActive: {
     backgroundColor: '#12B8A4',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 12, opacity: 0.22, radius: 20 }),
   },
   profileAddressSavedIcon: {
     flexShrink: 0,
@@ -193,11 +185,8 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileAuraButton: {
     backgroundColor: 'rgba(248,255,253,0.92)',
     borderColor: 'rgba(45,211,193,0.38)',
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 12, opacity: 0.12, radius: 24 }),
     overflow: 'hidden',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
   },
   profileAvatarEditBadge: {
     alignItems: 'center',
@@ -227,12 +216,9 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.92)',
     borderRadius: 30,
     borderWidth: 2,
+    boxShadow: createSurfaceShadow({ color: '#08AF9C', offsetY: 9, opacity: 0.23, radius: 22 }),
     height: 80,
     justifyContent: 'center',
-    shadowColor: '#08AF9C',
-    shadowOffset: { height: 9, width: 0 },
-    shadowOpacity: 0.23,
-    shadowRadius: 22,
     width: 80,
   },
   profileAvatarImage: {
@@ -294,12 +280,9 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileMintChipFrame: {
     alignSelf: 'flex-start',
     borderRadius: 999,
+    boxShadow: createSurfaceShadow({ color: '#08AF9C', offsetY: 7, opacity: 0.08, radius: 16 }),
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#08AF9C',
-    shadowOffset: { height: 7, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
   },
   profileMoneyBody: {
     fontSize: 16,
@@ -448,10 +431,7 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileOverviewHeroCard: {
     borderColor: 'rgba(255,255,255,0.96)',
     borderRadius: 30,
-    shadowColor: '#08AF9C',
-    shadowOffset: { height: 22, width: 0 },
-    shadowOpacity: 0.13,
-    shadowRadius: 44,
+    boxShadow: createSurfaceShadow({ color: '#08AF9C', offsetY: 22, opacity: 0.13, radius: 44 }),
   },
   profilePaymentForm: {
     gap: 12,
@@ -487,11 +467,8 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   },
   profileProgressFill: {
     backgroundColor: '#08AF9C',
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 0, opacity: 0.22, radius: 12 }),
     overflow: 'hidden',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
   },
   profileProgressSheen: {
     backgroundColor: 'rgba(255,255,255,0.70)',
@@ -509,12 +486,9 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileRankingEntryCard: {
     borderColor: 'rgba(74,218,197,0.48)',
     borderRadius: 28,
+    boxShadow: createSurfaceShadow({ color: '#08AF9C', offsetY: 18, opacity: 0.14, radius: 38 }),
     gap: 0,
     padding: 0,
-    shadowColor: '#08AF9C',
-    shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 38,
   },
   profileRankingEntryConnector: {
     height: 1,
@@ -621,10 +595,7 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileRankingHeroCard: {
     borderColor: 'rgba(113,225,209,0.50)',
     borderRadius: 28,
-    shadowColor: '#08AF9C',
-    shadowOffset: { height: 20, width: 0 },
-    shadowOpacity: 0.13,
-    shadowRadius: 42,
+    boxShadow: createSurfaceShadow({ color: '#08AF9C', offsetY: 20, opacity: 0.13, radius: 42 }),
   },
   rankNode: {
     alignItems: 'center',
@@ -638,10 +609,7 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     position: 'relative',
   },
   rankNodeActive: {
-    shadowColor: '#087D72',
-    shadowOffset: { height: 13, width: 0 },
-    shadowOpacity: 0.13,
-    shadowRadius: 26,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 13, opacity: 0.13, radius: 26 }),
   },
   rankNodeContent: {
     alignItems: 'center',
@@ -662,10 +630,7 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
     lineHeight: 22,
   },
   rankNodeRest: {
-    shadowColor: '#056459',
-    shadowOffset: { height: 7, width: 0 },
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
+    boxShadow: createSurfaceShadow({ color: '#056459', offsetY: 7, opacity: 0.07, radius: 18 }),
   },
   rankRail: {
     flexDirection: 'row',
@@ -674,16 +639,13 @@ export const customerV21ProfileUtilityStyles = StyleSheet.create({
   profileRankProcess: {
     borderRadius: 21,
     borderWidth: 1,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 12, opacity: 0.12, radius: 28 }),
     marginTop: 10,
     minHeight: 58,
     overflow: 'hidden',
     paddingHorizontal: 12,
     paddingVertical: 10,
     position: 'relative',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 28,
   },
   profileRankProcessContent: {
     gap: 7,

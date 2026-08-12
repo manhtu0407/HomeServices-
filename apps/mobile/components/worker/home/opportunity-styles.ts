@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, radius, shadow, typography } from '@/design/theme'
 
@@ -60,9 +61,7 @@ export const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.98)',
     borderColor: 'rgba(19,203,184,0.78)',
     borderWidth: 1.5,
-    shadowColor: '#13CBB8',
-    shadowOpacity: 0.24,
-    shadowRadius: 16,
+    boxShadow: createSurfaceShadow({ color: '#13CBB8', offsetY: -3, opacity: 0.24, radius: 16 }),
   },
   opportunityIcon: {
     height: 38,

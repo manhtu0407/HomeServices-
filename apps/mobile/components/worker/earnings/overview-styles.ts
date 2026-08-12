@@ -1,4 +1,5 @@
 import { Platform, StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, shadow, typography } from '@/design/theme'
 
@@ -60,16 +61,13 @@ export const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.76)',
     borderRadius: 999,
     borderWidth: 1,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 8, opacity: 0.08, radius: 18 }),
     flexDirection: 'row',
     height: 54,
     marginHorizontal: 16,
     overflow: 'hidden',
     padding: 4,
     position: 'relative',
-    shadowColor: '#087D72',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
     zIndex: 1,
   },
   periodRailOpaque: {
@@ -115,13 +113,10 @@ export const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     bottom: 4,
+    boxShadow: createSurfaceShadow({ color: '#078071', offsetY: 9, opacity: 0.12, radius: 20 }),
     left: 4,
     overflow: 'hidden',
     position: 'absolute',
-    shadowColor: '#078071',
-    shadowOffset: { height: 9, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
     top: 4,
     zIndex: 1,
   },

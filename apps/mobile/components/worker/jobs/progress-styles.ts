@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, shadow, typography } from '@/design/theme'
 
@@ -79,10 +80,7 @@ export const styles = StyleSheet.create({
     zIndex: 1,
   },
   railNodeActive: {
-    shadowColor: color.brand.primary,
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    boxShadow: createSurfaceShadow({ color: color.brand.primary, offsetY: 0, opacity: 0.1, radius: 10 }),
   },
   railNodeOn: {
     backgroundColor: color.brand.primary,
@@ -144,10 +142,7 @@ export const styles = StyleSheet.create({
   },
   stepRowActive: {
     borderColor: 'rgba(13,174,154,0.34)',
-    shadowColor: color.brand.primary,
-    shadowOffset: { height: 7, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
+    boxShadow: createSurfaceShadow({ color: color.brand.primary, offsetY: 7, opacity: 0.08, radius: 14 }),
   },
   stepRowDone: {
     backgroundColor: 'rgba(255,255,255,0.72)',
@@ -162,10 +157,7 @@ export const styles = StyleSheet.create({
   },
   stepStateActive: {
     backgroundColor: color.brand.primary,
-    shadowColor: color.brand.primary,
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
+    boxShadow: createSurfaceShadow({ color: color.brand.primary, offsetY: 0, opacity: 0.14, radius: 10 }),
   },
   stepStateDone: {
     backgroundColor: color.mint.mint50,

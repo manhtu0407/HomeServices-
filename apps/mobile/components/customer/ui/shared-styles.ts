@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 export const customerV21SharedStyles = StyleSheet.create({
   card: {
@@ -76,15 +77,12 @@ export const customerV21SharedStyles = StyleSheet.create({
   homeEmptyState: {
     overflow: 'hidden',
     position: 'relative',
-    shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 34,
   },
   homeEmptyStateShadowDark: {
-    shadowColor: '#000000',
+    boxShadow: createSurfaceShadow({ color: '#000000', offsetY: 18, opacity: 0.12, radius: 34 }),
   },
   homeEmptyStateShadowLight: {
-    shadowColor: '#05695E',
+    boxShadow: createSurfaceShadow({ color: '#05695E', offsetY: 18, opacity: 0.12, radius: 34 }),
   },
   inactiveAgenticGate: {
     minHeight: 1,
@@ -265,10 +263,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     width: 23,
   },
   progressNodeActive: {
-    shadowColor: '#08AF9C',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 7,
+    boxShadow: createSurfaceShadow({ color: '#08AF9C', offsetY: 0, opacity: 0.14, radius: 7 }),
   },
   progressNodeText: {
     fontSize: 9,
@@ -557,13 +552,9 @@ export const customerV21SharedStyles = StyleSheet.create({
   sourceIconTile: {
     borderRadius: 22,
     borderWidth: 1,
-    elevation: 1,
+    boxShadow: createSurfaceShadow({ color: '#056055', offsetY: 10, opacity: 0.13, radius: 26 }),
     height: 64,
     overflow: 'hidden',
-    shadowColor: '#056055',
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.13,
-    shadowRadius: 26,
     width: 64,
   },
   utilityLabel: {

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { createSurfaceShadow } from '@/components/ui/tokens'
 
 import { color, radius, shadow, typography } from '@/design/theme'
 
@@ -196,10 +197,7 @@ export const styles = StyleSheet.create({
     padding: 14,
     position: 'relative',
     ...shadow.soft,
-    shadowColor: '#087D72',
-    shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 38,
+    boxShadow: createSurfaceShadow({ color: '#087D72', offsetY: 18, opacity: 0.16, radius: 38 }),
   },
   timerLabel: {
     color: color.text.muted,
