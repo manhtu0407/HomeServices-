@@ -567,12 +567,40 @@ P0.3 kết luận Android       → Nhóm 1 ĐÚNG là bug production. Không ch
                               iOS giữ nguyên y hệt.
 ```
 
+**Đo chéo độc lập** (luật 4 §51.0.5 — agent sau chạy lại gate của agent trước). Chạy trên
+container Linux, khác OS với máy Tu, trên đúng `a4f4a64`:
+
+```text
+G2 npx jest --ci            → exit 0 · 119 suite / 1118 test / 0 fail · 78s   ✅ khớp
+G3 react-doctor@0.5.8       → rn-no-legacy-shadow-styles = 0 · rn-style-prefer-boxshadow = 0
+                              (grep trả 0 dòng trên toàn output)              ✅ khớp
+G4 react-doctor@0.5.8       → tổng 171 · Bugs 241 → 29 · Performance 87 · Maintainability 55
+                              171 − 25 deslop/* = 146 react-doctor/*          ✅ khớp con số
+                              146 của Tu; xác nhận luôn cách tách deslop là đúng
+   scripts/check-react-doctor-budget.mjs → exit 0, "react-doctor gate passed"
+```
+
+29 Bugs còn lại được đối chiếu từng rule với §51.0.7.3: `no-event-handler` 11 · `no-derived-state`
+6 · `prefer-useReducer` 3 · `no-cascading-set-state` 3 · `no-pass-live-state-to-parent` 2 ·
+`no-fetch-in-effect` 1 · `no-pass-data-to-parent` 1 · `rn-no-panresponder` 1 ·
+`rn-no-scrollview-mapped-list` 1 = **29**. Trùng khít danh sách false positive đã verify —
+**không còn bug thật nào sót lại** sau P1–P4.
+
+Hai claim chịu lực của P1 cũng được kiểm lại thẳng vào `node_modules/react-native@0.86.2`:
+`Libraries/StyleSheet/StyleSheetTypes.js:678-699` (cả 4 prop `@platform ios`) và
+`React/Fabric/Utils/RCTBoxShadow.mm:67` (`shadowLayer.shadowRadius = shadow.blurRadius / 2`).
+Cả hai đúng ⇒ hệ số `radius * 2` giữ iOS nguyên pixel là chính xác.
+
+**G7 vẫn mở** — container này cũng không có device lẫn simulator. G7 chỉ đóng được trên máy
+có thiết bị thật; đây là increment duy nhất của §51 chưa đóng.
+
 ### 51.7 Change Log
 
 | Ver | Ngày | Ai | Đổi gì |
 |---|---|---|---|
 | 0.1 | 2026-08-12 | Claude Code | viết lần đầu từ kết quả React Doctor full scan; 4 quyết định để `OPEN` chờ Tu |
 | 0.2 | 2026-08-12 | Claude Code | Tu nhắc: nhánh thi công chung phải rõ. Đưa `claude/react-doctor-audit-zrlda5` + PR #196 lên blockquote đầu §51 và Metadata; luật 1 §51.0.5 cấm thêm nhánh phụ / worktree / PR thứ hai; thêm vòng git chuẩn cho hai agent dùng chung một nhánh (claim → verify → đóng), luật xử push bị từ chối và cấm force-push |
+| 0.4 | 2026-08-12 | Claude Code | Đo chéo độc lập theo luật 4 §51.0.5, trên container Linux (khác OS máy Tu), tại `a4f4a64`: G2 119/1118/0 fail, G3 = 0/0, G4 tổng 171 ⇒ 146 `react-doctor/*` — **khớp toàn bộ số của v0.3**. Đối chiếu 29 Bugs còn lại với §51.0.7.3: trùng khít, không sót bug thật. Kiểm hai claim chịu lực của P1 thẳng vào `node_modules/react-native@0.86.2` (`StyleSheetTypes.js:678-699`, `RCTBoxShadow.mm:67`) — cả hai đúng. G7 vẫn mở |
 | 0.3 | 2026-08-12 | Claude Code | Thực thi. Tu ra lệnh chạy 4 giờ liên tục, **không hỏi thêm** → D1–D4 chốt theo đúng phương án Claude đã đề xuất sẵn trong §51.0.2, ghi rõ đây là chốt-mặc-định chứ không phải Tu duyệt từng dòng: **D1 = (a)** (nay có bằng chứng nguồn RN, không còn là suy đoán) · **D2 = có** · **D3 = (a)** · **D4 = làm trong plan này**. Kết quả: 25/27 increment `DONE`, 2 `BLOCKED` — **P0.2** (không có thiết bị/simulator ⇒ G7 không đo được; P0.3 thay bằng bằng chứng nguồn RN 0.86.2 đã cài, ghi ở §51.6) và **P3.1** (thử `useLazyRef`, đóng 10 finding nhưng **đẻ 15 finding `exhaustive-deps` mới** vì bọc `useRef` làm analyzer mất dấu ref ⇒ đã revert, lý do ghi ở `docs/audit/react-doctor-accepted-findings-20260812.md`). G4 phải đổi cách đo: họ rule `deslop/*` không tái lập giữa hai lần quét nên gate CI chỉ tính `react-doctor/*` |
 
 ---
