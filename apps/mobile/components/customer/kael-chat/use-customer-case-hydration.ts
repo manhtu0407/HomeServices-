@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type CustomerCaseHydrationSnapshot = {
   owner: CustomerCaseHydrationOwner | null
@@ -42,12 +42,23 @@ export function useCustomerCaseHydration({
   }
   const owner = visibleSnapshot.owner
 
+  // Supabase hands out a new access token on every refresh. The token is a credential for the
+  // request, not a reason to re-fetch the job, so it is read at call time instead of being a
+  // dependency — otherwise every silent refresh replays a hydration that already resolved.
+  // Declared before the hydration effect so a commit that changes both the token and the owner
+  // refreshes the credential first.
+  const sessionAccessTokenRef = useRef(sessionAccessToken)
+  useEffect(() => {
+    sessionAccessTokenRef.current = sessionAccessToken
+  }, [sessionAccessToken])
+
   useEffect(() => {
     if (!hydrate || !owner) return undefined
 
     let cancelled = false
-    const request = sessionAccessToken
-      ? hydrate(owner.targetJobId, sessionAccessToken)
+    const accessToken = sessionAccessTokenRef.current
+    const request = accessToken
+      ? hydrate(owner.targetJobId, accessToken)
       : hydrate(owner.targetJobId)
     void request.then((hydrated) => {
       if (cancelled) return
@@ -62,7 +73,7 @@ export function useCustomerCaseHydration({
     return () => {
       cancelled = true
     }
-  }, [authLoading, hydrate, owner, sessionAccessToken])
+  }, [hydrate, owner])
 
   return {
     authRequired,

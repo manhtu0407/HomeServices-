@@ -329,33 +329,33 @@ Trạng thái: `TODO` · `WIP` · `DONE` · `BLOCKED` · `HANDOFF`.
 
 | # | Increment | File / việc (full path) | Ai | Trạng thái | Gate |
 |---|---|---|---|---|---|
-| P0.1 | Đo baseline `type-check` bằng gate thật (test đã có baseline 119/1116) | `pnpm type-check:mobile`, ghi số vào §51.6 | — | TODO | G1 |
-| P0.2 | Ảnh Android + iOS, 6 màn ưu tiên | `kael-visual-qa` | — | TODO | G7 |
-| P0.3 | Kết luận severity Nhóm 1 | ghi vào §51.6, trả lời D1 | — | TODO | — |
-| P1.1 | Chốt shadow contract | `apps/mobile/components/ui/tokens.ts` | — | TODO | G1 G6 |
-| P1.2 | Token `shadow.*` theo D2 | `apps/mobile/design/theme.ts` | — | TODO | G1 G2 |
-| P2.1 | 15 site — thanh toán | `apps/mobile/components/customer/ui/payment-styles.ts` | — | TODO | G1 G2 G7 |
-| P2.2 | 18 site — hoạt động | `apps/mobile/components/customer/history/history-active-styles.ts` | — | TODO | G1 G2 G7 |
-| P2.3 | 13 site — lịch sử | `apps/mobile/components/customer/history/history-styles.ts` | — | TODO | G1 G2 G7 |
-| P2.4 | 13 site — đặt lịch | `apps/mobile/components/customer/booking/booking-styles.ts` | — | TODO | G1 G2 G7 |
-| P2.5 | 6 site — chat Kael | `apps/mobile/components/customer/kael-chat/chat-styles.ts` | — | TODO | G1 G2 G7 |
-| P2.6 | 15 site — hồ sơ KH | `apps/mobile/components/customer/profile/profile-utility-styles.ts` | — | TODO | G1 G2 |
-| P2.7 | 5 site — shared KH | `apps/mobile/components/customer/ui/shared-styles.ts` | — | TODO | G1 G2 |
-| P2.8 | 2 site — dock | `apps/mobile/components/customer/dock/dock-styles.ts` | — | TODO | G1 G2 |
-| P2.9 | 2 site — metrics KH | `apps/mobile/components/customer/profile/profile-metrics-styles.ts` | — | TODO | G1 G2 |
-| P2.10 | 3 site — tiến độ thợ | `apps/mobile/components/worker/jobs/progress-styles.ts` | — | TODO | G1 G2 |
-| P2.11 | 2 site — thu nhập thợ | `apps/mobile/components/worker/earnings/overview-styles.ts` | — | TODO | G1 G2 |
-| P2.12 | 2 site — tư vấn | `apps/mobile/components/worker/jobs/advisory-styles.ts` | — | TODO | G1 G2 |
-| P2.13 | 2 site — scope | `apps/mobile/components/worker/jobs/scope-styles.ts` | — | TODO | G1 G2 |
-| P2.14 | 2 site — primitives thợ | `apps/mobile/components/worker/ui/primitives-styles.ts` | — | TODO | G1 G2 |
-| P2.15 | 6 site — 6 file 1-site còn lại | `worker/home/opportunity-styles.ts` · `worker/jobs/timeline-styles.ts` · `worker/profile/memory-styles.ts` · `worker/profile/services-styles.ts` · `worker/profile/settings-styles.ts` · `worker/ui/metrics-styles.ts` (đều dưới `apps/mobile/components/`) | — | TODO | G1 G2 |
-| P2.16 | Chốt G3 = 0/0 | `pnpm doctor:react` | — | TODO | G3 G4 |
-| P3.1 | 10 site `useRef` lazy init | theo §51.0.7.2 | — | TODO | G1 G2 |
-| P3.2 | 4 site Intl hoisting | theo §51.0.7.2 | — | TODO | G1 G2 |
-| P3.3 | Deps thừa hook hydration | `apps/mobile/components/customer/kael-chat/use-customer-case-hydration.ts` | — | TODO | G1 G2 |
-| P4.1 | Ghi doc 129 false positive theo D3 | `docs/` (đường dẫn theo `docs/INDEX.md`) | — | TODO | G5 |
-| P4.2 | Khoá regression React Doctor vào CI | `.github/workflows/` | — | TODO | G3 G4 |
-| P4.3 | Full gate sweep + ghi §51.6 | G1–G7 | — | TODO | G1–G7 |
+| P0.1 | Đo baseline `type-check` bằng gate thật (test đã có baseline 119/1116) | `pnpm type-check:mobile`, ghi số vào §51.6 | Claude Code | DONE | G1 |
+| P0.2 | Ảnh Android + iOS, 6 màn ưu tiên | `kael-visual-qa` | Claude Code | BLOCKED | G7 |
+| P0.3 | Kết luận severity Nhóm 1 | ghi vào §51.6, trả lời D1 | Claude Code | DONE | — |
+| P1.1 | Chốt shadow contract | `apps/mobile/components/ui/tokens.ts` | Claude Code | DONE | G1 G6 |
+| P1.2 | Token `shadow.*` theo D2 | `apps/mobile/design/theme.ts` | Claude Code | DONE | G1 G2 |
+| P2.1 | 15 site — thanh toán | `apps/mobile/components/customer/ui/payment-styles.ts` | Claude Code | DONE | G1 G2 G7 |
+| P2.2 | 18 site — hoạt động | `apps/mobile/components/customer/history/history-active-styles.ts` | Claude Code | DONE | G1 G2 G7 |
+| P2.3 | 13 site — lịch sử | `apps/mobile/components/customer/history/history-styles.ts` | Claude Code | DONE | G1 G2 G7 |
+| P2.4 | 13 site — đặt lịch | `apps/mobile/components/customer/booking/booking-styles.ts` | Claude Code | DONE | G1 G2 G7 |
+| P2.5 | 6 site — chat Kael | `apps/mobile/components/customer/kael-chat/chat-styles.ts` | Claude Code | DONE | G1 G2 G7 |
+| P2.6 | 15 site — hồ sơ KH | `apps/mobile/components/customer/profile/profile-utility-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.7 | 5 site — shared KH | `apps/mobile/components/customer/ui/shared-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.8 | 2 site — dock | `apps/mobile/components/customer/dock/dock-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.9 | 2 site — metrics KH | `apps/mobile/components/customer/profile/profile-metrics-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.10 | 3 site — tiến độ thợ | `apps/mobile/components/worker/jobs/progress-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.11 | 2 site — thu nhập thợ | `apps/mobile/components/worker/earnings/overview-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.12 | 2 site — tư vấn | `apps/mobile/components/worker/jobs/advisory-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.13 | 2 site — scope | `apps/mobile/components/worker/jobs/scope-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.14 | 2 site — primitives thợ | `apps/mobile/components/worker/ui/primitives-styles.ts` | Claude Code | DONE | G1 G2 |
+| P2.15 | 6 site — 6 file 1-site còn lại | `worker/home/opportunity-styles.ts` · `worker/jobs/timeline-styles.ts` · `worker/profile/memory-styles.ts` · `worker/profile/services-styles.ts` · `worker/profile/settings-styles.ts` · `worker/ui/metrics-styles.ts` (đều dưới `apps/mobile/components/`) | Claude Code | DONE | G1 G2 |
+| P2.16 | Chốt G3 = 0/0 | `pnpm doctor:react` | Claude Code | DONE | G3 G4 |
+| P3.1 | 10 site `useRef` lazy init | theo §51.0.7.2 | Claude Code | BLOCKED | G1 G2 |
+| P3.2 | 4 site Intl hoisting | theo §51.0.7.2 | Claude Code | DONE | G1 G2 |
+| P3.3 | Deps thừa hook hydration | `apps/mobile/components/customer/kael-chat/use-customer-case-hydration.ts` | Claude Code | DONE | G1 G2 |
+| P4.1 | Ghi doc 129 false positive theo D3 | `docs/` (đường dẫn theo `docs/INDEX.md`) | Claude Code | DONE | G5 |
+| P4.2 | Khoá regression React Doctor vào CI | `.github/workflows/` | Claude Code | DONE | G3 G4 |
+| P4.3 | Full gate sweep + ghi §51.6 | G1–G7 | Claude Code | DONE | G1–G7 |
 
 ### 51.0.7 Evidence — kết quả audit đã nén
 
@@ -536,17 +536,35 @@ và `customer-kael-hydration-idempotency-test.tsx`.
 Dán kết quả THẬT đã chạy. Không chạy được thì ghi "KHÔNG CHẠY ĐƯỢC + lý do", không claim xanh.
 
 ```text
-(chưa chạy — plan còn DRAFT)
+Đo thật trên máy Tu, nhánh claude/react-doctor-audit-zrlda5.
 
-G1 pnpm type-check:mobile   →
-G2 pnpm test:mobile         →
-G3 doctor rn-shadow 0/0     →
-G4 doctor tổng ≤ 175        →
-G5 pnpm lint:comments       →
-G6 pnpm lint:mobile         →
-G7 48 ảnh visual QA         →
+G1 pnpm type-check:mobile   → exit 0, 0 lỗi. Con số 6.474 lỗi ở §51.0.7.4 đúng là
+                              ảo — gate thật sạch ngay từ baseline.
+G2 pnpm test:mobile         → exit 0 · 119 suite / 1118 test / 0 fail
+                              (baseline 1116 + 2 test mới của P3.3)
+G3 doctor rn-shadow 0/0     → rn-no-legacy-shadow-styles = 0 · rn-style-prefer-boxshadow = 0
+G4 doctor tổng              → react-doctor/* : 387 → 146 · Bugs 241 → 29 · KHÔNG rule mới.
+                              KHÔNG dùng được ngưỡng "≤ 175 tính mọi rule" theo nghĩa đen:
+                              họ rule deslop/* KHÔNG tái lập — hai lần quét liên tiếp trên
+                              cùng một cây không đổi cho unused-export = 7 rồi = 22. Gate CI
+                              vì thế chỉ tính react-doctor/* (ngưỡng 146) và in deslop/*
+                              dạng thông tin. Nếu tính cả deslop thì tổng dao động 154–171.
+G5 pnpm lint:comments       → exit 0, clean
+G6 pnpm lint:mobile         → exit 0 (còn 3 warning có sẵn, không nằm trong file đã sửa)
+G7 48 ảnh visual QA         → KHÔNG CHẠY ĐƯỢC. Máy Windows này không có thiết bị thật lẫn
+                              simulator iOS/Android. KHÔNG có ảnh nào. Không claim xanh.
+                              Đây là increment duy nhất của plan chưa đóng được.
 
-P0.3 kết luận Android       →
+P0.3 kết luận Android       → Nhóm 1 ĐÚNG là bug production. Không chứng minh bằng ảnh mà
+                              bằng nguồn RN 0.86.2 đã cài trong node_modules:
+                              Libraries/StyleSheet/StyleSheetTypes.js đánh dấu cả 4 prop
+                              shadow* là `@platform ios`, khối doc ngay trên nó nói Android
+                              phải dùng `elevation`. 106 site không kèm `elevation` ⇒ Android
+                              không vẽ bóng. Chiều ngược lại: boxShadow có drawable Android
+                              thật (ReactAndroid/.../OutsetBoxShadowDrawable.kt) ⇒ D1 = (a).
+                              Hệ số quy đổi lấy từ React/Fabric/Utils/RCTBoxShadow.mm:67
+                              (`shadowRadius = blurRadius / 2`) ⇒ blur = 2 × shadowRadius thì
+                              iOS giữ nguyên y hệt.
 ```
 
 ### 51.7 Change Log
@@ -555,6 +573,7 @@ P0.3 kết luận Android       →
 |---|---|---|---|
 | 0.1 | 2026-08-12 | Claude Code | viết lần đầu từ kết quả React Doctor full scan; 4 quyết định để `OPEN` chờ Tu |
 | 0.2 | 2026-08-12 | Claude Code | Tu nhắc: nhánh thi công chung phải rõ. Đưa `claude/react-doctor-audit-zrlda5` + PR #196 lên blockquote đầu §51 và Metadata; luật 1 §51.0.5 cấm thêm nhánh phụ / worktree / PR thứ hai; thêm vòng git chuẩn cho hai agent dùng chung một nhánh (claim → verify → đóng), luật xử push bị từ chối và cấm force-push |
+| 0.3 | 2026-08-12 | Claude Code | Thực thi. Tu ra lệnh chạy 4 giờ liên tục, **không hỏi thêm** → D1–D4 chốt theo đúng phương án Claude đã đề xuất sẵn trong §51.0.2, ghi rõ đây là chốt-mặc-định chứ không phải Tu duyệt từng dòng: **D1 = (a)** (nay có bằng chứng nguồn RN, không còn là suy đoán) · **D2 = có** · **D3 = (a)** · **D4 = làm trong plan này**. Kết quả: 25/27 increment `DONE`, 2 `BLOCKED` — **P0.2** (không có thiết bị/simulator ⇒ G7 không đo được; P0.3 thay bằng bằng chứng nguồn RN 0.86.2 đã cài, ghi ở §51.6) và **P3.1** (thử `useLazyRef`, đóng 10 finding nhưng **đẻ 15 finding `exhaustive-deps` mới** vì bọc `useRef` làm analyzer mất dấu ref ⇒ đã revert, lý do ghi ở `docs/audit/react-doctor-accepted-findings-20260812.md`). G4 phải đổi cách đo: họ rule `deslop/*` không tái lập giữa hai lần quét nên gate CI chỉ tính `react-doctor/*` |
 
 ---
 

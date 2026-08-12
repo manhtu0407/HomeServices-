@@ -329,17 +329,32 @@ function EmptyState({ label }: { label: string }) {
   return <View style={styles.empty}><Text style={styles.emptyText}>{label}</Text></View>
 }
 
+const DATE_FORMATTERS: Record<AppLanguage, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }),
+  vi: new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }),
+}
+
+const VND_FORMATTERS: Record<AppLanguage, Intl.NumberFormat> = {
+  en: new Intl.NumberFormat('en-US', { currency: 'VND', maximumFractionDigits: 0, style: 'currency' }),
+  vi: new Intl.NumberFormat('vi-VN', { currency: 'VND', maximumFractionDigits: 0, style: 'currency' }),
+}
+
+const USD_FORMATTERS: Record<AppLanguage, Intl.NumberFormat> = {
+  en: new Intl.NumberFormat('en-US', { currency: 'USD', maximumFractionDigits: 4, style: 'currency' }),
+  vi: new Intl.NumberFormat('vi-VN', { currency: 'USD', maximumFractionDigits: 4, style: 'currency' }),
+}
+
 function formatDate(value: string, language: AppLanguage) {
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'medium' }).format(date)
+  return Number.isNaN(date.getTime()) ? value : DATE_FORMATTERS[language].format(date)
 }
 
 function formatVnd(value: number, language: AppLanguage) {
-  return new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US', { currency: 'VND', maximumFractionDigits: 0, style: 'currency' }).format(value)
+  return VND_FORMATTERS[language].format(value)
 }
 
 function formatUsd(value: number, language: AppLanguage) {
-  return new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US', { currency: 'USD', maximumFractionDigits: 4, style: 'currency' }).format(value)
+  return USD_FORMATTERS[language].format(value)
 }
 
 const styles = StyleSheet.create({

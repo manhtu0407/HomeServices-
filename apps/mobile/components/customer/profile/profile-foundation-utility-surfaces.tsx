@@ -467,17 +467,24 @@ function FoundationActionRow({
   )
 }
 
+const NOTIFICATION_TIMESTAMP_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  month: '2-digit',
+  timeZone: 'Asia/Ho_Chi_Minh',
+  year: 'numeric',
+}
+
+const NOTIFICATION_TIMESTAMP_FORMATTERS: Record<AppLanguage, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat('en-US', NOTIFICATION_TIMESTAMP_OPTIONS),
+  vi: new Intl.DateTimeFormat('vi-VN', NOTIFICATION_TIMESTAMP_OPTIONS),
+}
+
 function formatNotificationTimestamp(value: string, language: AppLanguage) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return language === 'vi' ? 'Thời gian chưa xác định' : 'Time unavailable'
   }
-  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    month: '2-digit',
-    timeZone: 'Asia/Ho_Chi_Minh',
-    year: 'numeric',
-  }).format(date)
+  return NOTIFICATION_TIMESTAMP_FORMATTERS[language].format(date)
 }
