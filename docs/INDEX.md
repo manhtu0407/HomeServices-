@@ -25,6 +25,8 @@ Top-level files: `progress-log.md` (the running progress log, referenced by `REA
 
 Outside `docs/`: [`docker/INDEX.md`](../docker/INDEX.md) is the map for running the database and Edge toolchain locally (`pnpm db:local:*`, `pnpm edge:check`). Docker in this repo is a **dev dependency only, never a deployment target** — that boundary is stated there.
 
+Also outside `docs/`: `governance/plan-archive/` holds retired execution plans. `governance/Plan.md` keeps only the plan-writing contract plus the plan currently being executed; a plan that reaches `DONE #<PR>` moves to the archive. Historical `Plan.md §N` references with N ≤ 50 resolve to [`governance/plan-archive/2026-05-20_workflow-enhancement.md`](../governance/plan-archive/2026-05-20_workflow-enhancement.md).
+
 ## Where a new document goes (quick decision)
 
 - Teaching Kael a service? → `playbooks/services/<service>.md` + follow `playbooks/process-distillation.md`.
@@ -52,7 +54,7 @@ These are referenced by locked docs or by code — moving them breaks references
 
 - `architecture/code-ownership-map.md` — referenced by `CLAUDE.md` (locked). The owner-file map per layer.
 - `workflow/worker-cancellation.md` — **load-bearing at runtime.** Its path is a string literal in `supabase/functions/mobile-api/_shared/domains/worker/cancellation.ts`, used as the policy-evidence `reference_id` on a `KaelAutonomyDecision`. Moving, renaming, or deleting it dangles a live evidence pointer and **no test catches it**. Before removing any doc, grep its full path across `*.ts`/`*.tsx`/`*.mjs`, not just `*.md`.
-- `architecture/status-vocabulary.md`, `architecture/workflow-step-contracts.md` — redirect stubs. Content moved into `governance/structures/{state-machines,customer-workflow,worker-workflow}.md`; the files stay because `docs/memory/`, `docs/audit/`, `docs/design/`, and `governance/Plan.md` link to these paths.
+- `architecture/status-vocabulary.md`, `architecture/workflow-step-contracts.md` — redirect stubs. Content moved into `governance/structures/{state-machines,customer-workflow,worker-workflow}.md`; the files stay because `docs/memory/`, `docs/audit/`, `docs/design/`, and `governance/plan-archive/` link to these paths.
 - `memory/INDEX.md` and `memory/<YYYY-MM>.md` — referenced by `CLAUDE.md`, `governance/critical.md` §3 (both locked), `AGENTS.md`, and the `/kael-mem` command. The write target for the Session Memory Gate; moving it breaks the gate.
 - `progress-log.md`, `assets/nestscout-aurora-nest-logo.png` — referenced by `README.md` (locked).
 - `test-logs/**` — referenced by test files and scripts under `apps/api`. Keep the directory; archive within it if needed, never relocate it wholesale.
