@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const root = resolve(process.cwd(), '../..')
 const migrationPath = resolve(root, 'supabase/migrations/20260806124000_harness_learning_provenance.sql')
@@ -40,7 +41,7 @@ describe('Harness learning provenance and manual review', () => {
 
   it('retains the legacy RPC contract only as a fail-closed compatibility boundary', () => {
     const migration = readFileSync(migrationPath, 'utf8')
-    const databaseTypes = readFileSync(resolve(root, 'packages/shared/src/types/database.types.ts'), 'utf8')
+    const databaseTypes = readGeneratedDatabaseTypes()
     expect(migration).toContain('create or replace function public.auto_promote_learning_candidate_atomic')
     expect(databaseTypes).toContain('auto_promote_learning_candidate_atomic: {')
     expect(databaseTypes).toContain('p_candidate_id: string')

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const ROOT = resolve(__dirname, '../../../../../')
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf8').replace(/\r\n/g, '\n')
@@ -32,7 +33,7 @@ describe('Kael source-trust tiering migration', () => {
   })
 
   it('keeps generated database types aligned with the new nullable evidence and non-null auto tier', () => {
-    const types = read('packages/shared/src/types/database.types.ts')
+    const types = readGeneratedDatabaseTypes()
     const registry = types.slice(types.indexOf('source_trust_registry: {'), types.indexOf('source_trust_registry: {') + 2_500)
 
     expect(registry).toContain('auto_tier: number')

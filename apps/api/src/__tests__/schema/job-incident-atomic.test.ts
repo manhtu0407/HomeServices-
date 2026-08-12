@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const root = resolve(__dirname, '../../../../../')
 const migrationPath = resolve(
@@ -17,7 +18,6 @@ const servicePaths = [
   'supabase/functions/mobile-api/_shared/domains/job/incident-assistant.ts',
   'supabase/functions/mobile-api/_shared/domains/job/incident-data.ts',
 ].map((path) => resolve(root, path))
-const databaseTypesPath = resolve(root, 'packages/shared/src/types/database.types.ts')
 
 describe('atomic Kael job incident transitions', () => {
   it('serializes incident sources and applies assistant output through optimistic revision checks', () => {
@@ -107,7 +107,7 @@ describe('atomic Kael job incident transitions', () => {
   })
 
   it('wires every new RPC into the shared generated database contract', () => {
-    const databaseTypes = readFileSync(databaseTypesPath, 'utf8')
+    const databaseTypes = readGeneratedDatabaseTypes()
     for (const name of [
       'upsert_job_incident_signal_atomic',
       'claim_job_incident_chat_turn_atomic',

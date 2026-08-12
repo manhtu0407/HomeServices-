@@ -84,7 +84,7 @@ Use for every task involving Supabase database, Auth, RLS, migrations, generated
 ### Inputs Required
 
 - Existing migrations.
-- Generated `database.types.ts`.
+- Generated DB types under `packages/shared/src/types/database/**`.
 - Affected tables/policies/functions.
 - Actor roles: customer, worker, admin.
 - Existing SQL/tests.

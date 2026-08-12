@@ -1,16 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const root = resolve(__dirname, '../../../../../')
 const migration = readFileSync(
   resolve(root, 'supabase/migrations/20260811114500_bind_kael_price_reasoning_receipt.sql'),
   'utf8',
 )
-const databaseTypes = readFileSync(
-  resolve(root, 'packages/shared/src/types/database.types.ts'),
-  'utf8',
-)
+const databaseTypes = readGeneratedDatabaseTypes()
 
 describe('Kael price reasoning receipt confirmation gate', () => {
   it('requires the exact reviewed receipt inside the atomic confirmation transaction', () => {

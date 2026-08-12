@@ -112,10 +112,15 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Generated type drift check
+        # The artifact is committed split across packages/shared/src/types/database/**.
+        # Rejoining it and comparing bytes keeps this check exactly as strong as the
+        # single-file cmp it replaces; --check-against only makes the failure readable.
         run: |
-          if ! cmp -s packages/shared/src/types/database.types.ts /tmp/database.types.ts; then
-            echo "Generated database types differ from the committed artifact."
-            diff --unified=3 packages/shared/src/types/database.types.ts /tmp/database.types.ts | head -400 || true
+          node scripts/split-database-types.mjs --join > /tmp/rejoined.types.ts
+          if ! cmp -s /tmp/rejoined.types.ts /tmp/database.types.ts; then
+            echo "Generated database types differ from the committed split tree."
+            node scripts/split-database-types.mjs --check-against /tmp/database.types.ts || true
+            diff --unified=3 /tmp/rejoined.types.ts /tmp/database.types.ts | head -400 || true
             exit 1
           fi
       - name: Supabase schema lint

@@ -3,13 +3,13 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Database, Enums, Tables, TablesInsert, TablesUpdate } from '@/lib/database.types'
 import { Constants } from '@/lib/database.types'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 type TableNames = keyof Database['public']['Tables']
 type EnumNames = keyof Database['public']['Enums']
 
 const ROOT = resolve(__dirname, '../../../../../')
 const MIGRATIONS_DIR = resolve(ROOT, 'supabase/migrations')
-const SHARED_DATABASE_TYPES = resolve(ROOT, 'packages/shared/src/types/database.types.ts')
 const DROPPED_PUBLIC_TABLES = new Set(['worker_profiles_districts_backup_x3'])
 const DROPPED_PUBLIC_FUNCTIONS = new Set([
   'normalize_district_value',
@@ -46,7 +46,7 @@ function uniqueMatches(source: string, pattern: RegExp, groupIndex = 1) {
 function generatedPublicKeys(sectionName: 'Tables' | 'Functions') {
   const keys: string[] = []
   let section: string | null = null
-  for (const line of readText(SHARED_DATABASE_TYPES).split('\n')) {
+  for (const line of readGeneratedDatabaseTypes().split('\n')) {
     if (/^\s{4}Tables: \{/.test(line)) {
       section = 'Tables'
       continue

@@ -23,7 +23,7 @@ Before remote commands, check the target explicitly. This repo may be linked to 
 
 When this fires:
 
-1. Read current schema + generated `database.types.ts` first.
+1. Read current schema + the generated types under `packages/shared/src/types/database/**` first.
 2. Schema change → NEW migration (never edit old merged migrations); regenerate types whenever schema changes.
 3. RLS positive AND negative tests for each relevant actor (customer/worker/admin); test constraints/triggers/indexes when touched.
 4. Keep Supabase client/server code type-safe; apply `kael-security-sweep` for PII/auth/logging.

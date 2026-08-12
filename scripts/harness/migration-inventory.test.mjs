@@ -63,7 +63,6 @@ function withMigrationFixture(run) {
   try {
     const migration = 'begin; select 1; commit;\n'
     write(resolve(root, 'supabase/migrations/20260101000000_base.sql'), migration)
-    write(resolve(root, 'packages/shared/src/types/database.types.ts'), 'export type Database = {}\n')
     const sha = createHash('sha256').update(migration).digest('hex')
     const entry = {
       version: '20260101000000',

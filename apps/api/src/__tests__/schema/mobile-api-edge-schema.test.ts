@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const ROOT = resolve(__dirname, '../../../../../')
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
@@ -372,7 +373,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds P14 backend cleanup invariants for telemetry, worker districts, and orphan analyzing jobs', () => {
     const migration = readMigrationByName('backend_gaps_cleanup_p14')
-    const databaseTypes = read('packages/shared/src/types/database.types.ts')
+    const databaseTypes = readGeneratedDatabaseTypes()
     const migrationChain = read('docs/architecture/migration-chain.md')
 
     expect(migration).toContain('alter table public.api_logs alter column purpose set not null')
@@ -1011,7 +1012,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const noShowFixMigration = readMigrationByName('fix_worker_no_show_reason_code_ambiguity')
     const edgeServices = readEdgeServiceLayer()
     const edgeKaelModules = readEdgeKaelModules()
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const sharedTypes = readGeneratedDatabaseTypes()
 
     expect(migration).toContain('create table if not exists public.worker_cancellation_reason_taxonomy')
     expect(migration).toContain('grant select on public.worker_cancellation_reason_taxonomy to authenticated')
@@ -1053,7 +1054,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeRouter = readEdgeRouterLayer()
     const edgeContracts = readEdgeContracts()
     const edgeKaelModules = readEdgeKaelModules()
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const sharedTypes = readGeneratedDatabaseTypes()
     const mobileServices = read('apps/mobile/lib/services.ts')
 
     expect(migration).toContain('create table if not exists public.customer_cancellation_reason_taxonomy')
@@ -1087,7 +1088,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeRouter = readEdgeRouterLayer()
     const edgeContracts = readEdgeContracts()
     const edgeKaelModules = readEdgeKaelModules()
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const sharedTypes = readGeneratedDatabaseTypes()
     const mobileServices = read('apps/mobile/lib/services.ts')
 
     expect(migration).toContain('create table if not exists public.evidence_snapshots')

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const ROOT = resolve(__dirname, '../../../../../')
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
@@ -90,7 +91,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const migration = readMigrationByName('kael_market_cache_q3')
     const router = readEdgeRouterLayer()
     const services = readEdgeServiceLayer()
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const sharedTypes = readGeneratedDatabaseTypes()
 
     expect(migration).toContain('create table if not exists public.kael_market_cache')
     expect(migration).toContain('constraint kael_market_cache_lookup_unique')
@@ -144,7 +145,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const lintFix = read('supabase/migrations/20260605004000_fix_plan31_rpc_lint_warnings.sql')
     const atomicEffect = readMigrationByName('atomic_learning_effect_commits')
     const effectStore = read('supabase/functions/mobile-api/_shared/kael/learning/cron/learning-effect-store.ts')
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const sharedTypes = readGeneratedDatabaseTypes()
 
     expect(migration).toContain('create or replace function public.promote_learning_candidate')
     expect(migration).toContain('security definer')
@@ -169,7 +170,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const migration = readMigrationByName('rollback_learning_rule_rpc')
     const ambiguityFix = read('supabase/migrations/20260605001000_fix_kael_rollback_learning_rule_ambiguity.sql')
     const monitor = read('supabase/functions/mobile-api/_shared/kael/learning/cron/monitor-learning-rules.ts')
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const sharedTypes = readGeneratedDatabaseTypes()
 
     expect(migration).toContain('create or replace function public.rollback_learning_rule')
     expect(migration).toContain('security definer')
@@ -198,7 +199,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const nextHome = read('apps/api/src/app/page.tsx')
     const mobileServices = read('apps/mobile/lib/services.ts')
     const batchLifecycle = read('supabase/functions/mobile-api/_shared/kael/learning/cron/batch-learning-lifecycle.ts')
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const sharedTypes = readGeneratedDatabaseTypes()
 
     expect(statusMigration).toContain("add value if not exists 'manual_review'")
     expect(rpcMigration).toContain('create or replace function public.admin_approve_learning_candidate')

@@ -8,7 +8,7 @@
   "migrationCount": 248,
   "migrationsSha256": "0b485f8a4fbb389a4981fb815b7e376a42d28fa4d777864ece68a7bb7dcdf9be",
   "databaseTypes": {
-    "file": "packages/shared/src/types/database.types.ts",
+    "file": "packages/shared/src/types/database",
     "sha256": "0e092653611d884fddefcaa81f6dd55656cb1392ad7f70cd7a50291ff3f8e1ed"
   },
   "entries": [

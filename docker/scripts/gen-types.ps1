@@ -12,7 +12,8 @@ param(
 $ErrorActionPreference = "Stop"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $here "..\..")).Path
-$target = Join-Path $repoRoot "packages\shared\src\types\database.types.ts"
+$target = Join-Path $repoRoot "packages\shared\src\types\database"
+$splitter = Join-Path $repoRoot "scripts\split-database-types.mjs"
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) "nestscout-database.types.ts"
 
 Push-Location $repoRoot
@@ -29,30 +30,33 @@ try {
   $text = ($generated -join "`n") -replace "`r`n", "`n"
   [System.IO.File]::WriteAllText($temp, $text)
 
+  # The artifact is stored split across $target. The splitter's --check-against rejoins that
+  # tree and compares it to the freshly generated file, so this check is byte-for-byte on the
+  # whole artifact exactly as it was when the artifact was one file.
   if (-not (Test-Path $target)) {
-    Write-Output "no committed types at $target; writing generated output"
-    Copy-Item $temp $target -Force
+    Write-Output "no committed types at $target; splitting generated output"
+    & node $splitter --write $temp
+    exit $LASTEXITCODE
+  }
+
+  & node $splitter --check-against $temp
+  if ($LASTEXITCODE -eq 0) {
+    Write-Output "database types match the local schema - no drift"
     exit 0
   }
 
-  $existing = ([System.IO.File]::ReadAllText($target)) -replace "`r`n", "`n"
-  if ($existing -eq $text) {
-    Write-Output "database.types.ts matches the local schema - no drift"
-    exit 0
-  }
-
-  Write-Output "DRIFT: generated types differ from the committed database.types.ts"
+  Write-Output "DRIFT: generated types differ from the committed split tree"
   Write-Output "  committed : $target"
   Write-Output "  generated : $temp"
 
   if ($Check) {
-    Write-Output "check mode - committed file left untouched"
+    Write-Output "check mode - committed files left untouched"
     exit 1
   }
 
-  Copy-Item $temp $target -Force
-  Write-Output "committed file overwritten. Review the diff before accepting it."
-  exit 0
+  & node $splitter --write $temp
+  Write-Output "committed files overwritten. Review the diff before accepting it."
+  exit $LASTEXITCODE
 } finally {
   Pop-Location
 }
