@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Pressable, Text as RNText, View, type TextProps } from 'react-native'
 import { type LocalDeal } from '@nestscout/shared'
 import { KaelTextField, MintAura } from '@/components/ui/kael-primitives'
@@ -19,6 +19,8 @@ import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+type WorkerV5KaelOrbChat = ReturnType<typeof useWorkerV5KaelOrbChat>
+
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
@@ -35,32 +37,18 @@ export function WorkerV5KaelChatBody({
   runtime: WorkerV5Runtime
 }) {
   const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language, 'normal', runtime.workerJobsHydrated)
-  if (getWorkerV5ChatJobId(runtime.state.deal)) {
+  const sharedJobId = getWorkerV5ChatJobId(runtime.state.deal)
+  if (sharedJobId) {
     return <WorkerV5SharedJobIncidentChat deal={runtime.state.deal} language={language} reduceTransparency={reduceTransparency} />
   }
   return (
-    <WorkerV5KaelOrbBody
-      composer={(
-        <WorkerV5KaelOrbComposer
-          busy={orbChat.busy}
-          language={language}
-          mediaCount={orbChat.mediaCount}
-          mode="normal"
-          onPickMedia={() => void orbChat.pickMedia()}
-          onSend={(message) => void orbChat.send(message)}
-          reduceTransparency={reduceTransparency}
-        />
-      )}
+    <WorkerV5PrivateKaelOrbBody
       deal={runtime.state.deal}
-      fallbackJobIcon={workerV5Icons.jobs}
       language={language}
-      liveError={orbChat.error}
-      liveStatus={orbChat.busyLabel}
-      liveTurns={orbChat.liveTurns}
       mode="normal"
-      onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(runtime.state.deal))}
+      navigateToScreen={navigateToScreen}
+      orbChat={orbChat}
       reduceTransparency={reduceTransparency}
-      serviceIcons={workerV5OpportunityServiceIcons}
     />
   )
 }
@@ -148,28 +136,60 @@ export function WorkerV5KaelJobIntakeBody({
 }) {
   const orbChat = useWorkerV5KaelOrbChat(runtime.state.deal, language, 'intake', runtime.workerJobsHydrated)
   return (
-    <WorkerV5KaelOrbBody
-      composer={(
-        <WorkerV5KaelOrbComposer
-          busy={orbChat.busy}
-          language={language}
-          mediaCount={orbChat.mediaCount}
-          mode="intake"
-          onPickMedia={() => void orbChat.pickMedia()}
-          onSend={(message) => void orbChat.send(message)}
-          reduceTransparency={reduceTransparency}
-        />
-      )}
+    <WorkerV5PrivateKaelOrbBody
       deal={runtime.state.deal}
+      language={language}
+      mode="intake"
+      navigateToScreen={navigateToScreen}
+      orbChat={orbChat}
+      reduceTransparency={reduceTransparency}
+    />
+  )
+}
+
+function WorkerV5PrivateKaelOrbBody({
+  deal,
+  language,
+  mode,
+  navigateToScreen,
+  orbChat,
+  reduceTransparency,
+}: {
+  deal: LocalDeal | null
+  language: AppLanguage
+  mode: 'intake' | 'normal'
+  navigateToScreen: (id: WorkerV5ScreenId) => void
+  orbChat: WorkerV5KaelOrbChat
+  reduceTransparency: boolean
+}) {
+  const composer = useMemo(() => (
+    <WorkerV5KaelOrbComposer
+      busy={orbChat.busy}
+      language={language}
+      mediaCount={orbChat.mediaCount}
+      mode={mode}
+      onPickMedia={() => void orbChat.pickMedia()}
+      onSend={(message) => void orbChat.send(message)}
+      reduceTransparency={reduceTransparency}
+    />
+  ), [language, mode, orbChat, reduceTransparency])
+  return (
+    <WorkerV5KaelOrbBody
+      composer={composer}
+      deal={deal}
       fallbackJobIcon={workerV5Icons.jobs}
       language={language}
       liveError={orbChat.error}
-      liveStatus={orbChat.busyLabel}
+      liveStatus={orbChat.reasoningReceipt.status !== 'idle' ? null : orbChat.busyLabel}
       liveTurns={orbChat.liveTurns}
-      mode="intake"
-      onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(runtime.state.deal))}
+      mode={mode}
+      onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
+      onStreamingReplySettled={orbChat.settleStreamingReply}
+      onToggleReasoningReceipt={orbChat.toggleReasoningReceipt}
       reduceTransparency={reduceTransparency}
+      reasoningReceipt={orbChat.reasoningReceipt}
       serviceIcons={workerV5OpportunityServiceIcons}
+      streamingReply={orbChat.streamingReply}
     />
   )
 }

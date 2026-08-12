@@ -68,7 +68,6 @@ function evidenceHarness(agenticEvidenceReason = 'Không có ảnh hiện trạn
     turns: [],
   } as any
   const processController = {
-    settleEvidenceProcessLines: jest.fn(async () => undefined),
     startEvidenceProcessLines: jest.fn(),
     startProcessLines: jest.fn(async () => undefined),
     stopProcessLines: jest.fn(),
@@ -222,7 +221,7 @@ describe('customer Kael evidence concurrency', () => {
         },
       },
       responseId: 'turn-estimate',
-      status: 'streaming',
+      status: 'completed',
       transport: 'legacy',
     })
   })

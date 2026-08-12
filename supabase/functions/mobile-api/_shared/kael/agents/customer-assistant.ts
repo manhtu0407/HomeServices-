@@ -10,6 +10,8 @@ import {
 } from "../contracts/types.ts";
 import {
   callStructuredAI,
+  callStructuredAIStream,
+  createStructuredResponseStreamObserver,
   type StructuredAIInvoker,
 } from "../kael-providers/structured-call.ts";
 import {
@@ -82,6 +84,12 @@ import {
   resolveBoundedServiceLifecycleAnswer,
   retrieveAssistantKnowledgeContext,
 } from "./customer-assistant-support.ts";
+import {
+  isKaelReasoningPublicSummaryItem,
+  reportKaelPublicExecutionStep,
+  type KaelReasoningReporter,
+} from "../reasoning-receipt.ts";
+import { type KaelResponseReporter } from "../response-stream.ts";
 export type {
   CustomerAssistantJobContext,
   CustomerAssistantSurface,
@@ -99,6 +107,8 @@ export type CustomerAssistantInput = {
   readonly client?: AssistantClient | null;
   readonly memorySummary?: string | null;
   readonly secrets: EdgeAiSecrets;
+  readonly reasoning?: KaelReasoningReporter;
+  readonly response?: KaelResponseReporter;
   readonly callAI?: StructuredAIInvoker;
 };
 
@@ -109,6 +119,7 @@ export type CustomerAssistantAnswer = {
   readonly suggested_actions: readonly CustomerAssistantSuggestedAction[];
   readonly boundary: CustomerAssistantBoundary;
   readonly fallback_used: boolean;
+  readonly public_reasoning_summary?: readonly string[];
   readonly trace?: readonly KaelSafeTraceEvent[];
 };
 
@@ -116,6 +127,9 @@ const customerAssistantResponseSchema = z.preprocess(normalizeAssistantPayload, 
   answer: z.string().trim().min(1).max(900),
   safety_notes: z.array(z.string().trim().min(1).max(180)).max(3).default([]),
   citations: z.array(z.string().trim().min(1).max(180)).max(5).default([]),
+  public_reasoning_summary: z.array(
+    z.string().trim().min(1).max(220).refine(isKaelReasoningPublicSummaryItem),
+  ).min(1).max(4).catch([]).default([]),
   suggested_actions: z.array(z.enum([
     "open_booking",
     "check_job",
@@ -132,24 +146,22 @@ const customerAssistantResponseSchema = z.preprocess(normalizeAssistantPayload, 
   ]).default("answered"),
 }).strip());
 
+type CustomerAssistantProviderPayload = z.infer<typeof customerAssistantResponseSchema>;
+
 export async function runCustomerAssistant(
   input: CustomerAssistantInput,
 ): Promise<CustomerAssistantAnswer> {
-  const language = input.language ?? "vi";
-  const surface = input.surface ?? "customer_normal";
-  const trace: KaelSafeTraceEvent[] = [];
-  const cleanQuestion = (
-    surface === "customer_case"
-      ? sanitizeCustomerCaseEvidenceText(input.message)
-      : scrubSensitiveForLLM(input.message)
-  ).slice(0, 2000);
-  const workflowQuestion = scrubSensitiveForLLM(input.message).slice(0, 2000);
-  const serviceType = input.serviceType ?? inferAssistantServiceType(cleanQuestion, input.job);
-  const topic = classifyAssistantTopic(cleanQuestion, serviceType);
-  const boundary = evaluateMessageBoundary(cleanQuestion, serviceType, {
-    semanticInjectionClassifierEnabled: true,
+  const {
+    boundary,
+    cleanQuestion,
     language,
-  });
+    registerHint,
+    serviceType,
+    surface,
+    topic,
+    workflowQuestion,
+  } = buildCustomerAssistantRunContext(input);
+  const trace: KaelSafeTraceEvent[] = [];
   if (!boundary.ok && boundary.reason === "prompt_injection") {
     return buildFallbackCustomerAssistantAnswer(
       boundary.declineText,
@@ -160,9 +172,14 @@ export async function runCustomerAssistant(
       trace,
     );
   }
-  // Deterministic per-conversation register (KC2): read the customer's own words
-  // to produce a mirror-lite hint. No region label, no PII, nothing logged.
-  const registerHint = buildRegisterHint(detectRegionalRegister(cleanQuestion));
+  reportKaelPublicExecutionStep(input.reasoning, {
+    detail: customerRequestScopeDetail(language, serviceType),
+    id: "request-classified",
+    label: customerExecutionLabel(language, "request"),
+    sequence: 0,
+    stage: "intent",
+    status: "completed",
+  });
   const permission = await evaluateKaelPermissionGateWithBoundaries({
     purpose: "educational_response",
     actor: "customer",
@@ -175,7 +192,14 @@ export async function runCustomerAssistant(
     jobId: input.job?.id ?? null,
     language,
   }, input.client ?? undefined);
-
+  reportKaelPublicExecutionStep(input.reasoning, {
+    detail: customerBoundaryDetail(language, permission.allowed),
+    id: permission.allowed ? "scope-cleared" : "scope-limited",
+    label: customerExecutionLabel(language, "boundary"),
+    sequence: 1,
+    stage: "context",
+    status: "completed",
+  });
   if (!permission.allowed) {
     return buildFallbackCustomerAssistantAnswer(
       permission.responseText ?? fallbackText(language, topic),
@@ -237,12 +261,17 @@ export async function runCustomerAssistant(
     surface,
     topic,
   });
-
-  const routes = circuitAwareProviderCandidatesForPurpose("educational_response", {
-    routeProfile: surface === "customer_normal" && isSimpleNormalChatMessage(cleanQuestion)
-      ? "simple_normal_chat"
-      : "standard",
-  });
+  if (knowledge?.promptContext) {
+    reportKaelPublicExecutionStep(input.reasoning, {
+      detail: customerKnowledgeDetail(language, knowledge.semanticCitations.length),
+      id: "knowledge-available",
+      label: customerExecutionLabel(language, "knowledge"),
+      sequence: 2,
+      stage: "retrieval",
+      status: "completed",
+    });
+  }
+  const routes = customerAssistantProviderRoutes(surface, cleanQuestion);
   if (routes.length === 0) {
     trace.push(buildCustomerAssistantNoProviderTrace(surface));
     return buildFallbackCustomerAssistantAnswer(
@@ -268,6 +297,46 @@ export async function runCustomerAssistant(
   );
 }
 
+function buildCustomerAssistantRunContext(input: CustomerAssistantInput) {
+  const language = input.language ?? "vi";
+  const surface = input.surface ?? "customer_normal";
+  const cleanQuestion = (
+    surface === "customer_case"
+      ? sanitizeCustomerCaseEvidenceText(input.message)
+      : scrubSensitiveForLLM(input.message)
+  ).slice(0, 2000);
+  const workflowQuestion = scrubSensitiveForLLM(input.message).slice(0, 2000);
+  const serviceType = input.serviceType ?? inferAssistantServiceType(cleanQuestion, input.job);
+  const topic = classifyAssistantTopic(cleanQuestion, serviceType);
+  const boundary = evaluateMessageBoundary(cleanQuestion, serviceType, {
+    semanticInjectionClassifierEnabled: true,
+    language,
+  });
+  const registerHint = buildRegisterHint(detectRegionalRegister(cleanQuestion));
+
+  return {
+    boundary,
+    cleanQuestion,
+    language,
+    registerHint,
+    serviceType,
+    surface,
+    topic,
+    workflowQuestion,
+  };
+}
+
+function customerAssistantProviderRoutes(
+  surface: CustomerAssistantSurface,
+  cleanQuestion: string,
+) {
+  return circuitAwareProviderCandidatesForPurpose("educational_response", {
+    routeProfile: surface === "customer_normal" && isSimpleNormalChatMessage(cleanQuestion)
+      ? "simple_normal_chat"
+      : "standard",
+  });
+}
+
 async function resolveCustomerAssistantProviders(
   input: CustomerAssistantInput,
   language: KaelPromptLanguage,
@@ -288,28 +357,61 @@ async function resolveCustomerAssistantProviders(
   const blockedProviders = new Set<string>();
   for (const route of routes) {
     if (blockedProviders.has(route.provider)) continue;
-    const result = await callStructuredAI(
-      buildAssistantRequest({
-        route,
-        question: cleanQuestion,
-        language,
-        surface,
-        serviceType,
-        topic,
-        job: input.job ?? null,
-        knowledgePrompt: knowledge?.promptContext ?? null,
-        memorySummary: input.memorySummary ?? null,
-        registerHint,
-      }),
-      customerAssistantResponseSchema,
-      input.secrets,
-      spendGate,
-      input.callAI,
-    );
+    const request = buildAssistantRequest({
+      route,
+      question: cleanQuestion,
+      language,
+      surface,
+      serviceType,
+      topic,
+      job: input.job ?? null,
+      knowledgePrompt: knowledge?.promptContext ?? null,
+      memorySummary: input.memorySummary ?? null,
+      registerHint,
+    });
+    const streamObserver = input.response && !input.callAI
+      ? createCustomerResponseStreamObserver(input, language, surface, topic)
+      : null;
+    const result = streamObserver
+      ? await callStructuredAIStream(
+        request,
+        customerAssistantResponseSchema,
+        input.secrets,
+        spendGate,
+        streamObserver,
+      )
+      : await callStructuredAI(
+        request,
+        customerAssistantResponseSchema,
+        input.secrets,
+        spendGate,
+        input.callAI,
+      );
     if (!result.success) {
       const schemaResponse = result.code === "SCHEMA_INVALID"
         ? result.response
         : undefined;
+      if (input.response?.hasPublished()) {
+        trace.push(schemaResponse
+          ? buildCustomerAssistantProviderTrace(surface, route, "schema_invalid", {
+            code: "INVALID_SCHEMA",
+            latencyMs: schemaResponse.latencyMs,
+            costUsd: schemaResponse.usage.costUsd,
+            fallbackUsed: true,
+          })
+          : buildCustomerAssistantProviderTrace(surface, route, "error", {
+            code: result.code,
+            fallbackUsed: true,
+        }));
+        return buildFallbackCustomerAssistantAnswer(
+          input.response.publishedText(),
+          topic,
+          "fallback",
+          true,
+          deterministicSafetyNotes(language, topic),
+          trace,
+        );
+      }
       if (schemaResponse) {
         trace.push(buildCustomerAssistantProviderTrace(surface, route, "schema_invalid", {
           code: "INVALID_SCHEMA",
@@ -329,13 +431,7 @@ async function resolveCustomerAssistantProviders(
             return {
               answer: normalizeKaelResponseBrand(checked.text),
               safety_notes: deterministicSafetyNotes(language, topic),
-              citations: normalizeCitations([
-                ...(knowledge?.semanticCitations ?? []),
-                "NestScout platform scope",
-              ], [
-                ...(knowledge?.semanticCitations ?? []),
-                "NestScout platform scope",
-              ]),
+              citations: customerAssistantCitations(knowledge),
               suggested_actions: normalizeActions([], surface, topic),
               boundary: "answered",
               fallback_used: true,
@@ -356,51 +452,18 @@ async function resolveCustomerAssistantProviders(
       continue;
     }
 
-    const checked = guardCustomerAssistantOutput(
-      result.data.answer,
+    return resolveSuccessfulCustomerAssistantProvider({
+      input,
       language,
       surface,
       topic,
-    );
-    if (checked.used_fallback || !checked.allowed) {
-      await auditCustomerAssistantGuardTrip(input, surface, route, checked);
-      trace.push(buildCustomerAssistantProviderTrace(surface, route, "error", {
-        code: checked.reason ?? "SELF_CHECK_FALLBACK",
-        latencyMs: result.latencyMs,
-        costUsd: result.usage.costUsd,
-        fallbackUsed: true,
-      }));
-      return buildFallbackCustomerAssistantAnswer(
-        checked.text,
-        topic,
-        "fallback",
-        true,
-        deterministicSafetyNotes(language, topic),
-        trace,
-      );
-    }
-
-    trace.push(buildCustomerAssistantProviderTrace(surface, route, "success", {
+      trace,
+      route,
+      knowledge,
+      data: result.data,
       latencyMs: result.latencyMs,
       costUsd: result.usage.costUsd,
-      fallbackUsed: false,
-    }));
-    return {
-      answer: normalizeKaelResponseBrand(checked.text),
-      safety_notes: deterministicSafetyNotes(language, topic),
-      citations: normalizeCitations([
-        ...result.data.citations,
-        ...(knowledge?.semanticCitations ?? []),
-        "NestScout platform scope",
-      ], [
-        ...(knowledge?.semanticCitations ?? []),
-        "NestScout platform scope",
-      ]),
-      suggested_actions: normalizeActions(result.data.suggested_actions, surface, topic),
-      boundary: result.data.boundary,
-      fallback_used: false,
-      trace,
-    };
+    });
   }
 
   return buildFallbackCustomerAssistantAnswer(
@@ -411,6 +474,250 @@ async function resolveCustomerAssistantProviders(
     deterministicSafetyNotes(language, topic),
     trace,
   );
+}
+
+async function resolveSuccessfulCustomerAssistantProvider(input: {
+  input: CustomerAssistantInput;
+  language: KaelPromptLanguage;
+  surface: CustomerAssistantSurface;
+  topic: KaelTopic;
+  trace: KaelSafeTraceEvent[];
+  route: ProviderChoice;
+  knowledge: Awaited<ReturnType<typeof retrieveAssistantKnowledgeContext>>;
+  data: CustomerAssistantProviderPayload;
+  latencyMs: number;
+  costUsd: number;
+}): Promise<CustomerAssistantAnswer> {
+  const checked = guardCustomerAssistantOutput(
+    input.data.answer,
+    input.language,
+    input.surface,
+    input.topic,
+  );
+  if (checked.used_fallback || !checked.allowed) {
+    await auditCustomerAssistantGuardTrip(input.input, input.surface, input.route, checked);
+    input.trace.push(buildCustomerAssistantProviderTrace(input.surface, input.route, "error", {
+      code: checked.reason ?? "SELF_CHECK_FALLBACK",
+      latencyMs: input.latencyMs,
+      costUsd: input.costUsd,
+      fallbackUsed: true,
+    }));
+    const fallbackAnswer = input.input.response?.hasPublished()
+      ? input.input.response.publishedText()
+      : checked.text;
+    return buildFallbackCustomerAssistantAnswer(
+      fallbackAnswer,
+      input.topic,
+      "fallback",
+      true,
+      deterministicSafetyNotes(input.language, input.topic),
+      input.trace,
+    );
+  }
+  return buildSuccessfulCustomerAssistantAnswer({
+    input: input.input,
+    language: input.language,
+    surface: input.surface,
+    topic: input.topic,
+    trace: input.trace,
+    route: input.route,
+    knowledge: input.knowledge,
+    data: input.data,
+    answer: checked.text,
+    latencyMs: input.latencyMs,
+    costUsd: input.costUsd,
+  });
+}
+
+function buildSuccessfulCustomerAssistantAnswer(input: {
+  input: Pick<CustomerAssistantInput, "reasoning">;
+  language: KaelPromptLanguage;
+  surface: CustomerAssistantSurface;
+  topic: KaelTopic;
+  trace: KaelSafeTraceEvent[];
+  route: ProviderChoice;
+  knowledge: Awaited<ReturnType<typeof retrieveAssistantKnowledgeContext>>;
+  data: CustomerAssistantProviderPayload;
+  answer: string;
+  latencyMs: number;
+  costUsd: number;
+}): CustomerAssistantAnswer {
+  input.trace.push(buildCustomerAssistantProviderTrace(input.surface, input.route, "success", {
+    latencyMs: input.latencyMs,
+    costUsd: input.costUsd,
+    fallbackUsed: false,
+  }));
+  const publicReasoningSummary = publicCustomerReasoningSummary(
+    input.data.public_reasoning_summary,
+    input.language,
+  );
+  reportCustomerPublicSummary(input.input.reasoning, input.language, publicReasoningSummary);
+  return {
+    answer: normalizeKaelResponseBrand(input.answer),
+    safety_notes: deterministicSafetyNotes(input.language, input.topic),
+    citations: customerAssistantCitations(input.knowledge, input.data.citations),
+    suggested_actions: normalizeActions(input.data.suggested_actions, input.surface, input.topic),
+    boundary: input.data.boundary,
+    fallback_used: false,
+    public_reasoning_summary: publicReasoningSummary,
+    trace: input.trace,
+  };
+}
+
+function reportCustomerPublicSummary(
+  reporter: KaelReasoningReporter | undefined,
+  language: KaelPromptLanguage,
+  summary: readonly string[],
+) {
+  summary.forEach((detail, index) => reportKaelPublicExecutionStep(reporter, {
+    detail,
+    id: `public-summary-${index}`,
+    label: customerExecutionLabel(language, "summary"),
+    sequence: 3 + index,
+    stage: "compose",
+    status: "completed",
+  }));
+}
+
+function createCustomerResponseStreamObserver(
+  input: CustomerAssistantInput,
+  language: KaelPromptLanguage,
+  surface: CustomerAssistantSurface,
+  topic: KaelTopic,
+) {
+  return createStructuredResponseStreamObserver({
+    textField: "answer",
+    onPublicReasoningSummary(detail, index) {
+      if (!isKaelReasoningPublicSummaryItem(detail, language)) return;
+      reportKaelPublicExecutionStep(input.reasoning, {
+        detail,
+        id: `public-summary-${index}`,
+        label: customerExecutionLabel(language, "summary"),
+        sequence: 3 + index,
+        stage: "compose",
+        status: "completed",
+      });
+    },
+    onTextUpdate(text) {
+      const stablePrefix = completedSentencePrefix(text);
+      if (!stablePrefix) return;
+      const checked = guardCustomerAssistantOutput(
+        stablePrefix,
+        language,
+        surface,
+        topic,
+      );
+      if (checked.used_fallback || !checked.allowed) return;
+      input.response?.preview(normalizeKaelResponseBrand(checked.text));
+    },
+  });
+}
+
+function completedSentencePrefix(text: string) {
+  const matches = [...text.matchAll(/[.!?\u2026]["')\]\u2019\u201d]*(?=\s|$)|\n/gu)];
+  const boundary = matches.at(-1);
+  return boundary && boundary.index !== undefined
+    ? text.slice(0, boundary.index + boundary[0].length).trim()
+    : "";
+}
+
+function customerExecutionLabel(
+  language: KaelPromptLanguage,
+  kind: "request" | "boundary" | "knowledge" | "summary",
+) {
+  const copy = language === "en"
+    ? {
+      boundary: "Support boundary",
+      knowledge: "Related knowledge",
+      request: "Request classification",
+      summary: "Public response note",
+    }
+    : {
+      boundary: "Giới hạn hỗ trợ",
+      knowledge: "Thông tin liên quan",
+      request: "Phân loại yêu cầu",
+      summary: "Ghi chú phản hồi",
+    };
+  return copy[kind];
+}
+
+function customerRequestScopeDetail(
+  language: KaelPromptLanguage,
+  serviceType: ReturnType<typeof inferAssistantServiceType>,
+) {
+  const service = serviceType ? customerServiceLabel(language, serviceType) : null;
+  if (language === "en") {
+    return service
+      ? `The request was classified as ${service} support.`
+      : "The request was classified as general Kael support.";
+  }
+  return service
+    ? `Yêu cầu được nhận diện thuộc nhóm hỗ trợ ${service}.`
+    : "Yêu cầu được nhận diện là hỗ trợ chung của Kael.";
+}
+
+function customerBoundaryDetail(language: KaelPromptLanguage, allowed: boolean) {
+  if (language === "en") {
+    return allowed
+      ? "The request is eligible for advisory support within current boundaries."
+      : "The request needs a bounded safe response instead of general advisory support.";
+  }
+  return allowed
+    ? "Yêu cầu phù hợp để nhận hỗ trợ tư vấn trong giới hạn hiện tại."
+    : "Yêu cầu cần phản hồi an toàn có giới hạn thay vì tư vấn chung.";
+}
+
+function customerKnowledgeDetail(language: KaelPromptLanguage, citationCount: number) {
+  if (language === "en") {
+    return citationCount > 0
+      ? `Added ${citationCount} verified related knowledge source${citationCount === 1 ? "" : "s"}.`
+      : "Added verified related platform context.";
+  }
+  return citationCount > 0
+    ? `Đã bổ sung ${citationCount} nguồn thông tin liên quan đã được kiểm chứng.`
+    : "Đã bổ sung ngữ cảnh nền tảng liên quan đã được kiểm chứng.";
+}
+
+function customerServiceLabel(
+  language: KaelPromptLanguage,
+  serviceType: NonNullable<ReturnType<typeof inferAssistantServiceType>>,
+) {
+  const copy = language === "en"
+    ? {
+      cleaning: "home cleaning",
+      electrical: "electrical repair",
+      handyman: "minor handyman work",
+      hvac: "air-conditioner service",
+      plumbing: "plumbing repair",
+      upholstery: "upholstery care",
+    }
+    : {
+      cleaning: "vệ sinh nhà",
+      electrical: "sửa điện",
+      handyman: "sửa vặt và lắp đặt nhỏ",
+      hvac: "điều hòa",
+      plumbing: "sửa nước",
+      upholstery: "chăm sóc sofa, nệm, rèm hoặc thảm",
+    };
+  return copy[serviceType];
+}
+
+function customerAssistantCitations(
+  knowledge: Awaited<ReturnType<typeof retrieveAssistantKnowledgeContext>>,
+  citations: readonly string[] = [],
+) {
+  const fallback = [
+    ...(knowledge?.semanticCitations ?? []),
+    "NestScout platform scope",
+  ];
+  return normalizeCitations([...citations, ...fallback], fallback);
+}
+
+function publicCustomerReasoningSummary(
+  summary: readonly string[],
+  language: KaelPromptLanguage,
+) {
+  return summary.filter((item) => isKaelReasoningPublicSummaryItem(item, language));
 }
 
 function guardCustomerAssistantOutput(

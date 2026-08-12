@@ -25,10 +25,12 @@ export function useCustomerProfileInsightsActions({
   sessionUserId,
 }: CustomerProfileInsightsActionsInput) {
   const [customerProfileInsightsState, setCustomerProfileInsightsState] = useState<CustomerProfileInsightsState>(initialCustomerProfileInsightsState)
-  const customerProfileInsights = customerProfileInsightsState.sessionUserId === sessionUserId ? customerProfileInsightsState.insights : null
+  const customerProfileInsights = role === 'customer' && customerProfileInsightsState.sessionUserId === sessionUserId
+    ? customerProfileInsightsState.insights
+    : null
 
   const refreshCustomerProfileInsights = useCallback(async () => {
-    if (!sessionUserId) {
+    if (!sessionUserId || role !== 'customer') {
       setCustomerProfileInsightsState(initialCustomerProfileInsightsState)
       return false
     }
@@ -47,11 +49,14 @@ export function useCustomerProfileInsightsActions({
         : { insights: result.data, sessionUserId }
     })
     return true
-  }, [sessionUserId])
+  }, [role, sessionUserId])
 
   useEffect(() => {
-    if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
     const refreshTimer = setTimeout(() => {
+      if (!sessionUserId || role !== 'customer') {
+        void refreshCustomerProfileInsights()
+        return
+      }
       if (isAppForeground()) void refreshCustomerProfileInsights()
     }, 0)
     return () => clearTimeout(refreshTimer)

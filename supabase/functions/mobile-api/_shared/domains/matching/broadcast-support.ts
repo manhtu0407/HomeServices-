@@ -179,7 +179,6 @@ export async function loadQualityLockedWorkerIds(
   if (result.error) {
     console.warn("mobile-api worker service quality load failed", {
       errorCode: result.error.code,
-      serviceType,
       workerCount: workerIds.length,
     });
     return { success: false as const, workerIds: lockedWorkerIds };

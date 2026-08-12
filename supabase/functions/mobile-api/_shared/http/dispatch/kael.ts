@@ -1,6 +1,7 @@
 import {
   kaelAssistantSchema,
   kaelChatCreateSchema,
+  kaelChatConfirmSchema,
   kaelChatEvidenceSchema,
   kaelChatIntakeConfirmationDecisionSchema,
   kaelChatMediaRevokeSchema,
@@ -71,8 +72,11 @@ export async function dispatchKaelRoute(
         input.data,
       );
     }
-    case "kael.chat.confirm":
-      return services.confirmKaelChat(ctx, route.sessionId);
+    case "kael.chat.confirm": {
+      const input = kaelChatConfirmSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu xác nhận không hợp lệ", 400);
+      return services.confirmKaelChat(ctx, route.sessionId, input.data);
+    }
     case "kael.chat.evidence": {
       const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

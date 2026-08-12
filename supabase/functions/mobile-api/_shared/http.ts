@@ -27,6 +27,10 @@ import {
 import { apiFailure, ApiFailure } from "./platform/api-failure.ts";
 import { dispatchRoute } from "./http/dispatch/index.ts";
 import {
+  withHarnessStreamLifecycle,
+  type HarnessEventStreamTerminal,
+} from "./http/harness-stream.ts";
+import {
   isPublicRoute,
   matchRoute,
   type PublicRoute,
@@ -400,6 +404,28 @@ async function dispatchAuthorizedRequest(state: MobileApiRequestState): Promise<
     state.ctx,
     state.deps.services,
   );
+  if (data instanceof Response && isEventStreamRoute(state.route.kind)) {
+    const response = withCorsHeaders(data);
+    await recordHarnessEvent(state.trace, {
+      eventClass: "request.stream_opened",
+      stage: state.route.kind,
+      status: "started",
+      latencyMs: Date.now() - state.trace.startedAtMs,
+      safeMetadata: { transport: "sse" },
+    });
+    if (!response.body) {
+      await finalizeAuthorizedEventStream(state, {
+        errorCode: "STREAM_BODY_MISSING",
+        eventClass: "request.stream_failed",
+        status: "failed",
+      });
+      return withHarnessHeaders(response, state.trace);
+    }
+    return withHarnessHeaders(withHarnessStreamLifecycle(
+      response,
+      (input) => finalizeAuthorizedEventStream(state, input),
+    ), state.trace);
+  }
   await recordHarnessEvent(state.trace, {
     eventClass: "request.completed",
     stage: state.route.kind,
@@ -458,6 +484,46 @@ async function auditPrivilegedCompletion(state: MobileApiRequestState): Promise<
     resourceType: envelope.resource.type,
     resourceId: envelope.resource.id,
     result: "succeeded",
+  });
+}
+
+async function finalizeAuthorizedEventStream(
+  state: MobileApiRequestState,
+  input: HarnessEventStreamTerminal,
+): Promise<void> {
+  await recordHarnessEvent(state.trace, {
+    eventClass: input.eventClass,
+    stage: state.route.kind,
+    status: input.status === "completed" ? "succeeded" : input.status,
+    latencyMs: Date.now() - state.trace.startedAtMs,
+    ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+  });
+  if (input.status === "completed") {
+    await auditPrivilegedCompletion(state);
+  } else if (input.status === "failed") {
+    await auditPrivilegedStreamFailure(state, input.errorCode ?? "STREAM_FAILED");
+  }
+  await finishHarnessRun(state.trace, {
+    status: input.status,
+    ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+  });
+}
+
+async function auditPrivilegedStreamFailure(
+  state: MobileApiRequestState,
+  errorCode: string,
+): Promise<void> {
+  const envelope = state.ctx.capabilityEnvelope;
+  if (!envelope?.privileged) return;
+  await recordHarnessPrivilegedOperation(state.trace, {
+    actorRole: state.ctx.role,
+    operationId: state.route.kind,
+    capability: envelope.capability,
+    reason: "mobile_api_event_stream",
+    resourceType: envelope.resource.type,
+    resourceId: envelope.resource.id,
+    result: "failed",
+    errorCode,
   });
 }
 

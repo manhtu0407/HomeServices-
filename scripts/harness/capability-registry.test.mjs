@@ -111,16 +111,23 @@ test('marks Worker Edge routes as privileged service-owned operations', () => {
   }
 })
 
-test('classifies Kael event streams as provider calls instead of durable response receipts', () => {
+test('classifies server-owned Kael AI routes as privileged provider operations', () => {
   const root = mkdtempSync(resolve(tmpdir(), 'harness-capability-stream-'))
   try {
     write(
       resolve(root, 'supabase/functions/mobile-api/_shared/http/routes/kael.ts'),
       [
         'export type Route =',
+        '  | { kind: "kael.assistant"; method: "POST"; roles: ["customer"] }',
+        '  | { kind: "kael.chat.create"; method: "POST"; roles: ["customer"] }',
         '  | { kind: "kael.chat.stream"; method: "POST"; sessionId: string; roles: ["customer"] }',
         '  | { kind: "kael.chat.evidenceStream"; method: "POST"; sessionId: string; roles: ["customer"] }',
+        '  | { kind: "kael.chat.turn"; method: "POST"; sessionId: string; roles: ["customer"] }',
+        '  | { kind: "kael.chat.evidence"; method: "POST"; sessionId: string; roles: ["customer"] }',
+        '  | { kind: "kael.chat.intakeConfirmation"; method: "POST"; sessionId: string; roles: ["customer"] }',
+        '  | { kind: "kael.chat.confirm"; method: "POST"; sessionId: string; roles: ["customer"] }',
         '  | { kind: "customer.kaelConversations.stream"; method: "POST"; conversationId: string; roles: ["customer"] }',
+        '  | { kind: "customer.kaelConversations.turn"; method: "POST"; conversationId: string; roles: ["customer"] }',
         '  | { kind: "workers.kaelChat.stream"; method: "POST"; sessionId: string; roles: ["worker"] };',
         '',
       ].join('\n'),
@@ -131,6 +138,22 @@ test('classifies Kael event streams as provider calls instead of durable respons
     )
 
     for (const kind of [
+      'kael.assistant',
+      'kael.chat.create',
+      'kael.chat.stream',
+      'kael.chat.evidenceStream',
+      'kael.chat.turn',
+      'kael.chat.evidence',
+      'kael.chat.intakeConfirmation',
+      'kael.chat.confirm',
+      'customer.kaelConversations.stream',
+      'customer.kaelConversations.turn',
+      'workers.kaelChat.stream',
+    ]) {
+      assert.equal(entries[kind].privileged, true)
+    }
+
+    for (const kind of [
       'kael.chat.stream',
       'kael.chat.evidenceStream',
       'customer.kaelConversations.stream',
@@ -139,6 +162,42 @@ test('classifies Kael event streams as provider calls instead of durable respons
       assert.equal(entries[kind].operationClass, 'provider_call')
       assert.equal(entries[kind].sideEffectClass, 'conditional-write')
     }
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('marks customer catalog routes that reconcile or mutate service-owned rows as privileged', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'harness-capability-customer-catalog-'))
+  try {
+    write(
+      resolve(root, 'supabase/functions/mobile-api/_shared/http/routes/customer-kael-conversation-routes.ts'),
+      [
+        'export type Route =',
+        '  | { kind: "customer.kaelConversations.create"; method: "POST"; roles: ["customer"] }',
+        '  | { kind: "customer.kaelConversations.list"; method: "GET"; roles: ["customer"] }',
+        '  | { kind: "customer.kaelConversations.archive"; method: "DELETE"; conversationId: string; roles: ["customer"] }',
+        '  | { kind: "customer.kaelConversations.rename"; method: "PATCH"; conversationId: string; roles: ["customer"] }',
+        '  | { kind: "customer.kaelConversations.pin"; method: "PATCH"; conversationId: string; roles: ["customer"] }',
+        '  | { kind: "customer.kaelConversations.get"; method: "GET"; conversationId: string; roles: ["customer"] };',
+        '',
+      ].join('\n'),
+    )
+
+    const entries = Object.fromEntries(
+      buildCapabilityRegistry({ root }).entries.map((entry) => [entry.kind, entry]),
+    )
+
+    for (const kind of [
+      'customer.kaelConversations.create',
+      'customer.kaelConversations.list',
+      'customer.kaelConversations.archive',
+      'customer.kaelConversations.rename',
+      'customer.kaelConversations.pin',
+    ]) {
+      assert.equal(entries[kind].privileged, true)
+    }
+    assert.equal(entries['customer.kaelConversations.get'].privileged, false)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

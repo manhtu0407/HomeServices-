@@ -22,6 +22,13 @@ export function mapConfirmKaelChatError(errorCode: string | null): never {
   if (errorCode === "MISSING_ESTIMATE") {
     apiFailure("MISSING_ESTIMATE", "Kael chưa có ước tính để đặt thợ", 409);
   }
+  if (errorCode === "MISSING_REASONING_RECEIPT") {
+    apiFailure(
+      "MISSING_REASONING_RECEIPT",
+      "Kael chưa có biên nhận phân tích giá đã xác thực để xác nhận báo giá",
+      409,
+    );
+  }
   if (errorCode === "MISSING_SCOPE") {
     apiFailure(
       "MISSING_SCOPE",

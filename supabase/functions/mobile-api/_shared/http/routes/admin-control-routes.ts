@@ -32,6 +32,15 @@ export type AdminControlRoute =
     jobId: string;
     roles: AdminReadRoles;
   }
+  | { kind: "admin.paymentReconciliations.list"; method: "GET"; roles: AdminReadRoles }
+  | {
+    kind: "admin.paymentReconciliations.decision";
+    method: "POST";
+    paymentOrderId: string;
+    roles: AdminReadRoles;
+  }
+  | { kind: "admin.finance.summary"; method: "GET"; roles: AdminReadRoles }
+  | { kind: "admin.finance.balanceSnapshot"; method: "POST"; roles: AdminReadRoles }
   | { kind: "admin.payoutMethods.list"; method: "GET"; roles: AdminReadRoles }
   | {
     kind: "admin.payoutMethods.detail";
@@ -92,9 +101,37 @@ export function matchAdminControlRoute(
   method: string,
 ): AdminControlRoute | null {
   return matchAdminOperationsRoute(path, method)
+    ?? matchAdminFinanceRoute(path, method)
     ?? matchAdminWorkerTransactionRoute(path, method)
     ?? matchAdminPayoutRoute(path, method)
     ?? matchAdminTeamRoute(path, method);
+}
+
+function matchAdminFinanceRoute(
+  path: string,
+  method: string,
+): AdminControlRoute | null {
+  if (method === "GET" && path === "/admin/payment-reconciliations") {
+    return { kind: "admin.paymentReconciliations.list", method: "GET", roles: adminReadRoles };
+  }
+  const reconciliationDecision = path.match(/^\/admin\/payment-reconciliations\/([^/]+)\/decision$/);
+  if (method === "POST" && reconciliationDecision) {
+    const paymentOrderId = decodeSegment(reconciliationDecision[1] ?? "");
+    if (!paymentOrderId) return null;
+    return {
+      kind: "admin.paymentReconciliations.decision",
+      method: "POST",
+      paymentOrderId,
+      roles: adminReadRoles,
+    };
+  }
+  if (method === "GET" && path === "/admin/finance/summary") {
+    return { kind: "admin.finance.summary", method: "GET", roles: adminReadRoles };
+  }
+  if (method === "POST" && path === "/admin/finance/balance-snapshots") {
+    return { kind: "admin.finance.balanceSnapshot", method: "POST", roles: adminReadRoles };
+  }
+  return null;
 }
 
 function matchAdminOperationsRoute(

@@ -24,6 +24,39 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
+  kaelOrbBareReply: {
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  kaelOrbBareReplyBulletMarker: {
+    color: color.brand.primary,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 23,
+    minWidth: 16,
+  },
+  kaelOrbBareReplyBulletRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+  },
+  kaelOrbBareReplyBulletText: {
+    color: color.text.secondary,
+    flex: 1,
+    fontSize: 14.5,
+    fontWeight: '500',
+    lineHeight: 23,
+  },
+  kaelOrbBareReplyContent: {
+    gap: 8,
+  },
+  kaelOrbBareReplyText: {
+    color: color.text.secondary,
+    fontSize: 14.5,
+    fontWeight: '500',
+    lineHeight: 23,
+  },
   kaelOrbBubbleLeft: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.92)',

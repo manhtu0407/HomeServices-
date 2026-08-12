@@ -440,6 +440,7 @@ function createDeal(draft: LocalDealDraft): LocalDeal {
     confirmedAt: null,
     paidAt: null,
     reviewedAt: null,
+    matchingState: null,
   }
 }
 
@@ -482,6 +483,7 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal | null 
     confirmedAt: job.confirmedAt ?? null,
     paidAt: job.paidAt ?? null,
     reviewedAt: job.reviewedAt ?? null,
+    matchingState: job.matchingState ?? null,
   }
 }
 
@@ -533,6 +535,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
     fieldEvidencePhotoUrls: [],
     completionPhotoUrls: [],
     completionNotes: null,
+    matchingState: null,
   }
 }
 

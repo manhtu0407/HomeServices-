@@ -30,6 +30,11 @@ import {
   type KaelResponseStreamEvent,
 } from './kael-response-stream'
 import {
+  isKaelReasoningStreamEvent,
+  parseKaelReasoningSseEvent,
+  type KaelReasoningStreamEvent,
+} from './kael-reasoning-receipt'
+import {
   isBoundedString,
   isCustomerKaelConversationStreamResult,
   isCustomerKaelStreamResult,
@@ -90,12 +95,14 @@ type KaelStreamEvent =
   | KaelStreamResultEvent
   | KaelStreamErrorEvent
   | KaelStreamHeartbeatEvent
+  | KaelReasoningStreamEvent
   | KaelResponseStreamEvent
 
 export type KaelChatStreamHandlers = {
   onError?: (event: KaelStreamErrorEvent) => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResponseEvent?: (event: KaelResponseStreamEvent) => void
+  onReasoning?: (event: KaelReasoningStreamEvent) => void
   onResult?: (event: KaelStreamResultEvent) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -105,6 +112,7 @@ export type CustomerKaelConversationStreamHandlers = {
   onError?: (event: KaelStreamErrorEvent) => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResponseEvent?: (event: KaelResponseStreamEvent) => void
+  onReasoning?: (event: KaelReasoningStreamEvent) => void
   onResult?: (event: { type: 'result'; data: CustomerKaelConversationResponse }) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -119,6 +127,7 @@ export type WorkerKaelChatStreamHandlers = {
   onError?: (event: KaelStreamErrorEvent) => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResponseEvent?: (event: KaelResponseStreamEvent) => void
+  onReasoning?: (event: KaelReasoningStreamEvent) => void
   onResult?: (event: WorkerKaelStreamResultEvent) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -233,6 +242,7 @@ type StreamHandlers<T> = {
   onError?: (event: KaelStreamErrorEvent) => void
   onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
   onResponseEvent?: (event: KaelResponseStreamEvent) => void
+  onReasoning?: (event: KaelReasoningStreamEvent) => void
   onResult?: (event: { type: 'result'; data: T }) => void
   onStage?: (event: KaelStreamStageEvent) => void
   onToken?: (event: KaelStreamTokenEvent) => void
@@ -323,6 +333,7 @@ async function streamKaelTurn<T>(
         if (event.type === 'token') handlers.onToken?.(event)
         if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
         if (isKaelResponseStreamEvent(event)) handlers.onResponseEvent?.(event)
+        if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
         if (event.type === 'error') {
           handlers.onError?.(event)
           return { success: false, error: event.message, code: event.code, status: response.status }
@@ -476,6 +487,9 @@ function parseKaelSseFrame(frame: string): KaelStreamEvent | null {
 
   if (commentOnly) return { type: 'heartbeat' }
   const data = dataLines.length > 0 ? safeParseObject(dataLines.join('\n')) : {}
+
+  const reasoningEvent = parseKaelReasoningSseEvent(eventName, data)
+  if (reasoningEvent) return reasoningEvent
 
   if (eventName === 'stage') {
     const progress = stageEventToProgress(data)

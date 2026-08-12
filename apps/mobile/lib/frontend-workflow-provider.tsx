@@ -6,6 +6,8 @@ import {
   selectLocalWorkflow,
   type CustomerKaelMemoryPreferenceUpdateInput,
   type CustomerScopeDecisionInput,
+  type FavoriteWorkerForMatching,
+  type JobMatchingPreferenceInput,
   type LocalDealDraft,
   type LocalWorkflowAction,
   type LocalWorkflowSelectors,
@@ -84,13 +86,15 @@ type FrontendWorkflowActions = {
   ) => Promise<{ jobId: string; mediaError?: string } | false | null>
   hydrateRemoteJobById: (jobId: string, accessToken?: string) => Promise<boolean>
   confirmRemoteSearch: (jobIdOverride?: string) => Promise<boolean>
+  listFavoriteWorkersForMatching: () => Promise<FavoriteWorkerForMatching[] | null>
+  setMatchingPreference: (input: Omit<JobMatchingPreferenceInput, 'client_request_id'>) => Promise<boolean>
   cancelRemoteJob: () => Promise<boolean>
   refreshCurrentJob: () => Promise<boolean>
   workerRefresh: () => Promise<boolean>
   workerAcceptBroadcast: (jobId?: string) => Promise<boolean>
   workerDeclineBroadcast: () => Promise<boolean>
   workerUpdateStatus: WorkerOnsiteActions['workerUpdateStatus']
-  workerConfirmCashPayment: () => Promise<boolean>
+  workerConfirmCashPayment: (received?: boolean) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeDraftInput) => Promise<boolean>
   getKaelJobIncident: () => Promise<JobIncidentResponse | false>
   openKaelJobIncident: (input: WorkerScopeChangeDraftInput) => Promise<JobIncidentResponse | false>
@@ -100,6 +104,10 @@ type FrontendWorkflowActions = {
   decideScopeChange: (scopeChangeId: string, input: CustomerScopeDecisionInput) => Promise<boolean>
   customerConfirmCompletion: () => Promise<boolean>
   createPaymentIntent: () => Promise<boolean>
+  createManualBankPaymentOrder: () => Promise<boolean>
+  claimManualBankPayment: (sendingBank?: string) => Promise<boolean>
+  selectDirectWorkerPayment: () => Promise<boolean>
+  respondToDirectWorkerPayment: (received: boolean) => Promise<boolean>
   confirmStagingPayment: () => Promise<boolean>
   authorizeApartmentAccess: () => Promise<boolean>
   submitReview: (input: Omit<ReviewInput, 'job_id'>) => Promise<boolean>
@@ -158,6 +166,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const remoteSessionUserId = localVisualAuditSession ? null : sessionUserId
   const stateRef = useRef(state)
   const pendingJobCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
+  const pendingMatchingPreferenceClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingDirectScopeChangeClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingIncidentOpenClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingScopeProposalClientRequestRef = useRef<PendingClientRequestId | null>(null)
@@ -178,6 +187,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (pendingRequestOwnerRef.current === sessionUserId) return
     pendingRequestOwnerRef.current = sessionUserId
     pendingJobCreateClientRequestRef.current = null
+    pendingMatchingPreferenceClientRequestRef.current = null
     pendingDirectScopeChangeClientRequestRef.current = null
     pendingIncidentOpenClientRequestRef.current = null
     pendingScopeProposalClientRequestRef.current = null
@@ -227,11 +237,14 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     createRemoteJobFromDraft,
     hydrateCustomerActiveJob,
     hydrateRemoteJobById,
+    listFavoriteWorkersForMatching,
     refreshCurrentJob,
+    setMatchingPreference,
   } = useCustomerJobActions({
     dispatch,
     language,
     pendingJobCreateClientRequestRef,
+    pendingMatchingPreferenceClientRequestRef,
     role: remoteRole,
     sessionUserId: remoteSessionUserId,
     setRemoteError,
@@ -312,9 +325,13 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   })
 
   const {
+    claimManualBankPayment,
     confirmStagingPayment,
+    createManualBankPaymentOrder,
     createPaymentIntent,
     customerConfirmCompletion,
+    respondToDirectWorkerPayment,
+    selectDirectWorkerPayment,
     submitReview,
   } = useCompletionPaymentActions({
     dispatch,
@@ -326,6 +343,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const actions = useMemo<FrontendWorkflowActions>(() => ({
     createRemoteJobFromDraft,
     confirmRemoteSearch,
+    listFavoriteWorkersForMatching,
+    setMatchingPreference,
     cancelRemoteJob,
     hydrateRemoteJobById,
     refreshCurrentJob,
@@ -342,7 +361,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerSubmitRegistration,
     decideScopeChange,
     customerConfirmCompletion,
+    createManualBankPaymentOrder,
     createPaymentIntent,
+    claimManualBankPayment,
+    selectDirectWorkerPayment,
+    respondToDirectWorkerPayment,
     confirmStagingPayment,
     authorizeApartmentAccess,
     submitReview,
@@ -367,12 +390,18 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     cancelRemoteJob,
     confirmRemoteSearch,
     createRemoteJobFromDraft,
+    listFavoriteWorkersForMatching,
     customerConfirmCompletion,
+    createManualBankPaymentOrder,
     createPaymentIntent,
+    claimManualBankPayment,
+    selectDirectWorkerPayment,
+    respondToDirectWorkerPayment,
     confirmStagingPayment,
     decideScopeChange,
     decideWorkerCandidate,
     setWorkerCandidateFavorite,
+    setMatchingPreference,
     hydrateRemoteJobById,
     refreshCurrentJob,
     refreshNotifications,

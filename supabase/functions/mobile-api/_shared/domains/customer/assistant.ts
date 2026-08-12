@@ -4,6 +4,8 @@ import {
   buildKaelL2L3MemorySummary,
   runCustomerAssistant,
   type EdgeAiSecrets,
+  type KaelReasoningReporter,
+  type KaelResponseReporter,
 } from "../../kael/index.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
@@ -35,6 +37,10 @@ export async function answerKaelAssistant(
   ctx: MobileApiContext,
   input: KaelAssistantInput,
   secrets: EdgeAiSecrets,
+  options: {
+    reasoning?: KaelReasoningReporter;
+    response?: KaelResponseReporter;
+  } = {},
 ) {
   const client = db(ctx);
   if (input.surface === "customer_case" && !input.job_id) {
@@ -98,6 +104,8 @@ export async function answerKaelAssistant(
     language: input.language,
     memorySummary,
     message: input.message,
+    reasoning: options.reasoning,
+    response: options.response,
     secrets,
     surface: input.surface,
   });
@@ -108,5 +116,6 @@ export async function answerKaelAssistant(
     suggested_actions: answer.suggested_actions,
     boundary: answer.boundary,
     fallback_used: answer.fallback_used,
+    public_reasoning_summary: answer.public_reasoning_summary,
   };
 }

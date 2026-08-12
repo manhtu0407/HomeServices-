@@ -8,7 +8,7 @@ import type {
 } from '../constants'
 import type { LocalPaymentStatus } from '../mobile-workflow'
 import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation'
-
+import type { WorkflowResponses } from './workflow-responses'
 export type AddressAccessView = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
@@ -49,6 +49,121 @@ export type KaelEstimateAnalysisReceipt = {
   }
 }
 
+export type KaelPriceReasoningReceipt = {
+  schema_version: 'price_reasoning_receipt.v1'
+  receipt_id: string
+  problem: {
+    confirmed_facts: string[]
+    possible_causes: {
+      statement: string
+      basis: ('customer_report' | 'visual_evidence' | 'service_profile' | 'knowledge')[]
+      confidence: 'low' | 'medium' | 'high'
+    }[]
+    unknowns: string[]
+  }
+  scope: {
+    included: string[]
+    conditional: string[]
+    excluded: string[]
+  }
+  costs: {
+    currency: 'VND'
+    total_min: number
+    total_max: number
+    reconciliation: 'package_total' | 'exact'
+    components: {
+      kind:
+        | 'service_package'
+        | 'labor'
+        | 'travel'
+        | 'materials'
+        | 'replacement_parts'
+        | 'equipment'
+        | 'other'
+      status:
+        | 'priced'
+        | 'included_unitemized'
+        | 'conditional_unpriced'
+        | 'excluded'
+        | 'undetermined'
+      amount_min: number | null
+      amount_max: number | null
+      explanation: string
+    }[]
+  }
+  scenarios: {
+    low: { total: number; conditions: string[]; scope: string[] }
+    high: { total: number; conditions: string[]; scope: string[] }
+  }
+  fairness: {
+    price_source:
+      | 'perplexity_validated'
+      | 'baseline_with_market'
+      | 'baseline_only'
+      | 'inspection_required'
+    confidence: 'low' | 'medium' | 'high'
+    market_source_count: number | null
+    high_trust_source_count: number | null
+    quorum_met: boolean | null
+    cap_statement: string
+    remaining_uncertainty: string[]
+  }
+}
+
+export type MatchingState = {
+  strategy: 'pending_choice' | 'general' | 'saved_worker_first'
+  stage:
+    | 'awaiting_choice'
+    | 'saved_worker_search'
+    | 'general_search'
+    | 'candidate_ready'
+    | 'recovery_required'
+    | 'exhausted'
+    | 'stopped'
+  checks: {
+    kind: 'service_capability' | 'service_area' | 'availability'
+    state: 'pending' | 'verified'
+  }[]
+  batch: {
+    attempt: number
+    recipient_count: number
+    deadline_at: string | null
+    seconds_remaining: number | null
+    strategy: 'saved_worker' | 'general'
+  } | null
+  event_history: {
+    kind:
+      | 'awaiting_customer_choice'
+      | 'saved_worker_requested'
+      | 'saved_worker_no_response'
+      | 'saved_worker_declined'
+      | 'saved_worker_unavailable'
+      | 'search_expanded'
+      | 'general_batch_sent'
+      | 'matching_recovery_required'
+      | 'no_worker_found'
+      | 'candidate_ready'
+      | 'search_stopped'
+    occurred_at: string
+    recipient_count?: number
+  }[]
+}
+
+export type FavoriteWorkerForMatching = {
+  id: string
+  avatar_url: string | null
+  display_name: string | null
+  rating: number | null
+  total_jobs: number
+  availability: 'available' | 'unavailable'
+  availability_reason: 'not_available_for_this_request' | null
+}
+
+export type FavoriteWorkersForMatchingResponse = {
+  job_id: string
+  workers: FavoriteWorkerForMatching[]
+}
+
 export type KaelEstimate = {
   service_type: ServiceType
   problem_category: string
@@ -66,6 +181,7 @@ export type KaelEstimate = {
   needs_inspection_reason?: string | null
   market_signals?: string | null
   analysis_receipt?: KaelEstimateAnalysisReceipt | null
+  price_reasoning_receipt?: KaelPriceReasoningReceipt | null
 }
 
 export type ServiceCatalogResponse = {
@@ -282,6 +398,7 @@ export type JobDetailResponse = {
     kael_progress: KaelChatProgress | null
     final_price: number | null
     payment_rail_available?: boolean
+    payment_rail_provider?: 'platform_bank_manual' | 'sepay_vietqr' | null
     payment_status?: LocalPaymentStatus | null
     payment_provider?: string | null
     payment_code?: string | null
@@ -293,6 +410,21 @@ export type JobDetailResponse = {
     gross_amount?: number | null
     platform_fee?: number | null
     worker_net?: number | null
+    payment_receipt?: {
+      method: 'platform_bank_manual' | 'direct_worker'
+      status: string
+      gross_amount: number
+      customer_transfer_claimed_at: string | null
+      customer_transferred_at: string | null
+      response_deadline: string | null
+      hold_until: string | null
+      customer_confirmed_at: string | null
+      worker_confirmed_at: string | null
+      collateral_amount: number | null
+      bank_code: string | null
+      account_holder: string | null
+      account_masked: string | null
+    } | null
     completion_notes: string | null
     completion_photo_urls: string[]
     created_at: string
@@ -316,6 +448,7 @@ export type JobDetailResponse = {
     active_count: number
     seconds_remaining: number | null
   } | null
+  matching_state: MatchingState | null
   current_scope_change: {
     id: string
     status: ScopeChangeStatus
@@ -353,106 +486,21 @@ export type JobMessageSendResponse = {
   message: JobMessageResponse
 }
 
-export type ConfirmSearchResponse = {
-  job_id: string
-  status: JobStatus
-  broadcast_sent: boolean
-  worker: {
-    avatar_url: string | null
-    display_code?: string | null
-    full_name: string
-    id: string
-    rating: number
-    review_count?: number | null
-    total_jobs: number
-  } | null
-  message: string
-}
-
-export type ConfirmKaelChatResponse = ConfirmSearchResponse & {
-  session_id: string
-}
-
-export type StatusUpdateResponse = {
-  job_id: string
-  from_status: JobStatus
-  to_status: JobStatus
-  updated_at: string
-}
-
-export type ConfirmCompletionResponse = {
-  job_id: string
-  status: JobStatus
-  final_price: number | null
-}
-
-export type PaymentIntentResponse = {
-  job_id: string
-  status: JobStatus
-  payment: {
-    provider: 'sepay_vietqr' | 'staging_simulator'
-    status: LocalPaymentStatus
-    gross_amount: number | null
-    platform_fee: number | null
-    worker_net: number | null
-    payment_code: string | null
-    transfer_content: string | null
-    qr_image_url: string | null
-    expires_at: string | null
-    received_at: string | null
-    amount_received: number | null
-    updated_at: string | null
-  }
-}
-
-export type CustomerCancellationResponse = {
-  cancellation_id: string
-  job_id: string
-  status: 'requested'
-  job_status: JobStatus
-  sub_case:
-    | 'before_a7'
-    | 'after_a7_before_worker_accept'
-    | 'after_worker_accept'
-    | 'after_worker_completed_trigger_dispute'
-    | 'scheduled_job'
-  reason_code: string
-  reason_category: string
-  admin_review_required: boolean
-  phase0_no_monetary_penalty: boolean
-  worker_goodwill: Record<string, unknown> | null
-  abuse_signals: string[]
-  message: string
-  created_at: string
-}
-
-export type DisputeOpenResponse = {
-  dispute_id: string
-  job_id: string
-  status: string
-  dispute_type: string
-  evidence_snapshot_id: string
-  admin_review_required: boolean
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  evidence_locked_at: string
-  message: string
-  created_at: string
-}
-
-export type DisputeCounterStatementResponse = {
-  dispute_id: string
-  status: string
-  counter_party_statement_submitted: boolean
-  updated_at: string
-}
-
-export type DisputeAdminDecisionResponse = {
-  dispute_id: string
-  status: string
-  outcome: string
-  decided_at: string
-}
-
+export type ConfirmCompletionResponse = WorkflowResponses['confirmCompletion']
+export type ConfirmKaelChatResponse = WorkflowResponses['confirmKaelChat']
+export type ConfirmSearchResponse = WorkflowResponses['confirmSearch']
+export type CustomerCancellationResponse = WorkflowResponses['customerCancellation']
+export type DirectWorkerPaymentResponse = WorkflowResponses['directWorkerPayment']
+export type DirectWorkerPaymentResponseInput = WorkflowResponses['directWorkerPaymentResponse']
+export type DirectWorkerPaymentSelectInput = WorkflowResponses['directWorkerPaymentSelect']
+export type DisputeAdminDecisionResponse = WorkflowResponses['disputeAdminDecision']
+export type DisputeCounterStatementResponse = WorkflowResponses['disputeCounterStatement']
+export type DisputeOpenResponse = WorkflowResponses['disputeOpen']
+export type ManualBankPaymentClaimInput = WorkflowResponses['manualBankPaymentClaim']
+export type ManualBankPaymentClaimResponse = WorkflowResponses['manualBankPaymentClaimResponse']
+export type MatchingPreferenceResponse = WorkflowResponses['matchingPreference']
+export type PaymentIntentResponse = WorkflowResponses['paymentIntent']
+export type StatusUpdateResponse = WorkflowResponses['statusUpdate']
 export type ReviewResponse = {
   review_id: string
   job_id: string

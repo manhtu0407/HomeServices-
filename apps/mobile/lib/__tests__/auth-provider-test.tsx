@@ -27,7 +27,7 @@ const mockOnAuthStateChange = jest.fn((listener: typeof mockAuthStateListener) =
 const mockSession = {
   access_token: 'customer-access-token',
   user: {
-    email: 'manhtu0407@gmail.com',
+    email: 'customer@example.com',
     id: 'customer_test_1',
     user_metadata: {},
   },
@@ -789,7 +789,7 @@ describe('AuthProvider password update', () => {
       expect(screen.getByTestId('password-result')).toHaveTextContent('success')
     })
     expect(mockSignInWithPassword).toHaveBeenCalledWith({
-      email: 'manhtu0407@gmail.com',
+      email: 'customer@example.com',
       password: 'OldSafe123',
     })
     expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'NewSafe123' })

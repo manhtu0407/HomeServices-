@@ -16,6 +16,9 @@ export function buildHarnessRelease(options = {}) {
   const root = resolve(options.root ?? ROOT)
   const environment = options.environment ?? 'preview'
   if (!ENVIRONMENTS.has(environment)) throw new Error(`invalid release environment: ${environment}`)
+  if (environment === 'production' && options.requireCleanWorktree !== false) {
+    assertCleanReleaseWorktree(root)
+  }
   const gitSha = options.gitSha ?? git(root, ['rev-parse', 'HEAD'])
   if (!/^[0-9a-f]{40}$/u.test(gitSha)) throw new Error('release git SHA is invalid')
 
@@ -85,6 +88,12 @@ export function buildHarnessRelease(options = {}) {
   release.releaseId = `harness-${gitSha.slice(0, 12)}-${behaviorHash.slice(0, 12)}`
   release.bundleSha256 = sha256(canonicalJson({ ...release, bundleSha256: undefined }))
   return release
+}
+
+export function assertCleanReleaseWorktree(rootInput = ROOT) {
+  const root = resolve(rootInput)
+  const status = git(root, ['status', '--porcelain=v1', '--untracked-files=all'])
+  if (status) throw new Error('production release requires a clean Git worktree')
 }
 
 export function checkHarnessRelease(release) {

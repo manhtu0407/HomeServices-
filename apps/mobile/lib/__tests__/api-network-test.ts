@@ -88,6 +88,31 @@ describe('mobile API response guard', () => {
     )
   })
 
+  it('uses a body client request id as the stable idempotency header for writes', async () => {
+    mockFetch.mockResolvedValue({
+      body: null,
+      headers: { get: () => null },
+      ok: true,
+      status: 201,
+      text: jest.fn(async () => '{}'),
+    })
+
+    await api.post('/workers/me/kael/chat', {
+      client_request_id: 'd6c9fe68-ae24-4f17-8d15-6eecaa9b7c70',
+      language: 'vi',
+      mode: 'normal',
+    })
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.test/functions/v1/mobile-api/workers/me/kael/chat',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Idempotency-Key': 'mobile:d6c9fe68-ae24-4f17-8d15-6eecaa9b7c70',
+        }),
+      }),
+    )
+  })
+
   it('uses the supplied token for an authenticated mobile API read', async () => {
     mockFetch.mockResolvedValue({
       body: null,
@@ -335,6 +360,27 @@ describe('mobile API response guard', () => {
     expect(abortTimes).toEqual([30_000])
   })
 
+  it('gives intake confirmation one complete Agentic deadline without retrying an in-flight timeout', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(0)
+    const abortTimes: number[] = []
+    mockFetch.mockImplementation((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        abortTimes.push(Date.now())
+        const error = new Error('request aborted')
+        error.name = 'AbortError'
+        reject(error)
+      }, { once: true })
+    }))
+
+    const pending = api.post('/kael/chat/session-1/intake-confirmation', { decision: 'confirmed' })
+    await jest.runAllTimersAsync()
+
+    await expect(pending).resolves.toMatchObject({ success: false, code: 'TIMEOUT' })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(abortTimes).toEqual([30_000])
+  })
+
   it('retries Kael estimate confirmation after a lost response', async () => {
     jest.useFakeTimers()
     const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -353,6 +399,12 @@ describe('mobile API response guard', () => {
 
     await expect(pending).resolves.toMatchObject({ success: true })
     expect(mockFetch).toHaveBeenCalledTimes(2)
+    const firstHeaders = mockFetch.mock.calls[0][1]?.headers as Record<string, string>
+    const retryHeaders = mockFetch.mock.calls[1][1]?.headers as Record<string, string>
+    expect(firstHeaders['Idempotency-Key']).toMatch(
+      /^mobile:post:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    expect(retryHeaders['Idempotency-Key']).toBe(firstHeaders['Idempotency-Key'])
     expect(warning).toHaveBeenCalledWith('mobile-api retry', expect.objectContaining({
       method: 'POST',
       path: '/kael/chat/session-1/confirm',
@@ -360,29 +412,27 @@ describe('mobile API response guard', () => {
     }))
   })
 
-  it('reuses one generated idempotency key across transport retries', async () => {
+  it('does not automatically retry an HTTP failure from Kael estimate confirmation', async () => {
     jest.useFakeTimers()
-    mockFetch
-      .mockRejectedValueOnce(new TypeError('response lost after confirmation commit'))
-      .mockResolvedValueOnce({
-        body: null,
-        headers: { get: () => null },
-        ok: true,
-        status: 200,
-        text: jest.fn(async () => '{"job_id":"job-1","status":"broadcasting"}'),
-      })
+    const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    mockFetch.mockResolvedValue({
+      body: null,
+      headers: { get: () => null },
+      ok: false,
+      status: 500,
+      text: jest.fn(async () => '{"error":"confirmation failed","code":"DB_ERROR"}'),
+    })
 
     const pending = api.post('/kael/chat/session-1/confirm')
     await jest.runAllTimersAsync()
-    await expect(pending).resolves.toMatchObject({ success: true })
 
-    const headers = mockFetch.mock.calls.map(([, init]) =>
-      (init?.headers as Record<string, string>)['Idempotency-Key'],
-    )
-    expect(headers).toHaveLength(2)
-    expect(headers[0]).toMatch(/^mobile:post:[0-9a-f-]{36}$/)
-    expect(headers[0]).toMatch(/^[A-Za-z0-9._:-]{16,160}$/)
-    expect(headers[1]).toBe(headers[0])
+    await expect(pending).resolves.toMatchObject({
+      success: false,
+      code: 'DB_ERROR',
+      status: 500,
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(warning).not.toHaveBeenCalled()
   })
 
   it('derives the idempotency key from a durable client request id', async () => {
@@ -407,6 +457,37 @@ describe('mobile API response guard', () => {
         }),
       }),
     )
+  })
+
+  it('retries intake confirmation after a lost response', async () => {
+    jest.useFakeTimers()
+    const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    mockFetch
+      .mockRejectedValueOnce(new TypeError('response lost after intake confirmation'))
+      .mockResolvedValueOnce({
+        body: null,
+        headers: { get: () => null },
+        ok: true,
+        status: 200,
+        text: jest.fn(async () => '{"session":{"id":"session-1"},"turns":[]}'),
+      })
+
+    const pending = api.post('/kael/chat/session-1/intake-confirmation', { decision: 'confirmed' })
+    await jest.runAllTimersAsync()
+
+    await expect(pending).resolves.toMatchObject({ success: true })
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    const firstHeaders = mockFetch.mock.calls[0][1]?.headers as Record<string, string>
+    const retryHeaders = mockFetch.mock.calls[1][1]?.headers as Record<string, string>
+    expect(firstHeaders['Idempotency-Key']).toMatch(
+      /^mobile:post:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    expect(retryHeaders['Idempotency-Key']).toBe(firstHeaders['Idempotency-Key'])
+    expect(warning).toHaveBeenCalledWith('mobile-api retry', expect.objectContaining({
+      method: 'POST',
+      path: '/kael/chat/session-1/intake-confirmation',
+      reason: 'NETWORK_ERROR',
+    }))
   })
 
   it('does not retry worker application creation without an idempotency key', async () => {

@@ -56,8 +56,19 @@ export async function runKaelParallelStage(
   if (!visionStage || !visionResult) {
     throw new Error(visionStage?.failureReason ?? "vision stage failed");
   }
+  const baselineStage = parallelRun.results.find((stage) =>
+    stage.label === "baseline"
+  );
+  const baselineResult = baselineStage?.value?.kind === "baseline"
+    ? baselineStage.value.result
+    : undefined;
+  const fallbackComplexity = !visionResult.success && baselineResult?.success
+    ? baselineResult.defaultComplexity
+    : undefined;
   const analysis = visionResult.success
     ? visionResult.analysis
+    : fallbackComplexity
+    ? { ...visionResult.fallback, complexity_hint: fallbackComplexity }
     : visionResult.fallback;
   const visionAnalysisStatus = visionResult.success
     ? "analyzed" as const

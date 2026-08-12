@@ -9,23 +9,32 @@ import { mapConfirmKaelChatError } from "../../platform/domain-error-mappers.ts"
 import { geocodeConfirmedKaelJob } from "../places/geo.ts";
 import { confirmSearch } from "../matching/flow.ts";
 import { hasActiveBroadcast } from "../matching/broadcasts.ts";
+import {
+  beginMatchingPreferencePrompt,
+  getMatchingState,
+  hasSavedWorker,
+  isCustomerFavoriteWorker,
+  setJobMatchingPreference,
+} from "../matching/matching-preference.ts";
 import { HCMC_SCHEDULE_VALIDATION_MESSAGE, validateFutureHcmcSchedule } from "../../platform/scheduling.ts";
 import { requireJobAccess } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { buildKaelAutonomyDecision, kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets, type KaelAutonomyDecision } from "../../kael/index.ts";
-import type { JobStatus } from "../../../../_shared/domain.ts";
+import { recordHarnessEvent } from "../../../../_shared/harness/trace.ts";
+import type { EdgeKaelChatConfirmInput, JobStatus } from "../../../../_shared/domain.ts";
 
 export async function confirmKaelChat(
   ctx: MobileApiContext,
   sessionId: string,
+  input: EdgeKaelChatConfirmInput,
   secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_chat_sessions")
-      .select("id, job_id, customer_id, case_phase, diagnosis_scope, scheduled_at")
+      .select("id, job_id, customer_id, case_phase, diagnosis_scope, scheduled_at, preferred_worker_id")
       .eq("id", sessionId)
       .eq("customer_id", ctx.user.id)
       .maybeSingle(),
@@ -40,9 +49,10 @@ export async function confirmKaelChat(
     apiFailure("INVALID_STATUS", "Kael chưa hoàn tất phân tích phạm vi để xác nhận báo giá", 409);
   }
   const diagnosisScope = diagnosisScopeResult.data;
+  const scheduledAt = nullableString(sessionResult.data.scheduled_at);
   if (
     !nullableString(sessionResult.data.job_id) &&
-    validateFutureHcmcSchedule(nullableString(sessionResult.data.scheduled_at)) !== null
+    (!scheduledAt || validateFutureHcmcSchedule(scheduledAt) !== null)
   ) {
     apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
   }
@@ -60,9 +70,20 @@ export async function confirmKaelChat(
     client.rpc("confirm_kael_chat_atomic", {
       p_session_id: sessionId,
       p_customer_id: ctx.user.id,
+      p_price_reasoning_receipt_id: input.price_reasoning_receipt_id,
     }),
   );
   if (result.error) {
+    await recordHarnessEvent(ctx.traceContext, {
+      eventClass: "kael.confirm.rpc_failed",
+      stage: "kael.chat.confirm",
+      status: "failed",
+      errorCode: "KAEL_CONFIRM_RPC_FAILED",
+      safeMetadata: {
+        rpc_code: safeConfirmRpcErrorCode(result.error.code),
+        rpc_subject: safeConfirmRpcFailureSubject(result.error.message),
+      },
+    });
     apiFailure("DB_ERROR", "Không thể xác nhận phiên Kael", 500);
   }
   const row = result.data?.[0];
@@ -94,14 +115,13 @@ export async function confirmKaelChat(
       if (currentState.status === "awaiting_customer_confirm") {
         return {
           session_id: sessionId,
-          ...(await confirmSearch(ctx, existingJobId, {
-            kaelSessionId: sessionId,
-            autonomyDecision: buildKaelChatMatchingDecision(
-              sessionId,
-              existingJobId,
-              diagnosisScope.confidence,
-              diagnosisScope.scope_summary,
-            ),
+          ...(await startConfirmedKaelMatching({
+            ctx,
+            diagnosisScope,
+            input,
+            jobId: existingJobId,
+            preferredWorkerId: nullableString(sessionResult.data.preferred_worker_id),
+            sessionId,
           })),
         };
       }
@@ -123,14 +143,13 @@ export async function confirmKaelChat(
     nullableString(row.district_code),
     secrets,
   );
-  const confirmed = await confirmSearch(ctx, jobId, {
-    kaelSessionId: sessionId,
-    autonomyDecision: buildKaelChatMatchingDecision(
-      sessionId,
-      jobId,
-      diagnosisScope.confidence,
-      diagnosisScope.scope_summary,
-    ),
+  const confirmed = await startConfirmedKaelMatching({
+    ctx,
+    diagnosisScope,
+    input,
+    jobId,
+    preferredWorkerId: nullableString(sessionResult.data.preferred_worker_id),
+    sessionId,
   });
   return {
     session_id: sessionId,
@@ -171,6 +190,73 @@ function buildKaelChatMatchingDecision(
   });
 }
 
+async function startConfirmedKaelMatching(input: {
+  ctx: MobileApiContext;
+  diagnosisScope: ReturnType<typeof kaelDiagnosisScopeArtifactSchema.parse>;
+  input: EdgeKaelChatConfirmInput;
+  jobId: string;
+  preferredWorkerId: string | null;
+  sessionId: string;
+}) {
+  const autonomyDecision = buildKaelChatMatchingDecision(
+    input.sessionId,
+    input.jobId,
+    input.diagnosisScope.confidence,
+    input.diagnosisScope.scope_summary,
+  );
+  if (
+    input.preferredWorkerId &&
+    await isCustomerFavoriteWorker(input.ctx, input.preferredWorkerId)
+  ) {
+    await beginMatchingPreferencePrompt(input.ctx, input.jobId, { autonomyDecision });
+    return setJobMatchingPreference(input.ctx, input.jobId, {
+      auto_general: true,
+      client_request_id: crypto.randomUUID(),
+      mode: "saved_worker_first",
+      worker_id: input.preferredWorkerId,
+    });
+  }
+  if (
+    input.input.matching_mode === "prompt_if_saved" &&
+    await hasSavedWorker(input.ctx)
+  ) {
+    const matchingState = await beginMatchingPreferencePrompt(
+      input.ctx,
+      input.jobId,
+      { autonomyDecision },
+    );
+    return {
+      job_id: input.jobId,
+      status: "broadcasting" as JobStatus,
+      broadcast_sent: false,
+      worker: null,
+      message: "Kael đã tìm thấy thợ bạn đã lưu. Bạn chọn cách tìm thợ trước khi Kael gửi yêu cầu.",
+      matching_state: matchingState,
+    };
+  }
+  return confirmSearch(input.ctx, input.jobId, {
+    kaelSessionId: input.sessionId,
+    autonomyDecision,
+  });
+}
+
+function safeConfirmRpcErrorCode(value: unknown): string {
+  return typeof value === "string" && /^[A-Za-z0-9_]{1,64}$/u.test(value)
+    ? value
+    : "UNKNOWN";
+}
+
+function safeConfirmRpcFailureSubject(value: unknown): string {
+  if (typeof value !== "string") return "unknown";
+  const normalized = value.toLowerCase();
+  if (normalized.includes("permission denied for function")) return "function_execute";
+  if (normalized.includes("permission denied for table") || normalized.includes("permission denied for relation") || normalized.includes("permission denied for sequence")) {
+    return "data_access";
+  }
+  if (normalized.includes("permission denied")) return "permission_other";
+  return "unknown";
+}
+
 async function readConfirmedKaelChatState(
   ctx: MobileApiContext,
   jobId: string,
@@ -191,5 +277,6 @@ async function readConfirmedKaelChatState(
     broadcast_sent: broadcastSent,
     worker: null,
     message: "Phiên Kael đã được xác nhận. Đang đồng bộ trạng thái hiện tại.",
+    matching_state: await getMatchingState(client, jobId, status),
   };
 }

@@ -1,7 +1,11 @@
 import { db } from "../../platform/db.ts";
 import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../../platform/sse.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import type { EdgeAiSecrets } from "../../kael/index.ts";
+import {
+  createKaelReasoningReporter,
+  createKaelResponseReporter,
+  type EdgeAiSecrets,
+} from "../../kael/index.ts";
 import type { WorkerKaelChatTurnInput } from "../../../../_shared/domain.ts";
 import {
   readWorkerKaelSession,
@@ -14,7 +18,7 @@ import {
   KAEL_CHAT_STREAM_MAX_MS,
   KAEL_CHAT_STREAM_POLL_MS,
 } from "./stream.ts";
-import { sleepForKaelChatStream } from "./verified-response-stream.ts";
+import { waitForKaelChatProgressPoll } from "./stream-delay.ts";
 export async function streamWorkerKaelChatTurn(
   ctx: MobileApiContext,
   sessionId: string,
@@ -45,6 +49,9 @@ export async function streamWorkerKaelChatTurn(
       // Keep worker streams equally resilient when the first assist stage
       // needs more time than the client connection window.
       write(encodeSseHeartbeat());
+      const reasoning = createKaelReasoningReporter({ emit });
+      const response = createKaelResponseReporter({ emit, language: input.language });
+      reasoning.start();
       const emitProgressIfChanged = async () => {
         const snapshot = await readWorkerKaelChatProgressSnapshot(ctx, sessionId);
         const progress = snapshot.progress;
@@ -61,15 +68,31 @@ export async function streamWorkerKaelChatTurn(
         });
       };
 
-      const resultPromise = sendWorkerKaelChatTurn(ctx, sessionId, input, secrets)
+      const resultPromise = sendWorkerKaelChatTurn(
+        ctx,
+        sessionId,
+        input,
+        secrets,
+        { reasoning, response },
+      )
         .then(async (result) => {
           await emitProgressIfChanged();
-          // Token events stay disabled until callAI exposes real provider token
-          // streaming for worker_assist. The final result remains authoritative.
           emit("result", result);
           close();
         })
         .catch((err) => {
+          response.fail({
+            message: input.language === "en"
+              ? "Kael could not complete this reply. Please try again."
+              : "Kael chưa thể hoàn tất phản hồi này. Vui lòng thử lại.",
+            recoverable: true,
+          });
+          reasoning.fail({
+            publicMessage: input.language === "en"
+              ? "Kael could not complete this reply. Please try again."
+              : "Kael chưa thể hoàn tất phản hồi này. Vui lòng thử lại.",
+            recoverable: true,
+          });
           emit("error", kaelChatStreamErrorPayload(err));
           close();
         });
@@ -83,7 +106,7 @@ export async function streamWorkerKaelChatTurn(
             write(encodeSseHeartbeat());
             lastHeartbeatAt = now;
           }
-          await sleepForKaelChatStream(KAEL_CHAT_STREAM_POLL_MS);
+          await waitForKaelChatProgressPoll(KAEL_CHAT_STREAM_POLL_MS);
         }
         await resultPromise;
       })().catch((err) => {

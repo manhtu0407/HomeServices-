@@ -3,12 +3,16 @@ import type {
   JobStatus,
   MessageSender,
 } from "../../../../_shared/domain.ts";
+import type { EdgeKaelMatchingContracts } from "../../../../_shared/contracts.ts";
 import type {
   EdgeKaelEstimate,
 } from "./kael-chat.ts";
 import type {
   EdgeWorkerScopeChangeResponse,
 } from "./worker.ts";
+
+type MatchingState = EdgeKaelMatchingContracts["matchingState"];
+type FavoriteWorkersForMatchingResponse = EdgeKaelMatchingContracts["favoriteWorkersResponse"];
 
 export type EdgeCreateJobResponse = {
   job_id: string;
@@ -28,7 +32,14 @@ export type EdgeConfirmSearchResponse = {
   broadcast_sent: boolean;
   worker: null | { full_name: string; rating: number; total_jobs: number };
   message: string;
+  matching_state?: MatchingState | null;
 };
+
+export type EdgeMatchingPreferenceResponse = EdgeConfirmSearchResponse & {
+  matching_state: MatchingState;
+};
+
+export type EdgeFavoriteWorkersForMatchingResponse = FavoriteWorkersForMatchingResponse;
 
 export type EdgeStatusUpdateResponse = {
   job_id: string;

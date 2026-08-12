@@ -189,7 +189,48 @@ describe('mobile-api HCMC scheduling boundary', () => {
       }], [], rpcCalls),
     }
 
-    await expect(confirmKaelChat(ctx, 'schedule-session', {})).rejects.toMatchObject({
+    await expect(confirmKaelChat(ctx, 'schedule-session', {
+      price_reasoning_receipt_id: 'price_reasoning:receipt-1',
+    }, {})).rejects.toMatchObject({
+      code: 'VALIDATION',
+      status: 400,
+    })
+    expect(rpcCalls).toEqual([])
+  })
+
+  it('rejects a quote-ready session with no chosen time before creating a job', async () => {
+    const rpcCalls: string[] = []
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'schedule-missing-customer' },
+      role: 'customer',
+      supabase: queuedDb([{
+        data: {
+          id: 'schedule-missing-session',
+          job_id: null,
+          customer_id: 'schedule-missing-customer',
+          case_phase: 'offer_review',
+          diagnosis_scope: {
+            ...buildInitialDiagnosisScopeArtifact({
+              serviceType: 'electrical',
+              customerGoal: 'Ổ cắm mất điện cần kiểm tra',
+            }),
+            case_phase: 'offer_review',
+            missing_facts: [],
+            quote_blockers: [],
+            scope_summary: 'Kiểm tra và sửa ổ cắm trong phạm vi đã xác nhận.',
+            quote_ready: true,
+            next_action: { kind: 'prepare_offer' },
+          },
+          scheduled_at: null,
+        },
+        error: null,
+      }], [], rpcCalls),
+    }
+
+    await expect(confirmKaelChat(ctx, 'schedule-missing-session', {
+      price_reasoning_receipt_id: 'price_reasoning:receipt-2',
+    }, {})).rejects.toMatchObject({
       code: 'VALIDATION',
       status: 400,
     })

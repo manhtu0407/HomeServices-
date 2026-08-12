@@ -1,4 +1,11 @@
-import type { ComplexityLevel, JobStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, UserRole } from '@nestscout/shared'
+import type { ComplexityLevel, JobStatus, LocalPaymentStatus, MatchingState, ScopeChangeStatus, ServiceType, UserRole } from '@nestscout/shared'
+export type {
+  DirectWorkerPaymentResponse,
+  DirectWorkerPaymentResponseInput,
+  DirectWorkerPaymentSelectInput,
+  ManualBankPaymentClaimInput,
+  ManualBankPaymentClaimResponse,
+} from '@nestscout/shared'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView } from './shared'
 
@@ -34,6 +41,7 @@ export type JobDetailResponse = {
     kael_progress: KaelChatProgress | null
     final_price: number | null
     payment_rail_available?: boolean
+    payment_rail_provider?: 'platform_bank_manual' | 'sepay_vietqr' | null
     payment_status?: LocalPaymentStatus | null
     payment_provider?: string | null
     payment_code?: string | null
@@ -45,6 +53,21 @@ export type JobDetailResponse = {
     gross_amount?: number | null
     platform_fee?: number | null
     worker_net?: number | null
+    payment_receipt?: {
+      method: 'platform_bank_manual' | 'direct_worker'
+      status: string
+      gross_amount: number
+      customer_transfer_claimed_at: string | null
+      customer_transferred_at: string | null
+      response_deadline: string | null
+      hold_until: string | null
+      customer_confirmed_at: string | null
+      worker_confirmed_at: string | null
+      collateral_amount: number | null
+      bank_code: string | null
+      account_holder: string | null
+      account_masked: string | null
+    } | null
     completion_notes: string | null
     completion_photo_urls: string[]
     created_at: string
@@ -68,6 +91,7 @@ export type JobDetailResponse = {
     active_count: number
     seconds_remaining: number | null
   } | null
+  matching_state: MatchingState | null
   current_scope_change: {
     id: string
     status: ScopeChangeStatus
@@ -174,6 +198,7 @@ export type ConfirmSearchResponse = {
     total_jobs: number
   } | null
   message: string
+  matching_state?: MatchingState | null
 }
 
 export type StatusUpdateResponse = {
@@ -193,7 +218,7 @@ export type PaymentIntentResponse = {
   job_id: string
   status: JobStatus
   payment: {
-    provider: 'sepay_vietqr' | 'staging_simulator'
+    provider: 'sepay_vietqr' | 'staging_simulator' | 'platform_bank_manual'
     status: LocalPaymentStatus
     gross_amount: number | null
     platform_fee: number | null

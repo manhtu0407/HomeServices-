@@ -2,10 +2,56 @@
   "version": "1.0.0",
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
-    "fileCount": 17,
-    "sha256": "acf61c4fcbe4335cf705caa194b37b698681f8ef7a4f020193a06c0de04b0094"
+    "fileCount": 19,
+    "sha256": "38fa20f1fd74b446fc238d1ab0a241e22dd0045e9c215497b2f2eb64240a30fc"
   },
   "entries": [
+    {
+      "kind": "admin.finance.balanceSnapshot",
+      "capability": "mobile.route.admin.finance.balanceSnapshot",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.finance.summary",
+      "capability": "mobile.route.admin.finance.summary",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
     {
       "kind": "admin.governance.aiCosts",
       "capability": "mobile.route.admin.governance.aiCosts",
@@ -426,6 +472,52 @@
       ]
     },
     {
+      "kind": "admin.paymentReconciliations.decision",
+      "capability": "mobile.route.admin.paymentReconciliations.decision",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.paymentReconciliations.list",
+      "capability": "mobile.route.admin.paymentReconciliations.list",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
       "kind": "admin.payoutMethods.decision",
       "capability": "mobile.route.admin.payoutMethods.decision",
       "public": false,
@@ -805,7 +897,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "conversation",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -828,7 +920,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "conversation",
       "requiresResourceCheck": false,
       "confirmationGate": "none",
@@ -874,7 +966,7 @@
       "risk": "read",
       "operationClass": "database_read",
       "sideEffectClass": "read-only",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "conversation",
       "requiresResourceCheck": false,
       "confirmationGate": "none",
@@ -897,7 +989,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "conversation",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -920,7 +1012,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "conversation",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -943,7 +1035,7 @@
       "risk": "write",
       "operationClass": "provider_call",
       "sideEffectClass": "conditional-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "conversation",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -966,7 +1058,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "conversation",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -1249,6 +1341,53 @@
       ]
     },
     {
+      "kind": "jobs.directPaymentRespond",
+      "capability": "mobile.route.jobs.directPaymentRespond",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer",
+        "worker"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.directPaymentSelect",
+      "capability": "mobile.route.jobs.directPaymentSelect",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
       "kind": "jobs.get",
       "capability": "mobile.route.jobs.get",
       "public": false,
@@ -1363,6 +1502,29 @@
       "envelopeTtlMs": 120000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts"
+      ]
+    },
+    {
+      "kind": "jobs.matchingPreference",
+      "capability": "mobile.route.jobs.matchingPreference",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
       ]
     },
     {
@@ -1531,6 +1693,52 @@
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/job.ts",
         "supabase/functions/mobile-api/_shared/http/routes/staging-payment-routes.ts"
+      ]
+    },
+    {
+      "kind": "jobs.paymentOrder",
+      "capability": "mobile.route.jobs.paymentOrder",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
+      "kind": "jobs.paymentOrderClaim",
+      "capability": "mobile.route.jobs.paymentOrderClaim",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
       ]
     },
     {
@@ -1734,7 +1942,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "system",
       "requiresResourceCheck": false,
       "confirmationGate": "none",
@@ -1778,7 +1986,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -1801,7 +2009,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": false,
       "confirmationGate": "none",
@@ -1825,7 +2033,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -1849,7 +2057,7 @@
       "risk": "write",
       "operationClass": "provider_call",
       "sideEffectClass": "conditional-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -1897,7 +2105,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -1991,7 +2199,7 @@
       "risk": "write",
       "operationClass": "provider_call",
       "sideEffectClass": "conditional-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -2015,7 +2223,7 @@
       "risk": "write",
       "operationClass": "idempotent_write",
       "sideEffectClass": "idempotent-write",
-      "privileged": false,
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": true,
       "confirmationGate": "none",
@@ -2137,6 +2345,29 @@
       "envelopeTtlMs": 120000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts"
+      ]
+    },
+    {
+      "kind": "me.favoriteWorkers.matching",
+      "capability": "mobile.route.me.favoriteWorkers.matching",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "read",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": false,
+      "resourceType": "self",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/me.ts"
       ]
     },
     {

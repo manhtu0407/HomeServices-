@@ -401,6 +401,7 @@ describe('active customer Kael chat surface wiring', () => {
       readCustomerSource('kael-chat/use-customer-kael-decision-actions.ts'),
     ].join('\n')
     const chatView = readCustomerSource('kael-chat/chat-stateful-surfaces.tsx')
+    const chatTranscript = readCustomerSource('kael-chat/use-kael-chat-transcript.tsx')
     const chatPrimitives = readCustomerSource('kael-chat/chat-surfaces.tsx')
 
     expect(kaelRoute).toContain('CustomerKaelSurface')
@@ -418,8 +419,8 @@ describe('active customer Kael chat surface wiring', () => {
     expect(guardedActions).toContain('.isCurrent(')
     expect(chatPrimitives).toContain("speaker: 'customer' | 'worker' | 'kael'")
     expect(chatPrimitives).not.toContain("role: 'customer' | 'worker' | 'kael'")
-    expect(chatView).toContain('speaker="customer"')
-    expect(chatView).not.toContain('<ChatBubble\n                role=')
+    expect(chatTranscript).toContain('speaker="customer"')
+    expect(chatTranscript).not.toContain('<ChatBubble\n                role=')
     expect(chatView).toContain('testID="customer-v21-kael-chat"')
     expect(chatView).toContain('customer-v21-screen-2.4-chat-normal')
     expect(chatView).not.toContain('customer-kael-chat-stack-screen')
@@ -510,6 +511,31 @@ describe('active customer Kael chat surface wiring', () => {
     }
   })
 
+  it('uses the text token for Customer Kael header navigation icons', () => {
+    const header = readCustomerSource('kael-chat/kael-chat-header.tsx')
+
+    expect(header).toContain('<ChatBackIcon color={tokens.text} />')
+    expect(header).toContain('<ChatNewConversationIcon color={tokens.text} />')
+    expect(header).not.toContain('<ChatBackIcon color={tokens.primary} />')
+    expect(header).not.toContain('<ChatNewConversationIcon color={tokens.primary} />')
+  })
+
+  it('matches the Worker Kael header icon geometry', () => {
+    const surfaces = readCustomerSource('kael-chat/chat-surfaces.tsx')
+    const styles = readCustomerSource('kael-chat/chat-styles.ts')
+
+    expect(surfaces).toContain('height={18} style={styles.chatBackIcon} viewBox="0 0 24 24" width={18}')
+    expect(surfaces).toContain('<Svg fill="none" height={20} viewBox="0 0 24 24" width={20}>')
+    expect(styles).toContain('chatBackIcon: {\n    height: 18,\n    width: 18,\n  },')
+  })
+
+  it('uses bold strokes for Customer Kael header navigation icons', () => {
+    const surfaces = readCustomerSource('kael-chat/chat-surfaces.tsx')
+
+    expect(surfaces).toContain('d="M14.5 5.5 8 12l6.5 6.5" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={3}')
+    expect(surfaces).toContain('d="M12 5v14M5 12h14" stroke={color} strokeLinecap="round" strokeWidth={2.7}')
+  })
+
   it('keeps the Kael empty-state timeline looping while the app is active', () => {
     const hero = readCustomerSource('kael-chat/kael-empty-hero.tsx')
 
@@ -554,13 +580,17 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByTestId('customer-v21-kael-empty-hero-normal')).toBeOnTheScreen()
   })
 
-  it('keeps breathing room between the new-session action and the session list', async () => {
+  it('keeps breathing room below Customer Kael header actions when the session menu opens', async () => {
     mockSessionsByMode.normal = [makeConversationSession('normal', 'session-spacing')]
     render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('normal')
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-menu-shell').props.style)).toMatchObject({
+      top: 74,
+    })
     const sessionList = screen.getByTestId('customer-v21-kael-session-list')
 
     expect(StyleSheet.flatten(sessionList.props.style)).toMatchObject({
@@ -568,10 +598,10 @@ describe('active customer Kael chat surface wiring', () => {
       maxHeight: 138,
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-session-new-label').props.style)).toMatchObject({
-      fontSize: 12,
+      fontSize: 13,
     })
-    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('height', 20)
-    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('width', 20)
+    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('height', 21)
+    expect(screen.getByTestId('customer-v21-kael-session-new-plus')).toHaveProp('width', 21)
   })
 
   it('sends a normal Kael message when the keyboard submits the composer', async () => {
@@ -589,6 +619,163 @@ describe('active customer Kael chat surface wiring', () => {
       expect.objectContaining({ onResponseDelta: expect.any(Function) }),
     ))
     expect(screen.getByTestId('customer-v21-kael-input')).toHaveProp('value', '')
+  })
+
+  it('shows Suy nghĩ immediately for a normal Kael reply without inventing backend steps', async () => {
+    mockConversationSendTurn.mockImplementationOnce((
+      _sessionId: string,
+      _input: { message: string },
+      _handlers: { onReasoning?: (event: unknown) => void },
+    ) => {
+      return new Promise(() => undefined)
+    })
+    render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('normal')
+
+    const input = screen.getByTestId('customer-v21-kael-input')
+    fireEvent.changeText(input, 'Please check this')
+    fireEvent(input, 'submitEditing')
+
+    const receipt = await screen.findByTestId('customer-v21-kael-reasoning-receipt')
+    expect(receipt).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-kael-reasoning-receipt-toggle'))
+      .toHaveProp('accessibilityState', { busy: true, expanded: true })
+    expect(screen.getByText('Suy nghĩ')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-kael-reasoning-receipt-elapsed-slot')).toBeNull()
+    expect(screen.getByTestId('customer-v21-kael-reasoning-pending-message'))
+      .toHaveTextContent('Please check this')
+  })
+
+  it('marks an interrupted normal reply as failed instead of leaving Suy nghĩ active', async () => {
+    mockConversationSendTurn.mockRejectedValueOnce(new Error('network interrupted'))
+    render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('normal')
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Please check this')
+    fireEvent(screen.getByTestId('customer-v21-kael-input'), 'submitEditing')
+
+    await screen.findByTestId('customer-v21-kael-reasoning-receipt-toggle')
+    await waitFor(() => expect(screen.getByTestId('customer-v21-kael-reasoning-receipt-toggle')).toHaveProp('accessibilityState', {
+      busy: false,
+      expanded: false,
+    }))
+    expect(screen.getByText('Suy nghĩ bị gián đoạn')).toBeOnTheScreen()
+  })
+
+  it('removes the optimistic receipt when a normal reply has no backend receipt', async () => {
+    render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('normal')
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Reply without receipt')
+    fireEvent(screen.getByTestId('customer-v21-kael-input'), 'submitEditing')
+
+    await screen.findByText('Kael đã ghi nhận.')
+    await waitFor(() => expect(screen.queryByTestId('customer-v21-kael-reasoning-receipt')).toBeNull())
+  })
+
+  it('marks a backend-started receipt as interrupted when its terminal event is missing', async () => {
+    mockConversationSendTurn.mockImplementationOnce(async (
+      sessionId: string,
+      input: { message: string },
+      handlers: { onReasoning?: (event: unknown) => void },
+    ) => {
+      handlers.onReasoning?.({
+        receiptId: 'kael-reasoning:customer-incomplete',
+        schemaVersion: 'kael_reasoning.v1',
+        startedAt: '2026-08-10T00:00:00.000Z',
+        type: 'reasoning.started',
+      })
+      const session = updateMockSession(sessionId, { total_turns: 2 })
+      return {
+        data: {
+          session,
+          turns: [
+            { conversation_id: sessionId, created_at: '2026-08-10T00:00:00.000Z', id: 'customer-incomplete-turn', role: 'customer', text_content: input.message, turn_index: 1 },
+            { conversation_id: sessionId, created_at: '2026-08-10T00:00:01.000Z', id: 'kael-incomplete-turn', role: 'kael', text_content: 'Kael returned without a terminal receipt.', turn_index: 2 },
+          ],
+        },
+        success: true,
+      }
+    })
+    render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('normal')
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Check an incomplete receipt')
+    fireEvent(screen.getByTestId('customer-v21-kael-input'), 'submitEditing')
+
+    await screen.findByText('Kael returned without a terminal receipt.')
+    expect(screen.getByTestId('customer-v21-kael-reasoning-receipt-toggle'))
+      .toHaveProp('accessibilityState', { busy: false, expanded: false })
+    expect(screen.getByText('Suy nghĩ bị gián đoạn')).toBeOnTheScreen()
+  })
+
+  it('keeps completed backend feedback only with the current normal-chat session', async () => {
+    mockConversationSendTurn.mockImplementationOnce(async (
+      sessionId: string,
+      input: { message: string },
+      handlers: { onReasoning?: (event: unknown) => void },
+    ) => {
+      handlers.onReasoning?.({
+        receiptId: 'kael-reasoning:customer-complete',
+        schemaVersion: 'kael_reasoning.v1',
+        startedAt: '2026-08-10T00:00:00.000Z',
+        type: 'reasoning.started',
+      })
+      handlers.onReasoning?.({
+        elapsedMs: 320,
+        receiptId: 'kael-reasoning:customer-complete',
+        schemaVersion: 'kael_reasoning.v1',
+        step: {
+          detail: 'The backend checked the current conversation context.',
+          id: 'context',
+          label: 'Checked the relevant conversation context',
+          sequence: 1,
+          stage: 'context',
+          status: 'completed',
+        },
+        type: 'reasoning.step',
+      })
+      handlers.onReasoning?.({
+        elapsedMs: 580,
+        fallbackUsed: false,
+        receiptId: 'kael-reasoning:customer-complete',
+        schemaVersion: 'kael_reasoning.v1',
+        summary: ['Prepared a safe reply from backend feedback.'],
+        type: 'reasoning.completed',
+      })
+      const session = updateMockSession(sessionId, { total_turns: 2 })
+      return {
+        data: {
+          session,
+          turns: [
+            { conversation_id: sessionId, created_at: '2026-08-10T00:00:00.000Z', id: 'customer-complete-turn', role: 'customer', text_content: input.message, turn_index: 1 },
+            { conversation_id: sessionId, created_at: '2026-08-10T00:00:01.000Z', id: 'kael-complete-turn', role: 'kael', text_content: 'Kael has completed the safe answer.', turn_index: 2 },
+          ],
+        },
+        success: true,
+      }
+    })
+    render(<CustomerKaelSurface />)
+    await waitForConversationCatalog('normal')
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Check completion receipt')
+    fireEvent(screen.getByTestId('customer-v21-kael-input'), 'submitEditing')
+
+    await screen.findByText('Kael has completed the safe answer.')
+    expect(screen.getByTestId('customer-v21-kael-reasoning-receipt')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-kael-reasoning-pending-message')).toBeNull()
+    const receiptToggle = screen.getByTestId('customer-v21-kael-reasoning-receipt-toggle')
+    expect(receiptToggle).toHaveProp('accessibilityState', { busy: false, expanded: false })
+    fireEvent.press(receiptToggle)
+    expect(receiptToggle).toHaveProp('accessibilityState', { busy: false, expanded: true })
+    expect(screen.getByText('The backend checked the current conversation context.')).toBeOnTheScreen()
+    expect(screen.getByText('Prepared a safe reply from backend feedback.')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    fireEvent.press(screen.getByTestId('customer-v21-kael-session-new'))
+
+    await waitFor(() => expect(mockConversationCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'normal' })))
+    expect(screen.queryByTestId('customer-v21-kael-reasoning-receipt')).toBeNull()
   })
 
   it('sends only once when web emits both Enter key and submit events', async () => {
@@ -1102,7 +1289,8 @@ describe('active customer Kael chat surface wiring', () => {
       alignItems: 'center',
       height: 44,
       justifyContent: 'center',
-      width: 120,
+      paddingHorizontal: 11,
+      width: 114,
     })
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
@@ -1748,6 +1936,7 @@ describe('active customer Kael chat surface wiring', () => {
     const content = readCustomerSource('kael-chat/customer-kael-chat-content.tsx')
     const header = readCustomerSource('kael-chat/kael-chat-header.tsx')
     const menu = readCustomerSource('kael-chat/kael-session-menu.tsx')
+    const menuStyles = readCustomerSource('kael-chat/kael-session-menu-styles.ts')
     const chatStyles = readCustomerSource('kael-chat/chat-styles.ts')
     const mobileServices = readMobileSource('lib/services.ts')
 
@@ -1758,7 +1947,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(menu).toContain("'Đổi tên'")
     expect(menu).toContain("'Xóa'")
     expect(menu).toContain('customer-v21-kael-session-new')
-    expect(menu).toContain('maxWidth: 208')
+    expect(menuStyles).toContain('maxWidth: 208')
     expect(chatStyles).toContain('maxWidth: 208')
     expect(chatStyles).toContain("outlineColor: 'rgba(13,167,151,0.62)'")
     expect(chatStyles.toLowerCase()).not.toContain('orange')

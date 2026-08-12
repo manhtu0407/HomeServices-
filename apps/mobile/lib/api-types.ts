@@ -8,6 +8,10 @@ export type {
   KaelChatTurn,
   KaelChatSession,
   KaelChatResponse,
+  MatchingState,
+  FavoriteWorkerForMatching,
+  FavoriteWorkersForMatchingResponse,
+  MatchingPreferenceResponse,
 } from '@nestscout/shared'
 
 export type * from './api-types/customer'

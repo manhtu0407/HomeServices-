@@ -16,6 +16,10 @@ const mobile = readSource(resolve(ROOT, 'apps/mobile/lib/api-types.ts'))
 
 const CONTRACTS = [
   'KaelEstimateAnalysisReceipt',
+  'KaelPriceReasoningReceipt',
+  'MatchingState',
+  'FavoriteWorkerForMatching',
+  'FavoriteWorkersForMatchingResponse',
   'KaelEstimate',
   'CreateJobResponse',
   'KaelChatStatus',

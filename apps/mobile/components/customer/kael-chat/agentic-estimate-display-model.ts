@@ -7,22 +7,34 @@ import {
   formatVnd,
   looksLikeRawProblemTaxonomy,
 } from './case-work-display-model'
-import { customerVisibleCaseRequestText } from './kael-chat-turn-display-model'
+import {
+  confidenceLabel,
+  evidenceAnalysisRows,
+  estimateScopeSections,
+  problemReceiptDetail,
+} from './agentic-estimate-evidence-display-model'
 
 type AgenticEstimate = NonNullable<KaelChatResponse['session']['estimate']>
 
 export type AgenticEstimateSupportingPhaseModel = {
+  receiptId: string | null
   title: string
   rows: {
     detail: string
     key:
       | 'conclusion'
+      | 'costs'
       | 'evidence'
       | `evidence-photo-${number}`
       | `evidence-video_frame-${number}`
+      | 'fairness'
+      | 'facts'
+      | 'hypotheses'
       | 'price'
       | 'problem'
       | 'resolution'
+      | 'scenario_high'
+      | 'scenario_low'
       | 'scope'
       | 'uncertainty'
     label: string
@@ -64,8 +76,8 @@ export function agenticEstimatePriceExplanation(
   language: AppLanguage,
 ) {
   return language === 'vi'
-    ? 'Khoảng ước tính theo phạm vi hiện tại.'
-    : 'Estimated range for the current scope.'
+    ? 'Xem căn cứ, phạm vi và điều kiện trước khi đến khoảng giá ở cuối.'
+    : 'Review the basis, scope, and conditions before the final range at the end.'
 }
 
 export function agenticEstimateSourceExplanation(language: AppLanguage) {
@@ -80,6 +92,10 @@ export function agenticEstimateSupportingPhase(
   diagnosisScope?: Record<string, unknown> | null,
   evidencePreviews: NonNullable<KaelChatResponse['session']['evidence_previews']> = [],
 ): AgenticEstimateSupportingPhaseModel | null {
+  const priceReasoningReceipt = estimate.price_reasoning_receipt
+  if (priceReasoningReceipt?.schema_version === 'price_reasoning_receipt.v1') {
+    return priceReasoningSupportingPhase(estimate, priceReasoningReceipt, language)
+  }
   const receipt = estimate.analysis_receipt
   if (!receipt || receipt.schema_version !== 'analysis_receipt.v1') return null
   const problemReceipt = receipt.problem
@@ -91,7 +107,11 @@ export function agenticEstimateSupportingPhase(
 
   if (problemReceipt) {
     rows.push({
-      detail: problemReceiptDetail(problemReceipt, estimate, language),
+      detail: problemReceiptDetail(
+        problemReceipt,
+        agenticEstimateProblemLabel(estimate, language),
+        language,
+      ),
       key: 'problem',
       label: analysisCompleted
         ? (language === 'vi' ? 'Vấn đề Kael nhận thấy' : 'What Kael found')
@@ -126,7 +146,12 @@ export function agenticEstimateSupportingPhase(
     })
   }
 
-  const scopeSections = estimateScopeSections(estimate, diagnosisScope, language)
+  const scopeSections = estimateScopeSections(
+    estimate,
+    diagnosisScope,
+    agenticEstimateProblemLabel(estimate, language),
+    language,
+  )
   rows.push({
     detail: scopeSections.map((section) => section.value).join('\n'),
     key: 'scope',
@@ -134,12 +159,15 @@ export function agenticEstimateSupportingPhase(
     layout: scopeSections.length > 1 ? 'columns' : 'stacked',
     sections: scopeSections,
   })
+  const priceDetail = priceReceiptDetail(estimate, language)
   rows.push({
-    detail: priceReceiptDetail(estimate, language),
+    detail: priceDetail,
     key: 'price',
     label: enriched
       ? (language === 'vi' ? 'Vì sao có khoảng giá này' : 'Why this price range')
       : (language === 'vi' ? 'Cơ sở giá' : 'Price basis'),
+    layout: 'stacked',
+    sections: priceReceiptSections(estimate, priceDetail, language),
   })
 
   if (problemReceipt?.remaining_uncertainty) {
@@ -159,6 +187,7 @@ export function agenticEstimateSupportingPhase(
   }
 
   return {
+    receiptId: null,
     title: enriched && analysisCompleted
       ? (language === 'vi'
           ? 'Kael phân tích vấn đề và cơ sở giá'
@@ -170,233 +199,290 @@ export function agenticEstimateSupportingPhase(
         : (language === 'vi' ? 'Kael đã kiểm tra' : 'Kael completed these checks'),
     rows,
     valueStatement: language === 'vi'
-      ? 'Khoảng giá gắn với phạm vi hiện tại; phần phát sinh chỉ được tính sau khi bạn xác nhận.'
-      : 'This range is tied to the current scope; extra work is priced only after you approve it.',
+      ? 'Không có giá hay hạng mục phát sinh nào được tự cộng sau khi bạn xác nhận.'
+      : 'No price or extra work is added automatically after you approve.',
   }
 }
 
-function problemReceiptDetail(
-  problem: NonNullable<NonNullable<AgenticEstimate['analysis_receipt']>['problem']>,
+function priceReasoningSupportingPhase(
   estimate: AgenticEstimate,
+  receipt: NonNullable<AgenticEstimate['price_reasoning_receipt']>,
   language: AppLanguage,
-) {
-  const mappedSummary = agenticProblemTaxonomyLabel(problem.summary, language)
-  const summary = mappedSummary || (looksLikeRawProblemTaxonomy(problem.summary)
-    ? agenticEstimateProblemLabel(estimate, language)
-    : problem.summary)
-  if (problem.severity_indicators.length === 0) return summary
-  const indicators = problem.severity_indicators
-    .map((indicator) => indicator.trim().replace(/[.;]+$/u, ''))
-    .join('; ')
-  return language === 'vi'
-    ? `${summary}\nDấu hiệu đáng chú ý: ${indicators}.`
-    : `${summary}\nNotable signs: ${indicators}.`
+): AgenticEstimateSupportingPhaseModel {
+  const rows: AgenticEstimateSupportingPhaseModel['rows'] = [
+    {
+      detail: receipt.problem.confirmed_facts.join('\n'),
+      key: 'facts',
+      label: language === 'vi' ? 'Điều Kael đã xác nhận' : 'What Kael confirmed',
+    },
+  ]
+  if (receipt.problem.possible_causes.length > 0) {
+    rows.push({
+      detail: receipt.problem.possible_causes.map((cause) => cause.statement).join('\n'),
+      key: 'hypotheses',
+      label: language === 'vi' ? 'Khả năng đang xem xét' : 'Possibilities being considered',
+      layout: 'stacked',
+      sections: receipt.problem.possible_causes.map((cause, index) => ({
+        label: language === 'vi' ? `Khả năng ${index + 1}` : `Possibility ${index + 1}`,
+        value: [
+          cause.statement,
+          language === 'vi'
+            ? `Căn cứ: ${cause.basis.map((basis) => priceReasoningBasisLabel(basis, language)).join(', ')}.`
+            : `Basis: ${cause.basis.map((basis) => priceReasoningBasisLabel(basis, language)).join(', ')}.`,
+          language === 'vi'
+            ? `Mức tin cậy: ${confidenceLabel(cause.confidence, language)}.`
+            : `Confidence: ${confidenceLabel(cause.confidence, language)}.`,
+        ].join('\n'),
+      })),
+    })
+  }
+  if (receipt.problem.unknowns.length > 0) {
+    rows.push({
+      detail: receipt.problem.unknowns.join('\n'),
+      key: 'uncertainty',
+      label: language === 'vi' ? 'Điều chưa thể kết luận' : 'What remains unknown',
+    })
+  }
+
+  const scopeSections = [
+    ...(receipt.scope.included.length > 0 ? [{
+      label: language === 'vi' ? 'Bao gồm' : 'Included',
+      value: receipt.scope.included.join('\n'),
+    }] : []),
+    ...(receipt.scope.conditional.length > 0 ? [{
+      label: language === 'vi' ? 'Có điều kiện' : 'Conditional',
+      value: receipt.scope.conditional.join('\n'),
+    }] : []),
+    ...(receipt.scope.excluded.length > 0 ? [{
+      label: language === 'vi' ? 'Không bao gồm' : 'Excluded',
+      value: receipt.scope.excluded.join('\n'),
+    }] : []),
+  ]
+  rows.push({
+    detail: scopeSections.map((section) => section.value).join('\n'),
+    key: 'scope',
+    label: language === 'vi' ? 'Phạm vi của đề nghị này' : 'Scope of this offer',
+    layout: 'stacked',
+    sections: scopeSections,
+  })
+
+  const costSections = receipt.costs.components.map((component) => ({
+    label: priceReasoningComponentLabel(component.kind, language),
+    value: [
+      component.explanation,
+      priceReasoningComponentAmount(component, language),
+    ].join('\n'),
+  }))
+  rows.push({
+    detail: costSections.map((section) => section.value).join('\n'),
+    key: 'costs',
+    label: language === 'vi' ? 'Cách cấu thành mức giá' : 'How the price is formed',
+    layout: 'stacked',
+    sections: costSections,
+  })
+  rows.push({
+    detail: scenarioDetail(receipt.scenarios.low),
+    key: 'scenario_low',
+    label: language === 'vi' ? 'Kịch bản ở mức thấp' : 'Lower-range scenario',
+    layout: 'stacked',
+    sections: scenarioSections(receipt.scenarios.low, language),
+  })
+  rows.push({
+    detail: scenarioDetail(receipt.scenarios.high),
+    key: 'scenario_high',
+    label: language === 'vi' ? 'Kịch bản ở mức cao' : 'Upper-range scenario',
+    layout: 'stacked',
+    sections: scenarioSections(receipt.scenarios.high, language),
+  })
+
+  const fairnessSections = [
+    {
+      label: language === 'vi' ? 'Căn cứ giá' : 'Price basis',
+      value: priceReasoningSourceLabel(receipt.fairness.price_source, language),
+    },
+    {
+      label: language === 'vi' ? 'Mức tin cậy' : 'Confidence',
+      value: confidenceLabel(receipt.fairness.confidence, language),
+    },
+    {
+      label: language === 'vi' ? 'Đối chiếu thị trường' : 'Market check',
+      value: priceReasoningMarketDetail(receipt, language),
+    },
+    {
+      label: language === 'vi' ? 'Giới hạn khi xác nhận' : 'Limit when you approve',
+      value: receipt.fairness.cap_statement,
+    },
+  ]
+  rows.push({
+    detail: fairnessSections.map((section) => section.value).join('\n'),
+    key: 'fairness',
+    label: language === 'vi' ? 'Vì sao đề nghị này công bằng' : 'Why this offer is fair',
+    layout: 'stacked',
+    sections: fairnessSections,
+  })
+  rows.push({
+    detail: priceReasoningConclusion(receipt, language),
+    key: 'conclusion',
+    label: language === 'vi' ? 'Kết luận trước khi bạn quyết định' : 'Conclusion before you decide',
+  })
+  rows.push({
+    detail: formatPriceRange(receipt.costs.total_min, receipt.costs.total_max, language),
+    key: 'price',
+    label: language === 'vi' ? 'Khoảng giá cho phạm vi hiện tại' : 'Price range for the current scope',
+    layout: 'stacked',
+    sections: [{
+      label: language === 'vi' ? 'Khoảng bạn có thể xác nhận' : 'Range you can approve',
+      value: formatPriceRange(receipt.costs.total_min, receipt.costs.total_max, language),
+    }],
+  })
+
+  return {
+    receiptId: receipt.receipt_id,
+    title: language === 'vi'
+      ? 'Kael phân tích phạm vi trước khi đề nghị giá'
+      : 'Kael analyzed the scope before proposing a price',
+    rows,
+    valueStatement: language === 'vi'
+      ? 'Giá chỉ áp dụng cho phạm vi trên. Hạng mục ngoài phạm vi cần một đề nghị mới để bạn quyết định riêng.'
+      : 'This price applies only to the scope above. Work outside it needs a new proposal for your separate decision.',
+  }
 }
 
-function evidenceFindingLabel(
-  finding: Pick<
-    NonNullable<NonNullable<AgenticEstimate['analysis_receipt']>['evidence']['findings']>[number],
-    'evidence_index' | 'evidence_kind'
-  >,
+function priceReasoningBasisLabel(
+  basis: NonNullable<NonNullable<AgenticEstimate['price_reasoning_receipt']>['problem']['possible_causes']>[number]['basis'][number],
   language: AppLanguage,
 ) {
   if (language === 'vi') {
-    return finding.evidence_kind === 'photo'
-      ? `Hình ${finding.evidence_index}`
-      : `Khung hình video ${finding.evidence_index}`
+    if (basis === 'customer_report') return 'mô tả của bạn'
+    if (basis === 'visual_evidence') return 'hình ảnh/video đã đối chiếu'
+    if (basis === 'service_profile') return 'hồ sơ dịch vụ'
+    return 'kiến thức chuyên môn áp dụng cho dịch vụ'
   }
-  return finding.evidence_kind === 'photo'
-    ? `Photo ${finding.evidence_index}`
-    : `Video frame ${finding.evidence_index}`
+  if (basis === 'customer_report') return 'your description'
+  if (basis === 'visual_evidence') return 'checked visual evidence'
+  if (basis === 'service_profile') return 'the service profile'
+  return 'service knowledge'
 }
 
-function evidenceFindingDetail(
-  finding: NonNullable<NonNullable<AgenticEstimate['analysis_receipt']>['evidence']['findings']>[number],
+function priceReasoningComponentLabel(
+  kind: NonNullable<NonNullable<AgenticEstimate['price_reasoning_receipt']>['costs']['components']>[number]['kind'],
   language: AppLanguage,
 ) {
-  return evidenceFindingSections(finding, language)
-    .map((section) => section.value)
-    .join('\n')
+  if (language === 'vi') {
+    if (kind === 'service_package') return 'Gói dịch vụ'
+    if (kind === 'labor') return 'Tiền công'
+    if (kind === 'travel') return 'Di chuyển'
+    if (kind === 'materials') return 'Vật tư'
+    if (kind === 'replacement_parts') return 'Linh kiện thay thế'
+    if (kind === 'equipment') return 'Thiết bị'
+    return 'Hạng mục khác'
+  }
+  if (kind === 'service_package') return 'Service package'
+  if (kind === 'labor') return 'Labor'
+  if (kind === 'travel') return 'Travel'
+  if (kind === 'materials') return 'Materials'
+  if (kind === 'replacement_parts') return 'Replacement parts'
+  if (kind === 'equipment') return 'Equipment'
+  return 'Other item'
 }
 
-function evidenceFindingSections(
-  finding: NonNullable<NonNullable<AgenticEstimate['analysis_receipt']>['evidence']['findings']>[number],
+function priceReasoningComponentAmount(
+  component: NonNullable<NonNullable<AgenticEstimate['price_reasoning_receipt']>['costs']['components']>[number],
+  language: AppLanguage,
+) {
+  if (component.status === 'priced' && component.amount_min !== null && component.amount_max !== null) {
+    return language === 'vi'
+      ? 'Gói này đã được xác thực; khoảng bạn có thể xác nhận được hiển thị ở phần cuối.'
+      : 'This package is verified; the range you can approve appears at the end.'
+  }
+  if (language === 'vi') {
+    if (component.status === 'included_unitemized') return 'Đã tính trong gói nhưng chưa có đơn giá thành phần độc lập.'
+    if (component.status === 'conditional_unpriced') return 'Chưa có số tiền; chỉ đánh giá khi điều kiện thực tế được xác nhận.'
+    if (component.status === 'excluded') return 'Không nằm trong khoảng giá hiện tại.'
+    return 'Chưa đủ dữ liệu để định lượng; không hiển thị số tiền.'
+  }
+  if (component.status === 'included_unitemized') return 'Included in the package without a separate verified component price.'
+  if (component.status === 'conditional_unpriced') return 'No amount is shown until the on-site condition is confirmed.'
+  if (component.status === 'excluded') return 'Not included in the current price range.'
+  return 'There is not enough information to quantify this item, so no amount is shown.'
+}
+
+function scenarioSections(
+  scenario: NonNullable<NonNullable<AgenticEstimate['price_reasoning_receipt']>['scenarios']>[keyof NonNullable<NonNullable<AgenticEstimate['price_reasoning_receipt']>['scenarios']>],
   language: AppLanguage,
 ) {
   return [
     {
-      label: language === 'vi' ? 'Mức tin cậy' : 'Confidence',
-      value: confidenceLabel(finding.confidence, language),
+      label: language === 'vi' ? 'Điều kiện' : 'Conditions',
+      value: scenario.conditions.join('\n'),
     },
     {
-      label: language === 'vi' ? 'Quan sát' : 'Observation',
-      value: finding.observation,
+      label: language === 'vi' ? 'Phạm vi áp dụng' : 'Scope',
+      value: scenario.scope.join('\n'),
     },
-    ...(finding.possible_meaning
-      ? [{
-          label: language === 'vi' ? 'Khả năng liên quan' : 'Possible meaning',
-          value: finding.possible_meaning,
-        }]
-      : []),
   ]
 }
 
-function evidenceAnalysisRows(
-  evidence: NonNullable<AgenticEstimate['analysis_receipt']>['evidence'],
-  language: AppLanguage,
-  evidencePreviews: NonNullable<KaelChatResponse['session']['evidence_previews']>,
-): AgenticEstimateSupportingPhaseModel['rows'] {
-  const findings = evidence.findings ?? []
-  const rows: AgenticEstimateSupportingPhaseModel['rows'] = []
-  const findingsByEvidence = new Map<string, typeof findings[number]>()
-  for (const finding of findings) {
-    const lookupKey = evidenceLookupKey(finding.evidence_kind, finding.evidence_index)
-    if (!findingsByEvidence.has(lookupKey)) findingsByEvidence.set(lookupKey, finding)
-  }
-  const previewsByEvidence = new Map<string, typeof evidencePreviews[number]>()
-  for (const preview of evidencePreviews) {
-    const lookupKey = evidenceLookupKey(preview.evidence_kind, preview.evidence_index)
-    if (!previewsByEvidence.has(lookupKey)) previewsByEvidence.set(lookupKey, preview)
-  }
-  const kinds = [
-    { count: evidence.photo_count, kind: 'photo' as const },
-    { count: evidence.video_frame_count, kind: 'video_frame' as const },
-  ]
-
-  for (const { count, kind } of kinds) {
-    for (let evidenceIndex = 1; evidenceIndex <= count; evidenceIndex += 1) {
-      const lookupKey = evidenceLookupKey(kind, evidenceIndex)
-      const finding = findingsByEvidence.get(lookupKey)
-      const key = `evidence-${kind}-${evidenceIndex}` as const
-      const mediaUrl = previewsByEvidence.get(lookupKey)?.url
-      if (finding) {
-        const sections = evidenceFindingSections(finding, language)
-        rows.push({
-          detail: evidenceFindingDetail(finding, language),
-          key,
-          label: evidenceFindingLabel(finding, language),
-          layout: 'stacked',
-          mediaUrl,
-          sections,
-        })
-        continue
-      }
-
-      const unavailable = evidence.analysis_status === 'unavailable'
-      const detail = language === 'vi'
-        ? unavailable
-          ? 'Kael chưa thể phân tích hình này nên không dùng nó cho kết luận hoặc khoảng giá.'
-          : 'Hình này chưa có chi tiết đủ rõ để dùng vào kết luận.'
-        : unavailable
-          ? 'Kael could not analyze this image, so it is not used for the conclusion or price range.'
-          : 'This image does not contain a clear enough detail to support the conclusion.'
-      rows.push({
-        detail,
-        key,
-        label: evidenceFindingLabel({ evidence_index: evidenceIndex, evidence_kind: kind }, language),
-        layout: 'stacked',
-        mediaUrl,
-        sections: [{ label: language === 'vi' ? 'Trạng thái' : 'Status', value: detail }],
-      })
-    }
-  }
-  return rows
+function scenarioDetail(
+  scenario: NonNullable<NonNullable<AgenticEstimate['price_reasoning_receipt']>['scenarios']>[keyof NonNullable<NonNullable<AgenticEstimate['price_reasoning_receipt']>['scenarios']>],
+) {
+  return [
+    scenario.conditions.join('\n'),
+    scenario.scope.join('\n'),
+  ].join('\n')
 }
 
-function evidenceLookupKey(kind: 'photo' | 'video_frame', evidenceIndex: number) {
-  return `${kind}:${evidenceIndex}`
-}
-
-function estimateScopeSections(
-  estimate: AgenticEstimate,
-  diagnosisScope: Record<string, unknown> | null | undefined,
+function priceReasoningSourceLabel(
+  source: NonNullable<NonNullable<AgenticEstimate['price_reasoning_receipt']>['fairness']['price_source']>,
   language: AppLanguage,
 ) {
-  const facts = recordValue(diagnosisScope?.facts)
-  const customerGoal = stringValue(facts?.customer_goal)
-  const latestCustomerDetail = stringValue(facts?.latest_customer_detail)
-  const customerGoalParts = scopeDescriptionParts(customerGoal, language)
-  const latestCustomerDetailParts = scopeDescriptionParts(latestCustomerDetail, language)
-  const receiptSummary = estimate.analysis_receipt?.problem?.summary
-  const receiptScope = receiptSummary
-    ? agenticProblemTaxonomyLabel(receiptSummary, language) ||
-      (looksLikeRawProblemTaxonomy(receiptSummary) ? '' : scopeDescription(receiptSummary, language))
-    : ''
-  const primary = customerGoalParts[0] ||
-    receiptScope ||
-    agenticEstimateProblemLabel(estimate, language)
-  const primaryKey = normalizeScopeText(primary)
-  const additions: string[] = []
-  const additionKeys = new Set<string>()
-
-  for (const part of [...customerGoalParts.slice(1), ...latestCustomerDetailParts]) {
-    const normalized = normalizeScopeText(part)
-    if (!normalized || normalized === primaryKey || normalized.includes(primaryKey)) continue
-    if (additionKeys.has(normalized)) continue
-    additions.push(part)
-    additionKeys.add(normalized)
+  if (language === 'vi') {
+    if (source === 'perplexity_validated') return 'Dữ liệu thị trường đã được đối chiếu theo phạm vi hiện tại.'
+    if (source === 'baseline_with_market') return 'Mức giá cơ sở được đối chiếu thêm với tín hiệu thị trường.'
+    if (source === 'baseline_only') return 'Mức giá cơ sở được quản trị theo phạm vi hiện tại.'
+    return 'Dữ liệu hiện tại cần được kiểm tra tại hiện trường trước khi có thể chốt.'
   }
-
-  return [
-    {
-      label: language === 'vi' ? 'Mô tả chính' : 'Main description',
-      value: primary,
-    },
-    ...(additions.length > 0
-      ? [{
-          label: language === 'vi' ? 'Thông tin bổ sung' : 'Additional information',
-          value: additions.join('\n'),
-        }]
-      : []),
-  ]
+  if (source === 'perplexity_validated') return 'Market data was checked against the current scope.'
+  if (source === 'baseline_with_market') return 'A governed baseline was checked with market signals.'
+  if (source === 'baseline_only') return 'A governed baseline is used for the current scope.'
+  return 'The current information needs an on-site check before it can be finalized.'
 }
 
-function scopeDescriptionParts(value: string | null, language: AppLanguage) {
-  if (!value) return []
-  const updateMarker = language === 'vi'
-    ? /(Thông tin bổ sung|Bổ sung(?: lần (?:hai|ba|\d+))?|Tôi vừa kiểm tra lại)\s*:\s*/giu
-    : /(Additional information|Update(?: number \d+)?)\s*:\s*/giu
-  return value
-    .replace(updateMarker, '\n\n$1: ')
-    .split(/\n{2,}/u)
-    .flatMap((part) => {
-      const description = scopeDescription(part, language)
-      return description ? [description] : []
-    })
+function priceReasoningMarketDetail(
+  receipt: NonNullable<AgenticEstimate['price_reasoning_receipt']>,
+  language: AppLanguage,
+) {
+  const count = receipt.fairness.market_source_count
+  const highTrust = receipt.fairness.high_trust_source_count
+  if (count === null) {
+    return language === 'vi'
+      ? 'Không có số lượng nguồn thị trường để công bố cho đề nghị này.'
+      : 'No market-source count is published for this offer.'
+  }
+  const countCopy = language === 'vi'
+    ? `${count} nguồn đã được đối chiếu${highTrust === null ? '' : `, gồm ${highTrust} nguồn độ tin cậy cao`}.`
+    : `${count} checked market ${count === 1 ? 'source' : 'sources'}${highTrust === null ? '' : `, including ${highTrust} high-trust ${highTrust === 1 ? 'source' : 'sources'}`}.`
+  if (receipt.fairness.quorum_met === false) {
+    return language === 'vi'
+      ? `${countCopy} Chưa đủ đồng thuận nguồn; Kael giữ phạm vi giá theo mức cơ sở.`
+      : `${countCopy} The source quorum is not yet met, so Kael keeps the governed baseline range.`
+  }
+  return countCopy
 }
 
-function scopeDescription(value: string | null, language: AppLanguage) {
-  if (!value) return ''
-  const visible = customerVisibleCaseRequestText(value, language).trim()
-  if (!visible) return ''
-  const descriptionLabel = language === 'vi' ? 'Mô tả:' : 'Description:'
-  const descriptionIndex = visible.indexOf(descriptionLabel)
-  const description = descriptionIndex >= 0
-    ? visible.slice(descriptionIndex + descriptionLabel.length).trim()
-    : visible
-  return sentenceCase(description
-    .replace(/^(?:Mô tả đã xác nhận|Confirmed description)\s*:\s*/iu, '')
-    .replace(/^(?:Thông tin bổ sung|Bổ sung(?: lần (?:hai|ba|\d+))?|Tôi vừa kiểm tra lại|Additional information|Update(?: number \d+)?)\s*:\s*/iu, '')
-    .trim())
-}
-
-function normalizeScopeText(value: string) {
-  return value.replace(/\s+/gu, ' ').trim().toLocaleLowerCase('vi-VN')
-}
-
-function sentenceCase(value: string) {
-  if (!value) return value
-  return `${value.charAt(0).toLocaleUpperCase('vi-VN')}${value.slice(1)}`
-}
-
-function recordValue(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null
-}
-
-function stringValue(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null
+function priceReasoningConclusion(
+  receipt: NonNullable<AgenticEstimate['price_reasoning_receipt']>,
+  language: AppLanguage,
+) {
+  const unknowns = receipt.fairness.remaining_uncertainty
+  if (unknowns.length === 0) {
+    return language === 'vi'
+      ? 'Kael có thể đề nghị khoảng giá dưới đây cho đúng phạm vi đã nêu.'
+      : 'Kael can propose the range below for the scope stated above.'
+  }
+  return language === 'vi'
+    ? `Khoảng giá dưới đây áp dụng cho phạm vi đã nêu; ${unknowns.join(' ')}`
+    : `The range below applies to the stated scope; ${unknowns.join(' ')}`
 }
 
 function estimateConclusion(estimate: AgenticEstimate, language: AppLanguage) {
@@ -544,18 +630,45 @@ function priceReceiptDetail(estimate: AgenticEstimate, language: AppLanguage) {
     : `${confidence}\nKael checked the confirmed scope, ${complexity} complexity, and ${priceBasis}.\nThis range excludes work outside the confirmed scope.`
 }
 
-function confidenceLabel(
-  confidence: 'low' | 'medium' | 'high',
+function priceReceiptSections(
+  estimate: AgenticEstimate,
+  priceDetail: string,
   language: AppLanguage,
 ) {
-  if (language === 'vi') {
-    if (confidence === 'high') return 'Cao'
-    if (confidence === 'medium') return 'Vừa'
-    return 'Thấp'
-  }
-  if (confidence === 'high') return 'High'
-  if (confidence === 'medium') return 'Medium'
-  return 'Low'
+  return language === 'vi'
+    ? [
+        {
+          label: 'Mức độ công việc',
+          value: `Phạm vi đã xác nhận hiện được xếp ở mức độ ${complexityLabel(estimate.complexity, language).toLocaleLowerCase('vi-VN')}.`,
+        },
+        { label: 'Căn cứ của khoảng giá', value: priceDetail },
+        {
+          label: 'Giới hạn khi bạn xác nhận',
+          value: priceConfirmationBoundaryStatement(estimate, language),
+        },
+      ]
+    : [
+        {
+          label: 'Work complexity',
+          value: `The confirmed scope is currently assessed as ${complexityLabel(estimate.complexity, language).toLocaleLowerCase('en-US')} complexity.`,
+        },
+        { label: 'Price-range basis', value: priceDetail },
+        {
+          label: 'Limit when you approve',
+          value: priceConfirmationBoundaryStatement(estimate, language),
+        },
+      ]
+}
+
+function priceConfirmationBoundaryStatement(
+  estimate: AgenticEstimate,
+  language: AppLanguage,
+) {
+  const range = formatPriceRange(estimate.price_min, estimate.price_max, language)
+  const maximum = formatVnd(estimate.price_max, language)
+  return language === 'vi'
+    ? `Bạn đang xem khoảng ${range}. Nếu xác nhận, ${maximum} là mức tối đa cho phạm vi hiện tại. Hạng mục ngoài phạm vi phải là đề xuất mới để bạn quyết định riêng.`
+    : `You are viewing ${range}. If you approve, ${maximum} is the maximum for the current scope. Work outside the scope must be a new proposal for your separate decision.`
 }
 
 function priceEvidenceBasis(

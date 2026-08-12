@@ -28,6 +28,7 @@ export type BaselineCandidatesResult =
   | {
     success: true;
     serviceProblemId: string;
+    defaultComplexity?: ComplexityLevel;
     byComplexity: Partial<Record<ComplexityLevel, BaselinePrice>>;
   }
   | {
@@ -179,7 +180,7 @@ export async function fetchBaselineCandidates(
   >(
     supabase
       .from("service_problems")
-      .select("id")
+      .select("id, default_complexity")
       .eq("service_type", serviceType)
       .eq("slug", problemSlug) as PromiseLike<
         {
@@ -200,6 +201,7 @@ export async function fetchBaselineCandidates(
   if (typeof problemId !== "string" || problemId.length === 0) {
     return { success: false, error: "no service problem" };
   }
+  const defaultComplexity = complexityLevelFrom(problems?.[0]?.default_complexity);
 
   const { data, error } = await withDbTimeout<
     {
@@ -262,8 +264,16 @@ export async function fetchBaselineCandidates(
   return {
     success: true,
     serviceProblemId: problemId,
+    ...(defaultComplexity ? { defaultComplexity } : {}),
     byComplexity,
   };
+}
+
+function complexityLevelFrom(value: unknown): ComplexityLevel | undefined {
+  return typeof value === "string" &&
+      (COMPLEXITIES as readonly string[]).includes(value)
+    ? value as ComplexityLevel
+    : undefined;
 }
 
 export function pickBaselineCandidate(

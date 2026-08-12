@@ -24,8 +24,8 @@ describe('worker-earnings', () => {
   })
 
   it('uses the exact reconciled earnings aggregate in the Edge runtime', async () => {
-    const client = makeSequenceClient([
-      {
+    const client = makeSequenceClient([], {
+      get_worker_earnings_summary: [{
         data: [
           {
             worker_id: 'worker-1',
@@ -56,8 +56,17 @@ describe('worker-earnings', () => {
           },
         ],
         error: null,
-      },
-    ])
+      }],
+      get_worker_payment_safety_balance: [{
+        data: [{
+          available_balance: 266000,
+          collateral_reserved_amount: 0,
+          withdrawal_reserved_amount: 0,
+          withdrawn_total: 0,
+        }],
+        error: null,
+      }],
+    })
     const ctx: MobileApiContext = {
       success: true,
       user: { id: 'worker-1' },

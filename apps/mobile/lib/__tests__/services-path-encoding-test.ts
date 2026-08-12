@@ -62,7 +62,9 @@ describe('mobile service path segments', () => {
     kaelChatService.get(unsafeId)
     kaelChatService.sendTurn(unsafeId, input)
     kaelChatService.submitEvidence(unsafeId, input)
-    kaelChatService.confirm(unsafeId)
+    kaelChatService.confirm(unsafeId, {
+      price_reasoning_receipt_id: 'receipt_kael_price_20260811_01',
+    })
     kaelChatProgressService.get(unsafeId)
     workerKaelChatService.get(unsafeId)
     workerKaelChatService.sendTurn(unsafeId, input)

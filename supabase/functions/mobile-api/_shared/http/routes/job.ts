@@ -11,6 +11,7 @@ export type JobCreateRoute = {
 export type JobResourceRoute =
   | { kind: "jobs.get"; method: "GET"; jobId: string; roles?: UserRole[] }
   | { kind: "jobs.confirmSearch"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.matchingPreference"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.cancel"; method: "POST"; jobId: string; roles: UserRole[] }
   | {
     kind: "jobs.customerCancellation";
@@ -68,6 +69,10 @@ export type JobResourceRoute =
   }
   | { kind: "jobs.confirmCompletion"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.paymentIntent"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.paymentOrder"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.paymentOrderClaim"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.directPaymentSelect"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.directPaymentRespond"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.cashPaymentConfirm"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.stagingPaymentConfirm"; method: "POST"; jobId: string; roles: UserRole[] }
   | {
@@ -99,6 +104,38 @@ export function matchJobResourceRoute(
   method: string,
   decodePathSegment: (value: string) => string | null,
 ): JobResourceRoute | null {
+  const paymentOrderClaim = path.match(/^\/jobs\/([^/]+)\/payment-order\/claim$/);
+  if (method === "POST" && paymentOrderClaim) {
+    const paymentOrderJobId = decodePathSegment(paymentOrderClaim[1] ?? "");
+    if (!paymentOrderJobId) return null;
+    return {
+      kind: "jobs.paymentOrderClaim",
+      method: "POST",
+      jobId: paymentOrderJobId,
+      roles: ["customer"],
+    };
+  }
+
+  const directPaymentAction = path.match(/^\/jobs\/([^/]+)\/direct-payment\/(select|respond)$/);
+  if (method === "POST" && directPaymentAction) {
+    const directPaymentJobId = decodePathSegment(directPaymentAction[1] ?? "");
+    const directPaymentOperation = directPaymentAction[2];
+    if (!directPaymentJobId) return null;
+    return directPaymentOperation === "select"
+      ? {
+        kind: "jobs.directPaymentSelect",
+        method: "POST",
+        jobId: directPaymentJobId,
+        roles: ["customer"],
+      }
+      : {
+        kind: "jobs.directPaymentRespond",
+        method: "POST",
+        jobId: directPaymentJobId,
+        roles: ["customer", "worker"],
+      };
+  }
+
   const accessAuthorize = path.match(/^\/jobs\/([^/]+)\/access\/authorize$/);
   if (method === "POST" && accessAuthorize) {
     const accessAuthorizeJobId = decodePathSegment(accessAuthorize[1] ?? "");
@@ -134,6 +171,15 @@ function matchJobResourceAction(
       method: "POST",
       jobId,
       roles: ["customer", "admin"],
+    };
+  }
+
+  if (action === "matching-preference" && method === "POST") {
+    return {
+      kind: "jobs.matchingPreference",
+      method: "POST",
+      jobId,
+      roles: ["customer"],
     };
   }
   if (action === "cancel" && method === "POST") {
@@ -228,12 +274,28 @@ function matchJobResourceAction(
       successStatus: 201,
     };
   }
+  return matchJobPaymentAction(action, method, jobId);
+}
+
+function matchJobPaymentAction(
+  action: string,
+  method: string,
+  jobId: string,
+): JobResourceRoute | null {
   if (action === "confirm-completion" && method === "POST") {
     return {
       kind: "jobs.confirmCompletion",
       method: "POST",
       jobId,
       roles: ["customer", "admin"],
+    };
+  }
+  if (action === "payment-order" && method === "POST") {
+    return {
+      kind: "jobs.paymentOrder",
+      method: "POST",
+      jobId,
+      roles: ["customer"],
     };
   }
   if (action === "cash-payment-confirmation" && method === "POST") {

@@ -9,23 +9,30 @@ export async function getWorkerEarnings(
   ctx: MobileApiContext,
   range: { from?: string; to?: string },
 ): Promise<EdgeEarningsResponse> {
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    db(ctx).rpc("get_worker_earnings_summary", {
-      p_worker_id: ctx.user.id,
-      p_from: range.from ?? null,
-      p_to: range.to ?? null,
-    }),
-  );
+  const [result, safetyResult] = await Promise.all([
+    dbQuery<Array<Record<string, unknown>>>(
+      db(ctx).rpc("get_worker_earnings_summary", {
+        p_worker_id: ctx.user.id,
+        p_from: range.from ?? null,
+        p_to: range.to ?? null,
+      }),
+    ),
+    dbQuery<Array<Record<string, unknown>>>(
+      db(ctx).rpc("get_worker_payment_safety_balance", { p_worker_id: ctx.user.id }),
+    ),
+  ]);
   const row = result.data?.[0];
-  if (result.error || !row) {
+  const safetyRow = safetyResult.data?.[0];
+  if (result.error || safetyResult.error || !row || !safetyRow) {
     console.warn("mobile-api earnings query failed", {
       errorCode: result.error?.code,
+      safetyErrorCode: safetyResult.error?.code,
     });
     apiFailure("DB_ERROR", "Không thể tải thu nhập", 500);
   }
   let aggregate: ReturnType<typeof parseWorkerEarningsAggregate>;
   try {
-    aggregate = parseWorkerEarningsAggregate(row, ctx.user.id);
+    aggregate = parseWorkerEarningsAggregate(row, ctx.user.id, parseWorkerPaymentSafetyBalance(safetyRow));
   } catch {
     console.warn("mobile-api earnings aggregate response invalid", {
       userId: ctx.user.id,
@@ -46,6 +53,7 @@ const MAX_DAILY_EARNINGS_ROWS = 366;
 function parseWorkerEarningsAggregate(
   row: Record<string, unknown>,
   expectedWorkerId: string,
+  paymentSafety: WorkerPaymentSafetyBalance,
 ): Omit<EdgeEarningsResponse, "worker_id" | "from_date" | "to_date"> {
   if (row.worker_id !== expectedWorkerId) {
     throw new Error("INVALID_EARNINGS_OWNER");
@@ -55,7 +63,10 @@ function parseWorkerEarningsAggregate(
     gross_earnings: nonnegativeSafeInteger(row.gross_earnings),
     platform_fee_total: nonnegativeSafeInteger(row.platform_fee_total),
     net_earnings: nonnegativeSafeInteger(row.net_earnings),
-    available_balance: nonnegativeSafeInteger(row.available_balance),
+    available_balance: paymentSafety.available_balance,
+    withdrawal_reserved_amount: paymentSafety.withdrawal_reserved_amount,
+    withdrawn_total: paymentSafety.withdrawn_total,
+    collateral_reserved_amount: paymentSafety.collateral_reserved_amount,
     cash_commission_collected_total: nonnegativeSafeInteger(row.cash_commission_collected_total),
     cash_commission_due_total: nonnegativeSafeInteger(row.cash_commission_due_total),
     pending_payment_count: nonnegativeSafeInteger(row.pending_payment_count),
@@ -65,6 +76,20 @@ function parseWorkerEarningsAggregate(
     current_commission_rate_bps: commissionRateBps(row.current_commission_rate_bps),
     recent_transactions: parseRecentWorkerTransactions(row.recent_transactions),
     daily_earnings: parseDailyEarnings(row.daily_earnings),
+  };
+}
+
+type WorkerPaymentSafetyBalance = Pick<
+  EdgeEarningsResponse,
+  "available_balance" | "withdrawal_reserved_amount" | "withdrawn_total" | "collateral_reserved_amount"
+>;
+
+function parseWorkerPaymentSafetyBalance(row: Record<string, unknown>): WorkerPaymentSafetyBalance {
+  return {
+    available_balance: nonnegativeSafeInteger(row.available_balance),
+    withdrawal_reserved_amount: nonnegativeSafeInteger(row.withdrawal_reserved_amount),
+    withdrawn_total: nonnegativeSafeInteger(row.withdrawn_total),
+    collateral_reserved_amount: nonnegativeSafeInteger(row.collateral_reserved_amount),
   };
 }
 

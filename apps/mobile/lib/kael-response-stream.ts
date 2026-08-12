@@ -9,6 +9,11 @@ export type KaelResponseBlock = {
   text: string
 }
 
+export type KaelResponsePresentationItem = {
+  kind: 'bullet' | 'paragraph'
+  text: string
+}
+
 export type KaelResponseStreamEvent =
   | { mode: 'fast' | 'standard'; responseId: string; type: 'response.started' }
   | { blockId: string; kind: KaelResponseBlockKind; type: 'block.started' }
@@ -160,6 +165,17 @@ export function appendLegacyKaelResponseDelta(
   }
 }
 
+export function completeLegacyKaelResponseStream(
+  state: KaelResponseStreamState | null,
+): KaelResponseStreamState | null {
+  if (!state || state.transport !== 'legacy' || state.status !== 'streaming') return state
+  return {
+    ...state,
+    blocks: completeResponseBlocks(state.blocks),
+    status: 'completed',
+  }
+}
+
 export function createCompletedKaelResponseState(
   text: string,
   responseId: string,
@@ -197,6 +213,38 @@ export function segmentKaelResponseText(text: string, responseId: string) {
   return capResponseBlocks(blocks, responseId)
 }
 
+export function formatKaelResponseText(text: string): readonly KaelResponsePresentationItem[] {
+  const normalized = text.replace(/\r\n/gu, '\n').trim()
+  if (!normalized) return []
+
+  const explicitLines = normalized.split('\n').map((line) => line.trim()).filter(Boolean)
+  if (explicitLines.length > 1) {
+    return explicitLines.map((line) => {
+      const match = line.match(/^\s*(?:[-*\u2022]|\d+[.)])\s+(.+)$/u)
+      return match
+        ? { kind: 'bullet' as const, text: match[1].trim() }
+        : { kind: 'paragraph' as const, text: line }
+    })
+  }
+
+  const leadMatch = normalized.match(/^([^.!?\n]{3,}?:)\s+(.+)$/u)
+  if (leadMatch) {
+    const steps = splitKaelResponseSentences(leadMatch[2])
+    if (steps.length >= 2) {
+      return [
+        { kind: 'paragraph', text: leadMatch[1].trimEnd() },
+        ...steps.map((step) => ({ kind: 'bullet' as const, text: step })),
+      ]
+    }
+  }
+
+  const sentences = splitKaelResponseSentences(normalized)
+  if (sentences.length >= 3) {
+    return sentences.map((sentence) => ({ kind: 'paragraph' as const, text: sentence }))
+  }
+  return [{ kind: 'paragraph', text: normalized }]
+}
+
 export function activeKaelResponseBlockId(state: KaelResponseStreamState) {
   for (let index = state.blockOrder.length - 1; index >= 0; index -= 1) {
     const blockId = state.blockOrder[index]
@@ -220,6 +268,21 @@ function responseBlockKind(section: string): KaelResponseBlockKind {
   if (lines.length > 0 && lines.every((line) => /^\s*(?:[-*\u2022]|\d+[.)])\s+\S/u.test(line))) return 'list'
   if (lines.length > 0 && lines.every((line) => /^\s*>\s*\S/u.test(line))) return 'callout'
   return 'paragraph'
+}
+
+function splitKaelResponseSentences(text: string) {
+  const sentences: string[] = []
+  const boundaries = /[.!?\u2026]+(?:["')\]\u2019\u201d]+)?(?=\s|$)/gu
+  let cursor = 0
+  for (const match of text.matchAll(boundaries)) {
+    const end = (match.index ?? 0) + match[0].length
+    const sentence = text.slice(cursor, end).trim()
+    if (sentence) sentences.push(sentence)
+    cursor = end
+  }
+  const tail = text.slice(cursor).trim()
+  if (tail) sentences.push(tail)
+  return sentences
 }
 
 function responseTextLength(state: KaelResponseStreamState) {

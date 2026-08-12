@@ -24,6 +24,32 @@ const STREAMING_PROVIDER_ROUTE_KINDS = new Set([
   'kael.chat.stream',
   'workers.kaelChat.stream',
 ])
+// These authenticated routes perform a server-owned AI operation. Route handlers
+// enforce the actor and resource ownership before the workflow reaches the
+// service-only spend, dependency, and conversation-persistence RPCs.
+const SERVER_OWNED_KAEL_AI_ROUTE_KINDS = new Set([
+  'customer.kaelConversations.stream',
+  'customer.kaelConversations.turn',
+  'kael.assistant',
+  'kael.chat.create',
+  'kael.chat.evidence',
+  'kael.chat.evidenceStream',
+  'kael.chat.confirm',
+  'kael.chat.intakeConfirmation',
+  'kael.chat.stream',
+  'kael.chat.turn',
+  'workers.kaelChat.stream',
+  'workers.kaelChat.turn',
+])
+// The Case catalog can reconcile linkage while listing, and its mutations use
+// service-only table grants after the customer domain binds every row to ctx.user.id.
+const SERVER_OWNED_CUSTOMER_CONVERSATION_CATALOG_ROUTE_KINDS = new Set([
+  'customer.kaelConversations.archive',
+  'customer.kaelConversations.create',
+  'customer.kaelConversations.list',
+  'customer.kaelConversations.pin',
+  'customer.kaelConversations.rename',
+])
 const repoPath = (value) => value.split(sep).join('/')
 const normalizeSource = (value) => value.replace(/\r\n/gu, '\n')
 
@@ -132,7 +158,9 @@ function policyFor(input) {
       input.kind.startsWith('jobs.') ||
       input.kind.startsWith('disputes.') ||
       input.kind.startsWith('workers.') ||
-      input.kind === 'workerApplications.submit'
+      input.kind === 'workerApplications.submit' ||
+      SERVER_OWNED_KAEL_AI_ROUTE_KINDS.has(input.kind) ||
+      SERVER_OWNED_CUSTOMER_CONVERSATION_CATALOG_ROUTE_KINDS.has(input.kind)
     ),
     resourceType: resourceTypeFor(input.kind),
     // Admin control endpoints are privileged monitoring/operations paths. Their identifiers

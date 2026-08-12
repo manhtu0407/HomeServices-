@@ -24,7 +24,7 @@ export type CaseWorkResponseModel = Readonly<{
   title: string
 }>
 
-export type PaymentRailProvider = 'sepay_vietqr' | null
+export type PaymentRailProvider = 'platform_bank_manual' | 'sepay_vietqr' | null
 
 type PhaseCopy = Readonly<{
   noteCopy: string
@@ -458,6 +458,19 @@ function dynamicPhaseCopy({
   }
 
   if (phase === 'customer_confirmed_completion' && !deal?.payment) {
+    if (paymentRailProvider === 'platform_bank_manual') {
+      return language === 'vi'
+        ? {
+            ...copy,
+            noteCopy: 'Kael đã tạo lệnh chuyển khoản riêng cho công việc này. Bạn chỉ báo đã chuyển; Admin sẽ đối soát trước khi xác nhận thanh toán.',
+            noteTitle: 'Thanh toán có đối soát',
+          }
+        : {
+            ...copy,
+            noteCopy: 'Kael created a transfer order for this work. Your transfer claim is reconciled by an admin before payment is confirmed.',
+            noteTitle: 'Reconciled payment',
+          }
+    }
     if (paymentRailProvider === 'sepay_vietqr') {
       return language === 'vi'
         ? {

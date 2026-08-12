@@ -83,10 +83,11 @@ function useCustomerKaelCreateHarness(ownerKey = 'customer-a:normal') {
     mode: 'normal',
     processController: {
       processLines: null,
-      settleEvidenceProcessLines: async () => undefined,
+      startBackendProcessLines: () => undefined,
       startEvidenceProcessLines: () => undefined,
       startProcessLines: async () => undefined,
       stopProcessLines: () => undefined,
+      updateBackendProcessProgress: () => undefined,
       updateEvidenceProcessProgress: () => undefined,
     },
     requestOwnerKey: ownerKey,
@@ -96,7 +97,7 @@ function useCustomerKaelCreateHarness(ownerKey = 'customer-a:normal') {
   return { chatUi, conversation, messageActions }
 }
 
-function useLinkedCaseMessageHarness(replyReveal: Promise<void>) {
+function useLinkedCaseMessageHarness() {
   const chatUi = useCustomerKaelChatUiState()
   const conversation = useCustomerKaelConversationState({
     initialLoading: false,
@@ -127,8 +128,10 @@ function useLinkedCaseMessageHarness(replyReveal: Promise<void>) {
     mode: 'case',
     processController: {
       processLines: null,
-      startProcessLines: () => replyReveal,
+      startBackendProcessLines: jest.fn(),
+      startProcessLines: async () => undefined,
       stopProcessLines: jest.fn(),
+      updateBackendProcessProgress: jest.fn(),
     } as unknown as Parameters<typeof useCustomerKaelMessageActions>[0]['processController'],
     requestOwnerKey: 'customer-a:case',
     selectedService: 'electrical',
@@ -259,16 +262,12 @@ describe('customer Kael create idempotency', () => {
     expect(mockKaelChatCreate).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps an active Case Work turn on the canonical Agentic session and reveals Kael after Process Lines', async () => {
-    let resolveReplyReveal!: () => void
-    const replyReveal = new Promise<void>((resolve) => {
-      resolveReplyReveal = resolve
-    })
+  it('keeps an active Case Work turn on the canonical Agentic session without a synthetic reveal delay', async () => {
     let resolveTurn!: (value: { data: ReturnType<typeof kaelChatResponse>; success: true }) => void
     mockKaelChatSendTurn.mockImplementationOnce(() => new Promise((resolve) => {
       resolveTurn = resolve
     }))
-    const { result } = renderHook(() => useLinkedCaseMessageHarness(replyReveal))
+    const { result } = renderHook(() => useLinkedCaseMessageHarness())
     const activeChat = {
       ...kaelChatResponse(),
       session: {
@@ -304,12 +303,6 @@ describe('customer Kael create idempotency', () => {
     } as unknown as ReturnType<typeof kaelChatResponse>
     await act(async () => {
       resolveTurn({ data: completedChat, success: true })
-      await Promise.resolve()
-    })
-    expect(result.current.conversation.chat?.turns).toEqual([])
-
-    await act(async () => {
-      resolveReplyReveal()
       await send
     })
     expect(result.current.conversation.chat?.turns).toEqual(completedChat.turns)

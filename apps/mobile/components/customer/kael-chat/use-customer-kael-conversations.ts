@@ -8,8 +8,6 @@ import type {
 } from '@/lib/api-types/customer'
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
-import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
-import type { KaelResponseStreamEvent } from '@/lib/kael-response-stream'
 import { customerKaelConversationService } from '@/lib/services'
 
 import {
@@ -38,6 +36,10 @@ import {
   responseMemory,
   setCatalogStateField,
 } from './customer-kael-conversation-catalog-state'
+import {
+  forwardCustomerKaelStreamEvent,
+  type CustomerKaelTurnStreamOptions,
+} from './customer-kael-conversation-stream-options'
 
 export function useCustomerKaelConversations(
   mode: CustomerKaelConversationMode,
@@ -463,12 +465,7 @@ export function useCustomerKaelConversations(
 
   const sendConversationTurn = useCallback(async (
     message: string,
-    options?: {
-      onResponseCommitted?: () => void
-      onResponseDelta?: (event: KaelStreamResponseDeltaEvent) => void
-      onResponseEvent?: (event: KaelResponseStreamEvent) => void
-      revealAfter?: Promise<void>
-    },
+    options?: CustomerKaelTurnStreamOptions,
   ) => {
     const content = message.trim()
     if (!content) return null
@@ -500,26 +497,30 @@ export function useCustomerKaelConversations(
         language,
         message: content,
       }
+      const isCurrentStream = () => (
+        operationRequestRef.current === requestId
+        && activeModeRef.current === mode
+        && activeKeyRef.current === catalogKey
+      )
       const streamed = await customerKaelConversationService.streamTurn(
         targetId,
         turnInput,
         {
-          onResponseDelta: (event) => {
-            if (
-              operationRequestRef.current !== requestId ||
-              activeModeRef.current !== mode ||
-              activeKeyRef.current !== catalogKey
-            ) return
-            options?.onResponseDelta?.(event)
-          },
-          onResponseEvent: (event) => {
-            if (
-              operationRequestRef.current !== requestId ||
-              activeModeRef.current !== mode ||
-              activeKeyRef.current !== catalogKey
-            ) return
-            options?.onResponseEvent?.(event)
-          },
+          onResponseDelta: (event) => forwardCustomerKaelStreamEvent(
+            event,
+            isCurrentStream,
+            options?.onResponseDelta,
+          ),
+          onResponseEvent: (event) => forwardCustomerKaelStreamEvent(
+            event,
+            isCurrentStream,
+            options?.onResponseEvent,
+          ),
+          onReasoning: (event) => forwardCustomerKaelStreamEvent(
+            event,
+            isCurrentStream,
+            options?.onReasoning,
+          ),
         },
       )
       const sent = !streamed.success && streamed.code === 'STREAM_UNSUPPORTED'
@@ -547,12 +548,6 @@ export function useCustomerKaelConversations(
         }
         return null
       }
-      await options?.revealAfter
-      if (
-        operationRequestRef.current !== requestId
-        || activeModeRef.current !== mode
-        || activeKeyRef.current !== catalogKey
-      ) return null
       options?.onResponseCommitted?.()
       activateResponse(committed)
       return committed

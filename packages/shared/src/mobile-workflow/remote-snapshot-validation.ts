@@ -32,6 +32,30 @@ const PAYMENT_STATUS_SET = new Set<string>([
   'failed',
   'reconciled',
 ])
+const MATCHING_STRATEGY_SET = new Set<string>(['pending_choice', 'general', 'saved_worker_first'])
+const MATCHING_STAGE_SET = new Set<string>([
+  'awaiting_choice',
+  'saved_worker_search',
+  'general_search',
+  'candidate_ready',
+  'recovery_required',
+  'exhausted',
+  'stopped',
+])
+const MATCHING_CHECK_KIND_SET = new Set<string>(['service_capability', 'service_area', 'availability'])
+const MATCHING_EVENT_KIND_SET = new Set<string>([
+  'awaiting_customer_choice',
+  'saved_worker_requested',
+  'saved_worker_no_response',
+  'saved_worker_declined',
+  'saved_worker_unavailable',
+  'search_expanded',
+  'general_batch_sent',
+  'matching_recovery_required',
+  'no_worker_found',
+  'candidate_ready',
+  'search_stopped',
+])
 
 export function isLocalWorkerGate(value: unknown): value is LocalWorkerGate {
   return typeof value === 'string' && LOCAL_WORKER_GATE_SET.has(value)
@@ -212,6 +236,42 @@ function isOptionalWorkerProfile(value: unknown): boolean {
     value.totalJobs >= 0
 }
 
+function isOptionalMatchingState(value: unknown): boolean {
+  if (value === undefined || value === null) return true
+  if (!isRecord(value)) return false
+  if (
+    typeof value.strategy !== 'string' || !MATCHING_STRATEGY_SET.has(value.strategy) ||
+    typeof value.stage !== 'string' || !MATCHING_STAGE_SET.has(value.stage) ||
+    !Array.isArray(value.checks) || value.checks.length > 3 ||
+    !Array.isArray(value.event_history) || value.event_history.length > 12
+  ) return false
+  const checksValid = value.checks.every((check) => isRecord(check) &&
+    typeof check.kind === 'string' && MATCHING_CHECK_KIND_SET.has(check.kind) &&
+    (check.state === 'pending' || check.state === 'verified'))
+  if (!checksValid) return false
+  if (value.batch !== null) {
+    if (!isRecord(value.batch)) return false
+    const recipientCount = value.batch.recipient_count
+    const secondsRemaining = value.batch.seconds_remaining
+    if (
+      typeof value.batch.attempt !== 'number' || !Number.isSafeInteger(value.batch.attempt) || value.batch.attempt < 1 || value.batch.attempt > 50 ||
+      typeof recipientCount !== 'number' || !Number.isSafeInteger(recipientCount) || recipientCount < 1 || recipientCount > 5 ||
+      (value.batch.deadline_at !== null && !isNonEmptyBoundedString(value.batch.deadline_at, 100)) ||
+      (secondsRemaining !== null && (
+        typeof secondsRemaining !== 'number' || !Number.isSafeInteger(secondsRemaining) || secondsRemaining < 0 || secondsRemaining > 3_600
+      )) ||
+      (value.batch.strategy !== 'saved_worker' && value.batch.strategy !== 'general')
+    ) return false
+  }
+  return value.event_history.every((event) => isRecord(event) &&
+    typeof event.kind === 'string' && MATCHING_EVENT_KIND_SET.has(event.kind) &&
+    isNonEmptyBoundedString(event.occurred_at, 100) &&
+    (event.recipient_count === undefined || (
+      typeof event.recipient_count === 'number' && Number.isSafeInteger(event.recipient_count) &&
+      event.recipient_count >= 1 && event.recipient_count <= 5
+    )))
+}
+
 export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJobSnapshot {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const job = value as Partial<LocalRemoteJobSnapshot>
@@ -247,7 +307,8 @@ export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJo
     isOptionalNullableString(job.completedAt) &&
     isOptionalNullableString(job.confirmedAt) &&
     isOptionalNullableString(job.paidAt) &&
-    isOptionalNullableString(job.reviewedAt)
+    isOptionalNullableString(job.reviewedAt) &&
+    isOptionalMatchingState(job.matchingState)
 }
 
 export function isValidRemoteBroadcastSnapshot(value: unknown): value is LocalRemoteBroadcastSnapshot {

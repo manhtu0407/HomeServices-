@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useReducer } from 'react'
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import { color, component, radius, shadow, spacing, typography } from '@/design/theme'
@@ -180,6 +180,7 @@ const teamCopy: Record<AppLanguage, TeamCopy> = {
       update: 'Chỉnh quyền',
     },
     capabilities: {
+      'finance.reconcile': 'Đối soát thanh toán',
       'operations.read': 'Xem vận hành',
       'payouts.process': 'Xử lý chi trả thợ',
       'payouts.read': 'Xem chi trả thợ',
@@ -222,6 +223,7 @@ const teamCopy: Record<AppLanguage, TeamCopy> = {
       update: 'Edit access',
     },
     capabilities: {
+      'finance.reconcile': 'Reconcile payments',
       'operations.read': 'View operations',
       'payouts.process': 'Process worker payouts',
       'payouts.read': 'View worker payouts',
@@ -253,6 +255,11 @@ const teamCopy: Record<AppLanguage, TeamCopy> = {
   },
 }
 
+const operationsDateFormatter: Record<AppLanguage, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
+  vi: new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }),
+}
+
 export function AdminOperationsOverview({
   language,
   snapshot,
@@ -271,7 +278,7 @@ export function AdminOperationsOverview({
   const copy = operationsCopy[language]
   const formatDate = (value: string) => {
     try {
-      return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+      return operationsDateFormatter[language].format(new Date(value))
     } catch {
       return value
     }
@@ -352,101 +359,88 @@ export function AdminSubAdminPanel({
   onRefresh: () => Promise<void>
 }) {
   const copy = teamCopy[language]
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [accounts, setAccounts] = useState<AdminViewSubAdminAccountCandidate[]>([])
-  const [searchComplete, setSearchComplete] = useState(false)
-  const [editor, setEditor] = useState<EditorState>(null)
-  const [capabilities, setCapabilities] = useState<AdminCapability[]>([])
-  const [reason, setReason] = useState('')
-  const [pending, setPending] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const [state, dispatch] = useReducer(subAdminReducer, initialSubAdminState)
+  const {
+    accounts,
+    actionError,
+    capabilities,
+    editor,
+    notice,
+    pending,
+    reason,
+    searchComplete,
+    searchQuery,
+    searching,
+  } = state
   const isOwner = actor?.access_level === 'owner'
 
   const openSearch = () => {
-    setEditor({ mode: 'search' })
-    setAccounts([])
-    setSearchComplete(false)
-    setSearchQuery('')
-    setActionError(null)
+    dispatch({ type: 'open_search' })
   }
 
   const openEditor = (mode: 'nominate' | 'grant' | 'update' | 'revoke', target: EditorTarget) => {
-    setEditor({ mode, target })
-    setCapabilities('capabilities' in target ? target.capabilities : [])
-    setReason('')
-    setActionError(null)
+    dispatch({ type: 'open_editor', editor: { mode, target } })
   }
 
   const closeEditor = () => {
-    if (!pending) setEditor(null)
+    if (!pending) dispatch({ type: 'close_editor' })
   }
 
   const search = async () => {
     if (searchQuery.trim().length < 2) {
-      setActionError(copy.searchHint)
+      dispatch({ type: 'set_error', error: copy.searchHint })
       return
     }
-    setSearching(true)
-    setActionError(null)
+    dispatch({ type: 'search_start' })
     const result = await adminControlService.searchSubAdminAccounts(searchQuery.trim())
     if (result.success) {
-      setAccounts(result.data.accounts)
-      setSearchComplete(true)
+      dispatch({ type: 'search_result', accounts: result.data.accounts, error: null })
     } else {
-      setActionError(result.error)
-      setSearchComplete(true)
+      dispatch({ type: 'search_result', accounts: [], error: result.error })
     }
-    setSearching(false)
   }
 
   const toggleCapability = (capability: AdminCapability) => {
-    setCapabilities((current) => current.includes(capability)
-      ? current.filter((item) => item !== capability)
-      : [...current, capability])
+    dispatch({ type: 'toggle_capability', capability })
   }
 
   const save = async () => {
     if (!editor || editor.mode === 'search' || !('target' in editor)) return
     if ((editor.mode === 'grant' || editor.mode === 'update') && capabilities.length === 0) {
-      setActionError(copy.searchHint)
+      dispatch({ type: 'set_error', error: copy.searchHint })
       return
     }
     if (editor.mode === 'revoke' && reason.trim().length < 3) {
-      setActionError(copy.revokeReason)
+      dispatch({ type: 'set_error', error: copy.revokeReason })
       return
     }
-    setPending(true)
-    setActionError(null)
+    dispatch({ type: 'pending_start' })
     const result = editor.mode === 'nominate'
       ? await adminControlService.nominateManager(editor.target.user_id)
       : await adminControlService.setSubAdminAccess(editor.target.user_id, {
         action: editor.mode,
         capabilities: editor.mode === 'revoke' ? [] : capabilities,
         ...(editor.mode === 'revoke' ? { reason: reason.trim() } : {}),
-      })
+    })
     if (result.success) {
-      setNotice(copy.notice)
-      setEditor(null)
+      dispatch({ type: 'save_success', notice: copy.notice })
       await onRefresh()
     } else {
-      setActionError(result.error)
+      dispatch({ type: 'pending_failure', error: result.error })
     }
-    setPending(false)
+    if (result.success) dispatch({ type: 'pending_finish' })
   }
 
   const cancelNomination = async (nominationId: string) => {
-    setPending(true)
-    setActionError(null)
+    dispatch({ type: 'pending_start' })
     const result = await adminControlService.cancelManagerNomination(nominationId)
     if (result.success) {
-      setNotice(copy.notice)
+      dispatch({ type: 'set_notice', notice: copy.notice })
       await onRefresh()
     } else {
-      setActionError(result.error)
+      dispatch({ type: 'pending_failure', error: result.error })
     }
-    setPending(false)
+    if (result.success) dispatch({ type: 'pending_finish' })
   }
 
   const formattedMembers = useMemo(() => members.map((member) => ({
@@ -520,7 +514,7 @@ export function AdminSubAdminPanel({
               <KaelTextField
                 accessibilityLabel={copy.searchLabel}
                 autoCapitalize="none"
-                onChangeText={setSearchQuery}
+                onChangeText={(value) => dispatch({ type: 'set_search_query', value })}
                 placeholder={copy.searchLabel}
                 placeholderTextColor={color.text.muted}
                 value={searchQuery}
@@ -541,7 +535,7 @@ export function AdminSubAdminPanel({
               {editor.mode === 'revoke' ? <KaelTextField
                 accessibilityLabel={copy.revokeReason}
                 multiline
-                onChangeText={setReason}
+                onChangeText={(value) => dispatch({ type: 'set_reason', value })}
                 placeholder={copy.revokeReason}
                 placeholderTextColor={color.text.muted}
                 value={reason}
@@ -570,6 +564,92 @@ export function AdminSubAdminPanel({
 
 type EditorTarget = AdminViewManagerNominationSummary | AdminViewSubAdminSummary | AdminViewSubAdminAccountCandidate
 type EditorState = { mode: 'search' } | { mode: 'nominate' | 'grant' | 'update' | 'revoke'; target: EditorTarget } | null
+
+type SubAdminState = {
+  accounts: AdminViewSubAdminAccountCandidate[]
+  actionError: string | null
+  capabilities: AdminCapability[]
+  editor: EditorState
+  notice: string | null
+  pending: boolean
+  reason: string
+  searchComplete: boolean
+  searchQuery: string
+  searching: boolean
+}
+
+type SubAdminAction =
+  | { type: 'open_search' }
+  | { type: 'open_editor'; editor: Exclude<EditorState, null | { mode: 'search' }> }
+  | { type: 'close_editor' }
+  | { type: 'set_search_query'; value: string }
+  | { type: 'set_reason'; value: string }
+  | { type: 'set_error'; error: string | null }
+  | { type: 'search_start' }
+  | { type: 'search_result'; accounts: AdminViewSubAdminAccountCandidate[]; error: string | null }
+  | { type: 'toggle_capability'; capability: AdminCapability }
+  | { type: 'pending_start' }
+  | { type: 'pending_finish' }
+  | { type: 'pending_failure'; error: string }
+  | { type: 'save_success'; notice: string }
+  | { type: 'set_notice'; notice: string }
+
+const initialSubAdminState: SubAdminState = {
+  accounts: [],
+  actionError: null,
+  capabilities: [],
+  editor: null,
+  notice: null,
+  pending: false,
+  reason: '',
+  searchComplete: false,
+  searchQuery: '',
+  searching: false,
+}
+
+function subAdminReducer(state: SubAdminState, action: SubAdminAction): SubAdminState {
+  switch (action.type) {
+    case 'open_search':
+      return { ...state, accounts: [], actionError: null, editor: { mode: 'search' }, searchComplete: false, searchQuery: '' }
+    case 'open_editor':
+      return {
+        ...state,
+        actionError: null,
+        capabilities: 'capabilities' in action.editor.target ? action.editor.target.capabilities : [],
+        editor: action.editor,
+        reason: '',
+      }
+    case 'close_editor':
+      return { ...state, editor: null }
+    case 'set_search_query':
+      return { ...state, searchQuery: action.value }
+    case 'set_reason':
+      return { ...state, reason: action.value }
+    case 'set_error':
+      return { ...state, actionError: action.error }
+    case 'search_start':
+      return { ...state, actionError: null, searching: true }
+    case 'search_result':
+      return { ...state, accounts: action.accounts, actionError: action.error, searchComplete: true, searching: false }
+    case 'toggle_capability':
+      return {
+        ...state,
+        capabilities: state.capabilities.includes(action.capability)
+          ? state.capabilities.filter((capability) => capability !== action.capability)
+          : [...state.capabilities, action.capability],
+      }
+    case 'pending_start':
+      return { ...state, actionError: null, pending: true }
+    case 'pending_finish':
+      return { ...state, pending: false }
+    case 'pending_failure':
+      return { ...state, actionError: action.error, pending: false }
+    case 'save_success':
+      return { ...state, editor: null, notice: action.notice }
+    case 'set_notice':
+      return { ...state, notice: action.notice }
+  }
+}
 
 function auditActorLabel(actorName: string | null, actorRole: string, copy: OperationsCopy) {
   if (actorName === 'Owner Admin') return copy.auditRole.admin

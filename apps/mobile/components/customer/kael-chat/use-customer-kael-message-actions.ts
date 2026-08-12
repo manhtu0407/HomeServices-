@@ -1,15 +1,20 @@
-import type { CaseWorkEvidence, LocalDeal, LocalDealDraft, ServiceType } from '@nestscout/shared'
+import type { CaseWorkEvidence, LocalDeal, ServiceType } from '@nestscout/shared'
 import { inferLocalDealDraftFromKael } from '@nestscout/shared'
-import { useEffect, useRef, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
 import {
   appendLegacyKaelResponseDelta,
+  completeLegacyKaelResponseStream,
   initialKaelResponseStreamState,
   kaelResponseStreamReducer,
   type KaelResponseStreamEvent,
 } from '@/lib/kael-response-stream'
+import {
+  kaelReasoningReceiptReducer,
+  type KaelReasoningStreamEvent,
+} from '@/lib/kael-reasoning-receipt'
 import {
   clearStableClientRequestId,
   shouldRetainClientRequestId,
@@ -28,16 +33,21 @@ import {
   kaelChatStreamService,
 } from '@/lib/services'
 import type { useJobChatThread } from '@/lib/use-job-chat-thread'
-import { revealVerifiedResponse } from '@/lib/verified-response-reveal'
 
 import {
   formatAssistantAnswer,
   isLikelyKaelIntakeRequest,
-  latestKaelReply,
   localizeKaelRequestFailure,
   makeAssistantTurnId,
   shouldFallbackCaseAssistantToJobChat,
 } from './customer-kael-chat-helpers'
+import {
+  isPreAgenticConfirmation,
+  preAgenticClarification,
+  preAgenticConfirmation,
+  preAgenticMissingDetails,
+} from './customer-kael-pre-agentic-copy'
+import { applyCustomerKaelReasoningEvent } from './customer-kael-reasoning-actions'
 import type { CustomerKaelRequestGuard } from './customer-kael-state-scope'
 import type { CustomerKaelMode } from '../ui/types'
 import type { useCustomerKaelChatUiState } from './use-customer-kael-chat-ui-state'
@@ -113,6 +123,8 @@ export function useCustomerKaelMessageActions({
     setComposerMediaDrafts,
     setError,
     setLoading,
+    setPendingNormalMessage,
+    setReasoningReceipt,
     setStreamingReply,
     setTurns,
   } = conversation
@@ -127,7 +139,14 @@ export function useCustomerKaelMessageActions({
     setVoiceTranscript,
     voiceTranscript,
   } = chatUi
-  const { startProcessLines, stopProcessLines } = processController
+  const {
+    startBackendProcessLines,
+    stopProcessLines,
+    updateBackendProcessProgress,
+  } = processController
+  const settleStreamingReply = useCallback((responseId: string) => {
+    setStreamingReply((current) => current?.responseId === responseId ? null : current)
+  }, [setStreamingReply])
 
   const sendMessage = async () => {
     const reviewedVoiceTranscript = voiceTranscript.trim()
@@ -139,6 +158,9 @@ export function useCustomerKaelMessageActions({
     sendOperationRef.current = sendOperation
     const requestToken = kaelRequestGuard.begin('message')
     let ownedStreamingTurnId: string | null = null
+    let legacyStreamingTurnId: string | null = null
+    let receivedResponseTerminal = false
+    let retainStreamingReply = false
     const isSendOperationCurrent = () => sendOperationRef.current === sendOperation
     const appendVerifiedReply = (
       event: KaelStreamResponseDeltaEvent,
@@ -146,6 +168,7 @@ export function useCustomerKaelMessageActions({
     ) => {
       if (!isCurrent()) return
       ownedStreamingTurnId = event.turnId
+      legacyStreamingTurnId = event.turnId
       setStreamingReply((current) => {
         return appendLegacyKaelResponseDelta(current, event)
       })
@@ -158,7 +181,13 @@ export function useCustomerKaelMessageActions({
       isCurrent: () => boolean,
     ) => {
       if (!isCurrent()) return
-      if (event.type === 'response.started') ownedStreamingTurnId = event.responseId
+      if (event.type === 'response.started') {
+        legacyStreamingTurnId = null
+        ownedStreamingTurnId = event.responseId
+      }
+      if (event.type === 'response.completed' && event.responseId === ownedStreamingTurnId) {
+        receivedResponseTerminal = true
+      }
       setStreamingReply((current) => kaelResponseStreamReducer(
         current ?? initialKaelResponseStreamState,
         event,
@@ -167,13 +196,30 @@ export function useCustomerKaelMessageActions({
     const applyStreamingResponseEvent = (event: KaelResponseStreamEvent) => {
       applyResponseEvent(event, () => kaelRequestGuard.isCurrent(requestToken))
     }
-    const applyLocalResponseEvent = (event: KaelResponseStreamEvent) => {
-      applyResponseEvent(event, isSendOperationCurrent)
+    const completeLegacyStreamingReply = () => {
+      if (receivedResponseTerminal || !legacyStreamingTurnId) return
+      receivedResponseTerminal = true
+      setStreamingReply((current) => current?.responseId === legacyStreamingTurnId
+        ? completeLegacyKaelResponseStream(current)
+        : current)
+    }
+    let activeReasoningReceiptId: string | null = null
+    let receivedReasoningTerminal = false
+    const applyStreamingReasoningEvent = (event: KaelReasoningStreamEvent) => {
+      if (!kaelRequestGuard.isCurrent(requestToken)) return
+      if (event.type === 'reasoning.started') activeReasoningReceiptId = event.receiptId
+      if (
+        (event.type === 'reasoning.completed' || event.type === 'reasoning.failed')
+        && event.receiptId === activeReasoningReceiptId
+      ) receivedReasoningTerminal = true
+      applyCustomerKaelReasoningEvent(
+        event,
+        () => kaelRequestGuard.isCurrent(requestToken),
+        setReasoningReceipt,
+      )
     }
     const clearOwnedStreamingReply = (turnId: string) => {
-      setStreamingReply((current) => {
-        return current?.responseId === turnId ? null : current
-      })
+      settleStreamingReply(turnId)
     }
     const clearCurrentOwnedStreamingReply = () => {
       if (ownedStreamingTurnId) clearOwnedStreamingReply(ownedStreamingTurnId)
@@ -192,14 +238,7 @@ export function useCustomerKaelMessageActions({
         },
       ])
       try {
-        const revealed = await revealVerifiedResponse({
-          isCurrent: isSendOperationCurrent,
-          onResponseEvent: applyLocalResponseEvent,
-          text: kaelText,
-          turnId: kaelTurnId,
-        })
-        if (!revealed || !isSendOperationCurrent()) return false
-        clearOwnedStreamingReply(kaelTurnId)
+        if (!isSendOperationCurrent()) return false
         setAssistantTurns((current) => [
           ...current,
           {
@@ -240,31 +279,49 @@ export function useCustomerKaelMessageActions({
             : 'Photos and videos are handled in Work handling.')
           return
         }
-        const processDone = startProcessLines(message, {
-          complexity: null,
-          mediaCount: 0,
-          mode: 'normal',
-          replyReveal: 'composer_message',
-          serviceType: null,
-        })
+        setPendingNormalMessage(message)
+        setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, { type: 'begin' }))
         clearSubmittedComposer()
         setLoading(true)
         setError(null)
         try {
           const result = await conversations.sendConversationTurn(message, {
-            onResponseCommitted: clearCurrentOwnedStreamingReply,
+            onResponseCommitted: () => {
+              setPendingNormalMessage(null)
+            },
             onResponseDelta: appendStreamingReply,
             onResponseEvent: applyStreamingResponseEvent,
-            revealAfter: processDone,
+            onReasoning: applyStreamingReasoningEvent,
           })
           if (!kaelRequestGuard.isCurrent(requestToken)) return
           if (result) {
+            if (!receivedReasoningTerminal) {
+              if (activeReasoningReceiptId) {
+                const incompleteReceiptMessage = language === 'vi'
+                  ? 'Kael đã nhận được phản hồi, nhưng biên nhận xử lý chưa hoàn tất.'
+                  : 'Kael received a reply, but the processing receipt did not finish.'
+                setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, {
+                  message: incompleteReceiptMessage,
+                  type: 'fail',
+                }))
+              } else {
+                setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, { type: 'reset' }))
+              }
+            }
+            completeLegacyStreamingReply()
+            retainStreamingReply = receivedResponseTerminal
             commitSubmittedComposer()
           } else {
             restoreSubmittedComposer()
-            setError(conversations.sessionsError ?? (language === 'vi'
+            setPendingNormalMessage(null)
+            const failureMessage = conversations.sessionsError ?? (language === 'vi'
               ? 'Kael chưa thể trả lời lúc này.'
-              : 'Kael could not reply right now.'))
+              : 'Kael could not reply right now.')
+            setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, {
+              message: failureMessage,
+              type: 'fail',
+            }))
+            setError(failureMessage)
           }
         } finally {
           if (kaelRequestGuard.isCurrent(requestToken)) {
@@ -285,13 +342,7 @@ export function useCustomerKaelMessageActions({
           ? chat
           : null
         if (activeAgenticChat) {
-          const processDone = startProcessLines(message, {
-            complexity: deal.estimate?.complexity ?? null,
-            mediaCount: deal.draft.mediaCount ?? 0,
-            mode: 'case',
-            replyReveal: 'composer_message',
-            serviceType: deal.draft.serviceType,
-          })
+          startBackendProcessLines()
           clearSubmittedComposer()
           setLoading(true)
           setError(null)
@@ -304,16 +355,21 @@ export function useCustomerKaelMessageActions({
                 photo_urls: [],
               },
               {
+                onReasoning: applyStreamingReasoningEvent,
                 onResponseDelta: appendStreamingReply,
                 onResponseEvent: applyStreamingResponseEvent,
+                onStage: ({ progress }) => {
+                  if (kaelRequestGuard.isCurrent(requestToken)) {
+                    updateBackendProcessProgress(progress)
+                  }
+                },
               },
             )
             const result = await reconcileCommittedKaelTurn(activeAgenticChat, streamed)
             if (!kaelRequestGuard.isCurrent(requestToken)) return
             if (result.success) {
-              await processDone
-              if (!kaelRequestGuard.isCurrent(requestToken)) return
-              setStreamingReply(null)
+              completeLegacyStreamingReply()
+              retainStreamingReply = receivedResponseTerminal
               setChat(result.data)
               setTurns(result.data.turns)
               commitSubmittedComposer()
@@ -353,13 +409,6 @@ export function useCustomerKaelMessageActions({
           return
         }
 
-        const processDone = startProcessLines(message, {
-          complexity: deal.estimate?.complexity ?? null,
-          mediaCount: deal.draft.mediaCount ?? 0,
-          mode: 'case',
-          replyReveal: 'composer_message',
-          serviceType: deal.draft.serviceType,
-        })
         clearSubmittedComposer()
         setLoading(true)
         setError(null)
@@ -372,8 +421,6 @@ export function useCustomerKaelMessageActions({
           })
           if (!kaelRequestGuard.isCurrent(requestToken)) return
           if (result.success) {
-            await processDone
-            if (!kaelRequestGuard.isCurrent(requestToken)) return
             setAssistantTurns((current) => [
               ...current,
               {
@@ -394,8 +441,6 @@ export function useCustomerKaelMessageActions({
             const stored = await jobService.sendMessage(deal.id, { content: message })
             if (!kaelRequestGuard.isCurrent(requestToken)) return
             if (stored.success) {
-              await processDone
-              if (!kaelRequestGuard.isCurrent(requestToken)) return
               setAssistantTurns((current) => [
                 ...current,
                 {
@@ -438,24 +483,19 @@ export function useCustomerKaelMessageActions({
     const shouldUseIntake = mode === 'case' || Boolean(
       hasComposerMedia || reviewedVoiceTranscript || pendingDraft || chat || intakeIntent,
     )
-    if (!shouldUseIntake) {
-      setLoading(true)
-      setError(null)
-      const processDone = startProcessLines(message, {
-        complexity: null,
-        mediaCount: 0,
-        mode: conversations ? 'case' : 'normal',
-        replyReveal: 'composer_message',
-        serviceType: null,
-      })
+      if (!shouldUseIntake) {
+        setLoading(true)
+        setError(null)
       clearSubmittedComposer()
       try {
         const catalogResult = conversations
           ? await conversations.sendConversationTurn(message, {
-              onResponseCommitted: clearCurrentOwnedStreamingReply,
+              onResponseCommitted: () => {
+                completeLegacyStreamingReply()
+                retainStreamingReply = receivedResponseTerminal
+              },
               onResponseDelta: appendStreamingReply,
               onResponseEvent: applyStreamingResponseEvent,
-              revealAfter: processDone,
             })
           : null
         const result = conversations
@@ -469,8 +509,6 @@ export function useCustomerKaelMessageActions({
         if (catalogResult) {
           commitSubmittedComposer()
         } else if (result?.success) {
-          await processDone
-          if (!kaelRequestGuard.isCurrent(requestToken)) return
           setAssistantTurns((current) => [
             ...current,
             {
@@ -649,13 +687,7 @@ export function useCustomerKaelMessageActions({
         }
       }
     }
-    const processDone = startProcessLines(outgoingMessage, {
-      complexity: null,
-      mediaCount: composerMediaDrafts.length + (reviewedVoiceTranscript ? 1 : 0),
-      mode: conversations ? 'case' : 'normal',
-      replyReveal: 'composer_message',
-      serviceType: inferredService,
-    })
+    if (chat) startBackendProcessLines()
     clearSubmittedComposer()
     const result = chat
       ? await kaelChatStreamService.sendTurn(
@@ -667,8 +699,14 @@ export function useCustomerKaelMessageActions({
             photo_urls: photoUrls,
           },
           {
+            onReasoning: applyStreamingReasoningEvent,
             onResponseDelta: appendStreamingReply,
             onResponseEvent: applyStreamingResponseEvent,
+            onStage: ({ progress }) => {
+              if (kaelRequestGuard.isCurrent(requestToken)) {
+                updateBackendProcessProgress(progress)
+              }
+            },
           },
         ).then((streamed) => reconcileCommittedKaelTurn(chat, streamed))
       : await kaelChatService.create({
@@ -688,23 +726,11 @@ export function useCustomerKaelMessageActions({
         clearStableClientRequestId(pendingCreate.requestRef, createFingerprint)
         if (pendingCreateRef.current === pendingCreate) pendingCreateRef.current = null
       }
-      await processDone
       if (!kaelRequestGuard.isCurrent(requestToken)) return
-      if (!chat) {
-        const initialReply = latestKaelReply(result.data)
-        if (initialReply) {
-          const revealed = await revealVerifiedResponse({
-            isCurrent: () => kaelRequestGuard.isCurrent(requestToken),
-            onResponseEvent: applyStreamingResponseEvent,
-            text: initialReply.text,
-            turnId: initialReply.turnId,
-          })
-          if (!revealed || !kaelRequestGuard.isCurrent(requestToken)) return
-        }
-      }
+      completeLegacyStreamingReply()
+      retainStreamingReply = receivedResponseTerminal
       setLoading(false)
       stopProcessLines()
-      setStreamingReply(null)
       setChat(result.data)
       setTurns(result.data.turns)
       pendingPreAgenticIntakeRef.current = null
@@ -738,53 +764,23 @@ export function useCustomerKaelMessageActions({
         setUploadingMedia(false)
         stopProcessLines()
         restoreSubmittedComposer()
-        setError(language === 'vi'
+        const failureMessage = language === 'vi'
           ? 'Kael đang không kết nối được. Vui lòng thử lại.'
-          : 'Kael is unavailable. Try again.')
+          : 'Kael is unavailable. Try again.'
+        if (mode === 'normal' && conversations) {
+          setPendingNormalMessage(null)
+          setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, {
+            message: failureMessage,
+            type: 'fail',
+          }))
+        }
+        setError(failureMessage)
       }
     } finally {
-      clearCurrentOwnedStreamingReply()
+      if (!retainStreamingReply) clearCurrentOwnedStreamingReply()
       if (sendOperationRef.current === sendOperation) sendOperationRef.current = null
     }
   }
 
-  return { sendMessage }
-}
-
-function isPreAgenticConfirmation(message: string) {
-  const normalized = message
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase()
-  return /^(xac nhan|confirm|dung|dung roi|dong y|ok|okay|yes)$/.test(normalized)
-}
-
-function preAgenticMissingDetails(draft: LocalDealDraft | null) {
-  const missing: string[] = []
-  if (!draft?.serviceType) missing.push('hạng mục cần hỗ trợ')
-  if (!draft?.inferredProblemLabel) missing.push('hiện tượng hoặc thiết bị gặp vấn đề')
-  if (!draft?.districtLabel) missing.push('quận tại TP.HCM')
-  return missing
-}
-
-function preAgenticClarification(language: AppLanguage, missingDetails: string[]) {
-  if (language === 'vi') {
-    const details = missingDetails.length > 0
-      ? missingDetails.join(', ')
-      : 'thông tin còn thiếu'
-    const supportedServices = missingDetails.includes('hạng mục cần hỗ trợ')
-      ? ' Hạng mục hỗ trợ gồm: sửa điện, sửa nước, vệ sinh nhà, điều hòa, chăm sóc nội thất hoặc sửa vặt/lắp đặt.'
-      : ''
-    return `Mình đã ghi nhận mô tả. Trước khi Kael bắt đầu, bạn cho biết ${details} trong một tin nhắn nhé.${supportedServices}`
-  }
-  return 'I have noted your description. Before Kael begins, please provide the service, the affected item or symptom, and the district in Ho Chi Minh City in one message. Supported services are electrical, plumbing, home cleaning, air conditioning, upholstery care, and handyman work.'
-}
-
-function preAgenticConfirmation(language: AppLanguage, draft: LocalDealDraft | null) {
-  const detail = [draft?.inferredProblemLabel, draft?.districtLabel].filter(Boolean).join(' tại ')
-  if (language === 'vi') {
-    return `Kael hiểu yêu cầu là ${detail || 'hạng mục bạn vừa mô tả'}. Đúng không? Nhắn “Xác nhận” để Kael bắt đầu phân tích.`
-  }
-  return `Kael understands the request as ${detail || 'the work you described'}. Is that correct? Reply “Confirm” for Kael to begin analysis.`
+  return { sendMessage, settleStreamingReply }
 }

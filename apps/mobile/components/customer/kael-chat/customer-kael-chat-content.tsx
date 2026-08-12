@@ -1,12 +1,7 @@
 import { useCallback, useMemo } from 'react'
 
 import { MediaDraftPreviewTray } from './media-draft-preview-tray'
-import {
-  agenticEstimatePriceExplanation,
-  agenticEstimateSourceExplanation,
-  formatPriceRange,
-} from './agentic-estimate-display-model'
-import { AgenticChatEstimateResponse } from './agentic-chat-estimate-response'
+import { CustomerAgenticEstimateNode } from './customer-agentic-estimate-node'
 import { KaelChatSurfaceView } from './chat-stateful-surfaces'
 import { customerV21KaelChatRootStyles as rootStyles } from './chat-styles'
 import { ChatBubble } from './chat-surfaces'
@@ -33,7 +28,6 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     conversations,
     copy,
     deal,
-    decisionActions,
     evidenceActions,
     language,
     messageActions,
@@ -69,6 +63,8 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         conversation.chat ||
         conversation.turns.length > 0 ||
         presentation.normalAssistantTurns.length > 0 ||
+        Boolean(conversation.pendingNormalMessage) ||
+        conversation.reasoningReceipt.status !== 'idle' ||
         conversation.composerMediaDrafts.length > 0 ||
         chatUi.voiceTranscript.trim()
       )
@@ -84,9 +80,16 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         chatUi.voiceTranscript.trim()
       )
   const showEmptyHero = !hasCurrentConversation && !conversation.loading
+  const { setReasoningReceipt } = conversation
   const onOpenActivity = useCallback(() => {
     router.replace('/(customer)/history' as never)
   }, [router])
+  const onToggleNormalReasoningReceipt = useCallback(() => {
+    setReasoningReceipt((current) => ({
+      ...current,
+      expanded: !current.expanded,
+    }))
+  }, [setReasoningReceipt])
   const caseIntakeResponseNode = useMemo(
     () => <CustomerKaelIntakeResponseNode controller={controller} />,
     [controller],
@@ -112,140 +115,133 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     conversation.streamingReply ? (
       <KaelResponseSurface
         language={language}
+        onPresentationSettled={messageActions.settleStreamingReply}
         reduceMotion={reduceMotion}
         state={conversation.streamingReply}
         testID="customer-v21-kael-streaming-response"
         tokens={tokens}
       />
     ) : null
-  ), [conversation.streamingReply, language, reduceMotion, tokens])
+  ), [conversation.streamingReply, language, messageActions.settleStreamingReply, reduceMotion, tokens])
+  const agenticEstimateNode = useMemo(
+    () => <CustomerAgenticEstimateNode controller={controller} />,
+    [controller],
+  )
+  const composerMediaNode = useMemo(() => (
+    <MediaDraftPreviewTray
+      busy={composerBusy}
+      drafts={conversation.composerMediaDrafts}
+      language={language}
+      onRemove={(index) => conversation.setComposerMediaDrafts((current) =>
+        current.filter((_, currentIndex) => currentIndex !== index))}
+      tokens={tokens}
+    />
+  ), [composerBusy, conversation, language, tokens])
+  const processLinesNode = useMemo(() => (
+    processController.processLines ? (
+      <>
+        {processController.processLines.prompt ? (
+          <ChatBubble speaker="customer" text={processController.processLines.prompt} tokens={tokens} />
+        ) : null}
+        <KaelProcessLines state={processController.processLines} />
+      </>
+    ) : null
+  ), [processController.processLines, tokens])
+  const sessionMenuNode = useMemo(() => (
+    <CustomerKaelSessionMenu
+      activeSessionId={conversations.activeSessionId}
+      canCreate={conversations.canCreateSession}
+      error={conversations.sessionsError}
+      language={language}
+      loading={conversations.sessionsLoading}
+      mode={mode}
+      onArchive={sessionCatalog.archiveConversation}
+      onCreate={() => void sessionCatalog.startNewConversation()}
+      onPin={conversations.setSessionPinned}
+      onRename={conversations.renameSession}
+      onSelect={(conversationId) => void sessionCatalog.openConversation(conversationId)}
+      pendingSessionIds={conversations.pendingSessionIds}
+      reduceMotion={reduceMotion}
+      reduceTransparency={reduceTransparency}
+      sessions={conversations.sessions}
+      tokens={tokens}
+    />
+  ), [
+    conversations.activeSessionId,
+    conversations.canCreateSession,
+    conversations.pendingSessionIds,
+    conversations.sessions,
+    conversations.sessionsError,
+    conversations.sessionsLoading,
+    conversations.renameSession,
+    conversations.setSessionPinned,
+    language,
+    mode,
+    reduceMotion,
+    reduceTransparency,
+    sessionCatalog,
+    tokens,
+  ])
 
   return (
     <KaelChatSurfaceView
-      agenticEstimateNode={presentation.offerReviewActive &&
-        presentation.chatEstimate &&
-        !processController.processLines &&
-        !chatUi.submittingAgenticAdjustment &&
-        !chatUi.submittingAgenticRejectReason &&
-        !chatUi.confirmingAgenticEstimate ? (
-          <AgenticChatEstimateResponse
-            adjustmentOpen={chatUi.agenticAdjustmentOpen}
-            adjustmentText={chatUi.agenticAdjustmentText}
-            canConfirm={presentation.canConfirmAgenticEstimate}
-            confirming={chatUi.confirmingAgenticEstimate}
-            confirmed={presentation.agenticEstimateConfirmed}
-            diagnosisScope={presentation.diagnosisScope}
-            evidencePreviews={presentation.evidencePreviews}
-            estimate={presentation.chatEstimate}
-            formatPriceRange={formatPriceRange}
-            language={language}
-            onAdjust={() => {
-              chatUi.setAgenticAdjustmentOpen(true)
-              chatUi.setAgenticRejectOpen(false)
-              conversation.setError(null)
-            }}
-            onAdjustmentChange={chatUi.setAgenticAdjustmentText}
-            onConfirm={decisionActions.confirmAgenticEstimate}
-            onReject={() => {
-              chatUi.setAgenticAdjustmentOpen(false)
-              chatUi.setAgenticRejectOpen(true)
-              conversation.setError(null)
-            }}
-            onReasonChange={chatUi.setAgenticRejectReason}
-            onSubmitAdjustment={() => void decisionActions.submitAgenticAdjustment()}
-            onSubmitRejectReason={() => void decisionActions.submitAgenticRejectReason()}
-            priceExplanationForEstimate={agenticEstimatePriceExplanation}
-            rejected={chatUi.agenticRejectOpen}
-            rejectReason={chatUi.agenticRejectReason}
-            sourceExplanationForLanguage={agenticEstimateSourceExplanation}
-            submittingAdjustment={chatUi.submittingAgenticAdjustment}
-            submittingRejectReason={chatUi.submittingAgenticRejectReason}
-            textInputStyle={[rootStyles.composerInput, customerV21WebTextInputNoOutline]}
-          />
-        ) : null}
+      agenticEstimateNode={agenticEstimateNode}
       analysisEvidenceNode={analysisEvidenceNode}
       agenticVisibleTurns={mode === 'case' || presentation.agenticIntakeModeActive
         ? presentation.agenticVisibleTurns
         : []}
       animatedModeMenuSheenStyle={modeMenu.animatedModeMenuSheenStyle}
       animatedModeMenuStyle={modeMenu.animatedModeMenuStyle}
-      canStartNewConversation={conversations.canCreateSession}
-      canUseComposerMedia={canUseComposerMedia}
       caseAssistantTurns={presentation.showCaseConversation ? presentation.caseAssistantTurns : []}
       caseIntakeResponseNode={caseIntakeResponseNode}
       caseThreadNode={caseThreadNode}
       caseWorkLabel={copy.caseWork}
-      composerBusy={composerBusy}
-      composerMediaDraftCount={conversation.composerMediaDrafts.length}
-      composerMediaNode={(
-        <MediaDraftPreviewTray
-          busy={composerBusy}
-          drafts={conversation.composerMediaDrafts}
-          language={language}
-          onRemove={(index) => conversation.setComposerMediaDrafts((current) =>
-            current.filter((_, currentIndex) => currentIndex !== index))}
-          tokens={tokens}
-        />
-      )}
-      composerPlaceholder={composerPlaceholder}
-      draft={chatUi.draft}
+      composerMediaNode={composerMediaNode}
+      composer={{
+        busy: composerBusy,
+        canUseMedia: canUseComposerMedia,
+        draft: chatUi.draft,
+        mediaDraftCount: conversation.composerMediaDrafts.length,
+        placeholder: composerPlaceholder,
+        show: presentation.showComposer,
+      }}
       error={visibleError}
       hiddenScrollbarStyle={customerV21HiddenScrollbar}
-      hydratingCase={caseHydration.hydrating && !deal}
       language={language}
       mode={mode}
-      modeMenuOpen={chatUi.modeMenuOpen}
+      motion={{ reduceMotion, reduceTransparency }}
       normalAssistantTurns={presentation.normalAssistantTurns}
       normalChatLabel={copy.normalChat}
+      normalReasoningReceipt={conversation.reasoningReceipt}
       onBack={() => router.replace('/(customer)/home' as never)}
       onDraftChange={chatUi.setDraft}
       onPickMedia={evidenceActions.pickComposerMedia}
       onSendMessage={() => void messageActions.sendMessage()}
       onSwitchMode={modeMenu.switchChatMode}
       onToggleModeMenu={modeMenu.toggleModeMenu}
+      onToggleNormalReasoningReceipt={onToggleNormalReasoningReceipt}
       onToggleSessionMenu={sessionCatalog.toggleSessionMenu}
       pendingDraftMessage={presentation.pendingDraftMessage}
-      processLinesNode={processController.processLines ? (
-        <>
-          <ChatBubble speaker="customer" text={processController.processLines.prompt} tokens={tokens} />
-          <KaelProcessLines state={processController.processLines} />
-        </>
-      ) : null}
+      pendingNormalMessage={conversation.pendingNormalMessage}
+      processLinesNode={processLinesNode}
       streamingReplyNode={streamingReplyNode}
       streamingReplyTurnId={conversation.streamingReply?.responseId ?? null}
-      reduceMotion={reduceMotion}
-      reduceTransparency={reduceTransparency}
       rootStyles={rootStyles}
-      sessionMenuNode={(
-        <CustomerKaelSessionMenu
-          activeSessionId={conversations.activeSessionId}
-          canCreate={conversations.canCreateSession}
-          error={conversations.sessionsError}
-          language={language}
-          loading={conversations.sessionsLoading}
-          mode={mode}
-          onArchive={sessionCatalog.archiveConversation}
-          onCreate={() => void sessionCatalog.startNewConversation()}
-          onPin={conversations.setSessionPinned}
-          onRename={conversations.renameSession}
-          onSelect={(conversationId) => void sessionCatalog.openConversation(conversationId)}
-          pendingSessionIds={conversations.pendingSessionIds}
-          reduceMotion={reduceMotion}
-          reduceTransparency={reduceTransparency}
-          sessions={conversations.sessions}
-          tokens={tokens}
-        />
-      )}
-      sessionMenuOpen={chatUi.sessionMenuOpen}
-      showComposer={presentation.showComposer}
-      showEmptyHero={showEmptyHero}
-      showNormalGreeting={false}
-      showPendingDraftBubble={presentation.showPendingDraftBubble}
+      sessionMenuNode={sessionMenuNode}
       textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
       timelineHeadline={timelineHeadline}
       tokens={tokens}
+      visibility={{
+        canStartNewConversation: conversations.canCreateSession,
+        hydratingCase: caseHydration.hydrating && !deal,
+        missingCaseWorkDeal: presentation.missingCaseWorkDeal,
+        modeMenuOpen: chatUi.modeMenuOpen,
+        sessionMenuOpen: chatUi.sessionMenuOpen,
+        showEmptyHero,
+        showNormalGreeting: false,
+        showPendingDraftBubble: presentation.showPendingDraftBubble,
+      }}
       workerCandidateNode={workerCandidateNode}
-      missingCaseWorkDeal={presentation.missingCaseWorkDeal}
     />
   )
 }

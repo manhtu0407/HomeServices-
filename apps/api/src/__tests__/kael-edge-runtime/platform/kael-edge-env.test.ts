@@ -224,6 +224,35 @@ describe('edge-env', () => {
     expect(read({}).sepayVietQr.enabled).toBe(true)
   })
 
+  it('enables the manual bank QR only with complete non-staging server configuration', () => {
+    const read = (values: Record<string, string | undefined>) => readEdgeEnv((name) => {
+      const base: Record<string, string | undefined> = {
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        NESTSCOUT_ENVIRONMENT: 'production',
+        APP_SECRET_KEY: 'sb_secret_project',
+        NESTSCOUT_PLATFORM_MANUAL_BANK_ENABLED: 'true',
+        PLATFORM_MANUAL_BANK_CODE: 'VCB',
+        PLATFORM_MANUAL_BANK_ACCOUNT_NUMBER: '1234567890',
+        PLATFORM_MANUAL_BANK_ACCOUNT_HOLDER: 'NESTSCOUT COMPANY',
+      }
+      return { ...base, ...values }[name]
+    })
+
+    expect(read({ PLATFORM_MANUAL_BANK_ACCOUNT_NUMBER: undefined }).manualBank.enabled).toBe(false)
+    expect(read({}).manualBank.enabled).toBe(true)
+
+    const staging = readEdgeEnv((name) => ({
+      SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+      NESTSCOUT_ENVIRONMENT: 'staging',
+      APP_SECRET_KEY: 'sb_secret_project',
+      NESTSCOUT_PLATFORM_MANUAL_BANK_ENABLED: 'true',
+      PLATFORM_MANUAL_BANK_CODE: 'VCB',
+      PLATFORM_MANUAL_BANK_ACCOUNT_NUMBER: '1234567890',
+      PLATFORM_MANUAL_BANK_ACCOUNT_HOLDER: 'NESTSCOUT COMPANY',
+    })[name])
+    expect(staging.manualBank.enabled).toBe(false)
+  })
+
   it('lets an explicit Section 25 R2 false flag override the staging fallback', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {

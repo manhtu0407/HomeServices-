@@ -1,12 +1,26 @@
 import type { ComplexityLevel, KaelEstimate, ServiceType } from "../contracts/types.ts";
 import { PRICE_DISCLAIMER, priceDisclaimer } from "../contracts/types.ts";
-import {
-  calculateScopeChangeAnomaly,
-  calculateScopeChangeMargin,
-  type ScopeChangeRiskConfig,
-} from "./scope-risk.ts";
 import { kaelArtifactProposalSchema } from "../contracts/artifact-contract.ts";
-import { looksLikePrivateUnitIdentifier } from "../pipeline/utils.ts";
+import {
+  buildReceiptEvidenceFindings,
+  boundedEvidenceCount,
+  estimateComplexityReasoning,
+  isSafePublicPriceReasoningText,
+  nullableBoundedEvidenceCount,
+  nullableSanitized,
+  numericConfidenceToLabel,
+  optionalText,
+  recordFromUnknown,
+  reusePreviousAnalyzedEvidence,
+  sanitizeKaelText,
+} from "./output-support.ts";
+export {
+  isSafePublicPriceReasoningText,
+  sanitizeKaelOutputObject,
+  sanitizeKaelText,
+  scrubKaelPiiText,
+} from "./output-support.ts";
+export { buildScopeChangeOutputs } from "./scope-change-output.ts";
 import { customerVisibleKaelProblemSummary } from "../language/user-facing-copy.ts";
 
 export type EstimatePriceSource =
@@ -32,6 +46,7 @@ export type EstimateCardV3 = {
     needs_inspection_reason?: string;
   };
   analysis_receipt?: EstimateAnalysisReceipt;
+  price_reasoning_receipt: PriceReasoningReceipt;
   advisory?: string;
   disclaimer: string;
 };
@@ -62,6 +77,58 @@ export type EstimateAnalysisReceipt = {
     recommended_scope: string | null;
     severity_indicators: string[];
     summary: string;
+  };
+};
+
+export type PriceReasoningReceipt = {
+  schema_version: "price_reasoning_receipt.v1";
+  receipt_id: string;
+  problem: {
+    confirmed_facts: string[];
+    possible_causes: Array<{
+      statement: string;
+      basis: Array<"customer_report" | "visual_evidence" | "service_profile" | "knowledge">;
+      confidence: "low" | "medium" | "high";
+    }>;
+    unknowns: string[];
+  };
+  scope: {
+    included: string[];
+    conditional: string[];
+    excluded: string[];
+  };
+  costs: {
+    currency: "VND";
+    total_min: number;
+    total_max: number;
+    reconciliation: "package_total" | "exact";
+    components: Array<{
+      kind:
+        | "service_package"
+        | "labor"
+        | "travel"
+        | "materials"
+        | "replacement_parts"
+        | "equipment"
+        | "other";
+      status: "priced" | "included_unitemized" | "conditional_unpriced" | "excluded" | "undetermined";
+      amount_min: number | null;
+      amount_max: number | null;
+      explanation: string;
+    }>;
+  };
+  scenarios: {
+    low: { total: number; conditions: string[]; scope: string[] };
+    high: { total: number; conditions: string[]; scope: string[] };
+  };
+  fairness: {
+    price_source: EstimatePriceSource;
+    confidence: "low" | "medium" | "high";
+    market_source_count: number | null;
+    high_trust_source_count: number | null;
+    quorum_met: boolean | null;
+    cap_statement: string;
+    remaining_uncertainty: string[];
   };
 };
 
@@ -151,23 +218,31 @@ export function buildEstimateCardOutput(input: {
   const confidence = numericConfidenceToLabel(input.estimate.confidence);
   const needsInspection = input.estimate.needs_inspection === true ||
     input.priceSource === "inspection_required";
+  const priceMin = Math.max(1, Math.round(input.estimate.price_min));
+  const priceMax = Math.max(priceMin, Math.round(input.estimate.price_max));
+  const priceSource = needsInspection
+    ? "inspection_required" as const
+    : input.priceSource ?? "baseline_with_market";
+  const analysisReceipt = buildEstimateAnalysisReceipt(
+    input.analysisEvidence,
+    input.marketEvidence,
+    input.visionAnalysis,
+    language,
+    input.previousAnalysisReceipt,
+  );
+  const problemSummary = sanitizeKaelText(
+    customerVisibleKaelProblemSummary(input.estimate.problem_summary, language),
+    200,
+  );
   const card: EstimateCardV3 = {
     service_type: input.estimate.service_type,
-    problem_summary: sanitizeKaelText(
-      customerVisibleKaelProblemSummary(input.estimate.problem_summary, language),
-      200,
-    ),
+    problem_summary: problemSummary,
     complexity: input.estimate.complexity,
-    price_min: Math.max(1, Math.round(input.estimate.price_min)),
-    price_max: Math.max(
-      Math.round(input.estimate.price_min),
-      Math.round(input.estimate.price_max),
-    ),
+    price_min: priceMin,
+    price_max: priceMax,
     confidence: needsInspection ? "low" : confidence,
     needs_inspection: needsInspection,
-    price_source: needsInspection
-      ? "inspection_required"
-      : input.priceSource ?? "baseline_with_market",
+    price_source: priceSource,
     kael_reasoning: {
       vision_findings: optionalText(
         input.visionFindings
@@ -189,13 +264,18 @@ export function buildEstimateCardOutput(input: {
             : "Cần xác nhận hiện trường trước khi chốt phạm vi.")
         : undefined,
     },
-    analysis_receipt: buildEstimateAnalysisReceipt(
-      input.analysisEvidence,
-      input.marketEvidence,
-      input.visionAnalysis,
+    analysis_receipt: analysisReceipt,
+    price_reasoning_receipt: buildPriceReasoningReceipt({
+      analysisReceipt,
+      complexity: input.estimate.complexity,
+      confidence: needsInspection ? "low" : confidence,
       language,
-      input.previousAnalysisReceipt,
-    ),
+      needsInspection,
+      priceMax,
+      priceMin,
+      priceSource,
+      problemSummary,
+    }),
     advisory: needsInspection
       ? sanitizeKaelText(
         input.estimate.advisory ??
@@ -383,319 +463,257 @@ function buildEstimateAnalysisReceipt(
   return reusePreviousAnalyzedEvidence(receipt, previousAnalysisReceipt);
 }
 
-function reusePreviousAnalyzedEvidence(
-  receipt: EstimateAnalysisReceipt,
-  previous: unknown,
-): EstimateAnalysisReceipt {
-  if (
-    receipt.evidence.analysis_status === "analyzed" ||
-    (receipt.evidence.findings?.length ?? 0) > 0
-  ) return receipt;
-  const previousRecord = recordFromUnknown(previous);
-  const previousEvidence = recordFromUnknown(previousRecord?.evidence);
-  if (previousEvidence?.analysis_status !== "analyzed") return receipt;
-  const findings: NonNullable<EstimateAnalysisReceipt["evidence"]["findings"]> = [];
-  const seenEvidence = new Set<string>();
-  for (const value of Array.isArray(previousEvidence.findings) ? previousEvidence.findings : []) {
-    const finding = recordFromUnknown(value);
-    if (!finding) continue;
-    const evidenceKind = finding.evidence_kind === "photo" || finding.evidence_kind === "video_frame"
-      ? finding.evidence_kind
-      : null;
-    const evidenceIndex = Number.isSafeInteger(finding.evidence_index)
-      ? finding.evidence_index as number
-      : null;
-    const confidence = finding.confidence === "low" ||
-        finding.confidence === "medium" || finding.confidence === "high"
-      ? finding.confidence
-      : null;
-    const availableCount = evidenceKind === "photo"
-      ? receipt.evidence.photo_count
-      : evidenceKind === "video_frame"
-      ? receipt.evidence.video_frame_count
-      : 0;
-    const observation = typeof finding.observation === "string"
-      ? optionalText(finding.observation, 240)
-      : undefined;
-    const evidenceKey = `${evidenceKind}:${evidenceIndex}`;
-    if (
-      !evidenceKind || !evidenceIndex || !confidence || !observation ||
-      evidenceIndex > availableCount || seenEvidence.has(evidenceKey)
-    ) continue;
-    seenEvidence.add(evidenceKey);
-    findings.push({
-      confidence,
-      evidence_index: evidenceIndex,
-      evidence_kind: evidenceKind,
-      observation,
-      possible_meaning: typeof finding.possible_meaning === "string"
-        ? optionalText(finding.possible_meaning, 240) ?? null
-        : null,
-    });
-    if (findings.length >= 5) break;
-  }
-  if (findings.length === 0) return receipt;
-  const previousProblem = recordFromUnknown(previousRecord?.problem);
-  const summary = typeof previousProblem?.summary === "string"
-    ? optionalText(previousProblem.summary, 500)
-    : undefined;
-  return {
-    ...receipt,
-    evidence: {
-      ...receipt.evidence,
-      analysis_status: "analyzed",
-      findings,
-    },
-    ...(summary
-      ? {
-        problem: {
-          remaining_uncertainty: typeof previousProblem?.remaining_uncertainty === "string"
-            ? optionalText(previousProblem.remaining_uncertainty, 300) ?? null
-            : null,
-          recommended_scope: typeof previousProblem?.recommended_scope === "string"
-            ? optionalText(previousProblem.recommended_scope, 400) ?? null
-            : null,
-          severity_indicators: Array.isArray(previousProblem?.severity_indicators)
-            ? previousProblem.severity_indicators
-              .flatMap((value) => typeof value === "string" ? [optionalText(value, 200)] : [])
-              .filter((value): value is string => Boolean(value))
-              .slice(0, 5)
-            : [],
-          summary,
-        },
-      }
-      : {}),
-  };
-}
-
-function recordFromUnknown(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
-
-function buildReceiptEvidenceFindings(
-  visualEvidenceRefs: Array<{
-    evidenceIndex: number;
-    evidenceKind: "photo" | "video_frame";
-  }> | undefined,
-  findings: Array<{
-    confidence: "low" | "medium" | "high";
-    evidenceIndex: number;
-    observation: string;
-    possibleMeaning: string | null;
-  }> | undefined,
-): NonNullable<EstimateAnalysisReceipt["evidence"]["findings"]> {
-  if (!visualEvidenceRefs || visualEvidenceRefs.length === 0 || !findings) return [];
-  const seen = new Set<number>();
-  return findings.flatMap((finding) => {
-    if (
-      !Number.isSafeInteger(finding.evidenceIndex) ||
-      finding.evidenceIndex < 1 ||
-      finding.evidenceIndex > visualEvidenceRefs.length ||
-      seen.has(finding.evidenceIndex)
-    ) return [];
-    const evidenceRef = visualEvidenceRefs[finding.evidenceIndex - 1];
-    if (!evidenceRef) return [];
-    const observation = optionalText(finding.observation, 240);
-    if (!observation) return [];
-    seen.add(finding.evidenceIndex);
-    return [{
-      confidence: finding.confidence,
-      evidence_index: evidenceRef.evidenceIndex,
-      evidence_kind: evidenceRef.evidenceKind,
-      observation,
-      possible_meaning: optionalText(finding.possibleMeaning, 240) ?? null,
-    }];
-  });
-}
-
-function estimateComplexityReasoning(
-  complexity: ComplexityLevel,
-  needsInspection: boolean,
-  language: "vi" | "en",
-) {
-  if (needsInspection) {
-    return language === "en"
-      ? "The current evidence is not yet strong enough, so a worker must inspect it on site."
-      : "Thông tin hiện tại chưa đủ chắc chắn nên cần thợ kiểm tra trực tiếp.";
-  }
-  if (language === "en") {
-    const level = complexity === "small"
-      ? "small"
-      : complexity === "medium"
-      ? "medium"
-      : "large";
-    return `The confirmed scope and evidence place this request at ${level} complexity.`;
-  }
-  const level = complexity === "small"
-    ? "nhỏ"
-    : complexity === "medium"
-    ? "vừa"
-    : "lớn";
-  return `Phạm vi và bằng chứng đã xác nhận xếp yêu cầu ở mức độ ${level}.`;
-}
-
-function boundedEvidenceCount(value: number | null | undefined) {
-  if (!Number.isSafeInteger(value) || (value ?? -1) < 0) return 0;
-  return Math.min(value ?? 0, 100);
-}
-
-function nullableBoundedEvidenceCount(value: number | null | undefined) {
-  if (value === null || value === undefined) return null;
-  return Number.isSafeInteger(value) && value >= 0 ? Math.min(value, 100) : null;
-}
-
-export function buildScopeChangeOutputs(input: {
-  serviceType: ServiceType;
-  originalPriceMax: number | null;
-  newPriceMin: number;
-  newPriceMax: number;
-  newComplexity: ComplexityLevel;
-  hasPhotos: boolean;
-  workerDescription: string;
-  workerReason: string;
-  workerScopeChangeRate: number;
-  riskConfig: ScopeChangeRiskConfig;
-}) {
-  const antiFraud = calculateScopeChangeAnomaly({
-    originalPriceMax: input.originalPriceMax,
-    newPriceMax: input.newPriceMax,
-    hasPhotos: input.hasPhotos,
-    description: input.workerDescription,
-    reason: input.workerReason,
-    workerScopeChangeRate: input.workerScopeChangeRate,
-  });
-  const margin = calculateScopeChangeMargin({
-    newComplexity: input.newComplexity,
-    newPriceMax: input.newPriceMax,
-    config: input.riskConfig,
-  });
-  const challengeReasons = [
-    ...antiFraud.reasons,
-    ...(margin.adminAlert ? ["margin_requires_attention"] : []),
-  ];
-  const challengeRequired = antiFraud.challengeRequired || margin.adminAlert;
-  const workerChallenge = {
-    schema_version: "scope_change_worker_challenge.v1" as const,
-    challenge_required: challengeRequired,
-    challenge_reason: challengeReasons.length > 0
-      ? challengeReasons.join(", ")
-      : "scope_change_requires_kael_decision",
-    requested_evidence: challengeRequired
-      ? [
-        "Ảnh cận cảnh phần phát sinh",
-        "Giải thích phần khác so với phạm vi ban đầu",
-      ]
-      : ["Giữ mô tả rõ ràng để Kael quyết định và khách dễ kiểm tra"],
-    worker_message: challengeRequired
-      ? "Kael cần thêm bằng chứng trước khi ra quyết định phạm vi."
-      : "Kael đã ghi nhận phạm vi phát sinh và đang quyết định theo chính sách.",
-  };
-  const newPriceMin = Math.max(1, Math.round(input.newPriceMin));
-  const newPriceMax = Math.max(newPriceMin, Math.round(input.newPriceMax));
-  const customerCard = {
-    schema_version: "scope_change_customer_card.v1" as const,
-    service_type: input.serviceType,
-    problem_summary: sanitizeKaelText(input.workerDescription, 220),
-    price_change: {
-      original_price_max: input.originalPriceMax && input.originalPriceMax > 0
-        ? Math.round(input.originalPriceMax)
-        : null,
-      new_price_min: newPriceMin,
-      new_price_max: newPriceMax,
-    },
-    kael_assessment: margin.assessment,
-    decision_required: true as const,
-    advisory: margin.assessment === "reasonable"
-      ? "Kael đã tính lại theo phạm vi thợ báo cáo. Khách có thể đồng ý hoặc khiếu nại nếu bằng chứng chưa đúng."
-      : "Mức phát sinh cần được Kael xem kỹ cùng bằng chứng trước khi ra quyết định.",
-    disclaimer: PRICE_DISCLAIMER,
-  };
-  return {
-    anti_fraud: {
-      drift_ratio: antiFraud.driftRatio,
-      score: antiFraud.score,
-      challenge_required: challengeRequired,
-      admin_flag_required: antiFraud.adminFlagRequired || margin.adminAlert,
-      matched_keywords: antiFraud.matchedKeywords,
-      reasons: challengeReasons,
-      margin,
-    },
-    worker_challenge: sanitizeKaelOutputObject(workerChallenge),
-    customer_card: sanitizeKaelOutputObject(customerCard),
-  };
-}
-
-const UNLABELLED_BANK_ACCOUNT_PATTERN = /\b\d{13,20}\b/g;
-const UNSAFE_TEXT_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF\uFFF9-\uFFFB]/g;
-
-export function sanitizeKaelText(input: string, maxLength = 500): string {
-  const safeMaxLength = maxLength === Number.POSITIVE_INFINITY
-    ? 500
-    : Number.isFinite(maxLength)
-    ? Math.max(0, Math.floor(maxLength))
-    : 0;
-  const sanitized = stripVndPatterns(scrubKaelPiiText(input))
-    .replace(/\s+/g, " ")
-    .trim();
-  return truncateWithoutSplittingSurrogate(sanitized, safeMaxLength);
-}
-
-function truncateWithoutSplittingSurrogate(value: string, maxLength: number): string {
-  const truncated = value.slice(0, maxLength);
-  const lastCodeUnit = truncated.charCodeAt(truncated.length - 1);
-  return lastCodeUnit >= 0xD800 && lastCodeUnit <= 0xDBFF
-    ? truncated.slice(0, -1)
-    : truncated;
-}
-
-export function sanitizeKaelOutputObject<T>(value: T): T {
-  if (typeof value === "string") return sanitizeKaelText(value) as T;
-  if (Array.isArray(value)) return value.map((item) => sanitizeKaelOutputObject(item)) as T;
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, sanitizeKaelOutputObject(item)]),
-    ) as T;
-  }
-  return value;
-}
-
-function numericConfidenceToLabel(value: number): "low" | "medium" | "high" {
-  if (value >= 0.75) return "high";
-  if (value >= 0.45) return "medium";
-  return "low";
-}
-
-function optionalText(value: string | null | undefined, maxLength: number) {
-  const sanitized = sanitizeKaelText(value ?? "", maxLength);
-  return sanitized.length > 0 ? sanitized : undefined;
-}
-
-function nullableSanitized(value: string | null | undefined, maxLength: number) {
-  const sanitized = sanitizeKaelText(value ?? "", maxLength);
-  return sanitized.length > 0 ? sanitized : null;
-}
-
-function stripVndPatterns(input: string): string {
-  return input.replace(
-    /\b\d{1,3}(?:[.,]\d{3})+\s*(?:vnd|vnđ|đ|₫|dong|đồng)|\b\d{4,}\s*(?:vnd|vnđ|đ|₫|dong|đồng)/gi,
-    "[price-removed]",
+function buildPriceReasoningReceipt(input: {
+  analysisReceipt: EstimateAnalysisReceipt | undefined;
+  complexity: ComplexityLevel;
+  confidence: "low" | "medium" | "high";
+  language: "vi" | "en";
+  needsInspection: boolean;
+  priceMin: number;
+  priceMax: number;
+  priceSource: EstimatePriceSource;
+  problemSummary: string;
+}): PriceReasoningReceipt {
+  const isVietnamese = input.language === "vi";
+  const problem = input.analysisReceipt?.problem;
+  const evidence = input.analysisReceipt?.evidence;
+  const noVisualEvidence = evidence?.analysis_status === "not_provided" ||
+    evidence?.skipped === true || evidence?.photo_count === 0;
+  const unknowns = publicReceiptTextList(
+    [
+      problem?.remaining_uncertainty,
+      noVisualEvidence
+        ? isVietnamese
+          ? "Chưa có ảnh hoặc bằng chứng trực quan để xác nhận nguyên nhân và phần bị che khuất."
+          : "No image or visual evidence is available to verify the cause or hidden damage."
+        : undefined,
+      input.needsInspection
+        ? isVietnamese
+          ? "Cần kiểm tra hiện trường trước khi chốt các hạng mục ngoài phạm vi hiện có."
+          : "An on-site inspection is required before any work outside the current scope is finalized."
+        : undefined,
+    ],
+    isVietnamese
+      ? "Phạm vi thực tế vẫn cần được đối chiếu trước khi thực hiện."
+      : "The actual scope still needs to be verified before work begins.",
+    4,
+    280,
   );
+  const possibleCauses: PriceReasoningReceipt["problem"]["possible_causes"] = [];
+  for (const finding of evidence?.findings ?? []) {
+    if (finding.possible_meaning) {
+      possibleCauses.push({
+        statement: publicReasoningText(
+          finding.possible_meaning,
+          isVietnamese
+            ? "Dấu hiệu này cần được kiểm tra thêm tại hiện trường."
+            : "This sign needs further on-site verification.",
+          240,
+        ),
+        basis: ["visual_evidence"],
+        confidence: finding.confidence,
+      });
+    }
+    if (possibleCauses.length >= 3) break;
+  }
+  if (possibleCauses.length === 0) {
+    possibleCauses.push({
+      statement: isVietnamese
+        ? "Nguyên nhân cụ thể chưa thể khẳng định chỉ từ thông tin hiện có."
+        : "The specific cause cannot yet be confirmed from the available information alone.",
+      basis: ["customer_report"],
+      confidence: "low",
+    });
+  }
+  const included = publicReceiptTextList(
+    [
+      problem?.recommended_scope,
+      isVietnamese
+        ? `Gói hiện tại được tính theo mức độ phạm vi ${complexityLabel(input.complexity, input.language)}.`
+        : `The current package is priced for ${complexityLabel(input.complexity, input.language)} complexity.`,
+    ],
+    isVietnamese
+      ? "Kiểm tra và xử lý phần việc đã được mô tả trong yêu cầu hiện có."
+      : "Inspect and handle the work described in the current request.",
+    3,
+    320,
+  );
+  const scope = priceReasoningScope(isVietnamese);
+  return {
+    schema_version: "price_reasoning_receipt.v1",
+    receipt_id: `price_reasoning:${crypto.randomUUID()}`,
+    problem: {
+      confirmed_facts: publicReceiptTextList(
+        [
+          isVietnamese
+            ? `Khách mô tả: ${input.problemSummary}`
+            : `Customer report: ${input.problemSummary}`,
+          problem?.summary,
+          ...(problem?.severity_indicators ?? []),
+        ],
+        isVietnamese
+          ? "Kael ghi nhận yêu cầu trong phạm vi thông tin khách đã cung cấp."
+          : "Kael recorded the request within the information the customer provided.",
+        5,
+        240,
+      ),
+      possible_causes: possibleCauses,
+      unknowns,
+    },
+    scope: {
+      included,
+      conditional: scope.conditional,
+      excluded: scope.excluded,
+    },
+    costs: priceReasoningCosts(input, isVietnamese),
+    scenarios: {
+      low: {
+        total: input.priceMin,
+        conditions: scope.lowConditions,
+        scope: included,
+      },
+      high: {
+        total: input.priceMax,
+        conditions: scope.highConditions,
+        scope: included,
+      },
+    },
+    fairness: {
+      price_source: input.priceSource,
+      confidence: input.confidence,
+      market_source_count: input.analysisReceipt?.market.accepted_source_count ?? null,
+      high_trust_source_count: input.analysisReceipt?.market.high_trust_source_count ?? null,
+      quorum_met: input.analysisReceipt?.market.quorum_met ?? null,
+      cap_statement: input.needsInspection
+        ? isVietnamese
+          ? "Khoảng giá chỉ là căn cứ tham khảo trước khi kiểm tra hiện trường; không tự phát sinh khoản mới."
+          : "This range is a pre-inspection reference and does not add new charges automatically."
+        : isVietnamese
+        ? "Khoảng giá chỉ dùng các kết quả định giá đã kiểm chứng; Kael không tự tạo một mức giá ngoài kết quả này."
+        : "The range uses only verified pricing results; Kael does not create a price outside those results.",
+      remaining_uncertainty: unknowns,
+    },
+  };
 }
 
-export function scrubKaelPiiText(input: string): string {
-  return input
-    .replace(UNSAFE_TEXT_CONTROL_PATTERN, "")
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
-    .replace(/\b(?:stk|số tài khoản|so tai khoan|bank)\s*[:#-]?\s*\d{6,20}\b/gi, "[bank-account]")
-    .replace(UNLABELLED_BANK_ACCOUNT_PATTERN, "[bank-account]")
-    .replace(/\b(?:\+?84|0)(?:[\s.-]?\d){8,10}\b/g, "[phone]")
-    .replace(/\b\d{9,12}\b/g, "[id-number]")
-    .replace(
-      /(?<![\p{L}\p{N}])(?:căn(?:[^\S\r\n]+hộ)?|can(?:[^\S\r\n]+ho)?|unit|phòng|phong|apt)[^\S\r\n]+([\p{L}\p{N}](?:[\p{L}\p{N}._/-]*[\p{L}\p{N}])?)/giu,
-      (match, identifier: string) => looksLikePrivateUnitIdentifier(identifier) ? "[unit]" : match,
-    )
-    .replace(/\b(?:tầng|tang|lầu|lau|floor)\s*\d+\b/gi, "[floor]")
-    .replace(/\b(?:số nhà|so nha|nhà số|nha so)\s*[A-Z0-9./-]+\b/gi, "[house-no]");
+function priceReasoningCosts(
+  input: {
+    priceMin: number;
+    priceMax: number;
+  },
+  isVietnamese: boolean,
+): PriceReasoningReceipt["costs"] {
+  return {
+    currency: "VND",
+    total_min: input.priceMin,
+    total_max: input.priceMax,
+    reconciliation: "package_total",
+    components: [
+      {
+        kind: "service_package",
+        status: "priced",
+        amount_min: input.priceMin,
+        amount_max: input.priceMax,
+        explanation: isVietnamese
+          ? "Khoảng giá đã chốt cho gói công việc trong phạm vi hiện có."
+          : "The confirmed price range for the current work package.",
+      },
+      {
+        kind: "labor",
+        status: "included_unitemized",
+        amount_min: null,
+        amount_max: null,
+        explanation: isVietnamese
+          ? "Tiền công được thể hiện trong gói, nhưng hệ thống không có số tách riêng."
+          : "Labor is represented in the package, but no separate amount is available.",
+      },
+      {
+        kind: "travel",
+        status: "undetermined",
+        amount_min: null,
+        amount_max: null,
+        explanation: isVietnamese
+          ? "Không có dữ liệu tách riêng cho di chuyển nên Kael không suy diễn thành một khoản giá."
+          : "There is no separate travel amount, so Kael does not infer one.",
+      },
+      {
+        kind: "materials",
+        status: "conditional_unpriced",
+        amount_min: null,
+        amount_max: null,
+        explanation: isVietnamese
+          ? "Vật tư chỉ được báo riêng nếu thực tế cần và khách xác nhận phạm vi mới."
+          : "Materials are quoted separately only if needed and the customer approves the new scope.",
+      },
+      {
+        kind: "replacement_parts",
+        status: "conditional_unpriced",
+        amount_min: null,
+        amount_max: null,
+        explanation: isVietnamese
+          ? "Linh kiện thay thế chưa được định giá khi chưa xác nhận hiện trạng."
+          : "Replacement parts are not priced before the condition is confirmed.",
+      },
+    ],
+  };
+}
+
+function priceReasoningScope(isVietnamese: boolean) {
+  return {
+    conditional: [
+      isVietnamese
+        ? "Nếu phát hiện hạng mục ngoài phạm vi, thợ phải gửi đề xuất đổi phạm vi để khách xác nhận trước khi làm."
+        : "If work outside the scope is found, the worker must submit a scope-change proposal for customer approval first.",
+    ],
+    excluded: [
+      isVietnamese
+        ? "Chưa có số tách riêng cho linh kiện thay thế, vật tư hoặc hạng mục ngoài mô tả."
+        : "No separate amount is quoted for replacement parts, materials, or work outside the description.",
+    ],
+    lowConditions: [
+      isVietnamese
+        ? "Phạm vi thực tế khớp với mô tả hiện có."
+        : "The actual scope matches the current description.",
+      isVietnamese
+        ? "Không phát hiện hạng mục ngoài phạm vi cần khách duyệt."
+        : "No out-of-scope work requiring customer approval is found.",
+    ],
+    highConditions: [
+      isVietnamese
+        ? "Cần nhiều thao tác hơn nhưng vẫn nằm trong phạm vi đã định giá."
+        : "More work is needed, but it remains within the priced scope.",
+      isVietnamese
+        ? "Không tự cộng linh kiện hoặc hạng mục ngoài phạm vi chưa được khách xác nhận."
+        : "Unapproved parts or out-of-scope work are not added automatically.",
+    ],
+  };
+}
+
+function complexityLabel(complexity: ComplexityLevel, language: "vi" | "en") {
+  if (language === "en") return complexity;
+  return complexity === "small" ? "nhỏ" : complexity === "medium" ? "vừa" : "lớn";
+}
+
+function publicReceiptTextList(
+  values: Array<string | null | undefined>,
+  fallback: string,
+  limit: number,
+  maxLength: number,
+): string[] {
+  const unique = new Set<string>();
+  for (const value of values) {
+    const text = publicReasoningText(value, "", maxLength);
+    if (text) unique.add(text);
+    if (unique.size >= limit) break;
+  }
+  return unique.size > 0 ? [...unique] : [fallback];
+}
+
+function publicReasoningText(
+  value: string | null | undefined,
+  fallback: string,
+  maxLength: number,
+): string {
+  const text = optionalText(value, maxLength);
+  return text && isSafePublicPriceReasoningText(text, maxLength) ? text : fallback;
 }

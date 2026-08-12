@@ -9,18 +9,6 @@ export type KaelEvidenceMediaProfile = {
   hasVoiceTranscript: boolean
 }
 
-export function buildEvidencePreparationLine(language: AppLanguage): KaelProcessLine {
-  return {
-    durationMs: 0,
-    key: 'evidence-preparation',
-    stage: 'observe',
-    status: 'running',
-    text: language === 'vi'
-      ? 'Đang chuẩn bị bằng chứng để gửi riêng tư.'
-      : 'Preparing evidence for private submission.',
-  }
-}
-
 export function buildEvidenceProgressLine({
   language,
   profile,
@@ -35,13 +23,29 @@ export function buildEvidenceProgressLine({
     key: `evidence-${progress.current_stage}`,
     stage: processStage(progress.current_stage),
     status: progress.status,
-    text: evidenceProgressText(language, profile, progress),
+    text: kaelProgressText(language, profile, progress),
   }
 }
 
-function evidenceProgressText(
+export function buildKaelProgressLine({
+  language,
+  progress,
+}: {
+  language: AppLanguage
+  progress: KaelChatProgress
+}): KaelProcessLine {
+  return {
+    durationMs: 0,
+    key: `progress-${progress.current_stage}`,
+    stage: processStage(progress.current_stage),
+    status: progress.status,
+    text: kaelProgressText(language, null, progress),
+  }
+}
+
+function kaelProgressText(
   language: AppLanguage,
-  profile: KaelEvidenceMediaProfile,
+  profile: KaelEvidenceMediaProfile | null,
   progress: KaelChatProgress,
 ) {
   if (progress.status === 'failed') {
@@ -52,7 +56,7 @@ function evidenceProgressText(
 
   const completed = progress.status === 'completed'
   if (progress.current_stage === 'vision_analysis') {
-    if (profile.hasVideo) {
+    if (profile?.hasVideo) {
       return language === 'vi'
         ? (completed
           ? 'Kael đã kiểm tra các khung hình đã tách từ video.'
@@ -61,7 +65,7 @@ function evidenceProgressText(
           ? 'Kael checked the frames extracted from the video.'
           : 'Kael is checking the frames extracted from the video.')
     }
-    if (profile.hasImage) {
+    if (profile?.hasImage) {
       return language === 'vi'
         ? (completed
           ? 'Kael đã kiểm tra vùng nhìn thấy và độ rõ của ảnh.'
@@ -70,7 +74,7 @@ function evidenceProgressText(
           ? 'Kael checked the visible area and clarity of the images.'
           : 'Kael is checking the visible area and clarity of the images.')
     }
-    if (profile.hasVoiceTranscript) {
+    if (profile?.hasVoiceTranscript) {
       return language === 'vi'
         ? (completed
           ? 'Kael đã đối chiếu bản chép lời đã được bạn kiểm tra.'
@@ -78,6 +82,15 @@ function evidenceProgressText(
         : (completed
           ? 'Kael checked the transcript you reviewed.'
           : 'Kael is checking the transcript you reviewed.')
+    }
+    if (!profile) {
+      return language === 'vi'
+        ? (completed
+          ? 'Kael đã hoàn tất kiểm tra bằng chứng có liên quan.'
+          : 'Kael đang kiểm tra bằng chứng có liên quan.')
+        : (completed
+          ? 'Kael completed the relevant evidence check.'
+          : 'Kael is checking the relevant evidence.')
     }
     return language === 'vi'
       ? (completed

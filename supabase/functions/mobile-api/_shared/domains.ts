@@ -42,7 +42,12 @@ import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } fr
 import { confirmCompletion, submitReview } from "./domains/payment/completion-review.ts";
 import { confirmStagingPayment, createStagingPaymentIntent } from "./domains/payment/staging.ts";
 import { createSePayVietQrPaymentIntent } from "./domains/payment/sepay-vietqr.ts";
-import { confirmWorkerCashPayment } from "./domains/payment/cash.ts";
+import {
+  claimManualBankPayment,
+  createManualBankPaymentOrder,
+  respondToDirectWorkerPayment,
+  selectDirectWorkerPayment,
+} from "./domains/payment/manual-bank.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./domains/job/chat.ts";
 import { createKaelChat } from "./domains/kael-chat/create.ts";
 import {
@@ -106,6 +111,12 @@ import {
   resolveAdminWithdrawalRequest,
 } from "./domains/admin/payout.ts";
 import {
+  decideAdminPaymentReconciliation,
+  getAdminFinanceSummary,
+  listAdminPaymentReconciliations,
+  recordAdminFinanceBalanceSnapshot,
+} from "./domains/admin/finance.ts";
+import {
   createWorkerWithdrawalRequest,
   getWorkerPayoutMethod,
   listWorkerWithdrawalRequests,
@@ -134,6 +145,10 @@ import {
 } from "./domains/matching/flow.ts";
 import { confirmWorkerCandidate, getWorkerCandidate, rejectWorkerCandidate } from "./domains/matching/candidate.ts";
 import { removeCustomerFavoriteWorker, saveCustomerFavoriteWorker } from "./domains/customer/favorite-worker.ts";
+import {
+  listFavoriteWorkersForMatching,
+  setJobMatchingPreference,
+} from "./domains/matching/matching-preference.ts";
 import { createJob } from "./domains/job/create/create.ts";
 import { updateJobStatus } from "./domains/job/status.ts";
 import { confirmKaelChat } from "./domains/kael-chat/confirm.service.ts";
@@ -149,12 +164,16 @@ import type { MobileApiContext } from "./platform/auth.ts";
 import type { MobileApiServices } from "./http/contracts.ts";
 
 import { type EdgeAiSecrets, type EdgeGuardClient, getPublicKaelCharter } from "./kael/index.ts";
-import type { SePayVietQrConfig } from "../../_shared/platform/env.ts";
+import type {
+  PlatformManualBankConfig,
+  SePayVietQrConfig,
+} from "../../_shared/platform/env.ts";
 import { harnessHealthPayload } from "../../_shared/harness/release.ts";
 import type { HarnessEnvironmentDescriptor } from "../../_shared/harness/environment.ts";
 import type { HarnessRuntimeRelease } from "../../_shared/harness/release.ts";
 
 export type EdgeServiceSecrets = EdgeAiSecrets & {
+  manualBank?: PlatformManualBankConfig;
   sepayVietQr?: SePayVietQrConfig;
   harnessEnvironment?: HarnessEnvironmentDescriptor;
   harnessRelease?: HarnessRuntimeRelease;
@@ -181,6 +200,7 @@ function createDiscoveryServices(secrets: EdgeServiceSecrets): Pick<
   | "getJob"
   | "listCustomerActiveJobs"
   | "listCustomerServiceHistory"
+  | "listFavoriteWorkersForMatching"
 > {
   return {
     listServices,
@@ -188,12 +208,13 @@ function createDiscoveryServices(secrets: EdgeServiceSecrets): Pick<
     placesResolve: (ctx, input) => placesResolve(ctx, input, secrets),
     createJob: (ctx, input) => createJob(ctx, input, aiRuntime(ctx, secrets)),
     getJob: (ctx, jobId) => getJob(ctx, jobId, {
-      paymentRailAvailable: ctx.role === "customer" && secrets.sepayVietQr?.enabled === true,
+      paymentRailProvider: ctx.role === "customer" ? configuredPaymentRailProvider(secrets) : null,
     }),
     listCustomerActiveJobs: (ctx) => listCustomerActiveJobs(ctx, {
-      paymentRailAvailable: secrets.sepayVietQr?.enabled === true,
+      paymentRailProvider: configuredPaymentRailProvider(secrets),
     }),
     listCustomerServiceHistory,
+    listFavoriteWorkersForMatching,
   };
 }
 
@@ -224,7 +245,7 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
     createKaelChat: (ctx, input) => createKaelChat(ctx, input, aiRuntime(ctx, secrets)),
     answerKaelAssistant: (ctx, input) => answerKaelAssistant(ctx, input, {
       ...aiRuntime(ctx, secrets),
-      paymentRailAvailable: ctx.role === "customer" && secrets.sepayVietQr?.enabled === true,
+      paymentRailAvailable: ctx.role === "customer" && configuredPaymentRailProvider(secrets) !== null,
     }),
     createCustomerKaelConversation,
     listCustomerKaelConversations,
@@ -248,7 +269,8 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
       sendKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     decideKaelIntakeConfirmation: (ctx, sessionId, input) =>
       decideKaelIntakeConfirmation(ctx, sessionId, input, aiRuntime(ctx, secrets)),
-    confirmKaelChat: (ctx, sessionId) => confirmKaelChat(ctx, sessionId, aiRuntime(ctx, secrets)),
+    confirmKaelChat: (ctx, sessionId, input) =>
+      confirmKaelChat(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     submitKaelChatEvidence: (ctx, sessionId, input) =>
       submitKaelChatEvidence(ctx, sessionId, input, aiRuntime(ctx, secrets)),
   };
@@ -257,6 +279,7 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
 function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   MobileApiServices,
   | "confirmSearch"
+  | "setJobMatchingPreference"
   | "cancelJob"
   | "acceptBroadcast"
   | "declineBroadcast"
@@ -274,6 +297,7 @@ function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
 > {
   return {
     confirmSearch,
+    setJobMatchingPreference,
     cancelJob,
     acceptBroadcast,
     declineBroadcast,
@@ -321,6 +345,10 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   | "decideScopeChange"
   | "confirmCompletion"
   | "createPaymentIntent"
+  | "createManualBankPaymentOrder"
+  | "claimManualBankPayment"
+  | "selectDirectWorkerPayment"
+  | "respondToDirectWorkerPayment"
   | "confirmWorkerCashPayment"
   | "confirmStagingPayment"
   | "submitReview"
@@ -352,16 +380,38 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
     listJobMessages,
     sendJobMessage: (ctx, jobId, input) => sendJobMessage(ctx, jobId, input, aiRuntime(ctx, secrets)),
     decideScopeChange,
-    confirmCompletion,
-    createPaymentIntent: (ctx, jobId) => secrets.sepayVietQr?.enabled
+    confirmCompletion: async (ctx, jobId) => {
+      const completion = await confirmCompletion(ctx, jobId);
+      if (secrets.manualBank?.enabled) {
+        const payment = await createManualBankPaymentOrder(ctx, jobId, secrets.manualBank);
+        return { ...completion, payment: payment.payment };
+      }
+      return completion;
+    },
+    createPaymentIntent: (ctx, jobId) => secrets.manualBank?.enabled
+      ? createManualBankPaymentOrder(ctx, jobId, secrets.manualBank)
+      : secrets.sepayVietQr?.enabled
       ? createSePayVietQrPaymentIntent(ctx, jobId, secrets.sepayVietQr)
       : createStagingPaymentIntent(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
-    confirmWorkerCashPayment,
+    createManualBankPaymentOrder: (ctx, jobId) =>
+      createManualBankPaymentOrder(ctx, jobId, secrets.manualBank),
+    claimManualBankPayment,
+    selectDirectWorkerPayment,
+    respondToDirectWorkerPayment,
+    confirmWorkerCashPayment: (ctx, jobId) =>
+      respondToDirectWorkerPayment(ctx, jobId, { received: true }),
     confirmStagingPayment: (ctx, jobId) =>
       confirmStagingPayment(ctx, jobId, secrets.stagingPaymentRailEnabled === true),
     submitReview,
     submitCustomerKaelFeedback,
   };
+}
+
+function configuredPaymentRailProvider(
+  secrets: EdgeServiceSecrets,
+): "platform_bank_manual" | "sepay_vietqr" | null {
+  if (secrets.manualBank?.enabled) return "platform_bank_manual";
+  return secrets.sepayVietQr?.enabled ? "sepay_vietqr" : null;
 }
 
 function createProfileServices(secrets: EdgeServiceSecrets): Pick<
@@ -469,6 +519,10 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "getAdminWithdrawalRequest"
   | "claimAdminWithdrawalRequest"
   | "resolveAdminWithdrawalRequest"
+  | "listAdminPaymentReconciliations"
+  | "decideAdminPaymentReconciliation"
+  | "getAdminFinanceSummary"
+  | "recordAdminFinanceBalanceSnapshot"
   | "listAdminSubAdmins"
   | "searchAdminSubAdminAccounts"
   | "nominateAdminManager"
@@ -511,6 +565,10 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     getAdminWithdrawalRequest,
     claimAdminWithdrawalRequest,
     resolveAdminWithdrawalRequest,
+    listAdminPaymentReconciliations,
+    decideAdminPaymentReconciliation,
+    getAdminFinanceSummary,
+    recordAdminFinanceBalanceSnapshot,
     listAdminSubAdmins,
     searchAdminSubAdminAccounts,
     nominateAdminManager,

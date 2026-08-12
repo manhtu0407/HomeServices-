@@ -8,26 +8,17 @@ import {
   encodeSseHeartbeat,
 } from '../../../../../supabase/functions/mobile-api/_shared/platform/sse'
 import {
-  splitVerifiedResponseBlocks,
-  splitVerifiedResponseDeltas,
-  verifiedResponseCadenceMs,
-  verifiedResponseTargetChars,
-} from '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/verified-response-stream'
+  createKaelResponseReporter,
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/response-stream'
 
 const kaelStreamSource = [
-  fs.readFileSync(
-    path.resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/verified-response-stream.ts'),
-    'utf8',
-  ),
-  ...[
-    'stream.ts',
-    'customer-conversation-stream.ts',
-    'worker-stream.ts',
-  ].map((file) => fs.readFileSync(
-    path.resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat', file),
-    'utf8',
-  )),
-].join('\n')
+  'stream.ts',
+  'customer-conversation-stream.ts',
+  'worker-stream.ts',
+].map((file) => fs.readFileSync(
+  path.resolve(__dirname, '../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat', file),
+  'utf8',
+)).join('\n')
 
 describe('mobile-api SSE helper', () => {
   it('frames typed events as text/event-stream chunks', () => {
@@ -37,112 +28,85 @@ describe('mobile-api SSE helper', () => {
     })).toBe('event: stage\ndata: {"stage":"market_lookup","status":"running","progress":0.32}\n\n')
   })
 
-  it('frames heartbeat comments without event data', () => {
+  it('frames heartbeat comments and cache-safe SSE headers', () => {
     expect(encodeSseHeartbeat()).toBe(': heartbeat\n\n')
-  })
-
-  it('sets no-cache event-stream response headers', () => {
     const response = createSseResponse(new ReadableStream())
-
     expect(response.headers.get('Content-Type')).toBe('text/event-stream; charset=utf-8')
     expect(response.headers.get('Cache-Control')).toBe('no-cache')
     expect(response.headers.get('Connection')).toBe('keep-alive')
   })
 
-  it('splits a verified Unicode response without changing its content', () => {
-    const response = [
-      'Kael \u0111a kiem tra thong tin.',
-      'Ban co the tiep tuc khi san sang.',
-      '\ud83d\udee0\ufe0f',
-    ].join('\n')
-    const deltas = splitVerifiedResponseDeltas(response)
+  it('emits only caller-provided answer prefixes with no simulated cadence', () => {
+    const events: Array<{ event: string; data: Record<string, unknown> }> = []
+    const reporter = createKaelResponseReporter({
+      emit: (event, data) => events.push({ event, data: data as Record<string, unknown> }),
+      responseId: 'reply-1',
+      startedAt: new Date(),
+    })
 
-    expect(deltas.length).toBeGreaterThan(1)
-    expect(deltas.length).toBeLessThanOrEqual(40)
-    expect(deltas.join('')).toBe(response)
-    expect(deltas.every((delta) => delta.length > 0)).toBe(true)
-  })
+    reporter.preview('Da kiem tra yeu cau.')
+    reporter.preview('Da kiem tra yeu cau. Hay khoa van nuoc truoc.')
+    reporter.complete('Da kiem tra yeu cau. Hay khoa van nuoc truoc.')
 
-  it('classifies only supported reading blocks and preserves legacy reconstruction separators', () => {
-    const response = [
-      '## Huong xu ly',
-      '',
-      'Kael da doi chieu thong tin.',
-      '',
-      '- Kiem tra nguon dien',
-      '- Xac nhan pham vi',
-    ].join('\n')
-    const blocks = splitVerifiedResponseBlocks(response)
-
-    expect(blocks.map((block) => block.kind)).toEqual(['heading', 'paragraph', 'list'])
-    expect(blocks.map((block) => block.text + block.separatorAfter).join('')).toBe(response)
-  })
-
-  it('caps pathological block counts without changing the verified response', () => {
-    const response = Array.from({ length: 60 }, (_, index) => `Doan ${index + 1}.`).join('\n\n')
-    const blocks = splitVerifiedResponseBlocks(response)
-
-    expect(blocks).toHaveLength(32)
-    expect(blocks.map((block) => block.text + block.separatorAfter).join('')).toBe(response)
-  })
-
-  it('shares one cadence budget across all response blocks', () => {
-    const response = Array.from({ length: 4 }, (_, index) => (
-      `Doan ${index + 1}. ${'Noi dung kiem chung '.repeat(30)}`
-    )).join('\n\n')
-    const blocks = splitVerifiedResponseBlocks(response)
-    const targetChars = verifiedResponseTargetChars(response)
-    const deltaCount = blocks.reduce(
-      (total, block) => total + splitVerifiedResponseDeltas(block.text, targetChars).length,
-      0,
+    expect(events.map(({ event }) => event)).toEqual([
+      'response.started',
+      'block.started',
+      'block.text.delta',
+      'block.text.delta',
+      'block.completed',
+      'response.completed',
+    ])
+    expect(events.filter(({ event }) => event === 'block.text.delta')
+      .map(({ data }) => data.delta).join('')).toBe(
+      'Da kiem tra yeu cau. Hay khoa van nuoc truoc.',
     )
-
-    expect(deltaCount).toBeLessThanOrEqual(88)
-    expect(blocks.map((block) => block.text + block.separatorAfter).join('')).toBe(response)
+    expect(events.find(({ event }) => event === 'response.completed')?.data.elapsed_ms)
+      .toEqual(expect.any(Number))
   })
 
-  it('keeps medium replies granular enough for a visible conversational reveal', () => {
-    const response = [
-      'Kael đã kiểm tra nội dung bạn gửi.',
-      'Bạn nên đối chiếu thời gian, địa chỉ và mô tả trước khi tiếp tục.',
-      'Nếu có điểm chưa đúng, hãy sửa lại để Kael xử lý chính xác hơn.',
-    ].join(' ')
-    const deltas = splitVerifiedResponseDeltas(response)
+  it('keeps deterministic fallbacks atomic instead of inventing a typing reveal', () => {
+    const events: string[] = []
+    const reporter = createKaelResponseReporter({
+      emit: (event) => events.push(event),
+      responseId: 'reply-fallback',
+    })
 
-    expect(deltas.length).toBeGreaterThanOrEqual(16)
-    expect(deltas.join('')).toBe(response)
+    reporter.complete('Phan hoi an toan da san sang.')
+
+    expect(events).toEqual([
+      'response.started',
+      'block.started',
+      'block.text.delta',
+      'block.completed',
+      'response.completed',
+    ])
   })
 
-  it('uses a readable cadence with natural pauses at clauses and sentences', () => {
-    const wordCadence = verifiedResponseCadenceMs('đang kiểm tra ')
-    const clauseCadence = verifiedResponseCadenceMs('phạm vi, ')
-    const sentenceCadence = verifiedResponseCadenceMs('đã hoàn tất. ')
-    const paragraphCadence = verifiedResponseCadenceMs('Cơ sở giá\n')
+  it('closes a verified streamed prefix without appending a generic fallback', () => {
+    const events: string[] = []
+    const reporter = createKaelResponseReporter({
+      emit: (event) => events.push(event),
+      responseId: 'reply-published-prefix',
+    })
 
-    expect(wordCadence).toBeGreaterThanOrEqual(80)
-    expect(wordCadence).toBeLessThanOrEqual(95)
-    expect(clauseCadence).toBeGreaterThan(wordCadence)
-    expect(sentenceCadence).toBeGreaterThan(clauseCadence)
-    expect(paragraphCadence).toBeGreaterThan(sentenceCadence)
+    reporter.preview('Da kiem tra yeu cau truoc.')
+    reporter.complete(reporter.publishedText())
+
+    expect(events).toEqual([
+      'response.started',
+      'block.started',
+      'block.text.delta',
+      'block.completed',
+      'response.completed',
+    ])
+    expect(events).not.toContain('response.failed')
   })
 
-  it('flushes a heartbeat as soon as each Kael stream opens', () => {
-    // A first byte keeps Expo connected while Storage or an AI provider starts.
-    expect(kaelStreamSource).toMatch(
-      /Vision\. Expo otherwise can time out while the server is still working\.\s*write\(encodeSseHeartbeat\(\)\);/,
-    )
-    expect(kaelStreamSource).toMatch(
-      /needs more time than the client connection window\.\s*write\(encodeSseHeartbeat\(\)\);/,
-    )
-  })
-
-  it('emits the universal response lifecycle while retaining legacy deltas', () => {
-    expect(kaelStreamSource).toContain('emit("response.started"')
-    expect(kaelStreamSource).toContain('mode: "standard"')
-    expect(kaelStreamSource).toContain('emit("block.started"')
-    expect(kaelStreamSource).toContain('emit("block.text.delta"')
-    expect(kaelStreamSource).toContain('emit("block.completed"')
-    expect(kaelStreamSource).toContain('emit("response.completed"')
-    expect(kaelStreamSource).toContain('emit("response_delta"')
+  it('opens customer and worker streams promptly without the retired post-hoc reveal', () => {
+    expect(kaelStreamSource).toContain('write(encodeSseHeartbeat());')
+    expect(kaelStreamSource).toContain('createKaelResponseReporter({ emit, language })')
+    expect(kaelStreamSource).toContain('createKaelResponseReporter({ emit, language: input.language })')
+    expect(kaelStreamSource).not.toContain('emitCommittedKaelReply')
+    expect(kaelStreamSource).not.toContain('response_delta')
   })
 })

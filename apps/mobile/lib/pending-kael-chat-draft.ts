@@ -8,6 +8,7 @@ export const PENDING_KAEL_CHAT_DRAFT_TTL_MS = 30 * 60 * 1000
 
 const PENDING_KAEL_CHAT_DRAFT_STORAGE_KEY = 'nestscout.customer.pending_kael_chat_draft.v2'
 const LEGACY_PENDING_KAEL_CHAT_DRAFT_STORAGE_KEY = 'nestscout.customer.pending_kael_chat_draft.v1'
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 type PendingKaelScheduleWindow = {
   date: string
@@ -27,6 +28,7 @@ export type PendingKaelChatDraft = {
   message: string
   mediaCount?: number
   photoDrafts?: LocalMediaUploadDraft[]
+  preferredWorkerId?: string
   problemChips?: string[]
   profileId: KaelPerformanceMode
   scheduleMode: 'now' | 'scheduled'
@@ -65,6 +67,7 @@ function clonePendingKaelChatDraft(draft: PendingKaelChatDraft): PendingKaelChat
     message: draft.message,
     mediaCount: draft.mediaCount,
     photoDrafts: draft.photoDrafts?.map((photoDraft) => ({ ...photoDraft })),
+    preferredWorkerId: draft.preferredWorkerId,
     problemChips: draft.problemChips ? [...draft.problemChips] : undefined,
     profileId: draft.serviceType ? performanceProfileForServiceType(draft.serviceType) : draft.profileId,
     scheduleMode: draft.scheduleMode,
@@ -122,6 +125,7 @@ function parsePendingKaelChatDraft(value: unknown): PendingKaelChatDraft | null 
       : undefined,
     message: parsed.message,
     photoDrafts: parseLocalMediaUploadDrafts(parsed.photoDrafts),
+    preferredWorkerId: validPreferredWorkerId(parsed.preferredWorkerId),
     problemChips: Array.isArray(parsed.problemChips) ? parsed.problemChips.filter((chip): chip is string => typeof chip === 'string') : undefined,
     profileId,
     scheduleMode,
@@ -172,6 +176,10 @@ function parseLocalMediaUploadDrafts(value: unknown): LocalMediaUploadDraft[] | 
 
 function validNonNegativeNumber(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
+}
+
+function validPreferredWorkerId(value: unknown) {
+  return typeof value === 'string' && UUID_PATTERN.test(value) ? value : undefined
 }
 
 function parseScheduleWindow(value: unknown): PendingKaelScheduleWindow | undefined {

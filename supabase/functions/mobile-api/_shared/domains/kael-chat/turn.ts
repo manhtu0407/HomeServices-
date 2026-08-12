@@ -98,6 +98,10 @@ export async function sendKaelChatTurn(
     apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận tin nhắn", 409);
   }
 
+  if (input.turn_intent === "price_question") {
+    return getKaelChat(ctx, sessionId);
+  }
+
   const persisted = await persistIncomingKaelChatTurn({
     client,
     ctx,

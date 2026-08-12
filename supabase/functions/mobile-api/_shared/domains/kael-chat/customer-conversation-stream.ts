@@ -1,10 +1,15 @@
 import {
-  getCustomerKaelConversation,
   sendCustomerKaelConversationTurn,
 } from "../customer/kael-conversation.ts";
 import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../../platform/sse.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import type { EdgeAiSecrets } from "../../kael/index.ts";
+import {
+  createKaelReasoningReporter,
+  createKaelResponseReporter,
+  type EdgeAiSecrets,
+  type KaelReasoningReporter,
+  type KaelResponseReporter,
+} from "../../kael/index.ts";
 import type { EdgeCustomerKaelConversationTurnInput } from "../../../../_shared/domain.ts";
 import {
   kaelChatStreamErrorPayload,
@@ -12,23 +17,31 @@ import {
   KAEL_CHAT_STREAM_MAX_MS,
   KAEL_CHAT_STREAM_POLL_MS,
 } from "./stream.ts";
-import { emitCommittedKaelReply, sleepForKaelChatStream } from "./verified-response-stream.ts";
+import { waitForKaelChatProgressPoll } from "./stream-delay.ts";
 export async function streamCustomerKaelConversationTurn(
   ctx: MobileApiContext,
   conversationId: string,
   input: EdgeCustomerKaelConversationTurnInput,
   secrets: EdgeAiSecrets,
 ) {
-  const baseline = await getCustomerKaelConversation(ctx, conversationId);
   return streamCustomerKaelConversationRequest(
-    baseline,
-    () => sendCustomerKaelConversationTurn(ctx, conversationId, input, secrets),
+    input.language,
+    (reasoning, response) => sendCustomerKaelConversationTurn(
+      ctx,
+      conversationId,
+      input,
+      secrets,
+      { reasoning, response },
+    ),
   );
 }
 
 function streamCustomerKaelConversationRequest(
-  baseline: unknown,
-  request: () => Promise<unknown>,
+  language: "vi" | "en",
+  request: (
+    reasoning: KaelReasoningReporter,
+    response: KaelResponseReporter,
+  ) => Promise<unknown>,
 ) {
   const encoder = new TextEncoder();
   let stopped = false;
@@ -49,14 +62,28 @@ function streamCustomerKaelConversationRequest(
         controller.close();
       };
       write(encodeSseHeartbeat());
+      const reasoning = createKaelReasoningReporter({ emit });
+      const response = createKaelResponseReporter({ emit, language });
+      reasoning.start();
 
-      const resultPromise = request()
-        .then(async (result) => {
-          await emitCommittedKaelReply(baseline, result, emit, () => stopped);
+      const resultPromise = request(reasoning, response)
+        .then((result) => {
           emit("result", result);
           close();
         })
         .catch((err) => {
+          response.fail({
+            message: language === "en"
+              ? "Kael could not complete this reply. Please try again."
+              : "Kael chưa thể hoàn tất phản hồi này. Vui lòng thử lại.",
+            recoverable: true,
+          });
+          reasoning.fail({
+            publicMessage: language === "en"
+              ? "Kael could not complete this reply. Please try again."
+              : "Kael chưa thể hoàn tất phản hồi này. Vui lòng thử lại.",
+            recoverable: true,
+          });
           emit("error", kaelChatStreamErrorPayload(err));
           close();
         });
@@ -69,7 +96,7 @@ function streamCustomerKaelConversationRequest(
             write(encodeSseHeartbeat());
             lastHeartbeatAt = now;
           }
-          await sleepForKaelChatStream(KAEL_CHAT_STREAM_POLL_MS);
+          await waitForKaelChatProgressPoll(KAEL_CHAT_STREAM_POLL_MS);
         }
         await resultPromise;
       })().catch((err) => {

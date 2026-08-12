@@ -21,6 +21,7 @@ const CONTRACT_PAIRS = [
     schemas: [
       'apartmentAccessProfileSchema',
       'jobCreateSchema',
+      'jobMatchingPreferenceSchema',
       'jobMessageSendSchema',
       'placesAutocompleteSchema',
       'placesResolveSchema',
@@ -33,6 +34,7 @@ const CONTRACT_PAIRS = [
     schemas: [
       'kaelAssistantSchema',
       'kaelChatCreateSchema',
+      'kaelChatConfirmSchema',
       'kaelChatEvidenceSchema',
       'kaelChatIntakeConfirmationDecisionSchema',
       'kaelChatProgressSchema',
@@ -86,10 +88,10 @@ const CONTRACT_PAIRS = [
   },
 ] as const
 
-// P1 measured exactly 38 public schemas shared by the Edge and workspace contracts. A
+// P1 measured exactly 40 public schemas shared by the Edge and workspace contracts. A
 // pair is intentionally exact rather than a floor so a schema cannot silently move or
 // disappear from one twin while a different schema happens to replace the count.
-const EXPECTED_COMMON_SCHEMA_COUNT = 38
+const EXPECTED_COMMON_SCHEMA_COUNT = 40
 
 // These helpers let contract modules share validation primitives, but their names were
 // never part of the two public facade surfaces measured in P1. The barrel deliberately
@@ -248,7 +250,7 @@ describe('request contract parity across the Deno Edge and the npm workspace', (
     })
   }
 
-  it('still compares exactly the P1 baseline of 38 public schemas', () => {
+  it('still compares exactly the 40 public schemas in the current contract baseline', () => {
     const common = CONTRACT_PAIRS.flatMap((pair) => pairedDeclarations(pair).common)
     const divergent = CONTRACT_PAIRS.flatMap((pair) => {
       const { edge, shared, common: names } = pairedDeclarations(pair)

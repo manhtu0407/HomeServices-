@@ -49,3 +49,5 @@ export * from "./agents/agentic/case-5-dispute.ts";
 export * from "./learning/performance-profiles.ts";
 export * from "./kael-guardrails/electrical-intake-policy.ts";
 export * from "./kael-guardrails/case-work-controls.ts";
+export * from "./reasoning-receipt.ts";
+export * from "./response-stream.ts";

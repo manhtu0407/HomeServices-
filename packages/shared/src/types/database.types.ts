@@ -2093,6 +2093,265 @@ export type Database = {
           },
         ]
       }
+      job_matching_preferences: {
+        Row: {
+          auto_general: boolean
+          client_request_id: string | null
+          created_at: string
+          customer_id: string
+          fallback_at: string | null
+          fallback_reason: string | null
+          job_id: string
+          preferred_worker_id: string | null
+          selected_at: string | null
+          strategy: string
+        }
+        Insert: {
+          auto_general?: boolean
+          client_request_id?: string | null
+          created_at?: string
+          customer_id: string
+          fallback_at?: string | null
+          fallback_reason?: string | null
+          job_id: string
+          preferred_worker_id?: string | null
+          selected_at?: string | null
+          strategy?: string
+        }
+        Update: {
+          auto_general?: boolean
+          client_request_id?: string | null
+          created_at?: string
+          customer_id?: string
+          fallback_at?: string | null
+          fallback_reason?: string | null
+          job_id?: string
+          preferred_worker_id?: string | null
+          selected_at?: string | null
+          strategy?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_matching_preferences_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "job_matching_preferences_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_matching_preferences_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_matching_preferences_preferred_worker_id_fkey"
+            columns: ["preferred_worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "job_matching_preferences_preferred_worker_id_fkey"
+            columns: ["preferred_worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_payment_orders: {
+        Row: {
+          amount_received: number | null
+          bank_reference_hash: string | null
+          bank_reference_suffix: string | null
+          client_request_id: string | null
+          created_at: string
+          credited_at: string | null
+          customer_confirmed_at: string | null
+          customer_id: string
+          customer_transfer_claimed_at: string | null
+          customer_transferred_at: string | null
+          gross_amount: number
+          hold_until: string | null
+          id: string
+          job_id: string
+          payment_code: string | null
+          payment_method: string
+          platform_fee: number
+          qr_image_url: string | null
+          response_deadline: string | null
+          sending_bank_code: string | null
+          status: string
+          transfer_content: string | null
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+          worker_confirmed_at: string | null
+          worker_id: string
+          worker_net: number
+        }
+        Insert: {
+          amount_received?: number | null
+          bank_reference_hash?: string | null
+          bank_reference_suffix?: string | null
+          client_request_id?: string | null
+          created_at?: string
+          credited_at?: string | null
+          customer_confirmed_at?: string | null
+          customer_id: string
+          customer_transfer_claimed_at?: string | null
+          customer_transferred_at?: string | null
+          gross_amount: number
+          hold_until?: string | null
+          id?: string
+          job_id: string
+          payment_code?: string | null
+          payment_method: string
+          platform_fee?: number
+          qr_image_url?: string | null
+          response_deadline?: string | null
+          sending_bank_code?: string | null
+          status: string
+          transfer_content?: string | null
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          worker_confirmed_at?: string | null
+          worker_id: string
+          worker_net?: number
+        }
+        Update: {
+          amount_received?: number | null
+          bank_reference_hash?: string | null
+          bank_reference_suffix?: string | null
+          client_request_id?: string | null
+          created_at?: string
+          credited_at?: string | null
+          customer_confirmed_at?: string | null
+          customer_id?: string
+          customer_transfer_claimed_at?: string | null
+          customer_transferred_at?: string | null
+          gross_amount?: number
+          hold_until?: string | null
+          id?: string
+          job_id?: string
+          payment_code?: string | null
+          payment_method?: string
+          platform_fee?: number
+          qr_image_url?: string | null
+          response_deadline?: string | null
+          sending_bank_code?: string | null
+          status?: string
+          transfer_content?: string | null
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          worker_confirmed_at?: string | null
+          worker_id?: string
+          worker_net?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_payment_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_orders_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_orders_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_orders_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "job_payment_orders_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_payment_reconciliation_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          job_id: string
+          payment_order_id: string
+          reason_code: string | null
+          safe_metadata: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          job_id: string
+          payment_order_id: string
+          reason_code?: string | null
+          safe_metadata?: Json
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          job_id?: string
+          payment_order_id?: string
+          reason_code?: string | null
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_payment_reconciliation_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_reconciliation_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_reconciliation_events_payment_order_id_fkey"
+            columns: ["payment_order_id"]
+            isOneToOne: false
+            referencedRelation: "job_payment_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_media_assets: {
         Row: {
           bucket_id: string
@@ -3299,6 +3558,7 @@ export type Database = {
           id: string
           job_id: string | null
           kael_progress: Json | null
+          preferred_worker_id: string | null
           safe_metadata: Json
           scheduled_at: string | null
           service_type: Database["public"]["Enums"]["service_type"]
@@ -3319,6 +3579,7 @@ export type Database = {
           id?: string
           job_id?: string | null
           kael_progress?: Json | null
+          preferred_worker_id?: string | null
           safe_metadata?: Json
           scheduled_at?: string | null
           service_type: Database["public"]["Enums"]["service_type"]
@@ -3339,6 +3600,7 @@ export type Database = {
           id?: string
           job_id?: string | null
           kael_progress?: Json | null
+          preferred_worker_id?: string | null
           safe_metadata?: Json
           scheduled_at?: string | null
           service_type?: Database["public"]["Enums"]["service_type"]
@@ -3361,6 +3623,20 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: true
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_chat_sessions_preferred_worker_id_fkey"
+            columns: ["preferred_worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "kael_chat_sessions_preferred_worker_id_fkey"
+            columns: ["preferred_worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5612,6 +5888,41 @@ export type Database = {
           },
         ]
       }
+      platform_bank_balance_snapshots: {
+        Row: {
+          account_key: string
+          balance_vnd: number
+          created_at: string
+          entered_by: string
+          id: string
+          observed_at: string
+        }
+        Insert: {
+          account_key: string
+          balance_vnd: number
+          created_at?: string
+          entered_by: string
+          id?: string
+          observed_at: string
+        }
+        Update: {
+          account_key?: string
+          balance_vnd?: number
+          created_at?: string
+          entered_by?: string
+          id?: string
+          observed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_bank_balance_snapshots_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_state: string
@@ -6574,6 +6885,84 @@ export type Database = {
             columns: ["worker_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_direct_payment_collateral_reservations: {
+        Row: {
+          collateral_amount: number
+          created_at: string
+          held_at: string
+          id: string
+          job_id: string
+          payment_order_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          collateral_amount: number
+          created_at?: string
+          held_at?: string
+          id?: string
+          job_id: string
+          payment_order_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          collateral_amount?: number
+          created_at?: string
+          held_at?: string
+          id?: string
+          job_id?: string
+          payment_order_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_payment_order_id_fkey"
+            columns: ["payment_order_id"]
+            isOneToOne: true
+            referencedRelation: "job_payment_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -7728,6 +8117,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      begin_job_matching_preference_atomic: {
+        Args: {
+          p_customer_id: string
+          p_final_price: number
+          p_job_id: string
+          p_worker_brief_core: Json
+        }
+        Returns: {
+          error_code: string | null
+          ok: boolean
+        }[]
+      }
+      admin_finance_summary: {
+        Args: { p_actor_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       cancel_job_after_accept_atomic: {
         Args: {
           p_abuse_signals?: string[]
@@ -7811,6 +8216,19 @@ export type Database = {
         Returns: {
           claimed: boolean
           error_code: string
+        }[]
+      }
+      claim_saved_worker_fallback_atomic: {
+        Args: {
+          p_expected_worker_id?: string | null
+          p_job_id: string
+          p_reason: string
+        }
+        Returns: {
+          claimed: boolean
+          customer_id: string | null
+          error_code: string
+          preferred_worker_id: string | null
         }[]
       }
       claim_job_incident_chat_turn_atomic: {
@@ -8129,7 +8547,11 @@ export type Database = {
         }[]
       }
       confirm_kael_chat_atomic: {
-        Args: { p_customer_id: string; p_session_id: string }
+        Args: {
+          p_customer_id: string
+          p_price_reasoning_receipt_id: string
+          p_session_id: string
+        }
         Returns: {
           district_code: string
           error_code: string
@@ -9161,6 +9583,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_job_matching_preference_atomic: {
+        Args: {
+          p_auto_general: boolean
+          p_client_request_id: string
+          p_customer_id: string
+          p_job_id: string
+          p_preferred_worker_id: string | null
+          p_strategy: string
+        }
+        Returns: {
+          auto_general: boolean
+          error_code: string
+          ok: boolean
+          preferred_worker_id: string | null
+          strategy: string
+        }[]
+      }
       set_worker_availability_atomic: {
         Args: { p_is_available: boolean; p_worker_id: string }
         Returns: {
@@ -9324,6 +9763,118 @@ export type Database = {
           ok: boolean
           reason: string
           validated_refs: string[]
+        }[]
+      }
+      claim_manual_bank_payment: {
+        Args: {
+          p_customer_id: string
+          p_job_id: string
+          p_sending_bank?: string | null
+          p_transferred_at: string
+        }
+        Returns: {
+          job_id: string
+          payment_status: string
+          notification_required: boolean
+          status: Database["public"]["Enums"]["job_status"]
+          transfer_claimed_at: string
+        }[]
+      }
+      create_manual_bank_payment_order: {
+        Args: {
+          p_customer_id: string
+          p_expected_gross_amount: number
+          p_job_id: string
+          p_payment_code: string
+          p_payment_updated_at?: string
+          p_qr_image_url: string
+          p_transfer_content: string
+        }
+        Returns: {
+          gross_amount: number
+          job_id: string
+          payment_code: string
+          payment_qr_image_url: string
+          payment_status: string
+          payment_transfer_content: string
+          payment_updated_at: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
+      decide_manual_bank_payment_reconciliation: {
+        Args: {
+          p_actor_id: string
+          p_amount_received?: number | null
+          p_bank_reference_hash?: string | null
+          p_bank_reference_suffix?: string | null
+          p_credited_at?: string | null
+          p_decision: string
+          p_payment_order_id: string
+          p_reason_code?: string | null
+        }
+        Returns: {
+          error_code: string
+          hold_until: string
+          job_id: string
+          ok: boolean
+          outcome: string
+          payment_status: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
+      get_worker_payment_safety_balance: {
+        Args: { p_worker_id: string }
+        Returns: {
+          available_balance: number
+          collateral_reserved_amount: number
+          withdrawn_total: number
+          withdrawal_reserved_amount: number
+        }[]
+      }
+      maintain_manual_bank_payment_holds: {
+        Args: { p_limit?: number }
+        Returns: {
+          direct_reconcile_count: number
+          direct_reconcile_job_ids: string[]
+          released_count: number
+        }[]
+      }
+      record_platform_bank_balance_snapshot: {
+        Args: { p_actor_id: string; p_balance_vnd: number; p_observed_at: string }
+        Returns: {
+          balance_vnd: number
+          observed_at: string
+          snapshot_id: string
+        }[]
+      }
+      respond_to_direct_worker_payment: {
+        Args: {
+          p_actor_id: string
+          p_actor_role: string
+          p_job_id: string
+          p_received: boolean
+        }
+        Returns: {
+          collateral_amount: number
+          direct_status: string
+          error_code: string
+          job_id: string
+          notification_required: boolean
+          ok: boolean
+          response_deadline: string
+          status: Database["public"]["Enums"]["job_status"]
+        }[]
+      }
+      select_direct_worker_payment: {
+        Args: { p_client_request_id: string; p_customer_id: string; p_job_id: string }
+        Returns: {
+          collateral_amount: number
+          direct_status: string
+          error_code: string
+          job_id: string
+          ok: boolean
+          response_deadline: string
+          status: Database["public"]["Enums"]["job_status"]
         }[]
       }
     }

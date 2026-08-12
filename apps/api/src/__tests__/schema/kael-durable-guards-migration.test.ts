@@ -62,6 +62,10 @@ describe('Kael durable guards migration', () => {
       new URL('../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts', import.meta.url),
       'utf8',
     )
+    const providerPreflight = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-preflight.ts', import.meta.url),
+      'utf8',
+    )
     const services = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/domains.ts', import.meta.url),
       'utf8',
@@ -77,7 +81,7 @@ describe('Kael durable guards migration', () => {
 
     expect(env).toContain('KAEL_DURABLE_GUARDS_ENABLED')
     expect(example).toContain('KAEL_DURABLE_GUARDS_ENABLED=')
-    expect(provider).toContain('isDurableCircuitOpen')
+    expect(providerPreflight).toContain('isDurableCircuitOpen')
     expect(provider).toContain('recordDurableCircuitFailure')
     expect(provider).toContain('recordDurableCircuitSuccess')
     expect(services).toContain('durableGuardClient:')

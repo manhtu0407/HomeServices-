@@ -302,21 +302,21 @@ export function WorkerV5CompletionEvidenceBody({
 }
 
 export function WorkerV5CompletionSubmittedBody({
-  cashPaymentBusy,
+  directPaymentBusy,
   language,
   navigateNext,
   navigateToEvidence,
-  onConfirmCashPayment,
+  onRespondToDirectPayment,
   primaryFill,
   reduceTransparency,
   runtime,
   statusTimeline,
 }: {
-  cashPaymentBusy: boolean
+  directPaymentBusy: boolean
   language: AppLanguage
   navigateNext: () => void
   navigateToEvidence: () => void
-  onConfirmCashPayment: () => void
+  onRespondToDirectPayment: (received: boolean) => void
   primaryFill: WorkerV5PrimaryFillComponent
   reduceMotion: boolean
   reduceTransparency: boolean
@@ -326,7 +326,10 @@ export function WorkerV5CompletionSubmittedBody({
   const deal = runtime.state.deal
   const sourceCount = (deal?.completionPhotoUrls?.length ?? 0) + (deal?.completionNotes?.trim() ? 1 : 0)
   const customerConfirmed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
-  const awaitingCashPaymentConfirmation = deal?.status === 'confirmed_by_customer'
+  const awaitingDirectPaymentConfirmation = deal?.payment?.provider === 'direct_worker'
+    && (deal.payment.status === 'direct_awaiting_worker_confirmation'
+      || (deal.payment.status === 'direct_awaiting_confirmation' && Boolean(deal.payment.directCustomerConfirmedAt)))
+    && !deal.payment.directWorkerConfirmedAt
   const heroState: WorkerV5CompletionHeroState = deal
     ? customerConfirmed ? 'confirmed' : 'waiting'
     : 'empty'
@@ -344,14 +347,14 @@ export function WorkerV5CompletionSubmittedBody({
     : heroState === 'confirmed'
       ? textByLanguage(language, 'Đã xác nhận', 'Confirmed')
       : textByLanguage(language, 'Đang chờ khách xác nhận', 'Waiting for customer confirmation')
-  const completionAction = awaitingCashPaymentConfirmation
+  const completionAction = awaitingDirectPaymentConfirmation
     ? {
-      onPrimary: onConfirmCashPayment,
-      primary: cashPaymentBusy
-        ? textByLanguage(language, 'Đang ghi nhận tiền mặt', 'Recording cash payment')
-        : textByLanguage(language, 'Xác nhận đã nhận tiền mặt', 'Confirm cash received'),
-      primaryDisabled: cashPaymentBusy,
-      primaryTestID: 'worker-v5-completion-cash-payment-action',
+      onPrimary: () => onRespondToDirectPayment(true),
+      primary: directPaymentBusy
+        ? textByLanguage(language, 'Đang lưu xác nhận', 'Saving confirmation')
+        : textByLanguage(language, 'Xác nhận đã nhận tiền trực tiếp', 'Confirm direct payment received'),
+      primaryDisabled: directPaymentBusy,
+      primaryTestID: 'worker-v5-completion-direct-payment-action',
     }
     : {
       onPrimary: navigateNext,
@@ -388,12 +391,12 @@ export function WorkerV5CompletionSubmittedBody({
         reduceTransparency={reduceTransparency}
         zipAura={WorkerV5CustomerZipMintAura}
       />
-      {awaitingCashPaymentConfirmation && runtime.state.lastError ? (
+      {awaitingDirectPaymentConfirmation && runtime.state.lastError ? (
         <WorkerV5BoundaryNote
           body={language === 'vi'
             ? runtime.state.lastError
-            : textByLanguage(language, 'Không thể xác nhận thanh toán tiền mặt. Vui lòng thử lại.', 'Cash payment could not be confirmed. Please try again.')}
-          title={textByLanguage(language, 'Chưa ghi nhận được', 'Not recorded')}
+            : textByLanguage(language, 'Không thể lưu xác nhận thanh toán trực tiếp. Vui lòng thử lại.', 'Direct-payment confirmation could not be saved. Please try again.')}
+          title={textByLanguage(language, 'Chưa lưu được', 'Not recorded')}
         />
       ) : null}
       <WorkerV5ActionRail
@@ -401,11 +404,17 @@ export function WorkerV5CompletionSubmittedBody({
         primaryButtonFill={primaryFill}
         zipAura={WorkerV5CustomerZipMintAura}
         {...completionAction}
-        onSecondary={navigateToEvidence}
+      onSecondary={awaitingDirectPaymentConfirmation
+        ? () => onRespondToDirectPayment(false)
+        : navigateToEvidence}
         primaryVariant="source"
         reduceTransparency={reduceTransparency}
-        secondary={textByLanguage(language, 'Xem bằng chứng', 'View evidence')}
-        secondaryTestID="worker-v5-completion-submitted-timeline-action"
+      secondary={awaitingDirectPaymentConfirmation
+        ? textByLanguage(language, 'Báo chưa nhận tiền', 'Report not received')
+        : textByLanguage(language, 'Xem bằng chứng', 'View evidence')}
+      secondaryTestID={awaitingDirectPaymentConfirmation
+        ? 'worker-v5-completion-direct-payment-problem'
+        : 'worker-v5-completion-submitted-timeline-action'}
       />
     </View>
   )
@@ -437,11 +446,11 @@ export function WorkerV5CaseClosedBody({
     )
     : null
   const workerNet = ledgerCredit?.worker_net ?? null
-  const cashPaymentRecorded = deal?.payment?.provider === 'cash' && deal.payment.status === 'cash_confirmed'
+  const directPaymentRecorded = deal?.payment?.provider === 'direct_worker' && deal.payment.status === 'direct_paid'
   const heroState: WorkerV5CaseClosedHeroState = workerNet && workerNet > 0
     ? 'settled'
-    : cashPaymentRecorded
-      ? 'cash_recorded'
+    : directPaymentRecorded
+      ? 'direct_recorded'
       : 'waiting'
   const rating = runtime.workerPerformanceInsights?.average_rating ?? runtime.workerProfile?.rating ?? null
   const hasRating = typeof rating === 'number' && rating > 0

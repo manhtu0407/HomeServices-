@@ -8,6 +8,7 @@ import {
   checkKaelResponse,
   runKaelSelfCheckPipeline,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/self-check'
+import { isKaelReasoningPublicSummaryItem } from '../../../../../supabase/functions/mobile-api/_shared/kael/reasoning-receipt'
 import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator'
 import { createMobileApiHandler, type MobileApiServices } from '../../../../../supabase/functions/mobile-api/_shared/http'
 
@@ -76,6 +77,29 @@ describe('Kael P9 charter, prompt, and self-check', () => {
       actor: 'customer',
       language: 'vi',
     })).toMatchObject({ allowed: false, reason: 'language_mismatch' })
+  })
+
+  it('rejects isolated English reply words when Vietnamese is selected', () => {
+    expect(checkKaelResponse({
+      text: 'Kael da kiem tra service va se ho tro buoc tiep theo.',
+      actor: 'customer',
+      language: 'vi',
+    })).toMatchObject({ allowed: false, reason: 'language_mismatch' })
+  })
+
+  it('rejects a leaked English device term when Vietnamese is selected', () => {
+    expect(checkKaelResponse({
+      text: 'Không mở panel điện khi máy đang chảy nước.',
+      actor: 'customer',
+      language: 'vi',
+    })).toMatchObject({ allowed: false, reason: 'language_mismatch' })
+  })
+
+  it('blocks mixed-language public reasoning before a Vietnamese stream can emit it', () => {
+    const detail = 'The request needs a safe plumbing step.'
+
+    expect(isKaelReasoningPublicSummaryItem(detail, 'vi')).toBe(false)
+    expect(isKaelReasoningPublicSummaryItem(detail, 'en')).toBe(true)
   })
 
   it('regenerates once then falls back when self-check fails', () => {

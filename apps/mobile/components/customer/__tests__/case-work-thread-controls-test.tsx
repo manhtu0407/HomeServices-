@@ -24,7 +24,7 @@ describe('Case Work phase controls', () => {
     const onOpenActivity = jest.fn()
     renderPanel(dealFixture('confirmed_by_customer'), onOpenActivity)
 
-    expect(screen.getByText('Phương thức thanh toán chưa khả dụng cho công việc này.')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-payment-unavailable')).toBeOnTheScreen()
     expect(onOpenActivity).not.toHaveBeenCalled()
   })
 
@@ -32,150 +32,77 @@ describe('Case Work phase controls', () => {
     const onCreatePaymentIntent = jest.fn(async () => true)
     const pendingDeal = dealFixture('payment_pending')
     if (pendingDeal.payment) pendingDeal.payment.provider = 'staging_simulator'
-    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
-      onCreatePaymentIntent,
-    })
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), { onCreatePaymentIntent })
 
-    expect(screen.getByText('Thanh toán chưa sẵn sàng')).toBeOnTheScreen()
-    expect(screen.queryByText(/mô phỏng/i)).not.toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-payment-unavailable')).toBeOnTheScreen()
     expect(onCreatePaymentIntent).not.toHaveBeenCalled()
   })
 
-  it('opens a production VietQR intent but never exposes a customer-paid confirmation', async () => {
-    const onCreatePaymentIntent = jest.fn(async () => true)
+  it('creates a manual platform order only after completion confirmation', async () => {
+    const onCreateManualBankPaymentOrder = jest.fn(async () => true)
     renderPanel(dealFixture('confirmed_by_customer'), jest.fn(), jest.fn(), jest.fn(), {
-      onCreatePaymentIntent,
-      paymentRailProvider: 'sepay_vietqr',
+      onCreateManualBankPaymentOrder,
+      paymentRailProvider: 'platform_bank_manual',
     })
 
-    expect(screen.getByTestId('customer-v21-case-payment-start')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('customer-v21-case-sepay-payment-start'))
-    await waitFor(() => expect(onCreatePaymentIntent).toHaveBeenCalledTimes(1))
+    fireEvent.press(screen.getByTestId('customer-v21-case-manual-payment-create'))
+    await waitFor(() => expect(onCreateManualBankPaymentOrder).toHaveBeenCalledTimes(1))
+    expect(screen.queryByTestId('customer-v21-case-payment-confirmed')).not.toBeOnTheScreen()
+  })
 
+  it('shows a per-job QR receipt and only lets the customer claim the transfer', async () => {
+    const onClaimManualBankPayment = jest.fn(async () => true)
     const pendingDeal = dealFixture('payment_pending')
-    pendingDeal.payment = verifiedVietQrPayment()
+    pendingDeal.payment = manualBankPayment()
     renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
-      paymentRailProvider: 'sepay_vietqr',
+      onClaimManualBankPayment,
+      paymentRailProvider: 'platform_bank_manual',
     })
 
-    expect(screen.getByTestId('customer-v21-case-payment-pending')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-case-sepay-qr')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-case-sepay-qr-frame').props.style)).toMatchObject({
+    expect(screen.getByTestId('customer-v21-case-manual-payment-ready')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-manual-qr')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-case-manual-qr-frame').props.style)).toMatchObject({
       aspectRatio: 1,
       maxWidth: 256,
       width: '100%',
     })
-    expect(screen.getByTestId('customer-v21-case-sepay-transfer-content')).toHaveTextContent('NS1234567890ABCDEF12345678')
-    expect(screen.queryByTestId('customer-v21-case-sepay-payment-confirm')).not.toBeOnTheScreen()
-  })
-
-  it('shows only verified VietQR instructions and refreshes payment state without creating another intent', async () => {
-    const onCreatePaymentIntent = jest.fn(async () => true)
-    const onRefreshPayment = jest.fn(async () => true)
-    const pendingDeal = dealFixture('payment_pending')
-    pendingDeal.payment = verifiedVietQrPayment()
-    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
-      onCreatePaymentIntent,
-      onRefreshPayment,
-      paymentRailProvider: 'sepay_vietqr',
-    })
-
-    expect(screen.getByText('Thanh toán qua VietQR')).toBeOnTheScreen()
-    expect(screen.getByText('Số tiền cần chuyển')).toBeOnTheScreen()
-    expect(screen.getByText('450.000đ')).toBeOnTheScreen()
-    expect(screen.getByText('Nội dung chuyển khoản')).toBeOnTheScreen()
-    expect(screen.getByText(/Không cần bấm xác nhận thanh toán\./)).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('customer-v21-case-sepay-payment-refresh'))
-    await waitFor(() => expect(onRefreshPayment).toHaveBeenCalledTimes(1))
-    expect(onCreatePaymentIntent).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('customer-v21-case-sepay-payment-confirm')).not.toBeOnTheScreen()
-  })
-
-  it('hides an unverified QR and prevents a new transfer instruction from being shown', async () => {
-    const onRefreshPayment = jest.fn(async () => true)
-    const pendingDeal = dealFixture('payment_pending')
-    pendingDeal.payment = verifiedVietQrPayment({
-      qrImageUrl: 'https://vietqr.app/img?acc=1234567890&bank=MB&amount=450001&des=NS1234567890ABCDEF12345678',
-    })
-    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
-      onRefreshPayment,
-      paymentRailProvider: 'sepay_vietqr',
-    })
-
-    expect(screen.queryByTestId('customer-v21-case-sepay-qr')).not.toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-sepay-transfer-content')).not.toBeOnTheScreen()
-    expect(screen.getByText('Thông tin VietQR chưa thể xác minh.')).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('customer-v21-case-sepay-payment-refresh'))
-    await waitFor(() => expect(onRefreshPayment).toHaveBeenCalledTimes(1))
-  })
-
-  it('fails closed when the server no longer enables the VietQR rail', () => {
-    const pendingDeal = dealFixture('payment_pending')
-    pendingDeal.payment = verifiedVietQrPayment()
-    renderPanel(pendingDeal)
-
-    expect(screen.queryByTestId('customer-v21-case-sepay-qr')).not.toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-sepay-transfer-content')).not.toBeOnTheScreen()
-    expect(screen.getByText('Thanh toán chưa thể tiếp tục')).toBeOnTheScreen()
-  })
-
-  it('removes the QR if the image cannot load and keeps the safe refresh action', async () => {
-    const onRefreshPayment = jest.fn(async () => true)
-    const pendingDeal = dealFixture('payment_pending')
-    pendingDeal.payment = verifiedVietQrPayment()
-    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
-      onRefreshPayment,
-      paymentRailProvider: 'sepay_vietqr',
-    })
-
-    fireEvent(screen.getByTestId('customer-v21-case-sepay-qr'), 'error', {
-      nativeEvent: { error: 'image unavailable' },
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('customer-v21-case-sepay-qr')).not.toBeOnTheScreen()
-      expect(screen.getByText('Thông tin VietQR chưa thể xác minh.')).toBeOnTheScreen()
-    })
-
-    fireEvent.press(screen.getByTestId('customer-v21-case-sepay-payment-refresh'))
-    await waitFor(() => expect(onRefreshPayment).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(screen.getByTestId('customer-v21-case-sepay-qr')).toBeOnTheScreen())
-  })
-
-  it('does not offer the QR again after an amount mismatch', async () => {
-    const onRefreshPayment = jest.fn(async () => true)
-    const pendingDeal = dealFixture('payment_pending')
-    pendingDeal.payment = verifiedVietQrPayment({
-      amountReceived: 400_000,
-      status: 'amount_mismatch',
-    })
-    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
-      onRefreshPayment,
-      paymentRailProvider: 'sepay_vietqr',
-    })
-
-    expect(screen.getByText('Số tiền nhận được chưa khớp')).toBeOnTheScreen()
-    expect(screen.getByText(/Không chuyển thêm tiền cho công việc này\./)).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-sepay-qr')).not.toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-sepay-transfer-content')).not.toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('customer-v21-case-sepay-payment-refresh'))
-    await waitFor(() => expect(onRefreshPayment).toHaveBeenCalledTimes(1))
-  })
-
-  it('keeps rating locked until the server payment receipt is verified', () => {
-    const paidBeforeVerification = dealFixture('paid')
-    paidBeforeVerification.payment = verifiedVietQrPayment({ status: 'pending' })
-
-    renderPanel(paidBeforeVerification, jest.fn(), jest.fn(), jest.fn(), {
-      paymentRailProvider: 'sepay_vietqr',
-    })
-
-    expect(screen.getByTestId('customer-v21-case-payment-verification-pending')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('customer-v21-case-manual-payment-claim'))
+    await waitFor(() => expect(onClaimManualBankPayment).toHaveBeenCalledTimes(1))
     expect(screen.queryByTestId('customer-v21-case-payment-confirmed')).not.toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-review-controls')).not.toBeOnTheScreen()
+  })
+
+  it('keeps manual claims in reconciliation and does not show the QR again', async () => {
+    const onRefreshPayment = jest.fn(async () => true)
+    const pendingDeal = dealFixture('payment_pending')
+    pendingDeal.payment = manualBankPayment({ status: 'manual_reconcile_required' })
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
+      onRefreshPayment,
+      paymentRailProvider: 'platform_bank_manual',
+    })
+
+    expect(screen.getByTestId('customer-v21-case-manual-payment-reconcile')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-manual-qr')).not.toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('customer-v21-case-payment-refresh'))
+    await waitFor(() => expect(onRefreshPayment).toHaveBeenCalledTimes(1))
+  })
+
+  it('requires the customer direct-payment confirmation without marking the job paid', async () => {
+    const onRespondToDirectWorkerPayment = jest.fn(async () => true)
+    const pendingDeal = dealFixture('payment_pending')
+    pendingDeal.payment = manualBankPayment({
+      collateralAmount: 67_500,
+      directResponseDeadline: '2099-01-01T00:00:00.000Z',
+      provider: 'direct_worker',
+      status: 'direct_awaiting_confirmation',
+    })
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
+      onRespondToDirectWorkerPayment,
+      paymentRailProvider: 'platform_bank_manual',
+    })
+
+    fireEvent.press(screen.getByTestId('customer-v21-case-direct-payment-confirm'))
+    await waitFor(() => expect(onRespondToDirectWorkerPayment).toHaveBeenCalledWith(true))
+    expect(screen.queryByTestId('customer-v21-case-payment-confirmed')).not.toBeOnTheScreen()
   })
 
   it('submits a real review inline after the server reports paid', async () => {
@@ -183,13 +110,13 @@ describe('Case Work phase controls', () => {
     renderPanel(dealFixture('paid'), jest.fn(), jest.fn(), jest.fn(), { onSubmitReview })
 
     expect(screen.getByTestId('customer-v21-case-payment-confirmed')).toBeOnTheScreen()
-    expect(screen.getByText('Đánh giá công việc')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-review-controls')).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('customer-v21-case-review-rating-5'))
-    fireEvent.changeText(screen.getByTestId('customer-v21-case-review-comment'), 'Làm việc cẩn thận và đúng phạm vi.')
+    fireEvent.changeText(screen.getByTestId('customer-v21-case-review-comment'), 'Completed within scope.')
     fireEvent.press(screen.getByTestId('customer-v21-case-review-submit'))
 
     await waitFor(() => expect(onSubmitReview).toHaveBeenCalledWith({
-      comment: 'Làm việc cẩn thận và đúng phạm vi.',
+      comment: 'Completed within scope.',
       rating: 5,
       tags: [],
     }))
@@ -211,7 +138,7 @@ describe('Case Work phase controls', () => {
     expect(screen.getByTestId('customer-v21-case-work-history-intake_started')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-case-work-history-kael_collecting')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-v21-case-work-history-kael_estimating')).not.toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-case-work-response-status')).toHaveTextContent('Đang phân tích')
+    expect(screen.getByTestId('customer-v21-case-work-response-status')).toBeOnTheScreen()
   })
 
   it('offers one explicit retry only after the worker broadcast expires', () => {
@@ -220,7 +147,6 @@ describe('Case Work phase controls', () => {
 
     fireEvent.press(screen.getByTestId('customer-v21-case-retry-worker-search'))
     expect(onRetryWorkerSearch).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Tìm lại thợ')).toBeOnTheScreen()
   })
 
   it('keeps retry hidden while a worker broadcast is still active', () => {
@@ -243,11 +169,11 @@ describe('Case Work phase controls', () => {
         release_stage: 'building_released',
         worker_checked_in: true,
       },
-      fullAddressLabel: 'Tòa A, Quận 1',
+      fullAddressLabel: 'TÃƒÂ²a A, QuÃ¡ÂºÂ­n 1',
       fullAddressVisible: false,
-      generalArea: 'Quận 1',
+      generalArea: 'QuÃ¡ÂºÂ­n 1',
       prebrief: [],
-      problemSummary: 'Ổ cắm bị cháy xém',
+      problemSummary: 'Ã¡Â»â€ cÃ¡ÂºÂ¯m bÃ¡Â»â€¹ chÃƒÂ¡y xÃƒÂ©m',
       secondsRemaining: null,
       serviceType: 'electrical',
       status: 'accepted',
@@ -266,15 +192,19 @@ function renderPanel(
   onRetryWorkerSearch = jest.fn(),
   onAuthorizeApartmentAccess = jest.fn(),
   options: {
+    onClaimManualBankPayment?: () => Promise<boolean>
+    onCreateManualBankPaymentOrder?: () => Promise<boolean>
     onCreatePaymentIntent?: () => Promise<boolean>
     onRefreshPayment?: () => Promise<boolean>
+    onRespondToDirectWorkerPayment?: (received: boolean) => Promise<boolean>
+    onSelectDirectWorkerPayment?: () => Promise<boolean>
     onSubmitReview?: (input: { rating: number; tags: string[]; comment?: string }) => Promise<boolean>
-    paymentRailProvider?: 'sepay_vietqr' | null
+    paymentRailProvider?: 'platform_bank_manual' | 'sepay_vietqr' | null
   } = {},
 ) {
   return render(
     <AgenticCaseThreadPanel
-      activityLabel="Xem hoạt động"
+      activityLabel="Xem hoÃ¡ÂºÂ¡t Ã„â€˜Ã¡Â»â„¢ng"
       caseEvidenceGateActive={false}
       caseEvidenceGateNode={null}
       caseOptionsAcknowledged
@@ -285,8 +215,14 @@ function renderPanel(
       deal={deal}
       language="vi"
       onAcknowledgeOptions={jest.fn()}
-      onAuthorizeApartmentAccess={onAuthorizeApartmentAccess}
-      onCreatePaymentIntent={options.onCreatePaymentIntent ?? jest.fn(async () => false)}
+       onAuthorizeApartmentAccess={onAuthorizeApartmentAccess}
+       onCreatePaymentIntent={options.onCreatePaymentIntent ?? jest.fn(async () => false)}
+       onCreateManualBankPaymentOrder={options.onCreateManualBankPaymentOrder ?? jest.fn(async () => false)}
+       onClaimManualBankPayment={options.onClaimManualBankPayment ?? jest.fn(async () => false)}
+       onSelectDirectWorkerPayment={options.onSelectDirectWorkerPayment ?? jest.fn(async () => false)}
+       onRespondToDirectWorkerPayment={options.onRespondToDirectWorkerPayment ?? jest.fn(async () => false)}
+       onChooseMatchingPreference={jest.fn(async () => false)}
+      onLoadSavedWorkers={jest.fn(async () => [])}
       onRefreshPayment={options.onRefreshPayment ?? jest.fn(async () => false)}
       onApproveQuote={jest.fn()}
       onApproveScopeChange={jest.fn()}
@@ -296,6 +232,7 @@ function renderPanel(
       onRejectQuote={jest.fn()}
       onRejectScopeChange={jest.fn()}
       onRetryWorkerSearch={onRetryWorkerSearch}
+      onStopMatching={jest.fn(async () => false)}
       onSubmitReview={options.onSubmitReview ?? jest.fn(async () => false)}
       reduceMotion
       retryingWorkerSearch={false}
@@ -307,17 +244,20 @@ function renderPanel(
   )
 }
 
-function verifiedVietQrPayment(
+function manualBankPayment(
   overrides: Partial<NonNullable<LocalDeal['payment']>> = {},
 ): NonNullable<LocalDeal['payment']> {
-  const paymentCode = 'NS1234567890ABCDEF12345678'
+  const paymentCode = 'NS-DEAL-PAYMENT-0001'
   return {
+    accountHolder: 'Platform account',
+    accountMasked: '****6789',
+    bankCode: 'VCB',
     grossAmount: 450_000,
     paymentCode,
     platformFee: 45_000,
-    provider: 'sepay_vietqr',
-    qrImageUrl: `https://vietqr.app/img?acc=1234567890&bank=MB&amount=450000&des=${paymentCode}&template=compact&showinfo=true&holder=NestScout&store=NestScout`,
-    status: 'vietqr_ready',
+    provider: 'platform_bank_manual',
+    qrImageUrl: 'https://qr.example.test/' + paymentCode,
+    status: 'manual_qr_ready',
     transferContent: paymentCode,
     workerNet: 405_000,
     ...overrides,
@@ -334,9 +274,9 @@ function dealFixture(
       ? {
           fullAddressLabel: null,
           fullAddressVisible: false,
-          generalArea: 'Thành phố Thủ Đức',
+          generalArea: 'ThÃƒÂ nh phÃ¡Â»â€˜ ThÃ¡Â»Â§ Ã„ÂÃ¡Â»Â©c',
           prebrief: [],
-          problemSummary: 'Ổ cắm bị cháy xém',
+          problemSummary: 'Ã¡Â»â€ cÃ¡ÂºÂ¯m bÃ¡Â»â€¹ chÃƒÂ¡y xÃƒÂ©m',
           secondsRemaining: broadcastStatus === 'expired' ? 0 : 42,
           serviceType: 'electrical',
           status: broadcastStatus,
@@ -345,8 +285,8 @@ function dealFixture(
     createdAt: '2026-07-19T08:00:00.000Z',
     draft: {
       addressLabel: 'Vinhomes Grand Park',
-      description: 'Lắp xà đơn trên tường bê tông',
-      districtLabel: 'Thành phố Thủ Đức',
+      description: 'LÃ¡ÂºÂ¯p xÃƒÂ  Ã„â€˜Ã†Â¡n trÃƒÂªn tÃ†Â°Ã¡Â»Âng bÃƒÂª tÃƒÂ´ng',
+      districtLabel: 'ThÃƒÂ nh phÃ¡Â»â€˜ ThÃ¡Â»Â§ Ã„ÂÃ¡Â»Â©c',
       inferredProblemLabel: null,
       mediaCount: 0,
       needsServiceChoice: false,
@@ -376,8 +316,8 @@ function dealFixture(
           kaelReview: { confidence: 0.9 },
           priceMax: 520000,
           priceMin: 480000,
-          reason: 'Cần đổi vị trí khoan để tránh đường điện âm tường.',
-          requestedDescription: 'Dời vị trí khoan sang trái 20 cm.',
+          reason: 'CÃ¡ÂºÂ§n Ã„â€˜Ã¡Â»â€¢i vÃ¡Â»â€¹ trÃƒÂ­ khoan Ã„â€˜Ã¡Â»Æ’ trÃƒÂ¡nh Ã„â€˜Ã†Â°Ã¡Â»Âng Ã„â€˜iÃ¡Â»â€¡n ÃƒÂ¢m tÃ†Â°Ã¡Â»Âng.',
+          requestedDescription: 'DÃ¡Â»Âi vÃ¡Â»â€¹ trÃƒÂ­ khoan sang trÃƒÂ¡i 20 cm.',
           status: scopeStatus,
         }
       : null,

@@ -3,6 +3,7 @@ import {
   disputeOpenRequestSchema,
   edgeJobIncidentScopeProposalSchema,
   jobCreateSchema,
+  jobMatchingPreferenceSchema,
   jobMediaAttachSchema,
   jobMessageSendSchema,
   kaelWorkerClarifySchema,
@@ -14,6 +15,11 @@ import {
   jobMediaRevokeSchema,
   jobMediaUploadSchema,
 } from "../../../../_shared/job-media-contract.ts";
+import {
+  directWorkerPaymentResponseSchema,
+  directWorkerPaymentSelectSchema,
+  manualBankPaymentClaimSchema,
+} from "../routes/payment-contract.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
 import { workerStatusUpdateSchema } from "../dto/worker.ts";
@@ -41,6 +47,11 @@ export async function dispatchJobRoute(
       return services.getJob(ctx, route.jobId);
     case "jobs.confirmSearch":
       return services.confirmSearch(ctx, route.jobId);
+    case "jobs.matchingPreference": {
+      const input = jobMatchingPreferenceSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.setJobMatchingPreference(ctx, route.jobId, input.data);
+    }
     case "jobs.cancel":
       return services.cancelJob(ctx, route.jobId);
     case "jobs.customerCancellation": {
@@ -126,6 +137,23 @@ export async function dispatchJobRoute(
       return services.confirmCompletion(ctx, route.jobId);
     case "jobs.paymentIntent":
       return services.createPaymentIntent(ctx, route.jobId);
+    case "jobs.paymentOrder":
+      return services.createManualBankPaymentOrder(ctx, route.jobId);
+    case "jobs.paymentOrderClaim": {
+      const input = manualBankPaymentClaimSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Xác nhận chuyển khoản không hợp lệ", 400);
+      return services.claimManualBankPayment(ctx, route.jobId, input.data);
+    }
+    case "jobs.directPaymentSelect": {
+      const input = directWorkerPaymentSelectSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Yêu cầu trả trực tiếp không hợp lệ", 400);
+      return services.selectDirectWorkerPayment(ctx, route.jobId, input.data.client_request_id);
+    }
+    case "jobs.directPaymentRespond": {
+      const input = directWorkerPaymentResponseSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Xác nhận trả trực tiếp không hợp lệ", 400);
+      return services.respondToDirectWorkerPayment(ctx, route.jobId, input.data);
+    }
     case "jobs.cashPaymentConfirm":
       return services.confirmWorkerCashPayment(ctx, route.jobId);
     case "jobs.stagingPaymentConfirm":

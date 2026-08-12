@@ -614,6 +614,7 @@ describe('customer Kael workflow view model wiring', () => {
     readCustomerSurface('use-customer-kael-decision-actions.ts'),
   ].join('\n')
   const v21KaelProcess = () => [
+    readCustomerSurface('kael-process-lines.ts'),
     readCustomerSurface('use-kael-process-line-controller.ts'),
     readCustomerSurface('kael-process-line-view.tsx'),
   ].join('\n')

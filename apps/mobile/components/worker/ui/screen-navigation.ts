@@ -11,6 +11,13 @@ export function workerV5JobsDestinationScreenId(deal: LocalDeal | null): WorkerV
   if (status === 'scope_change_pending') return '2.9-approval-wait'
   if (status === 'completed_by_worker' || status === 'confirmed_by_customer') return '2.11-completion-submitted'
   if (
+    status === 'payment_pending'
+    && deal.payment?.provider === 'direct_worker'
+    && !deal.payment.directWorkerConfirmedAt
+    && (deal.payment.status === 'direct_awaiting_worker_confirmation'
+      || (deal.payment.status === 'direct_awaiting_confirmation' && Boolean(deal.payment.directCustomerConfirmedAt)))
+  ) return '2.11-completion-submitted'
+  if (
     status === 'reviewed'
     || status === 'payment_pending'
     || status === 'paid'

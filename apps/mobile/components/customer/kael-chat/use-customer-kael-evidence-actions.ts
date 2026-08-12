@@ -7,6 +7,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
 import {
   appendLegacyKaelResponseDelta,
+  completeLegacyKaelResponseStream,
   initialKaelResponseStreamState,
   kaelResponseStreamReducer,
   type KaelResponseStreamEvent,
@@ -105,7 +106,6 @@ export function useCustomerKaelEvidenceActions({
     submittingCaseEvidence,
   } = caseUi
   const {
-    settleEvidenceProcessLines,
     startEvidenceProcessLines,
     startProcessLines,
     stopProcessLines,
@@ -230,14 +230,25 @@ export function useCustomerKaelEvidenceActions({
         problem_chips: pendingDraft?.problemChips ?? [],
         skip_reason: decision === 'skipped' ? skipReason : undefined,
       }
+      let activeResponseId: string | null = null
+      let legacyResponseId: string | null = null
+      let receivedResponseTerminal = false
       const appendStreamingReply = (event: KaelStreamResponseDeltaEvent) => {
         if (!kaelRequestGuard.isCurrent(requestToken)) return
+        legacyResponseId = event.turnId
         setStreamingReply((current) => {
           return appendLegacyKaelResponseDelta(current, event)
         })
       }
       const applyStreamingResponseEvent = (event: KaelResponseStreamEvent) => {
         if (!kaelRequestGuard.isCurrent(requestToken)) return
+        if (event.type === 'response.started') {
+          activeResponseId = event.responseId
+          legacyResponseId = null
+        }
+        if (event.type === 'response.completed' && event.responseId === activeResponseId) {
+          receivedResponseTerminal = true
+        }
         setStreamingReply((current) => kaelResponseStreamReducer(
           current ?? initialKaelResponseStreamState,
           event,
@@ -250,20 +261,26 @@ export function useCustomerKaelEvidenceActions({
           if (kaelRequestGuard.isCurrent(requestToken)) updateEvidenceProcessProgress(progress)
         },
       })
+      const completeLegacyStreamingReply = () => {
+        if (receivedResponseTerminal || !legacyResponseId) return
+        receivedResponseTerminal = true
+        setStreamingReply((current) => current?.responseId === legacyResponseId
+          ? completeLegacyKaelResponseStream(current)
+          : current)
+      }
       if (shouldFallbackToDirectEvidenceSubmission(result)) {
         result = await kaelChatService.submitEvidence(sessionId, evidenceInput)
       }
       if (result.success) {
         mediaAccepted = true
         if (!kaelRequestGuard.isCurrent(requestToken)) return
-        await settleEvidenceProcessLines()
-        if (!kaelRequestGuard.isCurrent(requestToken)) return
+        completeLegacyStreamingReply()
         if (pendingDraftOwnerId) await clearPendingKaelChatDraft(pendingDraftOwnerId)
         if (!kaelRequestGuard.isCurrent(requestToken)) return
         setRouteDraftEvidencePending(false)
         setChat(result.data)
         setTurns(result.data.turns)
-        setStreamingReply(null)
+        if (!receivedResponseTerminal) setStreamingReply(null)
         stopProcessLines()
         setComposerMediaDrafts([])
         setVoiceTranscript('')
@@ -285,8 +302,6 @@ export function useCustomerKaelEvidenceActions({
         if (legacy.success) {
           mediaAccepted = true
           if (!kaelRequestGuard.isCurrent(requestToken)) return
-          await settleEvidenceProcessLines()
-          if (!kaelRequestGuard.isCurrent(requestToken)) return
           if (pendingDraftOwnerId) await clearPendingKaelChatDraft(pendingDraftOwnerId)
           if (!kaelRequestGuard.isCurrent(requestToken)) return
           setRouteDraftEvidencePending(false)
@@ -299,10 +314,12 @@ export function useCustomerKaelEvidenceActions({
           setAgenticEvidenceRejectOpen(false)
           setAgenticEvidenceReason('')
         } else if (kaelRequestGuard.isCurrent(requestToken)) {
+          setStreamingReply(null)
           stopProcessLines()
           setError(localizeKaelRequestFailure(legacy, language))
         }
       } else if (kaelRequestGuard.isCurrent(requestToken)) {
+        setStreamingReply(null)
         stopProcessLines()
         setError(localizeKaelRequestFailure(result, language))
       }

@@ -18,8 +18,10 @@ $repoRoot = (Resolve-Path (Join-Path $here "..\..")).Path
 
 $functions = @(
   "kael-learning-monitor",
+  "kael-matching-maintainer",
   "kael-media-retention",
   "mobile-api",
+  "payment-maintainer",
   "sepay-webhook"
 )
 

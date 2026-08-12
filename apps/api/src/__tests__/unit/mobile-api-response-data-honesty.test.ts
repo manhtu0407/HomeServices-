@@ -242,6 +242,24 @@ describe('mobile-api response data honesty', () => {
     })
   })
 
+  it('rejects administrator access to customer-only profile insights before any database query', async () => {
+    const adminContext: MobileApiContext = {
+      success: true,
+      user: { id: 'admin-1' },
+      role: 'admin',
+      supabase: {
+        rpc: () => {
+          throw new Error('Customer profile database query must not run for an administrator')
+        },
+      },
+    }
+
+    await expect(getCustomerProfileInsights(adminContext)).rejects.toMatchObject({
+      code: 'AUTH_FORBIDDEN',
+      status: 403,
+    })
+  })
+
   it('rejects a partial worker aggregate instead of publishing a fake zero review count', async () => {
     const client = sequenceClient([{
       data: [{

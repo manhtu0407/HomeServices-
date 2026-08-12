@@ -139,6 +139,113 @@ describe('Kael P4 output schemas', () => {
     }).success).toBe(false)
   })
 
+  it('requires a public price reasoning receipt to reconcile to the offered range', () => {
+    const priceReasoningReceipt = {
+      schema_version: 'price_reasoning_receipt.v1' as const,
+      receipt_id: 'receipt_kael_price_20260811_01',
+      problem: {
+        confirmed_facts: ['The customer reports a slow leak below the basin.'],
+        possible_causes: [{
+          statement: 'A loose trap connection may be contributing to the leak.',
+          basis: ['customer_report' as const, 'visual_evidence' as const],
+          confidence: 'medium' as const,
+        }],
+        unknowns: ['The hidden pipe condition cannot be verified from the current evidence.'],
+      },
+      scope: {
+        included: ['Inspect the accessible trap and tighten the connection if appropriate.'],
+        conditional: ['Replace a worn seal only if it is found during the visit.'],
+        excluded: ['Repair concealed pipework outside the accessible basin area.'],
+      },
+      costs: {
+        currency: 'VND' as const,
+        total_min: 250000,
+        total_max: 450000,
+        reconciliation: 'package_total' as const,
+        components: [
+          {
+            kind: 'service_package' as const,
+            status: 'priced' as const,
+            amount_min: 250000,
+            amount_max: 450000,
+            explanation: 'The governed service package covers the confirmed accessible scope.',
+          },
+          {
+            kind: 'replacement_parts' as const,
+            status: 'conditional_unpriced' as const,
+            amount_min: null,
+            amount_max: null,
+            explanation: 'A replacement part is not priced until the condition is verified on site.',
+          },
+        ],
+      },
+      scenarios: {
+        low: {
+          total: 250000,
+          conditions: ['The connection is accessible and no replacement part is needed.'],
+          scope: ['Inspect and secure the accessible connection.'],
+        },
+        high: {
+          total: 450000,
+          conditions: ['The visit includes the approved accessible package scope.'],
+          scope: ['Inspect, diagnose, and complete the governed accessible package.'],
+        },
+      },
+      fairness: {
+        price_source: 'baseline_with_market' as const,
+        confidence: 'medium' as const,
+        market_source_count: 3,
+        high_trust_source_count: 2,
+        quorum_met: true,
+        cap_statement: 'The upper amount is the cap for this confirmed scope only.',
+        remaining_uncertainty: ['A concealed fault may require a separate proposal.'],
+      },
+    }
+
+    expect(estimateCardV3Schema.safeParse({
+      ...validEstimateCard,
+      price_reasoning_receipt: priceReasoningReceipt,
+    }).success).toBe(true)
+    expect(estimateCardV3Schema.safeParse({
+      ...validEstimateCard,
+      price_reasoning_receipt: {
+        ...priceReasoningReceipt,
+        costs: { ...priceReasoningReceipt.costs, total_max: 460000 },
+      },
+    }).success).toBe(false)
+    expect(estimateCardV3Schema.safeParse({
+      ...validEstimateCard,
+      price_reasoning_receipt: {
+        ...priceReasoningReceipt,
+        costs: {
+          ...priceReasoningReceipt.costs,
+          components: [{
+            ...priceReasoningReceipt.costs.components[1],
+            amount_min: 50000,
+            amount_max: 50000,
+          }],
+        },
+      },
+    }).success).toBe(false)
+    expect(estimateCardV3Schema.safeParse({
+      ...validEstimateCard,
+      price_reasoning_receipt: {
+        ...priceReasoningReceipt,
+        costs: {
+          ...priceReasoningReceipt.costs,
+          reconciliation: 'exact' as const,
+          components: [{
+            kind: 'labor' as const,
+            status: 'priced' as const,
+            amount_min: 250000,
+            amount_max: 450000,
+            explanation: 'A separate labor price is not verified by the governed package.',
+          }],
+        },
+      },
+    }).success).toBe(false)
+  })
+
   it('requires inspection cards to be low confidence with an advisory', () => {
     const parsed = estimateCardV3Schema.parse({
       ...validEstimateCard,

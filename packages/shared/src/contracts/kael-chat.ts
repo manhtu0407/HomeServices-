@@ -53,6 +53,7 @@ export const kaelChatCreateSchema = z.object({
   scheduled_at: z.string().datetime().optional(),
   schedule_window: kaelChatScheduleWindowSchema.optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
+  preferred_worker_id: z.string().uuid().optional(),
   // Mobile-generated UUID v4 per submit.
   client_request_id: clientRequestIdSchema.optional(),
 }).superRefine((value, ctx) => {
@@ -93,6 +94,11 @@ export const kaelChatCreateSchema = z.object({
 
 export const kaelChatIntakeConfirmationDecisionSchema = z.object({
   decision: z.enum(['confirmed', 'correction_requested']),
+}).strict()
+
+export const kaelChatConfirmSchema = z.object({
+  price_reasoning_receipt_id: z.string().trim().min(8).max(160),
+  matching_mode: z.enum(['prompt_if_saved']).optional(),
 }).strict()
 
 const kaelChatMediaRefSchema = z.string().regex(
@@ -191,6 +197,7 @@ export const kaelChatEvidenceSchema = z.object({
 
 export const kaelChatTurnSchema = z.object({
   message: z.string().trim().min(1).max(5000),
+  turn_intent: z.enum(['price_question', 'scope_adjustment']).optional(),
   problem_chips: z.array(z.string().trim().min(1).max(100)).max(10).optional(),
   photo_urls: z.array(z.string().url()).max(5).default([]),
   evidence_items: kaelChatEvidenceItemsSchema,
@@ -284,6 +291,7 @@ export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>
 export type KaelChatIntakeConfirmationDecisionInput = z.infer<
   typeof kaelChatIntakeConfirmationDecisionSchema
 >
+export type KaelChatConfirmInput = z.infer<typeof kaelChatConfirmSchema>
 export type KaelChatMediaUploadInput = z.infer<typeof kaelChatMediaUploadSchema>
 export type KaelChatMediaRevokeInput = z.infer<typeof kaelChatMediaRevokeSchema>
 export type KaelChatEvidenceInput = z.infer<typeof kaelChatEvidenceSchema>

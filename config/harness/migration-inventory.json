@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 237,
-  "migrationsSha256": "e4f45b598a2f31dd00d936233fbd05d1ada99af22b152b202363dc232ac2224a",
+  "migrationCount": 245,
+  "migrationsSha256": "17eef1e9c6dd1256ed1ba4612c1f413cf9d32b889a729d122cd15b20a8888c23",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
-    "sha256": "5044f363996b179054848fdbf3b503dfd6de001fddbc6c9fb5ed14829a5ca552"
+    "sha256": "fb9d8f4196cfa662a70e819a230f42d9d9bcdbe2fb76584abd055332978a794a"
   },
   "entries": [
     {
@@ -1670,6 +1670,62 @@
       "file": "supabase/migrations/20260810120000_fix_plpgsql_reference_ambiguities.sql",
       "sha256": "5d794988f2c24a731cc5156c656fb3644d0a67b05baac6dcadfc670455a79fc0",
       "bytes": 19115
+    },
+    {
+      "version": "20260811093000",
+      "name": "require_kael_price_reasoning_receipt",
+      "file": "supabase/migrations/20260811093000_require_kael_price_reasoning_receipt.sql",
+      "sha256": "8725df1d5f4e259d8304cd63fb23b91cd31501dc0b1e6ea663b3ffc03cc18736",
+      "bytes": 7785
+    },
+    {
+      "version": "20260811114500",
+      "name": "bind_kael_price_reasoning_receipt",
+      "file": "supabase/migrations/20260811114500_bind_kael_price_reasoning_receipt.sql",
+      "sha256": "c6309206b4daa129dbbaff30973fd6c35907601b63aac1911983b84464aed526",
+      "bytes": 16284
+    },
+    {
+      "version": "20260811153000",
+      "name": "finding_workers_matching_preferences",
+      "file": "supabase/migrations/20260811153000_finding_workers_matching_preferences.sql",
+      "sha256": "85ad191d7480e5ffa7c3d6a8f86b03b41310caac224efa99b6160762fe0ecff0",
+      "bytes": 13241
+    },
+    {
+      "version": "20260811213000",
+      "name": "manual_bank_payment_finance_v1",
+      "file": "supabase/migrations/20260811213000_manual_bank_payment_finance_v1.sql",
+      "sha256": "d0b36cb3a8f7de6608e85bef5567efaf4af8eff87f0ed34c2fc3c5d6b5627b00",
+      "bytes": 63524
+    },
+    {
+      "version": "20260811213100",
+      "name": "schedule_payment_maintainer",
+      "file": "supabase/migrations/20260811213100_schedule_payment_maintainer.sql",
+      "sha256": "e93797b0fd15da59e6a337e3ed543cce867c9d868dd89b01470da94d0603d059",
+      "bytes": 2120
+    },
+    {
+      "version": "20260811213200",
+      "name": "allow_finance_reconcile_capability",
+      "file": "supabase/migrations/20260811213200_allow_finance_reconcile_capability.sql",
+      "sha256": "010ae167007bba24c06de4530913aa944e70140b133d8c097c3349110e2a47ca",
+      "bytes": 7200
+    },
+    {
+      "version": "20260811213300",
+      "name": "worker_payment_safety_balance",
+      "file": "supabase/migrations/20260811213300_worker_payment_safety_balance.sql",
+      "sha256": "c125c32482ed42169e39216750301f56aecef96d41680291c073061c77083515",
+      "bytes": 2335
+    },
+    {
+      "version": "20260811213400",
+      "name": "retire_unilateral_cash_payment_confirmation",
+      "file": "supabase/migrations/20260811213400_retire_unilateral_cash_payment_confirmation.sql",
+      "sha256": "49ea28a0e72ed2673c5effedf370faadadda9c0745095720b28c49b6c9f1f94f",
+      "bytes": 226
     }
   ]
 }

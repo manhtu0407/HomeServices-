@@ -27,13 +27,13 @@ export function WorkerV5SectionHeader({ action, title }: { action?: string; titl
   )
 }
 
-export function WorkerV5BackArrowIcon() {
+export function WorkerV5BackArrowIcon({ strokeColor = color.brand.primaryDark }: { strokeColor?: string } = {}) {
   return (
     <Svg height={18} style={styles.iconButtonIcon} viewBox="0 0 24 24" width={18}>
       <Path
         d="M15 18L9 12l6-6"
         fill="none"
-        stroke={color.brand.primaryDark}
+        stroke={strokeColor}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={3}

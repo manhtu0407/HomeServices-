@@ -7,8 +7,7 @@ import {
   useWindowDimensions,
   type ImageSourcePropType,
 } from 'react-native'
-import Svg, { Defs, Rect } from 'react-native-svg'
-import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated'
+import { cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   CUSTOMER_SERVICE_IDS,
@@ -19,8 +18,7 @@ import {
 } from '@nestscout/shared'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
-import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
-import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
+import { motionTokens } from '@/components/ui/motion-tokens'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { localizeAccountMutationError } from '@/lib/account-mutation-error'
 import { localizedProblemOptions, setAppLanguage, useAppLanguage } from '@/lib/app-language'
@@ -61,6 +59,7 @@ import { useBookingFormState } from '../booking/use-booking-form-state'
 import { useBookingAddressLookup, type BookingAddressSuggestion } from '../booking/use-booking-address-lookup'
 import { useCustomerMessageMemoryPreference } from '../kael-chat/use-customer-message-memory-preference'
 import { useCustomerAvatarPicker } from '../profile/use-customer-avatar-picker'
+import { ProfileProgressBar } from '../profile/profile-progress-bar'
 import { KaelChatSurface } from './kael-chat-surface'
 import { customerKaelStateScopeKey } from '../kael-chat/customer-kael-state-scope'
 import {
@@ -166,6 +165,7 @@ const customerBookingServiceIdForHistory: Record<ServiceType, CustomerServiceId>
   plumbing: 'plumbing',
   upholstery: 'upholstery_care',
 }
+const PREFERRED_WORKER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const customerV21DockNavItems: { image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }[] = [
   { image: customerV21Assets.home, key: 'home', route: '/(customer)/home' },
@@ -173,71 +173,6 @@ const customerV21DockNavItems: { image: ImageSourcePropType; key: CustomerPrimar
   { image: customerV21Assets.activityNav, key: 'activity', route: '/(customer)/history' },
   { image: customerV21Assets.profile, key: 'profile', route: '/(customer)/profile' },
 ]
-function ProfileProgressBar({ percent, testID }: { percent: number; testID?: string }) {
-  const { reduceMotion, reduceTransparency, tokens } = useV21Theme()
-  const clamped = Math.max(0, Math.min(100, percent))
-  const fillWidth = useSharedValue(reduceMotion ? clamped : 0)
-  const sheenX = useSharedValue(-72)
-  const sheenOpacity = useSharedValue(0)
-
-  useEffect(() => {
-    cancelAnimation(fillWidth)
-    cancelAnimation(sheenX)
-    cancelAnimation(sheenOpacity)
-
-    if (reduceMotion) {
-      fillWidth.value = clamped
-      sheenX.value = -72
-      sheenOpacity.value = 0
-      return
-    }
-
-    fillWidth.value = 0
-    fillWidth.value = withTiming(clamped, { duration: motionDuration(620, reduceMotion) })
-    sheenX.value = -72
-    sheenOpacity.value = withTiming(clamped > 0 ? 0.8 : 0, { duration: motionDuration(120, reduceMotion) })
-    sheenX.value = withTiming(260, { duration: motionDuration(820, reduceMotion) })
-    sheenOpacity.value = withDelay(680, withTiming(0, { duration: motionDuration(160, reduceMotion) }))
-
-    return () => {
-      cancelAnimation(fillWidth)
-      cancelAnimation(sheenX)
-      cancelAnimation(sheenOpacity)
-    }
-  }, [clamped, fillWidth, reduceMotion, sheenOpacity, sheenX])
-
-  const fillStyle = useAnimatedStyle(() => ({
-    width: `${fillWidth.value}%`,
-  }))
-
-  const sheenStyle = useAnimatedStyle(() => ({
-    opacity: sheenOpacity.value,
-    transform: [{ translateX: sheenX.value }],
-  }))
-
-  return (
-    <View style={[sharedStyles.protectionBar, { backgroundColor: tokens.border }]} testID={testID}>
-      <Animated.View style={[sharedStyles.protectionBarFill, profileUtilityStyles.profileProgressFill, fillStyle]} testID={testID ? `${testID}-fill` : undefined}>
-        {!reduceTransparency ? (
-          <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 260 8" width="100%">
-            <Defs>
-              <LinearGradient id="profileProgressFillGradient" x1="0" x2="1" y1="0" y2="0">
-                <Stop offset="0" stopColor="#7BE7D6" />
-                <Stop offset="0.55" stopColor="#08AF9C" />
-                <Stop offset="1" stopColor="#087D72" />
-              </LinearGradient>
-            </Defs>
-            <Rect fill="url(#profileProgressFillGradient)" height="8" rx="4" width="260" />
-          </Svg>
-        ) : null}
-      </Animated.View>
-      {!reduceMotion && !reduceTransparency ? (
-        <Animated.View pointerEvents="none" style={[profileUtilityStyles.profileProgressSheen, sheenStyle]} testID={testID ? `${testID}-sheen` : undefined} />
-      ) : null}
-    </View>
-  )
-}
-
 function ProfileRankProcess({ label, percent, value }: { label: string; percent: number; value: string }) {
   const { reduceTransparency, tokens } = useV21Theme()
   return (
@@ -347,7 +282,7 @@ export function CustomerBookingEntrySurface() {
 function CustomerBookingEntrySurfaceRoute() {
   const language = useAppLanguage()
   const router = useRouter()
-  const params = useLocalSearchParams<{ date?: string | string[]; editKaelIntake?: string | string[]; screen?: string | string[]; service?: string | string[]; serviceType?: string | string[]; time?: string | string[] }>()
+  const params = useLocalSearchParams<{ date?: string | string[]; editKaelIntake?: string | string[]; preferred_worker_id?: string | string[]; screen?: string | string[]; service?: string | string[]; serviceType?: string | string[]; time?: string | string[] }>()
   const { guestMode, session } = useAuth()
   const { reduceTransparency, tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
@@ -357,6 +292,7 @@ function CustomerBookingEntrySurfaceRoute() {
   const directScheduleDate = bookingScheduleDateParam(firstParam(params.date))
   const directScheduleTime = bookingScheduleTimeParam(firstParam(params.time))
   const editingKaelIntake = firstParam(params.editKaelIntake) === '1'
+  const preferredWorkerId = preferredWorkerIdFromRoute(firstParam(params.preferred_worker_id))
   const legacyMediaScreenRequested = rawServicesScreen === '2.3-media'
   const servicesScreenId = legacyMediaScreenRequested ? '2.2-search' : directServicesScreen ?? '2.2-search'
   const isMediaScreen = false
@@ -530,6 +466,7 @@ function CustomerBookingEntrySurfaceRoute() {
       locale: language,
       message,
       problemChips: draftProblemChips,
+      preferredWorkerId: preferredWorkerId ?? undefined,
       profileId,
       scheduleMode: 'scheduled',
       scheduledAt: scheduleDraft.scheduledAt,
@@ -660,7 +597,11 @@ export function CustomerHistorySurface() {
 
   const rebookService = (item: CustomerServiceHistoryItem) => {
     const serviceId = customerBookingServiceIdForHistory[item.service_type]
-    router.replace(`/(customer)/booking?service=${encodeURIComponent(serviceId)}` as never)
+    const preferredWorkerId = item.worker?.is_favorite ? item.worker.id : null
+    const target = preferredWorkerId && PREFERRED_WORKER_ID_PATTERN.test(preferredWorkerId)
+      ? `&preferred_worker_id=${encodeURIComponent(preferredWorkerId)}`
+      : ''
+    router.replace(`/(customer)/booking?service=${encodeURIComponent(serviceId)}${target}` as never)
   }
 
   const openHistoryDetail = (item: CustomerServiceHistoryItem) => {
@@ -898,7 +839,7 @@ export function CustomerProfileSurface() {
         rankingBody={language === 'vi' ? 'Kael đánh giá từ dữ liệu sử dụng thật.' : 'Kael evaluates real usage data.'}
         rankingLabel={language === 'vi' ? 'Xếp hạng sử dụng' : 'Usage ranking'}
         rankingMetaLabel={usageRankPointsLabel}
-        rankingProgressNode={<ProfileProgressBar percent={usageRankProgress} testID="customer-v21-profile-ranking-entry-progress" />}
+        rankingProgressPercent={usageRankProgress}
         rankingProgressSourceLabel={language === 'vi' ? 'Tăng theo hoạt động thật' : 'Grows with real activity'}
         rootStyles={styles}
         settingsGroups={settingsGroups}
@@ -921,6 +862,10 @@ type CustomerKaelRouteParams = {
   mode?: string | string[]
   screen?: string | string[]
   sessionId?: string | string[]
+}
+
+function preferredWorkerIdFromRoute(value: string | null | undefined) {
+  return value && PREFERRED_WORKER_ID_PATTERN.test(value) ? value : null
 }
 
 export function CustomerKaelSurface() {
@@ -1083,7 +1028,7 @@ function ActiveCaseCard({ deal, onOpen }: { deal: LocalDeal; onOpen: () => void 
   const { tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
   const service = deal.draft.serviceType ? customerV21ServiceCopy[language][deal.draft.serviceType].label : copy.dataPending
-  const caseFactMetrics = [
+  const caseFactMetrics = useMemo(() => [
     {
       auraScope: 'ActiveCaseService',
       label: language === 'vi' ? 'Dịch vụ' : 'Service',
@@ -1108,7 +1053,11 @@ function ActiveCaseCard({ deal, onOpen }: { deal: LocalDeal; onOpen: () => void 
       testID: 'customer-v21-active-case-estimate',
       value: deal.estimate?.priceRangeLabel || copy.dataPending,
     },
-  ]
+  ], [copy.dataPending, deal, language, service])
+  const caseFactGrid = useMemo(
+    () => <CaseFactGrid metrics={caseFactMetrics} sourceCardSkin={SourceCardSkin} tokens={tokens} zipMintAura={ZipMintAura} />,
+    [caseFactMetrics, tokens],
+  )
   return (
     <ActiveCaseCardPanel
       activeCaseLabel={customerV21CommonCopy[language].activeCase}
@@ -1117,7 +1066,7 @@ function ActiveCaseCard({ deal, onOpen }: { deal: LocalDeal; onOpen: () => void 
       bodyTextStyle={styles.bodyText}
       cardStyle={styles.activeCaseCard}
       caseCode={caseDisplayCode(deal, language)}
-      caseFactGrid={<CaseFactGrid metrics={caseFactMetrics} sourceCardSkin={SourceCardSkin} tokens={tokens} zipMintAura={ZipMintAura} />}
+      caseFactGrid={caseFactGrid}
       onOpen={onOpen}
       openLabel={language === 'vi' ? 'Xem hoạt động' : 'View activity'}
       service={service}
@@ -1459,6 +1408,20 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
     (value) => `${formatNumber(value, language)}%`,
   )
   const protectedTransactions = protectedTransactionLabel(insights, language, copy.emptyProfileMetric)
+  const progressBar = useMemo(
+    () => <ProfileProgressBar percent={numericRank > 0 && points !== null ? progress : 0} testID="customer-v21-profile-ranking-progress" />,
+    [numericRank, points, progress],
+  )
+  const rankProcess = useMemo(
+    () => (
+      <ProfileRankProcess
+        label={language === 'vi' ? 'Tiến trình hạng' : 'Level progress'}
+        percent={levelProgress}
+        value={levelProgressLabel}
+      />
+    ),
+    [language, levelProgress, levelProgressLabel],
+  )
   return (
     <ProfileRankingPanel
       metrics={[
@@ -1468,16 +1431,10 @@ function ProfileRanking({ insights }: { insights: CustomerProfileInsightsRespons
       ]}
       pointsText={pointsText}
       progress={progress}
-      progressBar={<ProfileProgressBar percent={numericRank > 0 && points !== null ? progress : 0} testID="customer-v21-profile-ranking-progress" />}
+      progressBar={progressBar}
       rank={rank}
       rankNodes={[1, 2, 3, 4, 5].map((node) => ({ active: numericRank === node, label: rankLabel(node, language), value: node }))}
-      rankProcess={(
-        <ProfileRankProcess
-          label={language === 'vi' ? 'Tiến trình hạng' : 'Level progress'}
-          percent={levelProgress}
-          value={levelProgressLabel}
-        />
-      )}
+      rankProcess={rankProcess}
       rankTitle={rankTitle}
       rules={[
         {

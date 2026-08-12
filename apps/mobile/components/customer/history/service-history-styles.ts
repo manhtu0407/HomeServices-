@@ -25,8 +25,10 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
   },
   favoriteIcon: {
     fontSize: 22,
-    lineHeight: 25,
+    includeFontPadding: false,
+    lineHeight: 22,
     textAlign: 'center',
+    textAlignVertical: 'center',
   },
   filterChip: {
     alignItems: 'center',
@@ -269,6 +271,8 @@ export const customerV21ServiceHistoryStyles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 11,
+    marginBottom: 8,
+    marginTop: -8,
   },
   workerUnavailable: {
     fontSize: 12,

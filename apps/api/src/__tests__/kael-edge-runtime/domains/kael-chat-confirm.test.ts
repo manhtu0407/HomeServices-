@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { type MobileApiContext } from '../../../../../../supabase/functions/mobile-api/_shared/http'
+import { type HarnessTraceContext } from '../../../../../../supabase/functions/_shared/harness/trace'
 import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
 import { installEdgeRuntimeTestHooks, makeSequenceClient, quoteReadyPlumbingDiagnosisScope } from '../harness'
 
 describe('chat-confirm', () => {
   installEdgeRuntimeTestHooks()
+  const priceReasoningReceiptInput = {
+    price_reasoning_receipt_id: 'price_reasoning:receipt-1',
+  }
+  const futureSchedule = '2099-01-15T01:00:00.000Z'
 
   it('confirms a quote-ready artifact through the production RPC without a duplicate confidence gate', async () => {
     const client = makeSequenceClient([
@@ -17,6 +22,7 @@ describe('chat-confirm', () => {
             ...quoteReadyPlumbingDiagnosisScope(),
             confidence: 0.4,
           },
+          scheduled_at: futureSchedule,
         },
         error: null,
       },
@@ -48,7 +54,7 @@ describe('chat-confirm', () => {
       supabase: client,
     }
 
-    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1')).resolves.toMatchObject({
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1', priceReasoningReceiptInput)).resolves.toMatchObject({
       session_id: 'kael-session-1',
       job_id: 'job-1',
       status: 'broadcasting',
@@ -62,6 +68,7 @@ describe('chat-confirm', () => {
       {
         p_session_id: 'kael-session-1',
         p_customer_id: 'customer-1',
+        p_price_reasoning_receipt_id: 'price_reasoning:receipt-1',
       },
     ])
     const addressUpdateCall = client.calls.find((call) =>
@@ -82,6 +89,145 @@ describe('chat-confirm', () => {
     expect(statusUpdateCall?.operations).toContainEqual(['eq', 'status', 'awaiting_customer_confirm'])
   })
 
+  it('opens the saved-worker choice after confirmation without loading worker eligibility', async () => {
+    const client = makeSequenceClient([], {
+      begin_job_matching_preference_atomic: [
+        { data: [{ ok: true, error_code: null }], error: null },
+      ],
+      confirm_kael_chat_atomic: [
+        {
+          data: [{
+            ok: true,
+            error_code: null,
+            job_id: 'job-1',
+            job_status: 'awaiting_customer_confirm',
+            service_type: 'plumbing',
+            district_code: 'q7',
+          }],
+          error: null,
+        },
+      ],
+    }, {
+      customer_favorite_workers: [{ data: [{ worker_id: 'worker-1' }], error: null }],
+      job_broadcasts: [{ data: [], error: null }],
+      job_events: [
+        { data: null, error: null },
+        { data: null, error: null },
+        { data: [], error: null },
+      ],
+      job_matching_preferences: [{
+        data: { strategy: 'pending', auto_general: true, fallback_at: null },
+        error: null,
+      }],
+      jobs: [
+        { data: { id: 'job-1' }, error: null },
+        {
+          data: {
+            id: 'job-1',
+            status: 'awaiting_customer_confirm',
+            customer_id: 'customer-1',
+            service_type: 'plumbing',
+            address_district: 'q7',
+            kael_problem_identified: 'Pipe leak',
+            kael_price_max: 250000,
+            final_price: null,
+          },
+          error: null,
+        },
+      ],
+      kael_chat_sessions: [
+        {
+          data: {
+            id: 'kael-session-1',
+            customer_id: 'customer-1',
+            case_phase: 'offer_review',
+            diagnosis_scope: quoteReadyPlumbingDiagnosisScope(),
+            scheduled_at: futureSchedule,
+          },
+          error: null,
+        },
+        { data: { safe_metadata: {} }, error: null },
+      ],
+    })
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1', {
+      ...priceReasoningReceiptInput,
+      matching_mode: 'prompt_if_saved',
+    })).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: false,
+      matching_state: { stage: 'awaiting_choice' },
+    })
+
+    expect(client.calls.some((call) => call.table === 'worker_profiles')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'job_broadcasts' &&
+      call.operations.some((operation) => operation[0] === 'insert'))).toBe(false)
+  })
+
+  it('records only the safe confirmation RPC code when the RPC fails', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-1',
+          customer_id: 'customer-1',
+          case_phase: 'offer_review',
+          diagnosis_scope: quoteReadyPlumbingDiagnosisScope(),
+          scheduled_at: futureSchedule,
+        },
+        error: null,
+      },
+      { data: null, error: { code: 'PGRST202', message: 'permission denied for function confirm_kael_chat_atomic' } },
+    ])
+    const traceEvents: Array<{ name: string; args?: Record<string, unknown> }> = []
+    const traceContext: HarnessTraceContext = {
+      traceId: '00000000-0000-4000-8000-000000000001',
+      runId: '00000000-0000-4000-8000-000000000002',
+      parentRunId: null,
+      turnId: null,
+      toolCallId: null,
+      parentEventId: null,
+      actorIdHash: null,
+      actorRole: 'customer',
+      jobId: null,
+      releaseId: 'test',
+      environment: 'local',
+      startedAtMs: 0,
+      client: {
+        rpc: async (name, args) => {
+          traceEvents.push({ name, args })
+          return { data: true, error: null }
+        },
+      },
+    }
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+      traceContext,
+    }
+
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1', priceReasoningReceiptInput))
+      .rejects.toMatchObject({ code: 'DB_ERROR', status: 500 })
+
+    expect(traceEvents).toContainEqual({
+      name: 'append_harness_event',
+      args: expect.objectContaining({
+        p_event_class: 'kael.confirm.rpc_failed',
+        p_error_code: 'KAEL_CONFIRM_RPC_FAILED',
+        p_safe_metadata: { rpc_code: 'PGRST202', rpc_subject: 'function_execute' },
+      }),
+    })
+    expect(JSON.stringify(traceEvents)).not.toContain('confirm_kael_chat_atomic')
+  })
+
   it('restores the Kael offer phase when broadcast creation fails after confirmation', async () => {
     const client = makeSequenceClient([
       {
@@ -90,6 +236,7 @@ describe('chat-confirm', () => {
           customer_id: 'customer-1',
           case_phase: 'offer_review',
           diagnosis_scope: quoteReadyPlumbingDiagnosisScope(),
+          scheduled_at: futureSchedule,
         },
         error: null,
       },
@@ -128,7 +275,7 @@ describe('chat-confirm', () => {
     }
 
     await expect(
-      createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1'),
+      createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1', priceReasoningReceiptInput),
     ).rejects.toMatchObject({ code: 'DB_ERROR', status: 500 })
 
     const sessionRollback = client.calls.find((call) =>
@@ -155,6 +302,7 @@ describe('chat-confirm', () => {
           customer_id: 'customer-1',
           case_phase: 'offer_review',
           diagnosis_scope: quoteReadyPlumbingDiagnosisScope(),
+          scheduled_at: futureSchedule,
         },
         error: null,
       },
@@ -187,7 +335,7 @@ describe('chat-confirm', () => {
       supabase: client,
     }
 
-    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1')).resolves.toMatchObject({
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1', priceReasoningReceiptInput)).resolves.toMatchObject({
       session_id: 'kael-session-1',
       job_id: 'job-1',
       status: 'broadcasting',
@@ -202,6 +350,7 @@ describe('chat-confirm', () => {
       {
         p_session_id: 'kael-session-1',
         p_customer_id: 'customer-1',
+        p_price_reasoning_receipt_id: 'price_reasoning:receipt-1',
       },
     ])
     expect(client.calls.some((call) =>
@@ -221,6 +370,7 @@ describe('chat-confirm', () => {
           customer_id: 'customer-1',
           case_phase: 'offer_review',
           diagnosis_scope: quoteReadyPlumbingDiagnosisScope(),
+          scheduled_at: futureSchedule,
         },
         error: null,
       },
@@ -244,7 +394,7 @@ describe('chat-confirm', () => {
       supabase: client,
     }
 
-    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1'))
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1', priceReasoningReceiptInput))
       .rejects.toMatchObject({ code: 'DB_ERROR', status: 500 })
   })
 
@@ -256,6 +406,7 @@ describe('chat-confirm', () => {
           customer_id: 'customer-1',
           case_phase: 'matching',
           diagnosis_scope: quoteReadyPlumbingDiagnosisScope(),
+          scheduled_at: futureSchedule,
         },
         error: null,
       },
@@ -306,7 +457,7 @@ describe('chat-confirm', () => {
       supabase: client,
     }
 
-    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1')).resolves.toMatchObject({
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1', priceReasoningReceiptInput)).resolves.toMatchObject({
       session_id: 'kael-session-1',
       job_id: 'job-1',
       status: 'broadcasting',
@@ -327,173 +478,4 @@ describe('chat-confirm', () => {
     )).toBe(false)
   })
 
-  it('returns JOB_PENDING instead of a fake estimate for duplicate in-flight job creates', async () => {
-    const client = makeSequenceClient([
-      { data: { id: 'job-pending' }, error: null },
-      {
-        data: {
-          id: 'job-pending',
-          status: 'analyzing',
-          service_type: 'plumbing',
-          kael_problem_identified: null,
-          kael_complexity: null,
-          kael_price_min: null,
-          kael_price_max: null,
-          kael_advisory: null,
-          kael_estimate_card_v3: null,
-        },
-        error: null,
-      },
-    ])
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: 'customer-1' },
-      role: 'customer',
-      supabase: client,
-    }
-
-    await expect(createEdgeServices({}).createJob(ctx, {
-      service_type: 'plumbing',
-      description: 'Ong nuoc ro ri duoi lavabo can tho toi kiem tra',
-      problem_chips: ['pipe_leak'],
-      photo_urls: [],
-      address_district: 'q7',
-      client_request_id: '00000000-0000-4000-8000-000000000001',
-    })).rejects.toMatchObject({ code: 'JOB_PENDING', status: 409 })
-  })
-
-  it('returns SESSION_PENDING instead of a half-created empty Kael chat session', async () => {
-    const client = makeSequenceClient([
-      {
-        data: {
-          id: 'kael-session-pending',
-          job_id: null,
-          status: 'active',
-          estimate_ready_at: null,
-          total_turns: 0,
-        },
-        error: null,
-      },
-    ])
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: 'customer-1' },
-      role: 'customer',
-      supabase: client,
-    }
-
-    await expect(createEdgeServices({}).createKaelChat(ctx, {
-      service_type: 'electrical',
-      message: 'Den phong tam chap chon can kiem tra',
-      problem_chips: [],
-      photo_urls: [],
-      client_request_id: '00000000-0000-4000-8000-000000000002',
-    })).rejects.toMatchObject({ code: 'SESSION_PENDING', status: 409 })
-    expect(client.calls.map((call) => call.table)).toEqual(['kael_chat_sessions'])
-  })
-
-  it('replays a deliberately empty Kael session instead of leaving it pending forever', async () => {
-    const session = {
-      id: 'kael-session-empty',
-      job_id: null,
-      customer_id: 'customer-1',
-      service_type: 'electrical',
-      status: 'active',
-      case_phase: 'analysis',
-      diagnosis_scope: null,
-      scheduled_at: null,
-      started_at: '2026-07-14T00:00:00.000Z',
-      estimate_ready_at: null,
-      total_turns: 0,
-      total_cost_usd: 0,
-      safe_metadata: { initial_turn_expected: false },
-      created_at: '2026-07-14T00:00:00.000Z',
-    }
-    const client = makeSequenceClient([
-      { data: session, error: null },
-      { data: { id: session.id, customer_id: 'customer-1' }, error: null },
-      { data: { id: 'customer-conversation-empty' }, error: null },
-      { data: session, error: null },
-      { data: [], error: null },
-    ])
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: 'customer-1' },
-      role: 'customer',
-      supabase: client,
-    }
-
-    const result = await createEdgeServices({}).createKaelChat(ctx, {
-      service_type: 'electrical',
-      problem_chips: [],
-      photo_urls: [],
-      client_request_id: '00000000-0000-4000-8000-000000000003',
-    })
-
-    expect(result.session.id).toBe('kael-session-empty')
-    expect(result.turns).toEqual([])
-  })
-
-  it('retires a half-created Kael session so the same idempotency key can retry', async () => {
-    const client = makeSequenceClient([
-      { data: null, error: null },
-      { data: [{ allowed: true }], error: null },
-      {
-        data: {
-          id: 'kael-session-failed',
-          job_id: null,
-          customer_id: 'customer-1',
-          service_type: 'electrical',
-          status: 'active',
-          case_phase: 'analysis',
-          diagnosis_scope: null,
-          scheduled_at: null,
-          started_at: '2026-07-14T00:00:00.000Z',
-          estimate_ready_at: null,
-          total_turns: 0,
-          total_cost_usd: 0,
-          safe_metadata: { initial_turn_expected: true },
-          created_at: '2026-07-14T00:00:00.000Z',
-        },
-        error: null,
-      },
-      {
-        data: { id: 'kael-session-failed', customer_id: 'customer-1' },
-        error: null,
-      },
-      { data: { id: 'customer-conversation-failed' }, error: null },
-      { data: null, error: { code: 'PERSIST_FAILED' } },
-      { data: { id: 'kael-session-failed' }, error: null },
-    ])
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: 'customer-1' },
-      role: 'customer',
-      supabase: client,
-    }
-
-    await expect(createEdgeServices({}).createKaelChat(ctx, {
-      service_type: 'electrical',
-      message: 'Den phong tam chap chon can kiem tra',
-      problem_chips: [],
-      photo_urls: [],
-      client_request_id: '00000000-0000-4000-8000-000000000004',
-    })).rejects.toMatchObject({ code: 'DB_ERROR', status: 500 })
-
-    const retireCall = client.calls.find((call) =>
-      call.table === 'kael_chat_sessions' &&
-      call.operations.some((operation) => {
-        const value = operation[1] as { status?: string } | undefined
-        return operation[0] === 'update' && value?.status === 'abandoned'
-      })
-    )
-    expect(retireCall?.operations).toContainEqual([
-      'update',
-      { client_request_id: null, status: 'abandoned' },
-    ])
-    expect(retireCall?.operations).toContainEqual(['eq', 'id', 'kael-session-failed'])
-    expect(retireCall?.operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
-    expect(retireCall?.operations).toContainEqual(['eq', 'status', 'active'])
-    expect(retireCall?.operations).toContainEqual(['eq', 'total_turns', 0])
-  })
 })

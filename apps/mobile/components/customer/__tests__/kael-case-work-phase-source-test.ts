@@ -7,10 +7,12 @@ const content = readFileSync(join(mobileRoot, 'components/customer/kael-chat/cus
 const controller = readFileSync(join(mobileRoot, 'components/customer/kael-chat/use-customer-kael-surface-controller.ts'), 'utf8')
 const evidenceActions = readFileSync(join(mobileRoot, 'components/customer/kael-chat/use-customer-kael-evidence-actions.ts'), 'utf8')
 const analysisEvidenceNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-kael-analysis-evidence-node.tsx'), 'utf8')
+const agenticEstimateNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-agentic-estimate-node.tsx'), 'utf8')
 const caseThreadNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-kael-case-thread-node.tsx'), 'utf8')
 const candidateNode = readFileSync(join(mobileRoot, 'components/customer/kael-chat/customer-worker-candidate-node.tsx'), 'utf8')
 const kaelFeature = [presentation, content, controller, evidenceActions, analysisEvidenceNode, caseThreadNode, candidateNode].join('\n')
 const chatView = readFileSync(join(mobileRoot, 'components/customer/kael-chat/chat-stateful-surfaces.tsx'), 'utf8')
+const transcriptView = readFileSync(join(mobileRoot, 'components/customer/kael-chat/use-kael-chat-transcript.tsx'), 'utf8')
 const evidenceView = readFileSync(join(mobileRoot, 'components/customer/kael-chat/agentic-evidence-stateful-surfaces.tsx'), 'utf8')
 const estimateResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/agentic-chat-estimate-response.tsx'), 'utf8')
 const candidateResponse = readFileSync(join(mobileRoot, 'components/customer/kael-chat/worker-candidate-review-response.tsx'), 'utf8')
@@ -28,9 +30,9 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
   })
 
   it('formats the pending detailed Case Work request for readable customer display', () => {
-    expect(chatView).toContain('customerVisibleCaseRequestText')
-    expect(chatView).toContain('text={customerVisibleCaseRequestText(pendingDraftMessage, language)}')
-    expect(chatView).toContain("text={turn.text_content ?? ''}")
+    expect(transcriptView).toContain('customerVisibleCaseRequestText')
+    expect(transcriptView).toContain('text={customerVisibleCaseRequestText(pendingDraftMessage, language)}')
+    expect(transcriptView).toContain("text={turn.text_content ?? ''}")
   })
 
   it('keeps analysis media and editable voice inside the evidence response without revealing later phases', () => {
@@ -70,7 +72,7 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
 
   it('reveals offers and completion/payment actions only at their server-confirmed phase', () => {
     expect(presentation).toContain("chat?.session.case_phase === 'offer_review'")
-    expect(content).toContain('agenticEstimateNode={presentation.offerReviewActive &&')
+    expect(agenticEstimateNode).toContain('!presentation.offerReviewActive')
     expect(caseThreadNode).toContain("deal.status === 'completed_by_worker'")
     expect(completionResponse).toContain('customer-v21-completion-confirm')
     expect(responseModel).toContain("customer_confirmed_completion: 'payment'")
@@ -80,9 +82,11 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
     expect(caseThread).toContain("from './customer-payment-rail-surface'")
     expect(caseThread).toContain('<CustomerPaymentRailSurface')
     expect(paymentSurface).toContain("phase !== 'customer_confirmed_completion' && phase !== 'payment_pending' && phase !== 'paid'")
-    expect(paymentSurface).toContain('customer-v21-case-sepay-payment-start')
+    expect(paymentSurface).toContain("paymentRailProvider === 'platform_bank_manual'")
+    expect(paymentSurface).toContain('customer-v21-case-manual-payment-claim')
+    expect(paymentSurface).toContain('customer-v21-case-direct-payment-confirm')
     expect(paymentSurface).toContain('customer-v21-case-payment-confirmed')
-    expect(paymentSurface).toContain('isDealPaymentProtected(deal)')
+    expect(paymentSurface).toContain("deal.payment?.provider === 'direct_worker'")
     expect(caseThread).not.toContain('SePayVietQrPaymentDetails')
     expect(caseThread).not.toContain('customer-v21-case-sepay-payment-confirm')
     expect(caseThread).not.toContain('staging_simulator')

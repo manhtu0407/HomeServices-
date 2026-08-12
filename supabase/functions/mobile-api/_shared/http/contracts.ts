@@ -16,12 +16,14 @@ import type {
   DisputeCounterStatementInput,
   DisputeOpenRequestInput,
   JobCreateInput,
+  EdgeJobMatchingPreferenceInput,
   EdgeJobIncidentScopeProposalInput,
   JobMediaAttachInput,
   JobMessageSendInput,
   JobStatus,
   KaelAssistantInput,
   KaelChatCreateInput,
+  EdgeKaelChatConfirmInput,
   EdgeKaelChatIntakeConfirmationDecisionInput,
   KaelChatEvidenceInput,
   EdgeKaelChatMediaRevokeInput,
@@ -68,7 +70,13 @@ import type { WorkerRouteOrigin, WorkerStatusUpdateInput } from "../domains/cont
 import type { EdgeCustomerAccountDeletionResponse } from "../domains/contracts/customer.ts";
 import type { EdgeStagingPaymentResponse } from "../domains/payment/staging.ts";
 import type { EdgePaymentIntentResponse } from "../domains/payment/sepay-vietqr.ts";
-import type { EdgeCashPaymentConfirmationResponse } from "../domains/payment/cash.ts";
+import type {
+  DirectPaymentResponseInput,
+  EdgeDirectPaymentResponse,
+  EdgeManualBankClaimResponse,
+  EdgeManualBankPaymentResponse,
+  ManualBankClaimInput,
+} from "../domains/payment/manual-bank.ts";
 import type {
   EdgeAcceptBroadcastResponse,
   EdgeConfirmWorkerCandidateResponse,
@@ -76,6 +84,7 @@ import type {
   EdgeBroadcastListResponse,
   EdgeConfirmCompletionResponse,
   EdgeConfirmSearchResponse,
+  EdgeFavoriteWorkersForMatchingResponse,
   EdgeCreateJobResponse,
   EdgeCustomerActiveJobResponse,
   EdgeCustomerCancellationResponse,
@@ -98,6 +107,7 @@ import type {
   EdgeJobMediaAttachResponse,
   EdgeJobMessageListResponse,
   EdgeJobMessageSendResponse,
+  EdgeMatchingPreferenceResponse,
   EdgeKaelAssistantResponse,
   EdgeKaelChatMediaUploadResponse,
   KaelBatchResultsProcessInput,
@@ -270,6 +280,10 @@ export type MobileApiServices = AdminControlServices & {
   listCustomerServiceHistory(
     ctx: MobileApiContext,
   ): Promise<EdgeCustomerServiceHistoryResponse>;
+  listFavoriteWorkersForMatching(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeFavoriteWorkersForMatchingResponse>;
   createKaelChat(
     ctx: MobileApiContext,
     input: KaelChatCreateInput,
@@ -354,6 +368,7 @@ export type MobileApiServices = AdminControlServices & {
   confirmKaelChat(
     ctx: MobileApiContext,
     sessionId: string,
+    input: EdgeKaelChatConfirmInput,
   ): Promise<EdgeConfirmSearchResponse & { session_id: string }>;
   submitKaelChatEvidence(
     ctx: MobileApiContext,
@@ -364,6 +379,11 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     jobId: string,
   ): Promise<EdgeConfirmSearchResponse>;
+  setJobMatchingPreference(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: EdgeJobMatchingPreferenceInput,
+  ): Promise<EdgeMatchingPreferenceResponse>;
   cancelJob(
     ctx: MobileApiContext,
     jobId: string,
@@ -543,11 +563,30 @@ export type MobileApiServices = AdminControlServices & {
   createPaymentIntent(
     ctx: MobileApiContext,
     jobId: string,
-  ): Promise<EdgePaymentIntentResponse>;
+  ): Promise<EdgePaymentIntentResponse | EdgeManualBankPaymentResponse>;
+  createManualBankPaymentOrder(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeManualBankPaymentResponse>;
+  claimManualBankPayment(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: ManualBankClaimInput,
+  ): Promise<EdgeManualBankClaimResponse>;
+  selectDirectWorkerPayment(
+    ctx: MobileApiContext,
+    jobId: string,
+    clientRequestId: string,
+  ): Promise<EdgeDirectPaymentResponse>;
+  respondToDirectWorkerPayment(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: DirectPaymentResponseInput,
+  ): Promise<EdgeDirectPaymentResponse>;
   confirmWorkerCashPayment(
     ctx: MobileApiContext,
     jobId: string,
-  ): Promise<EdgeCashPaymentConfirmationResponse>;
+  ): Promise<EdgeDirectPaymentResponse>;
   confirmStagingPayment(
     ctx: MobileApiContext,
     jobId: string,

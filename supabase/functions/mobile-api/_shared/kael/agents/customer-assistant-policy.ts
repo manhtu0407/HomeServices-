@@ -113,7 +113,7 @@ export function inferAssistantServiceType(
   if (/\b(dieu hoa|may lanh|dan lanh|dan nong|khong mat|lam lanh yeu|ma loi|air conditioner|air conditioning|hvac|ac unit|not cooling)\b/.test(normalized)) {
     return "hvac";
   }
-  if (/\b(sofa|nem|rem|tham|vai boc|giat sofa|giat nem|vet ban|mui hoi|am moc|upholstery|mattress|curtain|carpet|fabric stain)\b/.test(normalized)) {
+  if (/\b(sofa|nem|rem|tham|vai boc|giat sofa|giat nem|vet ban|am moc|upholstery|mattress|curtain|carpet|fabric stain)\b/.test(normalized)) {
     return "upholstery";
   }
   if (/\b(khoan tuong|lap ke|lap thanh rem|ban le|tay nam|treo tv|lap tv|sua vat|handyman|mount shelf|hang tv|door hinge|cabinet handle)\b/.test(normalized)) {

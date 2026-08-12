@@ -12,6 +12,8 @@ import {
   scrubSensitiveForLLM,
   updateKaelProgress,
   type EdgeAiSecrets,
+  type KaelReasoningReporter,
+  type KaelResponseReporter,
   type WorkerAssistAnswer,
 } from "../../kael/index.ts";
 import { takeDurableKaelChatRateLimit } from "../../kael/kael-guardrails/durable-guards.ts";
@@ -66,7 +68,12 @@ export async function sendWorkerKaelChatTurn(
   sessionId: string,
   input: WorkerKaelChatTurnInput,
   secrets: EdgeAiSecrets,
-  options: { prefetchedJob?: Record<string, unknown>; skipRateLimit?: boolean } = {},
+  options: {
+    prefetchedJob?: Record<string, unknown>;
+    reasoning?: KaelReasoningReporter;
+    response?: KaelResponseReporter;
+    skipRateLimit?: boolean;
+  } = {},
 ) {
   const client = db(ctx);
   const spendGate = createRuntimeKaelSpendGate(client, ctx.user.id, secrets.harnessTrace);
@@ -113,6 +120,12 @@ export async function sendWorkerKaelChatTurn(
     sessionId,
     workerId: ctx.user.id,
   });
+  if (asBoolean(claim.completed)) {
+    options.reasoning?.complete({
+      fallbackUsed: false,
+      summary: [workerReasoningCompletion(input.language, false, true)],
+    });
+  }
   if (asBoolean(claim.completed)) return getWorkerKaelChat(ctx, sessionId);
 
   if (!options.skipRateLimit) {
@@ -139,11 +152,12 @@ export async function sendWorkerKaelChatTurn(
   });
   const { answer, needsInitialTitle } = await runWorkerKaelAssistant({
     client, ctx, session, sessionId, input, secrets, spendGate, sessionMode,
-    sessionJobId, job, visionPhotoUrls, claim, claimId, safeMessage,
+    sessionJobId, job, visionPhotoUrls, claim, claimId, reasoning: options.reasoning,
+    response: options.response, safeMessage,
   });
   return finalizeWorkerKaelChatTurn({
     client, ctx, sessionId, input, sessionJobId, answer, needsInitialTitle,
-    claim, claimId, safeMessage,
+    claim, claimId, reasoning: options.reasoning, response: options.response, safeMessage,
   });
 }
 
@@ -161,6 +175,8 @@ async function runWorkerKaelAssistant(input: {
   visionPhotoUrls: string[];
   claim: Record<string, unknown>;
   claimId: string;
+  reasoning?: KaelReasoningReporter;
+  response?: KaelResponseReporter;
   safeMessage: string;
 }) {
   const needsInitialTitle = asNumber(input.session.total_turns) === 0 && !nullableString(input.session.title);
@@ -186,6 +202,8 @@ async function runWorkerKaelAssistant(input: {
         }
         : null,
       question: input.safeMessage, language: input.input.language, mediaRefs: input.input.media_refs,
+      reasoning: input.reasoning,
+      response: input.response,
       visionFinding: workerVisionFinding, previousTurns: recentTurns,
       memorySummary, secrets: input.secrets, spendGate: input.spendGate,
     });
@@ -236,6 +254,8 @@ async function finalizeWorkerKaelChatTurn(input: {
   needsInitialTitle: boolean;
   claim: Record<string, unknown>;
   claimId: string;
+  reasoning?: KaelReasoningReporter;
+  response?: KaelResponseReporter;
   safeMessage: string;
 }) {
   await updateKaelProgress(input.client, { table: "kael_worker_chat_sessions", id: input.sessionId }, {
@@ -271,10 +291,33 @@ async function finalizeWorkerKaelChatTurn(input: {
   if (asBoolean(completed.stale)) {
     apiFailure("WORKFLOW_STALE", "Trạng thái công việc đã đổi trong lúc Kael xử lý. Vui lòng gửi lại yêu cầu.", 409);
   }
+  input.response?.complete(input.answer.text);
   await updateKaelProgress(input.client, { table: "kael_worker_chat_sessions", id: input.sessionId }, {
     stage: "worker_assist", status: "completed", progress: 1,
   });
-  return getWorkerKaelChat(input.ctx, input.sessionId);
+  const response = await getWorkerKaelChat(input.ctx, input.sessionId);
+  input.reasoning?.complete({
+    fallbackUsed: input.answer.fallback_used,
+    summary: input.answer.public_reasoning_summary ?? [],
+  });
+  return response;
+}
+
+function workerReasoningCompletion(
+  language: "vi" | "en",
+  fallbackUsed: boolean,
+  existing = false,
+) {
+  if (language === "en") {
+    if (existing) return "The already saved reply has been synchronized.";
+    return fallbackUsed
+      ? "Kael completed a safe alternative reply."
+      : "Kael completed and saved a safe reply.";
+  }
+  if (existing) return "Ph\u1ea3n h\u1ed3i \u0111\u00e3 l\u01b0u \u0111\u01b0\u1ee3c \u0111\u1ed3ng b\u1ed9.";
+  return fallbackUsed
+    ? "Kael \u0111\u00e3 ho\u00e0n t\u1ea5t m\u1ed9t ph\u1ea3n h\u1ed3i thay th\u1ebf an to\u00e0n."
+    : "Kael \u0111\u00e3 ho\u00e0n t\u1ea5t v\u00e0 l\u01b0u ph\u1ea3n h\u1ed3i an to\u00e0n.";
 }
 
 async function persistWorkerKaelSessionTitle(

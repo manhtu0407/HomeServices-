@@ -9,13 +9,26 @@ import { styles } from './transaction-history-styles'
 
 type WorkerTransaction = EarningsResponse['recent_transactions'][number]
 
+const transactionDateFormatter: Record<AppLanguage, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }),
+  vi: new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }),
+}
+
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
 }
 
 function transactionTitle(transaction: WorkerTransaction, language: AppLanguage) {
   if (transaction.entry_type === 'cash_commission_debit') {
-    return textByLanguage(language, 'Hoa hồng tiền mặt', 'Cash commission')
+    return textByLanguage(language, 'Hoa hồng trả trực tiếp', 'Direct-payment commission')
   }
   return transaction.display_code || textByLanguage(language, 'Khoản thu từ công việc', 'Job earnings')
 }
@@ -23,7 +36,7 @@ function transactionTitle(transaction: WorkerTransaction, language: AppLanguage)
 function transactionStatus(transaction: WorkerTransaction, language: AppLanguage) {
   const labels: Record<WorkerTransaction['payment_state'], { en: string; vi: string }> = {
     available: { en: 'Available', vi: 'Đã ghi có' },
-    cash_collected: { en: 'Cash received', vi: 'Đã nhận tiền mặt' },
+    cash_collected: { en: 'Commission collected', vi: 'Đã thu hoa hồng' },
     cash_reconciliation_due: { en: 'Reconciliation pending', vi: 'Chờ đối soát' },
     on_hold: { en: 'On hold', vi: 'Đang tạm giữ' },
     pending: { en: 'Pending', vi: 'Đang xử lý' },
@@ -35,11 +48,7 @@ function transactionStatus(transaction: WorkerTransaction, language: AppLanguage
 function transactionDate(value: string, language: AppLanguage) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return textByLanguage(language, 'Chưa rõ ngày', 'Date unavailable')
-  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date)
+  return transactionDateFormatter[language].format(date)
 }
 
 function transactionAmount(transaction: WorkerTransaction, language: AppLanguage) {

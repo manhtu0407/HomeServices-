@@ -49,20 +49,26 @@ export async function queryEligibleWorkers(
   serviceType: ServiceType,
   district: string,
   limit: number,
-  options: { excludeWorkerIds?: string[]; jobId?: string } = {},
+  options: {
+    candidateWorkerIds?: string[];
+    excludeWorkerIds?: string[];
+    jobId?: string;
+  } = {},
 ) {
   const candidatesResult = await loadMatchingCandidates(client, serviceType, district, limit, options);
   if (!candidatesResult.success) return candidatesResult;
   const { candidateRows, favoriteWorkerIds, jobGeo } = candidatesResult;
   const districtCode = normalizeDistrict(district);
   const excludedWorkerIds = new Set(options.excludeWorkerIds ?? []);
-  const favoriteCandidates = await loadFavoriteCandidates(
-    client,
-    favoriteWorkerIds,
-    serviceType,
-    districtCode,
-    jobGeo,
-  );
+  const favoriteCandidates = options.candidateWorkerIds?.length
+    ? []
+    : await loadFavoriteCandidates(
+      client,
+      favoriteWorkerIds,
+      serviceType,
+      districtCode,
+      jobGeo,
+    );
   const combinedCandidates = new Map<string, Record<string, unknown>>();
   for (const worker of [...candidateRows, ...favoriteCandidates]) {
     const workerId = asString(worker.id);
@@ -103,8 +109,6 @@ export async function queryEligibleWorkers(
     );
   if (activeJobs.error) {
     console.warn("mobile-api active worker job query failed", {
-      serviceType,
-      district: districtCode,
       errorCode: activeJobs.error.code,
     });
     return {
@@ -140,7 +144,7 @@ export async function queryEligibleWorkers(
       "mobile-api matching soft-deprioritized workers (disintermediation risk)",
       {
         jobId: options.jobId ?? null,
-        workerIds: deprioritizedIds,
+        deprioritizedCount: deprioritizedIds.length,
       },
     );
   }
@@ -167,12 +171,41 @@ async function loadMatchingCandidates(
   serviceType: ServiceType,
   district: string,
   limit: number,
-  options: { jobId?: string },
+  options: { candidateWorkerIds?: string[]; jobId?: string },
 ): Promise<MatchingCandidateLoad> {
   const candidateLimit = Math.max(limit, DEFAULT_WORKER_CANDIDATE_POOL_SIZE);
   const districtCode = normalizeDistrict(district);
   const jobGeo = options.jobId ? await loadJobGeoForMatching(client, options.jobId) : null;
   const favoriteWorkerIds = await loadAllFavoriteWorkerIds(client, jobGeo?.customerId ?? null);
+  const candidateWorkerIds = Array.from(new Set(
+    (options.candidateWorkerIds ?? []).filter(Boolean),
+  ));
+  if (candidateWorkerIds.length > 0) {
+    const requested = await dbQuery<WorkerRecord[]>(
+      client
+        .from("worker_profiles")
+        .select(WORKER_PROJECTION)
+        .in("id", candidateWorkerIds)
+        .eq("is_approved", true)
+        .eq("is_available", true)
+        .eq("is_suspended", false)
+        .contains("selected_service_types", [serviceType])
+        .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`),
+    );
+    if (requested.error) {
+      console.warn("mobile-api requested worker eligibility query failed", {
+        errorCode: requested.error.code,
+        requestedCount: candidateWorkerIds.length,
+      });
+      return { success: false, reason: "Lỗi khi kiểm tra thợ đã lưu" };
+    }
+    return {
+      success: true,
+      jobGeo,
+      favoriteWorkerIds,
+      candidateRows: requested.data ?? [],
+    };
+  }
   const candidateRows: WorkerRecord[] = [];
   for (let offset = 0;; offset += candidateLimit) {
     const page = await dbQuery<WorkerRecord[]>(
@@ -190,8 +223,6 @@ async function loadMatchingCandidates(
     );
     if (page.error) {
       console.warn("mobile-api worker eligibility query failed", {
-        serviceType,
-        district: districtCode,
         errorCode: page.error.code,
       });
       return { success: false, reason: "Lỗi khi tìm thợ phù hợp" };
@@ -224,7 +255,6 @@ async function loadFavoriteCandidates(
   );
   if (!favoriteResult.error) return favoriteResult.data ?? [];
   console.warn("mobile-api favorite-worker eligibility load failed", {
-    customerId: jobGeo?.customerId ?? null,
     errorCode: favoriteResult.error.code,
   });
   return [];

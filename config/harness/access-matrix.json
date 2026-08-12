@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 237,
-    "migrationDigest": "a4cfbaf602bb9609eed0bf021edbdb05b5f9527af9b41ef3d55abeb402b81ccc"
+    "migrationCount": 245,
+    "migrationDigest": "f9daa7d48abc6e5fdd758901e6d2b9c738fcaf9207e8c381625e480ad26a730b"
   },
   "actors": [
     "anonymous",
@@ -711,6 +711,24 @@
       "realtime": true
     },
     {
+      "name": "job_matching_preferences",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "job_media_assets",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -734,6 +752,38 @@
     },
     {
       "name": "job_media_upload_intents",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "job_payment_orders",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "job_payment_reconciliation_events",
       "classification": "internal",
       "rlsEnabled": true,
       "actorCommands": {
@@ -1771,6 +1821,22 @@
       "realtime": true
     },
     {
+      "name": "platform_bank_balance_snapshots",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "price_baselines",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -2069,6 +2135,22 @@
         "authenticated": [
           "all"
         ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "worker_direct_payment_collateral_reservations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
       },
       "serviceRole": [
         "select",
@@ -2381,6 +2463,14 @@
       ]
     },
     {
+      "signature": "admin_finance_summary(uuid, timestamp with time zone, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "admin_nominate_manager_atomic(uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2557,6 +2647,14 @@
       ]
     },
     {
+      "signature": "begin_job_matching_preference_atomic(uuid, uuid, integer, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "cancel_job_after_accept_atomic(uuid, uuid, text, text, text, text[])",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -2662,6 +2760,22 @@
     },
     {
       "signature": "claim_kael_learning_queue_atomic(uuid, integer, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "claim_manual_bank_payment(uuid, uuid, timestamp with time zone, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "claim_saved_worker_fallback_atomic(uuid, text, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2797,6 +2911,14 @@
       ]
     },
     {
+      "signature": "confirm_kael_chat_atomic(uuid, uuid, text)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "confirm_kael_chat_atomic(uuid, uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -2816,9 +2938,7 @@
       "signature": "confirm_worker_cash_payment(uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
-      "executeRoles": [
-        "service_role"
-      ]
+      "executeRoles": []
     },
     {
       "signature": "consume_job_media_uploads(uuid, uuid, text[], timestamp with time zone)",
@@ -2837,6 +2957,14 @@
       ]
     },
     {
+      "signature": "create_manual_bank_payment_order(uuid, uuid, integer, text, text, text, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "create_worker_vietqr_payment_intent(uuid, uuid, integer, text, text, text, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -2846,6 +2974,14 @@
     },
     {
       "signature": "create_worker_withdrawal_request(uuid, integer, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "decide_manual_bank_payment_reconciliation(uuid, uuid, text, integer, timestamp with time zone, text, text, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -2965,6 +3101,14 @@
       ]
     },
     {
+      "signature": "get_worker_payment_safety_balance(uuid)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "get_worker_performance_insights_aggregate(uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -2996,6 +3140,14 @@
     },
     {
       "signature": "is_circuit_open(text, text, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "maintain_manual_bank_payment_holds(integer)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -3197,6 +3349,14 @@
     {
       "signature": "record_normal_transaction_memory_atomic(uuid, uuid)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_platform_bank_balance_snapshot(uuid, integer, timestamp with time zone)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -3411,6 +3571,14 @@
       ]
     },
     {
+      "signature": "respond_to_direct_worker_payment(uuid, uuid, text, boolean)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "revoke_job_media_uploads(uuid, uuid, text[], timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -3443,7 +3611,23 @@
       ]
     },
     {
+      "signature": "select_direct_worker_payment(uuid, uuid, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "set_harness_kill_switch(text, text, boolean, text, text, uuid, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "set_job_matching_preference_atomic(uuid, uuid, text, uuid, boolean, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

@@ -4,29 +4,36 @@ import { Text, View } from 'react-native'
 import type { AppLanguage } from '@/lib/app-language'
 import {
   activeKaelResponseBlockId,
+  formatKaelResponseText,
   type KaelResponseBlock,
   type KaelResponseStreamState,
 } from '@/lib/kael-response-stream'
+import { useKaelResponseStreamPresentation } from '@/components/ui/use-kael-respond-stream-presentation'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
-import { KaelFeedbackControls, KaelTrustDisclosure } from '@/components/kael/kael-feedback-controls'
 import { KaelLiquidReveal } from './kael-liquid-reveal'
 
 export function KaelResponseSurface({
   language,
+  onPresentationSettled,
   reduceMotion,
   state,
   testID,
   tokens,
 }: {
   language: AppLanguage
+  onPresentationSettled?: (responseId: string) => void
   reduceMotion: boolean
   state: KaelResponseStreamState
   testID?: string
   tokens: CustomerThemeTokens
 }) {
-  const activeBlockId = activeKaelResponseBlockId(state)
+  const presentationState = useKaelResponseStreamPresentation(state, {
+    onSettled: onPresentationSettled,
+    reduceMotion,
+  })
+  const activeBlockId = activeKaelResponseBlockId(presentationState)
   const streaming = state.status === 'streaming'
 
   return (
@@ -40,36 +47,19 @@ export function KaelResponseSurface({
       style={styles.kaelResponse}
       testID={testID}
     >
-      <Text style={[styles.kaelResponseLabel, { color: tokens.primary }]}>Kael</Text>
-      <View style={[styles.kaelResponseRail, { borderLeftColor: tokens.primary }]}>
-        {state.blockOrder.map((blockId, index) => {
-          const block = state.blocks[blockId]
-          if (!block || (!block.text && blockId !== activeBlockId)) return null
-          return (
-            <KaelResponseBlockView
-              block={block}
-              index={index}
-              key={blockId}
-              reduceMotion={reduceMotion}
-              tokens={tokens}
-            />
-          )
-        })}
-        {state.status === 'completed' && state.responseId ? (
-          <>
-            <KaelTrustDisclosure
-              language={language}
-              testID={`${testID ?? 'customer-kael-response'}-disclosure`}
-            />
-            <KaelFeedbackControls
-              actor="customer"
-              language={language}
-              responseId={state.responseId}
-              testID={`${testID ?? 'customer-kael-response'}-feedback`}
-            />
-          </>
-        ) : null}
-      </View>
+      {presentationState.blockOrder.map((blockId, index) => {
+        const block = presentationState.blocks[blockId]
+        if (!block || (!block.text && blockId !== activeBlockId)) return null
+        return (
+          <KaelResponseBlockView
+            block={block}
+            index={index}
+            key={blockId}
+            reduceMotion={reduceMotion}
+            tokens={tokens}
+          />
+        )
+      })}
     </View>
   )
 }
@@ -93,9 +83,11 @@ const KaelResponseBlockView = memo(function KaelResponseBlockView({
     >
       {block.kind === 'list' ? (
         <KaelResponseList block={block} tokens={tokens} />
+      ) : block.kind === 'paragraph' ? (
+        <KaelResponseParagraph block={block} tokens={tokens} />
       ) : (
         <View style={block.kind === 'callout'
-          ? [styles.kaelResponseCallout, { backgroundColor: tokens.service, borderColor: tokens.border }]
+          ? [styles.kaelResponseCallout, { backgroundColor: 'transparent', borderColor: 'transparent' }]
           : null}
         >
           <Text
@@ -111,6 +103,36 @@ const KaelResponseBlockView = memo(function KaelResponseBlockView({
     </KaelLiquidReveal>
   )
 })
+
+function KaelResponseParagraph({ block, tokens }: {
+  block: KaelResponseBlock
+  tokens: CustomerThemeTokens
+}) {
+  const occurrenceByItem = new Map<string, number>()
+  return (
+    <View style={styles.kaelResponseProse}>
+      {formatKaelResponseText(block.text).map((item) => {
+        const itemId = `${item.kind}:${item.text}`
+        const occurrence = occurrenceByItem.get(itemId) ?? 0
+        occurrenceByItem.set(itemId, occurrence + 1)
+        const key = `${block.id}:${itemId}:${occurrence}`
+        return item.kind === 'bullet' ? (
+          <View key={key} style={styles.kaelResponseListRow}>
+            <Text style={[styles.kaelResponseListMarker, { color: tokens.primary }]}>{'\u2022'}</Text>
+            <Text style={[styles.kaelResponseListText, { color: tokens.text }]}>{item.text}</Text>
+          </View>
+        ) : (
+          <Text
+            key={key}
+            style={[styles.kaelResponseText, { color: tokens.text }]}
+          >
+            {item.text}
+          </Text>
+        )
+      })}
+    </View>
+  )
+}
 
 function KaelResponseList({ block, tokens }: {
   block: KaelResponseBlock

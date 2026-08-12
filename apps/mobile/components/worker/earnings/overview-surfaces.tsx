@@ -420,10 +420,10 @@ export function WorkerV5EarningsDashboard({
         ? earnings.withdrawal_reserved_amount > 0
           ? textByLanguage(language, `Đang giữ ${displayAmount(earnings.withdrawal_reserved_amount, language)} để chi trả`, `Reserving ${displayAmount(earnings.withdrawal_reserved_amount, language)} for settlement`)
           : textByLanguage(language, 'Các khoản đã hoàn tất', 'Completed withdrawals')
-        : textByLanguage(language, 'Đang tải dữ liệu chi trả', 'Loading payout data'),
+        : textByLanguage(language, 'Chưa có số liệu chi trả', 'No payout data yet'),
       value: earnings
         ? displayAmount(earnings.withdrawn_total, language)
-        : textByLanguage(language, 'Đang tải', 'Loading'),
+        : displayAmount(0, language),
     },
     {
       id: 'fee',
@@ -438,6 +438,32 @@ export function WorkerV5EarningsDashboard({
       label: textByLanguage(language, 'Số dư có thể rút', 'Withdrawable balance'),
       note: textByLanguage(language, 'Số dư đã ghi có trên ứng dụng', 'Balance credited in app'),
       value: availableAmount,
+    },
+    {
+      id: 'hold',
+      label: textByLanguage(language, 'Tiền đang giữ 24 giờ', 'Funds held for 24 hours'),
+      note: earnings?.on_hold_amount
+        ? textByLanguage(language, 'Sẽ khả dụng sau thời gian giữ nếu không có tranh chấp', 'Becomes available after the hold if there is no dispute')
+        : textByLanguage(language, 'Chưa có khoản ghi có đang giữ', 'There are no credits currently on hold'),
+      value: displayAmount(earnings?.on_hold_amount ?? 0, language),
+    },
+    {
+      id: 'collateral',
+      label: textByLanguage(language, 'Ký quỹ hoa hồng đang giữ', 'Commission collateral on hold'),
+      note: earnings?.collateral_reserved_amount
+        ? textByLanguage(language, 'Giữ cho giao dịch trả trực tiếp đang chờ đối soát', 'Held for a direct-payment transaction awaiting reconciliation')
+        : textByLanguage(language, 'Chưa có ký quỹ thanh toán trực tiếp', 'There is no direct-payment collateral on hold'),
+      value: displayAmount(earnings?.collateral_reserved_amount ?? 0, language),
+    },
+    {
+      id: 'direct-commission',
+      label: textByLanguage(language, 'Hoa hồng trực tiếp đã thu', 'Direct-payment commission collected'),
+      note: textByLanguage(
+        language,
+        `Còn phải thu ${displayAmount(earnings?.cash_commission_due_total ?? 0, language)}`,
+        `${displayAmount(earnings?.cash_commission_due_total ?? 0, language)} remains receivable`,
+      ),
+      value: displayAmount(earnings?.cash_commission_collected_total ?? 0, language),
     },
   ]
 

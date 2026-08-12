@@ -6,8 +6,8 @@ const customerV21WebFocusRing = Platform.OS === 'web'
 
 export const customerV21ChatStyles = StyleSheet.create({
   chatBackIcon: {
-    height: 22,
-    width: 22,
+    height: 18,
+    width: 18,
   },
   chatBubble: {
     borderRadius: 22,
@@ -29,8 +29,10 @@ export const customerV21ChatStyles = StyleSheet.create({
     lineHeight: 20,
   },
   kaelResponse: {
-    alignSelf: 'stretch',
-    maxWidth: '94%',
+    alignSelf: 'flex-start',
+    backgroundColor: 'transparent',
+    maxWidth: '100%',
+    paddingHorizontal: 4,
     paddingVertical: 5,
   },
   kaelResponseBlock: {
@@ -47,13 +49,6 @@ export const customerV21ChatStyles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.12,
     lineHeight: 22,
-  },
-  kaelResponseLabel: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    lineHeight: 17,
-    marginBottom: 6,
-    marginLeft: 15,
   },
   kaelResponseList: {
     gap: 7,
@@ -73,24 +68,18 @@ export const customerV21ChatStyles = StyleSheet.create({
     fontSize: 14.5,
     lineHeight: 21,
   },
-  kaelResponseRail: {
-    borderLeftWidth: 1.5,
-    gap: 11,
-    paddingLeft: 14,
+  kaelResponseProse: {
+    gap: 8,
   },
   kaelResponseText: {
     fontSize: 14.5,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   chatMediaCameraIcon: {
     height: 20,
     width: 20,
   },
   chatComposerAura: {
-    ...StyleSheet.absoluteFill,
-    zIndex: 0,
-  },
-  chatModeSwitchAura: {
     ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
@@ -197,8 +186,8 @@ export const customerV21ChatStyles = StyleSheet.create({
     borderRadius: 21,
     height: 44,
     justifyContent: 'center',
-    paddingHorizontal: 14,
-    width: 120,
+    paddingHorizontal: 11,
+    width: 114,
   },
   chatHeaderModeTriggerOpen: {
     backgroundColor: 'rgba(255,255,255,0.94)',

@@ -35,12 +35,12 @@ describe('frontend workflow error localization', () => {
     )
   })
 
-  it('keeps cash-settlement failures actionable without exposing backend detail', () => {
-    expect(localizeWorkflowError('private provider detail 42', 'vi', 'ROUTE_NOT_FOUND', 'cash_payment_confirmation')).toBe(
-      'Chức năng xác nhận tiền mặt chưa sẵn sàng. Vui lòng thử lại sau.',
+  it('keeps direct-payment confirmation failures actionable without exposing backend detail', () => {
+    expect(localizeWorkflowError('private provider detail 42', 'vi', 'ROUTE_NOT_FOUND', 'direct_payment_confirmation')).toBe(
+      'Chức năng xác nhận trả trực tiếp chưa sẵn sàng. Vui lòng thử lại sau.',
     )
-    expect(localizeWorkflowError('private provider detail 42', 'vi', 'DB_ERROR', 'cash_payment_confirmation')).toBe(
-      'Chưa thể ghi nhận thanh toán tiền mặt. Vui lòng thử lại.',
+    expect(localizeWorkflowError('private provider detail 42', 'vi', 'DB_ERROR', 'direct_payment_confirmation')).toBe(
+      'Chưa thể ghi nhận xác nhận trả trực tiếp. Vui lòng thử lại.',
     )
     expect(localizeWorkflowError('private provider detail 42', 'en', 'STATUS_CHANGED')).toBe(
       'The job status changed. Refresh and try again.',

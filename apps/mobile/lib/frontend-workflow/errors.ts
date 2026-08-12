@@ -1,6 +1,6 @@
 import type { AppLanguage } from '../app-language'
 
-export type WorkflowErrorContext = 'cash_payment_confirmation'
+export type WorkflowErrorContext = 'direct_payment_confirmation'
 
 const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
   vi: {
@@ -28,8 +28,8 @@ const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
     network: 'Không thể kết nối đến hệ thống. Vui lòng thử lại.',
     timeout: 'Kết nối quá chậm. Vui lòng thử lại.',
     invalidResponse: 'Dữ liệu công việc chưa hợp lệ. Vui lòng thử lại.',
-    cashConfirmationUnavailable: 'Chức năng xác nhận tiền mặt chưa sẵn sàng. Vui lòng thử lại sau.',
-    cashConfirmationFailed: 'Chưa thể ghi nhận thanh toán tiền mặt. Vui lòng thử lại.',
+    directConfirmationUnavailable: 'Chức năng xác nhận trả trực tiếp chưa sẵn sàng. Vui lòng thử lại sau.',
+    directConfirmationFailed: 'Chưa thể ghi nhận xác nhận trả trực tiếp. Vui lòng thử lại.',
     statusChanged: 'Trạng thái công việc đã thay đổi. Hãy tải lại rồi thử lại.',
     fallback: 'Không thể cập nhật yêu cầu. Vui lòng thử lại.',
   },
@@ -58,8 +58,8 @@ const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
     network: 'Could not connect to the system. Try again.',
     timeout: 'The connection is too slow. Try again.',
     invalidResponse: 'The job data is not valid. Try again.',
-    cashConfirmationUnavailable: 'Cash confirmation is not ready yet. Try again later.',
-    cashConfirmationFailed: 'Cash payment could not be recorded. Try again.',
+    directConfirmationUnavailable: 'Direct-payment confirmation is not ready yet. Try again later.',
+    directConfirmationFailed: 'Direct-payment confirmation could not be recorded. Try again.',
     statusChanged: 'The job status changed. Refresh and try again.',
     fallback: 'Could not update the request. Try again.',
   },
@@ -94,10 +94,10 @@ export function localizeWorkflowError(
               ? 'invalidResponse'
               : code === 'STATUS_CHANGED'
                 ? 'statusChanged'
-                : context === 'cash_payment_confirmation' && code === 'ROUTE_NOT_FOUND'
-                  ? 'cashConfirmationUnavailable'
-                  : context === 'cash_payment_confirmation' && code === 'DB_ERROR'
-                    ? 'cashConfirmationFailed'
+                : context === 'direct_payment_confirmation' && code === 'ROUTE_NOT_FOUND'
+                  ? 'directConfirmationUnavailable'
+                  : context === 'direct_payment_confirmation' && code === 'DB_ERROR'
+                    ? 'directConfirmationFailed'
               : null
   if (codeKey) return workflowErrorCopy[language][codeKey]
   const mappedKey = workflowErrorKeyByViMessage.get(error)

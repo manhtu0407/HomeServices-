@@ -236,9 +236,73 @@ describe('mobile-api durable idempotency ingress', () => {
       expect(names).not.toContain('start_harness_idempotency_execution')
       expect(names).not.toContain('complete_harness_idempotency')
       expect(names).not.toContain('mark_harness_idempotency_reconcile_required')
+      expect(names).not.toContain('finish_harness_run')
+
+      resolveBodyClosed()
+      await response?.text()
+
+      expect(rpc.mock.calls.map(([name]) => name)).toContain('finish_harness_run')
+      const eventClasses = (rpc.mock.calls as unknown as Array<[
+        string,
+        { p_event_class?: string },
+      ]>)
+        .filter(([name]) => name === 'append_harness_event')
+        .map(([, args]) => args.p_event_class)
+      expect(eventClasses).toContain('request.stream_opened')
+      expect(eventClasses).toContain('request.stream_completed')
     } finally {
       resolveBodyClosed()
     }
+  })
+
+  it('finishes a Harness stream as failed when its public SSE protocol reports failure', async () => {
+    const { handler, rpc } = remoteHandler({
+      streamService: async () => new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: response.failed\ndata: {}\n\n'))
+          controller.close()
+        },
+      }), { headers: { 'content-type': 'text/event-stream' } }),
+    })
+
+    const response = await handler(new Request('https://api.example.test/kael/chat/550e8400-e29b-41d4-a716-446655440000/stream', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message: 'Kiá»ƒm tra tiáº¿n Ä‘á»™', evidence_items: [] }),
+    }))
+
+    await response.text()
+
+    expect(rpc).toHaveBeenCalledWith('finish_harness_run', expect.objectContaining({
+      p_status: 'failed',
+      p_error_code: 'STREAM_RESPONSE_FAILED',
+    }))
+  })
+
+  it('detects a protocol failure that follows an earlier SSE event', async () => {
+    const { handler, rpc } = remoteHandler({
+      streamService: async () => new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(
+            'event: reasoning.started\ndata: {}\n\nevent: response.failed\ndata: {}\n\n',
+          ))
+          controller.close()
+        },
+      }), { headers: { 'content-type': 'text/event-stream' } }),
+    })
+
+    const response = await handler(new Request('https://api.example.test/kael/chat/550e8400-e29b-41d4-a716-446655440000/stream', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message: 'Kiá»ƒm tra tiáº¿n Ä‘á»™', evidence_items: [] }),
+    }))
+
+    await response.text()
+
+    expect(rpc).toHaveBeenCalledWith('finish_harness_run', expect.objectContaining({
+      p_status: 'failed',
+      p_error_code: 'STREAM_RESPONSE_FAILED',
+    }))
   })
 
   it('quarantines an unknown response receipt instead of making the request retryable', async () => {

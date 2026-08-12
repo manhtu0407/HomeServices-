@@ -21,8 +21,8 @@ export function AgenticChatEstimateResponse({
   diagnosisScope,
   evidencePreviews,
   estimate,
-  formatPriceRange,
   language,
+  onAskPrice,
   onAdjust,
   onAdjustmentChange,
   onConfirm,
@@ -30,9 +30,12 @@ export function AgenticChatEstimateResponse({
   onReasonChange,
   onSubmitAdjustment,
   onSubmitRejectReason,
+  onSubmitSchedule,
+  priceQuestionOpen,
   rejected,
   rejectReason,
   sourceExplanationForLanguage,
+  scheduledAt,
   priceExplanationForEstimate,
   submittingAdjustment,
   submittingRejectReason,
@@ -46,8 +49,8 @@ export function AgenticChatEstimateResponse({
   diagnosisScope?: Record<string, unknown> | null
   evidencePreviews: NonNullable<KaelChatResponse['session']['evidence_previews']>
   estimate: AgenticEstimate
-  formatPriceRange: (min: number, max: number, language: AppLanguage) => string
   language: AppLanguage
+  onAskPrice: () => void
   onAdjust: () => void
   onAdjustmentChange: (value: string) => void
   onConfirm: () => void
@@ -55,10 +58,22 @@ export function AgenticChatEstimateResponse({
   onReasonChange: (value: string) => void
   onSubmitAdjustment: () => void
   onSubmitRejectReason: () => void
+  onSubmitSchedule: (input: {
+    message: string
+    scheduled_at: string
+    schedule_window: {
+      date: string
+      end: string
+      start: string
+      time_zone: 'Asia/Ho_Chi_Minh'
+    }
+  }) => Promise<void>
+  priceQuestionOpen: boolean
   priceExplanationForEstimate: (estimate: AgenticEstimate, language: AppLanguage) => string
   rejected: boolean
   rejectReason: string
   sourceExplanationForLanguage: (language: AppLanguage) => string
+  scheduledAt?: string | null
   submittingAdjustment: boolean
   submittingRejectReason: boolean
   textInputStyle: StyleProp<TextStyle>
@@ -78,15 +93,6 @@ export function AgenticChatEstimateResponse({
     !submittingRejectReason && !submittingAdjustment && !confirming
   const canSubmitAdjustment = adjustmentText.trim().length > 0 &&
     !submittingAdjustment && !submittingRejectReason && !confirming
-  const statusLabel = confirmed
-    ? (language === 'vi' ? 'Công việc đã được mở' : 'Work request opened')
-    : needsInspection
-      ? (language === 'vi' ? 'Cần khảo sát hiện trường' : 'Inspection required')
-      : needsMoreInfo
-        ? (language === 'vi' ? 'Cần thêm dữ liệu' : 'Needs more context')
-        : canConfirm
-          ? (language === 'vi' ? 'Cần bạn chốt' : 'Needs your decision')
-          : (language === 'vi' ? 'Đang chờ' : 'Waiting')
   const priceExplanation = priceExplanationForEstimate(estimate, language)
   const priceSource = estimate.price_source
   const priceSourceLabel = priceSource === 'perplexity_validated'
@@ -114,7 +120,19 @@ export function AgenticChatEstimateResponse({
     () => agenticEstimateSupportingPhase(estimate, language, diagnosisScope, evidencePreviews),
     [diagnosisScope, estimate, evidencePreviews, language],
   )
-  const price = formatPriceRange(estimate.price_min, estimate.price_max, language)
+  const statusLabel = confirmed
+    ? (language === 'vi' ? 'Công việc đã được mở' : 'Work request opened')
+    : needsInspection
+      ? (language === 'vi' ? 'Cần khảo sát hiện trường' : 'Inspection required')
+      : needsMoreInfo
+        ? (language === 'vi' ? 'Cần thêm dữ liệu' : 'Needs more context')
+        : canConfirm && !scheduledAt
+          ? (language === 'vi' ? 'Cần chọn lịch hẹn' : 'Choose a service time')
+        : canConfirm && !supportingPhase?.receiptId
+          ? (language === 'vi' ? 'Cần hoàn tất cơ sở giá' : 'Price reasoning required')
+          : canConfirm
+            ? (language === 'vi' ? 'Cần bạn chốt' : 'Needs your decision')
+            : (language === 'vi' ? 'Đang chờ' : 'Waiting')
   const moreInfoText = needsInspection && estimate.needs_inspection_reason
     ? estimate.needs_inspection_reason
     : language === 'vi'
@@ -136,6 +154,7 @@ export function AgenticChatEstimateResponse({
       language={language}
       moreInfoText={moreInfoText}
       needsMoreInfo={needsMoreInfo}
+      onAskPrice={onAskPrice}
       onAdjust={onAdjust}
       onAdjustmentChange={onAdjustmentChange}
       onConfirm={onConfirm}
@@ -143,14 +162,16 @@ export function AgenticChatEstimateResponse({
       onReject={onReject}
       onSubmitAdjustment={onSubmitAdjustment}
       onSubmitRejectReason={onSubmitRejectReason}
-      price={price}
+      onSubmitSchedule={onSubmitSchedule}
       priceExplanation={priceExplanation}
+      priceQuestionOpen={priceQuestionOpen}
       rejected={rejected}
       rejectLabel={rejectLabel}
       rejectReason={rejectReason}
       serviceLabel={serviceLabel}
       sourceExplanation={sourceExplanation}
       statusLabel={statusLabel}
+      requiresSchedule={!scheduledAt}
       submittingAdjustment={submittingAdjustment}
       submittingRejectReason={submittingRejectReason}
       supportingPhase={supportingPhase}

@@ -3,7 +3,12 @@ import type {
   EdgeCustomerKaelConversationTurnInput,
   JobStatus,
 } from "../../../../_shared/domain.ts";
-import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../../kael/index.ts";
+import {
+  scrubSensitiveForLLM,
+  type EdgeAiSecrets,
+  type KaelReasoningReporter,
+  type KaelResponseReporter,
+} from "../../kael/index.ts";
 import { sanitizeCustomerCaseEvidenceText } from "../../kael/evidence/untrusted-evidence.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
@@ -82,6 +87,10 @@ export async function sendCustomerKaelConversationTurn(
   conversationId: string,
   input: EdgeCustomerKaelConversationTurnInput,
   secrets: EdgeAiSecrets,
+  options: {
+    reasoning?: KaelReasoningReporter;
+    response?: KaelResponseReporter;
+  } = {},
 ) {
   const client = customerConversationDb(ctx);
   const session = await readCustomerConversation(client, ctx, conversationId);
@@ -112,13 +121,20 @@ export async function sendCustomerKaelConversationTurn(
   if (existingTurn.error) {
     apiFailure("DB_ERROR", "Không thể kiểm tra lượt trò chuyện", 500);
   }
-  if (existingTurn.data) return getCustomerKaelConversation(ctx, conversationId);
+  if (existingTurn.data) {
+    const existingResponse = await getCustomerKaelConversation(ctx, conversationId);
+    options.reasoning?.complete({
+      fallbackUsed: false,
+      summary: [customerReasoningCompletion(input.language, false, true)],
+    });
+    return existingResponse;
+  }
 
   const answer = await answerKaelAssistant(ctx, {
     language: input.language,
     message: input.message,
     surface: "customer_normal",
-  }, secrets);
+  }, secrets, { reasoning: options.reasoning, response: options.response });
   const customerText = (
     conversationMode === "case"
       ? sanitizeCustomerCaseEvidenceText(input.message)
@@ -150,7 +166,30 @@ export async function sendCustomerKaelConversationTurn(
   if (appended.error) {
     apiFailure("DB_ERROR", "Không thể lưu lượt trò chuyện Kael", 500);
   }
-  return getCustomerKaelConversation(ctx, conversationId);
+  options.response?.complete(kaelText);
+  const response = await getCustomerKaelConversation(ctx, conversationId);
+  options.reasoning?.complete({
+    fallbackUsed: answer.fallback_used,
+    summary: answer.public_reasoning_summary ?? [],
+  });
+  return response;
+}
+
+function customerReasoningCompletion(
+  language: "vi" | "en",
+  fallbackUsed: boolean,
+  existing = false,
+) {
+  if (language === "en") {
+    if (existing) return "The already saved reply has been synchronized.";
+    return fallbackUsed
+      ? "Kael completed a safe alternative reply."
+      : "Kael completed and saved a safe reply.";
+  }
+  if (existing) return "Phản hồi đã lưu được đồng bộ.";
+  return fallbackUsed
+    ? "Kael đã hoàn tất một phản hồi thay thế an toàn."
+    : "Kael đã hoàn tất và lưu phản hồi an toàn.";
 }
 
 export async function readCustomerConversation(

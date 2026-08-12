@@ -3,6 +3,7 @@ import { Alert, Platform, StyleSheet } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { LocalDeal, LocalWorkerGate } from '@nestscout/shared'
 import type { EarningsResponse, NotificationListResponse, WorkerPayoutMethod, WorkerPerformanceInsightsResponse, WorkerProfileResponse, WorkerWithdrawalRequest } from '@/lib/api-types'
+import { color } from '@/design/theme'
 
 let mockWorkflowValue: any
 let mockAuthRole: 'admin' | 'customer' | 'worker'
@@ -252,6 +253,7 @@ function buildNoEarnings(): EarningsResponse {
     total_jobs_paid: 0,
     withdrawal_reserved_amount: 0,
     withdrawn_total: 0,
+    collateral_reserved_amount: 0,
     worker_id: 'worker_test_1',
   }
 }
@@ -301,6 +303,7 @@ function buildSettledEarnings(): EarningsResponse {
     total_jobs_paid: 5,
     withdrawal_reserved_amount: 0,
     withdrawn_total: 0,
+    collateral_reserved_amount: 0,
     worker_id: 'worker_test_1',
   }
 }
@@ -433,6 +436,26 @@ function buildConfirmedCompletionDeal(): LocalDeal {
     completionNotes: 'Ðã thay ? c?m và ki?m tra t?i.',
     completionPhotoUrls: ['job-media/after-1.jpg'],
     status: 'confirmed_by_customer',
+  }
+}
+
+function buildDirectWorkerConfirmationDeal(): LocalDeal {
+  const deal = buildConfirmedCompletionDeal()
+  return {
+    ...deal,
+    backendStatus: 'payment_pending',
+    payment: {
+      collateralAmount: 60_000,
+      directCustomerConfirmedAt: '2026-08-11T09:00:00.000Z',
+      directResponseDeadline: '2026-08-12T09:00:00.000Z',
+      directWorkerConfirmedAt: null,
+      grossAmount: 400_000,
+      platformFee: 60_000,
+      provider: 'direct_worker',
+      status: 'direct_awaiting_worker_confirmation',
+      workerNet: 340_000,
+    },
+    status: 'payment_pending',
   }
 }
 
@@ -1328,7 +1351,9 @@ describe('Worker runtime surface wiring', () => {
       expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledTimes(1)
     })
     expect(screen.getByText('Tin nhắn thuộc phiên trước')).toBeOnTheScreen()
-    expect(screen.getByText('Kael đang xử lý...')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-reasoning-receipt-toggle'))
+      .toHaveProp('accessibilityState', { busy: true, expanded: true })
+    expect(screen.queryByText('Kael đang xử lý...')).toBeNull()
 
     act(() => {
       mockFocusCallback?.()
@@ -1336,7 +1361,8 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-kael-orb-live-thread')).toBeOnTheScreen()
     expect(screen.getByText('Tin nhắn thuộc phiên trước')).toBeOnTheScreen()
-    expect(screen.getByText('Kael đang xử lý...')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-reasoning-receipt-toggle'))
+      .toHaveProp('accessibilityState', { busy: true, expanded: true })
 
     await act(async () => {
       rejectPreviousTurn?.(new Error('previous session failed after refocus'))
@@ -1345,7 +1371,155 @@ describe('Worker runtime surface wiring', () => {
 
     expect(screen.getByTestId('worker-v5-kael-orb-live-thread')).toBeOnTheScreen()
     expect(screen.getByText(/Kael đang không kết nối được/)).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-reasoning-receipt-toggle'))
+      .toHaveProp('accessibilityState', { busy: false, expanded: false })
+    expect(screen.getByText('Suy nghĩ bị gián đoạn')).toBeOnTheScreen()
     expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(1)
+  })
+
+  it('removes the optimistic receipt when a normal reply has no backend receipt', async () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+    await waitFor(() => expect(mockWorkerKaelChatService.list).toHaveBeenCalledWith('normal'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Reply without receipt')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+
+    await screen.findByText('Kael saved this advisory. Keep the next step inside the app.')
+    await waitFor(() => expect(screen.queryByTestId('worker-v5-kael-reasoning-receipt')).toBeNull())
+  })
+
+  it('marks a backend-started receipt as interrupted when its terminal event is missing', async () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    const defaultStreamTurn = mockWorkerKaelChatService.streamTurn.getMockImplementation()
+    mockWorkerKaelChatService.streamTurn.mockImplementation((sessionId: string, input: { message: string }, handlers?: any) => {
+      handlers?.onReasoning?.({
+        receiptId: 'kael-reasoning:worker-incomplete',
+        schemaVersion: 'kael_reasoning.v1',
+        startedAt: '2026-08-10T00:00:00.000Z',
+        type: 'reasoning.started',
+      })
+      return defaultStreamTurn?.(sessionId, input, handlers)
+    })
+
+    render(<WorkerChatSurface />)
+    await waitFor(() => expect(mockWorkerKaelChatService.list).toHaveBeenCalledWith('normal'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Check an incomplete receipt')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+
+    await screen.findByText('Kael saved this advisory. Keep the next step inside the app.')
+    expect(screen.getByTestId('worker-v5-kael-reasoning-receipt-toggle'))
+      .toHaveProp('accessibilityState', { busy: false, expanded: false })
+    expect(screen.getByText('Suy nghĩ bị gián đoạn')).toBeOnTheScreen()
+  })
+
+  it('shows server-received processing feedback in normal Kael chat and lets the Worker reopen it after completion', async () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    let emitReasoning: ((event: unknown) => void) | undefined
+    let resolveTurn: ((response: unknown) => void) | undefined
+    mockWorkerKaelChatService.streamTurn.mockImplementation((
+      _sessionId: string,
+      _input: { message: string },
+      handlers?: { onReasoning?: (event: unknown) => void },
+    ) => {
+      emitReasoning = handlers?.onReasoning
+      return new Promise((resolve) => {
+        resolveTurn = resolve
+      })
+    })
+
+    render(<WorkerChatSurface />)
+    await waitFor(() => expect(mockWorkerKaelChatService.list).toHaveBeenCalledWith('normal'))
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Help with my next step')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+    await waitFor(() => expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledTimes(1))
+    expect(emitReasoning).toEqual(expect.any(Function))
+    await act(async () => {
+      emitReasoning?.({
+        receiptId: 'kael-reasoning:worker-test',
+        schemaVersion: 'kael_reasoning.v1',
+        startedAt: '2026-08-10T00:00:00.000Z',
+        type: 'reasoning.started',
+      })
+      emitReasoning?.({
+        elapsedMs: 320,
+        receiptId: 'kael-reasoning:worker-test',
+        schemaVersion: 'kael_reasoning.v1',
+        step: {
+          detail: null,
+          id: 'context',
+          label: 'Checked the relevant conversation context',
+          sequence: 1,
+          stage: 'context',
+          status: 'completed',
+        },
+        type: 'reasoning.step',
+      })
+      emitReasoning?.({
+        elapsedMs: 560,
+        fallbackUsed: false,
+        receiptId: 'kael-reasoning:worker-test',
+        schemaVersion: 'kael_reasoning.v1',
+        summary: ['Prepared the next safe action from backend feedback.'],
+        type: 'reasoning.completed',
+      })
+      await Promise.resolve()
+    })
+
+    const receipt = await screen.findByTestId('worker-v5-kael-reasoning-receipt')
+    expect(receipt).toBeOnTheScreen()
+    const receiptToggle = screen.getByTestId('worker-v5-kael-reasoning-receipt-toggle')
+    expect(receiptToggle).toHaveProp('accessibilityState', { busy: false, expanded: false })
+    fireEvent.press(receiptToggle)
+    expect(receiptToggle).toHaveProp('accessibilityState', { busy: false, expanded: true })
+    expect(screen.getByText('Checked the relevant conversation context')).toBeOnTheScreen()
+    expect(screen.getByText('Prepared the next safe action from backend feedback.')).toBeOnTheScreen()
+
+    await act(async () => {
+      resolveTurn?.({
+        data: {
+          session: {
+            closed_at: null,
+            id: 'worker-kael-session-1',
+            job_id: null,
+            mode: 'normal',
+            progress: {
+              current_stage: 'worker_assist',
+              failure_reason: null,
+              progress: 1,
+              status: 'completed',
+              updated_at: '2026-08-10T00:00:01.000Z',
+            },
+            safe_metadata: {},
+            started_at: '2026-08-10T00:00:00.000Z',
+            status: 'active',
+            title: 'Safe next step',
+            total_cost_usd: 0,
+            total_turns: 2,
+            worker_id: 'worker_test_1',
+          },
+          turns: [
+            { content_type: 'text', created_at: '2026-08-10T00:00:00.000Z', id: 'worker-receipt-turn', media_refs: [], role: 'worker', safe_metadata: {}, session_id: 'worker-kael-session-1', text_content: 'Help with my next step', turn_index: 1 },
+            { content_type: 'guidance', created_at: '2026-08-10T00:00:01.000Z', id: 'kael-receipt-turn', media_refs: [], role: 'kael', safe_metadata: {}, session_id: 'worker-kael-session-1', text_content: 'Kael has prepared the next safe action.', turn_index: 2 },
+          ],
+        },
+        status: 200,
+        success: true,
+      })
+      await Promise.resolve()
+    })
+
+    await screen.findByText('Kael has prepared the next safe action.')
+    expect(screen.getByTestId('worker-v5-kael-reasoning-receipt')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-toggle'))
+    fireEvent.press(screen.getByTestId('worker-v5-kael-session-new'))
+
+    await waitFor(() => expect(mockWorkerKaelChatService.create).toHaveBeenCalledTimes(2))
+    expect(screen.queryByTestId('worker-v5-kael-reasoning-receipt')).toBeNull()
   })
 
   it('persists and answers normal Kael chat without an active work session', async () => {
@@ -1372,6 +1546,25 @@ describe('Worker runtime surface wiring', () => {
     expect(await screen.findByText('Kael giúp tôi chuẩn bị gì?')).toBeOnTheScreen()
     expect(await screen.findByText('Kael saved this advisory. Keep the next step inside the app.')).toBeOnTheScreen()
   })
+
+  it('shows the safe API error when normal Kael session creation fails', async () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+    mockWorkerKaelChatService.create.mockResolvedValueOnce({
+      code: 'DB_ERROR',
+      error: 'Không thể tạo phiên Kael cho thợ',
+      status: 500,
+      success: false,
+    })
+
+    render(<WorkerChatSurface />)
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Kiểm tra tạo phiên Kael')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+
+    expect(await screen.findByText('Không thể tạo phiên Kael cho thợ')).toBeOnTheScreen()
+    expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['Chat thường', '3.1-kael-chat-normal'],
     ['Nhận việc', '3.2-kael-job-intake'],
@@ -1399,7 +1592,27 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-kael-mode-menu')).toBeOnTheScreen()
   })
 
-  it('restores the Kael mode control hit area and centers its label within the control', () => {
+  it('uses dark text icons for the Worker Kael header controls', () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+
+    expect(screen.getByTestId('worker-v5-back').findAllByProps({ stroke: color.text.primary }).length).toBeGreaterThan(0)
+    expect(screen.getByTestId('worker-v5-kael-session-toggle').findAllByProps({ stroke: color.text.primary }).length).toBeGreaterThan(0)
+  })
+
+  it('matches Customer bold stroke weights for the Worker Kael header controls', () => {
+    buildWorkflow()
+    mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
+
+    render(<WorkerChatSurface />)
+
+    expect(screen.getByTestId('worker-v5-back').findAllByProps({ strokeWidth: 3 }).length).toBeGreaterThan(0)
+    expect(screen.getByTestId('worker-v5-kael-session-toggle').findAllByProps({ strokeWidth: 2.7 }).length).toBeGreaterThan(0)
+  })
+
+  it('matches the Customer Kael mode control hit area and label alignment', () => {
     buildWorkflow()
     mockRouteParams = { ns_worker_screen: '3.1-kael-chat-normal' }
 
@@ -1409,7 +1622,7 @@ describe('Worker runtime surface wiring', () => {
       alignItems: 'center',
       height: 44,
       justifyContent: 'center',
-      width: 120,
+      width: 114,
     })
     expect(
       StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-toggle').props.style),
@@ -1421,13 +1634,15 @@ describe('Worker runtime surface wiring', () => {
       outlineColor: 'transparent',
       outlineStyle: 'solid',
       outlineWidth: 0,
+      paddingHorizontal: 11,
     })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-active-mode').props.style)).toMatchObject({
       alignSelf: 'stretch',
-      fontSize: 15,
+      fontSize: 14,
       includeFontPadding: false,
       textAlign: 'center',
       textAlignVertical: 'center',
+      transform: [{ translateX: -12 }],
     })
 
     fireEvent.press(screen.getByTestId('worker-v5-kael-mode-toggle'))
@@ -1455,18 +1670,19 @@ describe('Worker runtime surface wiring', () => {
     expect(modeMenu).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-mode-menu-options')).toBeOnTheScreen()
     expect(StyleSheet.flatten(modeMenu.props.style)).toMatchObject({
-      backgroundColor: 'rgba(255,255,255,0.92)',
+      backgroundColor: 'rgba(255,253,248,0.78)',
       borderColor: 'rgba(255,255,255,0.88)',
-      borderRadius: 23,
+      borderRadius: 18,
       borderWidth: 1,
       maxWidth: 208,
       width: '59%',
     })
-    expect(screen.queryByTestId('worker-v5-kael-mode-menu-skin')).toBeNull()
-    expect(screen.queryByTestId('worker-v5-kael-mode-menu-mint-aura')).toBeNull()
-    expect(screen.getByTestId('worker-v5-kael-mode-menu-top-light')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-kael-mode-menu-inner-shadow')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-mode-menu-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-mode-menu-mint-aura')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-kael-mode-menu-sheen')).toBeNull()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-normal').props.style)).toMatchObject({
+      backgroundColor: '#FFFFFF',
+    })
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-mode-menu-intake').props.style)).toMatchObject({
       minHeight: 46,
     })
@@ -2120,12 +2336,32 @@ describe('Worker runtime surface wiring', () => {
       await Promise.resolve()
     })
     expect(screen.getByTestId('worker-v5-kael-session-menu')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-menu-shell').props.style).maxWidth).toBeLessThanOrEqual(224)
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-menu-shell').props.style)).toMatchObject({
+      maxWidth: 208,
+      top: 74,
+      width: '59%',
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-menu-glass').props.style)).toMatchObject({
+      borderRadius: 16,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-list').props.style)).toMatchObject({
+      marginTop: 6,
+      maxHeight: 138,
+    })
     expect(screen.getByText('Cuộc trò chuyện mới')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-new-label').props.style))
+      .toMatchObject({ color: color.brand.primary, fontSize: 13 })
+    expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('height', 21)
+    expect(screen.getByTestId('worker-v5-kael-session-new-plus')).toHaveProp('width', 21)
     expect(screen.queryByText('Phiên Kael')).toBeNull()
     expect(screen.getByText('Kiểm tra phạm vi lavabo')).toBeOnTheScreen()
     expect(screen.queryByText('2')).toBeNull()
     expect(screen.getByTestId('worker-v5-kael-session-worker-kael-session-2')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-session-row-worker-kael-session-2').props.style))
+      .toMatchObject({
+        backgroundColor: 'rgba(231, 252, 247, 0.98)',
+        borderColor: '#08AF9C',
+      })
 
     const prefetchedCalls = mockWorkerKaelChatService.get.mock.calls.length
     fireEvent.press(screen.getByTestId('worker-v5-kael-session-worker-kael-session-2'))
@@ -2609,7 +2845,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-completion-submitted-status')).toBeNull()
   })
 
-  it('keeps the status marker static and gives the assigned worker a cash confirmation action', async () => {
+  it('keeps the status marker static and lets the worker answer the direct-payment receipt', async () => {
     buildWorkflow({ deal: buildCompletedByWorkerDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const pending = render(<WorkerJobsSurface />)
@@ -2618,14 +2854,14 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByTestId('worker-v5-completion-submitted-status-waiting-dots')).toBeNull()
     pending.unmount()
 
-    buildWorkflow({ deal: buildConfirmedCompletionDeal() })
+    buildWorkflow({ deal: buildDirectWorkerConfirmationDeal() })
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
     const confirmed = render(<WorkerJobsSurface />)
 
-    expect(screen.getByTestId('worker-v5-completion-cash-payment-action')).toHaveTextContent('Xác nhận đã nhận tiền mặt')
+    expect(screen.getByTestId('worker-v5-completion-direct-payment-action')).toHaveTextContent('Xác nhận đã nhận tiền trực tiếp')
     expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
-    fireEvent.press(screen.getByTestId('worker-v5-completion-cash-payment-action'))
-    await waitFor(() => expect(mockWorkerConfirmCashPayment).toHaveBeenCalledTimes(1))
+    fireEvent.press(screen.getByTestId('worker-v5-completion-direct-payment-action'))
+    await waitFor(() => expect(mockWorkerConfirmCashPayment).toHaveBeenCalledWith(true))
     expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
     confirmed.unmount()
 
@@ -2639,14 +2875,25 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.queryByText('Chờ sổ thu nhập đồng bộ')).toBeNull()
   })
 
-  it('shows the cash-confirmation failure instead of leaving the worker without feedback', () => {
-    buildWorkflow({ deal: buildConfirmedCompletionDeal() })
-    mockWorkflowValue.state.lastError = 'Không thể xác nhận thanh toán tiền mặt.'
+  it('keeps the job in payment when the worker reports that direct payment was not received', async () => {
+    buildWorkflow({ deal: buildDirectWorkerConfirmationDeal() })
+    mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
+
+    render(<WorkerJobsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-completion-direct-payment-problem'))
+
+    await waitFor(() => expect(mockWorkerConfirmCashPayment).toHaveBeenCalledWith(false))
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.12-case-closed')
+  })
+
+  it('shows the direct-payment confirmation failure instead of leaving the worker without feedback', () => {
+    buildWorkflow({ deal: buildDirectWorkerConfirmationDeal() })
+    mockWorkflowValue.state.lastError = 'Không thể lưu xác nhận thanh toán trực tiếp.'
     mockRouteParams = { ns_worker_screen: '2.11-completion-submitted' }
 
     render(<WorkerJobsSurface />)
 
-    expect(screen.getByText('Không thể xác nhận thanh toán tiền mặt.')).toBeOnTheScreen()
+    expect(screen.getByText('Không thể lưu xác nhận thanh toán trực tiếp.')).toBeOnTheScreen()
   })
 
   it('renders the settled case from a real recorded payment', () => {
@@ -2975,7 +3222,12 @@ describe('Worker runtime surface wiring', () => {
     const pending = render(<WorkerEarningsSurface />)
     expect(screen.getByTestId('worker-v5-earnings-amount')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-total-value')).toHaveTextContent('0đ')
-    expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('Đang tải')
+    expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('0đ')
+    expect(screen.getByText('Chưa có số liệu chi trả')).toBeOnTheScreen()
+    for (const period of ['day', 'week', 'month', 'year'] as const) {
+      fireEvent.press(screen.getByTestId(`worker-v5-earnings-period-${period}`))
+      expect(screen.getByTestId('worker-v5-earnings-metric-withdrawn-value')).toHaveTextContent('0đ')
+    }
     expect(screen.getByTestId('worker-v5-earnings-metric-fee-value')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('0đ')
     expect(screen.getByTestId('worker-v5-earnings-chart').props.accessibilityLabel).toBe('Đang tải biểu đồ thu nhập')
@@ -3469,6 +3721,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-reliability-stat-arrival-value')).not.toHaveTextContent(/^0%$/)
     expect(screen.getByTestId('worker-v5-reliability-axis-meta-0')).not.toHaveTextContent(/0\/100/)
     expect(screen.getByTestId('worker-v5-reliability-axis-score-0')).not.toHaveTextContent(/^0\/100$/)
+    expect(screen.queryByTestId('worker-v5-kael-draft-card')).toBeNull()
     reliability.unmount()
 
     mockRouteParams = { ns_worker_screen: '5.5-account-utilities' }

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { mobileRuntimeConfig } from './runtime-config'
+import { generateClientRequestId } from './client-request-id'
 import {
   readResponseTextBounded,
   ResponseBodyInvalidEncodingError,
@@ -19,8 +20,10 @@ const MAX_API_RESPONSE_BYTES = 2 * 1024 * 1024
 const MAX_API_ERROR_LENGTH = 512
 const API_ERROR_CODE_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/
 const API_ERROR_CONTROL_PATTERN = /[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF\uFFF9-\uFFFB]/u
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,160}$/
 const MOBILE_API_BASE_PATH = /(?:\/functions\/v1)?\/mobile-api$/i
 const KAEL_CHAT_CONFIRM_PATH = /^\/kael\/chat\/[^/]+\/confirm$/
+const KAEL_CHAT_INTAKE_CONFIRMATION_PATH = /^\/kael\/chat\/[^/]+\/intake-confirmation$/
 const CUSTOMER_KAEL_TURN_PATH = /^\/me\/kael\/conversations\/[^/]+\/turn$/
 
 export type ApiResult<T> =
@@ -85,7 +88,7 @@ async function request<T>(
 
   const retryBudget = isRetrySafeRequest(method, path, body) ? MAX_RETRIES : 0
   const timeoutMs = requestTimeoutMs(method, path)
-  const idempotencyKey = idempotencyKeyForRequest(method, path, body)
+  const idempotencyKey = idempotencyKeyForRequest(method, body)
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController()
@@ -93,10 +96,12 @@ async function request<T>(
     let responseStatus = 0
 
     try {
-      const headers = accessToken === undefined
+      const authHeaders = accessToken === undefined
         ? await waitForAbort(getMobileApiAuthHeaders(), controller.signal)
         : createMobileApiHeaders(accessToken)
-      if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
+      const headers = idempotencyKey
+        ? { ...authHeaders, 'Idempotency-Key': idempotencyKey }
+        : authHeaders
       const url = `${API_BASE_URL}${path}`
 
       const response = await fetch(url, {
@@ -112,7 +117,7 @@ async function request<T>(
       const json = safeParseJsonObject(responseText)
 
       if (!response.ok) {
-        if (attempt < retryBudget && shouldRetryResponse(response.status)) {
+        if (attempt < retryBudget && shouldRetryResponse(response.status, method, path)) {
           await waitForRetry(method, path, attempt, `HTTP_${response.status}`)
           continue
         }
@@ -223,22 +228,6 @@ export const api = {
   },
 }
 
-
-function idempotencyKeyForRequest(
-  method: string,
-  path: string,
-  body: unknown,
-): string | null {
-  if (method === 'GET' || method === 'HEAD') return null
-  if (typeof body === 'object' && body !== null && !Array.isArray(body)) {
-    const clientRequestId = (body as Record<string, unknown>).client_request_id
-    if (typeof clientRequestId === 'string' && clientRequestId.trim()) {
-      return `mobile:${clientRequestId.trim()}`.slice(0, 160)
-    }
-  }
-  return `mobile:${method.toLowerCase()}:${crypto.randomUUID()}`.slice(0, 160)
-}
-
 function createMobileApiHeaders(accessToken?: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -291,7 +280,7 @@ function isRetrySafeRequest(method: string, path: string, body: unknown) {
     path === '/me/kael/conversations' &&
     hasClientRequestId(body)
   ) return true
-  if (method === 'POST' && KAEL_CHAT_CONFIRM_PATH.test(path)) return true
+  if (method === 'POST' && isKaelChatDecisionPath(path)) return true
   if (
     method === 'POST' &&
     /^\/jobs\/[^/]+\/scope-change$/.test(path) &&
@@ -326,6 +315,20 @@ function hasClientRequestId(body: unknown) {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return false
   const clientRequestId = (body as Record<string, unknown>).client_request_id
   return typeof clientRequestId === 'string' && clientRequestId.trim().length > 0
+}
+
+function idempotencyKeyForRequest(method: string, body: unknown): string | null {
+  if (method === 'GET' || method === 'HEAD') return null
+  const bodyRequestId = typeof body === 'object' && body !== null && !Array.isArray(body)
+    ? (body as Record<string, unknown>).client_request_id
+    : null
+  if (typeof bodyRequestId === 'string' && IDEMPOTENCY_KEY_PATTERN.test(bodyRequestId.trim())) {
+    const stableRequestId = bodyRequestId.trim()
+    return stableRequestId.startsWith('mobile:')
+      ? stableRequestId
+      : `mobile:${stableRequestId}`
+  }
+  return `mobile:${method.toLowerCase()}:${generateClientRequestId()}`
 }
 
 async function waitForAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -368,7 +371,8 @@ function abortError() {
   return error
 }
 
-function shouldRetryResponse(status: number) {
+function shouldRetryResponse(status: number, method: string, path: string) {
+  if (status >= 500 && method === 'POST' && isKaelChatDecisionPath(path)) return false
   return status === 408 || status === 425 || status === 429 || status >= 500
 }
 
@@ -380,7 +384,7 @@ function shouldRetryRequestError(err: unknown, method: string, path: string) {
   if (
     isAbortError(err) &&
     method === 'POST' &&
-    (path === '/kael/chat' || KAEL_CHAT_CONFIRM_PATH.test(path))
+    (path === '/kael/chat' || isKaelChatDecisionPath(path))
   ) return false
   return shouldRetryError(err)
 }
@@ -388,9 +392,13 @@ function shouldRetryRequestError(err: unknown, method: string, path: string) {
 function requestTimeoutMs(method: string, path: string) {
   if (method !== 'POST') return TIMEOUT_MS
   if (path === '/kael/chat') return KAEL_CHAT_CREATE_TIMEOUT_MS
-  if (KAEL_CHAT_CONFIRM_PATH.test(path)) return KAEL_CHAT_CONFIRM_TIMEOUT_MS
+  if (isKaelChatDecisionPath(path)) return KAEL_CHAT_CONFIRM_TIMEOUT_MS
   if (CUSTOMER_KAEL_TURN_PATH.test(path)) return CUSTOMER_KAEL_TURN_TIMEOUT_MS
   return TIMEOUT_MS
+}
+
+function isKaelChatDecisionPath(path: string) {
+  return KAEL_CHAT_CONFIRM_PATH.test(path) || KAEL_CHAT_INTAKE_CONFIRMATION_PATH.test(path)
 }
 
 async function waitForRetry(method: string, path: string, attempt: number, reason: string) {

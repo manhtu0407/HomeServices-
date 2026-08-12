@@ -1,6 +1,9 @@
 import type { ComplexityLevel, JobStatus, ScopeChangeStatus, ServiceType } from "../../../../_shared/domain.ts";
 import type { EdgeAddressAccessView } from "./job.ts";
 import type { EdgeKaelChatProgressResponse } from "./kael-chat.ts";
+import type { EdgeKaelMatchingContracts } from "../../../../_shared/contracts.ts";
+
+type MatchingState = EdgeKaelMatchingContracts["matchingState"];
 
 export type EdgeJobDetailResponse = {
   job: {
@@ -30,6 +33,7 @@ export type EdgeJobDetailResponse = {
     kael_progress: EdgeKaelChatProgressResponse["progress"];
     final_price: number | null;
     payment_rail_available: boolean;
+    payment_rail_provider: "platform_bank_manual" | "sepay_vietqr" | null;
     payment_status:
       | "not_started"
       | "code_requested"
@@ -41,6 +45,15 @@ export type EdgeJobDetailResponse = {
       | "expired"
       | "failed"
       | "reconciled"
+      | "manual_qr_ready"
+      | "manual_customer_claimed"
+      | "manual_reconcile_required"
+      | "manual_verified"
+      | "direct_awaiting_confirmation"
+      | "direct_awaiting_customer_confirmation"
+      | "direct_awaiting_worker_confirmation"
+      | "direct_reconcile_required"
+      | "direct_paid"
       | null;
     payment_provider: string | null;
     payment_code: string | null;
@@ -52,6 +65,21 @@ export type EdgeJobDetailResponse = {
     gross_amount: number | null;
     platform_fee: number | null;
     worker_net: number | null;
+    payment_receipt: {
+      method: "platform_bank_manual" | "direct_worker";
+      status: string;
+      gross_amount: number;
+      customer_transfer_claimed_at: string | null;
+      customer_transferred_at: string | null;
+      response_deadline: string | null;
+      hold_until: string | null;
+      customer_confirmed_at: string | null;
+      worker_confirmed_at: string | null;
+      collateral_amount: number | null;
+      bank_code: string | null;
+      account_holder: string | null;
+      account_masked: string | null;
+    } | null;
     completion_notes: string | null;
     completion_photo_urls: string[];
     created_at: string;
@@ -75,6 +103,7 @@ export type EdgeJobDetailResponse = {
     active_count: number;
     seconds_remaining: number | null;
   } | null;
+  matching_state: MatchingState | null;
   current_scope_change: {
     id: string;
     status: ScopeChangeStatus;

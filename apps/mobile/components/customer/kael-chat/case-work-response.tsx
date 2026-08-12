@@ -49,7 +49,6 @@ export function CaseWorkResponse({
         <Text
           accessibilityLabel={`${model.status}`}
           accessibilityLiveRegion="polite"
-          numberOfLines={1}
           style={[styles.status, compact ? styles.statusCompact : null, { color: tokens.muted }]}
           testID="customer-v21-case-work-response-status"
         >

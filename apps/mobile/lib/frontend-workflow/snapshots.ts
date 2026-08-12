@@ -58,18 +58,21 @@ export function createJobResponseToSnapshot(data: CreateJobResponse, draft: Loca
       : null,
     scopeChange: null,
     finalPrice: data.final_price ?? null,
+    matchingState: null,
   }
 }
 
 export function confirmSearchToSnapshot(data: ConfirmSearchResponse, deal: NonNullable<LocalWorkflowState['deal']>): LocalRemoteJobSnapshot {
   const snapshot = dealToSnapshot(deal)
   const broadcastSent = data.broadcast_sent
+  const matchingState = data.matching_state ?? null
   return {
     ...snapshot,
     backendStatus: data.status,
     status: toLocalDealStatus(data.status),
     workerProfile: workerProfileSummaryFromApi(data.worker),
-    broadcast: {
+    matchingState,
+    broadcast: matchingState?.stage === 'awaiting_choice' ? null : {
       status: broadcastSent ? 'sent' : 'expired',
       jobId: data.job_id,
       serviceType: deal.draft.serviceType as ServiceType,
@@ -140,6 +143,7 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
     scopeChange: scopeChangeFromJobDetail(data),
     finalPrice: job.final_price,
     paymentRailAvailable: job.payment_rail_available === true,
+    paymentRailProvider: job.payment_rail_provider ?? null,
     payment: paymentFromJob(job),
     customerEvidencePhotoUrls,
     fieldEvidencePhotoUrls,
@@ -153,6 +157,7 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
     confirmedAt: job.confirmed_at,
     paidAt: job.paid_at,
     reviewedAt: job.reviewed_at,
+    matchingState: data.matching_state,
   }
 }
 
@@ -214,6 +219,7 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
     scopeChange: null,
     finalPrice: job.final_price,
     paymentRailAvailable: false,
+    paymentRailProvider: null,
     payment: paymentFromJob(job),
     customerEvidencePhotoUrls: job.customer_evidence_photo_urls,
     fieldEvidencePhotoUrls: job.field_evidence_photo_urls,
@@ -223,11 +229,15 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
     createdAt: job.created_at,
     matchedAt: job.matched_at,
     completedAt: job.completed_at,
+    matchingState: null,
   }
 }
 
 function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['jobs'][number]): LocalDealPayment | null {
-  const paymentStatus = job.payment_status ?? paymentStatusFromJobStatus(job.status)
+  const receipt = 'payment_receipt' in job ? job.payment_receipt ?? null : null
+  const paymentStatus = paymentStatusFromReceipt(receipt?.status)
+    ?? job.payment_status
+    ?? paymentStatusFromJobStatus(job.status)
   const grossAmount = numericOrNull(job.gross_amount)
   const platformFee = numericOrNull(job.platform_fee)
   const workerNet = numericOrNull(job.worker_net)
@@ -260,6 +270,30 @@ function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['j
     status: paymentStatus ?? 'not_started',
     transferContent: job.payment_transfer_content ?? null,
     workerNet,
+    holdUntil: receipt?.hold_until ?? null,
+    directResponseDeadline: receipt?.response_deadline ?? null,
+    directCustomerConfirmedAt: receipt?.customer_confirmed_at ?? null,
+    directWorkerConfirmedAt: receipt?.worker_confirmed_at ?? null,
+    collateralAmount: numericOrNull(receipt?.collateral_amount),
+    bankCode: receipt?.bank_code ?? null,
+    accountHolder: receipt?.account_holder ?? null,
+    accountMasked: receipt?.account_masked ?? null,
+  }
+}
+
+function paymentStatusFromReceipt(status: string | null | undefined): LocalDealPayment['status'] | null {
+  switch (status) {
+    case 'manual_qr_ready':
+    case 'manual_customer_claimed':
+    case 'manual_reconcile_required':
+    case 'manual_verified':
+    case 'direct_awaiting_customer_confirmation':
+    case 'direct_awaiting_worker_confirmation':
+    case 'direct_reconcile_required':
+    case 'direct_paid':
+      return status
+    default:
+      return null
   }
 }
 
@@ -290,6 +324,7 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     scopeChange: deal.scopeChange,
     finalPrice: deal.finalPrice ?? null,
     paymentRailAvailable: deal.paymentRailAvailable === true,
+    paymentRailProvider: deal.paymentRailProvider ?? null,
     payment: deal.payment ?? null,
     customerEvidencePhotoUrls: deal.customerEvidencePhotoUrls ?? [],
     fieldEvidencePhotoUrls: deal.fieldEvidencePhotoUrls ?? [],
@@ -303,6 +338,7 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     confirmedAt: deal.confirmedAt ?? null,
     paidAt: deal.paidAt ?? null,
     reviewedAt: deal.reviewedAt ?? null,
+    matchingState: deal.matchingState ?? null,
   }
 }
 

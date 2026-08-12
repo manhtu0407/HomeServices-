@@ -34,6 +34,128 @@ export type KaelEstimateAnalysisReceipt = {
   };
 };
 
+type KaelPriceReasoningReceipt = {
+  schema_version: "price_reasoning_receipt.v1";
+  receipt_id: string;
+  problem: {
+    confirmed_facts: string[];
+    possible_causes: {
+      statement: string;
+      basis: ("customer_report" | "visual_evidence" | "service_profile" | "knowledge")[];
+      confidence: "low" | "medium" | "high";
+    }[];
+    unknowns: string[];
+  };
+  scope: {
+    included: string[];
+    conditional: string[];
+    excluded: string[];
+  };
+  costs: {
+    currency: "VND";
+    total_min: number;
+    total_max: number;
+    reconciliation: "package_total" | "exact";
+    components: {
+      kind:
+        | "service_package"
+        | "labor"
+        | "travel"
+        | "materials"
+        | "replacement_parts"
+        | "equipment"
+        | "other";
+      status:
+        | "priced"
+        | "included_unitemized"
+        | "conditional_unpriced"
+        | "excluded"
+        | "undetermined";
+      amount_min: number | null;
+      amount_max: number | null;
+      explanation: string;
+    }[];
+  };
+  scenarios: {
+    low: { total: number; conditions: string[]; scope: string[] };
+    high: { total: number; conditions: string[]; scope: string[] };
+  };
+  fairness: {
+    price_source:
+      | "perplexity_validated"
+      | "baseline_with_market"
+      | "baseline_only"
+      | "inspection_required";
+    confidence: "low" | "medium" | "high";
+    market_source_count: number | null;
+    high_trust_source_count: number | null;
+    quorum_met: boolean | null;
+    cap_statement: string;
+    remaining_uncertainty: string[];
+  };
+};
+
+type MatchingState = {
+  strategy: "pending_choice" | "general" | "saved_worker_first";
+  stage:
+    | "awaiting_choice"
+    | "saved_worker_search"
+    | "general_search"
+    | "candidate_ready"
+    | "recovery_required"
+    | "exhausted"
+    | "stopped";
+  checks: {
+    kind: "service_capability" | "service_area" | "availability";
+    state: "pending" | "verified";
+  }[];
+  batch: {
+    attempt: number;
+    recipient_count: number;
+    deadline_at: string | null;
+    seconds_remaining: number | null;
+    strategy: "saved_worker" | "general";
+  } | null;
+  event_history: {
+    kind:
+      | "awaiting_customer_choice"
+      | "saved_worker_requested"
+      | "saved_worker_no_response"
+      | "saved_worker_declined"
+      | "saved_worker_unavailable"
+      | "search_expanded"
+      | "general_batch_sent"
+      | "matching_recovery_required"
+      | "no_worker_found"
+      | "candidate_ready"
+      | "search_stopped";
+    occurred_at: string;
+    recipient_count?: number;
+  }[];
+};
+
+type FavoriteWorkerForMatching = {
+  id: string;
+  avatar_url: string | null;
+  display_name: string | null;
+  rating: number | null;
+  total_jobs: number;
+  availability: "available" | "unavailable";
+  availability_reason: "not_available_for_this_request" | null;
+};
+
+type FavoriteWorkersForMatchingResponse = {
+  job_id: string;
+  workers: FavoriteWorkerForMatching[];
+};
+
+export type EdgeKaelMatchingContracts = {
+  priceReasoningReceipt: KaelPriceReasoningReceipt;
+  matchingState: MatchingState;
+  favoriteWorker: FavoriteWorkerForMatching;
+  favoriteWorkersResponse: FavoriteWorkersForMatchingResponse;
+};
+
 export type KaelEstimate = {
   service_type: ServiceType;
   problem_category: string;
@@ -50,6 +172,7 @@ export type KaelEstimate = {
   needs_inspection_reason?: string | null;
   market_signals?: string | null;
   analysis_receipt?: KaelEstimateAnalysisReceipt | null;
+  price_reasoning_receipt?: KaelPriceReasoningReceipt | null;
 };
 
 export type CreateJobResponse = {

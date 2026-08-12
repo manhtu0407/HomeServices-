@@ -3,17 +3,19 @@ import {
   extractKnownDistrictLabel,
   toLocalDealStatus,
   type JobCreateInput,
+  type JobMatchingPreferenceInput,
   type LocalDealDraft,
   type LocalWorkflowAction,
   type LocalWorkflowState,
   type UserRole,
 } from '@nestscout/shared'
 import type { ApiResult } from '../api'
-import type { JobDetailResponse } from '../api-types'
+import type { FavoriteWorkerForMatching, JobDetailResponse } from '../api-types'
 import type { AppLanguage } from '../app-language'
 import {
   clearStableClientRequestId,
   stableClientRequestId,
+  shouldRetainClientRequestId,
   type PendingClientRequestId,
 } from '../client-request-id'
 import {
@@ -40,6 +42,7 @@ type CustomerJobActionsInput = {
   dispatch: Dispatch<LocalWorkflowAction>
   language: AppLanguage
   pendingJobCreateClientRequestRef: RefObject<PendingClientRequestId | null>
+  pendingMatchingPreferenceClientRequestRef: RefObject<PendingClientRequestId | null>
   role: UserRole | null
   sessionUserId: string | null
   setRemoteError: (error: string) => false
@@ -50,6 +53,7 @@ export function useCustomerJobActions({
   dispatch,
   language,
   pendingJobCreateClientRequestRef,
+  pendingMatchingPreferenceClientRequestRef,
   role,
   sessionUserId,
   setRemoteError,
@@ -159,6 +163,55 @@ export function useCustomerJobActions({
     return true
   }, [dispatch, setRemoteError, stateRef])
 
+  const listFavoriteWorkersForMatching = useCallback(async (): Promise<FavoriteWorkerForMatching[] | null> => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) {
+      setRemoteError('Chưa có yêu cầu để tải thợ đã lưu')
+      return null
+    }
+    const result = await jobService.listFavoriteWorkersForMatching(jobId)
+    if (!result.success) {
+      setRemoteError(result.error)
+      return null
+    }
+    return result.data.workers
+  }, [setRemoteError, stateRef])
+
+  const setMatchingPreference = useCallback(async (
+    input: Omit<JobMatchingPreferenceInput, 'client_request_id'>,
+  ) => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Chưa có yêu cầu để chọn cách tìm thợ')
+    if (input.mode === 'saved_worker_first' && !input.worker_id) {
+      return setRemoteError('Chọn một thợ đã lưu trước khi tiếp tục')
+    }
+    const fingerprint = JSON.stringify({
+      auto_general: input.auto_general,
+      job_id: jobId,
+      mode: input.mode,
+      worker_id: input.worker_id ?? null,
+    })
+    const result = await jobService.setMatchingPreference(jobId, {
+      ...input,
+      client_request_id: stableClientRequestId(pendingMatchingPreferenceClientRequestRef, fingerprint),
+    })
+    if (!result.success) {
+      if (!shouldRetainClientRequestId(result)) {
+        clearStableClientRequestId(pendingMatchingPreferenceClientRequestRef, fingerprint)
+      }
+      return setRemoteError(result.error)
+    }
+    clearStableClientRequestId(pendingMatchingPreferenceClientRequestRef, fingerprint)
+    const existing = stateRef.current.deal
+    if (existing) {
+      dispatch({
+        type: 'hydrate_remote_job',
+        job: confirmSearchToSnapshot(result.data, existing),
+      })
+    }
+    return true
+  }, [dispatch, pendingMatchingPreferenceClientRequestRef, setRemoteError, stateRef])
+
   const cancelRemoteJob = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) {
@@ -221,6 +274,8 @@ export function useCustomerJobActions({
     createRemoteJobFromDraft,
     hydrateCustomerActiveJob,
     hydrateRemoteJobById,
+    listFavoriteWorkersForMatching,
     refreshCurrentJob,
+    setMatchingPreference,
   }
 }

@@ -8,6 +8,7 @@ import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { ProfileUsageRankingMark } from './profile-ranking-mark'
+import { ProfileProgressBar } from './profile-progress-bar'
 import { customerV21ProfileJourneyStyles as profileJourneyStyles } from './profile-journey-styles'
 import { customerV21ProfileSettingsGroupStyles as settingsGroupStyles } from './profile-settings-group-styles'
 import { ProfileAuraCard, ProfileFormulaMintSurface } from './profile-utility-surfaces'
@@ -97,7 +98,7 @@ export function CustomerProfileOverviewView({
   rankingBody,
   rankingLabel,
   rankingMetaLabel,
-  rankingProgressNode,
+  rankingProgressPercent,
   rankingProgressSourceLabel,
   settingsGroups,
   tokens,
@@ -119,7 +120,7 @@ export function CustomerProfileOverviewView({
   rankingBody: string
   rankingLabel: string
   rankingMetaLabel: string
-  rankingProgressNode: ReactNode
+  rankingProgressPercent: number
   rankingProgressSourceLabel: string
   settingsGroups: ProfileSettingsGroupModel[]
   tokens: CustomerThemeTokens
@@ -282,7 +283,9 @@ export function CustomerProfileOverviewView({
                     <Text numberOfLines={1} style={[profileUtilityStyles.profileRankingEntrySignalText, { color: tokens.muted }]}>{rankingProgressSourceLabel}</Text>
                   </View>
                 </View>
-                <View style={profileUtilityStyles.profileRankingEntryProgress}>{rankingProgressNode}</View>
+                <View style={profileUtilityStyles.profileRankingEntryProgress}>
+                  <ProfileProgressBar percent={rankingProgressPercent} testID="customer-v21-profile-ranking-entry-progress" />
+                </View>
               </View>
             </ProfileAuraCard>
           )}

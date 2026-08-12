@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
-import { buildHarnessRelease, checkHarnessRelease, edgeFunctionBundles, resolveReleaseArtifactPath } from './release-bundle.mjs'
+import { assertCleanReleaseWorktree, buildHarnessRelease, checkHarnessRelease, edgeFunctionBundles, resolveReleaseArtifactPath } from './release-bundle.mjs'
 
 test('builds a deterministic immutable release bundle', () => {
   const input = { environment: 'preview', gitSha: 'a'.repeat(40) }
@@ -36,6 +37,25 @@ test('keeps release artifacts inside the repository root', () => {
       resolve(root, 'artifacts/harness/release-manifest.json'),
     )
     assert.throws(() => resolveReleaseArtifactPath(root, '../outside.json'), /escapes repository root/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('refuses a production release from a dirty Git worktree', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'harness-release-clean-worktree-'))
+  try {
+    runGit(root, ['init', '--quiet'])
+    runGit(root, ['config', 'user.email', 'harness@example.test'])
+    runGit(root, ['config', 'user.name', 'Harness Test'])
+    write(root, 'tracked.txt', 'baseline\n')
+    runGit(root, ['add', 'tracked.txt'])
+    runGit(root, ['commit', '--quiet', '-m', 'baseline'])
+
+    assert.doesNotThrow(() => assertCleanReleaseWorktree(root))
+
+    write(root, 'untracked.txt', 'dirty\n')
+    assert.throws(() => assertCleanReleaseWorktree(root), /clean Git worktree/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -84,4 +104,8 @@ function write(root, path, content) {
   const absolute = resolve(root, path)
   mkdirSync(dirname(absolute), { recursive: true })
   writeFileSync(absolute, content)
+}
+
+function runGit(root, args) {
+  execFileSync('git', args, { cwd: root, stdio: 'ignore' })
 }

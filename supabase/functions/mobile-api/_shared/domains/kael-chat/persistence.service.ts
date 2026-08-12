@@ -36,6 +36,7 @@ export async function createKaelChatSession(
         case_phase: "analysis",
         diagnosis_scope: initialDiagnosisScope,
         scheduled_at: input.scheduled_at ?? null,
+        preferred_worker_id: input.preferred_worker_id ?? null,
         safe_metadata: metadata,
         client_request_id: input.client_request_id ?? null,
       })

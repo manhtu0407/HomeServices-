@@ -6,6 +6,7 @@ export const ADMIN_CAPABILITY_VALUES = [
   "workers.review",
   "workers.manage",
   "transactions.read",
+  "finance.reconcile",
   "payouts.read",
   "payouts.process",
   "team.read",
@@ -78,7 +79,7 @@ export const adminSubAdminAccountSearchQuerySchema = z.object({
 
 export const adminSubAdminAccessSchema = z.object({
   action: z.enum(["grant", "update", "revoke"]),
-  capabilities: z.array(z.enum(ADMIN_CAPABILITY_VALUES)).max(8),
+  capabilities: z.array(z.enum(ADMIN_CAPABILITY_VALUES)).max(9),
   reason: z.string().trim().min(3).max(500).optional(),
 }).strict().superRefine((value, context) => {
   if ((value.action === "grant" || value.action === "update") && value.capabilities.length === 0) {

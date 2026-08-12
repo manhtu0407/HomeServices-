@@ -16,19 +16,18 @@ const paymentDisplayModel = readFileSync(
 )
 
 describe('CustomerPaymentRailSurface', () => {
-  it('uses the standard Mint Aura behind the payment card without affecting the QR frame', () => {
-    expect(paymentRailSurface).toContain("import { CaseWideMintAura } from '../ui/aura-surfaces'")
-    expect(paymentRailSurface).toContain('<CaseWideMintAura')
-    expect(paymentRailSurface).toContain('testID={`${testID}-mint-aura`}')
-    expect(paymentRailSurface).toContain('style={styles.surfaceContent}')
+  it('uses a solid receipt surface and an isolated QR frame', () => {
+    expect(paymentRailSurface).toContain('backgroundColor: tokens.raised')
     expect(paymentRailSurface).toContain("backgroundColor: '#ffffff'")
+    expect(paymentRailSurface).toContain('const QR_BOX_SIZE = 256')
     expect(paymentRailSurface).not.toContain('useSharedValue')
   })
 
-  it('shows a recorded cash receipt without adding a customer cash-confirmation action', () => {
-    expect(paymentRailSurface).toContain("deal.payment?.provider === 'cash' && deal.payment.status === 'cash_confirmed'")
-    expect(paymentRailSurface).toContain('customer-v21-case-cash-payment-confirmed')
-    expect(paymentRailSurface).not.toContain('customer-v21-case-cash-payment-action')
+  it('requires a direct-payment response from the customer without legacy cash authority', () => {
+    expect(paymentRailSurface).toContain("deal.payment?.provider === 'direct_worker'")
+    expect(paymentRailSurface).toContain('customer-v21-case-direct-payment-confirm')
+    expect(paymentRailSurface).toContain('customer-v21-case-direct-payment-problem')
+    expect(paymentRailSurface).not.toContain('cash_confirmed')
   })
 
   it('keeps provider and infrastructure names out of customer-facing payment copy', () => {

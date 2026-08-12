@@ -31,66 +31,180 @@ const ASSISTANT_ANSWER_KEYS = [
   "completion",
 ] as const;
 const ASSISTANT_ANSWER_KEY_SET = new Set<string>(ASSISTANT_ANSWER_KEYS);
-const MAX_RECOVERY_SCAN_LENGTH = 64 * 1024;
+const ASSISTANT_WRAPPER_KEYS = ["result", "data", "output", "response"] as const;
 const MAX_ASSISTANT_ANSWER_LENGTH = 900;
+const MAX_ASSISTANT_WRAPPER_ITEMS = 4;
+const MAX_ASSISTANT_RECOVERY_DEPTH = 4;
+const MAX_ASSISTANT_RECOVERY_ITEMS = 4;
+const MAX_RECOVERY_SCAN_LENGTH = 64 * 1024;
+const ASSISTANT_INTERNAL_ENVELOPE_TYPES = new Set([
+  "analysis",
+  "internal",
+  "reasoning",
+  "thinking",
+]);
+const ASSISTANT_INTERNAL_REPLY_MARKERS = [
+  "<think",
+  "</think",
+  "analysis:",
+  "reasoning:",
+  "chain of thought",
+  "system prompt",
+  "system instruction",
+  "api key",
+  "api_key",
+  "access token",
+  "[internal]",
+  "deepseek",
+  "anthropic",
+  "perplexity",
+] as const;
 
 export function normalizeAssistantPayload(value: unknown) {
-  const unwrapped = unwrapAssistantPayload(value);
-  if (!unwrapped) return value;
-  const record = unwrapped;
-  const answer = firstString(
-    ...ASSISTANT_ANSWER_KEYS.map((key) => record[key]),
+  const records = assistantPayloadRecords(value);
+  if (records.length === 0) return value;
+  const firstPublicSummary = records.findIndex((record) => (
+    normalizeStringArray(
+      [record.public_reasoning_summary, record.publicReasoningSummary],
+      4,
+      220,
+    ).length > 0
+  ));
+  const publicRecords = firstPublicSummary < 0
+    ? assistantPayloadHasInternalEnvelope(value) ? [] : records
+    : records.slice(firstPublicSummary);
+  const answer = firstPublicAssistantString(
+    ...publicRecords.flatMap((record) => ASSISTANT_ANSWER_KEYS.map((key) => record[key])),
   )?.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
   return {
-    ...record,
     ...(answer ? { answer } : {}),
-    safety_notes: normalizeStringArray(
-      [record.safety_notes, record.safetyNotes],
+    safety_notes: normalizeRecordStringArrays(
+      publicRecords,
+      ["safety_notes", "safetyNotes"],
       3,
       180,
     ),
-    citations: normalizeStringArray(
-      [record.citations, record.sources],
+    citations: normalizeRecordStringArrays(
+      publicRecords,
+      ["citations", "sources"],
       5,
       180,
     ),
-    suggested_actions: normalizeSuggestedActions(
-      record.suggested_actions,
-      record.suggestedActions,
-      record.actions,
+    public_reasoning_summary: normalizeRecordStringArrays(
+      publicRecords,
+      ["public_reasoning_summary", "publicReasoningSummary"],
+      4,
+      220,
     ),
-    boundary: normalizeAssistantBoundary(record.boundary),
+    suggested_actions: normalizeSuggestedActions(
+      ...publicRecords.flatMap((record) => [
+        record.suggested_actions,
+        record.suggestedActions,
+        record.actions,
+      ]),
+    ),
+    boundary: normalizeAssistantBoundary(firstString(
+      ...publicRecords.map((record) => record.boundary),
+    )),
   };
 }
 
 export function recoverAssistantProviderAnswer(result: StructuredAIError): string | null {
   const normalized = normalizeAssistantPayload(result.parsedValue);
   if (normalized && typeof normalized === "object" && !Array.isArray(normalized)) {
-    const answer = firstString((normalized as Record<string, unknown>).answer);
+    const record = normalized as Record<string, unknown>;
+    const answer = firstString(record.answer);
     if (answer) return answer.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
   }
-  if (typeof result.parsedValue === "string" && result.parsedValue.trim()) {
-    return recoverAssistantText(result.parsedValue);
-  }
+  if (assistantRecoveryHasInternalEnvelope(result.parsedValue)) return null;
   return recoverAssistantText(result.response?.content);
 }
 
-function unwrapAssistantPayload(value: unknown): Record<string, unknown> | null {
-  let candidate = Array.isArray(value) && value.length === 1 ? value[0] : value;
-  for (let depth = 0; depth < 4; depth += 1) {
-    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
-      return null;
+function assistantPayloadRecords(value: unknown): Record<string, unknown>[] {
+  const records: Record<string, unknown>[] = [];
+  collectAssistantPayloadRecords(value, 0, records);
+  return records;
+}
+
+function collectAssistantPayloadRecords(
+  value: unknown,
+  depth: number,
+  records: Record<string, unknown>[],
+) {
+  if (depth > MAX_ASSISTANT_RECOVERY_DEPTH) return;
+  if (Array.isArray(value)) {
+    if (value.length > MAX_ASSISTANT_WRAPPER_ITEMS) return;
+    for (const item of value) {
+      collectAssistantPayloadRecords(item, depth + 1, records);
     }
-    const record = candidate as Record<string, unknown>;
-    const nested = ["result", "data", "output", "response"]
-      .map((key) => record[key])
-      .find((item) => item && typeof item === "object" && !Array.isArray(item));
-    if (!nested) return record;
-    candidate = nested;
+    return;
   }
-  return candidate && typeof candidate === "object" && !Array.isArray(candidate)
-    ? candidate as Record<string, unknown>
-    : null;
+  if (!value || typeof value !== "object") return;
+
+  const record = value as Record<string, unknown>;
+  if (isAssistantInternalEnvelope(record)) return;
+  if (hasAssistantPublicPayloadField(record)) records.push(record);
+  for (const key of ASSISTANT_WRAPPER_KEYS) {
+    const nested = record[key];
+    if (nested && typeof nested === "object") {
+      collectAssistantPayloadRecords(nested, depth + 1, records);
+    }
+  }
+}
+
+function assistantPayloadHasInternalEnvelope(value: unknown, depth = 0): boolean {
+  if (depth > MAX_ASSISTANT_RECOVERY_DEPTH) return true;
+  if (Array.isArray(value)) {
+    if (value.length > MAX_ASSISTANT_WRAPPER_ITEMS) return true;
+    return value.some((item) => assistantPayloadHasInternalEnvelope(item, depth + 1));
+  }
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  if (isAssistantInternalEnvelope(record)) return true;
+  return ASSISTANT_WRAPPER_KEYS.some((key) => {
+    const nested = record[key];
+    return nested && typeof nested === "object"
+      ? assistantPayloadHasInternalEnvelope(nested, depth + 1)
+      : false;
+  });
+}
+
+function hasAssistantPublicPayloadField(record: Record<string, unknown>) {
+  const answer = firstPublicAssistantString(
+    ...ASSISTANT_ANSWER_KEYS.map((key) => record[key]),
+  );
+  return Boolean(answer) ||
+    normalizeStringArray(
+      [record.public_reasoning_summary, record.publicReasoningSummary],
+      4,
+      220,
+    ).length > 0 ||
+    normalizeStringArray([record.safety_notes, record.safetyNotes], 3, 180).length > 0 ||
+    normalizeStringArray([record.citations, record.sources], 5, 180).length > 0 ||
+    normalizeStringArray(
+      [record.suggested_actions, record.suggestedActions, record.actions],
+      3,
+      80,
+    ).length > 0 ||
+    typeof record.boundary === "string";
+}
+
+function isAssistantInternalEnvelope(record: Record<string, unknown>) {
+  const type = firstString(record.type, record.kind, record.channel)?.toLowerCase();
+  return Boolean(type && ASSISTANT_INTERNAL_ENVELOPE_TYPES.has(type));
+}
+
+function normalizeRecordStringArrays(
+  records: readonly Record<string, unknown>[],
+  keys: readonly string[],
+  maxItems: number,
+  maxLength: number,
+) {
+  return Array.from(new Set(records.flatMap((record) => normalizeStringArray(
+    keys.map((key) => record[key]),
+    maxItems,
+    maxLength,
+  )))).slice(0, maxItems);
 }
 
 function normalizeStringArray(
@@ -113,14 +227,45 @@ function normalizeStringArray(
   return [];
 }
 
+function assistantRecoveryHasInternalEnvelope(value: unknown, depth = 0): boolean {
+  if (depth > MAX_ASSISTANT_RECOVERY_DEPTH || value === null || value === undefined) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    if (value.length > MAX_ASSISTANT_RECOVERY_ITEMS) return true;
+    return value.some((item) => assistantRecoveryHasInternalEnvelope(item, depth + 1));
+  }
+  if (typeof value === "string") {
+    return hasAssistantInternalReplyMarker(value);
+  }
+  if (typeof value !== "object") return false;
+
+  const record = value as Record<string, unknown>;
+  if (isAssistantInternalEnvelope(record)) return true;
+  return Object.values(record)
+    .slice(0, MAX_ASSISTANT_RECOVERY_ITEMS)
+    .some((item) => assistantRecoveryHasInternalEnvelope(item, depth + 1));
+}
+
 function recoverAssistantText(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const plain = stripOptionalMarkdownFence(value);
+  const withoutThinking = stripLeadingAssistantThinking(value);
+  if (withoutThinking === null || hasAssistantInternalReplyMarker(withoutThinking)) return null;
+  const plain = stripOptionalMarkdownFence(withoutThinking);
   if (!plain) return null;
-  if (!/^[{[]/.test(plain)) {
-    return plain.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
-  }
+  if (!/^[{[]/.test(plain)) return plain.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
   return recoverAllowedJsonStringField(plain);
+}
+
+function stripLeadingAssistantThinking(value: string): string | null {
+  const trimmed = value.trim();
+  const opening = trimmed.match(/^<think(?:ing)?\b[^>]*>/i);
+  if (!opening) return trimmed;
+  const closing = /<\/think(?:ing)?\s*>/ig;
+  closing.lastIndex = opening[0].length;
+  const match = closing.exec(trimmed);
+  if (!match || match.index < opening[0].length) return null;
+  return trimmed.slice(match.index + match[0].length).trim();
 }
 
 function stripOptionalMarkdownFence(value: string) {
@@ -145,7 +290,9 @@ function recoverAllowedJsonStringField(value: string): string | null {
     if (bounded[cursor] !== '"') continue;
     const answer = parseJsonStringAt(bounded, cursor);
     const normalized = answer?.value.trim();
-    if (normalized) return normalized.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
+    if (normalized && !hasAssistantInternalReplyMarker(normalized)) {
+      return normalized.slice(0, MAX_ASSISTANT_ANSWER_LENGTH);
+    }
   }
   return null;
 }
@@ -180,6 +327,11 @@ function skipWhitespace(value: string, start: number) {
   let index = start;
   while (index < value.length && /\s/.test(value[index] ?? "")) index += 1;
   return index;
+}
+
+function hasAssistantInternalReplyMarker(value: string) {
+  const normalized = value.toLowerCase();
+  return ASSISTANT_INTERNAL_REPLY_MARKERS.some((marker) => normalized.includes(marker));
 }
 
 function normalizeSuggestedActions(...values: unknown[]): CustomerAssistantSuggestedAction[] {
@@ -221,6 +373,19 @@ function normalizeAssistantBoundary(value: unknown): CustomerAssistantBoundary {
 function firstString(...values: unknown[]) {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function firstPublicAssistantString(...values: unknown[]) {
+  for (const value of values) {
+    if (
+      typeof value === "string" &&
+      value.trim() &&
+      !hasAssistantInternalReplyMarker(value)
+    ) {
+      return value.trim();
+    }
   }
   return undefined;
 }

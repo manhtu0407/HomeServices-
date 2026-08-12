@@ -156,6 +156,90 @@ const ENGLISH_SIGNAL_WORDS = [
   "customer",
 ];
 const ENGLISH_WORKFLOW_FRAGMENT = /\b(?:app|case|check(?:[-\s]?in)?|confirm|customer|job|next|open|payment|pending|review|scope(?:[-\s]?change)?|staging|status|step|worker)\b/i;
+const ENGLISH_REPLY_WORDS = [
+  "answer",
+  "access",
+  "account",
+  "action",
+  "alert",
+  "assistant",
+  "available",
+  "booking",
+  "browser",
+  "button",
+  "cancel",
+  "card",
+  "case",
+  "chat",
+  "check",
+  "code",
+  "completed",
+  "confirm",
+  "contact",
+  "control",
+  "customer",
+  "data",
+  "device",
+  "detail",
+  "details",
+  "error",
+  "evidence",
+  "feature",
+  "file",
+  "flow",
+  "form",
+  "follow",
+  "guidance",
+  "help",
+  "image",
+  "input",
+  "job",
+  "link",
+  "list",
+  "login",
+  "message",
+  "model",
+  "next",
+  "note",
+  "open",
+  "option",
+  "panel",
+  "payment",
+  "pending",
+  "photo",
+  "platform",
+  "please",
+  "profile",
+  "provide",
+  "reply",
+  "report",
+  "request",
+  "response",
+  "result",
+  "review",
+  "route",
+  "safe",
+  "screen",
+  "scope",
+  "service",
+  "session",
+  "setting",
+  "status",
+  "step",
+  "support",
+  "system",
+  "task",
+  "text",
+  "tool",
+  "update",
+  "user",
+  "verify",
+  "video",
+  "warning",
+  "worker",
+  "workflow",
+] as const;
+const ENGLISH_REPLY_WORD_PATTERN = new RegExp(`\\b(?:${ENGLISH_REPLY_WORDS.join("|")})\\b`, "i");
 const VIETNAMESE_SIGNAL_WORDS = [
   "ban",
   "vui",
@@ -201,10 +285,7 @@ export function checkKaelResponse(input: KaelSelfCheckInput): KaelSelfCheckResul
   }
 
   const language = input.language ?? "vi";
-  if (
-    (language === "vi" && (looksEnglishOnly(canonical) || ENGLISH_WORKFLOW_FRAGMENT.test(canonical))) ||
-    (language === "en" && looksVietnameseOnly(text, canonical))
-  ) {
+  if (hasKaelLanguageMismatch(text, language)) {
     return { allowed: false, text, reason: "language_mismatch" };
   }
 
@@ -235,6 +316,18 @@ export function checkKaelResponse(input: KaelSelfCheckInput): KaelSelfCheckResul
   }
 
   return { allowed: true, text };
+}
+
+export function hasKaelLanguageMismatch(
+  text: string,
+  language: KaelPromptLanguage = "vi",
+) {
+  const canonical = canonicalizeVN(text);
+  return language === "vi"
+    ? looksEnglishOnly(canonical) ||
+      ENGLISH_WORKFLOW_FRAGMENT.test(canonical) ||
+      ENGLISH_REPLY_WORD_PATTERN.test(canonical)
+    : looksVietnameseOnly(text, canonical);
 }
 
 export function runKaelSelfCheckPipeline(

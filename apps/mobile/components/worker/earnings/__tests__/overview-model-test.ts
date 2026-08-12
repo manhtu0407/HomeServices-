@@ -44,6 +44,7 @@ function buildEarnings(): EarningsResponse {
     total_jobs_paid: 4,
     withdrawal_reserved_amount: 0,
     withdrawn_total: 0,
+    collateral_reserved_amount: 0,
     worker_id: 'worker_test_1',
   }
 }

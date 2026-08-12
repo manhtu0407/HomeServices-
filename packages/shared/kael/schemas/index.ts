@@ -89,6 +89,187 @@ const estimateAnalysisReceiptSchema = z.object({
   }).strict().optional(),
 }).strict()
 
+const priceReasoningComponentSchema = z.object({
+  kind: z.enum([
+    'service_package',
+    'labor',
+    'travel',
+    'materials',
+    'replacement_parts',
+    'equipment',
+    'other',
+  ]),
+  status: z.enum([
+    'priced',
+    'included_unitemized',
+    'conditional_unpriced',
+    'excluded',
+    'undetermined',
+  ]),
+  amount_min: z.number().int().positive().nullable(),
+  amount_max: z.number().int().positive().nullable(),
+  explanation: z.string().trim().min(1).max(360),
+}).strict().superRefine((component, ctx) => {
+  const hasMin = component.amount_min !== null
+  const hasMax = component.amount_max !== null
+  if (hasMin !== hasMax) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['amount_max'],
+      message: 'component amounts must be both present or both absent',
+    })
+    return
+  }
+  const amountMin = component.amount_min
+  const amountMax = component.amount_max
+  if (amountMin !== null && amountMax !== null && amountMax < amountMin) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['amount_max'],
+      message: 'component amount_max must be >= amount_min',
+    })
+  }
+  if (component.status === 'priced' && !hasMin) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['amount_min'],
+      message: 'priced components require both amounts',
+    })
+  }
+  if (component.status === 'priced' && component.kind !== 'service_package') {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['kind'],
+      message: 'only the governed service package may expose a numeric amount',
+    })
+  }
+  if (component.status !== 'priced' && hasMin) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['amount_min'],
+      message: 'unpriced components must not expose a numeric amount',
+    })
+  }
+})
+
+const priceReasoningScenarioSchema = z.object({
+  total: z.number().int().positive(),
+  conditions: z.array(z.string().trim().min(1).max(260)).min(1).max(5),
+  scope: z.array(z.string().trim().min(1).max(260)).min(1).max(5),
+}).strict()
+
+export const priceReasoningReceiptSchema = z.object({
+  schema_version: z.literal('price_reasoning_receipt.v1'),
+  receipt_id: z.string().trim().min(8).max(160),
+  problem: z.object({
+    confirmed_facts: z.array(z.string().trim().min(1).max(300)).min(1).max(5),
+    possible_causes: z.array(z.object({
+      statement: z.string().trim().min(1).max(300),
+      basis: z.array(z.enum([
+        'customer_report',
+        'visual_evidence',
+        'service_profile',
+        'knowledge',
+      ])).min(1).max(4),
+      confidence: estimateConfidenceSchema,
+    }).strict()).max(5),
+    unknowns: z.array(z.string().trim().min(1).max(300)).max(5),
+  }).strict(),
+  scope: z.object({
+    included: z.array(z.string().trim().min(1).max(300)).min(1).max(8),
+    conditional: z.array(z.string().trim().min(1).max(300)).max(8),
+    excluded: z.array(z.string().trim().min(1).max(300)).max(8),
+  }).strict(),
+  costs: z.object({
+    currency: z.literal('VND'),
+    total_min: z.number().int().positive(),
+    total_max: z.number().int().positive(),
+    reconciliation: z.enum(['package_total', 'exact']),
+    components: z.array(priceReasoningComponentSchema).min(1).max(8),
+  }).strict(),
+  scenarios: z.object({
+    low: priceReasoningScenarioSchema,
+    high: priceReasoningScenarioSchema,
+  }).strict(),
+  fairness: z.object({
+    price_source: z.enum([
+      'perplexity_validated',
+      'baseline_with_market',
+      'baseline_only',
+      'inspection_required',
+    ]),
+    confidence: estimateConfidenceSchema,
+    market_source_count: z.number().int().nonnegative().nullable(),
+    high_trust_source_count: z.number().int().nonnegative().nullable(),
+    quorum_met: z.boolean().nullable(),
+    cap_statement: z.string().trim().min(1).max(360),
+    remaining_uncertainty: z.array(z.string().trim().min(1).max(300)).max(5),
+  }).strict(),
+}).strict().superRefine((receipt, ctx) => {
+  if (receipt.costs.total_max < receipt.costs.total_min) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['costs', 'total_max'],
+      message: 'total_max must be >= total_min',
+    })
+  }
+  if (receipt.scenarios.low.total !== receipt.costs.total_min) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['scenarios', 'low', 'total'],
+      message: 'low scenario must reconcile to total_min',
+    })
+  }
+  if (receipt.scenarios.high.total !== receipt.costs.total_max) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['scenarios', 'high', 'total'],
+      message: 'high scenario must reconcile to total_max',
+    })
+  }
+  const pricedComponents = receipt.costs.components.filter((component) => component.status === 'priced')
+  if (receipt.costs.reconciliation === 'package_total') {
+    const packageComponent = pricedComponents[0]
+    if (
+      pricedComponents.length !== 1 ||
+      !packageComponent ||
+      packageComponent.kind !== 'service_package' ||
+      packageComponent.amount_min !== receipt.costs.total_min ||
+      packageComponent.amount_max !== receipt.costs.total_max
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['costs', 'components'],
+        message: 'package_total requires one priced service package matching the offered range',
+      })
+    }
+  }
+  if (receipt.costs.reconciliation === 'exact') {
+    const totalMin = pricedComponents.reduce((sum, component) => sum + (component.amount_min ?? 0), 0)
+    const totalMax = pricedComponents.reduce((sum, component) => sum + (component.amount_max ?? 0), 0)
+    if (
+      pricedComponents.length === 0 ||
+      totalMin !== receipt.costs.total_min ||
+      totalMax !== receipt.costs.total_max
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['costs', 'components'],
+        message: 'exact components must sum to the offered range',
+      })
+    }
+  }
+  const marketCount = receipt.fairness.market_source_count
+  const highTrustCount = receipt.fairness.high_trust_source_count
+  if (marketCount !== null && highTrustCount !== null && highTrustCount > marketCount) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['fairness', 'high_trust_source_count'],
+      message: 'high-trust sources cannot exceed total market sources',
+    })
+  }
+})
+
 export const estimateCardV3Schema = z.object({
   service_type: kaelServiceTypeSchema,
   problem_summary: z.string().trim().min(10).max(200),
@@ -111,6 +292,7 @@ export const estimateCardV3Schema = z.object({
     needs_inspection_reason: z.string().trim().max(200).optional(),
   }).strict(),
   analysis_receipt: estimateAnalysisReceiptSchema.optional(),
+  price_reasoning_receipt: priceReasoningReceiptSchema.optional(),
   advisory: z.string().trim().max(150).optional(),
   disclaimer: z.literal(KAEL_PRICE_DISCLAIMER_V3),
 }).strict().superRefine((data, ctx) => {
@@ -141,6 +323,26 @@ export const estimateCardV3Schema = z.object({
       path: ['needs_inspection'],
       message: 'inspection_required requires needs_inspection',
     })
+  }
+  if (data.price_reasoning_receipt) {
+    const receipt = data.price_reasoning_receipt
+    if (
+      receipt.costs.total_min !== data.price_min ||
+      receipt.costs.total_max !== data.price_max
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['price_reasoning_receipt', 'costs'],
+        message: 'price reasoning receipt must reconcile to the card range',
+      })
+    }
+    if (receipt.fairness.price_source !== data.price_source) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['price_reasoning_receipt', 'fairness', 'price_source'],
+        message: 'price reasoning source must match the card source',
+      })
+    }
   }
 })
 
@@ -235,6 +437,7 @@ export const scopeChangeCustomerCardSchema = z.object({
 })
 
 export type EstimateCardV3 = z.infer<typeof estimateCardV3Schema>
+export type PriceReasoningReceipt = z.infer<typeof priceReasoningReceiptSchema>
 export type WorkerBrief = z.infer<typeof workerBriefSchema>
 export type ScopeChangeWorkerChallenge = z.infer<typeof scopeChangeWorkerChallengeSchema>
 export type ScopeChangeCustomerCard = z.infer<typeof scopeChangeCustomerCardSchema>

@@ -46,8 +46,109 @@ describe('Kael agentic estimate display model', () => {
 
   it('breaks the Vietnamese estimate rationale into concise, decision-ready lines', () => {
     expect(agenticEstimatePriceExplanation(estimate, 'vi')).toBe(
-      'Khoảng ước tính theo phạm vi hiện tại.',
+      'Xem căn cứ, phạm vi và điều kiện trước khi đến khoảng giá ở cuối.',
     )
+  })
+
+  it('puts the public reasoning before the final range and keeps unpriced components non-numeric', () => {
+    const supportedEstimate = {
+      ...estimate,
+      price_source: 'baseline_with_market' as const,
+      price_reasoning_receipt: {
+        schema_version: 'price_reasoning_receipt.v1' as const,
+        receipt_id: 'receipt_kael_price_20260811_01',
+        problem: {
+          confirmed_facts: ['Nước rò chậm dưới lavabo theo mô tả của bạn.'],
+          possible_causes: [{
+            statement: 'Khớp nối dễ tiếp cận có thể bị lỏng.',
+            basis: ['customer_report' as const],
+            confidence: 'medium' as const,
+          }],
+          unknowns: ['Chưa xác nhận được tình trạng ống nằm sau tường.'],
+        },
+        scope: {
+          included: ['Kiểm tra khớp nối dễ tiếp cận.'],
+          conditional: ['Chỉ thay gioăng khi xác nhận hỏng tại chỗ.'],
+          excluded: ['Sửa phần ống âm tường.'],
+        },
+        costs: {
+          currency: 'VND' as const,
+          total_min: 250000,
+          total_max: 500000,
+          reconciliation: 'package_total' as const,
+          components: [
+            {
+              kind: 'service_package' as const,
+              status: 'priced' as const,
+              amount_min: 250000,
+              amount_max: 500000,
+              explanation: 'Gói đã xác thực cho phạm vi dễ tiếp cận.',
+            },
+            {
+              kind: 'replacement_parts' as const,
+              status: 'conditional_unpriced' as const,
+              amount_min: null,
+              amount_max: null,
+              explanation: 'Gioăng chỉ được đánh giá sau khi kiểm tra.',
+            },
+          ],
+        },
+        scenarios: {
+          low: {
+            total: 250000,
+            conditions: ['Khớp nối dễ tiếp cận và không cần thay gioăng.'],
+            scope: ['Kiểm tra và siết lại khớp nối.'],
+          },
+          high: {
+            total: 500000,
+            conditions: ['Phạm vi thực tế đúng với gói đã xác nhận.'],
+            scope: ['Kiểm tra, chẩn đoán và hoàn tất gói dễ tiếp cận.'],
+          },
+        },
+        fairness: {
+          price_source: 'baseline_with_market' as const,
+          confidence: 'medium' as const,
+          market_source_count: 3,
+          high_trust_source_count: 2,
+          quorum_met: true,
+          cap_statement: 'Mức cao là giới hạn cho đúng phạm vi đã nêu.',
+          remaining_uncertainty: ['Phần ống âm tường cần một đề nghị riêng.'],
+        },
+      },
+    }
+
+    const model = agenticEstimateSupportingPhase(supportedEstimate, 'vi')
+    const rowKeys = model?.rows.map((row) => row.key)
+    const costs = model?.rows.find((row) => row.key === 'costs')
+    const lowerScenario = model?.rows.find((row) => row.key === 'scenario_low')
+    const upperScenario = model?.rows.find((row) => row.key === 'scenario_high')
+    const servicePackage = costs?.sections?.find((section) => section.label === 'Gói dịch vụ')
+    const replacementParts = costs?.sections?.find((section) => section.label === 'Linh kiện thay thế')
+
+    expect(model?.receiptId).toBe('receipt_kael_price_20260811_01')
+    expect(rowKeys).toEqual([
+      'facts',
+      'hypotheses',
+      'uncertainty',
+      'scope',
+      'costs',
+      'scenario_low',
+      'scenario_high',
+      'fairness',
+      'conclusion',
+      'price',
+    ])
+    expect(servicePackage?.value).toContain('khoảng bạn có thể xác nhận được hiển thị ở phần cuối')
+    expect(servicePackage?.value).not.toMatch(/\d/u)
+    expect(lowerScenario?.detail).not.toMatch(/\d/u)
+    expect(upperScenario?.detail).not.toMatch(/\d/u)
+    expect(replacementParts?.value).toContain('Chưa có số tiền')
+    expect(replacementParts?.value).not.toMatch(/\d/u)
+    expect(model?.rows.at(-1)).toMatchObject({
+      key: 'price',
+      label: 'Khoảng giá cho phạm vi hiện tại',
+      detail: '250.000đ - 500.000đ',
+    })
   })
 
   it('turns the backend analysis receipt into a concise supporting phase', () => {
@@ -91,9 +192,20 @@ describe('Kael agentic estimate display model', () => {
     expect(model?.rows.find((row) => row.key === 'price')).toMatchObject({
       detail: 'Mức tin cậy của khoảng giá: Vừa.\nKael đối chiếu phạm vi đã xác nhận, mức độ vừa và mức giá cơ sở cùng 4 nguồn giá được chấp nhận, gồm 3 nguồn độ tin cậy cao.\nKhoảng này chưa bao gồm phần phát sinh ngoài phạm vi đã xác nhận.',
       label: 'Cơ sở giá',
+      sections: [
+        { label: 'Mức độ công việc', value: 'Phạm vi đã xác nhận hiện được xếp ở mức độ vừa.' },
+        {
+          label: 'Căn cứ của khoảng giá',
+          value: 'Mức tin cậy của khoảng giá: Vừa.\nKael đối chiếu phạm vi đã xác nhận, mức độ vừa và mức giá cơ sở cùng 4 nguồn giá được chấp nhận, gồm 3 nguồn độ tin cậy cao.\nKhoảng này chưa bao gồm phần phát sinh ngoài phạm vi đã xác nhận.',
+        },
+        {
+          label: 'Giới hạn khi bạn xác nhận',
+          value: expect.stringContaining('500.000đ là mức tối đa cho phạm vi hiện tại'),
+        },
+      ],
     })
     expect(model?.valueStatement).toBe(
-      'Khoảng giá gắn với phạm vi hiện tại; phần phát sinh chỉ được tính sau khi bạn xác nhận.',
+      'Không có giá hay hạng mục phát sinh nào được tự cộng sau khi bạn xác nhận.',
     )
   })
 

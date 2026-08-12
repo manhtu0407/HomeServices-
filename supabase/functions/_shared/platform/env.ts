@@ -16,6 +16,13 @@ export type SePayVietQrConfig = {
   webhookSecret?: string;
 };
 
+export type PlatformManualBankConfig = {
+  enabled: boolean;
+  bankCode?: string;
+  accountNumber?: string;
+  accountHolder?: string;
+};
+
 export type EdgeEnv = EdgeAiSecrets & {
   supabaseUrl: string;
   supabaseSecretKey: string;
@@ -23,6 +30,7 @@ export type EdgeEnv = EdgeAiSecrets & {
   harnessEnvironment: HarnessEnvironmentDescriptor;
   harnessRelease: HarnessRuntimeRelease;
   releaseId: string;
+  manualBank: PlatformManualBankConfig;
   sepayVietQr: SePayVietQrConfig;
   // S4/F1 (§38): global hard-stop for customer-facing AI during an incident.
   // Default false. Enforced at the callAI chokepoint (kael/spend-gate.ts).
@@ -80,8 +88,33 @@ export function readEdgeEnv(
     stagingPaymentRailEnabled:
       harnessEnvironment.name === "staging" &&
       readBooleanFlag(getEnv("NESTSCOUT_STAGING_PAYMENT_RAIL_ENABLED")),
+    manualBank: readPlatformManualBankConfig(getEnv, harnessEnvironment.name),
     sepayVietQr: readSePayVietQrConfig(getEnv, harnessEnvironment.name),
     aiKillSwitch: readBooleanFlag(getEnv("KAEL_AI_KILL_SWITCH")),
+  };
+}
+
+function readPlatformManualBankConfig(
+  getEnv: (name: string) => string | undefined,
+  environment: HarnessEnvironmentDescriptor["name"],
+): PlatformManualBankConfig {
+  const bankCode = readVietQrBankCode(getEnv("PLATFORM_MANUAL_BANK_CODE"));
+  const accountNumber = readVietQrAccountNumber(
+    getEnv("PLATFORM_MANUAL_BANK_ACCOUNT_NUMBER"),
+  );
+  const accountHolder = readBoundedText(
+    getEnv("PLATFORM_MANUAL_BANK_ACCOUNT_HOLDER"),
+    120,
+  );
+  const enabled = environment !== "staging" &&
+    readBooleanFlag(getEnv("NESTSCOUT_PLATFORM_MANUAL_BANK_ENABLED")) &&
+    Boolean(bankCode && accountNumber && accountHolder);
+
+  return {
+    enabled,
+    ...(bankCode ? { bankCode } : {}),
+    ...(accountNumber ? { accountNumber } : {}),
+    ...(accountHolder ? { accountHolder } : {}),
   };
 }
 

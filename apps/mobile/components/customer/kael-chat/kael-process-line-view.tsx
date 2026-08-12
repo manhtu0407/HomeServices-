@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, {
   cancelAnimation,
@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated'
 
 import { motionDuration } from '@/components/ui/motion-tokens'
+import { useKaelRespondStreamItems } from '@/components/ui/use-kael-respond-stream-presentation'
 import { useAppLanguage } from '@/lib/app-language'
 
 import type { KaelProcessLine, KaelProcessLineStatus } from './kael-process-lines'
@@ -16,7 +17,24 @@ import { useV21Theme } from '../ui/use-v21-theme'
 
 export function KaelProcessLines({ state }: { state: KaelProcessLineRuntime }) {
   const language = useAppLanguage()
-  const { tokens } = useV21Theme()
+  const { reduceMotion, tokens } = useV21Theme()
+  const usesBackendProgress = state.origin === 'backend'
+  const visibleLines = useMemo(
+    () => state.lines.slice(0, state.visibleCount),
+    [state.lines, state.visibleCount],
+  )
+  const items = useMemo(() => visibleLines.map((line) => ({
+    id: line.key,
+    text: line.text,
+  })), [visibleLines])
+  const presentedItems = useKaelRespondStreamItems({
+    items,
+    reduceMotion,
+    streamId: usesBackendProgress ? state.streamId : null,
+    streaming: usesBackendProgress,
+    terminal: false,
+  })
+  const presentedText = new Map(presentedItems.map((item) => [item.id, item.text]))
   if (state.collapse && state.activeIndex === null) {
     return (
       <View
@@ -33,24 +51,28 @@ export function KaelProcessLines({ state }: { state: KaelProcessLineRuntime }) {
       </View>
     )
   }
+  if (visibleLines.length === 0) return null
 
-  const visibleLines = state.lines.slice(0, state.visibleCount)
   return (
     <View
       accessibilityLabel={language === 'vi' ? 'Kael đang xử lý' : 'Kael processing'}
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={usesBackendProgress ? 'none' : 'polite'}
       accessibilityState={{ busy: state.activeIndex !== null }}
       style={styles.lines}
       testID="customer-v21-kael-process-lines"
     >
-      {visibleLines.map((line, index) => (
-        <KaelProcessLineView
-          key={line.key}
-          line={line}
-          status={resolveLineStatus(line, index, state.activeIndex)}
-          testID={`customer-v21-kael-process-line-${index}`}
-        />
-      ))}
+      {visibleLines.map((line, index) => {
+        const text = presentedText.get(line.key) ?? ''
+        if (usesBackendProgress && !text) return null
+        return (
+          <KaelProcessLineView
+            key={line.key}
+            line={{ ...line, text }}
+            status={resolveLineStatus(line, index, state.activeIndex)}
+            testID={`customer-v21-kael-process-line-${index}`}
+          />
+        )
+      })}
     </View>
   )
 }

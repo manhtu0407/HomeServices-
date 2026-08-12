@@ -1,11 +1,31 @@
 import {
   clearStableClientRequestId,
+  generateClientRequestId,
   shouldRetainClientRequestId,
   stableClientRequestId,
   type PendingClientRequestRef,
 } from '../client-request-id'
 
 describe('client request id lifecycle', () => {
+  it('falls back to a UUID v4 when the runtime randomUUID implementation returns another version', () => {
+    const originalCrypto = globalThis.crypto
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: {
+        randomUUID: () => '018f48a0-0000-7000-8000-000000000001',
+      },
+    })
+
+    try {
+      expect(generateClientRequestId()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    } finally {
+      Object.defineProperty(globalThis, 'crypto', {
+        configurable: true,
+        value: originalCrypto,
+      })
+    }
+  })
+
   it('keeps one key for one fingerprint and rotates it only when the operation changes', () => {
     const requestRef: PendingClientRequestRef = { current: null }
     const firstKey = stableClientRequestId(requestRef, 'operation-a')

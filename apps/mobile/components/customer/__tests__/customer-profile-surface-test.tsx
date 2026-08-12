@@ -62,7 +62,7 @@ jest.mock('@/lib/auth-provider', () => ({
     session: {
       access_token: 'customer_access_token',
       user: {
-        email: 'manhtu0407@gmail.com',
+        email: 'customer@example.com',
         id: 'customer_test_1',
         user_metadata: mockSessionMetadata,
       },

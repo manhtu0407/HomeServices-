@@ -23,10 +23,14 @@ export function localizeKaelRequestFailure(
       return copy.invalidStatus
     case 'ALREADY_CONFIRMED':
       return copy.alreadyConfirmed
+    case 'IDEMPOTENCY_RECONCILE_REQUIRED':
+      return copy.reconcilingConfirmation
     case 'MISSING_ESTIMATE':
       return copy.missingEstimate
     case 'MISSING_SCOPE':
       return copy.missingScope
+    case 'MISSING_REASONING_RECEIPT':
+      return copy.missingReasoningReceipt
     case 'SESSION_PENDING':
       return copy.sessionPending
     case 'TIMEOUT':
@@ -46,10 +50,12 @@ export function localizeKaelRequestFailure(
 
 const kaelRequestFailureCopy = {
   vi: {
+    reconcilingConfirmation: 'Kael đang đối soát lịch sử xác nhận để tránh tạo trùng yêu cầu. Vui lòng tải lại trạng thái sau ít phút.',
     fallback: 'Kael chưa thể hoàn tất bước này. Vui lòng thử lại.',
     alreadyConfirmed: 'Xác nhận này đã được xử lý. Hãy tải lại trạng thái công việc để tiếp tục.',
     invalidStatus: 'Kael chưa thể xác nhận báo giá này. Hãy tải lại trạng thái công việc rồi kiểm tra lại.',
     missingEstimate: 'Kael cần hoàn tất ước tính trước khi xác nhận báo giá.',
+    missingReasoningReceipt: 'Kael cần hoàn tất biên nhận phân tích giá đã xác thực trước khi xác nhận báo giá.',
     missingScope: 'Kael cần hoàn tất phân tích phạm vi trước khi xác nhận báo giá.',
     notFound: 'Không tìm thấy công việc này hoặc công việc không còn khả dụng.',
     rateLimited: 'Kael đã tạm đạt giới hạn yêu cầu. Vui lòng thử lại sau.',
@@ -59,10 +65,12 @@ const kaelRequestFailureCopy = {
     validation: 'Một số thông tin yêu cầu chưa hợp lệ. Hãy kiểm tra và thử lại.',
   },
   en: {
+    reconcilingConfirmation: 'Kael is reconciling a previous confirmation to avoid creating a duplicate request. Refresh the case status shortly.',
     fallback: 'Kael could not complete that step. Please try again.',
     alreadyConfirmed: 'This confirmation was already processed. Refresh the case status to continue.',
     invalidStatus: 'Kael could not confirm this estimate. Refresh the case status and review it again.',
     missingEstimate: 'Kael needs to complete the estimate before it can be confirmed.',
+    missingReasoningReceipt: 'Kael needs to complete the validated price reasoning receipt before this estimate can be confirmed.',
     missingScope: 'Kael needs to complete the scope analysis before this estimate can be confirmed.',
     notFound: 'This case could not be found or is no longer available.',
     rateLimited: 'Kael has reached a temporary request limit. Please try again later.',

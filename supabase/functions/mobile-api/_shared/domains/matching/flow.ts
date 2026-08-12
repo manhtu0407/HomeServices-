@@ -24,6 +24,7 @@ import { validateKaelAutonomyTransition, validateWorkflowTransition } from "../.
 import { buildWorkerBriefOutput, type KaelAutonomyDecision } from "../../kael/index.ts";
 import { normalizeServiceAreaDistrict } from "../../../../_shared/domain.ts";
 import type { JobStatus, ServiceType } from "../../../../_shared/domain.ts";
+import { ensureGeneralMatchingPreference, getMatchingState, isMatchingPreferencePending } from "./matching-preference.ts";
 
 type ConfirmSearchOptions = {
   autonomyDecision?: KaelAutonomyDecision;
@@ -46,6 +47,16 @@ export async function confirmSearch(
     select:
       "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, final_price",
   });
+  if (
+    job.status === "broadcasting" &&
+    await isMatchingPreferencePending(client, jobId)
+  ) {
+    apiFailure(
+      "MATCHING_PREFERENCE_PENDING",
+      "B\u1ea1n c\u1ea7n ch\u1ecdn c\u00e1ch t\u00ecm th\u1ee3 tr\u01b0\u1edbc khi Kael g\u1eedi y\u00eau c\u1ea7u.",
+      409,
+    );
+  }
   const broadcastContext = await prepareSearchBroadcast({
     client,
     ctx,
@@ -54,7 +65,8 @@ export async function confirmSearch(
     now,
     options,
   });
-  return executeSearchBroadcast({
+  await ensureGeneralMatchingPreference(client, jobId, ctx.user.id);
+  const result = await executeSearchBroadcast({
     client,
     ctx,
     job,
@@ -62,6 +74,10 @@ export async function confirmSearch(
     options,
     ...broadcastContext,
   });
+  return {
+    ...result,
+    matching_state: await getMatchingState(client, jobId, result.status),
+  };
 }
 
 async function prepareSearchBroadcast(input: {

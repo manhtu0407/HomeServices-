@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import { Alert } from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
 import type { LocalDeal, WorkerKaelChatMode } from '@nestscout/shared'
 import type { AppLanguage } from '@/lib/app-language'
 import type { WorkerKaelChatResponse, WorkerKaelChatSession } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
-import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { initialKaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { workerKaelChatService } from '@/lib/services'
 import { textByLanguage } from '../ui/format'
 import { getWorkerV5ChatJobId } from '../ui/labels'
@@ -20,9 +18,11 @@ import {
   workerKaelSessionCatalogKey,
   workerKaelSessionMatchesScope,
   workerV5KaelAdvisoryUnavailableReply,
-  workerV5KaelOrbMediaName,
   workerV5KaelOrbTurnsFromResponse,
 } from './kael-orb-chat-model'
+import { pickWorkerKaelMedia } from './kael-orb-media-picker'
+import { createWorkerKaelReasoningActions } from './kael-orb-reasoning-actions'
+import { createWorkerKaelOrbSendAction } from './kael-orb-send-action'
 import { readWorkerKaelSessionCatalog, writeWorkerKaelSessionCatalog } from './session-catalog-cache'
 import { useWorkerV5KaelOrbScopedState } from './use-kael-orb-scoped-state'
 import { useLatestWorkerSessionRestore } from './use-latest-worker-session-restore'
@@ -65,10 +65,10 @@ export function useWorkerV5KaelOrbChat(
   const {
     activeOwnerRef, owner, setActiveField,
     activeSessionId, busy, creatingSession, error, mediaItems, openingSessionId,
-    pendingSessionIds, progress, sessions, sessionsError,
+    pendingSessionIds, progress, reasoningReceipt, sessions, sessionsError, streamingReply,
     setActiveSessionId, setBusy, setCreatingSession, setError, setMediaItems,
     setOpeningSessionId, setPendingSessionIds, setProgress, setSessions,
-    setSessionsError, setTurns, sessionsLoading, turns,
+    setReasoningReceipt, setSessionsError, setStreamingReply, setTurns, sessionsLoading, turns,
   } = useWorkerV5KaelOrbScopedState({
     catalogKey,
     jobId: sessionJobId, localVisualAuditSession, mode, ownerKey,
@@ -86,6 +86,10 @@ export function useWorkerV5KaelOrbChat(
   const progressPercent = progress ? Math.max(0, Math.min(100, Math.round(progress.progress * 100))) : null
   const busyLabel = openingSessionId || creatingSession ? textByLanguage(language, 'Đang mở cuộc trò chuyện...', 'Opening conversation...')
     : busy ? textByLanguage(language, `Kael đang xử lý...${progressPercent != null ? ` ${progressPercent}%` : ''}`, `Kael is working...${progressPercent != null ? ` ${progressPercent}%` : ''}`) : null
+  const reasoningActions = createWorkerKaelReasoningActions(
+    setReasoningReceipt,
+    (action) => setActiveField('reasoningReceipt', action),
+  )
   const setSessionPending = (sessionId: string, pending: boolean) => {
     setPendingSessionIds((current) => {
       const next = pending ? (current.includes(sessionId) ? current : [...current, sessionId]) : current.filter((id) => id !== sessionId)
@@ -357,6 +361,7 @@ export function useWorkerV5KaelOrbChat(
       setSessionsError(textByLanguage(language, 'Cần một công việc đang thực hiện để tạo cuộc trò chuyện này.', 'Active work is needed to create this conversation.'))
       return false
     }
+    reasoningActions.reset()
     const requestId = openRequestRef.current + 1
     openRequestRef.current = requestId
     setCreatingSession(true)
@@ -407,6 +412,7 @@ export function useWorkerV5KaelOrbChat(
     const requestId = openRequestRef.current + 1
     openRequestRef.current = requestId
     setSessionsError(null)
+    reasoningActions.reset()
     const cached = sessionCacheRef.current.get(sessionId)
     if (cached) {
       setOpeningSessionId(null)
@@ -460,10 +466,16 @@ export function useWorkerV5KaelOrbChat(
     setActiveField('openingSessionId', null)
     setActiveField('progress', null)
     setActiveField('busy', false)
+    setActiveField('reasoningReceipt', initialKaelReasoningReceiptState)
+    setActiveField('streamingReply', null)
     setActiveField('turns', [])
     setActiveField('mediaItems', [])
     setActiveField('error', null)
   }, [setActiveField])
+
+  const settleStreamingReply = useCallback((responseId: string) => {
+    setStreamingReply((current) => current?.responseId === responseId ? null : current)
+  }, [setStreamingReply])
 
   const archiveSession = async (sessionId: string): Promise<boolean> => {
     const requestedJobId = sessionJobId
@@ -610,166 +622,41 @@ export function useWorkerV5KaelOrbChat(
     if (cached) cacheSessionResponse({ ...cached, session: nextSession })
   }
 
-  const pickMedia = async () => {
-    if (busy || openingSessionId) return
-    if (!hasJobKaelSessionAccess) {
-      Alert.alert('Kael', textByLanguage(language, 'Cần việc đang thực hiện để gửi ảnh cho Kael.', 'Active work is needed to send a photo to Kael.'))
-      return
-    }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('Kael', textByLanguage(language, 'Cần quyền thư viện ảnh để thêm ảnh cho Kael.', 'Photo library permission is needed to add a photo for Kael.'))
-      return
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: false,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.84,
-    })
-    if (result.canceled || result.assets.length === 0) return
-    const asset = result.assets[0]
-    setMediaItems([{ fileName: workerV5KaelOrbMediaName(asset, 0, language), uri: asset.uri }])
-  }
+  const pickMedia = () => pickWorkerKaelMedia({
+    busy,
+    hasJobKaelSessionAccess,
+    language,
+    openingSessionId,
+    setMediaItems,
+  })
 
-  const send = async (message: string) => {
-    const content = message.trim()
-    if (!content || busy || openingSessionId) return
-    const sendRequestId = sendRequestRef.current + 1
-    sendRequestRef.current = sendRequestId
-    setError(null)
-    setTurns((current) => [...current, { id: `worker-orb-${Date.now()}`, role: 'worker', text: content }])
-
-    if (!canUseKaelSession) {
-      setTurns((current) => [...current, { id: `kael-orb-${Date.now()}`, role: 'kael', text: advisoryUnavailableReply }])
-      setMediaItems([])
-      return
-    }
-
-    setBusy(true)
-    const currentJobId = sessionJobId
-    const currentMode = mode
-    const currentOwner = owner
-    const isCurrentSend = () => (
-      sendRequestRef.current === sendRequestId
-      && activeOwnerRef.current === currentOwner
-      && activeJobIdRef.current === currentJobId
-      && activeModeRef.current === currentMode
-    )
-    try {
-      let mediaRefs: string[] = []
-      if (mediaItems.length > 0) {
-        if (!currentJobId) {
-          setError(textByLanguage(language, 'Ảnh chỉ dùng trong cuộc trò chuyện theo công việc.', 'Photos are only available in job conversations.'))
-          return
-        }
-        const uploadDrafts: LocalMediaUploadDraft[] = mediaItems.map((item) => ({
-          fileName: item.fileName,
-          type: 'image',
-          uri: item.uri,
-        }))
-        const uploaded = await uploadJobMediaDrafts(currentJobId, uploadDrafts, 'kael_reference')
-        if (!isCurrentSend()) return
-        if (!uploaded.success) {
-          setError(uploaded.error)
-          return
-        }
-        mediaRefs = uploaded.mediaRefs
-      }
-
-      let sessionId = sessionRef.current?.jobId === currentJobId
-        && sessionRef.current.mode === currentMode
-        ? sessionRef.current.sessionId
-        : null
-      if (!sessionId) {
-        const created = await workerKaelChatService.create({
-          client_request_id: generateClientRequestId(),
-          language,
-          mode: currentMode,
-          ...(currentJobId ? { job_id: currentJobId } : {}),
-        })
-        if (!isCurrentSend()) return
-        if (
-          !created.success
-          || created.data.session.job_id !== currentJobId
-          || created.data.session.mode !== currentMode
-        ) {
-          setProgress(null)
-          setError(textByLanguage(language, 'Kael chưa mở được cuộc trò chuyện riêng cho việc này.', 'Kael could not open the private work session yet.'))
-          return
-        }
-        sessionId = created.data.session.id
-        locallyCreatedSessionIdsRef.current.add(sessionId)
-        cacheSessionResponse(created.data)
-        sessionRef.current = { jobId: currentJobId, mode: currentMode, sessionId }
-        setActiveSessionId(sessionId)
-        commitSessionSummary(created.data.session)
-        if (
-          created.data.session.progress
-          && activeJobIdRef.current === currentJobId
-          && activeModeRef.current === currentMode
-        ) {
-          setProgress(created.data.session.progress)
-        }
-      }
-
-      const streamed = await workerKaelChatService.streamTurn(sessionId, {
-        client_request_id: generateClientRequestId(),
-        language,
-        media_refs: mediaRefs,
-        message: content,
-      }, {
-        onStage: (event) => {
-          if (!isCurrentSend()) return
-          setProgress(event.progress)
-        },
-        onToken: () => undefined,
-      })
-      if (!isCurrentSend()) return
-
-      let finalResponse = streamed.success ? streamed : null
-      if (!finalResponse) {
-        const recovered = await workerKaelChatService.get(sessionId)
-        if (!isCurrentSend()) return
-        if (recovered.success) finalResponse = recovered
-      }
-
-      if (
-        !finalResponse
-        || finalResponse.data.session.job_id !== currentJobId
-        || finalResponse.data.session.mode !== currentMode
-      ) {
-        if (
-          activeJobIdRef.current === currentJobId
-          && activeModeRef.current === currentMode
-        ) setProgress(null)
-        setError(textByLanguage(language, 'Kael bỏ qua phản hồi không khớp việc hiện tại.', 'Kael ignored a response that did not match the current work.'))
-        return
-      }
-
-      cacheSessionResponse(finalResponse.data)
-      if (
-        isCurrentSend()
-        && sessionRef.current?.sessionId === finalResponse.data.session.id
-      ) {
-        sessionRef.current = {
-          jobId: currentJobId,
-          mode: currentMode,
-          sessionId: finalResponse.data.session.id,
-        }
-        setActiveSessionId(finalResponse.data.session.id)
-        setProgress(finalResponse.data.session.progress)
-        setTurns(workerV5KaelOrbTurnsFromResponse(finalResponse.data.turns))
-        setMediaItems([])
-        commitSessionSummary(finalResponse.data.session)
-      }
-    } catch {
-      if (isCurrentSend()) {
-        setError(textByLanguage(language, 'Kael đang không kết nối được. Không có hành động nào được ghi vào việc.', 'Kael is unavailable. No work action was written.'))
-      }
-    } finally {
-      if (sendRequestRef.current === sendRequestId) setBusy(false)
-    }
-  }
+  const send = async (message: string) => createWorkerKaelOrbSendAction({
+    activeJobIdRef,
+    activeModeRef,
+    activeOwnerRef,
+    advisoryUnavailableReply,
+    busy,
+    cacheSessionResponse,
+    canUseKaelSession,
+    commitSessionSummary,
+    language,
+    locallyCreatedSessionIdsRef,
+    mediaItems,
+    mode,
+    openingSessionId,
+    owner,
+    reasoningActions,
+    sendRequestRef,
+    sessionJobId,
+    sessionRef,
+    setActiveSessionId,
+    setBusy,
+    setError,
+    setMediaItems,
+    setProgress,
+    setStreamingReply,
+    setTurns,
+  })(message)
 
   return {
     activeSessionId,
@@ -780,6 +667,9 @@ export function useWorkerV5KaelOrbChat(
     canCreateSession: canUseKaelSession && !busy && !creatingSession && !openingSessionId,
     error,
     liveTurns: turns,
+    reasoningReceipt,
+    streamingReply,
+    settleStreamingReply,
     mediaCount: mediaItems.length,
     openSession,
     openingSessionId,
@@ -794,5 +684,6 @@ export function useWorkerV5KaelOrbChat(
     sessionsLoading,
     setSessionPinned,
     startNewSession,
+    toggleReasoningReceipt: reasoningActions.toggle,
   }
 }

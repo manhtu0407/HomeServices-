@@ -1,10 +1,9 @@
-import { useCallback, useRef, useState , useEffect } from 'react'
-import { Pressable, Text as RNText, View, type StyleProp, type TextProps, type ViewStyle , KeyboardAvoidingView, Platform, type PressableStateCallbackType } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming , withDelay } from 'react-native-reanimated'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { Pressable, Text as RNText, View, type StyleProp, type TextProps, type ViewStyle , KeyboardAvoidingView, Platform } from 'react-native'
+import { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, withDelay } from 'react-native-reanimated'
 import { type LocalDeal } from '@nestscout/shared'
 import { useFocusEffect } from 'expo-router'
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
-import { GlassSurface } from '@/components/ui/glass-surface'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
@@ -14,17 +13,16 @@ import { WorkerV5CustomerCaseWideMintAura, WorkerV5CustomerZipMintAura, WorkerV5
 import { textByLanguage } from '../ui/format'
 import { getWorkerV5ChatJobId } from '../ui/labels'
 import { styles } from '../worker-v5-flow-styles'
-import { WorkerV5KaelOrbCameraIcon } from './orb-surfaces'
+import { WorkerV5KaelOrbCameraIcon } from './orb-camera-icon'
 import { useWorkerV5KaelOrbChat } from './use-kael-orb-chat'
 import { canUseWorkerV5PrivateKaelChat } from './use-worker-kael-orb-chat'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { WorkerV5BackArrowIcon } from '../ui/primitives-surfaces'
 
 import { WorkerV5KaelOrbBody } from './body-surfaces'
-import { WorkerV5KaelSessionMenu, WorkerV5KaelSessionPlusIcon } from './session-menu'
+import { WorkerV5KaelOrbNavigationSurface } from './orb-navigation-surface'
 import { localizedServiceLabel } from '@/lib/app-language'
 
 
@@ -103,15 +101,31 @@ export function WorkerV5KaelOrbScreenSurface({
         withSpring(1, motionTokens.liquid.press),
       )
     }
-    if (!modeMenuOpen) {
+    const nextOpen = !modeMenuOpen
+    if (nextOpen) {
       modeMenuOpacity.value = reduceMotion ? 1 : 0
       modeMenuScaleX.value = reduceMotion ? 1 : 0.92
       modeMenuScaleY.value = reduceMotion ? 1 : 0.8
       modeMenuContentOpacity.value = reduceMotion ? 1 : 0
       modeMenuContentTranslateY.value = reduceMotion ? 0 : 8
       modeMenuTranslateY.value = reduceMotion ? 0 : -4
+      if (reduceMotion) {
+        modeMenuOpacity.value = 1
+        modeMenuScaleX.value = 1
+        modeMenuScaleY.value = 1
+        modeMenuContentOpacity.value = 1
+        modeMenuContentTranslateY.value = 0
+        modeMenuTranslateY.value = 0
+      } else {
+        modeMenuOpacity.value = withTiming(1, { duration: motionDuration(120, reduceMotion) })
+        modeMenuScaleX.value = withSpring(1, motionTokens.liquid.pill)
+        modeMenuScaleY.value = withSpring(1, motionTokens.liquid.entrance)
+        modeMenuTranslateY.value = withSpring(0, motionTokens.liquid.pill)
+        modeMenuContentOpacity.value = withDelay(55, withTiming(1, { duration: motionDuration(130, reduceMotion) }))
+        modeMenuContentTranslateY.value = withDelay(45, withSpring(0, motionTokens.liquid.entrance))
+      }
     }
-    setModeMenuOpen((current) => !current)
+    setModeMenuOpen(nextOpen)
   }
   const animatedModeMenuStyle = useAnimatedStyle(() => ({
     opacity: modeMenuOpacity.value,
@@ -167,8 +181,9 @@ export function WorkerV5KaelOrbScreenSurface({
     void orbChat.openSession(sessionId)
   }
   const hasPrivateIntakeChat = mode !== 'intake' || canUseWorkerV5PrivateKaelChat(deal)
-  const composer = !hasPrivateIntakeChat
-    ? (
+  const composer = useMemo(() => (
+    !hasPrivateIntakeChat
+      ? (
         <WorkerV5KaelIntakeReadinessActions
           language={language}
           navigateToScreen={navigateToScreen}
@@ -176,7 +191,7 @@ export function WorkerV5KaelOrbScreenSurface({
           reduceTransparency={reduceTransparency}
         />
       )
-    : (
+      : (
       <WorkerV5KaelOrbComposer
         busy={orbChat.busy}
         key={`${mode}:${getWorkerV5ChatJobId(deal) ?? 'no-job'}:${orbChat.activeSessionId ?? 'draft'}:${chatEntryKey}`}
@@ -188,27 +203,18 @@ export function WorkerV5KaelOrbScreenSurface({
         onSend={(message) => void orbChat.send(message)}
         reduceTransparency={reduceTransparency}
       />
-    )
-
-  useEffect(() => {
-    if (!modeMenuOpen) return
-    if (reduceMotion) {
-      modeMenuOpacity.value = 1
-      modeMenuScaleX.value = 1
-      modeMenuScaleY.value = 1
-      modeMenuContentOpacity.value = 1
-      modeMenuContentTranslateY.value = 0
-      modeMenuTranslateY.value = 0
-      return
-    }
-
-    modeMenuOpacity.value = withTiming(1, { duration: motionDuration(120, reduceMotion) })
-    modeMenuScaleX.value = withSpring(1, motionTokens.liquid.pill)
-    modeMenuScaleY.value = withSpring(1, motionTokens.liquid.entrance)
-    modeMenuTranslateY.value = withSpring(0, motionTokens.liquid.pill)
-    modeMenuContentOpacity.value = withDelay(55, withTiming(1, { duration: motionDuration(130, reduceMotion) }))
-    modeMenuContentTranslateY.value = withDelay(45, withSpring(0, motionTokens.liquid.entrance))
-  }, [modeMenuContentOpacity, modeMenuContentTranslateY, modeMenuOpen, modeMenuOpacity, modeMenuScaleX, modeMenuScaleY, modeMenuTranslateY, reduceMotion])
+      )
+  ), [
+    chatEntryKey,
+    deal,
+    hasPrivateIntakeChat,
+    language,
+    mode,
+    navigateToScreen,
+    orbChat,
+    profile,
+    reduceTransparency,
+  ])
 
   return (
     <SafeAreaView style={[styles.safeArea, surfaceStyle, styles.kaelOrbCustomerSafeArea]} testID={`worker-v5-screen-${screen.id}`}>
@@ -234,143 +240,26 @@ export function WorkerV5KaelOrbScreenSurface({
           style={[styles.kaelOrbCustomerChatFrame, mode === 'intake' ? styles.kaelOrbCustomerChatFrameIntake : null]}
           testID="worker-v5-kael-customer-frame"
         >
-          <View style={[styles.kaelOrbCustomerTopBar, reduceTransparency && styles.opaqueCard]} testID="worker-v5-kael-source-header">
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Quay lại' : 'Back'}
-              accessibilityRole="button"
-              onPress={onBack ?? (() => navigateToScreen('2.1-opportunity-inbox'))}
-              style={({ pressed }) => [styles.kaelOrbCustomerTopControl, pressed ? styles.pressed : null]}
-              testID="worker-v5-back"
-            >
-              <WorkerV5BackArrowIcon />
-            </Pressable>
-            <View style={styles.kaelOrbCustomerTopSpacer} />
-            <GlassSurface
-              backgroundColor="rgba(255,255,255,0.96)"
-              borderColor="rgba(255,255,255,0.98)"
-              material="liquid"
-              mode="light"
-              style={[
-                styles.kaelOrbCustomerHeaderActions,
-                modeMenuOpen || sessionMenuOpen ? styles.kaelOrbCustomerHeaderActionsOpen : null,
-              ]}
-              testID="worker-v5-kael-header-actions"
-              variant="control"
-            >
-              <Pressable
-                accessibilityLabel={textByLanguage(language, 'Quản lý các phiên Kael', 'Manage Kael conversations')}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: sessionMenuOpen }}
-                onPress={toggleSessionMenu}
-                style={({ pressed }) => [
-                  styles.kaelOrbCustomerSessionTrigger,
-                  sessionMenuOpen ? styles.kaelOrbCustomerSessionTriggerOpen : null,
-                  pressed ? (reduceMotion ? styles.kaelOrbCustomerSessionTriggerPressedReduced : styles.pressed) : null,
-                ]}
-                testID="worker-v5-kael-session-toggle"
-              >
-                <WorkerV5KaelSessionPlusIcon />
-              </Pressable>
-              <Animated.View
-                style={[
-                  styles.kaelOrbCustomerModeTrigger,
-                  modeMenuOpen ? styles.kaelOrbCustomerModeTriggerOpen : null,
-                  animatedModeTriggerStyle,
-                ]}
-                testID="worker-v5-kael-mode-trigger-frame"
-              >
-                <Pressable
-                  accessibilityLabel={textByLanguage(
-                    language,
-                    `Chế độ Kael: ${activeMode.label}. Nhấn để đổi chế độ`,
-                    `Kael mode: ${activeMode.label}. Press to switch mode`,
-                  )}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: modeMenuOpen }}
-                  onPress={toggleModeMenu}
-                  style={({ pressed }: PressableStateCallbackType) => [
-                    styles.kaelOrbCustomerModeTriggerPressTarget,
-                    pressed ? (reduceMotion ? styles.kaelOrbCustomerModeTriggerPressedReduced : styles.pressed) : null,
-                  ]}
-                  testID="worker-v5-kael-mode-toggle"
-                >
-                  <Text
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.78}
-                    numberOfLines={1}
-                    style={styles.kaelOrbCustomerModeTriggerText}
-                    testID="worker-v5-kael-active-mode"
-                  >
-                    {activeMode.label}
-                  </Text>
-                </Pressable>
-              </Animated.View>
-            </GlassSurface>
-          </View>
-
-          {modeMenuOpen ? (
-            <Animated.View
-              style={[
-                styles.kaelOrbCustomerModeMenu,
-                reduceTransparency ? styles.opaqueCard : null,
-                animatedModeMenuStyle,
-              ]}
-              testID="worker-v5-kael-mode-menu"
-            >
-              {!reduceTransparency ? (
-                <>
-                  <View style={styles.kaelOrbCustomerModeMenuTopLight} testID="worker-v5-kael-mode-menu-top-light" />
-                  <View style={styles.kaelOrbCustomerModeMenuInnerShadow} testID="worker-v5-kael-mode-menu-inner-shadow" />
-                </>
-              ) : null}
-              <Animated.View style={[styles.kaelOrbCustomerModeMenuOptions, animatedModeMenuContentStyle]} testID="worker-v5-kael-mode-menu-options">
-                {modeOptions.map((item) => {
-                  const selected = mode === item.value
-                  return (
-                    <Pressable
-                      accessibilityRole="tab"
-                      accessibilityState={{ selected }}
-                      key={item.value}
-                      onPress={() => switchMode(item.value)}
-                      style={({ pressed }) => [
-                        styles.kaelOrbCustomerModeMenuOption,
-                        selected ? styles.kaelOrbCustomerModeMenuOptionActive : null,
-                        reduceTransparency ? styles.opaqueCard : null,
-                        pressed ? styles.pressed : null,
-                      ]}
-                      testID={`worker-v5-kael-mode-menu-${item.value}`}
-                    >
-                      <View style={styles.kaelOrbCustomerModeMenuCopy}>
-                        <Text style={[styles.kaelOrbCustomerModeMenuText, selected ? styles.kaelOrbCustomerModeMenuTextActive : null]}>{item.label}</Text>
-                        <Text style={styles.kaelOrbCustomerModeMenuDescription}>{item.description}</Text>
-                      </View>
-                      {selected ? <Text style={styles.kaelOrbCustomerModeMenuCheck}>{'✓'}</Text> : null}
-                    </Pressable>
-                  )
-                })}
-              </Animated.View>
-            </Animated.View>
-          ) : null}
-
-          {sessionMenuOpen ? (
-            <WorkerV5KaelSessionMenu
-              activeSessionId={orbChat.activeSessionId}
-              canCreate={orbChat.canCreateSession}
-              error={orbChat.sessionsError}
-              language={language}
-              loading={orbChat.sessionsLoading}
-              mode={mode}
-              onArchive={orbChat.archiveSession}
-              onCreate={openNewSession}
-              onPin={orbChat.setSessionPinned}
-              onRename={orbChat.renameSession}
-              onSelect={openSession}
-              pendingSessionIds={orbChat.pendingSessionIds}
-              reduceMotion={reduceMotion}
-              reduceTransparency={reduceTransparency}
-              sessions={orbChat.sessions}
-            />
-          ) : null}
+          <WorkerV5KaelOrbNavigationSurface
+            activeMode={activeMode}
+            animatedModeMenuContentStyle={animatedModeMenuContentStyle}
+            animatedModeMenuStyle={animatedModeMenuStyle}
+            animatedModeTriggerStyle={animatedModeTriggerStyle}
+            chat={orbChat}
+            language={language}
+            mode={mode}
+            modeMenuOpen={modeMenuOpen}
+            modeOptions={modeOptions}
+            onBack={onBack ?? (() => navigateToScreen('2.1-opportunity-inbox'))}
+            onOpenSession={openSession}
+            onSelectMode={switchMode}
+            onStartNewSession={openNewSession}
+            onToggleModeMenu={toggleModeMenu}
+            onToggleSessionMenu={toggleSessionMenu}
+            reduceMotion={reduceMotion}
+            reduceTransparency={reduceTransparency}
+            sessionMenuOpen={sessionMenuOpen}
+          />
 
           <WorkerV5KaelOrbBody
             activeSessionId={orbChat.activeSessionId}
@@ -381,14 +270,18 @@ export function WorkerV5KaelOrbScreenSurface({
             keepIntakeContextAccessible={!hasPrivateIntakeChat}
             language={language}
             liveError={orbChat.error}
-            liveStatus={orbChat.busyLabel}
+            liveStatus={orbChat.reasoningReceipt.status !== 'idle' ? null : orbChat.busyLabel}
             liveTurns={orbChat.liveTurns}
             mode={mode}
             modeMenuOpen={modeMenuOpen || sessionMenuOpen}
             onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
+            onStreamingReplySettled={orbChat.settleStreamingReply}
+            onToggleReasoningReceipt={orbChat.toggleReasoningReceipt}
             reduceMotion={reduceMotion}
             reduceTransparency={reduceTransparency}
+            reasoningReceipt={orbChat.reasoningReceipt}
             serviceIcons={workerV5OpportunityServiceIcons}
+            streamingReply={orbChat.streamingReply}
           />
         </View>
       </KeyboardAvoidingView>

@@ -67,7 +67,7 @@ jobs:
       - name: Run pinned Deno checks
         run: |
           image='denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498'
-          for fn in kael-learning-monitor kael-media-retention mobile-api sepay-webhook; do
+          for fn in kael-learning-monitor kael-matching-maintainer kael-media-retention mobile-api sepay-webhook; do
             docker run --rm -v "$PWD:/repo" -w /repo "$image" \
               deno check --config "supabase/functions/$fn/deno.json" "supabase/functions/$fn/index.ts"
           done

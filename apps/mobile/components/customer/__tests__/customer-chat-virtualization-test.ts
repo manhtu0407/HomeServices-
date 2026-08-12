@@ -19,9 +19,9 @@ describe('customer Kael chat transcript performance', () => {
   })
 
   it('places completed local Case Work exchanges before the current phase surface', () => {
-    const viewSource = readFileSync(customerV21Path('chat-stateful-surfaces.tsx'), 'utf8')
-    const localTurnsIndex = viewSource.indexOf('for (const turn of caseAssistantTurns)')
-    const currentEstimateIndex = viewSource.indexOf("appendChatTranscriptRow(rows, 'agentic-estimate'")
+    const transcriptSource = readFileSync(customerV21Path('use-kael-chat-transcript.tsx'), 'utf8')
+    const localTurnsIndex = transcriptSource.indexOf('for (const turn of caseAssistantTurns)')
+    const currentEstimateIndex = transcriptSource.indexOf("appendRow(rows, 'agentic-estimate'")
 
     expect(localTurnsIndex).toBeGreaterThanOrEqual(0)
     expect(currentEstimateIndex).toBeGreaterThanOrEqual(0)

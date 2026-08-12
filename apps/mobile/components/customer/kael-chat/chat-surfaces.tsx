@@ -2,6 +2,7 @@ import { Text, View } from 'react-native'
 import Svg, { Circle, Defs, Path, Rect } from 'react-native-svg'
 
 import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
+import { KaelModeMenuMintAura } from '@/components/ui/kael-mode-menu-mint-aura'
 import { AlphaStop as Stop, NativeSafeRadialGradient as RadialGradient } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
@@ -56,21 +57,12 @@ export function ChatMediaCameraIcon({ color }: { color: string }) {
 }
 
 export function ChatModeSwitchAura({ reduceTransparency }: { reduceTransparency: boolean }) {
-  if (reduceTransparency) return null
-
   return (
-    <View pointerEvents="none" style={styles.chatModeSwitchAura} testID="customer-v21-chat-mode-mint-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 360 58" width="100%">
-        <Defs>
-          <RadialGradient id="chatModeSwitchAuraFill" cx="50%" cy="50%" r="76%">
-            <Stop offset="0" stopColor="rgba(75,228,205,0.22)" />
-            <Stop offset="0.52" stopColor="rgba(151,246,232,0.10)" />
-            <Stop offset="0.82" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#chatModeSwitchAuraFill)" height="58" width="360" />
-      </Svg>
-    </View>
+    <KaelModeMenuMintAura
+      reduceTransparency={reduceTransparency}
+      scope="Customer"
+      testID="customer-v21-chat-mode-mint-aura"
+    />
   )
 }
 
@@ -106,16 +98,16 @@ export function ChatCanvasAura({ mode, reduceTransparency }: { mode: CustomerThe
 
 export function ChatBackIcon({ color }: { color: string }) {
   return (
-    <Svg fill="none" height={22} style={styles.chatBackIcon} viewBox="0 0 24 24" width={22}>
-      <Path d="M14.5 5.5 8 12l6.5 6.5" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} />
+    <Svg fill="none" height={18} style={styles.chatBackIcon} viewBox="0 0 24 24" width={18}>
+      <Path d="M14.5 5.5 8 12l6.5 6.5" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} />
     </Svg>
   )
 }
 
 export function ChatNewConversationIcon({ color }: { color: string }) {
   return (
-    <Svg fill="none" height={22} viewBox="0 0 24 24" width={22}>
-      <Path d="M12 5v14M5 12h14" stroke={color} strokeLinecap="round" strokeWidth={2.1} />
+    <Svg fill="none" height={20} viewBox="0 0 24 24" width={20}>
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeLinecap="round" strokeWidth={2.7} />
     </Svg>
   )
 }

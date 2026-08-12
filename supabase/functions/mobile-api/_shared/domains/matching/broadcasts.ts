@@ -68,7 +68,7 @@ export async function createBroadcasts(
   jobId: string,
   serviceType: ServiceType,
   district: string,
-  options: { excludeWorkerIds?: string[] } = {},
+  options: { candidateWorkerIds?: string[]; excludeWorkerIds?: string[] } = {},
 ) {
   const eligibleResult = await queryEligibleWorkers(
     client,
@@ -115,6 +115,7 @@ export async function createBroadcasts(
     success: true as const,
     batchId,
     broadcastCount: activation.targets.length,
+    expiresAt: expiresAt.toISOString(),
   };
 }
 

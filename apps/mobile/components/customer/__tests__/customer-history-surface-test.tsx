@@ -160,6 +160,17 @@ describe('CustomerHistorySurface service history', () => {
     expect(screen.getByTestId('customer-v21-history-item-job_paid-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-item-job_paid-wide-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-history-item-job_paid-mint-aura')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-worker-row-job_paid').props.style)).toMatchObject({
+      marginBottom: 8,
+      marginTop: -8,
+    })
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-history-favorite-job_paid-icon').props.style)).toMatchObject({
+      fontSize: 22,
+      includeFontPadding: false,
+      lineHeight: 22,
+      textAlign: 'center',
+      textAlignVertical: 'center',
+    })
     expect(screen.queryByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeNull()
   })
 
@@ -273,6 +284,24 @@ describe('CustomerHistorySurface service history', () => {
     fireEvent.press(screen.getByTestId('customer-v21-history-rebook-job_paid'))
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking?service=electrical')
+  })
+
+  it('carries a real saved worker into the new Case Work handoff without assigning them yet', async () => {
+    const result = serviceHistory()
+    result.data.service_history[0].worker = {
+      ...result.data.service_history[0].worker!,
+      id: '10fe7ac1-78e7-4e8a-9eb2-1a2c5c7b9d10',
+      is_favorite: true,
+    }
+    mockListMyServiceHistory.mockResolvedValue(result)
+    render(<CustomerHistorySurface />)
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-history-rebook-job_paid')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('customer-v21-history-rebook-job_paid'))
+
+    expect(mockReplace).toHaveBeenCalledWith(
+      '/(customer)/booking?service=electrical&preferred_worker_id=10fe7ac1-78e7-4e8a-9eb2-1a2c5c7b9d10',
+    )
   })
 
   it('requires confirmation before opening after-service support', async () => {

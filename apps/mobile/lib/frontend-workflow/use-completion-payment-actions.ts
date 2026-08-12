@@ -1,6 +1,7 @@
 import { useCallback, type Dispatch, type RefObject } from 'react'
 import type { LocalWorkflowAction, LocalWorkflowState, ReviewInput } from '@nestscout/shared'
 import { jobService } from '../services'
+import { generateClientRequestId } from '../client-request-id'
 import { getRemoteJobId } from './helpers'
 
 type CompletionPaymentActionsInput = {
@@ -34,6 +35,47 @@ export function useCompletionPaymentActions({
     return true
   }, [refreshCurrentJob, setRemoteError, stateRef])
 
+  const createManualBankPaymentOrder = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để tạo lệnh thanh toán')
+    const created = await jobService.createPaymentOrder(jobId)
+    if (!created.success) return setRemoteError(created.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError, stateRef])
+
+  const claimManualBankPayment = useCallback(async (sendingBank?: string) => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để xác nhận chuyển khoản')
+    const claimed = await jobService.claimManualBankPayment(jobId, {
+      transferred_at: new Date().toISOString(),
+      ...(sendingBank ? { sending_bank: sendingBank } : {}),
+    })
+    if (!claimed.success) return setRemoteError(claimed.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError, stateRef])
+
+  const selectDirectWorkerPayment = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để chọn thanh toán trực tiếp')
+    const selected = await jobService.selectDirectWorkerPayment(jobId, {
+      client_request_id: generateClientRequestId(),
+    })
+    if (!selected.success) return setRemoteError(selected.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError, stateRef])
+
+  const respondToDirectWorkerPayment = useCallback(async (received: boolean) => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để xác nhận thanh toán trực tiếp')
+    const responded = await jobService.respondToDirectWorkerPayment(jobId, { received })
+    if (!responded.success) return setRemoteError(responded.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError, stateRef])
+
   const confirmStagingPayment = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để xác nhận thanh toán Staging')
@@ -54,9 +96,13 @@ export function useCompletionPaymentActions({
   }, [dispatch, refreshCurrentJob, setRemoteError, stateRef])
 
   return {
+    claimManualBankPayment,
     confirmStagingPayment,
+    createManualBankPaymentOrder,
     createPaymentIntent,
     customerConfirmCompletion,
+    respondToDirectWorkerPayment,
+    selectDirectWorkerPayment,
     submitReview,
   }
 }

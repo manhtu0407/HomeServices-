@@ -21,6 +21,17 @@ export type {
 } from './ai.types'
 export { TIMEOUT_MS, MAX_RETRIES, AIProviderError } from './ai.types'
 export type {
+  AdminFinanceBalanceSnapshotInput,
+  AdminFinanceBalanceSnapshotResponse,
+  AdminFinanceRange,
+  AdminFinanceSummaryResponse,
+  AdminPaymentReconciliationDecisionInput,
+  AdminPaymentReconciliationDecisionResponse,
+  AdminPaymentReconciliationListResponse,
+  AdminPaymentReconciliationStatus,
+  AdminPaymentReconciliationSummary,
+} from './admin-finance'
+export type {
   AddressAccessView,
   KaelEstimate,
   ServiceCatalogResponse,
@@ -39,6 +50,11 @@ export type {
   StatusUpdateResponse,
   ConfirmCompletionResponse,
   PaymentIntentResponse,
+  ManualBankPaymentClaimInput,
+  ManualBankPaymentClaimResponse,
+  DirectWorkerPaymentSelectInput,
+  DirectWorkerPaymentResponseInput,
+  DirectWorkerPaymentResponse,
   CustomerCancellationResponse,
   DisputeOpenResponse,
   DisputeCounterStatementResponse,

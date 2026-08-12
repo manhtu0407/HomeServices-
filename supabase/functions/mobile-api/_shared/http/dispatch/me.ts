@@ -32,6 +32,13 @@ export async function dispatchMeRoute(
       return services.listCustomerActiveJobs(ctx);
     case "me.jobs.history":
       return services.listCustomerServiceHistory(ctx);
+    case "me.favoriteWorkers.matching": {
+      const jobId = new URL(request.url).searchParams.get("job_id")?.trim() ?? "";
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) {
+        apiFailure("VALIDATION", "job_id không hợp lệ", 400);
+      }
+      return services.listFavoriteWorkersForMatching(ctx, jobId);
+    }
     case "me.kaelFeedback": {
       const input = customerKaelFeedbackSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

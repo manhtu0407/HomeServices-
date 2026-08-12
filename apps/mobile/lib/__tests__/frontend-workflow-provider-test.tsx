@@ -20,9 +20,10 @@ const mockListNotifications = jest.fn()
 const mockRequestScopeChange = jest.fn()
 const mockOpenKaelJobIncident = jest.fn()
 const mockGetCustomerAvatar = jest.fn()
+const mockGetCustomerInsights = jest.fn()
 const mockUploadCustomerAvatar = jest.fn()
 let mockAuth: {
-  role: 'customer' | 'worker'
+  role: 'admin' | 'customer' | 'worker'
   session: { user: { app_metadata?: { provider?: string }; id: string } }
 } = {
   role: 'worker',
@@ -53,7 +54,7 @@ jest.mock('../realtime', () => ({
 jest.mock('../services', () => ({
   customerProfileService: {
     getAvatar: (...args: unknown[]) => mockGetCustomerAvatar(...args),
-    getInsights: jest.fn(async () => ({ error: 'not needed for this regression', success: false })),
+    getInsights: (...args: unknown[]) => mockGetCustomerInsights(...args),
   },
   jobService: {
     getJob: (...args: unknown[]) => mockGetJob(...args),
@@ -135,12 +136,18 @@ function CustomerAvatarProbe() {
   return <Text testID="customer-avatar-url">{customerAvatarUrl ?? 'initials'}</Text>
 }
 
+function CustomerProfileInsightsProbe() {
+  const { customerProfileInsights } = useFrontendWorkflow()
+  return <Text testID="customer-profile-insights-points">{customerProfileInsights?.usage_rank_points ?? 'none'}</Text>
+}
+
 function buildCustomerJobDetail(
   id: string,
   status: JobDetailResponse['job']['status'],
 ): JobDetailResponse {
   return {
     broadcast_state: null,
+    matching_state: null,
     current_scope_change: null,
     job: {
       address_access: {
@@ -206,6 +213,8 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
       status: 200,
       success: true,
     })
+    mockGetCustomerInsights.mockReset()
+    mockGetCustomerInsights.mockResolvedValue({ error: 'not needed for this regression', success: false })
     mockUploadCustomerAvatar.mockReset()
     mockUploadCustomerAvatar.mockResolvedValue({
       data: {
@@ -343,6 +352,78 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
     } finally {
       jest.useRealTimers()
     }
+  })
+
+  it('does not request customer-only profile insights for an admin session', async () => {
+    mockAuth = {
+      role: 'admin',
+      session: { user: { id: 'admin-1' } },
+    }
+
+    render(
+      <FrontendWorkflowProvider>
+        <WorkflowIsolationProbe />
+      </FrontendWorkflowProvider>,
+    )
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    })
+
+    expect(mockGetCustomerInsights).not.toHaveBeenCalled()
+  })
+
+  it('hides cached customer profile insights as soon as the role leaves customer scope', async () => {
+    mockAuth = {
+      role: 'customer',
+      session: { user: { id: 'customer-1' } },
+    }
+    mockGetCustomerInsights.mockResolvedValueOnce({
+      data: {
+        active_service_days: 3,
+        active_streak_days: 1,
+        completed_service_count: 2,
+        customer_id: 'customer-1',
+        fair_price_service_count: 1,
+        fair_price_status: 'verified',
+        kael_interaction_count: 4,
+        member_since: '2026-05-24T00:00:00.000Z',
+        money_protection_score: 80,
+        positive_review_rate_percent: 100,
+        preferred_service_count: 1,
+        price_savings_vnd: 0,
+        protected_transaction_count: 1,
+        protected_value_vnd: 0,
+        saved_address_count: 1,
+        total_spend_vnd: 0,
+        total_transaction_count: 1,
+        usage_rank_level: 1,
+        usage_rank_points: 290,
+        dispute_free_rate_percent: 100,
+      },
+      success: true,
+    })
+    const view = render(
+      <FrontendWorkflowProvider>
+        <CustomerProfileInsightsProbe />
+      </FrontendWorkflowProvider>,
+    )
+
+    await waitFor(() => {
+      expect(view.getByTestId('customer-profile-insights-points')).toHaveTextContent('290')
+    })
+
+    mockAuth = {
+      role: 'admin',
+      session: { user: { id: 'customer-1' } },
+    }
+    view.rerender(
+      <FrontendWorkflowProvider>
+        <CustomerProfileInsightsProbe />
+      </FrontendWorkflowProvider>,
+    )
+
+    expect(view.getByTestId('customer-profile-insights-points')).toHaveTextContent('none')
   })
 
   it('hydrates and updates the signed customer avatar through the workflow owner', async () => {

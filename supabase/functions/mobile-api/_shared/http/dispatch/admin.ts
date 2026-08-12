@@ -17,6 +17,12 @@ import {
   parseAdminWithdrawalRequestListQuery,
 } from "../routes/admin-payout-contract.ts";
 import {
+  adminFinanceBalanceSnapshotSchema,
+  adminPaymentReconciliationDecisionSchema,
+  parseAdminFinanceSummaryQuery,
+  parseAdminPaymentReconciliationListQuery,
+} from "../routes/admin-finance-contract.ts";
+import {
   kaelBatchResultsProcessInput,
   kaelLearningCandidateListInput,
   kaelLearningCandidateReviewInput,
@@ -44,6 +50,8 @@ type AdminControlDispatchRoute = Extract<
       | `admin.workerApplications.${string}`
       | `admin.workers.${string}`
       | `admin.transactions.${string}`
+      | `admin.paymentReconciliations.${string}`
+      | `admin.finance.${string}`
       | `admin.payoutMethods.${string}`
       | `admin.withdrawalRequests.${string}`
       | `admin.subAdmins.${string}`
@@ -57,6 +65,8 @@ function isAdminControlRoute(route: AdminDispatchRoute): route is AdminControlDi
     || route.kind.startsWith("admin.workerApplications.")
     || route.kind.startsWith("admin.workers.")
     || route.kind.startsWith("admin.transactions.")
+    || route.kind.startsWith("admin.paymentReconciliations.")
+    || route.kind.startsWith("admin.finance.")
     || route.kind.startsWith("admin.payoutMethods.")
     || route.kind.startsWith("admin.withdrawalRequests.")
     || route.kind.startsWith("admin.subAdmins.")
@@ -146,6 +156,26 @@ async function dispatchAdminControlRoute(
     }
     case "admin.transactions.detail":
       return services.getAdminTransaction(ctx, route.jobId);
+    case "admin.paymentReconciliations.list": {
+      const input = parseAdminPaymentReconciliationListQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Bộ lọc đối soát thanh toán không hợp lệ", 400);
+      return services.listAdminPaymentReconciliations(ctx, input.data);
+    }
+    case "admin.paymentReconciliations.decision": {
+      const input = adminPaymentReconciliationDecisionSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Quyết định đối soát không hợp lệ", 400);
+      return services.decideAdminPaymentReconciliation(ctx, route.paymentOrderId, input.data);
+    }
+    case "admin.finance.summary": {
+      const input = parseAdminFinanceSummaryQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Khoảng thời gian tài chính không hợp lệ", 400);
+      return services.getAdminFinanceSummary(ctx, input.data);
+    }
+    case "admin.finance.balanceSnapshot": {
+      const input = adminFinanceBalanceSnapshotSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Số dư tài khoản không hợp lệ", 400);
+      return services.recordAdminFinanceBalanceSnapshot(ctx, input.data);
+    }
     case "admin.payoutMethods.list": {
       const input = parseAdminPayoutMethodListQuery(new URL(request.url));
       if (!input.success) apiFailure("VALIDATION", "Bộ lọc tài khoản nhận tiền không hợp lệ", 400);

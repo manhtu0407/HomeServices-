@@ -37,6 +37,16 @@ import type {
   AdminWithdrawalRequestResolveInput,
   AdminWithdrawalRequestResolveResponse,
 } from "../../domains/contracts/admin-payout.ts";
+import type { AdminFinanceContracts } from "../../domains/contracts/admin-finance.ts";
+
+type AdminFinanceRange = AdminFinanceContracts["range"];
+type AdminPaymentReconciliationListInput = AdminFinanceContracts["paymentReconciliationListInput"];
+type AdminPaymentReconciliationDecisionInput = AdminFinanceContracts["paymentReconciliationDecisionInput"];
+type AdminPaymentReconciliationListResponse = AdminFinanceContracts["paymentReconciliationListResponse"];
+type AdminPaymentReconciliationDecisionResponse = AdminFinanceContracts["paymentReconciliationDecisionResponse"];
+type AdminFinanceSummaryResponse = AdminFinanceContracts["financeSummaryResponse"];
+type AdminFinanceBalanceSnapshotInput = AdminFinanceContracts["financeBalanceSnapshotInput"];
+type AdminFinanceBalanceSnapshotResponse = AdminFinanceContracts["financeBalanceSnapshotResponse"];
 
 export type AdminControlServices = {
   getAdminOperations(ctx: MobileApiContext): Promise<AdminOperationsResponse>;
@@ -100,6 +110,23 @@ export type AdminControlServices = {
     withdrawalRequestId: string,
     input: AdminWithdrawalRequestResolveInput,
   ): Promise<AdminWithdrawalRequestResolveResponse>;
+  listAdminPaymentReconciliations(
+    ctx: MobileApiContext,
+    input: AdminPaymentReconciliationListInput,
+  ): Promise<AdminPaymentReconciliationListResponse>;
+  decideAdminPaymentReconciliation(
+    ctx: MobileApiContext,
+    paymentOrderId: string,
+    input: AdminPaymentReconciliationDecisionInput,
+  ): Promise<AdminPaymentReconciliationDecisionResponse>;
+  getAdminFinanceSummary(
+    ctx: MobileApiContext,
+    input: { anchor?: string; range: AdminFinanceRange },
+  ): Promise<AdminFinanceSummaryResponse>;
+  recordAdminFinanceBalanceSnapshot(
+    ctx: MobileApiContext,
+    input: AdminFinanceBalanceSnapshotInput,
+  ): Promise<AdminFinanceBalanceSnapshotResponse>;
   listAdminSubAdmins(ctx: MobileApiContext): Promise<AdminSubAdminListResponse>;
   searchAdminSubAdminAccounts(
     ctx: MobileApiContext,

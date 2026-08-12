@@ -78,7 +78,7 @@ export function CustomerKaelChatHeader({
           ]}
           testID="customer-v21-kael-back"
         >
-          <ChatBackIcon color={tokens.primary} />
+          <ChatBackIcon color={tokens.text} />
         </KaelLiquidPressable>
         <View style={styles.chatHeaderSpacer} />
         <View
@@ -104,7 +104,7 @@ export function CustomerKaelChatHeader({
             ]}
             testID="customer-v21-kael-new-conversation"
           >
-            <ChatNewConversationIcon color={tokens.primary} />
+            <ChatNewConversationIcon color={tokens.text} />
           </KaelLiquidPressable>
           <KaelLiquidPressable
             accessibilityLabel={language === 'vi' ? `Chế độ Kael: ${activeModeLabel}. Nhấn để đổi chế độ` : `Kael mode: ${activeModeLabel}. Press to switch mode`}

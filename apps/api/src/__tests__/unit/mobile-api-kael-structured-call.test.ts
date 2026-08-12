@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import { runCustomerAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant'
+import { normalizeAssistantPayload } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-provider-output'
 import { classifyIntent, diagnoseIntake } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent'
 import { searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/tools/market'
 import { reviewScopeChange, computeScopeChangeEstimate } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/scope-change'
@@ -162,6 +163,53 @@ describe('mobile-api Kael structured output health', () => {
     })
   })
 
+  it('validates JSON that follows a closed hidden thinking block without retaining it', async () => {
+    const guard = makeCircuitRpc()
+    vi.stubGlobal('fetch', vi.fn(async () => deepseekResponse(
+      '<think>internal route note</think>\n{"answer":"safe"}',
+    )))
+
+    await expect(callStructuredAI(request, z.object({ answer: z.string() }), {
+      deepseekApiKey: 'deepseek-test',
+      durableGuardsEnabled: true,
+      durableGuardClient: guard.client,
+    }, undefined)).resolves.toMatchObject({
+      success: true,
+      data: { answer: 'safe' },
+    })
+    expect(guard.successCalls).toBe(1)
+  })
+
+  it('uses a later top-level JSON response when an earlier envelope fails the schema', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => deepseekResponse(
+      '{"type":"envelope"}\n{"answer":"safe"}',
+    )))
+
+    await expect(callStructuredAI(request, z.object({ answer: z.string() }), {
+      deepseekApiKey: 'deepseek-test',
+    }, undefined)).resolves.toMatchObject({
+      success: true,
+      data: { answer: 'safe' },
+    })
+  })
+
+  it('rejects a payload when a hidden thinking block is not closed', async () => {
+    const guard = makeCircuitRpc()
+    vi.stubGlobal('fetch', vi.fn(async () => deepseekResponse(
+      '<think>{"answer":"not visible"}',
+    )))
+
+    await expect(callStructuredAI(request, z.object({ answer: z.string() }), {
+      deepseekApiKey: 'deepseek-test',
+      durableGuardsEnabled: true,
+      durableGuardClient: guard.client,
+    }, undefined)).resolves.toMatchObject({
+      success: false,
+      code: 'SCHEMA_INVALID',
+    })
+    expect(guard.successCalls).toBe(0)
+  })
+
   it('does not count the market insufficient-data sentinel as malformed schema', async () => {
     const guard = makeCircuitRpc()
     vi.stubGlobal('fetch', vi.fn(async () => deepseekResponse(
@@ -231,6 +279,106 @@ describe('mobile-api Kael structured output health', () => {
         validation: { status: 'fail', reason_code: 'INVALID_SCHEMA' },
       }),
     ]))
+  })
+
+  it('normalizes a singleton JSON wrapper before validating a worker streamed-style response', async () => {
+    const wrappedCall = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify([{
+        public_reasoning_summary: ['Xác nhận yêu cầu chỉ cần hướng dẫn an toàn.'],
+        text: 'Kiểm tra van nước và chuẩn bị khu vực an toàn trước khi nhận việc.',
+      }]),
+      usage: { inputTokens: 10, outputTokens: 12, costUsd: 0.0001 },
+      latencyMs: 12,
+    }))
+
+    const result = await runWorkerAssist({
+      job: null,
+      question: 'Tôi nên kiểm tra gì trước khi nhận việc sửa vòi nước?',
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
+      callAI: wrappedCall,
+    })
+
+    expect(result).toMatchObject({
+      fallback_used: false,
+      text: 'Kiểm tra van nước và chuẩn bị khu vực an toàn trước khi nhận việc.',
+      public_reasoning_summary: ['Xác nhận yêu cầu chỉ cần hướng dẫn an toàn.'],
+    })
+  })
+
+  it('normalizes bounded multi-part JSON wrappers without accepting arbitrary fields', async () => {
+    const wrappedCall = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify([
+        { public_reasoning_summary: ['Xác nhận yêu cầu chỉ cần hướng dẫn an toàn.'] },
+        { text: 'Kiểm tra van nước và chuẩn bị khu vực an toàn trước khi nhận việc.' },
+        { safety_notes: ['Không tự báo giá mới ngoài luồng Kael trong app.'] },
+      ]),
+      usage: { inputTokens: 10, outputTokens: 12, costUsd: 0.0001 },
+      latencyMs: 12,
+    }))
+
+    const result = await runWorkerAssist({
+      job: null,
+      question: 'Tôi nên kiểm tra gì trước khi nhận việc sửa vòi nước?',
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
+      callAI: wrappedCall,
+    })
+
+    expect(result).toMatchObject({
+      fallback_used: false,
+      text: 'Kiểm tra van nước và chuẩn bị khu vực an toàn trước khi nhận việc.',
+      public_reasoning_summary: ['Xác nhận yêu cầu chỉ cần hướng dẫn an toàn.'],
+      safety_notes: [
+        'Không tự báo giá mới ngoài luồng Kael trong ứng dụng.',
+        'Không chuyển trạng thái thay cho bằng chứng thực tế.',
+      ],
+    })
+  })
+
+  it('skips an internal wrapper record before the public worker trace and final reply', async () => {
+    const wrappedCall = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify([
+        { type: 'thinking', text: 'private provider rationale' },
+        { public_reasoning_summary: ['Checked the worker request boundary.'] },
+        { type: 'final', text: 'Check the water valve and prepare the area safely before taking the job.' },
+      ]),
+      usage: { inputTokens: 10, outputTokens: 12, costUsd: 0.0001 },
+      latencyMs: 12,
+    }))
+
+    const result = await runWorkerAssist({
+      job: null,
+      question: 'What should I check before accepting a plumbing job?',
+      language: 'en',
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
+      callAI: wrappedCall,
+    })
+
+    expect(result).toMatchObject({
+      fallback_used: false,
+      text: 'Check the water valve and prepare the area safely before taking the job.',
+      public_reasoning_summary: ['Checked the worker request boundary.'],
+    })
+    expect(result.text).not.toContain('private provider rationale')
+  })
+
+  it('normalizes a public Customer trace and answer after an internal wrapper record', () => {
+    const result = normalizeAssistantPayload([
+      { type: 'thinking', answer: 'private provider rationale' },
+      { public_reasoning_summary: ['Checked the request boundary.'] },
+      { type: 'final', answer: 'Please turn off the water valve and keep the area dry until the worker arrives.' },
+    ])
+
+    expect(result).toMatchObject({
+      answer: 'Please turn off the water valve and keep the area dry until the worker arrives.',
+      public_reasoning_summary: ['Checked the request boundary.'],
+    })
+    expect((result as { answer?: string }).answer).not.toContain('private provider rationale')
   })
 
   it('fails closed without a price when scope-change estimation schema validation fails', async () => {

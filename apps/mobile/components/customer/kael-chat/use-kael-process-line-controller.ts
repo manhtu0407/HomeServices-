@@ -1,21 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
 import type { AppLanguage } from '@/lib/app-language'
 import type { KaelChatProgress } from '@/lib/api-types'
 
-import { caseDisplayCode } from './case-work-display-model'
-import { customerV21ServiceCopy } from '../ui/copy'
 import {
-  buildEvidencePreparationLine,
+  buildKaelProgressLine,
   buildEvidenceProgressLine,
   type KaelEvidenceMediaProfile,
 } from './kael-evidence-progress'
-import {
-  buildKaelProcessSequence,
-  type KaelProcessScenarioId,
-  type KaelProcessSequence,
-} from './kael-process-lines'
+import type { KaelProcessScenarioId } from './kael-process-lines'
 import type { CustomerKaelMode } from '../ui/types'
 import type { KaelProcessLineRuntime } from './use-customer-kael-chat-ui-state'
 
@@ -23,7 +17,6 @@ type StartProcessLineOptions = {
   complexity?: string | null
   mediaCount?: number
   mode: CustomerKaelMode
-  replyReveal?: 'composer_message'
   scenario?: KaelProcessScenarioId
   serviceType?: ServiceType | null
 }
@@ -32,112 +25,31 @@ type StartEvidenceProcessLineOptions = Partial<KaelEvidenceMediaProfile> & {
   serviceType?: ServiceType | null
 }
 
-export const KAEL_COMPOSER_REPLY_REVEAL_MS = 900
-export const KAEL_EVIDENCE_RESULT_SETTLE_MS = 240
-
-export function useKaelProcessLineController({
-  caseServiceLabel,
-  deal,
-  language,
-  reduceMotion = false,
-  selectedService,
-}: {
+export function useKaelProcessLineController(_context: {
   caseServiceLabel: string | null
   deal: LocalDeal | null
   language: AppLanguage
-  reduceMotion?: boolean
   selectedService: ServiceType | null
 }) {
+  const { language } = _context
   const [processLines, setProcessLines] = useState<KaelProcessLineRuntime | null>(null)
-  const [revealWaiters] = useState(() => new Map<number, () => void>())
-  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const runRef = useRef(0)
   const evidenceProfileRef = useRef<KaelEvidenceMediaProfile | null>(null)
-
-  const clearTimers = useCallback(() => {
-    timersRef.current.forEach((timer) => clearTimeout(timer))
-    timersRef.current = []
-  }, [])
-
-  const settleRevealWaiters = useCallback(() => {
-    revealWaiters.forEach((resolve) => resolve())
-    revealWaiters.clear()
-  }, [revealWaiters])
 
   const stopProcessLines = useCallback(() => {
     runRef.current += 1
     evidenceProfileRef.current = null
-    clearTimers()
-    settleRevealWaiters()
     setProcessLines(null)
-  }, [clearTimers, settleRevealWaiters])
+  }, [])
 
-  const startProcessLines = useCallback((prompt: string, options: StartProcessLineOptions) => {
-    const safePrompt = prompt.trim() || (language === 'vi' ? 'Đã gửi ảnh/video.' : 'Sent media.')
-    const serviceType = options.serviceType ?? deal?.draft.serviceType ?? selectedService
-    const sequence = options.replyReveal === 'composer_message'
-      ? composerResponseSequence(language)
-      : buildKaelProcessSequence({
-          caseId: deal ? caseDisplayCode(deal, language) : null,
-          complexity: options.complexity ?? deal?.estimate?.complexity ?? null,
-          distance: deal?.broadcast?.generalArea ?? deal?.draft.districtLabel ?? null,
-          hasRealCase: Boolean(deal),
-          jobType: serviceType ? customerV21ServiceCopy[language][serviceType].label : caseServiceLabel,
-          language,
-          mediaCount: options.mediaCount ?? 0,
-          message: safePrompt,
-          mode: options.mode,
-          scenario: options.scenario,
-        })
-    const runId = runRef.current + 1
-    runRef.current = runId
+  const startProcessLines = useCallback((_prompt: string, _options: StartProcessLineOptions) => {
+    // A non-streaming action has no backend process data to present. Keep its loading UI
+    // separate rather than inventing a reasoning trail from local timers.
+    runRef.current += 1
     evidenceProfileRef.current = null
-    clearTimers()
-    settleRevealWaiters()
-    setProcessLines({
-      activeIndex: sequence.lines.length > 0 ? 0 : null,
-      collapse: null,
-      lines: sequence.lines,
-      prompt: safePrompt,
-      scenarioId: sequence.scenarioId,
-      visibleCount: sequence.lines.length > 0 ? 1 : 0,
-    })
-
-    let elapsedMs = 0
-    sequence.lines.forEach((line, index) => {
-      elapsedMs += line.durationMs
-      const nextIndex = index + 1
-      timersRef.current.push(setTimeout(() => {
-        if (runRef.current !== runId) return
-        if (nextIndex < sequence.lines.length) {
-          setProcessLines((current) => current ? {
-            ...current,
-            activeIndex: nextIndex,
-            visibleCount: Math.max(current.visibleCount, nextIndex + 1),
-          } : current)
-          return
-        }
-        setProcessLines((current) => current ? {
-          ...current,
-          activeIndex: null,
-          collapse: sequence.collapse,
-          visibleCount: sequence.lines.length,
-        } : current)
-      }, elapsedMs))
-    })
-
-    // Session/menu/evidence actions never wait on presentation. A composer send gets one
-    // short reveal window while its API request is already running, so Process Lines remain
-    // perceptible without slowing the rest of Kael Chat.
-    if (options.replyReveal !== 'composer_message') return Promise.resolve()
-    return new Promise<void>((resolve) => {
-      revealWaiters.set(runId, resolve)
-      timersRef.current.push(setTimeout(() => {
-        revealWaiters.delete(runId)
-        resolve()
-      }, KAEL_COMPOSER_REPLY_REVEAL_MS))
-    })
-  }, [caseServiceLabel, clearTimers, deal, language, revealWaiters, selectedService, settleRevealWaiters])
+    setProcessLines(null)
+    return Promise.resolve()
+  }, [])
 
   const startEvidenceProcessLines = useCallback((options: StartEvidenceProcessLineOptions) => {
     const runId = runRef.current + 1
@@ -147,18 +59,33 @@ export function useKaelProcessLineController({
       hasVideo: Boolean(options.hasVideo),
       hasVoiceTranscript: Boolean(options.hasVoiceTranscript),
     }
-    clearTimers()
-    settleRevealWaiters()
-    const preparation = buildEvidencePreparationLine(language)
     setProcessLines({
-      activeIndex: 0,
+      activeIndex: null,
       collapse: null,
-      lines: [preparation],
-      prompt: preparation.text,
+      lines: [],
+      origin: 'backend',
+      prompt: '',
       scenarioId: 'evidence_check',
-      visibleCount: 1,
+      streamId: `evidence:${runId}`,
+      visibleCount: 0,
     })
-  }, [clearTimers, language, settleRevealWaiters])
+  }, [])
+
+  const startBackendProcessLines = useCallback(() => {
+    const runId = runRef.current + 1
+    runRef.current = runId
+    evidenceProfileRef.current = null
+    setProcessLines({
+      activeIndex: null,
+      collapse: null,
+      lines: [],
+      origin: 'backend',
+      prompt: '',
+      scenarioId: 'analysis_refinement',
+      streamId: `backend:${runId}`,
+      visibleCount: 0,
+    })
+  }, [])
 
   const updateEvidenceProcessProgress = useCallback((progress: KaelChatProgress) => {
     const profile = evidenceProfileRef.current
@@ -166,10 +93,7 @@ export function useKaelProcessLineController({
     const line = buildEvidenceProgressLine({ language, profile, progress })
     setProcessLines((current) => {
       if (!current || current.scenarioId !== 'evidence_check') return current
-      const preparation = current.lines[0]
-      const nextLines = preparation?.key === 'evidence-preparation'
-        ? [{ ...preparation, status: 'completed' as const }, ...current.lines.slice(1)]
-        : [...current.lines]
+      const nextLines = [...current.lines]
       const existingIndex = nextLines.findIndex((item) => item.key === line.key)
       if (existingIndex >= 0) {
         nextLines[existingIndex] = line
@@ -189,63 +113,37 @@ export function useKaelProcessLineController({
     })
   }, [language])
 
-  const settleEvidenceProcessLines = useCallback(() => {
-    if (!evidenceProfileRef.current) return Promise.resolve()
-    const runId = runRef.current
+  const updateBackendProcessProgress = useCallback((progress: KaelChatProgress) => {
+    const line = buildKaelProgressLine({ language, progress })
     setProcessLines((current) => {
-      if (!current || current.scenarioId !== 'evidence_check') return current
+      if (!current || current.origin !== 'backend' || current.scenarioId === 'evidence_check') return current
+      const nextLines = [...current.lines]
+      const existingIndex = nextLines.findIndex((item) => item.key === line.key)
+      if (existingIndex >= 0) {
+        nextLines[existingIndex] = line
+      } else {
+        nextLines.push(line)
+      }
+      let activeIndex: number | null = null
+      nextLines.forEach((item, index) => {
+        if (item.status === 'queued' || item.status === 'running') activeIndex = index
+      })
       return {
         ...current,
-        activeIndex: null,
-        collapse: language === 'vi'
-          ? 'Kael đã hoàn tất đối chiếu. Đang mở cơ sở giá.'
-          : 'Kael completed the checks. Opening the price basis.',
-        lines: current.lines.map((line) => (
-          line.status === 'failed' ? line : { ...line, status: 'completed' as const }
-        )),
-        visibleCount: current.lines.length,
+        activeIndex,
+        lines: nextLines,
+        visibleCount: nextLines.length,
       }
     })
-    if (reduceMotion) return Promise.resolve()
-    return new Promise<void>((resolve) => {
-      revealWaiters.set(runId, resolve)
-      timersRef.current.push(setTimeout(() => {
-        revealWaiters.delete(runId)
-        resolve()
-      }, KAEL_EVIDENCE_RESULT_SETTLE_MS))
-    })
-  }, [language, reduceMotion, revealWaiters])
-
-  // Unmount invalidates the latest generation; capturing an older ref value would leave newer timers live.
-  // react-doctor-disable-next-line react-doctor/exhaustive-deps
-  useEffect(() => () => {
-    runRef.current += 1
-    evidenceProfileRef.current = null
-    clearTimers()
-    settleRevealWaiters()
-  }, [clearTimers, settleRevealWaiters])
+  }, [language])
 
   return {
     processLines,
-    settleEvidenceProcessLines,
+    startBackendProcessLines,
     startEvidenceProcessLines,
     startProcessLines,
     stopProcessLines,
+    updateBackendProcessProgress,
     updateEvidenceProcessProgress,
-  }
-}
-
-function composerResponseSequence(language: AppLanguage): KaelProcessSequence {
-  return {
-    collapse: language === 'vi' ? 'Kael \u0111ang ph\u1ea3n h\u1ed3i.' : 'Kael is responding.',
-    lines: [{
-      durationMs: KAEL_COMPOSER_REPLY_REVEAL_MS,
-      key: 'composer-response-preparing',
-      stage: 'compose',
-      text: language === 'vi'
-        ? 'Kael \u0111ang chu\u1ea9n b\u1ecb ph\u1ea3n h\u1ed3i\u2026'
-        : 'Kael is preparing a response\u2026',
-    }],
-    scenarioId: 'normal_chat',
   }
 }

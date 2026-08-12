@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react-native'
+import { render, screen } from '@testing-library/react-native'
 import { Dimensions, StyleSheet } from 'react-native'
 
 import { customerTheme } from '@/design/theme'
@@ -7,6 +7,7 @@ import type { AgenticEstimateSupportingPhaseModel } from '../kael-chat/agentic-e
 import { AgenticPriceReasoningStream } from '../kael-chat/agentic-price-reasoning-stream'
 
 const model: AgenticEstimateSupportingPhaseModel = {
+  receiptId: 'receipt_kael_price_20260811_01',
   title: 'Kael phân tích vấn đề và cơ sở giá',
   rows: [
     {
@@ -35,17 +36,17 @@ const model: AgenticEstimateSupportingPhaseModel = {
         { label: 'Thông tin bổ sung', value: 'Khớp nối khô lại sau hai phút.' },
       ],
     },
+    {
+      detail: 'Khoảng giá dựa trên phạm vi đã xác nhận và chưa bao gồm hạng mục phát sinh.',
+      key: 'price',
+      label: 'Vì sao có khoảng giá này',
+    },
   ],
   valueStatement: 'Khoảng giá gắn với phạm vi hiện tại.',
 }
 
 describe('Agentic Price Reasoning stream', () => {
-  afterEach(() => {
-    jest.useRealTimers()
-  })
-
-  it('reveals validated rows in reading order without streaming the price value', async () => {
-    jest.useFakeTimers()
+  it('renders the full validated receipt on first render', () => {
     render(
       <AgenticPriceReasoningStream
         model={model}
@@ -54,23 +55,9 @@ describe('Agentic Price Reasoning stream', () => {
       />,
     )
 
-    expect(screen.queryByTestId('customer-v21-agentic-estimate-support-problem')).toBeNull()
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(0)
-    })
     expect(screen.getByTestId('customer-v21-agentic-estimate-support-problem')).toBeTruthy()
     expect(screen.getByTestId('customer-v21-agentic-estimate-support-problem'))
       .not.toHaveTextContent('▍')
-    expect(screen.queryByTestId('customer-v21-agentic-estimate-support-evidence-photo-1')).toBeNull()
-    expect(screen.queryByText(/250\.000|450\.000/)).toBeNull()
-
-    await act(async () => {
-      for (let timerPass = 0; timerPass < 100; timerPass += 1) {
-        await Promise.resolve()
-        await jest.runOnlyPendingTimersAsync()
-      }
-    })
-
     expect(screen.getByTestId('customer-v21-agentic-estimate-support-evidence-photo-1'))
       .toHaveTextContent(/Khả năng liên quan/)
     expect(screen.getByTestId('customer-v21-agentic-estimate-support-evidence-photo-1'))
@@ -79,6 +66,8 @@ describe('Agentic Price Reasoning stream', () => {
       .toHaveTextContent(/Mô tả chính\s*Khớp ren dưới bồn rửa rò khi xả\./)
     expect(screen.getByTestId('customer-v21-agentic-estimate-support-scope'))
       .toHaveTextContent(/Thông tin bổ sung\s*Khớp nối khô lại sau hai phút\./)
+    expect(screen.getByTestId('customer-v21-agentic-estimate-support-price'))
+      .toHaveTextContent(/Khoảng giá dựa trên phạm vi đã xác nhận/)
     expect(screen.getByTestId('customer-v21-agentic-estimate-supporting-phase').props.accessibilityState)
       .toBeUndefined()
     expect(screen.getByText(model.valueStatement)).toBeTruthy()
@@ -86,8 +75,7 @@ describe('Agentic Price Reasoning stream', () => {
       .toEqual([{ uri: 'https://media.test/photo-1' }])
   })
 
-  it('does not render an empty received-information row before its stream begins', () => {
-    jest.useFakeTimers()
+  it('renders a standalone received-information row immediately', () => {
     render(
       <AgenticPriceReasoningStream
         model={{ ...model, rows: [model.rows[2]] }}
@@ -96,7 +84,8 @@ describe('Agentic Price Reasoning stream', () => {
       />,
     )
 
-    expect(screen.queryByTestId('customer-v21-agentic-estimate-support-scope')).toBeNull()
+    expect(screen.getByTestId('customer-v21-agentic-estimate-support-scope'))
+      .toHaveTextContent(/Khớp ren dưới bồn rửa rò khi xả\./)
   })
 
   it('reveals the complete validated receipt immediately with Reduce Motion', () => {

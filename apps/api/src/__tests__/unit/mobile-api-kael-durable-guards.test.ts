@@ -324,6 +324,26 @@ describe('mobile-api Kael callAI durable circuit wiring', () => {
       }),
     }))
     expect(calls.some((call) => call.fn === 'append_harness_event')).toBe(true)
+    const providerCallEvent = calls.find((call) => (
+      call.fn === 'append_harness_event' &&
+      call.args.p_event_class === 'provider.call'
+    ))
+    const providerAttemptEvents = calls.filter((call) => (
+      call.fn === 'append_harness_event' &&
+      call.args.p_event_class === 'provider.attempt'
+    ))
+    expect(providerCallEvent?.args).toMatchObject({
+      p_status: 'started',
+      p_provider: 'deepseek',
+    })
+    expect(providerAttemptEvents[0]?.args).toMatchObject({
+      p_parent_event_id: providerCallEvent?.args.p_event_id,
+      p_status: 'started',
+    })
+    expect(providerAttemptEvents[1]?.args).toMatchObject({
+      p_parent_event_id: providerAttemptEvents[0]?.args.p_event_id,
+      p_status: 'succeeded',
+    })
     expect(calls).toContainEqual(expect.objectContaining({
       fn: 'record_harness_dependency_result',
       args: expect.objectContaining({

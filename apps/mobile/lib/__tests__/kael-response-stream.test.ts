@@ -1,6 +1,8 @@
 import {
   appendLegacyKaelResponseDelta,
+  completeLegacyKaelResponseStream,
   createCompletedKaelResponseState,
+  formatKaelResponseText,
   initialKaelResponseStreamState,
   kaelResponseStreamReducer,
   segmentKaelResponseText,
@@ -30,6 +32,17 @@ describe('Kael response stream state', () => {
       'Kael da doi chieu mo ta va khu vuc.',
       '1. Kiem tra nguon dien\n2. Xac nhan pham vi',
       '> Khong thao tac khi tay uot.',
+    ])
+  })
+
+  it('turns a dense instructional reply into a readable lead and visual steps', () => {
+    expect(formatKaelResponseText(
+      'Truoc khi goi tho, ban co the kiem tra an toan: Thao nap chan xa. Dung den pin soi xem co toc, can bam khong. Tranh do hoa chat manh vi co the hong ong.',
+    )).toEqual([
+      { kind: 'paragraph', text: 'Truoc khi goi tho, ban co the kiem tra an toan:' },
+      { kind: 'bullet', text: 'Thao nap chan xa.' },
+      { kind: 'bullet', text: 'Dung den pin soi xem co toc, can bam khong.' },
+      { kind: 'bullet', text: 'Tranh do hoa chat manh vi co the hong ong.' },
     ])
   })
 
@@ -146,6 +159,10 @@ describe('Kael response stream state', () => {
 
     expect(legacyComplete.blocks['turn-legacy:block:0'].text).toBe('Kael tra loi.')
     expect(legacyComplete.transport).toBe('legacy')
+    expect(completeLegacyKaelResponseStream(legacyComplete)).toMatchObject({
+      status: 'completed',
+      transport: 'legacy',
+    })
     expect(appendLegacyKaelResponseDelta(universal, {
       delta: 'duplicate',
       turnId: 'turn-v2',

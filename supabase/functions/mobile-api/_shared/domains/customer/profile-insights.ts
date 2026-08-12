@@ -82,6 +82,10 @@ type CustomerProfileInsightAggregate = {
 };
 
 export async function getCustomerProfileInsights(ctx: MobileApiContext) {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Bạn không có quyền thực hiện hành động này", 403);
+  }
+
   const result = await dbQuery<Array<Record<string, unknown>>>(
     db(ctx).rpc("get_customer_profile_insights_aggregate", {
       p_customer_id: ctx.user.id,

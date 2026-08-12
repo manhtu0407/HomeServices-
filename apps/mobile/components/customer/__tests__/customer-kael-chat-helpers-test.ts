@@ -18,6 +18,7 @@ describe('localizeKaelRequestFailure', () => {
   it.each([
     ['MISSING_ESTIMATE', 'Kael cần hoàn tất ước tính trước khi xác nhận báo giá.'],
     ['MISSING_SCOPE', 'Kael cần hoàn tất phân tích phạm vi trước khi xác nhận báo giá.'],
+    ['MISSING_REASONING_RECEIPT', 'Kael cần hoàn tất biên nhận phân tích giá đã xác thực trước khi xác nhận báo giá.'],
   ])('explains the %s confirmation prerequisite without inventing a workflow state', (code, expected) => {
     expect(localizeKaelRequestFailure({ code, error: 'private detail' }, 'vi')).toBe(expected)
   })
@@ -30,6 +31,17 @@ describe('localizeKaelRequestFailure', () => {
     )
     expect(localizeKaelRequestFailure(failure, 'en')).toBe(
       'This confirmation was already processed. Refresh the case status to continue.',
+    )
+  })
+
+  it('explains that an incomplete idempotency record is being reconciled', () => {
+    const failure = { code: 'IDEMPOTENCY_RECONCILE_REQUIRED', error: 'private detail' }
+
+    expect(localizeKaelRequestFailure(failure, 'vi')).toBe(
+      'Kael đang đối soát lịch sử xác nhận để tránh tạo trùng yêu cầu. Vui lòng tải lại trạng thái sau ít phút.',
+    )
+    expect(localizeKaelRequestFailure(failure, 'en')).toBe(
+      'Kael is reconciling a previous confirmation to avoid creating a duplicate request. Refresh the case status shortly.',
     )
   })
 

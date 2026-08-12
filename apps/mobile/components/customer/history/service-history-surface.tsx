@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer } from 'react'
 import { Image } from 'expo-image'
 import {
   ActivityIndicator,
@@ -55,6 +55,65 @@ const historyTimeFormatters = {
     minute: '2-digit',
   }),
 } satisfies Record<AppLanguage, Intl.DateTimeFormat>
+
+type HistoryState = {
+  favoriteWorkerIdsInFlight: Set<string>
+  filter: HistoryFilter
+  items: CustomerServiceHistoryItem[]
+  loadFailed: boolean
+  loading: boolean
+  supportingJobId: string | null
+}
+
+type HistoryAction =
+  | { type: 'filter'; filter: HistoryFilter }
+  | { type: 'load_start' }
+  | { type: 'load_success'; items: CustomerServiceHistoryItem[] }
+  | { type: 'load_failure' }
+  | { type: 'favorite_start'; workerId: string }
+  | { type: 'favorite_change'; workerId: string; isFavorite: boolean }
+  | { type: 'favorite_finish'; workerId: string }
+  | { type: 'supporting'; jobId: string | null }
+
+const initialHistoryState: HistoryState = {
+  favoriteWorkerIdsInFlight: new Set(),
+  filter: 'all',
+  items: [],
+  loadFailed: false,
+  loading: true,
+  supportingJobId: null,
+}
+
+function historyReducer(state: HistoryState, action: HistoryAction): HistoryState {
+  switch (action.type) {
+    case 'filter':
+      return { ...state, filter: action.filter }
+    case 'load_start':
+      return { ...state, loadFailed: false, loading: true }
+    case 'load_success':
+      return { ...state, items: action.items, loadFailed: false, loading: false }
+    case 'load_failure':
+      return { ...state, items: [], loadFailed: true, loading: false }
+    case 'favorite_start':
+      return { ...state, favoriteWorkerIdsInFlight: new Set(state.favoriteWorkerIdsInFlight).add(action.workerId) }
+    case 'favorite_change':
+      return {
+        ...state,
+        items: state.items.map((item) => (
+          item.worker?.id === action.workerId
+            ? { ...item, worker: { ...item.worker, is_favorite: action.isFavorite } }
+            : item
+        )),
+      }
+    case 'favorite_finish': {
+      const favoriteWorkerIdsInFlight = new Set(state.favoriteWorkerIdsInFlight)
+      favoriteWorkerIdsInFlight.delete(action.workerId)
+      return { ...state, favoriteWorkerIdsInFlight }
+    }
+    case 'supporting':
+      return { ...state, supportingJobId: action.jobId }
+  }
+}
 
 function isCompletedHistoryItem(item: CustomerServiceHistoryItem) {
   return item.status === 'paid' || item.status === 'reviewed'
@@ -141,29 +200,20 @@ export function CustomerServiceHistorySurface({
   const { mode, reduceMotion, tokens } = useCustomerV21SurfaceTheme()
   const { width: viewportWidth } = useWindowDimensions()
   const contentWidth = Math.max(0, Math.min(viewportWidth - 32, 560))
-  const [filter, setFilter] = useState<HistoryFilter>('all')
-  const [items, setItems] = useState<CustomerServiceHistoryItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadFailed, setLoadFailed] = useState(false)
-  const [supportingJobId, setSupportingJobId] = useState<string | null>(null)
-  const [favoriteWorkerIdsInFlight, setFavoriteWorkerIdsInFlight] = useState<Set<string>>(() => new Set())
+  const [historyState, dispatch] = useReducer(historyReducer, initialHistoryState)
+  const { favoriteWorkerIdsInFlight, filter, items, loadFailed, loading, supportingJobId } = historyState
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setLoadFailed(false)
+    dispatch({ type: 'load_start' })
     try {
       const result = await jobService.listMyServiceHistory()
       if (!result.success) {
-        setItems([])
-        setLoadFailed(true)
+        dispatch({ type: 'load_failure' })
         return
       }
-      setItems(result.data.service_history)
+      dispatch({ type: 'load_success', items: result.data.service_history })
     } catch {
-      setItems([])
-      setLoadFailed(true)
-    } finally {
-      setLoading(false)
+      dispatch({ type: 'load_failure' })
     }
   }, [])
 
@@ -185,37 +235,25 @@ export function CustomerServiceHistorySurface({
     const worker = item.worker
     if (!worker || favoriteWorkerIdsInFlight.has(worker.id)) return
     const nextFavorite = !worker.is_favorite
-    setFavoriteWorkerIdsInFlight((current) => new Set(current).add(worker.id))
-    setItems((current) => current.map((historyItem) => (
-      historyItem.worker?.id === worker.id
-        ? { ...historyItem, worker: { ...historyItem.worker, is_favorite: nextFavorite } }
-        : historyItem
-    )))
+    dispatch({ type: 'favorite_start', workerId: worker.id })
+    dispatch({ type: 'favorite_change', workerId: worker.id, isFavorite: nextFavorite })
 
     try {
       const result = await jobService.setFavoriteWorker(worker.id, nextFavorite)
       if (!result.success) throw new Error('favorite_worker_update_failed')
     } catch {
-      setItems((current) => current.map((historyItem) => (
-        historyItem.worker?.id === worker.id
-          ? { ...historyItem, worker: { ...historyItem.worker, is_favorite: worker.is_favorite } }
-          : historyItem
-      )))
+      dispatch({ type: 'favorite_change', workerId: worker.id, isFavorite: worker.is_favorite })
       Alert.alert(
         language === 'vi' ? 'Chưa cập nhật được thợ đã lưu' : 'Saved worker was not updated',
         language === 'vi' ? 'Vui lòng thử lại khi kết nối ổn định hơn.' : 'Please try again when your connection is stable.',
       )
     } finally {
-      setFavoriteWorkerIdsInFlight((current) => {
-        const next = new Set(current)
-        next.delete(worker.id)
-        return next
-      })
+      dispatch({ type: 'favorite_finish', workerId: worker.id })
     }
   }
 
   const submitSupport = async (item: CustomerServiceHistoryItem) => {
-    setSupportingJobId(item.id)
+    dispatch({ type: 'supporting', jobId: item.id })
     try {
       const result = await jobService.openDispute(item.id, {
         dispute_type: 'other',
@@ -241,7 +279,7 @@ export function CustomerServiceHistorySurface({
         language === 'vi' ? 'Vui lòng thử lại sau.' : 'Please try again later.',
       )
     } finally {
-      setSupportingJobId(null)
+      dispatch({ type: 'supporting', jobId: null })
     }
   }
 
@@ -276,7 +314,7 @@ export function CustomerServiceHistorySurface({
         </Text>
       </View>
 
-      <ServiceHistoryFilterRail onSelect={setFilter} selected={filter} />
+      <ServiceHistoryFilterRail onSelect={(nextFilter) => dispatch({ type: 'filter', filter: nextFilter })} selected={filter} />
 
       <View style={[styles.savedWorkerHint, styles.historyAuraCard, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
         <HistoryCardAura dark={mode === 'dark'} scope="HistorySavedHint" testIDPrefix="customer-v21-history-saved-hint" />
@@ -410,7 +448,7 @@ function HistoryDealCard({
 
         {completed ? (
           item.worker ? (
-            <View style={styles.workerRow}>
+            <View style={styles.workerRow} testID={`customer-v21-history-worker-row-${item.id}`}>
               {item.worker.avatar_url ? (
                 <Image accessibilityIgnoresInvertColors contentFit="cover" source={{ uri: item.worker.avatar_url }} style={styles.workerAvatar} />
               ) : (
@@ -505,21 +543,17 @@ function FavoriteWorkerButton({
   workerName: string
 }) {
   const scale = useSharedValue(1)
-  const mounted = useRef(false)
-  useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true
-      return
-    }
+  const handlePress = () => {
     if (reduceMotion) {
       scale.value = 1
-      return
+    } else {
+      scale.value = withSequence(
+        withSpring(selected ? 0.9 : 1.18, motionTokens.liquid.press),
+        withSpring(1, motionTokens.liquid.press),
+      )
     }
-    scale.value = withSequence(
-      withSpring(selected ? 1.18 : 0.9, motionTokens.liquid.press),
-      withSpring(1, motionTokens.liquid.press),
-    )
-  }, [reduceMotion, scale, selected])
+    onPress()
+  }
   useEffect(() => () => cancelAnimation(scale), [scale])
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
   const accessibilityLabel = selected
@@ -534,7 +568,7 @@ function FavoriteWorkerButton({
         accessibilityState={{ busy, disabled: busy, selected }}
         disabled={busy}
         hitSlop={4}
-        onPress={onPress}
+        onPress={handlePress}
         style={[
           styles.favoriteButton,
           {
@@ -547,7 +581,9 @@ function FavoriteWorkerButton({
         {busy ? (
           <ActivityIndicator color={tokens.primary} size="small" />
         ) : (
-          <Text style={[styles.favoriteIcon, { color: selected ? tokens.primary : tokens.muted }]}>{selected ? '★' : '☆'}</Text>
+          <Text style={[styles.favoriteIcon, { color: selected ? tokens.primary : tokens.muted }]} testID={`${testID}-icon`}>
+            {selected ? '★' : '☆'}
+          </Text>
         )}
       </Pressable>
     </Animated.View>

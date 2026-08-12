@@ -74,6 +74,7 @@ export function sameWorkerEarnings(left: EarningsResponse | null, right: Earning
     && left.available_balance === right.available_balance
     && left.withdrawal_reserved_amount === right.withdrawal_reserved_amount
     && left.withdrawn_total === right.withdrawn_total
+    && left.collateral_reserved_amount === right.collateral_reserved_amount
     && left.cash_commission_collected_total === right.cash_commission_collected_total
     && left.cash_commission_due_total === right.cash_commission_due_total
     && left.pending_payment_count === right.pending_payment_count

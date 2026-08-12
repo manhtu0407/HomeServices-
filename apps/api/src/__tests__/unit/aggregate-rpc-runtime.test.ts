@@ -20,8 +20,14 @@ import { getWorkerPerformanceInsights } from '../../../../../supabase/functions/
 import { getWorkerEarnings } from '../../../../../supabase/functions/mobile-api/_shared/domains/worker/workers'
 import { computeEarnings } from '@/lib/workers/earnings'
 
-function rpcOnlyClient(row: Record<string, unknown>) {
-  const rpc = vi.fn(() => Promise.resolve({ data: [row], error: null }))
+function rpcOnlyClient(
+  row: Record<string, unknown>,
+  paymentSafety?: Record<string, unknown>,
+) {
+  const rpc = vi.fn((name: string) => Promise.resolve({
+    data: [name === 'get_worker_payment_safety_balance' ? paymentSafety ?? row : row],
+    error: null,
+  }))
   return {
     client: {
       from: vi.fn(() => {
@@ -83,7 +89,7 @@ describe('exact aggregate RPC runtime wiring', () => {
     })
   })
 
-  it('loads Edge worker earnings through the same exact aggregate', async () => {
+  it('loads Edge worker earnings with an exact aggregate and payment-safety balance', async () => {
     const { client, rpc } = rpcOnlyClient({
       worker_id: 'worker-1',
       total_jobs_paid: 1_205,
@@ -108,6 +114,11 @@ describe('exact aggregate RPC runtime wiring', () => {
       }],
       from_date: null,
       to_date: null,
+    }, {
+      available_balance: 10_845_000,
+      collateral_reserved_amount: 0,
+      withdrawal_reserved_amount: 0,
+      withdrawn_total: 0,
     })
     const ctx: MobileApiContext = {
       success: true,
@@ -131,6 +142,9 @@ describe('exact aggregate RPC runtime wiring', () => {
     expect(rpc).toHaveBeenCalledWith('get_worker_earnings_summary', {
       p_from: null,
       p_to: null,
+      p_worker_id: 'worker-1',
+    })
+    expect(rpc).toHaveBeenCalledWith('get_worker_payment_safety_balance', {
       p_worker_id: 'worker-1',
     })
   })

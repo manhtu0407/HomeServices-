@@ -49,6 +49,19 @@ const WORKER_SESSION_STATUSES = new Set(['active', 'closed', 'escalated', 'error
 const WORKER_TURN_ROLES = new Set(['worker', 'kael', 'system'])
 const WORKER_TURN_TYPES = new Set(['text', 'clarification', 'guidance', 'photo_request', 'photo_attached', 'error'])
 const COMPLEXITY_LEVELS = new Set(['small', 'medium', 'large'])
+const PRICE_REASONING_COMPONENT_KINDS = new Set([
+  'service_package', 'labor', 'travel', 'materials', 'replacement_parts', 'equipment', 'other',
+])
+const PRICE_REASONING_COMPONENT_STATUSES = new Set([
+  'priced', 'included_unitemized', 'conditional_unpriced', 'excluded', 'undetermined',
+])
+const PRICE_REASONING_CAUSE_BASIS = new Set([
+  'customer_report', 'visual_evidence', 'service_profile', 'knowledge',
+])
+const PRICE_REASONING_SOURCES = new Set([
+  'perplexity_validated', 'baseline_with_market', 'baseline_only', 'inspection_required',
+])
+const PRICE_REASONING_CONFIDENCE = new Set(['low', 'medium', 'high'])
 
 export function isKaelProgressStatus(status: string): status is KaelChatProgress['status'] {
   return status === 'queued' || status === 'running' || status === 'completed' || status === 'failed'
@@ -183,7 +196,12 @@ function isNullableEstimate(value: unknown): boolean {
     (estimate.complexity_reasoning === undefined || isNullableBoundedString(estimate.complexity_reasoning, 2_000)) &&
     (estimate.needs_inspection_reason === undefined || isNullableBoundedString(estimate.needs_inspection_reason, 2_000)) &&
     (estimate.market_signals === undefined || isNullableBoundedString(estimate.market_signals, 2_000)) &&
-    isOptionalNullableAnalysisReceipt(estimate.analysis_receipt)
+    isOptionalNullableAnalysisReceipt(estimate.analysis_receipt) &&
+    isOptionalNullablePriceReasoningReceipt(
+      estimate.price_reasoning_receipt,
+      Number(estimate.price_min),
+      Number(estimate.price_max),
+    )
 }
 
 function isOptionalNullableAnalysisReceipt(value: unknown): boolean {
@@ -267,6 +285,127 @@ function isOptionalAnalysisReceiptProblem(value: unknown): boolean {
     isNullableBoundedString(problem?.remaining_uncertainty, 300)
 }
 
+function isOptionalNullablePriceReasoningReceipt(
+  value: unknown,
+  estimateMin: number,
+  estimateMax: number,
+): boolean {
+  if (value === undefined || value === null) return true
+  const receipt = asRecord(value)
+  const problem = asRecord(receipt?.problem)
+  const scope = asRecord(receipt?.scope)
+  const costs = asRecord(receipt?.costs)
+  const scenarios = asRecord(receipt?.scenarios)
+  const fairness = asRecord(receipt?.fairness)
+  if (
+    receipt?.schema_version !== 'price_reasoning_receipt.v1' ||
+    !isBoundedString(receipt?.receipt_id, 160) ||
+    !problem ||
+    !isBoundedStringArray(problem.confirmed_facts, 5, 300) ||
+    problem.confirmed_facts.length === 0 ||
+    !isPriceReasoningCauses(problem.possible_causes) ||
+    !isBoundedStringArray(problem.unknowns, 5, 300) ||
+    !scope ||
+    !isBoundedStringArray(scope.included, 8, 300) ||
+    scope.included.length === 0 ||
+    !isBoundedStringArray(scope.conditional, 8, 300) ||
+    !isBoundedStringArray(scope.excluded, 8, 300) ||
+    !costs ||
+    costs.currency !== 'VND' ||
+    !isFiniteRange(costs.total_min, 1, Number.MAX_SAFE_INTEGER) ||
+    !isFiniteRange(costs.total_max, Number(costs.total_min), Number.MAX_SAFE_INTEGER) ||
+    costs.total_min !== estimateMin ||
+    costs.total_max !== estimateMax ||
+    !isEnumString(costs.reconciliation, new Set(['package_total', 'exact'])) ||
+    !Array.isArray(costs.components) ||
+    costs.components.length === 0 ||
+    costs.components.length > 8 ||
+    !scenarios ||
+    !isPriceReasoningScenario(scenarios.low, Number(costs.total_min)) ||
+    !isPriceReasoningScenario(scenarios.high, Number(costs.total_max)) ||
+    !fairness ||
+    !isEnumString(fairness.price_source, PRICE_REASONING_SOURCES) ||
+    !isEnumString(fairness.confidence, PRICE_REASONING_CONFIDENCE) ||
+    !(fairness.market_source_count === null || isNonNegativeInteger(fairness.market_source_count)) ||
+    !(fairness.high_trust_source_count === null || isNonNegativeInteger(fairness.high_trust_source_count)) ||
+    !(fairness.quorum_met === null || typeof fairness.quorum_met === 'boolean') ||
+    !isBoundedString(fairness.cap_statement, 360) ||
+    !isBoundedStringArray(fairness.remaining_uncertainty, 5, 300)
+  ) return false
+
+  const components = costs.components
+  if (!components.every(isPriceReasoningComponent)) return false
+  const pricedComponents = components.filter((component) => asRecord(component)?.status === 'priced')
+  if (costs.reconciliation === 'package_total') {
+    const packageComponent = asRecord(pricedComponents[0])
+    return pricedComponents.length === 1 &&
+      packageComponent?.kind === 'service_package' &&
+      packageComponent.amount_min === costs.total_min &&
+      packageComponent.amount_max === costs.total_max &&
+      isFairPriceReasoningMarketCounts(fairness)
+  }
+  const exactMin = pricedComponents.reduce(
+    (sum, component) => sum + Number(asRecord(component)?.amount_min ?? 0),
+    0,
+  )
+  const exactMax = pricedComponents.reduce(
+    (sum, component) => sum + Number(asRecord(component)?.amount_max ?? 0),
+    0,
+  )
+  return pricedComponents.length > 0 &&
+    exactMin === costs.total_min &&
+    exactMax === costs.total_max &&
+    isFairPriceReasoningMarketCounts(fairness)
+}
+
+function isPriceReasoningCauses(value: unknown): boolean {
+  return Array.isArray(value) && value.length <= 5 && value.every((item) => {
+    const cause = asRecord(item)
+    return Boolean(cause) &&
+      isBoundedString(cause?.statement, 300) &&
+      isEnumString(cause?.confidence, PRICE_REASONING_CONFIDENCE) &&
+      Array.isArray(cause?.basis) &&
+      cause.basis.length > 0 &&
+      cause.basis.length <= 4 &&
+      cause.basis.every((basis) => isEnumString(basis, PRICE_REASONING_CAUSE_BASIS))
+  })
+}
+
+function isPriceReasoningComponent(value: unknown): boolean {
+  const component = asRecord(value)
+  if (
+    !component ||
+    !isEnumString(component.kind, PRICE_REASONING_COMPONENT_KINDS) ||
+    !isEnumString(component.status, PRICE_REASONING_COMPONENT_STATUSES) ||
+    !isBoundedString(component.explanation, 360)
+  ) return false
+  const hasMin = component.amount_min !== null
+  const hasMax = component.amount_max !== null
+  if (hasMin !== hasMax) return false
+  if (component.status === 'priced') {
+    return component.kind === 'service_package' &&
+      isFiniteRange(component.amount_min, 1, Number.MAX_SAFE_INTEGER) &&
+      isFiniteRange(component.amount_max, Number(component.amount_min), Number.MAX_SAFE_INTEGER)
+  }
+  return component.amount_min === null && component.amount_max === null
+}
+
+function isPriceReasoningScenario(value: unknown, expectedTotal: number): boolean {
+  const scenario = asRecord(value)
+  return Boolean(scenario) &&
+    scenario?.total === expectedTotal &&
+    isBoundedStringArray(scenario?.conditions, 5, 260) &&
+    scenario.conditions.length > 0 &&
+    isBoundedStringArray(scenario?.scope, 5, 260) &&
+    scenario.scope.length > 0
+}
+
+function isFairPriceReasoningMarketCounts(fairness: Record<string, unknown>): boolean {
+  const marketCount = fairness.market_source_count
+  const highTrustCount = fairness.high_trust_source_count
+  return !(typeof marketCount === 'number' && typeof highTrustCount === 'number' && highTrustCount > marketCount)
+}
+
 function isNullableProgress(value: unknown): boolean {
   if (value === null) return true
   const progress = asRecord(value)
@@ -294,7 +433,11 @@ function isOptionalNullableBoundedString(value: unknown, maxLength: number): boo
   return value === undefined || isNullableBoundedString(value, maxLength)
 }
 
-function isBoundedStringArray(value: unknown, maxItems: number, maxItemLength: number): boolean {
+function isBoundedStringArray(
+  value: unknown,
+  maxItems: number,
+  maxItemLength: number,
+): value is string[] {
   return Array.isArray(value) && value.length <= maxItems &&
     value.every((item) => isBoundedString(item, maxItemLength))
 }

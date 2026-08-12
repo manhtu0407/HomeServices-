@@ -2,6 +2,13 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type SetStateA
 import type { WorkerKaelChatMode } from '@nestscout/shared'
 
 import type { KaelChatProgress, WorkerKaelChatSession } from '@/lib/api-types'
+import {
+  initialKaelReasoningReceiptState,
+  type KaelReasoningReceiptState,
+} from '@/lib/kael-reasoning-receipt'
+import {
+  type KaelResponseStreamState,
+} from '@/lib/kael-response-stream'
 import type { WorkerV5KaelOrbLocalTurn, WorkerV5KaelOrbMediaPreview } from './kael-orb-chat-model'
 
 type WorkerV5KaelOrbChatState = {
@@ -13,6 +20,8 @@ type WorkerV5KaelOrbChatState = {
   openingSessionId: string | null
   pendingSessionIds: string[]
   progress: KaelChatProgress | null
+  reasoningReceipt: KaelReasoningReceiptState
+  streamingReply: KaelResponseStreamState | null
   sessions: WorkerKaelChatSession[]
   sessionsError: string | null
   sessionsLoading: boolean
@@ -101,6 +110,8 @@ export function useWorkerV5KaelOrbScopedState(options: WorkerV5KaelOrbScopedStat
     setOpeningSessionId: (action: SetStateAction<WorkerV5KaelOrbChatState['openingSessionId']>) => setField('openingSessionId', action),
     setPendingSessionIds: (action: SetStateAction<WorkerV5KaelOrbChatState['pendingSessionIds']>) => setField('pendingSessionIds', action),
     setProgress: (action: SetStateAction<WorkerV5KaelOrbChatState['progress']>) => setField('progress', action),
+    setReasoningReceipt: (action: SetStateAction<WorkerV5KaelOrbChatState['reasoningReceipt']>) => setField('reasoningReceipt', action),
+    setStreamingReply: (action: SetStateAction<WorkerV5KaelOrbChatState['streamingReply']>) => setField('streamingReply', action),
     setSessions: (action: SetStateAction<WorkerV5KaelOrbChatState['sessions']>) => setField('sessions', action),
     setSessionsError: (action: SetStateAction<WorkerV5KaelOrbChatState['sessionsError']>) => setField('sessionsError', action),
     setSessionsLoading: (action: SetStateAction<WorkerV5KaelOrbChatState['sessionsLoading']>) => setField('sessionsLoading', action),
@@ -136,6 +147,8 @@ function createState({
     openingSessionId: null,
     pendingSessionIds: [],
     progress: null,
+    reasoningReceipt: initialKaelReasoningReceiptState,
+    streamingReply: null,
     sessions: mode === 'normal' || jobId
       ? catalogSessions.filter((session) => (
           session.job_id === jobId

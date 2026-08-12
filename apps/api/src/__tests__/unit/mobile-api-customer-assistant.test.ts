@@ -2,14 +2,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   runCustomerAssistant,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant'
+import { inferAssistantServiceType } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-policy'
+import type { KaelReasoningReporter } from '../../../../../supabase/functions/mobile-api/_shared/kael/reasoning-receipt'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import type {
   AIRequest,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import { createKaelResponseReporter } from '../../../../../supabase/functions/mobile-api/_shared/kael/response-stream'
 
 describe('mobile-api customer Kael assistant', () => {
   afterEach(() => {
     KAEL_CIRCUIT_BREAKER.reset()
+  })
+
+  it('prioritizes a concrete plumbing fixture over a generic odor signal', () => {
+    expect(inferAssistantServiceType(
+      'Ống thoát nước lavabo có tiếng ọc ọc và mùi hôi sau khi xả.',
+    )).toBe('plumbing')
+    expect(inferAssistantServiceType('Sofa có mùi hôi và cần làm sạch.')).toBe('upholstery')
   })
 
   it('prioritizes NestScout knowledge for worker questions even without a service type', async () => {
@@ -122,6 +132,68 @@ describe('mobile-api customer Kael assistant', () => {
     expect(callAI).not.toHaveBeenCalled()
   })
 
+  it('completes a safe fallback after a streamed customer prefix fails validation', async () => {
+    const events: string[] = []
+    const response = createKaelResponseReporter({
+      emit: (event) => events.push(event),
+      responseId: 'customer-prefix-fallback',
+    })
+    response.preview('Check the shutoff valve before inspecting the leak.')
+
+    const result = await runCustomerAssistant({
+      callAI: async (request) => ({
+        success: false as const,
+        provider: request.provider,
+        code: 'TIMEOUT' as const,
+        error: 'TIMEOUT',
+      }),
+      language: 'en',
+      message: 'Why does a bathroom sink drain gurgle and smell after water runs?',
+      response,
+      secrets: { knowledgeRetrievalEnabled: false },
+      serviceType: 'plumbing',
+      surface: 'customer_normal',
+    })
+
+    response.complete(result.answer)
+
+    expect(result.fallback_used).toBe(true)
+    expect(result.answer).toBe('Check the shutoff valve before inspecting the leak.')
+    expect(events).toContain('response.completed')
+    expect(events).not.toContain('response.failed')
+  })
+
+  it('keeps a verified Vietnamese streamed prefix when the final customer reply mixes languages', async () => {
+    const response = createKaelResponseReporter({
+      emit: () => undefined,
+      responseId: 'customer-language-prefix',
+    })
+    const prefix = 'Hãy ngắt điện khu vực bị ẩm trước khi kiểm tra nước rò.'
+    response.preview(prefix)
+
+    const result = await runCustomerAssistant({
+      callAI: async (request) => ({
+        success: true as const,
+        content: JSON.stringify({
+          answer: `${prefix} Please keep the area dry while waiting for a worker.`,
+          public_reasoning_summary: [],
+        }),
+        latencyMs: 12,
+        usage: { costUsd: 0.00001, inputTokens: 5, outputTokens: 8 },
+      }),
+      language: 'vi',
+      message: 'Máy lạnh bị rò nước gần ổ điện, tôi cần làm gì?',
+      response,
+      secrets: { knowledgeRetrievalEnabled: false },
+      serviceType: 'hvac',
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(true)
+    expect(result.answer).toBe(prefix)
+    expect(result.answer).not.toContain('Please')
+  })
+
   it('blocks an explicitly selected service mismatch before provider invocation', async () => {
     const callAI = vi.fn(async () => {
       throw new Error('provider must not receive a mismatched service request')
@@ -138,6 +210,166 @@ describe('mobile-api customer Kael assistant', () => {
     expect(result).toMatchObject({ boundary: 'unsupported', fallback_used: true })
     expect(result.answer).toContain('không khớp với dịch vụ đang chọn')
     expect(callAI).not.toHaveBeenCalled()
+  })
+
+  it('requests public execution notes alongside a normal customer reply', async () => {
+    const seenRequests: AIRequest[] = []
+    const result = await runCustomerAssistant({
+      callAI: async (request) => {
+        seenRequests.push(request)
+        return {
+          success: true as const,
+          content: JSON.stringify({
+            answer: 'Turn the unit off if doing so is safe, then arrange an on-site inspection for the leak.',
+            public_reasoning_summary: [
+              'The request is about a safe first step for an air-conditioner leak.',
+            ],
+          }),
+          latencyMs: 12,
+          usage: { costUsd: 0.00001, inputTokens: 5, outputTokens: 8 },
+        }
+      },
+      language: 'en',
+      message: 'My air conditioner is leaking. What should I check safely before booking a worker?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    const prompt = seenRequests[0]?.messages[1]?.content ?? ''
+    expect(result.fallback_used).toBe(false)
+    expect(prompt).toContain('Return JSON only with answer and public_reasoning_summary.')
+    expect(prompt).toContain('Use exactly {"public_reasoning_summary":["..."],"answer":"..."}')
+    expect(prompt).toContain('public_reasoning_summary')
+    expect(prompt).not.toContain('safety_notes')
+    expect(prompt).not.toContain('suggested_actions')
+  })
+
+  it('keeps the receipt limited to backend-generated public feedback', async () => {
+    const steps: Parameters<KaelReasoningReporter['step']>[0][] = []
+    const requests: AIRequest[] = []
+    const reasoning: KaelReasoningReporter = {
+      complete: () => undefined,
+      fail: () => undefined,
+      start: () => undefined,
+      step: (step) => steps.push(step),
+    }
+
+    const answer = await runCustomerAssistant({
+      callAI: async (request) => {
+        requests.push(request)
+        return {
+          success: true as const,
+          content: JSON.stringify({
+            answer: 'Kael can help with a supported service question.',
+            boundary: 'answered',
+            citations: [],
+            public_reasoning_summary: [
+              'The greeting does not yet name a specific NestScout request.',
+              'Kael chose a short readiness reply instead of guessing a service need.',
+            ],
+            safety_notes: [],
+            suggested_actions: [],
+          }),
+          latencyMs: 12,
+          usage: { costUsd: 0.00001, inputTokens: 5, outputTokens: 8 },
+        }
+      },
+      language: 'en',
+      message: 'Hello!',
+      reasoning,
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(answer.public_reasoning_summary).toEqual([
+      'The greeting does not yet name a specific NestScout request.',
+      'Kael chose a short readiness reply instead of guessing a service need.',
+    ])
+    expect(JSON.stringify(requests)).toContain('public_reasoning_summary')
+    expect(steps).toEqual([
+      expect.objectContaining({
+        detail: 'The request was classified as general Kael support.',
+        id: 'request-classified',
+        stage: 'intent',
+        status: 'completed',
+      }),
+      expect.objectContaining({
+        detail: 'The request is eligible for advisory support within current boundaries.',
+        id: 'scope-cleared',
+        stage: 'context',
+        status: 'completed',
+      }),
+      expect.objectContaining({
+        detail: 'The greeting does not yet name a specific NestScout request.',
+        id: 'public-summary-0',
+        stage: 'compose',
+        status: 'completed',
+      }),
+      expect.objectContaining({
+        detail: 'Kael chose a short readiness reply instead of guessing a service need.',
+        id: 'public-summary-1',
+        stage: 'compose',
+        status: 'completed',
+      }),
+    ])
+    expect(steps.map((step) => step.id)).not.toContain('compose')
+    expect(steps.map((step) => step.id)).not.toContain('safety')
+    expect(JSON.stringify(steps)).not.toMatch(/deepseek|anthropic|perplexity|model|provider/i)
+  })
+
+  it('keeps a valid customer reply when a provider summary contains unsafe internals', async () => {
+    const answer = await runCustomerAssistant({
+      callAI: async () => ({
+        success: true as const,
+        content: JSON.stringify({
+          answer: 'Kael can help with a supported service question.',
+          boundary: 'answered',
+          citations: [],
+          public_reasoning_summary: ['DeepSeek used an API key to choose this response.'],
+          safety_notes: [],
+          suggested_actions: [],
+        }),
+        latencyMs: 12,
+        usage: { costUsd: 0.00001, inputTokens: 5, outputTokens: 8 },
+      }),
+      language: 'en',
+      message: 'Hello!',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      public_reasoning_summary: [],
+    })
+    expect(JSON.stringify(answer.public_reasoning_summary)).not.toMatch(/deepseek|api key/i)
+  })
+
+  it('drops English public reasoning before a Vietnamese normal-chat reply reaches the receipt', async () => {
+    const answer = await runCustomerAssistant({
+      callAI: async () => ({
+        success: true as const,
+        content: JSON.stringify({
+          answer: 'Hay khoa van nuoc neu co the va chup lai vi tri ro.',
+          boundary: 'answered',
+          citations: [],
+          public_reasoning_summary: ['The request needs a safe first plumbing step.'],
+          safety_notes: [],
+          suggested_actions: [],
+        }),
+        latencyMs: 12,
+        usage: { costUsd: 0.00001, inputTokens: 5, outputTokens: 8 },
+      }),
+      language: 'vi',
+      message: 'Lavabo bi ro nuoc, toi nen kiem tra gi truoc?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      public_reasoning_summary: [],
+    })
   })
 
   it('uses legal-awareness rows for service-law questions without turning them into legal advice', async () => {
@@ -826,6 +1058,44 @@ describe('mobile-api customer Kael assistant', () => {
       boundary: 'educational_only',
       fallback_used: false,
       suggested_actions: ['contact_support'],
+    })
+    expect(callAI).toHaveBeenCalledTimes(1)
+  })
+
+  it('unwraps a public final reply from a nested array provider envelope', async () => {
+    const callAI = vi.fn(async () => ({
+      success: true as const,
+      content: JSON.stringify({
+        output: [
+          { type: 'thinking', content: 'private provider reasoning' },
+          {
+            answer: 'A gurgling, smelly sink drain can come from a partial clog, a dry trap, or a blocked vent.',
+            public_reasoning_summary: [
+              'The question asks for bounded plumbing troubleshooting before on-site inspection.',
+            ],
+          },
+        ],
+      }),
+      latencyMs: 24,
+      usage: { costUsd: 0.0001, inputTokens: 12, outputTokens: 18 },
+      provider: 'deepseek' as const,
+      model: 'deepseek-v4-flash',
+    }))
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'en',
+      message: 'Why does a bathroom sink drain gurgle and smell after water runs?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result).toMatchObject({
+      answer: expect.stringContaining('partial clog'),
+      fallback_used: false,
+      public_reasoning_summary: [
+        'The question asks for bounded plumbing troubleshooting before on-site inspection.',
+      ],
     })
     expect(callAI).toHaveBeenCalledTimes(1)
   })

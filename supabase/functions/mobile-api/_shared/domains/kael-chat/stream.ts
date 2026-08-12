@@ -1,12 +1,9 @@
-import {
-  getKaelChat,
-  readKaelChatProgressSnapshot,
-} from "./read.service.ts";
+import { readKaelChatProgressSnapshot } from "./read.service.ts";
 import { sendKaelChatTurn } from "./turn.ts";
 import { submitKaelChatEvidence } from "./evidence.ts";
 
 import { createSseResponse, encodeSseEvent, encodeSseHeartbeat } from "../../platform/sse.ts";
-import { emitCommittedKaelReply, sleepForKaelChatStream } from "./verified-response-stream.ts";
+import { waitForKaelChatProgressPoll } from "./stream-delay.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { EdgeAiSecrets } from "../../kael/index.ts";
 import type {
@@ -50,8 +47,6 @@ async function streamKaelChatRequest(
 ) {
   // Preflight ownership before returning a 200 event stream so unauthorized
   // callers still receive the normal JSON auth/error path.
-  const baseline = await getKaelChat(ctx, sessionId);
-
   // A session retains its last completed progress snapshot. Capture it before
   // this request begins so the client only sees stages emitted for this turn.
   const baselineProgress = await readKaelChatProgressSnapshot(ctx, sessionId);
@@ -97,7 +92,6 @@ async function streamKaelChatRequest(
       const resultPromise = request()
         .then(async (result) => {
           await emitProgressIfChanged();
-          await emitCommittedKaelReply(baseline, result, emit, () => stopped);
           emit("result", result);
           close();
         })
@@ -115,66 +109,7 @@ async function streamKaelChatRequest(
             write(encodeSseHeartbeat());
             lastHeartbeatAt = now;
           }
-          await sleepForKaelChatStream(KAEL_CHAT_STREAM_POLL_MS);
-        }
-        await resultPromise;
-      })().catch((err) => {
-        emit("error", kaelChatStreamErrorPayload(err));
-        close();
-      });
-    },
-    cancel() {
-      stopped = true;
-    },
-  });
-
-  return createSseResponse(stream);
-}
-
-function streamCustomerKaelConversationRequest(
-  baseline: unknown,
-  request: () => Promise<unknown>,
-) {
-  const encoder = new TextEncoder();
-  let stopped = false;
-  let lastHeartbeatAt = Date.now();
-
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      const write = (chunk: string) => {
-        if (stopped) return;
-        controller.enqueue(encoder.encode(chunk));
-      };
-      const emit = (event: string, data: unknown) => {
-        write(encodeSseEvent({ event, data }));
-      };
-      const close = () => {
-        if (stopped) return;
-        stopped = true;
-        controller.close();
-      };
-      write(encodeSseHeartbeat());
-
-      const resultPromise = request()
-        .then(async (result) => {
-          await emitCommittedKaelReply(baseline, result, emit, () => stopped);
-          emit("result", result);
-          close();
-        })
-        .catch((err) => {
-          emit("error", kaelChatStreamErrorPayload(err));
-          close();
-        });
-
-      void (async () => {
-        const startedAt = Date.now();
-        while (!stopped && Date.now() - startedAt < KAEL_CHAT_STREAM_MAX_MS) {
-          const now = Date.now();
-          if (now - lastHeartbeatAt >= KAEL_CHAT_STREAM_HEARTBEAT_MS) {
-            write(encodeSseHeartbeat());
-            lastHeartbeatAt = now;
-          }
-          await sleepForKaelChatStream(KAEL_CHAT_STREAM_POLL_MS);
+          await waitForKaelChatProgressPoll(KAEL_CHAT_STREAM_POLL_MS);
         }
         await resultPromise;
       })().catch((err) => {

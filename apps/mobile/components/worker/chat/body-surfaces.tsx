@@ -1,12 +1,20 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, type ReactNode } from 'react'
 import { ScrollView, View, type ImageSourcePropType } from 'react-native'
 import type { LocalDeal, ServiceType } from '@nestscout/shared'
 
-import { KaelFeedbackControls, KaelTrustDisclosure } from '@/components/kael/kael-feedback-controls'
+import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
+import { useKaelResponseStreamPresentation } from '@/components/ui/use-kael-respond-stream-presentation'
+import { color } from '@/design/theme'
 import { localizedServiceLabel, localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
+import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
+import {
+  initialKaelResponseStreamState,
+  type KaelResponseStreamState,
+} from '@/lib/kael-response-stream'
 
 import { textByLanguage } from '../ui/format'
-import { WorkerV5KaelOrbBubble, WorkerV5KaelOrbOpportunityResults } from './orb-surfaces'
+import { WorkerV5KaelOrbBubble } from './orb-surfaces'
+import { WorkerV5KaelOrbOpportunityResults } from './orb-opportunity-results'
 import { WorkerV5KaelEmptyHero } from './empty-hero'
 import { styles } from './body-styles'
 
@@ -80,11 +88,15 @@ export function WorkerV5KaelOrbBody({
   keepIntakeContextAccessible = false,
   language,
   liveError = null,
+  reasoningReceipt = null,
+  streamingReply = null,
   liveStatus = null,
   liveTurns = EMPTY_WORKER_V5_KAEL_ORB_LIVE_TURNS,
   mode,
   modeMenuOpen = false,
   onOpenOpportunity,
+  onStreamingReplySettled,
+  onToggleReasoningReceipt,
   reduceMotion = false,
   reduceTransparency,
   serviceIcons,
@@ -97,26 +109,64 @@ export function WorkerV5KaelOrbBody({
   keepIntakeContextAccessible?: boolean
   language: AppLanguage
   liveError?: string | null
+  reasoningReceipt?: KaelReasoningReceiptState | null
+  streamingReply?: KaelResponseStreamState | null
   liveStatus?: string | null
   liveTurns?: WorkerV5KaelOrbLiveTurn[]
   mode: 'intake' | 'normal'
   modeMenuOpen?: boolean
   onOpenOpportunity: () => void
+  onStreamingReplySettled?: (responseId: string) => void
+  onToggleReasoningReceipt?: () => void
   reduceMotion?: boolean
   reduceTransparency: boolean
   serviceIcons: WorkerV5ServiceIconMap
 }) {
   const hasActiveSession = Boolean(activeSessionId)
-  const hasLiveTurns = liveTurns.length > 0
-  const hasLiveThread = hasLiveTurns || Boolean(liveStatus) || Boolean(liveError)
-  const showEmptyHero = !hasLiveTurns && !composerActive
+  const visibleTurns = liveTurns.slice(-8)
+  const presentedStreamingReply = useKaelResponseStreamPresentation(
+    streamingReply ?? initialKaelResponseStreamState,
+    {
+      onSettled: onStreamingReplySettled,
+      reduceMotion,
+    },
+  )
+  const streamingReplyText = workerKaelStreamingReplyText(presentedStreamingReply)
+  const hasStreamingReply = Boolean(streamingReply && streamingReply.status !== 'idle')
+  const finalKaelTurnIndex = hasStreamingReply
+    ? visibleTurns.findLastIndex((turn) => turn.role === 'kael')
+    : -1
+  const visibleThreadTurns = visibleTurns.filter((_, index) => index !== finalKaelTurnIndex)
+  const hasLiveTurns = visibleThreadTurns.length > 0
+  const reasoningReceiptNode = reasoningReceipt
+    && reasoningReceipt.status !== 'idle'
+    && onToggleReasoningReceipt ? (
+      <KaelReasoningReceipt
+        colors={{
+          accent: color.brand.primary,
+          border: color.surface.stroke,
+          mutedText: color.text.secondary,
+          surface: color.surface.soft,
+          text: color.text.primary,
+        }}
+        language={language}
+        onToggle={onToggleReasoningReceipt}
+        state={reasoningReceipt}
+        testID="worker-v5-kael-reasoning-receipt"
+      />
+    ) : null
+  const receiptBeforeStreamingReply = Boolean(reasoningReceiptNode) && hasStreamingReply
+  const receiptBeforeFinalKaelTurn = !receiptBeforeStreamingReply && Boolean(reasoningReceiptNode)
+    && visibleTurns.at(-1)?.role === 'kael'
+  const hasLiveThread = hasLiveTurns || Boolean(reasoningReceiptNode) || hasStreamingReply || Boolean(liveStatus) || Boolean(liveError)
+  const showEmptyHero = !hasLiveTurns && !reasoningReceiptNode && !hasStreamingReply && !composerActive
   const activeJobContext = mode === 'intake' ? workerV5ActiveJobKaelContext(deal, language) : null
   const transcriptRef = useRef<ScrollView>(null)
 
   useEffect(() => {
     if (!activeSessionId || !hasLiveThread) return
     transcriptRef.current?.scrollToEnd({ animated: !reduceMotion })
-  }, [activeSessionId, hasLiveThread, liveTurns.length, reduceMotion])
+  }, [activeSessionId, hasLiveThread, liveTurns.length, reduceMotion, streamingReplyText])
 
   const scrollToRestoredThread = () => {
     if (!activeSessionId || !hasLiveThread) return
@@ -160,35 +210,43 @@ export function WorkerV5KaelOrbBody({
         ) : null}
         {hasLiveThread ? (
           <View style={styles.kaelOrbChatBody} testID="worker-v5-kael-orb-live-thread">
-            <KaelTrustDisclosure
-              language={language}
-              testID="worker-kael-thread-disclosure"
-            />
-            {liveTurns.slice(-8).map((turn) => (
-              <View key={turn.id}>
+            {visibleThreadTurns.map((turn, index) => (
+              <Fragment key={turn.id}>
+                {receiptBeforeFinalKaelTurn && index === visibleThreadTurns.length - 1 ? reasoningReceiptNode : null}
                 <WorkerV5KaelOrbBubble
                   align={turn.role === 'worker' ? 'right' : undefined}
+                  appearance={mode === 'normal' && turn.role === 'kael' ? 'bare' : 'bubble'}
                   body={turn.text}
                   speakerLabel={turn.role === 'worker' ? textByLanguage(language, 'Bạn', 'You') : 'Kael'}
                 />
-                {turn.role === 'kael' ? (
-                  <KaelFeedbackControls
-                    actor="worker"
-                    language={language}
-                    responseId={turn.id}
-                    testID={`worker-kael-response-${turn.id}-feedback`}
-                  />
-                ) : null}
-              </View>
+              </Fragment>
             ))}
-            {liveStatus ? <WorkerV5KaelOrbBubble body={liveStatus} speakerLabel="Kael" /> : null}
-            {liveError ? <WorkerV5KaelOrbBubble body={liveError} speakerLabel="Kael" /> : null}
+            {!receiptBeforeFinalKaelTurn ? reasoningReceiptNode : null}
+            {streamingReplyText ? (
+              <WorkerV5KaelOrbBubble
+                appearance={mode === 'normal' ? 'bare' : 'bubble'}
+                body={streamingReplyText}
+                speakerLabel="Kael"
+              />
+            ) : null}
+            {liveStatus ? <WorkerV5KaelOrbBubble appearance={mode === 'normal' ? 'bare' : 'bubble'} body={liveStatus} speakerLabel="Kael" /> : null}
+            {liveError ? <WorkerV5KaelOrbBubble appearance={mode === 'normal' ? 'bare' : 'bubble'} body={liveError} speakerLabel="Kael" /> : null}
           </View>
         ) : null}
       </ScrollView>
       {composer}
     </View>
   )
+}
+
+function workerKaelStreamingReplyText(reply: KaelResponseStreamState | null) {
+  if (!reply || reply.status === 'idle') return ''
+  return reply.blockOrder
+    .flatMap((blockId) => {
+      const text = reply.blocks[blockId]?.text ?? ''
+      return text ? [text] : []
+    })
+    .join('\n\n')
 }
 
 function WorkerV5KaelOrbIntakeThread({

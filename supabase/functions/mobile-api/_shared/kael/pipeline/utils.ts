@@ -123,6 +123,40 @@ export function safeParseJSON(content: string): unknown | null {
   return null;
 }
 
+/**
+ * Returns bounded, sequential top-level JSON values without descending into
+ * an earlier wrapper. Structured AI callers use this to avoid accepting an
+ * answer-shaped object from an internal or malformed envelope.
+ */
+export function safeParseJSONCandidates(content: string): readonly unknown[] {
+  if (content.length > MAX_JSON_INPUT_LENGTH) return [];
+
+  const stripped = content.trim();
+  const values: unknown[] = [];
+  let searchFrom = 0;
+  for (let attempt = 0; attempt < MAX_JSON_CANDIDATES; attempt += 1) {
+    const startIdx = findJsonStart(stripped, searchFrom);
+    if (startIdx === -1) break;
+
+    const extracted = extractBalanced(stripped, startIdx);
+    if (extracted.tooDeep) break;
+    if (!extracted.candidate) {
+      searchFrom = startIdx + 1;
+      continue;
+    }
+
+    searchFrom = startIdx + extracted.candidate.length;
+    try {
+      values.push(JSON.parse(extracted.candidate));
+    } catch {
+      // Skip the complete malformed top-level wrapper rather than scanning
+      // inside it for a field that only happens to resemble an answer.
+    }
+  }
+
+  return values;
+}
+
 function findJsonStart(text: string, from: number): number {
   for (let index = from; index < text.length; index += 1) {
     if (text[index] === "{" || text[index] === "[") return index;

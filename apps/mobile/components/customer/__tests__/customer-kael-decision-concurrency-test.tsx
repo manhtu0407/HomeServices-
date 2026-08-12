@@ -25,6 +25,7 @@ function decisionHarness(agenticAdjustmentText = '') {
     retryingWorkerSearch: false,
     setAgenticAdjustmentOpen: jest.fn(),
     setAgenticAdjustmentText: jest.fn(),
+    setAgenticPriceQuestionOpen: jest.fn(),
     setAgenticRejectOpen: jest.fn(),
     setAgenticRejectReason: jest.fn(),
     setCaseEditOpen: jest.fn(),
@@ -70,7 +71,10 @@ function decisionHarness(agenticAdjustmentText = '') {
     status: 'completed_by_worker',
   } as any
   const input = {
-    chatEstimate: { complexity: 'standard' } as any,
+    chatEstimate: {
+      complexity: 'standard',
+      price_reasoning_receipt: { receipt_id: 'receipt_kael_price_20260811_01' },
+    } as any,
     chatUi,
     conversation,
     deal,
@@ -117,6 +121,7 @@ describe('customer Kael decision concurrency', () => {
       language: 'vi',
       message: detail,
       photo_urls: [],
+      turn_intent: 'scope_adjustment',
     })
     expect(harness.input.processController.startProcessLines).toHaveBeenCalledWith(detail, expect.objectContaining({
       mediaCount: 0,
@@ -175,6 +180,21 @@ describe('customer Kael decision concurrency', () => {
     expect(mockConfirmEstimate).toHaveBeenCalledTimes(2)
   })
 
+  it('does not send a confirmation without the receipt rendered to the customer', async () => {
+    const harness = decisionHarness()
+    harness.input.chatEstimate = { complexity: 'standard' }
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+
+    await act(async () => {
+      await result.current.confirmAgenticEstimate()
+    })
+
+    expect(mockConfirmEstimate).not.toHaveBeenCalled()
+    expect(harness.conversation.setError).toHaveBeenCalledWith(
+      'Kael chưa có biên nhận phân tích giá hợp lệ cho đề nghị này.',
+    )
+  })
+
   it('continues to the matching job when optional hydration fails after confirmation', async () => {
     const harness = decisionHarness()
     mockConfirmEstimate.mockResolvedValueOnce({
@@ -211,7 +231,14 @@ describe('customer Kael decision concurrency', () => {
       await result.current.confirmAgenticEstimate()
     })
 
-    expect(mockConfirmEstimate).toHaveBeenCalledWith('session-a', 'customer-session-token')
+    expect(mockConfirmEstimate).toHaveBeenCalledWith(
+      'session-a',
+      {
+        price_reasoning_receipt_id: 'receipt_kael_price_20260811_01',
+        matching_mode: 'prompt_if_saved',
+      },
+      'customer-session-token',
+    )
     expect(harness.workflow.actions.hydrateRemoteJobById).toHaveBeenCalledWith(
       'job-confirmed',
       'customer-session-token',

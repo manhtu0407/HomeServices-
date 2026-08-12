@@ -17,11 +17,9 @@ import {
 import {
   workerV5ReliabilityAxes,
   workerV5ReliabilityAxisScore,
-  workerV5ReliabilityAxisTitle,
   workerV5ReliabilityPercentValue,
   workerV5ReliabilityRatingValue,
 } from '../ui/performance'
-import { WorkerV5KaelDraftCard } from '../jobs/shared-surfaces'
 import {
   WorkerV5ProfileHeader,
 } from './header-surfaces'
@@ -300,7 +298,6 @@ export function WorkerV5SkillsServiceAreaBody({
 }
 
 export function WorkerV5ReliabilityInsightsBody({
-  caseWideAura,
   icons,
   language,
   listAura,
@@ -310,9 +307,7 @@ export function WorkerV5ReliabilityInsightsBody({
   reliabilityAxisFill: ReliabilityAxisFill,
   reliabilityHero: ReliabilityHero,
   runtime,
-  zipAura,
 }: {
-  caseWideAura: WorkerV5ScopedAuraComponent
   icons: WorkerV5IconMap
   language: AppLanguage
   listAura: WorkerV5AuraComponent
@@ -322,16 +317,10 @@ export function WorkerV5ReliabilityInsightsBody({
   reliabilityAxisFill: WorkerV5ReliabilityAxisFillComponent
   reliabilityHero: WorkerV5ReliabilityHeroComponent
   runtime: WorkerV5Runtime
-  zipAura: WorkerV5ScopedAuraComponent
 }) {
   const insights = runtime.workerPerformanceInsights
   const profile = runtime.workerProfile
   const axes = workerV5ReliabilityAxes(insights)
-  const syncedAxes = axes.filter((axis) => axis.hasData)
-  const weakestAxis = syncedAxes.reduce<(typeof syncedAxes)[number] | undefined>(
-    (weakest, axis) => !weakest || axis.score < weakest.score ? axis : weakest,
-    undefined,
-  )
   const onTimeValue = workerV5ReliabilityPercentValue(insights?.on_time_rate_percent, language)
   const ratingValue = workerV5ReliabilityRatingValue(insights?.average_rating ?? profile?.rating, language)
   return (
@@ -373,18 +362,6 @@ export function WorkerV5ReliabilityInsightsBody({
           />
         )}
       />
-      {weakestAxis ? (
-        <WorkerV5KaelDraftCard
-          caseWideAura={caseWideAura}
-          chatIcon={icons.chat}
-          body={textByLanguage(language, `Kael ưu tiên cải thiện ${workerV5ReliabilityAxisTitle(weakestAxis.id, language)} vì đây là thành phần thấp nhất trong dữ liệu thật.`, `Kael prioritizes ${workerV5ReliabilityAxisTitle(weakestAxis.id, language)} because it is the lowest real component.`)}
-          formulaAura
-          language={language}
-          reduceTransparency={reduceTransparency}
-          title={textByLanguage(language, 'Kael gợi ý cải thiện', 'Kael coaching')}
-          zipAura={zipAura}
-        />
-      ) : null}
     </View>
   )
 }

@@ -3,6 +3,7 @@ import {
   serviceTypeSchema,
   jobCreateSchema,
   kaelChatCreateSchema,
+  kaelChatConfirmSchema,
   kaelChatEvidenceSchema,
   kaelChatIntakeConfirmationDecisionSchema,
   kaelChatMediaRevokeSchema,
@@ -553,6 +554,27 @@ describe('kaelChat schemas', () => {
         photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
       })
     ).toThrow()
+  })
+
+  it('separates a price question from a scope adjustment and binds approval to a receipt', () => {
+    expect(kaelChatTurnSchema.parse({
+      message: 'Why is the upper amount needed for this scope?',
+      turn_intent: 'price_question',
+    }).turn_intent).toBe('price_question')
+    expect(kaelChatTurnSchema.parse({
+      message: 'The leak reaches the wall behind the basin.',
+      turn_intent: 'scope_adjustment',
+    }).turn_intent).toBe('scope_adjustment')
+    expect(kaelChatTurnSchema.safeParse({
+      message: 'Please change the price.',
+      turn_intent: 'repricing',
+    }).success).toBe(false)
+    expect(kaelChatConfirmSchema.parse({
+      price_reasoning_receipt_id: 'receipt_kael_price_20260811_01',
+    }).price_reasoning_receipt_id).toBe('receipt_kael_price_20260811_01')
+    expect(kaelChatConfirmSchema.safeParse({
+      price_reasoning_receipt_id: ' ',
+    }).success).toBe(false)
   })
 
   it('rejects traversal-like Kael media refs for customer and worker turns', () => {

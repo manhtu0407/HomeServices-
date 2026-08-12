@@ -20,7 +20,8 @@ export type MeRoute =
     successStatus: 201;
   }
   | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
-  | { kind: "me.jobs.history"; method: "GET"; roles: UserRole[] };
+  | { kind: "me.jobs.history"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.favoriteWorkers.matching"; method: "GET"; roles: UserRole[] };
 
 export function matchMeRoute(path: string, method: string): MeRoute | null {
   if (method === "GET" && path === "/me/jobs/active") {
@@ -29,11 +30,14 @@ export function matchMeRoute(path: string, method: string): MeRoute | null {
   if (method === "GET" && path === "/me/jobs/history") {
     return { kind: "me.jobs.history", method: "GET", roles: ["customer", "admin"] };
   }
+  if (method === "GET" && path === "/me/favorite-workers") {
+    return { kind: "me.favoriteWorkers.matching", method: "GET", roles: ["customer"] };
+  }
   if (method === "GET" && path === "/me/pending-decisions") {
     return { kind: "me.pendingDecisions", method: "GET", roles: ["customer", "admin"] };
   }
   if (method === "GET" && path === "/me/profile-insights") {
-    return { kind: "me.profileInsights", method: "GET", roles: ["customer", "admin"] };
+    return { kind: "me.profileInsights", method: "GET", roles: ["customer"] };
   }
   if (method === "GET" && path === "/me/avatar") {
     return { kind: "me.avatar", method: "GET", roles: ["customer"] };

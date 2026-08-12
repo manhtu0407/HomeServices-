@@ -4,6 +4,7 @@ import { logJobEvent } from "../../platform/audit.ts";
 import { queueKaelLearningEvent } from "../../kael/learning/audit.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
+import { reconcileSavedWorkerFallback } from "./matching-preference.ts";
 
 export async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
@@ -48,6 +49,7 @@ export async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
       apiFailure("BROADCAST_NOT_ACTIVE", "Yêu cầu này đã được xử lý", 409);
     }
     await logJobEvent(client, jobId, "broadcast_expired", ctx, null, null);
+    await reconcileFallbackAfterWorkerResponse(client, jobId, ctx.user.id, "saved_worker_expired");
     apiFailure("EXPIRED", "Yêu cầu đã hết hạn", 410);
   }
 
@@ -73,5 +75,26 @@ export async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
     decline_reason: "broadcast_declined",
     feedback_present: false,
   });
+  await reconcileFallbackAfterWorkerResponse(client, jobId, ctx.user.id, "saved_worker_declined");
   return { job_id: jobId, declined: true as const };
+}
+
+async function reconcileFallbackAfterWorkerResponse(
+  client: ReturnType<typeof db>,
+  jobId: string,
+  workerId: string,
+  reason: "saved_worker_declined" | "saved_worker_expired",
+) {
+  try {
+    await reconcileSavedWorkerFallback(client, {
+      expectedWorkerId: workerId,
+      jobId,
+      reason,
+    });
+  } catch {
+    console.warn("mobile-api saved-worker fallback reconciliation failed", {
+      jobId,
+      reason,
+    });
+  }
 }

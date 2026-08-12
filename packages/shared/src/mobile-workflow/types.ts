@@ -1,4 +1,5 @@
 import type { JobStatus, ScopeChangeStatus, ServiceType } from '../constants'
+import type { MatchingState } from '../types/api-responses'
 import type { LocalDealStatus } from './status'
 
 export type LocalDealSource = 'home' | 'kael' | 'booking'
@@ -88,6 +89,15 @@ export type LocalPaymentStatus =
   | 'expired'
   | 'failed'
   | 'reconciled'
+  | 'manual_qr_ready'
+  | 'manual_customer_claimed'
+  | 'manual_reconcile_required'
+  | 'manual_verified'
+  | 'direct_awaiting_confirmation'
+  | 'direct_awaiting_customer_confirmation'
+  | 'direct_awaiting_worker_confirmation'
+  | 'direct_reconcile_required'
+  | 'direct_paid'
 
 export type LocalDealPayment = {
   provider: 'sepay_vietqr' | 'cash' | 'bank_transfer' | string | null
@@ -102,6 +112,14 @@ export type LocalDealPayment = {
   receivedAt?: string | null
   amountReceived?: number | null
   updatedAt?: string | null
+  holdUntil?: string | null
+  directResponseDeadline?: string | null
+  directCustomerConfirmedAt?: string | null
+  directWorkerConfirmedAt?: string | null
+  collateralAmount?: number | null
+  bankCode?: string | null
+  accountHolder?: string | null
+  accountMasked?: string | null
 }
 
 export type LocalDeal = {
@@ -115,6 +133,7 @@ export type LocalDeal = {
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
   paymentRailAvailable?: boolean
+  paymentRailProvider?: 'platform_bank_manual' | 'sepay_vietqr' | null
   payment?: LocalDealPayment | null
   customerEvidencePhotoUrls?: string[]
   fieldEvidencePhotoUrls?: string[]
@@ -128,6 +147,7 @@ export type LocalDeal = {
   confirmedAt?: string | null
   paidAt?: string | null
   reviewedAt?: string | null
+  matchingState?: MatchingState | null
 }
 
 export type LocalScopeChange = {
@@ -176,6 +196,7 @@ export type LocalRemoteJobSnapshot = {
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
   paymentRailAvailable?: boolean
+  paymentRailProvider?: 'platform_bank_manual' | 'sepay_vietqr' | null
   payment?: LocalDealPayment | null
   customerEvidencePhotoUrls?: string[]
   fieldEvidencePhotoUrls?: string[]
@@ -189,6 +210,7 @@ export type LocalRemoteJobSnapshot = {
   confirmedAt?: string | null
   paidAt?: string | null
   reviewedAt?: string | null
+  matchingState?: MatchingState | null
 }
 
 export type LocalRemoteBroadcastSnapshot = {

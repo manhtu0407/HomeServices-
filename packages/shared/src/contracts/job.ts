@@ -49,6 +49,35 @@ export const jobMessageSendSchema = z.object({
   content: z.string().trim().min(1).max(5000),
 })
 
+export const jobMatchingPreferenceSchema = z.object({
+  mode: z.enum(['general', 'saved_worker_first']),
+  worker_id: z.string().uuid().optional(),
+  auto_general: z.boolean().default(true),
+  client_request_id: clientRequestIdSchema,
+}).strict().superRefine((value, ctx) => {
+  if (value.mode === 'saved_worker_first' && !value.worker_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'worker_id is required for saved_worker_first',
+      path: ['worker_id'],
+    })
+  }
+  if (value.mode === 'general' && value.worker_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'worker_id is only allowed for saved_worker_first',
+      path: ['worker_id'],
+    })
+  }
+  if (!value.auto_general) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'auto_general must remain enabled for saved-worker matching',
+      path: ['auto_general'],
+    })
+  }
+})
+
 const jobMediaAssetSchema = z.object({
   object_path: z.string().min(10).max(500).regex(
     new RegExp(`^${uuidPathPattern}/(?:${jobMediaStages.join('|')})/(?!.*(?:\\.\\.|//))[^\\s?#/]+$`, 'i'),
@@ -86,4 +115,5 @@ export type PlacesAutocompleteInput = z.infer<typeof placesAutocompleteSchema>
 export type PlacesResolveInput = z.infer<typeof placesResolveSchema>
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>
 export type JobMessageSendInput = z.infer<typeof jobMessageSendSchema>
+export type JobMatchingPreferenceInput = z.infer<typeof jobMatchingPreferenceSchema>
 export type JobMediaAttachInput = z.infer<typeof jobMediaAttachSchema>

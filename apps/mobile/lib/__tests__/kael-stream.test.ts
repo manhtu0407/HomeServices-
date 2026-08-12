@@ -45,6 +45,53 @@ describe('Kael SSE parser', () => {
     ])
   })
 
+  it('parses bounded public processing receipts before stream handlers receive them', () => {
+    const parser = createKaelSseParser()
+    const events = parser.push([
+      'event: reasoning.started',
+      'data: {"receipt_id":"kael-reasoning:test","schema_version":"kael_reasoning.v1","started_at":"2026-08-10T00:00:00.000Z"}',
+      '',
+      'event: reasoning.step',
+      'data: {"receipt_id":"kael-reasoning:test","schema_version":"kael_reasoning.v1","elapsed_ms":420,"step":{"id":"intent","label":"Checked the request","detail":null,"sequence":0,"stage":"intent","status":"completed"}}',
+      '',
+      'event: reasoning.completed',
+      'data: {"receipt_id":"kael-reasoning:test","schema_version":"kael_reasoning.v1","elapsed_ms":840,"fallback_used":false,"summary":["Kael completed and saved a safe reply."]}',
+      '',
+      '',
+    ].join('\n'))
+
+    expect(events).toEqual([
+      {
+        receiptId: 'kael-reasoning:test',
+        schemaVersion: 'kael_reasoning.v1',
+        startedAt: '2026-08-10T00:00:00.000Z',
+        type: 'reasoning.started',
+      },
+      {
+        elapsedMs: 420,
+        receiptId: 'kael-reasoning:test',
+        schemaVersion: 'kael_reasoning.v1',
+        step: {
+          detail: null,
+          id: 'intent',
+          label: 'Checked the request',
+          sequence: 0,
+          stage: 'intent',
+          status: 'completed',
+        },
+        type: 'reasoning.step',
+      },
+      {
+        elapsedMs: 840,
+        fallbackUsed: false,
+        receiptId: 'kael-reasoning:test',
+        schemaVersion: 'kael_reasoning.v1',
+        summary: ['Kael completed and saved a safe reply.'],
+        type: 'reasoning.completed',
+      },
+    ])
+  })
+
   it('accepts one universal response start and sanitizes a structured failure', () => {
     const parser = createKaelSseParser()
     const events = parser.push([
@@ -218,6 +265,138 @@ describe('Kael SSE parser', () => {
             evidence: {
               ...analysisReceipt.evidence,
               analysis_status: 'invented',
+            },
+          },
+        },
+      },
+    })).toBe(false)
+  })
+
+  it('accepts a reconciled public price reasoning receipt and rejects hidden numeric components', () => {
+    const priceReasoningReceipt = {
+      schema_version: 'price_reasoning_receipt.v1',
+      receipt_id: 'receipt_kael_price_20260811_01',
+      problem: {
+        confirmed_facts: ['The customer reports a slow leak below the basin.'],
+        possible_causes: [{
+          statement: 'A loose accessible connection may be contributing to the leak.',
+          basis: ['customer_report'],
+          confidence: 'medium',
+        }],
+        unknowns: ['The hidden pipe condition is not confirmed.'],
+      },
+      scope: {
+        included: ['Inspect the accessible connection.'],
+        conditional: ['Replace a worn seal if the customer approves it on site.'],
+        excluded: ['Concealed pipework repair.'],
+      },
+      costs: {
+        currency: 'VND',
+        total_min: 250000,
+        total_max: 450000,
+        reconciliation: 'package_total',
+        components: [{
+          kind: 'service_package',
+          status: 'priced',
+          amount_min: 250000,
+          amount_max: 450000,
+          explanation: 'The governed package covers the confirmed accessible scope.',
+        }],
+      },
+      scenarios: {
+        low: {
+          total: 250000,
+          conditions: ['The connection is accessible.'],
+          scope: ['Inspect and secure the connection.'],
+        },
+        high: {
+          total: 450000,
+          conditions: ['The visit uses the approved accessible package scope.'],
+          scope: ['Inspect, diagnose, and complete the package.'],
+        },
+      },
+      fairness: {
+        price_source: 'baseline_with_market',
+        confidence: 'medium',
+        market_source_count: 3,
+        high_trust_source_count: 2,
+        quorum_met: true,
+        cap_statement: 'The upper amount is the cap for this scope.',
+        remaining_uncertainty: ['A concealed issue needs a separate proposal.'],
+      },
+    }
+    const valid = {
+      session: {
+        id: 'session-1',
+        job_id: null,
+        customer_id: 'customer-1',
+        service_type: 'plumbing',
+        status: 'estimate_ready',
+        case_phase: 'offer_review',
+        diagnosis_scope: null,
+        scheduled_at: null,
+        estimate: {
+          service_type: 'plumbing',
+          problem_category: 'pipe_leak',
+          problem_summary: 'A slow leak is reported below the basin.',
+          complexity: 'medium',
+          price_min: 250000,
+          price_max: 450000,
+          confidence: 0.72,
+          advisory: null,
+          disclaimer: 'This is an estimate based on the current information.',
+          price_reasoning_receipt: priceReasoningReceipt,
+        },
+        started_at: '2026-08-01T00:00:00.000Z',
+        estimate_ready_at: '2026-08-01T00:00:01.000Z',
+        total_turns: 0,
+        total_cost_usd: 0,
+        next_action: 'estimate_ready',
+      },
+      turns: [],
+    }
+
+    expect(isCustomerKaelStreamResult(valid)).toBe(true)
+    expect(isCustomerKaelStreamResult({
+      ...valid,
+      session: {
+        ...valid.session,
+        estimate: {
+          ...valid.session.estimate,
+          price_reasoning_receipt: {
+            ...priceReasoningReceipt,
+            costs: {
+              ...priceReasoningReceipt.costs,
+              components: [{
+                kind: 'replacement_parts',
+                status: 'conditional_unpriced',
+                amount_min: 50000,
+                amount_max: 50000,
+                explanation: 'This must not expose a price before verification.',
+              }],
+            },
+          },
+        },
+      },
+    })).toBe(false)
+    expect(isCustomerKaelStreamResult({
+      ...valid,
+      session: {
+        ...valid.session,
+        estimate: {
+          ...valid.session.estimate,
+          price_reasoning_receipt: {
+            ...priceReasoningReceipt,
+            costs: {
+              ...priceReasoningReceipt.costs,
+              reconciliation: 'exact',
+              components: [{
+                kind: 'labor',
+                status: 'priced',
+                amount_min: 250000,
+                amount_max: 450000,
+                explanation: 'The client must not accept an inferred labor line item.',
+              }],
             },
           },
         },

@@ -3,7 +3,12 @@ import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-na
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
-import { toWorkflowPhase, type LocalDeal } from '@nestscout/shared'
+import {
+  toWorkflowPhase,
+  type FavoriteWorkerForMatching,
+  type JobMatchingPreferenceInput,
+  type LocalDeal,
+} from '@nestscout/shared'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { canCustomerDecideScopeChange } from './case-work-display-model'
@@ -14,6 +19,7 @@ import {
   type PaymentRailProvider,
 } from './case-work-response-model'
 import { CustomerPaymentRailSurface } from './customer-payment-rail-surface'
+import { FindingWorkersReceipt } from './finding-workers-receipt'
 
 export function AgenticCaseThreadPanel({
   activityLabel,
@@ -29,6 +35,12 @@ export function AgenticCaseThreadPanel({
   onAcknowledgeOptions,
   onAuthorizeApartmentAccess,
   onCreatePaymentIntent,
+  onCreateManualBankPaymentOrder,
+  onClaimManualBankPayment,
+  onSelectDirectWorkerPayment,
+  onRespondToDirectWorkerPayment,
+  onChooseMatchingPreference,
+  onLoadSavedWorkers,
   onRefreshPayment,
   onApproveScopeChange,
   onApproveQuote,
@@ -38,6 +50,7 @@ export function AgenticCaseThreadPanel({
   onRejectScopeChange,
   onRejectQuote,
   onRetryWorkerSearch,
+  onStopMatching,
   onSubmitReview,
   reduceMotion,
   retryingWorkerSearch,
@@ -59,6 +72,12 @@ export function AgenticCaseThreadPanel({
   onAcknowledgeOptions: () => void
   onAuthorizeApartmentAccess: () => Promise<void> | void
   onCreatePaymentIntent: () => Promise<boolean>
+  onCreateManualBankPaymentOrder: () => Promise<boolean>
+  onClaimManualBankPayment: () => Promise<boolean>
+  onSelectDirectWorkerPayment: () => Promise<boolean>
+  onRespondToDirectWorkerPayment: (received: boolean) => Promise<boolean>
+  onChooseMatchingPreference: (input: Omit<JobMatchingPreferenceInput, 'client_request_id'>) => Promise<boolean>
+  onLoadSavedWorkers: () => Promise<FavoriteWorkerForMatching[] | null>
   onRefreshPayment: () => Promise<boolean>
   onApproveScopeChange: (id: string) => void
   onApproveQuote: () => void
@@ -68,6 +87,7 @@ export function AgenticCaseThreadPanel({
   onRejectScopeChange: (id: string) => void
   onRejectQuote: () => void
   onRetryWorkerSearch: () => void
+  onStopMatching: () => Promise<boolean>
   onSubmitReview: (input: { rating: number; tags: string[]; comment?: string }) => Promise<boolean>
   reduceMotion: boolean
   retryingWorkerSearch: boolean
@@ -112,7 +132,19 @@ export function AgenticCaseThreadPanel({
     ? deal.scopeChange
     : null
   const quoteReviewActive = phase === 'ticket_review' && Boolean(deal.estimate)
-  const retrySearchActive = phase === 'matching' && deal.broadcast?.status === 'expired'
+  const matchingReceipt = phase === 'matching' && deal.matchingState ? (
+    <FindingWorkersReceipt
+      language={language}
+      matchingState={deal.matchingState}
+      onChoosePreference={onChooseMatchingPreference}
+      onLoadSavedWorkers={onLoadSavedWorkers}
+      onRetry={() => onRetryWorkerSearch()}
+      onStop={onStopMatching}
+      reduceMotion={reduceMotion}
+      tokens={tokens}
+    />
+  ) : null
+  const retrySearchActive = phase === 'matching' && !matchingReceipt && deal.broadcast?.status === 'expired'
   const apartmentAccessReady = model.actionKind === 'apartment_access'
   const activityActionLabel = phase === 'done' || phase === 'cancelled' ? activityLabel : null
 
@@ -191,6 +223,7 @@ export function AgenticCaseThreadPanel({
             variant="secondary"
           />
         ) : undefined}
+        details={matchingReceipt}
         model={model}
         reduceMotion={reduceMotion}
         tokens={tokens}
@@ -203,6 +236,26 @@ export function AgenticCaseThreadPanel({
           setPaymentBusy(true)
           void onCreatePaymentIntent().finally(() => setPaymentBusy(false))
         }}
+        onCreateManualBankPaymentOrder={() => {
+          if (paymentBusy) return
+          setPaymentBusy(true)
+          void onCreateManualBankPaymentOrder().finally(() => setPaymentBusy(false))
+        }}
+        onClaimManualBankPayment={() => {
+          if (paymentBusy) return
+          setPaymentBusy(true)
+          void onClaimManualBankPayment().finally(() => setPaymentBusy(false))
+        }}
+        onSelectDirectWorkerPayment={() => {
+          if (paymentBusy) return
+          setPaymentBusy(true)
+          void onSelectDirectWorkerPayment().finally(() => setPaymentBusy(false))
+        }}
+        onRespondToDirectWorkerPayment={(received) => {
+          if (paymentBusy) return
+          setPaymentBusy(true)
+          void onRespondToDirectWorkerPayment(received).finally(() => setPaymentBusy(false))
+        }}
         onRefreshPayment={() => {
           if (refreshingPayment) return
           setRefreshingPayment(true)
@@ -211,6 +264,7 @@ export function AgenticCaseThreadPanel({
         paymentBusy={paymentBusy}
         paymentRailProvider={paymentRailProvider}
         refreshingPayment={refreshingPayment}
+        reduceMotion={reduceMotion}
         reviewControls={phase === 'paid' ? (
           <CustomerReviewControls
             language={language}

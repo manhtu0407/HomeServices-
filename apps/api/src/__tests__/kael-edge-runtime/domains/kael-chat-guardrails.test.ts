@@ -7,6 +7,54 @@ import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 describe('chat-guardrails', () => {
   installEdgeRuntimeTestHooks()
 
+  it('treats a price question as a read-only request and does not reprice the offer', async () => {
+    const estimateReadySession = {
+      id: 'kael-session-1',
+      job_id: null,
+      customer_id: 'customer-1',
+      service_type: 'plumbing',
+      status: 'estimate_ready',
+      case_phase: 'offer_review',
+      diagnosis_scope: null,
+      scheduled_at: null,
+      started_at: '2026-08-11T01:00:00.000Z',
+      estimate_ready_at: '2026-08-11T01:02:00.000Z',
+      total_turns: 2,
+      total_cost_usd: 0,
+      safe_metadata: {},
+      created_at: '2026-08-11T01:00:00.000Z',
+    }
+    const client = makeSequenceClient([
+      { data: estimateReadySession, error: null },
+      { data: estimateReadySession, error: null },
+      { data: [], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).sendKaelChatTurn(ctx, 'kael-session-1', {
+      message: 'Vì sao có mức giá này?',
+      photo_urls: [],
+      turn_intent: 'price_question',
+    })).resolves.toMatchObject({
+      session: { id: 'kael-session-1', status: 'estimate_ready' },
+      turns: [],
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'kael_chat_sessions',
+      'kael_chat_sessions',
+      'kael_chat_turns',
+    ])
+    expect(client.calls.flatMap((call) => call.operations).some((operation) =>
+      operation[0] === 'insert' || operation[0] === 'update',
+    )).toBe(false)
+  })
+
   it('hard-stops Kael chat before provider calls when the session exceeds the AI budget cap', async () => {
     const client = makeSequenceClient([
       {

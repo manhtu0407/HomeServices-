@@ -1,4 +1,4 @@
-import type { LocalDeal } from '@nestscout/shared'
+import type { KaelChatTurnInput, LocalDeal } from '@nestscout/shared'
 import type { useRouter } from 'expo-router'
 import { useRef } from 'react'
 
@@ -78,6 +78,7 @@ export function useCustomerKaelDecisionActions({
     retryingWorkerSearch,
     setAgenticAdjustmentOpen,
     setAgenticAdjustmentText,
+    setAgenticPriceQuestionOpen,
     setAgenticRejectOpen,
     setAgenticRejectReason,
     setCaseEditOpen,
@@ -222,12 +223,20 @@ export function useCustomerKaelDecisionActions({
 
   const confirmAgenticEstimate = async () => {
     if (!chat?.session.id || !chatEstimate || confirmingAgenticEstimate) return
+    const priceReasoningReceiptId = chatEstimate.price_reasoning_receipt?.receipt_id
+    if (!priceReasoningReceiptId) {
+      setError(language === 'vi'
+        ? 'Kael chưa có biên nhận phân tích giá hợp lệ cho đề nghị này.'
+        : 'Kael does not yet have a valid price reasoning receipt for this offer.')
+      return
+    }
     const operation = beginDecisionOperation('confirm-agentic-estimate')
     if (!operation) return
     const requestToken = kaelRequestGuard.begin('conversation')
     setConfirmingAgenticEstimate(true)
     setAgenticAdjustmentOpen(false)
     setAgenticAdjustmentText('')
+    setAgenticPriceQuestionOpen(false)
     setAgenticRejectOpen(false)
     setAgenticRejectReason('')
     setError(null)
@@ -243,8 +252,18 @@ export function useCustomerKaelDecisionActions({
     let confirmedJobId: string | null = null
     try {
       const confirmed = sessionAccessToken
-        ? await kaelChatService.confirm(chat.session.id, sessionAccessToken)
-        : await kaelChatService.confirm(chat.session.id)
+        ? await kaelChatService.confirm(
+            chat.session.id,
+            {
+              price_reasoning_receipt_id: priceReasoningReceiptId,
+              matching_mode: 'prompt_if_saved',
+            },
+            sessionAccessToken,
+          )
+        : await kaelChatService.confirm(chat.session.id, {
+            price_reasoning_receipt_id: priceReasoningReceiptId,
+            matching_mode: 'prompt_if_saved',
+          })
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       if (!confirmed.success) {
         stopProcessLines()
@@ -291,11 +310,17 @@ export function useCustomerKaelDecisionActions({
     message,
     onSuccess,
     setSubmitting,
+    scheduledAt,
+    scheduleWindow,
+    turnIntent,
   }: {
-    kind: 'adjust-agentic-estimate' | 'reject-agentic-estimate'
+    kind: 'adjust-agentic-estimate' | 'reject-agentic-estimate' | 'schedule-agentic-estimate'
     message: string
     onSuccess: () => void
     setSubmitting: (value: boolean) => void
+    scheduledAt?: string
+    scheduleWindow?: KaelChatTurnInput['schedule_window']
+    turnIntent?: 'scope_adjustment'
   }) => {
     if (!chat?.session.id || !message) return
     const operation = beginDecisionOperation(kind)
@@ -304,12 +329,12 @@ export function useCustomerKaelDecisionActions({
     setSubmitting(true)
     setLoading(true)
     setError(null)
-    const isAdjustment = kind === 'adjust-agentic-estimate'
+    const reanalyzing = kind === 'adjust-agentic-estimate' || kind === 'schedule-agentic-estimate'
     const processDone = startProcessLines(message, {
       complexity: chatEstimate?.complexity ?? null,
-      mediaCount: isAdjustment ? 0 : totalMediaRefs(turns),
+      mediaCount: reanalyzing ? 0 : totalMediaRefs(turns),
       mode: 'case',
-      scenario: isAdjustment ? 'analysis_refinement' : undefined,
+      scenario: reanalyzing ? 'analysis_refinement' : undefined,
       serviceType: chat.session.service_type,
     })
     try {
@@ -317,6 +342,9 @@ export function useCustomerKaelDecisionActions({
         language,
         message,
         photo_urls: [],
+        ...(scheduledAt ? { scheduled_at: scheduledAt } : {}),
+        ...(scheduleWindow ? { schedule_window: scheduleWindow } : {}),
+        turn_intent: turnIntent,
       })
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       if (result.success) {
@@ -352,6 +380,7 @@ export function useCustomerKaelDecisionActions({
         setAgenticAdjustmentText('')
       },
       setSubmitting: setSubmittingAgenticAdjustment,
+      turnIntent: 'scope_adjustment',
     })
   }
 
@@ -366,6 +395,21 @@ export function useCustomerKaelDecisionActions({
         setAgenticRejectReason('')
       },
       setSubmitting: setSubmittingAgenticRejectReason,
+    })
+  }
+
+  const submitAgenticSchedule = async (input: {
+    message: string
+    scheduled_at: string
+    schedule_window: NonNullable<KaelChatTurnInput['schedule_window']>
+  }) => {
+    await submitAgenticEstimateFollowUp({
+      kind: 'schedule-agentic-estimate',
+      message: input.message,
+      onSuccess: () => undefined,
+      scheduledAt: input.scheduled_at,
+      scheduleWindow: input.schedule_window,
+      setSubmitting: () => undefined,
     })
   }
 
@@ -494,9 +538,11 @@ export function useCustomerKaelDecisionActions({
   }
 
   const retryWorkerSearch = async () => {
+    const matchingReceiptRecoverable = deal?.matchingState?.stage === 'exhausted' ||
+      deal?.matchingState?.stage === 'recovery_required'
     if (
       deal?.status !== 'broadcasting' ||
-      deal.broadcast?.status !== 'expired' ||
+      (!matchingReceiptRecoverable && deal.broadcast?.status !== 'expired') ||
       retryingWorkerSearch ||
       typeof workflow.actions.confirmRemoteSearch !== 'function'
     ) return
@@ -530,6 +576,7 @@ export function useCustomerKaelDecisionActions({
     requestIntakeCorrection,
     submitAgenticAdjustment,
     submitAgenticRejectReason,
+    submitAgenticSchedule,
     submitCaseQuoteRejectReason,
   }
 }

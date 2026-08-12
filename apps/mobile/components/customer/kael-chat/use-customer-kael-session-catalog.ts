@@ -6,6 +6,7 @@ import type { AppLanguage } from '@/lib/app-language'
 import type { KaelChatResponse } from '@/lib/api-types'
 import type { CustomerKaelConversationSession } from '@/lib/api-types/customer'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { initialKaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { kaelChatService } from '@/lib/services'
 
 import { clearPendingKaelChatDraft } from './pending-intake'
@@ -230,6 +231,9 @@ export function useCustomerKaelSessionCatalog({
     conversation.setComposerMediaDrafts([])
     conversation.setError(null)
     conversation.setLoading(false)
+    conversation.setPendingNormalMessage(null)
+    conversation.setReasoningReceipt(initialKaelReasoningReceiptState)
+    conversation.setStreamingReply(null)
     conversation.setAssistantTurns((current) => current.filter((turn) => (
       turn.surface !== (mode === 'normal' ? 'customer_normal' : 'customer_case')
     )))

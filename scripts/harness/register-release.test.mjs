@@ -8,7 +8,11 @@ import {
 } from './register-release.mjs'
 
 test('builds a complete immutable release-ledger registration statement', () => {
-  const release = buildHarnessRelease({ environment: 'production', gitSha: 'd'.repeat(40) })
+  const release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: 'd'.repeat(40),
+    requireCleanWorktree: false,
+  })
   const sql = buildReleaseRegistrationSql(release)
 
   assert.match(sql, /public\.register_harness_release/u)

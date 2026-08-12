@@ -6,14 +6,17 @@ export type KaelProcessLineRuntime = {
   activeIndex: number | null
   collapse: string | null
   lines: KaelProcessLine[]
+  origin: 'backend' | 'local'
   prompt: string
   scenarioId: KaelProcessScenarioId
+  streamId: string
   visibleCount: number
 }
 
 type CustomerKaelChatUiState = {
   agenticAdjustmentOpen: boolean
   agenticAdjustmentText: string
+  agenticPriceQuestionOpen: boolean
   agenticEvidenceReason: string
   agenticEvidenceRejectOpen: boolean
   agenticRejectOpen: boolean
@@ -51,6 +54,7 @@ type CustomerKaelChatUiSetter<Key extends keyof CustomerKaelChatUiState> = Dispa
 const initialCustomerKaelChatUiState: CustomerKaelChatUiState = {
   agenticAdjustmentOpen: false,
   agenticAdjustmentText: '',
+  agenticPriceQuestionOpen: false,
   agenticEvidenceReason: '',
   agenticEvidenceRejectOpen: false,
   agenticRejectOpen: false,
@@ -101,6 +105,7 @@ export function useCustomerKaelChatUiState() {
   const setters = useMemo(() => ({
     setAgenticAdjustmentOpen: createSetter(dispatch, 'agenticAdjustmentOpen'),
     setAgenticAdjustmentText: createSetter(dispatch, 'agenticAdjustmentText'),
+    setAgenticPriceQuestionOpen: createSetter(dispatch, 'agenticPriceQuestionOpen'),
     setAgenticEvidenceReason: createSetter(dispatch, 'agenticEvidenceReason'),
     setAgenticEvidenceRejectOpen: createSetter(dispatch, 'agenticEvidenceRejectOpen'),
     setAgenticRejectOpen: createSetter(dispatch, 'agenticRejectOpen'),

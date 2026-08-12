@@ -313,7 +313,7 @@ describe('job-create-pipeline', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const supabase = makeSequenceClient([
-      { data: [{ id: 'pipe-problem' }], error: null },
+      { data: [{ id: 'pipe-problem', default_complexity: 'small' }], error: null },
       { data: [{ complexity: 'medium', price_min: 150000, price_max: 350000, district_code: 'q7' }], error: null },
     ])
 
@@ -333,6 +333,7 @@ describe('job-create-pipeline', () => {
     if (result.success) {
       expect(result.fallbackUsed).toBe(false)
       expect(result.stageLogs.some((stage) => stage.stage === 'vision')).toBe(false)
+      expect(result.estimate.complexity).toBe('small')
       expect(result.estimate.problem_summary).toContain('Ống rò rỉ')
       expect(result.estimate.problem_summary).not.toContain('plumbing:')
     }

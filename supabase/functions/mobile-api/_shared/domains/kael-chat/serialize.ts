@@ -15,6 +15,10 @@ import {
   nullableString,
 } from "../../platform/coercions.ts";
 import { KAEL_CHAT_HARD_COST_CAP_USD } from "../../kael/kael-guardrails/cost-cap.ts";
+import {
+  isSafePublicPriceReasoningText,
+  type PriceReasoningReceipt,
+} from "../../kael/kael-guardrails/output-pipeline.ts";
 
 export function serializeKaelTurn(row: Record<string, unknown>) {
   const metadata = asRecord(row.safe_metadata);
@@ -199,7 +203,325 @@ export function serializeKaelEstimate(value: unknown, cardV3?: unknown) {
     market_signals: nullableString(reasoning.market_signals),
     needs_inspection_reason: nullableString(reasoning.needs_inspection_reason),
     analysis_receipt: serializeEstimateAnalysisReceipt(card.analysis_receipt),
+    price_reasoning_receipt: serializePriceReasoningReceipt(
+      card.price_reasoning_receipt,
+      {
+        expectedPriceSource: nullableEstimatePriceSource(card.price_source),
+        priceMax,
+        priceMin,
+      },
+    ),
   };
+}
+
+type StoredEstimatePriceSource = PriceReasoningReceipt["fairness"]["price_source"];
+
+function serializePriceReasoningReceipt(
+  value: unknown,
+  expected: {
+    expectedPriceSource: StoredEstimatePriceSource | null;
+    priceMin: number;
+    priceMax: number;
+  },
+): PriceReasoningReceipt | null {
+  const receipt = asRecord(value);
+  if (Object.keys(receipt).length === 0) return null;
+  if (
+    receipt.schema_version !== "price_reasoning_receipt.v1" ||
+    !isReceiptId(receipt.receipt_id)
+  ) {
+    invalidPriceReasoningReceipt();
+  }
+  const problem = asRecord(receipt.problem);
+  const scope = asRecord(receipt.scope);
+  const costs = asRecord(receipt.costs);
+  const scenarios = asRecord(receipt.scenarios);
+  const lowScenario = asRecord(scenarios.low);
+  const highScenario = asRecord(scenarios.high);
+  const fairness = asRecord(receipt.fairness);
+  const source = priceReasoningSource(fairness.price_source);
+  if (!expected.expectedPriceSource || source !== expected.expectedPriceSource) {
+    invalidPriceReasoningReceipt();
+  }
+  const totalMin = positiveSafeInteger(costs.total_min);
+  const totalMax = positiveSafeInteger(costs.total_max);
+  const reconciliation = costs.reconciliation;
+  if (
+    costs.currency !== "VND" ||
+    totalMin !== expected.priceMin ||
+    totalMax !== expected.priceMax ||
+    (reconciliation !== "package_total" && reconciliation !== "exact")
+  ) {
+    invalidPriceReasoningReceipt();
+  }
+  const components = serializePriceReasoningComponents(
+    costs.components,
+    expected,
+    reconciliation,
+  );
+  const lowTotal = positiveSafeInteger(lowScenario.total);
+  const highTotal = positiveSafeInteger(highScenario.total);
+  if (lowTotal !== expected.priceMin || highTotal !== expected.priceMax) {
+    invalidPriceReasoningReceipt();
+  }
+  const marketSourceCount = nullableNonNegativeSafeInteger(
+    fairness.market_source_count,
+  );
+  const highTrustSourceCount = nullableNonNegativeSafeInteger(
+    fairness.high_trust_source_count,
+  );
+  if (
+    highTrustSourceCount !== null && marketSourceCount !== null &&
+    highTrustSourceCount > marketSourceCount ||
+    (fairness.quorum_met !== null && typeof fairness.quorum_met !== "boolean")
+  ) {
+    invalidPriceReasoningReceipt();
+  }
+  const confidence = priceReasoningConfidence(fairness.confidence);
+  const capStatement = priceReasoningText(fairness.cap_statement, 300);
+  return {
+    schema_version: "price_reasoning_receipt.v1",
+    receipt_id: receipt.receipt_id,
+    problem: {
+      confirmed_facts: priceReasoningTextList(problem.confirmed_facts, 1, 5, 240),
+      possible_causes: serializePriceReasoningCauses(problem.possible_causes),
+      unknowns: priceReasoningTextList(problem.unknowns, 1, 4, 280),
+    },
+    scope: {
+      included: priceReasoningTextList(scope.included, 1, 5, 320),
+      conditional: priceReasoningTextList(scope.conditional, 1, 5, 320),
+      excluded: priceReasoningTextList(scope.excluded, 1, 5, 320),
+    },
+    costs: {
+      currency: "VND",
+      total_min: totalMin,
+      total_max: totalMax,
+      reconciliation,
+      components,
+    },
+    scenarios: {
+      low: {
+        total: lowTotal,
+        conditions: priceReasoningTextList(lowScenario.conditions, 1, 4, 280),
+        scope: priceReasoningTextList(lowScenario.scope, 1, 5, 320),
+      },
+      high: {
+        total: highTotal,
+        conditions: priceReasoningTextList(highScenario.conditions, 1, 4, 280),
+        scope: priceReasoningTextList(highScenario.scope, 1, 5, 320),
+      },
+    },
+    fairness: {
+      price_source: source,
+      confidence,
+      market_source_count: marketSourceCount,
+      high_trust_source_count: highTrustSourceCount,
+      quorum_met: fairness.quorum_met,
+      cap_statement: capStatement,
+      remaining_uncertainty: priceReasoningTextList(
+        fairness.remaining_uncertainty,
+        1,
+        4,
+        280,
+      ),
+    },
+  };
+}
+
+function serializePriceReasoningCauses(
+  value: unknown,
+): PriceReasoningReceipt["problem"]["possible_causes"] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 3) {
+    invalidPriceReasoningReceipt();
+  }
+  return value.map((item) => {
+    const cause = asRecord(item);
+    const basis = serializePriceReasoningBasis(cause.basis);
+    const confidence = cause.confidence === "low" || cause.confidence === "medium" ||
+        cause.confidence === "high"
+      ? cause.confidence
+      : invalidPriceReasoningReceipt();
+    return {
+      statement: priceReasoningText(cause.statement, 240),
+      basis,
+      confidence,
+    };
+  });
+}
+
+function serializePriceReasoningBasis(
+  value: unknown,
+): PriceReasoningReceipt["problem"]["possible_causes"][number]["basis"] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 4) {
+    invalidPriceReasoningReceipt();
+  }
+  const seen = new Set<string>();
+  const basis = value.map((item) => {
+    if (
+      item !== "customer_report" && item !== "visual_evidence" &&
+      item !== "service_profile" && item !== "knowledge" || seen.has(item)
+    ) {
+      invalidPriceReasoningReceipt();
+    }
+    seen.add(item);
+    return item;
+  });
+  return basis;
+}
+
+function serializePriceReasoningComponents(
+  value: unknown,
+  expected: { priceMin: number; priceMax: number },
+  reconciliation: PriceReasoningReceipt["costs"]["reconciliation"],
+): PriceReasoningReceipt["costs"]["components"] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 7) {
+    invalidPriceReasoningReceipt();
+  }
+  const kinds = new Set<string>();
+  const components = value.map((item) => {
+    const component = asRecord(item);
+    const kind = priceReasoningComponentKind(component.kind);
+    const status = priceReasoningComponentStatus(component.status);
+    const amountMin = nullablePriceAmount(component.amount_min);
+    const amountMax = nullablePriceAmount(component.amount_max);
+    if (
+      kinds.has(kind) ||
+      (amountMin === null) !== (amountMax === null) ||
+      (amountMin !== null && amountMax !== null && amountMax < amountMin) ||
+      (status === "priced" &&
+        (kind !== "service_package" || amountMin === null || amountMax === null)) ||
+      (status !== "priced" && (amountMin !== null || amountMax !== null))
+    ) {
+      invalidPriceReasoningReceipt();
+    }
+    kinds.add(kind);
+    return {
+      kind,
+      status,
+      amount_min: amountMin,
+      amount_max: amountMax,
+      explanation: priceReasoningText(component.explanation, 260),
+    };
+  });
+  const servicePackage = components.find((component) => component.kind === "service_package");
+  if (
+    reconciliation === "package_total" &&
+    (!servicePackage || servicePackage.status !== "priced" ||
+      servicePackage.amount_min !== expected.priceMin ||
+      servicePackage.amount_max !== expected.priceMax ||
+      components.some((component) =>
+        component.kind !== "service_package" && component.status === "priced"
+      ))
+  ) {
+    invalidPriceReasoningReceipt();
+  }
+  if (reconciliation === "exact") {
+    const priced = components.filter((component) => component.status === "priced");
+    const totalMin = priced.reduce((total, component) => total + (component.amount_min ?? 0), 0);
+    const totalMax = priced.reduce((total, component) => total + (component.amount_max ?? 0), 0);
+    if (priced.length === 0 || totalMin !== expected.priceMin || totalMax !== expected.priceMax) {
+      invalidPriceReasoningReceipt();
+    }
+  }
+  return components;
+}
+
+function priceReasoningComponentKind(
+  value: unknown,
+): PriceReasoningReceipt["costs"]["components"][number]["kind"] {
+  if (
+    value === "service_package" || value === "labor" || value === "travel" ||
+    value === "materials" || value === "replacement_parts" ||
+    value === "equipment" || value === "other"
+  ) return value;
+  return invalidPriceReasoningReceipt();
+}
+
+function priceReasoningComponentStatus(
+  value: unknown,
+): PriceReasoningReceipt["costs"]["components"][number]["status"] {
+  if (
+    value === "priced" || value === "included_unitemized" ||
+    value === "conditional_unpriced" || value === "excluded" ||
+    value === "undetermined"
+  ) return value;
+  return invalidPriceReasoningReceipt();
+}
+
+function priceReasoningSource(value: unknown): StoredEstimatePriceSource {
+  if (
+    value === "perplexity_validated" || value === "baseline_with_market" ||
+    value === "baseline_only" || value === "inspection_required"
+  ) return value;
+  return invalidPriceReasoningReceipt();
+}
+
+function priceReasoningConfidence(
+  value: unknown,
+): PriceReasoningReceipt["fairness"]["confidence"] {
+  if (value === "low" || value === "medium" || value === "high") return value;
+  return invalidPriceReasoningReceipt();
+}
+
+function priceReasoningTextList(
+  value: unknown,
+  minItems: number,
+  maxItems: number,
+  maxLength: number,
+): string[] {
+  if (!Array.isArray(value) || value.length < minItems || value.length > maxItems) {
+    invalidPriceReasoningReceipt();
+  }
+  const seen = new Set<string>();
+  return value.map((item) => {
+    const text = priceReasoningText(item, maxLength);
+    if (seen.has(text)) invalidPriceReasoningReceipt();
+    seen.add(text);
+    return text;
+  });
+}
+
+function priceReasoningText(value: unknown, maxLength: number): string {
+  return isSafePublicPriceReasoningText(value, maxLength)
+    ? value
+    : invalidPriceReasoningReceipt();
+}
+
+function isReceiptId(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9:_-]{1,160}$/.test(value);
+}
+
+function positiveSafeInteger(value: unknown): number {
+  const parsed = finiteDbNumber(value);
+  if (!parsed || !Number.isSafeInteger(parsed) || parsed <= 0) {
+    invalidPriceReasoningReceipt();
+  }
+  return parsed;
+}
+
+function nullablePriceAmount(value: unknown): number | null {
+  if (value === null) return null;
+  return positiveSafeInteger(value);
+}
+
+function nullableNonNegativeSafeInteger(value: unknown): number | null {
+  if (value === null) return null;
+  const parsed = finiteDbNumber(value);
+  if (parsed === null || !Number.isSafeInteger(parsed) || parsed < 0) {
+    invalidPriceReasoningReceipt();
+  }
+  return parsed;
+}
+
+function nullableEstimatePriceSource(value: unknown): StoredEstimatePriceSource | null {
+  return value === "perplexity_validated" || value === "baseline_with_market" ||
+      value === "baseline_only" || value === "inspection_required"
+    ? value
+    : null;
+}
+
+function invalidPriceReasoningReceipt(): never {
+  return apiFailure("DB_ERROR", "Dữ liệu biên nhận giải thích giá Kael không hợp lệ", 500);
 }
 
 function serializeEstimateAnalysisReceipt(value: unknown) {

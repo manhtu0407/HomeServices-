@@ -1,5 +1,9 @@
 import { api } from '../api'
 import type {
+  AdminFinanceBalanceSnapshotInput,
+  AdminFinanceBalanceSnapshotResponse,
+  AdminFinanceRange,
+  AdminFinanceSummaryResponse,
   AdminViewAiCostListResponse,
   AdminViewDisputeListResponse,
   AdminViewGovernanceListInput,
@@ -29,6 +33,10 @@ import type {
   AdminViewWorkerApplicationDecisionResponse,
   AdminViewWorkerApplicationListResponse,
   AdminViewWorkerApplicationSummary,
+  AdminPaymentReconciliationDecisionInput,
+  AdminPaymentReconciliationDecisionResponse,
+  AdminPaymentReconciliationListResponse,
+  AdminPaymentReconciliationStatus,
 } from '../api-types/admin'
 
 function adminGovernancePath(path: string, params: AdminViewGovernanceListInput) {
@@ -110,6 +118,36 @@ export const adminControlService = {
 
   getTransaction(jobId: string) {
     return api.get<AdminViewTransactionDetailResponse>(`/admin/transactions/${encodeURIComponent(jobId)}`)
+  },
+
+  listPaymentReconciliations(params: {
+    status?: AdminPaymentReconciliationStatus
+    limit?: number
+    offset?: number
+  } = {}) {
+    const searchParams = new URLSearchParams()
+    if (params.status) searchParams.set('status', params.status)
+    if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
+    if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
+    const query = searchParams.toString()
+    return api.get<AdminPaymentReconciliationListResponse>(`/admin/payment-reconciliations${query ? `?${query}` : ''}`)
+  },
+
+  decidePaymentReconciliation(paymentOrderId: string, input: AdminPaymentReconciliationDecisionInput) {
+    return api.post<AdminPaymentReconciliationDecisionResponse>(
+      `/admin/payment-reconciliations/${encodeURIComponent(paymentOrderId)}/decision`,
+      input,
+    )
+  },
+
+  getFinanceSummary(params: { range: AdminFinanceRange; anchor?: string }) {
+    const searchParams = new URLSearchParams({ range: params.range })
+    if (params.anchor) searchParams.set('anchor', params.anchor)
+    return api.get<AdminFinanceSummaryResponse>(`/admin/finance/summary?${searchParams.toString()}`)
+  },
+
+  recordFinanceBalanceSnapshot(input: AdminFinanceBalanceSnapshotInput) {
+    return api.post<AdminFinanceBalanceSnapshotResponse>('/admin/finance/balance-snapshots', input)
   },
 
   listPayoutMethods(params: {

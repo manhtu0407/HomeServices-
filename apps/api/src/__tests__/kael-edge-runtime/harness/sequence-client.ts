@@ -21,6 +21,9 @@ export function makeSequenceClient(
       if (table === 'worker_service_quality_status') {
         return makeQuery(call, [{ data: [], error: null }])
       }
+      if (table === 'job_matching_preferences') {
+        return makeQuery(call, [{ data: null, error: null }])
+      }
       return makeQuery(call, results)
     },
     rpc(name: string, args?: Record<string, unknown>) {
@@ -135,6 +138,10 @@ function makeQuery(call: QueryCall, results: QueryResult[]) {
     },
     update(value: unknown) {
       call.operations.push(['update', value])
+      return query
+    },
+    delete() {
+      call.operations.push(['delete'])
       return query
     },
     upsert(value: unknown) {

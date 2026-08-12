@@ -405,6 +405,16 @@ verify_jwt = false
 # can call it without exposing a customer/admin JWT.
 verify_jwt = false
 
+[functions.kael-matching-maintainer]
+# Dedicated secret authentication is enforced inside the function so pg_cron
+# can reconcile saved-worker timeouts without exposing a customer/admin JWT.
+verify_jwt = false
+
+[functions.payment-maintainer]
+# Dedicated secret authentication is enforced inside the function so the scheduled
+# maintenance call cannot impersonate a customer, worker, or finance operator.
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 55327

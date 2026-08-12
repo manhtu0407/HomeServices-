@@ -108,13 +108,11 @@ export function useWorkerOnsiteActions({
     return true
   }, [dispatch, refreshCurrentJob, setRemoteError, stateRef, workerRefresh])
 
-  // Cash is collected off-app; the worker only confirms it so the server can
-  // settle the commission against their in-app balance.
-  const workerConfirmCashPayment = useCallback(async () => {
+  const workerConfirmCashPayment = useCallback(async (received = true) => {
     const jobId = getRemoteJobId(stateRef.current)
-    if (!jobId) return setRemoteError('Không có công việc để xác nhận thanh toán tiền mặt')
-    const settled = await workerService.confirmCashPayment(jobId)
-    if (!settled.success) return setRemoteError(settled.error, settled.code, 'cash_payment_confirmation')
+    if (!jobId) return setRemoteError('Không có công việc để phản hồi thanh toán trực tiếp')
+    const settled = await jobService.respondToDirectWorkerPayment(jobId, { received })
+    if (!settled.success) return setRemoteError(settled.error, settled.code, 'direct_payment_confirmation')
     await workerRefresh()
     return true
   }, [setRemoteError, stateRef, workerRefresh])

@@ -188,6 +188,33 @@ export function providerAdapterFor(provider: AIProvider): ProviderAdapter {
   return PROVIDER_ADAPTERS[provider];
 }
 
+/**
+ * Builds the provider-native SSE request used only by the public Kael response
+ * stream. The caller still owns validation and never forwards provider event
+ * payloads to the client directly.
+ */
+export function providerStreamRequestFor(
+  input: ProviderAdapterBuildInput,
+): ProviderRequestSpec {
+  const spec = providerAdapterFor(input.request.provider).buildRequest(input);
+  const provider = input.request.provider;
+  return {
+    ...spec,
+    headers: {
+      ...spec.headers,
+      Accept: "text/event-stream",
+    },
+    body: {
+      ...spec.body,
+      stream: true,
+      ...(provider === "deepseek"
+        ? { stream_options: { include_usage: true } }
+        : {}),
+      ...(provider === "perplexity" ? { stream_mode: "concise" } : {}),
+    },
+  };
+}
+
 function openAiCompatibleRequest(input: {
   request: AIRequest;
   apiKey: string;

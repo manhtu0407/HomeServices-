@@ -15,6 +15,7 @@ import {
 import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/ai-boundary-contract'
 import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker'
 import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import { createKaelResponseReporter } from '../../../../../supabase/functions/mobile-api/_shared/kael/response-stream'
 import { allowKaelSpendForTest } from './kael-spend-test-helper'
 
 const job = {
@@ -293,6 +294,40 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(answer.text).not.toMatch(/vnd|dong|status|trang thai/i)
   })
 
+  it('unwraps a public final worker reply from a nested array provider envelope', async () => {
+    const answer = await runWorkerAssist({
+      job,
+      question: 'What should I inspect first when a sink drain gurgles and smells?',
+      language: 'en',
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
+      callAI: async () => ({
+        success: true,
+        content: JSON.stringify({
+          data: [
+            { type: 'thinking', content: 'private provider reasoning' },
+            {
+              public_reasoning_summary: [
+                'The worker needs a bounded plumbing inspection checklist before changing scope.',
+              ],
+              text: 'Check the trap, visible blockage, and vent symptoms before proposing any extra work.',
+            },
+          ],
+        }),
+        usage: { inputTokens: 100, outputTokens: 40, costUsd: 0.0001 },
+        latencyMs: 120,
+      }),
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      public_reasoning_summary: [
+        'The worker needs a bounded plumbing inspection checklist before changing scope.',
+      ],
+      text: expect.stringContaining('Check the trap'),
+    })
+  })
+
   it('uses Flash only for a short greeting in normal worker chat', async () => {
     const requestedModels: string[] = []
     const answer = await runWorkerAssist({
@@ -410,6 +445,116 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(answer.fallback_used).toBe(true)
     expect(answer.redirect_scope_change).toBe(true)
     expect(answer.guardrail_reason).toBe('MONEY_OR_STATUS_MUTATION')
+  })
+
+  it('completes a safe fallback after a streamed worker prefix fails validation', async () => {
+    const events: string[] = []
+    const response = createKaelResponseReporter({
+      emit: (event) => events.push(event),
+      responseId: 'worker-prefix-fallback',
+    })
+    response.preview('Kiem tra van khoa truoc khi thao tac.')
+
+    const answer = await runWorkerAssist({
+      conversationMode: 'normal',
+      job: null,
+      question: 'What should I inspect first at a leaking sink?',
+      language: 'en',
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-1'),
+      response,
+      callAI: async (request) => ({
+        success: false as const,
+        provider: request.provider,
+        code: 'TIMEOUT' as const,
+        error: 'TIMEOUT',
+      }),
+    })
+
+    response.complete(answer.text)
+
+    expect(answer.fallback_used).toBe(true)
+    expect(answer.text).toBe('Kiem tra van khoa truoc khi thao tac.')
+    expect(events).toContain('response.completed')
+    expect(events).not.toContain('response.failed')
+  })
+
+  it('keeps a verified Vietnamese streamed prefix when the final worker reply mixes languages', async () => {
+    const response = createKaelResponseReporter({
+      emit: () => undefined,
+      responseId: 'worker-language-prefix',
+    })
+    const prefix = 'Khóa van nước chính trước khi kiểm tra vị trí rò rỉ.'
+    response.preview(prefix)
+
+    const answer = await runWorkerAssist({
+      conversationMode: 'normal',
+      job: null,
+      question: 'Trước khi sửa ống nước, tôi cần làm gì để an toàn?',
+      language: 'vi',
+      secrets: {},
+      spendGate: allowKaelSpendForTest('worker-language-prefix'),
+      response,
+      callAI: async () => ({
+        success: true as const,
+        content: JSON.stringify({
+          text: `${prefix} Please wear dry protective gloves before continuing.`,
+          safety_notes: [],
+          redirect_scope_change: false,
+        }),
+        usage: { inputTokens: 24, outputTokens: 28, costUsd: 0.00004 },
+        latencyMs: 18,
+      }),
+    })
+
+    expect(answer.fallback_used).toBe(true)
+    expect(answer.guardrail_reason).toBe('language_mismatch')
+    expect(answer.text).toBe(prefix)
+    expect(answer.text).not.toContain('Please')
+  })
+
+  it('completes response streams for both intake and in-progress worker job guidance', async () => {
+    for (const scenario of [
+      { name: 'intake', status: 'worker_matched' },
+      { name: 'in_progress', status: 'arrived' },
+    ]) {
+      const events: string[] = []
+      const response = createKaelResponseReporter({
+        emit: (event) => events.push(event),
+        responseId: `worker-${scenario.name}-stream`,
+      })
+      const prefix = 'Check the shutoff valve and verify the assigned plumbing scope before beginning.'
+      response.preview(prefix)
+
+      const answer = await runWorkerAssist({
+        conversationMode: 'intake',
+        job: { ...job, status: scenario.status },
+        question: 'What should I verify first before I continue this plumbing job safely?',
+        language: 'en',
+        secrets: {},
+        spendGate: allowKaelSpendForTest(`worker-${scenario.name}`),
+        response,
+        callAI: async () => ({
+          success: true as const,
+          content: JSON.stringify({
+            text: `${prefix} Keep the work inside the agreed scope and document the actual condition.`,
+            safety_notes: ['Keep communication and evidence in the app.'],
+            public_reasoning_summary: ['The assigned job scope and basic safety checks were reviewed.'],
+            redirect_scope_change: false,
+          }),
+          usage: { inputTokens: 24, outputTokens: 28, costUsd: 0.00004 },
+          latencyMs: 18,
+        }),
+      })
+
+      response.complete(answer.text)
+
+      expect(answer.fallback_used).toBe(false)
+      expect(answer.redirect_scope_change).toBe(false)
+      expect(answer.text).toMatch(/^Check the shutoff valve and verify the assigned plumbing scope before beginning\./)
+      expect(events).toContain('response.completed')
+      expect(events).not.toContain('response.failed')
+    }
   })
 
   it('accepts provider JSON with harmless metadata keys', async () => {

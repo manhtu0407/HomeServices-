@@ -10,8 +10,16 @@
       "reason": "Scheduled service-role monitor with no end-user request context"
     },
     {
+      "path": "supabase/functions/kael-matching-maintainer/index.ts",
+      "reason": "Scheduled service-role maintainer for expired saved-worker matching"
+    },
+    {
       "path": "supabase/functions/kael-media-retention/index.ts",
       "reason": "Scheduled retention worker with service-role storage cleanup"
+    },
+    {
+      "path": "supabase/functions/payment-maintainer/index.ts",
+      "reason": "Secret-authenticated scheduled maintainer for payment holds and direct-payment timeouts"
     },
     {
       "path": "supabase/functions/sepay-webhook/index.ts",

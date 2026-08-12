@@ -106,23 +106,23 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   menuGlass: {
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   menuInner: {
-    gap: 4,
+    gap: 3,
   },
   menuPosition: {
-    maxWidth: 224,
+    maxWidth: 208,
     position: 'absolute',
     right: 10,
-    top: 66,
-    width: '68%',
+    top: 74,
+    width: '59%',
     zIndex: 42,
   },
   menuContent: {
     overflow: 'hidden',
-    padding: 6,
+    padding: 5,
   },
   moreButton: {
     alignItems: 'center',
@@ -137,7 +137,7 @@ export const styles = StyleSheet.create({
   newSession: {
     alignItems: 'center',
     backgroundColor: 'rgba(229, 250, 245, 0.92)',
-    borderColor: 'rgba(84, 199, 184, 0.42)',
+    borderColor: 'rgba(35,96,84,0.13)',
     borderRadius: radius.pill,
     borderWidth: 1,
     flexDirection: 'row',
@@ -147,8 +147,8 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   newSessionText: {
-    color: color.brand.primaryDark,
-    fontSize: 11,
+    color: color.brand.primary,
+    fontSize: 13,
     fontWeight: '700',
   },
   pinnedIcon: {
@@ -216,7 +216,7 @@ export const styles = StyleSheet.create({
   session: {
     alignItems: 'center',
     backgroundColor: 'rgba(247, 252, 251, 0.94)',
-    borderColor: 'rgba(198, 229, 225, 0.78)',
+    borderColor: 'rgba(35,96,84,0.13)',
     borderRadius: 13,
     borderWidth: 1,
     flexDirection: 'row',
@@ -234,6 +234,7 @@ export const styles = StyleSheet.create({
     gap: 3,
   },
   sessionListViewport: {
+    marginTop: 6,
     maxHeight: 138,
   },
   sessionMain: {
@@ -252,7 +253,6 @@ export const styles = StyleSheet.create({
   },
   sessionSelected: {
     backgroundColor: 'rgba(231, 252, 247, 0.98)',
-    borderColor: 'rgba(14, 177, 157, 0.42)',
   },
   sessionTitle: {
     color: color.text.strong,
@@ -264,6 +264,7 @@ export const styles = StyleSheet.create({
   sessionTitleRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: 3,
     minWidth: 0,
   },
   statusDot: {

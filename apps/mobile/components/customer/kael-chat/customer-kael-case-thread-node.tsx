@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+
 import { AgenticEvidenceGateResponse } from './agentic-evidence-gate-response'
 import { CompletionReviewResponse } from './completion-review-response'
 import { AgenticCaseThreadPanel } from './chat-case-thread-stateful-surfaces'
@@ -17,23 +19,74 @@ export function CustomerKaelCaseThreadNode({
   controller: Controller
   onOpenActivity: () => void
 }) {
+  const { deal, mode } = controller
+  if (mode !== 'case' || !deal) return null
+  if (deal.status === 'worker_candidate_pending') return null
+  return <CustomerKaelCaseThreadContent controller={controller} deal={deal} onOpenActivity={onOpenActivity} />
+}
+
+function CustomerKaelCaseThreadContent({
+  controller,
+  deal,
+  onOpenActivity,
+}: {
+  controller: Controller
+  deal: NonNullable<Controller['deal']>
+  onOpenActivity: () => void
+}) {
   const {
     caseUi,
     chatUi,
     conversation,
-    deal,
     decisionActions,
     evidenceActions,
     language,
-    mode,
     presentation,
     reduceMotion,
     tokens,
     workflow,
   } = controller
-  if (mode !== 'case' || !deal) return null
-  if (deal.status === 'worker_candidate_pending') return null
-  const paymentRailProvider = deal.paymentRailAvailable === true ? 'sepay_vietqr' : null
+  const paymentRailProvider = deal.paymentRailProvider ?? (deal.paymentRailAvailable === true ? 'sepay_vietqr' : null)
+  const caseEvidenceGateNode = useMemo(() => (
+    <AgenticEvidenceGateResponse
+      busy={caseUi.submittingCaseEvidence || chatUi.uploadingMedia}
+      language={language}
+      mediaDrafts={conversation.composerMediaDrafts}
+      onAddMedia={evidenceActions.pickComposerMedia}
+      onConfirm={() => void evidenceActions.submitCaseEvidence('confirmed')}
+      onReasonChange={caseUi.setCaseEvidenceReason}
+      onRemoveMedia={(index) => conversation.setComposerMediaDrafts((current) =>
+        current.filter((_, currentIndex) => currentIndex !== index))}
+      onReject={() => {
+        caseUi.setCaseEvidenceRejectOpen(true)
+        conversation.setError(null)
+      }}
+      onSkip={() => void evidenceActions.submitCaseEvidence('skipped')}
+      onVoiceTranscriptChange={chatUi.setVoiceTranscript}
+      rejectOpen={caseUi.caseEvidenceRejectOpen}
+      rejectReason={caseUi.caseEvidenceReason}
+      reduceMotion={reduceMotion}
+      textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
+      tokens={tokens}
+      voiceTranscript={chatUi.voiceTranscript}
+    />
+  ), [caseUi, chatUi, conversation, evidenceActions, language, reduceMotion, tokens])
+  const completionReviewNode = useMemo(() => (
+    deal.status === 'completed_by_worker' ? (
+      <CompletionReviewResponse
+        busy={chatUi.confirmingCompletion}
+        deal={deal}
+        language={language}
+        onConfirm={() => void decisionActions.confirmCaseCompletion()}
+        onReportIssue={() => {
+          chatUi.setCaseEditOpen(true)
+          conversation.setError(null)
+        }}
+        reduceMotion={reduceMotion}
+        tokens={tokens}
+      />
+    ) : null
+  ), [chatUi, conversation, deal, decisionActions, language, reduceMotion, tokens])
 
   return (
     <AgenticCaseThreadPanel
@@ -70,53 +123,23 @@ export function CustomerKaelCaseThreadNode({
         ])
       }}
       caseEvidenceGateActive={presentation.caseEvidenceGateActive}
-      caseEvidenceGateNode={(
-        <AgenticEvidenceGateResponse
-          busy={caseUi.submittingCaseEvidence || chatUi.uploadingMedia}
-          language={language}
-          mediaDrafts={conversation.composerMediaDrafts}
-          onAddMedia={evidenceActions.pickComposerMedia}
-          onConfirm={() => void evidenceActions.submitCaseEvidence('confirmed')}
-          onReasonChange={caseUi.setCaseEvidenceReason}
-          onRemoveMedia={(index) => conversation.setComposerMediaDrafts((current) =>
-            current.filter((_, currentIndex) => currentIndex !== index))}
-          onReject={() => {
-            caseUi.setCaseEvidenceRejectOpen(true)
-            conversation.setError(null)
-          }}
-          onSkip={() => void evidenceActions.submitCaseEvidence('skipped')}
-          onVoiceTranscriptChange={chatUi.setVoiceTranscript}
-          rejectOpen={caseUi.caseEvidenceRejectOpen}
-          rejectReason={caseUi.caseEvidenceReason}
-          reduceMotion={reduceMotion}
-          textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
-          tokens={tokens}
-          voiceTranscript={chatUi.voiceTranscript}
-        />
-      )}
+      caseEvidenceGateNode={caseEvidenceGateNode}
       caseQuoteRejectOpen={chatUi.caseQuoteRejectOpen}
       caseQuoteRejectReason={chatUi.caseQuoteRejectReason}
       caseOptionsAcknowledged={caseUi.caseOptionsAcknowledged}
       confirmingCaseQuote={chatUi.confirmingCaseQuote}
-      completionReviewNode={deal.status === 'completed_by_worker' ? (
-        <CompletionReviewResponse
-          busy={chatUi.confirmingCompletion}
-          deal={deal}
-          language={language}
-          onConfirm={() => void decisionActions.confirmCaseCompletion()}
-          onReportIssue={() => {
-            chatUi.setCaseEditOpen(true)
-            conversation.setError(null)
-          }}
-          reduceMotion={reduceMotion}
-          tokens={tokens}
-        />
-      ) : null}
+      completionReviewNode={completionReviewNode}
       onAcknowledgeOptions={() => caseUi.setCaseOptionsAcknowledged(true)}
       onAuthorizeApartmentAccess={async () => {
         await workflow.actions.authorizeApartmentAccess()
       }}
       onCreatePaymentIntent={workflow.actions.createPaymentIntent}
+      onCreateManualBankPaymentOrder={workflow.actions.createManualBankPaymentOrder}
+      onClaimManualBankPayment={workflow.actions.claimManualBankPayment}
+      onSelectDirectWorkerPayment={workflow.actions.selectDirectWorkerPayment}
+      onRespondToDirectWorkerPayment={workflow.actions.respondToDirectWorkerPayment}
+      onChooseMatchingPreference={workflow.actions.setMatchingPreference}
+      onLoadSavedWorkers={workflow.actions.listFavoriteWorkersForMatching}
       onRefreshPayment={workflow.actions.refreshCurrentJob}
       onApproveQuote={() => void decisionActions.confirmCaseQuote()}
       onQuoteRejectReasonChange={chatUi.setCaseQuoteRejectReason}
@@ -126,6 +149,7 @@ export function CustomerKaelCaseThreadNode({
         conversation.setError(null)
       }}
       onRetryWorkerSearch={() => void decisionActions.retryWorkerSearch()}
+      onStopMatching={workflow.actions.cancelRemoteJob}
       onSubmitReview={workflow.actions.submitReview}
       reduceMotion={reduceMotion}
       retryingWorkerSearch={chatUi.retryingWorkerSearch}

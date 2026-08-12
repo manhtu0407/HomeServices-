@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { MatchingState } from '@nestscout/shared'
 import {
   createMobileApiHandler,
   type MobileApiAuthResult,
@@ -69,6 +70,10 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getJob: vi.fn(),
     listCustomerActiveJobs: vi.fn(),
     listCustomerServiceHistory: vi.fn(),
+    listFavoriteWorkersForMatching: vi.fn(async () => ({
+      job_id: '22222222-2222-4222-8222-222222222222',
+      workers: [],
+    })),
     createCustomerKaelConversation: vi.fn(),
     listCustomerKaelConversations: vi.fn(async () => ({ sessions: [] })),
     archiveCustomerKaelConversation: vi.fn(),
@@ -115,6 +120,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     confirmKaelChat: vi.fn(),
     submitKaelChatEvidence: vi.fn(),
     confirmSearch: vi.fn(),
+    setJobMatchingPreference: vi.fn(),
     cancelJob: vi.fn(),
     acceptBroadcast: vi.fn(),
     declineBroadcast: vi.fn(),
@@ -164,6 +170,10 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     listJobMessages: vi.fn(),
     sendJobMessage: vi.fn(),    confirmCompletion: vi.fn(),
     createPaymentIntent: vi.fn(),
+    createManualBankPaymentOrder: vi.fn(),
+    claimManualBankPayment: vi.fn(),
+    selectDirectWorkerPayment: vi.fn(),
+    respondToDirectWorkerPayment: vi.fn(),
     confirmWorkerCashPayment: vi.fn(),
     confirmStagingPayment: vi.fn(),
     submitReview: vi.fn(),
@@ -192,6 +202,10 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getAdminWithdrawalRequest: vi.fn(),
     claimAdminWithdrawalRequest: vi.fn(),
     resolveAdminWithdrawalRequest: vi.fn(),
+    listAdminPaymentReconciliations: vi.fn(),
+    decideAdminPaymentReconciliation: vi.fn(),
+    getAdminFinanceSummary: vi.fn(),
+    recordAdminFinanceBalanceSnapshot: vi.fn(),
     listAdminSubAdmins: vi.fn(),
     searchAdminSubAdminAccounts: vi.fn(),
     nominateAdminManager: vi.fn(),
@@ -448,6 +462,28 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({ role: 'customer' }),
       'notification-1',
     )
+  })
+
+  it('does not authorize admin access to customer-only profile insights', async () => {
+    const getCustomerProfileInsights = vi.fn()
+    const authenticate = vi.fn(async (
+      _request: Request,
+      allowedRoles?: string[],
+    ): Promise<MobileApiAuthResult> => {
+      if (allowedRoles?.includes('admin')) return adminAuth
+      return { success: false, status: 403, error: 'forbidden' }
+    })
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ getCustomerProfileInsights }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/profile-insights'))
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: 'AUTH_FORBIDDEN' })
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer'])
+    expect(getCustomerProfileInsights).not.toHaveBeenCalled()
   })
 
   it('routes customer profile feedback through authenticated mobile API services', async () => {
@@ -912,6 +948,93 @@ describe('mobile-api Edge router contract', () => {
       expect.anything(),
       expect.arrayContaining(['worker']),
     )
+  })
+
+  it('returns only the customer-owned saved-worker matching list for a valid job', async () => {
+    const jobId = '22222222-2222-4222-8222-222222222222'
+    const listFavoriteWorkersForMatching = vi.fn(async () => ({ job_id: jobId, workers: [] }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ listFavoriteWorkersForMatching }),
+    })
+
+    const response = await handler(new Request(
+      `https://example.test/mobile-api/me/favorite-workers?job_id=${jobId}`,
+    ))
+
+    expect(response.status).toBe(200)
+    expect(listFavoriteWorkersForMatching).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      jobId,
+    )
+  })
+
+  it('validates and routes a customer matching preference with its idempotency key', async () => {
+    const jobId = '22222222-2222-4222-8222-222222222222'
+    const matchingState: MatchingState = {
+      batch: null,
+      checks: [
+        { kind: 'service_capability', state: 'verified' },
+        { kind: 'service_area', state: 'verified' },
+        { kind: 'availability', state: 'verified' },
+      ],
+      event_history: [],
+      stage: 'general_search',
+      strategy: 'general',
+    }
+    const setJobMatchingPreference = vi.fn(async () => ({
+      broadcast_sent: false,
+      job_id: jobId,
+      matching_state: matchingState,
+      message: 'Kael đang bắt đầu tìm thợ.',
+      status: 'broadcasting' as const,
+      worker: null,
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ setJobMatchingPreference }),
+    })
+
+    const response = await handler(new Request(
+      `https://example.test/mobile-api/jobs/${jobId}/matching-preference`,
+      {
+        body: JSON.stringify({
+          auto_general: true,
+          client_request_id: '55555555-5555-4555-8555-555555555555',
+          mode: 'general',
+        }),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    ))
+
+    expect(response.status).toBe(200)
+    expect(setJobMatchingPreference).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      jobId,
+      {
+        auto_general: true,
+        client_request_id: '55555555-5555-4555-8555-555555555555',
+        mode: 'general',
+      },
+    )
+
+    const noFallbackResponse = await handler(new Request(
+      `https://example.test/mobile-api/jobs/${jobId}/matching-preference`,
+      {
+        body: JSON.stringify({
+          auto_general: false,
+          client_request_id: '66666666-6666-4666-8666-666666666666',
+          mode: 'saved_worker_first',
+          worker_id: '44444444-4444-4444-8444-444444444444',
+        }),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    ))
+
+    expect(noFallbackResponse.status).toBe(400)
+    expect(setJobMatchingPreference).toHaveBeenCalledTimes(1)
   })
 
   it('routes worker Kael memory self-view through the worker endpoint', async () => {
@@ -1776,6 +1899,14 @@ describe('mobile-api Edge router contract', () => {
 
   it('creates a mode-scoped Customer Kael session through the owned route', async () => {
     const clientRequestId = '77777777-7777-4777-8777-777777777777'
+    const privilegedSupabase = { client: 'service' }
+    const userSupabase = { client: 'user' }
+    const auth = {
+      ...customerAuth,
+      privilegedSupabase,
+      supabase: privilegedSupabase,
+      userSupabase,
+    }
     const createCustomerKaelConversation = vi.fn(async () => ({
       session: {
         case_job_id: null,
@@ -1795,7 +1926,7 @@ describe('mobile-api Edge router contract', () => {
       turns: [],
     }))
     const handler = createMobileApiHandler({
-      authenticate: vi.fn(async () => customerAuth),
+      authenticate: vi.fn(async () => auth),
       services: makeServices({ createCustomerKaelConversation }),
     })
 
@@ -1807,9 +1938,64 @@ describe('mobile-api Edge router contract', () => {
 
     expect(response.status).toBe(201)
     expect(createCustomerKaelConversation).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'customer' }),
+      expect.objectContaining({
+        privilegedSupabase,
+        role: 'customer',
+        supabase: privilegedSupabase,
+      }),
       { client_request_id: clientRequestId, mode: 'normal' },
     )
+  })
+
+  it('uses the service client only for catalog paths that can write', async () => {
+    const privilegedSupabase = { client: 'service' }
+    const userSupabase = { client: 'user' }
+    const auth = {
+      ...customerAuth,
+      privilegedSupabase,
+      supabase: privilegedSupabase,
+      userSupabase,
+    }
+    const conversation = {
+      session: {
+        case_job_id: null,
+        case_session_id: null,
+        client_request_id: '77777777-7777-4777-8777-777777777777',
+        customer_id: customerAuth.user.id,
+        id: 'customer-conversation-1',
+        mode: 'case' as const,
+        pinned_at: null,
+        profile_id: null,
+        service_type: null,
+        started_at: '2026-08-11T00:00:00.000Z',
+        title: null,
+        total_turns: 0,
+        updated_at: '2026-08-11T00:00:00.000Z',
+      },
+      turns: [],
+    }
+    const listCustomerKaelConversations = vi.fn(async (ctx: { supabase: unknown }) => {
+      expect(ctx.supabase).toBe(privilegedSupabase)
+      return { sessions: [] }
+    })
+    const getCustomerKaelConversation = vi.fn(async (ctx: { supabase: unknown }) => {
+      expect(ctx.supabase).toBe(userSupabase)
+      return conversation
+    })
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => auth),
+      services: makeServices({ getCustomerKaelConversation, listCustomerKaelConversations }),
+    })
+
+    const [listResponse, getResponse] = await Promise.all([
+      handler(new Request('https://example.test/mobile-api/me/kael/conversations?mode=case')),
+      handler(new Request('https://example.test/mobile-api/me/kael/conversations/customer-conversation-1')),
+    ])
+
+    expect(listResponse.status).toBe(200)
+    expect(getResponse.status).toBe(200)
+    expect(listCustomerKaelConversations).toHaveBeenCalledOnce()
+    expect(getCustomerKaelConversation).toHaveBeenCalledOnce()
   })
 
   it('dispatches a Customer conversation turn through the SSE boundary', async () => {
@@ -2275,13 +2461,35 @@ describe('mobile-api Edge router contract', () => {
 
     const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1/confirm', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        price_reasoning_receipt_id: 'price_reasoning:receipt-1',
+      }),
     }))
 
     expect(response.status).toBe(200)
     expect(confirmKaelChat).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       'kael-session-1',
+      { price_reasoning_receipt_id: 'price_reasoning:receipt-1' },
     )
+  })
+
+  it('rejects a Kael confirmation without the reviewed price receipt id', async () => {
+    const confirmKaelChat = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ confirmKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(confirmKaelChat).not.toHaveBeenCalled()
   })
 
   it('does not let admin QA bypass the Case Work offer gate through legacy POST /jobs', async () => {

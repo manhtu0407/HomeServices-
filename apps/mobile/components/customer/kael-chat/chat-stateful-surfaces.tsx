@@ -1,279 +1,141 @@
-import { useMemo, useState, type ComponentProps, type ReactNode } from 'react'
-import {
-  ActivityIndicator,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Text,
-  View,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
-} from 'react-native'
+import { useState, type ComponentProps, type ReactNode } from 'react'
+import { Keyboard, KeyboardAvoidingView, Platform, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated from 'react-native-reanimated'
 
 import type { AppLanguage } from '@/lib/app-language'
-import { createCompletedKaelResponseState } from '@/lib/kael-response-stream'
+import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { ChatBubble, ChatCanvasAura } from './chat-surfaces'
-import { customerV21ChatStyles as chatStyles } from './chat-styles'
-import { CaseWorkResponse } from './case-work-response'
-import { buildCaseWorkResponseModel } from './case-work-response-model'
 import { customerV21HistoryActiveStyles as historyActiveStyles } from '../history/history-active-styles'
 import { customerV21SharedStyles as sharedStyles } from '../ui/shared-styles'
-import { CustomerKaelEmptyHero } from './kael-empty-hero'
-import { CustomerKaelChatHeader } from './kael-chat-header'
-import { KaelChatComposer, type RootChatStyles } from './kael-chat-composer'
-import { customerVisibleCaseRequestText } from './kael-chat-turn-display-model'
-import { CustomerThemeSystemBar, InactiveAgenticGate } from '../ui/shared-surfaces'
+import { CustomerThemeSystemBar } from '../ui/shared-surfaces'
 import type { CustomerKaelMode } from '../ui/types'
-import { KaelResponseSurface } from './kael-response-surface'
-import { KaelChatTranscript, type ChatTranscriptRow } from './kael-chat-transcript'
+import { KaelChatComposer, type RootChatStyles } from './kael-chat-composer'
+import { CustomerKaelChatHeader } from './kael-chat-header'
+import { KaelChatTranscript } from './kael-chat-transcript'
+import { ChatCanvasAura } from './chat-surfaces'
+import { customerV21ChatStyles as chatStyles } from './chat-styles'
+import { type AgenticTurnView, type ChatTurnView, useKaelChatTranscript } from './use-kael-chat-transcript'
 
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
 
-type ChatTurnView = {
-  id: string
-  role: 'customer' | 'worker' | 'kael'
-  text_content: string
-}
-
-type AgenticTurnView = {
-  id: string
-  role: string
-  text_content?: string | null
-}
-
-function appendChatTranscriptRow(rows: ChatTranscriptRow[], key: string, node: ReactNode) {
-  if (node === null || node === undefined || node === false) return
-  rows.push({ key, node })
-}
-
-function renderConversationTurn(
-  turn: ChatTurnView,
-  language: AppLanguage,
-  reduceMotion: boolean,
-  tokens: CustomerThemeTokens,
-) {
-  if (turn.role !== 'kael') {
-    return <ChatBubble speaker={turn.role} text={turn.text_content} tokens={tokens} />
-  }
-  return (
-    <KaelResponseSurface
-      language={language}
-      reduceMotion={reduceMotion}
-      state={createCompletedKaelResponseState(turn.text_content, turn.id)}
-      tokens={tokens}
-    />
-  )
-}
-
-export function KaelChatSurfaceView({
-  agenticEstimateNode,
-  analysisEvidenceNode,
-  agenticVisibleTurns,
-  animatedModeMenuSheenStyle,
-  animatedModeMenuStyle,
-  canUseComposerMedia,
-  canStartNewConversation = false,
-  caseIntakeResponseNode,
-  caseThreadNode,
-  caseWorkLabel,
-  composerBusy,
-  composerMediaDraftCount,
-  composerMediaNode,
-  composerPlaceholder,
-  draft,
-  error,
-  hiddenScrollbarStyle,
-  hydratingCase,
-  language,
-  mode,
-  modeMenuOpen,
-  normalAssistantTurns,
-  normalChatLabel,
-  onBack,
-  onDraftChange,
-  onPickMedia,
-  onSendMessage,
-  onSwitchMode,
-  onToggleModeMenu,
-  onToggleSessionMenu,
-  processLinesNode,
-  streamingReplyNode,
-  streamingReplyTurnId,
-  reduceMotion,
-  reduceTransparency,
-  rootStyles,
-  sessionMenuNode = null,
-  sessionMenuOpen = false,
-  showComposer,
-  showEmptyHero = false,
-  showNormalGreeting = false,
-  showPendingDraftBubble,
-  textInputNoOutlineStyle,
-  tokens,
-  workerCandidateNode,
-  caseAssistantTurns,
-  missingCaseWorkDeal,
-  pendingDraftMessage,
-}: {
+type Props = {
   agenticEstimateNode: ReactNode
-  analysisEvidenceNode: ReactNode
   agenticVisibleTurns: AgenticTurnView[]
+  analysisEvidenceNode: ReactNode
   animatedModeMenuSheenStyle: AnimatedViewStyle
   animatedModeMenuStyle: AnimatedViewStyle
-  canUseComposerMedia: boolean
-  canStartNewConversation?: boolean
-  caseIntakeResponseNode: ReactNode
   caseAssistantTurns: ChatTurnView[]
+  caseIntakeResponseNode: ReactNode
   caseThreadNode: ReactNode
   caseWorkLabel: string
-  composerBusy: boolean
-  composerMediaDraftCount: number
   composerMediaNode: ReactNode
-  composerPlaceholder: string
-  draft: string
+  composer: {
+    busy: boolean
+    canUseMedia: boolean
+    draft: string
+    mediaDraftCount: number
+    placeholder: string
+    show: boolean
+  }
   error: string | null
   hiddenScrollbarStyle: StyleProp<ViewStyle>
-  hydratingCase: boolean
   language: AppLanguage
-  missingCaseWorkDeal: boolean
+  motion: {
+    reduceMotion: boolean
+    reduceTransparency: boolean
+  }
   mode: CustomerKaelMode
-  modeMenuOpen: boolean
   normalAssistantTurns: ChatTurnView[]
   normalChatLabel: string
+  normalReasoningReceipt: KaelReasoningReceiptState
   onBack: () => void
   onDraftChange: (value: string) => void
   onPickMedia: () => void
   onSendMessage: () => void
   onSwitchMode: (mode: CustomerKaelMode) => void
   onToggleModeMenu: () => void
+  onToggleNormalReasoningReceipt: () => void
   onToggleSessionMenu?: () => void
   pendingDraftMessage: string
+  pendingNormalMessage: string | null
   processLinesNode: ReactNode
-  streamingReplyNode: ReactNode
-  streamingReplyTurnId: string | null
-  reduceMotion: boolean
-  reduceTransparency: boolean
   rootStyles: RootChatStyles
   sessionMenuNode?: ReactNode
-  sessionMenuOpen?: boolean
-  showComposer: boolean
-  showEmptyHero?: boolean
-  showNormalGreeting?: boolean
-  showPendingDraftBubble: boolean
+  streamingReplyNode: ReactNode
+  streamingReplyTurnId: string | null
   textInputNoOutlineStyle: StyleProp<TextStyle>
   timelineHeadline?: string
   tokens: CustomerThemeTokens
+  visibility: {
+    canStartNewConversation: boolean
+    hydratingCase: boolean
+    missingCaseWorkDeal: boolean
+    modeMenuOpen: boolean
+    sessionMenuOpen: boolean
+    showEmptyHero: boolean
+    showNormalGreeting: boolean
+    showPendingDraftBubble: boolean
+  }
   workerCandidateNode: ReactNode
-}) {
+}
+
+export function KaelChatSurfaceView({
+  agenticEstimateNode,
+  agenticVisibleTurns,
+  analysisEvidenceNode,
+  animatedModeMenuSheenStyle,
+  animatedModeMenuStyle,
+  caseAssistantTurns,
+  caseIntakeResponseNode,
+  caseThreadNode,
+  caseWorkLabel,
+  composerMediaNode,
+  composer,
+  error,
+  hiddenScrollbarStyle,
+  language,
+  motion,
+  mode,
+  normalAssistantTurns,
+  normalChatLabel,
+  normalReasoningReceipt,
+  onBack,
+  onDraftChange,
+  onPickMedia,
+  onSendMessage,
+  onSwitchMode,
+  onToggleModeMenu,
+  onToggleNormalReasoningReceipt,
+  onToggleSessionMenu,
+  pendingDraftMessage,
+  pendingNormalMessage,
+  processLinesNode,
+  rootStyles,
+  sessionMenuNode = null,
+  streamingReplyNode,
+  streamingReplyTurnId,
+  textInputNoOutlineStyle,
+  tokens,
+  visibility,
+  workerCandidateNode,
+}: Props) {
+  const { busy: composerBusy, canUseMedia: canUseComposerMedia, draft, mediaDraftCount: composerMediaDraftCount, placeholder: composerPlaceholder, show: showComposer } = composer
+  const { reduceMotion, reduceTransparency } = motion
+  const {
+    canStartNewConversation,
+    hydratingCase,
+    missingCaseWorkDeal,
+    modeMenuOpen,
+    sessionMenuOpen,
+    showEmptyHero,
+    showNormalGreeting,
+    showPendingDraftBubble,
+  } = visibility
   const [composerFocused, setComposerFocused] = useState(false)
   const emptyHeroVisible = showEmptyHero && !composerFocused && draft.trim().length === 0
-  const responseInFlight = Boolean(processLinesNode || streamingReplyNode)
-
-  const toggleSessionMenu = () => {
-    Keyboard.dismiss()
-    setComposerFocused(false)
-    onToggleSessionMenu?.()
-  }
-
-  const selectMode = (nextMode: CustomerKaelMode) => {
-    Keyboard.dismiss()
-    setComposerFocused(false)
-    onSwitchMode(nextMode)
-  }
-
-  const transcriptRows = useMemo(() => {
-    const rows: ChatTranscriptRow[] = []
-    if (emptyHeroVisible) {
-      appendChatTranscriptRow(rows, 'empty-hero', (
-        <CustomerKaelEmptyHero language={language} mode={mode} reduceMotion={reduceMotion} tokens={tokens} />
-      ))
-    }
-    if (showPendingDraftBubble) {
-      appendChatTranscriptRow(rows, 'pending-draft', (
-        <ChatBubble
-          speaker="customer"
-          testID="customer-v21-pending-draft-bubble"
-          text={customerVisibleCaseRequestText(pendingDraftMessage, language)}
-          tokens={tokens}
-        />
-      ))
-    }
-    if (showNormalGreeting) {
-      appendChatTranscriptRow(rows, 'normal-greeting', (
-        <ChatBubble
-          speaker="kael"
-          testID="customer-v21-normal-greeting-bubble"
-          text={language === 'vi' ? 'Chào bạn, mình là Kael. Bạn muốn hỏi gì hôm nay?' : 'Hi, I am Kael. What would you like to ask today?'}
-          tokens={tokens}
-        />
-      ))
-    }
-    appendChatTranscriptRow(rows, 'case-intake-response', caseIntakeResponseNode)
-    if (mode === 'case' && hydratingCase) {
-      const hydrationModel = buildCaseWorkResponseModel({ language, phase: 'kael_collecting' })
-      appendChatTranscriptRow(rows, 'case-hydrating', (
-        <CaseWorkResponse
-          details={<ActivityIndicator color={tokens.primary} />}
-          model={{
-            ...hydrationModel,
-            noteCopy: language === 'vi'
-              ? 'Phiên và trạng thái công việc đang được đồng bộ từ hệ thống.'
-              : 'The session and work status are syncing from the system.',
-            status: language === 'vi' ? 'Đang đồng bộ' : 'Syncing',
-            title: language === 'vi' ? 'Đang tải công việc' : 'Loading work',
-          }}
-          reduceMotion={reduceMotion}
-          testID="customer-v21-case-hydrating"
-          tokens={tokens}
-        />
-      ))
-    }
-    for (const turn of caseAssistantTurns) {
-      appendChatTranscriptRow(rows, `turn-${turn.id}`, (
-        renderConversationTurn(turn, language, reduceMotion, tokens)
-      ))
-    }
-    for (const turn of agenticVisibleTurns) {
-      appendChatTranscriptRow(rows, `turn-${turn.id}`, (
-        turn.role === 'customer'
-          ? <ChatBubble speaker="customer" text={turn.text_content ?? ''} tokens={tokens} />
-          : <KaelResponseSurface
-              language={language}
-              reduceMotion={reduceMotion}
-              state={createCompletedKaelResponseState(turn.text_content ?? '', turn.id)}
-              tokens={tokens}
-            />
-      ))
-    }
-    appendChatTranscriptRow(rows, 'case-thread', caseThreadNode)
-    appendChatTranscriptRow(rows, 'worker-candidate', workerCandidateNode)
-    appendChatTranscriptRow(rows, 'analysis-evidence', analysisEvidenceNode)
-    appendChatTranscriptRow(rows, 'agentic-estimate', agenticEstimateNode)
-    if (mode === 'normal') {
-      for (const turn of normalAssistantTurns) {
-        appendChatTranscriptRow(rows, `turn-${turn.id}`, (
-          renderConversationTurn(turn, language, reduceMotion, tokens)
-        ))
-      }
-    }
-    appendChatTranscriptRow(rows, 'process-lines', processLinesNode)
-    appendChatTranscriptRow(
-      rows,
-      streamingReplyTurnId ? `turn-${streamingReplyTurnId}` : 'streaming-reply',
-      streamingReplyNode,
-    )
-    if (missingCaseWorkDeal && !hydratingCase) {
-      appendChatTranscriptRow(rows, 'case-work-inactive', (
-        <InactiveAgenticGate testID="customer-v21-case-work-inactive" />
-      ))
-    }
-    return rows
-  }, [
+  const { responseInFlight, transcriptRows } = useKaelChatTranscript({
     agenticEstimateNode,
     agenticVisibleTurns,
     analysisEvidenceNode,
@@ -286,16 +148,29 @@ export function KaelChatSurfaceView({
     missingCaseWorkDeal,
     mode,
     normalAssistantTurns,
+    normalReasoningReceipt,
+    onToggleNormalReasoningReceipt,
     pendingDraftMessage,
+    pendingNormalMessage,
     processLinesNode,
-    streamingReplyNode,
-    streamingReplyTurnId,
     reduceMotion,
     showNormalGreeting,
     showPendingDraftBubble,
+    streamingReplyNode,
+    streamingReplyTurnId,
     tokens,
     workerCandidateNode,
-  ])
+  })
+  const toggleSessionMenu = () => {
+    Keyboard.dismiss()
+    setComposerFocused(false)
+    onToggleSessionMenu?.()
+  }
+  const selectMode = (nextMode: CustomerKaelMode) => {
+    Keyboard.dismiss()
+    setComposerFocused(false)
+    onSwitchMode(nextMode)
+  }
 
   return (
     <SafeAreaView style={[sharedStyles.safeArea, { backgroundColor: tokens.canvas }]} testID="customer-v21-kael-chat">
@@ -322,7 +197,6 @@ export function KaelChatSurfaceView({
             sessionMenuOpen={sessionMenuOpen}
             tokens={tokens}
           />
-
           <KaelChatTranscript
             empty={emptyHeroVisible}
             hiddenScrollbarStyle={hiddenScrollbarStyle}
@@ -333,7 +207,6 @@ export function KaelChatSurfaceView({
             rows={transcriptRows}
             tokens={tokens}
           />
-
           {composerMediaNode}
           {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-kael-error">{error}</Text> : null}
           {showComposer ? (

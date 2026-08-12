@@ -7,6 +7,8 @@ import {
   View,
   useWindowDimensions,
   type TextProps,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -304,13 +306,16 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const openJobChat = () => router.replace('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal' as never)
   const openSupportKaelChat = () => router.replace(`/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal&ns_worker_lang=${language}&ns_worker_return_to=worker-support` as never)
   const openActiveJobKaelChat = () => router.replace('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake' as never)
-  const runWorkerAction = async (action: () => Promise<boolean>) => {
+  const runWorkerAction = async (
+    action: () => Promise<boolean>,
+    { navigateOnSuccess = true }: { navigateOnSuccess?: boolean } = {},
+  ) => {
     if (actionBusyRef.current) return
     actionBusyRef.current = true
     setActionBusy(true)
     try {
       const ok = await action()
-      if (ok) openScreen(nextScreen)
+      if (ok && navigateOnSuccess) openScreen(nextScreen)
     } finally {
       actionBusyRef.current = false
       setActionBusy(false)
@@ -409,234 +414,327 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     )
   }
 
-  return (
-    <SafeAreaView style={[styles.safeArea, surfaceStyle]} testID={`worker-v5-screen-${screen.id}`}>
-      {shouldShowWorkerAura ? (
-        <WorkerV5CustomerFulfillmentCanvasAura
-          reduceTransparency={glass.reduceTransparency}
-          scope={formulaPageAuraTarget.scope}
-          testID={formulaPageAuraTarget.testID}
-        />
-      ) : null}
-      {usesOpportunityInboxHandoff && shouldShowWorkerAura ? (
-        <WorkerV5CustomerZipMintAura
-          scope="OpportunityInboxPageFine"
-          style={styles.opportunityInboxPageZipAura}
-          testID="worker-v5-opportunity-page-customer-zip-mint-aura"
-        />
-      ) : null}
-      {usesOfferDetailHandoff && shouldShowWorkerAura ? (
-        <WorkerV5CustomerZipMintAura
-          scope="OfferDetailPageFine"
-          style={styles.offerDetailPageZipAura}
-          testID="worker-v5-offer-page-customer-zip-mint-aura"
-        />
-      ) : null}
-      {usesRouteEtaHandoff && shouldShowWorkerAura ? (
-        <WorkerV5CustomerZipMintAura
-          scope="RouteEtaPageFine"
-          style={styles.routeEtaPageZipAura}
-          testID="worker-v5-route-page-customer-zip-mint-aura"
-        />
-      ) : null}
-      {usesCaseExecutionHandoff && !usesInProgressHandoff && shouldShowWorkerAura ? (
-        <WorkerV5CustomerZipMintAura
-          scope="WorkerCaseExecutionPageFine"
-          style={styles.arrivalCheckinPageZipAura}
-          testID="worker-v5-case-flow-page-customer-zip-mint-aura"
-        />
-      ) : null}
-      {(usesEarningsHandoff || usesProfileHandoff) && shouldShowWorkerAura ? (
-        <WorkerV5CustomerZipMintAura
-          scope={usesProfileHandoff ? 'WorkerProfilePageFine' : 'WorkerEarningsPageFine'}
-          style={usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesCommissionPolicyHandoff || usesProfileHandoff ? styles.earningsPageZipAura : styles.arrivalCheckinPageZipAura}
-          testID="worker-v5-earnings-page-customer-zip-mint-aura"
-        />
-      ) : null}
-      {(usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesCommissionPolicyHandoff || usesProfileHandoff) && shouldShowWorkerAura ? (
-        <WorkerV5CustomerCaseWideMintAura
-          scope={usesProfileHandoff ? 'WorkerProfilePageLower' : 'WorkerEarningsPageLower'}
-          style={styles.earningsPageLowerAura}
-          testID={usesProfileHandoff ? 'worker-v5-profile-page-lower-mint-aura' : 'worker-v5-earnings-page-lower-mint-aura'}
-        />
-      ) : null}
-      {usesCaseExecutionHandoff && !usesInProgressHandoff && shouldShowWorkerAura ? (
-        <WorkerV5CustomerCaseWideMintAura
-          scope="WorkerCaseExecutionPageLower"
-          style={styles.caseFlowPageLowerAura}
-          testID="worker-v5-case-flow-page-lower-mint-aura"
-        />
-      ) : null}
-      {usesKaelOrbHandoff && shouldShowWorkerAura ? (
-        <WorkerV5CustomerZipMintAura
-          scope="KaelOrbPageFine"
-          style={styles.kaelOrbPageZipAura}
-          testID="worker-v5-kael-orb-page-zip-mint-aura"
-        />
-      ) : null}
-      {usesOfferDetailHandoff && shouldShowWorkerAura ? (
-        <WorkerV5CustomerCaseWideMintAura
-          scope="OfferDetailPageLower"
-          style={styles.offerDetailPageLowerAura}
-          testID="worker-v5-offer-page-lower-mint-aura"
-        />
-      ) : null}
-      <ScrollView
-        bounces={false}
-        contentContainerStyle={[styles.scrollContent, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]}
-        onScroll={onDockScroll}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={false}
-        testID="worker-v5-scroll"
+  const handleHeaderBack = () => {
+    if (usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff) {
+      openScreen(headerBackScreen)
+      return
+    }
+    router.replace(workerV5Routes[screen.section] as never)
+  }
+  const openOfferMenu = () => {
+    openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === '3.2-kael-job-intake') ?? nextScreen)
+  }
+
+  return <WorkerV5ScreenLayout
+    actions={{
+      handlePrimaryAction,
+      navigateActiveJobChat: openActiveJobKaelChat,
+      navigateNext: () => openScreen(nextScreen),
+      navigatePrevious: () => openScreen(previousScreen),
+      navigateSupportKael: openSupportKaelChat,
+      navigateToJob: (jobId) => router.replace(`/(worker)/jobs?job_id=${encodeURIComponent(jobId)}` as never),
+      navigateToJobs: () => router.replace('/(worker)/jobs' as never),
+      navigateToScreen: openScreenById,
+      onDockScroll,
+      onHeaderBack: handleHeaderBack,
+      onOpenJobChat: openJobChat,
+      onOpenOfferMenu: openOfferMenu,
+      onSignOut: () => void signOut(),
+      openWorkerAvatarPicker,
+      runRouteAction,
+      runWorkerAction,
+    }}
+    state={{
+      auraState: { formulaPageAuraTarget, reduceTransparency: glass.reduceTransparency, shouldShowWorkerAura, usesCaseExecutionHandoff, usesCommissionPolicyHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesInProgressHandoff, usesKaelOrbHandoff, usesLedgerDetailHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesPayoutMethodHandoff, usesPayoutRequestHandoff, usesProfileHandoff, usesRouteEtaHandoff },
+      content: { actionBusy, avatarUploadBusy, language, minHeight, primaryAction, reduceMotion: glass.reduceMotion, reduceTransparency: glass.reduceTransparency, routePreview, runtime, screen, surfaceStyle, usesCaseExecutionHandoff, usesEarningsHandoff, usesHandoffStage, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesTravelHandoff, workerKey: session?.user.id ?? 'guest-worker' },
+      headerState: { displayTitle, handoffHeaderSubtitle, hidesHeaderUtility, language, reduceMotion: glass.reduceMotion, screen, title, usesApprovalWaitHandoff, usesCaseClosedHandoff, usesCaseExecutionHandoff, usesEarningsHandoff, usesEarningsOverviewHandoff, usesKaelOrbHandoff, usesOfferDetailHandoff, usesOpportunityInboxHandoff, usesProfileHandoff, usesRouteEtaHandoff, usesTravelHandoff, workerThemeMode },
+      nextScreen,
+      previousScreen,
+    }}
+  />
+}
+
+type WorkerV5ScreenAuraState = {
+  formulaPageAuraTarget: { scope: string; testID: string }
+  reduceTransparency: boolean
+  shouldShowWorkerAura: boolean
+  usesCaseExecutionHandoff: boolean
+  usesCommissionPolicyHandoff: boolean
+  usesEarningsHandoff: boolean
+  usesEarningsOverviewHandoff: boolean
+  usesInProgressHandoff: boolean
+  usesKaelOrbHandoff: boolean
+  usesLedgerDetailHandoff: boolean
+  usesOfferDetailHandoff: boolean
+  usesOpportunityInboxHandoff: boolean
+  usesPayoutMethodHandoff: boolean
+  usesPayoutRequestHandoff: boolean
+  usesProfileHandoff: boolean
+  usesRouteEtaHandoff: boolean
+}
+
+function WorkerV5ScreenAuras({ state }: { state: WorkerV5ScreenAuraState }) {
+  const {
+    formulaPageAuraTarget,
+    reduceTransparency,
+    shouldShowWorkerAura,
+    usesCaseExecutionHandoff,
+    usesCommissionPolicyHandoff,
+    usesEarningsHandoff,
+    usesEarningsOverviewHandoff,
+    usesInProgressHandoff,
+    usesKaelOrbHandoff,
+    usesLedgerDetailHandoff,
+    usesOfferDetailHandoff,
+    usesOpportunityInboxHandoff,
+    usesPayoutMethodHandoff,
+    usesPayoutRequestHandoff,
+    usesProfileHandoff,
+    usesRouteEtaHandoff,
+  } = state
+
+  return <>
+    {shouldShowWorkerAura ? <WorkerV5CustomerFulfillmentCanvasAura reduceTransparency={reduceTransparency} scope={formulaPageAuraTarget.scope} testID={formulaPageAuraTarget.testID} /> : null}
+    {usesOpportunityInboxHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="OpportunityInboxPageFine" style={styles.opportunityInboxPageZipAura} testID="worker-v5-opportunity-page-customer-zip-mint-aura" /> : null}
+    {usesOfferDetailHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="OfferDetailPageFine" style={styles.offerDetailPageZipAura} testID="worker-v5-offer-page-customer-zip-mint-aura" /> : null}
+    {usesRouteEtaHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="RouteEtaPageFine" style={styles.routeEtaPageZipAura} testID="worker-v5-route-page-customer-zip-mint-aura" /> : null}
+    {usesCaseExecutionHandoff && !usesInProgressHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="WorkerCaseExecutionPageFine" style={styles.arrivalCheckinPageZipAura} testID="worker-v5-case-flow-page-customer-zip-mint-aura" /> : null}
+    {(usesEarningsHandoff || usesProfileHandoff) && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope={usesProfileHandoff ? 'WorkerProfilePageFine' : 'WorkerEarningsPageFine'} style={usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesCommissionPolicyHandoff || usesProfileHandoff ? styles.earningsPageZipAura : styles.arrivalCheckinPageZipAura} testID="worker-v5-earnings-page-customer-zip-mint-aura" /> : null}
+    {(usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesCommissionPolicyHandoff || usesProfileHandoff) && shouldShowWorkerAura ? <WorkerV5CustomerCaseWideMintAura scope={usesProfileHandoff ? 'WorkerProfilePageLower' : 'WorkerEarningsPageLower'} style={styles.earningsPageLowerAura} testID={usesProfileHandoff ? 'worker-v5-profile-page-lower-mint-aura' : 'worker-v5-earnings-page-lower-mint-aura'} /> : null}
+    {usesCaseExecutionHandoff && !usesInProgressHandoff && shouldShowWorkerAura ? <WorkerV5CustomerCaseWideMintAura scope="WorkerCaseExecutionPageLower" style={styles.caseFlowPageLowerAura} testID="worker-v5-case-flow-page-lower-mint-aura" /> : null}
+    {usesKaelOrbHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="KaelOrbPageFine" style={styles.kaelOrbPageZipAura} testID="worker-v5-kael-orb-page-zip-mint-aura" /> : null}
+    {usesOfferDetailHandoff && shouldShowWorkerAura ? <WorkerV5CustomerCaseWideMintAura scope="OfferDetailPageLower" style={styles.offerDetailPageLowerAura} testID="worker-v5-offer-page-lower-mint-aura" /> : null}
+  </>
+}
+
+type WorkerV5ScreenHeaderState = {
+  displayTitle: string
+  handoffHeaderSubtitle: string | null
+  hidesHeaderUtility: boolean
+  language: AppLanguage
+  reduceMotion: boolean
+  screen: WorkerV5ScreenDefinition
+  title: string
+  usesApprovalWaitHandoff: boolean
+  usesCaseClosedHandoff: boolean
+  usesCaseExecutionHandoff: boolean
+  usesEarningsHandoff: boolean
+  usesEarningsOverviewHandoff: boolean
+  usesKaelOrbHandoff: boolean
+  usesOfferDetailHandoff: boolean
+  usesOpportunityInboxHandoff: boolean
+  usesProfileHandoff: boolean
+  usesRouteEtaHandoff: boolean
+  usesTravelHandoff: boolean
+  workerThemeMode: 'dark' | 'light'
+}
+
+function WorkerV5ScreenHeader({
+  onBack,
+  onOpenJobChat,
+  onOpenOfferMenu,
+  state,
+}: {
+  onBack: () => void
+  onOpenJobChat: () => void
+  onOpenOfferMenu: () => void
+  state: WorkerV5ScreenHeaderState
+}) {
+  const {
+    displayTitle,
+    handoffHeaderSubtitle,
+    hidesHeaderUtility,
+    language,
+    reduceMotion,
+    screen,
+    title,
+    usesApprovalWaitHandoff,
+    usesCaseClosedHandoff,
+    usesCaseExecutionHandoff,
+    usesEarningsHandoff,
+    usesEarningsOverviewHandoff,
+    usesKaelOrbHandoff,
+    usesOfferDetailHandoff,
+    usesOpportunityInboxHandoff,
+    usesProfileHandoff,
+    usesRouteEtaHandoff,
+    usesTravelHandoff,
+    workerThemeMode,
+  } = state
+  const usesHandoffHeading = usesKaelOrbHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff || usesProfileHandoff
+  const showPlainTitle = !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff && !usesProfileHandoff
+
+  return <View style={[styles.headerRow, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderRow : null]}>
+    {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || screen.id === '5.1-profile-overview' ? null : (
+      <Pressable
+        accessibilityLabel={language === 'vi' ? 'Quay lại worker hiện tại' : 'Back to current worker surface'}
+        accessibilityRole="button"
+        onPress={onBack}
+        style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]}
+        testID="worker-v5-back"
       >
-        <View style={[styles.headerRow, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderRow : null]}>
-          {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff || screen.id === '5.1-profile-overview' ? null : (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Quay lại worker hiện tại' : 'Back to current worker surface'}
-              accessibilityRole="button"
-              onPress={() => (usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff ? openScreen(headerBackScreen) : router.replace(workerV5Routes[screen.section] as never))}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-back"
-            >
-              <WorkerV5BackArrowIcon />
-            </Pressable>
-          )}
-          <View style={styles.headerTextColumn}>
-            {usesCaseClosedHandoff ? null : usesKaelOrbHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff || usesProfileHandoff ? (
-              <>
-                <Text
-                  style={[
-                    styles.titleText,
-                    workerThemeMode === 'dark' ? styles.titleTextDark : null,
-                    usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderTitle : null,
-                    usesEarningsOverviewHandoff ? styles.earningsOverviewTitle : null,
-                  ]}
-                  testID={usesEarningsOverviewHandoff ? 'worker-v5-earnings-overview-title' : undefined}
-                >
-                  {displayTitle}
-                </Text>
-                {handoffHeaderSubtitle ? <Text style={[styles.headerSubtitleText, workerThemeMode === 'dark' ? styles.headerSubtitleTextDark : null]} numberOfLines={2}>{handoffHeaderSubtitle}</Text> : null}
-              </>
-            ) : (
-              <Text style={[styles.phaseText, workerThemeMode === 'dark' ? styles.phaseTextDark : null]}>{phaseCopy[screen.phase][language]}</Text>
-            )}
-            {!usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff && !usesProfileHandoff ? <Text style={[styles.titleText, workerThemeMode === 'dark' ? styles.titleTextDark : null]}>{title}</Text> : null}
-          </View>
-          {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff ? null : usesOfferDetailHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Tùy chọn đề nghị' : 'Offer options'}
-              accessibilityRole="button"
-              onPress={() => openScreen(WORKER_V5_SCREENS.find((candidate) => candidate.id === '3.2-kael-job-intake') ?? nextScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-offer-menu"
-            >
-              <Text style={styles.headerMenuText}>•••</Text>
-            </Pressable>
-          ) : usesRouteEtaHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Tùy chọn di chuyển' : 'Travel options'}
-              accessibilityRole="button"
-              onPress={openJobChat}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-route-menu"
-            >
-              <Text style={styles.headerMenuText}>•••</Text>
-            </Pressable>
-          ) : usesApprovalWaitHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Trợ giúp phê duyệt' : 'Approval help'}
-              accessibilityRole="button"
-              onPress={openJobChat}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-approval-help"
-            >
-              <Text style={styles.headerMenuText}>?</Text>
-            </Pressable>
-          ) : usesCaseExecutionHandoff || usesEarningsHandoff ? null : usesKaelOrbHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Tùy chọn Kael' : 'Kael options'}
-              accessibilityRole="button"
-              onPress={openJobChat}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-kael-menu"
-            >
-              <Text style={styles.headerMenuText}>•••</Text>
-            </Pressable>
-          ) : hidesHeaderUtility ? null : (
-            <View style={styles.iconBadge} testID={`worker-v5-header-icon-${screen.id}`}>
-              <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
-              <Image source={workerV5Icons[screen.icon]} style={styles.iconImage} />
-            </View>
-          )}
-        </View>
+        <WorkerV5BackArrowIcon />
+      </Pressable>
+    )}
+    <View style={styles.headerTextColumn}>
+      {usesCaseClosedHandoff ? null : usesHandoffHeading ? (
+        <>
+          <Text
+            style={[
+              styles.titleText,
+              workerThemeMode === 'dark' ? styles.titleTextDark : null,
+              usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderTitle : null,
+              usesEarningsOverviewHandoff ? styles.earningsOverviewTitle : null,
+            ]}
+            testID={usesEarningsOverviewHandoff ? 'worker-v5-earnings-overview-title' : undefined}
+          >
+            {displayTitle}
+          </Text>
+          {handoffHeaderSubtitle ? <Text style={[styles.headerSubtitleText, workerThemeMode === 'dark' ? styles.headerSubtitleTextDark : null]} numberOfLines={2}>{handoffHeaderSubtitle}</Text> : null}
+        </>
+      ) : <Text style={[styles.phaseText, workerThemeMode === 'dark' ? styles.phaseTextDark : null]}>{phaseCopy[screen.phase][language]}</Text>}
+      {showPlainTitle ? <Text style={[styles.titleText, workerThemeMode === 'dark' ? styles.titleTextDark : null]}>{title}</Text> : null}
+    </View>
+    {usesOpportunityInboxHandoff || usesEarningsOverviewHandoff ? null : usesOfferDetailHandoff ? (
+      <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn đề nghị' : 'Offer options'} accessibilityRole="button" onPress={onOpenOfferMenu} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-offer-menu">
+        <Text style={styles.headerMenuText}>•••</Text>
+      </Pressable>
+    ) : usesRouteEtaHandoff ? (
+      <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn di chuyển' : 'Travel options'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-route-menu">
+        <Text style={styles.headerMenuText}>•••</Text>
+      </Pressable>
+    ) : usesApprovalWaitHandoff ? (
+      <Pressable accessibilityLabel={language === 'vi' ? 'Trợ giúp phê duyệt' : 'Approval help'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-approval-help">
+        <Text style={styles.headerMenuText}>?</Text>
+      </Pressable>
+    ) : usesCaseExecutionHandoff || usesEarningsHandoff ? null : usesKaelOrbHandoff ? (
+      <Pressable accessibilityLabel={language === 'vi' ? 'Tùy chọn Kael' : 'Kael options'} accessibilityRole="button" onPress={onOpenJobChat} style={({ pressed }) => [styles.iconButton, pressed && !reduceMotion ? styles.pressed : null]} testID="worker-v5-kael-menu">
+        <Text style={styles.headerMenuText}>•••</Text>
+      </Pressable>
+    ) : hidesHeaderUtility ? null : (
+      <View style={styles.iconBadge} testID={`worker-v5-header-icon-${screen.id}`}>
+        <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
+        <Image source={workerV5Icons[screen.icon]} style={styles.iconImage} />
+      </View>
+    )}
+  </View>
+}
 
-        {!usesHandoffStage ? (
-          <View style={[styles.glassCard, glass.reduceTransparency && styles.opaqueCard]}>
-            {!glass.reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
-            <View pointerEvents="none" style={styles.cardTopHighlight} />
-            <View style={styles.heroTopRow}>
-              <View style={styles.statusDot} />
-              <Text style={styles.kickerText}>
-                {language === 'vi' ? 'Dữ liệu đã đồng bộ' : 'Synced data'}
-              </Text>
-            </View>
-            <Text style={styles.heroTitle}>{buildHeroLine(screen, runtime, language)}</Text>
-            <Text style={styles.heroBody}>{buildHeroBody(screen, runtime, language)}</Text>
-          </View>
-        ) : null}
+type WorkerV5ScreenLayoutState = {
+  auraState: WorkerV5ScreenAuraState
+  content: {
+    actionBusy: boolean
+    avatarUploadBusy: boolean
+    language: AppLanguage
+    minHeight: number
+    primaryAction: ReturnType<typeof getWorkerV5PrimaryAction>
+    reduceMotion: boolean
+    reduceTransparency: boolean
+    routePreview: WorkerV5RoutePreviewState
+    runtime: WorkerV5Runtime
+    screen: WorkerV5ScreenDefinition
+    surfaceStyle: StyleProp<ViewStyle>
+    usesCaseExecutionHandoff: boolean
+    usesEarningsHandoff: boolean
+    usesHandoffStage: boolean
+    usesKaelOrbHandoff: boolean
+    usesOfferDetailHandoff: boolean
+    usesOpportunityInboxHandoff: boolean
+    usesTravelHandoff: boolean
+    workerKey: string
+  }
+  headerState: WorkerV5ScreenHeaderState
+  nextScreen: WorkerV5ScreenDefinition | null
+  previousScreen: WorkerV5ScreenDefinition | null
+}
 
-        <WorkerV5Body
-          key={session?.user.id ?? 'guest-worker'}
-          actionBusy={actionBusy}
-          avatarUploadBusy={avatarUploadBusy}
-          language={language}
-          navigateActiveJobChat={openActiveJobKaelChat}
-          navigateJobChat={openJobChat}
-          navigateSupportKael={openSupportKaelChat}
-          navigateNext={() => openScreen(nextScreen)}
-          navigateToScreen={openScreenById}
-          navigateToJob={(jobId) => router.replace(`/(worker)/jobs?job_id=${encodeURIComponent(jobId)}` as never)}
-          navigateToJobs={() => router.replace('/(worker)/jobs' as never)}
-          openWorkerAvatarPicker={openWorkerAvatarPicker}
-          onSignOut={() => void signOut()}
-          reduceMotion={glass.reduceMotion}
-          reduceTransparency={glass.reduceTransparency}
-          routePreview={routePreview}
-          runRouteAction={runRouteAction}
-          runWorkerAction={runWorkerAction}
-          runtime={runtime}
-          screen={screen}
-        />
+type WorkerV5ScreenLayoutActions = {
+  handlePrimaryAction: () => void
+  navigateActiveJobChat: () => void
+  navigateNext: () => void
+  navigatePrevious: () => void
+  navigateSupportKael: () => void
+  navigateToJob: (jobId: string) => void
+  navigateToJobs: () => void
+  navigateToScreen: (id: WorkerV5ScreenId) => void
+  onDockScroll: ReturnType<typeof useDockScrollHandler>
+  onHeaderBack: () => void
+  onOpenJobChat: () => void
+  onOpenOfferMenu: () => void
+  onSignOut: () => void
+  openWorkerAvatarPicker: () => void
+  runRouteAction: () => void | Promise<void>
+  runWorkerAction: (
+    action: () => Promise<boolean>,
+    options?: { navigateOnSuccess?: boolean },
+  ) => void | Promise<void>
+}
 
-        {primaryAction && screen.id !== '5.4-reliability-insights' && screen.id !== '5.5-account-utilities' && screen.id !== '5.6-agent-memory-preferences' && screen.id !== '5.10-support-settings' && !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff ? (
-          <WorkerV5PrimaryActionButton
-            disabled={primaryAction.disabled}
-            label={primaryAction.label}
-            onPress={handlePrimaryAction}
-            variant={usesHandoffStage ? 'source' : 'default'}
-          />
-        ) : null}
+function WorkerV5ScreenLayout({ actions, state }: { actions: WorkerV5ScreenLayoutActions; state: WorkerV5ScreenLayoutState }) {
+  const { auraState, content, headerState, nextScreen, previousScreen } = state
+  const {
+    actionBusy,
+    avatarUploadBusy,
+    language,
+    minHeight,
+    primaryAction,
+    reduceMotion,
+    reduceTransparency,
+    routePreview,
+    runtime,
+    screen,
+    surfaceStyle,
+    usesCaseExecutionHandoff,
+    usesEarningsHandoff,
+    usesHandoffStage,
+    usesKaelOrbHandoff,
+    usesOfferDetailHandoff,
+    usesOpportunityInboxHandoff,
+    usesTravelHandoff,
+    workerKey,
+  } = content
 
-        {usesHandoffStage ? null : <AuthorityCard screen={screen} language={language} />}
-
-        {usesHandoffStage ? null : (
-          <View style={styles.navigationRow}>
-            <WorkerV5NavButton
-              disabled={!previousScreen}
-              label={language === 'vi' ? 'Trước' : 'Previous'}
-              onPress={() => openScreen(previousScreen)}
-            />
-            <WorkerV5NavButton
-              disabled={!nextScreen}
-              label={nextScreen ? (language === 'vi' ? 'Tiếp tục' : 'Continue') : (language === 'vi' ? 'Chưa có bước tiếp' : 'No next step yet')}
-              onPress={() => openScreen(nextScreen)}
-              primary
-            />
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
-  )
+  return <SafeAreaView style={[styles.safeArea, surfaceStyle]} testID={`worker-v5-screen-${screen.id}`}>
+    <WorkerV5ScreenAuras state={auraState} />
+    <ScrollView bounces={false} contentContainerStyle={[styles.scrollContent, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]} onScroll={actions.onDockScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} testID="worker-v5-scroll">
+      <WorkerV5ScreenHeader onBack={actions.onHeaderBack} onOpenJobChat={actions.onOpenJobChat} onOpenOfferMenu={actions.onOpenOfferMenu} state={headerState} />
+      {!usesHandoffStage ? <View style={[styles.glassCard, reduceTransparency && styles.opaqueCard]}>
+        {!reduceTransparency ? <MintAura intensity="component" style={styles.cardMintAura} testID="worker-v5-hero-mint-aura" /> : null}
+        <View pointerEvents="none" style={styles.cardTopHighlight} />
+        <View style={styles.heroTopRow}><View style={styles.statusDot} /><Text style={styles.kickerText}>{language === 'vi' ? 'Dữ liệu đã đồng bộ' : 'Synced data'}</Text></View>
+        <Text style={styles.heroTitle}>{buildHeroLine(screen, runtime, language)}</Text>
+        <Text style={styles.heroBody}>{buildHeroBody(screen, runtime, language)}</Text>
+      </View> : null}
+      <WorkerV5Body
+        key={workerKey}
+        actionBusy={actionBusy}
+        avatarUploadBusy={avatarUploadBusy}
+        language={language}
+        navigateActiveJobChat={actions.navigateActiveJobChat}
+        navigateJobChat={actions.onOpenJobChat}
+        navigateSupportKael={actions.navigateSupportKael}
+        navigateNext={actions.navigateNext}
+        navigateToScreen={actions.navigateToScreen}
+        navigateToJob={actions.navigateToJob}
+        navigateToJobs={actions.navigateToJobs}
+        openWorkerAvatarPicker={actions.openWorkerAvatarPicker}
+        onSignOut={actions.onSignOut}
+        reduceMotion={reduceMotion}
+        reduceTransparency={reduceTransparency}
+        routePreview={routePreview}
+        runRouteAction={actions.runRouteAction}
+        runWorkerAction={actions.runWorkerAction}
+        runtime={runtime}
+        screen={screen}
+      />
+      {primaryAction && screen.id !== '5.4-reliability-insights' && screen.id !== '5.5-account-utilities' && screen.id !== '5.6-agent-memory-preferences' && screen.id !== '5.10-support-settings' && !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff ? <WorkerV5PrimaryActionButton disabled={primaryAction.disabled} label={primaryAction.label} onPress={actions.handlePrimaryAction} variant={usesHandoffStage ? 'source' : 'default'} /> : null}
+      {usesHandoffStage ? null : <AuthorityCard screen={screen} language={language} />}
+      {usesHandoffStage ? null : <View style={styles.navigationRow}>
+        <WorkerV5NavButton disabled={!previousScreen} label={language === 'vi' ? 'Trước' : 'Previous'} onPress={actions.navigatePrevious} />
+        <WorkerV5NavButton disabled={!nextScreen} label={nextScreen ? (language === 'vi' ? 'Tiếp tục' : 'Continue') : (language === 'vi' ? 'Chưa có bước tiếp' : 'No next step yet')} onPress={actions.navigateNext} primary />
+      </View>}
+    </ScrollView>
+  </SafeAreaView>
 }
 
 function WorkerV5Body({
@@ -676,7 +774,10 @@ function WorkerV5Body({
   reduceTransparency: boolean
   routePreview: WorkerV5RoutePreviewState
   runRouteAction: () => void | Promise<void>
-  runWorkerAction: (action: () => Promise<boolean>) => void | Promise<void>
+  runWorkerAction: (
+    action: () => Promise<boolean>,
+    options?: { navigateOnSuccess?: boolean },
+  ) => void | Promise<void>
   runtime: WorkerV5Runtime
   screen: WorkerV5ScreenDefinition
 }) {
@@ -747,11 +848,14 @@ function WorkerV5Body({
     case '2.11-completion-submitted':
       return (
         <WorkerV5CompletionSubmittedBody
-          cashPaymentBusy={actionBusy}
+          directPaymentBusy={actionBusy}
           language={language}
           navigateNext={navigateNext}
           navigateToEvidence={() => navigateToScreen('2.10-completion-evidence')}
-          onConfirmCashPayment={() => void runWorkerAction(runtime.actions.workerConfirmCashPayment)}
+          onRespondToDirectPayment={(received) => void runWorkerAction(
+            () => runtime.actions.workerConfirmCashPayment(received),
+            { navigateOnSuccess: received },
+          )}
           primaryFill={WorkerV5PrimaryButtonFill}
           reduceMotion={reduceMotion}
           reduceTransparency={reduceTransparency}
@@ -857,7 +961,6 @@ function WorkerV5Body({
     case '5.4-reliability-insights':
       return (
         <WorkerV5ReliabilityInsightsBody
-          caseWideAura={WorkerV5CustomerCaseWideMintAura}
           icons={workerV5Icons}
           language={language}
           listAura={WorkerV5EarningsHomeListAura}
@@ -867,7 +970,6 @@ function WorkerV5Body({
           reliabilityAxisFill={WorkerV5ReliabilityAxisFill}
           reliabilityHero={WorkerV5ReliabilityHero}
           runtime={runtime}
-          zipAura={WorkerV5CustomerZipMintAura}
         />
       )
     case '5.5-account-utilities':

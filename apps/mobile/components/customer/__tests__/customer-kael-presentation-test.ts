@@ -154,8 +154,10 @@ describe('customer Kael presentation', () => {
         activeIndex: 0,
         collapse: null,
         lines: [],
+        origin: 'local',
         prompt: 'Tôi cũng chưa rõ',
         scenarioId: 'work_plan',
+        streamId: 'local:test-work-plan',
         visibleCount: 1,
       },
       turns: [

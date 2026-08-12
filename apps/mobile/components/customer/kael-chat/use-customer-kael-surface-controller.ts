@@ -149,7 +149,6 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     caseServiceLabel,
     deal,
     language,
-    reduceMotion,
     selectedService,
   })
   useCustomerKaelSessionHydration({

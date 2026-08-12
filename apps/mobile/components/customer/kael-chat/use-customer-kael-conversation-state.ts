@@ -4,6 +4,10 @@ import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { PendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
 import type { KaelResponseStreamState } from '@/lib/kael-response-stream'
+import {
+  initialKaelReasoningReceiptState,
+  type KaelReasoningReceiptState,
+} from '@/lib/kael-reasoning-receipt'
 
 import type { CustomerKaelMode } from '../ui/types'
 
@@ -25,6 +29,8 @@ type CustomerKaelConversationState = {
   loading: boolean
   localMode: CustomerKaelMode
   pendingDraft: PendingKaelChatDraft | null
+  pendingNormalMessage: string | null
+  reasoningReceipt: KaelReasoningReceiptState
   routeDraftEvidencePending: boolean
   streamingReply: CustomerKaelStreamingReply | null
   turns: KaelChatTurn[]
@@ -38,6 +44,8 @@ type CustomerKaelConversationAction =
   | { type: 'set-loading'; value: SetStateAction<boolean> }
   | { type: 'set-local-mode'; value: SetStateAction<CustomerKaelMode> }
   | { type: 'set-pending-draft'; value: SetStateAction<PendingKaelChatDraft | null> }
+  | { type: 'set-pending-normal-message'; value: SetStateAction<string | null> }
+  | { type: 'set-reasoning-receipt'; value: SetStateAction<KaelReasoningReceiptState> }
   | { type: 'set-route-draft-evidence'; value: SetStateAction<boolean> }
   | { type: 'set-streaming-reply'; value: SetStateAction<CustomerKaelStreamingReply | null> }
   | { type: 'set-turns'; value: SetStateAction<KaelChatTurn[]> }
@@ -78,6 +86,10 @@ export function customerKaelConversationReducer(
         ...state,
         error: clearsMissingServiceError ? null : state.error,
         localMode,
+        pendingNormalMessage: localMode === state.localMode ? state.pendingNormalMessage : null,
+        reasoningReceipt: localMode === state.localMode
+          ? state.reasoningReceipt
+          : initialKaelReasoningReceiptState,
         streamingReply: localMode === state.localMode ? state.streamingReply : null,
       }
     }
@@ -89,6 +101,16 @@ export function customerKaelConversationReducer(
         pendingDraft,
       }
     }
+    case 'set-pending-normal-message':
+      return {
+        ...state,
+        pendingNormalMessage: resolveStateAction(state.pendingNormalMessage, action.value),
+      }
+    case 'set-reasoning-receipt':
+      return {
+        ...state,
+        reasoningReceipt: resolveStateAction(state.reasoningReceipt, action.value),
+      }
     case 'set-route-draft-evidence':
       return { ...state, routeDraftEvidencePending: resolveStateAction(state.routeDraftEvidencePending, action.value) }
     case 'set-streaming-reply':
@@ -103,6 +125,8 @@ export function customerKaelConversationReducer(
         loading: action.loading,
         localMode: 'case',
         pendingDraft: action.draft,
+        pendingNormalMessage: null,
+        reasoningReceipt: initialKaelReasoningReceiptState,
         routeDraftEvidencePending: true,
       }
     case 'begin-hydration':
@@ -115,6 +139,10 @@ export function customerKaelConversationReducer(
         error: null,
         loading: false,
         pendingDraft: action.consumePendingDraft ? null : state.pendingDraft,
+        pendingNormalMessage: null,
+        reasoningReceipt: state.localMode === 'normal'
+          ? state.reasoningReceipt
+          : initialKaelReasoningReceiptState,
         routeDraftEvidencePending: action.consumePendingDraft ? false : state.routeDraftEvidencePending,
         streamingReply: null,
         turns: action.response.turns,
@@ -133,6 +161,8 @@ export function customerKaelConversationReducer(
         intakeDisplayMessage: null,
         loading: false,
         localMode: action.mode,
+        pendingNormalMessage: null,
+        reasoningReceipt: initialKaelReasoningReceiptState,
         streamingReply: null,
         turns: [],
       }
@@ -153,6 +183,8 @@ export function createCustomerKaelConversationState(input: {
     loading: input.initialLoading,
     localMode: input.initialMode,
     pendingDraft: input.pendingDraft,
+    pendingNormalMessage: null,
+    reasoningReceipt: initialKaelReasoningReceiptState,
     routeDraftEvidencePending: Boolean(input.pendingDraft),
     streamingReply: null,
     turns: [],
@@ -189,6 +221,12 @@ export function useCustomerKaelConversationState(input: {
   }, [])
   const setPendingDraftState: Dispatch<SetStateAction<PendingKaelChatDraft | null>> = useCallback((value) => {
     dispatch({ type: 'set-pending-draft', value })
+  }, [])
+  const setPendingNormalMessage: Dispatch<SetStateAction<string | null>> = useCallback((value) => {
+    dispatch({ type: 'set-pending-normal-message', value })
+  }, [])
+  const setReasoningReceipt: Dispatch<SetStateAction<KaelReasoningReceiptState>> = useCallback((value) => {
+    dispatch({ type: 'set-reasoning-receipt', value })
   }, [])
   const setRouteDraftEvidencePending: Dispatch<SetStateAction<boolean>> = useCallback((value) => {
     dispatch({ type: 'set-route-draft-evidence', value })
@@ -232,6 +270,8 @@ export function useCustomerKaelConversationState(input: {
     setLoading,
     setLocalMode,
     setPendingDraftState,
+    setPendingNormalMessage,
+    setReasoningReceipt,
     setRouteDraftEvidencePending,
     setStreamingReply,
     setTurns,

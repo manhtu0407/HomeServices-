@@ -89,6 +89,7 @@ function buildCustomerJobDetail(): JobDetailResponse {
     },
     worker: null,
     broadcast_state: null,
+    matching_state: null,
     current_scope_change: null,
   }
 }
@@ -231,6 +232,41 @@ describe('frontend workflow payment truth', () => {
       workerNet: 336_000,
       amountReceived: 420_000,
       paymentCode: 'NS-TRUTH-420',
+    }))
+  })
+
+  it('uses the safe receipt state to distinguish which direct-payment confirmation is still needed', () => {
+    const response = buildCustomerJobDetail()
+    const snapshot = jobDetailToSnapshot({
+      ...response,
+      job: {
+        ...response.job,
+        gross_amount: 420_000,
+        payment_provider: 'direct_worker',
+        payment_receipt: {
+          method: 'direct_worker',
+          status: 'direct_awaiting_worker_confirmation',
+          gross_amount: 420_000,
+          customer_transfer_claimed_at: null,
+          customer_transferred_at: null,
+          response_deadline: '2026-08-12T09:00:00.000Z',
+          hold_until: null,
+          customer_confirmed_at: '2026-08-11T09:00:00.000Z',
+          worker_confirmed_at: null,
+          collateral_amount: 63_000,
+          bank_code: null,
+          account_holder: null,
+          account_masked: null,
+        },
+        payment_status: 'direct_awaiting_confirmation',
+        status: 'payment_pending',
+      },
+    })
+
+    expect(snapshot.payment).toEqual(expect.objectContaining({
+      status: 'direct_awaiting_worker_confirmation',
+      directCustomerConfirmedAt: '2026-08-11T09:00:00.000Z',
+      directWorkerConfirmedAt: null,
     }))
   })
 

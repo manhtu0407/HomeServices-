@@ -6,6 +6,10 @@ import { asJobStatus, asNumber, asServiceType, asString, asStringArray, nullable
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { JOB_DETAIL_SELECT, parseKaelProgressSnapshot } from "../../platform/job-state.ts";
 import { getJobBroadcastState } from "../matching/broadcasts.ts";
+import {
+  getMatchingState,
+  reconcileSavedWorkerFallbackForJob,
+} from "../matching/matching-preference.ts";
 import { projectAddressAccess } from "../worker/apartment-access.ts";
 import { requireJobAccess } from "../../platform/access.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
@@ -19,8 +23,11 @@ import {
 } from "./evidence-refs.ts";
 import { createSignedCaseWorkEvidenceUrls } from "../kael-chat/media-vision.ts";
 import { getCurrentScopeChange } from "./pending-decisions.ts";
+import { loadPaymentReceipt, parsePaymentStatus } from "./payment-receipt.ts";
+import { listCustomerServiceHistory } from "./customer-history.ts";
 
 export { listMyPendingDecisions } from "./pending-decisions.ts";
+export { listCustomerServiceHistory, projectCustomerServiceHistoryRows } from "./customer-history.ts";
 
 const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
@@ -37,27 +44,49 @@ const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "payment_pending",
 ];
 
-const CUSTOMER_SERVICE_HISTORY_STATUSES: JobStatus[] = [
-  "paid",
-  "reviewed",
-  "cancelled",
-];
+type AvailablePaymentRailProvider = "platform_bank_manual" | "sepay_vietqr";
 
 export async function getJob(
   ctx: MobileApiContext,
   jobId: string,
-  options: { paymentRailAvailable?: boolean } = {},
+  options: { paymentRailProvider?: AvailablePaymentRailProvider | null } = {},
 ): Promise<EdgeJobDetailResponse> {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     select: JOB_DETAIL_SELECT,
   });
   const workerId = nullableString(job.worker_id);
-  const [broadcastState, currentScopeChange, worker] = await Promise.all([
+  const paymentProvider = nullableString(job.payment_provider);
+  const hasPaymentReceipt = job.status === "payment_pending" ||
+    paymentProvider === "platform_bank_manual" || paymentProvider === "direct_worker";
+  const [initialBroadcastState, currentScopeChange, worker, paymentReceipt] = await Promise.all([
     job.status === "broadcasting" ? getJobBroadcastState(client, jobId) : null,
     job.status === "scope_change_pending" ? getCurrentScopeChange(client, jobId) : null,
     workerId ? loadJobWorkerSummary(client, workerId) : null,
+    hasPaymentReceipt ? loadPaymentReceipt(client, jobId, ctx.role) : null,
   ]);
+  let broadcastState = initialBroadcastState;
+  if (
+    ctx.role === "customer" &&
+    job.status === "broadcasting" &&
+    (broadcastState?.active_count ?? 0) === 0
+  ) {
+    try {
+      const fallback = await reconcileSavedWorkerFallbackForJob(
+        client,
+        jobId,
+        "saved_worker_expired",
+      );
+      if (fallback.started) {
+        broadcastState = await getJobBroadcastState(client, jobId);
+      }
+    } catch {
+      console.warn("mobile-api saved-worker refresh reconciliation failed", { jobId });
+    }
+  }
+  const matchingState = ctx.role === "customer" || ctx.role === "admin"
+    ? await getMatchingState(client, jobId, asString(job.status))
+    : null;
   const evidenceReleased = ctx.role !== "worker" ||
     canReleaseJobEvidenceToWorker(job.status, job.matched_at);
   const fieldEvidenceByJob = workerId && evidenceReleased
@@ -76,7 +105,7 @@ export async function getJob(
       nullableString(job.customer_id),
     )
     : [];
-  const paymentInstructionsVisible = ctx.role !== "worker";
+  const paymentInstructionsVisible = ctx.role === "customer";
 
   return {
     job: {
@@ -105,9 +134,12 @@ export async function getJob(
       kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
       kael_progress: parseKaelProgressSnapshot(job.kael_progress, jobId),
       final_price: nullableNumber(job.final_price),
-      payment_rail_available: ctx.role === "customer" && options.paymentRailAvailable === true,
+      payment_rail_available: ctx.role === "customer" && options.paymentRailProvider !== undefined && options.paymentRailProvider !== null,
+      payment_rail_provider: ctx.role === "customer"
+        ? options.paymentRailProvider ?? null
+        : null,
       payment_status: parsePaymentStatus(job.payment_status),
-      payment_provider: nullableString(job.payment_provider),
+       payment_provider: paymentProvider,
       payment_code: paymentInstructionsVisible ? nullableString(job.payment_code) : null,
       payment_transfer_content: paymentInstructionsVisible
         ? nullableString(job.payment_transfer_content)
@@ -121,6 +153,7 @@ export async function getJob(
       gross_amount: nullableNumber(job.gross_amount),
       platform_fee: nullableNumber(job.platform_fee),
       worker_net: nullableNumber(job.worker_net),
+      payment_receipt: paymentReceipt,
       completion_notes: nullableString(job.completion_notes),
       completion_photo_urls: evidenceReleased
         ? asStringArray(job.completion_photo_urls)
@@ -135,34 +168,13 @@ export async function getJob(
     },
     worker,
     broadcast_state: broadcastState,
+    matching_state: matchingState,
     current_scope_change: currentScopeChange,
   };
 }
-
-function parsePaymentStatus(
-  value: unknown,
-): EdgeJobDetailResponse["job"]["payment_status"] {
-  if (value === null || value === undefined) return null;
-  if (
-    value === "not_started" ||
-    value === "code_requested" ||
-    value === "vietqr_ready" ||
-    value === "pending" ||
-    value === "received" ||
-    value === "cash_confirmed" ||
-    value === "amount_mismatch" ||
-    value === "expired" ||
-    value === "failed" ||
-    value === "reconciled"
-  ) {
-    return value;
-  }
-  apiFailure("DB_ERROR", "Trạng thái thanh toán không hợp lệ", 500);
-}
-
 export async function listCustomerActiveJobs(
   ctx: MobileApiContext,
-  options: { paymentRailAvailable?: boolean } = {},
+  options: { paymentRailProvider?: AvailablePaymentRailProvider | null } = {},
 ) {
   const client = db(ctx);
   const result = await dbQuery<Array<{ id: string }>>(
@@ -181,67 +193,6 @@ export async function listCustomerActiveJobs(
   if (!row) return { active_job: null };
   const detail = await getJob(ctx, row.id, options);
   return { active_job: detail };
-}
-
-export async function listCustomerServiceHistory(ctx: MobileApiContext) {
-  const client = db(ctx);
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    client
-      .from("jobs")
-      .select("id, service_type, status, worker_id, final_price, completed_at, paid_at, reviewed_at, cancelled_at, created_at")
-      .eq("customer_id", ctx.user.id)
-      .in("status", CUSTOMER_SERVICE_HISTORY_STATUSES)
-      .order("updated_at", { ascending: false }),
-  );
-  if (result.error) {
-    apiFailure("DB_ERROR", "Không thể tải lịch sử dịch vụ", 500);
-  }
-
-  const jobs = result.data ?? [];
-  const workerIds = Array.from(new Set(
-    jobs.map((job) => nullableString(job.worker_id)).filter((workerId): workerId is string => Boolean(workerId)),
-  ));
-  if (workerIds.length === 0) {
-    return { service_history: projectCustomerServiceHistoryRows(jobs, new Map(), new Set()) };
-  }
-
-  const [profileResult, favoriteResult] = await Promise.all([
-    dbQuery<Array<Record<string, unknown>>>(
-      client.from("profiles")
-        .select("id, full_name, avatar_url")
-        .in("id", workerIds),
-    ),
-    dbQuery<Array<Record<string, unknown>>>(
-      client.from("customer_favorite_workers")
-        .select("worker_id")
-        .eq("customer_id", ctx.user.id)
-        .in("worker_id", workerIds),
-    ),
-  ]);
-  if (profileResult.error || favoriteResult.error) {
-    apiFailure("DB_ERROR", "Không thể tải thông tin thợ trong lịch sử", 500);
-  }
-
-  const signedProfiles: Array<Record<string, unknown>> = await Promise.all(
-    (profileResult.data ?? []).map(async (profile): Promise<Record<string, unknown>> => ({
-      ...profile,
-      avatar_url: await resolveWorkerAvatarUrl(client, profile.avatar_url),
-    })),
-  );
-  const profilesByWorkerId = new Map(
-    signedProfiles.map((profile) => [asString(profile.id), profile]),
-  );
-  const favoriteWorkerIds = new Set(
-    (favoriteResult.data ?? []).map((favorite) => asString(favorite.worker_id)),
-  );
-
-  return {
-    service_history: projectCustomerServiceHistoryRows(
-      jobs,
-      profilesByWorkerId,
-      favoriteWorkerIds,
-    ),
-  };
 }
 
 async function loadJobWorkerSummary(
@@ -266,35 +217,4 @@ async function loadJobWorkerSummary(
     rating: Math.max(0, Math.min(5, asNumber(worker.data.rating))),
     total_jobs: Math.max(0, Math.trunc(asNumber(worker.data.total_jobs))),
   };
-}
-
-export function projectCustomerServiceHistoryRows(
-  jobs: Array<Record<string, unknown>>,
-  profilesByWorkerId: Map<string, Record<string, unknown>>,
-  favoriteWorkerIds: Set<string>,
-) {
-  return jobs.map((job) => {
-    const status = asJobStatus(job.status);
-    const createdAt = asString(job.created_at);
-    const endedAt = status === "cancelled"
-      ? nullableString(job.cancelled_at) ?? createdAt
-      : nullableString(job.reviewed_at) ?? nullableString(job.paid_at) ?? nullableString(job.completed_at) ?? createdAt;
-    const workerId = nullableString(job.worker_id);
-    const workerProfile = workerId ? profilesByWorkerId.get(workerId) : undefined;
-    return {
-      id: asString(job.id),
-      service_type: asServiceType(job.service_type),
-      status,
-      ended_at: endedAt,
-      final_price: nullableNumber(job.final_price),
-      worker: workerId
-        ? {
-            id: workerId,
-            display_name: nullableString(workerProfile?.full_name),
-            avatar_url: nullableString(workerProfile?.avatar_url),
-            is_favorite: favoriteWorkerIds.has(workerId),
-          }
-        : null,
-    };
-  });
 }
