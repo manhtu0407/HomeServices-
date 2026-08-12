@@ -37,9 +37,21 @@ from dependency analysis. Behind a wrapper it no longer sees a ref, so every
 The trade was bad in both directions — it swapped a cosmetic allocation count for the loss of
 real staleness detection in three of the most stateful hooks in the app. `useRef(new Map())`
 allocates and discards on re-render but its **behaviour is correct**, which is why these 10 sit
-in the accepted list below rather than the closed list above. Anyone retrying this needs the
-inline form (`const ref = useRef<T | null>(null); ref.current ??= ...`) that keeps `useRef` as
-the literal call site, and must accept the nullable type at every usage.
+in the accepted list below rather than the closed list above.
+
+The remaining escape hatch is the inline form, which keeps `useRef` as the literal call site:
+
+```ts
+const ref = useRef<Map<K, V> | null>(null)
+ref.current ??= new Map()
+```
+
+That was measured, not assumed. It passes eslint — writing `ref.current` during render is only
+an error for a plain assignment, not for `??=`. The cost is the type: applied to one ref in
+`use-customer-kael-session-catalog.ts` it produced **5 `TS18047: possibly 'null'` errors**, one
+per usage. Ten refs means roughly that many non-null assertions, each one silencing a real type
+guarantee to save an allocation. Not worth it — but if someone does take this path, it is the
+only form that keeps the analyzer's ref detection intact.
 
 ## Accepted — correct as written
 
