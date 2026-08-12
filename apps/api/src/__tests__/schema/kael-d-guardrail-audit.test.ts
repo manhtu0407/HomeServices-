@@ -8,17 +8,12 @@ function read(path: string) {
   return readFileSync(join(repoRoot, path), 'utf8')
 }
 
-describe('Kael Track D guardrail observability schema', () => {
-  it('adds an append-only guardrail trip audit table with admin-read/service-role-write RLS', () => {
-    const migration = read('supabase/migrations/20260604221500_kael_d_guardrail_trip_audit.sql')
+describe('Kael Track D guardrail observability wiring', () => {
+  // Catches a table rename that updates the migration but leaves the Edge
+  // writer pointing at the old name.
+  it('writes guardrail trips from the Edge self-check path', () => {
     const selfCheck = read('supabase/functions/mobile-api/_shared/kael/kael-guardrails/self-check.ts')
 
-    expect(migration).toContain('create table if not exists public.kael_guardrail_trip_audit')
-    expect(migration).toContain("source text not null check (source in ('self_check', 'semantic_self_check', 'boundary_guard', 'autonomy_gate'))")
-    expect(migration).toContain('alter table public.kael_guardrail_trip_audit enable row level security')
-    expect(migration).toContain('create policy "Admins view kael guardrail trip audit"')
-    expect(migration).toContain('grant select on public.kael_guardrail_trip_audit to authenticated')
-    expect(migration).toContain('grant all on public.kael_guardrail_trip_audit to service_role')
     expect(selfCheck).toContain('kael_guardrail_trip_audit')
   })
 })

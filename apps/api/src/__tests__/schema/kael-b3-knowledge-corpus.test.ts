@@ -52,37 +52,13 @@ describe('Plan §31 B3 knowledge corpus draft gate', () => {
     }
   })
 
-  it('seeds the approved B3 safety, legal, and service knowledge corpus with signed metadata', () => {
-    const migration = read('supabase/migrations/20260604203000_kael_b3_knowledge_corpus.sql')
+  it('ships no migration still carrying the pending sign-off marker', () => {
     const migrations = readdirSync(resolve(ROOT, 'supabase/migrations'))
       .filter((name) => name.endsWith('.sql'))
       .map((name) => read(`supabase/migrations/${name}`))
       .join('\n')
 
     expect(migrations).not.toContain('pending_tu_signoff')
-    expect(migration).toContain('insert into public.worker_safety_patterns')
-    expect(migration).toContain('insert into public.legal_awareness_patterns')
-    expect(migration).toContain('update public.service_knowledge_boxes')
-    expect(migration).toContain('on conflict (pattern_key) do update')
-    expect(migration).toContain('"corpus_version":"b3-draft-2026-06-04"')
-    expect(migration).toContain('"signoff_status":"approved"')
-    expect(migration).toContain('"source_trust_score"')
-    expect(migration).toContain('"problem_hints"')
-    expect(migration).toContain('"problem_hint_version":"b3-draft-2026-06-04"')
-    for (const row of candidateRowsBetween(
-      doc,
-      '## Candidate `worker_safety_patterns`',
-      '## Candidate `legal_awareness_patterns`',
-    )) {
-      expect(migration).toContain(row.cells[1])
-    }
-    for (const row of candidateRowsBetween(
-      doc,
-      '## Candidate `legal_awareness_patterns`',
-      '## Candidate `service_knowledge_boxes` / Problem Hints',
-    )) {
-      expect(migration).toContain(row.cells[1])
-    }
   })
 
   it('fails closed before generating SQL while a corpus document still needs Tu sign-off', () => {

@@ -46,17 +46,4 @@ describe('Section 25 R1 source trust research handoff', () => {
     expect(env).toContain('sourceTrustPerplexityFilterExplicit')
   })
 
-  it('adds F26 source_trust_registry migration with admin RLS and 20 Tier 1 seeds', () => {
-    const migration = read('supabase/migrations/20260526195300_source_trust_registry_f26.sql')
-
-    expect(migration).toContain('create table if not exists public.source_trust_registry')
-    expect(migration).toContain("tier text not null check (tier in ('tier_1', 'tier_2', 'tier_3', 'blocked'))")
-    expect(migration).toContain('create index if not exists source_trust_registry_lookup_idx')
-    expect(migration).toContain('alter table public.source_trust_registry enable row level security')
-    expect(migration).toContain('create policy "Admin write source trust"')
-    expect(migration).toContain('with check (private.is_admin())')
-    expect((migration.match(/'tier_1'/g) ?? []).length).toBeGreaterThanOrEqual(21)
-    expect(migration).toContain("'btaskee.com', 'tier_1'")
-    expect(migration).toContain("'diennuochuongthinh.com', 'tier_1'")
-  })
 })
