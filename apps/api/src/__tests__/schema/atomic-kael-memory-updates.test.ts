@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -94,10 +95,7 @@ describe('atomic Kael memory updates', () => {
   })
 
   it('keeps generated database types aligned with the receipt and RPC contract', () => {
-    const databaseTypes = readFileSync(resolve(
-      root,
-      'packages/shared/src/types/database.types.ts',
-    ), 'utf8')
+    const databaseTypes = readGeneratedDatabaseTypes()
 
     expect(databaseTypes).toContain('kael_memory_update_receipts: {')
     for (const functionName of [

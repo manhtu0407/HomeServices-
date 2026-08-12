@@ -121,21 +121,37 @@ apps/mobile/components/ui/
 | Push helper | `supabase/functions/mobile-api/_shared/platform/push.ts` | push is best-effort; notification rows remain source of truth |
 | Rate limit | `supabase/functions/mobile-api/_shared/platform/rate-limit.ts` | protect AI/provider routes |
 | Kael Harness shared contracts | `packages/shared/kael/**` | charter skeletons, permission-purpose types, and future shared Kael governance contracts |
-| Generated DB types | `packages/shared/src/types/database.types.ts`, re-exported by `apps/api/src/lib/database.types.ts` | generated artifact, never hand-edited — see the regenerate command below |
+| Generated DB types | `packages/shared/src/types/database/**`, re-exported by `packages/shared/src/types/index.ts` and `apps/api/src/lib/database.types.ts` | generated artifact split by domain, never hand-edited — see the regenerate command below |
 
 `apps/api/src/**` mirrors/reference-tests many of these behaviors for Next.js/admin/support. It is not the store-bound mobile runtime unless Tu explicitly changes scope.
 
-### Regenerating `database.types.ts`
+### Regenerating the generated DB types
 
 ```bash
-pnpm supabase gen types --local > packages/shared/src/types/database.types.ts
+pnpm db:local:types
 ```
 
+That wrapper generates from the running local schema and then runs `scripts/split-database-types.mjs`, which
+writes the artifact split by domain under `packages/shared/src/types/database/**`. Do not redirect
+`supabase gen types` into a file by hand — the single-file form is no longer what the repo reads.
+
 `--local` needs Docker and a running local stack; use `--linked` or `--project-id <ref>` to generate against a
-remote project instead. Hand edits to this file are lost on the next regenerate, so fix the migration and
-regenerate rather than patching the output. `.gitattributes` marks it `linguist-generated -diff`, and
-`apps/api/src/__tests__/schema/kael-database-types-drift.test.ts` fails if its public tables and the tables the
-migrations create ever diverge in either direction.
+remote project instead. Hand edits to these files are lost on the next regenerate, so fix the migration and
+regenerate rather than patching the output. `.gitattributes` marks the directory `linguist-generated -diff`.
+
+Three gates hold the split honest, and all three read the artifact through the splitter's `join()`, never a
+single file:
+
+- `node scripts/split-database-types.mjs --check-against <generated>` — rejoins the tree and compares it byte
+  for byte, which is what `.github/workflows/harness-assurance.yml` runs after replaying every migration.
+- `config/harness/migration-inventory.json → databaseTypes.sha256` — hashes the rejoined bytes.
+  `scripts/harness/promotion.mjs` compares that value across releases, so it must not change when only the
+  file layout changes.
+- `apps/api/src/__tests__/schema/kael-database-types-drift.test.ts` — fails if the generated public tables and
+  the tables the migrations create diverge in either direction.
+
+A new table whose name matches no bucket rule aborts the splitter by design; add a prefix rule or an explicit
+`CORE_TABLES` entry rather than a catch-all.
 
 ### C3 — One Kael brain (Edge canonical)
 

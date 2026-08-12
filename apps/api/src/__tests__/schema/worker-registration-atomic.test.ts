@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const root = resolve(__dirname, '../../../../..')
 const migrationPath = resolve(
@@ -112,7 +113,7 @@ describe('atomic worker registration migration', () => {
       root,
       'supabase/functions/mobile-api/_shared/domains/worker/registration.ts',
     ))
-    const types = normalized(resolve(root, 'packages/shared/src/types/database.types.ts'))
+    const types = readGeneratedDatabaseTypes().replace(/\s+/g, ' ').trim().toLowerCase()
     const nextRegister = next.match(/export async function registerworker[\s\S]*?\nfunction normalizeworkerdistricts/)?.[0] ?? ''
     const edgeRegister = edge.match(/export async function registerworker[\s\S]*?\n}\n\nexport async function submitworkerapplication/)?.[0] ?? ''
 

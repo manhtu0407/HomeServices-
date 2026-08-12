@@ -162,18 +162,17 @@ Every number below carries the command that regenerates it. **A count with no co
 | Edge `_shared` source files | 313 | `git ls-files supabase/functions/mobile-api/_shared \| wc -l` — split http 41 / domains 126 / kael 120 / platform 21 (§4.5) |
 | Deployable Edge functions | 5 | `git ls-files supabase/functions \| awk -F/ 'NF>2 && $3!="_shared"{print $3}' \| sort -u \| wc -l` |
 | Migrations | 208 | `git ls-files 'supabase/migrations/*.sql' \| wc -l` |
-| `public` tables / views / functions | 94 / 7 / 109 | the `awk` below |
+| `public` tables / views / functions | 124 / 9 / 156 | the `--count` command below |
 | Test suites (api / mobile / shared / SQL) | 278 / 106 / 24 / 23 | `git ls-files <package> \| grep -cE '[-.]test\.tsx?$'` |
 
 ```bash
-awk '/^    (Tables|Views|Functions): \{/{s=$1} /^      [A-Za-z_][A-Za-z0-9_]*: \{$/{n[s]++} END{for(k in n) print k, n[k]}' \
-  packages/shared/src/types/database.types.ts
+node scripts/split-database-types.mjs --count
 ```
 
 Two counting traps, both of which have produced wrong numbers here before:
 
 - Mobile suites use **two** naming conventions — `*-test.ts(x)` (103) and `*.test.ts` (3, under `apps/mobile/lib/__tests__`). Counting only the `.test.` form returns 3 and makes the app look untested; hence the `[-.]` in the command above.
-- One of the 109 `public` functions is `graphql`, the pg_graphql extension helper, not a project RPC.
+- The generated artifact declares members in three shapes — `name: {` over several lines, `name: { Args: …; Returns: … }` on one line, and `name:` followed by a multi-line union (the three `*_kael_ai_spend` RPCs). A regex keyed on `name: {` silently drops the last two, and one keyed on the file as a whole also picks up `graphql` from the separate `graphql_public` schema. The 156 above counts by brace depth inside `public` only, so it excludes `graphql` and includes all three shapes.
 
 ### 1.5.2 Capability status
 

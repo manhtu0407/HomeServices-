@@ -5,8 +5,8 @@ export type {
   Tables,
   TablesInsert,
   TablesUpdate,
-} from './database.types'
-export { Constants } from './database.types'
+} from './database'
+export { Constants } from './database'
 export type {
   AIProvider,
   AITextContent,

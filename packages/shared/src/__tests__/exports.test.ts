@@ -50,7 +50,7 @@ describe('types/index.ts barrel export completeness', () => {
 
   it('re-exports Database type', () => {
     expect(typesSrc).toContain('Database')
-    expect(typesSrc).toContain("from './database.types'")
+    expect(typesSrc).toContain("from './database'")
   })
 
   it('re-exports AI types', () => {
@@ -122,7 +122,10 @@ describe('all source files exist', () => {
     'validation.ts',
     'workflow/index.ts',
     'types/index.ts',
-    'types/database.types.ts',
+    'types/database/index.ts',
+    'types/database/schema.database.types.ts',
+    'types/database/helpers.database.types.ts',
+    'types/database/table-order.json',
     'types/ai.types.ts',
   ]
 

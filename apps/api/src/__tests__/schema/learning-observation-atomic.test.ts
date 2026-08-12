@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const root = resolve(__dirname, '../../../../..')
 const migrationPath = resolve(
@@ -70,10 +71,7 @@ describe('atomic learning observation migration', () => {
       resolve(root, 'apps/api/src/lib/learning/observation-rpc.ts'),
       'utf8',
     )
-    const types = readFileSync(
-      resolve(root, 'packages/shared/src/types/database.types.ts'),
-      'utf8',
-    )
+    const types = readGeneratedDatabaseTypes()
 
     expect(market).toContain("recordLearningObservation(supabase, 'price_prior_update', input)")
     expect(review).toContain("recordLearningObservation(supabase, 'analysis_rule', input)")

@@ -36,7 +36,7 @@ In filename (timestamp) order. Each row: migration → objects it adds → the E
 
 1. `supabase migration list --linked` (or `supabase db push --dry-run`) against the **target** project and confirm **exactly** migrations #1–#7 above (plus the same-batch three) are pending, and **nothing unexpected** is.
 2. Apply migrations, THEN deploy `mobile-api`. Never deploy the Edge function ahead of the migrations.
-3. `packages/shared/src/types/database.types.ts` already reflects the FULL post-migration schema (including `kael_worker_chat_turns.job_id NOT NULL`). An unmigrated DB therefore diverges **silently** from the generated types — types passing is NOT evidence the DB is migrated.
+3. The generated types under `packages/shared/src/types/database/**` already reflect the FULL post-migration schema (including `kael_worker_chat_turns.job_id NOT NULL`). An unmigrated DB therefore diverges **silently** from the generated types — types passing is NOT evidence the DB is migrated.
 
 ## Post-apply smoke (closes the §32 G1 gate)
 

@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readGeneratedDatabaseTypes } from '../helpers/generated-database-types'
 
 const ROOT = resolve(__dirname, '../../../../../')
 const MIGRATIONS_DIR = resolve(ROOT, 'supabase/migrations')
-const SHARED_DATABASE_TYPES = resolve(ROOT, 'packages/shared/src/types/database.types.ts')
 
 // Migrations use every accepted spelling: bare `create table jobs`, `if not exists`, and an
 // optional schema qualifier. Matching only the fully-qualified form silently skips a third of
@@ -41,7 +41,7 @@ const migrationPublicTables = () => {
 const generatedPublicTables = () => {
   const names = new Set<string>()
   let section: string | null = null
-  for (const line of readText(SHARED_DATABASE_TYPES).split('\n')) {
+  for (const line of readGeneratedDatabaseTypes().split('\n')) {
     const header = line.match(/^ {4}([A-Za-z]+): \{/)
     if (header) section = header[1]
     else if (section === 'Tables') {

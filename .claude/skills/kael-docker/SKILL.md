@@ -1,6 +1,6 @@
 ---
 name: kael-docker
-description: Run the NestScout database and Edge toolchain locally with Docker. Use when you need a real Postgres instead of reading SQL as text - running migrations, db reset, RLS or trigger or constraint checks, the SQL verification scripts, integration tests against a real database, regenerating database.types.ts, or deno check on supabase/functions. Also use on the bare word docker, or for compose, container, local stack, or local supabase.
+description: Run the NestScout database and Edge toolchain locally with Docker. Use when you need a real Postgres instead of reading SQL as text - running migrations, db reset, RLS or trigger or constraint checks, the SQL verification scripts, integration tests against a real database, regenerating the database types under packages/shared/src/types/database, or deno check on supabase/functions. Also use on the bare word docker, or for compose, container, local stack, or local supabase.
 ---
 
 # kael-docker
@@ -28,7 +28,7 @@ real client, violates `RULES.md` #0. Stop if you find yourself doing it.
 | `pnpm db:local:down` | Stop the stack. |
 | `pnpm db:local:reset` | Replay every migration from zero, then `supabase/seed.sql`. |
 | `pnpm db:local:test` | Run the SQL verification scripts through psql in the db container. |
-| `pnpm db:local:types` | Regenerate `packages/shared/src/types/database.types.ts` from the local schema. |
+| `pnpm db:local:types` | Regenerate `packages/shared/src/types/database/**` from the local schema (generates, then splits by domain). |
 | `pnpm db:local:diff` | Diff local schema against migrations. |
 | `pnpm db:local:lint` | `supabase db lint --local`. |
 | `pnpm edge:check` | Type-check `supabase/functions/**` in the pinned Deno container. |

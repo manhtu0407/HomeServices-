@@ -2,11 +2,16 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { join as joinDatabaseTypes } from '../split-database-types.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const MIGRATION_ROOT = 'supabase/migrations'
 const INVENTORY_PATH = 'config/harness/migration-inventory.json'
-const TYPES_PATH = 'packages/shared/src/types/database.types.ts'
+// The generated Supabase artifact is stored split across this directory. The hash below is
+// taken over the rejoined bytes, not over any one file, so it stays identical to the hash
+// recorded before the split — scripts/harness/promotion.mjs compares that value across
+// releases, and a change would invalidate every release already recorded.
+const TYPES_PATH = 'packages/shared/src/types/database'
 const BASELINE_PATH = 'config/harness/migration-baseline.json'
 const normalizeSource = (value) => value.replace(/\r\n/gu, '\n')
 
@@ -39,7 +44,7 @@ export function buildMigrationInventory(options = {}) {
     migrationsSha256: digest(entries.map((entry) => `${entry.version}:${entry.name}:${entry.sha256}\n`).join('')),
     databaseTypes: {
       file: TYPES_PATH,
-      sha256: digest(canonicalSourceBytes(resolve(root, TYPES_PATH))),
+      sha256: digest(Buffer.from(normalizeSource(joinDatabaseTypes(root)), 'utf8')),
     },
     entries,
   }
