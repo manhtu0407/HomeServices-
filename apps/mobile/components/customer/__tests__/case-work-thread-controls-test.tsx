@@ -53,7 +53,7 @@ describe('Case Work phase controls', () => {
   it('shows a per-job QR receipt and only lets the customer claim the transfer', async () => {
     const onClaimManualBankPayment = jest.fn(async () => true)
     const pendingDeal = dealFixture('payment_pending')
-    pendingDeal.payment = manualBankPayment()
+    pendingDeal.payment = manualBankPayment({ directPaymentAvailable: true })
     renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
       onClaimManualBankPayment,
       paymentRailProvider: 'platform_bank_manual',
@@ -76,6 +76,59 @@ describe('Case Work phase controls', () => {
     fireEvent.press(screen.getByTestId('customer-v21-case-manual-payment-claim'))
     await waitFor(() => expect(onClaimManualBankPayment).toHaveBeenCalledTimes(1))
     expect(screen.queryByTestId('customer-v21-case-payment-confirmed')).not.toBeOnTheScreen()
+  })
+
+  it('explains the QR-only payment path when the server cannot reserve safety collateral', () => {
+    const onSelectDirectWorkerPayment = jest.fn(async () => true)
+    const pendingDeal = dealFixture('payment_pending')
+    pendingDeal.payment = manualBankPayment({ directPaymentAvailable: false })
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
+      onSelectDirectWorkerPayment,
+      paymentRailProvider: 'platform_bank_manual',
+    })
+
+    expect(screen.getByTestId('customer-v21-case-direct-payment-qr-only')).toBeOnTheScreen()
+    expect(screen.getByText('Thanh toán QR qua Kael')).toBeOnTheScreen()
+    expect(screen.getByText('Trả trực tiếp có bảo đảm chưa được mở cho công việc này. Hãy dùng QR để Kael đối soát an toàn.')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-direct-payment-select')).not.toBeOnTheScreen()
+    expect(onSelectDirectWorkerPayment).not.toHaveBeenCalled()
+  })
+
+  it('does not offer direct payment before the server verifies eligibility', async () => {
+    const onRefreshPayment = jest.fn(async () => true)
+    const pendingDeal = dealFixture('payment_pending')
+    pendingDeal.payment = manualBankPayment({ directPaymentAvailable: null })
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
+      onRefreshPayment,
+      paymentRailProvider: 'platform_bank_manual',
+    })
+
+    expect(screen.getByTestId('customer-v21-case-direct-payment-checking')).toBeOnTheScreen()
+    expect(screen.getByText('Kael đang kiểm tra trả trực tiếp')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-direct-payment-select')).not.toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('customer-v21-case-payment-refresh'))
+    await waitFor(() => expect(onRefreshPayment).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps the QR claim label stable while direct-payment eligibility is being checked', async () => {
+    let resolveDirectSelection: (value: boolean) => void = () => undefined
+    const onSelectDirectWorkerPayment = jest.fn(() => new Promise<boolean>((resolve) => {
+      resolveDirectSelection = resolve
+    }))
+    const pendingDeal = dealFixture('payment_pending')
+    pendingDeal.payment = manualBankPayment({ directPaymentAvailable: true })
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
+      onSelectDirectWorkerPayment,
+      paymentRailProvider: 'platform_bank_manual',
+    })
+
+    fireEvent.press(screen.getByTestId('customer-v21-case-direct-payment-select'))
+    await waitFor(() => expect(onSelectDirectWorkerPayment).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('Tôi đã chuyển khoản')).toBeOnTheScreen()
+    expect(screen.getByText('Đang kiểm tra điều kiện')).toBeOnTheScreen()
+
+    resolveDirectSelection(true)
+    await waitFor(() => expect(screen.getByText('Trả trực tiếp cho thợ')).toBeOnTheScreen())
   })
 
   it('keeps the dark payment receipt solid instead of applying the light Formula Mint aura', () => {

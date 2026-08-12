@@ -21,6 +21,14 @@ import {
 import { CustomerPaymentRailSurface } from './customer-payment-rail-surface'
 import { FindingWorkersReceipt } from './finding-workers-receipt'
 
+type PaymentBusyAction =
+  | 'legacy_create'
+  | 'manual_order'
+  | 'manual_claim'
+  | 'direct_selection'
+  | 'direct_response'
+  | null
+
 export function AgenticCaseThreadPanel({
   activityLabel,
   caseEvidenceGateActive,
@@ -97,7 +105,7 @@ export function AgenticCaseThreadPanel({
   tokens: CustomerThemeTokens
 }) {
   const [authorizingApartmentAccess, setAuthorizingApartmentAccess] = useState(false)
-  const [paymentBusy, setPaymentBusy] = useState(false)
+  const [paymentBusyAction, setPaymentBusyAction] = useState<PaymentBusyAction>(null)
   const [refreshingPayment, setRefreshingPayment] = useState(false)
   const phase = toWorkflowPhase(deal.backendStatus ?? deal.status)
   const model = buildCaseWorkResponseModel({ deal, language, paymentRailProvider, phase })
@@ -109,6 +117,15 @@ export function AgenticCaseThreadPanel({
   const phaseHistory = (
     <CaseWorkPhaseHistory language={language} models={completedPhaseModels} tokens={tokens} />
   )
+  const paymentBusy = paymentBusyAction !== null
+  const runPaymentAction = (
+    action: Exclude<PaymentBusyAction, null>,
+    operation: () => Promise<boolean>,
+  ) => {
+    if (paymentBusyAction) return
+    setPaymentBusyAction(action)
+    void operation().finally(() => setPaymentBusyAction(null))
+  }
 
   if (caseEvidenceGateActive) {
     return (
@@ -232,29 +249,19 @@ export function AgenticCaseThreadPanel({
         deal={deal}
         language={language}
         onCreatePaymentIntent={() => {
-          if (paymentBusy) return
-          setPaymentBusy(true)
-          void onCreatePaymentIntent().finally(() => setPaymentBusy(false))
+          runPaymentAction('legacy_create', onCreatePaymentIntent)
         }}
         onCreateManualBankPaymentOrder={() => {
-          if (paymentBusy) return
-          setPaymentBusy(true)
-          void onCreateManualBankPaymentOrder().finally(() => setPaymentBusy(false))
+          runPaymentAction('manual_order', onCreateManualBankPaymentOrder)
         }}
         onClaimManualBankPayment={() => {
-          if (paymentBusy) return
-          setPaymentBusy(true)
-          void onClaimManualBankPayment().finally(() => setPaymentBusy(false))
+          runPaymentAction('manual_claim', onClaimManualBankPayment)
         }}
         onSelectDirectWorkerPayment={() => {
-          if (paymentBusy) return
-          setPaymentBusy(true)
-          void onSelectDirectWorkerPayment().finally(() => setPaymentBusy(false))
+          runPaymentAction('direct_selection', onSelectDirectWorkerPayment)
         }}
         onRespondToDirectWorkerPayment={(received) => {
-          if (paymentBusy) return
-          setPaymentBusy(true)
-          void onRespondToDirectWorkerPayment(received).finally(() => setPaymentBusy(false))
+          runPaymentAction('direct_response', () => onRespondToDirectWorkerPayment(received))
         }}
         onRefreshPayment={() => {
           if (refreshingPayment) return
@@ -262,6 +269,7 @@ export function AgenticCaseThreadPanel({
           void onRefreshPayment().finally(() => setRefreshingPayment(false))
         }}
         paymentBusy={paymentBusy}
+        paymentBusyAction={paymentBusyAction}
         paymentRailProvider={paymentRailProvider}
         refreshingPayment={refreshingPayment}
         reduceMotion={reduceMotion}

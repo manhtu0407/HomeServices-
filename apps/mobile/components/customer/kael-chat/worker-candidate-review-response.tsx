@@ -55,6 +55,9 @@ function WorkerCandidateReviewContent({
   const [finalReviewOpen, setFinalReviewOpen] = useState(false)
   const displayName = candidate?.display_name?.trim() || (language === 'vi' ? 'Hồ sơ thợ' : 'Worker profile')
   const facts = candidate ? candidateFacts(candidate, language) : []
+  const paymentEligibility = candidate
+    ? paymentEligibilityCopy(candidate.direct_payment_available, language)
+    : null
   const model = buildCaseWorkResponseModel({
     language,
     phase: 'worker_candidate_review',
@@ -181,6 +184,17 @@ function WorkerCandidateReviewContent({
                   ? 'Địa chỉ chi tiết vẫn được khóa cho tới khi bạn chọn thợ này.'
                   : 'Your detailed address stays locked until you choose this worker.'}
               </Text>
+              {paymentEligibility ? (
+                <View
+                  accessible
+                  accessibilityLabel={`${paymentEligibility.title}. ${paymentEligibility.body}`}
+                  style={[styles.paymentEligibility, { backgroundColor: tokens.base, borderColor: tokens.border }]}
+                  testID={paymentEligibility.testID}
+                >
+                  <Text style={[styles.paymentTitle, { color: tokens.text }]}>{paymentEligibility.title}</Text>
+                  <Text style={[styles.body, { color: tokens.muted }]}>{paymentEligibility.body}</Text>
+                </View>
+              ) : null}
               {!finalReviewOpen ? (
                 <KaelButton
                   accessibilityState={{ disabled: busy, selected: candidate.is_favorite }}
@@ -207,6 +221,46 @@ function WorkerCandidateReviewContent({
   )
 }
 
+function paymentEligibilityCopy(availability: boolean | null | undefined, language: AppLanguage) {
+  if (availability === true) {
+    return language === 'vi'
+      ? {
+          body: 'Theo điều kiện hiện tại, Kael có thể mở trả trực tiếp có bảo đảm sau khi hoàn tất. Kael sẽ kiểm tra lại mọi điều kiện trước khi mở thanh toán.',
+          testID: 'customer-v21-worker-candidate-payment-direct-available',
+          title: 'Trả trực tiếp đang đủ điều kiện',
+        }
+      : {
+          body: 'Under the current conditions, Kael can open protected direct payment after completion. Kael checks every condition again before payment opens.',
+          testID: 'customer-v21-worker-candidate-payment-direct-available',
+          title: 'Protected direct payment is currently eligible',
+        }
+  }
+  if (availability === false) {
+    return language === 'vi'
+      ? {
+          body: 'Với thợ này, Kael chưa thể mở trả trực tiếp có bảo đảm. Kael sẽ xác nhận phương thức thanh toán an toàn khi hoàn tất.',
+          testID: 'customer-v21-worker-candidate-payment-direct-unavailable',
+          title: 'Trả trực tiếp chưa được mở',
+        }
+      : {
+          body: 'For this worker, Kael cannot open protected direct payment yet. Kael confirms the safe payment method after completion.',
+          testID: 'customer-v21-worker-candidate-payment-direct-unavailable',
+          title: 'Protected direct payment is not open',
+        }
+  }
+  return language === 'vi'
+    ? {
+        body: 'Kael sẽ kiểm tra phương thức thanh toán an toàn trước khi mở bước thanh toán.',
+        testID: 'customer-v21-worker-candidate-payment-checking',
+        title: 'Phương thức thanh toán đang được xác nhận',
+      }
+    : {
+        body: 'Kael checks the safe payment method before opening the payment step.',
+        testID: 'customer-v21-worker-candidate-payment-checking',
+        title: 'Payment method is being verified',
+      }
+}
+
 function candidateFacts(candidate: WorkerCandidateView, language: AppLanguage) {
   const facts: string[] = []
   if (candidate.rating !== null && candidate.total_jobs > 0) facts.push(`${candidate.rating.toFixed(1)} ★`)
@@ -227,6 +281,8 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
   name: { fontSize: 17, fontWeight: '700', lineHeight: 23 },
   notice: { fontSize: 12, lineHeight: 18 },
+  paymentEligibility: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 3, padding: 12 },
+  paymentTitle: { fontSize: 13, fontWeight: '700', lineHeight: 19 },
   savedHeader: { gap: 3 },
   savedTitle: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
 })

@@ -369,7 +369,6 @@ export type PlacesResolveResponse = {
   place_id: string
   provider: 'vietmap' | 'google_maps' | 'fallback'
 }
-
 export type JobDetailResponse = {
   job: {
     id: string
@@ -421,6 +420,7 @@ export type JobDetailResponse = {
       customer_confirmed_at: string | null
       worker_confirmed_at: string | null
       collateral_amount: number | null
+      direct_payment_available?: boolean | null
       bank_code: string | null
       account_holder: string | null
       account_masked: string | null

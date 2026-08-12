@@ -210,6 +210,7 @@ function isOptionalPayment(value: unknown): boolean {
     isOptionalNullableString(value.directCustomerConfirmedAt) &&
     isOptionalNullableString(value.directWorkerConfirmedAt) &&
     isOptionalSafeMoney(value.collateralAmount) &&
+    (value.directPaymentAvailable === undefined || value.directPaymentAvailable === null || typeof value.directPaymentAvailable === 'boolean') &&
     isOptionalNullableString(value.bankCode) &&
     isOptionalNullableString(value.accountHolder) &&
     isOptionalNullableString(value.accountMasked) &&

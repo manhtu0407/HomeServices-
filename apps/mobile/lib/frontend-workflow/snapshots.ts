@@ -275,6 +275,7 @@ function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['j
     directCustomerConfirmedAt: receipt?.customer_confirmed_at ?? null,
     directWorkerConfirmedAt: receipt?.worker_confirmed_at ?? null,
     collateralAmount: numericOrNull(receipt?.collateral_amount),
+    directPaymentAvailable: receipt?.direct_payment_available ?? null,
     bankCode: receipt?.bank_code ?? null,
     accountHolder: receipt?.account_holder ?? null,
     accountMasked: receipt?.account_masked ?? null,

@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 246,
-    "migrationDigest": "016a13dcb98e22191b34f56c7a0d475d9dfadb4079e66e044d5a5cdb236c26b3"
+    "migrationCount": 248,
+    "migrationDigest": "45ab2ef9a8c3685b99537421c48975afbfd9b17a5ec712798b64a7c5920e4cc1"
   },
   "actors": [
     "anonymous",
@@ -3071,6 +3071,14 @@
     {
       "signature": "get_customer_profile_insights_aggregate(uuid)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_direct_worker_payment_availability(uuid, uuid)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"

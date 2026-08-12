@@ -81,6 +81,7 @@ export type EdgeWorkerCandidateView = {
   proposed_at: string;
   expires_at: string | null;
   customer_decided_at: string | null;
+  direct_payment_available?: boolean | null;
 };
 
 export type EdgeWorkerCandidateResponse = {

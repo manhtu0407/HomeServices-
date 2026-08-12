@@ -18,6 +18,7 @@ import {
 import { asJobStatus, asString, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery } from "../../platform/db.ts";
 import { insertUserNotification, notifyCustomerWorkerMatched } from "../notification/notifications.ts";
+import { loadDirectWorkerPaymentAvailability } from "../payment/direct-payment-availability.ts";
 
 export { notifyCustomerCandidateReady } from "./candidate-support.ts";
 
@@ -59,11 +60,17 @@ export async function getWorkerCandidate(ctx: MobileApiContext, jobId: string) {
       message: resumed.message,
     };
   }
+  const candidate = current.data
+    ? await buildSafeWorkerCandidateView(client, current.data, asString(job.customer_id))
+    : null;
+  const directPaymentAvailable = candidate && ctx.role === "customer"
+    ? await loadDirectWorkerPaymentAvailability(client, jobId, ctx.user.id)
+    : null;
   return {
     job_id: jobId,
     status: job.status,
-    candidate: current.data
-      ? await buildSafeWorkerCandidateView(client, current.data, asString(job.customer_id))
+    candidate: candidate
+      ? { ...candidate, direct_payment_available: directPaymentAvailable }
       : null,
   };
 }
