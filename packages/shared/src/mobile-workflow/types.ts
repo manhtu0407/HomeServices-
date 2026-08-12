@@ -120,6 +120,7 @@ export type LocalDealPayment = {
   directCustomerConfirmedAt?: string | null
   directWorkerConfirmedAt?: string | null
   collateralAmount?: number | null
+  directPaymentAvailable?: boolean | null
   bankCode?: string | null
   accountHolder?: string | null
   accountMasked?: string | null

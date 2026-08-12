@@ -63,7 +63,9 @@ export async function getJob(
     job.status === "broadcasting" ? getJobBroadcastState(client, jobId) : null,
     job.status === "scope_change_pending" ? getCurrentScopeChange(client, jobId) : null,
     workerId ? loadJobWorkerSummary(client, workerId) : null,
-    hasPaymentReceipt ? loadPaymentReceipt(client, jobId, ctx.role) : null,
+    hasPaymentReceipt
+      ? loadPaymentReceipt(client, jobId, ctx.role, ctx.role === "customer" ? ctx.user.id : null)
+      : null,
   ]);
   let broadcastState = initialBroadcastState;
   if (

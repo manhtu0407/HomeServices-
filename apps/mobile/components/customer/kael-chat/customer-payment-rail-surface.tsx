@@ -15,6 +15,14 @@ import { buildSePayVietQrPaymentPresentation } from './sepay-vietqr-payment-disp
 
 const QR_BOX_SIZE = 256
 
+type PaymentBusyAction =
+  | 'legacy_create'
+  | 'manual_order'
+  | 'manual_claim'
+  | 'direct_selection'
+  | 'direct_response'
+  | null
+
 type CustomerPaymentRailSurfaceProps = {
   deal: LocalDeal
   language: AppLanguage
@@ -25,6 +33,7 @@ type CustomerPaymentRailSurfaceProps = {
   onRespondToDirectWorkerPayment: (received: boolean) => void
   onSelectDirectWorkerPayment: () => void
   paymentBusy: boolean
+  paymentBusyAction: PaymentBusyAction
   paymentRailProvider: PaymentRailProvider
   refreshingPayment: boolean
   reduceMotion: boolean
@@ -42,6 +51,7 @@ export function CustomerPaymentRailSurface({
   onRespondToDirectWorkerPayment,
   onSelectDirectWorkerPayment,
   paymentBusy,
+  paymentBusyAction,
   paymentRailProvider,
   refreshingPayment,
   reduceMotion,
@@ -72,7 +82,7 @@ export function CustomerPaymentRailSurface({
           <KaelButton
             accessibilityState={{ busy: paymentBusy, disabled: paymentBusy }}
             disabled={paymentBusy}
-            label={paymentBusy
+            label={paymentBusyAction === 'manual_order'
               ? (language === 'vi' ? 'Đang tạo lệnh' : 'Creating order')
               : (language === 'vi' ? 'Tạo lại lệnh thanh toán' : 'Create payment order again')}
             onPress={onCreateManualBankPaymentOrder}
@@ -82,7 +92,7 @@ export function CustomerPaymentRailSurface({
       )
     }
     if (paymentRailProvider === 'sepay_vietqr') {
-      return <LegacyPaymentStart language={language} onCreate={onCreatePaymentIntent} paymentBusy={paymentBusy} tokens={tokens} />
+      return <LegacyPaymentStart language={language} onCreate={onCreatePaymentIntent} paymentBusy={paymentBusy} paymentBusyAction={paymentBusyAction} tokens={tokens} />
     }
     return <PaymentUnavailable language={language} tokens={tokens} />
   }
@@ -95,6 +105,7 @@ export function CustomerPaymentRailSurface({
         onRefresh={onRefreshPayment}
         onRespond={onRespondToDirectWorkerPayment}
         paymentBusy={paymentBusy}
+        paymentBusyAction={paymentBusyAction}
         refreshing={refreshingPayment}
         reduceMotion={reduceMotion}
         tokens={tokens}
@@ -110,6 +121,7 @@ export function CustomerPaymentRailSurface({
         onRefresh={onRefreshPayment}
         onSelectDirect={onSelectDirectWorkerPayment}
         paymentBusy={paymentBusy}
+        paymentBusyAction={paymentBusyAction}
         refreshing={refreshingPayment}
         reduceMotion={reduceMotion}
         tokens={tokens}
@@ -129,6 +141,7 @@ function ManualBankPayment({
   onRefresh,
   onSelectDirect,
   paymentBusy,
+  paymentBusyAction,
   refreshing,
   reduceMotion,
   tokens,
@@ -139,6 +152,7 @@ function ManualBankPayment({
   onRefresh: () => void
   onSelectDirect: () => void
   paymentBusy: boolean
+  paymentBusyAction: PaymentBusyAction
   refreshing: boolean
   reduceMotion: boolean
   tokens: CustomerThemeTokens
@@ -173,6 +187,8 @@ function ManualBankPayment({
   }
 
   const text = copy(language)
+  const directPaymentAvailable = payment.directPaymentAvailable === true
+  const directSelectionBusy = paymentBusyAction === 'direct_selection'
   return (
     <PaymentSurface status={text.readyStatus} testID="customer-v21-case-manual-payment-ready" title={text.readyTitle} tokens={tokens}>
       <View style={styles.qrFrame} testID="customer-v21-case-manual-qr-frame">
@@ -200,31 +216,76 @@ function ManualBankPayment({
         <Text style={[styles.instruction, { color: tokens.muted }]}>{text.stepThree}</Text>
       </View>
       <KaelButton
-        accessibilityState={{ busy: paymentBusy, disabled: paymentBusy }}
+        accessibilityState={{ busy: paymentBusyAction === 'manual_claim', disabled: paymentBusy }}
         disabled={paymentBusy}
-        label={paymentBusy ? text.claimingLabel : text.claimLabel}
+        label={paymentBusyAction === 'manual_claim' ? text.claimingLabel : text.claimLabel}
         onPress={onClaim}
         testID="customer-v21-case-manual-payment-claim"
       />
-      <View
-        style={[styles.directWarning, { backgroundColor: tokens.base, borderColor: tokens.border }]}
-        testID="customer-v21-case-direct-payment-warning"
-      >
-        <View style={styles.directCopy}>
-          <Text style={[styles.messageTitle, { color: tokens.text }]}>{text.directTitle}</Text>
-          <Text style={[styles.note, { color: tokens.muted }]}>{text.directBody}</Text>
+      {directPaymentAvailable ? (
+        <View
+          style={[styles.directWarning, { backgroundColor: tokens.base, borderColor: tokens.border }]}
+          testID="customer-v21-case-direct-payment-warning"
+        >
+          <View style={styles.directCopy}>
+            <Text style={[styles.messageTitle, { color: tokens.text }]}>{text.directTitle}</Text>
+            <Text style={[styles.note, { color: tokens.muted }]}>{text.directBody}</Text>
+          </View>
+          <KaelButton
+            accessibilityState={{ busy: directSelectionBusy, disabled: paymentBusy }}
+            disabled={paymentBusy}
+            label={directSelectionBusy ? text.directCheckingLabel : text.directAction}
+            onPress={onSelectDirect}
+            size="small"
+            testID="customer-v21-case-direct-payment-select"
+            variant="secondary"
+          />
         </View>
-        <KaelButton
-          accessibilityState={{ busy: paymentBusy, disabled: paymentBusy }}
-          disabled={paymentBusy}
-          label={text.directAction}
-          onPress={onSelectDirect}
-          size="small"
-          testID="customer-v21-case-direct-payment-select"
-          variant="secondary"
+      ) : (
+        <DirectPaymentUnavailable
+          availability={payment.directPaymentAvailable}
+          language={language}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+          tokens={tokens}
         />
-      </View>
+      )}
     </PaymentSurface>
+  )
+}
+
+function DirectPaymentUnavailable({
+  availability,
+  language,
+  onRefresh,
+  refreshing,
+  tokens,
+}: {
+  availability: boolean | null | undefined
+  language: AppLanguage
+  onRefresh: () => void
+  refreshing: boolean
+  tokens: CustomerThemeTokens
+}) {
+  const text = copy(language)
+  const eligibilityKnown = availability === false
+  return (
+    <View
+      style={[styles.directWarning, { backgroundColor: tokens.base, borderColor: tokens.border }]}
+      testID={eligibilityKnown
+        ? 'customer-v21-case-direct-payment-qr-only'
+        : 'customer-v21-case-direct-payment-checking'}
+    >
+      <View style={styles.directCopy}>
+        <Text style={[styles.messageTitle, { color: tokens.text }]}>
+          {eligibilityKnown ? text.directUnavailableTitle : text.directEligibilityPendingTitle}
+        </Text>
+        <Text style={[styles.note, { color: tokens.muted }]}>
+          {eligibilityKnown ? text.directUnavailableBody : text.directEligibilityPendingBody}
+        </Text>
+      </View>
+      {!eligibilityKnown ? <RefreshButton language={language} onRefresh={onRefresh} refreshing={refreshing} /> : null}
+    </View>
   )
 }
 
@@ -234,6 +295,7 @@ function DirectWorkerPayment({
   onRefresh,
   onRespond,
   paymentBusy,
+  paymentBusyAction,
   refreshing,
   reduceMotion,
   tokens,
@@ -243,6 +305,7 @@ function DirectWorkerPayment({
   onRefresh: () => void
   onRespond: (received: boolean) => void
   paymentBusy: boolean
+  paymentBusyAction: PaymentBusyAction
   refreshing: boolean
   reduceMotion: boolean
   tokens: CustomerThemeTokens
@@ -269,14 +332,14 @@ function DirectWorkerPayment({
       {!isReconcile && !customerConfirmed ? (
         <View style={styles.actionStack}>
           <KaelButton
-            accessibilityState={{ busy: paymentBusy, disabled: paymentBusy }}
+            accessibilityState={{ busy: paymentBusyAction === 'direct_response', disabled: paymentBusy }}
             disabled={paymentBusy}
-            label={paymentBusy ? text.savingLabel : text.directConfirmAction}
+            label={paymentBusyAction === 'direct_response' ? text.savingLabel : text.directConfirmAction}
             onPress={() => onRespond(true)}
             testID="customer-v21-case-direct-payment-confirm"
           />
           <KaelButton
-            accessibilityState={{ busy: paymentBusy, disabled: paymentBusy }}
+            accessibilityState={{ busy: paymentBusyAction === 'direct_response', disabled: paymentBusy }}
             disabled={paymentBusy}
             label={text.directProblemAction}
             onPress={() => onRespond(false)}
@@ -313,17 +376,18 @@ function ConfirmedPaymentReceipt({ deal, language, reviewControls, tokens }: {
   )
 }
 
-function LegacyPaymentStart({ language, onCreate, paymentBusy, tokens }: {
+function LegacyPaymentStart({ language, onCreate, paymentBusy, paymentBusyAction, tokens }: {
   language: AppLanguage
   onCreate: () => void
   paymentBusy: boolean
+  paymentBusyAction: PaymentBusyAction
   tokens: CustomerThemeTokens
 }) {
   const text = copy(language)
   return (
     <PaymentSurface status={text.preparingStatus} testID="customer-v21-case-sepay-payment-start" title={language === 'vi' ? 'Thanh toán VietQR cũ' : 'Legacy VietQR payment'} tokens={tokens}>
       <Text style={[styles.body, { color: tokens.muted }]}>{language === 'vi' ? 'Lệnh VietQR cũ vẫn chỉ được xác minh theo trạng thái server.' : 'The legacy VietQR order is still verified only by server state.'}</Text>
-      <KaelButton accessibilityState={{ busy: paymentBusy, disabled: paymentBusy }} disabled={paymentBusy} label={paymentBusy ? text.preparingStatus : (language === 'vi' ? 'Tạo mã' : 'Create code')} onPress={onCreate} />
+      <KaelButton accessibilityState={{ busy: paymentBusyAction === 'legacy_create', disabled: paymentBusy }} disabled={paymentBusy} label={paymentBusyAction === 'legacy_create' ? text.preparingStatus : (language === 'vi' ? 'Tạo mã' : 'Create code')} onPress={onCreate} />
     </PaymentSurface>
   )
 }
@@ -476,6 +540,7 @@ function copy(language: AppLanguage) {
         confirmedTitle: 'Thanh toán đã được xác nhận',
         directAction: 'Trả trực tiếp cho thợ',
         directBody: 'Chỉ chọn khi chưa báo đã chuyển QR. Kael giữ 15% hoa hồng đến khi hai bên cùng xác nhận.',
+        directCheckingLabel: 'Đang kiểm tra điều kiện',
         directConfirmAction: 'Tôi đã trả trực tiếp',
         directConfirmedBody: 'Bạn và thợ đã cùng xác nhận thanh toán trực tiếp. Hoa hồng đã được ghi nhận theo biên nhận này.',
         directConfirmedTitle: 'Thanh toán trực tiếp đã được xác nhận',
@@ -483,8 +548,12 @@ function copy(language: AppLanguage) {
         directPendingTitle: 'Thanh toán trực tiếp cần hai xác nhận',
         directProblemAction: 'Báo có vấn đề',
         directReconcileBody: 'Kael đã chuyển biên nhận cho Admin đối soát. Khoản hoa hồng giữ lại không được tự giải phóng.',
+        directEligibilityPendingBody: 'Kael chưa thể xác minh điều kiện trả trực tiếp. Bạn vẫn có thể thanh toán QR hoặc cập nhật lại trạng thái.',
+        directEligibilityPendingTitle: 'Kael đang kiểm tra trả trực tiếp',
         directStatus: 'Chờ xác nhận hai phía',
         directTitle: 'Trả trực tiếp có bảo đảm',
+        directUnavailableBody: 'Trả trực tiếp có bảo đảm chưa được mở cho công việc này. Hãy dùng QR để Kael đối soát an toàn.',
+        directUnavailableTitle: 'Thanh toán QR qua Kael',
         preparingBody: 'Kael đang đọc lại lệnh thanh toán từ server. Không chuyển tiền cho đến khi QR và nội dung chuyển khoản xuất hiện.',
         preparingStatus: 'Đang chuẩn bị',
         preparingTitle: 'Đang chuẩn bị thanh toán',
@@ -526,6 +595,7 @@ function copy(language: AppLanguage) {
         confirmedTitle: 'Payment has been confirmed',
         directAction: 'Pay the worker directly',
         directBody: 'Choose this before claiming the QR transfer. Kael holds 15% commission until both sides confirm.',
+        directCheckingLabel: 'Checking eligibility',
         directConfirmAction: 'I paid directly',
         directConfirmedBody: 'You and the worker confirmed the direct payment. The commission is recorded through this receipt.',
         directConfirmedTitle: 'Direct payment confirmed',
@@ -533,8 +603,12 @@ function copy(language: AppLanguage) {
         directPendingTitle: 'Direct payment needs two confirmations',
         directProblemAction: 'Report a problem',
         directReconcileBody: 'Kael sent the receipt to an admin for reconciliation. The held commission is not released automatically.',
+        directEligibilityPendingBody: 'Kael could not verify direct-payment eligibility yet. You can still use QR payment or refresh the status.',
+        directEligibilityPendingTitle: 'Kael is checking direct payment',
         directStatus: 'Awaiting two confirmations',
         directTitle: 'Protected direct payment',
+        directUnavailableBody: 'Protected direct payment is not open for this work. Use QR payment so Kael can reconcile it safely.',
+        directUnavailableTitle: 'QR payment through Kael',
         preparingBody: 'Kael is reading the payment order from the server again. Do not transfer until the QR and transfer content appear.',
         preparingStatus: 'Preparing',
         preparingTitle: 'Preparing payment',

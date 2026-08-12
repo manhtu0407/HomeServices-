@@ -245,7 +245,12 @@ describe('matching-accept', () => {
         },
         error: null,
       },
-    ])
+    ], {
+      get_direct_worker_payment_availability: [{
+        data: [{ direct_payment_available: false }],
+        error: null,
+      }],
+    })
     const ctx: MobileApiContext = {
       success: true,
       user: { id: 'customer-1' },
@@ -265,12 +270,24 @@ describe('matching-accept', () => {
         total_jobs: 12,
         years_experience: 5,
         verification_status: 'approved',
+        direct_payment_available: false,
       },
     })
     expect(response.candidate).not.toHaveProperty('phone')
     expect(response.candidate).not.toHaveProperty('bank_account')
     expect(response.candidate).not.toHaveProperty('cccd_front_url')
     expect(response.candidate).not.toHaveProperty('address_unit')
+    expect(response.candidate).not.toHaveProperty('collateral_amount')
+    expect(response.candidate).not.toHaveProperty('available_balance')
+    expect(response.candidate).not.toHaveProperty('worker_net')
+    expect(client.calls).toContainEqual(expect.objectContaining({
+      table: 'rpc:get_direct_worker_payment_availability',
+      operations: [[
+        'rpc',
+        'get_direct_worker_payment_availability',
+        { p_customer_id: 'customer-1', p_job_id: 'job-1' },
+      ]],
+    }))
     const selectedColumns = client.calls.flatMap((call) => call.operations)
       .filter((operation) => operation[0] === 'select')
       .map((operation) => String(operation[1]))

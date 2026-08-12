@@ -9822,6 +9822,12 @@ export type Database = {
           status: Database["public"]["Enums"]["job_status"]
         }[]
       }
+      get_direct_worker_payment_availability: {
+        Args: { p_customer_id: string; p_job_id: string }
+        Returns: {
+          direct_payment_available: boolean
+        }[]
+      }
       get_worker_payment_safety_balance: {
         Args: { p_worker_id: string }
         Returns: {

@@ -40,6 +40,7 @@ begin
     'public.maintain_manual_bank_payment_holds(integer)'::regprocedure,
     'public.record_platform_bank_balance_snapshot(uuid,integer,timestamp with time zone)'::regprocedure,
     'public.admin_finance_summary(uuid,timestamp with time zone,timestamp with time zone)'::regprocedure,
+    'public.get_direct_worker_payment_availability(uuid,uuid)'::regprocedure,
     'private.schedule_payment_maintainer()'::regprocedure
   ] loop
     if not exists (
@@ -116,6 +117,17 @@ begin
     or position('if v_collateral <= 0' in v_definition) > position('delete from public.worker_payment_ledger' in v_definition)
   then
     raise exception 'direct-payment selection can mutate the QR ledger before collateral validation';
+  end if;
+
+  v_definition := pg_catalog.pg_get_functiondef(
+    'public.get_direct_worker_payment_availability(uuid,uuid)'::regprocedure
+  );
+  if v_definition not like '%worker_candidate_pending%'
+    or v_definition not like '%job_worker_candidates%'
+    or v_definition not like '%candidate.status = ''proposed''%'
+    or v_definition not like '%return query select v_collateral > 0%'
+  then
+    raise exception 'direct-payment availability lost its candidate-safe boolean projection';
   end if;
 
   if exists (

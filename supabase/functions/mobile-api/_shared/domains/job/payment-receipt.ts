@@ -3,11 +3,13 @@ import { dbQuery, type DbClient } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { UserRole } from "../../../../_shared/domain.ts";
 import type { EdgeJobDetailResponse } from "../contracts/job-detail.ts";
+import { loadDirectWorkerPaymentAvailability } from "../payment/direct-payment-availability.ts";
 
 export async function loadPaymentReceipt(
   client: DbClient,
   jobId: string,
   role: UserRole,
+  customerId: string | null,
 ): Promise<EdgeJobDetailResponse["job"]["payment_receipt"]> {
   const orderResult = await dbQuery<Record<string, unknown>>(
     client
@@ -45,6 +47,9 @@ export async function loadPaymentReceipt(
     }
     collateralAmount = nullableNumber(collateralResult.data?.collateral_amount);
   }
+  const directPaymentAvailable = method === "platform_bank_manual" && role === "customer" && customerId
+    ? await loadDirectWorkerPaymentAvailability(client, jobId, customerId)
+    : null;
   const account = role === "worker" ? null : paymentReceiptAccount(order.qr_image_url);
   return {
     method,
@@ -57,6 +62,7 @@ export async function loadPaymentReceipt(
     customer_confirmed_at: nullableString(order.customer_confirmed_at),
     worker_confirmed_at: nullableString(order.worker_confirmed_at),
     collateral_amount: collateralAmount,
+    direct_payment_available: directPaymentAvailable,
     bank_code: account?.bankCode ?? null,
     account_holder: account?.accountHolder ?? null,
     account_masked: account?.accountMasked ?? null,
