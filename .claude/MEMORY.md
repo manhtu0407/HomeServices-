@@ -91,3 +91,4 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 ---
 
 **Legacy session history (May 2026, Sessions 8-18)** was moved out of this file on 2026-08-03 and now lives at the end of [`docs/memory/2026-05.md`](../docs/memory/2026-05.md), verbatim. It was ~1,040 lines sitting in a file that every session loads. Fetch it only if you need pre-period-split history.
+- [§51 React Doctor executed](../docs/memory/2026-08.md) — shadow* is iOS-only in RN 0.86: 106 sites drew nothing on Android. boxShadow blur = 2x shadowRadius; RN default offset is {0,-3}; useLazyRef breaks exhaustive-deps; deslop/* rules not reproducible. G7 never ran.
