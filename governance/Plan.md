@@ -145,6 +145,10 @@ Plan đang sống viết từ đây xuống, bắt đầu từ **§51**.
 > Maintainability 55) trên 977 file / 2 project. `jest` mobile **đo xong, xanh: 119 suite /
 > 1116 test / 0 fail / `exit 0` / 125s**. `tsc` mobile **CHƯA ĐO ĐƯỢC bằng gate thật** — lý do
 > ở §51.0.7.4, **cấm coi con số tsc trong phiên này là baseline**.
+> **Nhánh thi công — bắt buộc, cả hai agent.** Toàn bộ §51 chạy trên **`claude/react-doctor-audit-zrlda5`**,
+> PR **#196** (draft). Codex và Claude Code **cùng commit và push vào đúng nhánh này** — không
+> nhánh phụ, không nhánh riêng theo agent, không worktree tách, không PR thứ hai. Chi tiết cơ
+> chế ở §51.0.5.
 > **DRAFT.** Decision Log còn 4 dòng `OPEN` (D1–D4), tất cả chờ Tu chốt. Chưa được sang
 > `EXECUTING`.
 
@@ -154,7 +158,9 @@ Plan đang sống viết từ đây xuống, bắt đầu từ **§51**.
 Plan ID:        plan-react-doctor-triage-20260812
 Created:        2026-08-12
 Owner:          Manh Tu
-Branch:         claude/react-doctor-audit-zrlda5
+Branch:         claude/react-doctor-audit-zrlda5   ← DUY NHẤT, dùng chung cho Codex +
+                Claude Code. Cấm nhánh phụ / worktree riêng / PR thứ hai.
+PR:             #196 (draft) — PR thi công của cả plan, không mở PR mới cho từng phase
 Status:         DRAFT
 Mốc:            HEAD 3a60840d · dải đã merge #1 → #194
 Trigger:        React Doctor full scan phát hiện 106 vị trí shadow chỉ chạy một nền tảng,
@@ -255,8 +261,12 @@ bất kỳ increment nào.
 
 **Bảy luật:**
 
-1. **Một plan, một branch, một ledger.** Cả hai agent làm trên `claude/react-doctor-audit-zrlda5`.
-   Không nhánh phụ, không worktree riêng cho từng agent.
+1. **Một plan, một branch, một PR, một ledger.** Cả hai agent commit và push vào đúng
+   **`claude/react-doctor-audit-zrlda5`**, gom về PR **#196**. Không nhánh phụ, không nhánh
+   `-codex` / `-claude`, không worktree riêng, không PR thứ hai cho từng phase. Agent nào thấy
+   mình đang đứng ở nhánh khác thì **dừng, `git checkout` về đúng nhánh, rồi mới làm** — cấm
+   "làm tạm ở nhánh này rồi cherry-pick sau", đó là cách §49 từng chạy nhầm worktree suốt một
+   phiên.
 2. **Increment là đơn vị nguyên tử.** Một increment = một file (hoặc một cụm đã ghi rõ ở phase)
    + gate của increment đó xanh + một commit. Không agent nào giữ quá **một** increment `WIP`
    cùng lúc.
@@ -276,6 +286,33 @@ bất kỳ increment nào.
    kế tiếp đọc đúng dòng đó và chạy tiếp — không bắt đầu lại, không hỏi lại Tu.
 7. **Không agent nào được tự đánh dấu plan `DONE`.** `DONE` cần số PR đã merge (luật B), và chỉ
    Tu chốt. Agent chỉ được đưa mọi increment về `DONE` rồi báo.
+
+**Vòng git chuẩn cho mỗi increment — cả hai agent chạy y hệt nhau:**
+
+```bash
+git checkout claude/react-doctor-audit-zrlda5   # xác nhận đúng nhánh TRƯỚC mọi thứ
+git pull --rebase origin claude/react-doctor-audit-zrlda5
+
+# 1) claim: sửa đúng MỘT dòng ledger §51.0.6 → WIP + tên mình, rồi push ngay
+git add governance/Plan.md
+git commit -m "Claim <increment>"
+git push -u origin claude/react-doctor-audit-zrlda5
+
+# 2) verify việc của người trước (luật 4) — chạy lại gate của increment DONE gần nhất
+# 3) làm increment của mình + chạy gate của nó
+# 4) đóng increment: code + ledger DONE trong CÙNG một commit
+git add -A
+git commit -m "<increment>: <việc>"
+git push -u origin claude/react-doctor-audit-zrlda5
+```
+
+**Push bị từ chối** (agent kia đã push trước) → `git pull --rebase` rồi push lại. **Tuyệt đối
+không** `--force` / `--force-with-lease` trên nhánh này: nó xoá commit của agent kia. Nếu rebase
+đụng conflict ở `governance/Plan.md`, conflict đó gần như luôn nằm ở bảng ledger — xử theo luật 5:
+**giữ cả hai dòng**.
+
+**Push lỗi mạng** → retry tối đa 4 lần, backoff 2s / 4s / 8s / 16s. Vẫn lỗi thì ghi `BLOCKED`
+vào ledger, không bỏ commit lại local rồi kết phiên im lặng.
 
 **Khác biệt công cụ đã biết, không được vấp lại:**
 
@@ -517,6 +554,7 @@ P0.3 kết luận Android       →
 | Ver | Ngày | Ai | Đổi gì |
 |---|---|---|---|
 | 0.1 | 2026-08-12 | Claude Code | viết lần đầu từ kết quả React Doctor full scan; 4 quyết định để `OPEN` chờ Tu |
+| 0.2 | 2026-08-12 | Claude Code | Tu nhắc: nhánh thi công chung phải rõ. Đưa `claude/react-doctor-audit-zrlda5` + PR #196 lên blockquote đầu §51 và Metadata; luật 1 §51.0.5 cấm thêm nhánh phụ / worktree / PR thứ hai; thêm vòng git chuẩn cho hai agent dùng chung một nhánh (claim → verify → đóng), luật xử push bị từ chối và cấm force-push |
 
 ---
 
