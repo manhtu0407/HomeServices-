@@ -164,6 +164,49 @@ describe('frontend workflow payment truth', () => {
     expect(snapshot.paymentRailAvailable).toBe(true)
   })
 
+  it('preserves the server-owned manual QR receipt and rail provider', () => {
+    const response = buildCustomerJobDetail()
+    const snapshot = jobDetailToSnapshot({
+      ...response,
+      job: {
+        ...response.job,
+        final_price: 420_000,
+        payment_rail_provider: 'platform_bank_manual',
+        payment_status: 'manual_qr_ready',
+        payment_provider: 'platform_bank_manual',
+        gross_amount: 420_000,
+        platform_fee: 63_000,
+        worker_net: 357_000,
+        payment_code: 'NS-MANUAL-420',
+        payment_transfer_content: 'NS-MANUAL-420',
+        payment_qr_image_url: 'https://qr.example.test/NS-MANUAL-420',
+        payment_receipt: {
+          method: 'platform_bank_manual',
+          status: 'manual_qr_ready',
+          gross_amount: 420_000,
+          customer_transfer_claimed_at: null,
+          customer_transferred_at: null,
+          response_deadline: null,
+          hold_until: null,
+          customer_confirmed_at: null,
+          worker_confirmed_at: null,
+          collateral_amount: null,
+          bank_code: 'VCB',
+          account_holder: 'Platform account',
+          account_masked: '****6789',
+        },
+        status: 'payment_pending',
+      },
+    })
+
+    expect(snapshot.paymentRailProvider).toBe('platform_bank_manual')
+    expect(snapshot.payment).toEqual(expect.objectContaining({
+      status: 'manual_qr_ready',
+      provider: 'platform_bank_manual',
+      transferContent: 'NS-MANUAL-420',
+    }))
+  })
+
   it('hydrates a legacy job detail without split evidence arrays', () => {
     const response = buildCustomerJobDetail()
     const legacyJob = {

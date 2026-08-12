@@ -1940,7 +1940,7 @@ Section này append sau mỗi pass implementation. KHÔNG edit §1-20 (Plan core
 **Auditor**: Claude (audit role)
 **Builder**: Codex
 **Source branch**: `codex/glass-motion-ui-enhancement`
-**PR đã merge**: [#23 Enhance PR20 frontend Kael and worker surfaces](https://github.com/manhtu0407/HomeServices-/pull/23) → main commit `b1b86c0`
+**PR đã merge**: [#23 Enhance PR20 frontend Kael and worker surfaces](https://github.com/example-account/HomeServices-/pull/23) → main commit `b1b86c0`
 **Codex commits chính**: `778d622` (UI surface enhancement) + `ccc1d10` (memory + React Doctor fix)
 
 **Mission audit**: Verify Plan §16 checklist Phase 0 → 4 trên main + tất cả branch push được. Báo cáo gap theo file path + line ref. KHÔNG edit code.
@@ -2104,7 +2104,7 @@ Mỗi phase done → Codex commit + push → Claude audit per §16 checklist →
 **Ngày**: 2026-05-21
 **Auditor**: Claude
 **Builder**: Codex
-**Source branch**: `codex/glass-motion-ui-enhancement` → merged main qua [#24 Consolidate Plan workflow upgrade](https://github.com/manhtu0407/HomeServices-/pull/24) (commit `0f02641`)
+**Source branch**: `codex/glass-motion-ui-enhancement` → merged main qua [#24 Consolidate Plan workflow upgrade](https://github.com/example-account/HomeServices-/pull/24) (commit `0f02641`)
 **Stat**: 62 files changed, +6834 / -3243 lines
 
 **Mission audit**: Verify Plan §16 checklist sau khi Codex hoàn tất 2 pass tiếp theo pass 1. Verify PR#24 merge intact.
@@ -2331,7 +2331,7 @@ Google Cloud Console resources đã provisioned và secret đã set. Codex KHÔN
 | **Quota Geocoding `v3 requests per day`** | **1,000 req/day** (cap potential cost ≤ $150/month nếu paid) |
 | **Quota Places `AutocompletePlacesRequest per day`** | **500 req/day** (cap potential cost ≤ $42/month nếu paid) |
 | **Combined potential max** | $192/month < $200 free credit → **ZERO charge expected** |
-| **Budget alert** | "Home Services Maps Alert" — 25,000₫ (~$1)/month, email tại 50% / 90% / 100% threshold to billing admins + project owners (manhtu0407@gmail.com) |
+| **Budget alert** | "Home Services Maps Alert" — 25,000₫ (~$1)/month, email tại 50% / 90% / 100% threshold to billing admins + project owners (owner@example.com) |
 | **Env var name (locked)** | `GOOGLE_MAPS_API_KEY` |
 | **Secret status staging** (`xyylanuyflrjzbjzhqfl`) | ✅ Set 2026-05-21 pm |
 | **Secret status production** (`iwevizmsedyqozxlawwl`) | Pending (Tu set khi sẵn sàng deploy prod) |
@@ -3970,7 +3970,7 @@ docs/workflow/worker-cancellation.md (new)                     Phase 5.4
 ```text
 Plan ID:        plan-kael-harness-agentic
 Created:        2026-05-25
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
 Critical Alert: HIGH — touches Kael identity, provider routing, money-impacting workflow
 Decision log:   Conversation 2026-05-25 (Tu + Claude) chốt Harness 7/7 + Agentic 5/5
@@ -6129,7 +6129,7 @@ P17 → Production: Tu approve (manual gate)
 ```text
 Plan ID:        plan-cost-optimization-anthropic
 Created:        2026-05-25
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
 Critical Alert: MEDIUM — touches AI provider routing layer, quality measurable
 Decision log:   Conversation 2026-05-25 sau khi chốt §23
@@ -6960,7 +6960,7 @@ Q5 → Production: A/B verify quality preserve + cost saving ≥ 65% + Tu approv
 ```text
 Plan ID:        plan-source-trust-multi-llm
 Created:        2026-05-25 (drafted), 2026-05-26 (written to Plan.md)
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
 Critical Alert: MEDIUM-HIGH — touches AI price accuracy + customer trust
 Decision log:   Conversation 2026-05-25 sau khi chốt §24; Perplexity API doc verified 2026-05-25
@@ -7978,7 +7978,7 @@ R8 → Production: A/B verify quality + citation transparency + Tu approve
 ```text
 Plan ID:        plan-codex-gap-fixing
 Created:        2026-05-26
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         DRAFT v0.1 → Tu approved 2026-05-26 → write Plan.md §26
 Critical Alert: HIGH — production rollout decision + locked docs edit
 Trigger:        Audit verify PR #37 (P0-P17), #38 (P18 production fix), #39 (P19 + Q1),
@@ -8546,7 +8546,7 @@ F2 is HARD GATE — Tu manual approve required before F3-F9 begin.
 ```text
 Plan ID:        plan-prod-bug-audit-20260528
 Created:        2026-05-28
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         DRAFT v0.1 → Tu approved 2026-05-28 với điều kiện X0 robust → write Plan.md §27
 Critical Alert: HIGH — 8 HIGH bugs + 5 MEDIUM/LOW; production matching layer hoàn toàn vỡ (F-09)
 Trigger:        QA audit toàn diện 2026-05-28 với Expo Web runtime + Supabase MCP + curl direct
@@ -9332,7 +9332,7 @@ DL-F31: defer pending mobile-side field name verification
 ```text
 Plan ID:        plan-governance-upgrade-20260529
 Created:        2026-05-29
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         APPROVED 2026-05-29 — Tu duyệt 5 mục + cấp quyền edit locked docs cho session upgrade này
 Trigger:        Deep-dive anthropics/claude-plugins-official (frontend-design + claude-md-management)
                 → đối chiếu craft skill chính chủ vs governance stack hiện tại
@@ -9481,7 +9481,7 @@ Locked override: Tu approved 2026-05-29 — G1/G3/G4 được sửa critical.md,
 ```text
 Plan ID:        plan-design-context-upgrade-20260529
 Created:        2026-05-29
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         APPROVED 2026-05-29 — A + C built; B glass-liquid-signature later built in §29.8; signature tokens still need visual sign-off on Expo
 Trigger:        Deep-dive 5 repo: taste-skill, design-motion-principles, claudedesignskills,
                 claude-mem, claude-context → lấy principle, không bê infra/web code
@@ -9572,7 +9572,7 @@ Tu chốt direction qua interview: classic/minimal, OS-grade (Apple Liquid Glass
 ```text
 Plan ID:        plan-kael-smart-clarification-20260604
 Created:        2026-06-04
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         DONE — backend+frontend implemented + STAGING BEHAVIOR-VERIFIED 2026-06-04 (flag-gated). Staging xyylanuyflrjzbjzhqfl: v87 deployed + flag ON.
 Trigger:        Tu — Kael "đã hoạt động nhưng chưa linh hoạt": input mơ hồ → không hiểu ngữ cảnh để hỏi lại
 Scope:          Smart clarification (LLM-driven, A4) + LLM-assist 2 keyword gates (boundary + demanding) + multi-turn context (closes §27 F-15)
@@ -9644,7 +9644,7 @@ v1.0 — 2026-06-04 — P1–P3 implemented + verified (deno check + 24 new test
 ```text
 Plan ID:        plan-kael-ai-core-to-100-20260604
 Created:        2026-06-04
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/distracted-babbage-eb8cf4 (worktree)
 File location:  Plan.md §31 (durable) — single-source addendum
 Status:         DECISIONS LOCKED v0.2 — Tu approved D-OPEN-1..5 + D6 (2026-06-04). Build tuần tự bằng Codex; Claude verify result. READY — execute K0→A→B→C→D→K-FINAL.
@@ -10197,7 +10197,7 @@ v0.2 — 2026-06-04 — Tu chốt D-OPEN-1..5 + D6. C2 → full autonomy (γ′)
 ```text
 Plan ID:        plan-kael-perceived-perf-worker-parity-antileak-20260604
 Created:        2026-06-04
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/adoring-leavitt-5d0ad6 (worktree)
 File location:  Plan.md §32 (durable, canonical) + 2 companion docs (xem dưới)
 Status:         DESIGN LOCKED v0.8 — Tu chốt D1–D14. CHƯA execute. Codex build, Claude verify. Build sau §31.
@@ -10586,7 +10586,7 @@ Server then geofence-gates `mode:'geofence'` against the job's geocoded `address
 ```text
 Plan ID:        plan-kael-price-visualization-20260608
 Created:        2026-06-08
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         PLAN-FIRST, scope+approach locked Tu 2026-06-08. CHƯA execute. Codex build, Claude verify.
 Trigger:        Tu nâng cấp "Visualize" của Kael. Audit hợp nhất: kế hoạch 4-tầng vốn viết cho stack Next.js/web
                 (Recharts/Mermaid/Vitest-only/XSS) — sai stack; ~3/4 đã build (Data Contract, Orchestrator Binding,
@@ -10626,7 +10626,7 @@ Skill mapping:  karpathy-guidelines, kael-frontend-test (RNTL+recording), kael-m
 ```text
 Plan ID:        plan-kael-worker-onsite-vision-20260608
 Created:        2026-06-08
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         PLAN-FIRST, scope locked Tu 2026-06-08. CHƯA execute. Codex build, Claude verify.
 Trigger:        Tu: thợ phát hiện biến số on-site → trao đổi Kael → Vision phải đủ mạnh để xác định rõ. Audit: worker
                 advisory chat (§32 B-FUNC) ĐÃ build nhưng MÙ — worker-assist.ts:416 chỉ nhét media_ref_count, messages
@@ -10666,7 +10666,7 @@ Skill mapping:  kael-ai-boundary, kael-security-sweep (RLS worker-media, prompt-
 ```text
 Plan ID:        plan-kael-chat-ux-quickwins-20260608
 Created:        2026-06-08
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         PLAN-FIRST, scope locked Tu 2026-06-08. CHƯA execute. Codex build, Claude verify.
 Trigger:        Audit UI/UX vs Claude/ChatGPT: thread dùng ScrollView không auto-scroll (thread.tsx:164); tin user
                 không hiện ngay (không có optimistic turn trong state.ts). Đã có (mạnh, đừng build lại): SSE streaming,
@@ -10701,7 +10701,7 @@ Skill mapping:  kael-frontend-test (RNTL+recording), kael-motion (Reduce Motion 
 ```text
 Plan ID:        plan-kael-voice-stt-tts-20260608
 Created:        2026-06-08
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Status:         SPIKE-GATED. Scope locked Tu 2026-06-08 (kết hợp STT on-device + ElevenLabs TTS). CHƯA execute —
                 Phase 0 spike PHẢI qua gate Tu trước khi build. Codex build, Claude verify.
 Trigger:        Tu hỏi voice (Kael nói / user ghi âm) + ElevenLabs. Audit: voice gần như vắng trên app thật — mic
@@ -10748,7 +10748,7 @@ v0.1 — 2026-06-08 — Thêm 4 plan pointer (Claude): §33 price-viz, §34 work
 ```text
 Plan ID:        plan-worker-map-real-provider-maplibre-vietmap-20260608
 Created:        2026-06-08
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/goofy-jemison-21c7f8 (worktree)
 File location:  Plan.md §37 (durable, canonical) + companion doc (tạo ở MP0)
 Status:         DESIGN DRAFT v0.2 — Tu chốt Hướng B + Option-1 (Edge proxy) 2026-06-08. VietMap key ĐÃ
@@ -10971,7 +10971,7 @@ v0.6 — 2026-06-10 — MP0 việc 1–2 DONE (Claude). Việc 1 ToS verdict = S
 ```text
 Plan ID:        plan-security-hardening-protocol-S1-S5-20260614
 Created:        2026-06-14
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/gallant-sinoussi-b0c0c3 (worktree)
 File location:  Plan.md §38 (durable, canonical) + audit dossier docs/audit/security-audit-20260614.md
 Status:         DESIGN — audit read-only DONE (pass 1-3, 0 vuln exploit-được, posture mạnh). Findings F1-F6.
@@ -11250,7 +11250,7 @@ v0.2 — 2026-06-14 — HARDENED qua 4 adversarial critic (completeness/logic/co
 ```text
 Plan ID:         plan-kael-charter-upgrade-KC0-KC6-20260706
 Created:         2026-07-06
-Owner:           Manh Tu (manhtu0407@gmail.com)
+Owner:           Manh Tu (owner@example.com)
 Branch:          claude/kael-guardrails-review (worktree exciting-jepsen-7bec6e) — branch DUY NHẤT, không nhảy branch
 File location:   Plan.md §39 (durable, canonical) + companion research docs/foundation/kael-regional-register-research.md (OQ-1).
 Status:          DESIGN — TẤT CẢ OQ RESOLVED + Tu MỞ LOCK charter files (D-UNLOCK). KC7 còn gate §36 P0 spike. Sẵn sàng execute non-stop.
@@ -11545,7 +11545,7 @@ v0.6 — 2026-07-06 — EXECUTED KC0–KC7 trên branch claude/kael-guardrails-r
 ```text
 Plan ID:        plan-kael-harness-model-tiering-source-trust-20260707
 Created:        2026-07-07
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/jolly-brattain-ab42dc (worktree exciting-jepsen-7bec6e)
 File location:  Plan.md §40 (durable, canonical) + companion doc (tạo ở execute)
 Status:         DESIGN LOCKED v0.1 — Tu chốt trong session 2026-07-06..07. CHƯA execute.
@@ -11852,7 +11852,7 @@ v0.2 — 2026-07-08 — Sửa nhẹ (Tu yêu cầu) sau khi soi thật `source-t
 ```text
 Plan ID:        plan-kael-harness-reliability-20260708
 Created:        2026-07-08
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/jolly-brattain-ab42dc (worktree exciting-jepsen-7bec6e)
 File location:  Plan.md §41 (durable, canonical) + companion doc (tạo ở execute)
 Status:         DESIGN LOCKED v0.3 — 3 lỗi đào sâu; TẤT CẢ quyết định (D-A..D-G) Tu chốt 2026-07-08.
@@ -12121,7 +12121,7 @@ v0.3 — 2026-07-08 — Tu chốt NỐT (theo đề xuất Claude): D-C = **bả
 ```text
 Plan ID:        plan-kael-harness-hardening-20260708
 Created:        2026-07-08
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/jolly-brattain-ab42dc (worktree exciting-jepsen-7bec6e)
 File location:  Plan.md §42 (durable, canonical) + companion doc (tạo ở execute)
 Status:         DESIGN LOCKED v0.2 — 4 lỗ + 5 hướng; DH0 + DH-A..DH-D Tu chốt 2026-07-08. CHƯA execute — chờ Tu duyệt go.
@@ -12388,7 +12388,7 @@ v0.2 — 2026-07-08 — Tu chốt HẾT (theo đề xuất Claude): DH-A = **qua
 ```text
 Plan ID:        plan-kael-harness-performance-assurance-20260708
 Created:        2026-07-08
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/jolly-brattain-ab42dc (worktree exciting-jepsen-7bec6e)
 File location:  Plan.md §43 (durable, canonical) + companion doc (tạo ở execute)
 Status:         DESIGN LOCKED v0.1 — 5 workstream H/C/R/V/E. Tu chốt ambition + 5 lỗ + eval + honest-vision 2026-07-08.
@@ -13283,7 +13283,7 @@ Thứ tự đọc trước khi implement: **44.0** (Metadata) → **44.0.1** (Pr
 ```text
 Plan ID:        plan-frontend-structure-reorg-20260727
 Created:        2026-07-27
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/project-structure-review-bb83bc (worktree frosty-aryabhata-61ee21)
 File location:  Plan.md §44 (durable, canonical) — không companion doc riêng, chi tiết increment đủ nằm trong 44.1.
 Status:         Phase 1 (frontend-workflow-provider.tsx split) DESIGN LOCKED v0.1 — chờ Tu duyệt go execute.
@@ -13550,7 +13550,7 @@ Chạy sau khi Phase 2 xong hẳn (không làm trước — tránh lặp lỗi h
 ```text
 Plan ID:        plan-backend-kael-structure-reorg-20260728
 Created:        2026-07-28
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/system-reorganization-audit-ec3e39 (worktree implement-project-structure-plan-bf52f2)
 File location:  Plan.md §45 (durable, canonical) — không companion doc riêng, bảng 45.1-45.4 đủ chi tiết để
                 execute trực tiếp.
@@ -13924,7 +13924,7 @@ Không chạy `pnpm test:mobile` — scope này không đụng `apps/mobile`.
 ```text
 Plan ID:        plan-backend-structure-reorg-20260802
 Created:        2026-08-02
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/backend-audit-review-cf14f1
                 (worktree: .claude/worktrees/pr-status-consolidate-c6f50c)
                 >>> CẢ HAI AI CODING AGENT (Claude Code + Codex) ĐỀU LÀM TRÊN ĐÚNG NHÁNH NÀY. <<<
@@ -15142,7 +15142,7 @@ maxLines : 800 -> 800, KHÔNG ĐỔI
 ```text
 Plan ID:        plan-test-and-generated-type-reorg-20260803
 Created:        2026-08-03
-Owner:          Manh Tu (manhtu0407@gmail.com)
+Owner:          Manh Tu (owner@example.com)
 Branch:         claude/audit-large-files-459e61
                 (worktree: .claude/worktrees/audit-large-files-459e61)
                 >>> MỌI THAY ĐỔI CỦA §47 VÀO ĐÚNG NHÁNH NÀY. Không tạo nhánh mới, không tách

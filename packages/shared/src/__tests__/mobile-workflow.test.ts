@@ -682,6 +682,42 @@ describe('mobile local workflow state machine', () => {
     expect(state.deal?.workerProfile?.rating).toBe(4.8)
   })
 
+  it('hydrates a server-owned manual QR receipt without losing its payment rail', () => {
+    const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-manual-qr',
+        status: 'payment_pending',
+        backendStatus: 'payment_pending',
+        serviceType: 'plumbing',
+        description: 'The plumbing repair has been completed.',
+        problemChips: ['Leak repaired'],
+        addressLabel: 'District 7',
+        districtLabel: 'District 7',
+        finalPrice: 250_000,
+        paymentRailAvailable: true,
+        paymentRailProvider: 'platform_bank_manual',
+        payment: {
+          provider: 'platform_bank_manual',
+          status: 'manual_qr_ready',
+          grossAmount: 250_000,
+          platformFee: 37_500,
+          workerNet: 212_500,
+          paymentCode: 'NS-MANUAL-250',
+          transferContent: 'NS-MANUAL-250',
+          qrImageUrl: 'https://qr.example.test/NS-MANUAL-250',
+          bankCode: 'VCB',
+          accountHolder: 'Platform account',
+          accountMasked: '****6789',
+        },
+      },
+    })
+
+    expect(state.lastError).toBeNull()
+    expect(state.deal?.payment?.status).toBe('manual_qr_ready')
+    expect(state.deal?.paymentRailProvider).toBe('platform_bank_manual')
+  })
+
   it('hydrates a paid cash settlement so Customer can reach review after Worker confirmation', () => {
     const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
       type: 'hydrate_remote_job',

@@ -78,26 +78,29 @@ export type LocalWorkerProfileSummary = {
   totalJobs: number
 }
 
-export type LocalPaymentStatus =
-  | 'not_started'
-  | 'code_requested'
-  | 'vietqr_ready'
-  | 'pending'
-  | 'received'
-  | 'cash_confirmed'
-  | 'amount_mismatch'
-  | 'expired'
-  | 'failed'
-  | 'reconciled'
-  | 'manual_qr_ready'
-  | 'manual_customer_claimed'
-  | 'manual_reconcile_required'
-  | 'manual_verified'
-  | 'direct_awaiting_confirmation'
-  | 'direct_awaiting_customer_confirmation'
-  | 'direct_awaiting_worker_confirmation'
-  | 'direct_reconcile_required'
-  | 'direct_paid'
+export const LOCAL_PAYMENT_STATUSES = [
+  'not_started',
+  'code_requested',
+  'vietqr_ready',
+  'pending',
+  'received',
+  'cash_confirmed',
+  'amount_mismatch',
+  'expired',
+  'failed',
+  'reconciled',
+  'manual_qr_ready',
+  'manual_customer_claimed',
+  'manual_reconcile_required',
+  'manual_verified',
+  'direct_awaiting_confirmation',
+  'direct_awaiting_customer_confirmation',
+  'direct_awaiting_worker_confirmation',
+  'direct_reconcile_required',
+  'direct_paid',
+] as const
+
+export type LocalPaymentStatus = (typeof LOCAL_PAYMENT_STATUSES)[number]
 
 export type LocalDealPayment = {
   provider: 'sepay_vietqr' | 'cash' | 'bank_transfer' | string | null

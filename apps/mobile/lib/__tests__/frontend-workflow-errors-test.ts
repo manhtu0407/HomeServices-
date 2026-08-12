@@ -47,6 +47,18 @@ describe('frontend workflow error localization', () => {
     )
   })
 
+  it('keeps direct-payment selection failures actionable without exposing worker finances', () => {
+    expect(localizeWorkflowError('private provider detail 42', 'vi', 'COLLATERAL_UNAVAILABLE', 'direct_payment_selection')).toBe(
+      'Trả trực tiếp chưa khả dụng cho công việc này. Hãy thanh toán bằng QR.',
+    )
+    expect(localizeWorkflowError('private provider detail 42', 'en', 'COLLATERAL_UNAVAILABLE', 'direct_payment_selection')).toBe(
+      'Direct payment is not available for this job. Use the QR payment instead.',
+    )
+    expect(localizeWorkflowError('private provider detail 42', 'vi', 'ROUTE_NOT_FOUND', 'direct_payment_selection')).toBe(
+      'Chức năng trả trực tiếp chưa sẵn sàng. Vui lòng thử lại sau.',
+    )
+  })
+
   it('preserves specific locally-owned workflow guidance', () => {
     const message = 'Không có yêu cầu để mở quyền vào căn hộ'
 

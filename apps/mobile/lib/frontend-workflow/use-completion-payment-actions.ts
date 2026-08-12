@@ -2,12 +2,13 @@ import { useCallback, type Dispatch, type RefObject } from 'react'
 import type { LocalWorkflowAction, LocalWorkflowState, ReviewInput } from '@nestscout/shared'
 import { jobService } from '../services'
 import { generateClientRequestId } from '../client-request-id'
+import type { WorkflowErrorContext } from './errors'
 import { getRemoteJobId } from './helpers'
 
 type CompletionPaymentActionsInput = {
   dispatch: Dispatch<LocalWorkflowAction>
   refreshCurrentJob: () => Promise<boolean>
-  setRemoteError: (error: string) => false
+  setRemoteError: (error: string, code?: string, context?: WorkflowErrorContext) => false
   stateRef: RefObject<LocalWorkflowState>
 }
 
@@ -62,7 +63,7 @@ export function useCompletionPaymentActions({
     const selected = await jobService.selectDirectWorkerPayment(jobId, {
       client_request_id: generateClientRequestId(),
     })
-    if (!selected.success) return setRemoteError(selected.error)
+    if (!selected.success) return setRemoteError(selected.error, selected.code, 'direct_payment_selection')
     await refreshCurrentJob()
     return true
   }, [refreshCurrentJob, setRemoteError, stateRef])
@@ -71,7 +72,7 @@ export function useCompletionPaymentActions({
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để xác nhận thanh toán trực tiếp')
     const responded = await jobService.respondToDirectWorkerPayment(jobId, { received })
-    if (!responded.success) return setRemoteError(responded.error)
+    if (!responded.success) return setRemoteError(responded.error, responded.code, 'direct_payment_confirmation')
     await refreshCurrentJob()
     return true
   }, [refreshCurrentJob, setRemoteError, stateRef])

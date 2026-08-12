@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Image } from 'expo-image'
 import { StyleSheet, Text, View } from 'react-native'
 
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { FormulaMintCardAura } from '@/components/ui/formula-mint-card'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import { toWorkflowPhase, type LocalDeal } from '@nestscout/shared'
@@ -204,9 +206,14 @@ function ManualBankPayment({
         onPress={onClaim}
         testID="customer-v21-case-manual-payment-claim"
       />
-      <View style={[styles.directWarning, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
-        <Text style={[styles.messageTitle, { color: tokens.text }]}>{text.directTitle}</Text>
-        <Text style={[styles.note, { color: tokens.muted }]}>{text.directBody}</Text>
+      <View
+        style={[styles.directWarning, { backgroundColor: tokens.base, borderColor: tokens.border }]}
+        testID="customer-v21-case-direct-payment-warning"
+      >
+        <View style={styles.directCopy}>
+          <Text style={[styles.messageTitle, { color: tokens.text }]}>{text.directTitle}</Text>
+          <Text style={[styles.note, { color: tokens.muted }]}>{text.directBody}</Text>
+        </View>
         <KaelButton
           accessibilityState={{ busy: paymentBusy, disabled: paymentBusy }}
           disabled={paymentBusy}
@@ -368,13 +375,25 @@ function PaymentSurface({ children, status, testID, title, tokens }: {
   title: string
   tokens: CustomerThemeTokens
 }) {
+  const { reduceTransparency } = useGlassAccessibility()
+  const showFormulaMintAura = tokens.mode === 'light'
+
   return (
     <View accessibilityLabel={`${title}. ${status}`} style={[styles.surface, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID={testID}>
-      <View style={styles.header}>
-        <Text accessibilityRole="header" style={[styles.heading, { color: tokens.text }]}>{title}</Text>
-        <Text accessibilityLiveRegion="polite" style={[styles.status, { color: tokens.primary }]}>{status}</Text>
+      {showFormulaMintAura ? (
+        <FormulaMintCardAura
+          reduceTransparency={reduceTransparency}
+          scope={testID}
+          testID={`${testID}-formula-mint-aura`}
+        />
+      ) : null}
+      <View style={styles.surfaceContent}>
+        <View style={styles.header}>
+          <Text accessibilityRole="header" style={[styles.heading, { color: tokens.text }]}>{title}</Text>
+          <Text accessibilityLiveRegion="polite" style={[styles.status, { color: tokens.primary }]}>{status}</Text>
+        </View>
+        {children}
       </View>
-      {children}
     </View>
   )
 }
@@ -456,7 +475,7 @@ function copy(language: AppLanguage) {
         confirmedStatus: 'Đã xác nhận',
         confirmedTitle: 'Thanh toán đã được xác nhận',
         directAction: 'Trả trực tiếp cho thợ',
-        directBody: 'Chỉ chọn khi bạn chưa báo đã chuyển QR. Kael giữ trước 15% hoa hồng của thợ và cần cả bạn lẫn thợ xác nhận trước khi công việc được thanh toán.',
+        directBody: 'Chỉ chọn khi chưa báo đã chuyển QR. Kael giữ 15% hoa hồng đến khi hai bên cùng xác nhận.',
         directConfirmAction: 'Tôi đã trả trực tiếp',
         directConfirmedBody: 'Bạn và thợ đã cùng xác nhận thanh toán trực tiếp. Hoa hồng đã được ghi nhận theo biên nhận này.',
         directConfirmedTitle: 'Thanh toán trực tiếp đã được xác nhận',
@@ -506,7 +525,7 @@ function copy(language: AppLanguage) {
         confirmedStatus: 'Confirmed',
         confirmedTitle: 'Payment has been confirmed',
         directAction: 'Pay the worker directly',
-        directBody: 'Choose this only before claiming the QR transfer. Kael reserves 15% worker commission collateral and requires both confirmations before the job is paid.',
+        directBody: 'Choose this before claiming the QR transfer. Kael holds 15% commission until both sides confirm.',
         directConfirmAction: 'I paid directly',
         directConfirmedBody: 'You and the worker confirmed the direct payment. The commission is recorded through this receipt.',
         directConfirmedTitle: 'Direct payment confirmed',
@@ -548,7 +567,8 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, lineHeight: 22 },
   detailGroup: { gap: 4 },
   detailValue: { fontSize: 16, fontVariant: ['tabular-nums'], fontWeight: '600', lineHeight: 22 },
-  directWarning: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, gap: 10, padding: 14 },
+  directCopy: { gap: 4 },
+  directWarning: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, gap: 12, paddingHorizontal: 16, paddingVertical: 16 },
   header: { gap: 4 },
   heading: { fontSize: 20, fontWeight: '700', lineHeight: 27 },
   instruction: { fontSize: 14, lineHeight: 20 },
@@ -561,6 +581,7 @@ const styles = StyleSheet.create({
   reviewHeading: { fontSize: 18, fontWeight: '700', lineHeight: 24 },
   reviewSection: { borderTopWidth: StyleSheet.hairlineWidth, gap: 12, paddingTop: 18 },
   status: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  surface: { alignSelf: 'center', borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, gap: 18, maxWidth: 608, padding: 20, width: '100%' },
+  surface: { alignSelf: 'center', borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, maxWidth: 608, overflow: 'hidden', width: '100%' },
+  surfaceContent: { gap: 18, padding: 20, zIndex: 1 },
   transferContent: { fontSize: 16, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: 0.35, lineHeight: 22 },
 })

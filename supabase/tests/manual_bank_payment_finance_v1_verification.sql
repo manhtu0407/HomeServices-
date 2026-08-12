@@ -111,6 +111,32 @@ begin
   then
     raise exception 'direct-payment selection lost its serialized 15 percent collateral guard';
   end if;
+  if position('if v_collateral <= 0' in v_definition) = 0
+    or position('delete from public.worker_payment_ledger' in v_definition) = 0
+    or position('if v_collateral <= 0' in v_definition) > position('delete from public.worker_payment_ledger' in v_definition)
+  then
+    raise exception 'direct-payment selection can mutate the QR ledger before collateral validation';
+  end if;
+
+  if exists (
+    select 1
+    from public.job_payment_orders as payment_order
+    join public.jobs as job on job.id = payment_order.job_id
+    where payment_order.payment_method = 'platform_bank_manual'
+      and payment_order.status = 'manual_qr_ready'
+      and job.status = 'payment_pending'::public.job_status
+      and job.payment_status = 'manual_qr_ready'
+      and job.payment_provider = 'platform_bank_manual'
+      and not exists (
+        select 1
+        from public.worker_payment_ledger as ledger
+        where ledger.job_id = job.id
+          and ledger.payment_provider = 'platform_bank_manual'
+          and ledger.payment_state = 'pending'
+      )
+  ) then
+    raise exception 'manual QR order is missing its pending worker ledger';
+  end if;
 
   v_definition := pg_catalog.pg_get_functiondef(
     'public.respond_to_direct_worker_payment(uuid,uuid,text,boolean)'::regprocedure

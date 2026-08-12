@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 245,
-  "migrationsSha256": "17eef1e9c6dd1256ed1ba4612c1f413cf9d32b889a729d122cd15b20a8888c23",
+  "migrationCount": 246,
+  "migrationsSha256": "478fdf8149922308ddff7ac249addc8257249ee398121419f29ac82e98d87ac1",
   "databaseTypes": {
     "file": "packages/shared/src/types/database.types.ts",
     "sha256": "fb9d8f4196cfa662a70e819a230f42d9d9bcdbe2fb76584abd055332978a794a"
@@ -1726,6 +1726,13 @@
       "file": "supabase/migrations/20260811213400_retire_unilateral_cash_payment_confirmation.sql",
       "sha256": "49ea28a0e72ed2673c5effedf370faadadda9c0745095720b28c49b6c9f1f94f",
       "bytes": 226
+    },
+    {
+      "version": "20260812093000",
+      "name": "fix_direct_payment_collateral_guard",
+      "file": "supabase/migrations/20260812093000_fix_direct_payment_collateral_guard.sql",
+      "sha256": "68dd764e1b3c199597a6a3cd55c36f4abec7cdce741c5e1c651e1e8d0bd68d6e",
+      "bytes": 9849
     }
   ]
 }

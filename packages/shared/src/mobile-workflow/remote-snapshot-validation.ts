@@ -7,11 +7,12 @@ import {
   type ServiceType,
 } from '../constants'
 import { isLocalDealStatus } from './status'
-import type {
-  LocalRemoteBroadcastSnapshot,
-  LocalRemoteJobSnapshot,
-  LocalWorkerBroadcastStatus,
-  LocalWorkerGate,
+import {
+  LOCAL_PAYMENT_STATUSES,
+  type LocalRemoteBroadcastSnapshot,
+  type LocalRemoteJobSnapshot,
+  type LocalWorkerBroadcastStatus,
+  type LocalWorkerGate,
 } from './types'
 
 const JOB_STATUS_SET = new Set<string>(JOB_STATUSES)
@@ -20,18 +21,8 @@ const BROADCAST_STATUS_SET = new Set<string>(BROADCAST_STATUSES)
 const SCOPE_CHANGE_STATUS_SET = new Set<string>(SCOPE_CHANGE_STATUSES)
 const LOCAL_WORKER_GATE_SET = new Set<string>(['backend_pending', 'local_deal_audit', 'remote_backend'])
 const ESTIMATE_COMPLEXITY_SET = new Set<string>(['small', 'medium', 'large', 'unknown'])
-const PAYMENT_STATUS_SET = new Set<string>([
-  'not_started',
-  'code_requested',
-  'vietqr_ready',
-  'pending',
-  'received',
-  'cash_confirmed',
-  'amount_mismatch',
-  'expired',
-  'failed',
-  'reconciled',
-])
+const PAYMENT_STATUS_SET = new Set<string>(LOCAL_PAYMENT_STATUSES)
+const PAYMENT_RAIL_PROVIDER_SET = new Set<string>(['platform_bank_manual', 'sepay_vietqr'])
 const MATCHING_STRATEGY_SET = new Set<string>(['pending_choice', 'general', 'saved_worker_first'])
 const MATCHING_STAGE_SET = new Set<string>([
   'awaiting_choice',
@@ -214,7 +205,19 @@ function isOptionalPayment(value: unknown): boolean {
     isOptionalNullableString(value.expiresAt) &&
     isOptionalNullableString(value.receivedAt) &&
     (value.amountReceived === undefined || isNullableSafeMoney(value.amountReceived)) &&
+    isOptionalNullableString(value.holdUntil) &&
+    isOptionalNullableString(value.directResponseDeadline) &&
+    isOptionalNullableString(value.directCustomerConfirmedAt) &&
+    isOptionalNullableString(value.directWorkerConfirmedAt) &&
+    isOptionalSafeMoney(value.collateralAmount) &&
+    isOptionalNullableString(value.bankCode) &&
+    isOptionalNullableString(value.accountHolder) &&
+    isOptionalNullableString(value.accountMasked) &&
     isOptionalNullableString(value.updatedAt)
+}
+
+function isOptionalPaymentRailProvider(value: unknown): value is LocalRemoteJobSnapshot['paymentRailProvider'] {
+  return value === undefined || value === null || (typeof value === 'string' && PAYMENT_RAIL_PROVIDER_SET.has(value))
 }
 
 function isOptionalWorkerProfile(value: unknown): boolean {
@@ -295,6 +298,7 @@ export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJo
     isOptionalScopeChange(job.scopeChange) &&
     isOptionalPayment(job.payment) &&
     (job.paymentRailAvailable === undefined || typeof job.paymentRailAvailable === 'boolean') &&
+    isOptionalPaymentRailProvider(job.paymentRailProvider) &&
     isOptionalWorkerProfile(job.workerProfile) &&
     isOptionalStringArray(job.customerEvidencePhotoUrls) &&
     isOptionalStringArray(job.fieldEvidencePhotoUrls) &&

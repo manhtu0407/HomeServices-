@@ -302,7 +302,7 @@
   - SQL (2 files): security hardening migration, seed validation
 - **Verification**: `npm test` 417 pass, `tsc --noEmit` 0 errors, `npm run build` success
 - **Testing guidelines**: Viết vào `.claude/commands/test-log.md` — 5 sections, anti-patterns, checklists
-- **PR**: [#5](https://github.com/manhtu0407/HomeServices-/pull/5)
+- **PR**: #5
 - **Next**: Monorepo setup + RN skeleton
 - **Blockers**: None
 
@@ -322,7 +322,7 @@
   - monorepo-wiring.test.ts (42): workspace structure, turbo pipeline, dependency consistency
   - mobile-wiring.test.ts (120): navigation vs STRUCTURES.md, Rule #1 sweep, auth wiring
 - **Verification**: `turbo test` 672 pass, `tsc --noEmit` 0 errors on api + shared + mobile
-- **PR**: [#6](https://github.com/manhtu0407/HomeServices-/pull/6)
+- **PR**: #6
 - **Next**: Feature implementation plan — Auth (A0/B0) → Kael Price Check → Worker matching
 - **Blockers**: None
 

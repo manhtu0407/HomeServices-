@@ -78,7 +78,7 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
     expect(responseModel).toContain("customer_confirmed_completion: 'payment'")
     expect(responseModel).toContain("payment_pending: 'payment'")
     expect(responseModel).toContain("paid: 'review'")
-    expect(caseThreadNode).toContain("deal.paymentRailAvailable === true")
+    expect(caseThreadNode).toContain('const paymentRailProvider = deal.paymentRailProvider ?? null')
     expect(caseThread).toContain("from './customer-payment-rail-surface'")
     expect(caseThread).toContain('<CustomerPaymentRailSurface')
     expect(paymentSurface).toContain("phase !== 'customer_confirmed_completion' && phase !== 'payment_pending' && phase !== 'paid'")
@@ -94,6 +94,11 @@ describe('Kael Case Work phase-gated mobile wiring', () => {
     expect(caseThread).not.toContain('customer-v21-case-staging-payment')
     expect(caseThreadNode).not.toContain('stagingPaymentRailEnabled')
     expect(caseThread).not.toContain("focus === 'payment'")
+  })
+
+  it('does not invent a legacy payment rail when the server omits one', () => {
+    expect(caseThreadNode).toContain('const paymentRailProvider = deal.paymentRailProvider ?? null')
+    expect(caseThreadNode).not.toContain("deal.paymentRailAvailable === true ? 'sepay_vietqr' : null")
   })
 
   it('shows scope controls only after the authoritative customer-decision state', () => {

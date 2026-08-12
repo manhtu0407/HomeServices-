@@ -60,15 +60,35 @@ describe('Case Work phase controls', () => {
     })
 
     expect(screen.getByTestId('customer-v21-case-manual-payment-ready')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-manual-payment-ready-formula-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-case-manual-qr')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-case-manual-qr-frame').props.style)).toMatchObject({
       aspectRatio: 1,
       maxWidth: 256,
       width: '100%',
     })
+    expect(screen.getByTestId('customer-v21-case-direct-payment-warning')).toBeOnTheScreen()
+    expect(screen.getByText('Chỉ chọn khi chưa báo đã chuyển QR. Kael giữ 15% hoa hồng đến khi hai bên cùng xác nhận.')).toBeOnTheScreen()
+    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-case-direct-payment-warning').props.style)).toMatchObject({
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+    })
     fireEvent.press(screen.getByTestId('customer-v21-case-manual-payment-claim'))
     await waitFor(() => expect(onClaimManualBankPayment).toHaveBeenCalledTimes(1))
     expect(screen.queryByTestId('customer-v21-case-payment-confirmed')).not.toBeOnTheScreen()
+  })
+
+  it('keeps the dark payment receipt solid instead of applying the light Formula Mint aura', () => {
+    const pendingDeal = dealFixture('payment_pending')
+    pendingDeal.payment = manualBankPayment()
+    renderPanel(pendingDeal, jest.fn(), jest.fn(), jest.fn(), {
+      paymentRailProvider: 'platform_bank_manual',
+      themeMode: 'dark',
+    })
+
+    expect(screen.getByTestId('customer-v21-case-manual-payment-ready')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-manual-payment-ready-formula-mint-aura')).not.toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-manual-qr')).toBeOnTheScreen()
   })
 
   it('keeps manual claims in reconciliation and does not show the QR again', async () => {
@@ -200,6 +220,7 @@ function renderPanel(
     onSelectDirectWorkerPayment?: () => Promise<boolean>
     onSubmitReview?: (input: { rating: number; tags: string[]; comment?: string }) => Promise<boolean>
     paymentRailProvider?: 'platform_bank_manual' | 'sepay_vietqr' | null
+    themeMode?: 'light' | 'dark'
   } = {},
 ) {
   return render(
@@ -239,7 +260,7 @@ function renderPanel(
       submittingCaseQuoteRejectReason={false}
       paymentRailProvider={options.paymentRailProvider ?? null}
       textInputStyle={{}}
-      tokens={getCustomerThemeTokens('light')}
+      tokens={getCustomerThemeTokens(options.themeMode ?? 'light')}
     />,
   )
 }

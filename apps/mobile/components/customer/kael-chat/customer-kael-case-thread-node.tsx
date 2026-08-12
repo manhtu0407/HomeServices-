@@ -46,7 +46,7 @@ function CustomerKaelCaseThreadContent({
     tokens,
     workflow,
   } = controller
-  const paymentRailProvider = deal.paymentRailProvider ?? (deal.paymentRailAvailable === true ? 'sepay_vietqr' : null)
+  const paymentRailProvider = deal.paymentRailProvider ?? null
   const caseEvidenceGateNode = useMemo(() => (
     <AgenticEvidenceGateResponse
       busy={caseUi.submittingCaseEvidence || chatUi.uploadingMedia}
