@@ -605,6 +605,7 @@ describe('customer Kael workflow view model wiring', () => {
   const v21ChatAura = () => readCustomerSurface('chat-surfaces.tsx')
   const v21KaelSurface = () => readCustomerSurface('kael-chat-surface.tsx')
   const v21KaelContent = () => readCustomerSurface('customer-kael-chat-content.tsx')
+  const v21KaelEstimateNode = () => readCustomerSurface('customer-agentic-estimate-node.tsx')
   const v21KaelPresentation = () => readCustomerSurface('customer-kael-presentation.ts')
   const v21KaelOrchestration = () => [
     readCustomerSurface('use-customer-kael-surface-controller.ts'),
@@ -668,6 +669,7 @@ describe('customer Kael workflow view model wiring', () => {
     const src = [
       v21KaelPresentation(),
       v21KaelContent(),
+      v21KaelEstimateNode(),
       readCustomerSurface('use-customer-kael-decision-actions.ts'),
     ].join('\n')
     expect(src).toContain("chat?.session.next_action === 'estimate_ready'")
@@ -2123,7 +2125,8 @@ describe('mobile glassmorphism design system', () => {
 
   it('wires scroll direction into both dock overlays without changing their tab navigation contract', () => {
     const customerLayout = read('app/(customer)/_layout.tsx')
-    const customerDock = readCustomerSurface('dock-stateful-surfaces.tsx')
+    const customerDockController = read('components/customer/v21/surfaces.tsx')
+    const customerDockOverlay = readCustomerSurface('dock-stateful-surfaces.tsx')
     const customerOverlay = read('components/customer/v21/surfaces.tsx')
     const customerScroll = readCustomerSurface('shared-surfaces.tsx')
     const workerDock = read('components/worker/dock/worker-v5-dock-overlay.tsx')
@@ -2134,8 +2137,10 @@ describe('mobile glassmorphism design system', () => {
     expect(customerScroll).toContain('useDockScrollHandler')
     expect(workerScroll).toContain('useDockScrollHandler')
     expect(customerScroll).toContain('onScroll={onDockScroll}')
-    expect(workerScroll).toContain('onScroll={onDockScroll}')
-    expect(customerDock).toContain('animatedDockScrollStyle')
+    expect(workerScroll).toContain('onScroll={actions.onDockScroll}')
+    expect(customerDockController).toContain('const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)')
+    expect(customerDockController).toContain('animatedDockScrollStyle={animatedDockScrollStyle}')
+    expect(customerDockOverlay).toContain('animatedDockScrollStyle')
     expect(workerDock).toContain('animatedDockScrollStyle')
     expect(customerOverlay).toContain('onTabPress={(route) => router.replace(route as never)}')
     expect(workerDock).toContain('router.replace(workerV5Routes[item.id] as never)')
