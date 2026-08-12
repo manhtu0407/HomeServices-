@@ -12,6 +12,7 @@ Audience: AI coding agent (Claude Code hoặc Codex) thực thi, Tu duyệt và 
 
 - **Một plan sống tại một thời điểm.** Plan mới thay plan cũ, không nối đuôi. Hai việc song song = hai file, không phải hai section.
 - **Xong là rời đi.** Status chuyển `DONE #<PR>` → chuyển nguyên section sang `governance/plan-archive/<YYYY-MM-DD>_<slug>.md`, Plan.md quay về chỉ còn A–D. Đây là luật ngăn file phình lại 17k dòng.
+- **`Plan ID` là danh tính, số `§` chỉ là chỗ ngồi.** Plan ID (`plan-<slug>-<YYYYMMDD>`) là duy nhất toàn cục và có ngay từ lúc viết dòng đầu. Số `§` **chỉ được cấp khi plan vào ở trong Plan.md** — mà mỗi lúc chỉ có một plan ở trong đó, nên mỗi lúc chỉ có một số đang được cấp. Plan viết song song ở file riêng **không mang số `§`**; nó dùng Plan ID cho tới lượt vào Plan.md. Không cần sổ đăng ký, không có hai người cùng nhận một số.
 - **Số section không tái sử dụng**, kể cả khi plan bị `ABANDONED`. Dùng lại số cũ là cách "§44" từng mang ba nghĩa khác nhau trong ba commit khác nhau.
 - **Plan.md thua `RULES.md` và `critical.md`.** Conflict thì dừng, báo, hỏi Tu — không tự chọn nguồn tiện hơn.
 - **Không sửa plan giữa chừng.** Phát hiện phải đổi → bump version ở Change Log hoặc viết addendum, không edit im lặng.
