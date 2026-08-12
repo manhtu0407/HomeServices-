@@ -7,6 +7,28 @@ const helperPath = resolve(__dirname, '../../../../../scripts/lib/staging-target
 const powershell = process.platform === 'win32' ? 'powershell.exe' : 'pwsh'
 const POWERSHELL_TEST_TIMEOUT_MS = 20_000
 
+/**
+ * The guards under test are PowerShell, so the cases that execute them need a
+ * PowerShell to execute. Where there is none the case is skipped, never faked:
+ * asserting against a spawn that failed to start would report the guard as
+ * working on evidence that it never ran.
+ *
+ * The cases that only read script text still run everywhere.
+ */
+const hasPowerShell = (() => {
+  const probe = spawnSync(powershell, ['-NoProfile', '-NonInteractive', '-Command', 'exit 0'], {
+    encoding: 'utf8',
+  })
+  return probe.error === undefined && probe.status === 0
+})()
+
+if (!hasPowerShell) {
+  console.warn(
+    `[tooling-staging-target-safety] SKIPPED the executing cases - \`${powershell}\` is not on PATH. ` +
+      'The exact-target guards are unverified on this machine; CI runs them under pwsh.',
+  )
+}
+
 function validateTargets(
   target: 'staging' | 'production',
   supabaseUrl: string,
@@ -55,7 +77,7 @@ describe('PowerShell staging target safety', () => {
     expect(source).not.toMatch(/\.Contains\(\$stagingRef\)|-notlike\s+"\*\$stagingRef\*"/)
   })
 
-  it('accepts only the canonical staging Supabase root and mobile-api path', () => {
+  it.skipIf(!hasPowerShell)('accepts only the canonical staging Supabase root and mobile-api path', () => {
     const result = validateTargets(
       'staging',
       'https://xyylanuyflrjzbjzhqfl.supabase.co',
@@ -65,7 +87,7 @@ describe('PowerShell staging target safety', () => {
     expect(result.status, result.stderr).toBe(0)
   }, POWERSHELL_TEST_TIMEOUT_MS)
 
-  it.each([
+  it.skipIf(!hasPowerShell).each([
     [
       'https://xyylanuyflrjzbjzhqfl.supabase.co.attacker.example',
       'https://xyylanuyflrjzbjzhqfl.supabase.co.attacker.example/functions/v1/mobile-api',
@@ -86,14 +108,14 @@ describe('PowerShell staging target safety', () => {
     expect(validateTargets('staging', supabaseUrl, apiUrl).status).not.toBe(0)
   }, POWERSHELL_TEST_TIMEOUT_MS)
 
-  it.each([
+  it.skipIf(!hasPowerShell).each([
     'sb_publishable_fixture_key',
     'e30.eyJyb2xlIjoiYW5vbiJ9.signature',
   ])('accepts a Supabase public client key without exposing its value', (value) => {
     expect(validatePublishableKey(value).status).toBe(0)
   }, POWERSHELL_TEST_TIMEOUT_MS)
 
-  it.each([
+  it.skipIf(!hasPowerShell).each([
     'sb_secret_fixture_key',
     'e30.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.signature',
   ])('rejects server-authority credentials in a public client key slot', (value) => {
@@ -144,7 +166,7 @@ describe('PowerShell production target safety', () => {
     expect(sharedPreviewRunner).not.toMatch(/Write-(Host|Output).*\$value/)
   })
 
-  it('accepts only the canonical Production Supabase root and mobile-api path', () => {
+  it.skipIf(!hasPowerShell)('accepts only the canonical Production Supabase root and mobile-api path', () => {
     const result = validateTargets(
       'production',
       'https://iwevizmsedyqozxlawwl.supabase.co',
@@ -154,7 +176,7 @@ describe('PowerShell production target safety', () => {
     expect(result.status, result.stderr).toBe(0)
   }, POWERSHELL_TEST_TIMEOUT_MS)
 
-  it.each([
+  it.skipIf(!hasPowerShell).each([
     [
       'https://iwevizmsedyqozxlawwl.supabase.co.attacker.example',
       'https://iwevizmsedyqozxlawwl.supabase.co.attacker.example/functions/v1/mobile-api',
