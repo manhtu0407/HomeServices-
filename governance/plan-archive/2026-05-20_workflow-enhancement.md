@@ -10,6 +10,30 @@ Plan này KHÔNG phải tài liệu marketing. Mỗi phase phải xuất ra evid
 
 > 2026-08-03 tên dự án: dự án đã đổi tên thành **NestScout**. Tiêu đề file trên đã đổi theo; **6 chỗ "Home Services" còn lại trong file này là CỐ Ý giữ, đừng "sửa giúp"**. Hai chỗ (§ Google Maps setup) là **tên tài nguyên Google Cloud có thật** — "Home Services Billing", "Home Services Maps Alert" — đổi trong doc sẽ khiến doc mô tả sai tài nguyên đang tồn tại. Bốn chỗ còn lại là **bản ghi lịch sử** (prompt cũ, cặp `Old:`/`New:` của một lần sửa rule, và một ghi chú anti-pattern): sửa chúng là viết lại quá khứ. Prompt đang chạy thật đã là NestScout và có regression test chặn — `apps/api/src/__tests__/unit/kael-brand-boundary.test.ts`.
 
+> **RETIRED — ĐỌC TRƯỚC KHI LÀM BẤT KỲ VIỆC GÌ TRONG FILE NÀY.**
+>
+> File này là **bản ghi lịch sử, không phải plan để chạy**. Nó được chuyển nguyên văn ra khỏi `governance/Plan.md` khi Plan.md được rút về contract viết plan. **Không section nào ở đây được thực thi lại.**
+>
+> Các dòng `Status:` bên dưới **ghi sai trạng thái** — chúng đóng băng ở thời điểm viết và không ai cập nhật sau khi việc đã merge. Bảng dưới là trạng thái thật, đối chiếu với `main`:
+>
+> | § | Status ghi trong file (SAI) | Thật sự |
+> |---|---|---|
+> | 38 | `DESIGN … CHƯA execute` | đã chạy — commit `bc656cad` (S5 CI gitleaks + PII-log lint) |
+> | 39 | `CHƯA execute — chờ Tu duyệt + 5 OQ` | đã chạy — commit `8b9e7ff3` (KC0–KC7) |
+> | 44 | `DESIGN LOCKED v0.1 — chờ Tu duyệt go` | **DONE #136** |
+> | 45 | `ĐÃ THỰC THI … CHƯA COMMIT` | **DONE #138** |
+> | 46 | `v0.1 DRAFT — chờ Tu duyệt. Chưa execute.` | **DONE #144** |
+> | 47 | blockquote ghi `CHƯA EXECUTE`, `Status:` ghi `ĐÃ EXECUTE` | **DONE #145** |
+> | 48 | `ĐÃ EXECUTE P1+P2+P3` | **DONE #146** |
+> | 49 | `CHƯA tạo 1 file nào` | **DONE #150** — `docker/` + `compose.yaml` đã tồn tại |
+> | 50 | `SẴN SÀNG EXECUTE … CHƯA sửa 1 dòng code nào` | **DONE** — plan #152, hoàn tất #169 |
+>
+> §50 nguy hiểm nhất nếu hiểu nhầm: nó đụng migration và guardrail trên production. Nó **đã xong**.
+>
+> **§1 "Workflow Vision (locked)" và §4 "Architecture Baseline (preserve)" khoá scope 3 dịch vụ.** Scope hiện hành là **sáu**, canonical ở `RULES.md` #6 và enum `service_type`: `electrical, plumbing, cleaning, hvac, upholstery, handyman`. Hai nhãn "locked"/"preserve" đó chỉ đúng ở thời điểm 2026-05-20.
+>
+> Các section không nằm trong bảng trên chưa được đối chiếu từng cái; mặc định coi mọi `Status:` trong file này là **không đáng tin**. Nguồn thật là `git log` và `governance/STRUCTURES.md` §1.5.
+
 ## 0. Activation Protocol
 
 Trước khi đụng bất kỳ file nào, agent thực hiện plan này MUST:
@@ -16451,7 +16475,7 @@ Snapshot / log pull / status   →  scratchpad ngoài repo (KHÔNG để lại t
 Tham chiếu plan trong script   →  CẤM. Đừng viết `# theo §49 D2` lên đầu file .sh/.ps1/.yml
 ```
 
-**Tên file doc của thư mục là `INDEX.md`, KHÔNG phải `README.md`.** Quy ước chuẩn của repo, ghi ở [`AGENTS.md`](../AGENTS.md) Tier 2: *"`README.md` is a LOCKED filename — use `INDEX.md`"*. Thực tế repo khớp đúng: mọi doc cấp thư mục đều là `INDEX.md` (`docs/INDEX.md`, `docs/archive/INDEX.md`, `docs/memory/INDEX.md`, `docs/playbooks/INDEX.md`, `docs/test-logs/INDEX.md`); chỉ còn 3 `README.md` và đều là file gốc/legacy (`README.md`, `sandbox/README.md`, `sandbox/agent/workbench/README.md`). Vì `INDEX.md` không bị khoá nên **tạo `docker/INDEX.md` không cần duyệt riêng** — v0.3 nhầm chỗ này và đẻ ra một quyết định giả (D-49-A cũ), đã xoá.
+**Tên file doc của thư mục là `INDEX.md`, KHÔNG phải `README.md`.** Quy ước chuẩn của repo, ghi ở [`AGENTS.md`](../../AGENTS.md) Tier 2: *"`README.md` is a LOCKED filename — use `INDEX.md`"*. Thực tế repo khớp đúng: mọi doc cấp thư mục đều là `INDEX.md` (`docs/INDEX.md`, `docs/archive/INDEX.md`, `docs/memory/INDEX.md`, `docs/playbooks/INDEX.md`, `docs/test-logs/INDEX.md`); chỉ còn 3 `README.md` và đều là file gốc/legacy (`README.md`, `sandbox/README.md`, `sandbox/agent/workbench/README.md`). Vì `INDEX.md` không bị khoá nên **tạo `docker/INDEX.md` không cần duyệt riêng** — v0.3 nhầm chỗ này và đẻ ra một quyết định giả (D-49-A cũ), đã xoá.
 
 `docker/INDEX.md` là **ngoại lệ có chủ đích và là file duy nhất được phép nhắc §49** — nó là doc chính thức của thư mục, không phải note.
 
