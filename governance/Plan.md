@@ -594,6 +594,32 @@ Cả hai đúng ⇒ hệ số `radius * 2` giữ iOS nguyên pixel là chính x�
 **G7 vẫn mở** — container này cũng không có device lẫn simulator. G7 chỉ đóng được trên máy
 có thiết bị thật; đây là increment duy nhất của §51 chưa đóng.
 
+**Hai rủi ro P1/P2 đã đo, không còn là phỏng đoán:**
+
+```text
+1. Bỏ `elevation` khỏi 4 token shadow.* có làm lệch thứ tự chồng lớp trên Android không?
+   → Không. 97 style spread `...shadow.*`: 0 style dùng `position: 'absolute'`,
+     7 style có `zIndex` khai báo tường minh (đều kèm `position: 'relative'`).
+     Android tôn trọng `zIndex` độc lập với `elevation`, nên 7 style đó vẫn còn cơ chế
+     xếp lớp; 90 style còn lại nằm theo luồng, không chồng nhau.
+
+2. 106 site quy đổi có giữ đúng giá trị cũ không?
+   → Dựng lại toàn bộ cây trước khi sửa từ `8a4747ca`, parse lại từng khối shadow gốc,
+     tính chuỗi boxShadow kỳ vọng rồi so với code hiện tại: **91 site full-shape, 0 sai
+     lệch**. 19 site override một phần được liệt kê riêng và đã xử tay từng cái.
+     91 + 19 = 110 = 106 site component + 4 token trong `design/theme.ts`. Khớp.
+```
+
+**Gate ngoài mobile cũng đã chạy** (memory `feedback_apps_api_reads_mobile_source` cảnh báo
+`apps/api` có test đọc chuỗi source của mobile):
+
+```text
+type-check:api → PASS · type-check:shared → PASS
+test:api       → 307 file pass / 4 skip · 3367 test pass / 78 skip · 0 fail
+test:shared    → 25 file / 759 test pass
+lint:structure → ok, 945 file · skills:check → 30 ↔ 30 in sync
+```
+
 ### 51.7 Change Log
 
 | Ver | Ngày | Ai | Đổi gì |
@@ -601,6 +627,7 @@ có thiết bị thật; đây là increment duy nhất của §51 chưa đóng.
 | 0.1 | 2026-08-12 | Claude Code | viết lần đầu từ kết quả React Doctor full scan; 4 quyết định để `OPEN` chờ Tu |
 | 0.2 | 2026-08-12 | Claude Code | Tu nhắc: nhánh thi công chung phải rõ. Đưa `claude/react-doctor-audit-zrlda5` + PR #196 lên blockquote đầu §51 và Metadata; luật 1 §51.0.5 cấm thêm nhánh phụ / worktree / PR thứ hai; thêm vòng git chuẩn cho hai agent dùng chung một nhánh (claim → verify → đóng), luật xử push bị từ chối và cấm force-push |
 | 0.4 | 2026-08-12 | Claude Code | Đo chéo độc lập theo luật 4 §51.0.5, trên container Linux (khác OS máy Tu), tại `a4f4a64`: G2 119/1118/0 fail, G3 = 0/0, G4 tổng 171 ⇒ 146 `react-doctor/*` — **khớp toàn bộ số của v0.3**. Đối chiếu 29 Bugs còn lại với §51.0.7.3: trùng khít, không sót bug thật. Kiểm hai claim chịu lực của P1 thẳng vào `node_modules/react-native@0.86.2` (`StyleSheetTypes.js:678-699`, `RCTBoxShadow.mm:67`) — cả hai đúng. G7 vẫn mở |
+| 0.5 | 2026-08-12 | Claude Code | Đóng ba chỗ trước đó mới là phỏng đoán: (1) rủi ro z-order khi bỏ `elevation` — đo 97 style spread `...shadow.*`, 0 dùng `absolute`, 7 có `zIndex` tường minh ⇒ không mất cơ chế xếp lớp; (2) độ trung thực của 106 site quy đổi — dựng lại cây `8a4747ca` và so từng site, **91/91 full-shape khớp, 0 sai lệch**; (3) đường thoát của P3.1 — `ref.current ??= new Map()` **qua được eslint** (lỗi ref-trong-render chỉ bắt phép gán thường), giá thật là **5 lỗi `TS18047` cho một ref**, nhân 10 ref là lý do không đi đường đó. Thêm test khoá hệ số `radius * 2` và khoá `processBoxShadow('none') === []` (3 nút disabled dựa vào đó). Chạy thêm gate ngoài mobile: `test:api` 3367 pass, `test:shared` 759 pass, `lint:structure` + `skills:check` ok. Mobile: **120 suite / 1128 test** |
 | 0.3 | 2026-08-12 | Claude Code | Thực thi. Tu ra lệnh chạy 4 giờ liên tục, **không hỏi thêm** → D1–D4 chốt theo đúng phương án Claude đã đề xuất sẵn trong §51.0.2, ghi rõ đây là chốt-mặc-định chứ không phải Tu duyệt từng dòng: **D1 = (a)** (nay có bằng chứng nguồn RN, không còn là suy đoán) · **D2 = có** · **D3 = (a)** · **D4 = làm trong plan này**. Kết quả: 25/27 increment `DONE`, 2 `BLOCKED` — **P0.2** (không có thiết bị/simulator ⇒ G7 không đo được; P0.3 thay bằng bằng chứng nguồn RN 0.86.2 đã cài, ghi ở §51.6) và **P3.1** (thử `useLazyRef`, đóng 10 finding nhưng **đẻ 15 finding `exhaustive-deps` mới** vì bọc `useRef` làm analyzer mất dấu ref ⇒ đã revert, lý do ghi ở `docs/audit/react-doctor-accepted-findings-20260812.md`). G4 phải đổi cách đo: họ rule `deslop/*` không tái lập giữa hai lần quét nên gate CI chỉ tính `react-doctor/*` |
 
 ---
