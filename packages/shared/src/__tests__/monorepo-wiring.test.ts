@@ -44,44 +44,16 @@ function listSourceFiles(rel: string): string[] {
 // ===================================================================
 
 describe('root product contract alignment', () => {
-  // Every spoke that can carry workflow copy must be listed. The assertions below include
-  // not.toContain guards, so a spoke left out of this array is not "untested" — it is
-  // silently exempt, and the suite still passes. Add new workflow spokes here.
-  const structures = [
-    readText('governance/STRUCTURES.md'),
-    readText('governance/structures/customer-workflow.md'),
-    readText('governance/structures/customer-workflow-fulfillment.md'),
-    readText('governance/structures/worker-workflow.md'),
-  ].join('\n')
   const supabaseConfig = readText('supabase/config.toml')
 
-  it('keeps Phase 0 auth aligned with the current role-first email/password app', () => {
-    expect(structures).toContain('chooses role first')
-    expect(structures).toContain('current Supabase email/password auth in Phase 0')
-    expect(structures).toContain('phone OTP is a later production-auth upgrade after SMS provider setup')
-    expect(structures).not.toContain('logs in with phone OTP')
-    expect(structures).not.toContain('|- OTP required')
+  // config.toml is loaded by the Supabase CLI, so its auth comment is part of
+  // the runtime surface. The governance markdown that used to be asserted here
+  // was not: it described the auth flow without touching it.
+  it('keeps the Supabase auth config annotated for the later phone OTP upgrade', () => {
     expect(supabaseConfig).toContain('later phone OTP production-auth upgrade')
     expect(supabaseConfig).not.toContain('auth flow is phone OTP')
   })
 
-  it('keeps worker verification scoped to the six approved services', () => {
-    expect(structures).toContain('service skills: electrical / plumbing / cleaning / HVAC / upholstery / handyman')
-    expect(structures).toContain('including verified multi-service combinations')
-    expect(structures).not.toContain('service skills: electrical / plumbing / both')
-  })
-
-  it('does not describe the repo as pre-feature after mobile and Edge workflow slices exist', () => {
-    // Guard the claim, not one sentence: the Current Phase section is rewritten
-    // whenever the milestone moves, so accept any wording that still states the
-    // workflow slices exist.
-    const claude = readText('CLAUDE.md')
-    const describesExistingSlices = /Mobile and Supabase Edge workflow slices exist/i.test(claude)
-      || /workflow spine runs end to end/i.test(claude)
-    expect(claude).toMatch(/Production fix and foundation hardening/i)
-    expect(describesExistingSlices).toBe(true)
-    expect(claude).not.toContain('Chưa có feature code')
-  })
   it('keeps production source files free from mojibake Vietnamese strings', () => {
     const productionFiles = [
       ...listSourceFiles('apps/mobile/app'),

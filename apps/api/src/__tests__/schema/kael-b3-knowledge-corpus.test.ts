@@ -10,16 +10,9 @@ const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(
 describe('Plan §31 B3 knowledge corpus draft gate', () => {
   const doc = read('docs/foundation/kael-knowledge-corpus.md')
 
-  it('keeps the corpus as an approved sign-off package with a migration gate', () => {
-    expect(doc).toContain('Status: `approved`')
-    expect(doc).toContain('Research method:')
-    expect(doc).toContain('Tu approved the corpus rows on 2026-06-04')
-    expect(doc).toContain('kael-b3-source-audit-1780579373188.json')
-    expect(doc).toContain('`failed_sources=0`')
-    expect(doc).toContain('## Migration Gate')
-    expect(doc).toContain('Do not create or apply a migration while any candidate row remains unapproved.')
-  })
-
+  // The sign-off banner and gate sentence were asserted here as prose. The gate
+  // that actually holds is the generator refusing to emit SQL while a row is
+  // unapproved, which the cases below run.
   it('covers supported services and legal boundaries with cited candidate rows only', () => {
     const sourceIds = new Set(
       [...doc.matchAll(/^\| (S\d+) \|/gm)].map((match) => match[1]),

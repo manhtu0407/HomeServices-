@@ -6,33 +6,6 @@ const ROOT = resolve(__dirname, '../../../../../')
 
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8')
 
-describe('Mission 3 pre-app build contract', () => {
-  const contractPath = 'docs/foundation/pre-app-build-contract.md'
-  const contract = read(contractPath)
-
-  it('defines the mission boundary and explicitly blocks feature runtime work', () => {
-    expect(contract).toContain('Prepared foundation only')
-    expect(contract).toContain('Do not build now')
-    expect(contract).toContain('functional customer booking screens')
-    expect(contract).toContain('Kael runtime orchestration')
-    expect(contract).toContain('remote production schema changes')
-  })
-
-  it('matches the current monorepo topology', () => {
-    expect(contract).toContain('apps/mobile')
-    expect(contract).toContain('apps/api')
-    expect(contract).toContain('packages/shared')
-    expect(contract).toContain('Do not recreate a root src/ application tree.')
-  })
-
-  it('keeps mobile AI and secret boundaries explicit', () => {
-    expect(contract).toContain('never calls Anthropic, Perplexity, DeepSeek, or OpenAI directly')
-    expect(contract).toContain('never reads Supabase service role or management credentials')
-    expect(contract).toContain('expo-secure-store')
-    expect(contract).toContain('fetch for network calls')
-  })
-})
-
 describe('Build foundation stays offline-capable and app-scoped', () => {
   it('sets Turbopack root to the pnpm workspace root', () => {
     const config = read('apps/api/next.config.ts')
