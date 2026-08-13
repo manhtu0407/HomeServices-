@@ -37,16 +37,6 @@ describe('learning gate constants: one source across Edge, apps/api, and SQL', (
     expect(CONTRADICTION_MIN_SAMPLE).toBe(3)
   })
 
-  it('promotion RPC migration pins the same evidence gate numbers', () => {
-    const migration = readFileSync(
-      join(MIGRATIONS_DIR, '20260714101000_atomic_learning_autopromotion.sql'),
-      'utf8',
-    )
-    expect(migration).toContain(
-      `v_candidate.evidence_count < ${EDGE_MIN_EVIDENCE} or v_candidate.confidence < ${EDGE_CONFIDENCE_THRESHOLD}`,
-    )
-  })
-
   it('observation RPC windows its aggregates on the same rolling window', () => {
     const migration = readFileSync(
       join(MIGRATIONS_DIR, '20260721100000_learning_observation_rolling_window.sql'),

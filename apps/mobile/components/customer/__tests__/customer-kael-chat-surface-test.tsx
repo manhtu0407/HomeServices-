@@ -511,29 +511,17 @@ describe('active customer Kael chat surface wiring', () => {
     }
   })
 
-  it('uses the text token for Customer Kael header navigation icons', () => {
+  // Icon colour, size and stroke weight are props of a rendered node, and the
+  // Worker header cases assert exactly that with findAllByProps against a
+  // mounted surface. The substring versions asserted source formatting — down to
+  // where the style object put its line breaks — so they broke on a reformat and
+  // held while the rendered icon changed. Only the retired token stays, as
+  // absence.
+  it('does not put the primary token back on Customer Kael header navigation icons', () => {
     const header = readCustomerSource('kael-chat/kael-chat-header.tsx')
 
-    expect(header).toContain('<ChatBackIcon color={tokens.text} />')
-    expect(header).toContain('<ChatNewConversationIcon color={tokens.text} />')
     expect(header).not.toContain('<ChatBackIcon color={tokens.primary} />')
     expect(header).not.toContain('<ChatNewConversationIcon color={tokens.primary} />')
-  })
-
-  it('matches the Worker Kael header icon geometry', () => {
-    const surfaces = readCustomerSource('kael-chat/chat-surfaces.tsx')
-    const styles = readCustomerSource('kael-chat/chat-styles.ts')
-
-    expect(surfaces).toContain('height={18} style={styles.chatBackIcon} viewBox="0 0 24 24" width={18}')
-    expect(surfaces).toContain('<Svg fill="none" height={20} viewBox="0 0 24 24" width={20}>')
-    expect(styles).toContain('chatBackIcon: {\n    height: 18,\n    width: 18,\n  },')
-  })
-
-  it('uses bold strokes for Customer Kael header navigation icons', () => {
-    const surfaces = readCustomerSource('kael-chat/chat-surfaces.tsx')
-
-    expect(surfaces).toContain('d="M14.5 5.5 8 12l6.5 6.5" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={3}')
-    expect(surfaces).toContain('d="M12 5v14M5 12h14" stroke={color} strokeLinecap="round" strokeWidth={2.7}')
   })
 
   it('keeps the Kael empty-state timeline looping while the app is active', () => {

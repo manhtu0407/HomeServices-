@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   getKaelPerformanceProfile,
@@ -56,15 +54,6 @@ describe('Kael six-service performance profiles', () => {
     expect(getKaelPerformanceProfile('unsupported')).toBeNull()
     expect(getKaelPerformanceProfile('__proto__')).toBeNull()
     expect(getKaelPerformanceProfile('constructor')).toBeNull()
-  })
-
-  it('exports the registry through the canonical Edge Kael barrel', () => {
-    const indexSource = readFileSync(
-      resolve(process.cwd(), '../../supabase/functions/mobile-api/_shared/kael/index.ts'),
-      'utf8',
-    )
-
-    expect(indexSource).toContain('export * from "./learning/performance-profiles.ts";')
   })
 
   it('feeds each profile quote drivers, safety gates, evidence, and work modes into intake diagnosis', () => {

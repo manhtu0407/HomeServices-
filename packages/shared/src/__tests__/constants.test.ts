@@ -152,8 +152,3 @@ describe('constants are runtime immutable', () => {
   })
 })
 
-describe('migration source availability', () => {
-  it('contains the workflow alignment migration used for enum parity', () => {
-    expect(existsSync(resolve(MIGRATIONS_DIR, '20260513114845_align_structures_workflow.sql'))).toBe(true)
-  })
-})

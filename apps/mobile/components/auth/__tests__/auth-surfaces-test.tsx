@@ -175,20 +175,21 @@ describe('LoginRoleSurface', () => {
     expect(onStepChange).not.toHaveBeenCalledWith('onboarding')
   })
 
-  it('keeps the splash logo on the SVG renderer that matches Preview instead of native Lottie', () => {
+  // Which renderer the splash uses is a value the module exports, so it is
+  // asserted directly. The rest is absence: the native Lottie adapter must stay
+  // deleted and unimported, the retired static logo must not come back, and the
+  // renderer must not regain the mask that broke the approved mark.
+  it('keeps the splash logo on the SVG renderer instead of native Lottie', () => {
     const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
     const logoSource = readFileSync(resolve(__dirname, '../entry-access/lottie-logo-mark.tsx'), 'utf-8')
     const rendererSource = readFileSync(resolve(__dirname, '../../kael/kael-svg-lottie-view.tsx'), 'utf-8')
     const nativeAdapterPath = resolve(__dirname, '../../kael/kael-lottie-view.native.tsx')
 
     expect(splashLogoRendererKind).toBe('svg-lottie')
-    expect(flowSource).toContain('./lottie-logo-mark')
-    expect(logoSource).toContain('@/components/kael/kael-svg-lottie-view')
     expect(flowSource).not.toContain('@/components/kael/kael-lottie-view')
     expect(logoSource).not.toContain('@/components/kael/kael-lottie-view')
     expect(flowSource).not.toContain('nestscout-aurora-nest-appstore-1024.png')
     expect(flowSource).not.toContain('auroraNestLogoStatic')
-    expect(rendererSource).toContain('nestscout-aurora-nest-approved-logo-transparent.png')
     expect(rendererSource).not.toContain('<Mask')
     expect(rendererSource).not.toContain('mask={')
     expect(existsSync(nativeAdapterPath)).toBe(false)

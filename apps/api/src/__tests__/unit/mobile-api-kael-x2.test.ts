@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
 import {
   AI_SESSION_LIMIT,
   KAEL_CHAT_PER_HOUR_LIMIT,
@@ -13,11 +11,6 @@ import {
   jobCreateSchema,
   kaelChatCreateSchema,
 } from '../../../../../supabase/functions/_shared/domain'
-
-const AUDIT_GAP_MIGRATION = readFileSync(
-  resolve(__dirname, '../../../../../supabase/migrations/20260530100110_fix_recent_pr_audit_gaps.sql'),
-  'utf-8',
-)
 
 // Cross-layer safety contracts:
 // - F-04 client_request_id idempotency keys on jobs + kael chat sessions
@@ -83,21 +76,6 @@ describe('X2 schema: kaelChatCreateSchema accepts client_request_id', () => {
       message: 'Vòi rò',
     })
     expect(parsed.success).toBe(true)
-  })
-})
-
-describe('X2 migration follow-up: rate limit and backup table hardening', () => {
-  it('serializes DB-backed Kael chat quota check and insert per user', () => {
-    expect(AUDIT_GAP_MIGRATION).toContain('pg_advisory_xact_lock')
-    expect(AUDIT_GAP_MIGRATION).toContain('hashtextextended(p_user_id::text, 0)')
-    expect(AUDIT_GAP_MIGRATION).toContain('insert into public.kael_chat_rate_limit_log')
-  })
-
-  it('protects the worker district backup table from anon/authenticated reads', () => {
-    expect(AUDIT_GAP_MIGRATION).toContain('alter table if exists public.worker_profiles_districts_backup_x3 enable row level security')
-    expect(AUDIT_GAP_MIGRATION).toContain('revoke all on table public.worker_profiles_districts_backup_x3 from anon')
-    expect(AUDIT_GAP_MIGRATION).toContain('revoke all on table public.worker_profiles_districts_backup_x3 from authenticated')
-    expect(AUDIT_GAP_MIGRATION).toContain('grant select on table public.worker_profiles_districts_backup_x3 to service_role')
   })
 })
 

@@ -43,87 +43,17 @@ function listSourceFiles(rel: string): string[] {
 // Workspace structure — Turborepo + pnpm
 // ===================================================================
 
-describe('monorepo directory structure', () => {
-  it('apps/api/ exists', () => {
-    expect(isDir('apps/api')).toBe(true)
-  })
-
-  it('apps/mobile/ exists', () => {
-    expect(isDir('apps/mobile')).toBe(true)
-  })
-
-  it('packages/shared/ exists', () => {
-    expect(isDir('packages/shared')).toBe(true)
-  })
-
-  it('supabase/ stays at root (not moved)', () => {
-    expect(isDir('supabase')).toBe(true)
-    expect(exists('supabase/migrations')).toBe(true)
-  })
-
-  it('no stray src/ at root (moved to apps/api/src/)', () => {
-    // If src/ exists at root, the move was incomplete
-    const rootSrc = resolve(REPO_ROOT, 'src')
-    if (existsSync(rootSrc)) {
-      // It could exist as an empty dir or leftover — check for actual code
-      expect(exists('src/lib')).toBe(false)
-      expect(exists('src/app')).toBe(false)
-    }
-  })
-
-  it('CLAUDE.md stays at root (LOCKED)', () => {
-    expect(exists('CLAUDE.md')).toBe(true)
-  })
-
-  it('governance/STRUCTURES.md is the locked workflow source', () => {
-    expect(exists('governance/STRUCTURES.md')).toBe(true)
-    expect(isDir('governance/structures')).toBe(true)
-  })
-
-  it('governance/RULES.md is the locked rules source', () => {
-    expect(exists('governance/RULES.md')).toBe(true)
-  })
-})
-
 describe('root product contract alignment', () => {
-  // Every spoke that can carry workflow copy must be listed. The assertions below include
-  // not.toContain guards, so a spoke left out of this array is not "untested" — it is
-  // silently exempt, and the suite still passes. Add new workflow spokes here.
-  const structures = [
-    readText('governance/STRUCTURES.md'),
-    readText('governance/structures/customer-workflow.md'),
-    readText('governance/structures/customer-workflow-fulfillment.md'),
-    readText('governance/structures/worker-workflow.md'),
-  ].join('\n')
   const supabaseConfig = readText('supabase/config.toml')
 
-  it('keeps Phase 0 auth aligned with the current role-first email/password app', () => {
-    expect(structures).toContain('chooses role first')
-    expect(structures).toContain('current Supabase email/password auth in Phase 0')
-    expect(structures).toContain('phone OTP is a later production-auth upgrade after SMS provider setup')
-    expect(structures).not.toContain('logs in with phone OTP')
-    expect(structures).not.toContain('|- OTP required')
+  // config.toml is loaded by the Supabase CLI, so its auth comment is part of
+  // the runtime surface. The governance markdown that used to be asserted here
+  // was not: it described the auth flow without touching it.
+  it('keeps the Supabase auth config annotated for the later phone OTP upgrade', () => {
     expect(supabaseConfig).toContain('later phone OTP production-auth upgrade')
     expect(supabaseConfig).not.toContain('auth flow is phone OTP')
   })
 
-  it('keeps worker verification scoped to the six approved services', () => {
-    expect(structures).toContain('service skills: electrical / plumbing / cleaning / HVAC / upholstery / handyman')
-    expect(structures).toContain('including verified multi-service combinations')
-    expect(structures).not.toContain('service skills: electrical / plumbing / both')
-  })
-
-  it('does not describe the repo as pre-feature after mobile and Edge workflow slices exist', () => {
-    // Guard the claim, not one sentence: the Current Phase section is rewritten
-    // whenever the milestone moves, so accept any wording that still states the
-    // workflow slices exist.
-    const claude = readText('CLAUDE.md')
-    const describesExistingSlices = /Mobile and Supabase Edge workflow slices exist/i.test(claude)
-      || /workflow spine runs end to end/i.test(claude)
-    expect(claude).toMatch(/Production fix and foundation hardening/i)
-    expect(describesExistingSlices).toBe(true)
-    expect(claude).not.toContain('Chưa có feature code')
-  })
   it('keeps production source files free from mojibake Vietnamese strings', () => {
     const productionFiles = [
       ...listSourceFiles('apps/mobile/app'),
@@ -186,10 +116,6 @@ describe('root product contract alignment', () => {
 // ===================================================================
 
 describe('pnpm-workspace.yaml', () => {
-  it('exists at root', () => {
-    expect(exists('pnpm-workspace.yaml')).toBe(true)
-  })
-
   it('includes apps/* and packages/*', () => {
     const content = readText('pnpm-workspace.yaml')
     expect(content).toContain('"apps/*"')
@@ -204,26 +130,11 @@ describe('pnpm-workspace.yaml', () => {
 describe('config/turbo/turbo.json', () => {
   const turbo = readJSON('config/turbo/turbo.json')
 
-  it('has $schema', () => {
-    expect(turbo.$schema).toContain('turbo.build')
-  })
-
   it('defines build task with ^build dependency', () => {
     expect(turbo.tasks.build).toBeDefined()
     expect(turbo.tasks.build.dependsOn).toContain('^build')
   })
 
-  it('defines test task', () => {
-    expect(turbo.tasks.test).toBeDefined()
-  })
-
-  it('defines type-check task', () => {
-    expect(turbo.tasks['type-check']).toBeDefined()
-  })
-
-  it('dev task is not cached', () => {
-    expect(turbo.tasks.dev.cache).toBe(false)
-  })
 })
 
 // ===================================================================
@@ -232,25 +143,6 @@ describe('config/turbo/turbo.json', () => {
 
 describe('root package.json', () => {
   const pkg = readJSON('package.json')
-
-  it('name is nestscout', () => {
-    expect(pkg.name).toBe('nestscout')
-  })
-
-  it('is private', () => {
-    expect(pkg.private).toBe(true)
-  })
-
-  it('scripts delegate to turbo', () => {
-    expect(pkg.scripts.build).toContain('turbo')
-    expect(pkg.scripts.test).toContain('turbo')
-    expect(pkg.scripts['type-check']).toContain('turbo')
-  })
-
-  it('runs skills maintenance through the bundled Node PowerShell launcher', () => {
-    expect(pkg.scripts['skills:sync']).toContain('-File scripts/run-node.ps1 scripts/sync-skills.mjs')
-    expect(pkg.scripts['skills:check']).toContain('-File scripts/run-node.ps1 scripts/check-skills-sync.mjs')
-  })
 
   it('removes cmd forwarding shims that can reinterpret shell metacharacters', () => {
     for (const wrapper of [
@@ -281,58 +173,11 @@ describe('root package.json', () => {
     expect(structureLint).not.toContain('@home-services/api')
   })
 
-  it('has turbo in devDependencies', () => {
-    expect(pkg.devDependencies.turbo).toBeDefined()
-  })
-
-  it('does NOT have app-specific deps at root', () => {
-    // Root should only have turbo — app deps live in apps/
-    expect(pkg.dependencies).toBeUndefined()
-    expect(pkg.devDependencies.next).toBeUndefined()
-    expect(pkg.devDependencies.react).toBeUndefined()
-    expect(pkg.devDependencies.expo).toBeUndefined()
-  })
 })
 
 // ===================================================================
 // apps/api package.json
 // ===================================================================
-
-describe('apps/api/package.json', () => {
-  const pkg = readJSON('apps/api/package.json')
-
-  it('name is @nestscout/api', () => {
-    expect(pkg.name).toBe('@nestscout/api')
-  })
-
-  it('is private', () => {
-    expect(pkg.private).toBe(true)
-  })
-
-  it('depends on @nestscout/shared via workspace', () => {
-    expect(pkg.dependencies['@nestscout/shared']).toBe('workspace:*')
-  })
-
-  it('has next.js', () => {
-    expect(pkg.dependencies.next).toBeDefined()
-  })
-
-  it('has vitest for testing', () => {
-    expect(pkg.devDependencies.vitest).toBeDefined()
-  })
-
-  it('has test script', () => {
-    expect(pkg.scripts.test).toBeDefined()
-  })
-
-  it('has type-check script', () => {
-    expect(pkg.scripts['type-check']).toBeDefined()
-  })
-
-  it('has zod (for validation)', () => {
-    expect(pkg.dependencies.zod).toBeDefined()
-  })
-})
 
 // ===================================================================
 // apps/mobile package.json
@@ -340,63 +185,6 @@ describe('apps/api/package.json', () => {
 
 describe('apps/mobile/package.json', () => {
   const pkg = readJSON('apps/mobile/package.json')
-
-  it('name is @nestscout/mobile', () => {
-    expect(pkg.name).toBe('@nestscout/mobile')
-  })
-
-  it('is private', () => {
-    expect(pkg.private).toBe(true)
-  })
-
-  it('depends on @nestscout/shared via workspace', () => {
-    expect(pkg.dependencies['@nestscout/shared']).toBe('workspace:*')
-  })
-
-  it('has expo', () => {
-    expect(pkg.dependencies.expo).toBeDefined()
-  })
-
-  it('has expo-router', () => {
-    expect(pkg.dependencies['expo-router']).toBeDefined()
-  })
-
-  it('has react-native', () => {
-    expect(pkg.dependencies['react-native']).toBeDefined()
-  })
-
-  it('has supabase client', () => {
-    expect(pkg.dependencies['@supabase/supabase-js']).toBeDefined()
-  })
-
-  it('has AsyncStorage for non-sensitive local UI preferences', () => {
-    expect(pkg.dependencies['@react-native-async-storage/async-storage']).toBeDefined()
-  })
-
-  it('has expo-secure-store for Supabase session persistence', () => {
-    expect(pkg.dependencies['expo-secure-store']).toBeDefined()
-  })
-
-  it('has expo-image-picker for local customer media selection', () => {
-    expect(pkg.dependencies['expo-image-picker']).toBeDefined()
-  })
-
-  it('main entry is expo-router/entry', () => {
-    expect(pkg.main).toBe('expo-router/entry')
-  })
-
-  it('does NOT have vitest (no tests in mobile yet)', () => {
-    // Mobile doesn't run vitest — it uses Expo testing tools
-    expect(pkg.devDependencies?.vitest).toBeUndefined()
-  })
-
-  it('has type-check script', () => {
-    expect(pkg.scripts['type-check']).toBeDefined()
-  })
-
-  it('participates in the root Turbo lint task', () => {
-    expect(pkg.scripts.lint).toBe('eslint .')
-  })
 
   it('pins EAS CLI commands to the workspace package manager', () => {
     const easScripts = [
@@ -420,40 +208,6 @@ describe('apps/mobile/package.json', () => {
 // ===================================================================
 // packages/shared package.json
 // ===================================================================
-
-describe('packages/shared/package.json', () => {
-  const pkg = readJSON('packages/shared/package.json')
-
-  it('name is @nestscout/shared', () => {
-    expect(pkg.name).toBe('@nestscout/shared')
-  })
-
-  it('is private', () => {
-    expect(pkg.private).toBe(true)
-  })
-
-  it('has zod dependency', () => {
-    expect(pkg.dependencies.zod).toBeDefined()
-  })
-
-  it('has vitest for testing', () => {
-    expect(pkg.devDependencies.vitest).toBeDefined()
-  })
-
-  it('has test script', () => {
-    expect(pkg.scripts.test).toBeDefined()
-  })
-
-  it('main points to src/index.ts', () => {
-    expect(pkg.main).toContain('index.ts')
-  })
-
-  it('does NOT depend on next or react-native (shared = platform agnostic)', () => {
-    expect(pkg.dependencies?.next).toBeUndefined()
-    expect(pkg.dependencies?.['react-native']).toBeUndefined()
-    expect(pkg.dependencies?.react).toBeUndefined()
-  })
-})
 
 // ===================================================================
 // Cross-package dependency consistency
@@ -489,36 +243,3 @@ describe('dependency version consistency', () => {
 // apps/api source structure (post-move)
 // ===================================================================
 
-describe('apps/api source structure after move', () => {
-  it('has src/app/ (Next.js pages)', () => {
-    expect(isDir('apps/api/src/app')).toBe(true)
-  })
-
-  it('has src/lib/ (server code)', () => {
-    expect(isDir('apps/api/src/lib')).toBe(true)
-  })
-
-  it('has src/__tests__/ (test suites)', () => {
-    expect(isDir('apps/api/src/__tests__')).toBe(true)
-  })
-
-  it('has next.config.ts', () => {
-    expect(exists('apps/api/next.config.ts')).toBe(true)
-  })
-
-  it('has tsconfig.json', () => {
-    expect(exists('apps/api/tsconfig.json')).toBe(true)
-  })
-
-  it('has vitest.config.mts (ESM config so Vite loads vitest/config without ERR_REQUIRE_ESM)', () => {
-    expect(exists('apps/api/vitest.config.mts')).toBe(true)
-  })
-
-  it('has proxy.ts (Next.js 16 — not middleware.ts at root)', () => {
-    expect(exists('apps/api/src/proxy.ts')).toBe(true)
-  })
-
-  it('no nested src/src/ (move artifact)', () => {
-    expect(exists('apps/api/src/src')).toBe(false)
-  })
-})

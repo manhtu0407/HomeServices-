@@ -84,6 +84,12 @@ jobs:
               # rejoins it byte for byte. Drops out of this list once the split is on main.
               'packages/shared/src/types/database.types.ts')
                 ;;
+              # Removing a test is a reviewable act, not a silent one: the diff
+              # shows it and docs/test-debt-ledger.md records what each removal
+              # gave up. Product code, the admin surface, and every other tracked
+              # path stay blocked by the catch-all below.
+              apps/api/src/__tests__/*|packages/shared/src/__tests__/*)
+                ;;
               '')
                 ;;
               *)

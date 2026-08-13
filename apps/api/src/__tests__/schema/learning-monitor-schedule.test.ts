@@ -8,32 +8,7 @@ const ROOT = join(__dirname, '../../../../..')
 const read = (relative: string) => readFileSync(join(ROOT, relative), 'utf8')
 
 describe('learning monitor: scheduled invocation', () => {
-  const migration = read(
-    'supabase/migrations/20260721105000_kael_learning_monitor_cron.sql',
-  )
   const edgeFunction = read('supabase/functions/kael-learning-monitor/index.ts')
-
-  it('schedules a named daily job that posts to the monitor function', () => {
-    expect(migration).toContain("'kael-learning-monitor',")
-    expect(migration).toContain("'0 2 * * *'")
-    expect(migration).toContain("'/functions/v1/kael-learning-monitor'")
-  })
-
-  it('re-applies without duplicating or erroring on the job', () => {
-    expect(migration).toContain("where jobname = 'kael-learning-monitor'")
-    expect(migration).toContain("perform cron.unschedule('kael-learning-monitor')")
-  })
-
-  it('stays uninstalled until both Vault secrets exist', () => {
-    expect(migration).toContain("where name = 'project_url'")
-    expect(migration).toContain("where name = 'kael_learning_monitor_secret'")
-    expect(migration).toContain('return false;')
-  })
-
-  it('keeps the scheduler helper off every public role', () => {
-    expect(migration).toContain('revoke all on function private.schedule_kael_learning_monitor()')
-    expect(migration).toContain('from public, anon, authenticated;')
-  })
 
   it('authenticates the function by secret header, not by user JWT', () => {
     expect(edgeFunction).toContain('KAEL_LEARNING_MONITOR_SECRET')

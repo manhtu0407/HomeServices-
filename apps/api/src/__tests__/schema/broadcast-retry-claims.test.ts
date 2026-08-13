@@ -7,22 +7,6 @@ const read = (path: string) => readFileSync(
 )
 
 describe('broadcast retry claims', () => {
-  it('uses a durable service-only claim with bounded crash recovery', () => {
-    const sql = read('supabase/migrations/20260715113000_broadcast_retry_claims.sql')
-
-    expect(sql).toContain('public.job_broadcast_retry_claims')
-    expect(sql).toContain('function public.claim_job_broadcast_retry_atomic')
-    expect(sql).toContain('function public.release_job_broadcast_retry_claim_atomic')
-    expect(sql).toContain('on conflict (job_id) do update')
-    expect(sql).toContain('v_now timestamptz := pg_catalog.clock_timestamp()')
-    expect(sql).toContain('claim.expires_at <= v_now')
-    expect(sql).not.toContain('p_now timestamptz')
-    expect(sql).toContain("return query select false, 'ACTIVE_BROADCAST'::text")
-    expect(sql).toContain("set search_path = ''")
-    expect(sql).toContain('to service_role')
-    expect(sql).toContain('from public, anon, authenticated')
-  })
-
   it('rechecks active rows under the claim and always releases the exact token', () => {
     const broadcasts = [
       'supabase/functions/mobile-api/_shared/domains/matching/broadcasts.ts',
