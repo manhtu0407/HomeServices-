@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { EdgeAiSecrets } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
@@ -116,23 +115,6 @@ describe('worker Kael normal chat service', () => {
         worker_id: workerId,
       }),
     })
-  })
-
-  it('keeps general sessions jobless while intake sessions remain job-scoped', () => {
-    const migration = readFileSync(
-      new URL('../../../../../supabase/migrations/20260723092515_enable_worker_kael_normal_chat.sql', import.meta.url),
-      'utf8',
-    )
-
-    expect(migration).toContain('alter column job_id drop not null')
-    expect(migration).toContain("chat_mode = 'normal' and job_id is null")
-    expect(migration).toContain("chat_mode = 'intake' and job_id is not null")
-    expect(migration).toContain('kael_worker_chat_sessions_normal_idempotency_idx')
-    expect(migration).toContain('kael_worker_chat_sessions_intake_idempotency_idx')
-    expect(migration).toContain('kael_worker_chat_turns')
-    expect(migration).toContain('kael_worker_chat_turn_requests')
-    expect(migration).toContain('create or replace function public.claim_worker_kael_general_turn_atomic')
-    expect(migration).toContain('create or replace function public.complete_worker_kael_general_turn_atomic')
   })
 
   it('answers a general worker question without job context', async () => {

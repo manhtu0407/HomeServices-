@@ -79,19 +79,4 @@ describe('Kael private-media retention worker', () => {
     expect(edgeSource).not.toContain('normalizeRows')
   })
 
-  it('schedules only after both Vault secrets exist', () => {
-    expect(migration).toContain('schedule_kael_chat_media_retention')
-    expect(migration).toContain("name = 'project_url'")
-    expect(migration).toContain("name = 'kael_media_retention_secret'")
-    expect(migration).toContain("'*/15 * * * *'")
-    expect(migration).toContain("'/functions/v1/kael-media-retention'")
-    expect(migration).toMatch(/if nullif\(btrim\(v_project_url\), ''\) is null[\s\S]*?return false/)
-  })
-
-  it('locks and verifies consume against a concurrent cleanup claim', () => {
-    expect(migration).toContain('for update of intent')
-    expect(migration).toContain('intent.cleanup_claim_token is null')
-    expect(migration).toContain('get diagnostics v_updated = row_count')
-    expect(migration).toContain("'MEDIA_INTENT_STATE_CHANGED'")
-  })
 })

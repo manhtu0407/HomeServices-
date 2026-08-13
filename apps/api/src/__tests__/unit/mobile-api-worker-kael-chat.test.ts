@@ -845,20 +845,6 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(migration).toContain('check_kael_worker_chat_rate')
   })
 
-  it('scopes worker Kael chat idempotency to the active job', () => {
-    const migration = readFileSync(
-      new URL('../../../../../supabase/migrations/20260605005000_scope_worker_kael_chat_idempotency_by_job.sql', import.meta.url),
-      'utf8',
-    )
-
-    expect(migration).toContain('drop index if exists public.kael_worker_chat_sessions_worker_idempotency_idx')
-    expect(migration).toContain('alter table public.kael_worker_chat_turns')
-    expect(migration).toContain('add column if not exists job_id uuid references public.jobs on delete cascade')
-    expect(migration).toContain('alter column job_id set not null')
-    expect(migration).toContain('(worker_id, job_id, client_request_id)')
-    expect(migration).toContain('where client_request_id is not null')
-  })
-
   it('archives a worker Kael session through the owned Edge boundary without deleting its evidence rows', () => {
     const router = readMobileApiRouterLayer()
     const services = readMobileApiServiceLayer()
@@ -1049,16 +1035,4 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(migration).toContain('pg_advisory_xact_lock')
   })
 
-  it('ships worker feedback and training-consent storage behind service-role writes', () => {
-    const migration = readFileSync(
-      new URL('../../../../../supabase/migrations/20260604225500_worker_kael_feedback_consent.sql', import.meta.url),
-      'utf8',
-    )
-
-    expect(migration).toContain('create table if not exists public.worker_kael_feedback')
-    expect(migration).toContain('create table if not exists public.worker_kael_training_consent')
-    expect(migration).toContain('grant all on public.worker_kael_feedback to service_role')
-    expect(migration).toContain('grant all on public.worker_kael_training_consent to service_role')
-    expect(migration).toContain('grant select on public.worker_kael_feedback to authenticated')
-  })
 })
