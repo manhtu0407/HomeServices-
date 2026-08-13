@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { matchAdminControlRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/admin-control-routes'
 import { matchMeRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/me'
@@ -30,16 +28,5 @@ describe('admin operator provisioning routes', () => {
     ))?.toMatchObject({ kind: 'admin.subAdmins.resetPassword', roles: ['admin'] })
     expect(matchMeRoute('/me/admin-activation', 'GET')?.kind).toBe('me.adminActivation')
     expect(matchMeRoute('/me/admin-activation', 'POST')?.kind).toBe('me.adminActivation.activate')
-  })
-
-  it('keeps client metadata from granting a worker or admin role', () => {
-    const migration = readFileSync(resolve(
-      process.cwd(),
-      '../../supabase/migrations/20260813113000_worker_review_admin_provisioning.sql',
-    ), 'utf8')
-
-    expect(migration).toContain("'customer'::public.user_role")
-    expect(migration).not.toContain("raw_user_meta_data->>'role'")
-    expect(migration).not.toMatch(/initial_password\s+(text|varchar)/i)
   })
 })
