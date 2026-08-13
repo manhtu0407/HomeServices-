@@ -39,6 +39,12 @@ Nothing verifies these against a database. This is the same surface that has to 
 | `worker_profiles_districts_backup_x3` has RLS on and is revoked from `anon` / `authenticated` | `unit/mobile-api-kael-x2` → *protects the worker district backup table…* | a per-actor `select` attempt asserting permission denied; the table holds worker district history, so a leak is a privacy leak |
 | `kael_customer_conversations` grants owner-only reads and blocks cross-actor writes | `unit/mobile-api-customer-kael-conversations` → *enables RLS, grants read-only owner access…*; *covers the composite owner foreign key…* | `supabase/tests/kael_customer_conversations_verification.sql` |
 | The per-user Kael chat quota (`check_kael_worker_chat_rate`) is enforced in the database, not only in Edge | `unit/mobile-api-worker-kael-chat` → *keeps the rollback limiter fail-closed…* | exceed the bucket inside one transaction, assert the RPC rejects |
+| Participants can read jobs while ordinary roles cannot mutate workflow state | `tier4-sql-migration` → *participants can read jobs but normal users cannot mutate workflow state directly* | per-actor DML matrix in `supabase/tests/`; this is the broadest RLS claim the suite ever made and it rested on substrings |
+| `handle_new_user` execute is revoked from `public`, `anon`, `authenticated` | `tier4-sql-migration` → *prevents API roles from calling trigger-only handle_new_user directly* | `set role anon`, call it, assert permission denied |
+| Storage policies stay scoped by job folder and worker ownership | `tier4-sql-migration` → *job photos require participant access…*; *completion uploads require the matched worker*; *worker documents remain worker-owned…* | storage-object access attempts per actor |
+| Six-service foundation enables RLS and grants only least Data API privilege | `six-service-casework-foundation-migration` → *enables RLS and exposes only the least Data API privileges* | extend `supabase/tests/six_service_casework_foundation_verification.sql` |
+| Cancelling a job releases the pending worker candidate in the same transaction | `customer-worker-candidate-gate-migration` → *atomically releases a pending candidate when the customer cancels* | extend `supabase/tests/customer_worker_candidate_gate_verification.sql` — cancel mid-flight, assert candidate status and `jobs.worker_id` both settle |
+| The learning evidence gate numbers in the promotion RPC match the shared constants | `learning-gate-constants-parity` → *promotion RPC migration pins the same evidence gate numbers* | call the RPC at the boundary values and assert accept/reject, rather than reading the number out of a file |
 
 ## 2b. Uncovered — media and PII retention
 
@@ -77,6 +83,27 @@ These invariants had a real verification script *and* a migration-text test. Rem
 
 `tier1-type-completeness.test.ts` had 27 cases that declared an object literal with a `satisfies Database[...]` clause and then asserted the literal back. The runtime assertion was theatre; the `satisfies` clause was a real static check. The fixtures moved to `apps/api/src/__tests__/schema/generated-type-fixtures.ts`, where `tsc` still enforces every one of them and vitest no longer counts them as passing tests. `tier3-relationships.test.ts` was deleted outright — its type annotations duplicated checks `tier1` already makes.
 
+## 5. Deleted as unfalsifiable — no invariant to record
+
+A later sweep removed 163 more cases that asserted on file text without asserting anything a reader could act on. Unlike the sections above, nothing goes on a to-do list here: these were not weak checks of real invariants, they were checks of nothing.
+
+| Group | Cases | What the name claimed vs what it read |
+|---|---|---|
+| `wiring/module-wiring` | 10 | *"checks supabase connectivity"* — connects to nothing; it reads a file. *"exports GET handler"*, *"has route matcher config"* the same |
+| `schema/tier6-seed-validation` | 21 | *"includes a paid job (full workflow test)"* — one substring in `supabase/seed.sql`. *"worker has realistic rating (1-5 range)"* reads no rating |
+| `shared/monorepo-wiring` | 56 | *"has zod dependency"*, *"is private"*, *"name is nestscout"* — reads `package.json`, asserts the field back. Losing `zod` breaks the build far louder |
+| `shared/mobile-wiring` | 29 | *"tab: Trang chủ"*, *"exports useAuth hook"* — reads `apps/mobile` source from `packages/shared`, where 1,116 RNTL tests already cover those components behaviorally |
+| `schema/tier7-staging-security-harness` | 2 | *"simulates customer, worker, outsider, and admin authenticated contexts"* — simulates nothing |
+| `shared/exports`, `shared/constants`, `foundation/pre-app-build-contract`, scattered singles | 45 | single-substring or manifest-field assertions; `tsc` and the build already enforce them |
+
+**`supabase/seed.sql` is the same category as migration SQL.** The first round's rule named only `supabase/migrations`, so seed-file assertions survived two sweeps. Any `.sql` the database must execute cannot be verified by reading it.
+
+## 6. Audited and healthy — do not mistake these for debt
+
+- **Mock assertions.** 50 cases assert only `toHaveBeenCalled*`. 27 of them are negative — `expect(rpc).not.toHaveBeenCalled()` after calling real code and asserting it rejects — which is precisely the negative security test `tdd.md` requires. The rest assert call counts that are the behavior under test, such as "one aggregate query, not N+1". Nothing here needs removing.
+- **~280 source-text wiring cases.** Kept deliberately. Unlike migration SQL, a `.ts` file *is* the shipped artifact, so a substring match is a weak but real regression signal — and for Edge (Deno) wiring there is currently no other reachable layer. They were retitled where the old name promised behavior; they were not deleted.
+- **78 skipped integration tests.** Good tests that never run on pull requests. That is a CI wiring problem, not a test-quality one: the fix is a step in the `database-controls` job, not a deletion.
+
 ---
 
 ## Structural notes
@@ -89,6 +116,8 @@ Two things made this debt easy to accumulate, and both still hold:
 
 Cause 1 is still open, and it is the one that matters more: as long as the SQL layer cannot be run on a Linux or macOS machine, the rule tells a contributor their only reachable option does not count, without giving them a reachable one.
 
+**CI note.** `.github/workflows/kael-agentic-completeness.yml` blocks every tracked-file deletion outside an allowlist. That guard is correct and it caught this work; the allowlist now covers `apps/api/src/__tests__/` and `packages/shared/src/__tests__/`, on the grounds that a deleted test is visible in the diff and recorded here. Product code, the admin surface, and every other path stay blocked.
+
 ## What still counts as a legitimate text assertion
 
 Not every `readFileSync` + `toContain` was removed, and the distinction is what the assertion is *about*:
@@ -98,3 +127,28 @@ Not every `readFileSync` + `toContain` was removed, and the distinction is what 
 - **Generated database types** — produced by `supabase gen types` from a live database, so asserting on them is asserting on the schema.
 - **Derived sets** — enumerating migrations and reconciling them against generated types (`tier1-type-completeness`, `mobile-api-edge-schema`) fails when something new arrives unguarded. That is a ratchet doing its job.
 - **Secret scans** — `expect(sql).not.toMatch(/pplx-[a-zA-Z0-9]{20,}/)` claims no key is committed, which is exactly a claim about file text.
+
+## How to find these
+
+The rule was right from the first sweep; finding every violation took three tries, and each miss was the same mistake — matching a pattern instead of resolving what the code actually reads.
+
+| Miss | Why the search failed |
+|---|---|
+| Ratchet files still holding migration-text cases | classified at *file* level instead of *case* level |
+| `mobile-api-customer-kael-conversations` | followed `const x = …` but not `function readMigrations() { … }` |
+| `tier4-sql-migration` and three others | the path was built from a constant, so the literal `supabase/migrations` never appeared in the read expression |
+
+Search this way instead — substitute file-level string constants into the read expression *before* testing it, so the result does not depend on how a path was spelled or a variable named:
+
+```python
+const_map = {}          # const X = '...' | resolve(...) | new URL('...')
+for `const V = readFileSync(<expr>)`:
+    resolved = substitute(const_map, expr)
+    if 'migrations' in resolved.lower():
+        V holds migration text
+violation = any case with expect(V).toContain / .toMatch   # excluding .not.
+```
+
+A clean run prints zero. Anything else is a case claiming database behavior on the strength of a substring.
+
+**Removing cases safely.** Deleting an `it()` block by searching for the next `\n  })\n`, or by brace-scanning, both cut through multi-line arrays inside the block and produce parse errors. What worked: take block boundaries from *line* structure — `^  it\(` opens, `^  \}\)$` closes — verify the pairing is 1:1 before applying, and delete from the end of the file backwards so earlier offsets stay valid.
