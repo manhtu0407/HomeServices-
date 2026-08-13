@@ -2,7 +2,7 @@
 
 Records the invariants that lost their only test when the migration-text suite was removed, and names the real layer each one needs.
 
-**Why this file exists.** 222 test cases under `apps/api/src/__tests__` proved product behavior by reading a `.sql` migration and matching substrings. `expect(migration).toContain('check (gross_amount = platform_fee + worker_net)')` passes whether or not the migration ever ran, and whether or not a later migration dropped the constraint. `governance/protocols/tdd.md` already rules that out — "Static-only coverage is insufficient for behavior or security changes", and the failure mode "Tests that never execute real code" — so the cases were deleted rather than left to report green.
+**Why this file exists.** 233 test cases across `apps/api` and `packages/shared` proved product behavior by reading a `.sql` migration and matching substrings. `expect(migration).toContain('check (gross_amount = platform_fee + worker_net)')` passes whether or not the migration ever ran, and whether or not a later migration dropped the constraint. `governance/protocols/tdd.md` already ruled that out — "Static-only coverage is insufficient for behavior or security changes", and the failure mode "Tests that never execute real code" — so the cases were deleted rather than left to report green. That file now says so explicitly: a text assertion over migration SQL is a ratchet, never a test layer.
 
 Deleting them did not make the product less safe. It made the real level of safety visible. This ledger is what keeps that visibility from decaying into "nobody remembers what we stopped checking".
 
@@ -25,6 +25,7 @@ Nothing verifies these against a database. This is the same surface that has to 
 | Payment RPCs are unreachable from `anon` / `authenticated` | both cases above (`revoke` / `grant` substrings) | same scripts — `set role authenticated`, call, assert permission denied |
 | `upsert_customer_refund_payment_method` locks the row and never exposes the raw account | `customer-refund-account-persistence` → *uses one locked service-role RPC…* | `supabase/tests/customer_refund_account_verification.sql` |
 | Cash commission is deducted from in-app balance without inventing a cash credit | `worker-cash-commission-settlement` (file deleted) | extend `supabase/tests/manual_bank_payment_finance_v1_verification.sql` |
+| `confirm_kael_chat_atomic` refuses to confirm a quote without a valid `analysis_receipt.v1` Price Reasoning receipt | `unit/mobile-api-kael-casework-runtime` → *requires a validated Price Reasoning receipt…* | `supabase/tests/kael_price_reasoning_receipt_verification.sql` — confirm with a missing receipt and with a wrong `schema_version`, assert both raise `MISSING_REASONING_RECEIPT` |
 
 `worker_payment_ledger` rows are read by `exact_aggregate_rpcs_verification.sql` and `manual_bank_payment_finance_v1_verification.sql`, so the table is not entirely unseen — but no script drives the VietQR write path that creates those rows.
 
@@ -35,6 +36,16 @@ Nothing verifies these against a database. This is the same surface that has to 
 | `handle_new_user` cannot take a role from user metadata | `tier5-security-hardening` → *does NOT use coalesce…* | partly covered by `admin_operations_sub_admin_verification.sql`; add a negative case that signs up with `raw_user_meta_data.role = 'admin'` and asserts the row lands as `customer` |
 | Admin RLS policies all route through `is_admin()` | `tier5-security-hardening` → *all admin policies use is_admin()…* | partly covered by `harness_access_boundary_verification.sql`; extend to enumerate policies per actor |
 | Authenticated clients stay read-only on workflow tables | `mobile-api-edge-schema` → *keeps authenticated mobile clients read-only…* | per-actor DML attempts in `supabase/tests/` — the pattern `rls-per-actor.test.ts` uses, but at the SQL layer |
+| `worker_profiles_districts_backup_x3` has RLS on and is revoked from `anon` / `authenticated` | `unit/mobile-api-kael-x2` → *protects the worker district backup table…* | a per-actor `select` attempt asserting permission denied; the table holds worker district history, so a leak is a privacy leak |
+| `kael_customer_conversations` grants owner-only reads and blocks cross-actor writes | `unit/mobile-api-customer-kael-conversations` → *enables RLS, grants read-only owner access…*; *covers the composite owner foreign key…* | `supabase/tests/kael_customer_conversations_verification.sql` |
+| The per-user Kael chat quota (`check_kael_worker_chat_rate`) is enforced in the database, not only in Edge | `unit/mobile-api-worker-kael-chat` → *keeps the rollback limiter fail-closed…* | exceed the bucket inside one transaction, assert the RPC rejects |
+
+## 2b. Uncovered — media and PII retention
+
+| Invariant | Deleted case | Real layer needed |
+|---|---|---|
+| Retention cleanup leases only uncleaned rows, `for update skip locked`, and records a claim token | `unit/kael-media-retention-function` → *leases every due uncleaned status…*; *locks and verifies consume against a concurrent cleanup claim* | `supabase/tests/kael_media_retention_verification.sql` — two concurrent claims, assert one lease wins and bytes are deleted once |
+| The scheduled job stays uninstalled until both Vault secrets exist | same file → *schedules only after both Vault secrets exist* | same script — assert the scheduler helper is a no-op with a missing secret |
 
 `tier5-security-hardening.test.ts` asserted a privilege-escalation fix with `expect(SQL.toLowerCase()).not.toContain('coalesce')`. That is the sharpest example in the repository of a security claim resting on a substring.
 
@@ -59,6 +70,8 @@ These invariants had a real verification script *and* a migration-text test. Rem
 | Device push token single owner | `device_push_token_single_owner_verification.sql` |
 | Job media upload intents / audio guard | `job_media_upload_intents_verification.sql`, `job_media_audio_guard_verification.sql` |
 | Admin queue resolution, estimate accuracy, structured feedback, api-log retention | `kael_*_verification.sql`, `api_logs_retention_verification.sql` |
+| Admin operator accounts and the persisted permission model | `admin_operations_sub_admin_verification.sql` |
+| Worker Kael chat sessions and turns | `worker_kael_atomic_turns_verification.sql` |
 
 ## 4. Type coverage that moved rather than died
 
@@ -72,9 +85,9 @@ Two things made this debt easy to accumulate, and both still hold:
 
 1. **The real layer is hard to reach locally.** `pnpm db:local:test` runs `docker/scripts/run-sql-tests.ps1`, which needs PowerShell. On Linux and macOS the SQL layer is effectively unavailable, so a text assertion is the only thing a contributor can actually execute. Porting the `docker/scripts/*.ps1` runners to `.mjs` — the form every other script in `scripts/` already uses — removes that pressure.
 
-2. **`governance/protocols/tdd.md` asks for "at least two relevant layers" without saying what does not count as one.** When the SQL layer is out of reach, the second layer becomes a `toContain`, which satisfies the wording and adds no verification. The rule needs one sentence: a text assertion over migration SQL is a ratchet, never a test layer.
+2. ~~**`governance/protocols/tdd.md` asks for "at least two relevant layers" without saying what does not count as one.**~~ **Closed.** `tdd.md` now states, in Test Integrity Rules, that a text assertion over migration SQL is a ratchet and never a test layer, and lists what reading text is still correct for.
 
-Until those change, the deleted cases will grow back.
+Cause 1 is still open, and it is the one that matters more: as long as the SQL layer cannot be run on a Linux or macOS machine, the rule tells a contributor their only reachable option does not count, without giving them a reachable one.
 
 ## What still counts as a legitimate text assertion
 
