@@ -11,6 +11,7 @@ import {
   workerKaelMemoryPreferenceUpdateSchema,
   workerKaelTrainingConsentSchema,
   workerRegisterSchema,
+  workerRegistrationDraftSchema,
   workerServiceAreaUpdateSchema,
   workerServicePreferencesUpdateSchema,
 } from "../../../../_shared/domain.ts";
@@ -40,6 +41,13 @@ export async function dispatchWorkerRoute(
       const input = workerRegisterSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.registerWorker(ctx, input.data);
+    }
+    case "workers.registrationDraft": {
+      const input = workerRegistrationDraftSchema.safeParse(await readJson(request));
+      if (!input.success || Object.keys(input.data).length === 0) {
+        apiFailure("VALIDATION", "Dữ liệu tự lưu không hợp lệ", 400);
+      }
+      return services.saveWorkerRegistrationDraft(ctx, input.data);
     }
     case "workerApplications.submit": {
       const input = workerApplicationSubmitSchema.safeParse(await readJson(request));

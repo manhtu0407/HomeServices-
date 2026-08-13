@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 248,
-  "migrationsSha256": "0b485f8a4fbb389a4981fb815b7e376a42d28fa4d777864ece68a7bb7dcdf9be",
+  "migrationCount": 251,
+  "migrationsSha256": "a23f9b7b3d72e532ae61d1a39e8e98053e89ff1bd4561303269dd3b2d37125c1",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "0e092653611d884fddefcaa81f6dd55656cb1392ad7f70cd7a50291ff3f8e1ed"
+    "sha256": "2c3aff2c26925558759b82fcd4bdab6253a280e75397925323ce0c30076a2970"
   },
   "entries": [
     {
@@ -1747,6 +1747,27 @@
       "file": "supabase/migrations/20260812103000_extend_direct_payment_availability_to_candidate.sql",
       "sha256": "613178b88d99a0dabacf96d7b56a7b6652958135c8b28a9e99d47b3a20ee303b",
       "bytes": 3638
+    },
+    {
+      "version": "20260813100000",
+      "name": "admin_finance_overview_v1",
+      "file": "supabase/migrations/20260813100000_admin_finance_overview_v1.sql",
+      "sha256": "9c21b5df2d37b978d1c1d8ba5807080cbd02e60268caaf307d317f67f56b160a",
+      "bytes": 71700
+    },
+    {
+      "version": "20260813113000",
+      "name": "worker_review_admin_provisioning",
+      "file": "supabase/migrations/20260813113000_worker_review_admin_provisioning.sql",
+      "sha256": "98fde0e92785065639879a60f073fcc3aa2587c2d74bd315a9605a0eda6c1e43",
+      "bytes": 24239
+    },
+    {
+      "version": "20260813114000",
+      "name": "fix_finance_rpc_conflict_ambiguities",
+      "file": "supabase/migrations/20260813114000_fix_finance_rpc_conflict_ambiguities.sql",
+      "sha256": "890080a186dcdd70a451339c52c85acc8a2c8df28d48fd0841c15ede73c76f8e",
+      "bytes": 1819
     }
   ]
 }

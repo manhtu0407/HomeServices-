@@ -13,6 +13,7 @@ import { motionTokens } from '@/components/ui/motion-tokens'
 import { customerTheme, spacing, typography } from '@/design/theme'
 
 export type AdminTabNavigationItem = {
+  accessibilityLabel?: string
   key: string
   label: string
   onPress: () => void
@@ -20,7 +21,7 @@ export type AdminTabNavigationItem = {
   testID: string
 }
 
-export function AdminTabNavigation({ items, testID }: { items: readonly AdminTabNavigationItem[]; testID: string }) {
+export function AdminTabNavigation({ compactLabels = false, items, testID }: { compactLabels?: boolean; items: readonly AdminTabNavigationItem[]; testID: string }) {
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const selectedIndex = Math.max(items.findIndex((item) => item.selected), 0)
   const previousIndexRef = useRef(selectedIndex)
@@ -153,6 +154,7 @@ export function AdminTabNavigation({ items, testID }: { items: readonly AdminTab
       </Animated.View>
       {items.map((item) => (
         <Pressable
+          accessibilityLabel={item.accessibilityLabel ?? item.label}
           accessibilityRole="tab"
           accessibilityState={{ selected: item.selected }}
           key={item.key}
@@ -160,7 +162,7 @@ export function AdminTabNavigation({ items, testID }: { items: readonly AdminTab
           style={({ pressed }) => [liquidDockStyles.dockItem, pressed && !reduceMotion ? liquidDockStyles.dockItemPressed : null]}
           testID={item.testID}
         >
-          <Text style={[styles.tabText, item.selected && styles.activeTabText]}>{item.label}</Text>
+          <Text style={[styles.tabText, compactLabels && styles.compactTabText, item.selected && styles.activeTabText]}>{item.label}</Text>
         </Pressable>
       ))}
     </GlassSurface>
@@ -168,6 +170,9 @@ export function AdminTabNavigation({ items, testID }: { items: readonly AdminTab
 }
 
 const styles = StyleSheet.create({
+  compactTabText: {
+    ...typography.footnote,
+  },
   navigationSurface: {
     marginBottom: spacing.lg,
     width: '100%',

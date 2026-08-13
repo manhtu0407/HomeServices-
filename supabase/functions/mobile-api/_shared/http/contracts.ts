@@ -48,6 +48,7 @@ import type {
   WorkerKaelFeedbackInput,
   WorkerKaelTrainingConsentInput,
   WorkerRegisterInput,
+  EdgeWorkerRegistrationDraftInput,
   WorkerServiceAreaUpdateInput,
   WorkerServicePreferencesUpdateInput,
   WorkerKaelMemoryPreferenceUpdateInput,
@@ -168,6 +169,11 @@ import type {
   EdgeWorkerWithdrawalRequestListResponse,
 } from "../domains/contracts/worker-payout.ts";
 import type { AdminControlServices } from "./routes/admin-control-services-contract.ts";
+import type {
+  AdminActivationResponse,
+  AdminActivationStatusResponse,
+  EdgeAdminOperatorActivationInput,
+} from "../domains/contracts/admin-activation.ts";
 export type {
   KaelBatchResultsProcessInput,
   KaelBatchResultsProcessResponse,
@@ -258,6 +264,11 @@ export type ThreadsResponse = {
 };
 
 export type MobileApiServices = AdminControlServices & {
+  getAdminActivation(ctx: MobileApiContext): Promise<AdminActivationStatusResponse>;
+  activateAdminOperator(
+    ctx: MobileApiContext,
+    input: EdgeAdminOperatorActivationInput,
+  ): Promise<AdminActivationResponse>;
   getHarnessHealth?(): Promise<Record<string, unknown>> | Record<string, unknown>;
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<EdgeServiceCatalogResponse>;
@@ -604,6 +615,14 @@ export type MobileApiServices = AdminControlServices & {
     ctx: MobileApiContext,
     input: WorkerRegisterInput,
   ): Promise<EdgeWorkerRegisterResponse>;
+  saveWorkerRegistrationDraft(
+    ctx: MobileApiContext,
+    input: EdgeWorkerRegistrationDraftInput,
+  ): Promise<{
+    worker_id: string;
+    verification_status: import("../../../_shared/domain.ts").WorkerVerificationStatus;
+    updated_at: string;
+  }>;
   submitWorkerApplication(
     ctx: MobileApiContext,
     input: WorkerApplicationSubmitInput,

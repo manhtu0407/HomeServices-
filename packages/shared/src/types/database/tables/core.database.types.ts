@@ -464,6 +464,41 @@ export type CoreTables = {
           },
         ]
       }
+      platform_bank_balance_snapshots: {
+        Row: {
+          account_key: string
+          balance_vnd: number
+          created_at: string
+          entered_by: string
+          id: string
+          observed_at: string
+        }
+        Insert: {
+          account_key: string
+          balance_vnd: number
+          created_at?: string
+          entered_by: string
+          id?: string
+          observed_at: string
+        }
+        Update: {
+          account_key?: string
+          balance_vnd?: number
+          created_at?: string
+          entered_by?: string
+          id?: string
+          observed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_bank_balance_snapshots_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_baselines: {
         Row: {
           complexity: Database["public"]["Enums"]["complexity_level"]
@@ -510,41 +545,6 @@ export type CoreTables = {
             columns: ["service_problem_id"]
             isOneToOne: false
             referencedRelation: "service_problems"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      platform_bank_balance_snapshots: {
-        Row: {
-          account_key: string
-          balance_vnd: number
-          created_at: string
-          entered_by: string
-          id: string
-          observed_at: string
-        }
-        Insert: {
-          account_key: string
-          balance_vnd: number
-          created_at?: string
-          entered_by: string
-          id?: string
-          observed_at: string
-        }
-        Update: {
-          account_key?: string
-          balance_vnd?: number
-          created_at?: string
-          entered_by?: string
-          id?: string
-          observed_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "platform_bank_balance_snapshots_entered_by_fkey"
-            columns: ["entered_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

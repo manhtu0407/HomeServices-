@@ -50,6 +50,42 @@ describe('mobile-api admin control plane', () => {
     })
   })
 
+  it('routes additive finance reads and keeps tax approval owner-only', () => {
+    expect(matchRoute(new Request('https://edge.test/admin/finance/overview?range=month'))).toMatchObject({
+      kind: 'admin.finance.overview',
+      roles: ['admin', 'admin_operator'],
+    })
+    expect(matchRoute(new Request('https://edge.test/admin/finance/transactions?from=2026-08-01T00%3A00%3A00.000Z&to=2026-08-13T00%3A00%3A00.000Z'))).toMatchObject({
+      kind: 'admin.finance.transactions',
+    })
+    expect(matchRoute(new Request('https://edge.test/admin/finance/export.csv?from=2026-08-01T00%3A00%3A00.000Z&to=2026-08-13T00%3A00%3A00.000Z'))).toMatchObject({
+      kind: 'admin.finance.export',
+    })
+    expect(matchRoute(new Request('https://edge.test/admin/finance/tax-policies'))).toMatchObject({
+      kind: 'admin.finance.taxPolicies.list',
+    })
+    expect(matchRoute(new Request('https://edge.test/admin/finance/tax-policies/policy-1/approve', {
+      method: 'POST',
+    }))).toMatchObject({
+      kind: 'admin.finance.taxPolicies.approve',
+      policyId: 'policy-1',
+      roles: ['admin'],
+    })
+  })
+
+  it('rejects finance date ranges longer than 366 days before dispatch', async () => {
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => operatorAuth),
+      services: {} as MobileApiServices,
+    })
+
+    const response = await handler(new Request(
+      'https://edge.test/admin/finance/transactions?from=2025-01-01T00%3A00%3A00.000Z&to=2026-08-13T00%3A00%3A00.000Z',
+    ))
+
+    expect(response.status).toBe(400)
+  })
+
   it('keeps Sub Admin account changes owner-only while still dispatching an operational read', async () => {
     const getAdminOperations = vi.fn(async () => ({
       actor: { access_level: 'operator', capabilities: ['operations.read'] },

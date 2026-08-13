@@ -123,6 +123,9 @@ export function createEdgeAuthenticator(
       };
     }
 
+    const activationGate = await checkAdminActivationGate(supabase, request, userData.user.id);
+    if (!activationGate.allowed) return activationGate.failure;
+
     const accountDeletionRetry = request.method === "POST" &&
       new URL(request.url).pathname.endsWith("/me/account-deletion");
     if (
@@ -213,6 +216,41 @@ function isMissingAccountStateColumn(error: unknown): boolean {
   return candidate.code === "42703" &&
     typeof candidate.message === "string" &&
     candidate.message.includes("account_state");
+}
+
+function isMissingProvisioningTable(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown };
+  return candidate.code === "42P01";
+}
+
+type ActivationGateClient = {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        maybeSingle?: () => Promise<{ data: { status?: unknown } | null; error: unknown }>;
+      };
+    };
+  };
+};
+
+async function checkAdminActivationGate(
+  clientValue: unknown,
+  request: Request,
+  userId: string,
+): Promise<{ allowed: true } | { allowed: false; failure: MobileApiAuthResult }> {
+  const client = clientValue as ActivationGateClient;
+  const query = client.from("admin_operator_provisioning").select("status").eq("user_id", userId);
+  if (!query.maybeSingle) return { allowed: true };
+  const provisioning = await query.maybeSingle();
+  if (provisioning.error && !isMissingProvisioningTable(provisioning.error)) {
+    return { allowed: false, failure: { success: false, error: "Không thể kiểm tra trạng thái kích hoạt", status: 403 } };
+  }
+  const activationPath = new URL(request.url).pathname.endsWith("/me/admin-activation");
+  if (provisioning.data?.status === "pending_password_change" && !activationPath) {
+    return { allowed: false, failure: { success: false, error: "Vui lòng đổi mật khẩu ban đầu trước khi tiếp tục", status: 403 } };
+  }
+  return { allowed: true };
 }
 
 function isUserRole(role: unknown): role is UserRole {

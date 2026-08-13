@@ -3,6 +3,7 @@ import type { UserRole } from "../../../../_shared/domain.ts";
 export type WorkerRoute =
   | { kind: "workerApplications.submit"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | { kind: "workers.register"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workers.registrationDraft"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.avatarUpload"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | { kind: "workers.avatar"; method: "PATCH"; roles: UserRole[] }
@@ -49,6 +50,9 @@ export function matchWorkerRoute(path: string, method: string): WorkerRoute | nu
       roles: ["worker"],
       successStatus: 201,
     };
+  }
+  if (method === "PATCH" && path === "/workers/registration-draft") {
+    return { kind: "workers.registrationDraft", method: "PATCH", roles: ["worker"] };
   }
   if (method === "GET" && path === "/workers/me") {
     return { kind: "workers.me", method: "GET", roles: ["worker", "admin"] };

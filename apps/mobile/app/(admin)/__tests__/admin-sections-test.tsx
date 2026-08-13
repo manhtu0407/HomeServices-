@@ -5,12 +5,14 @@ import type {
   AdminViewDisputeSummary,
   AdminViewPriceBaselineSummary,
   AdminViewPayoutMethodSummary,
+  AdminViewOperatorProvisioningSummary,
   AdminViewSubAdminAccountCandidate,
   AdminViewSubAdminSummary,
   AdminViewTransactionDetailResponse,
   AdminViewTransactionSummary,
   AdminViewWithdrawalRequestSummary,
   AdminViewWorkerApplicationSummary,
+  AdminViewWorkerReviewDetail,
 } from '@/lib/api-types/admin'
 import { adminControlService } from '@/lib/services'
 
@@ -27,9 +29,54 @@ const workerApplication = {
   account_role: 'customer',
   full_name: 'Worker Application One',
   phone_masked: '•••• 2814',
+  stage: 'pending_access',
+  checklist: { completed_count: 0, total_count: 11, missing: ['legal_name'] },
+  profile_review_queue_id: null,
   worker_profile: null,
   review: null,
 } satisfies AdminViewWorkerApplicationSummary
+
+const readyWorkerApplication = {
+  ...workerApplication,
+  account_role: 'worker',
+  checklist: { completed_count: 11, total_count: 11, missing: [] },
+  full_name: 'Worker Ready To Verify',
+  profile_review_queue_id: 'profile-queue-1',
+  stage: 'ready_verification',
+  worker_profile: {
+    verification_status: 'submitted',
+    is_approved: false,
+    is_suspended: false,
+    service_types: ['plumbing'],
+    districts: ['quan_1'],
+    has_cccd: true,
+    has_selfie: true,
+  },
+} satisfies AdminViewWorkerApplicationSummary
+
+const workerReviewDetail = {
+  application: readyWorkerApplication,
+  login_gates: { email: 'worker@gmail.com', phone: '+84901232814', full_name: readyWorkerApplication.full_name, created_at: '2026-08-07T04:10:00.000Z' },
+  profile: {
+    legal_name: 'NGUYEN VAN THO',
+    date_of_birth: '1990-01-02',
+    gender: null,
+    service_types: ['plumbing'],
+    years_experience: 6,
+    districts: ['quan_1'],
+    service_radius_km: 8,
+    problem_specializations: [],
+    bank_account: '0123456789',
+    bank_name: 'Vietcombank',
+    documents: {
+      cccd_front_url: 'https://signed.test/front',
+      cccd_back_url: 'https://signed.test/back',
+      selfie_url: 'https://signed.test/selfie',
+      expires_at: '2026-08-08T05:10:00.000Z',
+    },
+  },
+  history: [{ stage: 'access', decision: 'approve', reason: null, decided_at: '2026-08-08T04:11:00.000Z', decided_by_name: 'Owner Admin' }],
+} satisfies AdminViewWorkerReviewDetail
 
 const transaction = {
   job_id: 'job-1',
@@ -137,7 +184,7 @@ const withdrawalRequest = {
 const operations = {
   actor: {
     access_level: 'owner',
-    capabilities: ['operations.read', 'workers.read', 'workers.review', 'workers.manage', 'transactions.read', 'payouts.read', 'payouts.process', 'team.read'],
+    capabilities: ['operations.read', 'workers.read', 'workers.review', 'workers.manage', 'transactions.read', 'finance.read', 'payouts.read', 'payouts.process', 'team.read'],
   },
   generated_at: '2026-08-08T07:00:00.000Z',
   attention: [
@@ -186,7 +233,19 @@ const managerNomination = {
   nominated_at: '2026-08-09T05:00:00.000Z',
 }
 
-let mockLocalSearchParams: { ns_admin_section?: string | string[] } = {}
+const pendingOperator = {
+  id: 'operator-provisioning-1',
+  full_name: 'Admin Account One',
+  email_masked: 'a•••@gmail.com',
+  status: 'pending_password_change',
+  capabilities: ['finance.read', 'operations.read'],
+  created_at: '2026-08-09T05:00:00.000Z',
+  updated_at: '2026-08-09T05:00:00.000Z',
+  last_activity_at: null,
+} satisfies AdminViewOperatorProvisioningSummary
+
+let mockLocalSearchParams: { ns_admin_section?: string | string[]; ns_finance_view?: string | string[] } = {}
+let mockAuthSessionProvider: string | undefined
 const mockReplace = jest.fn()
 const mockRouter = { replace: mockReplace }
 const mockSignOut = jest.fn()
@@ -206,21 +265,33 @@ jest.mock('@/lib/app-language', () => ({
 }))
 
 jest.mock('@/lib/auth-provider', () => ({
-  useAuth: () => ({ signOut: mockSignOut, role: 'admin' }),
+  useAuth: () => ({
+    role: 'admin',
+    session: mockAuthSessionProvider ? { user: { app_metadata: { provider: mockAuthSessionProvider } } } : null,
+    signOut: mockSignOut,
+  }),
 }))
 
 jest.mock('@/lib/services', () => ({
   adminControlService: {
     decideWorkerApplication: jest.fn(),
+    decideWorkerProfile: jest.fn(),
+    exportFinanceCsv: jest.fn(),
     decidePayoutMethod: jest.fn(),
+    getFinanceOverview: jest.fn(),
+    getFinanceSummary: jest.fn(),
     getPayoutMethod: jest.fn(),
     nominateManager: jest.fn(),
     getOperations: jest.fn(),
     listAiCosts: jest.fn(),
     listDisputes: jest.fn(),
     listLearningRules: jest.fn(),
+    listPaymentReconciliations: jest.fn(),
+    listFinanceTaxPolicies: jest.fn(),
+    listFinanceTransactions: jest.fn(),
     getTransaction: jest.fn(),
     getWithdrawalRequest: jest.fn(),
+    getWorkerReviewDetail: jest.fn(),
     claimWithdrawalRequest: jest.fn(),
     listPayoutMethods: jest.fn(),
     listPriceBaselines: jest.fn(),
@@ -229,7 +300,9 @@ jest.mock('@/lib/services', () => ({
     listWithdrawalRequests: jest.fn(),
     cancelManagerNomination: jest.fn(),
     listWorkerApplications: jest.fn(),
+    provisionOperator: jest.fn(),
     resolveWithdrawalRequest: jest.fn(),
+    resetPendingOperatorPassword: jest.fn(),
     searchSubAdminAccounts: jest.fn(),
     setSubAdminAccess: jest.fn(),
     setWorkerAccess: jest.fn(),
@@ -240,7 +313,7 @@ function mockSuccessfulLoad() {
   jest.mocked(adminControlService.getOperations).mockResolvedValue({ success: true, data: operations, status: 200 })
   jest.mocked(adminControlService.listWorkerApplications).mockResolvedValue({
     success: true,
-    data: { applications: [workerApplication], has_more: false, next_offset: null, total_count: 1 },
+    data: { applications: [workerApplication], has_more: false, next_offset: null, next_cursor: null, total_count: 1 },
     status: 200,
   })
   jest.mocked(adminControlService.listTransactions).mockResolvedValue({
@@ -260,7 +333,7 @@ function mockSuccessfulLoad() {
   })
   jest.mocked(adminControlService.listSubAdmins).mockResolvedValue({
     success: true,
-    data: { actor: operations.actor, members: [subAdmin], nominations: [] },
+    data: { actor: operations.actor, members: [subAdmin], nominations: [], pending_accounts: [] },
     status: 200,
   })
   jest.mocked(adminControlService.listDisputes).mockResolvedValue({
@@ -273,11 +346,51 @@ function mockSuccessfulLoad() {
     data: { price_baselines: [priceBaseline], has_more: false, next_offset: null, total_count: 1 },
     status: 200,
   })
+  jest.mocked(adminControlService.getFinanceSummary).mockResolvedValue({
+    success: true,
+    data: {
+      range: 'month',
+      from: '2026-08-01T00:00:00.000Z',
+      to: '2026-09-01T00:00:00.000Z',
+      platform_incoming: 450000,
+      payout_outflow: 0,
+      commission_accrued: 67500,
+      commission_collected: 0,
+      commission_receivable: 0,
+      worker_hold: 382500,
+      worker_available: 0,
+      payout_pending: 0,
+      direct_payment_total: 0,
+      opening_balance: null,
+      closing_balance: null,
+      expected_bank_change: null,
+      actual_bank_change: null,
+      unexplained_variance: null,
+    },
+    status: 200,
+  })
+  jest.mocked(adminControlService.getFinanceOverview).mockResolvedValue({
+    success: false,
+    code: 'UNAVAILABLE',
+    error: 'overview unavailable',
+    status: 503,
+  })
+  jest.mocked(adminControlService.listFinanceTaxPolicies).mockResolvedValue({
+    success: true,
+    data: { active_policy_ids: [], tax_policies: [] },
+    status: 200,
+  })
+  jest.mocked(adminControlService.listFinanceTransactions).mockResolvedValue({
+    success: true,
+    data: { has_more: false, next_cursor: null, transactions: [] },
+    status: 200,
+  })
 }
 
 describe('AdminSections', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthSessionProvider = 'email'
     mockLocalSearchParams = {}
     mockSignOut.mockResolvedValue(undefined)
   })
@@ -326,7 +439,7 @@ describe('AdminSections', () => {
 
     fireEvent.press(screen.getByTestId('admin-operation-attention-worker_applications'))
     expect(await screen.findByText('Worker Application One')).toBeTruthy()
-    expect(adminControlService.listWorkerApplications).toHaveBeenCalledWith({ status: 'open', query: '', limit: 8, offset: 0 })
+    expect(adminControlService.listWorkerApplications).toHaveBeenCalledWith({ status: 'all', stage: 'pending_access', query: '', limit: 8, offset: 0 })
 
     fireEvent.press(screen.getByTestId('admin-sections-transactions-tab'))
     expect(await screen.findByText('NS-TEST-0001')).toBeTruthy()
@@ -416,8 +529,8 @@ describe('AdminSections', () => {
     jest.mocked(adminControlService.listWorkerApplications).mockImplementation(async ({ offset = 0 } = {}) => ({
       success: true,
       data: offset === 8
-        ? { applications: [secondWorker], has_more: false, next_offset: null, total_count: 9 }
-        : { applications: Array.from({ length: 8 }, (_, index) => ({ ...workerApplication, id: `worker-application-${index + 1}`, full_name: `Worker Application ${index + 1}` })), has_more: true, next_offset: 8, total_count: 9 },
+        ? { applications: [secondWorker], has_more: false, next_offset: null, next_cursor: null, total_count: 9 }
+        : { applications: Array.from({ length: 8 }, (_, index) => ({ ...workerApplication, id: `worker-application-${index + 1}`, full_name: `Worker Application ${index + 1}` })), has_more: true, next_offset: 8, next_cursor: null, total_count: 9 },
       status: 200,
     }))
 
@@ -427,11 +540,11 @@ describe('AdminSections', () => {
 
     expect(await screen.findByText('Worker Application 1')).toBeTruthy()
     expect(screen.queryByText('Worker Application Two')).toBeNull()
-    expect(adminControlService.listWorkerApplications).toHaveBeenLastCalledWith({ status: 'open', query: '', limit: 8, offset: 0 })
+    expect(adminControlService.listWorkerApplications).toHaveBeenLastCalledWith({ status: 'all', stage: 'pending_access', query: '', limit: 8, offset: 0 })
 
     fireEvent.press(screen.getByTestId('admin-worker-page-2'))
     expect(await screen.findByText('Worker Application Two')).toBeTruthy()
-    expect(adminControlService.listWorkerApplications).toHaveBeenLastCalledWith({ status: 'open', query: '', limit: 8, offset: 8 })
+    expect(adminControlService.listWorkerApplications).toHaveBeenLastCalledWith({ status: 'all', stage: 'pending_access', query: '', limit: 8, offset: 8 })
   })
 
   it('sends worker approval decisions to the production service when the actor has workers.review', async () => {
@@ -458,6 +571,44 @@ describe('AdminSections', () => {
 
     await waitFor(() => {
       expect(adminControlService.decideWorkerApplication).toHaveBeenCalledWith(workerApplication.id, { decision: 'approve' })
+    })
+  })
+
+  it('shows the complete worker review in the Admin Sections modal and verifies a ready profile', async () => {
+    mockSuccessfulLoad()
+    jest.mocked(adminControlService.listWorkerApplications).mockResolvedValue({
+      success: true,
+      data: { applications: [readyWorkerApplication], has_more: false, next_offset: null, next_cursor: null, total_count: 1 },
+      status: 200,
+    })
+    jest.mocked(adminControlService.getWorkerReviewDetail).mockResolvedValue({ success: true, data: workerReviewDetail, status: 200 })
+    jest.mocked(adminControlService.decideWorkerProfile).mockResolvedValue({
+      success: true,
+      data: {
+        ok: true,
+        application_id: readyWorkerApplication.id,
+        worker_id: readyWorkerApplication.worker_id,
+        decision: 'approve',
+        verification_status: 'approved',
+        decided_at: '2026-08-08T05:00:00.000Z',
+      },
+      status: 200,
+    })
+
+    render(<AdminSections />)
+    await screen.findByTestId('admin-operations-overview')
+    fireEvent.press(screen.getByTestId('admin-sections-worker-tab'))
+    fireEvent.press(await screen.findByLabelText(readyWorkerApplication.full_name))
+
+    expect(await screen.findByTestId('admin-worker-review-detail')).toBeTruthy()
+    expect(await screen.findByText('Thông tin đăng ký')).toBeTruthy()
+    expect(screen.getByText('Giấy tờ xác minh')).toBeTruthy()
+    expect(screen.getAllByText('Ngân hàng').length).toBeGreaterThanOrEqual(1)
+    fireEvent.press(screen.getByText('Xác minh hồ sơ'))
+
+    await waitFor(() => {
+      expect(adminControlService.getWorkerReviewDetail).toHaveBeenCalledWith(readyWorkerApplication.id)
+      expect(adminControlService.decideWorkerProfile).toHaveBeenCalledWith(readyWorkerApplication.id, { decision: 'approve' })
     })
   })
 
@@ -510,6 +661,80 @@ describe('AdminSections', () => {
     expect(await screen.findByTestId(`admin-withdrawal-request-${withdrawalRequest.id}`)).toBeTruthy()
   })
 
+  it('opens the top-level Finance section directly on the overview view', async () => {
+    mockLocalSearchParams = { ns_admin_section: 'finance' }
+    mockSuccessfulLoad()
+
+    render(<AdminSections />)
+
+    expect(await screen.findByTestId('admin-finance-view-overview')).toBeTruthy()
+    expect(screen.getByTestId('admin-sections-finance-tab').props.accessibilityState).toEqual({ selected: true })
+    expect(screen.getByTestId('admin-finance-tab-overview').props.accessibilityState).toEqual({ selected: true })
+  })
+
+  it('returns the localhost Admin visual-audit Finance route to Login Gates instead of rendering Finance without a backend session', async () => {
+    mockAuthSessionProvider = 'local-visual-audit'
+    mockLocalSearchParams = { ns_admin_section: 'finance' }
+    const unavailable = { success: false, code: 'AUTH_MISSING', error: 'Preview data unavailable', status: 401 } as const
+    jest.mocked(adminControlService.getOperations).mockResolvedValue(unavailable)
+    jest.mocked(adminControlService.listWorkerApplications).mockResolvedValue(unavailable)
+    jest.mocked(adminControlService.listTransactions).mockResolvedValue(unavailable)
+    jest.mocked(adminControlService.listSubAdmins).mockResolvedValue(unavailable)
+    jest.mocked(adminControlService.getFinanceSummary).mockResolvedValue(unavailable)
+    jest.mocked(adminControlService.getFinanceOverview).mockResolvedValue(unavailable)
+
+    render(<AdminSections />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login?stage=login&ns_audit_role=none')
+    })
+    expect(screen.queryByTestId('admin-sections-finance-tab')).toBeNull()
+    expect(screen.queryByTestId('admin-finance-view-overview')).toBeNull()
+  })
+
+  it('does not load or render Finance for a direct route without an authenticated Admin session', async () => {
+    mockAuthSessionProvider = undefined
+    mockLocalSearchParams = { ns_admin_section: 'finance' }
+
+    render(<AdminSections />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login?stage=login')
+    })
+    expect(adminControlService.getOperations).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('admin-sections-finance-tab')).toBeNull()
+    expect(screen.queryByTestId('admin-finance-view-overview')).toBeNull()
+  })
+
+  it('keeps Finance and its subview in the direct route', async () => {
+    mockSuccessfulLoad()
+
+    render(<AdminSections />)
+    await screen.findByTestId('admin-operations-overview')
+    fireEvent.press(screen.getByTestId('admin-sections-finance-tab'))
+
+    expect(mockReplace).toHaveBeenLastCalledWith('/sections?ns_admin_section=finance&ns_finance_view=overview')
+    fireEvent.press(await screen.findByTestId('admin-finance-tab-tax'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/sections?ns_admin_section=finance&ns_finance_view=tax')
+  })
+
+  it('keeps Finance visible for authenticated admins during capability backfill', async () => {
+    mockSuccessfulLoad()
+    jest.mocked(adminControlService.getOperations).mockResolvedValue({
+      success: true,
+      data: { ...operations, actor: { ...operations.actor, capabilities: operations.actor.capabilities.filter((capability) => capability !== 'finance.read') } },
+      status: 200,
+    })
+
+    render(<AdminSections />)
+
+    await screen.findByTestId('admin-operations-overview')
+    expect(await screen.findByTestId('admin-sections-finance-tab')).toBeTruthy()
+    fireEvent.press(screen.getByTestId('admin-sections-finance-tab'))
+    expect(await screen.findByTestId('admin-finance-view-overview')).toBeTruthy()
+    expect(screen.queryByTestId('admin-finance-no-access')).toBeNull()
+  })
+
   it('requires Owner nomination before a registered account can be granted Admin-team capability', async () => {
     mockSuccessfulLoad()
     jest.mocked(adminControlService.searchSubAdminAccounts).mockResolvedValue({
@@ -529,7 +754,7 @@ describe('AdminSections', () => {
     render(<AdminSections />)
     await screen.findByTestId('admin-operations-overview')
     fireEvent.press(await screen.findByTestId('admin-sections-team-tab'))
-    fireEvent.press(await screen.findByLabelText('Đề cử quản lý'))
+    fireEvent.press(await screen.findByLabelText('Đề cử tài khoản đã có'))
     fireEvent.changeText(await screen.findByLabelText('Tên hoặc số điện thoại'), 'Registered')
     fireEvent.press(screen.getByText('Tìm tài khoản'))
     fireEvent.press(await screen.findByText('Registered Account One'))
@@ -549,14 +774,14 @@ describe('AdminSections', () => {
         user_id: managerNomination.user_id,
         status: 'active',
         role: 'admin_operator',
-        capabilities: ['operations.read'],
+        capabilities: ['finance.read', 'operations.read'],
         updated_at: '2026-08-09T05:01:00.000Z',
       },
       status: 200,
     })
     jest.mocked(adminControlService.listSubAdmins).mockResolvedValue({
       success: true,
-      data: { actor: operations.actor, members: [subAdmin], nominations: [managerNomination] },
+      data: { actor: operations.actor, members: [subAdmin], nominations: [managerNomination], pending_accounts: [] },
       status: 200,
     })
 
@@ -574,9 +799,71 @@ describe('AdminSections', () => {
     await waitFor(() => {
       expect(adminControlService.setSubAdminAccess).toHaveBeenCalledWith(managerNomination.user_id, {
         action: 'grant',
-        capabilities: ['operations.read'],
+        capabilities: ['finance.read', 'operations.read'],
       })
     })
+  })
+
+  it('lets only the Owner create a Gmail-identified Admin account from the shared team surface', async () => {
+    mockSuccessfulLoad()
+    jest.mocked(adminControlService.listSubAdmins).mockResolvedValue({
+      success: true,
+      data: { actor: operations.actor, members: [subAdmin], nominations: [], pending_accounts: [pendingOperator] },
+      status: 200,
+    })
+    jest.mocked(adminControlService.provisionOperator).mockResolvedValue({
+      success: true,
+      data: { ok: true, account: pendingOperator },
+      status: 201,
+    })
+
+    render(<AdminSections />)
+    await screen.findByTestId('admin-operations-overview')
+    fireEvent.press(screen.getByTestId('admin-sections-team-tab'))
+
+    expect(await screen.findByTestId('admin-team-owner-actions')).toBeTruthy()
+    expect(screen.getByTestId(`admin-pending-operator-${pendingOperator.id}`)).toBeTruthy()
+    expect(screen.getByTestId('admin-nominate-existing')).toBeTruthy()
+    fireEvent.press(screen.getByTestId('admin-create-operator'))
+    fireEvent.changeText(await screen.findByLabelText('Họ và tên'), 'Admin Account Two')
+    fireEvent.changeText(screen.getByLabelText('Địa chỉ Gmail'), 'admin.two@gmail.com')
+    fireEvent.changeText(screen.getByLabelText('Mật khẩu ban đầu'), 'InitialPass123!')
+    fireEvent.changeText(screen.getByLabelText('Nhập lại mật khẩu'), 'InitialPass123!')
+    fireEvent.press(screen.getByLabelText('Tôi hiểu tài khoản phải đổi mật khẩu ở lần đăng nhập đầu.'))
+    const createButtons = screen.getAllByText('Tạo tài khoản quản trị')
+    fireEvent.press(createButtons[createButtons.length - 1])
+
+    await waitFor(() => {
+      expect(adminControlService.provisionOperator).toHaveBeenCalledWith({
+        full_name: 'Admin Account Two',
+        email: 'admin.two@gmail.com',
+        initial_password: 'InitialPass123!',
+        capabilities: ['finance.read'],
+      })
+    })
+  })
+
+  it('hides Owner account actions from an Admin operator', async () => {
+    mockSuccessfulLoad()
+    const operatorActor = { ...operations.actor, access_level: 'operator' as const }
+    jest.mocked(adminControlService.getOperations).mockResolvedValue({
+      success: true,
+      data: { ...operations, actor: operatorActor },
+      status: 200,
+    })
+    jest.mocked(adminControlService.listSubAdmins).mockResolvedValue({
+      success: true,
+      data: { actor: operatorActor, members: [subAdmin], nominations: [], pending_accounts: [] },
+      status: 200,
+    })
+
+    render(<AdminSections />)
+    await screen.findByTestId('admin-operations-overview')
+    fireEvent.press(screen.getByTestId('admin-sections-team-tab'))
+
+    expect(await screen.findByTestId('admin-sub-admin-panel')).toBeTruthy()
+    expect(screen.queryByTestId('admin-team-owner-actions')).toBeNull()
+    expect(screen.queryByTestId('admin-create-operator')).toBeNull()
   })
 
   it('shows the actual service failure without falling back to local sample content', async () => {
@@ -592,7 +879,7 @@ describe('AdminSections', () => {
     expect(screen.queryByText('NS-TEST-0001')).toBeNull()
   })
 
-  it('returns an unauthenticated admin retry to Login Gates after the backend check', async () => {
+  it('returns an expired Admin backend session to Login Gates before rendering an ambiguous retry state', async () => {
     mockSuccessfulLoad()
     jest.mocked(adminControlService.getOperations).mockResolvedValue({
       success: false,
@@ -603,14 +890,10 @@ describe('AdminSections', () => {
 
     render(<AdminSections />)
 
-    expect(await screen.findByText('Vui lòng đăng nhập')).toBeTruthy()
-    const workerApplicationCallsBeforeRetry = jest.mocked(adminControlService.listWorkerApplications).mock.calls.length
-    fireEvent.press(screen.getByText('Thử lại'))
-
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(auth)/login?stage=login')
     })
-    expect(adminControlService.getOperations).toHaveBeenCalledTimes(2)
-    expect(adminControlService.listWorkerApplications).toHaveBeenCalledTimes(workerApplicationCallsBeforeRetry)
+    expect(adminControlService.getOperations).toHaveBeenCalledTimes(1)
+    expect(adminControlService.listWorkerApplications).not.toHaveBeenCalled()
   })
 })

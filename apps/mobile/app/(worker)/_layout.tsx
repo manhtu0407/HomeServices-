@@ -6,6 +6,7 @@ import type { WorkerV5RouteParams } from '@/components/worker/dock/types'
 import { getWorkerThemeTokens, useWorkerThemeMode } from '@/components/worker/worker-theme'
 import { color } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
+import { useAdminActivation } from '@/lib/admin-activation-provider'
 import { useAppLanguage } from '@/lib/app-language'
 
 const WORKER_DOCK_MAIN = 'WORKER_DOCK_MAIN: worker liquid glass dock'
@@ -36,6 +37,7 @@ const dockTokens = {
 
 export default function WorkerLayout() {
   const { loading, role, session } = useAuth()
+  const activation = useAdminActivation()
   const language = useAppLanguage()
   const workerThemeMode = useWorkerThemeMode()
   const workerThemeTokens = getWorkerThemeTokens(workerThemeMode)
@@ -45,7 +47,7 @@ export default function WorkerLayout() {
   const activeDock = resolveWorkerV5DockActive(pathname, params)
   const shouldShowDock = !pathname.includes('chat')
 
-  if (loading) {
+  if (loading || (session && activation.loading)) {
     return (
       <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
         <ActivityIndicator color={dockTokens.active} size="large" />
@@ -56,6 +58,7 @@ export default function WorkerLayout() {
   if (!session) {
     return <Redirect href="/(auth)/login" />
   }
+  if (activation.status?.required) return <Redirect href="/(auth)/admin-activation" />
 
   if (role === 'customer') {
     return <Redirect href="/(customer)/home" />

@@ -57,7 +57,7 @@ begin
     raise exception 'Sub Admin access RPC has lost its owner/revoke audit controls';
   end if;
 
-  v_definition := pg_catalog.pg_get_functiondef('public.handle_new_user()'::regprocedure);
+  v_definition := pg_catalog.pg_get_functiondef('private.handle_new_user()'::regprocedure);
   if v_definition like '%''admin''::public.user_role%' then
     raise exception 'new user trigger must not self-assign an admin role from metadata';
   end if;
