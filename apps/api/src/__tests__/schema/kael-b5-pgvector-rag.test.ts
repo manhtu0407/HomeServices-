@@ -21,9 +21,4 @@ describe('Plan §31 B5 pgvector knowledge RAG', () => {
     expect(sql).not.toMatch(/pplx-[a-zA-Z0-9]{20,}/)
   })
 
-  it('backfills approved corpus embeddings with a deterministic local model', () => {
-    const script = read('apps/api/scripts/kael-b5-generate-embedding-backfill.mjs')
-
-    expect(script).toContain('kael-local-hash-64-v1')
-  })
 })

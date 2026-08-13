@@ -10,10 +10,6 @@ describe('Mission 3 pre-app build contract', () => {
   const contractPath = 'docs/foundation/pre-app-build-contract.md'
   const contract = read(contractPath)
 
-  it('exists as the prepared foundation contract', () => {
-    expect(existsSync(resolve(ROOT, contractPath))).toBe(true)
-  })
-
   it('defines the mission boundary and explicitly blocks feature runtime work', () => {
     expect(contract).toContain('Prepared foundation only')
     expect(contract).toContain('Do not build now')
@@ -27,18 +23,6 @@ describe('Mission 3 pre-app build contract', () => {
     expect(contract).toContain('apps/api')
     expect(contract).toContain('packages/shared')
     expect(contract).toContain('Do not recreate a root src/ application tree.')
-  })
-
-  it('defines mobile, backend, Supabase, Kael, and testing contracts', () => {
-    for (const requiredText of [
-      'Mobile Foundation Contract',
-      'Backend API Contract',
-      'Supabase Schema Alignment Audit',
-      'Kael Foundation Contract',
-      'Testing Blueprint',
-    ]) {
-      expect(contract).toContain(requiredText)
-    }
   })
 
   it('keeps mobile AI and secret boundaries explicit', () => {

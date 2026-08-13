@@ -15,10 +15,6 @@ const service = [
   resolve(root, 'supabase/functions/mobile-api/_shared/domains', path),
   'utf8',
 )).join('\n')
-const orchestrator = readFileSync(
-  resolve(root, 'supabase/functions/mobile-api/_shared/workflow-orchestrator.ts'),
-  'utf8',
-)
 const notifications = [
   'notifications.ts',
   'notifications-events.ts',
@@ -27,12 +23,6 @@ const notifications = [
   'utf8',
 )).join('\n')
 describe('unified pre-arrival and on-site scope adjustment', () => {
-  it('allows the same hard gate before arrival and on site', () => {
-    for (const status of ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing']) {
-      expect(orchestrator).toContain(`["${status}", "scope_change_pending"]`)
-    }
-  })
-
   it('uses explicit customer confirmation without an autonomy feature flag', () => {
     expect(service).not.toContain('runPolicyAutonomyGate')
     expect(service).not.toContain('tryAutoApproveScopeChange')

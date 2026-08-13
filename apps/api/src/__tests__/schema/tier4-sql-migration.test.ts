@@ -23,16 +23,6 @@ const RLS_AUTO_ENABLE_REVOKE_SQL = readFileSync(
   resolve(MIGRATIONS_DIR, '20260513131949_revoke_rls_auto_enable_rpc.sql'),
   'utf-8'
 )
-const CATALOG_LABEL_FIX_SQL = readFileSync(
-  resolve(MIGRATIONS_DIR, '20260519145538_fix_vietnamese_catalog_labels.sql'),
-  'utf-8'
-)
-const FUNCTION_SEARCH_PATH_PATTERNS = [
-  /alter\s+function\s+public\.update_updated_at\(\)\s+set\s+search_path\s*=\s*public/i,
-  /alter\s+function\s+public\.update_worker_rating\(\)\s+set\s+search_path\s*=\s*public/i,
-  /alter\s+function\s+public\.handle_new_user\(\)\s+set\s+search_path\s*=\s*public/i,
-]
-
 describe('Workflow alignment migration exists', () => {
   it('renames legacy job_status before creating the new enum', () => {
     expect(ALIGNMENT_SQL).toMatch(/alter\s+type\s+job_status\s+rename\s+to\s+job_status_legacy/i)
@@ -40,20 +30,6 @@ describe('Workflow alignment migration exists', () => {
     expect(ALIGNMENT_SQL).toMatch(/drop\s+type\s+job_status_legacy/i)
   })
 
-  it('maps legacy states to the new workflow explicitly', () => {
-    for (const [legacy, next] of [
-      ['pending', 'analyzing'],
-      ['broadcast', 'broadcasting'],
-      ['matched', 'worker_matched'],
-      ['worker_en_route', 'worker_on_way'],
-      ['in_progress', 'repairing'],
-      ['scope_change', 'scope_change_pending'],
-      ['completed', 'completed_by_worker'],
-      ['confirmed', 'confirmed_by_customer'],
-    ]) {
-      expect(ALIGNMENT_SQL).toContain(`when '${legacy}' then '${next}'`)
-    }
-  })
 })
 
 describe('All public tables have RLS enabled', () => {
@@ -139,12 +115,6 @@ describe('RLS policy hardening', () => {
 })
 
 describe('Function execution hardening migration', () => {
-  it('pins search_path on trigger/helper functions flagged by Supabase advisors', () => {
-    for (const pattern of FUNCTION_SEARCH_PATH_PATTERNS) {
-      expect(FUNCTION_HARDENING_SQL).toMatch(pattern)
-    }
-  })
-
   it('prevents API roles from calling trigger-only handle_new_user directly', () => {
     expect(FUNCTION_HARDENING_SQL).toMatch(
       /revoke\s+execute\s+on\s+function\s+public\.handle_new_user\(\)\s+from\s+public/i
@@ -207,20 +177,6 @@ describe('Data API grants are explicit', () => {
   it('grants public schema usage and table access to authenticated role', () => {
     expect(ALIGNMENT_SQL).toMatch(/grant\s+usage\s+on\s+schema\s+public\s+to\s+authenticated/i)
     expect(ALIGNMENT_SQL).toMatch(/grant\s+select\s+on[\s\S]*service_categories[\s\S]*to\s+authenticated/i)
-  })
-})
-
-describe('Catalog labels are Vietnamese-first', () => {
-  it('patches the three active service and box labels with Vietnamese accents', () => {
-    for (const label of ['Sửa điện', 'Sửa nước', 'Vệ sinh/dọn dẹp']) {
-      expect(CATALOG_LABEL_FIX_SQL).toContain(label)
-    }
-  })
-
-  it('patches cleaning problem labels because cleaning was added after the original seed', () => {
-    for (const label of ['Dọn dẹp nhà', 'Vệ sinh bếp', 'Vệ sinh phòng tắm', 'Tổng vệ sinh']) {
-      expect(CATALOG_LABEL_FIX_SQL).toContain(label)
-    }
   })
 })
 

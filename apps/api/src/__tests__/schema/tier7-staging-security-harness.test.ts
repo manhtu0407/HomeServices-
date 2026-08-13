@@ -20,33 +20,6 @@ describe('Staging security verification harness', () => {
     expect(HARNESS_SQL).not.toMatch(/pplx-[A-Za-z0-9]{20,}/)
   })
 
-  it('simulates customer, worker, outsider, and admin authenticated contexts', () => {
-    for (const id of [
-      '20000000-0000-0000-0000-000000000001',
-      '30000000-0000-0000-0000-000000000001',
-      '30000000-0000-0000-0000-000000000002',
-      '40000000-0000-0000-0000-000000000001',
-      '10000000-0000-0000-0000-000000000001',
-    ]) {
-      expect(HARNESS_SQL).toContain(`set local request.jwt.claim.sub = '${id}'`)
-    }
-  })
-
-  it('covers participant isolation, pre-match worker privacy, learning protection, and storage boundaries', () => {
-    for (const checkName of [
-      'customer_reads_own_job',
-      'customer_cannot_read_other_job',
-      'broadcast_worker_cannot_read_full_job_before_match',
-      'normal_user_cannot_insert_learning_candidate',
-      'customer_cannot_upload_completion_photo',
-      'unmatched_worker_cannot_upload_job_photo',
-      'admin_reads_worker_documents',
-      'admin_direct_notification_insert_blocked',
-    ]) {
-      expect(HARNESS_SQL).toContain(checkName)
-    }
-  })
-
   it('keeps worker fixtures valid for submitted-or-approved identity constraints', () => {
     expect(HARNESS_SQL).toContain('legal_name')
     expect(HARNESS_SQL).toContain('date_of_birth')

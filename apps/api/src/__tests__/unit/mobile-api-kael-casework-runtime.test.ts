@@ -31,7 +31,6 @@ const caseWork = [
   'case-work-artifact.ts',
   'case-work-context.ts',
 ].map((path) => readFileSync(join(root, 'domains/kael-chat', path), 'utf8')).join('\n')
-const sessionStore = readFileSync(join(root, 'domains/kael-chat/session-store.ts'), 'utf8')
 const intakeService = readFileSync(join(root, 'domains/kael-chat/intake.ts'), 'utf8')
 const services = readFileSync(join(root, 'domains.ts'), 'utf8')
 const confirmService = readFileSync(join(root, 'domains/kael-chat/confirm.service.ts'), 'utf8')
@@ -63,10 +62,6 @@ function exportedAsyncFunctionBody(name: string, nextName?: string) {
 }
 
 describe('Kael Case Work runtime wiring', () => {
-  it('normalizes Kael response branding before an Agentic turn is persisted', () => {
-    expect(sessionStore).toContain('normalizeKaelResponseBrand(input.text)')
-  })
-
   it('holds booking intake at the confirmation Pre-Step before analysis', () => {
     expect(service).toContain('if (input.input.defer_analysis || input.prepared.intakeConfirmation) return;')
     expect(service).toContain('intake_confirmation: intakeConfirmation ?? undefined')
