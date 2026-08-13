@@ -120,6 +120,39 @@ A fourth pass ran a taint-based detector instead of a hand-written search and fo
 
 The candidate-gate, push-token, and casework claims are likewise covered by their own `supabase/tests/*_verification.sql` scripts, which the same job executes. Seed behaviour is settled by `supabase db reset --local` replaying it. Nothing from this sweep goes on the to-do list in sections 1–2b.
 
+## 5c. The fifth sweep — the two areas nobody had looked at
+
+**`apps/mobile` turned out to be the healthiest suite in the repo.** 938 case blocks: 414 mount real components, 368 test logic directly, 89 assert mock calls, 39 read source text, 28 use a bare matcher. Nothing fake, nothing assertion-free.
+
+Removed there: **8 runtime cases** of source text whose claim a render test already covers. The reason `apps/api` keeps its ~280 equivalents does not transfer — Deno Edge has no other layer, mobile has RNTL. The clearest case: `kael-case-work-phase-source-test` described the Case Work surface from substrings across 18 files while `customer-kael-chat-surface-test` mounts that surface 56 times. Header icon cases asserted source formatting down to line breaks in a style object; the Worker equivalents assert the same properties with `findAllByProps` on a mounted tree.
+
+Every file kept its absence claims, and those are the point: removed code renders nothing, so only a file read can say the SePay rail, the staging simulator, the composer voice escape hatch, the native Lottie adapter, the un-encoded session route, or a PII field on the candidate card never came back. Asset existence stays for the mirror reason — a missing PNG breaks `require()` at module load.
+
+**The weak-only number reported after the fourth sweep was wrong.** It said 124 cases of unaudited debt. Reading them: **89 are absence assertions** — `expect(x).toBeNull()` after calling real code — which is the negative security test this protocol requires. They were never debt. Removed instead:
+
+| Case group | Cases | Why it could not fail |
+|---|---|---|
+| `tier1-type-completeness` table keys | 66 | `EXPECTED_TABLES` already carries `as const satisfies readonly TableNames[]` 22 lines above, so `tsc` rejects an unknown key before any test runs; the runtime half proved the strings were non-empty |
+| `mobile-wiring` app.json fields | 6 | name, scheme, bundle identifier, Android package, Supabase extra, image-picker dep — each missing fails `eas build` on its first step |
+
+Left alone on purpose: the presence-only cases in `bug-verification`, `ai-types`, `env`, and `audit-fixes` assert on the result of code they actually run. Weak assertion, real execution — strengthening them belongs to the test-structure phase, and deleting them would only lose coverage.
+
+**The intermittent failure from the fourth sweep was not found.** `apps/api` ran 15 consecutive times: 15 × 3008 passed, zero failures. The working tree stayed clean across all 15, which disproves the standing hypothesis — that `kael-playbook-eval-core` spawning a CLI that writes into `docs/test-logs/` races with parallel test files. It writes byte-identical content, so nothing was changed on the strength of a theory the evidence contradicts. The failure remains unidentified, and this line stays here until it is seen again with a name attached.
+
+## 5d. Handoff to the test-structure phase
+
+Each row is an invariant that lost its (weak) signal in the fifth sweep, with the layer that should carry it. The first is the best candidate for the first prototype structure: a small module, a clear contract, and a test that stubs one dependency and asserts a real value.
+
+| Invariant | Was | Should be |
+|---|---|---|
+| Kael SSE routes encode session and conversation ids; connect/total timeouts, `redirect: "error"`, bounded error and frame reads | substring over `lib/kael-stream.ts` | stub `fetch`, call the exported function, assert the request URL, signal, and bounded reads |
+| Case Work phase gating — evidence request, offer review, completion, payment reveal | substrings across 18 `kael-chat` files | extend `customer-kael-chat-surface-test` state coverage |
+| Customer Kael header icon colour, size, stroke weight | substrings incl. style-object line breaks | `findAllByProps` on a mounted header, as `worker-home-surface-test` already does |
+| Transcript virtualization and row order | `<FlatList>` substring, source index comparison | assert the rendered row order in the mounted transcript |
+| On-device voice transcript stays editable before it becomes evidence | substrings over the native component | mount and type into it |
+| Worker icon map ↔ asset pairing | `toContain(require(...))` per icon | mount the surface and assert the resolved image source |
+| `getByText(...)` wrapped in `toBeTruthy()` — 7 mobile cases | matcher adds nothing; the query throws | `toBeOnTheScreen()` |
+
 ## 6. Audited and healthy — do not mistake these for debt
 
 - **Mock assertions.** 50 cases assert only `toHaveBeenCalled*`. 27 of them are negative — `expect(rpc).not.toHaveBeenCalled()` after calling real code and asserting it rejects — which is precisely the negative security test `tdd.md` requires. The rest assert call counts that are the behavior under test, such as "one aggregate query, not N+1". Nothing here needs removing.
@@ -168,6 +201,11 @@ The rule was right from the first sweep. Finding every violation took four tries
 
 Two false-positive sources cost as much time as the misses, and the script guards both: a fixed look-ahead window when reading a declaration bleeds into the next one and taints a source binding with the SQL read that follows it; and running a case block to wherever the next case starts sweeps up helpers declared after the last case, blaming their assertions on it.
 
-A clean run prints `0 banned`. The `warn` rows are text assertions over scripts CI executes — allowed, but each one needs a comment saying why running the script does not already prove it.
+A clean run prints `0 banned`. Two kinds of `warn` row exist, and both mean "justify this in a comment", not "delete it":
+
+- **`executed-sql`** — a text assertion over a script `run-sql-tests.ps1` already executes. Legitimate only where running it cannot prove the same thing: rollback discipline, committed-secret scans.
+- **`mobile-source`** — a positive substring assertion from an `apps/mobile` test. RNTL can mount the component, so the render layer is nearly always the right one. 21 of these remain; they are the working list for the test-structure phase, not a backlog of fakes.
+
+The ratchet also proved more accurate than the ad-hoc bucketing used to scope the fifth sweep: it found 17 mobile cases that a per-block heuristic had filed under "renders" or "logic", because they sat in files that render elsewhere and read source through a helper. That is the argument for keeping the detector in the repo rather than rebuilding it per session.
 
 **Removing cases safely.** Deleting an `it()` block by searching for the next `\n  })\n`, or by brace-scanning, both cut through multi-line arrays inside the block and produce parse errors. What worked: take block boundaries from *line* structure — `^  it\(` opens, `^  \}\)$` closes — verify the pairing is 1:1 before applying, and delete from the end of the file backwards so earlier offsets stay valid.

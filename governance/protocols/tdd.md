@@ -68,6 +68,8 @@ Committed documentation is not a test layer either. Asserting that a `.md` file 
 
 For an artifact CI already executes — every script under `supabase/tests/` is run by `run-sql-tests.ps1` in the `database-controls` job — a text assertion is only worth writing when execution cannot prove the same thing. Rollback-only discipline qualifies, because a script that commits still passes when it runs; "the fixtures are valid" and "it emits a summary row" do not.
 
+Whether reading source text counts at all depends on what else can reach the code. Under `supabase/functions` it does: Deno Edge code has no other layer available, so a substring is the only signal there is. Under `apps/mobile` it does not: React Native Testing Library mounts the real component, so a substring assertion is a weaker copy of a check that suite can already make — icon colour, stroke weight, row order and rendered copy are properties of a rendered node, not of a file. The one claim that stays a file read on either side is absence: removed code renders nothing, so only text can say a retired payment rail, a debug escape hatch, a static import that crashes at load, or a PII field never came back.
+
 `scripts/find-artifact-text-assertions.mjs` enforces this and runs in the `harness manifest + skills-sync + structure ratchet` job. It classifies per case, resolves paths built from constants and helpers, and follows bindings sliced out of an already-tainted variable — every one of those exists because a hand-written sweep missed that shape.
 
 ### Output Format

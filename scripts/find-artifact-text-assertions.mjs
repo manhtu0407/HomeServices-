@@ -153,17 +153,30 @@ function callArguments(chunk, names) {
 // that lives in the documentation trees is treated as a doc.
 const DOC_TREES = ['docs/', 'governance/', 'readme.md', 'claude.md', 'agents.md', 'document.md']
 
-function classify(path) {
+// Reading .ts source is allowed under supabase/functions because Deno Edge code
+// has no other reachable layer — a substring is the only signal available there.
+// apps/mobile does have one: React Native Testing Library mounts the real
+// component. A substring assertion from a mobile test is a weaker copy of a
+// check that suite can already make, so it is flagged for the author to justify
+// or move. Absence claims are exempt everywhere and never reach this point.
+function classify(path, fromMobile) {
   if (path.includes('supabase/tests')) return 'executed-sql'
   if (path.includes('seed.sql')) return 'seed'
   if (path.includes('migrations')) return 'migration'
   if (path.includes('.sql')) return 'sql'
   if (path.includes('.md') && DOC_TREES.some((tree) => path.includes(tree))) return 'doc'
+  if (fromMobile && /\.tsx?['"`\s)]|\.tsx?$/.test(path)) return 'mobile-source'
   return 'allowed'
 }
 
-const BANNED = new Set(['migration', 'seed', 'sql', 'doc'])
-const SEVERITY = { migration: 'banned', seed: 'banned', sql: 'banned', doc: 'banned', 'executed-sql': 'warn' }
+const SEVERITY = {
+  migration: 'banned',
+  seed: 'banned',
+  sql: 'banned',
+  doc: 'banned',
+  'executed-sql': 'warn',
+  'mobile-source': 'warn',
+}
 
 const CASE_START = /^\s*(it|test)\s*(\.\s*\w+[^\n]*?)?\s*[(`]/
 const POSITIVE_ASSERT =
@@ -174,7 +187,7 @@ const WHOLE_VALUE = new Set(['toBe', 'toEqual', 'toStrictEqual'])
 // inside one case inherits the verdict of an unrelated `const script` in another.
 // Bindings are collected per scope instead: file-level declarations start at
 // column zero, case-level ones are indented and live only inside their block.
-function collectTaint(lines, indices, constants, helpers, inherited) {
+function collectTaint(lines, indices, constants, helpers, inherited, fromMobile) {
   const tainted = new Map(inherited)
   for (const i of indices) {
     const match = CONST_DECL.exec(lines[i])
@@ -182,7 +195,7 @@ function collectTaint(lines, indices, constants, helpers, inherited) {
     const chunk = declarationChunk(lines, i)
     const args = callArguments(chunk, helpers)
     if (!args.length) continue
-    const kind = classify(args.map((arg) => substitute(arg, constants)).join(' '))
+    const kind = classify(args.map((arg) => substitute(arg, constants)).join(' '), fromMobile)
     if (kind !== 'allowed') tainted.set(match[1], kind)
   }
 
@@ -223,6 +236,7 @@ function analyse(file) {
       .filter((line) => /^\s*import\s/.test(line))
       .flatMap((line) => line.match(/[A-Za-z_$][\w$]*/g) ?? []),
   )
+  const fromMobile = rel(file).startsWith('apps/mobile/')
 
   const starts = []
   for (let i = 0; i < lines.length; i += 1) if (CASE_START.test(lines[i])) starts.push(i)
@@ -239,7 +253,7 @@ function analyse(file) {
     const scope = []
     for (let i = 0; i < firstCase; i += 1) if (/^\s*const\s/.test(lines[i])) scope.push(i)
     for (let i = start; i < end; i += 1) if (/^\s*const\s/.test(lines[i])) scope.push(i)
-    const tainted = collectTaint(lines, scope, constants, helpers, new Map())
+    const tainted = collectTaint(lines, scope, constants, helpers, new Map(), fromMobile)
 
     // A case that runs the tool under test and reads what it produced is
     // asserting output, not committed text.
