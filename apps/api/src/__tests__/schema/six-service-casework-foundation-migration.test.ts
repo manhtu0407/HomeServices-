@@ -20,6 +20,9 @@ const verificationSql = readFileSync(
 )
 
 describe('six-service case-work data foundation migration', () => {
+  // database-controls executes this script, so the actor matrix it asserts is
+  // proven by running it. Rollback discipline is not: a script that commits
+  // leaks fixtures into every later script and still reports green.
   it('ships rollback-only positive and negative actor verification', () => {
     expect(verificationSql.trimStart().startsWith('-- Rollback-only')).toBe(true)
     expect(verificationSql).toMatch(/\nbegin;[\s\S]*\nrollback;\s*$/)

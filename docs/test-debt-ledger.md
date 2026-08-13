@@ -98,6 +98,28 @@ A later sweep removed 163 more cases that asserted on file text without assertin
 
 **`supabase/seed.sql` is the same category as migration SQL.** The first round's rule named only `supabase/migrations`, so seed-file assertions survived two sweeps. Any `.sql` the database must execute cannot be verified by reading it.
 
+## 5b. Deleted in the fourth sweep — the rule finally applied in full
+
+A fourth pass ran a taint-based detector instead of a hand-written search and found **25 case blocks the first three sweeps had left**, expanding to 54 runtime cases. The rule did not change; the search did.
+
+| File | Blocks | Runtime cases | What it read |
+|---|---|---|---|
+| `schema/tier4-sql-migration` | 2 | 25 | RLS on 17 tables, 8 create-table checks, all against joined migration text |
+| `schema/tier6-seed-validation` | 6 | 6 | auth ordering, worker fixtures, insert idempotency in `seed.sql` |
+| `schema/customer-worker-candidate-gate` | 4 | 4 | proposal, single-winner confirm, eligibility recheck, release |
+| `schema/device-push-token-single-owner` | 4 | 4 | hash backfill, table lock, transaction shape, RPC grants |
+| `unit/mobile-api-kael-voice-transcript` | 2 | 2 | transcript and lexicon table shape |
+| `foundation/pre-app-build-contract` | 3 | 3 | a `.md` contract quoting its own sentences back |
+| `shared/monorepo-wiring` | 3 | 3 | governance markdown describing auth and service scope |
+| `schema/source-trust-research` | 1 | 1 | status banner and checkbox states in a research write-up |
+| `schema/kael-b3-knowledge-corpus` | 1 | 1 | sign-off banner and the migration-gate sentence |
+| `integration/real-supabase` | 7 | 7 | not text at all — fixture deletion written as assertion-free `it` blocks |
+| `schema/tier7-staging-security-harness` | 2 | 2 | fixture validity and summary row, both proven by running the script |
+
+**The largest deletion cost nothing.** The 17-table RLS claim looked like the one invariant worth replacing with an executed script. It did not need replacing: `supabase/tests/harness_access_boundary_verification.sql` already raises on *any* `public` table with `relrowsecurity` false — broader than the hand-maintained list, and already running in `database-controls`. The text version had been shadowing a real check the whole time.
+
+The candidate-gate, push-token, and casework claims are likewise covered by their own `supabase/tests/*_verification.sql` scripts, which the same job executes. Seed behaviour is settled by `supabase db reset --local` replaying it. Nothing from this sweep goes on the to-do list in sections 1–2b.
+
 ## 6. Audited and healthy — do not mistake these for debt
 
 - **Mock assertions.** 50 cases assert only `toHaveBeenCalled*`. 27 of them are negative — `expect(rpc).not.toHaveBeenCalled()` after calling real code and asserting it rejects — which is precisely the negative security test `tdd.md` requires. The rest assert call counts that are the behavior under test, such as "one aggregate query, not N+1". Nothing here needs removing.
@@ -112,7 +134,7 @@ Two things made this debt easy to accumulate, and both still hold:
 
 1. **The real layer is hard to reach locally.** `pnpm db:local:test` runs `docker/scripts/run-sql-tests.ps1`, which needs PowerShell. On Linux and macOS the SQL layer is effectively unavailable, so a text assertion is the only thing a contributor can actually execute. Porting the `docker/scripts/*.ps1` runners to `.mjs` — the form every other script in `scripts/` already uses — removes that pressure.
 
-2. ~~**`governance/protocols/tdd.md` asks for "at least two relevant layers" without saying what does not count as one.**~~ **Closed.** `tdd.md` now states, in Test Integrity Rules, that a text assertion over migration SQL is a ratchet and never a test layer, and lists what reading text is still correct for.
+2. ~~**`governance/protocols/tdd.md` asks for "at least two relevant layers" without saying what does not count as one.**~~ **Closed.** `tdd.md` now states, in Test Integrity Rules, that migration SQL, `seed.sql`, and committed documentation are not test layers, that shipped markdown compared against a runtime constant is, and that a text claim over a CI-executed script is only worth writing when execution cannot prove it. A rule stated in prose is still only a rule; `scripts/find-artifact-text-assertions.mjs` is the part that holds.
 
 Cause 1 is still open, and it is the one that matters more: as long as the SQL layer cannot be run on a Linux or macOS machine, the rule tells a contributor their only reachable option does not count, without giving them a reachable one.
 
@@ -127,28 +149,25 @@ Not every `readFileSync` + `toContain` was removed, and the distinction is what 
 - **Generated database types** — produced by `supabase gen types` from a live database, so asserting on them is asserting on the schema.
 - **Derived sets** — enumerating migrations and reconciling them against generated types (`tier1-type-completeness`, `mobile-api-edge-schema`) fails when something new arrives unguarded. That is a ratchet doing its job.
 - **Secret scans** — `expect(sql).not.toMatch(/pplx-[a-zA-Z0-9]{20,}/)` claims no key is committed, which is exactly a claim about file text.
+- **Markdown that ships** — the Kael charter is read into the Edge system prompt (`_shared/kael/prompts/system-prompt.ts`) and served by the public `/kael/charter` route; the service playbooks are injected into model input. Comparing that markdown byte-for-byte against the constant the runtime uses is a parity check, the same family as generated types. Prose in `docs/` and `governance/` is not.
+- **Rollback discipline on an executed script** — every `supabase/tests/*.sql` is run by `run-sql-tests.ps1` in `database-controls`, so running it proves its assertions. What running cannot prove is that it rolled back, because a script that commits still passes. That, and a secret scan, are the only text claims worth keeping over an executed artifact.
 
 ## How to find these
 
-The rule was right from the first sweep; finding every violation took three tries, and each miss was the same mistake — matching a pattern instead of resolving what the code actually reads.
+**Do not hand-write the search. Run `node scripts/find-artifact-text-assertions.mjs`.** It is wired into the `harness manifest + skills-sync + structure ratchet` job, so a new violation fails CI instead of waiting for the next sweep.
+
+The rule was right from the first sweep. Finding every violation took four tries, and every miss was the same mistake — matching a pattern instead of resolving what the code actually reads. Each rule in the script exists because one of these got through:
 
 | Miss | Why the search failed |
 |---|---|
 | Ratchet files still holding migration-text cases | classified at *file* level instead of *case* level |
 | `mobile-api-customer-kael-conversations` | followed `const x = …` but not `function readMigrations() { … }` |
 | `tier4-sql-migration` and three others | the path was built from a constant, so the literal `supabase/migrations` never appeared in the read expression |
+| `device-push-token`, `mobile-api-kael-voice-transcript` | the file name was chosen at runtime by `readdirSync(dir).find(…)`, so the resolved expression carried the directory but never a `.sql` suffix |
+| `customer-worker-candidate-gate`, `tier6-seed-validation` | the assertion ran against a binding *derived* from the tainted one — `const body = migration.match(…)`, `const authSection = SEED.slice(…)` |
 
-Search this way instead — substitute file-level string constants into the read expression *before* testing it, so the result does not depend on how a path was spelled or a variable named:
+Two false-positive sources cost as much time as the misses, and the script guards both: a fixed look-ahead window when reading a declaration bleeds into the next one and taints a source binding with the SQL read that follows it; and running a case block to wherever the next case starts sweeps up helpers declared after the last case, blaming their assertions on it.
 
-```python
-const_map = {}          # const X = '...' | resolve(...) | new URL('...')
-for `const V = readFileSync(<expr>)`:
-    resolved = substitute(const_map, expr)
-    if 'migrations' in resolved.lower():
-        V holds migration text
-violation = any case with expect(V).toContain / .toMatch   # excluding .not.
-```
-
-A clean run prints zero. Anything else is a case claiming database behavior on the strength of a substring.
+A clean run prints `0 banned`. The `warn` rows are text assertions over scripts CI executes — allowed, but each one needs a comment saying why running the script does not already prove it.
 
 **Removing cases safely.** Deleting an `it()` block by searching for the next `\n  })\n`, or by brace-scanning, both cut through multi-line arrays inside the block and produce parse errors. What worked: take block boundaries from *line* structure — `^  it\(` opens, `^  \}\)$` closes — verify the pairing is 1:1 before applying, and delete from the end of the file backwards so earlier offsets stay valid.

@@ -38,6 +38,9 @@ describe('worker manual payout persistence', () => {
     expect(adminService).not.toContain('console.')
   })
 
+  // The RLS, grant, and immutability claims are settled by database-controls
+  // running this script against Postgres. Only its rollback discipline survives
+  // execution, since committing does not fail the run.
   it('ships rollback-only database verification for RLS, service grants, immutability, and payout controls', () => {
     expect(existsSync(verificationPath)).toBe(true)
     const verification = read(verificationPath)

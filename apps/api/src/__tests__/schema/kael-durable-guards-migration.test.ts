@@ -43,6 +43,9 @@ describe('Kael durable guards migration', () => {
     expect(workerChat).toContain('takeDurableKaelChatRateLimit')
   })
 
+  // database-controls runs this harness, so its assertions prove themselves.
+  // A harness that forgets to roll back still passes when it runs, which is why
+  // that one property is read here.
   it('ships a rollback-only runtime harness for local/staging verification', () => {
     const harness = readFileSync(
       new URL('../../../../../supabase/tests/kael_durable_guards_verification.sql', import.meta.url),
