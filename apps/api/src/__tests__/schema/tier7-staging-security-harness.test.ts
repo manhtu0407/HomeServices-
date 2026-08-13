@@ -7,6 +7,11 @@ const HARNESS_SQL = readFileSync(
   'utf-8'
 )
 
+// run-sql-tests.ps1 executes this harness against real Postgres in the
+// database-controls job, so whether its fixtures satisfy the identity
+// constraints and whether it emits a summary row are settled by running it.
+// Only rollback discipline and a committed-secret scan survive execution: a
+// harness that commits, or one carrying a token, still passes when it runs.
 describe('Staging security verification harness', () => {
   it('uses a rollback-only transaction for remote staging fixtures', () => {
     expect(HARNESS_SQL.trimStart()).toMatch(/^--/)
@@ -18,18 +23,5 @@ describe('Staging security verification harness', () => {
     expect(HARNESS_SQL).not.toMatch(/sbp_[A-Za-z0-9]{32,}/)
     expect(HARNESS_SQL).not.toMatch(/sk-[A-Za-z0-9]{20,}/)
     expect(HARNESS_SQL).not.toMatch(/pplx-[A-Za-z0-9]{20,}/)
-  })
-
-  it('keeps worker fixtures valid for submitted-or-approved identity constraints', () => {
-    expect(HARNESS_SQL).toContain('legal_name')
-    expect(HARNESS_SQL).toContain('date_of_birth')
-    expect(HARNESS_SQL).toContain("'Security Worker One'")
-    expect(HARNESS_SQL).toContain("'Security Worker Two'")
-  })
-
-  it('reports a summary row that must show zero failures', () => {
-    expect(HARNESS_SQL).toContain('__summary__')
-    expect(HARNESS_SQL).toContain('0 failures')
-    expect(HARNESS_SQL).toContain('count(*) filter (where pass = false) = 0')
   })
 })
