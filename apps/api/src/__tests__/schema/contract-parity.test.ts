@@ -62,6 +62,7 @@ const CONTRACT_PAIRS = [
       'workerKaelMemoryPreferenceUpdateSchema',
       'workerKaelTrainingConsentSchema',
       'workerRegisterSchema',
+      'workerRegistrationDraftSchema',
       'workerScopeChangeSchema',
       'workerServiceAreaUpdateSchema',
       'workerServicePreferencesUpdateSchema',
@@ -91,7 +92,7 @@ const CONTRACT_PAIRS = [
 // P1 measured exactly 40 public schemas shared by the Edge and workspace contracts. A
 // pair is intentionally exact rather than a floor so a schema cannot silently move or
 // disappear from one twin while a different schema happens to replace the count.
-const EXPECTED_COMMON_SCHEMA_COUNT = 40
+const EXPECTED_COMMON_SCHEMA_COUNT = 41
 
 // These helpers let contract modules share validation primitives, but their names were
 // never part of the two public facade surfaces measured in P1. The barrel deliberately

@@ -1,7 +1,7 @@
-import { useReducer, type ReactNode } from 'react'
+import { useEffect, useReducer, useRef, type ReactNode } from 'react'
 import { Alert, Pressable, Text as RNText, View, type TextProps } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { SERVICE_TYPES, type ServiceType, type WorkerRegisterInput } from '@nestscout/shared'
+import { SERVICE_TYPES, type ServiceType, type WorkerRegisterInput, type WorkerRegistrationDraftInput } from '@nestscout/shared'
 
 import { KaelButton, KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
@@ -31,6 +31,7 @@ type RegistrationState = {
   serviceTypes: ServiceType[]
   submitError: string | null
   submitting: boolean
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error'
   yearsExperience: string
 }
 
@@ -40,6 +41,7 @@ type RegistrationAction =
   | { type: 'service'; serviceType: ServiceType }
   | { type: 'error'; value: string | null }
   | { type: 'submitting'; value: boolean }
+  | { type: 'saveStatus'; value: RegistrationState['saveStatus'] }
 
 type RegistrationField = Exclude<keyof RegistrationState, 'files' | 'serviceTypes' | 'submitError' | 'submitting'>
 
@@ -56,6 +58,7 @@ function createRegistrationState(profile: WorkerProfileResponse | null) : Regist
     serviceTypes: profile?.service_types ?? [],
     submitError: null,
     submitting: false,
+    saveStatus: 'idle',
     yearsExperience: profile?.years_experience ? String(profile.years_experience) : '',
   }
 }
@@ -74,6 +77,8 @@ function registrationReducer(state: RegistrationState, action: RegistrationActio
       return { ...state, submitError: action.value }
     case 'submitting':
       return { ...state, submitting: action.value }
+    case 'saveStatus':
+      return { ...state, saveStatus: action.value }
     default:
       return state
   }
@@ -97,7 +102,32 @@ export function WorkerV5WorkerRegistrationBody({
 }) {
   const isDark = useWorkerThemeMode() === 'dark'
   const [state, dispatch] = useReducer(registrationReducer, profile, createRegistrationState)
+  const lastSavedDraftRef = useRef('')
   const setField = (field: RegistrationField) => (value: string) => dispatch({ type: 'field', field, value })
+
+  useEffect(() => {
+    const draft = validWorkerRegistrationDraft({
+      bankAccount: state.bankAccount,
+      bankName: state.bankName,
+      dateOfBirth: state.dateOfBirth,
+      districts: state.districts,
+      legalName: state.legalName,
+      problemSpecializations: state.problemSpecializations,
+      serviceRadiusKm: state.serviceRadiusKm,
+      serviceTypes: state.serviceTypes,
+      yearsExperience: state.yearsExperience,
+    })
+    const serialized = JSON.stringify(draft)
+    if (Object.keys(draft).length === 0 || serialized === lastSavedDraftRef.current) return
+    dispatch({ type: 'saveStatus', value: 'saving' })
+    const timer = setTimeout(() => {
+      void runtime.actions.workerSaveRegistrationDraft(draft).then((saved) => {
+        if (saved) lastSavedDraftRef.current = serialized
+        dispatch({ type: 'saveStatus', value: saved ? 'saved' : 'error' })
+      })
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [runtime.actions, state.bankAccount, state.bankName, state.dateOfBirth, state.districts, state.legalName, state.problemSpecializations, state.serviceRadiusKm, state.serviceTypes, state.yearsExperience])
 
   const pickFile = async (slot: WorkerVerificationFileSlot) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -160,6 +190,7 @@ export function WorkerV5WorkerRegistrationBody({
         dispatch({ type: 'error', value: textByLanguage(language, 'Chưa thể tải giấy tờ lên. Hãy kiểm tra kết nối rồi thử lại.', 'The documents could not be uploaded. Check the connection and try again.') })
         return
       }
+      await runtime.actions.workerSaveRegistrationDraft(uploaded.urls)
       const input: WorkerRegisterInput = {
         bank_account: state.bankAccount.trim(),
         bank_name: state.bankName.trim(),
@@ -198,6 +229,9 @@ export function WorkerV5WorkerRegistrationBody({
         <Text>{textByLanguage(language, 'Hoàn tất hồ sơ thợ', 'Complete your worker profile')}</Text>
         <RNText style={[styles.copy, isDark ? styles.darkCopy : null]}>
           {textByLanguage(language, 'Cần đủ thông tin và giấy tờ thật để hệ thống gửi yêu cầu phù hợp. Hồ sơ sẽ được kiểm tra trước khi nhận việc.', 'Real details and documents are required so the app can match you with suitable work. Your profile is reviewed before you can accept work.')}
+        </RNText>
+        <RNText accessibilityLiveRegion="polite" style={[styles.note, isDark ? styles.darkCopy : null]} testID="worker-v5-registration-save-status">
+          {registrationSaveStatus(language, state.saveStatus)}
         </RNText>
       </View>
 
@@ -298,6 +332,33 @@ function commaSeparatedValues(value: string) {
     const trimmed = item.trim()
     return trimmed ? [trimmed] : []
   })
+}
+
+type RegistrationDraftState = Pick<RegistrationState, 'bankAccount' | 'bankName' | 'dateOfBirth' | 'districts' | 'legalName' | 'problemSpecializations' | 'serviceRadiusKm' | 'serviceTypes' | 'yearsExperience'>
+
+function validWorkerRegistrationDraft(state: RegistrationDraftState): WorkerRegistrationDraftInput {
+  const draft: WorkerRegistrationDraftInput = {}
+  const years = Number.parseInt(state.yearsExperience, 10)
+  const radius = Number.parseInt(state.serviceRadiusKm, 10)
+  const districts = commaSeparatedValues(state.districts)
+  const specializations = commaSeparatedValues(state.problemSpecializations)
+  if (state.legalName.trim().length >= 2) draft.legal_name = state.legalName.trim()
+  if (isPastDate(state.dateOfBirth)) draft.date_of_birth = state.dateOfBirth.trim()
+  if (Number.isInteger(years) && years >= 0 && years <= 60) draft.years_experience = years
+  if (districts.length > 0) draft.districts = districts
+  if (Number.isInteger(radius) && radius >= 1 && radius <= 30) draft.service_radius_km = radius
+  if (state.serviceTypes.length > 0) draft.service_types = state.serviceTypes
+  if (specializations.length > 0) draft.problem_specializations = specializations
+  if (state.bankName.trim().length >= 2) draft.bank_name = state.bankName.trim()
+  if (state.bankAccount.trim().length >= 6) draft.bank_account = state.bankAccount.trim()
+  return draft
+}
+
+function registrationSaveStatus(language: AppLanguage, status: RegistrationState['saveStatus']) {
+  if (status === 'saving') return textByLanguage(language, 'Đang tự lưu tiến độ…', 'Saving progress…')
+  if (status === 'saved') return textByLanguage(language, 'Đã tự lưu tiến độ.', 'Progress saved.')
+  if (status === 'error') return textByLanguage(language, 'Chưa thể tự lưu. Dữ liệu vẫn còn trên thiết bị.', 'Could not save yet. Your data remains on this device.')
+  return textByLanguage(language, 'Tiến độ hợp lệ sẽ được tự lưu.', 'Valid progress is saved automatically.')
 }
 
 function isPastDate(value: string) {

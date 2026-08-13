@@ -34,6 +34,8 @@ import {
   type AdminWorkerApplicationListResponse,
   type AdminWorkerApplicationStatus,
   type AdminWorkerApplicationSummary,
+  type AdminWorkerChecklist,
+  type AdminWorkerReviewStage,
 } from "../contracts/admin-control.ts";
 import {
   emptyRows,
@@ -41,18 +43,16 @@ import {
   maskPhone,
   matchesWorkerApplicationQuery,
 } from "./control-formatters.ts";
-
+import { serializeProvisioning } from "./operator-provisioning.ts";
 const WORKER_APPLICATION_SELECT =
   "id,actor_id,status,safe_metadata,created_at,updated_at";
 const WORKER_PROFILE_SELECT =
-  "id,verification_status,is_approved,is_suspended,service_types,districts,cccd_front_url,cccd_back_url,selfie_url";
+  "id,verification_status,is_approved,is_suspended,service_types,districts,legal_name,date_of_birth,years_experience,service_radius_km,cccd_front_url,cccd_back_url,selfie_url,bank_account,bank_name";
 const OPERATOR_ACCOUNT_SELECT =
   "user_id,baseline_role,capabilities,status,granted_at,updated_at";
 const MANAGER_NOMINATION_SELECT =
   "id,target_user_id,baseline_role,nominated_at";
-
 type Row = Record<string, unknown>;
-
 export async function getAdminOperations(
   ctx: MobileApiContext,
 ): Promise<AdminOperationsResponse> {
@@ -71,15 +71,17 @@ export async function listAdminWorkerApplications(
   input: AdminWorkerApplicationListInput,
 ): Promise<AdminWorkerApplicationListResponse> {
   await requireAdminCapability(ctx, "workers.read");
-  const scanLimit = input.query
-    ? Math.min(250, Math.max(50, input.offset + input.limit + 1))
-    : input.offset + input.limit + 1;
+  const effectiveOffset = input.cursor ? Number.parseInt(input.cursor, 10) : input.offset;
+  const needsPostFilter = Boolean(input.query || input.stage);
+  const scanLimit = needsPostFilter
+    ? Math.min(500, Math.max(100, effectiveOffset + input.limit + 1))
+    : effectiveOffset + input.limit + 1;
   let queueQuery = db(ctx)
     .from("kael_admin_queue")
     .select(WORKER_APPLICATION_SELECT, { count: "exact" })
     .eq("queue_type", "worker_application_review")
     .order("created_at", { ascending: false })
-    .range(input.query ? 0 : input.offset, (input.query ? 0 : input.offset) + scanLimit - 1);
+    .range(needsPostFilter ? 0 : effectiveOffset, (needsPostFilter ? 0 : effectiveOffset) + scanLimit - 1);
   if (input.status !== "all") queueQuery = queueQuery.eq("status", input.status);
 
   const result = await dbQuery<Row[]>(queueQuery);
@@ -87,11 +89,12 @@ export async function listAdminWorkerApplications(
     apiFailure("DB_ERROR", "Không thể tải danh sách hồ sơ thợ", 500);
   }
   const summaries = await buildWorkerApplicationSummaries(ctx, result.data ?? []);
-  const filtered = input.query
-    ? summaries.filter((summary) => matchesWorkerApplicationQuery(summary, input.query))
-    : summaries;
-  const page = input.query
-    ? filtered.slice(input.offset, input.offset + input.limit + 1)
+  const filtered = summaries.filter((summary) =>
+    (!input.query || matchesWorkerApplicationQuery(summary, input.query)) &&
+    (!input.stage || input.stage === "all" || summary.stage === input.stage)
+  );
+  const page = needsPostFilter
+    ? filtered.slice(effectiveOffset, effectiveOffset + input.limit + 1)
     : filtered;
   const hasMore = page.length > input.limit;
   const applications = page.slice(0, input.limit);
@@ -99,8 +102,9 @@ export async function listAdminWorkerApplications(
   return {
     applications,
     has_more: hasMore,
-    next_offset: hasMore ? input.offset + applications.length : null,
-    total_count: input.query ? null : nonNegativeInteger(result.count),
+    next_offset: hasMore ? effectiveOffset + applications.length : null,
+    next_cursor: hasMore ? String(effectiveOffset + applications.length) : null,
+    total_count: needsPostFilter ? null : nonNegativeInteger(result.count),
   };
 }
 
@@ -225,6 +229,11 @@ export async function listAdminSubAdmins(
     )
     : await emptyRows();
   if (accountsResult.error || nominationsResult.error) apiFailure("DB_ERROR", "Không thể tải danh sách Sub Admin", 500);
+  const provisioningResult = actor.access_level === "owner"
+    ? await dbQuery<Row[]>(db(ctx).from("admin_operator_provisioning").select("id,full_name,email,status,capabilities,created_at,updated_at")
+      .eq("created_by", ctx.user.id).in("status", ["pending_password_change", "failed"]).order("updated_at", { ascending: false }))
+    : await emptyRows();
+  if (provisioningResult.error) apiFailure("DB_ERROR", "Không thể tải tài khoản chờ kích hoạt", 500);
   const accounts = accountsResult.data ?? [];
   const nominationRows = nominationsResult.data ?? [];
   const userIds = uniqueStrings([
@@ -293,9 +302,11 @@ export async function listAdminSubAdmins(
       nominated_at: nominatedAt,
     } satisfies AdminManagerNominationSummary];
   });
-  return { actor, members, nominations };
+  const pendingAccounts = (provisioningResult.data ?? []).flatMap((row) => {
+    const account = serializeProvisioning(row); return account ? [account] : [];
+  });
+  return { actor, members, nominations, pending_accounts: pendingAccounts };
 }
-
 export async function searchAdminSubAdminAccounts(
   ctx: MobileApiContext,
   input: AdminSubAdminAccountSearchInput,
@@ -333,7 +344,6 @@ export async function searchAdminSubAdminAccounts(
   }
   return { accounts: [...candidates.values()] };
 }
-
 export async function nominateAdminManager(
   ctx: MobileApiContext,
   userId: string,
@@ -367,7 +377,6 @@ export async function nominateAdminManager(
     },
   };
 }
-
 export async function cancelAdminManagerNomination(
   ctx: MobileApiContext,
   nominationId: string,
@@ -385,7 +394,6 @@ export async function cancelAdminManagerNomination(
   if (row.ok !== true) mapManagerNominationError(nullableString(row.error_code));
   return { ok: true, nomination_id: asString(row.nomination_id) || nominationId };
 }
-
 export async function setAdminSubAdminAccess(
   ctx: MobileApiContext,
   userId: string,
@@ -428,7 +436,7 @@ async function buildWorkerApplicationSummaries(
   const actorIds = uniqueStrings(queueRows.map((row) => nullableString(row.actor_id)));
   const queueIds = uniqueStrings(queueRows.map((row) => nullableString(row.id)));
   const client = db(ctx);
-  const [profiles, workers, reviews] = await Promise.all([
+  const [profiles, workers, reviews, profileQueues] = await Promise.all([
     actorIds.length
       ? dbQuery<Row[]>(client.from("profiles").select("id,role,full_name,phone").in("id", actorIds))
       : emptyRows(),
@@ -443,8 +451,17 @@ async function buildWorkerApplicationSummaries(
           .in("queue_id", queueIds),
       )
       : emptyRows(),
+    actorIds.length
+      ? dbQuery<Row[]>(
+        client.from("kael_admin_queue")
+          .select("id,actor_id,status,created_at")
+          .eq("queue_type", "worker_profile_verification")
+          .in("actor_id", actorIds)
+          .order("created_at", { ascending: false }),
+      )
+      : emptyRows(),
   ]);
-  if (profiles.error || workers.error || reviews.error) {
+  if (profiles.error || workers.error || reviews.error || profileQueues.error) {
     apiFailure("DB_ERROR", "Không thể tải dữ liệu tài khoản thợ", 500);
   }
   const reviewerIds = uniqueStrings((reviews.data ?? []).map((review) => nullableString(review.decided_by)));
@@ -456,6 +473,11 @@ async function buildWorkerApplicationSummaries(
   const workerById = indexById(workers.data ?? []);
   const reviewByQueueId = indexById(reviews.data ?? [], "queue_id");
   const reviewerById = indexById(reviewerProfiles.data ?? []);
+  const profileQueueByWorker = new Map<string, Row>();
+  for (const queue of profileQueues.data ?? []) {
+    const workerId = nullableString(queue.actor_id);
+    if (workerId && !profileQueueByWorker.has(workerId)) profileQueueByWorker.set(workerId, queue);
+  }
   return queueRows.flatMap((row) => {
     const workerId = nullableString(row.actor_id);
     if (!workerId) return [];
@@ -465,6 +487,7 @@ async function buildWorkerApplicationSummaries(
       workerById.get(workerId),
       reviewByQueueId.get(asString(row.id)),
       reviewerById,
+      profileQueueByWorker.get(workerId),
     )];
   });
 }
@@ -475,11 +498,14 @@ function serializeWorkerApplication(
   worker: Row | undefined,
   review: Row | undefined,
   reviewerById: Map<string, Row>,
+  profileQueue: Row | undefined,
 ): AdminWorkerApplicationSummary {
   const metadata = nullableRecord(row.safe_metadata) ?? {};
   const reviewDecision = asReviewDecision(review?.decision);
   const reviewDecidedAt = nullableString(review?.decided_at);
   const reviewer = reviewerById.get(nullableString(review?.decided_by) ?? "");
+  const checklist = buildWorkerChecklist(worker);
+  const stage = workerReviewStage(row, profile, worker);
   return {
     id: asString(row.id),
     worker_id: asString(row.actor_id),
@@ -497,6 +523,9 @@ function serializeWorkerApplication(
     account_role: asUserRole(profile?.role),
     full_name: nullableString(profile?.full_name),
     phone_masked: maskPhone(nullableString(profile?.phone)),
+    stage,
+    checklist,
+    profile_review_queue_id: nullableString(profileQueue?.id),
     worker_profile: worker
       ? {
         verification_status: asWorkerVerificationStatus(worker.verification_status),
@@ -519,6 +548,45 @@ function serializeWorkerApplication(
   };
 }
 
+function buildWorkerChecklist(worker: Row | undefined): AdminWorkerChecklist {
+  const requirements: Array<[string, boolean]> = [
+    ["legal_name", Boolean(nullableString(worker?.legal_name))],
+    ["date_of_birth", Boolean(nullableString(worker?.date_of_birth))],
+    ["service_types", asServiceTypeArray(worker?.service_types).length > 0],
+    ["years_experience", worker !== undefined && nullableNumber(worker.years_experience) !== null],
+    ["districts", asStringArray(worker?.districts).length > 0],
+    ["service_radius_km", nullableNumber(worker?.service_radius_km) !== null],
+    ["cccd_front", Boolean(nullableString(worker?.cccd_front_url))],
+    ["cccd_back", Boolean(nullableString(worker?.cccd_back_url))],
+    ["selfie", Boolean(nullableString(worker?.selfie_url))],
+    ["bank_name", Boolean(nullableString(worker?.bank_name))],
+    ["bank_account", Boolean(nullableString(worker?.bank_account))],
+  ];
+  const missing = requirements.filter(([, complete]) => !complete).map(([key]) => key);
+  return {
+    completed_count: requirements.length - missing.length,
+    total_count: requirements.length,
+    missing,
+  };
+}
+
+function workerReviewStage(
+  queue: Row,
+  profile: Row | undefined,
+  worker: Row | undefined,
+): AdminWorkerReviewStage {
+  const queueStatus = asWorkerApplicationStatus(queue.status);
+  if (asUserRole(profile?.role) !== "worker" || queueStatus === "open" || queueStatus === "acknowledged") {
+    return "pending_access";
+  }
+  if (!worker || worker.verification_status === "draft" || worker.verification_status === "rejected") {
+    return "missing_profile";
+  }
+  if (worker.verification_status === "submitted" || worker.verification_status === "under_review") {
+    return "ready_verification";
+  }
+  return "verified";
+}
 function serializeOperationsSnapshot(value: unknown, actor: AdminActor): AdminOperationsResponse {
   const snapshot = nullableRecord(value);
   if (!snapshot) apiFailure("DB_ERROR", "Dữ liệu vận hành không hợp lệ", 500);
@@ -566,7 +634,6 @@ function serializeOperationsSnapshot(value: unknown, actor: AdminActor): AdminOp
   if (!generatedAt) apiFailure("DB_ERROR", "Dữ liệu vận hành chưa có thời điểm hợp lệ", 500);
   return { actor, generated_at: generatedAt, attention, flow, quality, audit_events: auditEvents };
 }
-
 export async function requireAdminCapability(
   ctx: MobileApiContext,
   capability: AdminControlCapability,
@@ -587,19 +654,20 @@ export async function requireAdminCapability(
   if (result.error || !result.data || result.data.status !== "active") {
     apiFailure("AUTH_FORBIDDEN", "Quyền Sub Admin hiện không còn hiệu lực", 403);
   }
-  const capabilities = asCapabilities(result.data.capabilities);
+  const storedCapabilities = asCapabilities(result.data.capabilities);
+  const capabilities = storedCapabilities.includes("finance.read")
+    ? storedCapabilities
+    : [...storedCapabilities, "finance.read" as const];
   if (!capabilities.includes(capability)) {
     apiFailure("AUTH_FORBIDDEN", "Tài khoản chưa được cấp quyền cho thao tác này", 403);
   }
   return { access_level: "operator", capabilities };
 }
-
 function requireAdminOwner(ctx: MobileApiContext): void {
   if (ctx.role !== "admin") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ Owner Admin mới có thể thay đổi quyền Sub Admin", 403);
   }
 }
-
 function mapWorkerApplicationDecisionError(code: string | null): never {
   if (code === "APPLICATION_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
   if (code === "WORKER_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy tài khoản thợ", 404);
@@ -610,7 +678,6 @@ function mapWorkerApplicationDecisionError(code: string | null): never {
   if (code === "ALREADY_REVIEWED") apiFailure("ALREADY_REVIEWED", "Hồ sơ thợ đã có quyết định khác", 409);
   apiFailure("REVIEW_FAILED", "Không thể lưu quyết định hồ sơ thợ", 409);
 }
-
 function mapWorkerAccessError(code: string | null): never {
   if (code === "WORKER_NOT_FOUND") apiFailure("NOT_FOUND", "Không tìm thấy tài khoản thợ", 404);
   if (code === "WORKER_MANAGE_REQUIRED") apiFailure("AUTH_FORBIDDEN", "Tài khoản chưa có quyền quản lý thợ", 403);

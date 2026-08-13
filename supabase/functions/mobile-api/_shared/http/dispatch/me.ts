@@ -5,6 +5,7 @@ import {
   customerKaelFeedbackSchema,
   customerRefundAccountSaveSchema,
   updateKaelMemorySchema,
+  adminOperatorActivationSchema,
 } from "../../../../_shared/domain.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
@@ -18,6 +19,13 @@ export async function dispatchMeRoute(
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
+    case "me.adminActivation":
+      return services.getAdminActivation(ctx);
+    case "me.adminActivation.activate": {
+      const input = adminOperatorActivationSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Mật khẩu kích hoạt không hợp lệ", 400);
+      return services.activateAdminOperator(ctx, input.data);
+    }
     case "me.favoriteWorkerSave":
       if (!services.saveCustomerFavoriteWorker) {
         apiFailure("NOT_IMPLEMENTED", "Chức năng lưu thợ chưa sẵn sàng", 501);

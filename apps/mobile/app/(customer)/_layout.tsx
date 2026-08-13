@@ -5,6 +5,7 @@ import { CustomerDockOverlay, type CustomerDockActive } from '@/components/custo
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { DockScrollStateProvider } from '@/components/ui/dock-scroll-state'
 import { useAuth } from '@/lib/auth-provider'
+import { useAdminActivation } from '@/lib/admin-activation-provider'
 import { useAppLanguage } from '@/lib/app-language'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
 
@@ -85,6 +86,7 @@ function CustomerRuntimeBuildMarker() {
 
 export default function CustomerLayout() {
   const { guestMode, loading, role, session } = useAuth()
+  const activation = useAdminActivation()
   const language = useAppLanguage()
   const themeMode = useCustomerThemeMode()
   const tokens = getCustomerThemeTokens(themeMode)
@@ -93,7 +95,7 @@ export default function CustomerLayout() {
   const activeDock = activeCustomerDockFromPath(pathname)
   const showDock = !pathname.includes('/kael')
 
-  if (loading) {
+  if (loading || (session && activation.loading)) {
     return (
       <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
         <ActivityIndicator color={tokens.primary} size="large" />
@@ -104,6 +106,7 @@ export default function CustomerLayout() {
   if (!session && !guestMode) {
     return <Redirect href="/(auth)/login" />
   }
+  if (session && activation.status?.required) return <Redirect href="/(auth)/admin-activation" />
 
   if (session && role === 'worker') {
     return <Redirect href="/(worker)/home" />

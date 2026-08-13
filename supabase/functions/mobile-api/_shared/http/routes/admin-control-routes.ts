@@ -14,6 +14,18 @@ export type AdminControlRoute =
     roles: AdminReadRoles;
   }
   | {
+    kind: "admin.workerApplications.reviewDetail";
+    method: "GET";
+    applicationId: string;
+    roles: AdminReadRoles;
+  }
+  | {
+    kind: "admin.workerApplications.profileDecision";
+    method: "POST";
+    applicationId: string;
+    roles: AdminReadRoles;
+  }
+  | {
     kind: "admin.workerApplications.decision";
     method: "POST";
     applicationId: string;
@@ -40,6 +52,29 @@ export type AdminControlRoute =
     roles: AdminReadRoles;
   }
   | { kind: "admin.finance.summary"; method: "GET"; roles: AdminReadRoles }
+  | { kind: "admin.finance.overview"; method: "GET"; roles: AdminReadRoles }
+  | { kind: "admin.finance.transactions"; method: "GET"; roles: AdminReadRoles }
+  | { kind: "admin.finance.export"; method: "GET"; roles: AdminReadRoles }
+  | { kind: "admin.finance.taxPolicies.list"; method: "GET"; roles: AdminReadRoles }
+  | { kind: "admin.finance.taxPolicies.draft"; method: "POST"; roles: AdminReadRoles }
+  | {
+    kind: "admin.finance.taxPolicies.updateDraft";
+    method: "PATCH";
+    policyId: string;
+    roles: AdminReadRoles;
+  }
+  | {
+    kind: "admin.finance.taxPolicies.approve";
+    method: "POST";
+    policyId: string;
+    roles: ["admin"];
+  }
+  | {
+    kind: "admin.finance.taxPolicies.retire";
+    method: "POST";
+    policyId: string;
+    roles: ["admin"];
+  }
   | { kind: "admin.finance.balanceSnapshot"; method: "POST"; roles: AdminReadRoles }
   | { kind: "admin.payoutMethods.list"; method: "GET"; roles: AdminReadRoles }
   | {
@@ -74,6 +109,13 @@ export type AdminControlRoute =
     roles: AdminReadRoles;
   }
   | { kind: "admin.subAdmins.list"; method: "GET"; roles: AdminReadRoles }
+  | { kind: "admin.subAdmins.provision"; method: "POST"; roles: ["admin"] }
+  | {
+    kind: "admin.subAdmins.resetPassword";
+    method: "POST";
+    provisioningId: string;
+    roles: ["admin"];
+  }
   | { kind: "admin.subAdmins.accounts"; method: "GET"; roles: ["admin"] }
   | {
     kind: "admin.managerNominations.nominate";
@@ -128,6 +170,54 @@ function matchAdminFinanceRoute(
   if (method === "GET" && path === "/admin/finance/summary") {
     return { kind: "admin.finance.summary", method: "GET", roles: adminReadRoles };
   }
+  if (method === "GET" && path === "/admin/finance/overview") {
+    return { kind: "admin.finance.overview", method: "GET", roles: adminReadRoles };
+  }
+  if (method === "GET" && path === "/admin/finance/transactions") {
+    return { kind: "admin.finance.transactions", method: "GET", roles: adminReadRoles };
+  }
+  if (method === "GET" && path === "/admin/finance/export.csv") {
+    return { kind: "admin.finance.export", method: "GET", roles: adminReadRoles };
+  }
+  if (method === "GET" && path === "/admin/finance/tax-policies") {
+    return { kind: "admin.finance.taxPolicies.list", method: "GET", roles: adminReadRoles };
+  }
+  if (method === "POST" && path === "/admin/finance/tax-policies/drafts") {
+    return { kind: "admin.finance.taxPolicies.draft", method: "POST", roles: adminReadRoles };
+  }
+  const taxPolicyDraftUpdate = path.match(/^\/admin\/finance\/tax-policies\/([^/]+)\/draft$/);
+  if (method === "PATCH" && taxPolicyDraftUpdate) {
+    const policyId = decodeSegment(taxPolicyDraftUpdate[1] ?? "");
+    if (!policyId) return null;
+    return {
+      kind: "admin.finance.taxPolicies.updateDraft",
+      method: "PATCH",
+      policyId,
+      roles: adminReadRoles,
+    };
+  }
+  const taxPolicyApproval = path.match(/^\/admin\/finance\/tax-policies\/([^/]+)\/approve$/);
+  if (method === "POST" && taxPolicyApproval) {
+    const policyId = decodeSegment(taxPolicyApproval[1] ?? "");
+    if (!policyId) return null;
+    return {
+      kind: "admin.finance.taxPolicies.approve",
+      method: "POST",
+      policyId,
+      roles: ["admin"],
+    };
+  }
+  const taxPolicyRetirement = path.match(/^\/admin\/finance\/tax-policies\/([^/]+)\/retire$/);
+  if (method === "POST" && taxPolicyRetirement) {
+    const policyId = decodeSegment(taxPolicyRetirement[1] ?? "");
+    if (!policyId) return null;
+    return {
+      kind: "admin.finance.taxPolicies.retire",
+      method: "POST",
+      policyId,
+      roles: ["admin"],
+    };
+  }
   if (method === "POST" && path === "/admin/finance/balance-snapshots") {
     return { kind: "admin.finance.balanceSnapshot", method: "POST", roles: adminReadRoles };
   }
@@ -163,6 +253,32 @@ function matchAdminWorkerTransactionRoute(
   path: string,
   method: string,
 ): AdminControlRoute | null {
+  const workerProfileDecision = path.match(
+    /^\/admin\/worker-applications\/([^/]+)\/profile-decision$/,
+  );
+  if (workerProfileDecision && method === "POST") {
+    const applicationId = decodeSegment(workerProfileDecision[1] ?? "");
+    if (!applicationId) return null;
+    return {
+      kind: "admin.workerApplications.profileDecision",
+      method: "POST",
+      applicationId,
+      roles: adminReadRoles,
+    };
+  }
+  const workerReviewDetail = path.match(
+    /^\/admin\/worker-applications\/([^/]+)\/review-detail$/,
+  );
+  if (workerReviewDetail && method === "GET") {
+    const applicationId = decodeSegment(workerReviewDetail[1] ?? "");
+    if (!applicationId) return null;
+    return {
+      kind: "admin.workerApplications.reviewDetail",
+      method: "GET",
+      applicationId,
+      roles: adminReadRoles,
+    };
+  }
   const workerApplicationDecision = path.match(
     /^\/admin\/worker-applications\/([^/]+)\/decision$/,
   );
@@ -291,6 +407,20 @@ function matchAdminTeamRoute(
 ): AdminControlRoute | null {
   if (method === "GET" && path === "/admin/sub-admins") {
     return { kind: "admin.subAdmins.list", method: "GET", roles: adminReadRoles };
+  }
+  if (method === "POST" && path === "/admin/sub-admins/provision") {
+    return { kind: "admin.subAdmins.provision", method: "POST", roles: ["admin"] };
+  }
+  const resetProvisionedPassword = path.match(/^\/admin\/sub-admins\/provision\/([^/]+)\/reset-password$/);
+  if (method === "POST" && resetProvisionedPassword) {
+    const provisioningId = decodeSegment(resetProvisionedPassword[1] ?? "");
+    if (!provisioningId) return null;
+    return {
+      kind: "admin.subAdmins.resetPassword",
+      method: "POST",
+      provisioningId,
+      roles: ["admin"],
+    };
   }
   if (method === "GET" && path === "/admin/sub-admins/accounts") {
     return { kind: "admin.subAdmins.accounts", method: "GET", roles: ["admin"] };

@@ -214,6 +214,131 @@ export type JobsTables = {
           },
         ]
       }
+      job_media_assets: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          file_size_bytes: number | null
+          id: string
+          job_id: string
+          mime_type: string | null
+          object_path: string
+          owner_id: string
+          safe_metadata: Json
+          service_type: Database["public"]["Enums"]["service_type"]
+          stage: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          file_size_bytes?: number | null
+          id?: string
+          job_id: string
+          mime_type?: string | null
+          object_path: string
+          owner_id: string
+          safe_metadata?: Json
+          service_type: Database["public"]["Enums"]["service_type"]
+          stage: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          file_size_bytes?: number | null
+          id?: string
+          job_id?: string
+          mime_type?: string | null
+          object_path?: string
+          owner_id?: string
+          safe_metadata?: Json
+          service_type?: Database["public"]["Enums"]["service_type"]
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_media_assets_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_media_assets_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_media_upload_intents: {
+        Row: {
+          attached_at: string | null
+          bucket_id: string
+          cleaned_at: string | null
+          cleanup_claim_token: string | null
+          cleanup_claimed_at: string | null
+          created_at: string
+          delete_after: string | null
+          expires_at: string
+          file_size_bytes: number
+          id: string
+          job_id: string
+          mime_type: string
+          object_path: string
+          owner_id: string
+          stage: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attached_at?: string | null
+          bucket_id?: string
+          cleaned_at?: string | null
+          cleanup_claim_token?: string | null
+          cleanup_claimed_at?: string | null
+          created_at?: string
+          delete_after?: string | null
+          expires_at: string
+          file_size_bytes: number
+          id?: string
+          job_id: string
+          mime_type: string
+          object_path: string
+          owner_id: string
+          stage: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attached_at?: string | null
+          bucket_id?: string
+          cleaned_at?: string | null
+          cleanup_claim_token?: string | null
+          cleanup_claimed_at?: string | null
+          created_at?: string
+          delete_after?: string | null
+          expires_at?: string
+          file_size_bytes?: number
+          id?: string
+          job_id?: string
+          mime_type?: string
+          object_path?: string
+          owner_id?: string
+          stage?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_media_upload_intents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_payment_orders: {
         Row: {
           amount_received: number | null
@@ -394,131 +519,6 @@ export type JobsTables = {
             columns: ["payment_order_id"]
             isOneToOne: false
             referencedRelation: "job_payment_orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      job_media_assets: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          file_size_bytes: number | null
-          id: string
-          job_id: string
-          mime_type: string | null
-          object_path: string
-          owner_id: string
-          safe_metadata: Json
-          service_type: Database["public"]["Enums"]["service_type"]
-          stage: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          file_size_bytes?: number | null
-          id?: string
-          job_id: string
-          mime_type?: string | null
-          object_path: string
-          owner_id: string
-          safe_metadata?: Json
-          service_type: Database["public"]["Enums"]["service_type"]
-          stage: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          file_size_bytes?: number | null
-          id?: string
-          job_id?: string
-          mime_type?: string | null
-          object_path?: string
-          owner_id?: string
-          safe_metadata?: Json
-          service_type?: Database["public"]["Enums"]["service_type"]
-          stage?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_media_assets_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_media_assets_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      job_media_upload_intents: {
-        Row: {
-          attached_at: string | null
-          bucket_id: string
-          cleaned_at: string | null
-          cleanup_claim_token: string | null
-          cleanup_claimed_at: string | null
-          created_at: string
-          delete_after: string | null
-          expires_at: string
-          file_size_bytes: number
-          id: string
-          job_id: string
-          mime_type: string
-          object_path: string
-          owner_id: string
-          stage: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          attached_at?: string | null
-          bucket_id?: string
-          cleaned_at?: string | null
-          cleanup_claim_token?: string | null
-          cleanup_claimed_at?: string | null
-          created_at?: string
-          delete_after?: string | null
-          expires_at: string
-          file_size_bytes: number
-          id?: string
-          job_id: string
-          mime_type: string
-          object_path: string
-          owner_id: string
-          stage: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          attached_at?: string | null
-          bucket_id?: string
-          cleaned_at?: string | null
-          cleanup_claim_token?: string | null
-          cleanup_claimed_at?: string | null
-          created_at?: string
-          delete_after?: string | null
-          expires_at?: string
-          file_size_bytes?: number
-          id?: string
-          job_id?: string
-          mime_type?: string
-          object_path?: string
-          owner_id?: string
-          stage?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_media_upload_intents_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]

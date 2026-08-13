@@ -18,6 +18,7 @@ import {
 } from "./domains/kael-chat/memory.ts";
 import {
   registerWorker,
+  saveWorkerRegistrationDraft,
   getWorkerProfile,
   recordWorkerAppActiveMinute,
   submitWorkerApplication,
@@ -91,6 +92,18 @@ import {
   setAdminSubAdminAccess,
   setAdminWorkerAccess,
 } from "./domains/admin/control.ts";
+import {
+  decideAdminWorkerProfile,
+  getAdminWorkerReviewDetail,
+} from "./domains/admin/worker-review.ts";
+import {
+  provisionAdminOperator,
+  resetPendingAdminOperatorPassword,
+} from "./domains/admin/operator-provisioning.ts";
+import {
+  activateAdminOperator,
+  getAdminActivation,
+} from "./domains/admin/admin-activation.ts";
 import {
   listAdminAiCosts,
   listAdminDisputes,
@@ -417,7 +430,10 @@ function configuredPaymentRailProvider(
 function createProfileServices(secrets: EdgeServiceSecrets): Pick<
   MobileApiServices,
   | "getKaelCharter"
+  | "getAdminActivation"
+  | "activateAdminOperator"
   | "registerWorker"
+  | "saveWorkerRegistrationDraft"
   | "submitWorkerApplication"
   | "getCustomerProfileInsights"
   | "getCustomerAvatar"
@@ -453,7 +469,10 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
 > {
   return {
     getKaelCharter,
+    getAdminActivation,
+    activateAdminOperator,
     registerWorker,
+    saveWorkerRegistrationDraft,
     submitWorkerApplication,
     getCustomerProfileInsights,
     getCustomerAvatar,
@@ -508,6 +527,8 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "listAdminLearningRules"
   | "listAdminWorkerApplications"
   | "getAdminWorkerApplication"
+  | "getAdminWorkerReviewDetail"
+  | "decideAdminWorkerProfile"
   | "decideAdminWorkerApplication"
   | "setAdminWorkerAccess"
   | "listAdminTransactions"
@@ -524,6 +545,8 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "getAdminFinanceSummary"
   | "recordAdminFinanceBalanceSnapshot"
   | "listAdminSubAdmins"
+  | "provisionAdminOperator"
+  | "resetPendingAdminOperatorPassword"
   | "searchAdminSubAdminAccounts"
   | "nominateAdminManager"
   | "cancelAdminManagerNomination"
@@ -554,6 +577,8 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     listAdminLearningRules,
     listAdminWorkerApplications,
     getAdminWorkerApplication,
+    getAdminWorkerReviewDetail,
+    decideAdminWorkerProfile,
     decideAdminWorkerApplication,
     setAdminWorkerAccess,
     listAdminTransactions,
@@ -570,6 +595,8 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     getAdminFinanceSummary,
     recordAdminFinanceBalanceSnapshot,
     listAdminSubAdmins,
+    provisionAdminOperator,
+    resetPendingAdminOperatorPassword,
     searchAdminSubAdminAccounts,
     nominateAdminManager,
     cancelAdminManagerNomination,

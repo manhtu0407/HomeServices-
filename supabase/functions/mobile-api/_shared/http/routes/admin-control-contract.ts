@@ -6,7 +6,9 @@ export const ADMIN_CAPABILITY_VALUES = [
   "workers.review",
   "workers.manage",
   "transactions.read",
+  "finance.read",
   "finance.reconcile",
+  "finance.tax.manage",
   "payouts.read",
   "payouts.process",
   "team.read",
@@ -17,6 +19,14 @@ const ADMIN_APPLICATION_STATUSES = [
   "acknowledged",
   "resolved",
   "cancelled",
+  "all",
+] as const;
+
+const ADMIN_WORKER_REVIEW_STAGES = [
+  "pending_access",
+  "missing_profile",
+  "ready_verification",
+  "verified",
   "all",
 ] as const;
 
@@ -43,7 +53,22 @@ const paginationFields = {
 export const adminWorkerApplicationListQuerySchema = z.object({
   ...paginationFields,
   status: z.enum(ADMIN_APPLICATION_STATUSES).default("open"),
+  stage: z.enum(ADMIN_WORKER_REVIEW_STAGES).optional(),
+  cursor: z.string().regex(/^\d+$/).optional(),
 }).strict();
+
+export const adminWorkerProfileDecisionSchema = z.object({
+  decision: z.enum(["approve", "request_changes"]),
+  reason: z.string().trim().max(1000).optional(),
+}).strict().superRefine((value, context) => {
+  if (value.decision === "request_changes" && !value.reason) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["reason"],
+      message: "A reason is required when requesting changes.",
+    });
+  }
+});
 
 export const adminTransactionListQuerySchema = z.object({
   ...paginationFields,
@@ -79,7 +104,7 @@ export const adminSubAdminAccountSearchQuerySchema = z.object({
 
 export const adminSubAdminAccessSchema = z.object({
   action: z.enum(["grant", "update", "revoke"]),
-  capabilities: z.array(z.enum(ADMIN_CAPABILITY_VALUES)).max(9),
+  capabilities: z.array(z.enum(ADMIN_CAPABILITY_VALUES)).max(11),
   reason: z.string().trim().min(3).max(500).optional(),
 }).strict().superRefine((value, context) => {
   if ((value.action === "grant" || value.action === "update") && value.capabilities.length === 0) {
@@ -108,6 +133,8 @@ export const adminSubAdminAccessSchema = z.object({
 export function parseAdminWorkerApplicationListQuery(url: URL) {
   return adminWorkerApplicationListQuerySchema.safeParse({
     status: url.searchParams.get("status") ?? undefined,
+    stage: url.searchParams.get("stage") ?? undefined,
+    cursor: url.searchParams.get("cursor") ?? undefined,
     query: url.searchParams.get("query") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,
     offset: url.searchParams.get("offset") ?? undefined,

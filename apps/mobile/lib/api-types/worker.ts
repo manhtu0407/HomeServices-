@@ -87,6 +87,12 @@ export type WorkerRegisterResponse = {
   submitted_at: string
 }
 
+export type WorkerRegistrationDraftResponse = {
+  worker_id: string
+  verification_status: WorkerVerificationStatus
+  updated_at: string
+}
+
 type WorkerPerformanceBadgeId =
   | 'verified_profile'
   | 'fast_responder'
