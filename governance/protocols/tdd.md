@@ -60,6 +60,8 @@ Two test layers are valuable only when they cover distinct risk. For example, a 
 
 Type-only assertions, broad snapshots, or simple existence checks are allowed only if they verify something useful. They MUST NOT be used as fake confidence.
 
+A text assertion over migration SQL is a ratchet, never a test layer. Matching a substring in a `.sql` file proves the string is in the file; it does not prove the migration ran, that a later migration did not drop the object, or that Postgres rejects a bad row. Anything a database enforces — constraints, RLS, grants, triggers, RPC atomicity — needs a script in `supabase/tests/` that exercises it against a real Postgres. Reading text stays correct for claims that are *about* text: application source (a banned call path must not reappear), config files, generated database types, and negative scans for committed secrets.
+
 ### Output Format
 
 ```text
