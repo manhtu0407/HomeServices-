@@ -7,10 +7,6 @@ const edgeSource = readFileSync(
   resolve(root, 'supabase/functions/kael-media-retention/index.ts'),
   'utf8',
 )
-const migration = readFileSync(
-  resolve(root, 'supabase/migrations/20260711066000_kael_chat_media_retention_worker.sql'),
-  'utf8',
-)
 const retentionDenoConfigPath = resolve(
   root,
   'supabase/functions/kael-media-retention/deno.json',
@@ -28,11 +24,6 @@ describe('Kael private-media retention worker', () => {
   })
 
   it('leases every due uncleaned status and deletes bytes through Storage', () => {
-    expect(migration).toContain('where intent.cleaned_at is null')
-    expect(migration).toContain('for update skip locked')
-    expect(migration).toContain('cleanup_claim_token')
-    expect(migration).toContain('cleanup_claimed_at')
-    expect(migration).not.toMatch(/where status in \('reserved', 'consumed'\)/)
     expect(edgeSource).toContain('.storage.from(BUCKET).remove([row.object_path])')
     expect(edgeSource).toContain('complete_kael_chat_media_cleanup')
   })

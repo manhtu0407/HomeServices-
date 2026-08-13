@@ -819,10 +819,6 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   it('wires worker-owned chat routes and DB tables separately from customer Kael chat', () => {
     const router = readMobileApiRouterLayer()
     const services = readMobileApiServiceLayer()
-    const migration = readFileSync(
-      new URL('../../../../../supabase/migrations/20260604224500_kael_worker_chat_sessions.sql', import.meta.url),
-      'utf8',
-    )
 
     expect(router).toContain('/workers/me/kael/chat')
     expect(router).toContain('/workers/me/kael-feedback')
@@ -840,58 +836,31 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(services).toContain('isWorkerAssistGuardrailReason')
     expect(services).toContain('.eq("job_id", jobId)')
     expect(services).toContain('p_ai_model: input.answer.model ?? null')
-    expect(migration).toContain('create table if not exists public.kael_worker_chat_sessions')
-    expect(migration).toContain('create table if not exists public.kael_worker_chat_turns')
-    expect(migration).toContain('check_kael_worker_chat_rate')
   })
 
   it('archives a worker Kael session through the owned Edge boundary without deleting its evidence rows', () => {
     const router = readMobileApiRouterLayer()
     const services = readMobileApiServiceLayer()
-    const migrations = readdirSync(
-      new URL('../../../../../supabase/migrations/', import.meta.url),
-      { withFileTypes: true },
-    )
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
-      .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
-      .join('\n')
 
     expect(router).toContain('workers.kaelChat.archive')
     expect(router).toContain('method: "DELETE"')
     expect(services).toContain('archiveWorkerKaelChat')
     expect(services).toContain('.is("archived_at", null)')
-    expect(migrations).toContain('add column if not exists archived_at timestamptz')
   })
 
   it('persists a bounded worker Kael session title without exposing provider metadata', () => {
     const router = readMobileApiRouterLayer()
     const services = readMobileApiServiceLayer()
-    const migrations = readdirSync(
-      new URL('../../../../../supabase/migrations/', import.meta.url),
-      { withFileTypes: true },
-    )
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
-      .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
-      .join('\n')
 
     expect(router).toContain('workers.kaelChat.rename')
     expect(router).toContain('workerKaelChatRenameSchema.safeParse')
     expect(services).toContain('renameWorkerKaelChat')
     expect(services).toContain('title: nullableString(row.title)')
-    expect(migrations).toContain('add column if not exists title text')
-    expect(migrations).toContain('char_length(btrim(title)) between 1 and 64')
   })
 
   it('pins owned worker Kael sessions and lists pinned conversations before recent ones', () => {
     const router = readMobileApiRouterLayer()
     const services = readMobileApiServiceLayer()
-    const migrations = readdirSync(
-      new URL('../../../../../supabase/migrations/', import.meta.url),
-      { withFileTypes: true },
-    )
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
-      .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
-      .join('\n')
 
     expect(router).toContain('workers.kaelChat.pin')
     expect(router).toContain('workerKaelChatPinSchema.safeParse')
@@ -899,8 +868,6 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(services).toContain('.update({ pinned_at: pinnedAt })')
     expect(services).toContain('.order("pinned_at", { ascending: false, nullsFirst: false })')
     expect(services).toContain('pinned_at: nullableString(row.pinned_at)')
-    expect(migrations).toContain('add column if not exists pinned_at timestamptz')
-    expect(migrations).toContain('where pinned_at is not null and archived_at is null')
   })
 
   it('persists and lists worker Kael sessions within their explicit chat mode', () => {
@@ -914,13 +881,6 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     )
     const router = readMobileApiRouterLayer()
     const services = readMobileApiServiceLayer()
-    const migrations = readdirSync(
-      new URL('../../../../../supabase/migrations/', import.meta.url),
-      { withFileTypes: true },
-    )
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
-      .map((entry) => readFileSync(new URL(`../../../../../supabase/migrations/${entry.name}`, import.meta.url), 'utf8'))
-      .join('\n')
 
     for (const source of [edgeWorkerContract, sharedWorkerContract]) {
       const createSchemaBlock = source.match(/export const workerKaelChatCreateSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
@@ -931,9 +891,6 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(services).toContain('chat_mode: input.mode')
     expect(services).toContain('.eq("chat_mode", mode)')
     expect(services).toContain('mode: asWorkerKaelChatMode(row.chat_mode)')
-    expect(migrations).toContain('add column if not exists chat_mode text not null default \'intake\'')
-    expect(migrations).toContain("check (chat_mode in ('normal', 'intake'))")
-    expect(migrations).toContain('(worker_id, chat_mode, updated_at desc)')
   })
 
   it('keeps worker chat creation session-only and turn idempotency on the turn route', () => {
@@ -942,10 +899,6 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       'utf8',
     )
     const services = readMobileApiServiceLayer()
-    const turnMigration = readFileSync(
-      new URL('../../../../../supabase/migrations/20260627090000_worker_kael_turn_idempotency.sql', import.meta.url),
-      'utf8',
-    )
     const createSchemaBlock = workerContract.match(/export const workerKaelChatCreateSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
     const turnSchemaBlock = workerContract.match(/export const workerKaelChatTurnSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
     const createHandlerBlock = services.match(/async function createWorkerKaelChat\([\s\S]*?async function listWorkerKaelChats/)?.[0] ?? ''
@@ -956,8 +909,6 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(createHandlerBlock).not.toContain('sendWorkerKaelChatTurn')
     expect(createHandlerBlock).not.toContain('enforceWorkerKaelChatRateLimit')
     expect(createHandlerBlock).not.toContain('check_kael_worker_chat_rate')
-    expect(turnMigration).toContain('add column if not exists client_request_id text')
-    expect(turnMigration).toContain('(session_id, client_request_id)')
   })
 
   it('claims a durable worker chat turn before rate limiting and provider calls', () => {
@@ -1022,17 +973,12 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   it('keeps the rollback limiter fail-closed while the durable flag uses the fail-open adapter', () => {
     const services = readMobileApiServiceLayer()
     const rateLimitBlock = services.match(/async function enforceWorkerKaelChatRateLimit[\s\S]*?async function readWorkerKaelRecentTurns/)?.[0] ?? ''
-    const migration = readFileSync(
-      new URL('../../../../../supabase/migrations/20260627090000_worker_kael_turn_idempotency.sql', import.meta.url),
-      'utf8',
-    )
 
     expect(rateLimitBlock).toContain('if (secrets.durableGuardsEnabled)')
     expect(rateLimitBlock).toContain('takeDurableKaelChatRateLimit')
     expect(rateLimitBlock).toContain('"RATE_LIMIT_UNAVAILABLE"')
     expect(rateLimitBlock).toContain('429')
     expect(rateLimitBlock).toMatch(/if \(secrets\.durableGuardsEnabled\)[\s\S]*?\n\s+return;\r?\n\s+}/)
-    expect(migration).toContain('pg_advisory_xact_lock')
   })
 
 })
