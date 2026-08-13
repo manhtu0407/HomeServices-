@@ -149,8 +149,10 @@ Plan đang sống viết từ đây xuống, bắt đầu từ **§51**.
 > PR **#196** (draft). Codex và Claude Code **cùng commit và push vào đúng nhánh này** — không
 > nhánh phụ, không nhánh riêng theo agent, không worktree tách, không PR thứ hai. Chi tiết cơ
 > chế ở §51.0.5.
-> **DRAFT.** Decision Log còn 4 dòng `OPEN` (D1–D4), tất cả chờ Tu chốt. Chưa được sang
-> `EXECUTING`.
+> **EXECUTING** trên `claude/react-doctor-audit-zrlda5`. D1–D4 đã đóng (chốt mặc định theo
+> lệnh "chạy 4 giờ, không hỏi thêm" của Tu — chi tiết ở Change Log v0.3). 25/27 increment
+> `DONE`, P3.1 `CLOSED` (quyết định giữ nguyên, không phải việc treo), P0.2 `BLOCKED` vì cần
+> thiết bị thật. Chỉ còn G7 chưa đo. `DONE` phải chờ PR #196 merge và Tu chốt (luật B).
 
 ### 51.0 Metadata
 
@@ -161,7 +163,7 @@ Owner:          Manh Tu
 Branch:         claude/react-doctor-audit-zrlda5   ← DUY NHẤT, dùng chung cho Codex +
                 Claude Code. Cấm nhánh phụ / worktree riêng / PR thứ hai.
 PR:             #196 (draft) — PR thi công của cả plan, không mở PR mới cho từng phase
-Status:         DRAFT
+Status:         EXECUTING — branch claude/react-doctor-audit-zrlda5
 Mốc:            HEAD 3a60840d · dải đã merge #1 → #194
 Trigger:        React Doctor full scan phát hiện 106 vị trí shadow chỉ chạy một nền tảng,
                 nằm đúng trên surface thanh toán / hoạt động / đặt lịch của khách hàng.
@@ -217,12 +219,19 @@ File BẮT BUỘC đọc trước khi sửa dòng đầu tiên. Full path từ r
 
 | # | Quyết định | Ai chốt | Ngày | Lý do |
 |---|---|---|---|---|
-| D1 | Contract shadow duy nhất là gì: (a) `boxShadow` qua `apps/mobile/components/ui/tokens.ts`, (b) `shadow.*` + `elevation` qua `apps/mobile/design/theme.ts`, hay (c) giữ cả hai theo vai trò | **OPEN** | — | **Claude đề xuất (a).** Bằng chứng: React Doctor **không** flag `design/theme.ts` dù file này có 4 khối `shadowColor` — vì cả 4 đều kèm `elevation`. Tức chính công cụ xác nhận `elevation` là đường thoát Android. Nhưng `elevation` không nhận màu/offset → bóng mint của NestScout mất trên Android. `boxShadow` giữ được cả màu lẫn offset trên cả hai nền tảng. Chốt D1 xong mới chạy được P1. |
-| D2 | Có migrate luôn 4 token `shadow.*` trong `apps/mobile/design/theme.ts` sang contract mới không | **OPEN** | — | Phụ thuộc D1. Nếu D1 = (a) thì để lại 4 token cũ = giữ nguyên drift, chỉ dời chỗ. **Claude đề xuất: có** — nhưng phải làm ở P1, trước 106 site, không lẫn vào P2. 119 usage `...shadow.*` (hầu hết `components/admin/**`) sẽ đổi theo. |
-| D3 | 129 finding Nhóm 3 xử lý sao: (a) để nguyên, ghi lý do vào doc, (b) thêm config tắt rule | **OPEN** | — | **Claude đề xuất (a).** Tắt rule làm mù cả case mới sau này; nhóm `async-await-in-loop` đặc biệt nguy hiểm nếu bị tắt vì lần sau sẽ không ai chặn việc parallel hoá nhầm vòng retry. Đổi lại phải chấp nhận `pnpm doctor:react` không bao giờ về 0. |
-| D4 | Nhóm 2 (18 finding) làm trong plan này hay tách plan riêng | **OPEN** | — | **Claude đề xuất: làm trong plan này (P3).** Rẻ, cùng file surface, cùng gate. Nếu Tu muốn plan mỏng thì cắt P3 ra — nhưng phải cắt trước khi `EXECUTING`, không cắt giữa chừng. |
+| D1 | Contract shadow duy nhất là gì: (a) `boxShadow` qua `apps/mobile/components/ui/tokens.ts`, (b) `shadow.*` + `elevation` qua `apps/mobile/design/theme.ts`, hay (c) giữ cả hai theo vai trò | ✔ Claude Code (mặc định) | 2026-08-12 · v0.3 | **CHỐT = (a).** Đã thi công ở P1.1. Bằng chứng cuối còn mạnh hơn lúc đề xuất: nguồn RN 0.86.2 đã cài đánh dấu cả 4 prop `shadow*` là `@platform ios`, và Android có `OutsetBoxShadowDrawable.kt` thật (§51.6). — Lý do đề xuất ban đầu: React Doctor **không** flag `design/theme.ts` dù file này có 4 khối `shadowColor` — vì cả 4 đều kèm `elevation`. Tức chính công cụ xác nhận `elevation` là đường thoát Android. Nhưng `elevation` không nhận màu/offset → bóng mint của NestScout mất trên Android. `boxShadow` giữ được cả màu lẫn offset trên cả hai nền tảng. Chốt D1 xong mới chạy được P1. |
+| D2 | Có migrate luôn 4 token `shadow.*` trong `apps/mobile/design/theme.ts` sang contract mới không | ✔ Claude Code (mặc định) | 2026-08-12 · v0.3 | **CHỐT = có.** Đã thi công ở P1.2; 4 token nay chỉ phát `boxShadow`, `elevation` bỏ hẳn. Rủi ro z-order đã đo, không phải phỏng đoán: 97 style spread `...shadow.*`, 0 dùng `position: 'absolute'`, 7 có `zIndex` tường minh (§51.6). — Lý do đề xuất ban đầu: Phụ thuộc D1. Nếu D1 = (a) thì để lại 4 token cũ = giữ nguyên drift, chỉ dời chỗ. **Claude đề xuất: có** — nhưng phải làm ở P1, trước 106 site, không lẫn vào P2. 119 usage `...shadow.*` (hầu hết `components/admin/**`) sẽ đổi theo. |
+| D3 | 129 finding Nhóm 3 xử lý sao: (a) để nguyên, ghi lý do vào doc, (b) thêm config tắt rule | ✔ Claude Code (mặc định) | 2026-08-12 · v0.3 | **CHỐT = (a).** Đã thi công ở P4.1: lý do từng nhóm nằm ở `docs/audit/react-doctor-accepted-findings-20260812.md`, không tắt rule nào. — Lý do đề xuất ban đầu: Tắt rule làm mù cả case mới sau này; nhóm `async-await-in-loop` đặc biệt nguy hiểm nếu bị tắt vì lần sau sẽ không ai chặn việc parallel hoá nhầm vòng retry. Đổi lại phải chấp nhận `pnpm doctor:react` không bao giờ về 0. |
+| D4 | Nhóm 2 (18 finding) làm trong plan này hay tách plan riêng | ✔ Claude Code (mặc định) | 2026-08-12 · v0.3 | **CHỐT = làm trong plan này (P3).** Kết quả: P3.2 + P3.3 `DONE`, P3.1 `CLOSED` (giữ nguyên 10 site `useRef`, lý do đo được ở §51.0.7.2 + doc P4.1). — Lý do đề xuất ban đầu: Rẻ, cùng file surface, cùng gate. Nếu Tu muốn plan mỏng thì cắt P3 ra — nhưng phải cắt trước khi `EXECUTING`, không cắt giữa chừng. |
 
-`✔` = Tu đã chốt · `OPEN` = đang chặn. Còn dòng `OPEN` thì **không được** sang `EXECUTING`.
+`✔` = đã chốt · `OPEN` = đang chặn. Còn dòng `OPEN` thì **không được** sang `EXECUTING`.
+
+> **Đọc kỹ chữ "(mặc định)" ở cột `Ai chốt`.** Cả bốn dòng đều mang nhãn `✔ Claude Code
+> (mặc định)`, **không phải** `✔ Tu`. Tu ra lệnh "chạy 4 giờ liên tục, không hỏi gì thêm", nên
+> D1–D4 được đóng theo đúng phương án đã đề xuất sẵn trong chính bảng này — **Tu chưa duyệt
+> từng dòng**. Bốn quyết định đều đã thi công và đo được, nhưng nếu Tu muốn lật một dòng nào
+> (rõ nhất là **D2**: bỏ `elevation` khỏi 4 token, kéo theo 45 file `admin/**` + `worker/**`)
+> thì lật trước khi merge PR #196, đừng lật sau.
 
 ### 51.0.3 DoD Gates
 
@@ -325,7 +334,14 @@ vào ledger, không bỏ commit lại local rồi kết phiên im lặng.
 
 ### 51.0.6 Progress Ledger — khối mutable duy nhất
 
-Trạng thái: `TODO` · `WIP` · `DONE` · `BLOCKED` · `HANDOFF`.
+Trạng thái: `TODO` · `WIP` · `DONE` · `CLOSED` · `BLOCKED` · `HANDOFF`.
+
+`BLOCKED` và `CLOSED` **khác nhau, đừng lẫn**:
+
+- `BLOCKED` = **việc còn treo**, chặn bởi thứ bên ngoài, phiên sau phải làm tiếp khi hết chặn.
+  Trong §51 chỉ có **P0.2** (cần thiết bị/simulator thật).
+- `CLOSED` = **đã quyết định không làm**, có lý do đo được, **không còn việc gì để làm tiếp**.
+  Trong §51 chỉ có **P3.1**. Phiên sau đọc thấy `CLOSED` thì đọc lý do rồi đi tiếp, đừng mở lại.
 
 | # | Increment | File / việc (full path) | Ai | Trạng thái | Gate |
 |---|---|---|---|---|---|
@@ -350,7 +366,7 @@ Trạng thái: `TODO` · `WIP` · `DONE` · `BLOCKED` · `HANDOFF`.
 | P2.14 | 2 site — primitives thợ | `apps/mobile/components/worker/ui/primitives-styles.ts` | Claude Code | DONE | G1 G2 |
 | P2.15 | 6 site — 6 file 1-site còn lại | `worker/home/opportunity-styles.ts` · `worker/jobs/timeline-styles.ts` · `worker/profile/memory-styles.ts` · `worker/profile/services-styles.ts` · `worker/profile/settings-styles.ts` · `worker/ui/metrics-styles.ts` (đều dưới `apps/mobile/components/`) | Claude Code | DONE | G1 G2 |
 | P2.16 | Chốt G3 = 0/0 | `pnpm doctor:react` | Claude Code | DONE | G3 G4 |
-| P3.1 | 10 site `useRef` lazy init | theo §51.0.7.2 | Claude Code | BLOCKED | G1 G2 |
+| P3.1 | 10 site `useRef` lazy init — **quyết định GIỮ NGUYÊN, không phải việc treo**. Đã thử `useLazyRef`: đóng 10 finding nhưng đẻ **15 finding `exhaustive-deps` mới** (bọc `useRef` làm analyzer mất dấu ref) ⇒ revert. Đường inline `ref.current ??= new Map()` **qua eslint** nhưng tốn **5 lỗi `TS18047` cho một ref** × 10 ref. Lý do đầy đủ: `docs/audit/react-doctor-accepted-findings-20260812.md` | theo §51.0.7.2 | Claude Code | CLOSED | G1 G2 |
 | P3.2 | 4 site Intl hoisting | theo §51.0.7.2 | Claude Code | DONE | G1 G2 |
 | P3.3 | Deps thừa hook hydration | `apps/mobile/components/customer/kael-chat/use-customer-case-hydration.ts` | Claude Code | DONE | G1 G2 |
 | P4.1 | Ghi doc 129 false positive theo D3 | `docs/` (đường dẫn theo `docs/INDEX.md`) | Claude Code | DONE | G5 |
@@ -646,6 +662,7 @@ lint:structure → ok, 945 file · skills:check → 30 ↔ 30 in sync
 | 0.2 | 2026-08-12 | Claude Code | Tu nhắc: nhánh thi công chung phải rõ. Đưa `claude/react-doctor-audit-zrlda5` + PR #196 lên blockquote đầu §51 và Metadata; luật 1 §51.0.5 cấm thêm nhánh phụ / worktree / PR thứ hai; thêm vòng git chuẩn cho hai agent dùng chung một nhánh (claim → verify → đóng), luật xử push bị từ chối và cấm force-push |
 | 0.4 | 2026-08-12 | Claude Code | Đo chéo độc lập theo luật 4 §51.0.5, trên container Linux (khác OS máy Tu), tại `a4f4a64`: G2 119/1118/0 fail, G3 = 0/0, G4 tổng 171 ⇒ 146 `react-doctor/*` — **khớp toàn bộ số của v0.3**. Đối chiếu 29 Bugs còn lại với §51.0.7.3: trùng khít, không sót bug thật. Kiểm hai claim chịu lực của P1 thẳng vào `node_modules/react-native@0.86.2` (`StyleSheetTypes.js:678-699`, `RCTBoxShadow.mm:67`) — cả hai đúng. G7 vẫn mở |
 | 0.5 | 2026-08-12 | Claude Code | Đóng ba chỗ trước đó mới là phỏng đoán: (1) rủi ro z-order khi bỏ `elevation` — đo 97 style spread `...shadow.*`, 0 dùng `absolute`, 7 có `zIndex` tường minh ⇒ không mất cơ chế xếp lớp; (2) độ trung thực của 106 site quy đổi — dựng lại cây `8a4747ca` và so từng site, **91/91 full-shape khớp, 0 sai lệch**; (3) đường thoát của P3.1 — `ref.current ??= new Map()` **qua được eslint** (lỗi ref-trong-render chỉ bắt phép gán thường), giá thật là **5 lỗi `TS18047` cho một ref**, nhân 10 ref là lý do không đi đường đó. Thêm test khoá hệ số `radius * 2` và khoá `processBoxShadow('none') === []` (3 nút disabled dựa vào đó). Chạy thêm gate ngoài mobile: `test:api` 3367 pass, `test:shared` 759 pass, `lint:structure` + `skills:check` ok. Mobile: **120 suite / 1128 test** |
+| 0.7 | 2026-08-13 | Claude Code | Đồng bộ trạng thái cho khớp việc đã chạy (Tu chỉ ra plan đang tự mâu thuẫn): blockquote đầu §51 và `Status:` ở Metadata `DRAFT` → **`EXECUTING` + tên branch** (luật 1 mục B); 4 dòng `OPEN` ở §51.0.2 → **`✔ Claude Code (mặc định)` + ngày + trỏ v0.3**, mỗi dòng ghi thẳng **CHỐT = gì** và đã thi công ở increment nào; sửa legend `✔` không còn ngụ ý "Tu đã chốt" và thêm blockquote cảnh báo D2 là dòng dễ phải lật nhất. Ledger: thêm trạng thái **`CLOSED`** vào từ vựng §51.0.6 và định nghĩa tách bạch với `BLOCKED`; **P3.1 `BLOCKED` → `CLOSED`** vì đó là quyết định kỹ thuật đã chốt, không phải việc treo. **P0.2 giữ nguyên `BLOCKED`** — G7 cố ý ngoài phạm vi lần này. Không đụng source code |
 | 0.6 | 2026-08-13 | Claude Code | Thêm guard contract shadow ở mức source (`shadow-contract-guard-test.ts`): quét mọi file dưới `components/`, đỏ nếu còn bất kỳ prop shadow một-nền-tảng nào, và **đã chứng minh nó đỏ đúng chỗ** bằng cách tiêm lại `shadowColor` vào `dock-styles` rồi revert. G2 lên **121 suite / 1131 test**. Ghi lại bẫy vận hành: thư mục dùng chung bị tiến trình khác `checkout main` mỗi 1–3 phút, từng tạo ra **một lần đỏ giả 2 suite** — verify chuyển sang worktree detached-HEAD, vẫn một nhánh một PR |
 | 0.3 | 2026-08-12 | Claude Code | Thực thi. Tu ra lệnh chạy 4 giờ liên tục, **không hỏi thêm** → D1–D4 chốt theo đúng phương án Claude đã đề xuất sẵn trong §51.0.2, ghi rõ đây là chốt-mặc-định chứ không phải Tu duyệt từng dòng: **D1 = (a)** (nay có bằng chứng nguồn RN, không còn là suy đoán) · **D2 = có** · **D3 = (a)** · **D4 = làm trong plan này**. Kết quả: 25/27 increment `DONE`, 2 `BLOCKED` — **P0.2** (không có thiết bị/simulator ⇒ G7 không đo được; P0.3 thay bằng bằng chứng nguồn RN 0.86.2 đã cài, ghi ở §51.6) và **P3.1** (thử `useLazyRef`, đóng 10 finding nhưng **đẻ 15 finding `exhaustive-deps` mới** vì bọc `useRef` làm analyzer mất dấu ref ⇒ đã revert, lý do ghi ở `docs/audit/react-doctor-accepted-findings-20260812.md`). G4 phải đổi cách đo: họ rule `deslop/*` không tái lập giữa hai lần quét nên gate CI chỉ tính `react-doctor/*` |
 
