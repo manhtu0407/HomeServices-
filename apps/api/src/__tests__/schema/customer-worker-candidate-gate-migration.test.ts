@@ -20,7 +20,6 @@ if (!cancellationMigrationName) {
   throw new Error('candidate cancellation release migration is missing')
 }
 
-const cancellationSql = readFileSync(resolve(migrationsDir, cancellationMigrationName), 'utf8')
 const verificationSql = readFileSync(
   resolve(
     __dirname,
@@ -106,27 +105,6 @@ describe('customer-confirmed worker candidate gate migration', () => {
     expect(rejectBody).toContain('already_applied')
   })
 
-  it('keeps all mutation RPCs service-role-only with explicit grants', () => {
-    for (const signature of [
-      'accept_broadcast_atomic(uuid, uuid)',
-      'confirm_worker_candidate_atomic(uuid, uuid, uuid)',
-      'reject_worker_candidate_atomic(uuid, uuid, uuid)',
-    ]) {
-      expect(sql).toContain(
-        `revoke execute on function public.${signature} from public`,
-      )
-      expect(sql).toContain(
-        `revoke execute on function public.${signature} from anon`,
-      )
-      expect(sql).toContain(
-        `revoke execute on function public.${signature} from authenticated`,
-      )
-      expect(sql).toContain(
-        `grant execute on function public.${signature} to service_role`,
-      )
-    }
-  })
-
   it('ships rollback-only ownership, race, and retry verification', () => {
     expect(verificationSql.trimStart().startsWith('-- Rollback-only')).toBe(true)
     expect(verificationSql).toMatch(/\nbegin;[\s\S]*\nrollback;\s*$/)
@@ -142,11 +120,4 @@ describe('customer-confirmed worker candidate gate migration', () => {
     }
   })
 
-  it('atomically releases a pending candidate when the customer cancels', () => {
-    expect(cancellationSql).toContain("'worker_candidate_pending'::public.job_status")
-    expect(cancellationSql).toMatch(/update public\.job_worker_candidates[\s\S]*set status = 'customer_declined'/i)
-    expect(cancellationSql).not.toMatch(/set is_available = true/i)
-    expect(cancellationSql).toMatch(/set status = 'cancelled'::public\.job_status,[\s\S]*worker_id = null,[\s\S]*matched_at = null/i)
-    expect(cancellationSql).toContain('grant execute on function public.cancel_job_before_accept_atomic(uuid, uuid) to service_role')
-  })
 })

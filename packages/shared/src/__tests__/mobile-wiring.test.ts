@@ -1647,7 +1647,7 @@ describe('auth-provider.tsx', () => {
     expect(src).toContain('Vai trò tài khoản không hợp lệ')
   })
 
-  it('validates malformed Email/SDT locally before Supabase password sign-in', () => {
+  it('calls parseAuthIdentifier before signInWithPassword', () => {
     expect(src).toContain('parseAuthIdentifier')
     expect(src).toContain('validateAuthIdentifier')
     expect(src.indexOf('const identifier = parseAuthIdentifier(identifierInput)')).toBeLessThan(src.indexOf('supabase.auth.signInWithPassword(credentials)'))
