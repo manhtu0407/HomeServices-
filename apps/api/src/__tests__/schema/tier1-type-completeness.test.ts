@@ -160,10 +160,10 @@ describe('Database.public.Tables completeness', () => {
     expect(EXPECTED_TABLES).toHaveLength(66)
   })
 
-  it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {
-    const tableName: TableNames = name
-    expect(tableName).toBeTruthy()
-  })
+  // Each of these 66 names being a real generated table key is enforced by the
+  // `satisfies readonly TableNames[]` clause on the EXPECTED_TABLES declaration
+  // above; tsc rejects an unknown key there before any test runs. The 66 runtime
+  // cases that re-checked it only proved the strings were non-empty.
 
   it('keeps generated public table keys aligned with migration-created tables', () => {
     const migrations = listMigrationSql()

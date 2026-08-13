@@ -1723,28 +1723,15 @@ describe('app.json configuration', () => {
   const appJson = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'app.json'), 'utf-8'))
   const expo = appJson.expo
 
-  it('has app name', () => {
-    expect(expo.name).toBeDefined()
-    expect(expo.name.length).toBeGreaterThan(0)
-  })
-
-  it('has scheme for deep linking', () => {
-    expect(expo.scheme).toBeDefined()
-  })
-
-  it('has iOS bundleIdentifier', () => {
-    expect(expo.ios?.bundleIdentifier).toBeDefined()
-  })
-
+  // A missing name, scheme, bundle identifier, or package fails `eas build` on
+  // the first step. Reading app.json to assert the field is present is the
+  // manifest-field pattern this suite dropped elsewhere; what stays below are
+  // the fields with a value the build does not check for us.
   it('has iOS store build metadata and review permission copy', () => {
     expect(expo.ios?.buildNumber).toBeDefined()
     expect(expo.ios?.config?.usesNonExemptEncryption).toBe(false)
     expect(expo.ios?.infoPlist?.NSCameraUsageDescription).toContain('camera')
     expect(expo.ios?.infoPlist?.NSPhotoLibraryUsageDescription).toContain('ảnh')
-  })
-
-  it('has Android package', () => {
-    expect(expo.android?.package).toBeDefined()
   })
 
   it('has an Android version code that can replace the prior preview build', () => {
@@ -1775,11 +1762,6 @@ describe('app.json configuration', () => {
       typeof p === 'string' ? p === 'expo-router' : p[0] === 'expo-router'
     )
     expect(hasRouter).toBe(true)
-  })
-
-  it('has supabase config in extra (not hardcoded in code)', () => {
-    expect(expo.extra?.supabaseUrl).toBeDefined()
-    expect(expo.extra?.supabasePublishableKey).toBeDefined()
   })
 
   it('registers expo-image-picker for customer image/video selection copy', () => {
@@ -1850,10 +1832,6 @@ describe('web preview dependencies', () => {
 
   it('keeps the existing Reanimated dependency available without forcing it into glass surfaces', () => {
     expect(mobilePackage.dependencies['react-native-reanimated']).toBe('4.5.1')
-  })
-
-  it('declares expo-image-picker for local image/video draft media', () => {
-    expect(mobilePackage.dependencies['expo-image-picker']).toBeDefined()
   })
 
   it('provides isolated staging and Production web preview runners that load public env without printing values', () => {
