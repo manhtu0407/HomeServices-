@@ -540,8 +540,8 @@ Dán kết quả THẬT đã chạy. Không chạy được thì ghi "KHÔNG CH�
 
 G1 pnpm type-check:mobile   → exit 0, 0 lỗi. Con số 6.474 lỗi ở §51.0.7.4 đúng là
                               ảo — gate thật sạch ngay từ baseline.
-G2 pnpm test:mobile         → exit 0 · 119 suite / 1118 test / 0 fail
-                              (baseline 1116 + 2 test mới của P3.3)
+G2 pnpm test:mobile         → exit 0 · 121 suite / 1131 test / 0 fail
+                              (baseline 119/1116 + 2 test P3.3 + 2 suite khoá contract shadow)
 G3 doctor rn-shadow 0/0     → rn-no-legacy-shadow-styles = 0 · rn-style-prefer-boxshadow = 0
 G4 doctor tổng              → react-doctor/* : 387 → 146 · Bugs 241 → 29 · KHÔNG rule mới.
                               KHÔNG dùng được ngưỡng "≤ 175 tính mọi rule" theo nghĩa đen:
@@ -594,6 +594,24 @@ Cả hai đúng ⇒ hệ số `radius * 2` giữ iOS nguyên pixel là chính x�
 **G7 vẫn mở** — container này cũng không có device lẫn simulator. G7 chỉ đóng được trên máy
 có thiết bị thật; đây là increment duy nhất của §51 chưa đóng.
 
+**Bẫy vận hành đã cắn thật — thư mục làm việc dùng chung bị đổi nhánh giữa chừng.**
+`C:/Users/Phan Manh Tu/Desktop/home-services` bị một tiến trình khác chạy `git checkout main`
+lặp lại (reflog: 10:43:46 · 10:45:02 · 10:48:18, xen giữa các lần agent này checkout về). Suite
+mobile chạy ~100 giây, tức là **dài hơn khoảng cách giữa hai lần đổi nhánh** → một lần
+`pnpm test:mobile` báo **2 suite đỏ / 1116 test**, nhưng đó là **đỏ giả**: cây nguồn đã tụt về
+`main` (không còn `createSurfaceShadow`) trong khi file test mới vẫn nằm trên đĩa. Không mất
+commit nào — mọi thứ đã push.
+
+Cách xử đã dùng, và là cách nên dùng lại: **verify ở thư mục không ai đụng vào.** Worktree
+`.claude/worktrees/audit-plan-large-files-82c30c` có sẵn `node_modules`, cho `git checkout
+--detach <tip>` rồi chạy gate ở đó; commit trên detached HEAD và `git push origin
+HEAD:claude/react-doctor-audit-zrlda5`. Vẫn đúng **một nhánh, một PR, một ledger** như luật 1
+§51.0.5 — chỉ khác thư mục, vì thư mục dùng chung đang bị reset. Luật 1 cấm nhánh/PR thứ hai,
+không cấm việc phải chạy đo ở chỗ ổn định.
+
+**Bài học cho luật 4 §51.0.5:** trước khi tin một gate đỏ, kiểm `git rev-parse --abbrev-ref HEAD`
+**ngay sau khi** lệnh chạy xong. Gate đỏ mà nhánh đã đổi thì đó là race, không phải regression.
+
 **Hai rủi ro P1/P2 đã đo, không còn là phỏng đoán:**
 
 ```text
@@ -628,6 +646,7 @@ lint:structure → ok, 945 file · skills:check → 30 ↔ 30 in sync
 | 0.2 | 2026-08-12 | Claude Code | Tu nhắc: nhánh thi công chung phải rõ. Đưa `claude/react-doctor-audit-zrlda5` + PR #196 lên blockquote đầu §51 và Metadata; luật 1 §51.0.5 cấm thêm nhánh phụ / worktree / PR thứ hai; thêm vòng git chuẩn cho hai agent dùng chung một nhánh (claim → verify → đóng), luật xử push bị từ chối và cấm force-push |
 | 0.4 | 2026-08-12 | Claude Code | Đo chéo độc lập theo luật 4 §51.0.5, trên container Linux (khác OS máy Tu), tại `a4f4a64`: G2 119/1118/0 fail, G3 = 0/0, G4 tổng 171 ⇒ 146 `react-doctor/*` — **khớp toàn bộ số của v0.3**. Đối chiếu 29 Bugs còn lại với §51.0.7.3: trùng khít, không sót bug thật. Kiểm hai claim chịu lực của P1 thẳng vào `node_modules/react-native@0.86.2` (`StyleSheetTypes.js:678-699`, `RCTBoxShadow.mm:67`) — cả hai đúng. G7 vẫn mở |
 | 0.5 | 2026-08-12 | Claude Code | Đóng ba chỗ trước đó mới là phỏng đoán: (1) rủi ro z-order khi bỏ `elevation` — đo 97 style spread `...shadow.*`, 0 dùng `absolute`, 7 có `zIndex` tường minh ⇒ không mất cơ chế xếp lớp; (2) độ trung thực của 106 site quy đổi — dựng lại cây `8a4747ca` và so từng site, **91/91 full-shape khớp, 0 sai lệch**; (3) đường thoát của P3.1 — `ref.current ??= new Map()` **qua được eslint** (lỗi ref-trong-render chỉ bắt phép gán thường), giá thật là **5 lỗi `TS18047` cho một ref**, nhân 10 ref là lý do không đi đường đó. Thêm test khoá hệ số `radius * 2` và khoá `processBoxShadow('none') === []` (3 nút disabled dựa vào đó). Chạy thêm gate ngoài mobile: `test:api` 3367 pass, `test:shared` 759 pass, `lint:structure` + `skills:check` ok. Mobile: **120 suite / 1128 test** |
+| 0.6 | 2026-08-13 | Claude Code | Thêm guard contract shadow ở mức source (`shadow-contract-guard-test.ts`): quét mọi file dưới `components/`, đỏ nếu còn bất kỳ prop shadow một-nền-tảng nào, và **đã chứng minh nó đỏ đúng chỗ** bằng cách tiêm lại `shadowColor` vào `dock-styles` rồi revert. G2 lên **121 suite / 1131 test**. Ghi lại bẫy vận hành: thư mục dùng chung bị tiến trình khác `checkout main` mỗi 1–3 phút, từng tạo ra **một lần đỏ giả 2 suite** — verify chuyển sang worktree detached-HEAD, vẫn một nhánh một PR |
 | 0.3 | 2026-08-12 | Claude Code | Thực thi. Tu ra lệnh chạy 4 giờ liên tục, **không hỏi thêm** → D1–D4 chốt theo đúng phương án Claude đã đề xuất sẵn trong §51.0.2, ghi rõ đây là chốt-mặc-định chứ không phải Tu duyệt từng dòng: **D1 = (a)** (nay có bằng chứng nguồn RN, không còn là suy đoán) · **D2 = có** · **D3 = (a)** · **D4 = làm trong plan này**. Kết quả: 25/27 increment `DONE`, 2 `BLOCKED` — **P0.2** (không có thiết bị/simulator ⇒ G7 không đo được; P0.3 thay bằng bằng chứng nguồn RN 0.86.2 đã cài, ghi ở §51.6) và **P3.1** (thử `useLazyRef`, đóng 10 finding nhưng **đẻ 15 finding `exhaustive-deps` mới** vì bọc `useRef` làm analyzer mất dấu ref ⇒ đã revert, lý do ghi ở `docs/audit/react-doctor-accepted-findings-20260812.md`). G4 phải đổi cách đo: họ rule `deslop/*` không tái lập giữa hai lần quét nên gate CI chỉ tính `react-doctor/*` |
 
 ---
