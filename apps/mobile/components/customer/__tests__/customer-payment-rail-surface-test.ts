@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+// What the payment rail renders — the receipt surface, the QR frame, the confirm
+// and problem actions — is covered by the surface tests that mount it. What
+// survives as a file read is absence: a removed cash authority, an animation the
+// receipt must not regain, and a provider or infrastructure name that must never
+// reach customer-facing copy. None of those render anything to assert against.
 const mobileRoot = join(process.cwd())
 const paymentRailSurface = readFileSync(
   join(mobileRoot, 'components/customer/kael-chat/customer-payment-rail-surface.tsx'),
@@ -16,17 +21,8 @@ const paymentDisplayModel = readFileSync(
 )
 
 describe('CustomerPaymentRailSurface', () => {
-  it('uses a solid receipt surface and an isolated QR frame', () => {
-    expect(paymentRailSurface).toContain('backgroundColor: tokens.raised')
-    expect(paymentRailSurface).toContain("backgroundColor: '#ffffff'")
-    expect(paymentRailSurface).toContain('const QR_BOX_SIZE = 256')
+  it('keeps the receipt static and free of legacy cash authority', () => {
     expect(paymentRailSurface).not.toContain('useSharedValue')
-  })
-
-  it('requires a direct-payment response from the customer without legacy cash authority', () => {
-    expect(paymentRailSurface).toContain("deal.payment?.provider === 'direct_worker'")
-    expect(paymentRailSurface).toContain('customer-v21-case-direct-payment-confirm')
-    expect(paymentRailSurface).toContain('customer-v21-case-direct-payment-problem')
     expect(paymentRailSurface).not.toContain('cash_confirmed')
   })
 
