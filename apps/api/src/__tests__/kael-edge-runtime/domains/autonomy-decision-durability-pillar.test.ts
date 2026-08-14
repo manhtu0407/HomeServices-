@@ -12,7 +12,7 @@ import {
 export const PILLAR = {
   id: 'P13-autonomy-decision-durability',
   invariant:
-    'an autonomy verdict is not durable until its audit row is written, an escalation also reaches the admin queue, and a failed write raises instead of passing silently',
+    'an autonomy verdict is not durable until its audit row is written, an escalation also reaches the admin queue, a failed write raises instead of passing silently, and neither stored column carries contact details',
   authority: [
     'governance/RULES.md #7 (autonomy is valid only through a recorded server decision)',
     'governance/RULES.md #9 (audit metadata must stay free of PII)',
@@ -21,7 +21,7 @@ export const PILLAR = {
   layer: 'integration',
   siblings: ['P12-workflow-transition-composition', 'P17-adversarial-surface-matrix', 'P09-kael-pii-scrub'],
   mutation:
-    'swallow the insert error in persistAutonomyRecord by returning instead of throwing — the two fail-closed cases turn red while every recorded-row case stays green',
+    'swallow the insert error in persistAutonomyRecord by returning instead of throwing — the two fail-closed cases turn red while every recorded-row case stays green. Separately, store input.gate.decision unscrubbed and both contact-detail cases turn red',
 } as const satisfies PillarManifest
 
 installEdgeRuntimeTestHooks()
@@ -223,14 +223,69 @@ describe('auditKaelAutonomyGateResult', () => {
       pillarWhy(PILLAR, 'the refusal must name the invariant it enforced'),
     ).toBe('PII_OR_SECRET_DETECTED')
 
-    // The rejected payload is retained verbatim in the `decision` column for forensics, so the
-    // guarantee this pillar can hold is narrower: `safe_metadata` is the field other systems read
-    // and surface, and it must never carry contact details.
+    // Neither column may carry the number — not `safe_metadata`, which downstream readers surface,
+    // and not `decision`, which used to keep the rejected payload verbatim. Storing the very PII a
+    // gate just refused turns the audit table into the leak it was meant to record.
     const client = auditClient()
     await auditKaelAutonomyGateResult(client, auditInput(gate))
+    const row = client.inserts[0].value
     expect(
-      JSON.stringify(client.inserts[0].value.safe_metadata),
+      JSON.stringify(row.safe_metadata),
       pillarWhy(PILLAR, 'safe_metadata is the field downstream readers treat as publishable'),
+    ).not.toContain(CUSTOMER_PHONE)
+    expect(
+      JSON.stringify(row.decision),
+      pillarWhy(PILLAR, 'a decision refused for carrying PII must not be stored still carrying it'),
+    ).not.toContain(CUSTOMER_PHONE)
+    // Scrubbed, not dropped: the audit still has to say what was proposed.
+    expect(
+      JSON.stringify(row.decision),
+      pillarWhy(PILLAR, 'an audit row with no decision cannot explain what the gate refused'),
+    ).toContain(POLICY_REF)
+  })
+
+  // The gate redacts what it can detect. What it fails to detect is the part worth worrying about,
+  // so the scrub is unconditional rather than reserved for rejected decisions.
+  it('scrubs contact details out of an allowed decision too', async () => {
+    const gate = gateAutonomyDecision({
+      decision: {
+        ...paymentDecision(0.95),
+        evidence: [
+          { kind: 'artifact', reference_id: JOB_ID, summary: 'Completion photo received.' },
+          { kind: 'job_event', reference_id: 'event-p13', summary: 'Customer confirmed completion.' },
+          { kind: 'policy', reference_id: POLICY_REF, summary: 'Payment follows a confirmed completion.' },
+        ],
+      },
+      from: 'confirmed_by_customer',
+      to: 'payment_pending',
+      authority: authority(),
+      knownEvidenceReferences: [JOB_ID, 'event-p13'],
+      amountVnd: 2_000_000,
+      featureFlags: { fullAutonomyEnabled: true },
+    })
+    expect(
+      gate.result,
+      pillarWhy(PILLAR, 'this case only means something if the gate let the decision through'),
+    ).toBe('allow')
+
+    const client = auditClient()
+    await auditKaelAutonomyGateResult(client, {
+      ...auditInput(gate),
+      gate: {
+        ...gate,
+        // Evidence summaries are the only free text a decision carries. Injecting the number after
+        // the gate has already answered `allow` models the case that matters: the detector missed it.
+        decision: {
+          ...gate.decision!,
+          evidence: gate.decision!.evidence.map((item, index) =>
+            index === 0 ? { ...item, summary: `Đã gọi khách ${CUSTOMER_PHONE} xác nhận.` } : item,
+          ),
+        },
+      },
+    })
+    expect(
+      JSON.stringify(client.inserts[0].value.decision),
+      pillarWhy(PILLAR, 'an allowed decision is not a decision that has been checked for PII'),
     ).not.toContain(CUSTOMER_PHONE)
   })
 })

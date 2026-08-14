@@ -7,6 +7,7 @@ import {
   evaluateKaelPermissionGate,
   type KaelPermissionGateRequest,
 } from "./permission-gate.ts";
+import { scrubKaelPiiText } from "./output-support.ts";
 import { validateKaelAutonomyTransition } from "../../workflow-orchestrator.ts";
 
 export type KaelAutonomyDecisionSource = "policy" | "llm_proposed";
@@ -247,7 +248,7 @@ export async function auditKaelAutonomyGateResult(
     actor_id: input.actorId,
     actor_role: input.actorRole,
     decision_source: input.source,
-    decision: input.gate.decision ?? null,
+    decision: scrubDecisionForAudit(input.gate.decision),
     from_status: audit.from_status,
     to_status: audit.to_status,
     gate_result: audit.gate_result,
@@ -285,6 +286,25 @@ export async function auditKaelAutonomyGateResult(
       "KAEL_AUTONOMY_ESCALATION_QUEUE_FAILED",
     );
   }
+}
+
+// The audit row used to store the decision payload verbatim, so a decision rejected *for* carrying a
+// phone number wrote that phone number into the audit table. Scrubbing only the rejected ones would
+// be backwards: the gate redacts what it can detect, and what it fails to detect is the part worth
+// worrying about. Every decision is scrubbed on the way in, whatever the verdict (RULES #9).
+function scrubDecisionForAudit(decision: KaelAutonomyDecision | undefined): unknown {
+  return decision ? scrubJsonStrings(decision) : null;
+}
+
+function scrubJsonStrings(value: unknown): unknown {
+  if (typeof value === "string") return scrubKaelPiiText(value);
+  if (Array.isArray(value)) return value.map(scrubJsonStrings);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, scrubJsonStrings(item)]),
+    );
+  }
+  return value;
 }
 
 async function persistAutonomyRecord(
