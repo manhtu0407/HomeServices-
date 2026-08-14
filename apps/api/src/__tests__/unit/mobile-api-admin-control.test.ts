@@ -26,6 +26,10 @@ describe('mobile-api admin control plane', () => {
   })
 
   it('routes operational reads to an owner or capability-scoped Sub Admin', () => {
+    expect(matchRoute(new Request('https://edge.test/admin/actor'))).toMatchObject({
+      kind: 'admin.actor.get',
+      roles: ['admin', 'admin_operator'],
+    })
     expect(matchRoute(new Request('https://edge.test/admin/operations'))).toMatchObject({
       kind: 'admin.operations.get',
       roles: ['admin', 'admin_operator'],
@@ -48,6 +52,26 @@ describe('mobile-api admin control plane', () => {
       kind: 'admin.governance.disputes',
       roles: ['admin'],
     })
+  })
+
+  it('returns the authenticated Admin capability envelope without requiring a section capability', async () => {
+    const getAdminActor = vi.fn(async () => ({
+      access_level: 'operator' as const,
+      capabilities: ['finance.read'] as const,
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => operatorAuth),
+      services: { getAdminActor } as unknown as MobileApiServices,
+    })
+
+    const response = await handler(new Request('https://edge.test/admin/actor'))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      access_level: 'operator',
+      capabilities: ['finance.read'],
+    })
+    expect(getAdminActor).toHaveBeenCalledWith(expect.objectContaining({ role: 'admin_operator' }))
   })
 
   it('routes additive finance reads and keeps tax approval owner-only', () => {

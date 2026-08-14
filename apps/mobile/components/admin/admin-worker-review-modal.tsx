@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native'
+import { useCallback, useEffect, useReducer } from 'react'
+import { Image } from 'expo-image'
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native'
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { color } from '@/design/theme'
@@ -33,58 +34,72 @@ type WorkerReviewModalProps = {
   worker: AdminViewWorkerApplicationSummary | null
 }
 
+type WorkerReviewState = {
+  detail: AdminViewWorkerReviewDetail | null
+  error: string | null
+  loading: boolean
+  profilePending: boolean
+  reason: string
+  requestingChanges: boolean
+}
+
 export function AdminWorkerReviewModal(props: WorkerReviewModalProps) {
   const { worker } = props
-  const [detail, setDetail] = useState<AdminViewWorkerReviewDetail | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(Boolean(worker))
-  const [profilePending, setProfilePending] = useState(false)
-  const [reason, setReason] = useState('')
-  const [requestingChanges, setRequestingChanges] = useState(false)
+  const [state, patch] = useReducer(
+    (current: WorkerReviewState, next: Partial<WorkerReviewState>) => ({ ...current, ...next }),
+    {
+      detail: null,
+      error: null,
+      loading: Boolean(worker),
+      profilePending: false,
+      reason: '',
+      requestingChanges: false,
+    },
+  )
+  const { detail, error, loading, profilePending, reason, requestingChanges } = state
   const reviewCopy = workerReviewCopy[props.language]
 
   const loadDetail = useCallback(async () => {
     if (!worker) return
     const result = await adminControlService.getWorkerReviewDetail(worker.id)
-    if (result.success) setDetail(result.data)
-    else setError(result.error)
-    setLoading(false)
+    patch(result.success
+      ? { detail: result.data, error: null, loading: false }
+      : { error: result.error, loading: false })
   }, [worker])
 
   useEffect(() => {
     if (!worker) return
     let cancelled = false
+    patch({ detail: null, error: null, loading: true, reason: '', requestingChanges: false })
     void adminControlService.getWorkerReviewDetail(worker.id).then((result) => {
       if (cancelled) return
-      if (result.success) setDetail(result.data)
-      else setError(result.error)
-      setLoading(false)
+      patch(result.success
+        ? { detail: result.data, error: null, loading: false }
+        : { error: result.error, loading: false })
     })
     return () => { cancelled = true }
   }, [worker])
 
   const retryDetail = () => {
-    setLoading(true)
-    setError(null)
+    patch({ error: null, loading: true })
     void loadDetail()
   }
 
   const decideProfile = async (decision: 'approve' | 'request_changes') => {
     if (!worker || (decision === 'request_changes' && reason.trim().length < 3)) {
-      setError(reviewCopy.reasonPlaceholder)
+      patch({ error: reviewCopy.reasonPlaceholder })
       return
     }
-    setProfilePending(true)
-    setError(null)
+    patch({ error: null, profilePending: true })
     const result = await adminControlService.decideWorkerProfile(worker.id, {
       decision,
       ...(decision === 'request_changes' ? { reason: reason.trim() } : {}),
     })
-    setProfilePending(false)
     if (!result.success) {
-      setError(result.error)
+      patch({ error: result.error, profilePending: false })
       return
     }
+    patch({ profilePending: false })
     await props.onRefresh()
     props.onClose()
   }
@@ -101,7 +116,7 @@ export function AdminWorkerReviewModal(props: WorkerReviewModalProps) {
           <HistorySection detail={detail} formatDate={props.formatDate} reviewCopy={reviewCopy} />
         </ScrollView>
         {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-        <WorkerReviewActions {...props} profilePending={profilePending} reason={reason} requestingChanges={requestingChanges} setReason={setReason} setRequestingChanges={setRequestingChanges} decideProfile={decideProfile} reviewCopy={reviewCopy} />
+        <WorkerReviewActions {...props} profilePending={profilePending} reason={reason} requestingChanges={requestingChanges} setReason={(value) => patch({ reason: value })} setRequestingChanges={(value) => patch({ requestingChanges: value })} decideProfile={decideProfile} reviewCopy={reviewCopy} />
       </> : null}
     </View></View>
   </Modal>
@@ -157,7 +172,7 @@ function DocumentSection({ detail, reviewCopy }: { detail: AdminViewWorkerReview
     { key: 'cccd_back', label: reviewCopy.field.cccd_back, uri: documents?.cccd_back_url },
     { key: 'selfie', label: reviewCopy.field.selfie, uri: documents?.selfie_url },
   ].filter((item): item is { key: string; label: string; uri: string } => Boolean(item.uri))
-  return <View style={styles.reviewSection}><Text style={styles.reviewSectionTitle}>{reviewCopy.group.documents}</Text>{items.length ? <View style={styles.documentGrid}>{items.map((item) => <View key={item.key} style={styles.documentCard}><Image accessibilityLabel={item.label} resizeMode="cover" source={{ uri: item.uri }} style={styles.documentImage} /><Text style={styles.documentLabel}>{item.label}</Text></View>)}</View> : <Text style={styles.reviewSummaryText}>{reviewCopy.noProfile}</Text>}</View>
+  return <View style={styles.reviewSection}><Text style={styles.reviewSectionTitle}>{reviewCopy.group.documents}</Text>{items.length ? <View style={styles.documentGrid}>{items.map((item) => <View key={item.key} style={styles.documentCard}><Image accessibilityLabel={item.label} contentFit="cover" source={{ uri: item.uri }} style={styles.documentImage} /><Text style={styles.documentLabel}>{item.label}</Text></View>)}</View> : <Text style={styles.reviewSummaryText}>{reviewCopy.noProfile}</Text>}</View>
 }
 
 function HistorySection({ detail, formatDate, reviewCopy }: { detail: AdminViewWorkerReviewDetail; formatDate: WorkerReviewModalProps['formatDate']; reviewCopy: typeof workerReviewCopy.vi }) {

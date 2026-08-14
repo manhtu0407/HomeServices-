@@ -68,7 +68,7 @@ describe('AdminActivationSurface', () => {
         current_password: 'InitialPass123!',
         new_password: 'PersonalPass456!',
       })
-      expect(mockReplace).toHaveBeenCalledWith('/(admin)/sections')
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login?stage=login&admin_activation=complete')
     })
   })
 

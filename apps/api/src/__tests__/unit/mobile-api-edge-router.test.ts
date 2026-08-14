@@ -186,6 +186,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       status: 'open' as const,
       submitted_at: '2026-05-26T00:00:00.000Z',
     })),
+    getAdminActor: vi.fn(),
     getAdminOperations: vi.fn(),
     getAdminWorkerReviewDetail: vi.fn(),
     decideAdminWorkerProfile: vi.fn(),

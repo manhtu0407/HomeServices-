@@ -123,7 +123,19 @@ export function createEdgeAuthenticator(
       };
     }
 
-    const activationGate = await checkAdminActivationGate(supabase, request, userData.user.id);
+    const userSupabase = env.supabasePublicKey
+      ? createUserScopedSupabaseClient({
+        url: env.supabaseUrl,
+        publicKey: env.supabasePublicKey,
+        accessToken: token,
+        createClient: createSupabaseClient,
+      })
+      : null;
+    const activationGate = await checkAdminActivationGate(
+      supabase,
+      request,
+      userData.user.id,
+    );
     if (!activationGate.allowed) return activationGate.failure;
 
     const accountDeletionRetry = request.method === "POST" &&
@@ -153,14 +165,6 @@ export function createEdgeAuthenticator(
     }
 
     const accountState = normalizeAccountState(profile.account_state);
-    const userSupabase = env.supabasePublicKey
-      ? createUserScopedSupabaseClient({
-        url: env.supabaseUrl,
-        publicKey: env.supabasePublicKey,
-        accessToken: token,
-        createClient: createSupabaseClient,
-      })
-      : null;
     bindPrivilegedClientContext(supabase, {
       reason: "actor_authentication",
       environment: env.harnessEnvironment?.name ?? "unknown",
@@ -218,20 +222,11 @@ function isMissingAccountStateColumn(error: unknown): boolean {
     candidate.message.includes("account_state");
 }
 
-function isMissingProvisioningTable(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { code?: unknown };
-  return candidate.code === "42P01";
-}
-
 type ActivationGateClient = {
-  from(table: string): {
-    select(columns: string): {
-      eq(column: string, value: string): {
-        maybeSingle?: () => Promise<{ data: { status?: unknown } | null; error: unknown }>;
-      };
-    };
-  };
+  rpc(
+    name: string,
+    args: Record<string, unknown>,
+  ): PromiseLike<{ data: Array<{ status?: unknown }> | null; error: unknown }>;
 };
 
 async function checkAdminActivationGate(
@@ -240,14 +235,14 @@ async function checkAdminActivationGate(
   userId: string,
 ): Promise<{ allowed: true } | { allowed: false; failure: MobileApiAuthResult }> {
   const client = clientValue as ActivationGateClient;
-  const query = client.from("admin_operator_provisioning").select("status").eq("user_id", userId);
-  if (!query.maybeSingle) return { allowed: true };
-  const provisioning = await query.maybeSingle();
-  if (provisioning.error && !isMissingProvisioningTable(provisioning.error)) {
+  const provisioning = await client.rpc("get_admin_operator_activation_status", {
+    p_actor_id: userId,
+  });
+  if (provisioning.error) {
     return { allowed: false, failure: { success: false, error: "Không thể kiểm tra trạng thái kích hoạt", status: 403 } };
   }
   const activationPath = new URL(request.url).pathname.endsWith("/me/admin-activation");
-  if (provisioning.data?.status === "pending_password_change" && !activationPath) {
+  if (provisioning.data?.[0]?.status === "pending_password_change" && !activationPath) {
     return { allowed: false, failure: { success: false, error: "Vui lòng đổi mật khẩu ban đầu trước khi tiếp tục", status: 403 } };
   }
   return { allowed: true };

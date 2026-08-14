@@ -1,6 +1,7 @@
 type AdminReadRoles = ["admin", "admin_operator"];
 
 export type AdminControlRoute =
+  | { kind: "admin.actor.get"; method: "GET"; roles: AdminReadRoles }
   | { kind: "admin.operations.get"; method: "GET"; roles: AdminReadRoles }
   | { kind: "admin.governance.disputes"; method: "GET"; roles: ["admin"] }
   | { kind: "admin.governance.priceBaselines"; method: "GET"; roles: ["admin"] }
@@ -228,6 +229,9 @@ function matchAdminOperationsRoute(
   path: string,
   method: string,
 ): AdminControlRoute | null {
+  if (method === "GET" && path === "/admin/actor") {
+    return { kind: "admin.actor.get", method: "GET", roles: adminReadRoles };
+  }
   if (method === "GET" && path === "/admin/operations") {
     return { kind: "admin.operations.get", method: "GET", roles: adminReadRoles };
   }

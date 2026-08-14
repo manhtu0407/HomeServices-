@@ -33,7 +33,7 @@ export function AdminActivationSurface() {
     }
     setValidation(null)
     if (await activate({ current_password: currentPassword, new_password: newPassword })) {
-      router.replace('/(admin)/sections')
+      router.replace('/(auth)/login?stage=login&admin_activation=complete')
     }
   }
 

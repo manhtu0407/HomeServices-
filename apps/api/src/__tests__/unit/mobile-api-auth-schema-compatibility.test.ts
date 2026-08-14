@@ -38,6 +38,7 @@ describe('mobile-api auth schema compatibility', () => {
         })),
       },
       from: vi.fn(() => ({ select })),
+      rpc: vi.fn(async () => ({ data: [], error: null })),
     })
 
     const authenticate = createEdgeAuthenticator({
@@ -99,6 +100,55 @@ describe('mobile-api auth schema compatibility', () => {
     expect(single).toHaveBeenCalledTimes(1)
   })
 
+  it('checks a pending operator through the service-owned activation RPC', async () => {
+    const rpc = vi.fn(async (name: string) => {
+      if (name !== 'get_admin_operator_activation_status') {
+        throw new Error(`unexpected RPC: ${name}`)
+      }
+      return {
+        data: [{ status: 'pending_password_change' }],
+        error: null,
+      }
+    })
+    createClient.mockReturnValue({
+      auth: {
+        getUser: vi.fn(async () => ({
+          data: {
+            user: { id: '11111111-1111-4111-8111-111111111111' },
+          },
+          error: null,
+        })),
+      },
+      from: vi.fn((table: string) => {
+        if (table !== 'profiles') throw new Error(`unexpected table read: ${table}`)
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(async () => ({
+                data: { role: 'customer', account_state: 'active' },
+                error: null,
+              })),
+            })),
+          })),
+        }
+      }),
+      rpc,
+    })
+
+    const authenticate = createEdgeAuthenticator({
+      supabaseUrl: 'https://staging.example.test',
+      supabaseSecretKey: 'service-role-key',
+    } as never, createClient as never)
+    const result = await authenticate(new Request('https://api.example.test/services', {
+      headers: { Authorization: 'Bearer customer-session-token' },
+    }), ['customer'])
+
+    expect(result).toMatchObject({ success: false, status: 403 })
+    expect(rpc).toHaveBeenCalledWith('get_admin_operator_activation_status', {
+      p_actor_id: '11111111-1111-4111-8111-111111111111',
+    })
+  })
+
   it('creates server-owned trace lineage for an authenticated actor', async () => {
     const client = {
       auth: {
@@ -119,6 +169,7 @@ describe('mobile-api auth schema compatibility', () => {
           })),
         })),
       })),
+      rpc: vi.fn(async () => ({ data: [], error: null })),
     }
     createClient.mockReturnValue(client)
     const authenticate = createEdgeAuthenticator({

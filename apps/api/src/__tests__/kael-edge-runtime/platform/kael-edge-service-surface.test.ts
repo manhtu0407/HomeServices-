@@ -53,6 +53,7 @@ describe('edge-service-surface', () => {
       'getCustomerProfileInsights',
       'getCustomerRefundAccount',
       'getAdminActivation',
+      'getAdminActor',
       'getAdminFinanceSummary',
       'getAdminOperations',
       'getAdminPayoutMethod',
