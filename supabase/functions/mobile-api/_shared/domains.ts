@@ -18,6 +18,7 @@ import {
 } from "./domains/kael-chat/memory.ts";
 import {
   registerWorker,
+  saveWorkerRegistrationDraft,
   getWorkerProfile,
   recordWorkerAppActiveMinute,
   submitWorkerApplication,
@@ -38,7 +39,7 @@ import {
 } from "./domains/dispute/dispute.ts";
 
 import { decideScopeChange, requestScopeChange } from "./domains/job/scope-change/request.ts";
-import { getJobIncident, openJobIncident, proposeScopeChangeFromJobIncident } from "./domains/job/incident.ts";
+import { getJobIncident, openJobIncident, previewScopeChangeFromJobIncident, proposeScopeChangeFromJobIncident } from "./domains/job/incident.ts";
 import { confirmCompletion, submitReview } from "./domains/payment/completion-review.ts";
 import { confirmStagingPayment, createStagingPaymentIntent } from "./domains/payment/staging.ts";
 import { createSePayVietQrPaymentIntent } from "./domains/payment/sepay-vietqr.ts";
@@ -91,6 +92,18 @@ import {
   setAdminSubAdminAccess,
   setAdminWorkerAccess,
 } from "./domains/admin/control.ts";
+import {
+  decideAdminWorkerProfile,
+  getAdminWorkerReviewDetail,
+} from "./domains/admin/worker-review.ts";
+import {
+  provisionAdminOperator,
+  resetPendingAdminOperatorPassword,
+} from "./domains/admin/operator-provisioning.ts";
+import {
+  activateAdminOperator,
+  getAdminActivation,
+} from "./domains/admin/admin-activation.ts";
 import {
   listAdminAiCosts,
   listAdminDisputes,
@@ -293,6 +306,7 @@ function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   | "requestScopeChange"
   | "getJobIncident"
   | "openJobIncident"
+  | "previewScopeChangeFromJobIncident"
   | "proposeScopeChangeFromJobIncident"
 > {
   return {
@@ -313,6 +327,8 @@ function createJobWorkflowServices(secrets: EdgeServiceSecrets): Pick<
     getJobIncident,
     openJobIncident: (ctx, jobId, input) =>
       openJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
+    previewScopeChangeFromJobIncident: (ctx, jobId, input) =>
+      previewScopeChangeFromJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
     proposeScopeChangeFromJobIncident: (ctx, jobId, input) =>
       proposeScopeChangeFromJobIncident(ctx, jobId, input, aiRuntime(ctx, secrets)),
   };
@@ -417,7 +433,10 @@ function configuredPaymentRailProvider(
 function createProfileServices(secrets: EdgeServiceSecrets): Pick<
   MobileApiServices,
   | "getKaelCharter"
+  | "getAdminActivation"
+  | "activateAdminOperator"
   | "registerWorker"
+  | "saveWorkerRegistrationDraft"
   | "submitWorkerApplication"
   | "getCustomerProfileInsights"
   | "getCustomerAvatar"
@@ -453,7 +472,10 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
 > {
   return {
     getKaelCharter,
+    getAdminActivation,
+    activateAdminOperator,
     registerWorker,
+    saveWorkerRegistrationDraft,
     submitWorkerApplication,
     getCustomerProfileInsights,
     getCustomerAvatar,
@@ -508,6 +530,8 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "listAdminLearningRules"
   | "listAdminWorkerApplications"
   | "getAdminWorkerApplication"
+  | "getAdminWorkerReviewDetail"
+  | "decideAdminWorkerProfile"
   | "decideAdminWorkerApplication"
   | "setAdminWorkerAccess"
   | "listAdminTransactions"
@@ -524,6 +548,8 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "getAdminFinanceSummary"
   | "recordAdminFinanceBalanceSnapshot"
   | "listAdminSubAdmins"
+  | "provisionAdminOperator"
+  | "resetPendingAdminOperatorPassword"
   | "searchAdminSubAdminAccounts"
   | "nominateAdminManager"
   | "cancelAdminManagerNomination"
@@ -554,6 +580,8 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     listAdminLearningRules,
     listAdminWorkerApplications,
     getAdminWorkerApplication,
+    getAdminWorkerReviewDetail,
+    decideAdminWorkerProfile,
     decideAdminWorkerApplication,
     setAdminWorkerAccess,
     listAdminTransactions,
@@ -570,6 +598,8 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     getAdminFinanceSummary,
     recordAdminFinanceBalanceSnapshot,
     listAdminSubAdmins,
+    provisionAdminOperator,
+    resetPendingAdminOperatorPassword,
     searchAdminSubAdminAccounts,
     nominateAdminManager,
     cancelAdminManagerNomination,

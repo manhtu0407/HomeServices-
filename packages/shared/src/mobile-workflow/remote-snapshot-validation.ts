@@ -276,6 +276,24 @@ function isOptionalMatchingState(value: unknown): boolean {
     )))
 }
 
+function isOptionalScopeReview(value: unknown): boolean {
+  if (value === undefined || value === null) return true
+  if (!isRecord(value)) return false
+  return isNonEmptyBoundedString(value.id, 200) &&
+    (value.status === 'open' || value.status === 'awaiting_worker' ||
+      value.status === 'awaiting_customer' || value.status === 'ready_for_scope_proposal') &&
+    (value.evidenceStatus === 'needs_more' || value.evidenceStatus === 'ready') &&
+    isOptionalNullableString(value.reportedDescription) &&
+    isOptionalNullableString(value.reportedReason) &&
+    typeof value.evidenceCount === 'number' && Number.isSafeInteger(value.evidenceCount) &&
+    value.evidenceCount >= 0 && value.evidenceCount <= 20 &&
+    isOptionalNullableString(value.lastSummary) &&
+    isOptionalNullableString(value.lastQuestion) &&
+    (value.lastNextActor === null || value.lastNextActor === 'customer' || value.lastNextActor === 'worker') &&
+    isNonEmptyBoundedString(value.createdAt, 100) &&
+    isNonEmptyBoundedString(value.updatedAt, 100)
+}
+
 export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJobSnapshot {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const job = value as Partial<LocalRemoteJobSnapshot>
@@ -296,6 +314,7 @@ export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJo
     )) &&
     isOptionalEstimate(job.estimate) &&
     isOptionalWorkerBroadcast(job.broadcast) &&
+    isOptionalScopeReview(job.scopeReview) &&
     isOptionalScopeChange(job.scopeChange) &&
     isOptionalPayment(job.payment) &&
     (job.paymentRailAvailable === undefined || typeof job.paymentRailAvailable === 'boolean') &&

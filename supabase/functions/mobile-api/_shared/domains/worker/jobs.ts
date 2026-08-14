@@ -170,7 +170,16 @@ function parseWorkerJobPaymentStatus(
     value === "amount_mismatch" ||
     value === "expired" ||
     value === "failed" ||
-    value === "reconciled"
+    value === "reconciled" ||
+    value === "manual_qr_ready" ||
+    value === "manual_customer_claimed" ||
+    value === "manual_reconcile_required" ||
+    value === "manual_verified" ||
+    value === "direct_awaiting_confirmation" ||
+    value === "direct_awaiting_customer_confirmation" ||
+    value === "direct_awaiting_worker_confirmation" ||
+    value === "direct_reconcile_required" ||
+    value === "direct_paid"
   ) {
     return value;
   }

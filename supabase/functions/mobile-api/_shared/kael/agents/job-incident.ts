@@ -80,6 +80,23 @@ const FALLBACKS: Record<KaelPromptLanguage, Pick<JobIncidentAssistantAnswer, "su
   },
 };
 
+const READY_FALLBACKS: Record<KaelPromptLanguage, Pick<JobIncidentAssistantAnswer, "summary" | "next_actor" | "question" | "evidence_status" | "evidence_gaps">> = {
+  vi: {
+    summary: "Kael đã đối chiếu phần việc phát sinh, lý do và bằng chứng hiện trường.",
+    next_actor: "worker",
+    question: "Thợ có thể chủ động yêu cầu Kael tính đề xuất phạm vi và giá để gửi khách xem xét.",
+    evidence_status: "ready",
+    evidence_gaps: [],
+  },
+  en: {
+    summary: "Kael matched the additional work, its reason, and the field evidence.",
+    next_actor: "worker",
+    question: "The worker may explicitly ask Kael to compute a scope and price proposal for customer review.",
+    evidence_status: "ready",
+    evidence_gaps: [],
+  },
+};
+
 export async function runJobIncidentAssistant(
   input: JobIncidentAssistantInput,
 ): Promise<JobIncidentAssistantAnswer> {
@@ -116,7 +133,7 @@ export async function runJobIncidentAssistant(
     }
 
     const guarded = guardIncidentAnswer(result.data, input.event.actor, language);
-    if (!guarded) return fallback(language);
+    if (!guarded) return fallback(language, input);
     return {
       schema_version: "job_incident_answer.v1",
       ...guarded,
@@ -127,7 +144,7 @@ export async function runJobIncidentAssistant(
       cost_usd: result.usage.costUsd,
     };
   }
-  return fallback(language);
+  return fallback(language, input);
 }
 
 function buildRequest(
@@ -210,12 +227,39 @@ function guardIncidentText(text: string, actor: "customer" | "worker", language:
   return checked.allowed && !checked.used_fallback ? checked.text : null;
 }
 
-function fallback(language: KaelPromptLanguage): JobIncidentAssistantAnswer {
+function fallback(
+  language: KaelPromptLanguage,
+  input?: JobIncidentAssistantInput,
+): JobIncidentAssistantAnswer {
+  const ready = Boolean(input && hasMinimumProposalEvidence(input.incident));
   return {
     schema_version: "job_incident_answer.v1",
-    ...FALLBACKS[language],
+    ...(ready
+      ? READY_FALLBACKS[language]
+      : FALLBACKS[language]),
+    ...(ready && input
+      ? { summary: readyFallbackSummary(language, input.incident.evidence_count) }
+      : {}),
     fallback_used: true,
     provider: null,
     model: null,
   };
+}
+
+function readyFallbackSummary(
+  language: KaelPromptLanguage,
+  evidenceCount: number,
+): string {
+  if (language === "vi") {
+    return `Kael đã đối chiếu phần việc và lý do thợ báo với ${evidenceCount} ảnh hiện trường đã gắn với hồ sơ. Dữ liệu đủ để lập đề xuất cho khách xem xét; Kael chưa xác minh vật lý độc lập và chưa cho phép thi công phát sinh.`;
+  }
+  return `Kael compared the worker-reported work and reason with ${evidenceCount} linked on-site photo${evidenceCount === 1 ? "" : "s"}. The data is sufficient to draft a proposal for Customer review; Kael has not independently verified the physical site or authorized the changed work.`;
+}
+
+function hasMinimumProposalEvidence(
+  incident: JobIncidentAssistantInput["incident"],
+): boolean {
+  return incident.evidence_count > 0 &&
+    incident.description.trim().length >= 24 &&
+    incident.reason.trim().length >= 24;
 }

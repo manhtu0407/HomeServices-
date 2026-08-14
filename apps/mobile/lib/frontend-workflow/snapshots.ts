@@ -140,6 +140,7 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
     mediaCount: customerEvidencePhotoUrls.length,
     estimate,
     broadcast,
+    scopeReview: scopeReviewFromJobDetail(data),
     scopeChange: scopeChangeFromJobDetail(data),
     finalPrice: job.final_price,
     paymentRailAvailable: job.payment_rail_available === true,
@@ -322,6 +323,7 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     mediaCount: deal.draft.mediaCount,
     estimate: deal.estimate,
     broadcast: deal.broadcast,
+    scopeReview: deal.scopeReview ?? null,
     scopeChange: deal.scopeChange,
     finalPrice: deal.finalPrice ?? null,
     paymentRailAvailable: deal.paymentRailAvailable === true,
@@ -340,6 +342,24 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     paidAt: deal.paidAt ?? null,
     reviewedAt: deal.reviewedAt ?? null,
     matchingState: deal.matchingState ?? null,
+  }
+}
+
+function scopeReviewFromJobDetail(data: JobDetailResponse): LocalRemoteJobSnapshot['scopeReview'] {
+  const incident = data.current_job_incident
+  if (!incident) return null
+  return {
+    id: incident.id,
+    status: incident.status,
+    evidenceStatus: incident.evidence_status,
+    reportedDescription: incident.reported_description,
+    reportedReason: incident.reported_reason,
+    evidenceCount: incident.evidence_count,
+    lastSummary: incident.last_summary,
+    lastQuestion: incident.last_question,
+    lastNextActor: incident.last_next_actor,
+    createdAt: incident.created_at,
+    updatedAt: incident.updated_at,
   }
 }
 

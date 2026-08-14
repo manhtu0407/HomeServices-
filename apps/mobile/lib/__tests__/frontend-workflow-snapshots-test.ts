@@ -158,6 +158,34 @@ describe('frontend workflow payment truth', () => {
     expect(snapshot.scheduledAt).toBe('2026-07-15T01:00:00.000Z')
   })
 
+  it('hydrates the active Kael incident as a Customer scope-review artifact', () => {
+    const response = buildCustomerJobDetail()
+    const snapshot = jobDetailToSnapshot({
+      ...response,
+      current_job_incident: {
+        created_at: '2026-08-13T02:10:00.000Z',
+        evidence_count: 1,
+        evidence_status: 'ready',
+        id: 'incident-1',
+        last_next_actor: 'worker',
+        last_question: null,
+        last_summary: 'Kael đã đủ căn cứ để chuẩn bị đề xuất.',
+        reported_description: 'Thay đúng hai bản lề kim loại bị nứt',
+        reported_reason: 'Hai bản lề nứt, gỗ và cánh tủ không hư hỏng.',
+        status: 'ready_for_scope_proposal',
+        updated_at: '2026-08-13T02:12:00.000Z',
+      },
+      job: { ...response.job, final_price: 350_000, status: 'inspecting' },
+    })
+
+    expect(snapshot.scopeReview).toEqual(expect.objectContaining({
+      evidenceCount: 1,
+      reportedDescription: 'Thay đúng hai bản lề kim loại bị nứt',
+      status: 'ready_for_scope_proposal',
+    }))
+    expect(snapshot.finalPrice).toBe(350_000)
+  })
+
   it('preserves the server-owned payment rail capability for the Customer surface', () => {
     const snapshot = jobDetailToSnapshot(buildCustomerJobDetail())
 

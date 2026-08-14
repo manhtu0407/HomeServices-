@@ -372,13 +372,35 @@ describe('CustomerHistorySurface service history', () => {
         kaelProgress: null,
         kaelReview: {
           advisory: 'Nên thay đoạn dây bị hỏng.',
+          baseline_evidence: verifiedElectricalBaselineEvidence(),
+          baseline_source: 'verified-test-source',
+          baseline_used: 'electrical:outlet_or_switch_broken:medium:hcmc_all',
           complexity_assessment: 'medium',
           confidence: 0.82,
           fallback_used: false,
+          price_source: 'verified_baseline',
+          pricing_mode: 'full_scope_total',
           problem_summary: 'Phát hiện dây âm tường bị chập.',
+          reference_price_max: 600000,
+          reference_price_min: 400000,
+          selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+          stakeholder_balance: {
+            commission_level: 1,
+            commission_rate_bps: 1500,
+            customer_confirmation_required: true,
+            customer_total: 500000,
+            platform_fee: 75000,
+            worker_confirmation_required: true,
+            worker_net: 425000,
+          },
+          worker_price_confirmation: {
+            confirmed: true,
+            confirmed_at: '2026-08-13T08:00:00.000Z',
+            quote_id: 'a7500000-0000-4000-8000-000000000010',
+          },
         },
-        priceMax: 520000,
-        priceMin: 420000,
+        priceMax: 500000,
+        priceMin: 500000,
         reason: 'Phát hiện hư hỏng ẩn.',
         requestTiming: 'on_site',
         requestedDescription: 'Thay dây âm tường bị chập',
@@ -410,3 +432,38 @@ describe('CustomerHistorySurface service history', () => {
     })
   })
 })
+
+function verifiedElectricalBaselineEvidence() {
+  return {
+    schema_version: 'baseline_price_evidence_receipt.v1',
+    accepted_source_count: 2,
+    aggregate_price_min: 400000,
+    aggregate_price_max: 600000,
+    high_trust_source_count: 2,
+    quorum_met: true,
+    required_quorum: 2,
+    unit: 'per_visit',
+    sources: [
+      {
+        domain: 'thoviet.com.vn',
+        url: 'https://thoviet.com.vn/bang-gia',
+        observed_at: '2026-08-14',
+        price_min: 350000,
+        price_max: 550000,
+        unit: 'per_visit',
+        effective_tier: 1,
+        weight: 1,
+      },
+      {
+        domain: 'thosaigon.vn',
+        url: 'https://thosaigon.vn/bang-gia',
+        observed_at: '2026-08-14',
+        price_min: 450000,
+        price_max: 650000,
+        unit: 'per_visit',
+        effective_tier: 1,
+        weight: 1,
+      },
+    ],
+  }
+}

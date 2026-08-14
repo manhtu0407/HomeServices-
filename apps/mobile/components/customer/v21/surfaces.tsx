@@ -476,6 +476,9 @@ function CustomerBookingEntrySurfaceRoute() {
     }).catch(() => undefined)
     resetBookingBoard()
     router.replace(customerKaelWorkRouteForHandoff(clientRequestId) as never)
+    setTimeout(() => {
+      submitDraftInFlightRef.current = false
+    }, 0)
   }
   const createDraftLabel = copy.createDraft
 

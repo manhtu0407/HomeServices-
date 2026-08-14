@@ -8,7 +8,9 @@ import { emitKaelOpsAlert } from "../ops/alerts.ts";
 export type KaelEscalationReason =
   | "low_confidence"
   | "high_stakes"
-  | "hard_vision";
+  | "hard_vision"
+  | "schema_invalid"
+  | "provider_failure";
 
 export type KaelEscalation = {
   readonly route: ProviderRoute;
@@ -23,11 +25,20 @@ export function selectKaelEscalation(
     readonly confidence?: number | null;
     readonly highStakes?: boolean;
     readonly hardVision?: boolean;
+    readonly schemaInvalid?: boolean;
+    readonly providerFailure?: boolean;
   },
 ): KaelEscalation | null {
   const config = KAEL_ROUTING_CONFIG[purpose];
   const escalation = config.escalation;
   if (!escalation || !isPrimaryRoute(config.primary, input)) return null;
+
+  if (input.schemaInvalid === true) {
+    return { route: escalation, reason: "schema_invalid" };
+  }
+  if (input.providerFailure === true) {
+    return { route: escalation, reason: "provider_failure" };
+  }
 
   if (input.highStakes === true && config.escalationTrigger.highStakes === true) {
     return { route: escalation, reason: "high_stakes" };

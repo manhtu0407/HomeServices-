@@ -55,6 +55,12 @@ const SERVER_OWNED_CUSTOMER_CONVERSATION_CATALOG_ROUTE_KINDS = new Set([
   'customer.kaelConversations.pin',
   'customer.kaelConversations.rename',
 ])
+// Upload reservations and revocation remain actor-scoped in their RPC inputs,
+// while the underlying quota table and Storage signer stay service-only.
+const SERVER_OWNED_KAEL_MEDIA_ROUTE_KINDS = new Set([
+  'kael.chat.mediaRevoke',
+  'kael.chat.mediaUpload',
+])
 const repoPath = (value) => value.split(sep).join('/')
 const normalizeSource = (value) => value.replace(/\r\n/gu, '\n')
 
@@ -164,7 +170,8 @@ function policyFor(input) {
       input.kind.startsWith('workers.') ||
       input.kind === 'workerApplications.submit' ||
       SERVER_OWNED_KAEL_AI_ROUTE_KINDS.has(input.kind) ||
-      SERVER_OWNED_CUSTOMER_CONVERSATION_CATALOG_ROUTE_KINDS.has(input.kind)
+      SERVER_OWNED_CUSTOMER_CONVERSATION_CATALOG_ROUTE_KINDS.has(input.kind) ||
+      SERVER_OWNED_KAEL_MEDIA_ROUTE_KINDS.has(input.kind)
     ),
     resourceType: resourceTypeFor(input.kind),
     // Admin control endpoints are privileged monitoring/operations paths. Their identifiers

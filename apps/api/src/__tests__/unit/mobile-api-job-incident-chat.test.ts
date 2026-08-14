@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   logApiCalls: vi.fn(async () => undefined),
+  requireJobAccess: vi.fn(),
   requestScopeChange: vi.fn(),
   runJobIncidentAssistant: vi.fn(),
 }))
@@ -34,13 +35,14 @@ vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/api-failu
 }))
 
 vi.mock('../../../../../supabase/functions/mobile-api/_shared/platform/access.ts', () => ({
-  requireJobAccess: vi.fn(),
+  requireJobAccess: mocks.requireJobAccess,
 }))
 
 import {
   proposeScopeChangeFromJobIncident,
   recordJobIncidentChatMessage,
 } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/incident'
+import { advanceJobIncident } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/incident-assistant'
 
 const incident = {
   id: 'incident-1',
@@ -58,8 +60,12 @@ const incident = {
   revision: 4,
 }
 
+const scopePriceQuoteId = 'a7500000-0000-4000-8000-000000000010'
+const baselineEvidence = testBaselineEvidenceReceipt()
+
 function clientForScopeProposedChat(options?: {
   duplicate?: boolean
+  historyError?: boolean
   stale?: boolean
 }) {
   const rpcCalls: Array<{ args: Record<string, unknown>; name: string }> = []
@@ -102,9 +108,11 @@ function clientForScopeProposedChat(options?: {
         limit: () => chain,
         order: () => chain,
         select: () => chain,
-        then<TResult1 = unknown>(onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null) {
-          const result = table === 'kael_job_incident_events'
-            ? { data: [], error: null }
+        then<TResult1 = unknown>(onfulfilled?: ((value: { data: unknown; error: { code: string } | null }) => TResult1 | PromiseLike<TResult1>) | null) {
+          const result: { data: unknown; error: { code: string } | null } = table === 'kael_job_incident_events'
+            ? options?.historyError
+              ? { data: null, error: { code: 'TEMPORARY_READ_FAILURE' } }
+              : { data: [], error: null }
             : { data: null, error: null }
           return Promise.resolve(result).then(onfulfilled ?? undefined)
         },
@@ -118,6 +126,110 @@ function clientForScopeProposedChat(options?: {
 describe('Kael job incident chat after proposal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('binds the worker-confirmed quote when creating the customer proposal', async () => {
+    const confirmedAt = '2026-08-13T08:05:00.000Z'
+    const storedQuote = {
+      schema_version: 'scope_change_worker_quote.v1',
+      quote_id: scopePriceQuoteId,
+      incident_id: 'incident-1',
+      job_id: 'job-1',
+      customer_total: 300000,
+      platform_fee: 45000,
+      worker_net: 255000,
+      commission_level: 1,
+      commission_rate_bps: 1500,
+      reference_price_min: 240000,
+      reference_price_max: 360000,
+      baseline_used: 'handyman:replace_cabinet_hinges:small:hcmc_all',
+      baseline_source: 'verified-test-source',
+      baseline_evidence: baselineEvidence,
+      selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+      calculation: '2 x 150000 VND = 300000 VND',
+      expires_at: '2026-08-13T08:15:00.000Z',
+    }
+    const claimedIncident = {
+      ...incident,
+      status: 'ready_for_scope_proposal',
+      evidence_status: 'ready',
+      scope_price_quote: storedQuote,
+      scope_price_quote_confirmed_at: confirmedAt,
+    }
+    const finalizedIncident = {
+      ...claimedIncident,
+      status: 'scope_proposed',
+      scope_change_id: 'scope-change-1',
+    }
+    const client = {
+      rpc(name: string, args: Record<string, unknown>) {
+        expect(name).toBe('claim_job_incident_scope_proposal_atomic')
+        expect(args).toMatchObject({ p_quote_id: scopePriceQuoteId })
+        return Promise.resolve({
+          data: [{
+            claimed: true,
+            idempotent: false,
+            incident: claimedIncident,
+            ok: true,
+          }],
+          error: null,
+        })
+      },
+      from() {
+        const chain = {
+          eq: () => chain,
+          select: () => chain,
+          single: () => Promise.resolve({ data: finalizedIncident, error: null }),
+        }
+        return chain
+      },
+    }
+    mocks.requestScopeChange.mockResolvedValue({
+      scope_change_id: 'scope-change-1',
+      job_id: 'job-1',
+      status: 'waiting_customer_decision',
+      created_at: confirmedAt,
+    })
+
+    await expect(proposeScopeChangeFromJobIncident(
+      {
+        role: 'worker',
+        supabase: client,
+        user: { id: 'worker-1' },
+      } as never,
+      'job-1',
+      {
+        client_request_id: 'a7500000-0000-4000-8000-000000000009',
+        quote_id: scopePriceQuoteId,
+      },
+      {},
+    )).resolves.toMatchObject({
+      incident: { status: 'scope_proposed' },
+      scope_change: { scope_change_id: 'scope-change-1' },
+    })
+    expect(mocks.requestScopeChange).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'job-1',
+      expect.objectContaining({
+        new_description: claimedIncident.reported_description,
+        reason: claimedIncident.reported_reason,
+      }),
+      {},
+      expect.objectContaining({ incidentId: 'incident-1' }),
+      {
+        confirmedAt,
+        quoteId: scopePriceQuoteId,
+        storedQuote,
+      },
+    )
+    expect(mocks.requireJobAccess).toHaveBeenCalledWith(
+      client,
+      'job-1',
+      expect.objectContaining({ role: 'worker' }),
+      expect.objectContaining({
+        select: expect.stringContaining('status'),
+      }),
+    )
   })
 
   it('surfaces a stale job phase before running scope proposal work', async () => {
@@ -146,7 +258,10 @@ describe('Kael job incident chat after proposal', () => {
         user: { id: 'worker-1' },
       } as never,
       'job-1',
-      { client_request_id: 'a7500000-0000-4000-8000-000000000009' },
+      {
+        client_request_id: 'a7500000-0000-4000-8000-000000000009',
+        quote_id: scopePriceQuoteId,
+      },
       {},
     )).rejects.toThrow('STATUS_CHANGED:')
     expect(mocks.requestScopeChange).not.toHaveBeenCalled()
@@ -207,7 +322,7 @@ describe('Kael job incident chat after proposal', () => {
         user: { id: 'worker-1' },
       } as never,
       'job-1',
-      { client_request_id: clientRequestId },
+      { client_request_id: clientRequestId, quote_id: scopePriceQuoteId },
       {},
     )).resolves.toMatchObject({
       incident: { id: 'incident-1', status: 'scope_proposed' },
@@ -250,7 +365,7 @@ describe('Kael job incident chat after proposal', () => {
         user: { id: 'worker-1' },
       } as never,
       'job-1',
-      { client_request_id: clientRequestId },
+      { client_request_id: clientRequestId, quote_id: scopePriceQuoteId },
       {},
     )).rejects.toThrow('INCIDENT_NOT_READY:')
 
@@ -347,4 +462,60 @@ describe('Kael job incident chat after proposal', () => {
       'release_job_incident_assistant_claim_atomic',
     ])
   })
+
+  it('continues the current incident turn when optional history cannot be loaded', async () => {
+    mocks.runJobIncidentAssistant.mockResolvedValue({
+      summary: 'Kael ghi nhận bằng chứng hiện trường.',
+      next_actor: 'worker',
+      question: 'Thợ xác nhận phạm vi thay đúng hai bản lề?',
+      evidence_status: 'ready',
+      evidence_gaps: [],
+      fallback_used: false,
+      provider: null,
+      model: null,
+    })
+    const client = clientForScopeProposedChat({ historyError: true })
+
+    await expect(advanceJobIncident(
+      client as never,
+      { id: 'job-1', description: 'Sửa bản lề', service_type: 'handyman', status: 'inspecting' },
+      { ...incident, status: 'open', revision: 1 },
+      { actor: 'worker', text: 'Cả hai bản lề đã nứt.' },
+      {
+        assistantClaimId: 'assistant-claim-1',
+        eventId: 'event-open-1',
+        revision: 1,
+      },
+      {},
+      'worker-1',
+    )).resolves.toMatchObject({ id: 'incident-1' })
+
+    expect(mocks.runJobIncidentAssistant).toHaveBeenCalledWith(expect.objectContaining({
+      history: [],
+    }))
+    expect(client.rpcCalls.map((call) => call.name)).toContain('apply_job_incident_assistant_turn_atomic')
+  })
 })
+
+function testBaselineEvidenceReceipt() {
+  return {
+    schema_version: 'baseline_price_evidence_receipt.v1',
+    accepted_source_count: 2,
+    aggregate_price_min: 240000,
+    aggregate_price_max: 360000,
+    high_trust_source_count: 2,
+    quorum_met: true,
+    required_quorum: 2,
+    unit: 'per_visit',
+    sources: ['source-a.example', 'source-b.example'].map((domain) => ({
+      domain,
+      url: `https://${domain}/price`,
+      observed_at: '2026-08-13',
+      price_min: 240000,
+      price_max: 360000,
+      unit: 'per_visit',
+      effective_tier: 1,
+      weight: 1,
+    })),
+  }
+}

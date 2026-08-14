@@ -94,6 +94,7 @@ export {
   chatMessageSchema,
   jobMessageSendSchema,
   workerRegisterSchema,
+  workerRegistrationDraftSchema,
   workerServiceAreaUpdateSchema,
   workerServicePreferencesUpdateSchema,
   workerAvatarUploadSchema,
@@ -124,6 +125,9 @@ export {
   scrubSensitiveForLLM,
   WORKER_AVATAR_MAX_BYTES,
   CUSTOMER_AVATAR_MAX_BYTES,
+  adminOperatorProvisionSchema,
+  adminOperatorResetPasswordSchema,
+  adminOperatorActivationSchema,
 } from './validation'
 export type {
   JobCreateInput,
@@ -155,6 +159,7 @@ export type {
   ChatMessageInput,
   JobMessageSendInput,
   WorkerRegisterInput,
+  WorkerRegistrationDraftInput,
   WorkerServiceAreaUpdateInput,
   WorkerServicePreferencesUpdateInput,
   WorkerAvatarUploadInput,
@@ -164,6 +169,7 @@ export type {
   AvailabilityToggleInput,
   WorkerScopeChangeInput,
   JobIncidentScopeProposalInput,
+  JobIncidentScopePricePreviewInput,
   KaelWorkerClarifyInput,
   WorkerKaelChatMode,
   WorkerKaelChatCreateInput,
@@ -181,6 +187,9 @@ export type {
   DisputeOpenRequestInput,
   DisputeCounterStatementInput,
   DisputeAdminDecisionInput,
+  AdminOperatorProvisionInput,
+  AdminOperatorResetPasswordInput,
+  AdminOperatorActivationInput,
 } from './validation'
 
 export {

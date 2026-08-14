@@ -30,8 +30,8 @@ export async function beginMatchingPreferencePrompt(
   if (job.status !== "awaiting_customer_confirm") {
     apiFailure("INVALID_STATUS", "Trạng thái đã thay đổi. Vui lòng tải lại và thử lại.", 409);
   }
-  const finalPrice = nullableNumber(job.final_price) ?? nullableNumber(job.kael_price_max);
-  if (finalPrice === null || finalPrice <= 0) {
+  const confirmedPriceCap = nullableNumber(job.kael_price_max);
+  if (confirmedPriceCap === null || confirmedPriceCap <= 0) {
     apiFailure("KAEL_PRICE_MISSING", "Kael chưa chốt được giá tạm tính nên chưa thể tìm thợ", 409);
   }
   const transition = options.autonomyDecision
@@ -57,7 +57,7 @@ export async function beginMatchingPreferencePrompt(
   const started = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("begin_job_matching_preference_atomic", {
       p_customer_id: ctx.user.id,
-      p_final_price: finalPrice,
+      p_final_price: confirmedPriceCap,
       p_job_id: jobId,
       p_worker_brief_core: workerBriefCore,
     }),

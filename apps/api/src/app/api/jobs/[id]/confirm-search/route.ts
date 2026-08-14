@@ -52,7 +52,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     return apiError('VALIDATION', 'Địa chỉ cần có quận TP.HCM rõ ràng', 400)
   }
 
-  const lockedFinalPrice =
+  const confirmedPriceCap =
     typeof job.final_price === 'number' && Number.isInteger(job.final_price) && job.final_price > 0
       ? job.final_price
       : job.kael_price_max
@@ -112,7 +112,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (!transition.valid) {
       return apiError('INVALID_STATUS', transition.error, 409)
     }
-    if (typeof lockedFinalPrice !== 'number' || !Number.isInteger(lockedFinalPrice) || lockedFinalPrice <= 0) {
+    if (typeof confirmedPriceCap !== 'number' || !Number.isInteger(confirmedPriceCap) || confirmedPriceCap <= 0) {
       return apiError(
         'KAEL_PRICE_MISSING',
         'Kael chưa chốt được giá tạm tính nên chưa thể tìm thợ',
@@ -130,7 +130,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           status: 'broadcasting',
           broadcast_at: now,
           confirmed_search_at: now,
-          final_price: lockedFinalPrice,
+          final_price: null,
         })
         .eq('id', id)
         .eq('customer_id', auth.user.id)

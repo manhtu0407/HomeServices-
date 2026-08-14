@@ -190,14 +190,17 @@ describe('mobile-api Kael P3 routing foundation', () => {
     ])
   })
 
-  it('keeps scope-change on the locked Anthropic roster with a provider-safe deadline', () => {
+  it('keeps Anthropic primary for scope-change with a provider-safe DeepSeek fallback', () => {
     expect(KAEL_ROUTING_CONFIG.scope_change).toMatchObject({
       primary: { provider: 'anthropic', model: 'claude-sonnet-5' },
       escalation: { provider: 'anthropic', model: 'claude-opus-4-8' },
       latencyBudgetMs: 20_000,
     })
     expect(KAEL_ROUTING_CONFIG.scope_change.modelFallback).toBeUndefined()
-    expect(KAEL_ROUTING_CONFIG.scope_change.fallback).toBeUndefined()
+    expect(KAEL_ROUTING_CONFIG.scope_change.fallback).toEqual({
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+    })
   })
 
   it('rejects invalid purposes and over-budget calls before provider selection', () => {

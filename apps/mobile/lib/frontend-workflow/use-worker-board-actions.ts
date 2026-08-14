@@ -5,6 +5,7 @@ import {
   type LocalWorkflowState,
   type UserRole,
   type WorkerRegisterInput,
+  type WorkerRegistrationDraftInput,
   type WorkerServiceAreaUpdateInput,
   type WorkerServicePreferencesUpdateInput,
 } from '@nestscout/shared'
@@ -364,6 +365,12 @@ export function useWorkerBoardActions({
     return true
   }, [setRemoteError, workerRefresh])
 
+  const workerSaveRegistrationDraft = useCallback(async (input: WorkerRegistrationDraftInput) => {
+    const result = await workerService.saveRegistrationDraft(input)
+    if (!result.success) return setRemoteError(result.error)
+    return true
+  }, [setRemoteError])
+
   useEffect(() => {
     if (!sessionUserId || role !== 'worker') return
     let cancelled = false
@@ -437,6 +444,7 @@ export function useWorkerBoardActions({
     workerRequestWithdrawal,
     workerSavePayoutMethod,
     workerSubmitRegistration,
+    workerSaveRegistrationDraft,
     workerUpdateAvailability,
     workerUpdateServiceArea,
     workerUpdateServicePreferences,

@@ -90,8 +90,7 @@ async function prepareSearchBroadcast(input: {
 }) {
   const retryingExistingSearch = input.job.status === "broadcasting";
   const autonomyDecision = input.options.autonomyDecision;
-  const lockedFinalPrice = nullableNumber(input.job.final_price) ??
-    nullableNumber(input.job.kael_price_max);
+  const confirmedPriceCap = nullableNumber(input.job.kael_price_max);
   const district = normalizeServiceAreaDistrict(
     nullableString(input.job.address_district) ?? "",
   );
@@ -103,7 +102,7 @@ async function prepareSearchBroadcast(input: {
     }
     return { retryingExistingSearch, rollbackStatus: null, district };
   }
-  if (lockedFinalPrice === null || lockedFinalPrice <= 0) {
+  if (confirmedPriceCap === null || confirmedPriceCap <= 0) {
     apiFailure("KAEL_PRICE_MISSING", "Kael chưa chốt được giá tạm tính nên chưa thể tìm thợ", 409);
   }
   const transition = autonomyDecision
@@ -133,7 +132,6 @@ async function prepareSearchBroadcast(input: {
         status: "broadcasting",
         broadcast_at: input.now,
         confirmed_search_at: input.now,
-        final_price: lockedFinalPrice,
         kael_worker_brief_core: workerBriefCore,
       })
       .eq("id", input.jobId)

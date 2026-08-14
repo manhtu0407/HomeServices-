@@ -5,7 +5,6 @@ import {
   buildReceiptEvidenceFindings,
   boundedEvidenceCount,
   estimateComplexityReasoning,
-  isSafePublicPriceReasoningText,
   nullableBoundedEvidenceCount,
   nullableSanitized,
   numericConfidenceToLabel,
@@ -22,6 +21,22 @@ export {
 } from "./output-support.ts";
 export { buildScopeChangeOutputs } from "./scope-change-output.ts";
 import { customerVisibleKaelProblemSummary } from "../language/user-facing-copy.ts";
+import type { BaselinePriceEvidenceReceipt } from "../evidence/baseline-price-evidence.ts";
+import {
+  complexityLabel,
+  customerContextClauses,
+  customerDeclaredScope,
+  customerDeclaredUnknowns,
+  hasUnconfirmedReplacement,
+  isCustomerInstruction,
+  isDeclaredScopeClause,
+  isDeclaredUnknownClause,
+  mentionsVisualEvidence,
+  normalizeCustomerReasoningClause,
+  publicReasoningText,
+  publicReceiptTextList,
+  withoutUnconfirmedReplacement,
+} from "./price-reasoning-text.ts";
 
 export type EstimatePriceSource =
   | "perplexity_validated"
@@ -124,6 +139,7 @@ export type PriceReasoningReceipt = {
   fairness: {
     price_source: EstimatePriceSource;
     confidence: "low" | "medium" | "high";
+    baseline_evidence: BaselinePriceEvidenceReceipt | null;
     market_source_count: number | null;
     high_trust_source_count: number | null;
     quorum_met: boolean | null;
@@ -179,8 +195,10 @@ export function runKaelOutputPipeline<TInput, TSanitized, TOutput>(input: {
 export function buildEstimateCardOutput(input: {
   estimate: KaelEstimate;
   language?: "vi" | "en";
+  customerScopeContext?: string;
   priceSource?: EstimatePriceSource;
   baselineUsed: string | null;
+  baselineEvidence?: BaselinePriceEvidenceReceipt | null;
   analysisEvidence?: {
     photoCount: number;
     videoFrameCount: number;
@@ -267,8 +285,10 @@ export function buildEstimateCardOutput(input: {
     analysis_receipt: analysisReceipt,
     price_reasoning_receipt: buildPriceReasoningReceipt({
       analysisReceipt,
+      baselineEvidence: input.baselineEvidence ?? null,
       complexity: input.estimate.complexity,
       confidence: needsInspection ? "low" : confidence,
+      customerScopeContext: input.customerScopeContext,
       language,
       needsInspection,
       priceMax,
@@ -465,8 +485,10 @@ function buildEstimateAnalysisReceipt(
 
 function buildPriceReasoningReceipt(input: {
   analysisReceipt: EstimateAnalysisReceipt | undefined;
+  baselineEvidence: BaselinePriceEvidenceReceipt | null;
   complexity: ComplexityLevel;
   confidence: "low" | "medium" | "high";
+  customerScopeContext?: string;
   language: "vi" | "en";
   needsInspection: boolean;
   priceMin: number;
@@ -477,12 +499,20 @@ function buildPriceReasoningReceipt(input: {
   const isVietnamese = input.language === "vi";
   const problem = input.analysisReceipt?.problem;
   const evidence = input.analysisReceipt?.evidence;
+  const customerScopeContext = input.customerScopeContext ?? input.problemSummary;
+  const declaredScope = customerDeclaredScope(customerScopeContext, input.language);
+  const replacementUnconfirmed = hasUnconfirmedReplacement(customerScopeContext);
   const noVisualEvidence = evidence?.analysis_status === "not_provided" ||
     evidence?.skipped === true || evidence?.photo_count === 0;
   const unknowns = publicReceiptTextList(
     [
-      problem?.remaining_uncertainty,
-      noVisualEvidence
+      ...customerDeclaredUnknowns(customerScopeContext, input.language),
+      replacementUnconfirmed
+        ? isVietnamese
+          ? "Nhu cầu thay linh kiện chưa được xác nhận; thợ phải đối chiếu hiện trạng trước khi gửi đề xuất đổi phạm vi."
+          : "The need for replacement parts is unconfirmed and must be checked before a scope-change proposal."
+        : problem?.remaining_uncertainty,
+      noVisualEvidence && !mentionsVisualEvidence(problem?.remaining_uncertainty)
         ? isVietnamese
           ? "Chưa có ảnh hoặc bằng chứng trực quan để xác nhận nguyên nhân và phần bị che khuất."
           : "No image or visual evidence is available to verify the cause or hidden damage."
@@ -527,7 +557,10 @@ function buildPriceReasoningReceipt(input: {
   }
   const included = publicReceiptTextList(
     [
-      problem?.recommended_scope,
+      ...declaredScope.included,
+      replacementUnconfirmed
+        ? withoutUnconfirmedReplacement(problem?.recommended_scope, input.language)
+        : problem?.recommended_scope,
       isVietnamese
         ? `Gói hiện tại được tính theo mức độ phạm vi ${complexityLabel(input.complexity, input.language)}.`
         : `The current package is priced for ${complexityLabel(input.complexity, input.language)} complexity.`,
@@ -538,32 +571,25 @@ function buildPriceReasoningReceipt(input: {
     3,
     320,
   );
-  const scope = priceReasoningScope(isVietnamese);
+  const scope = priceReasoningScope(isVietnamese, replacementUnconfirmed);
+  const excluded = publicReceiptTextList(
+    [...declaredScope.excluded, ...scope.excluded],
+    scope.excluded[0],
+    4,
+    320,
+  );
   return {
     schema_version: "price_reasoning_receipt.v1",
     receipt_id: `price_reasoning:${crypto.randomUUID()}`,
     problem: {
-      confirmed_facts: publicReceiptTextList(
-        [
-          isVietnamese
-            ? `Khách mô tả: ${input.problemSummary}`
-            : `Customer report: ${input.problemSummary}`,
-          problem?.summary,
-          ...(problem?.severity_indicators ?? []),
-        ],
-        isVietnamese
-          ? "Kael ghi nhận yêu cầu trong phạm vi thông tin khách đã cung cấp."
-          : "Kael recorded the request within the information the customer provided.",
-        5,
-        240,
-      ),
+      confirmed_facts: customerConfirmedFacts(customerScopeContext, input.language),
       possible_causes: possibleCauses,
       unknowns,
     },
     scope: {
       included,
       conditional: scope.conditional,
-      excluded: scope.excluded,
+      excluded,
     },
     costs: priceReasoningCosts(input, isVietnamese),
     scenarios: {
@@ -581,6 +607,7 @@ function buildPriceReasoningReceipt(input: {
     fairness: {
       price_source: input.priceSource,
       confidence: input.confidence,
+      baseline_evidence: input.baselineEvidence,
       market_source_count: input.analysisReceipt?.market.accepted_source_count ?? null,
       high_trust_source_count: input.analysisReceipt?.market.high_trust_source_count ?? null,
       quorum_met: input.analysisReceipt?.market.quorum_met ?? null,
@@ -658,9 +685,16 @@ function priceReasoningCosts(
   };
 }
 
-function priceReasoningScope(isVietnamese: boolean) {
+function priceReasoningScope(isVietnamese: boolean, replacementUnconfirmed = false) {
   return {
     conditional: [
+      ...(replacementUnconfirmed
+        ? [
+          isVietnamese
+            ? "Chỉ thay linh kiện sau khi thợ gửi đề xuất đổi phạm vi và khách xác nhận."
+            : "Replacement parts require a worker scope-change proposal and customer approval.",
+        ]
+        : []),
       isVietnamese
         ? "Nếu phát hiện hạng mục ngoài phạm vi, thợ phải gửi đề xuất đổi phạm vi để khách xác nhận trước khi làm."
         : "If work outside the scope is found, the worker must submit a scope-change proposal for customer approval first.",
@@ -689,31 +723,46 @@ function priceReasoningScope(isVietnamese: boolean) {
   };
 }
 
-function complexityLabel(complexity: ComplexityLevel, language: "vi" | "en") {
-  if (language === "en") return complexity;
-  return complexity === "small" ? "nhỏ" : complexity === "medium" ? "vừa" : "lớn";
-}
-
-function publicReceiptTextList(
-  values: Array<string | null | undefined>,
-  fallback: string,
-  limit: number,
-  maxLength: number,
+function customerConfirmedFacts(
+  value: string,
+  language: "vi" | "en",
 ): string[] {
-  const unique = new Set<string>();
-  for (const value of values) {
-    const text = publicReasoningText(value, "", maxLength);
-    if (text) unique.add(text);
-    if (unique.size >= limit) break;
-  }
-  return unique.size > 0 ? [...unique] : [fallback];
+  const factualClauses = customerContextClauses(value)
+    .map((clause) => clause.replace(
+      /,\s*(?:hãy|khỏi|please|just)\b.*$/iu,
+      "",
+    ).trim())
+    .filter((clause) =>
+      clause.length > 0 &&
+      !isCustomerInstruction(clause) &&
+      !isDeclaredScopeClause(clause) &&
+      !isDeclaredUnknownClause(clause)
+    );
+  const clauses = factualClauses.filter((clause) =>
+    !isRedundantWeakPressureSummary(clause, factualClauses)
+  );
+  return publicReceiptTextList(
+    clauses,
+    language === "vi"
+      ? "Kael ghi nhận yêu cầu trong phạm vi thông tin khách đã cung cấp."
+      : "Kael recorded the request within the information the customer provided.",
+    5,
+    180,
+  );
 }
 
-function publicReasoningText(
-  value: string | null | undefined,
-  fallback: string,
-  maxLength: number,
-): string {
-  const text = optionalText(value, maxLength);
-  return text && isSafePublicPriceReasoningText(text, maxLength) ? text : fallback;
+function isRedundantWeakPressureSummary(
+  value: string,
+  allFacts: readonly string[],
+): boolean {
+  const normalized = normalizeCustomerReasoningClause(value);
+  if (normalized !== "ap luc nuoc yeu" && normalized !== "weak water pressure") {
+    return false;
+  }
+  return allFacts.some((candidate) => {
+    if (candidate === value) return false;
+    const detailed = normalizeCustomerReasoningClause(candidate);
+    return /\bap luc\b.*\byeu\b/.test(detailed) ||
+      /\bweak\b.*\bpressure\b/.test(detailed);
+  });
 }

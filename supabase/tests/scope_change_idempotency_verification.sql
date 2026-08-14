@@ -85,6 +85,45 @@ insert into public.jobs (
   400000
 );
 
+insert into public.kael_job_incidents (
+  id,
+  job_id,
+  opened_by,
+  status,
+  reported_description,
+  reported_reason,
+  evidence_status,
+  revision,
+  scope_price_quote_id,
+  scope_price_quote,
+  scope_price_quote_revision,
+  scope_price_quote_expires_at,
+  scope_price_quote_confirmed_at
+) values (
+  'd1150000-0000-4000-8000-000000000001',
+  'd1110000-0000-4000-8000-000000000001',
+  'd1120000-0000-4000-8000-000000000002',
+  'ready_for_scope_proposal',
+  'Replace the concealed cracked pipe section behind the wall.',
+  'The original scope did not include the concealed damaged section.',
+  'ready',
+  1,
+  'd1160000-0000-4000-8000-000000000001',
+  '{
+    "schema_version": "scope_change_worker_quote.v1",
+    "quote_id": "d1160000-0000-4000-8000-000000000001",
+    "incident_id": "d1150000-0000-4000-8000-000000000001",
+    "job_id": "d1110000-0000-4000-8000-000000000001",
+    "selection_rule": "verified_neutral_midpoint_with_bilateral_confirmation",
+    "customer_total": 360000,
+    "platform_fee": 36000,
+    "worker_net": 324000
+  }'::jsonb,
+  1,
+  '2099-08-14T00:00:00+00'::timestamptz,
+  '2026-08-14T00:00:00+00'::timestamptz
+);
+
 select dblink_connect('scope_claim_a', :'dblink_connstr');
 select dblink_connect('scope_claim_b', :'dblink_connstr');
 
@@ -166,8 +205,8 @@ declare
   v_security_definer boolean;
   v_config text[];
   v_review jsonb := '{
-    "price_min": 260000,
-    "price_max": 480000,
+    "price_min": 360000,
+    "price_max": 360000,
     "confidence": 0.82,
     "problem_summary": "A concealed cracked pipe section requires replacement.",
     "advisory": "The customer must approve the changed scope before work continues.",
@@ -176,7 +215,27 @@ declare
     "fallback_used": false,
     "anti_fraud": {"score": 0.1, "challenge_required": false},
     "worker_challenge": {"challenge_required": false},
-    "customer_card": {"decision_required": true}
+    "customer_card": {"decision_required": true},
+    "price_source": "verified_baseline",
+    "pricing_mode": "full_scope_total",
+    "selection_rule": "verified_neutral_midpoint_with_bilateral_confirmation",
+    "baseline_used": "concealed_pipe_replacement_medium_hcmc",
+    "baseline_source": "verified_test_baseline",
+    "reference_price_min": 260000,
+    "reference_price_max": 480000,
+    "stakeholder_balance": {
+      "customer_total": 360000,
+      "platform_fee": 36000,
+      "worker_net": 324000,
+      "commission_rate_bps": 1000,
+      "worker_confirmation_required": true,
+      "customer_confirmation_required": true
+    },
+    "worker_price_confirmation": {
+      "confirmed": true,
+      "quote_id": "d1160000-0000-4000-8000-000000000001",
+      "confirmed_at": "2026-08-14T00:00:00+00:00"
+    }
   }'::jsonb;
 begin
   if (
@@ -278,8 +337,8 @@ begin
     v_command.new_description,
     v_command.reason,
     v_command.evidence_photo_urls,
-    260000,
-    480000,
+    360000,
+    360000,
     v_review - 'anti_fraud'
   );
   if v_invalid_review.ok is not false
@@ -327,8 +386,8 @@ begin
     v_command.new_description,
     v_command.reason,
     v_command.evidence_photo_urls,
-    270000,
-    480000,
+    370000,
+    370000,
     v_review
   );
   if v_mismatched_review.ok is not false
@@ -362,8 +421,8 @@ begin
     v_command.new_description,
     v_command.reason,
     v_command.evidence_photo_urls,
-    260000,
-    480000,
+    360000,
+    360000,
     v_review
   );
   if v_completed.ok is not true
@@ -579,8 +638,8 @@ begin
     v_command.new_description,
     v_command.reason,
     v_command.evidence_photo_urls,
-    260000,
-    480000,
+    360000,
+    360000,
     v_review
   );
   if v_final_retry.ok is not true

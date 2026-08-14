@@ -16,7 +16,6 @@ import {
   buildScopeChangeOutputs,
   computeScopeChangeEstimate,
   type EdgeAiSecrets,
-  type ScopeChangeKaelEstimate,
   updateKaelProgress,
 } from "../../../kael/index.ts";
 import type { ScopeChangeStatus } from "../../../../../_shared/domain.ts";
@@ -25,71 +24,24 @@ import {
   logScopeChangeEstimateApiCall,
   scopeChangeRiskConfig,
 } from "./decision.ts";
-
-type PricedScopeChangeEstimate = Extract<
-  ScopeChangeKaelEstimate,
-  { fallback_used: false }
->;
-
-export async function releaseDirectScopeClaim(
-  client: DbClient,
-  jobId: string,
-  workerId: string,
-  clientRequestId: string | undefined,
-  claimId: string | null,
-  errorCode: string,
-) {
-  if (!clientRequestId || !claimId) return;
-  try {
-    const result = await dbQuery<Array<Record<string, unknown>>>(
-      client.rpc("release_scope_change_request_claim_atomic", {
-        p_job_id: jobId,
-        p_worker_id: workerId,
-        p_client_request_id: clientRequestId,
-        p_claim_id: claimId,
-        p_error_code: errorCode,
-      }),
-    );
-    if (result.error || result.data?.[0]?.released !== true) {
-      console.warn("mobile-api scope-change claim release failed", {
-        jobId,
-        errorCode,
-      });
-    }
-  } catch {
-    console.warn("mobile-api scope-change claim release threw", {
-      jobId,
-      errorCode,
-    });
-  }
-}
+import { releaseDirectScopeClaim } from "./claim-support.ts";
+import type { PricedScopeChangeEstimate } from "./effects-contracts.ts";
+import { resolveVerifiedEstimate } from "./verified-estimate.ts";
+import { parseBaselinePriceEvidenceReceipt } from "../../../kael/evidence/baseline-price-evidence.ts";
 
 export async function prepareScopeChangeEstimate(input: {
   readonly client: DbClient;
   readonly ctx: MobileApiContext;
   readonly job: Record<string, unknown>;
   readonly jobId: string;
-  readonly request: {
-    client_request_id?: string;
-    new_description: string;
-    reason: string;
-  };
+  readonly request: { client_request_id?: string; new_description: string; reason: string };
   readonly secrets: EdgeAiSecrets;
   readonly originalPriceMax: number;
   readonly evidencePhotoRefs: string[];
   readonly directClaimId: string | null;
 }) {
-  const {
-    client,
-    ctx,
-    job,
-    jobId,
-    request,
-    secrets,
-    originalPriceMax,
-    evidencePhotoRefs,
-    directClaimId,
-  } = input;
+  const { client, ctx, job, jobId, request, secrets } = input;
+  const { originalPriceMax, evidencePhotoRefs, directClaimId } = input;
   const jobScopeProgressTarget = { table: "jobs" as const, id: jobId };
   await updateKaelProgress(client, jobScopeProgressTarget, {
     stage: "scope_reviewing",
@@ -97,11 +49,12 @@ export async function prepareScopeChangeEstimate(input: {
     progress: 0.24,
   });
 
-  let estimate: Awaited<ReturnType<typeof computeScopeChangeEstimate>>;
+  const serviceType = asServiceType(job.service_type);
+  let analysis: Awaited<ReturnType<typeof computeScopeChangeEstimate>>;
   try {
-    estimate = await computeScopeChangeEstimate(
+    analysis = await computeScopeChangeEstimate(
       {
-        serviceType: asServiceType(job.service_type),
+        serviceType,
         district: nullableString(job.address_district),
         originalDescription: nullableString(job.description) ?? "",
         originalProblemSummary: nullableString(job.kael_problem_identified),
@@ -137,23 +90,23 @@ export async function prepareScopeChangeEstimate(input: {
     progress: 0.68,
   });
   if (
-    estimate.fallback_used || estimate.provider === null ||
-    estimate.failure_reason
+    analysis.fallback_used || analysis.provider === null ||
+    analysis.failure_reason
   ) {
-    await logScopeChangeEstimateApiCall(client, jobId, estimate);
+    await logScopeChangeEstimateApiCall(client, jobId, analysis);
     await releaseDirectScopeClaim(
       client,
       jobId,
       ctx.user.id,
       request.client_request_id,
       directClaimId,
-      estimate.failure_reason ?? "SCOPE_ESTIMATE_UNAVAILABLE",
+      analysis.failure_reason ?? "SCOPE_ESTIMATE_UNAVAILABLE",
     );
     await updateKaelProgress(client, jobScopeProgressTarget, {
       stage: "scope_estimating",
       status: "failed",
       progress: 0.68,
-      failureReason: estimate.failure_reason ?? "scope_estimate_unavailable",
+      failureReason: analysis.failure_reason ?? "scope_estimate_unavailable",
     });
     apiFailure(
       "KAEL_ESTIMATE_UNAVAILABLE",
@@ -161,33 +114,40 @@ export async function prepareScopeChangeEstimate(input: {
       503,
     );
   }
-  if (estimate.price_max <= 0 || estimate.price_max < estimate.price_min) {
+  const verified = await resolveVerifiedEstimate({
+    analysis,
+    client,
+    district: nullableString(job.address_district) ?? "hcmc_all",
+    originalScope: originalVerifiedScope(job),
+    scopeExclusions: explicitScopeExclusions(request.new_description),
+    serviceType,
+    workerId: ctx.user.id,
+  });
+  if (!verified.success) {
+    await logScopeChangeEstimateApiCall(client, jobId, analysis);
     await releaseDirectScopeClaim(
       client,
       jobId,
       ctx.user.id,
       request.client_request_id,
       directClaimId,
-      "SCOPE_ESTIMATE_INVALID",
+      "SCOPE_BASELINE_UNAVAILABLE",
     );
     await updateKaelProgress(client, jobScopeProgressTarget, {
       stage: "scope_estimating",
       status: "failed",
       progress: 0.68,
-      failureReason: "scope_estimate_invalid",
+      failureReason: verified.error,
     });
-    apiFailure(
-      "KAEL_PRICE_MISSING",
-      "Kael chưa thể tính giá phát sinh hợp lệ",
-      409,
-    );
+    apiFailure("KAEL_ESTIMATE_UNAVAILABLE", "Kael chưa thể tính giá phát sinh hợp lệ", 503);
   }
+  const estimate = verified.estimate;
   const workerScopeChangeRate = await getWorkerScopeChangeRate(
     client,
     ctx.user.id,
   );
   const scopeChangeOutputs = buildScopeChangeOutputs({
-    serviceType: asServiceType(job.service_type),
+    serviceType,
     originalPriceMax,
     newPriceMin: estimate.price_min,
     newPriceMax: estimate.price_max,
@@ -212,6 +172,33 @@ export async function prepareScopeChangeEstimate(input: {
     enrichedEstimate,
     scopeChangeOutputs,
     jobScopeProgressTarget,
+  };
+}
+
+function originalVerifiedScope(job: Record<string, unknown>) {
+  const envelope = asRecord(job.kael_estimate_card_v3);
+  const card = asRecord(envelope.card);
+  const reasoning = asRecord(card.price_reasoning_receipt);
+  const fairness = asRecord(reasoning.fairness);
+  const evidenceReceipt = parseBaselinePriceEvidenceReceipt(
+    fairness.baseline_evidence,
+  );
+  const priceMin = nullableNumber(job.kael_price_min);
+  const priceMax = nullableNumber(job.kael_price_max);
+  if (!evidenceReceipt || priceMin === null || priceMax === null) return undefined;
+  return { evidenceReceipt, priceMax, priceMin };
+}
+
+function explicitScopeExclusions(description: string) {
+  const normalized = description.normalize("NFC").toLocaleLowerCase("vi-VN");
+  return {
+    materialsExcluded:
+      /(?:không gồm|không bao gồm|loại trừ)[^.;]{0,80}vật tư/u.test(normalized) ||
+      /materials?\s+(?:excluded|not included)/u.test(normalized),
+    surfaceFinishExcluded:
+      /(?:không gồm|không bao gồm|loại trừ)[^.;]{0,100}(?:hoàn thiện|trám|sơn)[^.;]{0,60}(?:gạch|tường|bề mặt)/u.test(
+        normalized,
+      ) || /surface finish(?:ing)?\s+(?:excluded|not included)/u.test(normalized),
   };
 }
 

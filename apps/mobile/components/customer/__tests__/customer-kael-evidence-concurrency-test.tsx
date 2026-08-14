@@ -11,6 +11,7 @@ const mockRequestMediaLibraryPermissions = jest.fn()
 const mockLaunchImageLibrary = jest.fn()
 const mockSubmitEvidence = jest.fn()
 const mockStreamEvidence = jest.fn()
+const mockUploadKaelChatMediaDrafts = jest.fn()
 
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: (...args: unknown[]) => mockLaunchImageLibrary(...args),
@@ -21,7 +22,7 @@ jest.mock('@/lib/media-upload', () => ({
   cleanupKaelChatMediaRefs: (...args: unknown[]) => mockCleanupKaelChatMediaRefs(...args),
   localizeMediaUploadFailure: jest.fn(() => 'media upload failed'),
   uploadJobMediaDrafts: jest.fn(),
-  uploadKaelChatMediaDrafts: jest.fn(),
+  uploadKaelChatMediaDrafts: (...args: unknown[]) => mockUploadKaelChatMediaDrafts(...args),
 }))
 
 jest.mock('@/lib/services', () => ({
@@ -106,6 +107,7 @@ describe('customer Kael evidence concurrency', () => {
     mockLaunchImageLibrary.mockResolvedValue({ assets: [], canceled: true })
     mockRequestMediaLibraryPermissions.mockReset()
     mockRequestMediaLibraryPermissions.mockResolvedValue({ granted: true })
+    mockUploadKaelChatMediaDrafts.mockReset()
     mockSubmitEvidence.mockReset()
     mockStreamEvidence.mockReset()
   })
@@ -184,6 +186,47 @@ describe('customer Kael evidence concurrency', () => {
       serviceType: 'electrical',
     })
     expect(harness.processController.updateEvidenceProcessProgress).toHaveBeenCalledWith(progress)
+  })
+
+  it('keeps an evidence submission current while same-scope hydration refreshes', async () => {
+    let resolveUpload!: (value: unknown) => void
+    mockUploadKaelChatMediaDrafts.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveUpload = resolve
+    }))
+    mockStreamEvidence.mockResolvedValueOnce({
+      data: { session: {}, turns: [] },
+      success: true,
+    })
+    const harness = evidenceHarness()
+    harness.conversation.composerMediaDrafts = [{
+      fileName: 'hinge.jpg',
+      fileSizeBytes: 2_048,
+      mimeType: 'image/jpeg',
+      type: 'image',
+      uri: 'file:///hinge.jpg',
+    }]
+    const { result } = renderHook(() => useCustomerKaelEvidenceActions(harness.input))
+    let submission!: Promise<void>
+
+    act(() => {
+      submission = result.current.submitAgenticEvidence('confirmed')
+    })
+    harness.input.kaelRequestGuard.begin('conversation')
+    await act(async () => {
+      resolveUpload({
+        evidenceItems: [{
+          kind: 'photo',
+          model_eligible: true,
+          ref: 'supabase://kael-chat-media/customer-a/hinge.jpg',
+        }],
+        mediaRefs: ['supabase://kael-chat-media/customer-a/hinge.jpg'],
+        success: true,
+        urls: [],
+      })
+      await submission
+    })
+
+    expect(mockStreamEvidence).toHaveBeenCalledTimes(1)
   })
 
   it('streams the committed Kael estimate response while evidence analysis is still visible', async () => {

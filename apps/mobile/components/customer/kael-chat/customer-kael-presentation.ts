@@ -77,19 +77,8 @@ export function deriveCustomerKaelPresentation({
       : customerVisibleKaelTurnText(turn.text_content, language),
   }))
   const normalAssistantTurns = mode === 'normal' ? catalogConversationTurns : []
-  const hasSharedJobIncident = jobIncidentMessages.some((message) =>
-    message.sender_role === 'kael' && message.content.startsWith('Kael Công việc:'),
-  )
-  const sharedJobIncidentTurns = hasSharedJobIncident
-    ? jobIncidentMessages.map((message) => ({
-      id: `job-incident-${message.id}`,
-      role: message.sender_role,
-      surface: 'customer_case' as const,
-      text_content: customerVisibleKaelTurnText(message.sender_role === 'worker'
-        ? `${language === 'vi' ? 'Thợ: ' : 'Worker: '}${message.content}`
-        : message.content, language),
-    }))
-    : []
+  // The phase panel projects this audit trail in workflow order; raw messages stay out of the chat transcript.
+  void jobIncidentMessages
   const localCaseAssistantTurns = assistantTurns.flatMap((turn) => {
     if (turn.surface !== 'customer_case') return []
     return [turn.role === 'customer'
@@ -100,10 +89,7 @@ export function deriveCustomerKaelPresentation({
     const text = turn.role === 'customer' ? turn.text_content.trim() : ''
     return text ? [text] : []
   }))
-  const caseAssistantTurns = [
-    ...localCaseAssistantTurns,
-    ...sharedJobIncidentTurns,
-  ]
+  const caseAssistantTurns = localCaseAssistantTurns
   const backendDraftCustomerTurn = routeDraftEvidencePending || intakeDisplayMessage
     ? normalVisibleTurns.find((turn) => turn.role === 'customer' && turn.text_content?.trim())
     : null
@@ -251,7 +237,6 @@ export function deriveCustomerKaelPresentation({
     chatEstimate,
     diagnosisScope,
     evidencePreviews,
-    hasSharedJobIncident,
     intakeConfirmation,
     intakeConfirmationActive,
     missingCaseWorkDeal,

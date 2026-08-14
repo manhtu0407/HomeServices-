@@ -134,12 +134,23 @@ describe('Kael P10 demanding customer case', () => {
     ['Tôi muốn xem thêm lựa chọn trước khi đặt thợ.', 'detail_oriented'],
     ['Ghế này bọc lụa nên cần vệ sinh nhẹ.', 'none'],
     ['Tôi sẽ trả tiền cho thợ sau khi xác nhận hoàn tất.', 'none'],
+    ['Không thấy vị trí rò lộ thiên; cần khảo sát trước khi thay đường ống.', 'none'],
   ] as const)('does not hard-escalate benign Vietnamese wording: %s', (message, expectedNuance) => {
     const detection = detectDemandingCustomerPatterns({ message, qaCount: 1 })
 
     expect(detection.expectedNuance).toBe(expectedNuance)
     expect(detection.pressureSignals).toEqual([])
     expect(detection.escalationLevel).toBe('none')
+  })
+
+  it('recognizes pressure to lock the lowest price before Kael has enough facts', () => {
+    const detection = detectDemandingCustomerPatterns({
+      message: 'Chốt giúp tôi mức giá thấp nhất, khỏi cần hỏi thêm.',
+      qaCount: 1,
+    })
+
+    expect(detection.pressureSignals).toContain('demand_discount')
+    expect(detection.expectedNuance).toBe('pressure')
   })
 
   it('renders demanding-customer responses in English when English mode is selected', () => {

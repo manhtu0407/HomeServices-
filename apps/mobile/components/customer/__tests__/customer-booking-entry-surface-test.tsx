@@ -704,4 +704,25 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     })
     expect(mockReplace).toHaveBeenCalledTimes(1)
   })
+
+  it('allows a second service handoff after returning to the still-mounted booking surface', async () => {
+    render(<CustomerBookingEntrySurface />)
+
+    const submitDraft = (description: string) => {
+      fireEvent.press(screen.getByTestId('customer-v21-service-electrical'))
+      selectTomorrowQuickSchedule(2)
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Tòa A, Quận 7')
+      fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), description)
+      fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+    }
+
+    submitDraft('Lần một: ổ cắm phải được kiểm tra an toàn.')
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    })
+    submitDraft('Lần hai: công tắc khác cần kiểm tra an toàn.')
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledTimes(2)
+    expect(mockReplace).toHaveBeenCalledTimes(2)
+  })
 })

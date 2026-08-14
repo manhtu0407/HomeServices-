@@ -53,6 +53,15 @@ export function resolveKaelChatAddressDistrict(
   return null;
 }
 
+export function resolveKaelChatProblemChips(
+  incoming: readonly string[] | null | undefined,
+  previous: readonly string[] | null | undefined,
+) {
+  const sanitizedIncoming = sanitizeUntrustedEvidenceList(incoming ?? []);
+  if (sanitizedIncoming.length > 0) return sanitizedIncoming;
+  return sanitizeUntrustedEvidenceList(previous ?? []);
+}
+
 function buildBookingIntakeConfirmation(input: {
   intake: KaelChatCreateInput;
   description: string;

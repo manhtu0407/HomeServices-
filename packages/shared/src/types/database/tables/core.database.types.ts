@@ -464,56 +464,6 @@ export type CoreTables = {
           },
         ]
       }
-      price_baselines: {
-        Row: {
-          complexity: Database["public"]["Enums"]["complexity_level"]
-          created_at: string
-          district_code: string
-          id: string
-          price_max: number
-          price_min: number
-          service_problem_id: string
-          service_type: Database["public"]["Enums"]["service_type"]
-          source: string
-          updated_at: string
-          version: number
-        }
-        Insert: {
-          complexity: Database["public"]["Enums"]["complexity_level"]
-          created_at?: string
-          district_code?: string
-          id?: string
-          price_max: number
-          price_min: number
-          service_problem_id: string
-          service_type: Database["public"]["Enums"]["service_type"]
-          source?: string
-          updated_at?: string
-          version?: number
-        }
-        Update: {
-          complexity?: Database["public"]["Enums"]["complexity_level"]
-          created_at?: string
-          district_code?: string
-          id?: string
-          price_max?: number
-          price_min?: number
-          service_problem_id?: string
-          service_type?: Database["public"]["Enums"]["service_type"]
-          source?: string
-          updated_at?: string
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "price_baselines_service_problem_id_fkey"
-            columns: ["service_problem_id"]
-            isOneToOne: false
-            referencedRelation: "service_problems"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       platform_bank_balance_snapshots: {
         Row: {
           account_key: string
@@ -545,6 +495,59 @@ export type CoreTables = {
             columns: ["entered_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_baselines: {
+        Row: {
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          created_at: string
+          district_code: string
+          id: string
+          price_evidence: Json
+          price_max: number
+          price_min: number
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          source: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          created_at?: string
+          district_code?: string
+          id?: string
+          price_evidence?: Json
+          price_max: number
+          price_min: number
+          service_problem_id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          source?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          complexity?: Database["public"]["Enums"]["complexity_level"]
+          created_at?: string
+          district_code?: string
+          id?: string
+          price_evidence?: Json
+          price_max?: number
+          price_min?: number
+          service_problem_id?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          source?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_baselines_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: false
+            referencedRelation: "service_problems"
             referencedColumns: ["id"]
           },
         ]

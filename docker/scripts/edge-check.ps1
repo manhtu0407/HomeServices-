@@ -29,6 +29,18 @@ if ($Only) { $functions = $functions | Where-Object { $_ -in $Only } }
 
 Push-Location $repoRoot
 try {
+  $pullAttempts = 3
+  for ($attempt = 1; $attempt -le $pullAttempts; $attempt++) {
+    & docker compose pull --policy missing deno
+    if ($LASTEXITCODE -eq 0) { break }
+    if ($attempt -eq $pullAttempts) {
+      throw "Unable to pull the pinned Deno image after $pullAttempts attempts."
+    }
+
+    Write-Output "Deno image pull failed; retrying ($attempt/$pullAttempts)."
+    Start-Sleep -Seconds (5 * $attempt)
+  }
+
   $failed = @()
   foreach ($fn in $functions) {
     $config = "supabase/functions/$fn/deno.json"
@@ -40,7 +52,7 @@ try {
     }
 
     Write-Output "check $fn"
-    & docker compose run --rm deno check --config $config $entry
+    & docker compose run --rm --pull never deno check --config $config $entry
     if ($LASTEXITCODE -ne 0) { $failed += $fn }
   }
 

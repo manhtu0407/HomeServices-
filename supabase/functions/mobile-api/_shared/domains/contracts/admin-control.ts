@@ -4,6 +4,11 @@ import type {
   UserRole,
   WorkerVerificationStatus,
 } from "../../../../_shared/domain.ts";
+import type {
+  EdgeAdminOperatorProvisionInput,
+  EdgeAdminOperatorResetPasswordInput,
+} from "../../../../_shared/domain.ts";
+export type { EdgeAdminOperatorProvisionInput, EdgeAdminOperatorResetPasswordInput };
 
 export const ADMIN_CONTROL_CAPABILITIES = [
   "operations.read",
@@ -11,7 +16,9 @@ export const ADMIN_CONTROL_CAPABILITIES = [
   "workers.review",
   "workers.manage",
   "transactions.read",
+  "finance.read",
   "finance.reconcile",
+  "finance.tax.manage",
   "payouts.read",
   "payouts.process",
   "team.read",
@@ -61,9 +68,23 @@ export type AdminWorkerApplicationStatus =
 
 export type AdminWorkerApplicationListInput = {
   status: AdminWorkerApplicationStatus | "all";
+  stage?: AdminWorkerReviewStage | "all";
   query: string;
   limit: number;
   offset: number;
+  cursor?: string;
+};
+
+export type AdminWorkerReviewStage =
+  | "pending_access"
+  | "missing_profile"
+  | "ready_verification"
+  | "verified";
+
+export type AdminWorkerChecklist = {
+  completed_count: number;
+  total_count: number;
+  missing: string[];
 };
 
 export type AdminWorkerApplicationSummary = {
@@ -79,6 +100,9 @@ export type AdminWorkerApplicationSummary = {
   account_role: UserRole | null;
   full_name: string | null;
   phone_masked: string | null;
+  stage: AdminWorkerReviewStage;
+  checklist: AdminWorkerChecklist;
+  profile_review_queue_id: string | null;
   worker_profile: {
     verification_status: WorkerVerificationStatus;
     is_approved: boolean;
@@ -100,7 +124,57 @@ export type AdminWorkerApplicationListResponse = {
   applications: AdminWorkerApplicationSummary[];
   has_more: boolean;
   next_offset: number | null;
+  next_cursor: string | null;
   total_count: number | null;
+};
+
+export type AdminWorkerReviewDetail = {
+  application: AdminWorkerApplicationSummary;
+  login_gates: {
+    email: string | null;
+    phone: string | null;
+    full_name: string | null;
+    created_at: string | null;
+  };
+  profile: {
+    legal_name: string | null;
+    date_of_birth: string | null;
+    gender: string | null;
+    service_types: ServiceType[];
+    years_experience: number;
+    districts: string[];
+    service_radius_km: number | null;
+    problem_specializations: string[];
+    bank_account: string | null;
+    bank_name: string | null;
+    documents: {
+      cccd_front_url: string | null;
+      cccd_back_url: string | null;
+      selfie_url: string | null;
+      expires_at: string | null;
+    };
+  } | null;
+  history: Array<{
+    stage: "access" | "profile";
+    decision: "approve" | "request_changes" | "reject";
+    reason: string | null;
+    decided_at: string;
+    decided_by_name: string | null;
+  }>;
+};
+
+export type AdminWorkerProfileDecisionInput = {
+  decision: "approve" | "request_changes";
+  reason?: string;
+};
+
+export type AdminWorkerProfileDecisionResponse = {
+  ok: true;
+  application_id: string;
+  worker_id: string;
+  decision: AdminWorkerProfileDecisionInput["decision"];
+  verification_status: WorkerVerificationStatus;
+  decided_at: string;
 };
 
 export type AdminWorkerApplicationDecisionInput = {
@@ -148,6 +222,29 @@ export type AdminSubAdminListResponse = {
   actor: AdminActor;
   members: AdminSubAdminSummary[];
   nominations: AdminManagerNominationSummary[];
+  pending_accounts: AdminOperatorProvisioningSummary[];
+};
+
+export type AdminOperatorProvisioningSummary = {
+  id: string;
+  full_name: string;
+  email_masked: string;
+  status: "pending_password_change" | "active" | "failed";
+  capabilities: AdminControlCapability[];
+  created_at: string;
+  updated_at: string;
+  last_activity_at: string | null;
+};
+
+export type AdminOperatorProvisionResponse = {
+  ok: true;
+  account: AdminOperatorProvisioningSummary;
+};
+
+export type AdminOperatorResetPasswordResponse = {
+  ok: true;
+  provisioning_id: string;
+  updated_at: string;
 };
 
 export type AdminSubAdminAccountSearchInput = {

@@ -19,6 +19,7 @@ const DROPPED_PUBLIC_FUNCTIONS = new Set([
 const TRIGGER_ONLY_PUBLIC_FUNCTIONS = new Set([
   'handle_new_user',
   'notify_worker_account_approved',
+  'guard_bilateral_final_price_lock',
   'prevent_evidence_snapshot_mutation',
   'validate_customer_payment_method_customer',
   'capture_learning_review_provenance',
@@ -26,6 +27,9 @@ const TRIGGER_ONLY_PUBLIC_FUNCTIONS = new Set([
   'prevent_revoked_learning_rule_activation',
   'reject_harness_append_only_mutation',
   'reject_harness_release_mutation',
+  'guard_verified_scope_change_approval',
+  'guard_scope_change_worker_quote_binding',
+  'enforce_kael_estimate_price_evidence',
 ])
 
 const readText = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')

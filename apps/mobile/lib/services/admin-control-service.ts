@@ -2,8 +2,18 @@ import { api } from '../api'
 import type {
   AdminFinanceBalanceSnapshotInput,
   AdminFinanceBalanceSnapshotResponse,
+  AdminFinanceCsvExportResponse,
+  AdminFinanceOverviewResponse,
+  AdminFinancePeriodInput,
   AdminFinanceRange,
   AdminFinanceSummaryResponse,
+  AdminFinanceTaxPolicy,
+  AdminFinanceTaxPolicyApproveInput,
+  AdminFinanceTaxPolicyDraftInput,
+  AdminFinanceTaxPolicyListResponse,
+  AdminFinanceTaxPolicyRetireInput,
+  AdminFinanceTransactionFilters,
+  AdminFinanceTransactionListResponse,
   AdminViewAiCostListResponse,
   AdminViewDisputeListResponse,
   AdminViewGovernanceListInput,
@@ -11,6 +21,9 @@ import type {
   AdminViewManagerNominationCancellationResponse,
   AdminViewManagerNominationResponse,
   AdminViewOperationsResponse,
+  AdminViewOperatorProvisionInput,
+  AdminViewOperatorProvisionResponse,
+  AdminViewOperatorResetPasswordResponse,
   AdminViewPayoutMethodDecisionInput,
   AdminViewPayoutMethodDecisionResponse,
   AdminViewPayoutMethodDetailResponse,
@@ -33,6 +46,10 @@ import type {
   AdminViewWorkerApplicationDecisionResponse,
   AdminViewWorkerApplicationListResponse,
   AdminViewWorkerApplicationSummary,
+  AdminViewWorkerProfileDecisionInput,
+  AdminViewWorkerProfileDecisionResponse,
+  AdminViewWorkerReviewDetail,
+  AdminViewWorkerReviewStage,
   AdminPaymentReconciliationDecisionInput,
   AdminPaymentReconciliationDecisionResponse,
   AdminPaymentReconciliationListResponse,
@@ -43,6 +60,21 @@ function adminGovernancePath(path: string, params: AdminViewGovernanceListInput)
   const searchParams = new URLSearchParams()
   if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
   if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
+  const query = searchParams.toString()
+  return `${path}${query ? `?${query}` : ''}`
+}
+
+function adminFinancePath(path: string, params: AdminFinanceTransactionFilters | AdminFinancePeriodInput) {
+  const searchParams = new URLSearchParams()
+  if (params.range) searchParams.set('range', params.range)
+  if (params.anchor) searchParams.set('anchor', params.anchor)
+  if (params.from) searchParams.set('from', params.from)
+  if (params.to) searchParams.set('to', params.to)
+  if ('cursor' in params && params.cursor) searchParams.set('cursor', params.cursor)
+  if ('limit' in params && params.limit !== undefined) searchParams.set('limit', String(params.limit))
+  if ('payment_method' in params && params.payment_method) searchParams.set('payment_method', params.payment_method)
+  if ('service_type' in params && params.service_type) searchParams.set('service_type', params.service_type)
+  if ('status' in params && params.status) searchParams.set('status', params.status)
   const query = searchParams.toString()
   return `${path}${query ? `?${query}` : ''}`
 }
@@ -73,18 +105,35 @@ export const adminControlService = {
     query?: string
     limit?: number
     offset?: number
+    cursor?: string
+    stage?: AdminViewWorkerReviewStage | 'all'
   } = {}) {
     const searchParams = new URLSearchParams()
     if (params.status) searchParams.set('status', params.status)
     if (params.query) searchParams.set('query', params.query)
     if (params.limit !== undefined) searchParams.set('limit', String(params.limit))
     if (params.offset !== undefined) searchParams.set('offset', String(params.offset))
+    if (params.cursor) searchParams.set('cursor', params.cursor)
+    if (params.stage) searchParams.set('stage', params.stage)
     const query = searchParams.toString()
     return api.get<AdminViewWorkerApplicationListResponse>(`/admin/worker-applications${query ? `?${query}` : ''}`)
   },
 
   getWorkerApplication(applicationId: string) {
     return api.get<AdminViewWorkerApplicationSummary>(`/admin/worker-applications/${encodeURIComponent(applicationId)}`)
+  },
+
+  getWorkerReviewDetail(applicationId: string) {
+    return api.get<AdminViewWorkerReviewDetail>(
+      `/admin/worker-applications/${encodeURIComponent(applicationId)}/review-detail`,
+    )
+  },
+
+  decideWorkerProfile(applicationId: string, input: AdminViewWorkerProfileDecisionInput) {
+    return api.post<AdminViewWorkerProfileDecisionResponse>(
+      `/admin/worker-applications/${encodeURIComponent(applicationId)}/profile-decision`,
+      input,
+    )
   },
 
   decideWorkerApplication(applicationId: string, input: AdminViewWorkerApplicationDecisionInput) {
@@ -144,6 +193,38 @@ export const adminControlService = {
     const searchParams = new URLSearchParams({ range: params.range })
     if (params.anchor) searchParams.set('anchor', params.anchor)
     return api.get<AdminFinanceSummaryResponse>(`/admin/finance/summary?${searchParams.toString()}`)
+  },
+
+  getFinanceOverview(params: AdminFinancePeriodInput = { range: 'month' }) {
+    return api.get<AdminFinanceOverviewResponse>(adminFinancePath('/admin/finance/overview', params))
+  },
+
+  listFinanceTransactions(params: AdminFinanceTransactionFilters) {
+    return api.get<AdminFinanceTransactionListResponse>(adminFinancePath('/admin/finance/transactions', params))
+  },
+
+  exportFinanceCsv(params: AdminFinanceTransactionFilters) {
+    return api.get<AdminFinanceCsvExportResponse>(adminFinancePath('/admin/finance/export.csv', params))
+  },
+
+  listFinanceTaxPolicies() {
+    return api.get<AdminFinanceTaxPolicyListResponse>('/admin/finance/tax-policies')
+  },
+
+  createFinanceTaxPolicyDraft(input: AdminFinanceTaxPolicyDraftInput) {
+    return api.post<AdminFinanceTaxPolicy>('/admin/finance/tax-policies/drafts', input)
+  },
+
+  updateFinanceTaxPolicyDraft(policyId: string, input: AdminFinanceTaxPolicyDraftInput) {
+    return api.patch<AdminFinanceTaxPolicy>(`/admin/finance/tax-policies/${encodeURIComponent(policyId)}/draft`, input)
+  },
+
+  approveFinanceTaxPolicy(policyId: string, input: AdminFinanceTaxPolicyApproveInput) {
+    return api.post<AdminFinanceTaxPolicy>(`/admin/finance/tax-policies/${encodeURIComponent(policyId)}/approve`, input)
+  },
+
+  retireFinanceTaxPolicy(policyId: string, input: AdminFinanceTaxPolicyRetireInput) {
+    return api.post<AdminFinanceTaxPolicy>(`/admin/finance/tax-policies/${encodeURIComponent(policyId)}/retire`, input)
   },
 
   recordFinanceBalanceSnapshot(input: AdminFinanceBalanceSnapshotInput) {
@@ -208,6 +289,17 @@ export const adminControlService = {
 
   listSubAdmins() {
     return api.get<AdminViewSubAdminListResponse>('/admin/sub-admins')
+  },
+
+  provisionOperator(input: AdminViewOperatorProvisionInput) {
+    return api.post<AdminViewOperatorProvisionResponse>('/admin/sub-admins/provision', input)
+  },
+
+  resetPendingOperatorPassword(provisioningId: string, initialPassword: string) {
+    return api.post<AdminViewOperatorResetPasswordResponse>(
+      `/admin/sub-admins/provision/${encodeURIComponent(provisioningId)}/reset-password`,
+      { initial_password: initialPassword },
+    )
   },
 
   searchSubAdminAccounts(query: string) {

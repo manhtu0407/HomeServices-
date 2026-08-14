@@ -218,6 +218,20 @@ describe('hook owner isolation', () => {
     expect(result.current.state.reason).toBe('')
   })
 
+  it('keeps the scope-draft updater stable while its owner is unchanged', () => {
+    const deal = workerDeal('job-a')
+    const { result, rerender } = renderHook(
+      ({ currentDeal }: { currentDeal: LocalDeal | null }) =>
+        useWorkerV5ScopeChangeDraft(currentDeal),
+      { initialProps: { currentDeal: deal } },
+    )
+    const updater = result.current.updateOwnerState
+
+    rerender({ currentDeal: deal })
+
+    expect(result.current.updateOwnerState).toBe(updater)
+  })
+
   it('does not restore a pending chat or accept its late failure after A -> B -> A', async () => {
     const createFirstA = deferred<{ error: string; success: false }>()
     mockWorkerKaelChatCreate.mockReturnValueOnce(createFirstA.promise)

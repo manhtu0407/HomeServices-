@@ -276,6 +276,84 @@ export type WorkerTables = {
         }
         Relationships: []
       }
+      worker_direct_payment_collateral_reservations: {
+        Row: {
+          collateral_amount: number
+          created_at: string
+          held_at: string
+          id: string
+          job_id: string
+          payment_order_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          collateral_amount: number
+          created_at?: string
+          held_at?: string
+          id?: string
+          job_id: string
+          payment_order_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          collateral_amount?: number
+          created_at?: string
+          held_at?: string
+          id?: string
+          job_id?: string
+          payment_order_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservat_payment_order_id_fkey"
+            columns: ["payment_order_id"]
+            isOneToOne: true
+            referencedRelation: "job_payment_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_direct_payment_collateral_reservations_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_kael_feedback: {
         Row: {
           created_at: string
@@ -419,84 +497,6 @@ export type WorkerTables = {
             columns: ["worker_id"]
             isOneToOne: true
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      worker_direct_payment_collateral_reservations: {
-        Row: {
-          collateral_amount: number
-          created_at: string
-          held_at: string
-          id: string
-          job_id: string
-          payment_order_id: string
-          resolved_at: string | null
-          resolved_by: string | null
-          status: string
-          updated_at: string
-          worker_id: string
-        }
-        Insert: {
-          collateral_amount: number
-          created_at?: string
-          held_at?: string
-          id?: string
-          job_id: string
-          payment_order_id: string
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status: string
-          updated_at?: string
-          worker_id: string
-        }
-        Update: {
-          collateral_amount?: number
-          created_at?: string
-          held_at?: string
-          id?: string
-          job_id?: string
-          payment_order_id?: string
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: string
-          updated_at?: string
-          worker_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "worker_direct_payment_collateral_reservations_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: true
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "worker_direct_payment_collateral_reservations_payment_order_id_fkey"
-            columns: ["payment_order_id"]
-            isOneToOne: true
-            referencedRelation: "job_payment_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "worker_direct_payment_collateral_reservations_resolved_by_fkey"
-            columns: ["resolved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "worker_direct_payment_collateral_reservations_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "worker_overview"
-            referencedColumns: ["worker_id"]
-          },
-          {
-            foreignKeyName: "worker_direct_payment_collateral_reservations_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "worker_profiles"
             referencedColumns: ["id"]
           },
         ]

@@ -16,6 +16,7 @@ const commands = [
   ['scripts/harness/check-privileged-clients.mjs'],
   ['scripts/harness/access-matrix.mjs'],
   ['scripts/harness/migration-inventory.mjs'],
+  ['scripts/harness/price-evidence-artifacts.mjs'],
   ['scripts/harness/reliability-registry.mjs'],
   ['scripts/harness/promotion.mjs', '--check'],
 ]

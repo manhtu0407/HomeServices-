@@ -18,7 +18,6 @@ import {
   requiredIncident,
   stringArray,
 } from "./incident-data.ts";
-import { apiFailure } from "../../platform/api-failure.ts";
 
 export async function advanceJobIncident(
   client: DbClient,
@@ -134,7 +133,13 @@ async function loadIncidentHistory(client: DbClient, incidentId: string) {
       .order("created_at", { ascending: false })
       .limit(12),
   );
-  if (result.error) apiFailure("DB_ERROR", INCIDENT_MESSAGES.inspect, 500);
+  if (result.error) {
+    console.warn("mobile-api incident history unavailable", {
+      errorCode: nullableString(result.error.code) ?? "DB_ERROR",
+      incidentId,
+    });
+    return [];
+  }
   const rows = Array.isArray(result.data) ? result.data : [];
   return rows.reverse().map((historyEvent) => ({
     source_kind: historyEvent.source_kind,

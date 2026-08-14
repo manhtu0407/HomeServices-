@@ -151,6 +151,90 @@ describe('Kael agentic estimate display model', () => {
     })
   })
 
+  it('shows verified baseline source quorum when no live market lookup was used', () => {
+    const supportedEstimate = {
+      ...estimate,
+      price_min: 700000,
+      price_max: 1200000,
+      price_source: 'baseline_only' as const,
+      price_reasoning_receipt: {
+        schema_version: 'price_reasoning_receipt.v1' as const,
+        receipt_id: 'receipt_baseline_sources',
+        problem: {
+          confirmed_facts: ['Áp lực yếu ở nhiều thiết bị.'],
+          possible_causes: [],
+          unknowns: ['Chưa biết loại ống âm.'],
+        },
+        scope: {
+          included: ['Khảo sát không phá dỡ.'],
+          conditional: [],
+          excluded: ['Không gồm sửa ống.'],
+        },
+        costs: {
+          currency: 'VND' as const,
+          total_min: 700000,
+          total_max: 1200000,
+          reconciliation: 'package_total' as const,
+          components: [{
+            kind: 'service_package' as const,
+            status: 'priced' as const,
+            amount_min: 700000,
+            amount_max: 1200000,
+            explanation: 'Gói khảo sát.',
+          }],
+        },
+        scenarios: {
+          low: { total: 700000, conditions: ['Phạm vi thấp.'], scope: ['Khảo sát.'] },
+          high: { total: 1200000, conditions: ['Phạm vi cao.'], scope: ['Khảo sát.'] },
+        },
+        fairness: {
+          price_source: 'baseline_only' as const,
+          confidence: 'low' as const,
+          baseline_evidence: {
+            schema_version: 'baseline_price_evidence_receipt.v1' as const,
+            accepted_source_count: 3,
+            aggregate_price_min: 700000,
+            aggregate_price_max: 1200000,
+            high_trust_source_count: 3,
+            quorum_met: true as const,
+            required_quorum: 3,
+            unit: 'per_visit' as const,
+            sources: [
+              ['1fix.vn', 500000, 1200000, 1],
+              ['aloviecnha.com', 800000, 1200000, 2],
+              ['thoviet.com.vn', 800000, 1200000, 2],
+            ].map(([domain, min, max, tier]) => ({
+              domain: String(domain),
+              url: `https://${domain}/price`,
+              observed_at: '2026-08-14',
+              price_min: Number(min),
+              price_max: Number(max),
+              unit: 'per_visit' as const,
+              effective_tier: Number(tier) as 1 | 2,
+              weight: 1,
+            })),
+          },
+          market_source_count: null,
+          high_trust_source_count: null,
+          quorum_met: null,
+          cap_statement: 'Không tự cộng giá.',
+          remaining_uncertainty: ['Chưa biết loại ống âm.'],
+        },
+      },
+    }
+
+    const fairness = agenticEstimateSupportingPhase(supportedEstimate, 'vi')
+      ?.rows.find((row) => row.key === 'fairness')
+    const sources = fairness?.sections?.find((section) =>
+      section.label === 'Nguồn giá đã kiểm chứng'
+    )
+
+    expect(sources?.value).toContain('đạt đồng thuận 3/3')
+    expect(sources?.value).toContain('1fix.vn: 500.000đ - 1.200.000đ · T1')
+    expect(sources?.value).toContain('Khoảng tổng hợp: 700.000đ - 1.200.000đ')
+    expect(sources?.value).not.toContain('Không có số lượng nguồn')
+  })
+
   it('turns the backend analysis receipt into a concise supporting phase', () => {
     const supportedEstimate = {
       ...estimate,

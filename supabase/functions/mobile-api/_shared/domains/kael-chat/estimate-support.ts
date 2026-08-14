@@ -5,6 +5,7 @@ import type { KaelDiagnosisScopeArtifact } from "../../kael/contracts/artifact-c
 import {
   buildEstimateCardOutput,
   buildKaelMissingInfoArtifactProposal,
+  buildPriceEvidenceUnavailableArtifact,
   buildProfileSafetyFlags,
   buildSafetyFirstElectricalEstimate,
   getKaelPerformanceProfile,
@@ -15,6 +16,10 @@ import {
   type KaelProgressTarget,
 } from "../../kael/index.ts";
 import type { PipelineStageLog } from "../../kael/contracts/types.ts";
+import {
+  parseBaselinePriceEvidenceReceipt,
+  type BaselinePriceEvidenceReceipt,
+} from "../../kael/evidence/baseline-price-evidence.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { DbClient } from "../../platform/db.ts";
 import { diagnosisScopeWithEvidenceRequest } from "./case-work-artifact.ts";
@@ -104,6 +109,37 @@ function buildKaelEstimateMarketEvidence(
       : null,
   };
 }
+
+function baselineEvidenceFromStageLogs(
+  stageLogs: readonly PipelineStageLog[],
+): BaselinePriceEvidenceReceipt | null {
+  return parseBaselinePriceEvidenceReceipt(
+    stageLogs.find((stage) => stage.stage === "baseline")
+      ?.safeMetadata?.baseline_price_evidence_receipt,
+  );
+}
+
+type KaelEstimateMarketEvidence = ReturnType<
+  typeof buildKaelEstimateMarketEvidence
+>;
+
+export function hasValidatedKaelPriceEvidence(input: {
+  baselineEvidence?: BaselinePriceEvidenceReceipt | null;
+  marketEvidence: KaelEstimateMarketEvidence;
+}) {
+  const hasVerifiedBaselineQuorum = Boolean(
+    input.baselineEvidence?.quorum_met === true &&
+      input.baselineEvidence.high_trust_source_count >=
+        input.baselineEvidence.required_quorum &&
+      input.baselineEvidence.accepted_source_count ===
+        input.baselineEvidence.sources.length,
+  );
+  const hasTrustedMarketQuorum =
+    input.marketEvidence.quorumMet === true &&
+    (input.marketEvidence.acceptedSourceCount ?? 0) >= 2 &&
+    (input.marketEvidence.highTrustSourceCount ?? 0) >= 1;
+  return hasVerifiedBaselineQuorum || hasTrustedMarketQuorum;
+}
 function nonNegativeMetadataInteger(value: unknown): number | null {
   return typeof value === "number" &&
       Number.isSafeInteger(value) &&
@@ -161,6 +197,79 @@ export async function finalizeKaelChatEstimate(
     electricalPlaybookEnabled,
   });
   const safetyFlags = buildProfileSafetyFlags(profile, responseSafetySignals, language);
+  const marketEvidence = buildKaelEstimateMarketEvidence(pipeline.stageLogs);
+  const baselineEvidence = baselineEvidenceFromStageLogs(pipeline.stageLogs);
+  if (!hasValidatedKaelPriceEvidence({
+    baselineEvidence,
+    marketEvidence,
+  })) {
+    const unavailableArtifact = buildPriceEvidenceUnavailableArtifact(artifact, {
+      customerDetail: customerAnalysisDetail,
+      scopeSummary: estimate.problem_summary,
+    });
+    await emitKaelChatStep(client, sessionId, progressTarget, {
+      artifact: unavailableArtifact,
+      turn: {
+        contentType: "error",
+        text: withIntakeSafetyGuidance(
+          language === "en"
+            ? "Kael has identified the scope but does not have sufficiently grounded price evidence for this case. No estimate is shown until a verified source or an inspection supports it."
+            : "Kael đã xác định phạm vi nhưng chưa có dữ liệu giá đủ căn cứ cho trường hợp này. Kael chưa hiển thị báo giá cho tới khi có nguồn đã kiểm chứng hoặc kết quả khảo sát hỗ trợ.",
+          responseSafetySignals,
+          language,
+        ),
+        nextStatus: "active",
+        metadata: {
+          diagnosis_scope: unavailableArtifact,
+          quote_readiness: "validated_price_evidence_unavailable",
+          fallback_used: pipeline.fallbackUsed,
+          service_problem_id: pipeline.serviceProblemId,
+          ...intakeObservationMetadata(pipeline.intakeObservation),
+        },
+      },
+      progress: {
+        stage: "price_synthesis",
+        status: "failed",
+        progress: 1,
+        failureReason: "validated_price_evidence_unavailable",
+      },
+    });
+    return;
+  }
+  await persistValidatedEstimate({
+    input,
+    artifact,
+    profile,
+    estimate,
+    profileFactCoverage,
+    safetyFlags,
+    marketEvidence,
+    baselineEvidence,
+    costUsd,
+  });
+}
+
+async function persistValidatedEstimate(input: {
+  input: FinalizeKaelChatEstimateInput;
+  artifact: KaelDiagnosisScopeArtifact;
+  profile: KaelPerformanceProfile;
+  estimate: ReturnType<typeof buildSafetyFirstElectricalEstimate>;
+  profileFactCoverage: ReturnType<typeof resolveIntakeFactCoverage>;
+  safetyFlags: ReturnType<typeof buildProfileSafetyFlags>;
+  marketEvidence: KaelEstimateMarketEvidence;
+  baselineEvidence: BaselinePriceEvidenceReceipt | null;
+  costUsd: number;
+}) {
+  const {
+    artifact,
+    baselineEvidence,
+    estimate,
+    profileFactCoverage,
+    safetyFlags,
+    marketEvidence,
+    costUsd,
+  } = input;
+  const { client, sessionId, pipeline, language, customerAnalysisDetail } = input.input;
   const quoteBlockers = [
     ...profileFactCoverage.missing.map((driver) => `missing_profile_fact:${driver}`),
     ...safetyFlags.map((flag) => `safety_gate:${flag.code}`),
@@ -174,12 +283,12 @@ export async function finalizeKaelChatEstimate(
       ...artifact.facts,
       ...profileFactCoverage.facts,
       latest_customer_detail: customerAnalysisDetail,
-      address_district: district,
+      address_district: input.input.district,
       problem_summary: estimate.problem_summary,
       complexity: estimate.complexity,
-      problem_chips: problemChips,
+      problem_chips: input.input.problemChips,
       needs_inspection: estimate.needs_inspection === true,
-      safety_signals: responseSafetySignals,
+      safety_signals: input.input.responseSafetySignals,
     },
     missing_facts: [...profileFactCoverage.missing],
     evidence: artifact.evidence,
@@ -187,7 +296,7 @@ export async function finalizeKaelChatEstimate(
     scope_summary: estimate.problem_summary,
     quote_ready: quoteReady,
     quote_blockers: quoteBlockers,
-    worker_requirements: profile.worker_capabilities,
+    worker_requirements: input.profile.worker_capabilities,
     confidence: estimate.confidence,
     next_action: quoteReady
       ? { kind: "prepare_offer" }
@@ -207,19 +316,21 @@ export async function finalizeKaelChatEstimate(
   const estimateCardV3 = buildEstimateCardOutput({
     estimate,
     language,
+    customerScopeContext: customerAnalysisDetail,
     priceSource: estimate.needs_inspection
       ? "inspection_required"
       : estimatePriceSourceFromStageLogs(pipeline.stageLogs),
     baselineUsed:
-      `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
+      `${input.input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
+    baselineEvidence,
     analysisEvidence: buildKaelEstimateAnalysisEvidence(
       artifact,
-      input.vision_evidence,
+      input.input.vision_evidence,
     ),
-    marketEvidence: buildKaelEstimateMarketEvidence(pipeline.stageLogs),
+    marketEvidence,
     marketSignals: estimate.market_signals ?? estimate.needs_inspection_reason,
     needsInspectionReason: estimate.needs_inspection_reason,
-    previousAnalysisReceipt,
+    previousAnalysisReceipt: input.input.previousAnalysisReceipt,
     visionAnalysis: pipeline.visionAnalysis,
     visionFindings: pipeline.visionAnalysis?.problemSummary,
   });
@@ -227,7 +338,7 @@ export async function finalizeKaelChatEstimate(
     contentType: "estimate",
     text: withIntakeSafetyGuidance(
       formatKaelEstimateText(estimate, language),
-      responseSafetySignals,
+      input.input.responseSafetySignals,
       language,
     ),
     nextStatus: quoteReady ? "estimate_ready" : "active",
@@ -246,9 +357,9 @@ export async function finalizeKaelChatEstimate(
       reference_price_min: pipeline.referencePriceMin ?? null,
       reference_price_max: pipeline.referencePriceMax ?? null,
       ...intakeObservationMetadata(pipeline.intakeObservation),
-      photo_count: input.photo_urls?.length ?? 0,
+      photo_count: input.input.photo_urls?.length ?? 0,
       budget_soft_cap_reached:
-        currentCostUsd + costUsd >= KAEL_CHAT_SOFT_COST_CAP_USD,
+        input.input.currentCostUsd + costUsd >= KAEL_CHAT_SOFT_COST_CAP_USD,
     },
     ...(pipeline.customerSentiment
       ? { sessionMetadata: { last_customer_sentiment: pipeline.customerSentiment } }

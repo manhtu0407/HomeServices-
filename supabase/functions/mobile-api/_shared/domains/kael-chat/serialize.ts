@@ -15,6 +15,7 @@ import {
   nullableString,
 } from "../../platform/coercions.ts";
 import { KAEL_CHAT_HARD_COST_CAP_USD } from "../../kael/kael-guardrails/cost-cap.ts";
+import { parseBaselinePriceEvidenceReceipt } from "../../kael/evidence/baseline-price-evidence.ts";
 import {
   isSafePublicPriceReasoningText,
   type PriceReasoningReceipt,
@@ -279,6 +280,13 @@ function serializePriceReasoningReceipt(
   }
   const confidence = priceReasoningConfidence(fairness.confidence);
   const capStatement = priceReasoningText(fairness.cap_statement, 300);
+  const baselineEvidence = fairness.baseline_evidence === null ||
+      fairness.baseline_evidence === undefined
+    ? null
+    : parseBaselinePriceEvidenceReceipt(fairness.baseline_evidence);
+  if (fairness.baseline_evidence && !baselineEvidence) {
+    invalidPriceReasoningReceipt();
+  }
   return {
     schema_version: "price_reasoning_receipt.v1",
     receipt_id: receipt.receipt_id,
@@ -314,6 +322,7 @@ function serializePriceReasoningReceipt(
     fairness: {
       price_source: source,
       confidence,
+      baseline_evidence: baselineEvidence,
       market_source_count: marketSourceCount,
       high_trust_source_count: highTrustSourceCount,
       quorum_met: fairness.quorum_met,

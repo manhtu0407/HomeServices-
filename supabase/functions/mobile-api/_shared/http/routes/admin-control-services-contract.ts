@@ -23,6 +23,13 @@ import type {
   AdminWorkerApplicationListInput,
   AdminWorkerApplicationListResponse,
   AdminWorkerApplicationSummary,
+  AdminWorkerReviewDetail,
+  AdminWorkerProfileDecisionInput,
+  AdminWorkerProfileDecisionResponse,
+  EdgeAdminOperatorProvisionInput,
+  AdminOperatorProvisionResponse,
+  EdgeAdminOperatorResetPasswordInput,
+  AdminOperatorResetPasswordResponse,
 } from "../../domains/contracts/admin-control.ts";
 import type {
   AdminPayoutMethodDecisionInput,
@@ -62,6 +69,15 @@ export type AdminControlServices = {
     ctx: MobileApiContext,
     applicationId: string,
   ): Promise<AdminWorkerApplicationSummary>;
+  getAdminWorkerReviewDetail(
+    ctx: MobileApiContext,
+    applicationId: string,
+  ): Promise<AdminWorkerReviewDetail>;
+  decideAdminWorkerProfile(
+    ctx: MobileApiContext,
+    applicationId: string,
+    input: AdminWorkerProfileDecisionInput,
+  ): Promise<AdminWorkerProfileDecisionResponse>;
   decideAdminWorkerApplication(
     ctx: MobileApiContext,
     applicationId: string,
@@ -128,6 +144,15 @@ export type AdminControlServices = {
     input: AdminFinanceBalanceSnapshotInput,
   ): Promise<AdminFinanceBalanceSnapshotResponse>;
   listAdminSubAdmins(ctx: MobileApiContext): Promise<AdminSubAdminListResponse>;
+  provisionAdminOperator(
+    ctx: MobileApiContext,
+    input: EdgeAdminOperatorProvisionInput,
+  ): Promise<AdminOperatorProvisionResponse>;
+  resetPendingAdminOperatorPassword(
+    ctx: MobileApiContext,
+    provisioningId: string,
+    input: EdgeAdminOperatorResetPasswordInput,
+  ): Promise<AdminOperatorResetPasswordResponse>;
   searchAdminSubAdminAccounts(
     ctx: MobileApiContext,
     input: AdminSubAdminAccountSearchInput,
