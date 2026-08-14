@@ -121,4 +121,3 @@ revoke execute on function public.claim_job_incident_scope_proposal_atomic(
 grant execute on function public.claim_job_incident_scope_proposal_atomic(
   uuid, uuid, uuid, uuid
 ) to service_role;
-
