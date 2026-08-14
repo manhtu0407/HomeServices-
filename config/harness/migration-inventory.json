@@ -5,8 +5,8 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 262,
-  "migrationsSha256": "20ef961b29d19cc27ed1e67288a44544603e94b670e99d6e391d8ffd658c3cba",
+  "migrationCount": 263,
+  "migrationsSha256": "a95fff2163eaa14b44cee7b05a6cc0e39af7433516d05f45b83234b96d53c074",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "25b9cc87c67d8d12c908d715e0ed2509fb5847a2fbcbb0ba2d06b539fb74f987"
@@ -1845,6 +1845,13 @@
       "file": "supabase/migrations/20260814111500_verified_pipe_leak_repair_price.sql",
       "sha256": "90ef413e7f3cb2e1f4bde6339afde6f19cebabd2a9f672ec3ae30244937011fb",
       "bytes": 4458
+    },
+    {
+      "version": "20260814111600",
+      "name": "harden_price_evidence_shape_check",
+      "file": "supabase/migrations/20260814111600_harden_price_evidence_shape_check.sql",
+      "sha256": "cf04d296fffb1a8e4ce679d2f4ec732dce0a3a53f3c873544cc276c39af96681",
+      "bytes": 575
     }
   ]
 }
