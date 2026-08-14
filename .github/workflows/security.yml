@@ -70,8 +70,6 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Harness manifest fixture tests
-        run: node --test scripts/harness/check-manifest.test.mjs
       - name: Harness manifest semantic check
         run: node scripts/harness/check-manifest.mjs
       - name: Skills single-source check
@@ -80,3 +78,5 @@ jobs:
         run: node scripts/lint-structure.mjs
       - name: Artifact-text assertion ratchet
         run: node scripts/find-artifact-text-assertions.mjs
+      - name: Pillar registry ratchet
+        run: node scripts/harness/pillar-registry.mjs

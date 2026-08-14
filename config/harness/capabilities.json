@@ -2207,8 +2207,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "money",
       "operationClass": "money_impacting",
@@ -2231,8 +2230,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "money",
       "operationClass": "money_impacting",
@@ -2298,8 +2296,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",
@@ -2345,8 +2342,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",
@@ -2369,8 +2365,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "provider_call",
@@ -2393,8 +2388,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "read",
       "operationClass": "database_read",
@@ -2417,8 +2411,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",
@@ -2487,8 +2480,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "read",
       "operationClass": "database_read",
@@ -2511,8 +2503,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "provider_call",
@@ -2535,8 +2526,7 @@
       ],
       "roles": [
         "admin",
-        "customer",
-        "worker"
+        "customer"
       ],
       "risk": "write",
       "operationClass": "idempotent_write",

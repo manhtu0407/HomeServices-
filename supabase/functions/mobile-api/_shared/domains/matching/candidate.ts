@@ -109,11 +109,14 @@ export async function confirmWorkerCandidate(
   const workerId = nullableString(row.worker_id);
   if (!workerId) apiFailure("DB_ERROR", "Dữ liệu thợ xác nhận không hợp lệ", 500);
   const alreadyApplied = row.already_applied === true;
+  const returnedStatus = asJobStatus(row.job_status);
   if (!alreadyApplied) {
+    // Checked against the status the RPC actually landed on, not against the one this branch
+    // expects. Asserting a literal against a literal answers a question nobody asked.
     const transition = validateWorkflowTransition({
       event: "customer_confirmed_worker",
       from: "worker_candidate_pending",
-      to: "worker_matched",
+      to: returnedStatus,
     });
     if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
     await logJobEvent(client, jobId, "customer_confirmed_worker", ctx,
@@ -163,7 +166,7 @@ export async function rejectWorkerCandidate(
     const transition = validateWorkflowTransition({
       event: "customer_rejected_worker",
       from: "worker_candidate_pending",
-      to: "broadcasting",
+      to: returnedStatus,
     });
     if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
     await logJobEvent(client, jobId, "customer_rejected_worker", ctx,

@@ -5,7 +5,7 @@ description: Test-driven workflow for the NestScout codebase. Use when implement
 
 # kael-tdd
 
-Auto-trigger wrapper. Full procedure is canonical in `governance/protocols/tdd.md` — do not duplicate it here.
+Auto-trigger wrapper. Full procedure is canonical in `governance/protocols/tdd.md` — do not duplicate it here. Before writing a test file, read `governance/protocols/test-pillars.md`: it holds the pattern catalogue, the required `PILLAR` manifest, and the worked example to copy for each layer.
 
 When this fires:
 

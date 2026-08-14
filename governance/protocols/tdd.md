@@ -4,6 +4,8 @@
 
 Load for: features, bugfixes, behavior/security/AI/Supabase changes, and non-trivial refactors.
 
+Pair with [`protocols/test-pillars.md`](test-pillars.md) whenever you actually write a test. This file rules on *what counts* as a layer; that one carries the pattern catalogue, the `PILLAR` manifest every test file must export, and a worked example of each shape. The pillar suite is the only suite the runners collect — `scripts/harness/pillar-registry.mjs` enforces it in CI.
+
 ## 7. Kael Protocol: `kael-tdd`
 
 Use for every feature, bugfix, behavior change, security fix, AI boundary change, Supabase change, and non-trivial refactor.

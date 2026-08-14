@@ -8,6 +8,16 @@
 --
 -- Run against a staging-linked project only:
 --   supabase db query --linked -f supabase/tests/staging_security_verification.sql -o json
+--
+-- @pillar id: P10-per-actor-rls
+-- @pillar invariant: every actor reads and writes only what its role allows, and the matrix
+--   raises instead of merely recording when any check fails
+-- @pillar authority: governance/RULES.md Security Invariants | docs/test-debt-ledger.md §2
+-- @pillar target: supabase/tests/staging_security_verification.sql
+-- @pillar layer: sql
+-- @pillar siblings: P03-direct-payment-availability, P06-payment-unlock-gate
+-- @pillar mutation: flip one expected count in any `insert into security_results` row --
+--   the verdict block names that check and the script exits nonzero
 -- =============================================================================
 
 begin;
@@ -551,5 +561,47 @@ select
   null
 from security_results
 order by test_name;
+
+-- The matrix above only records verdicts. run-sql-tests.ps1 fails a file solely on a nonzero
+-- psql exit under ON_ERROR_STOP, so without the block below a failing actor check printed
+-- pass=false and the runner still reported PASS. The empty-matrix branch matters for the same
+-- reason: if fixture setup silently produced no rows, "zero failures" would also be vacuously
+-- true.
+do $p10_verdict$
+declare
+  total_checks integer;
+  failed_count integer;
+  failed_detail text;
+begin
+  select count(*), count(*) filter (where not pass)
+    into total_checks, failed_count
+  from security_results;
+
+  if total_checks = 0 then
+    raise exception
+      'P10 per-actor RLS: no check was recorded, so the actor matrix verified nothing. authority: governance/RULES.md Security Invariants. next: P03-direct-payment-availability, P06-payment-unlock-gate';
+  end if;
+
+  if failed_count > 0 then
+    select string_agg(
+             format(
+               '%s (expected %s, actual %s%s)',
+               test_name,
+               expected,
+               actual,
+               case when detail is null then '' else '; ' || detail end
+             ),
+             ' | ' order by test_name
+           )
+      into failed_detail
+    from security_results
+    where not pass;
+
+    raise exception
+      'P10 per-actor RLS: % of % checks failed -> %. authority: governance/RULES.md Security Invariants. next: P03-direct-payment-availability, P06-payment-unlock-gate',
+      failed_count, total_checks, failed_detail;
+  end if;
+end;
+$p10_verdict$;
 
 rollback;
