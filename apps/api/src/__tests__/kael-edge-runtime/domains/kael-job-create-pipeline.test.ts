@@ -541,4 +541,31 @@ describe('job-create-pipeline', () => {
       ]),
     })
   })
+
+  it('produces an honest hinge-adjustment estimate from the verified small-job baseline', async () => {
+    const supabase = makeSequenceClient([
+      { data: [{ id: 'hinge-problem', default_complexity: 'small' }], error: null },
+      { data: [{ complexity: 'small', price_min: 150000, price_max: 350000, district_code: 'hcmc_all' }], error: null },
+    ])
+
+    const result = await runKaelPipeline({
+      serviceType: 'handyman',
+      problemChips: ['Sửa bản lề/tay nắm'],
+      description: 'Một cánh tủ bếp bị xệ, hai bản lề còn tốt nhưng vít lỏng và cần căn chỉnh.',
+      district: 'q7',
+    }, supabase, {})
+
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error('verified hinge baseline must produce an estimate')
+    expect(result.serviceProblemId).toBe('hinge-problem')
+    expect(result.estimate).toMatchObject({
+      service_type: 'handyman',
+      problem_category: 'repair_hinge_or_handle',
+      complexity: 'small',
+      price_min: 150000,
+      price_max: 350000,
+      confidence: 0.4,
+      needs_inspection: false,
+    })
+  })
 })

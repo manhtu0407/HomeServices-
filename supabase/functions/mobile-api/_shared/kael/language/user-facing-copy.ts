@@ -51,6 +51,7 @@ const PROBLEM_COPY: Record<string, Record<KaelLanguage, string>> = {
   power_outage_one_room: { en: "Power outage in one room", vi: "Mất điện một phòng" },
   power_outage_whole_unit: { en: "Power outage in the whole home", vi: "Mất điện toàn căn" },
   repair_hinge_or_handle: { en: "Repair a hinge or handle", vi: "Sửa bản lề hoặc tay nắm" },
+  replace_cabinet_hinges: { en: "Replace two cabinet hinges", vi: "Thay hai bản lề tủ" },
   routine_hvac_cleaning: { en: "Air conditioner cleaning", vi: "Vệ sinh điều hòa" },
   sofa_cleaning: { en: "Sofa cleaning", vi: "Vệ sinh sofa" },
   stain_treatment: { en: "Stain treatment", vi: "Xử lý vết bẩn" },

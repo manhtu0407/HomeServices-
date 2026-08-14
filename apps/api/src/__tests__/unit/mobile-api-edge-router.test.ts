@@ -132,6 +132,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     requestScopeChange: vi.fn(),
     getJobIncident: vi.fn(async () => ({ incident: null })),
     openJobIncident: vi.fn(async () => ({ incident: null })),
+    previewScopeChangeFromJobIncident: vi.fn(),
     proposeScopeChangeFromJobIncident: vi.fn(),
     askKaelForWorker: vi.fn(),
     createWorkerKaelChat: vi.fn(),
@@ -2615,9 +2616,13 @@ describe('mobile-api Edge router contract', () => {
     )
   })
 
-  it('keeps Kael job incident opening, readback, and proposal behind their dedicated Edge routes', async () => {
+  it('keeps Kael job incident opening, readback, price preview, and proposal behind dedicated Edge routes', async () => {
     const openJobIncident = vi.fn(async () => ({ incident: null }))
     const getJobIncident = vi.fn(async () => ({ incident: null }))
+    const previewScopeChangeFromJobIncident = vi.fn(async () => ({
+      incident: {} as never,
+      quote: {} as never,
+    }))
     const proposeScopeChangeFromJobIncident = vi.fn(async () => ({
       incident: {
         id: 'incident-1',
@@ -2639,7 +2644,12 @@ describe('mobile-api Edge router contract', () => {
     }))
     const handler = createMobileApiHandler({
       authenticate: vi.fn(async () => workerAuth),
-      services: makeServices({ openJobIncident, getJobIncident, proposeScopeChangeFromJobIncident }),
+      services: makeServices({
+        getJobIncident,
+        openJobIncident,
+        previewScopeChangeFromJobIncident,
+        proposeScopeChangeFromJobIncident,
+      }),
     })
     const jobId = '22222222-2222-4222-8222-222222222222'
     const incidentRequestId = 'a7400000-0000-4000-8000-000000000002'
@@ -2655,20 +2665,28 @@ describe('mobile-api Edge router contract', () => {
       }),
     }))
     const read = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident`))
+    const previewRequestId = 'a7500000-0000-4000-8000-000000000002'
+    const previewed = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident/preview-scope`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_request_id: previewRequestId }),
+    }))
     const rejectedProposal = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident/propose-scope`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{}',
     }))
     const proposalRequestId = 'a7500000-0000-4000-8000-000000000003'
+    const quoteId = 'a7500000-0000-4000-8000-000000000004'
     const proposed = await handler(new Request(`https://example.test/mobile-api/jobs/${jobId}/kael-incident/propose-scope`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_request_id: proposalRequestId }),
+      body: JSON.stringify({ client_request_id: proposalRequestId, quote_id: quoteId }),
     }))
 
     expect(opened.status).toBe(201)
     expect(read.status).toBe(200)
+    expect(previewed.status).toBe(200)
     expect(rejectedProposal.status).toBe(400)
     expect(proposed.status).toBe(200)
     expect(openJobIncident).toHaveBeenCalledWith(
@@ -2677,11 +2695,16 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({ client_request_id: incidentRequestId, photo_urls: [] }),
     )
     expect(getJobIncident).toHaveBeenCalledWith(expect.objectContaining({ role: 'worker' }), jobId)
+    expect(previewScopeChangeFromJobIncident).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      jobId,
+      { client_request_id: previewRequestId },
+    )
     expect(proposeScopeChangeFromJobIncident).toHaveBeenCalledTimes(1)
     expect(proposeScopeChangeFromJobIncident).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'worker' }),
       jobId,
-      { client_request_id: proposalRequestId },
+      { client_request_id: proposalRequestId, quote_id: quoteId },
     )
   })
 

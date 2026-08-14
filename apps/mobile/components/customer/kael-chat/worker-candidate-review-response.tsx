@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
@@ -55,6 +56,7 @@ function WorkerCandidateReviewContent({
   const [finalReviewOpen, setFinalReviewOpen] = useState(false)
   const displayName = candidate?.display_name?.trim() || (language === 'vi' ? 'Hồ sơ thợ' : 'Worker profile')
   const facts = candidate ? candidateFacts(candidate, language) : []
+  const personalFacts = candidate ? candidatePersonalFacts(candidate, language) : []
   const paymentEligibility = candidate
     ? paymentEligibilityCopy(candidate.direct_payment_available, language)
     : null
@@ -159,7 +161,36 @@ function WorkerCandidateReviewContent({
           ) : null}
           {candidate ? (
             <>
-              <Text style={[styles.name, { color: tokens.text }]}>{displayName}</Text>
+              <View style={styles.identity} testID="customer-v21-worker-candidate-identity">
+                <View style={[styles.avatarFrame, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
+                  {candidate.avatar_url ? (
+                    <Image
+                      accessibilityIgnoresInvertColors
+                      accessibilityLabel={language === 'vi' ? `Ảnh đại diện của ${displayName}` : `${displayName}'s profile photo`}
+                      contentFit="cover"
+                      source={{ uri: candidate.avatar_url }}
+                      style={styles.avatar}
+                      testID="customer-v21-worker-candidate-avatar"
+                    />
+                  ) : (
+                    <Text
+                      accessibilityLabel={language === 'vi' ? `Chưa có ảnh đại diện của ${displayName}` : `${displayName} has no profile photo`}
+                      style={[styles.avatarFallback, { color: tokens.primary }]}
+                      testID="customer-v21-worker-candidate-avatar-fallback"
+                    >
+                      {initialsForCandidate(displayName)}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.identityCopy}>
+                  <Text style={[styles.name, { color: tokens.text }]}>{displayName}</Text>
+                  {personalFacts.length > 0 ? (
+                    <Text style={[styles.personalFacts, { color: tokens.muted }]} testID="customer-v21-worker-candidate-personal-facts">
+                      {personalFacts.join(' · ')}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
               {candidate.is_favorite ? (
                 <Text style={[styles.meta, { color: tokens.primary }]} testID="customer-v21-worker-candidate-favorite">
                   {language === 'vi' ? 'Đã lưu trong danh sách yêu thích' : 'Saved as a favorite worker'}
@@ -269,18 +300,51 @@ function candidateFacts(candidate: WorkerCandidateView, language: AppLanguage) {
   return facts
 }
 
+function candidatePersonalFacts(candidate: WorkerCandidateView, language: AppLanguage) {
+  const facts: string[] = []
+  if (typeof candidate.birth_year === 'number' && Number.isSafeInteger(candidate.birth_year)) {
+    facts.push(language === 'vi' ? `Sinh năm ${candidate.birth_year}` : `Born ${candidate.birth_year}`)
+  }
+  if (candidate.gender) {
+    const labels = language === 'vi'
+      ? { female: 'Nữ', male: 'Nam', other: 'Khác' }
+      : { female: 'Female', male: 'Male', other: 'Other' }
+    facts.push(labels[candidate.gender])
+  }
+  return facts
+}
+
+function initialsForCandidate(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return parts.slice(-2).map((part) => part[0]?.toLocaleUpperCase() ?? '').join('') || 'K'
+}
+
 const styles = StyleSheet.create({
   action: { flex: 1 },
   actions: { flexDirection: 'row', gap: 10 },
+  avatar: { height: '100%', width: '100%' },
+  avatarFallback: { fontSize: 18, fontWeight: '800', letterSpacing: 0.3 },
+  avatarFrame: {
+    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 64,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 64,
+  },
   body: { fontSize: 13, lineHeight: 19 },
-  details: { gap: 8 },
+  details: { gap: 9 },
   error: { fontSize: 12, lineHeight: 18 },
   facts: { fontSize: 13, fontWeight: '600', lineHeight: 20 },
   finalReview: { gap: 12 },
+  identity: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 5 },
+  identityCopy: { flex: 1, gap: 3 },
   loading: { alignItems: 'center', flexDirection: 'row', gap: 9 },
   meta: { fontSize: 12, fontWeight: '600', lineHeight: 18 },
   name: { fontSize: 17, fontWeight: '700', lineHeight: 23 },
   notice: { fontSize: 12, lineHeight: 18 },
+  personalFacts: { fontSize: 12, lineHeight: 18 },
   paymentEligibility: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, gap: 3, padding: 12 },
   paymentTitle: { fontSize: 13, fontWeight: '700', lineHeight: 19 },
   savedHeader: { gap: 3 },

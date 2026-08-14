@@ -1,0 +1,124 @@
+{
+  "schema_version": "price_source_evidence_ledger.v1",
+  "audit_id": "price_baseline_water_pressure_20260814",
+  "verified_at": "2026-08-14",
+  "verified_by": "codex_agentic_e2e_price_audit",
+  "decision": "accepted_for_three_source_high_value_hcmc_baseline",
+  "normalization_target": "per_visit",
+  "aggregate": {
+    "method": "equal_weight_mean_of_t1_t2_ranges_rounded_to_nearest_1000_vnd",
+    "price_min": 700000,
+    "price_max": 1200000,
+    "currency": "VND"
+  },
+  "sources": [
+    {
+      "domain": "1fix.vn",
+      "publisher": "Công ty TNHH TM&DV Sửa Chữa Nhanh",
+      "price_url": "https://1fix.vn/dich-vu-do-tim-ro-ri-nuoc-ro-ri-nuoc-am-nen-nha-am-tuong",
+      "identity_url": "https://1fix.vn/gioi-thieu",
+      "source_published_at": "2026-08-12",
+      "date_basis": "page_date_modified",
+      "observed_at": "2026-08-14",
+      "identity": {
+        "registration_or_tax_id": "0315126341",
+        "location": "TP.HCM"
+      },
+      "published_price": {
+        "label": "Dò tìm vị trí rò rỉ nước bằng máy siêu âm chuyên dụng",
+        "price_min": 500000,
+        "price_max": 1200000,
+        "unit": "per_visit",
+        "currency": "VND"
+      },
+      "scope_note": "Giá khảo sát bằng máy; chưa gồm chi phí sửa chữa sau khi xác định điểm rò.",
+      "criteria": {
+        "A_identity": true,
+        "B_source_type": true,
+        "C_hcmc_relevant": true,
+        "D_clear_price_and_unit": true,
+        "E_fresh_within_12_months": true,
+        "F_source_controlled_integrity": true,
+        "G_evidence_stored": true
+      },
+      "artifacts": {
+        "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-1fix-20260814-price.png",
+        "price_snapshot_sha256": "129C4E16A02AD34B608D85BB76FC693E25C02BE28B52C43550675BF62775626B",
+        "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-1fix-20260814-identity.png",
+        "identity_snapshot_sha256": "A4D33F90F976DB76B314FE6D7BBE9F6AFA6FAC2944561818A7872B6DF3D8BA00"
+      }
+    },
+    {
+      "domain": "aloviecnha.com",
+      "publisher": "Công ty Alo Việc Nhà",
+      "price_url": "https://www.aloviecnha.com/do-tim-ro-ri-nuoc",
+      "identity_url": "https://www.aloviecnha.com/do-tim-ro-ri-nuoc",
+      "source_published_at": "2026-07-18",
+      "date_basis": "page_date_modified",
+      "observed_at": "2026-08-14",
+      "identity": {
+        "registration_or_tax_id": null,
+        "location": "TP.HCM"
+      },
+      "published_price": {
+        "label": "Dò Nước Dò Rỉ 2 - máy dò chuyên dụng cho ống ngầm",
+        "price_min": 800000,
+        "price_max": 1200000,
+        "unit": "per_visit",
+        "currency": "VND"
+      },
+      "scope_note": "Một lần cung cấp dịch vụ dò tìm; không dùng làm giá sửa chữa phần ống bị hỏng.",
+      "criteria": {
+        "A_identity": true,
+        "B_source_type": true,
+        "C_hcmc_relevant": true,
+        "D_clear_price_and_unit": true,
+        "E_fresh_within_12_months": true,
+        "F_source_controlled_integrity": true,
+        "G_evidence_stored": true
+      },
+      "artifacts": {
+        "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-aloviecnha-20260814-price.png",
+        "price_snapshot_sha256": "FB838E2872E9CB1F1DD91FBB64E87D016C491269796F88C73C1B93C47B688081",
+        "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-aloviecnha-20260814-identity.png",
+        "identity_snapshot_sha256": "E4129EFA0F1EDE39A95A0E599925BA8D3596D7AC79E1D8EFB7AE2E9901C7AE0C"
+      }
+    },
+    {
+      "domain": "thoviet.com.vn",
+      "publisher": "Công ty TNHH Dịch vụ Kỹ thuật Thợ Việt",
+      "price_url": "https://thoviet.com.vn/do-nuoc-ri",
+      "identity_url": "https://thoviet.com.vn/do-nuoc-ri",
+      "source_published_at": "2026-08-01",
+      "date_basis": "displayed_price_table_month_08_2026",
+      "observed_at": "2026-08-14",
+      "identity": {
+        "registration_or_tax_id": null,
+        "location": "TP.HCM"
+      },
+      "published_price": {
+        "label": "Dò Nước Dò Rỉ 2 - máy dò chuyên dụng cho ống ngầm",
+        "price_min": 800000,
+        "price_max": 1200000,
+        "unit": "per_visit",
+        "currency": "VND"
+      },
+      "scope_note": "Bảng giá ghi rõ áp dụng TP.HCM và thay đổi theo điều kiện khảo sát; quy đổi một dịch vụ tại nhà thành một lần khảo sát.",
+      "criteria": {
+        "A_identity": true,
+        "B_source_type": true,
+        "C_hcmc_relevant": true,
+        "D_clear_price_and_unit": true,
+        "E_fresh_within_12_months": true,
+        "F_source_controlled_integrity": true,
+        "G_evidence_stored": true
+      },
+      "artifacts": {
+        "price_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-thoviet-20260814-full.png",
+        "price_snapshot_sha256": "55A9FA2B5E89736144D2B2B79E054DE353DB8E8D1474B7DACA3D1C29E382A306",
+        "identity_snapshot": "docs/foundation/source-trust-samples/price-baseline-water-pressure-thoviet-20260814-full.png",
+        "identity_snapshot_sha256": "55A9FA2B5E89736144D2B2B79E054DE353DB8E8D1474B7DACA3D1C29E382A306"
+      }
+    }
+  ]
+}

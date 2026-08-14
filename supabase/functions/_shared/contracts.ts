@@ -34,6 +34,42 @@ export type KaelEstimateAnalysisReceipt = {
   };
 };
 
+type BaselinePriceEvidenceReceiptResponse = {
+  schema_version: "baseline_price_evidence_receipt.v1";
+  accepted_source_count: number;
+  aggregate_price_min: number;
+  aggregate_price_max: number;
+  high_trust_source_count: number;
+  quorum_met: true;
+  required_quorum: number;
+  unit: BaselinePriceEvidenceUnitResponse;
+  sources: BaselinePriceEvidenceSourceResponse[];
+};
+
+type BaselinePriceEvidenceSourceResponse = {
+  domain: string;
+  url: string;
+  observed_at: string;
+  price_min: number;
+  price_max: number;
+  unit: BaselinePriceEvidenceUnitResponse;
+  effective_tier: 1 | 2;
+  weight: number;
+  normalization?: {
+    original_price_min: number;
+    original_price_max: number;
+    original_unit: "per_item";
+    quantity: number;
+    calculation: string;
+  };
+};
+
+type BaselinePriceEvidenceUnitResponse =
+  | "per_visit"
+  | "per_cabinet_door"
+  | "per_repair_point"
+  | "per_item";
+
 type KaelPriceReasoningReceipt = {
   schema_version: "price_reasoning_receipt.v1";
   receipt_id: string;
@@ -87,6 +123,7 @@ type KaelPriceReasoningReceipt = {
       | "baseline_only"
       | "inspection_required";
     confidence: "low" | "medium" | "high";
+    baseline_evidence?: BaselinePriceEvidenceReceiptResponse | null;
     market_source_count: number | null;
     high_trust_source_count: number | null;
     quorum_met: boolean | null;

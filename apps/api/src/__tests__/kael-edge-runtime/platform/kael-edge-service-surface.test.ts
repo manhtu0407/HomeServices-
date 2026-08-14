@@ -96,6 +96,7 @@ describe('edge-service-surface', () => {
       'listKaelLearningCandidates',
       'listWorkerKaelChats',
       'listWorkerWithdrawalRequests',
+      'previewScopeChangeFromJobIncident',
       'processKaelBatchResults',
       'processKaelLearningQueue',
       'proposeScopeChangeFromJobIncident',

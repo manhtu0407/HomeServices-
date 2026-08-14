@@ -14,8 +14,11 @@ import {
   mapDirectScopeClaimError,
   parseScopeChangeReplay,
   prepareScopeChangeEstimate,
-  releaseDirectScopeClaim,
 } from "./support.ts";
+import {
+  assertWorkerQuoteConfirmation,
+  releaseDirectScopeClaim,
+} from "./claim-support.ts";
 import { db, dbQuery } from "../../../platform/db.ts";
 import { apiFailure } from "../../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../../platform/auth.ts";
@@ -23,6 +26,7 @@ import { requireJobAccess } from "../../../platform/access.ts";
 import { validateWorkflowTransition } from "../../../workflow-orchestrator.ts";
 import { type EdgeAiSecrets, updateKaelProgress } from "../../../kael/index.ts";
 import type { JobStatus, ScopeChangeStatus } from "../../../../../_shared/domain.ts";
+import { bindAcceptedScopeChangeWorkerQuote } from "./worker-quote.ts";
 
 export {
   decideScopeChange,
@@ -42,12 +46,17 @@ export async function requestScopeChange(
   input: ScopeChangeRequestInput,
   secrets: EdgeAiSecrets,
   incidentProposal?: IncidentScopeChangeProposal,
+  workerAcceptedQuote?: {
+    confirmedAt: string;
+    quoteId: string;
+    storedQuote: unknown;
+  },
 ) {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
     select:
-      "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max",
+      "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_estimate_card_v3",
   });
   const evidencePhotoRefs = await validateScopeChangeEvidenceRefs(
     client,
@@ -78,6 +87,10 @@ export async function requestScopeChange(
     return directClaim.response;
   }
   const claimId = directClaim?.kind === "claimed" ? directClaim.claimId : null;
+  await assertWorkerQuoteConfirmation(
+    client, jobId, ctx.user.id, input.client_request_id, claimId,
+    Boolean(workerAcceptedQuote),
+  );
   const originalPriceMax = await validateScopeChangeRequestState(
     client,
     ctx,
@@ -86,7 +99,7 @@ export async function requestScopeChange(
     input,
     claimId,
   );
-  const prepared = await prepareScopeChangeEstimate({
+  let prepared = await prepareScopeChangeEstimate({
     client,
     ctx,
     job,
@@ -97,6 +110,30 @@ export async function requestScopeChange(
     evidencePhotoRefs,
     directClaimId: claimId,
   });
+  const confirmedEstimate = workerAcceptedQuote
+    ? bindAcceptedScopeChangeWorkerQuote({
+      estimate: prepared.enrichedEstimate,
+      quoteId: workerAcceptedQuote.quoteId,
+      storedQuote: workerAcceptedQuote.storedQuote,
+      confirmedAt: workerAcceptedQuote.confirmedAt,
+    })
+    : null;
+  if (!confirmedEstimate) {
+    await releaseDirectScopeClaim(
+      client,
+      jobId,
+      ctx.user.id,
+      input.client_request_id,
+      claimId,
+      "WORKER_QUOTE_CONFIRMATION_REQUIRED",
+    );
+    apiFailure(
+      "WORKER_QUOTE_CHANGED",
+      "Bảng giá hoặc mức hoa hồng đã thay đổi. Thợ cần xem lại tổng khách trả và thu nhập rồi xác nhận lại.",
+      409,
+    );
+  }
+  prepared = { ...prepared, enrichedEstimate: confirmedEstimate };
   const learningInput = buildScopeChangeLearningInput(
     ctx,
     job,

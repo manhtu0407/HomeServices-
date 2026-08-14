@@ -43,6 +43,7 @@ export type {
   LocalDealPayment,
   LocalDealSource,
   LocalKaelProgress,
+  LocalJobIncidentReview,
   LocalPaymentStatus,
   LocalRemoteBroadcastSnapshot,
   LocalRemoteJobSnapshot,

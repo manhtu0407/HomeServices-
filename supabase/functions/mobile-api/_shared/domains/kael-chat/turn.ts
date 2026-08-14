@@ -22,7 +22,6 @@ import {
 } from "../../kael/index.ts";
 import {
   sanitizeCustomerCaseEvidenceText,
-  sanitizeUntrustedEvidenceList,
 } from "../../kael/evidence/untrusted-evidence.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
@@ -41,7 +40,10 @@ import {
   maybeApplyKaelBoundaryGuard,
   maybeHandleDemandingCustomerKaelChatTurn,
 } from "./guard.ts";
-import { resolveKaelChatAddressDistrict } from "./intake.ts";
+import {
+  resolveKaelChatAddressDistrict,
+  resolveKaelChatProblemChips,
+} from "./intake.ts";
 import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./intake-safety.ts";
 import { createSignedVisionUrls } from "./media-vision.ts";
 import { validateAndConsumeKaelChatEvidenceMediaRefs } from "./media-upload.ts";
@@ -80,7 +82,7 @@ export async function sendKaelChatTurn(
     client
       .from("kael_chat_sessions")
       .select(
-        "id, job_id, customer_id, service_type, status, total_turns, safe_metadata, diagnosis_scope",
+        "id, job_id, customer_id, service_type, status, case_phase, total_turns, safe_metadata, diagnosis_scope",
       )
       .eq("id", sessionId)
       .single(),
@@ -143,8 +145,9 @@ async function persistIncomingKaelChatTurn(input: {
   const previousMetadata = asRecord(input.session.safe_metadata);
   assertIntakeConfirmationCompleted(previousMetadata);
   const language = input.input.language ?? (previousMetadata.language === "en" ? "en" : "vi");
-  const safeProblemChips = sanitizeUntrustedEvidenceList(
-    input.input.problem_chips ?? asStringArray(previousMetadata.problem_chips),
+  const safeProblemChips = resolveKaelChatProblemChips(
+    input.input.problem_chips,
+    asStringArray(previousMetadata.problem_chips),
   );
   const sanitizedEvidenceItems = sanitizeCaseWorkEvidenceItems(input.input.evidence_items ?? []);
   const evidenceRefs = await validateAndConsumeKaelChatEvidenceMediaRefs(
@@ -312,6 +315,8 @@ async function handleIncomingKaelChatTurnBoundary(input: {
     actorId: input.ctx.user.id,
     jobId: nullableString(input.session.job_id),
     status: input.persisted.status,
+    casePhase: input.session.case_phase,
+    diagnosisScope: input.session.diagnosis_scope,
     metadata: input.persisted.metadata,
     message: input.persisted.message,
     qaCount: input.persisted.qaCount,

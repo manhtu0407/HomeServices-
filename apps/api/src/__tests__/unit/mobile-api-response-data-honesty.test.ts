@@ -461,4 +461,99 @@ describe('mobile-api response data honesty', () => {
       status: 500,
     })
   })
+
+  it('includes status in the access projection before hydrating a persisted incident quote', async () => {
+    const selectedColumns: string[] = []
+    const client = {
+      from(table: string) {
+        let projection = ''
+        const chain: Record<string, unknown> = {}
+        for (const method of ['eq', 'limit', 'maybeSingle', 'order', 'single']) {
+          chain[method] = () => chain
+        }
+        chain.select = (columns: string) => {
+          projection = columns
+          selectedColumns.push(columns)
+          return chain
+        }
+        chain.then = (onfulfilled?: (value: QueryResult) => unknown) => {
+          const source = table === 'jobs'
+            ? {
+                id: 'job-1',
+                status: 'inspecting',
+                customer_id: 'customer-1',
+                worker_id: 'worker-1',
+              }
+            : {
+                id: 'incident-1',
+                job_id: 'job-1',
+                status: 'ready_for_scope_proposal',
+                revision: 13,
+                evidence_status: 'ready',
+                last_summary: 'Kael đã kiểm tra dữ kiện hiện trường.',
+                last_question: null,
+                last_next_actor: 'worker',
+                scope_price_quote_id: 'a7500000-0000-4000-8000-000000000010',
+                scope_price_quote: {
+                  schema_version: 'scope_change_worker_quote.v1',
+                  quote_id: 'a7500000-0000-4000-8000-000000000010',
+                  incident_id: 'incident-1',
+                  job_id: 'job-1',
+                  customer_total: 300000,
+                  platform_fee: 45000,
+                  worker_net: 255000,
+                  commission_level: 1,
+                  commission_rate_bps: 1500,
+                  reference_price_min: 240000,
+                  reference_price_max: 360000,
+                  baseline_used: 'handyman:replace_cabinet_hinges:small:hcmc_all',
+                  baseline_source: 'verified-test-source',
+                  baseline_evidence: {
+                    schema_version: 'baseline_price_evidence_receipt.v1',
+                    accepted_source_count: 2,
+                    aggregate_price_min: 240000,
+                    aggregate_price_max: 360000,
+                    high_trust_source_count: 2,
+                    quorum_met: true,
+                    required_quorum: 2,
+                    unit: 'per_visit',
+                    sources: ['source-a.example', 'source-b.example'].map((domain) => ({
+                      domain,
+                      url: `https://${domain}/price`,
+                      observed_at: '2026-08-13',
+                      price_min: 240000,
+                      price_max: 360000,
+                      unit: 'per_visit',
+                      effective_tier: 1,
+                      weight: 1,
+                    })),
+                  },
+                  selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+                  calculation: '2 x 150000 VND = 300000 VND',
+                  expires_at: '2099-08-13T13:20:00.000Z',
+                },
+                scope_price_quote_revision: 13,
+                scope_price_quote_expires_at: '2099-08-13T13:20:00.000Z',
+                created_at: '2026-08-13T13:00:00.000Z',
+                updated_at: '2026-08-13T13:05:00.000Z',
+              }
+          const fields = new Set(projection.split(',').map((field) => field.trim()))
+          const data = Object.fromEntries(Object.entries(source).filter(([field]) => fields.has(field)))
+          return Promise.resolve({ data, error: null }).then(onfulfilled)
+        }
+        return chain
+      },
+    }
+
+    await expect(getJobIncident(context('worker', client as never), 'job-1')).resolves.toMatchObject({
+      incident: { id: 'incident-1', status: 'ready_for_scope_proposal' },
+      quote: {
+        quote_id: 'a7500000-0000-4000-8000-000000000010',
+        customer_total: 300000,
+        platform_fee: 45000,
+        worker_net: 255000,
+      },
+    })
+    expect(selectedColumns[0].split(',').map((field) => field.trim())).toContain('status')
+  })
 })

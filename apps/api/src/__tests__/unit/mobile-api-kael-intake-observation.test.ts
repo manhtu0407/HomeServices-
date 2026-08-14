@@ -72,6 +72,13 @@ describe('Kael intake eval observation boundary', () => {
     expect(isUnknownClarificationAnswer('Tôi cũng chưa rõ')).toBe(true)
     expect(isUnknownClarificationAnswer('Aptomat vẫn đang bật.')).toBe(false)
     expect(isGroundedClarificationAnswer('Chỉ có một hạng mục: khoan một vị trí.')).toBe(true)
+    const mixedGroundedAnswer = [
+      'Áp lực yếu ở toàn bộ căn hộ: vòi bếp, lavabo và vòi sen.',
+      'Van tổng tiếp cận bình thường.',
+      'Chưa biết loại ống vì ống đi âm.',
+    ].join(' ')
+    expect(isUnknownClarificationAnswer(mixedGroundedAnswer)).toBe(false)
+    expect(isGroundedClarificationAnswer(mixedGroundedAnswer)).toBe(true)
 
     const question = buildClarificationExplanationQuestion(
       'task_types_and_total_count',
@@ -228,6 +235,21 @@ describe('Kael intake eval observation boundary', () => {
     })
     expect(coverage.missing).toEqual([])
     expect(coverage.needsClarification).toBe(false)
+  })
+
+  it('requires one grounded profile fact when the provider returns none', () => {
+    const coverage = resolveIntakeFactCoverage({
+      serviceType: 'plumbing',
+      problemSlug: 'weak_water_pressure',
+      profileFacts: {},
+      providerMissingSlots: [],
+      providerNeedsClarification: false,
+      electricalPlaybookEnabled: false,
+    })
+
+    expect(coverage.missing).toEqual(['fixture_pipe_or_drain_type'])
+    expect(coverage.needsClarification).toBe(true)
+    expect(buildFocusedClarificationQuestion(coverage.missing[0], 'vi')).toContain('một vị trí hay nhiều vị trí')
   })
 
   it('asks only the provider-selected plumbing clarification instead of every unfilled driver', () => {

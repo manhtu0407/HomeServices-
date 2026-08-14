@@ -137,7 +137,7 @@ export async function createJob(
     status: "broadcasting" as JobStatus,
     estimate: preparation.estimate,
     estimate_card_v3: preparation.estimateCardV3,
-    final_price: preparation.lockedFinalPrice,
+    final_price: null,
     fallback_used: pipeline.fallbackUsed,
     broadcast_sent: broadcast.success,
     message: broadcast.success

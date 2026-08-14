@@ -11,6 +11,7 @@ export type WorkflowPhaseSourceOfTruth =
   | 'kael_chat_session'
   | 'hydrated_job'
   | 'broadcast'
+  | 'job_incident'
   | 'scope_change'
   | 'completion_evidence'
   | 'review'
@@ -47,6 +48,7 @@ export type WorkflowPhaseBlockedReason =
   | 'waiting_for_customer_worker_confirmation'
   | 'chat_requires_real_job'
   | 'chat_send_closed'
+  | 'scope_change_review_in_progress'
   | 'customer_scope_change_confirmation_required'
   | 'completion_evidence_required'
   | 'kael_completion_review_required'
@@ -223,6 +225,14 @@ const PHASE_CONTEXT_BY_PHASE = Object.freeze({
     primaryArtifact: 'booking',
     blockedReason: null,
     nextExpectedEvent: 'worker_completed',
+  },
+  scope_change_reviewing: {
+    title: text('Kael đang kiểm tra thay đổi phạm vi', 'Kael is reviewing the scope change'),
+    intent: text('Thợ đã báo phát sinh và Kael đang đối chiếu mô tả với bằng chứng. Giá cùng phạm vi cũ vẫn có hiệu lực; phần phát sinh chưa được phép thực hiện.', 'The worker reported a change and Kael is checking the description against evidence. The prior scope and price remain in effect; changed work is not authorized.'),
+    sourceOfTruth: 'job_incident',
+    primaryArtifact: 'scope_change',
+    blockedReason: 'scope_change_review_in_progress',
+    nextExpectedEvent: 'kael_decided_scope_change',
   },
   scope_change_pending: {
     title: text('Đề xuất đổi phạm vi chờ khách xác nhận', 'Scope proposal awaiting customer confirmation'),
@@ -428,6 +438,7 @@ const ACTIVE_TIMELINE_PHASES: readonly WorkflowPhase[] = [
   'arrived',
   'inspecting',
   'repairing',
+  'scope_change_reviewing',
   'scope_change_pending',
   'completed_by_worker',
   'customer_confirmed_completion',
@@ -441,6 +452,7 @@ const JOB_CHAT_PHASES: readonly WorkflowPhase[] = [
   'arrived',
   'inspecting',
   'repairing',
+  'scope_change_reviewing',
   'scope_change_pending',
   'completed_by_worker',
   'customer_confirmed_completion',
@@ -455,6 +467,7 @@ const JOB_CHAT_SEND_PHASES: readonly WorkflowPhase[] = [
   'arrived',
   'inspecting',
   'repairing',
+  'scope_change_reviewing',
   'scope_change_pending',
   'completed_by_worker',
   'customer_confirmed_completion',
@@ -507,6 +520,7 @@ export function workflowSourceOfTruthLabel(source: WorkflowPhaseSourceOfTruth, l
     kael_chat_session: text('Phiên Kael', 'Kael session'),
     hydrated_job: text('Công việc đã đồng bộ', 'Synced job'),
     broadcast: text('Luồng điều phối', 'Broadcast/job'),
+    job_incident: text('Phiên Kael tại hiện trường', 'On-site Kael incident'),
     scope_change: text('Thay đổi phạm vi', 'Scope change'),
     completion_evidence: text('Bằng chứng hoàn tất', 'Completion evidence'),
     review: text('Đánh giá', 'Review'),
@@ -556,6 +570,7 @@ export function workflowBlockedReasonLabel(reason: WorkflowPhaseBlockedReason, l
     waiting_for_customer_worker_confirmation: text('Chờ khách xác nhận thợ', 'Waiting for customer worker confirmation'),
     chat_requires_real_job: text('Chat cần công việc thật', 'Chat needs a real job'),
     chat_send_closed: text('Chat chỉ còn đọc lại', 'Chat is read-only now'),
+    scope_change_review_in_progress: text('Kael đang kiểm tra phát sinh; phần thay đổi vẫn bị khóa', 'Kael is reviewing the incident; changed work remains locked'),
     customer_scope_change_confirmation_required: text('Chờ khách xác nhận đề xuất đổi phạm vi', 'Waiting for customer scope confirmation'),
     completion_evidence_required: text('Cần bằng chứng hoàn tất', 'Completion evidence required'),
     kael_completion_review_required: text('Kael rà soát hoàn tất', 'Kael reviews completion'),
@@ -600,7 +615,7 @@ export function workflowArtifactModeLabel(mode: WorkflowArtifactMode, locale: Wo
 function sectionSummaryRank(section: WorkflowPhaseSection, phaseContext: WorkflowPhaseContext): number {
   if (phaseContext.primaryArtifact?.id === section.id) return 0
   if (phaseContext.phase === 'repairing' && section.id === 'completion_evidence') return 1
-  if ((phaseContext.phase === 'inspecting' || phaseContext.phase === 'repairing') && section.id === 'scope_change') return 2
+  if ((phaseContext.phase === 'inspecting' || phaseContext.phase === 'repairing' || phaseContext.phase === 'scope_change_reviewing') && section.id === 'scope_change') return 2
   if (section.sourceOfTruth === phaseContext.sourceOfTruth && section.artifact !== null) return 3
   if (section.sourceOfTruth === phaseContext.sourceOfTruth) return 4
   if (section.lockedReason) return 5

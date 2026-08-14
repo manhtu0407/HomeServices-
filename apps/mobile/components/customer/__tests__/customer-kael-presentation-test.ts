@@ -8,6 +8,7 @@ function derivePresentation({
   chat = null,
   deal = null,
   intakeDisplayMessage = null,
+  jobIncidentMessages = [],
   processLines = null,
   turns = [],
 }: {
@@ -16,6 +17,7 @@ function derivePresentation({
   chat?: KaelChatResponse | null
   deal?: Parameters<typeof deriveCustomerKaelPresentation>[0]['deal']
   intakeDisplayMessage?: string | null
+  jobIncidentMessages?: Parameters<typeof deriveCustomerKaelPresentation>[0]['jobIncidentMessages']
   processLines?: Parameters<typeof deriveCustomerKaelPresentation>[0]['processLines']
   turns?: KaelChatTurn[]
 }) {
@@ -26,7 +28,7 @@ function derivePresentation({
     chat,
     deal,
     intakeDisplayMessage,
-    jobIncidentMessages: [],
+    jobIncidentMessages,
     language: 'vi',
     loading: false,
     mode: 'case',
@@ -191,6 +193,20 @@ describe('customer Kael presentation', () => {
       'kael-question',
       'customer-answer',
     ])
+  })
+
+  it('keeps incident audit messages inside the dedicated scope-review phase instead of prepending them to chat', () => {
+    const presentation = derivePresentation({
+      deal: { id: 'job-a' } as Parameters<typeof deriveCustomerKaelPresentation>[0]['deal'],
+      jobIncidentMessages: [{
+        content: 'Kael Công việc: Kael đã đối chiếu phần việc phát sinh.',
+        id: 'incident-kael-1',
+        sender_role: 'kael',
+      }] as Parameters<typeof deriveCustomerKaelPresentation>[0]['jobIncidentMessages'],
+    })
+
+    expect(presentation.caseAssistantTurns).toEqual([])
+    expect(presentation.agenticVisibleTurns).toEqual([])
   })
 
   it('keeps the Pre-Step exchange but removes its duplicated persisted customer turn', () => {

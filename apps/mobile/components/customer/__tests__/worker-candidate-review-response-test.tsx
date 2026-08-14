@@ -5,6 +5,48 @@ import { getCustomerThemeTokens } from '../customer-theme'
 
 const tokens = getCustomerThemeTokens('light')
 
+it('places the real worker avatar before the name and shows only available personal facts', () => {
+  const view = render(
+    <WorkerCandidateReviewResponse
+      busy={false}
+      candidate={{
+        avatar_url: 'https://storage.example.test/worker-avatar.webp',
+        birth_year: 1990,
+        candidate_id: 'candidate-avatar',
+        customer_decided_at: null,
+        display_name: 'Nguyễn An',
+        expires_at: null,
+        gender: 'male',
+        is_favorite: false,
+        proposed_at: '2026-07-11T01:00:00.000Z',
+        rating: 4.9,
+        status: 'proposed',
+        total_jobs: 18,
+        verification_status: 'approved',
+        worker_id: 'worker-1',
+        years_experience: 3,
+      }}
+      error={null}
+      language="vi"
+      onConfirm={jest.fn()}
+      onReject={jest.fn()}
+      onRetry={jest.fn()}
+      onRetrySavedWorkers={jest.fn()}
+      onToggleFavorite={jest.fn()}
+      savedWorkers={[]}
+      savedWorkersStatus="ready"
+      tokens={tokens}
+    />,
+  )
+
+  expect(view.getByTestId('customer-v21-worker-candidate-identity')).toBeTruthy()
+  expect(view.getByTestId('customer-v21-worker-candidate-avatar').props.source).toEqual([{
+    uri: 'https://storage.example.test/worker-avatar.webp',
+  }])
+  expect(view.getByText('Nguyễn An')).toBeTruthy()
+  expect(view.getByText('Sinh năm 1990 · Nam')).toBeTruthy()
+})
+
 it('shows only real candidate facts and keeps the address locked until confirmation', () => {
   const onConfirm = jest.fn()
   const onReject = jest.fn()

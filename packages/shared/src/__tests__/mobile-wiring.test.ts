@@ -2012,6 +2012,9 @@ describe('frontend-only workflow safety audit', () => {
   const frontendWorkflowProvider = readFrontendWorkflowLayer()
   const edgeRouter = readEdgeRouterLayer()
   const edgeServices = readEdgeServiceLayer()
+  const edgeCreateJob = readRepository(
+    'supabase/functions/mobile-api/_shared/domains/job/create/create.ts',
+  )
   const sharedApiTypes = readSource(resolve(__dirname, '../types/api-responses.ts'))
 
   it('uses one shared app language store with matching VI/EN dictionary keys', () => {
@@ -2116,8 +2119,7 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerStatusUpdateSchema).toContain('result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in, jobId)')
     expect(workerStatusUpdateSchema).toContain('if (status === "completed_by_worker")')
     expect(workerStatusUpdateSchema).toContain('Cần ghi chú hoàn tất trước khi báo hoàn tất')
-    const createJobReturn = edgeServices.slice(edgeServices.indexOf('return {\n    job_id: jobId'), edgeServices.indexOf('async function cancelAnalyzingJob'))
-    expect(createJobReturn).toContain('final_price: lockedFinalPrice')
+    expect(edgeCreateJob).toContain('final_price: null')
     // listWorkerJobs is the last function in the last service module, so slice to end of the layer.
     const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('async function listWorkerJobs'))
     expect(edgeServices).toContain('const WORKER_JOB_LIST_COLUMNS =')

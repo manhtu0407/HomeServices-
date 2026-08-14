@@ -75,6 +75,8 @@ describe('mobile-api worker-candidate gate', () => {
       'rating',
       'total_jobs',
       'years_experience',
+      'birth_year',
+      'gender',
       'verification_status',
       'is_favorite',
       'proposed_at',
@@ -89,6 +91,7 @@ describe('mobile-api worker-candidate gate', () => {
     expect(candidateType).not.toMatch(
       /\b(phone|bank_account|bank_name|cccd|legal_name|address_|home_lat|home_lng)\b/,
     )
+    expect(candidateSources).toContain('date_of_birth, gender')
     expect(candidateSources).toContain('.select("full_name, avatar_url")')
     expect(candidateSources).toContain('resolveWorkerAvatarUrl(client, profile.data.avatar_url)')
     expect(candidateSources).toContain('avatar_url: avatarUrl')

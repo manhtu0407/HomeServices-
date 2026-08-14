@@ -25,6 +25,7 @@ import { createSignedCaseWorkEvidenceUrls } from "../kael-chat/media-vision.ts";
 import { getCurrentScopeChange } from "./pending-decisions.ts";
 import { loadPaymentReceipt, parsePaymentStatus } from "./payment-receipt.ts";
 import { listCustomerServiceHistory } from "./customer-history.ts";
+import { getCurrentJobIncidentReview } from "./incident.ts";
 
 export { listMyPendingDecisions } from "./pending-decisions.ts";
 export { listCustomerServiceHistory, projectCustomerServiceHistoryRows } from "./customer-history.ts";
@@ -59,8 +60,10 @@ export async function getJob(
   const paymentProvider = nullableString(job.payment_provider);
   const hasPaymentReceipt = job.status === "payment_pending" ||
     paymentProvider === "platform_bank_manual" || paymentProvider === "direct_worker";
-  const [initialBroadcastState, currentScopeChange, worker, paymentReceipt] = await Promise.all([
+  const incidentReviewVisible = job.status === "inspecting" || job.status === "repairing";
+  const [initialBroadcastState, currentJobIncident, currentScopeChange, worker, paymentReceipt] = await Promise.all([
     job.status === "broadcasting" ? getJobBroadcastState(client, jobId) : null,
+    incidentReviewVisible ? getCurrentJobIncidentReview(client, jobId) : null,
     job.status === "scope_change_pending" ? getCurrentScopeChange(client, jobId) : null,
     workerId ? loadJobWorkerSummary(client, workerId) : null,
     hasPaymentReceipt
@@ -171,6 +174,7 @@ export async function getJob(
     worker,
     broadcast_state: broadcastState,
     matching_state: matchingState,
+    current_job_incident: currentJobIncident,
     current_scope_change: currentScopeChange,
   };
 }

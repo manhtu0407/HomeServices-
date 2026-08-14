@@ -13,6 +13,7 @@ export type WorkflowViewModelInput = {
   hasPendingIntake?: boolean
   hasEstimate?: boolean
   hasAiNotes?: boolean
+  hasScopeReview?: boolean
   hasScopeChange?: boolean
   hasCompletionEvidence?: boolean
   isLoading?: boolean
@@ -57,6 +58,9 @@ export function buildWorkflowViewModel(input: WorkflowViewModelInput): WorkflowV
 }
 
 function resolveWorkflowPhase(input: WorkflowViewModelInput): WorkflowPhase {
+  if (input.hasScopeReview && (input.status === 'inspecting' || input.status === 'repairing')) {
+    return 'scope_change_reviewing'
+  }
   if (input.status) return toWorkflowPhase(input.status)
   if (input.hasEstimate) return 'kael_explaining'
   if (input.isLoading) return 'kael_estimating'
@@ -135,7 +139,7 @@ function estimateMode(phase: WorkflowPhase, input: WorkflowViewModelInput): Work
 function providerMatchMode(phase: WorkflowPhase): WorkflowArtifactMode {
   if (phase === 'matching') return 'loading'
   if (phase === 'worker_candidate_review') return 'review'
-  if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
+  if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_reviewing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
   if (phase === 'done') return 'done'
   return 'hidden'
 }
@@ -143,7 +147,7 @@ function providerMatchMode(phase: WorkflowPhase): WorkflowArtifactMode {
 function workerBriefMode(phase: WorkflowPhase): WorkflowArtifactMode {
   if (phase === 'matching') return 'loading'
   if (phase === 'worker_candidate_review') return 'review'
-  if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
+  if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_reviewing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
   if (phase === 'done') return 'done'
   if (phase === 'cancelled') return 'blocked'
   return 'hidden'
@@ -152,12 +156,13 @@ function workerBriefMode(phase: WorkflowPhase): WorkflowArtifactMode {
 function bookingMode(phase: WorkflowPhase): WorkflowArtifactMode {
   if (phase === 'matching') return 'loading'
   if (phase === 'cancelled') return 'blocked'
-  if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
+  if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_reviewing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
   if (phase === 'done') return 'done'
   return 'hidden'
 }
 
 function scopeChangeMode(phase: WorkflowPhase, input: WorkflowViewModelInput): WorkflowArtifactMode {
+  if (phase === 'scope_change_reviewing') return 'loading'
   const isActiveScopePhase = phase === 'worker_matched' ||
     phase === 'worker_on_way' ||
     phase === 'arrived' ||

@@ -87,6 +87,10 @@ describe('chat-confirm', () => {
       })
     )
     expect(statusUpdateCall?.operations).toContainEqual(['eq', 'status', 'awaiting_customer_confirm'])
+    expect(statusUpdateCall?.operations).toContainEqual([
+      'update',
+      expect.not.objectContaining({ final_price: expect.anything() }),
+    ])
   })
 
   it('opens the saved-worker choice after confirmation without loading worker eligibility', async () => {
@@ -226,6 +230,40 @@ describe('chat-confirm', () => {
       }),
     })
     expect(JSON.stringify(traceEvents)).not.toContain('confirm_kael_chat_atomic')
+  })
+
+  it('returns a reviewable stale-offer error when the database rejects missing price evidence', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-1',
+          customer_id: 'customer-1',
+          case_phase: 'offer_review',
+          diagnosis_scope: quoteReadyPlumbingDiagnosisScope(),
+          scheduled_at: futureSchedule,
+        },
+        error: null,
+      },
+      {
+        data: null,
+        error: {
+          code: '23514',
+          message: 'KAEL_PRICE_EVIDENCE_REQUIRED',
+        },
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmKaelChat(
+      ctx,
+      'kael-session-1',
+      priceReasoningReceiptInput,
+    )).rejects.toMatchObject({ code: 'INVALID_STATUS', status: 409 })
   })
 
   it('restores the Kael offer phase when broadcast creation fails after confirmation', async () => {

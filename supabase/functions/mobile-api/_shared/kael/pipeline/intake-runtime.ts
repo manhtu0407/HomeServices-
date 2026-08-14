@@ -102,13 +102,17 @@ export function resolveIntakeFactCoverage(input: {
       ) && slot.startsWith("safety_")
     )
     : [];
+  const minimumGroundingMissing = !requiredPolicy && !input.providerNeedsClarification &&
+      Object.keys(coverage.facts).length === 0
+    ? coverage.missing.slice(0, 1)
+    : [];
   const missing = [...new Set(requiredPolicy
     ? [
       ...coverage.missing,
       ...providerMissing,
       ...safetyClarificationMissing,
     ]
-    : providerMissing)];
+    : [...minimumGroundingMissing, ...providerMissing])];
   const providerRequestedClarification = input.providerNeedsClarification &&
     providerMissing.length > 0;
   return {
@@ -116,7 +120,7 @@ export function resolveIntakeFactCoverage(input: {
     missing,
     needsClarification: requiredPolicy
       ? missing.length > 0
-      : providerRequestedClarification,
+      : minimumGroundingMissing.length > 0 || providerRequestedClarification,
   };
 }
 
@@ -179,8 +183,11 @@ export function isGroundedClarificationAnswer(message: string) {
 }
 
 export function isUnknownClarificationAnswer(message: string) {
-  const normalized = normalizeClarificationReply(message);
-  return [
+  const clauses = message
+    .split(/(?:[.!?;,\r\n]+|\bnhưng\b|\bbut\b)/iu)
+    .map(normalizeClarificationReply)
+    .filter(Boolean);
+  const unknownPatterns = [
     "khong biet",
     "khong ro",
     "chua ro",
@@ -191,7 +198,15 @@ export function isUnknownClarificationAnswer(message: string) {
     "do not know",
     "dont know",
     "don't know",
-  ].some((pattern) => normalized.includes(pattern));
+  ];
+  const hasUnknownClause = clauses.some((clause) =>
+    unknownPatterns.some((pattern) => clause.includes(pattern))
+  );
+  if (!hasUnknownClause) return false;
+  return !clauses.some((clause) =>
+    !unknownPatterns.some((pattern) => clause.includes(pattern)) &&
+    clause.split(" ").filter(Boolean).length >= 3
+  );
 }
 
 export function buildClarificationExplanationQuestion(
@@ -222,6 +237,10 @@ export function buildFocusedClarificationQuestion(
 ) {
   const slot = missingSlot.toLowerCase();
   const compositeQuestions: Record<string, Record<"vi" | "en", string>> = {
+    fixture_pipe_or_drain_type: {
+      vi: "Sự cố nằm ở thiết bị, đường ống hay thoát nước nào; chỉ một vị trí hay nhiều vị trí?",
+      en: "Which fixture, pipe, or drain is affected, and is it limited to one location or several?",
+    },
     breaker_state: {
       vi: "Aptomat hiện đang bật/tắt/đã nhảy, hay đã nhảy lại sau lần bật lại trước đó?",
       en: "Is the breaker currently on/off/tripped, or did it re-trip after a reset already attempted?",

@@ -485,13 +485,13 @@ Chain     confirmKaelChat (domains/kael-chat/confirm.service.ts)
 Decision  buildKaelAutonomyDecision({ action: 'start_matching',
           policyId: 'kael.autonomy.v2.chat_estimate_to_matching',
           evidence: [session artifact, job artifact, RULES.md#rule-7], reversible, appealable })
-Writes    jobs.status='broadcasting', broadcast_at, confirmed_search_at, final_price,
+Writes    jobs.status='broadcasting', broadcast_at, confirmed_search_at, final_price=null,
           kael_worker_brief_core (buildWorkerBriefOutput stage 'core'); job_broadcasts rows
 Emits     logJobEvent 'kael_started_matching' then 'broadcast_sent'
 Gates     validateKaelAutonomyTransition - the update is a compare-and-set on
           (id, customer_id, status) so a concurrent change loses safely
 Fails as  NOT_FOUND 404 (session) - INVALID_STATUS 409 (scope not quote-ready)
-          KAEL_PRICE_MISSING 409 (no locked price) - BROADCAST_ACTIVE 409
+          KAEL_PRICE_MISSING 409 (no valid estimate ceiling) - BROADCAST_ACTIVE 409
           STATUS_CHANGED 409 (lost the compare-and-set) - DB_ERROR 500
 Recovery  ALREADY_CONFIRMED returns the current job state instead of an error; if the job
           is still awaiting_customer_confirm the retry completes one idempotent matching
@@ -512,12 +512,12 @@ Chain     createJob (domains/job/create/create.ts)
           -> prepareJobAutonomyOrFail -> persistAndStartJobBroadcast
 Emits     logJobEvent 'kael_started_matching' (analyzing -> broadcasting)
           + notification 'estimate_ready' ("Kael đang điều phối")
-Returns   job_id, status='broadcasting', estimate, estimate_card_v3, final_price,
+Returns   job_id, status='broadcasting', estimate, estimate_card_v3, final_price=null,
           fallback_used, broadcast_sent
 Fails as  VALIDATION 400 (schedule/district) - RATE_LIMITED 429 - DB_ERROR 500
 ```
 
-Both paths end at `broadcasting` and both require a validated `KaelAutonomyDecision`. Neither can be reached from raw AI output or a client-side status write.
+Both paths end at `broadcasting` and both require a validated `KaelAutonomyDecision`. The confirmed estimate remains a matching cap, while the exact payable price stays unset until bilateral A11 approval. Neither path can be reached from raw AI output or a client-side status write.
 
 ---
 

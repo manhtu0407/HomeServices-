@@ -51,10 +51,15 @@ const AMBIGUOUS_MUTATION_ERROR_CODES = new Set([
   'TIMEOUT',
 ])
 
+const DEFINITIVE_PRE_MUTATION_ERROR_CODES = new Set([
+  'KAEL_ESTIMATE_UNAVAILABLE',
+])
+
 export function shouldRetainClientRequestId(failure: {
   code?: string
   status?: number
 }): boolean {
+  if (failure.code && DEFINITIVE_PRE_MUTATION_ERROR_CODES.has(failure.code)) return false
   if (failure.code && AMBIGUOUS_MUTATION_ERROR_CODES.has(failure.code)) return true
   const status = failure.status
   if (status === undefined) return false

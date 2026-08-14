@@ -4,18 +4,23 @@ import { resolve } from 'path'
 
 // C2 (one contract source): the Edge runtime cannot import packages/shared directly (Deno/npm +
 // Supabase deploy-root boundary), so supabase/functions/_shared/contracts.ts mirrors the canonical
-// packages/shared/src/types/api-responses.ts. This is a VALUE-LEVEL parity test (it compares the
+// packages/shared/src/types response modules. This is a VALUE-LEVEL parity test (it compares the
 // normalized type bodies, not a brittle string slice) so any field/type drift between the two fails
 // CI. Mobile imports the canonical from shared directly, so it is checked for re-export, not re-decl.
 
 const readSource = (p: string) => readFileSync(p, 'utf-8').replace(/\r\n/g, '\n')
 const ROOT = resolve(__dirname, '../../../..')
-const shared = readSource(resolve(ROOT, 'packages/shared/src/types/api-responses.ts'))
+const sharedApiResponses = readSource(resolve(ROOT, 'packages/shared/src/types/api-responses.ts'))
+const sharedFavoriteWorkerResponses = readSource(resolve(ROOT, 'packages/shared/src/types/favorite-worker-responses.ts'))
+const sharedPriceEvidenceResponses = readSource(resolve(ROOT, 'packages/shared/src/types/price-evidence-responses.ts'))
 const edge = readSource(resolve(ROOT, 'supabase/functions/_shared/contracts.ts'))
 const mobile = readSource(resolve(ROOT, 'apps/mobile/lib/api-types.ts'))
 
 const CONTRACTS = [
   'KaelEstimateAnalysisReceipt',
+  'BaselinePriceEvidenceReceiptResponse',
+  'BaselinePriceEvidenceSourceResponse',
+  'BaselinePriceEvidenceUnitResponse',
   'KaelPriceReasoningReceipt',
   'MatchingState',
   'FavoriteWorkerForMatching',
@@ -28,6 +33,23 @@ const CONTRACTS = [
   'KaelChatSession',
   'KaelChatResponse',
 ]
+
+const FAVORITE_WORKER_CONTRACTS = new Set([
+  'FavoriteWorkerForMatching',
+  'FavoriteWorkersForMatchingResponse',
+])
+const PRICE_EVIDENCE_CONTRACTS = new Set([
+  'KaelEstimateAnalysisReceipt',
+  'BaselinePriceEvidenceReceiptResponse',
+  'BaselinePriceEvidenceSourceResponse',
+  'BaselinePriceEvidenceUnitResponse',
+])
+
+function sharedSourceFor(name: string): string {
+  if (FAVORITE_WORKER_CONTRACTS.has(name)) return sharedFavoriteWorkerResponses
+  if (PRICE_EVIDENCE_CONTRACTS.has(name)) return sharedPriceEvidenceResponses
+  return sharedApiResponses
+}
 
 function bodyOf(src: string, name: string): string {
   const m = new RegExp(`(?:export )?type ${name}\\b\\s*=\\s*`).exec(src)
@@ -71,9 +93,9 @@ function normalize(s: string): string {
 
 describe('C2 contract parity — Edge mirror matches the shared canonical (value-level)', () => {
   for (const name of CONTRACTS) {
-    it(`${name}: supabase/functions/_shared/contracts.ts == packages/shared api-responses.ts`, () => {
+    it(`${name}: Edge mirror matches its packages/shared canonical`, () => {
       expect(normalize(bodyOf(edge, name)), `${name} drifted between Edge and shared`).toBe(
-        normalize(bodyOf(shared, name)),
+        normalize(bodyOf(sharedSourceFor(name), name)),
       )
     })
   }

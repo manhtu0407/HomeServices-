@@ -106,6 +106,35 @@ describe('case-work response model', () => {
     expect(payment.noteCopy).toContain('450.000')
   })
 
+  it('makes the pre-proposal scope review explicit without opening a Customer decision', () => {
+    const deal = dealFixture('inspecting', {
+      finalPrice: 350_000,
+      scopeReview: {
+        createdAt: '2026-08-13T02:10:00.000Z',
+        evidenceCount: 1,
+        evidenceStatus: 'ready',
+        id: 'incident-1',
+        lastNextActor: 'worker',
+        lastQuestion: null,
+        lastSummary: 'Kael đã đủ căn cứ để chuẩn bị đề xuất.',
+        reportedDescription: 'Thay đúng hai bản lề kim loại bị nứt',
+        reportedReason: 'Hai bản lề nứt, gỗ và cánh tủ không hư hỏng.',
+        status: 'ready_for_scope_proposal',
+        updatedAt: '2026-08-13T02:12:00.000Z',
+      },
+    })
+
+    const model = buildCaseWorkResponseModel({ deal, language: 'vi', phase: 'scope_change_reviewing' })
+
+    expect(model).toMatchObject({
+      actionKind: 'none',
+      status: 'Đang chuẩn bị đề xuất',
+      title: 'Kael đang kiểm tra thay đổi phạm vi',
+    })
+    expect(model.noteCopy).toContain('phạm vi cũ')
+    expect(model.noteCopy).toContain('chưa được phép thực hiện')
+  })
+
   it('does not invent worker identity, evidence, price, or payment rail when data is absent', () => {
     const candidate = buildCaseWorkResponseModel({ language: 'vi', phase: 'worker_candidate_review' })
     const completion = buildCaseWorkResponseModel({ language: 'vi', phase: 'completed_by_worker' })
@@ -241,6 +270,29 @@ describe('case-work response model', () => {
     expect(models.map((model) => model.phase)).not.toContain('paid')
     expect(models.map((model) => model.phase)).not.toContain('scope_change_pending')
     expect(models.every((model) => model.actionKind === 'none')).toBe(true)
+  })
+
+  it('does not claim repair was performed when a scope proposal paused inspection', () => {
+    const deal = dealFixture('scope_change_pending', {
+      scopeChange: {
+        createdAt: '2026-08-14T00:00:00.000Z',
+        evidencePhotoUrls: ['evidence-1'],
+        id: 'scope-1',
+        kaelProgress: null,
+        kaelReview: {},
+        priceMax: 1213000,
+        priceMin: 1213000,
+        reason: 'One hidden leak point was found.',
+        requestedDescription: 'Open one access point and replace one damaged pipe segment.',
+        resumeJobStatus: 'inspecting',
+        status: 'waiting_customer_decision',
+      },
+    })
+    const models = buildCompletedCaseWorkResponseModels({ deal, language: 'vi', phase: 'scope_change_pending' })
+
+    expect(models.map((model) => model.phase)).toContain('inspecting')
+    expect(models.map((model) => model.phase)).toContain('scope_change_reviewing')
+    expect(models.map((model) => model.phase)).not.toContain('repairing')
   })
 
   it.each(WORKFLOW_PHASES.filter((phase) => phase !== 'cancelled').slice(1))(

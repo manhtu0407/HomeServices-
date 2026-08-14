@@ -273,6 +273,16 @@ describe('chat-guardrails', () => {
   })
 
   it('logs provider purposes for Kael chat estimate calls', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get: vi.fn((name: string) => {
+          if (name === 'KAEL_AUTONOMY_FULL_ENABLED') return 'true'
+          if (name === 'KAEL_TRUST_PERPLEXITY_FILTER_ENABLED') return 'true'
+          if (name === 'KAEL_SOURCE_TRUST_HIGH_VALUE_VND') return '1000000'
+          return undefined
+        }),
+      },
+    })
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const target = String(input)
       if (target.includes('deepseek.com')) {
@@ -317,14 +327,34 @@ describe('chat-guardrails', () => {
           choices: [{
             message: {
               content: JSON.stringify({
-                market_range_min: 180000,
-                market_range_max: 420000,
-                confidence: 0.78,
+                confidence: 0.9,
                 sources_summary: 'HCMC apartment repair references',
+                sources: [
+                  {
+                    domain: 'btaskee.com',
+                    price_min: 180000,
+                    price_max: 400000,
+                    unit: 'per_visit',
+                    date: '2026-08-14',
+                    signals: trustedMarketSignals(),
+                  },
+                  {
+                    domain: 'jupviec.vn',
+                    price_min: 200000,
+                    price_max: 420000,
+                    unit: 'per_visit',
+                    date: '2026-08-14',
+                    signals: trustedMarketSignals(),
+                  },
+                ],
               }),
             },
           }],
           usage: { prompt_tokens: 25, completion_tokens: 15 },
+          citations: [
+            'https://btaskee.com/bang-gia',
+            'https://jupviec.vn/bang-gia',
+          ],
         }))
       }
       return new Response('{}', { status: 404 })
@@ -379,7 +409,16 @@ describe('chat-guardrails', () => {
         error: null,
       },
       { data: [{ id: 'problem-1' }], error: null },
-      { data: [{ complexity: 'medium', price_min: 120000, price_max: 320000, district_code: 'hcmc_all' }], error: null },
+      {
+        data: [{
+          complexity: 'medium',
+          price_min: 120000,
+          price_max: 320000,
+          district_code: 'hcmc_all',
+          source: 'verified_electrical_fixture_baseline_2026_08',
+        }],
+        error: null,
+      },
       { data: null, error: null },
       { data: null, error: null },
       { data: { id: 'kael-session-1' }, error: null },
@@ -443,7 +482,17 @@ describe('chat-guardrails', () => {
         ],
         error: null,
       },
-    ])
+    ], {}, {
+      source_trust_registry: [{
+        data: [
+          trustedSourceRegistryRow('btaskee.com'),
+          trustedSourceRegistryRow('jupviec.vn'),
+        ],
+        error: null,
+      }],
+      kael_market_cache: [{ data: null, error: null }],
+      kael_market_artifacts: [{ data: null, error: null }],
+    })
     const ctx: MobileApiContext = {
       success: true,
       user: { id: 'customer-1' },
@@ -515,3 +564,31 @@ describe('chat-guardrails', () => {
     })
   })
 })
+
+function trustedMarketSignals() {
+  return {
+    identity_verified: true,
+    source_type: 'direct_pricing' as const,
+    hcmc_relevant: true,
+    clear_price_and_unit: true,
+    integrity_verified: true,
+    evidence_verified: true,
+    review_overdue: false,
+    price_jump_suspected: false,
+  }
+}
+
+function trustedSourceRegistryRow(domain: string) {
+  return {
+    domain,
+    tier: 'tier_1',
+    auto_tier: 1,
+    entity_type: 'direct_pricing',
+    region: 'hcmc',
+    criteria_met: { A: true, B: true, C: true, D: true, E: true, F: true, G: true },
+    trust_score: 1,
+    is_active: true,
+    last_reviewed_at: '2026-08-14T00:00:00.000Z',
+    effective_until: null,
+  }
+}

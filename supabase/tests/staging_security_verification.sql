@@ -187,7 +187,7 @@ insert into public.scope_change_requests (
     'Observed additional wiring issue',
     200000,
     350000,
-    'waiting_customer_decision'
+    'requested_by_worker'
   );
 
 insert into public.notifications (user_id, job_id, event_type, title, body) values

@@ -28,23 +28,89 @@ function makeScopeChange(overrides: Partial<LocalScopeChange> = {}): LocalScopeC
   return {
     id: 'sc_1',
     status: 'waiting_customer_decision',
-    requestedDescription: 'Phát hiện dây âm tường bị chập',
-    reason: 'Dây âm tường bị chập, phải đi lại dây mới',
-    priceMin: 450000,
-    priceMax: 650000,
+    requestedDescription: 'Thay đúng hai bản lề tủ bếp bị nứt',
+    reason: 'Hai bản lề nứt; gỗ và cánh tủ còn nguyên, lối tiếp cận bình thường',
+    priceMin: 258000,
+    priceMax: 258000,
     kaelProgress: null,
     kaelReview: {
-      problem_summary: 'Chập dây âm tường, có rủi ro cháy',
-      advisory: 'Nên thay đoạn dây cũ',
-      complexity_assessment: 'medium',
+      baseline_evidence: baselineEvidenceReceipt(),
+      baseline_source: 'multi_source_hcmc_cabinet_door_2026_08',
+      baseline_used: 'handyman:replace_cabinet_hinges:small:hcmc_all',
+      problem_summary: 'Thay đúng hai bản lề tương thích và căn chỉnh lại một cánh tủ',
+      advisory: 'Không gồm sửa gỗ, cánh cong vênh hoặc bản lề chuyên dụng.',
+      complexity_assessment: 'small',
+      confirmed_facts: ['Hai bản lề nứt', 'Gỗ và cánh tủ còn nguyên', 'Lối tiếp cận bình thường'],
+      unknowns: [],
       confidence: 0.82,
       fallback_used: false,
+      price_source: 'verified_baseline',
+      reference_price_max: 375000,
+      reference_price_min: 140000,
+      pricing_basis: {
+        calculation: 'neutral midpoint of verified one-door scope 140000-375000 VND = 258000 VND',
+        quantity: 1,
+        unit: 'cabinet_door_scope',
+        unit_price_max: 258000,
+        unit_price_min: 258000,
+      },
+      pricing_mode: 'full_scope_total',
+      selection_rule: 'verified_neutral_midpoint_with_bilateral_confirmation',
+      stakeholder_balance: {
+        commission_level: 1,
+        commission_rate_bps: 1500,
+        customer_confirmation_required: true,
+        customer_total: 258000,
+        platform_fee: 38700,
+        worker_confirmation_required: true,
+        worker_net: 219300,
+      },
+      worker_price_confirmation: {
+        confirmed: true,
+        confirmed_at: '2026-08-13T08:00:00.000Z',
+        quote_id: 'a7500000-0000-4000-8000-000000000010',
+      },
     },
     evidencePhotoUrls: [],
     requestTiming: 'pre_arrival',
     resumeJobStatus: 'worker_on_way',
     createdAt: '2026-05-29T10:00:00Z',
     ...overrides,
+  }
+}
+
+function baselineEvidenceReceipt() {
+  return {
+    schema_version: 'baseline_price_evidence_receipt.v1',
+    accepted_source_count: 2,
+    aggregate_price_min: 140000,
+    aggregate_price_max: 375000,
+    high_trust_source_count: 2,
+    quorum_met: true,
+    required_quorum: 2,
+    unit: 'per_cabinet_door',
+    sources: [
+      {
+        domain: 'suachuatainha.com.vn',
+        url: 'https://suachuatainha.com.vn/price',
+        observed_at: '2026-08-13',
+        price_min: 120000,
+        price_max: 250000,
+        unit: 'per_cabinet_door',
+        effective_tier: 1,
+        weight: 1,
+      },
+      {
+        domain: 'nhabepsaigon.vn',
+        url: 'https://nhabepsaigon.vn/price',
+        observed_at: '2026-08-13',
+        price_min: 160000,
+        price_max: 500000,
+        unit: 'per_cabinet_door',
+        effective_tier: 1,
+        weight: 1,
+      },
+    ],
   }
 }
 
@@ -55,9 +121,9 @@ function setup(overrides: { busy?: boolean; scopeChange?: LocalScopeChange | nul
     <ScopeChangeHardStopModal
       busy={overrides.busy}
       language="vi"
-      newScopeLabel="Đi lại dây âm tường"
-      originalEstimateLabel="150.000đ - 250.000đ"
-      originalScopeLabel="Kiểm tra ổ cắm"
+      newScopeLabel="Thay đúng hai bản lề tủ bếp bị nứt"
+      originalEstimateLabel="150.000đ - 350.000đ"
+      originalScopeLabel="Siết vít và căn chỉnh hai bản lề"
       onApprove={onApprove}
       onReject={onReject}
       scopeChange={overrides.scopeChange === undefined ? makeScopeChange() : overrides.scopeChange}
@@ -77,16 +143,32 @@ describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
 
   it('shows the old vs new scope and old vs new Kael estimate', () => {
     setup()
-    expect(screen.getByText('Kiểm tra ổ cắm')).toBeOnTheScreen()
-    expect(screen.getByText('Đi lại dây âm tường')).toBeOnTheScreen()
-    expect(screen.getByText('150.000đ - 250.000đ')).toBeOnTheScreen()
+    expect(screen.getByText('Siết vít và căn chỉnh hai bản lề')).toBeOnTheScreen()
+    expect(screen.getByText('Thay đúng hai bản lề tủ bếp bị nứt')).toBeOnTheScreen()
+    expect(screen.getByText('150.000đ - 350.000đ')).toBeOnTheScreen()
     // newEstimate is formatted by the component from priceMin/priceMax (vi-VN grouping).
-    expect(screen.getByText('450.000đ - 650.000đ')).toBeOnTheScreen()
+    expect(screen.getByText('258.000đ')).toBeOnTheScreen()
   })
 
   it('shows the Kael policy price disclaimer (price honesty)', () => {
     setup()
-    expect(screen.getByText(/ước tính do Kael tính theo dữ liệu hiện có/)).toBeOnTheScreen()
+    expect(screen.getByText(/tổng giá cho toàn bộ phạm vi thay thế/)).toBeOnTheScreen()
+  })
+
+  it('separates the worker report from Kael verification and exposes the price receipt', () => {
+    setup()
+
+    expect(screen.getByText('Thợ báo cáo')).toBeOnTheScreen()
+    expect(screen.getByText(/Hai bản lề nứt; gỗ và cánh tủ còn nguyên/)).toBeOnTheScreen()
+    expect(screen.getByText('Kael đã đối chiếu')).toBeOnTheScreen()
+    expect(screen.getByText('Facts Kael dùng để tính case này')).toBeOnTheScreen()
+    expect(screen.getByText(/Gỗ và cánh tủ còn nguyên/)).toBeOnTheScreen()
+    expect(screen.getByText(/Không còn unknown quyết định giá/)).toBeOnTheScreen()
+    expect(screen.getByText('Căn cứ giá đã xác minh')).toBeOnTheScreen()
+    expect(screen.getByText(/một cánh tủ.*140\.000.*375\.000.*trung điểm.*258\.000/)).toBeOnTheScreen()
+    expect(screen.getByText(/đúng mức 258\.000đ.*thợ xem trước.*sẽ trở thành giá cuối/)).toBeOnTheScreen()
+    expect(screen.getByText(/Khách trả 258\.000đ.*phí nền tảng 38\.700đ.*15%.*thợ dự kiến nhận 219\.300đ/)).toBeOnTheScreen()
+    expect(screen.getByText(/Đủ số nguồn 2\/2.*suachuatainha\.com\.vn.*nhabepsaigon\.vn/s)).toBeOnTheScreen()
   })
 
   it('shows every scope evidence image without cropping and opens the full viewer', () => {
@@ -132,7 +214,7 @@ describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
   it('does not invent a price when Kael has no estimate yet (price honesty)', () => {
     const { onApprove, onReject } = setup({ scopeChange: makeScopeChange({ priceMin: null, priceMax: null }) })
     // the specific computed range must be absent…
-    expect(screen.queryByText('450.000đ - 650.000đ')).toBeNull()
+    expect(screen.queryByText('258.000đ')).toBeNull()
     // …and the new-estimate slot falls back to a pending label instead of a fake number
     expect(screen.getAllByText('Kael đang xét').length).toBeGreaterThan(0)
     fireEvent.press(screen.getByTestId('customer-scope-change-modal-approve'))
@@ -149,7 +231,7 @@ describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
       fireEvent.press(screen.getByTestId('customer-scope-change-modal-reject'))
       expect(onApprove).not.toHaveBeenCalled()
       expect(onReject).not.toHaveBeenCalled()
-      expect(screen.queryByText('450.000đ - 650.000đ')).toBeNull()
+      expect(screen.queryByText('258.000đ')).toBeNull()
     },
   )
 

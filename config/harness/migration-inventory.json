@@ -5,11 +5,11 @@
     "immutableThroughVersion": "20260805090000",
     "sha256": "7d4ac8a8227452e357caa11a21ece9099c80112712dba9a250114d0761a90275"
   },
-  "migrationCount": 251,
-  "migrationsSha256": "a23f9b7b3d72e532ae61d1a39e8e98053e89ff1bd4561303269dd3b2d37125c1",
+  "migrationCount": 264,
+  "migrationsSha256": "9cecbb1a7d5ffd8515acc624c9c91b03ef11f56e3797139bfba99e61acbb143c",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "2c3aff2c26925558759b82fcd4bdab6253a280e75397925323ce0c30076a2970"
+    "sha256": "7e14ee78332efce47f523ac3d832bdfbc20aeced47c7f5c9282997b8811c8873"
   },
   "entries": [
     {
@@ -1756,6 +1756,20 @@
       "bytes": 71700
     },
     {
+      "version": "20260813104751",
+      "name": "allow_edge_incident_projection",
+      "file": "supabase/migrations/20260813104751_allow_edge_incident_projection.sql",
+      "sha256": "e6020b7d2f78bd005ef01c631d280f5cd003a8aa312b1ff081aafe29af03af01",
+      "bytes": 65
+    },
+    {
+      "version": "20260813110757",
+      "name": "allow_edge_incident_history_projection",
+      "file": "supabase/migrations/20260813110757_allow_edge_incident_history_projection.sql",
+      "sha256": "c3d9fd7e454ba9394ede898a0a6cd58f95c4ea1031f425607ce14835b35af32d",
+      "bytes": 71
+    },
+    {
       "version": "20260813113000",
       "name": "worker_review_admin_provisioning",
       "file": "supabase/migrations/20260813113000_worker_review_admin_provisioning.sql",
@@ -1768,6 +1782,83 @@
       "file": "supabase/migrations/20260813114000_fix_finance_rpc_conflict_ambiguities.sql",
       "sha256": "890080a186dcdd70a451339c52c85acc8a2c8df28d48fd0841c15ede73c76f8e",
       "bytes": 1819
+    },
+    {
+      "version": "20260813120000",
+      "name": "seed_verified_hinge_repair_price",
+      "file": "supabase/migrations/20260813120000_seed_verified_hinge_repair_price.sql",
+      "sha256": "d124e81ac2a2794dbf88bfc6b32079efe96f4351ddb4c9bc08f2ae39a705186d",
+      "bytes": 1150
+    },
+    {
+      "version": "20260813123719",
+      "name": "seed_verified_hinge_replacement_price",
+      "file": "supabase/migrations/20260813123719_seed_verified_hinge_replacement_price.sql",
+      "sha256": "5402fba71ee4033774640ca18aaeba66e5bbaab44eec68eb2af4b4b9f1f477d9",
+      "bytes": 1828
+    },
+    {
+      "version": "20260813123726",
+      "name": "guard_verified_scope_change_final_price",
+      "file": "supabase/migrations/20260813123726_guard_verified_scope_change_final_price.sql",
+      "sha256": "d79d5bec45a2407ee146c2305c7a086c93331dd63142d926c74d0f101c5190aa",
+      "bytes": 7372
+    },
+    {
+      "version": "20260813123736",
+      "name": "scope_change_worker_price_confirmation",
+      "file": "supabase/migrations/20260813123736_scope_change_worker_price_confirmation.sql",
+      "sha256": "8353faa7b3c8d4b52dfeee54f5f72dca15ac9d31b81647596d7831b3c68d9b7b",
+      "bytes": 9937
+    },
+    {
+      "version": "20260813160000",
+      "name": "confirm_candidate_service_preference_parity",
+      "file": "supabase/migrations/20260813160000_confirm_candidate_service_preference_parity.sql",
+      "sha256": "ef613c8c35863b0348b768e5321c6b99954c75d234dc5b67e50ed5723bd41db4",
+      "bytes": 6938
+    },
+    {
+      "version": "20260813170000",
+      "name": "price_baseline_multi_source_evidence",
+      "file": "supabase/migrations/20260813170000_price_baseline_multi_source_evidence.sql",
+      "sha256": "cd710ee220526b755c0220cdf458faa002aee23c068dc0b80e084cbc2adfcf73",
+      "bytes": 10649
+    },
+    {
+      "version": "20260814100000",
+      "name": "weak_water_pressure_price_evidence",
+      "file": "supabase/migrations/20260814100000_weak_water_pressure_price_evidence.sql",
+      "sha256": "427de920363224c253c9db5bbd8d36f1ea7459243501d2845b0ae9ff9aca4d69",
+      "bytes": 6778
+    },
+    {
+      "version": "20260814103000",
+      "name": "defer_final_price_until_bilateral_approval",
+      "file": "supabase/migrations/20260814103000_defer_final_price_until_bilateral_approval.sql",
+      "sha256": "ef0b4f08714277755c60b9829ae4ca75fc669a27ed48a63a6883b7683090c401",
+      "bytes": 4890
+    },
+    {
+      "version": "20260814111500",
+      "name": "verified_pipe_leak_repair_price",
+      "file": "supabase/migrations/20260814111500_verified_pipe_leak_repair_price.sql",
+      "sha256": "90ef413e7f3cb2e1f4bde6339afde6f19cebabd2a9f672ec3ae30244937011fb",
+      "bytes": 4458
+    },
+    {
+      "version": "20260814111600",
+      "name": "harden_price_evidence_shape_check",
+      "file": "supabase/migrations/20260814111600_harden_price_evidence_shape_check.sql",
+      "sha256": "cf04d296fffb1a8e4ce679d2f4ec732dce0a3a53f3c873544cc276c39af96681",
+      "bytes": 575
+    },
+    {
+      "version": "20260814111700",
+      "name": "keep_scope_quote_current_during_claim",
+      "file": "supabase/migrations/20260814111700_keep_scope_quote_current_during_claim.sql",
+      "sha256": "2ed3ab156d3d1be566e8ea8e0968745f64b264b6b9ed0abe8edd5c288eb8b8b4",
+      "bytes": 4217
     }
   ]
 }

@@ -31,6 +31,20 @@ type JobEvidenceGalleryProps = {
   uploadingSlot?: number | null
 }
 
+function CenteredAddMark({ testID }: { testID: string }) {
+  return (
+    <View
+      accessible={false}
+      importantForAccessibility="no"
+      style={styles.addMark}
+      testID={testID}
+    >
+      <View style={[styles.addMarkStroke, styles.addMarkHorizontal]} />
+      <View style={[styles.addMarkStroke, styles.addMarkVertical]} />
+    </View>
+  )
+}
+
 export function JobEvidenceGallery({
   addPhotoDisabled = false,
   emptyLabel,
@@ -144,7 +158,7 @@ export function JobEvidenceGallery({
                 ]}
                 testID={`${testID}-add-${slot}`}
               >
-                <Text style={styles.addMark}>+</Text>
+                <CenteredAddMark testID={`${testID}-add-mark-${slot}`} />
                 <Text numberOfLines={1} style={styles.badge}>
                   {isUploading
                     ? (language === 'vi' ? 'Đang gửi' : 'Uploading')
@@ -330,10 +344,23 @@ export function JobEvidenceGallery({
 
 const styles = StyleSheet.create({
   addMark: {
-    color: '#087F75',
-    fontSize: 32,
-    fontWeight: '500',
-    lineHeight: 36,
+    alignItems: 'center',
+    height: 20,
+    justifyContent: 'center',
+    width: 20,
+  },
+  addMarkHorizontal: {
+    height: 3,
+    width: 20,
+  },
+  addMarkStroke: {
+    backgroundColor: '#087F75',
+    borderRadius: 999,
+    position: 'absolute',
+  },
+  addMarkVertical: {
+    height: 20,
+    width: 3,
   },
   addTile: {
     alignItems: 'center',

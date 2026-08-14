@@ -2,6 +2,7 @@ import {
   customerCancellationRequestSchema,
   disputeOpenRequestSchema,
   edgeJobIncidentScopeProposalSchema,
+  edgeJobIncidentScopePricePreviewSchema,
   jobCreateSchema,
   jobMatchingPreferenceSchema,
   jobMediaAttachSchema,
@@ -55,9 +56,7 @@ export async function dispatchJobRoute(
     case "jobs.cancel":
       return services.cancelJob(ctx, route.jobId);
     case "jobs.customerCancellation": {
-      const input = customerCancellationRequestSchema.safeParse(
-        await readJson(request),
-      );
+      const input = customerCancellationRequestSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.requestCustomerCancellation(ctx, route.jobId, input.data);
     }
@@ -99,15 +98,18 @@ export async function dispatchJobRoute(
       if (!input.success) apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
       return services.proposeScopeChangeFromJobIncident(ctx, route.jobId, input.data);
     }
+    case "jobs.kaelIncidentPreviewScope": {
+      const input = edgeJobIncidentScopePricePreviewSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+      return services.previewScopeChangeFromJobIncident(ctx, route.jobId, input.data);
+    }
     case "jobs.kaelClarify": {
       const input = kaelWorkerClarifySchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.askKaelForWorker(ctx, route.jobId, input.data);
     }
     case "jobs.workerCancellation": {
-      const input = workerCancellationRequestSchema.safeParse(
-        await readJson(request),
-      );
+      const input = workerCancellationRequestSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.requestWorkerCancellation(ctx, route.jobId, input.data);
     }

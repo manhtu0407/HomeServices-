@@ -6,6 +6,7 @@ import type {
 } from "../../../../_shared/domain.ts";
 import type {
   EdgeAddressAccessView,
+  EdgeJobIncident,
 } from "./job.ts";
 
 export type WorkerStatusUpdate = Extract<
@@ -67,6 +68,38 @@ export type EdgeWorkerScopeChangeResponse = {
   anti_fraud?: Record<string, unknown>;
   worker_challenge?: Record<string, unknown>;
   customer_card?: Record<string, unknown>;
+};
+
+export type EdgeScopeChangeWorkerQuote = {
+  schema_version: "scope_change_worker_quote.v1";
+  quote_id: string;
+  incident_id: string;
+  job_id: string;
+  customer_total: number;
+  platform_fee: number;
+  worker_net: number;
+  commission_level: number;
+  commission_rate_bps: number;
+  reference_price_min: number;
+  reference_price_max: number;
+  baseline_used: string;
+  baseline_source: string;
+  baseline_evidence: import("../../kael/evidence/baseline-price-evidence.ts").BaselinePriceEvidenceReceipt;
+  pricing_components?: ReadonlyArray<{
+    evidence_receipt: import("../../kael/evidence/baseline-price-evidence.ts").BaselinePriceEvidenceReceipt;
+    kind: "approved_scope_change" | "original_confirmed_scope";
+    price_max: number;
+    price_min: number;
+    selected_price: number;
+  }>;
+  selection_rule: "verified_neutral_midpoint_with_bilateral_confirmation";
+  calculation: string;
+  expires_at: string;
+};
+
+export type EdgeJobIncidentScopePricePreviewResponse = {
+  incident: EdgeJobIncident;
+  quote: EdgeScopeChangeWorkerQuote;
 };
 
 export type EdgeWorkerKaelClarifyResponse = {
@@ -137,6 +170,15 @@ export type EdgeWorkerJobListResponse = {
       | "expired"
       | "failed"
       | "reconciled"
+      | "manual_qr_ready"
+      | "manual_customer_claimed"
+      | "manual_reconcile_required"
+      | "manual_verified"
+      | "direct_awaiting_confirmation"
+      | "direct_awaiting_customer_confirmation"
+      | "direct_awaiting_worker_confirmation"
+      | "direct_reconcile_required"
+      | "direct_paid"
       | null;
     payment_provider: string | null;
     payment_code: string | null;

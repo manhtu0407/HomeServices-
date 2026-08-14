@@ -305,7 +305,7 @@ function priceReasoningSupportingPhase(
       value: confidenceLabel(receipt.fairness.confidence, language),
     },
     {
-      label: language === 'vi' ? 'Đối chiếu thị trường' : 'Market check',
+      label: priceReasoningEvidenceLabel(receipt, language),
       value: priceReasoningMarketDetail(receipt, language),
     },
     {
@@ -452,6 +452,21 @@ function priceReasoningMarketDetail(
   receipt: NonNullable<AgenticEstimate['price_reasoning_receipt']>,
   language: AppLanguage,
 ) {
+  const baseline = receipt.fairness.baseline_evidence
+  if (baseline?.quorum_met && baseline.sources.length > 0) {
+    const sourceLines = baseline.sources.map((source) => {
+      const range = formatPriceRange(source.price_min, source.price_max, language)
+      return `${source.domain}: ${range} · T${source.effective_tier}`
+    }).join('\n')
+    const aggregate = formatPriceRange(
+      baseline.aggregate_price_min,
+      baseline.aggregate_price_max,
+      language,
+    )
+    return language === 'vi'
+      ? `${baseline.accepted_source_count} nguồn giá cơ sở đã kiểm chứng, đạt đồng thuận ${baseline.high_trust_source_count}/${baseline.required_quorum}.\n${sourceLines}\nKhoảng tổng hợp: ${aggregate}.`
+      : `${baseline.accepted_source_count} verified baseline sources meet quorum ${baseline.high_trust_source_count}/${baseline.required_quorum}.\n${sourceLines}\nAggregate range: ${aggregate}.`
+  }
   const count = receipt.fairness.market_source_count
   const highTrust = receipt.fairness.high_trust_source_count
   if (count === null) {
@@ -468,6 +483,16 @@ function priceReasoningMarketDetail(
       : `${countCopy} The source quorum is not yet met, so Kael keeps the governed baseline range.`
   }
   return countCopy
+}
+
+function priceReasoningEvidenceLabel(
+  receipt: NonNullable<AgenticEstimate['price_reasoning_receipt']>,
+  language: AppLanguage,
+) {
+  if (receipt.fairness.baseline_evidence?.quorum_met) {
+    return language === 'vi' ? 'Nguồn giá đã kiểm chứng' : 'Verified price sources'
+  }
+  return language === 'vi' ? 'Đối chiếu thị trường' : 'Market check'
 }
 
 function priceReasoningConclusion(

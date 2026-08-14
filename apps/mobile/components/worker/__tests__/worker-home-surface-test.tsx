@@ -527,7 +527,9 @@ function buildWorkflow({
   mockMarkNotificationRead = jest.fn(async () => true)
   mockWorkflowValue = {
     actions: {
+      getKaelJobIncident: jest.fn(async () => null),
       openKaelJobIncident: jest.fn(async () => ({ incident: null })),
+      previewScopeChangeFromKaelIncident: jest.fn(async () => false),
       proposeScopeChangeFromKaelIncident: jest.fn(async () => true),
       requestScopeChange: jest.fn(async () => true),
       requestWorkerCancellation: jest.fn(async () => true),

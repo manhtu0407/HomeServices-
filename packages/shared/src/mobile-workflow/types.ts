@@ -134,6 +134,7 @@ export type LocalDeal = {
   draft: LocalDealDraft
   estimate: LocalDealEstimate | null
   broadcast: LocalWorkerBroadcast | null
+  scopeReview?: LocalJobIncidentReview | null
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
   paymentRailAvailable?: boolean
@@ -169,6 +170,20 @@ export type LocalScopeChange = {
   createdAt: string | null
 }
 
+export type LocalJobIncidentReview = {
+  id: string
+  status: 'open' | 'awaiting_worker' | 'awaiting_customer' | 'ready_for_scope_proposal'
+  evidenceStatus: 'needs_more' | 'ready'
+  reportedDescription: string | null
+  reportedReason: string | null
+  evidenceCount: number
+  lastSummary: string | null
+  lastQuestion: string | null
+  lastNextActor: 'customer' | 'worker' | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type LocalKaelProgress = {
   current_stage: string
   status: 'queued' | 'running' | 'completed' | 'failed'
@@ -197,6 +212,7 @@ export type LocalRemoteJobSnapshot = {
   mediaCount?: number
   estimate?: LocalDealEstimate | null
   broadcast?: LocalWorkerBroadcast | null
+  scopeReview?: LocalJobIncidentReview | null
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
   paymentRailAvailable?: boolean

@@ -51,6 +51,7 @@ describe('client request id lifecycle', () => {
     [{ code: 'REQUEST_IN_PROGRESS', status: 409 }, true],
     [{ code: 'DB_ERROR', status: 500 }, true],
     [{ code: 'RATE_LIMITED', status: 429 }, true],
+    [{ code: 'KAEL_ESTIMATE_UNAVAILABLE', status: 503 }, false],
     [{ code: 'VALIDATION', status: 400 }, false],
     [{ code: 'MEDIA_READ_FAILED' }, false],
   ])('classifies whether %o can hide a completed mutation', (failure, expected) => {

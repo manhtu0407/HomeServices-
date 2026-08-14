@@ -788,7 +788,12 @@ export type DatabaseFunctions = {
         }[]
       }
       claim_job_incident_scope_proposal_atomic: {
-        Args: { p_claim_id: string; p_job_id: string; p_worker_id: string }
+        Args: {
+          p_claim_id: string
+          p_job_id: string
+          p_quote_id: string
+          p_worker_id: string
+        }
         Returns: {
           claimed: boolean
           error_code: string
@@ -2241,6 +2246,22 @@ export type DatabaseFunctions = {
           error_code: string
           ok: boolean
           rule_id: string
+        }[]
+      }
+      save_job_incident_scope_price_quote_atomic: {
+        Args: {
+          p_expected_revision: number
+          p_incident_id: string
+          p_job_id: string
+          p_quote: Json
+          p_quote_expires_at: string
+          p_quote_id: string
+          p_worker_id: string
+        }
+        Returns: {
+          error_code: string
+          incident: Json
+          ok: boolean
         }[]
       }
       save_worker_registration_draft_atomic: {

@@ -37,31 +37,62 @@ const SUPPORTED_SERVICE_ENUM = KAEL_CASE_WORK_SERVICE_TYPES.map((serviceType) =>
 
 export function buildScopeChangeEstimateMessages(
   input: ScopeChangeComputeInput,
+  schemaRepairRoot?: "array" | "other",
 ): AIMessage[] {
   const originalRange = formatReviewPriceRange(
     input.originalPriceMin,
     input.originalPriceMax,
   );
+  const schemaRepairDirective = schemaRepairRoot === "array"
+    ? `
+Previous provider attempt returned a top-level JSON array and failed validation.
+Repair that exact structural error: return one top-level JSON object, never an array.`
+    : schemaRepairRoot === "other"
+    ? `
+Previous provider attempt failed schema validation. Return one top-level JSON
+object containing every required field with the exact types below.`
+    : "";
   return [
     {
       role: "system",
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You compute an updated price estimate for a Vietnamese HCMC NestScout job
-after the worker reports a different on-site scope.
-The worker does NOT propose a price; you compute it independently using the
-original Kael analysis and the worker's reported scope description + reason.
+You objectively classify an updated scope for a Vietnamese HCMC NestScout job
+after the worker reports a different on-site condition.
+The worker does NOT propose a price and you MUST NOT calculate or output money.
+The backend will bind the accepted classification to an exact verified catalog
+baseline. Choose only a problem_slug allowed for the selected service.
 Do not include PII, full addresses, phone numbers, or raw worker/customer text.
-Prices must be VND integers grounded in supplied evidence for the selected
-supported service. Confidence below 0.4 if evidence is weak.
+Confidence must be below 0.4 if the evidence is weak or the exact classification
+is uncertain.
+Extract only facts explicitly supported by the original confirmed intake or the
+worker report. Put unresolved details in unknowns. Never convert an unknown into
+a confirmed fact. Pricing factors describe the whole proposed scope:
+- quantity: number of relevant items in the proposed scope
+- access_condition: normal only when ordinary access is explicitly supported
+- secondary_damage: none_confirmed only when related surfaces/components are
+  explicitly reported intact
+- material_tier: standard only when compatible ordinary hardware/material is
+  explicitly included and supported; use unknown when materials are explicitly
+  excluded from the proposed price, otherwise specialty or unknown
+${schemaRepairDirective}
 
-Respond ONLY with valid JSON matching this schema:
+Respond ONLY with one valid JSON object matching this schema. The first
+non-whitespace character must be { and the final non-whitespace character must
+be }. Never wrap the object in an array:
 {
+  "problem_slug": one of: ${PROBLEM_SLUGS_BY_SERVICE[input.serviceType].join(", ")},
   "complexity_assessment": "small" | "medium" | "large",
-  "price_min": number (VND integer),
-  "price_max": number (VND integer, >= price_min),
   "confidence": number (0-1),
+  "confirmed_facts": ["fact supported by supplied context"],
+  "unknowns": ["unresolved detail"],
+  "pricing_factors": {
+    "quantity": positive integer,
+    "access_condition": "normal" | "restricted" | "unknown",
+    "secondary_damage": "none_confirmed" | "present" | "unknown",
+    "material_tier": "standard" | "specialty" | "unknown"
+  },
   "problem_summary": "short Vietnamese summary of updated problem",
   "advisory": "optional short Vietnamese practical note or null"
 }`,

@@ -67,8 +67,8 @@ export async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
   });
   if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
   const finalPrice = nullableNumber(job.final_price);
-  // jobs.final_price là Kael-locked. Nếu null thì
-  // confirmSearch chưa set baseline — chặn confirm để giữ trust.
+  // jobs.final_price is set only by an evidence-backed, bilateral scope
+  // decision. A missing value means the payable scope is still unresolved.
   if (finalPrice === null || finalPrice <= 0) {
     apiFailure(
       "INVALID_STATUS",

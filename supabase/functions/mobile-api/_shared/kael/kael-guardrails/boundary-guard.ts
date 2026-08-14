@@ -214,7 +214,9 @@ const SERVICE_KEYWORDS: Record<ServiceType, readonly string[]> = {
     "giat nem",
   ],
   handyman: [
+    "khoan",
     "khoan tuong",
+    "ke",
     "lap ke",
     "lap thanh rem",
     "lap den",
@@ -334,7 +336,7 @@ export function detectServiceMismatch(
   suggestedService: ServiceType | null;
   hits: Record<ServiceType, number>;
 } {
-  const normalized = normalize(text);
+  const normalized = serviceMismatchAssertionText(text);
   const hits: Record<ServiceType, number> = {
     electrical: 0,
     plumbing: 0,
@@ -371,6 +373,14 @@ export function detectServiceMismatch(
     suggestedService: detected ? suggestedService : null,
     hits,
   };
+}
+
+function serviceMismatchAssertionText(text: string): string {
+  return normalize(text)
+    .replace(/\bkhong (?:di|dau|sua|lam) (?:day )?dien\b/g, " ")
+    .replace(/\b(?:no|not) (?:electrical|wiring) work\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function evaluateMessageBoundary(

@@ -353,4 +353,66 @@ describe('job-detail', () => {
     expect(scopeCall?.operations).toContainEqual(['eq', 'job_id', 'job-1'])
     expect(scopeCall?.operations).toContainEqual(['eq', 'status', 'waiting_customer_decision'])
   })
+
+  it('projects the active Kael incident while the worker and Kael are validating a scope change', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-incident-1',
+          status: 'inspecting',
+          service_type: 'handyman',
+          description: 'Căn chỉnh hai bản lề tủ bếp',
+          problem_chips: ['Bản lề tủ bị xệ'],
+          photo_urls: [],
+          address_district: 'q1',
+          customer_id: 'customer-1',
+          created_at: '2026-08-13T02:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'incident-1',
+          status: 'awaiting_worker',
+          evidence_status: 'needs_more',
+          reported_description: 'Thay đúng hai bản lề kim loại bị nứt',
+          reported_reason: 'Hai bản lề đã nứt, gỗ và cánh tủ không hư hỏng.',
+          evidence_photo_urls: ['supabase://job-media/job-incident-1/scope_change_evidence/hinge.jpg'],
+          last_summary: 'Kael đã nhận mô tả và đang đối chiếu ảnh hiện trường.',
+          last_question: 'Ảnh đã cho thấy đủ cả hai bản lề chưa?',
+          last_next_actor: 'worker',
+          created_at: '2026-08-13T02:10:00.000Z',
+          updated_at: '2026-08-13T02:11:00.000Z',
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).getJob(ctx, 'job-incident-1')).resolves.toMatchObject({
+      job: { id: 'job-incident-1', status: 'inspecting' },
+      current_job_incident: {
+        id: 'incident-1',
+        status: 'awaiting_worker',
+        evidence_status: 'needs_more',
+        reported_description: 'Thay đúng hai bản lề kim loại bị nứt',
+        reported_reason: 'Hai bản lề đã nứt, gỗ và cánh tủ không hư hỏng.',
+        evidence_count: 1,
+        last_next_actor: 'worker',
+      },
+    })
+
+    const incidentCall = client.calls.find((call) => call.table === 'kael_job_incidents')
+    expect(incidentCall?.operations).toContainEqual(['eq', 'job_id', 'job-incident-1'])
+    expect(incidentCall?.operations).toContainEqual([
+      'in',
+      'status',
+      ['open', 'awaiting_worker', 'awaiting_customer', 'ready_for_scope_proposal'],
+    ])
+  })
 })
