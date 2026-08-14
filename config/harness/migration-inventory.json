@@ -9,7 +9,7 @@
   "migrationsSha256": "9cecbb1a7d5ffd8515acc624c9c91b03ef11f56e3797139bfba99e61acbb143c",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "25b9cc87c67d8d12c908d715e0ed2509fb5847a2fbcbb0ba2d06b539fb74f987"
+    "sha256": "7e14ee78332efce47f523ac3d832bdfbc20aeced47c7f5c9282997b8811c8873"
   },
   "entries": [
     {
